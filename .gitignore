@@ -1,0 +1,20 @@
+node_modules
+dist
+.turbo
+coverage
+*.log
+.env
+.env.local
+.env.*.local
+.env.*
+!.env.example
+credentials.txt
+.DS_Store
+
+# Local tool state
+.expo
+.raven
+
+# Commercial font files (TT Squares) - keep out of the repo
+tt-squares/
+*.tsbuildinfo

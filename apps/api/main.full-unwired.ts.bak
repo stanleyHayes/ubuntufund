@@ -1,0 +1,586 @@
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+
+import { config } from './infrastructure/config/index.js';
+import { connectDatabase } from './infrastructure/database/connection.js';
+import { logger } from './infrastructure/logging/logger.js';
+
+// Outbound adapters (repositories)
+import { MongoCampaignRepository } from './infrastructure/adapters/outbound/persistence/MongoCampaignRepository.js';
+import { MongoUserRepository } from './infrastructure/adapters/outbound/persistence/MongoUserRepository.js';
+import { MongoDonationRepository } from './infrastructure/adapters/outbound/persistence/MongoDonationRepository.js';
+import { MongoWalletRepository } from './infrastructure/adapters/outbound/persistence/MongoWalletRepository.js';
+import { MongoCommentRepository } from './infrastructure/adapters/outbound/persistence/MongoCommentRepository.js';
+import { MongoDisputeRepository } from './infrastructure/adapters/outbound/persistence/MongoDisputeRepository.js';
+import { MongoNotificationRepository } from './infrastructure/adapters/outbound/persistence/MongoNotificationRepository.js';
+import { MongoEscrowRepository } from './infrastructure/adapters/outbound/persistence/MongoEscrowRepository.js';
+import { MongoMilestoneRepository } from './infrastructure/adapters/outbound/persistence/MongoMilestoneRepository.js';
+import { MongoReportRepository } from './infrastructure/adapters/outbound/persistence/MongoReportRepository.js';
+import { MongoRefundRepository } from './infrastructure/adapters/outbound/persistence/MongoRefundRepository.js';
+import { MongoVerificationRepository } from './infrastructure/adapters/outbound/persistence/MongoVerificationRepository.js';
+import { MongoLikeRepository } from './infrastructure/adapters/outbound/persistence/MongoLikeRepository.js';
+import { MongoFollowRepository } from './infrastructure/adapters/outbound/persistence/MongoFollowRepository.js';
+import { MongoShareRepository } from './infrastructure/adapters/outbound/persistence/MongoShareRepository.js';
+import { MongoAuditLogRepository } from './infrastructure/adapters/outbound/persistence/MongoAuditLogRepository.js';
+import { MongoLeaderboardRepository } from './infrastructure/adapters/outbound/persistence/MongoLeaderboardRepository.js';
+import { MongoSubscriptionRepository } from './infrastructure/adapters/outbound/persistence/MongoSubscriptionRepository.js';
+import { MongoCollaborationRepository } from './infrastructure/adapters/outbound/persistence/MongoCollaborationRepository.js';
+import { MongoCampaignLimitRepository } from './infrastructure/adapters/outbound/persistence/MongoCampaignLimitRepository.js';
+import { MongoCampaignMediaRepository } from './infrastructure/adapters/outbound/persistence/MongoCampaignMediaRepository.js';
+import { MongoPaymentProviderRepository } from './infrastructure/adapters/outbound/persistence/MongoPaymentProviderRepository.js';
+import { MongoWalletTransactionRepository } from './infrastructure/adapters/outbound/persistence/MongoWalletTransactionRepository.js';
+import { MongoAiUsageRepository } from './infrastructure/adapters/outbound/persistence/MongoAiUsageRepository.js';
+import { MongoPushTokenRepository } from './infrastructure/adapters/outbound/persistence/MongoPushTokenRepository.js';
+
+
+// Application services
+import { AuthTokenService } from './application/services/AuthTokenService.js';
+import { AuditService } from './application/services/AuditService.js';
+import { NotificationDispatcher } from './application/services/NotificationDispatcher.js';
+import { EventBus } from './application/services/EventBus.js';
+import { AiWritingService } from './application/services/AiWritingService.js';
+import { SSEService } from './application/services/SSEService.js';
+
+
+// Use cases - Auth & Campaign
+import { CreateCampaignUseCase } from './application/use-cases/CreateCampaignUseCase.js';
+import { GetCampaignUseCase } from './application/use-cases/GetCampaignUseCase.js';
+import { DonateToCampaignUseCase } from './application/use-cases/DonateToCampaignUseCase.js';
+import { SearchCampaignsUseCase } from './application/use-cases/SearchCampaignsUseCase.js';
+import { ReviewCampaignUseCase } from './application/use-cases/ReviewCampaignUseCase.js';
+import { UpdateCampaignUseCase } from './application/use-cases/UpdateCampaignUseCase.js';
+import { DeleteCampaignUseCase } from './application/use-cases/DeleteCampaignUseCase.js';
+import { ApproveCampaignUseCase } from './application/use-cases/ApproveCampaignUseCase.js';
+import { RegisterUserUseCase } from './application/use-cases/RegisterUserUseCase.js';
+import { LoginUserUseCase } from './application/use-cases/LoginUserUseCase.js';
+
+// Use cases - Social
+import { AddCommentUseCase } from './application/use-cases/AddCommentUseCase.js';
+import { GetCommentsUseCase } from './application/use-cases/GetCommentsUseCase.js';
+import { LikeCampaignUseCase } from './application/use-cases/LikeCampaignUseCase.js';
+import { FollowUserUseCase } from './application/use-cases/FollowUserUseCase.js';
+import { ShareCampaignUseCase } from './application/use-cases/ShareCampaignUseCase.js';
+
+// Use cases - Disputes & Reports
+import { CreateDisputeUseCase } from './application/use-cases/CreateDisputeUseCase.js';
+import { ResolveDisputeUseCase } from './application/use-cases/ResolveDisputeUseCase.js';
+import { CreateReportUseCase } from './application/use-cases/CreateReportUseCase.js';
+import { ReviewReportUseCase } from './application/use-cases/ReviewReportUseCase.js';
+
+// Use cases - Refunds
+import { RequestRefundUseCase } from './application/use-cases/RequestRefundUseCase.js';
+import { ProcessCampaignRefundsUseCase } from './application/use-cases/ProcessCampaignRefundsUseCase.js';
+
+// Use cases - Verification
+import { SubmitVerificationUseCase } from './application/use-cases/SubmitVerificationUseCase.js';
+import { ApproveVerificationUseCase } from './application/use-cases/ApproveVerificationUseCase.js';
+import { RejectVerificationUseCase } from './application/use-cases/RejectVerificationUseCase.js';
+
+// Use cases - Escrow & Milestones
+import { CreateEscrowUseCase } from './application/use-cases/CreateEscrowUseCase.js';
+import { ReleaseMilestoneUseCase } from './application/use-cases/ReleaseMilestoneUseCase.js';
+
+// Use cases - Notifications
+import { GetNotificationsUseCase } from './application/use-cases/GetNotificationsUseCase.js';
+import { CreateNotificationUseCase } from './application/use-cases/CreateNotificationUseCase.js';
+
+// Use cases - Leaderboard & Analytics
+import { GetLeaderboardUseCase } from './application/use-cases/GetLeaderboardUseCase.js';
+import { UpdateLeaderboardUseCase } from './application/use-cases/UpdateLeaderboardUseCase.js';
+import { GetAnalyticsUseCase } from './application/use-cases/GetAnalyticsUseCase.js';
+
+// Use cases - Collaboration
+import { InviteCollaboratorUseCase } from './application/use-cases/InviteCollaboratorUseCase.js';
+import { RespondToCollaborationUseCase } from './application/use-cases/RespondToCollaborationUseCase.js';
+import { RemoveCollaboratorUseCase } from './application/use-cases/RemoveCollaboratorUseCase.js';
+import { GetCollaborationsUseCase } from './application/use-cases/GetCollaborationsUseCase.js';
+
+
+// Use cases - Subscription
+import { GetSubscriptionUseCase } from './application/use-cases/GetSubscriptionUseCase.js';
+import { SubscribeUseCase } from './application/use-cases/SubscribeUseCase.js';
+import { CancelSubscriptionUseCase } from './application/use-cases/CancelSubscriptionUseCase.js';
+import { CheckSubscriptionLimitsUseCase } from './application/use-cases/CheckSubscriptionLimitsUseCase.js';
+
+// Inbound adapters (controllers)
+import { CampaignController } from './infrastructure/adapters/inbound/http/controllers/CampaignController.js';
+import { AuthController } from './infrastructure/adapters/inbound/http/controllers/AuthController.js';
+import { WalletController } from './infrastructure/adapters/inbound/http/controllers/WalletController.js';
+import { CommentController } from './infrastructure/adapters/inbound/http/controllers/CommentController.js';
+import { DisputeController } from './infrastructure/adapters/inbound/http/controllers/DisputeController.js';
+import { NotificationController } from './infrastructure/adapters/inbound/http/controllers/NotificationController.js';
+import { RefundController } from './infrastructure/adapters/inbound/http/controllers/RefundController.js';
+import { VerificationController } from './infrastructure/adapters/inbound/http/controllers/VerificationController.js';
+import { SocialController } from './infrastructure/adapters/inbound/http/controllers/SocialController.js';
+import { EscrowController } from './infrastructure/adapters/inbound/http/controllers/EscrowController.js';
+import { LeaderboardController } from './infrastructure/adapters/inbound/http/controllers/LeaderboardController.js';
+import { ReportController } from './infrastructure/adapters/inbound/http/controllers/ReportController.js';
+import { AnalyticsController } from './infrastructure/adapters/inbound/http/controllers/AnalyticsController.js';
+import { ProfileController } from './infrastructure/adapters/inbound/http/controllers/ProfileController.js';
+import { SubscriptionController } from './infrastructure/adapters/inbound/http/controllers/SubscriptionController.js';
+import { ManageSubscriptionPlansUseCase } from './application/use-cases/ManageSubscriptionPlansUseCase.js';
+import { RbacUseCase } from './application/use-cases/RbacUseCase.js';
+import { SubscribeNewsletterUseCase } from './application/use-cases/SubscribeNewsletterUseCase.js';
+import { SubmitContactUseCase } from './application/use-cases/SubmitContactUseCase.js';
+import { RbacController } from './infrastructure/adapters/inbound/http/controllers/RbacController.js';
+import { NewsletterController } from './infrastructure/adapters/inbound/http/controllers/NewsletterController.js';
+import { ContactController } from './infrastructure/adapters/inbound/http/controllers/ContactController.js';
+import { CollaborationController } from './infrastructure/adapters/inbound/http/controllers/CollaborationController.js';
+import { OrganizationController } from './infrastructure/adapters/inbound/http/controllers/OrganizationController.js';
+import { DonationController } from './infrastructure/adapters/inbound/http/controllers/DonationController.js';
+import { UserController } from './infrastructure/adapters/inbound/http/controllers/UserController.js';
+import { ListPaymentProvidersUseCase } from './application/use-cases/ListPaymentProvidersUseCase.js';
+import { GetEnabledPaymentProvidersUseCase } from './application/use-cases/GetEnabledPaymentProvidersUseCase.js';
+import { TogglePaymentProviderUseCase } from './application/use-cases/TogglePaymentProviderUseCase.js';
+import { UpdatePaymentProviderConfigUseCase } from './application/use-cases/UpdatePaymentProviderConfigUseCase.js';
+import { SeedPaymentProvidersUseCase } from './application/use-cases/SeedPaymentProvidersUseCase.js';
+import { PaymentGatewayFactory } from './application/services/PaymentGatewayFactory.js';
+import { DepositUseCase } from './application/use-cases/DepositUseCase.js';
+import { WithdrawUseCase } from './application/use-cases/WithdrawUseCase.js';
+import { TransferUseCase } from './application/use-cases/TransferUseCase.js';
+import { ManageTestimonialsUseCase } from './application/use-cases/ManageTestimonialsUseCase.js';
+import { TestimonialController } from './infrastructure/adapters/inbound/http/controllers/TestimonialController.js';
+import { PaymentProviderController } from './infrastructure/adapters/inbound/http/controllers/PaymentProviderController.js';
+import { AiWritingController } from './infrastructure/adapters/inbound/http/controllers/AiWritingController.js';
+import { PushNotificationController } from './infrastructure/adapters/inbound/http/controllers/PushNotificationController.js';
+import { StripeWebhookController } from './infrastructure/adapters/inbound/http/controllers/StripeWebhookController.js';
+import { SSEController } from './infrastructure/adapters/inbound/http/controllers/SSEController.js';
+
+import { createStripeWebhookRoutes } from './infrastructure/adapters/inbound/http/routes/stripeWebhookRoutes.js';
+import { EmailService } from './application/services/EmailService.js';
+import { PushNotificationService } from './application/services/PushNotificationService.js';
+import { KYCService } from './application/services/KYCService.js';
+import { KYCController } from './infrastructure/adapters/inbound/http/controllers/KYCController.js';
+
+// Middleware
+import { createAuthMiddleware } from './infrastructure/adapters/inbound/middleware/authMiddleware.js';
+import { errorHandler } from './infrastructure/adapters/inbound/middleware/errorHandler.js';
+import { apiRateLimiter } from './infrastructure/adapters/inbound/middleware/rateLimiter.js';
+import { requestLogger } from './infrastructure/adapters/inbound/middleware/requestLogger.js';
+import { requireKYCLevel } from './infrastructure/adapters/inbound/middleware/kycMiddleware.js';
+import { createApiRouter } from './infrastructure/adapters/inbound/http/routes/index.js';
+import { MPesaWebhookController } from './infrastructure/adapters/inbound/http/controllers/MPesaWebhookController.js';
+
+async function bootstrap(): Promise<void> {
+  await connectDatabase(config.mongodbUri);
+
+  // --- Repositories ---
+  const campaignRepo = new MongoCampaignRepository();
+  const userRepo = new MongoUserRepository();
+  const donationRepo = new MongoDonationRepository();
+  const walletRepo = new MongoWalletRepository();
+  const commentRepo = new MongoCommentRepository();
+  const disputeRepo = new MongoDisputeRepository();
+  const notificationRepo = new MongoNotificationRepository();
+  const escrowRepo = new MongoEscrowRepository();
+  const milestoneRepo = new MongoMilestoneRepository();
+  const reportRepo = new MongoReportRepository();
+  const refundRepo = new MongoRefundRepository();
+  const verificationRepo = new MongoVerificationRepository();
+  const likeRepo = new MongoLikeRepository();
+  const followRepo = new MongoFollowRepository();
+  const shareRepo = new MongoShareRepository();
+  const auditLogRepo = new MongoAuditLogRepository();
+  const leaderboardRepo = new MongoLeaderboardRepository();
+  const subscriptionRepo = new MongoSubscriptionRepository();
+  const collaborationRepo = new MongoCollaborationRepository();
+  const campaignLimitRepo = new MongoCampaignLimitRepository();
+  const campaignMediaRepo = new MongoCampaignMediaRepository();
+  const paymentProviderRepo = new MongoPaymentProviderRepository();
+  const walletTransactionRepo = new MongoWalletTransactionRepository();
+  const aiUsageRepo = new MongoAiUsageRepository();
+  const pushTokenRepo = new MongoPushTokenRepository();
+
+
+  // --- Application Services ---
+  const tokenService = new AuthTokenService(config.jwtSecret, config.jwtRefreshSecret);
+  const auditService = new AuditService(auditLogRepo);
+  const notificationDispatcher = new NotificationDispatcher(notificationRepo);
+  const emailService = new EmailService();
+  const eventBus = new EventBus();
+  const sseService = new SSEService();
+  const aiWritingService = new AiWritingService();
+  const pushNotificationService = new PushNotificationService(pushTokenRepo);
+
+  // --- Use Cases: Auth ---
+  const registerUserUseCase = new RegisterUserUseCase(userRepo, walletRepo, tokenService, eventBus);
+  const loginUserUseCase = new LoginUserUseCase(userRepo, tokenService);
+
+  // --- Use Cases: Campaign ---
+  const createCampaignUseCase = new CreateCampaignUseCase(campaignRepo, userRepo, subscriptionRepo, campaignLimitRepo);
+  const getCampaignUseCase = new GetCampaignUseCase(campaignRepo);
+  const paymentGatewayFactory = new PaymentGatewayFactory();
+  const donateToCampaignUseCase = new DonateToCampaignUseCase(campaignRepo, donationRepo, walletRepo, userRepo, paymentProviderRepo, paymentGatewayFactory, emailService, walletTransactionRepo, eventBus, logger.child({ useCase: 'DonateToCampaignUseCase' }));
+  const searchCampaignsUseCase = new SearchCampaignsUseCase(campaignRepo);
+  const reviewCampaignUseCase = new ReviewCampaignUseCase(campaignRepo, userRepo, emailService, eventBus);
+  const updateCampaignUseCase = new UpdateCampaignUseCase(campaignRepo, userRepo);
+  const deleteCampaignUseCase = new DeleteCampaignUseCase(campaignRepo, userRepo, campaignMediaRepo);
+  const approveCampaignUseCase = new ApproveCampaignUseCase(campaignRepo, userRepo);
+
+  // --- Use Cases: Social ---
+  const addCommentUseCase = new AddCommentUseCase(commentRepo, campaignRepo, eventBus);
+  const getCommentsUseCase = new GetCommentsUseCase(commentRepo);
+  const likeCampaignUseCase = new LikeCampaignUseCase(likeRepo, campaignRepo);
+  const followUserUseCase = new FollowUserUseCase(followRepo, userRepo);
+  const shareCampaignUseCase = new ShareCampaignUseCase(shareRepo);
+
+
+  // --- Use Cases: Disputes & Reports ---
+  const createDisputeUseCase = new CreateDisputeUseCase(disputeRepo, campaignRepo, userRepo, emailService);
+  const resolveDisputeUseCase = new ResolveDisputeUseCase(disputeRepo, campaignRepo, userRepo, emailService);
+  const createReportUseCase = new CreateReportUseCase(reportRepo, campaignRepo);
+  const reviewReportUseCase = new ReviewReportUseCase(reportRepo, campaignRepo, userRepo);
+
+  // --- Use Cases: Refunds ---
+  const requestRefundUseCase = new RequestRefundUseCase(refundRepo, donationRepo, walletRepo);
+  const processCampaignRefundsUseCase = new ProcessCampaignRefundsUseCase(refundRepo, donationRepo, walletRepo, campaignRepo);
+
+  // --- Use Cases: Verification ---
+  const submitVerificationUseCase = new SubmitVerificationUseCase(verificationRepo, userRepo);
+  const approveVerificationUseCase = new ApproveVerificationUseCase(verificationRepo, userRepo, emailService, eventBus);
+  const rejectVerificationUseCase = new RejectVerificationUseCase(verificationRepo, userRepo, emailService);
+
+  // --- Use Cases: Escrow & Milestones ---
+  const createEscrowUseCase = new CreateEscrowUseCase(escrowRepo, campaignRepo);
+  const releaseMilestoneUseCase = new ReleaseMilestoneUseCase(milestoneRepo, escrowRepo, walletRepo, campaignRepo, userRepo, emailService, eventBus);
+
+  // --- Use Cases: Notifications ---
+  const getNotificationsUseCase = new GetNotificationsUseCase(notificationRepo);
+  const createNotificationUseCase = new CreateNotificationUseCase(notificationRepo);
+
+  // --- Event Bus Subscribers ---
+  eventBus.subscribe('donation.completed', async (event) => {
+    await createNotificationUseCase.execute({
+      userId: (event.payload as { creatorId: string }).creatorId,
+      type: 'donation_received',
+      title: 'New donation received',
+      message: `${(event.payload as { donorName: string }).donorName} donated ${(event.payload as { amount: number }).amount} ${(event.payload as { currency: string }).currency}`,
+      referenceType: 'campaign',
+      referenceId: (event.payload as { campaignId: string }).campaignId,
+    });
+
+    const { campaignId, amount, donorName, currency } = event.payload as {
+      campaignId: string;
+      amount: number;
+      donorName: string;
+      currency: string;
+    };
+
+    sseService.broadcastToCampaign(campaignId, 'donation', {
+      amount,
+      donorName: donorName || 'Anonymous',
+      currency,
+      timestamp: Date.now(),
+    });
+
+    sseService.broadcastGlobal('activity', {
+      type: 'donation',
+      campaignId,
+      amount,
+      currency,
+    });
+  });
+
+  eventBus.subscribe('campaign.funded', async (event) => {
+    const creator = await userRepo.findById((event.payload as { creatorId: string }).creatorId);
+    if (creator) {
+      await emailService.sendCampaignFunded({
+        to: creator.email.toString(),
+        name: creator.name,
+        campaignTitle: (event.payload as { campaignTitle: string }).campaignTitle,
+        goalAmount: (event.payload as { goalAmount: number }).goalAmount,
+        raisedAmount: (event.payload as { raisedAmount: number }).raisedAmount,
+        currency: (event.payload as { currency: string }).currency,
+      });
+    }
+
+    sseService.broadcastToCampaign(
+      (event.payload as { campaignId: string }).campaignId,
+      'funded',
+      event.payload
+    );
+  });
+
+  eventBus.subscribe('campaign.approved', async (event) => {
+    const creator = await userRepo.findById((event.payload as { creatorId: string }).creatorId);
+    if (creator) {
+      await emailService.sendCampaignApproved({
+        to: creator.email.toString(),
+        name: creator.name,
+        campaignTitle: (event.payload as { campaignTitle: string }).campaignTitle,
+      });
+    }
+  });
+
+  eventBus.subscribe('user.registered', async (event) => {
+    await createNotificationUseCase.execute({
+      userId: (event.payload as { userId: string }).userId,
+      type: 'general',
+      title: 'Welcome to UbuntuFund',
+      message: 'Start by creating your first campaign or exploring causes to support.',
+    });
+  });
+
+  eventBus.subscribe('milestone.released', async (event) => {
+    const creator = await userRepo.findById((event.payload as { creatorId: string }).creatorId);
+    if (creator) {
+      await emailService.sendMilestoneReached({
+        to: creator.email.toString(),
+        name: creator.name,
+        campaignTitle: (event.payload as { campaignTitle: string }).campaignTitle,
+        milestoneTitle: (event.payload as { milestoneTitle: string }).milestoneTitle,
+        milestoneAmount: (event.payload as { milestoneAmount: number }).milestoneAmount,
+        currency: (event.payload as { currency: string }).currency,
+      });
+    }
+  });
+
+  // --- Push Notification Event Subscribers ---
+  eventBus.subscribe('donation.completed', async (event) => {
+    const payload = event.payload as { creatorId: string; donorName: string; amount: number; currency: string; campaignTitle: string };
+    await pushNotificationService.sendToUser(payload.creatorId, {
+      title: 'New Donation Received',
+      body: `${payload.donorName} donated ${payload.amount} ${payload.currency} to "${payload.campaignTitle}"`,
+      data: { type: 'donation', campaignId: (event.payload as { campaignId: string }).campaignId },
+    });
+  });
+
+  eventBus.subscribe('campaign.funded', async (event) => {
+    const payload = event.payload as { creatorId: string; campaignTitle: string };
+    await pushNotificationService.sendToUser(payload.creatorId, {
+      title: 'Campaign Fully Funded!',
+      body: `Congratulations! "${payload.campaignTitle}" has reached its funding goal.`,
+      data: { type: 'campaign_funded', campaignId: event.aggregateId },
+    });
+  });
+
+  eventBus.subscribe('milestone.released', async (event) => {
+    const payload = event.payload as { creatorId: string; campaignTitle: string; milestoneTitle: string; campaignId: string };
+    await pushNotificationService.sendToUser(payload.creatorId, {
+      title: 'Milestone Released',
+      body: `Milestone "${payload.milestoneTitle}" for "${payload.campaignTitle}" has been released.`,
+      data: { type: 'milestone', campaignId: payload.campaignId, milestoneId: event.aggregateId },
+    });
+  });
+
+  eventBus.subscribe('comment.added', async (event) => {
+    const payload = event.payload as { creatorId: string; campaignTitle: string; campaignId: string };
+    await pushNotificationService.sendToUser(payload.creatorId, {
+      title: 'New Comment',
+      body: `Someone commented on your campaign "${payload.campaignTitle}"`,
+      data: { type: 'comment', campaignId: payload.campaignId },
+    });
+  });
+
+  eventBus.subscribe('collaboration.invited', async (event) => {
+    const payload = event.payload as { invitedUserId: string; campaignTitle: string; role: string; campaignId: string };
+    await pushNotificationService.sendToUser(payload.invitedUserId, {
+      title: 'Collaboration Invitation',
+      body: `You have been invited to collaborate on "${payload.campaignTitle}" as ${payload.role}`,
+      data: { type: 'collaboration', campaignId: payload.campaignId },
+    });
+  });
+
+  // --- Use Cases: Leaderboard & Analytics ---
+  const getLeaderboardUseCase = new GetLeaderboardUseCase(leaderboardRepo);
+  const updateLeaderboardUseCase = new UpdateLeaderboardUseCase(leaderboardRepo);
+  const getAnalyticsUseCase = new GetAnalyticsUseCase(campaignRepo, donationRepo, userRepo, disputeRepo);
+
+  // --- Use Cases: Collaboration ---
+  const inviteCollaboratorUseCase = new InviteCollaboratorUseCase(collaborationRepo, campaignRepo, userRepo, subscriptionRepo, eventBus);
+  const respondToCollaborationUseCase = new RespondToCollaborationUseCase(collaborationRepo);
+  const removeCollaboratorUseCase = new RemoveCollaboratorUseCase(collaborationRepo, campaignRepo);
+  const getCollaborationsUseCase = new GetCollaborationsUseCase(collaborationRepo, campaignRepo);
+
+  // --- Use Cases: Subscription ---
+  const getSubscriptionUseCase = new GetSubscriptionUseCase(subscriptionRepo);
+  const subscribeUseCase = new SubscribeUseCase(subscriptionRepo);
+  const cancelSubscriptionUseCase = new CancelSubscriptionUseCase(subscriptionRepo);
+  const checkSubscriptionLimitsUseCase = new CheckSubscriptionLimitsUseCase(subscriptionRepo, campaignRepo);
+  const listPaymentProvidersUseCase = new ListPaymentProvidersUseCase(paymentProviderRepo);
+  const getEnabledPaymentProvidersUseCase = new GetEnabledPaymentProvidersUseCase(paymentProviderRepo);
+  const togglePaymentProviderUseCase = new TogglePaymentProviderUseCase(paymentProviderRepo);
+  const updatePaymentProviderConfigUseCase = new UpdatePaymentProviderConfigUseCase(paymentProviderRepo);
+  const seedPaymentProvidersUseCase = new SeedPaymentProvidersUseCase();
+  const managePlansUseCase = new ManageSubscriptionPlansUseCase();
+
+  // --- Controllers ---
+  const authController = new AuthController(registerUserUseCase, loginUserUseCase, tokenService);
+  const campaignController = new CampaignController(createCampaignUseCase, getCampaignUseCase, donateToCampaignUseCase);
+  const depositUseCase = new DepositUseCase(walletRepo, walletTransactionRepo);
+  const withdrawUseCase = new WithdrawUseCase(walletRepo, walletTransactionRepo, paymentGatewayFactory);
+  const transferUseCase = new TransferUseCase(walletRepo, walletTransactionRepo);
+  const walletController = new WalletController(walletRepo);
+  const commentController = new CommentController(addCommentUseCase, getCommentsUseCase, commentRepo);
+  const disputeController = new DisputeController(createDisputeUseCase, resolveDisputeUseCase, disputeRepo);
+  const notificationController = new NotificationController(getNotificationsUseCase);
+  const refundController = new RefundController(requestRefundUseCase, refundRepo);
+  const verificationController = new VerificationController(submitVerificationUseCase, approveVerificationUseCase, rejectVerificationUseCase, verificationRepo);
+  const socialController = new SocialController(likeCampaignUseCase, followUserUseCase, shareCampaignUseCase);
+  const escrowController = new EscrowController(createEscrowUseCase, releaseMilestoneUseCase, escrowRepo);
+  const leaderboardController = new LeaderboardController(getLeaderboardUseCase);
+  const reportController = new ReportController(createReportUseCase, reviewReportUseCase);
+  const analyticsController = new AnalyticsController(getAnalyticsUseCase);
+  const profileController = new ProfileController(userRepo);
+  const subscriptionController = new SubscriptionController(
+    getSubscriptionUseCase,
+    subscribeUseCase,
+    cancelSubscriptionUseCase,
+    checkSubscriptionLimitsUseCase,
+    managePlansUseCase
+  );
+
+  const collaborationController = new CollaborationController(
+    inviteCollaboratorUseCase,
+    respondToCollaborationUseCase,
+    removeCollaboratorUseCase,
+    getCollaborationsUseCase
+  );
+  const organizationController = new OrganizationController(userRepo, campaignRepo);
+  const donationController = new DonationController(donationRepo);
+  const userController = new UserController(userRepo);
+
+  // --- Use Cases: Testimonials ---
+  const manageTestimonialsUseCase = new ManageTestimonialsUseCase();
+  const testimonialController = new TestimonialController(manageTestimonialsUseCase);
+  const paymentProviderController = new PaymentProviderController(
+    listPaymentProvidersUseCase,
+    getEnabledPaymentProvidersUseCase,
+    togglePaymentProviderUseCase,
+    updatePaymentProviderConfigUseCase,
+    paymentProviderRepo
+  );
+  const aiWritingController = new AiWritingController(aiWritingService, aiUsageRepo);
+  const pushNotificationController = new PushNotificationController(pushNotificationService);
+  const kycService = new KYCService(verificationRepo, userRepo, emailService, logger);
+  const kycController = new KYCController(kycService, verificationRepo);
+  const sseController = new SSEController(sseService);
+
+  // --- Use Cases: Newsletter & Contact ---
+  const subscribeNewsletterUseCase = new SubscribeNewsletterUseCase();
+  const submitContactUseCase = new SubmitContactUseCase();
+
+  // --- RBAC ---
+  const rbacUseCase = new RbacUseCase();
+  const newsletterController = new NewsletterController(subscribeNewsletterUseCase);
+  const contactController = new ContactController(submitContactUseCase);
+  const rbacController = new RbacController(rbacUseCase, registerUserUseCase, emailService);
+
+  // Seed defaults on startup
+  await managePlansUseCase.seedDefaults();
+  await rbacUseCase.seedDefaultRoles();
+  await manageTestimonialsUseCase.seedDefaults();
+  await seedPaymentProvidersUseCase.seedDefaults();
+
+  // --- Middleware ---
+  const authMiddleware = createAuthMiddleware(tokenService);
+
+  // --- Express App ---
+  const app = express();
+
+  const allowedOrigins = process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(',')
+    : ['http://localhost:8200', 'http://localhost:8300', 'http://localhost:8400'];
+
+  // Stripe webhook must be mounted before express.json() to preserve raw body
+  const stripeWebhookController = new StripeWebhookController(
+    campaignRepo,
+    donationRepo,
+    emailService
+  );
+  app.use(createStripeWebhookRoutes(stripeWebhookController));
+
+  app.use(helmet());
+  app.use(cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, curl, etc.)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error('Not allowed by CORS'));
+    },
+    credentials: true,
+  }));
+  app.use(express.json({ limit: '10kb' }));
+  app.use(requestLogger);
+  app.use(apiRateLimiter);
+
+  // Health check with log sample
+  app.get('/health', (_req, res) => {
+    logger.info({ endpoint: '/health' }, 'Health check requested');
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  });
+
+  // M-Pesa webhook (public — no auth)
+  const mpesaWebhookController = new MPesaWebhookController();
+  app.post('/webhooks/mpesa', mpesaWebhookController.handleWebhook);
+
+  // API routes
+  const apiRouter = createApiRouter({
+    authController,
+    campaignController,
+    walletController,
+    commentController,
+    disputeController,
+    notificationController,
+    refundController,
+    verificationController,
+    socialController,
+    escrowController,
+    leaderboardController,
+    reportController,
+    analyticsController,
+    profileController,
+    subscriptionController,
+    rbacController,
+    newsletterController,
+    contactController,
+    collaborationController,
+    organizationController,
+    donationController,
+    userController,
+    testimonialController,
+    paymentProviderController,
+    aiWritingController,
+    sseController,
+    pushNotificationController,
+    kycController,
+    authMiddleware,
+  });
+  app.use('/api/v1', apiRouter);
+
+  // Global error handler (must be last)
+  app.use(errorHandler);
+
+  const server = app.listen(config.port, '0.0.0.0', () => {
+    logger.info(`UbuntuFund API running on http://0.0.0.0:${config.port} [${config.nodeEnv}]`);
+  });
+
+  server.timeout = 30000; // 30 seconds
+  server.keepAliveTimeout = 65000; // slightly above typical load balancer timeout
+  server.headersTimeout = 66000;
+
+  async function shutdown(signal: string): Promise<void> {
+    logger.info(`Received ${signal}. Shutting down gracefully...`);
+    server.close(() => {
+      logger.info('HTTP server closed');
+      process.exit(0);
+    });
+
+    // Force exit after 10s
+    setTimeout(() => {
+      logger.error('Forced shutdown after timeout');
+      process.exit(1);
+    }, 10000);
+  }
+
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
+}
+
+bootstrap().catch((error) => {
+  logger.error('Failed to start application:', error);
+  process.exit(1);
+});
