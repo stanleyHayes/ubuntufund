@@ -15,7 +15,7 @@ interface Verification {
   id: string
   level: number
   type: string
-  status: 'pending' | 'approved' | 'rejected'
+  status: string
   documentUrls: string[]
   rejectionReason?: string
   expiresAt?: string
@@ -23,11 +23,32 @@ interface Verification {
   updatedAt: string
 }
 
+// Shape returned by GET /kyc/status (unwrapped from the { data } envelope).
+interface KYCStatusResponse {
+  kycStatus: string
+  kycLevel: number
+  verifications: Array<{
+    id: string
+    type: string
+    status: string
+    riskLevel?: string
+    createdAt: string
+  }>
+}
+
 const LEVEL_LABELS: Record<number, string> = {
   1: 'Email & Phone',
   2: 'National ID',
   3: 'Institutional',
   4: 'Community',
+}
+
+// Map a KYC verification type to the display level used by this screen.
+const TYPE_LEVELS: Record<string, number> = {
+  email_phone: 1,
+  national_id: 2,
+  institutional: 3,
+  community: 4,
 }
 
 const TYPE_ICONS: Record<string, string> = {
@@ -43,8 +64,11 @@ const STATUS_CONFIG: Record<string, { color: string; bg: string; icon: string; l
   rejected: { color: brandColors.error, bg: 'rgba(165,67,47,0.10)', icon: 'close-circle', label: 'Rejected' },
 }
 
-function formatDate(date: string) {
-  return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+function formatDate(date?: string | null) {
+  if (!date) return '—'
+  const d = new Date(date)
+  if (isNaN(d.getTime())) return '—'
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 // ─── Skeleton ────────────────────────────────────────────────
@@ -87,8 +111,20 @@ export default function VerificationScreen() {
     setLoading(true)
     setError(null)
     try {
-      const res = await api.get<{ data: Verification[] }>('/verifications/mine')
-      setVerifications(Array.isArray(res) ? res : res.data ?? [])
+      // /kyc/status returns { kycStatus, kycLevel, verifications: [...] }.
+      const res = await api.get<KYCStatusResponse>('/kyc/status')
+      const records = Array.isArray(res?.verifications) ? res.verifications : []
+      setVerifications(
+        records.map((r) => ({
+          id: r.id,
+          level: TYPE_LEVELS[r.type] ?? res?.kycLevel ?? 1,
+          type: r.type,
+          status: r.status,
+          documentUrls: [],
+          createdAt: r.createdAt,
+          updatedAt: r.createdAt,
+        })),
+      )
     } catch (err: any) {
       setError(err.message ?? 'Failed to load verifications')
     } finally {

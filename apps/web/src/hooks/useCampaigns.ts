@@ -2,6 +2,23 @@ import { useState, useEffect } from 'react'
 import type { Campaign, CampaignDetail } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
 
+/**
+ * Normalise any `/campaigns` response into a Campaign[].
+ * The API wraps its payload as `{ data: { items: [...] } }`; the api client
+ * unwraps the outer `data`, so this hook receives the paginated object (NOT an
+ * array). Error / unexpected shapes (null, an error envelope, a primitive, or a
+ * payload whose `items` is not an array) all collapse to `[]` so consumers that
+ * call `.filter`/`.map` never throw "x.filter is not a function".
+ */
+function toCampaignArray(data: unknown): Campaign[] {
+  if (Array.isArray(data)) return data as Campaign[]
+  if (data && typeof data === 'object') {
+    const items = (data as { items?: unknown }).items
+    if (Array.isArray(items)) return items as Campaign[]
+  }
+  return []
+}
+
 interface UseCampaignsResult {
   campaigns: Campaign[]
   isLoading: boolean
@@ -26,7 +43,7 @@ export function useCampaigns(): UseCampaignsResult {
       .get<Campaign[] | { items: Campaign[] }>('/campaigns')
       .then((data) => {
         if (!cancelled) {
-          setCampaigns(Array.isArray(data) ? data : data.items ?? [])
+          setCampaigns(toCampaignArray(data))
           setError(null)
         }
       })

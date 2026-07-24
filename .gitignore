@@ -8,6 +8,10 @@ coverage
 .env.*.local
 .env.*
 !.env.example
+# Frontend production build config is public (client bundle, no secrets) — tracked.
+!apps/web/.env.production
+!apps/admin/.env.production
+!apps/marketing/.env.production
 credentials.txt
 .DS_Store
 

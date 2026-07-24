@@ -144,7 +144,9 @@ export default function MyCampaignsScreen() {
     setLoading(true)
     setError(null)
     try {
-      const data = await api.get<Campaign[]>('/campaigns')
+      // /campaigns is paginated ({ items }); normalise before filtering.
+      const res = await api.get<Campaign[] | { items: Campaign[] }>('/campaigns')
+      const data = Array.isArray(res) ? res : res.items ?? []
       const mine = data.filter((c) => c.creatorId === user?.id)
       setCampaigns(mine)
     } catch (err: any) {
@@ -175,72 +177,82 @@ export default function MyCampaignsScreen() {
         <Text style={styles.pageLede}>Manage and track the causes you've started.</Text>
       </View>
 
-      {/* Create button */}
-      <Button
-        mode="contained"
-        buttonColor={brandColors.secondary}
-        textColor="#221B0E"
-        icon="plus"
-        onPress={() => router.push('/campaign/create')}
-        style={styles.createBtn}
-        labelStyle={styles.btnLabel}
-      >
-        Create New Campaign
-      </Button>
-
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 32 + insets.bottom }}
-      >
-        {loading ? (
-          <View style={styles.listWrap}>
-            {[0, 1, 2].map((i) => (
-              <SkeletonCard key={i} index={i} />
-            ))}
-          </View>
-        ) : error ? (
-          <View style={styles.emptyState}>
-            <View style={[styles.emptyIconTile, styles.errorIconTile]}>
-              <Icon source="alert-circle-outline" size={24} color={brandColors.error} />
-            </View>
-            <Text style={styles.emptyTitle}>{error}</Text>
-            <Button
-              mode="contained"
-              buttonColor={brandColors.primary}
-              textColor="#FFFFFF"
-              onPress={fetchCampaigns}
-              style={styles.actionBtn}
-              labelStyle={styles.btnLabel}
-            >
-              Retry
-            </Button>
-          </View>
-        ) : campaigns.length === 0 ? (
-          <View style={styles.emptyState}>
+      {!loading && !error && campaigns.length === 0 ? (
+        /* Empty state — message fills the body, CTA docks at the bottom */
+        <View style={{ flex: 1 }}>
+          <View style={styles.emptyStateFill}>
             <View style={styles.emptyIconTile}>
               <Icon source="bullhorn-outline" size={24} color={brandColors.primary} />
             </View>
             <Text style={styles.emptyTitle}>You haven't created any campaigns yet</Text>
             <Text style={styles.emptySubtitle}>Start your first campaign and make a difference</Text>
+          </View>
+          <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 16 }]}>
             <Button
               mode="contained"
               buttonColor={brandColors.secondary}
               textColor="#221B0E"
+              icon="plus"
               onPress={() => router.push('/campaign/create')}
-              style={styles.actionBtn}
+              style={styles.createBtnDocked}
               labelStyle={styles.btnLabel}
             >
               Create Campaign
             </Button>
           </View>
-        ) : (
-          <View style={styles.listWrap}>
-            {campaigns.map((c) => (
-              <CampaignCard key={c.id} campaign={c} />
-            ))}
-          </View>
-        )}
-      </ScrollView>
+        </View>
+      ) : (
+        <>
+          {/* Create button */}
+          <Button
+            mode="contained"
+            buttonColor={brandColors.secondary}
+            textColor="#221B0E"
+            icon="plus"
+            onPress={() => router.push('/campaign/create')}
+            style={styles.createBtn}
+            labelStyle={styles.btnLabel}
+          >
+            Create New Campaign
+          </Button>
+
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 32 + insets.bottom }}
+          >
+            {loading ? (
+              <View style={styles.listWrap}>
+                {[0, 1, 2].map((i) => (
+                  <SkeletonCard key={i} index={i} />
+                ))}
+              </View>
+            ) : error ? (
+              <View style={styles.emptyState}>
+                <View style={[styles.emptyIconTile, styles.errorIconTile]}>
+                  <Icon source="alert-circle-outline" size={24} color={brandColors.error} />
+                </View>
+                <Text style={styles.emptyTitle}>{error}</Text>
+                <Button
+                  mode="contained"
+                  buttonColor={brandColors.primary}
+                  textColor="#FFFFFF"
+                  onPress={fetchCampaigns}
+                  style={styles.actionBtn}
+                  labelStyle={styles.btnLabel}
+                >
+                  Retry
+                </Button>
+              </View>
+            ) : (
+              <View style={styles.listWrap}>
+                {campaigns.map((c) => (
+                  <CampaignCard key={c.id} campaign={c} />
+                ))}
+              </View>
+            )}
+          </ScrollView>
+        </>
+      )}
     </View>
   )
 }
@@ -298,6 +310,15 @@ const styles = StyleSheet.create({
 
   // Empty
   emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 72, paddingHorizontal: 32 },
+  emptyStateFill: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
+  bottomBar: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    backgroundColor: brandColors.background,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(26,46,34,0.08)',
+  },
+  createBtnDocked: { borderRadius: 999 },
   emptyIconTile: {
     width: 48,
     height: 48,

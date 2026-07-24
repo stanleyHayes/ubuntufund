@@ -25,6 +25,14 @@ const priorityStyle: Record<string, { bg: string; text: string }> = {
   normal: { bg: 'rgba(168,181,160,0.28)', text: brandColors.text },
 }
 
+// Guarded date formatter — an absent or unparseable date renders "—", never "Invalid Date".
+function formatDate(date?: string | Date | null) {
+  if (!date) return '—'
+  const d = new Date(date)
+  if (isNaN(d.getTime())) return '—'
+  return d.toLocaleDateString()
+}
+
 export default function CampaignDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const { campaign, isLoading, error } = useCampaign(id ?? '')
@@ -253,7 +261,7 @@ export default function CampaignDetailScreen() {
                 <View>
                   <Text variant="labelSmall" style={styles.muted}>Started</Text>
                   <Text variant="bodySmall" style={styles.dateText}>
-                    {new Date(campaign.startDate).toLocaleDateString()}
+                    {formatDate(campaign.startDate)}
                   </Text>
                 </View>
               </View>
@@ -262,7 +270,7 @@ export default function CampaignDetailScreen() {
                 <View>
                   <Text variant="labelSmall" style={styles.muted}>Ends</Text>
                   <Text variant="bodySmall" style={styles.dateText}>
-                    {new Date(campaign.endDate).toLocaleDateString()}
+                    {formatDate(campaign.endDate)}
                   </Text>
                 </View>
               </View>
@@ -330,7 +338,7 @@ export default function CampaignDetailScreen() {
                         GH₵ {donation.amount.toLocaleString()}
                       </Text>
                       <Text variant="labelSmall" style={styles.muted}>
-                        {new Date(donation.createdAt).toLocaleDateString()}
+                        {formatDate(donation.createdAt)}
                       </Text>
                     </View>
                   </View>

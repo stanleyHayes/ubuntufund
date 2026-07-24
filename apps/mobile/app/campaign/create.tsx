@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { View, ScrollView, StyleSheet, Alert } from 'react-native'
 import { TextInput, Button, Text, Chip } from 'react-native-paper'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { CampaignCategory } from '@ubuntu-fund/types'
 import { brandColors } from '@/theme'
@@ -17,6 +18,7 @@ const CATEGORIES = [
 ]
 
 export default function CreateCampaignScreen() {
+  const insets = useSafeAreaInsets()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [goalAmount, setGoalAmount] = useState('')
@@ -44,8 +46,8 @@ export default function CreateCampaignScreen() {
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.content}>
+    <View style={styles.container}>
+      <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
         <Text style={styles.eyebrow}>NEW CAMPAIGN</Text>
         <Text variant="headlineSmall" style={styles.heading}>
           Start a Campaign
@@ -110,6 +112,10 @@ export default function CreateCampaignScreen() {
           ))}
         </View>
 
+      </ScrollView>
+
+      {/* Submit — docked at the bottom of the screen */}
+      <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
         <Button
           mode="contained"
           onPress={handleSubmit}
@@ -123,7 +129,7 @@ export default function CreateCampaignScreen() {
           {isSubmitting ? 'Creating...' : 'Create Campaign'}
         </Button>
       </View>
-    </ScrollView>
+    </View>
   )
 }
 
@@ -147,6 +153,13 @@ const styles = StyleSheet.create({
   categoryChipSelected: { backgroundColor: brandColors.primary },
   categoryChipText: { color: brandColors.text, fontFamily: 'Outfit_400Regular' },
   categoryChipTextSelected: { color: '#FFFFFF', fontFamily: 'TTSquares-Bold' },
-  submitButton: { borderRadius: 999, paddingVertical: 4, marginTop: 8 },
+  submitButton: { borderRadius: 999, paddingVertical: 4 },
   submitLabel: { fontSize: 16, fontFamily: 'TTSquares-Bold' },
+  bottomBar: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    backgroundColor: brandColors.background,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(26,46,34,0.08)',
+  },
 })

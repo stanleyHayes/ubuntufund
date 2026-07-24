@@ -131,15 +131,27 @@ function Footer() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.message ?? 'Failed to subscribe')
+
+      // A missing/misrouted endpoint answers with an HTML error page, not
+      // JSON. Guard on both status and content-type before parsing so a
+      // 404/500 never surfaces as an "Unexpected token '<'" JSON error.
+      const isJson = res.headers
+        .get('content-type')
+        ?.toLowerCase()
+        .includes('application/json')
+      const data = isJson ? await res.json() : null
+
+      if (!res.ok || !data) {
+        throw new Error('subscribe-failed')
+      }
+
       setSubscribeStatus('success')
       setSubscribeMessage(data.data?.message ?? 'Successfully subscribed!')
       setEmail('')
       setTimeout(() => setSubscribeStatus('idle'), 4000)
-    } catch (err) {
+    } catch {
       setSubscribeStatus('error')
-      setSubscribeMessage(err instanceof Error ? err.message : 'Failed to subscribe')
+      setSubscribeMessage("Couldn't subscribe. Please try again.")
       setTimeout(() => setSubscribeStatus('idle'), 4000)
     }
   }

@@ -41,9 +41,10 @@ function StatsSection() {
                 <Typography
                   variant="h2"
                   sx={{
-                    fontSize: { xs: '2rem', sm: '2.5rem', md: '2.75rem' },
+                    fontSize: { xs: '1.6rem', sm: '2.2rem', md: '2.6rem' },
                     color: index % 2 === 0 ? 'primary.main' : '#A07E33',
                     mb: 0.5,
+                    whiteSpace: 'nowrap',
                   }}
                 >
                   {stat.value}

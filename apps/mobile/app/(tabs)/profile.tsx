@@ -126,8 +126,8 @@ export default function ProfileTab() {
               <>
                 {[
                   { value: stats?.campaignsCount ?? 0, label: 'Campaigns' },
-                  { value: `$${stats?.totalDonated ?? 0}`, label: 'Donated' },
-                  { value: `$${stats?.totalRaised ?? 0}`, label: 'Raised' },
+                  { value: `GH₵ ${stats?.totalDonated ?? 0}`, label: 'Donated' },
+                  { value: `GH₵ ${stats?.totalRaised ?? 0}`, label: 'Raised' },
                 ].map((s, i) => (
                   <View key={s.label} style={styles.statBox}>
                     {i > 0 && <View style={styles.statDivider} />}

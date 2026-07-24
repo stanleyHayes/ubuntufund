@@ -10,6 +10,37 @@ interface UseApiResult<T> {
 }
 
 /**
+ * Reconcile a raw API payload with the expected fallback shape so consumers
+ * ALWAYS receive the shape they render.
+ *
+ * The backend's list endpoints return a paginated envelope
+ * (`{ items, total, page, pageSize, totalPages }`) while `api.get` only unwraps
+ * the outer `json.data`. Without this guard a collection hook would hand a
+ * consumer that inner object, and calling `.filter`/`.map` on it throws
+ * "campaigns.filter is not a function". For array fallbacks we unwrap the
+ * common envelope keys and guarantee an array; for object fallbacks we merge
+ * the response over the defaults so no expected field is ever undefined.
+ */
+function coerceToFallbackShape<T>(result: unknown, fallback: T): T {
+  if (Array.isArray(fallback)) {
+    if (Array.isArray(result)) return result as T
+    if (result && typeof result === 'object') {
+      const obj = result as Record<string, unknown>
+      const inner = obj.items ?? obj.data ?? obj.results
+      if (Array.isArray(inner)) return inner as T
+    }
+    return fallback
+  }
+  if (fallback && typeof fallback === 'object') {
+    if (result && typeof result === 'object' && !Array.isArray(result)) {
+      return { ...(fallback as object), ...(result as object) } as T
+    }
+    return fallback
+  }
+  return (result ?? fallback) as T
+}
+
+/**
  * Generic hook: tries the API first, falls back to mock data on failure.
  */
 function useApiWithFallback<T>(
@@ -25,9 +56,9 @@ function useApiWithFallback<T>(
 
     async function fetchData() {
       try {
-        const result = await api.get<T>(apiPath)
+        const result = await api.get<unknown>(apiPath)
         if (!cancelled) {
-          setData(result)
+          setData(coerceToFallbackShape(result, fallbackData))
           setError(null)
         }
       } catch (err) {

@@ -542,13 +542,27 @@ export default function DashboardPage() {
   const { data: stats, isLoading: statsLoading } = useAdminStats()
   const { can } = useAdminPermissions()
 
+  // Guard every numeric field: the stats source can momentarily be a partial or
+  // unexpectedly-shaped API payload, so coerce each value to a finite number.
+  // This keeps the dashboard rendering (no "undefined is not a number" / NaN).
+  const safeStats = useMemo(
+    () => ({
+      totalRaised: Number(stats?.totalRaised) || 0,
+      activeCampaigns: Number(stats?.activeCampaigns) || 0,
+      totalUsers: Number(stats?.totalUsers) || 0,
+      pendingDisputes: Number(stats?.pendingDisputes) || 0,
+      totalDonations: Number(stats?.totalDonations) || 0,
+    }),
+    [stats],
+  )
+
   const tiles = useMemo(
     () => tileTemplates
       .filter((t) => can(t.resource, t.action ?? Action.READ))
       .map((t): TileConfig => {
         let stat = ''
-        if (t.statKey && stats) {
-          const raw = stats[t.statKey]
+        if (t.statKey) {
+          const raw = safeStats[t.statKey]
           stat = t.formatStat ? t.formatStat(raw) : String(raw)
         }
         return {
@@ -564,18 +578,18 @@ export default function DashboardPage() {
           action: t.action,
         }
       }),
-    [can, stats, statsLoading],
+    [can, safeStats, statsLoading],
   )
 
-  const maxStatVal = Math.max(stats.totalRaised, stats.activeCampaigns * 1000, stats.totalUsers * 100, stats.pendingDisputes * 5000, 1)
+  const maxStatVal = Math.max(safeStats.totalRaised, safeStats.activeCampaigns * 1000, safeStats.totalUsers * 100, safeStats.pendingDisputes * 5000, 1)
 
   const { data: kycStats } = useKYCStats()
 
   const quickStats = [
-    { label: 'Total Raised', value: statsLoading ? '...' : `GH₵ ${stats.totalRaised.toLocaleString()}`, icon: <TrendingUpIcon />, color: '#8FAE96', fill: statsLoading ? 0 : (stats.totalRaised / maxStatVal) * 100 },
-    { label: 'Active Campaigns', value: statsLoading ? '...' : String(stats.activeCampaigns), icon: <CampaignIcon />, color: '#74909A', fill: statsLoading ? 0 : ((stats.activeCampaigns * 1000) / maxStatVal) * 100 },
-    { label: 'Total Users', value: statsLoading ? '...' : String(stats.totalUsers), icon: <PeopleIcon />, color: TONES.maroon.text, fill: statsLoading ? 0 : ((stats.totalUsers * 100) / maxStatVal) * 100 },
-    { label: 'Pending Disputes', value: statsLoading ? '...' : String(stats.pendingDisputes), icon: <GavelIcon />, color: '#D3A95C', fill: statsLoading ? 0 : ((stats.pendingDisputes * 5000) / maxStatVal) * 100 },
+    { label: 'Total Raised', value: statsLoading ? '...' : `GH₵ ${safeStats.totalRaised.toLocaleString()}`, icon: <TrendingUpIcon />, color: '#8FAE96', fill: statsLoading ? 0 : (safeStats.totalRaised / maxStatVal) * 100 },
+    { label: 'Active Campaigns', value: statsLoading ? '...' : String(safeStats.activeCampaigns), icon: <CampaignIcon />, color: '#74909A', fill: statsLoading ? 0 : ((safeStats.activeCampaigns * 1000) / maxStatVal) * 100 },
+    { label: 'Total Users', value: statsLoading ? '...' : String(safeStats.totalUsers), icon: <PeopleIcon />, color: TONES.maroon.text, fill: statsLoading ? 0 : ((safeStats.totalUsers * 100) / maxStatVal) * 100 },
+    { label: 'Pending Disputes', value: statsLoading ? '...' : String(safeStats.pendingDisputes), icon: <GavelIcon />, color: '#D3A95C', fill: statsLoading ? 0 : ((safeStats.pendingDisputes * 5000) / maxStatVal) * 100 },
     { label: 'Pending KYC', value: String(kycStats?.pending ?? 0), icon: <VerifiedUserIcon />, color: TONES.teal.text, fill: 0 },
     { label: 'KYC Approved Today', value: String(kycStats?.approvedToday ?? 0), icon: <VerifiedUserIcon />, color: '#5E8F72', fill: 0 },
     { label: 'KYC Rejected Today', value: String(kycStats?.rejectedToday ?? 0), icon: <VerifiedUserIcon />, color: '#C06B58', fill: 0 },

@@ -215,7 +215,7 @@ export default function HomeTab() {
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statBox}>
-              <Text style={styles.statValue}>${(totalRaised / 1000).toFixed(0)}K+</Text>
+              <Text style={styles.statValue}>GH₵ {(totalRaised / 1000).toFixed(0)}K+</Text>
               <Text style={styles.statLabel}>Total Raised</Text>
             </View>
             <View style={styles.statDivider} />
@@ -234,7 +234,7 @@ export default function HomeTab() {
           {/* ═══ CATEGORIES ═══ */}
           <View style={{ marginTop: 20 }}>
             <SectionHeader title="Browse Categories" />
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryScroll}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScrollView} contentContainerStyle={styles.categoryScroll}>
               {CATEGORIES.map((cat) => {
                 const count = active.filter((c) => c.category === cat.key).length
                 return (
@@ -377,7 +377,8 @@ const styles = StyleSheet.create({
   seeAll: { fontSize: 13, color: brandColors.primary, fontFamily: 'TTSquares-Bold' },
 
   // Categories
-  categoryScroll: { paddingHorizontal: 16, paddingRight: 24, gap: 10 },
+  categoryScrollView: { flexGrow: 0 },
+  categoryScroll: { paddingHorizontal: 16, paddingRight: 24, gap: 10, alignItems: 'flex-start' },
   categoryPill: {
     alignItems: 'center',
     width: 72,

@@ -17,10 +17,14 @@ interface Donation {
   amount: number
   currency: string
   campaignId: string
+  // API (MyDonationDTO) sends `campaignName` + `date`; keep the older aliases
+  // as fallbacks so both wire shapes render correctly.
+  campaignName?: string
   campaignTitle?: string
   status: string
   paymentMethod?: string
-  createdAt: string
+  date?: string
+  createdAt?: string
 }
 
 const FILTER_TABS = ['All', 'Completed', 'Pending', 'Refunded'] as const
@@ -33,8 +37,11 @@ const STATUS_COLORS: Record<string, string> = {
   failed: brandColors.error,
 }
 
-function formatDate(date: string) {
-  return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+function formatDate(date?: string | null) {
+  if (!date) return '—'
+  const d = new Date(date)
+  if (isNaN(d.getTime())) return '—'
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 // ─── Skeleton ────────────────────────────────────────────────
@@ -73,8 +80,8 @@ export default function MyDonationsScreen() {
     setLoading(true)
     setError(null)
     try {
-      const data = await api.get<Donation[]>('/donations')
-      setDonations(data)
+      const data = await api.get<Donation[]>('/donations/mine')
+      setDonations(Array.isArray(data) ? data : [])
     } catch (err: any) {
       setError(err.message ?? 'Failed to load donations')
     } finally {
@@ -108,7 +115,12 @@ export default function MyDonationsScreen() {
       </View>
 
       {/* Filter Tabs */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.filterScroll}
+        contentContainerStyle={styles.filterRow}
+      >
         {FILTER_TABS.map((tab) => (
           <TouchableOpacity
             key={tab}
@@ -171,9 +183,9 @@ export default function MyDonationsScreen() {
                   <View style={styles.donationHeader}>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.donationCampaign} numberOfLines={1}>
-                        {d.campaignTitle ?? 'Campaign'}
+                        {d.campaignName ?? d.campaignTitle ?? 'Campaign'}
                       </Text>
-                      <Text style={styles.donationDate}>{formatDate(d.createdAt)}</Text>
+                      <Text style={styles.donationDate}>{formatDate(d.date ?? d.createdAt)}</Text>
                     </View>
                     <Text style={styles.donationAmount}>
                       GH₵ {d.amount.toLocaleString()}
@@ -217,8 +229,9 @@ const styles = StyleSheet.create({
   pageTitle: { fontSize: 24, fontFamily: 'TTSquares-Black', color: brandColors.text, marginTop: 4 },
   pageLede: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 4 },
 
-  filterRow: { paddingHorizontal: 16, paddingVertical: 12, gap: 8 },
-  filterTab: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999, backgroundColor: '#fff', borderWidth: 1, borderColor: 'rgba(26,46,34,0.10)' },
+  filterScroll: { flexGrow: 0 },
+  filterRow: { paddingHorizontal: 16, paddingVertical: 12, gap: 8, alignItems: 'center' },
+  filterTab: { height: 38, justifyContent: 'center', paddingHorizontal: 16, borderRadius: 999, backgroundColor: '#fff', borderWidth: 1, borderColor: 'rgba(26,46,34,0.10)' },
   filterTabActive: { backgroundColor: brandColors.primary, borderColor: brandColors.primary },
   filterTabText: { fontSize: 13, fontFamily: 'TTSquares-Bold', color: brandColors.textSecondary },
   filterTabTextActive: { color: '#fff' },

@@ -48,9 +48,26 @@ Each app is its own Vercel project pointing at this monorepo:
 | Marketing | `apps/marketing` | [apps/marketing/vercel.json](apps/marketing/vercel.json) |
 | Admin | `apps/admin` | [apps/admin/vercel.json](apps/admin/vercel.json) |
 
-All three configs rewrite `/api/v1/*` to the Render API, so the frontends
-need no environment variables. Import the repo in Vercel three times with the
-root directories above — the rest is picked up from the config files.
+All three configs rewrite `/api/v1/*` to the Render API, so the frontends work
+with **no required environment variables** — import the repo in Vercel three
+times with the root directories above and the rest is picked up from the config
+files.
+
+### Environment variables
+
+Each frontend ships an `.env.example` (template), a tracked `.env.production`
+(public build config — client bundles contain no secrets), and a local `.env`
+(gitignored). Every client-exposed var is `VITE_`-prefixed.
+
+| Var | Apps | Purpose |
+|---|---|---|
+| `VITE_API_URL` | web, admin, marketing | API base. Defaults to `/api/v1` (Vercel rewrite → Render). Set to an absolute origin only to bypass the rewrite. |
+| `VITE_WEB_APP_URL` | marketing | Donor web-app URL that marketing CTAs link to. Set to the deployed web project's domain in Vercel. |
+| `API_PROXY_TARGET` | web, admin, marketing | **Dev only** — the Vite dev server proxies `/api/v1` here. Not read in production builds. |
+
+To override in production, set the var in each Vercel project's settings; the
+tracked `.env.production` is the committed default. Never put secrets in a
+frontend env file — everything `VITE_`-prefixed is shipped to the browser.
 
 ## 4. CI
 

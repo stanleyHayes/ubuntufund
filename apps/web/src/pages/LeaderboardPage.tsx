@@ -114,7 +114,7 @@ const DONATION_LEVEL_BADGES: Badge[] = [
   {
     id: 'champion',
     name: 'Champion',
-    description: '25+ donations or $500+ donated',
+    description: '25+ donations or GH₵ 500+ donated',
     icon: <WorkspacePremiumRounded />,
     color: '#4A6B75',
     bgSolid: '#1E88E5',
@@ -123,7 +123,7 @@ const DONATION_LEVEL_BADGES: Badge[] = [
   {
     id: 'hero',
     name: 'Hero',
-    description: '100+ donations or $2,500+ donated',
+    description: '100+ donations or GH₵ 2,500+ donated',
     icon: <MilitaryTechRounded />,
     color: '#AB47BC',
     bgSolid: '#8B6F4E',
@@ -132,7 +132,7 @@ const DONATION_LEVEL_BADGES: Badge[] = [
   {
     id: 'legend',
     name: 'Legend',
-    description: '500+ donations or $10,000+ donated',
+    description: '500+ donations or GH₵ 10,000+ donated',
     icon: <DiamondRounded />,
     color: '#C7A24A',
     bgSolid: '#FF6F00',
@@ -192,12 +192,21 @@ function ToggleBar<T extends string>({
 }) {
   return (
     <Box
+      role="tablist"
       sx={{
-        position: 'relative',
-        display: 'inline-flex',
-        bgcolor: 'rgba(0,0,0,0.05)',
-        borderRadius: '16px',
-        p: '5px',
+        // Compact horizontal segmented control — fixed track height so the
+        // segments can never stretch to an ancestor's height.
+        display: 'inline-grid',
+        gridAutoFlow: 'column',
+        gridAutoColumns: '1fr', // equal-width segments
+        alignItems: 'stretch',
+        alignSelf: 'center', // never grow vertically inside a flex parent
+        height: 48,
+        p: '4px',
+        borderRadius: '999px',
+        bgcolor: 'rgba(168, 181, 160, 0.22)', // sage-tinted track
+        border: '1px solid rgba(46, 61, 47, 0.10)',
+        fontFamily: '"Outfit", sans-serif',
       }}
     >
       {options.map((tab) => {
@@ -205,31 +214,38 @@ function ToggleBar<T extends string>({
         return (
           <Box
             key={tab.key}
+            role="tab"
+            aria-selected={isActive}
             onClick={() => onChange(tab.key)}
             sx={{
-              position: 'relative',
-              zIndex: 1,
               display: 'flex',
               alignItems: 'center',
-              gap: 0.8,
-              px: { xs: 1.5, sm: 2.5 },
-              py: 1.2,
-              borderRadius: '12px',
+              justifyContent: 'center',
+              gap: 0.75,
+              px: { xs: 1.75, sm: 2.75 },
+              borderRadius: '999px',
               cursor: 'pointer',
-              fontWeight: 700,
-              fontSize: { xs: '0.78rem', sm: '0.88rem' },
-              color: isActive ? '#1a1a1a' : 'text.secondary',
-              bgcolor: isActive ? '#fff' : 'transparent',
-              boxShadow: isActive ? '0 1px 8px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.06)' : 'none',
-              transition: 'all 0.25s ease',
               userSelect: 'none',
               whiteSpace: 'nowrap',
-              '&:hover': { color: isActive ? '#1a1a1a' : 'text.primary' },
-              '& svg': { color: isActive ? '#FFB300' : 'inherit', transition: 'color 0.25s ease' },
+              fontFamily: '"Outfit", sans-serif',
+              fontWeight: 700,
+              fontSize: { xs: '0.8rem', sm: '0.88rem' },
+              letterSpacing: '0.01em',
+              color: isActive ? '#F2EFEA' : '#4A5A50',
+              bgcolor: isActive ? '#2E3D2F' : 'transparent',
+              boxShadow: isActive ? '0 1px 4px rgba(28, 38, 29, 0.28)' : 'none',
+              transition: 'color 160ms ease, background-color 160ms ease',
+              '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
+              '& svg': {
+                fontSize: 18,
+                color: isActive ? '#F2EFEA' : '#5E8F72',
+                transition: 'color 160ms ease',
+              },
+              '&:hover': isActive ? {} : { color: '#2E3D2F', bgcolor: 'rgba(46, 61, 47, 0.06)' },
             }}
           >
             {tab.icon}
-            <Box sx={{ display: { xs: 'none', sm: 'inline' } }}>{tab.label}</Box>
+            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>{tab.label}</Box>
           </Box>
         )
       })}
@@ -359,7 +375,7 @@ function LeaderboardEmptyState() {
             mx: 'auto',
             mb: 4,
             animation: `${float} 4s ease-in-out infinite`,
-            boxShadow: '0 16px 48px rgba(255, 179, 0, 0.25)',
+            boxShadow: '0 16px 48px rgba(199, 162, 74, 0.25)',
             position: 'relative',
           }}
         >
@@ -377,7 +393,7 @@ function LeaderboardEmptyState() {
           sx={{
             fontWeight: 900,
             mb: 2,
-            color: '#FFB300',
+            color: '#C7A24A',
             fontSize: { xs: '1.8rem', md: '2.4rem' },
           }}
         >
@@ -396,7 +412,7 @@ function LeaderboardEmptyState() {
         <Box
           sx={{
             fontSize: '0.85rem',
-            color: '#FFB300',
+            color: '#C7A24A',
             fontWeight: 700,
             mb: 4,
             display: 'flex',
@@ -424,7 +440,7 @@ function LeaderboardEmptyState() {
               fontWeight: 800,
               fontSize: '1rem',
               textTransform: 'none',
-              bgcolor: '#FFB300',
+              bgcolor: '#C7A24A',
               boxShadow: '0 4px 20px rgba(255, 143, 0, 0.35)',
               '&:hover': {
                 boxShadow: '0 6px 20px rgba(255, 143, 0, 0.4)',
@@ -450,8 +466,8 @@ function LeaderboardEmptyState() {
               borderColor: 'divider',
               color: 'text.primary',
               '&:hover': {
-                borderColor: '#FFB300',
-                bgcolor: 'rgba(255,179,0,0.04)',
+                borderColor: '#C7A24A',
+                bgcolor: 'rgba(199, 162, 74,0.04)',
               },
               transition: 'background-color 0.2s ease, border-color 0.2s ease',
             }}
@@ -473,7 +489,7 @@ function LeaderboardEmptyState() {
               letterSpacing: '1.5px',
               mb: 1.5,
               bgcolor: 'rgba(255,215,0,0.08)',
-              color: '#FFB300',
+              color: '#C7A24A',
               border: '1px solid rgba(255,215,0,0.2)',
             }}
           />
@@ -607,12 +623,12 @@ function LeaderboardEmptyState() {
           borderRadius: 4,
           border: '1px solid',
           borderColor: 'divider',
-          bgcolor: 'rgba(255, 179, 0, 0.03)',
+          bgcolor: 'rgba(199, 162, 74, 0.03)',
           animation: `${fadeSlideIn} 0.5s ease 0.6s both`,
         }}
       >
         <Box sx={{ animation: `${floatSlow} 5s ease-in-out infinite`, mb: 2 }}>
-          <EmojiEventsRounded sx={{ fontSize: 40, color: '#FFB300' }} />
+          <EmojiEventsRounded sx={{ fontSize: 40, color: '#C7A24A' }} />
         </Box>
         <Typography variant="h6" sx={{ fontWeight: 800, mb: 1 }}>
           Your name could be right here
@@ -631,7 +647,7 @@ function LeaderboardEmptyState() {
             py: 1.2,
             fontWeight: 700,
             textTransform: 'none',
-            bgcolor: '#FFB300',
+            bgcolor: '#C7A24A',
             boxShadow: '0 4px 16px rgba(255, 143, 0, 0.3)',
             '&:hover': {
               boxShadow: '0 6px 24px rgba(255, 143, 0, 0.45)',
@@ -664,13 +680,13 @@ export function LeaderboardPage() {
       {/* Header */}
       <Box sx={{ textAlign: 'center', mb: 5 }}>
         <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-          <EmojiEventsRounded sx={{ fontSize: 44, color: '#FFB300' }} />
+          <EmojiEventsRounded sx={{ fontSize: 44, color: '#C7A24A' }} />
           <Typography
             variant="h2"
             component="h1"
             sx={{
               fontWeight: 900,
-              color: '#FFB300',
+              color: '#C7A24A',
             }}
           >
             Donor Leaderboard
@@ -695,9 +711,9 @@ export function LeaderboardPage() {
           {/* Stats Summary */}
           <Box sx={{ display: 'flex', justifyContent: 'center', gap: 4, mb: 5, flexWrap: 'wrap' }}>
             {[
-              { icon: <VolunteerActivismRounded sx={{ color: '#FFB300' }} />, label: 'Total Donations', value: stats.totalDonations.toLocaleString() },
-              { icon: <TrendingUpRounded sx={{ color: '#FFB300' }} />, label: 'Total Amount', value: `$${stats.totalAmount.toLocaleString()}` },
-              { icon: <EmojiEventsRounded sx={{ color: '#FFB300' }} />, label: 'Total Donors', value: stats.totalDonors.toLocaleString() },
+              { icon: <VolunteerActivismRounded sx={{ color: '#C7A24A' }} />, label: 'Total Donations', value: stats.totalDonations.toLocaleString() },
+              { icon: <TrendingUpRounded sx={{ color: '#C7A24A' }} />, label: 'Total Amount', value: `GH₵ ${stats.totalAmount.toLocaleString()}` },
+              { icon: <EmojiEventsRounded sx={{ color: '#C7A24A' }} />, label: 'Total Donors', value: stats.totalDonors.toLocaleString() },
             ].map((stat) => (
               <Card key={stat.label} sx={{ minWidth: 180, textAlign: 'center', border: '1px solid', borderColor: 'divider', borderRadius: 3 }} elevation={0}>
                 <CardContent sx={{ py: 2.5 }}>
@@ -783,8 +799,8 @@ export function LeaderboardPage() {
                         />
                       )}
                       <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, mt: 1, flexWrap: 'wrap' }}>
-                        <Chip size="small" label={`${entry.donationCount ?? entry.campaignsSupported} donations`} sx={{ fontWeight: 700, bgcolor: 'rgba(255,179,0,0.12)' }} />
-                        <Chip size="small" label={`${entry.currency} ${entry.totalDonated.toLocaleString()}`} sx={{ fontWeight: 700, bgcolor: 'rgba(255,179,0,0.12)' }} />
+                        <Chip size="small" label={`${entry.donationCount ?? entry.campaignsSupported} donations`} sx={{ fontWeight: 700, bgcolor: 'rgba(199, 162, 74,0.12)' }} />
+                        <Chip size="small" label={`GH₵ ${entry.totalDonated.toLocaleString()}`} sx={{ fontWeight: 700, bgcolor: 'rgba(199, 162, 74,0.12)' }} />
                       </Box>
                     </CardContent>
                   </Card>
@@ -829,7 +845,7 @@ export function LeaderboardPage() {
                           borderColor: 'divider',
                           animation: `${fadeSlideIn} 0.4s ease-out ${0.45 + i * 0.08}s both`,
                           transition: 'background-color 0.2s ease',
-                          '&:hover': { bgcolor: 'rgba(255,179,0,0.06)' },
+                          '&:hover': { bgcolor: 'rgba(199, 162, 74,0.06)' },
                           '&:last-child': { borderBottom: 'none' },
                         }}
                       >
@@ -853,7 +869,7 @@ export function LeaderboardPage() {
                         </Box>
                         <Typography variant="body2" sx={{ fontWeight: 700, textAlign: 'right' }}>{(entry.donationCount ?? entry.campaignsSupported).toLocaleString()}</Typography>
                         <Typography variant="body2" sx={{ fontWeight: 700, textAlign: 'right', color: '#2E3D2F' }}>
-                          {entry.currency} {entry.totalDonated.toLocaleString()}
+                          GH₵ {entry.totalDonated.toLocaleString()}
                         </Typography>
                       </Box>
                     )

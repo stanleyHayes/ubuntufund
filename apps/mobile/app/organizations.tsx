@@ -76,10 +76,12 @@ export default function OrganizationsScreen() {
       // Try dedicated endpoint first, fall back to deriving from campaigns
       let orgs: Organization[]
       try {
-        orgs = await api.get<Organization[]>('/organizations')
+        const res = await api.get<Organization[]>('/organizations')
+        orgs = Array.isArray(res) ? res : []
       } catch {
-        // Fallback: derive from campaigns
-        const campaigns = await api.get<any[]>('/campaigns')
+        // Fallback: derive from campaigns (/campaigns is paginated: { items }).
+        const campaignsRes = await api.get<any[] | { items: any[] }>('/campaigns')
+        const campaigns = Array.isArray(campaignsRes) ? campaignsRes : campaignsRes.items ?? []
         const orgMap = new Map<string, Organization>()
         for (const c of campaigns) {
           if (c.creatorRole === 'organization' || c.organizationId) {

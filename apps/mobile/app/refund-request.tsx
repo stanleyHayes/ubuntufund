@@ -9,6 +9,7 @@ import {
   Alert,
 } from 'react-native'
 import { Text, Icon, Button } from 'react-native-paper'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, Stack, useLocalSearchParams } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
@@ -18,10 +19,21 @@ interface DonationDetail {
   id: string
   amount: number
   currency: string
+  // API (DonationDetailDTO) sends `campaignName` + `date`; keep the older
+  // aliases as fallbacks so both wire shapes render correctly.
+  campaignName?: string
   campaignTitle?: string
   campaignId: string
-  status: string
-  createdAt: string
+  status?: string
+  date?: string
+  createdAt?: string
+}
+
+function formatDate(date?: string | null) {
+  if (!date) return '—'
+  const d = new Date(date)
+  if (isNaN(d.getTime())) return '—'
+  return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
 }
 
 const REASONS = [
@@ -62,6 +74,7 @@ function FormSkeleton() {
 export default function RefundRequestScreen() {
   const { donationId } = useLocalSearchParams<{ donationId: string }>()
   const { user } = useAuth()
+  const insets = useSafeAreaInsets()
   const [donation, setDonation] = useState<DonationDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -170,7 +183,7 @@ export default function RefundRequestScreen() {
         <Text style={styles.pageLede}>Tell us why, and we'll take it from there.</Text>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
         {loading ? (
           <FormSkeleton />
         ) : error ? (
@@ -198,7 +211,7 @@ export default function RefundRequestScreen() {
                 <Text style={styles.detailLabel}>Donation Details</Text>
                 <View style={styles.detailRow}>
                   <Text style={styles.detailKey}>Campaign</Text>
-                  <Text style={styles.detailValue}>{donation.campaignTitle ?? 'N/A'}</Text>
+                  <Text style={styles.detailValue}>{donation.campaignName ?? donation.campaignTitle ?? 'N/A'}</Text>
                 </View>
                 <View style={styles.detailRow}>
                   <Text style={styles.detailKey}>Amount</Text>
@@ -209,7 +222,7 @@ export default function RefundRequestScreen() {
                 <View style={styles.detailRow}>
                   <Text style={styles.detailKey}>Date</Text>
                   <Text style={styles.detailValue}>
-                    {new Date(donation.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                    {formatDate(donation.date ?? donation.createdAt)}
                   </Text>
                 </View>
               </View>
@@ -253,23 +266,27 @@ export default function RefundRequestScreen() {
                 A 2% processing fee will be deducted from the refund. Refunds typically take 5-7 business days to process.
               </Text>
             </View>
-
-            {/* Submit */}
-            <Button
-              mode="contained"
-              buttonColor={brandColors.primary}
-              textColor="#FFFFFF"
-              onPress={handleSubmit}
-              loading={submitting}
-              disabled={submitting || !selectedReason}
-              style={[styles.submitBtn, (!selectedReason) && { opacity: 0.5 }]}
-              labelStyle={[styles.btnLabel, { fontSize: 16 }]}
-            >
-              Submit Refund Request
-            </Button>
           </View>
         )}
       </ScrollView>
+
+      {/* Submit — docked at the bottom of the screen */}
+      {!loading && !error && (
+        <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
+          <Button
+            mode="contained"
+            buttonColor={brandColors.primary}
+            textColor="#FFFFFF"
+            onPress={handleSubmit}
+            loading={submitting}
+            disabled={submitting || !selectedReason}
+            style={[styles.submitBtn, (!selectedReason) && { opacity: 0.5 }]}
+            labelStyle={[styles.btnLabel, { fontSize: 16 }]}
+          >
+            Submit Refund Request
+          </Button>
+        </View>
+      )}
     </View>
   )
 }
@@ -346,7 +363,14 @@ const styles = StyleSheet.create({
   },
   policyText: { flex: 1, fontSize: 13, color: brandColors.text, lineHeight: 18, fontFamily: 'Outfit_400Regular' },
 
-  submitBtn: { marginTop: 24, borderRadius: 999, paddingVertical: 4 },
+  submitBtn: { borderRadius: 999, paddingVertical: 4 },
+  bottomBar: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    backgroundColor: brandColors.background,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(26,46,34,0.08)',
+  },
 
   successState: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
   successIconTile: {

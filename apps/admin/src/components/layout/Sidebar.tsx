@@ -22,7 +22,7 @@ import GavelRoundedIcon from '@mui/icons-material/GavelRounded'
 import VerifiedUserRoundedIcon from '@mui/icons-material/VerifiedUserRounded'
 import BadgeRoundedIcon from '@mui/icons-material/BadgeRounded'
 import MarkEmailUnreadRoundedIcon from '@mui/icons-material/MarkEmailUnreadRounded'
-import CampaignRoundedIcon from '@mui/icons-material/CampaignRounded'
+import MarkEmailReadRoundedIcon from '@mui/icons-material/MarkEmailReadRounded'
 import FormatQuoteRoundedIcon from '@mui/icons-material/FormatQuoteRounded'
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded'
 import LayersRoundedIcon from '@mui/icons-material/LayersRounded'
@@ -79,7 +79,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     heading: 'Growth',
     items: [
-      { label: 'Newsletter', path: '/newsletter', icon: <CampaignRoundedIcon /> },
+      { label: 'Newsletter', path: '/newsletter', icon: <MarkEmailReadRoundedIcon /> },
       { label: 'Testimonials', path: '/testimonials', icon: <FormatQuoteRoundedIcon /> },
       { label: 'AI Usage', path: '/ai-usage', icon: <AutoAwesomeRoundedIcon /> },
     ],

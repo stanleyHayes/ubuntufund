@@ -194,7 +194,7 @@ function FeaturedDonorsSection() {
     <Container maxWidth="lg" sx={{ py: 8 }}>
       <Box sx={{ textAlign: 'center', mb: 5 }}>
         <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, mb: 1 }}>
-          <EmojiEventsRounded sx={{ fontSize: 32, color: '#FFB300' }} />
+          <EmojiEventsRounded sx={{ fontSize: 32, color: '#C7A24A' }} />
           <Typography variant="h2" component="h2" sx={{ fontWeight: 800 }}>
             Top Donors
           </Typography>
@@ -214,7 +214,7 @@ function FeaturedDonorsSection() {
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {/* Render a podium section */}
           {[
-            { entries: featured.topAllTime, label: 'All-Time Leaders', icon: <TrendingUpRounded sx={{ color: '#FFB300', fontSize: 24 }} /> },
+            { entries: featured.topAllTime, label: 'All-Time Leaders', icon: <TrendingUpRounded sx={{ color: '#C7A24A', fontSize: 24 }} /> },
             { entries: featured.topThisMonth, label: "This Month's Stars", icon: <EmojiEventsRounded sx={{ color: '#AB47BC', fontSize: 24 }} /> },
           ]
             .filter((s) => s.entries.length > 0)

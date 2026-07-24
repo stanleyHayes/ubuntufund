@@ -61,13 +61,15 @@ async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
     headers,
   })
 
-  const data = await res.json()
+  const json = await res.json()
 
   if (!res.ok) {
-    throw new ApiError(res.status, data.error ?? data.message ?? 'Request failed')
+    throw new ApiError(res.status, json.error ?? json.message ?? 'Request failed')
   }
 
-  return data as T
+  // Unwrap the { data, message, status } envelope when present, matching the
+  // web client. Callers receive the payload directly (never the envelope).
+  return (json && typeof json === 'object' && 'data' in json ? json.data : json) as T
 }
 
 // --- Authenticated request helper ---
@@ -105,7 +107,9 @@ async function authedRequest<T>(path: string, options?: RequestInit): Promise<T>
   }
 
   const json = await res.json()
-  return (json.data !== undefined ? json.data : json) as T
+  // Unwrap the { data, message, status } envelope when present, matching the
+  // web client. Callers receive the payload directly (never the envelope).
+  return (json && typeof json === 'object' && 'data' in json ? json.data : json) as T
 }
 
 export const api = {
@@ -166,11 +170,11 @@ function demoLogin(email: string, password: string): LoginResponse | null {
 
 export async function loginApi(email: string, password: string): Promise<LoginResponse> {
   try {
-    const res = await request<{ data: LoginResponse }>('/auth/login', {
+    // request() unwraps the envelope, so this resolves to { user, tokens }.
+    return await request<LoginResponse>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     })
-    return res.data
   } catch (err) {
     const demo = demoLogin(email, password)
     if (demo) return demo
@@ -188,11 +192,11 @@ export async function registerApi(data: {
   organizationType?: string
   registrationNumber?: string
 }): Promise<RegisterResponse> {
-  const res = await request<{ data: RegisterResponse }>('/auth/register', {
+  // request() unwraps the envelope, so this resolves to { user, tokens }.
+  return request<RegisterResponse>('/auth/register', {
     method: 'POST',
     body: JSON.stringify(data),
   })
-  return res.data
 }
 
 export async function refreshTokenApi(refreshToken: string): Promise<AuthTokens> {

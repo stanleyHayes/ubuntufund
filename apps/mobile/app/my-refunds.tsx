@@ -14,12 +14,16 @@ import { brandColors } from '@/theme'
 interface Refund {
   id: string
   donationId: string
+  // API (MyRefundDTO) sends `campaignName` + `requestDate`; keep the older
+  // aliases as fallbacks so both wire shapes render correctly.
+  campaignName?: string
   campaignTitle?: string
   amount: number
   currency: string
   status: string
   reason: string
-  createdAt: string
+  requestDate?: string
+  createdAt?: string
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -29,8 +33,11 @@ const STATUS_COLORS: Record<string, string> = {
   failed: brandColors.error,
 }
 
-function formatDate(date: string) {
-  return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+function formatDate(date?: string | null) {
+  if (!date) return '—'
+  const d = new Date(date)
+  if (isNaN(d.getTime())) return '—'
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 // ─── Skeleton ────────────────────────────────────────────────
@@ -70,7 +77,7 @@ export default function MyRefundsScreen() {
     setError(null)
     try {
       const data = await api.get<Refund[]>('/refunds/mine')
-      setRefunds(data)
+      setRefunds(Array.isArray(data) ? data : [])
     } catch (err: any) {
       setError(err.message ?? 'Failed to load refunds')
     } finally {
@@ -146,12 +153,12 @@ export default function MyRefundsScreen() {
                   </View>
 
                   <Text style={styles.refundCampaign} numberOfLines={1}>
-                    {r.campaignTitle ?? 'Campaign'}
+                    {r.campaignName ?? r.campaignTitle ?? 'Campaign'}
                   </Text>
 
                   <View style={styles.refundFooter}>
                     <Text style={styles.refundAmount}>GH₵ {r.amount.toLocaleString()}</Text>
-                    <Text style={styles.refundDate}>{formatDate(r.createdAt)}</Text>
+                    <Text style={styles.refundDate}>{formatDate(r.requestDate ?? r.createdAt)}</Text>
                   </View>
 
                   <Text style={styles.refundReason}>Reason: {r.reason}</Text>

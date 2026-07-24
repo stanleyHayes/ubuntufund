@@ -278,15 +278,16 @@ export default function KYCReviewPage() {
                     </Typography>
                   </Box>
 
-                  {/* Actions */}
+                  {/* Actions — segmented one-line row; each label stays on a single line */}
                   {st === 'pending' && can(Resource.VERIFICATIONS, Action.UPDATE) && (
-                    <Box sx={{ mt: 2, display: 'flex', gap: 1 }} onClick={e => e.stopPropagation()}>
+                    <Box sx={{ mt: 2, display: 'flex', flexWrap: 'nowrap', gap: 0.75 }} onClick={e => e.stopPropagation()}>
                       <Button
                         size="small"
                         variant="outlined"
                         onClick={() => handleAction(v.id, 'approved')}
                         sx={{
-                          fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.06em',
+                          flex: '1 1 0', minWidth: 0, px: 1, whiteSpace: 'nowrap',
+                          fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.04em',
                           color: '#5E8F72', borderColor: 'rgba(76,175,80,0.3)',
                           '&:hover': { borderColor: '#5E8F72', bgcolor: 'rgba(76,175,80,0.08)' },
                         }}
@@ -298,7 +299,8 @@ export default function KYCReviewPage() {
                         variant="outlined"
                         onClick={() => handleAction(v.id, 'rejected')}
                         sx={{
-                          fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.06em',
+                          flex: '1 1 0', minWidth: 0, px: 1, whiteSpace: 'nowrap',
+                          fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.04em',
                           color: '#C06B58', borderColor: 'rgba(239,83,80,0.3)',
                           '&:hover': { borderColor: '#C06B58', bgcolor: 'rgba(239,83,80,0.08)' },
                         }}
@@ -310,12 +312,13 @@ export default function KYCReviewPage() {
                         variant="outlined"
                         onClick={() => handleAction(v.id, 'in_review')}
                         sx={{
-                          fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.06em',
+                          flex: '1 1 0', minWidth: 0, px: 1, whiteSpace: 'nowrap',
+                          fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.04em',
                           color: '#74909A', borderColor: 'rgba(66,165,245,0.3)',
                           '&:hover': { borderColor: '#74909A', bgcolor: 'rgba(66,165,245,0.08)' },
                         }}
                       >
-                        Request More
+                        Request
                       </Button>
                     </Box>
                   )}

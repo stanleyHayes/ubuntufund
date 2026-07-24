@@ -26,6 +26,7 @@ import { MongoPaymentProviderRepository } from './infrastructure/adapters/outbou
 import { MongoDisputeRepository } from './infrastructure/adapters/outbound/persistence/MongoDisputeRepository.js';
 import { MongoAdminUserRepository } from './infrastructure/adapters/outbound/persistence/MongoAdminUserRepository.js';
 import { MongoAnalyticsRepository } from './infrastructure/adapters/outbound/persistence/MongoAnalyticsRepository.js';
+import { MongoNewsletterSubscriptionRepository } from './infrastructure/adapters/outbound/persistence/MongoNewsletterSubscriptionRepository.js';
 
 // Application services
 import { AuthTokenService } from './application/services/AuthTokenService.js';
@@ -98,6 +99,8 @@ import { ReviewReportUseCase } from './application/use-cases/ReviewReportUseCase
 import { ReviewCampaignUseCase } from './application/use-cases/ReviewCampaignUseCase.js';
 import { ListUsersUseCase } from './application/use-cases/ListUsersUseCase.js';
 import { GetPlatformOverviewUseCase } from './application/use-cases/GetPlatformOverviewUseCase.js';
+import { SubscribeNewsletterUseCase } from './application/use-cases/SubscribeNewsletterUseCase.js';
+import { ListNewsletterSubscribersUseCase } from './application/use-cases/ListNewsletterSubscribersUseCase.js';
 
 // Inbound adapters (controllers, middleware, routes)
 import { AuthController } from './infrastructure/adapters/inbound/http/controllers/AuthController.js';
@@ -120,6 +123,7 @@ import { AdminReportController } from './infrastructure/adapters/inbound/http/co
 import { CampaignModerationController } from './infrastructure/adapters/inbound/http/controllers/CampaignModerationController.js';
 import { AdminUserController } from './infrastructure/adapters/inbound/http/controllers/AdminUserController.js';
 import { AnalyticsController } from './infrastructure/adapters/inbound/http/controllers/AnalyticsController.js';
+import { NewsletterController } from './infrastructure/adapters/inbound/http/controllers/NewsletterController.js';
 
 import {
   createAuthMiddleware,
@@ -153,6 +157,7 @@ import { createAdminReportRoutes } from './infrastructure/adapters/inbound/http/
 import { createCampaignModerationRoutes } from './infrastructure/adapters/inbound/http/routes/campaignModerationRoutes.js';
 import { createAdminUserRoutes } from './infrastructure/adapters/inbound/http/routes/adminUserRoutes.js';
 import { createAnalyticsRoutes } from './infrastructure/adapters/inbound/http/routes/analyticsRoutes.js';
+import { createNewsletterRoutes } from './infrastructure/adapters/inbound/http/routes/newsletterRoutes.js';
 
 /**
  * Assemble the fully-wired Express application (no listening, no DB
@@ -182,6 +187,7 @@ export function createApp(): express.Express {
   const disputeRepo = new MongoDisputeRepository();
   const adminUserRepo = new MongoAdminUserRepository();
   const analyticsRepo = new MongoAnalyticsRepository();
+  const newsletterRepo = new MongoNewsletterSubscriptionRepository();
 
   // ── Services ─────────────────────────────────────────────────────────
   const tokenService = new AuthTokenService(config.jwtSecret, config.jwtRefreshSecret);
@@ -263,6 +269,8 @@ export function createApp(): express.Express {
   const reviewCampaignUseCase = new ReviewCampaignUseCase(campaignRepo);
   const listUsersUseCase = new ListUsersUseCase(adminUserRepo);
   const getPlatformOverviewUseCase = new GetPlatformOverviewUseCase(analyticsRepo);
+  const subscribeNewsletterUseCase = new SubscribeNewsletterUseCase(newsletterRepo);
+  const listNewsletterSubscribersUseCase = new ListNewsletterSubscribersUseCase(newsletterRepo);
 
   // ── Controllers ──────────────────────────────────────────────────────
   const authController = new AuthController(
@@ -337,6 +345,10 @@ export function createApp(): express.Express {
   const campaignModerationController = new CampaignModerationController(reviewCampaignUseCase);
   const adminUserController = new AdminUserController(listUsersUseCase);
   const analyticsController = new AnalyticsController(getPlatformOverviewUseCase);
+  const newsletterController = new NewsletterController(
+    subscribeNewsletterUseCase,
+    listNewsletterSubscribersUseCase
+  );
 
   // ── HTTP pipeline ────────────────────────────────────────────────────
   const app = express();
@@ -388,6 +400,7 @@ export function createApp(): express.Express {
   api.use('/disputes', createDisputeRoutes(disputeController, authMiddleware, requireAdmin));
   api.use('/reports', createAdminReportRoutes(adminReportController, authMiddleware, requireAdmin));
   api.use('/analytics', createAnalyticsRoutes(analyticsController, authMiddleware));
+  api.use('/newsletter', createNewsletterRoutes(newsletterController, authMiddleware, requireAdmin));
 
   app.use('/api/v1', api);
   app.use(errorHandler);

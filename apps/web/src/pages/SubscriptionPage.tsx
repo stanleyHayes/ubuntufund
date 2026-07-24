@@ -102,7 +102,7 @@ function formatCellValue(value: unknown, format?: string): React.ReactNode {
     if (value === -1) return <Typography sx={{ fontSize: '0.82rem', fontWeight: 700, color: '#2E3D2F' }}>Unlimited</Typography>
     if (value === 0 && format === 'unlimited') return <CloseRoundedIcon sx={{ fontSize: 18, color: 'rgba(0,0,0,0.15)' }} />
     if (format === 'fee') return <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>{value}%</Typography>
-    if (format === 'goal') return <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>${value.toLocaleString()}</Typography>
+    if (format === 'goal') return <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>GH₵ {value.toLocaleString()}</Typography>
     return <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>{value}</Typography>
   }
   return String(value)
@@ -460,7 +460,7 @@ export function SubscriptionPage() {
                   ) : (
                     <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
                       <Typography sx={{ fontWeight: 900, fontSize: '2rem', fontFamily: '"Outfit", sans-serif', lineHeight: 1 }}>
-                        ${billingToggle === 'yearly' ? Math.round(price / 12) : price}
+                        GH₵ {billingToggle === 'yearly' ? Math.round(price / 12) : price}
                       </Typography>
                       <Typography sx={{ color: 'text.secondary', fontSize: '0.78rem' }}>
                         /mo
@@ -469,7 +469,7 @@ export function SubscriptionPage() {
                   )}
                   {billingToggle === 'yearly' && tier !== SubscriptionTier.FREE && tier !== SubscriptionTier.ENTERPRISE && (
                     <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary', mt: 0.25 }}>
-                      ${price}/year &middot; billed annually
+                      GH₵ {price}/year &middot; billed annually
                     </Typography>
                   )}
                 </Box>

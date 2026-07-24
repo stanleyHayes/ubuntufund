@@ -130,7 +130,10 @@ export function ExplorePage() {
   }, [search, selectedCategory, selectedStatus, sort])
 
   const filtered = useMemo(() => {
-    let result: Campaign[] = [...campaigns]
+    // Defensive: never spread/filter a non-array. If a hook ever hands back a
+    // non-array (error/unexpected response), fall back to an empty list instead
+    // of throwing "campaigns.filter is not a function".
+    let result: Campaign[] = Array.isArray(campaigns) ? [...campaigns] : []
     if (search.trim()) {
       const q = search.toLowerCase()
       result = result.filter((c) => c.title.toLowerCase().includes(q))

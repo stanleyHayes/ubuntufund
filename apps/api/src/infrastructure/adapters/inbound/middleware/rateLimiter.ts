@@ -61,3 +61,10 @@ export const authRateLimiter = createRateLimiter({
   max: 30,
   scope: 'auth',
 });
+
+/** Public newsletter signup: 20 requests / 15 min per IP (spam guard). */
+export const newsletterRateLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  scope: 'newsletter',
+});

@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react'
 import { View, Text, Animated, StyleSheet, Dimensions } from 'react-native'
+import { UbuntuLogo } from './UbuntuLogo'
 
 const { width } = Dimensions.get('window')
 
@@ -71,7 +72,7 @@ export default function AppSplashScreen({ onFinish }: { onFinish: () => void }) 
         ]}
       />
 
-      {/* Logo: 3 reaching arms with gold dots */}
+      {/* Brand mark: interlocked chain links (Nkonsonkonson) */}
       <Animated.View
         style={[
           styles.logoContainer,
@@ -82,19 +83,7 @@ export default function AppSplashScreen({ onFinish }: { onFinish: () => void }) 
         ]}
       >
         <View style={styles.logoCircle}>
-          {/* Three curved arms built with Views */}
-          {[0, 120, 240].map((angle) => (
-            <View
-              key={angle}
-              style={[
-                styles.arm,
-                { transform: [{ rotate: `${angle}deg` }] },
-              ]}
-            >
-              <View style={styles.armLine} />
-              <View style={styles.goldDot} />
-            </View>
-          ))}
+          <UbuntuLogo size={64} />
         </View>
       </Animated.View>
 
@@ -188,36 +177,14 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   logoCircle: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: 'rgba(46, 61, 47, 0.4)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(46, 61, 47, 0.35)',
+    borderWidth: 1,
+    borderColor: 'rgba(199, 162, 74, 0.25)',
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  arm: {
-    position: 'absolute',
-    width: 4,
-    height: 45,
-    alignItems: 'center',
-    bottom: '50%',
-    transformOrigin: 'center bottom',
-  },
-  armLine: {
-    width: 4,
-    height: 30,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 2,
-  },
-  goldDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#C7A24A',
-    marginTop: 2,
   },
   appName: {
     fontSize: 32,

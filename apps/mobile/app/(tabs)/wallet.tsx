@@ -106,7 +106,7 @@ export default function WalletTab() {
 
       {/* ═══ WALLETS ═══ */}
       <Text style={styles.sectionTitle}>My Wallets</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.walletScroll}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.walletScrollView} contentContainerStyle={styles.walletScroll}>
         {wallets.map((w) => (
           <TouchableRipple key={w.id} style={styles.walletCard} rippleColor="rgba(46,61,47,0.10)">
             <View>
@@ -181,7 +181,8 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 16, fontFamily: 'TTSquares-Bold', color: brandColors.text, paddingHorizontal: 20, marginBottom: 12 },
 
   // Wallets
-  walletScroll: { paddingHorizontal: 16, gap: 10 },
+  walletScrollView: { flexGrow: 0 },
+  walletScroll: { paddingHorizontal: 16, gap: 10, alignItems: 'flex-start' },
   walletCard: {
     width: 150,
     padding: 16,

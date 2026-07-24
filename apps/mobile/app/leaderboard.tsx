@@ -88,9 +88,8 @@ export default function LeaderboardScreen() {
     setLoading(true)
     setError(null)
     try {
-      const res = await api.get<{ data: LeaderboardEntry[] } | LeaderboardEntry[]>(`/leaderboard?period=${PERIOD_PARAMS[activePeriod]}`)
-      const data = Array.isArray(res) ? res : res.data ?? []
-      setEntries(data)
+      const res = await api.get<LeaderboardEntry[]>(`/leaderboard?period=${PERIOD_PARAMS[activePeriod]}`)
+      setEntries(Array.isArray(res) ? res : [])
     } catch (err: any) {
       setError(err.message ?? 'Failed to load leaderboard')
     } finally {
@@ -120,7 +119,12 @@ export default function LeaderboardScreen() {
       </View>
 
       {/* Period Tabs */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.periodRow}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.periodScroll}
+        contentContainerStyle={styles.periodRow}
+      >
         {PERIODS.map((period) => (
           <TouchableOpacity
             key={period}
@@ -231,8 +235,9 @@ const styles = StyleSheet.create({
   pageTitle: { fontSize: 24, fontFamily: 'TTSquares-Black', color: brandColors.text, marginTop: 4 },
   pageLede: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 4 },
 
-  periodRow: { paddingHorizontal: 16, paddingVertical: 12, gap: 8 },
-  periodTab: { paddingHorizontal: 18, paddingVertical: 8, borderRadius: 999, backgroundColor: '#fff', borderWidth: 1, borderColor: 'rgba(26,46,34,0.10)' },
+  periodScroll: { flexGrow: 0 },
+  periodRow: { paddingHorizontal: 16, paddingVertical: 12, gap: 8, alignItems: 'center' },
+  periodTab: { height: 38, justifyContent: 'center', paddingHorizontal: 18, borderRadius: 999, backgroundColor: '#fff', borderWidth: 1, borderColor: 'rgba(26,46,34,0.10)' },
   periodTabActive: { backgroundColor: brandColors.primary, borderColor: brandColors.primary },
   periodTabText: { fontSize: 13, fontFamily: 'TTSquares-Bold', color: brandColors.textSecondary },
   periodTabTextActive: { color: '#fff' },

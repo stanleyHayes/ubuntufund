@@ -121,7 +121,7 @@ export default function SubscriptionScreen() {
 
       {/* Plan comparison - horizontal scroll */}
       <Text style={styles.sectionTitle}>Compare Plans</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.plansRow}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.plansScroll} contentContainerStyle={styles.plansRow}>
         {TIER_ORDER.map((tier) => {
           const plan = SUBSCRIPTION_PLANS[tier]
           const isCurrent = tier === currentSub.tier
@@ -149,7 +149,7 @@ export default function SubscriptionScreen() {
                 <Text style={styles.planPrice}>Contact Us</Text>
               ) : (
                 <View style={styles.priceRow}>
-                  <Text style={styles.planPrice}>${plan.priceMonthly}</Text>
+                  <Text style={styles.planPrice}>GH₵ {plan.priceMonthly}</Text>
                   <Text style={styles.priceUnit}>/mo</Text>
                 </View>
               )}
@@ -276,14 +276,17 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 18, fontFamily: 'TTSquares-Bold', color: brandColors.text, marginBottom: 12 },
 
   // Plans row
-  plansRow: { paddingBottom: 8, paddingRight: 20, gap: 12 },
+  plansScroll: { flexGrow: 0 },
+  plansRow: { paddingBottom: 8, paddingRight: 20, gap: 12, alignItems: 'stretch' },
 
-  // Plan card
+  // Plan card — fixed height so every CTA docks at the same baseline
   planCard: {
     backgroundColor: brandColors.surface,
     borderRadius: 14,
     padding: 16,
     width: 220,
+    minHeight: 400,
+    flexDirection: 'column',
     borderWidth: 1,
     borderColor: 'rgba(26,46,34,0.10)',
   },
@@ -310,13 +313,14 @@ const styles = StyleSheet.create({
   featureRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 5 },
   featureItem: { fontSize: 12, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, flex: 1 },
 
-  // Plan button
-  planButton: { borderRadius: 999 },
+  // Plan button — marginTop:auto docks it at the card bottom so CTAs line up
+  planButton: { borderRadius: 999, marginTop: 'auto' },
   currentChip: {
     backgroundColor: 'rgba(168,181,160,0.28)',
     borderRadius: 999,
     paddingVertical: 10,
     alignItems: 'center',
+    marginTop: 'auto',
   },
   currentChipText: { fontSize: 14, fontFamily: 'TTSquares-Bold', color: brandColors.text },
 

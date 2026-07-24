@@ -346,10 +346,13 @@ export function KYCDetailDialog({
         </Box>
       </DialogContent>
 
-      <DialogActions sx={{ px: 3, py: 2, borderTop: `1px solid ${B}`, display: 'flex', gap: 1 }}>
+      <DialogActions sx={{ px: 3, py: 2, borderTop: `1px solid ${B}`, display: 'flex', flexWrap: 'nowrap', gap: 1 }}>
         <Button
           onClick={onClose}
           sx={{
+            mr: 'auto',
+            flexShrink: 0,
+            whiteSpace: 'nowrap',
             fontSize: '0.68rem',
             textTransform: 'uppercase',
             letterSpacing: '0.06em',
@@ -366,6 +369,8 @@ export function KYCDetailDialog({
               onClick={onRequestMore}
               variant="outlined"
               sx={{
+                flexShrink: 0,
+                whiteSpace: 'nowrap',
                 fontSize: '0.68rem',
                 textTransform: 'uppercase',
                 letterSpacing: '0.06em',
@@ -380,6 +385,8 @@ export function KYCDetailDialog({
               onClick={onReject}
               variant="outlined"
               sx={{
+                flexShrink: 0,
+                whiteSpace: 'nowrap',
                 fontSize: '0.68rem',
                 textTransform: 'uppercase',
                 letterSpacing: '0.06em',
@@ -394,6 +401,8 @@ export function KYCDetailDialog({
               onClick={onApprove}
               variant="outlined"
               sx={{
+                flexShrink: 0,
+                whiteSpace: 'nowrap',
                 fontSize: '0.68rem',
                 textTransform: 'uppercase',
                 letterSpacing: '0.06em',

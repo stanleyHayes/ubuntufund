@@ -26,15 +26,6 @@ function HeroSection() {
           background:
             'radial-gradient(circle at 20% 50%, rgba(199, 162, 74, 0.12) 0%, transparent 50%)',
         },
-        '&::after': {
-          content: '""',
-          position: 'absolute',
-          bottom: -2,
-          left: 0,
-          right: 0,
-          height: 80,
-          background: 'linear-gradient(to top, #F2EFEA, transparent)',
-        },
       }}
     >
       {/* Decorative circles */}

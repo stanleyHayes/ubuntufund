@@ -52,12 +52,12 @@ describe('CampaignCard', () => {
     ).toBeInTheDocument()
   })
 
-  it('renders the category chip with emoji', () => {
+  it('renders the category eyebrow label', () => {
     renderWithProviders(<CampaignCard campaign={mockCampaign} />)
     expect(screen.getByText(/Community/)).toBeInTheDocument()
   })
 
-  it('renders the percentage badge', () => {
+  it('renders the funded percentage', () => {
     renderWithProviders(<CampaignCard campaign={mockCampaign} />)
     expect(screen.getByText('75%')).toBeInTheDocument()
   })
@@ -67,9 +67,19 @@ describe('CampaignCard', () => {
     expect(screen.getByText(/GH₵ 375,000/)).toBeInTheDocument()
   })
 
+  it('renders the goal amount in GHS', () => {
+    renderWithProviders(<CampaignCard campaign={mockCampaign} />)
+    expect(screen.getByText(/GH₵ 500,000/)).toBeInTheDocument()
+  })
+
+  it('exposes an accessible funding progressbar', () => {
+    renderWithProviders(<CampaignCard campaign={mockCampaign} />)
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '75')
+  })
+
   it('renders a link to the campaign detail page', () => {
     renderWithProviders(<CampaignCard campaign={mockCampaign} />)
-    const link = screen.getByRole('link', { name: /view details/i })
+    const link = screen.getByRole('link')
     expect(link).toHaveAttribute('href', '/campaigns/test-1')
   })
 

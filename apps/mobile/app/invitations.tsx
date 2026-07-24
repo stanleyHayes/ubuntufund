@@ -23,8 +23,11 @@ interface Invitation {
   status: string
 }
 
-function formatDate(date: string) {
-  return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+function formatDate(date?: string | null) {
+  if (!date) return '—'
+  const d = new Date(date)
+  if (isNaN(d.getTime())) return '—'
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 // ─── Skeleton ────────────────────────────────────────────────
@@ -66,7 +69,7 @@ export default function InvitationsScreen() {
     setError(null)
     try {
       const data = await api.get<Invitation[]>('/collaborations/invitations')
-      setInvitations(data)
+      setInvitations(Array.isArray(data) ? data : [])
     } catch (err: any) {
       setError(err.message ?? 'Failed to load invitations')
     } finally {

@@ -1,4 +1,6 @@
-const API_BASE = '/api/v1'
+// In production, requests go to '/api/v1' which Vercel rewrites to the API
+// (see vercel.json). Set VITE_API_URL to call an absolute API origin instead.
+const API_BASE = import.meta.env.VITE_API_URL || '/api/v1'
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const token = localStorage.getItem('uf_admin_token')

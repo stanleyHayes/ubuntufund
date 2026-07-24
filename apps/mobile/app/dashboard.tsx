@@ -32,9 +32,12 @@ interface Donation {
   amount: number
   currency: string
   campaignTitle?: string
+  campaignName?: string
   campaignId: string
   donorName?: string
-  createdAt: string
+  // API (MyDonationDTO) sends `date`; keep `createdAt` as a fallback.
+  date?: string
+  createdAt?: string
   status: string
 }
 
@@ -46,8 +49,11 @@ function formatCurrency(amount: number) {
   return ghsFormatter.format(amount)
 }
 
-function formatDate(date: string) {
-  return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+function formatDate(date?: string | null) {
+  if (!date) return '—'
+  const d = new Date(date)
+  if (isNaN(d.getTime())) return '—'
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
 // ─── Skeleton ────────────────────────────────────────────────
@@ -131,10 +137,14 @@ export default function DashboardScreen() {
     setLoading(true)
     setError(null)
     try {
-      const [campaigns, donations] = await Promise.all([
-        api.get<Campaign[]>('/campaigns').catch(() => [] as Campaign[]),
-        api.get<Donation[]>('/donations').catch(() => [] as Donation[]),
+      const [campaignsRes, donationsRes] = await Promise.all([
+        api.get<Campaign[] | { items: Campaign[] }>('/campaigns').catch(() => [] as Campaign[]),
+        api.get<Donation[]>('/donations/mine').catch(() => [] as Donation[]),
       ])
+
+      // /campaigns is paginated ({ items }); /donations/mine is a bare array.
+      const campaigns = Array.isArray(campaignsRes) ? campaignsRes : campaignsRes.items ?? []
+      const donations = Array.isArray(donationsRes) ? donationsRes : []
 
       const myCampaigns = campaigns.filter((c) => c.creatorId === user?.id)
       const active = myCampaigns.filter((c) => c.status === 'active')
@@ -262,7 +272,7 @@ export default function DashboardScreen() {
                       <Text style={styles.listTitle} numberOfLines={1}>
                         {d.donorName ?? 'Anonymous'}
                       </Text>
-                      <Text style={styles.listSub}>{formatDate(d.createdAt)}</Text>
+                      <Text style={styles.listSub}>{formatDate(d.date ?? d.createdAt)}</Text>
                     </View>
                     <Text style={styles.donationAmount}>
                       +GH₵ {d.amount.toLocaleString()}
