@@ -107,7 +107,7 @@ export default function ReportsPage() {
           animation: `${slideIn} 0.4s ease 0.25s both`,
         }}>
           <Box sx={{ p: 2.5, borderBottom: `1px solid ${B}` }}>
-            <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#E0E0E8', fontFamily: '"TT Squares", sans-serif' }}>
+            <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#E0E0E8', fontFamily: '"Outfit", sans-serif' }}>
               Monthly Donation Trends
             </Typography>
           </Box>
@@ -126,7 +126,7 @@ export default function ReportsPage() {
           animation: `${slideIn} 0.4s ease 0.3s both`,
         }}>
           <Box sx={{ p: 2.5, borderBottom: `1px solid ${B}` }}>
-            <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#E0E0E8', fontFamily: '"TT Squares", sans-serif' }}>
+            <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#E0E0E8', fontFamily: '"Outfit", sans-serif' }}>
               Donations by Category
             </Typography>
           </Box>
@@ -147,7 +147,7 @@ export default function ReportsPage() {
           animation: `${slideIn} 0.4s ease 0.35s both`,
         }}>
           <Box sx={{ p: 2.5, borderBottom: `1px solid ${B}` }}>
-            <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#E0E0E8', fontFamily: '"TT Squares", sans-serif' }}>
+            <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#E0E0E8', fontFamily: '"Outfit", sans-serif' }}>
               Geographic Distribution
             </Typography>
           </Box>
@@ -176,10 +176,10 @@ export default function ReportsPage() {
                 <Typography sx={{ fontSize: '0.82rem', color: '#E0E0E8', fontWeight: 600 }}>{row.country}</Typography>
               </Box>
               <Box sx={{ px: 2.5, py: 1.5, borderRight: `1px solid ${B}` }}>
-                <Typography sx={{ fontSize: '0.82rem', color: '#A0A0B0', fontFamily: '"TT Squares", monospace' }}>{row.campaigns}</Typography>
+                <Typography sx={{ fontSize: '0.82rem', color: '#A0A0B0', fontFamily: '"Outfit", monospace' }}>{row.campaigns}</Typography>
               </Box>
               <Box sx={{ px: 2.5, py: 1.5 }}>
-                <Typography sx={{ fontSize: '0.82rem', color: '#A0A0B0', fontFamily: '"TT Squares", monospace' }}>GH₵ {row.donations.toLocaleString()}</Typography>
+                <Typography sx={{ fontSize: '0.82rem', color: '#A0A0B0', fontFamily: '"Outfit", monospace' }}>GH₵ {row.donations.toLocaleString()}</Typography>
               </Box>
             </Box>
           ))}
@@ -191,7 +191,7 @@ export default function ReportsPage() {
           animation: `${slideIn} 0.4s ease 0.4s both`,
         }}>
           <Box sx={{ p: 2.5, borderBottom: `1px solid ${B}` }}>
-            <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#E0E0E8', fontFamily: '"TT Squares", sans-serif' }}>
+            <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#E0E0E8', fontFamily: '"Outfit", sans-serif' }}>
               Campaign Status Breakdown
             </Typography>
           </Box>
@@ -209,7 +209,7 @@ export default function ReportsPage() {
                 <Typography sx={{ fontSize: '0.78rem', color: '#E0E0E8' }}>
                   {s.status}
                 </Typography>
-                <Typography sx={{ fontSize: '0.85rem', fontWeight: 700, color: '#fff', fontFamily: '"TT Squares", monospace' }}>
+                <Typography sx={{ fontSize: '0.85rem', fontWeight: 700, color: '#fff', fontFamily: '"Outfit", monospace' }}>
                   {s.count}
                 </Typography>
               </Box>

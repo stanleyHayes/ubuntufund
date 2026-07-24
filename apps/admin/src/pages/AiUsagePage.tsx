@@ -113,11 +113,11 @@ function StatCard({ label, value, icon, color, index }: StatCardProps) {
         <Box sx={{ color, opacity: 0.7, '& .MuiSvgIcon-root': { fontSize: 20 } }}>
           {icon}
         </Box>
-        <Typography sx={{ fontSize: '0.65rem', textTransform: 'uppercase', color: '#A0A0B0', letterSpacing: 1, fontFamily: '"TT Squares", sans-serif' }}>
+        <Typography sx={{ fontSize: '0.65rem', textTransform: 'uppercase', color: '#A0A0B0', letterSpacing: 1, fontFamily: '"Outfit", sans-serif' }}>
           {label}
         </Typography>
       </Box>
-      <Typography sx={{ fontSize: '1.6rem', fontWeight: 700, color: '#fff', fontFamily: '"TT Squares", monospace', lineHeight: 1.1 }}>
+      <Typography sx={{ fontSize: '1.6rem', fontWeight: 700, color: '#fff', fontFamily: '"Outfit", monospace', lineHeight: 1.1 }}>
         {value}
       </Typography>
     </Box>
@@ -208,7 +208,7 @@ export default function AiUsagePage() {
           }}
         >
           <PsychologyRoundedIcon sx={{ fontSize: 56, color: 'rgba(255,255,255,0.08)', mb: 2 }} />
-          <Typography sx={{ fontSize: '1rem', fontWeight: 600, color: 'rgba(255,255,255,0.5)', mb: 0.5, fontFamily: '"TT Squares", sans-serif' }}>
+          <Typography sx={{ fontSize: '1rem', fontWeight: 600, color: 'rgba(255,255,255,0.5)', mb: 0.5, fontFamily: '"Outfit", sans-serif' }}>
             No AI usage yet
           </Typography>
           <Typography sx={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.3)', textAlign: 'center', maxWidth: 360 }}>
@@ -273,10 +273,10 @@ export default function AiUsagePage() {
             }}
           >
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
-              <Typography sx={{ fontSize: '0.78rem', fontWeight: 600, color: '#E0E0E8', fontFamily: '"TT Squares", sans-serif' }}>
+              <Typography sx={{ fontSize: '0.78rem', fontWeight: 600, color: '#E0E0E8', fontFamily: '"Outfit", sans-serif' }}>
                 Daily Limit
               </Typography>
-              <Typography sx={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', fontFamily: '"TT Squares", monospace' }}>
+              <Typography sx={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', fontFamily: '"Outfit", monospace' }}>
                 {stats.requestsToday} / {dailyLimit}
               </Typography>
             </Box>
@@ -307,7 +307,7 @@ export default function AiUsagePage() {
             {/* Action breakdown bars */}
             <Box sx={{ borderRight: { md: `1px solid ${B}` }, borderBottom: { xs: `1px solid ${B}`, md: 'none' } }}>
               <Box sx={{ p: 2.5, borderBottom: `1px solid ${B}` }}>
-                <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#E0E0E8', fontFamily: '"TT Squares", sans-serif' }}>
+                <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#E0E0E8', fontFamily: '"Outfit", sans-serif' }}>
                   Actions Breakdown
                 </Typography>
               </Box>
@@ -334,7 +334,7 @@ export default function AiUsagePage() {
                       <Typography sx={{ fontSize: '0.78rem', color: '#E0E0E8' }}>
                         {actionLabels[action]}
                       </Typography>
-                      <Typography sx={{ fontSize: '0.85rem', fontWeight: 700, color: '#fff', fontFamily: '"TT Squares", monospace' }}>
+                      <Typography sx={{ fontSize: '0.85rem', fontWeight: 700, color: '#fff', fontFamily: '"Outfit", monospace' }}>
                         {count}
                       </Typography>
                     </Box>
@@ -356,7 +356,7 @@ export default function AiUsagePage() {
             {/* Recent activity list */}
             <Box>
               <Box sx={{ p: 2.5, borderBottom: `1px solid ${B}` }}>
-                <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#E0E0E8', fontFamily: '"TT Squares", sans-serif' }}>
+                <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#E0E0E8', fontFamily: '"Outfit", sans-serif' }}>
                   Recent Activity
                 </Typography>
               </Box>
@@ -420,12 +420,12 @@ export default function AiUsagePage() {
                           </Typography>
                         </Box>
                       </Box>
-                      <Typography sx={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.35)', fontFamily: '"TT Squares", monospace' }}>
+                      <Typography sx={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.35)', fontFamily: '"Outfit", monospace' }}>
                         {entry.inputLength} chars → {entry.outputLength} chars
                       </Typography>
                     </Box>
 
-                    <Typography sx={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.3)', fontFamily: '"TT Squares", monospace', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                    <Typography sx={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.3)', fontFamily: '"Outfit", monospace', whiteSpace: 'nowrap', flexShrink: 0 }}>
                       {formatDateTime(entry.timestamp)}
                     </Typography>
                   </Box>

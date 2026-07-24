@@ -202,7 +202,7 @@ export function ExplorePage() {
           <Typography
             component="h1"
             sx={{
-              fontFamily: '"TT Squares", sans-serif',
+              fontFamily: '"Outfit", sans-serif',
               fontWeight: 900,
               fontSize: { xs: '2rem', md: '2.8rem' },
               lineHeight: 1.1,
@@ -591,7 +591,7 @@ export function ExplorePage() {
                         color: '#fff',
                         px: 1.5,
                         py: 0.4,
-                        fontFamily: '"TT Squares", monospace',
+                        fontFamily: '"Outfit", monospace',
                         fontWeight: 900,
                         fontSize: '0.82rem',
                       }}
@@ -653,7 +653,7 @@ export function ExplorePage() {
                   border: '1px solid rgba(0,0,0,0.08)',
                   color: page === 0 ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.5)',
                   cursor: page === 0 ? 'default' : 'pointer',
-                  fontSize: '0.78rem', fontFamily: '"TT Squares", sans-serif',
+                  fontSize: '0.78rem', fontFamily: '"Outfit", sans-serif',
                   transition: 'all 0.2s',
                   '&:hover:not(:disabled)': { borderColor: 'rgba(0,0,0,0.2)', color: '#1a1a1a' },
                 }}
@@ -671,7 +671,7 @@ export function ExplorePage() {
                     border: `1px solid ${i === page ? '#1a1a1a' : 'rgba(0,0,0,0.08)'}`,
                     color: i === page ? '#fff' : 'rgba(0,0,0,0.5)',
                     cursor: 'pointer',
-                    fontSize: '0.78rem', fontFamily: '"TT Squares", monospace', fontWeight: i === page ? 700 : 400,
+                    fontSize: '0.78rem', fontFamily: '"Outfit", monospace', fontWeight: i === page ? 700 : 400,
                     transition: 'all 0.2s',
                     '&:hover': { borderColor: 'rgba(0,0,0,0.2)' },
                   }}
@@ -688,7 +688,7 @@ export function ExplorePage() {
                   border: '1px solid rgba(0,0,0,0.08)',
                   color: page >= totalPages - 1 ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.5)',
                   cursor: page >= totalPages - 1 ? 'default' : 'pointer',
-                  fontSize: '0.78rem', fontFamily: '"TT Squares", sans-serif',
+                  fontSize: '0.78rem', fontFamily: '"Outfit", sans-serif',
                   transition: 'all 0.2s',
                   '&:hover:not(:disabled)': { borderColor: 'rgba(0,0,0,0.2)', color: '#1a1a1a' },
                 }}

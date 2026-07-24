@@ -76,7 +76,7 @@ export function MyRefundsPage() {
 
         <Typography
           sx={{
-            fontFamily: '"TT Squares", sans-serif',
+            fontFamily: '"Outfit", sans-serif',
             fontWeight: 900,
             fontSize: { xs: '1.5rem', md: '1.8rem' },
             mb: 4,
@@ -127,7 +127,7 @@ export function MyRefundsPage() {
                         </Typography>
                       </TableCell>
                       <TableCell>
-                        <Typography sx={{ fontFamily: '"TT Squares", monospace', fontWeight: 700, fontSize: '0.85rem' }}>
+                        <Typography sx={{ fontFamily: '"Outfit", monospace', fontWeight: 700, fontSize: '0.85rem' }}>
                           {formatCurrency(r.amount, r.currency)}
                         </Typography>
                       </TableCell>

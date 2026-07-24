@@ -251,7 +251,7 @@ export function Header() {
         slotProps={{ paper: { sx: { width: '86vw', maxWidth: 360, bgcolor: '#1C261D', color: '#F5F2EA', p: 2 } } }}
       >
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography sx={{ fontFamily: '"TT Squares", sans-serif', fontWeight: 700 }}>UbuntuFund</Typography>
+          <Typography sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 700 }}>UbuntuFund</Typography>
           <IconButton aria-label="Close menu" onClick={() => setDrawerOpen(false)} sx={{ color: '#F5F2EA' }}>
             <CloseRoundedIcon />
           </IconButton>

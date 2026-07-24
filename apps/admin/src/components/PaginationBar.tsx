@@ -53,7 +53,7 @@ export default function PaginationBar({ pagination, accentColor = '#5E8F72' }: P
           sx={{
             fontSize: '0.75rem',
             color: 'text.secondary',
-            fontFamily: '"TT Squares", monospace',
+            fontFamily: '"Outfit", monospace',
             letterSpacing: '0.02em',
             whiteSpace: 'nowrap',
           }}
@@ -76,7 +76,7 @@ export default function PaginationBar({ pagination, accentColor = '#5E8F72' }: P
               '& .MuiInput-root': {
                 color: 'text.primary',
                 fontSize: '0.75rem',
-                fontFamily: '"TT Squares", monospace',
+                fontFamily: '"Outfit", monospace',
                 '&::before': { borderColor: B },
                 '&::after': { borderColor: accentColor },
               },
@@ -140,7 +140,7 @@ export default function PaginationBar({ pagination, accentColor = '#5E8F72' }: P
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontSize: '0.75rem',
-                fontFamily: '"TT Squares", monospace',
+                fontFamily: '"Outfit", monospace',
                 fontWeight: p === currentPage ? 700 : 400,
                 color: p === currentPage ? '#fff' : 'text.secondary',
                 bgcolor: p === currentPage ? accentColor : 'transparent',

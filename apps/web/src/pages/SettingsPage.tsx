@@ -198,7 +198,7 @@ export function SettingsPage() {
       <Container maxWidth="md">
         <Typography
           sx={{
-            fontFamily: '"TT Squares", sans-serif',
+            fontFamily: '"Outfit", sans-serif',
             fontWeight: 900,
             fontSize: { xs: '1.5rem', md: '1.8rem' },
             mb: 4,

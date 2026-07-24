@@ -74,7 +74,7 @@ export function AuthLayout({ eyebrow, title, subtitle, children }: AuthLayoutPro
 
           <Typography
             sx={{
-              fontFamily: '"TT Squares", sans-serif',
+              fontFamily: '"Outfit", sans-serif',
               fontWeight: 900,
               fontSize: '2rem',
               lineHeight: 1.15,
@@ -144,7 +144,7 @@ export function AuthLayout({ eyebrow, title, subtitle, children }: AuthLayoutPro
                   component="h1"
                   sx={{
                     mt: 0.75,
-                    fontFamily: '"TT Squares", "Inter", sans-serif',
+                    fontFamily: '"Outfit", "Inter", sans-serif',
                     fontWeight: 900,
                     fontSize: { xs: '1.5rem', md: '1.75rem' },
                     color: 'text.primary',

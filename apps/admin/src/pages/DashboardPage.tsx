@@ -311,7 +311,7 @@ function GridTile({ tile, index }: { tile: TileConfig; index: number }) {
             position: 'absolute',
             right: -8,
             bottom: -16,
-            fontFamily: '"TT Squares", monospace',
+            fontFamily: '"Outfit", monospace',
             fontWeight: 900,
             fontSize: { xs: '5rem', md: '6.5rem' },
             color: 'white',
@@ -383,7 +383,7 @@ function GridTile({ tile, index }: { tile: TileConfig; index: number }) {
           <Typography
             className="tile-stat"
             sx={{
-              fontFamily: '"TT Squares", monospace',
+              fontFamily: '"Outfit", monospace',
               fontWeight: 900,
               fontSize: { xs: '1.5rem', md: '2rem' },
               color: 'rgba(255,255,255,0.65)',
@@ -518,7 +518,7 @@ function StatCell({
         <Typography
           className="stat-value"
           sx={{
-            fontFamily: '"TT Squares", monospace',
+            fontFamily: '"Outfit", monospace',
             fontWeight: 900,
             fontSize: '1.15rem',
             color: 'text.primary',

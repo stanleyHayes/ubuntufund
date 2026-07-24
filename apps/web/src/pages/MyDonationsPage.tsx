@@ -74,7 +74,7 @@ export function MyDonationsPage() {
       <Container maxWidth="lg">
         <Typography
           sx={{
-            fontFamily: '"TT Squares", sans-serif',
+            fontFamily: '"Outfit", sans-serif',
             fontWeight: 900,
             fontSize: { xs: '1.5rem', md: '1.8rem' },
             mb: 4,
@@ -117,7 +117,7 @@ export function MyDonationsPage() {
                   {stat.icon}
                 </Box>
                 <Box>
-                  <Typography sx={{ fontFamily: '"TT Squares", sans-serif', fontWeight: 800, fontSize: '1.3rem' }}>
+                  <Typography sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 800, fontSize: '1.3rem' }}>
                     {stat.value}
                   </Typography>
                   <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary' }}>{stat.label}</Typography>
@@ -207,7 +207,7 @@ export function MyDonationsPage() {
                         </Typography>
                       </TableCell>
                       <TableCell>
-                        <Typography sx={{ fontFamily: '"TT Squares", monospace', fontWeight: 700, fontSize: '0.85rem' }}>
+                        <Typography sx={{ fontFamily: '"Outfit", monospace', fontWeight: 700, fontSize: '0.85rem' }}>
                           {formatCurrency(d.amount, d.currency)}
                         </Typography>
                       </TableCell>

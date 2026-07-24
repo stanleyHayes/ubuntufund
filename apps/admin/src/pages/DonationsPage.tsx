@@ -72,7 +72,7 @@ function DonationCard({ donation, donorName, campaignTitle, index }: DonationCar
       {/* Watermark */}
       <Typography sx={{
         position: 'absolute', right: 12, bottom: 8,
-        fontSize: '3.5rem', fontFamily: '"TT Squares", monospace', fontWeight: 900,
+        fontSize: '3.5rem', fontFamily: '"Outfit", monospace', fontWeight: 900,
         color: 'rgba(255,255,255,0.03)', lineHeight: 1, pointerEvents: 'none',
         userSelect: 'none',
       }}>
@@ -81,7 +81,7 @@ function DonationCard({ donation, donorName, campaignTitle, index }: DonationCar
 
       {/* Amount + Currency + Anon badge */}
       <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 0.5, position: 'relative', zIndex: 1 }}>
-        <Typography sx={{ fontSize: '1.5rem', fontWeight: 700, fontFamily: '"TT Squares", monospace', color: 'text.primary', lineHeight: 1.2 }}>
+        <Typography sx={{ fontSize: '1.5rem', fontWeight: 700, fontFamily: '"Outfit", monospace', color: 'text.primary', lineHeight: 1.2 }}>
           GH₵ {donation.amount.toLocaleString()}
         </Typography>
         <Typography sx={{ fontSize: '0.65rem', fontWeight: 600, textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', letterSpacing: '0.05em' }}>
@@ -219,7 +219,7 @@ export default function DonationsPage() {
           </TextField>
         </Box>
         <Box sx={{ px: 2.5, py: 1.5, display: 'flex', alignItems: 'center' }}>
-          <Typography sx={{ fontFamily: '"TT Squares", monospace', fontSize: '0.82rem', color: 'text.secondary' }}>
+          <Typography sx={{ fontFamily: '"Outfit", monospace', fontSize: '0.82rem', color: 'text.secondary' }}>
             {filtered.length} donations &middot; GH₵ {totalAmount.toLocaleString()} total
           </Typography>
         </Box>

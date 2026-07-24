@@ -173,7 +173,7 @@ export default function KYCReviewPage() {
           />
         </Box>
         <Box sx={{ p: 2, display: 'flex', alignItems: 'center' }}>
-          <Typography sx={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.78rem', fontFamily: '"TT Squares", monospace', whiteSpace: 'nowrap' }}>
+          <Typography sx={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.78rem', fontFamily: '"Outfit", monospace', whiteSpace: 'nowrap' }}>
             {loading ? '...' : `${filtered.length} verifications`}
           </Typography>
         </Box>
@@ -248,7 +248,7 @@ export default function KYCReviewPage() {
                   </Typography>
 
                   {/* User name */}
-                  <Typography sx={{ mt: 1.5, fontWeight: 700, fontSize: '0.95rem', color: '#fff', fontFamily: '"TT Squares", sans-serif' }}>
+                  <Typography sx={{ mt: 1.5, fontWeight: 700, fontSize: '0.95rem', color: '#fff', fontFamily: '"Outfit", sans-serif' }}>
                     {v.userName}
                   </Typography>
 
@@ -352,7 +352,7 @@ export default function KYCReviewPage() {
                 color: page === 0 ? 'rgba(255,255,255,0.2)' : 'text.secondary',
                 cursor: page === 0 ? 'default' : 'pointer',
                 fontSize: '0.75rem',
-                fontFamily: '"TT Squares", sans-serif',
+                fontFamily: '"Outfit", sans-serif',
                 transition: 'all 0.2s',
                 '&:hover:not(:disabled)': { borderColor: 'rgba(255,255,255,0.15)', color: 'text.primary' },
               }}
@@ -371,7 +371,7 @@ export default function KYCReviewPage() {
                   color: i === page ? 'text.primary' : 'text.secondary',
                   cursor: 'pointer',
                   fontSize: '0.75rem',
-                  fontFamily: '"TT Squares", monospace',
+                  fontFamily: '"Outfit", monospace',
                   fontWeight: i === page ? 700 : 400,
                   transition: 'all 0.2s',
                   '&:hover': { borderColor: 'rgba(255,255,255,0.15)' },
@@ -391,7 +391,7 @@ export default function KYCReviewPage() {
                 color: page >= Math.ceil(filtered.length / perPage) - 1 ? 'rgba(255,255,255,0.2)' : 'text.secondary',
                 cursor: page >= Math.ceil(filtered.length / perPage) - 1 ? 'default' : 'pointer',
                 fontSize: '0.75rem',
-                fontFamily: '"TT Squares", sans-serif',
+                fontFamily: '"Outfit", sans-serif',
                 transition: 'all 0.2s',
                 '&:hover:not(:disabled)': { borderColor: 'rgba(255,255,255,0.15)', color: 'text.primary' },
               }}

@@ -115,7 +115,7 @@ export default function DisputesPage() {
           />
         </Box>
         <Box sx={{ p: 2, display: 'flex', alignItems: 'center' }}>
-          <Typography sx={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.78rem', fontFamily: '"TT Squares", monospace', whiteSpace: 'nowrap' }}>
+          <Typography sx={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.78rem', fontFamily: '"Outfit", monospace', whiteSpace: 'nowrap' }}>
             {loading ? '...' : `${filtered.length} disputes`}
           </Typography>
         </Box>
@@ -173,7 +173,7 @@ export default function DisputesPage() {
                   </Typography>
 
                   {/* Reason */}
-                  <Typography sx={{ mt: 1.5, fontWeight: 700, fontSize: '0.95rem', color: '#fff', fontFamily: '"TT Squares", sans-serif' }}>
+                  <Typography sx={{ mt: 1.5, fontWeight: 700, fontSize: '0.95rem', color: '#fff', fontFamily: '"Outfit", sans-serif' }}>
                     {dispute.reason}
                   </Typography>
 

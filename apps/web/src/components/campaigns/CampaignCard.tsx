@@ -195,7 +195,7 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
           component="h3"
           sx={{
             mt: 1.5,
-            fontFamily: '"TT Squares", "Inter", sans-serif',
+            fontFamily: '"Outfit", "Inter", sans-serif',
             fontWeight: 700,
             fontSize: '1.1rem',
             lineHeight: 1.3,
@@ -214,7 +214,7 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
             <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.75 }}>
               <Typography
                 sx={{
-                  fontFamily: '"TT Squares", "Inter", sans-serif',
+                  fontFamily: '"Outfit", "Inter", sans-serif',
                   fontWeight: 900,
                   fontSize: '1.35rem',
                   color: 'text.primary',

@@ -226,7 +226,7 @@ export default function CampaignDetailPage() {
         }}>
           {/* Status chip */}
           <Box sx={{ p: 2.5, borderBottom: `1px solid ${B}` }}>
-            <Typography sx={{ fontSize: '0.65rem', textTransform: 'uppercase', color: '#6B6B80', letterSpacing: 1, mb: 1, fontFamily: '"TT Squares", sans-serif' }}>
+            <Typography sx={{ fontSize: '0.65rem', textTransform: 'uppercase', color: '#6B6B80', letterSpacing: 1, mb: 1, fontFamily: '"Outfit", sans-serif' }}>
               Current Status
             </Typography>
             <Chip
@@ -235,7 +235,7 @@ export default function CampaignDetailPage() {
                 bgcolor: `${statusColor}20`,
                 color: statusColor,
                 fontWeight: 700,
-                fontFamily: '"TT Squares", sans-serif',
+                fontFamily: '"Outfit", sans-serif',
                 fontSize: '0.75rem',
               }}
             />
@@ -263,7 +263,7 @@ export default function CampaignDetailPage() {
                   }}
                   sx={{
                     color: '#5E8F72', borderColor: '#5E8F72',
-                    fontFamily: '"TT Squares", sans-serif', textTransform: 'none',
+                    fontFamily: '"Outfit", sans-serif', textTransform: 'none',
                     '&:hover': { borderColor: '#5E8F72', bgcolor: 'rgba(76,175,80,0.08)' },
                   }}
                 >
@@ -289,7 +289,7 @@ export default function CampaignDetailPage() {
                   }}
                   sx={{
                     color: '#C06B58', borderColor: '#C06B58',
-                    fontFamily: '"TT Squares", sans-serif', textTransform: 'none',
+                    fontFamily: '"Outfit", sans-serif', textTransform: 'none',
                     '&:hover': { borderColor: '#C06B58', bgcolor: 'rgba(192,107,88,0.08)' },
                   }}
                 >
@@ -320,7 +320,7 @@ export default function CampaignDetailPage() {
                 }}
                 sx={{
                   color: '#C06B58', borderColor: '#C06B58',
-                  fontFamily: '"TT Squares", sans-serif', textTransform: 'none',
+                  fontFamily: '"Outfit", sans-serif', textTransform: 'none',
                   '&:hover': { borderColor: '#C06B58', bgcolor: 'rgba(192,107,88,0.08)' },
                 }}
               >
@@ -347,7 +347,7 @@ export default function CampaignDetailPage() {
                 }}
                 sx={{
                   color: '#5E8F72', borderColor: '#5E8F72',
-                  fontFamily: '"TT Squares", sans-serif', textTransform: 'none',
+                  fontFamily: '"Outfit", sans-serif', textTransform: 'none',
                   '&:hover': { borderColor: '#5E8F72', bgcolor: 'rgba(76,175,80,0.08)' },
                 }}
               >
@@ -376,7 +376,7 @@ export default function CampaignDetailPage() {
                   bgcolor: 'rgba(255,255,255,0.03)',
                   color: 'text.primary',
                   fontSize: '0.82rem',
-                  fontFamily: '"TT Squares", sans-serif',
+                  fontFamily: '"Outfit", sans-serif',
                 },
                 '& .MuiOutlinedInput-notchedOutline': { borderColor: B },
               }}
@@ -386,7 +386,7 @@ export default function CampaignDetailPage() {
           {/* Review history */}
           {(campaign.reviewNotes || campaign.reviewedBy) && (
             <Box sx={{ p: 2.5, borderBottom: `1px solid ${B}` }}>
-              <Typography sx={{ fontSize: '0.65rem', textTransform: 'uppercase', color: '#6B6B80', letterSpacing: 1, mb: 1, fontFamily: '"TT Squares", sans-serif' }}>
+              <Typography sx={{ fontSize: '0.65rem', textTransform: 'uppercase', color: '#6B6B80', letterSpacing: 1, mb: 1, fontFamily: '"Outfit", sans-serif' }}>
                 Review History
               </Typography>
               {campaign.reviewNotes && (
@@ -410,7 +410,7 @@ export default function CampaignDetailPage() {
               startIcon={<CurrencyExchangeIcon />}
               sx={{
                 color: '#D3A95C', borderColor: '#D3A95C',
-                fontFamily: '"TT Squares", sans-serif', textTransform: 'none',
+                fontFamily: '"Outfit", sans-serif', textTransform: 'none',
                 '&:hover': { borderColor: '#D3A95C', bgcolor: 'rgba(211,169,92,0.08)' },
               }}
             >
@@ -423,7 +423,7 @@ export default function CampaignDetailPage() {
               fullWidth
               sx={{
                 color: '#A0A0B0', borderColor: '#A0A0B0',
-                fontFamily: '"TT Squares", sans-serif', textTransform: 'none',
+                fontFamily: '"Outfit", sans-serif', textTransform: 'none',
                 '&:hover': { borderColor: '#fff', bgcolor: 'rgba(255,255,255,0.05)' },
               }}
               onClick={() => setEditOpen(true)}
@@ -438,7 +438,7 @@ export default function CampaignDetailPage() {
               color="error"
               sx={{
                 color: '#C06B58', borderColor: '#C06B58',
-                fontFamily: '"TT Squares", sans-serif', textTransform: 'none',
+                fontFamily: '"Outfit", sans-serif', textTransform: 'none',
                 '&:hover': { borderColor: '#C06B58', bgcolor: 'rgba(192,107,88,0.08)' },
               }}
               onClick={() => setDeleteOpen(true)}
@@ -451,7 +451,7 @@ export default function CampaignDetailPage() {
 
       {/* Collaborators */}
       <Box sx={{ borderBottom: `1px solid ${B}`, p: 2.5 }}>
-        <Typography sx={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#6B6B80', letterSpacing: 1, mb: 1.5, fontFamily: '"TT Squares", sans-serif' }}>
+        <Typography sx={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#6B6B80', letterSpacing: 1, mb: 1.5, fontFamily: '"Outfit", sans-serif' }}>
           Collaborators
         </Typography>
       </Box>
@@ -475,7 +475,7 @@ export default function CampaignDetailPage() {
             >
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <Box>
-                  <Typography sx={{ fontSize: '0.95rem', fontWeight: 700, color: '#fff', fontFamily: '"TT Squares", monospace' }}>
+                  <Typography sx={{ fontSize: '0.95rem', fontWeight: 700, color: '#fff', fontFamily: '"Outfit", monospace' }}>
                     {c.displayName}
                   </Typography>
                   <Typography sx={{ fontSize: '0.72rem', color: '#A0A0B0', mt: 0.5 }}>
@@ -496,7 +496,7 @@ export default function CampaignDetailPage() {
                     fontSize: '0.65rem',
                     textTransform: 'none',
                     minWidth: 'auto',
-                    fontFamily: '"TT Squares", sans-serif',
+                    fontFamily: '"Outfit", sans-serif',
                     '&:hover': { bgcolor: 'rgba(192,107,88,0.08)' },
                   }}
                 >
@@ -510,7 +510,7 @@ export default function CampaignDetailPage() {
 
       {/* Bottom: Recent donations */}
       <Box sx={{ borderBottom: `1px solid ${B}`, p: 2.5 }}>
-        <Typography sx={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#6B6B80', letterSpacing: 1, mb: 1.5, fontFamily: '"TT Squares", sans-serif' }}>
+        <Typography sx={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#6B6B80', letterSpacing: 1, mb: 1.5, fontFamily: '"Outfit", sans-serif' }}>
           Recent Donations
         </Typography>
       </Box>
@@ -532,7 +532,7 @@ export default function CampaignDetailPage() {
                 '&:hover': { bgcolor: 'rgba(255,255,255,0.02)' },
               }}
             >
-              <Typography sx={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff', fontFamily: '"TT Squares", monospace' }}>
+              <Typography sx={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff', fontFamily: '"Outfit", monospace' }}>
                 GH₵ {d.amount.toLocaleString()}
               </Typography>
               <Typography sx={{ fontSize: '0.72rem', color: '#A0A0B0', mt: 0.5 }}>
@@ -551,7 +551,7 @@ export default function CampaignDetailPage() {
 
       {/* Edit Dialog */}
       <Dialog open={editOpen} onClose={() => setEditOpen(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { bgcolor: '#0c0c14', color: '#fff' } }}>
-        <DialogTitle sx={{ fontWeight: 700, fontFamily: '"TT Squares", sans-serif' }}>Edit Campaign</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 700, fontFamily: '"Outfit", sans-serif' }}>Edit Campaign</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <TextField label="Title" defaultValue={campaign?.title} id="admin-edit-title" fullWidth sx={{ '& .MuiInputBase-root': { color: '#fff', bgcolor: 'rgba(255,255,255,0.03)' } }} />
           <TextField label="Description" defaultValue={campaign?.description} id="admin-edit-description" multiline rows={3} fullWidth sx={{ '& .MuiInputBase-root': { color: '#fff', bgcolor: 'rgba(255,255,255,0.03)' } }} />
@@ -601,7 +601,7 @@ export default function CampaignDetailPage() {
 
       {/* Delete Confirmation */}
       <Dialog open={deleteOpen} onClose={() => setDeleteOpen(false)} maxWidth="xs" fullWidth PaperProps={{ sx: { bgcolor: '#0c0c14', color: '#fff' } }}>
-        <DialogTitle sx={{ fontWeight: 700, fontFamily: '"TT Squares", sans-serif' }}>Delete Campaign</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 700, fontFamily: '"Outfit", sans-serif' }}>Delete Campaign</DialogTitle>
         <DialogContent>
           <Typography sx={{ color: '#A0A0B0' }}>Are you sure you want to delete this campaign? This cannot be undone.</Typography>
         </DialogContent>

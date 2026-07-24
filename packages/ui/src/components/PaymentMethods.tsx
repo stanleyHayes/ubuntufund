@@ -228,7 +228,7 @@ function ProviderCard({ provider, index, onSelect, selected, methodData }: Provi
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontFamily: '"TT Squares", sans-serif',
+              fontFamily: '"Outfit", sans-serif',
               fontWeight: 900,
               fontSize: '0.85rem',
               color: '#C7A24A',

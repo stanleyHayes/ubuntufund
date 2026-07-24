@@ -217,14 +217,14 @@ function SubscriptionRow({ sub, index }: { sub: MockSubscription; index: number 
 
       {/* Period Start */}
       <Box>
-        <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary', fontFamily: '"TT Squares", monospace', whiteSpace: 'nowrap' }}>
+        <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary', fontFamily: '"Outfit", monospace', whiteSpace: 'nowrap' }}>
           {sub.currentPeriodStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
         </Typography>
       </Box>
 
       {/* Period End */}
       <Box sx={{ display: { xs: 'none', md: 'block' } }}>
-        <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary', fontFamily: '"TT Squares", monospace', whiteSpace: 'nowrap' }}>
+        <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary', fontFamily: '"Outfit", monospace', whiteSpace: 'nowrap' }}>
           {sub.currentPeriodEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
         </Typography>
       </Box>
@@ -324,7 +324,7 @@ export default function SubscriptionsPage() {
             <Box key={r.tier} sx={{ flex: 1, minWidth: 140, animation: `${countUp} 0.5s ease ${0.5 + i * 0.1}s both` }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
                 <Typography sx={{ fontSize: '0.75rem', color: r.color, fontWeight: 700 }}>{r.name}</Typography>
-                <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontFamily: '"TT Squares", monospace' }}>
+                <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontFamily: '"Outfit", monospace' }}>
                   GH₵ {r.revenue.toFixed(0)}/mo
                 </Typography>
               </Box>
@@ -396,7 +396,7 @@ export default function SubscriptionsPage() {
           </TextField>
         </Box>
         <Box sx={{ px: 2.5, py: 1.5, display: 'flex', alignItems: 'center' }}>
-          <Typography sx={{ fontFamily: '"TT Squares", monospace', fontSize: '0.82rem', color: 'text.secondary' }}>
+          <Typography sx={{ fontFamily: '"Outfit", monospace', fontSize: '0.82rem', color: 'text.secondary' }}>
             {filtered.length} subscription{filtered.length !== 1 ? 's' : ''}
           </Typography>
         </Box>

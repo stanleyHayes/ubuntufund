@@ -174,7 +174,7 @@ function GeoRow({
         <Typography sx={{ fontSize: '0.75rem', color: 'text.primary', fontWeight: 500 }}>{country}</Typography>
         <Box sx={{ display: 'flex', gap: 2 }}>
           <Typography sx={{ fontSize: '0.68rem', color: 'text.secondary' }}>{campaigns} campaigns</Typography>
-          <Typography sx={{ fontSize: '0.68rem', color: '#5E8F72', fontWeight: 600, fontFamily: '"TT Squares", monospace' }}>
+          <Typography sx={{ fontSize: '0.68rem', color: '#5E8F72', fontWeight: 600, fontFamily: '"Outfit", monospace' }}>
             GH₵ {donations.toLocaleString()}
           </Typography>
         </Box>
@@ -216,7 +216,7 @@ function FraudMetricCard({ metric, value, change }: { metric: string; value: num
       <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', letterSpacing: '0.06em', textTransform: 'uppercase', mb: 0.75 }}>
         {metric}
       </Typography>
-      <Typography sx={{ fontFamily: '"TT Squares", monospace', fontWeight: 900, fontSize: '1.4rem', color: 'text.primary', lineHeight: 1 }}>
+      <Typography sx={{ fontFamily: '"Outfit", monospace', fontWeight: 900, fontSize: '1.4rem', color: 'text.primary', lineHeight: 1 }}>
         {metric === 'Fraud Rate' ? `${value}%` : metric === 'Avg Resolution Time' ? `${value}d` : value}
       </Typography>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5, mt: 0.75 }}>
@@ -502,7 +502,7 @@ export default function OverviewPage() {
               >
                 <Typography
                   sx={{
-                    fontFamily: '"TT Squares", monospace',
+                    fontFamily: '"Outfit", monospace',
                     fontWeight: 900,
                     fontSize: '0.85rem',
                     color: i === 0 ? '#C7A24A' : i === 1 ? '#A0A0B0' : i === 2 ? TONES.clay.text : 'text.secondary',
@@ -538,7 +538,7 @@ export default function OverviewPage() {
                 </Box>
                 <Typography
                   sx={{
-                    fontFamily: '"TT Squares", monospace',
+                    fontFamily: '"Outfit", monospace',
                     fontSize: '0.78rem',
                     fontWeight: 700,
                     color: '#5E8F72',
@@ -581,7 +581,7 @@ export default function OverviewPage() {
                         {level.replace(/_/g, ' ')}
                       </Typography>
                     </Box>
-                    <Typography sx={{ fontSize: '0.68rem', color: 'text.secondary', fontFamily: '"TT Squares", monospace' }}>
+                    <Typography sx={{ fontSize: '0.68rem', color: 'text.secondary', fontFamily: '"Outfit", monospace' }}>
                       {count} ({pct}%)
                     </Typography>
                   </Box>
@@ -625,7 +625,7 @@ export default function OverviewPage() {
                     <Typography sx={{ fontSize: '0.72rem', color: 'text.primary', fontWeight: 500, textTransform: 'capitalize' }}>
                       {pm.method.replace(/_/g, ' ')}
                     </Typography>
-                    <Typography sx={{ fontSize: '0.68rem', color: 'text.secondary', fontFamily: '"TT Squares", monospace' }}>
+                    <Typography sx={{ fontSize: '0.68rem', color: 'text.secondary', fontFamily: '"Outfit", monospace' }}>
                       {pm.count} ({pct}%)
                     </Typography>
                   </Box>
@@ -756,7 +756,7 @@ export default function OverviewPage() {
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5, mb: 0.75, color: s.color }}>
               {s.icon}
             </Box>
-            <Typography sx={{ fontFamily: '"TT Squares", monospace', fontWeight: 900, fontSize: '1.1rem', color: 'text.primary', lineHeight: 1 }}>
+            <Typography sx={{ fontFamily: '"Outfit", monospace', fontWeight: 900, fontSize: '1.1rem', color: 'text.primary', lineHeight: 1 }}>
               {s.value}
             </Typography>
             <Typography sx={{ fontSize: '0.58rem', color: 'text.secondary', mt: 0.5, letterSpacing: '0.06em', textTransform: 'uppercase' }}>

@@ -138,7 +138,7 @@ export function RefundRequestPage() {
 
         <Typography
           sx={{
-            fontFamily: '"TT Squares", sans-serif',
+            fontFamily: '"Outfit", sans-serif',
             fontWeight: 900,
             fontSize: '1.5rem',
             mb: 3,
@@ -167,7 +167,7 @@ export function RefundRequestPage() {
             </Box>
             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
               <Typography sx={{ fontSize: '0.88rem', color: 'text.secondary' }}>Amount</Typography>
-              <Typography sx={{ fontSize: '0.88rem', fontWeight: 700, fontFamily: '"TT Squares", monospace' }}>
+              <Typography sx={{ fontSize: '0.88rem', fontWeight: 700, fontFamily: '"Outfit", monospace' }}>
                 {formatCurrency(donation.amount, donation.currency)}
               </Typography>
             </Box>

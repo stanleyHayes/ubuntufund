@@ -269,7 +269,7 @@ export function ForgotPasswordPage() {
 
           <Typography
             sx={{
-              fontFamily: '"TT Squares", sans-serif',
+              fontFamily: '"Outfit", sans-serif',
               fontWeight: 900,
               fontSize: '1.5rem',
               color: '#1a1a1a',
@@ -388,7 +388,7 @@ export function ForgotPasswordPage() {
               sx={{
                 fontWeight: 900,
                 color: '#1a1a1a',
-                fontFamily: '"TT Squares", sans-serif',
+                fontFamily: '"Outfit", sans-serif',
                 fontSize: '1.6rem',
                 position: 'relative',
                 display: 'inline-block',
@@ -467,7 +467,7 @@ export function ForgotPasswordPage() {
                   cursor: loading ? 'wait' : 'pointer',
                   py: 2,
                   px: 3,
-                  fontFamily: '"TT Squares", sans-serif',
+                  fontFamily: '"Outfit", sans-serif',
                   fontWeight: 700,
                   fontSize: '1rem',
                   color: '#FFFFFF',

@@ -48,7 +48,7 @@ function LiveClock() {
   return (
     <Typography
       sx={{
-        fontFamily: '"TT Squares", monospace',
+        fontFamily: '"Outfit", monospace',
         fontSize: '0.7rem',
         color: 'rgba(76,175,80,0.5)',
         letterSpacing: '0.15em',
@@ -165,7 +165,7 @@ export default function LoginPage() {
           />
           <Typography
             sx={{
-              fontFamily: '"TT Squares", monospace',
+              fontFamily: '"Outfit", monospace',
               fontSize: '0.65rem',
               color: 'rgba(76,175,80,0.4)',
               letterSpacing: '0.2em',
@@ -200,7 +200,7 @@ export default function LoginPage() {
           {/* Wordmark */}
           <Typography
             sx={{
-              fontFamily: '"TT Squares", sans-serif',
+              fontFamily: '"Outfit", sans-serif',
               fontWeight: 900,
               fontSize: '2.8rem',
               lineHeight: 1.1,
@@ -223,7 +223,7 @@ export default function LoginPage() {
           <Box sx={{ mb: 4, overflow: 'hidden' }}>
             <Typography
               sx={{
-                fontFamily: '"TT Squares", monospace',
+                fontFamily: '"Outfit", monospace',
                 fontSize: '0.85rem',
                 color: 'rgba(76,175,80,0.6)',
                 letterSpacing: '0.15em',
@@ -263,7 +263,7 @@ export default function LoginPage() {
               <Box key={stat.label}>
                 <Typography
                   sx={{
-                    fontFamily: '"TT Squares", monospace',
+                    fontFamily: '"Outfit", monospace',
                     fontWeight: 700,
                     fontSize: '1.15rem',
                     color: '#5E8F72',
@@ -342,7 +342,7 @@ export default function LoginPage() {
           </Box>
           <Typography
             sx={{
-              fontFamily: '"TT Squares", sans-serif',
+              fontFamily: '"Outfit", sans-serif',
               fontWeight: 900,
               fontSize: '1.5rem',
               color: '#E0E0E8',
@@ -360,7 +360,7 @@ export default function LoginPage() {
           </Typography>
           <Typography
             sx={{
-              fontFamily: '"TT Squares", monospace',
+              fontFamily: '"Outfit", monospace',
               fontSize: '0.65rem',
               color: 'rgba(76,175,80,0.4)',
               letterSpacing: '0.2em',
@@ -393,7 +393,7 @@ export default function LoginPage() {
             <Box sx={{ mb: 3.5 }}>
               <Typography
                 sx={{
-                  fontFamily: '"TT Squares", sans-serif',
+                  fontFamily: '"Outfit", sans-serif',
                   fontWeight: 900,
                   fontSize: '1.5rem',
                   color: '#E0E0E8',
@@ -527,7 +527,7 @@ export default function LoginPage() {
                   py: 1.5,
                   fontSize: '0.9rem',
                   fontWeight: 700,
-                  fontFamily: '"TT Squares", sans-serif',
+                  fontFamily: '"Outfit", sans-serif',
                   background: loading
                     ? undefined
                     : '#2E3D2F',

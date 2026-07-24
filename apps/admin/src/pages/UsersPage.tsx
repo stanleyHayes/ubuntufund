@@ -103,7 +103,7 @@ function UserCard({ user, index }: { user: User; index: number }) {
       {/* Watermark */}
       <Typography sx={{
         position: 'absolute', right: 12, bottom: 8,
-        fontSize: '3.5rem', fontFamily: '"TT Squares", monospace', fontWeight: 900,
+        fontSize: '3.5rem', fontFamily: '"Outfit", monospace', fontWeight: 900,
         color: 'rgba(255,255,255,0.03)', lineHeight: 1, pointerEvents: 'none',
         userSelect: 'none',
       }}>
@@ -144,7 +144,7 @@ function UserCard({ user, index }: { user: User; index: number }) {
         {/* Trust Score */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.8 }}>
           <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>Trust Score</Typography>
-          <Typography sx={{ fontSize: '0.9rem', fontFamily: '"TT Squares", monospace', fontWeight: 700, color: trustColor }}>
+          <Typography sx={{ fontSize: '0.9rem', fontFamily: '"Outfit", monospace', fontWeight: 700, color: trustColor }}>
             {user.trustScore}
           </Typography>
         </Box>
@@ -246,7 +246,7 @@ export default function UsersPage() {
           </TextField>
         </Box>
         <Box sx={{ px: 2.5, py: 1.5, display: 'flex', alignItems: 'center' }}>
-          <Typography sx={{ fontFamily: '"TT Squares", monospace', fontSize: '0.82rem', color: 'text.secondary' }}>
+          <Typography sx={{ fontFamily: '"Outfit", monospace', fontSize: '0.82rem', color: 'text.secondary' }}>
             {filtered.length} users
           </Typography>
         </Box>

@@ -687,7 +687,7 @@ export function AiWritingBar({ value, onChange, inputLabel, allowedActions }: Ai
               textTransform: 'uppercase',
               color: 'rgba(255,255,255,0.35)',
               letterSpacing: 1,
-              fontFamily: '"TT Squares", sans-serif',
+              fontFamily: '"Outfit", sans-serif',
             }}
           >
             {inputLabel}
@@ -714,7 +714,7 @@ export function AiWritingBar({ value, onChange, inputLabel, allowedActions }: Ai
                   px: 1,
                   color: 'rgba(255,255,255,0.5)',
                   borderColor: 'rgba(255,255,255,0.08)',
-                  fontFamily: '"TT Squares", sans-serif',
+                  fontFamily: '"Outfit", sans-serif',
                   '&:hover': {
                     borderColor: 'rgba(255,255,255,0.2)',
                     color: 'rgba(255,255,255,0.8)',

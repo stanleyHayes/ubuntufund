@@ -179,7 +179,7 @@ export function SubscriptionPage() {
       {/* Page header */}
       <Typography
         variant="h4"
-        sx={{ fontFamily: '"TT Squares", sans-serif', fontWeight: 900, mb: 1, animation: `${fadeInUp} 0.4s ease` }}
+        sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 900, mb: 1, animation: `${fadeInUp} 0.4s ease` }}
       >
         Subscription
       </Typography>
@@ -226,7 +226,7 @@ export function SubscriptionPage() {
               <RocketLaunchRoundedIcon sx={{ color: '#fff', fontSize: 26 }} />
             </Box>
             <Box>
-              <Typography sx={{ color: '#fff', fontWeight: 800, fontSize: '1.4rem', fontFamily: '"TT Squares", sans-serif', lineHeight: 1.2 }}>
+              <Typography sx={{ color: '#fff', fontWeight: 800, fontSize: '1.4rem', fontFamily: '"Outfit", sans-serif', lineHeight: 1.2 }}>
                 {currentPlan.name} Plan
               </Typography>
               <Typography sx={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.82rem' }}>
@@ -292,7 +292,7 @@ export function SubscriptionPage() {
                     {stat.label}
                   </Typography>
                 </Box>
-                <Typography sx={{ fontWeight: 800, fontSize: '1.1rem', fontFamily: '"TT Squares", sans-serif' }}>
+                <Typography sx={{ fontWeight: 800, fontSize: '1.1rem', fontFamily: '"Outfit", sans-serif' }}>
                   {stat.value}
                 </Typography>
               </Box>
@@ -350,7 +350,7 @@ export function SubscriptionPage() {
 
       {/* ═══════════ PLAN CARDS ═══════════ */}
       <Box sx={{ textAlign: 'center', mb: 4, animation: `${fadeInUp} 0.4s 0.15s ease both` }}>
-        <Typography variant="h5" sx={{ fontFamily: '"TT Squares", sans-serif', fontWeight: 800, mb: 1.5 }}>
+        <Typography variant="h5" sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 800, mb: 1.5 }}>
           Choose Your Plan
         </Typography>
 
@@ -368,7 +368,7 @@ export function SubscriptionPage() {
                 color: billingToggle === cycle ? '#fff' : 'text.secondary',
                 fontWeight: 700,
                 fontSize: '0.82rem',
-                fontFamily: '"TT Squares", sans-serif',
+                fontFamily: '"Outfit", sans-serif',
                 cursor: 'pointer',
                 transition: 'all 0.2s',
               }}
@@ -446,7 +446,7 @@ export function SubscriptionPage() {
                 </Box>
               )}
               <CardContent sx={{ p: 3, flex: 1, display: 'flex', flexDirection: 'column' }}>
-                <Typography sx={{ fontWeight: 800, fontSize: '1.1rem', fontFamily: '"TT Squares", sans-serif', mb: 0.25 }}>
+                <Typography sx={{ fontWeight: 800, fontSize: '1.1rem', fontFamily: '"Outfit", sans-serif', mb: 0.25 }}>
                   {plan.name}
                 </Typography>
                 <Typography sx={{ color: 'text.secondary', fontSize: '0.78rem', mb: 2.5, lineHeight: 1.4 }}>
@@ -456,10 +456,10 @@ export function SubscriptionPage() {
                 {/* Price */}
                 <Box sx={{ mb: 2.5 }}>
                   {tier === SubscriptionTier.ENTERPRISE ? (
-                    <Typography sx={{ fontWeight: 800, fontSize: '1.3rem', fontFamily: '"TT Squares", sans-serif' }}>Custom</Typography>
+                    <Typography sx={{ fontWeight: 800, fontSize: '1.3rem', fontFamily: '"Outfit", sans-serif' }}>Custom</Typography>
                   ) : (
                     <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
-                      <Typography sx={{ fontWeight: 900, fontSize: '2rem', fontFamily: '"TT Squares", sans-serif', lineHeight: 1 }}>
+                      <Typography sx={{ fontWeight: 900, fontSize: '2rem', fontFamily: '"Outfit", sans-serif', lineHeight: 1 }}>
                         ${billingToggle === 'yearly' ? Math.round(price / 12) : price}
                       </Typography>
                       <Typography sx={{ color: 'text.secondary', fontSize: '0.78rem' }}>
@@ -513,7 +513,7 @@ export function SubscriptionPage() {
                   sx={{
                     borderRadius: SHAPE.sm,
                     fontWeight: 700,
-                    fontFamily: '"TT Squares", sans-serif',
+                    fontFamily: '"Outfit", sans-serif',
                     textTransform: 'none',
                     py: 1.2,
                     ...(isPro && !isCurrent && { bgcolor: tc.accent, '&:hover': { bgcolor: '#1C261D' } }),
@@ -530,7 +530,7 @@ export function SubscriptionPage() {
 
       {/* ═══════════ FEATURE COMPARISON TABLE ═══════════ */}
       <Box sx={{ mb: 6, animation: `${fadeInUp} 0.4s 0.3s ease both` }}>
-        <Typography variant="h5" sx={{ fontFamily: '"TT Squares", sans-serif', fontWeight: 800, mb: 4, textAlign: 'center' }}>
+        <Typography variant="h5" sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 800, mb: 4, textAlign: 'center' }}>
           Feature Comparison
         </Typography>
 
@@ -582,7 +582,7 @@ export function SubscriptionPage() {
                     }),
                   }}
                 >
-                  <Typography sx={{ fontWeight: 800, fontSize: '0.85rem', fontFamily: '"TT Squares", sans-serif' }}>
+                  <Typography sx={{ fontWeight: 800, fontSize: '0.85rem', fontFamily: '"Outfit", sans-serif' }}>
                     {plan.name}
                   </Typography>
                   {isCurrent && (
@@ -677,7 +677,7 @@ export function SubscriptionPage() {
             animation: `${fadeInUp} 0.4s 0.35s ease both`,
           }}
         >
-          <Typography sx={{ fontFamily: '"TT Squares", sans-serif', fontWeight: 800, fontSize: '1.3rem', mb: 1 }}>
+          <Typography sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 800, fontSize: '1.3rem', mb: 1 }}>
             Ready to grow your impact?
           </Typography>
           <Typography sx={{ color: 'text.secondary', mb: 3, maxWidth: 500, mx: 'auto' }}>
@@ -690,7 +690,7 @@ export function SubscriptionPage() {
             onClick={() => handleSubscribe(SubscriptionTier.PRO)}
             sx={{
               bgcolor: '#2E3D2F',
-              fontFamily: '"TT Squares", sans-serif',
+              fontFamily: '"Outfit", sans-serif',
               fontWeight: 700,
               px: 5,
               borderRadius: SHAPE.sm,
@@ -705,7 +705,7 @@ export function SubscriptionPage() {
 
       {/* ═══════════ CANCEL DIALOG ═══════════ */}
       <Dialog open={cancelDialogOpen} onClose={() => setCancelDialogOpen(false)} PaperProps={{ sx: { borderRadius: SHAPE.card } }}>
-        <DialogTitle sx={{ fontFamily: '"TT Squares", sans-serif', fontWeight: 700 }}>
+        <DialogTitle sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 700 }}>
           Cancel Subscription?
         </DialogTitle>
         <DialogContent>

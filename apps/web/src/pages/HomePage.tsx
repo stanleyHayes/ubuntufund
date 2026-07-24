@@ -133,7 +133,7 @@ function FeaturedDonorCard({
           sx={{
             fontWeight: 800,
             fontSize: isFirst ? '1.05rem' : '0.88rem',
-            fontFamily: '"TT Squares", sans-serif',
+            fontFamily: '"Outfit", sans-serif',
             mb: 0.25,
             ...(isFirst && {
               color: '#B8860B',
@@ -153,7 +153,7 @@ function FeaturedDonorCard({
         )}
 
         {/* Amount */}
-        <Typography sx={{ fontWeight: 800, fontSize: isFirst ? '1.2rem' : '0.95rem', color: '#2E3D2F', fontFamily: '"TT Squares", sans-serif' }}>
+        <Typography sx={{ fontWeight: 800, fontSize: isFirst ? '1.2rem' : '0.95rem', color: '#2E3D2F', fontFamily: '"Outfit", sans-serif' }}>
           ${entry.totalDonated.toLocaleString()}
         </Typography>
 
@@ -222,7 +222,7 @@ function FeaturedDonorsSection() {
               <Box key={section.label}>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1.5, mb: 4 }}>
                   {section.icon}
-                  <Typography variant="h6" sx={{ fontWeight: 800, fontFamily: '"TT Squares", sans-serif' }}>
+                  <Typography variant="h6" sx={{ fontWeight: 800, fontFamily: '"Outfit", sans-serif' }}>
                     {section.label}
                   </Typography>
                 </Box>

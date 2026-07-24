@@ -86,7 +86,7 @@ function CampaignCard({ campaign, index }: { campaign: Campaign; index: number }
       {/* Watermark */}
       <Typography sx={{
         position: 'absolute', right: 12, bottom: 8,
-        fontSize: '3.5rem', fontFamily: '"TT Squares", monospace', fontWeight: 900,
+        fontSize: '3.5rem', fontFamily: '"Outfit", monospace', fontWeight: 900,
         color: 'rgba(255,255,255,0.03)', lineHeight: 1, pointerEvents: 'none',
         userSelect: 'none',
       }}>
@@ -123,10 +123,10 @@ function CampaignCard({ campaign, index }: { campaign: Campaign; index: number }
       <Box sx={{ borderTop: `1px solid ${B}`, mt: 2, pt: 2, position: 'relative', zIndex: 1 }}>
         {/* Raised / Goal */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.8 }}>
-          <Typography sx={{ fontSize: '0.78rem', fontFamily: '"TT Squares", monospace', color: 'text.primary' }}>
+          <Typography sx={{ fontSize: '0.78rem', fontFamily: '"Outfit", monospace', color: 'text.primary' }}>
             GH₵ {campaign.raisedAmount.toLocaleString()} <Box component="span" sx={{ color: 'text.secondary', fontSize: '0.7rem' }}>raised</Box>
           </Typography>
-          <Typography sx={{ fontSize: '0.78rem', fontFamily: '"TT Squares", monospace', color: 'text.secondary' }}>
+          <Typography sx={{ fontSize: '0.78rem', fontFamily: '"Outfit", monospace', color: 'text.secondary' }}>
             GH₵ {campaign.goalAmount.toLocaleString()} <Box component="span" sx={{ fontSize: '0.7rem' }}>goal</Box>
           </Typography>
         </Box>
@@ -144,7 +144,7 @@ function CampaignCard({ campaign, index }: { campaign: Campaign; index: number }
         </Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
           <CampaignIcon sx={{ fontSize: 12, color: 'text.secondary' }} />
-          <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary', fontFamily: '"TT Squares", monospace' }}>
+          <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary', fontFamily: '"Outfit", monospace' }}>
             {Math.floor(campaign.id.charCodeAt(campaign.id.length - 1) % 8)} updates
           </Typography>
         </Box>
@@ -162,7 +162,7 @@ function CampaignCard({ campaign, index }: { campaign: Campaign; index: number }
               sx={{
                 color: '#5E8F72', borderColor: '#5E8F72',
                 fontSize: '0.65rem', textTransform: 'none', minWidth: 'auto',
-                fontFamily: '"TT Squares", sans-serif',
+                fontFamily: '"Outfit", sans-serif',
                 '&:hover': { borderColor: '#5E8F72', bgcolor: 'rgba(76,175,80,0.08)' },
               }}
             >
@@ -176,7 +176,7 @@ function CampaignCard({ campaign, index }: { campaign: Campaign; index: number }
               sx={{
                 color: '#C06B58', borderColor: '#C06B58',
                 fontSize: '0.65rem', textTransform: 'none', minWidth: 'auto',
-                fontFamily: '"TT Squares", sans-serif',
+                fontFamily: '"Outfit", sans-serif',
                 '&:hover': { borderColor: '#C06B58', bgcolor: 'rgba(192,107,88,0.08)' },
               }}
             >
@@ -193,7 +193,7 @@ function CampaignCard({ campaign, index }: { campaign: Campaign; index: number }
             sx={{
               color: '#C06B58', borderColor: '#C06B58',
               fontSize: '0.65rem', textTransform: 'none', minWidth: 'auto',
-              fontFamily: '"TT Squares", sans-serif',
+              fontFamily: '"Outfit", sans-serif',
               '&:hover': { borderColor: '#C06B58', bgcolor: 'rgba(192,107,88,0.08)' },
             }}
           >
@@ -245,7 +245,7 @@ export default function CampaignsPage() {
             px: 3, py: 1.5, cursor: 'pointer',
             borderBottom: activeTab === 'all' ? '2px solid #5E8F72' : '2px solid transparent',
             color: activeTab === 'all' ? '#5E8F72' : 'text.secondary',
-            fontFamily: '"TT Squares", sans-serif',
+            fontFamily: '"Outfit", sans-serif',
             fontWeight: 700, fontSize: '0.82rem',
             textTransform: 'uppercase', letterSpacing: '0.08em',
           }}
@@ -258,7 +258,7 @@ export default function CampaignsPage() {
             px: 3, py: 1.5, cursor: 'pointer',
             borderBottom: activeTab === 'pending' ? '2px solid #D3A95C' : '2px solid transparent',
             color: activeTab === 'pending' ? '#D3A95C' : 'text.secondary',
-            fontFamily: '"TT Squares", sans-serif',
+            fontFamily: '"Outfit", sans-serif',
             fontWeight: 700, fontSize: '0.82rem',
             textTransform: 'uppercase', letterSpacing: '0.08em',
           }}
@@ -331,7 +331,7 @@ export default function CampaignsPage() {
           </TextField>
         </Box>
         <Box sx={{ px: 2.5, py: 1.5, display: 'flex', alignItems: 'center' }}>
-          <Typography sx={{ fontFamily: '"TT Squares", monospace', fontSize: '0.82rem', color: 'text.secondary' }}>
+          <Typography sx={{ fontFamily: '"Outfit", monospace', fontSize: '0.82rem', color: 'text.secondary' }}>
             {filtered.length} campaigns
           </Typography>
         </Box>

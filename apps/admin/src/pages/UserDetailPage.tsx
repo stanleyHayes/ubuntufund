@@ -148,7 +148,7 @@ export default function UserDetailPage() {
               bgcolor: roleColor,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: '1.4rem', fontWeight: 700, color: '#fff',
-              fontFamily: '"TT Squares", sans-serif',
+              fontFamily: '"Outfit", sans-serif',
             }}>
               {initials}
             </Box>
@@ -220,7 +220,7 @@ export default function UserDetailPage() {
               startIcon={<VerifiedUserIcon />}
               sx={{
                 color: '#5E8F72', borderColor: '#5E8F72',
-                fontFamily: '"TT Squares", sans-serif', textTransform: 'none',
+                fontFamily: '"Outfit", sans-serif', textTransform: 'none',
                 '&:hover': { borderColor: '#5E8F72', bgcolor: 'rgba(94,143,114,0.08)' },
               }}
             >
@@ -234,7 +234,7 @@ export default function UserDetailPage() {
               startIcon={<PauseCircleOutlineIcon />}
               sx={{
                 color: '#D3A95C', borderColor: '#D3A95C',
-                fontFamily: '"TT Squares", sans-serif', textTransform: 'none',
+                fontFamily: '"Outfit", sans-serif', textTransform: 'none',
                 '&:hover': { borderColor: '#D3A95C', bgcolor: 'rgba(211,169,92,0.08)' },
               }}
             >
@@ -248,7 +248,7 @@ export default function UserDetailPage() {
               startIcon={<BlockIcon />}
               sx={{
                 color: '#C06B58', borderColor: '#C06B58',
-                fontFamily: '"TT Squares", sans-serif', textTransform: 'none',
+                fontFamily: '"Outfit", sans-serif', textTransform: 'none',
                 '&:hover': { borderColor: '#C06B58', bgcolor: 'rgba(192,107,88,0.08)' },
               }}
             >
@@ -260,7 +260,7 @@ export default function UserDetailPage() {
             <Typography sx={{ fontSize: '0.65rem', textTransform: 'uppercase', color: '#6B6B80', letterSpacing: 0.8, mb: 0.5 }}>
               Trust Score
             </Typography>
-            <Typography sx={{ fontSize: '2.4rem', fontWeight: 700, color: trustColor(user.trustScore), fontFamily: '"TT Squares", monospace', lineHeight: 1 }}>
+            <Typography sx={{ fontSize: '2.4rem', fontWeight: 700, color: trustColor(user.trustScore), fontFamily: '"Outfit", monospace', lineHeight: 1 }}>
               {user.trustScore}
             </Typography>
             <Box sx={{ mt: 1.5, width: '100%', height: 4, bgcolor: 'rgba(255,255,255,0.04)' }}>
@@ -279,7 +279,7 @@ export default function UserDetailPage() {
         {/* Campaigns */}
         <Box sx={{ borderRight: `1px solid ${B}`, borderBottom: `1px solid ${B}` }}>
           <Box sx={{ p: 2.5, borderBottom: `1px solid ${B}` }}>
-            <Typography sx={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#6B6B80', letterSpacing: 1, fontFamily: '"TT Squares", sans-serif' }}>
+            <Typography sx={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#6B6B80', letterSpacing: 1, fontFamily: '"Outfit", sans-serif' }}>
               Campaigns ({userCampaigns.length})
             </Typography>
           </Box>
@@ -307,7 +307,7 @@ export default function UserDetailPage() {
                   <Typography sx={{ fontSize: '0.68rem', color: '#6B6B80', textTransform: 'uppercase' }}>
                     {c.status.replace('_', ' ')}
                   </Typography>
-                  <Typography sx={{ fontSize: '0.88rem', fontWeight: 700, color: '#fff', fontFamily: '"TT Squares", monospace', mt: 0.5 }}>
+                  <Typography sx={{ fontSize: '0.88rem', fontWeight: 700, color: '#fff', fontFamily: '"Outfit", monospace', mt: 0.5 }}>
                     GH₵ {c.raisedAmount.toLocaleString()}
                   </Typography>
                 </Box>
@@ -319,7 +319,7 @@ export default function UserDetailPage() {
         {/* Donations */}
         <Box sx={{ borderBottom: `1px solid ${B}` }}>
           <Box sx={{ p: 2.5, borderBottom: `1px solid ${B}` }}>
-            <Typography sx={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#6B6B80', letterSpacing: 1, fontFamily: '"TT Squares", sans-serif' }}>
+            <Typography sx={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#6B6B80', letterSpacing: 1, fontFamily: '"Outfit", sans-serif' }}>
               Donations ({userDonations.length})
             </Typography>
           </Box>
@@ -341,7 +341,7 @@ export default function UserDetailPage() {
                     '&:hover': { bgcolor: 'rgba(255,255,255,0.02)' },
                   }}
                 >
-                  <Typography sx={{ fontSize: '1rem', fontWeight: 700, color: '#fff', fontFamily: '"TT Squares", monospace' }}>
+                  <Typography sx={{ fontSize: '1rem', fontWeight: 700, color: '#fff', fontFamily: '"Outfit", monospace' }}>
                     GH₵ {d.amount.toLocaleString()}
                   </Typography>
                   <Typography sx={{ fontSize: '0.68rem', color: '#A0A0B0', mt: 0.3 }}>

@@ -537,13 +537,13 @@ export default function AdminProfilePage() {
 
               <Box>
                 <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary', mb: 1 }}>Account created</Typography>
-                <Typography sx={{ fontSize: '0.88rem', fontWeight: 600, color: 'text.primary', fontFamily: '"TT Squares", monospace' }}>
+                <Typography sx={{ fontSize: '0.88rem', fontWeight: 600, color: 'text.primary', fontFamily: '"Outfit", monospace' }}>
                   {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
                 </Typography>
               </Box>
               <Box>
                 <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary', mb: 1 }}>Last login</Typography>
-                <Typography sx={{ fontSize: '0.88rem', fontWeight: 600, color: 'text.primary', fontFamily: '"TT Squares", monospace' }}>
+                <Typography sx={{ fontSize: '0.88rem', fontWeight: 600, color: 'text.primary', fontFamily: '"Outfit", monospace' }}>
                   {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
                   {' · '}
                   {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}

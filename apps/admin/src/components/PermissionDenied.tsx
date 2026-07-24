@@ -64,7 +64,7 @@ export default function PermissionDenied() {
 
         <Typography
           sx={{
-            fontFamily: '"TT Squares", sans-serif',
+            fontFamily: '"Outfit", sans-serif',
             fontWeight: 900,
             fontSize: '1.4rem',
             color: 'text.primary',

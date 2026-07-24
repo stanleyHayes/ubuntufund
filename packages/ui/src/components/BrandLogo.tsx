@@ -63,7 +63,7 @@ export function BrandLogo({ size = 36, withWordmark = true, onDark = false }: Br
         <Typography
           component="span"
           sx={{
-            fontFamily: '"TT Squares", sans-serif',
+            fontFamily: '"Outfit", sans-serif',
             fontWeight: 700,
             fontSize: size * 0.6,
             lineHeight: 1,

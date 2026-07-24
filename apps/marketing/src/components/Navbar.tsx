@@ -503,7 +503,7 @@ function Navbar() {
             />
             <Typography
               sx={{
-                fontFamily: '"TT Squares", "Inter", sans-serif',
+                fontFamily: '"Outfit", "Inter", sans-serif',
                 fontWeight: 800,
                 fontSize: scrolled ? '1.05rem' : '1.15rem',
                 lineHeight: 1,
@@ -553,7 +553,7 @@ function Navbar() {
               size="small"
               sx={{
                 fontWeight: 700,
-                fontFamily: '"TT Squares", sans-serif',
+                fontFamily: '"Outfit", sans-serif',
                 fontSize: '0.78rem',
                 textTransform: 'none',
                 borderRadius: SHAPE.sm,
@@ -605,7 +605,7 @@ function Navbar() {
         <Box sx={{ px: 2.5, py: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Box component="img" src="/favicon.svg" alt="UbuntuFund" sx={{ width: 30, height: 30 }} />
-            <Typography sx={{ fontFamily: '"TT Squares", sans-serif', fontWeight: 900, fontSize: '1.05rem' }}>
+            <Typography sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 900, fontSize: '1.05rem' }}>
               Ubuntu<Box component="span" sx={{ color: '#C7A24A' }}>Fund</Box>
             </Typography>
           </Box>
@@ -626,7 +626,7 @@ function Navbar() {
             sx={{
               borderRadius: SHAPE.sm,
               fontWeight: 700,
-              fontFamily: '"TT Squares", sans-serif',
+              fontFamily: '"Outfit", sans-serif',
               textTransform: 'none',
               py: 1.3,
               background: 'linear-gradient(135deg, #C7A24A, #A07E33)',

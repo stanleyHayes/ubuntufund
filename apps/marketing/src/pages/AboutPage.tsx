@@ -161,7 +161,7 @@ function AboutPage() {
         <Box sx={{ maxWidth: 800, mx: 'auto', textAlign: 'center', position: 'relative', zIndex: 1 }}>
           <Typography
             sx={{
-              fontFamily: '"TT Squares", sans-serif',
+              fontFamily: '"Outfit", sans-serif',
               fontWeight: 900,
               fontSize: { xs: '2.5rem', md: '3.5rem' },
               lineHeight: 1.1,
@@ -232,7 +232,7 @@ function AboutPage() {
           <Typography sx={{ fontSize: '0.65rem', color: '#C7A24A', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 700, mb: 1 }}>
             Our Mission
           </Typography>
-          <Typography sx={{ fontFamily: '"TT Squares", sans-serif', fontWeight: 900, fontSize: '1.5rem', color: '#1a1a1a', mb: 2, lineHeight: 1.2 }}>
+          <Typography sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 900, fontSize: '1.5rem', color: '#1a1a1a', mb: 2, lineHeight: 1.2 }}>
             Democratizing Generosity Across Ghana
           </Typography>
           <Typography sx={{ fontSize: '0.92rem', color: 'rgba(0,0,0,0.5)', lineHeight: 1.8 }}>
@@ -265,7 +265,7 @@ function AboutPage() {
           <Typography sx={{ fontSize: '0.65rem', color: '#C7A24A', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 700, mb: 1 }}>
             Our Vision
           </Typography>
-          <Typography sx={{ fontFamily: '"TT Squares", sans-serif', fontWeight: 900, fontSize: '1.5rem', color: '#1a1a1a', mb: 2, lineHeight: 1.2 }}>
+          <Typography sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 900, fontSize: '1.5rem', color: '#1a1a1a', mb: 2, lineHeight: 1.2 }}>
             A Ghana Where No Cause Goes Unfunded
           </Typography>
           <Typography sx={{ fontSize: '0.92rem', color: 'rgba(0,0,0,0.5)', lineHeight: 1.8 }}>
@@ -345,7 +345,7 @@ function AboutPage() {
           </Typography>
           <Typography
             sx={{
-              fontFamily: '"TT Squares", sans-serif',
+              fontFamily: '"Outfit", sans-serif',
               fontWeight: 900,
               fontSize: { xs: '2rem', md: '2.5rem' },
               lineHeight: 1.1,
@@ -404,7 +404,7 @@ function AboutPage() {
           </Typography>
           <Typography
             sx={{
-              fontFamily: '"TT Squares", sans-serif',
+              fontFamily: '"Outfit", sans-serif',
               fontWeight: 900,
               fontSize: { xs: '1.5rem', md: '1.8rem' },
               color: '#1a1a1a',
@@ -460,7 +460,7 @@ function AboutPage() {
               </Box>
 
               {/* Large initials watermark */}
-              <Typography sx={{ position: 'absolute', right: -8, bottom: -12, fontFamily: '"TT Squares", monospace', fontWeight: 900, fontSize: '5.5rem', color: member.color, opacity: 0.04, lineHeight: 1, pointerEvents: 'none', userSelect: 'none' }}>
+              <Typography sx={{ position: 'absolute', right: -8, bottom: -12, fontFamily: '"Outfit", monospace', fontWeight: 900, fontSize: '5.5rem', color: member.color, opacity: 0.04, lineHeight: 1, pointerEvents: 'none', userSelect: 'none' }}>
                 {member.initials}
               </Typography>
 
@@ -475,12 +475,12 @@ function AboutPage() {
                     '&::after': { content: '""', position: 'absolute', inset: -3, border: `2px solid ${member.color}`, opacity: 0.25, transform: 'rotate(-1.5deg)', pointerEvents: 'none' },
                   }}
                 >
-                  <Typography sx={{ fontFamily: '"TT Squares", sans-serif', fontWeight: 900, fontSize: '1.25rem', color: '#fff', letterSpacing: '0.04em' }}>
+                  <Typography sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 900, fontSize: '1.25rem', color: '#fff', letterSpacing: '0.04em' }}>
                     {member.initials}
                   </Typography>
                 </Box>
 
-                <Typography sx={{ fontFamily: '"TT Squares", sans-serif', fontWeight: 700, fontSize: '1.05rem', color: '#1a1a1a', mb: 0.3 }}>
+                <Typography sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 700, fontSize: '1.05rem', color: '#1a1a1a', mb: 0.3 }}>
                   {member.name}
                 </Typography>
                 <Typography sx={{ fontSize: '0.78rem', fontWeight: 600, color: member.color, textTransform: 'uppercase', letterSpacing: '0.06em', mb: 2 }}>

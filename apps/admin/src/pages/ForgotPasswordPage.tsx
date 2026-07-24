@@ -125,7 +125,7 @@ export default function ForgotPasswordPage() {
           </Box>
           <Typography
             sx={{
-              fontFamily: '"TT Squares", sans-serif',
+              fontFamily: '"Outfit", sans-serif',
               fontWeight: 900,
               fontSize: '1.5rem',
               color: '#E0E0E8',
@@ -143,7 +143,7 @@ export default function ForgotPasswordPage() {
           </Typography>
           <Typography
             sx={{
-              fontFamily: '"TT Squares", monospace',
+              fontFamily: '"Outfit", monospace',
               fontSize: '0.65rem',
               color: 'rgba(76,175,80,0.4)',
               letterSpacing: '0.2em',
@@ -195,7 +195,7 @@ export default function ForgotPasswordPage() {
 
               <Typography
                 sx={{
-                  fontFamily: '"TT Squares", sans-serif',
+                  fontFamily: '"Outfit", sans-serif',
                   fontWeight: 700,
                   fontSize: '1.2rem',
                   color: '#E0E0E8',
@@ -229,7 +229,7 @@ export default function ForgotPasswordPage() {
                   borderColor: 'rgba(255,255,255,0.1)',
                   color: '#E0E0E8',
                   fontWeight: 600,
-                  fontFamily: '"TT Squares", sans-serif',
+                  fontFamily: '"Outfit", sans-serif',
                   '&:hover': {
                     borderColor: 'rgba(76,175,80,0.3)',
                     bgcolor: 'rgba(76,175,80,0.04)',
@@ -245,7 +245,7 @@ export default function ForgotPasswordPage() {
               <Box sx={{ mb: 3 }}>
                 <Typography
                   sx={{
-                    fontFamily: '"TT Squares", sans-serif',
+                    fontFamily: '"Outfit", sans-serif',
                     fontWeight: 900,
                     fontSize: '1.35rem',
                     color: '#E0E0E8',
@@ -302,7 +302,7 @@ export default function ForgotPasswordPage() {
                     py: 1.5,
                     fontSize: '0.9rem',
                     fontWeight: 700,
-                    fontFamily: '"TT Squares", sans-serif',
+                    fontFamily: '"Outfit", sans-serif',
                     background: '#2E3D2F',
                     boxShadow: '0 4px 20px rgba(76,175,80,0.2)',
                     transition: 'background-color 200ms ease, box-shadow 200ms ease',

@@ -149,7 +149,7 @@ export function WalletPage() {
       <Container maxWidth="lg">
         <Typography
           sx={{
-            fontFamily: '"TT Squares", sans-serif',
+            fontFamily: '"Outfit", sans-serif',
             fontWeight: 900,
             fontSize: { xs: '1.5rem', md: '1.8rem' },
             mb: 1,
@@ -207,7 +207,7 @@ export function WalletPage() {
                       <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.6)', mb: 0.5 }}>
                         {label}
                       </Typography>
-                      <Typography sx={{ fontSize: '1.75rem', fontFamily: '"TT Squares", sans-serif', fontWeight: 900, color: '#fff', lineHeight: 1.1 }}>
+                      <Typography sx={{ fontSize: '1.75rem', fontFamily: '"Outfit", sans-serif', fontWeight: 900, color: '#fff', lineHeight: 1.1 }}>
                         {formatCurrency(wallet.balance, wallet.currency)}
                       </Typography>
                     </Box>
@@ -231,7 +231,7 @@ export function WalletPage() {
                             flex: 1,
                             borderRadius: SHAPE.sm,
                             fontWeight: 700,
-                            fontFamily: '"TT Squares", sans-serif',
+                            fontFamily: '"Outfit", sans-serif',
                             textTransform: 'none',
                             bgcolor: colors.accent,
                             '&:hover': { bgcolor: colors.accent, filter: 'brightness(0.9)' },
@@ -248,7 +248,7 @@ export function WalletPage() {
                             flex: 1,
                             borderRadius: SHAPE.sm,
                             fontWeight: 700,
-                            fontFamily: '"TT Squares", sans-serif',
+                            fontFamily: '"Outfit", sans-serif',
                             textTransform: 'none',
                             borderColor: colors.accent,
                             color: colors.accent,
@@ -268,7 +268,7 @@ export function WalletPage() {
         {/* ===== Transaction History ===== */}
         <Typography
           sx={{
-            fontFamily: '"TT Squares", sans-serif',
+            fontFamily: '"Outfit", sans-serif',
             fontWeight: 800,
             fontSize: { xs: '1.2rem', md: '1.4rem' },
             mb: 3,
@@ -336,7 +336,7 @@ export function WalletPage() {
                         </Typography>
                       </TableCell>
                       <TableCell>
-                        <Typography sx={{ fontFamily: '"TT Squares", monospace', fontWeight: 700, fontSize: '0.85rem' }}>
+                        <Typography sx={{ fontFamily: '"Outfit", monospace', fontWeight: 700, fontSize: '0.85rem' }}>
                           {formatCurrency(tx.amount, tx.currency)}
                         </Typography>
                       </TableCell>
@@ -378,7 +378,7 @@ export function WalletPage() {
           maxWidth="xs"
           PaperProps={{ sx: { borderRadius: SHAPE.card } }}
         >
-          <DialogTitle sx={{ fontFamily: '"TT Squares", sans-serif', fontWeight: 700 }}>
+          <DialogTitle sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 700 }}>
             {dialogType === 'deposit' ? 'Deposit Funds' : 'Withdraw Funds'}
           </DialogTitle>
           <DialogContent>

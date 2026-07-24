@@ -140,7 +140,7 @@ function StatCard({ icon, iconBg, iconColor, label, value, change, changePositiv
       </Box>
       <Typography
         sx={{
-          fontFamily: '"TT Squares", sans-serif',
+          fontFamily: '"Outfit", sans-serif',
           fontWeight: 900,
           fontSize: '1.65rem',
           color: 'text.primary',
@@ -262,7 +262,7 @@ function CampaignRow({ campaign, index }: { campaign: Campaign; index: number })
       <Box sx={{ mb: 1.5 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', mb: 0.75 }}>
           <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.75 }}>
-            <Typography sx={{ fontFamily: '"TT Squares", sans-serif', fontWeight: 800, fontSize: '1.1rem', color: 'primary.dark' }}>
+            <Typography sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 800, fontSize: '1.1rem', color: 'primary.dark' }}>
               {formatCurrency(campaign.raisedAmount, campaign.currency)}
             </Typography>
             <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary' }}>
@@ -271,7 +271,7 @@ function CampaignRow({ campaign, index }: { campaign: Campaign; index: number })
           </Box>
           <Typography
             sx={{
-              fontFamily: '"TT Squares", monospace',
+              fontFamily: '"Outfit", monospace',
               fontWeight: 800,
               fontSize: '0.85rem',
               color: funded ? 'success.main' : 'primary.main',
@@ -425,7 +425,7 @@ function DonationFeed({ donations }: { donations: UserDonation[] }) {
                 </Typography>
                 <Typography
                   sx={{
-                    fontFamily: '"TT Squares", monospace',
+                    fontFamily: '"Outfit", monospace',
                     fontWeight: 700,
                     fontSize: '0.82rem',
                     color: 'primary.dark',
@@ -564,7 +564,7 @@ export function DashboardPage() {
             <Box>
               <Typography
                 sx={{
-                  fontFamily: '"TT Squares", sans-serif',
+                  fontFamily: '"Outfit", sans-serif',
                   fontWeight: 900,
                   fontSize: { xs: '1.6rem', md: '2rem' },
                   color: '#FFFFFF',
@@ -590,7 +590,7 @@ export function DashboardPage() {
               sx={{
                 borderRadius: SHAPE.sm,
                 fontWeight: 700,
-                fontFamily: '"TT Squares", sans-serif',
+                fontFamily: '"Outfit", sans-serif',
                 textTransform: 'none',
                 px: 3,
                 py: 1.2,
@@ -661,7 +661,7 @@ export function DashboardPage() {
             <Box sx={{ mb: 2.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography
                 sx={{
-                  fontFamily: '"TT Squares", sans-serif',
+                  fontFamily: '"Outfit", sans-serif',
                   fontWeight: 800,
                   fontSize: '1.15rem',
                 }}

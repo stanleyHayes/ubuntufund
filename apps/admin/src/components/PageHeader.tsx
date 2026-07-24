@@ -117,7 +117,7 @@ export default function PageHeader({
               component="h1"
               sx={{
                 mt: 0.5,
-                fontFamily: '"TT Squares", "Inter", sans-serif',
+                fontFamily: '"Outfit", "Inter", sans-serif',
                 fontWeight: 900,
                 fontSize: { xs: '1.45rem', md: '1.7rem' },
                 lineHeight: 1.15,

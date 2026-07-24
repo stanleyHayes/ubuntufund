@@ -150,7 +150,7 @@ export default function Sidebar() {
         <Box>
           <Typography
             sx={{
-              fontFamily: '"TT Squares", sans-serif',
+              fontFamily: '"Outfit", sans-serif',
               fontWeight: 700,
               fontSize: '1rem',
               lineHeight: 1.2,

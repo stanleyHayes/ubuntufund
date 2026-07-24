@@ -24,7 +24,7 @@ declare module '@mui/material/styles' {
 // ---------------------------------------------------------------------------
 // Asymmetric border-radius: sharp on top-left & bottom-right, soft on the
 // other two corners.  Creates a subtle parallelogram / tech-panel motif that
-// echoes the angular TT Squares typeface used across the platform.
+// Outfit is the single typeface across the platform (display + body).
 //
 // Three tiers scale the same ratio to different element sizes:
 //   card  — panels, cards, modals, chart containers
@@ -195,35 +195,35 @@ const ubuntuFundTheme = createTheme({
   typography: {
     fontFamily: '"Outfit", "Inter", "Roboto", "Helvetica", "Arial", sans-serif',
     h1: {
-      fontFamily: '"TT Squares", "Inter", sans-serif',
+      fontFamily: '"Outfit", "Inter", sans-serif',
       fontSize: '2.5rem',
       fontWeight: 900,
       lineHeight: 1.2,
     },
     h2: {
-      fontFamily: '"TT Squares", "Inter", sans-serif',
+      fontFamily: '"Outfit", "Inter", sans-serif',
       fontSize: '2rem',
       fontWeight: 700,
       lineHeight: 1.3,
     },
     h3: {
-      fontFamily: '"TT Squares", "Inter", sans-serif',
+      fontFamily: '"Outfit", "Inter", sans-serif',
       fontSize: '1.5rem',
       fontWeight: 700,
       lineHeight: 1.4,
     },
     h4: {
-      fontFamily: '"TT Squares", "Inter", sans-serif',
+      fontFamily: '"Outfit", "Inter", sans-serif',
       fontSize: '1.25rem',
       fontWeight: 700,
       lineHeight: 1.4,
     },
     h5: {
-      fontFamily: '"TT Squares", "Inter", sans-serif',
+      fontFamily: '"Outfit", "Inter", sans-serif',
       fontWeight: 700,
     },
     h6: {
-      fontFamily: '"TT Squares", "Inter", sans-serif',
+      fontFamily: '"Outfit", "Inter", sans-serif',
       fontWeight: 700,
     },
     body1: {
@@ -237,7 +237,7 @@ const ubuntuFundTheme = createTheme({
       lineHeight: 1.5,
     },
     button: {
-      fontFamily: '"TT Squares", "Inter", sans-serif',
+      fontFamily: '"Outfit", "Inter", sans-serif',
       textTransform: 'none',
       fontWeight: 700,
     },
