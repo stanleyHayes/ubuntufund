@@ -143,7 +143,7 @@ export default function KYCScreen() {
           title: 'KYC Verification',
           headerStyle: { backgroundColor: brandColors.primary },
           headerTintColor: '#FFFFFF',
-          headerTitleStyle: { fontFamily: 'TTSquares-Bold' },
+          headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
         }}
       />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
@@ -180,10 +180,10 @@ const styles = StyleSheet.create({
   stepItem: { flex: 1, alignItems: 'center', position: 'relative' },
   stepDot: { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(168,181,160,0.28)', alignItems: 'center', justifyContent: 'center' },
   stepDotActive: { backgroundColor: brandColors.primary },
-  stepDotText: { fontSize: 12, fontFamily: 'TTSquares-Bold', color: brandColors.textSecondary },
+  stepDotText: { fontSize: 12, fontFamily: 'Outfit_700Bold', color: brandColors.textSecondary },
   stepDotTextActive: { color: '#FFFFFF' },
   stepLabel: { fontSize: 11, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 4 },
-  stepLabelActive: { color: brandColors.primary, fontFamily: 'TTSquares-Bold' },
+  stepLabelActive: { color: brandColors.primary, fontFamily: 'Outfit_700Bold' },
   stepLine: { position: 'absolute', top: 14, right: '-50%', width: '100%', height: 2, backgroundColor: 'rgba(168,181,160,0.28)', zIndex: -1 },
   stepLineActive: { backgroundColor: brandColors.primary },
 
@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 12,
   },
-  stepTitle: { fontSize: 18, fontFamily: 'TTSquares-Bold', color: brandColors.text, marginBottom: 4 },
+  stepTitle: { fontSize: 18, fontFamily: 'Outfit_700Bold', color: brandColors.text, marginBottom: 4 },
   stepDesc: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginBottom: 8 },
 
   input: { backgroundColor: brandColors.surface },
@@ -206,8 +206,8 @@ const styles = StyleSheet.create({
   button: { borderRadius: 999, marginTop: 8 },
   buttonFlex: { flex: 1 },
   buttonContent: { paddingVertical: 6 },
-  buttonLabel: { fontSize: 15, fontFamily: 'TTSquares-Bold', letterSpacing: 0.3 },
-  buttonLabelSecondary: { fontSize: 15, fontFamily: 'TTSquares-Bold', letterSpacing: 0.3 },
+  buttonLabel: { fontSize: 15, fontFamily: 'Outfit_700Bold', letterSpacing: 0.3 },
+  buttonLabelSecondary: { fontSize: 15, fontFamily: 'Outfit_700Bold', letterSpacing: 0.3 },
 
   successWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
   iconTile: {
@@ -219,6 +219,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 12,
   },
-  successTitle: { fontSize: 20, fontFamily: 'TTSquares-Bold', color: brandColors.text, textAlign: 'center' },
+  successTitle: { fontSize: 20, fontFamily: 'Outfit_700Bold', color: brandColors.text, textAlign: 'center' },
   successBody: { fontSize: 14, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 8, textAlign: 'center', lineHeight: 20, marginBottom: 16 },
 })

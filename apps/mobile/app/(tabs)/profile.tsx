@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: 'rgba(255,255,255,0.15)',
   },
-  avatarText: { fontSize: 28, fontFamily: 'TTSquares-Black', color: brandColors.text },
+  avatarText: { fontSize: 28, fontFamily: 'Outfit_800ExtraBold', color: brandColors.text },
   avatarBadge: {
     position: 'absolute',
     bottom: -2,
@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
     padding: 2,
   },
 
-  userName: { fontSize: 22, fontFamily: 'TTSquares-Black', color: '#FFFFFF', marginBottom: 2 },
+  userName: { fontSize: 22, fontFamily: 'Outfit_800ExtraBold', color: '#FFFFFF', marginBottom: 2 },
   userEmail: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: 'rgba(255,255,255,0.45)', marginBottom: 12 },
   trustWrap: { marginBottom: 16 },
 
@@ -248,7 +248,7 @@ const styles = StyleSheet.create({
   statBox: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   statDivider: { width: 1, height: 28, backgroundColor: 'rgba(255,255,255,0.08)', marginRight: 8 },
   statInner: { alignItems: 'center' },
-  statValue: { fontSize: 17, fontFamily: 'TTSquares-Bold', color: brandColors.secondary },
+  statValue: { fontSize: 17, fontFamily: 'Outfit_700Bold', color: brandColors.secondary },
   statLabel: { fontSize: 10, color: 'rgba(255,255,255,0.4)', fontFamily: 'Outfit_400Regular', marginTop: 2 },
 
   // Menu
@@ -278,11 +278,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 14,
   },
-  menuLabel: { flex: 1, fontSize: 15, fontFamily: 'TTSquares-Bold', color: brandColors.text },
+  menuLabel: { flex: 1, fontSize: 15, fontFamily: 'Outfit_700Bold', color: brandColors.text },
 
   // Legal
   legalRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 20, gap: 8 },
-  legalLink: { fontSize: 13, color: brandColors.primary, fontFamily: 'TTSquares-Bold' },
+  legalLink: { fontSize: 13, color: brandColors.primary, fontFamily: 'Outfit_700Bold' },
   legalDot: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: 'rgba(26,46,34,0.25)' },
 
   // Logout
@@ -293,7 +293,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(165,67,47,0.3)',
   },
   logoutBtnContent: { paddingVertical: 4 },
-  logoutText: { fontSize: 15, fontFamily: 'TTSquares-Bold' },
+  logoutText: { fontSize: 15, fontFamily: 'Outfit_700Bold' },
 
   version: { fontSize: 11, color: 'rgba(26,46,34,0.3)', textAlign: 'center', marginTop: 16, fontFamily: 'Outfit_400Regular' },
 })

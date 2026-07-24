@@ -548,7 +548,7 @@ const styles = StyleSheet.create({
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
   chip: { height: 28, backgroundColor: 'rgba(168,181,160,0.28)' },
   chipText: { fontSize: 12, fontFamily: 'Outfit_400Regular', color: brandColors.text },
-  title: { fontFamily: 'TTSquares-Bold', marginBottom: 16 },
+  title: { fontFamily: 'Outfit_700Bold', marginBottom: 16 },
   progressCard: {
     padding: 16,
     borderRadius: 14,
@@ -558,12 +558,12 @@ const styles = StyleSheet.create({
     borderColor: CARD_BORDER,
   },
   statsRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 },
-  raised: { color: brandColors.success, fontFamily: 'TTSquares-Bold' },
+  raised: { color: brandColors.success, fontFamily: 'Outfit_700Bold' },
   muted: { color: brandColors.textSecondary },
   statRight: { alignItems: 'flex-end' },
   donateButton: { borderRadius: 999, marginBottom: 24, paddingVertical: 4 },
-  donateLabel: { fontSize: 16, fontFamily: 'TTSquares-Bold' },
-  sectionTitle: { fontFamily: 'TTSquares-Bold', marginBottom: 8, marginTop: 8 },
+  donateLabel: { fontSize: 16, fontFamily: 'Outfit_700Bold' },
+  sectionTitle: { fontFamily: 'Outfit_700Bold', marginBottom: 8, marginTop: 8 },
   description: { lineHeight: 22, color: brandColors.textSecondary, marginBottom: 16 },
   collaboratorAvatarRow: { flexDirection: 'row', gap: 4, marginBottom: 12 },
   collaboratorAvatar: { backgroundColor: brandColors.primaryLight },
@@ -577,7 +577,7 @@ const styles = StyleSheet.create({
   },
   collaboratorRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   collaboratorInfo: { flex: 1 },
-  collaboratorName: { fontFamily: 'TTSquares-Bold' },
+  collaboratorName: { fontFamily: 'Outfit_700Bold' },
   stillNeeded: { color: brandColors.textSecondary, textAlign: 'center', marginTop: -12, marginBottom: 20, fontFamily: 'Outfit_400Regular' },
   datesCard: {
     padding: 14,
@@ -589,7 +589,7 @@ const styles = StyleSheet.create({
   },
   dateRow: { flexDirection: 'row', justifyContent: 'space-around' },
   dateItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  dateText: { fontFamily: 'TTSquares-Bold', color: brandColors.text },
+  dateText: { fontFamily: 'Outfit_700Bold', color: brandColors.text },
   creatorCard: {
     padding: 14,
     borderRadius: 14,
@@ -622,7 +622,7 @@ const styles = StyleSheet.create({
   },
   paymentMethodItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
   reportButton: { alignSelf: 'flex-end', marginTop: 4 },
-  reportLabel: { fontSize: 13, fontFamily: 'TTSquares-Bold' },
+  reportLabel: { fontSize: 13, fontFamily: 'Outfit_700Bold' },
 
   // Donation modal
   modalOverlay: {
@@ -637,8 +637,8 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingBottom: 36,
   },
-  modalTitle: { fontFamily: 'TTSquares-Bold', marginBottom: 4 },
-  fieldLabel: { fontFamily: 'TTSquares-Bold', marginBottom: 6, marginTop: 4 },
+  modalTitle: { fontFamily: 'Outfit_700Bold', marginBottom: 4 },
+  fieldLabel: { fontFamily: 'Outfit_700Bold', marginBottom: 6, marginTop: 4 },
   modalInput: {
     borderWidth: 1,
     borderColor: CARD_BORDER,
@@ -663,7 +663,7 @@ const styles = StyleSheet.create({
     borderColor: brandColors.primary,
     backgroundColor: 'rgba(46,61,47,0.08)',
   },
-  paymentOptionText: { fontSize: 12, color: brandColors.textSecondary, fontFamily: 'TTSquares-Bold' },
+  paymentOptionText: { fontSize: 12, color: brandColors.textSecondary, fontFamily: 'Outfit_700Bold' },
   paymentOptionTextActive: { color: brandColors.primary },
   providerList: { gap: 8, marginBottom: 12 },
   providerOption: {
@@ -681,7 +681,7 @@ const styles = StyleSheet.create({
     borderColor: brandColors.primary,
     backgroundColor: 'rgba(46,61,47,0.08)',
   },
-  providerOptionText: { fontSize: 13, color: brandColors.textSecondary, fontFamily: 'TTSquares-Bold' },
+  providerOptionText: { fontSize: 13, color: brandColors.textSecondary, fontFamily: 'Outfit_700Bold' },
   providerOptionTextActive: { color: brandColors.primary },
   paymentFallback: {
     flexDirection: 'row',
@@ -699,5 +699,5 @@ const styles = StyleSheet.create({
   modalActions: { flexDirection: 'row', marginTop: 8 },
   actionRow: { flexDirection: 'row', gap: 12, marginBottom: 8 },
   shareButton: { flex: 1, borderRadius: 999 },
-  shareLabel: { fontSize: 16, fontFamily: 'TTSquares-Bold' },
+  shareLabel: { fontSize: 16, fontFamily: 'Outfit_700Bold' },
 })

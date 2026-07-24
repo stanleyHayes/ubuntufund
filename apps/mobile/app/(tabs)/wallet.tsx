@@ -141,12 +141,12 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: 20, paddingBottom: 20 },
   eyebrow: {
     fontSize: 11,
-    fontFamily: 'TTSquares-Bold',
+    fontFamily: 'Outfit_700Bold',
     color: brandColors.secondaryDark,
     textTransform: 'uppercase',
     letterSpacing: 2,
   },
-  title: { fontSize: 28, fontFamily: 'TTSquares-Black', color: brandColors.text, marginTop: 4 },
+  title: { fontSize: 28, fontFamily: 'Outfit_800ExtraBold', color: brandColors.text, marginTop: 4 },
   lede: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 6 },
 
   // Balance card
@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
     marginBottom: 28,
   },
   balanceLabel: { fontSize: 12, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginBottom: 4 },
-  balanceValue: { fontSize: 32, fontFamily: 'TTSquares-Black', color: brandColors.text, marginBottom: 2 },
+  balanceValue: { fontSize: 32, fontFamily: 'Outfit_800ExtraBold', color: brandColors.text, marginBottom: 2 },
   balanceSub: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary },
 
   actionRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 24 },
@@ -175,10 +175,10 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     overflow: 'hidden',
   },
-  actionLabel: { fontSize: 12, fontFamily: 'TTSquares-Bold', color: brandColors.text },
+  actionLabel: { fontSize: 12, fontFamily: 'Outfit_700Bold', color: brandColors.text },
 
   // Section
-  sectionTitle: { fontSize: 16, fontFamily: 'TTSquares-Bold', color: brandColors.text, paddingHorizontal: 20, marginBottom: 12 },
+  sectionTitle: { fontSize: 16, fontFamily: 'Outfit_700Bold', color: brandColors.text, paddingHorizontal: 20, marginBottom: 12 },
 
   // Wallets
   walletScrollView: { flexGrow: 0 },
@@ -200,9 +200,9 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     marginBottom: 10,
   },
-  walletTypeText: { fontSize: 11, fontFamily: 'TTSquares-Bold', color: brandColors.text },
-  walletCurrency: { fontSize: 13, fontFamily: 'TTSquares-Bold', color: brandColors.textSecondary, marginBottom: 2 },
-  walletBalance: { fontSize: 20, fontFamily: 'TTSquares-Black', color: brandColors.text },
+  walletTypeText: { fontSize: 11, fontFamily: 'Outfit_700Bold', color: brandColors.text },
+  walletCurrency: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: brandColors.textSecondary, marginBottom: 2 },
+  walletBalance: { fontSize: 20, fontFamily: 'Outfit_800ExtraBold', color: brandColors.text },
 
   // Empty state
   emptyState: { alignItems: 'center', paddingVertical: 40, paddingHorizontal: 32 },
@@ -215,7 +215,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
-  emptyTitle: { fontSize: 15, fontFamily: 'TTSquares-Bold', color: brandColors.text, textAlign: 'center' },
+  emptyTitle: { fontSize: 15, fontFamily: 'Outfit_700Bold', color: brandColors.text, textAlign: 'center' },
   emptyBody: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, textAlign: 'center', marginTop: 4, lineHeight: 18 },
 
   // Error state

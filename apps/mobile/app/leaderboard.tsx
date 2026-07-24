@@ -108,7 +108,7 @@ export default function LeaderboardScreen() {
           title: 'Leaderboard',
           headerStyle: { backgroundColor: brandColors.primary },
           headerTintColor: '#FFFFFF',
-          headerTitleStyle: { fontFamily: 'TTSquares-Bold' },
+          headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
         }}
       />
 
@@ -231,15 +231,15 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: brandColors.background },
 
   headerBlock: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 4 },
-  eyebrow: { fontSize: 11, fontFamily: 'TTSquares-Bold', fontWeight: '700', color: brandColors.secondaryDark, textTransform: 'uppercase', letterSpacing: 2 },
-  pageTitle: { fontSize: 24, fontFamily: 'TTSquares-Black', color: brandColors.text, marginTop: 4 },
+  eyebrow: { fontSize: 11, fontFamily: 'Outfit_700Bold', fontWeight: '700', color: brandColors.secondaryDark, textTransform: 'uppercase', letterSpacing: 2 },
+  pageTitle: { fontSize: 24, fontFamily: 'Outfit_800ExtraBold', color: brandColors.text, marginTop: 4 },
   pageLede: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 4 },
 
   periodScroll: { flexGrow: 0 },
   periodRow: { paddingHorizontal: 16, paddingVertical: 12, gap: 8, alignItems: 'center' },
   periodTab: { height: 38, justifyContent: 'center', paddingHorizontal: 18, borderRadius: 999, backgroundColor: '#fff', borderWidth: 1, borderColor: 'rgba(26,46,34,0.10)' },
   periodTabActive: { backgroundColor: brandColors.primary, borderColor: brandColors.primary },
-  periodTabText: { fontSize: 13, fontFamily: 'TTSquares-Bold', color: brandColors.textSecondary },
+  periodTabText: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: brandColors.textSecondary },
   periodTabTextActive: { color: '#fff' },
 
   listWrap: { paddingHorizontal: 16 },
@@ -265,9 +265,9 @@ const styles = StyleSheet.create({
   },
 
   rankWrap: { width: 32, alignItems: 'center', marginRight: 8 },
-  rankText: { fontSize: 14, fontFamily: 'TTSquares-Bold', color: brandColors.textSecondary },
+  rankText: { fontSize: 14, fontFamily: 'Outfit_700Bold', color: brandColors.textSecondary },
   medalBadge: { width: 26, height: 26, borderRadius: 13, justifyContent: 'center', alignItems: 'center' },
-  medalText: { fontSize: 12, fontFamily: 'TTSquares-Black', color: '#fff' },
+  medalText: { fontSize: 12, fontFamily: 'Outfit_800ExtraBold', color: '#fff' },
 
   avatar: {
     width: 40,
@@ -278,11 +278,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
   },
-  avatarText: { fontSize: 14, fontFamily: 'TTSquares-Bold', color: brandColors.primary },
+  avatarText: { fontSize: 14, fontFamily: 'Outfit_700Bold', color: brandColors.primary },
 
-  entryName: { fontSize: 14, fontFamily: 'TTSquares-Bold', color: brandColors.text },
+  entryName: { fontSize: 14, fontFamily: 'Outfit_700Bold', color: brandColors.text },
   entrySub: { fontSize: 11, color: brandColors.textSecondary, marginTop: 1, fontFamily: 'Outfit_400Regular' },
-  entryAmount: { fontSize: 15, fontFamily: 'TTSquares-Bold', color: brandColors.text },
+  entryAmount: { fontSize: 15, fontFamily: 'Outfit_700Bold', color: brandColors.text },
 
   emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 72, paddingHorizontal: 32 },
   emptyIconTile: {
@@ -295,10 +295,10 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   errorIconTile: { backgroundColor: 'rgba(165,67,47,0.14)' },
-  emptyTitle: { fontSize: 16, fontFamily: 'TTSquares-Bold', color: brandColors.text, textAlign: 'center' },
+  emptyTitle: { fontSize: 16, fontFamily: 'Outfit_700Bold', color: brandColors.text, textAlign: 'center' },
   emptySubtitle: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 6, textAlign: 'center' },
   actionBtn: { marginTop: 16, borderRadius: 999 },
-  btnLabel: { fontFamily: 'TTSquares-Bold' },
+  btnLabel: { fontFamily: 'Outfit_700Bold' },
 
   skeletonRank: { width: 28, height: 14, backgroundColor: 'rgba(168,181,160,0.35)', borderRadius: 4, marginRight: 12 },
   skeletonAvatar: { width: 40, height: 40, backgroundColor: 'rgba(168,181,160,0.35)', borderRadius: 20, marginRight: 12 },

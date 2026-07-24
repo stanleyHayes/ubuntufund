@@ -143,11 +143,11 @@ const styles = StyleSheet.create({
   stageTitle: {
     marginTop: 22,
     fontSize: 26,
-    fontFamily: 'TTSquares-Black',
+    fontFamily: 'Outfit_800ExtraBold',
     color: '#F5F2EA',
     textAlign: 'center',
   },
-  stageTitleAccent: { color: '#DCC07E', fontFamily: 'TTSquares-Black' },
+  stageTitleAccent: { color: '#DCC07E', fontFamily: 'Outfit_800ExtraBold' },
   stageCaption: {
     marginTop: 10,
     fontSize: 10,
@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 26,
-    fontFamily: 'TTSquares-Black',
+    fontFamily: 'Outfit_800ExtraBold',
     color: brandColors.text,
     marginBottom: 6,
   },
@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
 
   button: { borderRadius: 999, marginBottom: 22 },
   buttonContent: { paddingVertical: 7 },
-  buttonLabel: { fontSize: 16, fontFamily: 'TTSquares-Bold', letterSpacing: 0.3 },
+  buttonLabel: { fontSize: 16, fontFamily: 'Outfit_700Bold', letterSpacing: 0.3 },
 
   footer: { flexDirection: 'row', justifyContent: 'center' },
   footerText: { fontSize: 14, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary },

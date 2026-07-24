@@ -33,5 +33,5 @@ const styles = StyleSheet.create({
     color: brandColors.secondaryDark,
     marginBottom: 4,
   },
-  title: { fontFamily: 'TTSquares-Bold', color: brandColors.text },
+  title: { fontFamily: 'Outfit_700Bold', color: brandColors.text },
 })

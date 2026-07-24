@@ -9,6 +9,8 @@ import {
   Outfit_400Regular,
   Outfit_500Medium,
   Outfit_600SemiBold,
+  Outfit_700Bold,
+  Outfit_800ExtraBold,
 } from '@expo-google-fonts/outfit'
 import * as NativeSplash from 'expo-splash-screen'
 import * as Linking from 'expo-linking'
@@ -29,13 +31,11 @@ export default function RootLayout() {
   }, [])
 
   const [fontsLoaded] = useFonts({
-    'TTSquares-Light': require('../assets/fonts/Squares Light.otf'),
-    'TTSquares-Regular': require('../assets/fonts/Squares Regular.otf'),
-    'TTSquares-Bold': require('../assets/fonts/Squares Bold.otf'),
-    'TTSquares-Black': require('../assets/fonts/Squares Black.otf'),
     Outfit_400Regular,
     Outfit_500Medium,
     Outfit_600SemiBold,
+    Outfit_700Bold,
+    Outfit_800ExtraBold,
   })
 
   const router = useRouter()
@@ -90,7 +90,7 @@ export default function RootLayout() {
               screenOptions={{
                 headerStyle: { backgroundColor: lightTheme.colors.primary },
                 headerTintColor: '#FFFFFF',
-                headerTitleStyle: { fontFamily: 'TTSquares-Bold' },
+                headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
               }}
             >
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />

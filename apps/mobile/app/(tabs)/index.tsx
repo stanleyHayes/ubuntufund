@@ -357,7 +357,7 @@ const styles = StyleSheet.create({
 
   greetingRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
   greeting: { fontSize: 14, color: 'rgba(255,255,255,0.5)', fontFamily: 'Outfit_400Regular' },
-  userName: { fontSize: 24, fontFamily: 'TTSquares-Black', color: '#FFFFFF', marginTop: 2 },
+  userName: { fontSize: 24, fontFamily: 'Outfit_800ExtraBold', color: '#FFFFFF', marginTop: 2 },
 
   statsRow: {
     flexDirection: 'row',
@@ -368,13 +368,13 @@ const styles = StyleSheet.create({
   },
   statBox: { flex: 1, alignItems: 'center' },
   statDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.08)', marginVertical: 4 },
-  statValue: { fontSize: 18, fontFamily: 'TTSquares-Bold', color: brandColors.secondary },
+  statValue: { fontSize: 18, fontFamily: 'Outfit_700Bold', color: brandColors.secondary },
   statLabel: { fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 2, fontFamily: 'Outfit_400Regular' },
 
   // Section
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 12 },
-  sectionTitle: { fontSize: 17, fontFamily: 'TTSquares-Bold', color: brandColors.text },
-  seeAll: { fontSize: 13, color: brandColors.primary, fontFamily: 'TTSquares-Bold' },
+  sectionTitle: { fontSize: 17, fontFamily: 'Outfit_700Bold', color: brandColors.text },
+  seeAll: { fontSize: 13, color: brandColors.primary, fontFamily: 'Outfit_700Bold' },
 
   // Categories
   categoryScrollView: { flexGrow: 0 },
@@ -392,7 +392,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     backgroundColor: 'rgba(168,181,160,0.28)',
   },
-  categoryLabel: { fontSize: 11, fontFamily: 'TTSquares-Bold', color: brandColors.textSecondary, textAlign: 'center' },
+  categoryLabel: { fontSize: 11, fontFamily: 'Outfit_700Bold', color: brandColors.textSecondary, textAlign: 'center' },
   categoryCount: { fontSize: 10, fontFamily: 'Outfit_400Regular', color: 'rgba(74,90,80,0.65)', marginTop: 1 },
 
   // Featured card
@@ -418,7 +418,7 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 6,
   },
-  priorityText: { fontSize: 11, fontFamily: 'TTSquares-Bold', color: '#fff' },
+  priorityText: { fontSize: 11, fontFamily: 'Outfit_700Bold', color: '#fff' },
   featuredContent: {
     position: 'absolute',
     bottom: 0,
@@ -428,13 +428,13 @@ const styles = StyleSheet.create({
   },
   featuredCategoryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
   featuredCategoryPill: { backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
-  featuredCategoryText: { fontSize: 11, color: '#fff', fontFamily: 'TTSquares-Bold' },
+  featuredCategoryText: { fontSize: 11, color: '#fff', fontFamily: 'Outfit_700Bold' },
   featuredDays: { fontSize: 11, fontFamily: 'Outfit_400Regular', color: 'rgba(255,255,255,0.6)' },
-  featuredTitle: { fontSize: 16, fontFamily: 'TTSquares-Bold', color: '#fff', marginBottom: 8, lineHeight: 21 },
+  featuredTitle: { fontSize: 16, fontFamily: 'Outfit_700Bold', color: '#fff', marginBottom: 8, lineHeight: 21 },
   featuredStats: { flexDirection: 'row', alignItems: 'center', marginTop: 6 },
-  featuredRaised: { fontSize: 13, fontFamily: 'TTSquares-Bold', color: brandColors.secondary },
+  featuredRaised: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: brandColors.secondary },
   featuredGoal: { fontSize: 11, fontFamily: 'Outfit_400Regular', color: 'rgba(255,255,255,0.5)', flex: 1 },
-  featuredPct: { fontSize: 13, fontFamily: 'TTSquares-Bold', color: '#fff' },
+  featuredPct: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: '#fff' },
 
   // Compact card (urgent)
   compactCard: {
@@ -448,10 +448,10 @@ const styles = StyleSheet.create({
   },
   compactImage: { width: 90, height: 90 },
   compactContent: { flex: 1, padding: 10, justifyContent: 'center' },
-  compactTitle: { fontSize: 13, fontFamily: 'TTSquares-Bold', color: brandColors.text, marginBottom: 6, lineHeight: 18 },
+  compactTitle: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: brandColors.text, marginBottom: 6, lineHeight: 18 },
   compactStats: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
-  compactRaised: { fontSize: 12, fontFamily: 'TTSquares-Bold', color: brandColors.primary },
-  compactPct: { fontSize: 12, fontFamily: 'TTSquares-Bold', color: brandColors.textSecondary },
+  compactRaised: { fontSize: 12, fontFamily: 'Outfit_700Bold', color: brandColors.primary },
+  compactPct: { fontSize: 12, fontFamily: 'Outfit_700Bold', color: brandColors.textSecondary },
 
   // Recent cards
   recentCard: {
@@ -464,8 +464,8 @@ const styles = StyleSheet.create({
   },
   recentImage: { width: '100%', height: 100 },
   recentContent: { padding: 10 },
-  recentTitle: { fontSize: 13, fontFamily: 'TTSquares-Bold', color: brandColors.text, marginBottom: 4, lineHeight: 17 },
-  recentAmount: { fontSize: 12, fontFamily: 'TTSquares-Bold', color: brandColors.primary },
+  recentTitle: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: brandColors.text, marginBottom: 4, lineHeight: 17 },
+  recentAmount: { fontSize: 12, fontFamily: 'Outfit_700Bold', color: brandColors.primary },
 
   // CTA banner
   ctaBanner: {
@@ -479,7 +479,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  ctaTitle: { fontSize: 17, fontFamily: 'TTSquares-Black', color: '#221B0E' },
+  ctaTitle: { fontSize: 17, fontFamily: 'Outfit_800ExtraBold', color: '#221B0E' },
   ctaSubtitle: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: 'rgba(34,27,14,0.72)', marginTop: 2 },
   ctaArrow: {
     width: 36,

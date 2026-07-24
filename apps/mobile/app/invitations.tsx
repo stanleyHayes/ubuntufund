@@ -106,7 +106,7 @@ export default function InvitationsScreen() {
           title: 'Invitations',
           headerStyle: { backgroundColor: brandColors.primary },
           headerTintColor: '#FFFFFF',
-          headerTitleStyle: { fontFamily: 'TTSquares-Bold' },
+          headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
         }}
       />
 
@@ -162,7 +162,7 @@ export default function InvitationsScreen() {
                 <View style={styles.invDetail}>
                   <Icon source="shield-account" size={14} color={brandColors.textSecondary} />
                   <Text style={styles.invDetailText}>
-                    Role: <Text style={{ fontFamily: 'TTSquares-Bold', color: brandColors.text }}>{inv.role}</Text>
+                    Role: <Text style={{ fontFamily: 'Outfit_700Bold', color: brandColors.text }}>{inv.role}</Text>
                   </Text>
                 </View>
 
@@ -170,7 +170,7 @@ export default function InvitationsScreen() {
                   <View style={styles.invDetail}>
                     <Icon source="percent" size={14} color={brandColors.textSecondary} />
                     <Text style={styles.invDetailText}>
-                      Revenue share: <Text style={{ fontFamily: 'TTSquares-Bold', color: brandColors.primary }}>{inv.revenueShare}%</Text>
+                      Revenue share: <Text style={{ fontFamily: 'Outfit_700Bold', color: brandColors.primary }}>{inv.revenueShare}%</Text>
                     </Text>
                   </View>
                 )}
@@ -217,8 +217,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: brandColors.background },
 
   headerBlock: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 4 },
-  eyebrow: { fontSize: 11, fontFamily: 'TTSquares-Bold', fontWeight: '700', color: brandColors.secondaryDark, textTransform: 'uppercase', letterSpacing: 2 },
-  pageTitle: { fontSize: 24, fontFamily: 'TTSquares-Black', color: brandColors.text, marginTop: 4 },
+  eyebrow: { fontSize: 11, fontFamily: 'Outfit_700Bold', fontWeight: '700', color: brandColors.secondaryDark, textTransform: 'uppercase', letterSpacing: 2 },
+  pageTitle: { fontSize: 24, fontFamily: 'Outfit_800ExtraBold', color: brandColors.text, marginTop: 4 },
   pageLede: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 4 },
 
   listWrap: { paddingHorizontal: 16, paddingTop: 12 },
@@ -231,7 +231,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(26,46,34,0.10)',
   },
-  invCampaign: { fontSize: 17, fontFamily: 'TTSquares-Bold', color: brandColors.text, marginBottom: 10 },
+  invCampaign: { fontSize: 17, fontFamily: 'Outfit_700Bold', color: brandColors.text, marginBottom: 10 },
   invDetail: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
   invDetailText: { fontSize: 13, color: brandColors.textSecondary, fontFamily: 'Outfit_400Regular' },
   invDate: { fontSize: 11, color: brandColors.textSecondary, marginTop: 8, marginBottom: 14, fontFamily: 'Outfit_400Regular' },
@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: brandColors.primary,
   },
-  acceptBtnText: { fontSize: 14, fontFamily: 'TTSquares-Bold', color: '#fff' },
+  acceptBtnText: { fontSize: 14, fontFamily: 'Outfit_700Bold', color: '#fff' },
   declineBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -260,7 +260,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(165,67,47,0.25)',
   },
-  declineBtnText: { fontSize: 14, fontFamily: 'TTSquares-Bold', color: brandColors.error },
+  declineBtnText: { fontSize: 14, fontFamily: 'Outfit_700Bold', color: brandColors.error },
 
   skeletonCard: {
     backgroundColor: '#fff',
@@ -281,8 +281,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   errorIconTile: { backgroundColor: 'rgba(165,67,47,0.14)' },
-  emptyTitle: { fontSize: 16, fontFamily: 'TTSquares-Bold', color: brandColors.text, textAlign: 'center' },
+  emptyTitle: { fontSize: 16, fontFamily: 'Outfit_700Bold', color: brandColors.text, textAlign: 'center' },
   emptySubtitle: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 6, textAlign: 'center', lineHeight: 18 },
   actionBtn: { marginTop: 16, borderRadius: 999 },
-  btnLabel: { fontFamily: 'TTSquares-Bold' },
+  btnLabel: { fontFamily: 'Outfit_700Bold' },
 })

@@ -129,7 +129,7 @@ export default function RefundRequestScreen() {
             title: 'Refund Request',
             headerStyle: { backgroundColor: brandColors.primary },
             headerTintColor: '#FFFFFF',
-            headerTitleStyle: { fontFamily: 'TTSquares-Bold' },
+            headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
           }}
         />
         <View style={styles.successState}>
@@ -173,7 +173,7 @@ export default function RefundRequestScreen() {
           title: 'Refund Request',
           headerStyle: { backgroundColor: brandColors.primary },
           headerTintColor: '#FFFFFF',
-          headerTitleStyle: { fontFamily: 'TTSquares-Bold' },
+          headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
         }}
       />
 
@@ -215,7 +215,7 @@ export default function RefundRequestScreen() {
                 </View>
                 <View style={styles.detailRow}>
                   <Text style={styles.detailKey}>Amount</Text>
-                  <Text style={[styles.detailValue, { color: brandColors.primary, fontFamily: 'TTSquares-Bold' }]}>
+                  <Text style={[styles.detailValue, { color: brandColors.primary, fontFamily: 'Outfit_700Bold' }]}>
                     GH₵ {donation.amount.toLocaleString()}
                   </Text>
                 </View>
@@ -295,8 +295,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: brandColors.background },
 
   headerBlock: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 4 },
-  eyebrow: { fontSize: 11, fontFamily: 'TTSquares-Bold', fontWeight: '700', color: brandColors.secondaryDark, textTransform: 'uppercase', letterSpacing: 2 },
-  pageTitle: { fontSize: 24, fontFamily: 'TTSquares-Black', color: brandColors.text, marginTop: 4 },
+  eyebrow: { fontSize: 11, fontFamily: 'Outfit_700Bold', fontWeight: '700', color: brandColors.secondaryDark, textTransform: 'uppercase', letterSpacing: 2 },
+  pageTitle: { fontSize: 24, fontFamily: 'Outfit_800ExtraBold', color: brandColors.text, marginTop: 4 },
   pageLede: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 4 },
 
   detailCard: {
@@ -307,12 +307,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(26,46,34,0.10)',
   },
-  detailLabel: { fontSize: 11, fontFamily: 'TTSquares-Bold', fontWeight: '700', color: brandColors.secondaryDark, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 2 },
+  detailLabel: { fontSize: 11, fontFamily: 'Outfit_700Bold', fontWeight: '700', color: brandColors.secondaryDark, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 2 },
   detailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: 'rgba(26,46,34,0.08)' },
   detailKey: { fontSize: 14, color: brandColors.textSecondary, fontFamily: 'Outfit_400Regular' },
   detailValue: { fontSize: 14, color: brandColors.text, fontFamily: 'Outfit_400Regular' },
 
-  fieldLabel: { fontSize: 14, fontFamily: 'TTSquares-Bold', color: brandColors.text, marginBottom: 10 },
+  fieldLabel: { fontSize: 14, fontFamily: 'Outfit_700Bold', color: brandColors.text, marginBottom: 10 },
 
   reasonOption: {
     flexDirection: 'row',
@@ -338,7 +338,7 @@ const styles = StyleSheet.create({
   radioOuterActive: { borderColor: brandColors.primary },
   radioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: brandColors.primary },
   reasonText: { fontSize: 14, color: brandColors.textSecondary, fontFamily: 'Outfit_400Regular' },
-  reasonTextActive: { color: brandColors.text, fontFamily: 'TTSquares-Bold' },
+  reasonTextActive: { color: brandColors.text, fontFamily: 'Outfit_700Bold' },
 
   textArea: {
     backgroundColor: '#fff',
@@ -382,12 +382,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 16,
   },
-  successTitle: { fontSize: 22, fontFamily: 'TTSquares-Black', color: brandColors.text, marginBottom: 8 },
+  successTitle: { fontSize: 22, fontFamily: 'Outfit_800ExtraBold', color: brandColors.text, marginBottom: 8 },
   successSubtitle: { fontSize: 14, color: brandColors.textSecondary, fontFamily: 'Outfit_400Regular' },
-  refundId: { fontSize: 18, fontFamily: 'TTSquares-Bold', color: brandColors.primary, marginTop: 4, marginBottom: 16 },
+  refundId: { fontSize: 18, fontFamily: 'Outfit_700Bold', color: brandColors.primary, marginTop: 4, marginBottom: 16 },
   successNote: { fontSize: 13, color: brandColors.textSecondary, textAlign: 'center', lineHeight: 18, fontFamily: 'Outfit_400Regular' },
   viewRefundsBtn: { marginTop: 24, borderRadius: 999 },
-  btnLabel: { fontFamily: 'TTSquares-Bold' },
+  btnLabel: { fontFamily: 'Outfit_700Bold' },
 
   skeletonLine: { height: 14, backgroundColor: 'rgba(168,181,160,0.35)', borderRadius: 4 },
 
@@ -402,6 +402,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   errorIconTile: { backgroundColor: 'rgba(165,67,47,0.14)' },
-  emptyTitle: { fontSize: 16, fontFamily: 'TTSquares-Bold', color: brandColors.text, textAlign: 'center' },
+  emptyTitle: { fontSize: 16, fontFamily: 'Outfit_700Bold', color: brandColors.text, textAlign: 'center' },
   actionBtn: { marginTop: 16, borderRadius: 999 },
 })

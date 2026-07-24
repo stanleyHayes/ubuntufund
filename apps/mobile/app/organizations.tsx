@@ -126,7 +126,7 @@ export default function OrganizationsScreen() {
           title: 'Organizations',
           headerStyle: { backgroundColor: brandColors.primary },
           headerTintColor: '#FFFFFF',
-          headerTitleStyle: { fontFamily: 'TTSquares-Bold' },
+          headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
         }}
       />
 
@@ -237,8 +237,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: brandColors.background },
 
   headerBlock: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 4 },
-  eyebrow: { fontSize: 11, fontFamily: 'TTSquares-Bold', fontWeight: '700', color: brandColors.secondaryDark, textTransform: 'uppercase', letterSpacing: 2 },
-  pageTitle: { fontSize: 24, fontFamily: 'TTSquares-Black', color: brandColors.text, marginTop: 4 },
+  eyebrow: { fontSize: 11, fontFamily: 'Outfit_700Bold', fontWeight: '700', color: brandColors.secondaryDark, textTransform: 'uppercase', letterSpacing: 2 },
+  pageTitle: { fontSize: 24, fontFamily: 'Outfit_800ExtraBold', color: brandColors.text, marginTop: 4 },
   pageLede: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 4 },
 
   searchWrap: {
@@ -277,8 +277,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
   },
-  orgAvatarText: { fontSize: 16, fontFamily: 'TTSquares-Bold', color: brandColors.primary },
-  orgName: { fontSize: 16, fontFamily: 'TTSquares-Bold', color: brandColors.text },
+  orgAvatarText: { fontSize: 16, fontFamily: 'Outfit_700Bold', color: brandColors.primary },
+  orgName: { fontSize: 16, fontFamily: 'Outfit_700Bold', color: brandColors.text },
   orgDesc: { fontSize: 12, color: brandColors.textSecondary, marginTop: 2, fontFamily: 'Outfit_400Regular', lineHeight: 16 },
   orgStats: { flexDirection: 'row', gap: 20 },
   orgStat: { flexDirection: 'row', alignItems: 'center', gap: 4 },
@@ -304,7 +304,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   errorIconTile: { backgroundColor: 'rgba(165,67,47,0.14)' },
-  emptyTitle: { fontSize: 16, fontFamily: 'TTSquares-Bold', color: brandColors.text, textAlign: 'center' },
+  emptyTitle: { fontSize: 16, fontFamily: 'Outfit_700Bold', color: brandColors.text, textAlign: 'center' },
   actionBtn: { marginTop: 16, borderRadius: 999 },
-  btnLabel: { fontFamily: 'TTSquares-Bold' },
+  btnLabel: { fontFamily: 'Outfit_700Bold' },
 })

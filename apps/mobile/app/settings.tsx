@@ -192,7 +192,7 @@ export default function SettingsScreen() {
           title: 'Settings',
           headerStyle: { backgroundColor: brandColors.primary },
           headerTintColor: '#FFFFFF',
-          headerTitleStyle: { fontFamily: 'TTSquares-Bold' },
+          headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
         }}
       />
 
@@ -258,7 +258,7 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: brandColors.background },
 
-  sectionTitle: { fontSize: 12, fontFamily: 'TTSquares-Bold', color: brandColors.textSecondary, paddingHorizontal: 20, marginTop: 24, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1 },
+  sectionTitle: { fontSize: 12, fontFamily: 'Outfit_700Bold', color: brandColors.textSecondary, paddingHorizontal: 20, marginTop: 24, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1 },
 
   card: {
     marginHorizontal: 16,
@@ -286,16 +286,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
   },
-  toggleLabel: { flex: 1, fontSize: 15, fontFamily: 'TTSquares-Bold', color: brandColors.text },
+  toggleLabel: { flex: 1, fontSize: 15, fontFamily: 'Outfit_700Bold', color: brandColors.text },
 
   pickerValue: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  pickerValueText: { fontSize: 14, fontFamily: 'TTSquares-Bold', color: brandColors.primary },
+  pickerValueText: { fontSize: 14, fontFamily: 'Outfit_700Bold', color: brandColors.primary },
   pickerOptions: { flexDirection: 'row', flexWrap: 'wrap', padding: 12, gap: 8 },
   pickerOption: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20, backgroundColor: 'rgba(168,181,160,0.28)' },
   pickerOptionActive: { backgroundColor: brandColors.primary },
-  pickerOptionText: { fontSize: 13, fontFamily: 'TTSquares-Bold', color: brandColors.text },
+  pickerOptionText: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: brandColors.text },
   pickerOptionTextActive: { color: '#fff' },
 
   dangerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, minHeight: 44 },
-  dangerText: { fontSize: 15, fontFamily: 'TTSquares-Bold', color: brandColors.error },
+  dangerText: { fontSize: 15, fontFamily: 'Outfit_700Bold', color: brandColors.error },
 })

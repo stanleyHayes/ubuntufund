@@ -218,7 +218,7 @@ const styles = StyleSheet.create({
     color: brandColors.secondaryDark,
     marginBottom: 6,
   },
-  campaignTitle: { fontFamily: 'TTSquares-Bold', color: brandColors.text, marginBottom: 16 },
+  campaignTitle: { fontFamily: 'Outfit_700Bold', color: brandColors.text, marginBottom: 16 },
   progressCard: {
     padding: 16,
     borderRadius: 14,
@@ -228,10 +228,10 @@ const styles = StyleSheet.create({
     borderColor: CARD_BORDER,
   },
   statsRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 },
-  raised: { color: brandColors.success, fontFamily: 'TTSquares-Bold' },
+  raised: { color: brandColors.success, fontFamily: 'Outfit_700Bold' },
   muted: { color: brandColors.textSecondary },
   statRight: { alignItems: 'flex-end' },
-  fieldLabel: { fontFamily: 'TTSquares-Bold', marginBottom: 6, marginTop: 4 },
+  fieldLabel: { fontFamily: 'Outfit_700Bold', marginBottom: 6, marginTop: 4 },
   modalInput: {
     borderWidth: 1,
     borderColor: CARD_BORDER,
@@ -273,7 +273,7 @@ const styles = StyleSheet.create({
     borderColor: brandColors.primary,
     backgroundColor: 'rgba(46,61,47,0.08)',
   },
-  providerOptionText: { fontSize: 13, color: brandColors.textSecondary, fontFamily: 'TTSquares-Bold' },
+  providerOptionText: { fontSize: 13, color: brandColors.textSecondary, fontFamily: 'Outfit_700Bold' },
   providerOptionTextActive: { color: brandColors.primary },
   modalActions: { flexDirection: 'row', marginTop: 8 },
 })

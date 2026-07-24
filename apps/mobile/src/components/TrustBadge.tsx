@@ -65,6 +65,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
-  label: { fontSize: 12, fontFamily: 'TTSquares-Bold' },
-  score: { fontSize: 12, fontFamily: 'TTSquares-Bold', marginLeft: 2, opacity: 0.75 },
+  label: { fontSize: 12, fontFamily: 'Outfit_700Bold' },
+  score: { fontSize: 12, fontFamily: 'Outfit_700Bold', marginLeft: 2, opacity: 0.75 },
 })

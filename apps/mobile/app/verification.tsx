@@ -143,7 +143,7 @@ export default function VerificationScreen() {
           title: 'Verification',
           headerStyle: { backgroundColor: brandColors.primary },
           headerTintColor: '#FFFFFF',
-          headerTitleStyle: { fontFamily: 'TTSquares-Bold' },
+          headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
         }}
       />
 
@@ -275,7 +275,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  cardTitle: { fontSize: 16, fontFamily: 'TTSquares-Bold', color: brandColors.text },
+  cardTitle: { fontSize: 16, fontFamily: 'Outfit_700Bold', color: brandColors.text },
   cardType: { fontSize: 12, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, textTransform: 'capitalize', marginTop: 2 },
 
   statusBadge: {
@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 999,
   },
-  statusText: { fontSize: 12, fontFamily: 'TTSquares-Bold' },
+  statusText: { fontSize: 12, fontFamily: 'Outfit_700Bold' },
 
   rejectionBox: {
     flexDirection: 'row',
@@ -329,9 +329,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 16,
   },
-  emptyTitle: { fontSize: 16, fontFamily: 'TTSquares-Bold', color: brandColors.text, textAlign: 'center' },
+  emptyTitle: { fontSize: 16, fontFamily: 'Outfit_700Bold', color: brandColors.text, textAlign: 'center' },
   emptySubtitle: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 6, textAlign: 'center', lineHeight: 18 },
   retryButton: { borderRadius: 999, marginTop: 16 },
   buttonContent: { paddingVertical: 4 },
-  buttonLabel: { fontSize: 14, fontFamily: 'TTSquares-Bold', letterSpacing: 0.3 },
+  buttonLabel: { fontSize: 14, fontFamily: 'Outfit_700Bold', letterSpacing: 0.3 },
 })

@@ -101,8 +101,8 @@ const styles = StyleSheet.create({
     left: -width * 0.2,
   },
   titleRow: { flexDirection: 'row', alignItems: 'baseline' },
-  titleWhite: { fontSize: 34, fontFamily: 'TTSquares-Black', color: '#FFFFFF', letterSpacing: 0.5 },
-  titleGold: { fontSize: 34, fontFamily: 'TTSquares-Black', color: brandColors.secondary, letterSpacing: 0.5 },
+  titleWhite: { fontSize: 34, fontFamily: 'Outfit_800ExtraBold', color: '#FFFFFF', letterSpacing: 0.5 },
+  titleGold: { fontSize: 34, fontFamily: 'Outfit_800ExtraBold', color: brandColors.secondary, letterSpacing: 0.5 },
   tagline: {
     fontSize: 13,
     fontFamily: 'Outfit_400Regular',

@@ -62,15 +62,15 @@ const styles = StyleSheet.create({
   container: { padding: 24, paddingBottom: 48 },
   eyebrow: {
     fontSize: 11,
-    fontFamily: 'TTSquares-Bold',
+    fontFamily: 'Outfit_700Bold',
     fontWeight: '700',
     color: brandColors.secondaryDark,
     textTransform: 'uppercase',
     letterSpacing: 2,
     marginBottom: 6,
   },
-  title: { fontSize: 24, fontFamily: 'TTSquares-Black', color: brandColors.text, marginBottom: 4 },
+  title: { fontSize: 24, fontFamily: 'Outfit_800ExtraBold', color: brandColors.text, marginBottom: 4 },
   updated: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginBottom: 24 },
-  heading: { fontSize: 16, fontFamily: 'TTSquares-Bold', marginTop: 20, marginBottom: 8, color: brandColors.text },
+  heading: { fontSize: 16, fontFamily: 'Outfit_700Bold', marginTop: 20, marginBottom: 8, color: brandColors.text },
   body: { fontSize: 14, fontFamily: 'Outfit_400Regular', lineHeight: 22, color: brandColors.textSecondary },
 })

@@ -173,7 +173,7 @@ export default function DashboardScreen() {
           title: 'Dashboard',
           headerStyle: { backgroundColor: brandColors.primary },
           headerTintColor: '#FFFFFF',
-          headerTitleStyle: { fontFamily: 'TTSquares-Bold' },
+          headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
         }}
       />
 
@@ -301,21 +301,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(26,46,34,0.10)',
   },
-  statValue: { fontSize: 18, fontFamily: 'TTSquares-Bold', color: brandColors.text, marginTop: 6 },
+  statValue: { fontSize: 18, fontFamily: 'Outfit_700Bold', color: brandColors.text, marginTop: 6 },
   statLabel: { fontSize: 10, color: brandColors.textSecondary, fontFamily: 'Outfit_400Regular', marginTop: 2 },
 
-  sectionTitle: { fontSize: 17, fontFamily: 'TTSquares-Bold', color: brandColors.text, paddingHorizontal: 20, marginTop: 24, marginBottom: 12 },
+  sectionTitle: { fontSize: 17, fontFamily: 'Outfit_700Bold', color: brandColors.text, paddingHorizontal: 20, marginTop: 24, marginBottom: 12 },
 
   quickActionsRow: { flexDirection: 'row', paddingHorizontal: 16, gap: 10 },
   quickAction: { flex: 1, backgroundColor: '#fff', borderRadius: 14, padding: 14, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(26,46,34,0.10)' },
   quickActionIcon: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
-  quickActionLabel: { fontSize: 11, fontFamily: 'TTSquares-Bold', color: brandColors.textSecondary, textAlign: 'center' },
+  quickActionLabel: { fontSize: 11, fontFamily: 'Outfit_700Bold', color: brandColors.textSecondary, textAlign: 'center' },
 
   listCard: { marginHorizontal: 16, backgroundColor: '#fff', borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(26,46,34,0.10)' },
   listRow: { flexDirection: 'row', alignItems: 'center', padding: 14, minHeight: 44, borderBottomWidth: 1, borderBottomColor: 'rgba(26,46,34,0.08)' },
-  listTitle: { fontSize: 14, fontFamily: 'TTSquares-Bold', color: brandColors.text, marginBottom: 4 },
+  listTitle: { fontSize: 14, fontFamily: 'Outfit_700Bold', color: brandColors.text, marginBottom: 4 },
   listSub: { fontSize: 11, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 4 },
-  donationAmount: { fontSize: 15, fontFamily: 'TTSquares-Bold', color: brandColors.success },
+  donationAmount: { fontSize: 15, fontFamily: 'Outfit_700Bold', color: brandColors.success },
 
   noData: { fontSize: 13, color: brandColors.textSecondary, paddingHorizontal: 20, fontFamily: 'Outfit_400Regular' },
   emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 80, paddingHorizontal: 32 },
@@ -327,7 +327,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  emptyTitle: { fontSize: 16, fontFamily: 'TTSquares-Bold', color: brandColors.text, marginTop: 16, textAlign: 'center' },
+  emptyTitle: { fontSize: 16, fontFamily: 'Outfit_700Bold', color: brandColors.text, marginTop: 16, textAlign: 'center' },
   emptyBody: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 4, textAlign: 'center' },
   emptyAction: { marginTop: 16, borderRadius: 999 },
 })

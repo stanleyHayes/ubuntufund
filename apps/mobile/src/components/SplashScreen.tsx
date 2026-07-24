@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
   appName: {
     fontSize: 32,
     color: '#FFFFFF',
-    fontFamily: 'TTSquares-Black',
+    fontFamily: 'Outfit_800ExtraBold',
     letterSpacing: -0.5,
   },
   appNameAccent: {

@@ -113,7 +113,7 @@ export function CampaignUpdatesList({ campaignId }: CampaignUpdatesListProps) {
               </View>
               <Chip
                 style={[styles.typeChip, { backgroundColor: typeStyle.bg }]}
-                textStyle={{ color: typeStyle.text, fontSize: 11, fontFamily: 'TTSquares-Bold' }}
+                textStyle={{ color: typeStyle.text, fontSize: 11, fontFamily: 'Outfit_700Bold' }}
               >
                 {update.type.replace(/_/g, ' ')}
               </Chip>
@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 15,
-    fontFamily: 'TTSquares-Bold',
+    fontFamily: 'Outfit_700Bold',
     color: brandColors.text,
     marginBottom: 4,
   },
@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
   pinnedText: {
     fontSize: 12,
     color: brandColors.primary,
-    fontFamily: 'TTSquares-Bold',
+    fontFamily: 'Outfit_700Bold',
   },
   headerRow: {
     flexDirection: 'row',
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
   },
   authorName: {
     fontSize: 13,
-    fontFamily: 'TTSquares-Bold',
+    fontFamily: 'Outfit_700Bold',
     color: brandColors.text,
   },
   dateText: {
@@ -216,7 +216,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 15,
-    fontFamily: 'TTSquares-Bold',
+    fontFamily: 'Outfit_700Bold',
     color: brandColors.text,
     marginBottom: 8,
     lineHeight: 20,
@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
   readMore: {
     fontSize: 12,
     color: brandColors.primary,
-    fontFamily: 'TTSquares-Bold',
+    fontFamily: 'Outfit_700Bold',
     marginTop: 6,
     paddingVertical: 6,
   },

@@ -59,7 +59,7 @@ const styles = StyleSheet.create({
   content: { alignItems: 'center' },
   eyebrow: {
     fontSize: 11,
-    fontFamily: 'TTSquares-Bold',
+    fontFamily: 'Outfit_700Bold',
     fontWeight: '700',
     color: brandColors.secondaryDark,
     textTransform: 'uppercase',
@@ -77,7 +77,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 20,
-    fontFamily: 'TTSquares-Bold',
+    fontFamily: 'Outfit_700Bold',
     color: brandColors.text,
     textAlign: 'center',
     marginBottom: 8,
@@ -93,5 +93,5 @@ const styles = StyleSheet.create({
   },
   button: { borderRadius: 999 },
   buttonContent: { paddingVertical: 4 },
-  buttonLabel: { fontSize: 14, fontFamily: 'TTSquares-Bold', letterSpacing: 0.3 },
+  buttonLabel: { fontSize: 14, fontFamily: 'Outfit_700Bold', letterSpacing: 0.3 },
 })

@@ -104,7 +104,7 @@ export default function MyDonationsScreen() {
           title: 'My Donations',
           headerStyle: { backgroundColor: brandColors.primary },
           headerTintColor: '#FFFFFF',
-          headerTitleStyle: { fontFamily: 'TTSquares-Bold' },
+          headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
         }}
       />
 
@@ -225,15 +225,15 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: brandColors.background },
 
   headerBlock: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 4 },
-  eyebrow: { fontSize: 11, fontFamily: 'TTSquares-Bold', fontWeight: '700', color: brandColors.secondaryDark, textTransform: 'uppercase', letterSpacing: 2 },
-  pageTitle: { fontSize: 24, fontFamily: 'TTSquares-Black', color: brandColors.text, marginTop: 4 },
+  eyebrow: { fontSize: 11, fontFamily: 'Outfit_700Bold', fontWeight: '700', color: brandColors.secondaryDark, textTransform: 'uppercase', letterSpacing: 2 },
+  pageTitle: { fontSize: 24, fontFamily: 'Outfit_800ExtraBold', color: brandColors.text, marginTop: 4 },
   pageLede: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 4 },
 
   filterScroll: { flexGrow: 0 },
   filterRow: { paddingHorizontal: 16, paddingVertical: 12, gap: 8, alignItems: 'center' },
   filterTab: { height: 38, justifyContent: 'center', paddingHorizontal: 16, borderRadius: 999, backgroundColor: '#fff', borderWidth: 1, borderColor: 'rgba(26,46,34,0.10)' },
   filterTabActive: { backgroundColor: brandColors.primary, borderColor: brandColors.primary },
-  filterTabText: { fontSize: 13, fontFamily: 'TTSquares-Bold', color: brandColors.textSecondary },
+  filterTabText: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: brandColors.textSecondary },
   filterTabTextActive: { color: '#fff' },
 
   listWrap: { paddingHorizontal: 16 },
@@ -247,15 +247,15 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(26,46,34,0.10)',
   },
   donationHeader: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 10 },
-  donationCampaign: { fontSize: 15, fontFamily: 'TTSquares-Bold', color: brandColors.text },
+  donationCampaign: { fontSize: 15, fontFamily: 'Outfit_700Bold', color: brandColors.text },
   donationDate: { fontSize: 11, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 2 },
-  donationAmount: { fontSize: 17, fontFamily: 'TTSquares-Bold', color: brandColors.primary },
+  donationAmount: { fontSize: 17, fontFamily: 'Outfit_700Bold', color: brandColors.primary },
   donationFooter: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   statusChip: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-  statusChipText: { fontSize: 11, fontFamily: 'TTSquares-Bold' },
+  statusChipText: { fontSize: 11, fontFamily: 'Outfit_700Bold' },
   paymentMethod: { fontSize: 11, color: brandColors.textSecondary, fontFamily: 'Outfit_400Regular' },
   refundBtn: { marginLeft: 'auto' },
-  refundBtnText: { fontSize: 12, fontFamily: 'TTSquares-Bold', color: brandColors.error },
+  refundBtnText: { fontSize: 12, fontFamily: 'Outfit_700Bold', color: brandColors.error },
 
   skeletonRow: {
     flexDirection: 'row',
@@ -278,8 +278,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   errorIconTile: { backgroundColor: 'rgba(165,67,47,0.14)' },
-  emptyTitle: { fontSize: 16, fontFamily: 'TTSquares-Bold', color: brandColors.text, textAlign: 'center' },
+  emptyTitle: { fontSize: 16, fontFamily: 'Outfit_700Bold', color: brandColors.text, textAlign: 'center' },
   emptySubtitle: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 6, textAlign: 'center' },
   actionBtn: { marginTop: 16, borderRadius: 999 },
-  btnLabel: { fontFamily: 'TTSquares-Bold' },
+  btnLabel: { fontFamily: 'Outfit_700Bold' },
 })

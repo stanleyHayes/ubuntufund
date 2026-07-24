@@ -63,7 +63,7 @@ export default function TabLayout() {
       screenOptions={{
         headerStyle: { backgroundColor: brandColors.primary },
         headerTintColor: '#FFFFFF',
-        headerTitleStyle: { fontFamily: 'TTSquares-Bold' },
+        headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
       }}
     >
       <Tabs.Screen name="index" options={{ title: 'Home', headerShown: false }} />
@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 10,
-    fontFamily: 'TTSquares-Bold',
+    fontFamily: 'Outfit_700Bold',
     color: 'rgba(245,242,234,0.55)',
   },
   labelActive: {

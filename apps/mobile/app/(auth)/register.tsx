@@ -321,11 +321,11 @@ const styles = StyleSheet.create({
   stageTitle: {
     marginTop: 18,
     fontSize: 22,
-    fontFamily: 'TTSquares-Black',
+    fontFamily: 'Outfit_800ExtraBold',
     color: '#F5F2EA',
     textAlign: 'center',
   },
-  stageTitleAccent: { color: '#DCC07E', fontFamily: 'TTSquares-Black' },
+  stageTitleAccent: { color: '#DCC07E', fontFamily: 'Outfit_800ExtraBold' },
   stageCaption: {
     marginTop: 8,
     fontSize: 10,
@@ -361,7 +361,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontFamily: 'TTSquares-Black',
+    fontFamily: 'Outfit_800ExtraBold',
     color: brandColors.text,
     marginBottom: 6,
   },
@@ -387,7 +387,7 @@ const styles = StyleSheet.create({
   toggleRow: { flexDirection: 'row', backgroundColor: 'rgba(168,181,160,0.28)', borderRadius: 999, padding: 4, marginBottom: 24 },
   toggleButton: { flex: 1, paddingVertical: 11, alignItems: 'center', borderRadius: 999 },
   toggleActive: { backgroundColor: brandColors.primary },
-  toggleText: { fontSize: 14, fontFamily: 'TTSquares-Bold', color: brandColors.text },
+  toggleText: { fontSize: 14, fontFamily: 'Outfit_700Bold', color: brandColors.text },
   toggleTextActive: { color: '#FFFFFF' },
 
   input: { marginBottom: 14, backgroundColor: brandColors.surface },
@@ -406,7 +406,7 @@ const styles = StyleSheet.create({
 
   button: { borderRadius: 999, marginTop: 8, marginBottom: 16 },
   buttonContent: { paddingVertical: 7 },
-  buttonLabel: { fontSize: 16, fontFamily: 'TTSquares-Bold', letterSpacing: 0.3 },
+  buttonLabel: { fontSize: 16, fontFamily: 'Outfit_700Bold', letterSpacing: 0.3 },
 
   terms: { fontSize: 12, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, textAlign: 'center', lineHeight: 18, marginBottom: 20 },
   termsLink: { color: brandColors.primary, fontFamily: 'Outfit_600SemiBold' },

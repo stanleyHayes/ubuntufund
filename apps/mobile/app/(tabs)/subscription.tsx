@@ -242,12 +242,12 @@ const styles = StyleSheet.create({
   // Header
   eyebrow: {
     fontSize: 11,
-    fontFamily: 'TTSquares-Bold',
+    fontFamily: 'Outfit_700Bold',
     color: brandColors.secondaryDark,
     textTransform: 'uppercase',
     letterSpacing: 2,
   },
-  title: { fontSize: 26, fontFamily: 'TTSquares-Black', color: brandColors.text, marginTop: 4 },
+  title: { fontSize: 26, fontFamily: 'Outfit_800ExtraBold', color: brandColors.text, marginTop: 4 },
   lede: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 6, marginBottom: 20 },
 
   // Current plan card
@@ -259,13 +259,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(26,46,34,0.10)',
   },
-  currentPlanLabel: { fontSize: 11, color: brandColors.secondaryDark, fontFamily: 'TTSquares-Bold', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 4 },
-  currentPlanName: { fontSize: 24, fontFamily: 'TTSquares-Black', color: brandColors.text, marginBottom: 8 },
+  currentPlanLabel: { fontSize: 11, color: brandColors.secondaryDark, fontFamily: 'Outfit_700Bold', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 4 },
+  currentPlanName: { fontSize: 24, fontFamily: 'Outfit_800ExtraBold', color: brandColors.text, marginBottom: 8 },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
   statusBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
   statusActive: { backgroundColor: 'rgba(47,107,70,0.12)' },
   statusInactive: { backgroundColor: 'rgba(165,67,47,0.12)' },
-  statusText: { fontSize: 11, fontFamily: 'TTSquares-Bold' },
+  statusText: { fontSize: 11, fontFamily: 'Outfit_700Bold' },
   statusTextActive: { color: brandColors.success },
   statusTextInactive: { color: brandColors.error },
   billingText: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary },
@@ -273,7 +273,7 @@ const styles = StyleSheet.create({
   feeText: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary },
 
   // Section title
-  sectionTitle: { fontSize: 18, fontFamily: 'TTSquares-Bold', color: brandColors.text, marginBottom: 12 },
+  sectionTitle: { fontSize: 18, fontFamily: 'Outfit_700Bold', color: brandColors.text, marginBottom: 12 },
 
   // Plans row
   plansScroll: { flexGrow: 0 },
@@ -300,13 +300,13 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     marginBottom: 8,
   },
-  popularText: { color: '#FFFFFF', fontSize: 10, fontFamily: 'TTSquares-Bold', letterSpacing: 0.5 },
-  planName: { fontSize: 18, fontFamily: 'TTSquares-Bold', color: brandColors.text, marginBottom: 4 },
+  popularText: { color: '#FFFFFF', fontSize: 10, fontFamily: 'Outfit_700Bold', letterSpacing: 0.5 },
+  planName: { fontSize: 18, fontFamily: 'Outfit_700Bold', color: brandColors.text, marginBottom: 4 },
   planDesc: { fontSize: 12, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginBottom: 12 },
   priceRow: { flexDirection: 'row', alignItems: 'baseline' },
-  planPrice: { fontSize: 28, fontFamily: 'TTSquares-Black', color: brandColors.text },
+  planPrice: { fontSize: 28, fontFamily: 'Outfit_800ExtraBold', color: brandColors.text },
   priceUnit: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginLeft: 2 },
-  feeLabel: { fontSize: 12, color: brandColors.primary, fontFamily: 'TTSquares-Bold', marginTop: 2, marginBottom: 12 },
+  feeLabel: { fontSize: 12, color: brandColors.primary, fontFamily: 'Outfit_700Bold', marginTop: 2, marginBottom: 12 },
 
   // Features
   featuresList: { marginBottom: 16 },
@@ -322,7 +322,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 'auto',
   },
-  currentChipText: { fontSize: 14, fontFamily: 'TTSquares-Bold', color: brandColors.text },
+  currentChipText: { fontSize: 14, fontFamily: 'Outfit_700Bold', color: brandColors.text },
 
   // Upgrade CTA
   upgradeCta: {
@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
-  upgradeTitle: { fontSize: 18, fontFamily: 'TTSquares-Bold', color: brandColors.text, marginBottom: 8 },
+  upgradeTitle: { fontSize: 18, fontFamily: 'Outfit_700Bold', color: brandColors.text, marginBottom: 8 },
   upgradeDesc: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, textAlign: 'center', marginBottom: 16, lineHeight: 20 },
   upgradeButton: { borderRadius: 999, alignSelf: 'stretch' },
   upgradeButtonContent: { paddingVertical: 4 },

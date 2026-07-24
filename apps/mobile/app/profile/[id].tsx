@@ -37,7 +37,7 @@ export default function ProfileScreen() {
               style={{ backgroundColor: brandColors.primary }}
             />
             <View style={styles.headerInfo}>
-              <Text variant="headlineSmall" style={{ fontFamily: 'TTSquares-Bold' }}>
+              <Text variant="headlineSmall" style={{ fontFamily: 'Outfit_700Bold' }}>
                 {user.name}
               </Text>
               {user.country && (
@@ -53,7 +53,7 @@ export default function ProfileScreen() {
         </Surface>
 
         <Surface style={styles.card} elevation={1}>
-          <Text variant="titleMedium" style={{ fontFamily: 'TTSquares-Bold', marginBottom: 12 }}>
+          <Text variant="titleMedium" style={{ fontFamily: 'Outfit_700Bold', marginBottom: 12 }}>
             Details
           </Text>
           <View style={styles.detailRow}>
@@ -67,7 +67,7 @@ export default function ProfileScreen() {
           {user.role === 'organization' && (
             <View style={styles.detailRow}>
               <Text variant="bodyMedium" style={styles.muted}>Organization</Text>
-              <Text variant="bodyMedium" style={{ fontFamily: 'TTSquares-Bold' }}>
+              <Text variant="bodyMedium" style={{ fontFamily: 'Outfit_700Bold' }}>
                 Verified Organization
               </Text>
             </View>

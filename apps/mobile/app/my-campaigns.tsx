@@ -167,7 +167,7 @@ export default function MyCampaignsScreen() {
           title: 'My Campaigns',
           headerStyle: { backgroundColor: brandColors.primary },
           headerTintColor: '#FFFFFF',
-          headerTitleStyle: { fontFamily: 'TTSquares-Bold' },
+          headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
         }}
       />
 
@@ -261,8 +261,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: brandColors.background },
 
   headerBlock: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 4 },
-  eyebrow: { fontSize: 11, fontFamily: 'TTSquares-Bold', fontWeight: '700', color: brandColors.secondaryDark, textTransform: 'uppercase', letterSpacing: 2 },
-  pageTitle: { fontSize: 24, fontFamily: 'TTSquares-Black', color: brandColors.text, marginTop: 4 },
+  eyebrow: { fontSize: 11, fontFamily: 'Outfit_700Bold', fontWeight: '700', color: brandColors.secondaryDark, textTransform: 'uppercase', letterSpacing: 2 },
+  pageTitle: { fontSize: 24, fontFamily: 'Outfit_800ExtraBold', color: brandColors.text, marginTop: 4 },
   pageLede: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 4 },
 
   createBtn: {
@@ -286,16 +286,16 @@ const styles = StyleSheet.create({
   cardImageFallback: { backgroundColor: 'rgba(168,181,160,0.28)' },
   cardContent: { padding: 14 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 },
-  cardTitle: { flex: 1, fontSize: 15, fontFamily: 'TTSquares-Bold', color: brandColors.text, marginRight: 8 },
+  cardTitle: { flex: 1, fontSize: 15, fontFamily: 'Outfit_700Bold', color: brandColors.text, marginRight: 8 },
   statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-  statusText: { fontSize: 11, fontFamily: 'TTSquares-Bold' },
+  statusText: { fontSize: 11, fontFamily: 'Outfit_700Bold' },
   cardStats: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
-  cardRaised: { fontSize: 13, fontFamily: 'TTSquares-Bold', color: brandColors.primary },
+  cardRaised: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: brandColors.primary },
   cardGoal: { fontSize: 11, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, flex: 1 },
-  cardPct: { fontSize: 13, fontFamily: 'TTSquares-Bold', color: brandColors.textSecondary },
+  cardPct: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: brandColors.textSecondary },
   cardActions: { flexDirection: 'row', gap: 12, marginTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(26,46,34,0.08)', paddingTop: 12 },
   actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 8 },
-  actionText: { fontSize: 13, fontFamily: 'TTSquares-Bold', color: brandColors.primary },
+  actionText: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: brandColors.primary },
 
   // Skeleton
   skeletonCard: {
@@ -329,7 +329,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   errorIconTile: { backgroundColor: 'rgba(165,67,47,0.14)' },
-  emptyTitle: { fontSize: 16, fontFamily: 'TTSquares-Bold', color: brandColors.text, textAlign: 'center' },
+  emptyTitle: { fontSize: 16, fontFamily: 'Outfit_700Bold', color: brandColors.text, textAlign: 'center' },
   emptySubtitle: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 6, textAlign: 'center' },
-  btnLabel: { fontFamily: 'TTSquares-Bold' },
+  btnLabel: { fontFamily: 'Outfit_700Bold' },
 })

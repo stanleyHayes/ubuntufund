@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(168,181,160,0.28)',
   },
   filterPillActive: { backgroundColor: brandColors.primary },
-  filterPillText: { fontSize: 13, fontFamily: 'TTSquares-Bold', color: brandColors.text, lineHeight: 18 },
+  filterPillText: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: brandColors.text, lineHeight: 18 },
   filterPillTextActive: { color: '#FFFFFF' },
 
   // Secondary filters
@@ -276,8 +276,8 @@ const styles = StyleSheet.create({
   },
   miniPillActive: { backgroundColor: brandColors.primary },
   miniPillSort: { backgroundColor: brandColors.primary },
-  miniPillText: { fontSize: 11, fontFamily: 'TTSquares-Bold', color: brandColors.textSecondary },
-  miniPillTextActive: { color: '#FFFFFF', fontFamily: 'TTSquares-Bold' },
+  miniPillText: { fontSize: 11, fontFamily: 'Outfit_700Bold', color: brandColors.textSecondary },
+  miniPillTextActive: { color: '#FFFFFF', fontFamily: 'Outfit_700Bold' },
   sortDivider: { width: 1, backgroundColor: 'rgba(26,46,34,0.10)', marginHorizontal: 4 },
 
   // Results
@@ -298,12 +298,12 @@ const styles = StyleSheet.create({
   campaignImage: { width: 100, height: 100 },
   campaignContent: { flex: 1, padding: 10, justifyContent: 'center' },
   campaignMeta: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
-  campaignCategory: { fontSize: 11, color: brandColors.textSecondary, fontFamily: 'TTSquares-Bold', flex: 1 },
+  campaignCategory: { fontSize: 11, color: brandColors.textSecondary, fontFamily: 'Outfit_700Bold', flex: 1 },
   priorityDot: { width: 7, height: 7, borderRadius: 4 },
-  campaignTitle: { fontSize: 14, fontFamily: 'TTSquares-Bold', color: brandColors.text, marginBottom: 6, lineHeight: 18 },
+  campaignTitle: { fontSize: 14, fontFamily: 'Outfit_700Bold', color: brandColors.text, marginBottom: 6, lineHeight: 18 },
   campaignStats: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
-  campaignRaised: { fontSize: 12, fontFamily: 'TTSquares-Bold', color: brandColors.primary },
-  campaignPct: { fontSize: 12, fontFamily: 'TTSquares-Bold', color: brandColors.textSecondary },
+  campaignRaised: { fontSize: 12, fontFamily: 'Outfit_700Bold', color: brandColors.primary },
+  campaignPct: { fontSize: 12, fontFamily: 'Outfit_700Bold', color: brandColors.textSecondary },
 
   // Empty
   emptyState: { alignItems: 'center', paddingTop: 60 },
@@ -317,6 +317,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 14,
   },
-  emptyTitle: { fontSize: 17, fontFamily: 'TTSquares-Bold', color: brandColors.text, marginBottom: 4 },
+  emptyTitle: { fontSize: 17, fontFamily: 'Outfit_700Bold', color: brandColors.text, marginBottom: 4 },
   emptyBody: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary },
 })
