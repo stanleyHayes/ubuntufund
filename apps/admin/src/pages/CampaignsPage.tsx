@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Box, Typography, TextField, MenuItem, InputAdornment, Button } from '@mui/material'
 import { keyframes } from '@mui/system'
 import SearchIcon from '@mui/icons-material/Search'
-import RocketLaunchIcon from '@mui/icons-material/RocketLaunch'
+import RocketLaunchRoundedIcon from '@mui/icons-material/RocketLaunchRounded'
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'
 import BlockIcon from '@mui/icons-material/Block'
 import DoNotDisturbIcon from '@mui/icons-material/DoNotDisturb'
@@ -14,6 +14,7 @@ import type { Campaign } from '@ubuntu-fund/types'
 import { useMockData } from '@/hooks/useMockData'
 import { usePagination } from '@/hooks/usePagination'
 import PaginationBar from '@/components/PaginationBar'
+import PageHeader from '@/components/PageHeader'
 
 const fadeIn = keyframes`from{opacity:0}to{opacity:1}`
 const slideIn = keyframes`from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}`
@@ -226,12 +227,14 @@ export default function CampaignsPage() {
 
   return (
     <Box sx={{ bgcolor: '#0c0c14', minHeight: '100vh', animation: `${fadeIn} 0.3s ease` }}>
-      {/* Header */}
-      <Box sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${B}`, display: 'flex', alignItems: 'center', gap: 1.5 }}>
-        <RocketLaunchIcon sx={{ color: '#5E8F72', fontSize: 20 }} />
-        <Typography sx={{ fontFamily: '"TT Squares", sans-serif', fontWeight: 700, fontSize: '1.1rem', color: 'text.primary' }}>
-          Campaigns
-        </Typography>
+      <Box sx={{ px: 3, pt: 3 }}>
+        <PageHeader
+          tone="gold"
+          eyebrow="Community"
+          title="Campaigns"
+          lede="Review, approve, and moderate every fundraising campaign live on the platform."
+          icon={<RocketLaunchRoundedIcon />}
+        />
       </Box>
 
       {/* Tabs */}

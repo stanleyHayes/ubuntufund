@@ -35,6 +35,7 @@ import {
   type PermissionString,
   type Role,
 } from '@ubuntu-fund/types'
+import PageHeader from '@/components/PageHeader'
 
 // ---------------------------------------------------------------------------
 // Animation
@@ -296,12 +297,23 @@ export default function InviteUserPage() {
   return (
     <Box sx={{ p: 3, maxWidth: 1000, mx: 'auto' }}>
       {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 4, animation: `${fadeSlide} 0.4s ease both` }}>
-        <PersonAddRoundedIcon sx={{ color: '#5E8F72', fontSize: 28 }} />
-        <Typography variant="h4" sx={{ fontWeight: 700 }}>
-          Invite User
-        </Typography>
-      </Box>
+      <PageHeader
+        tone="green"
+        eyebrow="Platform"
+        title="Invite User"
+        lede="Create a new admin account and assign it a role with the right permissions."
+        icon={<PersonAddRoundedIcon />}
+        actions={
+          <Button
+            variant="contained"
+            startIcon={<PersonAddRoundedIcon />}
+            onClick={handleSubmit}
+            sx={{ bgcolor: '#5E8F72', '&:hover': { bgcolor: '#2F6B46' } }}
+          >
+            Invite user
+          </Button>
+        }
+      />
 
       <Grid container spacing={3}>
         {/* Left column: Form */}
@@ -473,24 +485,6 @@ export default function InviteUserPage() {
                   ))}
                 </Box>
               </RadioGroup>
-
-              <Divider sx={{ my: 3, borderColor: 'rgba(255,255,255,0.06)' }} />
-
-              <Button
-                variant="contained"
-                startIcon={<PersonAddRoundedIcon />}
-                onClick={handleSubmit}
-                fullWidth
-                size="large"
-                sx={{
-                  bgcolor: '#5E8F72',
-                  '&:hover': { bgcolor: '#2F6B46' },
-                  py: 1.5,
-                  fontSize: '1rem',
-                }}
-              >
-                Invite User
-              </Button>
             </CardContent>
           </Card>
         </Grid>

@@ -524,7 +524,12 @@ export function CampaignDetailPage() {
 
       {/* Tabs */}
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3, mt: 4 }}>
-        <Tabs value={activeTab} onChange={(_e, v) => setActiveTab(v)}>
+        <Tabs
+          value={activeTab}
+          onChange={(_e, v) => setActiveTab(v)}
+          variant="scrollable"
+          allowScrollButtonsMobile
+        >
           <Tab label="Overview" sx={{ fontWeight: 700, textTransform: 'none' }} />
           <Tab label="Updates" sx={{ fontWeight: 700, textTransform: 'none' }} />
           <Tab label="Donations" sx={{ fontWeight: 700, textTransform: 'none' }} />

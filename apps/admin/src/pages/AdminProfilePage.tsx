@@ -7,7 +7,6 @@ import Alert from '@mui/material/Alert'
 import Card from '@mui/material/Card'
 import Chip from '@mui/material/Chip'
 import Snackbar from '@mui/material/Snackbar'
-import Avatar from '@mui/material/Avatar'
 import Grid from '@mui/material/Grid'
 import Switch from '@mui/material/Switch'
 import InputAdornment from '@mui/material/InputAdornment'
@@ -29,6 +28,8 @@ import { keyframes, alpha } from '@mui/material/styles'
 import { SHAPE, AiWritingBar } from '@ubuntu-fund/ui'
 import { AiWritingAction } from '@ubuntu-fund/types'
 import { useAuth } from '@/context/AuthContext'
+import PageHeader from '@/components/PageHeader'
+import { TONES } from '@/lib/tones'
 
 // ─── Animations ──────────────────────────────────────────────────────────────
 
@@ -188,51 +189,20 @@ export default function AdminProfilePage() {
     }
   }
 
-  const initials = name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase()
-
   return (
     <Box>
       {/* ─── Profile Header ─── */}
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 3,
-          mb: 4,
-          animation: `${fadeSlide} 0.3s ease both`,
-        }}
-      >
-        <Avatar
-          sx={{
-            width: 72,
-            height: 72,
-            bgcolor: 'primary.main',
-            fontSize: '1.4rem',
-            fontWeight: 900,
-            fontFamily: '"TT Squares", sans-serif',
-            border: '3px solid',
-            borderColor: alpha('#5E8F72', 0.3),
-          }}
-        >
-          {initials}
-        </Avatar>
-        <Box>
-          <Typography sx={{ fontWeight: 900, fontSize: '1.4rem', color: 'text.primary', lineHeight: 1.2 }}>
-            {name || 'Admin User'}
-          </Typography>
-          <Typography sx={{ fontSize: '0.85rem', color: 'text.secondary', mt: 0.25 }}>
-            {email}
-          </Typography>
+      <PageHeader
+        tone="green"
+        eyebrow="Account"
+        title={name || 'Admin User'}
+        lede="Manage your personal details, password, and notification preferences."
+        icon={<PersonRoundedIcon />}
+        actions={
           <Chip
             label={user?.role === 'admin' ? 'Administrator' : user?.role ?? 'Admin'}
             size="small"
             sx={{
-              mt: 0.75,
               height: 22,
               fontSize: '0.68rem',
               fontWeight: 700,
@@ -241,8 +211,8 @@ export default function AdminProfilePage() {
               borderRadius: SHAPE.sm,
             }}
           />
-        </Box>
-      </Box>
+        }
+      />
 
       <Grid container spacing={3}>
         {/* ─── Personal Information ─── */}
@@ -531,7 +501,7 @@ export default function AdminProfilePage() {
 
         {/* ─── Regional & Display Preferences ─── */}
         <Grid size={{ xs: 12, lg: 6 }}>
-          <SectionCard icon={<CakeRoundedIcon />} title="Regional & Display" color="#AB47BC" delay={0.2}>
+          <SectionCard icon={<CakeRoundedIcon />} title="Regional & Display" color={TONES.maroon.text} delay={0.2}>
             <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
               <TextField
                 label="Timezone"

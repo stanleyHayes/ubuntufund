@@ -17,7 +17,8 @@ import AccountBalanceRoundedIcon from '@mui/icons-material/AccountBalanceRounded
 import PaletteRoundedIcon from '@mui/icons-material/PaletteRounded'
 import { CampaignCategory, CampaignStatus } from '@ubuntu-fund/types'
 import type { Campaign } from '@ubuntu-fund/types'
-import { CurrencyDisplay, ProgressBar, EmptyState } from '@ubuntu-fund/ui'
+import { ProgressBar, EmptyState } from '@ubuntu-fund/ui'
+import { CoverPlaceholder } from '@/components/campaigns/CampaignCard'
 import { useCampaigns } from '@/hooks/useCampaigns'
 
 // ─── Animations ─────────────────────────────────────────────
@@ -535,27 +536,35 @@ export function ExplorePage() {
                 >
                   {/* Image */}
                   <Box sx={{ position: 'relative', overflow: 'hidden' }}>
-                    <Box
-                      className="card-img"
-                      component="img"
-                      src={campaign.imageUrls[0]}
-                      alt={campaign.title}
-                      sx={{
-                        width: '100%',
-                        height: 190,
-                        objectFit: 'cover',
-                        display: 'block',
-                        transition: 'transform 0.5s ease',
-                      }}
-                    />
-                    <Box
-                      sx={{
-                        position: 'absolute',
-                        inset: 0,
-                        bgcolor: 'rgba(0,0,0,0.25)',
-                        pointerEvents: 'none',
-                      }}
-                    />
+                    {campaign.imageUrls[0] ? (
+                      <>
+                        <Box
+                          className="card-img"
+                          component="img"
+                          src={campaign.imageUrls[0]}
+                          alt={campaign.title}
+                          sx={{
+                            width: '100%',
+                            height: 190,
+                            objectFit: 'cover',
+                            display: 'block',
+                            transition: 'transform 0.5s ease',
+                          }}
+                        />
+                        <Box
+                          sx={{
+                            position: 'absolute',
+                            inset: 0,
+                            bgcolor: 'rgba(0,0,0,0.25)',
+                            pointerEvents: 'none',
+                          }}
+                        />
+                      </>
+                    ) : (
+                      <Box className="card-img" sx={{ transition: 'transform 0.5s ease' }}>
+                        <CoverPlaceholder category={campaign.category} height={190} />
+                      </Box>
+                    )}
 
                     {/* Category + Country overlay */}
                     <Box sx={{ position: 'absolute', top: 12, left: 12, display: 'flex', gap: 0.75 }}>
@@ -610,13 +619,6 @@ export function ExplorePage() {
                     </Typography>
 
                     <ProgressBar current={campaign.raisedAmount} goal={campaign.goalAmount} currency={campaign.currency} />
-
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1, mb: 2 }}>
-                      <CurrencyDisplay amount={campaign.raisedAmount} currency={campaign.currency} />
-                      <Typography sx={{ fontSize: '0.72rem', color: 'rgba(0,0,0,0.4)' }}>
-                        of <CurrencyDisplay amount={campaign.goalAmount} currency={campaign.currency} />
-                      </Typography>
-                    </Box>
 
                     <Box sx={{ flexGrow: 1 }} />
                   </Box>

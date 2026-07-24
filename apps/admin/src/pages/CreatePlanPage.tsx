@@ -19,8 +19,10 @@ import SaveRoundedIcon from '@mui/icons-material/SaveRounded'
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import CancelRoundedIcon from '@mui/icons-material/CancelRounded'
 import StarRoundedIcon from '@mui/icons-material/StarRounded'
+import AddRoundedIcon from '@mui/icons-material/AddRounded'
 import { keyframes } from '@mui/material/styles'
 import { SubscriptionTier, type SubscriptionPlan } from '@ubuntu-fund/types'
+import PageHeader from '@/components/PageHeader'
 
 // ─── Animations ──────────────────────────────────────────────────────────────
 
@@ -122,10 +124,13 @@ export default function CreatePlanPage() {
         <Typography sx={{ fontSize: '0.85rem', color: 'text.primary', fontWeight: 700 }}>Create New Plan</Typography>
       </Breadcrumbs>
 
-      {/* Title */}
-      <Typography variant="h5" sx={{ fontWeight: 900, color: 'text.primary', mb: 3 }}>
-        Create New Plan
-      </Typography>
+      <PageHeader
+        tone="green"
+        eyebrow="Platform · Plans"
+        title="Create New Plan"
+        lede="Define pricing, limits, and features for a new subscription tier."
+        icon={<AddRoundedIcon />}
+      />
 
       <Grid container spacing={3}>
         {/* ═══ Left Column — Form ═══ */}

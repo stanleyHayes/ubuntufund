@@ -29,6 +29,7 @@ import { useAdminPaymentProviders } from '@/hooks/useApiData'
 import type { PaymentProvider } from '@/hooks/useMockData'
 import { SHAPE, AiWritingBar } from '@ubuntu-fund/ui'
 import { AiWritingAction } from '@ubuntu-fund/types'
+import PageHeader from '@/components/PageHeader'
 
 // ─── Animations ──────────────────────────────────────────────────────────────
 
@@ -141,62 +142,19 @@ export default function PaymentProvidersPage() {
   return (
     <Box sx={{ p: 3, maxWidth: 1400, mx: 'auto' }}>
       {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 4, flexWrap: 'wrap', gap: 2 }}>
-        <Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
-            <AccountBalanceRoundedIcon sx={{ color: '#5E8F72', fontSize: 28 }} />
-            <Typography variant="h4" sx={{ fontWeight: 800 }}>
-              Payment Providers
-            </Typography>
-          </Box>
-          <Typography sx={{ fontSize: '0.85rem', color: 'text.secondary', ml: 5.5 }}>
-            Enable, disable, and configure platform payment integrations
-          </Typography>
-        </Box>
-      </Box>
-
-      {/* Stats */}
-      <Box
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)' },
-          gap: '1px',
-          bgcolor: B,
-          border: `1px solid ${B}`,
-          borderRadius: '12px',
-          overflow: 'hidden',
-          mb: 3,
-          animation: `${fadeSlide} 0.3s ease both`,
-        }}
-      >
-        {[
-          { label: 'Total Providers', value: stats.total, color: '#74909A' },
-          { label: 'Active', value: stats.active, color: '#5E8F72' },
-          { label: 'Inactive', value: stats.inactive, color: '#C06B58' },
-          { label: 'Default', value: stats.default, color: '#D3A95C' },
-        ].map((stat) => (
-          <Box
-            key={stat.label}
-            sx={{
-              bgcolor: 'background.paper',
-              py: 2,
-              px: 2.5,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1.5,
-            }}
-          >
-            <Box sx={{ flex: 1 }}>
-              <Typography sx={{ fontSize: '1.2rem', fontWeight: 900, lineHeight: 1 }}>
-                {stat.value}
-              </Typography>
-              <Typography sx={{ fontSize: '0.65rem', fontWeight: 600, color: 'text.secondary', letterSpacing: '0.3px' }}>
-                {stat.label}
-              </Typography>
-            </Box>
-          </Box>
-        ))}
-      </Box>
+      <PageHeader
+        tone="green"
+        eyebrow="Platform"
+        title="Payment Providers"
+        lede="Enable, disable, and configure the payment integrations available at checkout."
+        icon={<AccountBalanceRoundedIcon />}
+        stats={[
+          { label: 'Total Providers', value: stats.total },
+          { label: 'Active', value: stats.active },
+          { label: 'Inactive', value: stats.inactive },
+          { label: 'Default', value: stats.default },
+        ]}
+      />
 
       {/* Cards Grid */}
       <Box

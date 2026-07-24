@@ -17,7 +17,7 @@ import Checkbox from '@mui/material/Checkbox'
 import Snackbar from '@mui/material/Snackbar'
 import Alert from '@mui/material/Alert'
 import Divider from '@mui/material/Divider'
-import SecurityRoundedIcon from '@mui/icons-material/SecurityRounded'
+import AdminPanelSettingsRoundedIcon from '@mui/icons-material/AdminPanelSettingsRounded'
 import SaveRoundedIcon from '@mui/icons-material/SaveRounded'
 import NavigateNextIcon from '@mui/icons-material/NavigateNext'
 import { keyframes } from '@mui/material/styles'
@@ -30,6 +30,7 @@ import {
   AiWritingAction,
 } from '@ubuntu-fund/types'
 import { AiWritingBar } from '@ubuntu-fund/ui'
+import PageHeader from '@/components/PageHeader'
 
 // ---------------------------------------------------------------------------
 // Animation
@@ -194,12 +195,13 @@ export default function CreateRolePage() {
       </Breadcrumbs>
 
       {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 4 }}>
-        <SecurityRoundedIcon sx={{ color: '#5E8F72', fontSize: 28 }} />
-        <Typography variant="h4" sx={{ fontWeight: 700 }}>
-          Create New Role
-        </Typography>
-      </Box>
+      <PageHeader
+        tone="green"
+        eyebrow="Platform · Roles"
+        title="Create New Role"
+        lede="Build a new role by choosing exactly which resources it can read, create, update, or delete."
+        icon={<AdminPanelSettingsRoundedIcon />}
+      />
 
       <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', lg: 'row' } }}>
         {/* Main form area */}

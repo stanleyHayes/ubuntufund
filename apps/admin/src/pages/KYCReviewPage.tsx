@@ -4,10 +4,12 @@ import { keyframes } from '@mui/system'
 import SearchIcon from '@mui/icons-material/Search'
 import InputAdornment from '@mui/material/InputAdornment'
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser'
+import BadgeRoundedIcon from '@mui/icons-material/BadgeRounded'
 import { useMockData, type KYCVerification } from '@/hooks/useMockData'
 import { Resource, Action } from '@ubuntu-fund/types'
 import { useAdminPermissions } from '@/context/AdminPermissionContext'
 import KYCDetailDialog from '@/components/kyc/KYCDetailDialog'
+import PageHeader from '@/components/PageHeader'
 
 const fadeIn = keyframes`from{opacity:0}to{opacity:1}`
 const slideIn = keyframes`from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}`
@@ -85,23 +87,18 @@ export default function KYCReviewPage() {
 
   return (
     <Box sx={{ bgcolor: '#0c0c14', minHeight: '100vh', animation: `${fadeIn} 0.4s ease` }}>
-      {/* Stats bar */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', borderBottom: `1px solid ${B}` }}>
-        {[
-          { label: 'Pending', value: pendingCount, color: '#D3A95C' },
-          { label: 'Approved Today', value: approvedToday, color: '#5E8F72' },
-          { label: 'Rejected Today', value: rejectedToday, color: '#C06B58' },
-        ].map((stat) => (
-          <Box key={stat.label} sx={{ p: 2, borderRight: `1px solid ${B}`, textAlign: 'center' }}>
-            <Typography sx={{ fontSize: '1.5rem', fontWeight: 900, color: stat.color, fontFamily: '"TT Squares", monospace' }}>
-              {stat.value}
-            </Typography>
-            <Typography sx={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-              {stat.label}
-            </Typography>
-          </Box>
-        ))}
-      </Box>
+      <PageHeader
+        tone="clay"
+        eyebrow="Trust & Safety"
+        title="KYC Review"
+        lede="Review identity, address, and business KYC submissions with risk scoring, then approve, reject, or request more information."
+        icon={<BadgeRoundedIcon />}
+        stats={[
+          { label: 'Pending', value: pendingCount },
+          { label: 'Approved Today', value: approvedToday },
+          { label: 'Rejected Today', value: rejectedToday },
+        ]}
+      />
 
       {/* Filter bar */}
       <Box sx={{

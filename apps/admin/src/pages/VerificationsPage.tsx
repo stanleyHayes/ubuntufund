@@ -4,10 +4,12 @@ import { keyframes } from '@mui/system'
 import SearchIcon from '@mui/icons-material/Search'
 import InputAdornment from '@mui/material/InputAdornment'
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser'
+import VerifiedUserRoundedIcon from '@mui/icons-material/VerifiedUserRounded'
 import Button from '@mui/material/Button'
 import { useMockData } from '@/hooks/useMockData'
 import { VerificationLevel, Resource, Action } from '@ubuntu-fund/types'
 import { useAdminPermissions } from '@/context/AdminPermissionContext'
+import PageHeader from '@/components/PageHeader'
 
 const fadeIn = keyframes`from{opacity:0}to{opacity:1}`
 const slideIn = keyframes`from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}`
@@ -92,6 +94,14 @@ export default function VerificationsPage() {
 
   return (
     <Box sx={{ bgcolor: '#0c0c14', minHeight: '100vh', animation: `${fadeIn} 0.4s ease` }}>
+      <PageHeader
+        tone="clay"
+        eyebrow="Trust & Safety"
+        title="Verifications"
+        lede="Review identity, phone, institutional, and community verification submissions and approve or reject them."
+        icon={<VerifiedUserRoundedIcon />}
+      />
+
       {/* Filter bar */}
       <Box sx={{
         display: 'grid',

@@ -3,13 +3,11 @@ import { Box, Typography, TextField, MenuItem, InputAdornment, Chip } from '@mui
 import { keyframes } from '@mui/system'
 import SearchIcon from '@mui/icons-material/Search'
 import { EmptyState } from '@ubuntu-fund/ui'
-import CheckCircleIcon from '@mui/icons-material/CheckCircle'
-import UnsubscribeIcon from '@mui/icons-material/Unsubscribe'
-import TrendingUpIcon from '@mui/icons-material/TrendingUp'
-import EmailRoundedIcon from '@mui/icons-material/EmailRounded'
+import CampaignRoundedIcon from '@mui/icons-material/CampaignRounded'
 import type { NewsletterSubscriber } from '@ubuntu-fund/types'
 import { usePagination } from '@/hooks/usePagination'
 import PaginationBar from '@/components/PaginationBar'
+import PageHeader from '@/components/PageHeader'
 
 const fadeIn = keyframes`from{opacity:0}to{opacity:1}`
 const slideIn = keyframes`from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}`
@@ -28,25 +26,6 @@ function Skel({ w, h }: { w?: string | number; h?: number }) {
       width: w || '100%', height: h || 14,
       bgcolor: 'rgba(255,255,255,0.04)',
     }} />
-  )
-}
-
-function StatCard({ icon, label, value, color, index }: { icon: React.ReactNode; label: string; value: number; color: string; index: number }) {
-  return (
-    <Box sx={{
-      position: 'relative', overflow: 'hidden',
-      borderRight: `1px solid ${B}`, borderBottom: `1px solid ${B}`,
-      p: 3,
-      animation: `${slideIn} 0.4s ease ${index * 0.08}s both`,
-    }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
-        <Box sx={{ color, '& svg': { fontSize: 20 } }}>{icon}</Box>
-        <Typography sx={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: 1 }}>{label}</Typography>
-      </Box>
-      <Typography sx={{ fontSize: '1.8rem', fontWeight: 800, color: '#fff', lineHeight: 1 }}>
-        {value.toLocaleString()}
-      </Typography>
-    </Box>
   )
 }
 
@@ -97,31 +76,20 @@ function NewsletterPage() {
     ? subscribers.filter((s) => s.email.toLowerCase().includes(search.toLowerCase()))
     : subscribers
 
-  const statCards = [
-    { icon: <TrendingUpIcon />, label: 'Total Subscribers', value: stats.total, color: '#74909A' },
-    { icon: <CheckCircleIcon />, label: 'Active', value: stats.active, color: ACCENT },
-    { icon: <UnsubscribeIcon />, label: 'Unsubscribed', value: stats.unsubscribed, color: '#78909C' },
-  ]
-
   return (
     <Box sx={{ animation: `${fadeIn} 0.3s ease` }}>
-      {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
-        <EmailRoundedIcon sx={{ fontSize: 28, color: ACCENT }} />
-        <Box>
-          <Typography sx={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff' }}>Newsletter Subscribers</Typography>
-          <Typography sx={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)' }}>Manage email subscriptions</Typography>
-        </Box>
-      </Box>
-
-      {/* Stats */}
-      <Box sx={{
-        display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' },
-        border: `1px solid ${B}`, borderRadius: 2, mb: 3, overflow: 'hidden',
-        bgcolor: 'rgba(255,255,255,0.015)',
-      }}>
-        {statCards.map((s, i) => <StatCard key={s.label} {...s} index={i} />)}
-      </Box>
+      <PageHeader
+        tone="teal"
+        eyebrow="Growth"
+        title="Newsletter Subscribers"
+        lede="See who's subscribed to the newsletter and manage active and unsubscribed contacts."
+        icon={<CampaignRoundedIcon />}
+        stats={[
+          { label: 'Total Subscribers', value: stats.total },
+          { label: 'Active', value: stats.active },
+          { label: 'Unsubscribed', value: stats.unsubscribed },
+        ]}
+      />
 
       {/* Filters */}
       <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>

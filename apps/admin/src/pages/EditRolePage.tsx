@@ -19,11 +19,12 @@ import Snackbar from '@mui/material/Snackbar'
 import Alert from '@mui/material/Alert'
 import Divider from '@mui/material/Divider'
 import { ItemNotFound } from '@ubuntu-fund/ui'
-import SecurityRoundedIcon from '@mui/icons-material/SecurityRounded'
+import AdminPanelSettingsRoundedIcon from '@mui/icons-material/AdminPanelSettingsRounded'
 import SaveRoundedIcon from '@mui/icons-material/SaveRounded'
 import NavigateNextIcon from '@mui/icons-material/NavigateNext'
 import ShieldRoundedIcon from '@mui/icons-material/ShieldRounded'
 import { keyframes } from '@mui/material/styles'
+import PageHeader from '@/components/PageHeader'
 import {
   Resource,
   Action,
@@ -221,27 +222,30 @@ export default function EditRolePage() {
       </Breadcrumbs>
 
       {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 4, flexWrap: 'wrap' }}>
-        <SecurityRoundedIcon sx={{ color: '#5E8F72', fontSize: 28 }} />
-        <Typography variant="h4" sx={{ fontWeight: 700 }}>
-          Edit Role: {role.name}
-        </Typography>
-        {role.isSystem && (
-          <Chip
-            icon={<ShieldRoundedIcon sx={{ fontSize: 14 }} />}
-            label="System Role"
-            size="small"
-            sx={{
-              bgcolor: 'rgba(76,175,80,0.15)',
-              color: '#A8B5A0',
-              fontWeight: 600,
-              fontSize: '0.72rem',
-              height: 26,
-              '& .MuiChip-icon': { color: '#A8B5A0' },
-            }}
-          />
-        )}
-      </Box>
+      <PageHeader
+        tone="green"
+        eyebrow="Platform · Roles"
+        title={`Edit Role: ${role.name}`}
+        lede="Adjust this role's name, description, and resource-level permissions."
+        icon={<AdminPanelSettingsRoundedIcon />}
+        actions={
+          role.isSystem ? (
+            <Chip
+              icon={<ShieldRoundedIcon sx={{ fontSize: 14 }} />}
+              label="System Role"
+              size="small"
+              sx={{
+                bgcolor: 'rgba(76,175,80,0.15)',
+                color: '#A8B5A0',
+                fontWeight: 600,
+                fontSize: '0.72rem',
+                height: 26,
+                '& .MuiChip-icon': { color: '#A8B5A0' },
+              }}
+            />
+          ) : undefined
+        }
+      />
 
       <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', lg: 'row' } }}>
         {/* Main form area */}

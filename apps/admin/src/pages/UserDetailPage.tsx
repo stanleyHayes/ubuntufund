@@ -6,9 +6,11 @@ import { keyframes } from '@mui/system'
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser'
 import PauseCircleOutlineIcon from '@mui/icons-material/PauseCircleOutline'
 import BlockIcon from '@mui/icons-material/Block'
+import PeopleRoundedIcon from '@mui/icons-material/PeopleRounded'
 import { useMockUser, useMockUserCampaigns, useMockUserDonations } from '@/hooks/useMockData'
 import { VerificationLevel, UserRole } from '@ubuntu-fund/types'
 import { ItemNotFound, EmptyState } from '@ubuntu-fund/ui'
+import PageHeader from '@/components/PageHeader'
 
 const fadeIn = keyframes`from{opacity:0}to{opacity:1}`
 const slideIn = keyframes`from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}`
@@ -25,7 +27,7 @@ function Skel({ w, h }: { w?: string | number; h?: number }) {
 
 const roleColors: Record<string, string> = {
   [UserRole.ADMIN]: '#C06B58',
-  [UserRole.ORGANIZATION]: '#AB47BC',
+  [UserRole.ORGANIZATION]: '#7D3223',
   [UserRole.USER]: '#74909A',
 }
 
@@ -112,42 +114,22 @@ export default function UserDetailPage() {
   const roleColor = roleColors[user.role] || '#74909A'
   const initials = user.name.split(' ').map(n => n[0]).join('')
 
-  const statCells = [
-    { label: 'Name / Role', value: user.name, sub: user.role.toUpperCase(), accent: roleColor },
-    { label: 'Trust Score', value: String(user.trustScore), sub: user.trustScore >= 70 ? 'trusted' : user.trustScore >= 40 ? 'moderate' : 'low', accent: trustColor(user.trustScore) },
-    { label: 'Campaigns', value: String(userCampaigns.length), sub: 'created', accent: '#AB47BC' },
-    { label: 'Donations', value: String(userDonations.length), sub: 'made', accent: '#74909A' },
-  ]
-
   return (
     <Box sx={{ bgcolor: '#0c0c14', minHeight: '100vh', animation: `${fadeIn} 0.4s ease` }}>
-      {/* Top stats row */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', sm: 'repeat(4, 1fr)' } }}>
-        {statCells.map((cell, i) => (
-          <Box
-            key={i}
-            sx={{
-              p: 2.5,
-              borderRight: `1px solid ${B}`,
-              borderBottom: `1px solid ${B}`,
-              borderTop: `2px solid ${cell.accent}40`,
-              borderLeft: `2px solid ${cell.accent}40`,
-              animation: `${slideIn} 0.4s ease ${i * 0.06}s both`,
-              transition: 'background 0.2s',
-              '&:hover': { bgcolor: 'rgba(255,255,255,0.02)' },
-            }}
-          >
-            <Typography sx={{ fontSize: '0.65rem', textTransform: 'uppercase', color: '#A0A0B0', letterSpacing: 1, fontFamily: '"TT Squares", sans-serif' }}>
-              {cell.label}
-            </Typography>
-            <Typography sx={{ fontSize: '1.6rem', fontWeight: 700, color: '#fff', fontFamily: '"TT Squares", monospace', mt: 0.5, lineHeight: 1.1 }}>
-              {cell.value}
-            </Typography>
-            <Typography sx={{ fontSize: '0.72rem', color: '#6B6B80', mt: 0.5 }}>
-              {cell.sub}
-            </Typography>
-          </Box>
-        ))}
+      <Box sx={{ px: 2.5, pt: 2.5 }}>
+        <PageHeader
+          tone="gold"
+          eyebrow="Community · User"
+          title={user.name}
+          lede="Review this member's trust signals, verification progress, and giving history."
+          icon={<PeopleRoundedIcon />}
+          stats={[
+            { label: 'Role', value: user.role.toUpperCase() },
+            { label: 'Trust Score', value: user.trustScore },
+            { label: 'Campaigns', value: userCampaigns.length },
+            { label: 'Donations', value: userDonations.length },
+          ]}
+        />
       </Box>
 
       {/* Main content */}
@@ -159,7 +141,7 @@ export default function UserDetailPage() {
           borderBottom: `1px solid ${B}`,
           animation: `${slideIn} 0.4s ease 0.25s both`,
         }}>
-          {/* Avatar + Name + Email */}
+          {/* Avatar + Email */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
             <Box sx={{
               width: 64, height: 64,
@@ -170,14 +152,9 @@ export default function UserDetailPage() {
             }}>
               {initials}
             </Box>
-            <Box>
-              <Typography sx={{ fontSize: '1.2rem', fontWeight: 700, color: '#fff', fontFamily: '"TT Squares", sans-serif' }}>
-                {user.name}
-              </Typography>
-              <Typography sx={{ fontSize: '0.82rem', color: '#A0A0B0' }}>
-                {user.email}
-              </Typography>
-            </Box>
+            <Typography sx={{ fontSize: '0.82rem', color: '#A0A0B0' }}>
+              {user.email}
+            </Typography>
           </Box>
 
           {/* Separator */}
@@ -317,8 +294,8 @@ export default function UserDetailPage() {
                     p: 2,
                     borderRight: `1px solid ${B}`,
                     borderBottom: `1px solid ${B}`,
-                    borderTop: '2px solid rgba(171,71,188,0.25)',
-                    borderLeft: '2px solid rgba(171,71,188,0.25)',
+                    borderTop: '2px solid rgba(125,50,35,0.25)',
+                    borderLeft: '2px solid rgba(125,50,35,0.25)',
                     animation: `${slideIn} 0.4s ease ${0.35 + i * 0.04}s both`,
                     transition: 'background 0.2s',
                     '&:hover': { bgcolor: 'rgba(255,255,255,0.02)' },

@@ -25,6 +25,7 @@ import VerifiedUserRoundedIcon from '@mui/icons-material/VerifiedUserRounded'
 import NotificationsActiveRoundedIcon from '@mui/icons-material/NotificationsActiveRounded'
 import SecurityRoundedIcon from '@mui/icons-material/SecurityRounded'
 import PaletteRoundedIcon from '@mui/icons-material/PaletteRounded'
+import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded'
 import SaveRoundedIcon from '@mui/icons-material/SaveRounded'
 import RestoreRoundedIcon from '@mui/icons-material/RestoreRounded'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
@@ -33,6 +34,8 @@ import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded'
 import { keyframes, alpha } from '@mui/material/styles'
 import { Resource, Action, SUBSCRIPTION_PLANS, SubscriptionTier } from '@ubuntu-fund/types'
 import { useAdminPermissions } from '@/context/AdminPermissionContext'
+import PageHeader from '@/components/PageHeader'
+import { TONES } from '@/lib/tones'
 
 // ─── Animations ──────────────────────────────────────────────────────────────
 
@@ -193,7 +196,7 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
 const TIER_COLORS: Record<string, string> = {
   free: '#78909C',
   starter: '#74909A',
-  pro: '#AB47BC',
+  pro: TONES.maroon.text,
   enterprise: '#C7A24A',
 }
 
@@ -279,44 +282,43 @@ export default function SettingsPage() {
   return (
     <Box>
       {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3, animation: `${fadeSlide} 0.3s ease both` }}>
-        <Box>
-          <Typography variant="h5" sx={{ fontWeight: 900, color: 'text.primary', mb: 0.5 }}>
-            Platform Settings
-          </Typography>
-          <Typography sx={{ fontSize: '0.85rem', color: 'text.secondary' }}>
-            Configure global fees, verification, notifications, and security
-          </Typography>
-        </Box>
-        {canEdit && (
-          <Box sx={{ display: 'flex', gap: 1.5 }}>
-            <Tooltip title="Reset to defaults">
-              <IconButton
-                onClick={handleReset}
-                sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, '&:hover': { borderColor: 'warning.main', color: 'warning.main' } }}
+      <PageHeader
+        tone="green"
+        eyebrow="Platform"
+        title="Platform Settings"
+        lede="Configure global fees, verification, notifications, and security."
+        icon={<SettingsRoundedIcon />}
+        actions={
+          canEdit ? (
+            <>
+              <Tooltip title="Reset to defaults">
+                <IconButton
+                  onClick={handleReset}
+                  sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, '&:hover': { borderColor: 'warning.main', color: 'warning.main' } }}
+                >
+                  <RestoreRoundedIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+              <Button
+                variant="contained"
+                startIcon={<SaveRoundedIcon />}
+                onClick={handleSave}
+                disabled={!hasChanges}
+                sx={{
+                  borderRadius: 2,
+                  px: 3,
+                  fontWeight: 700,
+                  textTransform: 'none',
+                  transition: 'box-shadow 200ms ease',
+                  boxShadow: hasChanges ? '0 0 0 3px rgba(143,174,150,0.35)' : 'none',
+                }}
               >
-                <RestoreRoundedIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-            <Button
-              variant="contained"
-              startIcon={<SaveRoundedIcon />}
-              onClick={handleSave}
-              disabled={!hasChanges}
-              sx={{
-                borderRadius: 2,
-                px: 3,
-                fontWeight: 700,
-                textTransform: 'none',
-                transition: 'box-shadow 200ms ease',
-                boxShadow: hasChanges ? '0 0 0 3px rgba(143,174,150,0.35)' : 'none',
-              }}
-            >
-              Save Changes
-            </Button>
-          </Box>
-        )}
-      </Box>
+                Save Changes
+              </Button>
+            </>
+          ) : undefined
+        }
+      />
 
       {!canEdit && (
         <Alert
@@ -493,7 +495,7 @@ export default function SettingsPage() {
 
         {/* ─── Verification ─── */}
         <Grid size={{ xs: 12, lg: 6 }}>
-          <SectionCard icon={<VerifiedUserRoundedIcon />} title="Verification Requirements" color="#AB47BC" delay={0.18}>
+          <SectionCard icon={<VerifiedUserRoundedIcon />} title="Verification Requirements" color={TONES.maroon.text} delay={0.18}>
             <SettingRow label="Email Verification" description="Require verified email to create campaigns">
               <Toggle checked={emailRequired} onChange={track(setEmailRequired)} />
             </SettingRow>
@@ -518,7 +520,7 @@ export default function SettingsPage() {
                   <Chip
                     label={autoApproveScore}
                     size="small"
-                    sx={{ bgcolor: '#AB47BC', color: '#fff', fontWeight: 700, minWidth: 40 }}
+                    sx={{ bgcolor: TONES.maroon.solid, color: '#fff', fontWeight: 700, minWidth: 40 }}
                   />
                 </Box>
                 <Slider
@@ -527,7 +529,7 @@ export default function SettingsPage() {
                   min={0}
                   max={100}
                   sx={{
-                    color: '#AB47BC',
+                    color: TONES.maroon.text,
                     '& .MuiSlider-rail': { bgcolor: 'rgba(255,255,255,0.06)', height: 6 },
                     '& .MuiSlider-track': { height: 6 },
                     '& .MuiSlider-thumb': { width: 18, height: 18 },
@@ -583,7 +585,7 @@ export default function SettingsPage() {
 
         {/* ─── Appearance ─── */}
         <Grid size={{ xs: 12, lg: 6 }}>
-          <SectionCard icon={<PaletteRoundedIcon />} title="Appearance" color="#26A69A" delay={0.36}>
+          <SectionCard icon={<PaletteRoundedIcon />} title="Appearance" color={TONES.teal.text} delay={0.36}>
             <SettingRow label="Dark Mode" description="Use dark theme for admin dashboard">
               <Toggle checked={darkMode} onChange={track(setDarkMode)} />
             </SettingRow>

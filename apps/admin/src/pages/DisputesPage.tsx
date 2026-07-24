@@ -5,6 +5,7 @@ import { keyframes } from '@mui/system'
 import SearchIcon from '@mui/icons-material/Search'
 import InputAdornment from '@mui/material/InputAdornment'
 import GavelIcon from '@mui/icons-material/Gavel'
+import GavelRoundedIcon from '@mui/icons-material/GavelRounded'
 import Button from '@mui/material/Button'
 import { Resource, Action } from '@ubuntu-fund/types'
 import { useAdminPermissions } from '@/context/AdminPermissionContext'
@@ -12,6 +13,7 @@ import { useMockData } from '@/hooks/useMockData'
 import type { Dispute } from '@/hooks/useMockData'
 import { usePagination } from '@/hooks/usePagination'
 import PaginationBar from '@/components/PaginationBar'
+import PageHeader from '@/components/PageHeader'
 
 const fadeIn = keyframes`from{opacity:0}to{opacity:1}`
 const slideIn = keyframes`from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}`
@@ -57,6 +59,14 @@ export default function DisputesPage() {
 
   return (
     <Box sx={{ bgcolor: '#0c0c14', minHeight: '100vh', animation: `${fadeIn} 0.4s ease` }}>
+      <PageHeader
+        tone="clay"
+        eyebrow="Trust & Safety"
+        title="Disputes"
+        lede="Review flagged campaigns and donor complaints, then track each case through to resolution."
+        icon={<GavelRoundedIcon />}
+      />
+
       {/* Filter bar */}
       <Box sx={{
         display: 'grid',

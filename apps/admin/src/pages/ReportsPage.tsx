@@ -3,6 +3,7 @@ import { Box, Typography } from '@mui/material'
 import { keyframes } from '@mui/system'
 import { LineChart } from '@mui/x-charts/LineChart'
 import { PieChart } from '@mui/x-charts/PieChart'
+import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded'
 import {
   useMockData,
   generateDonationTrend,
@@ -11,6 +12,7 @@ import {
   generateFraudMetrics,
 } from '@/hooks/useMockData'
 import { CampaignStatus } from '@ubuntu-fund/types'
+import PageHeader from '@/components/PageHeader'
 
 const fadeIn = keyframes`from{opacity:0}to{opacity:1}`
 const slideIn = keyframes`from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}`
@@ -62,18 +64,24 @@ export default function ReportsPage() {
   ]
   const maxStatusCount = Math.max(...statusBreakdown.map(s => s.count), 1)
 
+  const formatMetricValue = (m: { metric: string; value: number }): string =>
+    m.metric === 'Fraud Rate' ? `${m.value}%` : m.metric === 'Avg Resolution Time' ? `${m.value}d` : String(m.value)
+
+  const header = (
+    <PageHeader
+      tone="green"
+      eyebrow="Operations"
+      title="Reports"
+      lede="Track fraud signals, campaign funding trends, and platform health in one place."
+      icon={<AssessmentRoundedIcon />}
+      stats={fraudMetrics.map((m) => ({ label: m.metric, value: formatMetricValue(m) }))}
+    />
+  )
+
   if (loading) {
     return (
       <Box sx={{ bgcolor: '#0c0c14', minHeight: '100vh' }}>
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', sm: 'repeat(4, 1fr)' } }}>
-          {[0, 1, 2, 3].map(i => (
-            <Box key={i} sx={{ p: 2.5, borderRight: `1px solid ${B}`, borderBottom: `1px solid ${B}` }}>
-              <Skel w={100} h={10} />
-              <Box sx={{ mt: 1.5 }}><Skel w={80} h={28} /></Box>
-              <Box sx={{ mt: 1 }}><Skel w={50} h={10} /></Box>
-            </Box>
-          ))}
-        </Box>
+        <Box sx={{ px: 3, pt: 3 }}>{header}</Box>
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' } }}>
           {[0, 1, 2, 3].map(i => (
             <Box key={i} sx={{ p: 2.5, borderRight: `1px solid ${B}`, borderBottom: `1px solid ${B}` }}>
@@ -88,38 +96,7 @@ export default function ReportsPage() {
 
   return (
     <Box sx={{ bgcolor: '#0c0c14', minHeight: '100vh', animation: `${fadeIn} 0.4s ease` }}>
-      {/* Top metrics row: Fraud metrics */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', sm: 'repeat(4, 1fr)' } }}>
-        {fraudMetrics.map((m, i) => {
-          const isGood = m.change < 0
-          const accentColor = isGood ? '#5E8F72' : '#C06B58'
-          return (
-            <Box
-              key={m.metric}
-              sx={{
-                p: 2.5,
-                borderRight: `1px solid ${B}`,
-                borderBottom: `1px solid ${B}`,
-                borderTop: `2px solid ${accentColor}40`,
-                borderLeft: `2px solid ${accentColor}40`,
-                animation: `${slideIn} 0.4s ease ${i * 0.06}s both`,
-                transition: 'background 0.2s',
-                '&:hover': { bgcolor: 'rgba(255,255,255,0.02)' },
-              }}
-            >
-              <Typography sx={{ fontSize: '0.65rem', textTransform: 'uppercase', color: '#A0A0B0', letterSpacing: 1, fontFamily: '"TT Squares", sans-serif' }}>
-                {m.metric}
-              </Typography>
-              <Typography sx={{ fontSize: '1.6rem', fontWeight: 700, color: '#fff', fontFamily: '"TT Squares", monospace', mt: 0.5, lineHeight: 1.1 }}>
-                {m.metric === 'Fraud Rate' ? `${m.value}%` : m.metric === 'Avg Resolution Time' ? `${m.value}d` : m.value}
-              </Typography>
-              <Typography sx={{ fontSize: '0.72rem', color: accentColor, mt: 0.5, fontWeight: 600 }}>
-                {m.change > 0 ? '+' : ''}{m.change}{m.metric === 'Fraud Rate' ? '%' : m.metric === 'Avg Resolution Time' ? 'd' : ''}
-              </Typography>
-            </Box>
-          )
-        })}
-      </Box>
+      <Box sx={{ px: 3, pt: 3 }}>{header}</Box>
 
       {/* Charts section: 2x2 grid */}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' } }}>

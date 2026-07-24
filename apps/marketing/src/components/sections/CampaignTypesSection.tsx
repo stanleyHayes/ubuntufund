@@ -60,6 +60,7 @@ const campaignTypes = [
 function CampaignTypesSection() {
   return (
     <Box
+      id="campaign-types"
       sx={{
         py: { xs: 8, md: 12 },
         backgroundColor: '#F2EFEA',

@@ -14,12 +14,12 @@ import VerifiedUserIcon from '@mui/icons-material/VerifiedUser'
 import PublicIcon from '@mui/icons-material/Public'
 import ShieldIcon from '@mui/icons-material/Shield'
 import AccessTimeIcon from '@mui/icons-material/AccessTime'
-import MonetizationOnIcon from '@mui/icons-material/MonetizationOn'
 import GroupAddIcon from '@mui/icons-material/GroupAdd'
 import CampaignIcon from '@mui/icons-material/Rocket'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import WarningAmberIcon from '@mui/icons-material/WarningAmber'
 import BlockIcon from '@mui/icons-material/Block'
+import InsightsRoundedIcon from '@mui/icons-material/InsightsRounded'
 import { CampaignStatus, VerificationLevel } from '@ubuntu-fund/types'
 import { SHAPE } from '@ubuntu-fund/ui'
 import {
@@ -29,6 +29,8 @@ import {
   generateFraudMetrics,
   generateDonationTrend,
 } from '@/hooks/useMockData'
+import PageHeader from '@/components/PageHeader'
+import { TONES } from '@/lib/tones'
 
 // ---------------------------------------------------------------------------
 // Animations
@@ -44,7 +46,7 @@ const fadeIn = keyframes`
 const B = 'rgba(255,255,255,0.06)'
 const CARD_BG = 'rgba(255,255,255,0.02)'
 
-const PIE_COLORS = ['#5E8F72', '#74909A', '#C7A24A', '#C06B58', '#AB47BC', '#26A69A', '#8D6E63']
+const PIE_COLORS = ['#5E8F72', '#74909A', '#C7A24A', '#C06B58', TONES.maroon.text, TONES.teal.text, TONES.clay.text]
 
 
 // ---------------------------------------------------------------------------
@@ -82,108 +84,6 @@ function Section({
         {action}
       </Box>
       {children}
-    </Box>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Stat card
-// ---------------------------------------------------------------------------
-function StatCard({
-  label,
-  value,
-  change,
-  icon,
-  color,
-  delay,
-}: {
-  label: string
-  value: string
-  change?: number
-  icon: React.ReactNode
-  color: string
-  delay: number
-}) {
-  const isPositive = (change ?? 0) >= 0
-  return (
-    <Box
-      sx={{
-        position: 'relative',
-        bgcolor: CARD_BG,
-        border: `1px solid ${B}`,
-        borderRadius: SHAPE.card,
-        p: 2.5,
-        overflow: 'hidden',
-        animation: `${fadeIn} 0.4s ease ${delay}s both`,
-        transition: 'border-color 0.25s ease',
-        '&:hover': {
-          borderColor: `${color}30`,
-          '& .stat-icon-bg': { opacity: 0.08 },
-        },
-      }}
-    >
-      {/* Background icon */}
-      <Box
-        className="stat-icon-bg"
-        sx={{
-          position: 'absolute',
-          right: -8,
-          bottom: -8,
-          color,
-          opacity: 0.04,
-          transition: 'opacity 0.3s ease',
-          '& svg': { fontSize: 80 },
-        }}
-      >
-        {icon}
-      </Box>
-
-      {/* Top accent */}
-      <Box
-        sx={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 2,
-          background: color,
-          opacity: 0.5,
-        }}
-      />
-
-      <Box sx={{ position: 'relative', zIndex: 1 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
-          <Box sx={{ color, '& svg': { fontSize: 18 } }}>{icon}</Box>
-          <Typography sx={{ fontSize: '0.68rem', color: 'text.secondary', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-            {label}
-          </Typography>
-        </Box>
-        <Typography
-          sx={{
-            fontFamily: '"TT Squares", monospace',
-            fontWeight: 900,
-            fontSize: '1.75rem',
-            color: 'text.primary',
-            lineHeight: 1,
-            letterSpacing: '-0.02em',
-          }}
-        >
-          {value}
-        </Typography>
-        {change !== undefined && (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 1 }}>
-            {isPositive ? (
-              <TrendingUpIcon sx={{ fontSize: 14, color: '#5E8F72' }} />
-            ) : (
-              <TrendingDownIcon sx={{ fontSize: 14, color: '#C06B58' }} />
-            )}
-            <Typography sx={{ fontSize: '0.7rem', color: isPositive ? '#5E8F72' : '#C06B58', fontWeight: 600 }}>
-              {isPositive ? '+' : ''}{change}%
-            </Typography>
-            <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>vs last month</Typography>
-          </Box>
-        )}
-      </Box>
     </Box>
   )
 }
@@ -402,28 +302,26 @@ export default function OverviewPage() {
     [CampaignStatus.FUNDED]: '#74909A',
     [CampaignStatus.EXPIRED]: '#78909C',
     [CampaignStatus.BLOCKED]: '#C06B58',
-    [CampaignStatus.DRAFT]: '#8D6E63',
+    [CampaignStatus.DRAFT]: TONES.clay.text,
   }
 
   const chartTextColor = 'rgba(255,255,255,0.45)'
 
   return (
     <Box sx={{ maxWidth: 1400, mx: 'auto' }}>
-      {/* ═══ KPI CARDS ═══ */}
-      <Section title="Key Performance Indicators" delay={0}>
-        <Box
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: { xs: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' },
-            gap: 2,
-          }}
-        >
-          <StatCard label="Total Raised" value={`$${stats.totalRaised.toLocaleString()}`} change={stats.monthlyGrowth} icon={<MonetizationOnIcon />} color="#5E8F72" delay={0.05} />
-          <StatCard label="Active Campaigns" value={String(stats.activeCampaigns)} change={12.1} icon={<RocketLaunchIcon />} color="#74909A" delay={0.1} />
-          <StatCard label="Total Users" value={String(stats.totalUsers)} change={8.3} icon={<PeopleIcon />} color="#AB47BC" delay={0.15} />
-          <StatCard label="Avg Donation" value={`$${stats.avgDonation}`} change={stats.conversionRate} icon={<VolunteerActivismIcon />} color="#C7A24A" delay={0.2} />
-        </Box>
-      </Section>
+      <PageHeader
+        tone="green"
+        eyebrow="Operations"
+        title="Overview"
+        lede="See platform-wide performance across campaigns, donors, and trust signals in one view."
+        icon={<InsightsRoundedIcon />}
+        stats={[
+          { label: 'Total Raised', value: `$${stats.totalRaised.toLocaleString()}` },
+          { label: 'Active Campaigns', value: String(stats.activeCampaigns) },
+          { label: 'Total Users', value: String(stats.totalUsers) },
+          { label: 'Avg Donation', value: `$${stats.avgDonation}` },
+        ]}
+      />
 
       {/* ═══ ROW 2: Donation trend + Category breakdown ═══ */}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '2fr 1fr' }, gap: 3, mt: 4 }}>
@@ -607,7 +505,7 @@ export default function OverviewPage() {
                     fontFamily: '"TT Squares", monospace',
                     fontWeight: 900,
                     fontSize: '0.85rem',
-                    color: i === 0 ? '#C7A24A' : i === 1 ? '#A0A0B0' : i === 2 ? '#8D6E63' : 'text.secondary',
+                    color: i === 0 ? '#C7A24A' : i === 1 ? '#A0A0B0' : i === 2 ? TONES.clay.text : 'text.secondary',
                     width: 20,
                     textAlign: 'center',
                   }}
@@ -670,7 +568,7 @@ export default function OverviewPage() {
                 [VerificationLevel.NONE]: '#78909C',
                 [VerificationLevel.EMAIL_PHONE]: '#74909A',
                 [VerificationLevel.NATIONAL_ID]: '#C7A24A',
-                [VerificationLevel.INSTITUTIONAL]: '#AB47BC',
+                [VerificationLevel.INSTITUTIONAL]: TONES.maroon.text,
                 [VerificationLevel.COMMUNITY]: '#5E8F72',
               }
               const color = levelColors[level] || '#78909C'
@@ -719,7 +617,7 @@ export default function OverviewPage() {
             {donationsByMethod.map((pm, i) => {
               const total = donations.length
               const pct = Math.round((pm.count / total) * 100)
-              const colors = ['#5E8F72', '#74909A', '#C7A24A', '#AB47BC', '#C06B58', '#26A69A', '#8D6E63']
+              const colors = ['#5E8F72', '#74909A', '#C7A24A', TONES.maroon.text, '#C06B58', TONES.teal.text, TONES.clay.text]
               const color = colors[i % colors.length]
               return (
                 <Box key={pm.method} sx={{ mb: 1.75, '&:last-child': { mb: 0 } }}>
@@ -788,7 +686,7 @@ export default function OverviewPage() {
               }]}
               series={[{
                 data: trustScoreDistribution.map((b) => b.count),
-                color: '#AB47BC',
+                color: TONES.maroon.text,
               }]}
               height={280}
               margin={{ top: 20, right: 20, bottom: 30, left: 40 }}
@@ -840,7 +738,7 @@ export default function OverviewPage() {
           { label: 'Conversion Rate', value: `${stats.conversionRate}%`, icon: <TrendingUpIcon sx={{ fontSize: 16 }} />, color: '#5E8F72' },
           { label: 'Pending Disputes', value: stats.pendingDisputes, icon: <GavelIcon sx={{ fontSize: 16 }} />, color: '#C06B58' },
           { label: 'Active Campaigns', value: stats.activeCampaigns, icon: <CampaignIcon sx={{ fontSize: 16 }} />, color: '#74909A' },
-          { label: 'Verified Users', value: users.filter((u) => u.verificationLevel !== VerificationLevel.NONE).length, icon: <VerifiedUserIcon sx={{ fontSize: 16 }} />, color: '#AB47BC' },
+          { label: 'Verified Users', value: users.filter((u) => u.verificationLevel !== VerificationLevel.NONE).length, icon: <VerifiedUserIcon sx={{ fontSize: 16 }} />, color: TONES.maroon.text },
           { label: 'Monthly Growth', value: `${stats.monthlyGrowth}%`, icon: <TrendingUpIcon sx={{ fontSize: 16 }} />, color: '#5E8F72' },
         ].map((s, i) => (
           <Box

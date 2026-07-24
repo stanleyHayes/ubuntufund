@@ -14,6 +14,7 @@ import { Visibility, VisibilityOff } from '@mui/icons-material'
 import ShieldIcon from '@mui/icons-material/Shield'
 import { useNavigate, Link as RouterLink } from 'react-router-dom'
 import { keyframes } from '@emotion/react'
+import { useAuth } from '@/context/AuthContext'
 
 // ---------------------------------------------------------------------------
 // Animations
@@ -99,6 +100,7 @@ const inputSx = {
 // ---------------------------------------------------------------------------
 export default function LoginPage() {
   const navigate = useNavigate()
+  const { login } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -106,7 +108,7 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
 
@@ -116,15 +118,14 @@ export default function LoginPage() {
     }
 
     setLoading(true)
-    setTimeout(() => {
-      if (email === 'admin@ubuntufund.com' && password === 'admin') {
-        localStorage.setItem('uf_admin_token', 'mock-token')
-        navigate('/')
-      } else {
-        setError('Invalid credentials. Try admin@ubuntufund.com / admin')
-      }
+    try {
+      await login(email, password)
+      navigate('/')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Sign in failed. Please try again.')
+    } finally {
       setLoading(false)
-    }, 800)
+    }
   }
 
   return (
@@ -501,12 +502,14 @@ export default function LoginPage() {
                       position: 'absolute',
                       bottom: -1,
                       left: 0,
-                      width: 0,
+                      width: '100%',
                       height: '1px',
                       bgcolor: '#5E8F72',
-                      transition: 'width 0.3s ease',
+                      transform: 'scaleX(0)',
+                      transformOrigin: 'left',
+                      transition: 'transform 0.3s ease',
                     },
-                    '&:hover::after': { width: '100%' },
+                    '&:hover::after': { transform: 'scaleX(1)' },
                   }}
                 >
                   Forgot password?

@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { Box, Typography, Snackbar, Alert } from '@mui/material'
 import { keyframes } from '@mui/system'
 import PsychologyRoundedIcon from '@mui/icons-material/PsychologyRounded'
+import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded'
 import TrendingUpIcon from '@mui/icons-material/TrendingUp'
 import TodayIcon from '@mui/icons-material/Today'
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'
@@ -12,6 +13,8 @@ import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import ErrorRoundedIcon from '@mui/icons-material/ErrorRounded'
 import { AiWritingAction } from '@ubuntu-fund/types'
 import { useAiUsageStats, useAiUsageLog } from '@/hooks/useApiData'
+import PageHeader from '@/components/PageHeader'
+import { TONES } from '@/lib/tones'
 
 const fadeIn = keyframes`from{opacity:0}to{opacity:1}`
 const slideIn = keyframes`from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}`
@@ -38,7 +41,7 @@ const actionLabels: Record<AiWritingAction, string> = {
 
 const actionColors: Record<AiWritingAction, string> = {
   [AiWritingAction.FORMALIZE]: '#74909A',
-  [AiWritingAction.SUMMARIZE]: '#AB47BC',
+  [AiWritingAction.SUMMARIZE]: TONES.maroon.text,
   [AiWritingAction.CASUAL]: '#2F6B46',
   [AiWritingAction.EXPAND]: '#D3A95C',
   [AiWritingAction.FIX_GRAMMAR]: '#26A69A',
@@ -181,32 +184,14 @@ export default function AiUsagePage() {
 
   return (
     <Box sx={{ bgcolor: '#0c0c14', minHeight: '100vh', animation: `${fadeIn} 0.4s ease` }}>
-      {/* ═══ HEADER ═══ */}
-      <Box
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: { xs: '1fr', sm: '1fr auto' },
-          borderBottom: `1px solid ${B}`,
-          px: 3,
-          py: 2.5,
-        }}
-      >
-        <Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
-            <PsychologyRoundedIcon sx={{ color: '#AB47BC', fontSize: 22 }} />
-            <Typography sx={{ fontSize: '1.05rem', fontWeight: 700, color: '#fff', fontFamily: '"TT Squares", sans-serif', letterSpacing: '0.01em' }}>
-              AI Writing Assistant
-            </Typography>
-          </Box>
-          <Typography sx={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.4)' }}>
-            Usage stats and activity
-          </Typography>
-        </Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: { xs: 'flex-start', sm: 'flex-end' }, mt: { xs: 1.5, sm: 0 } }}>
-          <Typography sx={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.35)', fontFamily: '"TT Squares", monospace', whiteSpace: 'nowrap' }}>
-            {hasUsage ? `${stats.totalRequests} total requests` : 'No usage yet'}
-          </Typography>
-        </Box>
+      <Box sx={{ px: 3, pt: 3 }}>
+        <PageHeader
+          tone="teal"
+          eyebrow="Growth"
+          title="AI Writing Assistant"
+          lede="Track usage of the AI writing assistant across the admin console."
+          icon={<AutoAwesomeRoundedIcon />}
+        />
       </Box>
 
       {!hasUsage ? (
@@ -238,7 +223,7 @@ export default function AiUsagePage() {
               label="Total Requests"
               value={String(stats.totalRequests)}
               icon={<TrendingUpIcon />}
-              color="#AB47BC"
+              color={TONES.maroon.text}
               index={0}
             />
             <StatCard
@@ -300,7 +285,7 @@ export default function AiUsagePage() {
                 sx={{
                   height: '100%',
                   width: `${dailyPercent}%`,
-                  bgcolor: dailyPercent >= 90 ? '#C06B58' : dailyPercent >= 70 ? '#D3A95C' : '#AB47BC',
+                  bgcolor: dailyPercent >= 90 ? '#C06B58' : dailyPercent >= 70 ? '#D3A95C' : TONES.maroon.text,
                   transition: 'width 0.8s ease',
                 }}
               />

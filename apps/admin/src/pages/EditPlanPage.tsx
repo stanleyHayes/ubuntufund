@@ -19,8 +19,11 @@ import SaveRoundedIcon from '@mui/icons-material/SaveRounded'
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import CancelRoundedIcon from '@mui/icons-material/CancelRounded'
 import StarRoundedIcon from '@mui/icons-material/StarRounded'
+import LayersRoundedIcon from '@mui/icons-material/LayersRounded'
 import { keyframes } from '@mui/material/styles'
 import { SUBSCRIPTION_PLANS, SubscriptionTier, type SubscriptionPlan } from '@ubuntu-fund/types'
+import PageHeader from '@/components/PageHeader'
+import { TONES } from '@/lib/tones'
 
 // ─── Animations ──────────────────────────────────────────────────────────────
 
@@ -42,9 +45,9 @@ interface PlanWithMeta extends SubscriptionPlan {
 const TIER_COLORS: Record<string, string> = {
   free: '#78909C',
   starter: '#74909A',
-  pro: '#AB47BC',
+  pro: TONES.maroon.text,
   enterprise: '#C7A24A',
-  custom: '#00BCD4',
+  custom: TONES.teal.text,
 }
 
 const BOOLEAN_FEATURES: { key: keyof SubscriptionPlan; label: string }[] = [
@@ -122,7 +125,7 @@ export default function EditPlanPage() {
   return (
     <Box sx={{ animation: `${fadeSlide} 0.3s ease both` }}>
       {/* Breadcrumb */}
-      <Breadcrumbs separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ mb: 3 }}>
+      <Breadcrumbs separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ mb: 2 }}>
         <Typography
           component={RouterLink}
           to="/plans"
@@ -133,19 +136,22 @@ export default function EditPlanPage() {
         <Typography sx={{ fontSize: '0.85rem', color: 'text.primary', fontWeight: 700 }}>Edit: {originalPlan.name || tier}</Typography>
       </Breadcrumbs>
 
-      {/* Title */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-        <Typography variant="h5" sx={{ fontWeight: 900, color: 'text.primary' }}>
-          Edit Plan: {originalPlan.name || tier}
-        </Typography>
-        {hasChanges && (
-          <Chip
-            label="Unsaved Changes"
-            size="small"
-            sx={{ bgcolor: 'rgba(211,169,92,0.15)', color: '#D3A95C', fontWeight: 700, fontSize: '0.7rem' }}
-          />
-        )}
-      </Box>
+      <PageHeader
+        tone="green"
+        eyebrow="Platform · Plans"
+        title={`Edit Plan: ${originalPlan.name || tier}`}
+        lede="Adjust pricing, limits, and feature access for this subscription tier."
+        icon={<LayersRoundedIcon />}
+        actions={
+          hasChanges ? (
+            <Chip
+              label="Unsaved Changes"
+              size="small"
+              sx={{ bgcolor: 'rgba(211,169,92,0.15)', color: '#D3A95C', fontWeight: 700, fontSize: '0.7rem' }}
+            />
+          ) : undefined
+        }
+      />
 
       <Grid container spacing={3}>
         {/* ═══ Left Column — Form ═══ */}

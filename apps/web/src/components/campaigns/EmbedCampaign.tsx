@@ -49,16 +49,21 @@ export function EmbedCampaign({ campaignId, title }: EmbedCampaignProps) {
           component="pre"
           sx={{
             p: 2,
-            bgcolor: '#f5f5f5',
+            m: 0,
+            maxWidth: '100%',
+            bgcolor: '#F2EFEA',
             borderRadius: SHAPE.sm,
-            overflow: 'auto',
             fontSize: '0.75rem',
             lineHeight: 1.5,
             fontFamily: 'monospace',
             border: '1px solid',
             borderColor: 'divider',
+            // The snippet is one long unbreakable line — wrap it instead of
+            // letting it force horizontal overflow on small screens.
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-all',
             '& code': {
-              color: '#666',
+              color: '#4A5A50',
             },
           }}
         >

@@ -9,11 +9,13 @@ import CurrencyExchangeIcon from '@mui/icons-material/CurrencyExchange'
 import PersonRemoveIcon from '@mui/icons-material/PersonRemove'
 import ReplayIcon from '@mui/icons-material/Replay'
 import DoNotDisturbIcon from '@mui/icons-material/DoNotDisturb'
+import RocketLaunchRoundedIcon from '@mui/icons-material/RocketLaunchRounded'
 import { useMockCampaign, useMockCampaignDonations } from '@/hooks/useMockData'
 import { CampaignStatus, CampaignPriority, CollaboratorRole, CollaborationStatus, type CampaignCollaborator } from '@ubuntu-fund/types'
 import { ItemNotFound, EmptyState, AiWritingBar } from '@ubuntu-fund/ui'
 import { AiWritingAction } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
+import PageHeader from '@/components/PageHeader'
 
 const MOCK_COLLABORATORS: CampaignCollaborator[] = [
   {
@@ -149,42 +151,22 @@ export default function CampaignDetailPage() {
   const statusColor = statusColors[campaign.status] || '#78909C'
   const priorityColor = priorityColors[campaign.priority] || '#78909C'
 
-  const statCells = [
-    { label: 'Status / Priority', value: campaign.status.replace('_', ' ').toUpperCase(), sub: campaign.priority.toUpperCase(), accent: statusColor },
-    { label: 'Raised / Goal', value: `$${campaign.raisedAmount.toLocaleString()}`, sub: `of $${campaign.goalAmount.toLocaleString()}`, accent: '#5E8F72' },
-    { label: 'Donors', value: String(donations.length), sub: 'total donations', accent: '#74909A' },
-    { label: 'Days Remaining', value: String(daysRemaining), sub: campaign.status === CampaignStatus.EXPIRED ? 'expired' : 'days left', accent: '#D3A95C' },
-  ]
-
   return (
     <Box sx={{ bgcolor: '#0c0c14', minHeight: '100vh', animation: `${fadeIn} 0.4s ease` }}>
-      {/* Top stats row */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', sm: 'repeat(4, 1fr)' } }}>
-        {statCells.map((cell, i) => (
-          <Box
-            key={i}
-            sx={{
-              p: 2.5,
-              borderRight: `1px solid ${B}`,
-              borderBottom: `1px solid ${B}`,
-              borderTop: `2px solid ${cell.accent}40`,
-              borderLeft: `2px solid ${cell.accent}40`,
-              animation: `${slideIn} 0.4s ease ${i * 0.06}s both`,
-              transition: 'background 0.2s',
-              '&:hover': { bgcolor: 'rgba(255,255,255,0.02)' },
-            }}
-          >
-            <Typography sx={{ fontSize: '0.65rem', textTransform: 'uppercase', color: '#A0A0B0', letterSpacing: 1, fontFamily: '"TT Squares", sans-serif' }}>
-              {cell.label}
-            </Typography>
-            <Typography sx={{ fontSize: '1.6rem', fontWeight: 700, color: '#fff', fontFamily: '"TT Squares", monospace', mt: 0.5, lineHeight: 1.1 }}>
-              {cell.value}
-            </Typography>
-            <Typography sx={{ fontSize: '0.72rem', color: '#6B6B80', mt: 0.5 }}>
-              {cell.sub}
-            </Typography>
-          </Box>
-        ))}
+      <Box sx={{ px: 2.5, pt: 2.5 }}>
+        <PageHeader
+          tone="gold"
+          eyebrow="Community · Campaign"
+          title={campaign.title}
+          lede="Review this campaign's progress, moderate its status, and manage collaborators and refunds."
+          icon={<RocketLaunchRoundedIcon />}
+          stats={[
+            { label: 'Status / Priority', value: `${campaign.status.replace('_', ' ').toUpperCase()} / ${campaign.priority.toUpperCase()}` },
+            { label: 'Raised / Goal', value: `$${campaign.raisedAmount.toLocaleString()} / $${campaign.goalAmount.toLocaleString()}` },
+            { label: 'Donors', value: donations.length },
+            { label: 'Days Remaining', value: campaign.status === CampaignStatus.EXPIRED ? 'Expired' : daysRemaining },
+          ]}
+        />
       </Box>
 
       {/* Main content */}
@@ -196,9 +178,6 @@ export default function CampaignDetailPage() {
           borderBottom: `1px solid ${B}`,
           animation: `${slideIn} 0.4s ease 0.25s both`,
         }}>
-          <Typography variant="h5" sx={{ fontWeight: 700, color: '#fff', fontFamily: '"TT Squares", sans-serif', mb: 1.5 }}>
-            {campaign.title}
-          </Typography>
           <Typography sx={{ fontSize: '0.88rem', color: '#A0A0B0', lineHeight: 1.7, mb: 2 }}>
             {campaign.description}
           </Typography>

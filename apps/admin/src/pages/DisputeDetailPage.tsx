@@ -14,13 +14,14 @@ import Divider from '@mui/material/Divider'
 import Snackbar from '@mui/material/Snackbar'
 import Alert from '@mui/material/Alert'
 import NavigateNextIcon from '@mui/icons-material/NavigateNext'
-import GavelIcon from '@mui/icons-material/Gavel'
+import GavelRoundedIcon from '@mui/icons-material/GavelRounded'
 import TimelineIcon from '@mui/icons-material/Timeline'
 import CampaignIcon from '@mui/icons-material/Campaign'
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'
 import { ItemNotFound, AiWritingBar } from '@ubuntu-fund/ui'
 import { AiWritingAction } from '@ubuntu-fund/types'
 import { keyframes } from '@mui/material/styles'
+import PageHeader from '@/components/PageHeader'
 
 // ---------------------------------------------------------------------------
 // Animation
@@ -191,29 +192,33 @@ export default function DisputeDetailPage() {
         </Typography>
       </Breadcrumbs>
 
-      {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 4, flexWrap: 'wrap' }}>
-        <GavelIcon sx={{ color: statusConfig.color, fontSize: 28 }} />
-        <Typography variant="h4" sx={{ fontWeight: 700, flex: 1 }}>
-          {dispute.title}
-        </Typography>
-        <Chip
-          label={formatStatus(currentStatus)}
-          color={statusConfig.muiColor}
-          size="small"
-          sx={{ fontWeight: 600, fontSize: '0.75rem' }}
-        />
-        <Chip
-          label={dispute.priority.toUpperCase()}
-          size="small"
-          sx={{
-            bgcolor: dispute.priority === 'critical' ? 'rgba(192,107,88,0.15)' : 'rgba(211,169,92,0.15)',
-            color: dispute.priority === 'critical' ? '#C06B58' : '#D3A95C',
-            fontWeight: 700,
-            fontSize: '0.68rem',
-          }}
-        />
-      </Box>
+      <PageHeader
+        tone="clay"
+        eyebrow="Trust & Safety · Dispute"
+        title={dispute.title}
+        lede="Review the report, evidence, and campaign context, then record how the dispute was resolved."
+        icon={<GavelRoundedIcon />}
+        actions={
+          <>
+            <Chip
+              label={formatStatus(currentStatus)}
+              color={statusConfig.muiColor}
+              size="small"
+              sx={{ fontWeight: 600, fontSize: '0.75rem' }}
+            />
+            <Chip
+              label={dispute.priority.toUpperCase()}
+              size="small"
+              sx={{
+                bgcolor: dispute.priority === 'critical' ? 'rgba(192,107,88,0.15)' : 'rgba(211,169,92,0.15)',
+                color: dispute.priority === 'critical' ? '#C06B58' : '#D3A95C',
+                fontWeight: 700,
+                fontSize: '0.68rem',
+              }}
+            />
+          </>
+        }
+      />
 
       {/* Two-column layout */}
       <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', lg: 'row' } }}>

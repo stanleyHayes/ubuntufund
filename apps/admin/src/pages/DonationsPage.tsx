@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import { Box, Typography, TextField, MenuItem, InputAdornment } from '@mui/material'
 import { keyframes } from '@mui/system'
 import SearchIcon from '@mui/icons-material/Search'
-import VolunteerActivismIcon from '@mui/icons-material/VolunteerActivism'
+import VolunteerActivismRoundedIcon from '@mui/icons-material/VolunteerActivismRounded'
 import { EmptyState } from '@ubuntu-fund/ui'
 import type { Donation } from '@ubuntu-fund/types'
 import { useMockData } from '@/hooks/useMockData'
 import { usePagination } from '@/hooks/usePagination'
 import PaginationBar from '@/components/PaginationBar'
+import PageHeader from '@/components/PageHeader'
 
 const fadeIn = keyframes`from{opacity:0}to{opacity:1}`
 const slideIn = keyframes`from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}`
@@ -167,13 +168,13 @@ export default function DonationsPage() {
 
   return (
     <Box sx={{ bgcolor: '#0c0c14', minHeight: '100vh', animation: `${fadeIn} 0.3s ease` }}>
-      {/* Header */}
-      <Box sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${B}`, display: 'flex', alignItems: 'center', gap: 1.5 }}>
-        <VolunteerActivismIcon sx={{ color: ACCENT, fontSize: 20 }} />
-        <Typography sx={{ fontFamily: '"TT Squares", sans-serif', fontWeight: 700, fontSize: '1.1rem', color: 'text.primary' }}>
-          Donations
-        </Typography>
-      </Box>
+      <PageHeader
+        tone="gold"
+        eyebrow="Community"
+        title="Donations"
+        lede="Track every contribution moving through the platform, from named supporters to anonymous gifts."
+        icon={<VolunteerActivismRoundedIcon />}
+      />
 
       {/* Filter bar */}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr 1fr' }, borderBottom: `1px solid ${B}` }}>

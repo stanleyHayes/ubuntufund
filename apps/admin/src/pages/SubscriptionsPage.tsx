@@ -4,11 +4,7 @@ import { Box, Typography, TextField, MenuItem, InputAdornment, Button } from '@m
 import { keyframes } from '@mui/system'
 import SearchIcon from '@mui/icons-material/Search'
 import { EmptyState } from '@ubuntu-fund/ui'
-import PeopleIcon from '@mui/icons-material/People'
-import AttachMoneyIcon from '@mui/icons-material/AttachMoney'
-import PersonOffIcon from '@mui/icons-material/PersonOff'
-import StarIcon from '@mui/icons-material/Star'
-import CardMembershipIcon from '@mui/icons-material/CardMembership'
+import WorkspacePremiumRoundedIcon from '@mui/icons-material/WorkspacePremiumRounded'
 import VisibilityIcon from '@mui/icons-material/Visibility'
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz'
 import CancelIcon from '@mui/icons-material/Cancel'
@@ -23,6 +19,8 @@ import {
 import { useAdminPermissions } from '@/context/AdminPermissionContext'
 import { usePagination } from '@/hooks/usePagination'
 import PaginationBar from '@/components/PaginationBar'
+import PageHeader from '@/components/PageHeader'
+import { TONES } from '@/lib/tones'
 
 const fadeIn = keyframes`from{opacity:0}to{opacity:1}`
 const slideIn = keyframes`from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}`
@@ -36,7 +34,7 @@ const B = 'rgba(255,255,255,0.06)'
 const tierColors: Record<SubscriptionTier, string> = {
   [SubscriptionTier.FREE]: '#78909C',
   [SubscriptionTier.STARTER]: '#74909A',
-  [SubscriptionTier.PRO]: '#AB47BC',
+  [SubscriptionTier.PRO]: TONES.maroon.text,
   [SubscriptionTier.ENTERPRISE]: '#C7A24A',
 }
 
@@ -156,44 +154,6 @@ function SkeletonRow({ index }: { index: number }) {
 }
 
 // ---------------------------------------------------------------------------
-// StatCard
-// ---------------------------------------------------------------------------
-function StatCard({
-  label, value, icon, color, index,
-}: {
-  label: string; value: string; icon: React.ReactNode; color: string; index: number
-}) {
-  return (
-    <Box sx={{
-      position: 'relative', overflow: 'hidden',
-      px: 3, py: 2.5,
-      borderRight: `1px solid ${B}`,
-      animation: `${countUp} 0.5s ease ${0.3 + index * 0.1}s both`,
-      transition: 'all 0.25s ease',
-      '&:hover': {
-        '& .stat-value': { color },
-      },
-    }}>
-      <Box sx={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: 2, bgcolor: color, opacity: 0.5 }} />
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-        <Box sx={{ color, opacity: 0.7, '& .MuiSvgIcon-root': { fontSize: 22 } }}>{icon}</Box>
-        <Box>
-          <Typography sx={{ fontSize: '0.62rem', color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.1em', lineHeight: 1, mb: 0.5 }}>
-            {label}
-          </Typography>
-          <Typography className="stat-value" sx={{
-            fontFamily: '"TT Squares", monospace', fontWeight: 900, fontSize: '1.15rem',
-            color: 'text.primary', lineHeight: 1, letterSpacing: '-0.01em', transition: 'color 0.25s ease',
-          }}>
-            {value}
-          </Typography>
-        </Box>
-      </Box>
-    </Box>
-  )
-}
-
-// ---------------------------------------------------------------------------
 // SubscriptionRow
 // ---------------------------------------------------------------------------
 function SubscriptionRow({ sub, index }: { sub: MockSubscription; index: number }) {
@@ -291,8 +251,8 @@ function SubscriptionRow({ sub, index }: { sub: MockSubscription; index: number 
               size="small"
               sx={{
                 minWidth: 0, px: 1, py: 0.3, fontSize: '0.65rem', fontWeight: 700,
-                color: '#AB47BC', borderColor: 'rgba(171,71,188,0.3)', textTransform: 'none',
-                border: '1px solid', '&:hover': { bgcolor: 'rgba(171,71,188,0.08)' },
+                color: TONES.maroon.text, borderColor: 'rgba(185,138,138,0.3)', textTransform: 'none',
+                border: '1px solid', '&:hover': { bgcolor: 'rgba(185,138,138,0.08)' },
               }}
             >
               <SwapHorizIcon sx={{ fontSize: 13, mr: 0.3 }} />
@@ -343,25 +303,19 @@ export default function SubscriptionsPage() {
 
   return (
     <Box sx={{ bgcolor: '#0c0c14', minHeight: '100vh', animation: `${fadeIn} 0.3s ease` }}>
-      {/* Header */}
-      <Box sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${B}`, display: 'flex', alignItems: 'center', gap: 1.5 }}>
-        <CardMembershipIcon sx={{ color: '#AB47BC', fontSize: 20 }} />
-        <Typography sx={{ fontFamily: '"TT Squares", sans-serif', fontWeight: 700, fontSize: '1.1rem', color: 'text.primary' }}>
-          Subscriptions
-        </Typography>
-      </Box>
-
-      {/* Stats row */}
-      <Box sx={{
-        display: 'grid',
-        gridTemplateColumns: { xs: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' },
-        borderBottom: `1px solid ${B}`,
-      }}>
-        <StatCard label="Total Subscribers" value={String(totalSubscribers)} icon={<PeopleIcon />} color="#74909A" index={0} />
-        <StatCard label="Monthly Revenue" value={`$${monthlyRevenue.toFixed(0)}`} icon={<AttachMoneyIcon />} color="#5E8F72" index={1} />
-        <StatCard label="Free Users" value={String(freeUsers)} icon={<PersonOffIcon />} color="#78909C" index={2} />
-        <StatCard label="Paid Users" value={String(paidUsers)} icon={<StarIcon />} color="#AB47BC" index={3} />
-      </Box>
+      <PageHeader
+        tone="gold"
+        eyebrow="Community"
+        title="Subscriptions"
+        lede="Monitor plan mix, billing health, and recurring revenue across every subscriber."
+        icon={<WorkspacePremiumRoundedIcon />}
+        stats={[
+          { label: 'Total Subscribers', value: totalSubscribers },
+          { label: 'Monthly Revenue', value: `$${monthlyRevenue.toFixed(0)}` },
+          { label: 'Free Users', value: freeUsers },
+          { label: 'Paid Users', value: paidUsers },
+        ]}
+      />
 
       {/* Revenue breakdown by tier */}
       <Box sx={{ borderBottom: `1px solid ${B}`, px: 3, py: 2 }}>
@@ -410,7 +364,7 @@ export default function SubscriptionsPage() {
               ),
             }}
             sx={{
-              '& .MuiInput-root': { color: 'text.primary', '&::before': { borderColor: B }, '&::after': { borderColor: '#AB47BC' } },
+              '& .MuiInput-root': { color: 'text.primary', '&::before': { borderColor: B }, '&::after': { borderColor: TONES.maroon.text } },
             }}
           />
         </Box>
@@ -419,7 +373,7 @@ export default function SubscriptionsPage() {
             select size="small" variant="standard" label="Tier"
             value={tierFilter} onChange={e => setTierFilter(e.target.value)} fullWidth
             sx={{
-              '& .MuiInput-root': { color: 'text.primary', '&::before': { borderColor: B }, '&::after': { borderColor: '#AB47BC' } },
+              '& .MuiInput-root': { color: 'text.primary', '&::before': { borderColor: B }, '&::after': { borderColor: TONES.maroon.text } },
               '& .MuiInputLabel-root': { color: 'text.secondary', fontSize: '0.8rem' },
             }}
           >
@@ -434,7 +388,7 @@ export default function SubscriptionsPage() {
             select size="small" variant="standard" label="Status"
             value={statusFilter} onChange={e => setStatusFilter(e.target.value)} fullWidth
             sx={{
-              '& .MuiInput-root': { color: 'text.primary', '&::before': { borderColor: B }, '&::after': { borderColor: '#AB47BC' } },
+              '& .MuiInput-root': { color: 'text.primary', '&::before': { borderColor: B }, '&::after': { borderColor: TONES.maroon.text } },
               '& .MuiInputLabel-root': { color: 'text.secondary', fontSize: '0.8rem' },
             }}
           >
@@ -476,7 +430,7 @@ export default function SubscriptionsPage() {
         }
       </Box>
 
-      {!loading && <PaginationBar pagination={pagination} accentColor="#AB47BC" />}
+      {!loading && <PaginationBar pagination={pagination} accentColor={TONES.maroon.text} />}
 
       {/* Empty state */}
       {!loading && filtered.length === 0 && (

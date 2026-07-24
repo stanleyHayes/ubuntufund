@@ -18,7 +18,6 @@ import InputAdornment from '@mui/material/InputAdornment'
 import AddRoundedIcon from '@mui/icons-material/AddRounded'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
-import SecurityRoundedIcon from '@mui/icons-material/SecurityRounded'
 import ShieldRoundedIcon from '@mui/icons-material/ShieldRounded'
 import AdminPanelSettingsRoundedIcon from '@mui/icons-material/AdminPanelSettingsRounded'
 import SupervisorAccountRoundedIcon from '@mui/icons-material/SupervisorAccountRounded'
@@ -26,7 +25,6 @@ import VerifiedUserRoundedIcon from '@mui/icons-material/VerifiedUserRounded'
 import BusinessRoundedIcon from '@mui/icons-material/BusinessRounded'
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded'
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
-import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import BlockRoundedIcon from '@mui/icons-material/BlockRounded'
 import LockRoundedIcon from '@mui/icons-material/LockRounded'
 import ContentCopyRoundedIcon from '@mui/icons-material/ContentCopyRounded'
@@ -39,6 +37,8 @@ import {
   type PermissionString,
   type Role,
 } from '@ubuntu-fund/types'
+import PageHeader from '@/components/PageHeader'
+import { TONES } from '@/lib/tones'
 
 // ---------------------------------------------------------------------------
 // Animations
@@ -93,7 +93,7 @@ const ROLE_ICONS: Record<string, React.ReactNode> = {
 
 const ROLE_ACCENT: Record<string, string> = {
   super_admin: '#C06B58',
-  admin: '#AB47BC',
+  admin: TONES.maroon.text,
   moderator: '#74909A',
   organization: '#D3A95C',
   user: '#8FAE96',
@@ -566,88 +566,33 @@ export default function RolesPage() {
   return (
     <Box sx={{ p: 3, maxWidth: 1400, mx: 'auto' }}>
       {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 4, flexWrap: 'wrap', gap: 2 }}>
-        <Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
-            <SecurityRoundedIcon sx={{ color: '#5E8F72', fontSize: 28 }} />
-            <Typography variant="h4" sx={{ fontWeight: 800 }}>
-              Roles & Permissions
-            </Typography>
-          </Box>
-          <Typography sx={{ fontSize: '0.85rem', color: 'text.secondary', ml: 5.5 }}>
-            Manage access control across the platform. Each role defines what users can see and do.
-          </Typography>
-        </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddRoundedIcon />}
-          onClick={() => navigate('/roles/new')}
-          sx={{
-            bgcolor: '#5E8F72',
-            '&:hover': { bgcolor: '#2E3D2F' },
-            flexShrink: 0,
-          }}
-        >
-          Create Role
-        </Button>
-      </Box>
-
-      {/* Summary Stats */}
-      <Box
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)' },
-          gap: '1px',
-          bgcolor: B,
-          border: `1px solid ${B}`,
-          borderRadius: '12px',
-          overflow: 'hidden',
-          mb: 3,
-          animation: `${fadeSlide} 0.3s ease both`,
-        }}
-      >
-        {[
-          { label: 'Total Roles', value: roles.length, icon: <ShieldRoundedIcon sx={{ fontSize: 18 }} />, color: '#5E8F72' },
-          { label: 'System Roles', value: systemCount, icon: <LockRoundedIcon sx={{ fontSize: 18 }} />, color: '#AB47BC' },
-          { label: 'Custom Roles', value: customCount, icon: <PersonRoundedIcon sx={{ fontSize: 18 }} />, color: '#74909A' },
-          { label: 'Total Permissions', value: totalPerms, icon: <CheckCircleRoundedIcon sx={{ fontSize: 18 }} />, color: '#D3A95C' },
-        ].map((stat) => (
-          <Box
-            key={stat.label}
+      <PageHeader
+        tone="green"
+        eyebrow="Platform"
+        title="Roles & Permissions"
+        lede="Manage access control across the platform — each role defines what users can see and do."
+        icon={<AdminPanelSettingsRoundedIcon />}
+        actions={
+          <Button
+            variant="contained"
+            startIcon={<AddRoundedIcon />}
+            onClick={() => navigate('/roles/new')}
             sx={{
-              bgcolor: 'background.paper',
-              py: 2,
-              px: 2.5,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1.5,
+              bgcolor: '#5E8F72',
+              '&:hover': { bgcolor: '#2E3D2F' },
+              flexShrink: 0,
             }}
           >
-            <Box
-              sx={{
-                width: 32,
-                height: 32,
-                borderRadius: '8px',
-                bgcolor: `${stat.color}15`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: stat.color,
-              }}
-            >
-              {stat.icon}
-            </Box>
-            <Box>
-              <Typography sx={{ fontSize: '1.2rem', fontWeight: 900, lineHeight: 1 }}>
-                {stat.value}
-              </Typography>
-              <Typography sx={{ fontSize: '0.65rem', fontWeight: 600, color: 'text.secondary', letterSpacing: '0.3px' }}>
-                {stat.label}
-              </Typography>
-            </Box>
-          </Box>
-        ))}
-      </Box>
+            Create Role
+          </Button>
+        }
+        stats={[
+          { label: 'Total Roles', value: roles.length },
+          { label: 'System Roles', value: systemCount },
+          { label: 'Custom Roles', value: customCount },
+          { label: 'Total Permissions', value: totalPerms },
+        ]}
+      />
 
       {/* Search */}
       <Box sx={{ mb: 3, animation: `${fadeSlide} 0.3s ease 0.1s both` }}>

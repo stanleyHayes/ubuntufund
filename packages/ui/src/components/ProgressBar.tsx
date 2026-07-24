@@ -35,7 +35,7 @@ export function ProgressBar({
     <Box sx={{ width: '100%' }}>
       {showPercentage && (
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 0.5 }}>
-          <Typography variant="body2" fontWeight={600} color={isFunded ? 'success.main' : 'text.secondary'}>
+          <Typography variant="body2" fontWeight={600} color={isFunded ? 'secondary.dark' : 'text.secondary'}>
             {Math.round(percentage)}%{isFunded ? ' - Funded!' : ''}
           </Typography>
         </Box>
@@ -43,11 +43,11 @@ export function ProgressBar({
       <LinearProgress
         variant="determinate"
         value={percentage}
-        color={isFunded ? 'success' : color}
+        color={isFunded ? 'secondary' : color}
         sx={{
           height: 10,
           borderRadius: SHAPE.bar,
-          backgroundColor: 'grey.200',
+          backgroundColor: 'rgba(46, 61, 47, 0.10)',
         }}
       />
       {showAmounts && (

@@ -7,14 +7,12 @@ import { keyframes } from '@mui/system'
 import SearchIcon from '@mui/icons-material/Search'
 import { EmptyState, AiWritingBar } from '@ubuntu-fund/ui'
 import { AiWritingAction } from '@ubuntu-fund/types'
-import FiberNewIcon from '@mui/icons-material/FiberNew'
-import HourglassTopIcon from '@mui/icons-material/HourglassTop'
-import CheckCircleIcon from '@mui/icons-material/CheckCircle'
-import TrendingUpIcon from '@mui/icons-material/TrendingUp'
-import ContactMailRoundedIcon from '@mui/icons-material/ContactMailRounded'
+import MarkEmailUnreadRoundedIcon from '@mui/icons-material/MarkEmailUnreadRounded'
 import type { ContactSubmission, ContactStatus } from '@ubuntu-fund/types'
 import { usePagination } from '@/hooks/usePagination'
 import PaginationBar from '@/components/PaginationBar'
+import PageHeader from '@/components/PageHeader'
+import { TONES } from '@/lib/tones'
 
 const fadeIn = keyframes`from{opacity:0}to{opacity:1}`
 const slideIn = keyframes`from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}`
@@ -37,7 +35,7 @@ const statusColors: Record<string, string> = {
 
 const inquiryColors: Record<string, string> = {
   general: '#78909C',
-  partnership: '#AB47BC',
+  partnership: TONES.maroon.text,
   campaign: '#74909A',
   bug: '#C06B58',
 }
@@ -48,25 +46,6 @@ function Skel({ w, h }: { w?: string | number; h?: number }) {
       width: w || '100%', height: h || 14,
       bgcolor: 'rgba(255,255,255,0.04)',
     }} />
-  )
-}
-
-function StatCard({ icon, label, value, color, index }: { icon: React.ReactNode; label: string; value: number; color: string; index: number }) {
-  return (
-    <Box sx={{
-      position: 'relative', overflow: 'hidden',
-      borderRight: `1px solid ${B}`, borderBottom: `1px solid ${B}`,
-      p: 3,
-      animation: `${slideIn} 0.4s ease ${index * 0.08}s both`,
-    }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
-        <Box sx={{ color, '& svg': { fontSize: 20 } }}>{icon}</Box>
-        <Typography sx={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: 1 }}>{label}</Typography>
-      </Box>
-      <Typography sx={{ fontSize: '1.8rem', fontWeight: 800, color: '#fff', lineHeight: 1 }}>
-        {value.toLocaleString()}
-      </Typography>
-    </Box>
   )
 }
 
@@ -154,32 +133,21 @@ function ContactSubmissionsPage() {
       )
     : submissions
 
-  const statCards = [
-    { icon: <TrendingUpIcon />, label: 'Total', value: stats.total, color: '#74909A' },
-    { icon: <FiberNewIcon />, label: 'New', value: stats.new, color: '#74909A' },
-    { icon: <HourglassTopIcon />, label: 'In Progress', value: stats.inProgress, color: '#D3A95C' },
-    { icon: <CheckCircleIcon />, label: 'Resolved', value: stats.resolved, color: '#5E8F72' },
-  ]
-
   return (
     <Box sx={{ animation: `${fadeIn} 0.3s ease` }}>
-      {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
-        <ContactMailRoundedIcon sx={{ fontSize: 28, color: ACCENT }} />
-        <Box>
-          <Typography sx={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff' }}>Contact Submissions</Typography>
-          <Typography sx={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)' }}>Review and manage contact form inquiries</Typography>
-        </Box>
-      </Box>
-
-      {/* Stats */}
-      <Box sx={{
-        display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' },
-        border: `1px solid ${B}`, borderRadius: 2, mb: 3, overflow: 'hidden',
-        bgcolor: 'rgba(255,255,255,0.015)',
-      }}>
-        {statCards.map((s, i) => <StatCard key={s.label} {...s} index={i} />)}
-      </Box>
+      <PageHeader
+        tone="clay"
+        eyebrow="Trust & Safety"
+        title="Contact Submissions"
+        lede="Review and respond to inquiries submitted through the site's contact form."
+        icon={<MarkEmailUnreadRoundedIcon />}
+        stats={[
+          { label: 'Total', value: stats.total },
+          { label: 'New', value: stats.new },
+          { label: 'In Progress', value: stats.inProgress },
+          { label: 'Resolved', value: stats.resolved },
+        ]}
+      />
 
       {/* Filters */}
       <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>

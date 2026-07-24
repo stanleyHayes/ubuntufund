@@ -1,6 +1,7 @@
 import { Suspense, useEffect } from 'react'
 import { ThemeProvider, CssBaseline, GlobalStyles, Box } from '@mui/material'
 import { BrowserRouter, Routes, Route, useLocation, Outlet } from 'react-router-dom'
+import { scrollToHash } from '@/lib/scroll'
 import { ubuntuFundTheme, ttSquaresFontFace, AfricanBanner } from '@ubuntu-fund/ui'
 import PublicIcon from '@mui/icons-material/Public'
 import DiamondIcon from '@mui/icons-material/Diamond'
@@ -92,8 +93,12 @@ const BANNER_CONFIG: Record<string, { title: string; subtitle?: string; descript
 
 /** Layout for inner pages (not landing). Navbar → Banner → Content → Footer. */
 function ScrollToTop() {
-  const { pathname } = useLocation()
-  useEffect(() => { window.scrollTo(0, 0) }, [pathname])
+  const { pathname, hash } = useLocation()
+  useEffect(() => {
+    // Hash links land on their section; plain route changes start at the top.
+    if (hash) scrollToHash(hash.slice(1))
+    else window.scrollTo(0, 0)
+  }, [pathname, hash])
   return null
 }
 

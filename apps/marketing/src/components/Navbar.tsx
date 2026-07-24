@@ -6,6 +6,7 @@ import IconButton from '@mui/material/IconButton'
 import Drawer from '@mui/material/Drawer'
 import Collapse from '@mui/material/Collapse'
 import MenuIcon from '@mui/icons-material/Menu'
+import { scrollToHash } from '@/lib/scroll'
 import CloseIcon from '@mui/icons-material/Close'
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
@@ -348,9 +349,8 @@ function MobileMenuGroup({ menu, pathname, onNavigate }: { menu: NavMenu; pathna
                 onClick={() => onNavigate(item.href)}
                 sx={{
                   display: 'flex', gap: 1.5, px: 3, py: 1.25, cursor: 'pointer',
-                  bgcolor: itemActive ? 'rgba(46, 61, 47,0.04)' : 'transparent',
-                  borderLeft: `3px solid ${itemActive ? '#2E3D2F' : 'transparent'}`,
-                  '&:hover': { bgcolor: 'rgba(0,0,0,0.02)' },
+                  bgcolor: itemActive ? 'rgba(46, 61, 47, 0.08)' : 'transparent',
+                  '&:hover': { bgcolor: itemActive ? 'rgba(46, 61, 47, 0.08)' : 'rgba(0,0,0,0.02)' },
                 }}
               >
                 <Box sx={{
@@ -411,7 +411,7 @@ function Navbar() {
       if (el) { el.scrollIntoView({ behavior: 'smooth' }); return }
     }
     navigate(href)
-    if (hash) setTimeout(() => document.getElementById(hash)?.scrollIntoView({ behavior: 'smooth' }), 100)
+    if (hash) scrollToHash(hash)
   }
 
   return (
@@ -536,7 +536,9 @@ function Navbar() {
                 menu={menu}
                 open={openMenu === menu.label}
                 onOpen={() => setOpenMenu(menu.label)}
-                onClose={() => setOpenMenu(null)}
+                // Close only if this menu is still the open one — otherwise a
+                // stale close timer from menu A dismisses freshly opened menu B.
+                onClose={() => setOpenMenu((prev) => (prev === menu.label ? null : prev))}
                 scrolled={scrolled}
                 pathname={pathname}
                 onNavigate={handleNav}

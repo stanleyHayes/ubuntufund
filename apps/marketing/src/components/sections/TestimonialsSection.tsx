@@ -44,6 +44,7 @@ const testimonials = [
 function TestimonialsSection() {
   return (
     <Box
+      id="testimonials"
       sx={{
         py: { xs: 8, md: 12 },
         backgroundColor: '#fff',

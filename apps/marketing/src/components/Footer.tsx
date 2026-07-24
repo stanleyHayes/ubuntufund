@@ -26,7 +26,8 @@ import AutoStoriesIcon from '@mui/icons-material/AutoStories'
 import GavelIcon from '@mui/icons-material/Gavel'
 import LockIcon from '@mui/icons-material/Lock'
 import SyncAltIcon from '@mui/icons-material/SyncAlt'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { scrollToHash } from '@/lib/scroll'
 import { SHAPE } from '@ubuntu-fund/ui'
 
 const pulse = keyframes`
@@ -94,7 +95,26 @@ const linkStyle = {
 
 function Footer() {
   const { pathname } = useLocation()
+  const navigate = useNavigate()
   const [email, setEmail] = useState('')
+
+  // SPA-aware section links: same-page anchors scroll smoothly; cross-page
+  // anchors navigate first, then scroll once the section has mounted.
+  function handleAnchor(e: React.MouseEvent, to: string) {
+    e.preventDefault()
+    const [path, hash] = to.split('#')
+    const target = path || '/'
+    if (!hash) {
+      navigate(target)
+      return
+    }
+    if (pathname === target) {
+      scrollToHash(hash)
+      return
+    }
+    navigate(to)
+    scrollToHash(hash)
+  }
   const [subscribeStatus, setSubscribeStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [subscribeMessage, setSubscribeMessage] = useState('')
 
@@ -387,7 +407,13 @@ function Footer() {
                     </Box>
                   )
                   return link.anchor ? (
-                    <MuiLink key={link.label} href={link.to} underline="none" sx={{ ...linkStyle, ...activeSx, '&:hover .MuiBox-root:first-of-type': { color: '#C7A24A' } }}>
+                    <MuiLink
+                      key={link.label}
+                      href={link.to}
+                      onClick={(e) => handleAnchor(e, link.to)}
+                      underline="none"
+                      sx={{ ...linkStyle, ...activeSx, '&:hover .MuiBox-root:first-of-type': { color: '#C7A24A' } }}
+                    >
                       {inner}
                     </MuiLink>
                   ) : (

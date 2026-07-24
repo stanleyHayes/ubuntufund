@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Box, Typography, Chip } from '@mui/material'
+import { Box, Typography } from '@mui/material'
 import { keyframes } from '@mui/system'
 import RocketLaunchIcon from '@mui/icons-material/RocketLaunch'
 import PeopleIcon from '@mui/icons-material/People'
@@ -17,9 +17,12 @@ import CampaignIcon from '@mui/icons-material/Rocket'
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
 import PersonAddIcon from '@mui/icons-material/PersonAdd'
 import TuneIcon from '@mui/icons-material/Tune'
+import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded'
 import { Resource, Action } from '@ubuntu-fund/types'
 import { useAdminPermissions } from '@/context/AdminPermissionContext'
 import { useAdminStats, useKYCStats } from '@/hooks/useApiData'
+import PageHeader from '@/components/PageHeader'
+import { TONES } from '@/lib/tones'
 
 // ---------------------------------------------------------------------------
 // Animations
@@ -173,14 +176,14 @@ const tileTemplates: TileTemplate[] = [
   { label: 'Users', icon: <PeopleIcon />, route: '/users', color: '#74909A', statKey: 'totalUsers', formatStat: formatCompact, description: 'registered users', glowPosition: 'bottom left', patternAngle: -45, resource: Resource.USERS },
   { label: 'Donations', icon: <VolunteerActivismIcon />, route: '/donations', color: '#C7A24A', statKey: 'totalRaised', formatStat: formatCurrency, description: 'total raised', glowPosition: 'top left', patternAngle: 30, resource: Resource.DONATIONS },
   { label: 'Disputes', icon: <GavelIcon />, route: '/disputes', color: '#C06B58', statKey: 'pendingDisputes', description: 'pending review', glowPosition: 'bottom right', patternAngle: -30, resource: Resource.DISPUTES },
-  { label: 'Reports', icon: <BarChartIcon />, route: '/reports', color: '#AB47BC', statKey: 'totalDonations', description: 'analytics reports', glowPosition: 'center right', patternAngle: 60, resource: Resource.ANALYTICS },
+  { label: 'Reports', icon: <BarChartIcon />, route: '/reports', color: TONES.maroon.text, statKey: 'totalDonations', description: 'analytics reports', glowPosition: 'center right', patternAngle: 60, resource: Resource.ANALYTICS },
   { label: 'Settings', icon: <SettingsIcon />, route: '/settings', color: '#78909C', statKey: null, description: 'system configuration', glowPosition: 'center left', patternAngle: -60, resource: Resource.SETTINGS },
-  { label: 'Verifications', icon: <VerifiedUserIcon />, route: '/verifications', color: '#26A69A', statKey: null, description: 'pending verification', glowPosition: 'top center', patternAngle: 15, resource: Resource.VERIFICATIONS },
-  { label: 'Audit Log', icon: <HistoryIcon />, route: '/audit', color: '#8D6E63', statKey: null, description: 'total entries', glowPosition: 'bottom center', patternAngle: -15, resource: Resource.AUDIT_LOG },
-  { label: 'Subscriptions', icon: <CardMembershipIcon />, route: '/subscriptions', color: '#AB47BC', statKey: null, description: 'active subscribers', glowPosition: 'center left', patternAngle: 25, resource: Resource.SUBSCRIPTIONS },
-  { label: 'Manage Plans', icon: <TuneIcon />, route: '/plans', color: '#7E57C2', statKey: null, description: 'subscription packages', glowPosition: 'top left', patternAngle: -20, resource: Resource.PLANS },
+  { label: 'Verifications', icon: <VerifiedUserIcon />, route: '/verifications', color: TONES.teal.text, statKey: null, description: 'pending verification', glowPosition: 'top center', patternAngle: 15, resource: Resource.VERIFICATIONS },
+  { label: 'Audit Log', icon: <HistoryIcon />, route: '/audit', color: TONES.clay.text, statKey: null, description: 'total entries', glowPosition: 'bottom center', patternAngle: -15, resource: Resource.AUDIT_LOG },
+  { label: 'Subscriptions', icon: <CardMembershipIcon />, route: '/subscriptions', color: TONES.maroon.text, statKey: null, description: 'active subscribers', glowPosition: 'center left', patternAngle: 25, resource: Resource.SUBSCRIPTIONS },
+  { label: 'Manage Plans', icon: <TuneIcon />, route: '/plans', color: TONES.maroon.text, statKey: null, description: 'subscription packages', glowPosition: 'top left', patternAngle: -20, resource: Resource.PLANS },
   { label: 'Roles', icon: <AdminPanelSettingsIcon />, route: '/roles', color: '#FF7043', statKey: null, description: 'role management', glowPosition: 'top right', patternAngle: 35, resource: Resource.ROLES },
-  { label: 'Invite User', icon: <PersonAddIcon />, route: '/invite', color: '#29B6F6', statKey: null, description: 'create admin user', glowPosition: 'bottom left', patternAngle: -35, resource: Resource.USERS, action: Action.CREATE },
+  { label: 'Invite User', icon: <PersonAddIcon />, route: '/invite', color: TONES.teal.text, statKey: null, description: 'create admin user', glowPosition: 'bottom left', patternAngle: -35, resource: Resource.USERS, action: Action.CREATE },
 ]
 
 // ---------------------------------------------------------------------------
@@ -537,8 +540,7 @@ function StatCell({
 
 export default function DashboardPage() {
   const { data: stats, isLoading: statsLoading } = useAdminStats()
-  const { can, roleName } = useAdminPermissions()
-  const [currentTime, setCurrentTime] = useState(new Date())
+  const { can } = useAdminPermissions()
 
   const tiles = useMemo(
     () => tileTemplates
@@ -565,18 +567,6 @@ export default function DashboardPage() {
     [can, stats, statsLoading],
   )
 
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 60_000)
-    return () => clearInterval(timer)
-  }, [])
-
-  const greeting =
-    currentTime.getHours() < 12
-      ? 'Good morning'
-      : currentTime.getHours() < 18
-        ? 'Good afternoon'
-        : 'Good evening'
-
   const maxStatVal = Math.max(stats.totalRaised, stats.activeCampaigns * 1000, stats.totalUsers * 100, stats.pendingDisputes * 5000, 1)
 
   const { data: kycStats } = useKYCStats()
@@ -584,9 +574,9 @@ export default function DashboardPage() {
   const quickStats = [
     { label: 'Total Raised', value: statsLoading ? '...' : `$${stats.totalRaised.toLocaleString()}`, icon: <TrendingUpIcon />, color: '#8FAE96', fill: statsLoading ? 0 : (stats.totalRaised / maxStatVal) * 100 },
     { label: 'Active Campaigns', value: statsLoading ? '...' : String(stats.activeCampaigns), icon: <CampaignIcon />, color: '#74909A', fill: statsLoading ? 0 : ((stats.activeCampaigns * 1000) / maxStatVal) * 100 },
-    { label: 'Total Users', value: statsLoading ? '...' : String(stats.totalUsers), icon: <PeopleIcon />, color: '#AB47BC', fill: statsLoading ? 0 : ((stats.totalUsers * 100) / maxStatVal) * 100 },
+    { label: 'Total Users', value: statsLoading ? '...' : String(stats.totalUsers), icon: <PeopleIcon />, color: TONES.maroon.text, fill: statsLoading ? 0 : ((stats.totalUsers * 100) / maxStatVal) * 100 },
     { label: 'Pending Disputes', value: statsLoading ? '...' : String(stats.pendingDisputes), icon: <GavelIcon />, color: '#D3A95C', fill: statsLoading ? 0 : ((stats.pendingDisputes * 5000) / maxStatVal) * 100 },
-    { label: 'Pending KYC', value: String(kycStats?.pending ?? 0), icon: <VerifiedUserIcon />, color: '#26A69A', fill: 0 },
+    { label: 'Pending KYC', value: String(kycStats?.pending ?? 0), icon: <VerifiedUserIcon />, color: TONES.teal.text, fill: 0 },
     { label: 'KYC Approved Today', value: String(kycStats?.approvedToday ?? 0), icon: <VerifiedUserIcon />, color: '#5E8F72', fill: 0 },
     { label: 'KYC Rejected Today', value: String(kycStats?.rejectedToday ?? 0), icon: <VerifiedUserIcon />, color: '#C06B58', fill: 0 },
   ]
@@ -600,155 +590,14 @@ export default function DashboardPage() {
         flexDirection: 'column',
       }}
     >
-      {/* ═══ HEADER — same 4-column grid as tiles ═══ */}
-      <Box
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: {
-            xs: 'repeat(1, 1fr)',
-            sm: 'repeat(2, 1fr)',
-            md: 'repeat(3, 1fr)',
-            lg: 'repeat(4, 1fr)',
-          },
-          borderBottom: `1px solid ${B}`,
-          animation: `${fadeIn} 0.3s ease`,
-          position: 'relative',
-          '&::after': {
-            content: '""',
-            position: 'absolute',
-            bottom: -1,
-            left: '10%',
-            right: '10%',
-            height: 1,
-            background: 'rgba(76,175,80,0.25)',
-            pointerEvents: 'none',
-          },
-        }}
-      >
-        {/* Cell 1: Brand */}
-        <Box
-          sx={{
-            px: 3,
-            py: 2,
-            borderRight: `1px solid ${B}`,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1.5,
-          }}
-        >
-          <Typography
-            sx={{
-              fontFamily: '"TT Squares", sans-serif',
-              fontWeight: 900,
-              fontSize: '1.1rem',
-              letterSpacing: '0.04em',
-              color: '#5E8F72',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            UBUNTUFUND
-          </Typography>
-          <Typography
-            sx={{
-              fontSize: '0.6rem',
-              color: 'rgba(255,255,255,0.25)',
-              letterSpacing: '0.15em',
-              textTransform: 'uppercase',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            Admin
-          </Typography>
-        </Box>
-
-        {/* Cell 2: Live status */}
-        <Box
-          sx={{
-            px: 3,
-            py: 2,
-            borderRight: `1px solid ${B}`,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1,
-          }}
-        >
-          <Box
-            sx={{
-              width: 6,
-              height: 6,
-              bgcolor: '#5E8F72',
-              position: 'relative',
-              flexShrink: 0,
-              '&::after': {
-                content: '""',
-                position: 'absolute',
-                inset: -3,
-                border: '1px solid rgba(94,143,114,0.35)',
-              },
-            }}
-          />
-          <Typography sx={{ fontSize: '0.68rem', color: '#5E8F72', letterSpacing: '0.08em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
-            Live
-          </Typography>
-          <Typography sx={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.3)', ml: 0.5, whiteSpace: 'nowrap' }}>
-            All systems operational
-          </Typography>
-        </Box>
-
-        {/* Cell 3: Greeting */}
-        <Box
-          sx={{
-            px: 3,
-            py: 2,
-            borderRight: `1px solid ${B}`,
-            display: 'flex',
-            alignItems: 'center',
-          }}
-        >
-          <Typography sx={{ fontSize: '0.82rem', color: 'text.secondary', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 1 }}>
-            {greeting}, <Box component="span" sx={{ color: 'text.primary', fontWeight: 600 }}>Admin</Box>
-            {roleName && (
-              <Chip
-                label={roleName}
-                size="small"
-                sx={{
-                  height: 20,
-                  fontSize: '0.6rem',
-                  fontWeight: 700,
-                  bgcolor: 'rgba(76,175,80,0.12)',
-                  color: '#5E8F72',
-                  border: '1px solid rgba(76,175,80,0.25)',
-                  letterSpacing: '0.04em',
-                }}
-              />
-            )}
-          </Typography>
-        </Box>
-
-        {/* Cell 4: Date + time */}
-        <Box
-          sx={{
-            px: 3,
-            py: 2,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'flex-end',
-          }}
-        >
-          <Typography
-            sx={{
-              fontSize: '0.75rem',
-              color: 'text.secondary',
-              fontFamily: '"TT Squares", monospace',
-              letterSpacing: '0.04em',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {currentTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-            {' \u00B7 '}
-            {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-          </Typography>
-        </Box>
+      <Box sx={{ px: 3, pt: 3 }}>
+        <PageHeader
+          tone="green"
+          eyebrow="Operations"
+          title="Dashboard"
+          lede="Jump into any section of the console and keep a pulse on platform activity as it happens."
+          icon={<DashboardRoundedIcon />}
+        />
       </Box>
 
       {/* ═══ MAIN GRID — 4 columns, edge to edge ═══ */}

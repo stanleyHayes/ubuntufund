@@ -134,12 +134,12 @@ const PAYMENT_PROVIDERS: PaymentProvider[] = [
   },
 ]
 
-const CATEGORY_META: Record<string, { label: string; icon: string; color: string }> = {
-  mobile_money: { label: 'Mobile Money', icon: '📱', color: '#5E8F72' },
-  card: { label: 'Cards', icon: '💳', color: '#1A1F71' },
-  bank: { label: 'Processors', icon: '🏦', color: '#F5A623' },
-  crypto: { label: 'Crypto', icon: '₿', color: '#F7931A' },
-  wallet: { label: 'Wallet', icon: '👛', color: '#2E3D2F' },
+const CATEGORY_META: Record<string, { label: string; color: string }> = {
+  mobile_money: { label: 'Mobile Money', color: '#5E8F72' },
+  card: { label: 'Cards', color: '#2E3D2F' },
+  bank: { label: 'Processors', color: '#A07E33' },
+  crypto: { label: 'Crypto', color: '#8B6F4E' },
+  wallet: { label: 'UbuntuFund', color: '#C7A24A' },
 }
 
 const CATEGORY_ORDER = ['mobile_money', 'card', 'bank', 'crypto', 'wallet'] as const
@@ -223,32 +223,36 @@ function ProviderCard({ provider, index, onSelect, selected, methodData }: Provi
     : provider.name
 
   const clickable = !!onSelect && !!methodData
+  const isWallet = provider.category === 'wallet'
 
   return (
     <Tooltip title={tooltipContent} arrow>
       <Box
         onClick={clickable ? () => onSelect(methodData) : undefined}
+        role={clickable ? 'button' : undefined}
+        tabIndex={clickable ? 0 : undefined}
+        onKeyDown={
+          clickable
+            ? (e: React.KeyboardEvent) => {
+                if (e.key === 'Enter' || e.key === ' ') onSelect(methodData)
+              }
+            : undefined
+        }
         sx={{
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           gap: 0.75,
-          p: 1.5,
+          p: 1.25,
           borderRadius: SHAPE.sm,
           cursor: clickable ? 'pointer' : 'default',
           width: 80,
           animation: `${fadeIn} 0.4s ease ${index * 0.04}s both`,
-          transition: 'all 0.25s cubic-bezier(0.22, 1, 0.36, 1)',
+          transition: 'background-color 0.15s ease',
           position: 'relative',
-          border: selected ? `2px solid ${provider.iconColor}` : '2px solid transparent',
           ...(clickable && {
-            '&:hover': {
-              transform: 'translateY(-4px) scale(1.05)',
-              '& .provider-icon': {
-                boxShadow: `0 8px 24px ${provider.iconColor}30`,
-                borderColor: provider.iconColor,
-              },
-            },
+            '&:hover': { bgcolor: 'rgba(46, 61, 47, 0.05)' },
+            '&:focus-visible': { outline: '2px solid #C7A24A', outlineOffset: 2 },
           }),
         }}
       >
@@ -256,12 +260,12 @@ function ProviderCard({ provider, index, onSelect, selected, methodData }: Provi
           <Box
             sx={{
               position: 'absolute',
-              top: 2,
-              right: 2,
+              top: 4,
+              right: 8,
               width: 16,
               height: 16,
               borderRadius: '50%',
-              bgcolor: provider.iconColor,
+              bgcolor: '#C7A24A',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -269,36 +273,63 @@ function ProviderCard({ provider, index, onSelect, selected, methodData }: Provi
             }}
           >
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
-              <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="#fff" />
+              <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="#221B0E" />
             </svg>
           </Box>
         )}
-        <Box
-          className="provider-icon"
-          sx={{
-            width: 48,
-            height: 48,
-            borderRadius: SHAPE.sm,
-            background: provider.bgColor,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            border: '1.5px solid',
-            borderColor: selected ? provider.iconColor : 'rgba(0,0,0,0.06)',
-            transition: 'all 0.25s ease',
-          }}
-        >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-            {provider.iconPaths.map((d, i) => (
-              <path key={i} d={d} fill={provider.iconColor} />
-            ))}
-          </svg>
-        </Box>
+
+        {isWallet ? (
+          /* The UbuntuFund wallet tile carries the brand mark itself. */
+          <Box
+            className="provider-icon"
+            sx={{
+              width: 48,
+              height: 48,
+              borderRadius: SHAPE.sm,
+              bgcolor: '#2E3D2F',
+              border: '1.5px solid',
+              borderColor: selected ? '#C7A24A' : 'rgba(199, 162, 74, 0.55)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontFamily: '"TT Squares", sans-serif',
+              fontWeight: 900,
+              fontSize: '0.85rem',
+              color: '#C7A24A',
+              transition: 'border-color 0.15s ease',
+            }}
+          >
+            UF
+          </Box>
+        ) : (
+          <Box
+            className="provider-icon"
+            sx={{
+              width: 48,
+              height: 48,
+              borderRadius: SHAPE.sm,
+              bgcolor: '#F2EFEA',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: '1.5px solid',
+              borderColor: selected ? '#C7A24A' : '#E7E3D8',
+              transition: 'border-color 0.15s ease',
+            }}
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              {provider.iconPaths.map((d, i) => (
+                <path key={i} d={d} fill="#2E3D2F" fillOpacity={0.85} />
+              ))}
+            </svg>
+          </Box>
+        )}
+
         <Typography
           sx={{
             fontSize: '0.68rem',
-            fontWeight: 600,
-            color: selected ? provider.iconColor : 'text.secondary',
+            fontWeight: selected ? 700 : 600,
+            color: selected ? '#A07E33' : 'text.secondary',
             textAlign: 'center',
             lineHeight: 1.2,
           }}
@@ -437,14 +468,14 @@ export function PaymentMethods({
                   backgroundColor: `${group.meta.color}10`,
                 }}
               >
-                <Typography sx={{ fontSize: '1rem' }}>{group.meta.icon}</Typography>
+                <Box sx={{ width: 8, height: 8, borderRadius: '2px', transform: 'rotate(45deg)', bgcolor: group.meta.color }} />
                 <Typography
                   sx={{
-                    fontSize: '0.7rem',
-                    fontWeight: 800,
+                    fontSize: '0.66rem',
+                    fontWeight: 700,
                     color: group.meta.color,
                     textTransform: 'uppercase',
-                    letterSpacing: 1,
+                    letterSpacing: '0.16em',
                   }}
                 >
                   {group.meta.label}

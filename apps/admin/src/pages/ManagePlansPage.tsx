@@ -17,6 +17,7 @@ import Alert from '@mui/material/Alert'
 import Tooltip from '@mui/material/Tooltip'
 import IconButton from '@mui/material/IconButton'
 import AddRoundedIcon from '@mui/icons-material/AddRounded'
+import LayersRoundedIcon from '@mui/icons-material/LayersRounded'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded'
@@ -31,6 +32,7 @@ import { keyframes } from '@mui/material/styles'
 import { SUBSCRIPTION_PLANS } from '@ubuntu-fund/types'
 import type { SubscriptionPlan } from '@ubuntu-fund/types'
 import { SHAPE } from '@ubuntu-fund/ui'
+import PageHeader from '@/components/PageHeader'
 
 // ─── Animations ──────────────────────────────────────────────────────────────
 
@@ -92,22 +94,24 @@ export default function ManagePlansPage() {
 
   return (
     <Box>
-      {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3, animation: `${fadeSlide} 0.3s ease both` }}>
-        <Box>
-          <Typography variant="h5" sx={{ fontWeight: 900, color: 'text.primary' }}>Subscription Plans</Typography>
-          <Typography sx={{ fontSize: '0.85rem', color: 'text.secondary' }}>
-            Create and manage subscription packages with enforceable limits
-          </Typography>
-        </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddRoundedIcon />}
-          onClick={() => navigate('/plans/new')}
-          sx={{ borderRadius: SHAPE.sm, textTransform: 'none', fontWeight: 700, px: 3 }}
-        >
-          Create Plan
-        </Button>
+      <Box sx={{ animation: `${fadeSlide} 0.3s ease both` }}>
+        <PageHeader
+          tone="green"
+          eyebrow="Platform"
+          title="Subscription Plans"
+          lede="Create and manage subscription packages with enforceable limits."
+          icon={<LayersRoundedIcon />}
+          actions={
+            <Button
+              variant="contained"
+              startIcon={<AddRoundedIcon />}
+              onClick={() => navigate('/plans/new')}
+              sx={{ borderRadius: SHAPE.sm, textTransform: 'none', fontWeight: 700, px: 3 }}
+            >
+              Create Plan
+            </Button>
+          }
+        />
       </Box>
 
       {/* Plans Grid */}

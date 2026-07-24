@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Box, Typography, TextField, MenuItem, InputAdornment } from '@mui/material'
 import { keyframes } from '@mui/system'
 import SearchIcon from '@mui/icons-material/Search'
-import PeopleIcon from '@mui/icons-material/People'
+import PeopleRoundedIcon from '@mui/icons-material/PeopleRounded'
 import { EmptyState } from '@ubuntu-fund/ui'
 import { UserRole, VerificationLevel, Resource, Action } from '@ubuntu-fund/types'
 import type { User } from '@ubuntu-fund/types'
@@ -12,6 +12,7 @@ import PermissionDenied from '@/components/PermissionDenied'
 import { useMockData } from '@/hooks/useMockData'
 import { usePagination } from '@/hooks/usePagination'
 import PaginationBar from '@/components/PaginationBar'
+import PageHeader from '@/components/PageHeader'
 
 const fadeIn = keyframes`from{opacity:0}to{opacity:1}`
 const slideIn = keyframes`from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}`
@@ -191,12 +192,14 @@ export default function UsersPage() {
 
   return (
     <Box sx={{ bgcolor: '#0c0c14', minHeight: '100vh', animation: `${fadeIn} 0.3s ease` }}>
-      {/* Header */}
-      <Box sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${B}`, display: 'flex', alignItems: 'center', gap: 1.5 }}>
-        <PeopleIcon sx={{ color: '#8FAE96', fontSize: 20 }} />
-        <Typography sx={{ fontFamily: '"TT Squares", sans-serif', fontWeight: 700, fontSize: '1.1rem', color: 'text.primary' }}>
-          Users
-        </Typography>
+      <Box sx={{ px: 3, pt: 3 }}>
+        <PageHeader
+          tone="gold"
+          eyebrow="Community"
+          title="Users"
+          lede="Search, filter, and manage every donor, creator, and organization account on the platform."
+          icon={<PeopleRoundedIcon />}
+        />
       </Box>
 
       {/* Filter bar */}
