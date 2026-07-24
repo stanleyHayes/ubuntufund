@@ -25,6 +25,7 @@ export interface Wallet {
   id: string
   userId: string
   type: WalletType
+  /** Currency code — 'GHS' (Ghanaian cedi) is the platform's only currency */
   currency: string
   balance: number
   createdAt: Date
@@ -37,6 +38,7 @@ export interface Transaction {
   type: TransactionType
   status: TransactionStatus
   amount: number
+  /** Currency code — 'GHS' (Ghanaian cedi) is the platform's only currency */
   currency: string
   reference: string
   metadata?: Record<string, unknown>

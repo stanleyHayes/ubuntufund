@@ -61,7 +61,7 @@ function OrganizationsSection() {
             >
               Whether you are an NGO, hospital, school, or religious institution,
               UbuntuFund provides the tools to scale your fundraising and build
-              lasting donor relationships across Africa and beyond.
+              lasting donor relationships across Ghana and beyond.
             </Typography>
             <Button
               variant="contained"

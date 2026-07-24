@@ -89,8 +89,13 @@ describe('Payment Providers Integration', () => {
 
       expect(res.status).toBe(200);
       expect(Array.isArray(res.body.data)).toBe(true);
-      // Defaults seeded on first read: wallet, M-Pesa, Stripe, bank transfer.
-      expect(res.body.data.length).toBeGreaterThanOrEqual(4);
+      // Defaults seeded on first read: wallet, MTN MoMo, Telecel Cash,
+      // AT Money, Visa & Mastercard, bank transfer.
+      expect(res.body.data.length).toBeGreaterThanOrEqual(6);
+      const slugs = res.body.data.map((p: { slug: string }) => p.slug);
+      expect(slugs).toEqual(
+        expect.arrayContaining(['wallet', 'mtn-momo', 'telecel-cash', 'at-money', 'card', 'bank-transfer'])
+      );
       expect(res.body.data.some((p: { enabled: boolean }) => p.enabled === false)).toBe(true);
     });
   });

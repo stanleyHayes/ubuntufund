@@ -70,20 +70,7 @@ const RESOURCE_LABELS: Record<Resource, string> = Object.fromEntries(
   ])
 ) as Record<Resource, string>
 
-const AFRICAN_COUNTRIES = [
-  'Ghana',
-  'Kenya',
-  'Nigeria',
-  'South Africa',
-  'Rwanda',
-  'Tanzania',
-  'Uganda',
-  'Ethiopia',
-  'Senegal',
-  'Cameroon',
-  'DRC',
-  'Mali',
-]
+const COUNTRIES = ['Ghana']
 
 // Seed roles
 const MOCK_ROLES: Role[] = DEFAULT_ROLES.map((r, i) => ({
@@ -172,7 +159,7 @@ export default function InviteUserPage() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [country, setCountry] = useState('')
+  const [country, setCountry] = useState('Ghana')
   const [organizationName, setOrganizationName] = useState('')
   const [selectedRoleId, setSelectedRoleId] = useState('')
   const [overrides, setOverrides] = useState<OverrideMap>({})
@@ -382,7 +369,7 @@ export default function InviteUserPage() {
                   <MenuItem value="">
                     <em>Select country</em>
                   </MenuItem>
-                  {AFRICAN_COUNTRIES.map((c) => (
+                  {COUNTRIES.map((c) => (
                     <MenuItem key={c} value={c}>
                       {c}
                     </MenuItem>

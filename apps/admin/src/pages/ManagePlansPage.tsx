@@ -162,7 +162,7 @@ export default function ManagePlansPage() {
                   <Box sx={{ mb: 2 }}>
                     <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
                       <Typography sx={{ fontWeight: 900, fontSize: '1.8rem', color }}>
-                        {plan.priceMonthly === 0 ? 'Free' : `$${plan.priceMonthly}`}
+                        {plan.priceMonthly === 0 ? 'Free' : `GH₵ ${plan.priceMonthly.toLocaleString()}`}
                       </Typography>
                       {plan.priceMonthly > 0 && (
                         <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary' }}>/mo</Typography>
@@ -183,7 +183,7 @@ export default function ManagePlansPage() {
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.8, mb: 2 }}>
                     {[
                       { label: 'Campaigns', value: plan.maxActiveCampaigns === -1 ? 'Unlimited' : String(plan.maxActiveCampaigns) },
-                      { label: 'Goal Limit', value: plan.maxCampaignGoal === -1 ? 'Unlimited' : `$${plan.maxCampaignGoal.toLocaleString()}` },
+                      { label: 'Goal Limit', value: plan.maxCampaignGoal === -1 ? 'Unlimited' : `GH₵ ${plan.maxCampaignGoal.toLocaleString()}` },
                       { label: 'Platform Fee', value: `${plan.platformFeePercent}%` },
                       { label: 'Team Members', value: plan.maxTeamMembers === -1 ? 'Unlimited' : String(plan.maxTeamMembers) },
                     ].map((row) => (

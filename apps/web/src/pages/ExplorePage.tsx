@@ -239,7 +239,7 @@ export function ExplorePage() {
               fontStyle: 'italic',
             }}
           >
-            Discover verified fundraising campaigns across Africa. Filter by country, category, or search for a cause close to your heart.
+            Discover verified fundraising campaigns across Ghana. Filter by region, category, or search for a cause close to your heart.
           </Typography>
         </Box>
       </Box>

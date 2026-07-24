@@ -108,20 +108,18 @@ export interface AiUsageMockData {
 }
 
 const names = [
-  'Amara Okafor', 'Kwame Mensah', 'Fatima Diallo', 'Tendai Moyo',
-  'Zainab Hassan', 'Kofi Asante', 'Nala Kamara', 'Sipho Ndlovu',
-  'Aisha Mohammed', 'Emeka Uche', 'Wanjiku Njoroge', 'Ousmane Ba',
-  'Chiamaka Eze', 'Binta Toure', 'Jelani Osei',
+  'Ama Mensah', 'Kwame Boateng', 'Efua Asante', 'Kofi Owusu',
+  'Abena Sarpong', 'Yaw Darko', 'Adwoa Agyeman', 'Kojo Antwi',
 ]
 
 const campaignTitles = [
-  'Build a School in Kumasi', 'Medical Fund for Aisha', 'Clean Water for Kibera',
-  'Support Local Farmers in Senegal', 'Emergency Relief - Flood Victims',
-  'Youth Tech Training Lagos', 'Solar Power for Rural Clinic',
-  'Women Entrepreneurs Accra', 'Community Library Nairobi',
-  'Scholarship Fund for Girls', 'Mobile Health Unit - Niger Delta',
-  'Fish Farm Cooperative Mombasa', 'Art Center for Youth Johannesburg',
-  'Drought Relief East Africa', 'Microfinance for Market Women',
+  'Build a School in Kumasi', 'Medical Fund for Abena', 'Clean Water for Tamale',
+  'Support Local Farmers in Sunyani', 'Emergency Relief - Flood Victims',
+  'Youth Tech Training Takoradi', 'Solar Power for Rural Clinic',
+  'Women Entrepreneurs Accra', 'Community Library Tema',
+  'Scholarship Fund for Girls', 'Mobile Health Unit - Volta Region',
+  'Fish Farm Cooperative Cape Coast', 'Art Center for Youth Ho',
+  'Drought Relief Northern Ghana', 'Microfinance for Market Women',
 ]
 
 function randomDate(start: Date, end: Date): Date {
@@ -134,7 +132,7 @@ function randomItem<T>(arr: T[]): T {
 
 function generateUsers(count: number): User[] {
   const roles = [UserRole.USER, UserRole.USER, UserRole.USER, UserRole.ORGANIZATION, UserRole.ADMIN]
-  const countries = ['Nigeria', 'Ghana', 'Kenya', 'South Africa', 'Senegal', 'Tanzania', 'Ethiopia', 'Uganda']
+  const countries = ['Ghana']
   const levels = [VerificationLevel.NONE, VerificationLevel.EMAIL_PHONE, VerificationLevel.NATIONAL_ID, VerificationLevel.INSTITUTIONAL, VerificationLevel.COMMUNITY]
   const kycStatuses = [KYCStatus.UNVERIFIED, KYCStatus.PENDING, KYCStatus.VERIFIED, KYCStatus.REJECTED, KYCStatus.EXPIRED]
   const kycLevels = [KYCLevel.NONE, KYCLevel.BASIC, KYCLevel.FULL, KYCLevel.BUSINESS]
@@ -173,7 +171,7 @@ function generateCampaigns(count: number, users: User[]): Campaign[] {
       description: `This campaign aims to make a real difference in the community. We need your support to reach our goal and create lasting impact across the region.`,
       goalAmount: goal,
       raisedAmount: Math.min(raised, goal),
-      currency: 'USD',
+      currency: 'GHS',
       category: randomItem(categories),
       priority: randomItem(priorities),
       status: randomItem(statuses),
@@ -196,7 +194,7 @@ function generateDonations(count: number, campaigns: Campaign[], users: User[]):
     campaignId: randomItem(campaigns).id,
     donorId: randomItem(users).id,
     amount: Math.floor(Math.random() * 500) + 5,
-    currency: 'USD',
+    currency: 'GHS',
     paymentMethod: randomItem(paymentMethods),
     message: Math.random() > 0.5 ? 'Keep up the great work!' : undefined,
     isAnonymous: Math.random() > 0.8,
@@ -267,14 +265,14 @@ function generateAiUsageLog(count: number): AiUsageLogEntry[] {
 
 function generateActivity(): ActivityItem[] {
   return [
-    { id: 'a1', type: 'donation', message: 'Kwame Mensah donated $250 to "Build a School in Kumasi"', timestamp: new Date(2026, 2, 29, 14, 30) },
-    { id: 'a2', type: 'campaign_created', message: 'Fatima Diallo created "Clean Water for Kibera"', timestamp: new Date(2026, 2, 29, 13, 15) },
-    { id: 'a3', type: 'user_joined', message: 'Nala Kamara joined the platform', timestamp: new Date(2026, 2, 29, 12, 0) },
+    { id: 'a1', type: 'donation', message: 'Kwame Boateng donated GH₵ 250 to "Build a School in Kumasi"', timestamp: new Date(2026, 2, 29, 14, 30) },
+    { id: 'a2', type: 'campaign_created', message: 'Efua Asante created "Clean Water for Tamale"', timestamp: new Date(2026, 2, 29, 13, 15) },
+    { id: 'a3', type: 'user_joined', message: 'Abena Sarpong joined the platform', timestamp: new Date(2026, 2, 29, 12, 0) },
     { id: 'a4', type: 'campaign_funded', message: '"Solar Power for Rural Clinic" reached its goal!', timestamp: new Date(2026, 2, 29, 11, 45) },
     { id: 'a5', type: 'dispute_opened', message: 'Dispute opened for "Emergency Relief - Flood Victims"', timestamp: new Date(2026, 2, 29, 10, 20) },
-    { id: 'a6', type: 'donation', message: 'Anonymous donated $1,000 to "Scholarship Fund for Girls"', timestamp: new Date(2026, 2, 29, 9, 10) },
-    { id: 'a7', type: 'user_joined', message: 'Emeka Uche joined the platform', timestamp: new Date(2026, 2, 28, 22, 0) },
-    { id: 'a8', type: 'donation', message: 'Zainab Hassan donated $75 to "Youth Tech Training Lagos"', timestamp: new Date(2026, 2, 28, 20, 15) },
+    { id: 'a6', type: 'donation', message: 'Anonymous donated GH₵ 1,000 to "Scholarship Fund for Girls"', timestamp: new Date(2026, 2, 29, 9, 10) },
+    { id: 'a7', type: 'user_joined', message: 'Kofi Owusu joined the platform', timestamp: new Date(2026, 2, 28, 22, 0) },
+    { id: 'a8', type: 'donation', message: 'Adwoa Agyeman donated GH₵ 75 to "Youth Tech Training Takoradi"', timestamp: new Date(2026, 2, 28, 20, 15) },
   ]
 }
 
@@ -302,14 +300,14 @@ export function generateCategoryBreakdown(): { category: string; value: number }
 
 export function generateGeographicData(): { country: string; campaigns: number; donations: number }[] {
   return [
-    { country: 'Nigeria', campaigns: 142, donations: 28500 },
-    { country: 'Kenya', campaigns: 98, donations: 21200 },
-    { country: 'Ghana', campaigns: 76, donations: 15800 },
-    { country: 'South Africa', campaigns: 65, donations: 19400 },
-    { country: 'Senegal', campaigns: 43, donations: 8900 },
-    { country: 'Tanzania', campaigns: 38, donations: 7600 },
-    { country: 'Ethiopia', campaigns: 31, donations: 6200 },
-    { country: 'Uganda', campaigns: 27, donations: 5100 },
+    { country: 'Greater Accra', campaigns: 142, donations: 28500 },
+    { country: 'Ashanti', campaigns: 98, donations: 21200 },
+    { country: 'Northern', campaigns: 76, donations: 15800 },
+    { country: 'Western', campaigns: 65, donations: 19400 },
+    { country: 'Central', campaigns: 43, donations: 8900 },
+    { country: 'Volta', campaigns: 38, donations: 7600 },
+    { country: 'Eastern', campaigns: 31, donations: 6200 },
+    { country: 'Bono', campaigns: 27, donations: 5100 },
   ]
 }
 
@@ -373,8 +371,8 @@ function generateKYCVerifications(count: number, users: User[]): KYCVerification
         idNumber: `ID-${Math.floor(Math.random() * 1000000)}`,
         address: {
           street: `${Math.floor(Math.random() * 1000)} Main St`,
-          city: randomItem(['Lagos', 'Accra', 'Nairobi', 'Johannesburg', 'Dakar']),
-          state: randomItem(['Lagos', 'Greater Accra', 'Nairobi County', 'Gauteng', 'Dakar Region']),
+          city: randomItem(['Accra', 'Kumasi', 'Tamale', 'Takoradi', 'Cape Coast']),
+          state: randomItem(['Greater Accra', 'Ashanti', 'Northern', 'Western', 'Central']),
           country: user.country,
           postalCode: String(Math.floor(Math.random() * 90000) + 10000),
         },
@@ -425,11 +423,11 @@ export function useMockData() {
   }
   const paymentProviders: PaymentProvider[] = [
     { id: '1', name: 'UbuntuFund Wallet', slug: 'wallet', type: 'wallet', enabled: true, isDefault: true, feePercent: 0, displayOrder: 1, createdAt: new Date() },
-    { id: '2', name: 'M-Pesa', slug: 'mpesa', type: 'mobile_money', enabled: false, isDefault: false, feePercent: 1.5, displayOrder: 2, createdAt: new Date() },
-    { id: '3', name: 'MTN MoMo', slug: 'mtn-momo', type: 'mobile_money', enabled: false, isDefault: false, feePercent: 1.5, displayOrder: 3, createdAt: new Date() },
-    { id: '4', name: 'Stripe', slug: 'stripe', type: 'card', enabled: false, isDefault: false, feePercent: 2.9, displayOrder: 4, createdAt: new Date() },
-    { id: '5', name: 'Paystack', slug: 'paystack', type: 'bank', enabled: false, isDefault: false, feePercent: 1.5, displayOrder: 5, createdAt: new Date() },
-    { id: '6', name: 'Flutterwave', slug: 'flutterwave', type: 'bank', enabled: false, isDefault: false, feePercent: 1.4, displayOrder: 6, createdAt: new Date() },
+    { id: '2', name: 'MTN Mobile Money (MoMo)', slug: 'mtn-momo', type: 'mobile_money', enabled: false, isDefault: false, feePercent: 1.5, displayOrder: 2, createdAt: new Date() },
+    { id: '3', name: 'Telecel Cash', slug: 'telecel-cash', type: 'mobile_money', enabled: false, isDefault: false, feePercent: 1.5, displayOrder: 3, createdAt: new Date() },
+    { id: '4', name: 'AT Money', slug: 'at-money', type: 'mobile_money', enabled: false, isDefault: false, feePercent: 1.5, displayOrder: 4, createdAt: new Date() },
+    { id: '5', name: 'Visa & Mastercard', slug: 'card', type: 'card', enabled: false, isDefault: false, feePercent: 2.9, displayOrder: 5, createdAt: new Date() },
+    { id: '6', name: 'Bank Transfer', slug: 'bank-transfer', type: 'bank', enabled: false, isDefault: false, feePercent: 1.4, displayOrder: 6, createdAt: new Date() },
     { id: '7', name: 'Bitcoin', slug: 'bitcoin', type: 'crypto', enabled: false, isDefault: false, feePercent: 1.0, displayOrder: 7, createdAt: new Date() },
   ]
 

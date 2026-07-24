@@ -16,7 +16,7 @@ export default function TermsScreen() {
 
       <Text style={styles.heading}>2. Use of the Platform</Text>
       <Text style={styles.body}>
-        UbuntuFund is a crowdfunding platform connecting donors with verified campaigns across Africa. You must be at least 18 years old to create an account. You agree to provide accurate information and keep your account secure.
+        UbuntuFund is a crowdfunding platform connecting donors with verified campaigns across Ghana. You must be at least 18 years old to create an account. You agree to provide accurate information and keep your account secure.
       </Text>
 
       <Text style={styles.heading}>3. Campaign Guidelines</Text>

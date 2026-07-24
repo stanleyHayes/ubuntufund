@@ -38,10 +38,12 @@ const CATEGORIES: { key: CampaignCategory; icon: string; label: string; color: s
 
 // ─── Helpers ──────────────────────────────────────────────────
 
-function formatCurrency(amount: number, currency: string) {
-  if (amount >= 1_000_000) return `${currency} ${(amount / 1_000_000).toFixed(1)}M`
-  if (amount >= 1_000) return `${currency} ${(amount / 1_000).toFixed(1)}K`
-  return `${currency} ${amount.toLocaleString()}`
+const ghsFormatter = new Intl.NumberFormat('en-GH', { style: 'currency', currency: 'GHS' })
+
+function formatCurrency(amount: number) {
+  if (amount >= 1_000_000) return `GH₵ ${(amount / 1_000_000).toFixed(1)}M`
+  if (amount >= 1_000) return `GH₵ ${(amount / 1_000).toFixed(1)}K`
+  return ghsFormatter.format(amount)
 }
 
 function daysLeft(end: Date) {
@@ -108,8 +110,8 @@ function FeaturedCard({ campaign, index }: { campaign: Campaign; index: number }
           <ProgressBar progress={pct} height={4} backgroundColor="rgba(255,255,255,0.2)" fillColor={brandColors.secondary} />
 
           <View style={styles.featuredStats}>
-            <Text style={styles.featuredRaised}>{formatCurrency(campaign.raisedAmount, campaign.currency)}</Text>
-            <Text style={styles.featuredGoal}> of {formatCurrency(campaign.goalAmount, campaign.currency)}</Text>
+            <Text style={styles.featuredRaised}>{formatCurrency(campaign.raisedAmount)}</Text>
+            <Text style={styles.featuredGoal}> of {formatCurrency(campaign.goalAmount)}</Text>
             <Text style={styles.featuredPct}>{Math.round(pct * 100)}%</Text>
           </View>
         </View>
@@ -138,7 +140,7 @@ function CompactCard({ campaign }: { campaign: Campaign }) {
         <Text style={styles.compactTitle} numberOfLines={2}>{campaign.title}</Text>
         <ProgressBar progress={pct} height={3} />
         <View style={styles.compactStats}>
-          <Text style={styles.compactRaised}>{formatCurrency(campaign.raisedAmount, campaign.currency)}</Text>
+          <Text style={styles.compactRaised}>{formatCurrency(campaign.raisedAmount)}</Text>
           <Text style={styles.compactPct}>{Math.round(pct * 100)}%</Text>
         </View>
       </View>
@@ -307,7 +309,7 @@ export default function HomeTab() {
                     )}
                     <View style={styles.recentContent}>
                       <Text style={styles.recentTitle} numberOfLines={2}>{item.title}</Text>
-                      <Text style={styles.recentAmount}>{formatCurrency(item.raisedAmount, item.currency)}</Text>
+                      <Text style={styles.recentAmount}>{formatCurrency(item.raisedAmount)}</Text>
                     </View>
                   </TouchableOpacity>
                 )}

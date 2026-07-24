@@ -48,7 +48,7 @@ export class ProfileEntity {
       id: '',
       userId,
       notificationPreferences: { ...DEFAULT_NOTIFICATION_PREFERENCES },
-      preferredCurrency: 'USD',
+      preferredCurrency: 'GHS',
       language: 'English',
       darkMode: false,
       anonymousDonations: false,

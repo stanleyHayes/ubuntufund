@@ -29,6 +29,7 @@ export interface Campaign {
   description: string
   goalAmount: number
   raisedAmount: number
+  /** Currency code — 'GHS' (Ghanaian cedi) is the platform's only currency */
   currency: string
   category: CampaignCategory
   priority: CampaignPriority
@@ -51,6 +52,7 @@ export interface CreateCampaignInput {
   title: string
   description: string
   goalAmount: number
+  /** Currency code — 'GHS' (Ghanaian cedi) is the platform's only currency */
   currency: string
   category: CampaignCategory
   priority: CampaignPriority
@@ -87,6 +89,7 @@ export interface Donation {
   campaignId: string
   donorId: string
   amount: number
+  /** Currency code — 'GHS' (Ghanaian cedi) is the platform's only currency */
   currency: string
   paymentMethod: PaymentMethod
   message?: string
@@ -100,6 +103,7 @@ export interface CampaignDonation {
   donorName: string
   donorAvatarUrl?: string
   amount: number
+  /** Currency code — 'GHS' (Ghanaian cedi) is the platform's only currency */
   currency: string
   paymentMethod: PaymentMethod
   message?: string
@@ -110,6 +114,7 @@ export interface CampaignDonation {
 export interface CreateDonationInput {
   campaignId: string
   amount: number
+  /** Currency code — 'GHS' (Ghanaian cedi) is the platform's only currency */
   currency: string
   paymentMethod: PaymentMethod
   message?: string

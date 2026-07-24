@@ -34,7 +34,7 @@ const sections = [
   },
   {
     title: '8. International Data Transfers',
-    content: `UbuntuFund operates primarily in Africa but may transfer data internationally for processing and storage. When we transfer data outside your jurisdiction, we ensure appropriate safeguards are in place, including standard contractual clauses and adequacy decisions where applicable. By using the Platform, you consent to the transfer of your information as described in this policy.`,
+    content: `UbuntuFund operates in Ghana but may transfer data internationally for processing and storage. When we transfer data outside Ghana, we ensure appropriate safeguards are in place, including standard contractual clauses and adequacy decisions where applicable. By using the Platform, you consent to the transfer of your information as described in this policy.`,
   },
   {
     title: '9. Children\'s Privacy',

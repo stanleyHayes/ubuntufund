@@ -13,21 +13,21 @@ const steps = [
     step: '01',
     title: 'Create your campaign',
     description:
-      'Set up your fundraiser in minutes. Add your story, set a goal, choose your currency, and get verified through our trust system.',
+      'Set up your fundraiser in minutes. Add your story, set a goal in cedis, and get verified through our trust system.',
   },
   {
     icon: <ShareRoundedIcon sx={{ fontSize: 28 }} />,
     step: '02',
     title: 'Share with your network',
     description:
-      'Spread the word across Africa and the diaspora. Share on social media, WhatsApp, and email to reach supporters worldwide.',
+      'Spread the word across Ghana and the diaspora. Share on WhatsApp, social media, and email to reach supporters at home and abroad.',
   },
   {
     icon: <AccountBalanceWalletRoundedIcon sx={{ fontSize: 28 }} />,
     step: '03',
     title: 'Receive your funds',
     description:
-      'Get donations directly via M-Pesa, bank transfer, or card. Funds are released securely with full transparency and tracking.',
+      'Get donations directly via MTN MoMo, Telecel Cash, AT Money, bank transfer, or card. Funds are released securely with full transparency and tracking.',
   },
 ]
 

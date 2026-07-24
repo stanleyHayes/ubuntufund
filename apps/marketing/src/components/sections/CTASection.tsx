@@ -39,8 +39,8 @@ function CTASection() {
             mb: 4,
           }}
         >
-          Join thousands of Africans and allies building a more connected,
-          empowered continent through the power of collective giving.
+          Join thousands of Ghanaians at home and abroad funding what their
+          communities need through the power of collective giving.
         </Typography>
         <Stack
           direction={{ xs: 'column', sm: 'row' }}

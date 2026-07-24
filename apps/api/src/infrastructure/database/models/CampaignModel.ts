@@ -29,7 +29,7 @@ const campaignSchema = new Schema<CampaignDocument>(
     description: { type: String, required: true },
     goalAmount: { type: Number, required: true },
     raisedAmount: { type: Number, default: 0 },
-    currency: { type: String, required: true, default: 'ZAR' },
+    currency: { type: String, required: true, default: 'GHS' },
     category: {
       type: String,
       enum: Object.values(CampaignCategory),

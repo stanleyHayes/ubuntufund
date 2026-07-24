@@ -34,7 +34,7 @@ const validInput: CreateCampaignInput = {
   title: 'New Campaign',
   description: 'A campaign for testing',
   goalAmount: 10000,
-  currency: 'KES',
+  currency: 'GHS',
   category: CampaignCategory.EDUCATION,
   priority: CampaignPriority.NORMAL,
   beneficiaries: ['Community B'],
@@ -125,7 +125,7 @@ describe('CreateCampaignUseCase', () => {
     expect(result).toHaveProperty('description', 'A campaign for testing')
     expect(result).toHaveProperty('goalAmount', 10000)
     expect(result).toHaveProperty('raisedAmount', 0)
-    expect(result).toHaveProperty('currency', 'KES')
+    expect(result).toHaveProperty('currency', 'GHS')
     expect(result).toHaveProperty('category', CampaignCategory.EDUCATION)
     expect(result).toHaveProperty('creatorId', 'user-1')
     expect(result).toHaveProperty('beneficiaries')

@@ -74,7 +74,7 @@ const menus: NavMenu[] = [
     label: 'Company',
     items: [
       { icon: <PublicIcon />, title: 'About Us', description: 'Our mission and the team behind UbuntuFund', href: '/about' },
-      { icon: <AutoStoriesIcon />, title: 'Blog', description: 'Stories, updates, and insights from Africa', href: '/blog' },
+      { icon: <AutoStoriesIcon />, title: 'Blog', description: 'Stories, updates, and insights from Ghana', href: '/blog' },
       { icon: <DiamondIcon />, title: 'Pricing', description: 'Transparent fees — free for personal campaigns', href: '/pricing' },
       { icon: <GroupsIcon />, title: 'For Organizations', description: 'Enterprise tools for institutions and NGOs', href: '/for-organizations' },
     ],

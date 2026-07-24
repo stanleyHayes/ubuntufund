@@ -21,7 +21,7 @@ function campaignPayload(overrides: Partial<Record<string, unknown>> = {}) {
     title: 'Test Campaign',
     description: 'A test campaign for integration testing',
     goalAmount: 5000,
-    currency: 'ZAR',
+    currency: 'GHS',
     category: CampaignCategory.EDUCATION,
     priority: CampaignPriority.NORMAL,
     beneficiaries: ['Test Beneficiary'],

@@ -104,7 +104,7 @@ export default function CampaignDetailScreen() {
     try {
       await api.post(`/campaigns/${id}/donate`, {
         amount,
-        currency: campaign?.currency ?? 'USD',
+        currency: campaign?.currency ?? 'GHS',
         paymentMethod: selectedProvider.slug,
         message: donateMessage || undefined,
         isAnonymous: false,
@@ -182,10 +182,10 @@ export default function CampaignDetailScreen() {
             <View style={styles.statsRow}>
               <View>
                 <Text variant="titleMedium" style={styles.raised}>
-                  {campaign.currency} {campaign.raisedAmount.toLocaleString()}
+                  GH₵ {campaign.raisedAmount.toLocaleString()}
                 </Text>
                 <Text variant="bodySmall" style={styles.muted}>
-                  raised of {campaign.currency} {campaign.goalAmount.toLocaleString()}
+                  raised of GH₵ {campaign.goalAmount.toLocaleString()}
                 </Text>
               </View>
               <View style={styles.statRight}>
@@ -227,7 +227,7 @@ export default function CampaignDetailScreen() {
 
           {campaign.goalAmount - campaign.raisedAmount > 0 && (
             <Text variant="bodySmall" style={styles.stillNeeded}>
-              Still needed: {campaign.currency} {(campaign.goalAmount - campaign.raisedAmount).toLocaleString()}
+              Still needed: GH₵ {(campaign.goalAmount - campaign.raisedAmount).toLocaleString()}
             </Text>
           )}
 
@@ -327,7 +327,7 @@ export default function CampaignDetailScreen() {
                     </View>
                     <View style={styles.donationAmount}>
                       <Text variant="bodyMedium" style={styles.raised}>
-                        {donation.currency} {donation.amount.toLocaleString()}
+                        GH₵ {donation.amount.toLocaleString()}
                       </Text>
                       <Text variant="labelSmall" style={styles.muted}>
                         {new Date(donation.createdAt).toLocaleDateString()}
@@ -441,7 +441,7 @@ export default function CampaignDetailScreen() {
               {campaign.title}
             </Text>
 
-            <Text variant="labelLarge" style={styles.fieldLabel}>Amount ({campaign.currency})</Text>
+            <Text variant="labelLarge" style={styles.fieldLabel}>Amount (GHS)</Text>
             <TextInput
               style={styles.modalInput}
               placeholder="e.g. 50"

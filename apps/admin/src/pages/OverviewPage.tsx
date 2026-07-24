@@ -175,7 +175,7 @@ function GeoRow({
         <Box sx={{ display: 'flex', gap: 2 }}>
           <Typography sx={{ fontSize: '0.68rem', color: 'text.secondary' }}>{campaigns} campaigns</Typography>
           <Typography sx={{ fontSize: '0.68rem', color: '#5E8F72', fontWeight: 600, fontFamily: '"TT Squares", monospace' }}>
-            ${donations.toLocaleString()}
+            GH₵ {donations.toLocaleString()}
           </Typography>
         </Box>
       </Box>
@@ -316,10 +316,10 @@ export default function OverviewPage() {
         lede="See platform-wide performance across campaigns, donors, and trust signals in one view."
         icon={<InsightsRoundedIcon />}
         stats={[
-          { label: 'Total Raised', value: `$${stats.totalRaised.toLocaleString()}` },
+          { label: 'Total Raised', value: `GH₵ ${stats.totalRaised.toLocaleString()}` },
           { label: 'Active Campaigns', value: String(stats.activeCampaigns) },
           { label: 'Total Users', value: String(stats.totalUsers) },
-          { label: 'Avg Donation', value: `$${stats.avgDonation}` },
+          { label: 'Avg Donation', value: `GH₵ ${stats.avgDonation.toLocaleString()}` },
         ]}
       />
 
@@ -343,7 +343,7 @@ export default function OverviewPage() {
                 tickLabelStyle: { fill: chartTextColor, fontSize: 11 },
               }]}
               yAxis={[{
-                valueFormatter: (v: number) => `$${(v / 1000).toFixed(0)}k`,
+                valueFormatter: (v: number) => `GH₵ ${(v / 1000).toFixed(0)}k`,
                 tickLabelStyle: { fill: chartTextColor, fontSize: 11 },
               }]}
               series={[{
@@ -545,7 +545,7 @@ export default function OverviewPage() {
                     flexShrink: 0,
                   }}
                 >
-                  ${c.raisedAmount.toLocaleString()}
+                  GH₵ {c.raisedAmount.toLocaleString()}
                 </Typography>
               </Box>
             ))}
@@ -649,7 +649,7 @@ export default function OverviewPage() {
       {/* ═══ ROW 5: Geographic + Trust Score + Fraud ═══ */}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3, mt: 4 }}>
         {/* Geographic Distribution */}
-        <Section title="Geographic Distribution" delay={0.45} action={<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'text.secondary' }}><PublicIcon sx={{ fontSize: 14 }} /><Typography sx={{ fontSize: '0.62rem' }}>8 countries</Typography></Box>}>
+        <Section title="Geographic Distribution" delay={0.45} action={<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'text.secondary' }}><PublicIcon sx={{ fontSize: 14 }} /><Typography sx={{ fontSize: '0.62rem' }}>8 regions</Typography></Box>}>
           <Box
             sx={{
               bgcolor: CARD_BG,

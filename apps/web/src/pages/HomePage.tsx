@@ -320,7 +320,7 @@ export function HomePage() {
                 Campaigns
               </Typography>
               <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 520, mx: 'auto' }}>
-                Discover verified campaigns across Africa. Every contribution builds trust and transforms communities.
+                Discover verified campaigns across Ghana. Every contribution builds trust and transforms communities.
               </Typography>
             </Box>
 

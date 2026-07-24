@@ -1,5 +1,5 @@
 // Seed minimal data for the Playwright e2e suite: one verified creator and
-// one active ZAR campaign to donate to. Used by CI (fresh database) and safe
+// one active GHS campaign to donate to. Used by CI (fresh database) and safe
 // to re-run — it upserts by email/title.
 import mongoose from 'mongoose'
 import bcrypt from 'bcryptjs'
@@ -16,12 +16,12 @@ await db.collection('users').updateOne(
   {
     $setOnInsert: {
       email: 'seed-creator@ubuntufund.dev',
-      name: 'Seeded Creator',
+      name: 'Ama Mensah',
       passwordHash,
       role: 'user',
       trustScore: 80,
       emailVerified: true,
-      country: 'South Africa',
+      country: 'Ghana',
       createdAt: now,
       updatedAt: now,
     },
@@ -37,10 +37,9 @@ await db.collection('campaigns').updateOne(
     $setOnInsert: {
       title: 'Seeded Water Project',
       description:
-        'Seed campaign for automated end-to-end tests: clean water infrastructure for rural schools.',
+        'Seed campaign for automated end-to-end tests: clean water infrastructure for rural schools near Tamale.',
       goalAmount: 100000,
       raisedAmount: 0,
-      currency: 'ZAR',
       category: 'community',
       priority: 'normal',
       creatorId: creator._id.toString(),
@@ -51,7 +50,7 @@ await db.collection('campaigns').updateOne(
       createdAt: now,
       updatedAt: now,
     },
-    $set: { status: 'active' },
+    $set: { status: 'active', currency: 'GHS' },
   },
   { upsert: true }
 )

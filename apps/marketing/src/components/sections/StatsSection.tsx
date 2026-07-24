@@ -4,9 +4,9 @@ import Typography from '@mui/material/Typography'
 import Grid from '@mui/material/Grid'
 
 const stats = [
-  { value: '$10M+', label: 'Raised on platform' },
+  { value: 'GH₵ 120M+', label: 'Raised on platform' },
   { value: '50K+', label: 'Campaigns created' },
-  { value: '30+', label: 'African countries' },
+  { value: '16', label: 'Regions of Ghana' },
   { value: '99%', label: 'Trust rate' },
 ]
 

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { View, ScrollView, StyleSheet, Alert } from 'react-native'
-import { TextInput, Button, Text, SegmentedButtons, Chip } from 'react-native-paper'
+import { TextInput, Button, Text, Chip } from 'react-native-paper'
 import { router } from 'expo-router'
 import { CampaignCategory } from '@ubuntu-fund/types'
 import { brandColors } from '@/theme'
@@ -20,7 +20,6 @@ export default function CreateCampaignScreen() {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [goalAmount, setGoalAmount] = useState('')
-  const [currency, setCurrency] = useState('USD')
   const [category, setCategory] = useState<CampaignCategory>(CampaignCategory.COMMUNITY)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -31,7 +30,7 @@ export default function CreateCampaignScreen() {
         title,
         description,
         goalAmount: Number(goalAmount),
-        currency,
+        currency: 'GHS',
         category,
       })
       Alert.alert('Success', 'Campaign created successfully!', [
@@ -77,28 +76,17 @@ export default function CreateCampaignScreen() {
           style={styles.input}
         />
 
-        <View style={styles.row}>
-          <TextInput
-            label="Goal Amount"
-            value={goalAmount}
-            onChangeText={setGoalAmount}
-            mode="outlined"
-            outlineColor="rgba(26,46,34,0.15)"
-            activeOutlineColor={brandColors.primary}
-            keyboardType="numeric"
-            style={[styles.input, { flex: 2 }]}
-          />
-          <SegmentedButtons
-            value={currency}
-            onValueChange={setCurrency}
-            buttons={[
-              { value: 'USD', label: 'USD' },
-              { value: 'KES', label: 'KES' },
-              { value: 'NGN', label: 'NGN' },
-            ]}
-            style={[styles.input, { flex: 3 }]}
-          />
-        </View>
+        <TextInput
+          label="Goal Amount"
+          value={goalAmount}
+          onChangeText={setGoalAmount}
+          mode="outlined"
+          outlineColor="rgba(26,46,34,0.15)"
+          activeOutlineColor={brandColors.primary}
+          keyboardType="numeric"
+          right={<TextInput.Affix text="GHS" />}
+          style={styles.input}
+        />
 
         <Text variant="titleSmall" style={styles.label}>
           Category
@@ -153,7 +141,6 @@ const styles = StyleSheet.create({
   heading: { fontFamily: 'TTSquares-Bold', marginBottom: 4 },
   subtitle: { color: brandColors.textSecondary, marginBottom: 24 },
   input: { marginBottom: 16, backgroundColor: brandColors.surface },
-  row: { flexDirection: 'row', gap: 12, alignItems: 'center' },
   label: { marginBottom: 8, fontFamily: 'TTSquares-Bold' },
   categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 },
   categoryChip: { backgroundColor: 'rgba(168,181,160,0.28)' },

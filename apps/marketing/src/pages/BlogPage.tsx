@@ -29,26 +29,26 @@ export interface BlogPost {
 export const blogPosts: BlogPost[] = [
   {
     slug: 'mobile-money-revolutionizing-giving',
-    title: 'How Mobile Money Is Revolutionizing Charitable Giving in East Africa',
+    title: 'How Mobile Money Is Revolutionizing Charitable Giving in Ghana',
     date: 'March 15, 2026',
     category: 'Trends',
     excerpt:
-      'Mobile money platforms like M-Pesa have transformed how millions of Africans send and receive funds. Now, this same technology is making it easier than ever to support community causes and charitable campaigns across the continent.',
+      'MTN MoMo transformed how millions of Ghanaians send and receive money. Now the same rails are making it easier than ever to support community causes and charitable campaigns across the country.',
     image: 'https://images.unsplash.com/photo-1556745757-8d76bdb6984b?w=800&h=500&fit=crop',
     readTime: 7,
-    author: { name: 'Amina Okafor', avatar: 'AO', role: 'Head of Partnerships' },
+    author: { name: 'Kojo Antwi', avatar: 'KA', role: 'Head of Partnerships' },
     featured: true,
   },
   {
     slug: 'building-trust-verification-journey',
-    title: 'Building Trust in African Crowdfunding: Our Verification Journey',
+    title: 'Building Trust in Ghanaian Crowdfunding: Our Verification Journey',
     date: 'March 1, 2026',
     category: 'Trust & Safety',
     excerpt:
       'Transparency is the foundation of successful crowdfunding. Learn how UbuntuFund developed its multi-layer verification system to ensure donors can give with confidence.',
     image: 'https://images.unsplash.com/photo-1521791136064-7986c2920216?w=600&h=400&fit=crop',
     readTime: 5,
-    author: { name: 'Kwame Asante', avatar: 'KA', role: 'CTO' },
+    author: { name: 'Adwoa Agyeman', avatar: 'AA', role: 'CTO' },
   },
   {
     slug: '5-campaigns-that-changed-communities',
@@ -56,32 +56,32 @@ export const blogPosts: BlogPost[] = [
     date: 'February 18, 2026',
     category: 'Impact',
     excerpt:
-      'From a solar-powered classroom in rural Kenya to a women\'s cooperative in Senegal, these five campaigns demonstrate the transformative power of collective giving.',
+      'From a solar-powered classroom in the Upper East Region to a women\'s shea cooperative near Tamale, these five campaigns demonstrate the transformative power of collective giving.',
     image: 'https://images.unsplash.com/photo-1509099836639-18ba1795216d?w=600&h=400&fit=crop',
     readTime: 9,
-    author: { name: 'Fatou Diallo', avatar: 'FD', role: 'Impact Lead' },
+    author: { name: 'Abena Sarpong', avatar: 'AS', role: 'Impact Lead' },
   },
   {
     slug: 'rise-of-diaspora-giving',
-    title: 'The Rise of Diaspora Giving: Connecting Africans Abroad with Home',
+    title: 'The Rise of Diaspora Giving: Connecting Ghanaians Abroad with Home',
     date: 'February 5, 2026',
     category: 'Community',
     excerpt:
-      'The African diaspora sends over $90 billion in remittances annually. A growing portion is being channeled through crowdfunding platforms to support education, healthcare, and infrastructure.',
+      'Ghanaians abroad send home billions of cedis in remittances every year. A growing share is being channeled through crowdfunding platforms to support education, healthcare, and infrastructure.',
     image: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=600&h=400&fit=crop',
     readTime: 6,
-    author: { name: 'Tendai Moyo', avatar: 'TM', role: 'Community Manager' },
+    author: { name: 'Yaw Darko', avatar: 'YD', role: 'Community Manager' },
   },
   {
     slug: 'crowdfunding-for-education',
-    title: 'Crowdfunding for Education: Bridging the Gap in African Schools',
+    title: 'Crowdfunding for Education: Bridging the Gap in Ghanaian Schools',
     date: 'January 22, 2026',
     category: 'Education',
     excerpt:
       'Education campaigns are among the most successful on UbuntuFund, with an average success rate of 78%. Discover why education resonates so strongly with donors.',
     image: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=600&h=400&fit=crop',
     readTime: 8,
-    author: { name: 'Ngozi Eze', avatar: 'NE', role: 'Education Specialist' },
+    author: { name: 'Ama Mensah', avatar: 'AM', role: 'Education Specialist' },
   },
   {
     slug: 'guide-successful-health-campaign',
@@ -92,7 +92,7 @@ export const blogPosts: BlogPost[] = [
       'Health-related campaigns require special attention to detail, transparency, and urgency. This comprehensive guide covers everything from crafting your story to managing donor updates.',
     image: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=600&h=400&fit=crop',
     readTime: 12,
-    author: { name: 'Dr. Yemi Adeyemi', avatar: 'YA', role: 'Health Advisor' },
+    author: { name: 'Dr. Kofi Owusu', avatar: 'KO', role: 'Health Advisor' },
   },
 ]
 
@@ -731,7 +731,7 @@ function BlogPage() {
                 Stay in the loop
               </Typography>
               <Typography variant="body2" sx={{ mb: 2.5, opacity: 0.85, lineHeight: 1.6, position: 'relative' }}>
-                Get the latest stories from Africa's giving community, delivered to your inbox.
+                Get the latest stories from Ghana's giving community, delivered to your inbox.
               </Typography>
               <Box
                 component="input"

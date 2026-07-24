@@ -260,7 +260,7 @@ export default function AdminProfilePage() {
                 onChange={(e) => setPhone(e.target.value)}
                 fullWidth
                 size="small"
-                placeholder="+234 800 000 0000"
+                placeholder="+233 24 000 0000"
                 slotProps={{
                   input: {
                     startAdornment: (
@@ -278,7 +278,7 @@ export default function AdminProfilePage() {
                 onChange={(e) => setCountry(e.target.value)}
                 fullWidth
                 size="small"
-                placeholder="Nigeria"
+                placeholder="Ghana"
                 slotProps={{
                   input: {
                     startAdornment: (
@@ -512,7 +512,7 @@ export default function AdminProfilePage() {
                 select
                 sx={inputSx}
               >
-                {['Africa/Lagos', 'Africa/Nairobi', 'Africa/Accra', 'Africa/Johannesburg', 'Africa/Cairo', 'Europe/London', 'America/New_York', 'UTC'].map((tz) => (
+                {['Africa/Accra', 'UTC', 'Europe/London', 'America/New_York'].map((tz) => (
                   <option key={tz} value={tz}>{tz.replace('_', ' ')}</option>
                 ))}
               </TextField>

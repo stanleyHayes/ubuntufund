@@ -53,7 +53,7 @@ const campaignTypes = [
   {
     icon: PaletteIcon,
     title: 'Creative',
-    description: 'Arts, music, film, cultural projects, and creative endeavors across Africa.',
+    description: 'Arts, music, film, cultural projects, and creative work across Ghana.',
     accent: '#2E3D2F',
   },
 ]

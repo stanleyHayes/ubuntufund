@@ -677,7 +677,7 @@ export function LeaderboardPage() {
           </Typography>
         </Box>
         <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 520, mx: 'auto' }}>
-          Celebrating our most generous community members who are driving real change across Africa.
+          Celebrating our most generous community members who are driving real change across Ghana.
         </Typography>
       </Box>
 

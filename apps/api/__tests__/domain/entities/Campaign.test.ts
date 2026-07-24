@@ -12,8 +12,8 @@ function makeCampaign(overrides: Partial<ConstructorParameters<typeof CampaignEn
     id: 'camp-1',
     title: 'Test Campaign',
     description: 'A test campaign',
-    goalAmount: new Money(10000, 'KES'),
-    raisedAmount: new Money(0, 'KES'),
+    goalAmount: new Money(10000, 'GHS'),
+    raisedAmount: new Money(0, 'GHS'),
     category: CampaignCategory.COMMUNITY,
     priority: CampaignPriority.NORMAL,
     status: CampaignStatus.ACTIVE,
@@ -56,24 +56,24 @@ describe('CampaignEntity', () => {
   describe('addDonation', () => {
     it('increases the raised amount', () => {
       const campaign = makeCampaign({
-        raisedAmount: new Money(1000, 'KES'),
+        raisedAmount: new Money(1000, 'GHS'),
       })
-      campaign.addDonation(new Money(500, 'KES'))
+      campaign.addDonation(new Money(500, 'GHS'))
       expect(campaign.raisedAmount.amount).toBe(1500)
     })
 
     it('sets status to funded when goal is reached', () => {
       const campaign = makeCampaign({
-        goalAmount: new Money(1000, 'KES'),
-        raisedAmount: new Money(900, 'KES'),
+        goalAmount: new Money(1000, 'GHS'),
+        raisedAmount: new Money(900, 'GHS'),
       })
-      campaign.addDonation(new Money(100, 'KES'))
+      campaign.addDonation(new Money(100, 'GHS'))
       expect(campaign.status).toBe(CampaignStatus.FUNDED)
     })
 
     it('throws when campaign cannot receive donations', () => {
       const campaign = makeCampaign({ status: CampaignStatus.BLOCKED })
-      expect(() => campaign.addDonation(new Money(100, 'KES'))).toThrow(
+      expect(() => campaign.addDonation(new Money(100, 'GHS'))).toThrow(
         'Campaign cannot receive donations'
       )
     })
@@ -116,16 +116,16 @@ describe('CampaignEntity', () => {
   describe('isFunded', () => {
     it('returns true when raised equals goal', () => {
       const campaign = makeCampaign({
-        goalAmount: new Money(1000, 'KES'),
-        raisedAmount: new Money(1000, 'KES'),
+        goalAmount: new Money(1000, 'GHS'),
+        raisedAmount: new Money(1000, 'GHS'),
       })
       expect(campaign.isFunded()).toBe(true)
     })
 
     it('returns false when raised is below goal', () => {
       const campaign = makeCampaign({
-        goalAmount: new Money(1000, 'KES'),
-        raisedAmount: new Money(500, 'KES'),
+        goalAmount: new Money(1000, 'GHS'),
+        raisedAmount: new Money(500, 'GHS'),
       })
       expect(campaign.isFunded()).toBe(false)
     })

@@ -65,12 +65,12 @@ interface TeamMember {
 }
 
 const teamMembers: TeamMember[] = [
-  { name: 'Amara Osei', role: 'Co-Founder & CEO', initials: 'AO', color: '#2E3D2F', bio: 'Visionary leader passionate about democratizing giving across Africa.', doodleType: 'star' },
-  { name: 'Kwame Mensah', role: 'Co-Founder & CTO', initials: 'KM', color: '#1565C0', bio: 'Architect of the trust infrastructure powering transparent donations.', doodleType: 'circle' },
-  { name: 'Fatima Diallo', role: 'Head of Community', initials: 'FD', color: '#6A1B9A', bio: 'Building bridges between donors and communities across 15 countries.', doodleType: 'heart' },
-  { name: 'David Okoro', role: 'Head of Trust & Safety', initials: 'DO', color: '#C62828', bio: 'Guardian of platform integrity with a zero-tolerance fraud policy.', doodleType: 'diamond' },
-  { name: 'Nalini Patel', role: 'Head of Partnerships', initials: 'NP', color: '#A07E33', bio: 'Forging alliances with NGOs, governments, and corporate partners.', doodleType: 'leaf' },
-  { name: 'Samuel Adeyemi', role: 'Head of Engineering', initials: 'SA', color: '#00695C', bio: 'Leading the team building scalable, secure fintech for Africa.', doodleType: 'wave' },
+  { name: 'Kofi Owusu', role: 'Co-Founder & CEO', initials: 'KO', color: '#2E3D2F', bio: 'Visionary leader passionate about democratizing giving across Ghana.', doodleType: 'star' },
+  { name: 'Adwoa Agyeman', role: 'Co-Founder & CTO', initials: 'AA', color: '#1565C0', bio: 'Architect of the trust infrastructure powering transparent donations.', doodleType: 'circle' },
+  { name: 'Abena Sarpong', role: 'Head of Community', initials: 'AS', color: '#6A1B9A', bio: 'Building bridges between donors and communities in all 16 regions of Ghana.', doodleType: 'heart' },
+  { name: 'Yaw Darko', role: 'Head of Trust & Safety', initials: 'YD', color: '#C62828', bio: 'Guardian of platform integrity with a zero-tolerance fraud policy.', doodleType: 'diamond' },
+  { name: 'Kojo Antwi', role: 'Head of Partnerships', initials: 'KA', color: '#A07E33', bio: 'Forging alliances with NGOs, government agencies, and corporate partners.', doodleType: 'leaf' },
+  { name: 'Kwame Boateng', role: 'Head of Engineering', initials: 'KB', color: '#00695C', bio: 'Leading the team building scalable, secure fintech for Ghana.', doodleType: 'wave' },
 ]
 
 const DOODLE_PATHS: Record<string, string> = {
@@ -186,7 +186,7 @@ function AboutPage() {
               animation: `${fadeInUp} 0.7s 0.15s ease both`,
             }}
           >
-            UbuntuFund is Africa&apos;s trust infrastructure for giving — empowering communities across the continent through transparent, secure crowdfunding.
+            UbuntuFund is Ghana&apos;s trust infrastructure for giving — empowering communities across the country through transparent, secure crowdfunding.
           </Typography>
         </Box>
 
@@ -233,7 +233,7 @@ function AboutPage() {
             Our Mission
           </Typography>
           <Typography sx={{ fontFamily: '"TT Squares", sans-serif', fontWeight: 900, fontSize: '1.5rem', color: '#1a1a1a', mb: 2, lineHeight: 1.2 }}>
-            Democratizing Generosity Across Africa
+            Democratizing Generosity Across Ghana
           </Typography>
           <Typography sx={{ fontSize: '0.92rem', color: 'rgba(0,0,0,0.5)', lineHeight: 1.8 }}>
             We believe that every community has the power to uplift itself when given the right tools. UbuntuFund provides the infrastructure that connects donors with verified causes, ensuring that every contribution reaches those who need it most.
@@ -266,10 +266,10 @@ function AboutPage() {
             Our Vision
           </Typography>
           <Typography sx={{ fontFamily: '"TT Squares", sans-serif', fontWeight: 900, fontSize: '1.5rem', color: '#1a1a1a', mb: 2, lineHeight: 1.2 }}>
-            A Continent Where No Cause Goes Unfunded
+            A Ghana Where No Cause Goes Unfunded
           </Typography>
           <Typography sx={{ fontSize: '0.92rem', color: 'rgba(0,0,0,0.5)', lineHeight: 1.8 }}>
-            We envision a future where geographic and economic barriers no longer prevent communities from accessing the resources they need. By 2030, we aim to facilitate over $1 billion in donations across 54 African nations.
+            We envision a future where geographic and economic barriers no longer prevent communities from accessing the resources they need. By 2030, we aim to facilitate over GH₵ 1 billion in donations across all 16 regions of Ghana.
           </Typography>
           <Box sx={{ position: 'absolute', bottom: 16, right: 16, opacity: 0.04, animation: `${sway} 7s 1s ease-in-out infinite` }}>
             <svg width="50" height="50" viewBox="-12 -12 24 24"><path d={DOODLE_PATHS.diamond} fill="none" stroke="#C7A24A" strokeWidth="1.5" strokeLinecap="round" /></svg>

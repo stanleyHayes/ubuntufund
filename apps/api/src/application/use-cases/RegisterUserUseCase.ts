@@ -58,7 +58,7 @@ export class RegisterUserUseCase {
       id: '',
       userId: savedUser.id,
       type: WalletType.LOCAL,
-      balance: new Money(0, 'ZAR'),
+      balance: new Money(0, 'GHS'),
       createdAt: now,
       updatedAt: now,
     });

@@ -63,10 +63,10 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
 
         <View style={styles.stats}>
           <Text variant="bodySmall" style={styles.raised}>
-            {campaign.currency} {campaign.raisedAmount.toLocaleString()}
+            GH₵ {campaign.raisedAmount.toLocaleString()}
           </Text>
           <Text variant="bodySmall" style={styles.muted}>
-            of {campaign.currency} {campaign.goalAmount.toLocaleString()}
+            of GH₵ {campaign.goalAmount.toLocaleString()}
           </Text>
           <Text variant="bodySmall" style={styles.daysLeft}>
             {daysLeft}d left

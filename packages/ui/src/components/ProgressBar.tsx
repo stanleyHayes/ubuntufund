@@ -10,8 +10,8 @@ export interface ProgressBarProps {
   current: number
   /** Funding goal amount */
   goal: number
-  /** Currency code (e.g. GHS, NGN, KES, ZAR, USD) */
-  currency: string
+  /** Currency code — the platform uses GHS (Ghanaian cedi) only */
+  currency?: string
   /** Whether to show the amounts text below the bar */
   showAmounts?: boolean
   /** Whether to show the percentage text */
@@ -23,7 +23,7 @@ export interface ProgressBarProps {
 export function ProgressBar({
   current,
   goal,
-  currency,
+  currency = 'GHS',
   showAmounts = true,
   showPercentage = true,
   color = 'primary',

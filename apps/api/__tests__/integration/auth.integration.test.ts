@@ -43,7 +43,7 @@ describe('Auth Integration', () => {
         email,
         password: 'SecurePass123',
         name: 'Test User',
-        country: 'South Africa',
+        country: 'Ghana',
       });
 
       expect(res.status).toBe(201);

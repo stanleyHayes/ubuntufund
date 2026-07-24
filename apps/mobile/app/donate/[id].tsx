@@ -58,7 +58,7 @@ export default function DonateScreen() {
     try {
       await api.post(`/campaigns/${id}/donate`, {
         amount,
-        currency: campaign?.currency ?? 'USD',
+        currency: campaign?.currency ?? 'GHS',
         paymentMethod: selectedProvider.slug,
         message: donateMessage || undefined,
         isAnonymous: false,
@@ -104,10 +104,10 @@ export default function DonateScreen() {
           <View style={styles.statsRow}>
             <View>
               <Text variant="titleMedium" style={styles.raised}>
-                {campaign.currency} {campaign.raisedAmount.toLocaleString()}
+                GH₵ {campaign.raisedAmount.toLocaleString()}
               </Text>
               <Text variant="bodySmall" style={styles.muted}>
-                raised of {campaign.currency} {campaign.goalAmount.toLocaleString()}
+                raised of GH₵ {campaign.goalAmount.toLocaleString()}
               </Text>
             </View>
             <View style={styles.statRight}>
@@ -117,7 +117,7 @@ export default function DonateScreen() {
           </View>
         </Surface>
 
-        <Text variant="labelLarge" style={styles.fieldLabel}>Amount ({campaign.currency})</Text>
+        <Text variant="labelLarge" style={styles.fieldLabel}>Amount (GHS)</Text>
         <TextInput
           style={styles.modalInput}
           placeholder="e.g. 50"

@@ -443,12 +443,12 @@ export default function SettingsPage() {
                           </TableCell>
                           <TableCell align="center" sx={{ borderColor: 'divider', py: 1.5 }}>
                             <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: 'text.primary' }}>
-                              {plan.maxCampaignGoal === -1 ? 'Unlimited' : `$${plan.maxCampaignGoal.toLocaleString()}`}
+                              {plan.maxCampaignGoal === -1 ? 'Unlimited' : `GH₵ ${plan.maxCampaignGoal.toLocaleString()}`}
                             </Typography>
                           </TableCell>
                           <TableCell align="right" sx={{ borderColor: 'divider', py: 1.5 }}>
                             <Typography sx={{ fontSize: '0.85rem', fontWeight: 700, color: 'text.primary' }}>
-                              {plan.priceMonthly === 0 ? 'Free' : `$${plan.priceMonthly}/mo`}
+                              {plan.priceMonthly === 0 ? 'Free' : `GH₵ ${plan.priceMonthly.toLocaleString()}/mo`}
                             </Typography>
                           </TableCell>
                         </TableRow>
@@ -468,7 +468,7 @@ export default function SettingsPage() {
               <NumberInput value={processingFee} onChange={track(setProcessingFee)} suffix="%" />
             </SettingRow>
             <SettingRow label="Fixed Fee" description="Per-transaction flat charge">
-              <NumberInput value={fixedFee} onChange={track(setFixedFee)} suffix="USD" />
+              <NumberInput value={fixedFee} onChange={track(setFixedFee)} suffix="GHS" />
             </SettingRow>
             <SettingRow label="Withdrawal Fee" description="Fee when withdrawing to bank/mobile money">
               <NumberInput value={withdrawalFee} onChange={track(setWithdrawalFee)} suffix="%" />
@@ -488,7 +488,7 @@ export default function SettingsPage() {
               <NumberInput value={maxDuration} onChange={track(setMaxDuration)} suffix="days" />
             </SettingRow>
             <SettingRow label="Minimum Donation" description="Smallest accepted donation amount">
-              <NumberInput value={minDonation} onChange={track(setMinDonation)} suffix="USD" />
+              <NumberInput value={minDonation} onChange={track(setMinDonation)} suffix="GHS" />
             </SettingRow>
           </SectionCard>
         </Grid>

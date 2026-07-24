@@ -9,9 +9,9 @@ test.describe('Donations', () => {
       .request.get('/api/v1/campaigns?page=1&pageSize=50')
       .then((r) => r.json())
     const active = list.data.items.find(
-      (c: { status: string; currency: string }) => c.status === 'active' && c.currency === 'ZAR'
+      (c: { status: string; currency: string }) => c.status === 'active' && c.currency === 'GHS'
     )
-    test.skip(!active, 'no active ZAR campaign available to donate to')
+    test.skip(!active, 'no active GHS campaign available to donate to')
 
     // Fund the freshly registered user's wallet through the API.
     const tokens = await page.evaluate(() =>
@@ -24,7 +24,7 @@ test.describe('Donations', () => {
     const wallet = wallets.data[0]
     const deposit = await page.request.post(`/api/v1/wallets/${wallet.id}/deposit`, {
       headers: auth,
-      data: { amount: 500, currency: 'ZAR' },
+      data: { amount: 500, currency: 'GHS' },
     })
     expect(deposit.status()).toBe(200)
 

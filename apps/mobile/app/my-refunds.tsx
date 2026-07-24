@@ -150,7 +150,7 @@ export default function MyRefundsScreen() {
                   </Text>
 
                   <View style={styles.refundFooter}>
-                    <Text style={styles.refundAmount}>{r.currency ?? '$'}{r.amount}</Text>
+                    <Text style={styles.refundAmount}>GH₵ {r.amount.toLocaleString()}</Text>
                     <Text style={styles.refundDate}>{formatDate(r.createdAt)}</Text>
                   </View>
 

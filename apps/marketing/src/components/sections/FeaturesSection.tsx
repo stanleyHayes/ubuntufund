@@ -22,16 +22,16 @@ const features = [
   },
   {
     icon: CurrencyExchangeIcon,
-    title: 'Multi-currency',
+    title: 'Cedi payments',
     description:
-      'Accept donations in USD, KES, NGN, ZAR, GHS, and more. Automatic conversion with transparent exchange rates.',
+      'Every campaign raises and pays out in Ghanaian cedis (GHS). No conversion, no exchange-rate surprises — what donors give is what you receive.',
     accent: '#C7A24A',
   },
   {
     icon: PaymentsIcon,
     title: 'Direct payments',
     description:
-      'M-Pesa, bank transfers, cards, and mobile money. Funds reach you through the channels that work in Africa.',
+      'MTN MoMo, Telecel Cash, AT Money, bank transfer, and Visa & Mastercard cards. Funds reach you through the channels Ghanaians already use.',
     accent: '#2E3D2F',
   },
   {
@@ -45,7 +45,7 @@ const features = [
     icon: PublicIcon,
     title: 'Diaspora mode',
     description:
-      'Connect the African diaspora to causes back home. Localized experiences for supporters in Europe, Americas, and beyond.',
+      'Connect Ghanaians abroad to causes back home. A cousin in London or New York gives to a campaign in Kumasi as easily as a neighbour in Accra.',
     accent: '#2E3D2F',
   },
   {
@@ -82,14 +82,14 @@ function FeaturesSection() {
               fontSize: { xs: '1.75rem', md: '2.25rem' },
             }}
           >
-            Built for Africa, by Africa
+            Built for Ghana, by Ghanaians
           </Typography>
           <Typography
             variant="body1"
             sx={{ color: 'text.secondary', maxWidth: 640, mx: 'auto' }}
           >
-            Purpose-built features that address the unique needs of fundraising
-            across the African continent and its global diaspora.
+            Purpose-built features for how fundraising actually works in Ghana —
+            at home and among Ghanaians abroad.
           </Typography>
         </Box>
 

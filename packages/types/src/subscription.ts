@@ -22,15 +22,15 @@ export interface SubscriptionPlan {
   tier: SubscriptionTier
   name: string
   description: string
-  /** Monthly price in USD */
+  /** Monthly price in GHS */
   priceMonthly: number
-  /** Yearly price in USD (discounted) */
+  /** Yearly price in GHS (discounted) */
   priceYearly: number
   /** Platform fee percentage taken from each campaign */
   platformFeePercent: number
   /** Max concurrent active campaigns */
   maxActiveCampaigns: number
-  /** Max campaign goal amount in USD equivalent */
+  /** Max campaign goal amount in GHS */
   maxCampaignGoal: number
   /** Whether campaign gets featured/boosted visibility */
   featuredListing: boolean

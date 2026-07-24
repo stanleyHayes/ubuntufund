@@ -10,37 +10,37 @@ import FormatQuoteRoundedIcon from '@mui/icons-material/FormatQuoteRounded'
 
 const testimonials = [
   {
-    name: 'Amina Okafor',
+    name: 'Ama Mensah',
     role: 'Campaign Creator',
-    location: 'Lagos, Nigeria',
+    location: 'Kumasi',
     avatar: 'A',
     avatarColor: '#2E3D2F',
     avatarTextColor: '#F5F2EA',
     rating: 5,
     quote:
-      'UbuntuFund helped me raise funds for my daughter\'s surgery in just two weeks. The trust verification gave our donors confidence, and the M-Pesa integration made receiving funds seamless.',
+      'UbuntuFund helped me raise funds for my daughter\'s surgery at Komfo Anokye in just two weeks. The trust verification gave our donors confidence, and the MTN MoMo payouts made receiving funds seamless.',
   },
   {
-    name: 'David Mwangi',
+    name: 'Kwame Boateng',
     role: 'Recurring Donor',
-    location: 'Nairobi, Kenya',
-    avatar: 'D',
+    location: 'Tema',
+    avatar: 'K',
     avatarColor: '#A07E33',
     avatarTextColor: '#F5F2EA',
     rating: 5,
     quote:
-      'I live in London but wanted to support causes back home. The diaspora mode and multi-currency support make it incredibly easy to give. I can see exactly where my money goes.',
+      'I work in London but wanted to support causes back home in Tema. Diaspora mode makes it easy to give in cedis with my card, and I can see exactly where my money goes.',
   },
   {
-    name: 'Fatima Diallo',
+    name: 'Efua Asante',
     role: 'NGO Director',
-    location: 'Dakar, Senegal',
-    avatar: 'F',
+    location: 'Tamale',
+    avatar: 'E',
     avatarColor: '#A8B5A0',
     avatarTextColor: '#1A2E22',
     rating: 5,
     quote:
-      'Our organization raised over $50,000 for clean water projects through UbuntuFund. The escrow system and milestone tracking gave our international partners full confidence in the process.',
+      'Our organization raised over GH₵ 750,000 for borehole projects in the Northern Region through UbuntuFund. The escrow system and milestone tracking gave our partners full confidence in the process.',
   },
 ]
 
@@ -67,7 +67,7 @@ function TestimonialsSection() {
               fontSize: { xs: '1.75rem', md: '2.25rem' },
             }}
           >
-            Trusted across the continent
+            Trusted across Ghana
           </Typography>
           <Typography
             variant="body1"

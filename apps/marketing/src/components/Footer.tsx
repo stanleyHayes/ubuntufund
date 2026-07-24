@@ -293,7 +293,7 @@ function Footer() {
               variant="body2"
               sx={{ color: 'rgba(255,255,255,0.45)', maxWidth: 340, lineHeight: 1.7 }}
             >
-              Africa's trust infrastructure for giving. Empowering communities
+              Ghana's trust infrastructure for giving. Empowering communities
               through transparent, secure crowdfunding built on the Ubuntu philosophy.
             </Typography>
           </Box>

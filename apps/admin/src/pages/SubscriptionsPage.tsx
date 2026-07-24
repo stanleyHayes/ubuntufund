@@ -62,11 +62,8 @@ interface MockSubscription {
 }
 
 const MOCK_NAMES = [
-  'Amara Okafor', 'Bongani Dlamini', 'Chidera Eze', 'Dakarai Mwangi',
-  'Eshe Kimani', 'Folami Adeyemi', 'Gathoni Njeri', 'Halima Yusuf',
-  'Imani Kato', 'Jabari Osei', 'Kamau Njoroge', 'Lethabo Mokoena',
-  'Makena Wanjiku', 'Nia Mensah', 'Olumide Balogun', 'Palesa Nkosi',
-  'Quame Asante', 'Rehema Mushi', 'Sipho Ndlovu', 'Thandiwe Banda',
+  'Ama Mensah', 'Kwame Boateng', 'Efua Asante', 'Kofi Owusu',
+  'Abena Sarpong', 'Yaw Darko', 'Adwoa Agyeman', 'Kojo Antwi',
 ]
 
 function generateMockSubscriptions(): MockSubscription[] {
@@ -311,7 +308,7 @@ export default function SubscriptionsPage() {
         icon={<WorkspacePremiumRoundedIcon />}
         stats={[
           { label: 'Total Subscribers', value: totalSubscribers },
-          { label: 'Monthly Revenue', value: `$${monthlyRevenue.toFixed(0)}` },
+          { label: 'Monthly Revenue', value: `GH₵ ${monthlyRevenue.toFixed(0)}` },
           { label: 'Free Users', value: freeUsers },
           { label: 'Paid Users', value: paidUsers },
         ]}
@@ -328,7 +325,7 @@ export default function SubscriptionsPage() {
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
                 <Typography sx={{ fontSize: '0.75rem', color: r.color, fontWeight: 700 }}>{r.name}</Typography>
                 <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontFamily: '"TT Squares", monospace' }}>
-                  ${r.revenue.toFixed(0)}/mo
+                  GH₵ {r.revenue.toFixed(0)}/mo
                 </Typography>
               </Box>
               <Box sx={{ width: '100%', height: 4, bgcolor: 'rgba(255,255,255,0.04)', overflow: 'hidden' }}>

@@ -36,7 +36,7 @@ async function createActiveCampaign(app: Express, creatorToken: string, creatorI
       title: 'Donation Campaign',
       description: 'A campaign to receive donations',
       goalAmount: 5000,
-      currency: 'ZAR',
+      currency: 'GHS',
       category: CampaignCategory.EDUCATION,
       priority: CampaignPriority.NORMAL,
       beneficiaries: [],
@@ -80,14 +80,14 @@ describe('Donations Integration', () => {
     const depositRes = await request(app)
       .post(`/api/v1/wallets/${walletId}/deposit`)
       .set('Authorization', `Bearer ${donorToken}`)
-      .send({ amount: 1000, currency: 'ZAR' });
+      .send({ amount: 1000, currency: 'GHS' });
     expect(depositRes.status).toBe(200);
     expect(depositRes.body.data.balance).toBe(1000);
 
     const donateRes = await request(app)
       .post(`/api/v1/campaigns/${campaignId}/donate`)
       .set('Authorization', `Bearer ${donorToken}`)
-      .send({ amount: 500, currency: 'ZAR', message: 'Great cause!', isAnonymous: false });
+      .send({ amount: 500, currency: 'GHS', message: 'Great cause!', isAnonymous: false });
     expect(donateRes.status).toBe(200);
     expect(donateRes.body.message).toBe('Donation successful');
 
@@ -104,7 +104,7 @@ describe('Donations Integration', () => {
     const failedDonate = await request(app)
       .post(`/api/v1/campaigns/${campaignId}/donate`)
       .set('Authorization', `Bearer ${donorToken}`)
-      .send({ amount: 10000, currency: 'ZAR', isAnonymous: false });
+      .send({ amount: 10000, currency: 'GHS', isAnonymous: false });
     expect(failedDonate.status).toBe(400);
     expect(failedDonate.body.message).toBe('Insufficient wallet balance');
 
@@ -141,7 +141,7 @@ describe('Donations Integration', () => {
         title: 'Still Pending Campaign',
         description: 'Not yet approved',
         goalAmount: 1000,
-        currency: 'ZAR',
+        currency: 'GHS',
         category: CampaignCategory.EDUCATION,
         priority: CampaignPriority.NORMAL,
         beneficiaries: [],
@@ -155,13 +155,13 @@ describe('Donations Integration', () => {
     await request(app)
       .post(`/api/v1/wallets/${walletId}/deposit`)
       .set('Authorization', `Bearer ${donorToken}`)
-      .send({ amount: 500, currency: 'ZAR' })
+      .send({ amount: 500, currency: 'GHS' })
       .expect(200);
 
     const res = await request(app)
       .post(`/api/v1/campaigns/${campaignId}/donate`)
       .set('Authorization', `Bearer ${donorToken}`)
-      .send({ amount: 100, currency: 'ZAR', isAnonymous: false });
+      .send({ amount: 100, currency: 'GHS', isAnonymous: false });
 
     expect(res.status).toBe(400);
     expect(res.body.message).toBe('Campaign is not accepting donations');
@@ -170,7 +170,7 @@ describe('Donations Integration', () => {
   it('rejects donation without authentication', async () => {
     const res = await request(app)
       .post('/api/v1/campaigns/000000000000000000000000/donate')
-      .send({ amount: 100, currency: 'ZAR', isAnonymous: false });
+      .send({ amount: 100, currency: 'GHS', isAnonymous: false });
 
     expect(res.status).toBe(401);
   });

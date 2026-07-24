@@ -308,7 +308,7 @@ export default function UserDetailPage() {
                     {c.status.replace('_', ' ')}
                   </Typography>
                   <Typography sx={{ fontSize: '0.88rem', fontWeight: 700, color: '#fff', fontFamily: '"TT Squares", monospace', mt: 0.5 }}>
-                    ${c.raisedAmount.toLocaleString()}
+                    GH₵ {c.raisedAmount.toLocaleString()}
                   </Typography>
                 </Box>
               ))}
@@ -342,7 +342,7 @@ export default function UserDetailPage() {
                   }}
                 >
                   <Typography sx={{ fontSize: '1rem', fontWeight: 700, color: '#fff', fontFamily: '"TT Squares", monospace' }}>
-                    ${d.amount.toLocaleString()}
+                    GH₵ {d.amount.toLocaleString()}
                   </Typography>
                   <Typography sx={{ fontSize: '0.68rem', color: '#A0A0B0', mt: 0.3 }}>
                     {d.campaignId}

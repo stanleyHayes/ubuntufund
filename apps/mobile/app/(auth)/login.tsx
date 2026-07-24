@@ -33,17 +33,28 @@ export default function LoginScreen() {
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 32 }]}
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
+        bounces={false}
       >
-        <View style={styles.header}>
-          <UbuntuLogo size={56} />
-          <Text style={styles.title}>Welcome back</Text>
-          <Text style={styles.lede}>Sign in to continue supporting communities across Africa</Text>
+        {/* Forest brand stage — mirrors the web AuthLayout panel */}
+        <View style={[styles.stage, { paddingTop: insets.top + 48 }]}>
+          <UbuntuLogo size={52} />
+          <Text style={styles.stageTitle}>
+            Together, <Text style={styles.stageTitleAccent}>We Rise</Text>
+          </Text>
+          <Text style={styles.stageCaption}>One chain · Many hands · Ubuntu</Text>
         </View>
 
-        <View style={styles.card}>
+        {/* Parchment sheet */}
+        <View style={[styles.sheet, { paddingBottom: insets.bottom + 28 }]}>
+          <View style={styles.grabber} />
+          <Text style={styles.eyebrow}>Welcome back</Text>
+          <Text style={styles.title}>Sign in</Text>
+          <Text style={styles.lede}>Continue supporting the causes you care about.</Text>
+
           {!!error && (
             <View style={styles.errorBanner}>
               <Text style={styles.errorText}>{error}</Text>
@@ -61,7 +72,7 @@ export default function LoginScreen() {
             left={<TextInput.Icon icon="email-outline" />}
             style={styles.input}
             outlineStyle={styles.inputOutline}
-            outlineColor="rgba(26,46,34,0.10)"
+            outlineColor="rgba(26,46,34,0.14)"
             activeOutlineColor={brandColors.primary}
             disabled={loading}
           />
@@ -72,16 +83,18 @@ export default function LoginScreen() {
             onChangeText={setPassword}
             mode="outlined"
             secureTextEntry={secureEntry}
+            autoComplete="current-password"
             left={<TextInput.Icon icon="lock-outline" />}
             right={
               <TextInput.Icon
                 icon={secureEntry ? 'eye-off-outline' : 'eye-outline'}
                 onPress={() => setSecureEntry(!secureEntry)}
+                forceTextInputFocus={false}
               />
             }
             style={styles.input}
             outlineStyle={styles.inputOutline}
-            outlineColor="rgba(26,46,34,0.10)"
+            outlineColor="rgba(26,46,34,0.14)"
             activeOutlineColor={brandColors.primary}
             disabled={loading}
           />
@@ -97,6 +110,7 @@ export default function LoginScreen() {
             contentStyle={styles.buttonContent}
             labelStyle={styles.buttonLabel}
             buttonColor={brandColors.primary}
+            textColor="#F5F2EA"
             disabled={!email || !password || loading}
             loading={loading}
           >
@@ -106,7 +120,7 @@ export default function LoginScreen() {
           <View style={styles.footer}>
             <Text style={styles.footerText}>Don't have an account? </Text>
             <Link href="/(auth)/register">
-              <Text style={styles.footerLink}>Sign Up</Text>
+              <Text style={styles.footerLink}>Create one</Text>
             </Link>
           </View>
         </View>
@@ -116,37 +130,71 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: brandColors.background },
-  scrollContent: { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 32 },
+  container: { flex: 1, backgroundColor: brandColors.primaryDark },
+  scroll: { flex: 1 },
+  scrollContent: { flexGrow: 1, backgroundColor: brandColors.primaryDark },
 
-  header: { alignItems: 'center', marginBottom: 28 },
+  stage: {
+    alignItems: 'center',
+    paddingHorizontal: 32,
+    paddingBottom: 44,
+    backgroundColor: brandColors.primaryDark,
+  },
+  stageTitle: {
+    marginTop: 22,
+    fontSize: 26,
+    fontFamily: 'TTSquares-Black',
+    color: '#F5F2EA',
+    textAlign: 'center',
+  },
+  stageTitleAccent: { color: '#DCC07E', fontFamily: 'TTSquares-Black' },
+  stageCaption: {
+    marginTop: 10,
+    fontSize: 10,
+    fontFamily: 'Outfit_600SemiBold',
+    letterSpacing: 2.2,
+    textTransform: 'uppercase',
+    color: 'rgba(245,242,234,0.5)',
+  },
+
+  sheet: {
+    flexGrow: 1,
+    backgroundColor: brandColors.background,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 24,
+    paddingTop: 14,
+  },
+  grabber: {
+    alignSelf: 'center',
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(26,46,34,0.14)',
+    marginBottom: 22,
+  },
   eyebrow: {
     fontSize: 11,
-    fontWeight: '700',
-    fontFamily: 'TTSquares-Bold',
+    fontFamily: 'Outfit_600SemiBold',
     textTransform: 'uppercase',
     letterSpacing: 2,
     color: '#A07E33',
-    marginTop: 16,
     marginBottom: 6,
   },
-  title: { fontSize: 28, fontFamily: 'TTSquares-Black', color: brandColors.text, textAlign: 'center', marginBottom: 8 },
+  title: {
+    fontSize: 26,
+    fontFamily: 'TTSquares-Black',
+    color: brandColors.text,
+    marginBottom: 6,
+  },
   lede: {
     fontSize: 14,
     fontFamily: 'Outfit_400Regular',
     color: brandColors.textSecondary,
-    textAlign: 'center',
     lineHeight: 20,
-    paddingHorizontal: 12,
+    marginBottom: 20,
   },
 
-  card: {
-    backgroundColor: brandColors.surface,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(26,46,34,0.10)',
-    padding: 24,
-  },
   errorBanner: {
     backgroundColor: 'rgba(165,67,47,0.08)',
     borderRadius: 10,
@@ -158,11 +206,11 @@ const styles = StyleSheet.create({
   input: { marginBottom: 14, backgroundColor: brandColors.surface },
   inputOutline: { borderRadius: 12 },
 
-  forgotRow: { alignSelf: 'flex-end', marginBottom: 20, marginTop: -4 },
+  forgotRow: { alignSelf: 'flex-end', marginBottom: 20, marginTop: -2 },
   forgotText: { fontSize: 13, color: brandColors.primary, fontFamily: 'Outfit_600SemiBold' },
 
-  button: { borderRadius: 999, marginBottom: 24 },
-  buttonContent: { paddingVertical: 6 },
+  button: { borderRadius: 999, marginBottom: 22 },
+  buttonContent: { paddingVertical: 7 },
   buttonLabel: { fontSize: 16, fontFamily: 'TTSquares-Bold', letterSpacing: 0.3 },
 
   footer: { flexDirection: 'row', justifyContent: 'center' },

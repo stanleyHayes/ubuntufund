@@ -23,10 +23,12 @@ interface Organization {
   description?: string
 }
 
+const ghsFormatter = new Intl.NumberFormat('en-GH', { style: 'currency', currency: 'GHS' })
+
 function formatAmount(amount: number) {
-  if (amount >= 1_000_000) return `$${(amount / 1_000_000).toFixed(1)}M`
-  if (amount >= 1_000) return `$${(amount / 1_000).toFixed(1)}K`
-  return `$${amount.toLocaleString()}`
+  if (amount >= 1_000_000) return `GH₵ ${(amount / 1_000_000).toFixed(1)}M`
+  if (amount >= 1_000) return `GH₵ ${(amount / 1_000).toFixed(1)}K`
+  return ghsFormatter.format(amount)
 }
 
 // ─── Skeleton ────────────────────────────────────────────────
@@ -215,7 +217,7 @@ export default function OrganizationsScreen() {
                       <Text style={styles.orgStatText}>{org.campaignCount} campaigns</Text>
                     </View>
                     <View style={styles.orgStat}>
-                      <Icon source="currency-usd" size={14} color={brandColors.textSecondary} />
+                      <Icon source="cash" size={14} color={brandColors.textSecondary} />
                       <Text style={styles.orgStatText}>{formatAmount(org.totalRaised)} raised</Text>
                     </View>
                   </View>

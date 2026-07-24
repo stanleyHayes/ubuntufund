@@ -35,7 +35,7 @@ export interface OrganizationDetail extends OrganizationSummary {
   categories: CampaignCategory[];
 }
 
-const DEFAULT_CURRENCY = 'ZAR';
+const DEFAULT_CURRENCY = 'GHS';
 
 function isVerified(record: OrganizationRecord): boolean {
   return record.verificationLevel >= VerificationLevel.INSTITUTIONAL;

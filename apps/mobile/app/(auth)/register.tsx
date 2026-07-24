@@ -25,7 +25,6 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [country, setCountry] = useState('')
   const [secureEntry, setSecureEntry] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -40,8 +39,7 @@ export default function RegisterScreen() {
 
   const handleRegister = async () => {
     setError('')
-    const payload: Record<string, string> = { name, email, password }
-    if (country) payload.country = country
+    const payload: Record<string, string> = { name, email, password, country: 'Ghana' }
     if (accountType === 'organization') {
       payload.role = 'organization'
       payload.organizationName = orgName
@@ -73,18 +71,28 @@ export default function RegisterScreen() {
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 28 }]}
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
+        bounces={false}
       >
-        <View style={styles.header}>
-          <UbuntuLogo size={48} />
-          <Text style={styles.eyebrow}>Ubuntu Fund</Text>
-          <Text style={styles.title}>Join UbuntuFund</Text>
-          <Text style={styles.lede}>Create your account to start making an impact across Africa</Text>
+        {/* Forest brand stage — mirrors the web AuthLayout panel */}
+        <View style={[styles.stage, { paddingTop: insets.top + 36 }]}>
+          <UbuntuLogo size={44} />
+          <Text style={styles.stageTitle}>
+            Together, <Text style={styles.stageTitleAccent}>We Rise</Text>
+          </Text>
+          <Text style={styles.stageCaption}>One chain · Many hands · Ubuntu</Text>
         </View>
 
-        <View style={styles.card}>
+        {/* Parchment sheet */}
+        <View style={[styles.sheet, { paddingBottom: insets.bottom + 28 }]}>
+          <View style={styles.grabber} />
+          <Text style={styles.eyebrow}>Get started</Text>
+          <Text style={styles.title}>Create your account</Text>
+          <Text style={styles.lede}>Back causes and communities across Ghana.</Text>
+
           {!!error && (
             <View style={styles.errorBanner}>
               <Text style={styles.errorText}>{error}</Text>
@@ -109,7 +117,7 @@ export default function RegisterScreen() {
             })}
           </View>
 
-          <Text style={styles.sectionLabel}>Personal Information</Text>
+          <Text style={styles.sectionLabel}>Personal information</Text>
 
           <TextInput
             label="Full name"
@@ -119,7 +127,7 @@ export default function RegisterScreen() {
             left={<TextInput.Icon icon="account-outline" />}
             style={styles.input}
             outlineStyle={styles.inputOutline}
-            outlineColor="rgba(26,46,34,0.10)"
+            outlineColor="rgba(26,46,34,0.14)"
             activeOutlineColor={brandColors.primary}
             disabled={loading}
           />
@@ -134,19 +142,7 @@ export default function RegisterScreen() {
             left={<TextInput.Icon icon="email-outline" />}
             style={styles.input}
             outlineStyle={styles.inputOutline}
-            outlineColor="rgba(26,46,34,0.10)"
-            activeOutlineColor={brandColors.primary}
-            disabled={loading}
-          />
-          <TextInput
-            label="Country"
-            value={country}
-            onChangeText={setCountry}
-            mode="outlined"
-            left={<TextInput.Icon icon="earth" />}
-            style={styles.input}
-            outlineStyle={styles.inputOutline}
-            outlineColor="rgba(26,46,34,0.10)"
+            outlineColor="rgba(26,46,34,0.14)"
             activeOutlineColor={brandColors.primary}
             disabled={loading}
           />
@@ -154,7 +150,7 @@ export default function RegisterScreen() {
           {/* Organization fields */}
           {accountType === 'organization' && (
             <>
-              <Text style={[styles.sectionLabel, { marginTop: 8 }]}>Organization Details</Text>
+              <Text style={[styles.sectionLabel, { marginTop: 8 }]}>Organization details</Text>
 
               <TextInput
                 label="Organization name"
@@ -164,7 +160,7 @@ export default function RegisterScreen() {
                 left={<TextInput.Icon icon="domain" />}
                 style={styles.input}
                 outlineStyle={styles.inputOutline}
-                outlineColor="rgba(26,46,34,0.10)"
+                outlineColor="rgba(26,46,34,0.14)"
                 activeOutlineColor={brandColors.primary}
                 disabled={loading}
               />
@@ -178,7 +174,7 @@ export default function RegisterScreen() {
                   right={<TextInput.Icon icon={showOrgTypePicker ? 'chevron-up' : 'chevron-down'} onPress={() => setShowOrgTypePicker(!showOrgTypePicker)} />}
                   style={styles.input}
                   outlineStyle={styles.inputOutline}
-                  outlineColor="rgba(26,46,34,0.10)"
+                  outlineColor="rgba(26,46,34,0.14)"
                   activeOutlineColor={brandColors.primary}
                   editable={false}
                 />
@@ -212,7 +208,7 @@ export default function RegisterScreen() {
                 left={<TextInput.Icon icon="file-document-outline" />}
                 style={styles.input}
                 outlineStyle={styles.inputOutline}
-                outlineColor="rgba(26,46,34,0.10)"
+                outlineColor="rgba(26,46,34,0.14)"
                 activeOutlineColor={brandColors.primary}
                 disabled={loading}
               />
@@ -228,11 +224,18 @@ export default function RegisterScreen() {
             onChangeText={setPassword}
             mode="outlined"
             secureTextEntry={secureEntry}
+            autoComplete="new-password"
             left={<TextInput.Icon icon="lock-outline" />}
-            right={<TextInput.Icon icon={secureEntry ? 'eye-off-outline' : 'eye-outline'} onPress={() => setSecureEntry(!secureEntry)} />}
+            right={
+              <TextInput.Icon
+                icon={secureEntry ? 'eye-off-outline' : 'eye-outline'}
+                onPress={() => setSecureEntry(!secureEntry)}
+                forceTextInputFocus={false}
+              />
+            }
             style={styles.input}
             outlineStyle={styles.inputOutline}
-            outlineColor="rgba(26,46,34,0.10)"
+            outlineColor="rgba(26,46,34,0.14)"
             activeOutlineColor={brandColors.primary}
             disabled={loading}
           />
@@ -260,7 +263,7 @@ export default function RegisterScreen() {
             error={!!confirmPassword && !passwordsMatch}
             style={styles.input}
             outlineStyle={styles.inputOutline}
-            outlineColor="rgba(26,46,34,0.10)"
+            outlineColor="rgba(26,46,34,0.14)"
             activeOutlineColor={brandColors.primary}
             disabled={loading}
           />
@@ -278,13 +281,13 @@ export default function RegisterScreen() {
             contentStyle={styles.buttonContent}
             labelStyle={styles.buttonLabel}
             buttonColor={brandColors.primary}
+            textColor="#F5F2EA"
             disabled={!canSubmit}
             loading={loading}
           >
             {loading ? 'Creating Account...' : 'Create Account'}
           </Button>
 
-          {/* Terms notice with working links */}
           <Text style={styles.terms}>
             By creating an account, you agree to our{' '}
             <Text style={styles.termsLink} onPress={() => router.push('/terms')}>Terms of Service</Text>
@@ -305,43 +308,78 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: brandColors.background },
-  scrollContent: { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 32 },
+  container: { flex: 1, backgroundColor: brandColors.primaryDark },
+  scroll: { flex: 1 },
+  scrollContent: { flexGrow: 1, backgroundColor: brandColors.primaryDark },
 
-  header: { alignItems: 'center', marginBottom: 24 },
+  stage: {
+    alignItems: 'center',
+    paddingHorizontal: 32,
+    paddingBottom: 32,
+    backgroundColor: brandColors.primaryDark,
+  },
+  stageTitle: {
+    marginTop: 18,
+    fontSize: 22,
+    fontFamily: 'TTSquares-Black',
+    color: '#F5F2EA',
+    textAlign: 'center',
+  },
+  stageTitleAccent: { color: '#DCC07E', fontFamily: 'TTSquares-Black' },
+  stageCaption: {
+    marginTop: 8,
+    fontSize: 10,
+    fontFamily: 'Outfit_600SemiBold',
+    letterSpacing: 2.2,
+    textTransform: 'uppercase',
+    color: 'rgba(245,242,234,0.5)',
+  },
+
+  sheet: {
+    flexGrow: 1,
+    backgroundColor: brandColors.background,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 24,
+    paddingTop: 14,
+  },
+  grabber: {
+    alignSelf: 'center',
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(26,46,34,0.14)',
+    marginBottom: 22,
+  },
   eyebrow: {
     fontSize: 11,
-    fontFamily: 'TTSquares-Bold',
+    fontFamily: 'Outfit_600SemiBold',
     textTransform: 'uppercase',
     letterSpacing: 2,
     color: '#A07E33',
-    marginTop: 14,
     marginBottom: 6,
   },
-  title: { fontSize: 24, fontFamily: 'TTSquares-Black', color: brandColors.text, textAlign: 'center', marginBottom: 6 },
+  title: {
+    fontSize: 24,
+    fontFamily: 'TTSquares-Black',
+    color: brandColors.text,
+    marginBottom: 6,
+  },
   lede: {
-    fontSize: 13,
+    fontSize: 14,
     fontFamily: 'Outfit_400Regular',
     color: brandColors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 19,
-    paddingHorizontal: 12,
+    lineHeight: 20,
+    marginBottom: 20,
   },
 
-  card: {
-    backgroundColor: brandColors.surface,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(26,46,34,0.10)',
-    padding: 24,
-  },
   errorBanner: { backgroundColor: 'rgba(165,67,47,0.08)', borderRadius: 10, padding: 12, marginBottom: 16 },
   errorText: { color: brandColors.error, fontSize: 13, fontFamily: 'Outfit_500Medium', textAlign: 'center' },
   sectionLabel: {
     fontSize: 11,
-    fontFamily: 'TTSquares-Bold',
+    fontFamily: 'Outfit_600SemiBold',
     color: brandColors.textSecondary,
-    letterSpacing: 1,
+    letterSpacing: 1.4,
     textTransform: 'uppercase',
     marginBottom: 12,
   },
@@ -359,7 +397,7 @@ const styles = StyleSheet.create({
   pickerItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 13, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: 'rgba(26,46,34,0.06)' },
   pickerItemActive: { backgroundColor: 'rgba(168,181,160,0.28)' },
   pickerItemText: { fontSize: 14, fontFamily: 'Outfit_400Regular', color: brandColors.text },
-  pickerItemTextActive: { color: brandColors.text, fontFamily: 'TTSquares-Bold' },
+  pickerItemTextActive: { color: brandColors.text, fontFamily: 'Outfit_600SemiBold' },
   pickerCheck: { width: 8, height: 8, borderRadius: 4, backgroundColor: brandColors.primary },
 
   hintRow: { flexDirection: 'row', alignItems: 'center', marginTop: -8, marginBottom: 12, paddingLeft: 4 },
@@ -367,11 +405,11 @@ const styles = StyleSheet.create({
   hintText: { fontSize: 12, color: brandColors.textSecondary, fontFamily: 'Outfit_400Regular' },
 
   button: { borderRadius: 999, marginTop: 8, marginBottom: 16 },
-  buttonContent: { paddingVertical: 6 },
+  buttonContent: { paddingVertical: 7 },
   buttonLabel: { fontSize: 16, fontFamily: 'TTSquares-Bold', letterSpacing: 0.3 },
 
   terms: { fontSize: 12, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, textAlign: 'center', lineHeight: 18, marginBottom: 20 },
-  termsLink: { color: brandColors.primary, fontFamily: 'TTSquares-Bold' },
+  termsLink: { color: brandColors.primary, fontFamily: 'Outfit_600SemiBold' },
 
   footer: { flexDirection: 'row', justifyContent: 'center' },
   footerText: { fontSize: 14, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary },

@@ -63,7 +63,7 @@ const FEATURES = [
   { icon: <DashboardRoundedIcon />, title: 'Organization Dashboard', description: 'A dedicated control center for your team with role-based access, campaign management, and real-time analytics.', color: '#2E3D2F' },
   { icon: <PaletteRoundedIcon />, title: 'Branded Campaign Pages', description: 'Customize campaigns with your logo, colors, and brand story. Your campaigns, your identity.', color: '#1565C0' },
   { icon: <BarChartRoundedIcon />, title: 'Advanced Analytics', description: 'Track donor demographics, campaign performance, conversion rates, and generate exportable reports.', color: '#C7A24A' },
-  { icon: <ReceiptLongRoundedIcon />, title: 'Automated Tax Receipts', description: 'Generate and send tax-compliant receipts automatically. Stay compliant in every country you operate.', color: '#C75B39' },
+  { icon: <ReceiptLongRoundedIcon />, title: 'Automated Tax Receipts', description: 'Generate and send tax-compliant receipts automatically. Stay compliant with GRA requirements without the paperwork.', color: '#C75B39' },
   { icon: <SyncRoundedIcon />, title: 'Recurring Donations', description: 'Enable monthly giving plans with automatic processing, donor retention tools, and smart reminders.', color: '#6A1B9A' },
   { icon: <VerifiedUserRoundedIcon />, title: 'Priority Verification', description: 'Fast-track trust verification with dedicated review, enhanced badges, and institutional endorsement.', color: '#00695C' },
   { icon: <ApiRoundedIcon />, title: 'API & Integrations', description: 'Connect UbuntuFund to your CRM, website, or payment systems with our RESTful API and webhooks.', color: '#424242' },
@@ -79,20 +79,20 @@ const ORG_TYPES = [
 
 const STATS = [
   { value: '2,500+', label: 'Organizations', icon: <GroupsRoundedIcon />, color: '#2E3D2F' },
-  { value: '$8.2M', label: 'Raised for Orgs', icon: <VolunteerActivismRoundedIcon />, color: '#C7A24A' },
-  { value: '32', label: 'Countries', icon: <PublicRoundedIcon />, color: '#C75B39' },
+  { value: 'GH₵ 98M', label: 'Raised for Orgs', icon: <VolunteerActivismRoundedIcon />, color: '#C7A24A' },
+  { value: '16', label: 'Regions Covered', icon: <PublicRoundedIcon />, color: '#C75B39' },
   { value: '99.9%', label: 'Uptime SLA', icon: <SecurityRoundedIcon />, color: '#6A1B9A' },
 ]
 
 const TESTIMONIALS = [
-  { quote: 'UbuntuFund transformed how we connect with donors. Our monthly giving increased 340% in the first year.', name: 'Dr. Amina Osei', role: 'Director, Maji Foundation', org: 'Water & Sanitation NGO, Kenya', initials: 'AO', color: '#2E3D2F', stat: '+340%', statLabel: 'Monthly giving' },
+  { quote: 'UbuntuFund transformed how we connect with donors. Our monthly giving increased 340% in the first year.', name: 'Dr. Efua Asante', role: 'Director, Nsuo Pa Foundation', org: 'Water & Sanitation NGO, Tamale', initials: 'EA', color: '#2E3D2F', stat: '+340%', statLabel: 'Monthly giving' },
   { quote: 'The branded campaign pages and automated receipts saved our team hundreds of hours. It just works.', name: 'Pastor James Mensah', role: 'Administrator, Grace Cathedral', org: 'Religious Institution, Ghana', initials: 'JM', color: '#C7A24A', stat: '400hrs', statLabel: 'Saved yearly' },
-  { quote: 'We integrated UbuntuFund with our existing systems in days. The API is clean and well-documented.', name: 'Chidi Eze', role: 'CTO, Lagos Emergency Response', org: 'Medical NGO, Nigeria', initials: 'CE', color: '#C75B39', stat: '3 days', statLabel: 'To integrate' },
+  { quote: 'We integrated UbuntuFund with our existing systems in days. The API is clean and well-documented.', name: 'Kojo Antwi', role: 'CTO, Accra Emergency Response', org: 'Medical NGO, Accra', initials: 'KA', color: '#C75B39', stat: '3 days', statLabel: 'To integrate' },
 ]
 
 const PRICING_TIERS = [
   { name: 'Starter', price: 'Free', period: '', description: 'For small organizations getting started', features: ['Up to 5 active campaigns', 'Basic analytics', 'Email support', 'Standard verification'], cta: 'Get Started', highlighted: false },
-  { name: 'Growth', price: '$49', period: '/month', description: 'For growing organizations with active fundraising', features: ['Unlimited campaigns', 'Advanced analytics & exports', 'Branded campaign pages', 'Priority verification', 'Recurring donations', 'Priority support'], cta: 'Start Free Trial', highlighted: true },
+  { name: 'Growth', price: 'GH₵ 599', period: '/month', description: 'For growing organizations with active fundraising', features: ['Unlimited campaigns', 'Advanced analytics & exports', 'Branded campaign pages', 'Priority verification', 'Recurring donations', 'Priority support'], cta: 'Start Free Trial', highlighted: true },
   { name: 'Enterprise', price: 'Custom', period: '', description: 'For large institutions with complex needs', features: ['Everything in Growth', 'API access & webhooks', 'Dedicated account manager', 'Custom integrations', 'SLA guarantee', 'Multi-team management'], cta: 'Contact Sales', highlighted: false },
 ]
 
@@ -289,7 +289,7 @@ function ForOrganizationsPage() {
           <Box sx={{ textAlign: 'center', mb: 6 }}>
             <Chip label="Social Proof" size="small" sx={{ mb: 2, bgcolor: 'rgba(199,91,57,0.08)', color: '#C75B39', fontWeight: 700, fontSize: '0.72rem', letterSpacing: 1, textTransform: 'uppercase' }} />
             <Typography variant="h3" sx={{ fontWeight: 900, fontSize: { xs: '1.8rem', md: '2.4rem' } }}>
-              Trusted by Leaders Across <Box component="span" sx={{ color: 'primary.main' }}>Africa</Box>
+              Trusted by Leaders Across <Box component="span" sx={{ color: 'primary.main' }}>Ghana</Box>
             </Typography>
           </Box>
 

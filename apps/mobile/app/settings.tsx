@@ -27,8 +27,7 @@ interface SettingsData {
   showOnLeaderboard: boolean
 }
 
-const CURRENCIES = ['USD', 'EUR', 'GBP', 'ZAR', 'KES', 'NGN', 'GHS']
-const LANGUAGES = ['English', 'French', 'Swahili', 'Arabic', 'Portuguese']
+const LANGUAGES = ['English', 'Twi', 'Ga', 'Ewe', 'Hausa']
 
 const DEFAULT_SETTINGS: SettingsData = {
   emailNotifications: true,
@@ -39,7 +38,7 @@ const DEFAULT_SETTINGS: SettingsData = {
   pushMilestones: true,
   pushCampaigns: true,
   donationReceipts: true,
-  preferredCurrency: 'USD',
+  preferredCurrency: 'GHS',
   language: 'English',
   anonymousDonations: false,
   showOnLeaderboard: true,
@@ -222,7 +221,13 @@ export default function SettingsScreen() {
             {/* Account */}
             <Text style={styles.sectionTitle}>Account</Text>
             <View style={styles.card}>
-              <PickerRow icon="currency-usd" label="Preferred Currency" value={settings.preferredCurrency} options={CURRENCIES} onChange={(v) => updateSetting('preferredCurrency', v)} color={brandColors.success} />
+              <View style={styles.toggleRow}>
+                <View style={[styles.toggleIcon, { backgroundColor: `${brandColors.success}14` }]}>
+                  <Icon source="cash" size={18} color={brandColors.success} />
+                </View>
+                <Text style={styles.toggleLabel}>Currency</Text>
+                <Text style={styles.pickerValueText}>GHS</Text>
+              </View>
               <PickerRow icon="translate" label="Language" value={settings.language} options={LANGUAGES} onChange={(v) => updateSetting('language', v)} color={brandColors.textSecondary} />
             </View>
 

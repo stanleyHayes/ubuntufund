@@ -176,7 +176,7 @@ export default function MyDonationsScreen() {
                       <Text style={styles.donationDate}>{formatDate(d.createdAt)}</Text>
                     </View>
                     <Text style={styles.donationAmount}>
-                      {d.currency ?? '$'}{d.amount}
+                      GH₵ {d.amount.toLocaleString()}
                     </Text>
                   </View>
 

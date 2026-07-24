@@ -250,7 +250,7 @@ export default function LoginPage() {
             }}
           >
             Manage campaigns, monitor trust scores, resolve disputes, and oversee
-            the platform that connects communities across Africa.
+            the platform that connects communities across Ghana.
           </Typography>
 
           {/* Stats row */}

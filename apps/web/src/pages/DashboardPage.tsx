@@ -618,7 +618,7 @@ export function DashboardPage() {
               iconBg="rgba(46, 61, 47,0.08)"
               iconColor="#2E3D2F"
               label="Total Raised"
-              value={formatCurrency(campaigns.reduce((s, c) => s + c.raisedAmount, 0), 'USD')}
+              value={formatCurrency(campaigns.reduce((s, c) => s + c.raisedAmount, 0), 'GHS')}
               delay={0.05}
             />
           </Grid>

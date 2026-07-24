@@ -153,7 +153,7 @@ export default function ReportsPage() {
           </Box>
           {/* Header row */}
           <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', borderBottom: `1px solid ${B}` }}>
-            {['Country', 'Campaigns', 'Donations'].map((h, i) => (
+            {['Region', 'Campaigns', 'Donations'].map((h, i) => (
               <Box key={h} sx={{ px: 2.5, py: 1.2, borderRight: i < 2 ? `1px solid ${B}` : 'none' }}>
                 <Typography sx={{ fontSize: '0.65rem', textTransform: 'uppercase', color: '#6B6B80', letterSpacing: 0.8 }}>
                   {h}
@@ -179,7 +179,7 @@ export default function ReportsPage() {
                 <Typography sx={{ fontSize: '0.82rem', color: '#A0A0B0', fontFamily: '"TT Squares", monospace' }}>{row.campaigns}</Typography>
               </Box>
               <Box sx={{ px: 2.5, py: 1.5 }}>
-                <Typography sx={{ fontSize: '0.82rem', color: '#A0A0B0', fontFamily: '"TT Squares", monospace' }}>${row.donations.toLocaleString()}</Typography>
+                <Typography sx={{ fontSize: '0.82rem', color: '#A0A0B0', fontFamily: '"TT Squares", monospace' }}>GH₵ {row.donations.toLocaleString()}</Typography>
               </Box>
             </Box>
           ))}

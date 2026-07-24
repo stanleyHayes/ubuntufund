@@ -13,16 +13,16 @@ import {
 const mockCampaigns: Campaign[] = [
   {
     id: '1',
-    title: 'Clean Water for Kibera',
+    title: 'Clean Water for Tamale',
     description: 'Help us build a clean water well.',
     goalAmount: 500000,
     raisedAmount: 375000,
-    currency: 'KES',
+    currency: 'GHS',
     category: CampaignCategory.COMMUNITY,
     priority: CampaignPriority.URGENT,
     status: CampaignStatus.ACTIVE,
     creatorId: 'user-1',
-    beneficiaries: ['Kibera Community'],
+    beneficiaries: ['Tamale Community'],
     imageUrls: ['https://example.com/image.jpg'],
     startDate: new Date('2025-12-01'),
     endDate: new Date('2026-06-01'),
@@ -85,7 +85,7 @@ describe('HomePage', () => {
   it('renders the campaigns description', () => {
     renderWithProviders(<HomePage />)
     expect(
-      screen.getByText(/Discover verified campaigns across Africa/)
+      screen.getByText(/Discover verified campaigns across Ghana/)
     ).toBeInTheDocument()
   })
 
@@ -98,7 +98,7 @@ describe('HomePage', () => {
 
   it('renders campaign cards from the hook data', () => {
     renderWithProviders(<HomePage />)
-    expect(screen.getByText('Clean Water for Kibera')).toBeInTheDocument()
+    expect(screen.getByText('Clean Water for Tamale')).toBeInTheDocument()
     expect(
       screen.getByText('Solar Panels for Accra School')
     ).toBeInTheDocument()

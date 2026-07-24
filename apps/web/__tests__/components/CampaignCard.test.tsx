@@ -21,17 +21,17 @@ function renderWithProviders(ui: React.ReactElement) {
 
 const mockCampaign: Campaign = {
   id: 'test-1',
-  title: 'Clean Water for Kibera',
+  title: 'Clean Water for Tamale',
   description:
-    'Help us build a clean water well for the Kibera community in Nairobi. Over 2,000 families lack access to safe drinking water.',
+    'Help us build a clean water well for the Tamale community in the Northern Region. Over 2,000 families lack access to safe drinking water.',
   goalAmount: 500000,
   raisedAmount: 375000,
-  currency: 'KES',
+  currency: 'GHS',
   category: CampaignCategory.COMMUNITY,
   priority: CampaignPriority.URGENT,
   status: CampaignStatus.ACTIVE,
   creatorId: 'user-1',
-  beneficiaries: ['Kibera Community'],
+  beneficiaries: ['Tamale Community'],
   imageUrls: ['https://example.com/image.jpg'],
   startDate: new Date('2025-12-01'),
   endDate: new Date('2026-06-01'),
@@ -42,7 +42,7 @@ const mockCampaign: Campaign = {
 describe('CampaignCard', () => {
   it('renders the campaign title', () => {
     renderWithProviders(<CampaignCard campaign={mockCampaign} />)
-    expect(screen.getByText('Clean Water for Kibera')).toBeInTheDocument()
+    expect(screen.getByText('Clean Water for Tamale')).toBeInTheDocument()
   })
 
   it('renders the description', () => {
@@ -62,9 +62,9 @@ describe('CampaignCard', () => {
     expect(screen.getByText('75%')).toBeInTheDocument()
   })
 
-  it('renders the raised amount', () => {
+  it('renders the raised amount in GHS', () => {
     renderWithProviders(<CampaignCard campaign={mockCampaign} />)
-    expect(screen.getByText(/375,000/)).toBeInTheDocument()
+    expect(screen.getByText(/GH₵ 375,000/)).toBeInTheDocument()
   })
 
   it('renders a link to the campaign detail page', () => {

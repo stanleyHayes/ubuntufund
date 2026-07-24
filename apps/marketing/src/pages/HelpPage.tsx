@@ -43,7 +43,7 @@ const FAQ_CATEGORIES: FaqCategory[] = [
     label: 'Getting started',
     questions: [
       { q: 'How do I create an account on UbuntuFund?', a: 'Click "Sign Up" on the homepage, enter your email and create a password. You can also sign up with Google or Facebook. Complete your profile with your name, location, and a photo to build trust with the community.' },
-      { q: 'Is UbuntuFund available in my country?', a: 'UbuntuFund is available across all 54 African nations and to the global diaspora. While campaign creation is currently limited to organizers based in Africa, anyone worldwide can donate. We are continuously expanding payment options.' },
+      { q: 'Is UbuntuFund available in my country?', a: 'UbuntuFund is built for Ghana. Campaign creation is open to organizers based in Ghana, and anyone worldwide can donate to a Ghanaian campaign — family abroad included. All campaigns raise funds in Ghanaian cedis (GHS).' },
       { q: 'Do I need to verify my identity?', a: 'Basic usage requires email verification. To create campaigns and build trust, we recommend completing our multi-level verification: email/phone, national ID, institutional, and community vouching. Higher verification means a higher trust score.' },
     ],
   },
@@ -64,7 +64,7 @@ const FAQ_CATEGORIES: FaqCategory[] = [
     label: 'Donations',
     questions: [
       { q: 'How do I make a donation?', a: 'Browse campaigns and click "Donate." Enter the amount, choose your payment method, and confirm. You\'ll receive a confirmation email with your receipt. You can donate anonymously if you prefer.' },
-      { q: 'Is there a minimum or maximum donation?', a: 'Minimum is $1 USD (or equivalent). No maximum, though large donations may require additional verification. Enterprise organizations can set custom minimums for their campaigns.' },
+      { q: 'Is there a minimum or maximum donation?', a: 'Minimum is GH₵ 5. No maximum, though large donations may require additional verification. Enterprise organizations can set custom minimums for their campaigns.' },
       { q: 'Can I get a refund on my donation?', a: 'Refunds are available within 14 days if the campaign hasn\'t withdrawn the funds. For campaigns that are suspended or found fraudulent, full refunds are processed automatically. Visit your donation history to request a refund.' },
     ],
   },
@@ -73,9 +73,9 @@ const FAQ_CATEGORIES: FaqCategory[] = [
     icon: <PaymentsRoundedIcon />,
     label: 'Payments',
     questions: [
-      { q: 'What payment methods are accepted?', a: 'Mobile money (M-Pesa, MTN MoMo, Airtel Money, Orange Money), bank transfers, cards (Visa, Mastercard, Verve), and cryptocurrency (Bitcoin, USDT). Available methods vary by country.' },
-      { q: 'How do I withdraw my campaign funds?', a: 'Go to your dashboard and click "Withdraw." Choose mobile money (processed within 24 hours) or bank transfer (2-3 business days). International transfers may take up to 5 business days. Platform fees are automatically deducted.' },
-      { q: 'What are the platform fees?', a: 'Fees depend on your subscription tier. Free accounts pay a 5% platform fee. Starter (3.5%), Pro (2%), and Enterprise (1%). All tiers incur standard payment processing fees (2.9% + $0.30). See our pricing page for details.' },
+      { q: 'What payment methods are accepted?', a: 'MTN Mobile Money (MoMo), Telecel Cash, AT Money, Visa & Mastercard cards, and bank transfer. Mobile money is the fastest way to give and receive funds in Ghana.' },
+      { q: 'How do I withdraw my campaign funds?', a: 'Go to your dashboard and click "Withdraw." Choose mobile money (processed within 24 hours) or bank transfer to any Ghanaian bank (2-3 business days). Platform fees are automatically deducted.' },
+      { q: 'What are the platform fees?', a: 'Fees depend on your subscription tier. Free accounts pay a 5% platform fee. Starter (3.5%), Pro (2%), and Enterprise (1%). All tiers incur standard payment processing fees (2.9% + GH₵ 1). See our pricing page for details.' },
     ],
   },
   {
@@ -102,13 +102,13 @@ const FAQ_CATEGORIES: FaqCategory[] = [
 const QUICK_LINKS = [
   { icon: <MenuBookRoundedIcon />, label: 'Getting started guide', description: 'Step-by-step walkthrough for new users', target: 'getting-started' },
   { icon: <CampaignRoundedIcon />, label: 'Campaign best practices', description: 'Tips to maximize your fundraising', target: 'campaigns' },
-  { icon: <PaymentsRoundedIcon />, label: 'Payment methods', description: 'All supported payment options by country', target: 'payments' },
+  { icon: <PaymentsRoundedIcon />, label: 'Payment methods', description: 'MoMo, cards, and bank transfer in Ghana', target: 'payments' },
   { icon: <ShieldRoundedIcon />, label: 'Trust & verification', description: 'How our trust system works', target: 'trust' },
 ]
 
 const CONTACT_OPTIONS = [
   { icon: <EmailRoundedIcon />, title: 'Email support', desc: 'support@ubuntufund.com', detail: 'Response within 24 hours', action: 'Send email', href: 'mailto:support@ubuntufund.com' },
-  { icon: <ChatBubbleOutlineRoundedIcon />, title: 'Live chat', desc: 'Chat with our team in real time', detail: 'Mon-Sat, 8am-8pm WAT', action: 'Start chat', href: '/contact' },
+  { icon: <ChatBubbleOutlineRoundedIcon />, title: 'Live chat', desc: 'Chat with our team in real time', detail: 'Mon-Sat, 8am-8pm GMT', action: 'Start chat', href: '/contact' },
   { icon: <GroupsRoundedIcon />, title: 'Community forum', desc: 'Get help from other UbuntuFund users', detail: '5,000+ active members', action: 'Visit forum', href: '/contact' },
 ]
 
@@ -376,7 +376,7 @@ function HelpPage() {
               Still need help?
             </Typography>
             <Typography sx={{ color: 'rgba(245,242,234,0.75)', maxWidth: 640, mx: 'auto', lineHeight: 1.7 }}>
-              Our support team is available Monday through Saturday, 8am-8pm WAT. We typically respond within a few hours.
+              Our support team is available Monday through Saturday, 8am-8pm GMT. We typically respond within a few hours.
             </Typography>
           </Box>
 

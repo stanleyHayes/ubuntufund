@@ -85,7 +85,7 @@ function formatCellValue(value: unknown, format?: string): React.ReactNode {
     if (value === -1) return <Typography sx={{ fontSize: '0.82rem', fontWeight: 700, color: '#2E3D2F' }}>Unlimited</Typography>
     if (value === 0 && format === 'unlimited') return <CloseRoundedIcon sx={{ fontSize: 18, color: 'rgba(0,0,0,0.12)' }} />
     if (format === 'fee') return <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>{value}%</Typography>
-    if (format === 'goal') return <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>${value.toLocaleString()}</Typography>
+    if (format === 'goal') return <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>GH₵ {value.toLocaleString()}</Typography>
     return <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>{value}</Typography>
   }
   return String(value)
@@ -105,7 +105,7 @@ const faqs = [
   },
   {
     question: 'What payment methods are supported?',
-    answer: 'We support mobile money (M-Pesa, MTN Mobile Money, Airtel Money), bank transfers, credit/debit cards (Visa, Mastercard), and PayPal. Available methods vary by country.',
+    answer: 'We support MTN Mobile Money (MoMo), Telecel Cash, AT Money, Visa & Mastercard cards, and bank transfer. All donations and payouts are in Ghanaian cedis (GHS).',
   },
   {
     question: 'Can I switch plans at any time?',
@@ -243,14 +243,14 @@ function PricingPage() {
                     ) : (
                       <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
                         <Typography sx={{ fontWeight: 900, fontSize: '2.2rem', lineHeight: 1 }}>
-                          ${yearly ? Math.round(price / 12) : price}
+                          GH₵ {yearly ? Math.round(price / 12) : price}
                         </Typography>
                         <Typography sx={{ color: 'text.secondary', fontSize: '0.82rem' }}>/mo</Typography>
                       </Box>
                     )}
                     {yearly && !isEnterprise && price > 0 && (
                       <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary', mt: 0.25 }}>
-                        ${price}/year &middot; billed annually
+                        GH₵ {price}/year &middot; billed annually
                       </Typography>
                     )}
                   </Box>
@@ -263,7 +263,7 @@ function PricingPage() {
                   <Box sx={{ flex: 1, mb: 2.5 }}>
                     {[
                       plan.maxActiveCampaigns === -1 ? 'Unlimited campaigns' : `${plan.maxActiveCampaigns} active campaign${plan.maxActiveCampaigns !== 1 ? 's' : ''}`,
-                      plan.maxCampaignGoal === -1 ? 'No goal limit' : `Up to $${plan.maxCampaignGoal.toLocaleString()} goal`,
+                      plan.maxCampaignGoal === -1 ? 'No goal limit' : `Up to GH₵ ${plan.maxCampaignGoal.toLocaleString()} goal`,
                       plan.featuredListing && 'Featured listing',
                       plan.prioritySupport && 'Priority support',
                       plan.advancedAnalytics && 'Advanced analytics',

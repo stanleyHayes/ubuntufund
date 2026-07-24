@@ -101,6 +101,7 @@ export interface InviteUserInput {
   name: string
   password?: string
   roleId: string
+  /** Country — defaults to 'Ghana'; the platform operates in Ghana only */
   country?: string
   organizationName?: string
 }

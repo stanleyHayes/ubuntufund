@@ -16,7 +16,7 @@ interface AuthLayoutProps {
 
 const VALUE_PROPS = [
   'Built-in trust verification for every campaign',
-  'Multi-currency wallets made for African giving',
+  'Cedi wallets made for Ghanaian giving',
   'Transparent impact tracking, donation by donation',
 ]
 

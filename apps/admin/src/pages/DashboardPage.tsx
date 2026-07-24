@@ -160,9 +160,9 @@ interface TileTemplate {
 }
 
 function formatCurrency(val: number): string {
-  if (val >= 1_000_000) return `$${(val / 1_000_000).toFixed(1)}M`
-  if (val >= 1_000) return `$${(val / 1_000).toFixed(1)}K`
-  return `$${val.toLocaleString()}`
+  if (val >= 1_000_000) return `GH₵ ${(val / 1_000_000).toFixed(1)}M`
+  if (val >= 1_000) return `GH₵ ${(val / 1_000).toFixed(1)}K`
+  return new Intl.NumberFormat('en-GH', { style: 'currency', currency: 'GHS' }).format(val)
 }
 
 function formatCompact(val: number): string {
@@ -572,7 +572,7 @@ export default function DashboardPage() {
   const { data: kycStats } = useKYCStats()
 
   const quickStats = [
-    { label: 'Total Raised', value: statsLoading ? '...' : `$${stats.totalRaised.toLocaleString()}`, icon: <TrendingUpIcon />, color: '#8FAE96', fill: statsLoading ? 0 : (stats.totalRaised / maxStatVal) * 100 },
+    { label: 'Total Raised', value: statsLoading ? '...' : `GH₵ ${stats.totalRaised.toLocaleString()}`, icon: <TrendingUpIcon />, color: '#8FAE96', fill: statsLoading ? 0 : (stats.totalRaised / maxStatVal) * 100 },
     { label: 'Active Campaigns', value: statsLoading ? '...' : String(stats.activeCampaigns), icon: <CampaignIcon />, color: '#74909A', fill: statsLoading ? 0 : ((stats.activeCampaigns * 1000) / maxStatVal) * 100 },
     { label: 'Total Users', value: statsLoading ? '...' : String(stats.totalUsers), icon: <PeopleIcon />, color: TONES.maroon.text, fill: statsLoading ? 0 : ((stats.totalUsers * 100) / maxStatVal) * 100 },
     { label: 'Pending Disputes', value: statsLoading ? '...' : String(stats.pendingDisputes), icon: <GavelIcon />, color: '#D3A95C', fill: statsLoading ? 0 : ((stats.pendingDisputes * 5000) / maxStatVal) * 100 },

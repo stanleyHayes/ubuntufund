@@ -18,8 +18,10 @@ const ACTIONS: { icon: string; label: string }[] = [
   { icon: 'swap-horizontal', label: 'Transfer' },
 ]
 
-function formatAmount(amount: number, currency: string) {
-  return `${currency} ${amount.toLocaleString()}`
+const ghsFormatter = new Intl.NumberFormat('en-GH', { style: 'currency', currency: 'GHS' })
+
+function formatAmount(amount: number) {
+  return ghsFormatter.format(amount)
 }
 
 function ActionTile({ icon, label }: { icon: string; label: string }) {
@@ -89,10 +91,10 @@ export default function WalletTab() {
       <View style={styles.balanceCard}>
         <Text style={styles.balanceLabel}>Total Balance</Text>
         <Text style={styles.balanceValue}>
-          {primary ? formatAmount(primary.balance, primary.currency) : '—'}
+          {primary ? formatAmount(primary.balance) : '—'}
         </Text>
         {secondary.map((w) => (
-          <Text key={w.id} style={styles.balanceSub}>+ {formatAmount(w.balance, w.currency)}</Text>
+          <Text key={w.id} style={styles.balanceSub}>+ {formatAmount(w.balance)}</Text>
         ))}
 
         <View style={styles.actionRow}>

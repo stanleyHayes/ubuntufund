@@ -221,10 +221,10 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
                   lineHeight: 1,
                 }}
               >
-                {campaign.currency === 'ZAR' ? 'R' : campaign.currency} {campaign.raisedAmount.toLocaleString()}
+                GH₵ {campaign.raisedAmount.toLocaleString()}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                of {campaign.currency === 'ZAR' ? 'R' : campaign.currency} {campaign.goalAmount.toLocaleString()}
+                of GH₵ {campaign.goalAmount.toLocaleString()}
               </Typography>
             </Box>
             <Typography sx={{ fontWeight: 800, fontSize: '0.95rem', color: pct >= 100 ? '#A07E33' : 'text.primary' }}>

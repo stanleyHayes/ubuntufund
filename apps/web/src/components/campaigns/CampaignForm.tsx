@@ -2,6 +2,7 @@ import { useState } from 'react'
 import Box from '@mui/material/Box'
 import TextField from '@mui/material/TextField'
 import MenuItem from '@mui/material/MenuItem'
+import InputAdornment from '@mui/material/InputAdornment'
 import Button from '@mui/material/Button'
 import Alert from '@mui/material/Alert'
 import { CampaignCategory } from '@ubuntu-fund/types'
@@ -23,8 +24,6 @@ interface FormErrors {
   endDate?: string
 }
 
-const CURRENCIES = ['USD', 'KES', 'NGN', 'GHS', 'ZAR', 'TZS', 'UGX', 'RWF', 'ETB', 'EGP']
-
 const CATEGORIES = Object.values(CampaignCategory).map((value) => ({
   value,
   label: value.charAt(0).toUpperCase() + value.slice(1).replace(/_/g, ' '),
@@ -35,7 +34,7 @@ export function CampaignForm() {
     title: '',
     description: '',
     goalAmount: '',
-    currency: 'USD',
+    currency: 'GHS',
     category: '',
     endDate: '',
   })
@@ -107,32 +106,20 @@ export function CampaignForm() {
         required
       />
 
-      <Box sx={{ display: 'flex', gap: 2 }}>
-        <TextField
-          label="Goal Amount"
-          type="number"
-          value={formData.goalAmount}
-          onChange={handleChange('goalAmount')}
-          error={!!errors.goalAmount}
-          helperText={errors.goalAmount}
-          sx={{ flex: 2 }}
-          required
-          slotProps={{ htmlInput: { min: 1 } }}
-        />
-        <TextField
-          label="Currency"
-          select
-          value={formData.currency}
-          onChange={handleChange('currency')}
-          sx={{ flex: 1 }}
-        >
-          {CURRENCIES.map((c) => (
-            <MenuItem key={c} value={c}>
-              {c}
-            </MenuItem>
-          ))}
-        </TextField>
-      </Box>
+      <TextField
+        label="Goal Amount"
+        type="number"
+        value={formData.goalAmount}
+        onChange={handleChange('goalAmount')}
+        error={!!errors.goalAmount}
+        helperText={errors.goalAmount}
+        fullWidth
+        required
+        slotProps={{
+          htmlInput: { min: 1 },
+          input: { startAdornment: <InputAdornment position="start">GHS</InputAdornment> },
+        }}
+      />
 
       <TextField
         label="Category"

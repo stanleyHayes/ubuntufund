@@ -84,8 +84,8 @@ export function SettingsPage() {
   const [campaignUpdates, setCampaignUpdates] = useState(true)
   const [marketingEmails, setMarketingEmails] = useState(false)
 
-  // Account settings
-  const [currency, setCurrency] = useState('USD')
+  // Account settings — Ghana launch: currency is fixed to GHS
+  const currency = 'GHS'
   const [language, setLanguage] = useState('English')
   const [darkMode, setDarkMode] = useState(false)
 
@@ -135,7 +135,6 @@ export function SettingsPage() {
           if (np.campaignUpdates !== undefined) setCampaignUpdates(np.campaignUpdates)
           if (np.marketingEmails !== undefined) setMarketingEmails(np.marketingEmails)
         }
-        if (data.preferredCurrency) setCurrency(data.preferredCurrency)
         if (data.language) setLanguage(data.language)
         if (data.darkMode !== undefined) setDarkMode(data.darkMode)
         if (data.anonymousDonations !== undefined) setAnonymousDonations(data.anonymousDonations)
@@ -222,16 +221,12 @@ export function SettingsPage() {
         <SettingsSection title="Account Settings">
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, maxWidth: 600 }}>
             <TextField
-              select
-              label="Preferred Currency"
-              value={currency}
-              onChange={(e) => { setCurrency(e.target.value); persistSettings({ preferredCurrency: e.target.value }) }}
+              label="Currency"
+              value="GHS (Ghanaian cedi)"
+              helperText="All donations and campaigns use Ghanaian cedi"
               fullWidth
-            >
-              {['USD', 'GHS', 'KES', 'NGN', 'ZAR', 'RWF', 'TZS', 'UGX', 'ETB', 'XOF'].map((c) => (
-                <MenuItem key={c} value={c}>{c}</MenuItem>
-              ))}
-            </TextField>
+              disabled
+            />
             <TextField
               select
               label="Language"

@@ -203,7 +203,7 @@ export default function RefundRequestScreen() {
                 <View style={styles.detailRow}>
                   <Text style={styles.detailKey}>Amount</Text>
                   <Text style={[styles.detailValue, { color: brandColors.primary, fontFamily: 'TTSquares-Bold' }]}>
-                    {donation.currency ?? '$'}{donation.amount}
+                    GH₵ {donation.amount.toLocaleString()}
                   </Text>
                 </View>
                 <View style={styles.detailRow}>

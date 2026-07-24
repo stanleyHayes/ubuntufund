@@ -37,11 +37,13 @@ const PERIOD_PARAMS: Record<Period, string> = {
 // Rank 1-3 badge colors, drawn from the gold family only.
 const MEDAL_COLORS = [brandColors.secondary, brandColors.secondaryDark, brandColors.secondaryLight]
 
+const ghsFormatter = new Intl.NumberFormat('en-GH', { style: 'currency', currency: 'GHS' })
+
 function formatAmount(amount?: number) {
   const val = amount ?? 0
-  if (val >= 1_000_000) return `$${(val / 1_000_000).toFixed(1)}M`
-  if (val >= 1_000) return `$${(val / 1_000).toFixed(1)}K`
-  return `$${val.toLocaleString()}`
+  if (val >= 1_000_000) return `GH₵ ${(val / 1_000_000).toFixed(1)}M`
+  if (val >= 1_000) return `GH₵ ${(val / 1_000).toFixed(1)}K`
+  return ghsFormatter.format(val)
 }
 
 // ─── Skeleton ────────────────────────────────────────────────

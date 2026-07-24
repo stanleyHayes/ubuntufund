@@ -66,7 +66,7 @@ export function OrganizationsPage() {
             ...org,
             campaignCount: orgCampaigns.length,
             totalRaised: orgCampaigns.reduce((sum, c) => sum + (c.raisedAmount || 0), 0),
-            currency: orgCampaigns[0]?.currency ?? 'USD',
+            currency: orgCampaigns[0]?.currency ?? 'GHS',
           }
         })
         setOrganizations(enriched)
@@ -86,7 +86,7 @@ export function OrganizationsPage() {
           Organizations
         </Typography>
         <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 560, mx: 'auto' }}>
-          Discover trusted organizations driving impact across Africa. Follow their work and support their campaigns.
+          Discover trusted organizations driving impact across Ghana. Follow their work and support their campaigns.
         </Typography>
       </Box>
 

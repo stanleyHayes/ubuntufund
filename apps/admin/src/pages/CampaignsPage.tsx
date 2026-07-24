@@ -90,7 +90,7 @@ function CampaignCard({ campaign, index }: { campaign: Campaign; index: number }
         color: 'rgba(255,255,255,0.03)', lineHeight: 1, pointerEvents: 'none',
         userSelect: 'none',
       }}>
-        ${campaign.raisedAmount.toLocaleString()}
+        GH₵ {campaign.raisedAmount.toLocaleString()}
       </Typography>
 
       {/* Status + Category */}
@@ -124,10 +124,10 @@ function CampaignCard({ campaign, index }: { campaign: Campaign; index: number }
         {/* Raised / Goal */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.8 }}>
           <Typography sx={{ fontSize: '0.78rem', fontFamily: '"TT Squares", monospace', color: 'text.primary' }}>
-            ${campaign.raisedAmount.toLocaleString()} <Box component="span" sx={{ color: 'text.secondary', fontSize: '0.7rem' }}>raised</Box>
+            GH₵ {campaign.raisedAmount.toLocaleString()} <Box component="span" sx={{ color: 'text.secondary', fontSize: '0.7rem' }}>raised</Box>
           </Typography>
           <Typography sx={{ fontSize: '0.78rem', fontFamily: '"TT Squares", monospace', color: 'text.secondary' }}>
-            ${campaign.goalAmount.toLocaleString()} <Box component="span" sx={{ fontSize: '0.7rem' }}>goal</Box>
+            GH₵ {campaign.goalAmount.toLocaleString()} <Box component="span" sx={{ fontSize: '0.7rem' }}>goal</Box>
           </Typography>
         </Box>
 

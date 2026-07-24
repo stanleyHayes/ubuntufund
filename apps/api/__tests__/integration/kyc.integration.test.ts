@@ -56,7 +56,7 @@ describe('KYC Integration', () => {
       .post('/api/v1/kyc/identity')
       .set('Authorization', `Bearer ${token}`)
       .send({
-        personalInfo: { fullName: 'Jane Doe', nationality: 'Kenyan' },
+        personalInfo: { fullName: 'Efua Asante', nationality: 'Ghanaian' },
         documents: [{ type: 'passport', url: 'https://example.com/passport.jpg' }],
       });
 
@@ -104,7 +104,7 @@ describe('KYC Integration', () => {
         title: 'Campaign After KYC',
         description: 'Created once KYC-approved',
         goalAmount: 1000,
-        currency: 'ZAR',
+        currency: 'GHS',
         category: CampaignCategory.EDUCATION,
         priority: CampaignPriority.NORMAL,
         beneficiaries: [],

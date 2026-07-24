@@ -28,10 +28,12 @@ interface Campaign {
   creatorId: string
 }
 
-function formatCurrency(amount: number, currency: string) {
-  if (amount >= 1_000_000) return `${currency} ${(amount / 1_000_000).toFixed(1)}M`
-  if (amount >= 1_000) return `${currency} ${(amount / 1_000).toFixed(1)}K`
-  return `${currency} ${amount.toLocaleString()}`
+const ghsFormatter = new Intl.NumberFormat('en-GH', { style: 'currency', currency: 'GHS' })
+
+function formatCurrency(amount: number) {
+  if (amount >= 1_000_000) return `GH₵ ${(amount / 1_000_000).toFixed(1)}M`
+  if (amount >= 1_000) return `GH₵ ${(amount / 1_000).toFixed(1)}K`
+  return ghsFormatter.format(amount)
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -100,10 +102,10 @@ function CampaignCard({ campaign }: { campaign: Campaign }) {
 
         <View style={styles.cardStats}>
           <Text style={styles.cardRaised}>
-            {formatCurrency(campaign.raisedAmount, campaign.currency)}
+            {formatCurrency(campaign.raisedAmount)}
           </Text>
           <Text style={styles.cardGoal}>
-            {' '}of {formatCurrency(campaign.goalAmount, campaign.currency)}
+            {' '}of {formatCurrency(campaign.goalAmount)}
           </Text>
           <Text style={styles.cardPct}>{Math.round(pct * 100)}%</Text>
         </View>

@@ -10,7 +10,6 @@ import Tab from '@mui/material/Tab'
 import LinearProgress from '@mui/material/LinearProgress'
 import Snackbar from '@mui/material/Snackbar'
 import Alert from '@mui/material/Alert'
-import MenuItem from '@mui/material/MenuItem'
 import Chip from '@mui/material/Chip'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
@@ -157,8 +156,9 @@ export function ProfilePage() {
   // Edit Profile state
   const [name, setName] = useState(user?.name ?? '')
   const [phone, setPhone] = useState('+233 24 123 4567')
-  const [bio, setBio] = useState('Passionate about education and community development across Africa. Believer in the power of collective giving.')
-  const [country, setCountry] = useState('Ghana')
+  const [bio, setBio] = useState('Passionate about education and community development across Ghana. Believer in the power of collective giving.')
+  // Ghana launch: country is fixed
+  const country = 'Ghana'
   const [profileSnack, setProfileSnack] = useState(false)
   const [profileSaving, setProfileSaving] = useState(false)
   const [profileError, setProfileError] = useState<string | null>(null)
@@ -660,11 +660,7 @@ export function ProfilePage() {
                   </Box>
                   <TextField label="Bio" value={bio} onChange={(e) => setBio(e.target.value)} multiline rows={3} fullWidth placeholder="Tell us about yourself..." />
                 </Box>
-                <TextField label="Country" value={country} onChange={(e) => setCountry(e.target.value)} select fullWidth>
-                  {['Ghana', 'Kenya', 'Nigeria', 'South Africa', 'Rwanda', 'Tanzania', 'Uganda', 'Ethiopia', 'Senegal', 'Cameroon'].map((c) => (
-                    <MenuItem key={c} value={c}>{c}</MenuItem>
-                  ))}
-                </TextField>
+                <TextField label="Country" value={country} fullWidth disabled />
                 <Button
                   variant="contained"
                   color="primary"

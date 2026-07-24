@@ -33,7 +33,7 @@ const BANNER_CONFIG: Record<string, { title: string; subtitle?: string; descript
     icon: <PublicIcon />,
     title: 'Our Story',
     subtitle: 'The mission behind UbuntuFund',
-    description: 'Born from the belief that collective action can transform communities across Africa.',
+    description: 'Born from the belief that collective action can transform communities across Ghana.',
     accentWord: 'Story',
   },
   '/pricing': {
@@ -46,7 +46,7 @@ const BANNER_CONFIG: Record<string, { title: string; subtitle?: string; descript
   '/blog': {
     icon: <AutoStoriesIcon />,
     title: 'From the Community',
-    subtitle: 'Stories, updates, and insights from across Africa',
+    subtitle: 'Stories, updates, and insights from across Ghana',
     description: 'Real voices, real impact — dispatches from the frontlines of collective giving.',
     accentWord: 'Community',
   },

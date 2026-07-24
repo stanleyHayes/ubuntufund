@@ -76,13 +76,13 @@ function DonationCard({ donation, donorName, campaignTitle, index }: DonationCar
         color: 'rgba(255,255,255,0.03)', lineHeight: 1, pointerEvents: 'none',
         userSelect: 'none',
       }}>
-        ${donation.amount}
+        GH₵ {donation.amount}
       </Typography>
 
       {/* Amount + Currency + Anon badge */}
       <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 0.5, position: 'relative', zIndex: 1 }}>
         <Typography sx={{ fontSize: '1.5rem', fontWeight: 700, fontFamily: '"TT Squares", monospace', color: 'text.primary', lineHeight: 1.2 }}>
-          ${donation.amount.toLocaleString()}
+          GH₵ {donation.amount.toLocaleString()}
         </Typography>
         <Typography sx={{ fontSize: '0.65rem', fontWeight: 600, textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', letterSpacing: '0.05em' }}>
           {donation.currency}
@@ -220,7 +220,7 @@ export default function DonationsPage() {
         </Box>
         <Box sx={{ px: 2.5, py: 1.5, display: 'flex', alignItems: 'center' }}>
           <Typography sx={{ fontFamily: '"TT Squares", monospace', fontSize: '0.82rem', color: 'text.secondary' }}>
-            {filtered.length} donations &middot; ${totalAmount.toLocaleString()} total
+            {filtered.length} donations &middot; GH₵ {totalAmount.toLocaleString()} total
           </Typography>
         </Box>
       </Box>

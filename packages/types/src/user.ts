@@ -44,6 +44,7 @@ export interface KYCAddress {
   street?: string
   city?: string
   state?: string
+  /** Country — defaults to 'Ghana'; the platform operates in Ghana only */
   country?: string
   postalCode?: string
 }
@@ -91,6 +92,7 @@ export interface User {
   role: UserRole
   verificationLevel: VerificationLevel
   trustScore: number
+  /** Country — defaults to 'Ghana'; the platform operates in Ghana only */
   country?: string
   kycStatus: KYCStatus
   kycVerifiedAt?: Date
@@ -103,6 +105,7 @@ export interface CreateUserInput {
   email: string
   password: string
   name: string
+  /** Country — defaults to 'Ghana'; the platform operates in Ghana only */
   country?: string
   role?: UserRole
   /** Organization-specific fields */

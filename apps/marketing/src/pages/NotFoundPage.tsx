@@ -270,7 +270,7 @@ export default function NotFoundPage() {
           animation: 'fadeInUp 0.8s ease 0.5s forwards',
         }}
       >
-        This page is lost in the African sunset
+        This page is lost in the Ghanaian sunset
       </Typography>
 
       <Typography
@@ -313,7 +313,7 @@ export default function NotFoundPage() {
         Explore UbuntuFund
       </Button>
 
-      {/* African landscape silhouette at bottom */}
+      {/* Ghanaian landscape silhouette at bottom */}
       <svg
         style={{
           position: 'absolute',

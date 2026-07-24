@@ -22,8 +22,8 @@ function toDomain(doc: PaymentProviderDocument): PaymentProviderEntity {
 
 /**
  * Sensible defaults seeded the first time the collection is read and found
- * empty: wallet (on by default, platform default provider), M-Pesa (mobile
- * money), card/Stripe, and bank transfer.
+ * empty: wallet (on by default, platform default provider), Ghana mobile
+ * money rails (MTN MoMo, Telecel Cash, AT Money), cards, and bank transfer.
  */
 const DEFAULT_PROVIDERS = [
   {
@@ -36,8 +36,8 @@ const DEFAULT_PROVIDERS = [
     displayOrder: 1,
   },
   {
-    name: 'M-Pesa',
-    slug: 'mpesa',
+    name: 'MTN Mobile Money (MoMo)',
+    slug: 'mtn-momo',
     type: PaymentMethod.MOBILE_MONEY,
     enabled: false,
     isDefault: false,
@@ -45,13 +45,31 @@ const DEFAULT_PROVIDERS = [
     displayOrder: 2,
   },
   {
-    name: 'Stripe',
-    slug: 'stripe',
+    name: 'Telecel Cash',
+    slug: 'telecel-cash',
+    type: PaymentMethod.MOBILE_MONEY,
+    enabled: false,
+    isDefault: false,
+    feePercent: 1.5,
+    displayOrder: 3,
+  },
+  {
+    name: 'AT Money',
+    slug: 'at-money',
+    type: PaymentMethod.MOBILE_MONEY,
+    enabled: false,
+    isDefault: false,
+    feePercent: 1.5,
+    displayOrder: 4,
+  },
+  {
+    name: 'Visa & Mastercard',
+    slug: 'card',
     type: PaymentMethod.CARD,
     enabled: false,
     isDefault: false,
     feePercent: 2.9,
-    displayOrder: 3,
+    displayOrder: 5,
   },
   {
     name: 'Bank Transfer',
@@ -60,7 +78,7 @@ const DEFAULT_PROVIDERS = [
     enabled: false,
     isDefault: false,
     feePercent: 1.0,
-    displayOrder: 4,
+    displayOrder: 6,
   },
 ];
 

@@ -58,11 +58,11 @@ const MOCK_DISPUTES: MockDispute[] = [
     id: '1',
     title: 'Misleading campaign images',
     description:
-      'The campaign "Clean Water for Kibera" appears to be using stock photos instead of actual project images. Multiple donors have flagged this.',
+      'The campaign "Clean Water for Tamale" appears to be using stock photos instead of actual project images. Multiple donors have flagged this.',
     campaignId: '1',
-    campaignTitle: 'Clean Water for Kibera Community',
+    campaignTitle: 'Clean Water for Tamale Community',
     reportedBy: 'user-5',
-    reporterName: 'Tendai Moyo',
+    reporterName: 'Yaw Darko',
     assignedTo: 'admin-1',
     status: 'under_review',
     priority: 'high',
@@ -77,7 +77,7 @@ const MOCK_DISPUTES: MockDispute[] = [
     campaignId: '2',
     campaignTitle: 'Build a School in Kumasi',
     reportedBy: 'user-3',
-    reporterName: 'Fatima Diallo',
+    reporterName: 'Abena Sarpong',
     assignedTo: 'admin-1',
     status: 'open',
     priority: 'critical',
@@ -90,9 +90,9 @@ const MOCK_DISPUTES: MockDispute[] = [
     description:
       'A donor has reported that campaign funds were used for purposes other than what was stated. Evidence of purchases unrelated to the campaign goal.',
     campaignId: '3',
-    campaignTitle: 'Medical Fund for Aisha',
+    campaignTitle: 'Medical Fund for Abena',
     reportedBy: 'user-8',
-    reporterName: 'Sipho Ndlovu',
+    reporterName: 'Kojo Antwi',
     assignedTo: 'admin-2',
     status: 'resolved',
     priority: 'high',
@@ -443,7 +443,7 @@ export default function DisputeDetailPage() {
                     Raised
                   </Typography>
                   <Typography sx={{ fontSize: '1rem', fontWeight: 700, color: '#5E8F72' }}>
-                    ${MOCK_CAMPAIGN_STATS.raised.toLocaleString()}
+                    GH₵ {MOCK_CAMPAIGN_STATS.raised.toLocaleString()}
                   </Typography>
                 </Box>
                 <Box>
@@ -451,7 +451,7 @@ export default function DisputeDetailPage() {
                     Goal
                   </Typography>
                   <Typography sx={{ fontSize: '1rem', fontWeight: 700, color: 'text.primary' }}>
-                    ${MOCK_CAMPAIGN_STATS.goal.toLocaleString()}
+                    GH₵ {MOCK_CAMPAIGN_STATS.goal.toLocaleString()}
                   </Typography>
                 </Box>
                 <Box>

@@ -38,10 +38,12 @@ interface Donation {
   status: string
 }
 
+const ghsFormatter = new Intl.NumberFormat('en-GH', { style: 'currency', currency: 'GHS' })
+
 function formatCurrency(amount: number) {
-  if (amount >= 1_000_000) return `$${(amount / 1_000_000).toFixed(1)}M`
-  if (amount >= 1_000) return `$${(amount / 1_000).toFixed(1)}K`
-  return `$${amount.toLocaleString()}`
+  if (amount >= 1_000_000) return `GH₵ ${(amount / 1_000_000).toFixed(1)}M`
+  if (amount >= 1_000) return `GH₵ ${(amount / 1_000).toFixed(1)}K`
+  return ghsFormatter.format(amount)
 }
 
 function formatDate(date: string) {
@@ -190,7 +192,7 @@ export default function DashboardScreen() {
             {/* Stats */}
             <View style={styles.statsRow}>
               <View style={styles.statCard}>
-                <Icon source="currency-usd" size={24} color={brandColors.primary} />
+                <Icon source="cash" size={24} color={brandColors.primary} />
                 <Text style={styles.statValue}>{formatCurrency(totalRaised)}</Text>
                 <Text style={styles.statLabel}>Total Raised</Text>
               </View>
@@ -263,7 +265,7 @@ export default function DashboardScreen() {
                       <Text style={styles.listSub}>{formatDate(d.createdAt)}</Text>
                     </View>
                     <Text style={styles.donationAmount}>
-                      +{d.currency ?? '$'}{d.amount}
+                      +GH₵ {d.amount.toLocaleString()}
                     </Text>
                   </View>
                 ))}

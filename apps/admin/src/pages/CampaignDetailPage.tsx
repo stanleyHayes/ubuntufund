@@ -26,7 +26,7 @@ const MOCK_COLLABORATORS: CampaignCollaborator[] = [
     role: CollaboratorRole.CO_OWNER,
     status: CollaborationStatus.ACCEPTED,
     revenueSharePercent: 20,
-    displayName: 'Grace Achieng',
+    displayName: 'Efua Asante',
     createdAt: new Date('2026-03-01'),
     updatedAt: new Date('2026-03-02'),
   },
@@ -162,7 +162,7 @@ export default function CampaignDetailPage() {
           icon={<RocketLaunchRoundedIcon />}
           stats={[
             { label: 'Status / Priority', value: `${campaign.status.replace('_', ' ').toUpperCase()} / ${campaign.priority.toUpperCase()}` },
-            { label: 'Raised / Goal', value: `$${campaign.raisedAmount.toLocaleString()} / $${campaign.goalAmount.toLocaleString()}` },
+            { label: 'Raised / Goal', value: `GH₵ ${campaign.raisedAmount.toLocaleString()} / GH₵ ${campaign.goalAmount.toLocaleString()}` },
             { label: 'Donors', value: donations.length },
             { label: 'Days Remaining', value: campaign.status === CampaignStatus.EXPIRED ? 'Expired' : daysRemaining },
           ]}
@@ -533,7 +533,7 @@ export default function CampaignDetailPage() {
               }}
             >
               <Typography sx={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff', fontFamily: '"TT Squares", monospace' }}>
-                ${d.amount.toLocaleString()}
+                GH₵ {d.amount.toLocaleString()}
               </Typography>
               <Typography sx={{ fontSize: '0.72rem', color: '#A0A0B0', mt: 0.5 }}>
                 {d.isAnonymous ? 'Anonymous' : d.donorId}

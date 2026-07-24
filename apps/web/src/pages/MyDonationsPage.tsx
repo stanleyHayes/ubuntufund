@@ -57,8 +57,7 @@ export function MyDonationsPage() {
   })
 
   const nonRefunded = donations.filter((d) => d.status !== 'refunded')
-  const totalDonated = nonRefunded
-    .reduce((sum, d) => sum + (d.currency === 'USD' ? d.amount : d.amount * 0.008), 0)
+  const totalDonated = nonRefunded.reduce((sum, d) => sum + d.amount, 0)
   const campaignsSupported = new Set(donations.map((d) => d.campaignId)).size
   const avgDonation = nonRefunded.length > 0 ? totalDonated / nonRefunded.length : 0
 
@@ -87,9 +86,9 @@ export function MyDonationsPage() {
         {/* Stats Bar */}
         <Grid container spacing={2} sx={{ mb: 4 }}>
           {[
-            { icon: <TrendingUpRoundedIcon />, label: 'Total Donated (est. USD)', value: `$${Math.round(totalDonated).toLocaleString()}`, color: '#2E3D2F', bg: 'rgba(46, 61, 47,0.08)' },
+            { icon: <TrendingUpRoundedIcon />, label: 'Total Donated', value: `GH₵ ${Math.round(totalDonated).toLocaleString()}`, color: '#2E3D2F', bg: 'rgba(46, 61, 47,0.08)' },
             { icon: <VolunteerActivismRoundedIcon />, label: 'Campaigns Supported', value: String(campaignsSupported), color: '#1565C0', bg: 'rgba(21,101,192,0.08)' },
-            { icon: <BarChartRoundedIcon />, label: 'Average Donation (est. USD)', value: `$${Math.round(avgDonation).toLocaleString()}`, color: '#AD1457', bg: 'rgba(173,20,87,0.08)' },
+            { icon: <BarChartRoundedIcon />, label: 'Average Donation', value: `GH₵ ${Math.round(avgDonation).toLocaleString()}`, color: '#AD1457', bg: 'rgba(173,20,87,0.08)' },
           ].map((stat) => (
             <Grid size={{ xs: 12, sm: 4 }} key={stat.label}>
               <Box

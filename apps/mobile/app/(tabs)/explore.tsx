@@ -38,10 +38,12 @@ const STATUS_FILTERS: { key: string | null; label: string }[] = [
 
 type SortKey = 'newest' | 'most_funded' | 'ending_soon'
 
-function formatCurrency(amount: number, currency: string) {
-  if (amount >= 1_000_000) return `${currency} ${(amount / 1_000_000).toFixed(1)}M`
-  if (amount >= 1_000) return `${currency} ${(amount / 1_000).toFixed(1)}K`
-  return `${currency} ${amount.toLocaleString()}`
+const ghsFormatter = new Intl.NumberFormat('en-GH', { style: 'currency', currency: 'GHS' })
+
+function formatCurrency(amount: number) {
+  if (amount >= 1_000_000) return `GH₵ ${(amount / 1_000_000).toFixed(1)}M`
+  if (amount >= 1_000) return `GH₵ ${(amount / 1_000).toFixed(1)}K`
+  return ghsFormatter.format(amount)
 }
 
 function CampaignRow({ campaign, index }: { campaign: Campaign; index: number }) {
@@ -83,7 +85,7 @@ function CampaignRow({ campaign, index }: { campaign: Campaign; index: number })
           <Text style={styles.campaignTitle} numberOfLines={2}>{campaign.title}</Text>
           <ProgressBar progress={pct} height={3} />
           <View style={styles.campaignStats}>
-            <Text style={styles.campaignRaised}>{formatCurrency(campaign.raisedAmount, campaign.currency)}</Text>
+            <Text style={styles.campaignRaised}>{formatCurrency(campaign.raisedAmount)}</Text>
             <Text style={styles.campaignPct}>{Math.round(pct * 100)}%</Text>
           </View>
         </View>
@@ -138,7 +140,12 @@ export default function ExploreTab() {
       </View>
 
       {/* Category pills */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.filterRow}
+        contentContainerStyle={styles.filterScroll}
+      >
         {CATEGORIES.map((cat) => {
           const active = selectedCategory === cat.key
           return (
@@ -160,7 +167,12 @@ export default function ExploreTab() {
 
       {/* Status + Sort row */}
       <View style={styles.secondaryFilters}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingRight: 8 }}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.filterRow}
+          contentContainerStyle={{ gap: 6, paddingRight: 8, alignItems: 'center' }}
+        >
           {STATUS_FILTERS.map((s) => {
             const active = selectedStatus === s.key
             return (
@@ -238,14 +250,14 @@ const styles = StyleSheet.create({
   searchClear: { fontSize: 16, color: brandColors.textSecondary, paddingLeft: 8 },
 
   // Filter pills
-  filterScroll: { paddingHorizontal: 16, paddingRight: 24, paddingBottom: 10, gap: 8 },
+  filterRow: { flexGrow: 0 },
+  filterScroll: { paddingHorizontal: 16, paddingRight: 24, paddingBottom: 10, gap: 8, alignItems: 'center' },
   filterPill: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 44,
+    height: 36,
     paddingHorizontal: 14,
-    paddingVertical: 8,
     borderRadius: 999,
     backgroundColor: 'rgba(168,181,160,0.28)',
   },
@@ -257,9 +269,8 @@ const styles = StyleSheet.create({
   secondaryFilters: { paddingHorizontal: 16, paddingBottom: 8 },
   miniPill: {
     justifyContent: 'center',
-    minHeight: 44,
+    height: 30,
     paddingHorizontal: 12,
-    paddingVertical: 6,
     borderRadius: 999,
     backgroundColor: 'rgba(168,181,160,0.28)',
   },

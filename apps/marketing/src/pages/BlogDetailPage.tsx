@@ -17,11 +17,11 @@ import { blogPosts, CATEGORY_COLORS } from './BlogPage'
 function generateBody(post: (typeof blogPosts)[number]): string[] {
   return [
     post.excerpt,
-    `This is one of the most important topics in the African crowdfunding space today. As platforms like UbuntuFund continue to grow, understanding the nuances of ${post.category.toLowerCase()} becomes critical for campaign creators and donors alike.`,
-    `The data speaks for itself: campaigns in the ${post.category.toLowerCase()} category have seen a 45% increase in donor engagement over the past year. This growth reflects a broader trend of trust-based giving across the continent, where transparency and community verification play a central role.`,
+    `This is one of the most important topics in Ghanaian crowdfunding today. As platforms like UbuntuFund continue to grow, understanding the nuances of ${post.category.toLowerCase()} becomes critical for campaign creators and donors alike.`,
+    `The data speaks for itself: campaigns in the ${post.category.toLowerCase()} category have seen a 45% increase in donor engagement over the past year. This growth reflects a broader trend of trust-based giving across Ghana, where transparency and community verification play a central role.`,
     `"We've seen firsthand how collective action can transform entire communities," says ${post.author.name}, ${post.author.role} at UbuntuFund. "The key is building systems that make it easy for people to give with confidence."`,
     `For campaign creators, the takeaway is clear: invest time in telling your story authentically, provide regular updates to your donors, and leverage the verification tools available on the platform. The most successful campaigns are those that combine urgency with transparency.`,
-    `As we look ahead, the intersection of mobile technology, diaspora networks, and community-driven verification will continue to reshape how Africa funds its future. UbuntuFund is proud to be at the forefront of this movement.`,
+    `As we look ahead, the intersection of mobile money, diaspora networks, and community-driven verification will continue to reshape how Ghana funds its future. UbuntuFund is proud to be at the forefront of this movement.`,
   ]
 }
 
@@ -271,7 +271,7 @@ function BlogDetailPage() {
               }}
             />
             <Chip
-              label="Africa"
+              label="Ghana"
               size="small"
               variant="outlined"
               sx={{ fontWeight: 600 }}

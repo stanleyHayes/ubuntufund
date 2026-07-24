@@ -40,7 +40,7 @@ const CONTACT_CHANNELS = [
     icon: <LocationOnRoundedIcon />,
     label: 'Visit us',
     value: '14 Independence Avenue, Accra, Ghana',
-    detail: 'Mon-Fri, 9am-5pm WAT',
+    detail: 'Mon-Fri, 9am-5pm GMT',
   },
   {
     icon: <EmailRoundedIcon />,
@@ -52,13 +52,13 @@ const CONTACT_CHANNELS = [
     icon: <PhoneRoundedIcon />,
     label: 'Call us',
     value: '+233 30 123 4567',
-    detail: 'Mon-Fri, 9am-5pm WAT',
+    detail: 'Mon-Fri, 9am-5pm GMT',
   },
   {
     icon: <AccessTimeRoundedIcon />,
     label: 'Live chat',
     value: 'Available on platform',
-    detail: 'Mon-Sat, 8am-8pm WAT',
+    detail: 'Mon-Sat, 8am-8pm GMT',
   },
 ]
 
@@ -81,15 +81,15 @@ const FAQ = [
   { q: 'How long does it take to get a response?', a: 'We typically respond within 24 hours on business days. For urgent matters, please call our phone line or use the live chat during business hours.' },
   { q: 'I have an issue with my campaign. Who should I contact?', a: 'For campaign-related issues, select "Campaign support" as your inquiry type. Our campaign team will prioritize your request and respond within 12 hours.' },
   { q: 'How can I partner with UbuntuFund?', a: 'We welcome partnerships with NGOs, corporations, and government bodies. Select "Partnership" as your inquiry type, or email partnerships@ubuntufund.com directly.' },
-  { q: 'Where are your offices located?', a: 'Our headquarters is in Accra, Ghana. We also have satellite offices in Nairobi (Kenya), Lagos (Nigeria), and Cape Town (South Africa). We are expanding across the continent.' },
+  { q: 'Where are your offices located?', a: 'Our headquarters is on Independence Avenue in Accra. We also have regional offices in Kumasi, Tamale, and Takoradi, so campaign organizers anywhere in Ghana can reach us in person.' },
   { q: 'Is there a dedicated number for reporting fraud?', a: 'Yes. For fraud or suspicious activity, email trust@ubuntufund.com or call our dedicated trust line at +233 30 123 4599 (24/7).' },
 ]
 
 const OFFICES = [
-  { city: 'Accra', country: 'Ghana', hq: true },
-  { city: 'Nairobi', country: 'Kenya', hq: false },
-  { city: 'Lagos', country: 'Nigeria', hq: false },
-  { city: 'Cape Town', country: 'South Africa', hq: false },
+  { city: 'Accra', country: 'Greater Accra Region', hq: true },
+  { city: 'Kumasi', country: 'Ashanti Region', hq: false },
+  { city: 'Tamale', country: 'Northern Region', hq: false },
+  { city: 'Takoradi', country: 'Western Region', hq: false },
 ]
 
 const RESPONSE_TIMES = [

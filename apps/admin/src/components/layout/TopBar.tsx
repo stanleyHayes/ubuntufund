@@ -133,7 +133,7 @@ export default function TopBar({ onReplayTour }: { onReplayTour: () => void }) {
             color: 'rgba(199, 162, 74, 0.75)',
           }}
         >
-          Pan-African Giving · Admin Console
+          Giving Across Ghana · Admin Console
         </Typography>
         <Link
           href="https://ubuntufund.vercel.app"

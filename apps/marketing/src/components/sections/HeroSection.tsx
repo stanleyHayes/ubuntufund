@@ -84,7 +84,7 @@ function HeroSection() {
                 display: 'block',
               }}
             >
-              Pan-African Crowdfunding Platform
+              Ghana's Crowdfunding Platform
             </Typography>
             <Typography
               variant="h1"
@@ -113,8 +113,8 @@ function HeroSection() {
                 fontSize: { xs: '1.1rem', md: '1.25rem' },
               }}
             >
-              Africa's trust infrastructure for giving. Raise funds for what matters
-              with built-in trust verification, multi-currency support, and
+              Ghana's trust infrastructure for giving. Raise funds for what matters
+              with built-in trust verification, mobile money payouts, and
               transparent impact tracking.
             </Typography>
             <Stack
@@ -212,7 +212,7 @@ function HeroSection() {
                 >
                   Empowering{' '}
                   <Box component="span" sx={{ color: '#C7A24A' }}>
-                    Africa
+                    Ghana
                   </Box>
                 </Typography>
                 <Typography

@@ -45,7 +45,7 @@ const profileSchema = new Schema<ProfileDocument>(
       type: notificationPreferencesSchema,
       default: () => ({}),
     },
-    preferredCurrency: { type: String, default: 'USD' },
+    preferredCurrency: { type: String, default: 'GHS' },
     language: { type: String, default: 'English' },
     darkMode: { type: Boolean, default: false },
     anonymousDonations: { type: Boolean, default: false },
