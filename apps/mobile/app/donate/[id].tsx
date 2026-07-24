@@ -94,7 +94,8 @@ export default function DonateScreen() {
     <>
       <Stack.Screen options={{ title: `Donate to ${campaign.title}` }} />
       <ScrollView style={styles.container} contentContainerStyle={{ padding: 16 }}>
-        <Text variant="titleLarge" style={{ fontFamily: 'TTSquares-Bold', marginBottom: 16 }}>
+        <Text style={styles.eyebrow}>SUPPORT THIS CAMPAIGN</Text>
+        <Text variant="titleLarge" style={styles.campaignTitle}>
           {campaign.title}
         </Text>
 
@@ -120,7 +121,7 @@ export default function DonateScreen() {
         <TextInput
           style={styles.modalInput}
           placeholder="e.g. 50"
-          placeholderTextColor="#999"
+          placeholderTextColor="rgba(26,46,34,0.35)"
           keyboardType="numeric"
           value={donateAmount}
           onChangeText={setDonateAmount}
@@ -152,7 +153,7 @@ export default function DonateScreen() {
                 <Icon
                   source={getProviderIcon(provider.type)}
                   size={20}
-                  color={selectedProvider?.id === provider.id ? brandColors.primary : '#555'}
+                  color={selectedProvider?.id === provider.id ? brandColors.primary : brandColors.textSecondary}
                 />
                 <Text
                   style={[
@@ -171,7 +172,7 @@ export default function DonateScreen() {
         <TextInput
           style={[styles.modalInput, { height: 60, textAlignVertical: 'top' }]}
           placeholder="Leave a message of support..."
-          placeholderTextColor="#999"
+          placeholderTextColor="rgba(26,46,34,0.35)"
           multiline
           value={donateMessage}
           onChangeText={setDonateMessage}
@@ -182,16 +183,17 @@ export default function DonateScreen() {
           <Button
             mode="outlined"
             onPress={() => router.back()}
-            style={{ flex: 1, marginRight: 8 }}
+            style={{ flex: 1, marginRight: 8, borderRadius: 999 }}
             disabled={isDonating}
           >
             Cancel
           </Button>
           <Button
             mode="contained"
-            buttonColor={brandColors.primary}
+            buttonColor={brandColors.secondary}
+            textColor="#221B0E"
             onPress={handleDonate}
-            style={{ flex: 1, marginLeft: 8 }}
+            style={{ flex: 1, marginLeft: 8, borderRadius: 999 }}
             disabled={isDonating || !donateAmount || (!providersLoading && providers.length === 0 && !providersError)}
             loading={isDonating}
           >
@@ -203,26 +205,44 @@ export default function DonateScreen() {
   )
 }
 
+const CARD_BORDER = 'rgba(26,46,34,0.10)'
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAFAFA' },
+  container: { flex: 1, backgroundColor: brandColors.background },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  progressCard: { padding: 16, borderRadius: 12, marginBottom: 16, backgroundColor: '#FFFFFF' },
+  eyebrow: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+    color: brandColors.secondaryDark,
+    marginBottom: 6,
+  },
+  campaignTitle: { fontFamily: 'TTSquares-Bold', color: brandColors.text, marginBottom: 16 },
+  progressCard: {
+    padding: 16,
+    borderRadius: 14,
+    marginBottom: 16,
+    backgroundColor: brandColors.surface,
+    borderWidth: 1,
+    borderColor: CARD_BORDER,
+  },
   statsRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 },
-  raised: { color: '#2E7D32', fontFamily: 'TTSquares-Bold' },
-  muted: { color: '#757575' },
+  raised: { color: brandColors.success, fontFamily: 'TTSquares-Bold' },
+  muted: { color: brandColors.textSecondary },
   statRight: { alignItems: 'flex-end' },
   fieldLabel: { fontFamily: 'TTSquares-Bold', marginBottom: 6, marginTop: 4 },
   modalInput: {
     borderWidth: 1,
-    borderColor: '#DDD',
-    borderRadius: 8,
+    borderColor: CARD_BORDER,
+    borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 16,
-    fontFamily: 'TTSquares-Regular',
+    fontFamily: 'Outfit_400Regular',
     marginBottom: 12,
-    color: '#1a1a1a',
-    backgroundColor: '#FFFFFF',
+    color: brandColors.text,
+    backgroundColor: brandColors.surface,
   },
   paymentFallback: {
     flexDirection: 'row',
@@ -230,30 +250,30 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingVertical: 10,
     paddingHorizontal: 12,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#DDD',
-    backgroundColor: '#FFFFFF',
+    borderColor: CARD_BORDER,
+    backgroundColor: brandColors.surface,
     marginBottom: 12,
   },
-  paymentFallbackText: { flex: 1, fontSize: 13, color: '#757575', fontFamily: 'TTSquares-Regular' },
+  paymentFallbackText: { flex: 1, fontSize: 13, color: brandColors.textSecondary, fontFamily: 'Outfit_400Regular' },
   providerList: { gap: 8, marginBottom: 12 },
   providerOption: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 12,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#DDD',
-    backgroundColor: '#FFFFFF',
+    borderColor: CARD_BORDER,
+    backgroundColor: brandColors.surface,
   },
   providerOptionActive: {
     borderColor: brandColors.primary,
-    backgroundColor: 'rgba(46,125,50,0.08)',
+    backgroundColor: 'rgba(46,61,47,0.08)',
   },
-  providerOptionText: { fontSize: 13, color: '#555', fontFamily: 'TTSquares-Bold' },
+  providerOptionText: { fontSize: 13, color: brandColors.textSecondary, fontFamily: 'TTSquares-Bold' },
   providerOptionTextActive: { color: brandColors.primary },
   modalActions: { flexDirection: 'row', marginTop: 8 },
 })

@@ -37,6 +37,10 @@ const defaultDevOrigins = [
   'http://localhost:8300',
   'http://localhost:8400',
   'http://localhost:18200',
+  // Expo (mobile) dev origins: metro web preview + dev server ports
+  'http://localhost:8081',
+  'http://localhost:8600',
+  'http://localhost:19006',
 ];
 
 export const config: AppConfig = {

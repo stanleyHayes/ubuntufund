@@ -1,9 +1,20 @@
+import { Platform } from 'react-native'
 import * as Notifications from 'expo-notifications'
 import * as Device from 'expo-device'
+import Constants from 'expo-constants'
 import { api } from '@/lib/api'
 
+const vapidPublicKey: string | undefined = (
+  Constants.expoConfig as { notification?: { vapidPublicKey?: string } } | null
+)?.notification?.vapidPublicKey
+
 export async function registerForPushNotificationsAsync(): Promise<string | null> {
-  if (!Device.isDevice) {
+  // Browsers require a VAPID public key (app.json > expo.notification.
+  // vapidPublicKey) to create push subscriptions; without a real key, skip
+  // web push entirely. Native (APNs/FCM) needs no VAPID.
+  if (Platform.OS === 'web') {
+    if (!vapidPublicKey || vapidPublicKey.startsWith('PASTE_')) return null
+  } else if (!Device.isDevice) {
     return null
   }
 
@@ -19,8 +30,13 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
     return null
   }
 
-  const token = (await Notifications.getExpoPushTokenAsync()).data
-  return token
+  try {
+    const token = (await Notifications.getExpoPushTokenAsync()).data
+    return token
+  } catch {
+    // Push is an optional enhancement; never let it break a caller.
+    return null
+  }
 }
 
 export async function unregisterPushToken(token: string): Promise<void> {

@@ -18,7 +18,9 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.ubuntufund.app",
-      "associatedDomains": ["applinks:ubuntufund.com"]
+      "associatedDomains": [
+        "applinks:ubuntufund.com"
+      ]
     },
     "android": {
       "adaptiveIcon": {
@@ -40,7 +42,10 @@
               "scheme": "ubuntufund"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -51,6 +56,9 @@
     "plugins": [
       "expo-router",
       "expo-font"
-    ]
+    ],
+    "notification": {
+      "vapidPublicKey": "BNM8Xg2klofkUZfe2lXC80wFGQVSQj7ojDcn8mlLPQfDfuY4dIBcr5qpxggHMPzv53GwQ4xapuPIR3sQoXV0TuI"
+    }
   }
 }

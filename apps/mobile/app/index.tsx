@@ -78,7 +78,7 @@ export default function Index() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A1A0D',
+    backgroundColor: brandColors.primaryDark,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
   titleGold: { fontSize: 34, fontFamily: 'TTSquares-Black', color: brandColors.secondary, letterSpacing: 0.5 },
   tagline: {
     fontSize: 13,
-    fontFamily: 'TTSquares-Regular',
+    fontFamily: 'Outfit_400Regular',
     color: 'rgba(255,255,255,0.35)',
     letterSpacing: 4,
     textTransform: 'uppercase',

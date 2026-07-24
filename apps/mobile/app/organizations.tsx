@@ -44,15 +44,15 @@ function SkeletonCard() {
   return (
     <Animated.View style={[styles.skeletonCard, { opacity }]}>
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-        <View style={{ width: 48, height: 48, backgroundColor: '#E0E0E0', borderRadius: 24, marginRight: 12 }} />
+        <View style={styles.skeletonAvatar} />
         <View style={{ flex: 1 }}>
-          <View style={{ width: '60%', height: 14, backgroundColor: '#E0E0E0', borderRadius: 4, marginBottom: 6 }} />
-          <View style={{ width: '35%', height: 10, backgroundColor: '#E0E0E0', borderRadius: 4 }} />
+          <View style={[styles.skeletonLine, { width: '60%', marginBottom: 6 }]} />
+          <View style={[styles.skeletonLine, { width: '35%', height: 10 }]} />
         </View>
       </View>
       <View style={{ flexDirection: 'row', gap: 20 }}>
-        <View style={{ width: 60, height: 10, backgroundColor: '#E0E0E0', borderRadius: 4 }} />
-        <View style={{ width: 60, height: 10, backgroundColor: '#E0E0E0', borderRadius: 4 }} />
+        <View style={[styles.skeletonLine, { width: 60, height: 10 }]} />
+        <View style={[styles.skeletonLine, { width: 60, height: 10 }]} />
       </View>
     </Animated.View>
   )
@@ -126,19 +126,25 @@ export default function OrganizationsScreen() {
         }}
       />
 
+      <View style={styles.headerBlock}>
+        <Text style={styles.eyebrow}>Partner Orgs</Text>
+        <Text style={styles.pageTitle}>Organizations</Text>
+        <Text style={styles.pageLede}>Discover the organizations running campaigns.</Text>
+      </View>
+
       {/* Search */}
       <View style={styles.searchWrap}>
-        <Icon source="magnify" size={20} color="#999" />
+        <Icon source="magnify" size={20} color={brandColors.textSecondary} />
         <TextInput
           style={styles.searchInput}
           placeholder="Search organizations..."
-          placeholderTextColor="#999"
+          placeholderTextColor={brandColors.textSecondary}
           value={search}
           onChangeText={setSearch}
         />
         {search.length > 0 && (
-          <TouchableOpacity onPress={() => setSearch('')}>
-            <Icon source="close-circle" size={18} color="#999" />
+          <TouchableOpacity onPress={() => setSearch('')} hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}>
+            <Icon source="close-circle" size={18} color={brandColors.textSecondary} />
           </TouchableOpacity>
         )}
       </View>
@@ -150,15 +156,26 @@ export default function OrganizationsScreen() {
           </View>
         ) : error ? (
           <View style={styles.emptyState}>
-            <Icon source="alert-circle-outline" size={48} color="#ccc" />
+            <View style={[styles.emptyIconTile, styles.errorIconTile]}>
+              <Icon source="alert-circle-outline" size={24} color={brandColors.error} />
+            </View>
             <Text style={styles.emptyTitle}>{error}</Text>
-            <Button mode="outlined" onPress={fetchOrganizations} style={{ marginTop: 12 }}>
+            <Button
+              mode="contained"
+              buttonColor={brandColors.primary}
+              textColor="#FFFFFF"
+              onPress={fetchOrganizations}
+              style={styles.actionBtn}
+              labelStyle={styles.btnLabel}
+            >
               Retry
             </Button>
           </View>
         ) : filtered.length === 0 ? (
           <View style={styles.emptyState}>
-            <Icon source="office-building-outline" size={48} color="#ccc" />
+            <View style={styles.emptyIconTile}>
+              <Icon source="office-building-outline" size={24} color={brandColors.primary} />
+            </View>
             <Text style={styles.emptyTitle}>
               {search ? 'No organizations match your search' : 'No organizations found'}
             </Text>
@@ -182,23 +199,23 @@ export default function OrganizationsScreen() {
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                         <Text style={styles.orgName} numberOfLines={1}>{org.name}</Text>
                         {org.verified && (
-                          <Icon source="check-decagram" size={16} color="#1565C0" />
+                          <Icon source="check-decagram" size={16} color={brandColors.success} />
                         )}
                       </View>
                       {org.description && (
                         <Text style={styles.orgDesc} numberOfLines={2}>{org.description}</Text>
                       )}
                     </View>
-                    <Icon source="chevron-right" size={18} color="#ccc" />
+                    <Icon source="chevron-right" size={18} color={brandColors.textSecondary} />
                   </View>
 
                   <View style={styles.orgStats}>
                     <View style={styles.orgStat}>
-                      <Icon source="bullhorn" size={14} color="#999" />
+                      <Icon source="bullhorn" size={14} color={brandColors.textSecondary} />
                       <Text style={styles.orgStatText}>{org.campaignCount} campaigns</Text>
                     </View>
                     <View style={styles.orgStat}>
-                      <Icon source="currency-usd" size={14} color="#999" />
+                      <Icon source="currency-usd" size={14} color={brandColors.textSecondary} />
                       <Text style={styles.orgStatText}>{formatAmount(org.totalRaised)} raised</Text>
                     </View>
                   </View>
@@ -213,7 +230,12 @@ export default function OrganizationsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F8F4' },
+  container: { flex: 1, backgroundColor: brandColors.background },
+
+  headerBlock: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 4 },
+  eyebrow: { fontSize: 11, fontFamily: 'TTSquares-Bold', fontWeight: '700', color: brandColors.secondaryDark, textTransform: 'uppercase', letterSpacing: 2 },
+  pageTitle: { fontSize: 24, fontFamily: 'TTSquares-Black', color: brandColors.text, marginTop: 4 },
+  pageLede: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 4 },
 
   searchWrap: {
     flexDirection: 'row',
@@ -226,10 +248,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.06)',
+    borderColor: 'rgba(26,46,34,0.10)',
     gap: 8,
   },
-  searchInput: { flex: 1, fontSize: 14, fontFamily: 'TTSquares-Regular', color: '#1a1a1a' },
+  searchInput: { flex: 1, fontSize: 14, fontFamily: 'Outfit_400Regular', color: brandColors.text },
 
   listWrap: { paddingHorizontal: 16, paddingTop: 8 },
 
@@ -238,28 +260,25 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 16,
     marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(26,46,34,0.10)',
   },
   orgHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   orgAvatar: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#E8F5E9',
+    backgroundColor: 'rgba(168,181,160,0.28)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
   orgAvatarText: { fontSize: 16, fontFamily: 'TTSquares-Bold', color: brandColors.primary },
-  orgName: { fontSize: 16, fontFamily: 'TTSquares-Bold', color: '#1a1a1a' },
-  orgDesc: { fontSize: 12, color: '#999', marginTop: 2, fontFamily: 'TTSquares-Regular', lineHeight: 16 },
+  orgName: { fontSize: 16, fontFamily: 'TTSquares-Bold', color: brandColors.text },
+  orgDesc: { fontSize: 12, color: brandColors.textSecondary, marginTop: 2, fontFamily: 'Outfit_400Regular', lineHeight: 16 },
   orgStats: { flexDirection: 'row', gap: 20 },
   orgStat: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  orgStatText: { fontSize: 12, color: '#999', fontFamily: 'TTSquares-Regular' },
+  orgStatText: { fontSize: 12, color: brandColors.textSecondary, fontFamily: 'Outfit_400Regular' },
 
   skeletonCard: {
     backgroundColor: '#fff',
@@ -267,7 +286,21 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 12,
   },
+  skeletonAvatar: { width: 48, height: 48, backgroundColor: 'rgba(168,181,160,0.35)', borderRadius: 24, marginRight: 12 },
+  skeletonLine: { height: 14, backgroundColor: 'rgba(168,181,160,0.35)', borderRadius: 4 },
 
-  emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 80, paddingHorizontal: 32 },
-  emptyTitle: { fontSize: 16, fontFamily: 'TTSquares-Bold', color: '#666', marginTop: 16, textAlign: 'center' },
+  emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 72, paddingHorizontal: 32 },
+  emptyIconTile: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(168,181,160,0.28)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  errorIconTile: { backgroundColor: 'rgba(165,67,47,0.14)' },
+  emptyTitle: { fontSize: 16, fontFamily: 'TTSquares-Bold', color: brandColors.text, textAlign: 'center' },
+  actionBtn: { marginTop: 16, borderRadius: 999 },
+  btnLabel: { fontFamily: 'TTSquares-Bold' },
 })

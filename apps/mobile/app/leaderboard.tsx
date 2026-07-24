@@ -34,7 +34,8 @@ const PERIOD_PARAMS: Record<Period, string> = {
   Lifetime: 'lifetime',
 }
 
-const MEDAL_COLORS = ['#FFD700', '#C0C0C0', '#CD7F32']
+// Rank 1-3 badge colors, drawn from the gold family only.
+const MEDAL_COLORS = [brandColors.secondary, brandColors.secondaryDark, brandColors.secondaryLight]
 
 function formatAmount(amount?: number) {
   const val = amount ?? 0
@@ -56,16 +57,16 @@ function SkeletonRows() {
     ).start()
   }, [])
   return (
-    <Animated.View style={{ opacity, paddingHorizontal: 16, paddingTop: 16 }}>
+    <Animated.View style={{ opacity, paddingHorizontal: 16, paddingTop: 8 }}>
       {[0, 1, 2, 3, 4, 5, 6].map((i) => (
         <View key={i} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-          <View style={{ width: 28, height: 14, backgroundColor: '#E0E0E0', borderRadius: 4, marginRight: 12 }} />
-          <View style={{ width: 40, height: 40, backgroundColor: '#E0E0E0', borderRadius: 20, marginRight: 12 }} />
+          <View style={styles.skeletonRank} />
+          <View style={styles.skeletonAvatar} />
           <View style={{ flex: 1 }}>
-            <View style={{ width: '60%', height: 14, backgroundColor: '#E0E0E0', borderRadius: 4, marginBottom: 4 }} />
-            <View style={{ width: '35%', height: 10, backgroundColor: '#E0E0E0', borderRadius: 4 }} />
+            <View style={[styles.skeletonLine, { width: '60%', marginBottom: 4 }]} />
+            <View style={[styles.skeletonLine, { width: '35%', height: 10 }]} />
           </View>
-          <View style={{ width: 50, height: 14, backgroundColor: '#E0E0E0', borderRadius: 4 }} />
+          <View style={[styles.skeletonLine, { width: 50 }]} />
         </View>
       ))}
     </Animated.View>
@@ -110,6 +111,12 @@ export default function LeaderboardScreen() {
         }}
       />
 
+      <View style={styles.headerBlock}>
+        <Text style={styles.eyebrow}>Community Impact</Text>
+        <Text style={styles.pageTitle}>Leaderboard</Text>
+        <Text style={styles.pageLede}>See who's making the biggest difference right now.</Text>
+      </View>
+
       {/* Period Tabs */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.periodRow}>
         {PERIODS.map((period) => (
@@ -117,6 +124,7 @@ export default function LeaderboardScreen() {
             key={period}
             style={[styles.periodTab, activePeriod === period && styles.periodTabActive]}
             activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
             onPress={() => setActivePeriod(period)}
           >
             <Text style={[styles.periodTabText, activePeriod === period && styles.periodTabTextActive]}>
@@ -131,15 +139,26 @@ export default function LeaderboardScreen() {
           <SkeletonRows />
         ) : error ? (
           <View style={styles.emptyState}>
-            <Icon source="alert-circle-outline" size={48} color="#ccc" />
+            <View style={[styles.emptyIconTile, styles.errorIconTile]}>
+              <Icon source="alert-circle-outline" size={24} color={brandColors.error} />
+            </View>
             <Text style={styles.emptyTitle}>{error}</Text>
-            <Button mode="outlined" onPress={fetchLeaderboard} style={{ marginTop: 12 }}>
+            <Button
+              mode="contained"
+              buttonColor={brandColors.primary}
+              textColor="#FFFFFF"
+              onPress={fetchLeaderboard}
+              style={styles.actionBtn}
+              labelStyle={styles.btnLabel}
+            >
               Retry
             </Button>
           </View>
         ) : entries.length === 0 ? (
           <View style={styles.emptyState}>
-            <Icon source="trophy-outline" size={48} color="#ccc" />
+            <View style={styles.emptyIconTile}>
+              <Icon source="trophy-outline" size={24} color={brandColors.primary} />
+            </View>
             <Text style={styles.emptyTitle}>No leaderboard data yet</Text>
             <Text style={styles.emptySubtitle}>Be the first to make a donation!</Text>
           </View>
@@ -189,7 +208,7 @@ export default function LeaderboardScreen() {
                   </View>
 
                   {/* Amount */}
-                  <Text style={[styles.entryAmount, isTopThree && { color: brandColors.primary }]}>
+                  <Text style={styles.entryAmount}>
                     {formatAmount(entry.totalDonated)}
                   </Text>
                 </View>
@@ -203,12 +222,17 @@ export default function LeaderboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F8F4' },
+  container: { flex: 1, backgroundColor: brandColors.background },
+
+  headerBlock: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 4 },
+  eyebrow: { fontSize: 11, fontFamily: 'TTSquares-Bold', fontWeight: '700', color: brandColors.secondaryDark, textTransform: 'uppercase', letterSpacing: 2 },
+  pageTitle: { fontSize: 24, fontFamily: 'TTSquares-Black', color: brandColors.text, marginTop: 4 },
+  pageLede: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 4 },
 
   periodRow: { paddingHorizontal: 16, paddingVertical: 12, gap: 8 },
-  periodTab: { paddingHorizontal: 18, paddingVertical: 8, borderRadius: 20, backgroundColor: '#fff', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' },
+  periodTab: { paddingHorizontal: 18, paddingVertical: 8, borderRadius: 999, backgroundColor: '#fff', borderWidth: 1, borderColor: 'rgba(26,46,34,0.10)' },
   periodTabActive: { backgroundColor: brandColors.primary, borderColor: brandColors.primary },
-  periodTabText: { fontSize: 13, fontFamily: 'TTSquares-Bold', color: '#666' },
+  periodTabText: { fontSize: 13, fontFamily: 'TTSquares-Bold', color: brandColors.textSecondary },
   periodTabTextActive: { color: '#fff' },
 
   listWrap: { paddingHorizontal: 16 },
@@ -220,25 +244,21 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 12,
     marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: 'rgba(26,46,34,0.10)',
   },
   entryRowTop: {
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
+    borderColor: 'rgba(199,162,74,0.35)',
+    backgroundColor: 'rgba(199,162,74,0.05)',
   },
   entryRowCurrent: {
     borderWidth: 1.5,
     borderColor: brandColors.primary,
-    backgroundColor: `${brandColors.primary}06`,
+    backgroundColor: `${brandColors.primary}0A`,
   },
 
   rankWrap: { width: 32, alignItems: 'center', marginRight: 8 },
-  rankText: { fontSize: 14, fontFamily: 'TTSquares-Bold', color: '#999' },
+  rankText: { fontSize: 14, fontFamily: 'TTSquares-Bold', color: brandColors.textSecondary },
   medalBadge: { width: 26, height: 26, borderRadius: 13, justifyContent: 'center', alignItems: 'center' },
   medalText: { fontSize: 12, fontFamily: 'TTSquares-Black', color: '#fff' },
 
@@ -246,18 +266,34 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#E8F5E9',
+    backgroundColor: 'rgba(168,181,160,0.28)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
   avatarText: { fontSize: 14, fontFamily: 'TTSquares-Bold', color: brandColors.primary },
 
-  entryName: { fontSize: 14, fontFamily: 'TTSquares-Bold', color: '#1a1a1a' },
-  entrySub: { fontSize: 11, color: '#999', marginTop: 1, fontFamily: 'TTSquares-Regular' },
-  entryAmount: { fontSize: 15, fontFamily: 'TTSquares-Bold', color: '#1a1a1a' },
+  entryName: { fontSize: 14, fontFamily: 'TTSquares-Bold', color: brandColors.text },
+  entrySub: { fontSize: 11, color: brandColors.textSecondary, marginTop: 1, fontFamily: 'Outfit_400Regular' },
+  entryAmount: { fontSize: 15, fontFamily: 'TTSquares-Bold', color: brandColors.text },
 
-  emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 80, paddingHorizontal: 32 },
-  emptyTitle: { fontSize: 16, fontFamily: 'TTSquares-Bold', color: '#666', marginTop: 16, textAlign: 'center' },
-  emptySubtitle: { fontSize: 13, fontFamily: 'TTSquares-Regular', color: '#999', marginTop: 6, textAlign: 'center' },
+  emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 72, paddingHorizontal: 32 },
+  emptyIconTile: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(168,181,160,0.28)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  errorIconTile: { backgroundColor: 'rgba(165,67,47,0.14)' },
+  emptyTitle: { fontSize: 16, fontFamily: 'TTSquares-Bold', color: brandColors.text, textAlign: 'center' },
+  emptySubtitle: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 6, textAlign: 'center' },
+  actionBtn: { marginTop: 16, borderRadius: 999 },
+  btnLabel: { fontFamily: 'TTSquares-Bold' },
+
+  skeletonRank: { width: 28, height: 14, backgroundColor: 'rgba(168,181,160,0.35)', borderRadius: 4, marginRight: 12 },
+  skeletonAvatar: { width: 40, height: 40, backgroundColor: 'rgba(168,181,160,0.35)', borderRadius: 20, marginRight: 12 },
+  skeletonLine: { height: 14, backgroundColor: 'rgba(168,181,160,0.35)', borderRadius: 4 },
 })

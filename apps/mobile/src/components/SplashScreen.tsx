@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: '50%',
-    backgroundColor: '#0d3b13',
+    backgroundColor: '#2E3D2F',
   },
   bgBottom: {
     position: 'absolute',
@@ -231,7 +231,7 @@ const styles = StyleSheet.create({
   tagline: {
     fontSize: 14,
     color: 'rgba(255, 255, 255, 0.7)',
-    fontFamily: 'TTSquares-Regular',
+    fontFamily: 'Outfit_400Regular',
     letterSpacing: 1,
   },
   dotsContainer: {

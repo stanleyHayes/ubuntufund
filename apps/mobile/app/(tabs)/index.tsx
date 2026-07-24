@@ -81,13 +81,13 @@ function FeaturedCard({ campaign, index }: { campaign: Campaign; index: number }
         {campaign.imageUrls[0] ? (
           <Image source={{ uri: campaign.imageUrls[0] }} style={styles.featuredImage} />
         ) : (
-          <View style={[styles.featuredImage, { backgroundColor: '#E8F5E9' }]} />
+          <View style={[styles.featuredImage, { backgroundColor: 'rgba(168,181,160,0.28)' }]} />
         )}
         <View style={styles.featuredImageOverlay} />
 
         {/* Priority badge */}
         {campaign.priority !== 'normal' && (
-          <View style={[styles.priorityBadge, { backgroundColor: campaign.priority === 'critical' ? '#E53935' : '#F9A825' }]}>
+          <View style={[styles.priorityBadge, { backgroundColor: campaign.priority === 'critical' ? brandColors.error : brandColors.warning }]}>
             <Text style={styles.priorityText}>{campaign.priority === 'critical' ? 'Critical' : 'Urgent'}</Text>
           </View>
         )}
@@ -105,7 +105,7 @@ function FeaturedCard({ campaign, index }: { campaign: Campaign; index: number }
 
           <Text style={styles.featuredTitle} numberOfLines={2}>{campaign.title}</Text>
 
-          <ProgressBar progress={pct} height={4} backgroundColor="rgba(255,255,255,0.2)" fillColor="#F9A825" />
+          <ProgressBar progress={pct} height={4} backgroundColor="rgba(255,255,255,0.2)" fillColor={brandColors.secondary} />
 
           <View style={styles.featuredStats}>
             <Text style={styles.featuredRaised}>{formatCurrency(campaign.raisedAmount, campaign.currency)}</Text>
@@ -132,7 +132,7 @@ function CompactCard({ campaign }: { campaign: Campaign }) {
       {campaign.imageUrls[0] ? (
         <Image source={{ uri: campaign.imageUrls[0] }} style={styles.compactImage} />
       ) : (
-        <View style={[styles.compactImage, { backgroundColor: '#E8F5E9' }]} />
+        <View style={[styles.compactImage, { backgroundColor: 'rgba(168,181,160,0.28)' }]} />
       )}
       <View style={styles.compactContent}>
         <Text style={styles.compactTitle} numberOfLines={2}>{campaign.title}</Text>
@@ -242,8 +242,8 @@ export default function HomeTab() {
                     activeOpacity={0.7}
                     onPress={() => router.push({ pathname: '/(tabs)/explore', params: { category: cat.key } })}
                   >
-                    <View style={[styles.categoryEmoji, { backgroundColor: `${cat.color}14` }]}>
-                      <Icon source={cat.icon} size={20} color={cat.color} />
+                    <View style={styles.categoryEmoji}>
+                      <Icon source={cat.icon} size={20} color={brandColors.primary} />
                     </View>
                     <Text style={styles.categoryLabel}>{cat.label}</Text>
                     <Text style={styles.categoryCount}>{count}</Text>
@@ -303,7 +303,7 @@ export default function HomeTab() {
                     {item.imageUrls[0] ? (
                       <Image source={{ uri: item.imageUrls[0] }} style={styles.recentImage} />
                     ) : (
-                      <View style={[styles.recentImage, { backgroundColor: '#E8F5E9' }]} />
+                      <View style={[styles.recentImage, { backgroundColor: 'rgba(168,181,160,0.28)' }]} />
                     )}
                     <View style={styles.recentContent}>
                       <Text style={styles.recentTitle} numberOfLines={2}>{item.title}</Text>
@@ -326,7 +326,7 @@ export default function HomeTab() {
               <Text style={styles.ctaSubtitle}>Start your own campaign today</Text>
             </View>
             <View style={styles.ctaArrow}>
-              <Text style={{ color: '#1B5E20', fontSize: 18, fontFamily: 'TTSquares-Bold' }}>→</Text>
+              <Icon source="arrow-right" size={20} color="#221B0E" />
             </View>
           </TouchableOpacity>
 
@@ -340,11 +340,11 @@ export default function HomeTab() {
 // ─── Styles ──────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F8F4' },
+  container: { flex: 1, backgroundColor: brandColors.background },
 
   // Hero
   hero: {
-    backgroundColor: '#0A1A0D',
+    backgroundColor: brandColors.primaryDark,
     paddingBottom: 24,
     paddingHorizontal: 20,
     overflow: 'hidden',
@@ -354,7 +354,7 @@ const styles = StyleSheet.create({
   circleBottom: { width: width * 0.4, height: width * 0.4, bottom: -width * 0.15, left: -width * 0.1 },
 
   greetingRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
-  greeting: { fontSize: 14, color: 'rgba(255,255,255,0.5)', fontFamily: 'TTSquares-Regular' },
+  greeting: { fontSize: 14, color: 'rgba(255,255,255,0.5)', fontFamily: 'Outfit_400Regular' },
   userName: { fontSize: 24, fontFamily: 'TTSquares-Black', color: '#FFFFFF', marginTop: 2 },
 
   statsRow: {
@@ -367,11 +367,11 @@ const styles = StyleSheet.create({
   statBox: { flex: 1, alignItems: 'center' },
   statDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.08)', marginVertical: 4 },
   statValue: { fontSize: 18, fontFamily: 'TTSquares-Bold', color: brandColors.secondary },
-  statLabel: { fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 2, fontFamily: 'TTSquares-Regular' },
+  statLabel: { fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 2, fontFamily: 'Outfit_400Regular' },
 
   // Section
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 12 },
-  sectionTitle: { fontSize: 17, fontFamily: 'TTSquares-Bold', color: '#1a1a1a' },
+  sectionTitle: { fontSize: 17, fontFamily: 'TTSquares-Bold', color: brandColors.text },
   seeAll: { fontSize: 13, color: brandColors.primary, fontFamily: 'TTSquares-Bold' },
 
   // Categories
@@ -387,17 +387,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 6,
+    backgroundColor: 'rgba(168,181,160,0.28)',
   },
-  categoryLabel: { fontSize: 11, fontFamily: 'TTSquares-Bold', color: '#555', textAlign: 'center' },
-  categoryCount: { fontSize: 10, fontFamily: 'TTSquares-Regular', color: '#999', marginTop: 1 },
+  categoryLabel: { fontSize: 11, fontFamily: 'TTSquares-Bold', color: brandColors.textSecondary, textAlign: 'center' },
+  categoryCount: { fontSize: 10, fontFamily: 'Outfit_400Regular', color: 'rgba(74,90,80,0.65)', marginTop: 1 },
 
   // Featured card
   featuredCard: {
     width: CARD_WIDTH,
     height: 220,
-    borderRadius: 16,
+    borderRadius: 14,
     overflow: 'hidden',
-    backgroundColor: '#1a1a1a',
+    backgroundColor: brandColors.primaryDark,
+    borderWidth: 1,
+    borderColor: 'rgba(26,46,34,0.10)',
   },
   featuredImage: { width: '100%', height: '100%', position: 'absolute' },
   featuredImageOverlay: {
@@ -423,48 +426,42 @@ const styles = StyleSheet.create({
   featuredCategoryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
   featuredCategoryPill: { backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
   featuredCategoryText: { fontSize: 11, color: '#fff', fontFamily: 'TTSquares-Bold' },
-  featuredDays: { fontSize: 11, fontFamily: 'TTSquares-Regular', color: 'rgba(255,255,255,0.6)' },
+  featuredDays: { fontSize: 11, fontFamily: 'Outfit_400Regular', color: 'rgba(255,255,255,0.6)' },
   featuredTitle: { fontSize: 16, fontFamily: 'TTSquares-Bold', color: '#fff', marginBottom: 8, lineHeight: 21 },
   featuredStats: { flexDirection: 'row', alignItems: 'center', marginTop: 6 },
   featuredRaised: { fontSize: 13, fontFamily: 'TTSquares-Bold', color: brandColors.secondary },
-  featuredGoal: { fontSize: 11, fontFamily: 'TTSquares-Regular', color: 'rgba(255,255,255,0.5)', flex: 1 },
+  featuredGoal: { fontSize: 11, fontFamily: 'Outfit_400Regular', color: 'rgba(255,255,255,0.5)', flex: 1 },
   featuredPct: { fontSize: 13, fontFamily: 'TTSquares-Bold', color: '#fff' },
 
   // Compact card (urgent)
   compactCard: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    backgroundColor: brandColors.surface,
+    borderRadius: 14,
     overflow: 'hidden',
     marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(26,46,34,0.10)',
   },
   compactImage: { width: 90, height: 90 },
   compactContent: { flex: 1, padding: 10, justifyContent: 'center' },
-  compactTitle: { fontSize: 13, fontFamily: 'TTSquares-Bold', color: '#1a1a1a', marginBottom: 6, lineHeight: 18 },
+  compactTitle: { fontSize: 13, fontFamily: 'TTSquares-Bold', color: brandColors.text, marginBottom: 6, lineHeight: 18 },
   compactStats: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
   compactRaised: { fontSize: 12, fontFamily: 'TTSquares-Bold', color: brandColors.primary },
-  compactPct: { fontSize: 12, fontFamily: 'TTSquares-Bold', color: '#999' },
+  compactPct: { fontSize: 12, fontFamily: 'TTSquares-Bold', color: brandColors.textSecondary },
 
   // Recent cards
   recentCard: {
     width: SMALL_CARD_WIDTH,
-    borderRadius: 12,
+    borderRadius: 14,
     overflow: 'hidden',
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
+    backgroundColor: brandColors.surface,
+    borderWidth: 1,
+    borderColor: 'rgba(26,46,34,0.10)',
   },
   recentImage: { width: '100%', height: 100 },
   recentContent: { padding: 10 },
-  recentTitle: { fontSize: 13, fontFamily: 'TTSquares-Bold', color: '#1a1a1a', marginBottom: 4, lineHeight: 17 },
+  recentTitle: { fontSize: 13, fontFamily: 'TTSquares-Bold', color: brandColors.text, marginBottom: 4, lineHeight: 17 },
   recentAmount: { fontSize: 12, fontFamily: 'TTSquares-Bold', color: brandColors.primary },
 
   // CTA banner
@@ -478,14 +475,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    shadowColor: brandColors.secondary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 4,
   },
-  ctaTitle: { fontSize: 17, fontFamily: 'TTSquares-Black', color: '#1B5E20' },
-  ctaSubtitle: { fontSize: 13, fontFamily: 'TTSquares-Regular', color: '#33691E', marginTop: 2 },
+  ctaTitle: { fontSize: 17, fontFamily: 'TTSquares-Black', color: '#221B0E' },
+  ctaSubtitle: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: 'rgba(34,27,14,0.72)', marginTop: 2 },
   ctaArrow: {
     width: 36,
     height: 36,

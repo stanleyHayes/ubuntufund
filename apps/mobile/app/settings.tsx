@@ -5,9 +5,8 @@ import {
   StyleSheet,
   Animated,
   Alert,
-  TouchableOpacity,
 } from 'react-native'
-import { Text, Icon, Switch, Button } from 'react-native-paper'
+import { Text, Icon, Switch, TouchableRipple } from 'react-native-paper'
 import { router, Stack } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
@@ -91,34 +90,38 @@ function ToggleRow({ icon, label, value, onToggle, color = brandColors.primary }
 
 // ─── Picker Row ──────────────────────────────────────────────
 
-function PickerRow({ icon, label, value, options, onChange, color = '#1565C0' }: {
+function PickerRow({ icon, label, value, options, onChange, color = brandColors.primaryLight }: {
   icon: string; label: string; value: string; options: string[]; onChange: (v: string) => void; color?: string
 }) {
   const [expanded, setExpanded] = useState(false)
   return (
     <View>
-      <TouchableOpacity style={styles.toggleRow} activeOpacity={0.7} onPress={() => setExpanded(!expanded)}>
-        <View style={[styles.toggleIcon, { backgroundColor: `${color}14` }]}>
-          <Icon source={icon} size={18} color={color} />
-        </View>
-        <Text style={styles.toggleLabel}>{label}</Text>
-        <View style={styles.pickerValue}>
-          <Text style={styles.pickerValueText}>{value}</Text>
-          <Icon source={expanded ? 'chevron-up' : 'chevron-down'} size={16} color="#999" />
-        </View>
-      </TouchableOpacity>
+      <TouchableRipple style={styles.toggleRow} rippleColor="rgba(26,46,34,0.08)" onPress={() => setExpanded(!expanded)}>
+        <>
+          <View style={[styles.toggleIcon, { backgroundColor: `${color}14` }]}>
+            <Icon source={icon} size={18} color={color} />
+          </View>
+          <Text style={styles.toggleLabel}>{label}</Text>
+          <View style={styles.pickerValue}>
+            <Text style={styles.pickerValueText}>{value}</Text>
+            <Icon source={expanded ? 'chevron-up' : 'chevron-down'} size={16} color="rgba(26,46,34,0.35)" />
+          </View>
+        </>
+      </TouchableRipple>
       {expanded && (
         <View style={styles.pickerOptions}>
           {options.map((opt) => (
-            <TouchableOpacity
+            <TouchableRipple
               key={opt}
               style={[styles.pickerOption, value === opt && styles.pickerOptionActive]}
+              rippleColor="rgba(26,46,34,0.12)"
+              hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
               onPress={() => { onChange(opt); setExpanded(false) }}
             >
               <Text style={[styles.pickerOptionText, value === opt && styles.pickerOptionTextActive]}>
                 {opt}
               </Text>
-            </TouchableOpacity>
+            </TouchableRipple>
           ))}
         </View>
       )}
@@ -207,10 +210,10 @@ export default function SettingsScreen() {
               <ToggleRow icon="bell-outline" label="Push Notifications" value={settings.pushNotifications} onToggle={(v) => updateSetting('pushNotifications', v)} />
               {settings.pushNotifications && (
                 <>
-                  <ToggleRow icon="heart-outline" label="Donation Alerts" value={settings.pushDonations} onToggle={(v) => updateSetting('pushDonations', v)} color="#E53935" />
-                  <ToggleRow icon="comment-outline" label="Comment Alerts" value={settings.pushComments} onToggle={(v) => updateSetting('pushComments', v)} color="#1565C0" />
-                  <ToggleRow icon="flag-outline" label="Milestone Alerts" value={settings.pushMilestones} onToggle={(v) => updateSetting('pushMilestones', v)} color="#2E7D32" />
-                  <ToggleRow icon="bullhorn-outline" label="Campaign Alerts" value={settings.pushCampaigns} onToggle={(v) => updateSetting('pushCampaigns', v)} color="#F57F17" />
+                  <ToggleRow icon="heart-outline" label="Donation Alerts" value={settings.pushDonations} onToggle={(v) => updateSetting('pushDonations', v)} color={brandColors.error} />
+                  <ToggleRow icon="comment-outline" label="Comment Alerts" value={settings.pushComments} onToggle={(v) => updateSetting('pushComments', v)} color={brandColors.primaryLight} />
+                  <ToggleRow icon="flag-outline" label="Milestone Alerts" value={settings.pushMilestones} onToggle={(v) => updateSetting('pushMilestones', v)} color={brandColors.success} />
+                  <ToggleRow icon="bullhorn-outline" label="Campaign Alerts" value={settings.pushCampaigns} onToggle={(v) => updateSetting('pushCampaigns', v)} color={brandColors.warning} />
                 </>
               )}
               <ToggleRow icon="receipt" label="Donation Receipts" value={settings.donationReceipts} onToggle={(v) => updateSetting('donationReceipts', v)} />
@@ -219,24 +222,26 @@ export default function SettingsScreen() {
             {/* Account */}
             <Text style={styles.sectionTitle}>Account</Text>
             <View style={styles.card}>
-              <PickerRow icon="currency-usd" label="Preferred Currency" value={settings.preferredCurrency} options={CURRENCIES} onChange={(v) => updateSetting('preferredCurrency', v)} color="#2E7D32" />
-              <PickerRow icon="translate" label="Language" value={settings.language} options={LANGUAGES} onChange={(v) => updateSetting('language', v)} color="#6A1B9A" />
+              <PickerRow icon="currency-usd" label="Preferred Currency" value={settings.preferredCurrency} options={CURRENCIES} onChange={(v) => updateSetting('preferredCurrency', v)} color={brandColors.success} />
+              <PickerRow icon="translate" label="Language" value={settings.language} options={LANGUAGES} onChange={(v) => updateSetting('language', v)} color={brandColors.textSecondary} />
             </View>
 
             {/* Privacy */}
             <Text style={styles.sectionTitle}>Privacy</Text>
             <View style={styles.card}>
-              <ToggleRow icon="eye-off-outline" label="Anonymous Donations" value={settings.anonymousDonations} onToggle={(v) => updateSetting('anonymousDonations', v)} color="#78909C" />
-              <ToggleRow icon="trophy-outline" label="Show on Leaderboard" value={settings.showOnLeaderboard} onToggle={(v) => updateSetting('showOnLeaderboard', v)} color="#F57F17" />
+              <ToggleRow icon="eye-off-outline" label="Anonymous Donations" value={settings.anonymousDonations} onToggle={(v) => updateSetting('anonymousDonations', v)} color={brandColors.textSecondary} />
+              <ToggleRow icon="trophy-outline" label="Show on Leaderboard" value={settings.showOnLeaderboard} onToggle={(v) => updateSetting('showOnLeaderboard', v)} color={brandColors.secondary} />
             </View>
 
             {/* Danger Zone */}
-            <Text style={[styles.sectionTitle, { color: '#E53935' }]}>Danger Zone</Text>
+            <Text style={[styles.sectionTitle, { color: brandColors.error }]}>Danger Zone</Text>
             <View style={styles.card}>
-              <TouchableOpacity style={styles.dangerRow} onPress={handleDeleteAccount}>
-                <Icon source="delete-outline" size={20} color="#E53935" />
-                <Text style={styles.dangerText}>Delete Account</Text>
-              </TouchableOpacity>
+              <TouchableRipple style={styles.dangerRow} rippleColor="rgba(165,67,47,0.10)" onPress={handleDeleteAccount}>
+                <>
+                  <Icon source="delete-outline" size={20} color={brandColors.error} />
+                  <Text style={styles.dangerText}>Delete Account</Text>
+                </>
+              </TouchableRipple>
             </View>
           </>
         )}
@@ -246,20 +251,17 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F8F4' },
+  container: { flex: 1, backgroundColor: brandColors.background },
 
-  sectionTitle: { fontSize: 14, fontFamily: 'TTSquares-Bold', color: '#999', paddingHorizontal: 20, marginTop: 24, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
+  sectionTitle: { fontSize: 12, fontFamily: 'TTSquares-Bold', color: brandColors.textSecondary, paddingHorizontal: 20, marginTop: 24, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1 },
 
   card: {
     marginHorizontal: 16,
     backgroundColor: '#fff',
     borderRadius: 14,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(26,46,34,0.10)',
   },
 
   toggleRow: {
@@ -267,8 +269,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 14,
     paddingVertical: 14,
+    minHeight: 44,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.04)',
+    borderBottomColor: 'rgba(26,46,34,0.08)',
   },
   toggleIcon: {
     width: 34,
@@ -278,16 +281,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
   },
-  toggleLabel: { flex: 1, fontSize: 15, fontFamily: 'TTSquares-Bold', color: '#1a1a1a' },
+  toggleLabel: { flex: 1, fontSize: 15, fontFamily: 'TTSquares-Bold', color: brandColors.text },
 
   pickerValue: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   pickerValueText: { fontSize: 14, fontFamily: 'TTSquares-Bold', color: brandColors.primary },
   pickerOptions: { flexDirection: 'row', flexWrap: 'wrap', padding: 12, gap: 8 },
-  pickerOption: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: '#F5F5F5' },
+  pickerOption: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20, backgroundColor: 'rgba(168,181,160,0.28)' },
   pickerOptionActive: { backgroundColor: brandColors.primary },
-  pickerOptionText: { fontSize: 13, fontFamily: 'TTSquares-Bold', color: '#666' },
+  pickerOptionText: { fontSize: 13, fontFamily: 'TTSquares-Bold', color: brandColors.text },
   pickerOptionTextActive: { color: '#fff' },
 
-  dangerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16 },
-  dangerText: { fontSize: 15, fontFamily: 'TTSquares-Bold', color: '#E53935' },
+  dangerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, minHeight: 44 },
+  dangerText: { fontSize: 15, fontFamily: 'TTSquares-Bold', color: brandColors.error },
 })

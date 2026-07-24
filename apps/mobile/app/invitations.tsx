@@ -41,12 +41,12 @@ function SkeletonCard() {
   }, [])
   return (
     <Animated.View style={[styles.skeletonCard, { opacity }]}>
-      <View style={{ width: '70%', height: 14, backgroundColor: '#E0E0E0', borderRadius: 4, marginBottom: 8 }} />
-      <View style={{ width: '45%', height: 10, backgroundColor: '#E0E0E0', borderRadius: 4, marginBottom: 6 }} />
-      <View style={{ width: '55%', height: 10, backgroundColor: '#E0E0E0', borderRadius: 4, marginBottom: 14 }} />
+      <View style={[styles.skeletonLine, { width: '70%', marginBottom: 8 }]} />
+      <View style={[styles.skeletonLine, { width: '45%', height: 10, marginBottom: 6 }]} />
+      <View style={[styles.skeletonLine, { width: '55%', height: 10, marginBottom: 14 }]} />
       <View style={{ flexDirection: 'row', gap: 10 }}>
-        <View style={{ width: 100, height: 36, backgroundColor: '#E0E0E0', borderRadius: 8 }} />
-        <View style={{ width: 100, height: 36, backgroundColor: '#E0E0E0', borderRadius: 8 }} />
+        <View style={[styles.skeletonLine, { width: 100, height: 36, borderRadius: 8 }]} />
+        <View style={[styles.skeletonLine, { width: 100, height: 36, borderRadius: 8 }]} />
       </View>
     </Animated.View>
   )
@@ -107,6 +107,12 @@ export default function InvitationsScreen() {
         }}
       />
 
+      <View style={styles.headerBlock}>
+        <Text style={styles.eyebrow}>Collaborations</Text>
+        <Text style={styles.pageTitle}>Invitations</Text>
+        <Text style={styles.pageLede}>Review requests to collaborate on campaigns.</Text>
+      </View>
+
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
         {loading ? (
           <View style={styles.listWrap}>
@@ -114,15 +120,26 @@ export default function InvitationsScreen() {
           </View>
         ) : error ? (
           <View style={styles.emptyState}>
-            <Icon source="alert-circle-outline" size={48} color="#ccc" />
+            <View style={[styles.emptyIconTile, styles.errorIconTile]}>
+              <Icon source="alert-circle-outline" size={24} color={brandColors.error} />
+            </View>
             <Text style={styles.emptyTitle}>{error}</Text>
-            <Button mode="outlined" onPress={fetchInvitations} style={{ marginTop: 12 }}>
+            <Button
+              mode="contained"
+              buttonColor={brandColors.primary}
+              textColor="#FFFFFF"
+              onPress={fetchInvitations}
+              style={styles.actionBtn}
+              labelStyle={styles.btnLabel}
+            >
               Retry
             </Button>
           </View>
         ) : pending.length === 0 ? (
           <View style={styles.emptyState}>
-            <Icon source="email-open-outline" size={48} color="#ccc" />
+            <View style={styles.emptyIconTile}>
+              <Icon source="email-open-outline" size={24} color={brandColors.primary} />
+            </View>
             <Text style={styles.emptyTitle}>No pending invitations</Text>
             <Text style={styles.emptySubtitle}>
               When someone invites you to collaborate on a campaign, it will appear here
@@ -135,20 +152,20 @@ export default function InvitationsScreen() {
                 <Text style={styles.invCampaign} numberOfLines={1}>{inv.campaignName}</Text>
 
                 <View style={styles.invDetail}>
-                  <Icon source="account" size={14} color="#999" />
+                  <Icon source="account" size={14} color={brandColors.textSecondary} />
                   <Text style={styles.invDetailText}>Invited by {inv.inviterName}</Text>
                 </View>
 
                 <View style={styles.invDetail}>
-                  <Icon source="shield-account" size={14} color="#999" />
+                  <Icon source="shield-account" size={14} color={brandColors.textSecondary} />
                   <Text style={styles.invDetailText}>
-                    Role: <Text style={{ fontFamily: 'TTSquares-Bold', color: '#1a1a1a' }}>{inv.role}</Text>
+                    Role: <Text style={{ fontFamily: 'TTSquares-Bold', color: brandColors.text }}>{inv.role}</Text>
                   </Text>
                 </View>
 
                 {inv.revenueShare !== undefined && inv.revenueShare !== null && (
                   <View style={styles.invDetail}>
-                    <Icon source="percent" size={14} color="#999" />
+                    <Icon source="percent" size={14} color={brandColors.textSecondary} />
                     <Text style={styles.invDetailText}>
                       Revenue share: <Text style={{ fontFamily: 'TTSquares-Bold', color: brandColors.primary }}>{inv.revenueShare}%</Text>
                     </Text>
@@ -180,7 +197,7 @@ export default function InvitationsScreen() {
                     onPress={() => handleRespond(inv.id, false)}
                     disabled={responding === inv.id}
                   >
-                    <Icon source="close" size={16} color="#E53935" />
+                    <Icon source="close" size={16} color={brandColors.error} />
                     <Text style={styles.declineBtnText}>Decline</Text>
                   </TouchableOpacity>
                 </View>
@@ -194,24 +211,27 @@ export default function InvitationsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F8F4' },
-  listWrap: { paddingHorizontal: 16, paddingTop: 16 },
+  container: { flex: 1, backgroundColor: brandColors.background },
+
+  headerBlock: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 4 },
+  eyebrow: { fontSize: 11, fontFamily: 'TTSquares-Bold', fontWeight: '700', color: brandColors.secondaryDark, textTransform: 'uppercase', letterSpacing: 2 },
+  pageTitle: { fontSize: 24, fontFamily: 'TTSquares-Black', color: brandColors.text, marginTop: 4 },
+  pageLede: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 4 },
+
+  listWrap: { paddingHorizontal: 16, paddingTop: 12 },
 
   invCard: {
     backgroundColor: '#fff',
     borderRadius: 14,
     padding: 16,
     marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(26,46,34,0.10)',
   },
-  invCampaign: { fontSize: 17, fontFamily: 'TTSquares-Bold', color: '#1a1a1a', marginBottom: 10 },
+  invCampaign: { fontSize: 17, fontFamily: 'TTSquares-Bold', color: brandColors.text, marginBottom: 10 },
   invDetail: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
-  invDetailText: { fontSize: 13, color: '#666', fontFamily: 'TTSquares-Regular' },
-  invDate: { fontSize: 11, color: '#ccc', marginTop: 8, marginBottom: 14, fontFamily: 'TTSquares-Regular' },
+  invDetailText: { fontSize: 13, color: brandColors.textSecondary, fontFamily: 'Outfit_400Regular' },
+  invDate: { fontSize: 11, color: brandColors.textSecondary, marginTop: 8, marginBottom: 14, fontFamily: 'Outfit_400Regular' },
 
   invActions: { flexDirection: 'row', gap: 10 },
   acceptBtn: {
@@ -220,8 +240,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     flex: 1,
-    paddingVertical: 10,
-    borderRadius: 10,
+    paddingVertical: 13,
+    borderRadius: 999,
     backgroundColor: brandColors.primary,
   },
   acceptBtnText: { fontSize: 14, fontFamily: 'TTSquares-Bold', color: '#fff' },
@@ -231,13 +251,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     flex: 1,
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: 'rgba(229,57,53,0.08)',
+    paddingVertical: 13,
+    borderRadius: 999,
+    backgroundColor: 'rgba(165,67,47,0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(229,57,53,0.2)',
+    borderColor: 'rgba(165,67,47,0.25)',
   },
-  declineBtnText: { fontSize: 14, fontFamily: 'TTSquares-Bold', color: '#E53935' },
+  declineBtnText: { fontSize: 14, fontFamily: 'TTSquares-Bold', color: brandColors.error },
 
   skeletonCard: {
     backgroundColor: '#fff',
@@ -245,8 +265,21 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 12,
   },
+  skeletonLine: { height: 14, backgroundColor: 'rgba(168,181,160,0.35)', borderRadius: 4 },
 
-  emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 80, paddingHorizontal: 32 },
-  emptyTitle: { fontSize: 16, fontFamily: 'TTSquares-Bold', color: '#666', marginTop: 16, textAlign: 'center' },
-  emptySubtitle: { fontSize: 13, fontFamily: 'TTSquares-Regular', color: '#999', marginTop: 6, textAlign: 'center', lineHeight: 18 },
+  emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 72, paddingHorizontal: 32 },
+  emptyIconTile: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(168,181,160,0.28)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  errorIconTile: { backgroundColor: 'rgba(165,67,47,0.14)' },
+  emptyTitle: { fontSize: 16, fontFamily: 'TTSquares-Bold', color: brandColors.text, textAlign: 'center' },
+  emptySubtitle: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 6, textAlign: 'center', lineHeight: 18 },
+  actionBtn: { marginTop: 16, borderRadius: 999 },
+  btnLabel: { fontFamily: 'TTSquares-Bold' },
 })

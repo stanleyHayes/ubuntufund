@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { View, ScrollView, StyleSheet, TouchableOpacity } from 'react-native'
+import { View, ScrollView, StyleSheet } from 'react-native'
 import { Text, Icon, Button, TextInput } from 'react-native-paper'
 import { Stack, useRouter } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'
@@ -18,13 +18,15 @@ function PersonalInfoStep({ onNext }: StepProps) {
   const [idNumber, setIdNumber] = useState('')
 
   return (
-    <View style={{ gap: 12 }}>
+    <View style={styles.stepCard}>
       <Text style={styles.stepTitle}>Personal Information</Text>
-      <TextInput mode="outlined" label="Full Name" value={fullName} onChangeText={setFullName} style={styles.input} />
-      <TextInput mode="outlined" label="Date of Birth (YYYY-MM-DD)" value={dateOfBirth} onChangeText={setDateOfBirth} style={styles.input} />
-      <TextInput mode="outlined" label="Nationality" value={nationality} onChangeText={setNationality} style={styles.input} />
-      <TextInput mode="outlined" label="ID Number" value={idNumber} onChangeText={setIdNumber} style={styles.input} />
-      <Button mode="contained" onPress={onNext} style={styles.button}>Next</Button>
+      <TextInput mode="outlined" label="Full Name" value={fullName} onChangeText={setFullName} style={styles.input} outlineStyle={styles.inputOutline} outlineColor="rgba(26,46,34,0.10)" activeOutlineColor={brandColors.primary} />
+      <TextInput mode="outlined" label="Date of Birth (YYYY-MM-DD)" value={dateOfBirth} onChangeText={setDateOfBirth} style={styles.input} outlineStyle={styles.inputOutline} outlineColor="rgba(26,46,34,0.10)" activeOutlineColor={brandColors.primary} />
+      <TextInput mode="outlined" label="Nationality" value={nationality} onChangeText={setNationality} style={styles.input} outlineStyle={styles.inputOutline} outlineColor="rgba(26,46,34,0.10)" activeOutlineColor={brandColors.primary} />
+      <TextInput mode="outlined" label="ID Number" value={idNumber} onChangeText={setIdNumber} style={styles.input} outlineStyle={styles.inputOutline} outlineColor="rgba(26,46,34,0.10)" activeOutlineColor={brandColors.primary} />
+      <Button mode="contained" onPress={onNext} style={styles.button} contentStyle={styles.buttonContent} labelStyle={styles.buttonLabel} buttonColor={brandColors.primary}>
+        Next
+      </Button>
     </View>
   )
 }
@@ -34,14 +36,14 @@ function DocumentStep({ onNext, onBack }: StepProps) {
   const [idBack, setIdBack] = useState('')
 
   return (
-    <View style={{ gap: 12 }}>
+    <View style={styles.stepCard}>
       <Text style={styles.stepTitle}>ID Document</Text>
       <Text style={styles.stepDesc}>Upload front and back of your ID</Text>
-      <TextInput mode="outlined" label="Front URL" value={idFront} onChangeText={setIdFront} style={styles.input} />
-      <TextInput mode="outlined" label="Back URL" value={idBack} onChangeText={setIdBack} style={styles.input} />
-      <View style={{ flexDirection: 'row', gap: 12 }}>
-        {onBack && <Button mode="outlined" onPress={onBack} style={[styles.button, { flex: 1 }]}>Back</Button>}
-        <Button mode="contained" onPress={onNext} style={[styles.button, { flex: 1 }]}>Next</Button>
+      <TextInput mode="outlined" label="Front URL" value={idFront} onChangeText={setIdFront} style={styles.input} outlineStyle={styles.inputOutline} outlineColor="rgba(26,46,34,0.10)" activeOutlineColor={brandColors.primary} />
+      <TextInput mode="outlined" label="Back URL" value={idBack} onChangeText={setIdBack} style={styles.input} outlineStyle={styles.inputOutline} outlineColor="rgba(26,46,34,0.10)" activeOutlineColor={brandColors.primary} />
+      <View style={styles.buttonRow}>
+        {onBack && <Button mode="outlined" onPress={onBack} style={[styles.button, styles.buttonFlex]} contentStyle={styles.buttonContent} labelStyle={styles.buttonLabelSecondary} textColor={brandColors.primary}>Back</Button>}
+        <Button mode="contained" onPress={onNext} style={[styles.button, styles.buttonFlex]} contentStyle={styles.buttonContent} labelStyle={styles.buttonLabel} buttonColor={brandColors.primary}>Next</Button>
       </View>
     </View>
   )
@@ -53,14 +55,14 @@ function AddressStep({ onNext, onBack }: StepProps) {
   const [country, setCountry] = useState('')
 
   return (
-    <View style={{ gap: 12 }}>
+    <View style={styles.stepCard}>
       <Text style={styles.stepTitle}>Address Verification</Text>
-      <TextInput mode="outlined" label="Street" value={street} onChangeText={setStreet} style={styles.input} />
-      <TextInput mode="outlined" label="City" value={city} onChangeText={setCity} style={styles.input} />
-      <TextInput mode="outlined" label="Country" value={country} onChangeText={setCountry} style={styles.input} />
-      <View style={{ flexDirection: 'row', gap: 12 }}>
-        {onBack && <Button mode="outlined" onPress={onBack} style={[styles.button, { flex: 1 }]}>Back</Button>}
-        <Button mode="contained" onPress={onNext} style={[styles.button, { flex: 1 }]}>Next</Button>
+      <TextInput mode="outlined" label="Street" value={street} onChangeText={setStreet} style={styles.input} outlineStyle={styles.inputOutline} outlineColor="rgba(26,46,34,0.10)" activeOutlineColor={brandColors.primary} />
+      <TextInput mode="outlined" label="City" value={city} onChangeText={setCity} style={styles.input} outlineStyle={styles.inputOutline} outlineColor="rgba(26,46,34,0.10)" activeOutlineColor={brandColors.primary} />
+      <TextInput mode="outlined" label="Country" value={country} onChangeText={setCountry} style={styles.input} outlineStyle={styles.inputOutline} outlineColor="rgba(26,46,34,0.10)" activeOutlineColor={brandColors.primary} />
+      <View style={styles.buttonRow}>
+        {onBack && <Button mode="outlined" onPress={onBack} style={[styles.button, styles.buttonFlex]} contentStyle={styles.buttonContent} labelStyle={styles.buttonLabelSecondary} textColor={brandColors.primary}>Back</Button>}
+        <Button mode="contained" onPress={onNext} style={[styles.button, styles.buttonFlex]} contentStyle={styles.buttonContent} labelStyle={styles.buttonLabel} buttonColor={brandColors.primary}>Next</Button>
       </View>
     </View>
   )
@@ -70,13 +72,13 @@ function SelfieStep({ onBack, onSubmit }: StepProps & { onSubmit: () => void }) 
   const [selfie, setSelfie] = useState('')
 
   return (
-    <View style={{ gap: 12 }}>
+    <View style={styles.stepCard}>
       <Text style={styles.stepTitle}>Selfie Verification</Text>
       <Text style={styles.stepDesc}>Upload a selfie holding your ID</Text>
-      <TextInput mode="outlined" label="Selfie URL" value={selfie} onChangeText={setSelfie} style={styles.input} />
-      <View style={{ flexDirection: 'row', gap: 12 }}>
-        {onBack && <Button mode="outlined" onPress={onBack} style={[styles.button, { flex: 1 }]}>Back</Button>}
-        <Button mode="contained" onPress={onSubmit} style={[styles.button, { flex: 1 }]}>Submit</Button>
+      <TextInput mode="outlined" label="Selfie URL" value={selfie} onChangeText={setSelfie} style={styles.input} outlineStyle={styles.inputOutline} outlineColor="rgba(26,46,34,0.10)" activeOutlineColor={brandColors.primary} />
+      <View style={styles.buttonRow}>
+        {onBack && <Button mode="outlined" onPress={onBack} style={[styles.button, styles.buttonFlex]} contentStyle={styles.buttonContent} labelStyle={styles.buttonLabelSecondary} textColor={brandColors.primary}>Back</Button>}
+        <Button mode="contained" onPress={onSubmit} style={[styles.button, styles.buttonFlex]} contentStyle={styles.buttonContent} labelStyle={styles.buttonLabel} buttonColor={brandColors.primary}>Submit</Button>
       </View>
     </View>
   )
@@ -110,15 +112,23 @@ export default function KYCScreen() {
     return (
       <View style={styles.container}>
         <Stack.Screen options={{ title: 'KYC Submitted', headerStyle: { backgroundColor: brandColors.primary } }} />
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-          <Icon source="check-circle" size={64} color="#4CAF50" />
-          <Text style={{ fontSize: 20, fontFamily: 'TTSquares-Bold', marginTop: 16, textAlign: 'center' }}>
-            Verification Submitted!
-          </Text>
-          <Text style={{ fontSize: 14, fontFamily: 'TTSquares-Regular', color: '#666', marginTop: 8, textAlign: 'center' }}>
+        <View style={styles.successWrap}>
+          <View style={styles.iconTile}>
+            <Icon source="check-circle" size={28} color={brandColors.success} />
+          </View>
+          <Text style={styles.successTitle}>Verification submitted</Text>
+          <Text style={styles.successBody}>
             Your documents are under review. We'll notify you once complete.
           </Text>
-          <Button mode="contained" onPress={() => router.push('/dashboard')} style={{ marginTop: 24 }}>
+          <Button
+            mode="contained"
+            onPress={() => router.push('/dashboard')}
+            style={styles.button}
+            contentStyle={styles.buttonContent}
+            labelStyle={styles.buttonLabel}
+            buttonColor={brandColors.secondary}
+            textColor="#221B0E"
+          >
             Go to Dashboard
           </Button>
         </View>
@@ -136,7 +146,7 @@ export default function KYCScreen() {
           headerTitleStyle: { fontFamily: 'TTSquares-Bold' },
         }}
       />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* Progress */}
         <View style={styles.progressRow}>
           {steps.map((s, i) => (
@@ -151,7 +161,7 @@ export default function KYCScreen() {
         </View>
 
         {/* Step content */}
-        <View style={{ marginTop: 24 }}>
+        <View style={styles.stepContentWrap}>
           {step === 0 && <PersonalInfoStep onNext={() => setStep(1)} />}
           {step === 1 && <DocumentStep onNext={() => setStep(2)} onBack={() => setStep(0)} />}
           {step === 2 && <AddressStep onNext={() => setStep(3)} onBack={() => setStep(1)} />}
@@ -163,19 +173,52 @@ export default function KYCScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F8F4' },
+  container: { flex: 1, backgroundColor: brandColors.background },
+  scrollContent: { padding: 16, paddingBottom: 32 },
+
   progressRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8 },
   stepItem: { flex: 1, alignItems: 'center', position: 'relative' },
-  stepDot: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#E0E0E0', alignItems: 'center', justifyContent: 'center' },
+  stepDot: { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(168,181,160,0.28)', alignItems: 'center', justifyContent: 'center' },
   stepDotActive: { backgroundColor: brandColors.primary },
-  stepDotText: { fontSize: 12, fontFamily: 'TTSquares-Bold', color: '#666' },
-  stepDotTextActive: { color: '#fff' },
-  stepLabel: { fontSize: 11, fontFamily: 'TTSquares-Regular', color: '#999', marginTop: 4 },
-  stepLabelActive: { color: brandColors.primary, fontWeight: '700' },
-  stepLine: { position: 'absolute', top: 14, right: '-50%', width: '100%', height: 2, backgroundColor: '#E0E0E0', zIndex: -1 },
+  stepDotText: { fontSize: 12, fontFamily: 'TTSquares-Bold', color: brandColors.textSecondary },
+  stepDotTextActive: { color: '#FFFFFF' },
+  stepLabel: { fontSize: 11, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 4 },
+  stepLabelActive: { color: brandColors.primary, fontFamily: 'TTSquares-Bold' },
+  stepLine: { position: 'absolute', top: 14, right: '-50%', width: '100%', height: 2, backgroundColor: 'rgba(168,181,160,0.28)', zIndex: -1 },
   stepLineActive: { backgroundColor: brandColors.primary },
-  stepTitle: { fontSize: 18, fontFamily: 'TTSquares-Bold', color: '#1a1a1a', marginBottom: 4 },
-  stepDesc: { fontSize: 13, fontFamily: 'TTSquares-Regular', color: '#666', marginBottom: 8 },
-  input: { backgroundColor: '#fff' },
-  button: { borderRadius: 8, marginTop: 8 },
+
+  stepContentWrap: { marginTop: 24 },
+  stepCard: {
+    backgroundColor: brandColors.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(26,46,34,0.10)',
+    padding: 20,
+    gap: 12,
+  },
+  stepTitle: { fontSize: 18, fontFamily: 'TTSquares-Bold', color: brandColors.text, marginBottom: 4 },
+  stepDesc: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginBottom: 8 },
+
+  input: { backgroundColor: brandColors.surface },
+  inputOutline: { borderRadius: 12 },
+
+  buttonRow: { flexDirection: 'row', gap: 12 },
+  button: { borderRadius: 999, marginTop: 8 },
+  buttonFlex: { flex: 1 },
+  buttonContent: { paddingVertical: 6 },
+  buttonLabel: { fontSize: 15, fontFamily: 'TTSquares-Bold', letterSpacing: 0.3 },
+  buttonLabelSecondary: { fontSize: 15, fontFamily: 'TTSquares-Bold', letterSpacing: 0.3 },
+
+  successWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
+  iconTile: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: 'rgba(168,181,160,0.28)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  successTitle: { fontSize: 20, fontFamily: 'TTSquares-Bold', color: brandColors.text, textAlign: 'center' },
+  successBody: { fontSize: 14, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 8, textAlign: 'center', lineHeight: 20, marginBottom: 16 },
 })

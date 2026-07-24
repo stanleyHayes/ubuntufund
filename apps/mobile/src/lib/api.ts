@@ -9,19 +9,23 @@ import Constants from 'expo-constants'
 // Expo Go on physical device: use the debugger host IP
 // Android emulator: 10.0.2.2 maps to host localhost
 // iOS simulator: localhost works directly
+// Canonical port is 8100; override locally with EXPO_PUBLIC_API_PORT when the
+// API runs elsewhere (e.g. 18100 when Docker occupies the 81xx range).
+const API_PORT = process.env.EXPO_PUBLIC_API_PORT ?? '8100'
+
 function getApiBase(): string {
   const expoHost = Constants.expoConfig?.hostUri?.split(':')[0]
 
   if (expoHost && expoHost !== 'localhost') {
     // Physical device via Expo Go — use the LAN IP
-    return `http://${expoHost}:8100/api/v1`
+    return `http://${expoHost}:${API_PORT}/api/v1`
   }
 
   if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:8100/api/v1'
+    return `http://10.0.2.2:${API_PORT}/api/v1`
   }
 
-  return 'http://localhost:8100/api/v1'
+  return `http://localhost:${API_PORT}/api/v1`
 }
 
 const API_BASE = getApiBase()

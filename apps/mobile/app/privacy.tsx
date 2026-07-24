@@ -1,10 +1,12 @@
 import { ScrollView, StyleSheet } from 'react-native'
 import { Text } from 'react-native-paper'
+import { brandColors } from '@/theme'
 
 export default function PrivacyScreen() {
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text variant="headlineSmall" style={styles.title}>Privacy Policy</Text>
+    <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
+      <Text style={styles.eyebrow}>Privacy</Text>
+      <Text style={styles.title}>Privacy Policy</Text>
       <Text style={styles.updated}>Last updated: March 2026</Text>
 
       <Text style={styles.heading}>1. Information We Collect</Text>
@@ -56,9 +58,19 @@ export default function PrivacyScreen() {
 }
 
 const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: brandColors.background },
   container: { padding: 24, paddingBottom: 48 },
-  title: { fontFamily: 'TTSquares-Black', marginBottom: 4 },
-  updated: { fontSize: 13, fontFamily: 'TTSquares-Regular', color: '#999', marginBottom: 24 },
-  heading: { fontSize: 16, fontFamily: 'TTSquares-Bold', marginTop: 20, marginBottom: 8, color: '#1a1a1a' },
-  body: { fontSize: 14, fontFamily: 'TTSquares-Regular', lineHeight: 22, color: '#555' },
+  eyebrow: {
+    fontSize: 11,
+    fontFamily: 'TTSquares-Bold',
+    fontWeight: '700',
+    color: brandColors.secondaryDark,
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+    marginBottom: 6,
+  },
+  title: { fontSize: 24, fontFamily: 'TTSquares-Black', color: brandColors.text, marginBottom: 4 },
+  updated: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginBottom: 24 },
+  heading: { fontSize: 16, fontFamily: 'TTSquares-Bold', marginTop: 20, marginBottom: 8, color: brandColors.text },
+  body: { fontSize: 14, fontFamily: 'Outfit_400Regular', lineHeight: 22, color: brandColors.textSecondary },
 })

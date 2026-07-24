@@ -1,30 +1,51 @@
-import Svg, { Circle, Path, G } from 'react-native-svg'
+import Svg, { Rect, Path } from 'react-native-svg'
 
 interface UbuntuLogoProps {
   size?: number
 }
 
+/**
+ * The UbuntuFund mark: two interlocked chain links — a sharp-cornered gold
+ * diamond woven through a rounded sage one ("One chain. Many hands. Ubuntu.").
+ * Mirrors packages/ui BrandLogo so every surface shares one identity.
+ */
 export function UbuntuLogo({ size = 64 }: UbuntuLogoProps) {
-  const scale = size / 64
+  const width = size * 1.375
   return (
-    <Svg width={size} height={size} viewBox="0 0 64 64">
-      <Circle cx="32" cy="32" r="30" fill="#2E3D2F" />
-      <Circle cx="32" cy="32" r="20" fill="none" stroke="#5E8F72" strokeWidth="0.8" opacity="0.3" />
-      <G
-        translate="32, 32"
+    <Svg width={width} height={size} viewBox="0 0 66 48">
+      {/* Rounded sage link (back) */}
+      <Rect
+        x={30}
+        y={10}
+        width={28}
+        height={28}
+        rx={11}
+        transform="rotate(45 44 24)"
         fill="none"
-        stroke="white"
-        strokeWidth="4.5"
+        stroke="#A8B5A0"
+        strokeWidth={4}
+      />
+      {/* Sharp gold link (front) */}
+      <Rect
+        x={8}
+        y={10}
+        width={28}
+        height={28}
+        rx={3}
+        transform="rotate(45 22 24)"
+        fill="none"
+        stroke="#C7A24A"
+        strokeWidth={4}
+      />
+      {/* Weave: short sage arc redrawn over the gold link */}
+      <Path
+        d="M 33.5 13.5 A 11 11 0 0 1 38 11.2"
+        fill="none"
+        stroke="#A8B5A0"
+        strokeWidth={4}
         strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <Path d="M0,-12 C4.5,-10.5 9,-6 9,-0.8 C9,1.5 7.5,3 5.2,3" />
-        <Path d="M0,-12 C4.5,-10.5 9,-6 9,-0.8 C9,1.5 7.5,3 5.2,3" rotation="120" origin="0, 0" />
-        <Path d="M0,-12 C4.5,-10.5 9,-6 9,-0.8 C9,1.5 7.5,3 5.2,3" rotation="240" origin="0, 0" />
-      </G>
-      <Circle cx={32 + 5.2} cy={32 + 3} r="2.8" fill="#C7A24A" />
-      <Circle cx={32 - 4.2} cy={32 - 5.2} r="2.8" fill="#C7A24A" />
-      <Circle cx={32 - 1} cy={32 + 5.3} r="2.8" fill="#C7A24A" />
+        transform="rotate(45 44 24)"
+      />
     </Svg>
   )
 }

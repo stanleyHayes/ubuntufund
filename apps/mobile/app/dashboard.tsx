@@ -5,9 +5,8 @@ import {
   StyleSheet,
   Animated,
   Dimensions,
-  TouchableOpacity,
 } from 'react-native'
-import { Text, Icon, Button } from 'react-native-paper'
+import { Text, Icon, Button, TouchableRipple } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, Stack } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'
@@ -102,12 +101,14 @@ function DashboardSkeleton() {
 
 function QuickAction({ icon, label, color, onPress }: { icon: string; label: string; color: string; onPress: () => void }) {
   return (
-    <TouchableOpacity style={styles.quickAction} activeOpacity={0.7} onPress={onPress}>
-      <View style={[styles.quickActionIcon, { backgroundColor: `${color}14` }]}>
-        <Icon source={icon} size={22} color={color} />
-      </View>
-      <Text style={styles.quickActionLabel}>{label}</Text>
-    </TouchableOpacity>
+    <TouchableRipple style={styles.quickAction} rippleColor="rgba(26,46,34,0.08)" onPress={onPress}>
+      <>
+        <View style={[styles.quickActionIcon, { backgroundColor: `${color}14` }]}>
+          <Icon source={icon} size={22} color={color} />
+        </View>
+        <Text style={styles.quickActionLabel}>{label}</Text>
+      </>
+    </TouchableRipple>
   )
 }
 
@@ -169,9 +170,18 @@ export default function DashboardScreen() {
           <DashboardSkeleton />
         ) : error ? (
           <View style={styles.emptyState}>
-            <Icon source="alert-circle-outline" size={48} color="#ccc" />
-            <Text style={styles.emptyTitle}>{error}</Text>
-            <Button mode="outlined" onPress={fetchDashboard} style={{ marginTop: 12 }}>
+            <View style={styles.emptyIconTile}>
+              <Icon source="alert-circle-outline" size={24} color={brandColors.primary} />
+            </View>
+            <Text style={styles.emptyTitle}>Couldn't load dashboard</Text>
+            <Text style={styles.emptyBody}>{error}</Text>
+            <Button
+              mode="contained"
+              buttonColor={brandColors.secondary}
+              textColor="#221B0E"
+              onPress={fetchDashboard}
+              style={styles.emptyAction}
+            >
               Retry
             </Button>
           </View>
@@ -185,12 +195,12 @@ export default function DashboardScreen() {
                 <Text style={styles.statLabel}>Total Raised</Text>
               </View>
               <View style={styles.statCard}>
-                <Icon source="bullhorn" size={24} color="#1565C0" />
+                <Icon source="bullhorn" size={24} color={brandColors.success} />
                 <Text style={styles.statValue}>{activeCampaigns}</Text>
                 <Text style={styles.statLabel}>Active Campaigns</Text>
               </View>
               <View style={styles.statCard}>
-                <Icon source="heart" size={24} color="#E53935" />
+                <Icon source="heart" size={24} color={brandColors.error} />
                 <Text style={styles.statValue}>{totalDonations}</Text>
                 <Text style={styles.statLabel}>Total Donations</Text>
               </View>
@@ -200,8 +210,8 @@ export default function DashboardScreen() {
             <Text style={styles.sectionTitle}>Quick Actions</Text>
             <View style={styles.quickActionsRow}>
               <QuickAction icon="plus-circle" label="Create Campaign" color={brandColors.primary} onPress={() => router.push('/campaign/create')} />
-              <QuickAction icon="heart-outline" label="View Donations" color="#E53935" onPress={() => router.push('/my-donations')} />
-              <QuickAction icon="account-plus" label="Invite" color="#1565C0" onPress={() => router.push('/invitations')} />
+              <QuickAction icon="heart-outline" label="View Donations" color={brandColors.error} onPress={() => router.push('/my-donations')} />
+              <QuickAction icon="account-plus" label="Invite" color={brandColors.secondaryDark} onPress={() => router.push('/invitations')} />
             </View>
 
             {/* Recent Campaigns */}
@@ -213,21 +223,23 @@ export default function DashboardScreen() {
                 {recentCampaigns.map((c, i) => {
                   const pct = c.goalAmount > 0 ? Math.min(c.raisedAmount / c.goalAmount, 1) : 0
                   return (
-                    <TouchableOpacity
+                    <TouchableRipple
                       key={c.id}
                       style={[styles.listRow, i === recentCampaigns.length - 1 && { borderBottomWidth: 0 }]}
-                      activeOpacity={0.7}
+                      rippleColor="rgba(26,46,34,0.08)"
                       onPress={() => router.push(`/campaign/${c.id}`)}
                     >
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.listTitle} numberOfLines={1}>{c.title}</Text>
-                        <ProgressBar progress={pct} height={4} />
-                        <Text style={styles.listSub}>
-                          {formatCurrency(c.raisedAmount)} of {formatCurrency(c.goalAmount)}
-                        </Text>
-                      </View>
-                      <Icon source="chevron-right" size={18} color="#ccc" />
-                    </TouchableOpacity>
+                      <>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.listTitle} numberOfLines={1}>{c.title}</Text>
+                          <ProgressBar progress={pct} height={4} />
+                          <Text style={styles.listSub}>
+                            {formatCurrency(c.raisedAmount)} of {formatCurrency(c.goalAmount)}
+                          </Text>
+                        </View>
+                        <Icon source="chevron-right" size={18} color="rgba(26,46,34,0.3)" />
+                      </>
+                    </TouchableRipple>
                   )
                 })}
               </View>
@@ -265,7 +277,7 @@ export default function DashboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F8F4' },
+  container: { flex: 1, backgroundColor: brandColors.background },
 
   statsRow: { flexDirection: 'row', paddingHorizontal: 16, paddingTop: 20, gap: 10 },
   statCard: {
@@ -274,29 +286,36 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 14,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(26,46,34,0.10)',
   },
-  statValue: { fontSize: 18, fontFamily: 'TTSquares-Bold', color: '#1a1a1a', marginTop: 6 },
-  statLabel: { fontSize: 10, color: '#999', fontFamily: 'TTSquares-Regular', marginTop: 2 },
+  statValue: { fontSize: 18, fontFamily: 'TTSquares-Bold', color: brandColors.text, marginTop: 6 },
+  statLabel: { fontSize: 10, color: brandColors.textSecondary, fontFamily: 'Outfit_400Regular', marginTop: 2 },
 
-  sectionTitle: { fontSize: 17, fontFamily: 'TTSquares-Bold', color: '#1a1a1a', paddingHorizontal: 20, marginTop: 24, marginBottom: 12 },
+  sectionTitle: { fontSize: 17, fontFamily: 'TTSquares-Bold', color: brandColors.text, paddingHorizontal: 20, marginTop: 24, marginBottom: 12 },
 
   quickActionsRow: { flexDirection: 'row', paddingHorizontal: 16, gap: 10 },
-  quickAction: { flex: 1, backgroundColor: '#fff', borderRadius: 14, padding: 14, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2 },
+  quickAction: { flex: 1, backgroundColor: '#fff', borderRadius: 14, padding: 14, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(26,46,34,0.10)' },
   quickActionIcon: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
-  quickActionLabel: { fontSize: 11, fontFamily: 'TTSquares-Bold', color: '#555', textAlign: 'center' },
+  quickActionLabel: { fontSize: 11, fontFamily: 'TTSquares-Bold', color: brandColors.textSecondary, textAlign: 'center' },
 
-  listCard: { marginHorizontal: 16, backgroundColor: '#fff', borderRadius: 14, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2 },
-  listRow: { flexDirection: 'row', alignItems: 'center', padding: 14, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.04)' },
-  listTitle: { fontSize: 14, fontFamily: 'TTSquares-Bold', color: '#1a1a1a', marginBottom: 4 },
-  listSub: { fontSize: 11, fontFamily: 'TTSquares-Regular', color: '#999', marginTop: 4 },
-  donationAmount: { fontSize: 15, fontFamily: 'TTSquares-Bold', color: brandColors.primary },
+  listCard: { marginHorizontal: 16, backgroundColor: '#fff', borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(26,46,34,0.10)' },
+  listRow: { flexDirection: 'row', alignItems: 'center', padding: 14, minHeight: 44, borderBottomWidth: 1, borderBottomColor: 'rgba(26,46,34,0.08)' },
+  listTitle: { fontSize: 14, fontFamily: 'TTSquares-Bold', color: brandColors.text, marginBottom: 4 },
+  listSub: { fontSize: 11, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 4 },
+  donationAmount: { fontSize: 15, fontFamily: 'TTSquares-Bold', color: brandColors.success },
 
-  noData: { fontSize: 13, color: '#999', paddingHorizontal: 20, fontFamily: 'TTSquares-Regular' },
+  noData: { fontSize: 13, color: brandColors.textSecondary, paddingHorizontal: 20, fontFamily: 'Outfit_400Regular' },
   emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 80, paddingHorizontal: 32 },
-  emptyTitle: { fontSize: 16, fontFamily: 'TTSquares-Bold', color: '#666', marginTop: 16, textAlign: 'center' },
+  emptyIconTile: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(168,181,160,0.28)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyTitle: { fontSize: 16, fontFamily: 'TTSquares-Bold', color: brandColors.text, marginTop: 16, textAlign: 'center' },
+  emptyBody: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 4, textAlign: 'center' },
+  emptyAction: { marginTop: 16, borderRadius: 999 },
 })

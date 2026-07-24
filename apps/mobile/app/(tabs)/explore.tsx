@@ -66,18 +66,18 @@ function CampaignRow({ campaign, index }: { campaign: Campaign; index: number })
         {campaign.imageUrls[0] ? (
           <Image source={{ uri: campaign.imageUrls[0] }} style={styles.campaignImage} />
         ) : (
-          <View style={[styles.campaignImage, { backgroundColor: '#E8F5E9' }]} />
+          <View style={[styles.campaignImage, { backgroundColor: 'rgba(168,181,160,0.28)' }]} />
         )}
         <View style={styles.campaignContent}>
           <View style={styles.campaignMeta}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1 }}>
-              <Icon source={CATEGORIES.find((c) => c.key === campaign.category)?.icon ?? 'help-circle'} size={12} color="#888" />
+              <Icon source={CATEGORIES.find((c) => c.key === campaign.category)?.icon ?? 'help-circle'} size={12} color={brandColors.textSecondary} />
               <Text style={styles.campaignCategory}>
                 {campaign.category}
               </Text>
             </View>
             {campaign.priority !== 'normal' && (
-              <View style={[styles.priorityDot, { backgroundColor: campaign.priority === 'critical' ? '#E53935' : '#F9A825' }]} />
+              <View style={[styles.priorityDot, { backgroundColor: campaign.priority === 'critical' ? brandColors.error : brandColors.warning }]} />
             )}
           </View>
           <Text style={styles.campaignTitle} numberOfLines={2}>{campaign.title}</Text>
@@ -113,20 +113,25 @@ export default function ExploreTab() {
 
   return (
     <View style={styles.container}>
+      {/* Lede */}
+      <View style={styles.ledeWrap}>
+        <Text style={styles.lede}>Find causes that need your support</Text>
+      </View>
+
       {/* Search */}
       <View style={styles.searchWrap}>
         <View style={styles.searchBar}>
-          <Icon source="magnify" size={16} color="#999" />
+          <Icon source="magnify" size={16} color={brandColors.textSecondary} />
           <TextInput
             placeholder="Search campaigns..."
-            placeholderTextColor="#999"
+            placeholderTextColor="rgba(74,90,80,0.55)"
             value={search}
             onChangeText={setSearch}
             style={styles.searchInput}
           />
           {search.length > 0 && (
             <TouchableOpacity onPress={() => setSearch('')}>
-              <Icon source="close" size={16} color="#999" />
+              <Icon source="close" size={16} color={brandColors.textSecondary} />
             </TouchableOpacity>
           )}
         </View>
@@ -143,7 +148,7 @@ export default function ExploreTab() {
               onPress={() => setSelectedCategory(active ? null : cat.key)}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <Icon source={cat.icon} size={14} color={active ? '#fff' : '#555'} />
+                <Icon source={cat.icon} size={14} color={active ? '#FFFFFF' : brandColors.text} />
                 <Text style={[styles.filterPillText, active && styles.filterPillTextActive]}>
                   {cat.label}
                 </Text>
@@ -175,7 +180,7 @@ export default function ExploreTab() {
               style={[styles.miniPill, sort === key && styles.miniPillSort]}
               onPress={() => setSort(key)}
             >
-              <Text style={[styles.miniPillText, sort === key && { color: brandColors.primary, fontFamily: 'TTSquares-Bold' }]}>{label}</Text>
+              <Text style={[styles.miniPillText, sort === key && styles.miniPillTextActive]}>{label}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -191,7 +196,9 @@ export default function ExploreTab() {
         <ActivityIndicator size="large" style={{ marginTop: 60 }} color={brandColors.primary} />
       ) : filtered.length === 0 ? (
         <View style={styles.emptyState}>
-          <Icon source="magnify" size={40} color="#ccc" />
+          <View style={styles.emptyIconTile}>
+            <Icon source="magnify" size={22} color={brandColors.primary} />
+          </View>
           <Text style={styles.emptyTitle}>No campaigns found</Text>
           <Text style={styles.emptyBody}>Try adjusting your search or filters</Text>
         </View>
@@ -208,85 +215,97 @@ export default function ExploreTab() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F8F4' },
+  container: { flex: 1, backgroundColor: brandColors.background },
+
+  // Lede
+  ledeWrap: { paddingHorizontal: 16, paddingTop: 12 },
+  lede: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary },
 
   // Search
-  searchWrap: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 },
+  searchWrap: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8 },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    backgroundColor: brandColors.surface,
+    borderRadius: 14,
     paddingHorizontal: 14,
     height: 44,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.06)',
+    borderColor: 'rgba(26,46,34,0.10)',
   },
   searchIcon: { fontSize: 16, marginRight: 8 },
-  searchInput: { flex: 1, fontSize: 14, color: '#1a1a1a', fontFamily: 'TTSquares-Regular' },
-  searchClear: { fontSize: 16, color: '#999', paddingLeft: 8 },
+  searchInput: { flex: 1, fontSize: 14, color: brandColors.text, fontFamily: 'Outfit_400Regular' },
+  searchClear: { fontSize: 16, color: brandColors.textSecondary, paddingLeft: 8 },
 
   // Filter pills
   filterScroll: { paddingHorizontal: 16, paddingRight: 24, paddingBottom: 10, gap: 8 },
   filterPill: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.06)',
+    borderRadius: 999,
+    backgroundColor: 'rgba(168,181,160,0.28)',
   },
-  filterPillActive: { backgroundColor: brandColors.primary, borderColor: brandColors.primary },
-  filterPillText: { fontSize: 13, fontFamily: 'TTSquares-Bold', color: '#555', lineHeight: 18 },
-  filterPillTextActive: { color: '#fff' },
+  filterPillActive: { backgroundColor: brandColors.primary },
+  filterPillText: { fontSize: 13, fontFamily: 'TTSquares-Bold', color: brandColors.text, lineHeight: 18 },
+  filterPillTextActive: { color: '#FFFFFF' },
 
   // Secondary filters
   secondaryFilters: { paddingHorizontal: 16, paddingBottom: 8 },
   miniPill: {
+    justifyContent: 'center',
+    minHeight: 44,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: 'rgba(0,0,0,0.03)',
+    borderRadius: 999,
+    backgroundColor: 'rgba(168,181,160,0.28)',
   },
-  miniPillActive: { backgroundColor: 'rgba(46,125,50,0.1)' },
-  miniPillSort: { backgroundColor: 'rgba(46,125,50,0.06)' },
-  miniPillText: { fontSize: 11, fontFamily: 'TTSquares-Bold', color: '#777' },
-  miniPillTextActive: { color: brandColors.primary, fontFamily: 'TTSquares-Bold' },
-  sortDivider: { width: 1, backgroundColor: 'rgba(0,0,0,0.08)', marginHorizontal: 4 },
+  miniPillActive: { backgroundColor: brandColors.primary },
+  miniPillSort: { backgroundColor: brandColors.primary },
+  miniPillText: { fontSize: 11, fontFamily: 'TTSquares-Bold', color: brandColors.textSecondary },
+  miniPillTextActive: { color: '#FFFFFF', fontFamily: 'TTSquares-Bold' },
+  sortDivider: { width: 1, backgroundColor: 'rgba(26,46,34,0.10)', marginHorizontal: 4 },
 
   // Results
   resultsHeader: { paddingHorizontal: 16, paddingBottom: 6 },
-  resultsCount: { fontSize: 12, color: '#999', fontFamily: 'TTSquares-Regular' },
+  resultsCount: { fontSize: 12, color: brandColors.textSecondary, fontFamily: 'Outfit_400Regular' },
   results: { paddingHorizontal: 16 },
 
   // Campaign row
   campaignRow: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
+    backgroundColor: brandColors.surface,
     borderRadius: 14,
     overflow: 'hidden',
     marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(26,46,34,0.10)',
   },
   campaignImage: { width: 100, height: 100 },
   campaignContent: { flex: 1, padding: 10, justifyContent: 'center' },
   campaignMeta: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
-  campaignCategory: { fontSize: 11, color: '#888', fontFamily: 'TTSquares-Bold', flex: 1 },
+  campaignCategory: { fontSize: 11, color: brandColors.textSecondary, fontFamily: 'TTSquares-Bold', flex: 1 },
   priorityDot: { width: 7, height: 7, borderRadius: 4 },
-  campaignTitle: { fontSize: 14, fontFamily: 'TTSquares-Bold', color: '#1a1a1a', marginBottom: 6, lineHeight: 18 },
+  campaignTitle: { fontSize: 14, fontFamily: 'TTSquares-Bold', color: brandColors.text, marginBottom: 6, lineHeight: 18 },
   campaignStats: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
   campaignRaised: { fontSize: 12, fontFamily: 'TTSquares-Bold', color: brandColors.primary },
-  campaignPct: { fontSize: 12, fontFamily: 'TTSquares-Bold', color: '#999' },
+  campaignPct: { fontSize: 12, fontFamily: 'TTSquares-Bold', color: brandColors.textSecondary },
 
   // Empty
   emptyState: { alignItems: 'center', paddingTop: 60 },
   emptyEmoji: { fontSize: 40, marginBottom: 12 },
-  emptyTitle: { fontSize: 17, fontFamily: 'TTSquares-Bold', color: '#1a1a1a', marginBottom: 4 },
-  emptyBody: { fontSize: 13, fontFamily: 'TTSquares-Regular', color: '#999' },
+  emptyIconTile: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(168,181,160,0.28)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  emptyTitle: { fontSize: 17, fontFamily: 'TTSquares-Bold', color: brandColors.text, marginBottom: 4 },
+  emptyBody: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary },
 })

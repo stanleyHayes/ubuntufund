@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import { View, ScrollView, StyleSheet, TouchableOpacity, Alert } from 'react-native'
-import { Text, ActivityIndicator, Icon } from 'react-native-paper'
+import { View, ScrollView, StyleSheet, Alert } from 'react-native'
+import { Text, ActivityIndicator, Icon, Button } from 'react-native-paper'
 import {
   SubscriptionTier,
   SubscriptionStatus,
@@ -85,14 +85,18 @@ export default function SubscriptionScreen() {
 
   if (isLoading) {
     return (
-      <View style={[styles.container, { flex: 1, justifyContent: 'center', alignItems: 'center' }]}>
+      <View style={[styles.container, styles.centered]}>
         <ActivityIndicator size="large" color={brandColors.primary} />
       </View>
     )
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <Text style={styles.eyebrow}>MEMBERSHIP</Text>
+      <Text style={styles.title}>Manage Your Plan</Text>
+      <Text style={styles.lede}>Compare tiers and upgrade anytime.</Text>
+
       {/* Current plan card */}
       <View style={styles.currentPlanCard}>
         <Text style={styles.currentPlanLabel}>Current Plan</Text>
@@ -169,25 +173,22 @@ export default function SubscriptionScreen() {
                 ))}
               </View>
 
-              <TouchableOpacity
-                style={[
-                  styles.planButton,
-                  isCurrent && styles.planButtonCurrent,
-                  isPro && !isCurrent && styles.planButtonPro,
-                ]}
-                disabled={isCurrent || actionLoading}
-                onPress={() => handleUpgrade(tier)}
-              >
-                <Text
-                  style={[
-                    styles.planButtonText,
-                    isCurrent && styles.planButtonTextCurrent,
-                    isPro && !isCurrent && styles.planButtonTextPro,
-                  ]}
+              {isCurrent ? (
+                <View style={styles.currentChip}>
+                  <Text style={styles.currentChipText}>Current Plan</Text>
+                </View>
+              ) : (
+                <Button
+                  mode="contained"
+                  buttonColor={brandColors.secondary}
+                  textColor="#221B0E"
+                  style={styles.planButton}
+                  disabled={actionLoading}
+                  onPress={() => handleUpgrade(tier)}
                 >
-                  {isCurrent ? 'Current Plan' : actionLoading ? 'Processing...' : 'Upgrade'}
-                </Text>
-              </TouchableOpacity>
+                  {actionLoading ? 'Processing...' : 'Upgrade'}
+                </Button>
+              )}
             </View>
           )
         })}
@@ -196,145 +197,158 @@ export default function SubscriptionScreen() {
       {/* Upgrade CTA */}
       {currentSub.tier === SubscriptionTier.FREE && (
         <View style={styles.upgradeCta}>
+          <View style={styles.upgradeIconTile}>
+            <Icon source="crown" size={22} color={brandColors.secondaryDark} />
+          </View>
           <Text style={styles.upgradeTitle}>Unlock more features</Text>
           <Text style={styles.upgradeDesc}>
             Upgrade to Pro for featured listings, advanced analytics, custom branding, and more.
           </Text>
-          <TouchableOpacity
+          <Button
+            mode="contained"
+            buttonColor={brandColors.secondary}
+            textColor="#221B0E"
             style={styles.upgradeButton}
+            contentStyle={styles.upgradeButtonContent}
             disabled={actionLoading}
             onPress={() => handleUpgrade(SubscriptionTier.PRO)}
           >
-            <Text style={styles.upgradeButtonText}>
-              {actionLoading ? 'Processing...' : 'Upgrade to Pro'}
-            </Text>
-          </TouchableOpacity>
+            {actionLoading ? 'Processing...' : 'Upgrade to Pro'}
+          </Button>
         </View>
       )}
 
       {/* Cancel subscription */}
       {currentSub.tier !== SubscriptionTier.FREE && (
-        <TouchableOpacity
+        <Button
+          mode="outlined"
+          textColor={brandColors.error}
           style={styles.cancelButton}
           disabled={actionLoading}
           onPress={handleCancel}
         >
-          <Text style={styles.cancelButtonText}>Cancel Subscription</Text>
-        </TouchableOpacity>
+          Cancel Subscription
+        </Button>
       )}
     </ScrollView>
   )
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAFAFA' },
+  container: { flex: 1, backgroundColor: brandColors.background },
   content: { padding: 20, paddingBottom: 40 },
+  centered: { justifyContent: 'center', alignItems: 'center' },
+
+  // Header
+  eyebrow: {
+    fontSize: 11,
+    fontFamily: 'TTSquares-Bold',
+    color: brandColors.secondaryDark,
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+  },
+  title: { fontSize: 26, fontFamily: 'TTSquares-Black', color: brandColors.text, marginTop: 4 },
+  lede: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 6, marginBottom: 20 },
 
   // Current plan card
   currentPlanCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: brandColors.surface,
+    borderRadius: 14,
     padding: 20,
     marginBottom: 24,
-    borderWidth: 1.5,
-    borderColor: 'rgba(46,125,50,0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(26,46,34,0.10)',
   },
-  currentPlanLabel: { fontSize: 12, color: '#757575', fontFamily: 'TTSquares-Bold', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 },
-  currentPlanName: { fontSize: 24, fontFamily: 'TTSquares-Black', color: '#1a1a1a', marginBottom: 8 },
+  currentPlanLabel: { fontSize: 11, color: brandColors.secondaryDark, fontFamily: 'TTSquares-Bold', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 4 },
+  currentPlanName: { fontSize: 24, fontFamily: 'TTSquares-Black', color: brandColors.text, marginBottom: 8 },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
-  statusBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
-  statusActive: { backgroundColor: 'rgba(46,125,50,0.1)' },
-  statusInactive: { backgroundColor: 'rgba(229,57,53,0.1)' },
+  statusBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
+  statusActive: { backgroundColor: 'rgba(47,107,70,0.12)' },
+  statusInactive: { backgroundColor: 'rgba(165,67,47,0.12)' },
   statusText: { fontSize: 11, fontFamily: 'TTSquares-Bold' },
-  statusTextActive: { color: '#2E7D32' },
-  statusTextInactive: { color: '#E53935' },
-  billingText: { fontSize: 13, fontFamily: 'TTSquares-Regular', color: '#757575' },
-  renewText: { fontSize: 13, fontFamily: 'TTSquares-Regular', color: '#757575', marginBottom: 4 },
-  feeText: { fontSize: 13, fontFamily: 'TTSquares-Regular', color: '#757575' },
+  statusTextActive: { color: brandColors.success },
+  statusTextInactive: { color: brandColors.error },
+  billingText: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary },
+  renewText: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginBottom: 4 },
+  feeText: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary },
 
   // Section title
-  sectionTitle: { fontSize: 18, fontFamily: 'TTSquares-Bold', color: '#1a1a1a', marginBottom: 12 },
+  sectionTitle: { fontSize: 18, fontFamily: 'TTSquares-Bold', color: brandColors.text, marginBottom: 12 },
 
   // Plans row
   plansRow: { paddingBottom: 8, paddingRight: 20, gap: 12 },
 
   // Plan card
   planCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: brandColors.surface,
+    borderRadius: 14,
     padding: 16,
     width: 220,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
+    borderColor: 'rgba(26,46,34,0.10)',
   },
   planCardPro: { borderColor: brandColors.primary, borderWidth: 2 },
-  planCardCurrent: { backgroundColor: 'rgba(46,125,50,0.03)' },
+  planCardCurrent: { backgroundColor: 'rgba(168,181,160,0.12)' },
   popularBadge: {
     backgroundColor: brandColors.primary,
-    borderRadius: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
     alignSelf: 'flex-start',
     marginBottom: 8,
   },
-  popularText: { color: '#FFFFFF', fontSize: 10, fontFamily: 'TTSquares-Bold' },
-  planName: { fontSize: 18, fontFamily: 'TTSquares-Bold', color: '#1a1a1a', marginBottom: 4 },
-  planDesc: { fontSize: 12, fontFamily: 'TTSquares-Regular', color: '#757575', marginBottom: 12 },
+  popularText: { color: '#FFFFFF', fontSize: 10, fontFamily: 'TTSquares-Bold', letterSpacing: 0.5 },
+  planName: { fontSize: 18, fontFamily: 'TTSquares-Bold', color: brandColors.text, marginBottom: 4 },
+  planDesc: { fontSize: 12, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginBottom: 12 },
   priceRow: { flexDirection: 'row', alignItems: 'baseline' },
-  planPrice: { fontSize: 28, fontFamily: 'TTSquares-Black', color: '#1a1a1a' },
-  priceUnit: { fontSize: 13, fontFamily: 'TTSquares-Regular', color: '#757575', marginLeft: 2 },
+  planPrice: { fontSize: 28, fontFamily: 'TTSquares-Black', color: brandColors.text },
+  priceUnit: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginLeft: 2 },
   feeLabel: { fontSize: 12, color: brandColors.primary, fontFamily: 'TTSquares-Bold', marginTop: 2, marginBottom: 12 },
 
   // Features
   featuresList: { marginBottom: 16 },
   featureRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 5 },
-  featureItem: { fontSize: 12, fontFamily: 'TTSquares-Regular', color: '#424242', flex: 1 },
+  featureItem: { fontSize: 12, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, flex: 1 },
 
   // Plan button
-  planButton: {
-    borderWidth: 1.5,
-    borderColor: brandColors.primary,
-    borderRadius: 8,
+  planButton: { borderRadius: 999 },
+  currentChip: {
+    backgroundColor: 'rgba(168,181,160,0.28)',
+    borderRadius: 999,
     paddingVertical: 10,
     alignItems: 'center',
   },
-  planButtonCurrent: { borderColor: 'rgba(0,0,0,0.12)', backgroundColor: 'rgba(0,0,0,0.03)' },
-  planButtonPro: { backgroundColor: brandColors.primary },
-  planButtonText: { fontSize: 14, fontFamily: 'TTSquares-Bold', color: brandColors.primary },
-  planButtonTextCurrent: { color: '#9E9E9E' },
-  planButtonTextPro: { color: '#FFFFFF' },
+  currentChipText: { fontSize: 14, fontFamily: 'TTSquares-Bold', color: brandColors.text },
 
   // Upgrade CTA
   upgradeCta: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: brandColors.surface,
+    borderRadius: 14,
     padding: 24,
     marginTop: 24,
-    borderWidth: 1.5,
-    borderColor: 'rgba(46,125,50,0.2)',
-    borderStyle: 'dashed',
+    borderWidth: 1,
+    borderColor: 'rgba(26,46,34,0.10)',
     alignItems: 'center',
   },
-  upgradeTitle: { fontSize: 18, fontFamily: 'TTSquares-Bold', color: '#1a1a1a', marginBottom: 8 },
-  upgradeDesc: { fontSize: 13, fontFamily: 'TTSquares-Regular', color: '#757575', textAlign: 'center', marginBottom: 16, lineHeight: 20 },
-  upgradeButton: {
-    backgroundColor: brandColors.primary,
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 32,
+  upgradeIconTile: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: 'rgba(199,162,74,0.16)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
   },
-  upgradeButtonText: { color: '#FFFFFF', fontSize: 15, fontFamily: 'TTSquares-Bold' },
+  upgradeTitle: { fontSize: 18, fontFamily: 'TTSquares-Bold', color: brandColors.text, marginBottom: 8 },
+  upgradeDesc: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, textAlign: 'center', marginBottom: 16, lineHeight: 20 },
+  upgradeButton: { borderRadius: 999, alignSelf: 'stretch' },
+  upgradeButtonContent: { paddingVertical: 4 },
 
   // Cancel button
   cancelButton: {
-    marginHorizontal: 20,
     marginTop: 16,
-    marginBottom: 40,
-    borderWidth: 1.5,
-    borderColor: '#D32F2F',
-    borderRadius: 8,
-    paddingVertical: 12,
-    alignItems: 'center',
+    marginBottom: 8,
+    borderRadius: 999,
+    borderColor: brandColors.error,
   },
-  cancelButtonText: { color: '#D32F2F', fontSize: 15, fontFamily: 'TTSquares-Bold' },
 })

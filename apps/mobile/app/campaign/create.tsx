@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { View, ScrollView, StyleSheet, Alert } from 'react-native'
-import { TextInput, Button, Text, SegmentedButtons } from 'react-native-paper'
+import { TextInput, Button, Text, SegmentedButtons, Chip } from 'react-native-paper'
 import { router } from 'expo-router'
 import { CampaignCategory } from '@ubuntu-fund/types'
 import { brandColors } from '@/theme'
@@ -47,6 +47,7 @@ export default function CreateCampaignScreen() {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.content}>
+        <Text style={styles.eyebrow}>NEW CAMPAIGN</Text>
         <Text variant="headlineSmall" style={styles.heading}>
           Start a Campaign
         </Text>
@@ -59,6 +60,8 @@ export default function CreateCampaignScreen() {
           value={title}
           onChangeText={setTitle}
           mode="outlined"
+          outlineColor="rgba(26,46,34,0.15)"
+          activeOutlineColor={brandColors.primary}
           style={styles.input}
         />
 
@@ -67,6 +70,8 @@ export default function CreateCampaignScreen() {
           value={description}
           onChangeText={setDescription}
           mode="outlined"
+          outlineColor="rgba(26,46,34,0.15)"
+          activeOutlineColor={brandColors.primary}
           multiline
           numberOfLines={5}
           style={styles.input}
@@ -78,6 +83,8 @@ export default function CreateCampaignScreen() {
             value={goalAmount}
             onChangeText={setGoalAmount}
             mode="outlined"
+            outlineColor="rgba(26,46,34,0.15)"
+            activeOutlineColor={brandColors.primary}
             keyboardType="numeric"
             style={[styles.input, { flex: 2 }]}
           />
@@ -98,16 +105,20 @@ export default function CreateCampaignScreen() {
         </Text>
         <View style={styles.categoryGrid}>
           {CATEGORIES.map((cat) => (
-            <Button
+            <Chip
               key={cat.value}
-              mode={category === cat.value ? 'contained' : 'outlined'}
               onPress={() => setCategory(cat.value)}
-              compact
-              style={styles.categoryButton}
-              buttonColor={category === cat.value ? brandColors.primary : undefined}
+              style={[
+                styles.categoryChip,
+                category === cat.value && styles.categoryChipSelected,
+              ]}
+              textStyle={[
+                styles.categoryChipText,
+                category === cat.value && styles.categoryChipTextSelected,
+              ]}
             >
               {cat.label}
-            </Button>
+            </Chip>
           ))}
         </View>
 
@@ -116,7 +127,8 @@ export default function CreateCampaignScreen() {
           onPress={handleSubmit}
           style={styles.submitButton}
           labelStyle={styles.submitLabel}
-          buttonColor={brandColors.primary}
+          buttonColor={brandColors.secondary}
+          textColor="#221B0E"
           disabled={!title || !description || !goalAmount || isSubmitting}
           loading={isSubmitting}
         >
@@ -128,15 +140,26 @@ export default function CreateCampaignScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAFAFA' },
+  container: { flex: 1, backgroundColor: brandColors.background },
   content: { padding: 16 },
+  eyebrow: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+    color: brandColors.secondaryDark,
+    marginBottom: 6,
+  },
   heading: { fontFamily: 'TTSquares-Bold', marginBottom: 4 },
-  subtitle: { color: '#757575', marginBottom: 24 },
-  input: { marginBottom: 16 },
+  subtitle: { color: brandColors.textSecondary, marginBottom: 24 },
+  input: { marginBottom: 16, backgroundColor: brandColors.surface },
   row: { flexDirection: 'row', gap: 12, alignItems: 'center' },
   label: { marginBottom: 8, fontFamily: 'TTSquares-Bold' },
   categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 },
-  categoryButton: { borderRadius: 8 },
-  submitButton: { borderRadius: 8, paddingVertical: 4, marginTop: 8 },
+  categoryChip: { backgroundColor: 'rgba(168,181,160,0.28)' },
+  categoryChipSelected: { backgroundColor: brandColors.primary },
+  categoryChipText: { color: brandColors.text, fontFamily: 'Outfit_400Regular' },
+  categoryChipTextSelected: { color: '#FFFFFF', fontFamily: 'TTSquares-Bold' },
+  submitButton: { borderRadius: 999, paddingVertical: 4, marginTop: 8 },
   submitLabel: { fontSize: 16, fontFamily: 'TTSquares-Bold' },
 })

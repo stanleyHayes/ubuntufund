@@ -11,8 +11,8 @@ interface CampaignCardProps {
 }
 
 const priorityColor: Record<string, string> = {
-  critical: '#A5432F',
-  urgent: '#A07E33',
+  critical: brandColors.error,
+  urgent: brandColors.secondaryDark,
   normal: 'transparent',
 }
 
@@ -28,6 +28,7 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
 
   return (
     <Card
+      mode="contained"
       style={styles.card}
       onPress={() => router.push(`/campaign/${campaign.id}`)}
     >
@@ -36,14 +37,14 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
       )}
       <Card.Content style={styles.content}>
         <View style={styles.chipRow}>
-          <Chip compact style={styles.categoryChip} textStyle={styles.chipText}>
+          <Chip compact style={styles.categoryChip} textStyle={styles.categoryChipText}>
             {campaign.category}
           </Chip>
           {campaign.priority !== 'normal' && (
             <Chip
               compact
               style={[styles.priorityChip, { backgroundColor: priorityColor[campaign.priority] }]}
-              textStyle={[styles.chipText, { color: '#FFFFFF' }]}
+              textStyle={styles.priorityChipText}
             >
               {campaign.priority}
             </Chip>
@@ -79,20 +80,23 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
 const styles = StyleSheet.create({
   card: {
     marginBottom: 16,
-    borderRadius: 12,
+    borderRadius: 14,
     backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: 'rgba(26,46,34,0.10)',
     overflow: 'hidden',
   },
   cover: { height: 160 },
   content: { padding: 12, paddingTop: 10 },
   chipRow: { flexDirection: 'row', gap: 6, marginBottom: 8 },
-  categoryChip: { height: 24 },
+  categoryChip: { height: 24, backgroundColor: 'rgba(168,181,160,0.28)' },
+  categoryChipText: { fontSize: 11, fontFamily: 'TTSquares-Bold', color: brandColors.text },
   priorityChip: { height: 24 },
-  chipText: { fontSize: 11, fontFamily: 'TTSquares-Regular' },
-  title: { fontFamily: 'TTSquares-Bold', marginBottom: 4 },
-  description: { color: '#757575', marginBottom: 10, lineHeight: 18 },
+  priorityChipText: { fontSize: 11, fontFamily: 'TTSquares-Bold', color: '#FFFFFF' },
+  title: { fontFamily: 'TTSquares-Bold', color: brandColors.text, marginBottom: 4 },
+  description: { color: brandColors.textSecondary, marginBottom: 10, lineHeight: 18 },
   stats: { flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 4 },
   raised: { color: brandColors.primary, fontFamily: 'TTSquares-Bold' },
-  muted: { color: '#757575', flex: 1 },
-  daysLeft: { color: '#757575' },
+  muted: { color: brandColors.textSecondary, flex: 1 },
+  daysLeft: { color: brandColors.textSecondary },
 })

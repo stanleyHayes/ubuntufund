@@ -6,10 +6,10 @@ import { api } from '@/lib/api'
 import { brandColors } from '@/theme'
 
 const typeColors: Record<string, { text: string; bg: string }> = {
-  milestone: { text: '#1565C0', bg: '#E3F2FD' },
-  general: { text: '#2E3D2F', bg: '#E9EFE6' },
-  thank_you: { text: '#C62828', bg: '#FFEBEE' },
-  urgent: { text: '#EF6C00', bg: '#FFF3E0' },
+  milestone: { text: brandColors.secondaryDark, bg: 'rgba(199,162,74,0.18)' },
+  general: { text: brandColors.text, bg: 'rgba(168,181,160,0.28)' },
+  thank_you: { text: brandColors.success, bg: 'rgba(47,107,70,0.14)' },
+  urgent: { text: brandColors.warning, bg: 'rgba(185,138,46,0.16)' },
 }
 
 interface CampaignUpdatesListProps {
@@ -66,7 +66,7 @@ export function CampaignUpdatesList({ campaignId }: CampaignUpdatesListProps) {
   if (error) {
     return (
       <View style={styles.center}>
-        <Text style={{ color: '#E53935' }}>{error}</Text>
+        <Text style={{ color: brandColors.error }}>{error}</Text>
       </View>
     )
   }
@@ -74,7 +74,11 @@ export function CampaignUpdatesList({ campaignId }: CampaignUpdatesListProps) {
   if (updates.length === 0) {
     return (
       <View style={styles.center}>
-        <Text style={styles.emptyText}>No updates yet.</Text>
+        <View style={styles.emptyIconTile}>
+          <Icon source="bell-outline" size={24} color={brandColors.primary} />
+        </View>
+        <Text style={styles.emptyTitle}>No updates yet</Text>
+        <Text style={styles.emptyBody}>Check back soon for news from the campaign creator.</Text>
       </View>
     )
   }
@@ -109,7 +113,7 @@ export function CampaignUpdatesList({ campaignId }: CampaignUpdatesListProps) {
               </View>
               <Chip
                 style={[styles.typeChip, { backgroundColor: typeStyle.bg }]}
-                textStyle={{ color: typeStyle.text, fontSize: 11, fontWeight: '700' }}
+                textStyle={{ color: typeStyle.text, fontSize: 11, fontFamily: 'TTSquares-Bold' }}
               >
                 {update.type.replace(/_/g, ' ')}
               </Chip>
@@ -146,13 +150,35 @@ export function CampaignUpdatesList({ campaignId }: CampaignUpdatesListProps) {
 
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  emptyText: { fontSize: 14, color: '#757575', fontFamily: 'TTSquares-Regular' },
+  emptyIconTile: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(168,181,160,0.28)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  emptyTitle: {
+    fontSize: 15,
+    fontFamily: 'TTSquares-Bold',
+    color: brandColors.text,
+    marginBottom: 4,
+  },
+  emptyBody: {
+    fontSize: 13,
+    color: brandColors.textSecondary,
+    fontFamily: 'Outfit_400Regular',
+    textAlign: 'center',
+  },
   list: { padding: 16 },
   card: {
     padding: 14,
-    borderRadius: 12,
+    borderRadius: 14,
     marginBottom: 10,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: brandColors.surface,
+    borderWidth: 1,
+    borderColor: 'rgba(26,46,34,0.10)',
   },
   pinnedRow: {
     flexDirection: 'row',
@@ -177,12 +203,12 @@ const styles = StyleSheet.create({
   authorName: {
     fontSize: 13,
     fontFamily: 'TTSquares-Bold',
-    color: '#1a1a1a',
+    color: brandColors.text,
   },
   dateText: {
     fontSize: 11,
-    color: '#757575',
-    fontFamily: 'TTSquares-Regular',
+    color: brandColors.textSecondary,
+    fontFamily: 'Outfit_400Regular',
   },
   typeChip: {
     height: 24,
@@ -191,21 +217,22 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 15,
     fontFamily: 'TTSquares-Bold',
-    color: '#1a1a1a',
+    color: brandColors.text,
     marginBottom: 8,
     lineHeight: 20,
   },
   content: {
     fontSize: 13,
-    color: '#424242',
+    color: brandColors.textSecondary,
     lineHeight: 20,
-    fontFamily: 'TTSquares-Regular',
+    fontFamily: 'Outfit_400Regular',
   },
   readMore: {
     fontSize: 12,
     color: brandColors.primary,
     fontFamily: 'TTSquares-Bold',
     marginTop: 6,
+    paddingVertical: 6,
   },
   mediaScroll: {
     marginTop: 10,

@@ -28,12 +28,12 @@ const fontConfig = {
   titleLarge: { fontFamily: 'TTSquares-Bold' },
   titleMedium: { fontFamily: 'TTSquares-Bold' },
   titleSmall: { fontFamily: 'TTSquares-Bold' },
-  labelLarge: { fontFamily: 'TTSquares-Bold' },
-  labelMedium: { fontFamily: 'TTSquares-Bold' },
-  labelSmall: { fontFamily: 'TTSquares-Bold' },
-  bodyLarge: { fontFamily: 'TTSquares-Regular' },
-  bodyMedium: { fontFamily: 'TTSquares-Regular' },
-  bodySmall: { fontFamily: 'TTSquares-Regular' },
+  labelLarge: { fontFamily: 'Outfit_600SemiBold' },
+  labelMedium: { fontFamily: 'Outfit_500Medium' },
+  labelSmall: { fontFamily: 'Outfit_500Medium' },
+  bodyLarge: { fontFamily: 'Outfit_400Regular' },
+  bodyMedium: { fontFamily: 'Outfit_400Regular' },
+  bodySmall: { fontFamily: 'Outfit_400Regular' },
 } as const
 
 const fonts = configureFonts({ config: fontConfig })

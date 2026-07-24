@@ -4,19 +4,16 @@ import {
   ScrollView,
   StyleSheet,
   Animated,
-  Dimensions,
   TouchableOpacity,
   Image,
 } from 'react-native'
-import { Text, Icon, Chip, Button } from 'react-native-paper'
+import { Text, Icon, Button } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, Stack } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
 import { ProgressBar } from '@/components/ProgressBar'
 import { brandColors } from '@/theme'
-
-const { width } = Dimensions.get('window')
 
 interface Campaign {
   id: string
@@ -38,11 +35,11 @@ function formatCurrency(amount: number, currency: string) {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  active: '#2E7D32',
-  draft: '#78909C',
-  completed: '#1565C0',
-  paused: '#F57F17',
-  cancelled: '#E53935',
+  active: brandColors.success,
+  draft: brandColors.textSecondary,
+  completed: brandColors.primaryLight,
+  paused: brandColors.warning,
+  cancelled: brandColors.error,
 }
 
 // ─── Skeleton ────────────────────────────────────────────────
@@ -63,10 +60,10 @@ function SkeletonCard({ index }: { index: number }) {
     <Animated.View style={[styles.skeletonCard, { opacity }]}>
       <View style={styles.skeletonImage} />
       <View style={styles.skeletonContent}>
-        <View style={{ width: '70%', height: 14, backgroundColor: '#E0E0E0', borderRadius: 4, marginBottom: 8 }} />
-        <View style={{ width: '40%', height: 10, backgroundColor: '#E0E0E0', borderRadius: 4, marginBottom: 12 }} />
-        <View style={{ width: '100%', height: 6, backgroundColor: '#E0E0E0', borderRadius: 3, marginBottom: 8 }} />
-        <View style={{ width: '50%', height: 10, backgroundColor: '#E0E0E0', borderRadius: 4 }} />
+        <View style={[styles.skeletonLine, { width: '70%', marginBottom: 8 }]} />
+        <View style={[styles.skeletonLine, { width: '40%', height: 10, marginBottom: 12 }]} />
+        <View style={[styles.skeletonLine, { width: '100%', height: 6, marginBottom: 8, borderRadius: 3 }]} />
+        <View style={[styles.skeletonLine, { width: '50%', height: 10 }]} />
       </View>
     </Animated.View>
   )
@@ -76,7 +73,7 @@ function SkeletonCard({ index }: { index: number }) {
 
 function CampaignCard({ campaign }: { campaign: Campaign }) {
   const pct = campaign.goalAmount > 0 ? Math.min(campaign.raisedAmount / campaign.goalAmount, 1) : 0
-  const statusColor = STATUS_COLORS[campaign.status] ?? '#78909C'
+  const statusColor = STATUS_COLORS[campaign.status] ?? brandColors.textSecondary
 
   return (
     <TouchableOpacity
@@ -87,7 +84,7 @@ function CampaignCard({ campaign }: { campaign: Campaign }) {
       {campaign.imageUrls?.[0] ? (
         <Image source={{ uri: campaign.imageUrls[0] }} style={styles.cardImage} />
       ) : (
-        <View style={[styles.cardImage, { backgroundColor: '#E8F5E9' }]} />
+        <View style={[styles.cardImage, styles.cardImageFallback]} />
       )}
       <View style={styles.cardContent}>
         <View style={styles.cardHeader}>
@@ -170,17 +167,29 @@ export default function MyCampaignsScreen() {
         }}
       />
 
-      {/* Create button */}
-      <TouchableOpacity
-        style={styles.createBtn}
-        activeOpacity={0.85}
-        onPress={() => router.push('/campaign/create')}
-      >
-        <Icon source="plus" size={18} color="#1B5E20" />
-        <Text style={styles.createBtnText}>Create New Campaign</Text>
-      </TouchableOpacity>
+      <View style={styles.headerBlock}>
+        <Text style={styles.eyebrow}>Your Campaigns</Text>
+        <Text style={styles.pageTitle}>My Campaigns</Text>
+        <Text style={styles.pageLede}>Manage and track the causes you've started.</Text>
+      </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+      {/* Create button */}
+      <Button
+        mode="contained"
+        buttonColor={brandColors.secondary}
+        textColor="#221B0E"
+        icon="plus"
+        onPress={() => router.push('/campaign/create')}
+        style={styles.createBtn}
+        labelStyle={styles.btnLabel}
+      >
+        Create New Campaign
+      </Button>
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 32 + insets.bottom }}
+      >
         {loading ? (
           <View style={styles.listWrap}>
             {[0, 1, 2].map((i) => (
@@ -189,22 +198,35 @@ export default function MyCampaignsScreen() {
           </View>
         ) : error ? (
           <View style={styles.emptyState}>
-            <Icon source="alert-circle-outline" size={48} color="#ccc" />
+            <View style={[styles.emptyIconTile, styles.errorIconTile]}>
+              <Icon source="alert-circle-outline" size={24} color={brandColors.error} />
+            </View>
             <Text style={styles.emptyTitle}>{error}</Text>
-            <Button mode="outlined" onPress={fetchCampaigns} style={{ marginTop: 12 }}>
+            <Button
+              mode="contained"
+              buttonColor={brandColors.primary}
+              textColor="#FFFFFF"
+              onPress={fetchCampaigns}
+              style={styles.actionBtn}
+              labelStyle={styles.btnLabel}
+            >
               Retry
             </Button>
           </View>
         ) : campaigns.length === 0 ? (
           <View style={styles.emptyState}>
-            <Icon source="bullhorn-outline" size={48} color="#ccc" />
+            <View style={styles.emptyIconTile}>
+              <Icon source="bullhorn-outline" size={24} color={brandColors.primary} />
+            </View>
             <Text style={styles.emptyTitle}>You haven't created any campaigns yet</Text>
             <Text style={styles.emptySubtitle}>Start your first campaign and make a difference</Text>
             <Button
               mode="contained"
+              buttonColor={brandColors.secondary}
+              textColor="#221B0E"
               onPress={() => router.push('/campaign/create')}
-              style={{ marginTop: 16, backgroundColor: brandColors.primary }}
-              labelStyle={{ fontFamily: 'TTSquares-Bold' }}
+              style={styles.actionBtn}
+              labelStyle={styles.btnLabel}
             >
               Create Campaign
             </Button>
@@ -222,20 +244,19 @@ export default function MyCampaignsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F8F4' },
+  container: { flex: 1, backgroundColor: brandColors.background },
+
+  headerBlock: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 4 },
+  eyebrow: { fontSize: 11, fontFamily: 'TTSquares-Bold', fontWeight: '700', color: brandColors.secondaryDark, textTransform: 'uppercase', letterSpacing: 2 },
+  pageTitle: { fontSize: 24, fontFamily: 'TTSquares-Black', color: brandColors.text, marginTop: 4 },
+  pageLede: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 4 },
+
   createBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
     marginHorizontal: 16,
     marginTop: 16,
     marginBottom: 8,
-    paddingVertical: 14,
-    borderRadius: 12,
-    backgroundColor: brandColors.secondary,
+    borderRadius: 999,
   },
-  createBtnText: { fontSize: 15, fontFamily: 'TTSquares-Bold', color: '#1B5E20' },
   listWrap: { paddingHorizontal: 16, paddingTop: 8 },
 
   // Card
@@ -244,24 +265,22 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     overflow: 'hidden',
     marginBottom: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(26,46,34,0.10)',
   },
   cardImage: { width: '100%', height: 120 },
+  cardImageFallback: { backgroundColor: 'rgba(168,181,160,0.28)' },
   cardContent: { padding: 14 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 },
-  cardTitle: { flex: 1, fontSize: 15, fontFamily: 'TTSquares-Bold', color: '#1a1a1a', marginRight: 8 },
+  cardTitle: { flex: 1, fontSize: 15, fontFamily: 'TTSquares-Bold', color: brandColors.text, marginRight: 8 },
   statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
   statusText: { fontSize: 11, fontFamily: 'TTSquares-Bold' },
   cardStats: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
   cardRaised: { fontSize: 13, fontFamily: 'TTSquares-Bold', color: brandColors.primary },
-  cardGoal: { fontSize: 11, fontFamily: 'TTSquares-Regular', color: '#999', flex: 1 },
-  cardPct: { fontSize: 13, fontFamily: 'TTSquares-Bold', color: '#666' },
-  cardActions: { flexDirection: 'row', gap: 12, marginTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.04)', paddingTop: 12 },
-  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  cardGoal: { fontSize: 11, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, flex: 1 },
+  cardPct: { fontSize: 13, fontFamily: 'TTSquares-Bold', color: brandColors.textSecondary },
+  cardActions: { flexDirection: 'row', gap: 12, marginTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(26,46,34,0.08)', paddingTop: 12 },
+  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 8 },
   actionText: { fontSize: 13, fontFamily: 'TTSquares-Bold', color: brandColors.primary },
 
   // Skeleton
@@ -271,11 +290,23 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginBottom: 14,
   },
-  skeletonImage: { width: '100%', height: 120, backgroundColor: '#E0E0E0' },
+  skeletonImage: { width: '100%', height: 120, backgroundColor: 'rgba(168,181,160,0.28)' },
   skeletonContent: { padding: 14 },
+  skeletonLine: { height: 14, backgroundColor: 'rgba(168,181,160,0.35)', borderRadius: 4 },
 
   // Empty
-  emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 80, paddingHorizontal: 32 },
-  emptyTitle: { fontSize: 16, fontFamily: 'TTSquares-Bold', color: '#666', marginTop: 16, textAlign: 'center' },
-  emptySubtitle: { fontSize: 13, fontFamily: 'TTSquares-Regular', color: '#999', marginTop: 6, textAlign: 'center' },
+  emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 72, paddingHorizontal: 32 },
+  emptyIconTile: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(168,181,160,0.28)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  errorIconTile: { backgroundColor: 'rgba(165,67,47,0.14)' },
+  emptyTitle: { fontSize: 16, fontFamily: 'TTSquares-Bold', color: brandColors.text, textAlign: 'center' },
+  emptySubtitle: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 6, textAlign: 'center' },
+  btnLabel: { fontFamily: 'TTSquares-Bold' },
 })

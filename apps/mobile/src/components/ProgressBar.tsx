@@ -11,7 +11,7 @@ interface ProgressBarProps {
 export function ProgressBar({
   progress,
   height = 8,
-  backgroundColor = '#E0E0E0',
+  backgroundColor = 'rgba(168,181,160,0.28)',
   fillColor = brandColors.primary,
 }: ProgressBarProps) {
   const clampedProgress = Math.min(Math.max(progress, 0), 1)

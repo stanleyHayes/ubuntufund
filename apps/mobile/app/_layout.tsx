@@ -5,6 +5,11 @@ import { PaperProvider } from 'react-native-paper'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { StatusBar } from 'expo-status-bar'
 import { useFonts } from 'expo-font'
+import {
+  Outfit_400Regular,
+  Outfit_500Medium,
+  Outfit_600SemiBold,
+} from '@expo-google-fonts/outfit'
 import * as NativeSplash from 'expo-splash-screen'
 import * as Linking from 'expo-linking'
 import { lightTheme } from '@/theme'
@@ -28,6 +33,9 @@ export default function RootLayout() {
     'TTSquares-Regular': require('../assets/fonts/Squares Regular.otf'),
     'TTSquares-Bold': require('../assets/fonts/Squares Bold.otf'),
     'TTSquares-Black': require('../assets/fonts/Squares Black.otf'),
+    Outfit_400Regular,
+    Outfit_500Medium,
+    Outfit_600SemiBold,
   })
 
   const router = useRouter()

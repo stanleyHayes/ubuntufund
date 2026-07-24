@@ -6,7 +6,7 @@ import {
   Animated,
   TouchableOpacity,
 } from 'react-native'
-import { Text, Icon, Chip, Button } from 'react-native-paper'
+import { Text, Icon, Button } from 'react-native-paper'
 import { router, Stack } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
@@ -27,10 +27,10 @@ const FILTER_TABS = ['All', 'Completed', 'Pending', 'Refunded'] as const
 type FilterTab = (typeof FILTER_TABS)[number]
 
 const STATUS_COLORS: Record<string, string> = {
-  completed: '#2E7D32',
-  pending: '#F57F17',
-  refunded: '#1565C0',
-  failed: '#E53935',
+  completed: brandColors.success,
+  pending: brandColors.warning,
+  refunded: brandColors.primaryLight,
+  failed: brandColors.error,
 }
 
 function formatDate(date: string) {
@@ -52,10 +52,10 @@ function SkeletonRow() {
   return (
     <Animated.View style={[styles.skeletonRow, { opacity }]}>
       <View style={{ flex: 1 }}>
-        <View style={{ width: '60%', height: 14, backgroundColor: '#E0E0E0', borderRadius: 4, marginBottom: 6 }} />
-        <View style={{ width: '40%', height: 10, backgroundColor: '#E0E0E0', borderRadius: 4 }} />
+        <View style={[styles.skeletonLine, { width: '60%', marginBottom: 6 }]} />
+        <View style={[styles.skeletonLine, { width: '40%', height: 10 }]} />
       </View>
-      <View style={{ width: 60, height: 14, backgroundColor: '#E0E0E0', borderRadius: 4 }} />
+      <View style={[styles.skeletonLine, { width: 60 }]} />
     </Animated.View>
   )
 }
@@ -101,6 +101,12 @@ export default function MyDonationsScreen() {
         }}
       />
 
+      <View style={styles.headerBlock}>
+        <Text style={styles.eyebrow}>Giving History</Text>
+        <Text style={styles.pageTitle}>My Donations</Text>
+        <Text style={styles.pageLede}>Every contribution you've made, in one place.</Text>
+      </View>
+
       {/* Filter Tabs */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
         {FILTER_TABS.map((tab) => (
@@ -108,6 +114,7 @@ export default function MyDonationsScreen() {
             key={tab}
             style={[styles.filterTab, activeFilter === tab && styles.filterTabActive]}
             activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
             onPress={() => setActiveFilter(tab)}
           >
             <Text style={[styles.filterTabText, activeFilter === tab && styles.filterTabTextActive]}>
@@ -124,15 +131,26 @@ export default function MyDonationsScreen() {
           </View>
         ) : error ? (
           <View style={styles.emptyState}>
-            <Icon source="alert-circle-outline" size={48} color="#ccc" />
+            <View style={[styles.emptyIconTile, styles.errorIconTile]}>
+              <Icon source="alert-circle-outline" size={24} color={brandColors.error} />
+            </View>
             <Text style={styles.emptyTitle}>{error}</Text>
-            <Button mode="outlined" onPress={fetchDonations} style={{ marginTop: 12 }}>
+            <Button
+              mode="contained"
+              buttonColor={brandColors.primary}
+              textColor="#FFFFFF"
+              onPress={fetchDonations}
+              style={styles.actionBtn}
+              labelStyle={styles.btnLabel}
+            >
               Retry
             </Button>
           </View>
         ) : filtered.length === 0 ? (
           <View style={styles.emptyState}>
-            <Icon source="heart-outline" size={48} color="#ccc" />
+            <View style={styles.emptyIconTile}>
+              <Icon source="heart-outline" size={24} color={brandColors.primary} />
+            </View>
             <Text style={styles.emptyTitle}>No donations found</Text>
             <Text style={styles.emptySubtitle}>
               {activeFilter !== 'All' ? `No ${activeFilter.toLowerCase()} donations` : 'Your donation history will appear here'}
@@ -141,7 +159,7 @@ export default function MyDonationsScreen() {
         ) : (
           <View style={styles.listWrap}>
             {filtered.map((d) => {
-              const statusColor = STATUS_COLORS[d.status] ?? '#78909C'
+              const statusColor = STATUS_COLORS[d.status] ?? brandColors.textSecondary
               const canRefund = d.status === 'completed'
               return (
                 <TouchableOpacity
@@ -174,6 +192,7 @@ export default function MyDonationsScreen() {
                     {canRefund && (
                       <TouchableOpacity
                         style={styles.refundBtn}
+                        hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
                         onPress={() => router.push({ pathname: '/refund-request', params: { donationId: d.id } })}
                       >
                         <Text style={styles.refundBtnText}>Request Refund</Text>
@@ -191,12 +210,17 @@ export default function MyDonationsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F8F4' },
+  container: { flex: 1, backgroundColor: brandColors.background },
+
+  headerBlock: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 4 },
+  eyebrow: { fontSize: 11, fontFamily: 'TTSquares-Bold', fontWeight: '700', color: brandColors.secondaryDark, textTransform: 'uppercase', letterSpacing: 2 },
+  pageTitle: { fontSize: 24, fontFamily: 'TTSquares-Black', color: brandColors.text, marginTop: 4 },
+  pageLede: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 4 },
 
   filterRow: { paddingHorizontal: 16, paddingVertical: 12, gap: 8 },
-  filterTab: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#fff', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' },
+  filterTab: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999, backgroundColor: '#fff', borderWidth: 1, borderColor: 'rgba(26,46,34,0.10)' },
   filterTabActive: { backgroundColor: brandColors.primary, borderColor: brandColors.primary },
-  filterTabText: { fontSize: 13, fontFamily: 'TTSquares-Bold', color: '#666' },
+  filterTabText: { fontSize: 13, fontFamily: 'TTSquares-Bold', color: brandColors.textSecondary },
   filterTabTextActive: { color: '#fff' },
 
   listWrap: { paddingHorizontal: 16 },
@@ -206,22 +230,19 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 14,
     marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(26,46,34,0.10)',
   },
   donationHeader: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 10 },
-  donationCampaign: { fontSize: 15, fontFamily: 'TTSquares-Bold', color: '#1a1a1a' },
-  donationDate: { fontSize: 11, fontFamily: 'TTSquares-Regular', color: '#999', marginTop: 2 },
+  donationCampaign: { fontSize: 15, fontFamily: 'TTSquares-Bold', color: brandColors.text },
+  donationDate: { fontSize: 11, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 2 },
   donationAmount: { fontSize: 17, fontFamily: 'TTSquares-Bold', color: brandColors.primary },
   donationFooter: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   statusChip: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
   statusChipText: { fontSize: 11, fontFamily: 'TTSquares-Bold' },
-  paymentMethod: { fontSize: 11, color: '#999', fontFamily: 'TTSquares-Regular' },
+  paymentMethod: { fontSize: 11, color: brandColors.textSecondary, fontFamily: 'Outfit_400Regular' },
   refundBtn: { marginLeft: 'auto' },
-  refundBtnText: { fontSize: 12, fontFamily: 'TTSquares-Bold', color: '#E53935' },
+  refundBtnText: { fontSize: 12, fontFamily: 'TTSquares-Bold', color: brandColors.error },
 
   skeletonRow: {
     flexDirection: 'row',
@@ -231,8 +252,21 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 10,
   },
+  skeletonLine: { height: 14, backgroundColor: 'rgba(168,181,160,0.35)', borderRadius: 4 },
 
-  emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 80, paddingHorizontal: 32 },
-  emptyTitle: { fontSize: 16, fontFamily: 'TTSquares-Bold', color: '#666', marginTop: 16, textAlign: 'center' },
-  emptySubtitle: { fontSize: 13, fontFamily: 'TTSquares-Regular', color: '#999', marginTop: 6, textAlign: 'center' },
+  emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 72, paddingHorizontal: 32 },
+  emptyIconTile: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(168,181,160,0.28)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  errorIconTile: { backgroundColor: 'rgba(165,67,47,0.14)' },
+  emptyTitle: { fontSize: 16, fontFamily: 'TTSquares-Bold', color: brandColors.text, textAlign: 'center' },
+  emptySubtitle: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 6, textAlign: 'center' },
+  actionBtn: { marginTop: 16, borderRadius: 999 },
+  btnLabel: { fontFamily: 'TTSquares-Bold' },
 })

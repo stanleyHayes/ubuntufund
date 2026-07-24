@@ -7,7 +7,7 @@ import {
   Dimensions,
   TouchableOpacity,
 } from 'react-native'
-import { Text, Icon, ActivityIndicator } from 'react-native-paper'
+import { Text, Icon, ActivityIndicator, Button, TouchableRipple } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { VerificationLevel } from '@ubuntu-fund/types'
@@ -28,17 +28,17 @@ interface ProfileStats {
 }
 
 const MENU_ITEMS: { icon: string; label: string; color: string; route: string }[] = [
-  { icon: 'view-dashboard', label: 'Dashboard', color: '#00695C', route: '/dashboard' },
-  { icon: 'bullhorn', label: 'My Campaigns', color: '#2E7D32', route: '/my-campaigns' },
-  { icon: 'heart', label: 'My Donations', color: '#E53935', route: '/my-donations' },
-  { icon: 'wallet', label: 'Wallet', color: '#1565C0', route: '/(tabs)/wallet' },
-  { icon: 'trophy', label: 'Leaderboard', color: '#F57F17', route: '/leaderboard' },
-  { icon: 'email-open', label: 'Invitations', color: '#6A1B9A', route: '/invitations' },
-  { icon: 'shield-check', label: 'Verification', color: '#00695C', route: '/verification' },
-  { icon: 'crown', label: 'Subscription', color: '#F9A825', route: '/(tabs)/subscription' },
-  { icon: 'cog', label: 'Settings', color: '#78909C', route: '/settings' },
-  { icon: 'file-document-outline', label: 'Terms of Service', color: '#78909C', route: '/terms' },
-  { icon: 'lock-outline', label: 'Privacy Policy', color: '#6A1B9A', route: '/privacy' },
+  { icon: 'view-dashboard', label: 'Dashboard', color: brandColors.primary, route: '/dashboard' },
+  { icon: 'bullhorn', label: 'My Campaigns', color: brandColors.success, route: '/my-campaigns' },
+  { icon: 'heart', label: 'My Donations', color: brandColors.error, route: '/my-donations' },
+  { icon: 'wallet', label: 'Wallet', color: brandColors.secondaryDark, route: '/(tabs)/wallet' },
+  { icon: 'trophy', label: 'Leaderboard', color: brandColors.secondary, route: '/leaderboard' },
+  { icon: 'email-open', label: 'Invitations', color: brandColors.textSecondary, route: '/invitations' },
+  { icon: 'shield-check', label: 'Verification', color: brandColors.success, route: '/verification' },
+  { icon: 'crown', label: 'Subscription', color: brandColors.secondary, route: '/(tabs)/subscription' },
+  { icon: 'cog', label: 'Settings', color: brandColors.textSecondary, route: '/settings' },
+  { icon: 'file-document-outline', label: 'Terms of Service', color: brandColors.textSecondary, route: '/terms' },
+  { icon: 'lock-outline', label: 'Privacy Policy', color: brandColors.textSecondary, route: '/privacy' },
 ]
 
 export default function ProfileTab() {
@@ -147,37 +147,46 @@ export default function ProfileTab() {
       <Animated.View style={{ opacity: bodyOpacity, transform: [{ translateY: bodySlide }] }}>
         <View style={styles.menuCard}>
           {MENU_ITEMS.map((item, i) => (
-            <TouchableOpacity
+            <TouchableRipple
               key={item.label}
               style={[styles.menuRow, i === MENU_ITEMS.length - 1 && { borderBottomWidth: 0 }]}
-              activeOpacity={0.7}
+              rippleColor="rgba(26,46,34,0.08)"
               onPress={() => router.push(item.route as never)}
             >
-              <View style={[styles.menuIcon, { backgroundColor: `${item.color}14` }]}>
-                <Icon source={item.icon} size={20} color={item.color} />
-              </View>
-              <Text style={styles.menuLabel}>{item.label}</Text>
-              <Icon source="chevron-right" size={18} color="#ccc" />
-            </TouchableOpacity>
+              <>
+                <View style={[styles.menuIcon, { backgroundColor: `${item.color}14` }]}>
+                  <Icon source={item.icon} size={20} color={item.color} />
+                </View>
+                <Text style={styles.menuLabel}>{item.label}</Text>
+                <Icon source="chevron-right" size={18} color="rgba(26,46,34,0.3)" />
+              </>
+            </TouchableRipple>
           ))}
         </View>
 
         {/* Legal links */}
         <View style={styles.legalRow}>
-          <TouchableOpacity onPress={() => router.push('/terms')}>
+          <TouchableOpacity onPress={() => router.push('/terms')} hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}>
             <Text style={styles.legalLink}>Terms</Text>
           </TouchableOpacity>
           <Text style={styles.legalDot}>·</Text>
-          <TouchableOpacity onPress={() => router.push('/privacy')}>
+          <TouchableOpacity onPress={() => router.push('/privacy')} hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}>
             <Text style={styles.legalLink}>Privacy</Text>
           </TouchableOpacity>
         </View>
 
         {/* Sign out */}
-        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-          <Icon source="logout" size={18} color="#E53935" />
-          <Text style={styles.logoutText}>Sign Out</Text>
-        </TouchableOpacity>
+        <Button
+          mode="outlined"
+          icon="logout"
+          onPress={handleLogout}
+          textColor={brandColors.error}
+          style={styles.logoutBtn}
+          contentStyle={styles.logoutBtnContent}
+          labelStyle={styles.logoutText}
+        >
+          Sign Out
+        </Button>
 
         <Text style={styles.version}>UbuntuFund v1.0.0</Text>
 
@@ -188,11 +197,11 @@ export default function ProfileTab() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F8F4' },
+  container: { flex: 1, backgroundColor: brandColors.background },
 
   // Hero
   hero: {
-    backgroundColor: '#0A1A0D',
+    backgroundColor: brandColors.primaryDark,
     paddingBottom: 24,
     paddingHorizontal: 20,
     alignItems: 'center',
@@ -213,18 +222,18 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: 'rgba(255,255,255,0.15)',
   },
-  avatarText: { fontSize: 28, fontFamily: 'TTSquares-Black', color: '#1B5E20' },
+  avatarText: { fontSize: 28, fontFamily: 'TTSquares-Black', color: brandColors.text },
   avatarBadge: {
     position: 'absolute',
     bottom: -2,
     right: -2,
-    backgroundColor: '#0A1A0D',
+    backgroundColor: brandColors.primaryDark,
     borderRadius: 12,
     padding: 2,
   },
 
   userName: { fontSize: 22, fontFamily: 'TTSquares-Black', color: '#FFFFFF', marginBottom: 2 },
-  userEmail: { fontSize: 13, fontFamily: 'TTSquares-Regular', color: 'rgba(255,255,255,0.45)', marginBottom: 12 },
+  userEmail: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: 'rgba(255,255,255,0.45)', marginBottom: 12 },
   trustWrap: { marginBottom: 16 },
 
   statsRow: {
@@ -240,19 +249,16 @@ const styles = StyleSheet.create({
   statDivider: { width: 1, height: 28, backgroundColor: 'rgba(255,255,255,0.08)', marginRight: 8 },
   statInner: { alignItems: 'center' },
   statValue: { fontSize: 17, fontFamily: 'TTSquares-Bold', color: brandColors.secondary },
-  statLabel: { fontSize: 10, color: 'rgba(255,255,255,0.4)', fontFamily: 'TTSquares-Regular', marginTop: 2 },
+  statLabel: { fontSize: 10, color: 'rgba(255,255,255,0.4)', fontFamily: 'Outfit_400Regular', marginTop: 2 },
 
   // Menu
   menuCard: {
     marginHorizontal: 16,
     marginTop: 20,
-    borderRadius: 16,
+    borderRadius: 14,
     backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(26,46,34,0.10)',
     overflow: 'hidden',
   },
   menuRow: {
@@ -260,8 +266,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 14,
+    minHeight: 44,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.04)',
+    borderBottomColor: 'rgba(26,46,34,0.08)',
   },
   menuIcon: {
     width: 38,
@@ -271,28 +278,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 14,
   },
-  menuLabel: { flex: 1, fontSize: 15, fontFamily: 'TTSquares-Bold', color: '#1a1a1a' },
+  menuLabel: { flex: 1, fontSize: 15, fontFamily: 'TTSquares-Bold', color: brandColors.text },
 
   // Legal
   legalRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 20, gap: 8 },
   legalLink: { fontSize: 13, color: brandColors.primary, fontFamily: 'TTSquares-Bold' },
-  legalDot: { fontSize: 13, fontFamily: 'TTSquares-Regular', color: '#ccc' },
+  legalDot: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: 'rgba(26,46,34,0.25)' },
 
   // Logout
   logoutBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
     marginHorizontal: 16,
     marginTop: 16,
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(229,57,53,0.2)',
-    backgroundColor: 'rgba(229,57,53,0.04)',
+    borderRadius: 999,
+    borderColor: 'rgba(165,67,47,0.3)',
   },
-  logoutText: { fontSize: 15, fontFamily: 'TTSquares-Bold', color: '#E53935' },
+  logoutBtnContent: { paddingVertical: 4 },
+  logoutText: { fontSize: 15, fontFamily: 'TTSquares-Bold' },
 
-  version: { fontSize: 11, color: '#ccc', textAlign: 'center', marginTop: 16, fontFamily: 'TTSquares-Regular' },
+  version: { fontSize: 11, color: 'rgba(26,46,34,0.3)', textAlign: 'center', marginTop: 16, fontFamily: 'Outfit_400Regular' },
 })

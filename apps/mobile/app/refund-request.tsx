@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native'
-import { Text, Icon, Button, ActivityIndicator } from 'react-native-paper'
+import { Text, Icon, Button } from 'react-native-paper'
 import { router, Stack, useLocalSearchParams } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
@@ -45,14 +45,14 @@ function FormSkeleton() {
   }, [])
   return (
     <Animated.View style={{ opacity, padding: 16 }}>
-      <View style={{ width: '100%', height: 80, backgroundColor: '#E0E0E0', borderRadius: 14, marginBottom: 20 }} />
-      <View style={{ width: '40%', height: 14, backgroundColor: '#E0E0E0', borderRadius: 4, marginBottom: 12 }} />
-      <View style={{ width: '100%', height: 44, backgroundColor: '#E0E0E0', borderRadius: 10, marginBottom: 8 }} />
-      <View style={{ width: '100%', height: 44, backgroundColor: '#E0E0E0', borderRadius: 10, marginBottom: 8 }} />
-      <View style={{ width: '100%', height: 44, backgroundColor: '#E0E0E0', borderRadius: 10, marginBottom: 8 }} />
-      <View style={{ width: '100%', height: 44, backgroundColor: '#E0E0E0', borderRadius: 10, marginBottom: 20 }} />
-      <View style={{ width: '40%', height: 14, backgroundColor: '#E0E0E0', borderRadius: 4, marginBottom: 12 }} />
-      <View style={{ width: '100%', height: 100, backgroundColor: '#E0E0E0', borderRadius: 10 }} />
+      <View style={[styles.skeletonLine, { width: '100%', height: 80, borderRadius: 14, marginBottom: 20 }]} />
+      <View style={[styles.skeletonLine, { width: '40%', marginBottom: 12 }]} />
+      <View style={[styles.skeletonLine, { width: '100%', height: 44, borderRadius: 10, marginBottom: 8 }]} />
+      <View style={[styles.skeletonLine, { width: '100%', height: 44, borderRadius: 10, marginBottom: 8 }]} />
+      <View style={[styles.skeletonLine, { width: '100%', height: 44, borderRadius: 10, marginBottom: 8 }]} />
+      <View style={[styles.skeletonLine, { width: '100%', height: 44, borderRadius: 10, marginBottom: 20 }]} />
+      <View style={[styles.skeletonLine, { width: '40%', marginBottom: 12 }]} />
+      <View style={[styles.skeletonLine, { width: '100%', height: 100, borderRadius: 10 }]} />
     </Animated.View>
   )
 }
@@ -120,8 +120,8 @@ export default function RefundRequestScreen() {
           }}
         />
         <View style={styles.successState}>
-          <View style={styles.successIcon}>
-            <Icon source="check-circle" size={56} color={brandColors.primary} />
+          <View style={styles.successIconTile}>
+            <Icon source="check-circle" size={32} color={brandColors.success} />
           </View>
           <Text style={styles.successTitle}>Refund Request Submitted</Text>
           <Text style={styles.successSubtitle}>Your refund ID is:</Text>
@@ -131,9 +131,11 @@ export default function RefundRequestScreen() {
           </Text>
           <Button
             mode="contained"
+            buttonColor={brandColors.primary}
+            textColor="#FFFFFF"
             onPress={() => router.push('/my-refunds')}
-            style={{ marginTop: 24, backgroundColor: brandColors.primary }}
-            labelStyle={{ fontFamily: 'TTSquares-Bold' }}
+            style={styles.viewRefundsBtn}
+            labelStyle={styles.btnLabel}
           >
             View My Refunds
           </Button>
@@ -141,7 +143,8 @@ export default function RefundRequestScreen() {
             mode="text"
             onPress={() => router.back()}
             style={{ marginTop: 8 }}
-            labelStyle={{ fontFamily: 'TTSquares-Bold', color: brandColors.primary }}
+            textColor={brandColors.primary}
+            labelStyle={styles.btnLabel}
           >
             Go Back
           </Button>
@@ -161,19 +164,34 @@ export default function RefundRequestScreen() {
         }}
       />
 
+      <View style={styles.headerBlock}>
+        <Text style={styles.eyebrow}>Refund Request</Text>
+        <Text style={styles.pageTitle}>Request a Refund</Text>
+        <Text style={styles.pageLede}>Tell us why, and we'll take it from there.</Text>
+      </View>
+
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
         {loading ? (
           <FormSkeleton />
         ) : error ? (
           <View style={styles.emptyState}>
-            <Icon source="alert-circle-outline" size={48} color="#ccc" />
+            <View style={[styles.emptyIconTile, styles.errorIconTile]}>
+              <Icon source="alert-circle-outline" size={24} color={brandColors.error} />
+            </View>
             <Text style={styles.emptyTitle}>{error}</Text>
-            <Button mode="outlined" onPress={fetchDonation} style={{ marginTop: 12 }}>
+            <Button
+              mode="contained"
+              buttonColor={brandColors.primary}
+              textColor="#FFFFFF"
+              onPress={fetchDonation}
+              style={styles.actionBtn}
+              labelStyle={styles.btnLabel}
+            >
               Retry
             </Button>
           </View>
         ) : (
-          <View style={{ padding: 16 }}>
+          <View style={{ padding: 16, paddingTop: 4 }}>
             {/* Donation Details */}
             {donation && (
               <View style={styles.detailCard}>
@@ -222,7 +240,7 @@ export default function RefundRequestScreen() {
               multiline
               numberOfLines={4}
               placeholder="Describe your reason in more detail..."
-              placeholderTextColor="#999"
+              placeholderTextColor={brandColors.textSecondary}
               value={description}
               onChangeText={setDescription}
               textAlignVertical="top"
@@ -230,7 +248,7 @@ export default function RefundRequestScreen() {
 
             {/* Policy Note */}
             <View style={styles.policyCard}>
-              <Icon source="information-outline" size={18} color="#1565C0" />
+              <Icon source="information-outline" size={18} color={brandColors.primary} />
               <Text style={styles.policyText}>
                 A 2% processing fee will be deducted from the refund. Refunds typically take 5-7 business days to process.
               </Text>
@@ -239,11 +257,13 @@ export default function RefundRequestScreen() {
             {/* Submit */}
             <Button
               mode="contained"
+              buttonColor={brandColors.primary}
+              textColor="#FFFFFF"
               onPress={handleSubmit}
               loading={submitting}
               disabled={submitting || !selectedReason}
               style={[styles.submitBtn, (!selectedReason) && { opacity: 0.5 }]}
-              labelStyle={{ fontFamily: 'TTSquares-Bold', fontSize: 16 }}
+              labelStyle={[styles.btnLabel, { fontSize: 16 }]}
             >
               Submit Refund Request
             </Button>
@@ -255,25 +275,27 @@ export default function RefundRequestScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F8F4' },
+  container: { flex: 1, backgroundColor: brandColors.background },
+
+  headerBlock: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 4 },
+  eyebrow: { fontSize: 11, fontFamily: 'TTSquares-Bold', fontWeight: '700', color: brandColors.secondaryDark, textTransform: 'uppercase', letterSpacing: 2 },
+  pageTitle: { fontSize: 24, fontFamily: 'TTSquares-Black', color: brandColors.text, marginTop: 4 },
+  pageLede: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 4 },
 
   detailCard: {
     backgroundColor: '#fff',
     borderRadius: 14,
     padding: 16,
     marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(26,46,34,0.10)',
   },
-  detailLabel: { fontSize: 14, fontFamily: 'TTSquares-Bold', color: '#999', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
-  detailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.04)' },
-  detailKey: { fontSize: 14, color: '#666', fontFamily: 'TTSquares-Regular' },
-  detailValue: { fontSize: 14, color: '#1a1a1a', fontFamily: 'TTSquares-Regular' },
+  detailLabel: { fontSize: 11, fontFamily: 'TTSquares-Bold', fontWeight: '700', color: brandColors.secondaryDark, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 2 },
+  detailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: 'rgba(26,46,34,0.08)' },
+  detailKey: { fontSize: 14, color: brandColors.textSecondary, fontFamily: 'Outfit_400Regular' },
+  detailValue: { fontSize: 14, color: brandColors.text, fontFamily: 'Outfit_400Regular' },
 
-  fieldLabel: { fontSize: 14, fontFamily: 'TTSquares-Bold', color: '#1a1a1a', marginBottom: 10 },
+  fieldLabel: { fontSize: 14, fontFamily: 'TTSquares-Bold', color: brandColors.text, marginBottom: 10 },
 
   reasonOption: {
     flexDirection: 'row',
@@ -283,7 +305,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.06)',
+    borderColor: 'rgba(26,46,34,0.10)',
   },
   reasonOptionActive: { borderColor: brandColors.primary, backgroundColor: `${brandColors.primary}08` },
   radioOuter: {
@@ -291,25 +313,25 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: '#ccc',
+    borderColor: brandColors.textSecondary,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
   radioOuterActive: { borderColor: brandColors.primary },
   radioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: brandColors.primary },
-  reasonText: { fontSize: 14, color: '#666', fontFamily: 'TTSquares-Regular' },
-  reasonTextActive: { color: '#1a1a1a', fontFamily: 'TTSquares-Bold' },
+  reasonText: { fontSize: 14, color: brandColors.textSecondary, fontFamily: 'Outfit_400Regular' },
+  reasonTextActive: { color: brandColors.text, fontFamily: 'TTSquares-Bold' },
 
   textArea: {
     backgroundColor: '#fff',
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.06)',
+    borderColor: 'rgba(26,46,34,0.10)',
     padding: 14,
     fontSize: 14,
-    fontFamily: 'TTSquares-Regular',
-    color: '#1a1a1a',
+    fontFamily: 'Outfit_400Regular',
+    color: brandColors.text,
     minHeight: 100,
   },
 
@@ -317,22 +339,45 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 10,
-    backgroundColor: '#E3F2FD',
+    backgroundColor: 'rgba(168,181,160,0.28)',
     borderRadius: 10,
     padding: 14,
     marginTop: 20,
   },
-  policyText: { flex: 1, fontSize: 13, color: '#1565C0', lineHeight: 18, fontFamily: 'TTSquares-Regular' },
+  policyText: { flex: 1, fontSize: 13, color: brandColors.text, lineHeight: 18, fontFamily: 'Outfit_400Regular' },
 
-  submitBtn: { marginTop: 24, backgroundColor: brandColors.primary, borderRadius: 12, paddingVertical: 4 },
+  submitBtn: { marginTop: 24, borderRadius: 999, paddingVertical: 4 },
 
   successState: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
-  successIcon: { marginBottom: 16 },
-  successTitle: { fontSize: 22, fontFamily: 'TTSquares-Black', color: '#1a1a1a', marginBottom: 8 },
-  successSubtitle: { fontSize: 14, color: '#666', fontFamily: 'TTSquares-Regular' },
+  successIconTile: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(47,107,70,0.14)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  successTitle: { fontSize: 22, fontFamily: 'TTSquares-Black', color: brandColors.text, marginBottom: 8 },
+  successSubtitle: { fontSize: 14, color: brandColors.textSecondary, fontFamily: 'Outfit_400Regular' },
   refundId: { fontSize: 18, fontFamily: 'TTSquares-Bold', color: brandColors.primary, marginTop: 4, marginBottom: 16 },
-  successNote: { fontSize: 13, color: '#999', textAlign: 'center', lineHeight: 18, fontFamily: 'TTSquares-Regular' },
+  successNote: { fontSize: 13, color: brandColors.textSecondary, textAlign: 'center', lineHeight: 18, fontFamily: 'Outfit_400Regular' },
+  viewRefundsBtn: { marginTop: 24, borderRadius: 999 },
+  btnLabel: { fontFamily: 'TTSquares-Bold' },
 
-  emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 80, paddingHorizontal: 32 },
-  emptyTitle: { fontSize: 16, fontFamily: 'TTSquares-Bold', color: '#666', marginTop: 16, textAlign: 'center' },
+  skeletonLine: { height: 14, backgroundColor: 'rgba(168,181,160,0.35)', borderRadius: 4 },
+
+  emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 72, paddingHorizontal: 32 },
+  emptyIconTile: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(168,181,160,0.28)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  errorIconTile: { backgroundColor: 'rgba(165,67,47,0.14)' },
+  emptyTitle: { fontSize: 16, fontFamily: 'TTSquares-Bold', color: brandColors.text, textAlign: 'center' },
+  actionBtn: { marginTop: 16, borderRadius: 999 },
 })

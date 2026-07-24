@@ -110,13 +110,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await saveToStorage(user, tokens)
     setState({ user, tokens, isAuthenticated: true, isLoading: false })
 
-    // Register push token after login
-    const pushToken = await registerForPushNotificationsAsync()
-    if (pushToken) {
-      const platform = Platform.OS === 'ios' ? 'ios' : 'android'
-      await registerPushTokenWithApi(pushToken, platform).catch(() => {
-        // Silently fail — push registration is non-critical
-      })
+    // Register push token after login — never allow this optional step to
+    // surface an error into the auth flow.
+    try {
+      const pushToken = await registerForPushNotificationsAsync()
+      if (pushToken) {
+        const platform = Platform.OS === 'ios' ? 'ios' : 'android'
+        await registerPushTokenWithApi(pushToken, platform)
+      }
+    } catch {
+      // Push registration is non-critical.
     }
   }, [])
 
