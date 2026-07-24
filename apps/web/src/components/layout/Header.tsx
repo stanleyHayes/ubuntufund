@@ -58,9 +58,9 @@ export function Header() {
       position="sticky"
       elevation={0}
       sx={{
-        bgcolor: 'background.paper',
-        borderBottom: '1px solid #E7E3D8',
-        color: 'text.primary',
+        bgcolor: '#1C261D',
+        color: '#F5F2EA',
+        boxShadow: 'inset 0 -2px 0 rgba(199, 162, 74, 0.45)',
       }}
     >
       <Container maxWidth="lg">
@@ -72,7 +72,7 @@ export function Header() {
             aria-label="UbuntuFund home"
             sx={{ display: 'flex', alignItems: 'center', textDecoration: 'none', mr: 2 }}
           >
-            <BrandLogo size={34} />
+            <BrandLogo size={30} onDark />
           </Box>
 
           {/* Desktop nav */}
@@ -86,12 +86,12 @@ export function Header() {
                   to={link.to}
                   sx={{
                     px: 1.75,
-                    borderRadius: SHAPE.sm,
+                    borderRadius: '999px',
                     fontSize: '0.875rem',
                     fontWeight: active ? 700 : 500,
-                    color: active ? '#2E3D2F' : 'text.secondary',
-                    bgcolor: active ? 'rgba(168, 181, 160, 0.28)' : 'transparent',
-                    '&:hover': { bgcolor: active ? 'rgba(168, 181, 160, 0.28)' : 'rgba(46, 61, 47, 0.05)' },
+                    color: active ? '#DCC07E' : 'rgba(245, 242, 234, 0.78)',
+                    bgcolor: active ? 'rgba(245, 242, 234, 0.10)' : 'transparent',
+                    '&:hover': { bgcolor: 'rgba(245, 242, 234, 0.10)', color: active ? '#DCC07E' : '#F5F2EA' },
                   }}
                 >
                   {link.label}
@@ -127,18 +127,18 @@ export function Header() {
                   pl: 0.5,
                   pr: 1,
                   borderRadius: '999px',
-                  border: '1px solid #E7E3D8',
-                  '&:hover': { bgcolor: 'rgba(46, 61, 47, 0.04)' },
+                  border: '1px solid rgba(245, 242, 234, 0.22)',
+                  '&:hover': { bgcolor: 'rgba(245, 242, 234, 0.08)' },
                   '&:focus-visible': { outline: '2px solid #C7A24A', outlineOffset: 2 },
                 }}
               >
-                <Avatar sx={{ width: 30, height: 30, bgcolor: '#2E3D2F', color: '#F5F2EA', fontSize: '0.75rem', fontWeight: 700 }}>
+                <Avatar sx={{ width: 30, height: 30, bgcolor: '#A8B5A0', color: '#1C261D', fontSize: '0.75rem', fontWeight: 700 }}>
                   {initials}
                 </Avatar>
                 <Typography variant="body2" sx={{ fontWeight: 600, display: { xs: 'none', sm: 'block' }, maxWidth: 110 }} noWrap>
                   {(user?.name ?? '').split(' ')[0]}
                 </Typography>
-                <ExpandMoreRoundedIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                <ExpandMoreRoundedIcon sx={{ fontSize: 16, color: 'rgba(245, 242, 234, 0.6)' }} />
               </Box>
               <Menu
                 anchorEl={menuAnchor}
@@ -177,14 +177,14 @@ export function Header() {
             </Box>
           ) : (
             <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 1 }}>
-              <Button component={RouterLink} to="/login" sx={{ color: 'text.primary', fontWeight: 600 }}>
+              <Button component={RouterLink} to="/login" sx={{ color: 'rgba(245, 242, 234, 0.85)', fontWeight: 600, '&:hover': { color: '#F5F2EA', bgcolor: 'rgba(245, 242, 234, 0.08)' } }}>
                 Login
               </Button>
               <Button
                 component={RouterLink}
                 to="/register"
                 variant="contained"
-                color="primary"
+                color="secondary"
                 sx={{ borderRadius: '999px', px: 2.5, fontWeight: 700 }}
               >
                 Get Started
@@ -196,7 +196,7 @@ export function Header() {
           <IconButton
             aria-label="Open menu"
             onClick={() => setDrawerOpen(true)}
-            sx={{ display: { xs: 'inline-flex', md: 'none' }, color: '#2E3D2F' }}
+            sx={{ display: { xs: 'inline-flex', md: 'none' }, color: '#F5F2EA' }}
           >
             <MenuRoundedIcon />
           </IconButton>

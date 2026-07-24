@@ -2,45 +2,62 @@ import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 
 export interface BrandLogoProps {
-  /** Tile size in px. Wordmark scales with it. */
+  /** Mark height in px. Wordmark scales with it. */
   size?: number
-  /** Render the "UbuntuFund" wordmark next to the tile. */
+  /** Render the "UbuntuFund" wordmark next to the mark. */
   withWordmark?: boolean
   /** Set when the logo sits on a dark (forest) surface. */
   onDark?: boolean
 }
 
 /**
- * The canonical UbuntuFund mark: a forest tile with a single sharp corner
- * (bottom-left), gold hairline border, and the UF monogram in TT Squares —
- * paired with the Ubuntu(cream/ink) + Fund(gold) wordmark.
+ * The UbuntuFund mark: two interlocked chain links — a sharp-cornered gold
+ * diamond woven through a rounded sage one — drawn from the platform's
+ * unity-chain motif ("One chain. Many hands. Ubuntu.").
  */
 export function BrandLogo({ size = 36, withWordmark = true, onDark = false }: BrandLogoProps) {
-  const radius = Math.round(size * 0.3)
-  const sharp = Math.max(2, Math.round(size * 0.04))
-
   return (
-    <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: size * 0.035 }}>
+    <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: size * 0.032 }}>
       <Box
-        sx={{
-          width: size,
-          height: size,
-          flexShrink: 0,
-          borderRadius: `${radius}px ${radius}px ${radius}px ${sharp}px`,
-          bgcolor: '#2E3D2F',
-          border: `${Math.max(1.5, size * 0.028)}px solid #C7A24A`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontFamily: '"TT Squares", sans-serif',
-          fontWeight: 900,
-          fontSize: size * 0.38,
-          color: '#C7A24A',
-          lineHeight: 1,
-          userSelect: 'none',
-        }}
+        component="svg"
+        viewBox="0 0 66 48"
+        aria-hidden
+        sx={{ height: size, width: size * 1.375, display: 'block', flexShrink: 0 }}
       >
-        UF
+        {/* Rounded sage link (back) */}
+        <rect
+          x={30}
+          y={10}
+          width={28}
+          height={28}
+          rx={11}
+          transform="rotate(45 44 24)"
+          fill="none"
+          stroke="#A8B5A0"
+          strokeWidth={4}
+        />
+        {/* Sharp gold link (front) */}
+        <rect
+          x={8}
+          y={10}
+          width={28}
+          height={28}
+          rx={3}
+          transform="rotate(45 22 24)"
+          fill="none"
+          stroke="#C7A24A"
+          strokeWidth={4}
+        />
+        {/* Weave: re-draw a short arc of the sage link over the gold one so
+            the links read as interlocked, not stacked. */}
+        <path
+          d="M 33.5 13.5 A 11 11 0 0 1 38 11.2"
+          fill="none"
+          stroke="#A8B5A0"
+          strokeWidth={4}
+          strokeLinecap="round"
+          transform="rotate(45 44 24)"
+        />
       </Box>
       {withWordmark && (
         <Typography
@@ -48,7 +65,7 @@ export function BrandLogo({ size = 36, withWordmark = true, onDark = false }: Br
           sx={{
             fontFamily: '"TT Squares", sans-serif',
             fontWeight: 700,
-            fontSize: size * 0.62,
+            fontSize: size * 0.6,
             lineHeight: 1,
             color: onDark ? '#F5F2EA' : '#2E3D2F',
             userSelect: 'none',
