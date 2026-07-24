@@ -6,7 +6,7 @@ import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import Avatar from '@mui/material/Avatar'
 import Rating from '@mui/material/Rating'
-import FormatQuoteIcon from '@mui/icons-material/FormatQuote'
+import FormatQuoteRoundedIcon from '@mui/icons-material/FormatQuoteRounded'
 
 const testimonials = [
   {
@@ -15,6 +15,7 @@ const testimonials = [
     location: 'Lagos, Nigeria',
     avatar: 'A',
     avatarColor: '#2E3D2F',
+    avatarTextColor: '#F5F2EA',
     rating: 5,
     quote:
       'UbuntuFund helped me raise funds for my daughter\'s surgery in just two weeks. The trust verification gave our donors confidence, and the M-Pesa integration made receiving funds seamless.',
@@ -24,7 +25,8 @@ const testimonials = [
     role: 'Recurring Donor',
     location: 'Nairobi, Kenya',
     avatar: 'D',
-    avatarColor: '#1565C0',
+    avatarColor: '#A07E33',
+    avatarTextColor: '#F5F2EA',
     rating: 5,
     quote:
       'I live in London but wanted to support causes back home. The diaspora mode and multi-currency support make it incredibly easy to give. I can see exactly where my money goes.',
@@ -34,7 +36,8 @@ const testimonials = [
     role: 'NGO Director',
     location: 'Dakar, Senegal',
     avatar: 'F',
-    avatarColor: '#A07E33',
+    avatarColor: '#A8B5A0',
+    avatarTextColor: '#1A2E22',
     rating: 5,
     quote:
       'Our organization raised over $50,000 for clean water projects through UbuntuFund. The escrow system and milestone tracking gave our international partners full confidence in the process.',
@@ -46,17 +49,14 @@ function TestimonialsSection() {
     <Box
       id="testimonials"
       sx={{
-        py: { xs: 8, md: 12 },
+        py: { xs: 8, md: 10 },
         backgroundColor: '#fff',
       }}
     >
       <Container maxWidth="lg">
         <Box sx={{ textAlign: 'center', mb: { xs: 6, md: 8 } }}>
-          <Typography
-            variant="overline"
-            sx={{ color: 'secondary.main', fontWeight: 700, letterSpacing: 2, fontSize: '0.85rem' }}
-          >
-            Success Stories
+          <Typography variant="overline" sx={{ color: 'secondary.dark' }}>
+            Success stories
           </Typography>
           <Typography
             variant="h2"
@@ -67,11 +67,11 @@ function TestimonialsSection() {
               fontSize: { xs: '1.75rem', md: '2.25rem' },
             }}
           >
-            Trusted Across the Continent
+            Trusted across the continent
           </Typography>
           <Typography
             variant="body1"
-            sx={{ color: 'text.secondary', maxWidth: 600, mx: 'auto' }}
+            sx={{ color: 'text.secondary', maxWidth: 640, mx: 'auto' }}
           >
             Hear from the people whose lives have been changed through the
             generosity of the UbuntuFund community.
@@ -81,24 +81,11 @@ function TestimonialsSection() {
         <Grid container spacing={4}>
           {testimonials.map((testimonial) => (
             <Grid size={{ xs: 12, md: 4 }} key={testimonial.name}>
-              <Card
-                sx={{
-                  height: '100%',
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  position: 'relative',
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    boxShadow: '0 8px 30px rgba(0,0,0,0.08)',
-                    transform: 'translateY(-4px)',
-                  },
-                }}
-                elevation={0}
-              >
+              <Card sx={{ height: '100%' }} elevation={0}>
                 <CardContent sx={{ p: 4 }}>
-                  <FormatQuoteIcon
+                  <FormatQuoteRoundedIcon
                     sx={{
-                      fontSize: 40,
+                      fontSize: 36,
                       color: 'rgba(46, 61, 47, 0.15)',
                       mb: 1,
                     }}
@@ -114,11 +101,21 @@ function TestimonialsSection() {
                   >
                     "{testimonial.quote}"
                   </Typography>
-                  <Rating value={testimonial.rating} readOnly size="small" sx={{ mb: 2 }} />
+                  <Rating
+                    value={testimonial.rating}
+                    readOnly
+                    size="small"
+                    sx={{
+                      mb: 2,
+                      color: 'secondary.dark',
+                      '& .MuiRating-iconEmpty': { color: 'divider' },
+                    }}
+                  />
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     <Avatar
                       sx={{
                         bgcolor: testimonial.avatarColor,
+                        color: testimonial.avatarTextColor,
                         width: 48,
                         height: 48,
                         fontWeight: 700,

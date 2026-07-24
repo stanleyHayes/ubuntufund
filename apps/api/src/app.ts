@@ -196,7 +196,7 @@ export function createApp(): express.Express {
   const resetPasswordUseCase = new ResetPasswordUseCase(userRepo, tokenService);
 
   const createCampaignUseCase = new CreateCampaignUseCase(campaignRepo, userRepo);
-  const getCampaignUseCase = new GetCampaignUseCase(campaignRepo);
+  const getCampaignUseCase = new GetCampaignUseCase(campaignRepo, donationRepo);
   const donateToCampaignUseCase = new DonateToCampaignUseCase(
     campaignRepo,
     donationRepo,

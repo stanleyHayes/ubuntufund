@@ -2,32 +2,32 @@ import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
 import Grid from '@mui/material/Grid'
-import CampaignIcon from '@mui/icons-material/Campaign'
-import ShareIcon from '@mui/icons-material/Share'
-import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet'
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
+import CampaignRoundedIcon from '@mui/icons-material/CampaignRounded'
+import ShareRoundedIcon from '@mui/icons-material/ShareRounded'
+import AccountBalanceWalletRoundedIcon from '@mui/icons-material/AccountBalanceWalletRounded'
+import { SHAPE } from '@ubuntu-fund/ui'
 
 const steps = [
   {
-    icon: <CampaignIcon sx={{ fontSize: 48 }} />,
-    title: 'Create Your Campaign',
+    icon: <CampaignRoundedIcon sx={{ fontSize: 28 }} />,
+    step: '01',
+    title: 'Create your campaign',
     description:
       'Set up your fundraiser in minutes. Add your story, set a goal, choose your currency, and get verified through our trust system.',
-    step: '01',
   },
   {
-    icon: <ShareIcon sx={{ fontSize: 48 }} />,
-    title: 'Share With Your Network',
+    icon: <ShareRoundedIcon sx={{ fontSize: 28 }} />,
+    step: '02',
+    title: 'Share with your network',
     description:
       'Spread the word across Africa and the diaspora. Share on social media, WhatsApp, and email to reach supporters worldwide.',
-    step: '02',
   },
   {
-    icon: <AccountBalanceWalletIcon sx={{ fontSize: 48 }} />,
-    title: 'Receive Your Funds',
+    icon: <AccountBalanceWalletRoundedIcon sx={{ fontSize: 28 }} />,
+    step: '03',
+    title: 'Receive your funds',
     description:
       'Get donations directly via M-Pesa, bank transfer, or card. Funds are released securely with full transparency and tracking.',
-    step: '03',
   },
 ]
 
@@ -36,33 +36,26 @@ function HowItWorksSection() {
     <Box
       id="how-it-works"
       sx={{
-        py: { xs: 8, md: 12 },
+        py: { xs: 8, md: 10 },
         backgroundColor: '#F2EFEA',
       }}
     >
       <Container maxWidth="lg">
         <Box sx={{ textAlign: 'center', mb: { xs: 6, md: 8 } }}>
-          <Typography
-            variant="overline"
-            sx={{ color: 'secondary.main', fontWeight: 700, letterSpacing: 2, fontSize: '0.85rem' }}
-          >
-            Simple Process
+          <Typography variant="overline" sx={{ color: '#A07E33' }}>
+            Simple process
           </Typography>
           <Typography
             variant="h2"
             sx={{
-              fontWeight: 700,
               mt: 1,
               mb: 2,
               fontSize: { xs: '1.75rem', md: '2.25rem' },
             }}
           >
-            How It Works
+            How it works
           </Typography>
-          <Typography
-            variant="body1"
-            sx={{ color: 'text.secondary', maxWidth: 600, mx: 'auto' }}
-          >
+          <Typography variant="body1" sx={{ color: 'text.secondary', maxWidth: 640, mx: 'auto' }}>
             Launch your campaign and start receiving support in three simple steps.
             Our platform handles the complexity so you can focus on your cause.
           </Typography>
@@ -77,66 +70,70 @@ function HowItWorksSection() {
                   textAlign: 'center',
                   p: 4,
                   height: '100%',
-                  borderRadius: 3,
                   backgroundColor: '#fff',
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  transition: 'all 0.3s ease',
+                  border: '1px solid #E7E3D8',
+                  borderRadius: SHAPE.card,
+                  boxShadow: '0 12px 30px rgba(26, 46, 34, 0.06)',
+                  transition: 'box-shadow 0.2s ease-in-out',
                   '&:hover': {
-                    borderColor: 'primary.main',
-                    boxShadow: '0 8px 30px rgba(46, 61, 47, 0.1)',
-                    transform: 'translateY(-4px)',
+                    boxShadow: '0 16px 36px rgba(26, 46, 34, 0.1)',
                   },
                 }}
               >
-                <Typography
-                  sx={{
-                    position: 'absolute',
-                    top: 16,
-                    right: 20,
-                    fontSize: '3rem',
-                    fontWeight: 800,
-                    color: 'rgba(46, 61, 47, 0.08)',
-                    lineHeight: 1,
-                  }}
-                >
-                  {step.step}
+                <Typography variant="overline" sx={{ color: '#A07E33', display: 'block', mb: 2 }}>
+                  Step {step.step}
                 </Typography>
                 <Box
                   sx={{
-                    width: 80,
-                    height: 80,
-                    borderRadius: '50%',
-                    backgroundColor: 'rgba(46, 61, 47, 0.08)',
+                    width: 56,
+                    height: 56,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     mx: 'auto',
                     mb: 3,
+                    borderRadius: SHAPE.sm,
+                    backgroundColor: 'rgba(168, 181, 160, 0.18)',
                     color: 'primary.main',
                   }}
                 >
                   {step.icon}
                 </Box>
-                <Typography variant="h5" sx={{ fontWeight: 700, mb: 2 }}>
+                <Typography variant="h5" sx={{ mb: 1.5 }}>
                   {step.title}
                 </Typography>
-                <Typography variant="body1" sx={{ color: 'text.secondary', lineHeight: 1.7 }}>
+                <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.7 }}>
                   {step.description}
                 </Typography>
+
                 {index < steps.length - 1 && (
                   <Box
+                    component="svg"
+                    viewBox="0 0 40 40"
+                    aria-hidden="true"
                     sx={{
-                      display: { xs: 'none', md: 'flex' },
+                      display: { xs: 'none', md: 'block' },
                       position: 'absolute',
-                      right: -28,
+                      right: -30,
                       top: '50%',
                       transform: 'translateY(-50%)',
+                      width: 26,
+                      height: 26,
                       zIndex: 2,
-                      color: 'primary.light',
                     }}
                   >
-                    <ArrowForwardIcon sx={{ fontSize: 28 }} />
+                    <rect
+                      x={4}
+                      y={4}
+                      width={32}
+                      height={32}
+                      rx={index % 2 === 0 ? 4 : 14}
+                      transform="rotate(45 20 20)"
+                      fill="none"
+                      stroke={index % 2 === 0 ? '#C7A24A' : '#A8B5A0'}
+                      strokeWidth={2.5}
+                      opacity={0.7}
+                    />
                   </Box>
                 )}
               </Box>

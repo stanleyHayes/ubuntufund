@@ -3,43 +3,40 @@ import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
-import FavoriteIcon from '@mui/icons-material/Favorite'
+import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
+import FavoriteRoundedIcon from '@mui/icons-material/FavoriteRounded'
 
 function CTASection() {
   return (
     <Box
       sx={{
-        py: { xs: 8, md: 12 },
+        py: { xs: 8, md: 10 },
         textAlign: 'center',
         backgroundColor: '#F2EFEA',
       }}
     >
       <Container maxWidth="md">
-        <Typography
-          sx={{ fontSize: '3.5rem', mb: 2, lineHeight: 1 }}
-        >
-          🤝
+        <Typography variant="overline" sx={{ color: 'secondary.dark' }}>
+          Get involved
         </Typography>
         <Typography
           variant="h2"
           sx={{
-            fontWeight: 800,
+            fontWeight: 700,
+            mt: 1,
             mb: 2,
-            fontSize: { xs: '1.75rem', md: '2.5rem' },
+            fontSize: { xs: '1.75rem', md: '2.25rem' },
           }}
         >
-          Ready to Make a Difference?
+          Ready to make a difference?
         </Typography>
         <Typography
           variant="body1"
           sx={{
             color: 'text.secondary',
-            maxWidth: 520,
+            maxWidth: 640,
             mx: 'auto',
             mb: 4,
-            fontSize: '1.1rem',
-            lineHeight: 1.7,
           }}
         >
           Join thousands of Africans and allies building a more connected,
@@ -52,21 +49,21 @@ function CTASection() {
         >
           <Button
             variant="contained"
-            color="primary"
+            color="secondary"
             size="large"
-            endIcon={<ArrowForwardIcon />}
-            sx={{ py: 1.5, px: 4, fontSize: '1rem', fontWeight: 700 }}
+            endIcon={<ArrowForwardRoundedIcon />}
+            sx={{ py: 1.5, px: 4, fontSize: '1rem', fontWeight: 700, borderRadius: '999px' }}
           >
-            Start Your Campaign
+            Start your campaign
           </Button>
           <Button
             variant="outlined"
             color="primary"
             size="large"
-            startIcon={<FavoriteIcon />}
-            sx={{ py: 1.5, px: 4, fontSize: '1rem', fontWeight: 700 }}
+            startIcon={<FavoriteRoundedIcon />}
+            sx={{ py: 1.5, px: 4, fontSize: '1rem', fontWeight: 700, borderRadius: '999px' }}
           >
-            Explore Campaigns
+            Explore campaigns
           </Button>
         </Stack>
         <Typography

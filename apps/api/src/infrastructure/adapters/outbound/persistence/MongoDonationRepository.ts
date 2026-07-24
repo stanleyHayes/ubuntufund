@@ -55,4 +55,14 @@ export class MongoDonationRepository implements DonationRepositoryPort {
       .limit(limit);
     return docs.map(toDomain);
   }
+
+  async countDistinctDonorsByCampaignIds(campaignIds: string[]): Promise<Record<string, number>> {
+    if (campaignIds.length === 0) return {};
+    const rows = await DonationModel.aggregate<{ _id: string; donors: number }>([
+      { $match: { campaignId: { $in: campaignIds } } },
+      { $group: { _id: { campaignId: '$campaignId', donorId: '$donorId' } } },
+      { $group: { _id: '$_id.campaignId', donors: { $sum: 1 } } },
+    ]);
+    return Object.fromEntries(rows.map((r) => [r._id, r.donors]));
+  }
 }

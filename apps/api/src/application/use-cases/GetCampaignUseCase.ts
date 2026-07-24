@@ -1,5 +1,6 @@
 import type { Campaign, PaginationParams, PaginatedResponse } from '@ubuntu-fund/types';
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js';
+import type { DonationRepositoryPort } from '../../domain/ports/outbound/DonationRepositoryPort.js';
 import type { CampaignEntity } from '../../domain/entities/Campaign.js';
 
 function toDTO(entity: CampaignEntity): Campaign {
@@ -25,11 +26,20 @@ function toDTO(entity: CampaignEntity): Campaign {
 }
 
 export class GetCampaignUseCase {
-  constructor(private readonly campaignRepo: CampaignRepositoryPort) {}
+  constructor(
+    private readonly campaignRepo: CampaignRepositoryPort,
+    private readonly donationRepo?: DonationRepositoryPort
+  ) {}
 
   async getById(id: string): Promise<Campaign | null> {
     const entity = await this.campaignRepo.findById(id);
-    return entity ? toDTO(entity) : null;
+    if (!entity) return null;
+    const dto = toDTO(entity);
+    if (this.donationRepo) {
+      const counts = await this.donationRepo.countDistinctDonorsByCampaignIds([dto.id]);
+      dto.donorCount = counts[dto.id] ?? 0;
+    }
+    return dto;
   }
 
   async list(params: PaginationParams): Promise<PaginatedResponse<Campaign>> {
@@ -42,8 +52,14 @@ export class GetCampaignUseCase {
       pageSize,
     });
 
+    const dtos = items.map(toDTO);
+    if (this.donationRepo && dtos.length > 0) {
+      const counts = await this.donationRepo.countDistinctDonorsByCampaignIds(dtos.map((d) => d.id));
+      for (const dto of dtos) dto.donorCount = counts[dto.id] ?? 0;
+    }
+
     return {
-      items: items.map(toDTO),
+      items: dtos,
       total,
       page,
       pageSize,

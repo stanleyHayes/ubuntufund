@@ -146,8 +146,45 @@ export function Header() {
                 onClose={closeMenu}
                 transformOrigin={{ horizontal: 'right', vertical: 'top' }}
                 anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-                slotProps={{ paper: { sx: { mt: 1, width: 230, borderRadius: '14px', border: '1px solid #E7E3D8' } } }}
+                slotProps={{
+                  paper: {
+                    sx: {
+                      mt: 1,
+                      width: 260,
+                      borderRadius: '16px',
+                      border: '1px solid #E7E3D8',
+                      boxShadow: '0 18px 50px rgba(26, 46, 34, 0.14)',
+                      '& .MuiMenuItem-root': { py: 1, mx: 1, borderRadius: '10px' },
+                      '& .MuiListItemIcon-root': { color: '#5E8F72', minWidth: 34 },
+                    },
+                  },
+                }}
               >
+                <Box
+                  sx={{
+                    mx: 1,
+                    mb: 0.75,
+                    p: 1.25,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1.25,
+                    borderRadius: '12px',
+                    bgcolor: 'rgba(168, 181, 160, 0.16)',
+                    border: '1px solid #E7E3D8',
+                  }}
+                >
+                  <Avatar sx={{ width: 36, height: 36, bgcolor: '#2E3D2F', color: '#F5F2EA', fontWeight: 700, fontSize: '0.85rem' }}>
+                    {initials}
+                  </Avatar>
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography variant="body2" noWrap sx={{ fontWeight: 700 }}>
+                      {user?.name}
+                    </Typography>
+                    <Typography variant="caption" noWrap sx={{ color: 'text.secondary', display: 'block' }}>
+                      {user?.email}
+                    </Typography>
+                  </Box>
+                </Box>
                 <MenuItem onClick={() => { closeMenu(); navigate('/dashboard') }}>
                   <ListItemIcon><DashboardRoundedIcon sx={{ fontSize: 18 }} /></ListItemIcon>
                   Dashboard
@@ -169,7 +206,10 @@ export function Header() {
                   Settings
                 </MenuItem>
                 <Divider />
-                <MenuItem onClick={() => { closeMenu(); logout(); navigate('/') }} sx={{ color: '#A5432F' }}>
+                <MenuItem
+                  onClick={() => { closeMenu(); logout(); navigate('/') }}
+                  sx={{ color: '#A5432F', '&:hover': { bgcolor: 'rgba(165, 67, 47, 0.08)' } }}
+                >
                   <ListItemIcon><LogoutRoundedIcon sx={{ fontSize: 18, color: '#A5432F' }} /></ListItemIcon>
                   Sign out
                 </MenuItem>

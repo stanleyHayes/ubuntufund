@@ -40,6 +40,8 @@ export interface Campaign {
   endDate: Date
   createdAt: Date
   updatedAt: Date
+  /** Number of distinct donors; present on list/detail reads. */
+  donorCount?: number
   reviewNotes?: string
   reviewedBy?: string
   reviewedAt?: Date

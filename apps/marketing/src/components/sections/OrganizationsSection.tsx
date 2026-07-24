@@ -7,8 +7,9 @@ import List from '@mui/material/List'
 import ListItem from '@mui/material/ListItem'
 import ListItemIcon from '@mui/material/ListItemIcon'
 import ListItemText from '@mui/material/ListItemText'
-import CheckCircleIcon from '@mui/icons-material/CheckCircle'
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
+import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
+import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
+import { SHAPE } from '@ubuntu-fund/ui'
 
 const benefits = [
   'Dedicated organization dashboard with team management',
@@ -26,31 +27,16 @@ function OrganizationsSection() {
     <Box
       id="organizations"
       sx={{
-        py: { xs: 8, md: 12 },
-        background: 'linear-gradient(135deg, #1C261D 0%, #2E3D2F 100%)',
+        py: { xs: 8, md: 10 },
+        background: 'linear-gradient(160deg, #1C261D 0%, #2E3D2F 100%)',
         color: '#fff',
-        position: 'relative',
-        overflow: 'hidden',
-        '&::before': {
-          content: '""',
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background:
-            'radial-gradient(circle at 90% 20%, rgba(199, 162, 74,0.12) 0%, transparent 50%)',
-        },
       }}
     >
-      <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
+      <Container maxWidth="lg">
         <Grid container spacing={6} alignItems="center">
           <Grid size={{ xs: 12, md: 6 }}>
-            <Typography
-              variant="overline"
-              sx={{ color: '#C7A24A', fontWeight: 700, letterSpacing: 2, fontSize: '0.85rem' }}
-            >
-              For Organizations
+            <Typography variant="overline" sx={{ color: 'secondary.main' }}>
+              For organizations
             </Typography>
             <Typography
               variant="h2"
@@ -62,7 +48,7 @@ function OrganizationsSection() {
                 fontSize: { xs: '1.75rem', md: '2.25rem' },
               }}
             >
-              Supercharge Your Impact
+              Supercharge your impact
             </Typography>
             <Typography
               variant="body1"
@@ -81,10 +67,10 @@ function OrganizationsSection() {
               variant="contained"
               color="secondary"
               size="large"
-              endIcon={<ArrowForwardIcon />}
-              sx={{ py: 1.5, px: 4, fontSize: '1rem', fontWeight: 700 }}
+              endIcon={<ArrowForwardRoundedIcon />}
+              sx={{ py: 1.5, px: 4, fontSize: '1rem', fontWeight: 700, borderRadius: '999px' }}
             >
-              Get Started for Organizations
+              Get started for organizations
             </Button>
           </Grid>
 
@@ -92,7 +78,7 @@ function OrganizationsSection() {
             <Box
               sx={{
                 backgroundColor: 'rgba(46,61,47,0.55)',
-                borderRadius: 3,
+                borderRadius: SHAPE.card,
                 p: { xs: 2, md: 3 },
                 border: '1px solid rgba(255,255,255,0.12)',
               }}
@@ -101,12 +87,12 @@ function OrganizationsSection() {
                 {benefits.map((benefit) => (
                   <ListItem key={benefit} sx={{ py: 1 }}>
                     <ListItemIcon sx={{ minWidth: 36 }}>
-                      <CheckCircleIcon sx={{ color: '#C7A24A', fontSize: 22 }} />
+                      <CheckCircleRoundedIcon sx={{ color: 'secondary.main', fontSize: 22 }} />
                     </ListItemIcon>
                     <ListItemText
                       primary={benefit}
-                      primaryTypographyProps={{
-                        sx: { color: 'rgba(255,255,255,0.9)', fontSize: '0.95rem' },
+                      slotProps={{
+                        primary: { sx: { color: 'rgba(255,255,255,0.9)', fontSize: '0.95rem' } },
                       }}
                     />
                   </ListItem>

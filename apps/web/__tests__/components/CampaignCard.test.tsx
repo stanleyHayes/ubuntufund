@@ -69,14 +69,18 @@ describe('CampaignCard', () => {
 
   it('renders a link to the campaign detail page', () => {
     renderWithProviders(<CampaignCard campaign={mockCampaign} />)
-    const link = screen.getByRole('link', { name: /view campaign/i })
+    const link = screen.getByRole('link', { name: /view details/i })
     expect(link).toHaveAttribute('href', '/campaigns/test-1')
   })
 
-  it('renders the campaign image', () => {
-    renderWithProviders(<CampaignCard campaign={mockCampaign} />)
-    const img = screen.getByAltText('Clean Water for Kibera')
-    expect(img).toHaveAttribute('src', 'https://example.com/image.jpg')
+  it('shows the supporter count when donors exist', () => {
+    renderWithProviders(<CampaignCard campaign={{ ...mockCampaign, donorCount: 147 }} />)
+    expect(screen.getByText(/147 supporters/)).toBeInTheDocument()
+  })
+
+  it('invites the first supporter when nobody has donated', () => {
+    renderWithProviders(<CampaignCard campaign={{ ...mockCampaign, donorCount: 0 }} />)
+    expect(screen.getByText(/be the first supporter/i)).toBeInTheDocument()
   })
 
   it('shows days left for active campaigns', () => {

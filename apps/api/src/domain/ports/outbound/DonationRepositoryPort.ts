@@ -7,4 +7,6 @@ export interface DonationRepositoryPort {
   findByDonorId(donorId: string): Promise<DonationEntity[]>;
   /** Most recent donations across all campaigns, newest first. */
   findRecent(limit: number): Promise<DonationEntity[]>;
+  /** Distinct donor counts keyed by campaign id, for the given campaigns. */
+  countDistinctDonorsByCampaignIds(campaignIds: string[]): Promise<Record<string, number>>;
 }

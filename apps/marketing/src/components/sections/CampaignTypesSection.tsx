@@ -11,49 +11,50 @@ import BusinessCenterIcon from '@mui/icons-material/BusinessCenter'
 import HolidayVillageIcon from '@mui/icons-material/HolidayVillage'
 import ChurchIcon from '@mui/icons-material/Church'
 import PaletteIcon from '@mui/icons-material/Palette'
+import { SHAPE } from '@ubuntu-fund/ui'
 
 const campaignTypes = [
   {
     icon: LocalHospitalIcon,
     title: 'Medical',
     description: 'Healthcare costs, surgeries, treatments, and medical emergencies.',
-    gradient: 'linear-gradient(135deg, #A5432F, #C06B58)',
+    accent: '#2E3D2F',
   },
   {
     icon: SchoolIcon,
     title: 'Education',
     description: 'School fees, scholarships, learning materials, and university funding.',
-    gradient: 'linear-gradient(135deg, #4A6B75, #74909A)',
+    accent: '#C7A24A',
   },
   {
     icon: WarningAmberIcon,
     title: 'Emergency',
     description: 'Disaster relief, urgent needs, and crisis response for communities.',
-    gradient: 'linear-gradient(135deg, #B98A2E, #D3A95C)',
+    accent: '#2E3D2F',
   },
   {
     icon: BusinessCenterIcon,
     title: 'Business',
     description: 'Startups, small businesses, cooperatives, and entrepreneurial ventures.',
-    gradient: 'linear-gradient(135deg, #2E3D2F, #5E8F72)',
+    accent: '#C7A24A',
   },
   {
     icon: HolidayVillageIcon,
     title: 'Community',
     description: 'Infrastructure, clean water, sanitation, and community development projects.',
-    gradient: 'linear-gradient(135deg, #6A1B9A, #AB47BC)',
+    accent: '#2E3D2F',
   },
   {
     icon: ChurchIcon,
     title: 'Religious',
     description: 'Places of worship, religious events, missions, and faith-based initiatives.',
-    gradient: 'linear-gradient(135deg, #4E342E, #8D6E63)',
+    accent: '#C7A24A',
   },
   {
     icon: PaletteIcon,
     title: 'Creative',
     description: 'Arts, music, film, cultural projects, and creative endeavors across Africa.',
-    gradient: 'linear-gradient(135deg, #AD1457, #EC407A)',
+    accent: '#2E3D2F',
   },
 ]
 
@@ -62,7 +63,7 @@ function CampaignTypesSection() {
     <Box
       id="campaign-types"
       sx={{
-        py: { xs: 8, md: 12 },
+        py: { xs: 8, md: 10 },
         backgroundColor: '#F2EFEA',
       }}
     >
@@ -70,24 +71,23 @@ function CampaignTypesSection() {
         <Box sx={{ textAlign: 'center', mb: { xs: 6, md: 8 } }}>
           <Typography
             variant="overline"
-            sx={{ color: 'secondary.main', fontWeight: 700, letterSpacing: 2, fontSize: '0.85rem' }}
+            sx={{ color: 'secondary.dark' }}
           >
-            Campaign Categories
+            Campaign categories
           </Typography>
           <Typography
             variant="h2"
             sx={{
-              fontWeight: 700,
               mt: 1,
               mb: 2,
               fontSize: { xs: '1.75rem', md: '2.25rem' },
             }}
           >
-            Fundraise for Any Cause
+            Fundraise for any cause
           </Typography>
           <Typography
             variant="body1"
-            sx={{ color: 'text.secondary', maxWidth: 600, mx: 'auto' }}
+            sx={{ color: 'text.secondary', maxWidth: 640, mx: 'auto' }}
           >
             Whether it is a medical emergency, education funding, or a community project,
             UbuntuFund supports campaigns across every category that matters.
@@ -97,28 +97,15 @@ function CampaignTypesSection() {
         <Grid container spacing={3} justifyContent="center">
           {campaignTypes.map((type) => (
             <Grid size={{ xs: 6, sm: 4, md: 3 }} key={type.title}>
-              <Card
-                sx={{
-                  height: '100%',
-                  textAlign: 'center',
-                  cursor: 'pointer',
-                  transition: 'background-color 0.2s ease, box-shadow 0.2s ease',
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  '&:hover': {
-                    boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
-                  },
-                }}
-                elevation={0}
-              >
+              <Card sx={{ height: '100%', textAlign: 'center' }} elevation={0}>
                 <CardContent sx={{ p: 3 }}>
                   <Box
-                    className="campaign-type-icon"
                     sx={{
-                      width: 72,
-                      height: 72,
-                      borderRadius: '50%',
-                      background: type.gradient,
+                      width: 56,
+                      height: 56,
+                      borderRadius: SHAPE.sm,
+                      backgroundColor: `${type.accent}14`,
+                      color: type.accent,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -126,9 +113,9 @@ function CampaignTypesSection() {
                       mb: 2,
                     }}
                   >
-                    <type.icon sx={{ fontSize: '2rem', color: '#fff' }} />
+                    <type.icon sx={{ fontSize: 28 }} />
                   </Box>
-                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, fontSize: '1rem' }}>
+                  <Typography variant="h6" sx={{ mb: 1, fontSize: '1rem' }}>
                     {type.title}
                   </Typography>
                   <Typography
