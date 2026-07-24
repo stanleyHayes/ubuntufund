@@ -6,6 +6,8 @@ import Stack from '@mui/material/Stack'
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import FavoriteRoundedIcon from '@mui/icons-material/FavoriteRounded'
 
+const WEB_APP_URL = import.meta.env.VITE_WEB_APP_URL || 'http://localhost:8200'
+
 function CTASection() {
   return (
     <Box
@@ -51,6 +53,7 @@ function CTASection() {
             variant="contained"
             color="secondary"
             size="large"
+            href={`${WEB_APP_URL}/campaigns/new`}
             endIcon={<ArrowForwardRoundedIcon />}
             sx={{ py: 1.5, px: 4, fontSize: '1rem', fontWeight: 700, borderRadius: '999px' }}
           >
@@ -60,6 +63,7 @@ function CTASection() {
             variant="outlined"
             color="primary"
             size="large"
+            href={`${WEB_APP_URL}/explore`}
             startIcon={<FavoriteRoundedIcon />}
             sx={{ py: 1.5, px: 4, fontSize: '1rem', fontWeight: 700, borderRadius: '999px' }}
           >

@@ -32,6 +32,8 @@ const features: Feature[] = [
   { icon: SupportAgentRoundedIcon, title: 'Priority support', detail: 'A named account manager and a fast lane when you need help.' },
 ]
 
+const WEB_APP_URL = import.meta.env.VITE_WEB_APP_URL || 'http://localhost:8200'
+
 function OrganizationsSection() {
   return (
     <Box
@@ -76,6 +78,7 @@ function OrganizationsSection() {
               variant="contained"
               color="secondary"
               size="large"
+              href={`${WEB_APP_URL}/register`}
               endIcon={<ArrowForwardRoundedIcon />}
               sx={{ py: 1.5, px: 4, fontSize: '1rem', fontWeight: 700, borderRadius: '999px' }}
             >

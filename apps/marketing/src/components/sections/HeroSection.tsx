@@ -6,6 +6,8 @@ import Stack from '@mui/material/Stack'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import FavoriteIcon from '@mui/icons-material/Favorite'
 
+const WEB_APP_URL = import.meta.env.VITE_WEB_APP_URL || 'http://localhost:8200'
+
 function HeroSection() {
   return (
     <Box
@@ -117,6 +119,7 @@ function HeroSection() {
                 variant="contained"
                 color="secondary"
                 size="large"
+                href={`${WEB_APP_URL}/campaigns/new`}
                 endIcon={<ArrowForwardIcon />}
                 sx={{
                   py: 1.5,
@@ -130,6 +133,7 @@ function HeroSection() {
               <Button
                 variant="outlined"
                 size="large"
+                href={`${WEB_APP_URL}/explore`}
                 startIcon={<FavoriteIcon />}
                 sx={{
                   py: 1.5,
