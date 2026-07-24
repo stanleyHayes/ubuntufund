@@ -27,7 +27,7 @@ import AccountBalanceWalletRoundedIcon from '@mui/icons-material/AccountBalanceW
 import ArrowDownwardRoundedIcon from '@mui/icons-material/ArrowDownwardRounded'
 import ArrowUpwardRoundedIcon from '@mui/icons-material/ArrowUpwardRounded'
 import { keyframes } from '@emotion/react'
-import { formatCurrency, SHAPE } from '@ubuntu-fund/ui'
+import { formatCurrency, SHAPE, EmptyState } from '@ubuntu-fund/ui'
 import {
   WalletType,
   TransactionType,
@@ -306,9 +306,13 @@ export function WalletPage() {
         ) : transactions.length === 0 ? (
           <Card
             elevation={0}
-            sx={{ textAlign: 'center', p: 5, border: '1px solid rgba(0,0,0,0.06)', borderRadius: SHAPE.card }}
+            sx={{ p: { xs: 3, md: 4 }, border: '1px solid rgba(0,0,0,0.06)', borderRadius: SHAPE.card }}
           >
-            <Typography sx={{ color: 'text.secondary' }}>No transactions yet</Typography>
+            <EmptyState
+              variant="noData"
+              title="No transactions yet"
+              description="Your deposits, withdrawals, and donations will show up here."
+            />
           </Card>
         ) : (
           <TableContainer

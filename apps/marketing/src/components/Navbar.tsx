@@ -5,9 +5,12 @@ import Box from '@mui/material/Box'
 import IconButton from '@mui/material/IconButton'
 import Drawer from '@mui/material/Drawer'
 import Collapse from '@mui/material/Collapse'
+import Tooltip from '@mui/material/Tooltip'
 import MenuIcon from '@mui/icons-material/Menu'
 import { scrollToHash } from '@/lib/scroll'
 import CloseIcon from '@mui/icons-material/Close'
+import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
+import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import ArrowOutwardIcon from '@mui/icons-material/ArrowOutward'
@@ -29,23 +32,15 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { keyframes } from '@emotion/react'
 import { SHAPE } from '@ubuntu-fund/ui'
 
-// ---------------------------------------------------------------------------
-// Animations
-// ---------------------------------------------------------------------------
+const CREAM = '#F5F2EA'
+const GOLD = '#C7A24A'
+const GOLD_LIGHT = '#DCC07E'
+const FOREST_DARK = '#1C261D'
 
 const dropIn = keyframes`
   from { opacity: 0; transform: translateY(-8px) scale(0.97); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 `
-
-const slideUp = keyframes`
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
-`
-
-// ---------------------------------------------------------------------------
-// Menu data
-// ---------------------------------------------------------------------------
 
 interface MenuItem {
   icon: React.ReactNode
@@ -93,14 +88,8 @@ const menus: NavMenu[] = [
 
 const WEB_APP_URL = import.meta.env.VITE_WEB_APP_URL || 'http://localhost:8200'
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 function isActive(href: string, pathname: string): boolean {
   const [path, hash] = href.split('#')
-  // Anchor-only links (e.g. /#features) — don't count as "active" for nav highlighting
-  // since they're sections on the landing page, not distinct pages
   if (hash) return false
   return pathname === (path || '/')
 }
@@ -109,16 +98,13 @@ function isMenuActive(menu: NavMenu, pathname: string): boolean {
   return menu.items.some((item) => isActive(item.href, pathname))
 }
 
-// ---------------------------------------------------------------------------
-// MegaDropdown
-// ---------------------------------------------------------------------------
-
+// ── Desktop dropdown: uppercase trigger on the dark bar, gold active underline;
+//    the panel floats as a light card. ────────────────────────────────────────
 function MegaDropdown({
   menu,
   open,
   onOpen,
   onClose,
-  scrolled,
   pathname,
   onNavigate,
 }: {
@@ -126,7 +112,6 @@ function MegaDropdown({
   open: boolean
   onOpen: () => void
   onClose: () => void
-  scrolled: boolean
   pathname: string
   onNavigate: (href: string) => void
 }) {
@@ -144,39 +129,31 @@ function MegaDropdown({
 
   return (
     <Box onMouseEnter={handleEnter} onMouseLeave={handleLeave} sx={{ position: 'relative' }}>
-      {/* Trigger */}
       <Box
         onClick={handleEnter}
         role="button"
         tabIndex={0}
         sx={{
+          position: 'relative',
           display: 'flex',
           alignItems: 'center',
-          gap: 0.25,
-          height: 36,
-          px: 1.25,
-          borderRadius: SHAPE.sm,
+          gap: 0.35,
+          height: 44,
+          px: 1.5,
           cursor: 'pointer',
           userSelect: 'none',
-          position: 'relative',
-          transition: 'all 0.2s ease',
-          bgcolor: open
-            ? (scrolled ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.1)')
-            : 'transparent',
-          '&:hover': {
-            bgcolor: scrolled ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.1)',
-          },
         }}
       >
         <Typography
           component="span"
           sx={{
-            fontSize: '0.8rem',
-            fontWeight: menuActive ? 700 : 500,
-            color: scrolled
-              ? (menuActive ? '#1C261D' : '#1a1a1a')
-              : (menuActive ? '#DCC07E' : 'rgba(255,255,255,0.9)'),
-            transition: 'color 0.3s',
+            fontFamily: '"Outfit", sans-serif',
+            textTransform: 'uppercase',
+            letterSpacing: '0.09em',
+            fontSize: '0.78rem',
+            fontWeight: menuActive || open ? 700 : 600,
+            color: menuActive || open ? CREAM : 'rgba(245, 242, 234, 0.72)',
+            transition: 'color 160ms ease',
             lineHeight: 1,
           }}
         >
@@ -184,60 +161,47 @@ function MegaDropdown({
         </Typography>
         <KeyboardArrowDownIcon
           sx={{
-            fontSize: 14,
-            color: scrolled ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.4)',
+            fontSize: 15,
+            color: 'rgba(245, 242, 234, 0.5)',
             transition: 'transform 0.2s',
             transform: open ? 'rotate(180deg)' : 'none',
           }}
         />
-        {/* Active indicator */}
-        {menuActive && !open && (
-          <Box
-            sx={{
-              position: 'absolute',
-              bottom: 2,
-              left: '50%',
-              transform: 'translateX(-50%)',
-              width: 16,
-              height: 2.5,
-              borderRadius: 2,
-              bgcolor: scrolled ? '#2E3D2F' : '#C7A24A',
-            }}
-          />
-        )}
-      </Box>
-
-      {/* Panel */}
-      {open && (
         <Box
           sx={{
             position: 'absolute',
-            top: '100%',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 1400,
-            pt: '12px', // spacing via padding so hover area is continuous
+            bottom: 6,
+            left: 12,
+            right: 20,
+            height: 2,
+            borderRadius: 2,
+            bgcolor: GOLD,
+            transformOrigin: 'center',
+            transform: menuActive || open ? 'scaleX(1)' : 'scaleX(0)',
+            transition: 'transform 180ms ease',
+            '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
           }}
-        >
+        />
+      </Box>
+
+      {open && (
+        <Box sx={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', zIndex: 1400, pt: '10px' }}>
           <Box
             sx={{
               bgcolor: '#fff',
               borderRadius: SHAPE.card,
-              border: '1px solid rgba(0,0,0,0.06)',
-              boxShadow: '0 20px 60px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.04)',
+              border: '1px solid rgba(0,0,0,0.08)',
               minWidth: 340,
               maxWidth: 400,
               overflow: 'hidden',
               animation: `${dropIn} 0.18s ease both`,
             }}
           >
-            {/* Section label */}
             <Box sx={{ px: 2, pt: 1.5, pb: 0.75 }}>
               <Typography sx={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#999' }}>
                 {menu.label}
               </Typography>
             </Box>
-
             <Box sx={{ px: 0.75, pb: 0.75 }}>
               {menu.items.map((item) => {
                 const active = isActive(item.href, pathname)
@@ -256,11 +220,7 @@ function MegaDropdown({
                       bgcolor: active ? 'rgba(46, 61, 47,0.05)' : 'transparent',
                       '&:hover': {
                         bgcolor: active ? 'rgba(46, 61, 47,0.08)' : '#f8f8f5',
-                        '& .dd-icon': {
-                          bgcolor: '#2E3D2F',
-                          color: '#fff',
-                          transform: 'rotate(-4deg) scale(1.06)',
-                        },
+                        '& .dd-icon': { bgcolor: '#2E3D2F', color: '#fff' },
                         '& .dd-arrow': { opacity: 1, transform: 'translate(0,0)' },
                       },
                     }}
@@ -277,7 +237,7 @@ function MegaDropdown({
                         alignItems: 'center',
                         justifyContent: 'center',
                         flexShrink: 0,
-                        transition: 'all 0.2s cubic-bezier(0.22,1,0.36,1)',
+                        transition: 'all 0.2s ease',
                         '& .MuiSvgIcon-root': { fontSize: 17 },
                       }}
                     >
@@ -316,10 +276,6 @@ function MegaDropdown({
   )
 }
 
-// ---------------------------------------------------------------------------
-// Mobile
-// ---------------------------------------------------------------------------
-
 function MobileMenuGroup({ menu, pathname, onNavigate }: { menu: NavMenu; pathname: string; onNavigate: (href: string) => void }) {
   const [open, setOpen] = useState(false)
   const active = isMenuActive(menu, pathname)
@@ -334,7 +290,7 @@ function MobileMenuGroup({ menu, pathname, onNavigate }: { menu: NavMenu; pathna
           '&:hover': { bgcolor: 'rgba(0,0,0,0.02)' },
         }}
       >
-        <Typography sx={{ fontWeight: active ? 700 : 500, fontSize: '0.95rem', color: active ? '#1C261D' : '#1a1a1a' }}>
+        <Typography sx={{ fontWeight: active ? 700 : 600, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: active ? '#1C261D' : '#1a1a1a' }}>
           {menu.label}
         </Typography>
         <ExpandMoreIcon sx={{ fontSize: 18, color: '#999', transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'none' }} />
@@ -379,22 +335,11 @@ function MobileMenuGroup({ menu, pathname, onNavigate }: { menu: NavMenu; pathna
   )
 }
 
-// ---------------------------------------------------------------------------
-// Navbar
-// ---------------------------------------------------------------------------
-
 function Navbar() {
-  const [scrolled, setScrolled] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [openMenu, setOpenMenu] = useState<string | null>(null)
   const { pathname } = useLocation()
   const navigate = useNavigate()
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 80)
-    window.addEventListener('scroll', onScroll)
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
 
   useEffect(() => {
     const id = setTimeout(() => setOpenMenu(null), 0)
@@ -416,193 +361,141 @@ function Navbar() {
 
   return (
     <>
-      {/* ================================================================= */}
-      {/*  NAVBAR — morphs from full-width to floating island on scroll     */}
-      {/* ================================================================= */}
+      {/* Solid forest bar (design language #2), gold seam, no glass/shadow */}
       <Box
+        component="nav"
         sx={{
           position: 'fixed',
           top: 0,
           left: 0,
           right: 0,
           zIndex: 1200,
-          display: 'flex',
-          justifyContent: 'center',
-          px: scrolled ? 2 : 0,
-          pt: scrolled ? 1.25 : 0,
-          transition: 'padding 0.55s cubic-bezier(0.33, 1, 0.68, 1)',
-          pointerEvents: 'none',
+          bgcolor: FOREST_DARK,
+          boxShadow: 'inset 0 -2px 0 rgba(199, 162, 74, 0.45)',
         }}
       >
         <Box
           sx={{
-            pointerEvents: 'auto',
-            width: scrolled ? 'min(820px, calc(100% - 32px))' : '100%',
+            maxWidth: 1200,
+            mx: 'auto',
+            px: { xs: 2, md: 4 },
+            height: { xs: 62, md: 74 },
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            gap: { xs: 1, md: 2 },
-
-            // ── Shape ──
-            px: scrolled ? { xs: 2, md: 2.5 } : { xs: 2, md: 4 },
-            py: scrolled ? 0.7 : 1,
-            borderRadius: scrolled ? SHAPE.card : 0,
-
-            // ── Glass ──
-            bgcolor: scrolled
-              ? 'rgba(255,255,255,0.9)'
-              : 'rgba(0,0,0,0.06)',
-            backdropFilter: 'blur(8px)',
-            WebkitBackdropFilter: 'blur(8px)',
-
-            // ── Border (use outline to avoid layout shifts) ──
-            outline: scrolled
-              ? '1px solid rgba(0,0,0,0.06)'
-              : '1px solid transparent',
-
-            // ── Shadow ──
-            boxShadow: scrolled
-              ? '0 8px 32px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.03), inset 0 1px 0 rgba(255,255,255,0.5)'
-              : 'none',
-
-            // ── Smooth transition on individual properties ──
-            transition: `
-              width 0.55s cubic-bezier(0.33, 1, 0.68, 1),
-              padding 0.55s cubic-bezier(0.33, 1, 0.68, 1),
-              border-radius 0.55s cubic-bezier(0.33, 1, 0.68, 1),
-              background-color 0.4s ease,
-              box-shadow 0.4s ease,
-              outline-color 0.4s ease
-            `,
+            gap: 2,
           }}
         >
-          {/* ─── Logo ─── */}
+          {/* Logo + tagline */}
           <Box
             onClick={() => handleNav('/')}
-            sx={{
-              cursor: 'pointer',
-              flexShrink: 0,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
-              transition: 'transform 0.2s ease, opacity 0.2s ease',
-              '&:hover': { transform: 'scale(1.03)', opacity: 0.9 },
-              '&:active': { transform: 'scale(0.97)' },
-            }}
+            sx={{ cursor: 'pointer', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 0.35 }}
           >
-            <Box
-              component="img"
-              src="/favicon.svg"
-              alt="UbuntuFund"
-              sx={{
-                width: scrolled ? 32 : 36,
-                height: scrolled ? 32 : 36,
-                transition: 'all 0.5s cubic-bezier(0.33,1,0.68,1)',
-                display: 'block',
-              }}
-            />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Box component="img" src="/favicon.svg" alt="UbuntuFund" sx={{ width: 32, height: 32, display: 'block' }} />
+              <Typography
+                sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 800, fontSize: '1.15rem', lineHeight: 1, color: CREAM, whiteSpace: 'nowrap' }}
+              >
+                Ubuntu<Box component="span" sx={{ color: GOLD }}>Fund</Box>
+              </Typography>
+            </Box>
             <Typography
               sx={{
-                fontFamily: '"Outfit", "Inter", sans-serif',
-                fontWeight: 800,
-                fontSize: scrolled ? '1.05rem' : '1.15rem',
-                lineHeight: 1,
-                color: scrolled ? '#1C261D' : '#fff',
-                transition: 'all 0.4s ease',
-                whiteSpace: 'nowrap',
+                pl: '42px',
+                fontFamily: '"Outfit", sans-serif',
+                fontSize: '0.56rem',
+                fontWeight: 600,
+                letterSpacing: '0.16em',
+                textTransform: 'uppercase',
+                color: 'rgba(245, 242, 234, 0.5)',
               }}
             >
-              Ubuntu
-              <Box
-                component="span"
-                sx={{ color: '#C7A24A' }}
-              >
-                Fund
-              </Box>
+              One chain · Many hands
             </Typography>
           </Box>
 
-          {/* ─── Desktop nav links ─── */}
-          <Box
-            sx={{
-              display: { xs: 'none', md: 'flex' },
-              alignItems: 'center',
-              gap: 0.25,
-            }}
-          >
+          {/* Desktop nav */}
+          <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 0.25 }}>
             {menus.map((menu) => (
               <MegaDropdown
                 key={menu.label}
                 menu={menu}
                 open={openMenu === menu.label}
                 onOpen={() => setOpenMenu(menu.label)}
-                // Close only if this menu is still the open one — otherwise a
-                // stale close timer from menu A dismisses freshly opened menu B.
                 onClose={() => setOpenMenu((prev) => (prev === menu.label ? null : prev))}
-                scrolled={scrolled}
                 pathname={pathname}
                 onNavigate={handleNav}
               />
             ))}
           </Box>
 
-          {/* ─── CTA ─── */}
-          <Box sx={{ display: { xs: 'none', md: 'flex' }, flexShrink: 0 }}>
+          {/* Right cluster: search + outlined CTA */}
+          <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 1.5, flexShrink: 0 }}>
+            <Tooltip title="Explore campaigns">
+              <IconButton
+                aria-label="Explore campaigns"
+                href={`${WEB_APP_URL}/explore`}
+                sx={{
+                  width: 40,
+                  height: 40,
+                  color: CREAM,
+                  border: '1px solid rgba(245, 242, 234, 0.20)',
+                  '&:hover': { bgcolor: 'rgba(245, 242, 234, 0.08)', borderColor: 'rgba(245, 242, 234, 0.35)' },
+                }}
+              >
+                <SearchRoundedIcon sx={{ fontSize: 20 }} />
+              </IconButton>
+            </Tooltip>
             <Button
               href={`${WEB_APP_URL}/register`}
-              size="small"
+              endIcon={<ArrowForwardRoundedIcon sx={{ fontSize: 16 }} />}
               sx={{
-                fontWeight: 700,
                 fontFamily: '"Outfit", sans-serif',
+                fontWeight: 700,
                 fontSize: '0.78rem',
-                textTransform: 'none',
-                borderRadius: SHAPE.sm,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                borderRadius: '999px',
                 px: 2.5,
-                py: 0.7,
-                color: '#1C261D',
-                background: 'linear-gradient(135deg, #C7A24A, #A07E33)',
-                transition: 'background-color 0.2s ease',
-                '&:hover': {
-                  background: 'linear-gradient(135deg, #DCC07E, #C7A24A)',
-                },
+                py: 0.85,
+                color: GOLD_LIGHT,
+                border: '1.5px solid rgba(199, 162, 74, 0.55)',
+                transition: 'background-color 160ms ease, color 160ms ease, border-color 160ms ease',
+                '&:hover': { bgcolor: GOLD, color: FOREST_DARK, borderColor: GOLD },
               }}
             >
               Get Started
             </Button>
           </Box>
 
-          {/* ─── Mobile hamburger ─── */}
+          {/* Mobile hamburger */}
           <IconButton
             onClick={() => setDrawerOpen(true)}
             sx={{
               display: { xs: 'flex', md: 'none' },
-              width: 36,
-              height: 36,
-              borderRadius: SHAPE.sm,
-              color: scrolled ? '#1a1a1a' : '#fff',
-              border: scrolled ? '1px solid rgba(0,0,0,0.08)' : '1px solid rgba(255,255,255,0.15)',
-              ml: 'auto',
+              width: 40,
+              height: 40,
+              color: CREAM,
+              border: '1px solid rgba(245, 242, 234, 0.18)',
             }}
           >
-            <MenuIcon sx={{ fontSize: 18 }} />
+            <MenuIcon sx={{ fontSize: 20 }} />
           </IconButton>
         </Box>
       </Box>
 
-      {/* ================================================================= */}
-      {/*  Mobile Drawer                                                     */}
-      {/* ================================================================= */}
+      {/* Mobile drawer */}
       <Drawer
         anchor="right"
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        PaperProps={{ sx: { width: 320, bgcolor: '#F2EFEA' } }}
+        slotProps={{ paper: { sx: { width: 320, bgcolor: '#F2EFEA' } } }}
       >
         <Box sx={{ px: 2.5, py: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Box component="img" src="/favicon.svg" alt="UbuntuFund" sx={{ width: 30, height: 30 }} />
             <Typography sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 900, fontSize: '1.05rem' }}>
-              Ubuntu<Box component="span" sx={{ color: '#C7A24A' }}>Fund</Box>
+              Ubuntu<Box component="span" sx={{ color: GOLD }}>Fund</Box>
             </Typography>
           </Box>
           <IconButton onClick={() => setDrawerOpen(false)} size="small" sx={{ width: 30, height: 30, borderRadius: SHAPE.sm, border: '1px solid rgba(0,0,0,0.08)' }}>
@@ -617,17 +510,19 @@ function Navbar() {
         <Box sx={{ p: 2.5 }}>
           <Button
             href={`${WEB_APP_URL}/register`}
-            variant="contained"
+            endIcon={<ArrowForwardRoundedIcon sx={{ fontSize: 16 }} />}
             fullWidth
             sx={{
-              borderRadius: SHAPE.sm,
+              borderRadius: '999px',
               fontWeight: 700,
               fontFamily: '"Outfit", sans-serif',
-              textTransform: 'none',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              fontSize: '0.8rem',
               py: 1.3,
-              background: 'linear-gradient(135deg, #C7A24A, #A07E33)',
-              color: '#1C261D',
-              '&:hover': { background: 'linear-gradient(135deg, #DCC07E, #C7A24A)' },
+              color: FOREST_DARK,
+              bgcolor: GOLD,
+              '&:hover': { bgcolor: GOLD_LIGHT },
             }}
           >
             Get Started

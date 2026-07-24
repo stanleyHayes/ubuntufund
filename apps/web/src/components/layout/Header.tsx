@@ -12,8 +12,11 @@ import ListItemIcon from '@mui/material/ListItemIcon'
 import Divider from '@mui/material/Divider'
 import IconButton from '@mui/material/IconButton'
 import Drawer from '@mui/material/Drawer'
+import Tooltip from '@mui/material/Tooltip'
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
+import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
+import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded'
 import RocketLaunchRoundedIcon from '@mui/icons-material/RocketLaunchRounded'
 import VolunteerActivismRoundedIcon from '@mui/icons-material/VolunteerActivismRounded'
@@ -32,9 +35,90 @@ const NAV_LINKS = [
   { label: 'Leaderboard', to: '/leaderboard' },
 ]
 
+const CREAM = '#F5F2EA'
+const GOLD = '#C7A24A'
+const GOLD_LIGHT = '#DCC07E'
+
 function isLinkActive(pathname: string, to: string): boolean {
   if (to === '/') return pathname === '/'
   return pathname === to || pathname.startsWith(`${to}/`)
+}
+
+/** Uppercase nav item with a gold active-underline (design language #2). */
+function NavItem({ label, to, active }: { label: string; to: string; active: boolean }) {
+  return (
+    <Box
+      component={RouterLink}
+      to={to}
+      sx={{
+        position: 'relative',
+        display: 'inline-flex',
+        alignItems: 'center',
+        height: 40,
+        px: 1.5,
+        textDecoration: 'none',
+        '&:hover .nav-label': { color: CREAM },
+      }}
+    >
+      <Typography
+        className="nav-label"
+        sx={{
+          fontFamily: '"Outfit", sans-serif',
+          textTransform: 'uppercase',
+          letterSpacing: '0.09em',
+          fontSize: '0.78rem',
+          fontWeight: active ? 700 : 600,
+          color: active ? CREAM : 'rgba(245, 242, 234, 0.72)',
+          transition: 'color 160ms ease',
+        }}
+      >
+        {label}
+      </Typography>
+      <Box
+        sx={{
+          position: 'absolute',
+          bottom: 4,
+          left: 12,
+          right: 12,
+          height: 2,
+          borderRadius: 2,
+          bgcolor: GOLD,
+          transformOrigin: 'center',
+          transform: active ? 'scaleX(1)' : 'scaleX(0)',
+          transition: 'transform 180ms ease',
+          '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
+        }}
+      />
+    </Box>
+  )
+}
+
+/** Outlined gold pill CTA with a trailing arrow; fills gold on hover. */
+function CtaButton({ to, children }: { to: string; children: React.ReactNode }) {
+  return (
+    <Button
+      component={RouterLink}
+      to={to}
+      endIcon={<ArrowForwardRoundedIcon sx={{ fontSize: 16 }} />}
+      sx={{
+        borderRadius: '999px',
+        px: 2.5,
+        py: 0.85,
+        fontFamily: '"Outfit", sans-serif',
+        fontWeight: 700,
+        fontSize: '0.78rem',
+        textTransform: 'uppercase',
+        letterSpacing: '0.05em',
+        color: GOLD_LIGHT,
+        border: `1.5px solid rgba(199, 162, 74, 0.55)`,
+        bgcolor: 'transparent',
+        transition: 'background-color 160ms ease, color 160ms ease, border-color 160ms ease',
+        '&:hover': { bgcolor: GOLD, color: '#1C261D', borderColor: GOLD },
+      }}
+    >
+      {children}
+    </Button>
+  )
 }
 
 export function Header() {
@@ -59,60 +143,68 @@ export function Header() {
       elevation={0}
       sx={{
         bgcolor: '#1C261D',
-        color: '#F5F2EA',
+        color: CREAM,
         boxShadow: 'inset 0 -2px 0 rgba(199, 162, 74, 0.45)',
       }}
     >
       <Container maxWidth="lg">
-        <Toolbar disableGutters sx={{ gap: 2, minHeight: { xs: 60, md: 68 } }}>
-          {/* Brand */}
+        <Toolbar disableGutters sx={{ gap: 2, minHeight: { xs: 62, md: 74 } }}>
+          {/* Brand + tagline */}
           <Box
             component={RouterLink}
             to="/"
             aria-label="UbuntuFund home"
-            sx={{ display: 'flex', alignItems: 'center', textDecoration: 'none', mr: 2 }}
+            sx={{ display: 'flex', flexDirection: 'column', textDecoration: 'none', mr: 3, py: 0.5 }}
           >
-            <BrandLogo size={30} onDark />
+            <BrandLogo size={28} onDark />
+            <Typography
+              sx={{
+                mt: 0.35,
+                fontFamily: '"Outfit", sans-serif',
+                fontSize: '0.56rem',
+                fontWeight: 600,
+                letterSpacing: '0.16em',
+                textTransform: 'uppercase',
+                color: 'rgba(245, 242, 234, 0.5)',
+                pl: '38px',
+              }}
+            >
+              One chain · Many hands
+            </Typography>
           </Box>
 
-          {/* Desktop nav */}
-          <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 0.5, flex: 1 }}>
-            {NAV_LINKS.map((link) => {
-              const active = isLinkActive(pathname, link.to)
-              return (
-                <Button
-                  key={link.to}
-                  component={RouterLink}
-                  to={link.to}
-                  sx={{
-                    px: 1.75,
-                    borderRadius: '999px',
-                    fontSize: '0.875rem',
-                    fontWeight: active ? 700 : 500,
-                    color: active ? '#DCC07E' : 'rgba(245, 242, 234, 0.78)',
-                    bgcolor: active ? 'rgba(245, 242, 234, 0.10)' : 'transparent',
-                    '&:hover': { bgcolor: 'rgba(245, 242, 234, 0.10)', color: active ? '#DCC07E' : '#F5F2EA' },
-                  }}
-                >
-                  {link.label}
-                </Button>
-              )
-            })}
+          {/* Desktop nav — uppercase with gold active underline */}
+          <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 0.5, flex: 1 }}>
+            {NAV_LINKS.map((link) => (
+              <NavItem key={link.to} label={link.label} to={link.to} active={isLinkActive(pathname, link.to)} />
+            ))}
           </Box>
           <Box sx={{ flex: { xs: 1, md: 0 } }} />
+
+          {/* Search */}
+          <Tooltip title="Search campaigns">
+            <IconButton
+              aria-label="Search campaigns"
+              onClick={() => navigate('/explore')}
+              sx={{
+                display: { xs: 'none', md: 'inline-flex' },
+                width: 40,
+                height: 40,
+                color: CREAM,
+                border: '1px solid rgba(245, 242, 234, 0.20)',
+                '&:hover': { bgcolor: 'rgba(245, 242, 234, 0.08)', borderColor: 'rgba(245, 242, 234, 0.35)' },
+              }}
+            >
+              <SearchRoundedIcon sx={{ fontSize: 20 }} />
+            </IconButton>
+          </Tooltip>
 
           {/* Right cluster */}
           {isAuthenticated ? (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
-              <Button
-                component={RouterLink}
-                to="/campaigns/new"
-                variant="contained"
-                color="secondary"
-                sx={{ display: { xs: 'none', sm: 'inline-flex' }, borderRadius: '999px', px: 2.25, fontWeight: 700 }}
-              >
-                Start a Campaign
-              </Button>
+              <Box sx={{ display: { xs: 'none', sm: 'inline-flex' } }}>
+                <CtaButton to="/campaigns/new">Start a Campaign</CtaButton>
+              </Box>
               <Box
                 component="button"
                 onClick={(e: React.MouseEvent<HTMLElement>) => setMenuAnchor(e.currentTarget)}
@@ -153,7 +245,6 @@ export function Header() {
                       width: 260,
                       borderRadius: '16px',
                       border: '1px solid #E7E3D8',
-                      boxShadow: '0 18px 50px rgba(26, 46, 34, 0.14)',
                       '& .MuiMenuItem-root': { py: 1, mx: 1, borderRadius: '10px' },
                       '& .MuiListItemIcon-root': { color: '#5E8F72', minWidth: 34 },
                     },
@@ -216,19 +307,23 @@ export function Header() {
               </Menu>
             </Box>
           ) : (
-            <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 1 }}>
-              <Button component={RouterLink} to="/login" sx={{ color: 'rgba(245, 242, 234, 0.85)', fontWeight: 600, '&:hover': { color: '#F5F2EA', bgcolor: 'rgba(245, 242, 234, 0.08)' } }}>
-                Login
-              </Button>
+            <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 1.5 }}>
               <Button
                 component={RouterLink}
-                to="/register"
-                variant="contained"
-                color="secondary"
-                sx={{ borderRadius: '999px', px: 2.5, fontWeight: 700 }}
+                to="/login"
+                sx={{
+                  fontFamily: '"Outfit", sans-serif',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  fontSize: '0.78rem',
+                  color: 'rgba(245, 242, 234, 0.85)',
+                  fontWeight: 600,
+                  '&:hover': { color: CREAM, bgcolor: 'rgba(245, 242, 234, 0.08)' },
+                }}
               >
-                Get Started
+                Login
               </Button>
+              <CtaButton to="/register">Get Started</CtaButton>
             </Box>
           )}
 
@@ -236,23 +331,23 @@ export function Header() {
           <IconButton
             aria-label="Open menu"
             onClick={() => setDrawerOpen(true)}
-            sx={{ display: { xs: 'inline-flex', md: 'none' }, color: '#F5F2EA' }}
+            sx={{ display: { xs: 'inline-flex', md: 'none' }, color: CREAM }}
           >
             <MenuRoundedIcon />
           </IconButton>
         </Toolbar>
       </Container>
 
-      {/* Mobile drawer — forest panel, per the house drawer pattern */}
+      {/* Mobile drawer — forest panel */}
       <Drawer
         anchor="right"
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        slotProps={{ paper: { sx: { width: '86vw', maxWidth: 360, bgcolor: '#1C261D', color: '#F5F2EA', p: 2 } } }}
+        slotProps={{ paper: { sx: { width: '86vw', maxWidth: 360, bgcolor: '#1C261D', color: CREAM, p: 2 } } }}
       >
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 700 }}>UbuntuFund</Typography>
-          <IconButton aria-label="Close menu" onClick={() => setDrawerOpen(false)} sx={{ color: '#F5F2EA' }}>
+          <BrandLogo size={26} onDark />
+          <IconButton aria-label="Close menu" onClick={() => setDrawerOpen(false)} sx={{ color: CREAM }}>
             <CloseRoundedIcon />
           </IconButton>
         </Box>
@@ -274,7 +369,10 @@ export function Header() {
             fullWidth
             sx={{
               justifyContent: 'flex-start',
-              color: isLinkActive(pathname, link.to) ? '#C7A24A' : '#F5F2EA',
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+              fontSize: '0.82rem',
+              color: isLinkActive(pathname, link.to) ? GOLD_LIGHT : CREAM,
               fontWeight: 600,
               py: 1.1,
               borderRadius: SHAPE.sm,
