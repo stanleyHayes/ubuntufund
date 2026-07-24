@@ -36,8 +36,8 @@ const keyframes = `
     to { opacity: 1; transform: translateY(0); }
   }
   @keyframes pulse {
-    0%, 100% { transform: scale(1); box-shadow: 0 4px 20px rgba(249,168,37,0.3); }
-    50% { transform: scale(1.05); box-shadow: 0 6px 30px rgba(249,168,37,0.5); }
+    0%, 100% { transform: scale(1); box-shadow: 0 4px 20px rgba(199, 162, 74,0.3); }
+    50% { transform: scale(1.05); box-shadow: 0 6px 30px rgba(199, 162, 74,0.5); }
   }
   @keyframes sway {
     0%, 100% { transform: rotate(-1deg); }
@@ -51,8 +51,8 @@ const keyframes = `
     100% { transform: translateY(0) scale(1) rotate(0deg); opacity: 1; }
   }
   @keyframes sunGlow {
-    0%, 100% { box-shadow: 0 0 60px rgba(249,168,37,0.3); }
-    50% { box-shadow: 0 0 120px rgba(249,168,37,0.6); }
+    0%, 100% { box-shadow: 0 0 60px rgba(199, 162, 74,0.3); }
+    50% { box-shadow: 0 0 120px rgba(199, 162, 74,0.6); }
   }
   @keyframes kenteSlide {
     0% { background-position: 0 0; }
@@ -149,7 +149,7 @@ export default function NotFoundPage() {
         alignItems: 'center',
         justifyContent: 'center',
         background:
-          'linear-gradient(180deg, #1A0A2E 0%, #2D1B4E 15%, #6B2D5B 30%, #C75B39 50%, #F9A825 70%, #FFD54F 85%, #FFF8E1 100%)',
+          'linear-gradient(180deg, #1A0A2E 0%, #2D1B4E 15%, #6B2D5B 30%, #C75B39 50%, #C7A24A 70%, #FFD54F 85%, #FFF8E1 100%)',
         animation: 'sunsetShift 10s ease-in-out infinite',
       }}
     >
@@ -233,7 +233,7 @@ export default function NotFoundPage() {
               fontWeight: 900,
               lineHeight: 1,
               color: '#FFF8E1',
-              textShadow: '0 4px 30px rgba(0,0,0,0.3), 0 0 60px rgba(249,168,37,0.2)',
+              textShadow: '0 4px 30px rgba(0,0,0,0.3), 0 0 60px rgba(199, 162, 74,0.2)',
               fontFamily: '"Georgia", serif',
               opacity: 0,
               animation: `digitSlam 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) ${i * 0.15}s forwards, ${['floatDigit1', 'floatDigit2', 'floatDigit3'][i]} ${3 + i * 0.3}s ease-in-out ${0.8 + i * 0.15}s infinite`,
@@ -251,7 +251,7 @@ export default function NotFoundPage() {
           width: 200,
           height: 200,
           borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(249,168,37,0.15) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, rgba(199, 162, 74,0.15) 0%, transparent 70%)',
           animation: 'sunGlow 4s ease infinite',
           zIndex: 1,
         }}
@@ -294,7 +294,7 @@ export default function NotFoundPage() {
         variant="contained"
         size="large"
         sx={{
-          background: 'linear-gradient(135deg, #F9A825 0%, #FF8F00 100%)',
+          background: 'linear-gradient(135deg, #C7A24A 0%, #FF8F00 100%)',
           color: '#3E2723',
           fontWeight: 700,
           fontSize: '1.05rem',
@@ -306,7 +306,7 @@ export default function NotFoundPage() {
           opacity: 0,
           animation: 'fadeInUp 0.6s ease 1.1s forwards, pulse 2.5s ease 1.7s infinite',
           '&:hover': {
-            background: 'linear-gradient(135deg, #FFB300 0%, #F9A825 100%)',
+            background: 'linear-gradient(135deg, #FFB300 0%, #C7A24A 100%)',
           },
         }}
       >
@@ -353,7 +353,7 @@ export default function NotFoundPage() {
           right: 0,
           height: 5,
           background:
-            'repeating-linear-gradient(90deg, #2E7D32 0px, #2E7D32 20px, #F9A825 20px, #F9A825 40px, #C75B39 40px, #C75B39 60px, #5D4037 60px, #5D4037 80px)',
+            'repeating-linear-gradient(90deg, #2E3D2F 0px, #2E3D2F 20px, #C7A24A 20px, #C7A24A 40px, #C75B39 40px, #C75B39 60px, #5D4037 60px, #5D4037 80px)',
           zIndex: 3,
           animation: 'kenteSlide 2s linear infinite',
         }}

@@ -1,19 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 48" fill="none">
   <!-- Icon -->
   <g transform="translate(24, 24)">
-    <circle r="22" fill="#2E7D32"/>
-    <circle r="15" fill="none" stroke="#4CAF50" stroke-width="0.7" opacity="0.3"/>
+    <circle r="22" fill="#2E3D2F"/>
+    <circle r="15" fill="none" stroke="#5E8F72" stroke-width="0.7" opacity="0.3"/>
     <g fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
       <path d="M0,-12 C4.5,-10.5 9,-6 9,-0.8 C9,1.5 7.5,3 5.2,3"/>
       <path d="M0,-12 C4.5,-10.5 9,-6 9,-0.8 C9,1.5 7.5,3 5.2,3" transform="rotate(120)"/>
       <path d="M0,-12 C4.5,-10.5 9,-6 9,-0.8 C9,1.5 7.5,3 5.2,3" transform="rotate(240)"/>
     </g>
-    <circle cx="5.2" cy="3" r="2" fill="#F9A825"/>
-    <circle cx="-4.2" cy="-5.2" r="2" fill="#F9A825"/>
-    <circle cx="-1" cy="5.3" r="2" fill="#F9A825"/>
+    <circle cx="5.2" cy="3" r="2" fill="#C7A24A"/>
+    <circle cx="-4.2" cy="-5.2" r="2" fill="#C7A24A"/>
+    <circle cx="-1" cy="5.3" r="2" fill="#C7A24A"/>
   </g>
   <!-- Text -->
-  <text x="56" y="20" font-family="'TT Squares', 'Inter', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="700" fill="#2E7D32">Ubuntu</text>
-  <text x="118" y="20" font-family="'TT Squares', 'Inter', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="700" fill="#F9A825">Fund</text>
+  <text x="56" y="20" font-family="'TT Squares', 'Inter', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="700" fill="#2E3D2F">Ubuntu</text>
+  <text x="118" y="20" font-family="'TT Squares', 'Inter', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="700" fill="#C7A24A">Fund</text>
   <text x="56" y="36" font-family="'Inter', 'Helvetica Neue', Arial, sans-serif" font-size="9" font-weight="400" fill="#757575" letter-spacing="2.5">TOGETHER, WE RISE</text>
 </svg>

@@ -44,7 +44,7 @@ const fadeIn = keyframes`
 const B = 'rgba(255,255,255,0.06)'
 const CARD_BG = 'rgba(255,255,255,0.02)'
 
-const PIE_COLORS = ['#4CAF50', '#42A5F5', '#F9A825', '#EF5350', '#AB47BC', '#26A69A', '#8D6E63']
+const PIE_COLORS = ['#5E8F72', '#74909A', '#C7A24A', '#C06B58', '#AB47BC', '#26A69A', '#8D6E63']
 
 
 // ---------------------------------------------------------------------------
@@ -173,11 +173,11 @@ function StatCard({
         {change !== undefined && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 1 }}>
             {isPositive ? (
-              <TrendingUpIcon sx={{ fontSize: 14, color: '#66BB6A' }} />
+              <TrendingUpIcon sx={{ fontSize: 14, color: '#5E8F72' }} />
             ) : (
-              <TrendingDownIcon sx={{ fontSize: 14, color: '#EF5350' }} />
+              <TrendingDownIcon sx={{ fontSize: 14, color: '#C06B58' }} />
             )}
-            <Typography sx={{ fontSize: '0.7rem', color: isPositive ? '#66BB6A' : '#EF5350', fontWeight: 600 }}>
+            <Typography sx={{ fontSize: '0.7rem', color: isPositive ? '#5E8F72' : '#C06B58', fontWeight: 600 }}>
               {isPositive ? '+' : ''}{change}%
             </Typography>
             <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>vs last month</Typography>
@@ -192,11 +192,11 @@ function StatCard({
 // Activity item
 // ---------------------------------------------------------------------------
 const activityIcons: Record<string, { icon: React.ReactNode; color: string }> = {
-  donation: { icon: <VolunteerActivismIcon sx={{ fontSize: 16 }} />, color: '#F9A825' },
-  campaign_created: { icon: <RocketLaunchIcon sx={{ fontSize: 16 }} />, color: '#4CAF50' },
-  user_joined: { icon: <GroupAddIcon sx={{ fontSize: 16 }} />, color: '#42A5F5' },
-  dispute_opened: { icon: <GavelIcon sx={{ fontSize: 16 }} />, color: '#EF5350' },
-  campaign_funded: { icon: <CheckCircleIcon sx={{ fontSize: 16 }} />, color: '#66BB6A' },
+  donation: { icon: <VolunteerActivismIcon sx={{ fontSize: 16 }} />, color: '#C7A24A' },
+  campaign_created: { icon: <RocketLaunchIcon sx={{ fontSize: 16 }} />, color: '#5E8F72' },
+  user_joined: { icon: <GroupAddIcon sx={{ fontSize: 16 }} />, color: '#74909A' },
+  dispute_opened: { icon: <GavelIcon sx={{ fontSize: 16 }} />, color: '#C06B58' },
+  campaign_funded: { icon: <CheckCircleIcon sx={{ fontSize: 16 }} />, color: '#5E8F72' },
 }
 
 function ActivityRow({ type, message, timestamp }: { type: string; message: string; timestamp: Date }) {
@@ -274,7 +274,7 @@ function GeoRow({
         <Typography sx={{ fontSize: '0.75rem', color: 'text.primary', fontWeight: 500 }}>{country}</Typography>
         <Box sx={{ display: 'flex', gap: 2 }}>
           <Typography sx={{ fontSize: '0.68rem', color: 'text.secondary' }}>{campaigns} campaigns</Typography>
-          <Typography sx={{ fontSize: '0.68rem', color: '#4CAF50', fontWeight: 600, fontFamily: '"TT Squares", monospace' }}>
+          <Typography sx={{ fontSize: '0.68rem', color: '#5E8F72', fontWeight: 600, fontFamily: '"TT Squares", monospace' }}>
             ${donations.toLocaleString()}
           </Typography>
         </Box>
@@ -288,7 +288,7 @@ function GeoRow({
           bgcolor: 'rgba(255,255,255,0.04)',
           '& .MuiLinearProgress-bar': {
             borderRadius: SHAPE.bar,
-            background: '#4CAF50',
+            background: '#5E8F72',
           },
         }}
       />
@@ -310,7 +310,7 @@ function FraudMetricCard({ metric, value, change }: { metric: string; value: num
         p: 2,
         textAlign: 'center',
         transition: 'border-color 0.25s ease',
-        '&:hover': { borderColor: isGood ? '#4CAF5030' : '#EF535030' },
+        '&:hover': { borderColor: isGood ? '#5E8F7230' : '#C06B5830' },
       }}
     >
       <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', letterSpacing: '0.06em', textTransform: 'uppercase', mb: 0.75 }}>
@@ -321,11 +321,11 @@ function FraudMetricCard({ metric, value, change }: { metric: string; value: num
       </Typography>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5, mt: 0.75 }}>
         {isGood ? (
-          <TrendingDownIcon sx={{ fontSize: 12, color: '#66BB6A' }} />
+          <TrendingDownIcon sx={{ fontSize: 12, color: '#5E8F72' }} />
         ) : (
-          <TrendingUpIcon sx={{ fontSize: 12, color: '#EF5350' }} />
+          <TrendingUpIcon sx={{ fontSize: 12, color: '#C06B58' }} />
         )}
-        <Typography sx={{ fontSize: '0.65rem', color: isGood ? '#66BB6A' : '#EF5350', fontWeight: 600 }}>
+        <Typography sx={{ fontSize: '0.65rem', color: isGood ? '#5E8F72' : '#C06B58', fontWeight: 600 }}>
           {change > 0 ? '+' : ''}{metric === 'Fraud Rate' ? `${change}%` : metric === 'Avg Resolution Time' ? `${change}d` : change}
         </Typography>
       </Box>
@@ -397,11 +397,11 @@ export default function OverviewPage() {
   const maxGeo = Math.max(...geoData.map((g) => g.donations))
 
   const statusColors: Record<string, string> = {
-    [CampaignStatus.ACTIVE]: '#4CAF50',
-    [CampaignStatus.PENDING_REVIEW]: '#F9A825',
-    [CampaignStatus.FUNDED]: '#42A5F5',
+    [CampaignStatus.ACTIVE]: '#5E8F72',
+    [CampaignStatus.PENDING_REVIEW]: '#C7A24A',
+    [CampaignStatus.FUNDED]: '#74909A',
     [CampaignStatus.EXPIRED]: '#78909C',
-    [CampaignStatus.BLOCKED]: '#EF5350',
+    [CampaignStatus.BLOCKED]: '#C06B58',
     [CampaignStatus.DRAFT]: '#8D6E63',
   }
 
@@ -418,10 +418,10 @@ export default function OverviewPage() {
             gap: 2,
           }}
         >
-          <StatCard label="Total Raised" value={`$${stats.totalRaised.toLocaleString()}`} change={stats.monthlyGrowth} icon={<MonetizationOnIcon />} color="#4CAF50" delay={0.05} />
-          <StatCard label="Active Campaigns" value={String(stats.activeCampaigns)} change={12.1} icon={<RocketLaunchIcon />} color="#42A5F5" delay={0.1} />
+          <StatCard label="Total Raised" value={`$${stats.totalRaised.toLocaleString()}`} change={stats.monthlyGrowth} icon={<MonetizationOnIcon />} color="#5E8F72" delay={0.05} />
+          <StatCard label="Active Campaigns" value={String(stats.activeCampaigns)} change={12.1} icon={<RocketLaunchIcon />} color="#74909A" delay={0.1} />
           <StatCard label="Total Users" value={String(stats.totalUsers)} change={8.3} icon={<PeopleIcon />} color="#AB47BC" delay={0.15} />
-          <StatCard label="Avg Donation" value={`$${stats.avgDonation}`} change={stats.conversionRate} icon={<VolunteerActivismIcon />} color="#F9A825" delay={0.2} />
+          <StatCard label="Avg Donation" value={`$${stats.avgDonation}`} change={stats.conversionRate} icon={<VolunteerActivismIcon />} color="#C7A24A" delay={0.2} />
         </Box>
       </Section>
 
@@ -451,7 +451,7 @@ export default function OverviewPage() {
               series={[{
                 data: donationTrend.map((d) => d.amount),
                 area: true,
-                color: '#4CAF50',
+                color: '#5E8F72',
                 showMark: true,
               }]}
               height={280}
@@ -459,7 +459,7 @@ export default function OverviewPage() {
               sx={{
                 '& .MuiAreaElement-root': { fillOpacity: 0.12 },
                 '& .MuiLineElement-root': { strokeWidth: 2 },
-                '& .MuiMarkElement-root': { fill: '#4CAF50', stroke: '#0c0c14', strokeWidth: 2 },
+                '& .MuiMarkElement-root': { fill: '#5E8F72', stroke: '#0c0c14', strokeWidth: 2 },
                 '& .MuiChartsAxis-line': { stroke: B },
                 '& .MuiChartsAxis-tick': { stroke: B },
               }}
@@ -542,7 +542,7 @@ export default function OverviewPage() {
               }]}
               series={[{
                 data: Object.values(campaignsByStatus),
-                color: '#42A5F5',
+                color: '#74909A',
               }]}
               height={280}
               margin={{ top: 20, right: 20, bottom: 50, left: 40 }}
@@ -552,7 +552,7 @@ export default function OverviewPage() {
                 '& .MuiChartsAxis-tick': { stroke: B },
               }}
               barLabel={(item) => {
-                const colors = Object.keys(campaignsByStatus).map((k) => statusColors[k] || '#42A5F5')
+                const colors = Object.keys(campaignsByStatus).map((k) => statusColors[k] || '#74909A')
                 return undefined
               }}
             />
@@ -607,7 +607,7 @@ export default function OverviewPage() {
                     fontFamily: '"TT Squares", monospace',
                     fontWeight: 900,
                     fontSize: '0.85rem',
-                    color: i === 0 ? '#F9A825' : i === 1 ? '#A0A0B0' : i === 2 ? '#8D6E63' : 'text.secondary',
+                    color: i === 0 ? '#C7A24A' : i === 1 ? '#A0A0B0' : i === 2 ? '#8D6E63' : 'text.secondary',
                     width: 20,
                     textAlign: 'center',
                   }}
@@ -629,7 +629,7 @@ export default function OverviewPage() {
                         bgcolor: 'rgba(255,255,255,0.04)',
                         '& .MuiLinearProgress-bar': {
                           borderRadius: SHAPE.bar,
-                          bgcolor: '#4CAF50',
+                          bgcolor: '#5E8F72',
                         },
                       }}
                     />
@@ -643,7 +643,7 @@ export default function OverviewPage() {
                     fontFamily: '"TT Squares", monospace',
                     fontSize: '0.78rem',
                     fontWeight: 700,
-                    color: '#4CAF50',
+                    color: '#5E8F72',
                     flexShrink: 0,
                   }}
                 >
@@ -668,10 +668,10 @@ export default function OverviewPage() {
               const pct = Math.round((count / users.length) * 100)
               const levelColors: Record<string, string> = {
                 [VerificationLevel.NONE]: '#78909C',
-                [VerificationLevel.EMAIL_PHONE]: '#42A5F5',
-                [VerificationLevel.NATIONAL_ID]: '#F9A825',
+                [VerificationLevel.EMAIL_PHONE]: '#74909A',
+                [VerificationLevel.NATIONAL_ID]: '#C7A24A',
                 [VerificationLevel.INSTITUTIONAL]: '#AB47BC',
-                [VerificationLevel.COMMUNITY]: '#4CAF50',
+                [VerificationLevel.COMMUNITY]: '#5E8F72',
               }
               const color = levelColors[level] || '#78909C'
               return (
@@ -719,7 +719,7 @@ export default function OverviewPage() {
             {donationsByMethod.map((pm, i) => {
               const total = donations.length
               const pct = Math.round((pm.count / total) * 100)
-              const colors = ['#4CAF50', '#42A5F5', '#F9A825', '#AB47BC', '#EF5350', '#26A69A', '#8D6E63']
+              const colors = ['#5E8F72', '#74909A', '#C7A24A', '#AB47BC', '#C06B58', '#26A69A', '#8D6E63']
               const color = colors[i % colors.length]
               return (
                 <Box key={pm.method} sx={{ mb: 1.75, '&:last-child': { mb: 0 } }}>
@@ -836,12 +836,12 @@ export default function OverviewPage() {
         }}
       >
         {[
-          { label: 'Total Donations', value: stats.totalDonations, icon: <VolunteerActivismIcon sx={{ fontSize: 16 }} />, color: '#F9A825' },
-          { label: 'Conversion Rate', value: `${stats.conversionRate}%`, icon: <TrendingUpIcon sx={{ fontSize: 16 }} />, color: '#4CAF50' },
-          { label: 'Pending Disputes', value: stats.pendingDisputes, icon: <GavelIcon sx={{ fontSize: 16 }} />, color: '#EF5350' },
-          { label: 'Active Campaigns', value: stats.activeCampaigns, icon: <CampaignIcon sx={{ fontSize: 16 }} />, color: '#42A5F5' },
+          { label: 'Total Donations', value: stats.totalDonations, icon: <VolunteerActivismIcon sx={{ fontSize: 16 }} />, color: '#C7A24A' },
+          { label: 'Conversion Rate', value: `${stats.conversionRate}%`, icon: <TrendingUpIcon sx={{ fontSize: 16 }} />, color: '#5E8F72' },
+          { label: 'Pending Disputes', value: stats.pendingDisputes, icon: <GavelIcon sx={{ fontSize: 16 }} />, color: '#C06B58' },
+          { label: 'Active Campaigns', value: stats.activeCampaigns, icon: <CampaignIcon sx={{ fontSize: 16 }} />, color: '#74909A' },
           { label: 'Verified Users', value: users.filter((u) => u.verificationLevel !== VerificationLevel.NONE).length, icon: <VerifiedUserIcon sx={{ fontSize: 16 }} />, color: '#AB47BC' },
-          { label: 'Monthly Growth', value: `${stats.monthlyGrowth}%`, icon: <TrendingUpIcon sx={{ fontSize: 16 }} />, color: '#66BB6A' },
+          { label: 'Monthly Growth', value: `${stats.monthlyGrowth}%`, icon: <TrendingUpIcon sx={{ fontSize: 16 }} />, color: '#5E8F72' },
         ].map((s, i) => (
           <Box
             key={s.label}

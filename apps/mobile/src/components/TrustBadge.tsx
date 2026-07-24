@@ -29,7 +29,7 @@ const levelConfig: Record<
   [VerificationLevel.INSTITUTIONAL]: {
     label: 'Institutional',
     icon: 'shield-star',
-    color: '#F9A825',
+    color: '#C7A24A',
   },
   [VerificationLevel.COMMUNITY]: {
     label: 'Community Trusted',

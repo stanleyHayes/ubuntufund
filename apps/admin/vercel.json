@@ -1,0 +1,14 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "cd ../.. && npx turbo build --filter=@ubuntu-fund/admin",
+  "outputDirectory": "dist",
+  "installCommand": "cd ../.. && npm install",
+  "framework": "vite",
+  "rewrites": [
+    {
+      "source": "/api/v1/:path*",
+      "destination": "https://ubuntu-fund-api.onrender.com/api/v1/:path*"
+    },
+    { "source": "/(.*)", "destination": "/" }
+  ]
+}

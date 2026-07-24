@@ -55,8 +55,8 @@ const CONTACT_CHANNELS = [
     label: 'Visit Us',
     value: '14 Independence Avenue, Accra, Ghana',
     detail: 'Mon-Fri, 9am-5pm WAT',
-    color: '#2E7D32',
-    bgGrad: 'linear-gradient(135deg, rgba(46,125,50,0.08), rgba(46,125,50,0.02))',
+    color: '#2E3D2F',
+    bgGrad: 'linear-gradient(135deg, rgba(46, 61, 47,0.08), rgba(46, 61, 47,0.02))',
   },
   {
     icon: <EmailRoundedIcon />,
@@ -237,7 +237,7 @@ function ContactPage() {
                 sx={{
                   px: 4,
                   py: 3,
-                  background: 'linear-gradient(135deg, rgba(46,125,50,0.04), rgba(249,168,37,0.03))',
+                  background: 'linear-gradient(135deg, rgba(46, 61, 47,0.04), rgba(199, 162, 74,0.03))',
                   borderBottom: '1px solid',
                   borderColor: 'divider',
                 }}
@@ -263,7 +263,7 @@ function ContactPage() {
                         width: 72,
                         height: 72,
                         borderRadius: '50%',
-                        bgcolor: 'rgba(46,125,50,0.08)',
+                        bgcolor: 'rgba(46, 61, 47,0.08)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -306,10 +306,10 @@ function ContactPage() {
                             borderRadius: SHAPE.sm,
                             border: '1.5px solid',
                             borderColor: formData.type === t.value ? 'primary.main' : 'divider',
-                            bgcolor: formData.type === t.value ? 'rgba(46,125,50,0.08)' : 'transparent',
+                            bgcolor: formData.type === t.value ? 'rgba(46, 61, 47,0.08)' : 'transparent',
                             color: formData.type === t.value ? 'primary.main' : 'text.primary',
                             transition: 'all 0.2s ease',
-                            '&:hover': { borderColor: 'primary.light', bgcolor: 'rgba(46,125,50,0.04)' },
+                            '&:hover': { borderColor: 'primary.light', bgcolor: 'rgba(46, 61, 47,0.04)' },
                           }}
                         />
                       ))}
@@ -361,10 +361,10 @@ function ContactPage() {
                             fontWeight: 700,
                             fontSize: '0.95rem',
                             textTransform: 'none',
-                            boxShadow: '0 4px 16px rgba(46,125,50,0.25)',
+                            boxShadow: '0 4px 16px rgba(46, 61, 47,0.25)',
                             transition: 'all 0.25s ease',
                             '&:hover': {
-                              boxShadow: '0 6px 24px rgba(46,125,50,0.35)',
+                              boxShadow: '0 6px 24px rgba(46, 61, 47,0.35)',
                               transform: 'translateY(-2px)',
                             },
                           }}
@@ -404,9 +404,9 @@ function ContactPage() {
                           gap: 1.5,
                           p: 1.5,
                           borderRadius: SHAPE.card,
-                          bgcolor: office.hq ? 'rgba(46,125,50,0.04)' : 'transparent',
+                          bgcolor: office.hq ? 'rgba(46, 61, 47,0.04)' : 'transparent',
                           border: '1px solid',
-                          borderColor: office.hq ? 'rgba(46,125,50,0.12)' : 'transparent',
+                          borderColor: office.hq ? 'rgba(46, 61, 47,0.12)' : 'transparent',
                           transition: 'all 0.2s ease',
                           '&:hover': { bgcolor: 'rgba(0,0,0,0.02)' },
                         }}
@@ -489,7 +489,7 @@ function ContactPage() {
                   border: '1px solid',
                   borderColor: 'divider',
                   borderRadius: SHAPE.card,
-                  background: 'linear-gradient(135deg, rgba(249,168,37,0.04), rgba(199,91,57,0.03))',
+                  background: 'linear-gradient(135deg, rgba(199, 162, 74,0.04), rgba(199,91,57,0.03))',
                   animation: `${fadeSlide} 0.4s ease 0.6s both`,
                 }}
               >

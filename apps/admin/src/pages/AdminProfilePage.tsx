@@ -216,7 +216,7 @@ export default function AdminProfilePage() {
             fontWeight: 900,
             fontFamily: '"TT Squares", sans-serif',
             border: '3px solid',
-            borderColor: alpha('#4CAF50', 0.3),
+            borderColor: alpha('#5E8F72', 0.3),
           }}
         >
           {initials}
@@ -236,8 +236,8 @@ export default function AdminProfilePage() {
               height: 22,
               fontSize: '0.68rem',
               fontWeight: 700,
-              bgcolor: alpha('#4CAF50', 0.1),
-              color: '#4CAF50',
+              bgcolor: alpha('#5E8F72', 0.1),
+              color: '#5E8F72',
               borderRadius: SHAPE.sm,
             }}
           />
@@ -247,7 +247,7 @@ export default function AdminProfilePage() {
       <Grid container spacing={3}>
         {/* ─── Personal Information ─── */}
         <Grid size={{ xs: 12, lg: 6 }}>
-          <SectionCard icon={<PersonRoundedIcon />} title="Personal Information" color="#4CAF50" delay={0.05}>
+          <SectionCard icon={<PersonRoundedIcon />} title="Personal Information" color="#5E8F72" delay={0.05}>
             <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
               <TextField
                 label="Full Name"
@@ -359,7 +359,7 @@ export default function AdminProfilePage() {
 
         {/* ─── Change Password ─── */}
         <Grid size={{ xs: 12, lg: 6 }}>
-          <SectionCard icon={<LockRoundedIcon />} title="Change Password" color="#EF5350" delay={0.1}>
+          <SectionCard icon={<LockRoundedIcon />} title="Change Password" color="#C06B58" delay={0.1}>
             <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
               {passwordError && (
                 <Alert severity="error" sx={{ borderRadius: SHAPE.sm, py: 0 }}>
@@ -425,7 +425,7 @@ export default function AdminProfilePage() {
                   <Box sx={{ display: 'flex', gap: 0.5, mb: 0.5 }}>
                     {[1, 2, 3, 4].map((level) => {
                       const strength = (newPassword.length >= 8 ? 1 : 0) + (/[A-Z]/.test(newPassword) ? 1 : 0) + (/[0-9]/.test(newPassword) ? 1 : 0) + (/[^A-Za-z0-9]/.test(newPassword) ? 1 : 0)
-                      const colors = ['#EF5350', '#FFA726', '#F9A825', '#4CAF50']
+                      const colors = ['#C06B58', '#D3A95C', '#C7A24A', '#5E8F72']
                       return (
                         <Box
                           key={level}
@@ -472,7 +472,7 @@ export default function AdminProfilePage() {
 
         {/* ─── Notification Preferences ─── */}
         <Grid size={{ xs: 12, lg: 6 }}>
-          <SectionCard icon={<TuneRoundedIcon />} title="Notification Preferences" color="#42A5F5" delay={0.15}>
+          <SectionCard icon={<TuneRoundedIcon />} title="Notification Preferences" color="#74909A" delay={0.15}>
             {[
               { label: 'Email Notifications', desc: 'Receive important updates via email', checked: emailNotifs, onChange: setEmailNotifs },
               { label: 'Push Notifications', desc: 'Browser push notifications for real-time alerts', checked: pushNotifs, onChange: setPushNotifs },
@@ -502,8 +502,8 @@ export default function AdminProfilePage() {
                   checked={pref.checked}
                   onChange={(_, v) => pref.onChange(v)}
                   sx={{
-                    '& .MuiSwitch-switchBase.Mui-checked': { color: '#42A5F5' },
-                    '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: '#42A5F5' },
+                    '& .MuiSwitch-switchBase.Mui-checked': { color: '#74909A' },
+                    '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: '#74909A' },
                   }}
                 />
               </Box>
@@ -519,8 +519,8 @@ export default function AdminProfilePage() {
                   px: 3,
                   fontWeight: 700,
                   textTransform: 'none',
-                  bgcolor: '#42A5F5',
-                  '&:hover': { bgcolor: '#1E88E5' },
+                  bgcolor: '#4A6B75',
+                  '&:hover': { bgcolor: '#74909A' },
                 }}
               >
                 {saving ? 'Saving...' : 'Save Preferences'}

@@ -61,8 +61,8 @@ const keyframes = `
 
 function KenteWeave({ layer = 0 }: { layer?: number }) {
   const colors = [
-    ['#2E7D32', '#F9A825', '#C75B39', '#5D4037'],
-    ['#F9A825', '#C75B39', '#2E7D32', '#8D6E63'],
+    ['#2E3D2F', '#C7A24A', '#C75B39', '#5D4037'],
+    ['#C7A24A', '#C75B39', '#2E3D2F', '#8D6E63'],
   ][layer]
 
   // Each "strip" is a band of the weave
@@ -141,7 +141,7 @@ function OrbitingGlyphs() {
     delay: i * -6,
     size: 22 + (i % 3) * 4,
     opacity: 0.12 + (i % 3) * 0.04,
-    color: ['#2E7D32', '#F9A825', '#C75B39', '#5D4037', '#8D6E63'][i],
+    color: ['#2E3D2F', '#C7A24A', '#C75B39', '#5D4037', '#8D6E63'][i],
   }))
 
   return (
@@ -196,9 +196,9 @@ function AfricanSun() {
       }}
     >
       {/* Core */}
-      <circle cx="100" cy="100" r="30" fill="#F9A825" opacity="0.5" />
+      <circle cx="100" cy="100" r="30" fill="#C7A24A" opacity="0.5" />
       {/* Pulsing halo */}
-      <circle cx="100" cy="100" fill="none" stroke="#F9A825" strokeWidth="1" style={{ animation: 'sunPulse 4s ease infinite' }}>
+      <circle cx="100" cy="100" fill="none" stroke="#C7A24A" strokeWidth="1" style={{ animation: 'sunPulse 4s ease infinite' }}>
         <animate attributeName="r" values="60;75;60" dur="4s" repeatCount="indefinite" />
         <animate attributeName="opacity" values="0.12;0.2;0.12" dur="4s" repeatCount="indefinite" />
       </circle>
@@ -217,7 +217,7 @@ function AfricanSun() {
               y1={y1}
               x2={x2}
               y2={y2}
-              stroke="#F9A825"
+              stroke="#C7A24A"
               strokeWidth={i % 2 === 0 ? '1.5' : '0.8'}
               opacity={i % 2 === 0 ? 0.3 : 0.15}
               strokeLinecap="round"
@@ -264,7 +264,7 @@ function MorphingTerrain() {
       </path>
       {/* Near terrain */}
       <path
-        fill="rgba(46,125,50,0.06)"
+        fill="rgba(46, 61, 47,0.06)"
       >
         <animate
           attributeName="d"
@@ -286,11 +286,11 @@ function MorphingTerrain() {
 
 function DustMotes() {
   const motes = [
-    { x: '10%', dxS: '-5px', dxE: '8px', delay: 0, dur: 4, color: '#F9A825', size: 3 },
+    { x: '10%', dxS: '-5px', dxE: '8px', delay: 0, dur: 4, color: '#C7A24A', size: 3 },
     { x: '25%', dxS: '3px', dxE: '-6px', delay: 0.8, dur: 5, color: '#C75B39', size: 4 },
-    { x: '45%', dxS: '-8px', dxE: '4px', delay: 1.5, dur: 3.5, color: '#2E7D32', size: 3 },
+    { x: '45%', dxS: '-8px', dxE: '4px', delay: 1.5, dur: 3.5, color: '#2E3D2F', size: 3 },
     { x: '60%', dxS: '6px', dxE: '-3px', delay: 0.3, dur: 4.5, color: '#5D4037', size: 3 },
-    { x: '78%', dxS: '-4px', dxE: '7px', delay: 2, dur: 4, color: '#F9A825', size: 4 },
+    { x: '78%', dxS: '-4px', dxE: '7px', delay: 2, dur: 4, color: '#C7A24A', size: 4 },
     { x: '90%', dxS: '5px', dxE: '-5px', delay: 1, dur: 3.8, color: '#C75B39', size: 3 },
   ]
 
@@ -386,7 +386,7 @@ export function AfricanBanner({ title, subtitle, description, accentWord, icon, 
         minHeight: compact ? { xs: 200, md: 240 } : { xs: 280, md: 340 },
         pt: navbarOffset ? `${navbarOffset}px` : 0,
         overflow: 'hidden',
-        backgroundColor: '#2E7D32',
+        backgroundColor: '#2E3D2F',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -474,7 +474,7 @@ export function AfricanBanner({ title, subtitle, description, accentWord, icon, 
               border: '1.5px solid rgba(255,255,255,0.2)',
               mb: 2.5,
               animation: 'fadeInStagger 0.5s ease forwards',
-              color: '#F9A825',
+              color: '#C7A24A',
               boxShadow: '0 8px 32px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.1)',
               '& .MuiSvgIcon-root': {
                 fontSize: compact ? '1.8rem' : '2.2rem',
@@ -503,8 +503,8 @@ export function AfricanBanner({ title, subtitle, description, accentWord, icon, 
                 key={i}
                 component="span"
                 sx={{
-                  color: '#F9A825',
-                  filter: 'drop-shadow(0 2px 8px rgba(249,168,37,0.4))',
+                  color: '#C7A24A',
+                  filter: 'drop-shadow(0 2px 8px rgba(199, 162, 74,0.4))',
                 }}
               >
                 {part.text}
@@ -569,13 +569,13 @@ export function AfricanBanner({ title, subtitle, description, accentWord, icon, 
         <path
           d="M0,8 C120,20 240,2 360,12 C480,22 600,4 720,14 C840,24 960,6 1080,14 C1200,22 1320,4 1440,10"
           fill="none"
-          stroke="rgba(249,168,37,0.25)"
+          stroke="rgba(199, 162, 74,0.25)"
           strokeWidth="1.5"
         />
         {/* Main wave fill matching page background */}
         <path
           d="M0,16 C180,30 360,6 540,18 C720,30 900,8 1080,18 C1260,28 1380,12 1440,16 L1440,36 L0,36Z"
-          fill="#FAFAF5"
+          fill="#F2EFEA"
         />
       </svg>
     </Box>

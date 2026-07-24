@@ -1,6 +1,7 @@
-import type { LoginInput, AuthTokens, User } from '@ubuntu-fund/types';
+import { KYCStatus, KYCLevel, type LoginInput, type AuthTokens, type User } from '@ubuntu-fund/types';
 import * as bcrypt from 'bcryptjs';
 import type { UserRepositoryPort } from '../../domain/ports/outbound/UserRepositoryPort.js';
+import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 import type { AuthTokenService } from '../services/AuthTokenService.js';
 
 export class LoginUserUseCase {
@@ -14,7 +15,7 @@ export class LoginUserUseCase {
   ): Promise<{ user: User; tokens: AuthTokens }> {
     const user = await this.userRepo.findByEmail(input.email);
     if (!user) {
-      throw new Error('Invalid email or password');
+      throw new AppError('Invalid email or password', 401);
     }
 
     const isPasswordValid = await bcrypt.compare(
@@ -22,7 +23,7 @@ export class LoginUserUseCase {
       user.passwordHash
     );
     if (!isPasswordValid) {
-      throw new Error('Invalid email or password');
+      throw new AppError('Invalid email or password', 401);
     }
 
     const tokens = this.tokenService.generateTokens({
@@ -38,6 +39,8 @@ export class LoginUserUseCase {
         avatarUrl: user.avatarUrl,
         role: user.role,
         verificationLevel: user.verificationLevel,
+        kycStatus: KYCStatus.UNVERIFIED,
+        kycLevel: KYCLevel.NONE,
         trustScore: user.trustScore.value,
         country: user.country,
         createdAt: user.createdAt,

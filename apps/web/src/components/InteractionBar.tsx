@@ -161,10 +161,10 @@ export function InteractionBar({
           onClick={handleBookmark}
           aria-label={bookmarked ? 'Remove bookmark' : 'Bookmark'}
           sx={{
-            color: bookmarked ? '#F9A825' : 'text.secondary',
+            color: bookmarked ? '#C7A24A' : 'text.secondary',
             animation: animatingBookmark ? `${scaleBounce} 0.4s ease` : undefined,
             transition: 'color 0.2s',
-            '&:hover': { color: '#F9A825' },
+            '&:hover': { color: '#C7A24A' },
           }}
         >
           {bookmarked ? (

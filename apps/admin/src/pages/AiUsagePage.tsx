@@ -37,12 +37,12 @@ const actionLabels: Record<AiWritingAction, string> = {
 }
 
 const actionColors: Record<AiWritingAction, string> = {
-  [AiWritingAction.FORMALIZE]: '#42A5F5',
+  [AiWritingAction.FORMALIZE]: '#74909A',
   [AiWritingAction.SUMMARIZE]: '#AB47BC',
-  [AiWritingAction.CASUAL]: '#66BB6A',
-  [AiWritingAction.EXPAND]: '#FFA726',
+  [AiWritingAction.CASUAL]: '#2F6B46',
+  [AiWritingAction.EXPAND]: '#D3A95C',
   [AiWritingAction.FIX_GRAMMAR]: '#26A69A',
-  [AiWritingAction.CREATE_FROM_PROMPT]: '#EF5350',
+  [AiWritingAction.CREATE_FROM_PROMPT]: '#C06B58',
   [AiWritingAction.IMPROVE_CLARITY]: '#7E57C2',
   [AiWritingAction.GENERATE_TITLE]: '#29B6F6',
   [AiWritingAction.GENERATE_EMAIL]: '#8D6E63',
@@ -245,21 +245,21 @@ export default function AiUsagePage() {
               label="Requests Today"
               value={String(stats.requestsToday)}
               icon={<TodayIcon />}
-              color="#42A5F5"
+              color="#74909A"
               index={1}
             />
             <StatCard
               label="This Month"
               value={String(stats.requestsThisMonth)}
               icon={<CalendarMonthIcon />}
-              color="#66BB6A"
+              color="#2F6B46"
               index={2}
             />
             <StatCard
               label="Last Used"
               value={formatDateTime(stats.lastUsedAt)}
               icon={<AccessTimeIcon />}
-              color="#FFA726"
+              color="#D3A95C"
               index={3}
             />
             <StatCard
@@ -300,7 +300,7 @@ export default function AiUsagePage() {
                 sx={{
                   height: '100%',
                   width: `${dailyPercent}%`,
-                  bgcolor: dailyPercent >= 90 ? '#EF5350' : dailyPercent >= 70 ? '#FFA726' : '#AB47BC',
+                  bgcolor: dailyPercent >= 90 ? '#C06B58' : dailyPercent >= 70 ? '#D3A95C' : '#AB47BC',
                   transition: 'width 0.8s ease',
                 }}
               />
@@ -377,7 +377,7 @@ export default function AiUsagePage() {
               </Box>
               {log.slice(0, 20).map((entry, idx) => {
                 const isSuccess = entry.status === 'success'
-                const statusColor = isSuccess ? '#4CAF50' : '#EF5350'
+                const statusColor = isSuccess ? '#5E8F72' : '#C06B58'
                 const StatusIcon = isSuccess ? CheckCircleRoundedIcon : ErrorRoundedIcon
                 return (
                   <Box
@@ -457,7 +457,7 @@ export default function AiUsagePage() {
         onClose={() => setSnackbarOpen(false)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert onClose={() => setSnackbarOpen(false)} severity="error" sx={{ bgcolor: '#1a1a2e', color: '#EF5350', border: `1px solid ${B}` }}>
+        <Alert onClose={() => setSnackbarOpen(false)} severity="error" sx={{ bgcolor: '#1a1a2e', color: '#C06B58', border: `1px solid ${B}` }}>
           {snackbarMsg}
         </Alert>
       </Snackbar>

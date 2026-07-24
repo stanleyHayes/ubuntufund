@@ -24,9 +24,9 @@ function Skel({ w, h }: { w?: string | number; h?: number }) {
 }
 
 const statusColors: Record<string, string> = {
-  pending: '#FFA726',
-  approved: '#4CAF50',
-  rejected: '#EF5350',
+  pending: '#D3A95C',
+  approved: '#5E8F72',
+  rejected: '#C06B58',
 }
 
 const levelLabels: Record<number, string> = {
@@ -169,7 +169,7 @@ export default function VerificationsPage() {
             ))
           : paginated.map((v, idx) => {
               const st = getStatus(v)
-              const color = statusColors[st] || '#42A5F5'
+              const color = statusColors[st] || '#74909A'
               return (
                 <Box
                   key={v.id}
@@ -228,8 +228,8 @@ export default function VerificationsPage() {
                         onClick={() => handleAction(v.id, 'approved')}
                         sx={{
                           fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.06em',
-                          color: '#4CAF50', borderColor: 'rgba(76,175,80,0.3)',
-                          '&:hover': { borderColor: '#4CAF50', bgcolor: 'rgba(76,175,80,0.08)' },
+                          color: '#5E8F72', borderColor: 'rgba(47,107,70,0.3)',
+                          '&:hover': { borderColor: '#5E8F72', bgcolor: 'rgba(47,107,70,0.08)' },
                         }}
                       >
                         Approve
@@ -240,8 +240,8 @@ export default function VerificationsPage() {
                         onClick={() => handleAction(v.id, 'rejected')}
                         sx={{
                           fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.06em',
-                          color: '#EF5350', borderColor: 'rgba(239,83,80,0.3)',
-                          '&:hover': { borderColor: '#EF5350', bgcolor: 'rgba(239,83,80,0.08)' },
+                          color: '#C06B58', borderColor: 'rgba(192,107,88,0.3)',
+                          '&:hover': { borderColor: '#C06B58', bgcolor: 'rgba(192,107,88,0.08)' },
                         }}
                       >
                         Reject

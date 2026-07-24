@@ -31,9 +31,9 @@ interface KYCData {
 
 const statusConfig: Record<string, { color: string; bg: string; icon: React.ReactNode; label: string }> = {
   unverified: { color: '#9E9E9E', bg: 'rgba(158,158,158,0.08)', icon: <WarningAmberIcon />, label: 'Unverified' },
-  pending: { color: '#FFA726', bg: 'rgba(255,167,38,0.08)', icon: <WarningAmberIcon />, label: 'Pending Review' },
-  verified: { color: '#4CAF50', bg: 'rgba(76,175,80,0.08)', icon: <CheckCircleIcon />, label: 'Verified' },
-  rejected: { color: '#EF5350', bg: 'rgba(239,83,80,0.08)', icon: <CancelIcon />, label: 'Rejected' },
+  pending: { color: '#B98A2E', bg: 'rgba(185,138,46,0.08)', icon: <WarningAmberIcon />, label: 'Pending Review' },
+  verified: { color: '#5E8F72', bg: 'rgba(76,175,80,0.08)', icon: <CheckCircleIcon />, label: 'Verified' },
+  rejected: { color: '#A5432F', bg: 'rgba(165,67,47,0.08)', icon: <CancelIcon />, label: 'Rejected' },
   expired: { color: '#9E9E9E', bg: 'rgba(158,158,158,0.08)', icon: <WarningAmberIcon />, label: 'Expired' },
 }
 

@@ -11,8 +11,8 @@ interface CampaignCardProps {
 }
 
 const priorityColor: Record<string, string> = {
-  critical: '#D32F2F',
-  urgent: '#F57F17',
+  critical: '#A5432F',
+  urgent: '#A07E33',
   normal: 'transparent',
 }
 

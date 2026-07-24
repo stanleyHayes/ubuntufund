@@ -51,9 +51,9 @@ const fadeInUp = keyframes`
 // ---------------------------------------------------------------------------
 
 const WALLET_COLORS: Record<string, { accent: string; bg: string; gradient: string }> = {
-  [WalletType.LOCAL]: { accent: '#2E7D32', bg: 'rgba(46,125,50,0.05)', gradient: 'linear-gradient(135deg, #66BB6A, #2E7D32)' },
-  [WalletType.FOREIGN]: { accent: '#1565C0', bg: 'rgba(21,101,192,0.05)', gradient: 'linear-gradient(135deg, #42A5F5, #1565C0)' },
-  [WalletType.CRYPTO]: { accent: '#F57F17', bg: 'rgba(245,127,23,0.05)', gradient: 'linear-gradient(135deg, #FFD54F, #F57F17)' },
+  [WalletType.LOCAL]: { accent: '#2E3D2F', bg: 'rgba(46, 61, 47,0.05)', gradient: 'linear-gradient(135deg, #2F6B46, #2E3D2F)' },
+  [WalletType.FOREIGN]: { accent: '#1565C0', bg: 'rgba(21,101,192,0.05)', gradient: 'linear-gradient(135deg, #4A6B75, #1565C0)' },
+  [WalletType.CRYPTO]: { accent: '#A07E33', bg: 'rgba(245,127,23,0.05)', gradient: 'linear-gradient(135deg, #FFD54F, #A07E33)' },
 }
 
 const WALLET_LABELS: Record<string, string> = {
@@ -63,10 +63,10 @@ const WALLET_LABELS: Record<string, string> = {
 }
 
 const TX_STATUS_COLORS: Record<string, { bg: string; color: string }> = {
-  [TransactionStatus.COMPLETED]: { bg: 'rgba(46,125,50,0.08)', color: '#2E7D32' },
+  [TransactionStatus.COMPLETED]: { bg: 'rgba(46, 61, 47,0.08)', color: '#2E3D2F' },
   [TransactionStatus.PENDING]: { bg: 'rgba(255,167,38,0.1)', color: '#E65100' },
-  [TransactionStatus.FAILED]: { bg: 'rgba(239,83,80,0.08)', color: '#E53935' },
-  [TransactionStatus.REVERSED]: { bg: 'rgba(156,39,176,0.08)', color: '#7B1FA2' },
+  [TransactionStatus.FAILED]: { bg: 'rgba(239,83,80,0.08)', color: '#A5432F' },
+  [TransactionStatus.REVERSED]: { bg: 'rgba(156,39,176,0.08)', color: '#4A6B75' },
 }
 
 const PAYMENT_METHODS = ['Mobile Money', 'Bank Transfer', 'Card', 'Crypto']
@@ -145,7 +145,7 @@ export function WalletPage() {
   }
 
   return (
-    <Box sx={{ bgcolor: '#FAFAF5', minHeight: '100vh', py: 5 }}>
+    <Box sx={{ bgcolor: '#F2EFEA', minHeight: '100vh', py: 5 }}>
       <Container maxWidth="lg">
         <Typography
           sx={{
@@ -198,8 +198,8 @@ export function WalletPage() {
                       overflow: 'hidden',
                       border: '1px solid rgba(0,0,0,0.06)',
                       animation: `${fadeInUp} 0.4s ${0.1 + idx * 0.08}s ease both`,
-                      transition: 'transform 0.2s, box-shadow 0.2s',
-                      '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 12px 40px rgba(0,0,0,0.08)' },
+                      transition: 'box-shadow 0.2s ease',
+                      '&:hover': { boxShadow: '0 4px 16px rgba(0,0,0,0.08)' },
                     }}
                   >
                     {/* Gradient header */}
@@ -438,8 +438,8 @@ export function WalletPage() {
                 textTransform: 'none',
                 fontWeight: 700,
                 borderRadius: SHAPE.sm,
-                bgcolor: dialogType === 'deposit' ? '#2E7D32' : '#F57F17',
-                '&:hover': { bgcolor: dialogType === 'deposit' ? '#1B5E20' : '#E65100' },
+                bgcolor: dialogType === 'deposit' ? '#2E3D2F' : '#A07E33',
+                '&:hover': { bgcolor: dialogType === 'deposit' ? '#1C261D' : '#E65100' },
               }}
             >
               {actionLoading ? 'Processing...' : dialogType === 'deposit' ? 'Deposit' : 'Withdraw'}

@@ -11,12 +11,6 @@ const fadeIn = keyframes`
   to   { opacity: 1; transform: translateY(0); }
 `
 
-const pulseRing = keyframes`
-  0%   { transform: scale(1); opacity: 0.4; }
-  50%  { transform: scale(1.6); opacity: 0; }
-  100% { transform: scale(1.6); opacity: 0; }
-`
-
 export default function PermissionDenied() {
   const navigate = useNavigate()
 
@@ -48,9 +42,8 @@ export default function PermissionDenied() {
             sx={{
               position: 'absolute',
               inset: 0,
-              border: '2px solid #EF5350',
+              border: '2px solid rgba(192,107,88,0.25)',
               borderRadius: '50%',
-              animation: `${pulseRing} 2s ease-out infinite`,
             }}
           />
           <Box
@@ -58,14 +51,14 @@ export default function PermissionDenied() {
               width: 64,
               height: 64,
               borderRadius: '50%',
-              bgcolor: 'rgba(239,83,80,0.08)',
-              border: '1px solid rgba(239,83,80,0.25)',
+              bgcolor: 'rgba(192,107,88,0.08)',
+              border: '1px solid rgba(192,107,88,0.25)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <LockOutlinedIcon sx={{ fontSize: 32, color: '#EF5350' }} />
+            <LockOutlinedIcon sx={{ fontSize: 32, color: '#C06B58' }} />
           </Box>
         </Box>
 
@@ -111,12 +104,12 @@ export default function PermissionDenied() {
             textTransform: 'none',
             fontWeight: 700,
             fontSize: '0.85rem',
-            color: '#4CAF50',
+            color: '#5E8F72',
             borderColor: 'rgba(76,175,80,0.3)',
             px: 3,
             py: 1,
             '&:hover': {
-              borderColor: '#4CAF50',
+              borderColor: '#5E8F72',
               bgcolor: 'rgba(76,175,80,0.08)',
             },
           }}

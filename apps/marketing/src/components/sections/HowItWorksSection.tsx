@@ -37,7 +37,7 @@ function HowItWorksSection() {
       id="how-it-works"
       sx={{
         py: { xs: 8, md: 12 },
-        backgroundColor: '#FAFAF5',
+        backgroundColor: '#F2EFEA',
       }}
     >
       <Container maxWidth="lg">
@@ -84,7 +84,7 @@ function HowItWorksSection() {
                   transition: 'all 0.3s ease',
                   '&:hover': {
                     borderColor: 'primary.main',
-                    boxShadow: '0 8px 30px rgba(46, 125, 50, 0.1)',
+                    boxShadow: '0 8px 30px rgba(46, 61, 47, 0.1)',
                     transform: 'translateY(-4px)',
                   },
                 }}
@@ -96,7 +96,7 @@ function HowItWorksSection() {
                     right: 20,
                     fontSize: '3rem',
                     fontWeight: 800,
-                    color: 'rgba(46, 125, 50, 0.08)',
+                    color: 'rgba(46, 61, 47, 0.08)',
                     lineHeight: 1,
                   }}
                 >
@@ -107,7 +107,7 @@ function HowItWorksSection() {
                     width: 80,
                     height: 80,
                     borderRadius: '50%',
-                    backgroundColor: 'rgba(46, 125, 50, 0.08)',
+                    backgroundColor: 'rgba(46, 61, 47, 0.08)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',

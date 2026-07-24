@@ -15,6 +15,9 @@
     "test": {
       "outputs": ["coverage/**"]
     },
+    "e2e": {
+      "cache": false
+    },
     "type-check": {
       "dependsOn": ["^build"]
     }

@@ -5,4 +5,6 @@ export interface DonationRepositoryPort {
   findById(id: string): Promise<DonationEntity | null>;
   findByCampaignId(campaignId: string): Promise<DonationEntity[]>;
   findByDonorId(donorId: string): Promise<DonationEntity[]>;
+  /** Most recent donations across all campaigns, newest first. */
+  findRecent(limit: number): Promise<DonationEntity[]>;
 }

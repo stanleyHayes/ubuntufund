@@ -44,7 +44,7 @@ function BlogDetailPage() {
     )
   }
 
-  const accent = CATEGORY_COLORS[post.category] || '#2E7D32'
+  const accent = CATEGORY_COLORS[post.category] || '#2E3D2F'
   const bodyParagraphs = generateBody(post)
   const relatedPosts = blogPosts.filter((p) => p.slug !== post.slug).slice(0, 3)
 
@@ -86,12 +86,12 @@ function BlogDetailPage() {
             top: 24,
             left: 24,
             color: '#fff',
-            bgcolor: 'rgba(0,0,0,0.3)',
-            backdropFilter: 'blur(8px)',
+            bgcolor: 'rgba(28,38,29,0.72)',
             borderRadius: SHAPE.sm,
             fontWeight: 600,
             fontSize: '0.85rem',
-            '&:hover': { bgcolor: 'rgba(0,0,0,0.5)' },
+            transition: 'background-color 200ms ease',
+            '&:hover': { bgcolor: 'rgba(28,38,29,0.88)' },
           }}
         >
           Back to Blog
@@ -194,10 +194,10 @@ function BlogDetailPage() {
               mb: 4,
               background: `repeating-linear-gradient(
                 90deg,
-                #2E7D32 0px, #2E7D32 12px,
-                #F9A825 12px, #F9A825 24px,
+                #2E3D2F 0px, #2E3D2F 12px,
+                #C7A24A 12px, #C7A24A 24px,
                 #8D6E63 24px, #8D6E63 36px,
-                #1B5E20 36px, #1B5E20 48px
+                #1C261D 36px, #1C261D 48px
               )`,
               opacity: 0.6,
             }}
@@ -292,7 +292,7 @@ function BlogDetailPage() {
           </Typography>
           <Grid container spacing={3}>
             {relatedPosts.map((related) => {
-              const relAccent = CATEGORY_COLORS[related.category] || '#2E7D32'
+              const relAccent = CATEGORY_COLORS[related.category] || '#2E3D2F'
               return (
                 <Grid key={related.slug} size={{ xs: 12, sm: 4 }}>
                   <Box

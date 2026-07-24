@@ -99,11 +99,11 @@ export const blogPosts: BlogPost[] = [
 const CATEGORIES = ['All', 'Trends', 'Trust & Safety', 'Impact', 'Community', 'Education', 'Guide']
 
 export const CATEGORY_COLORS: Record<string, string> = {
-  Trends: '#2E7D32',
+  Trends: '#2E3D2F',
   'Trust & Safety': '#1565C0',
   Impact: '#E65100',
-  Community: '#F9A825',
-  Education: '#7B1FA2',
+  Community: '#C7A24A',
+  Education: '#4A6B75',
   Guide: '#00838F',
 }
 
@@ -117,10 +117,10 @@ function KenteDivider() {
         borderRadius: SHAPE.bar,
         background: `repeating-linear-gradient(
           90deg,
-          #2E7D32 0px, #2E7D32 12px,
-          #F9A825 12px, #F9A825 24px,
+          #2E3D2F 0px, #2E3D2F 12px,
+          #C7A24A 12px, #C7A24A 24px,
           #8D6E63 24px, #8D6E63 36px,
-          #1B5E20 36px, #1B5E20 48px
+          #1C261D 36px, #1C261D 48px
         )`,
         opacity: 0.6,
       }}
@@ -132,7 +132,7 @@ function KenteDivider() {
 
 function FeaturedBlogCard({ post }: { post: BlogPost }) {
   const [hovered, setHovered] = useState(false)
-  const accent = CATEGORY_COLORS[post.category] || '#2E7D32'
+  const accent = CATEGORY_COLORS[post.category] || '#2E3D2F'
 
   return (
     <Box
@@ -151,11 +151,8 @@ function FeaturedBlogCard({ post }: { post: BlogPost }) {
         cursor: 'pointer',
         border: '1px solid',
         borderColor: hovered ? accent : 'divider',
-        transition: 'all 0.4s cubic-bezier(0.22, 1, 0.36, 1)',
-        transform: hovered ? 'translateY(-4px)' : 'none',
-        boxShadow: hovered
-          ? `0 24px 48px ${accent}18, 0 8px 24px rgba(0,0,0,0.06)`
-          : '0 2px 12px rgba(0,0,0,0.04)',
+        transition: 'box-shadow 200ms ease, border-color 200ms ease',
+        boxShadow: hovered ? '0 8px 24px rgba(0,0,0,0.08)' : '0 2px 12px rgba(0,0,0,0.04)',
         bgcolor: 'background.paper',
       }}
     >
@@ -170,10 +167,10 @@ function FeaturedBlogCard({ post }: { post: BlogPost }) {
           zIndex: 2,
           background: `repeating-linear-gradient(
             90deg,
-            #2E7D32 0px, #2E7D32 20px,
-            #F9A825 20px, #F9A825 40px,
+            #2E3D2F 0px, #2E3D2F 20px,
+            #C7A24A 20px, #C7A24A 40px,
             #8D6E63 40px, #8D6E63 60px,
-            #1B5E20 60px, #1B5E20 80px
+            #1C261D 60px, #1C261D 80px
           )`,
         }}
       />
@@ -223,8 +220,8 @@ function FeaturedBlogCard({ post }: { post: BlogPost }) {
             position: 'absolute',
             top: 20,
             left: 20,
-            bgcolor: '#F9A825',
-            color: '#1B5E20',
+            bgcolor: '#C7A24A',
+            color: '#1C261D',
             px: 2,
             py: 0.5,
             borderRadius: SHAPE.sm,
@@ -323,7 +320,7 @@ function FeaturedBlogCard({ post }: { post: BlogPost }) {
 
 function BlogCard({ post, variant = 'vertical' }: { post: BlogPost; variant?: 'vertical' | 'horizontal' }) {
   const [hovered, setHovered] = useState(false)
-  const accent = CATEGORY_COLORS[post.category] || '#2E7D32'
+  const accent = CATEGORY_COLORS[post.category] || '#2E3D2F'
 
   if (variant === 'horizontal') {
     return (
@@ -341,7 +338,7 @@ function BlogCard({ post, variant = 'vertical' }: { post: BlogPost; variant?: 'v
           p: 2,
           borderRadius: SHAPE.card,
           transition: 'all 0.3s ease',
-          bgcolor: hovered ? 'rgba(46,125,50,0.02)' : 'transparent',
+          bgcolor: hovered ? 'rgba(46, 61, 47,0.02)' : 'transparent',
         }}
       >
         {/* Small thumbnail with rounded-corner notch */}
@@ -423,11 +420,8 @@ function BlogCard({ post, variant = 'vertical' }: { post: BlogPost; variant?: 'v
         border: '1px solid',
         borderColor: hovered ? accent : 'divider',
         clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 24px), calc(100% - 24px) 100%, 0 100%)',
-        transition: 'all 0.35s cubic-bezier(0.22, 1, 0.36, 1)',
-        transform: hovered ? 'translateY(-6px)' : 'none',
-        boxShadow: hovered
-          ? `0 16px 32px ${accent}12, 0 4px 12px rgba(0,0,0,0.04)`
-          : '0 1px 4px rgba(0,0,0,0.03)',
+        transition: 'box-shadow 200ms ease, border-color 200ms ease',
+        boxShadow: hovered ? '0 6px 16px rgba(0,0,0,0.08)' : '0 1px 4px rgba(0,0,0,0.03)',
         // Accent triangle in the notched corner
         '&::after': {
           content: '""',
@@ -478,8 +472,7 @@ function BlogCard({ post, variant = 'vertical' }: { post: BlogPost; variant?: 'v
             display: 'flex',
             alignItems: 'center',
             gap: 0.5,
-            bgcolor: 'rgba(0,0,0,0.5)',
-            backdropFilter: 'blur(8px)',
+            bgcolor: 'rgba(28,38,29,0.78)',
             color: '#fff',
             px: 1.25,
             py: 0.25,
@@ -608,7 +601,7 @@ function BlogPage() {
         >
           {CATEGORIES.map((cat) => {
             const active = activeCategory === cat
-            const color = cat === 'All' ? '#2E7D32' : CATEGORY_COLORS[cat] || '#2E7D32'
+            const color = cat === 'All' ? '#2E3D2F' : CATEGORY_COLORS[cat] || '#2E3D2F'
             return (
               <Chip
                 key={cat}
@@ -702,7 +695,7 @@ function BlogPage() {
               sx={{
                 borderRadius: SHAPE.card,
                 p: 3.5,
-                background: 'linear-gradient(135deg, #1B5E20 0%, #2E7D32 100%)',
+                background: 'linear-gradient(135deg, #1C261D 0%, #2E3D2F 100%)',
                 color: '#fff',
                 position: 'relative',
                 overflow: 'hidden',
@@ -729,7 +722,7 @@ function BlogPage() {
                   width: 80,
                   height: 80,
                   borderRadius: '50%',
-                  bgcolor: 'rgba(249,168,37,0.1)',
+                  bgcolor: 'rgba(199, 162, 74,0.1)',
                   pointerEvents: 'none',
                 }}
               />
@@ -754,17 +747,17 @@ function BlogPage() {
                   outline: 'none',
                   mb: 1.5,
                   '&::placeholder': { color: 'rgba(255,255,255,0.5)' },
-                  '&:focus': { borderColor: '#F9A825' },
+                  '&:focus': { borderColor: '#C7A24A' },
                 }}
               />
               <Button
                 variant="contained"
                 fullWidth
                 sx={{
-                  bgcolor: '#F9A825',
-                  color: '#1B5E20',
+                  bgcolor: '#C7A24A',
+                  color: '#1C261D',
                   fontWeight: 700,
-                  '&:hover': { bgcolor: '#FDD835' },
+                  '&:hover': { bgcolor: '#DCC07E' },
                 }}
               >
                 Subscribe

@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react'
 import Chip from '@mui/material/Chip'
 import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
@@ -5,6 +6,8 @@ import Box from '@mui/material/Box'
 import { Link as RouterLink } from 'react-router-dom'
 import { Card, ProgressBar } from '@ubuntu-fund/ui'
 import type { Campaign } from '@ubuntu-fund/types'
+
+const MS_PER_DAY = 86_400_000
 
 interface CampaignCardProps {
   campaign: Campaign
@@ -20,6 +23,12 @@ function formatCategory(category: string): string {
 }
 
 export function CampaignCard({ campaign }: CampaignCardProps) {
+  const [now] = useState(() => Date.now())
+  const daysLeft = useMemo(
+    () => Math.ceil((new Date(campaign.endDate).getTime() - now) / MS_PER_DAY),
+    [campaign.endDate, now]
+  )
+
   return (
     <Card
       imageUrl={campaign.imageUrls[0]}
@@ -57,6 +66,10 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
         goal={campaign.goalAmount}
         currency={campaign.currency}
       />
+
+      <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+        {daysLeft > 0 ? `${daysLeft} days left` : 'Ended'}
+      </Typography>
     </Card>
   )
 }

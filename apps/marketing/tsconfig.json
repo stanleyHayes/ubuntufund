@@ -18,5 +18,5 @@
     "ignoreDeprecations": "6.0",
     "noEmit": true
   },
-  "include": ["src", "test", "vite-env.d.ts"]
+  "include": ["src", "test", "__tests__", "vite-env.d.ts"]
 }

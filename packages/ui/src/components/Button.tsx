@@ -22,12 +22,12 @@ const brandVariantMap: Record<BrandVariant, Partial<MuiButtonProps>> = {
     variant: 'contained',
     color: 'primary',
     sx: {
-      backgroundColor: '#2E7D32',
+      backgroundColor: '#2E3D2F',
       fontWeight: 700,
       fontSize: '1rem',
       padding: '10px 32px',
       '&:hover': {
-        backgroundColor: '#1B5E20',
+        backgroundColor: '#1C261D',
       },
     },
   },

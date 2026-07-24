@@ -2,19 +2,19 @@ import { MD3LightTheme, MD3DarkTheme, configureFonts } from 'react-native-paper'
 import type { MD3Theme } from 'react-native-paper'
 
 const brandColors = {
-  primary: '#2E7D32',
-  primaryLight: '#4CAF50',
-  primaryDark: '#1B5E20',
-  secondary: '#F9A825',
-  secondaryLight: '#FDD835',
-  secondaryDark: '#F57F17',
-  error: '#D32F2F',
-  success: '#2E7D32',
-  warning: '#F9A825',
-  background: '#FAFAFA',
+  primary: '#2E3D2F',
+  primaryLight: '#5E8F72',
+  primaryDark: '#1C261D',
+  secondary: '#C7A24A',
+  secondaryLight: '#DCC07E',
+  secondaryDark: '#A07E33',
+  error: '#A5432F',
+  success: '#2F6B46',
+  warning: '#B98A2E',
+  background: '#F2EFEA',
   surface: '#FFFFFF',
-  text: '#212121',
-  textSecondary: '#757575',
+  text: '#1A2E22',
+  textSecondary: '#4A5A50',
 }
 
 // Configure all MD3 type scales to use TT Squares

@@ -64,8 +64,7 @@ function LiveClock() {
 const inputSx = {
   '& .MuiOutlinedInput-root': {
     borderRadius: '10px',
-    bgcolor: 'rgba(255,255,255,0.02)',
-    backdropFilter: 'blur(12px)',
+    bgcolor: 'rgba(255,255,255,0.04)',
     transition: 'all 0.25s ease',
     '& fieldset': {
       borderColor: 'rgba(255,255,255,0.06)',
@@ -75,7 +74,7 @@ const inputSx = {
       borderColor: 'rgba(76,175,80,0.25)',
     },
     '&.Mui-focused fieldset': {
-      borderColor: '#4CAF50',
+      borderColor: '#5E8F72',
       borderWidth: '1.5px',
     },
     '&.Mui-focused': {
@@ -86,7 +85,7 @@ const inputSx = {
   '& .MuiInputLabel-root': {
     color: 'rgba(255,255,255,0.35)',
     '&.Mui-focused': {
-      color: '#4CAF50',
+      color: '#5E8F72',
     },
   },
   '& .MuiOutlinedInput-input': {
@@ -159,7 +158,7 @@ export default function LoginPage() {
               width: 6,
               height: 6,
               borderRadius: '50%',
-              bgcolor: '#4CAF50',
+              bgcolor: '#5E8F72',
               boxShadow: '0 0 8px rgba(76,175,80,0.5)',
             }}
           />
@@ -194,7 +193,7 @@ export default function LoginPage() {
               mb: 4,
             }}
           >
-            <ShieldIcon sx={{ fontSize: 28, color: '#4CAF50' }} />
+            <ShieldIcon sx={{ fontSize: 28, color: '#5E8F72' }} />
           </Box>
 
           {/* Wordmark */}
@@ -212,7 +211,7 @@ export default function LoginPage() {
             <Box
               component="span"
               sx={{
-                color: '#4CAF50',
+                color: '#5E8F72',
               }}
             >
               Fund
@@ -266,7 +265,7 @@ export default function LoginPage() {
                     fontFamily: '"TT Squares", monospace',
                     fontWeight: 700,
                     fontSize: '1.15rem',
-                    color: '#4CAF50',
+                    color: '#5E8F72',
                     textShadow: '0 0 20px rgba(76,175,80,0.3)',
                   }}
                 >
@@ -338,7 +337,7 @@ export default function LoginPage() {
               mb: 2,
             }}
           >
-            <ShieldIcon sx={{ fontSize: 24, color: '#4CAF50' }} />
+            <ShieldIcon sx={{ fontSize: 24, color: '#5E8F72' }} />
           </Box>
           <Typography
             sx={{
@@ -352,7 +351,7 @@ export default function LoginPage() {
             <Box
               component="span"
               sx={{
-                color: '#4CAF50',
+                color: '#5E8F72',
               }}
             >
               Fund
@@ -384,9 +383,8 @@ export default function LoginPage() {
             sx={{
               p: { xs: 3, sm: 4 },
               borderRadius: '16px',
-              bgcolor: 'rgba(255,255,255,0.02)',
+              bgcolor: 'rgba(21,36,31,0.9)',
               border: '1px solid rgba(255,255,255,0.06)',
-              backdropFilter: 'blur(20px)',
               boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
             }}
           >
@@ -416,7 +414,7 @@ export default function LoginPage() {
                   borderRadius: '10px',
                   bgcolor: 'rgba(239,83,80,0.08)',
                   border: '1px solid rgba(239,83,80,0.2)',
-                  '& .MuiAlert-icon': { color: '#EF5350' },
+                  '& .MuiAlert-icon': { color: '#C06B58' },
                   color: '#E0E0E8',
                 }}
               >
@@ -479,7 +477,7 @@ export default function LoginPage() {
                       onChange={(e) => setRememberMe(e.target.checked)}
                       sx={{
                         color: 'rgba(255,255,255,0.15)',
-                        '&.Mui-checked': { color: '#4CAF50' },
+                        '&.Mui-checked': { color: '#5E8F72' },
                       }}
                     />
                   }
@@ -494,7 +492,7 @@ export default function LoginPage() {
                   to="/forgot-password"
                   sx={{
                     fontSize: '0.8rem',
-                    color: '#4CAF50',
+                    color: '#5E8F72',
                     textDecoration: 'none',
                     fontWeight: 500,
                     position: 'relative',
@@ -505,7 +503,7 @@ export default function LoginPage() {
                       left: 0,
                       width: 0,
                       height: '1px',
-                      bgcolor: '#4CAF50',
+                      bgcolor: '#5E8F72',
                       transition: 'width 0.3s ease',
                     },
                     '&:hover::after': { width: '100%' },
@@ -529,16 +527,15 @@ export default function LoginPage() {
                   fontFamily: '"TT Squares", sans-serif',
                   background: loading
                     ? undefined
-                    : '#2E7D32',
+                    : '#2E3D2F',
                   boxShadow: '0 4px 20px rgba(76,175,80,0.2)',
-                  transition: 'all 0.3s ease',
+                  transition: 'background-color 200ms ease, box-shadow 200ms ease',
                   position: 'relative',
                   overflow: 'hidden',
                   '&:hover': {
                     boxShadow: '0 6px 28px rgba(76,175,80,0.35)',
-                    transform: 'translateY(-1px)',
+                    background: loading ? undefined : '#1C261D',
                   },
-                  '&:active': { transform: 'translateY(0)' },
                   ...(loading && {
                     '&::after': {
                       content: '""',

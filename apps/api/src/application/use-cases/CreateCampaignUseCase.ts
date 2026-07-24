@@ -9,6 +9,7 @@ import { CampaignEntity } from '../../domain/entities/Campaign.js';
 import { Money } from '../../domain/value-objects/Money.js';
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js';
 import type { UserRepositoryPort } from '../../domain/ports/outbound/UserRepositoryPort.js';
+import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 
 export class CreateCampaignUseCase {
   constructor(
@@ -19,13 +20,14 @@ export class CreateCampaignUseCase {
   async execute(input: CreateCampaignInput, creatorId: string): Promise<Campaign> {
     const user = await this.userRepo.findById(creatorId);
     if (!user) {
-      throw new Error('User not found');
+      throw new AppError('User not found', 404);
     }
 
     const campaignCount = await this.campaignRepo.countByCreatorId(creatorId);
     if (!user.canCreateCampaign(campaignCount)) {
-      throw new Error(
-        `User cannot create more campaigns. Limit: ${user.getCampaignLimit()}, current: ${campaignCount}`
+      throw new AppError(
+        `User cannot create more campaigns. Limit: ${user.getCampaignLimit()}, current: ${campaignCount}`,
+        403
       );
     }
 

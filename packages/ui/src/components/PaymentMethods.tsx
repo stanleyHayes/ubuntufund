@@ -28,8 +28,8 @@ const PAYMENT_PROVIDERS: PaymentProvider[] = [
     name: 'M-Pesa',
     category: 'mobile_money',
     iconPaths: ['M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15h-1v-6h1v6zm3 0h-1v-6h1v6zm-1-8a1.5 1.5 0 110-3 1.5 1.5 0 010 3z'],
-    iconColor: '#4CAF50',
-    bgColor: '#E8F5E9',
+    iconColor: '#5E8F72',
+    bgColor: '#E9EFE6',
     regions: ['Kenya', 'Tanzania', 'DRC'],
   },
   {
@@ -120,7 +120,7 @@ const PAYMENT_PROVIDERS: PaymentProvider[] = [
       'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4 8h-3v8h-2v-8H8V8h8v2z',
     ],
     iconColor: '#26A17B',
-    bgColor: '#E8F5E9',
+    bgColor: '#E9EFE6',
   },
   {
     name: 'UbuntuFund Wallet',
@@ -129,17 +129,17 @@ const PAYMENT_PROVIDERS: PaymentProvider[] = [
     iconPaths: [
       'M21 7H3a1 1 0 00-1 1v10a1 1 0 001 1h18a1 1 0 001-1V8a1 1 0 00-1-1zM4 5h16a1 1 0 011 1H3a1 1 0 011-1zm14 10a2 2 0 110-4 2 2 0 010 4z',
     ],
-    iconColor: '#2E7D32',
-    bgColor: '#E8F5E9',
+    iconColor: '#2E3D2F',
+    bgColor: '#E9EFE6',
   },
 ]
 
 const CATEGORY_META: Record<string, { label: string; icon: string; color: string }> = {
-  mobile_money: { label: 'Mobile Money', icon: '📱', color: '#4CAF50' },
+  mobile_money: { label: 'Mobile Money', icon: '📱', color: '#5E8F72' },
   card: { label: 'Cards', icon: '💳', color: '#1A1F71' },
   bank: { label: 'Processors', icon: '🏦', color: '#F5A623' },
   crypto: { label: 'Crypto', icon: '₿', color: '#F7931A' },
-  wallet: { label: 'Wallet', icon: '👛', color: '#2E7D32' },
+  wallet: { label: 'Wallet', icon: '👛', color: '#2E3D2F' },
 }
 
 const CATEGORY_ORDER = ['mobile_money', 'card', 'bank', 'crypto', 'wallet'] as const
@@ -496,13 +496,13 @@ export function PaymentMethods({
             width: 28,
             height: 2,
             borderRadius: SHAPE.bar,
-            backgroundColor: 'rgba(46,125,50,0.4)',
+            backgroundColor: 'rgba(46, 61, 47,0.4)',
           }}
         />
         <Typography
           variant="caption"
           sx={{
-            color: '#2E7D32',
+            color: '#2E3D2F',
             fontSize: '0.7rem',
             fontWeight: 600,
           }}
@@ -514,7 +514,7 @@ export function PaymentMethods({
             width: 28,
             height: 2,
             borderRadius: SHAPE.bar,
-            backgroundColor: 'rgba(46,125,50,0.4)',
+            backgroundColor: 'rgba(46, 61, 47,0.4)',
           }}
         />
       </Box>

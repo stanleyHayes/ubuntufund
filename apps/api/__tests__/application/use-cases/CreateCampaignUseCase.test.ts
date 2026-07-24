@@ -63,6 +63,7 @@ describe('CreateCampaignUseCase', () => {
       update: vi.fn(),
       delete: vi.fn(),
       countByCreatorId: vi.fn().mockResolvedValue(0),
+      incrementRaised: vi.fn(),
     }
 
     userRepo = {

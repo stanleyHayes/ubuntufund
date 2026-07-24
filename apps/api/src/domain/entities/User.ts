@@ -74,6 +74,11 @@ export class UserEntity {
     this.props.updatedAt = new Date();
   }
 
+  changePassword(newPasswordHash: string): void {
+    this.props.passwordHash = newPasswordHash;
+    this.props.updatedAt = new Date();
+  }
+
   updateTrustScore(newScore: TrustScore): void {
     this.props.trustScore = newScore;
     this.props.updatedAt = new Date();

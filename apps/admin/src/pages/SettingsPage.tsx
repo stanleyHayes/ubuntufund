@@ -41,11 +41,6 @@ const fadeSlide = keyframes`
   to   { opacity: 1; transform: translateY(0); }
 `
 
-const pulseGlow = keyframes`
-  0%, 100% { box-shadow: 0 0 0 0 rgba(76,175,80,0.2); }
-  50% { box-shadow: 0 0 0 8px rgba(76,175,80,0); }
-`
-
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface SettingRowProps {
@@ -186,8 +181,8 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
       checked={checked}
       onChange={(_, v) => onChange(v)}
       sx={{
-        '& .MuiSwitch-switchBase.Mui-checked': { color: '#4CAF50' },
-        '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: '#4CAF50' },
+        '& .MuiSwitch-switchBase.Mui-checked': { color: '#5E8F72' },
+        '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: '#5E8F72' },
       }}
     />
   )
@@ -197,9 +192,9 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
 
 const TIER_COLORS: Record<string, string> = {
   free: '#78909C',
-  starter: '#42A5F5',
+  starter: '#74909A',
   pro: '#AB47BC',
-  enterprise: '#F9A825',
+  enterprise: '#C7A24A',
 }
 
 // ─── Main Component ──────────────────────────────────────────────────────────
@@ -313,7 +308,8 @@ export default function SettingsPage() {
                 px: 3,
                 fontWeight: 700,
                 textTransform: 'none',
-                animation: hasChanges ? `${pulseGlow} 2s ease infinite` : 'none',
+                transition: 'box-shadow 200ms ease',
+                boxShadow: hasChanges ? '0 0 0 3px rgba(143,174,150,0.35)' : 'none',
               }}
             >
               Save Changes
@@ -327,8 +323,8 @@ export default function SettingsPage() {
           severity="warning"
           sx={{
             mb: 3,
-            bgcolor: 'rgba(255,167,38,0.08)',
-            border: '1px solid rgba(255,167,38,0.2)',
+            bgcolor: 'rgba(211,169,92,0.08)',
+            border: '1px solid rgba(211,169,92,0.2)',
             borderRadius: 2,
             animation: `${fadeSlide} 0.3s ease both`,
             '& .MuiAlert-icon': { color: 'warning.main' },
@@ -344,8 +340,8 @@ export default function SettingsPage() {
           icon={<InfoOutlinedIcon />}
           sx={{
             mb: 3,
-            bgcolor: 'rgba(66,165,245,0.08)',
-            border: '1px solid rgba(66,165,245,0.2)',
+            bgcolor: 'rgba(116,144,154,0.08)',
+            border: '1px solid rgba(116,144,154,0.2)',
             borderRadius: 2,
             animation: `${fadeSlide} 0.3s ease both`,
             '& .MuiAlert-icon': { color: 'info.main' },
@@ -362,7 +358,7 @@ export default function SettingsPage() {
           <SectionCard
             icon={<MonetizationOnRoundedIcon />}
             title="Platform Fees by Subscription Tier"
-            color="#4CAF50"
+            color="#5E8F72"
             delay={0}
             badge={
               <Button
@@ -373,10 +369,10 @@ export default function SettingsPage() {
                   textTransform: 'none',
                   fontWeight: 700,
                   fontSize: '0.75rem',
-                  color: '#4CAF50',
+                  color: '#5E8F72',
                   borderRadius: 2,
                   px: 1.5,
-                  '&:hover': { bgcolor: alpha('#4CAF50', 0.08) },
+                  '&:hover': { bgcolor: alpha('#5E8F72', 0.08) },
                 }}
               >
                 Manage Plans
@@ -465,7 +461,7 @@ export default function SettingsPage() {
 
         {/* ─── Global Payment Fees ─── */}
         <Grid size={{ xs: 12, lg: 6 }}>
-          <SectionCard icon={<MonetizationOnRoundedIcon />} title="Payment Processing" color="#66BB6A" delay={0.06}>
+          <SectionCard icon={<MonetizationOnRoundedIcon />} title="Payment Processing" color="#8FAE96" delay={0.06}>
             <SettingRow label="Processing Fee" description="Payment processor percentage (e.g. Stripe)">
               <NumberInput value={processingFee} onChange={track(setProcessingFee)} suffix="%" />
             </SettingRow>
@@ -480,8 +476,8 @@ export default function SettingsPage() {
 
         {/* ─── Global Campaign Limits ─── */}
         <Grid size={{ xs: 12, lg: 6 }}>
-          <SectionCard icon={<TuneRoundedIcon />} title="Global Campaign Limits" color="#42A5F5" delay={0.12}>
-            <Box sx={{ px: 3, py: 1.5, bgcolor: alpha('#42A5F5', 0.04) }}>
+          <SectionCard icon={<TuneRoundedIcon />} title="Global Campaign Limits" color="#74909A" delay={0.12}>
+            <Box sx={{ px: 3, py: 1.5, bgcolor: alpha('#74909A', 0.04) }}>
               <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>
                 These are platform-wide limits. Per-tier limits (max campaigns, max goal) are configured in Manage Plans.
               </Typography>
@@ -545,7 +541,7 @@ export default function SettingsPage() {
 
         {/* ─── Notifications ─── */}
         <Grid size={{ xs: 12, lg: 6 }}>
-          <SectionCard icon={<NotificationsActiveRoundedIcon />} title="Notifications" color="#FF9800" delay={0.24}>
+          <SectionCard icon={<NotificationsActiveRoundedIcon />} title="Notifications" color="#D3A95C" delay={0.24}>
             <SettingRow label="Campaign Submissions" description="Alert when new campaigns are submitted for review">
               <Toggle checked={notifCampaigns} onChange={track(setNotifCampaigns)} />
             </SettingRow>
@@ -569,7 +565,7 @@ export default function SettingsPage() {
 
         {/* ─── Security ─── */}
         <Grid size={{ xs: 12, lg: 6 }}>
-          <SectionCard icon={<SecurityRoundedIcon />} title="Security" color="#EF5350" delay={0.3}>
+          <SectionCard icon={<SecurityRoundedIcon />} title="Security" color="#C06B58" delay={0.3}>
             <SettingRow label="Two-Factor Authentication" description="Require 2FA for all admin accounts">
               <Toggle checked={twoFactor} onChange={track(setTwoFactor)} />
             </SettingRow>

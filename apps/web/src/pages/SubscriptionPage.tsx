@@ -44,7 +44,7 @@ const TIER_ORDER = [SubscriptionTier.FREE, SubscriptionTier.STARTER, Subscriptio
 const TIER_COLORS: Record<SubscriptionTier, { accent: string; bg: string; banner: string }> = {
   [SubscriptionTier.FREE]: { accent: '#78909C', bg: 'rgba(120,144,156,0.06)', banner: '#78909C' },
   [SubscriptionTier.STARTER]: { accent: '#1565C0', bg: 'rgba(21,101,192,0.05)', banner: '#1565C0' },
-  [SubscriptionTier.PRO]: { accent: '#2E7D32', bg: 'rgba(46,125,50,0.05)', banner: '#2E7D32' },
+  [SubscriptionTier.PRO]: { accent: '#2E3D2F', bg: 'rgba(46, 61, 47,0.05)', banner: '#2E3D2F' },
   [SubscriptionTier.ENTERPRISE]: { accent: '#6A1B9A', bg: 'rgba(106,27,154,0.05)', banner: '#6A1B9A' },
 }
 
@@ -93,13 +93,13 @@ const FEATURE_SECTIONS: { title: string; rows: FeatureRow[] }[] = [
 function formatCellValue(value: unknown, format?: string): React.ReactNode {
   if (format === 'boolean') {
     return value ? (
-      <CheckRoundedIcon sx={{ fontSize: 18, color: '#2E7D32' }} />
+      <CheckRoundedIcon sx={{ fontSize: 18, color: '#2E3D2F' }} />
     ) : (
       <CloseRoundedIcon sx={{ fontSize: 18, color: 'rgba(0,0,0,0.15)' }} />
     )
   }
   if (typeof value === 'number') {
-    if (value === -1) return <Typography sx={{ fontSize: '0.82rem', fontWeight: 700, color: '#2E7D32' }}>Unlimited</Typography>
+    if (value === -1) return <Typography sx={{ fontSize: '0.82rem', fontWeight: 700, color: '#2E3D2F' }}>Unlimited</Typography>
     if (value === 0 && format === 'unlimited') return <CloseRoundedIcon sx={{ fontSize: 18, color: 'rgba(0,0,0,0.15)' }} />
     if (format === 'fee') return <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>{value}%</Typography>
     if (format === 'goal') return <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>${value.toLocaleString()}</Typography>
@@ -217,8 +217,7 @@ export function SubscriptionPage() {
                 width: 48,
                 height: 48,
                 borderRadius: SHAPE.sm,
-                bgcolor: 'rgba(255,255,255,0.2)',
-                backdropFilter: 'blur(8px)',
+                bgcolor: 'rgba(255,255,255,0.25)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -240,9 +239,8 @@ export function SubscriptionPage() {
             sx={{
               fontWeight: 700,
               fontSize: '0.75rem',
-              bgcolor: currentSub.status === SubscriptionStatus.ACTIVE ? 'rgba(255,255,255,0.2)' : 'rgba(255,100,100,0.3)',
+              bgcolor: currentSub.status === SubscriptionStatus.ACTIVE ? 'rgba(255,255,255,0.25)' : 'rgba(255,100,100,0.35)',
               color: '#fff',
-              backdropFilter: 'blur(4px)',
             }}
           />
         </Box>
@@ -322,9 +320,9 @@ export function SubscriptionPage() {
                   sx={{
                     fontWeight: 600,
                     fontSize: '0.72rem',
-                    bgcolor: 'rgba(46,125,50,0.06)',
-                    color: '#2E7D32',
-                    '& .MuiChip-icon': { color: '#2E7D32' },
+                    bgcolor: 'rgba(46, 61, 47,0.06)',
+                    color: '#2E3D2F',
+                    '& .MuiChip-icon': { color: '#2E3D2F' },
                   }}
                 />
               ))}
@@ -377,7 +375,7 @@ export function SubscriptionPage() {
             >
               {cycle === 'monthly' ? 'Monthly' : 'Yearly'}
               {cycle === 'yearly' && (
-                <Box component="span" sx={{ ml: 1, color: billingToggle === 'yearly' ? '#66BB6A' : '#2E7D32', fontSize: '0.72rem', fontWeight: 800 }}>
+                <Box component="span" sx={{ ml: 1, color: billingToggle === 'yearly' ? '#2F6B46' : '#2E3D2F', fontSize: '0.72rem', fontWeight: 800 }}>
                   Save 17%
                 </Box>
               )}
@@ -413,10 +411,9 @@ export function SubscriptionPage() {
                 display: 'flex',
                 flexDirection: 'column',
                 animation: `${fadeInUp} 0.4s ${0.2 + idx * 0.06}s ease both`,
-                transition: 'transform 0.2s, box-shadow 0.2s',
+                transition: 'box-shadow 0.2s ease',
                 '&:hover': {
-                  transform: 'translateY(-4px)',
-                  boxShadow: '0 12px 40px rgba(0,0,0,0.08)',
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
                 },
               }}
             >
@@ -441,10 +438,10 @@ export function SubscriptionPage() {
                   }}
                 >
                   <Chip
-                    icon={<StarRoundedIcon sx={{ fontSize: '14px !important', color: '#F9A825 !important' }} />}
+                    icon={<StarRoundedIcon sx={{ fontSize: '14px !important', color: '#C7A24A !important' }} />}
                     label="Current"
                     size="small"
-                    sx={{ fontWeight: 700, fontSize: '0.68rem', bgcolor: 'rgba(249,168,37,0.1)', color: '#E65100' }}
+                    sx={{ fontWeight: 700, fontSize: '0.68rem', bgcolor: 'rgba(199, 162, 74,0.1)', color: '#E65100' }}
                   />
                 </Box>
               )}
@@ -519,7 +516,7 @@ export function SubscriptionPage() {
                     fontFamily: '"TT Squares", sans-serif',
                     textTransform: 'none',
                     py: 1.2,
-                    ...(isPro && !isCurrent && { bgcolor: tc.accent, '&:hover': { bgcolor: '#1B5E20' } }),
+                    ...(isPro && !isCurrent && { bgcolor: tc.accent, '&:hover': { bgcolor: '#1C261D' } }),
                     ...(isCurrent && { borderColor: tc.accent, color: tc.accent }),
                   }}
                 >
@@ -589,7 +586,7 @@ export function SubscriptionPage() {
                     {plan.name}
                   </Typography>
                   {isCurrent && (
-                    <StarRoundedIcon sx={{ fontSize: 12, color: '#F9A825', ml: 0.5, verticalAlign: 'text-top' }} />
+                    <StarRoundedIcon sx={{ fontSize: 12, color: '#C7A24A', ml: 0.5, verticalAlign: 'text-top' }} />
                   )}
                 </Box>
               )
@@ -675,8 +672,8 @@ export function SubscriptionPage() {
             p: 4,
             textAlign: 'center',
             borderRadius: SHAPE.card,
-            bgcolor: 'rgba(46,125,50,0.04)',
-            border: '1.5px dashed rgba(46,125,50,0.25)',
+            bgcolor: 'rgba(46, 61, 47,0.04)',
+            border: '1.5px dashed rgba(46, 61, 47,0.25)',
             animation: `${fadeInUp} 0.4s 0.35s ease both`,
           }}
         >
@@ -692,13 +689,13 @@ export function SubscriptionPage() {
             disabled={actionLoading}
             onClick={() => handleSubscribe(SubscriptionTier.PRO)}
             sx={{
-              bgcolor: '#2E7D32',
+              bgcolor: '#2E3D2F',
               fontFamily: '"TT Squares", sans-serif',
               fontWeight: 700,
               px: 5,
               borderRadius: SHAPE.sm,
               textTransform: 'none',
-              '&:hover': { bgcolor: '#1B5E20' },
+              '&:hover': { bgcolor: '#1C261D' },
             }}
           >
             {actionLoading ? 'Processing...' : 'Upgrade to Pro'}

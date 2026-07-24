@@ -25,6 +25,13 @@ import PublicRoundedIcon from '@mui/icons-material/PublicRounded'
 import SecurityRoundedIcon from '@mui/icons-material/SecurityRounded'
 import FormatQuoteRoundedIcon from '@mui/icons-material/FormatQuoteRounded'
 import StarRoundedIcon from '@mui/icons-material/StarRounded'
+import LocalHospitalRoundedIcon from '@mui/icons-material/LocalHospitalRounded'
+import SchoolRoundedIcon from '@mui/icons-material/SchoolRounded'
+import MosqueRoundedIcon from '@mui/icons-material/MosqueRounded'
+import AccountBalanceRoundedIcon from '@mui/icons-material/AccountBalanceRounded'
+import BusinessCenterRoundedIcon from '@mui/icons-material/BusinessCenterRounded'
+import TheaterComedyRoundedIcon from '@mui/icons-material/TheaterComedyRounded'
+import SportsSoccerRoundedIcon from '@mui/icons-material/SportsSoccerRounded'
 import { keyframes } from '@mui/material/styles'
 import { SHAPE } from '@ubuntu-fund/ui'
 
@@ -40,11 +47,6 @@ const countIn = keyframes`
   to   { opacity: 1; transform: scale(1); }
 `
 
-const shimmer = keyframes`
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-`
-
 const float = keyframes`
   0%, 100% { transform: translateY(0) rotate(0deg); }
   50% { transform: translateY(-8px) rotate(1deg); }
@@ -58,9 +60,9 @@ const pulse = keyframes`
 // ─── Data (unchanged) ────────────────────────────────────────────────────────
 
 const FEATURES = [
-  { icon: <DashboardRoundedIcon />, title: 'Organization Dashboard', description: 'A dedicated control center for your team with role-based access, campaign management, and real-time analytics.', color: '#2E7D32' },
+  { icon: <DashboardRoundedIcon />, title: 'Organization Dashboard', description: 'A dedicated control center for your team with role-based access, campaign management, and real-time analytics.', color: '#2E3D2F' },
   { icon: <PaletteRoundedIcon />, title: 'Branded Campaign Pages', description: 'Customize campaigns with your logo, colors, and brand story. Your campaigns, your identity.', color: '#1565C0' },
-  { icon: <BarChartRoundedIcon />, title: 'Advanced Analytics', description: 'Track donor demographics, campaign performance, conversion rates, and generate exportable reports.', color: '#F9A825' },
+  { icon: <BarChartRoundedIcon />, title: 'Advanced Analytics', description: 'Track donor demographics, campaign performance, conversion rates, and generate exportable reports.', color: '#C7A24A' },
   { icon: <ReceiptLongRoundedIcon />, title: 'Automated Tax Receipts', description: 'Generate and send tax-compliant receipts automatically. Stay compliant in every country you operate.', color: '#C75B39' },
   { icon: <SyncRoundedIcon />, title: 'Recurring Donations', description: 'Enable monthly giving plans with automatic processing, donor retention tools, and smart reminders.', color: '#6A1B9A' },
   { icon: <VerifiedUserRoundedIcon />, title: 'Priority Verification', description: 'Fast-track trust verification with dedicated review, enhanced badges, and institutional endorsement.', color: '#00695C' },
@@ -69,22 +71,22 @@ const FEATURES = [
 ]
 
 const ORG_TYPES = [
-  { emoji: '🏥', label: 'Hospitals & Clinics' }, { emoji: '🎓', label: 'Schools & Universities' },
-  { emoji: '🕌', label: 'Religious Institutions' }, { emoji: '🌍', label: 'NGOs & Nonprofits' },
-  { emoji: '🏛️', label: 'Government Bodies' }, { emoji: '💼', label: 'Social Enterprises' },
-  { emoji: '🎭', label: 'Arts & Culture' }, { emoji: '⚽', label: 'Sports Organizations' },
+  { icon: <LocalHospitalRoundedIcon />, label: 'Hospitals & Clinics' }, { icon: <SchoolRoundedIcon />, label: 'Schools & Universities' },
+  { icon: <MosqueRoundedIcon />, label: 'Religious Institutions' }, { icon: <PublicRoundedIcon />, label: 'NGOs & Nonprofits' },
+  { icon: <AccountBalanceRoundedIcon />, label: 'Government Bodies' }, { icon: <BusinessCenterRoundedIcon />, label: 'Social Enterprises' },
+  { icon: <TheaterComedyRoundedIcon />, label: 'Arts & Culture' }, { icon: <SportsSoccerRoundedIcon />, label: 'Sports Organizations' },
 ]
 
 const STATS = [
-  { value: '2,500+', label: 'Organizations', icon: <GroupsRoundedIcon />, color: '#2E7D32' },
-  { value: '$8.2M', label: 'Raised for Orgs', icon: <VolunteerActivismRoundedIcon />, color: '#F9A825' },
+  { value: '2,500+', label: 'Organizations', icon: <GroupsRoundedIcon />, color: '#2E3D2F' },
+  { value: '$8.2M', label: 'Raised for Orgs', icon: <VolunteerActivismRoundedIcon />, color: '#C7A24A' },
   { value: '32', label: 'Countries', icon: <PublicRoundedIcon />, color: '#C75B39' },
   { value: '99.9%', label: 'Uptime SLA', icon: <SecurityRoundedIcon />, color: '#6A1B9A' },
 ]
 
 const TESTIMONIALS = [
-  { quote: 'UbuntuFund transformed how we connect with donors. Our monthly giving increased 340% in the first year.', name: 'Dr. Amina Osei', role: 'Director, Maji Foundation', org: 'Water & Sanitation NGO, Kenya', initials: 'AO', color: '#2E7D32', stat: '+340%', statLabel: 'Monthly giving' },
-  { quote: 'The branded campaign pages and automated receipts saved our team hundreds of hours. It just works.', name: 'Pastor James Mensah', role: 'Administrator, Grace Cathedral', org: 'Religious Institution, Ghana', initials: 'JM', color: '#F9A825', stat: '400hrs', statLabel: 'Saved yearly' },
+  { quote: 'UbuntuFund transformed how we connect with donors. Our monthly giving increased 340% in the first year.', name: 'Dr. Amina Osei', role: 'Director, Maji Foundation', org: 'Water & Sanitation NGO, Kenya', initials: 'AO', color: '#2E3D2F', stat: '+340%', statLabel: 'Monthly giving' },
+  { quote: 'The branded campaign pages and automated receipts saved our team hundreds of hours. It just works.', name: 'Pastor James Mensah', role: 'Administrator, Grace Cathedral', org: 'Religious Institution, Ghana', initials: 'JM', color: '#C7A24A', stat: '400hrs', statLabel: 'Saved yearly' },
   { quote: 'We integrated UbuntuFund with our existing systems in days. The API is clean and well-documented.', name: 'Chidi Eze', role: 'CTO, Lagos Emergency Response', org: 'Medical NGO, Nigeria', initials: 'CE', color: '#C75B39', stat: '3 days', statLabel: 'To integrate' },
 ]
 
@@ -114,8 +116,8 @@ function ForOrganizationsPage() {
         {/* Decorative grid */}
         <Box sx={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(76,175,80,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(76,175,80,0.03) 1px, transparent 1px)', backgroundSize: '60px 60px', pointerEvents: 'none', animation: `${pulse} 6s ease infinite` }} />
         {/* Glow orbs */}
-        <Box sx={{ position: 'absolute', width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(46,125,50,0.08), transparent 70%)', top: -200, left: '10%', pointerEvents: 'none' }} />
-        <Box sx={{ position: 'absolute', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(249,168,37,0.06), transparent 70%)', bottom: -150, right: '15%', pointerEvents: 'none' }} />
+        <Box sx={{ position: 'absolute', width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(46, 61, 47,0.08), transparent 70%)', top: -200, left: '10%', pointerEvents: 'none' }} />
+        <Box sx={{ position: 'absolute', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(199, 162, 74,0.06), transparent 70%)', bottom: -150, right: '15%', pointerEvents: 'none' }} />
 
         <Container maxWidth="md" sx={{ position: 'relative', zIndex: 1 }}>
           <Grid container spacing={3}>
@@ -149,13 +151,9 @@ function ForOrganizationsPage() {
                     sx={{
                       fontWeight: 900,
                       fontSize: { xs: '1.6rem', md: '2rem' },
-                      color: '#fff',
+                      color: '#DCC07E',
                       lineHeight: 1,
                       mb: 0.5,
-                      background: `linear-gradient(135deg, ${stat.color}, #fff)`,
-                      backgroundClip: 'text',
-                      WebkitBackgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent',
                     }}
                   >
                     {stat.value}
@@ -172,10 +170,10 @@ function ForOrganizationsPage() {
 
       {/* ═══ Who Is This For — Horizontal scroll feel ═══ */}
       <Box sx={{ py: { xs: 7, md: 10 }, position: 'relative', overflow: 'hidden' }}>
-        <Box sx={{ position: 'absolute', width: 500, height: 500, borderRadius: '50%', background: 'radial-gradient(circle, rgba(46,125,50,0.03), transparent 70%)', top: -200, right: -100, pointerEvents: 'none' }} />
+        <Box sx={{ position: 'absolute', width: 500, height: 500, borderRadius: '50%', background: 'radial-gradient(circle, rgba(46, 61, 47,0.03), transparent 70%)', top: -200, right: -100, pointerEvents: 'none' }} />
         <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
           <Box sx={{ textAlign: 'center', mb: 5, animation: `${fadeSlide} 0.4s ease both` }}>
-            <Chip label="Who We Serve" size="small" sx={{ mb: 2, bgcolor: 'rgba(46,125,50,0.08)', color: 'primary.dark', fontWeight: 700, fontSize: '0.72rem', letterSpacing: 1, textTransform: 'uppercase' }} />
+            <Chip label="Who We Serve" size="small" sx={{ mb: 2, bgcolor: 'rgba(46, 61, 47,0.08)', color: 'primary.dark', fontWeight: 700, fontSize: '0.72rem', letterSpacing: 1, textTransform: 'uppercase' }} />
             <Typography variant="h3" sx={{ fontWeight: 900, mb: 1, fontSize: { xs: '1.8rem', md: '2.4rem' } }}>
               Built for Every <Box component="span" sx={{ color: 'primary.main' }}>Organization</Box>
             </Typography>
@@ -197,17 +195,16 @@ function ForOrganizationsPage() {
                     borderColor: 'divider',
                     bgcolor: 'background.paper',
                     animation: `${fadeSlide} 0.35s ease ${i * 0.04}s both`,
-                    transition: 'all 0.25s cubic-bezier(0.22, 1, 0.36, 1)',
+                    transition: 'background-color 200ms ease, border-color 200ms ease, box-shadow 200ms ease',
                     cursor: 'default',
                     '&:hover': {
                       borderColor: 'primary.main',
-                      bgcolor: 'rgba(46,125,50,0.03)',
-                      transform: 'translateY(-3px)',
-                      boxShadow: '0 6px 20px rgba(46,125,50,0.08)',
+                      bgcolor: 'rgba(46, 61, 47,0.03)',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
                     },
                   }}
                 >
-                  <Typography sx={{ fontSize: '1.5rem', lineHeight: 1 }}>{type.emoji}</Typography>
+                  <Box sx={{ display: 'flex', color: 'primary.main', flexShrink: 0, '& svg': { fontSize: 22 } }}>{type.icon}</Box>
                   <Typography sx={{ fontWeight: 600, fontSize: '0.88rem' }}>{type.label}</Typography>
                 </Box>
               </Grid>
@@ -243,16 +240,13 @@ function ForOrganizationsPage() {
                     position: 'relative',
                     overflow: 'visible',
                     animation: `${fadeSlide} 0.4s ease ${0.05 + i * 0.04}s both`,
-                    transition: 'all 0.3s cubic-bezier(0.22, 1, 0.36, 1)',
+                    transition: 'box-shadow 200ms ease, border-color 200ms ease',
                     '&:hover': {
-                      transform: 'translateY(-6px)',
-                      boxShadow: `0 12px 32px ${feature.color}12`,
+                      boxShadow: '0 8px 20px rgba(0,0,0,0.08)',
                       borderColor: `${feature.color}40`,
                       '& .feat-icon': {
-                        transform: 'scale(1.15) rotate(-5deg)',
                         bgcolor: feature.color,
                         color: '#fff',
-                        boxShadow: `0 4px 16px ${feature.color}30`,
                       },
                     },
                   }}
@@ -272,7 +266,7 @@ function ForOrganizationsPage() {
                         alignItems: 'center',
                         justifyContent: 'center',
                         mb: 2,
-                        transition: 'all 0.3s cubic-bezier(0.22, 1, 0.36, 1)',
+                        transition: 'background-color 200ms ease, color 200ms ease',
                         '& svg': { fontSize: 22 },
                       }}
                     >
@@ -290,7 +284,7 @@ function ForOrganizationsPage() {
 
       {/* ═══ Testimonials — Magazine-style with pull-quote + stat ═══ */}
       <Box sx={{ py: { xs: 7, md: 10 }, position: 'relative', overflow: 'hidden' }}>
-        <Box sx={{ position: 'absolute', width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(249,168,37,0.04), transparent 70%)', bottom: -200, left: -100, pointerEvents: 'none' }} />
+        <Box sx={{ position: 'absolute', width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(199, 162, 74,0.04), transparent 70%)', bottom: -200, left: -100, pointerEvents: 'none' }} />
         <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
           <Box sx={{ textAlign: 'center', mb: 6 }}>
             <Chip label="Social Proof" size="small" sx={{ mb: 2, bgcolor: 'rgba(199,91,57,0.08)', color: '#C75B39', fontWeight: 700, fontSize: '0.72rem', letterSpacing: 1, textTransform: 'uppercase' }} />
@@ -392,16 +386,14 @@ function ForOrganizationsPage() {
                     position: 'relative',
                     overflow: 'visible',
                     animation: `${fadeSlide} 0.4s ease ${0.15 + i * 0.08}s both`,
-                    transition: 'all 0.3s cubic-bezier(0.22, 1, 0.36, 1)',
+                    transition: 'box-shadow 200ms ease',
                     ...(tier.highlighted && {
-                      transform: { md: 'scale(1.05)' },
                       zIndex: 2,
-                      boxShadow: '0 16px 48px rgba(46,125,50,0.15)',
+                      boxShadow: '0 16px 40px rgba(0,0,0,0.12)',
                       borderWidth: 2,
                     }),
                     '&:hover': {
-                      transform: tier.highlighted ? { md: 'scale(1.07)' } : 'translateY(-6px)',
-                      boxShadow: tier.highlighted ? '0 20px 56px rgba(46,125,50,0.2)' : '0 12px 32px rgba(0,0,0,0.08)',
+                      boxShadow: tier.highlighted ? '0 20px 48px rgba(0,0,0,0.16)' : '0 8px 24px rgba(0,0,0,0.08)',
                     },
                   }}
                 >
@@ -449,7 +441,7 @@ function ForOrganizationsPage() {
                         fontWeight: 700,
                         textTransform: 'none',
                         fontSize: '0.92rem',
-                        ...(tier.highlighted && { boxShadow: '0 4px 16px rgba(46,125,50,0.25)' }),
+                        ...(tier.highlighted && { boxShadow: '0 4px 16px rgba(46, 61, 47,0.25)' }),
                       }}
                     >
                       {tier.cta}
@@ -466,16 +458,16 @@ function ForOrganizationsPage() {
       <Box
         sx={{
           py: { xs: 10, md: 14 },
-          background: 'linear-gradient(135deg, #0d1a0f 0%, #1B5E20 50%, #0d1a0f 100%)',
+          background: 'linear-gradient(135deg, #0d1a0f 0%, #1C261D 50%, #0d1a0f 100%)',
           textAlign: 'center',
           position: 'relative',
           overflow: 'hidden',
         }}
       >
         {/* Kente weave */}
-        <Box sx={{ position: 'absolute', inset: 0, opacity: 0.04, backgroundImage: 'repeating-linear-gradient(90deg, #F9A825 0px, #F9A825 3px, transparent 3px, transparent 18px), repeating-linear-gradient(0deg, #C75B39 0px, #C75B39 3px, transparent 3px, transparent 18px)', pointerEvents: 'none' }} />
+        <Box sx={{ position: 'absolute', inset: 0, opacity: 0.04, backgroundImage: 'repeating-linear-gradient(90deg, #C7A24A 0px, #C7A24A 3px, transparent 3px, transparent 18px), repeating-linear-gradient(0deg, #C75B39 0px, #C75B39 3px, transparent 3px, transparent 18px)', pointerEvents: 'none' }} />
         {/* Glow */}
-        <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 600, height: 600, borderRadius: '50%', background: 'radial-gradient(circle, rgba(46,125,50,0.15), transparent 70%)', pointerEvents: 'none' }} />
+        <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 600, height: 600, borderRadius: '50%', background: 'radial-gradient(circle, rgba(46, 61, 47,0.15), transparent 70%)', pointerEvents: 'none' }} />
 
         <Container maxWidth="sm" sx={{ position: 'relative', zIndex: 1 }}>
           <Box sx={{ animation: `${float} 6s ease infinite`, mb: 3 }}>
@@ -484,15 +476,15 @@ function ForOrganizationsPage() {
                 width: 72,
                 height: 72,
                 borderRadius: SHAPE.sm,
-                background: 'linear-gradient(135deg, rgba(249,168,37,0.15), rgba(249,168,37,0.05))',
-                border: '1px solid rgba(249,168,37,0.2)',
+                background: 'linear-gradient(135deg, rgba(199, 162, 74,0.15), rgba(199, 162, 74,0.05))',
+                border: '1px solid rgba(199, 162, 74,0.2)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 mx: 'auto',
               }}
             >
-              <GroupsRoundedIcon sx={{ fontSize: 36, color: '#F9A825' }} />
+              <GroupsRoundedIcon sx={{ fontSize: 36, color: '#C7A24A' }} />
             </Box>
           </Box>
           <Typography
@@ -510,12 +502,7 @@ function ForOrganizationsPage() {
             <Box
               component="span"
               sx={{
-                background: 'linear-gradient(135deg, #F9A825, #FDD835)',
-                backgroundSize: '200% auto',
-                backgroundClip: 'text',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                animation: `${shimmer} 3s ease infinite`,
+                color: '#DCC07E',
               }}
             >
               Impact?
@@ -537,9 +524,9 @@ function ForOrganizationsPage() {
                 fontWeight: 700,
                 fontSize: '0.95rem',
                 borderRadius: SHAPE.sm,
-                boxShadow: '0 4px 20px rgba(249,168,37,0.3)',
-                transition: 'all 0.3s ease',
-                '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 8px 28px rgba(249,168,37,0.4)' },
+                boxShadow: '0 4px 14px rgba(0,0,0,0.18)',
+                transition: 'box-shadow 200ms ease',
+                '&:hover': { boxShadow: '0 6px 20px rgba(0,0,0,0.24)' },
               }}
             >
               Create Organization Account
@@ -557,8 +544,8 @@ function ForOrganizationsPage() {
                 borderColor: 'rgba(255,255,255,0.2)',
                 borderWidth: 1.5,
                 color: '#fff',
-                transition: 'all 0.3s ease',
-                '&:hover': { borderColor: 'rgba(255,255,255,0.5)', bgcolor: 'rgba(255,255,255,0.06)', transform: 'translateY(-2px)' },
+                transition: 'border-color 200ms ease, background-color 200ms ease',
+                '&:hover': { borderColor: 'rgba(255,255,255,0.5)', bgcolor: 'rgba(255,255,255,0.06)' },
               }}
             >
               Talk to Sales

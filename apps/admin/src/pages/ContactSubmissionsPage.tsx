@@ -19,7 +19,7 @@ import PaginationBar from '@/components/PaginationBar'
 const fadeIn = keyframes`from{opacity:0}to{opacity:1}`
 const slideIn = keyframes`from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}`
 const B = 'rgba(255,255,255,0.06)'
-const ACCENT = '#42A5F5'
+const ACCENT = '#74909A'
 
 interface Stats {
   total: number
@@ -29,17 +29,17 @@ interface Stats {
 }
 
 const statusColors: Record<string, string> = {
-  new: '#42A5F5',
-  in_progress: '#FFA726',
-  resolved: '#4CAF50',
+  new: '#74909A',
+  in_progress: '#D3A95C',
+  resolved: '#5E8F72',
   archived: '#78909C',
 }
 
 const inquiryColors: Record<string, string> = {
   general: '#78909C',
   partnership: '#AB47BC',
-  campaign: '#42A5F5',
-  bug: '#EF5350',
+  campaign: '#74909A',
+  bug: '#C06B58',
 }
 
 function Skel({ w, h }: { w?: string | number; h?: number }) {
@@ -155,10 +155,10 @@ function ContactSubmissionsPage() {
     : submissions
 
   const statCards = [
-    { icon: <TrendingUpIcon />, label: 'Total', value: stats.total, color: '#42A5F5' },
-    { icon: <FiberNewIcon />, label: 'New', value: stats.new, color: '#42A5F5' },
-    { icon: <HourglassTopIcon />, label: 'In Progress', value: stats.inProgress, color: '#FFA726' },
-    { icon: <CheckCircleIcon />, label: 'Resolved', value: stats.resolved, color: '#4CAF50' },
+    { icon: <TrendingUpIcon />, label: 'Total', value: stats.total, color: '#74909A' },
+    { icon: <FiberNewIcon />, label: 'New', value: stats.new, color: '#74909A' },
+    { icon: <HourglassTopIcon />, label: 'In Progress', value: stats.inProgress, color: '#D3A95C' },
+    { icon: <CheckCircleIcon />, label: 'Resolved', value: stats.resolved, color: '#5E8F72' },
   ]
 
   return (

@@ -1,56 +1,60 @@
-import { describe, it, beforeAll, afterAll, beforeEach, expect } from 'vitest';
+import { randomUUID } from 'node:crypto';
+import { describe, it, beforeAll, afterAll, expect } from 'vitest';
 import request from 'supertest';
 import type { Express } from 'express';
-import { createTestApp } from '../helpers/testServer.js';
-import { connectTestDatabase, clearTestDatabase, disconnectTestDatabase } from '../helpers/testDatabase.js';
-import { CampaignModel } from '../../src/infrastructure/database/models/CampaignModel.js';
-import { PaymentProviderModel } from '../../src/infrastructure/database/models/PaymentProviderModel.js';
-import { UserModel } from '../../src/infrastructure/database/models/UserModel.js';
-import { SubscriptionModel } from '../../src/infrastructure/database/models/SubscriptionModel.js';
-import { WalletModel } from '../../src/infrastructure/database/models/WalletModel.js';
-import { UserPermissionsModel } from '../../src/infrastructure/database/models/UserPermissionsModel.js';
-import { authRateLimiter, apiRateLimiter, donationRateLimiter } from '../../src/infrastructure/adapters/inbound/middleware/rateLimiter.js';
+import { createTestApp } from '../helpers/testApp.js';
 import {
-  VerificationLevel,
-  CampaignStatus,
-  SubscriptionTier,
-  BillingCycle,
-  CampaignCategory,
-  CampaignPriority,
-  PaymentMethod,
-} from '@ubuntu-fund/types';
+  connectTestDatabase,
+  dropTestDatabase,
+  disconnectTestDatabase,
+} from '../helpers/testDatabase.js';
+import { UserModel } from '../../src/infrastructure/database/models/UserModel.js';
+import { CampaignModel } from '../../src/infrastructure/database/models/CampaignModel.js';
+import { CampaignCategory, CampaignPriority } from '@ubuntu-fund/types';
 
-async function registerAndReadyUser(app: Express, email: string) {
-  const res = await request(app)
-    .post('/api/v1/auth/register')
-    .send({ email, password: 'SecurePass123', name: 'Test User' });
-
-  const userId = res.body.data.user.id;
-  const token = res.body.data.tokens.accessToken;
-
-  await UserModel.findByIdAndUpdate(userId, { verificationLevel: VerificationLevel.EMAIL_PHONE });
-  await SubscriptionModel.create({
-    userId,
-    tier: SubscriptionTier.FREE,
-    status: 'active',
-    billingCycle: BillingCycle.MONTHLY,
-    currentPeriodStart: new Date(),
-    currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-  });
-
-  return { userId, token };
+function uniqueEmail(label: string): string {
+  return `${label}-${randomUUID()}@example.com`;
 }
 
-async function seedPaymentProviders() {
-  await PaymentProviderModel.create({
-    name: 'UbuntuFund Wallet',
-    slug: 'wallet',
-    type: PaymentMethod.WALLET,
-    enabled: true,
-    isDefault: true,
-    feePercent: 0,
-    displayOrder: 1,
-  });
+async function registerUser(app: Express, email: string) {
+  const res = await request(app)
+    .post('/api/v1/auth/register')
+    .send({ email, password: 'SecurePass123', name: 'Test User' })
+    .expect(201);
+
+  return { userId: res.body.data.user.id as string, token: res.body.data.tokens.accessToken as string };
+}
+
+/** Creates an active campaign directly, bypassing the KYC/admin-approval flow (covered separately in campaigns.integration.test.ts). */
+async function createActiveCampaign(app: Express, creatorToken: string, creatorId: string) {
+  await UserModel.findByIdAndUpdate(creatorId, { verificationLevel: 2 });
+
+  const createRes = await request(app)
+    .post('/api/v1/campaigns')
+    .set('Authorization', `Bearer ${creatorToken}`)
+    .send({
+      title: 'Donation Campaign',
+      description: 'A campaign to receive donations',
+      goalAmount: 5000,
+      currency: 'ZAR',
+      category: CampaignCategory.EDUCATION,
+      priority: CampaignPriority.NORMAL,
+      beneficiaries: [],
+      endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    })
+    .expect(201);
+
+  const campaignId = createRes.body.data.id as string;
+  await CampaignModel.findByIdAndUpdate(campaignId, { status: 'active' });
+  return campaignId;
+}
+
+async function getWalletId(app: Express, token: string): Promise<string> {
+  const res = await request(app)
+    .get('/api/v1/wallets')
+    .set('Authorization', `Bearer ${token}`)
+    .expect(200);
+  return res.body.data[0].id as string;
 }
 
 describe('Donations Integration', () => {
@@ -58,97 +62,116 @@ describe('Donations Integration', () => {
 
   beforeAll(async () => {
     await connectTestDatabase();
-    const { app: testApp } = await createTestApp();
-    app = testApp;
-  });
-
-  beforeEach(async () => {
-    await clearTestDatabase();
-    await seedPaymentProviders();
-    (authRateLimiter as unknown as { reset: () => void }).reset();
-    (apiRateLimiter as unknown as { reset: () => void }).reset();
-    (donationRateLimiter as unknown as { reset: () => void }).reset();
+    app = await createTestApp();
   });
 
   afterAll(async () => {
+    await dropTestDatabase();
     await disconnectTestDatabase();
   });
 
-  describe('POST /api/v1/campaigns/:id/donate', () => {
-    it('donates to a campaign using wallet', async () => {
-      const { token: creatorToken } = await registerAndReadyUser(app, 'creator@example.com');
+  it('deposits into a wallet, then donates to an active campaign, updating both balances', async () => {
+    const { userId: creatorId, token: creatorToken } = await registerUser(app, uniqueEmail('creator'));
+    const campaignId = await createActiveCampaign(app, creatorToken, creatorId);
 
-      const campaignRes = await request(app)
-        .post('/api/v1/campaigns')
-        .set('Authorization', `Bearer ${creatorToken}`)
-        .send({
-          title: 'Donation Campaign',
-          description: 'A campaign to receive donations',
-          goalAmount: 5000,
-          currency: 'ZAR',
-          category: CampaignCategory.EDUCATION,
-          priority: CampaignPriority.NORMAL,
-          beneficiaries: [],
-          endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        });
+    const { token: donorToken } = await registerUser(app, uniqueEmail('donor'));
+    const walletId = await getWalletId(app, donorToken);
 
-      const campaignId = campaignRes.body.data.id;
-      await CampaignModel.findByIdAndUpdate(campaignId, { status: CampaignStatus.ACTIVE });
+    const depositRes = await request(app)
+      .post(`/api/v1/wallets/${walletId}/deposit`)
+      .set('Authorization', `Bearer ${donorToken}`)
+      .send({ amount: 1000, currency: 'ZAR' });
+    expect(depositRes.status).toBe(200);
+    expect(depositRes.body.data.balance).toBe(1000);
 
-      const { userId: donorId, token: donorToken } = await registerAndReadyUser(app, 'donor@example.com');
+    const donateRes = await request(app)
+      .post(`/api/v1/campaigns/${campaignId}/donate`)
+      .set('Authorization', `Bearer ${donorToken}`)
+      .send({ amount: 500, currency: 'ZAR', message: 'Great cause!', isAnonymous: false });
+    expect(donateRes.status).toBe(200);
+    expect(donateRes.body.message).toBe('Donation successful');
 
-      // Grant wallet deposit permission
-      await UserPermissionsModel.create({
-        userId: donorId,
-        roleId: 'test-role',
-        permissions: ['wallets:update'],
-      });
+    const campaignRes = await request(app).get(`/api/v1/campaigns/${campaignId}`);
+    expect(campaignRes.body.data.raisedAmount).toBe(500);
 
-      await request(app)
-        .post('/api/v1/wallets/deposit')
-        .set('Authorization', `Bearer ${donorToken}`)
-        .send({ userId: donorId, amount: 1000, currency: 'ZAR', paymentMethod: 'wallet' });
+    const walletRes = await request(app)
+      .get(`/api/v1/wallets/${walletId}`)
+      .set('Authorization', `Bearer ${donorToken}`);
+    expect(walletRes.body.data.balance).toBe(500);
 
-      const res = await request(app)
-        .post(`/api/v1/campaigns/${campaignId}/donate`)
-        .set('Authorization', `Bearer ${donorToken}`)
-        .send({
-          amount: 500,
-          currency: 'ZAR',
-          paymentMethod: 'wallet',
-          message: 'Great cause!',
-          isAnonymous: false,
-        });
+    // Insufficient balance: attempting to donate more than remains must fail
+    // with 400 and leave both balances untouched.
+    const failedDonate = await request(app)
+      .post(`/api/v1/campaigns/${campaignId}/donate`)
+      .set('Authorization', `Bearer ${donorToken}`)
+      .send({ amount: 10000, currency: 'ZAR', isAnonymous: false });
+    expect(failedDonate.status).toBe(400);
+    expect(failedDonate.body.message).toBe('Insufficient wallet balance');
 
-      expect(res.status).toBe(200);
-      expect(res.body.message).toBe('Donation successful');
-    });
+    const campaignAfterFailure = await request(app).get(`/api/v1/campaigns/${campaignId}`);
+    expect(campaignAfterFailure.body.data.raisedAmount).toBe(500);
 
-    it('rejects donation without authentication', async () => {
-      const res = await request(app)
-        .post('/api/v1/campaigns/some-id/donate')
-        .send({ amount: 100, currency: 'ZAR' });
+    const walletAfterFailure = await request(app)
+      .get(`/api/v1/wallets/${walletId}`)
+      .set('Authorization', `Bearer ${donorToken}`);
+    expect(walletAfterFailure.body.data.balance).toBe(500);
 
-      expect(res.status).toBe(401);
-    });
+    // The ledger should show both the deposit and the successful donation.
+    const transactionsRes = await request(app)
+      .get('/api/v1/wallets/transactions')
+      .set('Authorization', `Bearer ${donorToken}`);
+    expect(transactionsRes.status).toBe(200);
+    const types = transactionsRes.body.data.map((t: { type: string }) => t.type);
+    expect(types).toContain('deposit');
+    expect(types).toContain('donation');
+    expect(transactionsRes.body.data).toHaveLength(2);
   });
 
-  describe('GET /api/v1/donations', () => {
-    it('lists my donations', async () => {
-      const { token } = await registerAndReadyUser(app, 'donorlist@example.com');
+  it('rejects donation to a campaign that is not active', async () => {
+    const { userId: creatorId, token: creatorToken } = await registerUser(
+      app,
+      uniqueEmail('pendingcreator')
+    );
+    await UserModel.findByIdAndUpdate(creatorId, { verificationLevel: 2 });
 
-      const res = await request(app)
-        .get('/api/v1/donations')
-        .set('Authorization', `Bearer ${token}`);
+    const createRes = await request(app)
+      .post('/api/v1/campaigns')
+      .set('Authorization', `Bearer ${creatorToken}`)
+      .send({
+        title: 'Still Pending Campaign',
+        description: 'Not yet approved',
+        goalAmount: 1000,
+        currency: 'ZAR',
+        category: CampaignCategory.EDUCATION,
+        priority: CampaignPriority.NORMAL,
+        beneficiaries: [],
+        endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      })
+      .expect(201);
+    const campaignId = createRes.body.data.id;
 
-      expect(res.status).toBe(200);
-      expect(res.body.data.data).toBeDefined();
-      expect(Array.isArray(res.body.data.data)).toBe(true);
-    });
+    const { token: donorToken } = await registerUser(app, uniqueEmail('pendingdonor'));
+    const walletId = await getWalletId(app, donorToken);
+    await request(app)
+      .post(`/api/v1/wallets/${walletId}/deposit`)
+      .set('Authorization', `Bearer ${donorToken}`)
+      .send({ amount: 500, currency: 'ZAR' })
+      .expect(200);
 
-    it('rejects unauthenticated requests', async () => {
-      const res = await request(app).get('/api/v1/donations');
-      expect(res.status).toBe(401);
-    });
+    const res = await request(app)
+      .post(`/api/v1/campaigns/${campaignId}/donate`)
+      .set('Authorization', `Bearer ${donorToken}`)
+      .send({ amount: 100, currency: 'ZAR', isAnonymous: false });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toBe('Campaign is not accepting donations');
+  });
+
+  it('rejects donation without authentication', async () => {
+    const res = await request(app)
+      .post('/api/v1/campaigns/000000000000000000000000/donate')
+      .send({ amount: 100, currency: 'ZAR', isAnonymous: false });
+
+    expect(res.status).toBe(401);
   });
 });

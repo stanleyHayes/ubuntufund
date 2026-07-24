@@ -222,7 +222,7 @@ export default function EditRolePage() {
 
       {/* Header */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 4, flexWrap: 'wrap' }}>
-        <SecurityRoundedIcon sx={{ color: '#4CAF50', fontSize: 28 }} />
+        <SecurityRoundedIcon sx={{ color: '#5E8F72', fontSize: 28 }} />
         <Typography variant="h4" sx={{ fontWeight: 700 }}>
           Edit Role: {role.name}
         </Typography>
@@ -233,11 +233,11 @@ export default function EditRolePage() {
             size="small"
             sx={{
               bgcolor: 'rgba(76,175,80,0.15)',
-              color: '#81C784',
+              color: '#A8B5A0',
               fontWeight: 600,
               fontSize: '0.72rem',
               height: 26,
-              '& .MuiChip-icon': { color: '#81C784' },
+              '& .MuiChip-icon': { color: '#A8B5A0' },
             }}
           />
         )}
@@ -314,8 +314,8 @@ export default function EditRolePage() {
                               onChange={(_, c) => handleToggleAllColumn(a, c)}
                               sx={{
                                 color: 'rgba(255,255,255,0.2)',
-                                '&.Mui-checked': { color: '#4CAF50' },
-                                '&.MuiCheckbox-indeterminate': { color: '#4CAF50' },
+                                '&.Mui-checked': { color: '#5E8F72' },
+                                '&.MuiCheckbox-indeterminate': { color: '#5E8F72' },
                                 p: 0,
                                 mt: 0.5,
                               }}
@@ -333,8 +333,8 @@ export default function EditRolePage() {
                             onChange={(_, c) => handleToggleAllPerms(c)}
                             sx={{
                               color: 'rgba(255,255,255,0.2)',
-                              '&.Mui-checked': { color: '#4CAF50' },
-                              '&.MuiCheckbox-indeterminate': { color: '#4CAF50' },
+                              '&.Mui-checked': { color: '#5E8F72' },
+                              '&.MuiCheckbox-indeterminate': { color: '#5E8F72' },
                               p: 0,
                               mt: 0.5,
                             }}
@@ -369,8 +369,8 @@ export default function EditRolePage() {
                                   onChange={(_, c) => handlePermChange(resource, action, c)}
                                   sx={{
                                     color: 'rgba(255,255,255,0.2)',
-                                    '&.Mui-checked': { color: '#4CAF50' },
-                                    '&.Mui-disabled.Mui-checked': { color: '#4CAF5080' },
+                                    '&.Mui-checked': { color: '#5E8F72' },
+                                    '&.Mui-disabled.Mui-checked': { color: '#5E8F7280' },
                                   }}
                                 />
                               </TableCell>
@@ -384,8 +384,8 @@ export default function EditRolePage() {
                               onChange={(_, c) => handleToggleAllRow(resource, c)}
                               sx={{
                                 color: 'rgba(255,255,255,0.2)',
-                                '&.Mui-checked': { color: '#4CAF50' },
-                                '&.MuiCheckbox-indeterminate': { color: '#4CAF50' },
+                                '&.Mui-checked': { color: '#5E8F72' },
+                                '&.MuiCheckbox-indeterminate': { color: '#5E8F72' },
                               }}
                             />
                           </TableCell>
@@ -410,7 +410,7 @@ export default function EditRolePage() {
               variant="contained"
               startIcon={<SaveRoundedIcon />}
               onClick={handleSave}
-              sx={{ bgcolor: '#4CAF50', '&:hover': { bgcolor: '#388E3C' } }}
+              sx={{ bgcolor: '#5E8F72', '&:hover': { bgcolor: '#2F6B46' } }}
             >
               Save Changes
             </Button>
@@ -426,7 +426,7 @@ export default function EditRolePage() {
               </Typography>
 
               <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 2 }}>
-                <Typography variant="h3" sx={{ fontWeight: 700, color: '#4CAF50' }}>
+                <Typography variant="h3" sx={{ fontWeight: 700, color: '#5E8F72' }}>
                   {totalPermissions}
                 </Typography>
                 <Typography sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
@@ -465,7 +465,7 @@ export default function EditRolePage() {
                                 width: 6,
                                 height: 6,
                                 borderRadius: '50%',
-                                bgcolor: '#4CAF50',
+                                bgcolor: '#5E8F72',
                               }}
                             />
                             {action}

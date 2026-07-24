@@ -51,9 +51,9 @@ interface PlanWithMeta extends SubscriptionPlan {
 
 const TIER_COLORS: Record<string, string> = {
   free: '#78909C',
-  starter: '#42A5F5',
+  starter: '#74909A',
   pro: '#AB47BC',
-  enterprise: '#F9A825',
+  enterprise: '#C7A24A',
   custom: '#00BCD4',
 }
 
@@ -120,18 +120,18 @@ export default function ManagePlansPage() {
                 sx={{
                   bgcolor: 'background.paper',
                   border: '1px solid',
-                  borderColor: plan.isActive ? 'divider' : 'rgba(239,83,80,0.2)',
+                  borderColor: plan.isActive ? 'divider' : 'rgba(192,107,88,0.2)',
                   borderRadius: SHAPE.card,
                   position: 'relative',
                   opacity: plan.isActive ? 1 : 0.6,
                   animation: `${fadeSlide} 0.35s ease ${i * 0.06}s both`,
-                  transition: 'all 0.25s ease',
-                  '&:hover': { borderColor: `${color}60`, transform: 'translateY(-3px)', boxShadow: `0 8px 24px ${color}15` },
+                  transition: 'border-color 200ms ease, box-shadow 200ms ease',
+                  '&:hover': { borderColor: `${color}60`, boxShadow: `0 2px 8px ${color}20` },
                 }}
               >
                 {/* Status chip */}
                 {!plan.isActive && (
-                  <Chip label="Inactive" size="small" sx={{ position: 'absolute', top: 12, right: 12, bgcolor: 'rgba(239,83,80,0.15)', color: '#EF5350', fontWeight: 700, fontSize: '0.65rem' }} />
+                  <Chip label="Inactive" size="small" sx={{ position: 'absolute', top: 12, right: 12, bgcolor: 'rgba(192,107,88,0.15)', color: '#C06B58', fontWeight: 700, fontSize: '0.65rem' }} />
                 )}
 
                 <CardContent sx={{ p: 3 }}>
@@ -204,7 +204,7 @@ export default function ManagePlansPage() {
                             fontSize: '0.65rem',
                             fontWeight: 600,
                             bgcolor: enabled ? 'rgba(76,175,80,0.1)' : 'rgba(255,255,255,0.04)',
-                            color: enabled ? '#4CAF50' : 'text.secondary',
+                            color: enabled ? '#5E8F72' : 'text.secondary',
                             borderColor: enabled ? 'rgba(76,175,80,0.2)' : 'transparent',
                             border: '1px solid',
                             '& .MuiChip-icon': { color: 'inherit' },

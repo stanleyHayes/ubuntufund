@@ -173,8 +173,8 @@ function MegaDropdown({
             fontSize: '0.8rem',
             fontWeight: menuActive ? 700 : 500,
             color: scrolled
-              ? (menuActive ? '#1B5E20' : '#1a1a1a')
-              : (menuActive ? '#FDD835' : 'rgba(255,255,255,0.9)'),
+              ? (menuActive ? '#1C261D' : '#1a1a1a')
+              : (menuActive ? '#DCC07E' : 'rgba(255,255,255,0.9)'),
             transition: 'color 0.3s',
             lineHeight: 1,
           }}
@@ -200,7 +200,7 @@ function MegaDropdown({
               width: 16,
               height: 2.5,
               borderRadius: 2,
-              bgcolor: scrolled ? '#2E7D32' : '#F9A825',
+              bgcolor: scrolled ? '#2E3D2F' : '#C7A24A',
             }}
           />
         )}
@@ -252,11 +252,11 @@ function MegaDropdown({
                       borderRadius: SHAPE.sm,
                       cursor: 'pointer',
                       transition: 'all 0.15s ease',
-                      bgcolor: active ? 'rgba(46,125,50,0.05)' : 'transparent',
+                      bgcolor: active ? 'rgba(46, 61, 47,0.05)' : 'transparent',
                       '&:hover': {
-                        bgcolor: active ? 'rgba(46,125,50,0.08)' : '#f8f8f5',
+                        bgcolor: active ? 'rgba(46, 61, 47,0.08)' : '#f8f8f5',
                         '& .dd-icon': {
-                          bgcolor: '#2E7D32',
+                          bgcolor: '#2E3D2F',
                           color: '#fff',
                           transform: 'rotate(-4deg) scale(1.06)',
                         },
@@ -270,8 +270,8 @@ function MegaDropdown({
                         width: 34,
                         height: 34,
                         borderRadius: SHAPE.sm,
-                        bgcolor: active ? '#2E7D32' : '#f0f5f0',
-                        color: active ? '#fff' : '#2E7D32',
+                        bgcolor: active ? '#2E3D2F' : '#f0f5f0',
+                        color: active ? '#fff' : '#2E3D2F',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -284,7 +284,7 @@ function MegaDropdown({
                     </Box>
                     <Box sx={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center' }}>
                       <Box>
-                        <Typography sx={{ fontSize: '0.82rem', fontWeight: active ? 700 : 600, color: active ? '#1B5E20' : '#1a1a1a', lineHeight: 1.2 }}>
+                        <Typography sx={{ fontSize: '0.82rem', fontWeight: active ? 700 : 600, color: active ? '#1C261D' : '#1a1a1a', lineHeight: 1.2 }}>
                           {item.title}
                         </Typography>
                         <Typography sx={{ fontSize: '0.68rem', color: '#888', lineHeight: 1.35, mt: 0.1 }}>
@@ -296,7 +296,7 @@ function MegaDropdown({
                       className="dd-arrow"
                       sx={{
                         fontSize: 12,
-                        color: active ? '#2E7D32' : '#bbb',
+                        color: active ? '#2E3D2F' : '#bbb',
                         opacity: active ? 0.6 : 0,
                         transform: 'translate(-3px, 3px)',
                         transition: 'all 0.15s ease',
@@ -333,7 +333,7 @@ function MobileMenuGroup({ menu, pathname, onNavigate }: { menu: NavMenu; pathna
           '&:hover': { bgcolor: 'rgba(0,0,0,0.02)' },
         }}
       >
-        <Typography sx={{ fontWeight: active ? 700 : 500, fontSize: '0.95rem', color: active ? '#1B5E20' : '#1a1a1a' }}>
+        <Typography sx={{ fontWeight: active ? 700 : 500, fontSize: '0.95rem', color: active ? '#1C261D' : '#1a1a1a' }}>
           {menu.label}
         </Typography>
         <ExpandMoreIcon sx={{ fontSize: 18, color: '#999', transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'none' }} />
@@ -348,22 +348,22 @@ function MobileMenuGroup({ menu, pathname, onNavigate }: { menu: NavMenu; pathna
                 onClick={() => onNavigate(item.href)}
                 sx={{
                   display: 'flex', gap: 1.5, px: 3, py: 1.25, cursor: 'pointer',
-                  bgcolor: itemActive ? 'rgba(46,125,50,0.04)' : 'transparent',
-                  borderLeft: `3px solid ${itemActive ? '#2E7D32' : 'transparent'}`,
+                  bgcolor: itemActive ? 'rgba(46, 61, 47,0.04)' : 'transparent',
+                  borderLeft: `3px solid ${itemActive ? '#2E3D2F' : 'transparent'}`,
                   '&:hover': { bgcolor: 'rgba(0,0,0,0.02)' },
                 }}
               >
                 <Box sx={{
                   width: 30, height: 30, borderRadius: SHAPE.sm,
-                  bgcolor: itemActive ? '#2E7D32' : '#f0f5f0',
-                  color: itemActive ? '#fff' : '#2E7D32',
+                  bgcolor: itemActive ? '#2E3D2F' : '#f0f5f0',
+                  color: itemActive ? '#fff' : '#2E3D2F',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                   '& .MuiSvgIcon-root': { fontSize: 15 },
                 }}>
                   {item.icon}
                 </Box>
                 <Box>
-                  <Typography sx={{ fontSize: '0.82rem', fontWeight: itemActive ? 700 : 500, color: itemActive ? '#1B5E20' : '#1a1a1a' }}>
+                  <Typography sx={{ fontSize: '0.82rem', fontWeight: itemActive ? 700 : 500, color: itemActive ? '#1C261D' : '#1a1a1a' }}>
                     {item.title}
                   </Typography>
                   <Typography sx={{ fontSize: '0.66rem', color: '#999', lineHeight: 1.3 }}>
@@ -450,10 +450,10 @@ function Navbar() {
 
             // ── Glass ──
             bgcolor: scrolled
-              ? 'rgba(255,255,255,0.78)'
+              ? 'rgba(255,255,255,0.9)'
               : 'rgba(0,0,0,0.06)',
-            backdropFilter: 'blur(20px) saturate(1.8)',
-            WebkitBackdropFilter: 'blur(20px) saturate(1.8)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
 
             // ── Border (use outline to avoid layout shifts) ──
             outline: scrolled
@@ -507,7 +507,7 @@ function Navbar() {
                 fontWeight: 800,
                 fontSize: scrolled ? '1.05rem' : '1.15rem',
                 lineHeight: 1,
-                color: scrolled ? '#1B5E20' : '#fff',
+                color: scrolled ? '#1C261D' : '#fff',
                 transition: 'all 0.4s ease',
                 whiteSpace: 'nowrap',
               }}
@@ -515,7 +515,7 @@ function Navbar() {
               Ubuntu
               <Box
                 component="span"
-                sx={{ color: '#F9A825' }}
+                sx={{ color: '#C7A24A' }}
               >
                 Fund
               </Box>
@@ -557,16 +557,15 @@ function Navbar() {
                 borderRadius: SHAPE.sm,
                 px: 2.5,
                 py: 0.7,
-                color: '#1B5E20',
-                background: 'linear-gradient(135deg, #F9A825, #F57F17)',
+                color: '#1C261D',
+                background: 'linear-gradient(135deg, #C7A24A, #A07E33)',
                 boxShadow: scrolled
-                  ? '0 2px 8px rgba(249,168,37,0.25)'
-                  : '0 2px 12px rgba(249,168,37,0.3)',
-                transition: 'all 0.25s cubic-bezier(0.22,1,0.36,1)',
+                  ? '0 2px 8px rgba(199, 162, 74,0.25)'
+                  : '0 2px 12px rgba(199, 162, 74,0.3)',
+                transition: 'background-color 0.2s ease, box-shadow 0.2s ease',
                 '&:hover': {
-                  background: 'linear-gradient(135deg, #FDD835, #F9A825)',
-                  boxShadow: '0 4px 16px rgba(249,168,37,0.4)',
-                  transform: 'translateY(-1px)',
+                  background: 'linear-gradient(135deg, #DCC07E, #C7A24A)',
+                  boxShadow: '0 2px 8px rgba(199, 162, 74,0.3)',
                 },
               }}
             >
@@ -599,13 +598,13 @@ function Navbar() {
         anchor="right"
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        PaperProps={{ sx: { width: 320, bgcolor: '#FAFAF5' } }}
+        PaperProps={{ sx: { width: 320, bgcolor: '#F2EFEA' } }}
       >
         <Box sx={{ px: 2.5, py: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Box component="img" src="/favicon.svg" alt="UbuntuFund" sx={{ width: 30, height: 30 }} />
             <Typography sx={{ fontFamily: '"TT Squares", sans-serif', fontWeight: 900, fontSize: '1.05rem' }}>
-              Ubuntu<Box component="span" sx={{ color: '#F9A825' }}>Fund</Box>
+              Ubuntu<Box component="span" sx={{ color: '#C7A24A' }}>Fund</Box>
             </Typography>
           </Box>
           <IconButton onClick={() => setDrawerOpen(false)} size="small" sx={{ width: 30, height: 30, borderRadius: SHAPE.sm, border: '1px solid rgba(0,0,0,0.08)' }}>
@@ -628,10 +627,10 @@ function Navbar() {
               fontFamily: '"TT Squares", sans-serif',
               textTransform: 'none',
               py: 1.3,
-              background: 'linear-gradient(135deg, #F9A825, #F57F17)',
-              color: '#1B5E20',
-              boxShadow: '0 4px 14px rgba(249,168,37,0.25)',
-              '&:hover': { background: 'linear-gradient(135deg, #FDD835, #F9A825)' },
+              background: 'linear-gradient(135deg, #C7A24A, #A07E33)',
+              color: '#1C261D',
+              boxShadow: '0 4px 14px rgba(199, 162, 74,0.25)',
+              '&:hover': { background: 'linear-gradient(135deg, #DCC07E, #C7A24A)' },
             }}
           >
             Get Started

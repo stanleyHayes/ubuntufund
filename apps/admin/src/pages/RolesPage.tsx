@@ -67,10 +67,10 @@ const ACTION_LABELS: Record<Action, string> = {
 }
 
 const ACTION_COLORS: Record<Action, string> = {
-  [Action.READ]: '#42A5F5',
-  [Action.CREATE]: '#66BB6A',
-  [Action.UPDATE]: '#FFA726',
-  [Action.DELETE]: '#EF5350',
+  [Action.READ]: '#74909A',
+  [Action.CREATE]: '#8FAE96',
+  [Action.UPDATE]: '#D3A95C',
+  [Action.DELETE]: '#C06B58',
 }
 
 const RESOURCE_LABELS: Record<Resource, string> = Object.fromEntries(
@@ -92,15 +92,15 @@ const ROLE_ICONS: Record<string, React.ReactNode> = {
 }
 
 const ROLE_ACCENT: Record<string, string> = {
-  super_admin: '#EF5350',
+  super_admin: '#C06B58',
   admin: '#AB47BC',
-  moderator: '#42A5F5',
-  organization: '#FFA726',
-  user: '#66BB6A',
+  moderator: '#74909A',
+  organization: '#D3A95C',
+  user: '#8FAE96',
 }
 
 function getRoleAccent(slug: string): string {
-  return ROLE_ACCENT[slug] ?? '#4CAF50'
+  return ROLE_ACCENT[slug] ?? '#5E8F72'
 }
 
 function getRoleIcon(slug: string): React.ReactNode {
@@ -475,7 +475,7 @@ function RoleCard({
               <IconButton
                 size="small"
                 onClick={onDuplicate}
-                sx={{ color: 'text.secondary', '&:hover': { color: '#42A5F5', bgcolor: 'rgba(66,165,245,0.08)' } }}
+                sx={{ color: 'text.secondary', '&:hover': { color: '#74909A', bgcolor: 'rgba(116,144,154,0.08)' } }}
               >
                 <ContentCopyRoundedIcon sx={{ fontSize: 16 }} />
               </IconButton>
@@ -484,7 +484,7 @@ function RoleCard({
               <IconButton
                 size="small"
                 onClick={onEdit}
-                sx={{ color: 'text.secondary', '&:hover': { color: '#4CAF50', bgcolor: 'rgba(76,175,80,0.08)' } }}
+                sx={{ color: 'text.secondary', '&:hover': { color: '#5E8F72', bgcolor: 'rgba(94,143,114,0.08)' } }}
               >
                 <EditRoundedIcon sx={{ fontSize: 16 }} />
               </IconButton>
@@ -497,7 +497,7 @@ function RoleCard({
                   onClick={onDelete}
                   sx={{
                     color: 'text.secondary',
-                    '&:hover': { color: '#EF5350', bgcolor: 'rgba(239,83,80,0.08)' },
+                    '&:hover': { color: '#C06B58', bgcolor: 'rgba(192,107,88,0.08)' },
                     '&.Mui-disabled': { color: 'rgba(255,255,255,0.08)' },
                   }}
                 >
@@ -569,7 +569,7 @@ export default function RolesPage() {
       <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 4, flexWrap: 'wrap', gap: 2 }}>
         <Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
-            <SecurityRoundedIcon sx={{ color: '#4CAF50', fontSize: 28 }} />
+            <SecurityRoundedIcon sx={{ color: '#5E8F72', fontSize: 28 }} />
             <Typography variant="h4" sx={{ fontWeight: 800 }}>
               Roles & Permissions
             </Typography>
@@ -583,8 +583,8 @@ export default function RolesPage() {
           startIcon={<AddRoundedIcon />}
           onClick={() => navigate('/roles/new')}
           sx={{
-            bgcolor: '#4CAF50',
-            '&:hover': { bgcolor: '#388E3C' },
+            bgcolor: '#5E8F72',
+            '&:hover': { bgcolor: '#2E3D2F' },
             flexShrink: 0,
           }}
         >
@@ -607,10 +607,10 @@ export default function RolesPage() {
         }}
       >
         {[
-          { label: 'Total Roles', value: roles.length, icon: <ShieldRoundedIcon sx={{ fontSize: 18 }} />, color: '#4CAF50' },
+          { label: 'Total Roles', value: roles.length, icon: <ShieldRoundedIcon sx={{ fontSize: 18 }} />, color: '#5E8F72' },
           { label: 'System Roles', value: systemCount, icon: <LockRoundedIcon sx={{ fontSize: 18 }} />, color: '#AB47BC' },
-          { label: 'Custom Roles', value: customCount, icon: <PersonRoundedIcon sx={{ fontSize: 18 }} />, color: '#42A5F5' },
-          { label: 'Total Permissions', value: totalPerms, icon: <CheckCircleRoundedIcon sx={{ fontSize: 18 }} />, color: '#FFA726' },
+          { label: 'Custom Roles', value: customCount, icon: <PersonRoundedIcon sx={{ fontSize: 18 }} />, color: '#74909A' },
+          { label: 'Total Permissions', value: totalPerms, icon: <CheckCircleRoundedIcon sx={{ fontSize: 18 }} />, color: '#D3A95C' },
         ].map((stat) => (
           <Box
             key={stat.label}
@@ -671,7 +671,7 @@ export default function RolesPage() {
               bgcolor: 'rgba(255,255,255,0.03)',
               '& fieldset': { borderColor: B },
               '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.15)' },
-              '&.Mui-focused fieldset': { borderColor: '#4CAF50' },
+              '&.Mui-focused fieldset': { borderColor: '#5E8F72' },
             },
           }}
         />
@@ -739,13 +739,13 @@ export default function RolesPage() {
                 width: 32,
                 height: 32,
                 borderRadius: '8px',
-                bgcolor: 'rgba(239,83,80,0.12)',
+                bgcolor: 'rgba(192,107,88,0.12)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <DeleteRoundedIcon sx={{ fontSize: 18, color: '#EF5350' }} />
+              <DeleteRoundedIcon sx={{ fontSize: 18, color: '#C06B58' }} />
             </Box>
             <Typography sx={{ fontWeight: 800, fontSize: '1.05rem' }}>Delete Role</Typography>
           </Box>
@@ -763,7 +763,7 @@ export default function RolesPage() {
           <Button
             variant="contained"
             onClick={handleDelete}
-            sx={{ bgcolor: '#EF5350', '&:hover': { bgcolor: '#D32F2F' } }}
+            sx={{ bgcolor: '#C06B58', '&:hover': { bgcolor: '#A5432F' } }}
           >
             Delete Role
           </Button>

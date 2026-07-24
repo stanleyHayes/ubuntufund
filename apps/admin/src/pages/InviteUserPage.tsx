@@ -117,7 +117,7 @@ function PermissionDotGrid({ permissions }: { permissions: PermissionString[] })
                       width: 8,
                       height: 8,
                       borderRadius: '50%',
-                      bgcolor: granted ? '#4CAF50' : 'rgba(255,255,255,0.08)',
+                      bgcolor: granted ? '#5E8F72' : 'rgba(255,255,255,0.08)',
                       transition: 'background-color 0.2s',
                     }}
                   />
@@ -144,11 +144,11 @@ interface OverrideMap {
 function getOverrideColor(state: OverrideState): string {
   switch (state) {
     case 'inherited':
-      return '#4CAF50'
+      return '#5E8F72'
     case 'added':
-      return '#42A5F5'
+      return '#74909A'
     case 'removed':
-      return '#EF5350'
+      return '#C06B58'
   }
 }
 
@@ -297,7 +297,7 @@ export default function InviteUserPage() {
     <Box sx={{ p: 3, maxWidth: 1000, mx: 'auto' }}>
       {/* Header */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 4, animation: `${fadeSlide} 0.4s ease both` }}>
-        <PersonAddRoundedIcon sx={{ color: '#4CAF50', fontSize: 28 }} />
+        <PersonAddRoundedIcon sx={{ color: '#5E8F72', fontSize: 28 }} />
         <Typography variant="h4" sx={{ fontWeight: 700 }}>
           Invite User
         </Typography>
@@ -425,7 +425,7 @@ export default function InviteUserPage() {
                                 size="small"
                                 sx={{
                                   color: 'rgba(255,255,255,0.2)',
-                                  '&.Mui-checked': { color: '#4CAF50' },
+                                  '&.Mui-checked': { color: '#5E8F72' },
                                 }}
                               />
                             }
@@ -434,7 +434,7 @@ export default function InviteUserPage() {
                           />
                           <Box sx={{ flex: 1 }}>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <ShieldRoundedIcon sx={{ color: '#4CAF50', fontSize: 16 }} />
+                              <ShieldRoundedIcon sx={{ color: '#5E8F72', fontSize: 16 }} />
                               <Typography sx={{ fontWeight: 700, fontSize: '0.88rem' }}>
                                 {role.name}
                               </Typography>
@@ -444,7 +444,7 @@ export default function InviteUserPage() {
                                   size="small"
                                   sx={{
                                     bgcolor: 'rgba(76,175,80,0.15)',
-                                    color: '#81C784',
+                                    color: '#A8B5A0',
                                     fontWeight: 600,
                                     fontSize: '0.62rem',
                                     height: 18,
@@ -483,8 +483,8 @@ export default function InviteUserPage() {
                 fullWidth
                 size="large"
                 sx={{
-                  bgcolor: '#4CAF50',
-                  '&:hover': { bgcolor: '#388E3C' },
+                  bgcolor: '#5E8F72',
+                  '&:hover': { bgcolor: '#2F6B46' },
                   py: 1.5,
                   fontSize: '1rem',
                 }}
@@ -507,7 +507,7 @@ export default function InviteUserPage() {
           >
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                <SecurityRoundedIcon sx={{ color: '#4CAF50', fontSize: 20 }} />
+                <SecurityRoundedIcon sx={{ color: '#5E8F72', fontSize: 20 }} />
                 <Typography variant="h6" sx={{ fontWeight: 700 }}>
                   Permission Preview
                 </Typography>
@@ -528,7 +528,7 @@ export default function InviteUserPage() {
 
                   <Box sx={{ display: 'flex', gap: 1.5, mb: 2 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                      <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#4CAF50' }} />
+                      <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#5E8F72' }} />
                       <Typography sx={{ fontSize: '0.68rem', color: 'text.secondary' }}>Granted</Typography>
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -549,7 +549,7 @@ export default function InviteUserPage() {
                       color: 'text.secondary',
                       fontSize: '0.78rem',
                       mb: showOverrides ? 2 : 0,
-                      '&:hover': { borderColor: '#4CAF50', color: '#4CAF50' },
+                      '&:hover': { borderColor: '#5E8F72', color: '#5E8F72' },
                     }}
                   >
                     {showOverrides ? 'Hide Permission Overrides' : 'Customize Permissions'}
@@ -632,10 +632,10 @@ export default function InviteUserPage() {
                                             borderRadius: '50%',
                                             bgcolor: color,
                                             mx: 'auto',
-                                            transition: 'all 0.15s ease',
-                                            border: state === 'removed' ? '2px solid #EF5350' : 'none',
+                                            transition: 'box-shadow 200ms ease, opacity 200ms ease',
+                                            border: state === 'removed' ? '2px solid #C06B58' : 'none',
                                             opacity: effective ? 1 : 0.5,
-                                            '&:hover': { transform: 'scale(1.3)' },
+                                            '&:hover': { boxShadow: '0 0 0 3px rgba(255,255,255,0.18)' },
                                           }}
                                         />
                                       </Tooltip>
@@ -672,11 +672,11 @@ export default function InviteUserPage() {
                                     state === 'added'
                                       ? 'rgba(66,165,245,0.12)'
                                       : 'rgba(239,83,80,0.12)',
-                                  color: state === 'added' ? '#42A5F5' : '#EF5350',
+                                  color: state === 'added' ? '#74909A' : '#C06B58',
                                   fontSize: '0.65rem',
                                   height: 22,
                                   '& .MuiChip-deleteIcon': {
-                                    color: state === 'added' ? '#42A5F5' : '#EF5350',
+                                    color: state === 'added' ? '#74909A' : '#C06B58',
                                     fontSize: 14,
                                   },
                                 }}

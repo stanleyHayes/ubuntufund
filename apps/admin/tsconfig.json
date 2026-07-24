@@ -17,6 +17,6 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src", "test"],
+  "include": ["src", "test", "__tests__"],
   "references": []
 }

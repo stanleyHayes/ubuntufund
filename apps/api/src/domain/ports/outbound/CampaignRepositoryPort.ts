@@ -9,4 +9,10 @@ export interface CampaignRepositoryPort {
   update(campaign: CampaignEntity): Promise<CampaignEntity>;
   delete(id: string): Promise<void>;
   countByCreatorId(creatorId: string): Promise<number>;
+  /**
+   * Atomically add to raisedAmount, only while the campaign is active,
+   * unexpired, and in the same currency. Returns the updated campaign or null
+   * when the campaign cannot accept the donation.
+   */
+  incrementRaised(campaignId: string, amount: number, currency: string): Promise<CampaignEntity | null>;
 }

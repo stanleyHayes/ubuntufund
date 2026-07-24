@@ -147,7 +147,7 @@ function PulsingDot({ delay }: { delay: number }) {
 const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#1B5E20',
+    backgroundColor: '#1C261D',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 999,
@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: '50%',
-    backgroundColor: '#1B5E20',
+    backgroundColor: '#1C261D',
   },
   ring: {
     position: 'absolute',
@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
     height: width * 0.7,
     borderRadius: width * 0.35,
     borderWidth: 1.5,
-    borderColor: 'rgba(249, 168, 37, 0.3)',
+    borderColor: 'rgba(199, 162, 74, 0.3)',
   },
   ring2: {
     position: 'absolute',
@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
     width: 90,
     height: 90,
     borderRadius: 45,
-    backgroundColor: 'rgba(46, 125, 50, 0.4)',
+    backgroundColor: 'rgba(46, 61, 47, 0.4)',
     borderWidth: 1.5,
     borderColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
@@ -216,7 +216,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#F9A825',
+    backgroundColor: '#C7A24A',
     marginTop: 2,
   },
   appName: {
@@ -226,7 +226,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   appNameAccent: {
-    color: '#4CAF50',
+    color: '#5E8F72',
   },
   tagline: {
     fontSize: 14,
@@ -243,6 +243,6 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#F9A825',
+    backgroundColor: '#C7A24A',
   },
 })

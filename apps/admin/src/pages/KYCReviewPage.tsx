@@ -24,17 +24,17 @@ function Skel({ w, h }: { w?: string | number; h?: number }) {
 }
 
 const statusColors: Record<string, string> = {
-  pending: '#FFA726',
-  in_review: '#42A5F5',
-  approved: '#4CAF50',
-  rejected: '#EF5350',
+  pending: '#D3A95C',
+  in_review: '#74909A',
+  approved: '#5E8F72',
+  rejected: '#C06B58',
   expired: '#9E9E9E',
 }
 
 const riskColors: Record<string, string> = {
-  low: '#4CAF50',
-  medium: '#FFA726',
-  high: '#EF5350',
+  low: '#5E8F72',
+  medium: '#D3A95C',
+  high: '#C06B58',
 }
 
 const typeLabels: Record<string, string> = {
@@ -88,9 +88,9 @@ export default function KYCReviewPage() {
       {/* Stats bar */}
       <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', borderBottom: `1px solid ${B}` }}>
         {[
-          { label: 'Pending', value: pendingCount, color: '#FFA726' },
-          { label: 'Approved Today', value: approvedToday, color: '#4CAF50' },
-          { label: 'Rejected Today', value: rejectedToday, color: '#EF5350' },
+          { label: 'Pending', value: pendingCount, color: '#D3A95C' },
+          { label: 'Approved Today', value: approvedToday, color: '#5E8F72' },
+          { label: 'Rejected Today', value: rejectedToday, color: '#C06B58' },
         ].map((stat) => (
           <Box key={stat.label} sx={{ p: 2, borderRight: `1px solid ${B}`, textAlign: 'center' }}>
             <Typography sx={{ fontSize: '1.5rem', fontWeight: 900, color: stat.color, fontFamily: '"TT Squares", monospace' }}>
@@ -205,8 +205,8 @@ export default function KYCReviewPage() {
             ))
           : paginated.map((v, idx) => {
               const st = localStatuses[v.id] ?? v.status
-              const color = statusColors[st] || '#42A5F5'
-              const riskColor = riskColors[v.riskLevel] || '#42A5F5'
+              const color = statusColors[st] || '#74909A'
+              const riskColor = riskColors[v.riskLevel] || '#74909A'
               return (
                 <Box
                   key={v.id}
@@ -290,8 +290,8 @@ export default function KYCReviewPage() {
                         onClick={() => handleAction(v.id, 'approved')}
                         sx={{
                           fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.06em',
-                          color: '#4CAF50', borderColor: 'rgba(76,175,80,0.3)',
-                          '&:hover': { borderColor: '#4CAF50', bgcolor: 'rgba(76,175,80,0.08)' },
+                          color: '#5E8F72', borderColor: 'rgba(76,175,80,0.3)',
+                          '&:hover': { borderColor: '#5E8F72', bgcolor: 'rgba(76,175,80,0.08)' },
                         }}
                       >
                         Approve
@@ -302,8 +302,8 @@ export default function KYCReviewPage() {
                         onClick={() => handleAction(v.id, 'rejected')}
                         sx={{
                           fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.06em',
-                          color: '#EF5350', borderColor: 'rgba(239,83,80,0.3)',
-                          '&:hover': { borderColor: '#EF5350', bgcolor: 'rgba(239,83,80,0.08)' },
+                          color: '#C06B58', borderColor: 'rgba(239,83,80,0.3)',
+                          '&:hover': { borderColor: '#C06B58', bgcolor: 'rgba(239,83,80,0.08)' },
                         }}
                       >
                         Reject
@@ -314,8 +314,8 @@ export default function KYCReviewPage() {
                         onClick={() => handleAction(v.id, 'in_review')}
                         sx={{
                           fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.06em',
-                          color: '#42A5F5', borderColor: 'rgba(66,165,245,0.3)',
-                          '&:hover': { borderColor: '#42A5F5', bgcolor: 'rgba(66,165,245,0.08)' },
+                          color: '#74909A', borderColor: 'rgba(66,165,245,0.3)',
+                          '&:hover': { borderColor: '#74909A', bgcolor: 'rgba(66,165,245,0.08)' },
                         }}
                       >
                         Request More

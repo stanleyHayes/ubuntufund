@@ -80,7 +80,7 @@ function CompassSVG({ size = 100 }: { size?: number }) {
         cx="50"
         cy="50"
         r="28"
-        stroke="#F9A825"
+        stroke="#C7A24A"
         strokeWidth="0.8"
         fill="none"
         opacity="0.3"
@@ -110,7 +110,7 @@ function CompassSVG({ size = 100 }: { size?: number }) {
         <polygon points="50,85 46,50 54,50" fill="#5D4037" opacity="0.5" />
       </g>
       {/* Center dot */}
-      <circle cx="50" cy="50" r="3.5" fill="#F9A825" />
+      <circle cx="50" cy="50" r="3.5" fill="#C7A24A" />
       {/* N label */}
       <text x="50" y="12" textAnchor="middle" fontSize="8" fontWeight="bold" fill="#5D4037">
         N
@@ -126,7 +126,7 @@ function PatternBorder() {
       {Array.from({ length: 12 }).map((_, i) => (
         <g key={i} transform={`translate(${i * 20}, 0)`}>
           <path d="M0,6 L5,0 L10,6 L5,12Z" fill="#C75B39" opacity={0} style={{ animation: `fadeIn 0.3s ease ${i * 0.05}s forwards` }} />
-          <path d="M10,6 L15,0 L20,6 L15,12Z" fill="#2E7D32" opacity={0} style={{ animation: `fadeIn 0.3s ease ${i * 0.05 + 0.1}s forwards` }} />
+          <path d="M10,6 L15,0 L20,6 L15,12Z" fill="#2E3D2F" opacity={0} style={{ animation: `fadeIn 0.3s ease ${i * 0.05 + 0.1}s forwards` }} />
         </g>
       ))}
     </svg>
@@ -152,7 +152,7 @@ function BackgroundGlyphs() {
       />
       <path
         d="M350 240 L350 260 M340 250 L360 250"
-        stroke="#F9A825"
+        stroke="#C7A24A"
         strokeWidth="1.5"
         fill="none"
         strokeDasharray="100"
@@ -161,7 +161,7 @@ function BackgroundGlyphs() {
       />
       <path
         d="M360 50 C350 45 340 50 340 55 C340 65 355 65 360 55"
-        stroke="#2E7D32"
+        stroke="#2E3D2F"
         strokeWidth="1"
         fill="none"
         strokeDasharray="100"
@@ -193,7 +193,7 @@ function DustMotes() {
             width: 4,
             height: 4,
             borderRadius: '50%',
-            backgroundColor: ['#C75B39', '#F9A825', '#5D4037', '#2E7D32', '#F9A825'][i],
+            backgroundColor: ['#C75B39', '#C7A24A', '#5D4037', '#2E3D2F', '#C7A24A'][i],
             animation: `floatDust ${m.dur}s ease ${m.delay}s infinite`,
           }}
         />
@@ -246,7 +246,7 @@ export default function NotFoundPage() {
             content: '""',
             position: 'absolute',
             inset: 0,
-            background: 'rgba(249,168,37,0.08)',
+            background: 'rgba(199, 162, 74,0.08)',
             pointerEvents: 'none',
           },
         }}
@@ -316,7 +316,7 @@ export default function NotFoundPage() {
           right: 0,
           height: 4,
           background:
-            'repeating-linear-gradient(90deg, #2E7D32 0px, #2E7D32 16px, #F9A825 16px, #F9A825 32px, #C75B39 32px, #C75B39 48px, #5D4037 48px, #5D4037 64px)',
+            'repeating-linear-gradient(90deg, #2E3D2F 0px, #2E3D2F 16px, #C7A24A 16px, #C7A24A 32px, #C75B39 32px, #C75B39 48px, #5D4037 48px, #5D4037 64px)',
           animation: 'kenteSlide 2s linear infinite',
         }}
       />

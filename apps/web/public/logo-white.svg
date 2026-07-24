@@ -9,12 +9,12 @@
       <path d="M0,-12 C4.5,-10.5 9,-6 9,-0.8 C9,1.5 7.5,3 5.2,3" transform="rotate(120)"/>
       <path d="M0,-12 C4.5,-10.5 9,-6 9,-0.8 C9,1.5 7.5,3 5.2,3" transform="rotate(240)"/>
     </g>
-    <circle cx="5.2" cy="3" r="2" fill="#F9A825"/>
-    <circle cx="-4.2" cy="-5.2" r="2" fill="#F9A825"/>
-    <circle cx="-1" cy="5.3" r="2" fill="#F9A825"/>
+    <circle cx="5.2" cy="3" r="2" fill="#C7A24A"/>
+    <circle cx="-4.2" cy="-5.2" r="2" fill="#C7A24A"/>
+    <circle cx="-1" cy="5.3" r="2" fill="#C7A24A"/>
   </g>
   <!-- Text -->
   <text x="56" y="20" font-family="'TT Squares', 'Inter', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="700" fill="white">Ubuntu</text>
-  <text x="118" y="20" font-family="'TT Squares', 'Inter', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="700" fill="#F9A825">Fund</text>
+  <text x="118" y="20" font-family="'TT Squares', 'Inter', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="700" fill="#C7A24A">Fund</text>
   <text x="56" y="36" font-family="'Inter', 'Helvetica Neue', Arial, sans-serif" font-size="9" font-weight="400" fill="rgba(255,255,255,0.7)" letter-spacing="2.5">TOGETHER, WE RISE</text>
 </svg>

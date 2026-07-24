@@ -23,8 +23,8 @@ const keyframes = `
     40% { transform: scale(1); opacity: 1; }
   }
   @keyframes breatheGlow {
-    0%, 100% { box-shadow: 0 0 20px rgba(249,168,37,0.1); }
-    50% { box-shadow: 0 0 60px rgba(249,168,37,0.25); }
+    0%, 100% { box-shadow: 0 0 20px rgba(199, 162, 74,0.1); }
+    50% { box-shadow: 0 0 60px rgba(199, 162, 74,0.25); }
   }
   @keyframes drumHit {
     0%, 100% { transform: scale(1); }
@@ -84,7 +84,7 @@ function Embers() {
             width: 4,
             height: 4,
             borderRadius: '50%',
-            backgroundColor: ['#F9A825', '#C75B39', '#FF8F00'][i % 3],
+            backgroundColor: ['#C7A24A', '#C75B39', '#FF8F00'][i % 3],
             animation: `emberFloat ${e.dur}s ease ${e.delay}s infinite`,
           }}
         />
@@ -104,7 +104,7 @@ function BackgroundGlyphs() {
       {/* Gye Nyame simplified */}
       <path
         d="M80 60 C65 60 55 70 55 80 C55 88 60 95 68 98"
-        stroke="#F9A825"
+        stroke="#C7A24A"
         strokeWidth="1.5"
         fill="none"
         strokeDasharray="100"
@@ -124,7 +124,7 @@ function BackgroundGlyphs() {
       {/* Dwennimmen (rams horns) */}
       <path
         d="M320 70 C310 60 295 60 290 70 C285 80 295 90 305 85"
-        stroke="#F9A825"
+        stroke="#C7A24A"
         strokeWidth="1.5"
         fill="none"
         strokeDasharray="100"
@@ -177,7 +177,7 @@ export default function SplashScreen() {
           opacity: 0.15,
         }}
       >
-        <circle cx="60" cy="60" r="55" stroke="#F9A825" strokeWidth="1.5" fill="none" strokeDasharray="8 6" />
+        <circle cx="60" cy="60" r="55" stroke="#C7A24A" strokeWidth="1.5" fill="none" strokeDasharray="8 6" />
         <circle cx="60" cy="60" r="48" stroke="#C75B39" strokeWidth="1" fill="none" strokeDasharray="4 8" />
         {[0, 60, 120, 180, 240, 300].map((angle) => {
           const rad = (angle * Math.PI) / 180
@@ -190,7 +190,7 @@ export default function SplashScreen() {
               y={cy - 2}
               width="4"
               height="4"
-              fill="#F9A825"
+              fill="#C7A24A"
               transform={`rotate(${angle}, ${cx}, ${cy})`}
             />
           )
@@ -208,7 +208,7 @@ export default function SplashScreen() {
           opacity: 0.08,
         }}
       >
-        <circle cx="90" cy="90" r="85" stroke="#F9A825" strokeWidth="1" fill="none" strokeDasharray="3 10" />
+        <circle cx="90" cy="90" r="85" stroke="#C7A24A" strokeWidth="1" fill="none" strokeDasharray="3 10" />
         {[0, 45, 90, 135, 180, 225, 270, 315].map((angle) => {
           const rad = (angle * Math.PI) / 180
           const cx = 90 + 80 * Math.cos(rad)
@@ -236,7 +236,7 @@ export default function SplashScreen() {
       >
         <path
           d="M18,16 L18,42 C18,54 28,62 35,62 C42,62 52,54 52,42 L52,16"
-          stroke="#F9A825"
+          stroke="#C7A24A"
           strokeWidth="5"
           strokeLinecap="round"
           fill="none"
@@ -296,7 +296,7 @@ export default function SplashScreen() {
               width: 8,
               height: 8,
               borderRadius: '50%',
-              backgroundColor: ['#F9A825', '#C75B39', '#F9A825'][i],
+              backgroundColor: ['#C7A24A', '#C75B39', '#C7A24A'][i],
               animation: `drumHit 1.2s ease-in-out ${delay}s infinite`,
             }}
           />
@@ -312,7 +312,7 @@ export default function SplashScreen() {
           right: 0,
           height: 4,
           background:
-            'repeating-linear-gradient(90deg, #2E7D32 0px, #2E7D32 16px, #F9A825 16px, #F9A825 32px, #C75B39 32px, #C75B39 48px, #5D4037 48px, #5D4037 64px)',
+            'repeating-linear-gradient(90deg, #2E3D2F 0px, #2E3D2F 16px, #C7A24A 16px, #C7A24A 32px, #C75B39 32px, #C75B39 48px, #5D4037 48px, #5D4037 64px)',
           animation: 'kenteSlide 2s linear infinite',
         }}
       />

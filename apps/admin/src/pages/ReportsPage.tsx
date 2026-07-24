@@ -32,11 +32,11 @@ const chartSx = {
 }
 
 const statusBarColors: Record<string, string> = {
-  [CampaignStatus.ACTIVE]: '#4CAF50',
-  [CampaignStatus.PENDING_REVIEW]: '#FF9800',
-  [CampaignStatus.FUNDED]: '#42A5F5',
+  [CampaignStatus.ACTIVE]: '#5E8F72',
+  [CampaignStatus.PENDING_REVIEW]: '#D3A95C',
+  [CampaignStatus.FUNDED]: '#74909A',
   [CampaignStatus.EXPIRED]: '#78909C',
-  [CampaignStatus.BLOCKED]: '#EF5350',
+  [CampaignStatus.BLOCKED]: '#C06B58',
 }
 
 export default function ReportsPage() {
@@ -92,7 +92,7 @@ export default function ReportsPage() {
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', sm: 'repeat(4, 1fr)' } }}>
         {fraudMetrics.map((m, i) => {
           const isGood = m.change < 0
-          const accentColor = isGood ? '#4CAF50' : '#EF5350'
+          const accentColor = isGood ? '#5E8F72' : '#C06B58'
           return (
             <Box
               key={m.metric}
@@ -137,7 +137,7 @@ export default function ReportsPage() {
           <Box sx={{ p: 2.5, ...chartSx }}>
             <LineChart
               xAxis={[{ data: trend.map(t => t.month), scaleType: 'band' }]}
-              series={[{ data: trend.map(t => t.amount), color: '#4CAF50', area: true }]}
+              series={[{ data: trend.map(t => t.amount), color: '#5E8F72', area: true }]}
               height={280}
             />
           </Box>
@@ -190,7 +190,7 @@ export default function ReportsPage() {
               sx={{
                 display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
                 borderBottom: `1px solid ${B}`,
-                borderLeft: '2px solid rgba(66,165,245,0.25)',
+                borderLeft: '2px solid rgba(116,144,154,0.25)',
                 transition: 'background 0.2s',
                 '&:hover': { bgcolor: 'rgba(255,255,255,0.02)' },
               }}

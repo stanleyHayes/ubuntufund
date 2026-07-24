@@ -31,8 +31,7 @@ const popIn = keyframes`
 const inputSx = {
   '& .MuiOutlinedInput-root': {
     borderRadius: '10px',
-    bgcolor: 'rgba(255,255,255,0.02)',
-    backdropFilter: 'blur(12px)',
+    bgcolor: 'rgba(255,255,255,0.04)',
     transition: 'all 0.25s ease',
     '& fieldset': {
       borderColor: 'rgba(255,255,255,0.06)',
@@ -42,7 +41,7 @@ const inputSx = {
       borderColor: 'rgba(76,175,80,0.25)',
     },
     '&.Mui-focused fieldset': {
-      borderColor: '#4CAF50',
+      borderColor: '#5E8F72',
       borderWidth: '1.5px',
     },
     '&.Mui-focused': {
@@ -52,7 +51,7 @@ const inputSx = {
   },
   '& .MuiInputLabel-root': {
     color: 'rgba(255,255,255,0.35)',
-    '&.Mui-focused': { color: '#4CAF50' },
+    '&.Mui-focused': { color: '#5E8F72' },
   },
   '& .MuiOutlinedInput-input': {
     color: '#E0E0E8',
@@ -122,7 +121,7 @@ export default function ForgotPasswordPage() {
               mb: 2.5,
             }}
           >
-            <ShieldIcon sx={{ fontSize: 28, color: '#4CAF50' }} />
+            <ShieldIcon sx={{ fontSize: 28, color: '#5E8F72' }} />
           </Box>
           <Typography
             sx={{
@@ -136,7 +135,7 @@ export default function ForgotPasswordPage() {
             <Box
               component="span"
               sx={{
-                color: '#4CAF50',
+                color: '#5E8F72',
               }}
             >
               Fund
@@ -162,9 +161,8 @@ export default function ForgotPasswordPage() {
             animation: `${fadeInUp} 0.6s 0.1s ease both`,
             p: { xs: 3, sm: 4 },
             borderRadius: '16px',
-            bgcolor: 'rgba(255,255,255,0.02)',
+            bgcolor: 'rgba(21,36,31,0.9)',
             border: '1px solid rgba(255,255,255,0.06)',
-            backdropFilter: 'blur(20px)',
             boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
           }}
         >
@@ -192,7 +190,7 @@ export default function ForgotPasswordPage() {
                   // animation removed
                 }}
               >
-                <MarkEmailReadIcon sx={{ fontSize: 32, color: '#4CAF50' }} />
+                <MarkEmailReadIcon sx={{ fontSize: 32, color: '#5E8F72' }} />
               </Box>
 
               <Typography
@@ -215,7 +213,7 @@ export default function ForgotPasswordPage() {
                 }}
               >
                 If an account exists for{' '}
-                <Box component="span" sx={{ color: '#4CAF50', fontWeight: 500 }}>
+                <Box component="span" sx={{ color: '#5E8F72', fontWeight: 500 }}>
                   {email}
                 </Box>
                 , you&apos;ll receive a password reset link shortly.
@@ -269,7 +267,7 @@ export default function ForgotPasswordPage() {
                     borderRadius: '10px',
                     bgcolor: 'rgba(239,83,80,0.08)',
                     border: '1px solid rgba(239,83,80,0.2)',
-                    '& .MuiAlert-icon': { color: '#EF5350' },
+                    '& .MuiAlert-icon': { color: '#C06B58' },
                     color: '#E0E0E8',
                   }}
                 >
@@ -305,14 +303,13 @@ export default function ForgotPasswordPage() {
                     fontSize: '0.9rem',
                     fontWeight: 700,
                     fontFamily: '"TT Squares", sans-serif',
-                    background: '#2E7D32',
+                    background: '#2E3D2F',
                     boxShadow: '0 4px 20px rgba(76,175,80,0.2)',
-                    transition: 'all 0.3s ease',
+                    transition: 'background-color 200ms ease, box-shadow 200ms ease',
                     '&:hover': {
                       boxShadow: '0 6px 28px rgba(76,175,80,0.35)',
-                      transform: 'translateY(-1px)',
+                      background: '#1C261D',
                     },
-                    '&:active': { transform: 'translateY(0)' },
                   }}
                 >
                   Send Reset Link
@@ -330,7 +327,7 @@ export default function ForgotPasswordPage() {
                       alignItems: 'center',
                       gap: 0.5,
                       transition: 'color 0.2s ease',
-                      '&:hover': { color: '#4CAF50' },
+                      '&:hover': { color: '#5E8F72' },
                     }}
                   >
                     <ArrowBackIcon sx={{ fontSize: 14 }} />

@@ -255,12 +255,12 @@ export function ProfilePage() {
   }
 
   return (
-    <Box sx={{ bgcolor: '#FAFAF5', minHeight: '100vh', pb: 6 }}>
+    <Box sx={{ bgcolor: '#F2EFEA', minHeight: '100vh', pb: 6 }}>
       {/* ═══ Hero Section ═══ */}
       <Box
         sx={{
           position: 'relative',
-          bgcolor: '#1B5E20',
+          bgcolor: '#1C261D',
           pt: 5,
           pb: 12,
           overflow: 'hidden',
@@ -286,7 +286,7 @@ export function ProfilePage() {
             width: 500,
             height: 500,
             borderRadius: '50%',
-            bgcolor: 'rgba(249,168,37,0.06)',
+            bgcolor: 'rgba(199, 162, 74,0.06)',
             pointerEvents: 'none',
           }}
         />
@@ -297,7 +297,7 @@ export function ProfilePage() {
               sx={{
                 width: 110,
                 height: 110,
-                bgcolor: '#F9A825',
+                bgcolor: '#C7A24A',
                 fontSize: '2.5rem',
                 fontWeight: 900,
                 border: '4px solid rgba(255,255,255,0.3)',
@@ -316,8 +316,8 @@ export function ProfilePage() {
                 width: 36,
                 height: 36,
                 borderRadius: '50%',
-                bgcolor: '#2E7D32',
-                border: '3px solid #1B5E20',
+                bgcolor: '#2E3D2F',
+                border: '3px solid #1C261D',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -370,7 +370,7 @@ export function ProfilePage() {
               icon={<LocalFireDepartmentRoundedIcon sx={{ fontSize: 16, color: '#FF8F00 !important' }} />}
               label={`${impact.streak}-mo streak`}
               size="small"
-              sx={{ bgcolor: 'rgba(249,168,37,0.15)', color: '#FFD54F', fontWeight: 700, border: '1px solid rgba(249,168,37,0.2)' }}
+              sx={{ bgcolor: 'rgba(199, 162, 74,0.15)', color: '#FFD54F', fontWeight: 700, border: '1px solid rgba(199, 162, 74,0.2)' }}
             />
             <Button
               component={RouterLink}
@@ -413,7 +413,7 @@ export function ProfilePage() {
 
         {/* Bottom wave */}
         <svg style={{ position: 'absolute', bottom: -1, left: 0, width: '100%' }} viewBox="0 0 1440 60" preserveAspectRatio="none">
-          <path d="M0,20 C240,60 480,0 720,30 C960,60 1200,0 1440,20 L1440,60 L0,60Z" fill="#FAFAF5" />
+          <path d="M0,20 C240,60 480,0 720,30 C960,60 1200,0 1440,20 L1440,60 L0,60Z" fill="#F2EFEA" />
         </svg>
       </Box>
 
@@ -426,13 +426,13 @@ export function ProfilePage() {
         {/* ═══ Stats Grid ═══ */}
         <Grid container spacing={2} sx={{ mb: 4 }}>
           <Grid size={{ xs: 6, sm: 3 }}>
-            <StatCard icon={<VolunteerActivismRoundedIcon />} value={`$${impact.totalDonated.toLocaleString()}`} label="Total Donated" color="#2E7D32" delay={0} />
+            <StatCard icon={<VolunteerActivismRoundedIcon />} value={`$${impact.totalDonated.toLocaleString()}`} label="Total Donated" color="#2E3D2F" delay={0} />
           </Grid>
           <Grid size={{ xs: 6, sm: 3 }}>
             <StatCard icon={<FavoriteRoundedIcon />} value={String(impact.donationCount)} label="Donations" color="#C75B39" delay={0.08} />
           </Grid>
           <Grid size={{ xs: 6, sm: 3 }}>
-            <StatCard icon={<CampaignRoundedIcon />} value={String(impact.campaignsSupported)} label="Campaigns" color="#F9A825" delay={0.16} />
+            <StatCard icon={<CampaignRoundedIcon />} value={String(impact.campaignsSupported)} label="Campaigns" color="#C7A24A" delay={0.16} />
           </Grid>
           <Grid size={{ xs: 6, sm: 3 }}>
             <StatCard icon={<EmojiEventsRoundedIcon />} value={`#${impact.rank}`} label="Leaderboard" color="#6A1B9A" delay={0.24} />
@@ -478,7 +478,7 @@ export function ProfilePage() {
         >
           <CardContent sx={{ p: 3 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-              <StarRoundedIcon sx={{ color: '#F9A825' }} />
+              <StarRoundedIcon sx={{ color: '#C7A24A' }} />
               <Typography sx={{ fontWeight: 700, fontSize: '1rem' }}>Achievement Badges</Typography>
             </Box>
             <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
@@ -492,14 +492,14 @@ export function ProfilePage() {
                       px: 2,
                       py: 1,
                       borderRadius: SHAPE.sm,
-                      bgcolor: 'rgba(249,168,37,0.06)',
-                      border: '1px solid rgba(249,168,37,0.15)',
+                      bgcolor: 'rgba(199, 162, 74,0.06)',
+                      border: '1px solid rgba(199, 162, 74,0.15)',
                       animation: `${fadeIn} 0.3s ease ${0.4 + i * 0.06}s both`,
                       transition: 'all 0.2s ease',
                       cursor: 'default',
                       '&:hover': {
-                        bgcolor: 'rgba(249,168,37,0.12)',
-                        borderColor: 'rgba(249,168,37,0.3)',
+                        bgcolor: 'rgba(199, 162, 74,0.12)',
+                        borderColor: 'rgba(199, 162, 74,0.3)',
                         transform: 'translateY(-2px)',
                       },
                     }}
@@ -525,7 +525,7 @@ export function ProfilePage() {
         >
           <CardContent sx={{ p: 3 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
-              <TrendingUpRoundedIcon sx={{ color: '#2E7D32' }} />
+              <TrendingUpRoundedIcon sx={{ color: '#2E3D2F' }} />
               <Typography sx={{ fontWeight: 700, fontSize: '1rem' }}>Interested Categories</Typography>
             </Box>
             <Typography sx={{ fontSize: '0.82rem', color: 'text.secondary', mb: 2 }}>
@@ -602,7 +602,7 @@ export function ProfilePage() {
                   <Chip
                     label={`${d.currency} ${d.amount}`}
                     size="small"
-                    sx={{ fontWeight: 700, bgcolor: 'rgba(46,125,50,0.08)', color: 'primary.dark' }}
+                    sx={{ fontWeight: 700, bgcolor: 'rgba(46, 61, 47,0.08)', color: 'primary.dark' }}
                   />
                 </Box>
                 {i < impact.recentDonations.length - 1 && <Divider />}
@@ -670,7 +670,7 @@ export function ProfilePage() {
                   color="primary"
                   onClick={handleSaveProfile}
                   disabled={profileSaving}
-                  sx={{ alignSelf: 'flex-start', borderRadius: SHAPE.sm, px: 4, fontWeight: 700, textTransform: 'none', boxShadow: '0 2px 12px rgba(46,125,50,0.3)' }}
+                  sx={{ alignSelf: 'flex-start', borderRadius: SHAPE.sm, px: 4, fontWeight: 700, textTransform: 'none', boxShadow: '0 2px 12px rgba(46, 61, 47,0.3)' }}
                 >
                   {profileSaving ? 'Saving...' : 'Save Changes'}
                 </Button>

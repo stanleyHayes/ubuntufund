@@ -112,39 +112,88 @@ export const ttSquaresFontFace = `
     font-style: italic;
     font-display: swap;
   }
+  /* Outfit variable font — body text (latin + latin-ext subsets) */
+  @font-face {
+    font-family: 'Outfit';
+    src: url('/fonts/Outfit-Variable-latin.woff2') format('woff2');
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+      U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+      U+2212, U+2215, U+FEFF, U+FFFD;
+  }
+  @font-face {
+    font-family: 'Outfit';
+    src: url('/fonts/Outfit-Variable-latin-ext.woff2') format('woff2');
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+      U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+      U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  }
 `
 
 const ubuntuFundTheme = createTheme({
   palette: {
+    // Sage & Neutrals system: deep forest structure, burnished gold action,
+    // warm parchment ground. Derived from the brand palette, not framework
+    // defaults — semantic states are brand-tinted (clay error, ochre warning).
     primary: {
-      main: '#2E7D32',
-      light: '#4CAF50',
-      dark: '#1B5E20',
-      contrastText: '#FFFFFF',
+      main: '#2E3D2F',
+      light: '#A8B5A0',
+      dark: '#1C261D',
+      contrastText: '#F5F2EA',
     },
     secondary: {
-      main: '#F9A825',
-      light: '#FDD835',
-      dark: '#F57F17',
-      contrastText: '#212121',
+      main: '#C7A24A',
+      light: '#DCC07E',
+      dark: '#A07E33',
+      contrastText: '#221B0E',
+    },
+    success: {
+      main: '#2F6B46',
+      light: '#5E8F72',
+      dark: '#1F4B30',
+      contrastText: '#F5F2EA',
+    },
+    warning: {
+      main: '#B98A2E',
+      light: '#D3A95C',
+      dark: '#8F6A20',
+      contrastText: '#221B0E',
+    },
+    error: {
+      main: '#A5432F',
+      light: '#C06B58',
+      dark: '#7D3223',
+      contrastText: '#F9F4EF',
+    },
+    info: {
+      main: '#4A6B75',
+      light: '#74909A',
+      dark: '#354E56',
+      contrastText: '#F2F5F5',
     },
     background: {
-      default: '#FAFAF5',
+      default: '#F2EFEA',
       paper: '#FFFFFF',
     },
+    divider: '#DAD7CD',
     trust: {
-      level1: '#90CAF9',
-      level2: '#42A5F5',
-      level3: '#F9A825',
-      level4: '#2E7D32',
+      level1: '#DAD7CD',
+      level2: '#A8B5A0',
+      level3: '#C7A24A',
+      level4: '#2E3D2F',
     },
     text: {
-      primary: '#212121',
-      secondary: '#616161',
+      primary: '#1A2E22',
+      secondary: '#4A5A50',
     },
   },
   typography: {
-    fontFamily: '"TT Squares", "Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+    fontFamily: '"Outfit", "Inter", "Roboto", "Helvetica", "Arial", sans-serif',
     h1: {
       fontFamily: '"TT Squares", "Inter", sans-serif',
       fontSize: '2.5rem',
@@ -178,10 +227,12 @@ const ubuntuFundTheme = createTheme({
       fontWeight: 700,
     },
     body1: {
+      fontFamily: '"Outfit", "Inter", sans-serif',
       fontSize: '1rem',
       lineHeight: 1.6,
     },
     body2: {
+      fontFamily: '"Outfit", "Inter", sans-serif',
       fontSize: '0.875rem',
       lineHeight: 1.5,
     },
@@ -189,6 +240,14 @@ const ubuntuFundTheme = createTheme({
       fontFamily: '"TT Squares", "Inter", sans-serif',
       textTransform: 'none',
       fontWeight: 700,
+    },
+    overline: {
+      fontFamily: '"Outfit", "Inter", sans-serif',
+      fontSize: '0.72rem',
+      fontWeight: 700,
+      letterSpacing: '0.18em',
+      textTransform: 'uppercase',
+      lineHeight: 1.4,
     },
   },
   shape: {
@@ -199,17 +258,22 @@ const ubuntuFundTheme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: SHAPE.sm,
-          padding: '8px 24px',
+          padding: '10px 24px',
+          minHeight: 44,
           fontSize: '0.9375rem',
+          '&:focus-visible': {
+            outline: '2px solid #C7A24A',
+            outlineOffset: 2,
+          },
         },
         containedPrimary: {
           '&:hover': {
-            backgroundColor: '#1B5E20',
+            backgroundColor: '#1C261D',
           },
         },
         containedSecondary: {
           '&:hover': {
-            backgroundColor: '#F57F17',
+            backgroundColor: '#A07E33',
           },
         },
       },
@@ -221,10 +285,11 @@ const ubuntuFundTheme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: SHAPE.card,
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+          border: '1px solid #E7E3D8',
+          boxShadow: '0 12px 30px rgba(26, 46, 34, 0.06)',
           transition: 'box-shadow 0.2s ease-in-out',
           '&:hover': {
-            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)',
+            boxShadow: '0 16px 36px rgba(26, 46, 34, 0.1)',
           },
         },
       },

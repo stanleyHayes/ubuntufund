@@ -195,7 +195,7 @@ export default function CreateRolePage() {
 
       {/* Header */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 4 }}>
-        <SecurityRoundedIcon sx={{ color: '#4CAF50', fontSize: 28 }} />
+        <SecurityRoundedIcon sx={{ color: '#5E8F72', fontSize: 28 }} />
         <Typography variant="h4" sx={{ fontWeight: 700 }}>
           Create New Role
         </Typography>
@@ -272,8 +272,8 @@ export default function CreateRolePage() {
                               onChange={(_, c) => handleToggleAllColumn(a, c)}
                               sx={{
                                 color: 'rgba(255,255,255,0.2)',
-                                '&.Mui-checked': { color: '#4CAF50' },
-                                '&.MuiCheckbox-indeterminate': { color: '#4CAF50' },
+                                '&.Mui-checked': { color: '#5E8F72' },
+                                '&.MuiCheckbox-indeterminate': { color: '#5E8F72' },
                                 p: 0,
                                 mt: 0.5,
                               }}
@@ -291,8 +291,8 @@ export default function CreateRolePage() {
                             onChange={(_, c) => handleToggleAllPerms(c)}
                             sx={{
                               color: 'rgba(255,255,255,0.2)',
-                              '&.Mui-checked': { color: '#4CAF50' },
-                              '&.MuiCheckbox-indeterminate': { color: '#4CAF50' },
+                              '&.Mui-checked': { color: '#5E8F72' },
+                              '&.MuiCheckbox-indeterminate': { color: '#5E8F72' },
                               p: 0,
                               mt: 0.5,
                             }}
@@ -327,8 +327,8 @@ export default function CreateRolePage() {
                                   onChange={(_, c) => handlePermChange(resource, action, c)}
                                   sx={{
                                     color: 'rgba(255,255,255,0.2)',
-                                    '&.Mui-checked': { color: '#4CAF50' },
-                                    '&.Mui-disabled.Mui-checked': { color: '#4CAF5080' },
+                                    '&.Mui-checked': { color: '#5E8F72' },
+                                    '&.Mui-disabled.Mui-checked': { color: '#5E8F7280' },
                                   }}
                                 />
                               </TableCell>
@@ -342,8 +342,8 @@ export default function CreateRolePage() {
                               onChange={(_, c) => handleToggleAllRow(resource, c)}
                               sx={{
                                 color: 'rgba(255,255,255,0.2)',
-                                '&.Mui-checked': { color: '#4CAF50' },
-                                '&.MuiCheckbox-indeterminate': { color: '#4CAF50' },
+                                '&.Mui-checked': { color: '#5E8F72' },
+                                '&.MuiCheckbox-indeterminate': { color: '#5E8F72' },
                               }}
                             />
                           </TableCell>
@@ -368,7 +368,7 @@ export default function CreateRolePage() {
               variant="contained"
               startIcon={<SaveRoundedIcon />}
               onClick={handleCreate}
-              sx={{ bgcolor: '#4CAF50', '&:hover': { bgcolor: '#388E3C' } }}
+              sx={{ bgcolor: '#5E8F72', '&:hover': { bgcolor: '#2F6B46' } }}
             >
               Create Role
             </Button>
@@ -384,7 +384,7 @@ export default function CreateRolePage() {
               </Typography>
 
               <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 2 }}>
-                <Typography variant="h3" sx={{ fontWeight: 700, color: '#4CAF50' }}>
+                <Typography variant="h3" sx={{ fontWeight: 700, color: '#5E8F72' }}>
                   {totalPermissions}
                 </Typography>
                 <Typography sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
@@ -423,7 +423,7 @@ export default function CreateRolePage() {
                                 width: 6,
                                 height: 6,
                                 borderRadius: '50%',
-                                bgcolor: '#4CAF50',
+                                bgcolor: '#5E8F72',
                               }}
                             />
                             {action}

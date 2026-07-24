@@ -40,9 +40,9 @@ const pulse = keyframes`
 `
 
 const TYPE_CONFIG: Record<string, { icon: string; color: string; bg: string }> = {
-  donation: { icon: '💚', color: '#2E7D32', bg: 'rgba(46,125,50,0.08)' },
+  donation: { icon: '💚', color: '#2E3D2F', bg: 'rgba(46, 61, 47,0.08)' },
   campaign_created: { icon: '🚀', color: '#1565C0', bg: 'rgba(21,101,192,0.08)' },
-  milestone: { icon: '🏆', color: '#F57F17', bg: 'rgba(245,127,23,0.08)' },
+  milestone: { icon: '🏆', color: '#A07E33', bg: 'rgba(245,127,23,0.08)' },
 }
 
 function formatTimeAgo(ts: number): string {
@@ -132,7 +132,7 @@ export function GlobalActivityFeed({ compact = false }: { compact?: boolean }) {
             width: 8,
             height: 8,
             borderRadius: '50%',
-            bgcolor: '#2E7D32',
+            bgcolor: '#2E3D2F',
             animation: `${pulse} 2s ease-in-out infinite`,
           }}
         />
@@ -143,8 +143,8 @@ export function GlobalActivityFeed({ compact = false }: { compact?: boolean }) {
           label="Live"
           size="small"
           sx={{
-            bgcolor: 'rgba(46,125,50,0.1)',
-            color: '#2E7D32',
+            bgcolor: 'rgba(46, 61, 47,0.1)',
+            color: '#2E3D2F',
             fontWeight: 700,
             fontSize: '0.7rem',
             height: 22,

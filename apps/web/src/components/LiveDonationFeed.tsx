@@ -82,7 +82,7 @@ export function LiveDonationFeed({ campaignId, maxItems = 10 }: { campaignId: st
             gap: 1.5,
             p: 1.5,
             borderRadius: SHAPE.sm,
-            bgcolor: idx === 0 ? 'rgba(46,125,50,0.06)' : 'transparent',
+            bgcolor: idx === 0 ? 'rgba(46, 61, 47,0.06)' : 'transparent',
             animation: idx === 0 ? `${slideIn} 0.4s ease-out` : undefined,
             transition: 'background-color 0.3s',
           }}

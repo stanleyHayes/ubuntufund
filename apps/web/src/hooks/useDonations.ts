@@ -28,7 +28,7 @@ export function useMyDonations(): UseMyDonationsResult {
     let cancelled = false
 
     api
-      .get<UserDonation[] | { items: UserDonation[] }>('/donations')
+      .get<UserDonation[] | { items: UserDonation[] }>('/donations/mine')
       .then((data) => {
         if (!cancelled) {
           setDonations(Array.isArray(data) ? data : data.items ?? [])

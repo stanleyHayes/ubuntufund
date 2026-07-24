@@ -72,7 +72,7 @@ export function SocialShareBar({ url, title = 'UbuntuFund', description: _descri
       <IconButton
         size="small"
         onClick={handleCopy}
-        sx={{ color: copied ? '#4CAF50' : 'rgba(255,255,255,0.5)', '&:hover': { color: '#F9A825' } }}
+        sx={{ color: copied ? '#5E8F72' : 'rgba(255,255,255,0.5)', '&:hover': { color: '#C7A24A' } }}
         aria-label="Copy link"
       >
         <LinkIcon fontSize="small" />

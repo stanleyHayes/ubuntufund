@@ -40,12 +40,6 @@ const countUp = keyframes`
   to   { opacity: 1; transform: translateY(0); }
 `
 
-const pulseRing = keyframes`
-  0%   { transform: scale(1); opacity: 0.6; }
-  50%  { transform: scale(1.8); opacity: 0; }
-  100% { transform: scale(1.8); opacity: 0; }
-`
-
 const drawSparkline = keyframes`
   from { stroke-dashoffset: 300; }
   to   { stroke-dashoffset: 0; }
@@ -174,11 +168,11 @@ function formatCompact(val: number): string {
 }
 
 const tileTemplates: TileTemplate[] = [
-  { label: 'Overview', icon: <InsightsIcon />, route: '/overview', color: '#66BB6A', statKey: null, description: 'platform analytics', glowPosition: 'center', patternAngle: 0, resource: Resource.ANALYTICS },
-  { label: 'Campaigns', icon: <RocketLaunchIcon />, route: '/campaigns', color: '#4CAF50', statKey: 'activeCampaigns', description: 'active campaigns', glowPosition: 'top right', patternAngle: 45, resource: Resource.CAMPAIGNS },
-  { label: 'Users', icon: <PeopleIcon />, route: '/users', color: '#42A5F5', statKey: 'totalUsers', formatStat: formatCompact, description: 'registered users', glowPosition: 'bottom left', patternAngle: -45, resource: Resource.USERS },
-  { label: 'Donations', icon: <VolunteerActivismIcon />, route: '/donations', color: '#F9A825', statKey: 'totalRaised', formatStat: formatCurrency, description: 'total raised', glowPosition: 'top left', patternAngle: 30, resource: Resource.DONATIONS },
-  { label: 'Disputes', icon: <GavelIcon />, route: '/disputes', color: '#EF5350', statKey: 'pendingDisputes', description: 'pending review', glowPosition: 'bottom right', patternAngle: -30, resource: Resource.DISPUTES },
+  { label: 'Overview', icon: <InsightsIcon />, route: '/overview', color: '#8FAE96', statKey: null, description: 'platform analytics', glowPosition: 'center', patternAngle: 0, resource: Resource.ANALYTICS },
+  { label: 'Campaigns', icon: <RocketLaunchIcon />, route: '/campaigns', color: '#5E8F72', statKey: 'activeCampaigns', description: 'active campaigns', glowPosition: 'top right', patternAngle: 45, resource: Resource.CAMPAIGNS },
+  { label: 'Users', icon: <PeopleIcon />, route: '/users', color: '#74909A', statKey: 'totalUsers', formatStat: formatCompact, description: 'registered users', glowPosition: 'bottom left', patternAngle: -45, resource: Resource.USERS },
+  { label: 'Donations', icon: <VolunteerActivismIcon />, route: '/donations', color: '#C7A24A', statKey: 'totalRaised', formatStat: formatCurrency, description: 'total raised', glowPosition: 'top left', patternAngle: 30, resource: Resource.DONATIONS },
+  { label: 'Disputes', icon: <GavelIcon />, route: '/disputes', color: '#C06B58', statKey: 'pendingDisputes', description: 'pending review', glowPosition: 'bottom right', patternAngle: -30, resource: Resource.DISPUTES },
   { label: 'Reports', icon: <BarChartIcon />, route: '/reports', color: '#AB47BC', statKey: 'totalDonations', description: 'analytics reports', glowPosition: 'center right', patternAngle: 60, resource: Resource.ANALYTICS },
   { label: 'Settings', icon: <SettingsIcon />, route: '/settings', color: '#78909C', statKey: null, description: 'system configuration', glowPosition: 'center left', patternAngle: -60, resource: Resource.SETTINGS },
   { label: 'Verifications', icon: <VerifiedUserIcon />, route: '/verifications', color: '#26A69A', statKey: null, description: 'pending verification', glowPosition: 'top center', patternAngle: 15, resource: Resource.VERIFICATIONS },
@@ -234,18 +228,13 @@ function GridTile({ tile, index }: { tile: TileConfig; index: number }) {
             animationPlayState: 'running',
           },
           '& .tile-icon-wrap': {
-            transform: 'scale(1.15)',
-            '& .tile-pulse': {
-              animationPlayState: 'running',
-            },
+            bgcolor: `${tile.color}15`,
           },
           '& .tile-stat': {
             color: tile.color,
-            textShadow: `0 0 30px ${tile.color}40`,
           },
           '& .tile-watermark': {
             opacity: 0.06,
-            transform: 'scale(1.05)',
           },
           '& .tile-sparkline': {
             opacity: 1,
@@ -337,7 +326,7 @@ function GridTile({ tile, index }: { tile: TileConfig; index: number }) {
 
       {/* === Top section: icon + info === */}
       <Box sx={{ position: 'relative', zIndex: 2 }}>
-        {/* Icon with pulse ring */}
+        {/* Icon */}
         <Box
           className="tile-icon-wrap"
           sx={{
@@ -348,22 +337,10 @@ function GridTile({ tile, index }: { tile: TileConfig; index: number }) {
             alignItems: 'center',
             justifyContent: 'center',
             mb: 2,
-            transition: 'transform 0.3s ease',
+            borderRadius: 1,
+            transition: 'background-color 0.2s ease',
           }}
         >
-          {/* Pulse ring */}
-          <Box
-            className="tile-pulse"
-            sx={{
-              position: 'absolute',
-              inset: -4,
-              border: `1.5px solid ${tile.color}`,
-              opacity: 0,
-              animation: `${pulseRing} 2s ease-out infinite`,
-              animationPlayState: 'paused',
-              pointerEvents: 'none',
-            }}
-          />
           <Box
             sx={{
               color: tile.color,
@@ -605,13 +582,13 @@ export default function DashboardPage() {
   const { data: kycStats } = useKYCStats()
 
   const quickStats = [
-    { label: 'Total Raised', value: statsLoading ? '...' : `$${stats.totalRaised.toLocaleString()}`, icon: <TrendingUpIcon />, color: '#66BB6A', fill: statsLoading ? 0 : (stats.totalRaised / maxStatVal) * 100 },
-    { label: 'Active Campaigns', value: statsLoading ? '...' : String(stats.activeCampaigns), icon: <CampaignIcon />, color: '#42A5F5', fill: statsLoading ? 0 : ((stats.activeCampaigns * 1000) / maxStatVal) * 100 },
+    { label: 'Total Raised', value: statsLoading ? '...' : `$${stats.totalRaised.toLocaleString()}`, icon: <TrendingUpIcon />, color: '#8FAE96', fill: statsLoading ? 0 : (stats.totalRaised / maxStatVal) * 100 },
+    { label: 'Active Campaigns', value: statsLoading ? '...' : String(stats.activeCampaigns), icon: <CampaignIcon />, color: '#74909A', fill: statsLoading ? 0 : ((stats.activeCampaigns * 1000) / maxStatVal) * 100 },
     { label: 'Total Users', value: statsLoading ? '...' : String(stats.totalUsers), icon: <PeopleIcon />, color: '#AB47BC', fill: statsLoading ? 0 : ((stats.totalUsers * 100) / maxStatVal) * 100 },
-    { label: 'Pending Disputes', value: statsLoading ? '...' : String(stats.pendingDisputes), icon: <GavelIcon />, color: '#FFA726', fill: statsLoading ? 0 : ((stats.pendingDisputes * 5000) / maxStatVal) * 100 },
+    { label: 'Pending Disputes', value: statsLoading ? '...' : String(stats.pendingDisputes), icon: <GavelIcon />, color: '#D3A95C', fill: statsLoading ? 0 : ((stats.pendingDisputes * 5000) / maxStatVal) * 100 },
     { label: 'Pending KYC', value: String(kycStats?.pending ?? 0), icon: <VerifiedUserIcon />, color: '#26A69A', fill: 0 },
-    { label: 'KYC Approved Today', value: String(kycStats?.approvedToday ?? 0), icon: <VerifiedUserIcon />, color: '#4CAF50', fill: 0 },
-    { label: 'KYC Rejected Today', value: String(kycStats?.rejectedToday ?? 0), icon: <VerifiedUserIcon />, color: '#EF5350', fill: 0 },
+    { label: 'KYC Approved Today', value: String(kycStats?.approvedToday ?? 0), icon: <VerifiedUserIcon />, color: '#5E8F72', fill: 0 },
+    { label: 'KYC Rejected Today', value: String(kycStats?.rejectedToday ?? 0), icon: <VerifiedUserIcon />, color: '#C06B58', fill: 0 },
   ]
 
   return (
@@ -665,7 +642,7 @@ export default function DashboardPage() {
               fontWeight: 900,
               fontSize: '1.1rem',
               letterSpacing: '0.04em',
-              color: '#4CAF50',
+              color: '#5E8F72',
               whiteSpace: 'nowrap',
             }}
           >
@@ -699,19 +676,18 @@ export default function DashboardPage() {
             sx={{
               width: 6,
               height: 6,
-              bgcolor: '#4CAF50',
+              bgcolor: '#5E8F72',
               position: 'relative',
               flexShrink: 0,
               '&::after': {
                 content: '""',
                 position: 'absolute',
                 inset: -3,
-                border: '1px solid #4CAF50',
-                animation: `${pulseRing} 2s ease-out infinite`,
+                border: '1px solid rgba(94,143,114,0.35)',
               },
             }}
           />
-          <Typography sx={{ fontSize: '0.68rem', color: '#4CAF50', letterSpacing: '0.08em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+          <Typography sx={{ fontSize: '0.68rem', color: '#5E8F72', letterSpacing: '0.08em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
             Live
           </Typography>
           <Typography sx={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.3)', ml: 0.5, whiteSpace: 'nowrap' }}>
@@ -740,7 +716,7 @@ export default function DashboardPage() {
                   fontSize: '0.6rem',
                   fontWeight: 700,
                   bgcolor: 'rgba(76,175,80,0.12)',
-                  color: '#4CAF50',
+                  color: '#5E8F72',
                   border: '1px solid rgba(76,175,80,0.25)',
                   letterSpacing: '0.04em',
                 }}

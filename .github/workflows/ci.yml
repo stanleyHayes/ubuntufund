@@ -10,10 +10,27 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  MONGODB_TEST_URI: mongodb://127.0.0.1:28017/ubuntu-fund-test
+  JWT_SECRET: ci-only-jwt-secret-not-used-in-production-0000000000
+  JWT_REFRESH_SECRET: ci-only-refresh-secret-not-used-in-production-1111
+  MONGODB_URI: mongodb://127.0.0.1:28017/ubuntu-fund-e2e
+
 jobs:
   ci:
     name: Lint, Type Check, Test, Build
     runs-on: ubuntu-latest
+
+    services:
+      mongodb:
+        image: mongo:7
+        ports:
+          - 28017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand({ ping: 1 })' --quiet"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - name: Checkout
@@ -39,6 +56,19 @@ jobs:
 
       - name: Install Playwright browsers
         run: npx playwright install chromium
+
+      - name: Start API for E2E
+        run: |
+          PORT=8100 npm start -w @ubuntu-fund/api &
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:8100/health && break
+            sleep 2
+          done
+          curl -sf http://localhost:8100/health
+
+      - name: Seed E2E data
+        run: node scripts/seed-e2e.mjs
+        working-directory: apps/api
 
       - name: E2E tests
         run: npx turbo e2e

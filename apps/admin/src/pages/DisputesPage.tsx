@@ -28,9 +28,9 @@ function Skel({ w, h }: { w?: string | number; h?: number }) {
 }
 
 const statusColors: Record<string, string> = {
-  open: '#EF5350',
-  under_review: '#FFA726',
-  resolved: '#4CAF50',
+  open: '#C06B58',
+  under_review: '#D3A95C',
+  resolved: '#5E8F72',
 }
 
 export default function DisputesPage() {
@@ -129,7 +129,7 @@ export default function DisputesPage() {
               </Box>
             ))
           : pagination.page.map((dispute, idx) => {
-              const color = statusColors[dispute.status] || '#42A5F5'
+              const color = statusColors[dispute.status] || '#74909A'
               return (
                 <Box
                   key={dispute.id}
@@ -220,8 +220,8 @@ export default function DisputesPage() {
                         onClick={() => navigate(`/disputes/${dispute.id}`)}
                         sx={{
                           fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.06em',
-                          color: '#4CAF50', borderColor: 'rgba(76,175,80,0.3)',
-                          '&:hover': { borderColor: '#4CAF50', bgcolor: 'rgba(76,175,80,0.08)' },
+                          color: '#5E8F72', borderColor: 'rgba(76,175,80,0.3)',
+                          '&:hover': { borderColor: '#5E8F72', bgcolor: 'rgba(76,175,80,0.08)' },
                         }}
                       >
                         Resolve
@@ -234,7 +234,7 @@ export default function DisputesPage() {
         }
       </Box>
 
-      {!loading && <PaginationBar pagination={pagination} accentColor="#EF5350" />}
+      {!loading && <PaginationBar pagination={pagination} accentColor="#C06B58" />}
 
     </Box>
   )

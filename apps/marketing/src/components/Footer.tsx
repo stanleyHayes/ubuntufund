@@ -89,7 +89,7 @@ const linkStyle = {
   textDecoration: 'none',
   transition: 'color 0.2s ease, transform 0.2s ease',
   display: 'inline-block',
-  '&:hover': { color: '#FDD835', transform: 'translateX(3px)' },
+  '&:hover': { color: '#DCC07E', transform: 'translateX(3px)' },
 }
 
 function Footer() {
@@ -163,7 +163,7 @@ function Footer() {
           left: 0,
           right: 0,
           height: '1px',
-          background: 'linear-gradient(90deg, transparent 5%, rgba(46,125,50,0.4) 30%, rgba(249,168,37,0.3) 50%, rgba(46,125,50,0.4) 70%, transparent 95%)',
+          background: 'linear-gradient(90deg, transparent 5%, rgba(46, 61, 47,0.4) 30%, rgba(199, 162, 74,0.3) 50%, rgba(46, 61, 47,0.4) 70%, transparent 95%)',
         }}
       />
 
@@ -174,7 +174,7 @@ function Footer() {
           width: 500,
           height: 500,
           borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(46,125,50,0.06), transparent 65%)',
+          background: 'radial-gradient(circle, rgba(46, 61, 47,0.06), transparent 65%)',
           top: -200,
           left: -100,
           animation: `${pulse} 10s ease-in-out infinite`,
@@ -186,7 +186,7 @@ function Footer() {
           width: 400,
           height: 400,
           borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(249,168,37,0.04), transparent 65%)',
+          background: 'radial-gradient(circle, rgba(199, 162, 74,0.04), transparent 65%)',
           bottom: -150,
           right: -80,
           animation: `${pulse} 8s ease-in-out infinite 3s`,
@@ -195,9 +195,9 @@ function Footer() {
 
       {/* Floating accent dots */}
       {[
-        { size: 6, top: '15%', left: '5%', delay: 0, color: 'rgba(249,168,37,0.25)' },
+        { size: 6, top: '15%', left: '5%', delay: 0, color: 'rgba(199, 162, 74,0.25)' },
         { size: 4, top: '40%', left: '92%', delay: 1.5, color: 'rgba(255,255,255,0.15)' },
-        { size: 8, top: '70%', left: '88%', delay: 0.5, color: 'rgba(249,168,37,0.15)' },
+        { size: 8, top: '70%', left: '88%', delay: 0.5, color: 'rgba(199, 162, 74,0.15)' },
         { size: 5, top: '80%', left: '12%', delay: 2, color: 'rgba(255,255,255,0.1)' },
       ].map(({ size, top, left, delay, color }, i) => (
         <Box
@@ -236,7 +236,7 @@ function Footer() {
           width: 180,
           height: 180,
           borderRadius: '50%',
-          border: '1px solid rgba(249,168,37,0.04)',
+          border: '1px solid rgba(199, 162, 74,0.04)',
           bottom: '20%',
           left: '5%',
           display: { xs: 'none', lg: 'block' },
@@ -266,7 +266,7 @@ function Footer() {
               />
               <Typography variant="h5" sx={{ fontWeight: 900, color: '#fff' }}>
                 Ubuntu
-                <Box component="span" sx={{ color: '#F9A825' }}>Fund</Box>
+                <Box component="span" sx={{ color: '#C7A24A' }}>Fund</Box>
               </Typography>
             </Box>
             <Typography
@@ -292,7 +292,7 @@ function Footer() {
                 borderRadius: SHAPE.card,
                 p: 0.5,
                 transition: 'border-color 0.2s ease',
-                '&:focus-within': { borderColor: 'rgba(249,168,37,0.3)' },
+                '&:focus-within': { borderColor: 'rgba(199, 162, 74,0.3)' },
               }}
             >
               <Box
@@ -326,14 +326,14 @@ function Footer() {
                   fontWeight: 700,
                   fontSize: '0.8rem',
                   boxShadow: 'none',
-                  '&:hover': { boxShadow: '0 2px 12px rgba(249,168,37,0.3)' },
+                  '&:hover': { boxShadow: '0 2px 12px rgba(199, 162, 74,0.3)' },
                 }}
               >
                 {subscribeStatus === 'loading' ? <CircularProgress size={16} color="inherit" /> : 'Subscribe'}
               </Button>
             </Box>
             {subscribeStatus === 'success' && (
-              <Typography sx={{ color: '#4CAF50', fontSize: '0.78rem', mt: 1, fontWeight: 600 }}>
+              <Typography sx={{ color: '#5E8F72', fontSize: '0.78rem', mt: 1, fontWeight: 600 }}>
                 {subscribeMessage}
               </Typography>
             )}
@@ -349,7 +349,7 @@ function Footer() {
         <Box
           sx={{
             height: '1px',
-            background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.06), rgba(249,168,37,0.1), rgba(255,255,255,0.06), transparent)',
+            background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.06), rgba(199, 162, 74,0.1), rgba(255,255,255,0.06), transparent)',
             mb: { xs: 4, md: 5 },
           }}
         />
@@ -363,7 +363,7 @@ function Footer() {
                 sx={{
                   fontWeight: 700,
                   mb: 2,
-                  color: '#F9A825',
+                  color: '#C7A24A',
                   fontSize: '0.75rem',
                   letterSpacing: 1.5,
                   textTransform: 'uppercase',
@@ -374,9 +374,9 @@ function Footer() {
               <Stack spacing={1.3}>
                 {section.links.map((link) => {
                   const active = isFooterLinkActive(link.to, link.anchor)
-                  const iconColor = active ? '#FDD835' : 'rgba(255,255,255,0.25)'
+                  const iconColor = active ? '#DCC07E' : 'rgba(255,255,255,0.25)'
                   const activeSx = active
-                    ? { color: '#FDD835', fontWeight: 600 }
+                    ? { color: '#DCC07E', fontWeight: 600 }
                     : {}
                   const inner = (
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
@@ -387,11 +387,11 @@ function Footer() {
                     </Box>
                   )
                   return link.anchor ? (
-                    <MuiLink key={link.label} href={link.to} underline="none" sx={{ ...linkStyle, ...activeSx, '&:hover .MuiBox-root:first-of-type': { color: '#F9A825' } }}>
+                    <MuiLink key={link.label} href={link.to} underline="none" sx={{ ...linkStyle, ...activeSx, '&:hover .MuiBox-root:first-of-type': { color: '#C7A24A' } }}>
                       {inner}
                     </MuiLink>
                   ) : (
-                    <MuiLink key={link.label} component={Link} to={link.to} underline="none" sx={{ ...linkStyle, ...activeSx, '&:hover .MuiBox-root:first-of-type': { color: '#F9A825' } }}>
+                    <MuiLink key={link.label} component={Link} to={link.to} underline="none" sx={{ ...linkStyle, ...activeSx, '&:hover .MuiBox-root:first-of-type': { color: '#C7A24A' } }}>
                       {inner}
                     </MuiLink>
                   )
@@ -405,7 +405,7 @@ function Footer() {
         <Box
           sx={{
             height: '1px',
-            background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.06), rgba(249,168,37,0.08), rgba(255,255,255,0.06), transparent)',
+            background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.06), rgba(199, 162, 74,0.08), rgba(255,255,255,0.06), transparent)',
             mb: 3,
           }}
         />
@@ -442,9 +442,9 @@ function Footer() {
                   height: 34,
                   transition: 'all 0.2s ease',
                   '&:hover': {
-                    color: '#F9A825',
-                    borderColor: 'rgba(249,168,37,0.25)',
-                    bgcolor: 'rgba(249,168,37,0.06)',
+                    color: '#C7A24A',
+                    borderColor: 'rgba(199, 162, 74,0.25)',
+                    bgcolor: 'rgba(199, 162, 74,0.06)',
                     transform: 'translateY(-2px)',
                   },
                 }}

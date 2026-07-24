@@ -5,6 +5,8 @@ import {
   UserRole,
   VerificationLevel,
   WalletType,
+  KYCStatus,
+  KYCLevel,
 } from '@ubuntu-fund/types';
 import * as bcrypt from 'bcryptjs';
 import { UserEntity } from '../../domain/entities/User.js';
@@ -15,6 +17,7 @@ import { Money } from '../../domain/value-objects/Money.js';
 import type { UserRepositoryPort } from '../../domain/ports/outbound/UserRepositoryPort.js';
 import type { WalletRepositoryPort } from '../../domain/ports/outbound/WalletRepositoryPort.js';
 import type { AuthTokenService } from '../services/AuthTokenService.js';
+import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 
 export class RegisterUserUseCase {
   constructor(
@@ -28,7 +31,7 @@ export class RegisterUserUseCase {
   ): Promise<{ user: User; tokens: AuthTokens }> {
     const existingUser = await this.userRepo.findByEmail(input.email);
     if (existingUser) {
-      throw new Error('Email already registered');
+      throw new AppError('Email already registered', 409);
     }
 
     const passwordHash = await bcrypt.hash(input.password, 12);
@@ -75,6 +78,8 @@ export class RegisterUserUseCase {
         avatarUrl: savedUser.avatarUrl,
         role: savedUser.role,
         verificationLevel: savedUser.verificationLevel,
+        kycStatus: KYCStatus.UNVERIFIED,
+        kycLevel: KYCLevel.NONE,
         trustScore: savedUser.trustScore.value,
         country: savedUser.country,
         createdAt: savedUser.createdAt,

@@ -62,18 +62,18 @@ function Skel({ w, h }: { w?: string | number; h?: number }) {
 }
 
 const statusColors: Record<string, string> = {
-  [CampaignStatus.ACTIVE]: '#4CAF50',
-  [CampaignStatus.PENDING_REVIEW]: '#FF9800',
-  [CampaignStatus.FUNDED]: '#42A5F5',
+  [CampaignStatus.ACTIVE]: '#5E8F72',
+  [CampaignStatus.PENDING_REVIEW]: '#D3A95C',
+  [CampaignStatus.FUNDED]: '#74909A',
   [CampaignStatus.EXPIRED]: '#78909C',
-  [CampaignStatus.BLOCKED]: '#EF5350',
+  [CampaignStatus.BLOCKED]: '#C06B58',
   [CampaignStatus.DRAFT]: '#9E9E9E',
 }
 
 const priorityColors: Record<string, string> = {
   [CampaignPriority.NORMAL]: '#78909C',
-  [CampaignPriority.URGENT]: '#FF9800',
-  [CampaignPriority.CRITICAL]: '#EF5350',
+  [CampaignPriority.URGENT]: '#D3A95C',
+  [CampaignPriority.CRITICAL]: '#C06B58',
 }
 
 export default function CampaignDetailPage() {
@@ -151,9 +151,9 @@ export default function CampaignDetailPage() {
 
   const statCells = [
     { label: 'Status / Priority', value: campaign.status.replace('_', ' ').toUpperCase(), sub: campaign.priority.toUpperCase(), accent: statusColor },
-    { label: 'Raised / Goal', value: `$${campaign.raisedAmount.toLocaleString()}`, sub: `of $${campaign.goalAmount.toLocaleString()}`, accent: '#4CAF50' },
-    { label: 'Donors', value: String(donations.length), sub: 'total donations', accent: '#42A5F5' },
-    { label: 'Days Remaining', value: String(daysRemaining), sub: campaign.status === CampaignStatus.EXPIRED ? 'expired' : 'days left', accent: '#FF9800' },
+    { label: 'Raised / Goal', value: `$${campaign.raisedAmount.toLocaleString()}`, sub: `of $${campaign.goalAmount.toLocaleString()}`, accent: '#5E8F72' },
+    { label: 'Donors', value: String(donations.length), sub: 'total donations', accent: '#74909A' },
+    { label: 'Days Remaining', value: String(daysRemaining), sub: campaign.status === CampaignStatus.EXPIRED ? 'expired' : 'days left', accent: '#D3A95C' },
   ]
 
   return (
@@ -230,7 +230,7 @@ export default function CampaignDetailPage() {
             <Box sx={{
               position: 'absolute', top: 0, left: 0, height: '100%',
               width: `${progress}%`,
-              bgcolor: '#4CAF50',
+              bgcolor: '#5E8F72',
               transition: 'width 0.6s ease',
             }} />
           </Box>
@@ -283,9 +283,9 @@ export default function CampaignDetailPage() {
                     }
                   }}
                   sx={{
-                    color: '#4CAF50', borderColor: '#4CAF50',
+                    color: '#5E8F72', borderColor: '#5E8F72',
                     fontFamily: '"TT Squares", sans-serif', textTransform: 'none',
-                    '&:hover': { borderColor: '#4CAF50', bgcolor: 'rgba(76,175,80,0.08)' },
+                    '&:hover': { borderColor: '#5E8F72', bgcolor: 'rgba(76,175,80,0.08)' },
                   }}
                 >
                   {actionLoading === 'approve' ? 'Approving...' : 'Approve'}
@@ -309,9 +309,9 @@ export default function CampaignDetailPage() {
                     }
                   }}
                   sx={{
-                    color: '#EF5350', borderColor: '#EF5350',
+                    color: '#C06B58', borderColor: '#C06B58',
                     fontFamily: '"TT Squares", sans-serif', textTransform: 'none',
-                    '&:hover': { borderColor: '#EF5350', bgcolor: 'rgba(239,83,80,0.08)' },
+                    '&:hover': { borderColor: '#C06B58', bgcolor: 'rgba(192,107,88,0.08)' },
                   }}
                 >
                   {actionLoading === 'reject' ? 'Rejecting...' : 'Reject'}
@@ -340,9 +340,9 @@ export default function CampaignDetailPage() {
                   }
                 }}
                 sx={{
-                  color: '#EF5350', borderColor: '#EF5350',
+                  color: '#C06B58', borderColor: '#C06B58',
                   fontFamily: '"TT Squares", sans-serif', textTransform: 'none',
-                  '&:hover': { borderColor: '#EF5350', bgcolor: 'rgba(239,83,80,0.08)' },
+                  '&:hover': { borderColor: '#C06B58', bgcolor: 'rgba(192,107,88,0.08)' },
                 }}
               >
                 {actionLoading === 'block' ? 'Blocking...' : 'Block'}
@@ -367,9 +367,9 @@ export default function CampaignDetailPage() {
                   }
                 }}
                 sx={{
-                  color: '#4CAF50', borderColor: '#4CAF50',
+                  color: '#5E8F72', borderColor: '#5E8F72',
                   fontFamily: '"TT Squares", sans-serif', textTransform: 'none',
-                  '&:hover': { borderColor: '#4CAF50', bgcolor: 'rgba(76,175,80,0.08)' },
+                  '&:hover': { borderColor: '#5E8F72', bgcolor: 'rgba(76,175,80,0.08)' },
                 }}
               >
                 {actionLoading === 'unblock' ? 'Unblocking...' : 'Unblock'}
@@ -430,9 +430,9 @@ export default function CampaignDetailPage() {
               fullWidth
               startIcon={<CurrencyExchangeIcon />}
               sx={{
-                color: '#FF9800', borderColor: '#FF9800',
+                color: '#D3A95C', borderColor: '#D3A95C',
                 fontFamily: '"TT Squares", sans-serif', textTransform: 'none',
-                '&:hover': { borderColor: '#FF9800', bgcolor: 'rgba(255,152,0,0.08)' },
+                '&:hover': { borderColor: '#D3A95C', bgcolor: 'rgba(211,169,92,0.08)' },
               }}
             >
               Force Refund
@@ -458,9 +458,9 @@ export default function CampaignDetailPage() {
               fullWidth
               color="error"
               sx={{
-                color: '#EF5350', borderColor: '#EF5350',
+                color: '#C06B58', borderColor: '#C06B58',
                 fontFamily: '"TT Squares", sans-serif', textTransform: 'none',
-                '&:hover': { borderColor: '#EF5350', bgcolor: 'rgba(239,83,80,0.08)' },
+                '&:hover': { borderColor: '#C06B58', bgcolor: 'rgba(192,107,88,0.08)' },
               }}
               onClick={() => setDeleteOpen(true)}
             >
@@ -487,8 +487,8 @@ export default function CampaignDetailPage() {
                 p: 2,
                 borderRight: `1px solid ${B}`,
                 borderBottom: `1px solid ${B}`,
-                borderTop: '2px solid rgba(156,39,176,0.25)',
-                borderLeft: '2px solid rgba(156,39,176,0.25)',
+                borderTop: '2px solid rgba(220,192,126,0.25)',
+                borderLeft: '2px solid rgba(220,192,126,0.25)',
                 animation: `${slideIn} 0.4s ease ${0.35 + i * 0.04}s both`,
                 transition: 'background 0.2s',
                 '&:hover': { bgcolor: 'rgba(255,255,255,0.02)' },
@@ -513,12 +513,12 @@ export default function CampaignDetailPage() {
                   size="small"
                   startIcon={<PersonRemoveIcon sx={{ fontSize: 14 }} />}
                   sx={{
-                    color: '#EF5350',
+                    color: '#C06B58',
                     fontSize: '0.65rem',
                     textTransform: 'none',
                     minWidth: 'auto',
                     fontFamily: '"TT Squares", sans-serif',
-                    '&:hover': { bgcolor: 'rgba(239,83,80,0.08)' },
+                    '&:hover': { bgcolor: 'rgba(192,107,88,0.08)' },
                   }}
                 >
                   Remove
@@ -546,8 +546,8 @@ export default function CampaignDetailPage() {
                 p: 2,
                 borderRight: `1px solid ${B}`,
                 borderBottom: `1px solid ${B}`,
-                borderTop: '2px solid rgba(66,165,245,0.25)',
-                borderLeft: '2px solid rgba(66,165,245,0.25)',
+                borderTop: '2px solid rgba(116,144,154,0.25)',
+                borderLeft: '2px solid rgba(116,144,154,0.25)',
                 animation: `${slideIn} 0.4s ease ${0.35 + i * 0.04}s both`,
                 transition: 'background 0.2s',
                 '&:hover': { bgcolor: 'rgba(255,255,255,0.02)' },

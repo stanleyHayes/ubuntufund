@@ -41,9 +41,9 @@ interface PlanWithMeta extends SubscriptionPlan {
 
 const TIER_COLORS: Record<string, string> = {
   free: '#78909C',
-  starter: '#42A5F5',
+  starter: '#74909A',
   pro: '#AB47BC',
-  enterprise: '#F9A825',
+  enterprise: '#C7A24A',
   custom: '#00BCD4',
 }
 
@@ -273,7 +273,7 @@ export default function CreatePlanPage() {
                       <Switch
                         checked={plan[feat.key] as boolean}
                         onChange={(_, v) => updateField(feat.key, v)}
-                        sx={{ '& .MuiSwitch-switchBase.Mui-checked': { color: '#4CAF50' }, '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: '#4CAF50' } }}
+                        sx={{ '& .MuiSwitch-switchBase.Mui-checked': { color: '#5E8F72' }, '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: '#5E8F72' } }}
                       />
                     </Box>
                   </Grid>
@@ -290,7 +290,7 @@ export default function CreatePlanPage() {
                     <Switch
                       checked={plan.isActive}
                       onChange={(_, v) => updateField('isActive', v)}
-                      sx={{ '& .MuiSwitch-switchBase.Mui-checked': { color: '#4CAF50' }, '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: '#4CAF50' } }}
+                      sx={{ '& .MuiSwitch-switchBase.Mui-checked': { color: '#5E8F72' }, '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: '#5E8F72' } }}
                     />
                   </Box>
                 </Grid>
@@ -404,7 +404,7 @@ export default function CreatePlanPage() {
                           fontSize: '0.65rem',
                           fontWeight: 600,
                           bgcolor: enabled ? 'rgba(76,175,80,0.1)' : 'rgba(255,255,255,0.04)',
-                          color: enabled ? '#4CAF50' : 'text.secondary',
+                          color: enabled ? '#5E8F72' : 'text.secondary',
                           borderColor: enabled ? 'rgba(76,175,80,0.2)' : 'transparent',
                           border: '1px solid',
                           '& .MuiChip-icon': { color: 'inherit' },

@@ -104,11 +104,11 @@ const MOCK_DISPUTES: MockDispute[] = [
 ]
 
 const MOCK_TIMELINE = [
-  { label: 'Dispute created', date: '2026-03-25', color: '#EF5350' },
-  { label: 'Assigned to admin', date: '2026-03-25', color: '#FFA726' },
-  { label: 'Under review', date: '2026-03-26', color: '#42A5F5' },
-  { label: 'Evidence requested from reporter', date: '2026-03-27', color: '#42A5F5' },
-  { label: 'Campaign creator contacted', date: '2026-03-28', color: '#FFA726' },
+  { label: 'Dispute created', date: '2026-03-25', color: '#C06B58' },
+  { label: 'Assigned to admin', date: '2026-03-25', color: '#D3A95C' },
+  { label: 'Under review', date: '2026-03-26', color: '#74909A' },
+  { label: 'Evidence requested from reporter', date: '2026-03-27', color: '#74909A' },
+  { label: 'Campaign creator contacted', date: '2026-03-28', color: '#D3A95C' },
 ]
 
 const MOCK_CAMPAIGN_STATS = {
@@ -123,9 +123,9 @@ const MOCK_CAMPAIGN_STATS = {
 // ---------------------------------------------------------------------------
 
 const STATUS_CONFIG: Record<string, { color: string; muiColor: 'warning' | 'info' | 'success' | 'default' }> = {
-  open: { color: '#FFA726', muiColor: 'warning' },
-  under_review: { color: '#42A5F5', muiColor: 'info' },
-  resolved: { color: '#4CAF50', muiColor: 'success' },
+  open: { color: '#D3A95C', muiColor: 'warning' },
+  under_review: { color: '#74909A', muiColor: 'info' },
+  resolved: { color: '#5E8F72', muiColor: 'success' },
   dismissed: { color: '#9E9E9E', muiColor: 'default' },
 }
 
@@ -207,8 +207,8 @@ export default function DisputeDetailPage() {
           label={dispute.priority.toUpperCase()}
           size="small"
           sx={{
-            bgcolor: dispute.priority === 'critical' ? 'rgba(239,83,80,0.15)' : 'rgba(255,167,38,0.15)',
-            color: dispute.priority === 'critical' ? '#EF5350' : '#FFA726',
+            bgcolor: dispute.priority === 'critical' ? 'rgba(192,107,88,0.15)' : 'rgba(211,169,92,0.15)',
+            color: dispute.priority === 'critical' ? '#C06B58' : '#D3A95C',
             fontWeight: 700,
             fontSize: '0.68rem',
           }}
@@ -239,7 +239,7 @@ export default function DisputeDetailPage() {
                   </Typography>
                   <Link
                     underline="hover"
-                    sx={{ fontSize: '0.85rem', color: '#4CAF50', cursor: 'pointer' }}
+                    sx={{ fontSize: '0.85rem', color: '#5E8F72', cursor: 'pointer' }}
                     onClick={() => navigate(`/campaigns/${dispute.campaignId}`)}
                   >
                     {dispute.campaignTitle}
@@ -284,7 +284,7 @@ export default function DisputeDetailPage() {
             >
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                  <CheckCircleOutlineIcon sx={{ color: '#4CAF50', fontSize: 22 }} />
+                  <CheckCircleOutlineIcon sx={{ color: '#5E8F72', fontSize: 22 }} />
                   <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
                     Resolution
                   </Typography>
@@ -346,7 +346,7 @@ export default function DisputeDetailPage() {
                 <Button
                   variant="contained"
                   onClick={handleSubmitResolution}
-                  sx={{ bgcolor: '#4CAF50', '&:hover': { bgcolor: '#388E3C' } }}
+                  sx={{ bgcolor: '#5E8F72', '&:hover': { bgcolor: '#2F6B46' } }}
                 >
                   Submit Resolution
                 </Button>
@@ -361,7 +361,7 @@ export default function DisputeDetailPage() {
           <Card sx={{ bgcolor: '#1E1E2D', mb: 3 }}>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                <TimelineIcon sx={{ color: '#42A5F5', fontSize: 20 }} />
+                <TimelineIcon sx={{ color: '#74909A', fontSize: 20 }} />
                 <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
                   Timeline
                 </Typography>
@@ -416,7 +416,7 @@ export default function DisputeDetailPage() {
           <Card sx={{ bgcolor: '#1E1E2D' }}>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                <CampaignIcon sx={{ color: '#4CAF50', fontSize: 20 }} />
+                <CampaignIcon sx={{ color: '#5E8F72', fontSize: 20 }} />
                 <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
                   Related Campaign
                 </Typography>
@@ -424,7 +424,7 @@ export default function DisputeDetailPage() {
 
               <Link
                 underline="hover"
-                sx={{ fontSize: '0.88rem', color: '#4CAF50', cursor: 'pointer', fontWeight: 600 }}
+                sx={{ fontSize: '0.88rem', color: '#5E8F72', cursor: 'pointer', fontWeight: 600 }}
                 onClick={() => navigate(`/campaigns/${dispute.campaignId}`)}
               >
                 {dispute.campaignTitle}
@@ -437,7 +437,7 @@ export default function DisputeDetailPage() {
                   <Typography sx={{ fontSize: '0.68rem', color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                     Raised
                   </Typography>
-                  <Typography sx={{ fontSize: '1rem', fontWeight: 700, color: '#4CAF50' }}>
+                  <Typography sx={{ fontSize: '1rem', fontWeight: 700, color: '#5E8F72' }}>
                     ${MOCK_CAMPAIGN_STATS.raised.toLocaleString()}
                   </Typography>
                 </Box>

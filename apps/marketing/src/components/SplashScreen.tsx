@@ -58,8 +58,8 @@ const keyframes = `
     to { transform: rotate(0deg); }
   }
   @keyframes glowPulse {
-    0%, 100% { filter: drop-shadow(0 0 6px rgba(46,125,50,0.2)); }
-    50% { filter: drop-shadow(0 0 20px rgba(249,168,37,0.5)); }
+    0%, 100% { filter: drop-shadow(0 0 6px rgba(46, 61, 47,0.2)); }
+    50% { filter: drop-shadow(0 0 20px rgba(199, 162, 74,0.5)); }
   }
   @keyframes stampIn {
     0% { transform: scale(2.5) rotate(-12deg); opacity: 0; }
@@ -72,12 +72,12 @@ const keyframes = `
 /** Dust particles */
 function DustParticles() {
   const dots = [
-    { x: '20%', y: '35%', delay: 0, dur: 3, color: '#2E7D32' },
-    { x: '65%', y: '55%', delay: 0.5, dur: 4, color: '#F9A825' },
+    { x: '20%', y: '35%', delay: 0, dur: 3, color: '#2E3D2F' },
+    { x: '65%', y: '55%', delay: 0.5, dur: 4, color: '#C7A24A' },
     { x: '40%', y: '70%', delay: 1, dur: 3.5, color: '#C75B39' },
     { x: '80%', y: '30%', delay: 1.5, dur: 4.2, color: '#5D4037' },
-    { x: '10%', y: '60%', delay: 2, dur: 3.2, color: '#F9A825' },
-    { x: '55%', y: '25%', delay: 0.8, dur: 3.8, color: '#2E7D32' },
+    { x: '10%', y: '60%', delay: 2, dur: 3.2, color: '#C7A24A' },
+    { x: '55%', y: '25%', delay: 0.8, dur: 3.8, color: '#2E3D2F' },
   ]
   return (
     <>
@@ -130,7 +130,7 @@ export default function SplashScreen() {
           opacity: 0.1,
         }}
       >
-        <circle cx="100" cy="100" r="90" stroke="#2E7D32" strokeWidth="1" fill="none" strokeDasharray="6 10" />
+        <circle cx="100" cy="100" r="90" stroke="#2E3D2F" strokeWidth="1" fill="none" strokeDasharray="6 10" />
         {[0, 45, 90, 135, 180, 225, 270, 315].map((angle) => {
           const rad = (angle * Math.PI) / 180
           const cx = 100 + 85 * Math.cos(rad)
@@ -139,7 +139,7 @@ export default function SplashScreen() {
             <path
               key={angle}
               d={`M${cx},${cy - 5} L${cx + 3},${cy} L${cx},${cy + 5} L${cx - 3},${cy} Z`}
-              fill="#2E7D32"
+              fill="#2E3D2F"
             />
           )
         })}
@@ -156,7 +156,7 @@ export default function SplashScreen() {
           opacity: 0.06,
         }}
       >
-        <circle cx="130" cy="130" r="120" stroke="#F9A825" strokeWidth="1" fill="none" strokeDasharray="4 12" />
+        <circle cx="130" cy="130" r="120" stroke="#C7A24A" strokeWidth="1" fill="none" strokeDasharray="4 12" />
       </svg>
 
       {/* Ripple circles */}
@@ -168,7 +168,7 @@ export default function SplashScreen() {
             width: 60,
             height: 60,
             borderRadius: '50%',
-            border: `2px solid ${['#2E7D32', '#F9A825', '#C75B39', '#2E7D32', '#F9A825', '#C75B39'][i]}`,
+            border: `2px solid ${['#2E3D2F', '#C7A24A', '#C75B39', '#2E3D2F', '#C7A24A', '#C75B39'][i]}`,
             animation: `rippleOut 3.5s ease-out ${delay}s infinite`,
           }}
         />
@@ -194,7 +194,7 @@ export default function SplashScreen() {
         >
           <path
             d="M18,16 L18,46 C18,60 30,68 40,68 C50,68 62,60 62,46 L62,16"
-            stroke="#2E7D32"
+            stroke="#2E3D2F"
             strokeWidth="6"
             strokeLinecap="round"
             fill="none"
@@ -205,7 +205,7 @@ export default function SplashScreen() {
           {/* Inner glow */}
           <path
             d="M18,16 L18,46 C18,60 30,68 40,68 C50,68 62,60 62,46 L62,16"
-            stroke="#F9A825"
+            stroke="#C7A24A"
             strokeWidth="2"
             strokeLinecap="round"
             fill="none"
@@ -220,7 +220,7 @@ export default function SplashScreen() {
           sx={{
             fontSize: '2rem',
             fontWeight: 800,
-            color: '#2E7D32',
+            color: '#2E3D2F',
             letterSpacing: '0.02em',
             opacity: 0,
             animation: 'stampIn 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 1s forwards',
@@ -252,7 +252,7 @@ export default function SplashScreen() {
           maxWidth: 260,
           height: 3,
           borderRadius: SHAPE.bar,
-          backgroundColor: 'rgba(46,125,50,0.1)',
+          backgroundColor: 'rgba(46, 61, 47,0.1)',
           overflow: 'hidden',
         }}
       >
@@ -260,7 +260,7 @@ export default function SplashScreen() {
           sx={{
             height: '100%',
             borderRadius: SHAPE.bar,
-            background: 'linear-gradient(90deg, #2E7D32, #F9A825, #C75B39)',
+            background: 'linear-gradient(90deg, #2E3D2F, #C7A24A, #C75B39)',
             animation: 'progressBar 2.5s ease-in-out infinite',
             position: 'relative',
             '&::after': {
@@ -286,7 +286,7 @@ export default function SplashScreen() {
           right: 0,
           height: 5,
           background:
-            'repeating-linear-gradient(90deg, #2E7D32 0px, #2E7D32 20px, #F9A825 20px, #F9A825 40px, #C75B39 40px, #C75B39 60px, #5D4037 60px, #5D4037 80px)',
+            'repeating-linear-gradient(90deg, #2E3D2F 0px, #2E3D2F 20px, #C7A24A 20px, #C7A24A 40px, #C75B39 40px, #C75B39 60px, #5D4037 60px, #5D4037 80px)',
           animation: 'kenteSlide 2s linear infinite',
         }}
       />

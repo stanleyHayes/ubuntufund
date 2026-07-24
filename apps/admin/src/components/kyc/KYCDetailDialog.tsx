@@ -8,17 +8,17 @@ import { Resource, Action } from '@ubuntu-fund/types'
 const B = 'rgba(255,255,255,0.06)'
 
 const statusColors: Record<string, string> = {
-  pending: '#FFA726',
-  in_review: '#42A5F5',
-  approved: '#4CAF50',
-  rejected: '#EF5350',
+  pending: '#D3A95C',
+  in_review: '#74909A',
+  approved: '#5E8F72',
+  rejected: '#C06B58',
   expired: '#9E9E9E',
 }
 
 const riskColors: Record<string, string> = {
-  low: '#4CAF50',
-  medium: '#FFA726',
-  high: '#EF5350',
+  low: '#5E8F72',
+  medium: '#D3A95C',
+  high: '#C06B58',
 }
 
 const typeLabels: Record<string, string> = {
@@ -45,8 +45,8 @@ export function KYCDetailDialog({
   onRequestMore,
 }: KYCDetailDialogProps) {
   const { can } = useAdminPermissions()
-  const statusColor = statusColors[verification.status] || '#42A5F5'
-  const riskColor = riskColors[verification.riskLevel] || '#42A5F5'
+  const statusColor = statusColors[verification.status] || '#74909A'
+  const riskColor = riskColors[verification.riskLevel] || '#74909A'
 
   return (
     <>
@@ -141,7 +141,7 @@ export function KYCDetailDialog({
                     {doc.type.replace('_', ' ')}
                   </Typography>
                   {doc.verifiedAt && (
-                    <Typography sx={{ fontSize: '0.65rem', color: '#4CAF50', fontWeight: 600 }}>
+                    <Typography sx={{ fontSize: '0.65rem', color: '#5E8F72', fontWeight: 600 }}>
                       VERIFIED
                     </Typography>
                   )}
@@ -299,7 +299,7 @@ export function KYCDetailDialog({
             <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', letterSpacing: '0.05em', mb: 1 }}>
               Rejection Reason
             </Typography>
-            <Typography sx={{ fontSize: '0.85rem', color: '#EF5350', p: 1.5, bgcolor: 'rgba(239,83,80,0.08)', border: `1px solid rgba(239,83,80,0.2)`, borderRadius: '4px' }}>
+            <Typography sx={{ fontSize: '0.85rem', color: '#C06B58', p: 1.5, bgcolor: 'rgba(192,107,88,0.08)', border: `1px solid rgba(192,107,88,0.2)`, borderRadius: '4px' }}>
               {verification.rejectionReason}
             </Typography>
           </Box>
@@ -369,9 +369,9 @@ export function KYCDetailDialog({
                 fontSize: '0.68rem',
                 textTransform: 'uppercase',
                 letterSpacing: '0.06em',
-                color: '#42A5F5',
-                borderColor: 'rgba(66,165,245,0.3)',
-                '&:hover': { borderColor: '#42A5F5', bgcolor: 'rgba(66,165,245,0.08)' },
+                color: '#74909A',
+                borderColor: 'rgba(116,144,154,0.3)',
+                '&:hover': { borderColor: '#74909A', bgcolor: 'rgba(116,144,154,0.08)' },
               }}
             >
               Request More
@@ -383,9 +383,9 @@ export function KYCDetailDialog({
                 fontSize: '0.68rem',
                 textTransform: 'uppercase',
                 letterSpacing: '0.06em',
-                color: '#EF5350',
-                borderColor: 'rgba(239,83,80,0.3)',
-                '&:hover': { borderColor: '#EF5350', bgcolor: 'rgba(239,83,80,0.08)' },
+                color: '#C06B58',
+                borderColor: 'rgba(192,107,88,0.3)',
+                '&:hover': { borderColor: '#C06B58', bgcolor: 'rgba(192,107,88,0.08)' },
               }}
             >
               Reject
@@ -397,9 +397,9 @@ export function KYCDetailDialog({
                 fontSize: '0.68rem',
                 textTransform: 'uppercase',
                 letterSpacing: '0.06em',
-                color: '#4CAF50',
+                color: '#5E8F72',
                 borderColor: 'rgba(76,175,80,0.3)',
-                '&:hover': { borderColor: '#4CAF50', bgcolor: 'rgba(76,175,80,0.08)' },
+                '&:hover': { borderColor: '#5E8F72', bgcolor: 'rgba(76,175,80,0.08)' },
               }}
             >
               Approve

@@ -166,10 +166,11 @@ export async function registerApi(data: {
   registrationNumber?: string
   website?: string
 }): Promise<RegisterResponse> {
-  return request<RegisterResponse>('/auth/register', {
+  const res = await request<{ data: RegisterResponse }>('/auth/register', {
     method: 'POST',
     body: JSON.stringify(data),
   })
+  return res.data
 }
 
 export async function refreshTokenApi(refreshToken: string): Promise<AuthTokens> {
@@ -177,10 +178,11 @@ export async function refreshTokenApi(refreshToken: string): Promise<AuthTokens>
   if (refreshToken === 'demo-refresh-token') {
     return { accessToken: 'demo-access-token', refreshToken: 'demo-refresh-token' }
   }
-  return request<AuthTokens>('/auth/refresh', {
+  const res = await request<{ data: AuthTokens }>('/auth/refresh', {
     method: 'POST',
     body: JSON.stringify({ refreshToken }),
   })
+  return res.data
 }
 
 export { request, ApiError }

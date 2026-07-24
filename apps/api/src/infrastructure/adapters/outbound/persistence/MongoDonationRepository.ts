@@ -48,4 +48,11 @@ export class MongoDonationRepository implements DonationRepositoryPort {
     const docs = await DonationModel.find({ donorId }).sort({ createdAt: -1 });
     return docs.map(toDomain);
   }
+
+  async findRecent(limit: number): Promise<DonationEntity[]> {
+    const docs = await DonationModel.find()
+      .sort({ createdAt: -1 })
+      .limit(limit);
+    return docs.map(toDomain);
+  }
 }

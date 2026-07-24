@@ -33,9 +33,9 @@ interface AuditEntry {
 }
 
 const severityColors: Record<Severity, string> = {
-  info: '#42A5F5',
-  warning: '#FFA726',
-  critical: '#EF5350',
+  info: '#74909A',
+  warning: '#D3A95C',
+  critical: '#C06B58',
 }
 
 export default function AuditLogPage() {

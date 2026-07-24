@@ -114,4 +114,29 @@ export class MongoCampaignRepository implements CampaignRepositoryPort {
   async countByCreatorId(creatorId: string): Promise<number> {
     return CampaignModel.countDocuments({ creatorId });
   }
+
+  async incrementRaised(
+    campaignId: string,
+    amount: number,
+    currency: string
+  ): Promise<CampaignEntity | null> {
+    const doc = await CampaignModel.findOneAndUpdate(
+      {
+        _id: campaignId,
+        status: 'active',
+        currency,
+        endDate: { $gt: new Date() },
+      },
+      { $inc: { raisedAmount: amount } },
+      { new: true }
+    );
+    if (!doc) return null;
+
+    // Flip to funded once the goal is met; benign if two donations race.
+    if (doc.raisedAmount >= doc.goalAmount && doc.status === 'active') {
+      doc.status = 'funded' as typeof doc.status;
+      await doc.save();
+    }
+    return toDomain(doc);
+  }
 }

@@ -17,14 +17,14 @@ const features = [
     title: 'Trust System',
     description:
       'Multi-level verification builds confidence. Verified campaigns earn trust badges so donors give with certainty.',
-    color: '#2E7D32',
+    color: '#2E3D2F',
   },
   {
     icon: <CurrencyExchangeIcon sx={{ fontSize: 40 }} />,
     title: 'Multi-Currency',
     description:
       'Accept donations in USD, KES, NGN, ZAR, GHS, and more. Automatic conversion with transparent exchange rates.',
-    color: '#F57F17',
+    color: '#A07E33',
   },
   {
     icon: <PaymentsIcon sx={{ fontSize: 40 }} />,

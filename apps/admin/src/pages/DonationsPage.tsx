@@ -14,7 +14,7 @@ const fadeIn = keyframes`from{opacity:0}to{opacity:1}`
 const slideIn = keyframes`from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}`
 const B = 'rgba(255,255,255,0.06)'
 
-const ACCENT = '#4CAF50'
+const ACCENT = '#5E8F72'
 
 function Skel({ w, h }: { w?: string | number; h?: number }) {
   return (
@@ -89,8 +89,8 @@ function DonationCard({ donation, donorName, campaignTitle, index }: DonationCar
         {donation.isAnonymous && (
           <Typography sx={{
             fontSize: '0.58rem', fontWeight: 700, textTransform: 'uppercase',
-            color: '#EF5350', letterSpacing: '0.08em',
-            border: '1px solid rgba(239,83,80,0.15)', px: 0.8, py: 0.15, lineHeight: 1.4,
+            color: '#C06B58', letterSpacing: '0.08em',
+            border: '1px solid rgba(192,107,88,0.15)', px: 0.8, py: 0.15, lineHeight: 1.4,
           }}>
             ANON
           </Typography>
@@ -193,7 +193,7 @@ export default function DonationsPage() {
               ),
             }}
             sx={{
-              '& .MuiInput-root': { color: 'text.primary', '&::before': { borderColor: B }, '&::after': { borderColor: '#4CAF50' } },
+              '& .MuiInput-root': { color: 'text.primary', '&::before': { borderColor: B }, '&::after': { borderColor: '#5E8F72' } },
               '& .MuiInputLabel-root': { color: 'text.secondary', fontSize: '0.8rem' },
             }}
           />
@@ -208,7 +208,7 @@ export default function DonationsPage() {
             onChange={e => setTypeFilter(e.target.value)}
             fullWidth
             sx={{
-              '& .MuiInput-root': { color: 'text.primary', '&::before': { borderColor: B }, '&::after': { borderColor: '#4CAF50' } },
+              '& .MuiInput-root': { color: 'text.primary', '&::before': { borderColor: B }, '&::after': { borderColor: '#5E8F72' } },
               '& .MuiInputLabel-root': { color: 'text.secondary', fontSize: '0.8rem' },
             }}
           >
@@ -247,7 +247,7 @@ export default function DonationsPage() {
         }
       </Box>
 
-      {!loading && <PaginationBar pagination={pagination} accentColor="#F9A825" />}
+      {!loading && <PaginationBar pagination={pagination} accentColor="#C7A24A" />}
 
       {/* Empty state */}
       {!loading && filtered.length === 0 && (

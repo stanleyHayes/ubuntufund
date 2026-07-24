@@ -51,8 +51,8 @@ const keyframes = `
     100% { background-position: 80px 0; }
   }
   @keyframes glowPulse {
-    0%, 100% { filter: drop-shadow(0 0 4px rgba(46,125,50,0.3)); }
-    50% { filter: drop-shadow(0 0 16px rgba(249,168,37,0.6)); }
+    0%, 100% { filter: drop-shadow(0 0 4px rgba(46, 61, 47,0.3)); }
+    50% { filter: drop-shadow(0 0 16px rgba(199, 162, 74,0.6)); }
   }
   @keyframes revealMask {
     0% { clip-path: circle(0% at 50% 50%); }
@@ -69,7 +69,7 @@ const keyframes = `
 function AdinkraRing({
   delay = 0,
   size = 120,
-  color = '#2E7D32',
+  color = '#2E3D2F',
   reverse = false,
 }: {
   delay?: number
@@ -114,12 +114,12 @@ function AdinkraRing({
 /** Floating dust particles */
 function DustParticles() {
   const particles = [
-    { x: '20%', y: '30%', delay: 0, dur: 3, color: '#2E7D32' },
-    { x: '70%', y: '60%', delay: 0.5, dur: 4, color: '#F9A825' },
+    { x: '20%', y: '30%', delay: 0, dur: 3, color: '#2E3D2F' },
+    { x: '70%', y: '60%', delay: 0.5, dur: 4, color: '#C7A24A' },
     { x: '40%', y: '70%', delay: 1, dur: 3.5, color: '#C75B39' },
     { x: '80%', y: '25%', delay: 1.5, dur: 4.5, color: '#5D4037' },
-    { x: '15%', y: '65%', delay: 2, dur: 3, color: '#F9A825' },
-    { x: '60%', y: '40%', delay: 0.8, dur: 3.8, color: '#2E7D32' },
+    { x: '15%', y: '65%', delay: 2, dur: 3, color: '#C7A24A' },
+    { x: '60%', y: '40%', delay: 0.8, dur: 3.8, color: '#2E3D2F' },
     { x: '35%', y: '20%', delay: 1.3, dur: 4.2, color: '#C75B39' },
     { x: '85%', y: '50%', delay: 0.3, dur: 3.3, color: '#5D4037' },
   ]
@@ -172,15 +172,15 @@ export function SplashScreen() {
             width: 80,
             height: 80,
             borderRadius: '50%',
-            border: `2px solid ${['#2E7D32', '#F9A825', '#C75B39', '#5D4037', '#2E7D32', '#F9A825'][i]}`,
+            border: `2px solid ${['#2E3D2F', '#C7A24A', '#C75B39', '#5D4037', '#2E3D2F', '#C7A24A'][i]}`,
             animation: `ripple 3.2s ease-out ${delay}s infinite`,
           }}
         />
       ))}
 
       {/* Adinkra ring decorations */}
-      <AdinkraRing delay={0} size={160} color="#2E7D32" />
-      <AdinkraRing delay={1} size={200} color="#F9A825" reverse />
+      <AdinkraRing delay={0} size={160} color="#2E3D2F" />
+      <AdinkraRing delay={1} size={200} color="#C7A24A" reverse />
       <AdinkraRing delay={2} size={240} color="#C75B39" />
 
       {/* Logo: 3 reaching arms with gold dots — draw animation */}
@@ -194,8 +194,8 @@ export function SplashScreen() {
           animation: 'drumBeat 2s ease 1.5s forwards, glowPulse 3s ease 2s infinite',
         }}
       >
-        <circle cx="32" cy="32" r="30" fill="rgba(46,125,50,0.3)" />
-        <circle cx="32" cy="32" r="20" fill="none" stroke="#4CAF50" strokeWidth="0.8" opacity="0.3" />
+        <circle cx="32" cy="32" r="30" fill="rgba(46, 61, 47,0.3)" />
+        <circle cx="32" cy="32" r="20" fill="none" stroke="#5E8F72" strokeWidth="0.8" opacity="0.3" />
         {/* Three arms, each drawn in */}
         {[0, 120, 240].map((angle, i) => (
           <path
@@ -213,9 +213,9 @@ export function SplashScreen() {
           />
         ))}
         {/* Gold dots at grip points */}
-        <circle cx="39" cy="36" r="2.8" fill="#F9A825" opacity="0" style={{ animation: 'fadeInDot 0.4s ease 1.1s forwards' }} />
-        <circle cx="26.5" cy="24.9" r="2.8" fill="#F9A825" opacity="0" style={{ animation: 'fadeInDot 0.4s ease 1.3s forwards' }} />
-        <circle cx="30.5" cy="39.1" r="2.8" fill="#F9A825" opacity="0" style={{ animation: 'fadeInDot 0.4s ease 1.5s forwards' }} />
+        <circle cx="39" cy="36" r="2.8" fill="#C7A24A" opacity="0" style={{ animation: 'fadeInDot 0.4s ease 1.1s forwards' }} />
+        <circle cx="26.5" cy="24.9" r="2.8" fill="#C7A24A" opacity="0" style={{ animation: 'fadeInDot 0.4s ease 1.3s forwards' }} />
+        <circle cx="30.5" cy="39.1" r="2.8" fill="#C7A24A" opacity="0" style={{ animation: 'fadeInDot 0.4s ease 1.5s forwards' }} />
       </svg>
 
       {/* Logo text with stamp animation */}
@@ -224,7 +224,7 @@ export function SplashScreen() {
           fontSize: '1.6rem',
           fontWeight: 800,
           letterSpacing: '0.04em',
-          color: '#2E7D32',
+          color: '#2E3D2F',
           zIndex: 1,
           opacity: 0,
           animation: 'stampIn 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.8s forwards',
@@ -257,7 +257,7 @@ export function SplashScreen() {
               width: 10,
               height: 10,
               borderRadius: '50%',
-              backgroundColor: ['#2E7D32', '#F9A825', '#C75B39'][i],
+              backgroundColor: ['#2E3D2F', '#C7A24A', '#C75B39'][i],
               animation: `drumBeat 1.2s ease-in-out ${delay}s infinite`,
             }}
           />
@@ -273,7 +273,7 @@ export function SplashScreen() {
           right: 0,
           height: 6,
           background:
-            'repeating-linear-gradient(90deg, #2E7D32 0px, #2E7D32 20px, #F9A825 20px, #F9A825 40px, #C75B39 40px, #C75B39 60px, #5D4037 60px, #5D4037 80px)',
+            'repeating-linear-gradient(90deg, #2E3D2F 0px, #2E3D2F 20px, #C7A24A 20px, #C7A24A 40px, #C75B39 40px, #C75B39 60px, #5D4037 60px, #5D4037 80px)',
           animation: 'kenteSlide 2s linear infinite',
         }}
       />

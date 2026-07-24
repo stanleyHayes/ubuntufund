@@ -16,6 +16,7 @@ export function createWalletRoutes(
   const router = Router();
 
   router.get('/', authMiddleware, controller.getMyWallets);
+  router.get('/transactions', authMiddleware, controller.listTransactions);
   router.get('/:id', authMiddleware, controller.getById);
   router.post(
     '/:id/deposit',

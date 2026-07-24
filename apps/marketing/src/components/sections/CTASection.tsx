@@ -12,7 +12,7 @@ function CTASection() {
       sx={{
         py: { xs: 8, md: 12 },
         textAlign: 'center',
-        backgroundColor: '#FAFAF5',
+        backgroundColor: '#F2EFEA',
       }}
     >
       <Container maxWidth="md">

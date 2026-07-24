@@ -64,14 +64,10 @@ const keyframesStyle = `
     from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: translateY(0); }
   }
-  @keyframes breathe {
-    0%, 100% { transform: scale(1); box-shadow: 0 4px 20px rgba(46,125,50,0.3); }
-    50% { transform: scale(1.05); box-shadow: 0 8px 40px rgba(46,125,50,0.5); }
-  }
 `
 
 /** Adinkra: Gye Nyame symbol (Supremacy of God) */
-function GyeNyame({ size = 60, color = '#F9A825', style = {} }: { size?: number; color?: string; style?: React.CSSProperties }) {
+function GyeNyame({ size = 60, color = '#C7A24A', style = {} }: { size?: number; color?: string; style?: React.CSSProperties }) {
   return (
     <svg width={size} height={size} viewBox="0 0 100 100" fill="none" style={style}>
       <path
@@ -139,7 +135,7 @@ function BaobabTree({ size = 80, color = '#5D4037', style = {} }: { size?: numbe
 }
 
 /** African mask outline */
-function AfricanMask({ size = 50, color = '#F9A825', style = {} }: { size?: number; color?: string; style?: React.CSSProperties }) {
+function AfricanMask({ size = 50, color = '#C7A24A', style = {} }: { size?: number; color?: string; style?: React.CSSProperties }) {
   return (
     <svg width={size} height={size * 1.3} viewBox="0 0 80 104" fill="none" style={style}>
       <path
@@ -161,7 +157,7 @@ function AfricanMask({ size = 50, color = '#F9A825', style = {} }: { size?: numb
 }
 
 /** Small decorative star */
-function Star({ x, y, size = 8, color = '#F9A825', delay = 0 }: { x: number; y: number; size?: number; color?: string; delay?: number }) {
+function Star({ x, y, size = 8, color = '#C7A24A', delay = 0 }: { x: number; y: number; size?: number; color?: string; delay?: number }) {
   return (
     <svg
       width={size}
@@ -206,7 +202,7 @@ function ZigZag({ x, y, color = '#C75B39', delay = 0 }: { x: number; y: number; 
 }
 
 /** Dot cluster */
-function DotCluster({ x, y, color = '#2E7D32', delay = 0 }: { x: number; y: number; color?: string; delay?: number }) {
+function DotCluster({ x, y, color = '#2E3D2F', delay = 0 }: { x: number; y: number; color?: string; delay?: number }) {
   return (
     <svg
       width="30"
@@ -230,11 +226,11 @@ function DotCluster({ x, y, color = '#2E7D32', delay = 0 }: { x: number; y: numb
 /** Floating dust */
 function DustParticles() {
   const particles = [
-    { x: '12%', y: '80%', delay: 0, dur: 3.5, color: '#2E7D32' },
-    { x: '30%', y: '85%', delay: 0.5, dur: 4, color: '#F9A825' },
+    { x: '12%', y: '80%', delay: 0, dur: 3.5, color: '#2E3D2F' },
+    { x: '30%', y: '85%', delay: 0.5, dur: 4, color: '#C7A24A' },
     { x: '50%', y: '82%', delay: 1, dur: 3, color: '#C75B39' },
     { x: '70%', y: '88%', delay: 1.5, dur: 4.5, color: '#5D4037' },
-    { x: '88%', y: '83%', delay: 2, dur: 3.8, color: '#F9A825' },
+    { x: '88%', y: '83%', delay: 2, dur: 3.8, color: '#C7A24A' },
   ]
   return (
     <>
@@ -278,20 +274,20 @@ export function NotFoundPage() {
       <DustParticles />
 
       {/* Scattered decorative elements */}
-      <Star x={8} y={12} delay={0} color="#F9A825" />
+      <Star x={8} y={12} delay={0} color="#C7A24A" />
       <Star x={85} y={8} delay={0.5} color="#C75B39" size={10} />
-      <Star x={15} y={75} delay={1} color="#2E7D32" size={6} />
-      <Star x={90} y={65} delay={1.5} color="#F9A825" />
+      <Star x={15} y={75} delay={1} color="#2E3D2F" size={6} />
+      <Star x={90} y={65} delay={1.5} color="#C7A24A" />
       <Star x={5} y={45} delay={0.8} color="#5D4037" size={7} />
       <Star x={75} y={85} delay={2} color="#C75B39" size={9} />
-      <Star x={45} y={5} delay={0.3} color="#2E7D32" size={8} />
-      <Star x={60} y={92} delay={1.2} color="#F9A825" size={6} />
+      <Star x={45} y={5} delay={0.3} color="#2E3D2F" size={8} />
+      <Star x={60} y={92} delay={1.2} color="#C7A24A" size={6} />
       <ZigZag x={3} y={30} delay={0} />
-      <ZigZag x={80} y={40} delay={1} color="#2E7D32" />
-      <ZigZag x={60} y={90} delay={2} color="#F9A825" />
+      <ZigZag x={80} y={40} delay={1} color="#2E3D2F" />
+      <ZigZag x={60} y={90} delay={2} color="#C7A24A" />
       <DotCluster x={10} y={55} delay={0.5} />
       <DotCluster x={82} y={20} delay={1.5} color="#C75B39" />
-      <DotCluster x={70} y={75} delay={0.3} color="#F9A825" />
+      <DotCluster x={70} y={75} delay={0.3} color="#C7A24A" />
 
       {/* Main floating doodles with swirl entrance */}
       <Box
@@ -321,7 +317,7 @@ export function NotFoundPage() {
           fontSize: { xs: '8rem', md: '12rem' },
           fontWeight: 900,
           lineHeight: 1,
-          color: '#2E7D32',
+          color: '#2E3D2F',
           position: 'relative',
           mb: 1,
           fontFamily: '"Georgia", serif',
@@ -391,7 +387,7 @@ export function NotFoundPage() {
         variant="contained"
         size="large"
         sx={{
-          background: 'linear-gradient(135deg, #2E7D32 0%, #388E3C 100%)',
+          background: 'linear-gradient(135deg, #2E3D2F 0%, #2F6B46 100%)',
           color: '#fff',
           fontWeight: 700,
           fontSize: '1.05rem',
@@ -400,10 +396,11 @@ export function NotFoundPage() {
           borderRadius: SHAPE.sm,
           textTransform: 'none',
           opacity: 0,
-          animation: 'fadeInUp 0.6s ease 1.2s forwards, breathe 2.5s ease 2s infinite',
+          animation: 'fadeInUp 0.6s ease 1.2s forwards',
+          transition: 'box-shadow 0.2s ease',
           '&:hover': {
-            background: 'linear-gradient(135deg, #1B5E20 0%, #2E7D32 100%)',
-            boxShadow: '0 6px 28px rgba(46,125,50,0.4)',
+            background: 'linear-gradient(135deg, #1C261D 0%, #2E3D2F 100%)',
+            boxShadow: '0 6px 28px rgba(46, 61, 47,0.4)',
           },
         }}
       >
@@ -432,7 +429,7 @@ export function NotFoundPage() {
           left: 0,
           right: 0,
           height: 6,
-          bgcolor: '#2E7D32',
+          bgcolor: '#2E3D2F',
         }}
       />
     </Box>

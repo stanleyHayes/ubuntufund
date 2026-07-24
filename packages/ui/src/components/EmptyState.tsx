@@ -50,12 +50,12 @@ function SearchIllustration() {
         .${id}-sway { transform-origin: 90px 90px; animation: ${id}-sway 3s 1.5s ease-in-out infinite }
       `}</style>
       {/* Decorative ring */}
-      <circle cx="90" cy="90" r="80" stroke="#E8F5E9" strokeWidth="1.5" strokeDasharray="6 8" opacity=".5" />
+      <circle cx="90" cy="90" r="80" stroke="#E9EFE6" strokeWidth="1.5" strokeDasharray="6 8" opacity=".5" />
       {/* Magnifying glass circle */}
-      <circle cx="76" cy="76" r="38" stroke="#4CAF50" strokeWidth="3.5" strokeLinecap="round"
+      <circle cx="76" cy="76" r="38" stroke="#5E8F72" strokeWidth="3.5" strokeLinecap="round"
         strokeDasharray="200" className={`${id}-d1`} />
       {/* Glass fill */}
-      <circle cx="76" cy="76" r="34" fill="#E8F5E9" opacity=".4" className={`${id}-pop`} />
+      <circle cx="76" cy="76" r="34" fill="#E9EFE6" opacity=".4" className={`${id}-pop`} />
       {/* Handle */}
       <path d="M104 104 L135 135" stroke="#8D6E63" strokeWidth="5" strokeLinecap="round"
         strokeDasharray="50" className={`${id}-d2`} />
@@ -64,18 +64,18 @@ function SearchIllustration() {
       {/* Question mark */}
       <g className={`${id}-sway`}>
         <path d="M67 64 C67 55 76 51 82 55 C88 59 85 67 76 70 L76 76"
-          stroke="#F9A825" strokeWidth="3" strokeLinecap="round" fill="none"
+          stroke="#C7A24A" strokeWidth="3" strokeLinecap="round" fill="none"
           strokeDasharray="40" className={`${id}-d3`} />
-        <circle cx="76" cy="83" r="2.5" fill="#F9A825" className={`${id}-pop`} />
+        <circle cx="76" cy="83" r="2.5" fill="#C7A24A" className={`${id}-pop`} />
       </g>
       {/* Floating accent dots */}
-      <circle cx="30" cy="40" r="4" fill="#4CAF50" className={`${id}-dot ${id}-dot1`} />
-      <circle cx="145" cy="35" r="3" fill="#F9A825" className={`${id}-dot ${id}-dot2`} />
+      <circle cx="30" cy="40" r="4" fill="#5E8F72" className={`${id}-dot ${id}-dot1`} />
+      <circle cx="145" cy="35" r="3" fill="#C7A24A" className={`${id}-dot ${id}-dot2`} />
       <circle cx="150" cy="95" r="3.5" fill="#66BB6A" className={`${id}-dot ${id}-dot3`} />
       {/* Sparkles */}
       <g className={`${id}-pop`}>
-        <line x1="35" y1="130" x2="35" y2="140" stroke="#FDD835" strokeWidth="1.5" strokeLinecap="round" />
-        <line x1="30" y1="135" x2="40" y2="135" stroke="#FDD835" strokeWidth="1.5" strokeLinecap="round" />
+        <line x1="35" y1="130" x2="35" y2="140" stroke="#DCC07E" strokeWidth="1.5" strokeLinecap="round" />
+        <line x1="30" y1="135" x2="40" y2="135" stroke="#DCC07E" strokeWidth="1.5" strokeLinecap="round" />
       </g>
     </svg>
   )
@@ -103,7 +103,7 @@ function ErrorIllustration() {
       <circle cx="90" cy="80" r="55" fill="#FFF8E1" className={`${id}-glow`} />
       {/* Warning triangle */}
       <path d="M90 25 L155 130 L25 130 Z"
-        stroke="#F9A825" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" fill="none"
+        stroke="#C7A24A" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" fill="none"
         strokeDasharray="300" className={`${id}-tri`} />
       {/* Triangle fill */}
       <path d="M90 35 L148 125 L32 125 Z" fill="#FFF8E1" opacity=".5" className={`${id}-dot`} />
@@ -114,10 +114,10 @@ function ErrorIllustration() {
       <circle cx="90" cy="105" r="3" fill="#EF5350" className={`${id}-dot`} />
       {/* Repair gear */}
       <g className={`${id}-gear`}>
-        <circle cx="140" cy="140" r="14" stroke="#4CAF50" strokeWidth="2.5" fill="none"
+        <circle cx="140" cy="140" r="14" stroke="#5E8F72" strokeWidth="2.5" fill="none"
           strokeDasharray="90" strokeDashoffset="90"
           style={{ animation: `${id}-draw 0.8s 1.2s ease forwards` }} />
-        <circle cx="140" cy="140" r="5" fill="#4CAF50" className={`${id}-dot`} />
+        <circle cx="140" cy="140" r="5" fill="#5E8F72" className={`${id}-dot`} />
         {/* Gear teeth */}
         {[0, 60, 120, 180, 240, 300].map((deg) => {
           const rad = (deg * Math.PI) / 180
@@ -125,17 +125,17 @@ function ErrorIllustration() {
           const y1 = 140 + Math.sin(rad) * 12
           const x2 = 140 + Math.cos(rad) * 17
           const y2 = 140 + Math.sin(rad) * 17
-          return <line key={deg} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#4CAF50" strokeWidth="2.5" strokeLinecap="round" className={`${id}-dot`} />
+          return <line key={deg} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#5E8F72" strokeWidth="2.5" strokeLinecap="round" className={`${id}-dot`} />
         })}
       </g>
       {/* Sparkles */}
       <g className={`${id}-sp ${id}-sp1`}>
-        <line x1="40" y1="45" x2="40" y2="55" stroke="#FDD835" strokeWidth="1.5" strokeLinecap="round" />
-        <line x1="35" y1="50" x2="45" y2="50" stroke="#FDD835" strokeWidth="1.5" strokeLinecap="round" />
+        <line x1="40" y1="45" x2="40" y2="55" stroke="#DCC07E" strokeWidth="1.5" strokeLinecap="round" />
+        <line x1="35" y1="50" x2="45" y2="50" stroke="#DCC07E" strokeWidth="1.5" strokeLinecap="round" />
       </g>
       <g className={`${id}-sp ${id}-sp2`}>
-        <line x1="148" y1="38" x2="148" y2="46" stroke="#FDD835" strokeWidth="1.5" strokeLinecap="round" />
-        <line x1="144" y1="42" x2="152" y2="42" stroke="#FDD835" strokeWidth="1.5" strokeLinecap="round" />
+        <line x1="148" y1="38" x2="148" y2="46" stroke="#DCC07E" strokeWidth="1.5" strokeLinecap="round" />
+        <line x1="144" y1="42" x2="152" y2="42" stroke="#DCC07E" strokeWidth="1.5" strokeLinecap="round" />
       </g>
     </svg>
   )
@@ -158,12 +158,12 @@ function NotFoundIllustration() {
         .${id}-flagpop { transform: scale(0); opacity: 0; animation: ${id}-pop .4s 1.6s ease forwards }
       `}</style>
       {/* Outer decorative ring */}
-      <circle cx="80" cy="80" r="55" stroke="#E8F5E9" strokeWidth="1.5" strokeDasharray="6 8" opacity=".4" />
+      <circle cx="80" cy="80" r="55" stroke="#E9EFE6" strokeWidth="1.5" strokeDasharray="6 8" opacity=".4" />
       {/* Compass ring */}
-      <circle cx="80" cy="80" r="45" stroke="#4CAF50" strokeWidth="3" strokeLinecap="round"
+      <circle cx="80" cy="80" r="45" stroke="#5E8F72" strokeWidth="3" strokeLinecap="round"
         strokeDasharray="250" className={`${id}-ring`} />
       {/* Compass fill */}
-      <circle cx="80" cy="80" r="41" fill="#E8F5E9" opacity=".3" className={`${id}-dot`} />
+      <circle cx="80" cy="80" r="41" fill="#E9EFE6" opacity=".3" className={`${id}-dot`} />
       {/* Cardinal marks */}
       {[
         { x: 80, y: 40, label: 'N' }, { x: 80, y: 124, label: 'S' },
@@ -179,16 +179,16 @@ function NotFoundIllustration() {
       <path d="M80 80 L88 115" stroke="#8D6E63" strokeWidth="3" strokeLinecap="round"
         strokeDasharray="40" className={`${id}-needle`} />
       {/* Center dot */}
-      <circle cx="80" cy="80" r="4" fill="#F9A825" className={`${id}-dot`} />
+      <circle cx="80" cy="80" r="4" fill="#C7A24A" className={`${id}-dot`} />
       {/* Wandering trail */}
       <path d="M20 155 C40 148 55 160 75 150 C95 140 110 155 135 145 C148 140 155 148 165 143"
-        stroke="#F9A825" strokeWidth="2.5" strokeLinecap="round" fill="none"
+        stroke="#C7A24A" strokeWidth="2.5" strokeLinecap="round" fill="none"
         strokeDasharray="4 7"
         strokeDashoffset="200" className={`${id}-trail`} />
       {/* Destination flag */}
       <g className={`${id}-flag ${id}-flagpop`}>
-        <line x1="145" y1="42" x2="145" y2="22" stroke="#4CAF50" strokeWidth="2" strokeLinecap="round" />
-        <path d="M145 22 L160 28 L145 34 Z" fill="#4CAF50" />
+        <line x1="145" y1="42" x2="145" y2="22" stroke="#5E8F72" strokeWidth="2" strokeLinecap="round" />
+        <path d="M145 22 L160 28 L145 34 Z" fill="#5E8F72" />
       </g>
     </svg>
   )
@@ -213,38 +213,38 @@ function NoDataIllustration() {
         .${id}-leafpop { transform: scale(0); opacity: 0; animation: ${id}-pop .4s 1.7s ease forwards }
       `}</style>
       {/* Shadow */}
-      <ellipse cx="85" cy="160" rx="50" ry="6" fill="#E8F5E9" opacity=".5" className={`${id}-dot`} />
+      <ellipse cx="85" cy="160" rx="50" ry="6" fill="#E9EFE6" opacity=".5" className={`${id}-dot`} />
       {/* Document */}
       <rect x="40" y="20" width="80" height="110" rx="8"
-        stroke="#4CAF50" strokeWidth="3" fill="none"
+        stroke="#5E8F72" strokeWidth="3" fill="none"
         strokeDasharray="350" className={`${id}-doc`} />
       {/* Document fill */}
       <rect x="44" y="24" width="72" height="102" rx="6" fill="#F1F8E9" opacity=".5" className={`${id}-dot`} />
       {/* Fold corner */}
-      <path d="M100 20 L120 20 L120 40" fill="none" stroke="#4CAF50" strokeWidth="2"
+      <path d="M100 20 L120 20 L120 40" fill="none" stroke="#5E8F72" strokeWidth="2"
         strokeDasharray="40" strokeDashoffset="40"
         style={{ animation: `${id}-draw .3s 1s ease forwards` }} />
-      <path d="M100 20 L120 40" fill="none" stroke="#4CAF50" strokeWidth="2" strokeDasharray="3 3" className={`${id}-dot`} />
+      <path d="M100 20 L120 40" fill="none" stroke="#5E8F72" strokeWidth="2" strokeDasharray="3 3" className={`${id}-dot`} />
       {/* Content lines */}
-      <line x1="56" y1="52" x2="104" y2="52" stroke="#A5D6A7" strokeWidth="3" strokeLinecap="round"
+      <line x1="56" y1="52" x2="104" y2="52" stroke="#A8B5A0" strokeWidth="3" strokeLinecap="round"
         strokeDasharray="60" className={`${id}-line ${id}-l1`} />
       <line x1="56" y1="68" x2="96" y2="68" stroke="#C8E6C9" strokeWidth="3" strokeLinecap="round"
         strokeDasharray="60" className={`${id}-line ${id}-l2`} />
-      <line x1="56" y1="84" x2="88" y2="84" stroke="#A5D6A7" strokeWidth="3" strokeLinecap="round"
+      <line x1="56" y1="84" x2="88" y2="84" stroke="#A8B5A0" strokeWidth="3" strokeLinecap="round"
         strokeDasharray="60" className={`${id}-line ${id}-l3`} />
       <line x1="56" y1="100" x2="76" y2="100" stroke="#C8E6C9" strokeWidth="3" strokeLinecap="round"
         strokeDasharray="60" className={`${id}-line ${id}-l4`} />
       {/* Sprouting plant */}
       <g className={`${id}-leaf ${id}-leafpop`}>
         <path d="M130 120 C130 100 130 85 130 75" stroke="#66BB6A" strokeWidth="2.5" strokeLinecap="round" fill="none" />
-        <ellipse cx="118" cy="90" rx="10" ry="5" fill="#4CAF50" opacity=".7" transform="rotate(-30, 118, 90)" />
+        <ellipse cx="118" cy="90" rx="10" ry="5" fill="#5E8F72" opacity=".7" transform="rotate(-30, 118, 90)" />
         <ellipse cx="142" cy="80" rx="10" ry="5" fill="#66BB6A" opacity=".7" transform="rotate(30, 142, 80)" />
-        <circle cx="130" cy="70" r="6" fill="#F9A825" opacity=".8" />
+        <circle cx="130" cy="70" r="6" fill="#C7A24A" opacity=".8" />
       </g>
       {/* Sparkles */}
       <g className={`${id}-dot`}>
-        <line x1="148" y1="55" x2="148" y2="65" stroke="#FDD835" strokeWidth="1.5" strokeLinecap="round" />
-        <line x1="143" y1="60" x2="153" y2="60" stroke="#FDD835" strokeWidth="1.5" strokeLinecap="round" />
+        <line x1="148" y1="55" x2="148" y2="65" stroke="#DCC07E" strokeWidth="1.5" strokeLinecap="round" />
+        <line x1="143" y1="60" x2="153" y2="60" stroke="#DCC07E" strokeWidth="1.5" strokeLinecap="round" />
       </g>
     </svg>
   )
@@ -300,13 +300,13 @@ function EmptyIllustration() {
           strokeDasharray="70" className={`${id}-stemline`} />
         {/* Left leaf */}
         <g className={`${id}-leaf1`}>
-          <ellipse cx="72" cy="108" rx="14" ry="6" fill="#4CAF50" opacity=".7" transform="rotate(-30, 72, 108)" />
-          <line x1="80" y1="112" x2="65" y2="104" stroke="#2E7D32" strokeWidth=".8" opacity=".4" />
+          <ellipse cx="72" cy="108" rx="14" ry="6" fill="#5E8F72" opacity=".7" transform="rotate(-30, 72, 108)" />
+          <line x1="80" y1="112" x2="65" y2="104" stroke="#2E3D2F" strokeWidth=".8" opacity=".4" />
         </g>
         {/* Right leaf */}
         <g className={`${id}-leaf2`}>
           <ellipse cx="108" cy="90" rx="14" ry="6" fill="#66BB6A" opacity=".7" transform="rotate(25, 108, 90)" />
-          <line x1="100" y1="93" x2="116" y2="87" stroke="#2E7D32" strokeWidth=".8" opacity=".4" />
+          <line x1="100" y1="93" x2="116" y2="87" stroke="#2E3D2F" strokeWidth=".8" opacity=".4" />
         </g>
         {/* Top left small leaf */}
         <g className={`${id}-leaf3`}>
@@ -314,33 +314,33 @@ function EmptyIllustration() {
         </g>
         {/* Flower bud */}
         <g className={`${id}-bud`}>
-          <circle cx="90" cy="42" r="9" fill="#F9A825" opacity=".85" />
+          <circle cx="90" cy="42" r="9" fill="#C7A24A" opacity=".85" />
           {/* Petals */}
           {[0, 72, 144, 216, 288].map((deg) => {
             const rad = (deg * Math.PI) / 180
             const px = 90 + Math.cos(rad) * 14
             const py = 42 + Math.sin(rad) * 14
-            return <circle key={deg} cx={px} cy={py} r="4" fill="#FDD835" opacity=".5" />
+            return <circle key={deg} cx={px} cy={py} r="4" fill="#DCC07E" opacity=".5" />
           })}
-          <circle cx="90" cy="42" r="5" fill="#F9A825" />
+          <circle cx="90" cy="42" r="5" fill="#C7A24A" />
         </g>
       </g>
       {/* Sparkle / twinkle accents */}
       <g className={`${id}-tw`}>
-        <line x1="50" y1="55" x2="50" y2="65" stroke="#FDD835" strokeWidth="1.5" strokeLinecap="round" />
-        <line x1="45" y1="60" x2="55" y2="60" stroke="#FDD835" strokeWidth="1.5" strokeLinecap="round" />
+        <line x1="50" y1="55" x2="50" y2="65" stroke="#DCC07E" strokeWidth="1.5" strokeLinecap="round" />
+        <line x1="45" y1="60" x2="55" y2="60" stroke="#DCC07E" strokeWidth="1.5" strokeLinecap="round" />
       </g>
       <g className={`${id}-tw2`}>
-        <line x1="130" y1="48" x2="130" y2="56" stroke="#FDD835" strokeWidth="1.5" strokeLinecap="round" />
-        <line x1="126" y1="52" x2="134" y2="52" stroke="#FDD835" strokeWidth="1.5" strokeLinecap="round" />
+        <line x1="130" y1="48" x2="130" y2="56" stroke="#DCC07E" strokeWidth="1.5" strokeLinecap="round" />
+        <line x1="126" y1="52" x2="134" y2="52" stroke="#DCC07E" strokeWidth="1.5" strokeLinecap="round" />
       </g>
       <g className={`${id}-tw3`}>
-        <line x1="45" y1="90" x2="45" y2="96" stroke="#4CAF50" strokeWidth="1.2" strokeLinecap="round" />
-        <line x1="42" y1="93" x2="48" y2="93" stroke="#4CAF50" strokeWidth="1.2" strokeLinecap="round" />
+        <line x1="45" y1="90" x2="45" y2="96" stroke="#5E8F72" strokeWidth="1.2" strokeLinecap="round" />
+        <line x1="42" y1="93" x2="48" y2="93" stroke="#5E8F72" strokeWidth="1.2" strokeLinecap="round" />
       </g>
       {/* Floating accent circles */}
-      <circle cx="140" cy="70" r="3" fill="#4CAF50" opacity=".4" className={`${id}-leaf1`} />
-      <circle cx="40" cy="40" r="2.5" fill="#F9A825" opacity=".4" className={`${id}-leaf2`} />
+      <circle cx="140" cy="70" r="3" fill="#5E8F72" opacity=".4" className={`${id}-leaf1`} />
+      <circle cx="40" cy="40" r="2.5" fill="#C7A24A" opacity=".4" className={`${id}-leaf2`} />
     </svg>
   )
 }
@@ -471,7 +471,7 @@ export function ErrorState({
       <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', justifyContent: 'center' }}>
         {onRetry && (
           <Button variant="contained" onClick={onRetry}
-            sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2, px: 3, boxShadow: '0 2px 12px rgba(46,125,50,0.25)' }}>
+            sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2, px: 3, boxShadow: '0 2px 12px rgba(46, 61, 47,0.25)' }}>
             {retryLabel}
           </Button>
         )}

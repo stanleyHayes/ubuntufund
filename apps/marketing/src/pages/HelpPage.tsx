@@ -51,7 +51,7 @@ const FAQ_CATEGORIES: FaqCategory[] = [
     id: 'getting-started',
     icon: <RocketLaunchRoundedIcon />,
     label: 'Getting Started',
-    color: '#2E7D32',
+    color: '#2E3D2F',
     questions: [
       { q: 'How do I create an account on UbuntuFund?', a: 'Click "Sign Up" on the homepage, enter your email and create a password. You can also sign up with Google or Facebook. Complete your profile with your name, location, and a photo to build trust with the community.' },
       { q: 'Is UbuntuFund available in my country?', a: 'UbuntuFund is available across all 54 African nations and to the global diaspora. While campaign creation is currently limited to organizers based in Africa, anyone worldwide can donate. We are continuously expanding payment options.' },
@@ -85,7 +85,7 @@ const FAQ_CATEGORIES: FaqCategory[] = [
     id: 'payments',
     icon: <PaymentsRoundedIcon />,
     label: 'Payments',
-    color: '#F9A825',
+    color: '#C7A24A',
     questions: [
       { q: 'What payment methods are accepted?', a: 'Mobile money (M-Pesa, MTN MoMo, Airtel Money, Orange Money), bank transfers, cards (Visa, Mastercard, Verve), and cryptocurrency (Bitcoin, USDT). Available methods vary by country.' },
       { q: 'How do I withdraw my campaign funds?', a: 'Go to your dashboard and click "Withdraw." Choose mobile money (processed within 24 hours) or bank transfer (2-3 business days). International transfers may take up to 5 business days. Platform fees are automatically deducted.' },
@@ -167,7 +167,7 @@ function HelpPage() {
                 fontSize: '1.05rem',
                 py: 0.5,
                 boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
-                '&.Mui-focused': { boxShadow: '0 4px 20px rgba(46,125,50,0.1)' },
+                '&.Mui-focused': { boxShadow: '0 4px 20px rgba(46, 61, 47,0.1)' },
               },
             }}
           />
@@ -198,7 +198,7 @@ function HelpPage() {
                     '&:hover': {
                       borderColor: 'primary.main',
                       transform: 'translateY(-4px)',
-                      boxShadow: '0 8px 24px rgba(46,125,50,0.08)',
+                      boxShadow: '0 8px 24px rgba(46, 61, 47,0.08)',
                       '& .quick-icon': { bgcolor: 'primary.main', color: '#fff', transform: 'scale(1.1)' },
                     },
                   }}
@@ -208,7 +208,7 @@ function HelpPage() {
                       className="quick-icon"
                       sx={{
                         width: 48, height: 48, borderRadius: SHAPE.sm,
-                        bgcolor: 'rgba(46,125,50,0.08)', color: 'primary.main',
+                        bgcolor: 'rgba(46, 61, 47,0.08)', color: 'primary.main',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         transition: 'all 0.25s ease', '& svg': { fontSize: 24 },
                       }}
@@ -234,7 +234,7 @@ function HelpPage() {
             sx={{
               fontWeight: 600, fontSize: '0.85rem', borderRadius: SHAPE.sm,
               border: '1.5px solid', borderColor: !activeCategory ? 'primary.main' : 'divider',
-              bgcolor: !activeCategory ? 'rgba(46,125,50,0.08)' : 'transparent',
+              bgcolor: !activeCategory ? 'rgba(46, 61, 47,0.08)' : 'transparent',
               color: !activeCategory ? 'primary.main' : 'text.primary',
               transition: 'all 0.2s ease', '&:hover': { borderColor: 'primary.light' },
             }}
@@ -324,13 +324,13 @@ function HelpPage() {
               <Box
                 sx={{
                   p: { xs: 4, md: 5 },
-                  background: 'linear-gradient(135deg, #1B5E20, #2E7D32)',
+                  background: 'linear-gradient(135deg, #1C261D, #2E3D2F)',
                   color: '#fff', height: '100%',
                   display: 'flex', flexDirection: 'column', justifyContent: 'center',
                   position: 'relative', overflow: 'hidden',
                 }}
               >
-                <Box sx={{ position: 'absolute', inset: 0, opacity: 0.05, backgroundImage: 'repeating-linear-gradient(90deg, #F9A825 0px, #F9A825 3px, transparent 3px, transparent 16px), repeating-linear-gradient(0deg, #C75B39 0px, #C75B39 3px, transparent 3px, transparent 16px)', pointerEvents: 'none' }} />
+                <Box sx={{ position: 'absolute', inset: 0, opacity: 0.05, backgroundImage: 'repeating-linear-gradient(90deg, #C7A24A 0px, #C7A24A 3px, transparent 3px, transparent 16px), repeating-linear-gradient(0deg, #C75B39 0px, #C75B39 3px, transparent 3px, transparent 16px)', pointerEvents: 'none' }} />
                 <Box sx={{ position: 'relative', zIndex: 1 }}>
                   <SupportAgentRoundedIcon sx={{ fontSize: 40, mb: 2, opacity: 0.8 }} />
                   <Typography variant="h5" sx={{ fontWeight: 800, mb: 1 }}>Still Need Help?</Typography>
@@ -345,7 +345,7 @@ function HelpPage() {
                 <Stack spacing={2.5}>
                   {[
                     { icon: <EmailRoundedIcon />, title: 'Email Support', desc: 'support@ubuntufund.com', detail: 'Response within 24 hours', action: 'Send Email', href: 'mailto:support@ubuntufund.com', color: '#1565C0' },
-                    { icon: <ChatBubbleOutlineRoundedIcon />, title: 'Live Chat', desc: 'Chat with our team in real time', detail: 'Mon-Sat, 8am-8pm WAT', action: 'Start Chat', href: '/contact', color: '#2E7D32' },
+                    { icon: <ChatBubbleOutlineRoundedIcon />, title: 'Live Chat', desc: 'Chat with our team in real time', detail: 'Mon-Sat, 8am-8pm WAT', action: 'Start Chat', href: '/contact', color: '#2E3D2F' },
                     { icon: <GroupsRoundedIcon />, title: 'Community Forum', desc: 'Get help from other UbuntuFund users', detail: '5,000+ active members', action: 'Visit Forum', href: '/contact', color: '#6A1B9A' },
                   ].map((opt) => (
                     <Box

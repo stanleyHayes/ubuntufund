@@ -6,7 +6,9 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./test/setup.ts'],
-    include: ['**/__tests__/**/*.test.{ts,tsx}'],
+    // .ts only: React Native component tests (.tsx) need jest-expo, which cannot
+    // resolve react-native across the hoisted npm workspace — see UbuntuLogo.test.tsx.
+    include: ['src/**/__tests__/**/*.test.ts'],
     alias: {
       'react-native': 'react-native-web',
     },

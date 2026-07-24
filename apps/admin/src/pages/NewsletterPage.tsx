@@ -14,7 +14,7 @@ import PaginationBar from '@/components/PaginationBar'
 const fadeIn = keyframes`from{opacity:0}to{opacity:1}`
 const slideIn = keyframes`from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}`
 const B = 'rgba(255,255,255,0.06)'
-const ACCENT = '#4CAF50'
+const ACCENT = '#5E8F72'
 
 interface Stats {
   active: number
@@ -98,7 +98,7 @@ function NewsletterPage() {
     : subscribers
 
   const statCards = [
-    { icon: <TrendingUpIcon />, label: 'Total Subscribers', value: stats.total, color: '#42A5F5' },
+    { icon: <TrendingUpIcon />, label: 'Total Subscribers', value: stats.total, color: '#74909A' },
     { icon: <CheckCircleIcon />, label: 'Active', value: stats.active, color: ACCENT },
     { icon: <UnsubscribeIcon />, label: 'Unsubscribed', value: stats.unsubscribed, color: '#78909C' },
   ]
@@ -196,7 +196,7 @@ function NewsletterPage() {
                   width: 'fit-content',
                   fontWeight: 700, fontSize: '0.68rem', textTransform: 'uppercase',
                   bgcolor: sub.status === 'active' ? 'rgba(76,175,80,0.12)' : 'rgba(120,144,156,0.12)',
-                  color: sub.status === 'active' ? '#4CAF50' : '#78909C',
+                  color: sub.status === 'active' ? '#5E8F72' : '#78909C',
                   border: '1px solid',
                   borderColor: sub.status === 'active' ? 'rgba(76,175,80,0.2)' : 'rgba(120,144,156,0.2)',
                 }}

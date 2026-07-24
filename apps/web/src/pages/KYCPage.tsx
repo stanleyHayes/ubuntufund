@@ -89,7 +89,7 @@ export function KYCPage() {
   if (submitted) {
     return (
       <Container maxWidth="sm" sx={{ py: 8, textAlign: 'center', animation: `${fadeIn} 0.5s ease` }}>
-        <CheckCircleIcon sx={{ fontSize: 64, color: '#4CAF50', mb: 2 }} />
+        <CheckCircleIcon sx={{ fontSize: 64, color: '#5E8F72', mb: 2 }} />
         <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
           Verification Submitted!
         </Typography>
@@ -143,9 +143,9 @@ export function KYCPage() {
                 borderRadius: 2,
                 p: 3,
                 textAlign: 'center',
-                bgcolor: idFrontUrl ? 'rgba(46,125,50,0.04)' : 'transparent',
+                bgcolor: idFrontUrl ? 'rgba(46, 61, 47,0.04)' : 'transparent',
               }}>
-                <CloudUploadIcon sx={{ fontSize: 32, color: idFrontUrl ? '#4CAF50' : 'text.disabled', mb: 1 }} />
+                <CloudUploadIcon sx={{ fontSize: 32, color: idFrontUrl ? '#5E8F72' : 'text.disabled', mb: 1 }} />
                 <Typography sx={{ fontWeight: 600, fontSize: '0.9rem', mb: 0.5 }}>Front Side</Typography>
                 <TextField size="small" placeholder="Document URL" value={idFrontUrl} onChange={(e) => setIdFrontUrl(e.target.value)} fullWidth sx={{ mt: 1 }} />
               </Box>
@@ -154,9 +154,9 @@ export function KYCPage() {
                 borderRadius: 2,
                 p: 3,
                 textAlign: 'center',
-                bgcolor: idBackUrl ? 'rgba(46,125,50,0.04)' : 'transparent',
+                bgcolor: idBackUrl ? 'rgba(46, 61, 47,0.04)' : 'transparent',
               }}>
-                <CloudUploadIcon sx={{ fontSize: 32, color: idBackUrl ? '#4CAF50' : 'text.disabled', mb: 1 }} />
+                <CloudUploadIcon sx={{ fontSize: 32, color: idBackUrl ? '#5E8F72' : 'text.disabled', mb: 1 }} />
                 <Typography sx={{ fontWeight: 600, fontSize: '0.9rem', mb: 0.5 }}>Back Side</Typography>
                 <TextField size="small" placeholder="Document URL" value={idBackUrl} onChange={(e) => setIdBackUrl(e.target.value)} fullWidth sx={{ mt: 1 }} />
               </Box>
@@ -181,9 +181,9 @@ export function KYCPage() {
               borderRadius: 2,
               p: 3,
               textAlign: 'center',
-              bgcolor: addressDocUrl ? 'rgba(46,125,50,0.04)' : 'transparent',
+              bgcolor: addressDocUrl ? 'rgba(46, 61, 47,0.04)' : 'transparent',
             }}>
-              <CloudUploadIcon sx={{ fontSize: 32, color: addressDocUrl ? '#4CAF50' : 'text.disabled', mb: 1 }} />
+              <CloudUploadIcon sx={{ fontSize: 32, color: addressDocUrl ? '#5E8F72' : 'text.disabled', mb: 1 }} />
               <Typography sx={{ fontWeight: 600, fontSize: '0.9rem', mb: 0.5 }}>Address Proof</Typography>
               <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary', mb: 1 }}>Utility bill or bank statement (max 3 months old)</Typography>
               <TextField size="small" placeholder="Document URL" value={addressDocUrl} onChange={(e) => setAddressDocUrl(e.target.value)} fullWidth sx={{ mt: 1 }} />
@@ -202,9 +202,9 @@ export function KYCPage() {
               borderRadius: 2,
               p: 3,
               textAlign: 'center',
-              bgcolor: selfieUrl ? 'rgba(46,125,50,0.04)' : 'transparent',
+              bgcolor: selfieUrl ? 'rgba(46, 61, 47,0.04)' : 'transparent',
             }}>
-              <CloudUploadIcon sx={{ fontSize: 40, color: selfieUrl ? '#4CAF50' : 'text.disabled', mb: 1 }} />
+              <CloudUploadIcon sx={{ fontSize: 40, color: selfieUrl ? '#5E8F72' : 'text.disabled', mb: 1 }} />
               <Typography sx={{ fontWeight: 600, fontSize: '0.9rem', mb: 0.5 }}>Selfie with ID</Typography>
               <TextField size="small" placeholder="Selfie URL" value={selfieUrl} onChange={(e) => setSelfieUrl(e.target.value)} fullWidth sx={{ mt: 1 }} />
             </Box>
@@ -212,7 +212,7 @@ export function KYCPage() {
         )}
 
         {error && (
-          <Typography sx={{ color: '#EF5350', mt: 2, fontSize: '0.9rem' }}>
+          <Typography sx={{ color: '#A5432F', mt: 2, fontSize: '0.9rem' }}>
             {error}
           </Typography>
         )}

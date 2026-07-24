@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
+import { logger } from '../../../logging/logger.js';
 
 export class AppError extends Error {
   constructor(
@@ -17,7 +18,7 @@ export function errorHandler(
   res: Response,
   _next: NextFunction
 ): void {
-  console.error('Error:', err.message);
+  logger.error({ err }, err.message);
 
   if (err instanceof AppError) {
     res.status(err.statusCode).json({

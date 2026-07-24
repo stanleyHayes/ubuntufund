@@ -32,7 +32,7 @@ const floatUp = keyframes`
 `
 
 const RANK_CONFIG = [
-  { color: '#FFD700', bg: '#FFF8E1', glow: 'rgba(255,215,0,0.3)', icon: <EmojiEventsRounded />, label: '1st' },
+  { color: '#C7A24A', bg: '#FFF8E1', glow: 'rgba(199,162,74,0.3)', icon: <EmojiEventsRounded />, label: '1st' },
   { color: '#B0BEC5', bg: '#ECEFF1', glow: 'rgba(176,190,197,0.25)', icon: <MilitaryTechRounded />, label: '2nd' },
   { color: '#CD7F32', bg: '#EFEBE9', glow: 'rgba(205,127,50,0.25)', icon: <WorkspacePremiumRounded />, label: '3rd' },
   { color: '#78909C', bg: '#FAFAFA', glow: 'rgba(0,0,0,0.06)', icon: <StarRounded />, label: '4th' },
@@ -62,12 +62,11 @@ function FeaturedDonorCard({
         border: isTop3 ? `2.5px solid ${rank.color}` : '1px solid rgba(0,0,0,0.08)',
         bgcolor: isFirst ? rank.bg : '#fff',
         boxShadow: isTop3 ? `0 8px 32px ${rank.glow}` : '0 2px 8px rgba(0,0,0,0.04)',
-        transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+        transition: 'box-shadow 200ms ease',
         animation: isFirst ? `${floatUp} 3s ease-in-out infinite` : undefined,
         mt: isFirst ? 0 : index === 1 || index === 2 ? 4 : 6,
         '&:hover': {
-          transform: `translateY(-6px) ${isFirst ? 'scale(1.02)' : ''}`,
-          boxShadow: `0 16px 48px ${rank.glow}`,
+          boxShadow: isTop3 ? `0 10px 36px ${rank.glow}` : '0 4px 16px rgba(0,0,0,0.08)',
         },
       }}
     >
@@ -116,12 +115,12 @@ function FeaturedDonorCard({
                 width: 24,
                 height: 24,
                 borderRadius: '50%',
-                bgcolor: '#FFD700',
+                bgcolor: '#C7A24A',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 border: '2px solid #fff',
-                boxShadow: '0 2px 8px rgba(255,215,0,0.4)',
+                boxShadow: '0 2px 8px rgba(199,162,74,0.4)',
               }}
             >
               <StarRounded sx={{ fontSize: 14, color: '#fff' }} />
@@ -149,12 +148,12 @@ function FeaturedDonorCard({
             icon={<BusinessRounded sx={{ fontSize: '11px !important' }} />}
             label="Organization"
             size="small"
-            sx={{ mb: 0.5, fontSize: '0.6rem', fontWeight: 700, height: 20, bgcolor: 'rgba(66,165,245,0.1)', color: '#1E88E5' }}
+            sx={{ mb: 0.5, fontSize: '0.6rem', fontWeight: 700, height: 20, bgcolor: 'rgba(74,107,117,0.1)', color: '#4A6B75' }}
           />
         )}
 
         {/* Amount */}
-        <Typography sx={{ fontWeight: 800, fontSize: isFirst ? '1.2rem' : '0.95rem', color: '#2E7D32', fontFamily: '"TT Squares", sans-serif' }}>
+        <Typography sx={{ fontWeight: 800, fontSize: isFirst ? '1.2rem' : '0.95rem', color: '#2E3D2F', fontFamily: '"TT Squares", sans-serif' }}>
           ${entry.totalDonated.toLocaleString()}
         </Typography>
 

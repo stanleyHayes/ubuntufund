@@ -27,7 +27,7 @@ function OrganizationsSection() {
       id="organizations"
       sx={{
         py: { xs: 8, md: 12 },
-        background: 'linear-gradient(135deg, #1B5E20 0%, #2E7D32 50%, #1a6b3c 100%)',
+        background: 'linear-gradient(135deg, #1C261D 0%, #2E3D2F 100%)',
         color: '#fff',
         position: 'relative',
         overflow: 'hidden',
@@ -39,7 +39,7 @@ function OrganizationsSection() {
           right: 0,
           bottom: 0,
           background:
-            'radial-gradient(circle at 90% 20%, rgba(249,168,37,0.12) 0%, transparent 50%)',
+            'radial-gradient(circle at 90% 20%, rgba(199, 162, 74,0.12) 0%, transparent 50%)',
         },
       }}
     >
@@ -48,7 +48,7 @@ function OrganizationsSection() {
           <Grid size={{ xs: 12, md: 6 }}>
             <Typography
               variant="overline"
-              sx={{ color: '#F9A825', fontWeight: 700, letterSpacing: 2, fontSize: '0.85rem' }}
+              sx={{ color: '#C7A24A', fontWeight: 700, letterSpacing: 2, fontSize: '0.85rem' }}
             >
               For Organizations
             </Typography>
@@ -91,18 +91,17 @@ function OrganizationsSection() {
           <Grid size={{ xs: 12, md: 6 }}>
             <Box
               sx={{
-                backgroundColor: 'rgba(255,255,255,0.08)',
+                backgroundColor: 'rgba(46,61,47,0.55)',
                 borderRadius: 3,
                 p: { xs: 2, md: 3 },
                 border: '1px solid rgba(255,255,255,0.12)',
-                backdropFilter: 'blur(10px)',
               }}
             >
               <List dense>
                 {benefits.map((benefit) => (
                   <ListItem key={benefit} sx={{ py: 1 }}>
                     <ListItemIcon sx={{ minWidth: 36 }}>
-                      <CheckCircleIcon sx={{ color: '#F9A825', fontSize: 22 }} />
+                      <CheckCircleIcon sx={{ color: '#C7A24A', fontSize: 22 }} />
                     </ListItemIcon>
                     <ListItemText
                       primary={benefit}

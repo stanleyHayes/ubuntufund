@@ -23,7 +23,7 @@ import PaginationBar from '@/components/PaginationBar'
 const fadeIn = keyframes`from{opacity:0}to{opacity:1}`
 const slideIn = keyframes`from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}`
 const B = 'rgba(255,255,255,0.06)'
-const ACCENT = '#FF9800'
+const ACCENT = '#DCC07E'
 
 interface Stats {
   total: number
@@ -34,12 +34,12 @@ interface Stats {
 
 const statusColors: Record<string, string> = {
   draft: '#78909C',
-  published: '#4CAF50',
+  published: '#5E8F72',
   archived: '#FF7043',
 }
 
 const AVATAR_COLORS = [
-  '#2E7D32', '#1565C0', '#F57F17', '#6A1B9A',
+  '#2E3D2F', '#1565C0', '#A07E33', '#6A1B9A',
   '#C62828', '#00695C', '#E65100', '#283593',
 ]
 
@@ -205,7 +205,7 @@ function TestimonialsPage() {
 
   const statCards = [
     { icon: <TrendingUpIcon />, label: 'Total', value: stats.total, color: ACCENT },
-    { icon: <PublicIcon />, label: 'Published', value: stats.published, color: '#4CAF50' },
+    { icon: <PublicIcon />, label: 'Published', value: stats.published, color: '#5E8F72' },
     { icon: <DraftsIcon />, label: 'Draft', value: stats.draft, color: '#78909C' },
     { icon: <ArchiveIcon />, label: 'Archived', value: stats.archived, color: '#FF7043' },
   ]
@@ -227,7 +227,7 @@ function TestimonialsPage() {
           onClick={openCreate}
           sx={{
             textTransform: 'none', fontWeight: 700, borderRadius: 2,
-            bgcolor: ACCENT, '&:hover': { bgcolor: '#F57C00' },
+            bgcolor: ACCENT, '&:hover': { bgcolor: '#A07E33' },
           }}
         >
           Add Testimonial
@@ -345,7 +345,7 @@ function TestimonialsPage() {
                 <IconButton size="small" onClick={() => openEdit(t)} sx={{ color: 'rgba(255,255,255,0.4)', '&:hover': { color: ACCENT } }}>
                   <EditIcon sx={{ fontSize: 18 }} />
                 </IconButton>
-                <IconButton size="small" onClick={() => setDeleteConfirm(t.id)} sx={{ color: 'rgba(255,255,255,0.4)', '&:hover': { color: '#EF5350' } }}>
+                <IconButton size="small" onClick={() => setDeleteConfirm(t.id)} sx={{ color: 'rgba(255,255,255,0.4)', '&:hover': { color: '#C06B58' } }}>
                   <DeleteIcon sx={{ fontSize: 18 }} />
                 </IconButton>
               </Box>
@@ -439,8 +439,8 @@ function TestimonialsPage() {
                   sx={{
                     width: 32, height: 32, borderRadius: '50%', bgcolor: c, cursor: 'pointer',
                     border: form.avatarColor === c ? '3px solid #fff' : '3px solid transparent',
-                    transition: 'border-color 0.2s ease',
-                    '&:hover': { transform: 'scale(1.15)' },
+                    transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+                    '&:hover': { boxShadow: '0 0 0 2px rgba(255,255,255,0.35)' },
                   }}
                 />
               ))}

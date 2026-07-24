@@ -81,7 +81,7 @@ export function RefundRequestPage() {
 
   if (submitted) {
     return (
-      <Box sx={{ bgcolor: '#FAFAF5', minHeight: '100vh', py: 8 }}>
+      <Box sx={{ bgcolor: '#F2EFEA', minHeight: '100vh', py: 8 }}>
         <Container maxWidth="sm">
           <Box
             sx={{
@@ -99,7 +99,7 @@ export function RefundRequestPage() {
             <Typography sx={{ color: 'text.secondary', mb: 3 }}>
               Your refund request has been submitted successfully.
             </Typography>
-            <Box sx={{ p: 2.5, borderRadius: SHAPE.card, bgcolor: 'rgba(46,125,50,0.04)', mb: 3 }}>
+            <Box sx={{ p: 2.5, borderRadius: SHAPE.card, bgcolor: 'rgba(46, 61, 47,0.04)', mb: 3 }}>
               <Typography sx={{ fontWeight: 600, fontSize: '0.9rem', mb: 1 }}>
                 Refund ID: <Box component="span" sx={{ fontFamily: 'monospace' }}>{refundId}</Box>
               </Typography>
@@ -125,7 +125,7 @@ export function RefundRequestPage() {
   }
 
   return (
-    <Box sx={{ bgcolor: '#FAFAF5', minHeight: '100vh', py: 5 }}>
+    <Box sx={{ bgcolor: '#F2EFEA', minHeight: '100vh', py: 5 }}>
       <Container maxWidth="sm">
         <Button
           component={RouterLink}

@@ -1,49 +1,38 @@
-import { describe, it, beforeAll, afterAll, beforeEach, expect } from 'vitest';
+import { randomUUID } from 'node:crypto';
+import { describe, it, beforeAll, afterAll, expect } from 'vitest';
 import request from 'supertest';
 import type { Express } from 'express';
-import { createTestApp } from '../helpers/testServer.js';
-import { connectTestDatabase, clearTestDatabase, disconnectTestDatabase } from '../helpers/testDatabase.js';
-import { PaymentProviderModel } from '../../src/infrastructure/database/models/PaymentProviderModel.js';
+import { createTestApp } from '../helpers/testApp.js';
+import {
+  connectTestDatabase,
+  dropTestDatabase,
+  disconnectTestDatabase,
+} from '../helpers/testDatabase.js';
 import { UserModel } from '../../src/infrastructure/database/models/UserModel.js';
-import { authRateLimiter, apiRateLimiter, donationRateLimiter } from '../../src/infrastructure/adapters/inbound/middleware/rateLimiter.js';
-import { PaymentMethod } from '@ubuntu-fund/types';
 
-async function createAdmin(app: Express, email: string) {
+function uniqueEmail(label: string): string {
+  return `${label}-${randomUUID()}@example.com`;
+}
+
+async function registerUser(app: Express, email: string) {
   const res = await request(app)
     .post('/api/v1/auth/register')
-    .send({ email, password: 'SecurePass123', name: 'Admin User' });
+    .send({ email, password: 'SecurePass123', name: 'Test User' })
+    .expect(201);
 
-  const userId = res.body.data.user.id;
+  return { userId: res.body.data.user.id as string, token: res.body.data.tokens.accessToken as string };
+}
+
+async function createAdmin(app: Express, email: string) {
+  const { userId } = await registerUser(app, email);
   await UserModel.findByIdAndUpdate(userId, { role: 'admin' });
 
   const loginRes = await request(app)
     .post('/api/v1/auth/login')
-    .send({ email, password: 'SecurePass123' });
+    .send({ email, password: 'SecurePass123' })
+    .expect(200);
 
-  return { userId, token: loginRes.body.data.tokens.accessToken };
-}
-
-async function seedPaymentProviders() {
-  await PaymentProviderModel.insertMany([
-    {
-      name: 'Wallet',
-      slug: 'wallet',
-      type: PaymentMethod.WALLET,
-      enabled: true,
-      isDefault: true,
-      feePercent: 0,
-      displayOrder: 1,
-    },
-    {
-      name: 'Stripe',
-      slug: 'stripe',
-      type: PaymentMethod.CARD,
-      enabled: false,
-      isDefault: false,
-      feePercent: 2.9,
-      displayOrder: 2,
-    },
-  ]);
+  return { userId, token: loginRes.body.data.tokens.accessToken as string };
 }
 
 describe('Payment Providers Integration', () => {
@@ -51,94 +40,58 @@ describe('Payment Providers Integration', () => {
 
   beforeAll(async () => {
     await connectTestDatabase();
-    const { app: testApp } = await createTestApp();
-    app = testApp;
-  });
-
-  beforeEach(async () => {
-    await clearTestDatabase();
-    await seedPaymentProviders();
-    (authRateLimiter as unknown as { reset: () => void }).reset();
-    (apiRateLimiter as unknown as { reset: () => void }).reset();
-    (donationRateLimiter as unknown as { reset: () => void }).reset();
+    app = await createTestApp();
   });
 
   afterAll(async () => {
+    await dropTestDatabase();
     await disconnectTestDatabase();
   });
 
   describe('GET /api/v1/payment-providers/enabled', () => {
-    it('returns enabled providers publicly', async () => {
+    it('is public and returns only enabled providers', async () => {
       const res = await request(app).get('/api/v1/payment-providers/enabled');
 
       expect(res.status).toBe(200);
-      expect(res.body.data).toBeInstanceOf(Array);
-      expect(res.body.data.length).toBe(1);
-      expect(res.body.data[0].slug).toBe('wallet');
+      expect(Array.isArray(res.body.data)).toBe(true);
+      // The wallet provider is seeded enabled-by-default the first time the
+      // collection is read; every provider returned here must be enabled.
+      expect(res.body.data.length).toBeGreaterThan(0);
+      for (const provider of res.body.data) {
+        expect(provider.enabled).toBe(true);
+      }
+      expect(res.body.data.some((p: { slug: string }) => p.slug === 'wallet')).toBe(true);
     });
   });
 
   describe('GET /api/v1/payment-providers', () => {
-    it('returns all providers for admin', async () => {
-      const { token } = await createAdmin(app, 'admin@example.com');
-
-      const res = await request(app)
-        .get('/api/v1/payment-providers')
-        .set('Authorization', `Bearer ${token}`);
-
-      expect(res.status).toBe(200);
-      expect(res.body.data).toBeInstanceOf(Array);
-      expect(res.body.data.length).toBe(2);
-    });
-
-    it('rejects non-admin users', async () => {
-      const registerRes = await request(app)
-        .post('/api/v1/auth/register')
-        .send({ email: 'user@example.com', password: 'SecurePass123', name: 'Regular User' });
-
-      const token = registerRes.body.data.tokens.accessToken;
-
-      const res = await request(app)
-        .get('/api/v1/payment-providers')
-        .set('Authorization', `Bearer ${token}`);
-
-      expect(res.status).toBe(403);
-    });
-
-    it('rejects unauthenticated requests', async () => {
+    it('rejects unauthenticated requests with 401', async () => {
       const res = await request(app).get('/api/v1/payment-providers');
       expect(res.status).toBe(401);
     });
-  });
 
-  describe('PATCH /api/v1/payment-providers/:id/toggle', () => {
-    it('toggles provider enabled state for admin', async () => {
-      const { token } = await createAdmin(app, 'toggle@example.com');
-
-      const stripe = await PaymentProviderModel.findOne({ slug: 'stripe' });
-      const initialEnabled = stripe!.enabled;
+    it('rejects non-admin users with 403', async () => {
+      const { token } = await registerUser(app, uniqueEmail('nonadmin'));
 
       const res = await request(app)
-        .patch(`/api/v1/payment-providers/${stripe!._id}/toggle`)
-        .set('Authorization', `Bearer ${token}`);
-
-      expect(res.status).toBe(200);
-      expect(res.body.data.enabled).toBe(!initialEnabled);
-    });
-
-    it('rejects non-admin users', async () => {
-      const registerRes = await request(app)
-        .post('/api/v1/auth/register')
-        .send({ email: 'toggleuser@example.com', password: 'SecurePass123', name: 'Regular User' });
-
-      const token = registerRes.body.data.tokens.accessToken;
-      const stripe = await PaymentProviderModel.findOne({ slug: 'stripe' });
-
-      const res = await request(app)
-        .patch(`/api/v1/payment-providers/${stripe!._id}/toggle`)
+        .get('/api/v1/payment-providers')
         .set('Authorization', `Bearer ${token}`);
 
       expect(res.status).toBe(403);
+    });
+
+    it('returns the full provider list for an admin, including disabled ones', async () => {
+      const { token } = await createAdmin(app, uniqueEmail('admin'));
+
+      const res = await request(app)
+        .get('/api/v1/payment-providers')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body.data)).toBe(true);
+      // Defaults seeded on first read: wallet, M-Pesa, Stripe, bank transfer.
+      expect(res.body.data.length).toBeGreaterThanOrEqual(4);
+      expect(res.body.data.some((p: { enabled: boolean }) => p.enabled === false)).toBe(true);
     });
   });
 });

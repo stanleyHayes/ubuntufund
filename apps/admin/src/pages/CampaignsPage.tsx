@@ -20,11 +20,11 @@ const slideIn = keyframes`from{opacity:0;transform:translateY(12px)}to{opacity:1
 const B = 'rgba(255,255,255,0.06)'
 
 const statusColors: Record<string, string> = {
-  [CampaignStatus.ACTIVE]: '#4CAF50',
-  [CampaignStatus.PENDING_REVIEW]: '#FFA726',
-  [CampaignStatus.FUNDED]: '#42A5F5',
+  [CampaignStatus.ACTIVE]: '#5E8F72',
+  [CampaignStatus.PENDING_REVIEW]: '#D3A95C',
+  [CampaignStatus.FUNDED]: '#74909A',
   [CampaignStatus.EXPIRED]: '#78909C',
-  [CampaignStatus.BLOCKED]: '#EF5350',
+  [CampaignStatus.BLOCKED]: '#C06B58',
   [CampaignStatus.DRAFT]: '#616161',
 }
 
@@ -67,7 +67,7 @@ function CampaignCard({ campaign, index }: { campaign: Campaign; index: number }
   const navigate = useNavigate()
   const accent = statusColors[campaign.status] || '#616161'
   const pct = campaign.goalAmount > 0 ? Math.min((campaign.raisedAmount / campaign.goalAmount) * 100, 100) : 0
-  const barColor = pct >= 100 ? '#42A5F5' : pct >= 60 ? '#4CAF50' : pct >= 30 ? '#FFA726' : '#EF5350'
+  const barColor = pct >= 100 ? '#74909A' : pct >= 60 ? '#5E8F72' : pct >= 30 ? '#D3A95C' : '#C06B58'
 
   return (
     <Box
@@ -159,10 +159,10 @@ function CampaignCard({ campaign, index }: { campaign: Campaign; index: number }
               startIcon={<CheckCircleOutlineIcon sx={{ fontSize: 14 }} />}
               onClick={(e) => { e.stopPropagation(); }}
               sx={{
-                color: '#4CAF50', borderColor: '#4CAF50',
+                color: '#5E8F72', borderColor: '#5E8F72',
                 fontSize: '0.65rem', textTransform: 'none', minWidth: 'auto',
                 fontFamily: '"TT Squares", sans-serif',
-                '&:hover': { borderColor: '#4CAF50', bgcolor: 'rgba(76,175,80,0.08)' },
+                '&:hover': { borderColor: '#5E8F72', bgcolor: 'rgba(76,175,80,0.08)' },
               }}
             >
               Approve
@@ -173,10 +173,10 @@ function CampaignCard({ campaign, index }: { campaign: Campaign; index: number }
               startIcon={<DoNotDisturbIcon sx={{ fontSize: 14 }} />}
               onClick={(e) => { e.stopPropagation(); }}
               sx={{
-                color: '#EF5350', borderColor: '#EF5350',
+                color: '#C06B58', borderColor: '#C06B58',
                 fontSize: '0.65rem', textTransform: 'none', minWidth: 'auto',
                 fontFamily: '"TT Squares", sans-serif',
-                '&:hover': { borderColor: '#EF5350', bgcolor: 'rgba(239,83,80,0.08)' },
+                '&:hover': { borderColor: '#C06B58', bgcolor: 'rgba(192,107,88,0.08)' },
               }}
             >
               Reject
@@ -190,10 +190,10 @@ function CampaignCard({ campaign, index }: { campaign: Campaign; index: number }
             startIcon={<BlockIcon sx={{ fontSize: 14 }} />}
             onClick={(e) => { e.stopPropagation(); }}
             sx={{
-              color: '#EF5350', borderColor: '#EF5350',
+              color: '#C06B58', borderColor: '#C06B58',
               fontSize: '0.65rem', textTransform: 'none', minWidth: 'auto',
               fontFamily: '"TT Squares", sans-serif',
-              '&:hover': { borderColor: '#EF5350', bgcolor: 'rgba(239,83,80,0.08)' },
+              '&:hover': { borderColor: '#C06B58', bgcolor: 'rgba(192,107,88,0.08)' },
             }}
           >
             Block
@@ -228,7 +228,7 @@ export default function CampaignsPage() {
     <Box sx={{ bgcolor: '#0c0c14', minHeight: '100vh', animation: `${fadeIn} 0.3s ease` }}>
       {/* Header */}
       <Box sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${B}`, display: 'flex', alignItems: 'center', gap: 1.5 }}>
-        <RocketLaunchIcon sx={{ color: '#4CAF50', fontSize: 20 }} />
+        <RocketLaunchIcon sx={{ color: '#5E8F72', fontSize: 20 }} />
         <Typography sx={{ fontFamily: '"TT Squares", sans-serif', fontWeight: 700, fontSize: '1.1rem', color: 'text.primary' }}>
           Campaigns
         </Typography>
@@ -240,8 +240,8 @@ export default function CampaignsPage() {
           onClick={() => setActiveTab('all')}
           sx={{
             px: 3, py: 1.5, cursor: 'pointer',
-            borderBottom: activeTab === 'all' ? '2px solid #4CAF50' : '2px solid transparent',
-            color: activeTab === 'all' ? '#4CAF50' : 'text.secondary',
+            borderBottom: activeTab === 'all' ? '2px solid #5E8F72' : '2px solid transparent',
+            color: activeTab === 'all' ? '#5E8F72' : 'text.secondary',
             fontFamily: '"TT Squares", sans-serif',
             fontWeight: 700, fontSize: '0.82rem',
             textTransform: 'uppercase', letterSpacing: '0.08em',
@@ -253,8 +253,8 @@ export default function CampaignsPage() {
           onClick={() => setActiveTab('pending')}
           sx={{
             px: 3, py: 1.5, cursor: 'pointer',
-            borderBottom: activeTab === 'pending' ? '2px solid #FFA726' : '2px solid transparent',
-            color: activeTab === 'pending' ? '#FFA726' : 'text.secondary',
+            borderBottom: activeTab === 'pending' ? '2px solid #D3A95C' : '2px solid transparent',
+            color: activeTab === 'pending' ? '#D3A95C' : 'text.secondary',
             fontFamily: '"TT Squares", sans-serif',
             fontWeight: 700, fontSize: '0.82rem',
             textTransform: 'uppercase', letterSpacing: '0.08em',
@@ -282,7 +282,7 @@ export default function CampaignsPage() {
               ),
             }}
             sx={{
-              '& .MuiInput-root': { color: 'text.primary', '&::before': { borderColor: B }, '&::after': { borderColor: '#4CAF50' } },
+              '& .MuiInput-root': { color: 'text.primary', '&::before': { borderColor: B }, '&::after': { borderColor: '#5E8F72' } },
               '& .MuiInputLabel-root': { color: 'text.secondary', fontSize: '0.8rem' },
             }}
           />
@@ -297,7 +297,7 @@ export default function CampaignsPage() {
             onChange={e => setStatusFilter(e.target.value)}
             fullWidth
             sx={{
-              '& .MuiInput-root': { color: 'text.primary', '&::before': { borderColor: B }, '&::after': { borderColor: '#4CAF50' } },
+              '& .MuiInput-root': { color: 'text.primary', '&::before': { borderColor: B }, '&::after': { borderColor: '#5E8F72' } },
               '& .MuiInputLabel-root': { color: 'text.secondary', fontSize: '0.8rem' },
             }}
           >
@@ -317,7 +317,7 @@ export default function CampaignsPage() {
             onChange={e => setCategoryFilter(e.target.value)}
             fullWidth
             sx={{
-              '& .MuiInput-root': { color: 'text.primary', '&::before': { borderColor: B }, '&::after': { borderColor: '#4CAF50' } },
+              '& .MuiInput-root': { color: 'text.primary', '&::before': { borderColor: B }, '&::after': { borderColor: '#5E8F72' } },
               '& .MuiInputLabel-root': { color: 'text.secondary', fontSize: '0.8rem' },
             }}
           >
@@ -348,7 +348,7 @@ export default function CampaignsPage() {
       </Box>
 
       {/* Pagination */}
-      {!loading && <PaginationBar pagination={pagination} accentColor="#4CAF50" />}
+      {!loading && <PaginationBar pagination={pagination} accentColor="#5E8F72" />}
 
       {/* Empty state */}
       {!loading && filtered.length === 0 && (

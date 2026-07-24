@@ -41,10 +41,10 @@ import type { Campaign } from '@ubuntu-fund/types'
 const STATUS_CONFIG: Record<string, { bg: string; color: string; icon: React.ReactNode; label: string }> = {
   [CampaignStatus.DRAFT]: { bg: 'rgba(0,0,0,0.06)', color: '#616161', icon: <DraftsIcon sx={{ fontSize: 14 }} />, label: 'Draft' },
   [CampaignStatus.PENDING_REVIEW]: { bg: 'rgba(255,167,38,0.1)', color: '#E65100', icon: <AccessTimeIcon sx={{ fontSize: 14 }} />, label: 'Pending' },
-  [CampaignStatus.ACTIVE]: { bg: 'rgba(46,125,50,0.08)', color: '#2E7D32', icon: <TrendingUpIcon sx={{ fontSize: 14 }} />, label: 'Active' },
+  [CampaignStatus.ACTIVE]: { bg: 'rgba(46, 61, 47,0.08)', color: '#2E3D2F', icon: <TrendingUpIcon sx={{ fontSize: 14 }} />, label: 'Active' },
   [CampaignStatus.FUNDED]: { bg: 'rgba(21,101,192,0.08)', color: '#1565C0', icon: <CheckCircleIcon sx={{ fontSize: 14 }} />, label: 'Funded' },
   [CampaignStatus.EXPIRED]: { bg: 'rgba(0,0,0,0.06)', color: '#9E9E9E', icon: <AccessTimeIcon sx={{ fontSize: 14 }} />, label: 'Expired' },
-  [CampaignStatus.BLOCKED]: { bg: 'rgba(239,83,80,0.08)', color: '#E53935', icon: <BlockIcon sx={{ fontSize: 14 }} />, label: 'Blocked' },
+  [CampaignStatus.BLOCKED]: { bg: 'rgba(165,67,47,0.08)', color: '#A5432F', icon: <BlockIcon sx={{ fontSize: 14 }} />, label: 'Blocked' },
 }
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
@@ -58,8 +58,8 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
 }
 
 const PRIORITY_CONFIG: Record<string, { color: string; label: string }> = {
-  [CampaignPriority.CRITICAL]: { color: '#EF5350', label: 'Critical' },
-  [CampaignPriority.URGENT]: { color: '#FFA726', label: 'Urgent' },
+  [CampaignPriority.CRITICAL]: { color: '#A5432F', label: 'Critical' },
+  [CampaignPriority.URGENT]: { color: '#B98A2E', label: 'Urgent' },
 }
 
 function daysLeft(end: Date) {
@@ -90,8 +90,8 @@ function KenteProgress({ pct }: { pct: number }) {
           width: `${pct}%`,
           borderRadius: SHAPE.bar,
           background: funded
-            ? 'linear-gradient(90deg, #2E7D32, #4CAF50, #66BB6A)'
-            : `repeating-linear-gradient(90deg, #2E7D32 0px, #2E7D32 6px, #F9A825 6px, #F9A825 12px, #8D6E63 12px, #8D6E63 18px, #1B5E20 18px, #1B5E20 24px)`,
+            ? 'linear-gradient(90deg, #2E3D2F, #2F6B46)'
+            : `repeating-linear-gradient(90deg, #2E3D2F 0px, #2E3D2F 6px, #C7A24A 6px, #C7A24A 12px, #8D6E63 12px, #8D6E63 18px, #1C261D 18px, #1C261D 24px)`,
           backgroundSize: funded ? '100%' : '24px 100%',
           transition: 'width 0.8s cubic-bezier(0.22, 1, 0.36, 1)',
         }}
@@ -128,10 +128,9 @@ function CampaignRow({
         overflow: 'hidden',
         border: '1px solid',
         borderColor: hovered ? 'primary.light' : 'rgba(0,0,0,0.06)',
-        transition: 'all 0.3s cubic-bezier(0.22, 1, 0.36, 1)',
-        transform: hovered ? 'translateY(-3px)' : 'none',
+        transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
         boxShadow: hovered
-          ? '0 12px 32px rgba(46,125,50,0.08), 0 4px 12px rgba(0,0,0,0.04)'
+          ? '0 4px 16px rgba(46, 61, 47,0.08)'
           : '0 1px 4px rgba(0,0,0,0.02)',
         position: 'relative',
         '&::after': {
@@ -154,7 +153,7 @@ function CampaignRow({
           flexShrink: 0,
           position: 'relative',
           overflow: 'hidden',
-          bgcolor: hasImage ? 'transparent' : 'rgba(46,125,50,0.06)',
+          bgcolor: hasImage ? 'transparent' : 'rgba(46, 61, 47,0.06)',
         }}
       >
         {hasImage ? (
@@ -189,9 +188,8 @@ function CampaignRow({
             display: 'flex',
             alignItems: 'center',
             gap: 0.5,
-            bgcolor: statusCfg.bg,
+            bgcolor: 'rgba(242,239,234,0.92)',
             color: statusCfg.color,
-            backdropFilter: 'blur(8px)',
             borderRadius: SHAPE.sm,
             px: 1,
             py: 0.25,
@@ -315,7 +313,7 @@ function CampaignRow({
                 component={RouterLink}
                 to={`/campaigns/${campaign.id}`}
                 size="small"
-                sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main', bgcolor: 'rgba(46,125,50,0.06)' } }}
+                sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main', bgcolor: 'rgba(46, 61, 47,0.06)' } }}
               >
                 <VisibilityRoundedIcon sx={{ fontSize: 18 }} />
               </IconButton>
@@ -325,7 +323,7 @@ function CampaignRow({
                 component={RouterLink}
                 to={`/campaigns/${campaign.id}`}
                 size="small"
-                sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main', bgcolor: 'rgba(46,125,50,0.06)' } }}
+                sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main', bgcolor: 'rgba(46, 61, 47,0.06)' } }}
               >
                 <EditRoundedIcon sx={{ fontSize: 18 }} />
               </IconButton>
@@ -334,7 +332,7 @@ function CampaignRow({
               <IconButton
                 size="small"
                 onClick={onShare}
-                sx={{ color: 'text.secondary', '&:hover': { color: '#F9A825', bgcolor: 'rgba(249,168,37,0.06)' } }}
+                sx={{ color: 'text.secondary', '&:hover': { color: '#C7A24A', bgcolor: 'rgba(199, 162, 74,0.06)' } }}
               >
                 <ShareRoundedIcon sx={{ fontSize: 18 }} />
               </IconButton>
@@ -417,10 +415,10 @@ export function MyCampaignsPage() {
     <Container maxWidth="lg" sx={{ py: 4 }}>
       {/* Summary stats */}
       <Box sx={{ display: 'flex', gap: 2, mb: 4, flexWrap: 'wrap' }}>
-        <StatCard label="Total Raised" value={`$${(totalRaised / 1000).toFixed(0)}k+`} color="#2E7D32" icon={<TrendingUpIcon />} />
-        <StatCard label="Active" value={activeCampaigns} color="#F9A825" icon={<CampaignIcon />} />
+        <StatCard label="Total Raised" value={`$${(totalRaised / 1000).toFixed(0)}k+`} color="#2E3D2F" icon={<TrendingUpIcon />} />
+        <StatCard label="Active" value={activeCampaigns} color="#C7A24A" icon={<CampaignIcon />} />
         <StatCard label="Donors" value={totalDonors} color="#1565C0" icon={<PeopleIcon />} />
-        <StatCard label="Funded" value={fundedCampaigns} color="#7B1FA2" icon={<CheckCircleIcon />} />
+        <StatCard label="Funded" value={fundedCampaigns} color="#8B6F4E" icon={<CheckCircleIcon />} />
       </Box>
 
       {/* Tabs + Create button */}
@@ -440,7 +438,7 @@ export function MyCampaignsPage() {
             '& .MuiTabs-indicator': {
               height: 3,
               borderRadius: SHAPE.bar,
-              background: `repeating-linear-gradient(90deg, #2E7D32 0px, #2E7D32 6px, #F9A825 6px, #F9A825 12px, #8D6E63 12px, #8D6E63 18px)`,
+              background: `repeating-linear-gradient(90deg, #2E3D2F 0px, #2E3D2F 6px, #C7A24A 6px, #C7A24A 12px, #8D6E63 12px, #8D6E63 18px)`,
             },
           }}
         >
@@ -485,7 +483,7 @@ export function MyCampaignsPage() {
             px: 3,
             fontWeight: 700,
             textTransform: 'none',
-            boxShadow: '0 2px 12px rgba(46,125,50,0.25)',
+            boxShadow: '0 2px 12px rgba(46, 61, 47,0.25)',
           }}
         >
           New Campaign

@@ -14,7 +14,7 @@ const testimonials = [
     role: 'Campaign Creator',
     location: 'Lagos, Nigeria',
     avatar: 'A',
-    avatarColor: '#2E7D32',
+    avatarColor: '#2E3D2F',
     rating: 5,
     quote:
       'UbuntuFund helped me raise funds for my daughter\'s surgery in just two weeks. The trust verification gave our donors confidence, and the M-Pesa integration made receiving funds seamless.',
@@ -34,7 +34,7 @@ const testimonials = [
     role: 'NGO Director',
     location: 'Dakar, Senegal',
     avatar: 'F',
-    avatarColor: '#F57F17',
+    avatarColor: '#A07E33',
     rating: 5,
     quote:
       'Our organization raised over $50,000 for clean water projects through UbuntuFund. The escrow system and milestone tracking gave our international partners full confidence in the process.',
@@ -98,7 +98,7 @@ function TestimonialsSection() {
                   <FormatQuoteIcon
                     sx={{
                       fontSize: 40,
-                      color: 'rgba(46, 125, 50, 0.15)',
+                      color: 'rgba(46, 61, 47, 0.15)',
                       mb: 1,
                     }}
                   />

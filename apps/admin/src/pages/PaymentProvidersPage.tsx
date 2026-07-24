@@ -42,11 +42,11 @@ const fadeSlide = keyframes`
 const B = 'rgba(255,255,255,0.06)'
 
 const TYPE_COLORS: Record<PaymentProvider['type'], string> = {
-  mobile_money: '#4CAF50',
-  card: '#42A5F5',
-  bank: '#FFA726',
+  mobile_money: '#5E8F72',
+  card: '#74909A',
+  bank: '#D3A95C',
   crypto: '#FF7043',
-  wallet: '#4CAF50',
+  wallet: '#5E8F72',
 }
 
 const TYPE_LABELS: Record<PaymentProvider['type'], string> = {
@@ -144,7 +144,7 @@ export default function PaymentProvidersPage() {
       <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 4, flexWrap: 'wrap', gap: 2 }}>
         <Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
-            <AccountBalanceRoundedIcon sx={{ color: '#4CAF50', fontSize: 28 }} />
+            <AccountBalanceRoundedIcon sx={{ color: '#5E8F72', fontSize: 28 }} />
             <Typography variant="h4" sx={{ fontWeight: 800 }}>
               Payment Providers
             </Typography>
@@ -170,10 +170,10 @@ export default function PaymentProvidersPage() {
         }}
       >
         {[
-          { label: 'Total Providers', value: stats.total, color: '#42A5F5' },
-          { label: 'Active', value: stats.active, color: '#4CAF50' },
-          { label: 'Inactive', value: stats.inactive, color: '#EF5350' },
-          { label: 'Default', value: stats.default, color: '#FFA726' },
+          { label: 'Total Providers', value: stats.total, color: '#74909A' },
+          { label: 'Active', value: stats.active, color: '#5E8F72' },
+          { label: 'Inactive', value: stats.inactive, color: '#C06B58' },
+          { label: 'Default', value: stats.default, color: '#D3A95C' },
         ].map((stat) => (
           <Box
             key={stat.label}
@@ -221,12 +221,11 @@ export default function PaymentProvidersPage() {
                 animation: `${fadeSlide} 0.4s ease ${index * 0.06}s both`,
                 transition: 'border-color 0.3s ease, box-shadow 0.3s ease',
                 border: '1px solid',
-                borderColor: provider.enabled ? 'divider' : 'rgba(239,83,80,0.2)',
+                borderColor: provider.enabled ? 'divider' : 'rgba(192,107,88,0.2)',
                 opacity: provider.enabled ? 1 : 0.6,
                 '&:hover': {
                   borderColor: `${color}40`,
-                  boxShadow: `0 0 24px ${color}12`,
-                  transform: 'translateY(-3px)',
+                  boxShadow: `0 2px 10px ${color}18`,
                 },
               }}
             >
@@ -317,7 +316,7 @@ export default function PaymentProvidersPage() {
                       fontWeight: 700,
                       fontSize: '0.65rem',
                       bgcolor: provider.enabled ? 'rgba(76,175,80,0.15)' : 'rgba(255,255,255,0.04)',
-                      color: provider.enabled ? '#4CAF50' : 'text.secondary',
+                      color: provider.enabled ? '#5E8F72' : 'text.secondary',
                     }}
                   />
                 </Box>
@@ -346,7 +345,7 @@ export default function PaymentProvidersPage() {
                       <IconButton
                         size="small"
                         onClick={() => setEditTarget(provider)}
-                        sx={{ color: 'text.secondary', '&:hover': { color: '#4CAF50', bgcolor: 'rgba(76,175,80,0.08)' } }}
+                        sx={{ color: 'text.secondary', '&:hover': { color: '#5E8F72', bgcolor: 'rgba(76,175,80,0.08)' } }}
                       >
                         <EditRoundedIcon sx={{ fontSize: 16 }} />
                       </IconButton>
@@ -359,7 +358,7 @@ export default function PaymentProvidersPage() {
                           onClick={() => setDeleteTarget(provider)}
                           sx={{
                             color: 'text.secondary',
-                            '&:hover': { color: '#EF5350', bgcolor: 'rgba(239,83,80,0.08)' },
+                            '&:hover': { color: '#C06B58', bgcolor: 'rgba(192,107,88,0.08)' },
                             '&.Mui-disabled': { color: 'rgba(255,255,255,0.08)' },
                           }}
                         >
@@ -405,13 +404,13 @@ export default function PaymentProvidersPage() {
                 width: 32,
                 height: 32,
                 borderRadius: '8px',
-                bgcolor: 'rgba(239,83,80,0.12)',
+                bgcolor: 'rgba(192,107,88,0.12)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <DeleteRoundedIcon sx={{ fontSize: 18, color: '#EF5350' }} />
+              <DeleteRoundedIcon sx={{ fontSize: 18, color: '#C06B58' }} />
             </Box>
             <Typography sx={{ fontWeight: 800, fontSize: '1.05rem' }}>Delete Provider</Typography>
           </Box>
@@ -429,7 +428,7 @@ export default function PaymentProvidersPage() {
           <Button
             variant="contained"
             onClick={handleDelete}
-            sx={{ bgcolor: '#EF5350', '&:hover': { bgcolor: '#D32F2F' } }}
+            sx={{ bgcolor: '#C06B58', '&:hover': { bgcolor: '#A5432F' } }}
           >
             Delete Provider
           </Button>

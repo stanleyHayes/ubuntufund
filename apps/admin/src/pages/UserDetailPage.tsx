@@ -24,9 +24,9 @@ function Skel({ w, h }: { w?: string | number; h?: number }) {
 }
 
 const roleColors: Record<string, string> = {
-  [UserRole.ADMIN]: '#EF5350',
+  [UserRole.ADMIN]: '#C06B58',
   [UserRole.ORGANIZATION]: '#AB47BC',
-  [UserRole.USER]: '#42A5F5',
+  [UserRole.USER]: '#74909A',
 }
 
 const verificationSteps = [
@@ -38,9 +38,9 @@ const verificationSteps = [
 ]
 
 function trustColor(score: number): string {
-  if (score >= 70) return '#4CAF50'
-  if (score >= 40) return '#FF9800'
-  return '#EF5350'
+  if (score >= 70) return '#5E8F72'
+  if (score >= 40) return '#D3A95C'
+  return '#C06B58'
 }
 
 export default function UserDetailPage() {
@@ -109,14 +109,14 @@ export default function UserDetailPage() {
     )
   }
 
-  const roleColor = roleColors[user.role] || '#42A5F5'
+  const roleColor = roleColors[user.role] || '#74909A'
   const initials = user.name.split(' ').map(n => n[0]).join('')
 
   const statCells = [
     { label: 'Name / Role', value: user.name, sub: user.role.toUpperCase(), accent: roleColor },
     { label: 'Trust Score', value: String(user.trustScore), sub: user.trustScore >= 70 ? 'trusted' : user.trustScore >= 40 ? 'moderate' : 'low', accent: trustColor(user.trustScore) },
     { label: 'Campaigns', value: String(userCampaigns.length), sub: 'created', accent: '#AB47BC' },
-    { label: 'Donations', value: String(userDonations.length), sub: 'made', accent: '#42A5F5' },
+    { label: 'Donations', value: String(userDonations.length), sub: 'made', accent: '#74909A' },
   ]
 
   return (
@@ -217,11 +217,11 @@ export default function UserDetailPage() {
                     textAlign: 'center',
                     borderRight: i < verificationSteps.length - 1 ? `1px solid ${B}` : 'none',
                     p: 1,
-                    bgcolor: filled ? 'rgba(76,175,80,0.1)' : 'transparent',
-                    borderTop: filled ? '2px solid rgba(76,175,80,0.4)' : `2px solid ${B}`,
+                    bgcolor: filled ? 'rgba(94,143,114,0.1)' : 'transparent',
+                    borderTop: filled ? '2px solid rgba(94,143,114,0.4)' : `2px solid ${B}`,
                   }}
                 >
-                  <Typography sx={{ fontSize: '0.65rem', color: filled ? '#4CAF50' : '#6B6B80', fontWeight: filled ? 600 : 400 }}>
+                  <Typography sx={{ fontSize: '0.65rem', color: filled ? '#5E8F72' : '#6B6B80', fontWeight: filled ? 600 : 400 }}>
                     {step.label}
                   </Typography>
                 </Box>
@@ -242,9 +242,9 @@ export default function UserDetailPage() {
               fullWidth
               startIcon={<VerifiedUserIcon />}
               sx={{
-                color: '#4CAF50', borderColor: '#4CAF50',
+                color: '#5E8F72', borderColor: '#5E8F72',
                 fontFamily: '"TT Squares", sans-serif', textTransform: 'none',
-                '&:hover': { borderColor: '#4CAF50', bgcolor: 'rgba(76,175,80,0.08)' },
+                '&:hover': { borderColor: '#5E8F72', bgcolor: 'rgba(94,143,114,0.08)' },
               }}
             >
               Verify User
@@ -256,9 +256,9 @@ export default function UserDetailPage() {
               fullWidth
               startIcon={<PauseCircleOutlineIcon />}
               sx={{
-                color: '#FF9800', borderColor: '#FF9800',
+                color: '#D3A95C', borderColor: '#D3A95C',
                 fontFamily: '"TT Squares", sans-serif', textTransform: 'none',
-                '&:hover': { borderColor: '#FF9800', bgcolor: 'rgba(255,152,0,0.08)' },
+                '&:hover': { borderColor: '#D3A95C', bgcolor: 'rgba(211,169,92,0.08)' },
               }}
             >
               Suspend
@@ -270,9 +270,9 @@ export default function UserDetailPage() {
               fullWidth
               startIcon={<BlockIcon />}
               sx={{
-                color: '#EF5350', borderColor: '#EF5350',
+                color: '#C06B58', borderColor: '#C06B58',
                 fontFamily: '"TT Squares", sans-serif', textTransform: 'none',
-                '&:hover': { borderColor: '#EF5350', bgcolor: 'rgba(239,83,80,0.08)' },
+                '&:hover': { borderColor: '#C06B58', bgcolor: 'rgba(192,107,88,0.08)' },
               }}
             >
               Ban
@@ -357,8 +357,8 @@ export default function UserDetailPage() {
                     p: 2,
                     borderRight: `1px solid ${B}`,
                     borderBottom: `1px solid ${B}`,
-                    borderTop: '2px solid rgba(66,165,245,0.25)',
-                    borderLeft: '2px solid rgba(66,165,245,0.25)',
+                    borderTop: '2px solid rgba(116,144,154,0.25)',
+                    borderLeft: '2px solid rgba(116,144,154,0.25)',
                     animation: `${slideIn} 0.4s ease ${0.35 + i * 0.04}s both`,
                     transition: 'background 0.2s',
                     '&:hover': { bgcolor: 'rgba(255,255,255,0.02)' },

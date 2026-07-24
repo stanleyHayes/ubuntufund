@@ -35,17 +35,17 @@ const B = 'rgba(255,255,255,0.06)'
 // ---------------------------------------------------------------------------
 const tierColors: Record<SubscriptionTier, string> = {
   [SubscriptionTier.FREE]: '#78909C',
-  [SubscriptionTier.STARTER]: '#42A5F5',
+  [SubscriptionTier.STARTER]: '#74909A',
   [SubscriptionTier.PRO]: '#AB47BC',
-  [SubscriptionTier.ENTERPRISE]: '#F9A825',
+  [SubscriptionTier.ENTERPRISE]: '#C7A24A',
 }
 
 const statusColors: Record<SubscriptionStatus, string> = {
-  [SubscriptionStatus.ACTIVE]: '#4CAF50',
+  [SubscriptionStatus.ACTIVE]: '#5E8F72',
   [SubscriptionStatus.EXPIRED]: '#78909C',
-  [SubscriptionStatus.CANCELLED]: '#EF5350',
-  [SubscriptionStatus.PAST_DUE]: '#FFA726',
-  [SubscriptionStatus.TRIALING]: '#42A5F5',
+  [SubscriptionStatus.CANCELLED]: '#C06B58',
+  [SubscriptionStatus.PAST_DUE]: '#D3A95C',
+  [SubscriptionStatus.TRIALING]: '#74909A',
 }
 
 // ---------------------------------------------------------------------------
@@ -279,8 +279,8 @@ function SubscriptionRow({ sub, index }: { sub: MockSubscription; index: number 
             onClick={() => navigate(`/users/${sub.userId}`)}
             sx={{
               minWidth: 0, px: 1, py: 0.3, fontSize: '0.65rem', fontWeight: 700,
-              color: '#42A5F5', borderColor: 'rgba(66,165,245,0.3)', textTransform: 'none',
-              border: '1px solid', '&:hover': { bgcolor: 'rgba(66,165,245,0.08)' },
+              color: '#74909A', borderColor: 'rgba(116,144,154,0.3)', textTransform: 'none',
+              border: '1px solid', '&:hover': { bgcolor: 'rgba(116,144,154,0.08)' },
             }}
           >
             <VisibilityIcon sx={{ fontSize: 13, mr: 0.3 }} />
@@ -304,8 +304,8 @@ function SubscriptionRow({ sub, index }: { sub: MockSubscription; index: number 
               size="small"
               sx={{
                 minWidth: 0, px: 1, py: 0.3, fontSize: '0.65rem', fontWeight: 700,
-                color: '#EF5350', borderColor: 'rgba(239,83,80,0.3)', textTransform: 'none',
-                border: '1px solid', '&:hover': { bgcolor: 'rgba(239,83,80,0.08)' },
+                color: '#C06B58', borderColor: 'rgba(192,107,88,0.3)', textTransform: 'none',
+                border: '1px solid', '&:hover': { bgcolor: 'rgba(192,107,88,0.08)' },
               }}
             >
               <CancelIcon sx={{ fontSize: 13, mr: 0.3 }} />
@@ -357,8 +357,8 @@ export default function SubscriptionsPage() {
         gridTemplateColumns: { xs: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' },
         borderBottom: `1px solid ${B}`,
       }}>
-        <StatCard label="Total Subscribers" value={String(totalSubscribers)} icon={<PeopleIcon />} color="#42A5F5" index={0} />
-        <StatCard label="Monthly Revenue" value={`$${monthlyRevenue.toFixed(0)}`} icon={<AttachMoneyIcon />} color="#4CAF50" index={1} />
+        <StatCard label="Total Subscribers" value={String(totalSubscribers)} icon={<PeopleIcon />} color="#74909A" index={0} />
+        <StatCard label="Monthly Revenue" value={`$${monthlyRevenue.toFixed(0)}`} icon={<AttachMoneyIcon />} color="#5E8F72" index={1} />
         <StatCard label="Free Users" value={String(freeUsers)} icon={<PersonOffIcon />} color="#78909C" index={2} />
         <StatCard label="Paid Users" value={String(paidUsers)} icon={<StarIcon />} color="#AB47BC" index={3} />
       </Box>

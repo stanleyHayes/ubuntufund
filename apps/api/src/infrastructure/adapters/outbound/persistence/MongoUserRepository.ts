@@ -61,6 +61,7 @@ export class MongoUserRepository implements UserRepositoryPort {
         role: plain.role,
         verificationLevel: plain.verificationLevel,
         trustScore: plain.trustScore.value,
+        passwordHash: plain.passwordHash,
         country: plain.country,
         emailVerified: plain.emailVerified,
       },

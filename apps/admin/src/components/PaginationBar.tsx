@@ -14,7 +14,7 @@ interface PaginationBarProps {
   accentColor?: string
 }
 
-export default function PaginationBar({ pagination, accentColor = '#4CAF50' }: PaginationBarProps) {
+export default function PaginationBar({ pagination, accentColor = '#5E8F72' }: PaginationBarProps) {
   const { currentPage, totalPages, rangeLabel, hasNext, hasPrev, goToPage, nextPage, prevPage, pageSize, setPageSize } = pagination
 
   if (pagination.totalItems === 0) return null

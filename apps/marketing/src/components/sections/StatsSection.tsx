@@ -4,10 +4,10 @@ import Typography from '@mui/material/Typography'
 import Grid from '@mui/material/Grid'
 
 const stats = [
-  { value: '$10M+', label: 'Raised on Platform', color: '#2E7D32' },
-  { value: '50K+', label: 'Campaigns Created', color: '#F9A825' },
-  { value: '30+', label: 'African Countries', color: '#2E7D32' },
-  { value: '99%', label: 'Trust Rate', color: '#F9A825' },
+  { value: '$10M+', label: 'Raised on Platform', color: '#2E3D2F' },
+  { value: '50K+', label: 'Campaigns Created', color: '#C7A24A' },
+  { value: '30+', label: 'African Countries', color: '#2E3D2F' },
+  { value: '99%', label: 'Trust Rate', color: '#C7A24A' },
 ]
 
 function StatsSection() {

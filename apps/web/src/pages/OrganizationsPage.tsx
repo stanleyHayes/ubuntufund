@@ -121,7 +121,7 @@ export function OrganizationsPage() {
                 '&:hover': {
                   transform: 'translateY(-6px)',
                   borderColor: 'primary.light',
-                  boxShadow: '0 20px 40px rgba(46,125,50,0.12), 0 8px 16px rgba(0,0,0,0.06)',
+                  boxShadow: '0 20px 40px rgba(46, 61, 47,0.12), 0 8px 16px rgba(0,0,0,0.06)',
                 },
               }}
             >
@@ -129,7 +129,7 @@ export function OrganizationsPage() {
               <Box
                 sx={{
                   height: 100,
-                  background: 'linear-gradient(135deg, #2E7D32 0%, #4CAF50 50%, #1B5E20 100%)',
+                  background: 'linear-gradient(135deg, #2E3D2F 0%, #5E8F72 50%, #1C261D 100%)',
                   position: 'relative',
                 }}
               >

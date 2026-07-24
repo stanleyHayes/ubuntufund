@@ -42,7 +42,7 @@ const markerSwipe = keyframes`
 `
 
 // Squiggly underline
-const SQUIGGLE = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='6' viewBox='0 0 60 6'%3E%3Cpath d='M0,3 C5,0 10,6 15,3 C20,0 25,6 30,3 C35,0 40,6 45,3 C50,0 55,6 60,3' fill='none' stroke='%23F9A825' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E")`
+const SQUIGGLE = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='6' viewBox='0 0 60 6'%3E%3Cpath d='M0,3 C5,0 10,6 15,3 C20,0 25,6 30,3 C35,0 40,6 45,3 C50,0 55,6 60,3' fill='none' stroke='%23C7A24A' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E")`
 
 // ─── Constants ──────────────────────────────────────────────
 
@@ -57,9 +57,9 @@ const CATEGORY_LABELS: Record<string, { icon: React.ReactNode; label: string }> 
 }
 
 const PRIORITY_COLORS: Record<string, string> = {
-  critical: '#E53935',
-  urgent: '#F9A825',
-  normal: '#4CAF50',
+  critical: '#A5432F',
+  urgent: '#C7A24A',
+  normal: '#5E8F72',
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -189,7 +189,7 @@ export function ExplorePage() {
               <circle
                 key={i}
                 cx={d.cx} cy={d.cy} r={2}
-                fill={i % 2 === 0 ? '#4CAF50' : '#F9A825'}
+                fill={i % 2 === 0 ? '#5E8F72' : '#C7A24A'}
                 opacity={0}
                 style={{ animation: `${fadeIn} 0.5s ${1 + i * 0.15}s ease forwards` }}
               />
@@ -199,6 +199,7 @@ export function ExplorePage() {
 
         <Box sx={{ maxWidth: 1200, mx: 'auto', position: 'relative', zIndex: 1 }}>
           <Typography
+            component="h1"
             sx={{
               fontFamily: '"TT Squares", sans-serif',
               fontWeight: 900,
@@ -268,8 +269,8 @@ export function ExplorePage() {
                 borderRadius: 0,
                 bgcolor: '#fff',
                 '& fieldset': { borderColor: 'rgba(0,0,0,0.08)' },
-                '&:hover fieldset': { borderColor: 'rgba(46,125,50,0.3)' },
-                '&.Mui-focused fieldset': { borderColor: '#2E7D32', borderWidth: '1.5px' },
+                '&:hover fieldset': { borderColor: 'rgba(46, 61, 47,0.3)' },
+                '&.Mui-focused fieldset': { borderColor: '#2E3D2F', borderWidth: '1.5px' },
               },
             }}
             slotProps={{
@@ -296,7 +297,7 @@ export function ExplorePage() {
                 borderRadius: 0,
                 bgcolor: '#fff',
                 '& fieldset': { borderColor: 'rgba(0,0,0,0.08)' },
-                '&.Mui-focused fieldset': { borderColor: '#2E7D32' },
+                '&.Mui-focused fieldset': { borderColor: '#2E3D2F' },
               },
               '& .MuiInputLabel-root': { fontSize: '0.82rem' },
             }}
@@ -324,8 +325,8 @@ export function ExplorePage() {
                 py: 0.75,
                 border: '1px solid',
                 borderRadius: 5,
-                borderColor: !selectedCategory ? '#2E7D32' : 'rgba(0,0,0,0.08)',
-                bgcolor: !selectedCategory ? '#2E7D32' : 'transparent',
+                borderColor: !selectedCategory ? '#2E3D2F' : 'rgba(0,0,0,0.08)',
+                bgcolor: !selectedCategory ? '#2E3D2F' : 'transparent',
                 color: !selectedCategory ? '#fff' : 'rgba(0,0,0,0.6)',
                 fontSize: '0.78rem',
                 fontWeight: 600,
@@ -334,8 +335,8 @@ export function ExplorePage() {
                 transition: 'all 0.2s ease',
                 fontFamily: 'inherit',
                 '&:hover': {
-                  borderColor: !selectedCategory ? '#1B5E20' : 'rgba(46,125,50,0.3)',
-                  bgcolor: !selectedCategory ? '#1B5E20' : 'rgba(46,125,50,0.04)',
+                  borderColor: !selectedCategory ? '#1C261D' : 'rgba(46, 61, 47,0.3)',
+                  bgcolor: !selectedCategory ? '#1C261D' : 'rgba(46, 61, 47,0.04)',
                 },
               }}
             >
@@ -357,8 +358,8 @@ export function ExplorePage() {
                     py: 1,
                     border: '1px solid',
                     borderRadius: 5,
-                    borderColor: active ? '#2E7D32' : 'rgba(0,0,0,0.08)',
-                    bgcolor: active ? '#2E7D32' : 'transparent',
+                    borderColor: active ? '#2E3D2F' : 'rgba(0,0,0,0.08)',
+                    bgcolor: active ? '#2E3D2F' : 'transparent',
                     color: active ? '#fff' : 'rgba(0,0,0,0.6)',
                     fontSize: '0.78rem',
                     fontWeight: 600,
@@ -367,8 +368,8 @@ export function ExplorePage() {
                     transition: 'all 0.2s ease',
                     fontFamily: 'inherit',
                     '&:hover': {
-                      borderColor: active ? '#1B5E20' : 'rgba(46,125,50,0.3)',
-                      bgcolor: active ? '#1B5E20' : 'rgba(46,125,50,0.04)',
+                      borderColor: active ? '#1C261D' : 'rgba(46, 61, 47,0.3)',
+                      bgcolor: active ? '#1C261D' : 'rgba(46, 61, 47,0.04)',
                     },
                   }}
                 >
@@ -399,8 +400,8 @@ export function ExplorePage() {
                     px: 1.5,
                     py: 0.5,
                     border: '1px solid',
-                    borderColor: active ? '#2E7D32' : 'rgba(0,0,0,0.08)',
-                    bgcolor: active ? '#2E7D32' : 'transparent',
+                    borderColor: active ? '#2E3D2F' : 'rgba(0,0,0,0.08)',
+                    bgcolor: active ? '#2E3D2F' : 'transparent',
                     color: active ? '#fff' : 'rgba(0,0,0,0.6)',
                     fontSize: '0.78rem',
                     fontWeight: 600,
@@ -408,8 +409,8 @@ export function ExplorePage() {
                     transition: 'all 0.2s ease',
                     fontFamily: 'inherit',
                     '&:hover': {
-                      borderColor: active ? '#1B5E20' : 'rgba(46,125,50,0.3)',
-                      bgcolor: active ? '#1B5E20' : 'rgba(46,125,50,0.04)',
+                      borderColor: active ? '#1C261D' : 'rgba(46, 61, 47,0.3)',
+                      bgcolor: active ? '#1C261D' : 'rgba(46, 61, 47,0.04)',
                     },
                   }}
                 >
@@ -452,7 +453,7 @@ export function ExplorePage() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 0.5,
-                '&:hover': { borderColor: '#E53935', color: '#E53935' },
+                '&:hover': { borderColor: '#A5432F', color: '#A5432F' },
               }}
             >
               <CloseRoundedIcon sx={{ fontSize: 14 }} /> Clear filters
@@ -518,7 +519,7 @@ export function ExplorePage() {
                       left: 0,
                       right: 0,
                       height: 3,
-                      bgcolor: PRIORITY_COLORS[campaign.priority] || '#4CAF50',
+                      bgcolor: PRIORITY_COLORS[campaign.priority] || '#5E8F72',
                       opacity: 0.5,
                       transition: 'opacity 0.3s',
                       zIndex: 2,
@@ -562,8 +563,7 @@ export function ExplorePage() {
                         sx={{
                           px: 1,
                           py: 0.3,
-                          bgcolor: 'rgba(255,255,255,0.9)',
-                          backdropFilter: 'blur(4px)',
+                          bgcolor: 'rgba(255,255,255,0.95)',
                           fontSize: '0.7rem',
                           fontWeight: 700,
                         }}
@@ -578,7 +578,7 @@ export function ExplorePage() {
                         position: 'absolute',
                         bottom: 0,
                         right: 0,
-                        bgcolor: pct >= 100 ? '#4CAF50' : '#1a1a1a',
+                        bgcolor: pct >= 100 ? '#5E8F72' : '#1a1a1a',
                         color: '#fff',
                         px: 1.5,
                         py: 0.4,

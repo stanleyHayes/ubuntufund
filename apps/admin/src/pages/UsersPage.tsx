@@ -18,9 +18,9 @@ const slideIn = keyframes`from{opacity:0;transform:translateY(12px)}to{opacity:1
 const B = 'rgba(255,255,255,0.06)'
 
 const roleColors: Record<string, string> = {
-  [UserRole.ADMIN]: '#EF5350',
-  [UserRole.ORGANIZATION]: '#AB47BC',
-  [UserRole.USER]: '#42A5F5',
+  [UserRole.ADMIN]: '#C06B58',
+  [UserRole.ORGANIZATION]: '#DCC07E',
+  [UserRole.USER]: '#74909A',
 }
 
 const verificationLabels: Record<number, string> = {
@@ -83,8 +83,8 @@ function SkeletonCard({ index }: { index: number }) {
 
 function UserCard({ user, index }: { user: User; index: number }) {
   const navigate = useNavigate()
-  const roleColor = roleColors[user.role] || '#42A5F5'
-  const trustColor = user.trustScore >= 70 ? '#4CAF50' : user.trustScore >= 40 ? '#FFA726' : '#EF5350'
+  const roleColor = roleColors[user.role] || '#74909A'
+  const trustColor = user.trustScore >= 70 ? '#5E8F72' : user.trustScore >= 40 ? '#D3A95C' : '#C06B58'
 
   return (
     <Box
@@ -193,7 +193,7 @@ export default function UsersPage() {
     <Box sx={{ bgcolor: '#0c0c14', minHeight: '100vh', animation: `${fadeIn} 0.3s ease` }}>
       {/* Header */}
       <Box sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${B}`, display: 'flex', alignItems: 'center', gap: 1.5 }}>
-        <PeopleIcon sx={{ color: '#42A5F5', fontSize: 20 }} />
+        <PeopleIcon sx={{ color: '#8FAE96', fontSize: 20 }} />
         <Typography sx={{ fontFamily: '"TT Squares", sans-serif', fontWeight: 700, fontSize: '1.1rem', color: 'text.primary' }}>
           Users
         </Typography>
@@ -217,7 +217,7 @@ export default function UsersPage() {
               ),
             }}
             sx={{
-              '& .MuiInput-root': { color: 'text.primary', '&::before': { borderColor: B }, '&::after': { borderColor: '#4CAF50' } },
+              '& .MuiInput-root': { color: 'text.primary', '&::before': { borderColor: B }, '&::after': { borderColor: '#5E8F72' } },
               '& .MuiInputLabel-root': { color: 'text.secondary', fontSize: '0.8rem' },
             }}
           />
@@ -232,7 +232,7 @@ export default function UsersPage() {
             onChange={e => setRoleFilter(e.target.value)}
             fullWidth
             sx={{
-              '& .MuiInput-root': { color: 'text.primary', '&::before': { borderColor: B }, '&::after': { borderColor: '#4CAF50' } },
+              '& .MuiInput-root': { color: 'text.primary', '&::before': { borderColor: B }, '&::after': { borderColor: '#5E8F72' } },
               '& .MuiInputLabel-root': { color: 'text.secondary', fontSize: '0.8rem' },
             }}
           >
@@ -262,7 +262,7 @@ export default function UsersPage() {
         }
       </Box>
 
-      {!loading && <PaginationBar pagination={pagination} accentColor="#42A5F5" />}
+      {!loading && <PaginationBar pagination={pagination} accentColor="#8FAE96" />}
 
       {/* Empty state */}
       {!loading && filtered.length === 0 && (

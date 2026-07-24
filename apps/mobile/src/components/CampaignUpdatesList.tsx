@@ -7,7 +7,7 @@ import { brandColors } from '@/theme'
 
 const typeColors: Record<string, { text: string; bg: string }> = {
   milestone: { text: '#1565C0', bg: '#E3F2FD' },
-  general: { text: '#2E7D32', bg: '#E8F5E9' },
+  general: { text: '#2E3D2F', bg: '#E9EFE6' },
   thank_you: { text: '#C62828', bg: '#FFEBEE' },
   urgent: { text: '#EF6C00', bg: '#FFF3E0' },
 }

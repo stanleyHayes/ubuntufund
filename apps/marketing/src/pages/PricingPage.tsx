@@ -68,21 +68,21 @@ const FEATURE_SECTIONS: { title: string; rows: FeatureRow[] }[] = [
 
 const TIER_ACCENTS: Record<SubscriptionTier, { color: string; bg: string; gradient: string }> = {
   [SubscriptionTier.FREE]: { color: '#78909C', bg: 'rgba(120,144,156,0.05)', gradient: 'linear-gradient(135deg, #90A4AE, #78909C)' },
-  [SubscriptionTier.STARTER]: { color: '#1565C0', bg: 'rgba(21,101,192,0.04)', gradient: 'linear-gradient(135deg, #42A5F5, #1565C0)' },
-  [SubscriptionTier.PRO]: { color: '#2E7D32', bg: 'rgba(46,125,50,0.04)', gradient: 'linear-gradient(135deg, #66BB6A, #2E7D32)' },
+  [SubscriptionTier.STARTER]: { color: '#1565C0', bg: 'rgba(21,101,192,0.04)', gradient: 'linear-gradient(135deg, #74909A, #1565C0)' },
+  [SubscriptionTier.PRO]: { color: '#2E3D2F', bg: 'rgba(46, 61, 47,0.04)', gradient: 'linear-gradient(135deg, #A8B5A0, #2E3D2F)' },
   [SubscriptionTier.ENTERPRISE]: { color: '#6A1B9A', bg: 'rgba(106,27,154,0.04)', gradient: 'linear-gradient(135deg, #AB47BC, #6A1B9A)' },
 }
 
 function formatCellValue(value: unknown, format?: string): React.ReactNode {
   if (format === 'boolean') {
     return value ? (
-      <CheckRoundedIcon sx={{ fontSize: 18, color: '#2E7D32' }} />
+      <CheckRoundedIcon sx={{ fontSize: 18, color: '#2E3D2F' }} />
     ) : (
       <CloseRoundedIcon sx={{ fontSize: 18, color: 'rgba(0,0,0,0.12)' }} />
     )
   }
   if (typeof value === 'number') {
-    if (value === -1) return <Typography sx={{ fontSize: '0.82rem', fontWeight: 700, color: '#2E7D32' }}>Unlimited</Typography>
+    if (value === -1) return <Typography sx={{ fontSize: '0.82rem', fontWeight: 700, color: '#2E3D2F' }}>Unlimited</Typography>
     if (value === 0 && format === 'unlimited') return <CloseRoundedIcon sx={{ fontSize: 18, color: 'rgba(0,0,0,0.12)' }} />
     if (format === 'fee') return <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>{value}%</Typography>
     if (format === 'goal') return <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>${value.toLocaleString()}</Typography>
@@ -167,7 +167,7 @@ function PricingPage() {
                 >
                   {cycle === 'monthly' ? 'Monthly' : 'Yearly'}
                   {cycle === 'yearly' && (
-                    <Box component="span" sx={{ ml: 1, color: isActive ? '#66BB6A' : '#2E7D32', fontSize: '0.72rem', fontWeight: 800 }}>
+                    <Box component="span" sx={{ ml: 1, color: isActive ? '#A8B5A0' : '#2E3D2F', fontSize: '0.72rem', fontWeight: 800 }}>
                       Save 17%
                     </Box>
                   )}
@@ -223,8 +223,8 @@ function PricingPage() {
                       right: 12,
                       fontWeight: 700,
                       fontSize: '0.68rem',
-                      bgcolor: 'rgba(46,125,50,0.08)',
-                      color: '#2E7D32',
+                      bgcolor: 'rgba(46, 61, 47,0.08)',
+                      color: '#2E3D2F',
                     }}
                   />
                 )}
@@ -291,7 +291,7 @@ function PricingPage() {
                       fontWeight: 700,
                       textTransform: 'none',
                       py: 1.2,
-                      ...(isPro && { bgcolor: tc.color, '&:hover': { bgcolor: '#1B5E20' } }),
+                      ...(isPro && { bgcolor: tc.color, '&:hover': { bgcolor: '#1C261D' } }),
                     }}
                   >
                     {CTA_LABELS[tier]}

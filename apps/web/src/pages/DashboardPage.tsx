@@ -131,8 +131,8 @@ function StatCard({ icon, iconBg, iconColor, label, value, change, changePositiv
               height: 22,
               fontSize: '0.7rem',
               fontWeight: 700,
-              bgcolor: changePositive ? 'rgba(46,125,50,0.08)' : 'rgba(239,83,80,0.08)',
-              color: changePositive ? '#2E7D32' : '#E53935',
+              bgcolor: changePositive ? 'rgba(46, 61, 47,0.08)' : 'rgba(239,83,80,0.08)',
+              color: changePositive ? '#2E3D2F' : '#E53935',
               '& .MuiChip-label': { px: 1 },
             }}
           />
@@ -181,7 +181,7 @@ function CampaignRow({ campaign, index }: { campaign: Campaign; index: number })
         transition: 'all 0.35s cubic-bezier(0.22,1,0.36,1)',
         animation: `${fadeInUp} 0.5s ${0.1 * index + 0.3}s ease both`,
         transform: hovered ? 'translateY(-3px)' : 'none',
-        boxShadow: hovered ? '0 12px 32px rgba(46,125,50,0.08)' : 'none',
+        boxShadow: hovered ? '0 12px 32px rgba(46, 61, 47,0.08)' : 'none',
       }}
     >
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
@@ -194,7 +194,7 @@ function CampaignRow({ campaign, index }: { campaign: Campaign; index: number })
                 height: 24,
                 fontSize: '0.72rem',
                 fontWeight: 600,
-                bgcolor: 'rgba(46,125,50,0.06)',
+                bgcolor: 'rgba(46, 61, 47,0.06)',
                 color: 'primary.dark',
               }}
             />
@@ -289,7 +289,7 @@ function CampaignRow({ campaign, index }: { campaign: Campaign; index: number })
             bgcolor: 'rgba(0,0,0,0.04)',
             '& .MuiLinearProgress-bar': {
               borderRadius: SHAPE.bar,
-              bgcolor: '#2E7D32',
+              bgcolor: '#2E3D2F',
             },
           }}
         />
@@ -330,7 +330,7 @@ function CampaignRow({ campaign, index }: { campaign: Campaign; index: number })
             fontWeight: 600,
             textTransform: 'none',
             color: 'primary.main',
-            '&:hover': { bgcolor: 'rgba(46,125,50,0.06)' },
+            '&:hover': { bgcolor: 'rgba(46, 61, 47,0.06)' },
           }}
         >
           View Details
@@ -367,15 +367,15 @@ function DonationFeed({ donations }: { donations: UserDonation[] }) {
             height: 22,
             fontSize: '0.65rem',
             fontWeight: 700,
-            bgcolor: 'rgba(46,125,50,0.08)',
-            color: '#2E7D32',
+            bgcolor: 'rgba(46, 61, 47,0.08)',
+            color: '#2E3D2F',
             '& .MuiChip-label': { px: 1 },
             '&::before': {
               content: '""',
               width: 6,
               height: 6,
               borderRadius: '50%',
-              bgcolor: '#2E7D32',
+              bgcolor: '#2E3D2F',
               display: 'inline-block',
               mr: 0.5,
               opacity: 0.8,
@@ -406,8 +406,8 @@ function DonationFeed({ donations }: { donations: UserDonation[] }) {
                 height: 34,
                 fontSize: '0.7rem',
                 fontWeight: 700,
-                bgcolor: 'rgba(46,125,50,0.1)',
-                color: '#2E7D32',
+                bgcolor: 'rgba(46, 61, 47,0.1)',
+                color: '#2E3D2F',
               }}
             >
               {d.campaignName?.[0] ?? 'D'}
@@ -454,7 +454,7 @@ function DonationFeed({ donations }: { donations: UserDonation[] }) {
 
 function QuickActions() {
   const actions = [
-    { icon: <AddRoundedIcon />, label: 'New Campaign', to: '/campaigns/new', color: '#2E7D32', bg: 'rgba(46,125,50,0.08)' },
+    { icon: <AddRoundedIcon />, label: 'New Campaign', to: '/campaigns/new', color: '#2E3D2F', bg: 'rgba(46, 61, 47,0.08)' },
     { icon: <PeopleRoundedIcon />, label: 'Invite Friends', to: '#', color: '#1565C0', bg: 'rgba(21,101,192,0.08)' },
     { icon: <VolunteerActivismRoundedIcon />, label: 'My Donations', to: '#', color: '#AD1457', bg: 'rgba(173,20,87,0.08)' },
   ]
@@ -528,7 +528,7 @@ export function DashboardPage() {
   const recentDonations = donations.slice(0, 5)
 
   return (
-    <Box sx={{ bgcolor: '#FAFAF5', minHeight: '100vh' }}>
+    <Box sx={{ bgcolor: '#F2EFEA', minHeight: '100vh' }}>
       {/* Hero header */}
       <Box
         sx={{
@@ -573,7 +573,7 @@ export function DashboardPage() {
                 }}
               >
                 {getGreeting()},{' '}
-                <Box component="span" sx={{ color: '#4CAF50' }}>
+                <Box component="span" sx={{ color: '#5E8F72' }}>
                   {displayName}
                 </Box>
               </Typography>
@@ -594,7 +594,7 @@ export function DashboardPage() {
                 textTransform: 'none',
                 px: 3,
                 py: 1.2,
-                background: 'linear-gradient(135deg, #4CAF50, #2E7D32)',
+                background: 'linear-gradient(135deg, #5E8F72, #2E3D2F)',
                 boxShadow: '0 4px 16px rgba(76,175,80,0.3)',
                 '&:hover': {
                   boxShadow: '0 6px 24px rgba(76,175,80,0.4)',
@@ -615,8 +615,8 @@ export function DashboardPage() {
           <Grid size={{ xs: 6, md: 3 }}>
             <StatCard
               icon={<TrendingUpRoundedIcon sx={{ fontSize: 22 }} />}
-              iconBg="rgba(46,125,50,0.08)"
-              iconColor="#2E7D32"
+              iconBg="rgba(46, 61, 47,0.08)"
+              iconColor="#2E3D2F"
               label="Total Raised"
               value={formatCurrency(campaigns.reduce((s, c) => s + c.raisedAmount, 0), 'USD')}
               delay={0.05}
@@ -635,8 +635,8 @@ export function DashboardPage() {
           <Grid size={{ xs: 6, md: 3 }}>
             <StatCard
               icon={<VolunteerActivismRoundedIcon sx={{ fontSize: 22 }} />}
-              iconBg="rgba(249,168,37,0.08)"
-              iconColor="#F57F17"
+              iconBg="rgba(199, 162, 74,0.08)"
+              iconColor="#A07E33"
               label="Donations Received"
               value={String(donations.length)}
               delay={0.15}

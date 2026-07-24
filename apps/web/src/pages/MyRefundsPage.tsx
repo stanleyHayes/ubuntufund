@@ -35,7 +35,7 @@ interface Refund {
 const STATUS_CONFIG: Record<string, { bg: string; color: string }> = {
   pending: { bg: 'rgba(255,167,38,0.1)', color: '#E65100' },
   processing: { bg: 'rgba(21,101,192,0.08)', color: '#1565C0' },
-  completed: { bg: 'rgba(46,125,50,0.08)', color: '#2E7D32' },
+  completed: { bg: 'rgba(46, 61, 47,0.08)', color: '#2E3D2F' },
   failed: { bg: 'rgba(239,83,80,0.08)', color: '#E53935' },
 }
 
@@ -56,14 +56,14 @@ export function MyRefundsPage() {
 
   if (isLoading) {
     return (
-      <Box sx={{ bgcolor: '#FAFAF5', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <Box sx={{ bgcolor: '#F2EFEA', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <CircularProgress />
       </Box>
     )
   }
 
   return (
-    <Box sx={{ bgcolor: '#FAFAF5', minHeight: '100vh', py: 5 }}>
+    <Box sx={{ bgcolor: '#F2EFEA', minHeight: '100vh', py: 5 }}>
       <Container maxWidth="lg">
         <Button
           component={RouterLink}

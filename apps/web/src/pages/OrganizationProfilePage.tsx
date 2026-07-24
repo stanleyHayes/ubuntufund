@@ -329,9 +329,9 @@ export function OrganizationProfilePage() {
         <Card
           sx={{
             mb: 4,
-            background: 'linear-gradient(135deg, rgba(46,125,50,0.06) 0%, rgba(249,168,37,0.06) 100%)',
+            background: 'linear-gradient(135deg, rgba(46, 61, 47,0.06) 0%, rgba(199, 162, 74,0.06) 100%)',
             border: '1px solid',
-            borderColor: 'rgba(46,125,50,0.15)',
+            borderColor: 'rgba(46, 61, 47,0.15)',
             animation: `${fadeInUp} 0.6s ease-out 0.3s both`,
           }}
         >

@@ -7,6 +7,26 @@ export interface AuthenticatedRequest extends Request {
   userRole?: string;
 }
 
+/**
+ * Populates req.userId/userRole when a valid Bearer token is present, but
+ * never rejects — for public routes whose responses differ for owners.
+ */
+export function createOptionalAuthMiddleware(tokenService: AuthTokenService) {
+  return (req: AuthenticatedRequest, _res: Response, next: NextFunction): void => {
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith('Bearer ')) {
+      try {
+        const payload = tokenService.verifyAccessToken(authHeader.substring(7));
+        req.userId = payload.userId;
+        req.userRole = payload.role;
+      } catch {
+        // Invalid token on an optional-auth route: treat as anonymous.
+      }
+    }
+    next();
+  };
+}
+
 export function createAuthMiddleware(tokenService: AuthTokenService) {
   return (req: AuthenticatedRequest, _res: Response, next: NextFunction): void => {
     const authHeader = req.headers.authorization;

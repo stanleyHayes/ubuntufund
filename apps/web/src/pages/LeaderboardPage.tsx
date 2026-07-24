@@ -33,9 +33,7 @@ import { keyframes } from '@mui/material/styles'
 import { useLeaderboard } from '@/hooks/useLeaderboard'
 import type { LeaderboardEntry, Period, Category } from '@/hooks/useLeaderboard'
 
-const RANK_MEDALS = ['\u{1F947}', '\u{1F948}', '\u{1F949}']
-
-const RANK_COLORS = ['#FFD700', '#C0C0C0', '#CD7F32']
+const RANK_COLORS = ['#C7A24A', '#C0C0C0', '#CD7F32']
 
 type SortMode = 'donations' | 'amount'
 
@@ -44,11 +42,6 @@ type SortMode = 'donations' | 'amount'
 const fadeSlideIn = keyframes`
   from { opacity: 0; transform: translateY(16px); }
   to   { opacity: 1; transform: translateY(0); }
-`
-
-const pulse = keyframes`
-  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.4); }
-  50% { box-shadow: 0 0 0 12px rgba(255, 215, 0, 0); }
 `
 
 const float = keyframes`
@@ -84,7 +77,7 @@ const PIONEER_BADGES: Badge[] = [
     name: 'Trailblazer',
     description: 'Started the very first campaign on Ubuntu Fund',
     icon: <RocketLaunchRounded />,
-    color: '#FFD700',
+    color: '#C7A24A',
     bgSolid: '#FFA000',
     rarity: 'legendary',
   },
@@ -114,8 +107,8 @@ const DONATION_LEVEL_BADGES: Badge[] = [
     name: 'Supporter',
     description: '5+ donations made',
     icon: <FavoriteRounded />,
-    color: '#66BB6A',
-    bgSolid: '#43A047',
+    color: '#2F6B46',
+    bgSolid: '#2F6B46',
     rarity: 'common',
   },
   {
@@ -123,7 +116,7 @@ const DONATION_LEVEL_BADGES: Badge[] = [
     name: 'Champion',
     description: '25+ donations or $500+ donated',
     icon: <WorkspacePremiumRounded />,
-    color: '#42A5F5',
+    color: '#4A6B75',
     bgSolid: '#1E88E5',
     rarity: 'rare',
   },
@@ -133,7 +126,7 @@ const DONATION_LEVEL_BADGES: Badge[] = [
     description: '100+ donations or $2,500+ donated',
     icon: <MilitaryTechRounded />,
     color: '#AB47BC',
-    bgSolid: '#7B1FA2',
+    bgSolid: '#8B6F4E',
     rarity: 'epic',
   },
   {
@@ -141,7 +134,7 @@ const DONATION_LEVEL_BADGES: Badge[] = [
     name: 'Legend',
     description: '500+ donations or $10,000+ donated',
     icon: <DiamondRounded />,
-    color: '#FFD700',
+    color: '#C7A24A',
     bgSolid: '#FF6F00',
     rarity: 'legendary',
   },
@@ -150,17 +143,17 @@ const DONATION_LEVEL_BADGES: Badge[] = [
     name: 'On Fire',
     description: 'Donated 7 days in a row',
     icon: <LocalFireDepartmentRounded />,
-    color: '#FF5722',
+    color: '#B98A2E',
     bgSolid: '#F44336',
     rarity: 'rare',
   },
 ]
 
 const RARITY_LABELS: Record<string, { label: string; color: string }> = {
-  legendary: { label: 'Legendary', color: '#FFD700' },
+  legendary: { label: 'Legendary', color: '#C7A24A' },
   epic: { label: 'Epic', color: '#AB47BC' },
-  rare: { label: 'Rare', color: '#42A5F5' },
-  common: { label: 'Common', color: '#66BB6A' },
+  rare: { label: 'Rare', color: '#4A6B75' },
+  common: { label: 'Common', color: '#2F6B46' },
 }
 
 // ─── Period & Category Config ───────────────────────────────────────────────
@@ -259,12 +252,11 @@ function BadgeCard({ badge, delay = 0 }: { badge: Badge; delay?: number }) {
           borderRadius: 3,
           bgcolor: `${badge.color}06`,
           animation: `${fadeSlideIn} 0.5s ease ${delay}s both`,
-          transition: 'all 0.3s ease',
+          transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
           cursor: 'default',
           '&:hover': {
-            transform: 'translateY(-4px)',
             borderColor: `${badge.color}60`,
-            boxShadow: `0 8px 24px ${badge.color}20`,
+            boxShadow: `0 2px 12px ${badge.color}20`,
           },
         }}
       >
@@ -329,11 +321,11 @@ function LeaderboardEmptyState() {
         {/* Floating decorative elements */}
         <Box sx={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
           {[
-            { top: '10%', left: '8%', delay: '0s', size: 32, color: '#FFD700' },
+            { top: '10%', left: '8%', delay: '0s', size: 32, color: '#C7A24A' },
             { top: '20%', right: '12%', delay: '1s', size: 24, color: '#E040FB' },
-            { bottom: '25%', left: '15%', delay: '2s', size: 20, color: '#42A5F5' },
-            { bottom: '15%', right: '8%', delay: '0.5s', size: 28, color: '#66BB6A' },
-            { top: '40%', left: '5%', delay: '1.5s', size: 16, color: '#FF9800' },
+            { bottom: '25%', left: '15%', delay: '2s', size: 20, color: '#4A6B75' },
+            { bottom: '15%', right: '8%', delay: '0.5s', size: 28, color: '#2F6B46' },
+            { top: '40%', left: '5%', delay: '1.5s', size: 16, color: '#B98A2E' },
             { top: '35%', right: '5%', delay: '2.5s', size: 22, color: '#00E5FF' },
           ].map((star, i) => (
             <Box
@@ -373,7 +365,7 @@ function LeaderboardEmptyState() {
         >
           <EmojiEventsRounded sx={{ fontSize: 56, color: '#FF8F00' }} />
           <Box sx={{ position: 'absolute', top: -4, right: -4, animation: `${sparkle} 2s ease-in-out 0.5s infinite` }}>
-            <AutoAwesomeRounded sx={{ fontSize: 20, color: '#FFD700' }} />
+            <AutoAwesomeRounded sx={{ fontSize: 20, color: '#C7A24A' }} />
           </Box>
           <Box sx={{ position: 'absolute', bottom: 4, left: -8, animation: `${sparkle} 2s ease-in-out 1s infinite` }}>
             <AutoAwesomeRounded sx={{ fontSize: 16, color: '#FFA000' }} />
@@ -435,10 +427,9 @@ function LeaderboardEmptyState() {
               bgcolor: '#FFB300',
               boxShadow: '0 4px 20px rgba(255, 143, 0, 0.35)',
               '&:hover': {
-                boxShadow: '0 6px 28px rgba(255, 143, 0, 0.5)',
-                transform: 'translateY(-2px)',
+                boxShadow: '0 6px 20px rgba(255, 143, 0, 0.4)',
               },
-              transition: 'all 0.2s ease',
+              transition: 'box-shadow 0.2s ease, background-color 0.2s ease',
             }}
           >
             Start a Campaign
@@ -461,9 +452,8 @@ function LeaderboardEmptyState() {
               '&:hover': {
                 borderColor: '#FFB300',
                 bgcolor: 'rgba(255,179,0,0.04)',
-                transform: 'translateY(-2px)',
               },
-              transition: 'all 0.2s ease',
+              transition: 'background-color 0.2s ease, border-color 0.2s ease',
             }}
           >
             Explore Campaigns
@@ -475,7 +465,7 @@ function LeaderboardEmptyState() {
       <Box sx={{ animation: `${fadeSlideIn} 0.5s ease 0.2s both` }}>
         <Box sx={{ textAlign: 'center', mb: 4 }}>
           <Chip
-            icon={<AutoAwesomeRounded sx={{ fontSize: '16px !important', color: '#FFD700 !important' }} />}
+            icon={<AutoAwesomeRounded sx={{ fontSize: '16px !important', color: '#C7A24A !important' }} />}
             label="BADGE HIERARCHY"
             sx={{
               fontWeight: 800,
@@ -512,7 +502,7 @@ function LeaderboardEmptyState() {
           <Box sx={{ textAlign: 'center', mb: 1 }}>
             <Typography sx={{
               fontSize: '0.6rem', fontWeight: 800, letterSpacing: 2, textTransform: 'uppercase',
-              color: '#FFD700', mb: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1,
+              color: '#C7A24A', mb: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1,
             }}>
               <Box sx={{ width: 20, height: 1, bgcolor: 'rgba(255,215,0,0.3)' }} />
               Legendary
@@ -564,7 +554,7 @@ function LeaderboardEmptyState() {
           <Box sx={{ textAlign: 'center', mb: 1 }}>
             <Typography sx={{
               fontSize: '0.6rem', fontWeight: 800, letterSpacing: 2, textTransform: 'uppercase',
-              color: '#42A5F5', mb: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1,
+              color: '#4A6B75', mb: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1,
             }}>
               <Box sx={{ width: 40, height: 1, bgcolor: 'rgba(66,165,245,0.2)' }} />
               Rare
@@ -590,7 +580,7 @@ function LeaderboardEmptyState() {
           <Box sx={{ textAlign: 'center' }}>
             <Typography sx={{
               fontSize: '0.6rem', fontWeight: 800, letterSpacing: 2, textTransform: 'uppercase',
-              color: '#66BB6A', mb: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1,
+              color: '#2F6B46', mb: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1,
             }}>
               <Box sx={{ width: 50, height: 1, bgcolor: 'rgba(102,187,106,0.2)' }} />
               Common
@@ -767,19 +757,15 @@ export function LeaderboardPage() {
                       position: 'relative',
                       overflow: 'visible',
                       animation: `${fadeSlideIn} 0.5s ease-out ${i * 0.15}s both`,
-                      ...(i === 0 && {
-                        animation: `${fadeSlideIn} 0.5s ease-out both, ${pulse} 2s ease-in-out infinite`,
-                        transform: 'scale(1.05)',
-                      }),
-                      transition: 'transform 0.25s ease, box-shadow 0.25s ease',
+                      ...(i === 0 && { transform: 'scale(1.05)' }),
+                      transition: 'box-shadow 0.2s ease, border-color 0.2s ease',
                       '&:hover': {
-                        transform: i === 0 ? 'scale(1.08)' : 'scale(1.03)',
-                        boxShadow: `0 8px 32px ${RANK_COLORS[i]}44`,
+                        boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
                       },
                     }}
                   >
                     <Box sx={{ position: 'absolute', top: -18, left: '50%', transform: 'translateX(-50%)', fontSize: 36, lineHeight: 1 }}>
-                      {RANK_MEDALS[i]}
+                      <EmojiEventsRounded sx={{ fontSize: 36, color: RANK_COLORS[i] }} />
                     </Box>
                     <CardContent sx={{ pt: 4 }}>
                       <Avatar
@@ -861,12 +847,12 @@ export function LeaderboardPage() {
                               fontWeight: 700,
                               height: 22,
                               bgcolor: entry.userRole === 'organization' ? 'rgba(66,165,245,0.1)' : 'rgba(102,187,106,0.1)',
-                              color: entry.userRole === 'organization' ? '#1E88E5' : '#43A047',
+                              color: entry.userRole === 'organization' ? '#1E88E5' : '#2F6B46',
                             }}
                           />
                         </Box>
                         <Typography variant="body2" sx={{ fontWeight: 700, textAlign: 'right' }}>{(entry.donationCount ?? entry.campaignsSupported).toLocaleString()}</Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 700, textAlign: 'right', color: '#2E7D32' }}>
+                        <Typography variant="body2" sx={{ fontWeight: 700, textAlign: 'right', color: '#2E3D2F' }}>
                           {entry.currency} {entry.totalDonated.toLocaleString()}
                         </Typography>
                       </Box>

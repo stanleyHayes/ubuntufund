@@ -38,8 +38,8 @@ const TRUST_LEVEL_CONFIG: Record<number, TrustLevelConfig> = {
   4: {
     label: 'Level 4',
     tooltip: 'Community vouched and fully verified',
-    color: '#1B5E20',
-    backgroundColor: '#E8F5E9',
+    color: '#1C261D',
+    backgroundColor: '#E9EFE6',
   },
 }
 

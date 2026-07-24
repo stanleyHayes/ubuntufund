@@ -4,46 +4,53 @@ import Typography from '@mui/material/Typography'
 import Grid from '@mui/material/Grid'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
+import LocalHospitalIcon from '@mui/icons-material/LocalHospital'
+import SchoolIcon from '@mui/icons-material/School'
+import WarningAmberIcon from '@mui/icons-material/WarningAmber'
+import BusinessCenterIcon from '@mui/icons-material/BusinessCenter'
+import HolidayVillageIcon from '@mui/icons-material/HolidayVillage'
+import ChurchIcon from '@mui/icons-material/Church'
+import PaletteIcon from '@mui/icons-material/Palette'
 
 const campaignTypes = [
   {
-    emoji: '🏥',
+    icon: LocalHospitalIcon,
     title: 'Medical',
     description: 'Healthcare costs, surgeries, treatments, and medical emergencies.',
-    gradient: 'linear-gradient(135deg, #E53935, #EF5350)',
+    gradient: 'linear-gradient(135deg, #A5432F, #C06B58)',
   },
   {
-    emoji: '🎓',
+    icon: SchoolIcon,
     title: 'Education',
     description: 'School fees, scholarships, learning materials, and university funding.',
-    gradient: 'linear-gradient(135deg, #1565C0, #42A5F5)',
+    gradient: 'linear-gradient(135deg, #4A6B75, #74909A)',
   },
   {
-    emoji: '🚨',
+    icon: WarningAmberIcon,
     title: 'Emergency',
     description: 'Disaster relief, urgent needs, and crisis response for communities.',
-    gradient: 'linear-gradient(135deg, #E65100, #FF9800)',
+    gradient: 'linear-gradient(135deg, #B98A2E, #D3A95C)',
   },
   {
-    emoji: '💼',
+    icon: BusinessCenterIcon,
     title: 'Business',
     description: 'Startups, small businesses, cooperatives, and entrepreneurial ventures.',
-    gradient: 'linear-gradient(135deg, #2E7D32, #4CAF50)',
+    gradient: 'linear-gradient(135deg, #2E3D2F, #5E8F72)',
   },
   {
-    emoji: '🏘️',
+    icon: HolidayVillageIcon,
     title: 'Community',
     description: 'Infrastructure, clean water, sanitation, and community development projects.',
     gradient: 'linear-gradient(135deg, #6A1B9A, #AB47BC)',
   },
   {
-    emoji: '⛪',
+    icon: ChurchIcon,
     title: 'Religious',
     description: 'Places of worship, religious events, missions, and faith-based initiatives.',
     gradient: 'linear-gradient(135deg, #4E342E, #8D6E63)',
   },
   {
-    emoji: '🎨',
+    icon: PaletteIcon,
     title: 'Creative',
     description: 'Arts, music, film, cultural projects, and creative endeavors across Africa.',
     gradient: 'linear-gradient(135deg, #AD1457, #EC407A)',
@@ -55,7 +62,7 @@ function CampaignTypesSection() {
     <Box
       sx={{
         py: { xs: 8, md: 12 },
-        backgroundColor: '#FAFAF5',
+        backgroundColor: '#F2EFEA',
       }}
     >
       <Container maxWidth="lg">
@@ -94,15 +101,11 @@ function CampaignTypesSection() {
                   height: '100%',
                   textAlign: 'center',
                   cursor: 'pointer',
-                  transition: 'all 0.3s ease',
+                  transition: 'background-color 0.2s ease, box-shadow 0.2s ease',
                   border: '1px solid',
                   borderColor: 'divider',
                   '&:hover': {
-                    transform: 'translateY(-6px)',
-                    boxShadow: '0 12px 30px rgba(0,0,0,0.12)',
-                    '& .campaign-type-icon': {
-                      transform: 'scale(1.1)',
-                    },
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
                   },
                 }}
                 elevation={0}
@@ -120,11 +123,9 @@ function CampaignTypesSection() {
                       justifyContent: 'center',
                       mx: 'auto',
                       mb: 2,
-                      fontSize: '2rem',
-                      transition: 'transform 0.3s ease',
                     }}
                   >
-                    {type.emoji}
+                    <type.icon sx={{ fontSize: '2rem', color: '#fff' }} />
                   </Box>
                   <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, fontSize: '1rem' }}>
                     {type.title}

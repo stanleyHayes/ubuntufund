@@ -195,7 +195,7 @@ export function SettingsPage() {
   }
 
   return (
-    <Box sx={{ bgcolor: '#FAFAF5', minHeight: '100vh', py: 5 }}>
+    <Box sx={{ bgcolor: '#F2EFEA', minHeight: '100vh', py: 5 }}>
       <Container maxWidth="md">
         <Typography
           sx={{

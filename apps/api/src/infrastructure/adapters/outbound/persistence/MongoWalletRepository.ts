@@ -54,4 +54,31 @@ export class MongoWalletRepository implements WalletRepositoryPort {
     }
     return toDomain(doc);
   }
+
+  async depositAtomic(walletId: string, userId: string, amount: Money): Promise<WalletEntity | null> {
+    const doc = await WalletModel.findOneAndUpdate(
+      { _id: walletId, userId, currency: amount.currency },
+      { $inc: { balance: amount.amount } },
+      { new: true }
+    );
+    return doc ? toDomain(doc) : null;
+  }
+
+  async withdrawIfSufficient(
+    walletId: string,
+    userId: string,
+    amount: Money
+  ): Promise<WalletEntity | null> {
+    const doc = await WalletModel.findOneAndUpdate(
+      {
+        _id: walletId,
+        userId,
+        currency: amount.currency,
+        balance: { $gte: amount.amount },
+      },
+      { $inc: { balance: -amount.amount } },
+      { new: true }
+    );
+    return doc ? toDomain(doc) : null;
+  }
 }

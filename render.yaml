@@ -1,0 +1,25 @@
+# Render Blueprint — free-tier deployment of the UbuntuFund API.
+# Apply at https://dashboard.render.com/blueprints (New > Blueprint) after
+# connecting the GitHub repo. MongoDB is not offered on Render's free tier:
+# create a free MongoDB Atlas M0 cluster and paste its URI into MONGODB_URI.
+services:
+  - type: web
+    name: ubuntu-fund-api
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start -w @ubuntu-fund/api
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false # paste your Atlas connection string in the dashboard
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: CORS_ORIGINS
+        # comma-separated browser origins allowed to call the API
+        value: https://ubuntufund.vercel.app

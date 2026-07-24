@@ -50,8 +50,8 @@ const bloomIn = keyframes`
 `
 
 // Squiggly line SVGs
-const SQUIGGLE_GOLD = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='6' viewBox='0 0 60 6'%3E%3Cpath d='M0,3 C5,0 10,6 15,3 C20,0 25,6 30,3 C35,0 40,6 45,3 C50,0 55,6 60,3' fill='none' stroke='%23F9A825' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E")`
-const SQUIGGLE_GREEN = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='6' viewBox='0 0 60 6'%3E%3Cpath d='M0,3 C5,0 10,6 15,3 C20,0 25,6 30,3 C35,0 40,6 45,3 C50,0 55,6 60,3' fill='none' stroke='%232E7D32' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E")`
+const SQUIGGLE_GOLD = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='6' viewBox='0 0 60 6'%3E%3Cpath d='M0,3 C5,0 10,6 15,3 C20,0 25,6 30,3 C35,0 40,6 45,3 C50,0 55,6 60,3' fill='none' stroke='%23C7A24A' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E")`
+const SQUIGGLE_GREEN = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='6' viewBox='0 0 60 6'%3E%3Cpath d='M0,3 C5,0 10,6 15,3 C20,0 25,6 30,3 C35,0 40,6 45,3 C50,0 55,6 60,3' fill='none' stroke='%232E3D2F' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E")`
 
 // ─── Team Data ──────────────────────────────────────────────
 
@@ -65,11 +65,11 @@ interface TeamMember {
 }
 
 const teamMembers: TeamMember[] = [
-  { name: 'Amara Osei', role: 'Co-Founder & CEO', initials: 'AO', color: '#2E7D32', bio: 'Visionary leader passionate about democratizing giving across Africa.', doodleType: 'star' },
+  { name: 'Amara Osei', role: 'Co-Founder & CEO', initials: 'AO', color: '#2E3D2F', bio: 'Visionary leader passionate about democratizing giving across Africa.', doodleType: 'star' },
   { name: 'Kwame Mensah', role: 'Co-Founder & CTO', initials: 'KM', color: '#1565C0', bio: 'Architect of the trust infrastructure powering transparent donations.', doodleType: 'circle' },
   { name: 'Fatima Diallo', role: 'Head of Community', initials: 'FD', color: '#6A1B9A', bio: 'Building bridges between donors and communities across 15 countries.', doodleType: 'heart' },
   { name: 'David Okoro', role: 'Head of Trust & Safety', initials: 'DO', color: '#C62828', bio: 'Guardian of platform integrity with a zero-tolerance fraud policy.', doodleType: 'diamond' },
-  { name: 'Nalini Patel', role: 'Head of Partnerships', initials: 'NP', color: '#F57F17', bio: 'Forging alliances with NGOs, governments, and corporate partners.', doodleType: 'leaf' },
+  { name: 'Nalini Patel', role: 'Head of Partnerships', initials: 'NP', color: '#A07E33', bio: 'Forging alliances with NGOs, governments, and corporate partners.', doodleType: 'leaf' },
   { name: 'Samuel Adeyemi', role: 'Head of Engineering', initials: 'SA', color: '#00695C', bio: 'Leading the team building scalable, secure fintech for Africa.', doodleType: 'wave' },
 ]
 
@@ -85,12 +85,12 @@ const DOODLE_PATHS: Record<string, string> = {
 // ─── Floating doodle elements for backgrounds ───────────────
 
 const FLOAT_SHAPES = [
-  { d: DOODLE_PATHS.star, x: '8%', y: '15%', size: 1.2, delay: 0, color: '#4CAF50' },
-  { d: DOODLE_PATHS.heart, x: '92%', y: '25%', size: 1, delay: 1, color: '#F9A825' },
-  { d: DOODLE_PATHS.leaf, x: '15%', y: '75%', size: 0.8, delay: 2, color: '#66BB6A' },
-  { d: DOODLE_PATHS.circle, x: '85%', y: '70%', size: 1.1, delay: 0.5, color: '#F9A825' },
-  { d: DOODLE_PATHS.diamond, x: '50%', y: '10%', size: 0.9, delay: 1.5, color: '#4CAF50' },
-  { d: DOODLE_PATHS.wave, x: '75%', y: '85%', size: 1, delay: 3, color: '#81C784' },
+  { d: DOODLE_PATHS.star, x: '8%', y: '15%', size: 1.2, delay: 0, color: '#5E8F72' },
+  { d: DOODLE_PATHS.heart, x: '92%', y: '25%', size: 1, delay: 1, color: '#C7A24A' },
+  { d: DOODLE_PATHS.leaf, x: '15%', y: '75%', size: 0.8, delay: 2, color: '#A8B5A0' },
+  { d: DOODLE_PATHS.circle, x: '85%', y: '70%', size: 1.1, delay: 0.5, color: '#C7A24A' },
+  { d: DOODLE_PATHS.diamond, x: '50%', y: '10%', size: 0.9, delay: 1.5, color: '#5E8F72' },
+  { d: DOODLE_PATHS.wave, x: '75%', y: '85%', size: 1, delay: 3, color: '#A8B5A0' },
 ]
 
 // ─── Page ───────────────────────────────────────────────────
@@ -113,7 +113,7 @@ function AboutPage() {
       >
         {/* Watercolor glow blobs */}
         <Box sx={{ position: 'absolute', width: 350, height: 350, borderRadius: '50%', background: 'radial-gradient(circle, rgba(76,175,80,0.12) 0%, transparent 70%)', top: '10%', left: '15%', filter: 'blur(50px)', animation: `${breathe} 8s ease-in-out infinite` }} />
-        <Box sx={{ position: 'absolute', width: 280, height: 280, borderRadius: '50%', background: 'radial-gradient(circle, rgba(249,168,37,0.08) 0%, transparent 70%)', bottom: '10%', right: '20%', filter: 'blur(40px)', animation: `${breathe} 10s 2s ease-in-out infinite` }} />
+        <Box sx={{ position: 'absolute', width: 280, height: 280, borderRadius: '50%', background: 'radial-gradient(circle, rgba(199, 162, 74,0.08) 0%, transparent 70%)', bottom: '10%', right: '20%', filter: 'blur(40px)', animation: `${breathe} 10s 2s ease-in-out infinite` }} />
 
         {/* Animated SVG doodles */}
         <Box sx={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
@@ -123,7 +123,7 @@ function AboutPage() {
               'M80,60 C160,10 280,90 400,40 C520,-10 640,70 760,30',
               'M0,150 C120,100 240,180 360,120 C480,60 600,140 720,100',
             ].map((d, i) => (
-              <path key={i} d={d} fill="none" stroke={i === 0 ? 'rgba(76,175,80,0.08)' : 'rgba(249,168,37,0.06)'} strokeWidth="1.5" strokeLinecap="round" strokeDasharray="800" strokeDashoffset="800" style={{ animation: `${drawPath} 4s ${i * 0.8}s ease forwards` }} />
+              <path key={i} d={d} fill="none" stroke={i === 0 ? 'rgba(76,175,80,0.08)' : 'rgba(199, 162, 74,0.06)'} strokeWidth="1.5" strokeLinecap="round" strokeDasharray="800" strokeDashoffset="800" style={{ animation: `${drawPath} 4s ${i * 0.8}s ease forwards` }} />
             ))}
             {/* Scattered sparkles */}
             {[
@@ -131,8 +131,8 @@ function AboutPage() {
               { x: 250, y: 130 }, { x: 550, y: 110 }, { x: 800, y: 60 },
             ].map((s, i) => (
               <g key={i} transform={`translate(${s.x},${s.y})`} style={{ animation: `${sparkle} ${2.5 + i * 0.3}s ${i * 0.4}s ease-in-out infinite` }}>
-                <line x1={0} y1={-4} x2={0} y2={4} stroke={i % 2 === 0 ? '#4CAF50' : '#F9A825'} strokeWidth="1" strokeLinecap="round" />
-                <line x1={-4} y1={0} x2={4} y2={0} stroke={i % 2 === 0 ? '#4CAF50' : '#F9A825'} strokeWidth="1" strokeLinecap="round" />
+                <line x1={0} y1={-4} x2={0} y2={4} stroke={i % 2 === 0 ? '#5E8F72' : '#C7A24A'} strokeWidth="1" strokeLinecap="round" />
+                <line x1={-4} y1={0} x2={4} y2={0} stroke={i % 2 === 0 ? '#5E8F72' : '#C7A24A'} strokeWidth="1" strokeLinecap="round" />
               </g>
             ))}
           </svg>
@@ -219,17 +219,17 @@ function AboutPage() {
             position: 'relative',
             overflow: 'hidden',
             animation: `${fadeInUp} 0.6s ease`,
-            '&::before': { content: '""', position: 'absolute', top: 0, left: 0, right: 0, height: 3, bgcolor: '#2E7D32', opacity: 0.4 },
+            '&::before': { content: '""', position: 'absolute', top: 0, left: 0, right: 0, height: 3, bgcolor: '#2E3D2F', opacity: 0.4 },
           }}
         >
           {/* Doodle icon */}
           <Box sx={{ mb: 3 }}>
             <svg width="48" height="48" viewBox="0 0 48 48">
-              <circle cx="24" cy="24" r="20" fill="none" stroke="#2E7D32" strokeWidth="2" strokeLinecap="round" strokeDasharray="200" strokeDashoffset="200" style={{ animation: `${drawPath} 1.2s 0.3s ease forwards` }} />
-              <path d="M16,24 L22,30 L32,18" fill="none" stroke="#2E7D32" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="40" strokeDashoffset="40" style={{ animation: `${drawPath} 0.6s 1.2s ease forwards` }} />
+              <circle cx="24" cy="24" r="20" fill="none" stroke="#2E3D2F" strokeWidth="2" strokeLinecap="round" strokeDasharray="200" strokeDashoffset="200" style={{ animation: `${drawPath} 1.2s 0.3s ease forwards` }} />
+              <path d="M16,24 L22,30 L32,18" fill="none" stroke="#2E3D2F" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="40" strokeDashoffset="40" style={{ animation: `${drawPath} 0.6s 1.2s ease forwards` }} />
             </svg>
           </Box>
-          <Typography sx={{ fontSize: '0.65rem', color: '#F9A825', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 700, mb: 1 }}>
+          <Typography sx={{ fontSize: '0.65rem', color: '#C7A24A', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 700, mb: 1 }}>
             Our Mission
           </Typography>
           <Typography sx={{ fontFamily: '"TT Squares", sans-serif', fontWeight: 900, fontSize: '1.5rem', color: '#1a1a1a', mb: 2, lineHeight: 1.2 }}>
@@ -240,7 +240,7 @@ function AboutPage() {
           </Typography>
           {/* Faint doodle in corner */}
           <Box sx={{ position: 'absolute', bottom: 16, right: 16, opacity: 0.04, animation: `${sway} 6s ease-in-out infinite` }}>
-            <svg width="50" height="50" viewBox="-12 -12 24 24"><path d={DOODLE_PATHS.star} fill="none" stroke="#2E7D32" strokeWidth="1.5" strokeLinecap="round" /></svg>
+            <svg width="50" height="50" viewBox="-12 -12 24 24"><path d={DOODLE_PATHS.star} fill="none" stroke="#2E3D2F" strokeWidth="1.5" strokeLinecap="round" /></svg>
           </Box>
         </Box>
 
@@ -252,17 +252,17 @@ function AboutPage() {
             position: 'relative',
             overflow: 'hidden',
             animation: `${fadeInUp} 0.6s 0.1s ease both`,
-            '&::before': { content: '""', position: 'absolute', top: 0, left: 0, right: 0, height: 3, bgcolor: '#F9A825', opacity: 0.4 },
+            '&::before': { content: '""', position: 'absolute', top: 0, left: 0, right: 0, height: 3, bgcolor: '#C7A24A', opacity: 0.4 },
           }}
         >
           <Box sx={{ mb: 3 }}>
             <svg width="48" height="48" viewBox="0 0 48 48">
-              <path d="M12,36 L24,12 L36,36" fill="none" stroke="#F9A825" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="80" strokeDashoffset="80" style={{ animation: `${drawPath} 1s 0.5s ease forwards` }} />
-              <circle cx="24" cy="16" r="4" fill="none" stroke="#F9A825" strokeWidth="2" strokeDasharray="30" strokeDashoffset="30" style={{ animation: `${drawPath} 0.6s 1.3s ease forwards` }} />
-              <line x1="18" y1="28" x2="30" y2="28" stroke="#F9A825" strokeWidth="2" strokeLinecap="round" strokeDasharray="20" strokeDashoffset="20" style={{ animation: `${drawPath} 0.4s 1.6s ease forwards` }} />
+              <path d="M12,36 L24,12 L36,36" fill="none" stroke="#C7A24A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="80" strokeDashoffset="80" style={{ animation: `${drawPath} 1s 0.5s ease forwards` }} />
+              <circle cx="24" cy="16" r="4" fill="none" stroke="#C7A24A" strokeWidth="2" strokeDasharray="30" strokeDashoffset="30" style={{ animation: `${drawPath} 0.6s 1.3s ease forwards` }} />
+              <line x1="18" y1="28" x2="30" y2="28" stroke="#C7A24A" strokeWidth="2" strokeLinecap="round" strokeDasharray="20" strokeDashoffset="20" style={{ animation: `${drawPath} 0.4s 1.6s ease forwards` }} />
             </svg>
           </Box>
-          <Typography sx={{ fontSize: '0.65rem', color: '#F9A825', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 700, mb: 1 }}>
+          <Typography sx={{ fontSize: '0.65rem', color: '#C7A24A', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 700, mb: 1 }}>
             Our Vision
           </Typography>
           <Typography sx={{ fontFamily: '"TT Squares", sans-serif', fontWeight: 900, fontSize: '1.5rem', color: '#1a1a1a', mb: 2, lineHeight: 1.2 }}>
@@ -272,7 +272,7 @@ function AboutPage() {
             We envision a future where geographic and economic barriers no longer prevent communities from accessing the resources they need. By 2030, we aim to facilitate over $1 billion in donations across 54 African nations.
           </Typography>
           <Box sx={{ position: 'absolute', bottom: 16, right: 16, opacity: 0.04, animation: `${sway} 7s 1s ease-in-out infinite` }}>
-            <svg width="50" height="50" viewBox="-12 -12 24 24"><path d={DOODLE_PATHS.diamond} fill="none" stroke="#F9A825" strokeWidth="1.5" strokeLinecap="round" /></svg>
+            <svg width="50" height="50" viewBox="-12 -12 24 24"><path d={DOODLE_PATHS.diamond} fill="none" stroke="#C7A24A" strokeWidth="1.5" strokeLinecap="round" /></svg>
           </Box>
         </Box>
       </Box>
@@ -295,15 +295,15 @@ function AboutPage() {
         <Box sx={{ position: 'absolute', inset: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', pointerEvents: 'none' }}>
           <svg width="300" height="400" viewBox="0 0 300 400" style={{ opacity: 0.06 }}>
             {/* Trunk */}
-            <path d="M150,380 C148,340 152,300 150,260 C149,230 151,200 150,170" fill="none" stroke="#4CAF50" strokeWidth="3" strokeLinecap="round" strokeDasharray="400" strokeDashoffset="400" style={{ animation: `${drawPath} 3s ease forwards` }} />
+            <path d="M150,380 C148,340 152,300 150,260 C149,230 151,200 150,170" fill="none" stroke="#5E8F72" strokeWidth="3" strokeLinecap="round" strokeDasharray="400" strokeDashoffset="400" style={{ animation: `${drawPath} 3s ease forwards` }} />
             {/* Roots */}
-            <path d="M150,380 C130,395 100,400 80,398" fill="none" stroke="#4CAF50" strokeWidth="2" strokeLinecap="round" strokeDasharray="100" strokeDashoffset="100" style={{ animation: `${drawPath} 1.5s ease forwards` }} />
-            <path d="M150,380 C170,395 200,400 220,398" fill="none" stroke="#4CAF50" strokeWidth="2" strokeLinecap="round" strokeDasharray="100" strokeDashoffset="100" style={{ animation: `${drawPath} 1.5s 0.2s ease forwards` }} />
+            <path d="M150,380 C130,395 100,400 80,398" fill="none" stroke="#5E8F72" strokeWidth="2" strokeLinecap="round" strokeDasharray="100" strokeDashoffset="100" style={{ animation: `${drawPath} 1.5s ease forwards` }} />
+            <path d="M150,380 C170,395 200,400 220,398" fill="none" stroke="#5E8F72" strokeWidth="2" strokeLinecap="round" strokeDasharray="100" strokeDashoffset="100" style={{ animation: `${drawPath} 1.5s 0.2s ease forwards` }} />
             {/* Branches */}
-            <path d="M150,260 C120,240 90,235 65,230" fill="none" stroke="#4CAF50" strokeWidth="2" strokeLinecap="round" strokeDasharray="100" strokeDashoffset="100" style={{ animation: `${drawPath} 1.5s 1.5s ease forwards` }} />
-            <path d="M150,240 C180,220 210,218 235,215" fill="none" stroke="#4CAF50" strokeWidth="2" strokeLinecap="round" strokeDasharray="100" strokeDashoffset="100" style={{ animation: `${drawPath} 1.5s 1.8s ease forwards` }} />
-            <path d="M150,210 C125,195 100,190 80,188" fill="none" stroke="#4CAF50" strokeWidth="2" strokeLinecap="round" strokeDasharray="100" strokeDashoffset="100" style={{ animation: `${drawPath} 1.5s 2s ease forwards` }} />
-            <path d="M150,190 C175,175 200,172 220,168" fill="none" stroke="#4CAF50" strokeWidth="2" strokeLinecap="round" strokeDasharray="100" strokeDashoffset="100" style={{ animation: `${drawPath} 1.5s 2.2s ease forwards` }} />
+            <path d="M150,260 C120,240 90,235 65,230" fill="none" stroke="#5E8F72" strokeWidth="2" strokeLinecap="round" strokeDasharray="100" strokeDashoffset="100" style={{ animation: `${drawPath} 1.5s 1.5s ease forwards` }} />
+            <path d="M150,240 C180,220 210,218 235,215" fill="none" stroke="#5E8F72" strokeWidth="2" strokeLinecap="round" strokeDasharray="100" strokeDashoffset="100" style={{ animation: `${drawPath} 1.5s 1.8s ease forwards` }} />
+            <path d="M150,210 C125,195 100,190 80,188" fill="none" stroke="#5E8F72" strokeWidth="2" strokeLinecap="round" strokeDasharray="100" strokeDashoffset="100" style={{ animation: `${drawPath} 1.5s 2s ease forwards` }} />
+            <path d="M150,190 C175,175 200,172 220,168" fill="none" stroke="#5E8F72" strokeWidth="2" strokeLinecap="round" strokeDasharray="100" strokeDashoffset="100" style={{ animation: `${drawPath} 1.5s 2.2s ease forwards` }} />
             {/* Leaves */}
             {[
               { cx: 65, cy: 225, d: 2.8 }, { cx: 235, cy: 210, d: 3.0 },
@@ -311,13 +311,13 @@ function AboutPage() {
               { cx: 150, cy: 160, d: 3.6 }, { cx: 130, cy: 170, d: 3.5 },
               { cx: 170, cy: 168, d: 3.5 },
             ].map((l, i) => (
-              <ellipse key={i} cx={l.cx} cy={l.cy} rx={10} ry={7} fill="#4CAF50" opacity={0} style={{ animation: `${bloomIn} 0.5s ${l.d}s ease both` }} />
+              <ellipse key={i} cx={l.cx} cy={l.cy} rx={10} ry={7} fill="#5E8F72" opacity={0} style={{ animation: `${bloomIn} 0.5s ${l.d}s ease both` }} />
             ))}
             {/* Golden accent leaves */}
             {[
               { cx: 150, cy: 155, d: 3.8 }, { cx: 95, cy: 225, d: 3.6 }, { cx: 205, cy: 210, d: 3.7 },
             ].map((l, i) => (
-              <ellipse key={`g-${i}`} cx={l.cx} cy={l.cy} rx={7} ry={5} fill="#F9A825" opacity={0} style={{ animation: `${bloomIn} 0.5s ${l.d}s ease both` }} />
+              <ellipse key={`g-${i}`} cx={l.cx} cy={l.cy} rx={7} ry={5} fill="#C7A24A" opacity={0} style={{ animation: `${bloomIn} 0.5s ${l.d}s ease both` }} />
             ))}
           </svg>
         </Box>
@@ -331,7 +331,7 @@ function AboutPage() {
               left: `${15 + i * 10}%`,
               bottom: '20%',
               width: 4, height: 4,
-              bgcolor: i % 2 === 0 ? '#4CAF50' : '#F9A825',
+              bgcolor: i % 2 === 0 ? '#5E8F72' : '#C7A24A',
               opacity: 0,
               animation: `${floatUp} ${6 + i}s ${i * 0.8}s ease-in infinite`,
               pointerEvents: 'none',
@@ -340,7 +340,7 @@ function AboutPage() {
         ))}
 
         <Box sx={{ position: 'relative', zIndex: 1, maxWidth: 700, mx: 'auto' }}>
-          <Typography sx={{ fontSize: '0.65rem', color: '#F9A825', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 700, mb: 1.5, animation: `${fadeIn} 0.6s ease` }}>
+          <Typography sx={{ fontSize: '0.65rem', color: '#C7A24A', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 700, mb: 1.5, animation: `${fadeIn} 0.6s ease` }}>
             The Ubuntu Philosophy
           </Typography>
           <Typography
@@ -399,7 +399,7 @@ function AboutPage() {
       >
         {/* Section header */}
         <Box sx={{ textAlign: 'center', mb: 6, maxWidth: 1200, mx: 'auto' }}>
-          <Typography sx={{ fontSize: '0.65rem', color: '#F9A825', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 700, mb: 1 }}>
+          <Typography sx={{ fontSize: '0.65rem', color: '#C7A24A', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 700, mb: 1 }}>
             Our Team
           </Typography>
           <Typography

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import TextField from '@mui/material/TextField'
 import Button from '@mui/material/Button'
@@ -6,6 +7,7 @@ import Alert from '@mui/material/Alert'
 import Typography from '@mui/material/Typography'
 import Link from '@mui/material/Link'
 import { Link as RouterLink } from 'react-router-dom'
+import { useAuth } from '@/context/AuthContext'
 
 interface FormErrors {
   name?: string
@@ -15,12 +17,15 @@ interface FormErrors {
 }
 
 export function RegisterForm() {
+  const navigate = useNavigate()
+  const { register } = useAuth()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [errors, setErrors] = useState<FormErrors>({})
-  const [submitted, setSubmitted] = useState(false)
+  const [apiError, setApiError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
   function validate(): FormErrors {
     const newErrors: FormErrors = {}
@@ -32,27 +37,31 @@ export function RegisterForm() {
     return newErrors
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     const newErrors = validate()
     setErrors(newErrors)
-    if (Object.keys(newErrors).length === 0) {
-      setSubmitted(true)
-    }
-  }
+    setApiError('')
+    if (Object.keys(newErrors).length > 0) return
 
-  if (submitted) {
-    return (
-      <Alert severity="success">
-        Account created successfully! (This is a mock -- no data was saved.)
-      </Alert>
-    )
+    setSubmitting(true)
+    try {
+      await register({ name: name.trim(), email: email.trim(), password })
+      navigate('/dashboard')
+    } catch (err) {
+      setApiError(err instanceof Error ? err.message : 'Registration failed. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
     <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+      {apiError && <Alert severity="error">{apiError}</Alert>}
+
       <TextField
         label="Full Name"
+        name="name"
         value={name}
         onChange={(e) => setName(e.target.value)}
         error={!!errors.name}
@@ -64,6 +73,7 @@ export function RegisterForm() {
 
       <TextField
         label="Email"
+        name="email"
         type="email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
@@ -76,6 +86,7 @@ export function RegisterForm() {
 
       <TextField
         label="Password"
+        name="password"
         type="password"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
@@ -88,6 +99,7 @@ export function RegisterForm() {
 
       <TextField
         label="Confirm Password"
+        name="confirmPassword"
         type="password"
         value={confirmPassword}
         onChange={(e) => setConfirmPassword(e.target.value)}
@@ -98,8 +110,15 @@ export function RegisterForm() {
         autoComplete="new-password"
       />
 
-      <Button type="submit" variant="contained" color="primary" size="large" fullWidth>
-        Create Account
+      <Button
+        type="submit"
+        variant="contained"
+        color="primary"
+        size="large"
+        fullWidth
+        disabled={submitting}
+      >
+        {submitting ? 'Creating account...' : 'Create Account'}
       </Button>
 
       <Typography variant="body2" align="center" color="text.secondary">

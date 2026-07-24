@@ -7,15 +7,13 @@ import { SHAPE } from '@ubuntu-fund/ui'
 import LightbulbRoundedIcon from '@mui/icons-material/LightbulbRounded'
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 
-export interface StartCampaignBannerProps {}
-
-export function StartCampaignBanner({}: StartCampaignBannerProps = {}) {
+export function StartCampaignBanner() {
   return (
     <Box
       sx={{
         position: 'relative',
         width: '100%',
-        background: 'linear-gradient(135deg, #2E7D32 0%, #1B5E20 100%)',
+        background: 'linear-gradient(135deg, #2E3D2F 0%, #1C261D 100%)',
         py: { xs: 6, md: 8 },
         overflow: 'hidden',
       }}
@@ -65,16 +63,14 @@ export function StartCampaignBanner({}: StartCampaignBannerProps = {}) {
               width: 72,
               height: 72,
               borderRadius: SHAPE.card,
-              bgcolor: 'rgba(255,255,255,0.15)',
-              backdropFilter: 'blur(10px)',
+              bgcolor: 'rgba(255,255,255,0.12)',
               border: '1.5px solid rgba(255,255,255,0.2)',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
             }}
           >
             <LightbulbRoundedIcon
               sx={{
                 fontSize: 40,
-                color: '#FFD700',
+                color: '#DCC07E',
               }}
             />
           </Box>
@@ -117,23 +113,17 @@ export function StartCampaignBanner({}: StartCampaignBannerProps = {}) {
               size="large"
               endIcon={<ArrowForwardRoundedIcon />}
               sx={{
-                bgcolor: '#FFD700',
-                color: '#2E7D32',
+                bgcolor: '#C7A24A',
+                color: '#221B0E',
                 fontWeight: 700,
                 px: 4,
                 py: 1.5,
                 borderRadius: SHAPE.sm,
                 textTransform: 'none',
                 fontSize: '1rem',
-                boxShadow: '0 8px 24px rgba(255,215,0,0.3)',
-                transition: 'all 0.3s ease',
+                transition: 'background-color 0.2s ease',
                 '&:hover': {
-                  bgcolor: '#FFC500',
-                  boxShadow: '0 12px 32px rgba(255,215,0,0.4)',
-                  transform: 'translateY(-2px)',
-                },
-                '&:active': {
-                  transform: 'translateY(0)',
+                  bgcolor: '#A07E33',
                 },
               }}
             >
