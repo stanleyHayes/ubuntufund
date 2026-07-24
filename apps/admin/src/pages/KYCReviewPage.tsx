@@ -1,11 +1,13 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { Box, Typography, TextField, MenuItem, Button, Dialog } from '@mui/material'
 import { keyframes } from '@mui/system'
 import SearchIcon from '@mui/icons-material/Search'
 import InputAdornment from '@mui/material/InputAdornment'
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser'
 import BadgeRoundedIcon from '@mui/icons-material/BadgeRounded'
-import { useMockData, type KYCVerification } from '@/hooks/useMockData'
+import { type KYCVerification } from '@/hooks/useMockData'
+import { useAdminKYCVerifications } from '@/hooks/useApiData'
+import { api } from '@/lib/api'
 import { Resource, Action } from '@ubuntu-fund/types'
 import { useAdminPermissions } from '@/context/AdminPermissionContext'
 import KYCDetailDialog from '@/components/kyc/KYCDetailDialog'
@@ -48,9 +50,8 @@ const typeLabels: Record<string, string> = {
 }
 
 export default function KYCReviewPage() {
-  const { kycVerifications } = useMockData()
+  const { data: kycVerifications, isLoading: loading } = useAdminKYCVerifications()
   const { can } = useAdminPermissions()
-  const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('all')
   const [typeFilter, setTypeFilter] = useState('all')
   const [search, setSearch] = useState('')
@@ -59,8 +60,6 @@ export default function KYCReviewPage() {
   const [localStatuses, setLocalStatuses] = useState<Record<string, string>>({})
   const [selected, setSelected] = useState<KYCVerification | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
-
-  useEffect(() => { const t = setTimeout(() => setLoading(false), 800); return () => clearTimeout(t) }, [])
 
   const filtered = useMemo(() => {
     return kycVerifications.filter(v => {
@@ -78,7 +77,18 @@ export default function KYCReviewPage() {
   const paginated = filtered.slice(page * perPage, (page + 1) * perPage)
 
   const handleAction = (id: string, action: string) => {
+    // Optimistically reflect the decision in the queue for a responsive UX.
     setLocalStatuses(prev => ({ ...prev, [id]: action }))
+    // Persist to the real KYC review endpoints where they exist.
+    // 'in_review' (Request More) has no backend endpoint yet — local-only.
+    const path =
+      action === 'approved' ? `/kyc/${id}/approve` :
+      action === 'rejected' ? `/kyc/${id}/reject` : null
+    if (path) {
+      api.put(path, {}).catch(() => {
+        // Keep the optimistic status; the queue reconciles on next load.
+      })
+    }
   }
 
   const pendingCount = kycVerifications.filter(v => v.status === 'pending').length

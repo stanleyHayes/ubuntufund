@@ -5,7 +5,6 @@ import TextField from '@mui/material/TextField'
 import MenuItem from '@mui/material/MenuItem'
 import InputAdornment from '@mui/material/InputAdornment'
 import { keyframes } from '@emotion/react'
-import { Link as RouterLink } from 'react-router-dom'
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import LocalHospitalRoundedIcon from '@mui/icons-material/LocalHospitalRounded'
@@ -17,8 +16,9 @@ import AccountBalanceRoundedIcon from '@mui/icons-material/AccountBalanceRounded
 import PaletteRoundedIcon from '@mui/icons-material/PaletteRounded'
 import { CampaignCategory, CampaignStatus } from '@ubuntu-fund/types'
 import type { Campaign } from '@ubuntu-fund/types'
-import { ProgressBar, EmptyState } from '@ubuntu-fund/ui'
-import { CoverPlaceholder } from '@/components/campaigns/CampaignCard'
+import { EmptyState } from '@ubuntu-fund/ui'
+import { CampaignCard } from '@/components/campaigns/CampaignCard'
+import { PageBanner } from '@/components/layout/PageBanner'
 import { useCampaigns } from '@/hooks/useCampaigns'
 
 // ─── Animations ─────────────────────────────────────────────
@@ -33,17 +33,6 @@ const fadeIn = keyframes`
   to   { opacity: 1; }
 `
 
-const drawLine = keyframes`
-  to { stroke-dashoffset: 0; }
-`
-
-const markerSwipe = keyframes`
-  from { transform: scaleX(0); }
-  to   { transform: scaleX(1); }
-`
-
-// Squiggly underline
-const SQUIGGLE = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='6' viewBox='0 0 60 6'%3E%3Cpath d='M0,3 C5,0 10,6 15,3 C20,0 25,6 30,3 C35,0 40,6 45,3 C50,0 55,6 60,3' fill='none' stroke='%23C7A24A' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E")`
 
 // ─── Constants ──────────────────────────────────────────────
 
@@ -55,12 +44,6 @@ const CATEGORY_LABELS: Record<string, { icon: React.ReactNode; label: string }> 
   community: { icon: <GroupsRoundedIcon sx={{ fontSize: 14 }} />, label: 'Community' },
   religious: { icon: <AccountBalanceRoundedIcon sx={{ fontSize: 14 }} />, label: 'Religious' },
   creative: { icon: <PaletteRoundedIcon sx={{ fontSize: 14 }} />, label: 'Creative' },
-}
-
-const PRIORITY_COLORS: Record<string, string> = {
-  critical: '#A5432F',
-  urgent: '#C7A24A',
-  normal: '#5E8F72',
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -153,99 +136,11 @@ export function ExplorePage() {
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#FAF8F0' }}>
-      {/* ═══ HERO — hand-drawn feel ═══ */}
-      <Box
-        sx={{
-          position: 'relative',
-          overflow: 'hidden',
-          py: { xs: 6, md: 8 },
-          px: { xs: 3, md: 6 },
-          bgcolor: '#0A0F0A',
-          color: '#fff',
-        }}
-      >
-        {/* Doodle decoration — floating leaves */}
-        <Box sx={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
-          <svg width="100%" height="100%" style={{ position: 'absolute', inset: 0 }}>
-            {/* Hand-drawn connecting arcs */}
-            {[
-              'M50,80 C100,20 200,120 300,60',
-              'M400,90 C500,30 600,100 700,50',
-              'M800,70 C900,20 1000,90 1100,40',
-            ].map((d, i) => (
-              <path
-                key={i}
-                d={d}
-                fill="none"
-                stroke="rgba(76,175,80,0.08)"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeDasharray="600"
-                strokeDashoffset="600"
-                style={{ animation: `${drawLine} 3s ${i * 0.5}s ease forwards` }}
-              />
-            ))}
-            {/* Scattered dots */}
-            {[
-              { cx: 120, cy: 30 }, { cx: 350, cy: 70 }, { cx: 550, cy: 25 },
-              { cx: 780, cy: 55 }, { cx: 950, cy: 35 }, { cx: 200, cy: 85 },
-            ].map((d, i) => (
-              <circle
-                key={i}
-                cx={d.cx} cy={d.cy} r={2}
-                fill={i % 2 === 0 ? '#5E8F72' : '#C7A24A'}
-                opacity={0}
-                style={{ animation: `${fadeIn} 0.5s ${1 + i * 0.15}s ease forwards` }}
-              />
-            ))}
-          </svg>
-        </Box>
-
-        <Box sx={{ maxWidth: 1200, mx: 'auto', position: 'relative', zIndex: 1 }}>
-          <Typography
-            component="h1"
-            sx={{
-              fontFamily: '"Outfit", sans-serif',
-              fontWeight: 900,
-              fontSize: { xs: '2rem', md: '2.8rem' },
-              lineHeight: 1.1,
-              mb: 1.5,
-              animation: `${fadeInUp} 0.6s ease`,
-              position: 'relative',
-              display: 'inline-block',
-            }}
-          >
-            Explore Campaigns
-            <Box
-              component="span"
-              sx={{
-                position: 'absolute',
-                bottom: -4,
-                left: 0,
-                width: '50%',
-                height: 6,
-                backgroundImage: SQUIGGLE,
-                backgroundRepeat: 'repeat-x',
-                backgroundSize: '60px 6px',
-                animation: `${markerSwipe} 0.8s 0.4s ease both`,
-                transformOrigin: 'left',
-              }}
-            />
-          </Typography>
-          <Typography
-            sx={{
-              fontSize: '1.05rem',
-              color: 'rgba(255,255,255,0.55)',
-              maxWidth: 560,
-              lineHeight: 1.6,
-              animation: `${fadeInUp} 0.6s 0.1s ease both`,
-              fontStyle: 'italic',
-            }}
-          >
-            Discover verified fundraising campaigns across Ghana. Filter by region, category, or search for a cause close to your heart.
-          </Typography>
-        </Box>
-      </Box>
+      <PageBanner
+        eyebrow="Discover"
+        title="Explore Campaigns"
+        subtitle="Verified fundraising campaigns across Ghana — filter by category or search for a cause close to your heart."
+      />
 
       {/* ═══ FILTERS ═══ */}
       <Box sx={{ maxWidth: 1200, mx: 'auto', px: { xs: 2, md: 3 }, py: 3 }}>
@@ -489,144 +384,14 @@ export function ExplorePage() {
             sx={{
               display: 'grid',
               gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
-              border: '1px solid rgba(0,0,0,0.06)',
-              borderBottom: 'none',
-              borderRight: 'none',
+              gap: 2.5,
             }}
           >
-            {paginated.map((campaign, index) => {
-              const pct = Math.min(Math.round((campaign.raisedAmount / campaign.goalAmount) * 100), 100)
-              const catInfo = CATEGORY_LABELS[campaign.category]
-
-              return (
-                <Box
-                  key={campaign.id}
-                  component={RouterLink}
-                  to={`/campaigns/${campaign.id}`}
-                  sx={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    textDecoration: 'none',
-                    color: 'inherit',
-                    borderRight: '1px solid rgba(0,0,0,0.06)',
-                    borderBottom: '1px solid rgba(0,0,0,0.06)',
-                    bgcolor: '#fff',
-                    position: 'relative',
-                    overflow: 'hidden',
-                    transition: 'all 0.3s ease',
-                    animation: `${fadeInUp} 0.4s ease ${index * 0.06}s both`,
-                    // Priority accent top line
-                    '&::before': {
-                      content: '""',
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      height: 3,
-                      bgcolor: PRIORITY_COLORS[campaign.priority] || '#5E8F72',
-                      opacity: 0.5,
-                      transition: 'opacity 0.3s',
-                      zIndex: 2,
-                    },
-                    '&:hover': {
-                      bgcolor: '#FEFEFE',
-                      zIndex: 1,
-                      '&::before': { opacity: 1 },
-                      '& .card-img': { transform: 'scale(1.04)' },
-                    },
-                  }}
-                >
-                  {/* Image */}
-                  <Box sx={{ position: 'relative', overflow: 'hidden' }}>
-                    {campaign.imageUrls[0] ? (
-                      <>
-                        <Box
-                          className="card-img"
-                          component="img"
-                          src={campaign.imageUrls[0]}
-                          alt={campaign.title}
-                          sx={{
-                            width: '100%',
-                            height: 190,
-                            objectFit: 'cover',
-                            display: 'block',
-                            transition: 'transform 0.5s ease',
-                          }}
-                        />
-                        <Box
-                          sx={{
-                            position: 'absolute',
-                            inset: 0,
-                            bgcolor: 'rgba(0,0,0,0.25)',
-                            pointerEvents: 'none',
-                          }}
-                        />
-                      </>
-                    ) : (
-                      <Box className="card-img" sx={{ transition: 'transform 0.5s ease' }}>
-                        <CoverPlaceholder category={campaign.category} height={190} />
-                      </Box>
-                    )}
-
-                    {/* Category + Country overlay */}
-                    <Box sx={{ position: 'absolute', top: 12, left: 12, display: 'flex', gap: 0.75 }}>
-                      <Box
-                        sx={{
-                          px: 1,
-                          py: 0.3,
-                          bgcolor: 'rgba(255,255,255,0.95)',
-                          fontSize: '0.7rem',
-                          fontWeight: 700,
-                        }}
-                      >
-                        {catInfo?.icon} {catInfo?.label}
-                      </Box>
-                    </Box>
-
-                    {/* Funded badge */}
-                    <Box
-                      sx={{
-                        position: 'absolute',
-                        bottom: 0,
-                        right: 0,
-                        bgcolor: pct >= 100 ? '#5E8F72' : '#1a1a1a',
-                        color: '#fff',
-                        px: 1.5,
-                        py: 0.4,
-                        fontFamily: '"Outfit", monospace',
-                        fontWeight: 900,
-                        fontSize: '0.82rem',
-                      }}
-                    >
-                      {pct}%
-                    </Box>
-                  </Box>
-
-                  {/* Content */}
-                  <Box sx={{ p: 2.5, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-                    <Typography
-                      sx={{
-                        fontWeight: 700,
-                        fontSize: '0.95rem',
-                        lineHeight: 1.35,
-                        mb: 1.5,
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden',
-                        color: '#1a1a1a',
-                      }}
-                    >
-                      {campaign.title}
-                    </Typography>
-
-                    <ProgressBar current={campaign.raisedAmount} goal={campaign.goalAmount} currency={campaign.currency} />
-
-                    <Box sx={{ flexGrow: 1 }} />
-                  </Box>
-                </Box>
-              )
-            })}
+            {paginated.map((campaign, index) => (
+              <Box key={campaign.id} sx={{ animation: `${fadeInUp} 0.4s ease ${index * 0.06}s both` }}>
+                <CampaignCard campaign={campaign} />
+              </Box>
+            ))}
           </Box>
         )}
 

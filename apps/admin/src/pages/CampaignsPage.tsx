@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Box, Typography, TextField, MenuItem, InputAdornment, Button } from '@mui/material'
 import { keyframes } from '@mui/system'
@@ -11,7 +11,7 @@ import CampaignIcon from '@mui/icons-material/Campaign'
 import { EmptyState } from '@ubuntu-fund/ui'
 import { CampaignStatus, CampaignCategory } from '@ubuntu-fund/types'
 import type { Campaign } from '@ubuntu-fund/types'
-import { useMockData } from '@/hooks/useMockData'
+import { useAdminCampaigns } from '@/hooks/useApiData'
 import { usePagination } from '@/hooks/usePagination'
 import PaginationBar from '@/components/PaginationBar'
 import PageHeader from '@/components/PageHeader'
@@ -206,14 +206,11 @@ function CampaignCard({ campaign, index }: { campaign: Campaign; index: number }
 }
 
 export default function CampaignsPage() {
-  const { campaigns } = useMockData()
-  const [loading, setLoading] = useState(true)
+  const { data: campaigns, isLoading: loading } = useAdminCampaigns()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [activeTab, setActiveTab] = useState<'all' | 'pending'>('all')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
-
-  useEffect(() => { const t = setTimeout(() => setLoading(false), 800); return () => clearTimeout(t) }, [])
 
   const filtered = campaigns.filter(c => {
     if (activeTab === 'pending' && c.status !== CampaignStatus.PENDING_REVIEW) return false

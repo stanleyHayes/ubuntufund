@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Box, Typography, TextField, MenuItem, InputAdornment } from '@mui/material'
 import { keyframes } from '@mui/system'
@@ -9,7 +9,7 @@ import { UserRole, VerificationLevel, Resource, Action } from '@ubuntu-fund/type
 import type { User } from '@ubuntu-fund/types'
 import { useAdminPermissions } from '@/context/AdminPermissionContext'
 import PermissionDenied from '@/components/PermissionDenied'
-import { useMockData } from '@/hooks/useMockData'
+import { useAdminUsers } from '@/hooks/useApiData'
 import { usePagination } from '@/hooks/usePagination'
 import PaginationBar from '@/components/PaginationBar'
 import PageHeader from '@/components/PageHeader'
@@ -173,14 +173,11 @@ function UserCard({ user, index }: { user: User; index: number }) {
 
 export default function UsersPage() {
   const navigate = useNavigate()
-  const { users } = useMockData()
+  const { data: users, isLoading: loading } = useAdminUsers()
   const { can } = useAdminPermissions()
   const PAGE_SIZE = 12
-  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('all')
-
-  useEffect(() => { const t = setTimeout(() => setLoading(false), 800); return () => clearTimeout(t) }, [])
 
   const filtered = users.filter(u => {
     if (roleFilter !== 'all' && u.role !== roleFilter) return false

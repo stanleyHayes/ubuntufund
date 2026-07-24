@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
+import { PageBanner } from '@/components/layout/PageBanner'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
@@ -80,16 +81,14 @@ export function OrganizationsPage() {
   }, [])
 
   return (
-    <Container maxWidth="lg" sx={{ py: 8 }}>
-      <Box sx={{ textAlign: 'center', mb: 6, animation: `${fadeInUp} 0.5s ease-out` }}>
-        <Typography variant="h2" component="h1" sx={{ fontWeight: 800, mb: 1 }}>
-          Organizations
-        </Typography>
-        <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 560, mx: 'auto' }}>
-          Discover trusted organizations driving impact across Ghana. Follow their work and support their campaigns.
-        </Typography>
-      </Box>
-
+    <>
+      <PageBanner
+        eyebrow="Verified partners"
+        title="Organizations"
+        subtitle="Trusted organizations driving impact across Ghana. Follow their work and support their campaigns."
+        icon={<PeopleRoundedIcon sx={{ fontSize: 22 }} />}
+      />
+      <Container maxWidth="lg" sx={{ py: 8 }}>
       {isLoading ? (
         <Grid container spacing={3}>
           {[0, 1, 2, 3, 4, 5].map((i) => (
@@ -251,6 +250,7 @@ export function OrganizationsPage() {
         ))}
       </Grid>
       )}
-    </Container>
+      </Container>
+    </>
   )
 }

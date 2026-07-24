@@ -30,6 +30,7 @@ import PeopleRounded from '@mui/icons-material/PeopleRounded'
 import BusinessRounded from '@mui/icons-material/BusinessRounded'
 import GroupsRounded from '@mui/icons-material/GroupsRounded'
 import { keyframes } from '@mui/material/styles'
+import { PageBanner } from '@/components/layout/PageBanner'
 import { useLeaderboard } from '@/hooks/useLeaderboard'
 import type { LeaderboardEntry, Period, Category } from '@/hooks/useLeaderboard'
 
@@ -670,27 +671,14 @@ export function LeaderboardPage() {
   const isEmpty = !isLoading && leaderboardEntries.length === 0
 
   return (
-    <Container maxWidth="lg" sx={{ py: 6 }}>
-      {/* Header */}
-      <Box sx={{ textAlign: 'center', mb: 5 }}>
-        <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-          <EmojiEventsRounded sx={{ fontSize: 44, color: '#C7A24A' }} />
-          <Typography
-            variant="h2"
-            component="h1"
-            sx={{
-              fontWeight: 900,
-              color: '#C7A24A',
-            }}
-          >
-            Donor Leaderboard
-          </Typography>
-        </Box>
-        <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 520, mx: 'auto' }}>
-          Celebrating our most generous community members who are driving real change across Ghana.
-        </Typography>
-      </Box>
-
+    <>
+      <PageBanner
+        eyebrow="Community Impact"
+        title="Donor Leaderboard"
+        subtitle="Celebrating the community members driving real change across Ghana — ranked by their generosity."
+        icon={<EmojiEventsRounded sx={{ fontSize: 22 }} />}
+      />
+      <Container maxWidth="lg" sx={{ py: 6 }}>
       {/* Filters */}
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, mb: 5 }}>
         <ToggleBar options={PERIOD_OPTIONS} value={period} onChange={setPeriod} />
@@ -908,6 +896,7 @@ export function LeaderboardPage() {
           )}
         </>
       )}
-    </Container>
+      </Container>
+    </>
   )
 }

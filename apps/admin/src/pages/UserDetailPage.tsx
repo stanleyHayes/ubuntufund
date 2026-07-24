@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Box, Typography } from '@mui/material'
 import Button from '@mui/material/Button'
@@ -7,7 +7,7 @@ import VerifiedUserIcon from '@mui/icons-material/VerifiedUser'
 import PauseCircleOutlineIcon from '@mui/icons-material/PauseCircleOutline'
 import BlockIcon from '@mui/icons-material/Block'
 import PeopleRoundedIcon from '@mui/icons-material/PeopleRounded'
-import { useMockUser, useMockUserCampaigns, useMockUserDonations } from '@/hooks/useMockData'
+import { useAdminUser, useAdminCampaigns, useAdminDonations } from '@/hooks/useApiData'
 import { VerificationLevel, UserRole } from '@ubuntu-fund/types'
 import { ItemNotFound, EmptyState } from '@ubuntu-fund/ui'
 import PageHeader from '@/components/PageHeader'
@@ -47,15 +47,14 @@ function trustColor(score: number): string {
 
 export default function UserDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const user = useMockUser(id ?? '')
-  const userCampaigns = useMockUserCampaigns(id ?? '')
-  const userDonations = useMockUserDonations(id ?? '')
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 800)
-    return () => clearTimeout(t)
-  }, [])
+  const { data: user, isLoading: loading } = useAdminUser(id ?? '')
+  // No per-user campaigns/donations endpoint exists (only GET /users/:id/public),
+  // so derive the member's activity from the platform-wide real lists filtered
+  // by id. TODO: replace with a dedicated admin GET /users/:id detail endpoint.
+  const { data: allCampaigns } = useAdminCampaigns()
+  const { data: allDonations } = useAdminDonations()
+  const userCampaigns = useMemo(() => allCampaigns.filter(c => c.creatorId === id), [allCampaigns, id])
+  const userDonations = useMemo(() => allDonations.filter(d => d.donorId === id), [allDonations, id])
 
   const navigate = useNavigate()
 
@@ -153,7 +152,8 @@ export default function UserDetailPage() {
               {initials}
             </Box>
             <Typography sx={{ fontSize: '0.82rem', color: '#A0A0B0' }}>
-              {user.email}
+              {/* Public profile omits email; there is no admin GET /users/:id yet. */}
+              {user.email ?? '—'}
             </Typography>
           </Box>
 
@@ -344,8 +344,8 @@ export default function UserDetailPage() {
                   <Typography sx={{ fontSize: '1rem', fontWeight: 700, color: '#fff', fontFamily: '"Outfit", monospace' }}>
                     GH₵ {d.amount.toLocaleString()}
                   </Typography>
-                  <Typography sx={{ fontSize: '0.68rem', color: '#A0A0B0', mt: 0.3 }}>
-                    {d.campaignId}
+                  <Typography sx={{ fontSize: '0.68rem', color: '#A0A0B0', mt: 0.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {d.campaignTitle ?? d.campaignId}
                   </Typography>
                   <Typography sx={{ fontSize: '0.65rem', color: '#6B6B80', mt: 0.3 }}>
                     {new Date(d.createdAt).toLocaleDateString()}

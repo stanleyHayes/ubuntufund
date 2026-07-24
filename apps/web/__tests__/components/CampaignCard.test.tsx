@@ -45,11 +45,11 @@ describe('CampaignCard', () => {
     expect(screen.getByText('Clean Water for Tamale')).toBeInTheDocument()
   })
 
-  it('renders the description', () => {
+  it('omits the full description on the compact card', () => {
     renderWithProviders(<CampaignCard campaign={mockCampaign} />)
     expect(
-      screen.getByText(/Help us build a clean water well/)
-    ).toBeInTheDocument()
+      screen.queryByText(/Help us build a clean water well/)
+    ).not.toBeInTheDocument()
   })
 
   it('renders the category eyebrow label', () => {
@@ -85,12 +85,12 @@ describe('CampaignCard', () => {
 
   it('shows the supporter count when donors exist', () => {
     renderWithProviders(<CampaignCard campaign={{ ...mockCampaign, donorCount: 147 }} />)
-    expect(screen.getByText(/147 supporters/)).toBeInTheDocument()
+    expect(screen.getByText('147')).toBeInTheDocument()
   })
 
   it('invites the first supporter when nobody has donated', () => {
     renderWithProviders(<CampaignCard campaign={{ ...mockCampaign, donorCount: 0 }} />)
-    expect(screen.getByText(/be the first supporter/i)).toBeInTheDocument()
+    expect(screen.getByText(/be first/i)).toBeInTheDocument()
   })
 
   it('shows days left for active campaigns', () => {

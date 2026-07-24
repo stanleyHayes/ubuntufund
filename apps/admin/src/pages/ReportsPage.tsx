@@ -1,16 +1,15 @@
-import { useState, useEffect } from 'react'
 import { Box, Typography } from '@mui/material'
 import { keyframes } from '@mui/system'
 import { LineChart } from '@mui/x-charts/LineChart'
 import { PieChart } from '@mui/x-charts/PieChart'
 import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded'
 import {
-  useMockData,
   generateDonationTrend,
   generateCategoryBreakdown,
   generateGeographicData,
   generateFraudMetrics,
 } from '@/hooks/useMockData'
+import { useAdminCampaigns } from '@/hooks/useApiData'
 import { CampaignStatus } from '@ubuntu-fund/types'
 import PageHeader from '@/components/PageHeader'
 
@@ -42,14 +41,12 @@ const statusBarColors: Record<string, string> = {
 }
 
 export default function ReportsPage() {
-  const { campaigns } = useMockData()
-  const [loading, setLoading] = useState(true)
+  // Real campaign data drives the "Campaign Status Breakdown" panel below.
+  const { data: campaigns, isLoading: loading } = useAdminCampaigns()
 
-  useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 800)
-    return () => clearTimeout(t)
-  }, [])
-
+  // TODO: no backend analytics endpoint yet for donation trend, category
+  // breakdown, geographic distribution, or fraud metrics — these panels remain
+  // mock-derived until a /analytics/reports (or equivalent) endpoint exists.
   const trend = generateDonationTrend()
   const categories = generateCategoryBreakdown()
   const geoData = generateGeographicData()

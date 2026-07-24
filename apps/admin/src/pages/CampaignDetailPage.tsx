@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Box, Typography, Chip, TextField, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material'
 import Button from '@mui/material/Button'
@@ -10,7 +10,7 @@ import PersonRemoveIcon from '@mui/icons-material/PersonRemove'
 import ReplayIcon from '@mui/icons-material/Replay'
 import DoNotDisturbIcon from '@mui/icons-material/DoNotDisturb'
 import RocketLaunchRoundedIcon from '@mui/icons-material/RocketLaunchRounded'
-import { useMockCampaign, useMockCampaignDonations } from '@/hooks/useMockData'
+import { useAdminCampaign, useAdminCampaignDonations } from '@/hooks/useApiData'
 import { CampaignStatus, CampaignPriority, CollaboratorRole, CollaborationStatus, type CampaignCollaborator } from '@ubuntu-fund/types'
 import { ItemNotFound, EmptyState, AiWritingBar } from '@ubuntu-fund/ui'
 import { AiWritingAction } from '@ubuntu-fund/types'
@@ -80,25 +80,14 @@ const priorityColors: Record<string, string> = {
 
 export default function CampaignDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const campaign = useMockCampaign(id ?? '')
-  const donations = useMockCampaignDonations(id ?? '')
+  const { data: campaign, isLoading: loading } = useAdminCampaign(id ?? '')
+  const { data: donations } = useAdminCampaignDonations(id ?? '')
   const navigate = useNavigate()
-  const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [editOpen, setEditOpen] = useState(false)
   const [editLoading, setEditLoading] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
-
-  useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 800)
-    return () => clearTimeout(t)
-  }, [])
-
-  const [daysRemaining] = useState(() => {
-    if (!campaign) return 0
-    return Math.max(0, Math.ceil((new Date(campaign.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
-  })
   const [reviewNotes, setReviewNotes] = useState('')
 
   if (loading) {
@@ -148,6 +137,7 @@ export default function CampaignDetailPage() {
   }
 
   const progress = Math.min(Math.round((campaign.raisedAmount / campaign.goalAmount) * 100), 100)
+  const daysRemaining = Math.max(0, Math.ceil((new Date(campaign.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
   const statusColor = statusColors[campaign.status] || '#78909C'
   const priorityColor = priorityColors[campaign.priority] || '#78909C'
 
@@ -536,14 +526,17 @@ export default function CampaignDetailPage() {
                 GH₵ {d.amount.toLocaleString()}
               </Typography>
               <Typography sx={{ fontSize: '0.72rem', color: '#A0A0B0', mt: 0.5 }}>
-                {d.isAnonymous ? 'Anonymous' : d.donorId}
+                {/* Real CampaignDonation embeds donorName; mock rows carry donorId. */}
+                {d.isAnonymous ? 'Anonymous' : (d.donorName ?? d.donorId)}
               </Typography>
               <Typography sx={{ fontSize: '0.68rem', color: '#6B6B80', mt: 0.3 }}>
                 {new Date(d.createdAt).toLocaleDateString()}
               </Typography>
-              <Typography sx={{ fontSize: '0.65rem', color: '#6B6B80', mt: 0.3, textTransform: 'uppercase' }}>
-                {d.paymentMethod.replace('_', ' ')}
-              </Typography>
+              {d.paymentMethod && (
+                <Typography sx={{ fontSize: '0.65rem', color: '#6B6B80', mt: 0.3, textTransform: 'uppercase' }}>
+                  {d.paymentMethod.replace('_', ' ')}
+                </Typography>
+              )}
             </Box>
           ))}
         </Box>

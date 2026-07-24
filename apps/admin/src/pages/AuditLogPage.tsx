@@ -41,6 +41,8 @@ const severityColors: Record<Severity, string> = {
 }
 
 export default function AuditLogPage() {
+  // TODO: no backend endpoint yet — there is no /audit route, so this page
+  // stays on mock data until an audit-log endpoint is added.
   useMockData() // keep hook active for consistency
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')

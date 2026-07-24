@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { Box, Typography, TextField, MenuItem } from '@mui/material'
 import { keyframes } from '@mui/system'
 import SearchIcon from '@mui/icons-material/Search'
@@ -7,7 +7,8 @@ import VerifiedUserIcon from '@mui/icons-material/VerifiedUser'
 import VerifiedUserRoundedIcon from '@mui/icons-material/VerifiedUserRounded'
 import Button from '@mui/material/Button'
 import { EmptyState } from '@ubuntu-fund/ui'
-import { useMockData } from '@/hooks/useMockData'
+import { useAdminKYCVerifications } from '@/hooks/useApiData'
+import { api } from '@/lib/api'
 import { VerificationLevel, Resource, Action } from '@ubuntu-fund/types'
 import { useAdminPermissions } from '@/context/AdminPermissionContext'
 import PageHeader from '@/components/PageHeader'
@@ -28,8 +29,18 @@ function Skel({ w, h }: { w?: string | number; h?: number }) {
 
 const statusColors: Record<string, string> = {
   pending: '#D3A95C',
+  in_review: '#74909A',
   approved: '#5E8F72',
   rejected: '#C06B58',
+  expired: '#9E9E9E',
+}
+
+const typeLabels: Record<string, string> = {
+  identity: 'Identity',
+  address: 'Address',
+  business: 'Business',
+  political: 'Political',
+  media: 'Media',
 }
 
 const levelLabels: Record<number, string> = {
@@ -39,7 +50,7 @@ const levelLabels: Record<number, string> = {
   [VerificationLevel.COMMUNITY]: 'Community',
 }
 
-type VerificationStatus = 'pending' | 'approved' | 'rejected'
+type VerificationStatus = 'pending' | 'in_review' | 'approved' | 'rejected' | 'expired'
 
 interface Verification {
   id: string
@@ -52,28 +63,33 @@ interface Verification {
 }
 
 export default function VerificationsPage() {
-  const { users } = useMockData()
+  const { data: kycVerifications, isLoading: loading } = useAdminKYCVerifications()
   const { can } = useAdminPermissions()
-  const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('all')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(0)
   const [perPage] = useState(PAGE_SIZE)
   const [localStatuses, setLocalStatuses] = useState<Record<string, VerificationStatus>>({})
 
-  useEffect(() => { const t = setTimeout(() => setLoading(false), 800); return () => clearTimeout(t) }, [])
-
+  // Project the real KYC review queue onto this page's flatter Verification row.
   const verifications = useMemo<Verification[]>(() => {
-    return users.slice(0, 15).map((u, i) => ({
-      id: `ver-${i + 1}`,
-      userId: u.id,
-      userName: u.name,
-      level: [VerificationLevel.EMAIL_PHONE, VerificationLevel.NATIONAL_ID, VerificationLevel.INSTITUTIONAL, VerificationLevel.COMMUNITY][i % 4],
-      type: ['ID Document', 'Phone Verification', 'Institution Letter', 'Community Endorsement'][i % 4],
-      status: (['pending', 'pending', 'pending', 'approved', 'rejected'] as const)[i % 5],
-      submittedAt: new Date(2026, 2, 15 - i),
+    const typeToLevel: Record<string, VerificationLevel> = {
+      identity: VerificationLevel.NATIONAL_ID,
+      address: VerificationLevel.NATIONAL_ID,
+      business: VerificationLevel.INSTITUTIONAL,
+      political: VerificationLevel.COMMUNITY,
+      media: VerificationLevel.COMMUNITY,
+    }
+    return kycVerifications.map(v => ({
+      id: v.id,
+      userId: v.userId,
+      userName: v.userName,
+      level: typeToLevel[v.verificationType] ?? VerificationLevel.EMAIL_PHONE,
+      type: typeLabels[v.verificationType] ?? v.verificationType,
+      status: v.status,
+      submittedAt: new Date(v.createdAt),
     }))
-  }, [users])
+  }, [kycVerifications])
 
   const getStatus = (v: Verification): VerificationStatus => localStatuses[v.id] ?? v.status
 
@@ -90,7 +106,16 @@ export default function VerificationsPage() {
   const paginated = filtered.slice(page * perPage, (page + 1) * perPage)
 
   const handleAction = (id: string, action: VerificationStatus) => {
+    // Optimistic local update, then persist to the real KYC endpoints.
     setLocalStatuses(prev => ({ ...prev, [id]: action }))
+    const path =
+      action === 'approved' ? `/kyc/${id}/approve` :
+      action === 'rejected' ? `/kyc/${id}/reject` : null
+    if (path) {
+      api.put(path, {}).catch(() => {
+        // Keep the optimistic status; the queue reconciles on next load.
+      })
+    }
   }
 
   return (

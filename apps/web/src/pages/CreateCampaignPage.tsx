@@ -1,8 +1,10 @@
 import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
 import Box from '@mui/material/Box'
+import RocketLaunchRoundedIcon from '@mui/icons-material/RocketLaunchRounded'
 import { SHAPE } from '@ubuntu-fund/ui'
 import { CampaignForm } from '@/components/campaigns/CampaignForm'
+import { PageBanner } from '@/components/layout/PageBanner'
 
 const FOREST = '#2E3D2F'
 const SAGE = '#A8B5A0'
@@ -39,7 +41,14 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
 
 export function CreateCampaignPage() {
   return (
-    <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', py: { xs: 4, md: 7 } }}>
+    <>
+      <PageBanner
+        eyebrow="Start a campaign"
+        title="Rally your community"
+        subtitle="Raise funds with trust built in — every cedi tracked, every donor thanked. You can review everything before it goes live."
+        icon={<RocketLaunchRoundedIcon sx={{ fontSize: 22 }} />}
+      />
+      <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', py: { xs: 4, md: 7 } }}>
       <Container maxWidth="lg">
         <Box
           sx={{
@@ -51,14 +60,7 @@ export function CreateCampaignPage() {
         >
           {/* ---------------------------- Encouragement rail ---------------------------- */}
           <Box component="aside" sx={{ position: { md: 'sticky' }, top: { md: 32 } }}>
-            <Eyebrow>Start a campaign</Eyebrow>
-            <Typography
-              component="h1"
-              sx={{ mt: 1, fontWeight: 900, fontSize: { xs: '1.9rem', md: '2.2rem' }, lineHeight: 1.15, color: INK }}
-            >
-              Rally your community around what matters.
-            </Typography>
-            <Typography sx={{ mt: 2, color: INK_SECONDARY, lineHeight: 1.65, maxWidth: 420 }}>
+            <Typography sx={{ color: INK_SECONDARY, lineHeight: 1.65, maxWidth: 420 }}>
               From Accra to Tamale, UbuntuFund helps everyday Ghanaians raise funds with trust built in — every cedi tracked,
               every donor thanked. Take it one step at a time; you can review everything before it goes live.
             </Typography>
@@ -129,6 +131,7 @@ export function CreateCampaignPage() {
           </Box>
         </Box>
       </Container>
-    </Box>
+      </Box>
+    </>
   )
 }

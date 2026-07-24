@@ -1,12 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Box, Typography, TextField, MenuItem, InputAdornment } from '@mui/material'
 import { keyframes } from '@mui/system'
 import SearchIcon from '@mui/icons-material/Search'
 import VolunteerActivismRoundedIcon from '@mui/icons-material/VolunteerActivismRounded'
 import { EmptyState } from '@ubuntu-fund/ui'
-import type { Donation } from '@ubuntu-fund/types'
-import { useMockData } from '@/hooks/useMockData'
+import { useAdminDonations, type AdminDonation } from '@/hooks/useApiData'
 import { usePagination } from '@/hooks/usePagination'
 import PaginationBar from '@/components/PaginationBar'
 import PageHeader from '@/components/PageHeader'
@@ -50,7 +49,7 @@ function SkeletonCard({ index }: { index: number }) {
 }
 
 interface DonationCardProps {
-  donation: Donation
+  donation: AdminDonation
   donorName: string
   campaignTitle: string
   index: number
@@ -114,10 +113,12 @@ function DonationCard({ donation, donorName, campaignTitle, index }: DonationCar
 
       {/* Separator */}
       <Box sx={{ borderTop: `1px solid ${B}`, mt: 2, pt: 1.5, position: 'relative', zIndex: 1 }}>
-        {/* Payment method */}
-        <Typography sx={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', letterSpacing: '0.06em', fontWeight: 600 }}>
-          {donation.paymentMethod.replace('_', ' ')}
-        </Typography>
+        {/* Payment method — omitted by the real donations feed (PublicDonationDTO) */}
+        {donation.paymentMethod && (
+          <Typography sx={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', letterSpacing: '0.06em', fontWeight: 600 }}>
+            {donation.paymentMethod.replace('_', ' ')}
+          </Typography>
+        )}
 
         {/* Date */}
         <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary', mt: 0.5 }}>
@@ -142,22 +143,20 @@ function DonationCard({ donation, donorName, campaignTitle, index }: DonationCar
 
 export default function DonationsPage() {
   const navigate = useNavigate()
-  const { donations, users, campaigns } = useMockData()
+  const { data: donations, isLoading: loading } = useAdminDonations()
   const PAGE_SIZE = 12
-  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState<string>('all')
-
-  useEffect(() => { const t = setTimeout(() => setLoading(false), 800); return () => clearTimeout(t) }, [])
 
   const filtered = donations.filter(d => {
     if (typeFilter === 'named' && d.isAnonymous) return false
     if (typeFilter === 'anonymous' && !d.isAnonymous) return false
     if (search) {
-      const donor = users.find(u => u.id === d.donorId)
-      const campaign = campaigns.find(c => c.id === d.campaignId)
       const s = search.toLowerCase()
-      if (!(donor?.name.toLowerCase().includes(s)) && !(campaign?.title.toLowerCase().includes(s))) return false
+      // Real donations embed donorName/campaignTitle; mock rows only have ids.
+      const donorName = d.isAnonymous ? 'anonymous' : (d.donorName ?? d.donorId)
+      const campaignTitle = d.campaignTitle ?? d.campaignId
+      if (!donorName.toLowerCase().includes(s) && !campaignTitle.toLowerCase().includes(s)) return false
     }
     return true
   })
@@ -232,19 +231,15 @@ export default function DonationsPage() {
       }}>
         {loading
           ? Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} index={i} />)
-          : pagination.page.map((donation, i) => {
-              const donor = users.find(u => u.id === donation.donorId)
-              const campaign = campaigns.find(c => c.id === donation.campaignId)
-              return (
-                <DonationCard
-                  key={donation.id}
-                  donation={donation}
-                  donorName={donor?.name ?? donation.donorId}
-                  campaignTitle={campaign?.title ?? donation.campaignId}
-                  index={i}
-                />
-              )
-            })
+          : pagination.page.map((donation, i) => (
+              <DonationCard
+                key={donation.id}
+                donation={donation}
+                donorName={donation.donorName ?? donation.donorId}
+                campaignTitle={donation.campaignTitle ?? donation.campaignId}
+                index={i}
+              />
+            ))
         }
       </Box>
 

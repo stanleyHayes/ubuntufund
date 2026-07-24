@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Box, Typography, TextField, MenuItem } from '@mui/material'
 import { keyframes } from '@mui/system'
@@ -10,8 +10,7 @@ import Button from '@mui/material/Button'
 import { Resource, Action } from '@ubuntu-fund/types'
 import { EmptyState } from '@ubuntu-fund/ui'
 import { useAdminPermissions } from '@/context/AdminPermissionContext'
-import { useMockData } from '@/hooks/useMockData'
-import type { Dispute } from '@/hooks/useMockData'
+import { useAdminDisputes } from '@/hooks/useApiData'
 import { usePagination } from '@/hooks/usePagination'
 import PaginationBar from '@/components/PaginationBar'
 import PageHeader from '@/components/PageHeader'
@@ -38,14 +37,10 @@ const statusColors: Record<string, string> = {
 
 export default function DisputesPage() {
   const navigate = useNavigate()
-  const { disputes: initialDisputes } = useMockData()
+  const { data: disputes, isLoading: loading } = useAdminDisputes()
   const { can } = useAdminPermissions()
-  const [loading, setLoading] = useState(true)
-  const [disputes] = useState<Dispute[]>(initialDisputes)
   const [statusFilter, setStatusFilter] = useState('all')
   const [search, setSearch] = useState('')
-
-  useEffect(() => { const t = setTimeout(() => setLoading(false), 800); return () => clearTimeout(t) }, [])
 
   const filtered = disputes.filter(d => {
     if (statusFilter !== 'all' && d.status !== statusFilter) return false

@@ -23,12 +23,12 @@ import InsightsRoundedIcon from '@mui/icons-material/InsightsRounded'
 import { CampaignStatus, VerificationLevel } from '@ubuntu-fund/types'
 import { SHAPE } from '@ubuntu-fund/ui'
 import {
-  useMockData,
   generateCategoryBreakdown,
   generateGeographicData,
   generateFraudMetrics,
   generateDonationTrend,
 } from '@/hooks/useMockData'
+import { useAdminStats, useAdminUsers, useAdminCampaigns, useAdminDonations } from '@/hooks/useApiData'
 import PageHeader from '@/components/PageHeader'
 import { TONES } from '@/lib/tones'
 
@@ -237,8 +237,26 @@ function FraudMetricCard({ metric, value, change }: { metric: string; value: num
 // OverviewPage
 // ---------------------------------------------------------------------------
 export default function OverviewPage() {
-  const { users, campaigns, donations, disputes, stats, activity } = useMockData()
+  const { data: stats } = useAdminStats()
+  const { data: users } = useAdminUsers()
+  const { data: campaigns } = useAdminCampaigns()
+  const { data: donations } = useAdminDonations()
 
+  // No activity-feed endpoint exists; derive a recent-activity list from the
+  // real donations feed (each row embeds donor + campaign names).
+  const activity = useMemo(
+    () =>
+      donations.slice(0, 8).map((d) => ({
+        id: d.id,
+        type: 'donation' as const,
+        message: `${d.isAnonymous ? 'Anonymous' : (d.donorName ?? 'A donor')} donated GH₵ ${d.amount.toLocaleString()} to "${d.campaignTitle ?? 'a campaign'}"`,
+        timestamp: new Date(d.createdAt),
+      })),
+    [donations],
+  )
+
+  // TODO: no backend analytics endpoint yet for donation trend, category
+  // breakdown, geographic distribution, or fraud metrics — mock-derived.
   const donationTrend = useMemo(() => generateDonationTrend(), [])
   const categoryBreakdown = useMemo(() => generateCategoryBreakdown(), [])
   const geoData = useMemo(() => generateGeographicData(), [])
@@ -271,8 +289,12 @@ export default function OverviewPage() {
   )
 
   const donationsByMethod = useMemo(() => {
+    // The real donations feed (PublicDonationDTO) omits paymentMethod, so this
+    // panel is populated only by mock-fallback data. TODO: expose paymentMethod
+    // on the donations read model to drive this from real data.
     const map: Record<string, number> = {}
     donations.forEach((d) => {
+      if (!d.paymentMethod) return
       map[d.paymentMethod] = (map[d.paymentMethod] || 0) + 1
     })
     return Object.entries(map)
