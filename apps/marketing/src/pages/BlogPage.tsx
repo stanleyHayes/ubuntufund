@@ -151,8 +151,7 @@ function FeaturedBlogCard({ post }: { post: BlogPost }) {
         cursor: 'pointer',
         border: '1px solid',
         borderColor: hovered ? accent : 'divider',
-        transition: 'box-shadow 200ms ease, border-color 200ms ease',
-        boxShadow: hovered ? '0 8px 24px rgba(0,0,0,0.08)' : '0 2px 12px rgba(0,0,0,0.04)',
+        transition: 'border-color 200ms ease',
         bgcolor: 'background.paper',
       }}
     >
@@ -420,8 +419,7 @@ function BlogCard({ post, variant = 'vertical' }: { post: BlogPost; variant?: 'v
         border: '1px solid',
         borderColor: hovered ? accent : 'divider',
         clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 24px), calc(100% - 24px) 100%, 0 100%)',
-        transition: 'box-shadow 200ms ease, border-color 200ms ease',
-        boxShadow: hovered ? '0 6px 16px rgba(0,0,0,0.08)' : '0 1px 4px rgba(0,0,0,0.03)',
+        transition: 'border-color 200ms ease',
         // Accent triangle in the notched corner
         '&::after': {
           content: '""',

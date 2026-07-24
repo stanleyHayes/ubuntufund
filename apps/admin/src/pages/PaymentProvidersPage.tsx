@@ -177,13 +177,12 @@ export default function PaymentProvidersPage() {
                 flexDirection: 'column',
                 height: '100%',
                 animation: `${fadeSlide} 0.4s ease ${index * 0.06}s both`,
-                transition: 'border-color 0.3s ease, box-shadow 0.3s ease',
+                transition: 'border-color 0.3s ease',
                 border: '1px solid',
                 borderColor: provider.enabled ? 'divider' : 'rgba(192,107,88,0.2)',
                 opacity: provider.enabled ? 1 : 0.6,
                 '&:hover': {
                   borderColor: `${color}40`,
-                  boxShadow: `0 2px 10px ${color}18`,
                 },
               }}
             >

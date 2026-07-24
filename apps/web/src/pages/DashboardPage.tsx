@@ -99,12 +99,10 @@ function StatCard({ icon, iconBg, iconColor, label, value, change, changePositiv
         borderRadius: SHAPE.card,
         bgcolor: 'background.paper',
         border: '1px solid rgba(0,0,0,0.06)',
-        transition: 'all 0.3s cubic-bezier(0.22,1,0.36,1)',
+        transition: 'border-color 0.3s cubic-bezier(0.22,1,0.36,1)',
         animation: `${fadeInUp} 0.5s ${delay}s ease both`,
         '&:hover': {
           borderColor: `${iconColor}30`,
-          boxShadow: `0 8px 24px ${iconColor}12`,
-          transform: 'translateY(-2px)',
         },
       }}
     >
@@ -178,10 +176,8 @@ function CampaignRow({ campaign, index }: { campaign: Campaign; index: number })
         bgcolor: 'background.paper',
         border: '1px solid',
         borderColor: hovered ? 'primary.light' : 'rgba(0,0,0,0.06)',
-        transition: 'all 0.35s cubic-bezier(0.22,1,0.36,1)',
+        transition: 'border-color 0.35s cubic-bezier(0.22,1,0.36,1)',
         animation: `${fadeInUp} 0.5s ${0.1 * index + 0.3}s ease both`,
-        transform: hovered ? 'translateY(-3px)' : 'none',
-        boxShadow: hovered ? '0 12px 32px rgba(46, 61, 47,0.08)' : 'none',
       }}
     >
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
@@ -595,12 +591,10 @@ export function DashboardPage() {
                 px: 3,
                 py: 1.2,
                 background: 'linear-gradient(135deg, #5E8F72, #2E3D2F)',
-                boxShadow: '0 4px 16px rgba(76,175,80,0.3)',
                 '&:hover': {
-                  boxShadow: '0 6px 24px rgba(76,175,80,0.4)',
-                  transform: 'translateY(-1px)',
+                  background: 'linear-gradient(135deg, #2E3D2F, #1C261D)',
                 },
-                transition: 'all 0.25s ease',
+                transition: 'background 0.25s ease',
               }}
             >
               New Campaign

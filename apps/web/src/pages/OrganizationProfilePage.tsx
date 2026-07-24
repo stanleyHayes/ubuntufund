@@ -202,7 +202,6 @@ export function OrganizationProfilePage() {
               width: { xs: 80, md: 100 },
               height: { xs: 80, md: 100 },
               border: '4px solid #fff',
-              boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
               animation: `${fadeInUp} 0.6s ease-out`,
             }}
           />

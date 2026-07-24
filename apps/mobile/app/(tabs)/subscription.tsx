@@ -9,6 +9,9 @@ import {
 } from '@ubuntu-fund/types'
 import { brandColors } from '@/theme'
 import { api } from '@/lib/api'
+import { useAuth } from '@/context/AuthContext'
+import { SignInRequired } from '@/components/SignInRequired'
+import { FadeInUp } from '@/components/anim/FadeInUp'
 
 const TIER_ORDER = [SubscriptionTier.FREE, SubscriptionTier.STARTER, SubscriptionTier.PRO, SubscriptionTier.ENTERPRISE]
 
@@ -27,6 +30,7 @@ const DEFAULT_SUB: SubscriptionData = {
 }
 
 export default function SubscriptionScreen() {
+  const { user } = useAuth()
   const [currentSub, setCurrentSub] = useState<SubscriptionData>(DEFAULT_SUB)
   const [isLoading, setIsLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(false)
@@ -43,8 +47,9 @@ export default function SubscriptionScreen() {
   }, [])
 
   useEffect(() => {
+    if (!user) return
     fetchSubscription()
-  }, [fetchSubscription])
+  }, [user, fetchSubscription])
 
   const handleUpgrade = async (tier: SubscriptionTier) => {
     setActionLoading(true)
@@ -82,6 +87,14 @@ export default function SubscriptionScreen() {
   }
 
   const currentPlan = SUBSCRIPTION_PLANS[currentSub.tier]
+
+  if (!user) {
+    return (
+      <View style={styles.container}>
+        <SignInRequired what="subscription" />
+      </View>
+    )
+  }
 
   if (isLoading) {
     return (
@@ -122,15 +135,15 @@ export default function SubscriptionScreen() {
       {/* Plan comparison - horizontal scroll */}
       <Text style={styles.sectionTitle}>Compare Plans</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.plansScroll} contentContainerStyle={styles.plansRow}>
-        {TIER_ORDER.map((tier) => {
+        {TIER_ORDER.map((tier, i) => {
           const plan = SUBSCRIPTION_PLANS[tier]
           const isCurrent = tier === currentSub.tier
           const isPro = tier === SubscriptionTier.PRO
           const isEnterprise = tier === SubscriptionTier.ENTERPRISE
 
           return (
+            <FadeInUp key={tier} index={i}>
             <View
-              key={tier}
               style={[
                 styles.planCard,
                 isPro && styles.planCardPro,
@@ -190,6 +203,7 @@ export default function SubscriptionScreen() {
                 </Button>
               )}
             </View>
+            </FadeInUp>
           )
         })}
       </ScrollView>

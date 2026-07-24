@@ -5,10 +5,13 @@ import {
   StyleSheet,
   Animated,
 } from 'react-native'
-import { Text, Icon, Button } from 'react-native-paper'
+import { Text } from 'react-native-paper'
 import { Stack } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
+import { EmptyState } from '@/components/EmptyState'
+import { SignInRequired } from '@/components/SignInRequired'
+import { FadeInUp } from '@/components/anim/FadeInUp'
 import { brandColors } from '@/theme'
 
 interface Refund {
@@ -86,19 +89,29 @@ export default function MyRefundsScreen() {
   }, [])
 
   useEffect(() => {
+    if (!user) return
     fetchRefunds()
-  }, [fetchRefunds])
+  }, [user, fetchRefunds])
+
+  const headerOptions = {
+    title: 'My Refunds',
+    headerStyle: { backgroundColor: brandColors.primary },
+    headerTintColor: '#FFFFFF',
+    headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
+  }
+
+  if (!user) {
+    return (
+      <View style={styles.container}>
+        <Stack.Screen options={headerOptions} />
+        <SignInRequired what="refunds" />
+      </View>
+    )
+  }
 
   return (
     <View style={styles.container}>
-      <Stack.Screen
-        options={{
-          title: 'My Refunds',
-          headerStyle: { backgroundColor: brandColors.primary },
-          headerTintColor: '#FFFFFF',
-          headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
-        }}
-      />
+      <Stack.Screen options={headerOptions} />
 
       <View style={styles.headerBlock}>
         <Text style={styles.eyebrow}>Refund Status</Text>
@@ -112,36 +125,26 @@ export default function MyRefundsScreen() {
             {[0, 1, 2, 3].map((i) => <SkeletonRow key={i} />)}
           </View>
         ) : error ? (
-          <View style={styles.emptyState}>
-            <View style={[styles.emptyIconTile, styles.errorIconTile]}>
-              <Icon source="alert-circle-outline" size={24} color={brandColors.error} />
-            </View>
-            <Text style={styles.emptyTitle}>{error}</Text>
-            <Button
-              mode="contained"
-              buttonColor={brandColors.primary}
-              textColor="#FFFFFF"
-              onPress={fetchRefunds}
-              style={styles.actionBtn}
-              labelStyle={styles.btnLabel}
-            >
-              Retry
-            </Button>
-          </View>
+          <EmptyState
+            variant="error"
+            icon="alert-circle-outline"
+            title={error}
+            ctaLabel="Retry"
+            onCtaPress={fetchRefunds}
+          />
         ) : refunds.length === 0 ? (
-          <View style={styles.emptyState}>
-            <View style={styles.emptyIconTile}>
-              <Icon source="cash-refund" size={24} color={brandColors.primary} />
-            </View>
-            <Text style={styles.emptyTitle}>No refund requests</Text>
-            <Text style={styles.emptySubtitle}>Your refund history will appear here</Text>
-          </View>
+          <EmptyState
+            icon="cash-refund"
+            title="No refund requests"
+            subtitle="Your refund history will appear here"
+          />
         ) : (
           <View style={styles.listWrap}>
-            {refunds.map((r) => {
+            {refunds.map((r, i) => {
               const statusColor = STATUS_COLORS[r.status] ?? brandColors.textSecondary
               return (
-                <View key={r.id} style={styles.refundCard}>
+                <FadeInUp key={r.id} index={i}>
+                <View style={styles.refundCard}>
                   <View style={styles.refundHeader}>
                     <Text style={styles.refundId}>#{r.id}</Text>
                     <View style={[styles.statusBadge, { backgroundColor: `${statusColor}18` }]}>
@@ -163,6 +166,7 @@ export default function MyRefundsScreen() {
 
                   <Text style={styles.refundReason}>Reason: {r.reason}</Text>
                 </View>
+                </FadeInUp>
               )
             })}
           </View>

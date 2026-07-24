@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { SHAPE } from '@ubuntu-fund/ui'
+import { useContent } from '../hooks/useContent'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
@@ -36,7 +37,9 @@ interface FaqCategory {
   questions: { q: string; a: string }[]
 }
 
-const FAQ_CATEGORIES: FaqCategory[] = [
+// Static category metadata (id + icon + label). Icons are React nodes and can't come
+// from the CMS, so they live here; the questions/answers come from the CMS at runtime.
+const FAQ_CATEGORIES_STATIC: FaqCategory[] = [
   {
     id: 'getting-started',
     icon: <RocketLaunchRoundedIcon />,
@@ -99,6 +102,20 @@ const FAQ_CATEGORIES: FaqCategory[] = [
   },
 ]
 
+// CMS shape for key 'faq': a flat list of { category, question, answer }. The fallback is
+// derived from the static categories above so an unreachable CMS renders identically.
+interface FaqItem {
+  category: string
+  question: string
+  answer: string
+}
+
+const FAQ_FALLBACK: { items: FaqItem[] } = {
+  items: FAQ_CATEGORIES_STATIC.flatMap((cat) =>
+    cat.questions.map((q) => ({ category: cat.label, question: q.q, answer: q.a }))
+  ),
+}
+
 const QUICK_LINKS = [
   { icon: <MenuBookRoundedIcon />, label: 'Getting started guide', description: 'Step-by-step walkthrough for new users', target: 'getting-started' },
   { icon: <CampaignRoundedIcon />, label: 'Campaign best practices', description: 'Tips to maximize your fundraising', target: 'campaigns' },
@@ -117,6 +134,18 @@ const CONTACT_OPTIONS = [
 function HelpPage() {
   const [search, setSearch] = useState('')
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
+
+  // Runtime CMS: pull FAQ items and regroup them onto the static category metadata
+  // (matched by label). Falls back to the hardcoded defaults when the CMS is unreachable.
+  const faqContent = useContent('faq', FAQ_FALLBACK)
+  const FAQ_CATEGORIES: FaqCategory[] = FAQ_CATEGORIES_STATIC.map((cat) => ({
+    id: cat.id,
+    icon: cat.icon,
+    label: cat.label,
+    questions: faqContent.items
+      .filter((it) => it.category === cat.label)
+      .map((it) => ({ q: it.question, a: it.answer })),
+  }))
 
   const filteredCategories = FAQ_CATEGORIES.map((cat) => ({
     ...cat,
@@ -173,7 +202,6 @@ function HelpPage() {
                   borderRadius: SHAPE.card,
                   bgcolor: 'background.paper',
                   fontSize: '1.05rem',
-                  boxShadow: '0 12px 30px rgba(26,46,34,0.06)',
                   '& fieldset': { borderColor: '#E7E3D8' },
                   '&.Mui-focused fieldset': { borderColor: 'secondary.main', borderWidth: 2 },
                 },
@@ -309,13 +337,12 @@ function HelpPage() {
                     sx={{
                       border: '1px solid #E7E3D8',
                       borderRadius: SHAPE.sm,
-                      boxShadow: 'none',
                       mb: 1.5,
                       bgcolor: 'background.paper',
                       '&::before': { display: 'none' },
-                      transition: 'box-shadow 0.2s ease, border-color 0.2s ease',
-                      '&:hover': { boxShadow: '0 12px 30px rgba(26,46,34,0.06)' },
-                      '&.Mui-expanded': { borderColor: 'secondary.main', boxShadow: '0 12px 30px rgba(26,46,34,0.06)' },
+                      transition: 'border-color 0.2s ease',
+                      '&:hover': { borderColor: 'secondary.light' },
+                      '&.Mui-expanded': { borderColor: 'secondary.main' },
                     }}
                   >
                     <AccordionSummary

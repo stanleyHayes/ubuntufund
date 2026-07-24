@@ -1,6 +1,7 @@
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import { keyframes } from '@emotion/react'
+import { useContent } from '../hooks/useContent'
 
 // ─── Animations ─────────────────────────────────────────────
 
@@ -55,23 +56,63 @@ const SQUIGGLE_GREEN = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 
 // ─── Team Data ──────────────────────────────────────────────
 
+type DoodleType = 'star' | 'heart' | 'leaf' | 'circle' | 'diamond' | 'wave'
+
+// CMS-editable team fields (key 'about' → data.team).
 interface TeamMember {
   name: string
   role: string
   initials: string
-  color: string
   bio: string
-  doodleType: 'star' | 'heart' | 'leaf' | 'circle' | 'diamond' | 'wave'
 }
 
-const teamMembers: TeamMember[] = [
-  { name: 'Kofi Owusu', role: 'Co-Founder & CEO', initials: 'KO', color: '#2E3D2F', bio: 'Visionary leader passionate about democratizing giving across Ghana.', doodleType: 'star' },
-  { name: 'Adwoa Agyeman', role: 'Co-Founder & CTO', initials: 'AA', color: '#1565C0', bio: 'Architect of the trust infrastructure powering transparent donations.', doodleType: 'circle' },
-  { name: 'Abena Sarpong', role: 'Head of Community', initials: 'AS', color: '#6A1B9A', bio: 'Building bridges between donors and communities in all 16 regions of Ghana.', doodleType: 'heart' },
-  { name: 'Yaw Darko', role: 'Head of Trust & Safety', initials: 'YD', color: '#C62828', bio: 'Guardian of platform integrity with a zero-tolerance fraud policy.', doodleType: 'diamond' },
-  { name: 'Kojo Antwi', role: 'Head of Partnerships', initials: 'KA', color: '#A07E33', bio: 'Forging alliances with NGOs, government agencies, and corporate partners.', doodleType: 'leaf' },
-  { name: 'Kwame Boateng', role: 'Head of Engineering', initials: 'KB', color: '#00695C', bio: 'Leading the team building scalable, secure fintech for Ghana.', doodleType: 'wave' },
+// Per-member presentation (colour + background doodle). Index-aligned with the team list;
+// these are visual choices, not CMS content, so they stay in code.
+interface TeamPresentation {
+  color: string
+  doodleType: DoodleType
+}
+
+const TEAM_PRESENTATION: TeamPresentation[] = [
+  { color: '#2E3D2F', doodleType: 'star' },
+  { color: '#1565C0', doodleType: 'circle' },
+  { color: '#6A1B9A', doodleType: 'heart' },
+  { color: '#C62828', doodleType: 'diamond' },
+  { color: '#A07E33', doodleType: 'leaf' },
+  { color: '#00695C', doodleType: 'wave' },
 ]
+
+// Full CMS block for key 'about' — the current hardcoded copy kept as the runtime fallback.
+const ABOUT_FALLBACK = {
+  hero: {
+    title: 'Together, We Rise',
+    subtitle:
+      "UbuntuFund is Ghana's trust infrastructure for giving — empowering communities across the country through transparent, secure crowdfunding.",
+  },
+  mission: {
+    eyebrow: 'Our Mission',
+    title: 'Democratizing Generosity Across Ghana',
+    body: 'We believe that every community has the power to uplift itself when given the right tools. UbuntuFund provides the infrastructure that connects donors with verified causes, ensuring that every contribution reaches those who need it most.',
+  },
+  vision: {
+    eyebrow: 'Our Vision',
+    title: 'A Ghana Where No Cause Goes Unfunded',
+    body: 'We envision a future where geographic and economic barriers no longer prevent communities from accessing the resources they need. By 2030, we aim to facilitate over GH₵ 1 billion in donations across all 16 regions of Ghana.',
+  },
+  philosophy: {
+    eyebrow: 'The Ubuntu Philosophy',
+    quote: 'I am because we are',
+    body: 'Ubuntu is a Nguni Bantu term meaning “humanity.” It speaks to our interconnectedness — the idea that a person is a person through other people. This philosophy is the heartbeat of our platform. When one community thrives, we all thrive. When one person gives, the ripple effect touches countless lives.',
+  },
+  team: [
+    { name: 'Kofi Owusu', role: 'Co-Founder & CEO', initials: 'KO', bio: 'Visionary leader passionate about democratizing giving across Ghana.' },
+    { name: 'Adwoa Agyeman', role: 'Co-Founder & CTO', initials: 'AA', bio: 'Architect of the trust infrastructure powering transparent donations.' },
+    { name: 'Abena Sarpong', role: 'Head of Community', initials: 'AS', bio: 'Building bridges between donors and communities in all 16 regions of Ghana.' },
+    { name: 'Yaw Darko', role: 'Head of Trust & Safety', initials: 'YD', bio: 'Guardian of platform integrity with a zero-tolerance fraud policy.' },
+    { name: 'Kojo Antwi', role: 'Head of Partnerships', initials: 'KA', bio: 'Forging alliances with NGOs, government agencies, and corporate partners.' },
+    { name: 'Kwame Boateng', role: 'Head of Engineering', initials: 'KB', bio: 'Leading the team building scalable, secure fintech for Ghana.' },
+  ] as TeamMember[],
+}
 
 const DOODLE_PATHS: Record<string, string> = {
   star: 'M0,-8 L2.3,-3.2 L7.6,-2.5 L3.8,1.8 L4.7,7 L0,4 L-4.7,7 L-3.8,1.8 L-7.6,-2.5 L-2.3,-3.2 Z',
@@ -96,6 +137,10 @@ const FLOAT_SHAPES = [
 // ─── Page ───────────────────────────────────────────────────
 
 function AboutPage() {
+  // Runtime CMS: hero / mission / vision / philosophy / team copy (key 'about'),
+  // falling back to the hardcoded defaults when the CMS is unreachable.
+  const about = useContent('about', ABOUT_FALLBACK)
+
   return (
     <Box component="main" sx={{ flex: 1 }}>
       {/* ═══════════════════════════════════════════════════════
@@ -171,7 +216,7 @@ function AboutPage() {
               display: 'inline-block',
             }}
           >
-            Together, We Rise
+            {about.hero.title}
             <Box component="span" sx={{ position: 'absolute', bottom: -8, left: '20%', width: '60%', height: 6, backgroundImage: SQUIGGLE_GOLD, backgroundRepeat: 'repeat-x', backgroundSize: '60px 6px', animation: `${markerSwipe} 0.8s 0.5s ease both`, transformOrigin: 'left' }} />
           </Typography>
           <Typography
@@ -186,7 +231,7 @@ function AboutPage() {
               animation: `${fadeInUp} 0.7s 0.15s ease both`,
             }}
           >
-            UbuntuFund is Ghana&apos;s trust infrastructure for giving — empowering communities across the country through transparent, secure crowdfunding.
+            {about.hero.subtitle}
           </Typography>
         </Box>
 
@@ -230,13 +275,13 @@ function AboutPage() {
             </svg>
           </Box>
           <Typography sx={{ fontSize: '0.65rem', color: '#C7A24A', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 700, mb: 1 }}>
-            Our Mission
+            {about.mission.eyebrow}
           </Typography>
           <Typography sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 900, fontSize: '1.5rem', color: '#1a1a1a', mb: 2, lineHeight: 1.2 }}>
-            Democratizing Generosity Across Ghana
+            {about.mission.title}
           </Typography>
           <Typography sx={{ fontSize: '0.92rem', color: 'rgba(0,0,0,0.5)', lineHeight: 1.8 }}>
-            We believe that every community has the power to uplift itself when given the right tools. UbuntuFund provides the infrastructure that connects donors with verified causes, ensuring that every contribution reaches those who need it most.
+            {about.mission.body}
           </Typography>
           {/* Faint doodle in corner */}
           <Box sx={{ position: 'absolute', bottom: 16, right: 16, opacity: 0.04, animation: `${sway} 6s ease-in-out infinite` }}>
@@ -263,13 +308,13 @@ function AboutPage() {
             </svg>
           </Box>
           <Typography sx={{ fontSize: '0.65rem', color: '#C7A24A', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 700, mb: 1 }}>
-            Our Vision
+            {about.vision.eyebrow}
           </Typography>
           <Typography sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 900, fontSize: '1.5rem', color: '#1a1a1a', mb: 2, lineHeight: 1.2 }}>
-            A Ghana Where No Cause Goes Unfunded
+            {about.vision.title}
           </Typography>
           <Typography sx={{ fontSize: '0.92rem', color: 'rgba(0,0,0,0.5)', lineHeight: 1.8 }}>
-            We envision a future where geographic and economic barriers no longer prevent communities from accessing the resources they need. By 2030, we aim to facilitate over GH₵ 1 billion in donations across all 16 regions of Ghana.
+            {about.vision.body}
           </Typography>
           <Box sx={{ position: 'absolute', bottom: 16, right: 16, opacity: 0.04, animation: `${sway} 7s 1s ease-in-out infinite` }}>
             <svg width="50" height="50" viewBox="-12 -12 24 24"><path d={DOODLE_PATHS.diamond} fill="none" stroke="#C7A24A" strokeWidth="1.5" strokeLinecap="round" /></svg>
@@ -341,7 +386,7 @@ function AboutPage() {
 
         <Box sx={{ position: 'relative', zIndex: 1, maxWidth: 700, mx: 'auto' }}>
           <Typography sx={{ fontSize: '0.65rem', color: '#C7A24A', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 700, mb: 1.5, animation: `${fadeIn} 0.6s ease` }}>
-            The Ubuntu Philosophy
+            {about.philosophy.eyebrow}
           </Typography>
           <Typography
             sx={{
@@ -356,7 +401,7 @@ function AboutPage() {
               display: 'inline-block',
             }}
           >
-            &ldquo;I am because we are&rdquo;
+            &ldquo;{about.philosophy.quote}&rdquo;
             <Box component="span" sx={{ position: 'absolute', bottom: -6, left: '10%', width: '80%', height: 6, backgroundImage: SQUIGGLE_GREEN, backgroundRepeat: 'repeat-x', backgroundSize: '60px 6px', animation: `${markerSwipe} 1s 0.6s ease both`, transformOrigin: 'left' }} />
           </Typography>
           <Typography
@@ -368,7 +413,7 @@ function AboutPage() {
               animation: `${fadeInUp} 0.6s 0.2s ease both`,
             }}
           >
-            Ubuntu is a Nguni Bantu term meaning &ldquo;humanity.&rdquo; It speaks to our interconnectedness — the idea that a person is a person through other people. This philosophy is the heartbeat of our platform. When one community thrives, we all thrive. When one person gives, the ripple effect touches countless lives.
+            {about.philosophy.body}
           </Typography>
         </Box>
 
@@ -429,7 +474,9 @@ function AboutPage() {
             mx: 'auto',
           }}
         >
-          {teamMembers.map((member, index) => (
+          {about.team.map((member, index) => {
+            const pres = TEAM_PRESENTATION[index % TEAM_PRESENTATION.length]
+            return (
             <Box
               key={member.name}
               sx={{
@@ -442,7 +489,7 @@ function AboutPage() {
                 transition: 'all 0.35s ease',
                 animation: `${fadeInUp} 0.5s ease ${index * 0.08}s both`,
                 cursor: 'default',
-                '&::before': { content: '""', position: 'absolute', top: 0, left: 0, right: 0, height: 3, bgcolor: member.color, opacity: 0.4, transition: 'opacity 0.3s ease' },
+                '&::before': { content: '""', position: 'absolute', top: 0, left: 0, right: 0, height: 3, bgcolor: pres.color, opacity: 0.4, transition: 'opacity 0.3s ease' },
                 '&:hover': {
                   bgcolor: '#FEFEFE',
                   '&::before': { opacity: 1 },
@@ -455,12 +502,12 @@ function AboutPage() {
               {/* Background doodle */}
               <Box className="member-doodle" sx={{ position: 'absolute', top: 16, right: 16, opacity: 0.06, transition: 'all 0.5s ease', pointerEvents: 'none' }}>
                 <svg width="60" height="60" viewBox="-12 -12 24 24">
-                  <path d={DOODLE_PATHS[member.doodleType]} fill="none" stroke={member.color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d={DOODLE_PATHS[pres.doodleType]} fill="none" stroke={pres.color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </Box>
 
               {/* Large initials watermark */}
-              <Typography sx={{ position: 'absolute', right: -8, bottom: -12, fontFamily: '"Outfit", monospace', fontWeight: 900, fontSize: '5.5rem', color: member.color, opacity: 0.04, lineHeight: 1, pointerEvents: 'none', userSelect: 'none' }}>
+              <Typography sx={{ position: 'absolute', right: -8, bottom: -12, fontFamily: '"Outfit", monospace', fontWeight: 900, fontSize: '5.5rem', color: pres.color, opacity: 0.04, lineHeight: 1, pointerEvents: 'none', userSelect: 'none' }}>
                 {member.initials}
               </Typography>
 
@@ -469,10 +516,10 @@ function AboutPage() {
                 <Box
                   className="member-avatar"
                   sx={{
-                    width: 64, height: 64, bgcolor: member.color,
+                    width: 64, height: 64, bgcolor: pres.color,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     mb: 2.5, transition: 'transform 0.3s ease', position: 'relative',
-                    '&::after': { content: '""', position: 'absolute', inset: -3, border: `2px solid ${member.color}`, opacity: 0.25, transform: 'rotate(-1.5deg)', pointerEvents: 'none' },
+                    '&::after': { content: '""', position: 'absolute', inset: -3, border: `2px solid ${pres.color}`, opacity: 0.25, transform: 'rotate(-1.5deg)', pointerEvents: 'none' },
                   }}
                 >
                   <Typography sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 900, fontSize: '1.25rem', color: '#fff', letterSpacing: '0.04em' }}>
@@ -483,18 +530,19 @@ function AboutPage() {
                 <Typography sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 700, fontSize: '1.05rem', color: '#1a1a1a', mb: 0.3 }}>
                   {member.name}
                 </Typography>
-                <Typography sx={{ fontSize: '0.78rem', fontWeight: 600, color: member.color, textTransform: 'uppercase', letterSpacing: '0.06em', mb: 2 }}>
+                <Typography sx={{ fontSize: '0.78rem', fontWeight: 600, color: pres.color, textTransform: 'uppercase', letterSpacing: '0.06em', mb: 2 }}>
                   {member.role}
                 </Typography>
 
-                <Box className="member-line" sx={{ width: '40%', height: 2, bgcolor: member.color, opacity: 0.25, mb: 2, transition: 'width 0.4s ease' }} />
+                <Box className="member-line" sx={{ width: '40%', height: 2, bgcolor: pres.color, opacity: 0.25, mb: 2, transition: 'width 0.4s ease' }} />
 
                 <Typography sx={{ fontSize: '0.82rem', color: 'rgba(0,0,0,0.5)', lineHeight: 1.6, fontStyle: 'italic' }}>
                   {member.bio}
                 </Typography>
               </Box>
             </Box>
-          ))}
+            )
+          })}
         </Box>
       </Box>
     </Box>

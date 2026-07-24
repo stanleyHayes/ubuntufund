@@ -7,10 +7,13 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native'
-import { Text, Icon, Button, ActivityIndicator } from 'react-native-paper'
+import { Text, Icon, ActivityIndicator } from 'react-native-paper'
 import { Stack } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
+import { EmptyState } from '@/components/EmptyState'
+import { SignInRequired } from '@/components/SignInRequired'
+import { FadeInUp } from '@/components/anim/FadeInUp'
 import { brandColors } from '@/theme'
 
 interface Invitation {
@@ -78,8 +81,9 @@ export default function InvitationsScreen() {
   }, [])
 
   useEffect(() => {
+    if (!user) return
     fetchInvitations()
-  }, [fetchInvitations])
+  }, [user, fetchInvitations])
 
   const handleRespond = async (id: string, accept: boolean) => {
     setResponding(id)
@@ -99,16 +103,25 @@ export default function InvitationsScreen() {
 
   const pending = invitations.filter((inv) => inv.status === 'pending')
 
+  const headerOptions = {
+    title: 'Invitations',
+    headerStyle: { backgroundColor: brandColors.primary },
+    headerTintColor: '#FFFFFF',
+    headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
+  }
+
+  if (!user) {
+    return (
+      <View style={styles.container}>
+        <Stack.Screen options={headerOptions} />
+        <SignInRequired what="invitations" />
+      </View>
+    )
+  }
+
   return (
     <View style={styles.container}>
-      <Stack.Screen
-        options={{
-          title: 'Invitations',
-          headerStyle: { backgroundColor: brandColors.primary },
-          headerTintColor: '#FFFFFF',
-          headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
-        }}
-      />
+      <Stack.Screen options={headerOptions} />
 
       <View style={styles.headerBlock}>
         <Text style={styles.eyebrow}>Collaborations</Text>
@@ -122,36 +135,24 @@ export default function InvitationsScreen() {
             {[0, 1, 2].map((i) => <SkeletonCard key={i} />)}
           </View>
         ) : error ? (
-          <View style={styles.emptyState}>
-            <View style={[styles.emptyIconTile, styles.errorIconTile]}>
-              <Icon source="alert-circle-outline" size={24} color={brandColors.error} />
-            </View>
-            <Text style={styles.emptyTitle}>{error}</Text>
-            <Button
-              mode="contained"
-              buttonColor={brandColors.primary}
-              textColor="#FFFFFF"
-              onPress={fetchInvitations}
-              style={styles.actionBtn}
-              labelStyle={styles.btnLabel}
-            >
-              Retry
-            </Button>
-          </View>
+          <EmptyState
+            variant="error"
+            icon="alert-circle-outline"
+            title={error}
+            ctaLabel="Retry"
+            onCtaPress={fetchInvitations}
+          />
         ) : pending.length === 0 ? (
-          <View style={styles.emptyState}>
-            <View style={styles.emptyIconTile}>
-              <Icon source="email-open-outline" size={24} color={brandColors.primary} />
-            </View>
-            <Text style={styles.emptyTitle}>No pending invitations</Text>
-            <Text style={styles.emptySubtitle}>
-              When someone invites you to collaborate on a campaign, it will appear here
-            </Text>
-          </View>
+          <EmptyState
+            icon="email-open-outline"
+            title="No pending invitations"
+            subtitle="When someone invites you to collaborate on a campaign, it will appear here"
+          />
         ) : (
           <View style={styles.listWrap}>
-            {pending.map((inv) => (
-              <View key={inv.id} style={styles.invCard}>
+            {pending.map((inv, i) => (
+              <FadeInUp key={inv.id} index={i}>
+              <View style={styles.invCard}>
                 <Text style={styles.invCampaign} numberOfLines={1}>{inv.campaignName}</Text>
 
                 <View style={styles.invDetail}>
@@ -205,6 +206,7 @@ export default function InvitationsScreen() {
                   </TouchableOpacity>
                 </View>
               </View>
+              </FadeInUp>
             ))}
           </View>
         )}

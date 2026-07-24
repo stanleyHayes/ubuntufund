@@ -116,12 +116,10 @@ export function OrganizationsPage() {
                 borderRadius: SHAPE.card,
                 border: '1px solid',
                 borderColor: 'divider',
-                transition: 'all 0.35s cubic-bezier(0.22, 1, 0.36, 1)',
+                transition: 'border-color 0.35s cubic-bezier(0.22, 1, 0.36, 1)',
                 animation: `${fadeInUp} 0.5s ease-out ${index * 0.08}s both`,
                 '&:hover': {
-                  transform: 'translateY(-6px)',
                   borderColor: 'primary.light',
-                  boxShadow: '0 20px 40px rgba(46, 61, 47,0.12), 0 8px 16px rgba(0,0,0,0.06)',
                 },
               }}
             >
@@ -151,7 +149,6 @@ export function OrganizationsPage() {
                     width: 60,
                     height: 60,
                     border: '3px solid #fff',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
                     mt: -3.5,
                     mb: 1.5,
                     bgcolor: 'primary.main',

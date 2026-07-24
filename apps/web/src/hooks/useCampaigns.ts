@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import type { Campaign, CampaignDetail } from '@ubuntu-fund/types'
+import { useState, useEffect, useCallback } from 'react'
+import type { Campaign, CampaignDetail, CampaignCategory, CampaignPriority } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
 
 /**
@@ -63,6 +63,54 @@ export function useCampaigns(): UseCampaignsResult {
   }, [])
 
   return { campaigns, isLoading, error }
+}
+
+// ---------------------------------------------------------------------------
+// useCreateCampaign — real POST /campaigns (auth token attached by api client)
+// ---------------------------------------------------------------------------
+
+/** Payload sent to POST /campaigns. `imageUrls` carries the cover image. */
+export interface CreateCampaignPayload {
+  title: string
+  summary: string
+  category: CampaignCategory
+  description: string
+  beneficiaries: string[]
+  imageUrls: string[]
+  goalAmount: number
+  currency: string
+  endDate: string
+  priority: CampaignPriority
+}
+
+interface UseCreateCampaignResult {
+  createCampaign: (payload: CreateCampaignPayload) => Promise<Campaign>
+  isSubmitting: boolean
+  error: string | null
+  reset: () => void
+}
+
+export function useCreateCampaign(): UseCreateCampaignResult {
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const createCampaign = useCallback(async (payload: CreateCampaignPayload): Promise<Campaign> => {
+    setIsSubmitting(true)
+    setError(null)
+    try {
+      return await api.post<Campaign>('/campaigns', payload)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Could not create your campaign. Please try again.'
+      setError(message)
+      throw err
+    } finally {
+      setIsSubmitting(false)
+    }
+  }, [])
+
+  const reset = useCallback(() => setError(null), [])
+
+  return { createCampaign, isSubmitting, error, reset }
 }
 
 export function useCampaign(id: string): UseCampaignResult {

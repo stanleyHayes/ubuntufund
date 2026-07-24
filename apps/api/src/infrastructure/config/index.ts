@@ -2,6 +2,12 @@ import * as dotenv from 'dotenv';
 
 dotenv.config();
 
+export interface CloudinaryConfig {
+  cloudName: string;
+  apiKey: string;
+  apiSecret: string;
+}
+
 export interface AppConfig {
   port: number;
   mongodbUri: string;
@@ -9,6 +15,7 @@ export interface AppConfig {
   jwtRefreshSecret: string;
   nodeEnv: string;
   corsOrigins: string[];
+  cloudinary: CloudinaryConfig;
 }
 
 function requireEnv(name: string): string {
@@ -54,4 +61,11 @@ export const config: AppConfig = {
     : nodeEnv === 'development'
       ? defaultDevOrigins
       : [],
+  // Cloudinary is optional groundwork: absent creds simply disable signed
+  // uploads (the endpoint returns 501) rather than blocking boot.
+  cloudinary: {
+    cloudName: process.env.CLOUDINARY_CLOUD_NAME ?? '',
+    apiKey: process.env.CLOUDINARY_API_KEY ?? '',
+    apiSecret: process.env.CLOUDINARY_API_SECRET ?? '',
+  },
 };

@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
-import { View, ScrollView, StyleSheet, Image, Alert, Modal, TextInput, TouchableOpacity, Linking } from 'react-native'
+import { View, ScrollView, StyleSheet, Alert, Modal, TextInput, TouchableOpacity, Linking } from 'react-native'
 import { useLocalSearchParams, Stack } from 'expo-router'
 import { Text, Button, Chip, ActivityIndicator, Surface, Avatar, Divider, Icon } from 'react-native-paper'
 import { useCampaign, useUser } from '@/hooks/useCampaigns'
+import { RemoteImage } from '@/components/RemoteImage'
+import { FadeInUp } from '@/components/anim/FadeInUp'
 import { useEnabledPaymentProviders, EnabledPaymentProvider, getProviderIcon } from '@/hooks/useEnabledPaymentProviders'
 import { ProgressBar } from '@/components/ProgressBar'
 import { TrustBadge } from '@/components/TrustBadge'
@@ -155,11 +157,9 @@ export default function CampaignDetailScreen() {
     <>
       <Stack.Screen options={{ title: campaign.title }} />
       <ScrollView style={styles.container}>
-        {campaign.imageUrls[0] && (
-          <Image source={{ uri: campaign.imageUrls[0] }} style={styles.heroImage} />
-        )}
+        <RemoteImage uri={campaign.imageUrls[0]} style={styles.heroImage} />
 
-        <View style={styles.content}>
+        <FadeInUp style={styles.content}>
           <View style={styles.chipRow}>
             <Chip style={styles.chip} textStyle={styles.chipText}>
               {campaign.category}
@@ -185,7 +185,7 @@ export default function CampaignDetailScreen() {
             {campaign.title}
           </Text>
 
-          <Surface style={styles.progressCard} elevation={1}>
+          <Surface style={styles.progressCard} elevation={0}>
             <ProgressBar progress={progress} />
             <View style={styles.statsRow}>
               <View>
@@ -254,7 +254,7 @@ export default function CampaignDetailScreen() {
           </Text>
 
           {/* Campaign Dates */}
-          <Surface style={styles.datesCard} elevation={1}>
+          <Surface style={styles.datesCard} elevation={0}>
             <View style={styles.dateRow}>
               <View style={styles.dateItem}>
                 <Icon source="calendar-start" size={18} color={brandColors.textSecondary} />
@@ -281,7 +281,7 @@ export default function CampaignDetailScreen() {
           <Text variant="titleMedium" style={styles.sectionTitle}>
             Campaign Creator
           </Text>
-          <Surface style={styles.creatorCard} elevation={1}>
+          <Surface style={styles.creatorCard} elevation={0}>
             <View style={styles.creatorRow}>
               <Avatar.Text
                 size={48}
@@ -316,7 +316,7 @@ export default function CampaignDetailScreen() {
                 Recent Donations {campaign.donorCount > 0 && `(${campaign.donorCount})`}
               </Text>
               {campaign.donations.slice(0, 5).map((donation: CampaignDonation) => (
-                <Surface key={donation.id} style={styles.donationCard} elevation={1}>
+                <Surface key={donation.id} style={styles.donationCard} elevation={0}>
                   <View style={styles.donationRow}>
                     <Avatar.Text
                       size={36}
@@ -356,7 +356,7 @@ export default function CampaignDetailScreen() {
                 Collaborators
               </Text>
               {collaborators.map((c) => (
-                <Surface key={c.id} style={styles.collaboratorCard} elevation={1}>
+                <Surface key={c.id} style={styles.collaboratorCard} elevation={0}>
                   <View style={styles.collaboratorRow}>
                     <Avatar.Text
                       size={36}
@@ -393,7 +393,7 @@ export default function CampaignDetailScreen() {
           <Text variant="titleMedium" style={styles.sectionTitle}>
             Accepted Payment Methods
           </Text>
-          <Surface style={styles.paymentMethodsCard} elevation={1}>
+          <Surface style={styles.paymentMethodsCard} elevation={0}>
             {[
               { icon: 'cellphone', label: 'Mobile Money' },
               { icon: 'credit-card-outline', label: 'Debit / Credit Card' },
@@ -430,7 +430,7 @@ export default function CampaignDetailScreen() {
           </Button>
 
           <View style={{ height: 32 }} />
-        </View>
+        </FadeInUp>
       </ScrollView>
 
       {/* Donation Modal */}

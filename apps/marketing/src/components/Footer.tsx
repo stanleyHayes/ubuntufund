@@ -357,8 +357,6 @@ function Footer() {
                   py: 0.8,
                   fontWeight: 700,
                   fontSize: '0.8rem',
-                  boxShadow: 'none',
-                  '&:hover': { boxShadow: '0 2px 12px rgba(199, 162, 74,0.3)' },
                 }}
               >
                 {subscribeStatus === 'loading' ? <CircularProgress size={16} color="inherit" /> : 'Subscribe'}

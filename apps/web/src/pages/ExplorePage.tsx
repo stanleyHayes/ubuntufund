@@ -530,7 +530,6 @@ export function ExplorePage() {
                     },
                     '&:hover': {
                       bgcolor: '#FEFEFE',
-                      boxShadow: '0 8px 30px rgba(0,0,0,0.06)',
                       zIndex: 1,
                       '&::before': { opacity: 1 },
                       '& .card-img': { transform: 'scale(1.04)' },

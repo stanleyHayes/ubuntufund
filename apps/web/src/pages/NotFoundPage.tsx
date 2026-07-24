@@ -397,10 +397,9 @@ export function NotFoundPage() {
           textTransform: 'none',
           opacity: 0,
           animation: 'fadeInUp 0.6s ease 1.2s forwards',
-          transition: 'box-shadow 0.2s ease',
+          transition: 'background 0.2s ease',
           '&:hover': {
             background: 'linear-gradient(135deg, #1C261D 0%, #2E3D2F 100%)',
-            boxShadow: '0 6px 28px rgba(46, 61, 47,0.4)',
           },
         }}
       >

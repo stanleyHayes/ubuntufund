@@ -1,0 +1,162 @@
+[
+  {
+    "key": "marketing.stats",
+    "type": "stats",
+    "data": {
+      "items": [
+        { "value": "GH₵ 120M+", "label": "Raised on platform" },
+        { "value": "50K+", "label": "Campaigns created" },
+        { "value": "16", "label": "Regions of Ghana" },
+        { "value": "99%", "label": "Trust rate" }
+      ]
+    }
+  },
+  {
+    "key": "faq",
+    "type": "faq",
+    "data": {
+      "items": [
+        {
+          "category": "Getting started",
+          "question": "How do I create an account on UbuntuFund?",
+          "answer": "Click \"Sign Up\" on the homepage, enter your email and create a password. You can also sign up with Google or Facebook. Complete your profile with your name, location, and a photo to build trust with the community."
+        },
+        {
+          "category": "Getting started",
+          "question": "Is UbuntuFund available in my country?",
+          "answer": "UbuntuFund is built for Ghana. Campaign creation is open to organizers based in Ghana, and anyone worldwide can donate to a Ghanaian campaign — family abroad included. All campaigns raise funds in Ghanaian cedis (GHS)."
+        },
+        {
+          "category": "Getting started",
+          "question": "Do I need to verify my identity?",
+          "answer": "Basic usage requires email verification. To create campaigns and build trust, we recommend completing our multi-level verification: email/phone, national ID, institutional, and community vouching. Higher verification means a higher trust score."
+        },
+        {
+          "category": "Campaigns",
+          "question": "How do I start a fundraising campaign?",
+          "answer": "Click \"Start a Campaign\" and follow the guided setup: title, description, goal amount, category, and compelling photos. Set a deadline and submit for review. Our team typically reviews campaigns within 24-48 hours."
+        },
+        {
+          "category": "Campaigns",
+          "question": "What types of campaigns can I create?",
+          "answer": "We support education, healthcare, community development, emergency relief, arts & culture, small business, agriculture, and technology. Campaigns must be for legitimate, legal purposes benefiting communities or individuals."
+        },
+        {
+          "category": "Campaigns",
+          "question": "How long can my campaign run?",
+          "answer": "Campaigns run up to 90 days. We recommend 30-60 days for optimal engagement. You can extend once for 30 additional days if you haven't reached your goal. Campaigns that reach their goal early continue accepting donations."
+        },
+        {
+          "category": "Campaigns",
+          "question": "Can I edit my campaign after it's live?",
+          "answer": "Yes. You can update the description, images, and deadline. The goal amount cannot be reduced once donations are received. Major changes may trigger a re-review by our trust team."
+        },
+        {
+          "category": "Donations",
+          "question": "How do I make a donation?",
+          "answer": "Browse campaigns and click \"Donate.\" Enter the amount, choose your payment method, and confirm. You'll receive a confirmation email with your receipt. You can donate anonymously if you prefer."
+        },
+        {
+          "category": "Donations",
+          "question": "Is there a minimum or maximum donation?",
+          "answer": "Minimum is GH₵ 5. No maximum, though large donations may require additional verification. Enterprise organizations can set custom minimums for their campaigns."
+        },
+        {
+          "category": "Donations",
+          "question": "Can I get a refund on my donation?",
+          "answer": "Refunds are available within 14 days if the campaign hasn't withdrawn the funds. For campaigns that are suspended or found fraudulent, full refunds are processed automatically. Visit your donation history to request a refund."
+        },
+        {
+          "category": "Payments",
+          "question": "What payment methods are accepted?",
+          "answer": "MTN Mobile Money (MoMo), Telecel Cash, AT Money, Visa & Mastercard cards, and bank transfer. Mobile money is the fastest way to give and receive funds in Ghana."
+        },
+        {
+          "category": "Payments",
+          "question": "How do I withdraw my campaign funds?",
+          "answer": "Go to your dashboard and click \"Withdraw.\" Choose mobile money (processed within 24 hours) or bank transfer to any Ghanaian bank (2-3 business days). Platform fees are automatically deducted."
+        },
+        {
+          "category": "Payments",
+          "question": "What are the platform fees?",
+          "answer": "Fees depend on your subscription tier. Free accounts pay a 5% platform fee. Starter (3.5%), Pro (2%), and Enterprise (1%). All tiers incur standard payment processing fees (2.9% + GH₵ 1). See our pricing page for details."
+        },
+        {
+          "category": "Trust & safety",
+          "question": "How does UbuntuFund verify campaigns?",
+          "answer": "Multi-layer verification: initial team review, organizer identity verification, documentation checks, and community trust scores. Verified campaigns earn badges that help donors assess credibility at a glance."
+        },
+        {
+          "category": "Trust & safety",
+          "question": "What happens if a campaign is fraudulent?",
+          "answer": "The campaign is immediately suspended, funds are frozen, and we process refunds for affected donors. Fraudulent accounts are permanently banned. We cooperate with law enforcement. Use the \"Report\" button on any campaign to flag concerns."
+        },
+        {
+          "category": "Trust & safety",
+          "question": "How does the trust score work?",
+          "answer": "Trust scores (0-100) are calculated from verification level, campaign track record, community engagement, and donor feedback. Higher scores unlock features like increased campaign limits and featured placement."
+        },
+        {
+          "category": "Organizations",
+          "question": "How do I register as an organization?",
+          "answer": "During registration, select \"Organization\" as your account type. Provide your organization name, registration number, and type (NGO, hospital, school, etc.). Complete verification with official documents for priority trust status."
+        },
+        {
+          "category": "Organizations",
+          "question": "What features are available for organizations?",
+          "answer": "Organizations get: branded campaign pages, team management, advanced analytics, automated tax receipts, recurring donation support, API access, and dedicated account management. See our \"For Organizations\" page for tier details."
+        }
+      ]
+    }
+  },
+  {
+    "key": "about",
+    "type": "about",
+    "data": {
+      "hero": {
+        "title": "Together, We Rise",
+        "subtitle": "UbuntuFund is Ghana's trust infrastructure for giving — empowering communities across the country through transparent, secure crowdfunding."
+      },
+      "mission": {
+        "eyebrow": "Our Mission",
+        "title": "Democratizing Generosity Across Ghana",
+        "body": "We believe that every community has the power to uplift itself when given the right tools. UbuntuFund provides the infrastructure that connects donors with verified causes, ensuring that every contribution reaches those who need it most."
+      },
+      "vision": {
+        "eyebrow": "Our Vision",
+        "title": "A Ghana Where No Cause Goes Unfunded",
+        "body": "We envision a future where geographic and economic barriers no longer prevent communities from accessing the resources they need. By 2030, we aim to facilitate over GH₵ 1 billion in donations across all 16 regions of Ghana."
+      },
+      "philosophy": {
+        "eyebrow": "The Ubuntu Philosophy",
+        "quote": "I am because we are",
+        "body": "Ubuntu is a Nguni Bantu term meaning \"humanity.\" It speaks to our interconnectedness — the idea that a person is a person through other people. This philosophy is the heartbeat of our platform. When one community thrives, we all thrive. When one person gives, the ripple effect touches countless lives."
+      },
+      "team": [
+        { "name": "Kofi Owusu", "role": "Co-Founder & CEO", "initials": "KO", "bio": "Visionary leader passionate about democratizing giving across Ghana." },
+        { "name": "Adwoa Agyeman", "role": "Co-Founder & CTO", "initials": "AA", "bio": "Architect of the trust infrastructure powering transparent donations." },
+        { "name": "Abena Sarpong", "role": "Head of Community", "initials": "AS", "bio": "Building bridges between donors and communities in all 16 regions of Ghana." },
+        { "name": "Yaw Darko", "role": "Head of Trust & Safety", "initials": "YD", "bio": "Guardian of platform integrity with a zero-tolerance fraud policy." },
+        { "name": "Kojo Antwi", "role": "Head of Partnerships", "initials": "KA", "bio": "Forging alliances with NGOs, government agencies, and corporate partners." },
+        { "name": "Kwame Boateng", "role": "Head of Engineering", "initials": "KB", "bio": "Leading the team building scalable, secure fintech for Ghana." }
+      ]
+    }
+  },
+  {
+    "key": "contact",
+    "type": "contact",
+    "data": {
+      "email": "hello@ubuntufund.com",
+      "phone": "+233 30 123 4567",
+      "address": "14 Independence Avenue, Accra, Ghana",
+      "hours": "Mon-Fri, 9am-5pm GMT",
+      "socials": {
+        "facebook": "https://facebook.com/ubuntufund",
+        "x": "https://x.com/ubuntufund",
+        "instagram": "https://instagram.com/ubuntufund",
+        "linkedin": "https://linkedin.com/company/ubuntufund",
+        "youtube": "https://youtube.com/@ubuntufund"
+      }
+    }
+  }
+]

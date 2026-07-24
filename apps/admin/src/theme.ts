@@ -92,11 +92,16 @@ const adminTheme = createTheme({
       },
     },
     MuiCard: {
+      defaultProps: {
+        variant: 'outlined',
+        elevation: 0,
+      },
       styleOverrides: {
         root: {
           borderRadius: SHAPE.card,
           backgroundImage: 'none',
           border: '1px solid rgba(232, 235, 227, 0.07)',
+          boxShadow: 'none',
         },
       },
     },

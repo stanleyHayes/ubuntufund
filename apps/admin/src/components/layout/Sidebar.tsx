@@ -25,6 +25,10 @@ import MarkEmailUnreadRoundedIcon from '@mui/icons-material/MarkEmailUnreadRound
 import MarkEmailReadRoundedIcon from '@mui/icons-material/MarkEmailReadRounded'
 import FormatQuoteRoundedIcon from '@mui/icons-material/FormatQuoteRounded'
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded'
+import QueryStatsRoundedIcon from '@mui/icons-material/QueryStatsRounded'
+import QuizRoundedIcon from '@mui/icons-material/QuizRounded'
+import InfoRoundedIcon from '@mui/icons-material/InfoRounded'
+import ContactMailRoundedIcon from '@mui/icons-material/ContactMailRounded'
 import LayersRoundedIcon from '@mui/icons-material/LayersRounded'
 import AccountBalanceRoundedIcon from '@mui/icons-material/AccountBalanceRounded'
 import AdminPanelSettingsRoundedIcon from '@mui/icons-material/AdminPanelSettingsRounded'
@@ -82,6 +86,15 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Newsletter', path: '/newsletter', icon: <MarkEmailReadRoundedIcon /> },
       { label: 'Testimonials', path: '/testimonials', icon: <FormatQuoteRoundedIcon /> },
       { label: 'AI Usage', path: '/ai-usage', icon: <AutoAwesomeRoundedIcon /> },
+    ],
+  },
+  {
+    heading: 'Content',
+    items: [
+      { label: 'Homepage Stats', path: '/content/stats', icon: <QueryStatsRoundedIcon /> },
+      { label: 'FAQ', path: '/content/faq', icon: <QuizRoundedIcon /> },
+      { label: 'About Page', path: '/content/about', icon: <InfoRoundedIcon /> },
+      { label: 'Contact Details', path: '/content/contact', icon: <ContactMailRoundedIcon /> },
     ],
   },
   {
@@ -259,7 +272,6 @@ export default function Sidebar() {
                           mb: 0.25,
                           borderRadius: '10px',
                           bgcolor: active ? '#8FAE96' : 'transparent',
-                          boxShadow: active ? '0 2px 10px rgba(0,0,0,0.25)' : 'none',
                           transition: 'background-color 0.15s ease',
                           '&:hover': { bgcolor: active ? '#8FAE96' : WASH },
                           '&:focus-visible': { outline: '2px solid #C7A24A', outlineOffset: -2 },

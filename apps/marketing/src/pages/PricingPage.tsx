@@ -203,11 +203,6 @@ function PricingPage() {
                   position: 'relative',
                   display: 'flex',
                   flexDirection: 'column',
-                  transition: 'transform 0.2s, box-shadow 0.2s',
-                  '&:hover': {
-                    transform: 'translateY(-4px)',
-                    boxShadow: '0 12px 40px rgba(0,0,0,0.08)',
-                  },
                 }}
               >
                 {isPro && (

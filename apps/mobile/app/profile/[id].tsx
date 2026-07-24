@@ -29,7 +29,7 @@ export default function ProfileScreen() {
     <>
       <Stack.Screen options={{ title: user.name ?? 'Profile' }} />
       <ScrollView style={styles.container}>
-        <Surface style={styles.card} elevation={1}>
+        <Surface style={styles.card} elevation={0}>
           <View style={styles.header}>
             <Avatar.Text
               size={80}
@@ -52,7 +52,7 @@ export default function ProfileScreen() {
           </View>
         </Surface>
 
-        <Surface style={styles.card} elevation={1}>
+        <Surface style={styles.card} elevation={0}>
           <Text variant="titleMedium" style={{ fontFamily: 'Outfit_700Bold', marginBottom: 12 }}>
             Details
           </Text>
@@ -79,13 +79,16 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAFAFA' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  container: { flex: 1, backgroundColor: brandColors.background },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: brandColors.background },
   card: {
-    margin: 16,
+    marginHorizontal: 16,
+    marginTop: 16,
     padding: 16,
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    backgroundColor: brandColors.surface,
+    borderWidth: 1,
+    borderColor: 'rgba(26,46,34,0.10)',
   },
   header: {
     flexDirection: 'row',
@@ -95,14 +98,14 @@ const styles = StyleSheet.create({
   headerInfo: {
     flex: 1,
   },
-  muted: { color: '#757575' },
+  muted: { color: brandColors.textSecondary },
   detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: 'rgba(26,46,34,0.08)',
   },
-  chip: { height: 28 },
+  chip: { height: 28, backgroundColor: 'rgba(168,181,160,0.28)' },
 })

@@ -61,13 +61,8 @@ function FeaturedDonorCard({
         borderRadius: SHAPE.card,
         border: isTop3 ? `2.5px solid ${rank.color}` : '1px solid rgba(0,0,0,0.08)',
         bgcolor: isFirst ? rank.bg : '#fff',
-        boxShadow: isTop3 ? `0 8px 32px ${rank.glow}` : '0 2px 8px rgba(0,0,0,0.04)',
-        transition: 'box-shadow 200ms ease',
         animation: isFirst ? `${floatUp} 3s ease-in-out infinite` : undefined,
         mt: isFirst ? 0 : index === 1 || index === 2 ? 4 : 6,
-        '&:hover': {
-          boxShadow: isTop3 ? `0 10px 36px ${rank.glow}` : '0 4px 16px rgba(0,0,0,0.08)',
-        },
       }}
     >
       {/* Rank badge */}
@@ -85,7 +80,6 @@ function FeaturedDonorCard({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          boxShadow: `0 4px 12px ${rank.glow}`,
           '& .MuiSvgIcon-root': { fontSize: 18 },
         }}
       >
@@ -120,7 +114,6 @@ function FeaturedDonorCard({
                 alignItems: 'center',
                 justifyContent: 'center',
                 border: '2px solid #fff',
-                boxShadow: '0 2px 8px rgba(199,162,74,0.4)',
               }}
             >
               <StarRounded sx={{ fontSize: 14, color: '#fff' }} />

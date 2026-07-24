@@ -7,7 +7,6 @@ import {
   Dimensions,
   FlatList,
   TouchableOpacity,
-  Image,
 } from 'react-native'
 import { Text, ActivityIndicator, Icon } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -18,6 +17,9 @@ import { useCampaigns } from '@/hooks/useCampaigns'
 import { useAuth } from '@/context/AuthContext'
 import { ProgressBar } from '@/components/ProgressBar'
 import { UbuntuLogo } from '@/components/UbuntuLogo'
+import { RemoteImage } from '@/components/RemoteImage'
+import { FadeInUp } from '@/components/anim/FadeInUp'
+import { PressableScale } from '@/components/anim/PressableScale'
 import { brandColors } from '@/theme'
 
 const { width } = Dimensions.get('window')
@@ -80,11 +82,7 @@ function FeaturedCard({ campaign, index }: { campaign: Campaign; index: number }
         onPress={() => router.push(`/campaign/${campaign.id}`)}
         style={styles.featuredCard}
       >
-        {campaign.imageUrls[0] ? (
-          <Image source={{ uri: campaign.imageUrls[0] }} style={styles.featuredImage} />
-        ) : (
-          <View style={[styles.featuredImage, { backgroundColor: 'rgba(168,181,160,0.28)' }]} />
-        )}
+        <RemoteImage uri={campaign.imageUrls[0]} style={styles.featuredImage} />
         <View style={styles.featuredImageOverlay} />
 
         {/* Priority badge */}
@@ -131,11 +129,7 @@ function CompactCard({ campaign }: { campaign: Campaign }) {
       onPress={() => router.push(`/campaign/${campaign.id}`)}
       style={styles.compactCard}
     >
-      {campaign.imageUrls[0] ? (
-        <Image source={{ uri: campaign.imageUrls[0] }} style={styles.compactImage} />
-      ) : (
-        <View style={[styles.compactImage, { backgroundColor: 'rgba(168,181,160,0.28)' }]} />
-      )}
+      <RemoteImage uri={campaign.imageUrls[0]} style={styles.compactImage} />
       <View style={styles.compactContent}>
         <Text style={styles.compactTitle} numberOfLines={2}>{campaign.title}</Text>
         <ProgressBar progress={pct} height={3} />
@@ -235,21 +229,22 @@ export default function HomeTab() {
           <View style={{ marginTop: 20 }}>
             <SectionHeader title="Browse Categories" />
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScrollView} contentContainerStyle={styles.categoryScroll}>
-              {CATEGORIES.map((cat) => {
+              {CATEGORIES.map((cat, i) => {
                 const count = active.filter((c) => c.category === cat.key).length
                 return (
-                  <TouchableOpacity
-                    key={cat.key}
-                    style={styles.categoryPill}
-                    activeOpacity={0.7}
-                    onPress={() => router.push({ pathname: '/(tabs)/explore', params: { category: cat.key } })}
-                  >
-                    <View style={styles.categoryEmoji}>
-                      <Icon source={cat.icon} size={20} color={brandColors.primary} />
-                    </View>
-                    <Text style={styles.categoryLabel}>{cat.label}</Text>
-                    <Text style={styles.categoryCount}>{count}</Text>
-                  </TouchableOpacity>
+                  <FadeInUp key={cat.key} index={i}>
+                    <TouchableOpacity
+                      style={styles.categoryPill}
+                      activeOpacity={0.7}
+                      onPress={() => router.push({ pathname: '/(tabs)/explore', params: { category: cat.key } })}
+                    >
+                      <View style={styles.categoryEmoji}>
+                        <Icon source={cat.icon} size={20} color={brandColors.primary} />
+                      </View>
+                      <Text style={styles.categoryLabel}>{cat.label}</Text>
+                      <Text style={styles.categoryCount}>{count}</Text>
+                    </TouchableOpacity>
+                  </FadeInUp>
                 )
               })}
             </ScrollView>
@@ -277,8 +272,10 @@ export default function HomeTab() {
             <View style={{ marginTop: 28 }}>
               <SectionHeader title="Urgent — Needs Help Now" />
               <View style={{ paddingHorizontal: 16 }}>
-                {urgent.slice(0, 3).map((c) => (
-                  <CompactCard key={c.id} campaign={c} />
+                {urgent.slice(0, 3).map((c, i) => (
+                  <FadeInUp key={c.id} index={i}>
+                    <CompactCard campaign={c} />
+                  </FadeInUp>
                 ))}
               </View>
             </View>
@@ -302,11 +299,7 @@ export default function HomeTab() {
                     onPress={() => router.push(`/campaign/${item.id}`)}
                     style={styles.recentCard}
                   >
-                    {item.imageUrls[0] ? (
-                      <Image source={{ uri: item.imageUrls[0] }} style={styles.recentImage} />
-                    ) : (
-                      <View style={[styles.recentImage, { backgroundColor: 'rgba(168,181,160,0.28)' }]} />
-                    )}
+                    <RemoteImage uri={item.imageUrls[0]} style={styles.recentImage} />
                     <View style={styles.recentContent}>
                       <Text style={styles.recentTitle} numberOfLines={2}>{item.title}</Text>
                       <Text style={styles.recentAmount}>{formatCurrency(item.raisedAmount)}</Text>
@@ -318,9 +311,8 @@ export default function HomeTab() {
           )}
 
           {/* ═══ START A CAMPAIGN CTA ═══ */}
-          <TouchableOpacity
+          <PressableScale
             style={styles.ctaBanner}
-            activeOpacity={0.85}
             onPress={() => router.push('/campaign/create')}
           >
             <View>
@@ -330,7 +322,7 @@ export default function HomeTab() {
             <View style={styles.ctaArrow}>
               <Icon source="arrow-right" size={20} color="#221B0E" />
             </View>
-          </TouchableOpacity>
+          </PressableScale>
 
           <View style={{ height: 24 }} />
         </>

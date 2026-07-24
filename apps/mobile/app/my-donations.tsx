@@ -6,10 +6,13 @@ import {
   Animated,
   TouchableOpacity,
 } from 'react-native'
-import { Text, Icon, Button } from 'react-native-paper'
+import { Text } from 'react-native-paper'
 import { router, Stack } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
+import { EmptyState } from '@/components/EmptyState'
+import { SignInRequired } from '@/components/SignInRequired'
+import { FadeInUp } from '@/components/anim/FadeInUp'
 import { brandColors } from '@/theme'
 
 interface Donation {
@@ -90,23 +93,33 @@ export default function MyDonationsScreen() {
   }, [])
 
   useEffect(() => {
+    if (!user) return
     fetchDonations()
-  }, [fetchDonations])
+  }, [user, fetchDonations])
 
   const filtered = activeFilter === 'All'
     ? donations
     : donations.filter((d) => d.status.toLowerCase() === activeFilter.toLowerCase())
 
+  const headerOptions = {
+    title: 'My Donations',
+    headerStyle: { backgroundColor: brandColors.primary },
+    headerTintColor: '#FFFFFF',
+    headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
+  }
+
+  if (!user) {
+    return (
+      <View style={styles.container}>
+        <Stack.Screen options={headerOptions} />
+        <SignInRequired what="donations" />
+      </View>
+    )
+  }
+
   return (
     <View style={styles.container}>
-      <Stack.Screen
-        options={{
-          title: 'My Donations',
-          headerStyle: { backgroundColor: brandColors.primary },
-          headerTintColor: '#FFFFFF',
-          headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
-        }}
-      />
+      <Stack.Screen options={headerOptions} />
 
       <View style={styles.headerBlock}>
         <Text style={styles.eyebrow}>Giving History</Text>
@@ -142,40 +155,27 @@ export default function MyDonationsScreen() {
             {[0, 1, 2, 3, 4].map((i) => <SkeletonRow key={i} />)}
           </View>
         ) : error ? (
-          <View style={styles.emptyState}>
-            <View style={[styles.emptyIconTile, styles.errorIconTile]}>
-              <Icon source="alert-circle-outline" size={24} color={brandColors.error} />
-            </View>
-            <Text style={styles.emptyTitle}>{error}</Text>
-            <Button
-              mode="contained"
-              buttonColor={brandColors.primary}
-              textColor="#FFFFFF"
-              onPress={fetchDonations}
-              style={styles.actionBtn}
-              labelStyle={styles.btnLabel}
-            >
-              Retry
-            </Button>
-          </View>
+          <EmptyState
+            variant="error"
+            icon="alert-circle-outline"
+            title={error}
+            ctaLabel="Retry"
+            onCtaPress={fetchDonations}
+          />
         ) : filtered.length === 0 ? (
-          <View style={styles.emptyState}>
-            <View style={styles.emptyIconTile}>
-              <Icon source="heart-outline" size={24} color={brandColors.primary} />
-            </View>
-            <Text style={styles.emptyTitle}>No donations found</Text>
-            <Text style={styles.emptySubtitle}>
-              {activeFilter !== 'All' ? `No ${activeFilter.toLowerCase()} donations` : 'Your donation history will appear here'}
-            </Text>
-          </View>
+          <EmptyState
+            icon="heart-outline"
+            title="No donations found"
+            subtitle={activeFilter !== 'All' ? `No ${activeFilter.toLowerCase()} donations` : 'Your donation history will appear here'}
+          />
         ) : (
           <View style={styles.listWrap}>
-            {filtered.map((d) => {
+            {filtered.map((d, i) => {
               const statusColor = STATUS_COLORS[d.status] ?? brandColors.textSecondary
               const canRefund = d.status === 'completed'
               return (
+                <FadeInUp key={d.id} index={i}>
                 <TouchableOpacity
-                  key={d.id}
                   style={styles.donationCard}
                   activeOpacity={0.85}
                   onPress={() => router.push(`/campaign/${d.campaignId}`)}
@@ -212,6 +212,7 @@ export default function MyDonationsScreen() {
                     )}
                   </View>
                 </TouchableOpacity>
+                </FadeInUp>
               )
             })}
           </View>

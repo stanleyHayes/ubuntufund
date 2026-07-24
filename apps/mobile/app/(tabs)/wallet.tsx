@@ -4,6 +4,10 @@ import { Text, Icon, ActivityIndicator, TouchableRipple } from 'react-native-pap
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { brandColors } from '@/theme'
 import { api } from '@/lib/api'
+import { useAuth } from '@/context/AuthContext'
+import { EmptyState } from '@/components/EmptyState'
+import { SignInRequired } from '@/components/SignInRequired'
+import { FadeInUp } from '@/components/anim/FadeInUp'
 import type { Wallet } from '@ubuntu-fund/types'
 
 const WALLET_TYPE_LABEL: Record<string, string> = {
@@ -37,11 +41,13 @@ function ActionTile({ icon, label }: { icon: string; label: string }) {
 
 export default function WalletTab() {
   const insets = useSafeAreaInsets()
+  const { user } = useAuth()
   const [wallets, setWallets] = useState<Wallet[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (!user) return
     let cancelled = false
     api
       .get<Wallet[] | { items: Wallet[] }>('/wallets')
@@ -55,10 +61,18 @@ export default function WalletTab() {
         if (!cancelled) setIsLoading(false)
       })
     return () => { cancelled = true }
-  }, [])
+  }, [user])
 
   const primary = wallets[0]
   const secondary = wallets.slice(1)
+
+  if (!user) {
+    return (
+      <View style={styles.container}>
+        <SignInRequired what="wallet" />
+      </View>
+    )
+  }
 
   if (isLoading) {
     return (
@@ -70,11 +84,8 @@ export default function WalletTab() {
 
   if (error) {
     return (
-      <View style={[styles.container, styles.centered, { paddingHorizontal: 32 }]}>
-        <View style={styles.errorIconTile}>
-          <Icon source="alert-circle-outline" size={24} color={brandColors.error} />
-        </View>
-        <Text style={styles.errorText}>{error}</Text>
+      <View style={styles.container}>
+        <EmptyState variant="error" icon="alert-circle-outline" title="Couldn't load wallet" subtitle={error} />
       </View>
     )
   }
@@ -107,27 +118,28 @@ export default function WalletTab() {
       {/* ═══ WALLETS ═══ */}
       <Text style={styles.sectionTitle}>My Wallets</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.walletScrollView} contentContainerStyle={styles.walletScroll}>
-        {wallets.map((w) => (
-          <TouchableRipple key={w.id} style={styles.walletCard} rippleColor="rgba(46,61,47,0.10)">
-            <View>
-              <View style={styles.walletTypeChip}>
-                <Text style={styles.walletTypeText}>{WALLET_TYPE_LABEL[w.type] ?? w.type}</Text>
+        {wallets.map((w, i) => (
+          <FadeInUp key={w.id} index={i}>
+            <TouchableRipple style={styles.walletCard} rippleColor="rgba(46,61,47,0.10)">
+              <View>
+                <View style={styles.walletTypeChip}>
+                  <Text style={styles.walletTypeText}>{WALLET_TYPE_LABEL[w.type] ?? w.type}</Text>
+                </View>
+                <Text style={styles.walletCurrency}>{w.currency}</Text>
+                <Text style={styles.walletBalance}>{w.balance.toLocaleString()}</Text>
               </View>
-              <Text style={styles.walletCurrency}>{w.currency}</Text>
-              <Text style={styles.walletBalance}>{w.balance.toLocaleString()}</Text>
-            </View>
-          </TouchableRipple>
+            </TouchableRipple>
+          </FadeInUp>
         ))}
       </ScrollView>
 
       {/* Transactions placeholder — endpoint not yet available */}
-      <View style={styles.emptyState}>
-        <View style={styles.emptyIconTile}>
-          <Icon source="receipt-text-outline" size={24} color={brandColors.primary} />
-        </View>
-        <Text style={styles.emptyTitle}>Transaction history coming soon</Text>
-        <Text style={styles.emptyBody}>Check back soon — your activity will appear here.</Text>
-      </View>
+      <EmptyState
+        style={styles.transactionsEmpty}
+        icon="receipt-text-outline"
+        title="Transaction history coming soon"
+        subtitle="Check back soon — your activity will appear here."
+      />
     </ScrollView>
   )
 }
@@ -205,6 +217,7 @@ const styles = StyleSheet.create({
   walletBalance: { fontSize: 20, fontFamily: 'Outfit_800ExtraBold', color: brandColors.text },
 
   // Empty state
+  transactionsEmpty: { paddingTop: 40 },
   emptyState: { alignItems: 'center', paddingVertical: 40, paddingHorizontal: 32 },
   emptyIconTile: {
     width: 48,

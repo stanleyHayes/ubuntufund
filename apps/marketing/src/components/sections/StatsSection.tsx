@@ -2,15 +2,21 @@ import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
 import Grid from '@mui/material/Grid'
+import { useContent } from '../../hooks/useContent'
 
-const stats = [
-  { value: 'GH₵ 120M+', label: 'Raised on platform' },
-  { value: '50K+', label: 'Campaigns created' },
-  { value: '16', label: 'Regions of Ghana' },
-  { value: '99%', label: 'Trust rate' },
-]
+// Hardcoded default — used as the CMS fallback (key 'marketing.stats').
+const STATS_FALLBACK = {
+  items: [
+    { value: 'GH₵ 120M+', label: 'Raised on platform' },
+    { value: '50K+', label: 'Campaigns created' },
+    { value: '16', label: 'Regions of Ghana' },
+    { value: '99%', label: 'Trust rate' },
+  ],
+}
 
 function StatsSection() {
+  const { items: stats } = useContent('marketing.stats', STATS_FALLBACK)
+
   return (
     <Box
       sx={{

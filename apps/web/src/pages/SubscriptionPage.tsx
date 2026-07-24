@@ -411,9 +411,9 @@ export function SubscriptionPage() {
                 display: 'flex',
                 flexDirection: 'column',
                 animation: `${fadeInUp} 0.4s ${0.2 + idx * 0.06}s ease both`,
-                transition: 'box-shadow 0.2s ease',
+                transition: 'border-color 0.2s ease',
                 '&:hover': {
-                  boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+                  borderColor: isCurrent ? tc.accent : 'rgba(0,0,0,0.18)',
                 },
               }}
             >

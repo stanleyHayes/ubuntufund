@@ -233,7 +233,6 @@ function ToggleBar<T extends string>({
               letterSpacing: '0.01em',
               color: isActive ? '#F2EFEA' : '#4A5A50',
               bgcolor: isActive ? '#2E3D2F' : 'transparent',
-              boxShadow: isActive ? '0 1px 4px rgba(28, 38, 29, 0.28)' : 'none',
               transition: 'color 160ms ease, background-color 160ms ease',
               '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
               '& svg': {
@@ -268,11 +267,10 @@ function BadgeCard({ badge, delay = 0 }: { badge: Badge; delay?: number }) {
           borderRadius: 3,
           bgcolor: `${badge.color}06`,
           animation: `${fadeSlideIn} 0.5s ease ${delay}s both`,
-          transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+          transition: 'border-color 0.2s ease',
           cursor: 'default',
           '&:hover': {
             borderColor: `${badge.color}60`,
-            boxShadow: `0 2px 12px ${badge.color}20`,
           },
         }}
       >
@@ -290,7 +288,6 @@ function BadgeCard({ badge, delay = 0 }: { badge: Badge; delay?: number }) {
               mb: 1.5,
               color: '#fff',
               '& svg': { fontSize: 26 },
-              boxShadow: `0 4px 16px ${badge.color}40`,
             }}
           >
             {badge.icon}
@@ -375,7 +372,6 @@ function LeaderboardEmptyState() {
             mx: 'auto',
             mb: 4,
             animation: `${float} 4s ease-in-out infinite`,
-            boxShadow: '0 16px 48px rgba(199, 162, 74, 0.25)',
             position: 'relative',
           }}
         >
@@ -441,11 +437,10 @@ function LeaderboardEmptyState() {
               fontSize: '1rem',
               textTransform: 'none',
               bgcolor: '#C7A24A',
-              boxShadow: '0 4px 20px rgba(255, 143, 0, 0.35)',
               '&:hover': {
-                boxShadow: '0 6px 20px rgba(255, 143, 0, 0.4)',
+                bgcolor: '#A07E33',
               },
-              transition: 'box-shadow 0.2s ease, background-color 0.2s ease',
+              transition: 'background-color 0.2s ease',
             }}
           >
             Start a Campaign
@@ -648,9 +643,8 @@ function LeaderboardEmptyState() {
             fontWeight: 700,
             textTransform: 'none',
             bgcolor: '#C7A24A',
-            boxShadow: '0 4px 16px rgba(255, 143, 0, 0.3)',
             '&:hover': {
-              boxShadow: '0 6px 24px rgba(255, 143, 0, 0.45)',
+              bgcolor: '#A07E33',
             },
           }}
         >
@@ -774,10 +768,6 @@ export function LeaderboardPage() {
                       overflow: 'visible',
                       animation: `${fadeSlideIn} 0.5s ease-out ${i * 0.15}s both`,
                       ...(i === 0 && { transform: 'scale(1.05)' }),
-                      transition: 'box-shadow 0.2s ease, border-color 0.2s ease',
-                      '&:hover': {
-                        boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
-                      },
                     }}
                   >
                     <Box sx={{ position: 'absolute', top: -18, left: '50%', transform: 'translateX(-50%)', fontSize: 36, lineHeight: 1 }}>

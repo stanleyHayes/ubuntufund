@@ -2,9 +2,19 @@ import { createApp } from './app.js';
 import { config } from './infrastructure/config/index.js';
 import { connectDatabase, disconnectDatabase } from './infrastructure/database/connection.js';
 import { logger } from './infrastructure/logging/logger.js';
+import { MongoSiteContentRepository } from './infrastructure/adapters/outbound/persistence/MongoSiteContentRepository.js';
+import { seedSiteContentIfEmpty } from './infrastructure/database/seedSiteContent.js';
 
 async function bootstrap(): Promise<void> {
   await connectDatabase(config.mongodbUri);
+
+  // Safe prod first-run: populate CMS defaults only when the collection is
+  // empty. Never fatal — a seed failure logs and boot continues.
+  try {
+    await seedSiteContentIfEmpty(new MongoSiteContentRepository());
+  } catch (error) {
+    logger.error({ err: error }, 'site content seed failed');
+  }
 
   const app = createApp();
   const server = app.listen(config.port, () => {

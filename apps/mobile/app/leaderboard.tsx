@@ -6,10 +6,12 @@ import {
   Animated,
   TouchableOpacity,
 } from 'react-native'
-import { Text, Icon, Button } from 'react-native-paper'
+import { Text } from 'react-native-paper'
 import { Stack } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
+import { EmptyState } from '@/components/EmptyState'
+import { FadeInUp } from '@/components/anim/FadeInUp'
 import { brandColors } from '@/theme'
 
 interface LeaderboardEntry {
@@ -144,30 +146,19 @@ export default function LeaderboardScreen() {
         {loading ? (
           <SkeletonRows />
         ) : error ? (
-          <View style={styles.emptyState}>
-            <View style={[styles.emptyIconTile, styles.errorIconTile]}>
-              <Icon source="alert-circle-outline" size={24} color={brandColors.error} />
-            </View>
-            <Text style={styles.emptyTitle}>{error}</Text>
-            <Button
-              mode="contained"
-              buttonColor={brandColors.primary}
-              textColor="#FFFFFF"
-              onPress={fetchLeaderboard}
-              style={styles.actionBtn}
-              labelStyle={styles.btnLabel}
-            >
-              Retry
-            </Button>
-          </View>
+          <EmptyState
+            variant="error"
+            icon="alert-circle-outline"
+            title={error}
+            ctaLabel="Retry"
+            onCtaPress={fetchLeaderboard}
+          />
         ) : entries.length === 0 ? (
-          <View style={styles.emptyState}>
-            <View style={styles.emptyIconTile}>
-              <Icon source="trophy-outline" size={24} color={brandColors.primary} />
-            </View>
-            <Text style={styles.emptyTitle}>No leaderboard data yet</Text>
-            <Text style={styles.emptySubtitle}>Be the first to make a donation!</Text>
-          </View>
+          <EmptyState
+            icon="trophy-outline"
+            title="No leaderboard data yet"
+            subtitle="Be the first to make a donation!"
+          />
         ) : (
           <View style={styles.listWrap}>
             {entries.map((entry, i) => {
@@ -177,8 +168,8 @@ export default function LeaderboardScreen() {
               const medalColor = isTopThree ? MEDAL_COLORS[rank - 1] : undefined
 
               return (
+                <FadeInUp key={entry.userId ?? entry.id} index={i}>
                 <View
-                  key={entry.userId ?? entry.id}
                   style={[
                     styles.entryRow,
                     isTopThree && styles.entryRowTop,
@@ -218,6 +209,7 @@ export default function LeaderboardScreen() {
                     {formatAmount(entry.totalDonated)}
                   </Text>
                 </View>
+                </FadeInUp>
               )
             })}
           </View>

@@ -35,6 +35,10 @@ import TestimonialsPage from './pages/TestimonialsPage'
 import PaymentProvidersPage from './pages/PaymentProvidersPage'
 import AdminProfilePage from './pages/AdminProfilePage'
 import AiUsagePage from './pages/AiUsagePage'
+import ContentStatsPage from './pages/content/ContentStatsPage'
+import ContentFaqPage from './pages/content/ContentFaqPage'
+import ContentAboutPage from './pages/content/ContentAboutPage'
+import ContentContactPage from './pages/content/ContentContactPage'
 import NotFoundPage from './pages/NotFoundPage'
 
 function RequirePermission({
@@ -93,6 +97,10 @@ export const router = createBrowserRouter([
       { path: 'testimonials', element: <RequirePermission resource={Resource.TESTIMONIALS}><TestimonialsPage /></RequirePermission> },
       { path: 'payment-providers', element: <RequirePermission resource={Resource.PAYMENT_PROVIDERS}><PaymentProvidersPage /></RequirePermission> },
       { path: 'ai-usage', element: <AiUsagePage /> },
+      { path: 'content/stats', element: <RequirePermission resource={Resource.CONTENT}><ContentStatsPage /></RequirePermission> },
+      { path: 'content/faq', element: <RequirePermission resource={Resource.CONTENT}><ContentFaqPage /></RequirePermission> },
+      { path: 'content/about', element: <RequirePermission resource={Resource.CONTENT}><ContentAboutPage /></RequirePermission> },
+      { path: 'content/contact', element: <RequirePermission resource={Resource.CONTENT}><ContentContactPage /></RequirePermission> },
       { path: '*', element: <NotFoundPage /> },
     ],
   },

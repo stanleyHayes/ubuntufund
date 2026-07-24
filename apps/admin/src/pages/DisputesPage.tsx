@@ -8,6 +8,7 @@ import GavelIcon from '@mui/icons-material/Gavel'
 import GavelRoundedIcon from '@mui/icons-material/GavelRounded'
 import Button from '@mui/material/Button'
 import { Resource, Action } from '@ubuntu-fund/types'
+import { EmptyState } from '@ubuntu-fund/ui'
 import { useAdminPermissions } from '@/context/AdminPermissionContext'
 import { useMockData } from '@/hooks/useMockData'
 import type { Dispute } from '@/hooks/useMockData'
@@ -244,7 +245,25 @@ export default function DisputesPage() {
         }
       </Box>
 
-      {!loading && <PaginationBar pagination={pagination} accentColor="#C06B58" />}
+      {!loading && filtered.length === 0 && (
+        search || statusFilter !== 'all' ? (
+          <EmptyState
+            variant="search"
+            title="No disputes match your filters"
+            description="Try a different search term or clear the status filter."
+            compact
+          />
+        ) : (
+          <EmptyState
+            variant="noData"
+            title="No disputes to review"
+            description="When donors or organizers raise a dispute, it will appear here for your team to resolve."
+            compact
+          />
+        )
+      )}
+
+      {!loading && filtered.length > 0 && <PaginationBar pagination={pagination} accentColor="#C06B58" />}
 
     </Box>
   )

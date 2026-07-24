@@ -561,13 +561,9 @@ function Navbar() {
                 py: 0.7,
                 color: '#1C261D',
                 background: 'linear-gradient(135deg, #C7A24A, #A07E33)',
-                boxShadow: scrolled
-                  ? '0 2px 8px rgba(199, 162, 74,0.25)'
-                  : '0 2px 12px rgba(199, 162, 74,0.3)',
-                transition: 'background-color 0.2s ease, box-shadow 0.2s ease',
+                transition: 'background-color 0.2s ease',
                 '&:hover': {
                   background: 'linear-gradient(135deg, #DCC07E, #C7A24A)',
-                  boxShadow: '0 2px 8px rgba(199, 162, 74,0.3)',
                 },
               }}
             >
@@ -631,7 +627,6 @@ function Navbar() {
               py: 1.3,
               background: 'linear-gradient(135deg, #C7A24A, #A07E33)',
               color: '#1C261D',
-              boxShadow: '0 4px 14px rgba(199, 162, 74,0.25)',
               '&:hover': { background: 'linear-gradient(135deg, #DCC07E, #C7A24A)' },
             }}
           >

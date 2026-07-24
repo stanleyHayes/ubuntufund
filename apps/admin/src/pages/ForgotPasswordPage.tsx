@@ -163,7 +163,6 @@ export default function ForgotPasswordPage() {
             borderRadius: '16px',
             bgcolor: 'rgba(21,36,31,0.9)',
             border: '1px solid rgba(255,255,255,0.06)',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
           }}
         >
           {submitted ? (
@@ -304,10 +303,8 @@ export default function ForgotPasswordPage() {
                     fontWeight: 700,
                     fontFamily: '"Outfit", sans-serif',
                     background: '#2E3D2F',
-                    boxShadow: '0 4px 20px rgba(76,175,80,0.2)',
-                    transition: 'background-color 200ms ease, box-shadow 200ms ease',
+                    transition: 'background-color 200ms ease',
                     '&:hover': {
-                      boxShadow: '0 6px 28px rgba(76,175,80,0.35)',
                       background: '#1C261D',
                     },
                   }}

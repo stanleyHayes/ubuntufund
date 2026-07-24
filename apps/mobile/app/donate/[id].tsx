@@ -99,7 +99,7 @@ export default function DonateScreen() {
           {campaign.title}
         </Text>
 
-        <Surface style={styles.progressCard} elevation={1}>
+        <Surface style={styles.progressCard} elevation={0}>
           <ProgressBar progress={progress} />
           <View style={styles.statsRow}>
             <View>

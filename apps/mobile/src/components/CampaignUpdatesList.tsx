@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react'
-import { View, ScrollView, StyleSheet, Image, TouchableOpacity } from 'react-native'
+import { View, ScrollView, StyleSheet, TouchableOpacity } from 'react-native'
 import { Text, Chip, ActivityIndicator, Avatar, Icon, Surface } from 'react-native-paper'
 import type { CampaignUpdate } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
+import { EmptyState } from '@/components/EmptyState'
+import { RemoteImage } from '@/components/RemoteImage'
+import { FadeInUp } from '@/components/anim/FadeInUp'
 import { brandColors } from '@/theme'
 
 const typeColors: Record<string, { text: string; bg: string }> = {
@@ -73,25 +76,25 @@ export function CampaignUpdatesList({ campaignId }: CampaignUpdatesListProps) {
 
   if (updates.length === 0) {
     return (
-      <View style={styles.center}>
-        <View style={styles.emptyIconTile}>
-          <Icon source="bell-outline" size={24} color={brandColors.primary} />
-        </View>
-        <Text style={styles.emptyTitle}>No updates yet</Text>
-        <Text style={styles.emptyBody}>Check back soon for news from the campaign creator.</Text>
-      </View>
+      <EmptyState
+        style={styles.updatesEmpty}
+        icon="bell-outline"
+        title="No updates yet"
+        subtitle="Check back soon for news from the campaign creator."
+      />
     )
   }
 
   return (
     <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
-      {updates.map((update) => {
+      {updates.map((update, i) => {
         const typeStyle = typeColors[update.type] ?? typeColors.general
         const isExpanded = expandedIds.has(update.id)
         const shouldTruncate = update.content.length > 200
 
         return (
-          <Surface key={update.id} style={styles.card} elevation={1}>
+          <FadeInUp key={update.id} index={i}>
+          <Surface style={styles.card} elevation={0}>
             {update.isPinned && (
               <View style={styles.pinnedRow}>
                 <Icon source="pin" size={14} color={brandColors.primary} />
@@ -135,12 +138,13 @@ export function CampaignUpdatesList({ campaignId }: CampaignUpdatesListProps) {
 
             {update.mediaUrls.length > 0 && (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mediaScroll}>
-                {update.mediaUrls.map((url, i) => (
-                  <Image key={i} source={{ uri: url }} style={styles.mediaImage} />
+                {update.mediaUrls.map((url, mi) => (
+                  <RemoteImage key={mi} uri={url} style={styles.mediaImage} />
                 ))}
               </ScrollView>
             )}
           </Surface>
+          </FadeInUp>
         )
       })}
       <View style={{ height: 16 }} />
@@ -150,6 +154,7 @@ export function CampaignUpdatesList({ campaignId }: CampaignUpdatesListProps) {
 
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
+  updatesEmpty: { paddingTop: 24, paddingBottom: 8 },
   emptyIconTile: {
     width: 48,
     height: 48,

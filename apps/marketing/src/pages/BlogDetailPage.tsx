@@ -120,7 +120,6 @@ function BlogDetailPage() {
             bgcolor: 'background.paper',
             borderRadius: SHAPE.card,
             p: { xs: 3, md: 5 },
-            boxShadow: '0 8px 40px rgba(0,0,0,0.08)',
             border: '1px solid',
             borderColor: 'divider',
           }}
@@ -307,10 +306,8 @@ function BlogDetailPage() {
                       bgcolor: 'background.paper',
                       border: '1px solid',
                       borderColor: 'divider',
-                      transition: 'all 0.3s ease',
+                      transition: 'border-color 0.3s ease',
                       '&:hover': {
-                        transform: 'translateY(-4px)',
-                        boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
                         borderColor: relAccent,
                       },
                     }}

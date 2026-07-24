@@ -129,8 +129,8 @@ export default function ManagePlansPage() {
                   position: 'relative',
                   opacity: plan.isActive ? 1 : 0.6,
                   animation: `${fadeSlide} 0.35s ease ${i * 0.06}s both`,
-                  transition: 'border-color 200ms ease, box-shadow 200ms ease',
-                  '&:hover': { borderColor: `${color}60`, boxShadow: `0 2px 8px ${color}20` },
+                  transition: 'border-color 200ms ease',
+                  '&:hover': { borderColor: `${color}60` },
                 }}
               >
                 {/* Status chip */}

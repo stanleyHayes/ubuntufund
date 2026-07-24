@@ -91,16 +91,21 @@ export default function RootLayout() {
                 headerStyle: { backgroundColor: lightTheme.colors.primary },
                 headerTintColor: '#FFFFFF',
                 headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
+                // Default push feel: the new screen slides in from the right.
+                animation: 'slide_from_right',
               }}
             >
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
-              <Stack.Screen name="(auth)/register" options={{ headerShown: false }} />
-              <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
+              {/* Auth screens cross-fade — no directional push. */}
+              <Stack.Screen name="(auth)/login" options={{ headerShown: false, animation: 'fade' }} />
+              <Stack.Screen name="(auth)/register" options={{ headerShown: false, animation: 'fade' }} />
+              <Stack.Screen name="forgot-password" options={{ headerShown: false, animation: 'fade' }} />
               <Stack.Screen name="terms" options={{ title: 'Terms of Service' }} />
               <Stack.Screen name="privacy" options={{ title: 'Privacy Policy' }} />
               <Stack.Screen name="campaign/[id]" options={{ title: 'Campaign' }} />
-              <Stack.Screen name="campaign/create" options={{ title: 'Start a Campaign' }} />
+              {/* Modal-like flows rise up from the bottom. */}
+              <Stack.Screen name="campaign/create" options={{ title: 'Start a Campaign', animation: 'slide_from_bottom' }} />
+              <Stack.Screen name="donate/[id]" options={{ title: 'Donate', animation: 'slide_from_bottom' }} />
               <Stack.Screen name="dashboard" options={{ title: 'Dashboard' }} />
               <Stack.Screen name="my-campaigns" options={{ title: 'My Campaigns' }} />
               <Stack.Screen name="my-donations" options={{ title: 'My Donations' }} />
@@ -108,7 +113,7 @@ export default function RootLayout() {
               <Stack.Screen name="leaderboard" options={{ title: 'Leaderboard' }} />
               <Stack.Screen name="invitations" options={{ title: 'Invitations' }} />
               <Stack.Screen name="settings" options={{ title: 'Settings' }} />
-              <Stack.Screen name="refund-request" options={{ title: 'Request Refund' }} />
+              <Stack.Screen name="refund-request" options={{ title: 'Request Refund', animation: 'slide_from_bottom' }} />
               <Stack.Screen name="organizations" options={{ title: 'Organizations' }} />
               <Stack.Screen name="index" options={{ headerShown: false }} />
             </Stack>

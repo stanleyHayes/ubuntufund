@@ -128,10 +128,7 @@ function CampaignRow({
         overflow: 'hidden',
         border: '1px solid',
         borderColor: hovered ? 'primary.light' : 'rgba(0,0,0,0.06)',
-        transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
-        boxShadow: hovered
-          ? '0 4px 16px rgba(46, 61, 47,0.08)'
-          : '0 1px 4px rgba(0,0,0,0.02)',
+        transition: 'border-color 0.2s ease',
         position: 'relative',
         '&::after': {
           content: '""',
@@ -483,7 +480,6 @@ export function MyCampaignsPage() {
             px: 3,
             fontWeight: 700,
             textTransform: 'none',
-            boxShadow: '0 2px 12px rgba(46, 61, 47,0.25)',
           }}
         >
           New Campaign

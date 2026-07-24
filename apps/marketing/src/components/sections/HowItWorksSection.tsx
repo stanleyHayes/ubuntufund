@@ -73,11 +73,6 @@ function HowItWorksSection() {
                   backgroundColor: '#fff',
                   border: '1px solid #E7E3D8',
                   borderRadius: SHAPE.card,
-                  boxShadow: '0 12px 30px rgba(26, 46, 34, 0.06)',
-                  transition: 'box-shadow 0.2s ease-in-out',
-                  '&:hover': {
-                    boxShadow: '0 16px 36px rgba(26, 46, 34, 0.1)',
-                  },
                 }}
               >
                 <Typography variant="overline" sx={{ color: '#A07E33', display: 'block', mb: 2 }}>

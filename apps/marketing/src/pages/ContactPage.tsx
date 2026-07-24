@@ -32,49 +32,32 @@ import InstagramIcon from '@mui/icons-material/Instagram'
 import LinkedInIcon from '@mui/icons-material/LinkedIn'
 import YouTubeIcon from '@mui/icons-material/YouTube'
 import { SHAPE } from '@ubuntu-fund/ui'
+import { useContent } from '../hooks/useContent'
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
-const CONTACT_CHANNELS = [
-  {
-    icon: <LocationOnRoundedIcon />,
-    label: 'Visit us',
-    value: '14 Independence Avenue, Accra, Ghana',
-    detail: 'Mon-Fri, 9am-5pm GMT',
+// CMS block for key 'contact' — current hardcoded values kept as the runtime fallback.
+// Channels and social links are assembled from this inside the component (icons are JSX
+// and stay in code).
+const CONTACT_FALLBACK = {
+  email: 'hello@ubuntufund.com',
+  phone: '+233 30 123 4567',
+  address: '14 Independence Avenue, Accra, Ghana',
+  hours: 'Mon-Fri, 9am-5pm GMT',
+  socials: {
+    facebook: 'https://facebook.com/ubuntufund',
+    x: 'https://x.com/ubuntufund',
+    instagram: 'https://instagram.com/ubuntufund',
+    linkedin: 'https://linkedin.com/company/ubuntufund',
+    youtube: 'https://youtube.com/@ubuntufund',
   },
-  {
-    icon: <EmailRoundedIcon />,
-    label: 'Email us',
-    value: 'hello@ubuntufund.com',
-    detail: 'Response within 24 hours',
-  },
-  {
-    icon: <PhoneRoundedIcon />,
-    label: 'Call us',
-    value: '+233 30 123 4567',
-    detail: 'Mon-Fri, 9am-5pm GMT',
-  },
-  {
-    icon: <AccessTimeRoundedIcon />,
-    label: 'Live chat',
-    value: 'Available on platform',
-    detail: 'Mon-Sat, 8am-8pm GMT',
-  },
-]
+}
 
 const INQUIRY_TYPES = [
   { value: 'general', label: 'General inquiry', icon: <ChatBubbleOutlineRoundedIcon sx={{ fontSize: 18 }} /> },
   { value: 'partnership', label: 'Partnership', icon: <HandshakeRoundedIcon sx={{ fontSize: 18 }} /> },
   { value: 'campaign', label: 'Campaign support', icon: <GroupsRoundedIcon sx={{ fontSize: 18 }} /> },
   { value: 'bug', label: 'Report a bug', icon: <BugReportRoundedIcon sx={{ fontSize: 18 }} /> },
-]
-
-const SOCIAL_LINKS = [
-  { icon: <FacebookIcon />, label: 'Facebook', href: 'https://facebook.com/ubuntufund' },
-  { icon: <XIcon />, label: 'X', href: 'https://x.com/ubuntufund' },
-  { icon: <InstagramIcon />, label: 'Instagram', href: 'https://instagram.com/ubuntufund' },
-  { icon: <LinkedInIcon />, label: 'LinkedIn', href: 'https://linkedin.com/company/ubuntufund' },
-  { icon: <YouTubeIcon />, label: 'YouTube', href: 'https://youtube.com/@ubuntufund' },
 ]
 
 const FAQ = [
@@ -112,6 +95,25 @@ const eyebrowSx = {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 function ContactPage() {
+  // Runtime CMS: contact details + social links (key 'contact'), falling back to the
+  // hardcoded defaults when the CMS is unreachable.
+  const contact = useContent('contact', CONTACT_FALLBACK)
+
+  const CONTACT_CHANNELS = [
+    { icon: <LocationOnRoundedIcon />, label: 'Visit us', value: contact.address, detail: contact.hours },
+    { icon: <EmailRoundedIcon />, label: 'Email us', value: contact.email, detail: 'Response within 24 hours' },
+    { icon: <PhoneRoundedIcon />, label: 'Call us', value: contact.phone, detail: contact.hours },
+    { icon: <AccessTimeRoundedIcon />, label: 'Live chat', value: 'Available on platform', detail: 'Mon-Sat, 8am-8pm GMT' },
+  ]
+
+  const SOCIAL_LINKS = [
+    { icon: <FacebookIcon />, label: 'Facebook', href: contact.socials.facebook },
+    { icon: <XIcon />, label: 'X', href: contact.socials.x },
+    { icon: <InstagramIcon />, label: 'Instagram', href: contact.socials.instagram },
+    { icon: <LinkedInIcon />, label: 'LinkedIn', href: contact.socials.linkedin },
+    { icon: <YouTubeIcon />, label: 'YouTube', href: contact.socials.youtube },
+  ]
+
   const [formData, setFormData] = useState({ name: '', email: '', subject: '', type: 'general', message: '' })
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)

@@ -4,6 +4,9 @@
 // Run: cd apps/api && MONGODB_URI=mongodb://127.0.0.1:28017/ubuntu-fund node scripts/seed-dev.mjs
 import mongoose from 'mongoose'
 import bcrypt from 'bcryptjs'
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { dirname, join } from 'node:path'
 
 const uri = process.env.MONGODB_URI ?? 'mongodb://127.0.0.1:28017/ubuntu-fund'
 await mongoose.connect(uri)
@@ -92,7 +95,9 @@ for (const c of campaigns) {
     goalAmount: c.goalAmount, raisedAmount: c.raisedAmount, currency: 'GHS',
     category: c.category, priority: c.priority,
     creatorId: c.creatorId, beneficiaries: c.beneficiaries, region: c.region,
-    imageUrls: [], status: c.funded ? 'funded' : 'active',
+    // Demo media so the UI shows images. Real uploads go to Cloudinary in prod.
+    imageUrls: [`https://picsum.photos/seed/uf-${c.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 28)}/900/560`],
+    status: c.funded ? 'funded' : 'active',
     startDate: c.startDate, endDate: c.endDate, createdAt: c.startDate, updatedAt: now,
   }
   const res = await db.collection('campaigns').insertOne(doc)
@@ -124,5 +129,23 @@ for (const { user, amounts } of donors) {
 }
 if (donationDocs.length) await db.collection('donations').insertMany(donationDocs)
 
-console.log(`dev seed complete: ${inserted.length} campaigns, ${donationDocs.length} donations, 6 users`)
+// --- Site content (headless CMS) ---
+// Idempotent upsert by key. Reads the SAME canonical defaults the API boot seed
+// uses (src/infrastructure/database/siteContentDefaults.json) so dev and prod
+// first-run content never drift.
+const siteContentDefaults = JSON.parse(
+  readFileSync(
+    join(dirname(fileURLToPath(import.meta.url)), '../src/infrastructure/database/siteContentDefaults.json'),
+    'utf8'
+  )
+)
+for (const block of siteContentDefaults) {
+  await db.collection('sitecontents').updateOne(
+    { key: block.key },
+    { $set: { type: block.type, data: block.data, updatedAt: now } },
+    { upsert: true }
+  )
+}
+
+console.log(`dev seed complete: ${inserted.length} campaigns, ${donationDocs.length} donations, 6 users, ${siteContentDefaults.length} content blocks`)
 await mongoose.disconnect()

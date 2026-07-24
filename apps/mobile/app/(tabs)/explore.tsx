@@ -6,7 +6,6 @@ import {
   Animated,
   Dimensions,
   TouchableOpacity,
-  Image,
   TextInput,
 } from 'react-native'
 import { Text, ActivityIndicator, Icon } from 'react-native-paper'
@@ -15,6 +14,8 @@ import { CampaignCategory, CampaignStatus } from '@ubuntu-fund/types'
 import type { Campaign } from '@ubuntu-fund/types'
 import { useCampaigns } from '@/hooks/useCampaigns'
 import { ProgressBar } from '@/components/ProgressBar'
+import { RemoteImage } from '@/components/RemoteImage'
+import { EmptyState } from '@/components/EmptyState'
 import { brandColors } from '@/theme'
 
 const { width } = Dimensions.get('window')
@@ -65,11 +66,7 @@ function CampaignRow({ campaign, index }: { campaign: Campaign; index: number })
         onPress={() => router.push(`/campaign/${campaign.id}`)}
         style={styles.campaignRow}
       >
-        {campaign.imageUrls[0] ? (
-          <Image source={{ uri: campaign.imageUrls[0] }} style={styles.campaignImage} />
-        ) : (
-          <View style={[styles.campaignImage, { backgroundColor: 'rgba(168,181,160,0.28)' }]} />
-        )}
+        <RemoteImage uri={campaign.imageUrls[0]} style={styles.campaignImage} />
         <View style={styles.campaignContent}>
           <View style={styles.campaignMeta}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1 }}>
@@ -207,13 +204,11 @@ export default function ExploreTab() {
       {isLoading ? (
         <ActivityIndicator size="large" style={{ marginTop: 60 }} color={brandColors.primary} />
       ) : filtered.length === 0 ? (
-        <View style={styles.emptyState}>
-          <View style={styles.emptyIconTile}>
-            <Icon source="magnify" size={22} color={brandColors.primary} />
-          </View>
-          <Text style={styles.emptyTitle}>No campaigns found</Text>
-          <Text style={styles.emptyBody}>Try adjusting your search or filters</Text>
-        </View>
+        <EmptyState
+          icon="magnify"
+          title="No campaigns found"
+          subtitle="Try adjusting your search or filters"
+        />
       ) : (
         <ScrollView contentContainerStyle={styles.results} showsVerticalScrollIndicator={false}>
           {filtered.map((c, i) => (

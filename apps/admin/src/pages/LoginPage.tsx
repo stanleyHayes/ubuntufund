@@ -386,7 +386,6 @@ export default function LoginPage() {
               borderRadius: '16px',
               bgcolor: 'rgba(21,36,31,0.9)',
               border: '1px solid rgba(255,255,255,0.06)',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
             }}
           >
             {/* Header */}
@@ -531,12 +530,10 @@ export default function LoginPage() {
                   background: loading
                     ? undefined
                     : '#2E3D2F',
-                  boxShadow: '0 4px 20px rgba(76,175,80,0.2)',
-                  transition: 'background-color 200ms ease, box-shadow 200ms ease',
+                  transition: 'background-color 200ms ease',
                   position: 'relative',
                   overflow: 'hidden',
                   '&:hover': {
-                    boxShadow: '0 6px 28px rgba(76,175,80,0.35)',
                     background: loading ? undefined : '#1C261D',
                   },
                   ...(loading && {

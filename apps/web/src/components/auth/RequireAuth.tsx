@@ -1,12 +1,14 @@
-import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
+import { SignInPrompt } from '@/components/auth/SignInPrompt'
 
 export function RequireAuth({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth()
-  const location = useLocation()
 
+  // Instead of a bare redirect / blank screen, show a friendly sign-in panel
+  // in place of the protected content. The CTA routes to /login (carrying the
+  // current location) so the member lands back here after signing in.
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />
+    return <SignInPrompt />
   }
 
   return <>{children}</>

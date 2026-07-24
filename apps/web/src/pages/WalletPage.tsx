@@ -198,8 +198,8 @@ export function WalletPage() {
                       overflow: 'hidden',
                       border: '1px solid rgba(0,0,0,0.06)',
                       animation: `${fadeInUp} 0.4s ${0.1 + idx * 0.08}s ease both`,
-                      transition: 'box-shadow 0.2s ease',
-                      '&:hover': { boxShadow: '0 4px 16px rgba(0,0,0,0.08)' },
+                      transition: 'border-color 0.2s ease',
+                      '&:hover': { borderColor: 'rgba(0,0,0,0.18)' },
                     }}
                   >
                     {/* Gradient header */}

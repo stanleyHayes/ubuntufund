@@ -304,10 +304,9 @@ function RoleCard({
         flexDirection: 'column',
         height: '100%',
         animation: `${fadeSlide} 0.4s ease ${index * 0.06}s both`,
-        transition: 'border-color 0.3s ease, box-shadow 0.3s ease',
+        transition: 'border-color 0.3s ease',
         '&:hover': {
           borderColor: `${accent}40`,
-          boxShadow: `0 0 24px ${accent}12`,
         },
       }}
     >

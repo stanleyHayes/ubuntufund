@@ -27,6 +27,7 @@ import { MongoDisputeRepository } from './infrastructure/adapters/outbound/persi
 import { MongoAdminUserRepository } from './infrastructure/adapters/outbound/persistence/MongoAdminUserRepository.js';
 import { MongoAnalyticsRepository } from './infrastructure/adapters/outbound/persistence/MongoAnalyticsRepository.js';
 import { MongoNewsletterSubscriptionRepository } from './infrastructure/adapters/outbound/persistence/MongoNewsletterSubscriptionRepository.js';
+import { MongoSiteContentRepository } from './infrastructure/adapters/outbound/persistence/MongoSiteContentRepository.js';
 
 // Application services
 import { AuthTokenService } from './application/services/AuthTokenService.js';
@@ -102,6 +103,12 @@ import { GetPlatformOverviewUseCase } from './application/use-cases/GetPlatformO
 import { SubscribeNewsletterUseCase } from './application/use-cases/SubscribeNewsletterUseCase.js';
 import { ListNewsletterSubscribersUseCase } from './application/use-cases/ListNewsletterSubscribersUseCase.js';
 
+// Use cases — site content (headless CMS) & uploads
+import { ListSiteContentUseCase } from './application/use-cases/ListSiteContentUseCase.js';
+import { GetSiteContentUseCase } from './application/use-cases/GetSiteContentUseCase.js';
+import { UpsertSiteContentUseCase } from './application/use-cases/UpsertSiteContentUseCase.js';
+import { SignCloudinaryUploadUseCase } from './application/use-cases/SignCloudinaryUploadUseCase.js';
+
 // Inbound adapters (controllers, middleware, routes)
 import { AuthController } from './infrastructure/adapters/inbound/http/controllers/AuthController.js';
 import { CampaignController } from './infrastructure/adapters/inbound/http/controllers/CampaignController.js';
@@ -124,6 +131,8 @@ import { CampaignModerationController } from './infrastructure/adapters/inbound/
 import { AdminUserController } from './infrastructure/adapters/inbound/http/controllers/AdminUserController.js';
 import { AnalyticsController } from './infrastructure/adapters/inbound/http/controllers/AnalyticsController.js';
 import { NewsletterController } from './infrastructure/adapters/inbound/http/controllers/NewsletterController.js';
+import { SiteContentController } from './infrastructure/adapters/inbound/http/controllers/SiteContentController.js';
+import { UploadController } from './infrastructure/adapters/inbound/http/controllers/UploadController.js';
 
 import {
   createAuthMiddleware,
@@ -158,6 +167,8 @@ import { createCampaignModerationRoutes } from './infrastructure/adapters/inboun
 import { createAdminUserRoutes } from './infrastructure/adapters/inbound/http/routes/adminUserRoutes.js';
 import { createAnalyticsRoutes } from './infrastructure/adapters/inbound/http/routes/analyticsRoutes.js';
 import { createNewsletterRoutes } from './infrastructure/adapters/inbound/http/routes/newsletterRoutes.js';
+import { createContentRoutes } from './infrastructure/adapters/inbound/http/routes/contentRoutes.js';
+import { createUploadRoutes } from './infrastructure/adapters/inbound/http/routes/uploadRoutes.js';
 
 /**
  * Assemble the fully-wired Express application (no listening, no DB
@@ -188,6 +199,7 @@ export function createApp(): express.Express {
   const adminUserRepo = new MongoAdminUserRepository();
   const analyticsRepo = new MongoAnalyticsRepository();
   const newsletterRepo = new MongoNewsletterSubscriptionRepository();
+  const siteContentRepo = new MongoSiteContentRepository();
 
   // ── Services ─────────────────────────────────────────────────────────
   const tokenService = new AuthTokenService(config.jwtSecret, config.jwtRefreshSecret);
@@ -272,6 +284,11 @@ export function createApp(): express.Express {
   const subscribeNewsletterUseCase = new SubscribeNewsletterUseCase(newsletterRepo);
   const listNewsletterSubscribersUseCase = new ListNewsletterSubscribersUseCase(newsletterRepo);
 
+  const listSiteContentUseCase = new ListSiteContentUseCase(siteContentRepo);
+  const getSiteContentUseCase = new GetSiteContentUseCase(siteContentRepo);
+  const upsertSiteContentUseCase = new UpsertSiteContentUseCase(siteContentRepo);
+  const signCloudinaryUploadUseCase = new SignCloudinaryUploadUseCase(config.cloudinary);
+
   // ── Controllers ──────────────────────────────────────────────────────
   const authController = new AuthController(
     registerUserUseCase,
@@ -349,6 +366,12 @@ export function createApp(): express.Express {
     subscribeNewsletterUseCase,
     listNewsletterSubscribersUseCase
   );
+  const siteContentController = new SiteContentController(
+    listSiteContentUseCase,
+    getSiteContentUseCase,
+    upsertSiteContentUseCase
+  );
+  const uploadController = new UploadController(signCloudinaryUploadUseCase);
 
   // ── HTTP pipeline ────────────────────────────────────────────────────
   const app = express();
@@ -401,6 +424,8 @@ export function createApp(): express.Express {
   api.use('/reports', createAdminReportRoutes(adminReportController, authMiddleware, requireAdmin));
   api.use('/analytics', createAnalyticsRoutes(analyticsController, authMiddleware));
   api.use('/newsletter', createNewsletterRoutes(newsletterController, authMiddleware, requireAdmin));
+  api.use('/content', createContentRoutes(siteContentController, authMiddleware, requireAdmin));
+  api.use('/uploads', createUploadRoutes(uploadController, authMiddleware));
 
   app.use('/api/v1', api);
   app.use(errorHandler);

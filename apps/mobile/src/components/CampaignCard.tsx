@@ -4,6 +4,7 @@ import { Card, Text, Chip } from 'react-native-paper'
 import { router } from 'expo-router'
 import type { Campaign } from '@ubuntu-fund/types'
 import { ProgressBar } from './ProgressBar'
+import { RemoteImage } from './RemoteImage'
 import { brandColors } from '../theme'
 
 interface CampaignCardProps {
@@ -32,9 +33,7 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
       style={styles.card}
       onPress={() => router.push(`/campaign/${campaign.id}`)}
     >
-      {campaign.imageUrls[0] && (
-        <Card.Cover source={{ uri: campaign.imageUrls[0] }} style={styles.cover} />
-      )}
+      <RemoteImage uri={campaign.imageUrls[0]} style={styles.cover} />
       <Card.Content style={styles.content}>
         <View style={styles.chipRow}>
           <Chip compact style={styles.categoryChip} textStyle={styles.categoryChipText}>
@@ -86,7 +85,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(26,46,34,0.10)',
     overflow: 'hidden',
   },
-  cover: { height: 160 },
+  cover: { width: '100%', height: 160 },
   content: { padding: 12, paddingTop: 10 },
   chipRow: { flexDirection: 'row', gap: 6, marginBottom: 8 },
   categoryChip: { height: 24, backgroundColor: 'rgba(168,181,160,0.28)' },

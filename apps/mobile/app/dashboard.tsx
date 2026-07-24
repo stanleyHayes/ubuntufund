@@ -6,12 +6,15 @@ import {
   Animated,
   Dimensions,
 } from 'react-native'
-import { Text, Icon, Button, TouchableRipple } from 'react-native-paper'
+import { Text, Icon, TouchableRipple } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, Stack } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
 import { ProgressBar } from '@/components/ProgressBar'
+import { EmptyState } from '@/components/EmptyState'
+import { SignInRequired } from '@/components/SignInRequired'
+import { FadeInUp } from '@/components/anim/FadeInUp'
 import { brandColors } from '@/theme'
 
 const { width } = Dimensions.get('window')
@@ -163,59 +166,67 @@ export default function DashboardScreen() {
   }, [user?.id])
 
   useEffect(() => {
+    if (!user) return
     fetchDashboard()
-  }, [fetchDashboard])
+  }, [user, fetchDashboard])
+
+  const headerOptions = {
+    title: 'Dashboard',
+    headerStyle: { backgroundColor: brandColors.primary },
+    headerTintColor: '#FFFFFF',
+    headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
+  }
+
+  if (!user) {
+    return (
+      <View style={styles.container}>
+        <Stack.Screen options={headerOptions} />
+        <SignInRequired what="dashboard" />
+      </View>
+    )
+  }
 
   return (
     <View style={styles.container}>
-      <Stack.Screen
-        options={{
-          title: 'Dashboard',
-          headerStyle: { backgroundColor: brandColors.primary },
-          headerTintColor: '#FFFFFF',
-          headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
-        }}
-      />
+      <Stack.Screen options={headerOptions} />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
         {loading ? (
           <DashboardSkeleton />
         ) : error ? (
-          <View style={styles.emptyState}>
-            <View style={styles.emptyIconTile}>
-              <Icon source="alert-circle-outline" size={24} color={brandColors.primary} />
-            </View>
-            <Text style={styles.emptyTitle}>Couldn't load dashboard</Text>
-            <Text style={styles.emptyBody}>{error}</Text>
-            <Button
-              mode="contained"
-              buttonColor={brandColors.secondary}
-              textColor="#221B0E"
-              onPress={fetchDashboard}
-              style={styles.emptyAction}
-            >
-              Retry
-            </Button>
-          </View>
+          <EmptyState
+            variant="error"
+            icon="alert-circle-outline"
+            title="Couldn't load dashboard"
+            subtitle={error}
+            ctaLabel="Retry"
+            onCtaPress={fetchDashboard}
+          />
         ) : (
           <>
             {/* Stats */}
             <View style={styles.statsRow}>
-              <View style={styles.statCard}>
-                <Icon source="cash" size={24} color={brandColors.primary} />
-                <Text style={styles.statValue}>{formatCurrency(totalRaised)}</Text>
-                <Text style={styles.statLabel}>Total Raised</Text>
-              </View>
-              <View style={styles.statCard}>
-                <Icon source="bullhorn" size={24} color={brandColors.success} />
-                <Text style={styles.statValue}>{activeCampaigns}</Text>
-                <Text style={styles.statLabel}>Active Campaigns</Text>
-              </View>
-              <View style={styles.statCard}>
-                <Icon source="heart" size={24} color={brandColors.error} />
-                <Text style={styles.statValue}>{totalDonations}</Text>
-                <Text style={styles.statLabel}>Total Donations</Text>
-              </View>
+              <FadeInUp index={0} style={styles.statCardWrap}>
+                <View style={styles.statCard}>
+                  <Icon source="cash" size={24} color={brandColors.primary} />
+                  <Text style={styles.statValue}>{formatCurrency(totalRaised)}</Text>
+                  <Text style={styles.statLabel}>Total Raised</Text>
+                </View>
+              </FadeInUp>
+              <FadeInUp index={1} style={styles.statCardWrap}>
+                <View style={styles.statCard}>
+                  <Icon source="bullhorn" size={24} color={brandColors.success} />
+                  <Text style={styles.statValue}>{activeCampaigns}</Text>
+                  <Text style={styles.statLabel}>Active Campaigns</Text>
+                </View>
+              </FadeInUp>
+              <FadeInUp index={2} style={styles.statCardWrap}>
+                <View style={styles.statCard}>
+                  <Icon source="heart" size={24} color={brandColors.error} />
+                  <Text style={styles.statValue}>{totalDonations}</Text>
+                  <Text style={styles.statLabel}>Total Donations</Text>
+                </View>
+              </FadeInUp>
             </View>
 
             {/* Quick Actions */}
@@ -292,8 +303,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: brandColors.background },
 
   statsRow: { flexDirection: 'row', paddingHorizontal: 16, paddingTop: 20, gap: 10 },
+  statCardWrap: { flex: 1 },
   statCard: {
-    flex: 1,
     backgroundColor: '#fff',
     borderRadius: 14,
     padding: 14,

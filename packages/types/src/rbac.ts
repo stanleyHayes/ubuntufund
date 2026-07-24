@@ -23,6 +23,7 @@ export enum Resource {
   TESTIMONIALS = 'testimonials',
   PAYMENT_PROVIDERS = 'payment_providers',
   AI_WRITER = 'ai_writer',
+  CONTENT = 'content',
 }
 
 // ─── Actions ─────────────────────────────────────────────────────────────────

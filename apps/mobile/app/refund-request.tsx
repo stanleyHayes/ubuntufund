@@ -13,6 +13,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, Stack, useLocalSearchParams } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
+import { EmptyState } from '@/components/EmptyState'
+import { SignInRequired } from '@/components/SignInRequired'
 import { brandColors } from '@/theme'
 
 interface DonationDetail {
@@ -84,7 +86,7 @@ export default function RefundRequestScreen() {
   const [success, setSuccess] = useState<string | null>(null)
 
   const fetchDonation = useCallback(async () => {
-    if (!donationId) return
+    if (!user || !donationId) return
     setLoading(true)
     setError(null)
     try {
@@ -95,11 +97,12 @@ export default function RefundRequestScreen() {
     } finally {
       setLoading(false)
     }
-  }, [donationId])
+  }, [user, donationId])
 
   useEffect(() => {
+    if (!user) return
     fetchDonation()
-  }, [fetchDonation])
+  }, [user, fetchDonation])
 
   const handleSubmit = async () => {
     if (!selectedReason) {
@@ -119,6 +122,22 @@ export default function RefundRequestScreen() {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  const headerOptions = {
+    title: 'Refund Request',
+    headerStyle: { backgroundColor: brandColors.primary },
+    headerTintColor: '#FFFFFF',
+    headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
+  }
+
+  if (!user) {
+    return (
+      <View style={styles.container}>
+        <Stack.Screen options={headerOptions} />
+        <SignInRequired what="refund request" />
+      </View>
+    )
   }
 
   if (success) {
@@ -187,22 +206,13 @@ export default function RefundRequestScreen() {
         {loading ? (
           <FormSkeleton />
         ) : error ? (
-          <View style={styles.emptyState}>
-            <View style={[styles.emptyIconTile, styles.errorIconTile]}>
-              <Icon source="alert-circle-outline" size={24} color={brandColors.error} />
-            </View>
-            <Text style={styles.emptyTitle}>{error}</Text>
-            <Button
-              mode="contained"
-              buttonColor={brandColors.primary}
-              textColor="#FFFFFF"
-              onPress={fetchDonation}
-              style={styles.actionBtn}
-              labelStyle={styles.btnLabel}
-            >
-              Retry
-            </Button>
-          </View>
+          <EmptyState
+            variant="error"
+            icon="alert-circle-outline"
+            title={error}
+            ctaLabel="Retry"
+            onCtaPress={fetchDonation}
+          />
         ) : (
           <View style={{ padding: 16, paddingTop: 4 }}>
             {/* Donation Details */}

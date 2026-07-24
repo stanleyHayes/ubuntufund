@@ -124,11 +124,9 @@ function StatCard({ icon, value, label, color, delay }: { icon: React.ReactNode;
         border: '1px solid rgba(0,0,0,0.06)',
         borderRadius: SHAPE.card,
         animation: `${fadeIn} 0.5s ease ${delay}s both`,
-        transition: 'all 0.25s ease',
+        transition: 'border-color 0.25s ease',
         '&:hover': {
           borderColor: color,
-          boxShadow: `0 4px 20px ${color}20`,
-          transform: 'translateY(-3px)',
         },
       }}
     >
@@ -301,7 +299,6 @@ export function ProfilePage() {
                 fontSize: '2.5rem',
                 fontWeight: 900,
                 border: '4px solid rgba(255,255,255,0.3)',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
                 mx: 'auto',
               }}
             >
@@ -321,7 +318,6 @@ export function ProfilePage() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
               }}
             >
               <Typography sx={{ color: '#fff', fontSize: '0.65rem', fontWeight: 900 }}>{trustScore}</Typography>
@@ -666,7 +662,7 @@ export function ProfilePage() {
                   color="primary"
                   onClick={handleSaveProfile}
                   disabled={profileSaving}
-                  sx={{ alignSelf: 'flex-start', borderRadius: SHAPE.sm, px: 4, fontWeight: 700, textTransform: 'none', boxShadow: '0 2px 12px rgba(46, 61, 47,0.3)' }}
+                  sx={{ alignSelf: 'flex-start', borderRadius: SHAPE.sm, px: 4, fontWeight: 700, textTransform: 'none' }}
                 >
                   {profileSaving ? 'Saving...' : 'Save Changes'}
                 </Button>

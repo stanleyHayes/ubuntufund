@@ -5,7 +5,6 @@ import {
   StyleSheet,
   Animated,
   TouchableOpacity,
-  Image,
 } from 'react-native'
 import { Text, Icon, Button } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -13,6 +12,10 @@ import { router, Stack } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
 import { ProgressBar } from '@/components/ProgressBar'
+import { RemoteImage } from '@/components/RemoteImage'
+import { EmptyState } from '@/components/EmptyState'
+import { SignInRequired } from '@/components/SignInRequired'
+import { FadeInUp } from '@/components/anim/FadeInUp'
 import { brandColors } from '@/theme'
 
 interface Campaign {
@@ -83,11 +86,7 @@ function CampaignCard({ campaign }: { campaign: Campaign }) {
       onPress={() => router.push(`/campaign/${campaign.id}`)}
       style={styles.card}
     >
-      {campaign.imageUrls?.[0] ? (
-        <Image source={{ uri: campaign.imageUrls[0] }} style={styles.cardImage} />
-      ) : (
-        <View style={[styles.cardImage, styles.cardImageFallback]} />
-      )}
+      <RemoteImage uri={campaign.imageUrls?.[0]} style={styles.cardImage} />
       <View style={styles.cardContent}>
         <View style={styles.cardHeader}>
           <Text style={styles.cardTitle} numberOfLines={2}>{campaign.title}</Text>
@@ -157,19 +156,29 @@ export default function MyCampaignsScreen() {
   }, [user?.id])
 
   useEffect(() => {
+    if (!user) return
     fetchCampaigns()
-  }, [fetchCampaigns])
+  }, [user, fetchCampaigns])
+
+  const headerOptions = {
+    title: 'My Campaigns',
+    headerStyle: { backgroundColor: brandColors.primary },
+    headerTintColor: '#FFFFFF',
+    headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
+  }
+
+  if (!user) {
+    return (
+      <View style={styles.container}>
+        <Stack.Screen options={headerOptions} />
+        <SignInRequired what="campaigns" />
+      </View>
+    )
+  }
 
   return (
     <View style={styles.container}>
-      <Stack.Screen
-        options={{
-          title: 'My Campaigns',
-          headerStyle: { backgroundColor: brandColors.primary },
-          headerTintColor: '#FFFFFF',
-          headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
-        }}
-      />
+      <Stack.Screen options={headerOptions} />
 
       <View style={styles.headerBlock}>
         <Text style={styles.eyebrow}>Your Campaigns</Text>
@@ -181,11 +190,12 @@ export default function MyCampaignsScreen() {
         /* Empty state — message fills the body, CTA docks at the bottom */
         <View style={{ flex: 1 }}>
           <View style={styles.emptyStateFill}>
-            <View style={styles.emptyIconTile}>
-              <Icon source="bullhorn-outline" size={24} color={brandColors.primary} />
-            </View>
-            <Text style={styles.emptyTitle}>You haven't created any campaigns yet</Text>
-            <Text style={styles.emptySubtitle}>Start your first campaign and make a difference</Text>
+            <EmptyState
+              style={styles.emptyStateCentered}
+              icon="bullhorn-outline"
+              title="You haven't created any campaigns yet"
+              subtitle="Start your first campaign and make a difference"
+            />
           </View>
           <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 16 }]}>
             <Button
@@ -227,26 +237,19 @@ export default function MyCampaignsScreen() {
                 ))}
               </View>
             ) : error ? (
-              <View style={styles.emptyState}>
-                <View style={[styles.emptyIconTile, styles.errorIconTile]}>
-                  <Icon source="alert-circle-outline" size={24} color={brandColors.error} />
-                </View>
-                <Text style={styles.emptyTitle}>{error}</Text>
-                <Button
-                  mode="contained"
-                  buttonColor={brandColors.primary}
-                  textColor="#FFFFFF"
-                  onPress={fetchCampaigns}
-                  style={styles.actionBtn}
-                  labelStyle={styles.btnLabel}
-                >
-                  Retry
-                </Button>
-              </View>
+              <EmptyState
+                variant="error"
+                icon="alert-circle-outline"
+                title={error}
+                ctaLabel="Retry"
+                onCtaPress={fetchCampaigns}
+              />
             ) : (
               <View style={styles.listWrap}>
-                {campaigns.map((c) => (
-                  <CampaignCard key={c.id} campaign={c} />
+                {campaigns.map((c, i) => (
+                  <FadeInUp key={c.id} index={i}>
+                    <CampaignCard campaign={c} />
+                  </FadeInUp>
                 ))}
               </View>
             )}
@@ -311,6 +314,7 @@ const styles = StyleSheet.create({
   // Empty
   emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 72, paddingHorizontal: 32 },
   emptyStateFill: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
+  emptyStateCentered: { paddingTop: 0 },
   bottomBar: {
     paddingHorizontal: 16,
     paddingTop: 12,

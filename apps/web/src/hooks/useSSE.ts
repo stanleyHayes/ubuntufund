@@ -2,6 +2,12 @@ import { useEffect, useRef } from 'react'
 
 const SSE_BASE_URL = '/api/v1/sse'
 
+// Live updates are opt-in. When VITE_SSE_ENABLED is not exactly 'true' the hook
+// is a no-op: it never opens a connection, so a missing /sse route can't spam
+// the console with failed-connection errors. Consumers (activity/donation
+// feeds) simply degrade to their static/last-known state.
+const SSE_ENABLED = import.meta.env.VITE_SSE_ENABLED === 'true'
+
 interface SSEOptions {
   onMessage?: (event: string, data: unknown) => void
   onError?: (error: Event) => void
@@ -19,6 +25,9 @@ export function useSSE(channel: string, options: SSEOptions = {}) {
   })
 
   useEffect(() => {
+    // Disabled → degrade silently, no connection, no console noise.
+    if (!SSE_ENABLED) return
+
     const maxReconnectAttempts = 10
     const baseReconnectDelay = 1000
     const maxReconnectDelay = 30000
@@ -32,7 +41,13 @@ export function useSSE(channel: string, options: SSEOptions = {}) {
         ? `${SSE_BASE_URL}/campaigns/${channel.replace('campaign:', '')}/live`
         : `${SSE_BASE_URL}/subscribe/${channel}`
 
-      const es = new EventSource(url)
+      let es: EventSource
+      try {
+        es = new EventSource(url)
+      } catch {
+        // EventSource unavailable/blocked — degrade silently.
+        return
+      }
       eventSourceRef.current = es
 
       es.addEventListener('connected', () => {

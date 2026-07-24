@@ -5,11 +5,15 @@ export default defineConfig({
   test: {
     globals: true,
     include: ['__tests__/**/*.test.ts'],
-    // Integration tests share a single real MongoDB test database and drop
-    // it between files, so files must not run concurrently against it.
-    // Per-file module isolation (Vitest's default) still gives each file a
-    // fresh copy of process-wide singletons like the in-memory rate limiter.
+    // Integration tests hit a real MongoDB. Each worker connects to its own
+    // per-worker database (see __tests__/helpers/testDatabase.ts) so a file's
+    // afterAll dropDatabase() can never wipe a neighbouring worker's data.
+    // globalSetup sweeps those worker databases before/after the whole run.
+    // Files still run one at a time (fileParallelism off), which also keeps
+    // process-wide singletons like the in-memory rate limiter from bleeding
+    // across files via Vitest's per-file module isolation.
     fileParallelism: false,
+    globalSetup: ['./__tests__/helpers/globalSetup.ts'],
     testTimeout: 20000,
     hookTimeout: 20000,
     coverage: {

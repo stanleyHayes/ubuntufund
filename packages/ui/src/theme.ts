@@ -282,15 +282,16 @@ const ubuntuFundTheme = createTheme({
       },
     },
     MuiCard: {
+      defaultProps: {
+        variant: 'outlined',
+        elevation: 0,
+      },
       styleOverrides: {
         root: {
           borderRadius: SHAPE.card,
           border: '1px solid #E7E3D8',
-          boxShadow: '0 12px 30px rgba(26, 46, 34, 0.06)',
-          transition: 'box-shadow 0.2s ease-in-out',
-          '&:hover': {
-            boxShadow: '0 16px 36px rgba(26, 46, 34, 0.1)',
-          },
+          boxShadow: 'none',
+          backgroundImage: 'none',
         },
       },
     },

@@ -121,7 +121,6 @@ export function CreateCampaignPage() {
               bgcolor: 'background.paper',
               border: '1px solid #E7E3D8',
               borderRadius: SHAPE.card,
-              boxShadow: '0 12px 30px rgba(26, 46, 34, 0.06)',
               px: { xs: 2.5, sm: 4 },
               py: { xs: 3, sm: 4 },
             }}

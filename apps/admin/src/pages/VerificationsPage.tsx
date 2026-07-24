@@ -6,6 +6,7 @@ import InputAdornment from '@mui/material/InputAdornment'
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser'
 import VerifiedUserRoundedIcon from '@mui/icons-material/VerifiedUserRounded'
 import Button from '@mui/material/Button'
+import { EmptyState } from '@ubuntu-fund/ui'
 import { useMockData } from '@/hooks/useMockData'
 import { VerificationLevel, Resource, Action } from '@ubuntu-fund/types'
 import { useAdminPermissions } from '@/context/AdminPermissionContext'
@@ -263,6 +264,24 @@ export default function VerificationsPage() {
             })
         }
       </Box>
+
+      {!loading && filtered.length === 0 && (
+        search || statusFilter !== 'all' ? (
+          <EmptyState
+            variant="search"
+            title="No verifications match your filters"
+            description="Try a different search term or clear the status filter."
+            compact
+          />
+        ) : (
+          <EmptyState
+            variant="noData"
+            title="No verifications pending"
+            description="Identity and organization verification requests will appear here as members submit them."
+            compact
+          />
+        )
+      )}
 
       {/* Pagination */}
       {filtered.length > perPage && (

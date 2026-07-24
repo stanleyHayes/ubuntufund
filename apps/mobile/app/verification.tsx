@@ -5,10 +5,13 @@ import {
   StyleSheet,
   Animated,
 } from 'react-native'
-import { Text, Icon, Button } from 'react-native-paper'
+import { Text, Icon } from 'react-native-paper'
 import { Stack } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
+import { EmptyState } from '@/components/EmptyState'
+import { SignInRequired } from '@/components/SignInRequired'
+import { FadeInUp } from '@/components/anim/FadeInUp'
 import { brandColors } from '@/theme'
 
 interface Verification {
@@ -133,19 +136,29 @@ export default function VerificationScreen() {
   }, [])
 
   useEffect(() => {
+    if (!user) return
     fetchVerifications()
-  }, [fetchVerifications])
+  }, [user, fetchVerifications])
+
+  const headerOptions = {
+    title: 'Verification',
+    headerStyle: { backgroundColor: brandColors.primary },
+    headerTintColor: '#FFFFFF',
+    headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
+  }
+
+  if (!user) {
+    return (
+      <View style={styles.container}>
+        <Stack.Screen options={headerOptions} />
+        <SignInRequired what="verification status" />
+      </View>
+    )
+  }
 
   return (
     <View style={styles.container}>
-      <Stack.Screen
-        options={{
-          title: 'Verification',
-          headerStyle: { backgroundColor: brandColors.primary },
-          headerTintColor: '#FFFFFF',
-          headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
-        }}
-      />
+      <Stack.Screen options={headerOptions} />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
         {/* Info banner */}
@@ -161,39 +174,26 @@ export default function VerificationScreen() {
             {[0, 1, 2].map((i) => <SkeletonCard key={i} />)}
           </View>
         ) : error ? (
-          <View style={styles.emptyState}>
-            <View style={styles.emptyIconTile}>
-              <Icon source="alert-circle-outline" size={24} color={brandColors.primary} />
-            </View>
-            <Text style={styles.emptyTitle}>{error}</Text>
-            <Button
-              mode="contained"
-              onPress={fetchVerifications}
-              style={styles.retryButton}
-              contentStyle={styles.buttonContent}
-              labelStyle={styles.buttonLabel}
-              buttonColor={brandColors.secondary}
-              textColor="#221B0E"
-            >
-              Retry
-            </Button>
-          </View>
+          <EmptyState
+            variant="error"
+            icon="alert-circle-outline"
+            title={error}
+            ctaLabel="Retry"
+            onCtaPress={fetchVerifications}
+          />
         ) : verifications.length === 0 ? (
-          <View style={styles.emptyState}>
-            <View style={styles.emptyIconTile}>
-              <Icon source="shield-off-outline" size={24} color={brandColors.primary} />
-            </View>
-            <Text style={styles.emptyTitle}>No verifications yet</Text>
-            <Text style={styles.emptySubtitle}>
-              Submit verification documents to increase your trust level and unlock platform features.
-            </Text>
-          </View>
+          <EmptyState
+            icon="shield-off-outline"
+            title="No verifications yet"
+            subtitle="Submit verification documents to increase your trust level and unlock platform features."
+          />
         ) : (
           <View style={styles.listWrap}>
-            {verifications.map((v) => {
+            {verifications.map((v, i) => {
               const status = STATUS_CONFIG[v.status] ?? STATUS_CONFIG.pending
               return (
-                <View key={v.id} style={styles.card}>
+                <FadeInUp key={v.id} index={i}>
+                <View style={styles.card}>
                   <View style={styles.cardHeader}>
                     <View style={[styles.typeIcon, { backgroundColor: `${brandColors.primary}14` }]}>
                       <Icon source={TYPE_ICONS[v.type] ?? 'shield'} size={20} color={brandColors.primary} />
@@ -231,6 +231,7 @@ export default function VerificationScreen() {
                     </View>
                   )}
                 </View>
+                </FadeInUp>
               )
             })}
           </View>

@@ -195,12 +195,11 @@ function ForOrganizationsPage() {
                     borderColor: 'divider',
                     bgcolor: 'background.paper',
                     animation: `${fadeSlide} 0.35s ease ${i * 0.04}s both`,
-                    transition: 'background-color 200ms ease, border-color 200ms ease, box-shadow 200ms ease',
+                    transition: 'background-color 200ms ease, border-color 200ms ease',
                     cursor: 'default',
                     '&:hover': {
                       borderColor: 'primary.main',
                       bgcolor: 'rgba(46, 61, 47,0.03)',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
                     },
                   }}
                 >
@@ -240,9 +239,8 @@ function ForOrganizationsPage() {
                     position: 'relative',
                     overflow: 'visible',
                     animation: `${fadeSlide} 0.4s ease ${0.05 + i * 0.04}s both`,
-                    transition: 'box-shadow 200ms ease, border-color 200ms ease',
+                    transition: 'border-color 200ms ease',
                     '&:hover': {
-                      boxShadow: '0 8px 20px rgba(0,0,0,0.08)',
                       borderColor: `${feature.color}40`,
                       '& .feat-icon': {
                         bgcolor: feature.color,
@@ -304,8 +302,8 @@ function ForOrganizationsPage() {
                     borderColor: 'divider',
                     borderRadius: SHAPE.card,
                     animation: `${fadeSlide} 0.45s ease ${0.1 + i * 0.1}s both`,
-                    transition: 'all 0.3s ease',
-                    '&:hover': { borderColor: `${t.color}50`, boxShadow: `0 8px 24px ${t.color}10` },
+                    transition: 'border-color 0.3s ease',
+                    '&:hover': { borderColor: `${t.color}50` },
                   }}
                 >
                   <CardContent sx={{ p: 0, display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -386,15 +384,10 @@ function ForOrganizationsPage() {
                     position: 'relative',
                     overflow: 'visible',
                     animation: `${fadeSlide} 0.4s ease ${0.15 + i * 0.08}s both`,
-                    transition: 'box-shadow 200ms ease',
                     ...(tier.highlighted && {
                       zIndex: 2,
-                      boxShadow: '0 16px 40px rgba(0,0,0,0.12)',
                       borderWidth: 2,
                     }),
-                    '&:hover': {
-                      boxShadow: tier.highlighted ? '0 20px 48px rgba(0,0,0,0.16)' : '0 8px 24px rgba(0,0,0,0.08)',
-                    },
                   }}
                 >
                   {tier.highlighted && (
@@ -441,7 +434,6 @@ function ForOrganizationsPage() {
                         fontWeight: 700,
                         textTransform: 'none',
                         fontSize: '0.92rem',
-                        ...(tier.highlighted && { boxShadow: '0 4px 16px rgba(46, 61, 47,0.25)' }),
                       }}
                     >
                       {tier.cta}
@@ -524,9 +516,6 @@ function ForOrganizationsPage() {
                 fontWeight: 700,
                 fontSize: '0.95rem',
                 borderRadius: SHAPE.sm,
-                boxShadow: '0 4px 14px rgba(0,0,0,0.18)',
-                transition: 'box-shadow 200ms ease',
-                '&:hover': { boxShadow: '0 6px 20px rgba(0,0,0,0.24)' },
               }}
             >
               Create Organization Account

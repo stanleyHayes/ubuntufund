@@ -10,6 +10,7 @@ import { Text, Icon, Switch, TouchableRipple } from 'react-native-paper'
 import { router, Stack } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
+import { SignInRequired } from '@/components/SignInRequired'
 import { brandColors } from '@/theme'
 
 interface SettingsData {
@@ -150,8 +151,9 @@ export default function SettingsScreen() {
   }, [])
 
   useEffect(() => {
+    if (!user) return
     fetchSettings()
-  }, [fetchSettings])
+  }, [user, fetchSettings])
 
   const updateSetting = useCallback(async (key: keyof SettingsData, value: any) => {
     setSettings((prev) => ({ ...prev, [key]: value }))
@@ -185,16 +187,25 @@ export default function SettingsScreen() {
     )
   }
 
+  const headerOptions = {
+    title: 'Settings',
+    headerStyle: { backgroundColor: brandColors.primary },
+    headerTintColor: '#FFFFFF',
+    headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
+  }
+
+  if (!user) {
+    return (
+      <View style={styles.container}>
+        <Stack.Screen options={headerOptions} />
+        <SignInRequired what="settings" />
+      </View>
+    )
+  }
+
   return (
     <View style={styles.container}>
-      <Stack.Screen
-        options={{
-          title: 'Settings',
-          headerStyle: { backgroundColor: brandColors.primary },
-          headerTintColor: '#FFFFFF',
-          headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
-        }}
-      />
+      <Stack.Screen options={headerOptions} />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
         {loading ? (

@@ -77,15 +77,13 @@ export function useCampaign(id: string): UseCampaignResult {
 
 export function useUser(userId: string): UseUserResult {
   const [user, setUser] = useState<User | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(Boolean(userId))
 
   useEffect(() => {
-    if (!userId) {
-      return
-    }
+    if (!userId) return
     let cancelled = false
     api
-      .get<User>(`/users/${userId}`)
+      .get<User>(`/users/${userId}/public`)
       .then((data) => {
         if (!cancelled) setUser(data)
       })
