@@ -59,8 +59,6 @@ async function authedRequest<T>(path: string, options?: RequestInit): Promise<T>
       }
     })()
 
-  const isDemo = token === 'demo-access-token'
-
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -72,11 +70,6 @@ async function authedRequest<T>(path: string, options?: RequestInit): Promise<T>
   })
 
   if (!res.ok) {
-    // Demo accounts use a fake token the API rejects —
-    // return empty data instead of surfacing auth errors
-    if (isDemo && res.status === 401) {
-      return [] as unknown as T
-    }
     const error = await res.json().catch(() => ({ message: 'Request failed' }))
     throw new Error(error.message ?? error.error ?? `HTTP ${res.status}`)
   }
@@ -120,41 +113,14 @@ export interface RegisterResponse {
   tokens: AuthTokens
 }
 
-// --- Demo credentials (fallback when API is unavailable) ---
-
-const DEMO_ACCOUNTS: Record<string, { password: string; user: AuthUser }> = {
-  'demo@ubuntufund.com': {
-    password: 'ubuntu2026',
-    user: { id: 'demo-user-1', name: 'Amara Osei', email: 'demo@ubuntufund.com', role: 'user' },
-  },
-}
-
-function demoLogin(email: string, password: string): LoginResponse | null {
-  const account = DEMO_ACCOUNTS[email]
-  if (account && account.password === password) {
-    return {
-      user: account.user,
-      tokens: { accessToken: 'demo-access-token', refreshToken: 'demo-refresh-token' },
-    }
-  }
-  return null
-}
-
 // --- Auth API ---
 
 export async function loginApi(email: string, password: string): Promise<LoginResponse> {
-  try {
-    const res = await request<{ data: LoginResponse }>('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
-    })
-    return res.data
-  } catch (err) {
-    // Fallback to demo credentials when API is unreachable
-    const demo = demoLogin(email, password)
-    if (demo) return demo
-    throw err
-  }
+  const res = await request<{ data: LoginResponse }>('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  })
+  return res.data
 }
 
 export async function registerApi(data: {
@@ -176,10 +142,6 @@ export async function registerApi(data: {
 }
 
 export async function refreshTokenApi(refreshToken: string): Promise<AuthTokens> {
-  // Demo tokens don't need refresh
-  if (refreshToken === 'demo-refresh-token') {
-    return { accessToken: 'demo-access-token', refreshToken: 'demo-refresh-token' }
-  }
   const res = await request<{ data: AuthTokens }>('/auth/refresh', {
     method: 'POST',
     body: JSON.stringify({ refreshToken }),

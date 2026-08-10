@@ -4,10 +4,10 @@
     "type": "stats",
     "data": {
       "items": [
-        { "value": "GH₵ 120M+", "label": "Raised on platform" },
-        { "value": "50K+", "label": "Campaigns created" },
-        { "value": "16", "label": "Regions of Ghana" },
-        { "value": "99%", "label": "Trust rate" }
+        { "value": "GHS", "label": "Launch currency" },
+        { "value": "Web + mobile", "label": "Client access" },
+        { "value": "Admin-reviewed", "label": "Campaign workflow" },
+        { "value": "Soft-delete", "label": "Record policy" }
       ]
     }
   },
@@ -54,32 +54,32 @@
         {
           "category": "Donations",
           "question": "How do I make a donation?",
-          "answer": "Browse campaigns and click \"Donate.\" Enter the amount, choose your payment method, and confirm. You'll receive a confirmation email with your receipt. You can donate anonymously if you prefer."
+          "answer": "Browse campaigns and choose Donate. During launch readiness, confirmed contributions use your UbuntuFund Wallet balance. External payment methods remain disabled until their provider integrations are verified."
         },
         {
           "category": "Donations",
           "question": "Is there a minimum or maximum donation?",
-          "answer": "Minimum is GH₵ 5. No maximum, though large donations may require additional verification. Enterprise organizations can set custom minimums for their campaigns."
+          "answer": "The amount must be positive and cannot exceed your available UbuntuFund Wallet balance. Campaign and account limits may also apply."
         },
         {
           "category": "Donations",
           "question": "Can I get a refund on my donation?",
-          "answer": "Refunds are available within 14 days if the campaign hasn't withdrawn the funds. For campaigns that are suspended or found fraudulent, full refunds are processed automatically. Visit your donation history to request a refund."
+          "answer": "You can submit a refund request from your donation history. Requests are recorded for review, but approval and wallet settlement are not automatic and no processing time is guaranteed."
         },
         {
           "category": "Payments",
           "question": "What payment methods are accepted?",
-          "answer": "MTN Mobile Money (MoMo), Telecel Cash, AT Money, Visa & Mastercard cards, and bank transfer. Mobile money is the fastest way to give and receive funds in Ghana."
+          "answer": "UbuntuFund Wallet is the only live payment method currently enabled. Mobile money, cards, and bank transfer remain disabled until their production payment adapters and compliance reviews are complete."
         },
         {
           "category": "Payments",
           "question": "How do I withdraw my campaign funds?",
-          "answer": "Go to your dashboard and click \"Withdraw.\" Choose mobile money (processed within 24 hours) or bank transfer to any Ghanaian bank (2-3 business days). Platform fees are automatically deducted."
+          "answer": "Self-service campaign withdrawals are not currently available. Campaign organizers should contact support for the controlled disbursement process while production payout rails are being finalized."
         },
         {
           "category": "Payments",
           "question": "What are the platform fees?",
-          "answer": "Fees depend on your subscription tier. Free accounts pay a 5% platform fee. Starter (3.5%), Pro (2%), and Enterprise (1%). All tiers incur standard payment processing fees (2.9% + GH₵ 1). See our pricing page for details."
+          "answer": "Current plan pricing and platform fees are shown on the pricing page. External payment-processing fees are not charged while those payment methods remain disabled."
         },
         {
           "category": "Trust & safety",
@@ -104,7 +104,7 @@
         {
           "category": "Organizations",
           "question": "What features are available for organizations?",
-          "answer": "Organizations get: branded campaign pages, team management, advanced analytics, automated tax receipts, recurring donation support, API access, and dedicated account management. See our \"For Organizations\" page for tier details."
+          "answer": "Organizations have a dedicated workspace, member collaboration, campaign management, updates, comments, donation history, and review status across web and mobile. Paid billing and external integrations are not available yet."
         }
       ]
     }
@@ -125,7 +125,7 @@
       "vision": {
         "eyebrow": "Our Vision",
         "title": "A Ghana Where No Cause Goes Unfunded",
-        "body": "We envision a future where geographic and economic barriers no longer prevent communities from accessing the resources they need. By 2030, we aim to facilitate over GH₵ 1 billion in donations across all 16 regions of Ghana."
+        "body": "We envision a future where geographic and economic barriers no longer prevent communities from accessing the resources they need. Launch progress will be reported from verified platform records rather than aspirational counters."
       },
       "philosophy": {
         "eyebrow": "The Ubuntu Philosophy",
@@ -133,12 +133,7 @@
         "body": "Ubuntu is a Nguni Bantu term meaning \"humanity.\" It speaks to our interconnectedness — the idea that a person is a person through other people. This philosophy is the heartbeat of our platform. When one community thrives, we all thrive. When one person gives, the ripple effect touches countless lives."
       },
       "team": [
-        { "name": "Kofi Owusu", "role": "Co-Founder & CEO", "initials": "KO", "bio": "Visionary leader passionate about democratizing giving across Ghana." },
-        { "name": "Adwoa Agyeman", "role": "Co-Founder & CTO", "initials": "AA", "bio": "Architect of the trust infrastructure powering transparent donations." },
-        { "name": "Abena Sarpong", "role": "Head of Community", "initials": "AS", "bio": "Building bridges between donors and communities in all 16 regions of Ghana." },
-        { "name": "Yaw Darko", "role": "Head of Trust & Safety", "initials": "YD", "bio": "Guardian of platform integrity with a zero-tolerance fraud policy." },
-        { "name": "Kojo Antwi", "role": "Head of Partnerships", "initials": "KA", "bio": "Forging alliances with NGOs, government agencies, and corporate partners." },
-        { "name": "Kwame Boateng", "role": "Head of Engineering", "initials": "KB", "bio": "Leading the team building scalable, secure fintech for Ghana." }
+        { "name": "UbuntuFund Team", "role": "Launch team", "initials": "UF", "bio": "Named leadership profiles will be published after owner verification and consent." }
       ]
     }
   },
@@ -147,15 +142,15 @@
     "type": "contact",
     "data": {
       "email": "hello@ubuntufund.com",
-      "phone": "+233 30 123 4567",
-      "address": "14 Independence Avenue, Accra, Ghana",
-      "hours": "Mon-Fri, 9am-5pm GMT",
+      "phone": "",
+      "address": "",
+      "hours": "Support availability is confirmed by email",
       "socials": {
-        "facebook": "https://facebook.com/ubuntufund",
-        "x": "https://x.com/ubuntufund",
-        "instagram": "https://instagram.com/ubuntufund",
-        "linkedin": "https://linkedin.com/company/ubuntufund",
-        "youtube": "https://youtube.com/@ubuntufund"
+        "facebook": "",
+        "x": "",
+        "instagram": "",
+        "linkedin": "",
+        "youtube": ""
       }
     }
   }

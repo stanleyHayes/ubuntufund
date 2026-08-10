@@ -1,10 +1,12 @@
 import { Money } from '../value-objects/Money.js';
+import { PaymentMethod } from '@ubuntu-fund/types';
 
 export interface DonationProps {
   id: string;
   campaignId: string;
   donorId: string;
   amount: Money;
+  paymentMethod: PaymentMethod;
   message?: string;
   isAnonymous: boolean;
   createdAt: Date;
@@ -34,6 +36,9 @@ export class DonationEntity {
   }
   get message(): string | undefined {
     return this.props.message;
+  }
+  get paymentMethod(): PaymentMethod {
+    return this.props.paymentMethod;
   }
   get isAnonymous(): boolean {
     return this.props.isAnonymous;

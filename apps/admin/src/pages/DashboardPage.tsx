@@ -8,14 +8,12 @@ import VolunteerActivismIcon from '@mui/icons-material/VolunteerActivism'
 import GavelIcon from '@mui/icons-material/Gavel'
 import BarChartIcon from '@mui/icons-material/BarChart'
 import InsightsIcon from '@mui/icons-material/Insights'
-import SettingsIcon from '@mui/icons-material/Settings'
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser'
 import HistoryIcon from '@mui/icons-material/History'
 import CardMembershipIcon from '@mui/icons-material/CardMembership'
 import TrendingUpIcon from '@mui/icons-material/TrendingUp'
 import CampaignIcon from '@mui/icons-material/Rocket'
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
-import PersonAddIcon from '@mui/icons-material/PersonAdd'
 import TuneIcon from '@mui/icons-material/Tune'
 import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded'
 import { Resource, Action } from '@ubuntu-fund/types'
@@ -177,13 +175,11 @@ const tileTemplates: TileTemplate[] = [
   { label: 'Donations', icon: <VolunteerActivismIcon />, route: '/donations', color: '#C7A24A', statKey: 'totalRaised', formatStat: formatCurrency, description: 'total raised', glowPosition: 'top left', patternAngle: 30, resource: Resource.DONATIONS },
   { label: 'Disputes', icon: <GavelIcon />, route: '/disputes', color: '#C06B58', statKey: 'pendingDisputes', description: 'pending review', glowPosition: 'bottom right', patternAngle: -30, resource: Resource.DISPUTES },
   { label: 'Reports', icon: <BarChartIcon />, route: '/reports', color: TONES.maroon.text, statKey: 'totalDonations', description: 'analytics reports', glowPosition: 'center right', patternAngle: 60, resource: Resource.ANALYTICS },
-  { label: 'Settings', icon: <SettingsIcon />, route: '/settings', color: '#78909C', statKey: null, description: 'system configuration', glowPosition: 'center left', patternAngle: -60, resource: Resource.SETTINGS },
   { label: 'Verifications', icon: <VerifiedUserIcon />, route: '/verifications', color: TONES.teal.text, statKey: null, description: 'pending verification', glowPosition: 'top center', patternAngle: 15, resource: Resource.VERIFICATIONS },
   { label: 'Audit Log', icon: <HistoryIcon />, route: '/audit', color: TONES.clay.text, statKey: null, description: 'total entries', glowPosition: 'bottom center', patternAngle: -15, resource: Resource.AUDIT_LOG },
   { label: 'Subscriptions', icon: <CardMembershipIcon />, route: '/subscriptions', color: TONES.maroon.text, statKey: null, description: 'active subscribers', glowPosition: 'center left', patternAngle: 25, resource: Resource.SUBSCRIPTIONS },
   { label: 'Manage Plans', icon: <TuneIcon />, route: '/plans', color: TONES.maroon.text, statKey: null, description: 'subscription packages', glowPosition: 'top left', patternAngle: -20, resource: Resource.PLANS },
-  { label: 'Roles', icon: <AdminPanelSettingsIcon />, route: '/roles', color: '#FF7043', statKey: null, description: 'role management', glowPosition: 'top right', patternAngle: 35, resource: Resource.ROLES },
-  { label: 'Invite User', icon: <PersonAddIcon />, route: '/invite', color: TONES.teal.text, statKey: null, description: 'create admin user', glowPosition: 'bottom left', patternAngle: -35, resource: Resource.USERS, action: Action.CREATE },
+  { label: 'Roles', icon: <AdminPanelSettingsIcon />, route: '/roles', color: '#FF7043', statKey: null, description: 'system role policy', glowPosition: 'top right', patternAngle: 35, resource: Resource.ROLES },
 ]
 
 // ---------------------------------------------------------------------------

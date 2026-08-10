@@ -25,11 +25,11 @@ import PublicRoundedIcon from '@mui/icons-material/PublicRounded'
 import PhoneRoundedIcon from '@mui/icons-material/PhoneRounded'
 import CakeRoundedIcon from '@mui/icons-material/CakeRounded'
 import { keyframes, alpha } from '@mui/material/styles'
-import { SHAPE, AiWritingBar } from '@ubuntu-fund/ui'
-import { AiWritingAction } from '@ubuntu-fund/types'
+import { SHAPE } from '@ubuntu-fund/ui'
 import { useAuth } from '@/context/AuthContext'
 import PageHeader from '@/components/PageHeader'
 import { TONES } from '@/lib/tones'
+import { api } from '@/lib/api'
 
 // ─── Animations ──────────────────────────────────────────────────────────────
 
@@ -130,9 +130,6 @@ export default function AdminProfilePage() {
   // Preferences
   const [emailNotifs, setEmailNotifs] = useState(true)
   const [pushNotifs, setPushNotifs] = useState(true)
-  const [weeklyDigest, setWeeklyDigest] = useState(true)
-  const [loginAlerts, setLoginAlerts] = useState(true)
-  const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone)
   const [language, setLanguage] = useState('en')
 
   // UI state
@@ -143,8 +140,7 @@ export default function AdminProfilePage() {
   async function handleSaveProfile() {
     setSaving(true)
     try {
-      // In production: await api.put('/profile', { name, phone, country, bio })
-      await new Promise((r) => setTimeout(r, 600))
+      await api.put('/profile', { name, phone, country, bio })
       setSnack({ open: true, message: 'Profile updated successfully', severity: 'success' })
     } catch {
       setSnack({ open: true, message: 'Failed to update profile', severity: 'error' })
@@ -163,9 +159,13 @@ export default function AdminProfilePage() {
       setPasswordError('Passwords do not match')
       return
     }
+    if (!currentPassword) {
+      setPasswordError('Current password is required')
+      return
+    }
     setSaving(true)
     try {
-      await new Promise((r) => setTimeout(r, 600))
+      await api.put('/auth/change-password', { currentPassword, newPassword })
       setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
@@ -180,7 +180,10 @@ export default function AdminProfilePage() {
   async function handleSavePreferences() {
     setSaving(true)
     try {
-      await new Promise((r) => setTimeout(r, 600))
+      await api.put('/profile', {
+        notificationPreferences: { email: emailNotifs, push: pushNotifs },
+        language,
+      })
       setSnack({ open: true, message: 'Preferences saved', severity: 'success' })
     } catch {
       setSnack({ open: true, message: 'Failed to save preferences', severity: 'error' })
@@ -289,12 +292,6 @@ export default function AdminProfilePage() {
                   },
                 }}
                 sx={inputSx}
-              />
-              <AiWritingBar
-                value={bio}
-                onChange={setBio}
-                inputLabel="Bio"
-                allowedActions={[AiWritingAction.FORMALIZE, AiWritingAction.FIX_GRAMMAR, AiWritingAction.IMPROVE_CLARITY]}
               />
               <TextField
                 label="Bio"
@@ -446,8 +443,6 @@ export default function AdminProfilePage() {
             {[
               { label: 'Email Notifications', desc: 'Receive important updates via email', checked: emailNotifs, onChange: setEmailNotifs },
               { label: 'Push Notifications', desc: 'Browser push notifications for real-time alerts', checked: pushNotifs, onChange: setPushNotifs },
-              { label: 'Weekly Digest', desc: 'Summary of platform activity every Monday', checked: weeklyDigest, onChange: setWeeklyDigest },
-              { label: 'Login Alerts', desc: 'Get notified when your account is accessed', checked: loginAlerts, onChange: setLoginAlerts },
             ].map((pref, i) => (
               <Box
                 key={pref.label}
@@ -458,7 +453,7 @@ export default function AdminProfilePage() {
                   gap: 3,
                   py: 2,
                   px: 3,
-                  borderBottom: i < 3 ? '1px solid' : 'none',
+                  borderBottom: i < 1 ? '1px solid' : 'none',
                   borderColor: 'divider',
                   transition: 'background 0.2s ease',
                   '&:hover': { bgcolor: 'rgba(255,255,255,0.02)' },
@@ -503,19 +498,6 @@ export default function AdminProfilePage() {
         <Grid size={{ xs: 12, lg: 6 }}>
           <SectionCard icon={<CakeRoundedIcon />} title="Regional & Display" color={TONES.maroon.text} delay={0.2}>
             <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-              <TextField
-                label="Timezone"
-                value={timezone}
-                onChange={(e) => setTimezone(e.target.value)}
-                fullWidth
-                size="small"
-                select
-                sx={inputSx}
-              >
-                {['Africa/Accra', 'UTC', 'Europe/London', 'America/New_York'].map((tz) => (
-                  <option key={tz} value={tz}>{tz.replace('_', ' ')}</option>
-                ))}
-              </TextField>
               <TextField
                 label="Language"
                 value={language}

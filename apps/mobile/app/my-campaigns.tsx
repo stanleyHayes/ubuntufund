@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   View,
   ScrollView,
@@ -49,8 +49,8 @@ const STATUS_COLORS: Record<string, string> = {
 
 // ─── Skeleton ────────────────────────────────────────────────
 
-function SkeletonCard({ index }: { index: number }) {
-  const opacity = useRef(new Animated.Value(0.3)).current
+function SkeletonCard() {
+  const [opacity] = useState(() => new Animated.Value(0.3))
 
   useEffect(() => {
     Animated.loop(
@@ -59,7 +59,7 @@ function SkeletonCard({ index }: { index: number }) {
         Animated.timing(opacity, { toValue: 0.3, duration: 800, useNativeDriver: true }),
       ]),
     ).start()
-  }, [])
+  }, [opacity])
 
   return (
     <Animated.View style={[styles.skeletonCard, { opacity }]}>
@@ -143,17 +143,14 @@ export default function MyCampaignsScreen() {
     setLoading(true)
     setError(null)
     try {
-      // /campaigns is paginated ({ items }); normalise before filtering.
-      const res = await api.get<Campaign[] | { items: Campaign[] }>('/campaigns')
-      const data = Array.isArray(res) ? res : res.items ?? []
-      const mine = data.filter((c) => c.creatorId === user?.id)
-      setCampaigns(mine)
-    } catch (err: any) {
-      setError(err.message ?? 'Failed to load campaigns')
+      const data = await api.get<Campaign[]>('/campaigns/mine')
+      setCampaigns(Array.isArray(data) ? data : [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load campaigns')
     } finally {
       setLoading(false)
     }
-  }, [user?.id])
+  }, [])
 
   useEffect(() => {
     if (!user) return
@@ -233,7 +230,7 @@ export default function MyCampaignsScreen() {
             {loading ? (
               <View style={styles.listWrap}>
                 {[0, 1, 2].map((i) => (
-                  <SkeletonCard key={i} index={i} />
+              <SkeletonCard key={i} />
                 ))}
               </View>
             ) : error ? (

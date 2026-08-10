@@ -16,19 +16,13 @@ import UserDetailPage from './pages/UserDetailPage'
 import DonationsPage from './pages/DonationsPage'
 import DisputesPage from './pages/DisputesPage'
 import ReportsPage from './pages/ReportsPage'
-import SettingsPage from './pages/SettingsPage'
 import VerificationsPage from './pages/VerificationsPage'
 import KYCReviewPage from './pages/KYCReviewPage'
 import AuditLogPage from './pages/AuditLogPage'
 import SubscriptionsPage from './pages/SubscriptionsPage'
 import ManagePlansPage from './pages/ManagePlansPage'
-import CreatePlanPage from './pages/CreatePlanPage'
-import EditPlanPage from './pages/EditPlanPage'
 import RolesPage from './pages/RolesPage'
-import CreateRolePage from './pages/CreateRolePage'
-import EditRolePage from './pages/EditRolePage'
 import DisputeDetailPage from './pages/DisputeDetailPage'
-import InviteUserPage from './pages/InviteUserPage'
 import NewsletterPage from './pages/NewsletterPage'
 import ContactSubmissionsPage from './pages/ContactSubmissionsPage'
 import TestimonialsPage from './pages/TestimonialsPage'
@@ -80,18 +74,12 @@ export const router = createBrowserRouter([
       { path: 'disputes/:id', element: <RequirePermission resource={Resource.DISPUTES}><DisputeDetailPage /></RequirePermission> },
       { path: 'reports', element: <RequirePermission resource={Resource.ANALYTICS}><ReportsPage /></RequirePermission> },
       { path: 'profile', element: <AdminProfilePage /> },
-      { path: 'settings', element: <RequirePermission resource={Resource.SETTINGS}><SettingsPage /></RequirePermission> },
       { path: 'verifications', element: <RequirePermission resource={Resource.VERIFICATIONS}><VerificationsPage /></RequirePermission> },
       { path: 'kyc-review', element: <RequirePermission resource={Resource.VERIFICATIONS}><KYCReviewPage /></RequirePermission> },
       { path: 'audit', element: <RequirePermission resource={Resource.AUDIT_LOG}><AuditLogPage /></RequirePermission> },
       { path: 'subscriptions', element: <RequirePermission resource={Resource.SUBSCRIPTIONS}><SubscriptionsPage /></RequirePermission> },
       { path: 'plans', element: <RequirePermission resource={Resource.PLANS}><ManagePlansPage /></RequirePermission> },
-      { path: 'plans/new', element: <RequirePermission resource={Resource.PLANS} action={Action.CREATE}><CreatePlanPage /></RequirePermission> },
-      { path: 'plans/:tier/edit', element: <RequirePermission resource={Resource.PLANS} action={Action.UPDATE}><EditPlanPage /></RequirePermission> },
       { path: 'roles', element: <RequirePermission resource={Resource.ROLES}><RolesPage /></RequirePermission> },
-      { path: 'roles/new', element: <RequirePermission resource={Resource.ROLES} action={Action.CREATE}><CreateRolePage /></RequirePermission> },
-      { path: 'roles/:id/edit', element: <RequirePermission resource={Resource.ROLES} action={Action.UPDATE}><EditRolePage /></RequirePermission> },
-      { path: 'invite', element: <RequirePermission resource={Resource.USERS} action={Action.CREATE}><InviteUserPage /></RequirePermission> },
       { path: 'newsletter', element: <RequirePermission resource={Resource.NEWSLETTER}><NewsletterPage /></RequirePermission> },
       { path: 'contact-submissions', element: <RequirePermission resource={Resource.CONTACT_SUBMISSIONS}><ContactSubmissionsPage /></RequirePermission> },
       { path: 'testimonials', element: <RequirePermission resource={Resource.TESTIMONIALS}><TestimonialsPage /></RequirePermission> },

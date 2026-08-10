@@ -111,7 +111,7 @@ export class CampaignUpdateController {
       );
       res.json({
         data: update,
-        message: 'Update pinned successfully',
+        message: update.isPinned ? 'Update pinned successfully' : 'Update unpinned successfully',
         status: 200,
       });
     } catch (error) {

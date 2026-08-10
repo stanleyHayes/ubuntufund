@@ -135,6 +135,13 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
   },
 }))
 
+vi.mock('expo-secure-store', () => ({
+  WHEN_UNLOCKED_THIS_DEVICE_ONLY: 1,
+  getItemAsync: vi.fn(),
+  setItemAsync: vi.fn(),
+  deleteItemAsync: vi.fn(),
+}))
+
 // Mock react-native-safe-area-context
 vi.mock('react-native-safe-area-context', () => ({
   SafeAreaProvider: ({ children }: { children?: React.ReactNode }) => children,

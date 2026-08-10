@@ -1,5 +1,6 @@
 import {
   SubscriptionStatus,
+  SubscriptionTier,
   BillingCycle,
   type Subscription,
   type CreateSubscriptionInput,
@@ -23,6 +24,9 @@ export class SubscribeUseCase {
   constructor(private readonly subscriptionRepo: SubscriptionRepositoryPort) {}
 
   async execute(input: CreateSubscriptionInput, userId: string): Promise<Subscription> {
+    if (input.tier !== SubscriptionTier.FREE) {
+      throw new AppError('Paid subscriptions require a verified billing checkout and are not available yet', 409);
+    }
     const periodDays = PERIOD_DAYS[input.billingCycle];
     if (periodDays === undefined) {
       throw new AppError('Invalid billing cycle', 400);

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { Animated, AccessibilityInfo } from 'react-native'
 import type { ReactNode } from 'react'
 import type { StyleProp, ViewStyle } from 'react-native'
@@ -29,8 +29,8 @@ export function FadeInUp({
   duration = 300,
   style,
 }: FadeInUpProps) {
-  const opacity = useRef(new Animated.Value(0)).current
-  const translateY = useRef(new Animated.Value(distance)).current
+  const [opacity] = useState(() => new Animated.Value(0))
+  const [translateY] = useState(() => new Animated.Value(distance))
 
   useEffect(() => {
     let cancelled = false

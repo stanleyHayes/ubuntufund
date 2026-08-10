@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { CampaignCategory, CampaignPriority } from '@ubuntu-fund/types';
+import { CampaignCategory, CampaignPriority, PaymentMethod } from '@ubuntu-fund/types';
 import type { CampaignController } from '../controllers/CampaignController.js';
 import { validate } from '../../middleware/validate.js';
 import type { createAuthMiddleware } from '../../middleware/authMiddleware.js';
@@ -19,6 +19,7 @@ const createCampaignSchema = z.object({
 const donateSchema = z.object({
   amount: z.number().positive(),
   currency: z.string().min(2).max(5),
+  paymentMethod: z.nativeEnum(PaymentMethod).default(PaymentMethod.WALLET),
   message: z.string().max(500).optional(),
   isAnonymous: z.boolean().default(false),
 });
@@ -30,6 +31,7 @@ export function createCampaignRoutes(
   const router = Router();
 
   router.get('/', controller.list);
+  router.get('/mine', authMiddleware, controller.listMine);
   router.get('/:id', controller.getById);
   router.post(
     '/',

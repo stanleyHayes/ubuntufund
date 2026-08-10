@@ -68,3 +68,10 @@ export const newsletterRateLimiter = createRateLimiter({
   max: 20,
   scope: 'newsletter',
 });
+
+/** Public contact form: 10 submissions / 15 min per IP (spam guard). */
+export const contactRateLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  scope: 'contact',
+});

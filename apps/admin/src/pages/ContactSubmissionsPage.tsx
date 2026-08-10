@@ -5,8 +5,7 @@ import {
 } from '@mui/material'
 import { keyframes } from '@mui/system'
 import SearchIcon from '@mui/icons-material/Search'
-import { EmptyState, AiWritingBar } from '@ubuntu-fund/ui'
-import { AiWritingAction } from '@ubuntu-fund/types'
+import { EmptyState } from '@ubuntu-fund/ui'
 import MarkEmailUnreadRoundedIcon from '@mui/icons-material/MarkEmailUnreadRounded'
 import type { ContactSubmission, ContactStatus } from '@ubuntu-fund/types'
 import { usePagination } from '@/hooks/usePagination'
@@ -313,12 +312,6 @@ function ContactSubmissionsPage() {
                 <MenuItem value="archived">Archived</MenuItem>
               </TextField>
 
-              <AiWritingBar
-                value={adminNotes}
-                onChange={setAdminNotes}
-                inputLabel="Response"
-                allowedActions={[AiWritingAction.FORMALIZE, AiWritingAction.CASUAL, AiWritingAction.FIX_GRAMMAR, AiWritingAction.IMPROVE_CLARITY, AiWritingAction.GENERATE_EMAIL]}
-              />
               <TextField
                 fullWidth multiline rows={3} size="small" label="Admin Notes"
                 value={adminNotes}

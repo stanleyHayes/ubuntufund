@@ -4,14 +4,23 @@ import type { GetMySubscriptionUseCase } from '../../../../../application/use-ca
 import type { SubscribeUseCase } from '../../../../../application/use-cases/SubscribeUseCase.js';
 import type { UpgradeSubscriptionUseCase } from '../../../../../application/use-cases/UpgradeSubscriptionUseCase.js';
 import type { CancelSubscriptionUseCase } from '../../../../../application/use-cases/CancelSubscriptionUseCase.js';
+import type { ListSubscriptionsUseCase } from '../../../../../application/use-cases/ListSubscriptionsUseCase.js';
 
 export class SubscriptionController {
   constructor(
     private readonly getMySubscriptionUseCase: GetMySubscriptionUseCase,
     private readonly subscribeUseCase: SubscribeUseCase,
     private readonly upgradeSubscriptionUseCase: UpgradeSubscriptionUseCase,
-    private readonly cancelSubscriptionUseCase: CancelSubscriptionUseCase
+    private readonly cancelSubscriptionUseCase: CancelSubscriptionUseCase,
+    private readonly listSubscriptionsUseCase: ListSubscriptionsUseCase
   ) {}
+
+  list = async (_req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const items = await this.listSubscriptionsUseCase.execute();
+      res.json({ data: { items }, message: 'Subscriptions retrieved', status: 200 });
+    } catch (error) { next(error); }
+  };
 
   getMine = async (
     req: AuthenticatedRequest,

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   View,
   ScrollView,
@@ -47,10 +47,10 @@ export default function ProfileTab() {
   const [stats, setStats] = useState<ProfileStats | null>(null)
   const [statsLoading, setStatsLoading] = useState(true)
 
-  const heroOpacity = useRef(new Animated.Value(0)).current
-  const heroSlide = useRef(new Animated.Value(20)).current
-  const bodyOpacity = useRef(new Animated.Value(0)).current
-  const bodySlide = useRef(new Animated.Value(30)).current
+  const [heroOpacity] = useState(() => new Animated.Value(0))
+  const [heroSlide] = useState(() => new Animated.Value(20))
+  const [bodyOpacity] = useState(() => new Animated.Value(0))
+  const [bodySlide] = useState(() => new Animated.Value(30))
 
   const fetchProfile = useCallback(async () => {
     setStatsLoading(true)
@@ -79,7 +79,7 @@ export default function ProfileTab() {
         ]),
       ]).start()
     }
-  }, [statsLoading])
+  }, [bodyOpacity, bodySlide, heroOpacity, heroSlide, statsLoading])
 
   const displayName = user?.name ?? 'User'
   const displayEmail = user?.email ?? ''

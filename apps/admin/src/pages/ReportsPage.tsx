@@ -3,13 +3,7 @@ import { keyframes } from '@mui/system'
 import { LineChart } from '@mui/x-charts/LineChart'
 import { PieChart } from '@mui/x-charts/PieChart'
 import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded'
-import {
-  generateDonationTrend,
-  generateCategoryBreakdown,
-  generateGeographicData,
-  generateFraudMetrics,
-} from '@/hooks/useMockData'
-import { useAdminCampaigns } from '@/hooks/useApiData'
+import { useAdminCampaigns, useAdminReports } from '@/hooks/useApiData'
 import { CampaignStatus } from '@ubuntu-fund/types'
 import PageHeader from '@/components/PageHeader'
 
@@ -42,15 +36,13 @@ const statusBarColors: Record<string, string> = {
 
 export default function ReportsPage() {
   // Real campaign data drives the "Campaign Status Breakdown" panel below.
-  const { data: campaigns, isLoading: loading } = useAdminCampaigns()
-
-  // TODO: no backend analytics endpoint yet for donation trend, category
-  // breakdown, geographic distribution, or fraud metrics — these panels remain
-  // mock-derived until a /analytics/reports (or equivalent) endpoint exists.
-  const trend = generateDonationTrend()
-  const categories = generateCategoryBreakdown()
-  const geoData = generateGeographicData()
-  const fraudMetrics = generateFraudMetrics()
+  const { data: campaigns, isLoading: campaignsLoading } = useAdminCampaigns()
+  const { data: reports, isLoading: reportsLoading } = useAdminReports()
+  const loading = campaignsLoading || reportsLoading
+  const trend = reports.donationTrend
+  const categories = reports.categoryBreakdown
+  const geoData = reports.geographicData
+  const fraudMetrics = reports.fraudMetrics
 
   const statusBreakdown = [
     { status: 'Active', count: campaigns.filter(c => c.status === CampaignStatus.ACTIVE).length, color: statusBarColors[CampaignStatus.ACTIVE] },
@@ -62,7 +54,7 @@ export default function ReportsPage() {
   const maxStatusCount = Math.max(...statusBreakdown.map(s => s.count), 1)
 
   const formatMetricValue = (m: { metric: string; value: number }): string =>
-    m.metric === 'Fraud Rate' ? `${m.value}%` : m.metric === 'Avg Resolution Time' ? `${m.value}d` : String(m.value)
+    m.metric.includes('Rate') ? `${m.value}%` : m.metric.includes('Time') ? `${m.value}d` : String(m.value)
 
   const header = (
     <PageHeader
@@ -158,7 +150,7 @@ export default function ReportsPage() {
               </Box>
             ))}
           </Box>
-          {geoData.map((row, i) => (
+          {geoData.map((row) => (
             <Box
               key={row.country}
               sx={{

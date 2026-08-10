@@ -5,7 +5,7 @@ import Typography, { TypographyProps } from '@mui/material/Typography'
  * Formats a numeric amount in Ghanaian cedis (GHS) — the platform's only currency.
  * The `currency` parameter is kept for API compatibility; amounts are always GHS.
  */
-export function formatCurrency(amount: number, currency: string = 'GHS'): string {
+export function formatCurrency(amount: number, _currency: string = 'GHS'): string {
   try {
     return new Intl.NumberFormat('en-GH', {
       style: 'currency',

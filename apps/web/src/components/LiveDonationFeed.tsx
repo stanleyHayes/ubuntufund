@@ -5,12 +5,24 @@ import Avatar from '@mui/material/Avatar'
 import { keyframes } from '@mui/material/styles'
 import { formatCurrency, SHAPE } from '@ubuntu-fund/ui'
 import { useSSE } from '@/hooks/useSSE'
+import { api } from '@/lib/api'
 
 interface DonationEvent {
   amount: number
   donorName: string
   currency: string
   timestamp: number
+}
+
+interface CampaignDonationResponse {
+  items?: Array<{
+    id: string
+    amount: number
+    currency: string
+    donorName?: string
+    isAnonymous?: boolean
+    createdAt: string
+  }>
 }
 
 interface FeedItem extends DonationEvent {
@@ -52,20 +64,36 @@ export function LiveDonationFeed({ campaignId, maxItems = 10 }: { campaignId: st
 
   useSSE(`campaign:${campaignId}`, { onMessage: handleMessage })
 
-  // Seed with existing donations
   useEffect(() => {
+    let cancelled = false
+    api.get<CampaignDonationResponse | CampaignDonationResponse['items']>(`/campaigns/${campaignId}/donations?page=1&pageSize=${maxItems}`)
+      .then((response) => {
+        if (cancelled) return
+        const donations = Array.isArray(response) ? response : response?.items ?? []
+        setItems(donations.map((donation) => ({
+          id: donation.id,
+          amount: donation.amount,
+          currency: donation.currency,
+          donorName: donation.isAnonymous ? 'Anonymous' : donation.donorName || 'Supporter',
+          timestamp: new Date(donation.createdAt).getTime(),
+        })))
+      })
+      .catch(() => {
+        if (!cancelled) setItems([])
+      })
     return () => {
+      cancelled = true
       if (throttleRef.current) {
         clearTimeout(throttleRef.current)
       }
     }
-  }, [])
+  }, [campaignId, maxItems])
 
   if (items.length === 0) {
     return (
       <Box sx={{ p: 2, textAlign: 'center' }}>
         <Typography variant="body2" color="text.secondary">
-          Waiting for donations...
+          No donations have been recorded yet.
         </Typography>
       </Box>
     )

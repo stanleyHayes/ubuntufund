@@ -35,7 +35,7 @@ export function LiveCampaignProgress({
           gap: 2,
           mt: 2,
           p: 2,
-          bgcolor: 'grey.50',
+          bgcolor: 'action.hover',
           borderRadius: SHAPE.card,
         }}
       >

@@ -3,12 +3,14 @@ import type { AuthenticatedRequest } from '../../middleware/authMiddleware.js';
 import type { GetProfileUseCase } from '../../../../../application/use-cases/GetProfileUseCase.js';
 import type { UpdateProfileUseCase } from '../../../../../application/use-cases/UpdateProfileUseCase.js';
 import type { GetPublicUserProfileUseCase } from '../../../../../application/use-cases/GetPublicUserProfileUseCase.js';
+import type { DeleteAccountUseCase } from '../../../../../application/use-cases/DeleteAccountUseCase.js';
 
 export class ProfileController {
   constructor(
     private readonly getProfileUseCase: GetProfileUseCase,
     private readonly updateProfileUseCase: UpdateProfileUseCase,
-    private readonly getPublicUserProfileUseCase: GetPublicUserProfileUseCase
+    private readonly getPublicUserProfileUseCase: GetPublicUserProfileUseCase,
+    private readonly deleteAccountUseCase: DeleteAccountUseCase
   ) {}
 
   getMyProfile = async (
@@ -60,6 +62,23 @@ export class ProfileController {
       res.json({
         data: profile,
         message: 'Public profile retrieved',
+        status: 200,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  deleteMyAccount = async (
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      await this.deleteAccountUseCase.execute(req.userId!);
+      res.json({
+        data: null,
+        message: 'Account deletion request completed',
         status: 200,
       });
     } catch (error) {

@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type RequestHandler } from 'express';
 import type { AnalyticsController } from '../controllers/AnalyticsController.js';
 import type { createAuthMiddleware } from '../../middleware/authMiddleware.js';
 
@@ -11,11 +11,13 @@ import type { createAuthMiddleware } from '../../middleware/authMiddleware.js';
  */
 export function createAnalyticsRoutes(
   controller: AnalyticsController,
-  authMiddleware: ReturnType<typeof createAuthMiddleware>
+  authMiddleware: ReturnType<typeof createAuthMiddleware>,
+  requireAdmin: RequestHandler
 ): Router {
   const router = Router();
 
   router.get('/overview', authMiddleware, controller.overview);
+  router.get('/reports', authMiddleware, requireAdmin, controller.reports);
 
   return router;
 }

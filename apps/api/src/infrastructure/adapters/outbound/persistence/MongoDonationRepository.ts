@@ -1,4 +1,5 @@
 import { DonationEntity } from '../../../../domain/entities/Donation.js';
+import { PaymentMethod } from '@ubuntu-fund/types';
 import { Money } from '../../../../domain/value-objects/Money.js';
 import type { DonationRepositoryPort } from '../../../../domain/ports/outbound/DonationRepositoryPort.js';
 import {
@@ -12,6 +13,7 @@ function toDomain(doc: DonationDocument): DonationEntity {
     campaignId: doc.campaignId,
     donorId: doc.donorId,
     amount: new Money(doc.amount, doc.currency),
+    paymentMethod: doc.paymentMethod ?? PaymentMethod.WALLET,
     message: doc.message,
     isAnonymous: doc.isAnonymous,
     createdAt: doc.createdAt,
@@ -26,6 +28,7 @@ export class MongoDonationRepository implements DonationRepositoryPort {
       donorId: plain.donorId,
       amount: plain.amount.amount,
       currency: plain.amount.currency,
+      paymentMethod: plain.paymentMethod,
       message: plain.message,
       isAnonymous: plain.isAnonymous,
     });

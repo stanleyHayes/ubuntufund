@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 
 export interface LeaderboardEntry {
@@ -23,6 +23,10 @@ export interface LeaderboardStats {
 export interface FeaturedDonors {
   topAllTime: LeaderboardEntry[]
   topThisMonth: LeaderboardEntry[]
+}
+
+function unwrapData<T>(value: T | { data: T }): T {
+  return value && typeof value === 'object' && 'data' in value ? value.data : value
 }
 
 export type Period = 'daily' | 'monthly' | 'yearly' | 'lifetime'
@@ -53,14 +57,14 @@ export function useLeaderboard(
     if (limit) params.set('limit', String(limit))
 
     Promise.all([
-      api.get<{ data: LeaderboardEntry[] }>(`/leaderboard?${params}`),
-      api.get<{ data: LeaderboardStats }>(`/leaderboard/stats?${params}`),
+      api.get<LeaderboardEntry[] | { data: LeaderboardEntry[] }>(`/leaderboard?${params}`),
+      api.get<LeaderboardStats | { data: LeaderboardStats }>(`/leaderboard/stats?${params}`),
     ])
       .then(([leaderboardRes, statsRes]) => {
         if (!cancelled) {
           // Handle both wrapped { data: [...] } and direct array responses
-          const leaderboardData = Array.isArray(leaderboardRes) ? leaderboardRes : leaderboardRes.data ?? []
-          const statsData = (statsRes as any).data ?? statsRes
+          const leaderboardData = unwrapData(leaderboardRes)
+          const statsData = unwrapData(statsRes)
           setEntries(leaderboardData)
           setStats(statsData)
           setError(null)
@@ -101,10 +105,10 @@ export function useFeaturedDonors(category: Category = 'all', limit: number = 5)
     let cancelled = false
 
     api
-      .get<{ data: FeaturedDonors }>(`/leaderboard/featured?category=${category}&limit=${limit}`)
+      .get<FeaturedDonors | { data: FeaturedDonors }>(`/leaderboard/featured?category=${category}&limit=${limit}`)
       .then((res) => {
         if (!cancelled) {
-          const data = (res as any).data ?? res
+          const data = unwrapData(res)
           setFeatured(data)
           setError(null)
         }

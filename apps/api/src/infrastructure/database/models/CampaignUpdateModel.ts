@@ -9,6 +9,8 @@ export interface CampaignUpdateDocument extends Document {
   type: CampaignUpdateType;
   mediaUrls: string[];
   isPinned: boolean;
+  deletedAt?: Date;
+  deletedBy?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -26,6 +28,8 @@ const campaignUpdateSchema = new Schema<CampaignUpdateDocument>(
     },
     mediaUrls: [{ type: String }],
     isPinned: { type: Boolean, default: false, index: true },
+    deletedAt: { type: Date, index: true },
+    deletedBy: { type: String },
   },
   { timestamps: true }
 );

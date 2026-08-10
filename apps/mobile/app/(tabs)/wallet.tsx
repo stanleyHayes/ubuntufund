@@ -8,7 +8,7 @@ import { useAuth } from '@/context/AuthContext'
 import { EmptyState } from '@/components/EmptyState'
 import { SignInRequired } from '@/components/SignInRequired'
 import { FadeInUp } from '@/components/anim/FadeInUp'
-import type { Wallet } from '@ubuntu-fund/types'
+import { TransactionType, type Transaction, type Wallet } from '@ubuntu-fund/types'
 
 const WALLET_TYPE_LABEL: Record<string, string> = {
   local: 'Local',
@@ -16,43 +16,46 @@ const WALLET_TYPE_LABEL: Record<string, string> = {
   crypto: 'Crypto',
 }
 
-const ACTIONS: { icon: string; label: string }[] = [
-  { icon: 'arrow-down', label: 'Deposit' },
-  { icon: 'arrow-up', label: 'Withdraw' },
-  { icon: 'swap-horizontal', label: 'Transfer' },
-]
-
 const ghsFormatter = new Intl.NumberFormat('en-GH', { style: 'currency', currency: 'GHS' })
 
 function formatAmount(amount: number) {
   return ghsFormatter.format(amount)
 }
 
-function ActionTile({ icon, label }: { icon: string; label: string }) {
-  return (
-    <View style={styles.actionTile}>
-      <TouchableRipple style={styles.actionIcon} rippleColor="rgba(46,61,47,0.16)">
-        <Icon source={icon} size={22} color={brandColors.primary} />
-      </TouchableRipple>
-      <Text style={styles.actionLabel}>{label}</Text>
-    </View>
-  )
+function formatDate(value: Date | string) {
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString('en-GH', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+function transactionIcon(type: TransactionType) {
+  if (type === TransactionType.DEPOSIT || type === TransactionType.REFUND) return 'arrow-down-left'
+  if (type === TransactionType.DONATION) return 'heart-outline'
+  return 'arrow-up-right'
+}
+
+function isCredit(type: TransactionType) {
+  return type === TransactionType.DEPOSIT || type === TransactionType.REFUND
 }
 
 export default function WalletTab() {
   const insets = useSafeAreaInsets()
   const { user } = useAuth()
   const [wallets, setWallets] = useState<Wallet[]>([])
+  const [transactions, setTransactions] = useState<Transaction[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) return
     let cancelled = false
-    api
-      .get<Wallet[] | { items: Wallet[] }>('/wallets')
-      .then((data) => {
-        if (!cancelled) setWallets(Array.isArray(data) ? data : data.items ?? [])
+    Promise.all([
+      api.get<Wallet[] | { items: Wallet[] }>('/wallets'),
+      api.get<Transaction[] | { items: Transaction[] }>('/wallets/transactions?limit=30'),
+    ])
+      .then(([walletData, transactionData]) => {
+        if (cancelled) return
+        setWallets(Array.isArray(walletData) ? walletData : walletData.items ?? [])
+        setTransactions(Array.isArray(transactionData) ? transactionData : transactionData.items ?? [])
       })
       .catch((err: unknown) => {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load wallet')
@@ -108,10 +111,9 @@ export default function WalletTab() {
           <Text key={w.id} style={styles.balanceSub}>+ {formatAmount(w.balance)}</Text>
         ))}
 
-        <View style={styles.actionRow}>
-          {ACTIONS.map((a) => (
-            <ActionTile key={a.label} icon={a.icon} label={a.label} />
-          ))}
+        <View style={styles.secureNote}>
+          <Icon source="shield-check-outline" size={18} color={brandColors.success} />
+          <Text style={styles.secureNoteText}>Balances update from completed donations, refunds, and verified payment activity.</Text>
         </View>
       </View>
 
@@ -133,13 +135,30 @@ export default function WalletTab() {
         ))}
       </ScrollView>
 
-      {/* Transactions placeholder — endpoint not yet available */}
-      <EmptyState
-        style={styles.transactionsEmpty}
-        icon="receipt-text-outline"
-        title="Transaction history coming soon"
-        subtitle="Check back soon — your activity will appear here."
-      />
+      <Text style={styles.sectionTitle}>Recent Activity</Text>
+      {transactions.length === 0 ? (
+        <EmptyState style={styles.transactionsEmpty} icon="receipt-text-outline" title="No wallet activity yet" subtitle="Completed wallet activity will appear here." />
+      ) : (
+        <View style={styles.transactionList}>
+          {transactions.map((transaction, index) => {
+            const credit = isCredit(transaction.type)
+            return (
+              <View key={transaction.id} style={[styles.transactionRow, index === transactions.length - 1 && styles.transactionRowLast]}>
+                <View style={styles.transactionIcon}>
+                  <Icon source={transactionIcon(transaction.type)} size={19} color={credit ? brandColors.success : brandColors.primary} />
+                </View>
+                <View style={styles.transactionCopy}>
+                  <Text style={styles.transactionTitle}>{transaction.type.replaceAll('_', ' ')}</Text>
+                  <Text style={styles.transactionDate}>{formatDate(transaction.createdAt)} · {transaction.status}</Text>
+                </View>
+                <Text style={[styles.transactionAmount, credit && styles.transactionCredit]}>
+                  {credit ? '+' : '−'}{formatAmount(transaction.amount)}
+                </Text>
+              </View>
+            )
+          })}
+        </View>
+      )}
     </ScrollView>
   )
 }
@@ -175,25 +194,14 @@ const styles = StyleSheet.create({
   balanceValue: { fontSize: 32, fontFamily: 'Outfit_800ExtraBold', color: brandColors.text, marginBottom: 2 },
   balanceSub: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary },
 
-  actionRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 24 },
-  actionTile: { flex: 1, alignItems: 'center' },
-  actionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: 'rgba(168,181,160,0.28)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-    overflow: 'hidden',
-  },
-  actionLabel: { fontSize: 12, fontFamily: 'Outfit_700Bold', color: brandColors.text },
+  secureNote: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 20, paddingTop: 16, borderTopWidth: 1, borderTopColor: 'rgba(26,46,34,0.08)' },
+  secureNoteText: { flex: 1, fontSize: 11, lineHeight: 16, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary },
 
   // Section
   sectionTitle: { fontSize: 16, fontFamily: 'Outfit_700Bold', color: brandColors.text, paddingHorizontal: 20, marginBottom: 12 },
 
   // Wallets
-  walletScrollView: { flexGrow: 0 },
+  walletScrollView: { flexGrow: 0, marginBottom: 28 },
   walletScroll: { paddingHorizontal: 16, gap: 10, alignItems: 'flex-start' },
   walletCard: {
     width: 150,
@@ -215,6 +223,16 @@ const styles = StyleSheet.create({
   walletTypeText: { fontSize: 11, fontFamily: 'Outfit_700Bold', color: brandColors.text },
   walletCurrency: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: brandColors.textSecondary, marginBottom: 2 },
   walletBalance: { fontSize: 20, fontFamily: 'Outfit_800ExtraBold', color: brandColors.text },
+
+  transactionList: { marginHorizontal: 20, borderRadius: 14, backgroundColor: brandColors.surface, borderWidth: 1, borderColor: 'rgba(26,46,34,0.10)', overflow: 'hidden' },
+  transactionRow: { minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(26,46,34,0.08)' },
+  transactionRowLast: { borderBottomWidth: 0 },
+  transactionIcon: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(168,181,160,0.22)' },
+  transactionCopy: { flex: 1 },
+  transactionTitle: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: brandColors.text, textTransform: 'capitalize' },
+  transactionDate: { marginTop: 2, fontSize: 10, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, textTransform: 'capitalize' },
+  transactionAmount: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: brandColors.text },
+  transactionCredit: { color: brandColors.success },
 
   // Empty state
   transactionsEmpty: { paddingTop: 40 },

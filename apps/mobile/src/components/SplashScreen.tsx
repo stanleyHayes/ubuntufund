@@ -44,7 +44,7 @@ export default function AppSplashScreen({ onFinish }: { onFinish: () => void }) 
     ]).start(() => {
       onFinish()
     })
-  }, [])
+  }, [dotOpacity, fadeOut, logoOpacity, logoScale, onFinish, ring2Opacity, ring2Scale, ringOpacity, ringScale, taglineOpacity, textOpacity])
 
   return (
     <Animated.View style={[styles.container, { opacity: fadeOut }]}>
@@ -121,7 +121,7 @@ function PulsingDot({ delay }: { delay: number }) {
     )
     anim.start()
     return () => anim.stop()
-  }, [])
+  }, [delay, opacity])
 
   return (
     <Animated.View

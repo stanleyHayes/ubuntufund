@@ -1,11 +1,11 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { Box, Typography, TextField } from '@mui/material'
 import { keyframes } from '@mui/system'
 import SearchIcon from '@mui/icons-material/Search'
 import InputAdornment from '@mui/material/InputAdornment'
 import HistoryIcon from '@mui/icons-material/History'
 import HistoryEduRoundedIcon from '@mui/icons-material/HistoryEduRounded'
-import { useMockData } from '@/hooks/useMockData'
+import { api } from '@/lib/api'
 import PageHeader from '@/components/PageHeader'
 
 const fadeIn = keyframes`from{opacity:0}to{opacity:1}`
@@ -26,7 +26,7 @@ type Severity = 'info' | 'warning' | 'critical'
 
 interface AuditEntry {
   id: string
-  timestamp: Date
+  timestamp: string | Date
   user: string
   action: string
   resource: string
@@ -41,40 +41,46 @@ const severityColors: Record<Severity, string> = {
 }
 
 export default function AuditLogPage() {
-  // TODO: no backend endpoint yet — there is no /audit route, so this page
-  // stays on mock data until an audit-log endpoint is added.
-  useMockData() // keep hook active for consistency
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([])
+  const [total, setTotal] = useState(0)
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(0)
   const [perPage] = useState(PAGE_SIZE)
 
-  useEffect(() => { const t = setTimeout(() => setLoading(false), 800); return () => clearTimeout(t) }, [])
+  useEffect(() => {
+    let cancelled = false
+    const timer = window.setTimeout(async () => {
+      setLoading(true)
+      try {
+        const params = new URLSearchParams({ page: String(page + 1), pageSize: String(perPage) })
+        if (search.trim()) params.set('search', search.trim())
+        const result = await api.get<{ items: AuditEntry[]; total: number }>(`/audit?${params}`)
+        if (!cancelled) {
+          setAuditEntries(result.items)
+          setTotal(result.total)
+          setError(null)
+        }
+      } catch (requestError) {
+        if (!cancelled) {
+          setAuditEntries([])
+          setTotal(0)
+          setError(requestError instanceof Error ? requestError.message : 'Could not load the audit log')
+        }
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }, search ? 250 : 0)
 
-  const auditEntries = useMemo<AuditEntry[]>(() => [
-    { id: '1', timestamp: new Date(2026, 2, 30, 14, 30), user: 'Admin', action: 'campaign.approve', resource: 'campaign-5', details: 'Approved "Solar Power for Rural Clinic"', severity: 'info' },
-    { id: '2', timestamp: new Date(2026, 2, 30, 13, 15), user: 'System', action: 'user.flag', resource: 'user-12', details: 'Flagged suspicious activity on account', severity: 'warning' },
-    { id: '3', timestamp: new Date(2026, 2, 30, 12, 0), user: 'Admin', action: 'dispute.resolve', resource: 'dispute-3', details: 'Resolved dispute: funds released', severity: 'info' },
-    { id: '4', timestamp: new Date(2026, 2, 29, 22, 45), user: 'System', action: 'campaign.block', resource: 'campaign-8', details: 'Auto-blocked: fraud score exceeded threshold', severity: 'critical' },
-    { id: '5', timestamp: new Date(2026, 2, 29, 20, 10), user: 'Admin', action: 'user.verify', resource: 'user-7', details: 'Approved National ID verification for Nala Kamara', severity: 'info' },
-    { id: '6', timestamp: new Date(2026, 2, 29, 18, 30), user: 'System', action: 'donation.large', resource: 'donation-45', details: 'Large donation alert: $5,000 to "Scholarship Fund"', severity: 'warning' },
-    { id: '7', timestamp: new Date(2026, 2, 29, 16, 0), user: 'Admin', action: 'settings.update', resource: 'platform', details: 'Updated platform fee from 3% to 2.5%', severity: 'info' },
-    { id: '8', timestamp: new Date(2026, 2, 29, 14, 20), user: 'System', action: 'campaign.expire', resource: 'campaign-12', details: 'Campaign "Drought Relief" expired unfunded', severity: 'warning' },
-    { id: '9', timestamp: new Date(2026, 2, 28, 22, 0), user: 'Admin', action: 'user.ban', resource: 'user-22', details: 'Banned user for repeated fraud attempts', severity: 'critical' },
-    { id: '10', timestamp: new Date(2026, 2, 28, 19, 30), user: 'System', action: 'backup.complete', resource: 'database', details: 'Daily backup completed successfully', severity: 'info' },
-    { id: '11', timestamp: new Date(2026, 2, 28, 15, 45), user: 'Admin', action: 'report.generate', resource: 'analytics', details: 'Generated monthly analytics report', severity: 'info' },
-    { id: '12', timestamp: new Date(2026, 2, 28, 12, 0), user: 'System', action: 'campaign.fund', resource: 'campaign-3', details: '"Build a School in Kumasi" reached funding goal', severity: 'info' },
-  ], [])
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [page, perPage, search])
 
-  const filtered = auditEntries.filter(e => {
-    if (!search) return true
-    const q = search.toLowerCase()
-    return e.action.toLowerCase().includes(q) || e.details.toLowerCase().includes(q) || e.user.toLowerCase().includes(q) || e.resource.toLowerCase().includes(q)
-  })
-
-  const paginated = filtered.slice(page * perPage, (page + 1) * perPage)
-
-  const formatTimestamp = (d: Date) => {
+  const formatTimestamp = (value: string | Date) => {
+    const d = new Date(value)
     const pad = (n: number) => String(n).padStart(2, '0')
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
   }
@@ -119,7 +125,7 @@ export default function AuditLogPage() {
         </Box>
         <Box sx={{ p: 2, display: 'flex', alignItems: 'center' }}>
           <Typography sx={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.78rem', fontFamily: '"Outfit", monospace', whiteSpace: 'nowrap' }}>
-            {loading ? '...' : `${filtered.length} entries`}
+            {loading ? '...' : `${total} entries`}
           </Typography>
         </Box>
       </Box>
@@ -140,7 +146,7 @@ export default function AuditLogPage() {
                 <Skel w={6} h={6} />
               </Box>
             ))
-          : paginated.map((entry, idx) => {
+          : auditEntries.map((entry, idx) => {
               const color = severityColors[entry.severity]
               return (
                 <Box
@@ -218,10 +224,25 @@ export default function AuditLogPage() {
               )
             })
         }
+        {!loading && error && (
+          <Box sx={{ px: 3, py: 5, borderBottom: `1px solid ${B}` }}>
+            <Typography sx={{ color: '#C06B58', fontSize: '0.85rem' }}>{error}</Typography>
+            <Typography sx={{ color: 'rgba(255,255,255,0.42)', fontSize: '0.76rem', mt: 0.75 }}>
+              No demonstration records are shown when the API is unavailable.
+            </Typography>
+          </Box>
+        )}
+        {!loading && !error && auditEntries.length === 0 && (
+          <Box sx={{ px: 3, py: 5, borderBottom: `1px solid ${B}` }}>
+            <Typography sx={{ color: 'rgba(255,255,255,0.62)', fontSize: '0.85rem' }}>
+              {search ? 'No audit entries match this search.' : 'No authenticated changes have been recorded yet.'}
+            </Typography>
+          </Box>
+        )}
       </Box>
 
       {/* Pagination */}
-      {filtered.length > perPage && (
+      {total > perPage && (
         <Box
           sx={{
             borderTop: `1px solid ${B}`,
@@ -233,7 +254,7 @@ export default function AuditLogPage() {
           }}
         >
           <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>
-            Showing {page * perPage + 1}–{Math.min((page + 1) * perPage, filtered.length)} of {filtered.length}
+            Showing {page * perPage + 1}–{Math.min((page + 1) * perPage, total)} of {total}
           </Typography>
           <Box sx={{ display: 'flex', gap: 0.5 }}>
             <Box
@@ -254,7 +275,7 @@ export default function AuditLogPage() {
             >
               Prev
             </Box>
-            {Array.from({ length: Math.ceil(filtered.length / perPage) }, (_, i) => (
+            {Array.from({ length: Math.ceil(total / perPage) }, (_, i) => (
               <Box
                 key={i}
                 component="button"
@@ -277,14 +298,14 @@ export default function AuditLogPage() {
             ))}
             <Box
               component="button"
-              onClick={() => setPage(p => Math.min(Math.ceil(filtered.length / perPage) - 1, p + 1))}
-              disabled={page >= Math.ceil(filtered.length / perPage) - 1}
+              onClick={() => setPage(p => Math.min(Math.ceil(total / perPage) - 1, p + 1))}
+              disabled={page >= Math.ceil(total / perPage) - 1}
               sx={{
                 px: 2, py: 0.75,
                 bgcolor: 'transparent',
                 border: `1px solid ${B}`,
-                color: page >= Math.ceil(filtered.length / perPage) - 1 ? 'rgba(255,255,255,0.2)' : 'text.secondary',
-                cursor: page >= Math.ceil(filtered.length / perPage) - 1 ? 'default' : 'pointer',
+                color: page >= Math.ceil(total / perPage) - 1 ? 'rgba(255,255,255,0.2)' : 'text.secondary',
+                cursor: page >= Math.ceil(total / perPage) - 1 ? 'default' : 'pointer',
                 fontSize: '0.75rem',
                 fontFamily: '"Outfit", sans-serif',
                 transition: 'all 0.2s',

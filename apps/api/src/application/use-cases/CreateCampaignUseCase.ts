@@ -1,7 +1,5 @@
 import {
   CampaignStatus,
-  CampaignCategory,
-  CampaignPriority,
   type CreateCampaignInput,
   type Campaign,
 } from '@ubuntu-fund/types';

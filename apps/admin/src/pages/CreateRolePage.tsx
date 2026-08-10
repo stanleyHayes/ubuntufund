@@ -27,9 +27,7 @@ import {
   perm,
   normalizePermissions,
   type PermissionString,
-  AiWritingAction,
 } from '@ubuntu-fund/types'
-import { AiWritingBar } from '@ubuntu-fund/ui'
 import PageHeader from '@/components/PageHeader'
 
 // ---------------------------------------------------------------------------
@@ -221,12 +219,6 @@ export default function CreateRolePage() {
                       '& fieldset': { borderColor: 'rgba(255,255,255,0.12)' },
                     },
                   }}
-                />
-                <AiWritingBar
-                  value={formDescription}
-                  onChange={setFormDescription}
-                  inputLabel="Role Description"
-                  allowedActions={[AiWritingAction.FORMALIZE, AiWritingAction.FIX_GRAMMAR, AiWritingAction.IMPROVE_CLARITY]}
                 />
                 <TextField
                   label="Description"

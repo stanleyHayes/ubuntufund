@@ -166,7 +166,7 @@ export function ExplorePage() {
               minWidth: 220,
               '& .MuiOutlinedInput-root': {
                 borderRadius: 0,
-                bgcolor: '#fff',
+                bgcolor: 'background.paper',
                 '& fieldset': { borderColor: 'rgba(0,0,0,0.08)' },
                 '&:hover fieldset': { borderColor: 'rgba(46, 61, 47,0.3)' },
                 '&.Mui-focused fieldset': { borderColor: '#2E3D2F', borderWidth: '1.5px' },
@@ -194,7 +194,7 @@ export function ExplorePage() {
               minWidth: 160,
               '& .MuiOutlinedInput-root': {
                 borderRadius: 0,
-                bgcolor: '#fff',
+                bgcolor: 'background.paper',
                 '& fieldset': { borderColor: 'rgba(0,0,0,0.08)' },
                 '&.Mui-focused fieldset': { borderColor: '#2E3D2F' },
               },

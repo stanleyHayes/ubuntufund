@@ -107,8 +107,8 @@ function HeroSection() {
               }}
             >
               Ghana's trust infrastructure for giving. Raise funds for what matters
-              with built-in trust verification, mobile money payouts, and
-              transparent impact tracking.
+              with campaign review workflows, accountable records, and
+              transparent progress updates.
             </Typography>
             <Stack
               direction={{ xs: 'column', sm: 'row' }}

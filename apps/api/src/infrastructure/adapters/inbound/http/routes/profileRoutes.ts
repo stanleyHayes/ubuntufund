@@ -42,6 +42,7 @@ export function createProfileRoutes(
     validate(updateProfileSchema),
     controller.updateMyProfile
   );
+  router.delete('/', authMiddleware, controller.deleteMyAccount);
 
   return router;
 }

@@ -27,6 +27,7 @@ export interface AdminUserRecord {
 }
 
 export interface AdminUserRepositoryPort {
+  findUserById(id: string): Promise<AdminUserRecord | null>;
   listUsers(
     params: AdminUserListParams
   ): Promise<{ items: AdminUserRecord[]; total: number }>;

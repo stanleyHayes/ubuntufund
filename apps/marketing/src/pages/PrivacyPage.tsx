@@ -10,11 +10,11 @@ const sections = [
   },
   {
     title: '2. How We Use Your Information',
-    content: `We use your information to: operate, maintain, and improve the Platform; process donations and payouts; verify identities and prevent fraud through our trust system; communicate with you about your account, campaigns, and donations; send marketing communications (with your consent); comply with legal obligations and enforce our terms; generate anonymized analytics to improve our services; personalize your experience on the Platform.`,
+    content: `We use your information to: operate, maintain, and improve the Platform; record wallet-backed donations; review identity information and investigate fraud reports; communicate with you about your account, campaigns, and donations; send marketing communications with your consent; comply with legal obligations and enforce our terms; and generate analytics to improve our services.`,
   },
   {
     title: '3. Information Sharing',
-    content: `We share your information with: payment processors to facilitate transactions; identity verification partners for our trust system; campaign organizers (limited donor information as needed); law enforcement when required by law or to protect rights and safety. We do not sell your personal information to third parties. We may share anonymized, aggregated data with partners for research and analytics purposes.`,
+    content: `We may share limited information with campaign organizers where needed to display non-anonymous support, with service providers that host or operate the Platform under contractual safeguards, and with authorities when required by law or necessary to protect rights and safety. External payment processors are not active in the current launch configuration. We do not sell your personal information.`,
   },
   {
     title: '4. Cookies and Tracking',
@@ -22,7 +22,7 @@ const sections = [
   },
   {
     title: '5. Data Security',
-    content: `We implement industry-standard security measures to protect your data, including: encryption of data in transit (TLS/SSL) and at rest; regular security audits and penetration testing; access controls and authentication requirements; secure payment processing through PCI-compliant partners. While we strive to protect your information, no method of electronic transmission or storage is 100% secure, and we cannot guarantee absolute security.`,
+    content: `We use access controls, authentication requirements, and encrypted HTTPS connections in production to help protect your data. External payment providers remain disabled until their integrations and compliance requirements are verified. No method of electronic transmission or storage is 100% secure, and we cannot guarantee absolute security.`,
   },
   {
     title: '6. Data Retention',
@@ -46,7 +46,7 @@ const sections = [
   },
   {
     title: '11. Contact Us',
-    content: `If you have questions or concerns about this Privacy Policy or our data practices, please contact our Data Protection Officer at: privacy@ubuntufund.com, or write to us at: UbuntuFund, 14 Independence Avenue, Accra, Ghana. We aim to respond to all privacy-related inquiries within 30 days.`,
+    content: `If you have questions or concerns about this Privacy Policy or our data practices, contact privacy@ubuntufund.com. A public postal address and formal response-time commitment will be published only after owner and legal verification.`,
   },
 ]
 

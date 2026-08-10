@@ -97,7 +97,7 @@ const ABOUT_FALLBACK = {
   vision: {
     eyebrow: 'Our Vision',
     title: 'A Ghana Where No Cause Goes Unfunded',
-    body: 'We envision a future where geographic and economic barriers no longer prevent communities from accessing the resources they need. By 2030, we aim to facilitate over GH₵ 1 billion in donations across all 16 regions of Ghana.',
+    body: 'We envision a future where geographic and economic barriers no longer prevent communities from accessing the resources they need. Launch progress will be reported from verified platform records rather than aspirational counters.',
   },
   philosophy: {
     eyebrow: 'The Ubuntu Philosophy',
@@ -105,12 +105,7 @@ const ABOUT_FALLBACK = {
     body: 'Ubuntu is a Nguni Bantu term meaning “humanity.” It speaks to our interconnectedness — the idea that a person is a person through other people. This philosophy is the heartbeat of our platform. When one community thrives, we all thrive. When one person gives, the ripple effect touches countless lives.',
   },
   team: [
-    { name: 'Kofi Owusu', role: 'Co-Founder & CEO', initials: 'KO', bio: 'Visionary leader passionate about democratizing giving across Ghana.' },
-    { name: 'Adwoa Agyeman', role: 'Co-Founder & CTO', initials: 'AA', bio: 'Architect of the trust infrastructure powering transparent donations.' },
-    { name: 'Abena Sarpong', role: 'Head of Community', initials: 'AS', bio: 'Building bridges between donors and communities in all 16 regions of Ghana.' },
-    { name: 'Yaw Darko', role: 'Head of Trust & Safety', initials: 'YD', bio: 'Guardian of platform integrity with a zero-tolerance fraud policy.' },
-    { name: 'Kojo Antwi', role: 'Head of Partnerships', initials: 'KA', bio: 'Forging alliances with NGOs, government agencies, and corporate partners.' },
-    { name: 'Kwame Boateng', role: 'Head of Engineering', initials: 'KB', bio: 'Leading the team building scalable, secure fintech for Ghana.' },
+    { name: 'UbuntuFund Team', role: 'Launch team', initials: 'UF', bio: 'Named leadership profiles will be published after owner verification and consent.' },
   ] as TeamMember[],
 }
 
@@ -457,7 +452,7 @@ function AboutPage() {
               display: 'inline-block',
             }}
           >
-            The People Behind UbuntuFund
+            Team disclosure
             <Box component="span" sx={{ position: 'absolute', bottom: -6, left: '15%', width: '70%', height: 6, backgroundImage: SQUIGGLE_GOLD, backgroundRepeat: 'repeat-x', backgroundSize: '60px 6px', animation: `${markerSwipe} 0.8s 0.3s ease both`, transformOrigin: 'left' }} />
           </Typography>
         </Box>

@@ -65,6 +65,35 @@ export function useCampaigns(): UseCampaignsResult {
   return { campaigns, isLoading, error }
 }
 
+export function useMyCampaigns(): UseCampaignsResult {
+  const [campaigns, setCampaigns] = useState<Campaign[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    api.get<Campaign[]>('/campaigns/mine')
+      .then((data) => {
+        if (!cancelled) {
+          setCampaigns(Array.isArray(data) ? data : [])
+          setError(null)
+        }
+      })
+      .catch((requestError: Error) => {
+        if (!cancelled) {
+          setCampaigns([])
+          setError(requestError.message)
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [])
+
+  return { campaigns, isLoading, error }
+}
+
 // ---------------------------------------------------------------------------
 // useCreateCampaign — real POST /campaigns (auth token attached by api client)
 // ---------------------------------------------------------------------------

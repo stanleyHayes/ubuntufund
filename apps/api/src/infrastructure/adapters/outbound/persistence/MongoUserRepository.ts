@@ -19,6 +19,10 @@ function toDomain(doc: UserDocument): UserEntity {
     trustScore: new TrustScore(doc.trustScore),
     country: doc.country,
     emailVerified: doc.emailVerified,
+    organizationName: doc.organizationName,
+    organizationType: doc.organizationType,
+    registrationNumber: doc.registrationNumber,
+    website: doc.website,
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
   });
@@ -37,24 +41,31 @@ export class MongoUserRepository implements UserRepositoryPort {
       trustScore: plain.trustScore.value,
       country: plain.country,
       emailVerified: plain.emailVerified,
+      organizationName: plain.organizationName,
+      organizationType: plain.organizationType,
+      registrationNumber: plain.registrationNumber,
+      website: plain.website,
     });
     return toDomain(doc);
   }
 
   async findById(id: string): Promise<UserEntity | null> {
-    const doc = await UserModel.findById(id);
+    const doc = await UserModel.findOne({ _id: id, deletedAt: { $exists: false } });
     return doc ? toDomain(doc) : null;
   }
 
   async findByEmail(email: string): Promise<UserEntity | null> {
-    const doc = await UserModel.findOne({ email: email.toLowerCase() });
+    const doc = await UserModel.findOne({
+      email: email.toLowerCase(),
+      deletedAt: { $exists: false },
+    });
     return doc ? toDomain(doc) : null;
   }
 
   async update(user: UserEntity): Promise<UserEntity> {
     const plain = user.toPlain();
     const doc = await UserModel.findByIdAndUpdate(
-      plain.id,
+      { _id: plain.id, deletedAt: { $exists: false } },
       {
         name: plain.name,
         avatarUrl: plain.avatarUrl,
@@ -64,6 +75,10 @@ export class MongoUserRepository implements UserRepositoryPort {
         passwordHash: plain.passwordHash,
         country: plain.country,
         emailVerified: plain.emailVerified,
+        organizationName: plain.organizationName,
+        organizationType: plain.organizationType,
+        registrationNumber: plain.registrationNumber,
+        website: plain.website,
       },
       { new: true }
     );
@@ -75,6 +90,9 @@ export class MongoUserRepository implements UserRepositoryPort {
   }
 
   async delete(id: string): Promise<void> {
-    await UserModel.findByIdAndDelete(id);
+    await UserModel.updateOne(
+      { _id: id, deletedAt: { $exists: false } },
+      { $set: { deletedAt: new Date() } }
+    );
   }
 }

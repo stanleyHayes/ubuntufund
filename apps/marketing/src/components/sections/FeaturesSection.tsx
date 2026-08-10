@@ -22,37 +22,37 @@ const features = [
   },
   {
     icon: CurrencyExchangeIcon,
-    title: 'Cedi payments',
+    title: 'Cedi-first records',
     description:
-      'Every campaign raises and pays out in Ghanaian cedis (GHS). No conversion, no exchange-rate surprises — what donors give is what you receive.',
+      'Campaign goals, wallet balances, and donation records use Ghanaian cedis (GHS) throughout the product.',
     accent: '#C7A24A',
   },
   {
     icon: PaymentsIcon,
-    title: 'Direct payments',
+    title: 'Wallet contributions',
     description:
-      'MTN MoMo, Telecel Cash, AT Money, bank transfer, and Visa & Mastercard cards. Funds reach you through the channels Ghanaians already use.',
+      'The internal UbuntuFund Wallet is the active launch method. External payment rails remain disabled until verified.',
     accent: '#2E3D2F',
   },
   {
     icon: LiveTvIcon,
-    title: 'Live fundraising',
+    title: 'Live progress',
     description:
-      'Host live fundraising events with real-time donation tracking, leaderboards, and audience engagement tools.',
+      'Follow campaign totals, goals, updates, supporter comments, and persisted donation activity as they change.',
     accent: '#C7A24A',
   },
   {
     icon: PublicIcon,
-    title: 'Diaspora mode',
+    title: 'Shareable campaigns',
     description:
-      'Connect Ghanaians abroad to causes back home. A cousin in London or New York gives to a campaign in Kumasi as easily as a neighbour in Accra.',
+      'Publish a clear campaign story and share its public page with supporters wherever your community is located.',
     accent: '#2E3D2F',
   },
   {
     icon: LockIcon,
-    title: 'Escrow protection',
+    title: 'Accountable records',
     description:
-      'Milestone-based fund release ensures accountability. Donors see exactly how their contributions are used.',
+      'Review workflows, audit trails, reporting, moderation, and soft deletion protect users without erasing operational history.',
     accent: '#C7A24A',
   },
 ]

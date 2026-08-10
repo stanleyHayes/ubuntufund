@@ -1,4 +1,4 @@
-import { PaymentMethod } from '@ubuntu-fund/types';
+import type { PaymentMethod } from '@ubuntu-fund/types';
 import type { DonationRepositoryPort } from '../../domain/ports/outbound/DonationRepositoryPort.js';
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
@@ -46,7 +46,7 @@ export class GetDonationUseCase {
       amount: donation.amount.amount,
       currency: donation.amount.currency,
       date: donation.createdAt,
-      paymentMethod: PaymentMethod.WALLET,
+      paymentMethod: donation.paymentMethod,
       message: donation.message,
       isAnonymous: donation.isAnonymous,
       createdAt: donation.createdAt,

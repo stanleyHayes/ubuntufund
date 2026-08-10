@@ -1,10 +1,9 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import {
   View,
   ScrollView,
   StyleSheet,
   Animated,
-  Dimensions,
   TouchableOpacity,
   TextInput,
 } from 'react-native'
@@ -17,8 +16,6 @@ import { ProgressBar } from '@/components/ProgressBar'
 import { RemoteImage } from '@/components/RemoteImage'
 import { EmptyState } from '@/components/EmptyState'
 import { brandColors } from '@/theme'
-
-const { width } = Dimensions.get('window')
 
 const CATEGORIES: { key: CampaignCategory | null; icon: string; label: string }[] = [
   { key: null, icon: 'earth', label: 'All' },
@@ -49,15 +46,15 @@ function formatCurrency(amount: number) {
 
 function CampaignRow({ campaign, index }: { campaign: Campaign; index: number }) {
   const pct = campaign.goalAmount > 0 ? Math.min(campaign.raisedAmount / campaign.goalAmount, 1) : 0
-  const fadeAnim = useRef(new Animated.Value(0)).current
-  const slideAnim = useRef(new Animated.Value(20)).current
+  const [fadeAnim] = useState(() => new Animated.Value(0))
+  const [slideAnim] = useState(() => new Animated.Value(20))
 
   useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, { toValue: 1, duration: 300, delay: index * 60, useNativeDriver: true }),
       Animated.spring(slideAnim, { toValue: 0, friction: 8, tension: 50, delay: index * 60, useNativeDriver: true }),
     ]).start()
-  }, [])
+  }, [fadeAnim, index, slideAnim])
 
   return (
     <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>

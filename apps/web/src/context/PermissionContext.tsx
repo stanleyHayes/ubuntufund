@@ -1,16 +1,8 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import type { ReactNode } from 'react'
 import { useAuth } from './AuthContext'
-import { Resource, Action, perm, hasPermission, type PermissionString, type UserPermissions } from '@ubuntu-fund/types'
-
-const DEMO_PERMS: PermissionString[] = [
-  'campaigns:read', 'campaigns:create',
-  'donations:read', 'donations:create',
-  'wallets:read',
-  'comments:read', 'comments:create',
-  'notifications:read',
-  'subscriptions:read',
-]
+import { Resource, Action, hasPermission, type PermissionString, type UserPermissions } from '@ubuntu-fund/types'
+import { api } from '@/lib/api'
 
 interface PermissionContextValue {
   permissions: PermissionString[]
@@ -41,25 +33,16 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
     async function fetchPermissions() {
       setIsLoading(true)
       try {
-        const res = await fetch('/api/v1/rbac/me', {
-          headers: {
-            Authorization: `Bearer ${tokens?.accessToken ?? ''}`,
-          },
-        })
-
-        if (!res.ok) throw new Error('Failed to fetch permissions')
-
-        const data: UserPermissions = await res.json()
+        const data = await api.get<UserPermissions>('/rbac/me')
 
         if (!cancelled) {
           setPermissions(data.permissions)
           setRoleName(data.roleName)
         }
       } catch {
-        // Fall back to default user permissions for demo mode
         if (!cancelled) {
-          setPermissions(DEMO_PERMS)
-          setRoleName('User')
+          setPermissions([])
+          setRoleName('')
         }
       } finally {
         if (!cancelled) {
@@ -73,7 +56,7 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [isAuthenticated, tokens])
+  }, [isAuthenticated, tokens?.accessToken])
 
   const can = useCallback(
     (resource: Resource, action: Action): boolean => {

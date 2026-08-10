@@ -117,32 +117,6 @@ export function SubscriptionPage() {
   const [actionLoading, setActionLoading] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
 
-  async function handleSubscribe(tier: SubscriptionTier) {
-    setActionLoading(true)
-    setActionError(null)
-    try {
-      await api.post('/subscriptions', { tier, billingCycle: 'monthly' })
-      refetch()
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Failed to subscribe.')
-    } finally {
-      setActionLoading(false)
-    }
-  }
-
-  async function handleUpgrade(tier: SubscriptionTier) {
-    setActionLoading(true)
-    setActionError(null)
-    try {
-      await api.put('/subscriptions/upgrade', { tier, billingCycle: 'monthly' })
-      refetch()
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Failed to upgrade.')
-    } finally {
-      setActionLoading(false)
-    }
-  }
-
   async function handleCancel() {
     setActionLoading(true)
     setActionError(null)
@@ -170,7 +144,6 @@ export function SubscriptionPage() {
 
   const currentSub = subscription
   const currentPlan = SUBSCRIPTION_PLANS[currentSub.tier]
-  const currentTierIndex = TIER_ORDER.indexOf(currentSub.tier)
   const colors = TIER_COLORS[currentSub.tier]
   const daysLeft = Math.max(0, Math.ceil((new Date(currentSub.currentPeriodEnd).getTime() - Date.now()) / 86_400_000))
 
@@ -396,7 +369,6 @@ export function SubscriptionPage() {
           const plan = SUBSCRIPTION_PLANS[tier]
           const isCurrent = tier === currentSub.tier
           const isPro = tier === SubscriptionTier.PRO
-          const isUpgrade = idx > currentTierIndex
           const tc = TIER_COLORS[tier]
           const price = billingToggle === 'yearly' ? plan.priceYearly : plan.priceMonthly
 
@@ -479,7 +451,7 @@ export function SubscriptionPage() {
                   {[
                     `${plan.platformFeePercent}% platform fee`,
                     plan.maxActiveCampaigns === -1 ? 'Unlimited campaigns' : `${plan.maxActiveCampaigns} active campaign${plan.maxActiveCampaigns !== 1 ? 's' : ''}`,
-                    plan.maxCampaignGoal === -1 ? 'No goal limit' : `Up to $${plan.maxCampaignGoal.toLocaleString()} goal`,
+                    plan.maxCampaignGoal === -1 ? 'No goal limit' : `Up to GH₵ ${plan.maxCampaignGoal.toLocaleString()} goal`,
                     plan.featuredListing && 'Featured listing',
                     plan.prioritySupport && 'Priority support',
                     plan.advancedAnalytics && 'Advanced analytics',
@@ -499,17 +471,7 @@ export function SubscriptionPage() {
                 <Button
                   variant={isCurrent ? 'outlined' : isPro ? 'contained' : 'outlined'}
                   fullWidth
-                  disabled={isCurrent || actionLoading || tier === SubscriptionTier.ENTERPRISE}
-                  onClick={() => {
-                    if (tier === SubscriptionTier.ENTERPRISE || isCurrent) return
-                    if (currentSub.tier === SubscriptionTier.FREE) {
-                      handleSubscribe(tier)
-                    } else if (isUpgrade) {
-                      handleUpgrade(tier)
-                    } else {
-                      handleSubscribe(tier)
-                    }
-                  }}
+                  disabled
                   sx={{
                     borderRadius: SHAPE.sm,
                     fontWeight: 700,
@@ -520,7 +482,7 @@ export function SubscriptionPage() {
                     ...(isCurrent && { borderColor: tc.accent, color: tc.accent }),
                   }}
                 >
-                  {isCurrent ? 'Current Plan' : tier === SubscriptionTier.ENTERPRISE ? 'Contact Sales' : actionLoading ? 'Processing...' : isUpgrade ? 'Upgrade' : 'Switch'}
+                  {isCurrent ? 'Current Plan' : 'Billing unavailable'}
                 </Button>
               </CardContent>
             </Card>
@@ -681,13 +643,12 @@ export function SubscriptionPage() {
             Ready to grow your impact?
           </Typography>
           <Typography sx={{ color: 'text.secondary', mb: 3, maxWidth: 500, mx: 'auto' }}>
-            Upgrade to Pro for featured listings, advanced analytics, custom branding, escrow support, and more.
+            Paid upgrades will return after verified billing and production payment processing are configured.
           </Typography>
           <Button
             variant="contained"
             size="large"
-            disabled={actionLoading}
-            onClick={() => handleSubscribe(SubscriptionTier.PRO)}
+            disabled
             sx={{
               bgcolor: '#2E3D2F',
               fontFamily: '"Outfit", sans-serif',
@@ -698,7 +659,7 @@ export function SubscriptionPage() {
               '&:hover': { bgcolor: '#1C261D' },
             }}
           >
-            {actionLoading ? 'Processing...' : 'Upgrade to Pro'}
+            Billing unavailable
           </Button>
         </Card>
       )}

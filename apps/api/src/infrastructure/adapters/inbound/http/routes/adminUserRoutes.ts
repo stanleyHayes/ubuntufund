@@ -16,6 +16,7 @@ export function createAdminUserRoutes(
   const router = Router();
 
   router.get('/', authMiddleware, requireAdmin, controller.list);
+  router.get('/:id', authMiddleware, requireAdmin, controller.getById);
 
   return router;
 }

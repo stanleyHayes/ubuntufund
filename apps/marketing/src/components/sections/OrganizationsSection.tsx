@@ -4,12 +4,11 @@ import Typography from '@mui/material/Typography'
 import Grid from '@mui/material/Grid'
 import Button from '@mui/material/Button'
 import DashboardRoundedIcon from '@mui/icons-material/SpaceDashboardRounded'
-import PaletteRoundedIcon from '@mui/icons-material/PaletteRounded'
 import InsightsRoundedIcon from '@mui/icons-material/InsightsRounded'
 import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded'
-import AutorenewRoundedIcon from '@mui/icons-material/AutorenewRounded'
 import VerifiedRoundedIcon from '@mui/icons-material/VerifiedRounded'
-import ApiRoundedIcon from '@mui/icons-material/ApiRounded'
+import GroupsRoundedIcon from '@mui/icons-material/GroupsRounded'
+import CampaignRoundedIcon from '@mui/icons-material/CampaignRounded'
 import SupportAgentRoundedIcon from '@mui/icons-material/SupportAgentRounded'
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import type { SvgIconComponent } from '@mui/icons-material'
@@ -23,13 +22,12 @@ interface Feature {
 
 const features: Feature[] = [
   { icon: DashboardRoundedIcon, title: 'Team dashboard', detail: 'A dedicated organization workspace with roles for your whole team.' },
-  { icon: PaletteRoundedIcon, title: 'Branded pages', detail: 'Campaign pages that carry your logo, colours, and voice.' },
-  { icon: InsightsRoundedIcon, title: 'Donor analytics', detail: 'See what moves your supporters and build lasting relationships.' },
-  { icon: ReceiptLongRoundedIcon, title: 'Tax & compliance', detail: 'Automated receipts and reporting that keep you audit-ready.' },
-  { icon: AutorenewRoundedIcon, title: 'Recurring giving', detail: 'Bulk processing and monthly plans for dependable funding.' },
-  { icon: VerifiedRoundedIcon, title: 'Trust badges', detail: 'Priority verification and badges that signal credibility.' },
-  { icon: ApiRoundedIcon, title: 'API access', detail: 'Integrate UbuntuFund with the systems you already run.' },
-  { icon: SupportAgentRoundedIcon, title: 'Priority support', detail: 'A named account manager and a fast lane when you need help.' },
+  { icon: GroupsRoundedIcon, title: 'Collaboration', detail: 'Invite team members into accountable campaign workflows.' },
+  { icon: InsightsRoundedIcon, title: 'Campaign progress', detail: 'See goals, totals, donations, updates, and comments from real records.' },
+  { icon: ReceiptLongRoundedIcon, title: 'Transaction history', detail: 'Review dated wallet and donation activity in one workspace.' },
+  { icon: CampaignRoundedIcon, title: 'Campaign operations', detail: 'Create, submit, update, and monitor organization campaigns.' },
+  { icon: VerifiedRoundedIcon, title: 'Trust review', detail: 'Submit organization details and documents for administrative review.' },
+  { icon: SupportAgentRoundedIcon, title: 'Human support', detail: 'Get help with verification, access, and controlled disbursement.' },
 ]
 
 const WEB_APP_URL = import.meta.env.VITE_WEB_APP_URL || 'http://localhost:8200'

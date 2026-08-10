@@ -10,7 +10,7 @@ export interface NotificationPreferences {
 export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   email: true,
   sms: false,
-  push: true,
+  push: false,
   donationReceipts: true,
   campaignUpdates: true,
   marketingEmails: false,

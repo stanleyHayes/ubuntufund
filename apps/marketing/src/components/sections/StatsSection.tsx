@@ -7,10 +7,10 @@ import { useContent } from '../../hooks/useContent'
 // Hardcoded default — used as the CMS fallback (key 'marketing.stats').
 const STATS_FALLBACK = {
   items: [
-    { value: 'GH₵ 120M+', label: 'Raised on platform' },
-    { value: '50K+', label: 'Campaigns created' },
-    { value: '16', label: 'Regions of Ghana' },
-    { value: '99%', label: 'Trust rate' },
+    { value: 'GHS', label: 'Launch currency' },
+    { value: 'Web + mobile', label: 'Client access' },
+    { value: 'Admin-reviewed', label: 'Campaign workflow' },
+    { value: 'Soft-delete', label: 'Record policy' },
   ],
 }
 
@@ -27,7 +27,7 @@ function StatsSection() {
       <Container maxWidth="lg">
         <Box sx={{ textAlign: 'center', mb: { xs: 5, md: 6 } }}>
           <Typography variant="overline" sx={{ color: '#A07E33' }}>
-            Our impact
+            Platform foundations
           </Typography>
         </Box>
 

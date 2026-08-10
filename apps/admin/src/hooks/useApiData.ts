@@ -1,10 +1,6 @@
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import {
-  useMockData,
-  useMockUser,
-  useMockCampaign,
-  useMockCampaignDonations,
   type PlatformStats,
   type Dispute,
   type PaymentProvider,
@@ -14,17 +10,20 @@ import type { Campaign, User, Donation, AiUsageStats, AiUsageLogEntry } from '@u
 
 /**
  * The admin donations feed reads the API's PublicDonationDTO
- * (`GET /donations`), which enriches each donation with `donorName` /
- * `campaignTitle` but omits `paymentMethod`. The mock fallback is the plain
- * `Donation` shape (has `paymentMethod`, no donor/campaign names). This
- * superset type lets a page render either source; consumers must treat the
- * non-overlapping fields (`paymentMethod`, `donorName`, `campaignTitle`) as
- * optional and guard access.
+ * (`GET /donations`), which enriches each persisted donation with donor,
+ * campaign, and payment-method data.
  */
 export type AdminDonation = Donation & {
   donorName?: string
   campaignTitle?: string
   donorAvatarUrl?: string
+}
+
+export interface AnalyticsReports {
+  donationTrend: Array<{ month: string; amount: number }>
+  categoryBreakdown: Array<{ category: string; value: number }>
+  geographicData: Array<{ country: string; campaigns: number; donations: number }>
+  fraudMetrics: Array<{ metric: string; value: number; change: number }>
 }
 
 interface UseApiResult<T> {
@@ -45,33 +44,35 @@ interface UseApiResult<T> {
  * common envelope keys and guarantee an array; for object fallbacks we merge
  * the response over the defaults so no expected field is ever undefined.
  */
-function coerceToFallbackShape<T>(result: unknown, fallback: T): T {
-  if (Array.isArray(fallback)) {
+function coerceToInitialShape<T>(result: unknown, initialData: T): T {
+  if (Array.isArray(initialData)) {
     if (Array.isArray(result)) return result as T
     if (result && typeof result === 'object') {
       const obj = result as Record<string, unknown>
       const inner = obj.items ?? obj.data ?? obj.results
       if (Array.isArray(inner)) return inner as T
     }
-    return fallback
+    return initialData
   }
-  if (fallback && typeof fallback === 'object') {
+  if (initialData && typeof initialData === 'object') {
     if (result && typeof result === 'object' && !Array.isArray(result)) {
-      return { ...(fallback as object), ...(result as object) } as T
+      return { ...(initialData as object), ...(result as object) } as T
     }
-    return fallback
+    return initialData
   }
-  return (result ?? fallback) as T
+  return (result ?? initialData) as T
 }
 
 /**
- * Generic hook: tries the API first, falls back to mock data on failure.
+ * Generic API hook with a truthful empty initial state. Request failures keep
+ * the safe empty value and expose an error; production screens never render
+ * demonstration records as if they came from the backend.
  */
 function useApiWithFallback<T>(
   apiPath: string,
-  fallbackData: T,
+  initialData: T,
 ): UseApiResult<T> {
-  const [data, setData] = useState<T>(fallbackData)
+  const [data, setData] = useState<T>(initialData)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -82,13 +83,12 @@ function useApiWithFallback<T>(
       try {
         const result = await api.get<unknown>(apiPath)
         if (!cancelled) {
-          setData(coerceToFallbackShape(result, fallbackData))
+          setData(coerceToInitialShape(result, initialData))
           setError(null)
         }
       } catch (err) {
         if (!cancelled) {
-          // Fall back to mock data silently
-          setData(fallbackData)
+          setData(initialData)
           setError(err instanceof Error ? err.message : 'API unavailable')
         }
       } finally {
@@ -109,122 +109,129 @@ function useApiWithFallback<T>(
 }
 
 /**
- * Fetch campaigns from API with fallback to mock data.
+ * Fetch campaigns from the API with a truthful empty state on failure.
  */
 export function useAdminCampaigns(): UseApiResult<Campaign[]> {
-  const { campaigns } = useMockData()
-  return useApiWithFallback<Campaign[]>('/campaigns?page=1&pageSize=50', campaigns)
+  return useApiWithFallback<Campaign[]>('/campaigns?page=1&pageSize=50', [])
 }
 
 /**
- * Fetch users from API with fallback to mock data.
+ * Fetch users from the API with a truthful empty state on failure.
  */
 export function useAdminUsers(): UseApiResult<User[]> {
-  const { users } = useMockData()
-  return useApiWithFallback<User[]>('/users?page=1&pageSize=50', users)
+  return useApiWithFallback<User[]>('/users?page=1&pageSize=50', [])
 }
 
 /**
- * Fetch donations from API with fallback to mock data.
+ * Fetch donations from the API with a truthful empty state on failure.
  */
 export function useAdminDonations(): UseApiResult<AdminDonation[]> {
-  const { donations } = useMockData()
   // GET /donations is the recent-donations feed; it honours ?limit (not
   // page/pageSize) and returns a bare PublicDonationDTO[] array.
-  return useApiWithFallback<AdminDonation[]>('/donations?limit=50', donations)
+  return useApiWithFallback<AdminDonation[]>('/donations?limit=50', [])
 }
 
 /**
- * Fetch disputes from API with fallback to mock data.
+ * Fetch disputes from the API with a truthful empty state on failure.
  */
 export function useAdminDisputes(): UseApiResult<Dispute[]> {
-  const { disputes } = useMockData()
-  return useApiWithFallback<Dispute[]>('/disputes?page=1&pageSize=50', disputes)
+  return useApiWithFallback<Dispute[]>('/disputes?page=1&pageSize=50', [])
 }
 
 /**
- * Fetch platform stats/analytics from API with fallback to mock data.
+ * Fetch platform stats/analytics from the API.
  */
 export function useAdminStats(): UseApiResult<PlatformStats> {
-  const { stats } = useMockData()
-  return useApiWithFallback<PlatformStats>('/analytics/overview', stats)
+  return useApiWithFallback<PlatformStats>('/analytics/overview', {
+    totalRaised: 0,
+    activeCampaigns: 0,
+    totalUsers: 0,
+    pendingDisputes: 0,
+    totalDonations: 0,
+    avgDonation: 0,
+    conversionRate: 0,
+    monthlyGrowth: 0,
+  })
+}
+
+export function useAdminReports(): UseApiResult<AnalyticsReports> {
+  return useApiWithFallback<AnalyticsReports>('/analytics/reports', {
+    donationTrend: [],
+    categoryBreakdown: [],
+    geographicData: [],
+    fraudMetrics: [],
+  })
 }
 
 /**
- * Fetch payment providers from API with fallback to mock data.
+ * Fetch payment providers from the API.
  */
 export function useAdminPaymentProviders(): UseApiResult<PaymentProvider[]> {
-  const { paymentProviders } = useMockData()
-  return useApiWithFallback<PaymentProvider[]>('/payment-providers', paymentProviders)
+  return useApiWithFallback<PaymentProvider[]>('/payment-providers', [])
 }
 
 /**
- * Fetch AI writing usage stats from API with fallback to mock data.
+ * Fetch AI writing usage stats from the API.
  */
 export function useAiUsageStats(): UseApiResult<AiUsageStats> {
-  const { aiUsageStats } = useMockData()
-  return useApiWithFallback<AiUsageStats>('/ai-writing/stats', aiUsageStats)
+  return useApiWithFallback<AiUsageStats>('/ai-writing/stats', {
+    userId: '',
+    totalRequests: 0,
+    requestsToday: 0,
+    requestsThisMonth: 0,
+    lastUsedAt: new Date(0),
+  })
 }
 
 /**
- * Fetch AI writing usage log from API with fallback to mock data.
+ * Fetch AI writing usage log from the API.
  */
 export function useAiUsageLog(): UseApiResult<AiUsageLogEntry[]> {
-  const { aiUsageLog } = useMockData()
-  return useApiWithFallback<AiUsageLogEntry[]>('/ai-writing/usage', aiUsageLog)
+  return useApiWithFallback<AiUsageLogEntry[]>('/ai-writing/usage', [])
 }
 
 /**
- * Fetch KYC verifications from API with fallback to mock data.
+ * Fetch KYC verifications from the API.
  */
 export function useAdminKYCVerifications(): UseApiResult<KYCVerification[]> {
-  const { kycVerifications } = useMockData()
-  return useApiWithFallback<KYCVerification[]>('/kyc/pending', kycVerifications)
+  return useApiWithFallback<KYCVerification[]>('/kyc/pending', [])
 }
 
 /**
  * Fetch a single user for the admin detail view.
  *
- * NOTE: the only per-user endpoint is the PUBLIC profile
- * (`GET /users/:id/public` → PublicUserProfileDTO). It intentionally omits
- * admin-only fields such as `email`, `kycStatus`, and `kycLevel`; there is no
- * admin `GET /users/:id`, so those fields are absent on real data and pages
- * must guard them. Falls back to the richer mock user on failure.
+ * Uses the admin-only detail endpoint so sensitive fields are never sourced
+ * from a public profile or filled with demonstration data.
  */
 export function useAdminUser(id: string): UseApiResult<User | null> {
-  const fallback = useMockUser(id) ?? null
-  return useApiWithFallback<User | null>(`/users/${id}/public`, fallback)
+  return useApiWithFallback<User | null>(`/users/${id}`, null)
 }
 
 /**
  * Fetch a single campaign for the admin detail view.
  * GET /campaigns/:id is public and returns the full Campaign DTO (incl.
- * donorCount). Falls back to the mock campaign on failure.
+ * donorCount). Failures remain explicit rather than substituting demo data.
  */
 export function useAdminCampaign(id: string): UseApiResult<Campaign | null> {
-  const fallback = useMockCampaign(id) ?? null
-  return useApiWithFallback<Campaign | null>(`/campaigns/${id}`, fallback)
+  return useApiWithFallback<Campaign | null>(`/campaigns/${id}`, null)
 }
 
 /**
  * Fetch the paginated donations for a single campaign.
  * GET /campaigns/:id/donations returns PaginatedResponse<CampaignDonation>
- * (donor name embedded, no donorId). Falls back to mock donations on failure.
+ * (donor name embedded, no donorId). Failures remain explicit.
  */
 export function useAdminCampaignDonations(id: string): UseApiResult<AdminDonation[]> {
-  const fallback = useMockCampaignDonations(id)
-  return useApiWithFallback<AdminDonation[]>(`/campaigns/${id}/donations?page=1&pageSize=50`, fallback)
+  return useApiWithFallback<AdminDonation[]>(`/campaigns/${id}/donations?page=1&pageSize=50`, [])
 }
 
 /**
- * Fetch KYC stats from API with fallback to mock data.
+ * Fetch KYC stats from the API.
  */
 export function useKYCStats(): UseApiResult<{ pending: number; approvedToday: number; rejectedToday: number }> {
-  const { kycVerifications } = useMockData()
-  const fallback = {
-    pending: kycVerifications.filter(v => v.status === 'pending').length,
-    approvedToday: kycVerifications.filter(v => v.status === 'approved' && v.reviewedAt && new Date(v.reviewedAt).toDateString() === new Date().toDateString()).length,
-    rejectedToday: kycVerifications.filter(v => v.status === 'rejected' && v.reviewedAt && new Date(v.reviewedAt).toDateString() === new Date().toDateString()).length,
-  }
-  return useApiWithFallback('/kyc/stats', fallback)
+  return useApiWithFallback('/kyc/stats', {
+    pending: 0,
+    approvedToday: 0,
+    rejectedToday: 0,
+  })
 }

@@ -15,6 +15,14 @@ export interface PlatformOverviewRecord {
   pendingDisputes: number;
 }
 
+export interface AnalyticsReportRecord {
+  donationTrend: Array<{ month: string; amount: number }>;
+  categoryBreakdown: Array<{ category: string; value: number }>;
+  geographicData: Array<{ country: string; campaigns: number; donations: number }>;
+  fraudMetrics: Array<{ metric: string; value: number; change: number }>;
+}
+
 export interface AnalyticsRepositoryPort {
   getOverview(): Promise<PlatformOverviewRecord>;
+  getReports(): Promise<AnalyticsReportRecord>;
 }

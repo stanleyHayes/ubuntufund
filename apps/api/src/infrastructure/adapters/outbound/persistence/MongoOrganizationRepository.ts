@@ -12,6 +12,7 @@ import {
 const ORGANIZATION_QUERY = {
   role: UserRole.ORGANIZATION,
   organizationName: { $exists: true, $ne: null },
+  deletedAt: { $exists: false },
 };
 
 function toDomain(doc: OrganizationUserDocument): OrganizationRecord {

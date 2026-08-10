@@ -24,4 +24,17 @@ export class AnalyticsController {
       next(error);
     }
   };
+
+  reports = async (
+    _req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const reports = await this.getPlatformOverviewUseCase.reports();
+      res.json({ data: reports, message: 'Platform reports retrieved', status: 200 });
+    } catch (error) {
+      next(error);
+    }
+  };
 }

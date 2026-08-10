@@ -36,22 +36,25 @@ export class MongoCampaignUpdateRepository implements CampaignUpdateRepositoryPo
   }
 
   async findById(id: string): Promise<CampaignUpdateEntity | null> {
-    const doc = await CampaignUpdateModel.findById(id);
+    const doc = await CampaignUpdateModel.findOne({
+      _id: id,
+      deletedAt: { $exists: false },
+    });
     return doc ? toDomain(doc) : null;
   }
 
   async findByCampaignId(campaignId: string): Promise<CampaignUpdateEntity[]> {
-    const docs = await CampaignUpdateModel.find({ campaignId }).sort({
-      isPinned: -1,
-      createdAt: -1,
-    });
+    const docs = await CampaignUpdateModel.find({
+      campaignId,
+      deletedAt: { $exists: false },
+    }).sort({ isPinned: -1, createdAt: -1 });
     return docs.map(toDomain);
   }
 
   async update(update: CampaignUpdateEntity): Promise<CampaignUpdateEntity> {
     const plain = update.toPlain();
     const doc = await CampaignUpdateModel.findByIdAndUpdate(
-      plain.id,
+      { _id: plain.id, deletedAt: { $exists: false } },
       {
         title: plain.title,
         content: plain.content,
@@ -69,6 +72,9 @@ export class MongoCampaignUpdateRepository implements CampaignUpdateRepositoryPo
   }
 
   async delete(id: string): Promise<void> {
-    await CampaignUpdateModel.findByIdAndDelete(id);
+    await CampaignUpdateModel.updateOne(
+      { _id: id, deletedAt: { $exists: false } },
+      { $set: { deletedAt: new Date() } }
+    );
   }
 }

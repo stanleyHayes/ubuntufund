@@ -5,10 +5,8 @@ import { keyframes } from '@mui/system'
 import SearchIcon from '@mui/icons-material/Search'
 import PeopleRoundedIcon from '@mui/icons-material/PeopleRounded'
 import { EmptyState } from '@ubuntu-fund/ui'
-import { UserRole, VerificationLevel, Resource, Action } from '@ubuntu-fund/types'
+import { UserRole, VerificationLevel } from '@ubuntu-fund/types'
 import type { User } from '@ubuntu-fund/types'
-import { useAdminPermissions } from '@/context/AdminPermissionContext'
-import PermissionDenied from '@/components/PermissionDenied'
 import { useAdminUsers } from '@/hooks/useApiData'
 import { usePagination } from '@/hooks/usePagination'
 import PaginationBar from '@/components/PaginationBar'
@@ -172,9 +170,7 @@ function UserCard({ user, index }: { user: User; index: number }) {
 }
 
 export default function UsersPage() {
-  const navigate = useNavigate()
   const { data: users, isLoading: loading } = useAdminUsers()
-  const { can } = useAdminPermissions()
   const PAGE_SIZE = 12
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('all')

@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { View, ScrollView, StyleSheet } from 'react-native'
 import { Text, Icon, Button, TextInput } from 'react-native-paper'
 import { Stack, useRouter } from 'expo-router'
-import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
 import { brandColors } from '@/theme'
 
@@ -68,7 +67,7 @@ function AddressStep({ onNext, onBack }: StepProps) {
   )
 }
 
-function SelfieStep({ onBack, onSubmit }: StepProps & { onSubmit: () => void }) {
+function SelfieStep({ onBack, onSubmit, submitting }: StepProps & { onSubmit: () => void; submitting: boolean }) {
   const [selfie, setSelfie] = useState('')
 
   return (
@@ -78,14 +77,13 @@ function SelfieStep({ onBack, onSubmit }: StepProps & { onSubmit: () => void }) 
       <TextInput mode="outlined" label="Selfie URL" value={selfie} onChangeText={setSelfie} style={styles.input} outlineStyle={styles.inputOutline} outlineColor="rgba(26,46,34,0.10)" activeOutlineColor={brandColors.primary} />
       <View style={styles.buttonRow}>
         {onBack && <Button mode="outlined" onPress={onBack} style={[styles.button, styles.buttonFlex]} contentStyle={styles.buttonContent} labelStyle={styles.buttonLabelSecondary} textColor={brandColors.primary}>Back</Button>}
-        <Button mode="contained" onPress={onSubmit} style={[styles.button, styles.buttonFlex]} contentStyle={styles.buttonContent} labelStyle={styles.buttonLabel} buttonColor={brandColors.primary}>Submit</Button>
+        <Button mode="contained" onPress={onSubmit} loading={submitting} disabled={submitting} style={[styles.button, styles.buttonFlex]} contentStyle={styles.buttonContent} labelStyle={styles.buttonLabel} buttonColor={brandColors.primary}>Submit</Button>
       </View>
     </View>
   )
 }
 
 export default function KYCScreen() {
-  const { user } = useAuth()
   const router = useRouter()
   const [step, setStep] = useState(0)
   const [submitting, setSubmitting] = useState(false)
@@ -165,7 +163,7 @@ export default function KYCScreen() {
           {step === 0 && <PersonalInfoStep onNext={() => setStep(1)} />}
           {step === 1 && <DocumentStep onNext={() => setStep(2)} onBack={() => setStep(0)} />}
           {step === 2 && <AddressStep onNext={() => setStep(3)} onBack={() => setStep(1)} />}
-          {step === 3 && <SelfieStep onBack={() => setStep(2)} onSubmit={handleSubmit} />}
+          {step === 3 && <SelfieStep onBack={() => setStep(2)} onSubmit={handleSubmit} submitting={submitting} />}
         </View>
       </ScrollView>
     </View>

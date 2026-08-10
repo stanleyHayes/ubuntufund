@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   View,
   ScrollView,
@@ -48,7 +48,7 @@ const REASONS = [
 // ─── Skeleton ────────────────────────────────────────────────
 
 function FormSkeleton() {
-  const opacity = useRef(new Animated.Value(0.3)).current
+  const [opacity] = useState(() => new Animated.Value(0.3))
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
@@ -56,7 +56,7 @@ function FormSkeleton() {
         Animated.timing(opacity, { toValue: 0.3, duration: 800, useNativeDriver: true }),
       ]),
     ).start()
-  }, [])
+  }, [opacity])
   return (
     <Animated.View style={{ opacity, padding: 16 }}>
       <View style={[styles.skeletonLine, { width: '100%', height: 80, borderRadius: 14, marginBottom: 20 }]} />
@@ -92,8 +92,8 @@ export default function RefundRequestScreen() {
     try {
       const data = await api.get<DonationDetail>(`/donations/${donationId}`)
       setDonation(data)
-    } catch (err: any) {
-      setError(err.message ?? 'Failed to load donation')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load donation')
     } finally {
       setLoading(false)
     }
@@ -117,8 +117,8 @@ export default function RefundRequestScreen() {
         description,
       })
       setSuccess(result.id ?? 'REF-PENDING')
-    } catch (err: any) {
-      Alert.alert('Error', err.message ?? 'Failed to submit refund request.')
+    } catch (err) {
+      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to submit refund request.')
     } finally {
       setSubmitting(false)
     }
@@ -159,7 +159,7 @@ export default function RefundRequestScreen() {
           <Text style={styles.successSubtitle}>Your refund ID is:</Text>
           <Text style={styles.refundId}>{success}</Text>
           <Text style={styles.successNote}>
-            A 2% processing fee applies. Expect 5-7 business days for processing.
+            A 2% request fee is recorded. Settlement is not automatic and no processing time is guaranteed.
           </Text>
           <Button
             mode="contained"

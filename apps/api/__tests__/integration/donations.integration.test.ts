@@ -10,7 +10,8 @@ import {
 } from '../helpers/testDatabase.js';
 import { UserModel } from '../../src/infrastructure/database/models/UserModel.js';
 import { CampaignModel } from '../../src/infrastructure/database/models/CampaignModel.js';
-import { CampaignCategory, CampaignPriority } from '@ubuntu-fund/types';
+import { WalletModel } from '../../src/infrastructure/database/models/WalletModel.js';
+import { CampaignCategory, CampaignPriority, PaymentMethod } from '@ubuntu-fund/types';
 
 function uniqueEmail(label: string): string {
   return `${label}-${randomUUID()}@example.com`;
@@ -70,24 +71,21 @@ describe('Donations Integration', () => {
     await disconnectTestDatabase();
   });
 
-  it('deposits into a wallet, then donates to an active campaign, updating both balances', async () => {
+  it('donates from a funded wallet to an active campaign, updating both balances', async () => {
     const { userId: creatorId, token: creatorToken } = await registerUser(app, uniqueEmail('creator'));
     const campaignId = await createActiveCampaign(app, creatorToken, creatorId);
 
     const { token: donorToken } = await registerUser(app, uniqueEmail('donor'));
     const walletId = await getWalletId(app, donorToken);
 
-    const depositRes = await request(app)
-      .post(`/api/v1/wallets/${walletId}/deposit`)
-      .set('Authorization', `Bearer ${donorToken}`)
-      .send({ amount: 1000, currency: 'GHS' });
-    expect(depositRes.status).toBe(200);
-    expect(depositRes.body.data.balance).toBe(1000);
+    // Payment-provider settlement is outside the public HTTP contract. Seed a
+    // settled balance directly so this test exercises donation accounting only.
+    await WalletModel.findByIdAndUpdate(walletId, { $set: { balance: 1000 } });
 
     const donateRes = await request(app)
       .post(`/api/v1/campaigns/${campaignId}/donate`)
       .set('Authorization', `Bearer ${donorToken}`)
-      .send({ amount: 500, currency: 'GHS', message: 'Great cause!', isAnonymous: false });
+      .send({ amount: 500, currency: 'GHS', paymentMethod: PaymentMethod.WALLET, message: 'Great cause!', isAnonymous: false });
     expect(donateRes.status).toBe(200);
     expect(donateRes.body.message).toBe('Donation successful');
 
@@ -104,7 +102,7 @@ describe('Donations Integration', () => {
     const failedDonate = await request(app)
       .post(`/api/v1/campaigns/${campaignId}/donate`)
       .set('Authorization', `Bearer ${donorToken}`)
-      .send({ amount: 10000, currency: 'GHS', isAnonymous: false });
+      .send({ amount: 10000, currency: 'GHS', paymentMethod: PaymentMethod.WALLET, isAnonymous: false });
     expect(failedDonate.status).toBe(400);
     expect(failedDonate.body.message).toBe('Insufficient wallet balance');
 
@@ -116,15 +114,14 @@ describe('Donations Integration', () => {
       .set('Authorization', `Bearer ${donorToken}`);
     expect(walletAfterFailure.body.data.balance).toBe(500);
 
-    // The ledger should show both the deposit and the successful donation.
+    // Only provider-backed or donation mutations belong in the public ledger.
     const transactionsRes = await request(app)
       .get('/api/v1/wallets/transactions')
       .set('Authorization', `Bearer ${donorToken}`);
     expect(transactionsRes.status).toBe(200);
     const types = transactionsRes.body.data.map((t: { type: string }) => t.type);
-    expect(types).toContain('deposit');
     expect(types).toContain('donation');
-    expect(transactionsRes.body.data).toHaveLength(2);
+    expect(transactionsRes.body.data).toHaveLength(1);
   });
 
   it('rejects donation to a campaign that is not active', async () => {
@@ -152,11 +149,7 @@ describe('Donations Integration', () => {
 
     const { token: donorToken } = await registerUser(app, uniqueEmail('pendingdonor'));
     const walletId = await getWalletId(app, donorToken);
-    await request(app)
-      .post(`/api/v1/wallets/${walletId}/deposit`)
-      .set('Authorization', `Bearer ${donorToken}`)
-      .send({ amount: 500, currency: 'GHS' })
-      .expect(200);
+    await WalletModel.findByIdAndUpdate(walletId, { $set: { balance: 500 } });
 
     const res = await request(app)
       .post(`/api/v1/campaigns/${campaignId}/donate`)
@@ -173,5 +166,22 @@ describe('Donations Integration', () => {
       .send({ amount: 100, currency: 'GHS', isAnonymous: false });
 
     expect(res.status).toBe(401);
+  });
+
+  it('does not expose direct wallet balance mutation endpoints', async () => {
+    const { token } = await registerUser(app, uniqueEmail('walletmutation'));
+    const walletId = await getWalletId(app, token);
+
+    await request(app)
+      .post(`/api/v1/wallets/${walletId}/deposit`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ amount: 1000, currency: 'GHS' })
+      .expect(404);
+
+    await request(app)
+      .post(`/api/v1/wallets/${walletId}/withdraw`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ amount: 100, currency: 'GHS' })
+      .expect(404);
   });
 });

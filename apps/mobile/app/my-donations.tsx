@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   View,
   ScrollView,
@@ -50,7 +50,7 @@ function formatDate(date?: string | null) {
 // ─── Skeleton ────────────────────────────────────────────────
 
 function SkeletonRow() {
-  const opacity = useRef(new Animated.Value(0.3)).current
+  const [opacity] = useState(() => new Animated.Value(0.3))
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
@@ -58,7 +58,7 @@ function SkeletonRow() {
         Animated.timing(opacity, { toValue: 0.3, duration: 800, useNativeDriver: true }),
       ]),
     ).start()
-  }, [])
+  }, [opacity])
   return (
     <Animated.View style={[styles.skeletonRow, { opacity }]}>
       <View style={{ flex: 1 }}>
@@ -85,8 +85,8 @@ export default function MyDonationsScreen() {
     try {
       const data = await api.get<Donation[]>('/donations/mine')
       setDonations(Array.isArray(data) ? data : [])
-    } catch (err: any) {
-      setError(err.message ?? 'Failed to load donations')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load donations')
     } finally {
       setLoading(false)
     }

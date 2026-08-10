@@ -85,7 +85,7 @@ describe('Site Content (CMS) Integration', () => {
       expect(res.body.data.type).toBe('stats');
       const items = res.body.data.data.items as { value: string; label: string }[];
       expect(items).toHaveLength(4);
-      expect(items[0]).toEqual({ value: 'GH₵ 120M+', label: 'Raised on platform' });
+      expect(items[0]).toEqual({ value: 'GHS', label: 'Launch currency' });
     });
 
     it('returns the seeded faq block with question/answer items', async () => {

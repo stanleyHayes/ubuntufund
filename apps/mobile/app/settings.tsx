@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   View,
   ScrollView,
   StyleSheet,
   Animated,
   Alert,
+  Platform,
 } from 'react-native'
 import { Text, Icon, Switch, TouchableRipple } from 'react-native-paper'
 import { router, Stack } from 'expo-router'
@@ -12,15 +13,12 @@ import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
 import { SignInRequired } from '@/components/SignInRequired'
 import { brandColors } from '@/theme'
+import { registerForPushNotificationsAsync, registerPushTokenWithApi } from '@/services/notifications'
 
 interface SettingsData {
   emailNotifications: boolean
   smsNotifications: boolean
   pushNotifications: boolean
-  pushDonations: boolean
-  pushComments: boolean
-  pushMilestones: boolean
-  pushCampaigns: boolean
   donationReceipts: boolean
   preferredCurrency: string
   language: string
@@ -33,11 +31,7 @@ const LANGUAGES = ['English', 'Twi', 'Ga', 'Ewe', 'Hausa']
 const DEFAULT_SETTINGS: SettingsData = {
   emailNotifications: true,
   smsNotifications: false,
-  pushNotifications: true,
-  pushDonations: true,
-  pushComments: true,
-  pushMilestones: true,
-  pushCampaigns: true,
+  pushNotifications: false,
   donationReceipts: true,
   preferredCurrency: 'GHS',
   language: 'English',
@@ -48,7 +42,7 @@ const DEFAULT_SETTINGS: SettingsData = {
 // ─── Skeleton ────────────────────────────────────────────────
 
 function SkeletonToggleRows() {
-  const opacity = useRef(new Animated.Value(0.3)).current
+  const [opacity] = useState(() => new Animated.Value(0.3))
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
@@ -56,7 +50,7 @@ function SkeletonToggleRows() {
         Animated.timing(opacity, { toValue: 0.3, duration: 800, useNativeDriver: true }),
       ]),
     ).start()
-  }, [])
+  }, [opacity])
   return (
     <Animated.View style={{ opacity, paddingHorizontal: 16, paddingTop: 16 }}>
       {[0, 1, 2, 3, 4, 5, 6].map((i) => (
@@ -141,10 +135,22 @@ export default function SettingsScreen() {
     setLoading(true)
     setError(null)
     try {
-      const data = await api.get<Partial<SettingsData>>('/profile')
-      setSettings({ ...DEFAULT_SETTINGS, ...data })
-    } catch {
-      // Use defaults
+      const data = await api.get<{
+        notificationPreferences?: { email?: boolean; sms?: boolean; push?: boolean; donationReceipts?: boolean }
+        language?: string; anonymousDonations?: boolean; showLeaderboards?: boolean
+      }>('/profile')
+      setSettings({
+        ...DEFAULT_SETTINGS,
+        emailNotifications: data.notificationPreferences?.email ?? DEFAULT_SETTINGS.emailNotifications,
+        smsNotifications: data.notificationPreferences?.sms ?? DEFAULT_SETTINGS.smsNotifications,
+        pushNotifications: data.notificationPreferences?.push ?? DEFAULT_SETTINGS.pushNotifications,
+        donationReceipts: data.notificationPreferences?.donationReceipts ?? DEFAULT_SETTINGS.donationReceipts,
+        language: data.language ?? DEFAULT_SETTINGS.language,
+        anonymousDonations: data.anonymousDonations ?? DEFAULT_SETTINGS.anonymousDonations,
+        showOnLeaderboard: data.showLeaderboards ?? DEFAULT_SETTINGS.showOnLeaderboard,
+      })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load settings')
     } finally {
       setLoading(false)
     }
@@ -155,19 +161,58 @@ export default function SettingsScreen() {
     fetchSettings()
   }, [user, fetchSettings])
 
-  const updateSetting = useCallback(async (key: keyof SettingsData, value: any) => {
+  const updateSetting = useCallback(async <K extends keyof SettingsData,>(key: K, value: SettingsData[K]) => {
+    const previousValue = settings[key]
     setSettings((prev) => ({ ...prev, [key]: value }))
+    setError(null)
     try {
-      await api.put('/profile', { [key]: value })
-    } catch {
-      // Revert on failure could be added; for now silently fail
+      const payload = key === 'emailNotifications'
+        ? { notificationPreferences: { email: value } }
+        : key === 'smsNotifications'
+          ? { notificationPreferences: { sms: value } }
+          : key === 'pushNotifications'
+            ? { notificationPreferences: { push: value } }
+            : key === 'donationReceipts'
+              ? { notificationPreferences: { donationReceipts: value } }
+              : key === 'showOnLeaderboard'
+                ? { showLeaderboards: value }
+                : { [key]: value }
+      await api.put('/profile', payload)
+    } catch (err) {
+      setSettings((prev) => ({ ...prev, [key]: previousValue }))
+      setError(err instanceof Error ? err.message : 'Could not save that setting')
     }
-  }, [])
+  }, [settings])
+
+  const updatePushPermission = useCallback(async (enabled: boolean) => {
+    if (!enabled) {
+      await updateSetting('pushNotifications', false)
+      return
+    }
+
+    const token = await registerForPushNotificationsAsync()
+    if (!token) {
+      setSettings((prev) => ({ ...prev, pushNotifications: false }))
+      Alert.alert(
+        'Notifications remain off',
+        'Permission was not granted. You can enable notifications later in system settings.'
+      )
+      return
+    }
+
+    try {
+      await registerPushTokenWithApi(token, Platform.OS === 'ios' ? 'ios' : 'android')
+      await updateSetting('pushNotifications', true)
+    } catch (err) {
+      setSettings((prev) => ({ ...prev, pushNotifications: false }))
+      setError(err instanceof Error ? err.message : 'Could not enable push notifications')
+    }
+  }, [updateSetting])
 
   const handleDeleteAccount = () => {
     Alert.alert(
       'Delete Account',
-      'This action is permanent and cannot be undone. All your data, campaigns, and donation history will be permanently deleted.',
+      'This immediately closes your account and signs you out. Financial and safety records may be retained where required by law, fraud prevention, or an active dispute.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -212,20 +257,18 @@ export default function SettingsScreen() {
           <SkeletonToggleRows />
         ) : (
           <>
+            {error ? (
+              <View style={styles.errorBanner}>
+                <Icon source="alert-circle-outline" size={18} color={brandColors.error} />
+                <Text style={styles.errorBannerText}>{error}</Text>
+              </View>
+            ) : null}
             {/* Notifications */}
             <Text style={styles.sectionTitle}>Notifications</Text>
             <View style={styles.card}>
               <ToggleRow icon="email-outline" label="Email Notifications" value={settings.emailNotifications} onToggle={(v) => updateSetting('emailNotifications', v)} />
               <ToggleRow icon="message-text-outline" label="SMS Notifications" value={settings.smsNotifications} onToggle={(v) => updateSetting('smsNotifications', v)} />
-              <ToggleRow icon="bell-outline" label="Push Notifications" value={settings.pushNotifications} onToggle={(v) => updateSetting('pushNotifications', v)} />
-              {settings.pushNotifications && (
-                <>
-                  <ToggleRow icon="heart-outline" label="Donation Alerts" value={settings.pushDonations} onToggle={(v) => updateSetting('pushDonations', v)} color={brandColors.error} />
-                  <ToggleRow icon="comment-outline" label="Comment Alerts" value={settings.pushComments} onToggle={(v) => updateSetting('pushComments', v)} color={brandColors.primaryLight} />
-                  <ToggleRow icon="flag-outline" label="Milestone Alerts" value={settings.pushMilestones} onToggle={(v) => updateSetting('pushMilestones', v)} color={brandColors.success} />
-                  <ToggleRow icon="bullhorn-outline" label="Campaign Alerts" value={settings.pushCampaigns} onToggle={(v) => updateSetting('pushCampaigns', v)} color={brandColors.warning} />
-                </>
-              )}
+              <ToggleRow icon="bell-outline" label="Push Notifications" value={settings.pushNotifications} onToggle={updatePushPermission} />
               <ToggleRow icon="receipt" label="Donation Receipts" value={settings.donationReceipts} onToggle={(v) => updateSetting('donationReceipts', v)} />
             </View>
 
@@ -270,6 +313,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: brandColors.background },
 
   sectionTitle: { fontSize: 12, fontFamily: 'Outfit_700Bold', color: brandColors.textSecondary, paddingHorizontal: 20, marginTop: 24, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1 },
+  errorBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 16, marginTop: 16, padding: 12, borderRadius: 12, backgroundColor: 'rgba(165,67,47,0.10)' },
+  errorBannerText: { flex: 1, fontSize: 13, fontFamily: 'Outfit_500Medium', color: brandColors.error },
 
   card: {
     marginHorizontal: 16,

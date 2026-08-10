@@ -4,6 +4,7 @@ import type { GetMyNotificationsUseCase } from '../../../../../application/use-c
 import type { MarkNotificationAsReadUseCase } from '../../../../../application/use-cases/MarkNotificationAsReadUseCase.js';
 import type { MarkAllNotificationsAsReadUseCase } from '../../../../../application/use-cases/MarkAllNotificationsAsReadUseCase.js';
 import type { GetUnreadNotificationCountUseCase } from '../../../../../application/use-cases/GetUnreadNotificationCountUseCase.js';
+import { PushTokenModel } from '../../../../database/models/PushTokenModel.js';
 
 export class NotificationController {
   constructor(
@@ -88,5 +89,34 @@ export class NotificationController {
     } catch (error) {
       next(error);
     }
+  };
+
+  registerPushToken = async (
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      await PushTokenModel.findOneAndUpdate(
+        { token: req.body.token },
+        { $set: { userId: req.userId!, platform: req.body.platform, disabledAt: null } },
+        { upsert: true, new: true, runValidators: true }
+      );
+      res.json({ data: { registered: true }, message: 'Push token registered', status: 200 });
+    } catch (error) { next(error); }
+  };
+
+  unregisterPushToken = async (
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      await PushTokenModel.findOneAndUpdate(
+        { token: req.body.token, userId: req.userId!, disabledAt: null },
+        { $set: { disabledAt: new Date() } }
+      );
+      res.json({ data: { registered: false }, message: 'Push token unregistered', status: 200 });
+    } catch (error) { next(error); }
   };
 }

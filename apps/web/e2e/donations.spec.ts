@@ -1,7 +1,7 @@
 import { test, expect } from './fixtures'
 
 test.describe('Donations', () => {
-  test('user can fund a wallet and donate to an active campaign', async ({
+  test('an unfunded user cannot mint balance or complete a donation', async ({
     authenticatedPage: page,
   }) => {
     // An active campaign must exist (seeded locally / by CI's seed script).
@@ -13,22 +13,9 @@ test.describe('Donations', () => {
     )
     test.skip(!active, 'no active GHS campaign available to donate to')
 
-    // Fund the freshly registered user's wallet through the API.
-    const tokens = await page.evaluate(() =>
-      JSON.parse(window.localStorage.getItem('uf_tokens') ?? '{}')
-    )
-    const auth = { Authorization: `Bearer ${tokens.accessToken}` }
-    const wallets = await page.request
-      .get('/api/v1/wallets', { headers: auth })
-      .then((r) => r.json())
-    const wallet = wallets.data[0]
-    const deposit = await page.request.post(`/api/v1/wallets/${wallet.id}/deposit`, {
-      headers: auth,
-      data: { amount: 500, currency: 'GHS' },
-    })
-    expect(deposit.status()).toBe(200)
-
-    // Donate through the real UI.
+    // The public API deliberately exposes no balance-minting endpoint. An
+    // unfunded launch account should receive the real insufficient-balance
+    // response when attempting a wallet-backed contribution.
     await page.goto(`/campaigns/${active.id}`)
     await page.getByRole('button', { name: 'Donate Now' }).click()
 
@@ -38,6 +25,6 @@ test.describe('Donations', () => {
     await dialog.getByText(/wallet/i).first().click()
     await dialog.getByRole('button', { name: 'Confirm Donation' }).click()
 
-    await expect(page.getByText('Donation submitted successfully!')).toBeVisible()
+    await expect(page.getByText(/insufficient wallet balance/i)).toBeVisible()
   })
 })

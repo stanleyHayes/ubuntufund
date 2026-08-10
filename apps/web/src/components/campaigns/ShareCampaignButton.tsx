@@ -10,11 +10,31 @@ interface ShareCampaignButtonProps {
 }
 
 export function ShareCampaignButton({
-  campaignId,
+  campaignId: _campaignId,
   title,
   url,
 }: ShareCampaignButtonProps) {
   const [snackOpen, setSnackOpen] = useState(false)
+
+  const copyToClipboard = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(url)
+      setSnackOpen(true)
+    } catch {
+      const textarea = document.createElement('textarea')
+      textarea.value = url
+      document.body.appendChild(textarea)
+      textarea.select()
+      try {
+        document.execCommand('copy')
+        setSnackOpen(true)
+      } catch {
+        alert('Failed to copy link')
+      } finally {
+        document.body.removeChild(textarea)
+      }
+    }
+  }, [url])
 
   const handleShare = useCallback(() => {
     // Try native Web Share API first (mobile-friendly)
@@ -31,28 +51,7 @@ export function ShareCampaignButton({
       // Fall back to clipboard copy
       void copyToClipboard()
     }
-  }, [url, title])
-
-  const copyToClipboard = async () => {
-    try {
-      await navigator.clipboard.writeText(url)
-      setSnackOpen(true)
-    } catch {
-      // Fallback: create a temporary textarea
-      const textarea = document.createElement('textarea')
-      textarea.value = url
-      document.body.appendChild(textarea)
-      textarea.select()
-      try {
-        document.execCommand('copy')
-        setSnackOpen(true)
-      } catch {
-        alert('Failed to copy link')
-      } finally {
-        document.body.removeChild(textarea)
-      }
-    }
-  }
+  }, [copyToClipboard, title, url])
 
   return (
     <>

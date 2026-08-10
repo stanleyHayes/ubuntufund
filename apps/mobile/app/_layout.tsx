@@ -42,7 +42,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     const handleDeepLink = (event: { url: string }) => {
-      const { path, queryParams } = Linking.parse(event.url)
+      const { path } = Linking.parse(event.url)
       if (!path) return
 
       const segments = path.split('/').filter(Boolean)
@@ -115,6 +115,7 @@ export default function RootLayout() {
               <Stack.Screen name="settings" options={{ title: 'Settings' }} />
               <Stack.Screen name="refund-request" options={{ title: 'Request Refund', animation: 'slide_from_bottom' }} />
               <Stack.Screen name="organizations" options={{ title: 'Organizations' }} />
+              <Stack.Screen name="organization/[id]" options={{ title: 'Organization' }} />
               <Stack.Screen name="index" options={{ headerShown: false }} />
             </Stack>
           </AuthProvider>

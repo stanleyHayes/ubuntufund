@@ -66,4 +66,16 @@ export class GetCampaignUseCase {
       totalPages: Math.ceil(total / pageSize),
     };
   }
+
+  async listByCreator(creatorId: string): Promise<Campaign[]> {
+    const items = await this.campaignRepo.findByCreatorId(creatorId);
+    const dtos = items.map(toDTO);
+    if (this.donationRepo && dtos.length > 0) {
+      const counts = await this.donationRepo.countDistinctDonorsByCampaignIds(
+        dtos.map((campaign) => campaign.id)
+      );
+      for (const dto of dtos) dto.donorCount = counts[dto.id] ?? 0;
+    }
+    return dtos;
+  }
 }

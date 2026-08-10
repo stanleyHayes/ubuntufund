@@ -11,6 +11,7 @@ export interface ReportDocument extends Document {
   description?: string;
   status: ReportStatus;
   createdAt: Date;
+  updatedAt: Date;
 }
 
 const REPORT_REASONS: ReportReason[] = [

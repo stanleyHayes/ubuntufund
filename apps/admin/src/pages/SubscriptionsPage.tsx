@@ -16,6 +16,8 @@ import {
   Resource,
   Action,
 } from '@ubuntu-fund/types'
+import type { Subscription } from '@ubuntu-fund/types'
+import { api } from '@/lib/api'
 import { useAdminPermissions } from '@/context/AdminPermissionContext'
 import { usePagination } from '@/hooks/usePagination'
 import PaginationBar from '@/components/PaginationBar'
@@ -47,81 +49,12 @@ const statusColors: Record<SubscriptionStatus, string> = {
 }
 
 // ---------------------------------------------------------------------------
-// Mock subscription data
+// Subscription read model
 // ---------------------------------------------------------------------------
-interface MockSubscription {
-  id: string
-  userId: string
+interface AdminSubscription extends Subscription {
   userName: string
   email: string
-  tier: SubscriptionTier
-  status: SubscriptionStatus
-  billingCycle: BillingCycle
-  currentPeriodStart: Date
-  currentPeriodEnd: Date
 }
-
-const MOCK_NAMES = [
-  'Ama Mensah', 'Kwame Boateng', 'Efua Asante', 'Kofi Owusu',
-  'Abena Sarpong', 'Yaw Darko', 'Adwoa Agyeman', 'Kojo Antwi',
-]
-
-function generateMockSubscriptions(): MockSubscription[] {
-  const tiers = [SubscriptionTier.FREE, SubscriptionTier.STARTER, SubscriptionTier.PRO, SubscriptionTier.ENTERPRISE]
-  const statuses = [SubscriptionStatus.ACTIVE, SubscriptionStatus.ACTIVE, SubscriptionStatus.ACTIVE, SubscriptionStatus.EXPIRED, SubscriptionStatus.CANCELLED, SubscriptionStatus.PAST_DUE, SubscriptionStatus.TRIALING]
-  const cycles = [BillingCycle.MONTHLY, BillingCycle.YEARLY]
-
-  return MOCK_NAMES.map((name, i) => {
-    const tier = tiers[i % tiers.length]
-    const status = statuses[i % statuses.length]
-    const cycle = cycles[i % cycles.length]
-    const start = new Date(2025, 6 + (i % 6), 1 + (i % 28))
-    const end = new Date(start)
-    if (cycle === BillingCycle.MONTHLY) {
-      end.setMonth(end.getMonth() + 1)
-    } else {
-      end.setFullYear(end.getFullYear() + 1)
-    }
-
-    return {
-      id: `sub_${String(i + 1).padStart(3, '0')}`,
-      userId: `usr_${String(i + 1).padStart(3, '0')}`,
-      userName: name,
-      email: `${name.toLowerCase().replace(' ', '.')}@example.com`,
-      tier,
-      status,
-      billingCycle: cycle,
-      currentPeriodStart: start,
-      currentPeriodEnd: end,
-    }
-  })
-}
-
-const mockSubscriptions = generateMockSubscriptions()
-
-// ---------------------------------------------------------------------------
-// Stats helpers
-// ---------------------------------------------------------------------------
-const totalSubscribers = mockSubscriptions.length
-const paidUsers = mockSubscriptions.filter(s => s.tier !== SubscriptionTier.FREE).length
-const freeUsers = mockSubscriptions.filter(s => s.tier === SubscriptionTier.FREE).length
-const monthlyRevenue = mockSubscriptions
-  .filter(s => s.status === SubscriptionStatus.ACTIVE && s.tier !== SubscriptionTier.FREE)
-  .reduce((sum, s) => {
-    const plan = SUBSCRIPTION_PLANS[s.tier]
-    return sum + (s.billingCycle === BillingCycle.MONTHLY ? plan.priceMonthly : plan.priceYearly / 12)
-  }, 0)
-
-// Revenue breakdown by tier
-const revenueByTier = Object.values(SubscriptionTier).filter(t => t !== SubscriptionTier.FREE).map(tier => {
-  const subs = mockSubscriptions.filter(s => s.tier === tier && s.status === SubscriptionStatus.ACTIVE)
-  const rev = subs.reduce((sum, s) => {
-    const plan = SUBSCRIPTION_PLANS[s.tier]
-    return sum + (s.billingCycle === BillingCycle.MONTHLY ? plan.priceMonthly : plan.priceYearly / 12)
-  }, 0)
-  return { tier, name: SUBSCRIPTION_PLANS[tier].name, count: subs.length, revenue: rev, color: tierColors[tier] }
-})
-const totalRevForBar = Math.max(1, revenueByTier.reduce((s, r) => s + r.revenue, 0))
 
 // ---------------------------------------------------------------------------
 // Skeleton
@@ -153,7 +86,7 @@ function SkeletonRow({ index }: { index: number }) {
 // ---------------------------------------------------------------------------
 // SubscriptionRow
 // ---------------------------------------------------------------------------
-function SubscriptionRow({ sub, index }: { sub: MockSubscription; index: number }) {
+function SubscriptionRow({ sub, index }: { sub: AdminSubscription; index: number }) {
   const navigate = useNavigate()
   const { can } = useAdminPermissions()
   const canUpdate = can(Resource.SUBSCRIPTIONS, Action.UPDATE)
@@ -280,13 +213,45 @@ function SubscriptionRow({ sub, index }: { sub: MockSubscription; index: number 
 export default function SubscriptionsPage() {
   const PAGE_SIZE = 10
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [subscriptions, setSubscriptions] = useState<AdminSubscription[]>([])
   const [search, setSearch] = useState('')
   const [tierFilter, setTierFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
 
-  useEffect(() => { const t = setTimeout(() => setLoading(false), 600); return () => clearTimeout(t) }, [])
+  useEffect(() => {
+    let cancelled = false
+    api.get<{ items: AdminSubscription[] }>('/subscriptions')
+      .then((response) => {
+        if (!cancelled) setSubscriptions(response.items ?? [])
+      })
+      .catch((requestError: unknown) => {
+        if (!cancelled) setError(requestError instanceof Error ? requestError.message : 'Could not load subscriptions')
+      })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [])
 
-  const filtered = mockSubscriptions.filter(s => {
+  const totalSubscribers = subscriptions.length
+  const paidUsers = subscriptions.filter((subscription) => subscription.tier !== SubscriptionTier.FREE).length
+  const freeUsers = totalSubscribers - paidUsers
+  const monthlyRevenue = subscriptions
+    .filter((subscription) => subscription.status === SubscriptionStatus.ACTIVE && subscription.tier !== SubscriptionTier.FREE)
+    .reduce((sum, subscription) => {
+      const plan = SUBSCRIPTION_PLANS[subscription.tier]
+      return sum + (subscription.billingCycle === BillingCycle.MONTHLY ? plan.priceMonthly : plan.priceYearly / 12)
+    }, 0)
+  const revenueByTier = Object.values(SubscriptionTier).filter((tier) => tier !== SubscriptionTier.FREE).map((tier) => {
+    const active = subscriptions.filter((subscription) => subscription.tier === tier && subscription.status === SubscriptionStatus.ACTIVE)
+    const revenue = active.reduce((sum, subscription) => {
+      const plan = SUBSCRIPTION_PLANS[subscription.tier]
+      return sum + (subscription.billingCycle === BillingCycle.MONTHLY ? plan.priceMonthly : plan.priceYearly / 12)
+    }, 0)
+    return { tier, name: SUBSCRIPTION_PLANS[tier].name, count: active.length, revenue, color: tierColors[tier] }
+  })
+  const totalRevForBar = Math.max(1, revenueByTier.reduce((sum, row) => sum + row.revenue, 0))
+
+  const filtered = subscriptions.filter(s => {
     if (tierFilter !== 'all' && s.tier !== tierFilter) return false
     if (statusFilter !== 'all' && s.status !== statusFilter) return false
     if (search) {
@@ -297,6 +262,10 @@ export default function SubscriptionsPage() {
   })
 
   const pagination = usePagination(filtered, PAGE_SIZE)
+
+  if (error) {
+    return <EmptyState title="Could not load subscriptions" description={error} />
+  }
 
   return (
     <Box sx={{ bgcolor: '#0c0c14', minHeight: '100vh', animation: `${fadeIn} 0.3s ease` }}>

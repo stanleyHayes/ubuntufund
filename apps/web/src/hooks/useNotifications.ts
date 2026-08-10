@@ -29,7 +29,7 @@ export function useNotifications(): UseNotificationsResult {
       .get<Notification[] | { items: Notification[] }>('/notifications')
       .then((data) => {
         if (!cancelled) {
-          setNotifications(Array.isArray(data) ? data : (data as any)?.items ?? [])
+          setNotifications(Array.isArray(data) ? data : data.items ?? [])
           setError(null)
         }
       })

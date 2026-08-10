@@ -1,4 +1,3 @@
-import { PaymentMethod } from '@ubuntu-fund/types';
 import type {
   CampaignDonation,
   PaginatedResponse,
@@ -58,7 +57,7 @@ export class ListCampaignDonationsUseCase {
       donorAvatarUrl: donor?.avatarUrl,
       amount: donation.amount.amount,
       currency: donation.amount.currency,
-      paymentMethod: PaymentMethod.WALLET,
+      paymentMethod: donation.paymentMethod,
       message: donation.message,
       isAnonymous: donation.isAnonymous,
       createdAt: donation.createdAt,

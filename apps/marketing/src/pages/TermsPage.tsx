@@ -27,12 +27,12 @@ const sections = [
   {
     title: '5. Donations',
     content:
-      'Donations made through UbuntuFund are voluntary contributions. While we verify campaigns through our trust system, UbuntuFund does not guarantee that funds will be used as described by campaign organizers. Donors acknowledge that contributions are made at their own discretion. Donation receipts will be provided for tax purposes where applicable.',
+      'Donations made through UbuntuFund are voluntary contributions. While campaigns can move through a review workflow, UbuntuFund does not guarantee that funds will be used as described by campaign organizers. Donors acknowledge that contributions are made at their own discretion. Transaction history is not a tax receipt; users should obtain independent tax advice.',
   },
   {
     title: '6. Fees and Payments',
     content:
-      'UbuntuFund charges a platform fee on funds raised through campaigns. Current fee structures are published on our Pricing page. Payment processing fees may apply and are subject to our payment partners\' terms. All fees are deducted before funds are disbursed to campaign organizers. We reserve the right to modify our fee structure with 30 days\' notice.',
+      'Current product configuration and any applicable platform fee are shown on the Pricing page before use. UbuntuFund Wallet is the only active launch method; external payment and payout providers are disabled until verified. Paid subscriptions and self-service external disbursement are not currently available.',
   },
   {
     title: '7. Prohibited Conduct',

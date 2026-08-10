@@ -28,7 +28,7 @@ import PaletteRoundedIcon from '@mui/icons-material/PaletteRounded'
 import { Link as RouterLink } from 'react-router-dom'
 import { formatCurrency, SHAPE, EmptyState } from '@ubuntu-fund/ui'
 import { useAuth } from '@/context/AuthContext'
-import { useCampaigns } from '@/hooks/useCampaigns'
+import { useMyCampaigns } from '@/hooks/useCampaigns'
 import { useMyDonations, type UserDonation } from '@/hooks/useDonations'
 import type { Campaign } from '@ubuntu-fund/types'
 import { keyframes } from '@emotion/react'
@@ -519,12 +519,12 @@ function QuickActions() {
 export function DashboardPage() {
   const { user } = useAuth()
   const displayName = user?.name?.split(' ')[0] ?? 'there'
-  const { campaigns, isLoading: campaignsLoading } = useCampaigns()
-  const { donations, isLoading: donationsLoading } = useMyDonations()
+  const { campaigns } = useMyCampaigns()
+  const { donations } = useMyDonations()
   const recentDonations = donations.slice(0, 5)
 
   return (
-    <Box sx={{ bgcolor: '#F2EFEA', minHeight: '100vh' }}>
+    <Box sx={{ bgcolor: 'background.default', minHeight: '100vh' }}>
       {/* Hero header */}
       <Box
         sx={{

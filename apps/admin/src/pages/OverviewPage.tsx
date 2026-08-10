@@ -6,7 +6,6 @@ import { PieChart } from '@mui/x-charts/PieChart'
 import { LineChart } from '@mui/x-charts/LineChart'
 import TrendingUpIcon from '@mui/icons-material/TrendingUp'
 import TrendingDownIcon from '@mui/icons-material/TrendingDown'
-import PeopleIcon from '@mui/icons-material/People'
 import RocketLaunchIcon from '@mui/icons-material/RocketLaunch'
 import VolunteerActivismIcon from '@mui/icons-material/VolunteerActivism'
 import GavelIcon from '@mui/icons-material/Gavel'
@@ -17,18 +16,10 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime'
 import GroupAddIcon from '@mui/icons-material/GroupAdd'
 import CampaignIcon from '@mui/icons-material/Rocket'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
-import WarningAmberIcon from '@mui/icons-material/WarningAmber'
-import BlockIcon from '@mui/icons-material/Block'
 import InsightsRoundedIcon from '@mui/icons-material/InsightsRounded'
-import { CampaignStatus, VerificationLevel } from '@ubuntu-fund/types'
+import { VerificationLevel } from '@ubuntu-fund/types'
 import { SHAPE } from '@ubuntu-fund/ui'
-import {
-  generateCategoryBreakdown,
-  generateGeographicData,
-  generateFraudMetrics,
-  generateDonationTrend,
-} from '@/hooks/useMockData'
-import { useAdminStats, useAdminUsers, useAdminCampaigns, useAdminDonations } from '@/hooks/useApiData'
+import { useAdminStats, useAdminUsers, useAdminCampaigns, useAdminDonations, useAdminReports } from '@/hooks/useApiData'
 import PageHeader from '@/components/PageHeader'
 import { TONES } from '@/lib/tones'
 
@@ -217,7 +208,7 @@ function FraudMetricCard({ metric, value, change }: { metric: string; value: num
         {metric}
       </Typography>
       <Typography sx={{ fontFamily: '"Outfit", monospace', fontWeight: 900, fontSize: '1.4rem', color: 'text.primary', lineHeight: 1 }}>
-        {metric === 'Fraud Rate' ? `${value}%` : metric === 'Avg Resolution Time' ? `${value}d` : value}
+        {metric.includes('Rate') ? `${value}%` : metric.includes('Time') ? `${value}d` : value}
       </Typography>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5, mt: 0.75 }}>
         {isGood ? (
@@ -226,7 +217,7 @@ function FraudMetricCard({ metric, value, change }: { metric: string; value: num
           <TrendingUpIcon sx={{ fontSize: 12, color: '#C06B58' }} />
         )}
         <Typography sx={{ fontSize: '0.65rem', color: isGood ? '#5E8F72' : '#C06B58', fontWeight: 600 }}>
-          {change > 0 ? '+' : ''}{metric === 'Fraud Rate' ? `${change}%` : metric === 'Avg Resolution Time' ? `${change}d` : change}
+          {change > 0 ? '+' : ''}{metric.includes('Rate') ? `${change}%` : metric.includes('Time') ? `${change}d` : `${change}%`}
         </Typography>
       </Box>
     </Box>
@@ -238,6 +229,7 @@ function FraudMetricCard({ metric, value, change }: { metric: string; value: num
 // ---------------------------------------------------------------------------
 export default function OverviewPage() {
   const { data: stats } = useAdminStats()
+  const { data: reports } = useAdminReports()
   const { data: users } = useAdminUsers()
   const { data: campaigns } = useAdminCampaigns()
   const { data: donations } = useAdminDonations()
@@ -255,12 +247,10 @@ export default function OverviewPage() {
     [donations],
   )
 
-  // TODO: no backend analytics endpoint yet for donation trend, category
-  // breakdown, geographic distribution, or fraud metrics — mock-derived.
-  const donationTrend = useMemo(() => generateDonationTrend(), [])
-  const categoryBreakdown = useMemo(() => generateCategoryBreakdown(), [])
-  const geoData = useMemo(() => generateGeographicData(), [])
-  const fraudMetrics = useMemo(() => generateFraudMetrics(), [])
+  const donationTrend = reports.donationTrend
+  const categoryBreakdown = reports.categoryBreakdown
+  const geoData = reports.geographicData
+  const fraudMetrics = reports.fraudMetrics
 
   // Derived analytics
   const campaignsByStatus = useMemo(() => {
@@ -289,9 +279,6 @@ export default function OverviewPage() {
   )
 
   const donationsByMethod = useMemo(() => {
-    // The real donations feed (PublicDonationDTO) omits paymentMethod, so this
-    // panel is populated only by mock-fallback data. TODO: expose paymentMethod
-    // on the donations read model to drive this from real data.
     const map: Record<string, number> = {}
     donations.forEach((d) => {
       if (!d.paymentMethod) return
@@ -316,16 +303,7 @@ export default function OverviewPage() {
     return buckets
   }, [users])
 
-  const maxGeo = Math.max(...geoData.map((g) => g.donations))
-
-  const statusColors: Record<string, string> = {
-    [CampaignStatus.ACTIVE]: '#5E8F72',
-    [CampaignStatus.PENDING_REVIEW]: '#C7A24A',
-    [CampaignStatus.FUNDED]: '#74909A',
-    [CampaignStatus.EXPIRED]: '#78909C',
-    [CampaignStatus.BLOCKED]: '#C06B58',
-    [CampaignStatus.DRAFT]: TONES.clay.text,
-  }
+  const maxGeo = Math.max(...geoData.map((g) => g.donations), 1)
 
   const chartTextColor = 'rgba(255,255,255,0.45)'
 
@@ -470,10 +448,6 @@ export default function OverviewPage() {
                 '& .MuiBarElement-root': { rx: 2, ry: 8 },
                 '& .MuiChartsAxis-line': { stroke: B },
                 '& .MuiChartsAxis-tick': { stroke: B },
-              }}
-              barLabel={(item) => {
-                const colors = Object.keys(campaignsByStatus).map((k) => statusColors[k] || '#74909A')
-                return undefined
               }}
             />
           </Box>

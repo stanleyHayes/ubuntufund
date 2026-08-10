@@ -56,14 +56,14 @@ export function MyRefundsPage() {
 
   if (isLoading) {
     return (
-      <Box sx={{ bgcolor: '#F2EFEA', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <CircularProgress />
       </Box>
     )
   }
 
   return (
-    <Box sx={{ bgcolor: '#F2EFEA', minHeight: '100vh', py: 5 }}>
+    <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', py: 5 }}>
       <Container maxWidth="lg">
         <Button
           component={RouterLink}

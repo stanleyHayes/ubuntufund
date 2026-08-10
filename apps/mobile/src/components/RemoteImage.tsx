@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { View, Image, StyleSheet } from 'react-native'
 import type { ImageResizeMode, StyleProp, ViewStyle } from 'react-native'
 import { Icon } from 'react-native-paper'
-import { brandColors } from '@/theme'
 
 interface RemoteImageProps {
   uri?: string | null

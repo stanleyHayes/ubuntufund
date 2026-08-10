@@ -7,6 +7,7 @@ import { keyframes } from '@mui/material/styles'
 import { Link } from 'react-router-dom'
 import { formatCurrency, SHAPE } from '@ubuntu-fund/ui'
 import { useSSE } from '@/hooks/useSSE'
+import { api } from '@/lib/api'
 
 interface ActivityEvent {
   type: 'donation' | 'campaign_created' | 'milestone'
@@ -27,6 +28,16 @@ interface ActivityItem {
   amount?: number
   currency?: string
   timestamp: number
+}
+
+interface RecentDonation {
+  id: string
+  campaignId: string
+  campaignTitle?: string
+  donorName?: string
+  amount: number
+  currency: string
+  createdAt: string
 }
 
 const slideIn = keyframes`
@@ -94,12 +105,31 @@ export function GlobalActivityFeed({ compact = false }: { compact?: boolean }) {
   useSSE('global', { onMessage: handleMessage })
 
   useEffect(() => {
+    let cancelled = false
+    api.get<RecentDonation[]>(`/donations?limit=${compact ? 8 : 20}`)
+      .then((donations) => {
+        if (cancelled || !Array.isArray(donations)) return
+        setItems(donations.map((donation) => ({
+          id: donation.id,
+          type: 'donation',
+          userName: donation.donorName || 'Anonymous',
+          campaignTitle: donation.campaignTitle,
+          campaignId: donation.campaignId,
+          amount: donation.amount,
+          currency: donation.currency,
+          timestamp: new Date(donation.createdAt).getTime(),
+        })))
+      })
+      .catch(() => {
+        if (!cancelled) setItems([])
+      })
     return () => {
+      cancelled = true
       if (throttleRef.current) {
         clearTimeout(throttleRef.current)
       }
     }
-  }, [])
+  }, [compact])
 
   return (
     <Box

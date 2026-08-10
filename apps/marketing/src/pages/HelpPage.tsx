@@ -66,9 +66,9 @@ const FAQ_CATEGORIES_STATIC: FaqCategory[] = [
     icon: <VolunteerActivismRoundedIcon />,
     label: 'Donations',
     questions: [
-      { q: 'How do I make a donation?', a: 'Browse campaigns and click "Donate." Enter the amount, choose your payment method, and confirm. You\'ll receive a confirmation email with your receipt. You can donate anonymously if you prefer.' },
-      { q: 'Is there a minimum or maximum donation?', a: 'Minimum is GH₵ 5. No maximum, though large donations may require additional verification. Enterprise organizations can set custom minimums for their campaigns.' },
-      { q: 'Can I get a refund on my donation?', a: 'Refunds are available within 14 days if the campaign hasn\'t withdrawn the funds. For campaigns that are suspended or found fraudulent, full refunds are processed automatically. Visit your donation history to request a refund.' },
+      { q: 'How do I make a donation?', a: 'Browse campaigns and choose Donate. During launch readiness, confirmed contributions use your UbuntuFund Wallet balance. External payment methods remain disabled until their provider integrations are verified.' },
+      { q: 'Is there a minimum or maximum donation?', a: 'The amount must be positive and cannot exceed your available UbuntuFund Wallet balance. Campaign and account limits may also apply.' },
+      { q: 'Can I get a refund on my donation?', a: 'You can submit a refund request from your donation history. Requests are recorded for review, but approval and wallet settlement are not automatic and no processing time is guaranteed.' },
     ],
   },
   {
@@ -76,9 +76,9 @@ const FAQ_CATEGORIES_STATIC: FaqCategory[] = [
     icon: <PaymentsRoundedIcon />,
     label: 'Payments',
     questions: [
-      { q: 'What payment methods are accepted?', a: 'MTN Mobile Money (MoMo), Telecel Cash, AT Money, Visa & Mastercard cards, and bank transfer. Mobile money is the fastest way to give and receive funds in Ghana.' },
-      { q: 'How do I withdraw my campaign funds?', a: 'Go to your dashboard and click "Withdraw." Choose mobile money (processed within 24 hours) or bank transfer to any Ghanaian bank (2-3 business days). Platform fees are automatically deducted.' },
-      { q: 'What are the platform fees?', a: 'Fees depend on your subscription tier. Free accounts pay a 5% platform fee. Starter (3.5%), Pro (2%), and Enterprise (1%). All tiers incur standard payment processing fees (2.9% + GH₵ 1). See our pricing page for details.' },
+      { q: 'What payment methods are accepted?', a: 'UbuntuFund Wallet is the only active method during launch readiness. Mobile money, card, and bank integrations will be listed only after their provider adapters are verified.' },
+      { q: 'How do I withdraw my campaign funds?', a: 'Self-service withdrawals are not available yet. Contact support for operational assistance; do not treat a displayed wallet balance as an external payout guarantee.' },
+      { q: 'What are the platform fees?', a: 'The Free plan currently defines a 5% platform fee in the product configuration. External payment processing fees are not charged while those payment methods remain disabled.' },
     ],
   },
   {
@@ -97,7 +97,7 @@ const FAQ_CATEGORIES_STATIC: FaqCategory[] = [
     label: 'Organizations',
     questions: [
       { q: 'How do I register as an organization?', a: 'During registration, select "Organization" as your account type. Provide your organization name, registration number, and type (NGO, hospital, school, etc.). Complete verification with official documents for priority trust status.' },
-      { q: 'What features are available for organizations?', a: 'Organizations get: branded campaign pages, team management, advanced analytics, automated tax receipts, recurring donation support, API access, and dedicated account management. See our "For Organizations" page for tier details.' },
+      { q: 'What features are available for organizations?', a: 'Organizations have a dedicated workspace, member collaboration, campaign management, updates, comments, donation history, and review status across web and mobile. Paid billing and external integrations are not available yet.' },
     ],
   },
 ]
@@ -119,14 +119,14 @@ const FAQ_FALLBACK: { items: FaqItem[] } = {
 const QUICK_LINKS = [
   { icon: <MenuBookRoundedIcon />, label: 'Getting started guide', description: 'Step-by-step walkthrough for new users', target: 'getting-started' },
   { icon: <CampaignRoundedIcon />, label: 'Campaign best practices', description: 'Tips to maximize your fundraising', target: 'campaigns' },
-  { icon: <PaymentsRoundedIcon />, label: 'Payment methods', description: 'MoMo, cards, and bank transfer in Ghana', target: 'payments' },
+  { icon: <PaymentsRoundedIcon />, label: 'Payment readiness', description: 'Current wallet flow and provider status', target: 'payments' },
   { icon: <ShieldRoundedIcon />, label: 'Trust & verification', description: 'How our trust system works', target: 'trust' },
 ]
 
 const CONTACT_OPTIONS = [
   { icon: <EmailRoundedIcon />, title: 'Email support', desc: 'support@ubuntufund.com', detail: 'Response within 24 hours', action: 'Send email', href: 'mailto:support@ubuntufund.com' },
-  { icon: <ChatBubbleOutlineRoundedIcon />, title: 'Live chat', desc: 'Chat with our team in real time', detail: 'Mon-Sat, 8am-8pm GMT', action: 'Start chat', href: '/contact' },
-  { icon: <GroupsRoundedIcon />, title: 'Community forum', desc: 'Get help from other UbuntuFund users', detail: '5,000+ active members', action: 'Visit forum', href: '/contact' },
+  { icon: <ChatBubbleOutlineRoundedIcon />, title: 'Contact form', desc: 'Send the team a detailed support request', detail: 'Available from the contact page', action: 'Contact support', href: '/contact' },
+  { icon: <GroupsRoundedIcon />, title: 'Organization help', desc: 'Get help with verification and team access', detail: 'Handled by the support team', action: 'Contact support', href: '/contact' },
 ]
 
 // ─── Component ───────────────────────────────────────────────────────────────

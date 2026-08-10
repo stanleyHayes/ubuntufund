@@ -101,7 +101,7 @@ export class CampaignEntity {
     }
   }
 
-  block(reason?: string): void {
+  block(_reason?: string): void {
     this.props.status = 'blocked' as CampaignStatus;
     this.props.updatedAt = new Date();
   }

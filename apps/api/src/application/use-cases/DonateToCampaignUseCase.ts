@@ -1,4 +1,4 @@
-import { TransactionType, type CreateDonationInput } from '@ubuntu-fund/types';
+import { PaymentMethod, TransactionType, type CreateDonationInput } from '@ubuntu-fund/types';
 import { DonationEntity } from '../../domain/entities/Donation.js';
 import { Money } from '../../domain/value-objects/Money.js';
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js';
@@ -23,6 +23,9 @@ export class DonateToCampaignUseCase {
     }
     if (!campaign.canReceiveDonation()) {
       throw new AppError('Campaign is not accepting donations', 400);
+    }
+    if (input.paymentMethod !== PaymentMethod.WALLET) {
+      throw new AppError('This payment method is not available for live transactions yet', 400);
     }
 
     const donationAmount = new Money(input.amount, input.currency);
@@ -60,6 +63,7 @@ export class DonateToCampaignUseCase {
       campaignId: input.campaignId,
       donorId,
       amount: donationAmount,
+      paymentMethod: input.paymentMethod,
       message: input.message,
       isAnonymous: input.isAnonymous,
       createdAt: new Date(),

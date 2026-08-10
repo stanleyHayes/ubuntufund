@@ -25,6 +25,9 @@ export class UpgradeSubscriptionUseCase {
   constructor(private readonly subscriptionRepo: SubscriptionRepositoryPort) {}
 
   async execute(input: UpgradeSubscriptionInput, userId: string): Promise<Subscription> {
+    if (input.tier !== SubscriptionTier.FREE) {
+      throw new AppError('Paid upgrades require a verified billing checkout and are not available yet', 409);
+    }
     const existing = await this.subscriptionRepo.findByUserId(userId);
     if (!existing) {
       throw new AppError('Subscription not found', 404);

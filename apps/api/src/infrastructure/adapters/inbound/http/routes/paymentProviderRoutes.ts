@@ -2,10 +2,6 @@ import { Router, type RequestHandler } from 'express';
 import type { PaymentProviderController } from '../controllers/PaymentProviderController.js';
 import type { createAuthMiddleware } from '../../middleware/authMiddleware.js';
 
-/**
- * `requireAdmin` is accepted as a parameter (not implemented here) — see
- * ../../middleware/requireRole.ts for the actual middleware.
- */
 export function createPaymentProviderRoutes(
   controller: PaymentProviderController,
   authMiddleware: ReturnType<typeof createAuthMiddleware>,

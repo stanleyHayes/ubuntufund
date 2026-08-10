@@ -1,16 +1,40 @@
 import { Router } from 'express';
 import type { RequestHandler } from 'express';
 import { z } from 'zod';
+import { OrganizationType, UserRole } from '@ubuntu-fund/types';
 import type { AuthController } from '../controllers/AuthController.js';
 import { validate } from '../../middleware/validate.js';
 import { authRateLimiter } from '../../middleware/rateLimiter.js';
 
-const registerSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8).max(128),
-  name: z.string().min(2).max(100),
-  country: z.string().min(2).max(100).optional(),
-});
+const registerSchema = z
+  .object({
+    email: z.string().email(),
+    password: z.string().min(8).max(128),
+    name: z.string().min(2).max(100),
+    country: z.string().min(2).max(100).optional(),
+    role: z.enum([UserRole.USER, UserRole.ORGANIZATION]).optional(),
+    organizationName: z.string().min(2).max(160).optional(),
+    organizationType: z.nativeEnum(OrganizationType).optional(),
+    registrationNumber: z.string().max(100).optional(),
+    website: z.string().url().max(500).optional(),
+  })
+  .superRefine((value, context) => {
+    if (value.role !== UserRole.ORGANIZATION) return;
+    if (!value.organizationName) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['organizationName'],
+        message: 'Organization name is required',
+      });
+    }
+    if (!value.organizationType) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['organizationType'],
+        message: 'Organization type is required',
+      });
+    }
+  });
 
 const loginSchema = z.object({
   email: z.string().email(),

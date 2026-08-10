@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, Link as RouterLink, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
@@ -14,7 +14,7 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogActions from '@mui/material/DialogActions'
 import Snackbar from '@mui/material/Snackbar'
 import FlagRoundedIcon from '@mui/icons-material/FlagRounded'
-import { CurrencyDisplay, PaymentMethods, ErrorState, ItemNotFound, TrustBadge, SHAPE, type PaymentMethodData, AiWritingBar } from '@ubuntu-fund/ui'
+import { CurrencyDisplay, PaymentMethods, ErrorState, ItemNotFound, TrustBadge, SHAPE, type PaymentMethodData } from '@ubuntu-fund/ui'
 import Tabs from '@mui/material/Tabs'
 import Tab from '@mui/material/Tab'
 import Avatar from '@mui/material/Avatar'
@@ -25,10 +25,7 @@ import {
   CampaignStatus,
   CampaignCategory,
   CampaignPriority,
-  CollaboratorRole,
-  CollaborationStatus,
   type CampaignCollaborator,
-  AiWritingAction,
 } from '@ubuntu-fund/types'
 import { useCampaign } from '@/hooks/useCampaigns'
 import { ReportCampaignDialog } from '@/components/campaigns/ReportCampaignDialog'
@@ -37,6 +34,7 @@ import { ShareCampaignButton } from '@/components/campaigns/ShareCampaignButton'
 import { CampaignQRCode } from '@/components/campaigns/CampaignQRCode'
 import { EmbedCampaign } from '@/components/campaigns/EmbedCampaign'
 import { CampaignUpdates } from '@/components/campaigns/CampaignUpdates'
+import { CampaignComments } from '@/components/campaigns/CampaignComments'
 import { CreateUpdateDialog } from '@/components/campaigns/CreateUpdateDialog'
 import { useCreateCampaignUpdate } from '@/hooks/useCampaignUpdates'
 import { LiveCampaignProgress } from '@/components/campaigns/LiveCampaignProgress'
@@ -357,19 +355,6 @@ export function CampaignDetailPage() {
           )}
 
           <Box>
-            <Box sx={{ mb: 1 }}>
-              <AiWritingBar
-                value={donateMessage}
-                onChange={setDonateMessage}
-                inputLabel="Donation Message"
-                allowedActions={[
-                  AiWritingAction.FORMALIZE,
-                  AiWritingAction.CASUAL,
-                  AiWritingAction.FIX_GRAMMAR,
-                  AiWritingAction.IMPROVE_CLARITY,
-                ]}
-              />
-            </Box>
             <TextField
               label="Message (optional)"
               value={donateMessage}
@@ -394,6 +379,7 @@ export function CampaignDetailPage() {
                 await api.post(`/campaigns/${id}/donate`, {
                   amount: Number(donateAmount),
                   currency: campaign.currency,
+                  paymentMethod: selectedProvider?.slug,
                   message: donateMessage || undefined,
                   isAnonymous: false,
                 })
@@ -427,21 +413,6 @@ export function CampaignDetailPage() {
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '16px !important' }}>
           <TextField label="Title" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} fullWidth />
           <Box>
-            <Box sx={{ mb: 1 }}>
-              <AiWritingBar
-                value={editDescription}
-                onChange={setEditDescription}
-                inputLabel="Campaign Description"
-                allowedActions={[
-                  AiWritingAction.FORMALIZE,
-                  AiWritingAction.SUMMARIZE,
-                  AiWritingAction.EXPAND,
-                  AiWritingAction.FIX_GRAMMAR,
-                  AiWritingAction.IMPROVE_CLARITY,
-                  AiWritingAction.GENERATE_TITLE,
-                ]}
-              />
-            </Box>
             <TextField label="Description" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} multiline rows={3} fullWidth />
           </Box>
           <TextField label="Goal Amount" type="number" value={editGoalAmount} onChange={(e) => setEditGoalAmount(e.target.value)} fullWidth />
@@ -555,12 +526,12 @@ export function CampaignDetailPage() {
           />
 
           {/* Accepted Payment Methods */}
-          <Box sx={{ mb: 4, p: 3, bgcolor: 'grey.50', borderRadius: SHAPE.card }}>
+          <Box sx={{ mb: 4, p: 3, bgcolor: 'action.hover', borderRadius: SHAPE.card }}>
             <PaymentMethods compact title="Accepted Payment Methods" />
           </Box>
 
           {/* Creator Info */}
-          <Box sx={{ p: 3, bgcolor: 'grey.50', borderRadius: SHAPE.card }}>
+          <Box sx={{ p: 3, bgcolor: 'action.hover', borderRadius: SHAPE.card }}>
             <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 2 }}>
               Campaign Creator
             </Typography>
@@ -604,7 +575,7 @@ export function CampaignDetailPage() {
 
           {/* Share & Embed */}
           <Box sx={{ mt: 4, display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 4 }}>
-            <Box sx={{ flex: 1, p: 3, bgcolor: 'grey.50', borderRadius: SHAPE.card }}>
+            <Box sx={{ flex: 1, p: 3, bgcolor: 'action.hover', borderRadius: SHAPE.card }}>
               <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 2 }}>
                 Campaign QR Code
               </Typography>
@@ -613,7 +584,7 @@ export function CampaignDetailPage() {
                 title="Scan to view campaign"
               />
             </Box>
-            <Box sx={{ flex: 1, p: 3, bgcolor: 'grey.50', borderRadius: SHAPE.card }}>
+            <Box sx={{ flex: 1, p: 3, bgcolor: 'action.hover', borderRadius: SHAPE.card }}>
               <EmbedCampaign campaignId={campaign.id} title={campaign.title} />
             </Box>
           </Box>
@@ -665,7 +636,7 @@ export function CampaignDetailPage() {
                     gap: 2,
                     p: 2,
                     mb: 1,
-                    bgcolor: 'grey.50',
+                    bgcolor: 'action.hover',
                     borderRadius: SHAPE.card,
                   }}
                 >
@@ -698,11 +669,7 @@ export function CampaignDetailPage() {
       )}
 
       {activeTab === 3 && (
-        <Box sx={{ py: 4, textAlign: 'center' }}>
-          <Typography variant="body1" color="text.secondary">
-            Comments coming soon.
-          </Typography>
-        </Box>
+        <CampaignComments campaignId={campaign.id} creatorId={campaign.creatorId} />
       )}
 
       {/* Report Campaign */}

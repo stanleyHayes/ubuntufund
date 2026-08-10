@@ -13,7 +13,6 @@ import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined'
 import MailOutlineRoundedIcon from '@mui/icons-material/MailOutlineRounded'
 import {
   CollaboratorRole,
-  CollaborationStatus,
   type CampaignCollaborator,
 } from '@ubuntu-fund/types'
 import { SHAPE } from '@ubuntu-fund/ui'
@@ -35,7 +34,7 @@ export function CollaborationInvitationsPage() {
   const [invitations, setInvitations] = useState<CampaignCollaborator[]>([])
   const [campaignNames, setCampaignNames] = useState<Record<string, string>>({})
   const [snackMessage, setSnackMessage] = useState('')
-  const [isLoading, setIsLoading] = useState(true)
+  const [, setIsLoading] = useState(true)
 
   useEffect(() => {
     api.get<CampaignCollaborator[]>('/collaborations/invitations')
@@ -142,7 +141,7 @@ export function CollaborationInvitationsPage() {
                     sx={{
                       mb: 2,
                       p: 2,
-                      bgcolor: 'grey.50',
+                      bgcolor: 'action.hover',
                       borderRadius: SHAPE.sm,
                       fontStyle: 'italic',
                       color: 'text.secondary',

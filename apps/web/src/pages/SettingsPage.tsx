@@ -24,11 +24,12 @@ import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded'
 import { useNavigate } from 'react-router-dom'
 import { SHAPE } from '@ubuntu-fund/ui'
 import { useAuth } from '@/context/AuthContext'
+import { useColorMode } from '@/context/ColorModeContext'
 import { api } from '@/lib/api'
 
 const FOREST = '#2E3D2F'
-const INK = '#1A2E22'
-const INK_SECONDARY = '#4A5A50'
+const INK = 'text.primary'
+const INK_SECONDARY = 'text.secondary'
 const GOLD_DARK = '#A07E33'
 const CLAY = '#A5432F'
 const HAIRLINE = '#E7E3D8'
@@ -133,6 +134,7 @@ function ToggleRow({
 
 export function SettingsPage() {
   const { user, logout } = useAuth()
+  const { darkMode, setDarkMode } = useColorMode()
   const navigate = useNavigate()
 
   // Notification preferences
@@ -146,7 +148,6 @@ export function SettingsPage() {
   // Account settings — Ghana launch: currency is fixed to GHS
   const currency = 'GHS'
   const [language, setLanguage] = useState('English')
-  const [darkMode, setDarkMode] = useState(false)
 
   // Privacy settings
   const [anonymousDonations, setAnonymousDonations] = useState(false)
@@ -205,7 +206,7 @@ export function SettingsPage() {
         if (!cancelled) setLoading(false)
       })
     return () => { cancelled = true }
-  }, [])
+  }, [setDarkMode])
 
   const persistSettings = useCallback((overrides: Record<string, unknown> = {}) => {
     if (saveTimer.current) clearTimeout(saveTimer.current)
@@ -243,16 +244,26 @@ export function SettingsPage() {
     }, 400)
   }, [emailNotif, smsNotif, pushNotif, donationReceipts, campaignUpdates, marketingEmails, currency, language, darkMode, anonymousDonations, showLeaderboards, publicProfile])
 
-  function handleDeleteAccount() {
-    setDeleteOpen(false)
-    logout()
-    navigate('/')
+  async function handleDeleteAccount() {
+    setSaving(true)
+    try {
+      await api.delete('/profile')
+      setDeleteOpen(false)
+      logout()
+      navigate('/')
+    } catch (err) {
+      setSnackMessage(err instanceof Error ? err.message : 'Failed to delete account')
+      setSnackSeverity('error')
+      setSnack(true)
+    } finally {
+      setSaving(false)
+    }
   }
 
   const initials = (user?.name ?? 'U').split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase()
 
   return (
-    <Box sx={{ bgcolor: '#F2EFEA', minHeight: '100vh', py: { xs: 4, md: 6 } }}>
+    <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', py: { xs: 4, md: 6 } }}>
       <Container maxWidth="lg">
         {/* Header */}
         <Box sx={{ mb: 4 }}>
@@ -377,7 +388,7 @@ export function SettingsPage() {
                 </TextField>
               </Box>
               <Box sx={{ mt: 1 }}>
-                <ToggleRow label="Dark mode" description="Switch to dark theme (coming soon)" checked={darkMode} onChange={(v) => { setDarkMode(v); persistSettings({ darkMode: v }) }} />
+                <ToggleRow label="Dark mode" description="Use Ubuntu Fund's low-light color theme" checked={darkMode} onChange={(v) => { setDarkMode(v); persistSettings({ darkMode: v }) }} />
               </Box>
             </SettingsSection>
 
@@ -416,8 +427,8 @@ export function SettingsPage() {
           <DialogTitle sx={{ fontWeight: 700, color: 'error.main' }}>Delete account</DialogTitle>
           <DialogContent>
             <Typography>
-              Are you sure you want to permanently delete your account? This action cannot be undone.
-              All your campaigns, donations, and data will be permanently removed.
+              This immediately closes your account and signs you out. Your profile will no longer be available.
+              Financial and safety records may be retained where required by law, fraud prevention, or an active dispute.
             </Typography>
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 2 }}>

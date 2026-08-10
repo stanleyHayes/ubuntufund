@@ -20,6 +20,7 @@ export interface OrganizationUserDocument extends Document {
   organizationType?: OrganizationType;
   registrationNumber?: string;
   website?: string;
+  deletedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -50,6 +51,7 @@ const organizationUserSchema = new Schema<OrganizationUserDocument>(
     },
     registrationNumber: { type: String },
     website: { type: String },
+    deletedAt: { type: Date, index: true },
   },
   {
     timestamps: true,

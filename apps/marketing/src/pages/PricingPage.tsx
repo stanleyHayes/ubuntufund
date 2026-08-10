@@ -9,6 +9,7 @@ import Chip from '@mui/material/Chip'
 import Accordion from '@mui/material/Accordion'
 import AccordionSummary from '@mui/material/AccordionSummary'
 import AccordionDetails from '@mui/material/AccordionDetails'
+import Alert from '@mui/material/Alert'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import { SHAPE } from '@ubuntu-fund/ui'
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded'
@@ -93,39 +94,39 @@ function formatCellValue(value: unknown, format?: string): React.ReactNode {
 
 const CTA_LABELS: Record<SubscriptionTier, string> = {
   [SubscriptionTier.FREE]: 'Get Started Free',
-  [SubscriptionTier.STARTER]: 'Start Starter',
-  [SubscriptionTier.PRO]: 'Go Pro',
-  [SubscriptionTier.ENTERPRISE]: 'Contact Sales',
+  [SubscriptionTier.STARTER]: 'Billing unavailable',
+  [SubscriptionTier.PRO]: 'Billing unavailable',
+  [SubscriptionTier.ENTERPRISE]: 'Contact support',
 }
 
 const faqs = [
   {
     question: 'When are platform fees charged?',
-    answer: 'Platform fees are deducted automatically when funds are disbursed to campaign organizers. You only pay fees on funds you successfully raise -- there are no upfront costs.',
+    answer: 'The Free plan currently defines a platform fee in product configuration. Self-service external disbursement is not available during launch readiness.',
   },
   {
     question: 'What payment methods are supported?',
-    answer: 'We support MTN Mobile Money (MoMo), Telecel Cash, AT Money, Visa & Mastercard cards, and bank transfer. All donations and payouts are in Ghanaian cedis (GHS).',
+    answer: 'UbuntuFund Wallet is the only active launch method. External payment and payout providers remain disabled until their adapters and compliance checks are complete.',
   },
   {
     question: 'Can I switch plans at any time?',
-    answer: 'Yes, you can upgrade or downgrade your plan at any time. When upgrading, you will be charged the prorated amount for the remainder of your billing period. Downgrades take effect at the start of the next billing cycle.',
+    answer: 'Paid plan activation is disabled until a verified billing integration is available. Existing Free accounts can continue without entering payment details.',
   },
   {
     question: 'Is there a free trial?',
-    answer: 'Yes! The Free plan is completely free forever with no credit card required. Paid plans also include a 14-day free trial so you can try all features before committing.',
+    answer: 'The Free plan does not require a card. Paid trials are not offered while paid billing is unavailable.',
   },
   {
     question: 'How does yearly billing work?',
-    answer: 'Yearly billing is charged once per year at a discounted rate. You save up to 17% compared to monthly billing. You can switch between monthly and yearly at any time.',
+    answer: 'Yearly prices are planning references only. UbuntuFund does not currently collect monthly or yearly subscription payments.',
   },
   {
     question: 'What happens if I cancel my subscription?',
-    answer: 'Your subscription remains active until the end of your current billing period. After that, you are moved to the Free plan. All your campaigns and data are preserved.',
+    answer: 'There is no paid billing cycle to cancel during launch readiness. Account deletion is separate and uses soft deletion to preserve required operational records.',
   },
   {
     question: 'Are there any hidden fees?',
-    answer: 'No. We believe in full transparency. The only fees are the platform fee for your plan tier and standard payment processing fees -- all clearly listed on this page.',
+    answer: 'No external processing fees are charged while external methods are disabled. Any future fee schedule must be shown before a payment is confirmed.',
   },
 ]
 
@@ -141,8 +142,12 @@ function PricingPage() {
             Simple, Transparent Pricing
           </Typography>
           <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 400, maxWidth: 600, mx: 'auto', mb: 4 }}>
-            Choose the plan that fits your mission. Start free, upgrade as you grow.
+            Start with the Free plan. Paid plan checkout remains unavailable until verified billing is connected.
           </Typography>
+
+          <Alert severity="info" sx={{ maxWidth: 760, mx: 'auto', mb: 4, textAlign: 'left' }}>
+            Paid tiers and prices are previews only. No paid entitlement can be activated and no subscription payment is collected today.
+          </Alert>
 
           {/* Monthly/Yearly toggle */}
           <Box sx={{ display: 'inline-flex', borderRadius: SHAPE.sm, border: '1px solid rgba(0,0,0,0.1)', overflow: 'hidden' }}>
@@ -168,7 +173,7 @@ function PricingPage() {
                   {cycle === 'monthly' ? 'Monthly' : 'Yearly'}
                   {cycle === 'yearly' && (
                     <Box component="span" sx={{ ml: 1, color: isActive ? '#A8B5A0' : '#2E3D2F', fontSize: '0.72rem', fontWeight: 800 }}>
-                      Save 17%
+                      Price preview
                     </Box>
                   )}
                 </Box>
@@ -280,7 +285,8 @@ function PricingPage() {
                     variant={isPro ? 'contained' : 'outlined'}
                     fullWidth
                     size="large"
-                    href={isEnterprise ? 'mailto:sales@ubuntufund.com' : WEB_APP_REGISTER}
+                    href={tier === SubscriptionTier.FREE ? WEB_APP_REGISTER : isEnterprise ? '/contact' : undefined}
+                    disabled={tier !== SubscriptionTier.FREE && !isEnterprise}
                     sx={{
                       borderRadius: SHAPE.sm,
                       fontWeight: 700,

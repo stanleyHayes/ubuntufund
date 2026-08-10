@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import type { ReactNode } from 'react'
-import { Resource, Action, perm, hasPermission, getAllPermissions, type PermissionString } from '@ubuntu-fund/types'
+import { Resource, Action, hasPermission, type PermissionString } from '@ubuntu-fund/types'
+import { api } from '@/lib/api'
 
 interface AdminPermissionContextValue {
   permissions: PermissionString[]
@@ -26,35 +27,25 @@ export function AdminPermissionProvider({ children }: { children: ReactNode }) {
       const token = localStorage.getItem('uf_admin_token')
 
       if (!token) {
-        // No token — still grant super admin for demo mode
         if (!cancelled) {
-          setPermissions(getAllPermissions())
-          setRoleName('Super Admin')
+          setPermissions([])
+          setRoleName('')
           setIsLoading(false)
         }
         return
       }
 
       try {
-        const res = await fetch('/api/v1/rbac/me', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-
-        if (!res.ok) throw new Error('Failed to fetch permissions')
-
-        const data = await res.json()
+        const data = await api.get<{ permissions: PermissionString[]; roleName: string }>('/rbac/me')
 
         if (!cancelled) {
           setPermissions(data.permissions)
           setRoleName(data.roleName)
         }
       } catch {
-        // Fall back to super admin permissions for demo mode
         if (!cancelled) {
-          setPermissions(getAllPermissions())
-          setRoleName('Super Admin')
+          setPermissions([])
+          setRoleName('')
         }
       } finally {
         if (!cancelled) {

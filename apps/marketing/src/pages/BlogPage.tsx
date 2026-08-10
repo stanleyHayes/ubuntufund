@@ -29,14 +29,14 @@ export interface BlogPost {
 export const blogPosts: BlogPost[] = [
   {
     slug: 'mobile-money-revolutionizing-giving',
-    title: 'How Mobile Money Is Revolutionizing Charitable Giving in Ghana',
+    title: 'Preparing Payment Integrations for Responsible Giving',
     date: 'March 15, 2026',
     category: 'Trends',
     excerpt:
-      'MTN MoMo transformed how millions of Ghanaians send and receive money. Now the same rails are making it easier than ever to support community causes and charitable campaigns across the country.',
+      'A practical look at provider verification, transaction integrity, refunds, and the release checks required before an external payment method should go live.',
     image: 'https://images.unsplash.com/photo-1556745757-8d76bdb6984b?w=800&h=500&fit=crop',
     readTime: 7,
-    author: { name: 'Kojo Antwi', avatar: 'KA', role: 'Head of Partnerships' },
+    author: { name: 'UbuntuFund Editorial', avatar: 'UF', role: 'Launch guide' },
     featured: true,
   },
   {
@@ -48,18 +48,18 @@ export const blogPosts: BlogPost[] = [
       'Transparency is the foundation of successful crowdfunding. Learn how UbuntuFund developed its multi-layer verification system to ensure donors can give with confidence.',
     image: 'https://images.unsplash.com/photo-1521791136064-7986c2920216?w=600&h=400&fit=crop',
     readTime: 5,
-    author: { name: 'Adwoa Agyeman', avatar: 'AA', role: 'CTO' },
+    author: { name: 'UbuntuFund Editorial', avatar: 'UF', role: 'Trust guide' },
   },
   {
     slug: '5-campaigns-that-changed-communities',
-    title: '5 Campaigns That Changed Communities: Stories from 2025',
+    title: 'Five Ways to Document Community Campaign Impact',
     date: 'February 18, 2026',
     category: 'Impact',
     excerpt:
-      'From a solar-powered classroom in the Upper East Region to a women\'s shea cooperative near Tamale, these five campaigns demonstrate the transformative power of collective giving.',
+      'A field guide to collecting evidence, publishing useful updates, recording milestones, and giving supporters a clear view of campaign progress.',
     image: 'https://images.unsplash.com/photo-1509099836639-18ba1795216d?w=600&h=400&fit=crop',
     readTime: 9,
-    author: { name: 'Abena Sarpong', avatar: 'AS', role: 'Impact Lead' },
+    author: { name: 'UbuntuFund Editorial', avatar: 'UF', role: 'Campaign guide' },
   },
   {
     slug: 'rise-of-diaspora-giving',
@@ -70,7 +70,7 @@ export const blogPosts: BlogPost[] = [
       'Ghanaians abroad send home billions of cedis in remittances every year. A growing share is being channeled through crowdfunding platforms to support education, healthcare, and infrastructure.',
     image: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=600&h=400&fit=crop',
     readTime: 6,
-    author: { name: 'Yaw Darko', avatar: 'YD', role: 'Community Manager' },
+    author: { name: 'UbuntuFund Editorial', avatar: 'UF', role: 'Community guide' },
   },
   {
     slug: 'crowdfunding-for-education',
@@ -78,10 +78,10 @@ export const blogPosts: BlogPost[] = [
     date: 'January 22, 2026',
     category: 'Education',
     excerpt:
-      'Education campaigns are among the most successful on UbuntuFund, with an average success rate of 78%. Discover why education resonates so strongly with donors.',
+      'Education campaigns need precise goals, credible budgets, supporting evidence, and consistent updates. This guide explains how to prepare each one.',
     image: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=600&h=400&fit=crop',
     readTime: 8,
-    author: { name: 'Ama Mensah', avatar: 'AM', role: 'Education Specialist' },
+    author: { name: 'UbuntuFund Editorial', avatar: 'UF', role: 'Education guide' },
   },
   {
     slug: 'guide-successful-health-campaign',
@@ -92,7 +92,7 @@ export const blogPosts: BlogPost[] = [
       'Health-related campaigns require special attention to detail, transparency, and urgency. This comprehensive guide covers everything from crafting your story to managing donor updates.',
     image: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=600&h=400&fit=crop',
     readTime: 12,
-    author: { name: 'Dr. Kofi Owusu', avatar: 'KO', role: 'Health Advisor' },
+    author: { name: 'UbuntuFund Editorial', avatar: 'UF', role: 'Campaign guide' },
   },
 ]
 

@@ -18,7 +18,6 @@ import AccordionDetails from '@mui/material/AccordionDetails'
 import LocationOnRoundedIcon from '@mui/icons-material/LocationOnRounded'
 import EmailRoundedIcon from '@mui/icons-material/EmailRounded'
 import PhoneRoundedIcon from '@mui/icons-material/PhoneRounded'
-import AccessTimeRoundedIcon from '@mui/icons-material/AccessTimeRounded'
 import SendRoundedIcon from '@mui/icons-material/SendRounded'
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded'
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
@@ -41,15 +40,15 @@ import { useContent } from '../hooks/useContent'
 // and stay in code).
 const CONTACT_FALLBACK = {
   email: 'hello@ubuntufund.com',
-  phone: '+233 30 123 4567',
-  address: '14 Independence Avenue, Accra, Ghana',
-  hours: 'Mon-Fri, 9am-5pm GMT',
+  phone: '',
+  address: '',
+  hours: 'Support availability is confirmed by email',
   socials: {
-    facebook: 'https://facebook.com/ubuntufund',
-    x: 'https://x.com/ubuntufund',
-    instagram: 'https://instagram.com/ubuntufund',
-    linkedin: 'https://linkedin.com/company/ubuntufund',
-    youtube: 'https://youtube.com/@ubuntufund',
+    facebook: '',
+    x: '',
+    instagram: '',
+    linkedin: '',
+    youtube: '',
   },
 }
 
@@ -61,25 +60,20 @@ const INQUIRY_TYPES = [
 ]
 
 const FAQ = [
-  { q: 'How long does it take to get a response?', a: 'We typically respond within 24 hours on business days. For urgent matters, please call our phone line or use the live chat during business hours.' },
-  { q: 'I have an issue with my campaign. Who should I contact?', a: 'For campaign-related issues, select "Campaign support" as your inquiry type. Our campaign team will prioritize your request and respond within 12 hours.' },
+  { q: 'How long does it take to get a response?', a: 'Response times vary during launch readiness. Submit the form with enough detail for the team to route and investigate your request.' },
+  { q: 'I have an issue with my campaign. Who should I contact?', a: 'Select "Campaign support" as your inquiry type and include the campaign link plus a concise description. Do not send passwords or access tokens.' },
   { q: 'How can I partner with UbuntuFund?', a: 'We welcome partnerships with NGOs, corporations, and government bodies. Select "Partnership" as your inquiry type, or email partnerships@ubuntufund.com directly.' },
-  { q: 'Where are your offices located?', a: 'Our headquarters is on Independence Avenue in Accra. We also have regional offices in Kumasi, Tamale, and Takoradi, so campaign organizers anywhere in Ghana can reach us in person.' },
-  { q: 'Is there a dedicated number for reporting fraud?', a: 'Yes. For fraud or suspicious activity, email trust@ubuntufund.com or call our dedicated trust line at +233 30 123 4599 (24/7).' },
+  { q: 'Where are your offices located?', a: 'No public walk-in office is listed during launch readiness. Use the contact form before attempting an in-person visit.' },
+  { q: 'How do I report suspected fraud?', a: 'Use the campaign report action or email trust@ubuntufund.com with the campaign link and relevant evidence. Do not publish sensitive identity documents.' },
 ]
 
-const OFFICES = [
-  { city: 'Accra', country: 'Greater Accra Region', hq: true },
-  { city: 'Kumasi', country: 'Ashanti Region', hq: false },
-  { city: 'Tamale', country: 'Northern Region', hq: false },
-  { city: 'Takoradi', country: 'Western Region', hq: false },
-]
+const OFFICES = [{ city: 'Online support', country: 'Serving Ghana during launch readiness', hq: false }]
 
 const RESPONSE_TIMES = [
-  { label: 'General inquiries', time: '< 24 hours' },
-  { label: 'Campaign issues', time: '< 12 hours' },
-  { label: 'Partnership requests', time: '< 48 hours' },
-  { label: 'Fraud reports', time: '< 2 hours' },
+  { label: 'General inquiries', time: 'No guaranteed SLA' },
+  { label: 'Campaign issues', time: 'Reviewed by support' },
+  { label: 'Partnership requests', time: 'Reviewed by support' },
+  { label: 'Fraud reports', time: 'Prioritized for review' },
 ]
 
 // ─── Shared styles ───────────────────────────────────────────────────────────
@@ -101,10 +95,9 @@ function ContactPage() {
 
   const CONTACT_CHANNELS = [
     { icon: <LocationOnRoundedIcon />, label: 'Visit us', value: contact.address, detail: contact.hours },
-    { icon: <EmailRoundedIcon />, label: 'Email us', value: contact.email, detail: 'Response within 24 hours' },
+    { icon: <EmailRoundedIcon />, label: 'Email us', value: contact.email, detail: contact.hours },
     { icon: <PhoneRoundedIcon />, label: 'Call us', value: contact.phone, detail: contact.hours },
-    { icon: <AccessTimeRoundedIcon />, label: 'Live chat', value: 'Available on platform', detail: 'Mon-Sat, 8am-8pm GMT' },
-  ]
+  ].filter((channel) => channel.value)
 
   const SOCIAL_LINKS = [
     { icon: <FacebookIcon />, label: 'Facebook', href: contact.socials.facebook },
@@ -112,7 +105,7 @@ function ContactPage() {
     { icon: <InstagramIcon />, label: 'Instagram', href: contact.socials.instagram },
     { icon: <LinkedInIcon />, label: 'LinkedIn', href: contact.socials.linkedin },
     { icon: <YouTubeIcon />, label: 'YouTube', href: contact.socials.youtube },
-  ]
+  ].filter((social) => social.href)
 
   const [formData, setFormData] = useState({ name: '', email: '', subject: '', type: 'general', message: '' })
   const [submitted, setSubmitted] = useState(false)
@@ -338,7 +331,7 @@ function ContactPage() {
               {/* Offices */}
               <Card elevation={0}>
                 <CardContent sx={{ p: 3 }}>
-                  <Typography sx={{ fontWeight: 700, fontSize: '1rem', mb: 2 }}>Our offices</Typography>
+                  <Typography sx={{ fontWeight: 700, fontSize: '1rem', mb: 2 }}>Support location</Typography>
                   <Stack spacing={1.5}>
                     {OFFICES.map((office) => (
                       <Box

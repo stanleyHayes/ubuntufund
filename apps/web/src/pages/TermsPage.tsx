@@ -37,7 +37,7 @@ export function TermsPage() {
 
         <Typography variant="h5">6. Fees</Typography>
         <Typography>
-          UbuntuFund charges a platform fee of 1-5% on funds raised, depending on the plan. Withdrawal fees and payment processing fees may apply. All fees are disclosed before transactions are completed.
+          The current launch configuration uses the Free plan and UbuntuFund Wallet only. Any future platform or processing fee must be displayed before a transaction and reflected in the applicable published policy.
         </Typography>
 
         <Typography variant="h5">7. Prohibited Conduct</Typography>

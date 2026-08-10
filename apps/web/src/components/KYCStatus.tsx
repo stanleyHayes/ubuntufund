@@ -4,7 +4,6 @@ import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
 import LinearProgress from '@mui/material/LinearProgress'
 import Paper from '@mui/material/Paper'
-import VerifiedUserIcon from '@mui/icons-material/VerifiedUser'
 import WarningAmberIcon from '@mui/icons-material/WarningAmber'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import CancelIcon from '@mui/icons-material/Cancel'
@@ -46,7 +45,6 @@ const levelLabels: Record<number, string> = {
 
 export default function KYCStatus() {
   const [data, setData] = useState<KYCData | null>(null)
-  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let cancelled = false
@@ -57,7 +55,7 @@ export default function KYCStatus() {
       } catch {
         // ignore
       } finally {
-        if (!cancelled) setLoading(false)
+        // The empty state below remains usable if status retrieval fails.
       }
     }
     fetchStatus()

@@ -795,7 +795,7 @@ export function LeaderboardPage() {
                       gap: 1,
                       px: 3,
                       py: 1.5,
-                      bgcolor: 'grey.50',
+                      bgcolor: 'action.hover',
                       borderBottom: '1px solid',
                       borderColor: 'divider',
                       alignItems: 'center',

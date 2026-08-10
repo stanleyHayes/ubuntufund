@@ -28,7 +28,7 @@ const notificationPreferencesSchema = new Schema<NotificationPreferencesSubdocum
   {
     email: { type: Boolean, default: true },
     sms: { type: Boolean, default: false },
-    push: { type: Boolean, default: true },
+    push: { type: Boolean, default: false },
     donationReceipts: { type: Boolean, default: true },
     campaignUpdates: { type: Boolean, default: true },
     marketingEmails: { type: Boolean, default: false },

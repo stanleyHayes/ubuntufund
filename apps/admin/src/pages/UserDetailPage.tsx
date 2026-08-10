@@ -48,9 +48,8 @@ function trustColor(score: number): string {
 export default function UserDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { data: user, isLoading: loading } = useAdminUser(id ?? '')
-  // No per-user campaigns/donations endpoint exists (only GET /users/:id/public),
-  // so derive the member's activity from the platform-wide real lists filtered
-  // by id. TODO: replace with a dedicated admin GET /users/:id detail endpoint.
+  // Derive the member's activity from the platform-wide real lists until a
+  // dedicated per-user activity feed is available.
   const { data: allCampaigns } = useAdminCampaigns()
   const { data: allDonations } = useAdminDonations()
   const userCampaigns = useMemo(() => allCampaigns.filter(c => c.creatorId === id), [allCampaigns, id])
@@ -152,7 +151,6 @@ export default function UserDetailPage() {
               {initials}
             </Box>
             <Typography sx={{ fontSize: '0.82rem', color: '#A0A0B0' }}>
-              {/* Public profile omits email; there is no admin GET /users/:id yet. */}
               {user.email ?? '—'}
             </Typography>
           </Box>

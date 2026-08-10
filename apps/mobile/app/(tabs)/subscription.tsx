@@ -51,19 +51,6 @@ export default function SubscriptionScreen() {
     fetchSubscription()
   }, [user, fetchSubscription])
 
-  const handleUpgrade = async (tier: SubscriptionTier) => {
-    setActionLoading(true)
-    try {
-      await api.post('/subscriptions', { tier, billingCycle: currentSub.billingCycle })
-      await fetchSubscription()
-      Alert.alert('Success', `Upgraded to ${SUBSCRIPTION_PLANS[tier].name}`)
-    } catch (err: unknown) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to upgrade')
-    } finally {
-      setActionLoading(false)
-    }
-  }
-
   const handleCancel = async () => {
     Alert.alert('Cancel Subscription', 'Are you sure you want to cancel?', [
       { text: 'No', style: 'cancel' },
@@ -196,10 +183,9 @@ export default function SubscriptionScreen() {
                   buttonColor={brandColors.secondary}
                   textColor="#221B0E"
                   style={styles.planButton}
-                  disabled={actionLoading}
-                  onPress={() => handleUpgrade(tier)}
+                  disabled
                 >
-                  {actionLoading ? 'Processing...' : 'Upgrade'}
+                  Billing unavailable
                 </Button>
               )}
             </View>
@@ -214,9 +200,9 @@ export default function SubscriptionScreen() {
           <View style={styles.upgradeIconTile}>
             <Icon source="crown" size={22} color={brandColors.secondaryDark} />
           </View>
-          <Text style={styles.upgradeTitle}>Unlock more features</Text>
+          <Text style={styles.upgradeTitle}>Paid plans are not yet available</Text>
           <Text style={styles.upgradeDesc}>
-            Upgrade to Pro for featured listings, advanced analytics, custom branding, and more.
+            Paid upgrades will return after verified App Store billing and production payment processing are configured.
           </Text>
           <Button
             mode="contained"
@@ -224,10 +210,9 @@ export default function SubscriptionScreen() {
             textColor="#221B0E"
             style={styles.upgradeButton}
             contentStyle={styles.upgradeButtonContent}
-            disabled={actionLoading}
-            onPress={() => handleUpgrade(SubscriptionTier.PRO)}
+            disabled
           >
-            {actionLoading ? 'Processing...' : 'Upgrade to Pro'}
+            Billing unavailable
           </Button>
         </View>
       )}

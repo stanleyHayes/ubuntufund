@@ -13,15 +13,16 @@ import { useParams, useNavigate, Link as RouterLink } from 'react-router-dom'
 import { SHAPE, ItemNotFound } from '@ubuntu-fund/ui'
 import { blogPosts, CATEGORY_COLORS } from './BlogPage'
 
-// Since we only have excerpts, generate placeholder body content per post
+// Editorial fallback copy. This intentionally avoids invented impact metrics,
+// customer quotes, or claims about payment providers that are not live.
 function generateBody(post: (typeof blogPosts)[number]): string[] {
   return [
     post.excerpt,
-    `This is one of the most important topics in Ghanaian crowdfunding today. As platforms like UbuntuFund continue to grow, understanding the nuances of ${post.category.toLowerCase()} becomes critical for campaign creators and donors alike.`,
-    `The data speaks for itself: campaigns in the ${post.category.toLowerCase()} category have seen a 45% increase in donor engagement over the past year. This growth reflects a broader trend of trust-based giving across Ghana, where transparency and community verification play a central role.`,
-    `"We've seen firsthand how collective action can transform entire communities," says ${post.author.name}, ${post.author.role} at UbuntuFund. "The key is building systems that make it easy for people to give with confidence."`,
-    `For campaign creators, the takeaway is clear: invest time in telling your story authentically, provide regular updates to your donors, and leverage the verification tools available on the platform. The most successful campaigns are those that combine urgency with transparency.`,
-    `As we look ahead, the intersection of mobile money, diaspora networks, and community-driven verification will continue to reshape how Ghana funds its future. UbuntuFund is proud to be at the forefront of this movement.`,
+    `For campaign creators, ${post.category.toLowerCase()} begins with a specific goal, evidence that supporters can assess, and a realistic explanation of how funds will be used. Avoid promises that cannot be measured or verified.`,
+    'Publish updates when circumstances, budgets, or timelines change. A useful update identifies what happened, what evidence is available, and what the campaign will do next.',
+    'Supporters should review the campaign story, organizer details, verification state, and recent activity before contributing. A platform review is one signal, not a guarantee of outcome.',
+    'UbuntuFund currently records wallet-backed contributions in Ghanaian cedis. External payment and payout methods remain unavailable until their production adapters and compliance checks are complete.',
+    'Good fundraising communication is concrete, respectful, and accountable. Protect personal information, obtain consent for sensitive images, and keep records that can support later review.',
   ]
 }
 

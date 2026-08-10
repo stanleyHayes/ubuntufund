@@ -16,7 +16,6 @@ import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
-import Checkbox from '@mui/material/Checkbox'
 import MenuItem from '@mui/material/MenuItem'
 import Radio from '@mui/material/Radio'
 import RadioGroup from '@mui/material/RadioGroup'
@@ -29,7 +28,6 @@ import {
   Resource,
   Action,
   perm,
-  normalizePermissions,
   computeEffectivePermissions,
   DEFAULT_ROLES,
   type PermissionString,

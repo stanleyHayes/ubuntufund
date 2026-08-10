@@ -147,9 +147,9 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
     featuredListing: true,
     prioritySupport: true,
     advancedAnalytics: true,
-    customBranding: true,
+    customBranding: false,
     maxMediaPerCampaign: 25,
-    escrowSupport: true,
+    escrowSupport: false,
     liveStreaming: false,
     maxTeamMembers: 5,
     campaignCollaboration: true,
@@ -167,10 +167,10 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
     featuredListing: true,
     prioritySupport: true,
     advancedAnalytics: true,
-    customBranding: true,
+    customBranding: false,
     maxMediaPerCampaign: -1, // unlimited
-    escrowSupport: true,
-    liveStreaming: true,
+    escrowSupport: false,
+    liveStreaming: false,
     maxTeamMembers: -1, // unlimited
     campaignCollaboration: true,
     maxCollaboratorsPerCampaign: -1, // unlimited

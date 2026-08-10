@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useCampaigns } from '@/hooks/useCampaigns'
+import { useMyCampaigns } from '@/hooks/useCampaigns'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
@@ -33,7 +33,7 @@ import PaletteRoundedIcon from '@mui/icons-material/PaletteRounded'
 import AnnouncementRoundedIcon from '@mui/icons-material/AnnouncementRounded'
 import { Link as RouterLink } from 'react-router-dom'
 import { formatCurrency, EmptyState, SHAPE } from '@ubuntu-fund/ui'
-import { CampaignStatus, CampaignCategory, CampaignPriority } from '@ubuntu-fund/types'
+import { CampaignStatus, CampaignPriority } from '@ubuntu-fund/types'
 import type { Campaign } from '@ubuntu-fund/types'
 
 // ─── Constants ─────────────────────────────────────────────
@@ -388,7 +388,7 @@ function StatCard({ label, value, color, icon }: { label: string; value: string 
 // ─── Page ──────────────────────────────────────────────────
 
 export function MyCampaignsPage() {
-  const { campaigns, isLoading } = useCampaigns()
+  const { campaigns } = useMyCampaigns()
   const [tabIndex, setTabIndex] = useState(0)
   const [shareSnack, setShareSnack] = useState(false)
 

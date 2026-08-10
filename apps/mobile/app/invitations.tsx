@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   View,
   ScrollView,
@@ -36,7 +36,7 @@ function formatDate(date?: string | null) {
 // ─── Skeleton ────────────────────────────────────────────────
 
 function SkeletonCard() {
-  const opacity = useRef(new Animated.Value(0.3)).current
+  const [opacity] = useState(() => new Animated.Value(0.3))
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
@@ -44,7 +44,7 @@ function SkeletonCard() {
         Animated.timing(opacity, { toValue: 0.3, duration: 800, useNativeDriver: true }),
       ]),
     ).start()
-  }, [])
+  }, [opacity])
   return (
     <Animated.View style={[styles.skeletonCard, { opacity }]}>
       <View style={[styles.skeletonLine, { width: '70%', marginBottom: 8 }]} />
@@ -73,8 +73,8 @@ export default function InvitationsScreen() {
     try {
       const data = await api.get<Invitation[]>('/collaborations/invitations')
       setInvitations(Array.isArray(data) ? data : [])
-    } catch (err: any) {
-      setError(err.message ?? 'Failed to load invitations')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load invitations')
     } finally {
       setLoading(false)
     }
@@ -94,8 +94,8 @@ export default function InvitationsScreen() {
         accept ? 'Accepted' : 'Declined',
         accept ? 'You have joined the collaboration.' : 'Invitation declined.',
       )
-    } catch (err: any) {
-      Alert.alert('Error', err.message ?? 'Failed to respond to invitation.')
+    } catch (err) {
+      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to respond to invitation.')
     } finally {
       setResponding(null)
     }

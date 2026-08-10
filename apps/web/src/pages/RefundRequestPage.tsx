@@ -81,7 +81,7 @@ export function RefundRequestPage() {
 
   if (submitted) {
     return (
-      <Box sx={{ bgcolor: '#F2EFEA', minHeight: '100vh', py: 8 }}>
+      <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', py: 8 }}>
         <Container maxWidth="sm">
           <Box
             sx={{
@@ -104,7 +104,7 @@ export function RefundRequestPage() {
                 Refund ID: <Box component="span" sx={{ fontFamily: 'monospace' }}>{refundId}</Box>
               </Typography>
               <Typography sx={{ fontSize: '0.85rem', color: 'text.secondary' }}>
-                Expected processing time: 5-7 business days
+                This request is pending review; settlement is not automatic and no processing time is guaranteed.
               </Typography>
               <Typography sx={{ fontSize: '0.85rem', color: 'text.secondary' }}>
                 Refund amount: {formatCurrency(donation.amount * 0.98, donation.currency)} (after 2% processing fee)
@@ -125,7 +125,7 @@ export function RefundRequestPage() {
   }
 
   return (
-    <Box sx={{ bgcolor: '#F2EFEA', minHeight: '100vh', py: 5 }}>
+    <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', py: 5 }}>
       <Container maxWidth="sm">
         <Button
           component={RouterLink}

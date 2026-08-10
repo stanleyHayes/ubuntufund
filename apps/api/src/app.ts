@@ -12,6 +12,7 @@ import { MongoWalletRepository } from './infrastructure/adapters/outbound/persis
 import { MongoWalletTransactionRepository } from './infrastructure/adapters/outbound/persistence/MongoWalletTransactionRepository.js';
 import { MongoProfileRepository } from './infrastructure/adapters/outbound/persistence/MongoProfileRepository.js';
 import { MongoCampaignUpdateRepository } from './infrastructure/adapters/outbound/persistence/MongoCampaignUpdateRepository.js';
+import { MongoCampaignCommentRepository } from './infrastructure/adapters/outbound/persistence/MongoCampaignCommentRepository.js';
 import { MongoShareRepository } from './infrastructure/adapters/outbound/persistence/MongoShareRepository.js';
 import { MongoReportRepository } from './infrastructure/adapters/outbound/persistence/MongoReportRepository.js';
 import { MongoAdminReportRepository } from './infrastructure/adapters/outbound/persistence/MongoAdminReportRepository.js';
@@ -48,6 +49,7 @@ import { DonateToCampaignUseCase } from './application/use-cases/DonateToCampaig
 import { GetProfileUseCase } from './application/use-cases/GetProfileUseCase.js';
 import { UpdateProfileUseCase } from './application/use-cases/UpdateProfileUseCase.js';
 import { GetPublicUserProfileUseCase } from './application/use-cases/GetPublicUserProfileUseCase.js';
+import { DeleteAccountUseCase } from './application/use-cases/DeleteAccountUseCase.js';
 
 // Use cases — campaign updates
 import { CreateCampaignUpdateUseCase } from './application/use-cases/CreateCampaignUpdateUseCase.js';
@@ -55,6 +57,7 @@ import { GetCampaignUpdatesUseCase } from './application/use-cases/GetCampaignUp
 import { UpdateCampaignUpdateUseCase } from './application/use-cases/UpdateCampaignUpdateUseCase.js';
 import { DeleteCampaignUpdateUseCase } from './application/use-cases/DeleteCampaignUpdateUseCase.js';
 import { PinCampaignUpdateUseCase } from './application/use-cases/PinCampaignUpdateUseCase.js';
+import { CampaignCommentUseCases } from './application/use-cases/CampaignCommentUseCases.js';
 
 // Use cases — share/report, donations, leaderboard, notifications
 import { ShareCampaignUseCase } from './application/use-cases/ShareCampaignUseCase.js';
@@ -88,6 +91,7 @@ import { GetMySubscriptionUseCase } from './application/use-cases/GetMySubscript
 import { SubscribeUseCase } from './application/use-cases/SubscribeUseCase.js';
 import { UpgradeSubscriptionUseCase } from './application/use-cases/UpgradeSubscriptionUseCase.js';
 import { CancelSubscriptionUseCase } from './application/use-cases/CancelSubscriptionUseCase.js';
+import { ListSubscriptionsUseCase } from './application/use-cases/ListSubscriptionsUseCase.js';
 
 // Use cases — payment providers, moderation, admin
 import { ListPaymentProvidersUseCase } from './application/use-cases/ListPaymentProvidersUseCase.js';
@@ -99,6 +103,7 @@ import { ListReportsUseCase } from './application/use-cases/ListReportsUseCase.j
 import { ReviewReportUseCase } from './application/use-cases/ReviewReportUseCase.js';
 import { ReviewCampaignUseCase } from './application/use-cases/ReviewCampaignUseCase.js';
 import { ListUsersUseCase } from './application/use-cases/ListUsersUseCase.js';
+import { GetAdminUserUseCase } from './application/use-cases/GetAdminUserUseCase.js';
 import { GetPlatformOverviewUseCase } from './application/use-cases/GetPlatformOverviewUseCase.js';
 import { SubscribeNewsletterUseCase } from './application/use-cases/SubscribeNewsletterUseCase.js';
 import { ListNewsletterSubscribersUseCase } from './application/use-cases/ListNewsletterSubscribersUseCase.js';
@@ -115,6 +120,7 @@ import { CampaignController } from './infrastructure/adapters/inbound/http/contr
 import { WalletController } from './infrastructure/adapters/inbound/http/controllers/WalletController.js';
 import { ProfileController } from './infrastructure/adapters/inbound/http/controllers/ProfileController.js';
 import { CampaignUpdateController } from './infrastructure/adapters/inbound/http/controllers/CampaignUpdateController.js';
+import { CampaignCommentController } from './infrastructure/adapters/inbound/http/controllers/CampaignCommentController.js';
 import { ShareReportController } from './infrastructure/adapters/inbound/http/controllers/ShareReportController.js';
 import { DonationController } from './infrastructure/adapters/inbound/http/controllers/DonationController.js';
 import { LeaderboardController } from './infrastructure/adapters/inbound/http/controllers/LeaderboardController.js';
@@ -133,6 +139,9 @@ import { AnalyticsController } from './infrastructure/adapters/inbound/http/cont
 import { NewsletterController } from './infrastructure/adapters/inbound/http/controllers/NewsletterController.js';
 import { SiteContentController } from './infrastructure/adapters/inbound/http/controllers/SiteContentController.js';
 import { UploadController } from './infrastructure/adapters/inbound/http/controllers/UploadController.js';
+import { AuditLogController } from './infrastructure/adapters/inbound/http/controllers/AuditLogController.js';
+import { TestimonialController } from './infrastructure/adapters/inbound/http/controllers/TestimonialController.js';
+import { ContactController } from './infrastructure/adapters/inbound/http/controllers/ContactController.js';
 
 import {
   createAuthMiddleware,
@@ -142,6 +151,7 @@ import { requireAdmin } from './infrastructure/adapters/inbound/middleware/requi
 import { errorHandler } from './infrastructure/adapters/inbound/middleware/errorHandler.js';
 import { requestLogger } from './infrastructure/adapters/inbound/middleware/requestLogger.js';
 import { apiRateLimiter } from './infrastructure/adapters/inbound/middleware/rateLimiter.js';
+import { auditMutation } from './infrastructure/adapters/inbound/middleware/auditMutation.js';
 
 import { createAuthRoutes } from './infrastructure/adapters/inbound/http/routes/authRoutes.js';
 import { createCampaignRoutes } from './infrastructure/adapters/inbound/http/routes/campaignRoutes.js';
@@ -149,6 +159,7 @@ import { createWalletRoutes } from './infrastructure/adapters/inbound/http/route
 import { createProfileRoutes } from './infrastructure/adapters/inbound/http/routes/profileRoutes.js';
 import { createUserRoutes } from './infrastructure/adapters/inbound/http/routes/userRoutes.js';
 import { createCampaignUpdateRoutes } from './infrastructure/adapters/inbound/http/routes/campaignUpdateRoutes.js';
+import { createCampaignCommentRoutes } from './infrastructure/adapters/inbound/http/routes/campaignCommentRoutes.js';
 import { createShareReportRoutes } from './infrastructure/adapters/inbound/http/routes/shareReportRoutes.js';
 import { createDonationRoutes } from './infrastructure/adapters/inbound/http/routes/donationRoutes.js';
 import { createCampaignDonationRoutes } from './infrastructure/adapters/inbound/http/routes/campaignDonationRoutes.js';
@@ -169,6 +180,10 @@ import { createAnalyticsRoutes } from './infrastructure/adapters/inbound/http/ro
 import { createNewsletterRoutes } from './infrastructure/adapters/inbound/http/routes/newsletterRoutes.js';
 import { createContentRoutes } from './infrastructure/adapters/inbound/http/routes/contentRoutes.js';
 import { createUploadRoutes } from './infrastructure/adapters/inbound/http/routes/uploadRoutes.js';
+import { createAuditLogRoutes } from './infrastructure/adapters/inbound/http/routes/auditLogRoutes.js';
+import { createRbacRoutes } from './infrastructure/adapters/inbound/http/routes/rbacRoutes.js';
+import { createTestimonialRoutes } from './infrastructure/adapters/inbound/http/routes/testimonialRoutes.js';
+import { createContactRoutes } from './infrastructure/adapters/inbound/http/routes/contactRoutes.js';
 
 /**
  * Assemble the fully-wired Express application (no listening, no DB
@@ -184,6 +199,7 @@ export function createApp(): express.Express {
   const walletTxRepo = new MongoWalletTransactionRepository();
   const profileRepo = new MongoProfileRepository();
   const campaignUpdateRepo = new MongoCampaignUpdateRepository();
+  const campaignCommentRepo = new MongoCampaignCommentRepository();
   const shareRepo = new MongoShareRepository();
   const reportRepo = new MongoReportRepository();
   const adminReportRepo = new MongoAdminReportRepository();
@@ -225,12 +241,14 @@ export function createApp(): express.Express {
   const getProfileUseCase = new GetProfileUseCase(userRepo, profileRepo, donationRepo, campaignRepo);
   const updateProfileUseCase = new UpdateProfileUseCase(userRepo, profileRepo);
   const getPublicUserProfileUseCase = new GetPublicUserProfileUseCase(userRepo, profileRepo);
+  const deleteAccountUseCase = new DeleteAccountUseCase(userRepo, tokenService);
 
   const createCampaignUpdateUseCase = new CreateCampaignUpdateUseCase(campaignUpdateRepo, campaignRepo);
   const getCampaignUpdatesUseCase = new GetCampaignUpdatesUseCase(campaignUpdateRepo, campaignRepo);
   const updateCampaignUpdateUseCase = new UpdateCampaignUpdateUseCase(campaignUpdateRepo);
   const deleteCampaignUpdateUseCase = new DeleteCampaignUpdateUseCase(campaignUpdateRepo);
   const pinCampaignUpdateUseCase = new PinCampaignUpdateUseCase(campaignUpdateRepo);
+  const campaignCommentUseCases = new CampaignCommentUseCases(campaignCommentRepo, campaignRepo, userRepo);
 
   const shareCampaignUseCase = new ShareCampaignUseCase(shareRepo);
   const reportCampaignUseCase = new ReportCampaignUseCase(campaignRepo, reportRepo);
@@ -269,6 +287,7 @@ export function createApp(): express.Express {
   const subscribeUseCase = new SubscribeUseCase(subscriptionRepo);
   const upgradeSubscriptionUseCase = new UpgradeSubscriptionUseCase(subscriptionRepo);
   const cancelSubscriptionUseCase = new CancelSubscriptionUseCase(subscriptionRepo);
+  const listSubscriptionsUseCase = new ListSubscriptionsUseCase(subscriptionRepo, userRepo);
 
   const listPaymentProvidersUseCase = new ListPaymentProvidersUseCase(paymentProviderRepo);
   const getEnabledPaymentProvidersUseCase = new GetEnabledPaymentProvidersUseCase(paymentProviderRepo);
@@ -280,6 +299,7 @@ export function createApp(): express.Express {
   const reviewReportUseCase = new ReviewReportUseCase(adminReportRepo);
   const reviewCampaignUseCase = new ReviewCampaignUseCase(campaignRepo);
   const listUsersUseCase = new ListUsersUseCase(adminUserRepo);
+  const getAdminUserUseCase = new GetAdminUserUseCase(adminUserRepo);
   const getPlatformOverviewUseCase = new GetPlatformOverviewUseCase(analyticsRepo);
   const subscribeNewsletterUseCase = new SubscribeNewsletterUseCase(newsletterRepo);
   const listNewsletterSubscribersUseCase = new ListNewsletterSubscribersUseCase(newsletterRepo);
@@ -307,7 +327,8 @@ export function createApp(): express.Express {
   const profileController = new ProfileController(
     getProfileUseCase,
     updateProfileUseCase,
-    getPublicUserProfileUseCase
+    getPublicUserProfileUseCase,
+    deleteAccountUseCase
   );
   const campaignUpdateController = new CampaignUpdateController(
     createCampaignUpdateUseCase,
@@ -316,6 +337,7 @@ export function createApp(): express.Express {
     deleteCampaignUpdateUseCase,
     pinCampaignUpdateUseCase
   );
+  const campaignCommentController = new CampaignCommentController(campaignCommentUseCases);
   const shareReportController = new ShareReportController(shareCampaignUseCase, reportCampaignUseCase);
   const donationController = new DonationController(
     listRecentDonationsUseCase,
@@ -350,7 +372,8 @@ export function createApp(): express.Express {
     getMySubscriptionUseCase,
     subscribeUseCase,
     upgradeSubscriptionUseCase,
-    cancelSubscriptionUseCase
+    cancelSubscriptionUseCase,
+    listSubscriptionsUseCase
   );
   const paymentProviderController = new PaymentProviderController(
     listPaymentProvidersUseCase,
@@ -360,7 +383,10 @@ export function createApp(): express.Express {
   const disputeController = new DisputeController(getDisputeUseCase, resolveDisputeUseCase);
   const adminReportController = new AdminReportController(listReportsUseCase, reviewReportUseCase);
   const campaignModerationController = new CampaignModerationController(reviewCampaignUseCase);
-  const adminUserController = new AdminUserController(listUsersUseCase);
+  const adminUserController = new AdminUserController(
+    listUsersUseCase,
+    getAdminUserUseCase
+  );
   const analyticsController = new AnalyticsController(getPlatformOverviewUseCase);
   const newsletterController = new NewsletterController(
     subscribeNewsletterUseCase,
@@ -372,6 +398,9 @@ export function createApp(): express.Express {
     upsertSiteContentUseCase
   );
   const uploadController = new UploadController(signCloudinaryUploadUseCase);
+  const auditLogController = new AuditLogController();
+  const testimonialController = new TestimonialController();
+  const contactController = new ContactController();
 
   // ── HTTP pipeline ────────────────────────────────────────────────────
   const app = express();
@@ -392,6 +421,7 @@ export function createApp(): express.Express {
 
   const api = express.Router();
   api.use(apiRateLimiter);
+  api.use(auditMutation);
 
   api.use('/auth', createAuthRoutes(authController, authMiddleware));
 
@@ -399,6 +429,7 @@ export function createApp(): express.Express {
   // dispatches across routers sharing a prefix by method + path).
   api.use('/campaigns', createCampaignRoutes(campaignController, authMiddleware));
   api.use('/campaigns', createCampaignUpdateRoutes(campaignUpdateController, authMiddleware));
+  api.use('/campaigns', createCampaignCommentRoutes(campaignCommentController, authMiddleware));
   api.use('/campaigns', createShareReportRoutes(shareReportController, authMiddleware));
   api.use('/campaigns', createCampaignDonationRoutes(donationController));
   api.use(
@@ -418,14 +449,18 @@ export function createApp(): express.Express {
   api.use('/refunds', createRefundRoutes(refundController, authMiddleware));
   api.use('/kyc', createKYCRoutes(kycController, authMiddleware, requireAdmin));
   api.use('/collaborations', createCollaborationRoutes(collaborationController, authMiddleware));
-  api.use('/subscriptions', createSubscriptionRoutes(subscriptionController, authMiddleware));
+  api.use('/subscriptions', createSubscriptionRoutes(subscriptionController, authMiddleware, requireAdmin));
   api.use('/payment-providers', createPaymentProviderRoutes(paymentProviderController, authMiddleware, requireAdmin));
   api.use('/disputes', createDisputeRoutes(disputeController, authMiddleware, requireAdmin));
   api.use('/reports', createAdminReportRoutes(adminReportController, authMiddleware, requireAdmin));
-  api.use('/analytics', createAnalyticsRoutes(analyticsController, authMiddleware));
+  api.use('/analytics', createAnalyticsRoutes(analyticsController, authMiddleware, requireAdmin));
   api.use('/newsletter', createNewsletterRoutes(newsletterController, authMiddleware, requireAdmin));
   api.use('/content', createContentRoutes(siteContentController, authMiddleware, requireAdmin));
   api.use('/uploads', createUploadRoutes(uploadController, authMiddleware));
+  api.use('/audit', createAuditLogRoutes(auditLogController, authMiddleware, requireAdmin));
+  api.use('/rbac', createRbacRoutes(authMiddleware));
+  api.use('/testimonials', createTestimonialRoutes(testimonialController, authMiddleware, requireAdmin));
+  api.use('/contact', createContactRoutes(contactController, authMiddleware, requireAdmin));
 
   app.use('/api/v1', api);
   app.use(errorHandler);

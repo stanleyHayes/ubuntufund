@@ -1,18 +1,8 @@
 const { getDefaultConfig } = require('expo/metro-config')
-const path = require('path')
 
 const projectRoot = __dirname
-const monorepoRoot = path.resolve(projectRoot, '../..')
 
-const config = getDefaultConfig(projectRoot)
-
-// Watch all files in the monorepo
-config.watchFolders = [monorepoRoot]
-
-// Resolve modules from both the mobile workspace and the monorepo root
-config.resolver.nodeModulesPaths = [
-  path.resolve(projectRoot, 'node_modules'),
-  path.resolve(monorepoRoot, 'node_modules'),
-]
-
-module.exports = config
+// Expo detects npm workspaces and supplies the required monorepo watch and
+// resolver defaults. Keeping those defaults intact is required for doctor and
+// avoids stale hand-maintained Metro paths.
+module.exports = getDefaultConfig(projectRoot)

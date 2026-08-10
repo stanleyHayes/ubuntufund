@@ -36,7 +36,11 @@ export class PinCampaignUpdateUseCase {
       throw new AppError('You can only pin your own updates', 403);
     }
 
-    update.pin();
+    if (update.isPinned) {
+      update.unpin();
+    } else {
+      update.pin();
+    }
     const saved = await this.updateRepo.update(update);
     return toDTO(saved);
   }

@@ -34,7 +34,10 @@ export function usePagination<T>(
   initialPageSize = 12,
 ): PaginationResult<T> {
   const isArray = Array.isArray(itemsOrConfig)
-  const items: T[] = isArray ? itemsOrConfig : []
+  const items = useMemo<T[]>(
+    () => isArray ? itemsOrConfig as T[] : [],
+    [isArray, itemsOrConfig],
+  )
   const serverTotalItems = isArray ? undefined : itemsOrConfig.totalItems
   const pageSizeInit = isArray ? initialPageSize : itemsOrConfig.pageSize
 

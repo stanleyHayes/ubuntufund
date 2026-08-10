@@ -17,9 +17,7 @@ import Grid from '@mui/material/Grid'
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
 import Divider from '@mui/material/Divider'
-import VerifiedUserRoundedIcon from '@mui/icons-material/VerifiedUserRounded'
 import KYCStatus from '@/components/KYCStatus'
-import CloudUploadRoundedIcon from '@mui/icons-material/CloudUploadRounded'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import ShareRoundedIcon from '@mui/icons-material/ShareRounded'
 import FavoriteRoundedIcon from '@mui/icons-material/FavoriteRounded'
@@ -41,8 +39,8 @@ import GroupsRoundedIcon from '@mui/icons-material/GroupsRounded'
 import AccountBalanceRoundedIcon from '@mui/icons-material/AccountBalanceRounded'
 import PaletteRoundedIcon from '@mui/icons-material/PaletteRounded'
 import { keyframes } from '@mui/material/styles'
-import { TrustBadge, SHAPE, AiWritingBar } from '@ubuntu-fund/ui'
-import { VerificationLevel, CampaignCategory, AiWritingAction } from '@ubuntu-fund/types'
+import { TrustBadge, SHAPE } from '@ubuntu-fund/ui'
+import { VerificationLevel, CampaignCategory } from '@ubuntu-fund/types'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
 import { Link as RouterLink } from 'react-router-dom'
@@ -52,11 +50,6 @@ import { Link as RouterLink } from 'react-router-dom'
 const fadeIn = keyframes`
   from { opacity: 0; transform: translateY(16px); }
   to   { opacity: 1; transform: translateY(0); }
-`
-
-const pulse = keyframes`
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.08); }
 `
 
 const countUp = keyframes`
@@ -253,7 +246,7 @@ export function ProfilePage() {
   }
 
   return (
-    <Box sx={{ bgcolor: '#F2EFEA', minHeight: '100vh', pb: 6 }}>
+    <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', pb: 6 }}>
       {/* ═══ Hero Section ═══ */}
       <Box
         sx={{
@@ -641,19 +634,6 @@ export function ProfilePage() {
                 <TextField label="Full Name" value={name} onChange={(e) => setName(e.target.value)} fullWidth />
                 <TextField label="Phone Number" value={phone} onChange={(e) => setPhone(e.target.value)} fullWidth />
                 <Box>
-                  <Box sx={{ mb: 1 }}>
-                    <AiWritingBar
-                      value={bio}
-                      onChange={setBio}
-                      inputLabel="About Me"
-                      allowedActions={[
-                        AiWritingAction.FORMALIZE,
-                        AiWritingAction.CASUAL,
-                        AiWritingAction.FIX_GRAMMAR,
-                        AiWritingAction.IMPROVE_CLARITY,
-                      ]}
-                    />
-                  </Box>
                   <TextField label="Bio" value={bio} onChange={(e) => setBio(e.target.value)} multiline rows={3} fullWidth placeholder="Tell us about yourself..." />
                 </Box>
                 <TextField label="Country" value={country} fullWidth disabled />

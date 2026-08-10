@@ -1,19 +1,11 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
-import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import Skeleton from '@mui/material/Skeleton'
 import Alert from '@mui/material/Alert'
-import Dialog from '@mui/material/Dialog'
-import DialogTitle from '@mui/material/DialogTitle'
-import DialogContent from '@mui/material/DialogContent'
-import DialogActions from '@mui/material/DialogActions'
-import TextField from '@mui/material/TextField'
-import MenuItem from '@mui/material/MenuItem'
-import Snackbar from '@mui/material/Snackbar'
 import Chip from '@mui/material/Chip'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
@@ -24,8 +16,6 @@ import TableRow from '@mui/material/TableRow'
 import Paper from '@mui/material/Paper'
 import Grid from '@mui/material/Grid'
 import AccountBalanceWalletRoundedIcon from '@mui/icons-material/AccountBalanceWalletRounded'
-import ArrowDownwardRoundedIcon from '@mui/icons-material/ArrowDownwardRounded'
-import ArrowUpwardRoundedIcon from '@mui/icons-material/ArrowUpwardRounded'
 import { keyframes } from '@emotion/react'
 import { formatCurrency, SHAPE, EmptyState } from '@ubuntu-fund/ui'
 import {
@@ -69,9 +59,6 @@ const TX_STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   [TransactionStatus.REVERSED]: { bg: 'rgba(156,39,176,0.08)', color: '#4A6B75' },
 }
 
-const PAYMENT_METHODS = ['Mobile Money', 'Bank Transfer', 'Card', 'Crypto']
-const WITHDRAW_DESTINATIONS = ['Bank Account', 'Mobile Money', 'Crypto Wallet']
-
 function formatTxType(type: TransactionType): string {
   return type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
 }
@@ -87,65 +74,20 @@ export function WalletPage() {
   const [txLoading, setTxLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Dialog state
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [dialogType, setDialogType] = useState<'deposit' | 'withdraw'>('deposit')
-  const [dialogWallet, setDialogWallet] = useState<Wallet | null>(null)
-  const [amount, setAmount] = useState('')
-  const [paymentMethod, setPaymentMethod] = useState('')
-  const [destination, setDestination] = useState('')
-  const [actionLoading, setActionLoading] = useState(false)
-  const [snackMessage, setSnackMessage] = useState('')
-
-  const fetchTransactions = useCallback(() => {
-    setTxLoading(true)
-    api.get<Transaction[]>('/wallets/transactions')
-      .then(setTransactions)
-      .catch(() => setTransactions([]))
-      .finally(() => setTxLoading(false))
-  }, [])
-
   useEffect(() => {
     api.get<Wallet[]>('/wallets')
       .then(setWallets)
       .catch((err: Error) => setError(err.message))
       .finally(() => setIsLoading(false))
 
-    fetchTransactions()
-  }, [fetchTransactions])
-
-  function openDialog(type: 'deposit' | 'withdraw', wallet: Wallet) {
-    setDialogType(type)
-    setDialogWallet(wallet)
-    setAmount('')
-    setPaymentMethod('')
-    setDestination('')
-    setDialogOpen(true)
-  }
-
-  async function handleAction() {
-    if (!dialogWallet || !amount || Number(amount) <= 0) return
-    setActionLoading(true)
-    try {
-      const endpoint = `/wallets/${dialogWallet.id}/${dialogType}`
-      const res = await api.post<Wallet>(endpoint, {
-        amount: Number(amount),
-        currency: dialogWallet.currency,
-        ...(dialogType === 'deposit' ? { paymentMethod } : { destination }),
-      })
-      setWallets((prev) => prev.map((w) => w.id === dialogWallet.id ? { ...w, balance: res.balance } : w))
-      setDialogOpen(false)
-      setSnackMessage(`${dialogType === 'deposit' ? 'Deposit' : 'Withdrawal'} successful!`)
-      fetchTransactions()
-    } catch (err) {
-      setSnackMessage(err instanceof Error ? err.message : 'Action failed')
-    } finally {
-      setActionLoading(false)
-    }
-  }
+    api.get<Transaction[]>('/wallets/transactions')
+      .then(setTransactions)
+      .catch(() => setTransactions([]))
+      .finally(() => setTxLoading(false))
+  }, [])
 
   return (
-    <Box sx={{ bgcolor: '#F2EFEA', minHeight: '100vh', py: 5 }}>
+    <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', py: 5 }}>
       <Container maxWidth="lg">
         <Typography
           sx={{
@@ -159,7 +101,7 @@ export function WalletPage() {
           Wallet
         </Typography>
         <Typography sx={{ color: 'text.secondary', mb: 4, animation: `${fadeInUp} 0.4s 0.05s ease both` }}>
-          Manage your funds, deposit, and withdraw.
+          Review your wallet balance and recorded contribution activity.
         </Typography>
 
         {/* ===== Wallet Cards ===== */}
@@ -221,42 +163,9 @@ export function WalletPage() {
                           Updated {new Date(wallet.updatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
                         </Typography>
                       </Box>
-                      <Box sx={{ display: 'flex', gap: 1.5 }}>
-                        <Button
-                          variant="contained"
-                          size="small"
-                          startIcon={<ArrowDownwardRoundedIcon sx={{ fontSize: '16px !important' }} />}
-                          onClick={() => openDialog('deposit', wallet)}
-                          sx={{
-                            flex: 1,
-                            borderRadius: SHAPE.sm,
-                            fontWeight: 700,
-                            fontFamily: '"Outfit", sans-serif',
-                            textTransform: 'none',
-                            bgcolor: colors.accent,
-                            '&:hover': { bgcolor: colors.accent, filter: 'brightness(0.9)' },
-                          }}
-                        >
-                          Deposit
-                        </Button>
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          startIcon={<ArrowUpwardRoundedIcon sx={{ fontSize: '16px !important' }} />}
-                          onClick={() => openDialog('withdraw', wallet)}
-                          sx={{
-                            flex: 1,
-                            borderRadius: SHAPE.sm,
-                            fontWeight: 700,
-                            fontFamily: '"Outfit", sans-serif',
-                            textTransform: 'none',
-                            borderColor: colors.accent,
-                            color: colors.accent,
-                          }}
-                        >
-                          Withdraw
-                        </Button>
-                      </Box>
+                      <Alert severity="info" icon={false} sx={{ py: 0.5, fontSize: '0.78rem' }}>
+                        External deposits and withdrawals are unavailable until verified payment and payout providers are connected.
+                      </Alert>
                     </CardContent>
                   </Card>
                 </Grid>
@@ -311,7 +220,7 @@ export function WalletPage() {
             <EmptyState
               variant="noData"
               title="No transactions yet"
-              description="Your deposits, withdrawals, and donations will show up here."
+              description="Wallet-backed donations and verified balance changes will show up here."
             />
           </Card>
         ) : (
@@ -374,89 +283,6 @@ export function WalletPage() {
           </TableContainer>
         )}
 
-        {/* ===== Deposit / Withdraw Dialog ===== */}
-        <Dialog
-          open={dialogOpen}
-          onClose={() => setDialogOpen(false)}
-          fullWidth
-          maxWidth="xs"
-          PaperProps={{ sx: { borderRadius: SHAPE.card } }}
-        >
-          <DialogTitle sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 700 }}>
-            {dialogType === 'deposit' ? 'Deposit Funds' : 'Withdraw Funds'}
-          </DialogTitle>
-          <DialogContent>
-            <Typography sx={{ color: 'text.secondary', mb: 2.5, fontSize: '0.9rem' }}>
-              {dialogType === 'deposit' ? 'Add funds to' : 'Withdraw funds from'} your{' '}
-              {dialogWallet ? WALLET_LABELS[dialogWallet.type]?.toLowerCase() ?? 'wallet' : 'wallet'} ({dialogWallet?.currency})
-            </Typography>
-            <TextField
-              fullWidth
-              label="Amount"
-              type="number"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              disabled={actionLoading}
-              sx={{ mb: 2.5 }}
-              InputProps={{
-                startAdornment: <Typography sx={{ mr: 1, color: 'text.secondary' }}>{dialogWallet?.currency}</Typography>,
-              }}
-            />
-            {dialogType === 'deposit' ? (
-              <TextField
-                select
-                fullWidth
-                label="Payment Method"
-                value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value)}
-                disabled={actionLoading}
-              >
-                {PAYMENT_METHODS.map((m) => (
-                  <MenuItem key={m} value={m}>{m}</MenuItem>
-                ))}
-              </TextField>
-            ) : (
-              <TextField
-                select
-                fullWidth
-                label="Destination"
-                value={destination}
-                onChange={(e) => setDestination(e.target.value)}
-                disabled={actionLoading}
-              >
-                {WITHDRAW_DESTINATIONS.map((d) => (
-                  <MenuItem key={d} value={d}>{d}</MenuItem>
-                ))}
-              </TextField>
-            )}
-          </DialogContent>
-          <DialogActions sx={{ px: 3, pb: 2.5 }}>
-            <Button onClick={() => setDialogOpen(false)} disabled={actionLoading} sx={{ textTransform: 'none' }}>
-              Cancel
-            </Button>
-            <Button
-              variant="contained"
-              onClick={handleAction}
-              disabled={!amount || Number(amount) <= 0 || actionLoading}
-              sx={{
-                textTransform: 'none',
-                fontWeight: 700,
-                borderRadius: SHAPE.sm,
-                bgcolor: dialogType === 'deposit' ? '#2E3D2F' : '#A07E33',
-                '&:hover': { bgcolor: dialogType === 'deposit' ? '#1C261D' : '#E65100' },
-              }}
-            >
-              {actionLoading ? 'Processing...' : dialogType === 'deposit' ? 'Deposit' : 'Withdraw'}
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        <Snackbar
-          open={!!snackMessage}
-          autoHideDuration={3000}
-          onClose={() => setSnackMessage('')}
-          message={snackMessage}
-        />
       </Container>
     </Box>
   )

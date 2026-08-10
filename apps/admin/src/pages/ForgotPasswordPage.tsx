@@ -11,6 +11,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead'
 import { Link as RouterLink } from 'react-router-dom'
 import { keyframes } from '@emotion/react'
+import { api } from '@/lib/api'
 
 // ---------------------------------------------------------------------------
 // Animations
@@ -65,15 +66,24 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
     if (!email) {
       setError('Please enter your email address.')
       return
     }
-    setSubmitted(true)
+    setSubmitting(true)
+    try {
+      await api.post('/auth/forgot-password', { email })
+      setSubmitted(true)
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : 'Unable to submit the request.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -296,6 +306,7 @@ export default function ForgotPasswordPage() {
                   variant="contained"
                   size="large"
                   fullWidth
+                  disabled={submitting}
                   sx={{
                     borderRadius: '10px',
                     py: 1.5,
@@ -309,7 +320,7 @@ export default function ForgotPasswordPage() {
                     },
                   }}
                 >
-                  Send Reset Link
+                  {submitting ? 'Sending…' : 'Send Reset Link'}
                 </Button>
 
                 <Box sx={{ textAlign: 'center' }}>

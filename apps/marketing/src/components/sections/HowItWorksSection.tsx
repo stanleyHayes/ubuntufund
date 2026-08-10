@@ -25,9 +25,9 @@ const steps = [
   {
     icon: <AccountBalanceWalletRoundedIcon sx={{ fontSize: 28 }} />,
     step: '03',
-    title: 'Receive your funds',
+    title: 'Track support',
     description:
-      'Get donations directly via MTN MoMo, Telecel Cash, AT Money, bank transfer, or card. Funds are released securely with full transparency and tracking.',
+      'Receive wallet-backed contributions and keep supporters informed with campaign updates. External payouts require support during launch readiness.',
   },
 ]
 

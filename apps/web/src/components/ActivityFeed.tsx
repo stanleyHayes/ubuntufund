@@ -122,7 +122,6 @@ function buildActionText(item: ActivityItem): React.ReactNode {
 
 export function ActivityFeed({ compact = false }: { compact?: boolean }) {
   const [items, setItems] = useState<ActivityItem[]>([])
-  const [newIds, setNewIds] = useState<Set<string>>(new Set())
   const listRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -214,8 +213,6 @@ export function ActivityFeed({ compact = false }: { compact?: boolean }) {
       >
         {items.slice(0, maxItems).map((item, idx) => {
           const cfg = TYPE_CONFIG[item.type] ?? TYPE_CONFIG.donation
-          const isNew = newIds.has(item.id)
-
           return (
             <Box
               key={item.id}
@@ -226,7 +223,7 @@ export function ActivityFeed({ compact = false }: { compact?: boolean }) {
                 px: compact ? 2 : 2.5,
                 py: compact ? 1 : 1.5,
                 bgcolor: idx % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.015)',
-                animation: isNew ? `${slideIn} 0.5s ease-out` : undefined,
+                animation: `${slideIn} 0.35s ease-out ${Math.min(idx, 8) * 35}ms both`,
                 transition: 'background-color 0.2s',
                 cursor: 'default',
                 '&:hover': {

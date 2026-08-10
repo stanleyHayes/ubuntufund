@@ -19,6 +19,8 @@ export interface CampaignDocument extends Document {
   imageUrls: string[];
   startDate: Date;
   endDate: Date;
+  deletedAt?: Date;
+  deletedBy?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -51,6 +53,8 @@ const campaignSchema = new Schema<CampaignDocument>(
     imageUrls: [{ type: String }],
     startDate: { type: Date, required: true },
     endDate: { type: Date, required: true },
+    deletedAt: { type: Date, index: true },
+    deletedBy: { type: String },
   },
   { timestamps: true }
 );

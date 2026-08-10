@@ -4,6 +4,7 @@ export interface SubscriptionRepositoryPort {
   /** A user has at most one subscription record. */
   findByUserId(userId: string): Promise<Subscription | null>;
   findById(id: string): Promise<Subscription | null>;
+  findAll(limit?: number): Promise<Subscription[]>;
   /** Creates a new subscription record. The `id` on the input is ignored/assigned by the repository. */
   save(subscription: Subscription): Promise<Subscription>;
   /**

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   View,
   ScrollView,
@@ -9,32 +9,23 @@ import {
 } from 'react-native'
 import { Text, Icon, Button } from 'react-native-paper'
 import { router, Stack } from 'expo-router'
-import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
 import { brandColors } from '@/theme'
 
 interface Organization {
   id: string
   name: string
-  avatar?: string
+  email: string
+  country: string
+  avatarUrl?: string
   verified: boolean
-  campaignCount: number
-  totalRaised: number
-  description?: string
-}
-
-const ghsFormatter = new Intl.NumberFormat('en-GH', { style: 'currency', currency: 'GHS' })
-
-function formatAmount(amount: number) {
-  if (amount >= 1_000_000) return `GH₵ ${(amount / 1_000_000).toFixed(1)}M`
-  if (amount >= 1_000) return `GH₵ ${(amount / 1_000).toFixed(1)}K`
-  return ghsFormatter.format(amount)
+  createdAt: string
 }
 
 // ─── Skeleton ────────────────────────────────────────────────
 
 function SkeletonCard() {
-  const opacity = useRef(new Animated.Value(0.3)).current
+  const [opacity] = useState(() => new Animated.Value(0.3))
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
@@ -42,7 +33,7 @@ function SkeletonCard() {
         Animated.timing(opacity, { toValue: 0.3, duration: 800, useNativeDriver: true }),
       ]),
     ).start()
-  }, [])
+  }, [opacity])
   return (
     <Animated.View style={[styles.skeletonCard, { opacity }]}>
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
@@ -63,7 +54,6 @@ function SkeletonCard() {
 // ─── Main ────────────────────────────────────────────────────
 
 export default function OrganizationsScreen() {
-  const { user } = useAuth()
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -73,39 +63,10 @@ export default function OrganizationsScreen() {
     setLoading(true)
     setError(null)
     try {
-      // Try dedicated endpoint first, fall back to deriving from campaigns
-      let orgs: Organization[]
-      try {
-        const res = await api.get<Organization[]>('/organizations')
-        orgs = Array.isArray(res) ? res : []
-      } catch {
-        // Fallback: derive from campaigns (/campaigns is paginated: { items }).
-        const campaignsRes = await api.get<any[] | { items: any[] }>('/campaigns')
-        const campaigns = Array.isArray(campaignsRes) ? campaignsRes : campaignsRes.items ?? []
-        const orgMap = new Map<string, Organization>()
-        for (const c of campaigns) {
-          if (c.creatorRole === 'organization' || c.organizationId) {
-            const orgId = c.organizationId ?? c.creatorId
-            const existing = orgMap.get(orgId)
-            if (existing) {
-              existing.campaignCount += 1
-              existing.totalRaised += c.raisedAmount ?? 0
-            } else {
-              orgMap.set(orgId, {
-                id: orgId,
-                name: c.organizationName ?? c.creatorName ?? 'Organization',
-                verified: c.verified ?? false,
-                campaignCount: 1,
-                totalRaised: c.raisedAmount ?? 0,
-              })
-            }
-          }
-        }
-        orgs = Array.from(orgMap.values())
-      }
-      setOrganizations(orgs)
-    } catch (err: any) {
-      setError(err.message ?? 'Failed to load organizations')
+      const response = await api.get<Organization[]>('/organizations')
+      setOrganizations(Array.isArray(response) ? response : [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load organizations')
     } finally {
       setLoading(false)
     }
@@ -193,7 +154,7 @@ export default function OrganizationsScreen() {
                   key={org.id}
                   style={styles.orgCard}
                   activeOpacity={0.85}
-                  onPress={() => router.push({ pathname: '/(tabs)/explore', params: { organizationId: org.id } })}
+                  onPress={() => router.push(`/organization/${org.id}`)}
                 >
                   <View style={styles.orgHeader}>
                     <View style={styles.orgAvatar}>
@@ -206,9 +167,7 @@ export default function OrganizationsScreen() {
                           <Icon source="check-decagram" size={16} color={brandColors.success} />
                         )}
                       </View>
-                      {org.description && (
-                        <Text style={styles.orgDesc} numberOfLines={2}>{org.description}</Text>
-                      )}
+                      <Text style={styles.orgDesc} numberOfLines={1}>{org.country || 'Ghana'}</Text>
                     </View>
                     <Icon source="chevron-right" size={18} color={brandColors.textSecondary} />
                   </View>
@@ -216,11 +175,11 @@ export default function OrganizationsScreen() {
                   <View style={styles.orgStats}>
                     <View style={styles.orgStat}>
                       <Icon source="bullhorn" size={14} color={brandColors.textSecondary} />
-                      <Text style={styles.orgStatText}>{org.campaignCount} campaigns</Text>
+                      <Text style={styles.orgStatText}>Open organization profile</Text>
                     </View>
                     <View style={styles.orgStat}>
-                      <Icon source="cash" size={14} color={brandColors.textSecondary} />
-                      <Text style={styles.orgStatText}>{formatAmount(org.totalRaised)} raised</Text>
+                      <Icon source="calendar-outline" size={14} color={brandColors.textSecondary} />
+                      <Text style={styles.orgStatText}>Joined {new Date(org.createdAt).getFullYear()}</Text>
                     </View>
                   </View>
                 </TouchableOpacity>

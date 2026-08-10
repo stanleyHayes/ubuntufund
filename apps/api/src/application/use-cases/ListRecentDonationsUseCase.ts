@@ -2,6 +2,7 @@ import type { DonationEntity } from '../../domain/entities/Donation.js';
 import type { DonationRepositoryPort } from '../../domain/ports/outbound/DonationRepositoryPort.js';
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js';
 import type { UserRepositoryPort } from '../../domain/ports/outbound/UserRepositoryPort.js';
+import type { PaymentMethod } from '@ubuntu-fund/types';
 
 /** Public, donor-facing view of a donation used by activity/live feeds. */
 export interface PublicDonationDTO {
@@ -12,6 +13,7 @@ export interface PublicDonationDTO {
   campaignTitle: string;
   amount: number;
   currency: string;
+  paymentMethod: PaymentMethod;
   isAnonymous: boolean;
   createdAt: Date;
 }
@@ -50,6 +52,7 @@ export class ListRecentDonationsUseCase {
       campaignTitle: campaign ? campaign.title : 'Campaign',
       amount: donation.amount.amount,
       currency: donation.amount.currency,
+      paymentMethod: donation.paymentMethod,
       isAnonymous: donation.isAnonymous,
       createdAt: donation.createdAt,
     };

@@ -1,4 +1,4 @@
-import { createTheme } from '@mui/material/styles'
+import { createTheme, type PaletteMode } from '@mui/material/styles'
 
 declare module '@mui/material/styles' {
   interface Palette {
@@ -135,8 +135,11 @@ export const ttSquaresFontFace = `
   }
 `
 
-const ubuntuFundTheme = createTheme({
+export function createUbuntuFundTheme(mode: PaletteMode = 'light') {
+  const dark = mode === 'dark'
+  return createTheme({
   palette: {
+    mode,
     // Sage & Neutrals system: deep forest structure, burnished gold action,
     // warm parchment ground. Derived from the brand palette, not framework
     // defaults — semantic states are brand-tinted (clay error, ochre warning).
@@ -177,10 +180,10 @@ const ubuntuFundTheme = createTheme({
       contrastText: '#F2F5F5',
     },
     background: {
-      default: '#F2EFEA',
-      paper: '#FFFFFF',
+      default: dark ? '#101712' : '#F2EFEA',
+      paper: dark ? '#172019' : '#FFFFFF',
     },
-    divider: '#DAD7CD',
+    divider: dark ? '#344238' : '#DAD7CD',
     trust: {
       level1: '#DAD7CD',
       level2: '#A8B5A0',
@@ -188,8 +191,8 @@ const ubuntuFundTheme = createTheme({
       level4: '#2E3D2F',
     },
     text: {
-      primary: '#1A2E22',
-      secondary: '#4A5A50',
+      primary: dark ? '#F3F0E8' : '#1A2E22',
+      secondary: dark ? '#B6C0B8' : '#4A5A50',
     },
   },
   typography: {
@@ -289,7 +292,7 @@ const ubuntuFundTheme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: SHAPE.card,
-          border: '1px solid #E7E3D8',
+          border: `1px solid ${dark ? '#344238' : '#E7E3D8'}`,
           boxShadow: 'none',
           backgroundImage: 'none',
         },
@@ -322,6 +325,9 @@ const ubuntuFundTheme = createTheme({
       },
     },
   },
-})
+  })
+}
+
+const ubuntuFundTheme = createUbuntuFundTheme('light')
 
 export { ubuntuFundTheme }

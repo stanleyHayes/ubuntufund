@@ -162,7 +162,7 @@ export function CollaboratorSection({
                   justifyContent: 'space-between',
                   p: 2,
                   mb: 1.5,
-                  bgcolor: 'grey.50',
+                  bgcolor: 'action.hover',
                   borderRadius: SHAPE.card,
                 }}
               >
@@ -226,7 +226,7 @@ export function CollaboratorSection({
                   justifyContent: 'space-between',
                   p: 2,
                   mb: 1.5,
-                  bgcolor: 'grey.50',
+                  bgcolor: 'action.hover',
                   borderRadius: SHAPE.card,
                   opacity: 0.7,
                 }}

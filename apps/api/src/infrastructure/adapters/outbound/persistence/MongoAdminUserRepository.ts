@@ -25,6 +25,14 @@ function toRecord(doc: UserDocument): AdminUserRecord {
 }
 
 export class MongoAdminUserRepository implements AdminUserRepositoryPort {
+  async findUserById(id: string): Promise<AdminUserRecord | null> {
+    const doc = await UserModel.findOne({
+      _id: id,
+      deletedAt: { $exists: false },
+    });
+    return doc ? toRecord(doc) : null;
+  }
+
   async listUsers(
     params: AdminUserListParams
   ): Promise<{ items: AdminUserRecord[]; total: number }> {
@@ -35,11 +43,11 @@ export class MongoAdminUserRepository implements AdminUserRepositoryPort {
     const sortOrder = params.sortOrder === 'asc' ? 1 : -1;
 
     const [docs, total] = await Promise.all([
-      UserModel.find()
+      UserModel.find({ deletedAt: { $exists: false } })
         .sort({ [sortField]: sortOrder })
         .skip(skip)
         .limit(pageSize),
-      UserModel.countDocuments(),
+      UserModel.countDocuments({ deletedAt: { $exists: false } }),
     ]);
 
     return {

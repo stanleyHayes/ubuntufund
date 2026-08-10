@@ -1,48 +1,18 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Box, Typography, Chip, TextField, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material'
 import Button from '@mui/material/Button'
 import { keyframes } from '@mui/system'
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'
 import BlockIcon from '@mui/icons-material/Block'
-import CurrencyExchangeIcon from '@mui/icons-material/CurrencyExchange'
-import PersonRemoveIcon from '@mui/icons-material/PersonRemove'
 import ReplayIcon from '@mui/icons-material/Replay'
 import DoNotDisturbIcon from '@mui/icons-material/DoNotDisturb'
 import RocketLaunchRoundedIcon from '@mui/icons-material/RocketLaunchRounded'
 import { useAdminCampaign, useAdminCampaignDonations } from '@/hooks/useApiData'
-import { CampaignStatus, CampaignPriority, CollaboratorRole, CollaborationStatus, type CampaignCollaborator } from '@ubuntu-fund/types'
-import { ItemNotFound, EmptyState, AiWritingBar } from '@ubuntu-fund/ui'
-import { AiWritingAction } from '@ubuntu-fund/types'
+import { CampaignStatus, CollaboratorRole, type CampaignCollaborator } from '@ubuntu-fund/types'
+import { ItemNotFound, EmptyState } from '@ubuntu-fund/ui'
 import { api } from '@/lib/api'
 import PageHeader from '@/components/PageHeader'
-
-const MOCK_COLLABORATORS: CampaignCollaborator[] = [
-  {
-    id: 'collab-1',
-    campaignId: '',
-    userId: 'user-partner-1',
-    invitedBy: 'creator',
-    role: CollaboratorRole.CO_OWNER,
-    status: CollaborationStatus.ACCEPTED,
-    revenueSharePercent: 20,
-    displayName: 'Efua Asante',
-    createdAt: new Date('2026-03-01'),
-    updatedAt: new Date('2026-03-02'),
-  },
-  {
-    id: 'collab-2',
-    campaignId: '',
-    userId: 'user-partner-2',
-    invitedBy: 'creator',
-    role: CollaboratorRole.FEATURED_PARTNER,
-    status: CollaborationStatus.ACCEPTED,
-    revenueSharePercent: 5,
-    displayName: 'Kwame Asante Foundation',
-    createdAt: new Date('2026-03-05'),
-    updatedAt: new Date('2026-03-06'),
-  },
-]
 
 const ROLE_LABELS: Record<CollaboratorRole, string> = {
   [CollaboratorRole.CO_OWNER]: 'Co-Owner',
@@ -72,19 +42,34 @@ const statusColors: Record<string, string> = {
   [CampaignStatus.DRAFT]: '#9E9E9E',
 }
 
-const priorityColors: Record<string, string> = {
-  [CampaignPriority.NORMAL]: '#78909C',
-  [CampaignPriority.URGENT]: '#D3A95C',
-  [CampaignPriority.CRITICAL]: '#C06B58',
-}
-
 export default function CampaignDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { data: campaign, isLoading: loading } = useAdminCampaign(id ?? '')
   const { data: donations } = useAdminCampaignDonations(id ?? '')
   const navigate = useNavigate()
+  const [collaborators, setCollaborators] = useState<CampaignCollaborator[]>([])
+  const [collaboratorsError, setCollaboratorsError] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [editOpen, setEditOpen] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    if (!id) return
+    api.get<CampaignCollaborator[]>(`/campaigns/${id}/collaborators`)
+      .then((result) => {
+        if (!cancelled) {
+          setCollaborators(result)
+          setCollaboratorsError(null)
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setCollaborators([])
+          setCollaboratorsError(error instanceof Error ? error.message : 'Unable to load collaborators.')
+        }
+      })
+    return () => { cancelled = true }
+  }, [id])
   const [editLoading, setEditLoading] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
@@ -139,7 +124,6 @@ export default function CampaignDetailPage() {
   const progress = Math.min(Math.round((campaign.raisedAmount / campaign.goalAmount) * 100), 100)
   const daysRemaining = Math.max(0, Math.ceil((new Date(campaign.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
   const statusColor = statusColors[campaign.status] || '#78909C'
-  const priorityColor = priorityColors[campaign.priority] || '#78909C'
 
   return (
     <Box sx={{ bgcolor: '#0c0c14', minHeight: '100vh', animation: `${fadeIn} 0.4s ease` }}>
@@ -348,12 +332,6 @@ export default function CampaignDetailPage() {
 
           {/* Review notes */}
           <Box sx={{ p: 2.5, borderBottom: `1px solid ${B}` }}>
-            <AiWritingBar
-              value={reviewNotes}
-              onChange={setReviewNotes}
-              inputLabel="Review Notes"
-              allowedActions={[AiWritingAction.FORMALIZE, AiWritingAction.SUMMARIZE, AiWritingAction.FIX_GRAMMAR, AiWritingAction.IMPROVE_CLARITY]}
-            />
             <TextField
               multiline
               rows={3}
@@ -397,20 +375,6 @@ export default function CampaignDetailPage() {
             <Button
               variant="outlined"
               fullWidth
-              startIcon={<CurrencyExchangeIcon />}
-              sx={{
-                color: '#D3A95C', borderColor: '#D3A95C',
-                fontFamily: '"Outfit", sans-serif', textTransform: 'none',
-                '&:hover': { borderColor: '#D3A95C', bgcolor: 'rgba(211,169,92,0.08)' },
-              }}
-            >
-              Force Refund
-            </Button>
-          </Box>
-          <Box sx={{ p: 2.5, borderBottom: `1px solid ${B}` }}>
-            <Button
-              variant="outlined"
-              fullWidth
               sx={{
                 color: '#A0A0B0', borderColor: '#A0A0B0',
                 fontFamily: '"Outfit", sans-serif', textTransform: 'none',
@@ -445,11 +409,13 @@ export default function CampaignDetailPage() {
           Collaborators
         </Typography>
       </Box>
-      {MOCK_COLLABORATORS.length === 0 ? (
+      {collaboratorsError ? (
+        <EmptyState variant="error" title="Collaborators unavailable" description={collaboratorsError} compact />
+      ) : collaborators.length === 0 ? (
         <EmptyState variant="noData" title="No collaborators" description="This campaign has no collaborators yet." compact />
       ) : (
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' } }}>
-          {MOCK_COLLABORATORS.map((c, i) => (
+          {collaborators.map((c, i) => (
             <Box
               key={c.id}
               sx={{
@@ -478,20 +444,7 @@ export default function CampaignDetailPage() {
                     {c.status}
                   </Typography>
                 </Box>
-                <Button
-                  size="small"
-                  startIcon={<PersonRemoveIcon sx={{ fontSize: 14 }} />}
-                  sx={{
-                    color: '#C06B58',
-                    fontSize: '0.65rem',
-                    textTransform: 'none',
-                    minWidth: 'auto',
-                    fontFamily: '"Outfit", sans-serif',
-                    '&:hover': { bgcolor: 'rgba(192,107,88,0.08)' },
-                  }}
-                >
-                  Remove
-                </Button>
+                <Chip label={c.status} size="small" />
               </Box>
             </Box>
           ))}

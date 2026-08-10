@@ -4,47 +4,51 @@ import Typography from '@mui/material/Typography'
 import Grid from '@mui/material/Grid'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
-import Avatar from '@mui/material/Avatar'
-import Rating from '@mui/material/Rating'
 import FormatQuoteRoundedIcon from '@mui/icons-material/FormatQuoteRounded'
+import { useEffect, useState } from 'react'
+
+interface TestimonialContent {
+  id: string
+  name: string
+  role: string
+  location: string
+  quote: string
+}
 
 const testimonials = [
   {
-    name: 'Ama Mensah',
-    role: 'Campaign Creator',
-    location: 'Kumasi',
-    avatar: 'A',
-    avatarColor: '#2E3D2F',
-    avatarTextColor: '#F5F2EA',
-    rating: 5,
+    name: 'Evidence before promotion',
+    role: 'Campaign review principle',
     quote:
-      'UbuntuFund helped me raise funds for my daughter\'s surgery at Komfo Anokye in just two weeks. The trust verification gave our donors confidence, and the MTN MoMo payouts made receiving funds seamless.',
+      'Campaigns move through a review workflow before publication, giving administrators a clear place to assess the story, goal, and supporting details.',
   },
   {
-    name: 'Kwame Boateng',
-    role: 'Recurring Donor',
-    location: 'Tema',
-    avatar: 'K',
-    avatarColor: '#A07E33',
-    avatarTextColor: '#F5F2EA',
-    rating: 5,
+    name: 'Records remain accountable',
+    role: 'Data handling principle',
     quote:
-      'I work in London but wanted to support causes back home in Tema. Diaspora mode makes it easy to give in cedis with my card, and I can see exactly where my money goes.',
+      'User-facing deletion is implemented as soft deletion so operational records can be retained for review without remaining active in the product.',
   },
   {
-    name: 'Efua Asante',
-    role: 'NGO Director',
-    location: 'Tamale',
-    avatar: 'E',
-    avatarColor: '#A8B5A0',
-    avatarTextColor: '#1A2E22',
-    rating: 5,
+    name: 'No false checkout',
+    role: 'Payment readiness principle',
     quote:
-      'Our organization raised over GH₵ 750,000 for borehole projects in the Northern Region through UbuntuFund. The escrow system and milestone tracking gave our partners full confidence in the process.',
+      'Only the internal UbuntuFund Wallet flow is available during launch readiness. External payment methods stay disabled until verified provider adapters are connected.',
   },
 ]
 
 function TestimonialsSection() {
+  const [publishedTestimonials, setPublishedTestimonials] = useState<TestimonialContent[]>([])
+
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/v1/testimonials', { headers: { Accept: 'application/json' } })
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error('Request failed')))
+      .then((body) => { if (!cancelled && Array.isArray(body?.data)) setPublishedTestimonials(body.data) })
+      .catch(() => undefined)
+    return () => { cancelled = true }
+  }, [])
+
+  const items = publishedTestimonials.length > 0 ? publishedTestimonials : testimonials
   return (
     <Box
       id="testimonials"
@@ -56,7 +60,7 @@ function TestimonialsSection() {
       <Container maxWidth="lg">
         <Box sx={{ textAlign: 'center', mb: { xs: 6, md: 8 } }}>
           <Typography variant="overline" sx={{ color: 'secondary.dark' }}>
-            Success stories
+            Product commitments
           </Typography>
           <Typography
             variant="h2"
@@ -67,19 +71,19 @@ function TestimonialsSection() {
               fontSize: { xs: '1.75rem', md: '2.25rem' },
             }}
           >
-            Trusted across Ghana
+            Trust starts with honest operations
           </Typography>
           <Typography
             variant="body1"
             sx={{ color: 'text.secondary', maxWidth: 640, mx: 'auto' }}
           >
-            Hear from the people whose lives have been changed through the
-            generosity of the UbuntuFund community.
+            These are the operating principles built into the platform today—not
+            invented customer outcomes or launch metrics.
           </Typography>
         </Box>
 
         <Grid container spacing={4}>
-          {testimonials.map((testimonial) => (
+          {items.map((testimonial) => (
             <Grid size={{ xs: 12, md: 4 }} key={testimonial.name}>
               <Card sx={{ height: '100%' }} elevation={0}>
                 <CardContent sx={{ p: 4 }}>
@@ -101,34 +105,13 @@ function TestimonialsSection() {
                   >
                     "{testimonial.quote}"
                   </Typography>
-                  <Rating
-                    value={testimonial.rating}
-                    readOnly
-                    size="small"
-                    sx={{
-                      mb: 2,
-                      color: 'secondary.dark',
-                      '& .MuiRating-iconEmpty': { color: 'divider' },
-                    }}
-                  />
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Avatar
-                      sx={{
-                        bgcolor: testimonial.avatarColor,
-                        color: testimonial.avatarTextColor,
-                        width: 48,
-                        height: 48,
-                        fontWeight: 700,
-                      }}
-                    >
-                      {testimonial.avatar}
-                    </Avatar>
                     <Box>
                       <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
                         {testimonial.name}
                       </Typography>
                       <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
-                        {testimonial.role} &middot; {testimonial.location}
+                        {testimonial.role}
                       </Typography>
                     </Box>
                   </Box>

@@ -1,4 +1,4 @@
-import type { UserRole, VerificationLevel } from '@ubuntu-fund/types';
+import type { UserRole, VerificationLevel, OrganizationType } from '@ubuntu-fund/types';
 import { Email } from '../value-objects/Email.js';
 import { TrustScore } from '../value-objects/TrustScore.js';
 
@@ -12,6 +12,10 @@ export interface UserProps {
   verificationLevel: VerificationLevel;
   trustScore: TrustScore;
   country?: string;
+  organizationName?: string;
+  organizationType?: OrganizationType;
+  registrationNumber?: string;
+  website?: string;
   emailVerified: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -61,6 +65,18 @@ export class UserEntity {
   }
   get emailVerified(): boolean {
     return this.props.emailVerified;
+  }
+  get organizationName(): string | undefined {
+    return this.props.organizationName;
+  }
+  get organizationType(): OrganizationType | undefined {
+    return this.props.organizationType;
+  }
+  get registrationNumber(): string | undefined {
+    return this.props.registrationNumber;
+  }
+  get website(): string | undefined {
+    return this.props.website;
   }
   get createdAt(): Date {
     return this.props.createdAt;

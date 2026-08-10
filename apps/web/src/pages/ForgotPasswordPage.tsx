@@ -7,6 +7,7 @@ import { Link as RouterLink } from 'react-router-dom'
 import { keyframes } from '@emotion/react'
 import { SHAPE } from '@ubuntu-fund/ui'
 import { AuthLayout } from '../components/auth/AuthLayout'
+import { api } from '@/lib/api'
 
 // ---------------------------------------------------------------------------
 // Animations
@@ -228,7 +229,7 @@ export function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
 
@@ -238,10 +239,16 @@ export function ForgotPasswordPage() {
     }
 
     setLoading(true)
-    setTimeout(() => {
-      setLoading(false)
+    try {
+      await api.post('/auth/forgot-password', { email: email.trim() })
       setSent(true)
-    }, 1200)
+    } catch {
+      // Keep the response account-enumeration safe. The API intentionally
+      // returns the same public outcome whether or not the address exists.
+      setSent(true)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -319,20 +326,6 @@ export function ForgotPasswordPage() {
           >
             Didn&apos;t receive it? Check your spam folder or try again.
           </Typography>
-
-          <Box
-            sx={{
-              mt: 4,
-              p: 2,
-              border: '1.5px dashed rgba(46, 61, 47,0.25)',
-              borderRadius: SHAPE.card,
-              bgcolor: 'rgba(46, 61, 47,0.03)',
-            }}
-          >
-            <Typography sx={{ fontSize: '0.78rem', color: '#5D4037', fontStyle: 'italic' }}>
-              This is a mock &mdash; no email was sent.
-            </Typography>
-          </Box>
 
           {/* Back to sign in */}
           <Box sx={{ mt: 4 }}>

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { Redirect } from 'expo-router'
 import { View, Animated, StyleSheet, Dimensions } from 'react-native'
 import { useAuth } from '@/context/AuthContext'
@@ -10,13 +10,13 @@ const { width } = Dimensions.get('window')
 export default function Index() {
   const { isAuthenticated, isLoading } = useAuth()
 
-  const logoScale = useRef(new Animated.Value(0.3)).current
-  const logoOpacity = useRef(new Animated.Value(0)).current
-  const textOpacity = useRef(new Animated.Value(0)).current
-  const textTranslate = useRef(new Animated.Value(20)).current
-  const taglineOpacity = useRef(new Animated.Value(0)).current
-  const dotScale = useRef(new Animated.Value(0)).current
-  const pulseAnim = useRef(new Animated.Value(1)).current
+  const [logoScale] = useState(() => new Animated.Value(0.3))
+  const [logoOpacity] = useState(() => new Animated.Value(0))
+  const [textOpacity] = useState(() => new Animated.Value(0))
+  const [textTranslate] = useState(() => new Animated.Value(20))
+  const [taglineOpacity] = useState(() => new Animated.Value(0))
+  const [dotScale] = useState(() => new Animated.Value(0))
+  const [pulseAnim] = useState(() => new Animated.Value(1))
 
   useEffect(() => {
     Animated.sequence([
@@ -38,7 +38,7 @@ export default function Index() {
         Animated.timing(pulseAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
       ])
     ).start()
-  }, [])
+  }, [dotScale, logoOpacity, logoScale, pulseAnim, taglineOpacity, textOpacity, textTranslate])
 
   if (!isLoading && !isAuthenticated) return <Redirect href="/(auth)/login" />
   if (!isLoading && isAuthenticated) return <Redirect href="/(tabs)" />

@@ -80,6 +80,23 @@ export class CampaignController {
     }
   };
 
+  listMine = async (
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const campaigns = await this.getCampaignUseCase.listByCreator(req.userId!);
+      res.json({
+        data: campaigns,
+        message: 'Your campaigns retrieved',
+        status: 200,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   donate = async (
     req: AuthenticatedRequest,
     res: Response,

@@ -1,5 +1,5 @@
 import mongoose, { Schema, type Document } from 'mongoose';
-import { UserRole, VerificationLevel } from '@ubuntu-fund/types';
+import { UserRole, VerificationLevel, OrganizationType } from '@ubuntu-fund/types';
 
 export interface UserDocument extends Document {
   email: string;
@@ -11,6 +11,12 @@ export interface UserDocument extends Document {
   trustScore: number;
   country?: string;
   emailVerified: boolean;
+  organizationName?: string;
+  organizationType?: OrganizationType;
+  registrationNumber?: string;
+  website?: string;
+  deletedAt?: Date;
+  deletedBy?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -36,6 +42,12 @@ const userSchema = new Schema<UserDocument>(
     trustScore: { type: Number, default: 50, min: 0, max: 100 },
     country: { type: String },
     emailVerified: { type: Boolean, default: false },
+    organizationName: { type: String, trim: true },
+    organizationType: { type: String, enum: Object.values(OrganizationType) },
+    registrationNumber: { type: String, trim: true },
+    website: { type: String, trim: true },
+    deletedAt: { type: Date, index: true },
+    deletedBy: { type: String },
   },
   { timestamps: true }
 );

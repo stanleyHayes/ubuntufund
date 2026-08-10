@@ -65,6 +65,10 @@ vi.mock('@/hooks/useLeaderboard', () => ({
   }),
 }))
 
+vi.mock('@/components/GlobalActivityFeed', () => ({
+  GlobalActivityFeed: () => <div data-testid="global-activity-feed" />,
+}))
+
 // Import after mock setup
 import { HomePage } from '@/pages/HomePage'
 

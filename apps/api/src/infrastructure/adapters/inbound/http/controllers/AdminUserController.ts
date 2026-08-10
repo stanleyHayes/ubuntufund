@@ -1,9 +1,26 @@
 import type { Response, NextFunction } from 'express';
 import type { AuthenticatedRequest } from '../../middleware/authMiddleware.js';
 import type { ListUsersUseCase } from '../../../../../application/use-cases/ListUsersUseCase.js';
+import type { GetAdminUserUseCase } from '../../../../../application/use-cases/GetAdminUserUseCase.js';
 
 export class AdminUserController {
-  constructor(private readonly listUsersUseCase: ListUsersUseCase) {}
+  constructor(
+    private readonly listUsersUseCase: ListUsersUseCase,
+    private readonly getAdminUserUseCase: GetAdminUserUseCase
+  ) {}
+
+  getById = async (
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const user = await this.getAdminUserUseCase.execute(req.params.id as string);
+      res.json({ data: user, message: 'User retrieved', status: 200 });
+    } catch (error) {
+      next(error);
+    }
+  };
 
   list = async (
     req: AuthenticatedRequest,

@@ -10,6 +10,14 @@ export interface Notification {
   createdAt: string
 }
 
+function notificationItems(value: Notification[] | { items: Notification[] }): Notification[] {
+  return Array.isArray(value) ? value : value.items
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Failed to load notifications'
+}
+
 export function useNotifications() {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -23,11 +31,11 @@ export function useNotifications() {
       api.get<{ count: number }>('/notifications/unread-count'),
     ])
       .then(([notifs, countRes]) => {
-        setNotifications(Array.isArray(notifs) ? notifs : (notifs as any).items ?? [])
+        setNotifications(notificationItems(notifs))
         setUnreadCount(countRes.count ?? 0)
         setError(null)
       })
-      .catch((err) => setError(err.message))
+      .catch((err: unknown) => setError(errorMessage(err)))
       .finally(() => setIsLoading(false))
   }, [])
 
@@ -39,13 +47,13 @@ export function useNotifications() {
     ])
       .then(([notifs, countRes]) => {
         if (cancelled) return
-        setNotifications(Array.isArray(notifs) ? notifs : (notifs as any).items ?? [])
+        setNotifications(notificationItems(notifs))
         setUnreadCount(countRes.count ?? 0)
         setError(null)
       })
       .catch((err) => {
         if (cancelled) return
-        setError(err.message)
+        setError(errorMessage(err))
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false)

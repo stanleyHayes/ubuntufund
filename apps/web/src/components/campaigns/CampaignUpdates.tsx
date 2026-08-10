@@ -15,7 +15,7 @@ import PushPinIcon from '@mui/icons-material/PushPin'
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined'
 import DeleteIcon from '@mui/icons-material/Delete'
 import { SHAPE } from '@ubuntu-fund/ui'
-import type { CampaignUpdate, CampaignUpdateType } from '@ubuntu-fund/types'
+import type { CampaignUpdateType } from '@ubuntu-fund/types'
 import { useCampaignUpdates, useDeleteCampaignUpdate, usePinCampaignUpdate } from '@/hooks/useCampaignUpdates'
 
 interface CampaignUpdatesProps {
@@ -52,7 +52,7 @@ function getUpdateTypeLabel(type: CampaignUpdateType): string {
 }
 
 export function CampaignUpdates({ campaignId, isCreator }: CampaignUpdatesProps) {
-  const { updates, isLoading, error } = useCampaignUpdates(campaignId)
+  const { updates, isLoading, error, refetch } = useCampaignUpdates(campaignId)
   const { deleteUpdate, isLoading: isDeleting } = useDeleteCampaignUpdate()
   const { pin, isLoading: isPinning } = usePinCampaignUpdate()
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -69,18 +69,14 @@ export function CampaignUpdates({ campaignId, isCreator }: CampaignUpdatesProps)
     if (success) {
       setDeleteDialogOpen(false)
       setSelectedUpdateId(null)
-      window.location.reload()
+      refetch()
     }
   }
 
-  const handlePin = async (updateId: string, currentlyPinned: boolean) => {
-    if (currentlyPinned) {
-      // Unpin not implemented in the hook, so we'd need to update the API to support it
-      return
-    }
+  const handlePin = async (updateId: string) => {
     const success = await pin(campaignId, updateId)
     if (success) {
-      window.location.reload()
+      refetch()
     }
   }
 
@@ -92,7 +88,7 @@ export function CampaignUpdates({ campaignId, isCreator }: CampaignUpdatesProps)
             key={i}
             sx={{
               p: 3,
-              bgcolor: 'grey.50',
+              bgcolor: 'action.hover',
               borderRadius: SHAPE.card,
             }}
           >
@@ -123,7 +119,7 @@ export function CampaignUpdates({ campaignId, isCreator }: CampaignUpdatesProps)
         sx={{
           py: 6,
           textAlign: 'center',
-          bgcolor: 'grey.50',
+          bgcolor: 'action.hover',
           borderRadius: SHAPE.card,
         }}
       >
@@ -142,7 +138,7 @@ export function CampaignUpdates({ campaignId, isCreator }: CampaignUpdatesProps)
             key={update.id}
             sx={{
               p: 3,
-              bgcolor: 'grey.50',
+              bgcolor: 'action.hover',
               borderRadius: SHAPE.card,
               borderLeft: update.isPinned ? '4px solid' : 'none',
               borderLeftColor: 'primary.main',
@@ -189,9 +185,9 @@ export function CampaignUpdates({ campaignId, isCreator }: CampaignUpdatesProps)
                 <Box sx={{ display: 'flex', gap: 0.5 }}>
                   <IconButton
                     size="small"
-                    onClick={() => handlePin(update.id, update.isPinned)}
+                    onClick={() => handlePin(update.id)}
                     disabled={isPinning}
-                    title={update.isPinned ? 'Pinned' : 'Pin this update'}
+                    title={update.isPinned ? 'Unpin this update' : 'Pin this update'}
                     sx={{
                       color: update.isPinned ? 'primary.main' : 'text.secondary',
                       '&:hover': {

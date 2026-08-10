@@ -42,10 +42,17 @@ export class RegisterUserUseCase {
       email: new Email(input.email),
       name: input.name,
       passwordHash,
-      role: UserRole.USER,
+      role:
+        input.role === UserRole.ORGANIZATION
+          ? UserRole.ORGANIZATION
+          : UserRole.USER,
       verificationLevel: VerificationLevel.NONE,
       trustScore: TrustScore.default(),
       country: input.country,
+      organizationName: input.organizationName,
+      organizationType: input.organizationType,
+      registrationNumber: input.registrationNumber,
+      website: input.website,
       emailVerified: false,
       createdAt: now,
       updatedAt: now,

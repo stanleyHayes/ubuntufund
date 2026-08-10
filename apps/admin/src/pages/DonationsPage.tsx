@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Box, Typography, TextField, MenuItem, InputAdornment } from '@mui/material'
 import { keyframes } from '@mui/system'
 import SearchIcon from '@mui/icons-material/Search'
@@ -142,7 +141,6 @@ function DonationCard({ donation, donorName, campaignTitle, index }: DonationCar
 }
 
 export default function DonationsPage() {
-  const navigate = useNavigate()
   const { data: donations, isLoading: loading } = useAdminDonations()
   const PAGE_SIZE = 12
   const [search, setSearch] = useState('')

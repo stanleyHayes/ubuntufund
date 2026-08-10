@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import {
   View,
   ScrollView,
@@ -65,15 +65,15 @@ function getGreeting() {
 
 function FeaturedCard({ campaign, index }: { campaign: Campaign; index: number }) {
   const pct = campaign.goalAmount > 0 ? Math.min(campaign.raisedAmount / campaign.goalAmount, 1) : 0
-  const fadeAnim = useRef(new Animated.Value(0)).current
-  const slideAnim = useRef(new Animated.Value(30)).current
+  const [fadeAnim] = useState(() => new Animated.Value(0))
+  const [slideAnim] = useState(() => new Animated.Value(30))
 
   useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, { toValue: 1, duration: 400, delay: index * 100, useNativeDriver: true }),
       Animated.spring(slideAnim, { toValue: 0, friction: 8, tension: 50, delay: index * 100, useNativeDriver: true }),
     ]).start()
-  }, [])
+  }, [fadeAnim, index, slideAnim])
 
   return (
     <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
@@ -174,15 +174,15 @@ export default function HomeTab() {
   const totalCampaigns = active.length
 
   // Hero animation
-  const heroOpacity = useRef(new Animated.Value(0)).current
-  const heroSlide = useRef(new Animated.Value(20)).current
+  const [heroOpacity] = useState(() => new Animated.Value(0))
+  const [heroSlide] = useState(() => new Animated.Value(20))
 
   useEffect(() => {
     Animated.parallel([
       Animated.timing(heroOpacity, { toValue: 1, duration: 500, useNativeDriver: true }),
       Animated.spring(heroSlide, { toValue: 0, friction: 8, tension: 50, useNativeDriver: true }),
     ]).start()
-  }, [])
+  }, [heroOpacity, heroSlide])
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>

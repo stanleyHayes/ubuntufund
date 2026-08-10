@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   View,
   ScrollView,
@@ -51,7 +51,7 @@ function formatAmount(amount?: number) {
 // ─── Skeleton ────────────────────────────────────────────────
 
 function SkeletonRows() {
-  const opacity = useRef(new Animated.Value(0.3)).current
+  const [opacity] = useState(() => new Animated.Value(0.3))
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
@@ -59,7 +59,7 @@ function SkeletonRows() {
         Animated.timing(opacity, { toValue: 0.3, duration: 800, useNativeDriver: true }),
       ]),
     ).start()
-  }, [])
+  }, [opacity])
   return (
     <Animated.View style={{ opacity, paddingHorizontal: 16, paddingTop: 8 }}>
       {[0, 1, 2, 3, 4, 5, 6].map((i) => (
@@ -92,8 +92,8 @@ export default function LeaderboardScreen() {
     try {
       const res = await api.get<LeaderboardEntry[]>(`/leaderboard?period=${PERIOD_PARAMS[activePeriod]}`)
       setEntries(Array.isArray(res) ? res : [])
-    } catch (err: any) {
-      setError(err.message ?? 'Failed to load leaderboard')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load leaderboard')
     } finally {
       setLoading(false)
     }

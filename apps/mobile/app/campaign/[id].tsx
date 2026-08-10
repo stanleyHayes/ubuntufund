@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { View, ScrollView, StyleSheet, Alert, Modal, TextInput, TouchableOpacity, Linking } from 'react-native'
+import { View, ScrollView, StyleSheet, Alert, Modal, TextInput, TouchableOpacity } from 'react-native'
 import { useLocalSearchParams, Stack } from 'expo-router'
-import { Text, Button, Chip, ActivityIndicator, Surface, Avatar, Divider, Icon } from 'react-native-paper'
+import { Text, Button, Chip, ActivityIndicator, Surface, Avatar, Icon } from 'react-native-paper'
 import { useCampaign, useUser } from '@/hooks/useCampaigns'
 import { RemoteImage } from '@/components/RemoteImage'
 import { FadeInUp } from '@/components/anim/FadeInUp'
@@ -11,9 +11,10 @@ import { TrustBadge } from '@/components/TrustBadge'
 import { shareCampaign } from '@/components/ShareCampaign'
 import { brandColors } from '@/theme'
 import { api } from '@/lib/api'
-import type { CampaignPriority, CampaignDonation } from '@ubuntu-fund/types'
-import { CollaboratorRole, CollaborationStatus, type CampaignCollaborator } from '@ubuntu-fund/types'
+import type { CampaignDonation } from '@ubuntu-fund/types'
+import { CollaboratorRole, type CampaignCollaborator } from '@ubuntu-fund/types'
 import { CampaignUpdatesList } from '@/components/CampaignUpdatesList'
+import { CampaignComments } from '@/components/CampaignComments'
 
 const ROLE_LABELS: Record<CollaboratorRole, string> = {
   [CollaboratorRole.CO_OWNER]: 'Co-Owner',
@@ -25,6 +26,10 @@ const priorityStyle: Record<string, { bg: string; text: string }> = {
   critical: { bg: 'rgba(165,67,47,0.14)', text: brandColors.error },
   urgent: { bg: 'rgba(185,138,46,0.16)', text: brandColors.warning },
   normal: { bg: 'rgba(168,181,160,0.28)', text: brandColors.text },
+}
+
+const FALLBACK_WALLET_PROVIDER: EnabledPaymentProvider = {
+  id: 'fallback-wallet', name: 'Wallet', slug: 'wallet', type: 'wallet', isDefault: true, feePercent: 0,
 }
 
 // Guarded date formatter — an absent or unparseable date renders "—", never "Invalid Date".
@@ -53,22 +58,13 @@ export default function CampaignDetailScreen() {
 
   const { providers, isLoading: providersLoading, error: providersError } = useEnabledPaymentProviders()
 
-  const fallbackWalletProvider: EnabledPaymentProvider = {
-    id: 'fallback-wallet',
-    name: 'Wallet',
-    slug: 'wallet',
-    type: 'wallet',
-    isDefault: true,
-    feePercent: 0,
-  }
-
   useEffect(() => {
     if (selectedProvider) return
     if (providers.length > 0) {
       const defaultProvider = providers.find((p) => p.isDefault) ?? providers[0]
       setSelectedProvider(defaultProvider)
     } else if (providersError) {
-      setSelectedProvider(fallbackWalletProvider)
+      setSelectedProvider(FALLBACK_WALLET_PROVIDER)
     }
   }, [providers, providersError, selectedProvider])
 
@@ -106,7 +102,7 @@ export default function CampaignDetailScreen() {
     }
 
     if (selectedProvider.type !== 'wallet') {
-      Alert.alert('Coming Soon', 'This payment method will be available soon.')
+      Alert.alert('Payment Method Unavailable', 'This provider is not configured for live payments.')
       return
     }
 
@@ -244,6 +240,11 @@ export default function CampaignDetailScreen() {
             Updates
           </Text>
           <CampaignUpdatesList campaignId={campaign.id} isCreator={false} />
+
+          <Text variant="titleMedium" style={styles.sectionTitle}>
+            Comments
+          </Text>
+          <CampaignComments campaignId={campaign.id} creatorId={campaign.creatorId} />
 
           {/* About */}
           <Text variant="titleMedium" style={styles.sectionTitle}>
@@ -389,16 +390,12 @@ export default function CampaignDetailScreen() {
             ))}
           </View>
 
-          {/* Payment Methods */}
+          {/* Payment Method */}
           <Text variant="titleMedium" style={styles.sectionTitle}>
-            Accepted Payment Methods
+            Accepted Payment Method
           </Text>
           <Surface style={styles.paymentMethodsCard} elevation={0}>
-            {[
-              { icon: 'cellphone', label: 'Mobile Money' },
-              { icon: 'credit-card-outline', label: 'Debit / Credit Card' },
-              { icon: 'bank-outline', label: 'Bank Transfer' },
-            ].map((method) => (
+            {[{ icon: 'wallet-outline', label: 'UbuntuFund Wallet' }].map((method) => (
               <View key={method.label} style={styles.paymentMethodItem}>
                 <Icon source={method.icon} size={20} color={brandColors.textSecondary} />
                 <Text variant="bodySmall">{method.label}</Text>
@@ -419,7 +416,7 @@ export default function CampaignDetailScreen() {
               [
                 { text: 'Cancel', style: 'cancel' },
                 { text: 'Report', style: 'destructive', onPress: () => {
-                  api.post(`/reports`, { campaignId: campaign.id, reason: 'Flagged from mobile' })
+                  api.post(`/campaigns/${campaign.id}/report`, { reason: 'Flagged from mobile' })
                     .then(() => Alert.alert('Reported', 'Thank you. Our team will review this campaign.'))
                     .catch(() => Alert.alert('Error', 'Could not submit report. Please try again.'))
                 }},

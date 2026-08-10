@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage'
+import * as SecureStore from 'expo-secure-store'
 
 // In dev, the API runs on your machine. Android emulator uses 10.0.2.2 for localhost.
 // iOS simulator and physical devices (with Expo) use the LAN IP.
@@ -14,6 +14,20 @@ import Constants from 'expo-constants'
 const API_PORT = process.env.EXPO_PUBLIC_API_PORT ?? '8100'
 
 function getApiBase(): string {
+  const configuredBase = process.env.EXPO_PUBLIC_API_URL?.trim().replace(/\/$/, '')
+  if (configuredBase) {
+    if (!__DEV__ && !configuredBase.startsWith('https://')) {
+      throw new Error('EXPO_PUBLIC_API_URL must use HTTPS in production')
+    }
+    return configuredBase.endsWith('/api/v1')
+      ? configuredBase
+      : `${configuredBase}/api/v1`
+  }
+
+  if (!__DEV__) {
+    throw new Error('EXPO_PUBLIC_API_URL is required for production builds')
+  }
+
   const expoHost = Constants.expoConfig?.hostUri?.split(':')[0]
 
   if (expoHost && expoHost !== 'localhost') {
@@ -76,12 +90,10 @@ async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
 
 async function authedRequest<T>(path: string, options?: RequestInit): Promise<T> {
   let token: string | null = null
-  let isDemo = false
   try {
-    const tokensRaw = await AsyncStorage.getItem('uf_tokens')
+    const tokensRaw = await SecureStore.getItemAsync('uf_tokens')
     const tokens = tokensRaw ? JSON.parse(tokensRaw) : null
     token = tokens?.accessToken ?? null
-    isDemo = token === 'demo-access-token'
   } catch {
     // ignore
   }
@@ -97,11 +109,6 @@ async function authedRequest<T>(path: string, options?: RequestInit): Promise<T>
   })
 
   if (!res.ok) {
-    // Demo accounts get a fake token that the real API rejects —
-    // return empty/default data instead of surfacing "authentication required"
-    if (isDemo && res.status === 401) {
-      return [] as unknown as T
-    }
     const error = await res.json().catch(() => ({ message: 'Request failed' }))
     throw new Error(error.message ?? error.error ?? `HTTP ${res.status}`)
   }
@@ -146,40 +153,13 @@ export interface RegisterResponse {
   tokens: AuthTokens
 }
 
-// --- Demo credentials (fallback when API is unavailable) ---
-
-const DEMO_ACCOUNTS: Record<string, { password: string; user: AuthUser }> = {
-  'demo@ubuntufund.com': {
-    password: 'ubuntu2026',
-    user: { id: 'demo-user-1', name: 'Amara Osei', email: 'demo@ubuntufund.com', role: 'user' },
-  },
-}
-
-function demoLogin(email: string, password: string): LoginResponse | null {
-  const account = DEMO_ACCOUNTS[email]
-  if (account && account.password === password) {
-    return {
-      user: account.user,
-      tokens: { accessToken: 'demo-access-token', refreshToken: 'demo-refresh-token' },
-    }
-  }
-  return null
-}
-
 // --- Auth API ---
 
 export async function loginApi(email: string, password: string): Promise<LoginResponse> {
-  try {
-    // request() unwraps the envelope, so this resolves to { user, tokens }.
-    return await request<LoginResponse>('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
-    })
-  } catch (err) {
-    const demo = demoLogin(email, password)
-    if (demo) return demo
-    throw err
-  }
+  return request<LoginResponse>('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  })
 }
 
 export async function registerApi(data: {
@@ -200,9 +180,6 @@ export async function registerApi(data: {
 }
 
 export async function refreshTokenApi(refreshToken: string): Promise<AuthTokens> {
-  if (refreshToken === 'demo-refresh-token') {
-    return { accessToken: 'demo-access-token', refreshToken: 'demo-refresh-token' }
-  }
   return request<AuthTokens>('/auth/refresh', {
     method: 'POST',
     body: JSON.stringify({ refreshToken }),

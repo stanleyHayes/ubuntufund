@@ -32,6 +32,11 @@ export class MongoSubscriptionRepository implements SubscriptionRepositoryPort {
     return doc ? toDomain(doc) : null;
   }
 
+  async findAll(limit = 500): Promise<Subscription[]> {
+    const docs = await SubscriptionModel.find().sort({ createdAt: -1 }).limit(Math.min(limit, 1000));
+    return docs.map(toDomain);
+  }
+
   async save(subscription: Subscription): Promise<Subscription> {
     const doc = await SubscriptionModel.create({
       userId: subscription.userId,

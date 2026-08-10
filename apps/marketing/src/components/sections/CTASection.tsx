@@ -74,7 +74,7 @@ function CTASection() {
           variant="body2"
           sx={{ color: 'text.secondary', mt: 3 }}
         >
-          No platform fees for personal campaigns. Free to get started.
+          The Free plan needs no card. External payment and payout rails remain disabled until verified.
         </Typography>
       </Container>
     </Box>

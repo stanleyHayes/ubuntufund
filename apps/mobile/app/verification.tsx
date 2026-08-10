@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   View,
   ScrollView,
@@ -77,7 +77,7 @@ function formatDate(date?: string | null) {
 // ─── Skeleton ────────────────────────────────────────────────
 
 function SkeletonCard() {
-  const opacity = useRef(new Animated.Value(0.3)).current
+  const [opacity] = useState(() => new Animated.Value(0.3))
   useEffect(() => {
     const anim = Animated.loop(
       Animated.sequence([
@@ -128,8 +128,8 @@ export default function VerificationScreen() {
           updatedAt: r.createdAt,
         })),
       )
-    } catch (err: any) {
-      setError(err.message ?? 'Failed to load verifications')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load verifications')
     } finally {
       setLoading(false)
     }

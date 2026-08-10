@@ -18,9 +18,21 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.ubuntufund.app",
-      "associatedDomains": [
-        "applinks:ubuntufund.com"
-      ]
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "privacyManifests": {
+        "NSPrivacyTracking": false,
+        "NSPrivacyAccessedAPITypes": [
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+            "NSPrivacyAccessedAPITypeReasons": [
+              "CA92.1"
+            ]
+          }
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -33,11 +45,6 @@
           "action": "VIEW",
           "autoVerify": true,
           "data": [
-            {
-              "scheme": "https",
-              "host": "ubuntufund.com",
-              "pathPrefix": "/campaigns"
-            },
             {
               "scheme": "ubuntufund"
             }
@@ -55,10 +62,16 @@
     },
     "plugins": [
       "expo-router",
-      "expo-font"
-    ],
-    "notification": {
-      "vapidPublicKey": "BNM8Xg2klofkUZfe2lXC80wFGQVSQj7ojDcn8mlLPQfDfuY4dIBcr5qpxggHMPzv53GwQ4xapuPIR3sQoXV0TuI"
-    }
+      "expo-font",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/adaptive-icon.png",
+          "color": "#2E7D32",
+          "defaultChannel": "default"
+        }
+      ],
+      "expo-secure-store"
+    ]
   }
 }

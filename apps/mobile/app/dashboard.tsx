@@ -1,13 +1,12 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   View,
   ScrollView,
   StyleSheet,
   Animated,
-  Dimensions,
+  type DimensionValue,
 } from 'react-native'
 import { Text, Icon, TouchableRipple } from 'react-native-paper'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, Stack } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
@@ -16,8 +15,6 @@ import { EmptyState } from '@/components/EmptyState'
 import { SignInRequired } from '@/components/SignInRequired'
 import { FadeInUp } from '@/components/anim/FadeInUp'
 import { brandColors } from '@/theme'
-
-const { width } = Dimensions.get('window')
 
 interface Campaign {
   id: string
@@ -61,8 +58,8 @@ function formatDate(date?: string | null) {
 
 // ─── Skeleton ────────────────────────────────────────────────
 
-function SkeletonBlock({ w, h, mb = 0 }: { w: number | string; h: number; mb?: number }) {
-  const opacity = useRef(new Animated.Value(0.3)).current
+function SkeletonBlock({ w, h, mb = 0 }: { w: DimensionValue; h: number; mb?: number }) {
+  const [opacity] = useState(() => new Animated.Value(0.3))
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
@@ -70,11 +67,11 @@ function SkeletonBlock({ w, h, mb = 0 }: { w: number | string; h: number; mb?: n
         Animated.timing(opacity, { toValue: 0.3, duration: 800, useNativeDriver: true }),
       ]),
     ).start()
-  }, [])
+  }, [opacity])
   return (
     <Animated.View
       style={{
-        width: w as any,
+        width: w,
         height: h,
         backgroundColor: '#E0E0E0',
         borderRadius: 8,
@@ -90,9 +87,9 @@ function DashboardSkeleton() {
     <View style={{ padding: 16 }}>
       {/* Stat boxes */}
       <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
-        <SkeletonBlock w={'31%' as any} h={80} />
-        <SkeletonBlock w={'31%' as any} h={80} />
-        <SkeletonBlock w={'31%' as any} h={80} />
+        <SkeletonBlock w="31%" h={80} />
+        <SkeletonBlock w="31%" h={80} />
+        <SkeletonBlock w="31%" h={80} />
       </View>
       {/* Campaign list */}
       <SkeletonBlock w="50%" h={16} mb={12} />
@@ -127,7 +124,7 @@ function QuickAction({ icon, label, color, onPress }: { icon: string; label: str
 
 export default function DashboardScreen() {
   const { user } = useAuth()
-  const insets = useSafeAreaInsets()
+  const isOrganization = user?.role === 'organization'
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [totalRaised, setTotalRaised] = useState(0)
@@ -141,29 +138,27 @@ export default function DashboardScreen() {
     setError(null)
     try {
       const [campaignsRes, donationsRes] = await Promise.all([
-        api.get<Campaign[] | { items: Campaign[] }>('/campaigns').catch(() => [] as Campaign[]),
+        api.get<Campaign[]>('/campaigns/mine'),
         api.get<Donation[]>('/donations/mine').catch(() => [] as Donation[]),
       ])
 
-      // /campaigns is paginated ({ items }); /donations/mine is a bare array.
-      const campaigns = Array.isArray(campaignsRes) ? campaignsRes : campaignsRes.items ?? []
+      const campaigns = Array.isArray(campaignsRes) ? campaignsRes : []
       const donations = Array.isArray(donationsRes) ? donationsRes : []
 
-      const myCampaigns = campaigns.filter((c) => c.creatorId === user?.id)
-      const active = myCampaigns.filter((c) => c.status === 'active')
-      const raised = myCampaigns.reduce((sum, c) => sum + c.raisedAmount, 0)
+      const active = campaigns.filter((c) => c.status === 'active')
+      const raised = campaigns.reduce((sum, c) => sum + c.raisedAmount, 0)
 
       setTotalRaised(raised)
       setActiveCampaigns(active.length)
       setTotalDonations(donations.length)
-      setRecentCampaigns(myCampaigns.slice(0, 3))
+      setRecentCampaigns(campaigns.slice(0, 3))
       setRecentDonations(donations.slice(0, 5))
-    } catch (err: any) {
-      setError(err.message ?? 'Failed to load dashboard')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load dashboard')
     } finally {
       setLoading(false)
     }
-  }, [user?.id])
+  }, [])
 
   useEffect(() => {
     if (!user) return
@@ -204,6 +199,19 @@ export default function DashboardScreen() {
           />
         ) : (
           <>
+            <View style={styles.heroCard}>
+              <View style={styles.heroIcon}>
+                <Icon source={isOrganization ? 'office-building-outline' : 'account-outline'} size={22} color={brandColors.secondaryDark} />
+              </View>
+              <View style={styles.heroCopy}>
+                <Text style={styles.heroEyebrow}>{isOrganization ? 'Organization workspace' : 'Personal workspace'}</Text>
+                <Text style={styles.heroTitle} numberOfLines={1}>{user.name}</Text>
+                <Text style={styles.heroBody}>
+                  {isOrganization ? 'Manage campaigns, collaborators, and your community impact.' : 'Track your campaigns and giving in one place.'}
+                </Text>
+              </View>
+            </View>
+
             {/* Stats */}
             <View style={styles.statsRow}>
               <FadeInUp index={0} style={styles.statCardWrap}>
@@ -224,7 +232,7 @@ export default function DashboardScreen() {
                 <View style={styles.statCard}>
                   <Icon source="heart" size={24} color={brandColors.error} />
                   <Text style={styles.statValue}>{totalDonations}</Text>
-                  <Text style={styles.statLabel}>Total Donations</Text>
+                  <Text style={styles.statLabel}>Donations Made</Text>
                 </View>
               </FadeInUp>
             </View>
@@ -234,7 +242,7 @@ export default function DashboardScreen() {
             <View style={styles.quickActionsRow}>
               <QuickAction icon="plus-circle" label="Create Campaign" color={brandColors.primary} onPress={() => router.push('/campaign/create')} />
               <QuickAction icon="heart-outline" label="View Donations" color={brandColors.error} onPress={() => router.push('/my-donations')} />
-              <QuickAction icon="account-plus" label="Invite" color={brandColors.secondaryDark} onPress={() => router.push('/invitations')} />
+              <QuickAction icon={isOrganization ? 'account-group-outline' : 'account-plus'} label={isOrganization ? 'Collaborators' : 'Invitations'} color={brandColors.secondaryDark} onPress={() => router.push('/invitations')} />
             </View>
 
             {/* Recent Campaigns */}
@@ -269,7 +277,7 @@ export default function DashboardScreen() {
             )}
 
             {/* Recent Donations */}
-            <Text style={styles.sectionTitle}>Recent Donations Received</Text>
+            <Text style={styles.sectionTitle}>Your Recent Donations</Text>
             {recentDonations.length === 0 ? (
               <Text style={styles.noData}>No donations yet</Text>
             ) : (
@@ -281,12 +289,12 @@ export default function DashboardScreen() {
                   >
                     <View style={{ flex: 1 }}>
                       <Text style={styles.listTitle} numberOfLines={1}>
-                        {d.donorName ?? 'Anonymous'}
+                        {d.campaignTitle ?? d.campaignName ?? 'Campaign donation'}
                       </Text>
                       <Text style={styles.listSub}>{formatDate(d.date ?? d.createdAt)}</Text>
                     </View>
                     <Text style={styles.donationAmount}>
-                      +GH₵ {d.amount.toLocaleString()}
+                      {formatCurrency(d.amount)}
                     </Text>
                   </View>
                 ))}
@@ -301,6 +309,13 @@ export default function DashboardScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: brandColors.background },
+
+  heroCard: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginTop: 18, padding: 16, borderRadius: 18, backgroundColor: brandColors.primary, gap: 12 },
+  heroIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: brandColors.secondary },
+  heroCopy: { flex: 1 },
+  heroEyebrow: { fontSize: 10, fontFamily: 'Outfit_700Bold', color: brandColors.secondary, textTransform: 'uppercase', letterSpacing: 1 },
+  heroTitle: { marginTop: 2, fontSize: 20, fontFamily: 'Outfit_700Bold', color: '#FFFFFF' },
+  heroBody: { marginTop: 3, fontSize: 12, lineHeight: 17, fontFamily: 'Outfit_400Regular', color: 'rgba(255,255,255,0.72)' },
 
   statsRow: { flexDirection: 'row', paddingHorizontal: 16, paddingTop: 20, gap: 10 },
   statCardWrap: { flex: 1 },

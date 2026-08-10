@@ -10,8 +10,7 @@ import AddIcon from '@mui/icons-material/Add'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
 import FormatQuoteRoundedIcon from '@mui/icons-material/FormatQuoteRounded'
-import { EmptyState, AiWritingBar } from '@ubuntu-fund/ui'
-import { AiWritingAction } from '@ubuntu-fund/types'
+import { EmptyState } from '@ubuntu-fund/ui'
 import type { Testimonial, TestimonialStatus, CreateTestimonialInput } from '@ubuntu-fund/types'
 import { usePagination } from '@/hooks/usePagination'
 import PaginationBar from '@/components/PaginationBar'
@@ -91,7 +90,7 @@ function TestimonialsPage() {
       if (statusFilter !== 'all') params.set('status', statusFilter)
 
       const [listRes, statsRes] = await Promise.all([
-        fetch(`/api/v1/testimonials?${params}`, { headers }),
+        fetch(`/api/v1/testimonials/admin?${params}`, { headers }),
         fetch('/api/v1/testimonials/stats', { headers }),
       ])
 
@@ -165,7 +164,7 @@ function TestimonialsPage() {
       const res = await fetch(`/api/v1/testimonials/${id}`, { method: 'DELETE', headers })
       if (res.ok) {
         setDeleteConfirm(null)
-        setSnackbar({ open: true, message: 'Testimonial deleted', severity: 'success' })
+        setSnackbar({ open: true, message: 'Testimonial archived and removed from the site', severity: 'success' })
         fetchData()
       }
     } catch {
@@ -359,12 +358,6 @@ function TestimonialsPage() {
             onChange={(e) => setForm({ ...form, location: e.target.value })}
             sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
           />
-          <AiWritingBar
-            value={form.quote}
-            onChange={(v) => setForm({ ...form, quote: v })}
-            inputLabel="Testimonial Content"
-            allowedActions={[AiWritingAction.FORMALIZE, AiWritingAction.SUMMARIZE, AiWritingAction.FIX_GRAMMAR, AiWritingAction.IMPROVE_CLARITY, AiWritingAction.GENERATE_TITLE]}
-          />
           <TextField
             fullWidth multiline rows={4} size="small" label="Quote"
             value={form.quote}
@@ -432,10 +425,10 @@ function TestimonialsPage() {
         onClose={() => setDeleteConfirm(null)}
         PaperProps={{ sx: { bgcolor: '#1a1a2e', border: `1px solid ${B}`, borderRadius: 3 } }}
       >
-        <DialogTitle sx={{ fontWeight: 800 }}>Delete Testimonial?</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 800 }}>Remove Testimonial?</DialogTitle>
         <DialogContent>
           <Typography sx={{ color: 'rgba(255,255,255,0.6)' }}>
-            This action cannot be undone. The testimonial will be permanently removed.
+            This hides the testimonial from the site and active admin lists. Its record is retained for audit and recovery.
           </Typography>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
@@ -444,7 +437,7 @@ function TestimonialsPage() {
             variant="contained" color="error" onClick={() => deleteConfirm && handleDelete(deleteConfirm)}
             sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2 }}
           >
-            Delete
+            Remove
           </Button>
         </DialogActions>
       </Dialog>

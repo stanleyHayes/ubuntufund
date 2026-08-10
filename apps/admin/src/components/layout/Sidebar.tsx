@@ -32,8 +32,6 @@ import ContactMailRoundedIcon from '@mui/icons-material/ContactMailRounded'
 import LayersRoundedIcon from '@mui/icons-material/LayersRounded'
 import AccountBalanceRoundedIcon from '@mui/icons-material/AccountBalanceRounded'
 import AdminPanelSettingsRoundedIcon from '@mui/icons-material/AdminPanelSettingsRounded'
-import PersonAddRoundedIcon from '@mui/icons-material/PersonAddRounded'
-import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded'
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded'
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded'
 import { useAuth } from '@/context/AuthContext'
@@ -103,8 +101,6 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Plans', path: '/plans', icon: <LayersRoundedIcon /> },
       { label: 'Payment Providers', path: '/payment-providers', icon: <AccountBalanceRoundedIcon /> },
       { label: 'Roles', path: '/roles', icon: <AdminPanelSettingsRoundedIcon /> },
-      { label: 'Invite Teammate', path: '/invite', icon: <PersonAddRoundedIcon /> },
-      { label: 'Settings', path: '/settings', icon: <SettingsRoundedIcon /> },
     ],
   },
 ]

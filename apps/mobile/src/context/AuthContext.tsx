@@ -1,13 +1,9 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import type { ReactNode } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { Platform } from 'react-native'
+import * as SecureStore from 'expo-secure-store'
 import { loginApi, registerApi, refreshTokenApi } from '@/lib/api'
 import type { AuthUser, AuthTokens } from '@/lib/api'
-import {
-  registerForPushNotificationsAsync,
-  registerPushTokenWithApi,
-} from '@/services/notifications'
 
 interface AuthState {
   user: AuthUser | null
@@ -38,10 +34,18 @@ const STORAGE_TOKENS_KEY = 'uf_tokens'
 
 async function loadFromStorage(): Promise<{ user: AuthUser | null; tokens: AuthTokens | null }> {
   try {
-    const [userRaw, tokensRaw] = await Promise.all([
+    const [userRaw, secureTokensRaw, legacyTokensRaw] = await Promise.all([
       AsyncStorage.getItem(STORAGE_USER_KEY),
+      SecureStore.getItemAsync(STORAGE_TOKENS_KEY),
       AsyncStorage.getItem(STORAGE_TOKENS_KEY),
     ])
+    const tokensRaw = secureTokensRaw ?? legacyTokensRaw
+    if (!secureTokensRaw && legacyTokensRaw) {
+      await SecureStore.setItemAsync(STORAGE_TOKENS_KEY, legacyTokensRaw, {
+        keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+      })
+      await AsyncStorage.removeItem(STORAGE_TOKENS_KEY)
+    }
     return {
       user: userRaw ? JSON.parse(userRaw) : null,
       tokens: tokensRaw ? JSON.parse(tokensRaw) : null,
@@ -54,14 +58,16 @@ async function loadFromStorage(): Promise<{ user: AuthUser | null; tokens: AuthT
 async function saveToStorage(user: AuthUser, tokens: AuthTokens) {
   await Promise.all([
     AsyncStorage.setItem(STORAGE_USER_KEY, JSON.stringify(user)),
-    AsyncStorage.setItem(STORAGE_TOKENS_KEY, JSON.stringify(tokens)),
+    SecureStore.setItemAsync(STORAGE_TOKENS_KEY, JSON.stringify(tokens), {
+      keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+    }),
   ])
 }
 
 async function clearStorage() {
   await Promise.all([
     AsyncStorage.removeItem(STORAGE_USER_KEY),
-    AsyncStorage.removeItem(STORAGE_TOKENS_KEY),
+    SecureStore.deleteItemAsync(STORAGE_TOKENS_KEY),
   ])
 }
 
@@ -110,17 +116,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await saveToStorage(user, tokens)
     setState({ user, tokens, isAuthenticated: true, isLoading: false })
 
-    // Register push token after login — never allow this optional step to
-    // surface an error into the auth flow.
-    try {
-      const pushToken = await registerForPushNotificationsAsync()
-      if (pushToken) {
-        const platform = Platform.OS === 'ios' ? 'ios' : 'android'
-        await registerPushTokenWithApi(pushToken, platform)
-      }
-    } catch {
-      // Push registration is non-critical.
-    }
   }, [])
 
   const register = useCallback(async (data: {
@@ -137,14 +132,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await saveToStorage(user, tokens)
     setState({ user, tokens, isAuthenticated: true, isLoading: false })
 
-    // Register push token after registration
-    const pushToken = await registerForPushNotificationsAsync()
-    if (pushToken) {
-      const platform = Platform.OS === 'ios' ? 'ios' : 'android'
-      await registerPushTokenWithApi(pushToken, platform).catch(() => {
-        // Silently fail — push registration is non-critical
-      })
-    }
   }, [])
 
   const logout = useCallback(async () => {

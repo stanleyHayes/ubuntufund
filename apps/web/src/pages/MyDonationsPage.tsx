@@ -63,14 +63,14 @@ export function MyDonationsPage() {
 
   if (isLoading) {
     return (
-      <Box sx={{ bgcolor: '#F2EFEA', minHeight: '100vh', py: 5, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+      <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', py: 5, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
         <Typography>Loading donations...</Typography>
       </Box>
     )
   }
 
   return (
-    <Box sx={{ bgcolor: '#F2EFEA', minHeight: '100vh', py: 5 }}>
+    <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', py: 5 }}>
       <Container maxWidth="lg">
         <Typography
           sx={{

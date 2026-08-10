@@ -49,7 +49,10 @@ export class MongoCampaignRepository implements CampaignRepositoryPort {
   }
 
   async findById(id: string): Promise<CampaignEntity | null> {
-    const doc = await CampaignModel.findById(id);
+    const doc = await CampaignModel.findOne({
+      _id: id,
+      deletedAt: { $exists: false },
+    });
     return doc ? toDomain(doc) : null;
   }
 
@@ -63,11 +66,11 @@ export class MongoCampaignRepository implements CampaignRepositoryPort {
     const sortOrder = params.sortOrder === 'asc' ? 1 : -1;
 
     const [docs, total] = await Promise.all([
-      CampaignModel.find()
+      CampaignModel.find({ deletedAt: { $exists: false } })
         .sort({ [sortField]: sortOrder })
         .skip(skip)
         .limit(pageSize),
-      CampaignModel.countDocuments(),
+      CampaignModel.countDocuments({ deletedAt: { $exists: false } }),
     ]);
 
     return {
@@ -77,14 +80,17 @@ export class MongoCampaignRepository implements CampaignRepositoryPort {
   }
 
   async findByCreatorId(creatorId: string): Promise<CampaignEntity[]> {
-    const docs = await CampaignModel.find({ creatorId });
+    const docs = await CampaignModel.find({
+      creatorId,
+      deletedAt: { $exists: false },
+    });
     return docs.map(toDomain);
   }
 
   async update(campaign: CampaignEntity): Promise<CampaignEntity> {
     const plain = campaign.toPlain();
     const doc = await CampaignModel.findByIdAndUpdate(
-      plain.id,
+      { _id: plain.id, deletedAt: { $exists: false } },
       {
         title: plain.title,
         description: plain.description,
@@ -108,11 +114,17 @@ export class MongoCampaignRepository implements CampaignRepositoryPort {
   }
 
   async delete(id: string): Promise<void> {
-    await CampaignModel.findByIdAndDelete(id);
+    await CampaignModel.updateOne(
+      { _id: id, deletedAt: { $exists: false } },
+      { $set: { deletedAt: new Date() } }
+    );
   }
 
   async countByCreatorId(creatorId: string): Promise<number> {
-    return CampaignModel.countDocuments({ creatorId });
+    return CampaignModel.countDocuments({
+      creatorId,
+      deletedAt: { $exists: false },
+    });
   }
 
   async incrementRaised(
@@ -123,6 +135,7 @@ export class MongoCampaignRepository implements CampaignRepositoryPort {
     const doc = await CampaignModel.findOneAndUpdate(
       {
         _id: campaignId,
+        deletedAt: { $exists: false },
         status: 'active',
         currency,
         endDate: { $gt: new Date() },

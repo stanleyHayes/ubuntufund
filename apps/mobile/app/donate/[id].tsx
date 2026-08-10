@@ -1,12 +1,16 @@
 import { useState, useEffect } from 'react'
-import { View, ScrollView, StyleSheet, Alert, Modal, TextInput, TouchableOpacity } from 'react-native'
+import { View, ScrollView, StyleSheet, Alert, TextInput, TouchableOpacity } from 'react-native'
 import { useLocalSearchParams, Stack, useRouter } from 'expo-router'
-import { Text, Button, Chip, ActivityIndicator, Surface, Icon } from 'react-native-paper'
+import { Text, Button, ActivityIndicator, Surface, Icon } from 'react-native-paper'
 import { useCampaign } from '@/hooks/useCampaigns'
 import { useEnabledPaymentProviders, EnabledPaymentProvider, getProviderIcon } from '@/hooks/useEnabledPaymentProviders'
 import { ProgressBar } from '@/components/ProgressBar'
 import { brandColors } from '@/theme'
 import { api } from '@/lib/api'
+
+const FALLBACK_WALLET_PROVIDER: EnabledPaymentProvider = {
+  id: 'fallback-wallet', name: 'Wallet', slug: 'wallet', type: 'wallet', isDefault: true, feePercent: 0,
+}
 
 export default function DonateScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
@@ -20,22 +24,13 @@ export default function DonateScreen() {
 
   const { providers, isLoading: providersLoading, error: providersError } = useEnabledPaymentProviders()
 
-  const fallbackWalletProvider: EnabledPaymentProvider = {
-    id: 'fallback-wallet',
-    name: 'Wallet',
-    slug: 'wallet',
-    type: 'wallet',
-    isDefault: true,
-    feePercent: 0,
-  }
-
   useEffect(() => {
     if (selectedProvider) return
     if (providers.length > 0) {
       const defaultProvider = providers.find((p) => p.isDefault) ?? providers[0]
       setSelectedProvider(defaultProvider)
     } else if (providersError) {
-      setSelectedProvider(fallbackWalletProvider)
+      setSelectedProvider(FALLBACK_WALLET_PROVIDER)
     }
   }, [providers, providersError, selectedProvider])
 
@@ -50,7 +45,7 @@ export default function DonateScreen() {
       return
     }
     if (selectedProvider.type !== 'wallet') {
-      Alert.alert('Coming Soon', 'This payment method will be available soon.')
+      Alert.alert('Payment Method Unavailable', 'This provider is not configured for live payments.')
       return
     }
 
