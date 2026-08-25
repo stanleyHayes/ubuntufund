@@ -17,6 +17,19 @@ async function bootstrap(): Promise<void> {
   }
 
   const app = createApp();
+
+  // Catch-up sweep: re-dispatch any donation side-effects (realtime/receipts)
+  // left pending in the transactional outbox by a prior crash/restart. Never
+  // fatal — a sweep failure logs and boot continues.
+  try {
+    const outboxDispatcher = app.locals.outboxDispatcher as
+      | { sweepPending: () => Promise<number> }
+      | undefined;
+    await outboxDispatcher?.sweepPending();
+  } catch (error) {
+    logger.error({ err: error }, 'outbox boot sweep failed');
+  }
+
   const server = app.listen(config.port, () => {
     logger.info(`Ubuntu Fund API running on port ${config.port} [${config.nodeEnv}]`);
   });

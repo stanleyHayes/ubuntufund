@@ -8,6 +8,7 @@ import { Money } from '../../domain/value-objects/Money.js';
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js';
 import type { UserRepositoryPort } from '../../domain/ports/outbound/UserRepositoryPort.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
+import { generateUniqueSlug } from '../utils/slug.js';
 
 export class CreateCampaignUseCase {
   constructor(
@@ -29,9 +30,15 @@ export class CreateCampaignUseCase {
       );
     }
 
+    const slug = await generateUniqueSlug(input.title, async (candidate) => {
+      const existing = await this.campaignRepo.findBySlug(candidate);
+      return existing !== null;
+    });
+
     const now = new Date();
     const campaign = new CampaignEntity({
       id: '', // Will be assigned by the repository
+      slug,
       title: input.title,
       description: input.description,
       goalAmount: new Money(input.goalAmount, input.currency),
@@ -53,6 +60,7 @@ export class CreateCampaignUseCase {
 
     return {
       id: plain.id,
+      slug: plain.slug || undefined,
       title: plain.title,
       description: plain.description,
       goalAmount: plain.goalAmount.amount,

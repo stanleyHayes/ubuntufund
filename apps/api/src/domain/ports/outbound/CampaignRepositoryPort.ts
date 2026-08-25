@@ -4,6 +4,7 @@ import type { PaginationParams } from '@ubuntu-fund/types';
 export interface CampaignRepositoryPort {
   save(campaign: CampaignEntity): Promise<CampaignEntity>;
   findById(id: string): Promise<CampaignEntity | null>;
+  findBySlug(slug: string): Promise<CampaignEntity | null>;
   findAll(params: PaginationParams): Promise<{ items: CampaignEntity[]; total: number }>;
   findByCreatorId(creatorId: string): Promise<CampaignEntity[]>;
   update(campaign: CampaignEntity): Promise<CampaignEntity>;

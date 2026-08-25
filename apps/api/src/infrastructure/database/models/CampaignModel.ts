@@ -6,6 +6,7 @@ import {
 } from '@ubuntu-fund/types';
 
 export interface CampaignDocument extends Document {
+  slug?: string;
   title: string;
   description: string;
   goalAmount: number;
@@ -27,6 +28,15 @@ export interface CampaignDocument extends Document {
 
 const campaignSchema = new Schema<CampaignDocument>(
   {
+    // Vanity handle: unique + lowercase. Sparse so legacy campaigns without a
+    // slug don't collide on the unique index.
+    slug: {
+      type: String,
+      unique: true,
+      sparse: true,
+      lowercase: true,
+      trim: true,
+    },
     title: { type: String, required: true, index: true },
     description: { type: String, required: true },
     goalAmount: { type: Number, required: true },

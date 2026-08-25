@@ -75,3 +75,15 @@ export const contactRateLimiter = createRateLimiter({
   max: 10,
   scope: 'contact',
 });
+
+/**
+ * Public donation checkout (create intent / record attempt): 60 requests /
+ * 15 min per IP. Tighter than the general API limit because it is an
+ * unauthenticated, money-changing write — idempotency keys still make honest
+ * retries safe under it.
+ */
+export const donationIntentRateLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  scope: 'donation-intent',
+});

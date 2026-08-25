@@ -9,4 +9,9 @@ export interface DonationRepositoryPort {
   findRecent(limit: number): Promise<DonationEntity[]>;
   /** Distinct donor counts keyed by campaign id, for the given campaigns. */
   countDistinctDonorsByCampaignIds(campaignIds: string[]): Promise<Record<string, number>>;
+  /**
+   * Set a donation's public message, only when owned by `donorId`. Returns the
+   * updated donation, or null when it does not exist or belongs to someone else.
+   */
+  updateMessage(id: string, donorId: string, message: string): Promise<DonationEntity | null>;
 }

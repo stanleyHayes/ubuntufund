@@ -29,9 +29,25 @@ import { MongoAdminUserRepository } from './infrastructure/adapters/outbound/per
 import { MongoAnalyticsRepository } from './infrastructure/adapters/outbound/persistence/MongoAnalyticsRepository.js';
 import { MongoNewsletterSubscriptionRepository } from './infrastructure/adapters/outbound/persistence/MongoNewsletterSubscriptionRepository.js';
 import { MongoSiteContentRepository } from './infrastructure/adapters/outbound/persistence/MongoSiteContentRepository.js';
+import { MongoShortLinkRepository } from './infrastructure/adapters/outbound/persistence/MongoShortLinkRepository.js';
+import { MongoLiveSessionRepository } from './infrastructure/adapters/outbound/persistence/MongoLiveSessionRepository.js';
+import { MongoLedgerRepository } from './infrastructure/adapters/outbound/persistence/MongoLedgerRepository.js';
+import { MongoCampaignBalanceRepository } from './infrastructure/adapters/outbound/persistence/MongoCampaignBalanceRepository.js';
+import { MongoDonationIntentRepository } from './infrastructure/adapters/outbound/persistence/MongoDonationIntentRepository.js';
+import { MongoPaymentAttemptRepository } from './infrastructure/adapters/outbound/persistence/MongoPaymentAttemptRepository.js';
+import { MongoOutboxRepository } from './infrastructure/adapters/outbound/persistence/MongoOutboxRepository.js';
+
+// Outbound adapters (payment gateway)
+import { PaystackGateway } from './infrastructure/adapters/outbound/payments/PaystackGateway.js';
 
 // Application services
 import { AuthTokenService } from './application/services/AuthTokenService.js';
+import { QrCodeService } from './application/services/QrCodeService.js';
+import { RealtimeDonationProjector } from './application/services/RealtimeDonationProjector.js';
+import { FeePolicy } from './application/services/FeePolicy.js';
+import { CampaignLedgerProjector } from './application/services/CampaignLedgerProjector.js';
+import { OutboxDispatcher } from './application/services/OutboxDispatcher.js';
+import { eventBus } from './infrastructure/realtime/EventBus.js';
 
 // Use cases — auth & campaigns & wallet
 import { RegisterUserUseCase } from './application/use-cases/RegisterUserUseCase.js';
@@ -43,7 +59,27 @@ import {
 } from './application/use-cases/ForgotPasswordUseCase.js';
 import { CreateCampaignUseCase } from './application/use-cases/CreateCampaignUseCase.js';
 import { GetCampaignUseCase } from './application/use-cases/GetCampaignUseCase.js';
+import { GetCampaignBySlugUseCase } from './application/use-cases/GetCampaignBySlugUseCase.js';
+import { SetCampaignSlugUseCase } from './application/use-cases/SetCampaignSlugUseCase.js';
 import { DonateToCampaignUseCase } from './application/use-cases/DonateToCampaignUseCase.js';
+import { PostDonationJournalUseCase } from './application/use-cases/PostDonationJournalUseCase.js';
+import { SettleDonationUseCase } from './application/use-cases/SettleDonationUseCase.js';
+import { CreateDonationIntentUseCase } from './application/use-cases/CreateDonationIntentUseCase.js';
+import { HandlePaystackWebhookUseCase } from './application/use-cases/HandlePaystackWebhookUseCase.js';
+import { RecordPaymentAttemptUseCase } from './application/use-cases/RecordPaymentAttemptUseCase.js';
+import { GetDonationIntentPublicUseCase } from './application/use-cases/GetDonationIntentPublicUseCase.js';
+import { AddDonationMessageUseCase } from './application/use-cases/AddDonationMessageUseCase.js';
+import { CreateShortLinkUseCase } from './application/use-cases/CreateShortLinkUseCase.js';
+import { ResolveShortLinkUseCase } from './application/use-cases/ResolveShortLinkUseCase.js';
+import { ListCampaignQrCodesUseCase } from './application/use-cases/ListCampaignQrCodesUseCase.js';
+
+// Use cases — live sessions
+import { StartLiveSessionUseCase } from './application/use-cases/StartLiveSessionUseCase.js';
+import { EndLiveSessionUseCase } from './application/use-cases/EndLiveSessionUseCase.js';
+import { UpdateLiveSessionPrivacyUseCase } from './application/use-cases/UpdateLiveSessionPrivacyUseCase.js';
+import { RotateOverlayTokenUseCase } from './application/use-cases/RotateOverlayTokenUseCase.js';
+import { GetLiveSessionPublicUseCase } from './application/use-cases/GetLiveSessionPublicUseCase.js';
+import { GetLiveSessionOverlayUseCase } from './application/use-cases/GetLiveSessionOverlayUseCase.js';
 
 // Use cases — profile
 import { GetProfileUseCase } from './application/use-cases/GetProfileUseCase.js';
@@ -117,12 +153,17 @@ import { SignCloudinaryUploadUseCase } from './application/use-cases/SignCloudin
 // Inbound adapters (controllers, middleware, routes)
 import { AuthController } from './infrastructure/adapters/inbound/http/controllers/AuthController.js';
 import { CampaignController } from './infrastructure/adapters/inbound/http/controllers/CampaignController.js';
+import { ShortLinkController } from './infrastructure/adapters/inbound/http/controllers/ShortLinkController.js';
+import { LiveSessionController } from './infrastructure/adapters/inbound/http/controllers/LiveSessionController.js';
+import { RealtimeController } from './infrastructure/adapters/inbound/http/controllers/RealtimeController.js';
 import { WalletController } from './infrastructure/adapters/inbound/http/controllers/WalletController.js';
 import { ProfileController } from './infrastructure/adapters/inbound/http/controllers/ProfileController.js';
 import { CampaignUpdateController } from './infrastructure/adapters/inbound/http/controllers/CampaignUpdateController.js';
 import { CampaignCommentController } from './infrastructure/adapters/inbound/http/controllers/CampaignCommentController.js';
 import { ShareReportController } from './infrastructure/adapters/inbound/http/controllers/ShareReportController.js';
 import { DonationController } from './infrastructure/adapters/inbound/http/controllers/DonationController.js';
+import { DonationIntentController } from './infrastructure/adapters/inbound/http/controllers/DonationIntentController.js';
+import { PaystackWebhookController } from './infrastructure/adapters/inbound/http/controllers/PaystackWebhookController.js';
 import { LeaderboardController } from './infrastructure/adapters/inbound/http/controllers/LeaderboardController.js';
 import { NotificationController } from './infrastructure/adapters/inbound/http/controllers/NotificationController.js';
 import { OrganizationController } from './infrastructure/adapters/inbound/http/controllers/OrganizationController.js';
@@ -155,6 +196,14 @@ import { auditMutation } from './infrastructure/adapters/inbound/middleware/audi
 
 import { createAuthRoutes } from './infrastructure/adapters/inbound/http/routes/authRoutes.js';
 import { createCampaignRoutes } from './infrastructure/adapters/inbound/http/routes/campaignRoutes.js';
+import {
+  createCampaignQrRoutes,
+  createShortLinkPublicRoutes,
+} from './infrastructure/adapters/inbound/http/routes/shortLinkRoutes.js';
+import {
+  createCampaignLiveSessionRoutes,
+  createLiveSessionRoutes,
+} from './infrastructure/adapters/inbound/http/routes/liveSessionRoutes.js';
 import { createWalletRoutes } from './infrastructure/adapters/inbound/http/routes/walletRoutes.js';
 import { createProfileRoutes } from './infrastructure/adapters/inbound/http/routes/profileRoutes.js';
 import { createUserRoutes } from './infrastructure/adapters/inbound/http/routes/userRoutes.js';
@@ -162,6 +211,11 @@ import { createCampaignUpdateRoutes } from './infrastructure/adapters/inbound/ht
 import { createCampaignCommentRoutes } from './infrastructure/adapters/inbound/http/routes/campaignCommentRoutes.js';
 import { createShareReportRoutes } from './infrastructure/adapters/inbound/http/routes/shareReportRoutes.js';
 import { createDonationRoutes } from './infrastructure/adapters/inbound/http/routes/donationRoutes.js';
+import {
+  createDonationIntentRoutes,
+  createDonationMessageRoutes,
+} from './infrastructure/adapters/inbound/http/routes/donationIntentRoutes.js';
+import { createPaystackWebhookRoutes } from './infrastructure/adapters/inbound/http/routes/paystackWebhookRoutes.js';
 import { createCampaignDonationRoutes } from './infrastructure/adapters/inbound/http/routes/campaignDonationRoutes.js';
 import { createLeaderboardRoutes } from './infrastructure/adapters/inbound/http/routes/leaderboardRoutes.js';
 import { createNotificationRoutes } from './infrastructure/adapters/inbound/http/routes/notificationRoutes.js';
@@ -216,11 +270,51 @@ export function createApp(): express.Express {
   const analyticsRepo = new MongoAnalyticsRepository();
   const newsletterRepo = new MongoNewsletterSubscriptionRepository();
   const siteContentRepo = new MongoSiteContentRepository();
+  const shortLinkRepo = new MongoShortLinkRepository();
+  const liveSessionRepo = new MongoLiveSessionRepository();
+  const ledgerRepo = new MongoLedgerRepository();
+  const campaignBalanceRepo = new MongoCampaignBalanceRepository();
+  const donationIntentRepo = new MongoDonationIntentRepository();
+  const paymentAttemptRepo = new MongoPaymentAttemptRepository();
+  const outboxRepo = new MongoOutboxRepository();
+
+  // Paystack payment gateway (behind the swappable PaymentGatewayPort). Absent
+  // credentials leave it disabled — the Paystack rail returns 501 and the
+  // wallet rail keeps working.
+  const paymentGateway = new PaystackGateway({
+    secretKey: config.paystack.secretKey,
+    publicKey: config.paystack.publicKey,
+    publicWebUrl: config.publicWebUrl,
+  });
 
   // ── Services ─────────────────────────────────────────────────────────
   const tokenService = new AuthTokenService(config.jwtSecret, config.jwtRefreshSecret);
   const authMiddleware = createAuthMiddleware(tokenService);
   const optionalAuthMiddleware = createOptionalAuthMiddleware(tokenService);
+  const qrCodeService = new QrCodeService();
+  // Projects successful donations onto the in-process realtime event bus and
+  // bumps live-session stats — shared by the wallet rail (today) and the later
+  // hosted-payment phases.
+  const realtimeDonationProjector = new RealtimeDonationProjector(
+    eventBus,
+    campaignRepo,
+    liveSessionRepo,
+    userRepo
+  );
+  // Ledger + donation-intent settlement wiring. The fee policy computes the
+  // wallet-rail money split; the projector moves campaign totals + balances
+  // through the ledger; the outbox dispatcher turns settled donations into
+  // realtime/receipt side-effects durably (swept again on boot).
+  const feePolicy = new FeePolicy(config.fees);
+  const campaignLedgerProjector = new CampaignLedgerProjector(
+    campaignRepo,
+    campaignBalanceRepo,
+    ledgerRepo
+  );
+  const outboxDispatcher = new OutboxDispatcher(
+    outboxRepo,
+    realtimeDonationProjector
+  );
 
   // ── Use cases ────────────────────────────────────────────────────────
   const registerUserUseCase = new RegisterUserUseCase(userRepo, walletRepo, tokenService);
@@ -231,11 +325,100 @@ export function createApp(): express.Express {
 
   const createCampaignUseCase = new CreateCampaignUseCase(campaignRepo, userRepo);
   const getCampaignUseCase = new GetCampaignUseCase(campaignRepo, donationRepo);
+  const getCampaignBySlugUseCase = new GetCampaignBySlugUseCase(
+    campaignRepo,
+    config.publicWebUrl,
+    donationRepo
+  );
+  const setCampaignSlugUseCase = new SetCampaignSlugUseCase(campaignRepo);
   const donateToCampaignUseCase = new DonateToCampaignUseCase(
     campaignRepo,
     donationRepo,
     walletRepo,
-    walletTxRepo
+    walletTxRepo,
+    realtimeDonationProjector
+  );
+
+  // Donation-intent rail: guest-capable checkout backed by the immutable
+  // ledger. settleDonation() is the seam Phase 4 (Paystack) also calls.
+  const postDonationJournalUseCase = new PostDonationJournalUseCase(ledgerRepo);
+  const settleDonationUseCase = new SettleDonationUseCase(
+    donationIntentRepo,
+    donationRepo,
+    postDonationJournalUseCase,
+    campaignLedgerProjector,
+    outboxRepo,
+    outboxDispatcher
+  );
+  const createDonationIntentUseCase = new CreateDonationIntentUseCase(
+    campaignRepo,
+    liveSessionRepo,
+    walletRepo,
+    donationIntentRepo,
+    feePolicy,
+    settleDonationUseCase,
+    paymentGateway,
+    walletTxRepo,
+    paymentAttemptRepo
+  );
+  // Paystack settlement: the signed webhook is the authoritative rail that
+  // calls settleDonation() with the provider's real fee breakdown.
+  const handlePaystackWebhookUseCase = new HandlePaystackWebhookUseCase(
+    paymentGateway,
+    donationIntentRepo,
+    paymentAttemptRepo,
+    feePolicy,
+    settleDonationUseCase
+  );
+  const recordPaymentAttemptUseCase = new RecordPaymentAttemptUseCase(
+    donationIntentRepo,
+    paymentAttemptRepo
+  );
+  const getDonationIntentPublicUseCase = new GetDonationIntentPublicUseCase(
+    donationIntentRepo
+  );
+  const addDonationMessageUseCase = new AddDonationMessageUseCase(donationRepo);
+
+  const createShortLinkUseCase = new CreateShortLinkUseCase(
+    shortLinkRepo,
+    campaignRepo,
+    config.publicWebUrl,
+    config.publicApiUrl
+  );
+  const resolveShortLinkUseCase = new ResolveShortLinkUseCase(
+    shortLinkRepo,
+    liveSessionRepo
+  );
+  const listCampaignQrCodesUseCase = new ListCampaignQrCodesUseCase(
+    shortLinkRepo,
+    campaignRepo,
+    config.publicApiUrl
+  );
+
+  const startLiveSessionUseCase = new StartLiveSessionUseCase(
+    liveSessionRepo,
+    campaignRepo
+  );
+  const endLiveSessionUseCase = new EndLiveSessionUseCase(
+    liveSessionRepo,
+    campaignRepo
+  );
+  const updateLiveSessionPrivacyUseCase = new UpdateLiveSessionPrivacyUseCase(
+    liveSessionRepo,
+    campaignRepo
+  );
+  const rotateOverlayTokenUseCase = new RotateOverlayTokenUseCase(
+    liveSessionRepo,
+    campaignRepo
+  );
+  const getLiveSessionPublicUseCase = new GetLiveSessionPublicUseCase(
+    liveSessionRepo
+  );
+  const getLiveSessionOverlayUseCase = new GetLiveSessionOverlayUseCase(
+    liveSessionRepo,
+    campaignRepo,
+    donationRepo,
+    userRepo
   );
 
   const getProfileUseCase = new GetProfileUseCase(userRepo, profileRepo, donationRepo, campaignRepo);
@@ -321,7 +504,30 @@ export function createApp(): express.Express {
   const campaignController = new CampaignController(
     createCampaignUseCase,
     getCampaignUseCase,
-    donateToCampaignUseCase
+    donateToCampaignUseCase,
+    getCampaignBySlugUseCase,
+    setCampaignSlugUseCase
+  );
+  const shortLinkController = new ShortLinkController(
+    createShortLinkUseCase,
+    listCampaignQrCodesUseCase,
+    resolveShortLinkUseCase,
+    shortLinkRepo,
+    qrCodeService,
+    config.publicApiUrl
+  );
+  const liveSessionController = new LiveSessionController(
+    startLiveSessionUseCase,
+    endLiveSessionUseCase,
+    updateLiveSessionPrivacyUseCase,
+    rotateOverlayTokenUseCase,
+    getLiveSessionPublicUseCase,
+    getLiveSessionOverlayUseCase
+  );
+  const realtimeController = new RealtimeController(
+    eventBus,
+    campaignRepo,
+    liveSessionRepo
   );
   const walletController = new WalletController(walletRepo, walletTxRepo);
   const profileController = new ProfileController(
@@ -344,6 +550,15 @@ export function createApp(): express.Express {
     listMyDonationsUseCase,
     getDonationUseCase,
     listCampaignDonationsUseCase
+  );
+  const donationIntentController = new DonationIntentController(
+    createDonationIntentUseCase,
+    recordPaymentAttemptUseCase,
+    getDonationIntentPublicUseCase,
+    addDonationMessageUseCase
+  );
+  const paystackWebhookController = new PaystackWebhookController(
+    handlePaystackWebhookUseCase
   );
   const leaderboardController = new LeaderboardController(getLeaderboardUseCase, getLeaderboardStatsUseCase);
   const notificationController = new NotificationController(
@@ -412,6 +627,15 @@ export function createApp(): express.Express {
       credentials: true,
     })
   );
+
+  // Paystack webhook — mounted BEFORE the JSON body parser so its handler
+  // receives the raw request bytes the HMAC-SHA512 signature is verified
+  // against. Its own express.raw parser applies only to this route.
+  app.use(
+    '/api/v1/webhooks/paystack',
+    createPaystackWebhookRoutes(paystackWebhookController)
+  );
+
   app.use(express.json({ limit: '200kb' }));
   app.use(requestLogger);
 
@@ -437,12 +661,27 @@ export function createApp(): express.Express {
     createCampaignCollaboratorRoutes(collaborationController, authMiddleware, optionalAuthMiddleware)
   );
   api.use('/campaigns', createCampaignModerationRoutes(campaignModerationController, authMiddleware, requireAdmin));
+  api.use('/campaigns', createCampaignQrRoutes(shortLinkController, authMiddleware));
+  api.use(
+    '/campaigns',
+    createCampaignLiveSessionRoutes(liveSessionController, realtimeController, authMiddleware)
+  );
+
+  // Live sessions + real-time overlay/SSE surface.
+  api.use(
+    '/live-sessions',
+    createLiveSessionRoutes(liveSessionController, realtimeController, authMiddleware)
+  );
 
   api.use('/wallets', createWalletRoutes(walletController, authMiddleware));
   api.use('/profile', createProfileRoutes(profileController, authMiddleware));
   api.use('/users', createUserRoutes(profileController));
   api.use('/users', createAdminUserRoutes(adminUserController, authMiddleware, requireAdmin));
   api.use('/donations', createDonationRoutes(donationController, authMiddleware));
+  // Post-donation message endpoint, composed onto the /donations resource.
+  api.use('/donations', createDonationMessageRoutes(donationIntentController, authMiddleware));
+  // Guest-capable donation-intent + ledger rail.
+  api.use('/donation-intents', createDonationIntentRoutes(donationIntentController, optionalAuthMiddleware));
   api.use('/leaderboard', createLeaderboardRoutes(leaderboardController));
   api.use('/notifications', createNotificationRoutes(notificationController, authMiddleware));
   api.use('/organizations', createOrganizationRoutes(organizationController));
@@ -463,7 +702,17 @@ export function createApp(): express.Express {
   api.use('/contact', createContactRoutes(contactController, authMiddleware, requireAdmin));
 
   app.use('/api/v1', api);
+
+  // Public short-link surface, mounted at the app root (outside /api/v1) so the
+  // QR/redirect URLs stay short and shareable: GET /r/:code, /qr/:code.svg,
+  // /qr/:code.png.
+  app.use('/', createShortLinkPublicRoutes(shortLinkController));
+
   app.use(errorHandler);
+
+  // Expose the outbox dispatcher so bootstrap can run a catch-up sweep on boot,
+  // re-dispatching any donation side-effects left pending by a prior crash.
+  app.locals.outboxDispatcher = outboxDispatcher;
 
   return app;
 }

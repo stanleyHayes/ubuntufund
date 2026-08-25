@@ -8,6 +8,27 @@ export interface CloudinaryConfig {
   apiSecret: string;
 }
 
+export interface FeeConfig {
+  /** Platform revenue cut, as a % of the campaign-directed donation amount. */
+  platformFeePercent: number;
+  /** Paystack percentage fee (used by the hosted-payment phase). */
+  paystackFeePercent: number;
+  /** Paystack flat per-transaction fee, in major currency units. */
+  paystackFlatFee: number;
+}
+
+export interface PaystackConfig {
+  /**
+   * Paystack secret key (server-only). Empty string disables the Paystack rail
+   * entirely — `POST /donation-intents` with `provider: 'paystack'` then
+   * returns 501, and the webhook rejects everything. The wallet rail is
+   * unaffected.
+   */
+  secretKey: string;
+  /** Paystack publishable key — safe to expose to the client. */
+  publicKey: string;
+}
+
 export interface AppConfig {
   port: number;
   mongodbUri: string;
@@ -16,6 +37,14 @@ export interface AppConfig {
   nodeEnv: string;
   corsOrigins: string[];
   cloudinary: CloudinaryConfig;
+  /** Donation fee policy (platform + processor fees). */
+  fees: FeeConfig;
+  /** Paystack credentials (Ghana card + mobile money in GHS). */
+  paystack: PaystackConfig;
+  /** Public base URL of the donor-facing web app; builds `/c/:slug` targets & canonical URLs. */
+  publicWebUrl: string;
+  /** Public base URL this API is reachable at; builds short URLs (`/r/:code`). */
+  publicApiUrl: string;
 }
 
 function requireEnv(name: string): string {
@@ -68,4 +97,22 @@ export const config: AppConfig = {
     apiKey: process.env.CLOUDINARY_API_KEY ?? '',
     apiSecret: process.env.CLOUDINARY_API_SECRET ?? '',
   },
+  // Fees default to zero so beneficiary-net equals the donation amount unless
+  // configured. The Paystack rail (Phase 4) supplies the processor's real fee
+  // at settlement time regardless of these preview defaults.
+  fees: {
+    platformFeePercent: Number.parseFloat(process.env.PLATFORM_FEE_PERCENT ?? '0'),
+    paystackFeePercent: Number.parseFloat(process.env.PAYSTACK_FEE_PERCENT ?? '0'),
+    paystackFlatFee: Number.parseFloat(process.env.PAYSTACK_FLAT_FEE ?? '0'),
+  },
+  // Absent secret key ⇒ the Paystack rail is disabled (501), the wallet rail
+  // keeps working. The secret key is server-only; never expose it to clients.
+  paystack: {
+    secretKey: process.env.PAYSTACK_SECRET_KEY ?? '',
+    publicKey: process.env.PAYSTACK_PUBLIC_KEY ?? '',
+  },
+  publicWebUrl: process.env.PUBLIC_WEB_URL ?? 'http://localhost:18200',
+  publicApiUrl:
+    process.env.PUBLIC_API_URL ??
+    `http://localhost:${parseInt(process.env.PORT ?? '4000', 10)}`,
 };

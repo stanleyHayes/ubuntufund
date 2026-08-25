@@ -22,6 +22,20 @@ const donateSchema = z.object({
   paymentMethod: z.nativeEnum(PaymentMethod).default(PaymentMethod.WALLET),
   message: z.string().max(500).optional(),
   isAnonymous: z.boolean().default(false),
+  // Optional live-session attribution: drives overlay stats + real-time events.
+  liveSessionId: z.string().max(200).optional(),
+  attributionSource: z.string().max(64).optional(),
+});
+
+const setSlugSchema = z.object({
+  slug: z
+    .string()
+    .min(3)
+    .max(60)
+    .regex(
+      /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+      'Slug must be lowercase letters, numbers, and single hyphens'
+    ),
 });
 
 export function createCampaignRoutes(
@@ -32,6 +46,8 @@ export function createCampaignRoutes(
 
   router.get('/', controller.list);
   router.get('/mine', authMiddleware, controller.listMine);
+  // Public read by vanity slug (distinct 3-segment path — never shadows /:id).
+  router.get('/slug/:slug/public', controller.getBySlugPublic);
   router.get('/:id', controller.getById);
   router.post(
     '/',
@@ -44,6 +60,13 @@ export function createCampaignRoutes(
     authMiddleware,
     validate(donateSchema),
     controller.donate
+  );
+  // Owner (or admin) sets a custom vanity slug.
+  router.patch(
+    '/:id/slug',
+    authMiddleware,
+    validate(setSlugSchema),
+    controller.setSlug
   );
 
   return router;

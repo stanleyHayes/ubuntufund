@@ -3,13 +3,17 @@ import type { AuthenticatedRequest } from '../../middleware/authMiddleware.js';
 import type { CreateCampaignUseCase } from '../../../../../application/use-cases/CreateCampaignUseCase.js';
 import type { GetCampaignUseCase } from '../../../../../application/use-cases/GetCampaignUseCase.js';
 import type { DonateToCampaignUseCase } from '../../../../../application/use-cases/DonateToCampaignUseCase.js';
+import type { GetCampaignBySlugUseCase } from '../../../../../application/use-cases/GetCampaignBySlugUseCase.js';
+import type { SetCampaignSlugUseCase } from '../../../../../application/use-cases/SetCampaignSlugUseCase.js';
 import { AppError } from '../../middleware/errorHandler.js';
 
 export class CampaignController {
   constructor(
     private readonly createCampaignUseCase: CreateCampaignUseCase,
     private readonly getCampaignUseCase: GetCampaignUseCase,
-    private readonly donateToCampaignUseCase: DonateToCampaignUseCase
+    private readonly donateToCampaignUseCase: DonateToCampaignUseCase,
+    private readonly getCampaignBySlugUseCase: GetCampaignBySlugUseCase,
+    private readonly setCampaignSlugUseCase: SetCampaignSlugUseCase
   ) {}
 
   create = async (
@@ -45,6 +49,49 @@ export class CampaignController {
       res.json({
         data: campaign,
         message: 'Campaign retrieved',
+        status: 200,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  getBySlugPublic = async (
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const view = await this.getCampaignBySlugUseCase.execute(
+        req.params.slug as string
+      );
+      if (!view) {
+        throw new AppError('Campaign not found', 404);
+      }
+      res.json({
+        data: view,
+        message: 'Campaign retrieved',
+        status: 200,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  setSlug = async (
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const campaign = await this.setCampaignSlugUseCase.execute(
+        req.params.id as string,
+        req.body.slug as string,
+        { userId: req.userId!, role: req.userRole }
+      );
+      res.json({
+        data: campaign,
+        message: 'Campaign slug updated',
         status: 200,
       });
     } catch (error) {

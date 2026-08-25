@@ -10,6 +10,7 @@ import {
 function toDomain(doc: CampaignDocument): CampaignEntity {
   return new CampaignEntity({
     id: doc._id!.toString(),
+    slug: doc.slug ?? '',
     title: doc.title,
     description: doc.description,
     goalAmount: new Money(doc.goalAmount, doc.currency),
@@ -31,6 +32,9 @@ export class MongoCampaignRepository implements CampaignRepositoryPort {
   async save(campaign: CampaignEntity): Promise<CampaignEntity> {
     const plain = campaign.toPlain();
     const doc = await CampaignModel.create({
+      // Only persist a slug when one is set: a stored '' would collide with
+      // other slug-less campaigns on the unique (sparse) index.
+      ...(plain.slug ? { slug: plain.slug } : {}),
       title: plain.title,
       description: plain.description,
       goalAmount: plain.goalAmount.amount,
@@ -51,6 +55,14 @@ export class MongoCampaignRepository implements CampaignRepositoryPort {
   async findById(id: string): Promise<CampaignEntity | null> {
     const doc = await CampaignModel.findOne({
       _id: id,
+      deletedAt: { $exists: false },
+    });
+    return doc ? toDomain(doc) : null;
+  }
+
+  async findBySlug(slug: string): Promise<CampaignEntity | null> {
+    const doc = await CampaignModel.findOne({
+      slug: slug.toLowerCase(),
       deletedAt: { $exists: false },
     });
     return doc ? toDomain(doc) : null;
@@ -92,6 +104,7 @@ export class MongoCampaignRepository implements CampaignRepositoryPort {
     const doc = await CampaignModel.findByIdAndUpdate(
       { _id: plain.id, deletedAt: { $exists: false } },
       {
+        ...(plain.slug ? { slug: plain.slug } : {}),
         title: plain.title,
         description: plain.description,
         goalAmount: plain.goalAmount.amount,

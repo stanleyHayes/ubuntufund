@@ -59,6 +59,20 @@ export class MongoDonationRepository implements DonationRepositoryPort {
     return docs.map(toDomain);
   }
 
+  async updateMessage(
+    id: string,
+    donorId: string,
+    message: string
+  ): Promise<DonationEntity | null> {
+    // Ownership is enforced in the filter: a non-owner matches nothing → null.
+    const doc = await DonationModel.findOneAndUpdate(
+      { _id: id, donorId },
+      { $set: { message } },
+      { new: true }
+    );
+    return doc ? toDomain(doc) : null;
+  }
+
   async countDistinctDonorsByCampaignIds(campaignIds: string[]): Promise<Record<string, number>> {
     if (campaignIds.length === 0) return {};
     const rows = await DonationModel.aggregate<{ _id: string; donors: number }>([

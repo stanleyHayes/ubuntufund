@@ -58,6 +58,7 @@ describe('CreateCampaignUseCase', () => {
         )
       }),
       findById: vi.fn(),
+      findBySlug: vi.fn().mockResolvedValue(null),
       findAll: vi.fn(),
       findByCreatorId: vi.fn(),
       update: vi.fn(),

@@ -7,6 +7,7 @@ function toDTO(entity: CampaignEntity): Campaign {
   const plain = entity.toPlain();
   return {
     id: plain.id,
+    slug: plain.slug || undefined,
     title: plain.title,
     description: plain.description,
     goalAmount: plain.goalAmount.amount,

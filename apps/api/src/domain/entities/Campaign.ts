@@ -7,6 +7,8 @@ import { Money } from '../value-objects/Money.js';
 
 export interface CampaignProps {
   id: string;
+  /** URL-safe vanity handle. Optional on input; defaults to '' until assigned. */
+  slug?: string;
   title: string;
   description: string;
   goalAmount: Money;
@@ -27,11 +29,14 @@ export class CampaignEntity {
   private props: CampaignProps;
 
   constructor(props: CampaignProps) {
-    this.props = { ...props };
+    this.props = { ...props, slug: props.slug ?? '' };
   }
 
   get id(): string {
     return this.props.id;
+  }
+  get slug(): string {
+    return this.props.slug ?? '';
   }
   get title(): string {
     return this.props.title;
@@ -99,6 +104,11 @@ export class CampaignEntity {
     if (this.isFunded()) {
       this.props.status = 'funded' as CampaignStatus;
     }
+  }
+
+  setSlug(slug: string): void {
+    this.props.slug = slug;
+    this.props.updatedAt = new Date();
   }
 
   block(_reason?: string): void {

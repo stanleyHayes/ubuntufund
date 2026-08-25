@@ -5,6 +5,7 @@ import type { CampaignRepositoryPort } from '../../domain/ports/outbound/Campaig
 import type { DonationRepositoryPort } from '../../domain/ports/outbound/DonationRepositoryPort.js';
 import type { WalletRepositoryPort } from '../../domain/ports/outbound/WalletRepositoryPort.js';
 import type { WalletTransactionRepositoryPort } from '../../domain/ports/outbound/WalletTransactionRepositoryPort.js';
+import type { RealtimeDonationProjector } from '../services/RealtimeDonationProjector.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 import { logger } from '../../infrastructure/logging/logger.js';
 
@@ -13,7 +14,8 @@ export class DonateToCampaignUseCase {
     private readonly campaignRepo: CampaignRepositoryPort,
     private readonly donationRepo: DonationRepositoryPort,
     private readonly walletRepo: WalletRepositoryPort,
-    private readonly walletTxRepo?: WalletTransactionRepositoryPort
+    private readonly walletTxRepo?: WalletTransactionRepositoryPort,
+    private readonly realtimeProjector?: RealtimeDonationProjector
   ) {}
 
   async execute(input: CreateDonationInput, donorId: string): Promise<void> {
@@ -85,6 +87,24 @@ export class DonateToCampaignUseCase {
         // The donation itself succeeded; a missing ledger row must not fail it.
         logger.error({ err: error, donorId }, 'failed to record donation transaction');
       }
+    }
+
+    // Publish real-time overlay/feed events and bump live-session stats. The
+    // projector swallows its own failures, so this can never fail the donation.
+    if (this.realtimeProjector) {
+      await this.realtimeProjector.recordDonationRealtime(
+        input.campaignId,
+        input.liveSessionId,
+        {
+          donationId: saved.id,
+          donorId,
+          amount: donationAmount.amount,
+          currency: donationAmount.currency,
+          message: input.message,
+          isAnonymous: input.isAnonymous,
+          createdAt: saved.createdAt,
+        }
+      );
     }
   }
 }
