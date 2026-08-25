@@ -6,14 +6,14 @@ links, dynamic QR, LIVE stream sessions with an OBS overlay, real-time donation
 events, an immutable money ledger, guest checkout, and **Paystack** payments
 (card + mobile money in GHS).
 
-> **Scope of this work:** everything here lives in `apps/api` + `packages/types`
-> (backend) and is fully wired and tested. The user-facing React UIs (guest donate
-> page, Creator Hub live controls, QR manager) are **not built yet** — see
-> [Frontend integration (not yet built)](#frontend-integration-not-yet-built).
-> The build was deliberately kept out of the frontend apps to avoid colliding with
-> the concurrent design refresh.
+> **Scope of this work:** the backend (`apps/api` + `packages/types`) **and** the
+> web UIs (`apps/web`) are built, wired, tested, and verified in-browser. New files
+> were used throughout, with only surgical additive edits to the clean `router.tsx`
+> and `CampaignDetailPage.tsx`, to avoid colliding with the concurrent design
+> refresh. See [Web UIs](#web-uis-built) below.
 
-Commits: `93d603b` (backend), `af9cd60` (OBS overlay page).
+Commits: `93d603b` (backend), `af9cd60` (OBS overlay page), `bdc3a9e` (web UIs +
+overlay-URL/CSP fixes).
 
 ---
 
@@ -132,28 +132,34 @@ Paystack → POST /webhooks/paystack (charge.success, HMAC-SHA512)   ← the onl
 
 ---
 
-## Frontend integration (not yet built)
+## Web UIs (built)
 
-These React surfaces are the remaining work. Build them against the new design
-system once it settles. Contracts:
+All in `apps/web` (commit `bdc3a9e`), verified in-browser. Client: `src/lib/fundraising.ts`.
 
-1. **Guest donate page** — route `PUBLIC_WEB_URL/c/:slug/donate` (and `?amount=`).
-   - Load campaign via `GET /campaigns/slug/:slug/public`.
-   - `POST /donation-intents` with `{ campaignId, amount, tip?, provider:'paystack', donorEmail, donorName?, message?, isAnonymous?, liveSessionId? }`, send an `Idempotency-Key` header, then redirect the browser to `authorization_url`.
-   - On return to `/donate/callback`, poll `GET /donation-intents/:id/public` for `SUCCEEDED` (never treat the redirect itself as success).
-2. **Creator Hub — live controls** (authenticated) — start/stop a session
-   (`POST /campaigns/:id/live-sessions`, `PATCH /live-sessions/:id`), toggle
-   privacy, copy the overlay URL (`/live-sessions/:id/overlay/view?token=…`),
-   rotate the token, and watch live totals via `GET /campaigns/:id/events`.
-3. **QR manager** — `POST /campaigns/:id/qr-codes`, show `pngDataUrl`, offer the
-   `shortUrl` to copy/print.
+1. **Public campaign landing** — `/c/:slug` (`CampaignPublicPage`) — QR/social entry
+   point: hero, goal bar, "Donate now".
+2. **Guest donate page** — `/c/:slug/donate` (`DonatePage`, honors `?amount=`) —
+   amount presets + tip + email + message + anonymity, accepted-methods strip,
+   `POST /donation-intents` (paystack) → redirect to `authorization_url`; a clean
+   "payments not enabled yet" notice on a 501.
+3. **Donate callback** — `/donate/callback` (`DonateCallbackPage`) — polls
+   `GET /donation-intents/:id/public` for `SUCCEEDED` (webhook is the truth; the
+   redirect is never treated as success).
+4. **Creator LIVE control room** — `/campaigns/:id/live` (`CampaignLivePage`,
+   owner-only) — start/end session, live totals over SSE (`useLiveTotals`), OBS
+   overlay link + rotate token (`OverlayLinkCard`), dynamic QR manager
+   (`QrCodeManager`), live donor-privacy toggles, donor feed. Reached via a
+   **"Go LIVE"** button on the owner's campaign detail page.
+
+Two fixes surfaced by previewing the running app (both in `bdc3a9e`): `overlayViewUrl`
+now returns an **absolute** URL (a relative one is unusable in OBS), and the overlay
+route sets a **route-scoped CSP** so its inline script/style + web font run (helmet's
+global `script-src 'self'` had blocked the whole overlay).
 
 ---
 
 ## Follow-ups / not done
 
-- Frontend UIs above.
-- **Slug backfill** for pre-existing campaigns (QR already works via id fallback).
 - **Payout/clearing** (`pending → available → paidOut`): settled beneficiary-net
   currently accrues in `CampaignBalance.pendingBalance`.
 - **Attribution reporting** endpoint over the recorded scan log.
