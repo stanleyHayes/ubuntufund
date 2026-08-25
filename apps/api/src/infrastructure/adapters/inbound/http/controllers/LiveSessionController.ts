@@ -157,6 +157,23 @@ export class LiveSessionController {
    * session lookup and exposes no injection surface.
    */
   getOverlayView = (_req: Request, res: Response): void => {
+    // This route serves a self-contained, trusted HTML page with an inline
+    // script/style and the Outfit web font. The global helmet CSP
+    // ("script-src 'self'") would block all of that, so relax the policy for
+    // THIS response only. Safe because the page embeds no user-controlled data
+    // (donor text arrives via fetch and is rendered with textContent, never
+    // inlined into the HTML).
+    res.setHeader(
+      'Content-Security-Policy',
+      [
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-inline'",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+        "font-src 'self' https://fonts.gstatic.com",
+        "img-src 'self' data:",
+        "connect-src 'self'",
+      ].join('; '),
+    );
     res
       .type('html')
       .set('Cache-Control', 'public, max-age=300')

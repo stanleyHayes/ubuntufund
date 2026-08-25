@@ -257,6 +257,14 @@ export function CampaignDetailPage() {
         {currentUser?.id === campaign.creatorId && (
           <>
             <Button
+              variant="contained"
+              size="small"
+              onClick={() => navigate(`/campaigns/${campaign.id}/live`)}
+              sx={{ fontWeight: 700 }}
+            >
+              Go LIVE
+            </Button>
+            <Button
               variant="outlined"
               size="small"
               onClick={handleOpenEdit}
