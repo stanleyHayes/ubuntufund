@@ -7,6 +7,7 @@ import type { RotateOverlayTokenUseCase } from '../../../../../application/use-c
 import type { GetLiveSessionPublicUseCase } from '../../../../../application/use-cases/GetLiveSessionPublicUseCase.js';
 import type { GetLiveSessionOverlayUseCase } from '../../../../../application/use-cases/GetLiveSessionOverlayUseCase.js';
 import { AppError } from '../../middleware/errorHandler.js';
+import { OVERLAY_PAGE_HTML } from '../views/overlayPage.js';
 
 function firstQueryValue(value: unknown): string | undefined {
   if (typeof value === 'string') return value;
@@ -145,5 +146,20 @@ export class LiveSessionController {
     } catch (error) {
       next(error);
     }
+  };
+
+  /**
+   * GET /live-sessions/:id/overlay/view — the OBS browser-source overlay page.
+   *
+   * Serves a static, self-contained HTML page (no server-side templating). The
+   * page reads its overlay token from the query string and pulls live data from
+   * the token-gated overlay JSON + SSE endpoints, so this handler needs no
+   * session lookup and exposes no injection surface.
+   */
+  getOverlayView = (_req: Request, res: Response): void => {
+    res
+      .type('html')
+      .set('Cache-Control', 'public, max-age=300')
+      .send(OVERLAY_PAGE_HTML);
   };
 }

@@ -63,6 +63,7 @@ export function createLiveSessionRoutes(
 
   router.get('/:id/public', liveSessionController.getPublic);
   router.get('/:id/overlay', liveSessionController.getOverlay);
+  router.get('/:id/overlay/view', liveSessionController.getOverlayView);
   router.get('/:id/events', realtimeController.liveSessionEvents);
   router.post(
     '/:id/overlay-token/rotate',
