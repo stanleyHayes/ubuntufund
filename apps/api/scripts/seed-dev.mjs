@@ -39,6 +39,9 @@ const amara = await ensureUser({ email: 'amara2@ubuntufund.com', name: 'Amara Os
 const kojo = await ensureUser({ email: 'kojo.antwi@ubuntufund.dev', name: 'Kojo Antwi', password: 'SeededCreator123!', country: 'Ghana', trustScore: 65, level: 1 })
 const abena = await ensureUser({ email: 'abena.sarpong@ubuntufund.dev', name: 'Abena Sarpong', password: 'SeededCreator123!', country: 'Ghana', trustScore: 60, level: 1 })
 
+// --- Platform admin (admin console login: admin@ubuntufund.com / Admin2026!) ---
+await ensureUser({ email: 'admin@ubuntufund.com', name: 'Platform Admin', password: 'Admin2026!', country: 'Ghana', role: 'admin', trustScore: 100, level: 3 })
+
 // --- Fresh campaigns (Ghana) ---
 await db.collection('campaigns').deleteMany({})
 await db.collection('donations').deleteMany({})
