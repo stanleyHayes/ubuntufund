@@ -167,7 +167,7 @@ export function SubscriptionPage() {
           mb: 7,
           borderRadius: SHAPE.card,
           overflow: 'hidden',
-          border: '1px solid rgba(0,0,0,0.06)',
+          boxShadow: 'var(--neu-raised)',
           animation: `${fadeInUp} 0.4s 0.1s ease both`,
         }}
       >
@@ -256,7 +256,7 @@ export function SubscriptionPage() {
                   p: 2,
                   borderRadius: SHAPE.sm,
                   bgcolor: colors.bg,
-                  border: '1px solid rgba(0,0,0,0.04)',
+                  boxShadow: 'var(--neu-subtle)',
                 }}
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.75 }}>
@@ -499,7 +499,7 @@ export function SubscriptionPage() {
         <Box
           sx={{
             borderRadius: SHAPE.card,
-            border: '1px solid rgba(0,0,0,0.08)',
+            boxShadow: 'var(--neu-raised)',
             overflow: 'hidden',
           }}
         >

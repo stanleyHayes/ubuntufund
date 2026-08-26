@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { View, ScrollView, StyleSheet } from 'react-native'
 import { Text, Icon, ActivityIndicator, TouchableRipple } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { brandColors } from '@/theme'
+import { brandColors, neumorphism } from '@/theme'
 import { api } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { EmptyState } from '@/components/EmptyState'
@@ -182,11 +182,10 @@ const styles = StyleSheet.create({
 
   // Balance card
   balanceCard: {
+    ...neumorphism.raised,
     backgroundColor: brandColors.surface,
     marginHorizontal: 20,
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(26,46,34,0.10)',
     padding: 20,
     marginBottom: 28,
   },
@@ -204,12 +203,11 @@ const styles = StyleSheet.create({
   walletScrollView: { flexGrow: 0, marginBottom: 28 },
   walletScroll: { paddingHorizontal: 16, gap: 10, alignItems: 'flex-start' },
   walletCard: {
+    ...neumorphism.raised,
     width: 150,
     padding: 16,
     borderRadius: 14,
     backgroundColor: brandColors.surface,
-    borderWidth: 1,
-    borderColor: 'rgba(26,46,34,0.10)',
     overflow: 'hidden',
   },
   walletTypeChip: {
@@ -224,10 +222,10 @@ const styles = StyleSheet.create({
   walletCurrency: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: brandColors.textSecondary, marginBottom: 2 },
   walletBalance: { fontSize: 20, fontFamily: 'Outfit_800ExtraBold', color: brandColors.text },
 
-  transactionList: { marginHorizontal: 20, borderRadius: 14, backgroundColor: brandColors.surface, borderWidth: 1, borderColor: 'rgba(26,46,34,0.10)', overflow: 'hidden' },
+  transactionList: { ...neumorphism.raised, marginHorizontal: 20, borderRadius: 14, overflow: 'hidden' },
   transactionRow: { minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(26,46,34,0.08)' },
   transactionRowLast: { borderBottomWidth: 0 },
-  transactionIcon: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(168,181,160,0.22)' },
+  transactionIcon: { ...neumorphism.subtle, width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   transactionCopy: { flex: 1 },
   transactionTitle: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: brandColors.text, textTransform: 'capitalize' },
   transactionDate: { marginTop: 2, fontSize: 10, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, textTransform: 'capitalize' },
@@ -238,6 +236,7 @@ const styles = StyleSheet.create({
   transactionsEmpty: { paddingTop: 40 },
   emptyState: { alignItems: 'center', paddingVertical: 40, paddingHorizontal: 32 },
   emptyIconTile: {
+    ...neumorphism.subtle,
     width: 48,
     height: 48,
     borderRadius: 14,
@@ -251,6 +250,7 @@ const styles = StyleSheet.create({
 
   // Error state
   errorIconTile: {
+    ...neumorphism.subtle,
     width: 48,
     height: 48,
     borderRadius: 14,

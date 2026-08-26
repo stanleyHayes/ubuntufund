@@ -303,8 +303,6 @@ function TestimonialsPage() {
                   fontWeight: 700, fontSize: '0.65rem', textTransform: 'uppercase',
                   bgcolor: `${statusColors[t.status] ?? '#78909C'}18`,
                   color: statusColors[t.status] ?? '#78909C',
-                  border: '1px solid',
-                  borderColor: `${statusColors[t.status] ?? '#78909C'}30`,
                 }}
               />
               <Box sx={{ display: 'flex', gap: 0.5 }}>

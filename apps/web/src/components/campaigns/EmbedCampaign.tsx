@@ -51,13 +51,12 @@ export function EmbedCampaign({ campaignId, title }: EmbedCampaignProps) {
             p: 2,
             m: 0,
             maxWidth: '100%',
-            bgcolor: '#F2EFEA',
+            bgcolor: 'background.default',
             borderRadius: SHAPE.sm,
             fontSize: '0.75rem',
             lineHeight: 1.5,
             fontFamily: 'monospace',
-            border: '1px solid',
-            borderColor: 'divider',
+            boxShadow: 'var(--neu-raised)',
             // The snippet is one long unbreakable line — wrap it instead of
             // letting it force horizontal overflow on small screens.
             whiteSpace: 'pre-wrap',

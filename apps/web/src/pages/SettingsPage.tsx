@@ -65,7 +65,7 @@ function SettingsSection({
         p: { xs: 2.5, sm: 3.5 },
         borderRadius: SHAPE.card,
         bgcolor: 'background.paper',
-        border: `1px solid ${tone === 'danger' ? 'rgba(165, 67, 47, 0.28)' : HAIRLINE}`,
+        boxShadow: 'var(--neu-raised)',
         mb: 3,
         scrollMarginTop: 96,
       }}
@@ -79,7 +79,8 @@ function SettingsSection({
             display: 'grid',
             placeItems: 'center',
             color: accent,
-            bgcolor: tone === 'danger' ? 'rgba(165, 67, 47, 0.10)' : 'rgba(46, 61, 47, 0.08)',
+            bgcolor: 'var(--neu-surface)',
+            boxShadow: 'var(--neu-subtle)',
             borderRadius: '4px 12px 4px 12px',
           }}
         >
@@ -118,7 +119,7 @@ function ToggleRow({
         alignItems: 'center',
         gap: 2,
         py: 1.5,
-        '&:not(:last-child)': { borderBottom: `1px solid ${HAIRLINE}` },
+        '&:not(:last-child)': { boxShadow: '0 9px 14px -16px rgba(38,55,44,0.4)' },
       }}
     >
       <Box sx={{ minWidth: 0 }}>
@@ -288,7 +289,7 @@ export function SettingsPage() {
                   mb: 2,
                   borderRadius: SHAPE.card,
                   bgcolor: 'background.paper',
-                  border: `1px solid ${HAIRLINE}`,
+                  boxShadow: 'var(--neu-raised)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 1.5,
@@ -308,7 +309,7 @@ export function SettingsPage() {
                   p: 1,
                   borderRadius: SHAPE.card,
                   bgcolor: 'background.paper',
-                  border: `1px solid ${HAIRLINE}`,
+                  boxShadow: 'var(--neu-raised)',
                   display: { xs: 'none', md: 'block' },
                 }}
               >

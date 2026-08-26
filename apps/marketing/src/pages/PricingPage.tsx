@@ -13,6 +13,8 @@ import Alert from '@mui/material/Alert'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import { SHAPE } from '@ubuntu-fund/ui'
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded'
+import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded'
+import { InternalPageHero } from '../components/InternalPageHero'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import {
   SubscriptionTier,
@@ -134,10 +136,20 @@ function PricingPage() {
   const [yearly, setYearly] = useState(false)
 
   return (
-    <Box component="main" sx={{ flex: 1, pt: { xs: 4, md: 8 }, pb: 10 }}>
+    <Box component="main" sx={{ flex: 1, pb: 10 }}>
+      <InternalPageHero
+        eyebrow="Plans and limits"
+        title="Clear pricing without hidden promises"
+        description="Start with the available Free plan. Paid tiers remain previews until verified billing and entitlement flows are connected."
+        icon={<PaymentsRoundedIcon />}
+        panelLabel="Launch status"
+        panelTitle="No card required and no paid checkout active today."
+        panelBody="Any future fee is shown before payment confirmation."
+        primaryAction={{ label: 'Create a free account', href: WEB_APP_REGISTER }}
+      />
       <Container maxWidth="lg">
         {/* Header */}
-        <Box sx={{ textAlign: 'center', mb: 6 }}>
+        <Box sx={{ textAlign: 'center', mt: 7, mb: 6 }}>
           <Typography variant="h3" sx={{ fontWeight: 800, mb: 2 }}>
             Simple, Transparent Pricing
           </Typography>
@@ -309,7 +321,7 @@ function PricingPage() {
             Detailed Comparison
           </Typography>
 
-          <Box sx={{ borderRadius: SHAPE.card, border: '1px solid rgba(0,0,0,0.08)', overflow: 'hidden' }}>
+          <Box sx={{ borderRadius: SHAPE.card, boxShadow: 'var(--neu-raised)', overflow: 'hidden' }}>
             {/* Header */}
             <Box
               sx={{
@@ -433,8 +445,7 @@ function PricingPage() {
               key={faq.question}
               elevation={0}
               sx={{
-                border: '1px solid',
-                borderColor: 'divider',
+                boxShadow: 'var(--neu-raised)',
                 mb: 1,
                 '&:before': { display: 'none' },
                 borderRadius: SHAPE.sm,

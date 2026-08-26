@@ -3,7 +3,7 @@ import { View, StyleSheet, Platform, KeyboardAvoidingView, ScrollView } from 're
 import { TextInput, Button, Text, Icon } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
-import { brandColors } from '@/theme'
+import { brandColors, neumorphism } from '@/theme'
 import { UbuntuLogo } from '@/components/UbuntuLogo'
 import { api } from '@/lib/api'
 
@@ -146,10 +146,9 @@ const styles = StyleSheet.create({
   },
 
   card: {
+    ...neumorphism.raised,
     backgroundColor: brandColors.surface,
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(26,46,34,0.10)',
     padding: 24,
   },
   errorBanner: { backgroundColor: 'rgba(165,67,47,0.08)', borderRadius: 10, padding: 12, marginBottom: 16 },

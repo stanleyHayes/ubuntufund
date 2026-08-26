@@ -13,6 +13,11 @@ export function StartCampaignBanner() {
       sx={{
         position: 'relative',
         width: '100%',
+        '--neu-surface': '#243126',
+        '--neu-raised': '7px 7px 16px rgba(0,0,0,0.46), -7px -7px 16px rgba(91,117,98,0.16)',
+        '--neu-raised-hover': '10px 10px 22px rgba(0,0,0,0.5), -9px -9px 20px rgba(91,117,98,0.18)',
+        '--neu-subtle': '4px 4px 10px rgba(0,0,0,0.42), -4px -4px 10px rgba(91,117,98,0.14)',
+        '--neu-inset': 'inset 3px 3px 8px rgba(0,0,0,0.44), inset -3px -3px 8px rgba(91,117,98,0.14)',
         background: 'linear-gradient(135deg, #2E3D2F 0%, #1C261D 100%)',
         py: { xs: 6, md: 8 },
         overflow: 'hidden',
@@ -63,8 +68,8 @@ export function StartCampaignBanner() {
               width: 72,
               height: 72,
               borderRadius: SHAPE.card,
-              bgcolor: 'rgba(255,255,255,0.12)',
-              border: '1.5px solid rgba(255,255,255,0.2)',
+              bgcolor: 'var(--neu-surface)',
+              boxShadow: 'var(--neu-subtle)',
             }}
           >
             <LightbulbRoundedIcon

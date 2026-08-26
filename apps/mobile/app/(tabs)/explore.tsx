@@ -15,7 +15,7 @@ import { useCampaigns } from '@/hooks/useCampaigns'
 import { ProgressBar } from '@/components/ProgressBar'
 import { RemoteImage } from '@/components/RemoteImage'
 import { EmptyState } from '@/components/EmptyState'
-import { brandColors } from '@/theme'
+import { brandColors, neumorphism } from '@/theme'
 
 const CATEGORIES: { key: CampaignCategory | null; icon: string; label: string }[] = [
   { key: null, icon: 'earth', label: 'All' },
@@ -228,14 +228,13 @@ const styles = StyleSheet.create({
   // Search
   searchWrap: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8 },
   searchBar: {
+    ...neumorphism.inset,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: brandColors.surface,
     borderRadius: 14,
     paddingHorizontal: 14,
     height: 44,
-    borderWidth: 1,
-    borderColor: 'rgba(26,46,34,0.10)',
   },
   searchIcon: { fontSize: 16, marginRight: 8 },
   searchInput: { flex: 1, fontSize: 14, color: brandColors.text, fontFamily: 'Outfit_400Regular' },
@@ -245,6 +244,7 @@ const styles = StyleSheet.create({
   filterRow: { flexGrow: 0 },
   filterScroll: { paddingHorizontal: 16, paddingRight: 24, paddingBottom: 10, gap: 8, alignItems: 'center' },
   filterPill: {
+    ...neumorphism.subtle,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -253,21 +253,22 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: 'rgba(168,181,160,0.28)',
   },
-  filterPillActive: { backgroundColor: brandColors.primary },
+  filterPillActive: { ...neumorphism.greenInset },
   filterPillText: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: brandColors.text, lineHeight: 18 },
   filterPillTextActive: { color: '#FFFFFF' },
 
   // Secondary filters
   secondaryFilters: { paddingHorizontal: 16, paddingBottom: 8 },
   miniPill: {
+    ...neumorphism.subtle,
     justifyContent: 'center',
     height: 30,
     paddingHorizontal: 12,
     borderRadius: 999,
     backgroundColor: 'rgba(168,181,160,0.28)',
   },
-  miniPillActive: { backgroundColor: brandColors.primary },
-  miniPillSort: { backgroundColor: brandColors.primary },
+  miniPillActive: { ...neumorphism.greenInset },
+  miniPillSort: { ...neumorphism.greenSubtle },
   miniPillText: { fontSize: 11, fontFamily: 'Outfit_700Bold', color: brandColors.textSecondary },
   miniPillTextActive: { color: '#FFFFFF', fontFamily: 'Outfit_700Bold' },
   sortDivider: { width: 1, backgroundColor: 'rgba(26,46,34,0.10)', marginHorizontal: 4 },
@@ -279,13 +280,12 @@ const styles = StyleSheet.create({
 
   // Campaign row
   campaignRow: {
+    ...neumorphism.raised,
     flexDirection: 'row',
     backgroundColor: brandColors.surface,
     borderRadius: 14,
     overflow: 'hidden',
     marginBottom: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(26,46,34,0.10)',
   },
   campaignImage: { width: 100, height: 100 },
   campaignContent: { flex: 1, padding: 10, justifyContent: 'center' },
@@ -301,6 +301,7 @@ const styles = StyleSheet.create({
   emptyState: { alignItems: 'center', paddingTop: 60 },
   emptyEmoji: { fontSize: 40, marginBottom: 12 },
   emptyIconTile: {
+    ...neumorphism.subtle,
     width: 48,
     height: 48,
     borderRadius: 24,

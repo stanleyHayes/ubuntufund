@@ -21,7 +21,7 @@ function StatsSection() {
     <Box
       sx={{
         py: { xs: 8, md: 9 },
-        backgroundColor: '#fff',
+        backgroundColor: 'background.default',
       }}
     >
       <Container maxWidth="lg">
@@ -37,20 +37,26 @@ function StatsSection() {
               <Box
                 sx={{
                   textAlign: 'center',
-                  px: { xs: 1, md: 2 },
-                  borderLeft: {
-                    xs: 'none',
-                    md: index === 0 ? 'none' : '1px solid #E7E3D8',
-                  },
+                  px: { xs: 1.5, md: 2.5 },
+                  py: { xs: 2.25, md: 3 },
+                  borderRadius: 3,
+                  backgroundColor: 'var(--neu-surface)',
+                  boxShadow: index % 2 === 0 ? 'var(--neu-raised)' : 'var(--neu-subtle)',
                 }}
               >
                 <Typography
                   variant="h2"
                   sx={{
-                    fontSize: { xs: '1.6rem', sm: '2.2rem', md: '2.6rem' },
+                    fontSize: stat.value.length > 10
+                      ? { xs: '1.15rem', sm: '1.35rem', md: '1.55rem' }
+                      : { xs: '1.55rem', sm: '1.9rem', md: '2.2rem' },
                     color: index % 2 === 0 ? 'primary.main' : '#A07E33',
                     mb: 0.5,
-                    whiteSpace: 'nowrap',
+                    minHeight: { md: 56 },
+                    display: 'grid',
+                    placeItems: 'center',
+                    lineHeight: 1.1,
+                    textWrap: 'balance',
                   }}
                 >
                   {stat.value}

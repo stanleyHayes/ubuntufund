@@ -11,7 +11,7 @@ import BusinessCenterIcon from '@mui/icons-material/BusinessCenter'
 import HolidayVillageIcon from '@mui/icons-material/HolidayVillage'
 import ChurchIcon from '@mui/icons-material/Church'
 import PaletteIcon from '@mui/icons-material/Palette'
-import { SHAPE } from '@ubuntu-fund/ui'
+import { NEUMORPHIC_SMOKE_VARS, SHAPE } from '@ubuntu-fund/ui'
 
 const campaignTypes = [
   {
@@ -65,6 +65,7 @@ function CampaignTypesSection() {
       sx={{
         py: { xs: 8, md: 10 },
         backgroundColor: '#F2EFEA',
+        ...NEUMORPHIC_SMOKE_VARS,
       }}
     >
       <Container maxWidth="lg">
@@ -104,7 +105,8 @@ function CampaignTypesSection() {
                       width: 56,
                       height: 56,
                       borderRadius: SHAPE.sm,
-                      backgroundColor: `${type.accent}14`,
+                      backgroundColor: 'var(--neu-surface)',
+                      boxShadow: 'var(--neu-subtle)',
                       color: type.accent,
                       display: 'flex',
                       alignItems: 'center',

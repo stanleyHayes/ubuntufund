@@ -6,6 +6,7 @@ import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import FormatQuoteRoundedIcon from '@mui/icons-material/FormatQuoteRounded'
 import { useEffect, useState } from 'react'
+import { NEUMORPHIC_WHITE_VARS } from '@ubuntu-fund/ui'
 
 interface TestimonialContent {
   id: string
@@ -54,7 +55,8 @@ function TestimonialsSection() {
       id="testimonials"
       sx={{
         py: { xs: 8, md: 10 },
-        backgroundColor: '#fff',
+        backgroundColor: '#FFFFFF',
+        ...NEUMORPHIC_WHITE_VARS,
       }}
     >
       <Container maxWidth="lg">

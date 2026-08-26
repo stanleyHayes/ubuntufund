@@ -3,7 +3,7 @@ import { useLocalSearchParams, Stack } from 'expo-router'
 import { Text, Avatar, ActivityIndicator, Surface, Chip } from 'react-native-paper'
 import { useUser } from '@/hooks/useCampaigns'
 import { TrustBadge } from '@/components/TrustBadge'
-import { brandColors } from '@/theme'
+import { brandColors, neumorphism } from '@/theme'
 
 export default function ProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
@@ -82,13 +82,12 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: brandColors.background },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: brandColors.background },
   card: {
+    ...neumorphism.raised,
     marginHorizontal: 16,
     marginTop: 16,
     padding: 16,
     borderRadius: 14,
     backgroundColor: brandColors.surface,
-    borderWidth: 1,
-    borderColor: 'rgba(26,46,34,0.10)',
   },
   header: {
     flexDirection: 'row',

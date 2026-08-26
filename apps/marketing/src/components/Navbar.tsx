@@ -188,9 +188,9 @@ function MegaDropdown({
         <Box sx={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', zIndex: 1400, pt: '10px' }}>
           <Box
             sx={{
-              bgcolor: '#fff',
+              bgcolor: 'background.default',
               borderRadius: SHAPE.card,
-              border: '1px solid rgba(0,0,0,0.08)',
+              boxShadow: 'var(--neu-raised)',
               minWidth: 340,
               maxWidth: 400,
               overflow: 'hidden',
@@ -371,6 +371,11 @@ function Navbar() {
           right: 0,
           zIndex: 1200,
           bgcolor: FOREST_DARK,
+          '--neu-surface': '#1C261D',
+          '--neu-raised': '6px 6px 14px rgba(7,12,8,0.48), -5px -5px 12px rgba(76,101,82,0.12)',
+          '--neu-raised-hover': '8px 8px 17px rgba(7,12,8,0.52), -7px -7px 15px rgba(76,101,82,0.15)',
+          '--neu-subtle': '3px 3px 8px rgba(7,12,8,0.44), -3px -3px 8px rgba(76,101,82,0.11)',
+          '--neu-inset': 'inset 3px 3px 7px rgba(7,12,8,0.5), inset -3px -3px 7px rgba(76,101,82,0.13)',
           boxShadow: 'inset 0 -2px 0 rgba(199, 162, 74, 0.45)',
         }}
       >
@@ -438,9 +443,10 @@ function Navbar() {
                 sx={{
                   width: 40,
                   height: 40,
-                  color: CREAM,
-                  border: '1px solid rgba(245, 242, 234, 0.20)',
-                  '&:hover': { bgcolor: 'rgba(245, 242, 234, 0.08)', borderColor: 'rgba(245, 242, 234, 0.35)' },
+                  color: GOLD_LIGHT,
+                  bgcolor: 'var(--neu-surface)',
+                  boxShadow: 'var(--neu-subtle) !important',
+                  '&:hover': { bgcolor: 'var(--neu-surface)', boxShadow: 'var(--neu-raised-hover) !important', transform: 'translateY(-1px)' },
                 }}
               >
                 <SearchRoundedIcon sx={{ fontSize: 20 }} />
@@ -489,7 +495,7 @@ function Navbar() {
         anchor="right"
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        slotProps={{ paper: { sx: { width: 320, bgcolor: '#F2EFEA' } } }}
+        slotProps={{ paper: { sx: { width: 320, bgcolor: 'background.default' } } }}
       >
         <Box sx={{ px: 2.5, py: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

@@ -15,7 +15,7 @@ import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
 import { EmptyState } from '@/components/EmptyState'
 import { SignInRequired } from '@/components/SignInRequired'
-import { brandColors } from '@/theme'
+import { brandColors, neumorphism } from '@/theme'
 
 interface DonationDetail {
   id: string
@@ -310,12 +310,10 @@ const styles = StyleSheet.create({
   pageLede: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 4 },
 
   detailCard: {
-    backgroundColor: '#fff',
+    ...neumorphism.raised,
     borderRadius: 14,
     padding: 16,
     marginBottom: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(26,46,34,0.10)',
   },
   detailLabel: { fontSize: 11, fontFamily: 'Outfit_700Bold', fontWeight: '700', color: brandColors.secondaryDark, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 2 },
   detailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: 'rgba(26,46,34,0.08)' },
@@ -325,16 +323,14 @@ const styles = StyleSheet.create({
   fieldLabel: { fontSize: 14, fontFamily: 'Outfit_700Bold', color: brandColors.text, marginBottom: 10 },
 
   reasonOption: {
+    ...neumorphism.subtle,
     flexDirection: 'row',
     alignItems: 'center',
     padding: 14,
-    backgroundColor: '#fff',
     borderRadius: 10,
     marginBottom: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(26,46,34,0.10)',
   },
-  reasonOptionActive: { borderColor: brandColors.primary, backgroundColor: `${brandColors.primary}08` },
+  reasonOptionActive: { ...neumorphism.inset },
   radioOuter: {
     width: 20,
     height: 20,
@@ -351,10 +347,8 @@ const styles = StyleSheet.create({
   reasonTextActive: { color: brandColors.text, fontFamily: 'Outfit_700Bold' },
 
   textArea: {
-    backgroundColor: '#fff',
+    ...neumorphism.inset,
     borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(26,46,34,0.10)',
     padding: 14,
     fontSize: 14,
     fontFamily: 'Outfit_400Regular',
@@ -384,6 +378,7 @@ const styles = StyleSheet.create({
 
   successState: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
   successIconTile: {
+    ...neumorphism.subtle,
     width: 64,
     height: 64,
     borderRadius: 32,
@@ -403,6 +398,7 @@ const styles = StyleSheet.create({
 
   emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 72, paddingHorizontal: 32 },
   emptyIconTile: {
+    ...neumorphism.subtle,
     width: 48,
     height: 48,
     borderRadius: 24,

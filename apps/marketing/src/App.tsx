@@ -111,11 +111,12 @@ function getBannerConfig(pathname: string) {
 function InnerPageLayout() {
   const { pathname } = useLocation()
   const bannerProps = getBannerConfig(pathname)
+  const hasEditorialHero = ['/about', '/blog', '/contact', '/pricing', '/help', '/for-organizations', '/terms', '/privacy', '/refund-policy'].includes(pathname)
 
   return (
     <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <Navbar />
-      <AfricanBanner {...bannerProps} compact navbarOffset={64} />
+      {!hasEditorialHero && <AfricanBanner {...bannerProps} compact navbarOffset={64} />}
       <Box component="main" sx={{ flex: 1 }}>
         <Outlet />
       </Box>

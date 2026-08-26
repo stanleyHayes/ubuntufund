@@ -123,7 +123,7 @@ export function RegisterForm() {
 
       <Typography variant="body2" align="center" color="text.secondary">
         Already have an account?{' '}
-        <Link component={RouterLink} to="/login" underline="hover">
+        <Link component={RouterLink} to="/login" underline="hover" sx={{ color: 'secondary.main', fontWeight: 600 }}>
           Sign in
         </Link>
       </Typography>

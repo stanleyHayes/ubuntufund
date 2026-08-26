@@ -3,7 +3,7 @@ import { View, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, Pressable
 import { TextInput, Button, Text } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Link, router } from 'expo-router'
-import { brandColors } from '@/theme'
+import { brandColors, neumorphism } from '@/theme'
 import { OrganizationType } from '@ubuntu-fund/types'
 import { useAuth } from '@/context/AuthContext'
 import { UbuntuLogo } from '@/components/UbuntuLogo'
@@ -384,16 +384,16 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
 
-  toggleRow: { flexDirection: 'row', backgroundColor: 'rgba(168,181,160,0.28)', borderRadius: 999, padding: 4, marginBottom: 24 },
+  toggleRow: { ...neumorphism.inset, flexDirection: 'row', borderRadius: 999, padding: 4, marginBottom: 24 },
   toggleButton: { flex: 1, paddingVertical: 11, alignItems: 'center', borderRadius: 999 },
-  toggleActive: { backgroundColor: brandColors.primary },
+  toggleActive: { ...neumorphism.greenSubtle },
   toggleText: { fontSize: 14, fontFamily: 'Outfit_700Bold', color: brandColors.text },
   toggleTextActive: { color: '#FFFFFF' },
 
-  input: { marginBottom: 14, backgroundColor: brandColors.surface },
+  input: { ...neumorphism.inset, marginBottom: 14 },
   inputOutline: { borderRadius: 12 },
 
-  pickerDropdown: { backgroundColor: brandColors.surface, borderWidth: 1, borderColor: 'rgba(26,46,34,0.10)', borderRadius: 12, marginTop: -10, marginBottom: 14, overflow: 'hidden' },
+  pickerDropdown: { ...neumorphism.raised, borderRadius: 12, marginTop: -10, marginBottom: 14, overflow: 'hidden' },
   pickerItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 13, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: 'rgba(26,46,34,0.06)' },
   pickerItemActive: { backgroundColor: 'rgba(168,181,160,0.28)' },
   pickerItemText: { fontSize: 14, fontFamily: 'Outfit_400Regular', color: brandColors.text },

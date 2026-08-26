@@ -96,8 +96,7 @@ export function MyRefundsPage() {
             component={Paper}
             sx={{
               borderRadius: SHAPE.card,
-              border: '1px solid rgba(0,0,0,0.06)',
-              boxShadow: 'none',
+              boxShadow: 'var(--neu-raised)',
             }}
           >
             <Table>

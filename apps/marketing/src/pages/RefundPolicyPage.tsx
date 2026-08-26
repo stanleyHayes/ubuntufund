@@ -1,7 +1,5 @@
-import Box from '@mui/material/Box'
-import Container from '@mui/material/Container'
-import Typography from '@mui/material/Typography'
-import { SHAPE } from '@ubuntu-fund/ui'
+import CurrencyExchangeRoundedIcon from '@mui/icons-material/CurrencyExchangeRounded'
+import { LegalPageLayout } from '../components/LegalPageLayout'
 
 const sections = [
   {
@@ -48,40 +46,18 @@ const sections = [
 
 function RefundPolicyPage() {
   return (
-    <Box component="main" sx={{ flex: 1, pt: { xs: 4, md: 6 }, pb: 8 }}>
-        <Container maxWidth="md">
-          <Typography variant="h3" sx={{ fontWeight: 800, mb: 1 }}>
-            Refund Policy
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 6 }}>
-            Last updated: January 15, 2026
-          </Typography>
-
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 4, lineHeight: 1.8 }}>
-            At UbuntuFund, we want every donor to feel confident about their contributions.
-            This Refund Policy outlines the circumstances under which refunds may be granted
-            and the process for requesting one.
-          </Typography>
-
-          {sections.map((section) => (
-            <Box key={section.title} sx={{ mb: 4 }}>
-              <Typography variant="h5" sx={{ fontWeight: 700, mb: 1.5 }}>
-                {section.title}
-              </Typography>
-              <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.8 }}>
-                {section.content}
-              </Typography>
-            </Box>
-          ))}
-
-          <Box sx={{ mt: 6, p: 3, backgroundColor: 'grey.50', borderRadius: SHAPE.card }}>
-            <Typography variant="body2" color="text.secondary">
-              Submit from donation history or contact <strong>refunds@ubuntufund.com</strong> with
-              the relevant transaction reference.
-            </Typography>
-          </Box>
-        </Container>
-    </Box>
+    <LegalPageLayout
+      eyebrow="Contribution review"
+      title="Refund Policy"
+      description="When a contribution may be reviewed for reversal, what information is required, and what happens next."
+      icon={<CurrencyExchangeRoundedIcon />}
+      panelLabel="Refund principle"
+      panelTitle="Every request is tied to a real contribution record."
+      panelBody="Refund requests are reviewed against campaign status, wallet activity, and the available transaction history."
+      introduction="We want donors to feel confident about their contributions. This policy explains when a refund may be considered, how to submit a complete request, and why approval or settlement is not automatic."
+      sections={sections}
+      contact={<>Submit from donation history or email <strong>refunds@ubuntufund.com</strong> with the relevant transaction reference.</>}
+    />
   )
 }
 

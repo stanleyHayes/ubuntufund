@@ -12,7 +12,7 @@ import { router, Stack } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
 import { SignInRequired } from '@/components/SignInRequired'
-import { brandColors } from '@/theme'
+import { brandColors, neumorphism } from '@/theme'
 import { registerForPushNotificationsAsync, registerPushTokenWithApi } from '@/services/notifications'
 
 interface SettingsData {
@@ -317,12 +317,10 @@ const styles = StyleSheet.create({
   errorBannerText: { flex: 1, fontSize: 13, fontFamily: 'Outfit_500Medium', color: brandColors.error },
 
   card: {
+    ...neumorphism.raised,
     marginHorizontal: 16,
-    backgroundColor: '#fff',
     borderRadius: 14,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(26,46,34,0.10)',
   },
 
   toggleRow: {
@@ -335,6 +333,7 @@ const styles = StyleSheet.create({
     borderBottomColor: 'rgba(26,46,34,0.08)',
   },
   toggleIcon: {
+    ...neumorphism.subtle,
     width: 34,
     height: 34,
     borderRadius: 8,
@@ -347,8 +346,8 @@ const styles = StyleSheet.create({
   pickerValue: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   pickerValueText: { fontSize: 14, fontFamily: 'Outfit_700Bold', color: brandColors.primary },
   pickerOptions: { flexDirection: 'row', flexWrap: 'wrap', padding: 12, gap: 8 },
-  pickerOption: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20, backgroundColor: 'rgba(168,181,160,0.28)' },
-  pickerOptionActive: { backgroundColor: brandColors.primary },
+  pickerOption: { ...neumorphism.subtle, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20 },
+  pickerOptionActive: { ...neumorphism.greenInset },
   pickerOptionText: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: brandColors.text },
   pickerOptionTextActive: { color: '#fff' },
 

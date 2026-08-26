@@ -20,7 +20,7 @@ import { UbuntuLogo } from '@/components/UbuntuLogo'
 import { RemoteImage } from '@/components/RemoteImage'
 import { FadeInUp } from '@/components/anim/FadeInUp'
 import { PressableScale } from '@/components/anim/PressableScale'
-import { brandColors } from '@/theme'
+import { brandColors, neumorphism } from '@/theme'
 
 const { width } = Dimensions.get('window')
 const CARD_WIDTH = width * 0.78
@@ -76,7 +76,7 @@ function FeaturedCard({ campaign, index }: { campaign: Campaign; index: number }
   }, [fadeAnim, index, slideAnim])
 
   return (
-    <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+    <Animated.View style={[styles.featuredCardShell, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
       <TouchableOpacity
         activeOpacity={0.9}
         onPress={() => router.push(`/campaign/${campaign.id}`)}
@@ -352,6 +352,7 @@ const styles = StyleSheet.create({
   userName: { fontSize: 24, fontFamily: 'Outfit_800ExtraBold', color: '#FFFFFF', marginTop: 2 },
 
   statsRow: {
+    ...neumorphism.greenInset,
     flexDirection: 'row',
     backgroundColor: 'rgba(255,255,255,0.06)',
     borderRadius: 14,
@@ -372,10 +373,15 @@ const styles = StyleSheet.create({
   categoryScrollView: { flexGrow: 0 },
   categoryScroll: { paddingHorizontal: 16, paddingRight: 24, gap: 10, alignItems: 'flex-start' },
   categoryPill: {
+    ...neumorphism.raised,
     alignItems: 'center',
     width: 72,
+    paddingVertical: 10,
+    borderRadius: 18,
+    marginVertical: 8,
   },
   categoryEmoji: {
+    ...neumorphism.subtle,
     width: 48,
     height: 48,
     borderRadius: 14,
@@ -388,14 +394,18 @@ const styles = StyleSheet.create({
   categoryCount: { fontSize: 10, fontFamily: 'Outfit_400Regular', color: 'rgba(74,90,80,0.65)', marginTop: 1 },
 
   // Featured card
+  featuredCardShell: {
+    ...neumorphism.greenRaised,
+    width: CARD_WIDTH,
+    height: 220,
+    borderRadius: 14,
+  },
   featuredCard: {
     width: CARD_WIDTH,
     height: 220,
     borderRadius: 14,
     overflow: 'hidden',
     backgroundColor: brandColors.primaryDark,
-    borderWidth: 1,
-    borderColor: 'rgba(26,46,34,0.10)',
   },
   featuredImage: { width: '100%', height: '100%', position: 'absolute' },
   featuredImageOverlay: {
@@ -430,13 +440,12 @@ const styles = StyleSheet.create({
 
   // Compact card (urgent)
   compactCard: {
+    ...neumorphism.raised,
     flexDirection: 'row',
     backgroundColor: brandColors.surface,
     borderRadius: 14,
     overflow: 'hidden',
     marginBottom: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(26,46,34,0.10)',
   },
   compactImage: { width: 90, height: 90 },
   compactContent: { flex: 1, padding: 10, justifyContent: 'center' },
@@ -447,12 +456,11 @@ const styles = StyleSheet.create({
 
   // Recent cards
   recentCard: {
+    ...neumorphism.raised,
     width: SMALL_CARD_WIDTH,
     borderRadius: 14,
     overflow: 'hidden',
     backgroundColor: brandColors.surface,
-    borderWidth: 1,
-    borderColor: 'rgba(26,46,34,0.10)',
   },
   recentImage: { width: '100%', height: 100 },
   recentContent: { padding: 10 },
@@ -461,6 +469,7 @@ const styles = StyleSheet.create({
 
   // CTA banner
   ctaBanner: {
+    boxShadow: '6px 6px 14px rgba(72,62,43,.18), -6px -6px 14px rgba(255,255,255,.9)',
     marginHorizontal: 16,
     marginTop: 28,
     backgroundColor: brandColors.secondary,
@@ -474,6 +483,7 @@ const styles = StyleSheet.create({
   ctaTitle: { fontSize: 17, fontFamily: 'Outfit_800ExtraBold', color: '#221B0E' },
   ctaSubtitle: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: 'rgba(34,27,14,0.72)', marginTop: 2 },
   ctaArrow: {
+    boxShadow: '4px 4px 10px rgba(72,62,43,.18), -4px -4px 10px rgba(255,255,255,.78)',
     width: 36,
     height: 36,
     borderRadius: 18,

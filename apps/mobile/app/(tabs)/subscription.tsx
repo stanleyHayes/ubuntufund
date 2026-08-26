@@ -7,7 +7,7 @@ import {
   BillingCycle,
   SUBSCRIPTION_PLANS,
 } from '@ubuntu-fund/types'
-import { brandColors } from '@/theme'
+import { brandColors, neumorphism } from '@/theme'
 import { api } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { SignInRequired } from '@/components/SignInRequired'
@@ -251,12 +251,11 @@ const styles = StyleSheet.create({
 
   // Current plan card
   currentPlanCard: {
+    ...neumorphism.raised,
     backgroundColor: brandColors.surface,
     borderRadius: 14,
     padding: 20,
     marginBottom: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(26,46,34,0.10)',
   },
   currentPlanLabel: { fontSize: 11, color: brandColors.secondaryDark, fontFamily: 'Outfit_700Bold', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 4 },
   currentPlanName: { fontSize: 24, fontFamily: 'Outfit_800ExtraBold', color: brandColors.text, marginBottom: 8 },
@@ -280,17 +279,16 @@ const styles = StyleSheet.create({
 
   // Plan card — fixed height so every CTA docks at the same baseline
   planCard: {
+    ...neumorphism.raised,
     backgroundColor: brandColors.surface,
     borderRadius: 14,
     padding: 16,
     width: 220,
     minHeight: 400,
     flexDirection: 'column',
-    borderWidth: 1,
-    borderColor: 'rgba(26,46,34,0.10)',
   },
-  planCardPro: { borderColor: brandColors.primary, borderWidth: 2 },
-  planCardCurrent: { backgroundColor: 'rgba(168,181,160,0.12)' },
+  planCardPro: { boxShadow: '7px 7px 16px rgba(72,62,43,.16), -7px -7px 16px rgba(255,255,255,.96), 0 0 0 2px rgba(46,61,47,.14)' },
+  planCardCurrent: { ...neumorphism.inset },
   popularBadge: {
     backgroundColor: brandColors.primary,
     borderRadius: 999,
@@ -325,15 +323,15 @@ const styles = StyleSheet.create({
 
   // Upgrade CTA
   upgradeCta: {
+    ...neumorphism.raised,
     backgroundColor: brandColors.surface,
     borderRadius: 14,
     padding: 24,
     marginTop: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(26,46,34,0.10)',
     alignItems: 'center',
   },
   upgradeIconTile: {
+    ...neumorphism.subtle,
     width: 48,
     height: 48,
     borderRadius: 14,

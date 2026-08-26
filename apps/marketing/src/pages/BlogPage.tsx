@@ -11,6 +11,8 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import AccessTimeIcon from '@mui/icons-material/AccessTime'
 import { Link as RouterLink } from 'react-router-dom'
 import { SHAPE } from '@ubuntu-fund/ui'
+import AutoStoriesRoundedIcon from '@mui/icons-material/AutoStoriesRounded'
+import { InternalPageHero } from '../components/InternalPageHero'
 
 // ─── Data ──────────────────────────────────────────────────
 
@@ -149,9 +151,9 @@ function FeaturedBlogCard({ post }: { post: BlogPost }) {
         borderRadius: SHAPE.card,
         overflow: 'hidden',
         cursor: 'pointer',
-        border: '1px solid',
-        borderColor: hovered ? accent : 'divider',
-        transition: 'border-color 200ms ease',
+        boxShadow: hovered ? 'var(--neu-raised-hover)' : 'var(--neu-raised)',
+        transform: hovered ? 'translateY(-2px)' : 'none',
+        transition: 'transform 200ms ease, box-shadow 200ms ease',
         bgcolor: 'background.paper',
       }}
     >
@@ -416,10 +418,10 @@ function BlogCard({ post, variant = 'vertical' }: { post: BlogPost; variant?: 'v
         borderRadius: SHAPE.card,
         overflow: 'hidden',
         bgcolor: 'background.paper',
-        border: '1px solid',
-        borderColor: hovered ? accent : 'divider',
+        boxShadow: hovered ? 'var(--neu-raised-hover)' : 'var(--neu-raised)',
         clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 24px), calc(100% - 24px) 100%, 0 100%)',
-        transition: 'border-color 200ms ease',
+        transition: 'transform 200ms ease, box-shadow 200ms ease',
+        transform: hovered ? 'translateY(-2px)' : 'none',
         // Accent triangle in the notched corner
         '&::after': {
           content: '""',
@@ -585,13 +587,23 @@ function BlogPage() {
     activeCategory === 'All' ? rest : rest.filter((p) => p.category === activeCategory)
 
   return (
-    <Box component="main" sx={{ flex: 1, pt: { xs: 3, md: 5 }, pb: 10 }}>
+    <Box component="main" sx={{ flex: 1, pb: 10 }}>
+      <InternalPageHero
+        eyebrow="UbuntuFund journal"
+        title="Field notes for trustworthy fundraising"
+        description="Practical guidance on campaign records, verification, community support, and responsible giving in Ghana."
+        icon={<AutoStoriesRoundedIcon />}
+        panelLabel="Editorial standard"
+        panelTitle="Useful guidance, grounded in what the platform can verify."
+        panelBody="No invented impact figures and no payment claims ahead of provider readiness."
+      />
       <Container maxWidth="lg">
         {/* Category filter pills */}
         <Box
           sx={{
             display: 'flex',
             gap: 1,
+            mt: 6,
             mb: 5,
             flexWrap: 'wrap',
             justifyContent: 'center',
@@ -671,8 +683,7 @@ function BlogPage() {
               sx={{
                 bgcolor: 'background.paper',
                 borderRadius: SHAPE.card,
-                border: '1px solid',
-                borderColor: 'divider',
+                boxShadow: 'var(--neu-raised)',
                 p: 3,
                 mb: 3,
               }}

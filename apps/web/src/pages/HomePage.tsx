@@ -7,7 +7,6 @@ import Grid from '@mui/material/Grid'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import Avatar from '@mui/material/Avatar'
-import Chip from '@mui/material/Chip'
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import EmojiEventsRounded from '@mui/icons-material/EmojiEventsRounded'
 import TrendingUpRounded from '@mui/icons-material/TrendingUpRounded'
@@ -15,7 +14,6 @@ import BusinessRounded from '@mui/icons-material/BusinessRounded'
 import StarRounded from '@mui/icons-material/StarRounded'
 import MilitaryTechRounded from '@mui/icons-material/MilitaryTechRounded'
 import WorkspacePremiumRounded from '@mui/icons-material/WorkspacePremiumRounded'
-import { keyframes } from '@emotion/react'
 import { Link as RouterLink } from 'react-router-dom'
 import { CampaignGrid } from '@/components/campaigns/CampaignGrid'
 import { StartCampaignBanner } from '@/components/campaigns/StartCampaignBanner'
@@ -26,17 +24,12 @@ import { useFeaturedDonors } from '@/hooks/useLeaderboard'
 
 const HOME_CAMPAIGN_LIMIT = 6
 
-const floatUp = keyframes`
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-6px); }
-`
-
 const RANK_CONFIG = [
-  { color: '#C7A24A', bg: '#FFF8E1', glow: 'rgba(199,162,74,0.3)', icon: <EmojiEventsRounded />, label: '1st' },
-  { color: '#B0BEC5', bg: '#ECEFF1', glow: 'rgba(176,190,197,0.25)', icon: <MilitaryTechRounded />, label: '2nd' },
-  { color: '#CD7F32', bg: '#EFEBE9', glow: 'rgba(205,127,50,0.25)', icon: <WorkspacePremiumRounded />, label: '3rd' },
-  { color: '#78909C', bg: '#FAFAFA', glow: 'rgba(0,0,0,0.06)', icon: <StarRounded />, label: '4th' },
-  { color: '#78909C', bg: '#FAFAFA', glow: 'rgba(0,0,0,0.06)', icon: <StarRounded />, label: '5th' },
+  { color: '#A07E33', icon: <EmojiEventsRounded />, label: '01' },
+  { color: '#74909A', icon: <MilitaryTechRounded />, label: '02' },
+  { color: '#B66A36', icon: <WorkspacePremiumRounded />, label: '03' },
+  { color: '#5E8F72', icon: <StarRounded />, label: '04' },
+  { color: '#5E8F72', icon: <StarRounded />, label: '05' },
 ]
 
 function FeaturedDonorCard({
@@ -47,129 +40,64 @@ function FeaturedDonorCard({
   index: number
 }) {
   const rank = RANK_CONFIG[index] ?? RANK_CONFIG[4]
-  const isTop3 = index < 3
   const isFirst = index === 0
-  const avatarSize = isFirst ? 80 : isTop3 ? 64 : 52
+  const avatarSize = isFirst ? 74 : 48
 
   return (
     <Card
       elevation={0}
       sx={{
-        textAlign: 'center',
+        display: 'flex',
+        alignItems: 'center',
         position: 'relative',
-        overflow: 'visible',
+        overflow: 'hidden',
         borderRadius: SHAPE.card,
-        border: isTop3 ? `2.5px solid ${rank.color}` : '1px solid rgba(0,0,0,0.08)',
-        bgcolor: isFirst ? rank.bg : '#fff',
-        animation: isFirst ? `${floatUp} 3s ease-in-out infinite` : undefined,
-        mt: isFirst ? 0 : index === 1 || index === 2 ? 4 : 6,
+        bgcolor: 'var(--neu-surface)',
+        color: 'text.primary',
+        boxShadow: isFirst ? 'var(--neu-raised)' : 'var(--neu-subtle)',
+        minHeight: isFirst ? 156 : 78,
+        transition: 'transform 180ms ease, box-shadow 180ms ease',
+        '&:hover': { transform: 'translateY(-2px)', boxShadow: 'var(--neu-raised-hover)' },
       }}
     >
-      {/* Rank badge */}
       <Box
         sx={{
-          position: 'absolute',
-          top: -16,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: 32,
-          height: 32,
-          borderRadius: '50%',
-          bgcolor: rank.color,
-          color: isTop3 ? '#fff' : '#fff',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          '& .MuiSvgIcon-root': { fontSize: 18 },
+          width: isFirst ? 60 : 44, height: isFirst ? 60 : 44, ml: isFirst ? 2.5 : 1.5, flexShrink: 0,
+          borderRadius: SHAPE.sm, bgcolor: 'var(--neu-surface)', color: rank.color,
+          display: 'grid', placeItems: 'center',
+          boxShadow: 'var(--neu-subtle)',
         }}
       >
-        {rank.icon}
+        <Box sx={{ textAlign: 'center' }}>
+          <Box sx={{ '& svg': { fontSize: isFirst ? 24 : 18 } }}>{rank.icon}</Box>
+          <Typography sx={{ mt: 0.35, fontWeight: 900, fontSize: '0.68rem', letterSpacing: '.08em' }}>{rank.label}</Typography>
+        </Box>
       </Box>
 
-      <CardContent sx={{ pt: 4, pb: 2.5, px: isFirst ? 3 : 2 }}>
-        {/* Avatar with ring */}
-        <Box sx={{ position: 'relative', display: 'inline-block', mb: 1.5 }}>
+      <CardContent sx={{ display: 'flex', alignItems: 'center', gap: isFirst ? 2.5 : 1.5, py: isFirst ? 3 : 1.5, px: isFirst ? 3 : 2, flex: 1, minWidth: 0 }}>
+        <Box sx={{ position: 'relative', flexShrink: 0 }}>
           <Avatar
             src={entry.avatarUrl}
             alt={entry.name}
             sx={{
               width: avatarSize,
               height: avatarSize,
-              mx: 'auto',
-              border: `3px solid ${rank.color}`,
-              boxShadow: isTop3 ? `0 0 0 4px ${rank.glow}` : 'none',
+              bgcolor: 'var(--neu-surface)',
+              color: rank.color,
+              boxShadow: 'var(--neu-subtle)',
             }}
           />
-          {isFirst && (
-            <Box
-              sx={{
-                position: 'absolute',
-                bottom: -4,
-                right: -4,
-                width: 24,
-                height: 24,
-                borderRadius: '50%',
-                bgcolor: '#C7A24A',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: '2px solid #fff',
-              }}
-            >
-              <StarRounded sx={{ fontSize: 14, color: '#fff' }} />
-            </Box>
-          )}
         </Box>
-
-        {/* Name */}
-        <Typography
-          sx={{
-            fontWeight: 800,
-            fontSize: isFirst ? '1.05rem' : '0.88rem',
-            fontFamily: '"Outfit", sans-serif',
-            mb: 0.25,
-            ...(isFirst && {
-              color: '#B8860B',
-            }),
-          }}
-        >
-          {entry.name}
-        </Typography>
-
-        {entry.userRole === 'organization' && (
-          <Chip
-            icon={<BusinessRounded sx={{ fontSize: '11px !important' }} />}
-            label="Organization"
-            size="small"
-            sx={{ mb: 0.5, fontSize: '0.6rem', fontWeight: 700, height: 20, bgcolor: 'rgba(74,107,117,0.1)', color: '#4A6B75' }}
-          />
-        )}
-
-        {/* Amount */}
-        <Typography sx={{ fontWeight: 800, fontSize: isFirst ? '1.2rem' : '0.95rem', color: '#2E3D2F', fontFamily: '"Outfit", sans-serif' }}>
-          ${entry.totalDonated.toLocaleString()}
-        </Typography>
-
-        {entry.donationCount != null && (
-          <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary', mt: 0.25 }}>
-            {entry.donationCount} donation{entry.donationCount !== 1 ? 's' : ''}
+        <Box sx={{ minWidth: 0, flex: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+            <Typography sx={{ fontWeight: 800, fontSize: isFirst ? '1.2rem' : '.9rem', lineHeight: 1.15, color: 'text.primary' }}>{entry.name}</Typography>
+            {entry.userRole === 'organization' && <BusinessRounded sx={{ fontSize: 15, color: 'info.main' }} />}
+          </Box>
+          <Typography sx={{ mt: .5, fontWeight: 900, fontSize: isFirst ? '1.7rem' : '.92rem', color: isFirst ? 'secondary.dark' : 'primary.main', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+            {entry.currency ?? 'GH₵'} {entry.totalDonated.toLocaleString()}
           </Typography>
-        )}
-
-        {/* Rank label */}
-        <Chip
-          label={rank.label}
-          size="small"
-          sx={{
-            mt: 1,
-            fontSize: '0.62rem',
-            fontWeight: 800,
-            height: 20,
-            bgcolor: `${rank.color}18`,
-            color: rank.color === '#78909C' ? '#555' : rank.color,
-            letterSpacing: '0.04em',
-          }}
-        />
+          {entry.donationCount != null && <Typography sx={{ fontSize: '.72rem', color: 'text.secondary' }}>{entry.donationCount} contribution{entry.donationCount !== 1 ? 's' : ''}</Typography>}
+        </Box>
       </CardContent>
     </Card>
   )
@@ -184,8 +112,8 @@ function FeaturedDonorsSection() {
   if (!isLoading && !hasAllTime && !hasMonthly) return null
 
   return (
-    <Container maxWidth="lg" sx={{ py: 8 }}>
-      <Box sx={{ textAlign: 'center', mb: 5 }}>
+    <Container maxWidth="lg" sx={{ py: { xs: 7, md: 10 } }}>
+      <Box sx={{ textAlign: { xs: 'left', md: 'center' }, mb: 5 }}>
         <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, mb: 1 }}>
           <EmojiEventsRounded sx={{ fontSize: 32, color: '#C7A24A' }} />
           <Typography variant="h2" component="h2" sx={{ fontWeight: 800 }}>
@@ -193,7 +121,7 @@ function FeaturedDonorsSection() {
           </Typography>
         </Box>
         <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 520, mx: 'auto' }}>
-          Celebrating the people and organizations making the biggest impact on our platform.
+          A live record of the people and organizations consistently backing community work.
         </Typography>
       </Box>
 
@@ -204,76 +132,26 @@ function FeaturedDonorsSection() {
           ))}
         </Box>
       ) : (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, maxWidth: 980, mx: 'auto' }}>
           {/* Render a podium section */}
           {[
             { entries: featured.topAllTime, label: 'All-Time Leaders', icon: <TrendingUpRounded sx={{ color: '#C7A24A', fontSize: 24 }} /> },
-            { entries: featured.topThisMonth, label: "This Month's Stars", icon: <EmojiEventsRounded sx={{ color: '#AB47BC', fontSize: 24 }} /> },
+            { entries: featured.topThisMonth, label: "This Month's Stars", icon: <EmojiEventsRounded sx={{ color: '#A7654A', fontSize: 24 }} /> },
           ]
             .filter((s) => s.entries.length > 0)
             .map((section) => (
-              <Box key={section.label}>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1.5, mb: 4 }}>
+              <Box key={section.label} sx={{ bgcolor: 'var(--neu-surface)', boxShadow: 'var(--neu-raised)', borderRadius: SHAPE.card, p: { xs: 2, md: 3 } }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
                   {section.icon}
                   <Typography variant="h6" sx={{ fontWeight: 800, fontFamily: '"Outfit", sans-serif' }}>
                     {section.label}
                   </Typography>
                 </Box>
 
-                {/* Podium layout: 2nd | 1st (elevated) | 3rd — then 4th, 5th below */}
-                {section.entries.length >= 3 ? (
-                  <Box sx={{ maxWidth: 900, mx: 'auto' }}>
-                    {/* Top 3 podium */}
-                    <Box
-                      sx={{
-                        display: 'grid',
-                        gridTemplateColumns: { xs: '1fr', sm: '1fr 1.3fr 1fr' },
-                        gap: { xs: 2, sm: 3 },
-                        alignItems: 'end',
-                        mb: section.entries.length > 3 ? 3 : 0,
-                      }}
-                    >
-                      {/* 2nd place */}
-                      <Box sx={{ order: { xs: 1, sm: 0 } }}>
-                        <FeaturedDonorCard entry={section.entries[1]} index={1} />
-                      </Box>
-                      {/* 1st place (elevated) */}
-                      <Box sx={{ order: { xs: 0, sm: 1 } }}>
-                        <FeaturedDonorCard entry={section.entries[0]} index={0} />
-                      </Box>
-                      {/* 3rd place */}
-                      <Box sx={{ order: 2 }}>
-                        <FeaturedDonorCard entry={section.entries[2]} index={2} />
-                      </Box>
-                    </Box>
-
-                    {/* 4th, 5th runners up */}
-                    {section.entries.length > 3 && (
-                      <Box
-                        sx={{
-                          display: 'grid',
-                          gridTemplateColumns: { xs: '1fr', sm: `repeat(${Math.min(section.entries.length - 3, 2)}, 1fr)` },
-                          gap: 2,
-                          maxWidth: 480,
-                          mx: 'auto',
-                        }}
-                      >
-                        {section.entries.slice(3, 5).map((e, i) => (
-                          <FeaturedDonorCard key={e.userId} entry={e} index={i + 3} />
-                        ))}
-                      </Box>
-                    )}
-                  </Box>
-                ) : (
-                  /* Fewer than 3 — simple row */
-                  <Box sx={{ display: 'flex', justifyContent: 'center', gap: 3, flexWrap: 'wrap' }}>
-                    {section.entries.map((e, i) => (
-                      <Box key={e.userId} sx={{ width: 200 }}>
-                        <FeaturedDonorCard entry={e} index={i} />
-                      </Box>
-                    ))}
-                  </Box>
-                )}
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: section.entries.length > 1 ? '1.3fr .7fr' : '1fr' }, gap: 2, alignItems: 'stretch' }}>
+                  <FeaturedDonorCard entry={section.entries[0]} index={0} />
+                  {section.entries.length > 1 && <Box sx={{ display: 'grid', gap: 1.25 }}>{section.entries.slice(1, 5).map((e, i) => <FeaturedDonorCard key={e.userId} entry={e} index={i + 1} />)}</Box>}
+                </Box>
               </Box>
             ))}
         </Box>
@@ -321,7 +199,7 @@ export function HomePage() {
               <Grid container spacing={3}>
                 {[0, 1, 2].map((i) => (
                   <Grid size={{ xs: 12, sm: 6, md: 4 }} key={i}>
-                    <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: SHAPE.card }}>
+                    <Card elevation={0} sx={{ borderRadius: SHAPE.card }}>
                       <Skeleton variant="rectangular" height={200} sx={{ borderRadius: SHAPE.card }} />
                       <CardContent>
                         <Skeleton width="40%" height={24} sx={{ mb: 1 }} />

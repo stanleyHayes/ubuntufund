@@ -3,7 +3,7 @@ import { View, ScrollView, StyleSheet } from 'react-native'
 import { Text, Icon, Button, TextInput } from 'react-native-paper'
 import { Stack, useRouter } from 'expo-router'
 import { api } from '@/lib/api'
-import { brandColors } from '@/theme'
+import { brandColors, neumorphism } from '@/theme'
 
 interface StepProps {
   onNext?: () => void
@@ -187,10 +187,9 @@ const styles = StyleSheet.create({
 
   stepContentWrap: { marginTop: 24 },
   stepCard: {
+    ...neumorphism.raised,
     backgroundColor: brandColors.surface,
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(26,46,34,0.10)',
     padding: 20,
     gap: 12,
   },

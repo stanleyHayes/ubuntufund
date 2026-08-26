@@ -176,7 +176,7 @@ export default function DisputeDetailPage() {
           </Card>
 
           {isClosed ? (
-            <Card sx={{ border: '1px solid', borderColor: 'success.main' }}>
+            <Card>
               <CardContent sx={{ p: 3 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                   <CheckCircleOutlineIcon color="success" />

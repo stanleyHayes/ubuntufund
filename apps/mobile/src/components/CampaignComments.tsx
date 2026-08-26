@@ -4,7 +4,7 @@ import { ActivityIndicator, Avatar, Button, IconButton, Text } from 'react-nativ
 import type { CampaignComment } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
-import { brandColors } from '@/theme'
+import { brandColors, neumorphism } from '@/theme'
 
 export function CampaignComments({ campaignId, creatorId }: { campaignId: string; creatorId: string }) {
   const { user } = useAuth()
@@ -69,8 +69,8 @@ export function CampaignComments({ campaignId, creatorId }: { campaignId: string
 }
 
 const styles = StyleSheet.create({
-  wrap: { gap: 12 }, loader: { marginVertical: 24 }, composer: { gap: 10, padding: 12, borderRadius: 14, backgroundColor: brandColors.surface },
-  input: { minHeight: 76, padding: 12, borderWidth: 1, borderColor: 'rgba(26,46,34,0.12)', borderRadius: 10, color: brandColors.text, textAlignVertical: 'top' },
+  wrap: { gap: 12 }, loader: { marginVertical: 24 }, composer: { ...neumorphism.raised, gap: 10, padding: 12, borderRadius: 14 },
+  input: { ...neumorphism.inset, minHeight: 76, padding: 12, borderRadius: 10, color: brandColors.text, textAlignVertical: 'top' },
   comment: { flexDirection: 'row', gap: 10, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(26,46,34,0.08)' },
   copy: { flex: 1 }, name: { fontFamily: 'Outfit_700Bold', color: brandColors.text }, date: { marginTop: 1, fontSize: 10, color: brandColors.textSecondary }, body: { marginTop: 6, color: brandColors.text, lineHeight: 19 }, empty: { color: brandColors.textSecondary, paddingVertical: 12 },
 })

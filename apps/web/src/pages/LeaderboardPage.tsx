@@ -29,6 +29,7 @@ import AllInclusiveRounded from '@mui/icons-material/AllInclusiveRounded'
 import PeopleRounded from '@mui/icons-material/PeopleRounded'
 import BusinessRounded from '@mui/icons-material/BusinessRounded'
 import GroupsRounded from '@mui/icons-material/GroupsRounded'
+import { SHAPE } from '@ubuntu-fund/ui'
 import { keyframes } from '@mui/material/styles'
 import { PageBanner } from '@/components/layout/PageBanner'
 import { useLeaderboard } from '@/hooks/useLeaderboard'
@@ -152,7 +153,7 @@ const DONATION_LEVEL_BADGES: Badge[] = [
 
 const RARITY_LABELS: Record<string, { label: string; color: string }> = {
   legendary: { label: 'Legendary', color: '#C7A24A' },
-  epic: { label: 'Epic', color: '#AB47BC' },
+  epic: { label: 'Epic', color: '#A7654A' },
   rare: { label: 'Rare', color: '#4A6B75' },
   common: { label: 'Common', color: '#2F6B46' },
 }
@@ -204,9 +205,9 @@ function ToggleBar<T extends string>({
         alignSelf: 'center', // never grow vertically inside a flex parent
         height: 48,
         p: '4px',
-        borderRadius: '999px',
-        bgcolor: 'rgba(168, 181, 160, 0.22)', // sage-tinted track
-        border: '1px solid rgba(46, 61, 47, 0.10)',
+        borderRadius: 3,
+        bgcolor: 'var(--neu-surface)',
+        boxShadow: 'var(--neu-subtle)',
         fontFamily: '"Outfit", sans-serif',
       }}
     >
@@ -224,7 +225,7 @@ function ToggleBar<T extends string>({
               justifyContent: 'center',
               gap: 0.75,
               px: { xs: 1.75, sm: 2.75 },
-              borderRadius: '999px',
+              borderRadius: 2.5,
               cursor: 'pointer',
               userSelect: 'none',
               whiteSpace: 'nowrap',
@@ -232,16 +233,17 @@ function ToggleBar<T extends string>({
               fontWeight: 700,
               fontSize: { xs: '0.8rem', sm: '0.88rem' },
               letterSpacing: '0.01em',
-              color: isActive ? '#F2EFEA' : '#4A5A50',
-              bgcolor: isActive ? '#2E3D2F' : 'transparent',
-              transition: 'color 160ms ease, background-color 160ms ease',
+              color: isActive ? 'primary.main' : 'text.secondary',
+              bgcolor: 'transparent',
+              boxShadow: isActive ? 'var(--neu-raised)' : 'none',
+              transition: 'color 160ms ease, box-shadow 160ms ease',
               '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
               '& svg': {
                 fontSize: 18,
-                color: isActive ? '#F2EFEA' : '#5E8F72',
+                color: isActive ? 'secondary.dark' : 'text.secondary',
                 transition: 'color 160ms ease',
               },
-              '&:hover': isActive ? {} : { color: '#2E3D2F', bgcolor: 'rgba(46, 61, 47, 0.06)' },
+              '&:hover': isActive ? {} : { color: 'primary.main', boxShadow: 'var(--neu-subtle)' },
             }}
           >
             {tab.icon}
@@ -262,55 +264,42 @@ function BadgeCard({ badge, delay = 0 }: { badge: Badge; delay?: number }) {
       <Card
         elevation={0}
         sx={{
-          textAlign: 'center',
-          border: '1px solid',
-          borderColor: `${badge.color}30`,
+          textAlign: 'left',
           borderRadius: 3,
-          bgcolor: `${badge.color}06`,
+          bgcolor: 'var(--neu-surface)',
+          boxShadow: 'var(--neu-subtle)',
           animation: `${fadeSlideIn} 0.5s ease ${delay}s both`,
-          transition: 'border-color 0.2s ease',
+          transition: 'transform 0.2s ease, box-shadow 0.2s ease',
           cursor: 'default',
           '&:hover': {
-            borderColor: `${badge.color}60`,
+            transform: 'translateY(-2px)',
+            boxShadow: 'var(--neu-raised-hover) !important',
           },
         }}
       >
-        <CardContent sx={{ py: 2.5, px: 2 }}>
+        <CardContent sx={{ py: 2.25, px: 2.25, display: 'flex', alignItems: 'center', gap: 2, '&:last-child': { pb: 2.25 } }}>
           <Box
             sx={{
-              width: 52,
-              height: 52,
-              borderRadius: '14px',
-              bgcolor: badge.bgSolid,
+              width: 50,
+              height: 50,
+              flexShrink: 0,
+              borderRadius: 2.5,
+              bgcolor: 'var(--neu-surface)',
+              boxShadow: 'var(--neu-subtle)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              mx: 'auto',
-              mb: 1.5,
-              color: '#fff',
-              '& svg': { fontSize: 26 },
+              color: badge.color,
+              '& svg': { fontSize: 25 },
             }}
           >
             {badge.icon}
           </Box>
-          <Typography sx={{ fontWeight: 800, fontSize: '0.85rem', mb: 0.25 }}>
-            {badge.name}
-          </Typography>
-          <Chip
-            label={rarity.label}
-            size="small"
-            sx={{
-              fontSize: '0.6rem',
-              fontWeight: 800,
-              height: 20,
-              color: rarity.color,
-              bgcolor: `${rarity.color}15`,
-              border: '1px solid',
-              borderColor: `${rarity.color}30`,
-              letterSpacing: '0.5px',
-              textTransform: 'uppercase',
-            }}
-          />
+          <Box sx={{ minWidth: 0 }}>
+            <Typography sx={{ fontWeight: 800, fontSize: '.92rem', lineHeight: 1.2 }}>{badge.name}</Typography>
+            <Typography sx={{ mt: .45, fontSize: '.72rem', color: 'text.secondary', lineHeight: 1.35 }}>{badge.description}</Typography>
+            <Typography sx={{ mt: .8, fontSize: '.61rem', fontWeight: 900, color: rarity.color, letterSpacing: '.12em', textTransform: 'uppercase' }}>{rarity.label}</Typography>
+          </Box>
         </CardContent>
       </Card>
     </Tooltip>
@@ -366,7 +355,8 @@ function LeaderboardEmptyState() {
             width: 120,
             height: 120,
             borderRadius: '50%',
-            bgcolor: '#FFF8E1',
+            bgcolor: 'var(--neu-surface)',
+            boxShadow: 'var(--neu-raised)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -459,11 +449,9 @@ function LeaderboardEmptyState() {
               fontWeight: 700,
               fontSize: '1rem',
               textTransform: 'none',
-              borderColor: 'divider',
               color: 'text.primary',
               '&:hover': {
-                borderColor: '#C7A24A',
-                bgcolor: 'rgba(199, 162, 74,0.04)',
+                bgcolor: 'var(--neu-surface)',
               },
               transition: 'background-color 0.2s ease, border-color 0.2s ease',
             }}
@@ -484,9 +472,8 @@ function LeaderboardEmptyState() {
               fontSize: '0.7rem',
               letterSpacing: '1.5px',
               mb: 1.5,
-              bgcolor: 'rgba(255,215,0,0.08)',
+              bgcolor: 'var(--neu-surface)',
               color: '#C7A24A',
-              border: '1px solid rgba(255,215,0,0.2)',
             }}
           />
           <Typography variant="h5" sx={{ fontWeight: 900, mb: 0.5 }}>
@@ -505,7 +492,7 @@ function LeaderboardEmptyState() {
             position: 'absolute', inset: 0, pointerEvents: 'none', display: { xs: 'none', md: 'block' },
             '&::before': {
               content: '""', position: 'absolute',
-              top: '15%', left: '50%', width: 1, height: '70%',
+              top: '15%', left: '50%', width: '1px', height: '70%',
               bgcolor: 'rgba(171,71,188,0.2)',
             },
           }} />
@@ -516,9 +503,9 @@ function LeaderboardEmptyState() {
               fontSize: '0.6rem', fontWeight: 800, letterSpacing: 2, textTransform: 'uppercase',
               color: '#C7A24A', mb: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1,
             }}>
-              <Box sx={{ width: 20, height: 1, bgcolor: 'rgba(255,215,0,0.3)' }} />
+              <Box sx={{ width: 20, height: '1px', bgcolor: 'rgba(255,215,0,0.3)' }} />
               Legendary
-              <Box sx={{ width: 20, height: 1, bgcolor: 'rgba(255,215,0,0.3)' }} />
+              <Box sx={{ width: 20, height: '1px', bgcolor: 'rgba(255,215,0,0.3)' }} />
             </Typography>
             <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, flexWrap: 'wrap' }}>
               {[...PIONEER_BADGES, ...DONATION_LEVEL_BADGES]
@@ -531,9 +518,9 @@ function LeaderboardEmptyState() {
 
           {/* Divider line */}
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', my: 2, gap: 2 }}>
-            <Box sx={{ flex: 1, maxWidth: 120, height: 1, bgcolor: 'rgba(171,71,188,0.25)' }} />
+            <Box sx={{ flex: 1, maxWidth: 120, height: '1px', bgcolor: 'rgba(171,71,188,0.25)' }} />
             <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: 'rgba(171,71,188,0.3)' }} />
-            <Box sx={{ flex: 1, maxWidth: 120, height: 1, bgcolor: 'rgba(171,71,188,0.25)' }} />
+            <Box sx={{ flex: 1, maxWidth: 120, height: '1px', bgcolor: 'rgba(171,71,188,0.25)' }} />
           </Box>
 
           {/* EPIC — Second tier (wider) */}
@@ -542,9 +529,9 @@ function LeaderboardEmptyState() {
               fontSize: '0.6rem', fontWeight: 800, letterSpacing: 2, textTransform: 'uppercase',
               color: '#AB47BC', mb: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1,
             }}>
-              <Box sx={{ width: 30, height: 1, bgcolor: 'rgba(171,71,188,0.25)' }} />
+              <Box sx={{ width: 30, height: '1px', bgcolor: 'rgba(171,71,188,0.25)' }} />
               Epic
-              <Box sx={{ width: 30, height: 1, bgcolor: 'rgba(171,71,188,0.25)' }} />
+              <Box sx={{ width: 30, height: '1px', bgcolor: 'rgba(171,71,188,0.25)' }} />
             </Typography>
             <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, flexWrap: 'wrap' }}>
               {[...PIONEER_BADGES, ...DONATION_LEVEL_BADGES]
@@ -557,9 +544,9 @@ function LeaderboardEmptyState() {
 
           {/* Divider line */}
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', my: 2, gap: 2 }}>
-            <Box sx={{ flex: 1, maxWidth: 160, height: 1, bgcolor: 'rgba(66,165,245,0.2)' }} />
+            <Box sx={{ flex: 1, maxWidth: 160, height: '1px', bgcolor: 'rgba(66,165,245,0.2)' }} />
             <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: 'rgba(66,165,245,0.25)' }} />
-            <Box sx={{ flex: 1, maxWidth: 160, height: 1, bgcolor: 'rgba(66,165,245,0.2)' }} />
+            <Box sx={{ flex: 1, maxWidth: 160, height: '1px', bgcolor: 'rgba(66,165,245,0.2)' }} />
           </Box>
 
           {/* RARE — Third tier (wider still) */}
@@ -568,9 +555,9 @@ function LeaderboardEmptyState() {
               fontSize: '0.6rem', fontWeight: 800, letterSpacing: 2, textTransform: 'uppercase',
               color: '#4A6B75', mb: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1,
             }}>
-              <Box sx={{ width: 40, height: 1, bgcolor: 'rgba(66,165,245,0.2)' }} />
+              <Box sx={{ width: 40, height: '1px', bgcolor: 'rgba(66,165,245,0.2)' }} />
               Rare
-              <Box sx={{ width: 40, height: 1, bgcolor: 'rgba(66,165,245,0.2)' }} />
+              <Box sx={{ width: 40, height: '1px', bgcolor: 'rgba(66,165,245,0.2)' }} />
             </Typography>
             <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, flexWrap: 'wrap' }}>
               {[...PIONEER_BADGES, ...DONATION_LEVEL_BADGES]
@@ -583,9 +570,9 @@ function LeaderboardEmptyState() {
 
           {/* Divider line */}
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', my: 2, gap: 2 }}>
-            <Box sx={{ flex: 1, maxWidth: 200, height: 1, bgcolor: 'rgba(102,187,106,0.2)' }} />
+            <Box sx={{ flex: 1, maxWidth: 200, height: '1px', bgcolor: 'rgba(102,187,106,0.2)' }} />
             <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: 'rgba(102,187,106,0.2)' }} />
-            <Box sx={{ flex: 1, maxWidth: 200, height: 1, bgcolor: 'rgba(102,187,106,0.2)' }} />
+            <Box sx={{ flex: 1, maxWidth: 200, height: '1px', bgcolor: 'rgba(102,187,106,0.2)' }} />
           </Box>
 
           {/* COMMON — Base of pyramid (widest) */}
@@ -594,9 +581,9 @@ function LeaderboardEmptyState() {
               fontSize: '0.6rem', fontWeight: 800, letterSpacing: 2, textTransform: 'uppercase',
               color: '#2F6B46', mb: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1,
             }}>
-              <Box sx={{ width: 50, height: 1, bgcolor: 'rgba(102,187,106,0.2)' }} />
+              <Box sx={{ width: 50, height: '1px', bgcolor: 'rgba(102,187,106,0.2)' }} />
               Common
-              <Box sx={{ width: 50, height: 1, bgcolor: 'rgba(102,187,106,0.2)' }} />
+              <Box sx={{ width: 50, height: '1px', bgcolor: 'rgba(102,187,106,0.2)' }} />
             </Typography>
             <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, flexWrap: 'wrap' }}>
               {[...PIONEER_BADGES, ...DONATION_LEVEL_BADGES]
@@ -617,9 +604,8 @@ function LeaderboardEmptyState() {
           py: 5,
           px: 3,
           borderRadius: 4,
-          border: '1px solid',
-          borderColor: 'divider',
-          bgcolor: 'rgba(199, 162, 74, 0.03)',
+          bgcolor: 'var(--neu-surface)',
+          boxShadow: 'var(--neu-raised)',
           animation: `${fadeSlideIn} 0.5s ease 0.6s both`,
         }}
       >
@@ -666,6 +652,9 @@ export function LeaderboardPage() {
 
   const sorted = useMemo(() => getSorted(leaderboardEntries, mode), [leaderboardEntries, mode])
   const top3 = sorted.slice(0, 3)
+  const podium = [top3[1], top3[0], top3[2]]
+    .filter((entry): entry is LeaderboardEntry => Boolean(entry))
+    .map((entry) => ({ entry, rankIndex: top3.indexOf(entry) }))
   const rest = sorted.slice(3)
 
   const isEmpty = !isLoading && leaderboardEntries.length === 0
@@ -697,7 +686,7 @@ export function LeaderboardPage() {
               { icon: <TrendingUpRounded sx={{ color: '#C7A24A' }} />, label: 'Total Amount', value: `GH₵ ${stats.totalAmount.toLocaleString()}` },
               { icon: <EmojiEventsRounded sx={{ color: '#C7A24A' }} />, label: 'Total Donors', value: stats.totalDonors.toLocaleString() },
             ].map((stat) => (
-              <Card key={stat.label} sx={{ minWidth: 180, textAlign: 'center', border: '1px solid', borderColor: 'divider', borderRadius: 3 }} elevation={0}>
+              <Card key={stat.label} sx={{ minWidth: 180, textAlign: 'center', borderRadius: 3 }} elevation={0}>
                 <CardContent sx={{ py: 2.5 }}>
                   {stat.icon}
                   <Typography variant="h5" sx={{ fontWeight: 800, mt: 0.5 }}>{stat.value}</Typography>
@@ -724,7 +713,7 @@ export function LeaderboardPage() {
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'center' }}>
               <Box sx={{ display: 'flex', gap: 3, justifyContent: 'center', flexWrap: 'wrap' }}>
                 {[0, 1, 2].map((i) => (
-                  <Card key={i} elevation={0} sx={{ width: 260, textAlign: 'center', border: '2px solid', borderColor: RANK_COLORS[i], borderRadius: 4 }}>
+                  <Card key={i} elevation={0} sx={{ width: 260, textAlign: 'center', borderRadius: 4 }}>
                     <CardContent sx={{ pt: 4 }}>
                       <Skeleton variant="circular" width={72} height={72} sx={{ mx: 'auto', mb: 1.5 }} />
                       <Skeleton variant="text" width={120} sx={{ mx: 'auto' }} />
@@ -740,32 +729,47 @@ export function LeaderboardPage() {
             </Box>
           ) : (
             <>
-              {/* Top 3 Podium */}
-              <Box sx={{ display: 'flex', justifyContent: 'center', gap: 3, mb: 6, flexWrap: 'wrap' }}>
-                {top3.map((entry, i) => (
+              {/* Top contributors */}
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, minmax(0, 1fr))' }, gap: 2, mb: 7, maxWidth: 980, mx: 'auto', alignItems: 'stretch' }}>
+                {podium.map(({ entry, rankIndex }, displayIndex) => (
                   <Card
                     key={entry.userId}
                     elevation={0}
                     sx={{
-                      width: 260,
-                      textAlign: 'center',
-                      border: '2px solid',
-                      borderColor: RANK_COLORS[i],
-                      borderRadius: 4,
+                      textAlign: 'left',
+                      borderRadius: SHAPE.card,
                       position: 'relative',
-                      overflow: 'visible',
-                      animation: `${fadeSlideIn} 0.5s ease-out ${i * 0.15}s both`,
-                      ...(i === 0 && { transform: 'scale(1.05)' }),
+                      overflow: 'hidden',
+                      bgcolor: rankIndex === 0 ? '#243126' : 'var(--neu-surface)',
+                      color: rankIndex === 0 ? '#F2EFEA' : 'text.primary',
+                      boxShadow: rankIndex === 0
+                        ? '-8px -8px 18px rgba(65, 88, 70, 0.34), 10px 12px 24px rgba(12, 25, 16, 0.48)'
+                        : 'var(--neu-raised)',
+                      animation: `${fadeSlideIn} 0.5s ease-out ${displayIndex * 0.15}s both`,
+                      transition: 'transform 180ms ease, box-shadow 180ms ease',
+                      '&:hover': {
+                        transform: 'translateY(-2px)',
+                        boxShadow: rankIndex === 0
+                          ? '-10px -10px 22px rgba(65, 88, 70, 0.4), 13px 15px 28px rgba(12, 25, 16, 0.54)'
+                          : 'var(--neu-raised-hover)',
+                      },
                     }}
                   >
-                    <Box sx={{ position: 'absolute', top: -18, left: '50%', transform: 'translateX(-50%)', fontSize: 36, lineHeight: 1 }}>
-                      <EmojiEventsRounded sx={{ fontSize: 36, color: RANK_COLORS[i] }} />
-                    </Box>
-                    <CardContent sx={{ pt: 4 }}>
+                    <Box sx={{ position: 'absolute', top: 16, right: 18, fontWeight: 900, fontSize: '2.2rem', color: RANK_COLORS[rankIndex], opacity: .28, fontVariantNumeric: 'tabular-nums' }}>0{rankIndex + 1}</Box>
+                    <CardContent sx={{ p: 3, '&:last-child': { pb: 3 } }}>
                       <Avatar
                         src={entry.avatarUrl}
                         alt={entry.name}
-                        sx={{ width: 72, height: 72, mx: 'auto', mb: 1.5, border: '3px solid', borderColor: RANK_COLORS[i] }}
+                        sx={{
+                          width: 64,
+                          height: 64,
+                          mb: 2,
+                          color: RANK_COLORS[rankIndex],
+                          bgcolor: rankIndex === 0 ? '#243126' : 'var(--neu-surface)',
+                          boxShadow: rankIndex === 0
+                            ? '-5px -5px 11px rgba(65, 88, 70, 0.32), 7px 8px 14px rgba(12, 25, 16, 0.5)'
+                            : 'var(--neu-subtle)',
+                        }}
                       />
                       <Typography variant="h6" sx={{ fontWeight: 800 }}>{entry.name}</Typography>
                       {entry.userRole === 'organization' && (
@@ -773,13 +777,11 @@ export function LeaderboardPage() {
                           icon={<BusinessRounded sx={{ fontSize: '14px !important' }} />}
                           label="Organization"
                           size="small"
-                          sx={{ mb: 0.5, fontSize: '0.65rem', fontWeight: 700, bgcolor: 'rgba(66,165,245,0.1)', color: '#1E88E5' }}
+                          sx={{ mb: 0.5, fontSize: '0.65rem', fontWeight: 700, color: 'info.main' }}
                         />
                       )}
-                      <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, mt: 1, flexWrap: 'wrap' }}>
-                        <Chip size="small" label={`${entry.donationCount ?? entry.campaignsSupported} donations`} sx={{ fontWeight: 700, bgcolor: 'rgba(199, 162, 74,0.12)' }} />
-                        <Chip size="small" label={`GH₵ ${entry.totalDonated.toLocaleString()}`} sx={{ fontWeight: 700, bgcolor: 'rgba(199, 162, 74,0.12)' }} />
-                      </Box>
+                      <Typography sx={{ mt: 1.25, fontSize: '1.4rem', fontWeight: 900, color: rankIndex === 0 ? '#DCC07E' : 'primary.main', fontVariantNumeric: 'tabular-nums' }}>GH₵ {entry.totalDonated.toLocaleString()}</Typography>
+                      <Typography sx={{ mt: .35, fontSize: '.76rem', color: rankIndex === 0 ? 'rgba(242,239,234,.62)' : 'text.secondary' }}>{entry.donationCount ?? entry.campaignsSupported} contributions</Typography>
                     </CardContent>
                   </Card>
                 ))}
@@ -787,7 +789,7 @@ export function LeaderboardPage() {
 
               {/* Ranked List */}
               {rest.length > 0 && (
-                <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3, overflow: 'hidden' }}>
+                <Box sx={{ borderRadius: 3, overflow: 'hidden', bgcolor: 'var(--neu-surface)', boxShadow: 'var(--neu-inset)' }}>
                   <Box
                     sx={{
                       display: 'grid',
@@ -795,9 +797,7 @@ export function LeaderboardPage() {
                       gap: 1,
                       px: 3,
                       py: 1.5,
-                      bgcolor: 'action.hover',
-                      borderBottom: '1px solid',
-                      borderColor: 'divider',
+                      bgcolor: 'transparent',
                       alignItems: 'center',
                     }}
                   >
@@ -819,12 +819,9 @@ export function LeaderboardPage() {
                           px: 3,
                           py: 1.5,
                           alignItems: 'center',
-                          borderBottom: '1px solid',
-                          borderColor: 'divider',
                           animation: `${fadeSlideIn} 0.4s ease-out ${0.45 + i * 0.08}s both`,
                           transition: 'background-color 0.2s ease',
-                          '&:hover': { bgcolor: 'rgba(199, 162, 74,0.06)' },
-                          '&:last-child': { borderBottom: 'none' },
+                          '&:hover': { boxShadow: 'var(--neu-subtle)' },
                         }}
                       >
                         <Typography variant="body2" sx={{ fontWeight: 800, color: 'text.secondary' }}>{rank}</Typography>
@@ -840,7 +837,6 @@ export function LeaderboardPage() {
                               fontSize: '0.65rem',
                               fontWeight: 700,
                               height: 22,
-                              bgcolor: entry.userRole === 'organization' ? 'rgba(66,165,245,0.1)' : 'rgba(102,187,106,0.1)',
                               color: entry.userRole === 'organization' ? '#1E88E5' : '#2F6B46',
                             }}
                           />
@@ -859,16 +855,15 @@ export function LeaderboardPage() {
               <Box sx={{ mt: 8, animation: `${fadeSlideIn} 0.5s ease 0.6s both` }}>
                 <Box sx={{ textAlign: 'center', mb: 3 }}>
                   <Chip
-                    icon={<WorkspacePremiumRounded sx={{ fontSize: '16px !important', color: '#AB47BC !important' }} />}
+                    icon={<WorkspacePremiumRounded sx={{ fontSize: '16px !important', color: '#A7654A !important' }} />}
                     label="BADGES & ACHIEVEMENTS"
                     sx={{
                       fontWeight: 800,
                       fontSize: '0.7rem',
                       letterSpacing: '1.5px',
                       mb: 1.5,
-                      bgcolor: 'rgba(171,71,188,0.08)',
-                      color: '#AB47BC',
-                      border: '1px solid rgba(171,71,188,0.2)',
+                      bgcolor: 'var(--neu-surface)',
+                      color: '#A7654A',
                     }}
                   />
                   <Typography variant="h5" sx={{ fontWeight: 900, mb: 0.5 }}>
@@ -881,9 +876,9 @@ export function LeaderboardPage() {
                 <Box
                   sx={{
                     display: 'grid',
-                    gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)', md: 'repeat(8, 1fr)' },
+                    gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(4, minmax(0, 1fr))' },
                     gap: 2,
-                    maxWidth: 900,
+                    maxWidth: 1120,
                     mx: 'auto',
                   }}
                 >

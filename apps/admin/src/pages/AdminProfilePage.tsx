@@ -57,13 +57,12 @@ function SectionCard({
     <Card
       sx={{
         bgcolor: 'background.paper',
-        border: '1px solid',
-        borderColor: 'divider',
         borderRadius: SHAPE.card,
+        boxShadow: 'var(--neu-raised)',
         overflow: 'hidden',
         animation: `${fadeSlide} 0.4s ease ${delay}s both`,
-        transition: 'border-color 0.3s ease',
-        '&:hover': { borderColor: `${color}40` },
+        transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+        '&:hover': { transform: 'translateY(-2px)', boxShadow: 'var(--neu-raised-hover) !important' },
       }}
     >
       <Box
@@ -73,8 +72,7 @@ function SectionCard({
           gap: 1.5,
           px: 3,
           py: 2,
-          borderBottom: '1px solid',
-          borderColor: 'divider',
+          boxShadow: '0 10px 16px -18px rgba(0,0,0,0.8)',
           position: 'relative',
           '&::before': {
             content: '""',

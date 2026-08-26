@@ -156,7 +156,7 @@ export default function EditPlanPage() {
       <Grid container spacing={3}>
         {/* ═══ Left Column — Form ═══ */}
         <Grid size={{ xs: 12, md: 8 }}>
-          <Card sx={{ bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', borderRadius: 3 }}>
+          <Card sx={{ bgcolor: 'background.paper', borderRadius: 3 }}>
             <CardContent sx={{ p: 3 }}>
               {/* ── Basic Info ── */}
               <Typography sx={{ fontWeight: 800, fontSize: '0.95rem', color: 'text.primary', mb: 2 }}>Basic Info</Typography>

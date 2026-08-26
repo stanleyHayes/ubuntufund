@@ -14,7 +14,7 @@ import { api } from '@/lib/api'
 import { EmptyState } from '@/components/EmptyState'
 import { SignInRequired } from '@/components/SignInRequired'
 import { FadeInUp } from '@/components/anim/FadeInUp'
-import { brandColors } from '@/theme'
+import { brandColors, neumorphism } from '@/theme'
 
 interface Invitation {
   id: string
@@ -226,12 +226,10 @@ const styles = StyleSheet.create({
   listWrap: { paddingHorizontal: 16, paddingTop: 12 },
 
   invCard: {
-    backgroundColor: '#fff',
+    ...neumorphism.raised,
     borderRadius: 14,
     padding: 16,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(26,46,34,0.10)',
   },
   invCampaign: { fontSize: 17, fontFamily: 'Outfit_700Bold', color: brandColors.text, marginBottom: 10 },
   invDetail: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
@@ -265,7 +263,7 @@ const styles = StyleSheet.create({
   declineBtnText: { fontSize: 14, fontFamily: 'Outfit_700Bold', color: brandColors.error },
 
   skeletonCard: {
-    backgroundColor: '#fff',
+    ...neumorphism.raised,
     borderRadius: 14,
     padding: 16,
     marginBottom: 12,

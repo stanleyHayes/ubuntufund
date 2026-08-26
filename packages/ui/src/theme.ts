@@ -41,6 +41,36 @@ export const SHAPE = {
   bar: '1px 6px 1px 6px',
 } as const
 
+export function getNeumorphicTokens(dark = false) {
+  const surface = dark ? '#172019' : '#F2EFEA'
+  const shadow = dark ? 'rgba(0, 0, 0, 0.48)' : 'rgba(72, 62, 43, 0.16)'
+  const highlight = dark ? 'rgba(91, 117, 98, 0.16)' : 'rgba(255,255,255,0.96)'
+
+  return {
+    surface,
+    raised: `7px 7px 16px ${shadow}, -7px -7px 16px ${highlight}`,
+    raisedHover: `10px 10px 22px ${shadow}, -9px -9px 20px ${highlight}`,
+    subtle: `4px 4px 10px ${shadow}, -4px -4px 10px ${highlight}`,
+    inset: `inset 3px 3px 8px ${shadow}, inset -3px -3px 8px ${highlight}`,
+  } as const
+}
+
+export const NEUMORPHIC_SMOKE_VARS = {
+  '--neu-surface': '#F2EFEA',
+  '--neu-raised': '7px 7px 16px rgba(72,62,43,0.16), -7px -7px 16px rgba(255,255,255,0.96)',
+  '--neu-raised-hover': '10px 10px 22px rgba(72,62,43,0.19), -9px -9px 20px rgba(255,255,255,1)',
+  '--neu-subtle': '4px 4px 10px rgba(72,62,43,0.14), -4px -4px 10px rgba(255,255,255,0.94)',
+  '--neu-inset': 'inset 3px 3px 8px rgba(72,62,43,0.15), inset -3px -3px 8px rgba(255,255,255,0.94)',
+} as const
+
+export const NEUMORPHIC_WHITE_VARS = {
+  '--neu-surface': '#FFFFFF',
+  '--neu-raised': '7px 7px 16px rgba(38,55,44,0.13), -7px -7px 16px rgba(255,255,255,1)',
+  '--neu-raised-hover': '10px 10px 22px rgba(38,55,44,0.16), -9px -9px 20px rgba(255,255,255,1)',
+  '--neu-subtle': '4px 4px 10px rgba(38,55,44,0.11), -4px -4px 10px rgba(255,255,255,1)',
+  '--neu-inset': 'inset 3px 3px 8px rgba(38,55,44,0.12), inset -3px -3px 8px rgba(255,255,255,1)',
+} as const
+
 export const ttSquaresFontFace = `
   @font-face {
     font-family: 'TT Squares';
@@ -137,6 +167,7 @@ export const ttSquaresFontFace = `
 
 export function createUbuntuFundTheme(mode: PaletteMode = 'light') {
   const dark = mode === 'dark'
+  const neu = getNeumorphicTokens(dark)
   return createTheme({
   palette: {
     mode,
@@ -180,8 +211,8 @@ export function createUbuntuFundTheme(mode: PaletteMode = 'light') {
       contrastText: '#F2F5F5',
     },
     background: {
-      default: dark ? '#101712' : '#F2EFEA',
-      paper: dark ? '#172019' : '#FFFFFF',
+      default: neu.surface,
+      paper: neu.surface,
     },
     divider: dark ? '#344238' : '#DAD7CD',
     trust: {
@@ -264,37 +295,49 @@ export function createUbuntuFundTheme(mode: PaletteMode = 'light') {
           padding: '10px 24px',
           minHeight: 44,
           fontSize: '0.9375rem',
+          boxShadow: 'var(--neu-subtle)',
+          transition: 'transform 160ms ease, box-shadow 160ms ease, background-color 160ms ease',
+          '&:hover': { boxShadow: 'var(--neu-raised-hover)', transform: 'translateY(-1px)' },
+          '&:active': { boxShadow: 'var(--neu-inset)', transform: 'translateY(1px)' },
           '&:focus-visible': {
             outline: '2px solid #C7A24A',
-            outlineOffset: 2,
+            outlineOffset: 3,
           },
+          '&.Mui-disabled': { boxShadow: 'none', opacity: 0.58 },
+          '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
         },
         containedPrimary: {
+          boxShadow: 'var(--neu-subtle)',
           '&:hover': {
             backgroundColor: '#1C261D',
           },
         },
         containedSecondary: {
+          boxShadow: 'var(--neu-subtle)',
           '&:hover': {
             backgroundColor: '#A07E33',
           },
         },
+        outlined: { border: '0 !important', backgroundColor: 'var(--neu-surface)' },
+        text: { boxShadow: 'none', '&:hover': { boxShadow: 'var(--neu-subtle)' }, '&:active': { boxShadow: 'var(--neu-inset)' } },
       },
       defaultProps: {
-        disableElevation: true,
+        disableElevation: false,
       },
     },
     MuiCard: {
       defaultProps: {
-        variant: 'outlined',
+        variant: 'elevation',
         elevation: 0,
       },
       styleOverrides: {
         root: {
           borderRadius: SHAPE.card,
-          border: `1px solid ${dark ? '#344238' : '#E7E3D8'}`,
-          boxShadow: 'none',
+          border: '0 !important',
+          boxShadow: 'var(--neu-raised) !important',
+          backgroundColor: 'var(--neu-surface)',
           backgroundImage: 'none',
+          transition: 'box-shadow 180ms ease, transform 180ms ease',
         },
       },
     },
@@ -311,9 +354,76 @@ export function createUbuntuFundTheme(mode: PaletteMode = 'light') {
     MuiChip: {
       styleOverrides: {
         root: {
-          fontWeight: 500,
+          minHeight: 30,
+          fontWeight: 600,
           borderRadius: SHAPE.sm,
+          border: '0 !important',
+          backgroundColor: 'var(--neu-surface)',
+          boxShadow: 'var(--neu-subtle) !important',
+          '&.MuiChip-clickable:hover': { boxShadow: `${neu.raisedHover} !important` },
+          '&.MuiChip-clickable:active': { boxShadow: `${neu.inset} !important` },
+          '&:focus-visible': { outline: '2px solid #C7A24A', outlineOffset: 2 },
         },
+      },
+    },
+    MuiIconButton: {
+      styleOverrides: {
+        root: {
+          border: '0 !important',
+          borderRadius: SHAPE.sm,
+          backgroundColor: 'var(--neu-surface)',
+          boxShadow: 'var(--neu-subtle) !important',
+          transition: 'transform 160ms ease, box-shadow 160ms ease',
+          '&:hover': { boxShadow: 'var(--neu-raised-hover) !important', transform: 'translateY(-1px)' },
+          '&:active': { boxShadow: 'var(--neu-inset) !important', transform: 'translateY(1px)' },
+          '&:focus-visible': { outline: '2px solid #C7A24A', outlineOffset: 2 },
+          '&.Mui-disabled': { boxShadow: 'none !important', opacity: 0.48 },
+        },
+      },
+    },
+    MuiPaper: { styleOverrides: { root: { backgroundImage: 'none', backgroundColor: neu.surface } } },
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: {
+          borderRadius: SHAPE.sm,
+          backgroundColor: 'var(--neu-surface)',
+          boxShadow: 'var(--neu-inset)',
+          '& .MuiOutlinedInput-notchedOutline': { border: '0 !important' },
+          '&.Mui-focused': { boxShadow: `${neu.inset}, 0 0 0 3px rgba(199,162,74,0.18)` },
+          '&.Mui-disabled': { boxShadow: 'none', opacity: 0.64 },
+        },
+      },
+    },
+    MuiToggleButton: {
+      styleOverrides: {
+        root: {
+          border: '0 !important', backgroundColor: 'var(--neu-surface)', boxShadow: 'var(--neu-subtle)',
+          '&:hover': { backgroundColor: 'var(--neu-surface)', boxShadow: 'var(--neu-raised-hover)' },
+          '&.Mui-selected': { backgroundColor: 'var(--neu-surface)', boxShadow: 'var(--neu-inset)' },
+          '&.Mui-selected:hover': { backgroundColor: 'var(--neu-surface)' },
+        },
+      },
+    },
+    MuiTableCell: { styleOverrides: { root: { borderBottom: '0' }, head: { fontWeight: 700 } } },
+    MuiListItemButton: {
+      styleOverrides: {
+        root: {
+          borderRadius: SHAPE.sm,
+          '&.Mui-selected': { backgroundColor: neu.surface, boxShadow: neu.inset },
+          '&.Mui-selected:hover': { backgroundColor: neu.surface },
+        },
+      },
+    },
+    MuiCssBaseline: {
+      styleOverrides: {
+        ':root': {
+          '--neu-surface': neu.surface,
+          '--neu-raised': neu.raised,
+          '--neu-raised-hover': neu.raisedHover,
+          '--neu-subtle': neu.subtle,
+          '--neu-inset': neu.inset,
+        },
+        body: { backgroundColor: neu.surface },
       },
     },
     MuiLinearProgress: {

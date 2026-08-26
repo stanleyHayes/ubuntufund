@@ -18,6 +18,12 @@ credentials.txt
 # Local tool state
 .expo
 .raven
+# RAVEN skill-observation output (tooling, not project content)
+skill-observations/
+cross-cutting-principles.md
+
+# Expo web build export (build artifact)
+dist-neumorphism/
 
 # Commercial font files (TT Squares) - keep out of the repo
 tt-squares/

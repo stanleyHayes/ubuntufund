@@ -35,7 +35,7 @@ import AdminPanelSettingsRoundedIcon from '@mui/icons-material/AdminPanelSetting
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded'
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded'
 import { useAuth } from '@/context/AuthContext'
-import { HAIRLINE, WASH, WASH_STRONG, ON_FILL } from '@/lib/tones'
+import { WASH, WASH_STRONG, ON_FILL } from '@/lib/tones'
 
 export const DRAWER_WIDTH = 264
 
@@ -147,7 +147,8 @@ export default function Sidebar() {
           width: DRAWER_WIDTH,
           boxSizing: 'border-box',
           bgcolor: '#101B15',
-          borderRight: `1px solid ${HAIRLINE}`,
+          borderRight: 0,
+          boxShadow: '8px 0 22px rgba(0,0,0,0.28)',
           display: 'flex',
           flexDirection: 'column',
         },
@@ -185,8 +186,11 @@ export default function Sidebar() {
               sx={{
                 mb: 1,
                 borderRadius: '14px',
-                border: `1px solid ${HAIRLINE}`,
-                bgcolor: 'rgba(232, 235, 227, 0.035)',
+                border: 0,
+                bgcolor: '#101B15',
+                boxShadow: open
+                  ? 'inset 3px 3px 8px rgba(0,0,0,.34), inset -3px -3px 8px rgba(91,117,98,.10)'
+                  : '3px 3px 8px rgba(0,0,0,.30), -3px -3px 8px rgba(91,117,98,.08)',
                 p: 0.75,
               }}
             >
@@ -268,7 +272,10 @@ export default function Sidebar() {
                           mb: 0.25,
                           borderRadius: '10px',
                           bgcolor: active ? '#8FAE96' : 'transparent',
-                          transition: 'background-color 0.15s ease',
+                          boxShadow: active
+                            ? 'inset 3px 3px 7px rgba(14,25,22,.26), inset -3px -3px 7px rgba(255,255,255,.18)'
+                            : 'none',
+                          transition: 'background-color 0.15s ease, box-shadow 0.15s ease',
                           '&:hover': { bgcolor: active ? '#8FAE96' : WASH },
                           '&:focus-visible': { outline: '2px solid #C7A24A', outlineOffset: -2 },
                           '&:hover .nav-tile': active
@@ -287,6 +294,9 @@ export default function Sidebar() {
                             justifyContent: 'center',
                             flexShrink: 0,
                             bgcolor: active ? 'rgba(14, 25, 22, 0.18)' : WASH_STRONG,
+                            boxShadow: active
+                              ? 'inset 2px 2px 5px rgba(0,0,0,.25)'
+                              : '3px 3px 7px rgba(0,0,0,.30), -3px -3px 7px rgba(91,117,98,.10)',
                             color: active ? ON_FILL : '#C7A24A',
                             transition: 'background-color 0.15s ease, color 0.15s ease',
                             '& svg': { fontSize: 17 },
@@ -317,7 +327,8 @@ export default function Sidebar() {
       <Box
         data-tour="sidebar-user"
         sx={{
-          borderTop: `1px solid ${HAIRLINE}`,
+          borderTop: 0,
+          boxShadow: 'inset 0 6px 12px -10px rgba(0,0,0,.9)',
           px: 1.75,
           py: 1.5,
           display: 'flex',

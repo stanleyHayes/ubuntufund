@@ -10,7 +10,7 @@ import {
 import { Text, Icon, Button } from 'react-native-paper'
 import { router, Stack } from 'expo-router'
 import { api } from '@/lib/api'
-import { brandColors } from '@/theme'
+import { brandColors, neumorphism } from '@/theme'
 
 interface Organization {
   id: string
@@ -201,6 +201,7 @@ const styles = StyleSheet.create({
   pageLede: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 4 },
 
   searchWrap: {
+    ...neumorphism.inset,
     flexDirection: 'row',
     alignItems: 'center',
     marginHorizontal: 16,
@@ -208,10 +209,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    backgroundColor: '#fff',
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(26,46,34,0.10)',
     gap: 8,
   },
   searchInput: { flex: 1, fontSize: 14, fontFamily: 'Outfit_400Regular', color: brandColors.text },
@@ -219,15 +217,14 @@ const styles = StyleSheet.create({
   listWrap: { paddingHorizontal: 16, paddingTop: 8 },
 
   orgCard: {
-    backgroundColor: '#fff',
+    ...neumorphism.raised,
     borderRadius: 14,
     padding: 16,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(26,46,34,0.10)',
   },
   orgHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   orgAvatar: {
+    ...neumorphism.subtle,
     width: 48,
     height: 48,
     borderRadius: 24,
@@ -244,7 +241,7 @@ const styles = StyleSheet.create({
   orgStatText: { fontSize: 12, color: brandColors.textSecondary, fontFamily: 'Outfit_400Regular' },
 
   skeletonCard: {
-    backgroundColor: '#fff',
+    ...neumorphism.raised,
     borderRadius: 14,
     padding: 16,
     marginBottom: 12,
@@ -254,6 +251,7 @@ const styles = StyleSheet.create({
 
   emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 72, paddingHorizontal: 32 },
   emptyIconTile: {
+    ...neumorphism.subtle,
     width: 48,
     height: 48,
     borderRadius: 24,

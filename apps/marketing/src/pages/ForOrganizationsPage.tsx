@@ -31,7 +31,8 @@ import BusinessCenterRoundedIcon from '@mui/icons-material/BusinessCenterRounded
 import TheaterComedyRoundedIcon from '@mui/icons-material/TheaterComedyRounded'
 import SportsSoccerRoundedIcon from '@mui/icons-material/SportsSoccerRounded'
 import { keyframes } from '@mui/material/styles'
-import { SHAPE } from '@ubuntu-fund/ui'
+import { NEUMORPHIC_SMOKE_VARS, SHAPE } from '@ubuntu-fund/ui'
+import { InternalPageHero } from '../components/InternalPageHero'
 
 // ─── Animations ──────────────────────────────────────────────────────────────
 
@@ -101,6 +102,18 @@ function ForOrganizationsPage() {
 
   return (
     <Box component="main" sx={{ flex: 1 }}>
+
+      <InternalPageHero
+        eyebrow="For organizations"
+        title="One accountable workspace for serious causes"
+        description="Give your team a shared place to prepare campaigns, coordinate reviews, publish updates, and preserve the record supporters expect."
+        icon={<GroupsRoundedIcon />}
+        panelLabel="Organization workspace"
+        panelTitle="Roles, campaign progress, records, and review status in one place."
+        panelBody="The Free organization plan is available while paid billing remains paused."
+        primaryAction={{ label: 'Create an organization account', href: `${WEB_APP_URL}/register` }}
+        secondaryAction={{ label: 'Contact support', href: '/contact' }}
+      />
 
       {/* ═══ Stats — Full-bleed dark strip ═══ */}
       <Box
@@ -189,15 +202,14 @@ function ForOrganizationsPage() {
                     gap: 1.5,
                     p: 2,
                     borderRadius: SHAPE.card,
-                    border: '1px solid',
-                    borderColor: 'divider',
+                    boxShadow: 'var(--neu-raised)',
                     bgcolor: 'background.paper',
                     animation: `${fadeSlide} 0.35s ease ${i * 0.04}s both`,
-                    transition: 'background-color 200ms ease, border-color 200ms ease',
+                    transition: 'transform 200ms ease, box-shadow 200ms ease',
                     cursor: 'default',
                     '&:hover': {
-                      borderColor: 'primary.main',
-                      bgcolor: 'rgba(46, 61, 47,0.03)',
+                      transform: 'translateY(-2px)',
+                      boxShadow: 'var(--neu-raised-hover)',
                     },
                   }}
                 >
@@ -211,7 +223,7 @@ function ForOrganizationsPage() {
       </Box>
 
       {/* ═══ Features — Alternating 2-col layout ═══ */}
-      <Box sx={{ py: { xs: 7, md: 10 }, bgcolor: '#f8faf8' }}>
+      <Box sx={{ py: { xs: 7, md: 10 }, bgcolor: '#F2EFEA', ...NEUMORPHIC_SMOKE_VARS }}>
         <Container maxWidth="lg">
           <Box sx={{ textAlign: 'center', mb: 6 }}>
             <Chip label="Platform" size="small" sx={{ mb: 2, bgcolor: 'rgba(21,101,192,0.08)', color: '#1565C0', fontWeight: 700, fontSize: '0.72rem', letterSpacing: 1, textTransform: 'uppercase' }} />
@@ -232,8 +244,7 @@ function ForOrganizationsPage() {
                   sx={{
                     height: '100%',
                     borderRadius: SHAPE.card,
-                    border: '1px solid',
-                    borderColor: 'divider',
+                    boxShadow: 'var(--neu-raised)',
                     position: 'relative',
                     overflow: 'visible',
                     animation: `${fadeSlide} 0.4s ease ${0.05 + i * 0.04}s both`,
@@ -296,8 +307,7 @@ function ForOrganizationsPage() {
                   elevation={0}
                   sx={{
                     height: '100%',
-                    border: '1px solid',
-                    borderColor: 'divider',
+                    boxShadow: 'var(--neu-raised)',
                     borderRadius: SHAPE.card,
                     animation: `${fadeSlide} 0.45s ease ${0.1 + i * 0.1}s both`,
                     transition: 'border-color 0.3s ease',

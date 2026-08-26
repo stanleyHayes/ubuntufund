@@ -427,3 +427,76 @@
 ---
 
 *End of audit. Estimated effort to reach Phase 3: 2–3 developer-weeks. Phase 4: 1–2 developer-months.*
+
+---
+
+## 10. Application-wide Neumorphism Completion — 2026-08-25
+
+**Status:** ✅ COMPLETE
+
+**Material rules applied**
+
+- Smoke (`#F2EFEA`) is the primary light surface; white is reserved for intentional contrast sections.
+- Cards inherit the material of their containing section: smoke on smoke, green on green, and dark green in admin/dark contexts.
+- Cards and card-like lists no longer use decorative outline borders; depth comes from paired light/dark shadows.
+- Buttons, icon buttons, chips, and decorative icon tiles are raised at rest and hover; inset treatment is reserved for active/selected states, inputs, and recessed wells.
+- Dark headers, CTA bands, organization sections, and footers use local dark neumorphic tokens so light/white glow cannot leak into them.
+
+**Coverage**
+
+- Shared UI theme primitives and exports.
+- Marketing navigation, footer, homepage sections, CTA, organization, pricing/blog/contact/support surfaces.
+- Web header/footer, homepage CTA, campaign/list/activity surfaces, dashboard, leaderboard, profile, wallet, settings, subscriptions, refunds, donations, KYC, and organization pages.
+- Admin theme, authentication, settings/profile, content panels, plan forms, dispute and testimonial surfaces.
+- Desktop and mobile visual checks for marketing, web homepage/CTA/header/footer, leaderboard, and admin authentication.
+
+**Acceptance evidence**
+
+- `npm run type-check` passes for `@ubuntu-fund/ui`, `web`, `marketing`, and `admin`.
+- ESLint passes for all four workspaces (only the repository's existing module-type warning remains).
+- Vitest passes: web 17 tests, marketing 5 tests, admin 2 tests.
+- Production builds pass for web, marketing, and admin (existing large-chunk warnings remain for marketing/admin).
+
+---
+
+## 11. Mobile, Editorial Pages, and Admin Detail Completion — 2026-08-25
+
+**Status:** ✅ COMPLETE
+
+**Delivered**
+
+- Applied the contextual smoke/green neumorphic system across the Expo mobile routes and shared campaign, comment, and update components. Raised states are used for touch controls; inset states are reserved for inputs and selections.
+- Rebuilt the Company/resource page banners as dark-green editorial heroes with contextual green shadows and no light-surface glow leakage.
+- Expanded Contact from one incomplete card to four truthful pathways: email support, support availability, Ghana operations, and organization help. Cards are smoke-on-smoke and raised without outline borders.
+- Rebuilt Terms, Privacy, and Refund Policy around one responsive legal-document layout: editorial hero, sticky section navigator, raised reading surface, and inset clarification panel. The mobile date chip and “On this page” label are verified on separate rows.
+- Redesigned admin login/forgot-password surfaces and sidebar groups with dark contextual neumorphism.
+- Fixed admin permissions after login by refetching `/rbac/me` when authentication tokens change and validating malformed permission payloads defensively.
+- Converted the admin Overview detailed dashboard and shared page header from outlined panels to raised chart surfaces, inset summary cells, and raised icon tiles.
+
+**Acceptance evidence**
+
+- Mobile: TypeScript and ESLint pass; Vitest passes 5/5; Expo web export completes; 390px login render has no runtime errors or horizontal overflow.
+- Marketing: TypeScript, ESLint, and production build pass; Contact, Terms, Privacy, and Refund routes render without page errors at desktop and 390px widths.
+- Admin: TypeScript and ESLint pass; Vitest passes 5/5; production build passes; authenticated `/overview` render reports zero permission-denied states and zero page errors.
+- Existing non-blocking notices: root ESLint module-type warning, marketing/admin bundle-size advisory, and Watchman falling back to Metro's node crawler during Expo export.
+
+---
+
+## 12. Contact, Donor, and Achievement Composition Redesign — 2026-08-25
+
+**Status:** ✅ COMPLETE
+
+**Delivered**
+
+- Replaced the Contact page's isolated channel-card treatment with a responsive 2×2 support directory: raised smoke surfaces, left-aligned information, raised icon tiles, and quiet ordinal watermarks.
+- Replaced the homepage's repeated oversized donor podiums with two compact impact ledgers. Each ledger has one first-place anchor and a readable ranked contribution list without floating medals, white cards, or oversized empty areas.
+- Rebuilt the Leaderboard top-three presentation as one restrained ranked set: first place uses contextual dark green, secondary ranks stay smoke-on-smoke, and amounts use tabular figures.
+- Rebuilt the eight-column achievement strip as a four-column descriptive collection. Names, unlock criteria, and rarity are now readable without truncated chips; mobile collapses to full-width achievement rows.
+- Reduced the achievement palette to the established green, gold, clay, and muted teal family while preserving badge identity.
+
+**Acceptance evidence**
+
+- Desktop renders verified for homepage donor ledgers, leaderboard rank panels and achievement grid, and Contact support directory.
+- 390px Leaderboard render verified with no horizontal overflow; achievement cards remain readable and full width.
+- Playwright reported zero page errors and zero horizontal overflow across Home, Leaderboard desktop/mobile, and Contact.
+- Web TypeScript passes. Full web ESLint remains blocked by pre-existing React compiler findings in `useLiveTotals.ts`, `CampaignPublicPage.tsx`, and `DonateCallbackPage.tsx`, outside this visual slice.

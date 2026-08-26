@@ -5,7 +5,7 @@ import Grid from '@mui/material/Grid'
 import CampaignRoundedIcon from '@mui/icons-material/CampaignRounded'
 import ShareRoundedIcon from '@mui/icons-material/ShareRounded'
 import AccountBalanceWalletRoundedIcon from '@mui/icons-material/AccountBalanceWalletRounded'
-import { SHAPE } from '@ubuntu-fund/ui'
+import { NEUMORPHIC_SMOKE_VARS, SHAPE } from '@ubuntu-fund/ui'
 
 const steps = [
   {
@@ -38,6 +38,7 @@ function HowItWorksSection() {
       sx={{
         py: { xs: 8, md: 10 },
         backgroundColor: '#F2EFEA',
+        ...NEUMORPHIC_SMOKE_VARS,
       }}
     >
       <Container maxWidth="lg">
@@ -70,8 +71,8 @@ function HowItWorksSection() {
                   textAlign: 'center',
                   p: 4,
                   height: '100%',
-                  backgroundColor: '#fff',
-                  border: '1px solid #E7E3D8',
+                  backgroundColor: 'var(--neu-surface)',
+                  boxShadow: 'var(--neu-raised)',
                   borderRadius: SHAPE.card,
                 }}
               >
@@ -88,7 +89,8 @@ function HowItWorksSection() {
                     mx: 'auto',
                     mb: 3,
                     borderRadius: SHAPE.sm,
-                    backgroundColor: 'rgba(168, 181, 160, 0.18)',
+                    backgroundColor: 'var(--neu-surface)',
+                    boxShadow: 'var(--neu-subtle)',
                     color: 'primary.main',
                   }}
                 >

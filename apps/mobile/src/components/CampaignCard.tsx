@@ -5,7 +5,7 @@ import { router } from 'expo-router'
 import type { Campaign } from '@ubuntu-fund/types'
 import { ProgressBar } from './ProgressBar'
 import { RemoteImage } from './RemoteImage'
-import { brandColors } from '../theme'
+import { brandColors, neumorphism } from '../theme'
 
 interface CampaignCardProps {
   campaign: Campaign
@@ -78,14 +78,11 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
 
 const styles = StyleSheet.create({
   card: {
+    ...neumorphism.raised,
     marginBottom: 16,
     borderRadius: 14,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: 'rgba(26,46,34,0.10)',
-    overflow: 'hidden',
   },
-  cover: { width: '100%', height: 160 },
+  cover: { width: '100%', height: 160, borderTopLeftRadius: 14, borderTopRightRadius: 14 },
   content: { padding: 12, paddingTop: 10 },
   chipRow: { flexDirection: 'row', gap: 6, marginBottom: 8 },
   categoryChip: { height: 24, backgroundColor: 'rgba(168,181,160,0.28)' },

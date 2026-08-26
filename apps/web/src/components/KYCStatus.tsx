@@ -77,7 +77,7 @@ export default function KYCStatus() {
       elevation={0}
       sx={{
         p: 3,
-        border: '1px solid rgba(0,0,0,0.08)',
+        boxShadow: 'var(--neu-raised)',
         borderRadius: 3,
         animation: `${fadeIn} 0.4s ease`,
       }}

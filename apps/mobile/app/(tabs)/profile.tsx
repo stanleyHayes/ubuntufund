@@ -13,7 +13,7 @@ import { router } from 'expo-router'
 import { VerificationLevel } from '@ubuntu-fund/types'
 import { TrustBadge } from '@/components/TrustBadge'
 import { UbuntuLogo } from '@/components/UbuntuLogo'
-import { brandColors } from '@/theme'
+import { brandColors, neumorphism } from '@/theme'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
 
@@ -213,14 +213,13 @@ const styles = StyleSheet.create({
 
   avatarWrap: { position: 'relative', marginBottom: 12 },
   avatar: {
+    ...neumorphism.greenRaised,
     width: 80,
     height: 80,
     borderRadius: 40,
     backgroundColor: brandColors.secondary,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 3,
-    borderColor: 'rgba(255,255,255,0.15)',
   },
   avatarText: { fontSize: 28, fontFamily: 'Outfit_800ExtraBold', color: brandColors.text },
   avatarBadge: {
@@ -253,12 +252,10 @@ const styles = StyleSheet.create({
 
   // Menu
   menuCard: {
+    ...neumorphism.raised,
     marginHorizontal: 16,
     marginTop: 20,
     borderRadius: 14,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: 'rgba(26,46,34,0.10)',
     overflow: 'hidden',
   },
   menuRow: {
@@ -271,6 +268,7 @@ const styles = StyleSheet.create({
     borderBottomColor: 'rgba(26,46,34,0.08)',
   },
   menuIcon: {
+    ...neumorphism.subtle,
     width: 38,
     height: 38,
     borderRadius: 10,

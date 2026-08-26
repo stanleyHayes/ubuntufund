@@ -12,7 +12,7 @@ import { api } from '@/lib/api'
 import { EmptyState } from '@/components/EmptyState'
 import { SignInRequired } from '@/components/SignInRequired'
 import { FadeInUp } from '@/components/anim/FadeInUp'
-import { brandColors } from '@/theme'
+import { brandColors, neumorphism } from '@/theme'
 
 interface Verification {
   id: string
@@ -246,6 +246,7 @@ const styles = StyleSheet.create({
   listWrap: { paddingHorizontal: 16, paddingTop: 4 },
 
   infoBanner: {
+    ...neumorphism.inset,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
@@ -255,21 +256,19 @@ const styles = StyleSheet.create({
     padding: 14,
     backgroundColor: 'rgba(46,61,47,0.06)',
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(26,46,34,0.10)',
   },
   infoText: { flex: 1, fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.text, lineHeight: 18 },
 
   card: {
+    ...neumorphism.raised,
     backgroundColor: brandColors.surface,
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(26,46,34,0.10)',
     padding: 16,
     marginBottom: 12,
   },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
   typeIcon: {
+    ...neumorphism.subtle,
     width: 40,
     height: 40,
     borderRadius: 10,
@@ -307,10 +306,9 @@ const styles = StyleSheet.create({
   docText: { fontSize: 12, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary },
 
   skeletonCard: {
+    ...neumorphism.raised,
     backgroundColor: brandColors.surface,
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(26,46,34,0.10)',
     padding: 16,
     marginBottom: 12,
   },
@@ -322,6 +320,7 @@ const styles = StyleSheet.create({
 
   emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 80, paddingHorizontal: 32 },
   emptyIconTile: {
+    ...neumorphism.subtle,
     width: 48,
     height: 48,
     borderRadius: 14,

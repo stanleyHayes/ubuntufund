@@ -28,17 +28,39 @@ async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
     headers['Authorization'] = `Bearer ${token}`
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...fetchOptions,
-    headers,
-  })
-
-  const data = await res.json()
-
-  if (!res.ok) {
-    throw new ApiError(res.status, data.error ?? data.message ?? 'Request failed')
+  let res: Response
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      ...fetchOptions,
+      headers,
+    })
+  } catch {
+    throw new ApiError(0, 'Unable to connect to UbuntuFund. Check your connection and try again.')
   }
 
+  const body = await res.text()
+  let data: { error?: string; message?: string } | T | null = null
+  if (body.trim()) {
+    try {
+      data = JSON.parse(body) as { error?: string; message?: string } | T
+    } catch {
+      if (res.ok) throw new ApiError(res.status, 'UbuntuFund returned an invalid response. Please try again.')
+    }
+  }
+
+  if (!res.ok) {
+    const errorBody = data && typeof data === 'object' ? data as { error?: string; message?: string } : null
+    const fallback = res.status === 401
+      ? 'The email or password is incorrect.'
+      : res.status === 429
+        ? 'Too many attempts. Please wait a moment and try again.'
+        : res.status >= 500
+          ? 'UbuntuFund is temporarily unavailable. Please try again shortly.'
+          : 'We could not complete your request. Please try again.'
+    throw new ApiError(res.status, errorBody?.error ?? errorBody?.message ?? fallback)
+  }
+
+  if (data === null) throw new ApiError(res.status, 'UbuntuFund returned an empty response. Please try again.')
   return data as T
 }
 

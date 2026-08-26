@@ -9,7 +9,7 @@ import { useEnabledPaymentProviders, EnabledPaymentProvider, getProviderIcon } f
 import { ProgressBar } from '@/components/ProgressBar'
 import { TrustBadge } from '@/components/TrustBadge'
 import { shareCampaign } from '@/components/ShareCampaign'
-import { brandColors } from '@/theme'
+import { brandColors, neumorphism } from '@/theme'
 import { api } from '@/lib/api'
 import type { CampaignDonation } from '@ubuntu-fund/types'
 import { CollaboratorRole, type CampaignCollaborator } from '@ubuntu-fund/types'
@@ -535,8 +535,6 @@ export default function CampaignDetailScreen() {
   )
 }
 
-const CARD_BORDER = 'rgba(26,46,34,0.10)'
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: brandColors.background },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
@@ -547,12 +545,11 @@ const styles = StyleSheet.create({
   chipText: { fontSize: 12, fontFamily: 'Outfit_400Regular', color: brandColors.text },
   title: { fontFamily: 'Outfit_700Bold', marginBottom: 16 },
   progressCard: {
+    ...neumorphism.raised,
     padding: 16,
     borderRadius: 14,
     marginBottom: 16,
     backgroundColor: brandColors.surface,
-    borderWidth: 1,
-    borderColor: CARD_BORDER,
   },
   statsRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 },
   raised: { color: brandColors.success, fontFamily: 'Outfit_700Bold' },
@@ -565,57 +562,52 @@ const styles = StyleSheet.create({
   collaboratorAvatarRow: { flexDirection: 'row', gap: 4, marginBottom: 12 },
   collaboratorAvatar: { backgroundColor: brandColors.primaryLight },
   collaboratorCard: {
+    ...neumorphism.raised,
     padding: 12,
     borderRadius: 14,
     marginBottom: 8,
     backgroundColor: brandColors.surface,
-    borderWidth: 1,
-    borderColor: CARD_BORDER,
   },
   collaboratorRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   collaboratorInfo: { flex: 1 },
   collaboratorName: { fontFamily: 'Outfit_700Bold' },
   stillNeeded: { color: brandColors.textSecondary, textAlign: 'center', marginTop: -12, marginBottom: 20, fontFamily: 'Outfit_400Regular' },
   datesCard: {
+    ...neumorphism.raised,
     padding: 14,
     borderRadius: 14,
     marginBottom: 16,
     backgroundColor: brandColors.surface,
-    borderWidth: 1,
-    borderColor: CARD_BORDER,
   },
   dateRow: { flexDirection: 'row', justifyContent: 'space-around' },
   dateItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   dateText: { fontFamily: 'Outfit_700Bold', color: brandColors.text },
   creatorCard: {
+    ...neumorphism.raised,
     padding: 14,
     borderRadius: 14,
     marginBottom: 16,
     backgroundColor: brandColors.surface,
-    borderWidth: 1,
-    borderColor: CARD_BORDER,
   },
   creatorRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   creatorInfo: { flex: 1 },
   creatorNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   donationCard: {
+    ...neumorphism.raised,
     padding: 12,
     borderRadius: 14,
     marginBottom: 8,
     backgroundColor: brandColors.surface,
-    borderWidth: 1,
-    borderColor: CARD_BORDER,
   },
   donationRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   donationInfo: { flex: 1 },
   donationAmount: { alignItems: 'flex-end' },
   paymentMethodsCard: {
+    ...neumorphism.raised,
     padding: 14,
     borderRadius: 14,
     marginBottom: 16,
     backgroundColor: brandColors.surface,
-    borderWidth: 1,
-    borderColor: CARD_BORDER,
   },
   paymentMethodItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
   reportButton: { alignSelf: 'flex-end', marginTop: 4 },
@@ -637,8 +629,7 @@ const styles = StyleSheet.create({
   modalTitle: { fontFamily: 'Outfit_700Bold', marginBottom: 4 },
   fieldLabel: { fontFamily: 'Outfit_700Bold', marginBottom: 6, marginTop: 4 },
   modalInput: {
-    borderWidth: 1,
-    borderColor: CARD_BORDER,
+    ...neumorphism.inset,
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -649,11 +640,10 @@ const styles = StyleSheet.create({
   },
   paymentRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
   paymentOption: {
+    ...neumorphism.subtle,
     flex: 1,
     paddingVertical: 10,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: CARD_BORDER,
     alignItems: 'center',
   },
   paymentOptionActive: {
@@ -664,14 +654,13 @@ const styles = StyleSheet.create({
   paymentOptionTextActive: { color: brandColors.primary },
   providerList: { gap: 8, marginBottom: 12 },
   providerOption: {
+    ...neumorphism.subtle,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     paddingVertical: 12,
     paddingHorizontal: 12,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: CARD_BORDER,
     backgroundColor: brandColors.surface,
   },
   providerOptionActive: {
@@ -681,14 +670,13 @@ const styles = StyleSheet.create({
   providerOptionText: { fontSize: 13, color: brandColors.textSecondary, fontFamily: 'Outfit_700Bold' },
   providerOptionTextActive: { color: brandColors.primary },
   paymentFallback: {
+    ...neumorphism.inset,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     paddingVertical: 10,
     paddingHorizontal: 12,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: CARD_BORDER,
     backgroundColor: brandColors.surface,
     marginBottom: 12,
   },

@@ -88,7 +88,7 @@ export function RefundRequestPage() {
               p: 4,
               borderRadius: SHAPE.card,
               bgcolor: 'background.paper',
-              border: '1px solid rgba(0,0,0,0.06)',
+              boxShadow: 'var(--neu-raised)',
               textAlign: 'center',
             }}
           >
@@ -153,7 +153,7 @@ export function RefundRequestPage() {
             p: 3,
             borderRadius: SHAPE.card,
             bgcolor: 'background.paper',
-            border: '1px solid rgba(0,0,0,0.06)',
+            boxShadow: 'var(--neu-raised)',
             mb: 3,
           }}
         >
@@ -205,7 +205,7 @@ export function RefundRequestPage() {
             p: 3,
             borderRadius: SHAPE.card,
             bgcolor: 'background.paper',
-            border: '1px solid rgba(0,0,0,0.06)',
+            boxShadow: 'var(--neu-raised)',
           }}
         >
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>

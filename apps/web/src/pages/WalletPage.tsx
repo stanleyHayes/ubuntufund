@@ -138,7 +138,7 @@ export function WalletPage() {
                     sx={{
                       borderRadius: SHAPE.card,
                       overflow: 'hidden',
-                      border: '1px solid rgba(0,0,0,0.06)',
+                      boxShadow: 'var(--neu-raised)',
                       animation: `${fadeInUp} 0.4s ${0.1 + idx * 0.08}s ease both`,
                       transition: 'border-color 0.2s ease',
                       '&:hover': { borderColor: 'rgba(0,0,0,0.18)' },
@@ -189,7 +189,7 @@ export function WalletPage() {
         {txLoading ? (
           <TableContainer
             component={Paper}
-            sx={{ borderRadius: SHAPE.card, border: '1px solid rgba(0,0,0,0.06)', boxShadow: 'none' }}
+            sx={{ borderRadius: SHAPE.card, boxShadow: 'var(--neu-raised)' }}
           >
             <Table>
               <TableHead>
@@ -215,7 +215,7 @@ export function WalletPage() {
         ) : transactions.length === 0 ? (
           <Card
             elevation={0}
-            sx={{ p: { xs: 3, md: 4 }, border: '1px solid rgba(0,0,0,0.06)', borderRadius: SHAPE.card }}
+            sx={{ p: { xs: 3, md: 4 }, boxShadow: 'var(--neu-raised)', borderRadius: SHAPE.card }}
           >
             <EmptyState
               variant="noData"
@@ -226,7 +226,7 @@ export function WalletPage() {
         ) : (
           <TableContainer
             component={Paper}
-            sx={{ borderRadius: SHAPE.card, border: '1px solid rgba(0,0,0,0.06)', boxShadow: 'none' }}
+            sx={{ borderRadius: SHAPE.card, boxShadow: 'var(--neu-raised)' }}
           >
             <Table>
               <TableHead>

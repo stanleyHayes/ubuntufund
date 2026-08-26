@@ -12,7 +12,7 @@ import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
 import { EmptyState } from '@/components/EmptyState'
 import { FadeInUp } from '@/components/anim/FadeInUp'
-import { brandColors } from '@/theme'
+import { brandColors, neumorphism } from '@/theme'
 
 interface LeaderboardEntry {
   id: string
@@ -229,31 +229,26 @@ const styles = StyleSheet.create({
 
   periodScroll: { flexGrow: 0 },
   periodRow: { paddingHorizontal: 16, paddingVertical: 12, gap: 8, alignItems: 'center' },
-  periodTab: { height: 38, justifyContent: 'center', paddingHorizontal: 18, borderRadius: 999, backgroundColor: '#fff', borderWidth: 1, borderColor: 'rgba(26,46,34,0.10)' },
-  periodTabActive: { backgroundColor: brandColors.primary, borderColor: brandColors.primary },
+  periodTab: { ...neumorphism.subtle, height: 38, justifyContent: 'center', paddingHorizontal: 18, borderRadius: 999 },
+  periodTabActive: { ...neumorphism.greenInset },
   periodTabText: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: brandColors.textSecondary },
   periodTabTextActive: { color: '#fff' },
 
   listWrap: { paddingHorizontal: 16 },
 
   entryRow: {
+    ...neumorphism.raised,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
     borderRadius: 14,
     padding: 12,
     marginBottom: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(26,46,34,0.10)',
   },
   entryRowTop: {
-    borderColor: 'rgba(199,162,74,0.35)',
-    backgroundColor: 'rgba(199,162,74,0.05)',
+    boxShadow: '7px 7px 16px rgba(72,62,43,0.16), -7px -7px 16px rgba(255,255,255,0.96), 0 0 0 2px rgba(199,162,74,0.18)',
   },
   entryRowCurrent: {
-    borderWidth: 1.5,
-    borderColor: brandColors.primary,
-    backgroundColor: `${brandColors.primary}0A`,
+    ...neumorphism.inset,
   },
 
   rankWrap: { width: 32, alignItems: 'center', marginRight: 8 },

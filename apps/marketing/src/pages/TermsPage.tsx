@@ -1,7 +1,5 @@
-import Box from '@mui/material/Box'
-import Container from '@mui/material/Container'
-import Typography from '@mui/material/Typography'
-import { SHAPE } from '@ubuntu-fund/ui'
+import GavelRoundedIcon from '@mui/icons-material/GavelRounded'
+import { LegalPageLayout } from '../components/LegalPageLayout'
 
 const sections = [
   {
@@ -68,39 +66,18 @@ const sections = [
 
 function TermsPage() {
   return (
-    <Box component="main" sx={{ flex: 1, pt: { xs: 4, md: 6 }, pb: 8 }}>
-        <Container maxWidth="md">
-          <Typography variant="h3" sx={{ fontWeight: 800, mb: 1 }}>
-            Terms of Service
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 6 }}>
-            Last updated: January 15, 2026
-          </Typography>
-
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 4, lineHeight: 1.8 }}>
-            Welcome to UbuntuFund. These Terms of Service govern your use of our crowdfunding
-            platform. Please read them carefully before using our services.
-          </Typography>
-
-          {sections.map((section) => (
-            <Box key={section.title} sx={{ mb: 4 }}>
-              <Typography variant="h5" sx={{ fontWeight: 700, mb: 1.5 }}>
-                {section.title}
-              </Typography>
-              <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.8 }}>
-                {section.content}
-              </Typography>
-            </Box>
-          ))}
-
-          <Box sx={{ mt: 6, p: 3, backgroundColor: 'grey.50', borderRadius: SHAPE.card }}>
-            <Typography variant="body2" color="text.secondary">
-              If you have questions about these Terms of Service, please contact us at{' '}
-              <strong>legal@ubuntufund.com</strong>.
-            </Typography>
-          </Box>
-        </Container>
-    </Box>
+    <LegalPageLayout
+      eyebrow="Platform agreement"
+      title="Terms of Service"
+      description="The ground rules for creating campaigns, supporting causes, and using UbuntuFund responsibly."
+      icon={<GavelRoundedIcon />}
+      panelLabel="Plain-language principle"
+      panelTitle="Use the platform honestly, securely, and for its stated purpose."
+      panelBody="These terms explain account responsibilities, campaign conduct, donations, and dispute handling."
+      introduction="Welcome to UbuntuFund. These Terms of Service govern your use of our crowdfunding platform. Please read them carefully before creating an account, publishing a campaign, or making a contribution."
+      sections={sections}
+      contact={<>Questions about these terms can be sent to <strong>legal@ubuntufund.com</strong>.</>}
+    />
   )
 }
 

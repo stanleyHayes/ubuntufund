@@ -114,7 +114,7 @@ function StatCard({ icon, value, label, color, delay }: { icon: React.ReactNode;
     <Card
       elevation={0}
       sx={{
-        border: '1px solid rgba(0,0,0,0.06)',
+        boxShadow: 'var(--neu-raised)',
         borderRadius: SHAPE.card,
         animation: `${fadeIn} 0.5s ease ${delay}s both`,
         transition: 'border-color 0.25s ease',
@@ -459,7 +459,7 @@ export function ProfilePage() {
         <Card
           elevation={0}
           sx={{
-            border: '1px solid rgba(0,0,0,0.06)',
+            boxShadow: 'var(--neu-raised)',
             borderRadius: SHAPE.card,
             mb: 3,
             animation: `${fadeIn} 0.5s ease 0.35s both`,
@@ -506,7 +506,7 @@ export function ProfilePage() {
         <Card
           elevation={0}
           sx={{
-            border: '1px solid rgba(0,0,0,0.06)',
+            boxShadow: 'var(--neu-raised)',
             borderRadius: SHAPE.card,
             mb: 3,
             animation: `${fadeIn} 0.5s ease 0.4s both`,
@@ -552,7 +552,7 @@ export function ProfilePage() {
         <Card
           elevation={0}
           sx={{
-            border: '1px solid rgba(0,0,0,0.06)',
+            boxShadow: 'var(--neu-raised)',
             borderRadius: SHAPE.card,
             mb: 3,
             animation: `${fadeIn} 0.5s ease 0.45s both`,
@@ -604,7 +604,7 @@ export function ProfilePage() {
         <Card
           elevation={0}
           sx={{
-            border: '1px solid rgba(0,0,0,0.06)',
+            boxShadow: 'var(--neu-raised)',
             borderRadius: SHAPE.card,
             animation: `${fadeIn} 0.5s ease 0.5s both`,
           }}

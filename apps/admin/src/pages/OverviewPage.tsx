@@ -35,7 +35,7 @@ const fadeIn = keyframes`
 // Constants
 // ---------------------------------------------------------------------------
 const B = 'rgba(255,255,255,0.06)'
-const CARD_BG = 'rgba(255,255,255,0.02)'
+const CARD_BG = 'background.paper'
 
 const PIE_COLORS = ['#5E8F72', '#74909A', '#C7A24A', '#C06B58', TONES.maroon.text, TONES.teal.text, TONES.clay.text]
 
@@ -101,8 +101,8 @@ function ActivityRow({ type, message, timestamp }: { type: string; message: stri
         alignItems: 'flex-start',
         gap: 1.5,
         py: 1.5,
-        borderBottom: `1px solid ${B}`,
-        '&:last-child': { borderBottom: 'none' },
+        boxShadow: 'inset 0 -8px 12px -14px rgba(0,0,0,.95)',
+        '&:last-child': { boxShadow: 'none' },
         transition: 'background 0.2s',
         px: 1,
         mx: -1,
@@ -196,12 +196,12 @@ function FraudMetricCard({ metric, value, change }: { metric: string; value: num
     <Box
       sx={{
         bgcolor: CARD_BG,
-        border: `1px solid ${B}`,
+        boxShadow: 'var(--neu-raised)',
         borderRadius: SHAPE.card,
         p: 2,
         textAlign: 'center',
-        transition: 'border-color 0.25s ease',
-        '&:hover': { borderColor: isGood ? '#5E8F7230' : '#C06B5830' },
+        transition: 'transform 0.25s ease, box-shadow 0.25s ease',
+        '&:hover': { transform: 'translateY(-2px)', boxShadow: 'var(--neu-raised-hover)' },
       }}
     >
       <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', letterSpacing: '0.06em', textTransform: 'uppercase', mb: 0.75 }}>
@@ -329,7 +329,7 @@ export default function OverviewPage() {
           <Box
             sx={{
               bgcolor: CARD_BG,
-              border: `1px solid ${B}`,
+              boxShadow: 'var(--neu-raised)',
               borderRadius: SHAPE.card,
               p: 2,
               height: 320,
@@ -369,7 +369,7 @@ export default function OverviewPage() {
           <Box
             sx={{
               bgcolor: CARD_BG,
-              border: `1px solid ${B}`,
+              boxShadow: 'var(--neu-raised)',
               borderRadius: SHAPE.card,
               p: 2,
               height: 320,
@@ -407,7 +407,7 @@ export default function OverviewPage() {
                     borderRadius: SHAPE.sm,
                     bgcolor: `${PIE_COLORS[i % PIE_COLORS.length]}18`,
                     color: PIE_COLORS[i % PIE_COLORS.length],
-                    border: `1px solid ${PIE_COLORS[i % PIE_COLORS.length]}25`,
+                    boxShadow: 'var(--neu-subtle)',
                     fontWeight: 600,
                   }}
                 />
@@ -423,7 +423,7 @@ export default function OverviewPage() {
           <Box
             sx={{
               bgcolor: CARD_BG,
-              border: `1px solid ${B}`,
+              boxShadow: 'var(--neu-raised)',
               borderRadius: SHAPE.card,
               p: 2,
               height: 320,
@@ -457,7 +457,7 @@ export default function OverviewPage() {
           <Box
             sx={{
               bgcolor: CARD_BG,
-              border: `1px solid ${B}`,
+              boxShadow: 'var(--neu-raised)',
               borderRadius: SHAPE.card,
               p: 2,
               height: 320,
@@ -480,7 +480,7 @@ export default function OverviewPage() {
           <Box
             sx={{
               bgcolor: CARD_BG,
-              border: `1px solid ${B}`,
+              boxShadow: 'var(--neu-raised)',
               borderRadius: SHAPE.card,
               p: 2,
             }}
@@ -493,7 +493,7 @@ export default function OverviewPage() {
                   alignItems: 'center',
                   gap: 1.5,
                   py: 1.25,
-                  borderBottom: i < topCampaigns.length - 1 ? `1px solid ${B}` : 'none',
+                  boxShadow: i < topCampaigns.length - 1 ? 'inset 0 -8px 12px -14px rgba(0,0,0,.95)' : 'none',
                 }}
               >
                 <Typography
@@ -553,7 +553,7 @@ export default function OverviewPage() {
           <Box
             sx={{
               bgcolor: CARD_BG,
-              border: `1px solid ${B}`,
+              boxShadow: 'var(--neu-raised)',
               borderRadius: SHAPE.card,
               p: 2,
             }}
@@ -605,7 +605,7 @@ export default function OverviewPage() {
           <Box
             sx={{
               bgcolor: CARD_BG,
-              border: `1px solid ${B}`,
+              boxShadow: 'var(--neu-raised)',
               borderRadius: SHAPE.card,
               p: 2,
             }}
@@ -649,7 +649,7 @@ export default function OverviewPage() {
           <Box
             sx={{
               bgcolor: CARD_BG,
-              border: `1px solid ${B}`,
+              boxShadow: 'var(--neu-raised)',
               borderRadius: SHAPE.card,
               p: 2.5,
             }}
@@ -665,7 +665,7 @@ export default function OverviewPage() {
           <Box
             sx={{
               bgcolor: CARD_BG,
-              border: `1px solid ${B}`,
+              boxShadow: 'var(--neu-raised)',
               borderRadius: SHAPE.card,
               p: 2,
               height: 320,
@@ -722,7 +722,7 @@ export default function OverviewPage() {
           mt: 3,
           mb: 1,
           bgcolor: CARD_BG,
-          border: `1px solid ${B}`,
+          boxShadow: 'var(--neu-raised)',
           borderRadius: SHAPE.card,
           display: 'grid',
           gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)', md: 'repeat(6, 1fr)' },
@@ -736,14 +736,15 @@ export default function OverviewPage() {
           { label: 'Active Campaigns', value: stats.activeCampaigns, icon: <CampaignIcon sx={{ fontSize: 16 }} />, color: '#74909A' },
           { label: 'Verified Users', value: users.filter((u) => u.verificationLevel !== VerificationLevel.NONE).length, icon: <VerifiedUserIcon sx={{ fontSize: 16 }} />, color: TONES.maroon.text },
           { label: 'Monthly Growth', value: `${stats.monthlyGrowth}%`, icon: <TrendingUpIcon sx={{ fontSize: 16 }} />, color: '#5E8F72' },
-        ].map((s, i) => (
+        ].map((s) => (
           <Box
             key={s.label}
             sx={{
               px: 2,
               py: 2,
-              borderRight: { xs: i % 2 === 0 ? `1px solid ${B}` : 'none', sm: i % 3 < 2 ? `1px solid ${B}` : 'none', md: i < 5 ? `1px solid ${B}` : 'none' },
-              borderBottom: { xs: i < 4 ? `1px solid ${B}` : 'none', sm: i < 3 ? `1px solid ${B}` : 'none', md: 'none' },
+              boxShadow: 'var(--neu-inset)',
+              m: 0.75,
+              borderRadius: SHAPE.sm,
               textAlign: 'center',
               transition: 'background 0.2s',
               '&:hover': { bgcolor: 'rgba(255,255,255,0.02)' },

@@ -39,6 +39,11 @@ function OrganizationsSection() {
       sx={{
         py: { xs: 8, md: 10 },
         background: 'linear-gradient(160deg, #1C261D 0%, #2E3D2F 100%)',
+        '--neu-surface': '#233126',
+        '--neu-raised': '8px 8px 18px rgba(8,14,10,0.48), -7px -7px 16px rgba(91,117,98,0.13)',
+        '--neu-raised-hover': '11px 11px 22px rgba(8,14,10,0.52), -9px -9px 19px rgba(91,117,98,0.16)',
+        '--neu-subtle': '4px 4px 10px rgba(8,14,10,0.44), -4px -4px 10px rgba(91,117,98,0.12)',
+        '--neu-inset': 'inset 3px 3px 8px rgba(8,14,10,0.48), inset -3px -3px 8px rgba(91,117,98,0.14)',
         color: '#fff',
       }}
     >
@@ -93,12 +98,12 @@ function OrganizationsSection() {
                       height: '100%',
                       p: 2.5,
                       borderRadius: SHAPE.card,
-                      backgroundColor: 'rgba(242,239,234,0.05)',
-                      border: '1px solid rgba(255,255,255,0.1)',
-                      transition: 'border-color 160ms ease, background-color 160ms ease',
+                      backgroundColor: 'var(--neu-surface)',
+                      boxShadow: 'var(--neu-raised)',
+                      transition: 'transform 160ms ease, box-shadow 160ms ease',
                       '&:hover': {
-                        borderColor: 'rgba(199,162,74,0.5)',
-                        backgroundColor: 'rgba(242,239,234,0.08)',
+                        transform: 'translateY(-2px)',
+                        boxShadow: 'var(--neu-raised-hover)',
                       },
                     }}
                   >
@@ -112,7 +117,8 @@ function OrganizationsSection() {
                           display: 'grid',
                           placeItems: 'center',
                           color: '#DCC07E',
-                          backgroundColor: 'rgba(199,162,74,0.14)',
+                          backgroundColor: 'var(--neu-surface)',
+                          boxShadow: 'var(--neu-subtle)',
                           borderRadius: '4px 12px 4px 12px',
                         }}
                       >

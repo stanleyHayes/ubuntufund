@@ -24,6 +24,12 @@ import AccountBalanceWalletRoundedIcon from '@mui/icons-material/AccountBalanceW
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded'
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded'
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded'
+import HomeRoundedIcon from '@mui/icons-material/HomeRounded'
+import ExploreRoundedIcon from '@mui/icons-material/ExploreRounded'
+import BusinessRoundedIcon from '@mui/icons-material/BusinessRounded'
+import EmojiEventsRoundedIcon from '@mui/icons-material/EmojiEventsRounded'
+import LoginRoundedIcon from '@mui/icons-material/LoginRounded'
+import PersonAddAltRoundedIcon from '@mui/icons-material/PersonAddAltRounded'
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
 import { SHAPE, BrandLogo } from '@ubuntu-fund/ui'
 import { useAuth } from '@/context/AuthContext'
@@ -143,6 +149,11 @@ export function Header() {
       elevation={0}
       sx={{
         bgcolor: '#1C261D',
+        '--neu-surface': '#1C261D',
+        '--neu-raised': '6px 6px 14px rgba(7,12,8,0.48), -5px -5px 12px rgba(76,101,82,0.12)',
+        '--neu-raised-hover': '8px 8px 17px rgba(7,12,8,0.52), -7px -7px 15px rgba(76,101,82,0.15)',
+        '--neu-subtle': '3px 3px 8px rgba(7,12,8,0.44), -3px -3px 8px rgba(76,101,82,0.11)',
+        '--neu-inset': 'inset 3px 3px 7px rgba(7,12,8,0.5), inset -3px -3px 7px rgba(76,101,82,0.13)',
         color: CREAM,
         boxShadow: 'inset 0 -2px 0 rgba(199, 162, 74, 0.45)',
       }}
@@ -190,9 +201,10 @@ export function Header() {
                 display: { xs: 'none', md: 'inline-flex' },
                 width: 40,
                 height: 40,
-                color: CREAM,
-                border: '1px solid rgba(245, 242, 234, 0.20)',
-                '&:hover': { bgcolor: 'rgba(245, 242, 234, 0.08)', borderColor: 'rgba(245, 242, 234, 0.35)' },
+                color: GOLD_LIGHT,
+                bgcolor: 'var(--neu-surface)',
+                boxShadow: 'var(--neu-subtle) !important',
+                '&:hover': { bgcolor: 'var(--neu-surface)', boxShadow: 'var(--neu-raised-hover) !important', transform: 'translateY(-1px)' },
               }}
             >
               <SearchRoundedIcon sx={{ fontSize: 20 }} />
@@ -343,24 +355,57 @@ export function Header() {
         anchor="right"
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        slotProps={{ paper: { sx: { width: '86vw', maxWidth: 360, bgcolor: '#1C261D', color: CREAM, p: 2 } } }}
+        slotProps={{
+          paper: {
+            sx: {
+              width: '88vw',
+              maxWidth: 390,
+              bgcolor: '#1C261D',
+              color: CREAM,
+              p: 2.5,
+              '--neu-surface': '#1C261D',
+              '--neu-subtle': '5px 5px 12px rgba(7,12,8,.5), -4px -4px 10px rgba(76,101,82,.14)',
+              '--neu-raised-hover': '8px 8px 18px rgba(7,12,8,.55), -7px -7px 16px rgba(76,101,82,.16)',
+            },
+          },
+        }}
       >
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
           <BrandLogo size={26} onDark />
-          <IconButton aria-label="Close menu" onClick={() => setDrawerOpen(false)} sx={{ color: CREAM }}>
+          <IconButton
+            aria-label="Close menu"
+            onClick={() => setDrawerOpen(false)}
+            sx={{
+              width: 42,
+              height: 42,
+              color: GOLD_LIGHT,
+              bgcolor: '#1C261D !important',
+              boxShadow: '5px 5px 12px rgba(7,12,8,.5), -4px -4px 10px rgba(76,101,82,.14) !important',
+              '&:hover': { bgcolor: '#1C261D', transform: 'translateY(-1px)' },
+            }}
+          >
             <CloseRoundedIcon />
           </IconButton>
         </Box>
-        {[...NAV_LINKS, ...(isAuthenticated
-          ? [
-              { label: 'Dashboard', to: '/dashboard' },
-              { label: 'Start a Campaign', to: '/campaigns/new' },
-              { label: 'Wallet', to: '/wallet' },
-            ]
-          : [
-              { label: 'Login', to: '/login' },
-              { label: 'Get Started', to: '/register' },
-            ])].map((link) => (
+        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 1.5 }}>
+        {[
+          { label: 'Home', to: '/', icon: <HomeRoundedIcon /> },
+          { label: 'Explore', to: '/explore', icon: <ExploreRoundedIcon /> },
+          { label: 'Organizations', to: '/organizations', icon: <BusinessRoundedIcon /> },
+          { label: 'Leaderboard', to: '/leaderboard', icon: <EmojiEventsRoundedIcon /> },
+          ...(isAuthenticated
+            ? [
+                { label: 'Dashboard', to: '/dashboard', icon: <DashboardRoundedIcon /> },
+                { label: 'Start Campaign', to: '/campaigns/new', icon: <RocketLaunchRoundedIcon /> },
+                { label: 'Wallet', to: '/wallet', icon: <AccountBalanceWalletRoundedIcon /> },
+              ]
+            : [
+                { label: 'Login', to: '/login', icon: <LoginRoundedIcon /> },
+                { label: 'Get Started', to: '/register', icon: <PersonAddAltRoundedIcon /> },
+              ]),
+        ].map((link) => {
+          const active = isLinkActive(pathname, link.to)
+          return (
           <Button
             key={link.to}
             component={RouterLink}
@@ -368,21 +413,32 @@ export function Header() {
             onClick={() => setDrawerOpen(false)}
             fullWidth
             sx={{
-              justifyContent: 'flex-start',
-              textTransform: 'uppercase',
-              letterSpacing: '0.06em',
-              fontSize: '0.82rem',
-              color: isLinkActive(pathname, link.to) ? GOLD_LIGHT : CREAM,
-              fontWeight: 600,
-              py: 1.1,
-              borderRadius: SHAPE.sm,
-              bgcolor: isLinkActive(pathname, link.to) ? 'rgba(245, 242, 234, 0.08)' : 'transparent',
-              '&:hover': { bgcolor: 'rgba(245, 242, 234, 0.08)' },
+              minWidth: 0,
+              minHeight: 112,
+              p: 2,
+              alignItems: 'flex-start',
+              justifyContent: 'space-between',
+              flexDirection: 'column',
+              textAlign: 'left',
+              textTransform: 'none',
+              color: active ? GOLD_LIGHT : CREAM,
+              fontWeight: 700,
+              lineHeight: 1.15,
+              borderRadius: SHAPE.card,
+              bgcolor: '#1C261D',
+              boxShadow: active
+                ? '7px 7px 16px rgba(7,12,8,.54), -6px -6px 14px rgba(76,101,82,.17)'
+                : '5px 5px 12px rgba(7,12,8,.48), -4px -4px 10px rgba(76,101,82,.12)',
+              '&:hover': { bgcolor: '#1C261D', boxShadow: '8px 8px 18px rgba(7,12,8,.55), -7px -7px 16px rgba(76,101,82,.16)', transform: 'translateY(-2px)' },
+              '& .MuiSvgIcon-root': { fontSize: 25 },
             }}
           >
-            {link.label}
+            <Box sx={{ color: active ? GOLD_LIGHT : 'rgba(220,192,126,.72)', lineHeight: 0 }}>{link.icon}</Box>
+            <Typography sx={{ fontSize: '.86rem', fontWeight: 750, color: 'inherit' }}>{link.label}</Typography>
           </Button>
-        ))}
+          )
+        })}
+        </Box>
         {isAuthenticated && (
           <Button
             onClick={() => { setDrawerOpen(false); logout(); navigate('/') }}

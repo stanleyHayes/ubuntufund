@@ -27,6 +27,8 @@ import EmailRoundedIcon from '@mui/icons-material/EmailRounded'
 import ChatBubbleOutlineRoundedIcon from '@mui/icons-material/ChatBubbleOutlineRounded'
 import MenuBookRoundedIcon from '@mui/icons-material/MenuBookRounded'
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
+import SupportAgentRoundedIcon from '@mui/icons-material/SupportAgentRounded'
+import { InternalPageHero } from '../components/InternalPageHero'
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -167,10 +169,21 @@ function HelpPage() {
   return (
     <Box component="main" sx={{ flex: 1 }}>
 
+      <InternalPageHero
+        eyebrow="Support"
+        title="Find a clear answer"
+        description="Browse practical guidance for accounts, campaigns, wallet contributions, verification, and organization workflows."
+        icon={<SupportAgentRoundedIcon />}
+        panelLabel="Need a person?"
+        panelTitle="Send the support team the full context."
+        panelBody="Contact requests are recorded so the response can be followed through."
+        primaryAction={{ label: 'Contact support', href: '/contact' }}
+      />
+
       {/* ═══ Header + search (white) ═══ */}
-      <Box sx={{ bgcolor: 'background.paper', py: { xs: 8, md: 10 } }}>
+      <Box sx={{ bgcolor: 'background.paper', py: { xs: 6, md: 7 } }}>
         <Container maxWidth="md">
-          <Box sx={{ textAlign: 'center' }}>
+          <Box sx={{ textAlign: 'center', display: 'none' }}>
             <Typography variant="overline" sx={{ color: 'secondary.dark' }}>
               Support
             </Typography>

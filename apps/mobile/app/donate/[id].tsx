@@ -5,7 +5,7 @@ import { Text, Button, ActivityIndicator, Surface, Icon } from 'react-native-pap
 import { useCampaign } from '@/hooks/useCampaigns'
 import { useEnabledPaymentProviders, EnabledPaymentProvider, getProviderIcon } from '@/hooks/useEnabledPaymentProviders'
 import { ProgressBar } from '@/components/ProgressBar'
-import { brandColors } from '@/theme'
+import { brandColors, neumorphism } from '@/theme'
 import { api } from '@/lib/api'
 
 const FALLBACK_WALLET_PROVIDER: EnabledPaymentProvider = {
@@ -200,8 +200,6 @@ export default function DonateScreen() {
   )
 }
 
-const CARD_BORDER = 'rgba(26,46,34,0.10)'
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: brandColors.background },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
@@ -215,12 +213,11 @@ const styles = StyleSheet.create({
   },
   campaignTitle: { fontFamily: 'Outfit_700Bold', color: brandColors.text, marginBottom: 16 },
   progressCard: {
+    ...neumorphism.raised,
     padding: 16,
     borderRadius: 14,
     marginBottom: 16,
     backgroundColor: brandColors.surface,
-    borderWidth: 1,
-    borderColor: CARD_BORDER,
   },
   statsRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 },
   raised: { color: brandColors.success, fontFamily: 'Outfit_700Bold' },
@@ -228,8 +225,7 @@ const styles = StyleSheet.create({
   statRight: { alignItems: 'flex-end' },
   fieldLabel: { fontFamily: 'Outfit_700Bold', marginBottom: 6, marginTop: 4 },
   modalInput: {
-    borderWidth: 1,
-    borderColor: CARD_BORDER,
+    ...neumorphism.inset,
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -240,28 +236,26 @@ const styles = StyleSheet.create({
     backgroundColor: brandColors.surface,
   },
   paymentFallback: {
+    ...neumorphism.inset,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     paddingVertical: 10,
     paddingHorizontal: 12,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: CARD_BORDER,
     backgroundColor: brandColors.surface,
     marginBottom: 12,
   },
   paymentFallbackText: { flex: 1, fontSize: 13, color: brandColors.textSecondary, fontFamily: 'Outfit_400Regular' },
   providerList: { gap: 8, marginBottom: 12 },
   providerOption: {
+    ...neumorphism.subtle,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     paddingVertical: 12,
     paddingHorizontal: 12,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: CARD_BORDER,
     backgroundColor: brandColors.surface,
   },
   providerOptionActive: {

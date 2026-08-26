@@ -73,7 +73,7 @@ function CardSkeleton({ index }: { index: number }) {
     <Box
       sx={{
         animation: `${fadeIn} 0.3s ${index * 0.05}s ease both`,
-        border: '1px solid rgba(0,0,0,0.06)',
+        boxShadow: 'var(--neu-raised)',
         overflow: 'hidden',
       }}
     >
@@ -135,7 +135,7 @@ export function ExplorePage() {
   const hasFilters = !!(selectedCategory || selectedStatus || search)
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#FAF8F0' }}>
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       <PageBanner
         eyebrow="Discover"
         title="Explore Campaigns"
@@ -222,10 +222,10 @@ export function ExplorePage() {
                 gap: 0.75,
                 px: 2,
                 py: 0.75,
-                border: '1px solid',
+                border: 0,
                 borderRadius: 5,
-                borderColor: !selectedCategory ? '#2E3D2F' : 'rgba(0,0,0,0.08)',
-                bgcolor: !selectedCategory ? '#2E3D2F' : 'transparent',
+                bgcolor: !selectedCategory ? '#2E3D2F' : 'var(--neu-surface)',
+                boxShadow: !selectedCategory ? 'var(--neu-inset)' : 'var(--neu-subtle)',
                 color: !selectedCategory ? '#fff' : 'rgba(0,0,0,0.6)',
                 fontSize: '0.78rem',
                 fontWeight: 600,
@@ -234,8 +234,8 @@ export function ExplorePage() {
                 transition: 'all 0.2s ease',
                 fontFamily: 'inherit',
                 '&:hover': {
-                  borderColor: !selectedCategory ? '#1C261D' : 'rgba(46, 61, 47,0.3)',
-                  bgcolor: !selectedCategory ? '#1C261D' : 'rgba(46, 61, 47,0.04)',
+                  bgcolor: !selectedCategory ? '#1C261D' : 'var(--neu-surface)',
+                  boxShadow: !selectedCategory ? 'var(--neu-inset)' : 'var(--neu-raised-hover)',
                 },
               }}
             >
@@ -255,10 +255,10 @@ export function ExplorePage() {
                     gap: 0.75,
                     px: 2,
                     py: 1,
-                    border: '1px solid',
+                    border: 0,
                     borderRadius: 5,
-                    borderColor: active ? '#2E3D2F' : 'rgba(0,0,0,0.08)',
-                    bgcolor: active ? '#2E3D2F' : 'transparent',
+                    bgcolor: active ? '#2E3D2F' : 'var(--neu-surface)',
+                    boxShadow: active ? 'var(--neu-inset)' : 'var(--neu-subtle)',
                     color: active ? '#fff' : 'rgba(0,0,0,0.6)',
                     fontSize: '0.78rem',
                     fontWeight: 600,
@@ -267,8 +267,8 @@ export function ExplorePage() {
                     transition: 'all 0.2s ease',
                     fontFamily: 'inherit',
                     '&:hover': {
-                      borderColor: active ? '#1C261D' : 'rgba(46, 61, 47,0.3)',
-                      bgcolor: active ? '#1C261D' : 'rgba(46, 61, 47,0.04)',
+                      bgcolor: active ? '#1C261D' : 'var(--neu-surface)',
+                      boxShadow: active ? 'var(--neu-inset)' : 'var(--neu-raised-hover)',
                     },
                   }}
                 >
@@ -298,9 +298,9 @@ export function ExplorePage() {
                   sx={{
                     px: 1.5,
                     py: 0.5,
-                    border: '1px solid',
-                    borderColor: active ? '#2E3D2F' : 'rgba(0,0,0,0.08)',
-                    bgcolor: active ? '#2E3D2F' : 'transparent',
+                    border: 0,
+                    bgcolor: active ? '#2E3D2F' : 'var(--neu-surface)',
+                    boxShadow: active ? 'var(--neu-inset)' : 'var(--neu-subtle)',
                     color: active ? '#fff' : 'rgba(0,0,0,0.6)',
                     fontSize: '0.78rem',
                     fontWeight: 600,
@@ -308,8 +308,8 @@ export function ExplorePage() {
                     transition: 'all 0.2s ease',
                     fontFamily: 'inherit',
                     '&:hover': {
-                      borderColor: active ? '#1C261D' : 'rgba(46, 61, 47,0.3)',
-                      bgcolor: active ? '#1C261D' : 'rgba(46, 61, 47,0.04)',
+                      bgcolor: active ? '#1C261D' : 'var(--neu-surface)',
+                      boxShadow: active ? 'var(--neu-inset)' : 'var(--neu-raised-hover)',
                     },
                   }}
                 >
@@ -417,7 +417,7 @@ export function ExplorePage() {
                 disabled={page === 0}
                 sx={{
                   px: 2, py: 0.75, bgcolor: 'transparent',
-                  border: '1px solid rgba(0,0,0,0.08)',
+                  boxShadow: 'var(--neu-raised)',
                   color: page === 0 ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.5)',
                   cursor: page === 0 ? 'default' : 'pointer',
                   fontSize: '0.78rem', fontFamily: '"Outfit", sans-serif',
@@ -452,7 +452,7 @@ export function ExplorePage() {
                 disabled={page >= totalPages - 1}
                 sx={{
                   px: 2, py: 0.75, bgcolor: 'transparent',
-                  border: '1px solid rgba(0,0,0,0.08)',
+                  boxShadow: 'var(--neu-raised)',
                   color: page >= totalPages - 1 ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.5)',
                   cursor: page >= totalPages - 1 ? 'default' : 'pointer',
                   fontSize: '0.78rem', fontFamily: '"Outfit", sans-serif',

@@ -14,7 +14,7 @@ import { ProgressBar } from '@/components/ProgressBar'
 import { EmptyState } from '@/components/EmptyState'
 import { SignInRequired } from '@/components/SignInRequired'
 import { FadeInUp } from '@/components/anim/FadeInUp'
-import { brandColors } from '@/theme'
+import { brandColors, neumorphism } from '@/theme'
 
 interface Campaign {
   id: string
@@ -310,8 +310,8 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: brandColors.background },
 
-  heroCard: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginTop: 18, padding: 16, borderRadius: 18, backgroundColor: brandColors.primary, gap: 12 },
-  heroIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: brandColors.secondary },
+  heroCard: { ...neumorphism.greenRaised, flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginTop: 18, padding: 16, borderRadius: 18, gap: 12 },
+  heroIcon: { ...neumorphism.greenSubtle, width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   heroCopy: { flex: 1 },
   heroEyebrow: { fontSize: 10, fontFamily: 'Outfit_700Bold', color: brandColors.secondary, textTransform: 'uppercase', letterSpacing: 1 },
   heroTitle: { marginTop: 2, fontSize: 20, fontFamily: 'Outfit_700Bold', color: '#FFFFFF' },
@@ -320,12 +320,10 @@ const styles = StyleSheet.create({
   statsRow: { flexDirection: 'row', paddingHorizontal: 16, paddingTop: 20, gap: 10 },
   statCardWrap: { flex: 1 },
   statCard: {
-    backgroundColor: '#fff',
+    ...neumorphism.raised,
     borderRadius: 14,
     padding: 14,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(26,46,34,0.10)',
   },
   statValue: { fontSize: 18, fontFamily: 'Outfit_700Bold', color: brandColors.text, marginTop: 6 },
   statLabel: { fontSize: 10, color: brandColors.textSecondary, fontFamily: 'Outfit_400Regular', marginTop: 2 },
@@ -333,11 +331,11 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 17, fontFamily: 'Outfit_700Bold', color: brandColors.text, paddingHorizontal: 20, marginTop: 24, marginBottom: 12 },
 
   quickActionsRow: { flexDirection: 'row', paddingHorizontal: 16, gap: 10 },
-  quickAction: { flex: 1, backgroundColor: '#fff', borderRadius: 14, padding: 14, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(26,46,34,0.10)' },
-  quickActionIcon: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
+  quickAction: { ...neumorphism.raised, flex: 1, borderRadius: 14, padding: 14, alignItems: 'center' },
+  quickActionIcon: { ...neumorphism.subtle, width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
   quickActionLabel: { fontSize: 11, fontFamily: 'Outfit_700Bold', color: brandColors.textSecondary, textAlign: 'center' },
 
-  listCard: { marginHorizontal: 16, backgroundColor: '#fff', borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(26,46,34,0.10)' },
+  listCard: { ...neumorphism.raised, marginHorizontal: 16, borderRadius: 14, overflow: 'hidden' },
   listRow: { flexDirection: 'row', alignItems: 'center', padding: 14, minHeight: 44, borderBottomWidth: 1, borderBottomColor: 'rgba(26,46,34,0.08)' },
   listTitle: { fontSize: 14, fontFamily: 'Outfit_700Bold', color: brandColors.text, marginBottom: 4 },
   listSub: { fontSize: 11, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 4 },

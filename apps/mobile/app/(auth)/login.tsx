@@ -3,7 +3,7 @@ import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Touchable
 import { TextInput, Button, Text } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Link, router } from 'expo-router'
-import { brandColors } from '@/theme'
+import { brandColors, neumorphism } from '@/theme'
 import { useAuth } from '@/context/AuthContext'
 import { UbuntuLogo } from '@/components/UbuntuLogo'
 
@@ -158,6 +158,7 @@ const styles = StyleSheet.create({
   },
 
   sheet: {
+    ...neumorphism.raised,
     flexGrow: 1,
     backgroundColor: brandColors.background,
     borderTopLeftRadius: 28,
@@ -203,7 +204,7 @@ const styles = StyleSheet.create({
   },
   errorText: { color: brandColors.error, fontSize: 13, fontFamily: 'Outfit_500Medium', textAlign: 'center' },
 
-  input: { marginBottom: 14, backgroundColor: brandColors.surface },
+  input: { ...neumorphism.inset, marginBottom: 14 },
   inputOutline: { borderRadius: 12 },
 
   forgotRow: { alignSelf: 'flex-end', marginBottom: 20, marginTop: -2 },

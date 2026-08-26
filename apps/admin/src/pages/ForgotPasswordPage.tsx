@@ -95,7 +95,7 @@ export default function ForgotPasswordPage() {
         justifyContent: 'center',
         position: 'relative',
         overflow: 'hidden',
-        bgcolor: '#0A0A12',
+        bgcolor: '#172019',
         px: 3,
         py: 4,
       }}
@@ -122,8 +122,8 @@ export default function ForgotPasswordPage() {
               width: 56,
               height: 56,
               borderRadius: '14px',
-              background: 'rgba(76,175,80,0.08)',
-              border: '1px solid rgba(76,175,80,0.12)',
+              background: '#243126',
+              boxShadow: '4px 4px 10px rgba(0,0,0,0.48), -4px -4px 10px rgba(91,117,98,0.14)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -171,8 +171,8 @@ export default function ForgotPasswordPage() {
             animation: `${fadeInUp} 0.6s 0.1s ease both`,
             p: { xs: 3, sm: 4 },
             borderRadius: '16px',
-            bgcolor: 'rgba(21,36,31,0.9)',
-            border: '1px solid rgba(255,255,255,0.06)',
+            bgcolor: '#243126',
+            boxShadow: '10px 10px 24px rgba(0,0,0,0.48), -8px -8px 20px rgba(91,117,98,0.14)',
           }}
         >
           {submitted ? (
@@ -189,8 +189,8 @@ export default function ForgotPasswordPage() {
                   width: 64,
                   height: 64,
                   borderRadius: '50%',
-                  background: 'rgba(76,175,80,0.08)',
-                  border: '1px solid rgba(76,175,80,0.15)',
+                  background: '#243126',
+                  boxShadow: '4px 4px 10px rgba(0,0,0,0.48), -4px -4px 10px rgba(91,117,98,0.14)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -215,7 +215,7 @@ export default function ForgotPasswordPage() {
               </Typography>
               <Typography
                 sx={{
-                  color: 'rgba(255,255,255,0.4)',
+                  color: 'rgba(243,240,232,0.62)',
                   fontSize: '0.85rem',
                   lineHeight: 1.6,
                   mb: 3,
@@ -263,7 +263,7 @@ export default function ForgotPasswordPage() {
                 >
                   Reset password
                 </Typography>
-                <Typography sx={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.85rem' }}>
+                <Typography sx={{ color: 'rgba(243,240,232,0.62)', fontSize: '0.85rem' }}>
                   We&apos;ll send a reset link to your email
                 </Typography>
               </Box>
@@ -275,7 +275,6 @@ export default function ForgotPasswordPage() {
                     mb: 3,
                     borderRadius: '10px',
                     bgcolor: 'rgba(239,83,80,0.08)',
-                    border: '1px solid rgba(239,83,80,0.2)',
                     '& .MuiAlert-icon': { color: '#C06B58' },
                     color: '#E0E0E8',
                   }}
@@ -313,10 +312,11 @@ export default function ForgotPasswordPage() {
                     fontSize: '0.9rem',
                     fontWeight: 700,
                     fontFamily: '"Outfit", sans-serif',
-                    background: '#2E3D2F',
+                    background: '#8FAE96',
+                    color: '#0E1916',
                     transition: 'background-color 200ms ease',
                     '&:hover': {
-                      background: '#1C261D',
+                      background: '#B5C9BA',
                     },
                   }}
                 >
@@ -329,7 +329,7 @@ export default function ForgotPasswordPage() {
                     to="/login"
                     sx={{
                       fontSize: '0.8rem',
-                      color: 'rgba(255,255,255,0.35)',
+                      color: 'rgba(243,240,232,0.62)',
                       textDecoration: 'none',
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -353,7 +353,7 @@ export default function ForgotPasswordPage() {
             textAlign: 'center',
             mt: 4,
             fontSize: '0.7rem',
-            color: 'rgba(255,255,255,0.15)',
+            color: 'rgba(243,240,232,0.38)',
             letterSpacing: '0.05em',
             animation: `${fadeInUp} 0.6s 0.3s ease both`,
           }}

@@ -16,7 +16,7 @@ import { RemoteImage } from '@/components/RemoteImage'
 import { EmptyState } from '@/components/EmptyState'
 import { SignInRequired } from '@/components/SignInRequired'
 import { FadeInUp } from '@/components/anim/FadeInUp'
-import { brandColors } from '@/theme'
+import { brandColors, neumorphism } from '@/theme'
 
 interface Campaign {
   id: string
@@ -275,12 +275,10 @@ const styles = StyleSheet.create({
 
   // Card
   card: {
-    backgroundColor: '#fff',
+    ...neumorphism.raised,
     borderRadius: 14,
     overflow: 'hidden',
     marginBottom: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(26,46,34,0.10)',
   },
   cardImage: { width: '100%', height: 120 },
   cardImageFallback: { backgroundColor: 'rgba(168,181,160,0.28)' },
@@ -299,7 +297,7 @@ const styles = StyleSheet.create({
 
   // Skeleton
   skeletonCard: {
-    backgroundColor: '#fff',
+    ...neumorphism.raised,
     borderRadius: 14,
     overflow: 'hidden',
     marginBottom: 14,

@@ -12,7 +12,7 @@ import { api } from '@/lib/api'
 import { EmptyState } from '@/components/EmptyState'
 import { SignInRequired } from '@/components/SignInRequired'
 import { FadeInUp } from '@/components/anim/FadeInUp'
-import { brandColors } from '@/theme'
+import { brandColors, neumorphism } from '@/theme'
 
 interface Refund {
   id: string
@@ -187,12 +187,10 @@ const styles = StyleSheet.create({
   listWrap: { paddingHorizontal: 16, paddingTop: 12 },
 
   refundCard: {
-    backgroundColor: '#fff',
+    ...neumorphism.raised,
     borderRadius: 14,
     padding: 16,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(26,46,34,0.10)',
   },
   refundHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   refundId: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: brandColors.textSecondary },
@@ -206,7 +204,7 @@ const styles = StyleSheet.create({
   refundReason: { fontSize: 12, color: brandColors.textSecondary, fontFamily: 'Outfit_400Regular', fontStyle: 'italic' },
 
   skeletonCard: {
-    backgroundColor: '#fff',
+    ...neumorphism.raised,
     borderRadius: 14,
     padding: 16,
     marginBottom: 12,
@@ -215,6 +213,7 @@ const styles = StyleSheet.create({
 
   emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 72, paddingHorizontal: 32 },
   emptyIconTile: {
+    ...neumorphism.subtle,
     width: 48,
     height: 48,
     borderRadius: 24,

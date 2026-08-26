@@ -121,8 +121,7 @@ function BlogDetailPage() {
             bgcolor: 'background.paper',
             borderRadius: SHAPE.card,
             p: { xs: 3, md: 5 },
-            border: '1px solid',
-            borderColor: 'divider',
+            boxShadow: 'var(--neu-raised)',
           }}
         >
           {/* Title */}
@@ -305,8 +304,7 @@ function BlogDetailPage() {
                       borderRadius: SHAPE.card,
                       overflow: 'hidden',
                       bgcolor: 'background.paper',
-                      border: '1px solid',
-                      borderColor: 'divider',
+                      boxShadow: 'var(--neu-raised)',
                       transition: 'border-color 0.3s ease',
                       '&:hover': {
                         borderColor: relAccent,

@@ -6,7 +6,7 @@ import { api } from '@/lib/api'
 import { EmptyState } from '@/components/EmptyState'
 import { RemoteImage } from '@/components/RemoteImage'
 import { FadeInUp } from '@/components/anim/FadeInUp'
-import { brandColors } from '@/theme'
+import { brandColors, neumorphism } from '@/theme'
 
 const typeColors: Record<string, { text: string; bg: string }> = {
   milestone: { text: brandColors.secondaryDark, bg: 'rgba(199,162,74,0.18)' },
@@ -156,6 +156,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
   updatesEmpty: { paddingTop: 24, paddingBottom: 8 },
   emptyIconTile: {
+    ...neumorphism.subtle,
     width: 48,
     height: 48,
     borderRadius: 24,
@@ -178,12 +179,11 @@ const styles = StyleSheet.create({
   },
   list: { padding: 16 },
   card: {
+    ...neumorphism.raised,
     padding: 14,
     borderRadius: 14,
     marginBottom: 10,
     backgroundColor: brandColors.surface,
-    borderWidth: 1,
-    borderColor: 'rgba(26,46,34,0.10)',
   },
   pinnedRow: {
     flexDirection: 'row',

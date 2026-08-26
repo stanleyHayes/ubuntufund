@@ -17,7 +17,6 @@ import AccordionSummary from '@mui/material/AccordionSummary'
 import AccordionDetails from '@mui/material/AccordionDetails'
 import LocationOnRoundedIcon from '@mui/icons-material/LocationOnRounded'
 import EmailRoundedIcon from '@mui/icons-material/EmailRounded'
-import PhoneRoundedIcon from '@mui/icons-material/PhoneRounded'
 import SendRoundedIcon from '@mui/icons-material/SendRounded'
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded'
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
@@ -32,6 +31,7 @@ import LinkedInIcon from '@mui/icons-material/LinkedIn'
 import YouTubeIcon from '@mui/icons-material/YouTube'
 import { SHAPE } from '@ubuntu-fund/ui'
 import { useContent } from '../hooks/useContent'
+import { InternalPageHero } from '../components/InternalPageHero'
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -94,10 +94,11 @@ function ContactPage() {
   const contact = useContent('contact', CONTACT_FALLBACK)
 
   const CONTACT_CHANNELS = [
-    { icon: <LocationOnRoundedIcon />, label: 'Visit us', value: contact.address, detail: contact.hours },
-    { icon: <EmailRoundedIcon />, label: 'Email us', value: contact.email, detail: contact.hours },
-    { icon: <PhoneRoundedIcon />, label: 'Call us', value: contact.phone, detail: contact.hours },
-  ].filter((channel) => channel.value)
+    { icon: <EmailRoundedIcon />, label: 'Email support', value: contact.email, detail: 'Send account, campaign, or general questions' },
+    { icon: <ChatBubbleOutlineRoundedIcon />, label: 'Support hours', value: contact.hours, detail: 'Availability is confirmed before a live conversation' },
+    { icon: <LocationOnRoundedIcon />, label: 'Ghana operations', value: contact.address || 'Serving communities across Ghana', detail: 'No public walk-in office is listed at launch' },
+    { icon: <GroupsRoundedIcon />, label: 'Organization help', value: 'Verification and team access', detail: 'Use the form and select Campaign support' },
+  ]
 
   const SOCIAL_LINKS = [
     { icon: <FacebookIcon />, label: 'Facebook', href: contact.socials.facebook },
@@ -151,11 +152,20 @@ function ContactPage() {
   }
 
   return (
-    <Box component="main" sx={{ flex: 1, pt: { xs: 6, md: 8 }, pb: { xs: 8, md: 10 } }}>
+    <Box component="main" sx={{ flex: 1, pb: { xs: 8, md: 10 } }}>
+      <InternalPageHero
+        eyebrow="Get in touch"
+        title="Bring us the full context"
+        description="Ask a question, discuss an organization workflow, report a problem, or share a partnership idea with the UbuntuFund team."
+        icon={<ChatBubbleOutlineRoundedIcon />}
+        panelLabel="Support record"
+        panelTitle="Clear requests lead to clearer answers."
+        panelBody="Include the page, account role, and action you were taking so the team can follow the issue through."
+      />
       <Container maxWidth="lg">
 
         {/* ═══ Page intro ═══ */}
-        <Box sx={{ textAlign: 'center', maxWidth: 640, mx: 'auto', mb: { xs: 6, md: 8 } }}>
+        <Box sx={{ display: 'none', textAlign: 'center', maxWidth: 640, mx: 'auto', mb: { xs: 6, md: 8 } }}>
           <Typography sx={eyebrowSx}>Get in touch</Typography>
           <Typography variant="h2" sx={{ mt: 1, mb: 2, fontSize: { xs: '2rem', md: '2.5rem' } }}>
             Contact us
@@ -166,31 +176,34 @@ function ContactPage() {
         </Box>
 
         {/* ═══ Contact Channels ═══ */}
-        <Grid container spacing={2} sx={{ mb: { xs: 6, md: 8 } }}>
-          {CONTACT_CHANNELS.map((ch) => (
-            <Grid size={{ xs: 12, sm: 6, md: 3 }} key={ch.label}>
-              <Card elevation={0} sx={{ height: '100%' }}>
-                <CardContent sx={{ p: 3, textAlign: 'center' }}>
+        <Grid container spacing={{ xs: 2, md: 3 }} sx={{ mt: { xs: 6, md: 8 }, mb: { xs: 6, md: 8 } }}>
+          {CONTACT_CHANNELS.map((ch, index) => (
+            <Grid size={{ xs: 12, sm: 6 }} key={ch.label}>
+              <Card elevation={0} sx={{ height: '100%', position: 'relative', overflow: 'hidden', transition: 'transform 180ms ease, box-shadow 180ms ease', '&:hover': { transform: 'translateY(-2px)', boxShadow: 'var(--neu-raised-hover)' } }}>
+                <Typography aria-hidden sx={{ position: 'absolute', right: 22, top: 14, fontSize: '2.5rem', fontWeight: 900, color: 'primary.main', opacity: .055, fontVariantNumeric: 'tabular-nums' }}>0{index + 1}</Typography>
+                <CardContent sx={{ p: { xs: 2.5, md: 3.5 }, display: 'flex', alignItems: 'flex-start', gap: 2.5, '&:last-child': { pb: { xs: 2.5, md: 3.5 } } }}>
                   <Box
                     sx={{
                       width: 52,
                       height: 52,
+                      flexShrink: 0,
                       borderRadius: SHAPE.sm,
-                      bgcolor: 'rgba(46, 61, 47, 0.06)',
+                      bgcolor: 'var(--neu-surface)',
+                      boxShadow: 'var(--neu-subtle)',
                       color: 'primary.main',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      mx: 'auto',
-                      mb: 2,
                       '& svg': { fontSize: 24 },
                     }}
                   >
                     {ch.icon}
                   </Box>
-                  <Typography sx={{ fontWeight: 700, fontSize: '0.9rem', mb: 0.5 }}>{ch.label}</Typography>
-                  <Typography sx={{ fontSize: '0.85rem', color: 'text.primary', fontWeight: 500, mb: 0.5 }}>{ch.value}</Typography>
-                  <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>{ch.detail}</Typography>
+                  <Box sx={{ minWidth: 0, pt: .15 }}>
+                    <Typography sx={{ fontWeight: 800, fontSize: '1rem', mb: 0.65 }}>{ch.label}</Typography>
+                    <Typography sx={{ fontSize: '0.9rem', color: 'text.primary', fontWeight: 600, mb: 0.65, overflowWrap: 'anywhere' }}>{ch.value}</Typography>
+                    <Typography sx={{ fontSize: '0.76rem', color: 'text.secondary', lineHeight: 1.55 }}>{ch.detail}</Typography>
+                  </Box>
                 </CardContent>
               </Card>
             </Grid>
@@ -206,13 +219,12 @@ function ContactPage() {
                   px: 4,
                   py: 3,
                   bgcolor: 'background.default',
-                  borderBottom: '1px solid',
-                  borderColor: 'divider',
+                  boxShadow: 'var(--neu-inset)',
                 }}
               >
                 <Typography variant="h5" sx={{ mb: 0.5 }}>Send us a message</Typography>
                 <Typography sx={{ fontSize: '0.88rem', color: 'text.secondary' }}>
-                  Fill out the form and our team will get back to you within 24 hours.
+                  Share enough detail for the team to route and investigate your request.
                 </Typography>
               </Box>
 
@@ -439,8 +451,7 @@ function ContactPage() {
                 elevation={0}
                 disableGutters
                 sx={{
-                  border: '1px solid',
-                  borderColor: 'divider',
+                  boxShadow: 'var(--neu-raised)',
                   borderRadius: SHAPE.sm,
                   mb: 1.5,
                   '&::before': { display: 'none' },

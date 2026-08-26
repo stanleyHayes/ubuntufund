@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Box, Typography } from '@mui/material'
 import { SHAPE } from '@ubuntu-fund/ui'
-import { TONES, HAIRLINE, type Tone } from '@/lib/tones'
+import { TONES, type Tone } from '@/lib/tones'
 
 export interface PageHeaderStat {
   label: string
@@ -48,9 +48,8 @@ export default function PageHeader({
         overflow: 'hidden',
         mb: 3,
         borderRadius: SHAPE.card,
-        border: `1px solid ${HAIRLINE}`,
-        borderTop: `3px solid ${t.border}`,
         bgcolor: 'background.paper',
+        boxShadow: 'var(--neu-raised)',
       }}
     >
       {icon && (
@@ -93,7 +92,7 @@ export default function PageHeader({
                 alignItems: 'center',
                 justifyContent: 'center',
                 bgcolor: t.soft,
-                border: `1px solid ${t.border}55`,
+                boxShadow: 'var(--neu-subtle)',
                 color: t.text,
                 '& svg': { fontSize: 22 },
               }}
@@ -154,16 +153,18 @@ export default function PageHeader({
               xs: 'repeat(2, 1fr)',
               sm: `repeat(${Math.min(stats.length, 4)}, 1fr)`,
             },
-            borderTop: `1px solid ${HAIRLINE}`,
+            boxShadow: 'inset 0 10px 15px -18px rgba(0,0,0,.95)',
           }}
         >
-          {stats.map((stat, i) => (
+          {stats.map((stat) => (
             <Box
               key={stat.label}
               sx={{
                 px: 3,
                 py: 1.75,
-                borderLeft: { sm: i > 0 ? `1px solid ${HAIRLINE}` : 'none' },
+                m: 0.65,
+                borderRadius: SHAPE.sm,
+                boxShadow: 'var(--neu-inset)',
               }}
             >
               <Typography

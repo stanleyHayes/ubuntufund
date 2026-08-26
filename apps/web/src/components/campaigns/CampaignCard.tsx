@@ -36,7 +36,6 @@ const GOLD_DARK = '#A07E33'
 const SUCCESS = '#2F6B46'
 const CLAY = '#A5432F'
 const WARN = '#B98A2E'
-const HAIRLINE = '#E7E3D8'
 
 /** Ghanaian cedi, always rendered "GH₵ 12,500". */
 function cedis(amount: number): string {
@@ -163,8 +162,8 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
         height: '100%',
         position: 'relative',
         overflow: 'hidden',
-        transition: 'border-color 160ms ease',
-        '&:hover': { borderColor: SAGE },
+        transition: 'transform 160ms ease, box-shadow 160ms ease',
+        '&:hover': { transform: 'translateY(-2px)', boxShadow: 'var(--neu-raised-hover) !important' },
         '&:hover .cta-arrow': { transform: 'translateX(3px)' },
         '@media (prefers-reduced-motion: reduce)': { '&:hover .cta-arrow': { transform: 'none' } },
       }}
@@ -182,8 +181,7 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
           width: 30,
           height: 30,
           color: FOREST,
-          bgcolor: 'rgba(245, 242, 234, 0.92)',
-          '&:hover': { bgcolor: '#F5F2EA' },
+          bgcolor: 'var(--neu-surface)',
         }}
       >
         <MoreHorizRoundedIcon sx={{ fontSize: 18 }} />
@@ -192,7 +190,7 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
         anchorEl={menuAnchor}
         open={Boolean(menuAnchor)}
         onClose={() => setMenuAnchor(null)}
-        slotProps={{ paper: { sx: { borderRadius: '12px', border: `1px solid ${HAIRLINE}` } } }}
+        slotProps={{ paper: { sx: { borderRadius: '12px', boxShadow: 'var(--neu-raised)' } } }}
       >
         <MenuItem onClick={copyLink}>
           <ListItemIcon>
@@ -347,7 +345,7 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
               alignItems: 'center',
               justifyContent: 'space-between',
               gap: 1,
-              borderTop: `1px solid ${HAIRLINE}`,
+              boxShadow: '0 -9px 14px -16px rgba(38,55,44,0.4)',
             }}
           >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0, color: INK_SECONDARY }}>

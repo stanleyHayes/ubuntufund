@@ -63,7 +63,7 @@ function FeaturesSection() {
       id="features"
       sx={{
         py: { xs: 8, md: 10 },
-        backgroundColor: '#fff',
+        backgroundColor: 'background.default',
       }}
     >
       <Container maxWidth="lg">
@@ -103,7 +103,8 @@ function FeaturesSection() {
                       width: 56,
                       height: 56,
                       borderRadius: SHAPE.sm,
-                      backgroundColor: `${feature.accent}14`,
+                      backgroundColor: 'var(--neu-surface)',
+                      boxShadow: 'var(--neu-subtle)',
                       color: feature.accent,
                       display: 'flex',
                       alignItems: 'center',

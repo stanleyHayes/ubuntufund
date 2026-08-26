@@ -3,8 +3,13 @@ import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import Link from '@mui/material/Link'
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
+import DarkModeRoundedIcon from '@mui/icons-material/DarkModeRounded'
+import LightModeRoundedIcon from '@mui/icons-material/LightModeRounded'
+import IconButton from '@mui/material/IconButton'
+import Tooltip from '@mui/material/Tooltip'
 import { Link as RouterLink } from 'react-router-dom'
 import { BrandLogo } from '@ubuntu-fund/ui'
+import { useColorMode } from '@/context/ColorModeContext'
 
 interface AuthLayoutProps {
   /** Small gold kicker above the title, e.g. "Welcome back". */
@@ -21,6 +26,8 @@ const VALUE_PROPS = [
 ]
 
 export function AuthLayout({ eyebrow, title, subtitle, children }: AuthLayoutProps) {
+  const { darkMode, setDarkMode } = useColorMode()
+
   return (
     <Box
       sx={{
@@ -116,13 +123,37 @@ export function AuthLayout({ eyebrow, title, subtitle, children }: AuthLayoutPro
       {/* Form column */}
       <Box
         sx={{
+          position: 'relative',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           px: { xs: 2.5, sm: 4 },
           py: { xs: 4, md: 6 },
+          '& input:-webkit-autofill, & input:-webkit-autofill:hover, & input:-webkit-autofill:focus': {
+            WebkitBoxShadow: '0 0 0 100px var(--neu-surface) inset !important',
+            WebkitTextFillColor: 'currentColor',
+            caretColor: 'currentColor',
+            transition: 'background-color 9999s ease-out 0s',
+          },
         }}
       >
+        <Tooltip title={darkMode ? 'Use light theme' : 'Use dark theme'}>
+          <IconButton
+            aria-label={darkMode ? 'Use light theme' : 'Use dark theme'}
+            onClick={() => setDarkMode(!darkMode)}
+            sx={{
+              position: 'absolute',
+              top: { xs: 18, md: 28 },
+              right: { xs: 18, md: 28 },
+              width: 44,
+              height: 44,
+              color: darkMode ? '#DCC07E' : 'primary.main',
+              bgcolor: 'var(--neu-surface)',
+            }}
+          >
+            {darkMode ? <LightModeRoundedIcon /> : <DarkModeRoundedIcon />}
+          </IconButton>
+        </Tooltip>
         <Box sx={{ width: '100%', maxWidth: 420 }}>
           {(eyebrow || title) && (
             <Box sx={{ mb: 3 }}>

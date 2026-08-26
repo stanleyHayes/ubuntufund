@@ -91,18 +91,19 @@ interface StatCardProps {
   delay: number
 }
 
-function StatCard({ icon, iconBg, iconColor, label, value, change, changePositive = true, delay }: StatCardProps) {
+function StatCard({ icon, iconColor, label, value, change, changePositive = true, delay }: StatCardProps) {
   return (
     <Box
       sx={{
         p: 3,
         borderRadius: SHAPE.card,
         bgcolor: 'background.paper',
-        border: '1px solid rgba(0,0,0,0.06)',
-        transition: 'border-color 0.3s cubic-bezier(0.22,1,0.36,1)',
+        boxShadow: 'var(--neu-raised)',
+        transition: 'transform 0.3s cubic-bezier(0.22,1,0.36,1), box-shadow 0.3s cubic-bezier(0.22,1,0.36,1)',
         animation: `${fadeInUp} 0.5s ${delay}s ease both`,
         '&:hover': {
-          borderColor: `${iconColor}30`,
+          transform: 'translateY(-2px)',
+          boxShadow: 'var(--neu-raised-hover)',
         },
       }}
     >
@@ -112,7 +113,8 @@ function StatCard({ icon, iconBg, iconColor, label, value, change, changePositiv
             width: 44,
             height: 44,
             borderRadius: SHAPE.sm,
-            bgcolor: iconBg,
+            bgcolor: 'var(--neu-surface)',
+            boxShadow: 'var(--neu-subtle)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -174,9 +176,9 @@ function CampaignRow({ campaign, index }: { campaign: Campaign; index: number })
         p: { xs: 2.5, sm: 3 },
         borderRadius: SHAPE.card,
         bgcolor: 'background.paper',
-        border: '1px solid',
-        borderColor: hovered ? 'primary.light' : 'rgba(0,0,0,0.06)',
-        transition: 'border-color 0.35s cubic-bezier(0.22,1,0.36,1)',
+        boxShadow: hovered ? 'var(--neu-raised-hover)' : 'var(--neu-raised)',
+        transform: hovered ? 'translateY(-2px)' : 'none',
+        transition: 'transform 0.35s cubic-bezier(0.22,1,0.36,1), box-shadow 0.35s cubic-bezier(0.22,1,0.36,1)',
         animation: `${fadeInUp} 0.5s ${0.1 * index + 0.3}s ease both`,
       }}
     >
@@ -347,7 +349,7 @@ function DonationFeed({ donations }: { donations: UserDonation[] }) {
         p: 3,
         borderRadius: SHAPE.card,
         bgcolor: 'background.paper',
-        border: '1px solid rgba(0,0,0,0.06)',
+        boxShadow: 'var(--neu-raised)',
         height: '100%',
         animation: `${fadeInUp} 0.5s 0.4s ease both`,
       }}
@@ -392,7 +394,7 @@ function DonationFeed({ donations }: { donations: UserDonation[] }) {
               alignItems: 'center',
               gap: 1.5,
               py: 1.5,
-              borderBottom: i < donations.length - 1 ? '1px solid rgba(0,0,0,0.04)' : 'none',
+              boxShadow: i < donations.length - 1 ? '0 8px 14px -14px rgba(38,55,44,0.35)' : 'none',
               animation: `${fadeInUp} 0.3s ${0.05 * i + 0.5}s ease both`,
             }}
           >
@@ -461,7 +463,7 @@ function QuickActions() {
         p: 3,
         borderRadius: SHAPE.card,
         bgcolor: 'background.paper',
-        border: '1px solid rgba(0,0,0,0.06)',
+        boxShadow: 'var(--neu-raised)',
         animation: `${fadeInUp} 0.5s 0.5s ease both`,
       }}
     >
@@ -481,7 +483,8 @@ function QuickActions() {
                   width: 32,
                   height: 32,
                   borderRadius: SHAPE.sm,
-                  bgcolor: a.bg,
+                  bgcolor: 'var(--neu-surface)',
+                  boxShadow: 'var(--neu-subtle)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',

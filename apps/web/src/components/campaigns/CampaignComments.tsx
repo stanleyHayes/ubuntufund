@@ -57,7 +57,7 @@ export function CampaignComments({ campaignId, creatorId }: { campaignId: string
   return (
     <Stack spacing={2} id="comments">
       {user ? (
-        <Box sx={{ p: 2.5, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', borderRadius: SHAPE.card }}>
+        <Box sx={{ p: 2.5, bgcolor: 'background.paper', boxShadow: 'var(--neu-raised)', borderRadius: SHAPE.card }}>
           <TextField fullWidth multiline minRows={2} maxRows={6} value={content} onChange={(event) => setContent(event.target.value)} inputProps={{ maxLength: 1000 }} placeholder="Share encouragement or ask a respectful question…" />
           <Box sx={{ mt: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography variant="caption" color="text.secondary">{content.length}/1000</Typography>
@@ -72,7 +72,7 @@ export function CampaignComments({ campaignId, creatorId }: { campaignId: string
       {loading ? <Box sx={{ py: 5, textAlign: 'center' }}><CircularProgress size={28} /></Box> : comments.length === 0 ? (
         <Box sx={{ py: 6, textAlign: 'center', color: 'text.secondary' }}><ChatBubbleOutlineRoundedIcon /><Typography>No comments yet. Start the conversation.</Typography></Box>
       ) : comments.map((comment) => (
-        <Box key={comment.id} sx={{ display: 'flex', gap: 1.5, p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
+        <Box key={comment.id} sx={{ display: 'flex', gap: 1.5, p: 2, borderRadius: SHAPE.sm, boxShadow: 'var(--neu-subtle)' }}>
           <Avatar src={comment.authorAvatarUrl}>{comment.authorName.charAt(0).toUpperCase()}</Avatar>
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography variant="body2" sx={{ fontWeight: 700 }}>{comment.authorName}</Typography>

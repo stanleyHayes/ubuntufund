@@ -136,7 +136,7 @@ export default function LoginPage() {
         display: 'flex',
         position: 'relative',
         overflow: 'hidden',
-        bgcolor: '#0A0A12',
+        bgcolor: '#172019',
         cursor: 'default',
       }}
     >
@@ -186,8 +186,8 @@ export default function LoginPage() {
               width: 56,
               height: 56,
               borderRadius: '14px',
-              background: 'rgba(76,175,80,0.08)',
-              border: '1px solid rgba(76,175,80,0.12)',
+              background: '#243126',
+              boxShadow: '4px 4px 10px rgba(0,0,0,0.48), -4px -4px 10px rgba(91,117,98,0.12)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -242,7 +242,7 @@ export default function LoginPage() {
           {/* Description */}
           <Typography
             sx={{
-              color: 'rgba(255,255,255,0.35)',
+              color: 'rgba(243,240,232,0.68)',
               fontSize: '0.95rem',
               lineHeight: 1.8,
               maxWidth: 380,
@@ -256,9 +256,9 @@ export default function LoginPage() {
           {/* Stats row */}
           <Box sx={{ display: 'flex', gap: 4 }}>
             {[
-              { value: '99.9%', label: 'Uptime' },
-              { value: '2FA', label: 'Secured' },
-              { value: '< 50ms', label: 'Latency' },
+              { value: 'RBAC', label: 'Role access' },
+              { value: '2FA', label: 'Account security' },
+              { value: 'AUDIT', label: 'Operator trail' },
             ].map((stat) => (
               <Box key={stat.label}>
                 <Typography
@@ -275,7 +275,7 @@ export default function LoginPage() {
                 <Typography
                   sx={{
                     fontSize: '0.65rem',
-                    color: 'rgba(255,255,255,0.25)',
+                    color: 'rgba(243,240,232,0.48)',
                     letterSpacing: '0.15em',
                     textTransform: 'uppercase',
                     mt: 0.25,
@@ -330,8 +330,8 @@ export default function LoginPage() {
               width: 48,
               height: 48,
               borderRadius: '12px',
-              background: 'rgba(76,175,80,0.1)',
-              border: '1px solid rgba(76,175,80,0.15)',
+              background: '#243126',
+              boxShadow: '4px 4px 10px rgba(0,0,0,0.48), -4px -4px 10px rgba(91,117,98,0.12)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -384,8 +384,8 @@ export default function LoginPage() {
             sx={{
               p: { xs: 3, sm: 4 },
               borderRadius: '16px',
-              bgcolor: 'rgba(21,36,31,0.9)',
-              border: '1px solid rgba(255,255,255,0.06)',
+              bgcolor: '#243126',
+              boxShadow: '10px 10px 24px rgba(0,0,0,0.48), -8px -8px 20px rgba(91,117,98,0.14)',
             }}
           >
             {/* Header */}
@@ -401,7 +401,7 @@ export default function LoginPage() {
               >
                 Sign in
               </Typography>
-              <Typography sx={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.85rem' }}>
+              <Typography sx={{ color: 'rgba(243,240,232,0.62)', fontSize: '0.85rem' }}>
                 Enter your credentials to access the dashboard
               </Typography>
             </Box>
@@ -413,7 +413,6 @@ export default function LoginPage() {
                   mb: 3,
                   borderRadius: '10px',
                   bgcolor: 'rgba(239,83,80,0.08)',
-                  border: '1px solid rgba(239,83,80,0.2)',
                   '& .MuiAlert-icon': { color: '#C06B58' },
                   color: '#E0E0E8',
                 }}
@@ -482,7 +481,7 @@ export default function LoginPage() {
                     />
                   }
                   label={
-                    <Typography sx={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)' }}>
+                    <Typography sx={{ fontSize: '0.8rem', color: 'rgba(243,240,232,0.62)' }}>
                       Remember me
                     </Typography>
                   }
@@ -527,14 +526,13 @@ export default function LoginPage() {
                   fontSize: '0.9rem',
                   fontWeight: 700,
                   fontFamily: '"Outfit", sans-serif',
-                  background: loading
-                    ? undefined
-                    : '#2E3D2F',
+                  background: loading ? undefined : '#8FAE96',
+                  color: '#0E1916',
                   transition: 'background-color 200ms ease',
                   position: 'relative',
                   overflow: 'hidden',
                   '&:hover': {
-                    background: loading ? undefined : '#1C261D',
+                    background: loading ? undefined : '#B5C9BA',
                   },
                   ...(loading && {
                     '&::after': {
@@ -559,7 +557,7 @@ export default function LoginPage() {
               textAlign: 'center',
               mt: 4,
               fontSize: '0.7rem',
-              color: 'rgba(255,255,255,0.15)',
+              color: 'rgba(243,240,232,0.38)',
               letterSpacing: '0.05em',
             }}
           >

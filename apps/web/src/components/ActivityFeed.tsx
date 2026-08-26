@@ -156,8 +156,7 @@ export function ActivityFeed({ compact = false }: { compact?: boolean }) {
         bgcolor: 'background.paper',
         borderRadius: SHAPE.card,
         overflow: 'hidden',
-        border: '1px solid',
-        borderColor: 'divider',
+        boxShadow: 'var(--neu-raised)',
       }}
     >
       {/* Header */}
@@ -168,8 +167,7 @@ export function ActivityFeed({ compact = false }: { compact?: boolean }) {
           gap: 1,
           px: compact ? 2 : 2.5,
           py: 1.5,
-          borderBottom: '1px solid',
-          borderColor: 'divider',
+          boxShadow: '0 10px 16px -18px rgba(38,55,44,0.4)',
         }}
       >
         {/* Pulsing live dot */}

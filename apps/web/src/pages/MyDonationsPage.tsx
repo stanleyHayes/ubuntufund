@@ -96,7 +96,7 @@ export function MyDonationsPage() {
                   p: 3,
                   borderRadius: SHAPE.card,
                   bgcolor: 'background.paper',
-                  border: '1px solid rgba(0,0,0,0.06)',
+                  boxShadow: 'var(--neu-raised)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 2,
@@ -171,8 +171,7 @@ export function MyDonationsPage() {
             component={Paper}
             sx={{
               borderRadius: SHAPE.card,
-              border: '1px solid rgba(0,0,0,0.06)',
-              boxShadow: 'none',
+              boxShadow: 'var(--neu-raised)',
             }}
           >
             <Table>

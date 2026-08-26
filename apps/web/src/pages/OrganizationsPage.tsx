@@ -113,8 +113,7 @@ export function OrganizationsPage() {
                 display: 'flex',
                 flexDirection: 'column',
                 borderRadius: SHAPE.card,
-                border: '1px solid',
-                borderColor: 'divider',
+                boxShadow: 'var(--neu-raised)',
                 transition: 'border-color 0.35s cubic-bezier(0.22, 1, 0.36, 1)',
                 animation: `${fadeInUp} 0.5s ease-out ${index * 0.08}s both`,
                 '&:hover': {

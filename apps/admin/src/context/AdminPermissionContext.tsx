@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import type { ReactNode } from 'react'
 import { Resource, Action, hasPermission, type PermissionString } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
+import { useAuth } from './AuthContext'
 
 interface AdminPermissionContextValue {
   permissions: PermissionString[]
@@ -14,6 +15,7 @@ interface AdminPermissionContextValue {
 const AdminPermissionContext = createContext<AdminPermissionContextValue | null>(null)
 
 export function AdminPermissionProvider({ children }: { children: ReactNode }) {
+  const { isAuthenticated, tokens } = useAuth()
   const [permissions, setPermissions] = useState<PermissionString[]>([])
   const [roleName, setRoleName] = useState('')
   const [isLoading, setIsLoading] = useState(true)
@@ -24,9 +26,9 @@ export function AdminPermissionProvider({ children }: { children: ReactNode }) {
     async function fetchPermissions() {
       setIsLoading(true)
 
-      const token = localStorage.getItem('uf_admin_token')
+      const token = tokens?.accessToken ?? localStorage.getItem('uf_admin_token')
 
-      if (!token) {
+      if (!isAuthenticated || !token) {
         if (!cancelled) {
           setPermissions([])
           setRoleName('')
@@ -39,8 +41,8 @@ export function AdminPermissionProvider({ children }: { children: ReactNode }) {
         const data = await api.get<{ permissions: PermissionString[]; roleName: string }>('/rbac/me')
 
         if (!cancelled) {
-          setPermissions(data.permissions)
-          setRoleName(data.roleName)
+          setPermissions(Array.isArray(data.permissions) ? data.permissions : [])
+          setRoleName(typeof data.roleName === 'string' ? data.roleName : '')
         }
       } catch {
         if (!cancelled) {
@@ -59,7 +61,7 @@ export function AdminPermissionProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [isAuthenticated, tokens?.accessToken])
 
   const can = useCallback(
     (resource: Resource, action: Action): boolean => {

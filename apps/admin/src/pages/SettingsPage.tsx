@@ -104,13 +104,12 @@ function SectionCard({
     <Card
       sx={{
         bgcolor: 'background.paper',
-        border: '1px solid',
-        borderColor: 'divider',
         borderRadius: 3,
+        boxShadow: 'var(--neu-raised)',
         overflow: 'hidden',
         animation: `${fadeSlide} 0.4s ease ${delay}s both`,
-        transition: 'border-color 0.3s ease',
-        '&:hover': { borderColor: `${color}40` },
+        transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+        '&:hover': { transform: 'translateY(-2px)', boxShadow: 'var(--neu-raised-hover) !important' },
       }}
     >
       <Box
@@ -120,8 +119,7 @@ function SectionCard({
           gap: 1.5,
           px: 3,
           py: 2,
-          borderBottom: '1px solid',
-          borderColor: 'divider',
+          boxShadow: '0 10px 16px -18px rgba(0,0,0,0.8)',
           position: 'relative',
           '&::before': {
             content: '""',
@@ -139,7 +137,7 @@ function SectionCard({
         <Typography sx={{ fontWeight: 700, fontSize: '0.95rem', color: 'text.primary', flex: 1 }}>{title}</Typography>
         {badge}
       </Box>
-      <Box sx={{ '& > *:not(:last-child)': { borderBottom: '1px solid', borderColor: 'divider' } }}>
+      <Box sx={{ '& > *:not(:last-child)': { boxShadow: '0 9px 14px -16px rgba(0,0,0,0.85)' } }}>
         {children}
       </Box>
     </Card>

@@ -1,7 +1,5 @@
-import Box from '@mui/material/Box'
-import Container from '@mui/material/Container'
-import Typography from '@mui/material/Typography'
-import { SHAPE } from '@ubuntu-fund/ui'
+import ShieldRoundedIcon from '@mui/icons-material/ShieldRounded'
+import { LegalPageLayout } from '../components/LegalPageLayout'
 
 const sections = [
   {
@@ -52,40 +50,18 @@ const sections = [
 
 function PrivacyPage() {
   return (
-    <Box component="main" sx={{ flex: 1, pt: { xs: 4, md: 6 }, pb: 8 }}>
-        <Container maxWidth="md">
-          <Typography variant="h3" sx={{ fontWeight: 800, mb: 1 }}>
-            Privacy Policy
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 6 }}>
-            Last updated: January 15, 2026
-          </Typography>
-
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 4, lineHeight: 1.8 }}>
-            At UbuntuFund, we are committed to protecting your privacy and ensuring the security
-            of your personal information. This Privacy Policy explains how we collect, use, share,
-            and protect your data when you use our platform.
-          </Typography>
-
-          {sections.map((section) => (
-            <Box key={section.title} sx={{ mb: 4 }}>
-              <Typography variant="h5" sx={{ fontWeight: 700, mb: 1.5 }}>
-                {section.title}
-              </Typography>
-              <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.8, whiteSpace: 'pre-line' }}>
-                {section.content}
-              </Typography>
-            </Box>
-          ))}
-
-          <Box sx={{ mt: 6, p: 3, backgroundColor: 'grey.50', borderRadius: SHAPE.card }}>
-            <Typography variant="body2" color="text.secondary">
-              For privacy-related inquiries, contact our Data Protection Officer at{' '}
-              <strong>privacy@ubuntufund.com</strong>.
-            </Typography>
-          </Box>
-        </Container>
-    </Box>
+    <LegalPageLayout
+      eyebrow="Your information"
+      title="Privacy Policy"
+      description="A clear account of what UbuntuFund collects, why it is needed, and the choices available to you."
+      icon={<ShieldRoundedIcon />}
+      panelLabel="Privacy principle"
+      panelTitle="Collect what is needed. Protect it. Explain its use."
+      panelBody="This policy covers account data, campaign records, donations, security, retention, and your rights."
+      introduction="At UbuntuFund, we are committed to protecting your privacy and the security of your personal information. This policy explains how we collect, use, share, retain, and protect data when you use the platform."
+      sections={sections}
+      contact={<>Privacy-related inquiries can be sent to <strong>privacy@ubuntufund.com</strong>.</>}
+    />
   )
 }
 

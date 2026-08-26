@@ -76,7 +76,7 @@ export function LoginForm() {
 
       <Typography variant="body2" align="center" color="text.secondary">
         Don&apos;t have an account?{' '}
-        <Link component={RouterLink} to="/register" underline="hover">
+        <Link component={RouterLink} to="/register" underline="hover" sx={{ color: 'secondary.main', fontWeight: 600 }}>
           Register
         </Link>
       </Typography>

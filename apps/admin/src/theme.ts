@@ -1,5 +1,7 @@
 import { createTheme } from '@mui/material/styles'
-import { SHAPE } from '@ubuntu-fund/ui'
+import { getNeumorphicTokens, SHAPE } from '@ubuntu-fund/ui'
+
+const neu = getNeumorphicTokens(true)
 
 declare module '@mui/material/styles' {
   interface Palette {
@@ -36,8 +38,8 @@ const adminTheme = createTheme({
       contrastText: '#221B0E',
     },
     background: {
-      default: '#0E1916',
-      paper: '#15241F',
+      default: neu.surface,
+      paper: neu.surface,
     },
     trust: {
       level1: '#3A4A3E',
@@ -85,23 +87,32 @@ const adminTheme = createTheme({
           borderRadius: SHAPE.sm,
           padding: '8px 24px',
           fontSize: '0.9375rem',
+          boxShadow: neu.subtle,
+          transition: 'transform 160ms ease, box-shadow 160ms ease',
+          '&:hover': { boxShadow: neu.raisedHover, transform: 'translateY(-1px)' },
+          '&:active': { boxShadow: neu.inset, transform: 'translateY(1px)' },
+          '&:focus-visible': { outline: '2px solid #C7A24A', outlineOffset: 3 },
+          '&.Mui-disabled': { boxShadow: 'none', opacity: 0.58 },
         },
+        outlined: { border: '0 !important', backgroundColor: neu.surface },
+        text: { boxShadow: 'none', '&:hover': { boxShadow: neu.subtle }, '&:active': { boxShadow: neu.inset } },
       },
       defaultProps: {
-        disableElevation: true,
+        disableElevation: false,
       },
     },
     MuiCard: {
       defaultProps: {
-        variant: 'outlined',
+        variant: 'elevation',
         elevation: 0,
       },
       styleOverrides: {
         root: {
           borderRadius: SHAPE.card,
           backgroundImage: 'none',
-          border: '1px solid rgba(232, 235, 227, 0.07)',
-          boxShadow: 'none',
+          border: '0 !important',
+          backgroundColor: neu.surface,
+          boxShadow: `${neu.raised} !important`,
         },
       },
     },
@@ -115,7 +126,33 @@ const adminTheme = createTheme({
     },
     MuiChip: {
       styleOverrides: {
-        root: { fontWeight: 500 },
+        root: {
+          minHeight: 30, fontWeight: 600, borderRadius: SHAPE.sm,
+          border: '0 !important', backgroundColor: neu.surface,
+          boxShadow: `${neu.subtle} !important`,
+        },
+      },
+    },
+    MuiIconButton: {
+      styleOverrides: {
+        root: {
+          border: '0 !important', borderRadius: SHAPE.sm,
+          backgroundColor: neu.surface, boxShadow: `${neu.subtle} !important`,
+          transition: 'transform 160ms ease, box-shadow 160ms ease',
+          '&:hover': { boxShadow: `${neu.raisedHover} !important`, transform: 'translateY(-1px)' },
+          '&:active': { boxShadow: `${neu.inset} !important`, transform: 'translateY(1px)' },
+          '&:focus-visible': { outline: '2px solid #C7A24A', outlineOffset: 2 },
+        },
+      },
+    },
+    MuiPaper: { styleOverrides: { root: { backgroundImage: 'none', backgroundColor: neu.surface } } },
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: {
+          borderRadius: SHAPE.sm, backgroundColor: neu.surface, boxShadow: neu.inset,
+          '& .MuiOutlinedInput-notchedOutline': { border: '0 !important' },
+          '&.Mui-focused': { boxShadow: `${neu.inset}, 0 0 0 3px rgba(199,162,74,0.16)` },
+        },
       },
     },
     MuiAppBar: {
@@ -127,9 +164,20 @@ const adminTheme = createTheme({
     },
     MuiTableCell: {
       styleOverrides: {
-        root: {
-          borderColor: 'rgba(255, 255, 255, 0.06)',
+        root: { borderBottom: '0' },
+        head: { fontWeight: 700 },
+      },
+    },
+    MuiCssBaseline: {
+      styleOverrides: {
+        ':root': {
+          '--neu-surface': neu.surface,
+          '--neu-raised': neu.raised,
+          '--neu-raised-hover': neu.raisedHover,
+          '--neu-subtle': neu.subtle,
+          '--neu-inset': neu.inset,
         },
+        body: { backgroundColor: neu.surface },
       },
     },
   },

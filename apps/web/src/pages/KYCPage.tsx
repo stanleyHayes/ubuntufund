@@ -120,7 +120,7 @@ export function KYCPage() {
         ))}
       </Stepper>
 
-      <Paper elevation={0} sx={{ p: { xs: 3, sm: 4 }, border: '1px solid rgba(0,0,0,0.08)', borderRadius: 3 }}>
+      <Paper elevation={0} sx={{ p: { xs: 3, sm: 4 }, boxShadow: 'var(--neu-raised)', borderRadius: 3 }}>
         {activeStep === 0 && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
             <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>Personal Information</Typography>

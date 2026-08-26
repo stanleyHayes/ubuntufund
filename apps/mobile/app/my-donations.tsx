@@ -13,7 +13,7 @@ import { api } from '@/lib/api'
 import { EmptyState } from '@/components/EmptyState'
 import { SignInRequired } from '@/components/SignInRequired'
 import { FadeInUp } from '@/components/anim/FadeInUp'
-import { brandColors } from '@/theme'
+import { brandColors, neumorphism } from '@/theme'
 
 interface Donation {
   id: string
@@ -232,20 +232,18 @@ const styles = StyleSheet.create({
 
   filterScroll: { flexGrow: 0 },
   filterRow: { paddingHorizontal: 16, paddingVertical: 12, gap: 8, alignItems: 'center' },
-  filterTab: { height: 38, justifyContent: 'center', paddingHorizontal: 16, borderRadius: 999, backgroundColor: '#fff', borderWidth: 1, borderColor: 'rgba(26,46,34,0.10)' },
-  filterTabActive: { backgroundColor: brandColors.primary, borderColor: brandColors.primary },
+  filterTab: { ...neumorphism.subtle, height: 38, justifyContent: 'center', paddingHorizontal: 16, borderRadius: 999 },
+  filterTabActive: { ...neumorphism.greenInset },
   filterTabText: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: brandColors.textSecondary },
   filterTabTextActive: { color: '#fff' },
 
   listWrap: { paddingHorizontal: 16 },
 
   donationCard: {
-    backgroundColor: '#fff',
+    ...neumorphism.raised,
     borderRadius: 14,
     padding: 14,
     marginBottom: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(26,46,34,0.10)',
   },
   donationHeader: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 10 },
   donationCampaign: { fontSize: 15, fontFamily: 'Outfit_700Bold', color: brandColors.text },
@@ -259,9 +257,9 @@ const styles = StyleSheet.create({
   refundBtnText: { fontSize: 12, fontFamily: 'Outfit_700Bold', color: brandColors.error },
 
   skeletonRow: {
+    ...neumorphism.raised,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
     borderRadius: 14,
     padding: 14,
     marginBottom: 10,
@@ -270,6 +268,7 @@ const styles = StyleSheet.create({
 
   emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 72, paddingHorizontal: 32 },
   emptyIconTile: {
+    ...neumorphism.subtle,
     width: 48,
     height: 48,
     borderRadius: 24,
