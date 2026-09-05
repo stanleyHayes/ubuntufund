@@ -395,7 +395,7 @@ export default function CampaignDetailScreen() {
             Accepted Payment Method
           </Text>
           <Surface style={styles.paymentMethodsCard} elevation={0}>
-            {[{ icon: 'wallet-outline', label: 'UbuntuFund Wallet' }].map((method) => (
+            {[{ icon: 'wallet-outline', label: 'Ujimora Wallet' }].map((method) => (
               <View key={method.label} style={styles.paymentMethodItem}>
                 <Icon source={method.icon} size={20} color={brandColors.textSecondary} />
                 <Text variant="bodySmall">{method.label}</Text>

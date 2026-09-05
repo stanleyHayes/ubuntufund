@@ -85,7 +85,7 @@ export function Footer() {
             </Box>
 
             <Typography variant="body2" sx={{ mt: 1.5, maxWidth: 280, color: 'rgba(245, 242, 234, 0.65)', lineHeight: 1.6 }}>
-              Ghana's trust infrastructure for giving. One chain. Many hands. Ubuntu.
+              Ghana's trust infrastructure for giving. One chain. Many hands. Ujima.
             </Typography>
           </Box>
 
@@ -138,10 +138,10 @@ export function Footer() {
           }}
         >
           <Typography variant="body2" sx={{ color: 'rgba(245, 242, 234, 0.55)' }}>
-            &copy; {new Date().getFullYear()} UbuntuFund. All rights reserved.
+            &copy; {new Date().getFullYear()} Ujimora. All rights reserved.
           </Typography>
           <Typography variant="body2" sx={{ color: 'rgba(245, 242, 234, 0.55)' }}>
-            Made with Ubuntu, across Ghana.
+            Made with Ujima, across Ghana.
           </Typography>
         </Box>
       </Container>

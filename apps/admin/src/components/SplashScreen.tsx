@@ -269,7 +269,7 @@ export default function SplashScreen() {
           animation: 'stampIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.7s forwards',
         }}
       >
-        UbuntuFund
+        Ujimora
       </Typography>
 
       <Typography

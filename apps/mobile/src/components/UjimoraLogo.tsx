@@ -1,15 +1,15 @@
 import Svg, { Rect, Path } from 'react-native-svg'
 
-interface UbuntuLogoProps {
+interface UjimoraLogoProps {
   size?: number
 }
 
 /**
- * The UbuntuFund mark: two interlocked chain links — a sharp-cornered gold
- * diamond woven through a rounded sage one ("One chain. Many hands. Ubuntu.").
+ * The Ujimora mark: two interlocked chain links — a sharp-cornered gold
+ * diamond woven through a rounded sage one ("One chain. Many hands. Ujima.").
  * Mirrors packages/ui BrandLogo so every surface shares one identity.
  */
-export function UbuntuLogo({ size = 64 }: UbuntuLogoProps) {
+export function UjimoraLogo({ size = 64 }: UjimoraLogoProps) {
   const width = size * 1.375
   return (
     <Svg width={width} height={size} viewBox="0 0 66 48">

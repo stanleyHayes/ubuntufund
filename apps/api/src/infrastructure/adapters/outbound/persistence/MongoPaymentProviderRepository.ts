@@ -27,7 +27,7 @@ function toDomain(doc: PaymentProviderDocument): PaymentProviderEntity {
  */
 const DEFAULT_PROVIDERS = [
   {
-    name: 'UbuntuFund Wallet',
+    name: 'Ujimora Wallet',
     slug: 'wallet',
     type: PaymentMethod.WALLET,
     enabled: true,

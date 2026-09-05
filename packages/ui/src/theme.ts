@@ -165,7 +165,7 @@ export const ttSquaresFontFace = `
   }
 `
 
-export function createUbuntuFundTheme(mode: PaletteMode = 'light') {
+export function createUjimoraTheme(mode: PaletteMode = 'light') {
   const dark = mode === 'dark'
   const neu = getNeumorphicTokens(dark)
   return createTheme({
@@ -438,6 +438,6 @@ export function createUbuntuFundTheme(mode: PaletteMode = 'light') {
   })
 }
 
-const ubuntuFundTheme = createUbuntuFundTheme('light')
+const ujimoraTheme = createUjimoraTheme('light')
 
-export { ubuntuFundTheme }
+export { ujimoraTheme }

@@ -20,7 +20,7 @@ const sections = [
   {
     title: '4. How to Request a Refund',
     content:
-      'Open the relevant donation in your donation history and submit the refund form, or email refunds@ubuntufund.com with your account email, campaign, transaction reference, amount, and reason. Do not send a password, access token, or full identity document by email.',
+      'Open the relevant donation in your donation history and submit the refund form, or email refunds@ujimora.com with your account email, campaign, transaction reference, amount, and reason. Do not send a password, access token, or full identity document by email.',
   },
   {
     title: '5. Campaign Organizer Refunds',
@@ -30,7 +30,7 @@ const sections = [
   {
     title: '6. Disputed Transactions',
     content:
-      'If you do not recognize a charge from UbuntuFund on your payment statement, please contact us before filing a dispute with your payment provider. We can often resolve issues more quickly through direct communication. Filing a dispute or chargeback with your payment provider may result in your UbuntuFund account being temporarily suspended until the matter is resolved.',
+      'If you do not recognize a charge from Ujimora on your payment statement, please contact us before filing a dispute with your payment provider. We can often resolve issues more quickly through direct communication. Filing a dispute or chargeback with your payment provider may result in your Ujimora account being temporarily suspended until the matter is resolved.',
   },
   {
     title: '7. Non-Refundable Items',
@@ -40,7 +40,7 @@ const sections = [
   {
     title: '8. Contact Us',
     content:
-      'For refund-related questions, use the in-app request workflow or contact refunds@ubuntufund.com. No guaranteed response or settlement window applies during launch readiness.',
+      'For refund-related questions, use the in-app request workflow or contact refunds@ujimora.com. No guaranteed response or settlement window applies during launch readiness.',
   },
 ]
 
@@ -56,7 +56,7 @@ function RefundPolicyPage() {
       panelBody="Refund requests are reviewed against campaign status, wallet activity, and the available transaction history."
       introduction="We want donors to feel confident about their contributions. This policy explains when a refund may be considered, how to submit a complete request, and why approval or settlement is not automatic."
       sections={sections}
-      contact={<>Submit from donation history or email <strong>refunds@ubuntufund.com</strong> with the relevant transaction reference.</>}
+      contact={<>Submit from donation history or email <strong>refunds@ujimora.com</strong> with the relevant transaction reference.</>}
     />
   )
 }

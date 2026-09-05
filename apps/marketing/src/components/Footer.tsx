@@ -77,11 +77,11 @@ const footerSections = [
 ]
 
 const socialLinks = [
-  { icon: <FacebookIcon />, label: 'Facebook', href: 'https://facebook.com/ubuntufund' },
-  { icon: <XIcon />, label: 'X', href: 'https://x.com/ubuntufund' },
-  { icon: <InstagramIcon />, label: 'Instagram', href: 'https://instagram.com/ubuntufund' },
-  { icon: <LinkedInIcon />, label: 'LinkedIn', href: 'https://linkedin.com/company/ubuntufund' },
-  { icon: <YouTubeIcon />, label: 'YouTube', href: 'https://youtube.com/@ubuntufund' },
+  { icon: <FacebookIcon />, label: 'Facebook', href: 'https://facebook.com/ujimora' },
+  { icon: <XIcon />, label: 'X', href: 'https://x.com/ujimora' },
+  { icon: <InstagramIcon />, label: 'Instagram', href: 'https://instagram.com/ujimora' },
+  { icon: <LinkedInIcon />, label: 'LinkedIn', href: 'https://linkedin.com/company/ujimora' },
+  { icon: <YouTubeIcon />, label: 'YouTube', href: 'https://youtube.com/@ujimora' },
 ]
 
 const linkStyle = {
@@ -298,12 +298,11 @@ function Footer() {
               <Box
                 component="img"
                 src="/favicon.svg"
-                alt="UbuntuFund"
+                alt="Ujimora"
                 sx={{ width: 36, height: 36 }}
               />
               <Typography variant="h5" sx={{ fontWeight: 900, color: '#fff' }}>
-                Ubuntu
-                <Box component="span" sx={{ color: '#C7A24A' }}>Fund</Box>
+                Ujimora
               </Typography>
             </Box>
             <Typography
@@ -311,7 +310,7 @@ function Footer() {
               sx={{ color: 'rgba(255,255,255,0.45)', maxWidth: 340, lineHeight: 1.7 }}
             >
               Ghana's trust infrastructure for giving. Empowering communities
-              through transparent, secure crowdfunding built on the Ubuntu philosophy.
+              through transparent, secure crowdfunding built on the Ujima philosophy.
             </Typography>
           </Box>
 
@@ -462,7 +461,7 @@ function Footer() {
           }}
         >
           <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.25)', fontSize: '0.75rem' }}>
-            &copy; {new Date().getFullYear()} UbuntuFund. All rights reserved.
+            &copy; {new Date().getFullYear()} Ujimora. All rights reserved.
           </Typography>
 
           <Stack direction="row" spacing={0.5}>
@@ -505,7 +504,7 @@ function Footer() {
               letterSpacing: 0.5,
             }}
           >
-            "I am because we are" &mdash; Ubuntu
+            "Collective work and responsibility" &mdash; Ujima
           </Typography>
         </Box>
       </Container>

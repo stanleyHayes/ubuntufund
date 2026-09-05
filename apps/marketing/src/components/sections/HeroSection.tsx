@@ -217,7 +217,7 @@ function HeroSection() {
                   variant="body2"
                   sx={{ color: 'rgba(255,255,255,0.7)', mt: 1, letterSpacing: '0.08em' }}
                 >
-                  One chain. Many hands. Ubuntu.
+                  One chain. Many hands. Ujima.
                 </Typography>
               </Box>
             </Box>

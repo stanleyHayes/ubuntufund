@@ -91,7 +91,7 @@ function CampaignTypesSection() {
             sx={{ color: 'text.secondary', maxWidth: 640, mx: 'auto' }}
           >
             Whether it is a medical emergency, education funding, or a community project,
-            UbuntuFund supports campaigns across every category that matters.
+            Ujimora supports campaigns across every category that matters.
           </Typography>
         </Box>
 

@@ -38,7 +38,7 @@ export const blogPosts: BlogPost[] = [
       'A practical look at provider verification, transaction integrity, refunds, and the release checks required before an external payment method should go live.',
     image: 'https://images.unsplash.com/photo-1556745757-8d76bdb6984b?w=800&h=500&fit=crop',
     readTime: 7,
-    author: { name: 'UbuntuFund Editorial', avatar: 'UF', role: 'Launch guide' },
+    author: { name: 'Ujimora Editorial', avatar: 'UF', role: 'Launch guide' },
     featured: true,
   },
   {
@@ -47,10 +47,10 @@ export const blogPosts: BlogPost[] = [
     date: 'March 1, 2026',
     category: 'Trust & Safety',
     excerpt:
-      'Transparency is the foundation of successful crowdfunding. Learn how UbuntuFund developed its multi-layer verification system to ensure donors can give with confidence.',
+      'Transparency is the foundation of successful crowdfunding. Learn how Ujimora developed its multi-layer verification system to ensure donors can give with confidence.',
     image: 'https://images.unsplash.com/photo-1521791136064-7986c2920216?w=600&h=400&fit=crop',
     readTime: 5,
-    author: { name: 'UbuntuFund Editorial', avatar: 'UF', role: 'Trust guide' },
+    author: { name: 'Ujimora Editorial', avatar: 'UF', role: 'Trust guide' },
   },
   {
     slug: '5-campaigns-that-changed-communities',
@@ -61,7 +61,7 @@ export const blogPosts: BlogPost[] = [
       'A field guide to collecting evidence, publishing useful updates, recording milestones, and giving supporters a clear view of campaign progress.',
     image: 'https://images.unsplash.com/photo-1509099836639-18ba1795216d?w=600&h=400&fit=crop',
     readTime: 9,
-    author: { name: 'UbuntuFund Editorial', avatar: 'UF', role: 'Campaign guide' },
+    author: { name: 'Ujimora Editorial', avatar: 'UF', role: 'Campaign guide' },
   },
   {
     slug: 'rise-of-diaspora-giving',
@@ -72,7 +72,7 @@ export const blogPosts: BlogPost[] = [
       'Ghanaians abroad send home billions of cedis in remittances every year. A growing share is being channeled through crowdfunding platforms to support education, healthcare, and infrastructure.',
     image: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=600&h=400&fit=crop',
     readTime: 6,
-    author: { name: 'UbuntuFund Editorial', avatar: 'UF', role: 'Community guide' },
+    author: { name: 'Ujimora Editorial', avatar: 'UF', role: 'Community guide' },
   },
   {
     slug: 'crowdfunding-for-education',
@@ -83,7 +83,7 @@ export const blogPosts: BlogPost[] = [
       'Education campaigns need precise goals, credible budgets, supporting evidence, and consistent updates. This guide explains how to prepare each one.',
     image: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=600&h=400&fit=crop',
     readTime: 8,
-    author: { name: 'UbuntuFund Editorial', avatar: 'UF', role: 'Education guide' },
+    author: { name: 'Ujimora Editorial', avatar: 'UF', role: 'Education guide' },
   },
   {
     slug: 'guide-successful-health-campaign',
@@ -94,7 +94,7 @@ export const blogPosts: BlogPost[] = [
       'Health-related campaigns require special attention to detail, transparency, and urgency. This comprehensive guide covers everything from crafting your story to managing donor updates.',
     image: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=600&h=400&fit=crop',
     readTime: 12,
-    author: { name: 'UbuntuFund Editorial', avatar: 'UF', role: 'Campaign guide' },
+    author: { name: 'Ujimora Editorial', avatar: 'UF', role: 'Campaign guide' },
   },
 ]
 
@@ -589,7 +589,7 @@ function BlogPage() {
   return (
     <Box component="main" sx={{ flex: 1, pb: 10 }}>
       <InternalPageHero
-        eyebrow="UbuntuFund journal"
+        eyebrow="Ujimora journal"
         title="Field notes for trustworthy fundraising"
         description="Practical guidance on campaign records, verification, community support, and responsible giving in Ghana."
         icon={<AutoStoriesRoundedIcon />}

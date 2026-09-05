@@ -28,15 +28,15 @@ const sections = [
   },
   {
     title: '7. Your Rights',
-    content: `Depending on your jurisdiction, you may have the right to: access the personal information we hold about you; correct inaccurate or incomplete information; delete your personal information; restrict or object to processing of your data; data portability (receive your data in a structured format); withdraw consent for marketing communications; lodge a complaint with a supervisory authority. To exercise any of these rights, please contact us at privacy@ubuntufund.com.`,
+    content: `Depending on your jurisdiction, you may have the right to: access the personal information we hold about you; correct inaccurate or incomplete information; delete your personal information; restrict or object to processing of your data; data portability (receive your data in a structured format); withdraw consent for marketing communications; lodge a complaint with a supervisory authority. To exercise any of these rights, please contact us at privacy@ujimora.com.`,
   },
   {
     title: '8. International Data Transfers',
-    content: `UbuntuFund operates in Ghana but may transfer data internationally for processing and storage. When we transfer data outside Ghana, we ensure appropriate safeguards are in place, including standard contractual clauses and adequacy decisions where applicable. By using the Platform, you consent to the transfer of your information as described in this policy.`,
+    content: `Ujimora operates in Ghana but may transfer data internationally for processing and storage. When we transfer data outside Ghana, we ensure appropriate safeguards are in place, including standard contractual clauses and adequacy decisions where applicable. By using the Platform, you consent to the transfer of your information as described in this policy.`,
   },
   {
     title: '9. Children\'s Privacy',
-    content: `UbuntuFund is not intended for children under 18 years of age. We do not knowingly collect personal information from children. If we become aware that we have collected information from a child, we will take steps to delete that information promptly. Parents or guardians who believe their child has provided us with personal information should contact us immediately.`,
+    content: `Ujimora is not intended for children under 18 years of age. We do not knowingly collect personal information from children. If we become aware that we have collected information from a child, we will take steps to delete that information promptly. Parents or guardians who believe their child has provided us with personal information should contact us immediately.`,
   },
   {
     title: '10. Changes to This Policy',
@@ -44,7 +44,7 @@ const sections = [
   },
   {
     title: '11. Contact Us',
-    content: `If you have questions or concerns about this Privacy Policy or our data practices, contact privacy@ubuntufund.com. A public postal address and formal response-time commitment will be published only after owner and legal verification.`,
+    content: `If you have questions or concerns about this Privacy Policy or our data practices, contact privacy@ujimora.com. A public postal address and formal response-time commitment will be published only after owner and legal verification.`,
   },
 ]
 
@@ -53,14 +53,14 @@ function PrivacyPage() {
     <LegalPageLayout
       eyebrow="Your information"
       title="Privacy Policy"
-      description="A clear account of what UbuntuFund collects, why it is needed, and the choices available to you."
+      description="A clear account of what Ujimora collects, why it is needed, and the choices available to you."
       icon={<ShieldRoundedIcon />}
       panelLabel="Privacy principle"
       panelTitle="Collect what is needed. Protect it. Explain its use."
       panelBody="This policy covers account data, campaign records, donations, security, retention, and your rights."
-      introduction="At UbuntuFund, we are committed to protecting your privacy and the security of your personal information. This policy explains how we collect, use, share, retain, and protect data when you use the platform."
+      introduction="At Ujimora, we are committed to protecting your privacy and the security of your personal information. This policy explains how we collect, use, share, retain, and protect data when you use the platform."
       sections={sections}
-      contact={<>Privacy-related inquiries can be sent to <strong>privacy@ubuntufund.com</strong>.</>}
+      contact={<>Privacy-related inquiries can be sent to <strong>privacy@ujimora.com</strong>.</>}
     />
   )
 }

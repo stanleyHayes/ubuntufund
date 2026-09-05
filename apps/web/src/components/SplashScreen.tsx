@@ -230,7 +230,7 @@ export function SplashScreen() {
           animation: 'stampIn 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.8s forwards',
         }}
       >
-        UbuntuFund
+        Ujimora
       </Typography>
 
       {/* Tagline */}
@@ -245,7 +245,7 @@ export function SplashScreen() {
           zIndex: 1,
         }}
       >
-        Together, We Rise
+        Together, we fund what matters
       </Typography>
 
       {/* Loading dots with drum beat rhythm */}

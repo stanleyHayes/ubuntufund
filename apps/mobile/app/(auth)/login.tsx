@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Link, router } from 'expo-router'
 import { brandColors, neumorphism } from '@/theme'
 import { useAuth } from '@/context/AuthContext'
-import { UbuntuLogo } from '@/components/UbuntuLogo'
+import { UjimoraLogo } from '@/components/UjimoraLogo'
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('')
@@ -41,11 +41,11 @@ export default function LoginScreen() {
       >
         {/* Forest brand stage — mirrors the web AuthLayout panel */}
         <View style={[styles.stage, { paddingTop: insets.top + 48 }]}>
-          <UbuntuLogo size={52} />
+          <UjimoraLogo size={52} />
           <Text style={styles.stageTitle}>
             Together, <Text style={styles.stageTitleAccent}>We Rise</Text>
           </Text>
-          <Text style={styles.stageCaption}>One chain · Many hands · Ubuntu</Text>
+          <Text style={styles.stageCaption}>One chain · Many hands · Ujima</Text>
         </View>
 
         {/* Parchment sheet */}

@@ -21,7 +21,7 @@ function generateBody(post: (typeof blogPosts)[number]): string[] {
     `For campaign creators, ${post.category.toLowerCase()} begins with a specific goal, evidence that supporters can assess, and a realistic explanation of how funds will be used. Avoid promises that cannot be measured or verified.`,
     'Publish updates when circumstances, budgets, or timelines change. A useful update identifies what happened, what evidence is available, and what the campaign will do next.',
     'Supporters should review the campaign story, organizer details, verification state, and recent activity before contributing. A platform review is one signal, not a guarantee of outcome.',
-    'UbuntuFund currently records wallet-backed contributions in Ghanaian cedis. External payment and payout methods remain unavailable until their production adapters and compliance checks are complete.',
+    'Ujimora currently records wallet-backed contributions in Ghanaian cedis. External payment and payout methods remain unavailable until their production adapters and compliance checks are complete.',
     'Good fundraising communication is concrete, respectful, and accountable. Protect personal information, obtain consent for sensitive images, and keep records that can support later review.',
   ]
 }
@@ -287,7 +287,7 @@ function BlogDetailPage() {
         {/* Related posts */}
         <Box sx={{ mt: 8 }}>
           <Typography variant="h5" sx={{ fontWeight: 800, mb: 3 }}>
-            More from UbuntuFund
+            More from Ujimora
           </Typography>
           <Grid container spacing={3}>
             {relatedPosts.map((related) => {

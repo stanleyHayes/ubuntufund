@@ -317,7 +317,7 @@ async function bootstrap(): Promise<void> {
     await createNotificationUseCase.execute({
       userId: (event.payload as { userId: string }).userId,
       type: 'general',
-      title: 'Welcome to UbuntuFund',
+      title: 'Welcome to Ujimora',
       message: 'Start by creating your first campaign or exploring causes to support.',
     });
   });
@@ -555,7 +555,7 @@ async function bootstrap(): Promise<void> {
   app.use(errorHandler);
 
   const server = app.listen(config.port, '0.0.0.0', () => {
-    logger.info(`UbuntuFund API running on http://0.0.0.0:${config.port} [${config.nodeEnv}]`);
+    logger.info(`Ujimora API running on http://0.0.0.0:${config.port} [${config.nodeEnv}]`);
   });
 
   server.timeout = 30000; // 30 seconds

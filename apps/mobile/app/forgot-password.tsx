@@ -4,7 +4,7 @@ import { TextInput, Button, Text, Icon } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { brandColors, neumorphism } from '@/theme'
-import { UbuntuLogo } from '@/components/UbuntuLogo'
+import { UjimoraLogo } from '@/components/UjimoraLogo'
 import { api } from '@/lib/api'
 
 export default function ForgotPasswordScreen() {
@@ -37,7 +37,7 @@ export default function ForgotPasswordScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <UbuntuLogo size={48} />
+          <UjimoraLogo size={48} />
           <Text style={styles.eyebrow}>Password Reset</Text>
           <Text style={styles.title}>Reset your password</Text>
           <Text style={styles.lede}>

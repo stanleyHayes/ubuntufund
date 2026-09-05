@@ -31,7 +31,7 @@ const features = [
     icon: PaymentsIcon,
     title: 'Wallet contributions',
     description:
-      'The internal UbuntuFund Wallet is the active launch method. External payment rails remain disabled until verified.',
+      'The internal Ujimora Wallet is the active launch method. External payment rails remain disabled until verified.',
     accent: '#2E3D2F',
   },
   {
@@ -72,7 +72,7 @@ function FeaturesSection() {
             variant="overline"
             sx={{ color: 'secondary.dark' }}
           >
-            Why UbuntuFund
+            Why Ujimora
           </Typography>
           <Typography
             variant="h2"

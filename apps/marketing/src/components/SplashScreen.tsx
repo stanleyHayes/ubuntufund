@@ -226,7 +226,7 @@ export default function SplashScreen() {
             animation: 'stampIn 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 1s forwards',
           }}
         >
-          UbuntuFund
+          Ujimora
         </Typography>
 
         <Typography
@@ -239,7 +239,7 @@ export default function SplashScreen() {
             animation: 'fadeInUp 0.7s ease 1.5s forwards',
           }}
         >
-          Together, We Rise
+          Together, we fund what matters
         </Typography>
       </Box>
 

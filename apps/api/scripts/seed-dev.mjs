@@ -32,15 +32,15 @@ async function ensureUser({ email, name, password, country, role = 'user', trust
 }
 
 // --- Creators (Ghanaian) + demo donor the login card uses ---
-const ama = await ensureUser({ email: 'seed-creator@ubuntufund.dev', name: 'Ama Mensah', password: 'SeededCreator123!', country: 'Ghana', trustScore: 88, level: 3 })
-const kwame = await ensureUser({ email: 'kwame.boateng@ubuntufund.dev', name: 'Kwame Boateng', password: 'SeededCreator123!', country: 'Ghana', trustScore: 82, level: 3 })
-const efua = await ensureUser({ email: 'efua.asante@ubuntufund.dev', name: 'Efua Asante', password: 'SeededCreator123!', country: 'Ghana', trustScore: 79, level: 2 })
-const amara = await ensureUser({ email: 'amara2@ubuntufund.com', name: 'Amara Osei', password: 'ubuntu2026!', country: 'Ghana', trustScore: 70, level: 1 })
-const kojo = await ensureUser({ email: 'kojo.antwi@ubuntufund.dev', name: 'Kojo Antwi', password: 'SeededCreator123!', country: 'Ghana', trustScore: 65, level: 1 })
-const abena = await ensureUser({ email: 'abena.sarpong@ubuntufund.dev', name: 'Abena Sarpong', password: 'SeededCreator123!', country: 'Ghana', trustScore: 60, level: 1 })
+const ama = await ensureUser({ email: 'seed-creator@ujimora.dev', name: 'Ama Mensah', password: 'SeededCreator123!', country: 'Ghana', trustScore: 88, level: 3 })
+const kwame = await ensureUser({ email: 'kwame.boateng@ujimora.dev', name: 'Kwame Boateng', password: 'SeededCreator123!', country: 'Ghana', trustScore: 82, level: 3 })
+const efua = await ensureUser({ email: 'efua.asante@ujimora.dev', name: 'Efua Asante', password: 'SeededCreator123!', country: 'Ghana', trustScore: 79, level: 2 })
+const amara = await ensureUser({ email: 'amara2@ujimora.com', name: 'Amara Osei', password: 'ubuntu2026!', country: 'Ghana', trustScore: 70, level: 1 })
+const kojo = await ensureUser({ email: 'kojo.antwi@ujimora.dev', name: 'Kojo Antwi', password: 'SeededCreator123!', country: 'Ghana', trustScore: 65, level: 1 })
+const abena = await ensureUser({ email: 'abena.sarpong@ujimora.dev', name: 'Abena Sarpong', password: 'SeededCreator123!', country: 'Ghana', trustScore: 60, level: 1 })
 
-// --- Platform admin (admin console login: admin@ubuntufund.com / Admin2026!) ---
-await ensureUser({ email: 'admin@ubuntufund.com', name: 'Platform Admin', password: 'Admin2026!', country: 'Ghana', role: 'admin', trustScore: 100, level: 3 })
+// --- Platform admin (admin console login: admin@ujimora.com / Admin2026!) ---
+await ensureUser({ email: 'admin@ujimora.com', name: 'Platform Admin', password: 'Admin2026!', country: 'Ghana', role: 'admin', trustScore: 100, level: 3 })
 
 // --- Fresh campaigns (Ghana) ---
 await db.collection('campaigns').deleteMany({})

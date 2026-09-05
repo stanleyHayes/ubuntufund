@@ -126,11 +126,11 @@ describe('Site Content (CMS) Integration', () => {
       const putRes2 = await request(app)
         .put(`/api/v1/content/${key}`)
         .set('Authorization', `Bearer ${adminToken}`)
-        .send({ data: { headline: 'Together, we rise' } });
+        .send({ data: { headline: 'Together, we fund what matters' } });
 
       expect(putRes2.status).toBe(200);
       expect(putRes2.body.data.type).toBe('custom');
-      expect(putRes2.body.data.data).toEqual({ headline: 'Together, we rise' });
+      expect(putRes2.body.data.data).toEqual({ headline: 'Together, we fund what matters' });
     });
 
     it('overwrites a seeded block in place (marketing.stats)', async () => {

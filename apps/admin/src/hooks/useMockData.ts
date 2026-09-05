@@ -422,7 +422,7 @@ export function useMockData() {
     lastUsedAt: new Date(),
   }
   const paymentProviders: PaymentProvider[] = [
-    { id: '1', name: 'UbuntuFund Wallet', slug: 'wallet', type: 'wallet', enabled: true, isDefault: true, feePercent: 0, displayOrder: 1, createdAt: new Date() },
+    { id: '1', name: 'Ujimora Wallet', slug: 'wallet', type: 'wallet', enabled: true, isDefault: true, feePercent: 0, displayOrder: 1, createdAt: new Date() },
     { id: '2', name: 'MTN Mobile Money (MoMo)', slug: 'mtn-momo', type: 'mobile_money', enabled: false, isDefault: false, feePercent: 1.5, displayOrder: 2, createdAt: new Date() },
     { id: '3', name: 'Telecel Cash', slug: 'telecel-cash', type: 'mobile_money', enabled: false, isDefault: false, feePercent: 1.5, displayOrder: 3, createdAt: new Date() },
     { id: '4', name: 'AT Money', slug: 'at-money', type: 'mobile_money', enabled: false, isDefault: false, feePercent: 1.5, displayOrder: 4, createdAt: new Date() },

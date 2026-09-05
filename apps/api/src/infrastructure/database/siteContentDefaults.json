@@ -18,13 +18,13 @@
       "items": [
         {
           "category": "Getting started",
-          "question": "How do I create an account on UbuntuFund?",
+          "question": "How do I create an account on Ujimora?",
           "answer": "Click \"Sign Up\" on the homepage, enter your email and create a password. You can also sign up with Google or Facebook. Complete your profile with your name, location, and a photo to build trust with the community."
         },
         {
           "category": "Getting started",
-          "question": "Is UbuntuFund available in my country?",
-          "answer": "UbuntuFund is built for Ghana. Campaign creation is open to organizers based in Ghana, and anyone worldwide can donate to a Ghanaian campaign — family abroad included. All campaigns raise funds in Ghanaian cedis (GHS)."
+          "question": "Is Ujimora available in my country?",
+          "answer": "Ujimora is built for Ghana. Campaign creation is open to organizers based in Ghana, and anyone worldwide can donate to a Ghanaian campaign — family abroad included. All campaigns raise funds in Ghanaian cedis (GHS)."
         },
         {
           "category": "Getting started",
@@ -54,12 +54,12 @@
         {
           "category": "Donations",
           "question": "How do I make a donation?",
-          "answer": "Browse campaigns and choose Donate. During launch readiness, confirmed contributions use your UbuntuFund Wallet balance. External payment methods remain disabled until their provider integrations are verified."
+          "answer": "Browse campaigns and choose Donate. During launch readiness, confirmed contributions use your Ujimora Wallet balance. External payment methods remain disabled until their provider integrations are verified."
         },
         {
           "category": "Donations",
           "question": "Is there a minimum or maximum donation?",
-          "answer": "The amount must be positive and cannot exceed your available UbuntuFund Wallet balance. Campaign and account limits may also apply."
+          "answer": "The amount must be positive and cannot exceed your available Ujimora Wallet balance. Campaign and account limits may also apply."
         },
         {
           "category": "Donations",
@@ -69,7 +69,7 @@
         {
           "category": "Payments",
           "question": "What payment methods are accepted?",
-          "answer": "UbuntuFund Wallet is the only live payment method currently enabled. Mobile money, cards, and bank transfer remain disabled until their production payment adapters and compliance reviews are complete."
+          "answer": "Ujimora Wallet is the only live payment method currently enabled. Mobile money, cards, and bank transfer remain disabled until their production payment adapters and compliance reviews are complete."
         },
         {
           "category": "Payments",
@@ -83,7 +83,7 @@
         },
         {
           "category": "Trust & safety",
-          "question": "How does UbuntuFund verify campaigns?",
+          "question": "How does Ujimora verify campaigns?",
           "answer": "Multi-layer verification: initial team review, organizer identity verification, documentation checks, and community trust scores. Verified campaigns earn badges that help donors assess credibility at a glance."
         },
         {
@@ -114,13 +114,13 @@
     "type": "about",
     "data": {
       "hero": {
-        "title": "Together, We Rise",
-        "subtitle": "UbuntuFund is Ghana's trust infrastructure for giving — empowering communities across the country through transparent, secure crowdfunding."
+        "title": "Together, we fund what matters",
+        "subtitle": "Ujimora is Ghana's trust infrastructure for giving — empowering communities across the country through transparent, secure crowdfunding."
       },
       "mission": {
         "eyebrow": "Our Mission",
         "title": "Democratizing Generosity Across Ghana",
-        "body": "We believe that every community has the power to uplift itself when given the right tools. UbuntuFund provides the infrastructure that connects donors with verified causes, ensuring that every contribution reaches those who need it most."
+        "body": "We believe that every community has the power to uplift itself when given the right tools. Ujimora provides the infrastructure that connects donors with verified causes, ensuring that every contribution reaches those who need it most."
       },
       "vision": {
         "eyebrow": "Our Vision",
@@ -128,12 +128,12 @@
         "body": "We envision a future where geographic and economic barriers no longer prevent communities from accessing the resources they need. Launch progress will be reported from verified platform records rather than aspirational counters."
       },
       "philosophy": {
-        "eyebrow": "The Ubuntu Philosophy",
+        "eyebrow": "The Ujima Philosophy",
         "quote": "I am because we are",
-        "body": "Ubuntu is a Nguni Bantu term meaning \"humanity.\" It speaks to our interconnectedness — the idea that a person is a person through other people. This philosophy is the heartbeat of our platform. When one community thrives, we all thrive. When one person gives, the ripple effect touches countless lives."
+        "body": "Ujima is a Swahili term — one of the seven Kwanzaa principles — meaning \"collective work and responsibility.\" It's the heartbeat of our platform: we build and sustain our community together. When one community thrives, we all thrive; when one person gives, the ripple touches countless lives."
       },
       "team": [
-        { "name": "UbuntuFund Team", "role": "Launch team", "initials": "UF", "bio": "Named leadership profiles will be published after owner verification and consent." }
+        { "name": "Ujimora Team", "role": "Launch team", "initials": "UF", "bio": "Named leadership profiles will be published after owner verification and consent." }
       ]
     }
   },
@@ -141,7 +141,7 @@
     "key": "contact",
     "type": "contact",
     "data": {
-      "email": "hello@ubuntufund.com",
+      "email": "hello@ujimora.com",
       "phone": "",
       "address": "",
       "hours": "Support availability is confirmed by email",

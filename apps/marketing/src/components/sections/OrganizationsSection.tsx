@@ -74,7 +74,7 @@ function OrganizationsSection() {
               sx={{ color: 'rgba(255,255,255,0.78)', mb: 4, lineHeight: 1.7, maxWidth: 460 }}
             >
               Whether you are an NGO, hospital, school, or religious institution,
-              UbuntuFund gives you the tools to grow your fundraising and build
+              Ujimora gives you the tools to grow your fundraising and build
               lasting donor relationships across Ghana.
             </Typography>
             <Button

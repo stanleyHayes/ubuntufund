@@ -2,7 +2,7 @@ import { Suspense, useEffect } from 'react'
 import { ThemeProvider, CssBaseline, GlobalStyles, Box } from '@mui/material'
 import { BrowserRouter, Routes, Route, useLocation, Outlet } from 'react-router-dom'
 import { scrollToHash } from '@/lib/scroll'
-import { ubuntuFundTheme, ttSquaresFontFace, AfricanBanner } from '@ubuntu-fund/ui'
+import { ujimoraTheme, ttSquaresFontFace, AfricanBanner } from '@ubuntu-fund/ui'
 import PublicIcon from '@mui/icons-material/Public'
 import DiamondIcon from '@mui/icons-material/Diamond'
 import AutoStoriesIcon from '@mui/icons-material/AutoStories'
@@ -32,7 +32,7 @@ const BANNER_CONFIG: Record<string, { title: string; subtitle?: string; descript
   '/about': {
     icon: <PublicIcon />,
     title: 'Our Story',
-    subtitle: 'The mission behind UbuntuFund',
+    subtitle: 'The mission behind Ujimora',
     description: 'Born from the belief that collective action can transform communities across Ghana.',
     accentWord: 'Story',
   },
@@ -61,7 +61,7 @@ const BANNER_CONFIG: Record<string, { title: string; subtitle?: string; descript
     icon: <SupportAgentIcon />,
     title: 'Help Center',
     subtitle: 'Find answers and get support',
-    description: 'Browse guides, FAQs, and resources to make the most of your UbuntuFund experience.',
+    description: 'Browse guides, FAQs, and resources to make the most of your Ujimora experience.',
     accentWord: 'Help',
   },
   '/terms': {
@@ -105,7 +105,7 @@ function ScrollToTop() {
 function getBannerConfig(pathname: string) {
   if (BANNER_CONFIG[pathname]) return BANNER_CONFIG[pathname]
   if (pathname.startsWith('/blog/')) return BANNER_CONFIG['/blog']
-  return { title: 'UbuntuFund', accentWord: 'Ubuntu' }
+  return { title: 'Ujimora', accentWord: 'ora' }
 }
 
 function InnerPageLayout() {
@@ -127,7 +127,7 @@ function InnerPageLayout() {
 
 function App() {
   return (
-    <ThemeProvider theme={ubuntuFundTheme}>
+    <ThemeProvider theme={ujimoraTheme}>
       <CssBaseline />
       <GlobalStyles styles={ttSquaresFontFace} />
       <Suspense fallback={<SplashScreen />}>

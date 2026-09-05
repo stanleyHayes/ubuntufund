@@ -15,9 +15,9 @@ interface SocialShareBarProps {
   description?: string
 }
 
-export function SocialShareBar({ url, title = 'UbuntuFund', description: _description }: SocialShareBarProps) {
+export function SocialShareBar({ url, title = 'Ujimora', description: _description }: SocialShareBarProps) {
   const [copied, setCopied] = useState(false)
-  const shareUrl = url ?? (typeof window !== 'undefined' ? window.location.href : 'https://ubuntufund.com')
+  const shareUrl = url ?? (typeof window !== 'undefined' ? window.location.href : 'https://ujimora.com')
 
   const shareLinks = {
     facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,

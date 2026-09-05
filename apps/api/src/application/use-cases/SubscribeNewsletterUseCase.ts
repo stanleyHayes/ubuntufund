@@ -32,7 +32,7 @@ export class SubscribeNewsletterUseCase {
     await this.newsletterRepo.upsertByEmail(email);
 
     return {
-      message: "You're subscribed. Look out for updates from UbuntuFund.",
+      message: "You're subscribed. Look out for updates from Ujimora.",
     };
   }
 }

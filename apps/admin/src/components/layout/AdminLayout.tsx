@@ -8,7 +8,7 @@ import { useAuth } from '@/context/AuthContext'
 
 const ADMIN_TOUR: TourStep[] = [
   {
-    title: 'Welcome to the UbuntuFund console',
+    title: 'Welcome to the Ujimora console',
     body: "This is where you steward the platform — campaigns, donors, disputes, and payouts. Sixty seconds and you'll know your way around.",
   },
   {

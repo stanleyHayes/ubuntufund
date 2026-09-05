@@ -1,4 +1,4 @@
-# UbuntuFund Monorepo — Production Completion Ledger
+# Ujimora Monorepo — Production Completion Ledger
 
 > Active completion pass started: 2026-08-09
 > Goal: production-complete web, mobile, API, marketing, admin, and organization experiences with App Store readiness, CMS-backed public content, soft deletion, and verified frontend/backend parity.
@@ -57,7 +57,7 @@
 - API/admin TypeScript and ESLint checks pass after subscription wiring; the admin production build passes with only the previously recorded bundle-size optimization warning.
 - Persisted `paymentMethod` on donations and exposed it across recent, personal, detail, and campaign donation read models. The admin payment-method panel now uses real records; legacy donations safely resolve to wallet. Unsupported provider labels are rejected before any wallet debit.
 - Completed the web dark-theme TODO with a persisted color-mode provider, shared light/dark theme factory, immediate settings synchronization, and replacement of hard-coded light page surfaces with semantic theme tokens.
-- Added `PRODUCT_NAMING.md` with a live collision/domain screen. `Ubuntu Fund` is already used by an active fundraising organization and Android product; the recommended legal/audience-test finalists are TumiRaise and SikaSpring.
+- Added `PRODUCT_NAMING.md` with a live collision/domain screen. `Ujimora` is already used by an active fundraising organization and Android product; the recommended legal/audience-test finalists are TumiRaise and SikaSpring.
 - Web lint, TypeScript, tests (17/17), and production build pass after dark-mode and payment-contract changes.
 - Closed the remaining source TODO/mock marker sweep. Admins can no longer enable non-wallet providers without a configured live adapter, preventing mobile/web from advertising unusable rails; unsupported transactions are rejected before balance mutation.
 - Prevented unpaid subscription escalation: API subscribe/upgrade use cases now reject every non-Free tier until a verified billing checkout exists; web/mobile paid actions are disabled and unsupported plan entitlements are no longer advertised as live.
@@ -84,7 +84,7 @@
 - Removed the Home page test's asynchronous activity-feed leakage, so web tests pass without React `act()` warnings. Removed the final source lint warning in the shared currency formatter.
 - Applied npm's non-breaking dependency remediation. Patched React Router, Axios, `shell-quote`, and other resolvable production dependencies; the production audit has no critical findings. Remaining findings are Expo/Metro/image parser transitives whose npm-proposed fix is an incompatible Expo downgrade, so they are recorded rather than force-applied. Expo remains 55.0.28 and Doctor remains 19/19.
 - Completed rendered responsive QA in the browser at 390x844 and 1440x900. Marketing, client login, and admin login have no horizontal overflow; primary form controls and actions retain 46-56px mobile targets. The marketing hero remains legible and structurally balanced at both breakpoints.
-- Rendered QA exposed and removed the last hero claim for unsupported mobile-money payouts. Mobile campaign detail now advertises UbuntuFund Wallet only; web Terms and marketing Privacy copy no longer claim unconfigured fees, payouts, payment processors, or identity-verification partners.
+- Rendered QA exposed and removed the last hero claim for unsupported mobile-money payouts. Mobile campaign detail now advertises Ujimora Wallet only; web Terms and marketing Privacy copy no longer claim unconfigured fees, payouts, payment processors, or identity-verification partners.
 - Closed a critical wallet-integrity gap: removed public authenticated deposit/withdraw routes that allowed direct balance mutation without provider settlement, removed matching web controls, and changed integration/E2E setup to avoid production balance-minting APIs. A regression test proves both former endpoints return 404 while wallet-backed donation accounting remains correct (4/4 tests).
 - Fixed mobile campaign reporting to use the real `/campaigns/:id/report` contract. Re-ran the exact frontend/backend endpoint sweep; no remaining references to the removed wallet mutation routes or the invalid mobile `/reports` write remain.
 - Migrated Vite/Vitest aliases away from `__dirname` to native ESM URL resolution and renamed the mobile Vitest config to `.mts`, removing the Vite 8 native-config warnings. Web 17/17, admin 5/5, marketing 2/2, and mobile 5/5 tests pass after the migration.
@@ -199,7 +199,7 @@
 
 ### 3.1 Secrets Committed to Repository
 - **Files:**
-  - `credentials.txt` — contains MongoDB URI (`mongodb+srv://ubuntufund_db_user:b49X2AFJ9uVuzBch@...`), demo passwords (`ubuntu2026`, `admin`), API endpoints.
+  - `credentials.txt` — contains the MongoDB URI, demo passwords, and API endpoints. (Actual values redacted here; the file is gitignored and must never be committed.)
   - `apps/api/.env` — contains `JWT_SECRET`, `JWT_REFRESH_SECRET`, `MONGODB_URI`, `RESEND_API_KEY`.
 - **Risk:** Credentials are permanently in Git history; anyone with repo access can connect to production DB, forge JWTs, or send emails.
 - **Fix:**
@@ -210,7 +210,7 @@
 
 ### 3.2 Weak / Identical JWT Secrets
 - **File:** `apps/api/.env`
-- **Issue:** `JWT_SECRET` and `JWT_REFRESH_SECRET` are identical (`b49X2AFJ9uVuzBch`) and short/weak.
+- **Issue:** `JWT_SECRET` and `JWT_REFRESH_SECRET` are identical (`***REDACTED***`) and short/weak.
 - **Risk:** Token forgery, privilege escalation.
 - **Fix:** Generate strong, distinct secrets (≥256-bit, e.g., `openssl rand -hex 32`).
 

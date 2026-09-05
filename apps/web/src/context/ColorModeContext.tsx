@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 import { ThemeProvider } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
 import GlobalStyles from '@mui/material/GlobalStyles'
-import { createUbuntuFundTheme, ttSquaresFontFace } from '@ubuntu-fund/ui'
+import { createUjimoraTheme, ttSquaresFontFace } from '@ubuntu-fund/ui'
 
 interface ColorModeValue {
   darkMode: boolean
@@ -13,7 +13,7 @@ const ColorModeContext = createContext<ColorModeValue | null>(null)
 
 export function ColorModeProvider({ children }: { children: ReactNode }) {
   const [darkMode, setDarkModeState] = useState(() => localStorage.getItem('uf_color_mode') === 'dark')
-  const theme = useMemo(() => createUbuntuFundTheme(darkMode ? 'dark' : 'light'), [darkMode])
+  const theme = useMemo(() => createUjimoraTheme(darkMode ? 'dark' : 'light'), [darkMode])
 
   const setDarkMode = useCallback((enabled: boolean) => {
     setDarkModeState(enabled)

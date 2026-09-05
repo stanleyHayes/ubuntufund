@@ -5,7 +5,7 @@ test.describe('Navigation', () => {
     const pages = ['/', '/campaigns', '/about', '/login', '/register']
     for (const url of pages) {
       await page.goto(url)
-      await expect(page).toHaveTitle(/UbuntuFund/)
+      await expect(page).toHaveTitle(/Ujimora/)
     }
   })
 })

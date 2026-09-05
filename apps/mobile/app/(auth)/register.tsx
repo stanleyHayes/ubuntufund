@@ -6,7 +6,7 @@ import { Link, router } from 'expo-router'
 import { brandColors, neumorphism } from '@/theme'
 import { OrganizationType } from '@ubuntu-fund/types'
 import { useAuth } from '@/context/AuthContext'
-import { UbuntuLogo } from '@/components/UbuntuLogo'
+import { UjimoraLogo } from '@/components/UjimoraLogo'
 
 type AccountType = 'individual' | 'organization'
 
@@ -79,11 +79,11 @@ export default function RegisterScreen() {
       >
         {/* Forest brand stage — mirrors the web AuthLayout panel */}
         <View style={[styles.stage, { paddingTop: insets.top + 36 }]}>
-          <UbuntuLogo size={44} />
+          <UjimoraLogo size={44} />
           <Text style={styles.stageTitle}>
             Together, <Text style={styles.stageTitleAccent}>We Rise</Text>
           </Text>
-          <Text style={styles.stageCaption}>One chain · Many hands · Ubuntu</Text>
+          <Text style={styles.stageCaption}>One chain · Many hands · Ujima</Text>
         </View>
 
         {/* Parchment sheet */}

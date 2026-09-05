@@ -41,7 +41,7 @@ export default function PrivacyScreen() {
 
       <Text style={styles.heading}>7. Children's Privacy</Text>
       <Text style={styles.body}>
-        UbuntuFund is not intended for children under 18. We do not knowingly collect information from minors.
+        Ujimora is not intended for children under 18. We do not knowingly collect information from minors.
       </Text>
 
       <Text style={styles.heading}>8. Changes to This Policy</Text>
@@ -51,7 +51,7 @@ export default function PrivacyScreen() {
 
       <Text style={styles.heading}>9. Contact</Text>
       <Text style={styles.body}>
-        Questions about privacy? Contact us at privacy@ubuntufund.com.
+        Questions about privacy? Contact us at privacy@ujimora.com.
       </Text>
     </ScrollView>
   )

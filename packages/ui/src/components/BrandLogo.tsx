@@ -4,16 +4,16 @@ import Typography from '@mui/material/Typography'
 export interface BrandLogoProps {
   /** Mark height in px. Wordmark scales with it. */
   size?: number
-  /** Render the "UbuntuFund" wordmark next to the mark. */
+  /** Render the "Ujimora" wordmark next to the mark. */
   withWordmark?: boolean
   /** Set when the logo sits on a dark (forest) surface. */
   onDark?: boolean
 }
 
 /**
- * The UbuntuFund mark: two interlocked chain links — a sharp-cornered gold
+ * The Ujimora mark: two interlocked chain links — a sharp-cornered gold
  * diamond woven through a rounded sage one — drawn from the platform's
- * unity-chain motif ("One chain. Many hands. Ubuntu.").
+ * unity-chain motif ("One chain. Many hands. Ujima.").
  */
 export function BrandLogo({ size = 36, withWordmark = true, onDark = false }: BrandLogoProps) {
   return (
@@ -71,10 +71,7 @@ export function BrandLogo({ size = 36, withWordmark = true, onDark = false }: Br
             userSelect: 'none',
           }}
         >
-          Ubuntu
-          <Box component="span" sx={{ color: '#C7A24A' }}>
-            Fund
-          </Box>
+          Ujimora
         </Typography>
       )}
     </Box>

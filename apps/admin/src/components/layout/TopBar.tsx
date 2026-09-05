@@ -136,7 +136,7 @@ export default function TopBar({ onReplayTour }: { onReplayTour: () => void }) {
           Giving Across Ghana · Admin Console
         </Typography>
         <Link
-          href="https://ubuntufund.vercel.app"
+          href="https://ujimora.vercel.app"
           target="_blank"
           rel="noreferrer"
           underline="none"

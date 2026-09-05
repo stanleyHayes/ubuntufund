@@ -188,7 +188,7 @@ export function OrganizationsPage() {
                     overflow: 'hidden',
                   }}
                 >
-                  Verified organization with {org.campaignCount} active campaign{org.campaignCount !== 1 ? 's' : ''} on UbuntuFund.
+                  Verified organization with {org.campaignCount} active campaign{org.campaignCount !== 1 ? 's' : ''} on Ujimora.
                 </Typography>
 
                 {/* Spacer */}

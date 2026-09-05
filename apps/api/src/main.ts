@@ -31,7 +31,7 @@ async function bootstrap(): Promise<void> {
   }
 
   const server = app.listen(config.port, () => {
-    logger.info(`Ubuntu Fund API running on port ${config.port} [${config.nodeEnv}]`);
+    logger.info(`Ujimora API running on port ${config.port} [${config.nodeEnv}]`);
   });
 
   // Bound request lifetimes (slowloris / hung-connection protection).

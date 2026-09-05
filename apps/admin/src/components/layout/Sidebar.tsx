@@ -167,7 +167,7 @@ export default function Sidebar() {
               color: 'text.primary',
             }}
           >
-            UbuntuFund
+            Ujimora
           </Typography>
           <Typography variant="caption" sx={{ color: '#C7A24A', letterSpacing: '0.14em', textTransform: 'uppercase', fontSize: '0.6rem', fontWeight: 700 }}>
             Admin Console

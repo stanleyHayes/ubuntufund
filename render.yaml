@@ -1,10 +1,10 @@
-# Render Blueprint — free-tier deployment of the UbuntuFund API.
+# Render Blueprint — free-tier deployment of the Ujimora API.
 # Apply at https://dashboard.render.com/blueprints (New > Blueprint) after
 # connecting the GitHub repo. MongoDB is not offered on Render's free tier:
 # create a free MongoDB Atlas M0 cluster and paste its URI into MONGODB_URI.
 services:
   - type: web
-    name: ubuntu-fund-api
+    name: ujimora-api
     runtime: node
     plan: free
     buildCommand: npm install
@@ -22,4 +22,16 @@ services:
         generateValue: true
       - key: CORS_ORIGINS
         # comma-separated browser origins allowed to call the API
-        value: https://ubuntufund.vercel.app
+        value: https://ujimora.com,https://www.ujimora.com,https://app.ujimora.com,https://admin.ujimora.com
+      # Public base URLs — build canonical /c/:slug links, QR short-links, and the
+      # Paystack donor callback. Point these at your live domains.
+      - key: PUBLIC_WEB_URL
+        value: https://app.ujimora.com
+      - key: PUBLIC_API_URL
+        value: https://api.ujimora.com
+      # Paystack (card + mobile money in GHS). Paste live keys in the dashboard —
+      # never commit them. Blank = Paystack rail disabled, wallet rail still works.
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      - key: PAYSTACK_PUBLIC_KEY
+        sync: false

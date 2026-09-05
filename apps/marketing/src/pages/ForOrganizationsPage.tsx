@@ -509,7 +509,7 @@ function ForOrganizationsPage() {
             </Box>
           </Typography>
           <Typography sx={{ color: 'rgba(255,255,255,0.6)', mb: 5, fontSize: '1.05rem', lineHeight: 1.7, animation: `${fadeSlide} 0.5s ease 0.2s both` }}>
-            Create an organization workspace, prepare a campaign, and keep your team aligned while UbuntuFund completes launch readiness.
+            Create an organization workspace, prepare a campaign, and keep your team aligned while Ujimora completes launch readiness.
           </Typography>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="center" sx={{ animation: `${fadeSlide} 0.5s ease 0.3s both` }}>
             <Button

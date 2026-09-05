@@ -35,7 +35,7 @@ export function useUser(userId: string) {
         if (!cancelled) {
           setUser({
             id: userId,
-            name: 'UbuntuFund User',
+            name: 'Ujimora User',
             trustScore: 50,
             verificationLevel: 1,
             role: 'user',

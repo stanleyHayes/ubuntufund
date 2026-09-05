@@ -12,12 +12,12 @@ export function TermsPage() {
       <Box sx={{ '& h5': { fontWeight: 700, mt: 4, mb: 1.5 }, '& p': { color: 'text.secondary', mb: 2, lineHeight: 1.8 } }}>
         <Typography variant="h5">1. Acceptance of Terms</Typography>
         <Typography>
-          By accessing or using UbuntuFund, you agree to be bound by these Terms of Service. If you do not agree, you may not use the platform.
+          By accessing or using Ujimora, you agree to be bound by these Terms of Service. If you do not agree, you may not use the platform.
         </Typography>
 
         <Typography variant="h5">2. Eligibility</Typography>
         <Typography>
-          You must be at least 18 years old and have the legal capacity to enter into a binding agreement. By using UbuntuFund, you represent that you meet these requirements.
+          You must be at least 18 years old and have the legal capacity to enter into a binding agreement. By using Ujimora, you represent that you meet these requirements.
         </Typography>
 
         <Typography variant="h5">3. Account Responsibilities</Typography>
@@ -32,17 +32,17 @@ export function TermsPage() {
 
         <Typography variant="h5">5. Donations</Typography>
         <Typography>
-          Donations are voluntary contributions. While UbuntuFund facilitates the transfer of funds, we do not guarantee the outcome of any campaign. Donors are encouraged to review campaign details before contributing.
+          Donations are voluntary contributions. While Ujimora facilitates the transfer of funds, we do not guarantee the outcome of any campaign. Donors are encouraged to review campaign details before contributing.
         </Typography>
 
         <Typography variant="h5">6. Fees</Typography>
         <Typography>
-          The current launch configuration uses the Free plan and UbuntuFund Wallet only. Any future platform or processing fee must be displayed before a transaction and reflected in the applicable published policy.
+          The current launch configuration uses the Free plan and Ujimora Wallet only. Any future platform or processing fee must be displayed before a transaction and reflected in the applicable published policy.
         </Typography>
 
         <Typography variant="h5">7. Prohibited Conduct</Typography>
         <Typography>
-          Users may not use UbuntuFund for fraudulent purposes, money laundering, terrorist financing, or any illegal activity. We reserve the right to block campaigns and accounts that violate these terms.
+          Users may not use Ujimora for fraudulent purposes, money laundering, terrorist financing, or any illegal activity. We reserve the right to block campaigns and accounts that violate these terms.
         </Typography>
 
         <Typography variant="h5">8. Refunds</Typography>
@@ -52,7 +52,7 @@ export function TermsPage() {
 
         <Typography variant="h5">9. Limitation of Liability</Typography>
         <Typography>
-          UbuntuFund is not liable for any indirect, incidental, or consequential damages arising from your use of the platform. Our total liability shall not exceed the fees paid to us in the preceding 12 months.
+          Ujimora is not liable for any indirect, incidental, or consequential damages arising from your use of the platform. Our total liability shall not exceed the fees paid to us in the preceding 12 months.
         </Typography>
 
         <Typography variant="h5">10. Governing Law</Typography>

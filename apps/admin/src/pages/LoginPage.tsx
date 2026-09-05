@@ -208,15 +208,7 @@ export default function LoginPage() {
               mb: 1,
             }}
           >
-            Ubuntu
-            <Box
-              component="span"
-              sx={{
-                color: '#5E8F72',
-              }}
-            >
-              Fund
-            </Box>
+            Ujimora
           </Typography>
 
           {/* Typewriter subtitle */}
@@ -348,15 +340,7 @@ export default function LoginPage() {
               color: '#E0E0E8',
             }}
           >
-            Ubuntu
-            <Box
-              component="span"
-              sx={{
-                color: '#5E8F72',
-              }}
-            >
-              Fund
-            </Box>
+            Ujimora
           </Typography>
           <Typography
             sx={{
@@ -435,7 +419,7 @@ export default function LoginPage() {
                 required
                 autoComplete="email"
                 autoFocus
-                placeholder="admin@ubuntufund.com"
+                placeholder="admin@ujimora.com"
                 sx={inputSx}
               />
 
@@ -561,7 +545,7 @@ export default function LoginPage() {
               letterSpacing: '0.05em',
             }}
           >
-            UbuntuFund &copy; {new Date().getFullYear()} &mdash; Secured Admin Portal
+            Ujimora &copy; {new Date().getFullYear()} &mdash; Secured Admin Portal
           </Typography>
         </Box>
       </Box>

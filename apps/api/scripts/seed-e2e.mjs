@@ -12,10 +12,10 @@ const now = new Date()
 const passwordHash = await bcrypt.hash('SeededCreator123!', 12)
 
 await db.collection('users').updateOne(
-  { email: 'seed-creator@ubuntufund.dev' },
+  { email: 'seed-creator@ujimora.dev' },
   {
     $setOnInsert: {
-      email: 'seed-creator@ubuntufund.dev',
+      email: 'seed-creator@ujimora.dev',
       name: 'Ama Mensah',
       passwordHash,
       role: 'user',
@@ -29,7 +29,7 @@ await db.collection('users').updateOne(
   },
   { upsert: true }
 )
-const creator = await db.collection('users').findOne({ email: 'seed-creator@ubuntufund.dev' })
+const creator = await db.collection('users').findOne({ email: 'seed-creator@ujimora.dev' })
 
 await db.collection('campaigns').updateOne(
   { title: 'Seeded Water Project' },

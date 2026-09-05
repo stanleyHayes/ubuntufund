@@ -33,7 +33,7 @@ const testimonials = [
     name: 'No false checkout',
     role: 'Payment readiness principle',
     quote:
-      'Only the internal UbuntuFund Wallet flow is available during launch readiness. External payment methods stay disabled until verified provider adapters are connected.',
+      'Only the internal Ujimora Wallet flow is available during launch readiness. External payment methods stay disabled until verified provider adapters are connected.',
   },
 ]
 

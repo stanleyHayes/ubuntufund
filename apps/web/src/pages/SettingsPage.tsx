@@ -275,7 +275,7 @@ export function SettingsPage() {
             Settings
           </Typography>
           <Typography sx={{ color: INK_SECONDARY, mt: 0.5 }}>
-            Manage how UbuntuFund notifies you and what others can see.
+            Manage how Ujimora notifies you and what others can see.
           </Typography>
         </Box>
 
@@ -389,7 +389,7 @@ export function SettingsPage() {
                 </TextField>
               </Box>
               <Box sx={{ mt: 1 }}>
-                <ToggleRow label="Dark mode" description="Use Ubuntu Fund's low-light color theme" checked={darkMode} onChange={(v) => { setDarkMode(v); persistSettings({ darkMode: v }) }} />
+                <ToggleRow label="Dark mode" description="Use Ujimora's low-light color theme" checked={darkMode} onChange={(v) => { setDarkMode(v); persistSettings({ darkMode: v }) }} />
               </Box>
             </SettingsSection>
 

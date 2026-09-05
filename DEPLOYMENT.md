@@ -21,7 +21,7 @@ web service (free plan, health check on `/health`, runs `tsx src/main.ts`).
 2. Render reads `render.yaml`; when prompted, paste the Atlas URI into
    `MONGODB_URI`. `JWT_SECRET` / `JWT_REFRESH_SECRET` are auto-generated.
 3. Set `CORS_ORIGINS` to your deployed frontend origins, comma-separated,
-   e.g. `https://ubuntufund.vercel.app,https://admin-ubuntufund.vercel.app`.
+   e.g. `https://ujimora.vercel.app,https://admin-ujimora.vercel.app`.
 4. The service URL will be `https://ubuntu-fund-api.onrender.com`. If Render
    assigns a different name, update the rewrite destinations in the three
    `vercel.json` files.

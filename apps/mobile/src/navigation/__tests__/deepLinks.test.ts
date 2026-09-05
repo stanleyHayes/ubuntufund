@@ -8,7 +8,7 @@ const { linking } = await import('../deepLinks')
 
 describe('deep link configuration', () => {
   it('registers the custom scheme and the Expo dev URL', () => {
-    expect(linking.prefixes).toContain('ubuntufund://')
+    expect(linking.prefixes).toContain('ujimora://')
     expect(linking.prefixes).toContain('exp://127.0.0.1:8081/')
   })
 

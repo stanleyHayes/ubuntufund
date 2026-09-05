@@ -72,7 +72,7 @@ export default function NewsletterPage() {
         tone="green"
         eyebrow="Growth"
         title="Newsletter Subscribers"
-        lede="Everyone who signed up for UbuntuFund updates from the marketing site, newest first."
+        lede="Everyone who signed up for Ujimora updates from the marketing site, newest first."
         icon={<MarkEmailReadRoundedIcon />}
         stats={[{ label: 'Total Subscribers', value: loading ? '—' : subscribers.length }]}
       />

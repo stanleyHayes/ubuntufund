@@ -41,7 +41,7 @@ export function ShareCampaignButton({
     if (navigator.share) {
       void navigator.share({
         title: `Support ${title}`,
-        text: `Check out this campaign on UbuntuFund`,
+        text: `Check out this campaign on Ujimora`,
         url,
       }).catch(() => {
         // If share dialog is cancelled, fall back to clipboard

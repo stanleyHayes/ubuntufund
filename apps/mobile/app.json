@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "UbuntuFund",
+    "name": "Ujimora",
     "slug": "ubuntu-fund",
-    "scheme": "ubuntufund",
+    "scheme": "ujimora",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -17,7 +17,7 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.ubuntufund.app",
+      "bundleIdentifier": "com.ujimora.app",
       "buildNumber": "1",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
@@ -39,14 +39,14 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#2E7D32"
       },
-      "package": "com.ubuntufund.app",
+      "package": "com.ujimora.app",
       "intentFilters": [
         {
           "action": "VIEW",
           "autoVerify": true,
           "data": [
             {
-              "scheme": "ubuntufund"
+              "scheme": "ujimora"
             }
           ],
           "category": [

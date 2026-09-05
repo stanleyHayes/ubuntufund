@@ -69,7 +69,7 @@ const PAYMENT_PROVIDERS: PaymentProvider[] = [
     bgColor: '#F2EFEA',
   },
   {
-    name: 'UbuntuFund Wallet',
+    name: 'Ujimora Wallet',
     shortName: 'Wallet',
     category: 'wallet',
     iconPaths: [
@@ -85,7 +85,7 @@ const CATEGORY_META: Record<string, { label: string; color: string }> = {
   card: { label: 'Cards', color: '#2E3D2F' },
   bank: { label: 'Bank', color: '#A07E33' },
   crypto: { label: 'Crypto', color: '#8B6F4E' },
-  wallet: { label: 'UbuntuFund', color: '#C7A24A' },
+  wallet: { label: 'Ujimora', color: '#C7A24A' },
 }
 
 const CATEGORY_ORDER = ['mobile_money', 'card', 'bank', 'crypto', 'wallet'] as const
@@ -113,9 +113,9 @@ function getProviderBySlug(slug: string): PaymentProvider | undefined {
     'mastercard': 'Mastercard',
     'bank-transfer': 'Bank Transfer',
     'bank': 'Bank Transfer',
-    'ubuntufund-wallet': 'UbuntuFund Wallet',
-    'ubuntu-fund-wallet': 'UbuntuFund Wallet',
-    'wallet': 'UbuntuFund Wallet',
+    'ujimora-wallet': 'Ujimora Wallet',
+    'ubuntu-fund-wallet': 'Ujimora Wallet',
+    'wallet': 'Ujimora Wallet',
   }
 
   const name = slugMap[normalized]
@@ -215,7 +215,7 @@ function ProviderCard({ provider, index, onSelect, selected, methodData }: Provi
         )}
 
         {isWallet ? (
-          /* The UbuntuFund wallet tile carries the brand mark itself. */
+          /* The Ujimora wallet tile carries the brand mark itself. */
           <Box
             className="provider-icon"
             sx={{

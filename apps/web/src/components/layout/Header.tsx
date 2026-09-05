@@ -164,7 +164,7 @@ export function Header() {
           <Box
             component={RouterLink}
             to="/"
-            aria-label="UbuntuFund home"
+            aria-label="Ujimora home"
             sx={{ display: 'flex', flexDirection: 'column', textDecoration: 'none', mr: 3, py: 0.5 }}
           >
             <BrandLogo size={28} onDark />

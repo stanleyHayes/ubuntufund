@@ -1,15 +1,15 @@
 import React from 'react'
 import { render } from '@testing-library/react-native'
-import { UbuntuLogo } from '../UbuntuLogo'
+import { UjimoraLogo } from '../UjimoraLogo'
 
-describe('UbuntuLogo', () => {
+describe('UjimoraLogo', () => {
   it('renders without crashing', () => {
-    const { root } = render(<UbuntuLogo />)
+    const { root } = render(<UjimoraLogo />)
     expect(root).toBeTruthy()
   })
 
   it('renders with custom size', () => {
-    const { root } = render(<UbuntuLogo size={128} />)
+    const { root } = render(<UjimoraLogo size={128} />)
     expect(root).toBeTruthy()
   })
 })

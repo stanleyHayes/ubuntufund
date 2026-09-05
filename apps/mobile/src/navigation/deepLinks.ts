@@ -1,7 +1,7 @@
 import * as Linking from 'expo-linking'
 
 export const linking = {
-  prefixes: ['ubuntufund://', Linking.createURL('/')],
+  prefixes: ['ujimora://', Linking.createURL('/')],
   config: {
     screens: {
       '(tabs)': {

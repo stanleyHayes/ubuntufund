@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { ThemeProvider } from '@mui/material/styles'
-import { ubuntuFundTheme } from '@ubuntu-fund/ui'
+import { ujimoraTheme } from '@ubuntu-fund/ui'
 import {
   CampaignCategory,
   CampaignPriority,
@@ -74,7 +74,7 @@ import { HomePage } from '@/pages/HomePage'
 
 function renderWithProviders(ui: React.ReactElement) {
   return render(
-    <ThemeProvider theme={ubuntuFundTheme}>
+    <ThemeProvider theme={ujimoraTheme}>
       <MemoryRouter>{ui}</MemoryRouter>
     </ThemeProvider>
   )

@@ -61,7 +61,7 @@ export function CreateCampaignPage() {
           {/* ---------------------------- Encouragement rail ---------------------------- */}
           <Box component="aside" sx={{ position: { md: 'sticky' }, top: { md: 32 } }}>
             <Typography sx={{ color: INK_SECONDARY, lineHeight: 1.65, maxWidth: 420 }}>
-              From Accra to Tamale, UbuntuFund helps everyday Ghanaians raise funds with trust built in — every cedi tracked,
+              From Accra to Tamale, Ujimora helps everyday Ghanaians raise funds with trust built in — every cedi tracked,
               every donor thanked. Take it one step at a time; you can review everything before it goes live.
             </Typography>
 
@@ -112,7 +112,7 @@ export function CreateCampaignPage() {
               >
                 <Box aria-hidden sx={{ width: 8, height: 8, bgcolor: GOLD, transform: 'rotate(45deg)' }} />
                 <Box aria-hidden sx={{ width: 8, height: 8, bgcolor: SAGE, transform: 'rotate(45deg)' }} />
-                One chain · Many hands · Ubuntu
+                One chain · Many hands · Ujima
               </Box>
             </Box>
           </Box>

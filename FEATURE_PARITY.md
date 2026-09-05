@@ -1,4 +1,4 @@
-# UbuntuFund Web and Mobile Feature Parity
+# Ujimora Web and Mobile Feature Parity
 
 Last verified: 2026-08-10
 
@@ -32,7 +32,7 @@ This matrix covers user- and organization-facing capabilities that are appropria
 
 ## Intentional launch boundaries
 
-- UbuntuFund Wallet is the only active donation method. Card, mobile-money, and bank adapters are disabled.
+- Ujimora Wallet is the only active donation method. Card, mobile-money, and bank adapters are disabled.
 - Paid subscription activation is rejected by the API and disabled in both clients until verified billing exists.
 - Refund requests are persisted and visible, but approval and settlement are not automatic.
 - External payout and self-service withdrawal controls are not exposed.

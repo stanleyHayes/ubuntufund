@@ -5,32 +5,32 @@ const sections = [
   {
     title: '1. Acceptance of Terms',
     content:
-      'By accessing or using UbuntuFund ("the Platform"), you agree to be bound by these Terms of Service. If you do not agree to these terms, you may not access or use the Platform. We reserve the right to update these terms at any time, and continued use of the Platform constitutes acceptance of any modifications.',
+      'By accessing or using Ujimora ("the Platform"), you agree to be bound by these Terms of Service. If you do not agree to these terms, you may not access or use the Platform. We reserve the right to update these terms at any time, and continued use of the Platform constitutes acceptance of any modifications.',
   },
   {
     title: '2. Eligibility',
     content:
-      'You must be at least 18 years of age or the age of majority in your jurisdiction to use UbuntuFund. By creating an account, you represent that you meet these eligibility requirements. Organizations must be legally registered in their respective countries to create campaigns.',
+      'You must be at least 18 years of age or the age of majority in your jurisdiction to use Ujimora. By creating an account, you represent that you meet these eligibility requirements. Organizations must be legally registered in their respective countries to create campaigns.',
   },
   {
     title: '3. Account Terms',
     content:
-      'You are responsible for maintaining the security of your account and password. UbuntuFund cannot and will not be liable for any loss or damage from your failure to comply with this security obligation. You must provide accurate, complete, and current information during registration and keep your account information updated.',
+      'You are responsible for maintaining the security of your account and password. Ujimora cannot and will not be liable for any loss or damage from your failure to comply with this security obligation. You must provide accurate, complete, and current information during registration and keep your account information updated.',
   },
   {
     title: '4. Campaign Rules',
     content:
-      'Campaign organizers must provide truthful and accurate information about their cause. Funds raised must be used for the stated purpose. Campaign organizers agree to provide updates to donors on the progress and use of funds. UbuntuFund reserves the right to review, suspend, or remove any campaign that violates these terms or our community guidelines. Campaigns must comply with all applicable local laws and regulations.',
+      'Campaign organizers must provide truthful and accurate information about their cause. Funds raised must be used for the stated purpose. Campaign organizers agree to provide updates to donors on the progress and use of funds. Ujimora reserves the right to review, suspend, or remove any campaign that violates these terms or our community guidelines. Campaigns must comply with all applicable local laws and regulations.',
   },
   {
     title: '5. Donations',
     content:
-      'Donations made through UbuntuFund are voluntary contributions. While campaigns can move through a review workflow, UbuntuFund does not guarantee that funds will be used as described by campaign organizers. Donors acknowledge that contributions are made at their own discretion. Transaction history is not a tax receipt; users should obtain independent tax advice.',
+      'Donations made through Ujimora are voluntary contributions. While campaigns can move through a review workflow, Ujimora does not guarantee that funds will be used as described by campaign organizers. Donors acknowledge that contributions are made at their own discretion. Transaction history is not a tax receipt; users should obtain independent tax advice.',
   },
   {
     title: '6. Fees and Payments',
     content:
-      'Current product configuration and any applicable platform fee are shown on the Pricing page before use. UbuntuFund Wallet is the only active launch method; external payment and payout providers are disabled until verified. Paid subscriptions and self-service external disbursement are not currently available.',
+      'Current product configuration and any applicable platform fee are shown on the Pricing page before use. Ujimora Wallet is the only active launch method; external payment and payout providers are disabled until verified. Paid subscriptions and self-service external disbursement are not currently available.',
   },
   {
     title: '7. Prohibited Conduct',
@@ -40,22 +40,22 @@ const sections = [
   {
     title: '8. Intellectual Property',
     content:
-      'The UbuntuFund name, logo, and all related marks are trademarks of UbuntuFund. Content uploaded by users remains the property of the respective users, but you grant UbuntuFund a non-exclusive license to use, display, and distribute such content in connection with the Platform\'s operation.',
+      'The Ujimora name, logo, and all related marks are trademarks of Ujimora. Content uploaded by users remains the property of the respective users, but you grant Ujimora a non-exclusive license to use, display, and distribute such content in connection with the Platform\'s operation.',
   },
   {
     title: '9. Termination',
     content:
-      'UbuntuFund may terminate or suspend your account at any time for violation of these terms. Upon termination, your right to use the Platform ceases immediately. Any pending campaign funds will be handled in accordance with our refund policy. You may also close your account at any time by contacting our support team.',
+      'Ujimora may terminate or suspend your account at any time for violation of these terms. Upon termination, your right to use the Platform ceases immediately. Any pending campaign funds will be handled in accordance with our refund policy. You may also close your account at any time by contacting our support team.',
   },
   {
     title: '10. Limitation of Liability',
     content:
-      'UbuntuFund is provided "as is" without warranty of any kind. To the maximum extent permitted by law, UbuntuFund shall not be liable for any indirect, incidental, special, consequential, or punitive damages resulting from your use of or inability to use the Platform. Our total liability shall not exceed the amount of fees paid by you to UbuntuFund in the twelve months preceding the claim.',
+      'Ujimora is provided "as is" without warranty of any kind. To the maximum extent permitted by law, Ujimora shall not be liable for any indirect, incidental, special, consequential, or punitive damages resulting from your use of or inability to use the Platform. Our total liability shall not exceed the amount of fees paid by you to Ujimora in the twelve months preceding the claim.',
   },
   {
     title: '11. Dispute Resolution',
     content:
-      'Any disputes arising from these terms or your use of UbuntuFund shall first be attempted to be resolved through good-faith negotiation. If negotiation fails, disputes shall be submitted to binding arbitration in accordance with the rules of the Ghana Arbitration Centre. The arbitration shall take place in Accra, Ghana.',
+      'Any disputes arising from these terms or your use of Ujimora shall first be attempted to be resolved through good-faith negotiation. If negotiation fails, disputes shall be submitted to binding arbitration in accordance with the rules of the Ghana Arbitration Centre. The arbitration shall take place in Accra, Ghana.',
   },
   {
     title: '12. Governing Law',
@@ -69,14 +69,14 @@ function TermsPage() {
     <LegalPageLayout
       eyebrow="Platform agreement"
       title="Terms of Service"
-      description="The ground rules for creating campaigns, supporting causes, and using UbuntuFund responsibly."
+      description="The ground rules for creating campaigns, supporting causes, and using Ujimora responsibly."
       icon={<GavelRoundedIcon />}
       panelLabel="Plain-language principle"
       panelTitle="Use the platform honestly, securely, and for its stated purpose."
       panelBody="These terms explain account responsibilities, campaign conduct, donations, and dispute handling."
-      introduction="Welcome to UbuntuFund. These Terms of Service govern your use of our crowdfunding platform. Please read them carefully before creating an account, publishing a campaign, or making a contribution."
+      introduction="Welcome to Ujimora. These Terms of Service govern your use of our crowdfunding platform. Please read them carefully before creating an account, publishing a campaign, or making a contribution."
       sections={sections}
-      contact={<>Questions about these terms can be sent to <strong>legal@ubuntufund.com</strong>.</>}
+      contact={<>Questions about these terms can be sent to <strong>legal@ujimora.com</strong>.</>}
     />
   )
 }

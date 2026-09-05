@@ -16,7 +16,7 @@ import { CampaignCategory } from '@ubuntu-fund/types'
 import { useCampaigns } from '@/hooks/useCampaigns'
 import { useAuth } from '@/context/AuthContext'
 import { ProgressBar } from '@/components/ProgressBar'
-import { UbuntuLogo } from '@/components/UbuntuLogo'
+import { UjimoraLogo } from '@/components/UjimoraLogo'
 import { RemoteImage } from '@/components/RemoteImage'
 import { FadeInUp } from '@/components/anim/FadeInUp'
 import { PressableScale } from '@/components/anim/PressableScale'
@@ -198,7 +198,7 @@ export default function HomeTab() {
               <Text style={styles.greeting}>{getGreeting()},</Text>
               <Text style={styles.userName}>{user?.name?.split(' ')[0] ?? 'Friend'}</Text>
             </View>
-            <UbuntuLogo size={44} />
+            <UjimoraLogo size={44} />
           </View>
 
           {/* Quick stats */}

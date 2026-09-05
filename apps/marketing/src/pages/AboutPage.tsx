@@ -16,11 +16,11 @@ import { useContent } from '../hooks/useContent'
 interface TeamMember { name: string; role: string; initials: string; bio: string }
 
 const ABOUT_FALLBACK = {
-  hero: { title: 'Together, We Rise', subtitle: "UbuntuFund is Ghana's trust infrastructure for giving — connecting people with transparent community fundraising records." },
+  hero: { title: 'Together, we fund what matters', subtitle: "Ujimora is Ghana's trust infrastructure for giving — connecting people with transparent community fundraising records." },
   mission: { eyebrow: 'Our mission', title: 'Make community fundraising easier to trust', body: 'We give campaign organizers a clear place to explain a need, document progress, and keep supporters informed. Donors can review the same campaign history before and after they contribute.' },
   vision: { eyebrow: 'Our direction', title: 'A stronger public record for generosity', body: 'We are building toward a Ghanaian giving ecosystem where campaign claims, reviews, contributions, updates, and operational decisions form one accountable record.' },
-  philosophy: { eyebrow: 'The Ubuntu philosophy', quote: 'I am because we are', body: 'Ubuntu describes our interdependence: individual wellbeing grows through the wellbeing of the community. The product reflects that idea by making support visible, shared, and accountable.' },
-  team: [{ name: 'UbuntuFund Team', role: 'Launch team', initials: 'UF', bio: 'Named leadership profiles will be published after owner verification and consent.' }] as TeamMember[],
+  philosophy: { eyebrow: 'The Ujima philosophy', quote: 'We build together', body: 'Ujima — collective work and responsibility — describes our interdependence: individual wellbeing grows through shared work on behalf of the community. The product reflects that idea by making support visible, shared, and accountable.' },
+  team: [{ name: 'Ujimora Team', role: 'Launch team', initials: 'UF', bio: 'Named leadership profiles will be published after owner verification and consent.' }] as TeamMember[],
 }
 
 const OPERATING_MODEL = [
@@ -40,14 +40,14 @@ function AboutPage() {
   const about = useContent('about', ABOUT_FALLBACK)
   return (
     <Box component="main" sx={{ flex: 1, bgcolor: 'background.default', pb: { xs: 8, md: 12 } }}>
-      <InternalPageHero eyebrow="About UbuntuFund" title={about.hero.title} description={about.hero.subtitle} icon={<PublicRoundedIcon />} panelLabel="Built in Ghana" panelTitle="Giving infrastructure shaped around local communities." panelBody="Cedi-first records. Human review. Transparent campaign histories." primaryAction={{ label: 'How trust works', href: '/how-it-works' }} secondaryAction={{ label: 'Talk to our team', href: '/contact' }} />
+      <InternalPageHero eyebrow="About Ujimora" title={about.hero.title} description={about.hero.subtitle} icon={<PublicRoundedIcon />} panelLabel="Built in Ghana" panelTitle="Giving infrastructure shaped around local communities." panelBody="Cedi-first records. Human review. Transparent campaign histories." primaryAction={{ label: 'How trust works', href: '/how-it-works' }} secondaryAction={{ label: 'Talk to our team', href: '/contact' }} />
 
       <Container maxWidth="lg" sx={{ mt: { xs: 6, md: 10 } }}>
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'minmax(0,.8fr) minmax(0,1.2fr)' }, gap: { xs: 4, md: 8 }, alignItems: 'start' }}>
           <Box sx={{ position: { md: 'sticky' }, top: { md: 92 } }}>
             <Typography variant="overline" color="secondary.dark">Why we exist</Typography>
             <Typography component="h2" sx={{ mt: 1.5, fontSize: { xs: '2.25rem', md: '3.4rem' }, fontWeight: 900, lineHeight: 1.02, letterSpacing: '-.045em', textWrap: 'balance' }}>Giving already happens. Trust needs better infrastructure.</Typography>
-            <Typography sx={{ mt: 3, maxWidth: 500, color: 'text.secondary', fontSize: { xs: '1rem', md: '1.08rem' }, lineHeight: 1.8 }}>Families, associations, faith communities, organizers, and supporters already mobilize around urgent needs. UbuntuFund is being built to give that activity a clearer shared record—from the first campaign statement to the latest update.</Typography>
+            <Typography sx={{ mt: 3, maxWidth: 500, color: 'text.secondary', fontSize: { xs: '1rem', md: '1.08rem' }, lineHeight: 1.8 }}>Families, associations, faith communities, organizers, and supporters already mobilize around urgent needs. Ujimora is being built to give that activity a clearer shared record—from the first campaign statement to the latest update.</Typography>
           </Box>
           <Stack spacing={3}>
             <Box
@@ -122,7 +122,7 @@ function AboutPage() {
               <Typography sx={{ mt: 3, color: 'text.secondary', lineHeight: 1.8 }}>{about.philosophy.body}</Typography>
             </Box>
             <Box sx={{ mt: 5, pt: 3, boxShadow: 'inset 0 8px 12px -14px rgba(72,62,43,.8)' }}>
-              <Typography sx={{ fontWeight: 800 }}>{about.team[0]?.name ?? 'UbuntuFund Team'}</Typography>
+              <Typography sx={{ fontWeight: 800 }}>{about.team[0]?.name ?? 'Ujimora Team'}</Typography>
               <Typography sx={{ mt: .5, color: 'text.secondary', fontSize: '.85rem' }}>{about.team[0]?.bio ?? ABOUT_FALLBACK.team[0].bio}</Typography>
             </Box>
             </Box>

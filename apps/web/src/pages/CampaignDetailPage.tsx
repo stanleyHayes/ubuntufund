@@ -335,7 +335,7 @@ export function CampaignDetailPage() {
                 <PaymentMethods
                   compact
                   providers={[
-                    { id: 'wallet', name: 'UbuntuFund Wallet', slug: 'wallet', type: 'wallet' },
+                    { id: 'wallet', name: 'Ujimora Wallet', slug: 'wallet', type: 'wallet' },
                   ]}
                   onSelect={setSelectedProvider}
                   selectedSlug={selectedProvider?.slug}
@@ -358,7 +358,7 @@ export function CampaignDetailPage() {
 
           {selectedProvider && selectedProvider.type !== 'wallet' && (
             <Alert severity="info" sx={{ fontSize: '0.85rem' }}>
-              This payment method will be available soon. Please use UbuntuFund Wallet for now.
+              This payment method will be available soon. Please use Ujimora Wallet for now.
             </Alert>
           )}
 

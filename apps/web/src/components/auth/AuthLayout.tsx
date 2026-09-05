@@ -53,7 +53,7 @@ export function AuthLayout({ eyebrow, title, subtitle, children }: AuthLayoutPro
         <Box
           component={RouterLink}
           to="/"
-          aria-label="UbuntuFund home"
+          aria-label="Ujimora home"
           sx={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}
         >
           <BrandLogo size={38} onDark />
@@ -116,7 +116,7 @@ export function AuthLayout({ eyebrow, title, subtitle, children }: AuthLayoutPro
             fontWeight: 600,
           }}
         >
-          One chain · Many hands · Ubuntu
+          One chain · Many hands · Ujima
         </Typography>
       </Box>
 

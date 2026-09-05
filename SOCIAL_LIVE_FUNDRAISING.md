@@ -45,7 +45,7 @@ Added to `apps/api/.env.example` (secrets stay in the gitignored `.env`):
 ### ⚠️ Operational note — `.env` drift (needs a durable fix)
 
 `apps/api/.env` currently points at a **deleted Atlas cluster**
-(`ubuntufund.jqnyj9q…mongodb.net` → `ENOTFOUND`) and sets `PORT=8100`, but the
+(`ujimora.jqnyj9q…mongodb.net` → `ENOTFOUND`) and sets `PORT=8100`, but the
 working dev setup is **local mongod on `28017`** and the web frontend proxies to
 **`:18100`** (`apps/web/.env` → `API_PROXY_TARGET`). The dev API is currently
 running via a runtime override:

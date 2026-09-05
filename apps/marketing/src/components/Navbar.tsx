@@ -68,7 +68,7 @@ const menus: NavMenu[] = [
   {
     label: 'Company',
     items: [
-      { icon: <PublicIcon />, title: 'About Us', description: 'Our mission and the team behind UbuntuFund', href: '/about' },
+      { icon: <PublicIcon />, title: 'About Us', description: 'Our mission and the team behind Ujimora', href: '/about' },
       { icon: <AutoStoriesIcon />, title: 'Blog', description: 'Stories, updates, and insights from Ghana', href: '/blog' },
       { icon: <DiamondIcon />, title: 'Pricing', description: 'Transparent fees — free for personal campaigns', href: '/pricing' },
       { icon: <GroupsIcon />, title: 'For Organizations', description: 'Enterprise tools for institutions and NGOs', href: '/for-organizations' },
@@ -397,11 +397,11 @@ function Navbar() {
             sx={{ cursor: 'pointer', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 0.35 }}
           >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Box component="img" src="/favicon.svg" alt="UbuntuFund" sx={{ width: 32, height: 32, display: 'block' }} />
+              <Box component="img" src="/favicon.svg" alt="Ujimora" sx={{ width: 32, height: 32, display: 'block' }} />
               <Typography
                 sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 800, fontSize: '1.15rem', lineHeight: 1, color: CREAM, whiteSpace: 'nowrap' }}
               >
-                Ubuntu<Box component="span" sx={{ color: GOLD }}>Fund</Box>
+                Ujimora
               </Typography>
             </Box>
             <Typography
@@ -499,9 +499,9 @@ function Navbar() {
       >
         <Box sx={{ px: 2.5, py: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Box component="img" src="/favicon.svg" alt="UbuntuFund" sx={{ width: 30, height: 30 }} />
+            <Box component="img" src="/favicon.svg" alt="Ujimora" sx={{ width: 30, height: 30 }} />
             <Typography sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 900, fontSize: '1.05rem' }}>
-              Ubuntu<Box component="span" sx={{ color: GOLD }}>Fund</Box>
+              Ujimora
             </Typography>
           </Box>
           <IconButton onClick={() => setDrawerOpen(false)} size="small" sx={{ width: 30, height: 30, borderRadius: SHAPE.sm, border: '1px solid rgba(0,0,0,0.08)' }}>

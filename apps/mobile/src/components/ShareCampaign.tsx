@@ -3,7 +3,7 @@ import type { Campaign } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
 
 export async function shareCampaign(campaign: Campaign): Promise<void> {
-  const url = `https://ubuntufund.com/campaigns/${campaign.id}`
+  const url = `https://ujimora.com/campaigns/${campaign.id}`
 
   try {
     const result = await Share.share({

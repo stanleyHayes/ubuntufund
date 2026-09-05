@@ -141,15 +141,7 @@ export default function ForgotPasswordPage() {
               color: '#E0E0E8',
             }}
           >
-            Ubuntu
-            <Box
-              component="span"
-              sx={{
-                color: '#5E8F72',
-              }}
-            >
-              Fund
-            </Box>
+            Ujimora
           </Typography>
           <Typography
             sx={{
@@ -358,7 +350,7 @@ export default function ForgotPasswordPage() {
             animation: `${fadeInUp} 0.6s 0.3s ease both`,
           }}
         >
-          UbuntuFund &copy; {new Date().getFullYear()} &mdash; Secured Admin Portal
+          Ujimora &copy; {new Date().getFullYear()} &mdash; Secured Admin Portal
         </Typography>
       </Box>
     </Box>

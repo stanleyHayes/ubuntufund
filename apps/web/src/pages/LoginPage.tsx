@@ -5,7 +5,7 @@ export function LoginPage() {
   return (
     <AuthLayout
       eyebrow="Welcome back"
-      title="Sign in to UbuntuFund"
+      title="Sign in to Ujimora"
       subtitle="Continue supporting the causes you care about."
     >
       <LoginForm />

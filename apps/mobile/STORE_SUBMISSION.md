@@ -1,4 +1,4 @@
-# Ubuntu Fund store submission checklist
+# Ujimora store submission checklist
 
 This file separates repository readiness from App Store Connect owner actions.
 Do not submit until every unchecked item has current evidence.

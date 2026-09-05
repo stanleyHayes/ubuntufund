@@ -3,7 +3,7 @@ import { Redirect } from 'expo-router'
 import { View, Animated, StyleSheet, Dimensions } from 'react-native'
 import { useAuth } from '@/context/AuthContext'
 import { brandColors } from '@/theme'
-import { UbuntuLogo } from '@/components/UbuntuLogo'
+import { UjimoraLogo } from '@/components/UjimoraLogo'
 
 const { width } = Dimensions.get('window')
 
@@ -51,20 +51,19 @@ export default function Index() {
 
       {/* Logo */}
       <Animated.View style={{ opacity: logoOpacity, transform: [{ scale: logoScale }] }}>
-        <UbuntuLogo size={100} />
+        <UjimoraLogo size={100} />
       </Animated.View>
 
       {/* Title */}
       <Animated.View style={{ opacity: textOpacity, transform: [{ translateY: textTranslate }], marginTop: 28 }}>
         <View style={styles.titleRow}>
-          <Animated.Text style={styles.titleWhite}>Ubuntu</Animated.Text>
-          <Animated.Text style={styles.titleGold}>Fund</Animated.Text>
+          <Animated.Text style={styles.titleWhite}>Ujimora</Animated.Text>
         </View>
       </Animated.View>
 
       {/* Tagline */}
       <Animated.Text style={[styles.tagline, { opacity: taglineOpacity }]}>
-        Together, We Rise
+        Together, we fund what matters
       </Animated.Text>
 
       {/* Pulsing loading dot */}

@@ -37,7 +37,7 @@ export function PrivacyPage() {
 
         <Typography variant="h5">6. Your Rights</Typography>
         <Typography>
-          You have the right to access, correct, or delete your personal data. You may also request data portability or object to certain processing activities. Contact us at privacy@ubuntufund.com to exercise these rights.
+          You have the right to access, correct, or delete your personal data. You may also request data portability or object to certain processing activities. Contact us at privacy@ujimora.com to exercise these rights.
         </Typography>
 
         <Typography variant="h5">7. Data Retention</Typography>
@@ -52,12 +52,12 @@ export function PrivacyPage() {
 
         <Typography variant="h5">9. Children's Privacy</Typography>
         <Typography>
-          UbuntuFund is not intended for children under 18. We do not knowingly collect personal information from children.
+          Ujimora is not intended for children under 18. We do not knowingly collect personal information from children.
         </Typography>
 
         <Typography variant="h5">10. Contact Us</Typography>
         <Typography>
-          For privacy-related inquiries, contact us at privacy@ubuntufund.com or write to: UbuntuFund, Accra, Ghana.
+          For privacy-related inquiries, contact us at privacy@ujimora.com or write to: Ujimora, Accra, Ghana.
         </Typography>
 
         <Typography variant="body2" sx={{ mt: 6, color: 'text.secondary' }}>

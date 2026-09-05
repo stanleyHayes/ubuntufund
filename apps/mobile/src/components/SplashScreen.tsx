@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react'
 import { View, Text, Animated, StyleSheet, Dimensions } from 'react-native'
-import { UbuntuLogo } from './UbuntuLogo'
+import { UjimoraLogo } from './UjimoraLogo'
 
 const { width } = Dimensions.get('window')
 
@@ -83,20 +83,20 @@ export default function AppSplashScreen({ onFinish }: { onFinish: () => void }) 
         ]}
       >
         <View style={styles.logoCircle}>
-          <UbuntuLogo size={64} />
+          <UjimoraLogo size={64} />
         </View>
       </Animated.View>
 
       {/* App name */}
       <Animated.View style={{ opacity: textOpacity, marginTop: 24 }}>
         <Text style={styles.appName}>
-          Ubuntu<Text style={styles.appNameAccent}>Fund</Text>
+          Ujimora
         </Text>
       </Animated.View>
 
       {/* Tagline */}
       <Animated.View style={{ opacity: taglineOpacity, marginTop: 8 }}>
-        <Text style={styles.tagline}>Together, We Rise.</Text>
+        <Text style={styles.tagline}>Together, we fund what matters.</Text>
       </Animated.View>
 
       {/* Loading dots */}

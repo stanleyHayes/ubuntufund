@@ -1,6 +1,6 @@
 /**
  * Five-tone accent system for the dark admin console, mirroring the section
- * toning used across the UbuntuFund family (green/gold/clay/maroon/teal).
+ * toning used across the Ujimora family (green/gold/clay/maroon/teal).
  * Each tone exposes the same four roles so components can stay tone-agnostic.
  */
 export type Tone = 'green' | 'gold' | 'clay' | 'maroon' | 'teal'

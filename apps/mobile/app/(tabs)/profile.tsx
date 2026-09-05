@@ -12,7 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { VerificationLevel } from '@ubuntu-fund/types'
 import { TrustBadge } from '@/components/TrustBadge'
-import { UbuntuLogo } from '@/components/UbuntuLogo'
+import { UjimoraLogo } from '@/components/UjimoraLogo'
 import { brandColors, neumorphism } from '@/theme'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
@@ -104,7 +104,7 @@ export default function ProfileTab() {
               <Text style={styles.avatarText}>{initials}</Text>
             </View>
             <View style={styles.avatarBadge}>
-              <UbuntuLogo size={20} />
+              <UjimoraLogo size={20} />
             </View>
           </View>
 
@@ -188,7 +188,7 @@ export default function ProfileTab() {
           Sign Out
         </Button>
 
-        <Text style={styles.version}>UbuntuFund v1.0.0</Text>
+        <Text style={styles.version}>Ujimora v1.0.0</Text>
 
         <View style={{ height: 32 }} />
       </Animated.View>

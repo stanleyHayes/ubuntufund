@@ -77,7 +77,7 @@ const PIONEER_BADGES: Badge[] = [
   {
     id: 'first-campaign',
     name: 'Trailblazer',
-    description: 'Started the very first campaign on Ubuntu Fund',
+    description: 'Started the very first campaign on Ujimora',
     icon: <RocketLaunchRounded />,
     color: '#C7A24A',
     bgSolid: '#FFA000',
@@ -393,7 +393,7 @@ function LeaderboardEmptyState() {
           sx={{ maxWidth: 520, mx: 'auto', mb: 1, fontSize: '1.05rem', lineHeight: 1.7 }}
         >
           The leaderboard is waiting for its first hero. Start a campaign or make a donation
-          and claim your place in Ubuntu Fund history.
+          and claim your place in Ujimora history.
         </Typography>
 
         <Box

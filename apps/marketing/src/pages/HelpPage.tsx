@@ -47,8 +47,8 @@ const FAQ_CATEGORIES_STATIC: FaqCategory[] = [
     icon: <RocketLaunchRoundedIcon />,
     label: 'Getting started',
     questions: [
-      { q: 'How do I create an account on UbuntuFund?', a: 'Click "Sign Up" on the homepage, enter your email and create a password. You can also sign up with Google or Facebook. Complete your profile with your name, location, and a photo to build trust with the community.' },
-      { q: 'Is UbuntuFund available in my country?', a: 'UbuntuFund is built for Ghana. Campaign creation is open to organizers based in Ghana, and anyone worldwide can donate to a Ghanaian campaign — family abroad included. All campaigns raise funds in Ghanaian cedis (GHS).' },
+      { q: 'How do I create an account on Ujimora?', a: 'Click "Sign Up" on the homepage, enter your email and create a password. You can also sign up with Google or Facebook. Complete your profile with your name, location, and a photo to build trust with the community.' },
+      { q: 'Is Ujimora available in my country?', a: 'Ujimora is built for Ghana. Campaign creation is open to organizers based in Ghana, and anyone worldwide can donate to a Ghanaian campaign — family abroad included. All campaigns raise funds in Ghanaian cedis (GHS).' },
       { q: 'Do I need to verify my identity?', a: 'Basic usage requires email verification. To create campaigns and build trust, we recommend completing our multi-level verification: email/phone, national ID, institutional, and community vouching. Higher verification means a higher trust score.' },
     ],
   },
@@ -68,8 +68,8 @@ const FAQ_CATEGORIES_STATIC: FaqCategory[] = [
     icon: <VolunteerActivismRoundedIcon />,
     label: 'Donations',
     questions: [
-      { q: 'How do I make a donation?', a: 'Browse campaigns and choose Donate. During launch readiness, confirmed contributions use your UbuntuFund Wallet balance. External payment methods remain disabled until their provider integrations are verified.' },
-      { q: 'Is there a minimum or maximum donation?', a: 'The amount must be positive and cannot exceed your available UbuntuFund Wallet balance. Campaign and account limits may also apply.' },
+      { q: 'How do I make a donation?', a: 'Browse campaigns and choose Donate. During launch readiness, confirmed contributions use your Ujimora Wallet balance. External payment methods remain disabled until their provider integrations are verified.' },
+      { q: 'Is there a minimum or maximum donation?', a: 'The amount must be positive and cannot exceed your available Ujimora Wallet balance. Campaign and account limits may also apply.' },
       { q: 'Can I get a refund on my donation?', a: 'You can submit a refund request from your donation history. Requests are recorded for review, but approval and wallet settlement are not automatic and no processing time is guaranteed.' },
     ],
   },
@@ -78,7 +78,7 @@ const FAQ_CATEGORIES_STATIC: FaqCategory[] = [
     icon: <PaymentsRoundedIcon />,
     label: 'Payments',
     questions: [
-      { q: 'What payment methods are accepted?', a: 'UbuntuFund Wallet is the only active method during launch readiness. Mobile money, card, and bank integrations will be listed only after their provider adapters are verified.' },
+      { q: 'What payment methods are accepted?', a: 'Ujimora Wallet is the only active method during launch readiness. Mobile money, card, and bank integrations will be listed only after their provider adapters are verified.' },
       { q: 'How do I withdraw my campaign funds?', a: 'Self-service withdrawals are not available yet. Contact support for operational assistance; do not treat a displayed wallet balance as an external payout guarantee.' },
       { q: 'What are the platform fees?', a: 'The Free plan currently defines a 5% platform fee in the product configuration. External payment processing fees are not charged while those payment methods remain disabled.' },
     ],
@@ -88,7 +88,7 @@ const FAQ_CATEGORIES_STATIC: FaqCategory[] = [
     icon: <ShieldRoundedIcon />,
     label: 'Trust & safety',
     questions: [
-      { q: 'How does UbuntuFund verify campaigns?', a: 'Multi-layer verification: initial team review, organizer identity verification, documentation checks, and community trust scores. Verified campaigns earn badges that help donors assess credibility at a glance.' },
+      { q: 'How does Ujimora verify campaigns?', a: 'Multi-layer verification: initial team review, organizer identity verification, documentation checks, and community trust scores. Verified campaigns earn badges that help donors assess credibility at a glance.' },
       { q: 'What happens if a campaign is fraudulent?', a: 'The campaign is immediately suspended, funds are frozen, and we process refunds for affected donors. Fraudulent accounts are permanently banned. We cooperate with law enforcement. Use the "Report" button on any campaign to flag concerns.' },
       { q: 'How does the trust score work?', a: 'Trust scores (0-100) are calculated from verification level, campaign track record, community engagement, and donor feedback. Higher scores unlock features like increased campaign limits and featured placement.' },
     ],
@@ -126,7 +126,7 @@ const QUICK_LINKS = [
 ]
 
 const CONTACT_OPTIONS = [
-  { icon: <EmailRoundedIcon />, title: 'Email support', desc: 'support@ubuntufund.com', detail: 'Response within 24 hours', action: 'Send email', href: 'mailto:support@ubuntufund.com' },
+  { icon: <EmailRoundedIcon />, title: 'Email support', desc: 'support@ujimora.com', detail: 'Response within 24 hours', action: 'Send email', href: 'mailto:support@ujimora.com' },
   { icon: <ChatBubbleOutlineRoundedIcon />, title: 'Contact form', desc: 'Send the team a detailed support request', detail: 'Available from the contact page', action: 'Contact support', href: '/contact' },
   { icon: <GroupsRoundedIcon />, title: 'Organization help', desc: 'Get help with verification and team access', detail: 'Handled by the support team', action: 'Contact support', href: '/contact' },
 ]

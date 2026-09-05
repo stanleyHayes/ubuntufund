@@ -310,7 +310,7 @@ export default function NotFoundPage() {
           },
         }}
       >
-        Explore UbuntuFund
+        Explore Ujimora
       </Button>
 
       {/* Ghanaian landscape silhouette at bottom */}

@@ -11,17 +11,17 @@ export default function TermsScreen() {
 
       <Text style={styles.heading}>1. Acceptance of Terms</Text>
       <Text style={styles.body}>
-        By accessing or using UbuntuFund, you agree to be bound by these Terms of Service. If you do not agree, please do not use the platform.
+        By accessing or using Ujimora, you agree to be bound by these Terms of Service. If you do not agree, please do not use the platform.
       </Text>
 
       <Text style={styles.heading}>2. Use of the Platform</Text>
       <Text style={styles.body}>
-        UbuntuFund is a crowdfunding platform connecting donors with verified campaigns across Ghana. You must be at least 18 years old to create an account. You agree to provide accurate information and keep your account secure.
+        Ujimora is a crowdfunding platform connecting donors with verified campaigns across Ghana. You must be at least 18 years old to create an account. You agree to provide accurate information and keep your account secure.
       </Text>
 
       <Text style={styles.heading}>3. Campaign Guidelines</Text>
       <Text style={styles.body}>
-        All campaigns must be truthful and transparent. Funds raised must be used for the stated purpose. UbuntuFund reserves the right to review, suspend, or remove campaigns that violate these guidelines.
+        All campaigns must be truthful and transparent. Funds raised must be used for the stated purpose. Ujimora reserves the right to review, suspend, or remove campaigns that violate these guidelines.
       </Text>
 
       <Text style={styles.heading}>4. Fees</Text>
@@ -31,17 +31,17 @@ export default function TermsScreen() {
 
       <Text style={styles.heading}>5. Donations</Text>
       <Text style={styles.body}>
-        Donations are voluntary contributions. While we verify campaigns, UbuntuFund does not guarantee specific outcomes. Refund eligibility is governed by our Refund Policy.
+        Donations are voluntary contributions. While we verify campaigns, Ujimora does not guarantee specific outcomes. Refund eligibility is governed by our Refund Policy.
       </Text>
 
       <Text style={styles.heading}>6. Privacy</Text>
       <Text style={styles.body}>
-        Your use of UbuntuFund is also governed by our Privacy Policy, which describes how we collect, use, and protect your information.
+        Your use of Ujimora is also governed by our Privacy Policy, which describes how we collect, use, and protect your information.
       </Text>
 
       <Text style={styles.heading}>7. Limitation of Liability</Text>
       <Text style={styles.body}>
-        UbuntuFund is provided "as is." We are not liable for any indirect, incidental, or consequential damages arising from your use of the platform.
+        Ujimora is provided "as is." We are not liable for any indirect, incidental, or consequential damages arising from your use of the platform.
       </Text>
 
       <Text style={styles.heading}>8. Changes to Terms</Text>
@@ -51,7 +51,7 @@ export default function TermsScreen() {
 
       <Text style={styles.heading}>9. Contact</Text>
       <Text style={styles.body}>
-        Questions about these terms? Contact us at legal@ubuntufund.com.
+        Questions about these terms? Contact us at legal@ujimora.com.
       </Text>
     </ScrollView>
   )

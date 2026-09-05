@@ -38,11 +38,11 @@ const FALLBACK: ContactData = {
 }
 
 const SOCIAL_FIELDS: { key: keyof Socials; label: string; icon: ReactNode; placeholder: string }[] = [
-  { key: 'facebook', label: 'Facebook', icon: <FacebookIcon sx={{ fontSize: 18 }} />, placeholder: 'https://facebook.com/ubuntufund' },
-  { key: 'x', label: 'X', icon: <XIcon sx={{ fontSize: 18 }} />, placeholder: 'https://x.com/ubuntufund' },
-  { key: 'instagram', label: 'Instagram', icon: <InstagramIcon sx={{ fontSize: 18 }} />, placeholder: 'https://instagram.com/ubuntufund' },
-  { key: 'linkedin', label: 'LinkedIn', icon: <LinkedInIcon sx={{ fontSize: 18 }} />, placeholder: 'https://linkedin.com/company/ubuntufund' },
-  { key: 'youtube', label: 'YouTube', icon: <YouTubeIcon sx={{ fontSize: 18 }} />, placeholder: 'https://youtube.com/@ubuntufund' },
+  { key: 'facebook', label: 'Facebook', icon: <FacebookIcon sx={{ fontSize: 18 }} />, placeholder: 'https://facebook.com/ujimora' },
+  { key: 'x', label: 'X', icon: <XIcon sx={{ fontSize: 18 }} />, placeholder: 'https://x.com/ujimora' },
+  { key: 'instagram', label: 'Instagram', icon: <InstagramIcon sx={{ fontSize: 18 }} />, placeholder: 'https://instagram.com/ujimora' },
+  { key: 'linkedin', label: 'LinkedIn', icon: <LinkedInIcon sx={{ fontSize: 18 }} />, placeholder: 'https://linkedin.com/company/ujimora' },
+  { key: 'youtube', label: 'YouTube', icon: <YouTubeIcon sx={{ fontSize: 18 }} />, placeholder: 'https://youtube.com/@ujimora' },
 ]
 
 function SectionPanel({ title, children }: { title: string; children: ReactNode }) {

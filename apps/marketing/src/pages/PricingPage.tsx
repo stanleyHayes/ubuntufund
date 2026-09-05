@@ -108,7 +108,7 @@ const faqs = [
   },
   {
     question: 'What payment methods are supported?',
-    answer: 'UbuntuFund Wallet is the only active launch method. External payment and payout providers remain disabled until their adapters and compliance checks are complete.',
+    answer: 'Ujimora Wallet is the only active launch method. External payment and payout providers remain disabled until their adapters and compliance checks are complete.',
   },
   {
     question: 'Can I switch plans at any time?',
@@ -120,7 +120,7 @@ const faqs = [
   },
   {
     question: 'How does yearly billing work?',
-    answer: 'Yearly prices are planning references only. UbuntuFund does not currently collect monthly or yearly subscription payments.',
+    answer: 'Yearly prices are planning references only. Ujimora does not currently collect monthly or yearly subscription payments.',
   },
   {
     question: 'What happens if I cancel my subscription?',
