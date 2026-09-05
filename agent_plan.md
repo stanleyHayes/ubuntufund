@@ -688,3 +688,16 @@
 - Replaced the crowded rank/avatar/name/amount arrangement with a first-place highlight: compact identity row, separate full-width contribution total, and contribution count. Remaining donors use ordered, compact rows with smaller avatars and explicit rank numbers.
 - All-time and monthly rankings now sit side by side at desktop widths and stack on mobile. All grid tracks allow shrinking; long names and large amounts can wrap instead of being clipped. Loading placeholders match the responsive layout.
 - Browser reviewed desktop hierarchy and verified zero overflowing donor rows and no page overflow at 320px. Web production build and targeted ESLint pass.
+
+### 2026-09-05 Campaign organizer and payment card redesign
+
+- Replaced the oversized full-width sections with two balanced inset cards, stacked on mobile. Organizer identity and verification are grouped together; start and closing dates have separate labeled columns.
+- Replaced the isolated UF payment tile with a wallet icon, configured provider name, concise balance explanation, and the existing guarded donation/sign-in action. Loading, unavailable-provider, error, and closed-campaign states remain supported.
+- Verification badge now inherits the page palette within this section. Public profile data and wallet-only filtering remain unchanged.
+- Browser reviewed the rendered cards and confirmed no card/page overflow at 390px. Production build, targeted ESLint and whitespace checks pass.
+
+### 2026-09-05 Registration theme contrast repair
+
+- Replaced fixed dark registration text, step connectors, option borders, and inactive icons with theme-aware palette colors. Selected step and billing controls now use matching foreground/background pairs; account icons and sign-in links retain readable brand accents.
+- Added selected-state semantics to account, plan, and billing buttons, active-step semantics, and visible keyboard focus for billing controls.
+- Browser reviewed account selection in dark mode and plan selection in both dark and light modes. Details were filled with temporary preview values only; no account was submitted. Production build, targeted ESLint and whitespace checks pass.

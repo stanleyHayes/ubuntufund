@@ -22,7 +22,7 @@ import { CurrencyDisplay, PaymentMethods, ErrorState, ItemNotFound, TrustBadge, 
 import Tabs from '@mui/material/Tabs'
 import Tab from '@mui/material/Tab'
 import Avatar from '@mui/material/Avatar'
-import VerifiedUserIcon from '@mui/icons-material/VerifiedUser'
+import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined'
 import { useAuth } from '@/context/AuthContext'
 import { useUser } from '@/hooks/useUser'
 import {
@@ -397,56 +397,36 @@ function CampaignDetailContent() {
             collaborators={collaborators}
           />
 
-          {/* Accepted Payment Methods */}
-          <Box sx={{ mb: 4, p: 3, bgcolor: 'action.hover', borderRadius: SHAPE.card }}>
-            <Typography component="h2" variant="subtitle2" sx={{ fontWeight: 700, mb: 1.5 }}>Payment method for this campaign</Typography>
-            {providersLoading ? <Skeleton height={56} /> : providersError ? <Alert severity="warning">Payment methods could not be loaded. Refresh the page to try again.</Alert> : walletProviders.length > 0 ? <>
-              <PaymentMethods compact providers={walletProviders.map((p) => ({ ...p, type: 'wallet' as const }))} />
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>Donate from your Ujimora wallet balance.{!currentUser && ' Sign in to continue.'}</Typography>
-            </> : <Alert severity="info">Wallet donations are not currently available.</Alert>}
-          </Box>
-
-          {/* Creator Info */}
-          <Box sx={{ p: 3, bgcolor: 'action.hover', borderRadius: SHAPE.card }}>
-            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 2 }}>
-              Campaign Creator
-            </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-              <Avatar
-                src={creator?.avatarUrl}
-                sx={{
-                  width: 52,
-                  height: 52,
-                  bgcolor: 'primary.main',
-                  color: 'primary.contrastText',
-                  fontSize: '1.2rem',
-                  fontWeight: 700,
-                }}
-              >
-                {creator?.name?.charAt(0).toUpperCase() ?? '?'}
-              </Avatar>
-              <Box sx={{ flex: 1 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                    {creator?.name ?? (creatorLoading ? 'Loading organizer…' : 'Organizer details unavailable')}
-                  </Typography>
-                  {creator && creator.verificationLevel >= 2 && (
-                    <VerifiedUserIcon sx={{ fontSize: 18, color: 'primary.main' }} />
-                  )}
+          <Box id="campaign-details" sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' }, gap: 3, mt: 3, scrollMarginTop: 100 }}>
+            <Box component="section" aria-labelledby="organizer-heading" sx={{ p: { xs: 2.5, md: 3 }, borderRadius: SHAPE.card, bgcolor: 'background.paper', boxShadow: 'var(--neu-inset)', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+              <Typography variant="overline" color="text.secondary">Behind the campaign</Typography>
+              <Typography id="organizer-heading" component="h2" variant="h6" sx={{ fontWeight: 800, mb: 2.5 }}>Meet the organizer</Typography>
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
+                <Avatar src={creator?.avatarUrl} alt="" sx={{ width: 48, height: 48, bgcolor: 'primary.main', color: 'primary.contrastText', fontWeight: 700, flexShrink: 0 }}>{creator?.name?.charAt(0).toUpperCase() ?? '?'}</Avatar>
+                <Box sx={{ minWidth: 0, flex: 1 }}>
+                  <Typography sx={{ fontWeight: 800, fontSize: '1.05rem', overflowWrap: 'anywhere' }}>{creator?.name ?? (creatorLoading ? 'Loading organizer…' : 'Organizer details unavailable')}</Typography>
+                  {creator?.country && <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>{creator.country}</Typography>}
+                  {creator && <Box sx={{ mt: 1.25, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1, '& .MuiChip-root': { bgcolor: 'background.paper', color: creator.verificationLevel > 0 ? 'primary.main' : 'text.secondary', boxShadow: 'var(--neu-subtle)', fontSize: '0.7rem', minHeight: 24 } }}><Typography variant="caption" color="text.secondary">Verification</Typography><TrustBadge level={creator.verificationLevel} /></Box>}
                 </Box>
-                {creator?.country && (
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 0.25 }}>
-                    {creator.country}
-                  </Typography>
-                )}
-                <Typography variant="caption" color="text.secondary">
-                  Started on {new Date(campaign.startDate).toLocaleDateString()} &middot; Ends{' '}
-                  {new Date(campaign.endDate).toLocaleDateString()}
-                </Typography>
               </Box>
-              {creator && (
-                <TrustBadge level={creator.verificationLevel} />
-              )}
+              <Box component="dl" sx={{ m: 0, mt: 3, pt: 2.5, borderTop: '1px solid', borderColor: 'divider', display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 2 }}>
+                {[{ label: 'Started', date: campaign.startDate }, { label: 'Closes', date: campaign.endDate }].map(({ label, date }) => <Box key={label} sx={{ minWidth: 0 }}><Typography component="dt" variant="caption" color="text.secondary">{label}</Typography><Typography component="dd" sx={{ m: 0, mt: 0.5, fontWeight: 600, fontSize: '0.85rem', overflowWrap: 'anywhere' }}>{new Date(date).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</Typography></Box>)}
+              </Box>
+            </Box>
+
+            <Box component="section" aria-labelledby="payment-heading" sx={{ p: { xs: 2.5, md: 3 }, borderRadius: SHAPE.card, bgcolor: 'background.paper', boxShadow: 'var(--neu-inset)', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+              <Typography variant="overline" color="text.secondary">Your contribution</Typography>
+              <Typography id="payment-heading" component="h2" variant="h6" sx={{ fontWeight: 800, mb: 2.5 }}>How to donate</Typography>
+              {providersLoading ? <Skeleton height={90} /> : providersError ? <Alert severity="warning">Payment methods could not be loaded. Refresh the page to try again.</Alert> : walletProviders.length > 0 ? <>
+                <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
+                  <Box sx={{ width: 48, height: 48, flexShrink: 0, display: 'grid', placeItems: 'center', borderRadius: SHAPE.sm, color: 'var(--text-warning)', bgcolor: 'background.paper', boxShadow: 'var(--neu-subtle)' }}><AccountBalanceWalletOutlinedIcon /></Box>
+                  <Box sx={{ minWidth: 0 }}><Typography sx={{ fontWeight: 800, fontSize: '1.05rem', overflowWrap: 'anywhere' }}>{walletProviders[0].name}</Typography><Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, lineHeight: 1.7 }}>Your donation comes from your wallet balance.</Typography></Box>
+                </Box>
+                <Box sx={{ mt: 'auto', pt: 3 }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>{!acceptsCampaignDonation(campaign) ? 'This campaign is not accepting donations.' : currentUser ? 'Choose an amount to support this campaign.' : 'Sign in to use your Ujimora wallet.'}</Typography>
+                  <Button fullWidth variant="outlined" onClick={handleOpenDonate} disabled={!acceptsCampaignDonation(campaign)} sx={{ justifyContent: 'space-between' }}>{currentUser ? 'Donate with wallet' : 'Sign in to donate'}<Box component="span" aria-hidden="true">→</Box></Button>
+                </Box>
+              </> : <Alert severity="info">Wallet donations are not currently available.</Alert>}
             </Box>
           </Box>
 

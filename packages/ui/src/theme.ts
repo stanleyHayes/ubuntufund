@@ -88,6 +88,72 @@ export const NEUMORPHIC_FOREST_VARS = {
   '--neu-inset': 'inset 3px 3px 7px rgba(8,14,10,0.5), inset -3px -3px 7px rgba(91,117,98,0.14)',
 } as const
 
+// ---------------------------------------------------------------------------
+// Design-system SKINS (user-selectable)
+// ---------------------------------------------------------------------------
+// A "skin" redefines the shared surface CSS vars that every component already
+// consumes (var(--neu-surface|raised|raised-hover|subtle|inset)) plus two glass
+// extras (--neu-backdrop, --neu-border). Switching skin = re-applying one var
+// set to :root at runtime — no component rewrites. Neumorphism is the default.
+export type ThemeSkin = 'neumorphism' | 'claymorphism' | 'glassmorphism'
+
+export const THEME_SKINS: { id: ThemeSkin; label: string; blurb: string }[] = [
+  { id: 'neumorphism', label: 'Neumorphism', blurb: 'Soft, embossed surfaces — the Ujimora default.' },
+  { id: 'claymorphism', label: 'Claymorphism', blurb: 'Puffy, playful clay with deep soft shadows.' },
+  { id: 'glassmorphism', label: 'Glassmorphism', blurb: 'Frosted, translucent panels with a subtle blur.' },
+]
+
+export function getSkinVars(skin: ThemeSkin, dark: boolean): Record<string, string> {
+  if (skin === 'claymorphism') {
+    const surface = dark ? '#20291F' : '#ECE6DD'
+    const sh = dark ? 'rgba(0,0,0,0.55)' : 'rgba(148,130,100,0.42)'
+    const hi = dark ? 'rgba(120,150,126,0.14)' : 'rgba(255,255,255,0.9)'
+    return {
+      '--neu-surface': surface,
+      '--neu-raised': `16px 16px 36px ${sh}, -10px -10px 28px ${hi}, inset 2px 2px 6px ${hi}, inset -3px -3px 8px ${sh}`,
+      '--neu-raised-hover': `20px 20px 44px ${sh}, -12px -12px 32px ${hi}, inset 2px 2px 6px ${hi}, inset -3px -3px 8px ${sh}`,
+      '--neu-subtle': `9px 9px 22px ${sh}, -7px -7px 18px ${hi}, inset 1px 1px 4px ${hi}`,
+      '--neu-inset': `inset 6px 6px 14px ${sh}, inset -6px -6px 14px ${hi}`,
+      '--neu-backdrop': 'none',
+      '--neu-border': '0px solid transparent',
+      '--neu-radius': '22px',
+    }
+  }
+  if (skin === 'glassmorphism') {
+    const surface = dark ? 'rgba(28,38,29,0.5)' : 'rgba(255,255,255,0.22)'
+    return {
+      '--neu-surface': surface,
+      '--neu-raised': dark ? '0 8px 32px rgba(0,0,0,0.42)' : '0 8px 32px rgba(31,38,28,0.16)',
+      '--neu-raised-hover': dark ? '0 12px 40px rgba(0,0,0,0.5)' : '0 12px 40px rgba(31,38,28,0.22)',
+      '--neu-subtle': dark ? '0 4px 18px rgba(0,0,0,0.38)' : '0 4px 18px rgba(31,38,28,0.1)',
+      '--neu-inset': dark ? 'inset 0 1px 1px rgba(255,255,255,0.06)' : 'inset 0 1px 1px rgba(255,255,255,0.45)',
+      '--neu-backdrop': 'blur(14px) saturate(140%)',
+      '--neu-border': dark ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(255,255,255,0.4)',
+      '--neu-radius': '18px',
+    }
+  }
+  // neumorphism (default) — reuse the calibrated dual-shadow tokens
+  const neu = getNeumorphicTokens(dark)
+  return {
+    '--neu-surface': neu.surface,
+    '--neu-raised': neu.raised,
+    '--neu-raised-hover': neu.raisedHover,
+    '--neu-subtle': neu.subtle,
+    '--neu-inset': neu.inset,
+    '--neu-backdrop': 'none',
+    '--neu-border': '0px solid transparent',
+    '--neu-radius': '16px',
+  }
+}
+
+/** Apply a skin's CSS vars to :root (inline — overrides the theme defaults). */
+export function applySkinVars(skin: ThemeSkin, dark: boolean, el?: HTMLElement): void {
+  if (typeof document === 'undefined') return
+  const target = el ?? document.documentElement
+  const vars = getSkinVars(skin, dark)
+  for (const [k, v] of Object.entries(vars)) target.style.setProperty(k, v)
+}
+
 export const ttSquaresFontFace = `
   @font-face {
     font-family: 'TT Squares';

@@ -28,10 +28,10 @@ import {
   isPaymentsNotConfigured,
 } from '@/lib/subscriptions'
 
-const FOREST = '#2E3D2F'
+const FOREST = 'primary.main'
 const GOLD = '#C7A24A'
-const GOLD_DARK = '#A07E33'
-const INK_SECONDARY = 'rgba(18,24,15,0.6)'
+const GOLD_DARK = 'var(--text-warning)'
+const INK_SECONDARY = 'text.secondary'
 
 type AccountType = 'individual' | 'organization'
 
@@ -66,15 +66,15 @@ function Stepper({ current }: { current: number }) {
         const done = i < current
         const active = i === current
         return (
-          <Box key={label} sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: i < STEPS.length - 1 ? 1 : '0 0 auto' }}>
+          <Box key={label} aria-current={active ? 'step' : undefined} sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: i < STEPS.length - 1 ? 1 : '0 0 auto' }}>
             <Box
               sx={{
                 width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: '0.75rem', fontWeight: 700,
                 bgcolor: done || active ? FOREST : 'transparent',
-                color: done || active ? '#fff' : INK_SECONDARY,
-                border: done || active ? 'none' : `1.5px solid ${INK_SECONDARY}`,
+                color: done || active ? 'primary.contrastText' : INK_SECONDARY,
+                border: '1.5px solid', borderColor: done || active ? 'primary.main' : 'divider',
                 transition: 'all .2s ease',
               }}
             >
@@ -83,7 +83,7 @@ function Stepper({ current }: { current: number }) {
             <Typography sx={{ fontSize: '0.72rem', fontWeight: active ? 700 : 500, color: active ? FOREST : INK_SECONDARY, whiteSpace: 'nowrap' }}>
               {label}
             </Typography>
-            {i < STEPS.length - 1 && <Box sx={{ flex: 1, height: 2, bgcolor: done ? FOREST : 'rgba(18,24,15,0.12)', mx: 0.5 }} />}
+            {i < STEPS.length - 1 && <Box sx={{ flex: 1, height: 2, bgcolor: done ? FOREST : 'divider', mx: 0.5 }} />}
           </Box>
         )
       })}
@@ -234,17 +234,18 @@ export function RegisterForm() {
                 key={opt.type}
                 component="button"
                 type="button"
+                aria-pressed={active}
                 onClick={() => setAccountType(opt.type)}
                 sx={{
                   all: 'unset', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 2, p: 2,
                   borderRadius: SHAPE.card, boxSizing: 'border-box', width: '100%',
-                  border: `1.5px solid ${active ? GOLD : 'rgba(18,24,15,0.14)'}`,
+                  border: '1.5px solid', borderColor: active ? 'secondary.main' : 'divider',
                   bgcolor: active ? 'rgba(199,162,74,0.08)' : 'transparent',
                   transition: 'border-color .15s ease, background-color .15s ease',
                   '&:focus-visible': { outline: `2px solid ${GOLD}`, outlineOffset: 2 },
                 }}
               >
-                <Box sx={{ width: 44, height: 44, borderRadius: SHAPE.sm, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: active ? GOLD : 'rgba(46,61,47,0.08)', color: active ? '#fff' : FOREST, flexShrink: 0 }}>
+                <Box sx={{ width: 44, height: 44, borderRadius: SHAPE.sm, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: active ? GOLD : 'action.hover', color: active ? 'secondary.contrastText' : FOREST, flexShrink: 0 }}>
                   {opt.icon}
                 </Box>
                 <Box>
@@ -286,11 +287,11 @@ export function RegisterForm() {
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
             <Typography sx={{ fontSize: '0.9rem', color: INK_SECONDARY }}>Choose a plan — you can change it anytime.</Typography>
-            <Box sx={{ display: 'inline-flex', borderRadius: SHAPE.sm, overflow: 'hidden', border: '1px solid rgba(18,24,15,0.14)' }}>
+            <Box sx={{ display: 'inline-flex', borderRadius: SHAPE.sm, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }}>
               {[BillingCycle.MONTHLY, BillingCycle.YEARLY].map((c) => (
-                <Box key={c} component="button" type="button" onClick={() => setBillingCycle(c)}
-                  sx={{ all: 'unset', cursor: 'pointer', px: 1.5, py: 0.5, fontSize: '0.75rem', fontWeight: 700,
-                    bgcolor: billingCycle === c ? FOREST : 'transparent', color: billingCycle === c ? '#fff' : INK_SECONDARY }}>
+                <Box key={c} component="button" type="button" aria-pressed={billingCycle === c} onClick={() => setBillingCycle(c)}
+                  sx={{ all: 'unset', cursor: 'pointer', px: 1.5, py: 0.5, fontSize: '0.75rem', fontWeight: 700, '&:focus-visible': { outline: '2px solid', outlineColor: 'secondary.main', outlineOffset: -2 },
+                    bgcolor: billingCycle === c ? FOREST : 'transparent', color: billingCycle === c ? 'primary.contrastText' : INK_SECONDARY }}>
                   {c === BillingCycle.MONTHLY ? 'Monthly' : 'Yearly · save'}
                 </Box>
               ))}
@@ -301,12 +302,12 @@ export function RegisterForm() {
             const active = selectedTier === tier
             const price = billingCycle === BillingCycle.YEARLY ? plan.priceYearly : plan.priceMonthly
             return (
-              <Box key={tier} component="button" type="button" onClick={() => setSelectedTier(tier)}
+              <Box key={tier} component="button" type="button" aria-pressed={active} onClick={() => setSelectedTier(tier)}
                 sx={{ all: 'unset', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 2, p: 2, width: '100%', boxSizing: 'border-box',
-                  borderRadius: SHAPE.card, border: `1.5px solid ${active ? GOLD : 'rgba(18,24,15,0.14)'}`,
+                  borderRadius: SHAPE.card, border: '1.5px solid', borderColor: active ? 'secondary.main' : 'divider',
                   bgcolor: active ? 'rgba(199,162,74,0.08)' : 'transparent',
                   '&:focus-visible': { outline: `2px solid ${GOLD}`, outlineOffset: 2 } }}>
-                <Box sx={{ width: 22, height: 22, flexShrink: 0, borderRadius: '50%', border: `2px solid ${active ? GOLD : 'rgba(18,24,15,0.3)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Box sx={{ width: 22, height: 22, flexShrink: 0, borderRadius: '50%', border: '2px solid', borderColor: active ? 'secondary.main' : 'text.secondary', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {active && <Box sx={{ width: 11, height: 11, borderRadius: '50%', bgcolor: GOLD }} />}
                 </Box>
                 <Box sx={{ flex: 1, minWidth: 0 }}>
