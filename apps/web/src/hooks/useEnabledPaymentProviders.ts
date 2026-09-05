@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { api } from '@/lib/api'
 
 export interface EnabledPaymentProvider {
   id: string
@@ -18,11 +19,10 @@ export function useEnabledPaymentProviders() {
     let cancelled = false
     const id = setTimeout(() => setIsLoading(true), 0)
 
-    fetch('/api/v1/payment-providers/enabled')
-      .then((r) => r.json())
-      .then((json) => {
+    api.get<EnabledPaymentProvider[]>('/payment-providers/enabled')
+      .then((data) => {
         if (cancelled) return
-        const data = json.data ?? []
+        if (!Array.isArray(data) || data.some((provider) => !provider || typeof provider.name !== 'string' || typeof provider.slug !== 'string' || typeof provider.type !== 'string')) throw new Error('Invalid payment provider response')
         setProviders(data)
         setError(null)
       })

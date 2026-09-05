@@ -43,13 +43,13 @@ export function CreateUpdateDialog({
   }
 
   async function handleSubmit() {
-    if (!title.trim()) {
-      setError('Please enter a title for your update')
+    if (title.trim().length < 3 || title.trim().length > 200) {
+      setError('Use a title between 3 and 200 characters')
       return
     }
 
-    if (!content.trim()) {
-      setError('Please enter content for your update')
+    if (!content.trim() || content.trim().length > 5000) {
+      setError('Enter an update of up to 5,000 characters')
       return
     }
 
@@ -107,6 +107,7 @@ export function CreateUpdateDialog({
               </Typography>
               <TextField
                 value={title}
+                inputProps={{ maxLength: 200 }}
                 onChange={(e) => {
                   setTitle(e.target.value)
                   if (error) setError('')
@@ -125,6 +126,7 @@ export function CreateUpdateDialog({
               </Typography>
               <TextField
                 value={content}
+                inputProps={{ maxLength: 5000 }}
                 onChange={(e) => {
                   setContent(e.target.value)
                   if (error) setError('')

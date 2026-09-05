@@ -10,6 +10,7 @@ import Skeleton from '@mui/material/Skeleton'
 import { raisedSurface, insetSurface } from '@/lib/surfaces'
 import Snackbar from '@mui/material/Snackbar'
 import AccountBalanceRoundedIcon from '@mui/icons-material/AccountBalanceRounded'
+import { EmptyState } from '@ubuntu-fund/ui'
 import { useAdminPaymentProviders } from '@/hooks/useApiData'
 import type { PaymentProvider } from '@/hooks/useMockData'
 import { api } from '@/lib/api'
@@ -52,7 +53,11 @@ export default function PaymentProvidersPage() {
           {[0, 1, 2, 3].map((item) => <Box key={item} sx={{ ...raisedSurface, p: 3 }}><Skeleton width="55%" height={30} /><Skeleton height={72} sx={{ my: 2 }} /><Skeleton width="35%" /></Box>)}
         </Box>
       ) : providers.length === 0 ? (
-        <Box sx={{ ...raisedSurface, p: 4, textAlign: 'center' }}><AccountBalanceRoundedIcon sx={{ color: 'primary.main', fontSize: 36, mb: 2 }} /><Typography variant="h6">{error ? 'Provider list unavailable' : 'No payment providers configured'}</Typography><Typography color="text.secondary" sx={{ mt: 1 }}>{error ? 'Refresh the page to try again.' : 'Configured providers will appear here when they are added to the deployment.'}</Typography></Box>
+        error ? (
+          <Box sx={{ ...raisedSurface, p: 4, textAlign: 'center' }}><AccountBalanceRoundedIcon sx={{ color: 'primary.main', fontSize: 36, mb: 2 }} /><Typography variant="h6">Provider list unavailable</Typography><Typography color="text.secondary" sx={{ mt: 1 }}>Refresh the page to try again.</Typography></Box>
+        ) : (
+          <Box sx={{ ...raisedSurface, p: 3 }}><EmptyState variant="noData" title="No payment providers configured" description="Configured providers will appear here when they are added to the deployment." compact /></Box>
+        )
       ) : (
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' }, gap: 2 }}>
           {providers.map((provider) => (

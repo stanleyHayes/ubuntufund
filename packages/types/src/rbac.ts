@@ -124,11 +124,16 @@ export const DEFAULT_ROLES: Omit<Role, 'id' | 'createdAt' | 'updatedAt'>[] = [
   {
     name: 'Admin',
     slug: 'admin',
-    description: 'Platform administration with most permissions. Cannot manage roles.',
+    // `admin` is the highest role a user account can hold (UserRole has no
+    // super-admin value, so the super-admin role above is currently unreachable
+    // by any user). On this single-owner platform the admin therefore gets full
+    // access, including role management — otherwise the Roles page is locked out
+    // for everyone.
+    description: 'Platform administration with full access, including role management.',
     isSystem: true,
-    permissions: Object.values(Resource)
-      .filter((r) => r !== Resource.ROLES)
-      .flatMap((r) => Object.values(Action).map((a) => perm(r, a))),
+    permissions: Object.values(Resource).flatMap((r) =>
+      Object.values(Action).map((a) => perm(r, a))
+    ),
   },
   {
     name: 'Moderator',

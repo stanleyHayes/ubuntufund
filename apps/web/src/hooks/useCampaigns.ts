@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import type { Campaign, CampaignDetail, CampaignCategory, CampaignPriority } from '@ubuntu-fund/types'
-import { api } from '@/lib/api'
+import type { Campaign, CampaignCategory, CampaignPriority } from '@ubuntu-fund/types'
+import { api, ApiError } from '@/lib/api'
 
 /**
  * Normalise any `/campaigns` response into a Campaign[].
@@ -26,7 +26,8 @@ interface UseCampaignsResult {
 }
 
 interface UseCampaignResult {
-  campaign: CampaignDetail | null
+  refresh: () => void
+  campaign: Campaign | null
   isLoading: boolean
   error: string | null
 }
@@ -143,7 +144,9 @@ export function useCreateCampaign(): UseCreateCampaignResult {
 }
 
 export function useCampaign(id: string): UseCampaignResult {
-  const [campaign, setCampaign] = useState<CampaignDetail | null>(null)
+  const [revision, setRevision] = useState(0)
+  const refresh = useCallback(() => setRevision((v) => v + 1), [])
+  const [campaign, setCampaign] = useState<Campaign | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -151,7 +154,7 @@ export function useCampaign(id: string): UseCampaignResult {
     let cancelled = false
 
     api
-      .get<CampaignDetail>(`/campaigns/${id}`)
+      .get<Campaign>(`/campaigns/${id}`)
       .then((data) => {
         if (!cancelled) {
           setCampaign(data)
@@ -160,7 +163,7 @@ export function useCampaign(id: string): UseCampaignResult {
       })
       .catch((err: Error) => {
         if (!cancelled) {
-          setError(err.message)
+          setError(err instanceof ApiError && err.status === 404 ? null : err.message)
           setCampaign(null)
         }
       })
@@ -171,7 +174,7 @@ export function useCampaign(id: string): UseCampaignResult {
     return () => {
       cancelled = true
     }
-  }, [id])
+  }, [id, revision])
 
-  return { campaign, isLoading, error }
+  return { campaign, isLoading, error, refresh }
 }

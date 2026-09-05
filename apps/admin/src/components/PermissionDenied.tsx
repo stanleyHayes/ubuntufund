@@ -1,122 +1,117 @@
-import { useNavigate } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
-import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
-import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import { keyframes } from '@mui/system'
+import { Link as RouterLink } from 'react-router-dom'
 
-const fadeIn = keyframes`
-  from { opacity: 0; transform: translateY(16px); }
-  to   { opacity: 1; transform: translateY(0); }
+// Shares the branded light treatment of NotFoundPage (parchment ground, warm
+// brown ink, kente bottom accent, drop-in animation) so the admin's "this
+// doesn't exist" and "you can't see this" states read as one design language.
+const keyframes = `
+  @keyframes pd-fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes pd-drop { 0% { transform: translateY(-60px) rotate(-12deg); opacity: 0; } 40% { transform: translateY(8px) rotate(4deg); opacity: 1; } 60% { transform: translateY(-4px) rotate(-2deg); } 100% { transform: translateY(0) rotate(0deg); opacity: 1; } }
+  @keyframes pd-breathe { 0%,100% { transform: scale(1); box-shadow: 0 4px 16px rgba(93,64,55,0.2); } 50% { transform: scale(1.04); box-shadow: 0 6px 28px rgba(93,64,55,0.35); } }
+  @keyframes pd-kente { 0% { background-position: 0 0; } 100% { background-position: 64px 0; } }
 `
 
-export default function PermissionDenied() {
-  const navigate = useNavigate()
+function LockSVG({ size = 104 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" fill="none">
+      <circle cx="50" cy="50" r="44" stroke="#5D4037" strokeWidth="2.5" fill="none" strokeDasharray="280" strokeDashoffset="280" style={{ animation: 'dash 1.5s ease forwards' }} />
+      <circle cx="50" cy="50" r="35" stroke="#C75B39" strokeWidth="1.5" fill="none" opacity="0.4" />
+      <circle cx="50" cy="50" r="28" stroke="#C7A24A" strokeWidth="0.8" fill="none" opacity="0.3" strokeDasharray="4 6" />
+      {/* Padlock */}
+      <rect x="38" y="47" width="24" height="19" rx="3" fill="#5D4037" />
+      <path d="M42 47 v-5 a8 8 0 0 1 16 0 v5" stroke="#5D4037" strokeWidth="3" fill="none" />
+      <circle cx="50" cy="55" r="2.6" fill="#C7A24A" />
+      <rect x="49" y="56" width="2" height="5" rx="1" fill="#C7A24A" />
+    </svg>
+  )
+}
 
+export default function PermissionDenied() {
   return (
     <Box
       sx={{
-        bgcolor: '#0c0c14',
-        minHeight: '100vh',
+        minHeight: '80vh',
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        animation: `${fadeIn} 0.5s ease both`,
+        position: 'relative',
+        background: '#F5F0EB',
+        px: 3,
+        py: 6,
+        overflow: 'hidden',
       }}
     >
-      <Box sx={{ textAlign: 'center', maxWidth: 420, px: 3 }}>
-        {/* Lock icon with pulse */}
-        <Box
-          sx={{
-            position: 'relative',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: 80,
-            height: 80,
-            mb: 3,
-          }}
-        >
-          <Box
-            sx={{
-              position: 'absolute',
-              inset: 0,
-              border: '2px solid rgba(192,107,88,0.25)',
-              borderRadius: '50%',
-            }}
-          />
-          <Box
-            sx={{
-              width: 64,
-              height: 64,
-              borderRadius: '50%',
-              bgcolor: 'rgba(192,107,88,0.08)',
-              border: '1px solid rgba(192,107,88,0.25)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <LockOutlinedIcon sx={{ fontSize: 32, color: '#C06B58' }} />
-          </Box>
-        </Box>
+      <style>{`@keyframes dash { to { stroke-dashoffset: 0; } }` + keyframes}</style>
 
-        <Typography
-          sx={{
-            fontFamily: '"Outfit", sans-serif',
-            fontWeight: 900,
-            fontSize: '1.4rem',
-            color: 'text.primary',
-            mb: 1,
-            letterSpacing: '0.02em',
-          }}
-        >
-          Access Denied
-        </Typography>
-
-        <Typography
-          sx={{
-            fontSize: '0.88rem',
-            color: 'text.secondary',
-            mb: 1,
-            lineHeight: 1.6,
-          }}
-        >
-          You don't have permission to view this page.
-        </Typography>
-
-        <Typography
-          sx={{
-            fontSize: '0.78rem',
-            color: 'rgba(255,255,255,0.3)',
-            mb: 4,
-          }}
-        >
-          Contact your administrator for access.
-        </Typography>
-
-        <Button
-          variant="outlined"
-          startIcon={<ArrowBackIcon />}
-          onClick={() => navigate('/')}
-          sx={{
-            textTransform: 'none',
-            fontWeight: 700,
-            fontSize: '0.85rem',
-            color: '#5E8F72',
-            borderColor: 'rgba(76,175,80,0.3)',
-            px: 3,
-            py: 1,
-            '&:hover': {
-              borderColor: '#5E8F72',
-              bgcolor: 'rgba(76,175,80,0.08)',
-            },
-          }}
-        >
-          Back to Dashboard
-        </Button>
+      <Box sx={{ mb: 2, opacity: 0, animation: 'pd-drop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards' }}>
+        <LockSVG size={110} />
       </Box>
+
+      <Typography
+        variant="h1"
+        sx={{
+          fontSize: { xs: '2.4rem', md: '3.2rem' },
+          fontWeight: 900,
+          lineHeight: 1.05,
+          color: '#5D4037',
+          mb: 1.5,
+          textAlign: 'center',
+          opacity: 0,
+          animation: 'pd-fadeIn 0.6s ease 0.3s forwards',
+        }}
+      >
+        Access Denied
+      </Typography>
+
+      <Typography
+        variant="h6"
+        sx={{ fontWeight: 600, color: '#5D4037', mb: 1, textAlign: 'center', opacity: 0, animation: 'pd-fadeIn 0.6s ease 0.5s forwards' }}
+      >
+        You don&apos;t have permission to view this page
+      </Typography>
+
+      <Typography
+        variant="body2"
+        sx={{ color: '#8D6E63', mb: 4, textAlign: 'center', maxWidth: 380, opacity: 0, animation: 'pd-fadeIn 0.6s ease 0.7s forwards' }}
+      >
+        Your role doesn&apos;t include access here. Contact a platform administrator if you need it.
+      </Typography>
+
+      <Button
+        component={RouterLink}
+        to="/"
+        variant="contained"
+        sx={{
+          background: '#5D4037',
+          color: '#fff',
+          fontWeight: 600,
+          textTransform: 'none',
+          px: 4,
+          py: 1.2,
+          borderRadius: 2,
+          opacity: 0,
+          animation: 'pd-fadeIn 0.6s ease 0.9s forwards, pd-breathe 2.5s ease 1.5s infinite',
+          '&:hover': { background: '#4E342E' },
+        }}
+      >
+        Back to Dashboard
+      </Button>
+
+      <Box
+        sx={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: 4,
+          background:
+            'repeating-linear-gradient(90deg, #2E3D2F 0px, #2E3D2F 16px, #C7A24A 16px, #C7A24A 32px, #C75B39 32px, #C75B39 48px, #5D4037 48px, #5D4037 64px)',
+          animation: 'pd-kente 2s linear infinite',
+        }}
+      />
     </Box>
   )
 }

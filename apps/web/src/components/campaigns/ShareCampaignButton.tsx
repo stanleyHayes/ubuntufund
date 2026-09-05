@@ -26,7 +26,7 @@ export function ShareCampaignButton({
       document.body.appendChild(textarea)
       textarea.select()
       try {
-        document.execCommand('copy')
+        if (!document.execCommand('copy')) throw new Error('Copy failed')
         setSnackOpen(true)
       } catch {
         alert('Failed to copy link')
@@ -43,8 +43,8 @@ export function ShareCampaignButton({
         title: `Support ${title}`,
         text: `Check out this campaign on Ujimora`,
         url,
-      }).catch(() => {
-        // If share dialog is cancelled, fall back to clipboard
+      }).catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === 'AbortError') return
         void copyToClipboard()
       })
     } else {

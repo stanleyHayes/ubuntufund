@@ -281,13 +281,23 @@ export default function TopBar({ onReplayTour, onOpenNav }: { onReplayTour: () =
               </Box>
             </Box>
 
-            <MenuItem onClick={() => { closeMenu(); navigate('/profile') }}>
-              <ListItemIcon><PersonRoundedIcon sx={{ fontSize: 18 }} /></ListItemIcon>
-              Profile
+            <MenuItem onClick={() => { closeMenu(); navigate('/profile') }} sx={{ alignItems: 'flex-start' }}>
+              <ListItemIcon sx={{ mt: 0.25 }}><PersonRoundedIcon sx={{ fontSize: 18 }} /></ListItemIcon>
+              <Box>
+                Profile
+                <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary' }}>
+                  Your account details and avatar
+                </Typography>
+              </Box>
             </MenuItem>
-            <MenuItem onClick={() => { closeMenu(); navigate('/settings') }}>
-              <ListItemIcon><SettingsRoundedIcon sx={{ fontSize: 18 }} /></ListItemIcon>
-              Settings
+            <MenuItem onClick={() => { closeMenu(); navigate('/settings') }} sx={{ alignItems: 'flex-start' }}>
+              <ListItemIcon sx={{ mt: 0.25 }}><SettingsRoundedIcon sx={{ fontSize: 18 }} /></ListItemIcon>
+              <Box>
+                Settings
+                <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary' }}>
+                  Console preferences and theme
+                </Typography>
+              </Box>
             </MenuItem>
             <MenuItem onClick={() => { closeMenu(); onReplayTour() }}>
               <ListItemIcon><MapRoundedIcon sx={{ fontSize: 18 }} /></ListItemIcon>

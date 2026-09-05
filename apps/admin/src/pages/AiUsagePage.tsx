@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Box, Typography, Skeleton, Alert } from '@mui/material'
+import { Box, Typography, Skeleton } from '@mui/material'
 import { raisedSurface, insetSurface, progressTrack } from '@/lib/surfaces'
 import PsychologyRoundedIcon from '@mui/icons-material/PsychologyRounded'
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded'
@@ -12,6 +12,7 @@ import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh'
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import ErrorRoundedIcon from '@mui/icons-material/ErrorRounded'
 import { AiWritingAction } from '@ubuntu-fund/types'
+import { EmptyState, ErrorState } from '@ubuntu-fund/ui'
 import { useAiUsageStats, useAiUsageLog } from '@/hooks/useApiData'
 import PageHeader from '@/components/PageHeader'
 import { TONES } from '@/lib/tones'
@@ -83,6 +84,35 @@ function getAverageTextLength(entries: { inputLength: number }[]): number {
   return Math.round(entries.reduce((sum, e) => sum + e.inputLength, 0) / entries.length)
 }
 
+/**
+ * The AI-writing endpoints (`/ai-writing/stats`, `/ai-writing/usage`) are not
+ * yet implemented on the backend and currently 404. The data hooks surface a
+ * failure as a plain message string (api.request throws
+ * `Error(err.message || 'HTTP <status>')`) with no structured status field, so
+ * we recover whatever HTTP code the message carries.
+ */
+function httpStatusFromError(error: string | null): number | null {
+  if (!error) return null
+  const match = error.match(/\b([1-5]\d{2})\b/)
+  return match ? Number(match[1]) : null
+}
+
+/**
+ * Decide whether a failed load means "feature not built yet" (show a calm
+ * coming-soon empty state) versus a genuine error (show ErrorState).
+ * An explicit 404/not-found counts as unavailable; so does any failure whose
+ * message exposes no HTTP status — for a route the backend hasn't shipped, a
+ * status-less failure is treated as not-yet-available rather than alarming the
+ * operator. A recognisable non-404 status (e.g. 500, 403) is a real error.
+ */
+function isFeatureUnavailable(error: string | null): boolean {
+  if (!error) return false
+  const status = httpStatusFromError(error)
+  if (status === 404 || /not\s*found/i.test(error)) return true
+  if (status !== null) return false
+  return true
+}
+
 interface StatCardProps {
   label: string
   value: string
@@ -130,6 +160,12 @@ export default function AiUsagePage() {
 
   const hasUsage = stats.totalRequests > 0
 
+  // The stats endpoint gates the whole page. A 404 (or status-less failure)
+  // means the AI usage feature isn't wired up yet — degrade to a calm
+  // coming-soon state. A genuine non-404 failure still surfaces an ErrorState.
+  const featureUnavailable = isFeatureUnavailable(statsError)
+  const genuineStatsError = Boolean(statsError) && !featureUnavailable
+
   if (statsLoading || logLoading) {
     return (
       <Box sx={{ bgcolor: 'background.default' }}>
@@ -168,15 +204,22 @@ export default function AiUsagePage() {
         />
       </Box>
 
-      {(statsError || logError) && (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {statsError && 'AI usage statistics could not be loaded. '}
-          {logError && 'AI activity could not be loaded. '}
-          Refresh the page to try again.
-        </Alert>
-      )}
-
-      {statsError ? null : !hasUsage ? (
+      {genuineStatsError ? (
+        /* ═══ GENUINE ERROR ═══ */
+        <ErrorState
+          title="AI usage couldn't be loaded"
+          message="AI usage statistics could not be loaded. This is usually temporary — refresh to try again."
+          onRetry={() => window.location.reload()}
+          retryLabel="Refresh"
+        />
+      ) : featureUnavailable ? (
+        /* ═══ COMING SOON (feature not implemented yet) ═══ */
+        <EmptyState
+          variant="noData"
+          title="AI usage tracking isn't available yet"
+          description="It will appear here once the AI writing assistant records activity."
+        />
+      ) : !hasUsage ? (
         /* ═══ EMPTY STATE ═══ */
         <Box
           sx={{

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Alert, Box, Pagination, Skeleton, Typography, TextField } from '@mui/material'
-import { SHAPE } from '@ubuntu-fund/ui'
+import { SHAPE, EmptyState } from '@ubuntu-fund/ui'
 import SearchIcon from '@mui/icons-material/Search'
 import InputAdornment from '@mui/material/InputAdornment'
 import HistoryEduRoundedIcon from '@mui/icons-material/HistoryEduRounded'
@@ -141,11 +141,21 @@ export default function AuditLogPage() {
         })}
         {!loading && error && <Alert severity="error">{error}</Alert>}
         {!loading && !error && auditEntries.length === 0 && (
-          <Box sx={{ ...surfaceSx, p: 4 }}>
-            <Typography variant="body2" color="text.secondary">
-              {search ? 'No audit entries match this search.' : 'No authenticated changes have been recorded yet.'}
-            </Typography>
-          </Box>
+          search ? (
+            <Box sx={{ ...surfaceSx, p: 3 }}><EmptyState
+              variant="search"
+              title="No audit entries match this search"
+              description="Try a different search term to find the authenticated change you're looking for."
+              compact
+            /></Box>
+          ) : (
+            <Box sx={{ ...surfaceSx, p: 3 }}><EmptyState
+              variant="noData"
+              title="No audit entries yet"
+              description="Authenticated changes made across the console will be recorded here as they happen."
+              compact
+            /></Box>
+          )
         )}
       </Box>
 

@@ -110,6 +110,7 @@ export function ReportCampaignDialog({
               </Typography>
               <TextField
                 value={description}
+                inputProps={{ maxLength: 2000 }}
                 onChange={(e) => {
                   setDescription(e.target.value)
                   if (error) setError('')

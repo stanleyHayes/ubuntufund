@@ -31,17 +31,7 @@ export function useUser(userId: string) {
         if (!cancelled) setUser(data)
       })
       .catch(() => {
-        // Fallback: construct a minimal user from the ID
-        if (!cancelled) {
-          setUser({
-            id: userId,
-            name: 'Ujimora User',
-            trustScore: 50,
-            verificationLevel: 1,
-            role: 'user',
-            createdAt: new Date().toISOString(),
-          })
-        }
+        if (!cancelled) setUser(null)
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false)

@@ -1,6 +1,5 @@
-import { BrandedDatePicker } from '@ubuntu-fund/ui'
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { Link as RouterLink, useParams, useNavigate } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
@@ -14,6 +13,10 @@ import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
 import DialogActions from '@mui/material/DialogActions'
 import Snackbar from '@mui/material/Snackbar'
+import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
+import PeopleOutlineRoundedIcon from '@mui/icons-material/PeopleOutlineRounded'
+import CalendarTodayRoundedIcon from '@mui/icons-material/CalendarTodayRounded'
+import { CoverPlaceholder } from '@/components/campaigns/CampaignCard'
 import FlagRoundedIcon from '@mui/icons-material/FlagRounded'
 import { CurrencyDisplay, PaymentMethods, ErrorState, ItemNotFound, TrustBadge, SHAPE, type PaymentMethodData } from '@ubuntu-fund/ui'
 import Tabs from '@mui/material/Tabs'
@@ -24,8 +27,6 @@ import { useAuth } from '@/context/AuthContext'
 import { useUser } from '@/hooks/useUser'
 import {
   CampaignStatus,
-  CampaignCategory,
-  CampaignPriority,
   type CampaignCollaborator,
 } from '@ubuntu-fund/types'
 import { useCampaign } from '@/hooks/useCampaigns'
@@ -33,14 +34,14 @@ import { ReportCampaignDialog } from '@/components/campaigns/ReportCampaignDialo
 import { CollaboratorSection } from '@/components/campaigns/CollaboratorSection'
 import { ShareCampaignButton } from '@/components/campaigns/ShareCampaignButton'
 import { CampaignQRCode } from '@/components/campaigns/CampaignQRCode'
-import { EmbedCampaign } from '@/components/campaigns/EmbedCampaign'
 import { CampaignUpdates } from '@/components/campaigns/CampaignUpdates'
 import { CampaignComments } from '@/components/campaigns/CampaignComments'
 import { CreateUpdateDialog } from '@/components/campaigns/CreateUpdateDialog'
 import { useCreateCampaignUpdate } from '@/hooks/useCampaignUpdates'
 import { LiveCampaignProgress } from '@/components/campaigns/LiveCampaignProgress'
-import { LiveDonationFeed } from '@/components/LiveDonationFeed'
+import { CampaignDonationHistory } from '@/components/campaigns/CampaignDonationHistory'
 import { api } from '@/lib/api'
+import { acceptsCampaignDonation, validWalletDonationAmount, walletDonationProviders } from '@/lib/campaignDetailPolicy'
 import { useEnabledPaymentProviders } from '@/hooks/useEnabledPaymentProviders'
 
 function formatCategory(category: string): string {
@@ -49,9 +50,15 @@ function formatCategory(category: string): string {
 
 export function CampaignDetailPage() {
   const { id } = useParams<{ id: string }>()
+  return <CampaignDetailContent key={id} />
+}
+
+function CampaignDetailContent() {
+  const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { campaign, isLoading, error } = useCampaign(id ?? '')
+  const { campaign, isLoading, error, refresh } = useCampaign(id ?? '')
   const [collaborators, setCollaborators] = useState<CampaignCollaborator[]>([])
+  const [collaboratorError, setCollaboratorError] = useState(false)
 
   const {
     providers: enabledProviders,
@@ -61,12 +68,15 @@ export function CampaignDetailPage() {
 
   useEffect(() => {
     if (!id) return
+    let cancelled = false
     api.get<CampaignCollaborator[]>(`/campaigns/${id}/collaborators`)
-      .then(setCollaborators)
-      .catch(() => setCollaborators([]))
+      .then((data) => { if (!cancelled) { setCollaborators(data); setCollaboratorError(false) } })
+      .catch(() => { if (!cancelled) { setCollaborators([]); setCollaboratorError(true) } })
+    return () => { cancelled = true }
   }, [id])
 
   const [donateOpen, setDonateOpen] = useState(false)
+  const [donationRevision, setDonationRevision] = useState(0)
   const [donateAmount, setDonateAmount] = useState('')
   const [donateMessage, setDonateMessage] = useState('')
   const [selectedProvider, setSelectedProvider] = useState<PaymentMethodData | null>(null)
@@ -75,26 +85,15 @@ export function CampaignDetailPage() {
   const [donateError, setDonateError] = useState('')
   const [reportOpen, setReportOpen] = useState(false)
   const { user: currentUser } = useAuth()
-  const { user: creator } = useUser(campaign?.creatorId ?? '')
-  const [editOpen, setEditOpen] = useState(false)
-  const [editLoading, setEditLoading] = useState(false)
-  const [editError, setEditError] = useState('')
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
-  const [deleteLoading, setDeleteLoading] = useState(false)
-
-  const [editTitle, setEditTitle] = useState('')
-  const [editDescription, setEditDescription] = useState('')
-  const [editGoalAmount, setEditGoalAmount] = useState('')
-  const [editCategory, setEditCategory] = useState<CampaignCategory | ''>('')
-  const [editPriority, setEditPriority] = useState<CampaignPriority | ''>('')
-  const [editBeneficiaries, setEditBeneficiaries] = useState('')
-  const [editEndDate, setEditEndDate] = useState('')
-
+  const { user: creator, isLoading: creatorLoading } = useUser(campaign?.creatorId ?? '')
   const [activeTab, setActiveTab] = useState(0)
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false)
   const { create: createUpdate, isLoading: creatingUpdate } = useCreateCampaignUpdate()
 
+  const walletProviders = walletDonationProviders(enabledProviders)
   function handleOpenDonate() {
+    if (!acceptsCampaignDonation(campaign) || providersLoading || providersError || !walletProviders.length) return
+    if (!currentUser) { navigate('/login', { state: { from: { pathname: `/campaigns/${id}` } } }); return }
     setDonateOpen(true)
     setDonateAmount('')
     setDonateMessage('')
@@ -102,27 +101,18 @@ export function CampaignDetailPage() {
     setDonateError('')
   }
 
-  function handleOpenEdit() {
-    if (!campaign) return
-    setEditTitle(campaign.title)
-    setEditDescription(campaign.description)
-    setEditGoalAmount(String(campaign.goalAmount))
-    setEditCategory(campaign.category)
-    setEditPriority(campaign.priority)
-    setEditBeneficiaries(campaign.beneficiaries.join(', '))
-    setEditEndDate(new Date(campaign.endDate).toISOString())
-    setEditError('')
-    setEditOpen(true)
-  }
-
   function handleCloseDonate() {
+    if (donating) return
     setDonateOpen(false)
     setDonateError('')
   }
 
   const canSubmit =
     donateAmount &&
-    Number(donateAmount) > 0 &&
+    validWalletDonationAmount(donateAmount) &&
+    donateMessage.length <= 500 &&
+    !!currentUser && acceptsCampaignDonation(campaign) &&
+    !providersLoading && !providersError && walletProviders.some((p) => p.slug === selectedProvider?.slug) &&
     !donating &&
     selectedProvider != null &&
     selectedProvider.type === 'wallet'
@@ -175,23 +165,8 @@ export function CampaignDetailPage() {
   }
 
   return (
-    <Container maxWidth="md" sx={{ py: 6 }}>
-      {/* Campaign Image */}
-      {campaign.imageUrls[0] && (
-        <Box
-          component="img"
-          src={campaign.imageUrls[0]}
-          alt={campaign.title}
-          sx={{
-            width: '100%',
-            height: { xs: 250, md: 400 },
-            objectFit: 'cover',
-            borderRadius: SHAPE.card,
-            mb: 4,
-          }}
-        />
-      )}
-
+    <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 } }}>
+      <Button component={RouterLink} to="/explore" startIcon={<ArrowBackRoundedIcon />} sx={{ mb: 3, color: 'text.secondary' }}>Explore campaigns</Button>
       {/* Category & Priority */}
       <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
         <Chip label={formatCategory(campaign.category)} color="primary" variant="outlined" />
@@ -206,12 +181,21 @@ export function CampaignDetailPage() {
       </Box>
 
       {/* Title */}
-      <Typography variant="h3" component="h1" gutterBottom sx={{ fontWeight: 700 }}>
+      <Typography variant="h2" component="h1" gutterBottom sx={{ fontWeight: 800, maxWidth: 940, fontSize: { xs: '2rem', md: '3rem' }, lineHeight: 1.12, mb: 4 }}>
         {campaign.title}
       </Typography>
 
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(0, 1.6fr) minmax(0, 1fr)' }, gap: { xs: 3, md: 4 }, alignItems: 'stretch' }}>
+        <Box sx={{ borderRadius: SHAPE.card, overflow: 'hidden', boxShadow: 'var(--neu-raised)', minWidth: 0, bgcolor: 'background.paper' }}>
+          {campaign.imageUrls[0] ? (
+            <Box component="img" src={campaign.imageUrls[0]} alt={campaign.title} sx={{ width: '100%', height: { xs: 260, md: '100%' }, minHeight: { md: 400 }, objectFit: 'cover', display: 'block' }} />
+          ) : <CoverPlaceholder category={campaign.category} height={400} />}
+        </Box>
+        <Box component="aside" aria-label="Support this campaign" sx={{ p: { xs: 2.5, md: 3.5 }, borderRadius: SHAPE.card, bgcolor: 'background.paper', boxShadow: 'var(--neu-raised)', minWidth: 0 }}>
+          <Typography variant="overline" color="text.secondary">Make a difference</Typography>
+          <Typography component="h2" variant="h5" sx={{ fontWeight: 800, mt: 0.5, mb: 3 }}>Help move this cause forward</Typography>
       {/* Progress */}
-      <Box sx={{ mb: 4 }}>
+      <Box sx={{ mb: 3 }}>
         <LiveCampaignProgress
           campaignId={campaign.id}
           initialProgress={{
@@ -223,20 +207,20 @@ export function CampaignDetailPage() {
       </Box>
 
       {/* Donation CTA */}
-      <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 4, flexWrap: 'wrap' }}>
+      <Box sx={{ display: 'flex', gap: 1.5, flexDirection: 'column', alignItems: 'stretch' }}>
         <Button
           variant="contained"
-          color="primary"
+          color="secondary"
           size="large"
           sx={{ px: 4 }}
           onClick={handleOpenDonate}
-          disabled={campaign.status !== CampaignStatus.ACTIVE}
+          disabled={!acceptsCampaignDonation(campaign) || providersLoading || !!providersError || walletProviders.length === 0}
         >
-          {campaign.status === CampaignStatus.ACTIVE ? 'Donate Now' : 'Donations Unavailable'}
+          {!acceptsCampaignDonation(campaign) ? 'Donations closed' : currentUser ? 'Donate with wallet' : 'Sign in to donate'}
         </Button>
         {campaign.status === CampaignStatus.ACTIVE && (
           <CurrencyDisplay
-            amount={campaign.goalAmount - campaign.raisedAmount}
+            amount={Math.max(0, campaign.goalAmount - campaign.raisedAmount)}
             currency={campaign.currency}
             variant="body1"
             color="text.secondary"
@@ -265,23 +249,14 @@ export function CampaignDetailPage() {
             >
               Go LIVE
             </Button>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={handleOpenEdit}
-            >
-              Edit
-            </Button>
-            <Button
-              variant="outlined"
-              color="error"
-              size="small"
-              onClick={() => setDeleteConfirmOpen(true)}
-            >
-              Delete
-            </Button>
           </>
         )}
+      </Box>
+          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mt: 3, pt: 2.5, borderTop: '1px solid', borderColor: 'divider' }}>
+            <Box><PeopleOutlineRoundedIcon sx={{ color: 'primary.main', fontSize: 20 }} /><Typography sx={{ fontWeight: 700, mt: 0.5 }}>{campaign.donorCount ?? 0} {(campaign.donorCount ?? 0) === 1 ? 'donor' : 'donors'}</Typography><Typography variant="caption" color="text.secondary">Distinct supporters</Typography></Box>
+            <Box><CalendarTodayRoundedIcon sx={{ color: 'primary.main', fontSize: 20 }} /><Typography sx={{ fontWeight: 700, mt: 0.5 }}>{new Date(campaign.endDate).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</Typography><Typography variant="caption" color="text.secondary">Campaign end date</Typography></Box>
+          </Box>
+        </Box>
       </Box>
 
       {/* Donate Dialog */}
@@ -293,6 +268,7 @@ export function CampaignDetailPage() {
           <TextField
             label="Amount"
             type="number"
+            inputProps={{ min: 0.01, step: 0.01 }}
             value={donateAmount}
             onChange={(e) => setDonateAmount(e.target.value)}
             InputProps={{ startAdornment: <Typography sx={{ mr: 1, color: 'text.secondary' }}>{campaign.currency}</Typography> }}
@@ -321,51 +297,17 @@ export function CampaignDetailPage() {
                   <Skeleton key={i} variant="rounded" width={80} height={72} sx={{ borderRadius: SHAPE.sm }} />
                 ))}
               </Box>
-            ) : providersError || enabledProviders.length === 0 ? (
-              <>
-                {providersError && (
-                  <Alert severity="warning" sx={{ mb: 1.5, fontSize: '0.82rem' }}>
-                    Could not load payment providers. Showing fallback options.
-                  </Alert>
-                )}
-                {enabledProviders.length === 0 && !providersError && (
-                  <Alert severity="info" sx={{ mb: 1.5, fontSize: '0.82rem' }}>
-                    No payment methods available.
-                  </Alert>
-                )}
-                <PaymentMethods
-                  compact
-                  providers={[
-                    { id: 'wallet', name: 'Ujimora Wallet', slug: 'wallet', type: 'wallet' },
-                  ]}
-                  onSelect={setSelectedProvider}
-                  selectedSlug={selectedProvider?.slug}
-                />
-              </>
-            ) : (
-              <PaymentMethods
-                compact
-                providers={enabledProviders.map((p) => ({
-                  id: p.id,
-                  name: p.name,
-                  slug: p.slug,
-                  type: p.type as PaymentMethodData['type'],
-                }))}
-                onSelect={setSelectedProvider}
-                selectedSlug={selectedProvider?.slug}
-              />
-            )}
+            ) : providersError ? (
+              <Alert severity="warning">Payment methods could not be loaded. Refresh the page to try again.</Alert>
+            ) : walletProviders.length > 0 ? (
+              <PaymentMethods compact providers={walletProviders.map((p) => ({ ...p, type: 'wallet' as const }))} onSelect={setSelectedProvider} selectedSlug={selectedProvider?.slug} />
+            ) : <Alert severity="info">Wallet donations are not currently available.</Alert>}
           </Box>
-
-          {selectedProvider && selectedProvider.type !== 'wallet' && (
-            <Alert severity="info" sx={{ fontSize: '0.85rem' }}>
-              This payment method will be available soon. Please use Ujimora Wallet for now.
-            </Alert>
-          )}
 
           <Box>
             <TextField
               label="Message (optional)"
+              inputProps={{ maxLength: 500 }}
               value={donateMessage}
               onChange={(e) => setDonateMessage(e.target.value)}
               multiline
@@ -376,23 +318,26 @@ export function CampaignDetailPage() {
           {donateError && <Alert severity="error">{donateError}</Alert>}
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={handleCloseDonate}>Cancel</Button>
+          <Button disabled={donating} onClick={handleCloseDonate}>Cancel</Button>
           <Button
             variant="contained"
             color="primary"
             disabled={!canSubmit}
             onClick={async () => {
+              if (!canSubmit) return
               setDonating(true)
               setDonateError('')
               try {
                 await api.post(`/campaigns/${id}/donate`, {
                   amount: Number(donateAmount),
                   currency: campaign.currency,
-                  paymentMethod: selectedProvider?.slug,
+                  paymentMethod: 'wallet',
                   message: donateMessage || undefined,
                   isAnonymous: false,
                 })
-                handleCloseDonate()
+                setDonateOpen(false)
+                refresh()
+                setDonationRevision((value) => value + 1)
                 setDonateAmount('')
                 setDonateMessage('')
                 setSelectedProvider(null)
@@ -413,121 +358,39 @@ export function CampaignDetailPage() {
         open={snackOpen}
         autoHideDuration={4000}
         onClose={() => setSnackOpen(false)}
-        message="Donation submitted successfully!"
+        message="Your wallet donation was completed."
       />
 
-      {/* Edit Dialog */}
-      <Dialog open={editOpen} onClose={() => setEditOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 700 }}>Edit Campaign</DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '16px !important' }}>
-          <TextField label="Title" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} fullWidth />
-          <Box>
-            <TextField label="Description" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} multiline rows={3} fullWidth />
-          </Box>
-          <TextField label="Goal Amount" type="number" value={editGoalAmount} onChange={(e) => setEditGoalAmount(e.target.value)} fullWidth />
-          <TextField select label="Category" value={editCategory} onChange={(e) => setEditCategory(e.target.value as CampaignCategory)} fullWidth SelectProps={{ native: true }}>
-            <option value="" disabled>Select category</option>
-            {Object.values(CampaignCategory).map((c) => (
-              <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1).replace(/_/g, ' ')}</option>
-            ))}
-          </TextField>
-          <TextField select label="Priority" value={editPriority} onChange={(e) => setEditPriority(e.target.value as CampaignPriority)} fullWidth SelectProps={{ native: true }}>
-            <option value="" disabled>Select priority</option>
-            {Object.values(CampaignPriority).map((p) => (
-              <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
-            ))}
-          </TextField>
-          <TextField label="Beneficiaries (comma separated)" value={editBeneficiaries} onChange={(e) => setEditBeneficiaries(e.target.value)} fullWidth />
-          <BrandedDatePicker label="End Date" mode="datetime" value={editEndDate} onChange={setEditEndDate} fullWidth  />
-          {editError && <Alert severity="error">{editError}</Alert>}
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setEditOpen(false)}>Cancel</Button>
-          <Button
-            variant="contained"
-            disabled={editLoading}
-            onClick={async () => {
-              setEditLoading(true)
-              setEditError('')
-              try {
-                await api.put(`/campaigns/${id}`, {
-                  ...(editTitle && { title: editTitle }),
-                  ...(editDescription && { description: editDescription }),
-                  ...(editGoalAmount && { goalAmount: Number(editGoalAmount) }),
-                  ...(editCategory && { category: editCategory }),
-                  ...(editPriority && { priority: editPriority }),
-                  ...(editBeneficiaries && { beneficiaries: editBeneficiaries.split(',').map((b) => b.trim()).filter(Boolean) }),
-                  ...(editEndDate && { endDate: new Date(editEndDate).toISOString() }),
-                })
-                setEditOpen(false)
-                window.location.reload()
-              } catch (err) {
-                setEditError(err instanceof Error ? err.message : 'Update failed')
-              } finally {
-                setEditLoading(false)
-              }
-            }}
-          >
-            {editLoading ? 'Saving...' : 'Save'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ fontWeight: 700 }}>Delete Campaign</DialogTitle>
-        <DialogContent>
-          <Typography>Are you sure you want to delete this campaign? This action cannot be undone.</Typography>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setDeleteConfirmOpen(false)}>Cancel</Button>
-          <Button
-            variant="contained"
-            color="error"
-            disabled={deleteLoading}
-            onClick={async () => {
-              setDeleteLoading(true)
-              try {
-                await api.delete(`/campaigns/${id}`)
-                navigate('/campaigns')
-              } catch (err) {
-                alert(err instanceof Error ? err.message : 'Delete failed')
-              } finally {
-                setDeleteLoading(false)
-              }
-            }}
-          >
-            {deleteLoading ? 'Deleting...' : 'Delete'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
       {/* Tabs */}
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3, mt: 4 }}>
+      <Box sx={{ borderRadius: SHAPE.sm, boxShadow: 'var(--neu-inset)', p: 0.75, mb: 4, mt: 5 }}>
         <Tabs
+          aria-label="Campaign information"
           value={activeTab}
           onChange={(_e, v) => setActiveTab(v)}
           variant="scrollable"
           allowScrollButtonsMobile
         >
-          <Tab label="Overview" sx={{ fontWeight: 700, textTransform: 'none' }} />
-          <Tab label="Updates" sx={{ fontWeight: 700, textTransform: 'none' }} />
-          <Tab label="Donations" sx={{ fontWeight: 700, textTransform: 'none' }} />
-          <Tab label="Comments" sx={{ fontWeight: 700, textTransform: 'none' }} />
+          <Tab id="campaign-tab-0" aria-controls="campaign-panel" label="Overview" sx={{ fontWeight: 700, textTransform: 'none' }} />
+          <Tab id="campaign-tab-1" aria-controls="campaign-panel" label="Updates" sx={{ fontWeight: 700, textTransform: 'none' }} />
+          <Tab id="campaign-tab-2" aria-controls="campaign-panel" label="Donations" sx={{ fontWeight: 700, textTransform: 'none' }} />
+          <Tab id="campaign-tab-3" aria-controls="campaign-panel" label="Comments" sx={{ fontWeight: 700, textTransform: 'none' }} />
         </Tabs>
       </Box>
 
+      <Box role="tabpanel" id="campaign-panel" aria-labelledby={`campaign-tab-${activeTab}`} sx={{ p: { xs: 2.5, md: 4 }, borderRadius: SHAPE.card, boxShadow: 'var(--neu-raised)', bgcolor: 'background.paper', minWidth: 0 }}>
       {activeTab === 0 && (
         <>
           {/* Description */}
-          <Typography variant="h5" gutterBottom sx={{ fontWeight: 700 }}>
-            About this Campaign
+          <Typography variant="h5" component="h2" gutterBottom sx={{ fontWeight: 700 }}>
+            About this campaign
           </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 4, whiteSpace: 'pre-line' }}>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 4, whiteSpace: 'pre-line', lineHeight: 1.9, fontSize: '1.05rem', maxWidth: 820, overflowWrap: 'anywhere' }}>
             {campaign.description}
           </Typography>
 
+          {campaign.beneficiaries.length > 0 && <Box sx={{ mb: 4 }}><Typography component="h2" variant="h6" sx={{ mb: 1 }}>Who this supports</Typography><Box component="ul" sx={{ pl: 2.5, color: 'text.secondary' }}>{campaign.beneficiaries.map((name, index) => <li key={index}>{name}</li>)}</Box></Box>}
           {/* Collaborators */}
+          {collaboratorError && <Alert severity="warning" sx={{ mb: 2 }}>Collaborator details could not be loaded.</Alert>}
           <CollaboratorSection
             campaignId={campaign.id}
             isOwner={currentUser?.id === campaign.creatorId}
@@ -536,7 +399,11 @@ export function CampaignDetailPage() {
 
           {/* Accepted Payment Methods */}
           <Box sx={{ mb: 4, p: 3, bgcolor: 'action.hover', borderRadius: SHAPE.card }}>
-            <PaymentMethods compact title="Accepted Payment Methods" />
+            <Typography component="h2" variant="subtitle2" sx={{ fontWeight: 700, mb: 1.5 }}>Payment method for this campaign</Typography>
+            {providersLoading ? <Skeleton height={56} /> : providersError ? <Alert severity="warning">Payment methods could not be loaded. Refresh the page to try again.</Alert> : walletProviders.length > 0 ? <>
+              <PaymentMethods compact providers={walletProviders.map((p) => ({ ...p, type: 'wallet' as const }))} />
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>Donate from your Ujimora wallet balance.{!currentUser && ' Sign in to continue.'}</Typography>
+            </> : <Alert severity="info">Wallet donations are not currently available.</Alert>}
           </Box>
 
           {/* Creator Info */}
@@ -544,13 +411,14 @@ export function CampaignDetailPage() {
             <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 2 }}>
               Campaign Creator
             </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
               <Avatar
                 src={creator?.avatarUrl}
                 sx={{
                   width: 52,
                   height: 52,
                   bgcolor: 'primary.main',
+                  color: 'primary.contrastText',
                   fontSize: '1.2rem',
                   fontWeight: 700,
                 }}
@@ -560,7 +428,7 @@ export function CampaignDetailPage() {
               <Box sx={{ flex: 1 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
                   <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                    {creator?.name ?? 'Loading...'}
+                    {creator?.name ?? (creatorLoading ? 'Loading organizer…' : 'Organizer details unavailable')}
                   </Typography>
                   {creator && creator.verificationLevel >= 2 && (
                     <VerifiedUserIcon sx={{ fontSize: 18, color: 'primary.main' }} />
@@ -583,7 +451,7 @@ export function CampaignDetailPage() {
           </Box>
 
           {/* Share & Embed */}
-          <Box sx={{ mt: 4, display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 4 }}>
+          <Box component="details" sx={{ mt: 4, p: 3, borderRadius: SHAPE.card, boxShadow: 'var(--neu-inset)', '& > summary': { cursor: 'pointer', fontWeight: 700 }, '& > div': { mt: 2 } }}><Box component="summary">Share this campaign · QR code</Box>
             <Box sx={{ flex: 1, p: 3, bgcolor: 'action.hover', borderRadius: SHAPE.card }}>
               <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 2 }}>
                 Campaign QR Code
@@ -592,9 +460,6 @@ export function CampaignDetailPage() {
                 url={`${window.location.origin}/campaigns/${campaign.id}`}
                 title="Scan to view campaign"
               />
-            </Box>
-            <Box sx={{ flex: 1, p: 3, bgcolor: 'action.hover', borderRadius: SHAPE.card }}>
-              <EmbedCampaign campaignId={campaign.id} title={campaign.title} />
             </Box>
           </Box>
         </>
@@ -619,67 +484,21 @@ export function CampaignDetailPage() {
               if (result) {
                 setUpdateDialogOpen(false)
                 window.location.reload()
+              } else {
+                throw new Error('Could not publish the update. Please try again.')
               }
             }}
           />
         </>
       )}
 
-      {activeTab === 2 && (
-        <>
-          <Typography variant="h5" gutterBottom sx={{ fontWeight: 700 }}>
-            Live Donations
-          </Typography>
-          <LiveDonationFeed campaignId={campaign.id} maxItems={8} />
-          {campaign.donations && campaign.donations.length > 0 && (
-            <Box sx={{ mt: 4 }}>
-              <Typography variant="h5" gutterBottom sx={{ fontWeight: 700 }}>
-                All Donations ({campaign.donorCount})
-              </Typography>
-              {campaign.donations.map((donation) => (
-                <Box
-                  key={donation.id}
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 2,
-                    p: 2,
-                    mb: 1,
-                    bgcolor: 'action.hover',
-                    borderRadius: SHAPE.card,
-                  }}
-                >
-                  <Avatar sx={{ width: 36, height: 36, bgcolor: 'primary.main', fontSize: '0.85rem' }}>
-                    {donation.isAnonymous ? '?' : donation.donorName.charAt(0).toUpperCase()}
-                  </Avatar>
-                  <Box sx={{ flex: 1 }}>
-                    <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                      {donation.isAnonymous ? 'Anonymous' : donation.donorName}
-                    </Typography>
-                    {donation.message && (
-                      <Typography variant="caption" color="text.secondary">
-                        {donation.message}
-                      </Typography>
-                    )}
-                  </Box>
-                  <Box sx={{ textAlign: 'right' }}>
-                    <Typography variant="body2" sx={{ fontWeight: 700, color: 'primary.main' }}>
-                      {donation.currency} {donation.amount.toLocaleString()}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {new Date(donation.createdAt).toLocaleDateString()}
-                    </Typography>
-                  </Box>
-                </Box>
-              ))}
-            </Box>
-          )}
-        </>
-      )}
+      {activeTab === 2 && <CampaignDonationHistory key={`${campaign.id}:${donationRevision}`} campaignId={campaign.id} />}
 
       {activeTab === 3 && (
         <CampaignComments campaignId={campaign.id} creatorId={campaign.creatorId} />
       )}
+
+      </Box>
 
       {/* Report Campaign */}
       <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end' }}>
@@ -687,7 +506,7 @@ export function CampaignDetailPage() {
           variant="outlined"
           size="small"
           startIcon={<FlagRoundedIcon />}
-          onClick={() => setReportOpen(true)}
+          onClick={() => currentUser ? setReportOpen(true) : navigate('/login', { state: { from: { pathname: `/campaigns/${id}` } } })}
           sx={{
             borderColor: 'rgba(239,83,80,0.4)',
             color: 'var(--text-error)',

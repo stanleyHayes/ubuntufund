@@ -647,3 +647,44 @@
 ### 2026-09-05 Account menu descriptions
 
 - Added short descriptions beneath Dashboard, My Campaigns, My Donations, Wallet, Affiliate, Settings, and Sign out in the account dropdown. Widened the menu within the viewport limit to accommodate the copy. Navigation and sign-out handlers are unchanged.
+
+### 2026-09-05 Web dark-theme contrast repair
+
+- Added mode-aware brand/text/status CSS tokens and corrected the dark semantic palette, neutral-surface chips, contained button contrast, and browser color scheme in the shared theme. Preserved the sage/gold palette and neumorphic surfaces.
+- Replaced light-only text colors across Explore filters/pagination, campaign cards/forms, dashboards, histories, subscriptions, profiles, activity feeds, account menus, recovery screens, and related web components. Preserved intentionally paired cream badges and dark banners. Replaced hex-alpha concatenation with color-mix where status colors now use CSS variables.
+- Browser verified: dark Explore titles/amounts use cream, metadata/filters use readable sage, funding status uses brighter semantic colors; Medical filtering returns two matching campaigns; action menu opens. Light-mode backgrounds and text remain correct. Mobile at 390px has no horizontal overflow. Authenticated routes received source-level fixes but could not be visually checked because the browser session is signed out.
+- Web TypeScript and production build pass. Full-web ESLint reports 22 pre-existing React-hook errors in useLiveTotals, CampaignPublicPage, and DonateCallbackPage; theme changes do not alter those files. No claim of a complete authenticated route-by-route visual audit.
+
+### 2026-09-05 Homepage campaigns and community activity redesign
+
+- Replaced the uneven featured-card/sidebar layout with six equal campaign cards in a responsive three/two/one-column grid. Added a left-aligned introduction and an always-available Explore link; loading placeholders match the grid.
+- Separated raised amounts and funding goals in shared campaign cards, aligned metadata, and added a subtle footer divider.
+- Moved recent community activity below campaigns into six readable contribution cards. Donor, timestamp, amount, and campaign link have distinct lines; removed the clipped scrolling panel and decorative live indicator. Existing donation fetching and SSE updates remain active.
+- Desktop browser confirms two even campaign rows and a three-column activity section. Mobile at 390px has no horizontal overflow. Targeted ESLint and production build pass.
+
+### 2026-09-05 Campaign detail redesign
+
+- Rebuilt /campaigns/:id with a wide title/header, campaign cover beside a raised funding panel, prominent gold donation action, sharing action, donor count, and deadline. Added a branded fallback for missing covers.
+- Simplified the funding presentation to one raised total, goal, progress bar, and percentage. Remaining funding is clamped at zero.
+- Added inset navigation tabs with associated tab panels, a comfortable story surface, and expandable QR/embed tools. Preserved donation, editing, deletion, reporting, update, comment, and sharing handlers.
+- Browser verified the dark desktop page, light mobile page, donation dialog open/cancel, Updates tab, and mobile sharing disclosure with no horizontal overflow at 390px. Targeted ESLint and production build pass.
+
+### 2026-09-05 404 and splash brand alignment
+
+- Replaced the old splash symbols, hardcoded white background, and layered animations with the current chain-link logo, raised brand tile, themed text/surfaces, and one restrained indeterminate loading bar. Includes a polite loading status and a static reduced-motion state; no artificial loading delay.
+- Rebuilt the 404 with a missing-link SVG, inset surface, current typography, and clear Explore campaigns / Back to home links. Removed legacy decorative symbols, delayed text reveals, and unrelated accent colors.
+- Browser inspected the real loading fallback and completed dark 404, verified the home action and 390px overflow check. Targeted ESLint and production build pass.
+
+### 2026-09-05 Campaign detail content and contract validation
+
+- Audited the detail surface against mounted API routes, use cases, and live read responses; full evidence and limits in `docs/reviews/campaign-detail-content-audit.md`.
+- Corrected wallet-only payment availability, guest sign-in return, deadline/amount/message checks, donation refresh, paginated history, beneficiary display, organizer failure handling, update validation/errors, and share/report behavior. Removed unsupported campaign edit/delete and broken embed controls from the detail page.
+- Policy tests: 3 passed. Read-only API checks: 6 endpoints returned 200. Browser confirms actual wallet display, beneficiary, donation history and guest login routing.
+- Found independently seeded raised totals and donation records; recorded the discrepancy without rewriting financial data. Owner mutations and live settlement remain unexecuted.
+- Final verification: web production build, targeted ESLint, and 3 policy tests pass. Full TypeScript check ended with signal 143 before reporting a result; not marked as passed.
+
+### 2026-09-05 Donor ranking hierarchy and overflow repair
+
+- Replaced the crowded rank/avatar/name/amount arrangement with a first-place highlight: compact identity row, separate full-width contribution total, and contribution count. Remaining donors use ordered, compact rows with smaller avatars and explicit rank numbers.
+- All-time and monthly rankings now sit side by side at desktop widths and stack on mobile. All grid tracks allow shrinking; long names and large amounts can wrap instead of being clipped. Loading placeholders match the responsive layout.
+- Browser reviewed desktop hierarchy and verified zero overflowing donor rows and no page overflow at 320px. Web production build and targeted ESLint pass.

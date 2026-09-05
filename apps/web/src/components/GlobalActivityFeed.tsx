@@ -1,11 +1,9 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import Box from '@mui/material/Box'
-import Chip from '@mui/material/Chip'
 import Typography from '@mui/material/Typography'
 import Avatar from '@mui/material/Avatar'
-import { keyframes } from '@mui/material/styles'
 import { Link } from 'react-router-dom'
-import { formatCurrency, SHAPE } from '@ubuntu-fund/ui'
+import { EmptyState, formatCurrency, SHAPE } from '@ubuntu-fund/ui'
 import { useSSE } from '@/hooks/useSSE'
 import { api } from '@/lib/api'
 
@@ -39,16 +37,6 @@ interface RecentDonation {
   currency: string
   createdAt: string
 }
-
-const slideIn = keyframes`
-  from { opacity: 0; transform: translateY(-12px); max-height: 0; }
-  to   { opacity: 1; transform: translateY(0);     max-height: 80px; }
-`
-
-const pulse = keyframes`
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50%      { opacity: 0.5; transform: scale(1.3); }
-`
 
 const TYPE_CONFIG: Record<string, { icon: string; color: string; bg: string }> = {
   donation: { icon: '💚', color: 'var(--text-brand)', bg: 'rgba(46, 61, 47,0.08)' },
@@ -132,173 +120,42 @@ export function GlobalActivityFeed({ compact = false }: { compact?: boolean }) {
   }, [compact])
 
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100%',
-        maxHeight: compact ? 520 : 'none',
-        bgcolor: 'background.paper',
-        borderRadius: SHAPE.card,
-        overflow: 'hidden',
-        boxShadow: 'var(--neu-raised)',
-      }}
-    >
-      {/* Header */}
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1,
-          px: compact ? 2 : 2.5,
-          py: 1.5,
-          boxShadow: '0 10px 16px -18px rgba(38,55,44,0.4)',
-        }}
-      >
-        <Box
-          sx={{
-            width: 8,
-            height: 8,
-            borderRadius: '50%',
-            bgcolor: '#2E3D2F',
-            animation: `${pulse} 2s ease-in-out infinite`,
-          }}
-        />
-        <Typography variant="subtitle2" sx={{ fontWeight: 700, flexGrow: 1 }}>
-          Live Activity
-        </Typography>
-        <Chip
-          label="Live"
-          size="small"
-          sx={{
-            bgcolor: 'rgba(46, 61, 47,0.1)',
-            color: 'var(--text-brand)',
-            fontWeight: 700,
-            fontSize: '0.7rem',
-            height: 22,
-          }}
-        />
-      </Box>
-
-      {/* Scrollable list */}
-      <Box
-        sx={{
-          flex: 1,
-          overflowY: 'auto',
-          '&::-webkit-scrollbar': { width: 4 },
-          '&::-webkit-scrollbar-thumb': {
-            bgcolor: 'rgba(0,0,0,0.15)',
-            borderRadius: SHAPE.bar,
-          },
-        }}
-      >
-        {items.length === 0 && (
-          <Box sx={{ p: 3, textAlign: 'center' }}>
-            <Typography variant="body2" color="text.secondary">
-              Waiting for activity...
-            </Typography>
+    <Box sx={{ bgcolor: 'background.paper', borderRadius: SHAPE.card, p: { xs: 2.5, md: 4 }, boxShadow: 'var(--neu-inset)' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, mb: 3 }}>
+        <Box>
+          <Typography variant="overline" color="text.secondary">One community, many hands</Typography>
+          <Typography component="h2" variant="h5" sx={{ fontWeight: 800, mt: 0.5 }}>Recent activity</Typography>
+        </Box>
+        <Box sx={{ width: 44, height: 44, flexShrink: 0, borderRadius: SHAPE.sm, boxShadow: 'var(--neu-subtle)', display: 'grid', placeItems: 'center', color: 'primary.main' }} aria-hidden="true">
+          <Box component="svg" viewBox="0 0 32 32" sx={{ width: 28, fill: 'none', stroke: 'currentColor', strokeWidth: 2 }}>
+            <rect x="5" y="5" width="14" height="14" rx="5" /><rect x="13" y="13" width="14" height="14" rx="5" />
           </Box>
-        )}
-
-        {items.map((item, idx) => {
-          const cfg = TYPE_CONFIG[item.type] ?? TYPE_CONFIG.donation
-          const isNew = idx < 3
-
-          return (
-            <Box
-              key={item.id}
-              sx={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: compact ? 1 : 1.5,
-                px: compact ? 2 : 2.5,
-                py: compact ? 1 : 1.5,
-                bgcolor: idx % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.015)',
-                animation: isNew ? `${slideIn} 0.5s ease-out` : undefined,
-                transition: 'background-color 0.2s',
-                cursor: 'default',
-                '&:hover': {
-                  bgcolor: cfg.bg,
-                },
-              }}
-            >
-              <Box sx={{ position: 'relative', flexShrink: 0 }}>
-                <Avatar
-                  sx={{
-                    width: compact ? 28 : 36,
-                    height: compact ? 28 : 36,
-                    fontSize: compact ? '0.7rem' : '0.85rem',
-                    bgcolor: 'primary.main',
-                  }}
-                >
-                  {item.userName.charAt(0).toUpperCase()}
-                </Avatar>
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    bottom: -2,
-                    right: -4,
-                    fontSize: compact ? '0.6rem' : '0.7rem',
-                    lineHeight: 1,
-                  }}
-                >
-                  {cfg.icon}
-                </Box>
-              </Box>
-
-              <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    fontSize: compact ? '0.75rem' : '0.82rem',
-                    lineHeight: 1.4,
-                    color: 'text.primary',
-                  }}
-                >
-                  <Box component="span" sx={{ fontWeight: 700, color: cfg.color }}>
-                    {item.userName}
-                  </Box>{' '}
-                  {item.type === 'donation' && (
-                    <>
-                      donated{' '}
-                      <strong>
-                        {item.amount != null && item.currency
-                          ? formatCurrency(item.amount, item.currency)
-                          : ''}
-                      </strong>
-                    </>
-                  )}
-                  {item.type === 'campaign_created' && 'created a new campaign'}
-                  {item.type === 'milestone' && 'reached a milestone'}
-                  {item.campaignId && (
-                    <>
-                      {' '}
-                      <Link
-                        to={`/campaigns/${item.campaignId}`}
-                        style={{ color: cfg.color, fontWeight: 600, textDecoration: 'none' }}
-                      >
-                        {item.campaignTitle ?? 'Campaign'}
-                      </Link>
-                    </>
-                  )}
-                </Typography>
-
-                <Typography
-                  variant="caption"
-                  sx={{
-                    color: 'text.disabled',
-                    fontSize: compact ? '0.65rem' : '0.72rem',
-                    mt: 0.25,
-                    display: 'block',
-                  }}
-                >
-                  {formatTimeAgo(item.timestamp)}
-                </Typography>
-              </Box>
-            </Box>
-          )
-        })}
+        </Box>
       </Box>
+      {items.length === 0 ? (
+        <EmptyState compact title="Every contribution starts something" description="Recent contributions and campaign milestones will appear here." />
+      ) : (
+        <Box component="ul" sx={{ listStyle: 'none', p: 0, m: 0, display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', md: 'repeat(3, minmax(0, 1fr))' }, gap: 2 }}>
+          {items.slice(0, compact ? 6 : 20).map((item) => {
+            const cfg = TYPE_CONFIG[item.type] ?? TYPE_CONFIG.donation
+            return (
+              <Box component="li" key={item.id} sx={{ minWidth: 0, p: 2, borderRadius: SHAPE.sm, bgcolor: 'background.paper', boxShadow: 'var(--neu-subtle)' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, mb: 1.5 }}>
+                  <Avatar sx={{ width: 32, height: 32, fontSize: '0.78rem', bgcolor: 'primary.main', color: 'primary.contrastText' }}>{item.userName.charAt(0).toUpperCase()}</Avatar>
+                  <Typography sx={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: '0.84rem', overflowWrap: 'anywhere' }}>{item.userName}</Typography>
+                  <Typography component="time" dateTime={new Date(item.timestamp).toISOString()} sx={{ fontSize: '0.7rem', color: 'text.secondary', flexShrink: 0 }}>{formatTimeAgo(item.timestamp)}</Typography>
+                </Box>
+                <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary', mb: 0.5 }}>
+                  {item.type === 'donation' ? <>Contributed <Box component="strong" sx={{ color: 'text.primary', fontVariantNumeric: 'tabular-nums' }}>{item.amount != null && item.currency ? formatCurrency(item.amount, item.currency) : ''}</Box> to</> : item.type === 'campaign_created' ? 'Started a new campaign' : 'Reached a milestone'}
+                </Typography>
+                {item.campaignId && (
+                  <Box component={Link} to={`/campaigns/${item.campaignId}`} sx={{ color: cfg.color, fontWeight: 600, fontSize: '0.84rem', lineHeight: 1.5, textDecoration: 'none', display: 'block', '&:hover': { textDecoration: 'underline' }, '&:focus-visible': { outline: '2px solid', outlineColor: 'secondary.main', outlineOffset: 3 } }}>{item.campaignTitle ?? 'View campaign'}</Box>
+                )}
+              </Box>
+            )
+          })}
+        </Box>
+      )}
     </Box>
   )
 }

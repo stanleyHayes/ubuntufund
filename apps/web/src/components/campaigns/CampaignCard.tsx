@@ -321,11 +321,11 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
           {/* Amounts */}
           <Box sx={{ mt: 1.25, display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 1 }}>
             <Box sx={{ minWidth: 0 }}>
-              <Typography component="span" sx={{ fontWeight: 800, fontSize: '1.05rem', color: INK }}>
+              <Typography component="span" sx={{ display: 'block', fontWeight: 800, fontSize: '1.15rem', color: INK, fontVariantNumeric: 'tabular-nums' }}>
                 {cedis(campaign.raisedAmount)}
               </Typography>
-              <Typography component="span" sx={{ fontSize: '0.8rem', color: INK_SECONDARY, ml: 0.5 }}>
-                of {cedis(campaign.goalAmount)}
+              <Typography component="span" sx={{ display: 'block', fontSize: '0.78rem', color: INK_SECONDARY, mt: 0.4 }}>
+                raised of {cedis(campaign.goalAmount)}
               </Typography>
             </Box>
             <Typography
@@ -339,8 +339,10 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
           {/* Meta footer: supporters + days-left, then the hover CTA arrow */}
           <Box
             sx={{
-              mt: 'auto',
-              pt: 1.75,
+              mt: 2,
+              pt: 2,
+              borderTop: '1px solid',
+              borderColor: 'divider',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',

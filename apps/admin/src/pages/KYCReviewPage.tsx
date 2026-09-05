@@ -11,6 +11,7 @@ import { api } from '@/lib/api'
 import { Resource, Action } from '@ubuntu-fund/types'
 import { useAdminPermissions } from '@/context/AdminPermissionContext'
 import KYCDetailDialog from '@/components/kyc/KYCDetailDialog'
+import { EmptyState } from '@ubuntu-fund/ui'
 import { usePagination } from '@/hooks/usePagination'
 import PaginationBar from '@/components/PaginationBar'
 import PageHeader from '@/components/PageHeader'
@@ -331,11 +332,21 @@ export default function KYCReviewPage() {
       {!loading && !error && <PaginationBar neumorphic pagination={pagination} accentColor="#C06B58" />}
 
       {!loading && !error && filtered.length === 0 && (
-        <Box sx={{ ...raisedSurface, p: 4 }}>
-          <Typography color="text.secondary">
-            {search || statusFilter !== 'all' || typeFilter !== 'all' ? 'No KYC submissions match your filters.' : 'No KYC submissions to review.'}
-          </Typography>
-        </Box>
+        search || statusFilter !== 'all' || typeFilter !== 'all' ? (
+          <Box sx={{ ...raisedSurface, p: 3 }}><EmptyState
+            variant="search"
+            title="No KYC submissions match your filters"
+            description="Try a different search term or clear the status and type filters to see more submissions."
+            compact
+          /></Box>
+        ) : (
+          <Box sx={{ ...raisedSurface, p: 3 }}><EmptyState
+            variant="noData"
+            title="No KYC submissions to review"
+            description="When members submit identity documents for verification, they'll appear here for your review."
+            compact
+          /></Box>
+        )
       )}
 
       {/* Detail Dialog */}

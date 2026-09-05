@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import TextField from '@mui/material/TextField'
 import Button from '@mui/material/Button'
@@ -11,6 +11,7 @@ import { useAuth } from '@/context/AuthContext'
 
 export function LoginForm() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { login } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -29,7 +30,8 @@ export function LoginForm() {
     setSubmitting(true)
     try {
       await login(email, password)
-      navigate('/dashboard')
+      const destination = location.state?.from?.pathname
+      navigate(typeof destination === 'string' && destination.startsWith('/') && !destination.startsWith('//') && !destination.includes('\\') ? destination : '/dashboard', { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed. Please try again.')
     } finally {
