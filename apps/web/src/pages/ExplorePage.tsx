@@ -176,7 +176,7 @@ export function ExplorePage() {
               input: {
                 startAdornment: (
                   <InputAdornment position="start">
-                    <SearchRoundedIcon sx={{ color: 'rgba(0,0,0,0.3)', fontSize: 20 }} />
+                    <SearchRoundedIcon sx={{ color: 'var(--text-secondary)', fontSize: 20 }} />
                   </InputAdornment>
                 ),
               },
@@ -208,7 +208,7 @@ export function ExplorePage() {
 
         {/* Category tags */}
         <Box sx={{ mb: 3, overflow: 'visible', animation: `${fadeIn} 0.4s 0.3s ease both` }}>
-          <Typography sx={{ fontSize: '0.68rem', color: 'rgba(0,0,0,0.4)', letterSpacing: '0.1em', textTransform: 'uppercase', mb: 1, fontWeight: 600 }}>
+          <Typography sx={{ fontSize: '0.68rem', color: 'var(--text-secondary)', letterSpacing: '0.1em', textTransform: 'uppercase', mb: 1, fontWeight: 600 }}>
             Category
           </Typography>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, overflow: 'visible' }}>
@@ -226,7 +226,7 @@ export function ExplorePage() {
                 borderRadius: 5,
                 bgcolor: !selectedCategory ? '#2E3D2F' : 'var(--neu-surface)',
                 boxShadow: !selectedCategory ? 'var(--neu-inset)' : 'var(--neu-subtle)',
-                color: !selectedCategory ? '#fff' : 'rgba(0,0,0,0.6)',
+                color: !selectedCategory ? '#fff' : 'var(--text-secondary)',
                 fontSize: '0.78rem',
                 fontWeight: 600,
                 cursor: 'pointer',
@@ -259,7 +259,7 @@ export function ExplorePage() {
                     borderRadius: 5,
                     bgcolor: active ? '#2E3D2F' : 'var(--neu-surface)',
                     boxShadow: active ? 'var(--neu-inset)' : 'var(--neu-subtle)',
-                    color: active ? '#fff' : 'rgba(0,0,0,0.6)',
+                    color: active ? '#fff' : 'var(--text-secondary)',
                     fontSize: '0.78rem',
                     fontWeight: 600,
                     cursor: 'pointer',
@@ -284,7 +284,7 @@ export function ExplorePage() {
 
         {/* Status tags */}
         <Box sx={{ mb: 3, animation: `${fadeIn} 0.4s 0.35s ease both` }}>
-          <Typography sx={{ fontSize: '0.68rem', color: 'rgba(0,0,0,0.4)', letterSpacing: '0.1em', textTransform: 'uppercase', mb: 1, fontWeight: 600 }}>
+          <Typography sx={{ fontSize: '0.68rem', color: 'var(--text-secondary)', letterSpacing: '0.1em', textTransform: 'uppercase', mb: 1, fontWeight: 600 }}>
             Status
           </Typography>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
@@ -301,7 +301,7 @@ export function ExplorePage() {
                     border: 0,
                     bgcolor: active ? '#2E3D2F' : 'var(--neu-surface)',
                     boxShadow: active ? 'var(--neu-inset)' : 'var(--neu-subtle)',
-                    color: active ? '#fff' : 'rgba(0,0,0,0.6)',
+                    color: active ? '#fff' : 'var(--text-secondary)',
                     fontSize: '0.78rem',
                     fontWeight: 600,
                     cursor: 'pointer',
@@ -331,8 +331,8 @@ export function ExplorePage() {
             borderBottom: '1px solid rgba(0,0,0,0.06)',
           }}
         >
-          <Typography sx={{ fontSize: '0.85rem', color: 'rgba(0,0,0,0.5)' }}>
-            Showing <Box component="strong" sx={{ color: '#1a1a1a' }}>{filtered.length}</Box> campaign{filtered.length !== 1 ? 's' : ''}
+          <Typography sx={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+            Showing <Box component="strong" sx={{ color: 'var(--text-primary)' }}>{filtered.length}</Box> campaign{filtered.length !== 1 ? 's' : ''}
             {selectedCategory && <> &middot; <strong>{CATEGORY_LABELS[selectedCategory]?.label}</strong></>}
             {selectedStatus && <> &middot; <strong>{STATUS_LABELS[selectedStatus]}</strong></>}
           </Typography>
@@ -344,7 +344,7 @@ export function ExplorePage() {
                 px: 1.5, py: 0.5,
                 border: '1px solid rgba(0,0,0,0.1)',
                 bgcolor: 'transparent',
-                color: 'rgba(0,0,0,0.5)',
+                color: 'var(--text-secondary)',
                 fontSize: '0.78rem',
                 fontWeight: 600,
                 cursor: 'pointer',
@@ -352,7 +352,7 @@ export function ExplorePage() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 0.5,
-                '&:hover': { borderColor: '#A5432F', color: '#A5432F' },
+                '&:hover': { borderColor: '#A5432F', color: 'var(--text-error)' },
               }}
             >
               <CloseRoundedIcon sx={{ fontSize: 14 }} /> Clear filters
@@ -407,7 +407,7 @@ export function ExplorePage() {
               borderTop: '1px solid rgba(0,0,0,0.06)',
             }}
           >
-            <Typography sx={{ fontSize: '0.78rem', color: 'rgba(0,0,0,0.4)' }}>
+            <Typography sx={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
               Showing {page * PER_PAGE + 1}&ndash;{Math.min((page + 1) * PER_PAGE, filtered.length)} of {filtered.length}
             </Typography>
             <Box sx={{ display: 'flex', gap: 0.5 }}>
@@ -418,11 +418,11 @@ export function ExplorePage() {
                 sx={{
                   px: 2, py: 0.75, bgcolor: 'transparent',
                   boxShadow: 'var(--neu-raised)',
-                  color: page === 0 ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.5)',
+                  color: page === 0 ? 'text.disabled' : 'var(--text-secondary)',
                   cursor: page === 0 ? 'default' : 'pointer',
                   fontSize: '0.78rem', fontFamily: '"Outfit", sans-serif',
                   transition: 'all 0.2s',
-                  '&:hover:not(:disabled)': { borderColor: 'rgba(0,0,0,0.2)', color: '#1a1a1a' },
+                  '&:hover:not(:disabled)': { borderColor: 'divider', color: 'var(--text-primary)' },
                 }}
               >
                 Prev
@@ -436,11 +436,11 @@ export function ExplorePage() {
                     px: 1.5, py: 0.75,
                     bgcolor: i === page ? '#1a1a1a' : 'transparent',
                     border: `1px solid ${i === page ? '#1a1a1a' : 'rgba(0,0,0,0.08)'}`,
-                    color: i === page ? '#fff' : 'rgba(0,0,0,0.5)',
+                    color: i === page ? '#fff' : 'var(--text-secondary)',
                     cursor: 'pointer',
                     fontSize: '0.78rem', fontFamily: '"Outfit", monospace', fontWeight: i === page ? 700 : 400,
                     transition: 'all 0.2s',
-                    '&:hover': { borderColor: 'rgba(0,0,0,0.2)' },
+                    '&:hover': { borderColor: 'divider' },
                   }}
                 >
                   {i + 1}
@@ -453,11 +453,11 @@ export function ExplorePage() {
                 sx={{
                   px: 2, py: 0.75, bgcolor: 'transparent',
                   boxShadow: 'var(--neu-raised)',
-                  color: page >= totalPages - 1 ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.5)',
+                  color: page >= totalPages - 1 ? 'text.disabled' : 'var(--text-secondary)',
                   cursor: page >= totalPages - 1 ? 'default' : 'pointer',
                   fontSize: '0.78rem', fontFamily: '"Outfit", sans-serif',
                   transition: 'all 0.2s',
-                  '&:hover:not(:disabled)': { borderColor: 'rgba(0,0,0,0.2)', color: '#1a1a1a' },
+                  '&:hover:not(:disabled)': { borderColor: 'divider', color: 'var(--text-primary)' },
                 }}
               >
                 Next

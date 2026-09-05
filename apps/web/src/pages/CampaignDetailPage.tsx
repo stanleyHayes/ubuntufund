@@ -1,3 +1,4 @@
+import { BrandedDatePicker } from '@ubuntu-fund/ui'
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -109,7 +110,7 @@ export function CampaignDetailPage() {
     setEditCategory(campaign.category)
     setEditPriority(campaign.priority)
     setEditBeneficiaries(campaign.beneficiaries.join(', '))
-    setEditEndDate(new Date(campaign.endDate).toISOString().slice(0, 16))
+    setEditEndDate(new Date(campaign.endDate).toISOString())
     setEditError('')
     setEditOpen(true)
   }
@@ -437,7 +438,7 @@ export function CampaignDetailPage() {
             ))}
           </TextField>
           <TextField label="Beneficiaries (comma separated)" value={editBeneficiaries} onChange={(e) => setEditBeneficiaries(e.target.value)} fullWidth />
-          <TextField label="End Date" type="datetime-local" value={editEndDate} onChange={(e) => setEditEndDate(e.target.value)} fullWidth InputLabelProps={{ shrink: true }} />
+          <BrandedDatePicker label="End Date" mode="datetime" value={editEndDate} onChange={setEditEndDate} fullWidth  />
           {editError && <Alert severity="error">{editError}</Alert>}
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
@@ -689,7 +690,7 @@ export function CampaignDetailPage() {
           onClick={() => setReportOpen(true)}
           sx={{
             borderColor: 'rgba(239,83,80,0.4)',
-            color: '#E53935',
+            color: 'var(--text-error)',
             textTransform: 'none',
             fontWeight: 600,
             fontSize: '0.82rem',

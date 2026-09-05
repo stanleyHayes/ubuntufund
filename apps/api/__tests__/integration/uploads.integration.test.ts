@@ -24,13 +24,34 @@ async function registerUser(app: Express, email: string) {
 
 describe('Uploads (Cloudinary sign) Integration', () => {
   let app: Express;
+  // This suite asserts the "Cloudinary not configured" 501 behaviour, so the app
+  // MUST be built with the Cloudinary creds absent regardless of the developer's
+  // local .env. config/index.ts reads these at construction time via dotenv
+  // (override:false), so an empty string assigned before createTestApp() survives
+  // — a `delete` would let dotenv repopulate it from .env. Originals are restored
+  // in afterAll to avoid leaking into later files.
+  const CLOUDINARY_ENV_KEYS = [
+    'CLOUDINARY_CLOUD_NAME',
+    'CLOUDINARY_API_KEY',
+    'CLOUDINARY_API_SECRET',
+  ] as const;
+  const savedCloudinaryEnv: Partial<Record<(typeof CLOUDINARY_ENV_KEYS)[number], string | undefined>> = {};
 
   beforeAll(async () => {
+    for (const key of CLOUDINARY_ENV_KEYS) {
+      savedCloudinaryEnv[key] = process.env[key];
+      process.env[key] = '';
+    }
     await connectTestDatabase();
     app = await createTestApp();
   });
 
   afterAll(async () => {
+    for (const key of CLOUDINARY_ENV_KEYS) {
+      const value = savedCloudinaryEnv[key];
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
     await dropTestDatabase();
     await disconnectTestDatabase();
   });

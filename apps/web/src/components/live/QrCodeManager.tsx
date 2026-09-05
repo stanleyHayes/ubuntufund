@@ -1,3 +1,4 @@
+import { EmptyState } from '@ubuntu-fund/ui'
 // ---------------------------------------------------------------------------
 // QrCodeManager — owner-facing dynamic QR / short-link manager for a campaign.
 //
@@ -201,9 +202,7 @@ export function QrCodeManager({ campaignId, liveSessionId }: QrCodeManagerProps)
           ))}
         </Stack>
       ) : codes.length === 0 ? (
-        <Typography sx={{ color: 'text.secondary', fontSize: '0.85rem', py: 1 }}>
-          No QR codes yet. Generate one above to share this campaign.
-        </Typography>
+        <EmptyState compact title="Make your campaign easy to find" description="Generate a QR code above to share on posters, at events, or with your community." />
       ) : (
         <Stack spacing={1.5}>
           {codes.map((code) => {

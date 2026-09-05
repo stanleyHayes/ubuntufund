@@ -1,3 +1,4 @@
+import { EmptyState } from '@ubuntu-fund/ui'
 import { useState } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
@@ -281,9 +282,7 @@ export function CollaboratorSection({
       )}
 
       {acceptedCollaborators.length === 0 && pendingCollaborators.length === 0 && isOwner && (
-        <Alert severity="info" sx={{ mb: 3 }}>
-          No collaborators yet. Invite collaborators to share responsibilities and revenue.
-        </Alert>
+        <EmptyState compact title="Build your campaign team" description="Invite collaborators to share responsibilities and revenue." />
       )}
 
       {/* Invite Dialog */}

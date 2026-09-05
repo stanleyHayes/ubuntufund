@@ -21,6 +21,9 @@ import KYCReviewPage from './pages/KYCReviewPage'
 import AuditLogPage from './pages/AuditLogPage'
 import SubscriptionsPage from './pages/SubscriptionsPage'
 import ManagePlansPage from './pages/ManagePlansPage'
+import CouponsPage from './pages/CouponsPage'
+import AffiliatesPage from './pages/AffiliatesPage'
+import AffiliateDetailPage from './pages/AffiliateDetailPage'
 import RolesPage from './pages/RolesPage'
 import DisputeDetailPage from './pages/DisputeDetailPage'
 import NewsletterPage from './pages/NewsletterPage'
@@ -28,6 +31,7 @@ import ContactSubmissionsPage from './pages/ContactSubmissionsPage'
 import TestimonialsPage from './pages/TestimonialsPage'
 import PaymentProvidersPage from './pages/PaymentProvidersPage'
 import AdminProfilePage from './pages/AdminProfilePage'
+import SettingsPage from './pages/SettingsPage'
 import AiUsagePage from './pages/AiUsagePage'
 import ContentStatsPage from './pages/content/ContentStatsPage'
 import ContentFaqPage from './pages/content/ContentFaqPage'
@@ -74,11 +78,15 @@ export const router = createBrowserRouter([
       { path: 'disputes/:id', element: <RequirePermission resource={Resource.DISPUTES}><DisputeDetailPage /></RequirePermission> },
       { path: 'reports', element: <RequirePermission resource={Resource.ANALYTICS}><ReportsPage /></RequirePermission> },
       { path: 'profile', element: <AdminProfilePage /> },
+      { path: 'settings', element: <RequirePermission resource={Resource.SETTINGS}><SettingsPage /></RequirePermission> },
       { path: 'verifications', element: <RequirePermission resource={Resource.VERIFICATIONS}><VerificationsPage /></RequirePermission> },
       { path: 'kyc-review', element: <RequirePermission resource={Resource.VERIFICATIONS}><KYCReviewPage /></RequirePermission> },
       { path: 'audit', element: <RequirePermission resource={Resource.AUDIT_LOG}><AuditLogPage /></RequirePermission> },
       { path: 'subscriptions', element: <RequirePermission resource={Resource.SUBSCRIPTIONS}><SubscriptionsPage /></RequirePermission> },
       { path: 'plans', element: <RequirePermission resource={Resource.PLANS}><ManagePlansPage /></RequirePermission> },
+      { path: 'coupons', element: <RequirePermission resource={Resource.COUPONS}><CouponsPage /></RequirePermission> },
+      { path: 'affiliates', element: <RequirePermission resource={Resource.AFFILIATES}><AffiliatesPage /></RequirePermission> },
+      { path: 'affiliates/:id', element: <RequirePermission resource={Resource.AFFILIATES}><AffiliateDetailPage /></RequirePermission> },
       { path: 'roles', element: <RequirePermission resource={Resource.ROLES}><RolesPage /></RequirePermission> },
       { path: 'newsletter', element: <RequirePermission resource={Resource.NEWSLETTER}><NewsletterPage /></RequirePermission> },
       { path: 'contact-submissions', element: <RequirePermission resource={Resource.CONTACT_SUBMISSIONS}><ContactSubmissionsPage /></RequirePermission> },

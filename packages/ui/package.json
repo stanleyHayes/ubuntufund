@@ -9,14 +9,18 @@
     "lint": "eslint src/"
   },
   "peerDependencies": {
-    "@mui/material": "^7.0.0",
-    "@mui/icons-material": "^7.0.0",
     "@emotion/react": "^11.0.0",
     "@emotion/styled": "^11.0.0",
+    "@mui/icons-material": "^7.0.0",
+    "@mui/material": "^7.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
   "dependencies": {
-    "@ubuntu-fund/types": "*"
+    "@gsap/react": "^2.1.2",
+    "@mui/x-date-pickers": "^8.29.3",
+    "@ubuntu-fund/types": "*",
+    "dayjs": "^1.11.23",
+    "gsap": "^3.15.0"
   }
 }

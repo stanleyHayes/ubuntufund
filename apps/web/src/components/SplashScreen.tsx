@@ -114,14 +114,14 @@ function AdinkraRing({
 /** Floating dust particles */
 function DustParticles() {
   const particles = [
-    { x: '20%', y: '30%', delay: 0, dur: 3, color: '#2E3D2F' },
+    { x: '20%', y: '30%', delay: 0, dur: 3, color: 'var(--text-brand)' },
     { x: '70%', y: '60%', delay: 0.5, dur: 4, color: '#C7A24A' },
     { x: '40%', y: '70%', delay: 1, dur: 3.5, color: '#C75B39' },
-    { x: '80%', y: '25%', delay: 1.5, dur: 4.5, color: '#5D4037' },
+    { x: '80%', y: '25%', delay: 1.5, dur: 4.5, color: 'var(--text-secondary)' },
     { x: '15%', y: '65%', delay: 2, dur: 3, color: '#C7A24A' },
-    { x: '60%', y: '40%', delay: 0.8, dur: 3.8, color: '#2E3D2F' },
+    { x: '60%', y: '40%', delay: 0.8, dur: 3.8, color: 'var(--text-brand)' },
     { x: '35%', y: '20%', delay: 1.3, dur: 4.2, color: '#C75B39' },
-    { x: '85%', y: '50%', delay: 0.3, dur: 3.3, color: '#5D4037' },
+    { x: '85%', y: '50%', delay: 0.3, dur: 3.3, color: 'var(--text-secondary)' },
   ]
   return (
     <>
@@ -224,7 +224,7 @@ export function SplashScreen() {
           fontSize: '1.6rem',
           fontWeight: 800,
           letterSpacing: '0.04em',
-          color: '#2E3D2F',
+          color: 'var(--text-brand)',
           zIndex: 1,
           opacity: 0,
           animation: 'stampIn 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.8s forwards',
@@ -237,7 +237,7 @@ export function SplashScreen() {
       <Typography
         sx={{
           fontSize: '0.9rem',
-          color: '#795548',
+          color: 'var(--text-secondary)',
           mt: 1,
           fontStyle: 'italic',
           opacity: 0,

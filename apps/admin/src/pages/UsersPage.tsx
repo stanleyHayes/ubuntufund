@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Box, Typography, TextField, MenuItem, InputAdornment } from '@mui/material'
-import { keyframes } from '@mui/system'
+import { Alert, Skeleton, Box, Typography, TextField, MenuItem, InputAdornment } from '@mui/material'
+import { raisedSurface, insetSurface, progressTrack } from '@/lib/surfaces'
 import SearchIcon from '@mui/icons-material/Search'
 import PeopleRoundedIcon from '@mui/icons-material/PeopleRounded'
 import { EmptyState } from '@ubuntu-fund/ui'
@@ -12,9 +12,6 @@ import { usePagination } from '@/hooks/usePagination'
 import PaginationBar from '@/components/PaginationBar'
 import PageHeader from '@/components/PageHeader'
 
-const fadeIn = keyframes`from{opacity:0}to{opacity:1}`
-const slideIn = keyframes`from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}`
-const B = 'rgba(255,255,255,0.06)'
 
 const roleColors: Record<string, string> = {
   [UserRole.ADMIN]: '#C06B58',
@@ -30,35 +27,22 @@ const verificationLabels: Record<number, string> = {
   [VerificationLevel.COMMUNITY]: 'Community',
 }
 
-function nameToColor(name: string): string {
-  let hash = 0
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash)
-  }
-  const hue = Math.abs(hash) % 360
-  return `hsl(${hue}, 45%, 35%)`
-}
-
 function initials(name: string): string {
   return name.split(' ').map(p => p[0]).join('').toUpperCase().slice(0, 2)
 }
 
 function Skel({ w, h }: { w?: string | number; h?: number }) {
   return (
-    <Box sx={{
-      width: w || '100%', height: h || 14,
-      bgcolor: 'rgba(255,255,255,0.04)',
-    }} />
+    <Skeleton variant="rounded" width={w ?? '100%'} height={h ?? 14} />
   )
 }
 
-function SkeletonCard({ index }: { index: number }) {
+function SkeletonCard() {
   return (
     <Box sx={{
       position: 'relative', overflow: 'hidden',
-      borderRight: `1px solid ${B}`, borderBottom: `1px solid ${B}`,
+      ...raisedSurface,
       p: 3,
-      animation: `${fadeIn} 0.4s ease ${index * 0.05}s both`,
     }}>
       <Box sx={{ display: 'flex', gap: 1.5, mb: 1.5 }}>
         <Skel w={40} h={40} />
@@ -68,7 +52,7 @@ function SkeletonCard({ index }: { index: number }) {
         </Box>
       </Box>
       <Skel w="80%" h={12} />
-      <Box sx={{ borderTop: `1px solid ${B}`, mt: 2, pt: 2 }}>
+      <Box sx={{ ...insetSurface, px: 1.5, pb: 1.5, mt: 2, pt: 2 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
           <Skel w={50} h={12} />
           <Skel w={30} h={16} />
@@ -80,7 +64,7 @@ function SkeletonCard({ index }: { index: number }) {
   )
 }
 
-function UserCard({ user, index }: { user: User; index: number }) {
+function UserCard({ user }: { user: User }) {
   const navigate = useNavigate()
   const roleColor = roleColors[user.role] || '#74909A'
   const trustColor = user.trustScore >= 70 ? '#5E8F72' : user.trustScore >= 40 ? '#D3A95C' : '#C06B58'
@@ -88,34 +72,27 @@ function UserCard({ user, index }: { user: User; index: number }) {
   return (
     <Box
       onClick={() => navigate(`/users/${user.id}`)}
+      role="link"
+      tabIndex={0}
+      onKeyDown={event => { if (event.target === event.currentTarget && event.key === 'Enter') navigate(`/users/${user.id}`) }}
       sx={{
         position: 'relative', overflow: 'hidden',
-        borderRight: `1px solid ${B}`, borderBottom: `1px solid ${B}`,
+        ...raisedSurface,
         p: 3, cursor: 'pointer',
-        transition: 'all 0.3s ease',
-        animation: `${slideIn} 0.4s ease ${index * 0.035}s both`,
-        '&::before': { content: '""', position: 'absolute', top: 0, left: 0, right: 0, height: 2, bgcolor: roleColor, opacity: 0.35, transition: 'opacity 0.3s' },
-        '&:hover': { bgcolor: 'rgba(255,255,255,0.03)', '&::before': { opacity: 1 } },
+        transition: 'box-shadow 160ms ease',
+        '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
+        '&:hover': { boxShadow: 'var(--neu-raised-hover)' },
+        '&:focus-visible': { outline: '2px solid', outlineColor: 'secondary.main', outlineOffset: 3 },
       }}
     >
-      {/* Watermark */}
-      <Typography sx={{
-        position: 'absolute', right: 12, bottom: 8,
-        fontSize: '3.5rem', fontFamily: '"Outfit", monospace', fontWeight: 900,
-        color: 'rgba(255,255,255,0.03)', lineHeight: 1, pointerEvents: 'none',
-        userSelect: 'none',
-      }}>
-        {user.trustScore}
-      </Typography>
-
       {/* Avatar + Name + Role */}
       <Box sx={{ display: 'flex', gap: 1.5, mb: 1.2, position: 'relative', zIndex: 1 }}>
         <Box sx={{
-          width: 40, height: 40, bgcolor: nameToColor(user.name),
+          width: 40, height: 40, ...insetSurface,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           flexShrink: 0,
         }}>
-          <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#fff', letterSpacing: '0.05em' }}>
+          <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, ...insetSurface, px: 1, py: 0.5, color: roleColor, letterSpacing: '0.05em' }}>
             {initials(user.name)}
           </Typography>
         </Box>
@@ -126,7 +103,7 @@ function UserCard({ user, index }: { user: User; index: number }) {
             </Typography>
             <Typography sx={{
               fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase',
-              color: roleColor, letterSpacing: '0.08em', flexShrink: 0,
+              ...insetSurface, px: 1, py: 0.5, color: roleColor, letterSpacing: '0.08em', flexShrink: 0,
             }}>
               {user.role}
             </Typography>
@@ -138,16 +115,16 @@ function UserCard({ user, index }: { user: User; index: number }) {
       </Box>
 
       {/* Separator */}
-      <Box sx={{ borderTop: `1px solid ${B}`, mt: 1.5, pt: 1.5, position: 'relative', zIndex: 1 }}>
+      <Box sx={{ ...insetSurface, px: 1.5, pb: 1.5, mt: 1.5, pt: 1.5, position: 'relative', zIndex: 1 }}>
         {/* Trust Score */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.8 }}>
           <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>Trust Score</Typography>
-          <Typography sx={{ fontSize: '0.9rem', fontFamily: '"Outfit", monospace', fontWeight: 700, color: trustColor }}>
+          <Typography sx={{ fontSize: '0.9rem', fontFamily: '"Outfit", monospace', fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: trustColor }}>
             {user.trustScore}
           </Typography>
         </Box>
-        <Box sx={{ width: '100%', height: 3, bgcolor: 'rgba(255,255,255,0.06)' }}>
-          <Box sx={{ width: `${user.trustScore}%`, height: '100%', bgcolor: trustColor, transition: 'width 0.6s ease' }} />
+        <Box sx={{ ...progressTrack }}>
+          <Box sx={{ width: `${Math.max(0, Math.min(100, user.trustScore))}%`, height: '100%', bgcolor: trustColor, transition: 'width 0.6s ease' }} />
         </Box>
       </Box>
 
@@ -170,7 +147,7 @@ function UserCard({ user, index }: { user: User; index: number }) {
 }
 
 export default function UsersPage() {
-  const { data: users, isLoading: loading } = useAdminUsers()
+  const { data: users, isLoading: loading, error } = useAdminUsers()
   const PAGE_SIZE = 12
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('all')
@@ -184,8 +161,8 @@ export default function UsersPage() {
   const pagination = usePagination(filtered, PAGE_SIZE)
 
   return (
-    <Box sx={{ bgcolor: '#0c0c14', minHeight: '100vh', animation: `${fadeIn} 0.3s ease` }}>
-      <Box sx={{ px: 3, pt: 3 }}>
+    <Box sx={{ bgcolor: 'background.default' }}>
+      <Box>
         <PageHeader
           tone="gold"
           eyebrow="Community"
@@ -195,13 +172,16 @@ export default function UsersPage() {
         />
       </Box>
 
+      {error && <Alert severity="error" sx={{ mb: 3 }}>Could not load users. Refresh the page to try again.</Alert>}
+
       {/* Filter bar */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr 1fr' }, borderBottom: `1px solid ${B}` }}>
-        <Box sx={{ px: 2.5, py: 1.5, borderRight: `1px solid ${B}`, display: 'flex', alignItems: 'center' }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr 1fr' }, ...raisedSurface, mb: 3 }}>
+        <Box sx={{ px: 2.5, py: 1.5, display: 'flex', alignItems: 'center' }}>
           <TextField
             size="small"
-            variant="standard"
+            variant="outlined"
             placeholder="Search users..."
+            slotProps={{ htmlInput: { 'aria-label': 'Search users...' } }}
             value={search}
             onChange={e => setSearch(e.target.value)}
             fullWidth
@@ -212,25 +192,17 @@ export default function UsersPage() {
                 </InputAdornment>
               ),
             }}
-            sx={{
-              '& .MuiInput-root': { color: 'text.primary', '&::before': { borderColor: B }, '&::after': { borderColor: '#5E8F72' } },
-              '& .MuiInputLabel-root': { color: 'text.secondary', fontSize: '0.8rem' },
-            }}
           />
         </Box>
-        <Box sx={{ px: 2.5, py: 1.5, borderRight: `1px solid ${B}`, display: 'flex', alignItems: 'center' }}>
+        <Box sx={{ px: 2.5, py: 1.5, display: 'flex', alignItems: 'center' }}>
           <TextField
             select
             size="small"
-            variant="standard"
+            variant="outlined"
             label="Role"
             value={roleFilter}
             onChange={e => setRoleFilter(e.target.value)}
             fullWidth
-            sx={{
-              '& .MuiInput-root': { color: 'text.primary', '&::before': { borderColor: B }, '&::after': { borderColor: '#5E8F72' } },
-              '& .MuiInputLabel-root': { color: 'text.secondary', fontSize: '0.8rem' },
-            }}
           >
             <MenuItem value="all">All Roles</MenuItem>
             <MenuItem value={UserRole.ADMIN}>Admin</MenuItem>
@@ -239,8 +211,8 @@ export default function UsersPage() {
           </TextField>
         </Box>
         <Box sx={{ px: 2.5, py: 1.5, display: 'flex', alignItems: 'center' }}>
-          <Typography sx={{ fontFamily: '"Outfit", monospace', fontSize: '0.82rem', color: 'text.secondary' }}>
-            {filtered.length} users
+          <Typography sx={{ fontFamily: '"Outfit", monospace', fontVariantNumeric: 'tabular-nums', fontSize: '0.82rem', color: 'text.secondary' }}>
+            {loading ? <Skeleton width={80} /> : error ? 'Unavailable' : `${filtered.length} users`}
           </Typography>
         </Box>
       </Box>
@@ -248,21 +220,21 @@ export default function UsersPage() {
       {/* Grid */}
       <Box sx={{
         display: 'grid',
-        gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)', lg: 'repeat(4, 1fr)' },
+        gap: 3, gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))', md: 'repeat(3, minmax(0, 1fr))', lg: 'repeat(4, minmax(0, 1fr))' },
       }}>
         {loading
-          ? Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} index={i} />)
-          : pagination.page.map((user, i) => (
-              <UserCard key={user.id} user={user} index={i} />
+          ? Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)
+          : pagination.page.map((user) => (
+              <UserCard key={user.id} user={user} />
             ))
         }
       </Box>
 
-      {!loading && <PaginationBar pagination={pagination} accentColor="#8FAE96" />}
+      {!loading && <PaginationBar neumorphic pagination={pagination} accentColor="#8FAE96" />}
 
       {/* Empty state */}
-      {!loading && filtered.length === 0 && (
-        <EmptyState variant="search" title="No users found" description="No users match your filters. Try adjusting your search criteria." compact />
+      {!loading && !error && filtered.length === 0 && (
+        <Box sx={{ ...raisedSurface, p: 3 }}><EmptyState variant="search" title="No users found" description="No users match your filters. Try adjusting your search criteria." compact /></Box>
       )}
     </Box>
   )

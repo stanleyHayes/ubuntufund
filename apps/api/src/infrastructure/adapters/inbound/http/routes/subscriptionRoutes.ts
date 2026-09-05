@@ -16,6 +16,12 @@ const upgradeSubscriptionSchema = z.object({
   billingCycle: z.nativeEnum(BillingCycle).optional(),
 });
 
+const createCheckoutSchema = z.object({
+  tier: z.nativeEnum(SubscriptionTier),
+  billingCycle: z.nativeEnum(BillingCycle),
+  couponCode: z.string().min(1).max(50).optional(),
+});
+
 export function createSubscriptionRoutes(
   controller: SubscriptionController,
   authMiddleware: ReturnType<typeof createAuthMiddleware>,
@@ -26,6 +32,16 @@ export function createSubscriptionRoutes(
   router.get('/', authMiddleware, requireAdmin, controller.list);
 
   router.get('/mine', authMiddleware, controller.getMine);
+
+  // Paid-subscription Paystack checkout rail.
+  router.post(
+    '/checkout',
+    authMiddleware,
+    validate(createCheckoutSchema),
+    controller.createCheckout
+  );
+  router.get('/checkout/:id', authMiddleware, controller.getCheckout);
+
   router.post(
     '/',
     authMiddleware,

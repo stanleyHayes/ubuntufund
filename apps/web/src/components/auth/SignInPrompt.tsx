@@ -4,7 +4,7 @@ import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import { Link as RouterLink, useLocation } from 'react-router-dom'
 import { EmptyState, SHAPE } from '@ubuntu-fund/ui'
 
-const FOREST = '#2E3D2F'
+const FOREST = 'primary.main'
 
 /**
  * Friendly "sign in to continue" panel shown on protected pages when the user

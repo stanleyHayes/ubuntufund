@@ -15,7 +15,6 @@ import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import Paper from '@mui/material/Paper'
 import Grid from '@mui/material/Grid'
-import AccountBalanceWalletRoundedIcon from '@mui/icons-material/AccountBalanceWalletRounded'
 import { keyframes } from '@emotion/react'
 import { formatCurrency, SHAPE, EmptyState } from '@ubuntu-fund/ui'
 import {
@@ -53,10 +52,10 @@ const WALLET_LABELS: Record<string, string> = {
 }
 
 const TX_STATUS_COLORS: Record<string, { bg: string; color: string }> = {
-  [TransactionStatus.COMPLETED]: { bg: 'rgba(46, 61, 47,0.08)', color: '#2E3D2F' },
-  [TransactionStatus.PENDING]: { bg: 'rgba(255,167,38,0.1)', color: '#E65100' },
-  [TransactionStatus.FAILED]: { bg: 'rgba(239,83,80,0.08)', color: '#A5432F' },
-  [TransactionStatus.REVERSED]: { bg: 'rgba(156,39,176,0.08)', color: '#4A6B75' },
+  [TransactionStatus.COMPLETED]: { bg: 'rgba(46, 61, 47,0.08)', color: 'var(--text-brand)' },
+  [TransactionStatus.PENDING]: { bg: 'rgba(255,167,38,0.1)', color: 'var(--text-warning)' },
+  [TransactionStatus.FAILED]: { bg: 'rgba(239,83,80,0.08)', color: 'var(--text-error)' },
+  [TransactionStatus.REVERSED]: { bg: 'rgba(156,39,176,0.08)', color: 'var(--text-info)' },
 }
 
 function formatTxType(type: TransactionType): string {
@@ -116,16 +115,7 @@ export function WalletPage() {
         ) : error ? (
           <Alert severity="error" sx={{ borderRadius: SHAPE.card, mb: 4 }}>{error}</Alert>
         ) : wallets.length === 0 ? (
-          <Card
-            elevation={0}
-            sx={{ textAlign: 'center', p: 6, border: '1.5px dashed rgba(0,0,0,0.1)', borderRadius: SHAPE.card, mb: 6 }}
-          >
-            <AccountBalanceWalletRoundedIcon sx={{ fontSize: 48, color: '#ccc', mb: 2 }} />
-            <Typography sx={{ fontWeight: 700, mb: 1 }}>No wallets found</Typography>
-            <Typography sx={{ color: 'text.secondary', fontSize: '0.9rem' }}>
-              Your wallets will appear here once your account is set up.
-            </Typography>
-          </Card>
+          <EmptyState compact variant="noData" title="Your wallet is getting ready" description="Your wallets will appear here once your account is set up." />
         ) : (
           <Grid container spacing={3} sx={{ mb: 6 }}>
             {wallets.map((wallet, idx) => {

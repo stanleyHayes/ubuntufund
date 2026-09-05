@@ -1,3 +1,4 @@
+import ProductIllustration from '../ProductIllustration'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
@@ -83,6 +84,8 @@ function TestimonialsSection() {
             invented customer outcomes or launch metrics.
           </Typography>
         </Box>
+
+        <Box sx={{ maxWidth: 900, mx: 'auto', mb: 6 }}><ProductIllustration screen="campaign" caption="A public view of the campaign goal and progress" /></Box>
 
         <Grid container spacing={4}>
           {items.map((testimonial) => (

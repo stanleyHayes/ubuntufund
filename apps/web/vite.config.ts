@@ -6,6 +6,10 @@ import { fileURLToPath } from 'node:url'
 export default defineConfig({
   plugins: [react()],
   resolve: {
+    // Force a single React instance. packages/ui is consumed as source and
+    // resolves the hoisted root react, while the app has its own nested copy;
+    // without dedupe that's two Reacts → "Invalid hook call" in MUI's provider.
+    dedupe: ['react', 'react-dom'],
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },

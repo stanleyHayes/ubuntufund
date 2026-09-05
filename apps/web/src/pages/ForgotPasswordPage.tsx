@@ -65,9 +65,9 @@ const sketchyInputSx = {
   '& .MuiInputLabel-root': {
     fontFamily: '"Inter", sans-serif',
     fontSize: '0.85rem',
-    color: 'rgba(0,0,0,0.45)',
+    color: 'text.secondary',
     '&.Mui-focused': {
-      color: '#2E3D2F',
+      color: 'var(--text-brand)',
     },
   },
 }
@@ -279,7 +279,7 @@ export function ForgotPasswordPage() {
               fontFamily: '"Outfit", sans-serif',
               fontWeight: 900,
               fontSize: '1.5rem',
-              color: '#1a1a1a',
+              color: 'var(--text-primary)',
               mb: 1,
               position: 'relative',
               display: 'inline-block',
@@ -303,7 +303,7 @@ export function ForgotPasswordPage() {
 
           <Typography
             sx={{
-              color: 'rgba(0,0,0,0.5)',
+              color: 'text.secondary',
               fontSize: '0.88rem',
               mt: 2,
               fontStyle: 'italic',
@@ -311,14 +311,14 @@ export function ForgotPasswordPage() {
             }}
           >
             We&apos;ve sent a password reset link to{' '}
-            <Box component="span" sx={{ color: '#2E3D2F', fontWeight: 600, fontStyle: 'normal' }}>
+            <Box component="span" sx={{ color: 'var(--text-brand)', fontWeight: 600, fontStyle: 'normal' }}>
               {email}
             </Box>
           </Typography>
 
           <Typography
             sx={{
-              color: 'rgba(0,0,0,0.35)',
+              color: 'text.secondary',
               fontSize: '0.78rem',
               mt: 1.5,
               fontStyle: 'italic',
@@ -333,7 +333,7 @@ export function ForgotPasswordPage() {
               component={RouterLink}
               to="/login"
               sx={{
-                color: '#2E3D2F',
+                color: 'var(--text-brand)',
                 fontSize: '0.88rem',
                 fontWeight: 600,
                 textDecoration: 'none',
@@ -380,7 +380,7 @@ export function ForgotPasswordPage() {
               variant="h4"
               sx={{
                 fontWeight: 900,
-                color: '#1a1a1a',
+                color: 'var(--text-primary)',
                 fontFamily: '"Outfit", sans-serif',
                 fontSize: '1.6rem',
                 position: 'relative',
@@ -406,7 +406,7 @@ export function ForgotPasswordPage() {
             </Typography>
             <Typography
               sx={{
-                color: 'rgba(0,0,0,0.5)',
+                color: 'text.secondary',
                 fontSize: '0.85rem',
                 mt: 1.5,
                 fontStyle: 'italic',
@@ -511,13 +511,13 @@ export function ForgotPasswordPage() {
                 component={RouterLink}
                 to="/login"
                 sx={{
-                  color: '#5D4037',
+                  color: 'var(--text-secondary)',
                   fontSize: '0.85rem',
                   fontWeight: 500,
                   textDecoration: 'none',
                   fontStyle: 'italic',
                   transition: 'color 0.2s ease',
-                  '&:hover': { color: '#2E3D2F' },
+                  '&:hover': { color: 'var(--text-brand)' },
                 }}
               >
                 &larr; Back to Sign in

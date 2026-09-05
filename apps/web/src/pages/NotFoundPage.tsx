@@ -226,10 +226,10 @@ function DotCluster({ x, y, color = '#2E3D2F', delay = 0 }: { x: number; y: numb
 /** Floating dust */
 function DustParticles() {
   const particles = [
-    { x: '12%', y: '80%', delay: 0, dur: 3.5, color: '#2E3D2F' },
+    { x: '12%', y: '80%', delay: 0, dur: 3.5, color: 'var(--text-brand)' },
     { x: '30%', y: '85%', delay: 0.5, dur: 4, color: '#C7A24A' },
     { x: '50%', y: '82%', delay: 1, dur: 3, color: '#C75B39' },
-    { x: '70%', y: '88%', delay: 1.5, dur: 4.5, color: '#5D4037' },
+    { x: '70%', y: '88%', delay: 1.5, dur: 4.5, color: 'var(--text-secondary)' },
     { x: '88%', y: '83%', delay: 2, dur: 3.8, color: '#C7A24A' },
   ]
   return (
@@ -317,7 +317,7 @@ export function NotFoundPage() {
           fontSize: { xs: '8rem', md: '12rem' },
           fontWeight: 900,
           lineHeight: 1,
-          color: '#2E3D2F',
+          color: 'var(--text-brand)',
           position: 'relative',
           mb: 1,
           fontFamily: '"Georgia", serif',
@@ -354,7 +354,7 @@ export function NotFoundPage() {
         variant="h4"
         sx={{
           fontWeight: 700,
-          color: '#5D4037',
+          color: 'var(--text-secondary)',
           mb: 1,
           textAlign: 'center',
           fontSize: { xs: '1.3rem', md: '1.8rem' },
@@ -368,7 +368,7 @@ export function NotFoundPage() {
       <Typography
         variant="body1"
         sx={{
-          color: '#795548',
+          color: 'var(--text-secondary)',
           mb: 4,
           textAlign: 'center',
           maxWidth: 440,

@@ -62,7 +62,7 @@ export function EmbedCampaign({ campaignId, title }: EmbedCampaignProps) {
             whiteSpace: 'pre-wrap',
             wordBreak: 'break-all',
             '& code': {
-              color: '#4A5A50',
+              color: 'var(--text-secondary)',
             },
           }}
         >

@@ -24,9 +24,9 @@ import { useMyDonations } from '@/hooks/useDonations'
 import type { UserDonation } from '@/hooks/useDonations'
 
 const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
-  completed: { bg: 'rgba(46, 61, 47,0.08)', color: '#2E3D2F' },
-  pending: { bg: 'rgba(255,167,38,0.1)', color: '#E65100' },
-  refunded: { bg: 'rgba(239,83,80,0.08)', color: '#E53935' },
+  completed: { bg: 'rgba(46, 61, 47,0.08)', color: 'var(--text-brand)' },
+  pending: { bg: 'rgba(255,167,38,0.1)', color: 'var(--text-warning)' },
+  refunded: { bg: 'rgba(239,83,80,0.08)', color: 'var(--text-error)' },
 }
 
 function formatPaymentMethod(method: PaymentMethod): string {
@@ -86,9 +86,9 @@ export function MyDonationsPage() {
         {/* Stats Bar */}
         <Grid container spacing={2} sx={{ mb: 4 }}>
           {[
-            { icon: <TrendingUpRoundedIcon />, label: 'Total Donated', value: `GH₵ ${Math.round(totalDonated).toLocaleString()}`, color: '#2E3D2F', bg: 'rgba(46, 61, 47,0.08)' },
-            { icon: <VolunteerActivismRoundedIcon />, label: 'Campaigns Supported', value: String(campaignsSupported), color: '#1565C0', bg: 'rgba(21,101,192,0.08)' },
-            { icon: <BarChartRoundedIcon />, label: 'Average Donation', value: `GH₵ ${Math.round(avgDonation).toLocaleString()}`, color: '#AD1457', bg: 'rgba(173,20,87,0.08)' },
+            { icon: <TrendingUpRoundedIcon />, label: 'Total Donated', value: `GH₵ ${Math.round(totalDonated).toLocaleString()}`, color: 'var(--text-brand)', bg: 'rgba(46, 61, 47,0.08)' },
+            { icon: <VolunteerActivismRoundedIcon />, label: 'Campaigns Supported', value: String(campaignsSupported), color: 'var(--text-info)', bg: 'rgba(21,101,192,0.08)' },
+            { icon: <BarChartRoundedIcon />, label: 'Average Donation', value: `GH₵ ${Math.round(avgDonation).toLocaleString()}`, color: 'var(--text-accent)', bg: 'rgba(173,20,87,0.08)' },
           ].map((stat) => (
             <Grid size={{ xs: 12, sm: 4 }} key={stat.label}>
               <Box

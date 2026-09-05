@@ -25,11 +25,11 @@ import { useFeaturedDonors } from '@/hooks/useLeaderboard'
 const HOME_CAMPAIGN_LIMIT = 6
 
 const RANK_CONFIG = [
-  { color: '#A07E33', icon: <EmojiEventsRounded />, label: '01' },
+  { color: 'var(--text-warning)', icon: <EmojiEventsRounded />, label: '01' },
   { color: '#74909A', icon: <MilitaryTechRounded />, label: '02' },
   { color: '#B66A36', icon: <WorkspacePremiumRounded />, label: '03' },
-  { color: '#5E8F72', icon: <StarRounded />, label: '04' },
-  { color: '#5E8F72', icon: <StarRounded />, label: '05' },
+  { color: 'var(--text-success)', icon: <StarRounded />, label: '04' },
+  { color: 'var(--text-success)', icon: <StarRounded />, label: '05' },
 ]
 
 function FeaturedDonorCard({

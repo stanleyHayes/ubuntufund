@@ -14,6 +14,7 @@ const LEDGER_ACCOUNT_KINDS: LedgerAccountKind[] = [
   'processor_fee',
   'tip',
   'beneficiary',
+  'payout',
 ];
 
 const ledgerAccountSchema = new Schema<LedgerAccountDocument>(

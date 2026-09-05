@@ -1,4 +1,4 @@
-import type { PaginationParams } from '@ubuntu-fund/types';
+import { CampaignStatus, type PaginationParams } from '@ubuntu-fund/types';
 import { CampaignEntity } from '../../../../domain/entities/Campaign.js';
 import { Money } from '../../../../domain/value-objects/Money.js';
 import type { CampaignRepositoryPort } from '../../../../domain/ports/outbound/CampaignRepositoryPort.js';
@@ -137,6 +137,14 @@ export class MongoCampaignRepository implements CampaignRepositoryPort {
     return CampaignModel.countDocuments({
       creatorId,
       deletedAt: { $exists: false },
+    });
+  }
+
+  async countActiveByCreator(creatorId: string): Promise<number> {
+    return CampaignModel.countDocuments({
+      creatorId,
+      deletedAt: { $exists: false },
+      status: { $in: [CampaignStatus.ACTIVE, CampaignStatus.PENDING_REVIEW] },
     });
   }
 

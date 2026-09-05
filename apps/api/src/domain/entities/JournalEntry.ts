@@ -167,4 +167,79 @@ export class JournalEntryEntity {
       lines,
     });
   }
+
+  /**
+   * Build the balanced double-entry for a payout disbursement: the beneficiary's
+   * owed funds leave the platform. Debit the campaign's `beneficiary` account
+   * (reducing what is owed) and credit its `payout` account (funds disbursed).
+   */
+  static forPayoutDisbursement(refs: {
+    campaignId: string;
+    amount: number;
+    currency: string;
+    memo?: string;
+  }): JournalEntryEntity {
+    const amount = round2(refs.amount);
+    if (amount <= 0) {
+      throw new Error('Payout amount must be greater than zero');
+    }
+    return new JournalEntryEntity({
+      memo: refs.memo ?? `payout for campaign ${refs.campaignId}`,
+      currency: refs.currency,
+      lines: [
+        {
+          accountKind: 'beneficiary',
+          accountOwnerId: refs.campaignId,
+          direction: 'debit',
+          amount,
+          currency: refs.currency,
+        },
+        {
+          accountKind: 'payout',
+          accountOwnerId: refs.campaignId,
+          direction: 'credit',
+          amount,
+          currency: refs.currency,
+        },
+      ],
+    });
+  }
+
+  /**
+   * Build the balanced reversing entry for a reversed payout: money came back to
+   * the platform. The mirror of {@link forPayoutDisbursement} — debit `payout`,
+   * credit `beneficiary`. Posted as a NEW entry (posted entries are never
+   * mutated).
+   */
+  static forPayoutReversal(refs: {
+    campaignId: string;
+    amount: number;
+    currency: string;
+    memo?: string;
+  }): JournalEntryEntity {
+    const amount = round2(refs.amount);
+    if (amount <= 0) {
+      throw new Error('Payout amount must be greater than zero');
+    }
+    return new JournalEntryEntity({
+      memo: refs.memo ?? `payout reversal for campaign ${refs.campaignId}`,
+      currency: refs.currency,
+      lines: [
+        {
+          accountKind: 'payout',
+          accountOwnerId: refs.campaignId,
+          direction: 'debit',
+          amount,
+          currency: refs.currency,
+        },
+        {
+          accountKind: 'beneficiary',
+          accountOwnerId: refs.campaignId,
+          direction: 'credit',
+          amount,
+          currency: refs.currency,
+        },
+      ],
+    });
+  }
 }

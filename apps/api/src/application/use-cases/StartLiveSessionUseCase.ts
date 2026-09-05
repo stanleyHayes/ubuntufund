@@ -2,6 +2,7 @@ import type { LiveSession, StartLiveSessionInput } from '@ubuntu-fund/types';
 import { LiveSessionEntity } from '../../domain/entities/LiveSession.js';
 import type { LiveSessionRepositoryPort } from '../../domain/ports/outbound/LiveSessionRepositoryPort.js';
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js';
+import type { PlanLimitsService } from '../services/PlanLimitsService.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 import { generateOverlayToken } from '../utils/overlayToken.js';
 import { toLiveSessionDto } from './mappers/liveSessionDto.js';
@@ -18,7 +19,8 @@ export interface LiveSessionRequester {
 export class StartLiveSessionUseCase {
   constructor(
     private readonly liveSessionRepo: LiveSessionRepositoryPort,
-    private readonly campaignRepo: CampaignRepositoryPort
+    private readonly campaignRepo: CampaignRepositoryPort,
+    private readonly planLimits: PlanLimitsService
   ) {}
 
   async execute(
@@ -39,6 +41,15 @@ export class StartLiveSessionUseCase {
         403
       );
     }
+
+    // LIVE fundraising is a plan feature, gated against the campaign owner's
+    // plan (not the requester's — an admin starting on the owner's behalf still
+    // uses the owner's entitlement).
+    await this.planLimits.assertFeature(
+      campaign.creatorId,
+      'liveStreaming',
+      'LIVE streaming'
+    );
 
     if (input.targetAmount != null && input.targetAmount <= 0) {
       throw new AppError('targetAmount must be a positive number', 400);

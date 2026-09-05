@@ -1,3 +1,4 @@
+import ProductIllustration from '../ProductIllustration'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
@@ -93,6 +94,14 @@ function FeaturesSection() {
           </Typography>
         </Box>
 
+        <Grid container spacing={4} sx={{ mb: 6 }}>
+          <Grid size={{ xs: 12, md: 7 }}><ProductIllustration screen="campaign" caption="Campaign goals, progress, and sharing in one place" /></Grid>
+          <Grid size={{ xs: 12, md: 5 }} sx={{ alignSelf: 'center' }}>
+            <Typography variant="h4" sx={{ mb: 2 }}>Give every cause room to grow</Typography>
+            <Typography sx={{ color: 'text.secondary', mb: 3 }}>A clear goal, a story worth sharing, and a community ready to help. Bring them together and build something that lasts.</Typography>
+            <ProductIllustration screen="workspace" caption="Campaign and donation activity" />
+          </Grid>
+        </Grid>
         <Grid container spacing={3}>
           {features.map((feature) => (
             <Grid size={{ xs: 12, sm: 6, md: 4 }} key={feature.title}>

@@ -10,7 +10,14 @@ import {
 } from '../helpers/testDatabase.js';
 import { UserModel } from '../../src/infrastructure/database/models/UserModel.js';
 import { CampaignModel } from '../../src/infrastructure/database/models/CampaignModel.js';
-import { CampaignCategory, CampaignPriority } from '@ubuntu-fund/types';
+import { SubscriptionModel } from '../../src/infrastructure/database/models/SubscriptionModel.js';
+import {
+  CampaignCategory,
+  CampaignPriority,
+  SubscriptionTier,
+  SubscriptionStatus,
+  BillingCycle,
+} from '@ubuntu-fund/types';
 
 function uniqueEmail(label: string): string {
   return `${label}-${randomUUID()}@example.com`;
@@ -43,6 +50,20 @@ async function registerUser(app: Express, email: string) {
 /** Directly raises a user's verificationLevel in the DB (bypasses the KYC flow, mirroring how an already-verified fixture user would look). */
 async function setVerificationLevel(userId: string, level: number): Promise<void> {
   await UserModel.findByIdAndUpdate(userId, { verificationLevel: level });
+}
+
+/** Seeds an active subscription so a user's plan lifts the Free-tier caps. */
+async function seedSubscription(userId: string, tier: SubscriptionTier): Promise<void> {
+  const now = new Date();
+  await SubscriptionModel.create({
+    userId,
+    tier,
+    status: SubscriptionStatus.ACTIVE,
+    billingCycle: BillingCycle.MONTHLY,
+    currentPeriodStart: now,
+    currentPeriodEnd: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
+    cancelAtPeriodEnd: false,
+  });
 }
 
 /** Registers an admin: sets role in the DB, then re-logs in so the JWT carries the fresh role claim. */
@@ -105,6 +126,55 @@ describe('Campaigns Integration', () => {
       const res = await request(app).post('/api/v1/campaigns').send(campaignPayload());
       expect(res.status).toBe(401);
     });
+
+    it('caps active campaigns at the Free-plan limit (second create → 403)', async () => {
+      const { userId, token } = await registerUser(app, uniqueEmail('freecap'));
+      await setVerificationLevel(userId, 3); // verification allows many; the plan is the cap
+
+      const first = await request(app)
+        .post('/api/v1/campaigns')
+        .set('Authorization', `Bearer ${token}`)
+        .send(campaignPayload({ title: 'First Free Campaign' }));
+      expect(first.status).toBe(201);
+
+      const second = await request(app)
+        .post('/api/v1/campaigns')
+        .set('Authorization', `Bearer ${token}`)
+        .send(campaignPayload({ title: 'Second Free Campaign' }));
+      expect(second.status).toBe(403);
+      expect(second.body.message).toMatch(/active campaign/i);
+
+      const count = await CampaignModel.countDocuments({ creatorId: userId });
+      expect(count).toBe(1);
+    });
+
+    it('caps the campaign goal at the Free-plan ceiling (over cap → 422)', async () => {
+      const { userId, token } = await registerUser(app, uniqueEmail('goalcap'));
+      await setVerificationLevel(userId, 2);
+
+      const res = await request(app)
+        .post('/api/v1/campaigns')
+        .set('Authorization', `Bearer ${token}`)
+        .send(campaignPayload({ title: 'Too Ambitious', goalAmount: 6000 })); // Free caps at 5000
+      expect(res.status).toBe(422);
+      expect(res.body.message).toMatch(/caps campaign goals/i);
+
+      const count = await CampaignModel.countDocuments({ creatorId: userId });
+      expect(count).toBe(0);
+    });
+
+    it('lifts the goal ceiling on a higher plan', async () => {
+      const { userId, token } = await registerUser(app, uniqueEmail('starter'));
+      await setVerificationLevel(userId, 2);
+      await seedSubscription(userId, SubscriptionTier.STARTER); // caps goals at 25000
+
+      const res = await request(app)
+        .post('/api/v1/campaigns')
+        .set('Authorization', `Bearer ${token}`)
+        .send(campaignPayload({ title: 'Bigger Goal', goalAmount: 20000 }));
+      expect(res.status).toBe(201);
+      expect(res.body.data.goalAmount).toBe(20000);
+    });
   });
 
   describe('GET /api/v1/campaigns/:id', () => {
@@ -136,6 +206,7 @@ describe('Campaigns Integration', () => {
     it('paginates the campaign list', async () => {
       const { userId, token } = await registerUser(app, uniqueEmail('paginate'));
       await setVerificationLevel(userId, 3); // INSTITUTIONAL -> limit 10, room for several campaigns
+      await seedSubscription(userId, SubscriptionTier.PRO); // Pro plan -> 10 active campaigns
 
       for (let i = 0; i < 3; i++) {
         await request(app)

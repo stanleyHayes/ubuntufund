@@ -1,9 +1,11 @@
-import { Box, Typography, IconButton, TextField, MenuItem } from '@mui/material'
+import { ButtonBase, Box, Typography, IconButton, TextField, MenuItem } from '@mui/material'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import FirstPageIcon from '@mui/icons-material/FirstPage'
 import LastPageIcon from '@mui/icons-material/LastPage'
 import type { PaginationResult } from '@/hooks/usePagination'
+
+import { raisedSurface, insetSurface } from '@/lib/surfaces'
 
 const B = 'rgba(255,255,255,0.06)'
 
@@ -11,10 +13,11 @@ const PAGE_SIZE_OPTIONS = [12, 24, 48]
 
 interface PaginationBarProps {
   pagination: PaginationResult<unknown>
+  neumorphic?: boolean
   accentColor?: string
 }
 
-export default function PaginationBar({ pagination, accentColor = '#5E8F72' }: PaginationBarProps) {
+export default function PaginationBar({ pagination, accentColor = '#5E8F72', neumorphic = false }: PaginationBarProps) {
   const { currentPage, totalPages, rangeLabel, hasNext, hasPrev, goToPage, nextPage, prevPage, pageSize, setPageSize } = pagination
 
   if (pagination.totalItems === 0) return null
@@ -45,6 +48,7 @@ export default function PaginationBar({ pagination, accentColor = '#5E8F72' }: P
         py: 1.5,
         borderTop: `1px solid ${B}`,
         bgcolor: 'rgba(255,255,255,0.01)',
+        ...(neumorphic ? { ...raisedSurface, mt: 3, borderTop: 0 } : {}),
       }}
     >
       {/* Left: range label + page size */}
@@ -68,11 +72,12 @@ export default function PaginationBar({ pagination, accentColor = '#5E8F72' }: P
           <TextField
             select
             size="small"
-            variant="standard"
+            variant={neumorphic ? 'outlined' : 'standard'}
+            slotProps={{ select: { inputProps: { 'aria-label': 'Items per page' } } }}
             value={pageSize}
             onChange={(e) => setPageSize(Number(e.target.value))}
             sx={{
-              width: 52,
+              width: neumorphic ? 72 : 52,
               '& .MuiInput-root': {
                 color: 'text.primary',
                 fontSize: '0.75rem',
@@ -83,7 +88,7 @@ export default function PaginationBar({ pagination, accentColor = '#5E8F72' }: P
               '& .MuiSelect-select': { py: 0.25 },
             }}
           >
-            {PAGE_SIZE_OPTIONS.map((opt) => (
+            {[...new Set([pageSize, ...PAGE_SIZE_OPTIONS])].sort((a, b) => a - b).map((opt) => (
               <MenuItem key={opt} value={opt}>{opt}</MenuItem>
             ))}
           </TextField>
@@ -95,6 +100,7 @@ export default function PaginationBar({ pagination, accentColor = '#5E8F72' }: P
         {/* First */}
         <IconButton
           size="small"
+          aria-label="First page"
           onClick={() => goToPage(1)}
           disabled={!hasPrev}
           sx={{
@@ -109,6 +115,7 @@ export default function PaginationBar({ pagination, accentColor = '#5E8F72' }: P
         {/* Prev */}
         <IconButton
           size="small"
+          aria-label="Previous page"
           onClick={prevPage}
           disabled={!hasPrev}
           sx={{
@@ -130,7 +137,9 @@ export default function PaginationBar({ pagination, accentColor = '#5E8F72' }: P
               ...
             </Typography>
           ) : (
-            <Box
+            <ButtonBase
+              aria-label={`Page ${p}`}
+              aria-current={p === currentPage ? 'page' : undefined}
               key={p}
               onClick={() => goToPage(p)}
               sx={{
@@ -148,19 +157,22 @@ export default function PaginationBar({ pagination, accentColor = '#5E8F72' }: P
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
                 userSelect: 'none',
+                ...(neumorphic ? { ...insetSurface, color: p === currentPage ? accentColor : 'text.secondary', boxShadow: p === currentPage ? 'var(--neu-inset)' : 'var(--neu-subtle)' } : {}),
+                '&.Mui-focusVisible': { outline: '2px solid', outlineColor: 'secondary.main', outlineOffset: 2 },
                 '&:hover': p !== currentPage
                   ? { bgcolor: `${accentColor}15`, color: accentColor }
                   : undefined,
               }}
             >
               {p}
-            </Box>
+            </ButtonBase>
           ),
         )}
 
         {/* Next */}
         <IconButton
           size="small"
+          aria-label="Next page"
           onClick={nextPage}
           disabled={!hasNext}
           sx={{
@@ -175,6 +187,7 @@ export default function PaginationBar({ pagination, accentColor = '#5E8F72' }: P
         {/* Last */}
         <IconButton
           size="small"
+          aria-label="Last page"
           onClick={() => goToPage(totalPages)}
           disabled={!hasNext}
           sx={{

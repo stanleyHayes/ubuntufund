@@ -1,3 +1,5 @@
+import ProductIllustration from '../ProductIllustration'
+import HomeWatermark from '../art/HomeWatermark'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
@@ -11,6 +13,7 @@ const steps = [
   {
     icon: <CampaignRoundedIcon sx={{ fontSize: 28 }} />,
     step: '01',
+    screen: 'create' as const,
     title: 'Create your campaign',
     description:
       'Set up your fundraiser in minutes. Add your story, set a goal in cedis, and get verified through our trust system.',
@@ -18,6 +21,7 @@ const steps = [
   {
     icon: <ShareRoundedIcon sx={{ fontSize: 28 }} />,
     step: '02',
+    screen: 'campaign' as const,
     title: 'Share with your network',
     description:
       'Spread the word across Ghana and the diaspora. Share on WhatsApp, social media, and email to reach supporters at home and abroad.',
@@ -25,6 +29,7 @@ const steps = [
   {
     icon: <AccountBalanceWalletRoundedIcon sx={{ fontSize: 28 }} />,
     step: '03',
+    screen: 'workspace' as const,
     title: 'Track support',
     description:
       'Receive wallet-backed contributions and keep supporters informed with campaign updates. External payouts require support during launch readiness.',
@@ -36,12 +41,13 @@ function HowItWorksSection() {
     <Box
       id="how-it-works"
       sx={{
-        py: { xs: 8, md: 10 },
+        position: 'relative', overflow: 'hidden', py: { xs: 8, md: 10 },
         backgroundColor: '#F2EFEA',
         ...NEUMORPHIC_SMOKE_VARS,
       }}
     >
-      <Container maxWidth="lg">
+      <HomeWatermark variant="ripple" />
+      <Container maxWidth="lg" sx={{ position: 'relative' }}>
         <Box sx={{ textAlign: 'center', mb: { xs: 6, md: 8 } }}>
           <Typography variant="overline" sx={{ color: '#A07E33' }}>
             Simple process
@@ -102,6 +108,8 @@ function HowItWorksSection() {
                 <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.7 }}>
                   {step.description}
                 </Typography>
+
+                <Box sx={{ mt: 3 }}><ProductIllustration screen={step.screen} caption={step.title} /></Box>
 
                 {index < steps.length - 1 && (
                   <Box

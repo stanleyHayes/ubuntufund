@@ -1,3 +1,4 @@
+import { BrandedDateField } from '@/components/BrandedDateField'
 import { useState } from 'react'
 import { View, ScrollView, StyleSheet } from 'react-native'
 import { Text, Icon, Button, TextInput } from 'react-native-paper'
@@ -20,7 +21,7 @@ function PersonalInfoStep({ onNext }: StepProps) {
     <View style={styles.stepCard}>
       <Text style={styles.stepTitle}>Personal Information</Text>
       <TextInput mode="outlined" label="Full Name" value={fullName} onChangeText={setFullName} style={styles.input} outlineStyle={styles.inputOutline} outlineColor="rgba(26,46,34,0.10)" activeOutlineColor={brandColors.primary} />
-      <TextInput mode="outlined" label="Date of Birth (YYYY-MM-DD)" value={dateOfBirth} onChangeText={setDateOfBirth} style={styles.input} outlineStyle={styles.inputOutline} outlineColor="rgba(26,46,34,0.10)" activeOutlineColor={brandColors.primary} />
+      <BrandedDateField label="Date of birth" value={dateOfBirth} onChange={setDateOfBirth} maxDate={new Date()} />
       <TextInput mode="outlined" label="Nationality" value={nationality} onChangeText={setNationality} style={styles.input} outlineStyle={styles.inputOutline} outlineColor="rgba(26,46,34,0.10)" activeOutlineColor={brandColors.primary} />
       <TextInput mode="outlined" label="ID Number" value={idNumber} onChangeText={setIdNumber} style={styles.input} outlineStyle={styles.inputOutline} outlineColor="rgba(26,46,34,0.10)" activeOutlineColor={brandColors.primary} />
       <Button mode="contained" onPress={onNext} style={styles.button} contentStyle={styles.buttonContent} labelStyle={styles.buttonLabel} buttonColor={brandColors.primary}>

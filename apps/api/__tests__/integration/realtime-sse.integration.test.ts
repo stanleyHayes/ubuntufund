@@ -13,7 +13,15 @@ import {
 import { UserModel } from '../../src/infrastructure/database/models/UserModel.js';
 import { CampaignModel } from '../../src/infrastructure/database/models/CampaignModel.js';
 import { WalletModel } from '../../src/infrastructure/database/models/WalletModel.js';
-import { CampaignCategory, CampaignPriority, PaymentMethod } from '@ubuntu-fund/types';
+import { SubscriptionModel } from '../../src/infrastructure/database/models/SubscriptionModel.js';
+import {
+  CampaignCategory,
+  CampaignPriority,
+  PaymentMethod,
+  SubscriptionTier,
+  SubscriptionStatus,
+  BillingCycle,
+} from '@ubuntu-fund/types';
 
 function uniqueEmail(label: string): string {
   return `${label}-${randomUUID()}@example.com`;
@@ -124,6 +132,21 @@ async function registerUser(app: Express, email: string) {
 
 async function createActiveCampaign(app: Express, token: string, userId: string) {
   await UserModel.findByIdAndUpdate(userId, { verificationLevel: 2 });
+  // Session owners go LIVE, which is a plan feature — give them a Pro plan.
+  const now = new Date();
+  await SubscriptionModel.findOneAndUpdate(
+    { userId },
+    {
+      userId,
+      tier: SubscriptionTier.PRO,
+      status: SubscriptionStatus.ACTIVE,
+      billingCycle: BillingCycle.MONTHLY,
+      currentPeriodStart: now,
+      currentPeriodEnd: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
+      cancelAtPeriodEnd: false,
+    },
+    { upsert: true, new: true }
+  );
   const res = await request(app)
     .post('/api/v1/campaigns')
     .set('Authorization', `Bearer ${token}`)

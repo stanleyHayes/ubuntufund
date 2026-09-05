@@ -18,6 +18,7 @@ const LEDGER_ACCOUNT_KINDS: LedgerAccountKind[] = [
   'processor_fee',
   'tip',
   'beneficiary',
+  'payout',
 ];
 
 const journalLineSchema = new Schema<JournalLineDocument>(

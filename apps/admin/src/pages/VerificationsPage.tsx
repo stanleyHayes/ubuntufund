@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
-import { Box, Typography, TextField, MenuItem } from '@mui/material'
-import { keyframes } from '@mui/system'
+import { Alert, Skeleton, Box, Typography, TextField, MenuItem } from '@mui/material'
+import { raisedSurface, insetSurface } from '@/lib/surfaces'
 import SearchIcon from '@mui/icons-material/Search'
 import InputAdornment from '@mui/material/InputAdornment'
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser'
@@ -11,26 +11,22 @@ import { useAdminKYCVerifications } from '@/hooks/useApiData'
 import { api } from '@/lib/api'
 import { VerificationLevel, Resource, Action } from '@ubuntu-fund/types'
 import { useAdminPermissions } from '@/context/AdminPermissionContext'
+import { usePagination } from '@/hooks/usePagination'
+import PaginationBar from '@/components/PaginationBar'
 import PageHeader from '@/components/PageHeader'
 
-const fadeIn = keyframes`from{opacity:0}to{opacity:1}`
-const slideIn = keyframes`from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}`
-const B = 'rgba(255,255,255,0.06)'
 const PAGE_SIZE = 9
 
 function Skel({ w, h }: { w?: string | number; h?: number }) {
   return (
-    <Box sx={{
-      width: w || '100%', height: h || 14,
-      bgcolor: 'rgba(255,255,255,0.04)',
-    }} />
+    <Skeleton variant="rounded" width={w ?? '100%'} height={h ?? 14} />
   )
 }
 
 const statusColors: Record<string, string> = {
   pending: '#D3A95C',
   in_review: '#74909A',
-  approved: '#5E8F72',
+  approved: '#8FAE96',
   rejected: '#C06B58',
   expired: '#9E9E9E',
 }
@@ -63,12 +59,10 @@ interface Verification {
 }
 
 export default function VerificationsPage() {
-  const { data: kycVerifications, isLoading: loading } = useAdminKYCVerifications()
+  const { data: kycVerifications, isLoading: loading, error } = useAdminKYCVerifications()
   const { can } = useAdminPermissions()
   const [statusFilter, setStatusFilter] = useState('all')
   const [search, setSearch] = useState('')
-  const [page, setPage] = useState(0)
-  const [perPage] = useState(PAGE_SIZE)
   const [localStatuses, setLocalStatuses] = useState<Record<string, VerificationStatus>>({})
 
   // Project the real KYC review queue onto this page's flatter Verification row.
@@ -103,7 +97,7 @@ export default function VerificationsPage() {
     return true
   })
 
-  const paginated = filtered.slice(page * perPage, (page + 1) * perPage)
+  const pagination = usePagination(filtered, PAGE_SIZE)
 
   const handleAction = (id: string, action: VerificationStatus) => {
     // Optimistic local update, then persist to the real KYC endpoints.
@@ -119,7 +113,7 @@ export default function VerificationsPage() {
   }
 
   return (
-    <Box sx={{ bgcolor: '#0c0c14', minHeight: '100vh', animation: `${fadeIn} 0.4s ease` }}>
+    <Box sx={{ bgcolor: 'background.default', }}>
       <PageHeader
         tone="clay"
         eyebrow="Trust & Safety"
@@ -128,25 +122,21 @@ export default function VerificationsPage() {
         icon={<VerifiedUserRoundedIcon />}
       />
 
+      {error && <Alert severity="error" sx={{ mb: 3 }}>Could not load verifications. Refresh the page to try again.</Alert>}
+
       {/* Filter bar */}
       <Box sx={{
         display: 'grid',
-        gridTemplateColumns: { xs: '1fr', sm: '200px 1fr auto' },
-        borderBottom: `1px solid ${B}`,
+        mb: 3, gridTemplateColumns: { xs: '1fr', md: '200px minmax(0, 1fr) auto' },
+        ...raisedSurface,
       }}>
-        <Box sx={{ p: 2, borderRight: { sm: `1px solid ${B}` } }}>
+        <Box sx={{ p: 2, minWidth: 0 }}>
           <TextField
             select
             fullWidth
             size="small"
             value={statusFilter}
-            onChange={e => { setStatusFilter(e.target.value); setPage(0) }}
-            sx={{
-              '& .MuiOutlinedInput-root': { bgcolor: 'rgba(255,255,255,0.02)', color: '#fff', fontSize: '0.82rem' },
-              '& .MuiOutlinedInput-notchedOutline': { borderColor: B },
-              '& .MuiInputLabel-root': { color: 'rgba(255,255,255,0.3)' },
-              '& .MuiSvgIcon-root': { color: 'rgba(255,255,255,0.3)' },
-            }}
+            onChange={e => { setStatusFilter(e.target.value) }}
             label="Status"
           >
             <MenuItem value="all">All Statuses</MenuItem>
@@ -155,29 +145,26 @@ export default function VerificationsPage() {
             <MenuItem value="rejected">Rejected</MenuItem>
           </TextField>
         </Box>
-        <Box sx={{ p: 2, borderRight: { sm: `1px solid ${B}` } }}>
+        <Box sx={{ p: 2, minWidth: 0 }}>
           <TextField
             fullWidth
             size="small"
             placeholder="Search verifications..."
+            slotProps={{ htmlInput: { 'aria-label': 'Search verifications...' } }}
             value={search}
-            onChange={e => { setSearch(e.target.value); setPage(0) }}
+            onChange={e => { setSearch(e.target.value) }}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <SearchIcon sx={{ color: 'rgba(255,255,255,0.2)', fontSize: 18 }} />
+                  <SearchIcon sx={{ color: 'text.secondary', fontSize: 18 }} />
                 </InputAdornment>
               ),
-            }}
-            sx={{
-              '& .MuiOutlinedInput-root': { bgcolor: 'rgba(255,255,255,0.02)', color: '#fff', fontSize: '0.82rem' },
-              '& .MuiOutlinedInput-notchedOutline': { borderColor: B },
             }}
           />
         </Box>
         <Box sx={{ p: 2, display: 'flex', alignItems: 'center' }}>
-          <Typography sx={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.78rem', fontFamily: '"Outfit", monospace', whiteSpace: 'nowrap' }}>
-            {loading ? '...' : `${filtered.length} verifications`}
+          <Typography sx={{ color: 'text.secondary', fontSize: '0.78rem', fontFamily: '"Outfit", monospace', whiteSpace: 'nowrap' }}>
+            {loading ? <Skeleton width={90} /> : error ? 'Unavailable' : `${filtered.length} verifications`}
           </Typography>
         </Box>
       </Box>
@@ -185,25 +172,25 @@ export default function VerificationsPage() {
       {/* Content grid */}
       <Box sx={{
         display: 'grid',
-        gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' },
+        gap: 3, gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(3, minmax(0, 1fr))' },
       }}>
         {loading
           ? Array.from({ length: 6 }).map((_, i) => (
               <Box key={i} sx={{
-                borderRight: `1px solid ${B}`,
-                borderBottom: `1px solid ${B}`, p: 3,
+
+                ...raisedSurface, p: 3,
               }}>
                 <Skel w={70} h={18} />
                 <Box sx={{ mt: 2 }}><Skel w="60%" h={16} /></Box>
                 <Box sx={{ mt: 1.5 }}><Skel w="40%" h={12} /></Box>
-                <Box sx={{ mt: 2, borderTop: `1px solid ${B}`, pt: 2 }}><Skel w={90} h={12} /></Box>
+                <Box sx={{ mt: 2, ...insetSurface, px: 1.5, pb: 1.5, pt: 2 }}><Skel w={90} h={12} /></Box>
                 <Box sx={{ mt: 1.5, display: 'flex', gap: 1 }}>
                   <Skel w={70} h={28} />
                   <Skel w={70} h={28} />
                 </Box>
               </Box>
             ))
-          : paginated.map((v, idx) => {
+          : pagination.page.map((v) => {
               const st = getStatus(v)
               const color = statusColors[st] || '#74909A'
               return (
@@ -211,47 +198,45 @@ export default function VerificationsPage() {
                   key={v.id}
                   sx={{
                     position: 'relative',
-                    borderRight: `1px solid ${B}`,
-                    borderBottom: `1px solid ${B}`,
-                    borderTop: `2px solid ${color}40`,
+
+                    ...raisedSurface,
+
                     p: 3,
                     overflow: 'hidden',
-                    animation: `${slideIn} 0.4s ease ${idx * 0.04}s both`,
-                    transition: 'background 0.25s ease',
+                    transition: 'box-shadow 160ms ease',
+                    '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
                     '&:hover': {
-                      bgcolor: 'rgba(255,255,255,0.015)',
+                      boxShadow: 'var(--neu-raised-hover)',
                     },
                   }}
                 >
-                  {/* Watermark */}
-                  <VerifiedUserIcon sx={{
-                    position: 'absolute', right: 12, top: 12, fontSize: 64,
-                    color: 'rgba(255,255,255,0.015)', pointerEvents: 'none',
-                  }} />
+                  <Box aria-hidden="true" sx={{ ...insetSurface, display: 'grid', placeItems: 'center', width: 40, height: 40, mb: 2, color }}>
+                    <VerifiedUserIcon sx={{ fontSize: 22 }} />
+                  </Box>
 
                   {/* Status chip */}
                   <Typography sx={{
                     display: 'inline-block', fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase',
                     color: color, letterSpacing: '0.08em',
-                    border: `1px solid ${color}33`, px: 1, py: 0.25,
+                    ...insetSurface, px: 1, py: 0.25,
                   }}>
                     {st}
                   </Typography>
 
                   {/* User name */}
-                  <Typography sx={{ mt: 1.5, fontWeight: 700, fontSize: '0.95rem', color: '#fff', fontFamily: '"Outfit", sans-serif' }}>
+                  <Typography sx={{ mt: 1.5, fontWeight: 700, fontSize: '0.95rem', color: 'text.primary', fontFamily: '"Outfit", sans-serif' }}>
                     {v.userName}
                   </Typography>
 
                   {/* Level + type */}
-                  <Typography sx={{ mt: 0.5, fontSize: '0.78rem', color: 'rgba(255,255,255,0.4)' }}>
+                  <Typography sx={{ mt: 0.5, fontSize: '0.78rem', color: 'text.secondary' }}>
                     {levelLabels[v.level] ?? 'Unknown'} — {v.type}
                   </Typography>
 
                   {/* Separator */}
-                  <Box sx={{ borderTop: `1px solid ${B}`, mt: 2, pt: 1.5 }}>
-                    <Typography sx={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.35)' }}>
-                      Submitted: <Box component="span" sx={{ color: 'rgba(255,255,255,0.6)' }}>{v.submittedAt.toLocaleDateString()}</Box>
+                  <Box sx={{ ...insetSurface, px: 1.5, pb: 1.5, mt: 2, pt: 1.5 }}>
+                    <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>
+                      Submitted: <Box component="span" sx={{ color: 'text.secondary' }}>{v.submittedAt.toLocaleDateString()}</Box>
                     </Typography>
                   </Box>
 
@@ -264,8 +249,8 @@ export default function VerificationsPage() {
                         onClick={() => handleAction(v.id, 'approved')}
                         sx={{
                           fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.06em',
-                          color: '#5E8F72', borderColor: 'rgba(47,107,70,0.3)',
-                          '&:hover': { borderColor: '#5E8F72', bgcolor: 'rgba(47,107,70,0.08)' },
+                          color: '#8FAE96', borderColor: 'rgba(47,107,70,0.3)',
+                          '&:hover': { borderColor: '#8FAE96', bgcolor: 'rgba(47,107,70,0.08)' },
                         }}
                       >
                         Approve
@@ -290,100 +275,26 @@ export default function VerificationsPage() {
         }
       </Box>
 
-      {!loading && filtered.length === 0 && (
+      {!loading && !error && filtered.length === 0 && (
         search || statusFilter !== 'all' ? (
-          <EmptyState
+          <Box sx={{ ...raisedSurface, p: 3 }}><EmptyState
             variant="search"
             title="No verifications match your filters"
             description="Try a different search term or clear the status filter."
             compact
-          />
+          /></Box>
         ) : (
-          <EmptyState
+          <Box sx={{ ...raisedSurface, p: 3 }}><EmptyState
             variant="noData"
             title="No verifications pending"
             description="Identity and organization verification requests will appear here as members submit them."
             compact
-          />
+          /></Box>
         )
       )}
 
-      {/* Pagination */}
-      {filtered.length > perPage && (
-        <Box
-          sx={{
-            borderTop: `1px solid ${B}`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            px: 3,
-            py: 1.5,
-          }}
-        >
-          <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>
-            Showing {page * perPage + 1}–{Math.min((page + 1) * perPage, filtered.length)} of {filtered.length}
-          </Typography>
-          <Box sx={{ display: 'flex', gap: 0.5 }}>
-            <Box
-              component="button"
-              onClick={() => setPage(p => Math.max(0, p - 1))}
-              disabled={page === 0}
-              sx={{
-                px: 2, py: 0.75,
-                bgcolor: 'transparent',
-                border: `1px solid ${B}`,
-                color: page === 0 ? 'rgba(255,255,255,0.2)' : 'text.secondary',
-                cursor: page === 0 ? 'default' : 'pointer',
-                fontSize: '0.75rem',
-                fontFamily: '"Outfit", sans-serif',
-                transition: 'all 0.2s',
-                '&:hover:not(:disabled)': { borderColor: 'rgba(255,255,255,0.15)', color: 'text.primary' },
-              }}
-            >
-              Prev
-            </Box>
-            {Array.from({ length: Math.ceil(filtered.length / perPage) }, (_, i) => (
-              <Box
-                key={i}
-                component="button"
-                onClick={() => setPage(i)}
-                sx={{
-                  px: 1.5, py: 0.75,
-                  bgcolor: i === page ? 'rgba(255,255,255,0.08)' : 'transparent',
-                  border: `1px solid ${i === page ? 'rgba(255,255,255,0.15)' : B}`,
-                  color: i === page ? 'text.primary' : 'text.secondary',
-                  cursor: 'pointer',
-                  fontSize: '0.75rem',
-                  fontFamily: '"Outfit", monospace',
-                  fontWeight: i === page ? 700 : 400,
-                  transition: 'all 0.2s',
-                  '&:hover': { borderColor: 'rgba(255,255,255,0.15)' },
-                }}
-              >
-                {i + 1}
-              </Box>
-            ))}
-            <Box
-              component="button"
-              onClick={() => setPage(p => Math.min(Math.ceil(filtered.length / perPage) - 1, p + 1))}
-              disabled={page >= Math.ceil(filtered.length / perPage) - 1}
-              sx={{
-                px: 2, py: 0.75,
-                bgcolor: 'transparent',
-                border: `1px solid ${B}`,
-                color: page >= Math.ceil(filtered.length / perPage) - 1 ? 'rgba(255,255,255,0.2)' : 'text.secondary',
-                cursor: page >= Math.ceil(filtered.length / perPage) - 1 ? 'default' : 'pointer',
-                fontSize: '0.75rem',
-                fontFamily: '"Outfit", sans-serif',
-                transition: 'all 0.2s',
-                '&:hover:not(:disabled)': { borderColor: 'rgba(255,255,255,0.15)', color: 'text.primary' },
-              }}
-            >
-              Next
-            </Box>
-          </Box>
-        </Box>
-      )}
+      {!loading && !error && <PaginationBar neumorphic pagination={pagination} accentColor="#C06B58" />}
+
     </Box>
   )
 }

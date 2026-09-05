@@ -15,6 +15,7 @@ import type {
   PaymentGatewayPort,
 } from '../../domain/ports/outbound/PaymentGatewayPort.js';
 import type { FeePolicy } from '../services/FeePolicy.js';
+import type { PlanLimitsService } from '../services/PlanLimitsService.js';
 import type { SettleDonationUseCase } from './SettleDonationUseCase.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 import { logger } from '../../infrastructure/logging/logger.js';
@@ -70,6 +71,7 @@ export class CreateDonationIntentUseCase {
     private readonly feePolicy: FeePolicy,
     private readonly settleDonationUseCase: SettleDonationUseCase,
     private readonly paymentGateway: PaymentGatewayPort,
+    private readonly planLimits: PlanLimitsService,
     private readonly walletTxRepo?: WalletTransactionRepositoryPort,
     private readonly paymentAttemptRepo?: PaymentAttemptRepositoryPort
   ) {}
@@ -133,11 +135,17 @@ export class CreateDonationIntentUseCase {
     }
 
     // ── Wallet rail (authed donor): debit, then settle synchronously ──────
+    // The platform fee follows the campaign creator's subscription plan, not a
+    // flat rate. Resolve it here (creator known) and pass it into the split.
+    const platformFeePercent = await this.planLimits.platformFeePercent(
+      campaign.creatorId
+    );
     const settled = await this.settleWalletIntent(
       intent,
       ctx.donorUserId!,
       currency,
-      tip
+      tip,
+      platformFeePercent
     );
     return { intent: settled };
   }
@@ -226,7 +234,8 @@ export class CreateDonationIntentUseCase {
     intent: DonationIntentEntity,
     donorUserId: string,
     currency: string,
-    tip: number
+    tip: number,
+    platformFeePercent: number
   ): Promise<DonationIntentEntity> {
     // A concurrent retry may have already settled this intent.
     if (intent.status === 'SUCCEEDED') return intent;
@@ -235,7 +244,8 @@ export class CreateDonationIntentUseCase {
       intent.amount,
       tip,
       currency,
-      'wallet'
+      'wallet',
+      platformFeePercent
     );
 
     const wallets = await this.walletRepo.findByUserId(donorUserId);

@@ -33,10 +33,10 @@ interface Refund {
 }
 
 const STATUS_CONFIG: Record<string, { bg: string; color: string }> = {
-  pending: { bg: 'rgba(255,167,38,0.1)', color: '#E65100' },
-  processing: { bg: 'rgba(21,101,192,0.08)', color: '#1565C0' },
-  completed: { bg: 'rgba(46, 61, 47,0.08)', color: '#2E3D2F' },
-  failed: { bg: 'rgba(239,83,80,0.08)', color: '#E53935' },
+  pending: { bg: 'rgba(255,167,38,0.1)', color: 'var(--text-warning)' },
+  processing: { bg: 'rgba(21,101,192,0.08)', color: 'var(--text-info)' },
+  completed: { bg: 'rgba(46, 61, 47,0.08)', color: 'var(--text-brand)' },
+  failed: { bg: 'rgba(239,83,80,0.08)', color: 'var(--text-error)' },
 }
 
 // ---------------------------------------------------------------------------

@@ -95,6 +95,8 @@ export interface CreateCampaignInput {
   priority: CampaignPriority
   beneficiaries: string[]
   endDate: Date
+  /** Cover/gallery image URLs (first is the cover). Optional; defaults to none. */
+  imageUrls?: string[]
 }
 
 /** Campaign with donation details, returned by the get-by-id endpoint */

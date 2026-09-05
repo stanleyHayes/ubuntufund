@@ -3,6 +3,78 @@
 > Active completion pass started: 2026-08-09
 > Goal: production-complete web, mobile, API, marketing, admin, and organization experiences with App Store readiness, CMS-backed public content, soft deletion, and verified frontend/backend parity.
 
+## African Feature Roadmap — GOAL: build all of the below
+
+> Added 2026-09-05 from the crowdfunding-landscape research verdict (survey of Kickstarter/Indiegogo/GoFundMe/Patreon/Kiva/M-Changa/LaunchGood + African payments, diaspora, trust, and community-finance context).
+>
+> **The frame:** global leaders (GoFundMe, Kickstarter, Patreon) *structurally cannot pay Africans* — the real competitors are M-Changa, LaunchGood, and diaspora rails (LemFi/NALA). Ujimora already holds the hard primitives: Paystack mobile-money + card, a double-entry ledger, Paystack Transfers payouts, LIVE rooms, plans/tiers, and (in progress) coupons + affiliate. The white space no competitor occupies is **trusted + diaspora + mobile-money-native + African community/faith finance, fused**.
+>
+> **GOAL: complete every feature in this roadmap.** Status legend: ◻ planned · 🔄 in progress · ✅ done. Each row keeps a dated note as it moves.
+
+### Foundation — monetization rail (in progress)
+
+| # | Feature | Status | Notes |
+|---|---------|--------|-------|
+| F1 | Paid-subscription Paystack checkout rail (`SubscriptionCheckout` intent, webhook-settled) | 🔄 | Prereq for coupons + affiliate; paid tiers previously hard-threw 409. Types done; backend building (`wf coupons-affiliate-backend`). |
+| F2 | Coupons — discount codes at paid-subscription checkout (percent/fixed, limits, validity, plan scope, admin CRUD) | 🔄 | Types done; backend building. $0-coupon activates without charge. |
+| F3 | Affiliate / referral program — one-time commission (10% default), hold window + refund clawback, payouts via Paystack Transfers, user dashboard + admin management | 🔄 | Types done (held→available→paid/reversed); backend building. |
+
+### P0 — flagship differentiators (highest leverage)
+
+| # | Feature | Status | Notes |
+|---|---------|--------|-------|
+| P0.1 | **Milestone-gated escrow + proof-of-impact + public per-campaign ledger** — hold funds, release tranches only against verified proof (invoice/receipt/geotagged photo), auto-deliver donor impact statements | ◻ | Turns the #1 barrier (distrust) into the product. Direct extension of the existing double-entry ledger + Transfers. THE headline differentiator. |
+| P0.2 | **USSD / feature-phone donate-to-shortcode** (`*XXX*campaignID#`) + SMS/WhatsApp receipts + agent cash-in | ◻ | USSD carries ~63.5% of MoMo volume on 2G; zero global crowdfunders offer it. Uncopyable access moat. |
+| P0.3 | **Diaspora lane** — multi-currency in → local-currency out, transparent beneficiary-net FX shown pre-confirm, and pay a school/hospital/named vendor **directly** (not cash to an organizer) | ◻ | Owns the corridor GoFundMe abandons; converts the $100B+/yr remittance habit into purpose-locked giving. |
+| P0.4 | **Ujimora trust score / alternative credit identity** derived from on-platform ledger behavior (susu contributions, repayments, payout history) | ◻ | Most defensible long-term moat (Esusu's insight for African informal finance). Pure derivative of the ledger + KYC; feeds the microloan/RBF layer. |
+
+### P1 — high value
+
+| # | Feature | Status | Notes |
+|---|---------|--------|-------|
+| P1.1 | **Digital susu/esusu/ajo/chama/stokvel circles** — audited per-member ledger, multi-signatory payouts, automated reminders, cross-border diaspora slots | ◻ | Up to ~95% of adults use informal circles; no interoperable player exists. Treat pooling as a regulated product (Bank of Ghana). |
+| P1.2 | **Community vouching + multi-treasurer withdrawal approval** — named vouchers (pastor/chief/elder) co-sign; up to 3 treasurers approve each withdrawal via SMS/USSD | ◻ | Digitizes offline accountability; M-Changa-proven anti-diversion control. Extends the review workflow + gates the payout step. |
+| P1.3 | **Life-event campaign templates** — funerals, weddings, school fees, medical, naming/outdooring, harvest/tithe, diaspora family fund | ◻ | Matches the occasions that actually drive African volume. Config over the existing campaign engine. |
+| P1.4 | **Recurring mobile-money memberships** (Patreon-style creator→fan) + **faith module** (MoMo tithe/offering/harvest, Zakat-verified badge) with church/mosque admin dashboard | ◻ | The "Patreon Africa can't have." Reuses the existing plans/tiers/feature-gate infrastructure + Paystack recurring MoMo + LIVE gating. |
+| P1.5 | **Failure-resilient payments** — smart retry + channel fallback (card fails → USSD/bank/MoMo) + explicit recovery flow | ◻ | Recovers 30–60% of checkout leakage. Enhancement to the existing Paystack integration. Quick revenue protection. |
+
+### P2 — medium / regulated (later phases)
+
+| # | Feature | Status | Notes |
+|---|---------|--------|-------|
+| P2.1 | Per-campaign funding model choice (all-or-nothing vs keep-it-all) + **digital-first reward tiers** (shoutouts, LIVE access, airtime/data, local pickup) | ◻ | Ledger supports authorize-at-pledge/capture-on-success. Default rewards digital to sidestep the international-shipping trap. |
+| P2.2 | **Ujimora Giving Guarantee reserve** — first African donor money-back guarantee, funded from a fee slice | ◻ | Sequence AFTER escrow + proof-of-impact (verification makes claims cheap to honor). |
+| P2.3 | **Community microloan + revenue-based-financing (RBF) layer** for cash-flow SMEs; joint-liability group loans; nominee/SPV for many small diaspora backers | ◻ | Lead with RBF over equity. Underwrite from ledger history (the trust score). Regulated: sequence country-by-country (BoG/SEC, Kenya CMA, Nigeria SEC, SA FSCA). |
+
+> **Top-3 to start with** (per the research verdict): **P0.1 the trust/escrow stack**, **P0.3 the diaspora corridor**, **P0.2 USSD access** — after the F1–F3 monetization rail lands. Keep fees transparent and well below the 8–12% Western norm, with no micro-pledge surcharges.
+
+## UX, Theming & Admin Polish — GOAL: fix all + ship multi-theme
+
+> Added 2026-09-05. Consolidates a run of QA + design requests. ◻ planned · 🔄 in progress · ✅ done.
+
+### Multi-theme design system (web + admin)
+- ◻ Selectable "skins": **Neumorphism** (current default) · **Claymorphism** · **Glassmorphism** · plus **Dark** mode. Approach: swap the shared surface/`--neu-*` CSS-var token sets per skin so existing components adopt each look without rewrites.
+- ◻ Theme context + persistence (localStorage, later user preference via API) + a Settings picker in BOTH web and admin.
+
+### Loading standards (site-wide: web + admin + marketing)
+- ◻ Page/section loads use **skeletons**; buttons use **animated dots** only. Sweep + standardize everywhere.
+
+### Admin dashboard polish
+- ✅ Settings route 404 — added `/settings` route (page existed, wasn't routed).
+- ◻ User-menu dropdown: descriptions under Profile & Settings.
+- ◻ Unify the 404 (`NotFoundPage`) and Access-Denied (`PermissionDenied`) into one branded light design.
+- ◻ Recommended empty states — use the shared `EmptyState` component across admin pages (KYC, etc.).
+- ◻ Permission: platform owner (admin@ujimora.com) is locked out of `/roles` (the Admin role excludes `roles` by design) — give the owner super-admin (full) access.
+- ◻ AI Usage page error — its stats/log endpoints 404 on the backend; implement them or degrade gracefully.
+
+### Registration & campaigns
+- ✅ Organization signup wired into the web register form (reads `?role=organization`, org fields + validation).
+- ◻ Make the (now longer) organization registration form **stepwise**.
+- ✅ Campaign create 400 fixed (endDate → ISO datetime); cover image now persists (`imageUrls` wired through use-case + schema).
+
+### Foundation (earlier) — pending lock-in
+- 🔄 F1–F3 (coupons, affiliate, paid subscriptions) built + verified end-to-end; **pending tests + commit**.
+
 ## Active workstream
 
 | Workstream | Status | Acceptance evidence |
@@ -17,6 +89,38 @@
 | UI/mobile polish | IN PROGRESS | Responsive layouts and shared mobile/web capability paths are implemented; physical phone/tablet accessibility and visual smoke testing remains owner/device-controlled |
 | Full review and release gate | IN PROGRESS | Automated lint, type-check, tests, builds, dependency review, and Expo checks pass; signed-build and deployed end-to-end smoke tests remain owner-controlled |
 | Naming/domain options | COMPLETE | `PRODUCT_NAMING.md` records collision evidence, positioning, pronunciation, domain strategies, and finalists |
+
+### 2026-09-05 Trust and Safety surface consistency
+
+- Disputes, Verifications, and KYC Review now use the shared admin background, raised queue/filter/loading cards, inset status/risk badges and icon wells, and matching pagination. Removed the page-specific blue-black backgrounds and card border grids.
+- KYC detail dialog now uses raised information sections, inset document/notes surfaces, theme text colors, and wrapping responsive actions. KYC cards support keyboard opening. Request failures and loading stats/counts have distinct visible states; empty KYC queues have a message.
+- Kept review permissions and decision handlers unchanged. Verification/KYC pagination uses the existing shared hook and neumorphic pagination component.
+- Verification: admin TypeScript, targeted ESLint, production build, five existing pagination tests, and diff whitespace checks pass. Existing build chunk-size advisory remains. Browser visual verification remains outstanding.
+
+### 2026-09-05 Community page surface consistency
+
+- Campaigns, Users, Donations, and Subscriptions now use the shared admin background, raised cards/filter bars/loading surfaces, inset badges/detail wells/progress tracks, and consistent spacing. Shared styles live in `apps/admin/src/lib/surfaces.ts`.
+- Enabled matching pagination styling for these four pages; retained page-size choices including the current 9/10-item defaults and added keyboard/accessible names to navigation controls. Campaign/user cards support Enter navigation; campaign tabs support keyboard activation.
+- Subscription metrics show loading skeletons; subscription dates accept serialized API dates. List counts distinguish loading and unavailable data, and campaign/user/donation request errors are visible.
+- Verification: admin TypeScript, targeted ESLint, production build, five existing pagination tests, and diff whitespace checks pass. The build retains the existing bundle-size advisory. Rendered browser verification was not completed for these four routes.
+
+### 2026-09-05 Reports and Audit Log surface consistency
+
+- Reports: replaced the blue-black canvas and border grid with the admin background, shared raised panels, inset geographic table/status tracks, and brand-colored charts. Header metrics and loading placeholders retain the same surface treatment; empty/error states distinguish unavailable reports from zero activity.
+- Audit Log: applied raised entry/filter/pagination surfaces, inset search/action badges, visible severity labels, wrapped detail text, and compact accessible pagination. Preserved API search, page size, and request cancellation.
+- Verification: admin TypeScript, targeted ESLint, production build, and diff whitespace checks pass; existing bundle-size advisory remains. Browser review could not be completed because the active admin tab kept changing routes during inspection; tab control was released.
+
+### 2026-09-05 Dashboard surface consistency
+
+- COMPLETE: Dashboard now inherits the admin background and uses shared raised/inset shadow tokens and diamond-cut shapes for every section tile and all seven summary cards. Removed the hard-coded blue-black canvas, border grid, generated sparklines, and arbitrary stat-fill graphics.
+- Preserved permission-filtered section destinations and API totals; section tiles are keyboard-accessible links. Added stat skeletons, separate platform/KYC failure feedback, and unavailable markers instead of zero totals on failed requests.
+- Verification: admin TypeScript, targeted Dashboard ESLint, production build, and diff whitespace checks pass. Build retains the existing large-chunk advisory. Live Dashboard DOM confirmed platform totals and KYC failure handling; full screenshot/responsive verification remains incomplete because browser captures showed a different route and subsequent navigation timed out.
+
+### 2026-09-05 admin sidebar hierarchy
+
+- Added an icon beside all six navigation group titles and visible tree connectors from each group icon to its child items; the final branch ends at the last item and the active branch uses gold.
+- Preserved group toggles and route selection, with compact child labels to accommodate the indentation.
+- Admin TypeScript, sidebar ESLint, and diff whitespace checks pass. Rendered browser review was not performed.
 
 ### 2026-08-09 evidence log
 
@@ -500,3 +604,46 @@
 - 390px Leaderboard render verified with no horizontal overflow; achievement cards remain readable and full width.
 - Playwright reported zero page errors and zero horizontal overflow across Home, Leaderboard desktop/mobile, and Contact.
 - Web TypeScript passes. Full web ESLint remains blocked by pre-existing React compiler findings in `useLiveTotals.ts`, `CampaignPublicPage.tsx`, and `DonateCallbackPage.tsx`, outside this visual slice.
+
+### 2026-09-05 Marketing homepage artwork
+
+- Added two generated Ghanaian community illustrations, compressed JPEG assets in `apps/marketing/public/images/home`, high-priority hero loading and lazy-loaded organization artwork. Source/provenance notes accompany the assets.
+- Added three original SVG watermarks (chain, leaf, ripple) and two CSS 3D sculptures (unity links and growing seed), with pointer tilt, click/tap rotation, keyboard controls and reduced-motion support.
+- Browser review: verified desktop and 390px mobile layout, image sizing, keyboard rotation and seed click rotation. Fixed an SVG syntax issue and MUI image-width override found during verification. Marketing TypeScript, ESLint, production build and diff whitespace checks pass; existing bundle-size advisory remains.
+
+### 2026-09-05 Live app screenshots across the marketing homepage
+
+- Added four genuine captures of the running app: campaign discovery, campaign creation, public campaign progress, and the initial campaign workspace. All preview frames disclose demo data; crops exclude account identity. Capture provenance is recorded in `apps/marketing/public/images/product/README.md`.
+- Integrated 11 screenshot placements across all eight homepage sections, including every How It Works step, a two-column Features showcase, campaign categories, organizations, and the final call to action. Existing generated artwork, watermarks, and interactive sculptures remain in place.
+- Added a shared responsive screenshot frame with lazy loading, descriptive alt text, keyboard focus styles, reduced-motion hover handling, and an accessible enlargement dialog.
+- Browser verification: desktop at 1440px and mobile at 390px have no horizontal overflow; all 11 product image placements load; enlargement, Close, Escape, and focus restoration work. Marketing TypeScript, ESLint, production build, and diff whitespace checks pass. Existing ESLint module-type and build chunk-size advisories remain.
+
+### 2026-09-05 Admin plans, providers, and roles
+
+- Matched Plans, Payment Providers, and Roles to the shared full-width admin background, raised cards, inset details, and header statistics.
+- Plans show readable availability badges, grouped campaign limits and fees, and included features. Roles expose resource/action permissions through keyboard-accessible disclosures.
+- Providers show availability counts, inset fee/type details, loading skeletons, distinct failure/empty states, and persistent error notifications. Availability requests are serialized through disabled toggles while a request runs.
+- Production build and diff whitespace checks pass. After initial navigation delays, the admin preview redirects to sign-in; authenticated layout review remains unverified. Admin TypeScript and ESLint pass. Removed one redundant borderRadius property in AI Usage that blocked the first TypeScript run; the shared inset style already supplies the effective radius. Existing bundle-size and ESLint module-type advisories remain.
+
+### 2026-09-05 Admin authentication redesign and homepage illustration revision
+
+- Rebuilt sign-in and password recovery around a shared, responsive auth layout with sculpted SVG chain artwork, sage/gold styling, inset inputs, a focused form panel, and consistent recovery/success states. Kept existing login/recovery API contracts; removed the nonfunctional Remember Me checkbox and unsupported status/security claims.
+- Replaced the previous homepage screenshot treatment at the user's request: removed captured product images and enlargement dialogs, added four original SVG illustrations for stories, growth, collaboration, and community. Existing generated community artwork and interactive sculptures remain. This supersedes the live-app screenshot deliverable above.
+- Admin desktop sign-in and 390px recovery reviewed; password visibility and native empty-email validation verified. Admin and marketing TypeScript, ESLint, production builds, and whitespace checks pass. Desktop illustration composition reviewed; both sites report no horizontal overflow at 390px. Existing bundle-size and ESLint module-type advisories remain.
+
+### 2026-09-05 Homepage foundations strip
+
+- Replaced four oversized statistic tiles and the standalone illustration above them with a compact shared neumorphic surface, inset icon tiles, subtle dividers, and descriptive copy. The four foundations explain cedi giving, web/mobile access, campaign review, and retained records.
+- Preserved the marketing.stats CMS integration and custom values. Layout uses four columns on large screens, two on tablets, and stacked rows on phones.
+- Production build, TypeScript, targeted ESLint, and diff whitespace checks pass. Both development and production browser previews rendered blank during this check, so visual acceptance remains unverified. Temporary production preview server stopped after inspection.
+
+### 2026-09-05 Branded empty states and date/time controls
+
+- Updated shared web/admin empty states with inset brand surfaces, more compact SVG illustrations, stable React IDs, and reduced-motion handling; upgraded the mobile empty-state presentation. Replaced plain campaign update/comment, QR-code, collaborator, donation-feed, and wallet empty messages with contextual guidance.
+- Added shared MUI date/date-time/time pickers styled for light and dark themes, DD/MM/YYYY display, 24-hour time, clear/cancel/accept controls, and local ISO values. Migrated all six native date/date-time controls in campaign creation/editing, KYC, and coupon validity. Corrected existing campaign deadline initialization to preserve local-time display.
+- Added a React Native Paper date picker for mobile KYC using the existing mobile theme.
+- Live browser: campaign date selection updates the duration, past dates are disabled, clearing works, ArrowRight/Enter selection works, and the picker fits 390px without horizontal overflow. Web/admin production builds, UI type-check, targeted ESLint, and whitespace checks pass. Web, admin, and mobile type checks pass after correcting Date-to-string initialization. Campaign Updates empty state was visually verified in the live app. Added interaction tests, but both fork and thread test workers timed out before executing tests on this machine.
+
+### 2026-09-05 Account menu descriptions
+
+- Added short descriptions beneath Dashboard, My Campaigns, My Donations, Wallet, Affiliate, Settings, and Sign out in the account dropdown. Widened the menu within the viewport limit to accommodate the copy. Navigation and sign-out handlers are unchanged.

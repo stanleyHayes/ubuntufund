@@ -41,34 +41,51 @@ export const SHAPE = {
   bar: '1px 6px 1px 6px',
 } as const
 
+// Neumorphism only reads when an element shares its background's colour: the
+// light "highlight" edge simulates a light source and must stay a soft glow,
+// never an opaque white bloom. Keeping the highlight low-opacity means a raised
+// light card that overlaps a dark section (dashboard header, hero) no longer
+// haloes against it — the effect degrades gracefully instead of glaring.
 export function getNeumorphicTokens(dark = false) {
   const surface = dark ? '#172019' : '#F2EFEA'
-  const shadow = dark ? 'rgba(0, 0, 0, 0.48)' : 'rgba(72, 62, 43, 0.16)'
-  const highlight = dark ? 'rgba(91, 117, 98, 0.16)' : 'rgba(255,255,255,0.96)'
+  const shadow = dark ? 'rgba(0, 0, 0, 0.42)' : 'rgba(72, 62, 43, 0.14)'
+  const highlight = dark ? 'rgba(91, 117, 98, 0.14)' : 'rgba(255, 255, 255, 0.55)'
 
   return {
     surface,
-    raised: `7px 7px 16px ${shadow}, -7px -7px 16px ${highlight}`,
-    raisedHover: `10px 10px 22px ${shadow}, -9px -9px 20px ${highlight}`,
-    subtle: `4px 4px 10px ${shadow}, -4px -4px 10px ${highlight}`,
-    inset: `inset 3px 3px 8px ${shadow}, inset -3px -3px 8px ${highlight}`,
+    raised: `6px 6px 14px ${shadow}, -6px -6px 14px ${highlight}`,
+    raisedHover: `9px 9px 20px ${shadow}, -8px -8px 18px ${highlight}`,
+    subtle: `4px 4px 9px ${shadow}, -4px -4px 9px ${highlight}`,
+    inset: `inset 3px 3px 7px ${shadow}, inset -3px -3px 7px ${highlight}`,
   } as const
 }
 
 export const NEUMORPHIC_SMOKE_VARS = {
   '--neu-surface': '#F2EFEA',
-  '--neu-raised': '7px 7px 16px rgba(72,62,43,0.16), -7px -7px 16px rgba(255,255,255,0.96)',
-  '--neu-raised-hover': '10px 10px 22px rgba(72,62,43,0.19), -9px -9px 20px rgba(255,255,255,1)',
-  '--neu-subtle': '4px 4px 10px rgba(72,62,43,0.14), -4px -4px 10px rgba(255,255,255,0.94)',
-  '--neu-inset': 'inset 3px 3px 8px rgba(72,62,43,0.15), inset -3px -3px 8px rgba(255,255,255,0.94)',
+  '--neu-raised': '6px 6px 14px rgba(72,62,43,0.14), -6px -6px 14px rgba(255,255,255,0.55)',
+  '--neu-raised-hover': '9px 9px 20px rgba(72,62,43,0.17), -8px -8px 18px rgba(255,255,255,0.62)',
+  '--neu-subtle': '4px 4px 9px rgba(72,62,43,0.12), -4px -4px 9px rgba(255,255,255,0.5)',
+  '--neu-inset': 'inset 3px 3px 7px rgba(72,62,43,0.13), inset -3px -3px 7px rgba(255,255,255,0.5)',
 } as const
 
 export const NEUMORPHIC_WHITE_VARS = {
   '--neu-surface': '#FFFFFF',
-  '--neu-raised': '7px 7px 16px rgba(38,55,44,0.13), -7px -7px 16px rgba(255,255,255,1)',
-  '--neu-raised-hover': '10px 10px 22px rgba(38,55,44,0.16), -9px -9px 20px rgba(255,255,255,1)',
-  '--neu-subtle': '4px 4px 10px rgba(38,55,44,0.11), -4px -4px 10px rgba(255,255,255,1)',
-  '--neu-inset': 'inset 3px 3px 8px rgba(38,55,44,0.12), inset -3px -3px 8px rgba(255,255,255,1)',
+  '--neu-raised': '6px 6px 14px rgba(38,55,44,0.12), -6px -6px 14px rgba(255,255,255,0.5)',
+  '--neu-raised-hover': '9px 9px 20px rgba(38,55,44,0.15), -8px -8px 18px rgba(255,255,255,0.55)',
+  '--neu-subtle': '4px 4px 9px rgba(38,55,44,0.1), -4px -4px 9px rgba(255,255,255,0.45)',
+  '--neu-inset': 'inset 3px 3px 7px rgba(38,55,44,0.11), inset -3px -3px 7px rgba(255,255,255,0.45)',
+} as const
+
+// For raised elements that sit on a DARK (forest) section — hero CTAs, dark
+// banners. Spread onto the dark container so descendant buttons/cards emboss
+// with a near-black shadow + a faint sage highlight instead of the light
+// SMOKE highlight, which would bloom into a white halo against the dark ground.
+export const NEUMORPHIC_FOREST_VARS = {
+  '--neu-surface': '#233126',
+  '--neu-raised': '6px 6px 14px rgba(8,14,10,0.5), -6px -6px 14px rgba(91,117,98,0.14)',
+  '--neu-raised-hover': '9px 9px 20px rgba(8,14,10,0.55), -8px -8px 18px rgba(91,117,98,0.17)',
+  '--neu-subtle': '4px 4px 9px rgba(8,14,10,0.46), -4px -4px 9px rgba(91,117,98,0.12)',
+  '--neu-inset': 'inset 3px 3px 7px rgba(8,14,10,0.5), inset -3px -3px 7px rgba(91,117,98,0.14)',
 } as const
 
 export const ttSquaresFontFace = `
@@ -175,10 +192,10 @@ export function createUjimoraTheme(mode: PaletteMode = 'light') {
     // warm parchment ground. Derived from the brand palette, not framework
     // defaults — semantic states are brand-tinted (clay error, ochre warning).
     primary: {
-      main: '#2E3D2F',
+      main: dark ? '#A8C5AE' : '#2E3D2F',
       light: '#A8B5A0',
-      dark: '#1C261D',
-      contrastText: '#F5F2EA',
+      dark: dark ? '#8FAE96' : '#1C261D',
+      contrastText: dark ? '#172019' : '#F5F2EA',
     },
     secondary: {
       main: '#C7A24A',
@@ -187,28 +204,28 @@ export function createUjimoraTheme(mode: PaletteMode = 'light') {
       contrastText: '#221B0E',
     },
     success: {
-      main: '#2F6B46',
+      main: dark ? '#8DC9A1' : '#2F6B46',
       light: '#5E8F72',
       dark: '#1F4B30',
-      contrastText: '#F5F2EA',
+      contrastText: dark ? '#172019' : '#F5F2EA',
     },
     warning: {
-      main: '#B98A2E',
+      main: dark ? '#DCC07E' : '#B98A2E',
       light: '#D3A95C',
       dark: '#8F6A20',
       contrastText: '#221B0E',
     },
     error: {
-      main: '#A5432F',
+      main: dark ? '#F0A18E' : '#A5432F',
       light: '#C06B58',
       dark: '#7D3223',
-      contrastText: '#F9F4EF',
+      contrastText: dark ? '#172019' : '#F9F4EF',
     },
     info: {
-      main: '#4A6B75',
+      main: dark ? '#A1C5CF' : '#4A6B75',
       light: '#74909A',
       dark: '#354E56',
-      contrastText: '#F2F5F5',
+      contrastText: dark ? '#172019' : '#F2F5F5',
     },
     background: {
       default: neu.surface,
@@ -307,6 +324,8 @@ export function createUjimoraTheme(mode: PaletteMode = 'light') {
           '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
         },
         containedPrimary: {
+          backgroundColor: '#2E3D2F',
+          color: '#F5F2EA',
           boxShadow: 'var(--neu-subtle)',
           '&:hover': {
             backgroundColor: '#1C261D',
@@ -360,6 +379,14 @@ export function createUjimoraTheme(mode: PaletteMode = 'light') {
           border: '0 !important',
           backgroundColor: 'var(--neu-surface)',
           boxShadow: 'var(--neu-subtle) !important',
+          ...(dark ? {
+            '&.MuiChip-colorPrimary': { color: '#A8C5AE' },
+            '&.MuiChip-colorSuccess': { color: '#8DC9A1' },
+            '&.MuiChip-colorError': { color: '#F0A18E' },
+            '&.MuiChip-colorWarning': { color: '#DCC07E' },
+            '&.MuiChip-colorInfo': { color: '#A1C5CF' },
+            '&.MuiChip-colorSecondary': { color: '#DCC07E' },
+          } : {}),
           '&.MuiChip-clickable:hover': { boxShadow: `${neu.raisedHover} !important` },
           '&.MuiChip-clickable:active': { boxShadow: `${neu.inset} !important` },
           '&:focus-visible': { outline: '2px solid #C7A24A', outlineOffset: 2 },
@@ -418,12 +445,21 @@ export function createUjimoraTheme(mode: PaletteMode = 'light') {
       styleOverrides: {
         ':root': {
           '--neu-surface': neu.surface,
+          '--text-primary': dark ? '#F3F0E8' : '#1A2E22',
+          '--text-secondary': dark ? '#B6C0B8' : '#4A5A50',
+          '--text-disabled': dark ? '#7D8B80' : '#858D87',
+          '--text-brand': dark ? '#A8C5AE' : '#2E3D2F',
+          '--text-success': dark ? '#8DC9A1' : '#2F6B46',
+          '--text-warning': dark ? '#DCC07E' : '#8F6A20',
+          '--text-error': dark ? '#F0A18E' : '#A5432F',
+          '--text-info': dark ? '#A1C5CF' : '#4A6B75',
+          '--text-accent': dark ? '#DCB4DE' : '#6A1B9A',
           '--neu-raised': neu.raised,
           '--neu-raised-hover': neu.raisedHover,
           '--neu-subtle': neu.subtle,
           '--neu-inset': neu.inset,
         },
-        body: { backgroundColor: neu.surface },
+        body: { backgroundColor: neu.surface, colorScheme: mode },
       },
     },
     MuiLinearProgress: {

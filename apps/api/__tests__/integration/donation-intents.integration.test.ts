@@ -15,7 +15,14 @@ import { CampaignBalanceModel } from '../../src/infrastructure/database/models/C
 import { JournalEntryModel } from '../../src/infrastructure/database/models/JournalEntryModel.js';
 import { JournalLineModel } from '../../src/infrastructure/database/models/JournalLineModel.js';
 import { DonationIntentModel } from '../../src/infrastructure/database/models/DonationIntentModel.js';
-import { CampaignCategory, CampaignPriority } from '@ubuntu-fund/types';
+import { SubscriptionModel } from '../../src/infrastructure/database/models/SubscriptionModel.js';
+import {
+  CampaignCategory,
+  CampaignPriority,
+  SubscriptionTier,
+  SubscriptionStatus,
+  BillingCycle,
+} from '@ubuntu-fund/types';
 
 function uniqueEmail(label: string): string {
   return `${label}-${randomUUID()}@example.com`;
@@ -67,13 +74,30 @@ async function fundWallet(walletId: string, balance: number): Promise<void> {
 
 describe('Donation Intents Integration', () => {
   let app: Express;
+  // This suite asserts the Paystack rail's "not configured" behaviour, so the
+  // app MUST be built with the Paystack secret absent regardless of the
+  // developer's local .env. config/index.ts reads these at construction time
+  // via dotenv (override:false), so an empty string assigned before
+  // createTestApp() survives — a `delete` would let dotenv repopulate it from
+  // .env. Originals are restored in afterAll to avoid leaking into later files.
+  const PAYSTACK_ENV_KEYS = ['PAYSTACK_SECRET_KEY', 'PAYSTACK_PUBLIC_KEY'] as const;
+  const savedPaystackEnv: Partial<Record<(typeof PAYSTACK_ENV_KEYS)[number], string | undefined>> = {};
 
   beforeAll(async () => {
+    for (const key of PAYSTACK_ENV_KEYS) {
+      savedPaystackEnv[key] = process.env[key];
+      process.env[key] = '';
+    }
     await connectTestDatabase();
     app = await createTestApp();
   });
 
   afterAll(async () => {
+    for (const key of PAYSTACK_ENV_KEYS) {
+      const value = savedPaystackEnv[key];
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
     await dropTestDatabase();
     await disconnectTestDatabase();
   });
@@ -125,9 +149,11 @@ describe('Donation Intents Integration', () => {
     expect(campaignDebit?.amount).toBe(500);
 
     // Campaign balance read model: beneficiary-net pending, tip tracked.
+    // The creator is on the Free plan (5% platform fee): net = 500 - 25.
     const balance = await CampaignBalanceModel.findOne({ campaignId });
     expect(balance?.totalRaised).toBe(500);
-    expect(balance?.pendingBalance).toBe(500); // no fees by default → net == amount
+    expect(balance?.pendingBalance).toBe(475); // 500 - 25.00 platform (Free 5%)
+    expect(balance?.platformFees).toBe(25);
     expect(balance?.availableBalance).toBe(0);
     expect(balance?.tips).toBe(50);
 
@@ -143,6 +169,37 @@ describe('Donation Intents Integration', () => {
       .set('Authorization', `Bearer ${donorToken}`);
     expect(mineRes.body.data.some((d: { campaignId: string }) => d.campaignId === campaignId)).toBe(true);
     void donorId;
+  });
+
+  it('applies the campaign creator\'s plan platform fee rate (Pro 2%, not Free 5%)', async () => {
+    const { userId: creatorId, token: creatorToken } = await registerUser(app, uniqueEmail('procreator'));
+    const campaignId = await createActiveCampaign(app, creatorToken, creatorId);
+    // Put the creator on the Pro plan (2% platform fee).
+    const now = new Date();
+    await SubscriptionModel.create({
+      userId: creatorId,
+      tier: SubscriptionTier.PRO,
+      status: SubscriptionStatus.ACTIVE,
+      billingCycle: BillingCycle.MONTHLY,
+      currentPeriodStart: now,
+      currentPeriodEnd: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
+      cancelAtPeriodEnd: false,
+    });
+
+    const { token: donorToken } = await registerUser(app, uniqueEmail('prodonor'));
+    const walletId = await getWalletId(app, donorToken);
+    await fundWallet(walletId, 1000);
+
+    const res = await request(app)
+      .post('/api/v1/donation-intents')
+      .set('Authorization', `Bearer ${donorToken}`)
+      .send({ campaignId, amount: 500, provider: 'wallet', isAnonymous: false });
+    expect(res.status).toBe(201);
+
+    // Pro plan → 2% of 500 = 10 platform fee, net 490 (vs Free 5% = 25 / net 475).
+    const balance = await CampaignBalanceModel.findOne({ campaignId });
+    expect(balance?.platformFees).toBe(10);
+    expect(balance?.pendingBalance).toBe(490);
   });
 
   it('is idempotent: the same Idempotency-Key never charges twice', async () => {

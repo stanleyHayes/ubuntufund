@@ -1,3 +1,4 @@
+import { BrandedDatePicker } from '@ubuntu-fund/ui'
 import { useState } from 'react'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
@@ -89,7 +90,7 @@ export function KYCPage() {
   if (submitted) {
     return (
       <Container maxWidth="sm" sx={{ py: 8, textAlign: 'center', animation: `${fadeIn} 0.5s ease` }}>
-        <CheckCircleIcon sx={{ fontSize: 64, color: '#5E8F72', mb: 2 }} />
+        <CheckCircleIcon sx={{ fontSize: 64, color: 'var(--text-success)', mb: 2 }} />
         <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
           Verification Submitted!
         </Typography>
@@ -125,7 +126,7 @@ export function KYCPage() {
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
             <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>Personal Information</Typography>
             <TextField label="Full Name (as on ID)" value={fullName} onChange={(e) => setFullName(e.target.value)} fullWidth required />
-            <TextField label="Date of Birth" type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} fullWidth InputLabelProps={{ shrink: true }} required />
+            <BrandedDatePicker label="Date of Birth"  value={dateOfBirth} onChange={setDateOfBirth} maxDate={new Date().toLocaleDateString('en-CA')} fullWidth  required />
             <TextField label="Nationality" value={nationality} onChange={(e) => setNationality(e.target.value)} fullWidth required />
             <TextField label="ID Number" value={idNumber} onChange={(e) => setIdNumber(e.target.value)} fullWidth required helperText="National ID, Passport, or Driver's License number" />
           </Box>
@@ -195,7 +196,7 @@ export function KYCPage() {
         )}
 
         {error && (
-          <Typography sx={{ color: '#A5432F', mt: 2, fontSize: '0.9rem' }}>
+          <Typography sx={{ color: 'var(--text-error)', mt: 2, fontSize: '0.9rem' }}>
             {error}
           </Typography>
         )}

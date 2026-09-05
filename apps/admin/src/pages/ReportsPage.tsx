@@ -1,5 +1,6 @@
-import { Box, Typography } from '@mui/material'
-import { keyframes } from '@mui/system'
+import { Alert, Box, Skeleton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from '@mui/material'
+import { SHAPE } from '@ubuntu-fund/ui'
+import { TONES } from '@/lib/tones'
 import { LineChart } from '@mui/x-charts/LineChart'
 import { PieChart } from '@mui/x-charts/PieChart'
 import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded'
@@ -7,23 +8,34 @@ import { useAdminCampaigns, useAdminReports } from '@/hooks/useApiData'
 import { CampaignStatus } from '@ubuntu-fund/types'
 import PageHeader from '@/components/PageHeader'
 
-const fadeIn = keyframes`from{opacity:0}to{opacity:1}`
-const slideIn = keyframes`from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}`
-const B = 'rgba(255,255,255,0.06)'
-
-function Skel({ w, h }: { w?: string | number; h?: number }) {
-  return (
-    <Box sx={{
-      width: w || '100%', height: h || 14,
-      bgcolor: 'rgba(255,255,255,0.04)',
-    }} />
-  )
+const panelSx = {
+  minWidth: 0,
+  p: 2.5,
+  borderRadius: SHAPE.card,
+  bgcolor: 'background.paper',
+  boxShadow: 'var(--neu-raised)',
 }
 
 const chartSx = {
-  '& .MuiChartsAxis-line': { stroke: B },
-  '& .MuiChartsAxis-tick': { stroke: B },
-  '& text': { fill: '#A0A0B0 !important', fontSize: '0.72rem !important' },
+  '& .MuiChartsAxis-line, & .MuiChartsAxis-tick': { stroke: 'divider' },
+  '& .MuiChartsAxis-tickLabel': { fill: 'text.secondary' },
+}
+
+function ReportPanel({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <Box component="section" aria-label={title} sx={panelSx}>
+      <Typography component="h2" variant="h6" sx={{ mb: 2 }}>{title}</Typography>
+      {children}
+    </Box>
+  )
+}
+
+function EmptyReport({ children }: { children: React.ReactNode }) {
+  return (
+    <Box sx={{ p: 3, borderRadius: SHAPE.sm, boxShadow: 'var(--neu-inset)' }}>
+      <Typography variant="body2" color="text.secondary">{children}</Typography>
+    </Box>
+  )
 }
 
 const statusBarColors: Record<string, string> = {
@@ -36,8 +48,8 @@ const statusBarColors: Record<string, string> = {
 
 export default function ReportsPage() {
   // Real campaign data drives the "Campaign Status Breakdown" panel below.
-  const { data: campaigns, isLoading: campaignsLoading } = useAdminCampaigns()
-  const { data: reports, isLoading: reportsLoading } = useAdminReports()
+  const { data: campaigns, isLoading: campaignsLoading, error: campaignsError } = useAdminCampaigns()
+  const { data: reports, isLoading: reportsLoading, error: reportsError } = useAdminReports()
   const loading = campaignsLoading || reportsLoading
   const trend = reports.donationTrend
   const categories = reports.categoryBreakdown
@@ -63,156 +75,89 @@ export default function ReportsPage() {
       title="Reports"
       lede="Track fraud signals, campaign funding trends, and platform health in one place."
       icon={<AssessmentRoundedIcon />}
-      stats={fraudMetrics.map((m) => ({ label: m.metric, value: formatMetricValue(m) }))}
+      stats={fraudMetrics.map((m) => ({ label: m.metric, value: reportsLoading ? <Skeleton width={60} /> : reportsError ? '—' : formatMetricValue(m) }))}
     />
   )
 
-  if (loading) {
-    return (
-      <Box sx={{ bgcolor: '#0c0c14', minHeight: '100vh' }}>
-        <Box sx={{ px: 3, pt: 3 }}>{header}</Box>
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' } }}>
-          {[0, 1, 2, 3].map(i => (
-            <Box key={i} sx={{ p: 2.5, borderRight: `1px solid ${B}`, borderBottom: `1px solid ${B}` }}>
-              <Skel w={160} h={14} />
-              <Box sx={{ mt: 2 }}><Skel h={280} /></Box>
-            </Box>
-          ))}
-        </Box>
-      </Box>
-    )
-  }
-
   return (
-    <Box sx={{ bgcolor: '#0c0c14', minHeight: '100vh', animation: `${fadeIn} 0.4s ease` }}>
-      <Box sx={{ px: 3, pt: 3 }}>{header}</Box>
-
-      {/* Charts section: 2x2 grid */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' } }}>
-        {/* Cell 1: Line chart - Monthly Donation Trends */}
-        <Box sx={{
-          borderRight: `1px solid ${B}`,
-          borderBottom: `1px solid ${B}`,
-          animation: `${slideIn} 0.4s ease 0.25s both`,
-        }}>
-          <Box sx={{ p: 2.5, borderBottom: `1px solid ${B}` }}>
-            <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#E0E0E8', fontFamily: '"Outfit", sans-serif' }}>
-              Monthly Donation Trends
-            </Typography>
-          </Box>
-          <Box sx={{ p: 2.5, ...chartSx }}>
-            <LineChart
-              xAxis={[{ data: trend.map(t => t.month), scaleType: 'band' }]}
-              series={[{ data: trend.map(t => t.amount), color: '#5E8F72', area: true }]}
-              height={280}
-            />
-          </Box>
-        </Box>
-
-        {/* Cell 2: Pie chart - Donations by Category */}
-        <Box sx={{
-          borderBottom: `1px solid ${B}`,
-          animation: `${slideIn} 0.4s ease 0.3s both`,
-        }}>
-          <Box sx={{ p: 2.5, borderBottom: `1px solid ${B}` }}>
-            <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#E0E0E8', fontFamily: '"Outfit", sans-serif' }}>
-              Donations by Category
-            </Typography>
-          </Box>
-          <Box sx={{ p: 2.5, ...chartSx }}>
-            <PieChart
-              series={[{
-                data: categories.map((c, i) => ({ id: i, value: c.value, label: c.category })),
-              }]}
-              height={280}
-            />
-          </Box>
-        </Box>
-
-        {/* Cell 3: Geographic data - table */}
-        <Box sx={{
-          borderRight: `1px solid ${B}`,
-          borderBottom: `1px solid ${B}`,
-          animation: `${slideIn} 0.4s ease 0.35s both`,
-        }}>
-          <Box sx={{ p: 2.5, borderBottom: `1px solid ${B}` }}>
-            <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#E0E0E8', fontFamily: '"Outfit", sans-serif' }}>
-              Geographic Distribution
-            </Typography>
-          </Box>
-          {/* Header row */}
-          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', borderBottom: `1px solid ${B}` }}>
-            {['Region', 'Campaigns', 'Donations'].map((h, i) => (
-              <Box key={h} sx={{ px: 2.5, py: 1.2, borderRight: i < 2 ? `1px solid ${B}` : 'none' }}>
-                <Typography sx={{ fontSize: '0.65rem', textTransform: 'uppercase', color: '#6B6B80', letterSpacing: 0.8 }}>
-                  {h}
-                </Typography>
-              </Box>
-            ))}
-          </Box>
-          {geoData.map((row) => (
-            <Box
-              key={row.country}
-              sx={{
-                display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
-                borderBottom: `1px solid ${B}`,
-                borderLeft: '2px solid rgba(116,144,154,0.25)',
-                transition: 'background 0.2s',
-                '&:hover': { bgcolor: 'rgba(255,255,255,0.02)' },
-              }}
-            >
-              <Box sx={{ px: 2.5, py: 1.5, borderRight: `1px solid ${B}` }}>
-                <Typography sx={{ fontSize: '0.82rem', color: '#E0E0E8', fontWeight: 600 }}>{row.country}</Typography>
-              </Box>
-              <Box sx={{ px: 2.5, py: 1.5, borderRight: `1px solid ${B}` }}>
-                <Typography sx={{ fontSize: '0.82rem', color: '#A0A0B0', fontFamily: '"Outfit", monospace' }}>{row.campaigns}</Typography>
-              </Box>
-              <Box sx={{ px: 2.5, py: 1.5 }}>
-                <Typography sx={{ fontSize: '0.82rem', color: '#A0A0B0', fontFamily: '"Outfit", monospace' }}>GH₵ {row.donations.toLocaleString()}</Typography>
-              </Box>
+    <Box sx={{ bgcolor: 'background.default' }}>
+      {header}
+      {(reportsError || campaignsError) && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {reportsError && 'Report statistics could not be loaded. '}
+          {campaignsError && 'Campaign statistics could not be loaded. '}
+          Refresh the page to try again.
+        </Alert>
+      )}
+      <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' } }}>
+        {loading ? [0, 1, 2, 3].map(i => (
+          <Box key={i} sx={panelSx}>
+            <Skeleton width={180} height={28} />
+            <Box sx={{ mt: 2, p: 2, borderRadius: SHAPE.sm, boxShadow: 'var(--neu-inset)' }}>
+              <Skeleton variant="rounded" height={250} />
             </Box>
-          ))}
-        </Box>
-
-        {/* Cell 4: Campaign status breakdown */}
-        <Box sx={{
-          borderBottom: `1px solid ${B}`,
-          animation: `${slideIn} 0.4s ease 0.4s both`,
-        }}>
-          <Box sx={{ p: 2.5, borderBottom: `1px solid ${B}` }}>
-            <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#E0E0E8', fontFamily: '"Outfit", sans-serif' }}>
-              Campaign Status Breakdown
-            </Typography>
           </Box>
-          {statusBreakdown.map((s) => (
-            <Box
-              key={s.status}
-              sx={{
-                px: 2.5, py: 1.8,
-                borderBottom: `1px solid ${B}`,
-                transition: 'background 0.2s',
-                '&:hover': { bgcolor: 'rgba(255,255,255,0.02)' },
-              }}
-            >
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.8 }}>
-                <Typography sx={{ fontSize: '0.78rem', color: '#E0E0E8' }}>
-                  {s.status}
-                </Typography>
-                <Typography sx={{ fontSize: '0.85rem', fontWeight: 700, color: '#fff', fontFamily: '"Outfit", monospace' }}>
-                  {s.count}
-                </Typography>
-              </Box>
-              <Box sx={{ width: '100%', height: 4, bgcolor: 'rgba(255,255,255,0.04)' }}>
-                <Box sx={{
-                  height: '100%',
-                  width: `${(s.count / maxStatusCount) * 100}%`,
-                  bgcolor: s.color,
-                  transition: 'width 0.6s ease',
-                }} />
-              </Box>
-            </Box>
-          ))}
-        </Box>
+        )) : (
+          <>
+            <ReportPanel title="Monthly Donation Trends">
+              {reportsError ? <EmptyReport>Donation trends are unavailable.</EmptyReport> : trend.length === 0 ? <EmptyReport>No donation history is available yet.</EmptyReport> : (
+                <LineChart
+                  sx={chartSx}
+                  xAxis={[{ data: trend.map(t => t.month), scaleType: 'band' }]}
+                  series={[{ data: trend.map(t => t.amount), color: TONES.green.text, area: true, label: 'Donations', valueFormatter: value => value === null ? '—' : `GH₵ ${value.toLocaleString()}` }]}
+                  height={280}
+                  skipAnimation
+                />
+              )}
+            </ReportPanel>
+            <ReportPanel title="Donations by Category">
+              {reportsError ? <EmptyReport>Donation categories are unavailable.</EmptyReport> : categories.length === 0 ? <EmptyReport>No category totals are available yet.</EmptyReport> : (
+                <PieChart
+                  sx={chartSx}
+                  colors={[TONES.green.text, TONES.gold.text, TONES.clay.text, TONES.teal.text, TONES.maroon.text, '#B5C9BA', '#DCC07E']}
+                  series={[{ data: categories.map((c, i) => ({ id: i, value: c.value, label: c.category })), innerRadius: 48, paddingAngle: 2, cornerRadius: 3 }]}
+                  height={280}
+                  skipAnimation
+                />
+              )}
+            </ReportPanel>
+            <ReportPanel title="Geographic Distribution">
+              {reportsError ? <EmptyReport>Geographic totals are unavailable.</EmptyReport> : geoData.length === 0 ? <EmptyReport>No geographic activity is available yet.</EmptyReport> : (
+                <TableContainer sx={{ borderRadius: SHAPE.sm, boxShadow: 'var(--neu-inset)' }}>
+                  <Table size="small" aria-label="Geographic distribution" sx={{ '& td, & th': { px: 2, py: 1.5 }, '& td': { fontVariantNumeric: 'tabular-nums' } }}>
+                    <TableHead><TableRow>
+                      <TableCell>Region</TableCell><TableCell align="right">Campaigns</TableCell><TableCell align="right">Donations</TableCell>
+                    </TableRow></TableHead>
+                    <TableBody>{geoData.map(row => (
+                      <TableRow key={row.country} hover>
+                        <TableCell component="th" scope="row">{row.country}</TableCell>
+                        <TableCell align="right">{row.campaigns}</TableCell>
+                        <TableCell align="right">GH₵ {row.donations.toLocaleString()}</TableCell>
+                      </TableRow>
+                    ))}</TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+            </ReportPanel>
+            <ReportPanel title="Campaign Status Breakdown">
+              {campaignsError ? <EmptyReport>Campaign status counts are unavailable.</EmptyReport> : (
+                <Box component="dl" sx={{ m: 0, display: 'grid', gap: 2.5 }}>
+                  {statusBreakdown.map(s => (
+                    <Box key={s.status}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, mb: 1 }}>
+                        <Typography component="dt" variant="body2" color="text.secondary">{s.status}</Typography>
+                        <Typography component="dd" sx={{ m: 0, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{s.count}</Typography>
+                      </Box>
+                      <Box aria-hidden="true" sx={{ height: 10, p: '2px', borderRadius: SHAPE.bar, boxShadow: 'var(--neu-inset)' }}>
+                        <Box sx={{ height: '100%', width: `${(s.count / maxStatusCount) * 100}%`, bgcolor: s.color, borderRadius: SHAPE.bar }} />
+                      </Box>
+                    </Box>
+                  ))}
+                </Box>
+              )}
+            </ReportPanel>
+          </>
+        )}
       </Box>
     </Box>
   )

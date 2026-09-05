@@ -113,6 +113,8 @@ export interface CreateUserInput {
   organizationType?: OrganizationType
   registrationNumber?: string
   website?: string
+  /** Referral code (from a ?ref link) linking this signup to a referrer's affiliate. */
+  referralCode?: string
 }
 
 export enum OrganizationType {

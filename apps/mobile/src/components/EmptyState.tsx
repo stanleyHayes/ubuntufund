@@ -40,7 +40,7 @@ export function EmptyState({
   return (
     <View style={[styles.wrap, style]}>
       <View style={[styles.iconTile, isError && styles.iconTileError]}>
-        <Icon source={icon} size={24} color={isError ? brandColors.error : brandColors.primary} />
+        <Icon source={icon} size={28} color={isError ? brandColors.error : brandColors.primary} />
       </View>
       <Text style={styles.title}>{title}</Text>
       {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
@@ -62,11 +62,11 @@ export function EmptyState({
 }
 
 const styles = StyleSheet.create({
-  wrap: { alignItems: 'center', justifyContent: 'center', paddingTop: 72, paddingHorizontal: 32 },
+  wrap: { alignItems: 'center', justifyContent: 'center', paddingVertical: 36, paddingHorizontal: 24, borderRadius: 20, backgroundColor: 'rgba(168,181,160,0.10)' },
   iconTile: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 64,
+    height: 64,
+    borderTopLeftRadius: 10, borderTopRightRadius: 22, borderBottomLeftRadius: 22, borderBottomRightRadius: 10,
     backgroundColor: 'rgba(168,181,160,0.28)',
     alignItems: 'center',
     justifyContent: 'center',

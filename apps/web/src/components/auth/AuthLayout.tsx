@@ -164,7 +164,7 @@ export function AuthLayout({ eyebrow, title, subtitle, children }: AuthLayoutPro
                     fontWeight: 700,
                     textTransform: 'uppercase',
                     letterSpacing: '0.22em',
-                    color: '#A07E33',
+                    color: 'var(--text-warning)',
                   }}
                 >
                   {eyebrow}

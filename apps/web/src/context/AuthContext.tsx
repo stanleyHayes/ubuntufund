@@ -12,7 +12,7 @@ interface AuthState {
 
 interface AuthContextValue extends AuthState {
   login: (email: string, password: string) => Promise<void>
-  register: (data: { name: string; email: string; password: string; country?: string; role?: string; organizationName?: string; organizationType?: string; registrationNumber?: string; website?: string }) => Promise<void>
+  register: (data: { name: string; email: string; password: string; country?: string; role?: string; organizationName?: string; organizationType?: string; registrationNumber?: string; website?: string; referralCode?: string }) => Promise<void>
   logout: () => void
 }
 
@@ -78,9 +78,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState({ user, tokens, isAuthenticated: true, isLoading: false })
   }, [])
 
-  const register = useCallback(async (data: { name: string; email: string; password: string; country?: string; role?: string; organizationName?: string; organizationType?: string; registrationNumber?: string; website?: string }) => {
+  const register = useCallback(async (data: { name: string; email: string; password: string; country?: string; role?: string; organizationName?: string; organizationType?: string; registrationNumber?: string; website?: string; referralCode?: string }) => {
     const { user, tokens } = await registerApi(data)
     saveToStorage(user, tokens)
+    // Referral attributed — drop the stored code so it can't be reused.
+    try { localStorage.removeItem('uf_ref') } catch { /* storage unavailable */ }
     setState({ user, tokens, isAuthenticated: true, isLoading: false })
   }, [])
 

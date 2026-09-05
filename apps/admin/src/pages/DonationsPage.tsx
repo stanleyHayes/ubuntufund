@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Box, Typography, TextField, MenuItem, InputAdornment } from '@mui/material'
-import { keyframes } from '@mui/system'
+import { Alert, Skeleton, Box, Typography, TextField, MenuItem, InputAdornment } from '@mui/material'
+import { raisedSurface, insetSurface } from '@/lib/surfaces'
 import SearchIcon from '@mui/icons-material/Search'
 import VolunteerActivismRoundedIcon from '@mui/icons-material/VolunteerActivismRounded'
 import { EmptyState } from '@ubuntu-fund/ui'
@@ -9,28 +9,20 @@ import { usePagination } from '@/hooks/usePagination'
 import PaginationBar from '@/components/PaginationBar'
 import PageHeader from '@/components/PageHeader'
 
-const fadeIn = keyframes`from{opacity:0}to{opacity:1}`
-const slideIn = keyframes`from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}`
-const B = 'rgba(255,255,255,0.06)'
 
-const ACCENT = '#5E8F72'
 
 function Skel({ w, h }: { w?: string | number; h?: number }) {
   return (
-    <Box sx={{
-      width: w || '100%', height: h || 14,
-      bgcolor: 'rgba(255,255,255,0.04)',
-    }} />
+    <Skeleton variant="rounded" width={w ?? '100%'} height={h ?? 14} />
   )
 }
 
-function SkeletonCard({ index }: { index: number }) {
+function SkeletonCard() {
   return (
     <Box sx={{
       position: 'relative', overflow: 'hidden',
-      borderRight: `1px solid ${B}`, borderBottom: `1px solid ${B}`,
+      ...raisedSurface,
       p: 3,
-      animation: `${fadeIn} 0.4s ease ${index * 0.05}s both`,
     }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5 }}>
         <Skel w={100} h={24} />
@@ -38,7 +30,7 @@ function SkeletonCard({ index }: { index: number }) {
       </Box>
       <Skel w="50%" h={12} />
       <Box sx={{ mt: 0.8 }}><Skel w="70%" h={12} /></Box>
-      <Box sx={{ borderTop: `1px solid ${B}`, mt: 2, pt: 2 }}>
+      <Box sx={{ ...insetSurface, px: 1.5, pb: 1.5, mt: 2, pt: 2 }}>
         <Skel w={80} h={11} />
         <Box sx={{ mt: 0.8 }}><Skel w={90} h={11} /></Box>
       </Box>
@@ -51,45 +43,34 @@ interface DonationCardProps {
   donation: AdminDonation
   donorName: string
   campaignTitle: string
-  index: number
 }
 
-function DonationCard({ donation, donorName, campaignTitle, index }: DonationCardProps) {
+function DonationCard({ donation, donorName, campaignTitle }: DonationCardProps) {
   return (
     <Box
       sx={{
         position: 'relative', overflow: 'hidden',
-        borderRight: `1px solid ${B}`, borderBottom: `1px solid ${B}`,
+        ...raisedSurface,
         p: 3,
-        transition: 'all 0.3s ease',
-        animation: `${slideIn} 0.4s ease ${index * 0.03}s both`,
-        '&::before': { content: '""', position: 'absolute', top: 0, left: 0, right: 0, height: 2, bgcolor: ACCENT, opacity: 0.35, transition: 'opacity 0.3s' },
-        '&:hover': { bgcolor: 'rgba(255,255,255,0.03)', '&::before': { opacity: 1 } },
+        transition: 'box-shadow 160ms ease',
+        '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
+        '&:hover': { boxShadow: 'var(--neu-raised-hover)' },
+        '&:focus-visible': { outline: '2px solid', outlineColor: 'secondary.main', outlineOffset: 3 },
       }}
     >
-      {/* Watermark */}
-      <Typography sx={{
-        position: 'absolute', right: 12, bottom: 8,
-        fontSize: '3.5rem', fontFamily: '"Outfit", monospace', fontWeight: 900,
-        color: 'rgba(255,255,255,0.03)', lineHeight: 1, pointerEvents: 'none',
-        userSelect: 'none',
-      }}>
-        GH₵ {donation.amount}
-      </Typography>
-
       {/* Amount + Currency + Anon badge */}
-      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 0.5, position: 'relative', zIndex: 1 }}>
-        <Typography sx={{ fontSize: '1.5rem', fontWeight: 700, fontFamily: '"Outfit", monospace', color: 'text.primary', lineHeight: 1.2 }}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 1, mb: 0.5, position: 'relative', zIndex: 1 }}>
+        <Typography sx={{ fontSize: '1.5rem', fontWeight: 700, fontFamily: '"Outfit", monospace', fontVariantNumeric: 'tabular-nums', color: 'text.primary', lineHeight: 1.2 }}>
           GH₵ {donation.amount.toLocaleString()}
         </Typography>
-        <Typography sx={{ fontSize: '0.65rem', fontWeight: 600, textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', letterSpacing: '0.05em' }}>
+        <Typography sx={{ fontSize: '0.65rem', fontWeight: 600, textTransform: 'uppercase', color: 'text.secondary', letterSpacing: '0.05em' }}>
           {donation.currency}
         </Typography>
         {donation.isAnonymous && (
           <Typography sx={{
             fontSize: '0.58rem', fontWeight: 700, textTransform: 'uppercase',
             color: '#C06B58', letterSpacing: '0.08em',
-            border: '1px solid rgba(192,107,88,0.15)', px: 0.8, py: 0.15, lineHeight: 1.4,
+            ...insetSurface, px: 0.8, py: 0.15, lineHeight: 1.4,
           }}>
             ANON
           </Typography>
@@ -111,10 +92,10 @@ function DonationCard({ donation, donorName, campaignTitle, index }: DonationCar
       </Typography>
 
       {/* Separator */}
-      <Box sx={{ borderTop: `1px solid ${B}`, mt: 2, pt: 1.5, position: 'relative', zIndex: 1 }}>
+      <Box sx={{ ...insetSurface, px: 1.5, pb: 1.5, mt: 2, pt: 1.5, position: 'relative', zIndex: 1 }}>
         {/* Payment method — omitted by the real donations feed (PublicDonationDTO) */}
         {donation.paymentMethod && (
-          <Typography sx={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', letterSpacing: '0.06em', fontWeight: 600 }}>
+          <Typography sx={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'text.secondary', letterSpacing: '0.06em', fontWeight: 600 }}>
             {donation.paymentMethod.replace('_', ' ')}
           </Typography>
         )}
@@ -128,8 +109,8 @@ function DonationCard({ donation, donorName, campaignTitle, index }: DonationCar
       {/* Message */}
       {donation.message && (
         <Typography sx={{
-          fontSize: '0.75rem', fontStyle: 'italic', color: 'rgba(255,255,255,0.3)',
-          mt: 1.5, lineHeight: 1.4, position: 'relative', zIndex: 1,
+          fontSize: '0.75rem', fontStyle: 'italic', color: 'text.secondary',
+          ...insetSurface, p: 1.5, mt: 1.5, lineHeight: 1.4, position: 'relative', zIndex: 1,
           overflow: 'hidden', display: '-webkit-box',
           WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
         }}>
@@ -141,7 +122,7 @@ function DonationCard({ donation, donorName, campaignTitle, index }: DonationCar
 }
 
 export default function DonationsPage() {
-  const { data: donations, isLoading: loading } = useAdminDonations()
+  const { data: donations, isLoading: loading, error } = useAdminDonations()
   const PAGE_SIZE = 12
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState<string>('all')
@@ -164,7 +145,7 @@ export default function DonationsPage() {
   const totalAmount = filtered.reduce((sum, d) => sum + d.amount, 0)
 
   return (
-    <Box sx={{ bgcolor: '#0c0c14', minHeight: '100vh', animation: `${fadeIn} 0.3s ease` }}>
+    <Box sx={{ bgcolor: 'background.default' }}>
       <PageHeader
         tone="gold"
         eyebrow="Community"
@@ -173,13 +154,16 @@ export default function DonationsPage() {
         icon={<VolunteerActivismRoundedIcon />}
       />
 
+      {error && <Alert severity="error" sx={{ mb: 3 }}>Could not load donations. Refresh the page to try again.</Alert>}
+
       {/* Filter bar */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr 1fr' }, borderBottom: `1px solid ${B}` }}>
-        <Box sx={{ px: 2.5, py: 1.5, borderRight: `1px solid ${B}`, display: 'flex', alignItems: 'center' }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr 1fr' }, ...raisedSurface, mb: 3 }}>
+        <Box sx={{ px: 2.5, py: 1.5, display: 'flex', alignItems: 'center' }}>
           <TextField
             size="small"
-            variant="standard"
+            variant="outlined"
             placeholder="Search by donor or campaign..."
+            slotProps={{ htmlInput: { 'aria-label': 'Search by donor or campaign...' } }}
             value={search}
             onChange={e => setSearch(e.target.value)}
             fullWidth
@@ -190,25 +174,17 @@ export default function DonationsPage() {
                 </InputAdornment>
               ),
             }}
-            sx={{
-              '& .MuiInput-root': { color: 'text.primary', '&::before': { borderColor: B }, '&::after': { borderColor: '#5E8F72' } },
-              '& .MuiInputLabel-root': { color: 'text.secondary', fontSize: '0.8rem' },
-            }}
           />
         </Box>
-        <Box sx={{ px: 2.5, py: 1.5, borderRight: `1px solid ${B}`, display: 'flex', alignItems: 'center' }}>
+        <Box sx={{ px: 2.5, py: 1.5, display: 'flex', alignItems: 'center' }}>
           <TextField
             select
             size="small"
-            variant="standard"
+            variant="outlined"
             label="Type"
             value={typeFilter}
             onChange={e => setTypeFilter(e.target.value)}
             fullWidth
-            sx={{
-              '& .MuiInput-root': { color: 'text.primary', '&::before': { borderColor: B }, '&::after': { borderColor: '#5E8F72' } },
-              '& .MuiInputLabel-root': { color: 'text.secondary', fontSize: '0.8rem' },
-            }}
           >
             <MenuItem value="all">All</MenuItem>
             <MenuItem value="named">Named</MenuItem>
@@ -216,8 +192,8 @@ export default function DonationsPage() {
           </TextField>
         </Box>
         <Box sx={{ px: 2.5, py: 1.5, display: 'flex', alignItems: 'center' }}>
-          <Typography sx={{ fontFamily: '"Outfit", monospace', fontSize: '0.82rem', color: 'text.secondary' }}>
-            {filtered.length} donations &middot; GH₵ {totalAmount.toLocaleString()} total
+          <Typography sx={{ fontFamily: '"Outfit", monospace', fontVariantNumeric: 'tabular-nums', fontSize: '0.82rem', color: 'text.secondary' }}>
+            {loading ? <Skeleton width={160} /> : error ? 'Unavailable' : `${filtered.length} donations · GH₵ ${totalAmount.toLocaleString()} total`}
           </Typography>
         </Box>
       </Box>
@@ -225,27 +201,27 @@ export default function DonationsPage() {
       {/* Grid */}
       <Box sx={{
         display: 'grid',
-        gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)', lg: 'repeat(4, 1fr)' },
+        gap: 3, gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))', md: 'repeat(3, minmax(0, 1fr))', lg: 'repeat(4, minmax(0, 1fr))' },
       }}>
         {loading
-          ? Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} index={i} />)
-          : pagination.page.map((donation, i) => (
+          ? Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)
+          : pagination.page.map((donation) => (
               <DonationCard
                 key={donation.id}
                 donation={donation}
                 donorName={donation.donorName ?? donation.donorId}
                 campaignTitle={donation.campaignTitle ?? donation.campaignId}
-                index={i}
+
               />
             ))
         }
       </Box>
 
-      {!loading && <PaginationBar pagination={pagination} accentColor="#C7A24A" />}
+      {!loading && <PaginationBar neumorphic pagination={pagination} accentColor="#C7A24A" />}
 
       {/* Empty state */}
-      {!loading && filtered.length === 0 && (
-        <EmptyState variant="search" title="No donations found" description="No donations match your filters. Try adjusting your search criteria." compact />
+      {!loading && !error && filtered.length === 0 && (
+        <Box sx={{ ...raisedSurface, p: 3 }}><EmptyState variant="search" title="No donations found" description="No donations match your filters. Try adjusting your search criteria." compact /></Box>
       )}
     </Box>
   )

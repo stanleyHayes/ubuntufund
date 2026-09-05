@@ -11,6 +11,12 @@ export interface CampaignRepositoryPort {
   delete(id: string): Promise<void>;
   countByCreatorId(creatorId: string): Promise<number>;
   /**
+   * Count a creator's campaigns that occupy an "active" slot for plan-limit
+   * purposes: status active or pending_review, excluding soft-deleted ones.
+   * (Funded/expired/blocked campaigns no longer count against the cap.)
+   */
+  countActiveByCreator(creatorId: string): Promise<number>;
+  /**
    * Atomically add to raisedAmount, only while the campaign is active,
    * unexpired, and in the same currency. Returns the updated campaign or null
    * when the campaign cannot accept the donation.

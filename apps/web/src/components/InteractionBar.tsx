@@ -86,10 +86,10 @@ export function InteractionBar({
             onClick={handleLike}
             aria-label={liked ? 'Unlike' : 'Like'}
             sx={{
-              color: liked ? '#E53935' : 'text.secondary',
+              color: liked ? 'var(--text-error)' : 'text.secondary',
               animation: animatingLike ? `${scaleBounce} 0.4s ease` : undefined,
               transition: 'color 0.2s',
-              '&:hover': { color: '#E53935' },
+              '&:hover': { color: 'var(--text-error)' },
             }}
           >
             {liked ? (
@@ -100,7 +100,7 @@ export function InteractionBar({
           </IconButton>
           <Typography
             variant="caption"
-            sx={{ color: liked ? '#E53935' : 'text.secondary', fontWeight: 600, minWidth: 16 }}
+            sx={{ color: liked ? 'var(--text-error)' : 'text.secondary', fontWeight: 600, minWidth: 16 }}
           >
             {likeCount}
           </Typography>
@@ -116,7 +116,7 @@ export function InteractionBar({
             sx={{
               color: 'text.secondary',
               transition: 'color 0.2s',
-              '&:hover': { color: '#E65100' },
+              '&:hover': { color: 'var(--text-warning)' },
             }}
           >
             <ChatBubbleOutlineRounded fontSize="small" />
@@ -139,7 +139,7 @@ export function InteractionBar({
               color: 'text.secondary',
               animation: animatingShare ? `${scaleBounce} 0.4s ease` : undefined,
               transition: 'color 0.2s',
-              '&:hover': { color: '#00695C' },
+              '&:hover': { color: 'var(--text-info)' },
             }}
           >
             <ShareRounded fontSize="small" />

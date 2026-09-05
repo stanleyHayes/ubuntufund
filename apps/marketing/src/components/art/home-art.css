@@ -1,0 +1,16 @@
+.community-sculpture{position:relative;display:block;width:min(100%,280px);height:245px;margin:auto;padding:0;border:0;background:transparent;color:inherit;cursor:pointer;perspective:850px;font:inherit;isolation:isolate;touch-action:pan-y}
+.community-sculpture:focus-visible{outline:2px solid #C7A24A;outline-offset:6px;border-radius:20px}
+.sculpture-stage{position:absolute;inset:12px 0 54px;display:block;transform-style:preserve-3d;transform:rotateX(calc(-15deg + var(--tilt))) rotateY(calc(-18deg + var(--turn)));transition:transform 350ms ease}
+.sculpture-link{position:absolute;left:40px;top:32px;width:105px;height:105px;transform-style:preserve-3d;transform:rotateZ(45deg)}
+.sculpture-link--1{left:126px;transform:translateZ(20px) rotateY(45deg) rotateZ(45deg)}
+.sculpture-layer{position:absolute;inset:0;display:block;border:11px solid #A07E33;border-radius:22px;background:transparent;box-shadow:inset 1px 1px 2px #f5e0a6,1px 1px 1px #594a2b}
+.sculpture-layer:last-child{border-color:#DCC07E}
+.sculpture-link--1 .sculpture-layer{border-color:#5E8F72;box-shadow:inset 1px 1px 2px #d2e5cd,1px 1px 1px #233126}
+.sculpture-link--1 .sculpture-layer:last-child{border-color:#8FAE96}
+.sculpture-seed{display:none;position:absolute;left:110px;top:80px;width:58px;height:74px;border-radius:65% 35% 60% 40%;background:radial-gradient(circle at 30% 25%,#f1d99b,#C7A24A 38%,#796021 90%);transform:translateZ(60px) rotate(-24deg);box-shadow:12px 20px 25px #14251933}
+.community-sculpture--seed .sculpture-seed{display:block}.community-sculpture--seed .sculpture-link{border-radius:50%;transform:rotateX(55deg) rotateZ(20deg);left:75px;top:40px;width:130px;height:130px}.community-sculpture--seed .sculpture-link--1{transform:rotateY(60deg) rotateZ(-20deg)}.community-sculpture--seed .sculpture-layer{border-radius:50%;border-width:5px}
+.sculpture-shadow{position:absolute;left:20%;right:20%;bottom:55px;height:15px;border-radius:50%;background:#10241926;filter:blur(10px)}
+.sculpture-hint{position:absolute;bottom:0;left:0;right:0;font-size:.82rem;font-weight:600}.sculpture-hint span{display:block;margin-top:6px;font-size:.65rem;font-weight:400;opacity:.7}
+.home-art-image{display:block;width:100%;height:auto;object-fit:cover;aspect-ratio:3/2;border-radius:5px 56px 5px 56px}
+@media(prefers-reduced-motion:reduce){.sculpture-stage{transition:none;transform:rotateX(-15deg) rotateY(-18deg)}}
+@media(max-width:600px){.community-sculpture{height:225px}.home-art-image{border-radius:4px 32px 4px 32px}}

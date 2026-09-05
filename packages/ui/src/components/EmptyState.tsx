@@ -13,23 +13,13 @@ const fadeIn = keyframes`
   to   { opacity: 1; transform: translateY(0); }
 `
 
-const float = keyframes`
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-8px); }
-`
-
 // ---------------------------------------------------------------------------
 // Illustration variants — pure SVG with embedded <style> for animations
 // ---------------------------------------------------------------------------
 
 type IllustrationVariant = 'empty' | 'search' | 'error' | 'notFound' | 'noData'
 
-/** Unique prefix per render to avoid CSS collisions */
-let _counter = 0
-function useId() {
-  const [id] = React.useState(() => `es-${++_counter}`)
-  return id
-}
+function useId() { return `es-${React.useId().replace(/:/g, '')}` }
 
 function SearchIllustration() {
   const id = useId()
@@ -71,7 +61,7 @@ function SearchIllustration() {
       {/* Floating accent dots */}
       <circle cx="30" cy="40" r="4" fill="#5E8F72" className={`${id}-dot ${id}-dot1`} />
       <circle cx="145" cy="35" r="3" fill="#C7A24A" className={`${id}-dot ${id}-dot2`} />
-      <circle cx="150" cy="95" r="3.5" fill="#66BB6A" className={`${id}-dot ${id}-dot3`} />
+      <circle cx="150" cy="95" r="3.5" fill="#8FAE96" className={`${id}-dot ${id}-dot3`} />
       {/* Sparkles */}
       <g className={`${id}-pop`}>
         <line x1="35" y1="130" x2="35" y2="140" stroke="#DCC07E" strokeWidth="1.5" strokeLinecap="round" />
@@ -108,10 +98,10 @@ function ErrorIllustration() {
       {/* Triangle fill */}
       <path d="M90 35 L148 125 L32 125 Z" fill="#FFF8E1" opacity=".5" className={`${id}-dot`} />
       {/* Exclamation line */}
-      <path d="M90 62 L90 92" stroke="#EF5350" strokeWidth="4" strokeLinecap="round"
+      <path d="M90 62 L90 92" stroke="#C06B58" strokeWidth="4" strokeLinecap="round"
         strokeDasharray="30" className={`${id}-ex1`} />
       {/* Exclamation dot */}
-      <circle cx="90" cy="105" r="3" fill="#EF5350" className={`${id}-dot`} />
+      <circle cx="90" cy="105" r="3" fill="#C06B58" className={`${id}-dot`} />
       {/* Repair gear */}
       <g className={`${id}-gear`}>
         <circle cx="140" cy="140" r="14" stroke="#5E8F72" strokeWidth="2.5" fill="none"
@@ -173,7 +163,7 @@ function NotFoundIllustration() {
           fontSize="10" fontWeight="700" className={`${id}-dot`}>{m.label}</text>
       ))}
       {/* Needle N */}
-      <path d="M80 80 L72 45" stroke="#EF5350" strokeWidth="3" strokeLinecap="round"
+      <path d="M80 80 L72 45" stroke="#C06B58" strokeWidth="3" strokeLinecap="round"
         strokeDasharray="40" className={`${id}-needle`} />
       {/* Needle S */}
       <path d="M80 80 L88 115" stroke="#8D6E63" strokeWidth="3" strokeLinecap="round"
@@ -236,9 +226,9 @@ function NoDataIllustration() {
         strokeDasharray="60" className={`${id}-line ${id}-l4`} />
       {/* Sprouting plant */}
       <g className={`${id}-leaf ${id}-leafpop`}>
-        <path d="M130 120 C130 100 130 85 130 75" stroke="#66BB6A" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+        <path d="M130 120 C130 100 130 85 130 75" stroke="#8FAE96" strokeWidth="2.5" strokeLinecap="round" fill="none" />
         <ellipse cx="118" cy="90" rx="10" ry="5" fill="#5E8F72" opacity=".7" transform="rotate(-30, 118, 90)" />
-        <ellipse cx="142" cy="80" rx="10" ry="5" fill="#66BB6A" opacity=".7" transform="rotate(30, 142, 80)" />
+        <ellipse cx="142" cy="80" rx="10" ry="5" fill="#8FAE96" opacity=".7" transform="rotate(30, 142, 80)" />
         <circle cx="130" cy="70" r="6" fill="#C7A24A" opacity=".8" />
       </g>
       {/* Sparkles */}
@@ -296,7 +286,7 @@ function EmptyIllustration() {
       <g className={`${id}-stem`}>
         {/* Main stem */}
         <path d="M90 140 C90 125 88 105 90 85 C91 72 89 60 90 48"
-          stroke="#66BB6A" strokeWidth="3" strokeLinecap="round" fill="none"
+          stroke="#8FAE96" strokeWidth="3" strokeLinecap="round" fill="none"
           strokeDasharray="70" className={`${id}-stemline`} />
         {/* Left leaf */}
         <g className={`${id}-leaf1`}>
@@ -305,7 +295,7 @@ function EmptyIllustration() {
         </g>
         {/* Right leaf */}
         <g className={`${id}-leaf2`}>
-          <ellipse cx="108" cy="90" rx="14" ry="6" fill="#66BB6A" opacity=".7" transform="rotate(25, 108, 90)" />
+          <ellipse cx="108" cy="90" rx="14" ry="6" fill="#8FAE96" opacity=".7" transform="rotate(25, 108, 90)" />
           <line x1="100" y1="93" x2="116" y2="87" stroke="#2E3D2F" strokeWidth=".8" opacity=".4" />
         </g>
         {/* Top left small leaf */}
@@ -382,12 +372,17 @@ export function EmptyState({ variant = 'empty', icon, title, description, action
         alignItems: 'center',
         justifyContent: 'center',
         textAlign: 'center',
-        py: compact ? 5 : 8,
-        px: 3,
+        py: compact ? 3 : 5,
+        px: { xs: 2, sm: 3 },
+        width: '100%',
+        bgcolor: 'background.paper',
+        borderRadius: '8px 24px 8px 24px',
+        boxShadow: 'var(--neu-inset)',
+        '@media (prefers-reduced-motion: reduce)': { animation: 'none', '& *': { animation: 'none !important', transform: 'none !important', opacity: '1 !important', strokeDashoffset: '0 !important' } },
         animation: `${fadeIn} 0.5s ease both`,
       }}
     >
-      <Box sx={{ mb: 3, animation: `${float} 5s 1s ease-in-out infinite` }}>
+      <Box aria-hidden="true" sx={{ mb: 2, display: 'grid', placeItems: 'center', '& > svg': { width: compact ? 96 : 128, height: compact ? 96 : 128 } }}>
         {icon ?? <Illustration />}
       </Box>
 
@@ -451,12 +446,17 @@ export function ErrorState({
         alignItems: 'center',
         justifyContent: 'center',
         textAlign: 'center',
-        py: compact ? 5 : 8,
-        px: 3,
+        py: compact ? 3 : 5,
+        px: { xs: 2, sm: 3 },
+        width: '100%',
+        bgcolor: 'background.paper',
+        borderRadius: '8px 24px 8px 24px',
+        boxShadow: 'var(--neu-inset)',
+        '@media (prefers-reduced-motion: reduce)': { animation: 'none', '& *': { animation: 'none !important', transform: 'none !important', opacity: '1 !important', strokeDashoffset: '0 !important' } },
         animation: `${fadeIn} 0.5s ease both`,
       }}
     >
-      <Box sx={{ mb: 3, animation: `${float} 5s 1s ease-in-out infinite` }}>
+      <Box aria-hidden="true" sx={{ mb: 2, display: 'grid', placeItems: 'center', '& > svg': { width: compact ? 96 : 128, height: compact ? 96 : 128 } }}>
         <ErrorIllustration />
       </Box>
 
@@ -510,12 +510,17 @@ export function ItemNotFound({
         alignItems: 'center',
         justifyContent: 'center',
         textAlign: 'center',
-        py: compact ? 5 : 8,
-        px: 3,
+        py: compact ? 3 : 5,
+        px: { xs: 2, sm: 3 },
+        width: '100%',
+        bgcolor: 'background.paper',
+        borderRadius: '8px 24px 8px 24px',
+        boxShadow: 'var(--neu-inset)',
+        '@media (prefers-reduced-motion: reduce)': { animation: 'none', '& *': { animation: 'none !important', transform: 'none !important', opacity: '1 !important', strokeDashoffset: '0 !important' } },
         animation: `${fadeIn} 0.5s ease both`,
       }}
     >
-      <Box sx={{ mb: 3, animation: `${float} 5s 1s ease-in-out infinite` }}>
+      <Box aria-hidden="true" sx={{ mb: 2, display: 'grid', placeItems: 'center', '& > svg': { width: compact ? 96 : 128, height: compact ? 96 : 128 } }}>
         <NotFoundIllustration />
       </Box>
 

@@ -26,7 +26,7 @@ import GroupsRoundedIcon from '@mui/icons-material/GroupsRounded'
 import AccountBalanceRoundedIcon from '@mui/icons-material/AccountBalanceRounded'
 import PaletteRoundedIcon from '@mui/icons-material/PaletteRounded'
 import { Link as RouterLink } from 'react-router-dom'
-import { formatCurrency, SHAPE, EmptyState } from '@ubuntu-fund/ui'
+import { formatCurrency, SHAPE, EmptyState, NEUMORPHIC_FOREST_VARS } from '@ubuntu-fund/ui'
 import { useAuth } from '@/context/AuthContext'
 import { useMyCampaigns } from '@/hooks/useCampaigns'
 import { useMyDonations, type UserDonation } from '@/hooks/useDonations'
@@ -132,7 +132,7 @@ function StatCard({ icon, iconColor, label, value, change, changePositive = true
               fontSize: '0.7rem',
               fontWeight: 700,
               bgcolor: changePositive ? 'rgba(46, 61, 47,0.08)' : 'rgba(239,83,80,0.08)',
-              color: changePositive ? '#2E3D2F' : '#E53935',
+              color: changePositive ? 'var(--text-brand)' : 'var(--text-error)',
               '& .MuiChip-label': { px: 1 },
             }}
           />
@@ -205,7 +205,7 @@ function CampaignRow({ campaign, index }: { campaign: Campaign; index: number })
                   fontSize: '0.68rem',
                   fontWeight: 700,
                   bgcolor: campaign.priority === 'critical' ? 'rgba(239,83,80,0.1)' : 'rgba(255,167,38,0.1)',
-                  color: campaign.priority === 'critical' ? '#E53935' : '#E65100',
+                  color: campaign.priority === 'critical' ? 'var(--text-error)' : 'var(--text-warning)',
                 }}
               />
             )}
@@ -366,7 +366,7 @@ function DonationFeed({ donations }: { donations: UserDonation[] }) {
             fontSize: '0.65rem',
             fontWeight: 700,
             bgcolor: 'rgba(46, 61, 47,0.08)',
-            color: '#2E3D2F',
+            color: 'var(--text-brand)',
             '& .MuiChip-label': { px: 1 },
             '&::before': {
               content: '""',
@@ -405,7 +405,7 @@ function DonationFeed({ donations }: { donations: UserDonation[] }) {
                 fontSize: '0.7rem',
                 fontWeight: 700,
                 bgcolor: 'rgba(46, 61, 47,0.1)',
-                color: '#2E3D2F',
+                color: 'var(--text-brand)',
               }}
             >
               {d.campaignName?.[0] ?? 'D'}
@@ -452,9 +452,9 @@ function DonationFeed({ donations }: { donations: UserDonation[] }) {
 
 function QuickActions() {
   const actions = [
-    { icon: <AddRoundedIcon />, label: 'New Campaign', to: '/campaigns/new', color: '#2E3D2F', bg: 'rgba(46, 61, 47,0.08)' },
-    { icon: <PeopleRoundedIcon />, label: 'Invite Friends', to: '#', color: '#1565C0', bg: 'rgba(21,101,192,0.08)' },
-    { icon: <VolunteerActivismRoundedIcon />, label: 'My Donations', to: '#', color: '#AD1457', bg: 'rgba(173,20,87,0.08)' },
+    { icon: <AddRoundedIcon />, label: 'New Campaign', to: '/campaigns/new', color: 'var(--text-brand)', bg: 'rgba(46, 61, 47,0.08)' },
+    { icon: <PeopleRoundedIcon />, label: 'Invite Friends', to: '#', color: 'var(--text-info)', bg: 'rgba(21,101,192,0.08)' },
+    { icon: <VolunteerActivismRoundedIcon />, label: 'My Donations', to: '#', color: 'var(--text-accent)', bg: 'rgba(173,20,87,0.08)' },
   ]
 
   return (
@@ -531,6 +531,7 @@ export function DashboardPage() {
       {/* Hero header */}
       <Box
         sx={{
+          ...NEUMORPHIC_FOREST_VARS,
           position: 'relative',
           overflow: 'hidden',
           pt: { xs: 4, md: 5 },
@@ -572,7 +573,7 @@ export function DashboardPage() {
                 }}
               >
                 {getGreeting()},{' '}
-                <Box component="span" sx={{ color: '#5E8F72' }}>
+                <Box component="span" sx={{ color: 'var(--text-success)' }}>
                   {displayName}
                 </Box>
               </Typography>

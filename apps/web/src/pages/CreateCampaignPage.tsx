@@ -6,10 +6,9 @@ import { SHAPE } from '@ubuntu-fund/ui'
 import { CampaignForm } from '@/components/campaigns/CampaignForm'
 import { PageBanner } from '@/components/layout/PageBanner'
 
-const FOREST = '#2E3D2F'
 const SAGE = '#A8B5A0'
-const INK = '#1A2E22'
-const INK_SECONDARY = '#4A5A50'
+const INK = 'text.primary'
+const INK_SECONDARY = 'text.secondary'
 const GOLD = '#C7A24A'
 const GOLD_DARK = '#A07E33'
 const DIVIDER = '#DAD7CD'
@@ -84,7 +83,7 @@ export function CreateCampaignPage() {
                         border: `1.5px solid ${DIVIDER}`,
                         fontSize: '0.72rem',
                         fontWeight: 800,
-                        color: FOREST,
+                        color: 'primary.main',
                       }}
                     >
                       {i + 1}

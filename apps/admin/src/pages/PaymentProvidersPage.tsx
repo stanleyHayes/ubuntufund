@@ -6,6 +6,8 @@ import Typography from '@mui/material/Typography'
 import Chip from '@mui/material/Chip'
 import Switch from '@mui/material/Switch'
 import Alert from '@mui/material/Alert'
+import Skeleton from '@mui/material/Skeleton'
+import { raisedSurface, insetSurface } from '@/lib/surfaces'
 import Snackbar from '@mui/material/Snackbar'
 import AccountBalanceRoundedIcon from '@mui/icons-material/AccountBalanceRounded'
 import { useAdminPaymentProviders } from '@/hooks/useApiData'
@@ -37,45 +39,46 @@ export default function PaymentProvidersPage() {
   }
 
   return (
-    <Box sx={{ p: 3, maxWidth: 1200, mx: 'auto' }}>
-      <PageHeader tone="green" eyebrow="Payments" title="Payment providers" lede="Review persisted provider state and enable only production-ready adapters." icon={<AccountBalanceRoundedIcon />} />
+    <Box sx={{ bgcolor: 'background.default' }}>
+      <PageHeader tone="green" eyebrow="Payments" title="Payment providers" lede="Review persisted provider state and enable only production-ready adapters." icon={<AccountBalanceRoundedIcon />} stats={[{ label: 'Configured', value: isLoading ? <Skeleton width={48} /> : error ? '—' : providers.length }, { label: 'Enabled', value: isLoading ? <Skeleton width={48} /> : error ? '—' : enabledCount }, { label: 'Disabled', value: isLoading ? <Skeleton width={48} /> : error ? '—' : providers.length - enabledCount }]} />
 
       <Alert severity="info" sx={{ mb: 3 }}>
         Provider definitions and credentials are deployment configuration. This console only toggles persisted availability; unsupported non-wallet adapters are rejected by the API even if an operator attempts to enable them.
       </Alert>
       {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
 
-      <Box sx={{ display: 'flex', gap: 1, mb: 3 }}>
-        <Chip label={`${providers.length} configured`} />
-        <Chip label={`${enabledCount} enabled`} color={enabledCount ? 'success' : 'default'} />
-      </Box>
-
       {isLoading ? (
-        <Typography color="text.secondary">Loading payment providers…</Typography>
+        <Box aria-label="Loading payment providers" sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3 }}>
+          {[0, 1, 2, 3].map((item) => <Box key={item} sx={{ ...raisedSurface, p: 3 }}><Skeleton width="55%" height={30} /><Skeleton height={72} sx={{ my: 2 }} /><Skeleton width="35%" /></Box>)}
+        </Box>
       ) : providers.length === 0 ? (
-        <Typography color="text.secondary">No payment providers are configured.</Typography>
+        <Box sx={{ ...raisedSurface, p: 4, textAlign: 'center' }}><AccountBalanceRoundedIcon sx={{ color: 'primary.main', fontSize: 36, mb: 2 }} /><Typography variant="h6">{error ? 'Provider list unavailable' : 'No payment providers configured'}</Typography><Typography color="text.secondary" sx={{ mt: 1 }}>{error ? 'Refresh the page to try again.' : 'Configured providers will appear here when they are added to the deployment.'}</Typography></Box>
       ) : (
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' }, gap: 2 }}>
           {providers.map((provider) => (
-            <Card key={provider.id}>
-              <CardContent sx={{ p: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Card key={provider.id} sx={raisedSurface}>
+              <CardContent sx={{ p: 3 }}>
                 <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1, mb: 2 }}>
                     <Typography sx={{ fontWeight: 800 }}>{provider.name}</Typography>
-                    {provider.isDefault && <Chip label="Default" size="small" color="primary" variant="outlined" />}
+                    {provider.isDefault && <Chip label="Default" size="small" color="primary" variant="filled" />}
                   </Box>
-                  <Typography variant="body2" color="text.secondary">
-                    {provider.type.replace(/_/g, ' ')} · configured fee {provider.feePercent}%
-                  </Typography>
+                  <Box sx={{ ...insetSurface, p: 2, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2, mb: 2 }}>
+                    <Box><Typography variant="caption" color="text.secondary">Provider type</Typography><Typography variant="body2" sx={{ textTransform: 'capitalize', fontWeight: 600 }}>{provider.type.replace(/_/g, ' ')}</Typography></Box>
+                    <Box><Typography variant="caption" color="text.secondary">Configured fee</Typography><Typography sx={{ fontWeight: 700 }}>{provider.feePercent}%</Typography></Box>
+                  </Box>
                 </Box>
-                <Switch checked={provider.enabled} disabled={busyId === provider.id} onChange={() => toggle(provider)} inputProps={{ 'aria-label': `Toggle ${provider.name}` }} />
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
+                  <Chip label={busyId === provider.id ? 'Updating…' : provider.enabled ? 'Enabled' : 'Disabled'} color={provider.enabled ? 'success' : 'default'} size="small" />
+                  <Switch checked={provider.enabled} disabled={busyId !== null} onChange={() => toggle(provider)} inputProps={{ 'aria-label': `Toggle ${provider.name}` }} />
+                </Box>
               </CardContent>
             </Card>
           ))}
         </Box>
       )}
 
-      <Snackbar open={Boolean(message)} autoHideDuration={4000} onClose={() => setMessage(null)}>
+      <Snackbar open={Boolean(message)} autoHideDuration={message?.severity === 'error' ? null : 4000} onClose={() => setMessage(null)}>
         <Alert severity={message?.severity ?? 'success'} variant="filled" onClose={() => setMessage(null)}>{message?.text}</Alert>
       </Snackbar>
     </Box>

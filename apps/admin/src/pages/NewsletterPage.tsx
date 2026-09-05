@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Box, Typography, TextField, InputAdornment } from '@mui/material'
-import { keyframes } from '@mui/system'
+import { Alert, Skeleton, Box, Typography, TextField, InputAdornment } from '@mui/material'
+import { raisedSurface, insetSurface } from '@/lib/surfaces'
 import SearchIcon from '@mui/icons-material/Search'
 import MarkEmailReadRoundedIcon from '@mui/icons-material/MarkEmailReadRounded'
 import { EmptyState } from '@ubuntu-fund/ui'
@@ -10,18 +10,12 @@ import { usePagination } from '@/hooks/usePagination'
 import PaginationBar from '@/components/PaginationBar'
 import PageHeader from '@/components/PageHeader'
 
-const fadeIn = keyframes`from{opacity:0}to{opacity:1}`
-const slideIn = keyframes`from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}`
-const B = 'rgba(255,255,255,0.06)'
 const ACCENT = '#5E8F72'
 const PAGE_SIZE = 12
 
 function Skel({ w, h }: { w?: string | number; h?: number }) {
   return (
-    <Box sx={{
-      width: w || '100%', height: h || 14,
-      bgcolor: 'rgba(255,255,255,0.04)',
-    }} />
+    <Skeleton variant="rounded" width={w ?? '100%'} height={h ?? 14} />
   )
 }
 
@@ -35,6 +29,7 @@ function formatDate(value: string): string {
 export default function NewsletterPage() {
   const [subscribers, setSubscribers] = useState<NewsletterSubscriberSummary[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
   const [search, setSearch] = useState('')
 
   useEffect(() => {
@@ -47,8 +42,7 @@ export default function NewsletterPage() {
         const data = await api.get<NewsletterSubscriberSummary[]>('/newsletter/subscribers')
         if (!cancelled) setSubscribers(Array.isArray(data) ? data : [])
       } catch {
-        // API unavailable — fall back to an empty list and let the empty state show.
-        if (!cancelled) setSubscribers([])
+        if (!cancelled) { setSubscribers([]); setError(true) }
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -67,26 +61,29 @@ export default function NewsletterPage() {
   const pagination = usePagination(filtered, PAGE_SIZE)
 
   return (
-    <Box sx={{ bgcolor: '#0c0c14', minHeight: '100vh', animation: `${fadeIn} 0.3s ease` }}>
+    <Box sx={{ bgcolor: 'background.default', }}>
       <PageHeader
         tone="green"
         eyebrow="Growth"
         title="Newsletter Subscribers"
         lede="Everyone who signed up for Ujimora updates from the marketing site, newest first."
         icon={<MarkEmailReadRoundedIcon />}
-        stats={[{ label: 'Total Subscribers', value: loading ? '—' : subscribers.length }]}
+        stats={[{ label: 'Total Subscribers', value: loading ? <Skeleton width={60} /> : error ? '—' : subscribers.length }]}
       />
+
+      {error && <Alert severity="error" sx={{ mb: 3 }}>Could not load newsletter subscribers. Refresh the page to try again.</Alert>}
 
       {/* Filter bar */}
       <Box sx={{
         display: 'grid',
         gridTemplateColumns: { xs: '1fr', sm: '1fr auto' },
-        borderBottom: `1px solid ${B}`,
+        ...raisedSurface, mb: 2,
       }}>
-        <Box sx={{ px: 2.5, py: 1.5, borderRight: { sm: `1px solid ${B}` }, display: 'flex', alignItems: 'center' }}>
+        <Box sx={{ px: 2.5, py: 1.5,  display: 'flex', alignItems: 'center' }}>
           <TextField
             size="small"
-            variant="standard"
+            variant="outlined"
+            slotProps={{ htmlInput: { 'aria-label': 'Search by email' } }}
             placeholder="Search by email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -98,26 +95,23 @@ export default function NewsletterPage() {
                 </InputAdornment>
               ),
             }}
-            sx={{
-              '& .MuiInput-root': { color: 'text.primary', '&::before': { borderColor: B }, '&::after': { borderColor: ACCENT } },
-            }}
           />
         </Box>
         <Box sx={{ px: 2.5, py: 1.5, display: 'flex', alignItems: 'center' }}>
           <Typography sx={{ fontFamily: '"Outfit", monospace', fontSize: '0.82rem', color: 'text.secondary', whiteSpace: 'nowrap' }}>
-            {loading ? '...' : `${filtered.length} subscriber${filtered.length === 1 ? '' : 's'}`}
+            {loading ? <Skeleton width={90} /> : error ? 'Unavailable' : `${filtered.length} subscriber${filtered.length === 1 ? '' : 's'}`}
           </Typography>
         </Box>
       </Box>
 
       {/* Table header */}
       <Box sx={{
-        display: 'grid', gridTemplateColumns: '2fr 1fr',
-        px: 3, py: 1.5, borderBottom: `1px solid ${B}`,
-        bgcolor: 'rgba(255,255,255,0.02)',
+        display: 'grid', gap: 2, gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)',
+        px: 3, py: 1.5, ...raisedSurface, mb: 2,
+        bgcolor: 'background.paper',
       }}>
         {['Email', 'Subscribed'].map((h) => (
-          <Typography key={h} sx={{ fontSize: '0.68rem', fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+          <Typography key={h} sx={{ fontSize: '0.68rem', fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
             {h}
           </Typography>
         ))}
@@ -126,13 +120,13 @@ export default function NewsletterPage() {
       {/* Rows */}
       {loading ? (
         Array.from({ length: 6 }).map((_, i) => (
-          <Box key={i} sx={{ display: 'grid', gridTemplateColumns: '2fr 1fr', px: 3, py: 2, borderBottom: `1px solid ${B}` }}>
+          <Box key={i} sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', px: 3, py: 2, ...raisedSurface, mb: 2 }}>
             <Skel w="55%" h={14} />
             <Skel w={90} h={14} />
           </Box>
         ))
-      ) : filtered.length === 0 ? (
-        <EmptyState
+      ) : error ? null : filtered.length === 0 ? (
+        <Box sx={{ ...raisedSurface, p: 3 }}><EmptyState
           variant={search ? 'search' : 'empty'}
           title={search ? 'No subscribers found' : 'No subscribers yet'}
           description={
@@ -141,30 +135,29 @@ export default function NewsletterPage() {
               : 'Signups from the marketing site will appear here.'
           }
           compact
-        />
+        /></Box>
       ) : (
-        pagination.page.map((sub, i) => (
+        pagination.page.map((sub) => (
           <Box
             key={sub.id}
             sx={{
-              display: 'grid', gridTemplateColumns: '2fr 1fr', alignItems: 'center',
-              px: 3, py: 2, borderBottom: `1px solid ${B}`,
-              animation: `${slideIn} 0.3s ease ${i * 0.03}s both`,
+              display: 'grid', gap: 2, gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', alignItems: 'center',
+              px: 3, py: 2, ...raisedSurface, mb: 2,
               transition: 'background-color 0.15s ease',
-              '&:hover': { bgcolor: 'rgba(255,255,255,0.02)' },
+              '&:hover': { boxShadow: 'var(--neu-raised-hover)' },
             }}
           >
             <Typography sx={{ fontSize: '0.85rem', fontWeight: 500, color: 'text.primary', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {sub.email}
             </Typography>
-            <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary' }}>
+            <Typography sx={{ ...insetSurface, px: 1.5, py: 1, fontSize: '0.78rem', color: 'text.secondary' }}>
               {formatDate(sub.createdAt)}
             </Typography>
           </Box>
         ))
       )}
 
-      {!loading && filtered.length > 0 && <PaginationBar pagination={pagination} accentColor={ACCENT} />}
+      {!loading && filtered.length > 0 && <PaginationBar neumorphic pagination={pagination} accentColor={ACCENT} />}
     </Box>
   )
 }

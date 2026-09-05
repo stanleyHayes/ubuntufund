@@ -14,7 +14,7 @@ import Stack from '@mui/material/Stack'
 import PushPinIcon from '@mui/icons-material/PushPin'
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined'
 import DeleteIcon from '@mui/icons-material/Delete'
-import { SHAPE } from '@ubuntu-fund/ui'
+import { SHAPE, EmptyState } from '@ubuntu-fund/ui'
 import type { CampaignUpdateType } from '@ubuntu-fund/types'
 import { useCampaignUpdates, useDeleteCampaignUpdate, usePinCampaignUpdate } from '@/hooks/useCampaignUpdates'
 
@@ -115,18 +115,8 @@ export function CampaignUpdates({ campaignId, isCreator }: CampaignUpdatesProps)
 
   if (updates.length === 0) {
     return (
-      <Box
-        sx={{
-          py: 6,
-          textAlign: 'center',
-          bgcolor: 'action.hover',
-          borderRadius: SHAPE.card,
-        }}
-      >
-        <Typography variant="body1" color="text.secondary">
-          No updates yet. {isCreator && 'Post an update to share progress with your supporters!'}
-        </Typography>
-      </Box>
+      <EmptyState variant="noData" compact title="The story is just getting started"
+        description={isCreator ? 'Share an update to let your supporters know how the campaign is progressing.' : 'Campaign updates will appear here as the organizer shares progress and milestones.'} />
     )
   }
 

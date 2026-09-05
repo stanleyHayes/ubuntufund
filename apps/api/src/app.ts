@@ -36,6 +36,16 @@ import { MongoCampaignBalanceRepository } from './infrastructure/adapters/outbou
 import { MongoDonationIntentRepository } from './infrastructure/adapters/outbound/persistence/MongoDonationIntentRepository.js';
 import { MongoPaymentAttemptRepository } from './infrastructure/adapters/outbound/persistence/MongoPaymentAttemptRepository.js';
 import { MongoOutboxRepository } from './infrastructure/adapters/outbound/persistence/MongoOutboxRepository.js';
+import { MongoTransferRecipientRepository } from './infrastructure/adapters/outbound/persistence/MongoTransferRecipientRepository.js';
+import { MongoPayoutRepository } from './infrastructure/adapters/outbound/persistence/MongoPayoutRepository.js';
+import { MongoCouponRepository } from './infrastructure/adapters/outbound/persistence/MongoCouponRepository.js';
+import { MongoCouponRedemptionRepository } from './infrastructure/adapters/outbound/persistence/MongoCouponRedemptionRepository.js';
+import { MongoSubscriptionCheckoutRepository } from './infrastructure/adapters/outbound/persistence/MongoSubscriptionCheckoutRepository.js';
+import { MongoAffiliateRepository } from './infrastructure/adapters/outbound/persistence/MongoAffiliateRepository.js';
+import { MongoAffiliateReferralRepository } from './infrastructure/adapters/outbound/persistence/MongoAffiliateReferralRepository.js';
+import { MongoAffiliateCommissionRepository } from './infrastructure/adapters/outbound/persistence/MongoAffiliateCommissionRepository.js';
+import { MongoAffiliateBalanceRepository } from './infrastructure/adapters/outbound/persistence/MongoAffiliateBalanceRepository.js';
+import { MongoAffiliatePayoutRepository } from './infrastructure/adapters/outbound/persistence/MongoAffiliatePayoutRepository.js';
 
 // Outbound adapters (payment gateway)
 import { PaystackGateway } from './infrastructure/adapters/outbound/payments/PaystackGateway.js';
@@ -45,6 +55,9 @@ import { AuthTokenService } from './application/services/AuthTokenService.js';
 import { QrCodeService } from './application/services/QrCodeService.js';
 import { RealtimeDonationProjector } from './application/services/RealtimeDonationProjector.js';
 import { FeePolicy } from './application/services/FeePolicy.js';
+import { PlanLimitsService } from './application/services/PlanLimitsService.js';
+import { CouponService } from './application/services/CouponService.js';
+import { AffiliateCommissionService } from './application/services/AffiliateCommissionService.js';
 import { CampaignLedgerProjector } from './application/services/CampaignLedgerProjector.js';
 import { OutboxDispatcher } from './application/services/OutboxDispatcher.js';
 import { eventBus } from './infrastructure/realtime/EventBus.js';
@@ -67,6 +80,13 @@ import { SettleDonationUseCase } from './application/use-cases/SettleDonationUse
 import { CreateDonationIntentUseCase } from './application/use-cases/CreateDonationIntentUseCase.js';
 import { HandlePaystackWebhookUseCase } from './application/use-cases/HandlePaystackWebhookUseCase.js';
 import { RecordPaymentAttemptUseCase } from './application/use-cases/RecordPaymentAttemptUseCase.js';
+import { HandlePayoutWebhookUseCase } from './application/use-cases/HandlePayoutWebhookUseCase.js';
+import { ListBanksUseCase } from './application/use-cases/ListBanksUseCase.js';
+import { CreatePayoutRecipientUseCase } from './application/use-cases/CreatePayoutRecipientUseCase.js';
+import { RequestPayoutUseCase } from './application/use-cases/RequestPayoutUseCase.js';
+import { ApprovePayoutUseCase } from './application/use-cases/ApprovePayoutUseCase.js';
+import { ListCampaignPayoutsUseCase } from './application/use-cases/ListCampaignPayoutsUseCase.js';
+import { ListPayoutsUseCase } from './application/use-cases/ListPayoutsUseCase.js';
 import { GetDonationIntentPublicUseCase } from './application/use-cases/GetDonationIntentPublicUseCase.js';
 import { AddDonationMessageUseCase } from './application/use-cases/AddDonationMessageUseCase.js';
 import { CreateShortLinkUseCase } from './application/use-cases/CreateShortLinkUseCase.js';
@@ -129,6 +149,35 @@ import { UpgradeSubscriptionUseCase } from './application/use-cases/UpgradeSubsc
 import { CancelSubscriptionUseCase } from './application/use-cases/CancelSubscriptionUseCase.js';
 import { ListSubscriptionsUseCase } from './application/use-cases/ListSubscriptionsUseCase.js';
 
+// Use cases — coupons (admin CRUD + authed preview)
+import { CreateCouponUseCase } from './application/use-cases/CreateCouponUseCase.js';
+import { UpdateCouponUseCase } from './application/use-cases/UpdateCouponUseCase.js';
+import { ListCouponsUseCase } from './application/use-cases/ListCouponsUseCase.js';
+import { GetCouponUseCase } from './application/use-cases/GetCouponUseCase.js';
+import { DeleteCouponUseCase } from './application/use-cases/DeleteCouponUseCase.js';
+import { PreviewCouponUseCase } from './application/use-cases/PreviewCouponUseCase.js';
+
+// Use cases — paid-subscription checkout rail
+import { CreateSubscriptionCheckoutUseCase } from './application/use-cases/CreateSubscriptionCheckoutUseCase.js';
+import { GetSubscriptionCheckoutUseCase } from './application/use-cases/GetSubscriptionCheckoutUseCase.js';
+import { SettleSubscriptionUseCase } from './application/use-cases/SettleSubscriptionUseCase.js';
+
+// Use cases — affiliate/referral program
+import { EnrollAffiliateUseCase } from './application/use-cases/EnrollAffiliateUseCase.js';
+import { GetAffiliateDashboardUseCase } from './application/use-cases/GetAffiliateDashboardUseCase.js';
+import { ListMyAffiliateReferralsUseCase } from './application/use-cases/ListMyAffiliateReferralsUseCase.js';
+import { ListMyAffiliateCommissionsUseCase } from './application/use-cases/ListMyAffiliateCommissionsUseCase.js';
+import { SetAffiliatePayoutRecipientUseCase } from './application/use-cases/SetAffiliatePayoutRecipientUseCase.js';
+import { RequestAffiliatePayoutUseCase } from './application/use-cases/RequestAffiliatePayoutUseCase.js';
+import { ApproveAffiliatePayoutUseCase } from './application/use-cases/ApproveAffiliatePayoutUseCase.js';
+import { HandleAffiliatePayoutWebhookUseCase } from './application/use-cases/HandleAffiliatePayoutWebhookUseCase.js';
+import { ListAffiliatesUseCase } from './application/use-cases/ListAffiliatesUseCase.js';
+import { GetAffiliateDetailUseCase } from './application/use-cases/GetAffiliateDetailUseCase.js';
+import { SetAffiliateCommissionRateUseCase } from './application/use-cases/SetAffiliateCommissionRateUseCase.js';
+import { UpdateAffiliateStatusUseCase } from './application/use-cases/UpdateAffiliateStatusUseCase.js';
+import { ListAffiliatePayoutsUseCase } from './application/use-cases/ListAffiliatePayoutsUseCase.js';
+import { MatureAffiliateCommissionsUseCase } from './application/use-cases/MatureAffiliateCommissionsUseCase.js';
+
 // Use cases — payment providers, moderation, admin
 import { ListPaymentProvidersUseCase } from './application/use-cases/ListPaymentProvidersUseCase.js';
 import { GetEnabledPaymentProvidersUseCase } from './application/use-cases/GetEnabledPaymentProvidersUseCase.js';
@@ -164,6 +213,7 @@ import { ShareReportController } from './infrastructure/adapters/inbound/http/co
 import { DonationController } from './infrastructure/adapters/inbound/http/controllers/DonationController.js';
 import { DonationIntentController } from './infrastructure/adapters/inbound/http/controllers/DonationIntentController.js';
 import { PaystackWebhookController } from './infrastructure/adapters/inbound/http/controllers/PaystackWebhookController.js';
+import { PayoutController } from './infrastructure/adapters/inbound/http/controllers/PayoutController.js';
 import { LeaderboardController } from './infrastructure/adapters/inbound/http/controllers/LeaderboardController.js';
 import { NotificationController } from './infrastructure/adapters/inbound/http/controllers/NotificationController.js';
 import { OrganizationController } from './infrastructure/adapters/inbound/http/controllers/OrganizationController.js';
@@ -171,6 +221,8 @@ import { RefundController } from './infrastructure/adapters/inbound/http/control
 import { KYCController } from './infrastructure/adapters/inbound/http/controllers/KYCController.js';
 import { CollaborationController } from './infrastructure/adapters/inbound/http/controllers/CollaborationController.js';
 import { SubscriptionController } from './infrastructure/adapters/inbound/http/controllers/SubscriptionController.js';
+import { CouponController } from './infrastructure/adapters/inbound/http/controllers/CouponController.js';
+import { AffiliateController } from './infrastructure/adapters/inbound/http/controllers/AffiliateController.js';
 import { PaymentProviderController } from './infrastructure/adapters/inbound/http/controllers/PaymentProviderController.js';
 import { DisputeController } from './infrastructure/adapters/inbound/http/controllers/DisputeController.js';
 import { AdminReportController } from './infrastructure/adapters/inbound/http/controllers/AdminReportController.js';
@@ -216,6 +268,11 @@ import {
   createDonationMessageRoutes,
 } from './infrastructure/adapters/inbound/http/routes/donationIntentRoutes.js';
 import { createPaystackWebhookRoutes } from './infrastructure/adapters/inbound/http/routes/paystackWebhookRoutes.js';
+import {
+  createBankRoutes,
+  createCampaignPayoutRoutes,
+  createPayoutRoutes,
+} from './infrastructure/adapters/inbound/http/routes/payoutRoutes.js';
 import { createCampaignDonationRoutes } from './infrastructure/adapters/inbound/http/routes/campaignDonationRoutes.js';
 import { createLeaderboardRoutes } from './infrastructure/adapters/inbound/http/routes/leaderboardRoutes.js';
 import { createNotificationRoutes } from './infrastructure/adapters/inbound/http/routes/notificationRoutes.js';
@@ -225,6 +282,11 @@ import { createKYCRoutes } from './infrastructure/adapters/inbound/http/routes/k
 import { createCampaignCollaboratorRoutes } from './infrastructure/adapters/inbound/http/routes/campaignCollaboratorRoutes.js';
 import { createCollaborationRoutes } from './infrastructure/adapters/inbound/http/routes/collaborationRoutes.js';
 import { createSubscriptionRoutes } from './infrastructure/adapters/inbound/http/routes/subscriptionRoutes.js';
+import { createCouponRoutes } from './infrastructure/adapters/inbound/http/routes/couponRoutes.js';
+import {
+  createAffiliateRoutes,
+  createAdminAffiliateRoutes,
+} from './infrastructure/adapters/inbound/http/routes/affiliateRoutes.js';
 import { createPaymentProviderRoutes } from './infrastructure/adapters/inbound/http/routes/paymentProviderRoutes.js';
 import { createDisputeRoutes } from './infrastructure/adapters/inbound/http/routes/disputeRoutes.js';
 import { createAdminReportRoutes } from './infrastructure/adapters/inbound/http/routes/adminReportRoutes.js';
@@ -277,6 +339,16 @@ export function createApp(): express.Express {
   const donationIntentRepo = new MongoDonationIntentRepository();
   const paymentAttemptRepo = new MongoPaymentAttemptRepository();
   const outboxRepo = new MongoOutboxRepository();
+  const transferRecipientRepo = new MongoTransferRecipientRepository();
+  const payoutRepo = new MongoPayoutRepository();
+  const couponRepo = new MongoCouponRepository();
+  const couponRedemptionRepo = new MongoCouponRedemptionRepository();
+  const subscriptionCheckoutRepo = new MongoSubscriptionCheckoutRepository();
+  const affiliateRepo = new MongoAffiliateRepository();
+  const affiliateReferralRepo = new MongoAffiliateReferralRepository();
+  const affiliateCommissionRepo = new MongoAffiliateCommissionRepository();
+  const affiliateBalanceRepo = new MongoAffiliateBalanceRepository();
+  const affiliatePayoutRepo = new MongoAffiliatePayoutRepository();
 
   // Paystack payment gateway (behind the swappable PaymentGatewayPort). Absent
   // credentials leave it disabled — the Paystack rail returns 501 and the
@@ -306,6 +378,23 @@ export function createApp(): express.Express {
   // through the ledger; the outbox dispatcher turns settled donations into
   // realtime/receipt side-effects durably (swept again on boot).
   const feePolicy = new FeePolicy(config.fees);
+  // Resolves a user's subscription plan and enforces its limits (active-campaign
+  // count, goal cap, plan feature gates) + the plan-based platform fee rate.
+  const planLimitsService = new PlanLimitsService(subscriptionRepo, campaignRepo);
+  // Coupon validation/pricing for the paid-subscription checkout rail.
+  const couponService = new CouponService(couponRepo, couponRedemptionRepo);
+  // Awards + claws back the one-time referral commission on a referee's first
+  // paid subscription (rate + hold window from config.affiliate).
+  const affiliateCommissionService = new AffiliateCommissionService(
+    affiliateRepo,
+    affiliateReferralRepo,
+    affiliateCommissionRepo,
+    affiliateBalanceRepo,
+    {
+      commissionPercent: config.affiliate.commissionPercent,
+      holdDays: config.affiliate.holdDays,
+    }
+  );
   const campaignLedgerProjector = new CampaignLedgerProjector(
     campaignRepo,
     campaignBalanceRepo,
@@ -317,13 +406,21 @@ export function createApp(): express.Express {
   );
 
   // ── Use cases ────────────────────────────────────────────────────────
-  const registerUserUseCase = new RegisterUserUseCase(userRepo, walletRepo, tokenService);
+  const registerUserUseCase = new RegisterUserUseCase(
+    userRepo,
+    walletRepo,
+    tokenService,
+    // Optional referral capture: a `?ref=` code on signup links the new user to
+    // the referrer's affiliate.
+    affiliateRepo,
+    affiliateReferralRepo
+  );
   const loginUserUseCase = new LoginUserUseCase(userRepo, tokenService);
   const changePasswordUseCase = new ChangePasswordUseCase(userRepo, tokenService);
   const forgotPasswordUseCase = new ForgotPasswordUseCase(userRepo);
   const resetPasswordUseCase = new ResetPasswordUseCase(userRepo, tokenService);
 
-  const createCampaignUseCase = new CreateCampaignUseCase(campaignRepo, userRepo);
+  const createCampaignUseCase = new CreateCampaignUseCase(campaignRepo, userRepo, planLimitsService);
   const getCampaignUseCase = new GetCampaignUseCase(campaignRepo, donationRepo);
   const getCampaignBySlugUseCase = new GetCampaignBySlugUseCase(
     campaignRepo,
@@ -358,17 +455,52 @@ export function createApp(): express.Express {
     feePolicy,
     settleDonationUseCase,
     paymentGateway,
+    planLimitsService,
     walletTxRepo,
     paymentAttemptRepo
   );
+  // Payout settlement: the signed transfer webhook moves an approved payout to
+  // its terminal state and clears the campaign balance/ledger accordingly.
+  const handlePayoutWebhookUseCase = new HandlePayoutWebhookUseCase(
+    payoutRepo,
+    campaignBalanceRepo,
+    ledgerRepo
+  );
+  // Affiliate payout settlement: the signed transfer webhook moves an approved
+  // affiliate payout (aff- reference) to its terminal state and reconciles the
+  // affiliate balance buckets accordingly.
+  const handleAffiliatePayoutWebhookUseCase =
+    new HandleAffiliatePayoutWebhookUseCase(
+      affiliatePayoutRepo,
+      affiliateBalanceRepo
+    );
+  // Paid-subscription settlement seam: activates the subscription, redeems any
+  // coupon, and awards the one-time affiliate commission. Called by the signed
+  // webhook (real charge) and inline for a coupon-zeroed checkout.
+  const settleSubscriptionUseCase = new SettleSubscriptionUseCase(
+    subscriptionCheckoutRepo,
+    subscriptionRepo,
+    couponRepo,
+    couponRedemptionRepo,
+    affiliateCommissionService
+  );
   // Paystack settlement: the signed webhook is the authoritative rail that
-  // calls settleDonation() with the provider's real fee breakdown.
+  // calls settleDonation() with the provider's real fee breakdown, settles
+  // approved campaign/affiliate payouts on transfer.* events, settles paid
+  // subscriptions on sub- charges, and claws back affiliate commission on a
+  // subscription refund.
   const handlePaystackWebhookUseCase = new HandlePaystackWebhookUseCase(
     paymentGateway,
     donationIntentRepo,
     paymentAttemptRepo,
     feePolicy,
-    settleDonationUseCase
+    settleDonationUseCase,
+    planLimitsService,
+    handlePayoutWebhookUseCase,
+    subscriptionCheckoutRepo,
+    settleSubscriptionUseCase,
+    handleAffiliatePayoutWebhookUseCase,
+    affiliateCommissionService
   );
   const recordPaymentAttemptUseCase = new RecordPaymentAttemptUseCase(
     donationIntentRepo,
@@ -378,6 +510,34 @@ export function createApp(): express.Express {
     donationIntentRepo
   );
   const addDonationMessageUseCase = new AddDonationMessageUseCase(donationRepo);
+
+  // Payout rail: register recipients, request/approve payouts of cleared funds,
+  // and disburse via Paystack Transfers. Guarded owner/admin; the transfer
+  // webhook (above) settles the terminal state.
+  const listBanksUseCase = new ListBanksUseCase(paymentGateway);
+  const createPayoutRecipientUseCase = new CreatePayoutRecipientUseCase(
+    campaignRepo,
+    transferRecipientRepo,
+    paymentGateway
+  );
+  const requestPayoutUseCase = new RequestPayoutUseCase(
+    campaignRepo,
+    transferRecipientRepo,
+    payoutRepo,
+    campaignBalanceRepo,
+    paymentGateway
+  );
+  const approvePayoutUseCase = new ApprovePayoutUseCase(
+    payoutRepo,
+    transferRecipientRepo,
+    campaignBalanceRepo,
+    paymentGateway
+  );
+  const listCampaignPayoutsUseCase = new ListCampaignPayoutsUseCase(
+    campaignRepo,
+    payoutRepo
+  );
+  const listPayoutsUseCase = new ListPayoutsUseCase(payoutRepo);
 
   const createShortLinkUseCase = new CreateShortLinkUseCase(
     shortLinkRepo,
@@ -397,7 +557,8 @@ export function createApp(): express.Express {
 
   const startLiveSessionUseCase = new StartLiveSessionUseCase(
     liveSessionRepo,
-    campaignRepo
+    campaignRepo,
+    planLimitsService
   );
   const endLiveSessionUseCase = new EndLiveSessionUseCase(
     liveSessionRepo,
@@ -460,7 +621,7 @@ export function createApp(): express.Express {
   const approveKYCUseCase = new ApproveKYCUseCase(kycRepo, userRepo);
   const rejectKYCUseCase = new RejectKYCUseCase(kycRepo);
 
-  const inviteCollaboratorUseCase = new InviteCollaboratorUseCase(campaignRepo, userRepo, collaborationRepo);
+  const inviteCollaboratorUseCase = new InviteCollaboratorUseCase(campaignRepo, userRepo, collaborationRepo, planLimitsService);
   const removeCollaboratorUseCase = new RemoveCollaboratorUseCase(campaignRepo, collaborationRepo);
   const listCampaignCollaboratorsUseCase = new ListCampaignCollaboratorsUseCase(campaignRepo, collaborationRepo);
   const listMyCollaborationInvitationsUseCase = new ListMyCollaborationInvitationsUseCase(collaborationRepo, campaignRepo);
@@ -471,6 +632,86 @@ export function createApp(): express.Express {
   const upgradeSubscriptionUseCase = new UpgradeSubscriptionUseCase(subscriptionRepo);
   const cancelSubscriptionUseCase = new CancelSubscriptionUseCase(subscriptionRepo);
   const listSubscriptionsUseCase = new ListSubscriptionsUseCase(subscriptionRepo, userRepo);
+
+  // Paid-subscription checkout rail (coupon-aware; settles via the webhook or,
+  // when a coupon zeroes the price, inline via settleSubscriptionUseCase).
+  const createSubscriptionCheckoutUseCase = new CreateSubscriptionCheckoutUseCase(
+    subscriptionCheckoutRepo,
+    couponRedemptionRepo,
+    userRepo,
+    couponService,
+    paymentGateway,
+    settleSubscriptionUseCase
+  );
+  const getSubscriptionCheckoutUseCase = new GetSubscriptionCheckoutUseCase(
+    subscriptionCheckoutRepo
+  );
+
+  // Coupons: admin CRUD + an authed pre-checkout preview.
+  const createCouponUseCase = new CreateCouponUseCase(couponRepo);
+  const updateCouponUseCase = new UpdateCouponUseCase(couponRepo);
+  const listCouponsUseCase = new ListCouponsUseCase(couponRepo);
+  const getCouponUseCase = new GetCouponUseCase(couponRepo);
+  const deleteCouponUseCase = new DeleteCouponUseCase(couponRepo);
+  const previewCouponUseCase = new PreviewCouponUseCase(couponService);
+
+  // Affiliate/referral program: owner surface + admin console + payout rail.
+  const enrollAffiliateUseCase = new EnrollAffiliateUseCase(
+    affiliateRepo,
+    affiliateBalanceRepo
+  );
+  const getAffiliateDashboardUseCase = new GetAffiliateDashboardUseCase(
+    affiliateRepo,
+    affiliateBalanceRepo,
+    affiliateCommissionRepo,
+    affiliateReferralRepo,
+    config.publicWebUrl
+  );
+  const listMyAffiliateReferralsUseCase = new ListMyAffiliateReferralsUseCase(
+    affiliateRepo,
+    affiliateReferralRepo
+  );
+  const listMyAffiliateCommissionsUseCase =
+    new ListMyAffiliateCommissionsUseCase(
+      affiliateRepo,
+      affiliateCommissionRepo
+    );
+  const setAffiliatePayoutRecipientUseCase =
+    new SetAffiliatePayoutRecipientUseCase(affiliateRepo, paymentGateway);
+  const requestAffiliatePayoutUseCase = new RequestAffiliatePayoutUseCase(
+    affiliateRepo,
+    affiliatePayoutRepo,
+    affiliateBalanceRepo,
+    affiliateCommissionRepo,
+    paymentGateway
+  );
+  const approveAffiliatePayoutUseCase = new ApproveAffiliatePayoutUseCase(
+    affiliatePayoutRepo,
+    affiliateRepo,
+    affiliateBalanceRepo,
+    paymentGateway
+  );
+  const listAffiliatesUseCase = new ListAffiliatesUseCase(affiliateRepo);
+  const getAffiliateDetailUseCase = new GetAffiliateDetailUseCase(
+    affiliateRepo,
+    affiliateBalanceRepo,
+    affiliateReferralRepo,
+    affiliateCommissionRepo,
+    affiliatePayoutRepo
+  );
+  const setAffiliateCommissionRateUseCase =
+    new SetAffiliateCommissionRateUseCase(affiliateRepo);
+  const updateAffiliateStatusUseCase = new UpdateAffiliateStatusUseCase(
+    affiliateRepo
+  );
+  const listAffiliatePayoutsUseCase = new ListAffiliatePayoutsUseCase(
+    affiliatePayoutRepo
+  );
+  // Batch maturity sweep (held → available); exposed for a boot/cron sweep.
+  const matureAffiliateCommissionsUseCase = new MatureAffiliateCommissionsUseCase(
+    affiliateCommissionRepo,
+    affiliateBalanceRepo
+  );
 
   const listPaymentProvidersUseCase = new ListPaymentProvidersUseCase(paymentProviderRepo);
   const getEnabledPaymentProvidersUseCase = new GetEnabledPaymentProvidersUseCase(paymentProviderRepo);
@@ -560,6 +801,14 @@ export function createApp(): express.Express {
   const paystackWebhookController = new PaystackWebhookController(
     handlePaystackWebhookUseCase
   );
+  const payoutController = new PayoutController(
+    listBanksUseCase,
+    createPayoutRecipientUseCase,
+    requestPayoutUseCase,
+    approvePayoutUseCase,
+    listCampaignPayoutsUseCase,
+    listPayoutsUseCase
+  );
   const leaderboardController = new LeaderboardController(getLeaderboardUseCase, getLeaderboardStatsUseCase);
   const notificationController = new NotificationController(
     getMyNotificationsUseCase,
@@ -588,7 +837,31 @@ export function createApp(): express.Express {
     subscribeUseCase,
     upgradeSubscriptionUseCase,
     cancelSubscriptionUseCase,
-    listSubscriptionsUseCase
+    listSubscriptionsUseCase,
+    createSubscriptionCheckoutUseCase,
+    getSubscriptionCheckoutUseCase
+  );
+  const couponController = new CouponController(
+    createCouponUseCase,
+    listCouponsUseCase,
+    getCouponUseCase,
+    updateCouponUseCase,
+    deleteCouponUseCase,
+    previewCouponUseCase
+  );
+  const affiliateController = new AffiliateController(
+    enrollAffiliateUseCase,
+    getAffiliateDashboardUseCase,
+    listMyAffiliateReferralsUseCase,
+    listMyAffiliateCommissionsUseCase,
+    setAffiliatePayoutRecipientUseCase,
+    requestAffiliatePayoutUseCase,
+    listAffiliatesUseCase,
+    getAffiliateDetailUseCase,
+    setAffiliateCommissionRateUseCase,
+    updateAffiliateStatusUseCase,
+    listAffiliatePayoutsUseCase,
+    approveAffiliatePayoutUseCase
   );
   const paymentProviderController = new PaymentProviderController(
     listPaymentProvidersUseCase,
@@ -662,6 +935,7 @@ export function createApp(): express.Express {
   );
   api.use('/campaigns', createCampaignModerationRoutes(campaignModerationController, authMiddleware, requireAdmin));
   api.use('/campaigns', createCampaignQrRoutes(shortLinkController, authMiddleware));
+  api.use('/campaigns', createCampaignPayoutRoutes(payoutController, authMiddleware));
   api.use(
     '/campaigns',
     createCampaignLiveSessionRoutes(liveSessionController, realtimeController, authMiddleware)
@@ -689,7 +963,15 @@ export function createApp(): express.Express {
   api.use('/kyc', createKYCRoutes(kycController, authMiddleware, requireAdmin));
   api.use('/collaborations', createCollaborationRoutes(collaborationController, authMiddleware));
   api.use('/subscriptions', createSubscriptionRoutes(subscriptionController, authMiddleware, requireAdmin));
+  // Coupons: admin CRUD (requireAdmin) + an authed pre-checkout preview.
+  api.use('/coupons', createCouponRoutes(couponController, authMiddleware, requireAdmin));
+  // Affiliate program: the owner surface (authed) + the admin console (admin).
+  api.use('/affiliate', createAffiliateRoutes(affiliateController, authMiddleware));
+  api.use('/affiliates', createAdminAffiliateRoutes(affiliateController, authMiddleware, requireAdmin));
   api.use('/payment-providers', createPaymentProviderRoutes(paymentProviderController, authMiddleware, requireAdmin));
+  // Payout rail: bank/telco directory (auth), plus the admin payout console.
+  api.use('/banks', createBankRoutes(payoutController, authMiddleware));
+  api.use('/payouts', createPayoutRoutes(payoutController, authMiddleware, requireAdmin));
   api.use('/disputes', createDisputeRoutes(disputeController, authMiddleware, requireAdmin));
   api.use('/reports', createAdminReportRoutes(adminReportController, authMiddleware, requireAdmin));
   api.use('/analytics', createAnalyticsRoutes(analyticsController, authMiddleware, requireAdmin));
@@ -713,6 +995,10 @@ export function createApp(): express.Express {
   // Expose the outbox dispatcher so bootstrap can run a catch-up sweep on boot,
   // re-dispatching any donation side-effects left pending by a prior crash.
   app.locals.outboxDispatcher = outboxDispatcher;
+
+  // Expose the affiliate maturity sweep so bootstrap/cron can move held
+  // commissions to available once their hold window elapses.
+  app.locals.matureAffiliateCommissionsUseCase = matureAffiliateCommissionsUseCase;
 
   return app;
 }

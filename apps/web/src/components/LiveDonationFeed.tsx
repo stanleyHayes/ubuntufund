@@ -1,3 +1,4 @@
+import { EmptyState } from '@ubuntu-fund/ui'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
@@ -91,11 +92,7 @@ export function LiveDonationFeed({ campaignId, maxItems = 10 }: { campaignId: st
 
   if (items.length === 0) {
     return (
-      <Box sx={{ p: 2, textAlign: 'center' }}>
-        <Typography variant="body2" color="text.secondary">
-          No donations have been recorded yet.
-        </Typography>
-      </Box>
+      <EmptyState compact variant="noData" title="Support starts here" description="New contributions will appear here as they arrive." />
     )
   }
 

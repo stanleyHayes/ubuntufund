@@ -1,22 +1,22 @@
-import { Box, Button, DialogActions, DialogContent, DialogTitle, Typography, Divider } from '@mui/material'
+import { Box, Button, DialogActions, DialogContent, DialogTitle, Typography } from '@mui/material'
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser'
 import WarningAmberIcon from '@mui/icons-material/WarningAmber'
 import type { KYCVerification } from '@/hooks/useMockData'
 import { useAdminPermissions } from '@/context/AdminPermissionContext'
 import { Resource, Action } from '@ubuntu-fund/types'
 
-const B = 'rgba(255,255,255,0.06)'
+import { raisedSurface, insetSurface } from '@/lib/surfaces'
 
 const statusColors: Record<string, string> = {
   pending: '#D3A95C',
   in_review: '#74909A',
-  approved: '#5E8F72',
+  approved: '#8FAE96',
   rejected: '#C06B58',
   expired: '#9E9E9E',
 }
 
 const riskColors: Record<string, string> = {
-  low: '#5E8F72',
+  low: '#8FAE96',
   medium: '#D3A95C',
   high: '#C06B58',
 }
@@ -50,14 +50,14 @@ export function KYCDetailDialog({
 
   return (
     <>
-      <DialogTitle sx={{ px: 3, py: 2, borderBottom: `1px solid ${B}` }}>
+      <DialogTitle sx={{ px: 3, py: 2, boxShadow: 'var(--neu-subtle)' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          <VerifiedUserIcon sx={{ fontSize: 28, color: statusColor }} />
+          <Box sx={{ ...insetSurface, p: 1.25, display: 'flex' }}><VerifiedUserIcon sx={{ fontSize: 24, color: statusColor }} /></Box>
           <Box sx={{ flex: 1 }}>
-            <Typography sx={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff' }}>
+            <Typography sx={{ fontSize: '1.1rem', fontWeight: 700, color: 'text.primary' }}>
               {verification.userName}
             </Typography>
-            <Typography sx={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', mt: 0.5 }}>
+            <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', mt: 0.5 }}>
               KYC ID: {verification.id}
             </Typography>
           </Box>
@@ -70,7 +70,7 @@ export function KYCDetailDialog({
                 textTransform: 'uppercase',
                 color: statusColor,
                 letterSpacing: '0.08em',
-                border: `1px solid ${statusColor}33`,
+                ...insetSurface,
                 px: 1,
                 py: 0.25,
               }}
@@ -81,20 +81,20 @@ export function KYCDetailDialog({
         </Box>
       </DialogTitle>
 
-      <DialogContent sx={{ px: 3, py: 2.5 }}>
+      <DialogContent sx={{ px: 3, py: 2.5, overflowWrap: 'anywhere', '&.MuiDialogContent-root': { pt: 3 } }}>
         {/* Verification Type and Risk Level */}
-        <Box sx={{ mb: 2.5 }}>
+        <Box sx={{ ...raisedSurface, p: 2.5, mb: 3 }}>
           <Box sx={{ display: 'flex', gap: 2, mb: 1 }}>
             <Box sx={{ flex: 1 }}>
-              <Typography sx={{ fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', letterSpacing: '0.05em', mb: 0.5 }}>
+              <Typography sx={{ fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', color: 'text.secondary', letterSpacing: '0.05em', mb: 0.5 }}>
                 Verification Type
               </Typography>
-              <Typography sx={{ fontSize: '0.95rem', fontWeight: 600, color: '#fff' }}>
+              <Typography sx={{ fontSize: '0.95rem', fontWeight: 600, color: 'text.primary' }}>
                 {typeLabels[verification.verificationType] ?? verification.verificationType}
               </Typography>
             </Box>
             <Box sx={{ flex: 1 }}>
-              <Typography sx={{ fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', letterSpacing: '0.05em', mb: 0.5 }}>
+              <Typography sx={{ fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', color: 'text.secondary', letterSpacing: '0.05em', mb: 0.5 }}>
                 Risk Level
               </Typography>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -106,7 +106,7 @@ export function KYCDetailDialog({
                     textTransform: 'uppercase',
                     color: riskColor,
                     letterSpacing: '0.08em',
-                    border: `1px solid ${riskColor}33`,
+                    ...insetSurface,
                     px: 1,
                     py: 0.25,
                   }}
@@ -118,11 +118,9 @@ export function KYCDetailDialog({
           </Box>
         </Box>
 
-        <Divider sx={{ borderColor: B, my: 2 }} />
-
         {/* Documents */}
-        <Box sx={{ mb: 2.5 }}>
-          <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', letterSpacing: '0.05em', mb: 1.5 }}>
+        <Box sx={{ ...raisedSurface, p: 2.5, mb: 3 }}>
+          <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', color: 'text.secondary', letterSpacing: '0.05em', mb: 1.5 }}>
             Documents ({verification.documents.length})
           </Typography>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -131,22 +129,22 @@ export function KYCDetailDialog({
                 key={idx}
                 sx={{
                   p: 1.5,
-                  bgcolor: 'rgba(255,255,255,0.03)',
-                  border: `1px solid ${B}`,
-                  borderRadius: '4px',
+
+                  ...insetSurface,
+
                 }}
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                  <Typography sx={{ fontSize: '0.8rem', fontWeight: 600, color: '#fff', flex: 1 }}>
+                  <Typography sx={{ fontSize: '0.8rem', fontWeight: 600, color: 'text.primary', flex: 1 }}>
                     {doc.type.replace('_', ' ')}
                   </Typography>
                   {doc.verifiedAt && (
-                    <Typography sx={{ fontSize: '0.65rem', color: '#5E8F72', fontWeight: 600 }}>
+                    <Typography sx={{ fontSize: '0.65rem', color: '#8FAE96', fontWeight: 600 }}>
                       VERIFIED
                     </Typography>
                   )}
                 </Box>
-                <Typography sx={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)' }}>
+                <Typography sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>
                   Uploaded: {new Date(doc.uploadedAt).toLocaleDateString()}
                 </Typography>
               </Box>
@@ -154,52 +152,50 @@ export function KYCDetailDialog({
           </Box>
         </Box>
 
-        <Divider sx={{ borderColor: B, my: 2 }} />
-
         {/* Personal Info */}
         {verification.personalInfo && (
           <>
-            <Box sx={{ mb: 2.5 }}>
-              <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', letterSpacing: '0.05em', mb: 1.5 }}>
+            <Box sx={{ ...raisedSurface, p: 2.5, mb: 3 }}>
+              <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', color: 'text.secondary', letterSpacing: '0.05em', mb: 1.5 }}>
                 Personal Information
               </Typography>
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' }, gap: 1.5 }}>
                 {verification.personalInfo.fullName && (
                   <Box>
-                    <Typography sx={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)', mb: 0.3 }}>
+                    <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', mb: 0.3 }}>
                       Full Name
                     </Typography>
-                    <Typography sx={{ fontSize: '0.85rem', color: '#fff' }}>
+                    <Typography sx={{ fontSize: '0.85rem', color: 'text.primary' }}>
                       {verification.personalInfo.fullName}
                     </Typography>
                   </Box>
                 )}
                 {verification.personalInfo.nationality && (
                   <Box>
-                    <Typography sx={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)', mb: 0.3 }}>
+                    <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', mb: 0.3 }}>
                       Nationality
                     </Typography>
-                    <Typography sx={{ fontSize: '0.85rem', color: '#fff' }}>
+                    <Typography sx={{ fontSize: '0.85rem', color: 'text.primary' }}>
                       {verification.personalInfo.nationality}
                     </Typography>
                   </Box>
                 )}
                 {verification.personalInfo.dateOfBirth && (
                   <Box>
-                    <Typography sx={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)', mb: 0.3 }}>
+                    <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', mb: 0.3 }}>
                       Date of Birth
                     </Typography>
-                    <Typography sx={{ fontSize: '0.85rem', color: '#fff' }}>
+                    <Typography sx={{ fontSize: '0.85rem', color: 'text.primary' }}>
                       {new Date(verification.personalInfo.dateOfBirth).toLocaleDateString()}
                     </Typography>
                   </Box>
                 )}
                 {verification.personalInfo.idNumber && (
                   <Box>
-                    <Typography sx={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)', mb: 0.3 }}>
+                    <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', mb: 0.3 }}>
                       ID Number
                     </Typography>
-                    <Typography sx={{ fontSize: '0.85rem', color: '#fff' }}>
+                    <Typography sx={{ fontSize: '0.85rem', color: 'text.primary' }}>
                       {verification.personalInfo.idNumber}
                     </Typography>
                   </Box>
@@ -207,10 +203,10 @@ export function KYCDetailDialog({
               </Box>
               {verification.personalInfo.address && (
                 <Box sx={{ mt: 1.5 }}>
-                  <Typography sx={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)', mb: 0.3 }}>
+                  <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', mb: 0.3 }}>
                     Address
                   </Typography>
-                  <Typography sx={{ fontSize: '0.85rem', color: '#fff' }}>
+                  <Typography sx={{ fontSize: '0.85rem', color: 'text.primary' }}>
                     {[
                       verification.personalInfo.address.street,
                       verification.personalInfo.address.city,
@@ -224,121 +220,119 @@ export function KYCDetailDialog({
                 </Box>
               )}
             </Box>
-            <Divider sx={{ borderColor: B, my: 2 }} />
           </>
         )}
 
         {/* Business Info */}
         {verification.businessInfo && (
           <>
-            <Box sx={{ mb: 2.5 }}>
-              <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', letterSpacing: '0.05em', mb: 1.5 }}>
+            <Box sx={{ ...raisedSurface, p: 2.5, mb: 3 }}>
+              <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', color: 'text.secondary', letterSpacing: '0.05em', mb: 1.5 }}>
                 Business Information
               </Typography>
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' }, gap: 1.5 }}>
                 {verification.businessInfo.businessName && (
                   <Box>
-                    <Typography sx={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)', mb: 0.3 }}>
+                    <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', mb: 0.3 }}>
                       Business Name
                     </Typography>
-                    <Typography sx={{ fontSize: '0.85rem', color: '#fff' }}>
+                    <Typography sx={{ fontSize: '0.85rem', color: 'text.primary' }}>
                       {verification.businessInfo.businessName}
                     </Typography>
                   </Box>
                 )}
                 {verification.businessInfo.businessType && (
                   <Box>
-                    <Typography sx={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)', mb: 0.3 }}>
+                    <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', mb: 0.3 }}>
                       Business Type
                     </Typography>
-                    <Typography sx={{ fontSize: '0.85rem', color: '#fff' }}>
+                    <Typography sx={{ fontSize: '0.85rem', color: 'text.primary' }}>
                       {verification.businessInfo.businessType}
                     </Typography>
                   </Box>
                 )}
                 {verification.businessInfo.registrationNumber && (
                   <Box>
-                    <Typography sx={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)', mb: 0.3 }}>
+                    <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', mb: 0.3 }}>
                       Registration Number
                     </Typography>
-                    <Typography sx={{ fontSize: '0.85rem', color: '#fff' }}>
+                    <Typography sx={{ fontSize: '0.85rem', color: 'text.primary' }}>
                       {verification.businessInfo.registrationNumber}
                     </Typography>
                   </Box>
                 )}
                 {verification.businessInfo.taxId && (
                   <Box>
-                    <Typography sx={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)', mb: 0.3 }}>
+                    <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', mb: 0.3 }}>
                       Tax ID
                     </Typography>
-                    <Typography sx={{ fontSize: '0.85rem', color: '#fff' }}>
+                    <Typography sx={{ fontSize: '0.85rem', color: 'text.primary' }}>
                       {verification.businessInfo.taxId}
                     </Typography>
                   </Box>
                 )}
               </Box>
             </Box>
-            <Divider sx={{ borderColor: B, my: 2 }} />
           </>
         )}
 
         {/* Review Notes */}
         {verification.reviewNotes && (
-          <Box sx={{ mb: 2.5 }}>
-            <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', letterSpacing: '0.05em', mb: 1 }}>
+          <Box sx={{ ...raisedSurface, p: 2.5, mb: 3 }}>
+            <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', color: 'text.secondary', letterSpacing: '0.05em', mb: 1 }}>
               Review Notes
             </Typography>
-            <Typography sx={{ fontSize: '0.85rem', color: '#fff', p: 1.5, bgcolor: 'rgba(255,255,255,0.03)', border: `1px solid ${B}`, borderRadius: '4px' }}>
+            <Typography sx={{ fontSize: '0.85rem', color: 'text.primary', p: 1.5,  ...insetSurface,  }}>
               {verification.reviewNotes}
             </Typography>
           </Box>
         )}
 
         {verification.rejectionReason && (
-          <Box sx={{ mb: 2.5 }}>
-            <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', letterSpacing: '0.05em', mb: 1 }}>
+          <Box sx={{ ...raisedSurface, p: 2.5, mb: 3 }}>
+            <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', color: 'text.secondary', letterSpacing: '0.05em', mb: 1 }}>
               Rejection Reason
             </Typography>
-            <Typography sx={{ fontSize: '0.85rem', color: '#C06B58', p: 1.5, bgcolor: 'rgba(192,107,88,0.08)', border: `1px solid rgba(192,107,88,0.2)`, borderRadius: '4px' }}>
+            <Typography sx={{ fontSize: '0.85rem', color: '#C06B58', p: 1.5, ...insetSurface,  }}>
               {verification.rejectionReason}
             </Typography>
           </Box>
         )}
 
         {/* Metadata */}
-        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5, fontSize: '0.75rem', color: 'rgba(255,255,255,0.35)' }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' }, gap: 1.5, fontSize: '0.75rem', color: 'text.secondary' }}>
           <Box>
-            <Typography sx={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)', mb: 0.3 }}>
+            <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', mb: 0.3 }}>
               Created
             </Typography>
-            <Typography sx={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)' }}>
+            <Typography sx={{ fontSize: '0.85rem', color: 'text.secondary' }}>
               {new Date(verification.createdAt).toLocaleString()}
             </Typography>
           </Box>
           <Box>
-            <Typography sx={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)', mb: 0.3 }}>
+            <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', mb: 0.3 }}>
               Last Updated
             </Typography>
-            <Typography sx={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)' }}>
+            <Typography sx={{ fontSize: '0.85rem', color: 'text.secondary' }}>
               {new Date(verification.updatedAt).toLocaleString()}
             </Typography>
           </Box>
           {verification.reviewedBy && (
             <Box>
-              <Typography sx={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)', mb: 0.3 }}>
+              <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', mb: 0.3 }}>
                 Reviewed By
               </Typography>
-              <Typography sx={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)' }}>
+              <Typography sx={{ fontSize: '0.85rem', color: 'text.secondary' }}>
                 {verification.reviewedBy}
               </Typography>
             </Box>
           )}
           {verification.expiryDate && (
             <Box>
-              <Typography sx={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)', mb: 0.3 }}>
+              <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', mb: 0.3 }}>
                 Expires
               </Typography>
-              <Typography sx={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)' }}>
+              <Typography sx={{ fontSize: '0.85rem', color: 'text.secondary' }}>
                 {new Date(verification.expiryDate).toLocaleDateString()}
               </Typography>
             </Box>
@@ -346,7 +340,7 @@ export function KYCDetailDialog({
         </Box>
       </DialogContent>
 
-      <DialogActions sx={{ px: 3, py: 2, borderTop: `1px solid ${B}`, display: 'flex', flexWrap: 'nowrap', gap: 1 }}>
+      <DialogActions sx={{ px: 3, py: 2, boxShadow: 'var(--neu-subtle)', display: 'flex', flexWrap: 'wrap', gap: 1 }}>
         <Button
           onClick={onClose}
           sx={{
@@ -357,7 +351,7 @@ export function KYCDetailDialog({
             textTransform: 'uppercase',
             letterSpacing: '0.06em',
             color: 'text.secondary',
-            borderColor: B,
+
             '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' },
           }}
         >
@@ -406,9 +400,9 @@ export function KYCDetailDialog({
                 fontSize: '0.68rem',
                 textTransform: 'uppercase',
                 letterSpacing: '0.06em',
-                color: '#5E8F72',
+                color: '#8FAE96',
                 borderColor: 'rgba(76,175,80,0.3)',
-                '&:hover': { borderColor: '#5E8F72', bgcolor: 'rgba(76,175,80,0.08)' },
+                '&:hover': { borderColor: '#8FAE96', bgcolor: 'rgba(76,175,80,0.08)' },
               }}
             >
               Approve

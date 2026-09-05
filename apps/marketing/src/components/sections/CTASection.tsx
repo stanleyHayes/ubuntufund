@@ -1,3 +1,6 @@
+import ProductIllustration from '../ProductIllustration'
+import CommunitySculpture from '../art/CommunitySculpture'
+import HomeWatermark from '../art/HomeWatermark'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
@@ -13,13 +16,15 @@ function CTASection() {
   return (
     <Box
       sx={{
-        py: { xs: 8, md: 10 },
+        position: 'relative', overflow: 'hidden', py: { xs: 8, md: 10 },
         textAlign: 'center',
         backgroundColor: '#F2EFEA',
         ...NEUMORPHIC_SMOKE_VARS,
       }}
     >
-      <Container maxWidth="md">
+      <HomeWatermark variant="leaf" />
+      <Container maxWidth="md" sx={{ position: 'relative' }}>
+        <Box sx={{ mb: 4, color: 'primary.dark' }}><CommunitySculpture variant="seed" /></Box>
         <Typography variant="overline" sx={{ color: 'secondary.dark' }}>
           Get involved
         </Typography>
@@ -46,6 +51,7 @@ function CTASection() {
           Join thousands of Ghanaians at home and abroad funding what their
           communities need through the power of collective giving.
         </Typography>
+        <Box sx={{ maxWidth: 620, mx: 'auto', mb: 5 }}><ProductIllustration screen="create" caption="Your next cause starts here" /></Box>
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
           spacing={2}

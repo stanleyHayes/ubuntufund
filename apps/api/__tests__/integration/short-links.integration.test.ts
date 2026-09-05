@@ -10,7 +10,14 @@ import {
 } from '../helpers/testDatabase.js';
 import { UserModel } from '../../src/infrastructure/database/models/UserModel.js';
 import { ShortLinkModel } from '../../src/infrastructure/database/models/ShortLinkModel.js';
-import { CampaignCategory, CampaignPriority } from '@ubuntu-fund/types';
+import { SubscriptionModel } from '../../src/infrastructure/database/models/SubscriptionModel.js';
+import {
+  CampaignCategory,
+  CampaignPriority,
+  SubscriptionTier,
+  SubscriptionStatus,
+  BillingCycle,
+} from '@ubuntu-fund/types';
 
 function uniqueEmail(label: string): string {
   return `${label}-${randomUUID()}@example.com`;
@@ -59,6 +66,20 @@ async function setVerificationLevel(userId: string, level: number): Promise<void
   await UserModel.findByIdAndUpdate(userId, { verificationLevel: level });
 }
 
+/** Seeds an active subscription so a user can hold more than one active campaign. */
+async function seedSubscription(userId: string, tier: SubscriptionTier): Promise<void> {
+  const now = new Date();
+  await SubscriptionModel.create({
+    userId,
+    tier,
+    status: SubscriptionStatus.ACTIVE,
+    billingCycle: BillingCycle.MONTHLY,
+    currentPeriodStart: now,
+    currentPeriodEnd: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
+    cancelAtPeriodEnd: false,
+  });
+}
+
 async function createCampaign(
   app: Express,
   token: string,
@@ -100,6 +121,7 @@ describe('Vanity slugs, short links & dynamic QR', () => {
     it('dedupes slugs generated from identical titles', async () => {
       const { userId, token } = await registerUser(app, uniqueEmail('dupe'));
       await setVerificationLevel(userId, 3);
+      await seedSubscription(userId, SubscriptionTier.PRO); // room for 2+ active campaigns
 
       const first = await createCampaign(app, token, { title: 'Same Title Here' });
       const second = await createCampaign(app, token, { title: 'Same Title Here' });
@@ -177,6 +199,7 @@ describe('Vanity slugs, short links & dynamic QR', () => {
     it('rejects a duplicate slug with 409', async () => {
       const { userId, token } = await registerUser(app, uniqueEmail('taken'));
       await setVerificationLevel(userId, 3);
+      await seedSubscription(userId, SubscriptionTier.PRO); // room for 2+ active campaigns
       const a = await createCampaign(app, token);
       const b = await createCampaign(app, token);
 

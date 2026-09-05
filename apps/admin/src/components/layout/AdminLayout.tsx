@@ -51,6 +51,7 @@ export default function AdminLayout() {
   const navigation = useNavigation()
   const { user } = useAuth()
   const [tourOpen, setTourOpen] = useState(false)
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
   // Auto-start once per user, desktop only, after the chrome settles.
   useEffect(() => {
@@ -82,13 +83,14 @@ export default function AdminLayout() {
           }}
         />
       )}
-      <Sidebar />
-      <TopBar onReplayTour={() => setTourOpen(true)} />
+      <Sidebar mobileOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
+      <TopBar onReplayTour={() => setTourOpen(true)} onOpenNav={() => setMobileNavOpen(true)} />
       <Box
         component="main"
         sx={{
           flexGrow: 1,
-          width: `calc(100% - ${DRAWER_WIDTH}px)`,
+          width: { xs: '100%', md: `calc(100% - ${DRAWER_WIDTH}px)` },
+          minWidth: 0,
           bgcolor: 'background.default',
           minHeight: '100vh',
         }}

@@ -1,3 +1,10 @@
+import { useRef } from 'react'
+import { gsap } from 'gsap'
+import { useGSAP } from '@gsap/react'
+import { SplitText } from 'gsap/SplitText'
+import { keyframes } from '@emotion/react'
+import HomeWatermark from '../art/HomeWatermark'
+import CommunitySculpture from '../art/CommunitySculpture'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
@@ -6,11 +13,71 @@ import Stack from '@mui/material/Stack'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import FavoriteIcon from '@mui/icons-material/Favorite'
 
+gsap.registerPlugin(useGSAP, SplitText)
+
 const WEB_APP_URL = import.meta.env.VITE_WEB_APP_URL || 'http://localhost:8200'
 
-function HeroSection() {
+// A slow light-sweep across the gold accent — the "sparkle" of the headline.
+const shimmer = keyframes`
+  0%   { background-position: -140% 0; }
+  60%  { background-position: 240% 0; }
+  100% { background-position: 240% 0; }
+`
+// Tiny twinkling stars beside the accent.
+const twinkle = keyframes`
+  0%, 100% { opacity: 0; transform: scale(0.5) rotate(0deg); }
+  50%      { opacity: 1; transform: scale(1) rotate(90deg); }
+`
+
+function Sparkle({ top, left, size, delay }: { top: string; left: string; size: number; delay: number }) {
   return (
     <Box
+      aria-hidden
+      className="hero-sparkle"
+      sx={{
+        position: 'absolute', top, left, width: size, height: size, pointerEvents: 'none',
+        opacity: 0,
+        animation: `${twinkle} 2.6s ease-in-out ${delay}s infinite`,
+        '@media (prefers-reduced-motion: reduce)': { animation: 'none', opacity: 0 },
+      }}
+    >
+      <svg viewBox="0 0 24 24" width={size} height={size}>
+        <path d="M12 0 L14 10 L24 12 L14 14 L12 24 L10 14 L0 12 L10 10 Z" fill="#F3DE9E" />
+      </svg>
+    </Box>
+  )
+}
+
+function HeroSection() {
+  const root = useRef<HTMLDivElement>(null)
+
+  useGSAP(
+    () => {
+      const mm = gsap.matchMedia()
+      mm.add('(prefers-reduced-motion: no-preference)', () => {
+        const split = new SplitText('.hero-title', { type: 'words', wordsClass: 'hero-word' })
+        const tl = gsap.timeline({ defaults: { ease: 'power3.out' } })
+        tl.from('.hero-overline', { y: 18, autoAlpha: 0, duration: 0.55 })
+          .from(
+            split.words,
+            { yPercent: 115, autoAlpha: 0, stagger: 0.06, duration: 0.75, ease: 'power4.out' },
+            '-=0.25',
+          )
+          .from('.hero-sub', { y: 20, autoAlpha: 0, duration: 0.7 }, '-=0.35')
+          .from('.hero-cta', { y: 16, autoAlpha: 0, stagger: 0.12, duration: 0.5 }, '-=0.4')
+          .from('.hero-art', { autoAlpha: 0, scale: 0.96, y: 24, duration: 0.9, ease: 'power2.out' }, '-=0.9')
+          .from('.hero-sparkle', { autoAlpha: 0, duration: 0.4 }, '-=0.3')
+          // Restore the intact headline so the gold accent's CSS shimmer runs cleanly.
+          .add(() => split.revert())
+        return () => split.revert()
+      })
+    },
+    { scope: root },
+  )
+
+  return (
+    <Box
+      ref={root}
       sx={{
         position: 'relative',
         minHeight: { xs: '100vh', md: '90vh' },
@@ -35,29 +102,7 @@ function HeroSection() {
         },
       }}
     >
-      {/* Decorative circles */}
-      <Box
-        sx={{
-          position: 'absolute',
-          width: { xs: 300, md: 500 },
-          height: { xs: 300, md: 500 },
-          borderRadius: '50%',
-          border: '1px solid rgba(255,255,255,0.08)',
-          top: { xs: -100, md: -150 },
-          right: { xs: -100, md: -100 },
-        }}
-      />
-      <Box
-        sx={{
-          position: 'absolute',
-          width: { xs: 200, md: 350 },
-          height: { xs: 200, md: 350 },
-          borderRadius: '50%',
-          border: '1px solid rgba(199, 162, 74,0.15)',
-          bottom: { xs: 50, md: 100 },
-          left: { xs: -80, md: -50 },
-        }}
-      />
+      <HomeWatermark variant="chain" />
 
       <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
         <Box
@@ -66,13 +111,14 @@ function HeroSection() {
             flexDirection: { xs: 'column', md: 'row' },
             alignItems: 'center',
             gap: { xs: 4, md: 8 },
-            pt: { xs: 12, md: 4 },
+            pt: { xs: 14, md: 12 }, pb: { xs: 6, md: 8 },
           }}
         >
           {/* Text Content */}
           <Box sx={{ flex: 1, textAlign: { xs: 'center', md: 'left' } }}>
             <Typography
               variant="overline"
+              className="hero-overline"
               sx={{
                 color: '#C7A24A',
                 fontWeight: 700,
@@ -86,7 +132,9 @@ function HeroSection() {
             </Typography>
             <Typography
               variant="h1"
+              className="hero-title"
               sx={{
+                position: 'relative',
                 color: '#fff',
                 fontSize: { xs: '2.5rem', sm: '3.5rem', md: '4rem' },
                 fontWeight: 800,
@@ -95,12 +143,36 @@ function HeroSection() {
               }}
             >
               Together,{' '}
-              <Box component="span" sx={{ color: '#DCC07E' }}>
+              <Box
+                component="span"
+                className="hero-accent"
+                sx={{
+                  position: 'relative',
+                  color: '#DCC07E',
+                  // Gold text with a bright light-sweep — the "sparkle".
+                  backgroundImage:
+                    'linear-gradient(100deg, #DCC07E 38%, #FFF4D2 50%, #DCC07E 62%)',
+                  backgroundSize: '250% 100%',
+                  backgroundRepeat: 'no-repeat',
+                  WebkitBackgroundClip: 'text',
+                  backgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  animation: `${shimmer} 5.5s ease-in-out 1.6s infinite`,
+                  '@media (prefers-reduced-motion: reduce)': {
+                    animation: 'none',
+                    WebkitTextFillColor: '#DCC07E',
+                  },
+                }}
+              >
                 we fund what matters
               </Box>
+              <Sparkle top="-6%" left="46%" size={18} delay={1.8} />
+              <Sparkle top="72%" left="92%" size={13} delay={2.5} />
+              <Sparkle top="18%" left="78%" size={10} delay={3.1} />
             </Typography>
             <Typography
               variant="h5"
+              className="hero-sub"
               sx={{
                 color: 'rgba(255,255,255,0.85)',
                 fontWeight: 400,
@@ -124,31 +196,22 @@ function HeroSection() {
                 variant="contained"
                 color="secondary"
                 size="large"
+                className="hero-cta"
                 href={`${WEB_APP_URL}/campaigns/new`}
                 endIcon={<ArrowForwardIcon />}
-                sx={{
-                  py: 1.5,
-                  px: 4,
-                  fontSize: '1rem',
-                  fontWeight: 700,
-                }}
+                sx={{ py: 1.5, px: 4, fontSize: '1rem', fontWeight: 700 }}
               >
                 Start a Campaign
               </Button>
               <Button
                 variant="outlined"
                 size="large"
+                className="hero-cta"
                 href={`${WEB_APP_URL}/explore`}
                 startIcon={<FavoriteIcon />}
                 sx={{
-                  py: 1.5,
-                  px: 4,
-                  fontSize: '1rem',
-                  fontWeight: 700,
-                  color: '#fff',
-                  '&:hover': {
-                    backgroundColor: '#233126',
-                  },
+                  py: 1.5, px: 4, fontSize: '1rem', fontWeight: 700, color: '#fff',
+                  '&:hover': { backgroundColor: '#233126' },
                 }}
               >
                 Donate Now
@@ -156,71 +219,12 @@ function HeroSection() {
             </Stack>
           </Box>
 
-          {/* Hero Illustration */}
-          <Box
-            sx={{
-              flex: 1,
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-            }}
-          >
-            <Box
-              sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 3,
-                maxWidth: { xs: 300, sm: 380, md: 440 },
-              }}
-            >
-              {/* Nkonsonkonson (unity chain) — interlocked diamond links echoing
-                  the platform's diamond-cut shape system */}
-              <Box
-                component="svg"
-                viewBox="0 0 440 150"
-                role="img"
-                aria-label="Chain of interlinked diamonds, a symbol of unity"
-                sx={{ width: '100%', height: 'auto', display: 'block' }}
-              >
-                {[0, 1, 2, 3, 4].map((i) => (
-                  <rect
-                    key={i}
-                    x={38 + i * 78}
-                    y={43}
-                    width={64}
-                    height={64}
-                    rx={i % 2 === 0 ? 6 : 22}
-                    transform={`rotate(45 ${70 + i * 78} 75)`}
-                    fill="none"
-                    stroke={i % 2 === 0 ? '#C7A24A' : '#A8B5A0'}
-                    strokeWidth={i % 2 === 0 ? 3.5 : 2.5}
-                    opacity={i % 2 === 0 ? 0.95 : 0.75}
-                  />
-                ))}
-              </Box>
-              <Box sx={{ textAlign: 'center' }}>
-                <Typography
-                  variant="h4"
-                  sx={{
-                    color: '#fff',
-                    fontWeight: 800,
-                    fontSize: { xs: '1.3rem', md: '1.6rem' },
-                  }}
-                >
-                  Empowering{' '}
-                  <Box component="span" sx={{ color: '#C7A24A' }}>
-                    Ghana
-                  </Box>
-                </Typography>
-                <Typography
-                  variant="body2"
-                  sx={{ color: 'rgba(255,255,255,0.7)', mt: 1, letterSpacing: '0.08em' }}
-                >
-                  One chain. Many hands. Ujima.
-                </Typography>
-              </Box>
-            </Box>
+          <Box className="hero-art" sx={{ flex: 1, width: '100%', minWidth: 0, maxWidth: 560, position: 'relative', pb: 2 }}>
+            <Box component="img" className="home-art-image" src="/images/home/community-garden.jpg"
+              alt="Illustration of neighbors planning a community garden in a Ghanaian courtyard"
+              width={1536} height={1024} fetchPriority="high"
+              sx={{ width: '100%', height: 'auto', boxShadow: '20px 25px 60px rgba(0,0,0,.25)' }} />
+            <Box sx={{ mt: -3, position: 'relative', color: '#E8EBE3' }}><CommunitySculpture /></Box>
           </Box>
         </Box>
       </Container>

@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Box, Typography } from '@mui/material'
-import { keyframes } from '@mui/system'
+import { Link as RouterLink } from 'react-router-dom'
+import { Alert, Box, ButtonBase, Skeleton, Typography } from '@mui/material'
+import { SHAPE } from '@ubuntu-fund/ui'
 import RocketLaunchIcon from '@mui/icons-material/RocketLaunch'
 import PeopleIcon from '@mui/icons-material/People'
 import VolunteerActivismIcon from '@mui/icons-material/VolunteerActivism'
@@ -22,110 +22,6 @@ import { useAdminStats, useKYCStats } from '@/hooks/useApiData'
 import PageHeader from '@/components/PageHeader'
 import { TONES } from '@/lib/tones'
 
-// ---------------------------------------------------------------------------
-// Animations
-// ---------------------------------------------------------------------------
-
-const fadeIn = keyframes`
-  from { opacity: 0; }
-  to   { opacity: 1; }
-`
-
-const slideIn = keyframes`
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
-`
-
-const countUp = keyframes`
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
-`
-
-const drawSparkline = keyframes`
-  from { stroke-dashoffset: 300; }
-  to   { stroke-dashoffset: 0; }
-`
-
-const fillBar = keyframes`
-  from { transform: scaleX(0); }
-  to   { transform: scaleX(1); }
-`
-
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-const B = 'rgba(255,255,255,0.06)'
-
-// ---------------------------------------------------------------------------
-// Mini sparkline — generates a random trend line SVG
-// ---------------------------------------------------------------------------
-
-function MiniSparkline({ color, seed }: { color: string; seed: number }) {
-  const points = useMemo(() => {
-    const pts: number[] = []
-    let val = 30 + (seed * 17) % 20
-    for (let i = 0; i < 12; i++) {
-      val += ((seed * (i + 1) * 7) % 15) - 6
-      val = Math.max(5, Math.min(45, val))
-      pts.push(val)
-    }
-    return pts
-  }, [seed])
-
-  const pathD = points
-    .map((y, i) => `${i === 0 ? 'M' : 'L'}${i * (80 / 11)},${y}`)
-    .join(' ')
-
-  return (
-    <svg
-      width="80"
-      height="50"
-      viewBox="0 0 80 50"
-      style={{ overflow: 'visible' }}
-    >
-      {/* Gradient fill under the line */}
-      <defs>
-        <linearGradient id={`spark-fill-${seed}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.15" />
-          <stop offset="100%" stopColor={color} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      {/* Fill area */}
-      <path
-        d={`${pathD} L80,50 L0,50 Z`}
-        fill={`url(#spark-fill-${seed})`}
-        opacity={0}
-        style={{ animation: `${fadeIn} 0.8s 0.6s ease forwards` }}
-      />
-      {/* Line */}
-      <path
-        d={pathD}
-        fill="none"
-        stroke={color}
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeDasharray="300"
-        strokeDashoffset="300"
-        style={{ animation: `${drawSparkline} 1.2s 0.3s ease forwards` }}
-      />
-      {/* End dot */}
-      <circle
-        cx={80}
-        cy={points[points.length - 1]}
-        r="2"
-        fill={color}
-        opacity={0}
-        style={{ animation: `${fadeIn} 0.3s 1.4s ease forwards` }}
-      />
-    </svg>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Tile config
-// ---------------------------------------------------------------------------
-
 interface TileConfig {
   label: string
   icon: React.ReactNode
@@ -133,10 +29,6 @@ interface TileConfig {
   color: string
   stat: string
   description: string
-  // Visual variation
-  glowPosition: string // CSS position for the radial glow
-  patternAngle: number // degrees for the diagonal lines
-  // RBAC
   resource: Resource
   action?: Action
 }
@@ -151,8 +43,6 @@ interface TileTemplate {
   statKey: StatKey
   formatStat?: (val: number) => string
   description: string
-  glowPosition: string
-  patternAngle: number
   resource: Resource
   action?: Action
 }
@@ -169,362 +59,144 @@ function formatCompact(val: number): string {
 }
 
 const tileTemplates: TileTemplate[] = [
-  { label: 'Overview', icon: <InsightsIcon />, route: '/overview', color: '#8FAE96', statKey: null, description: 'platform analytics', glowPosition: 'center', patternAngle: 0, resource: Resource.ANALYTICS },
-  { label: 'Campaigns', icon: <RocketLaunchIcon />, route: '/campaigns', color: '#5E8F72', statKey: 'activeCampaigns', description: 'active campaigns', glowPosition: 'top right', patternAngle: 45, resource: Resource.CAMPAIGNS },
-  { label: 'Users', icon: <PeopleIcon />, route: '/users', color: '#74909A', statKey: 'totalUsers', formatStat: formatCompact, description: 'registered users', glowPosition: 'bottom left', patternAngle: -45, resource: Resource.USERS },
-  { label: 'Donations', icon: <VolunteerActivismIcon />, route: '/donations', color: '#C7A24A', statKey: 'totalRaised', formatStat: formatCurrency, description: 'total raised', glowPosition: 'top left', patternAngle: 30, resource: Resource.DONATIONS },
-  { label: 'Disputes', icon: <GavelIcon />, route: '/disputes', color: '#C06B58', statKey: 'pendingDisputes', description: 'pending review', glowPosition: 'bottom right', patternAngle: -30, resource: Resource.DISPUTES },
-  { label: 'Reports', icon: <BarChartIcon />, route: '/reports', color: TONES.maroon.text, statKey: 'totalDonations', description: 'analytics reports', glowPosition: 'center right', patternAngle: 60, resource: Resource.ANALYTICS },
-  { label: 'Verifications', icon: <VerifiedUserIcon />, route: '/verifications', color: TONES.teal.text, statKey: null, description: 'pending verification', glowPosition: 'top center', patternAngle: 15, resource: Resource.VERIFICATIONS },
-  { label: 'Audit Log', icon: <HistoryIcon />, route: '/audit', color: TONES.clay.text, statKey: null, description: 'total entries', glowPosition: 'bottom center', patternAngle: -15, resource: Resource.AUDIT_LOG },
-  { label: 'Subscriptions', icon: <CardMembershipIcon />, route: '/subscriptions', color: TONES.maroon.text, statKey: null, description: 'active subscribers', glowPosition: 'center left', patternAngle: 25, resource: Resource.SUBSCRIPTIONS },
-  { label: 'Manage Plans', icon: <TuneIcon />, route: '/plans', color: TONES.maroon.text, statKey: null, description: 'subscription packages', glowPosition: 'top left', patternAngle: -20, resource: Resource.PLANS },
-  { label: 'Roles', icon: <AdminPanelSettingsIcon />, route: '/roles', color: '#FF7043', statKey: null, description: 'system role policy', glowPosition: 'top right', patternAngle: 35, resource: Resource.ROLES },
+  { label: 'Overview', icon: <InsightsIcon />, route: '/overview', color: '#8FAE96', statKey: null, description: 'platform analytics', resource: Resource.ANALYTICS },
+  { label: 'Campaigns', icon: <RocketLaunchIcon />, route: '/campaigns', color: TONES.green.text, statKey: 'activeCampaigns', description: 'active campaigns', resource: Resource.CAMPAIGNS },
+  { label: 'Users', icon: <PeopleIcon />, route: '/users', color: '#74909A', statKey: 'totalUsers', formatStat: formatCompact, description: 'registered users', resource: Resource.USERS },
+  { label: 'Donations', icon: <VolunteerActivismIcon />, route: '/donations', color: '#C7A24A', statKey: 'totalRaised', formatStat: formatCurrency, description: 'total raised', resource: Resource.DONATIONS },
+  { label: 'Disputes', icon: <GavelIcon />, route: '/disputes', color: '#C06B58', statKey: 'pendingDisputes', description: 'pending review', resource: Resource.DISPUTES },
+  { label: 'Reports', icon: <BarChartIcon />, route: '/reports', color: TONES.maroon.text, statKey: 'totalDonations', description: 'analytics reports', resource: Resource.ANALYTICS },
+  { label: 'Verifications', icon: <VerifiedUserIcon />, route: '/verifications', color: TONES.teal.text, statKey: null, description: 'pending verification', resource: Resource.VERIFICATIONS },
+  { label: 'Audit Log', icon: <HistoryIcon />, route: '/audit', color: TONES.clay.text, statKey: null, description: 'total entries', resource: Resource.AUDIT_LOG },
+  { label: 'Subscriptions', icon: <CardMembershipIcon />, route: '/subscriptions', color: TONES.maroon.text, statKey: null, description: 'active subscribers', resource: Resource.SUBSCRIPTIONS },
+  { label: 'Manage Plans', icon: <TuneIcon />, route: '/plans', color: TONES.maroon.text, statKey: null, description: 'subscription packages', resource: Resource.PLANS },
+  { label: 'Roles', icon: <AdminPanelSettingsIcon />, route: '/roles', color: TONES.clay.text, statKey: null, description: 'system role policy', resource: Resource.ROLES },
 ]
 
 // ---------------------------------------------------------------------------
 // GridTile
 // ---------------------------------------------------------------------------
 
-function GridTile({ tile, index }: { tile: TileConfig; index: number }) {
-  const navigate = useNavigate()
-
-  // Create diagonal line pattern as inline SVG data URL
-  const patternSvg = encodeURIComponent(
-    `<svg width="20" height="20" xmlns="http://www.w3.org/2000/svg"><line x1="0" y1="20" x2="20" y2="0" stroke="white" stroke-opacity="0.02" stroke-width="0.5"/></svg>`
-  )
-
-  return (
-    <Box
-      onClick={() => navigate(tile.route)}
+function StatValue({ value, loading, large = false }: { value: string; loading: boolean; large?: boolean }) {
+  return loading ? (
+    <Skeleton aria-label="Loading statistic" width="65%" height={large ? 40 : 28} />
+  ) : (
+    <Typography
+      component="span"
       sx={{
-        position: 'relative',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'space-between',
-        p: { xs: 1.5, sm: 2, md: 3 },
-        cursor: 'pointer',
-        bgcolor: 'transparent',
-        borderRight: `1px solid ${B}`,
-        borderBottom: `1px solid ${B}`,
-        transition: 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
-        animation: `${slideIn} 0.4s ease ${index * 0.06}s both`,
-        overflow: 'hidden',
-        minHeight: { xs: 160, md: 200 },
-        // Remove right border on last column per breakpoint
-        '&:nth-of-type(2n)': {
-          borderRight: { xs: 'none', md: `1px solid ${B}` },
-        },
-        '&:nth-of-type(4n)': {
-          borderRight: { xs: `1px solid ${B}`, md: 'none' },
-        },
-        // Hover state
-        '&:hover': {
-          '& .tile-glow': {
-            opacity: 0.12,
-          },
-          '& .tile-scan': {
-            animationPlayState: 'running',
-          },
-          '& .tile-icon-wrap': {
-            bgcolor: `${tile.color}15`,
-          },
-          '& .tile-stat': {
-            color: tile.color,
-          },
-          '& .tile-watermark': {
-            opacity: 0.06,
-          },
-          '& .tile-sparkline': {
-            opacity: 1,
-          },
-          '& .tile-accent-top': {
-            opacity: 1,
-            backgroundSize: '100% 100%',
-          },
-        },
+        display: 'block',
+        fontWeight: 800,
+        fontSize: large ? { xs: '1.65rem', md: '2rem' } : '1.25rem',
+        fontVariantNumeric: 'tabular-nums',
+        color: 'text.primary',
+        lineHeight: 1.2,
+        letterSpacing: '-0.02em',
+        overflowWrap: 'anywhere',
       }}
     >
-      {/* === Radial glow — unique position per tile === */}
-      <Box
-        className="tile-glow"
-        sx={{
-          position: 'absolute',
-          inset: 0,
-          background: `${tile.color}10`,
-          opacity: 0.04,
-          transition: 'opacity 0.5s ease',
-          pointerEvents: 'none',
-        }}
-      />
+      {value}
+    </Typography>
+  )
+}
 
-      {/* === Diagonal line texture === */}
-      <Box
-        sx={{
-          position: 'absolute',
-          inset: 0,
-          backgroundImage: `url("data:image/svg+xml,${patternSvg}")`,
-          backgroundSize: '20px 20px',
-          transform: `rotate(${tile.patternAngle}deg) scale(1.5)`,
-          pointerEvents: 'none',
-        }}
-      />
-
-      {/* === Top accent gradient line === */}
-      <Box
-        className="tile-accent-top"
-        sx={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 2,
-          background: tile.color,
-          opacity: 0.35,
-          transition: 'opacity 0.35s ease',
-        }}
-      />
-
-      {/* === Scan line (plays on hover) === */}
-      <Box
-        className="tile-scan"
-        sx={{
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          height: 1,
-          background: `${tile.color}20`,
-          pointerEvents: 'none',
-          zIndex: 1,
-        }}
-      />
-
-      {/* === Large watermark number === */}
-      {tile.stat && (
-        <Typography
-          className="tile-watermark"
-          sx={{
-            position: 'absolute',
-            right: -8,
-            bottom: -16,
-            fontFamily: '"Outfit", monospace',
-            fontWeight: 900,
-            fontSize: { xs: '5rem', md: '6.5rem' },
-            color: 'white',
-            opacity: 0.03,
-            lineHeight: 1,
-            letterSpacing: '-0.04em',
-            transition: 'all 0.5s ease',
-            pointerEvents: 'none',
-            userSelect: 'none',
-          }}
-        >
-          {tile.stat}
-        </Typography>
-      )}
-
-      {/* === Top section: icon + info === */}
-      <Box sx={{ position: 'relative', zIndex: 2 }}>
-        {/* Icon */}
-        <Box
-          className="tile-icon-wrap"
-          sx={{
-            position: 'relative',
-            width: 40,
-            height: 40,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            mb: 2,
-            borderRadius: 1,
-            transition: 'background-color 0.2s ease',
-          }}
-        >
-          <Box
-            sx={{
-              color: tile.color,
-              '& .MuiSvgIcon-root': { fontSize: 28 },
-            }}
-          >
-            {tile.icon}
-          </Box>
-        </Box>
-
-        <Typography
-          sx={{
-            fontWeight: 700,
-            fontSize: '0.95rem',
-            color: 'text.primary',
-            letterSpacing: '0.01em',
-          }}
-        >
-          {tile.label}
-        </Typography>
-        <Typography
-          sx={{
-            fontSize: '0.68rem',
-            color: 'text.secondary',
-            mt: 0.3,
-            letterSpacing: '0.04em',
-            textTransform: 'uppercase',
-          }}
-        >
-          {tile.description}
-        </Typography>
-      </Box>
-
-      {/* === Bottom section: stat + sparkline === */}
-      <Box sx={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-        {tile.stat ? (
-          <Typography
-            className="tile-stat"
-            sx={{
-              fontFamily: '"Outfit", monospace',
-              fontWeight: 900,
-              fontSize: { xs: '1.5rem', md: '2rem' },
-              color: 'rgba(255,255,255,0.65)',
-              lineHeight: 1,
-              transition: 'all 0.35s ease',
-              letterSpacing: '-0.02em',
-            }}
-          >
-            {tile.stat}
-          </Typography>
-        ) : (
-          <Box />
-        )}
-
-        {/* Mini sparkline chart */}
-        <Box
-          className="tile-sparkline"
-          sx={{
-            opacity: 0.5,
-            transition: 'opacity 0.35s ease',
-            flexShrink: 0,
-          }}
-        >
-          <MiniSparkline color={tile.color} seed={index + 1} />
-        </Box>
-      </Box>
+function MetricIcon({ icon, color }: { icon: React.ReactNode; color: string }) {
+  return (
+    <Box
+      aria-hidden="true"
+      sx={{
+        width: 44,
+        height: 44,
+        flexShrink: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: SHAPE.sm,
+        bgcolor: 'background.paper',
+        boxShadow: 'var(--neu-inset)',
+        color,
+        '& svg': { fontSize: 23 },
+      }}
+    >
+      {icon}
     </Box>
   )
 }
 
-// ---------------------------------------------------------------------------
-// StatCell
-// ---------------------------------------------------------------------------
+function GridTile({ tile, loading }: { tile: TileConfig; loading: boolean }) {
+  return (
+    <ButtonBase
+      component={RouterLink}
+      to={tile.route}
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'stretch',
+        justifyContent: 'space-between',
+        gap: 3,
+        p: { xs: 2.5, md: 3 },
+        minWidth: 0,
+        minHeight: 220,
+        textAlign: 'left',
+        borderRadius: SHAPE.card,
+        bgcolor: 'background.paper',
+        boxShadow: 'var(--neu-raised)',
+        transition: 'box-shadow 160ms ease, transform 160ms ease',
+        '&:hover': { boxShadow: 'var(--neu-raised-hover)', transform: 'translateY(-2px)' },
+        '&:active': { boxShadow: 'var(--neu-inset)', transform: 'translateY(1px)' },
+        '&.Mui-focusVisible': { outline: '2px solid', outlineColor: 'secondary.main', outlineOffset: 4 },
+        '@media (prefers-reduced-motion: reduce)': {
+          transition: 'none',
+          '&:hover, &:active': { transform: 'none' },
+        },
+      }}
+    >
+      <Box>
+        <MetricIcon icon={tile.icon} color={tile.color} />
+        <Typography component="h3" sx={{ mt: 2, fontWeight: 700, fontSize: '1rem', color: 'text.primary' }}>
+          {tile.label}
+        </Typography>
+        <Typography sx={{ mt: 0.5, fontSize: '0.8rem', color: 'text.secondary' }}>
+          {tile.description}
+        </Typography>
+      </Box>
+      {tile.stat ? (
+        <StatValue value={tile.stat} loading={loading} large />
+      ) : (
+        <Typography component="span" sx={{ color: tile.color, fontSize: '0.8rem', fontWeight: 600 }}>
+          Open section <span aria-hidden="true">↗</span>
+        </Typography>
+      )}
+    </ButtonBase>
+  )
+}
 
-function StatCell({
-  label,
-  value,
-  icon,
-  color,
-  index,
-  isLast,
-  fillPercent,
-}: {
+function StatCell({ label, value, icon, color, loading }: {
   label: string
   value: string
   icon: React.ReactNode
   color: string
-  index: number
-  isLast: boolean
-  fillPercent: number
+  loading: boolean
 }) {
   return (
     <Box
       sx={{
-        position: 'relative',
         display: 'flex',
         alignItems: 'center',
         gap: 2,
-        px: 3,
-        py: 2.5,
-        borderRight: isLast ? 'none' : `1px solid ${B}`,
-        animation: `${countUp} 0.5s ease ${0.5 + index * 0.1}s both`,
-        overflow: 'hidden',
-        transition: 'all 0.25s ease',
-        '&:hover': {
-          '& .stat-fill': {
-            opacity: 0.08,
-          },
-          '& .stat-value': {
-            color,
-          },
-        },
+        p: 2.5,
+        minWidth: 0,
+        borderRadius: SHAPE.card,
+        bgcolor: 'background.paper',
+        boxShadow: 'var(--neu-raised)',
       }}
     >
-      {/* Background fill bar */}
-      <Box
-        className="stat-fill"
-        sx={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          bottom: 0,
-          width: `${fillPercent}%`,
-          bgcolor: color,
-          opacity: 0.04,
-          transformOrigin: 'left',
-          animation: `${fillBar} 1s ${0.8 + index * 0.1}s ease both`,
-          pointerEvents: 'none',
-          transition: 'opacity 0.25s ease',
-        }}
-      />
-
-      {/* Left color accent */}
-      <Box
-        sx={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          bottom: 0,
-          width: 2,
-          bgcolor: color,
-          opacity: 0.5,
-        }}
-      />
-
-      <Box
-        sx={{
-          color,
-          opacity: 0.7,
-          display: 'flex',
-          alignItems: 'center',
-          '& .MuiSvgIcon-root': { fontSize: 20 },
-          position: 'relative',
-          zIndex: 1,
-        }}
-      >
-        {icon}
-      </Box>
-      <Box sx={{ position: 'relative', zIndex: 1 }}>
-        <Typography
-          sx={{
-            fontSize: '0.62rem',
-            color: 'text.secondary',
-            textTransform: 'uppercase',
-            letterSpacing: '0.1em',
-            lineHeight: 1,
-            mb: 0.5,
-          }}
-        >
+      <MetricIcon icon={icon} color={color} />
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Typography component="dt" sx={{ fontSize: '0.75rem', color: 'text.secondary', mb: 0.75 }}>
           {label}
         </Typography>
-        <Typography
-          className="stat-value"
-          sx={{
-            fontFamily: '"Outfit", monospace',
-            fontWeight: 900,
-            fontSize: '1.15rem',
-            color: 'text.primary',
-            lineHeight: 1,
-            letterSpacing: '-0.01em',
-            transition: 'color 0.25s ease',
-          }}
-        >
-          {value}
-        </Typography>
+        <Box component="dd" sx={{ m: 0 }}>
+          <StatValue value={value} loading={loading} />
+        </Box>
       </Box>
     </Box>
   )
@@ -535,7 +207,7 @@ function StatCell({
 // ---------------------------------------------------------------------------
 
 export default function DashboardPage() {
-  const { data: stats, isLoading: statsLoading } = useAdminStats()
+  const { data: stats, isLoading: statsLoading, error: statsError } = useAdminStats()
   const { can } = useAdminPermissions()
 
   // Guard every numeric field: the stats source can momentarily be a partial or
@@ -566,93 +238,96 @@ export default function DashboardPage() {
           icon: t.icon,
           route: t.route,
           color: t.color,
-          stat: statsLoading ? '' : stat,
+          stat: statsError && t.statKey ? '—' : stat,
           description: t.description,
-          glowPosition: t.glowPosition,
-          patternAngle: t.patternAngle,
           resource: t.resource,
           action: t.action,
         }
       }),
-    [can, safeStats, statsLoading],
+    [can, safeStats, statsError],
   )
 
-  const maxStatVal = Math.max(safeStats.totalRaised, safeStats.activeCampaigns * 1000, safeStats.totalUsers * 100, safeStats.pendingDisputes * 5000, 1)
-
-  const { data: kycStats } = useKYCStats()
+  const { data: kycStats, isLoading: kycLoading, error: kycError } = useKYCStats()
 
   const quickStats = [
-    { label: 'Total Raised', value: statsLoading ? '...' : `GH₵ ${safeStats.totalRaised.toLocaleString()}`, icon: <TrendingUpIcon />, color: '#8FAE96', fill: statsLoading ? 0 : (safeStats.totalRaised / maxStatVal) * 100 },
-    { label: 'Active Campaigns', value: statsLoading ? '...' : String(safeStats.activeCampaigns), icon: <CampaignIcon />, color: '#74909A', fill: statsLoading ? 0 : ((safeStats.activeCampaigns * 1000) / maxStatVal) * 100 },
-    { label: 'Total Users', value: statsLoading ? '...' : String(safeStats.totalUsers), icon: <PeopleIcon />, color: TONES.maroon.text, fill: statsLoading ? 0 : ((safeStats.totalUsers * 100) / maxStatVal) * 100 },
-    { label: 'Pending Disputes', value: statsLoading ? '...' : String(safeStats.pendingDisputes), icon: <GavelIcon />, color: '#D3A95C', fill: statsLoading ? 0 : ((safeStats.pendingDisputes * 5000) / maxStatVal) * 100 },
-    { label: 'Pending KYC', value: String(kycStats?.pending ?? 0), icon: <VerifiedUserIcon />, color: TONES.teal.text, fill: 0 },
-    { label: 'KYC Approved Today', value: String(kycStats?.approvedToday ?? 0), icon: <VerifiedUserIcon />, color: '#5E8F72', fill: 0 },
-    { label: 'KYC Rejected Today', value: String(kycStats?.rejectedToday ?? 0), icon: <VerifiedUserIcon />, color: '#C06B58', fill: 0 },
+    { label: 'Total Raised', value: statsLoading ? '...' : `GH₵ ${safeStats.totalRaised.toLocaleString()}`, icon: <TrendingUpIcon />, color: '#8FAE96', loading: statsLoading, error: statsError },
+    { label: 'Active Campaigns', value: statsLoading ? '...' : String(safeStats.activeCampaigns), icon: <CampaignIcon />, color: '#74909A', loading: statsLoading, error: statsError },
+    { label: 'Total Users', value: statsLoading ? '...' : String(safeStats.totalUsers), icon: <PeopleIcon />, color: TONES.maroon.text, loading: statsLoading, error: statsError },
+    { label: 'Pending Disputes', value: statsLoading ? '...' : String(safeStats.pendingDisputes), icon: <GavelIcon />, color: '#D3A95C', loading: statsLoading, error: statsError },
+    { label: 'Pending KYC', value: String(kycStats?.pending ?? 0), icon: <VerifiedUserIcon />, color: TONES.teal.text, loading: kycLoading, error: kycError },
+    { label: 'KYC Approved Today', value: String(kycStats?.approvedToday ?? 0), icon: <VerifiedUserIcon />, color: TONES.green.text, loading: kycLoading, error: kycError },
+    { label: 'KYC Rejected Today', value: String(kycStats?.rejectedToday ?? 0), icon: <VerifiedUserIcon />, color: '#C06B58', loading: kycLoading, error: kycError },
   ]
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        bgcolor: '#0c0c14',
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-    >
-      <Box sx={{ px: 3, pt: 3 }}>
-        <PageHeader
-          tone="green"
-          eyebrow="Operations"
-          title="Dashboard"
-          lede="Jump into any section of the console and keep a pulse on platform activity as it happens."
-          icon={<DashboardRoundedIcon />}
-        />
+    <Box sx={{ bgcolor: 'background.default' }}>
+      <PageHeader
+        tone="green"
+        eyebrow="Operations"
+        title="Dashboard"
+        lede="Jump into any section of the console and keep a pulse on platform activity."
+        icon={<DashboardRoundedIcon />}
+      />
+
+      {(statsError || kycError) && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {statsError && 'Platform statistics could not be loaded. '}
+          {kycError && 'KYC statistics could not be loaded. '}
+          Refresh the page to try again.
+        </Alert>
+      )}
+
+      <Box component="section" aria-labelledby="dashboard-sections" sx={{ mb: 4 }}>
+        <Typography id="dashboard-sections" component="h2" variant="h6" sx={{ mb: 2 }}>
+          Console sections
+        </Typography>
+        <Box
+          sx={{
+            display: 'grid',
+            gap: 3,
+            gridTemplateColumns: {
+              xs: 'minmax(0, 1fr)',
+              sm: 'repeat(2, minmax(0, 1fr))',
+              md: 'repeat(3, minmax(0, 1fr))',
+              lg: 'repeat(4, minmax(0, 1fr))',
+            },
+          }}
+        >
+          {tiles.map((tile) => (
+            <GridTile key={tile.route} tile={tile} loading={statsLoading} />
+          ))}
+        </Box>
       </Box>
 
-      {/* ═══ MAIN GRID — 4 columns, edge to edge ═══ */}
-      <Box
-        sx={{
-          flex: 1,
-          display: 'grid',
-          gridTemplateColumns: {
-            xs: 'repeat(1, 1fr)',
-            sm: 'repeat(2, 1fr)',
-            md: 'repeat(3, 1fr)',
-            lg: 'repeat(4, 1fr)',
-          },
-        }}
-      >
-        {tiles.map((tile, i) => (
-          <GridTile key={tile.route} tile={tile} index={i} />
-        ))}
-      </Box>
-
-      {/* ═══ STATS BAR — full width ═══ */}
-      <Box
-        sx={{
-          borderTop: `1px solid ${B}`,
-          display: 'grid',
-          gridTemplateColumns: {
-            xs: 'repeat(1, 1fr)',
-            sm: 'repeat(2, 1fr)',
-            md: 'repeat(3, 1fr)',
-            lg: 'repeat(4, 1fr)',
-          },
-        }}
-      >
-        {quickStats.map((s, i) => (
-          <StatCell
-            key={s.label}
-            label={s.label}
-            value={s.value}
-            icon={s.icon}
-            color={s.color}
-            index={i}
-            isLast={i === quickStats.length - 1}
-            fillPercent={s.fill}
-          />
-        ))}
+      <Box component="section" aria-labelledby="dashboard-stats">
+        <Typography id="dashboard-stats" component="h2" variant="h6" sx={{ mb: 2 }}>
+          Platform statistics
+        </Typography>
+        <Box
+          component="dl"
+          sx={{
+            m: 0,
+            display: 'grid',
+            gap: 3,
+            gridTemplateColumns: {
+              xs: 'minmax(0, 1fr)',
+              sm: 'repeat(2, minmax(0, 1fr))',
+              md: 'repeat(3, minmax(0, 1fr))',
+              lg: 'repeat(4, minmax(0, 1fr))',
+            },
+          }}
+        >
+          {quickStats.map((stat) => (
+            <StatCell
+              key={stat.label}
+              label={stat.label}
+              value={stat.error ? '—' : stat.value}
+              icon={stat.icon}
+              color={stat.color}
+              loading={stat.loading}
+            />
+          ))}
+        </Box>
       </Box>
     </Box>
   )

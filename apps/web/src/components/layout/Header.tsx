@@ -21,6 +21,7 @@ import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded'
 import RocketLaunchRoundedIcon from '@mui/icons-material/RocketLaunchRounded'
 import VolunteerActivismRoundedIcon from '@mui/icons-material/VolunteerActivismRounded'
 import AccountBalanceWalletRoundedIcon from '@mui/icons-material/AccountBalanceWalletRounded'
+import HandshakeRoundedIcon from '@mui/icons-material/HandshakeRounded'
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded'
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded'
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded'
@@ -254,11 +255,12 @@ export function Header() {
                   paper: {
                     sx: {
                       mt: 1,
-                      width: 260,
+                      width: 320,
+                      maxWidth: 'calc(100vw - 32px)',
                       borderRadius: '16px',
                       border: '1px solid #E7E3D8',
                       '& .MuiMenuItem-root': { py: 1, mx: 1, borderRadius: '10px' },
-                      '& .MuiListItemIcon-root': { color: '#5E8F72', minWidth: 34 },
+                      '& .MuiListItemIcon-root': { color: 'var(--text-success)', minWidth: 34 },
                     },
                   },
                 }}
@@ -290,31 +292,56 @@ export function Header() {
                 </Box>
                 <MenuItem onClick={() => { closeMenu(); navigate('/dashboard') }}>
                   <ListItemIcon><DashboardRoundedIcon sx={{ fontSize: 18 }} /></ListItemIcon>
-                  Dashboard
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography component="span" sx={{ display: 'block', fontWeight: 600, lineHeight: 1.4 }}>Dashboard</Typography>
+                    <Typography component="span" sx={{ display: 'block', mt: 0.25, fontSize: '0.75rem', lineHeight: 1.5, color: 'text.secondary', whiteSpace: 'normal' }}>See your activity at a glance.</Typography>
+                  </Box>
                 </MenuItem>
                 <MenuItem onClick={() => { closeMenu(); navigate('/my-campaigns') }}>
                   <ListItemIcon><RocketLaunchRoundedIcon sx={{ fontSize: 18 }} /></ListItemIcon>
-                  My Campaigns
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography component="span" sx={{ display: 'block', fontWeight: 600, lineHeight: 1.4 }}>My Campaigns</Typography>
+                    <Typography component="span" sx={{ display: 'block', mt: 0.25, fontSize: '0.75rem', lineHeight: 1.5, color: 'text.secondary', whiteSpace: 'normal' }}>Manage your fundraising campaigns.</Typography>
+                  </Box>
                 </MenuItem>
                 <MenuItem onClick={() => { closeMenu(); navigate('/donations') }}>
                   <ListItemIcon><VolunteerActivismRoundedIcon sx={{ fontSize: 18 }} /></ListItemIcon>
-                  My Donations
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography component="span" sx={{ display: 'block', fontWeight: 600, lineHeight: 1.4 }}>My Donations</Typography>
+                    <Typography component="span" sx={{ display: 'block', mt: 0.25, fontSize: '0.75rem', lineHeight: 1.5, color: 'text.secondary', whiteSpace: 'normal' }}>Review the causes you’ve supported.</Typography>
+                  </Box>
                 </MenuItem>
                 <MenuItem onClick={() => { closeMenu(); navigate('/wallet') }}>
                   <ListItemIcon><AccountBalanceWalletRoundedIcon sx={{ fontSize: 18 }} /></ListItemIcon>
-                  Wallet
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography component="span" sx={{ display: 'block', fontWeight: 600, lineHeight: 1.4 }}>Wallet</Typography>
+                    <Typography component="span" sx={{ display: 'block', mt: 0.25, fontSize: '0.75rem', lineHeight: 1.5, color: 'text.secondary', whiteSpace: 'normal' }}>View balances and transactions.</Typography>
+                  </Box>
+                </MenuItem>
+                <MenuItem onClick={() => { closeMenu(); navigate('/affiliate') }}>
+                  <ListItemIcon><HandshakeRoundedIcon sx={{ fontSize: 18 }} /></ListItemIcon>
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography component="span" sx={{ display: 'block', fontWeight: 600, lineHeight: 1.4 }}>Affiliate</Typography>
+                    <Typography component="span" sx={{ display: 'block', mt: 0.25, fontSize: '0.75rem', lineHeight: 1.5, color: 'text.secondary', whiteSpace: 'normal' }}>Track referrals and commissions.</Typography>
+                  </Box>
                 </MenuItem>
                 <MenuItem onClick={() => { closeMenu(); navigate('/settings') }}>
                   <ListItemIcon><SettingsRoundedIcon sx={{ fontSize: 18 }} /></ListItemIcon>
-                  Settings
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography component="span" sx={{ display: 'block', fontWeight: 600, lineHeight: 1.4 }}>Settings</Typography>
+                    <Typography component="span" sx={{ display: 'block', mt: 0.25, fontSize: '0.75rem', lineHeight: 1.5, color: 'text.secondary', whiteSpace: 'normal' }}>Manage your account preferences.</Typography>
+                  </Box>
                 </MenuItem>
                 <Divider />
                 <MenuItem
                   onClick={() => { closeMenu(); logout(); navigate('/') }}
-                  sx={{ color: '#A5432F', '&:hover': { bgcolor: 'rgba(165, 67, 47, 0.08)' } }}
+                  sx={{ color: 'var(--text-error)', '&:hover': { bgcolor: 'rgba(165, 67, 47, 0.08)' } }}
                 >
-                  <ListItemIcon><LogoutRoundedIcon sx={{ fontSize: 18, color: '#A5432F' }} /></ListItemIcon>
-                  Sign out
+                  <ListItemIcon><LogoutRoundedIcon sx={{ fontSize: 18, color: 'var(--text-error)' }} /></ListItemIcon>
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography component="span" sx={{ display: 'block', fontWeight: 600, lineHeight: 1.4 }}>Sign out</Typography>
+                    <Typography component="span" sx={{ display: 'block', mt: 0.25, fontSize: '0.75rem', lineHeight: 1.5, color: 'text.secondary', whiteSpace: 'normal' }}>Sign out of your account.</Typography>
+                  </Box>
                 </MenuItem>
               </Menu>
             </Box>
@@ -398,6 +425,7 @@ export function Header() {
                 { label: 'Dashboard', to: '/dashboard', icon: <DashboardRoundedIcon /> },
                 { label: 'Start Campaign', to: '/campaigns/new', icon: <RocketLaunchRoundedIcon /> },
                 { label: 'Wallet', to: '/wallet', icon: <AccountBalanceWalletRoundedIcon /> },
+                { label: 'Affiliate', to: '/affiliate', icon: <HandshakeRoundedIcon /> },
               ]
             : [
                 { label: 'Login', to: '/login', icon: <LoginRoundedIcon /> },

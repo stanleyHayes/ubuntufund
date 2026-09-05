@@ -1,8 +1,14 @@
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import type { DonationIntentEntity } from '../../../../domain/entities/DonationIntent.js';
 import type {
+  CreateTransferRecipientParams,
+  InitializeChargeParams,
+  InitiateTransferParams,
+  PaymentGatewayBalance,
+  PaymentGatewayBank,
   PaymentGatewayInitResult,
   PaymentGatewayPort,
+  PaymentGatewayTransferResult,
   PaymentGatewayVerifyResult,
 } from '../../../../domain/ports/outbound/PaymentGatewayPort.js';
 import { AppError } from '../../inbound/middleware/errorHandler.js';
@@ -35,6 +41,33 @@ interface PaystackVerifyData {
   amount: number;
   fees?: number;
   currency: string;
+  [key: string]: unknown;
+}
+
+interface PaystackBankData {
+  name: string;
+  code: string;
+  currency?: string;
+  type?: string;
+  active?: boolean;
+  [key: string]: unknown;
+}
+
+interface PaystackRecipientData {
+  recipient_code: string;
+  [key: string]: unknown;
+}
+
+interface PaystackTransferData {
+  transfer_code: string;
+  status: string;
+  reference: string;
+  [key: string]: unknown;
+}
+
+interface PaystackBalanceData {
+  currency: string;
+  balance: number;
   [key: string]: unknown;
 }
 
@@ -115,6 +148,51 @@ export class PaystackGateway implements PaymentGatewayPort {
     };
   }
 
+  async initializeCharge(
+    params: InitializeChargeParams
+  ): Promise<PaymentGatewayInitResult> {
+    if (!this.isConfigured()) {
+      throw new AppError('Payments are not configured', 501);
+    }
+    // Paystack requires an email to open a transaction.
+    if (!params.email) {
+      throw new AppError('An email is required to pay with Paystack', 400);
+    }
+
+    // Our own unique reference — echoed back by Paystack and stored as the
+    // charge's providerRef, so the later webhook correlates deterministically.
+    const reference = `${params.referencePrefix}-${randomUUID().slice(0, 8)}`;
+    // Charge amount, converted to pesewas (minor units).
+    const amount = Math.round(params.amount * 100);
+
+    const body = {
+      email: params.email,
+      amount,
+      currency: CURRENCY,
+      reference,
+      callback_url: `${this.config.publicWebUrl}${params.callbackPath ?? '/donate/callback'}`,
+      metadata: params.metadata,
+    };
+
+    const json = await this.request<PaystackInitData>(
+      'POST',
+      '/transaction/initialize',
+      body
+    );
+    if (!json.status || !json.data) {
+      throw new AppError(
+        `Paystack initialization failed: ${json.message ?? 'unknown error'}`,
+        502
+      );
+    }
+
+    return {
+      authorizationUrl: json.data.authorization_url,
+      accessCode: json.data.access_code,
+      reference: json.data.reference,
+    };
+  }
+
   async verifyTransaction(
     reference: string
   ): Promise<PaymentGatewayVerifyResult> {
@@ -161,6 +239,140 @@ export class PaystackGateway implements PaymentGatewayPort {
       return false;
     }
     return timingSafeEqual(expectedBuf, providedBuf);
+  }
+
+  // ── Payouts (Transfers) ──────────────────────────────────────────────────
+
+  async listBanks(
+    currency: string,
+    type?: string
+  ): Promise<PaymentGatewayBank[]> {
+    if (!this.isConfigured()) {
+      throw new AppError('Payments are not configured', 501);
+    }
+    const params = new URLSearchParams({ currency });
+    if (type) params.set('type', type);
+
+    const json = await this.request<PaystackBankData[]>(
+      'GET',
+      `/bank?${params.toString()}`
+    );
+    if (!json.status || !json.data) {
+      throw new AppError(
+        `Paystack bank listing failed: ${json.message ?? 'unknown error'}`,
+        502
+      );
+    }
+    return json.data.map((b) => ({
+      name: b.name,
+      code: b.code,
+      currency: b.currency,
+      type: b.type,
+      active: b.active,
+    }));
+  }
+
+  async createTransferRecipient(
+    params: CreateTransferRecipientParams
+  ): Promise<string> {
+    if (!this.isConfigured()) {
+      throw new AppError('Payments are not configured', 501);
+    }
+    const body = {
+      type: params.type,
+      name: params.name,
+      account_number: params.accountNumber,
+      bank_code: params.bankCode,
+      currency: params.currency ?? CURRENCY,
+    };
+    const json = await this.request<PaystackRecipientData>(
+      'POST',
+      '/transferrecipient',
+      body
+    );
+    if (!json.status || !json.data?.recipient_code) {
+      throw new AppError(
+        `Paystack recipient creation failed: ${json.message ?? 'unknown error'}`,
+        502
+      );
+    }
+    return json.data.recipient_code;
+  }
+
+  async initiateTransfer(
+    params: InitiateTransferParams
+  ): Promise<PaymentGatewayTransferResult> {
+    if (!this.isConfigured()) {
+      throw new AppError('Payments are not configured', 501);
+    }
+    const body = {
+      source: 'balance',
+      // Amount to Paystack is in pesewas (minor units).
+      amount: Math.round(params.amount * 100),
+      recipient: params.recipientCode,
+      reference: params.reference,
+      reason: params.reason,
+      currency: CURRENCY,
+    };
+    const json = await this.request<PaystackTransferData>(
+      'POST',
+      '/transfer',
+      body
+    );
+    if (!json.status || !json.data) {
+      throw new AppError(
+        `Paystack transfer failed: ${json.message ?? 'unknown error'}`,
+        502
+      );
+    }
+    return {
+      transferCode: json.data.transfer_code,
+      status: json.data.status,
+      reference: json.data.reference,
+      raw: json.data as Record<string, unknown>,
+    };
+  }
+
+  async verifyTransfer(
+    reference: string
+  ): Promise<PaymentGatewayTransferResult> {
+    if (!this.isConfigured()) {
+      throw new AppError('Payments are not configured', 501);
+    }
+    const json = await this.request<PaystackTransferData>(
+      'GET',
+      `/transfer/verify/${encodeURIComponent(reference)}`
+    );
+    if (!json.status || !json.data) {
+      throw new AppError(
+        `Paystack transfer verification failed: ${json.message ?? 'unknown error'}`,
+        502
+      );
+    }
+    return {
+      transferCode: json.data.transfer_code,
+      status: json.data.status,
+      reference: json.data.reference,
+      raw: json.data as Record<string, unknown>,
+    };
+  }
+
+  async getBalance(): Promise<PaymentGatewayBalance[]> {
+    if (!this.isConfigured()) {
+      throw new AppError('Payments are not configured', 501);
+    }
+    const json = await this.request<PaystackBalanceData[]>('GET', '/balance');
+    if (!json.status || !json.data) {
+      throw new AppError(
+        `Paystack balance lookup failed: ${json.message ?? 'unknown error'}`,
+        502
+      );
+    }
+    return json.data.map((b) => ({
+      currency: b.currency,
+      // Provider reports balances in pesewas (minor units).
+      balance: (Number(b.balance) || 0) / 100,
+    }));
   }
 
   /** Issue a request to the Paystack REST API and parse its JSON envelope. */

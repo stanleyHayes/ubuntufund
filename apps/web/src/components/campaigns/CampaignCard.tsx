@@ -29,11 +29,11 @@ const MEDIA_HEIGHT = 170
 const FOREST = '#2E3D2F'
 const FOREST_DARK = '#1C261D'
 const SAGE = '#A8B5A0'
-const INK = '#1A2E22'
-const INK_SECONDARY = '#4A5A50'
+const INK = 'text.primary'
+const INK_SECONDARY = 'text.secondary'
 const GOLD = '#C7A24A'
-const GOLD_DARK = '#A07E33'
-const SUCCESS = '#2F6B46'
+const GOLD_DARK = 'var(--text-warning)'
+const SUCCESS = 'var(--text-success)'
 const CLAY = '#A5432F'
 const WARN = '#B98A2E'
 
@@ -130,7 +130,7 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
   const urgent = daysLeft > 0 && daysLeft <= 7 && !funded
   const priorityTone =
     campaign.priority === 'critical' ? CLAY : campaign.priority === 'urgent' ? WARN : null
-  const fillColor = funded ? SUCCESS : FOREST
+  const fillColor = funded ? SUCCESS : 'primary.main'
 
   async function copyLink() {
     try {
@@ -180,7 +180,7 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
           zIndex: 3,
           width: 30,
           height: 30,
-          color: FOREST,
+          color: 'text.primary',
           bgcolor: 'var(--neu-surface)',
         }}
       >
@@ -355,7 +355,7 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
                   {supporters > 0 ? supporters.toLocaleString() : 'Be first'}
                 </Typography>
               </Box>
-              <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, color: urgent ? CLAY : INK_SECONDARY }}>
+              <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, color: urgent ? 'error.main' : INK_SECONDARY }}>
                 <ScheduleRoundedIcon sx={{ fontSize: 16 }} />
                 <Typography component="span" sx={{ fontSize: '0.78rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
                   {daysLabel}

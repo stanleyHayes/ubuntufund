@@ -78,6 +78,52 @@ export interface UpgradeSubscriptionInput {
   billingCycle?: BillingCycle
 }
 
+// ── Paid-subscription Paystack checkout rail ────────────────────────────────
+// Mirrors DonationIntent: create a PENDING checkout, redirect to Paystack, and
+// settle it (activate the subscription, redeem the coupon, award the affiliate
+// commission) exactly once from the signed webhook's charge.success.
+
+export enum SubscriptionCheckoutStatus {
+  PENDING = 'pending',
+  SUCCEEDED = 'succeeded',
+  FAILED = 'failed',
+  EXPIRED = 'expired',
+}
+
+export interface CreateSubscriptionCheckoutInput {
+  tier: SubscriptionTier // must be a paid tier
+  billingCycle: BillingCycle
+  couponCode?: string
+}
+
+export interface SubscriptionCheckout {
+  id: string
+  userId: string
+  tier: SubscriptionTier
+  billingCycle: BillingCycle
+  status: SubscriptionCheckoutStatus
+  baseAmount: number
+  discountAmount: number
+  finalAmount: number
+  currency: string
+  couponId?: string
+  couponCode?: string
+  providerRef?: string
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface SubscriptionCheckoutResult {
+  checkout: SubscriptionCheckout
+  /** Present when a Paystack charge is required; absent when finalAmount is 0 (activated immediately). */
+  authorizationUrl?: string
+  accessCode?: string
+  reference?: string
+  /** True when a 100%/fixed coupon zeroed the price and the subscription was activated with no charge. */
+  activatedWithoutCharge?: boolean
+  preview: { baseAmount: number; discountAmount: number; finalAmount: number; currency: string }
+}
+
 /** The plan limits that should be enforced */
 export interface PlanLimits {
   tier: SubscriptionTier
@@ -150,7 +196,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
     customBranding: false,
     maxMediaPerCampaign: 25,
     escrowSupport: false,
-    liveStreaming: false,
+    liveStreaming: true,
     maxTeamMembers: 5,
     campaignCollaboration: true,
     maxCollaboratorsPerCampaign: 3,
@@ -170,7 +216,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
     customBranding: false,
     maxMediaPerCampaign: -1, // unlimited
     escrowSupport: false,
-    liveStreaming: false,
+    liveStreaming: true,
     maxTeamMembers: -1, // unlimited
     campaignCollaboration: true,
     maxCollaboratorsPerCampaign: -1, // unlimited

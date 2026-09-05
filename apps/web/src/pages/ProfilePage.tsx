@@ -494,7 +494,7 @@ export function ProfilePage() {
                     }}
                   >
                     <Typography sx={{ fontSize: '1.2rem' }}>{badge.icon}</Typography>
-                    <Typography sx={{ fontSize: '0.78rem', fontWeight: 700, color: '#5D4037' }}>{badge.label}</Typography>
+                    <Typography sx={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)' }}>{badge.label}</Typography>
                   </Box>
                 </Tooltip>
               ))}
@@ -514,7 +514,7 @@ export function ProfilePage() {
         >
           <CardContent sx={{ p: 3 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
-              <TrendingUpRoundedIcon sx={{ color: '#2E3D2F' }} />
+              <TrendingUpRoundedIcon sx={{ color: 'var(--text-brand)' }} />
               <Typography sx={{ fontWeight: 700, fontSize: '1rem' }}>Interested Categories</Typography>
             </Box>
             <Typography sx={{ fontSize: '0.82rem', color: 'text.secondary', mb: 2 }}>

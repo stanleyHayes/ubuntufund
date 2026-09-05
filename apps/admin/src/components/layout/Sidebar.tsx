@@ -30,6 +30,8 @@ import QuizRoundedIcon from '@mui/icons-material/QuizRounded'
 import InfoRoundedIcon from '@mui/icons-material/InfoRounded'
 import ContactMailRoundedIcon from '@mui/icons-material/ContactMailRounded'
 import LayersRoundedIcon from '@mui/icons-material/LayersRounded'
+import LocalOfferRoundedIcon from '@mui/icons-material/LocalOfferRounded'
+import ShareRoundedIcon from '@mui/icons-material/ShareRounded'
 import AccountBalanceRoundedIcon from '@mui/icons-material/AccountBalanceRounded'
 import AdminPanelSettingsRoundedIcon from '@mui/icons-material/AdminPanelSettingsRounded'
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded'
@@ -46,6 +48,7 @@ interface NavItem {
 }
 
 interface NavGroup {
+  icon: React.ReactNode
   heading: string
   items: NavItem[]
 }
@@ -53,6 +56,7 @@ interface NavGroup {
 const NAV_GROUPS: NavGroup[] = [
   {
     heading: 'Operations',
+    icon: <DashboardRoundedIcon />,
     items: [
       { label: 'Dashboard', path: '/', icon: <DashboardRoundedIcon /> },
       { label: 'Overview', path: '/overview', icon: <InsightsRoundedIcon /> },
@@ -62,6 +66,7 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     heading: 'Community',
+    icon: <PeopleRoundedIcon />,
     items: [
       { label: 'Campaigns', path: '/campaigns', icon: <RocketLaunchRoundedIcon /> },
       { label: 'Users', path: '/users', icon: <PeopleRoundedIcon /> },
@@ -71,6 +76,7 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     heading: 'Trust & Safety',
+    icon: <VerifiedUserRoundedIcon />,
     items: [
       { label: 'Disputes', path: '/disputes', icon: <GavelRoundedIcon /> },
       { label: 'Verifications', path: '/verifications', icon: <VerifiedUserRoundedIcon /> },
@@ -80,6 +86,7 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     heading: 'Growth',
+    icon: <InsightsRoundedIcon />,
     items: [
       { label: 'Newsletter', path: '/newsletter', icon: <MarkEmailReadRoundedIcon /> },
       { label: 'Testimonials', path: '/testimonials', icon: <FormatQuoteRoundedIcon /> },
@@ -88,6 +95,7 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     heading: 'Content',
+    icon: <HistoryEduRoundedIcon />,
     items: [
       { label: 'Homepage Stats', path: '/content/stats', icon: <QueryStatsRoundedIcon /> },
       { label: 'FAQ', path: '/content/faq', icon: <QuizRoundedIcon /> },
@@ -97,8 +105,11 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     heading: 'Platform',
+    icon: <AdminPanelSettingsRoundedIcon />,
     items: [
       { label: 'Plans', path: '/plans', icon: <LayersRoundedIcon /> },
+      { label: 'Coupons', path: '/coupons', icon: <LocalOfferRoundedIcon /> },
+      { label: 'Affiliates', path: '/affiliates', icon: <ShareRoundedIcon /> },
       { label: 'Payment Providers', path: '/payment-providers', icon: <AccountBalanceRoundedIcon /> },
       { label: 'Roles', path: '/roles', icon: <AdminPanelSettingsRoundedIcon /> },
     ],
@@ -110,7 +121,14 @@ function isPathActive(pathname: string, path: string): boolean {
   return pathname === path || pathname.startsWith(`${path}/`)
 }
 
-export default function Sidebar() {
+interface SidebarProps {
+  /** Mobile temporary-drawer open state (ignored by the permanent desktop drawer). */
+  mobileOpen?: boolean
+  /** Close the mobile drawer — on backdrop click and after selecting a nav item. */
+  onClose?: () => void
+}
+
+export default function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
   const location = useLocation()
   const navigate = useNavigate()
   const { user, logout } = useAuth()
@@ -136,24 +154,8 @@ export default function Sidebar() {
     .join('')
     .toUpperCase()
 
-  return (
-    <Drawer
-      variant="permanent"
-      data-tour="sidebar"
-      sx={{
-        width: DRAWER_WIDTH,
-        flexShrink: 0,
-        '& .MuiDrawer-paper': {
-          width: DRAWER_WIDTH,
-          boxSizing: 'border-box',
-          bgcolor: '#101B15',
-          borderRight: 0,
-          boxShadow: '8px 0 22px rgba(0,0,0,0.28)',
-          display: 'flex',
-          flexDirection: 'column',
-        },
-      }}
-    >
+  const content = (
+    <>
       {/* Brand */}
       <Box sx={{ px: 2.5, py: 2.25, display: 'flex', alignItems: 'center', gap: 1.5 }}>
         <BrandLogo size={38} withWordmark={false} />
@@ -214,6 +216,17 @@ export default function Sidebar() {
                 }}
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box
+                    aria-hidden="true"
+                    sx={{
+                      display: 'flex',
+                      flexShrink: 0,
+                      color: groupActive ? '#C7A24A' : '#A9925E',
+                      '& svg': { fontSize: 18 },
+                    }}
+                  >
+                    {group.icon}
+                  </Box>
                   <Typography
                     sx={{
                       fontSize: '0.62rem',
@@ -250,21 +263,42 @@ export default function Sidebar() {
               </Box>
 
               <Collapse in={open} timeout={200}>
-                <Box sx={{ mt: 0.25 }}>
+                <Box sx={{ mt: 0.25, pl: 3.5 }}>
                   {group.items.map((item) => {
                     const active = isPathActive(location.pathname, item.path)
                     return (
                       <Box
                         key={item.path}
                         component="button"
-                        onClick={() => navigate(item.path)}
+                        onClick={() => { navigate(item.path); onClose?.() }}
                         aria-current={active ? 'page' : undefined}
                         sx={{
                           all: 'unset',
                           cursor: 'pointer',
+                          position: 'relative',
+                          // Connect each row to the group icon; stop at the final branch.
+                          '&::before': {
+                            content: '""',
+                            position: 'absolute',
+                            pointerEvents: 'none',
+                            left: -11,
+                            top: -2,
+                            bottom: -2,
+                            borderLeft: '2px solid #887B55',
+                          },
+                          '&:last-child::before': { bottom: '50%' },
+                          '&::after': {
+                            content: '""',
+                            position: 'absolute',
+                            pointerEvents: 'none',
+                            left: -11,
+                            top: 'calc(50% - 1px)',
+                            width: 11,
+                            borderTop: active ? '2px solid #C7A24A' : '2px solid #887B55',
+                          },
                           display: 'flex',
                           alignItems: 'center',
-                          gap: 1.25,
+                          gap: 1,
                           width: '100%',
                           boxSizing: 'border-box',
                           px: 1,
@@ -306,7 +340,7 @@ export default function Sidebar() {
                         </Box>
                         <Typography
                           sx={{
-                            fontSize: '0.855rem',
+                            fontSize: '0.8rem',
                             fontWeight: 600,
                             color: active ? ON_FILL : 'text.primary',
                           }}
@@ -360,6 +394,48 @@ export default function Sidebar() {
           </IconButton>
         </Tooltip>
       </Box>
-    </Drawer>
+    </>
+  )
+
+  const paperSx = {
+    width: DRAWER_WIDTH,
+    boxSizing: 'border-box',
+    bgcolor: '#101B15',
+    borderRight: 0,
+    boxShadow: '8px 0 22px rgba(0,0,0,0.28)',
+    display: 'flex',
+    flexDirection: 'column',
+  } as const
+
+  return (
+    <>
+      {/* Desktop: permanent rail */}
+      <Drawer
+        variant="permanent"
+        data-tour="sidebar"
+        sx={{
+          display: { xs: 'none', md: 'block' },
+          width: DRAWER_WIDTH,
+          flexShrink: 0,
+          '& .MuiDrawer-paper': paperSx,
+        }}
+      >
+        {content}
+      </Drawer>
+
+      {/* Mobile: temporary overlay opened by the TopBar hamburger */}
+      <Drawer
+        variant="temporary"
+        open={mobileOpen}
+        onClose={onClose}
+        ModalProps={{ keepMounted: true }}
+        sx={{
+          display: { xs: 'block', md: 'none' },
+          '& .MuiDrawer-paper': paperSx,
+        }}
+      >
+        {content}
+      </Drawer>
+    </>
   )
 }

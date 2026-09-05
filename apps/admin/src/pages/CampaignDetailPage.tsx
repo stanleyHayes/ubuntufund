@@ -1,3 +1,4 @@
+import { BrandedDatePicker } from '@ubuntu-fund/ui'
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Box, Typography, Chip, TextField, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material'
@@ -505,7 +506,7 @@ export default function CampaignDetailPage() {
           <TextField label="Category" defaultValue={campaign?.category} id="admin-edit-category" fullWidth sx={{ '& .MuiInputBase-root': { color: '#fff', bgcolor: 'rgba(255,255,255,0.03)' } }} />
           <TextField label="Priority" defaultValue={campaign?.priority} id="admin-edit-priority" fullWidth sx={{ '& .MuiInputBase-root': { color: '#fff', bgcolor: 'rgba(255,255,255,0.03)' } }} />
           <TextField label="Beneficiaries (comma separated)" defaultValue={campaign?.beneficiaries?.join(', ')} id="admin-edit-beneficiaries" fullWidth sx={{ '& .MuiInputBase-root': { color: '#fff', bgcolor: 'rgba(255,255,255,0.03)' } }} />
-          <TextField label="End Date" type="datetime-local" defaultValue={campaign?.endDate ? new Date(campaign.endDate).toISOString().slice(0, 16) : ''} id="admin-edit-endDate" fullWidth sx={{ '& .MuiInputBase-root': { color: '#fff', bgcolor: 'rgba(255,255,255,0.03)' } }} InputLabelProps={{ shrink: true }} />
+          <BrandedDatePicker label="End Date" mode="datetime" defaultValue={campaign?.endDate ? new Date(campaign.endDate).toISOString() : ''} id="admin-edit-endDate" fullWidth sx={{ '& .MuiInputBase-root': { color: '#fff', bgcolor: 'rgba(255,255,255,0.03)' } }}  />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setEditOpen(false)} sx={{ color: '#A0A0B0' }}>Cancel</Button>

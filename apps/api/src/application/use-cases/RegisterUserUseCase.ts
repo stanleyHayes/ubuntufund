@@ -7,6 +7,7 @@ import {
   WalletType,
   KYCStatus,
   KYCLevel,
+  AffiliateStatus,
 } from '@ubuntu-fund/types';
 import * as bcrypt from 'bcryptjs';
 import { UserEntity } from '../../domain/entities/User.js';
@@ -16,14 +17,21 @@ import { TrustScore } from '../../domain/value-objects/TrustScore.js';
 import { Money } from '../../domain/value-objects/Money.js';
 import type { UserRepositoryPort } from '../../domain/ports/outbound/UserRepositoryPort.js';
 import type { WalletRepositoryPort } from '../../domain/ports/outbound/WalletRepositoryPort.js';
+import type { AffiliateRepositoryPort } from '../../domain/ports/outbound/AffiliateRepositoryPort.js';
+import type { AffiliateReferralRepositoryPort } from '../../domain/ports/outbound/AffiliateReferralRepositoryPort.js';
 import type { AuthTokenService } from '../services/AuthTokenService.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
+import { logger } from '../../infrastructure/logging/logger.js';
 
 export class RegisterUserUseCase {
   constructor(
     private readonly userRepo: UserRepositoryPort,
     private readonly walletRepo: WalletRepositoryPort,
-    private readonly tokenService: AuthTokenService
+    private readonly tokenService: AuthTokenService,
+    // Optional: when wired, a `?ref=` referral code on signup links the new user
+    // to the referrer's affiliate. Absent, referral capture is simply skipped.
+    private readonly affiliateRepo?: AffiliateRepositoryPort,
+    private readonly affiliateReferralRepo?: AffiliateReferralRepositoryPort
   ) {}
 
   async execute(
@@ -71,6 +79,41 @@ export class RegisterUserUseCase {
     });
 
     await this.walletRepo.save(wallet);
+
+    // Capture an affiliate referral from a `?ref=` code, best-effort: a bad,
+    // self-, or suspended-affiliate code (or a duplicate referral) must never
+    // block signup, so any failure here is swallowed and logged.
+    if (
+      input.referralCode &&
+      this.affiliateRepo &&
+      this.affiliateReferralRepo
+    ) {
+      try {
+        const affiliate = await this.affiliateRepo.findByReferralCode(
+          input.referralCode
+        );
+        if (
+          affiliate &&
+          affiliate.userId !== savedUser.id && // no self-referral
+          affiliate.status !== AffiliateStatus.SUSPENDED // suspended affiliates earn nothing
+        ) {
+          await this.affiliateReferralRepo.create({
+            id: '', // assigned by the repository
+            referrerId: affiliate.id,
+            refereeId: savedUser.id, // unique: a user is referred at most once
+            referralCode: affiliate.referralCode,
+            status: 'pending',
+            createdAt: now,
+            updatedAt: now,
+          });
+        }
+      } catch (err) {
+        logger.warn(
+          { err, referralCode: input.referralCode, userId: savedUser.id },
+          'failed to capture affiliate referral at signup'
+        );
+      }
+    }
 
     const tokens = this.tokenService.generateTokens({
       userId: savedUser.id,

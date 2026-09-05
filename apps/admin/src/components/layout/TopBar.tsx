@@ -17,6 +17,7 @@ import {
 } from '@mui/material'
 import { alpha, styled } from '@mui/material/styles'
 import SearchIcon from '@mui/icons-material/Search'
+import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
 import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded'
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded'
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded'
@@ -65,7 +66,7 @@ const StyledInputBase = styled(InputBase)(({ theme }) => ({
   },
 }))
 
-export default function TopBar({ onReplayTour }: { onReplayTour: () => void }) {
+export default function TopBar({ onReplayTour, onOpenNav }: { onReplayTour: () => void; onOpenNav?: () => void }) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const [unread, setUnread] = useState(0)
   const navigate = useNavigate()
@@ -106,8 +107,8 @@ export default function TopBar({ onReplayTour }: { onReplayTour: () => void }) {
       position="fixed"
       elevation={0}
       sx={{
-        width: `calc(100% - ${DRAWER_WIDTH}px)`,
-        ml: `${DRAWER_WIDTH}px`,
+        width: { xs: '100%', md: `calc(100% - ${DRAWER_WIDTH}px)` },
+        ml: { xs: 0, md: `${DRAWER_WIDTH}px` },
         bgcolor: 'transparent',
       }}
     >
@@ -126,6 +127,7 @@ export default function TopBar({ onReplayTour }: { onReplayTour: () => void }) {
       >
         <Typography
           sx={{
+            display: { xs: 'none', sm: 'block' },
             fontSize: '0.6rem',
             fontWeight: 700,
             textTransform: 'uppercase',
@@ -164,12 +166,23 @@ export default function TopBar({ onReplayTour }: { onReplayTour: () => void }) {
           borderBottom: `1px solid ${HAIRLINE}`,
         }}
       >
-        <Search data-tour="search">
-          <SearchIconWrapper>
-            <SearchIcon />
-          </SearchIconWrapper>
-          <StyledInputBase placeholder="Search campaigns, users, donations..." />
-        </Search>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0, flexGrow: { xs: 1, sm: 0 } }}>
+          <IconButton
+            edge="start"
+            color="inherit"
+            aria-label="Open navigation menu"
+            onClick={onOpenNav}
+            sx={{ display: { xs: 'inline-flex', md: 'none' } }}
+          >
+            <MenuRoundedIcon />
+          </IconButton>
+          <Search data-tour="search" sx={{ width: { xs: '100%', sm: 320 }, flexGrow: { xs: 1, sm: 0 } }}>
+            <SearchIconWrapper>
+              <SearchIcon />
+            </SearchIconWrapper>
+            <StyledInputBase placeholder="Search campaigns, users, donations..." sx={{ width: '100%' }} />
+          </Search>
+        </Box>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <IconButton

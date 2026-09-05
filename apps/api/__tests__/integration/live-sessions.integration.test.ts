@@ -11,12 +11,20 @@ import {
 import { UserModel } from '../../src/infrastructure/database/models/UserModel.js';
 import { CampaignModel } from '../../src/infrastructure/database/models/CampaignModel.js';
 import { WalletModel } from '../../src/infrastructure/database/models/WalletModel.js';
+import { SubscriptionModel } from '../../src/infrastructure/database/models/SubscriptionModel.js';
 import {
   eventBus,
   campaignChannel,
   liveChannel,
 } from '../../src/infrastructure/realtime/EventBus.js';
-import { CampaignCategory, CampaignPriority, PaymentMethod } from '@ubuntu-fund/types';
+import {
+  CampaignCategory,
+  CampaignPriority,
+  PaymentMethod,
+  SubscriptionTier,
+  SubscriptionStatus,
+  BillingCycle,
+} from '@ubuntu-fund/types';
 
 function uniqueEmail(label: string): string {
   return `${label}-${randomUUID()}@example.com`;
@@ -33,6 +41,28 @@ async function registerUser(app: Express, email: string) {
   };
 }
 
+/**
+ * Seeds an active subscription for a user (upsert — safe to call repeatedly).
+ * LIVE streaming is a plan feature, so a session owner needs a plan that
+ * includes it (Pro or Enterprise).
+ */
+async function seedSubscription(userId: string, tier: SubscriptionTier): Promise<void> {
+  const now = new Date();
+  await SubscriptionModel.findOneAndUpdate(
+    { userId },
+    {
+      userId,
+      tier,
+      status: SubscriptionStatus.ACTIVE,
+      billingCycle: BillingCycle.MONTHLY,
+      currentPeriodStart: now,
+      currentPeriodEnd: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
+      cancelAtPeriodEnd: false,
+    },
+    { upsert: true, new: true }
+  );
+}
+
 async function createActiveCampaign(
   app: Express,
   token: string,
@@ -40,6 +70,8 @@ async function createActiveCampaign(
   overrides: Partial<Record<string, unknown>> = {}
 ): Promise<string> {
   await UserModel.findByIdAndUpdate(userId, { verificationLevel: 2 });
+  // Owners in these tests go LIVE, so give them a Pro plan (liveStreaming).
+  await seedSubscription(userId, SubscriptionTier.PRO);
   const res = await request(app)
     .post('/api/v1/campaigns')
     .set('Authorization', `Bearer ${token}`)
@@ -101,6 +133,36 @@ describe('Live sessions + realtime projector', () => {
       successfulDonations: 0,
       amountRaised: 0,
     });
+  });
+
+  it('forbids a Free-plan owner from starting a session (plan gate)', async () => {
+    // Build an active campaign for the owner WITHOUT a live-capable plan.
+    const { userId, token } = await registerUser(app, uniqueEmail('freehost'));
+    await UserModel.findByIdAndUpdate(userId, { verificationLevel: 2 });
+    const created = await request(app)
+      .post('/api/v1/campaigns')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        title: 'Free Plan Campaign',
+        description: 'A campaign whose owner is on the Free plan.',
+        goalAmount: 400,
+        currency: 'GHS',
+        category: CampaignCategory.COMMUNITY,
+        priority: CampaignPriority.NORMAL,
+        beneficiaries: [],
+        endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      })
+      .expect(201);
+    const campaignId = created.body.data.id as string;
+    await CampaignModel.findByIdAndUpdate(campaignId, { status: 'active' });
+
+    const res = await request(app)
+      .post(`/api/v1/campaigns/${campaignId}/live-sessions`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Should Be Blocked' });
+
+    expect(res.status).toBe(403);
+    expect(res.body.message).toMatch(/LIVE streaming/i);
   });
 
   it('forbids a non-owner from starting a session', async () => {

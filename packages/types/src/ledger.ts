@@ -16,6 +16,9 @@
  * - `platform_fee`  — the platform's revenue cut + any donor tip
  * - `processor_fee` — the payment processor's fee (e.g. Paystack)
  * - `tip`           — the donor's optional tip inflow to the platform
+ * - `payout`        — beneficiary funds disbursed out of the platform (a payout
+ *                     debits `beneficiary` and credits `payout`; a reversal
+ *                     posts the opposite balanced entry)
  */
 export type LedgerAccountKind =
   | 'campaign'
@@ -23,6 +26,7 @@ export type LedgerAccountKind =
   | 'processor_fee'
   | 'tip'
   | 'beneficiary'
+  | 'payout'
 
 /**
  * A single account in the chart of accounts. Identified by its `kind` plus an

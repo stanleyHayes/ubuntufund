@@ -18,7 +18,6 @@ export function ColorModeProvider({ children }: { children: ReactNode }) {
   const setDarkMode = useCallback((enabled: boolean) => {
     setDarkModeState(enabled)
     localStorage.setItem('uf_color_mode', enabled ? 'dark' : 'light')
-    document.documentElement.style.colorScheme = enabled ? 'dark' : 'light'
   }, [])
 
   return (

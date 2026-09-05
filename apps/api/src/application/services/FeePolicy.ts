@@ -29,8 +29,8 @@ function round2(n: number): number {
 export class FeePolicy {
   constructor(private readonly config: FeePolicyConfig) {}
 
-  private platformFee(amount: number): number {
-    return round2((amount * this.config.platformFeePercent) / 100);
+  private platformFee(amount: number, platformFeePercent: number): number {
+    return round2((amount * platformFeePercent) / 100);
   }
 
   private processorFee(amount: number, provider: DonationProvider): number {
@@ -43,11 +43,12 @@ export class FeePolicy {
     amount: number,
     tip: number,
     currency: string,
-    provider: DonationProvider
+    provider: DonationProvider,
+    platformFeePercent: number = this.config.platformFeePercent
   ): DonationSettlementBreakdown {
     const roundedAmount = round2(amount);
     const roundedTip = round2(tip);
-    const platformFee = this.platformFee(roundedAmount);
+    const platformFee = this.platformFee(roundedAmount, platformFeePercent);
     const processorFee = this.processorFee(roundedAmount, provider);
     const beneficiaryNet = round2(roundedAmount - platformFee - processorFee);
 
@@ -72,7 +73,8 @@ export class FeePolicy {
    * (amount + tip) and `processorFee` is the provider's real fee — both come
    * from the verified webhook/verification, not from this policy's estimates.
    * The campaign-directed `amount` is `gross - tip`; the platform fee is still
-   * applied per policy on that amount.
+   * applied per policy on that amount. `platformFeePercent` overrides the
+   * policy default so callers can apply the campaign creator's plan rate.
    */
   computeSettlementFromProvider(params: {
     gross: number;
@@ -80,12 +82,16 @@ export class FeePolicy {
     processorFee: number;
     currency: string;
     providerRef?: string;
+    platformFeePercent?: number;
   }): DonationSettlementBreakdown {
     const gross = round2(params.gross);
     const tip = round2(params.tip);
     const processorFee = round2(params.processorFee);
     const amount = round2(gross - tip);
-    const platformFee = this.platformFee(amount);
+    const platformFee = this.platformFee(
+      amount,
+      params.platformFeePercent ?? this.config.platformFeePercent
+    );
     const beneficiaryNet = round2(amount - platformFee - processorFee);
 
     if (beneficiaryNet < 0) {

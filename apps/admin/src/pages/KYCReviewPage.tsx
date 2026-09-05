@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
-import { Box, Typography, TextField, MenuItem, Button, Dialog } from '@mui/material'
-import { keyframes } from '@mui/system'
+import { Alert, Skeleton, Box, Typography, TextField, MenuItem, Button, Dialog } from '@mui/material'
+import { raisedSurface, insetSurface } from '@/lib/surfaces'
 import SearchIcon from '@mui/icons-material/Search'
 import InputAdornment from '@mui/material/InputAdornment'
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser'
@@ -11,32 +11,28 @@ import { api } from '@/lib/api'
 import { Resource, Action } from '@ubuntu-fund/types'
 import { useAdminPermissions } from '@/context/AdminPermissionContext'
 import KYCDetailDialog from '@/components/kyc/KYCDetailDialog'
+import { usePagination } from '@/hooks/usePagination'
+import PaginationBar from '@/components/PaginationBar'
 import PageHeader from '@/components/PageHeader'
 
-const fadeIn = keyframes`from{opacity:0}to{opacity:1}`
-const slideIn = keyframes`from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}`
-const B = 'rgba(255,255,255,0.06)'
 const PAGE_SIZE = 9
 
 function Skel({ w, h }: { w?: string | number; h?: number }) {
   return (
-    <Box sx={{
-      width: w || '100%', height: h || 14,
-      bgcolor: 'rgba(255,255,255,0.04)',
-    }} />
+    <Skeleton variant="rounded" width={w ?? '100%'} height={h ?? 14} />
   )
 }
 
 const statusColors: Record<string, string> = {
   pending: '#D3A95C',
   in_review: '#74909A',
-  approved: '#5E8F72',
+  approved: '#8FAE96',
   rejected: '#C06B58',
   expired: '#9E9E9E',
 }
 
 const riskColors: Record<string, string> = {
-  low: '#5E8F72',
+  low: '#8FAE96',
   medium: '#D3A95C',
   high: '#C06B58',
 }
@@ -50,13 +46,11 @@ const typeLabels: Record<string, string> = {
 }
 
 export default function KYCReviewPage() {
-  const { data: kycVerifications, isLoading: loading } = useAdminKYCVerifications()
+  const { data: kycVerifications, isLoading: loading, error } = useAdminKYCVerifications()
   const { can } = useAdminPermissions()
   const [statusFilter, setStatusFilter] = useState('all')
   const [typeFilter, setTypeFilter] = useState('all')
   const [search, setSearch] = useState('')
-  const [page, setPage] = useState(0)
-  const [perPage] = useState(PAGE_SIZE)
   const [localStatuses, setLocalStatuses] = useState<Record<string, string>>({})
   const [selected, setSelected] = useState<KYCVerification | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
@@ -74,7 +68,7 @@ export default function KYCReviewPage() {
     })
   }, [kycVerifications, statusFilter, typeFilter, search, localStatuses])
 
-  const paginated = filtered.slice(page * perPage, (page + 1) * perPage)
+  const pagination = usePagination(filtered, PAGE_SIZE)
 
   const handleAction = (id: string, action: string) => {
     // Optimistically reflect the decision in the queue for a responsive UX.
@@ -96,7 +90,7 @@ export default function KYCReviewPage() {
   const rejectedToday = kycVerifications.filter(v => v.status === 'rejected' && v.reviewedAt && new Date(v.reviewedAt).toDateString() === new Date().toDateString()).length
 
   return (
-    <Box sx={{ bgcolor: '#0c0c14', minHeight: '100vh', animation: `${fadeIn} 0.4s ease` }}>
+    <Box sx={{ bgcolor: 'background.default', }}>
       <PageHeader
         tone="clay"
         eyebrow="Trust & Safety"
@@ -104,31 +98,27 @@ export default function KYCReviewPage() {
         lede="Review identity, address, and business KYC submissions with risk scoring, then approve, reject, or request more information."
         icon={<BadgeRoundedIcon />}
         stats={[
-          { label: 'Pending', value: pendingCount },
-          { label: 'Approved Today', value: approvedToday },
-          { label: 'Rejected Today', value: rejectedToday },
+          { label: 'Pending', value: loading ? <Skeleton width={60} /> : error ? '—' : pendingCount },
+          { label: 'Approved Today', value: loading ? <Skeleton width={60} /> : error ? '—' : approvedToday },
+          { label: 'Rejected Today', value: loading ? <Skeleton width={60} /> : error ? '—' : rejectedToday },
         ]}
       />
+
+      {error && <Alert severity="error" sx={{ mb: 3 }}>Could not load verifications. Refresh the page to try again.</Alert>}
 
       {/* Filter bar */}
       <Box sx={{
         display: 'grid',
-        gridTemplateColumns: { xs: '1fr', sm: '160px 160px 1fr auto' },
-        borderBottom: `1px solid ${B}`,
+        mb: 3, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', lg: '160px 160px minmax(0, 1fr) auto' },
+        ...raisedSurface,
       }}>
-        <Box sx={{ p: 2, borderRight: { sm: `1px solid ${B}` } }}>
+        <Box sx={{ p: 2, minWidth: 0 }}>
           <TextField
             select
             fullWidth
             size="small"
             value={statusFilter}
-            onChange={e => { setStatusFilter(e.target.value); setPage(0) }}
-            sx={{
-              '& .MuiOutlinedInput-root': { bgcolor: 'rgba(255,255,255,0.02)', color: '#fff', fontSize: '0.82rem' },
-              '& .MuiOutlinedInput-notchedOutline': { borderColor: B },
-              '& .MuiInputLabel-root': { color: 'rgba(255,255,255,0.3)' },
-              '& .MuiSvgIcon-root': { color: 'rgba(255,255,255,0.3)' },
-            }}
+            onChange={e => { setStatusFilter(e.target.value) }}
             label="Status"
           >
             <MenuItem value="all">All Statuses</MenuItem>
@@ -139,19 +129,13 @@ export default function KYCReviewPage() {
             <MenuItem value="expired">Expired</MenuItem>
           </TextField>
         </Box>
-        <Box sx={{ p: 2, borderRight: { sm: `1px solid ${B}` } }}>
+        <Box sx={{ p: 2, minWidth: 0 }}>
           <TextField
             select
             fullWidth
             size="small"
             value={typeFilter}
-            onChange={e => { setTypeFilter(e.target.value); setPage(0) }}
-            sx={{
-              '& .MuiOutlinedInput-root': { bgcolor: 'rgba(255,255,255,0.02)', color: '#fff', fontSize: '0.82rem' },
-              '& .MuiOutlinedInput-notchedOutline': { borderColor: B },
-              '& .MuiInputLabel-root': { color: 'rgba(255,255,255,0.3)' },
-              '& .MuiSvgIcon-root': { color: 'rgba(255,255,255,0.3)' },
-            }}
+            onChange={e => { setTypeFilter(e.target.value) }}
             label="Type"
           >
             <MenuItem value="all">All Types</MenuItem>
@@ -162,29 +146,26 @@ export default function KYCReviewPage() {
             <MenuItem value="media">Media</MenuItem>
           </TextField>
         </Box>
-        <Box sx={{ p: 2, borderRight: { sm: `1px solid ${B}` } }}>
+        <Box sx={{ p: 2, minWidth: 0 }}>
           <TextField
             fullWidth
             size="small"
             placeholder="Search KYC verifications..."
+            slotProps={{ htmlInput: { 'aria-label': 'Search KYC verifications...' } }}
             value={search}
-            onChange={e => { setSearch(e.target.value); setPage(0) }}
+            onChange={e => { setSearch(e.target.value) }}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <SearchIcon sx={{ color: 'rgba(255,255,255,0.2)', fontSize: 18 }} />
+                  <SearchIcon sx={{ color: 'text.secondary', fontSize: 18 }} />
                 </InputAdornment>
               ),
-            }}
-            sx={{
-              '& .MuiOutlinedInput-root': { bgcolor: 'rgba(255,255,255,0.02)', color: '#fff', fontSize: '0.82rem' },
-              '& .MuiOutlinedInput-notchedOutline': { borderColor: B },
             }}
           />
         </Box>
         <Box sx={{ p: 2, display: 'flex', alignItems: 'center' }}>
-          <Typography sx={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.78rem', fontFamily: '"Outfit", monospace', whiteSpace: 'nowrap' }}>
-            {loading ? '...' : `${filtered.length} verifications`}
+          <Typography sx={{ color: 'text.secondary', fontSize: '0.78rem', fontFamily: '"Outfit", monospace', whiteSpace: 'nowrap' }}>
+            {loading ? <Skeleton width={90} /> : error ? 'Unavailable' : `${filtered.length} verifications`}
           </Typography>
         </Box>
       </Box>
@@ -192,25 +173,25 @@ export default function KYCReviewPage() {
       {/* Content grid */}
       <Box sx={{
         display: 'grid',
-        gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' },
+        gap: 3, gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(3, minmax(0, 1fr))' },
       }}>
         {loading
           ? Array.from({ length: 6 }).map((_, i) => (
               <Box key={i} sx={{
-                borderRight: `1px solid ${B}`,
-                borderBottom: `1px solid ${B}`, p: 3,
+
+                ...raisedSurface, p: 3,
               }}>
                 <Skel w={70} h={18} />
                 <Box sx={{ mt: 2 }}><Skel w="60%" h={16} /></Box>
                 <Box sx={{ mt: 1.5 }}><Skel w="40%" h={12} /></Box>
-                <Box sx={{ mt: 2, borderTop: `1px solid ${B}`, pt: 2 }}><Skel w={90} h={12} /></Box>
+                <Box sx={{ mt: 2, ...insetSurface, px: 1.5, pb: 1.5, pt: 2 }}><Skel w={90} h={12} /></Box>
                 <Box sx={{ mt: 1.5, display: 'flex', gap: 1 }}>
                   <Skel w={70} h={28} />
                   <Skel w={70} h={28} />
                 </Box>
               </Box>
             ))
-          : paginated.map((v, idx) => {
+          : pagination.page.map((v) => {
               const st = localStatuses[v.id] ?? v.status
               const color = statusColors[st] || '#74909A'
               const riskColor = riskColors[v.riskLevel] || '#74909A'
@@ -218,32 +199,41 @@ export default function KYCReviewPage() {
                 <Box
                   key={v.id}
                   onClick={() => { setSelected(v); setDetailOpen(true) }}
+                  tabIndex={0}
+                  role="button"
+                  aria-label={`Review verification for ${v.userName}`}
+                  onKeyDown={event => {
+                    if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
+                      event.preventDefault()
+                      setSelected(v)
+                      setDetailOpen(true)
+                    }
+                  }}
                   sx={{
                     position: 'relative',
-                    borderRight: `1px solid ${B}`,
-                    borderBottom: `1px solid ${B}`,
-                    borderTop: `2px solid ${color}40`,
+
+                    ...raisedSurface,
+
                     p: 3,
                     overflow: 'hidden',
-                    animation: `${slideIn} 0.4s ease ${idx * 0.04}s both`,
-                    transition: 'background 0.25s ease',
+                    transition: 'box-shadow 160ms ease',
+                    '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
                     cursor: 'pointer',
+                    '&:focus-visible': { outline: '2px solid', outlineColor: 'secondary.main', outlineOffset: 3 },
                     '&:hover': {
-                      bgcolor: 'rgba(255,255,255,0.015)',
+                      boxShadow: 'var(--neu-raised-hover)',
                     },
                   }}
                 >
-                  {/* Watermark */}
-                  <VerifiedUserIcon sx={{
-                    position: 'absolute', right: 12, top: 12, fontSize: 64,
-                    color: 'rgba(255,255,255,0.015)', pointerEvents: 'none',
-                  }} />
+                  <Box aria-hidden="true" sx={{ ...insetSurface, display: 'grid', placeItems: 'center', width: 40, height: 40, mb: 2, color }}>
+                    <VerifiedUserIcon sx={{ fontSize: 22 }} />
+                  </Box>
 
                   {/* Status chip */}
                   <Typography sx={{
                     display: 'inline-block', fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase',
                     color: color, letterSpacing: '0.08em',
-                    border: `1px solid ${color}33`, px: 1, py: 0.25, mr: 1,
+                    ...insetSurface, px: 1, py: 0.25, mr: 1,
                   }}>
                     {st}
                   </Typography>
@@ -252,45 +242,45 @@ export default function KYCReviewPage() {
                   <Typography sx={{
                     display: 'inline-block', fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase',
                     color: riskColor, letterSpacing: '0.08em',
-                    border: `1px solid ${riskColor}33`, px: 1, py: 0.25,
+                    ...insetSurface, px: 1, py: 0.25,
                   }}>
                     {v.riskLevel} risk
                   </Typography>
 
                   {/* User name */}
-                  <Typography sx={{ mt: 1.5, fontWeight: 700, fontSize: '0.95rem', color: '#fff', fontFamily: '"Outfit", sans-serif' }}>
+                  <Typography sx={{ mt: 1.5, fontWeight: 700, fontSize: '0.95rem', color: 'text.primary', fontFamily: '"Outfit", sans-serif' }}>
                     {v.userName}
                   </Typography>
 
                   {/* Type + docs */}
-                  <Typography sx={{ mt: 0.5, fontSize: '0.78rem', color: 'rgba(255,255,255,0.4)' }}>
+                  <Typography sx={{ mt: 0.5, fontSize: '0.78rem', color: 'text.secondary' }}>
                     {typeLabels[v.verificationType] ?? v.verificationType} — {v.documents.length} document{v.documents.length !== 1 ? 's' : ''}
                   </Typography>
 
                   {/* Personal info preview */}
                   {v.personalInfo && (
-                    <Typography sx={{ mt: 0.5, fontSize: '0.72rem', color: 'rgba(255,255,255,0.35)' }}>
+                    <Typography sx={{ mt: 0.5, fontSize: '0.72rem', color: 'text.secondary' }}>
                       {v.personalInfo.fullName} • {v.personalInfo.nationality}
                     </Typography>
                   )}
 
                   {/* Business info preview */}
                   {v.businessInfo && (
-                    <Typography sx={{ mt: 0.5, fontSize: '0.72rem', color: 'rgba(255,255,255,0.35)' }}>
+                    <Typography sx={{ mt: 0.5, fontSize: '0.72rem', color: 'text.secondary' }}>
                       {v.businessInfo.businessName} • {v.businessInfo.businessType}
                     </Typography>
                   )}
 
                   {/* Separator */}
-                  <Box sx={{ borderTop: `1px solid ${B}`, mt: 2, pt: 1.5 }}>
-                    <Typography sx={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.35)' }}>
-                      Submitted: <Box component="span" sx={{ color: 'rgba(255,255,255,0.6)' }}>{new Date(v.createdAt).toLocaleDateString()}</Box>
+                  <Box sx={{ ...insetSurface, px: 1.5, pb: 1.5, mt: 2, pt: 1.5 }}>
+                    <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>
+                      Submitted: <Box component="span" sx={{ color: 'text.secondary' }}>{new Date(v.createdAt).toLocaleDateString()}</Box>
                     </Typography>
                   </Box>
 
                   {/* Actions — segmented one-line row; each label stays on a single line */}
                   {st === 'pending' && can(Resource.VERIFICATIONS, Action.UPDATE) && (
-                    <Box sx={{ mt: 2, display: 'flex', flexWrap: 'nowrap', gap: 0.75 }} onClick={e => e.stopPropagation()}>
+                    <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 0.75 }} onClick={e => e.stopPropagation()}>
                       <Button
                         size="small"
                         variant="outlined"
@@ -298,8 +288,8 @@ export default function KYCReviewPage() {
                         sx={{
                           flex: '1 1 0', minWidth: 0, px: 1, whiteSpace: 'nowrap',
                           fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.04em',
-                          color: '#5E8F72', borderColor: 'rgba(76,175,80,0.3)',
-                          '&:hover': { borderColor: '#5E8F72', bgcolor: 'rgba(76,175,80,0.08)' },
+                          color: '#8FAE96', borderColor: 'rgba(76,175,80,0.3)',
+                          '&:hover': { borderColor: '#8FAE96', bgcolor: 'rgba(76,175,80,0.08)' },
                         }}
                       >
                         Approve
@@ -338,85 +328,18 @@ export default function KYCReviewPage() {
         }
       </Box>
 
-      {/* Pagination */}
-      {filtered.length > perPage && (
-        <Box
-          sx={{
-            borderTop: `1px solid ${B}`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            px: 3,
-            py: 1.5,
-          }}
-        >
-          <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>
-            Showing {page * perPage + 1}–{Math.min((page + 1) * perPage, filtered.length)} of {filtered.length}
+      {!loading && !error && <PaginationBar neumorphic pagination={pagination} accentColor="#C06B58" />}
+
+      {!loading && !error && filtered.length === 0 && (
+        <Box sx={{ ...raisedSurface, p: 4 }}>
+          <Typography color="text.secondary">
+            {search || statusFilter !== 'all' || typeFilter !== 'all' ? 'No KYC submissions match your filters.' : 'No KYC submissions to review.'}
           </Typography>
-          <Box sx={{ display: 'flex', gap: 0.5 }}>
-            <Box
-              component="button"
-              onClick={() => setPage(p => Math.max(0, p - 1))}
-              disabled={page === 0}
-              sx={{
-                px: 2, py: 0.75,
-                bgcolor: 'transparent',
-                border: `1px solid ${B}`,
-                color: page === 0 ? 'rgba(255,255,255,0.2)' : 'text.secondary',
-                cursor: page === 0 ? 'default' : 'pointer',
-                fontSize: '0.75rem',
-                fontFamily: '"Outfit", sans-serif',
-                transition: 'all 0.2s',
-                '&:hover:not(:disabled)': { borderColor: 'rgba(255,255,255,0.15)', color: 'text.primary' },
-              }}
-            >
-              Prev
-            </Box>
-            {Array.from({ length: Math.ceil(filtered.length / perPage) }, (_, i) => (
-              <Box
-                key={i}
-                component="button"
-                onClick={() => setPage(i)}
-                sx={{
-                  px: 1.5, py: 0.75,
-                  bgcolor: i === page ? 'rgba(255,255,255,0.08)' : 'transparent',
-                  border: `1px solid ${i === page ? 'rgba(255,255,255,0.15)' : B}`,
-                  color: i === page ? 'text.primary' : 'text.secondary',
-                  cursor: 'pointer',
-                  fontSize: '0.75rem',
-                  fontFamily: '"Outfit", monospace',
-                  fontWeight: i === page ? 700 : 400,
-                  transition: 'all 0.2s',
-                  '&:hover': { borderColor: 'rgba(255,255,255,0.15)' },
-                }}
-              >
-                {i + 1}
-              </Box>
-            ))}
-            <Box
-              component="button"
-              onClick={() => setPage(p => Math.min(Math.ceil(filtered.length / perPage) - 1, p + 1))}
-              disabled={page >= Math.ceil(filtered.length / perPage) - 1}
-              sx={{
-                px: 2, py: 0.75,
-                bgcolor: 'transparent',
-                border: `1px solid ${B}`,
-                color: page >= Math.ceil(filtered.length / perPage) - 1 ? 'rgba(255,255,255,0.2)' : 'text.secondary',
-                cursor: page >= Math.ceil(filtered.length / perPage) - 1 ? 'default' : 'pointer',
-                fontSize: '0.75rem',
-                fontFamily: '"Outfit", sans-serif',
-                transition: 'all 0.2s',
-                '&:hover:not(:disabled)': { borderColor: 'rgba(255,255,255,0.15)', color: 'text.primary' },
-              }}
-            >
-              Next
-            </Box>
-          </Box>
         </Box>
       )}
 
       {/* Detail Dialog */}
-      <Dialog open={detailOpen} onClose={() => setDetailOpen(false)} maxWidth="md" fullWidth PaperProps={{ sx: { bgcolor: '#0c0c14', color: '#fff' } }}>
+      <Dialog open={detailOpen} onClose={() => setDetailOpen(false)} maxWidth="md" fullWidth PaperProps={{ sx: { ...raisedSurface, color: 'text.primary' } }}>
         {selected && (
           <KYCDetailDialog
             verification={selected}

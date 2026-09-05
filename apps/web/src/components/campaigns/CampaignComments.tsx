@@ -1,7 +1,7 @@
+import { EmptyState } from '@ubuntu-fund/ui'
 import { useCallback, useEffect, useState } from 'react'
 import { Alert, Avatar, Box, Button, CircularProgress, IconButton, Stack, TextField, Typography } from '@mui/material'
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded'
-import ChatBubbleOutlineRoundedIcon from '@mui/icons-material/ChatBubbleOutlineRounded'
 import type { CampaignComment } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
@@ -70,7 +70,7 @@ export function CampaignComments({ campaignId, creatorId }: { campaignId: string
 
       {error ? <Alert severity="error">{error}</Alert> : null}
       {loading ? <Box sx={{ py: 5, textAlign: 'center' }}><CircularProgress size={28} /></Box> : comments.length === 0 ? (
-        <Box sx={{ py: 6, textAlign: 'center', color: 'text.secondary' }}><ChatBubbleOutlineRoundedIcon /><Typography>No comments yet. Start the conversation.</Typography></Box>
+        <EmptyState variant="noData" compact title="Start a conversation" description="Leave a message of encouragement or a question for the organizer." />
       ) : comments.map((comment) => (
         <Box key={comment.id} sx={{ display: 'flex', gap: 1.5, p: 2, borderRadius: SHAPE.sm, boxShadow: 'var(--neu-subtle)' }}>
           <Avatar src={comment.authorAvatarUrl}>{comment.authorName.charAt(0).toUpperCase()}</Avatar>

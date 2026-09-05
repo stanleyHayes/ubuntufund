@@ -29,6 +29,13 @@ export interface PaystackConfig {
   publicKey: string;
 }
 
+export interface AffiliateConfig {
+  /** Referral commission cut, as a % of the referee's first paid subscription. */
+  commissionPercent: number;
+  /** Days a newly accrued commission stays 'held' before it matures to 'available'. */
+  holdDays: number;
+}
+
 export interface AppConfig {
   port: number;
   mongodbUri: string;
@@ -41,6 +48,8 @@ export interface AppConfig {
   fees: FeeConfig;
   /** Paystack credentials (Ghana card + mobile money in GHS). */
   paystack: PaystackConfig;
+  /** Referral/affiliate commission policy (rate + hold window). */
+  affiliate: AffiliateConfig;
   /** Public base URL of the donor-facing web app; builds `/c/:slug` targets & canonical URLs. */
   publicWebUrl: string;
   /** Public base URL this API is reachable at; builds short URLs (`/r/:code`). */
@@ -110,6 +119,12 @@ export const config: AppConfig = {
   paystack: {
     secretKey: process.env.PAYSTACK_SECRET_KEY ?? '',
     publicKey: process.env.PAYSTACK_PUBLIC_KEY ?? '',
+  },
+  // Affiliate commission is one-time on the referee's first paid subscription;
+  // it accrues 'held' for `holdDays` before maturing to 'available'.
+  affiliate: {
+    commissionPercent: Number.parseFloat(process.env.AFFILIATE_COMMISSION_PERCENT ?? '10'),
+    holdDays: Number.parseInt(process.env.AFFILIATE_HOLD_DAYS ?? '14', 10),
   },
   publicWebUrl: process.env.PUBLIC_WEB_URL ?? 'http://localhost:18200',
   publicApiUrl:

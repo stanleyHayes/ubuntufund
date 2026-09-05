@@ -1,3 +1,4 @@
+import ProductIllustration from '../ProductIllustration'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
@@ -94,6 +95,8 @@ function CampaignTypesSection() {
             Ujimora supports campaigns across every category that matters.
           </Typography>
         </Box>
+
+        <Box sx={{ maxWidth: 900, mx: 'auto', mb: 6 }}><ProductIllustration screen="explore" caption="Find a cause that speaks to you" /></Box>
 
         <Grid container spacing={3} justifyContent="center">
           {campaignTypes.map((type) => (

@@ -1,3 +1,4 @@
+import { BrandedDatePicker } from '@ubuntu-fund/ui'
 import { Fragment, useMemo, useState } from 'react'
 import type { KeyboardEvent, ReactNode } from 'react'
 import Box from '@mui/material/Box'
@@ -23,11 +24,11 @@ import { useCreateCampaign } from '@/hooks/useCampaigns'
 const FOREST = '#2E3D2F'
 const FOREST_DARK = '#1C261D'
 const SAGE = '#A8B5A0'
-const INK = '#1A2E22'
-const INK_SECONDARY = '#4A5A50'
+const INK = 'text.primary'
+const INK_SECONDARY = 'text.secondary'
 const GOLD = '#C7A24A'
-const GOLD_DARK = '#A07E33'
-const CLAY = '#A5432F'
+const GOLD_DARK = 'var(--text-warning)'
+const CLAY = 'var(--text-error)'
 const DIVIDER = '#DAD7CD'
 
 // ---------------------------------------------------------------------------
@@ -212,7 +213,7 @@ function WizardStepper({ current }: { current: number }) {
                     fontWeight: active ? 700 : 600,
                     textTransform: 'uppercase',
                     letterSpacing: '0.12em',
-                    color: active ? GOLD_DARK : done ? FOREST : INK_SECONDARY,
+                    color: active ? GOLD_DARK : done ? 'primary.main' : INK_SECONDARY,
                     textAlign: 'center',
                     maxWidth: 92,
                     lineHeight: 1.3,
@@ -269,7 +270,7 @@ function ReviewSection({ title, onEdit, children }: { title: string; onEdit: () 
           type="button"
           onClick={onEdit}
           startIcon={<EditRoundedIcon sx={{ fontSize: 15 }} />}
-          sx={{ color: FOREST, minHeight: 0, py: 0.25, px: 1, fontSize: '0.8rem' }}
+          sx={{ color: 'primary.main', minHeight: 0, py: 0.25, px: 1, fontSize: '0.8rem' }}
         >
           Edit
         </Button>
@@ -361,7 +362,9 @@ export function CampaignForm() {
         imageUrls: cover ? [cover] : [],
         goalAmount: Number(formData.goalAmount),
         currency: 'GHS',
-        endDate: formData.endDate,
+        // The date input yields a date-only value ("YYYY-MM-DD"); the API expects
+        // a full ISO datetime (z.string().datetime()), so widen it before sending.
+        endDate: new Date(`${formData.endDate}T00:00:00.000Z`).toISOString(),
         priority: formData.priority,
       })
       // The api client returns the created campaign; guard for the demo
@@ -421,7 +424,7 @@ export function CampaignForm() {
           >
             {createdId ? 'View campaign' : 'Go to my campaigns'}
           </Button>
-          <Button component={RouterLink} to="/explore" sx={{ color: FOREST }}>
+          <Button component={RouterLink} to="/explore" sx={{ color: 'primary.main' }}>
             Explore campaigns
           </Button>
         </Box>
@@ -518,7 +521,7 @@ export function CampaignForm() {
                         border: '1.5px solid',
                         borderColor: selected ? GOLD : DIVIDER,
                         bgcolor: selected ? 'rgba(199, 162, 74, 0.12)' : 'transparent',
-                        color: selected ? FOREST_DARK : INK_SECONDARY,
+                        color: selected ? 'text.primary' : INK_SECONDARY,
                         fontSize: '0.85rem',
                         fontWeight: selected ? 700 : 600,
                         transition: 'border-color 160ms ease, background-color 160ms ease',
@@ -584,7 +587,7 @@ export function CampaignForm() {
                         bgcolor: 'rgba(46, 61, 47, 0.06)',
                         border: `1px solid ${DIVIDER}`,
                         fontSize: '0.8rem',
-                        color: FOREST,
+                        color: 'primary.main',
                         fontWeight: 600,
                       }}
                     >
@@ -627,7 +630,7 @@ export function CampaignForm() {
                   input: {
                     startAdornment: (
                       <InputAdornment position="start">
-                        <Typography sx={{ fontWeight: 700, color: FOREST }}>GH₵</Typography>
+                        <Typography sx={{ fontWeight: 700, color: 'primary.main' }}>GH₵</Typography>
                       </InputAdornment>
                     ),
                   },
@@ -636,7 +639,7 @@ export function CampaignForm() {
               {goalNumber > 0 && (
                 <Typography sx={{ mt: 0.75, fontSize: '0.8rem', color: INK_SECONDARY }}>
                   Donors will see a goal of{' '}
-                  <Box component="span" sx={{ fontWeight: 700, color: FOREST }}>
+                  <Box component="span" sx={{ fontWeight: 700, color: 'primary.main' }}>
                     {formatCurrency(goalNumber)}
                   </Box>
                 </Typography>
@@ -644,22 +647,22 @@ export function CampaignForm() {
             </Box>
 
             <Box>
-              <TextField
+              <BrandedDatePicker
                 label="End date"
-                type="date"
+
                 value={formData.endDate}
-                onChange={change('endDate')}
+                onChange={(value) => setFormData((prev) => ({ ...prev, endDate: value }))}
                 onBlur={blur('endDate')}
                 error={errFor('endDate')}
                 helperText={helperFor('endDate', 'When should the campaign stop accepting donations?')}
                 fullWidth
                 sx={fieldSx}
-                slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: todayIso } }}
+                minDate={todayIso}
               />
               {durationDays > 0 && (
                 <Typography sx={{ mt: 0.75, fontSize: '0.8rem', color: INK_SECONDARY }}>
                   Runs for{' '}
-                  <Box component="span" sx={{ fontWeight: 700, color: FOREST }}>
+                  <Box component="span" sx={{ fontWeight: 700, color: 'primary.main' }}>
                     {durationDays} {durationDays === 1 ? 'day' : 'days'}
                   </Box>{' '}
                   from today.
@@ -707,7 +710,7 @@ export function CampaignForm() {
                         <DiamondBullet color={p.tone} size={9} />
                       </Box>
                       <Box>
-                        <Typography sx={{ fontWeight: 700, color: selected ? p.tone : INK, fontSize: '0.95rem' }}>
+                        <Typography sx={{ fontWeight: 700, color: selected ? 'primary.main' : INK, fontSize: '0.95rem' }}>
                           {p.label}
                         </Typography>
                         <Typography sx={{ fontSize: '0.8rem', color: INK_SECONDARY, mt: 0.1 }}>{p.blurb}</Typography>
@@ -726,7 +729,7 @@ export function CampaignForm() {
             sx={{
               borderRadius: SHAPE.card,
               border: `1px solid ${DIVIDER}`,
-              bgcolor: 'rgba(242, 239, 234, 0.5)',
+              bgcolor: 'action.hover',
               px: { xs: 2, sm: 2.75 },
               py: { xs: 2, sm: 2.5 },
             }}
@@ -760,7 +763,7 @@ export function CampaignForm() {
                           border: `1px solid ${DIVIDER}`,
                           fontSize: '0.78rem',
                           fontWeight: 600,
-                          color: FOREST,
+                          color: 'primary.main',
                         }}
                       >
                         <DiamondBullet color={SAGE} size={6} />
@@ -820,7 +823,7 @@ export function CampaignForm() {
                 color: INK_SECONDARY,
               }}
             >
-              <ShieldRoundedIcon sx={{ fontSize: 18, color: FOREST, mt: 0.1 }} />
+              <ShieldRoundedIcon sx={{ fontSize: 18, color: 'primary.main', mt: 0.1 }} />
               <Typography sx={{ fontSize: '0.82rem', lineHeight: 1.5 }}>
                 Your campaign is reviewed by our team before it goes live. You can still edit any step above.
               </Typography>
@@ -874,7 +877,7 @@ export function CampaignForm() {
           onClick={handleBack}
           disabled={step === 0 || isSubmitting}
           startIcon={<ArrowBackRoundedIcon />}
-          sx={{ color: FOREST, visibility: step === 0 ? 'hidden' : 'visible' }}
+          sx={{ color: 'primary.main', visibility: step === 0 ? 'hidden' : 'visible' }}
         >
           Back
         </Button>

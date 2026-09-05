@@ -39,12 +39,12 @@ import type { Campaign } from '@ubuntu-fund/types'
 // ─── Constants ─────────────────────────────────────────────
 
 const STATUS_CONFIG: Record<string, { bg: string; color: string; icon: React.ReactNode; label: string }> = {
-  [CampaignStatus.DRAFT]: { bg: 'rgba(0,0,0,0.06)', color: '#616161', icon: <DraftsIcon sx={{ fontSize: 14 }} />, label: 'Draft' },
-  [CampaignStatus.PENDING_REVIEW]: { bg: 'rgba(255,167,38,0.1)', color: '#E65100', icon: <AccessTimeIcon sx={{ fontSize: 14 }} />, label: 'Pending' },
-  [CampaignStatus.ACTIVE]: { bg: 'rgba(46, 61, 47,0.08)', color: '#2E3D2F', icon: <TrendingUpIcon sx={{ fontSize: 14 }} />, label: 'Active' },
-  [CampaignStatus.FUNDED]: { bg: 'rgba(21,101,192,0.08)', color: '#1565C0', icon: <CheckCircleIcon sx={{ fontSize: 14 }} />, label: 'Funded' },
-  [CampaignStatus.EXPIRED]: { bg: 'rgba(0,0,0,0.06)', color: '#9E9E9E', icon: <AccessTimeIcon sx={{ fontSize: 14 }} />, label: 'Expired' },
-  [CampaignStatus.BLOCKED]: { bg: 'rgba(165,67,47,0.08)', color: '#A5432F', icon: <BlockIcon sx={{ fontSize: 14 }} />, label: 'Blocked' },
+  [CampaignStatus.DRAFT]: { bg: 'rgba(0,0,0,0.06)', color: 'var(--text-secondary)', icon: <DraftsIcon sx={{ fontSize: 14 }} />, label: 'Draft' },
+  [CampaignStatus.PENDING_REVIEW]: { bg: 'rgba(255,167,38,0.1)', color: 'var(--text-warning)', icon: <AccessTimeIcon sx={{ fontSize: 14 }} />, label: 'Pending' },
+  [CampaignStatus.ACTIVE]: { bg: 'rgba(46, 61, 47,0.08)', color: 'var(--text-brand)', icon: <TrendingUpIcon sx={{ fontSize: 14 }} />, label: 'Active' },
+  [CampaignStatus.FUNDED]: { bg: 'rgba(21,101,192,0.08)', color: 'var(--text-info)', icon: <CheckCircleIcon sx={{ fontSize: 14 }} />, label: 'Funded' },
+  [CampaignStatus.EXPIRED]: { bg: 'rgba(0,0,0,0.06)', color: 'var(--text-secondary)', icon: <AccessTimeIcon sx={{ fontSize: 14 }} />, label: 'Expired' },
+  [CampaignStatus.BLOCKED]: { bg: 'rgba(165,67,47,0.08)', color: 'var(--text-error)', icon: <BlockIcon sx={{ fontSize: 14 }} />, label: 'Blocked' },
 }
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
@@ -58,8 +58,8 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
 }
 
 const PRIORITY_CONFIG: Record<string, { color: string; label: string }> = {
-  [CampaignPriority.CRITICAL]: { color: '#A5432F', label: 'Critical' },
-  [CampaignPriority.URGENT]: { color: '#B98A2E', label: 'Urgent' },
+  [CampaignPriority.CRITICAL]: { color: 'var(--text-error)', label: 'Critical' },
+  [CampaignPriority.URGENT]: { color: 'var(--text-warning)', label: 'Urgent' },
 }
 
 function daysLeft(end: Date) {
@@ -137,7 +137,7 @@ function CampaignRow({
           right: 0,
           width: 28,
           height: 28,
-          background: `linear-gradient(135deg, transparent 50%, ${statusCfg.color}12 50%)`,
+          background: `linear-gradient(135deg, transparent 50%, color-mix(in srgb, ${statusCfg.color} 7%, transparent) 50%)`,
           pointerEvents: 'none',
         },
       }}
@@ -209,11 +209,11 @@ function CampaignRow({
               height: 8,
               borderRadius: '50%',
               bgcolor: priorityCfg.color,
-              boxShadow: `0 0 0 3px ${priorityCfg.color}30`,
+              boxShadow: `0 0 0 3px color-mix(in srgb, ${priorityCfg.color} 19%, transparent)`,
               animation: 'pulse 2s ease-in-out infinite',
               '@keyframes pulse': {
-                '0%, 100%': { boxShadow: `0 0 0 3px ${priorityCfg.color}30` },
-                '50%': { boxShadow: `0 0 0 6px ${priorityCfg.color}10` },
+                '0%, 100%': { boxShadow: `0 0 0 3px color-mix(in srgb, ${priorityCfg.color} 19%, transparent)` },
+                '50%': { boxShadow: `0 0 0 6px color-mix(in srgb, ${priorityCfg.color} 6%, transparent)` },
               },
             }}
           />
@@ -233,7 +233,7 @@ function CampaignRow({
             <Chip
               label={priorityCfg.label}
               size="small"
-              sx={{ height: 22, fontSize: '0.65rem', fontWeight: 700, bgcolor: `${priorityCfg.color}12`, color: priorityCfg.color }}
+              sx={{ height: 22, fontSize: '0.65rem', fontWeight: 700, bgcolor: `color-mix(in srgb, ${priorityCfg.color} 7%, transparent)`, color: priorityCfg.color }}
             />
           )}
           <Box sx={{ flex: 1 }} />
@@ -363,7 +363,7 @@ function StatCard({ label, value, color, icon }: { label: string; value: string 
           width: 40,
           height: 40,
           borderRadius: SHAPE.sm,
-          bgcolor: `${color}10`,
+          bgcolor: `color-mix(in srgb, ${color} 6%, transparent)`,
           color,
           display: 'flex',
           alignItems: 'center',

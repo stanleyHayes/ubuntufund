@@ -1,67 +1,12 @@
 import { useState } from 'react'
-import {
-  Box,
-  TextField,
-  Button,
-  Typography,
-  Alert,
-} from '@mui/material'
-import ShieldIcon from '@mui/icons-material/Shield'
-import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead'
+import { Box, TextField, Button, Typography, Alert, CircularProgress } from '@mui/material'
+import ArrowBackRounded from '@mui/icons-material/ArrowBackRounded'
+import ArrowForwardRounded from '@mui/icons-material/ArrowForwardRounded'
+import MarkEmailReadRounded from '@mui/icons-material/MarkEmailReadRounded'
 import { Link as RouterLink } from 'react-router-dom'
-import { keyframes } from '@emotion/react'
 import { api } from '@/lib/api'
+import AuthLayout from '@/components/auth/AuthLayout'
 
-// ---------------------------------------------------------------------------
-// Animations
-// ---------------------------------------------------------------------------
-const fadeInUp = keyframes`
-  from { opacity: 0; transform: translateY(20px); }
-  to   { opacity: 1; transform: translateY(0); }
-`
-
-const popIn = keyframes`
-  from { opacity: 0; transform: scale(0.85); }
-  to   { opacity: 1; transform: scale(1); }
-`
-
-// ---------------------------------------------------------------------------
-// Input styling
-// ---------------------------------------------------------------------------
-const inputSx = {
-  '& .MuiOutlinedInput-root': {
-    borderRadius: '10px',
-    bgcolor: 'rgba(255,255,255,0.04)',
-    transition: 'all 0.25s ease',
-    '& fieldset': {
-      borderColor: 'rgba(255,255,255,0.06)',
-      transition: 'all 0.25s ease',
-    },
-    '&:hover fieldset': {
-      borderColor: 'rgba(76,175,80,0.25)',
-    },
-    '&.Mui-focused fieldset': {
-      borderColor: '#5E8F72',
-      borderWidth: '1.5px',
-    },
-    '&.Mui-focused': {
-      bgcolor: 'rgba(76,175,80,0.03)',
-      boxShadow: '0 0 0 4px rgba(76,175,80,0.06), inset 0 0 20px rgba(76,175,80,0.02)',
-    },
-  },
-  '& .MuiInputLabel-root': {
-    color: 'rgba(255,255,255,0.35)',
-    '&.Mui-focused': { color: '#5E8F72' },
-  },
-  '& .MuiOutlinedInput-input': {
-    color: '#E0E0E8',
-  },
-}
-
-// ---------------------------------------------------------------------------
-// ForgotPasswordPage
-// ---------------------------------------------------------------------------
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
   const [submitted, setSubmitted] = useState(false)
@@ -70,289 +15,40 @@ export default function ForgotPasswordPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (submitting) return
     setError('')
-    if (!email) {
-      setError('Please enter your email address.')
-      return
-    }
+    if (!email.trim()) { setError('Enter your email address.'); return }
     setSubmitting(true)
     try {
-      await api.post('/auth/forgot-password', { email })
+      await api.post('/auth/forgot-password', { email: email.trim() })
       setSubmitted(true)
-    } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : 'Unable to submit the request.')
-    } finally {
-      setSubmitting(false)
-    }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to send your request. Please try again.')
+    } finally { setSubmitting(false) }
   }
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        position: 'relative',
-        overflow: 'hidden',
-        bgcolor: '#172019',
-        px: 3,
-        py: 4,
-      }}
-    >
-      {/* ====== CONTENT ====== */}
-      <Box
-        sx={{
-          width: '100%',
-          maxWidth: 400,
-          position: 'relative',
-          zIndex: 1,
-        }}
-      >
-        {/* Header */}
-        <Box
-          sx={{
-            textAlign: 'center',
-            mb: 4,
-            animation: `${fadeInUp} 0.6s ease both`,
-          }}
-        >
-          <Box
-            sx={{
-              width: 56,
-              height: 56,
-              borderRadius: '14px',
-              background: '#243126',
-              boxShadow: '4px 4px 10px rgba(0,0,0,0.48), -4px -4px 10px rgba(91,117,98,0.14)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              mx: 'auto',
-              mb: 2.5,
-            }}
-          >
-            <ShieldIcon sx={{ fontSize: 28, color: '#5E8F72' }} />
-          </Box>
-          <Typography
-            sx={{
-              fontFamily: '"Outfit", sans-serif',
-              fontWeight: 900,
-              fontSize: '1.5rem',
-              color: '#E0E0E8',
-            }}
-          >
-            Ujimora
-          </Typography>
-          <Typography
-            sx={{
-              fontFamily: '"Outfit", monospace',
-              fontSize: '0.65rem',
-              color: 'rgba(76,175,80,0.4)',
-              letterSpacing: '0.2em',
-              textTransform: 'uppercase',
-              mt: 0.5,
-            }}
-          >
-            Password Recovery
-          </Typography>
+    <AuthLayout recovery>
+      {submitted ? <>
+        <Box role="status" aria-live="polite">
+          <MarkEmailReadRounded sx={{ color: 'secondary.light', fontSize: 42, mb: 2 }} />
+          <Typography component="h1" className="admin-auth-title">Check your inbox.</Typography>
+          <Typography className="admin-auth-copy">If an account exists for <Box component="strong" sx={{ color: 'text.primary', overflowWrap: 'anywhere' }}>{email.trim()}</Box>, you’ll receive a password reset link shortly.</Typography>
         </Box>
-
-        {/* Card */}
-        <Box
-          sx={{
-            animation: `${fadeInUp} 0.6s 0.1s ease both`,
-            p: { xs: 3, sm: 4 },
-            borderRadius: '16px',
-            bgcolor: '#243126',
-            boxShadow: '10px 10px 24px rgba(0,0,0,0.48), -8px -8px 20px rgba(91,117,98,0.14)',
-          }}
-        >
-          {submitted ? (
-            /* ---- SUCCESS STATE ---- */
-            <Box
-              sx={{
-                textAlign: 'center',
-                py: 2,
-                animation: `${popIn} 0.4s ease both`,
-              }}
-            >
-              <Box
-                sx={{
-                  width: 64,
-                  height: 64,
-                  borderRadius: '50%',
-                  background: '#243126',
-                  boxShadow: '4px 4px 10px rgba(0,0,0,0.48), -4px -4px 10px rgba(91,117,98,0.14)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  mx: 'auto',
-                  mb: 3,
-                  // animation removed
-                }}
-              >
-                <MarkEmailReadIcon sx={{ fontSize: 32, color: '#5E8F72' }} />
-              </Box>
-
-              <Typography
-                sx={{
-                  fontFamily: '"Outfit", sans-serif',
-                  fontWeight: 700,
-                  fontSize: '1.2rem',
-                  color: '#E0E0E8',
-                  mb: 1,
-                }}
-              >
-                Check your email
-              </Typography>
-              <Typography
-                sx={{
-                  color: 'rgba(243,240,232,0.62)',
-                  fontSize: '0.85rem',
-                  lineHeight: 1.6,
-                  mb: 3,
-                }}
-              >
-                If an account exists for{' '}
-                <Box component="span" sx={{ color: '#5E8F72', fontWeight: 500 }}>
-                  {email}
-                </Box>
-                , you&apos;ll receive a password reset link shortly.
-              </Typography>
-
-              <Button
-                component={RouterLink}
-                to="/login"
-                variant="outlined"
-                startIcon={<ArrowBackIcon />}
-                sx={{
-                  borderRadius: '10px',
-                  borderColor: 'rgba(255,255,255,0.1)',
-                  color: '#E0E0E8',
-                  fontWeight: 600,
-                  fontFamily: '"Outfit", sans-serif',
-                  '&:hover': {
-                    borderColor: 'rgba(76,175,80,0.3)',
-                    bgcolor: 'rgba(76,175,80,0.04)',
-                  },
-                }}
-              >
-                Back to Sign In
-              </Button>
-            </Box>
-          ) : (
-            /* ---- FORM STATE ---- */
-            <>
-              <Box sx={{ mb: 3 }}>
-                <Typography
-                  sx={{
-                    fontFamily: '"Outfit", sans-serif',
-                    fontWeight: 900,
-                    fontSize: '1.35rem',
-                    color: '#E0E0E8',
-                    mb: 0.5,
-                  }}
-                >
-                  Reset password
-                </Typography>
-                <Typography sx={{ color: 'rgba(243,240,232,0.62)', fontSize: '0.85rem' }}>
-                  We&apos;ll send a reset link to your email
-                </Typography>
-              </Box>
-
-              {error && (
-                <Alert
-                  severity="error"
-                  sx={{
-                    mb: 3,
-                    borderRadius: '10px',
-                    bgcolor: 'rgba(239,83,80,0.08)',
-                    '& .MuiAlert-icon': { color: '#C06B58' },
-                    color: '#E0E0E8',
-                  }}
-                >
-                  {error}
-                </Alert>
-              )}
-
-              <Box
-                component="form"
-                onSubmit={handleSubmit}
-                sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}
-              >
-                <TextField
-                  label="Email address"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  fullWidth
-                  required
-                  autoComplete="email"
-                  autoFocus
-                  sx={inputSx}
-                />
-
-                <Button
-                  type="submit"
-                  variant="contained"
-                  size="large"
-                  fullWidth
-                  disabled={submitting}
-                  sx={{
-                    borderRadius: '10px',
-                    py: 1.5,
-                    fontSize: '0.9rem',
-                    fontWeight: 700,
-                    fontFamily: '"Outfit", sans-serif',
-                    background: '#8FAE96',
-                    color: '#0E1916',
-                    transition: 'background-color 200ms ease',
-                    '&:hover': {
-                      background: '#B5C9BA',
-                    },
-                  }}
-                >
-                  {submitting ? 'Sending…' : 'Send Reset Link'}
-                </Button>
-
-                <Box sx={{ textAlign: 'center' }}>
-                  <Box
-                    component={RouterLink}
-                    to="/login"
-                    sx={{
-                      fontSize: '0.8rem',
-                      color: 'rgba(243,240,232,0.62)',
-                      textDecoration: 'none',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 0.5,
-                      transition: 'color 0.2s ease',
-                      '&:hover': { color: '#5E8F72' },
-                    }}
-                  >
-                    <ArrowBackIcon sx={{ fontSize: 14 }} />
-                    Back to Sign In
-                  </Box>
-                </Box>
-              </Box>
-            </>
-          )}
+        <Button component={RouterLink} to="/login" variant="contained" fullWidth startIcon={<ArrowBackRounded />}>Back to sign in</Button>
+        <Button fullWidth onClick={() => { setSubmitted(false); setError('') }} sx={{ mt: 2 }}>Use a different email</Button>
+        <div className="admin-auth-form-note">Check your spam folder if the email hasn’t arrived.</div>
+      </> : <>
+        <Typography component="h1" className="admin-auth-title">Let’s get you back in.</Typography>
+        <Typography className="admin-auth-copy">Enter your administrator email to request a password reset link.</Typography>
+        {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
+        <Box component="form" className="admin-auth-form" onSubmit={handleSubmit} aria-busy={submitting}>
+          <TextField label="Email address" type="email" value={email} onChange={(e) => setEmail(e.target.value)} fullWidth required autoComplete="email" disabled={submitting} />
+          <Button type="submit" variant="contained" fullWidth disabled={submitting} endIcon={submitting ? <CircularProgress size={18} color="inherit" /> : <ArrowForwardRounded />}>{submitting ? 'Sending request…' : 'Send reset link'}</Button>
+          <Button component={RouterLink} to="/login" startIcon={<ArrowBackRounded />}>Back to sign in</Button>
         </Box>
-
-        {/* Footer */}
-        <Typography
-          sx={{
-            textAlign: 'center',
-            mt: 4,
-            fontSize: '0.7rem',
-            color: 'rgba(243,240,232,0.38)',
-            letterSpacing: '0.05em',
-            animation: `${fadeInUp} 0.6s 0.3s ease both`,
-          }}
-        >
-          Ujimora &copy; {new Date().getFullYear()} &mdash; Secured Admin Portal
-        </Typography>
-      </Box>
-    </Box>
+        <div className="admin-auth-form-note">For your privacy, the response is the same whether or not the email is registered.</div>
+      </>}
+    </AuthLayout>
   )
 }

@@ -9,6 +9,16 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   }
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers })
+  // An expired/absent session (401 = bad or missing token, distinct from a 403
+  // permission denial) should bounce to login rather than leave the page throwing
+  // silent errors — e.g. the TopBar's notification poll spamming the console.
+  if (res.status === 401) {
+    localStorage.removeItem('uf_admin_token')
+    if (!window.location.pathname.startsWith('/login')) {
+      window.location.assign('/login')
+    }
+    throw new Error('Your session has expired. Please sign in again.')
+  }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ message: 'Request failed' }))
     throw new Error(err.message || `HTTP ${res.status}`)

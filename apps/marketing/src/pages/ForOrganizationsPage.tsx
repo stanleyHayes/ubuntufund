@@ -31,7 +31,7 @@ import BusinessCenterRoundedIcon from '@mui/icons-material/BusinessCenterRounded
 import TheaterComedyRoundedIcon from '@mui/icons-material/TheaterComedyRounded'
 import SportsSoccerRoundedIcon from '@mui/icons-material/SportsSoccerRounded'
 import { keyframes } from '@mui/material/styles'
-import { NEUMORPHIC_SMOKE_VARS, SHAPE } from '@ubuntu-fund/ui'
+import { NEUMORPHIC_SMOKE_VARS, NEUMORPHIC_FOREST_VARS, SHAPE } from '@ubuntu-fund/ui'
 import { InternalPageHero } from '../components/InternalPageHero'
 
 // ─── Animations ──────────────────────────────────────────────────────────────
@@ -457,6 +457,7 @@ function ForOrganizationsPage() {
       {/* ═══ CTA — Immersive ═══ */}
       <Box
         sx={{
+          ...NEUMORPHIC_FOREST_VARS,
           py: { xs: 10, md: 14 },
           background: 'linear-gradient(135deg, #0d1a0f 0%, #1C261D 50%, #0d1a0f 100%)',
           textAlign: 'center',

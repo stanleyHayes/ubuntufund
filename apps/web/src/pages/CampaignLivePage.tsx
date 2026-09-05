@@ -309,7 +309,7 @@ export function CampaignLivePage() {
                 py: 0.4,
                 borderRadius: SHAPE.sm,
                 bgcolor: 'rgba(165,67,47,0.1)',
-                color: '#A5432F',
+                color: 'var(--text-error)',
               }}
             >
               <FiberManualRecordRoundedIcon sx={{ fontSize: 12 }} />
@@ -491,7 +491,7 @@ export function CampaignLivePage() {
                 onClick={handleEnd}
                 disabled={ending}
                 startIcon={ending ? <CircularProgress size={15} color="inherit" /> : <StopCircleRoundedIcon />}
-                sx={{ textTransform: 'none', fontWeight: 700, borderRadius: SHAPE.sm, color: '#A5432F', borderColor: '#A5432F' }}
+                sx={{ textTransform: 'none', fontWeight: 700, borderRadius: SHAPE.sm, color: 'var(--text-error)', borderColor: '#A5432F' }}
               >
                 {ending ? 'Ending…' : 'End session'}
               </Button>

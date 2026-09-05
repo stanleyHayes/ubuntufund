@@ -14,6 +14,7 @@ const createCampaignSchema = z.object({
   priority: z.nativeEnum(CampaignPriority),
   beneficiaries: z.array(z.string()).default([]),
   endDate: z.string().datetime(),
+  imageUrls: z.array(z.string().url()).max(10).optional(),
 });
 
 const donateSchema = z.object({

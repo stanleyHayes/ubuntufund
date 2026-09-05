@@ -257,10 +257,12 @@ describe('Paystack Integration', () => {
     expect(processorCredit?.amount).toBe(3.3);
 
     // Balance read model: beneficiary-net pending, processor fee + tip tracked.
+    // The creator is on the Free plan (5% platform fee).
     const balance = await CampaignBalanceModel.findOne({ campaignId });
     expect(balance?.totalRaised).toBe(200);
-    expect(balance?.pendingBalance).toBe(196.7); // 200 - 3.30 processor - 0 platform
+    expect(balance?.pendingBalance).toBe(186.7); // 200 - 3.30 processor - 10.00 platform (Free 5%)
     expect(balance?.processorFees).toBe(3.3);
+    expect(balance?.platformFees).toBe(10);
     expect(balance?.tips).toBe(20);
   });
 

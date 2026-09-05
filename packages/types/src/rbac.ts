@@ -10,6 +10,8 @@ export enum Resource {
   VERIFICATIONS = 'verifications',
   SUBSCRIPTIONS = 'subscriptions',
   PLANS = 'plans',
+  COUPONS = 'coupons',
+  AFFILIATES = 'affiliates',
   SETTINGS = 'settings',
   AUDIT_LOG = 'audit_log',
   ROLES = 'roles',

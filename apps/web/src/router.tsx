@@ -20,6 +20,8 @@ const MyRefundsPage = lazy(() => import('./pages/MyRefundsPage').then((m) => ({ 
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage })))
 const MyCampaignsPage = lazy(() => import('./pages/MyCampaignsPage').then((m) => ({ default: m.MyCampaignsPage })))
 const SubscriptionPage = lazy(() => import('./pages/SubscriptionPage').then((m) => ({ default: m.SubscriptionPage })))
+const SubscriptionCallbackPage = lazy(() => import('./pages/SubscriptionCallbackPage').then((m) => ({ default: m.SubscriptionCallbackPage })))
+const AffiliateDashboardPage = lazy(() => import('./pages/AffiliateDashboardPage').then((m) => ({ default: m.AffiliateDashboardPage })))
 const WalletPage = lazy(() => import('./pages/WalletPage').then((m) => ({ default: m.WalletPage })))
 const ExplorePage = lazy(() => import('./pages/ExplorePage').then((m) => ({ default: m.ExplorePage })))
 const OrganizationsPage = lazy(() => import('./pages/OrganizationsPage').then((m) => ({ default: m.OrganizationsPage })))
@@ -61,6 +63,8 @@ export const router = createBrowserRouter([
       { path: 'settings', element: <RequireAuth><SettingsPage /></RequireAuth> },
       { path: 'my-campaigns', element: <RequireAuth><MyCampaignsPage /></RequireAuth> },
       { path: 'subscription', element: <RequireAuth><SubscriptionPage /></RequireAuth> },
+      { path: 'subscription/callback', element: <SubscriptionCallbackPage /> },
+      { path: 'affiliate', element: <RequireAuth><AffiliateDashboardPage /></RequireAuth> },
       { path: 'wallet', element: <RequireAuth><WalletPage /></RequireAuth> },
       { path: 'invitations', element: <RequireAuth><CollaborationInvitationsPage /></RequireAuth> },
       { path: 'kyc', element: <RequireAuth><KYCPage /></RequireAuth> },

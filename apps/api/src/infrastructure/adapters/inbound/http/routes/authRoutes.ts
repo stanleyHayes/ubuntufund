@@ -17,6 +17,7 @@ const registerSchema = z
     organizationType: z.nativeEnum(OrganizationType).optional(),
     registrationNumber: z.string().max(100).optional(),
     website: z.string().url().max(500).optional(),
+    referralCode: z.string().min(3).max(24).optional(),
   })
   .superRefine((value, context) => {
     if (value.role !== UserRole.ORGANIZATION) return;

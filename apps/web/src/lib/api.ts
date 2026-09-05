@@ -155,6 +155,7 @@ export async function registerApi(data: {
   organizationType?: string
   registrationNumber?: string
   website?: string
+  referralCode?: string
 }): Promise<RegisterResponse> {
   const res = await request<{ data: RegisterResponse }>('/auth/register', {
     method: 'POST',

@@ -109,7 +109,7 @@ const DONATION_LEVEL_BADGES: Badge[] = [
     name: 'Supporter',
     description: '5+ donations made',
     icon: <FavoriteRounded />,
-    color: '#2F6B46',
+    color: 'var(--text-success)',
     bgSolid: '#2F6B46',
     rarity: 'common',
   },
@@ -118,7 +118,7 @@ const DONATION_LEVEL_BADGES: Badge[] = [
     name: 'Champion',
     description: '25+ donations or GH₵ 500+ donated',
     icon: <WorkspacePremiumRounded />,
-    color: '#4A6B75',
+    color: 'var(--text-info)',
     bgSolid: '#1E88E5',
     rarity: 'rare',
   },
@@ -145,7 +145,7 @@ const DONATION_LEVEL_BADGES: Badge[] = [
     name: 'On Fire',
     description: 'Donated 7 days in a row',
     icon: <LocalFireDepartmentRounded />,
-    color: '#B98A2E',
+    color: 'var(--text-warning)',
     bgSolid: '#F44336',
     rarity: 'rare',
   },
@@ -154,8 +154,8 @@ const DONATION_LEVEL_BADGES: Badge[] = [
 const RARITY_LABELS: Record<string, { label: string; color: string }> = {
   legendary: { label: 'Legendary', color: '#C7A24A' },
   epic: { label: 'Epic', color: '#A7654A' },
-  rare: { label: 'Rare', color: '#4A6B75' },
-  common: { label: 'Common', color: '#2F6B46' },
+  rare: { label: 'Rare', color: 'var(--text-info)' },
+  common: { label: 'Common', color: 'var(--text-success)' },
 }
 
 // ─── Period & Category Config ───────────────────────────────────────────────
@@ -326,9 +326,9 @@ function LeaderboardEmptyState() {
           {[
             { top: '10%', left: '8%', delay: '0s', size: 32, color: '#C7A24A' },
             { top: '20%', right: '12%', delay: '1s', size: 24, color: '#E040FB' },
-            { bottom: '25%', left: '15%', delay: '2s', size: 20, color: '#4A6B75' },
-            { bottom: '15%', right: '8%', delay: '0.5s', size: 28, color: '#2F6B46' },
-            { top: '40%', left: '5%', delay: '1.5s', size: 16, color: '#B98A2E' },
+            { bottom: '25%', left: '15%', delay: '2s', size: 20, color: 'var(--text-info)' },
+            { bottom: '15%', right: '8%', delay: '0.5s', size: 28, color: 'var(--text-success)' },
+            { top: '40%', left: '5%', delay: '1.5s', size: 16, color: 'var(--text-warning)' },
             { top: '35%', right: '5%', delay: '2.5s', size: 22, color: '#00E5FF' },
           ].map((star, i) => (
             <Box
@@ -553,7 +553,7 @@ function LeaderboardEmptyState() {
           <Box sx={{ textAlign: 'center', mb: 1 }}>
             <Typography sx={{
               fontSize: '0.6rem', fontWeight: 800, letterSpacing: 2, textTransform: 'uppercase',
-              color: '#4A6B75', mb: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1,
+              color: 'var(--text-info)', mb: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1,
             }}>
               <Box sx={{ width: 40, height: '1px', bgcolor: 'rgba(66,165,245,0.2)' }} />
               Rare
@@ -579,7 +579,7 @@ function LeaderboardEmptyState() {
           <Box sx={{ textAlign: 'center' }}>
             <Typography sx={{
               fontSize: '0.6rem', fontWeight: 800, letterSpacing: 2, textTransform: 'uppercase',
-              color: '#2F6B46', mb: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1,
+              color: 'var(--text-success)', mb: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1,
             }}>
               <Box sx={{ width: 50, height: '1px', bgcolor: 'rgba(102,187,106,0.2)' }} />
               Common
@@ -842,7 +842,7 @@ export function LeaderboardPage() {
                           />
                         </Box>
                         <Typography variant="body2" sx={{ fontWeight: 700, textAlign: 'right' }}>{(entry.donationCount ?? entry.campaignsSupported).toLocaleString()}</Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 700, textAlign: 'right', color: '#2E3D2F' }}>
+                        <Typography variant="body2" sx={{ fontWeight: 700, textAlign: 'right', color: 'var(--text-brand)' }}>
                           GH₵ {entry.totalDonated.toLocaleString()}
                         </Typography>
                       </Box>

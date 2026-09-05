@@ -1,3 +1,5 @@
+import ProductIllustration from '../ProductIllustration'
+import HomeWatermark from '../art/HomeWatermark'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
@@ -37,7 +39,7 @@ function OrganizationsSection() {
     <Box
       id="organizations"
       sx={{
-        py: { xs: 8, md: 10 },
+        position: 'relative', overflow: 'hidden', py: { xs: 8, md: 10 },
         background: 'linear-gradient(160deg, #1C261D 0%, #2E3D2F 100%)',
         '--neu-surface': '#233126',
         '--neu-raised': '8px 8px 18px rgba(8,14,10,0.48), -7px -7px 16px rgba(91,117,98,0.13)',
@@ -47,7 +49,8 @@ function OrganizationsSection() {
         color: '#fff',
       }}
     >
-      <Container maxWidth="lg">
+      <HomeWatermark variant="leaf" />
+      <Container maxWidth="lg" sx={{ position: 'relative' }}>
         <Grid container spacing={{ xs: 5, md: 8 }} alignItems="center">
           <Grid size={{ xs: 12, md: 5 }}>
             <Typography
@@ -77,6 +80,14 @@ function OrganizationsSection() {
               Ujimora gives you the tools to grow your fundraising and build
               lasting donor relationships across Ghana.
             </Typography>
+            <Box component="figure" sx={{ m: 0, mb: 4 }}>
+              <Box component="img" className="home-art-image" src="/images/home/community-learning.jpg"
+                alt="Illustration of a Ghanaian team arranging books and learning supplies together"
+                width={1536} height={1024} loading="lazy" decoding="async" sx={{ width: '100%', height: 'auto' }} />
+              <Typography component="figcaption" sx={{ mt: 1.5, fontSize: '.75rem', color: '#B5C9BA' }}>
+                A shared purpose starts with people.
+              </Typography>
+            </Box>
             <Button
               variant="contained"
               color="secondary"
@@ -90,6 +101,7 @@ function OrganizationsSection() {
           </Grid>
 
           <Grid size={{ xs: 12, md: 7 }}>
+            <Box sx={{ mb: 4 }}><ProductIllustration screen="create" caption="A guided start for your next cause" dark /></Box>
             <Grid container spacing={2}>
               {features.map(({ icon: Icon, title, detail }) => (
                 <Grid key={title} size={{ xs: 12, sm: 6 }}>

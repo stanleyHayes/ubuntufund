@@ -7,13 +7,15 @@ import { CampaignEntity } from '../../domain/entities/Campaign.js';
 import { Money } from '../../domain/value-objects/Money.js';
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js';
 import type { UserRepositoryPort } from '../../domain/ports/outbound/UserRepositoryPort.js';
+import type { PlanLimitsService } from '../services/PlanLimitsService.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 import { generateUniqueSlug } from '../utils/slug.js';
 
 export class CreateCampaignUseCase {
   constructor(
     private readonly campaignRepo: CampaignRepositoryPort,
-    private readonly userRepo: UserRepositoryPort
+    private readonly userRepo: UserRepositoryPort,
+    private readonly planLimits: PlanLimitsService
   ) {}
 
   async execute(input: CreateCampaignInput, creatorId: string): Promise<Campaign> {
@@ -29,6 +31,10 @@ export class CreateCampaignUseCase {
         403
       );
     }
+
+    // Enforce the creator's subscription-plan limits: active-campaign count
+    // (403 over the cap) and the campaign-goal ceiling (422 over the cap).
+    await this.planLimits.assertCanCreateCampaign(creatorId, input.goalAmount);
 
     const slug = await generateUniqueSlug(input.title, async (candidate) => {
       const existing = await this.campaignRepo.findBySlug(candidate);
@@ -48,7 +54,7 @@ export class CreateCampaignUseCase {
       status: CampaignStatus.PENDING_REVIEW,
       creatorId,
       beneficiaries: input.beneficiaries,
-      imageUrls: [],
+      imageUrls: input.imageUrls ?? [],
       startDate: now,
       endDate: new Date(input.endDate),
       createdAt: now,

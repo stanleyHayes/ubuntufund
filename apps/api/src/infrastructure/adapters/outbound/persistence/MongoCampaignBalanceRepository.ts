@@ -56,4 +56,83 @@ export class MongoCampaignBalanceRepository
     );
     return toDomain(doc!);
   }
+
+  async clearPendingToAvailable(
+    campaignId: string,
+    amount: number
+  ): Promise<CampaignBalance | null> {
+    // Guarded: only clears while pendingBalance covers the amount, so a race can
+    // never drive pendingBalance negative.
+    const doc = await CampaignBalanceModel.findOneAndUpdate(
+      { campaignId, pendingBalance: { $gte: amount } },
+      {
+        $set: { updatedAt: new Date() },
+        $inc: { pendingBalance: -amount, availableBalance: amount },
+      },
+      { new: true }
+    );
+    return doc ? toDomain(doc) : null;
+  }
+
+  async reserveForPayout(
+    campaignId: string,
+    amount: number
+  ): Promise<CampaignBalance | null> {
+    // Guarded on availableBalance so exactly one payout can reserve a given
+    // amount — the money leaves `available` and is now "in transit".
+    const doc = await CampaignBalanceModel.findOneAndUpdate(
+      { campaignId, availableBalance: { $gte: amount } },
+      {
+        $set: { updatedAt: new Date() },
+        $inc: { availableBalance: -amount },
+      },
+      { new: true }
+    );
+    return doc ? toDomain(doc) : null;
+  }
+
+  async markPaidOut(
+    campaignId: string,
+    amount: number
+  ): Promise<CampaignBalance | null> {
+    const doc = await CampaignBalanceModel.findOneAndUpdate(
+      { campaignId },
+      {
+        $set: { updatedAt: new Date() },
+        $inc: { paidOutBalance: amount },
+      },
+      { new: true }
+    );
+    return doc ? toDomain(doc) : null;
+  }
+
+  async returnToAvailable(
+    campaignId: string,
+    amount: number
+  ): Promise<CampaignBalance | null> {
+    const doc = await CampaignBalanceModel.findOneAndUpdate(
+      { campaignId },
+      {
+        $set: { updatedAt: new Date() },
+        $inc: { availableBalance: amount },
+      },
+      { new: true }
+    );
+    return doc ? toDomain(doc) : null;
+  }
+
+  async reverseFromPaidOut(
+    campaignId: string,
+    amount: number
+  ): Promise<CampaignBalance | null> {
+    const doc = await CampaignBalanceModel.findOneAndUpdate(
+      { campaignId },
+      {
+        $set: { updatedAt: new Date() },
+        $inc: { paidOutBalance: -amount, availableBalance: amount },
+      },
+      { new: true }
+    );
+    return doc ? toDomain(doc) : null;
+  }
 }

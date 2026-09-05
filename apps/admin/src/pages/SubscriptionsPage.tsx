@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Box, Typography, TextField, MenuItem, InputAdornment, Button } from '@mui/material'
-import { keyframes } from '@mui/system'
+import { Skeleton, Box, Typography, TextField, MenuItem, InputAdornment, Button } from '@mui/material'
+import { raisedSurface, insetSurface, progressTrack } from '@/lib/surfaces'
 import SearchIcon from '@mui/icons-material/Search'
 import { EmptyState } from '@ubuntu-fund/ui'
 import WorkspacePremiumRoundedIcon from '@mui/icons-material/WorkspacePremiumRounded'
@@ -24,11 +24,6 @@ import PaginationBar from '@/components/PaginationBar'
 import PageHeader from '@/components/PageHeader'
 import { TONES } from '@/lib/tones'
 
-const fadeIn = keyframes`from{opacity:0}to{opacity:1}`
-const slideIn = keyframes`from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}`
-const countUp = keyframes`from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}`
-const fillBar = keyframes`from{transform:scaleX(0)}to{transform:scaleX(1)}`
-const B = 'rgba(255,255,255,0.06)'
 
 // ---------------------------------------------------------------------------
 // Tier colors
@@ -61,22 +56,18 @@ interface AdminSubscription extends Subscription {
 // ---------------------------------------------------------------------------
 function Skel({ w, h }: { w?: string | number; h?: number }) {
   return (
-    <Box sx={{
-      width: w || '100%', height: h || 14,
-      bgcolor: 'rgba(255,255,255,0.04)',
-    }} />
+    <Skeleton variant="rounded" width={w ?? '100%'} height={h ?? 14} />
   )
 }
 
-function SkeletonRow({ index }: { index: number }) {
+function SkeletonRow() {
   return (
     <Box sx={{
       display: 'grid',
-      gridTemplateColumns: '2fr 0.9fr 0.8fr 0.8fr 1.1fr 1.1fr 2fr',
+      gridTemplateColumns: { xs: '1fr', md: '2fr 0.9fr 0.8fr 0.8fr 1.1fr 1.1fr 2fr' },
       gap: 2,
       px: 3, py: 2,
-      borderBottom: `1px solid ${B}`,
-      animation: `${fadeIn} 0.4s ease ${index * 0.05}s both`,
+      ...raisedSurface,
     }}>
       {Array.from({ length: 7 }).map((_, i) => <Skel key={i} w={i === 0 ? '80%' : '60%'} h={14} />)}
     </Box>
@@ -86,7 +77,7 @@ function SkeletonRow({ index }: { index: number }) {
 // ---------------------------------------------------------------------------
 // SubscriptionRow
 // ---------------------------------------------------------------------------
-function SubscriptionRow({ sub, index }: { sub: AdminSubscription; index: number }) {
+function SubscriptionRow({ sub }: { sub: AdminSubscription }) {
   const navigate = useNavigate()
   const { can } = useAdminPermissions()
   const canUpdate = can(Resource.SUBSCRIPTIONS, Action.UPDATE)
@@ -101,12 +92,12 @@ function SubscriptionRow({ sub, index }: { sub: AdminSubscription; index: number
       gap: { xs: 0.5, md: 2 },
       alignItems: 'center',
       px: 3, py: 2,
-      borderBottom: `1px solid ${B}`,
+      ...raisedSurface,
       cursor: 'default',
-      transition: 'all 0.3s ease',
-      animation: `${slideIn} 0.4s ease ${index * 0.03}s both`,
+      transition: 'box-shadow 160ms ease',
+        '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
       '&:hover': {
-        bgcolor: 'rgba(255,255,255,0.02)',
+        bgcolor: 'background.paper',
       },
     }}>
       {/* User Name + Email */}
@@ -124,8 +115,7 @@ function SubscriptionRow({ sub, index }: { sub: AdminSubscription; index: number
         <Box sx={{
           display: 'inline-flex', alignItems: 'center', gap: 0.5,
           px: 1.2, py: 0.3,
-          border: `1px solid ${tierColor}40`,
-          bgcolor: `${tierColor}12`,
+          ...insetSurface,
         }}>
           <Box sx={{ width: 6, height: 6, bgcolor: tierColor, flexShrink: 0 }} />
           <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: tierColor, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
@@ -150,15 +140,15 @@ function SubscriptionRow({ sub, index }: { sub: AdminSubscription; index: number
 
       {/* Period Start */}
       <Box>
-        <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary', fontFamily: '"Outfit", monospace', whiteSpace: 'nowrap' }}>
-          {sub.currentPeriodStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+        <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary', fontFamily: '"Outfit", monospace', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+          {new Date(sub.currentPeriodStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
         </Typography>
       </Box>
 
       {/* Period End */}
       <Box sx={{ display: { xs: 'none', md: 'block' } }}>
-        <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary', fontFamily: '"Outfit", monospace', whiteSpace: 'nowrap' }}>
-          {sub.currentPeriodEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+        <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary', fontFamily: '"Outfit", monospace', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+          {new Date(sub.currentPeriodEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
         </Typography>
       </Box>
 
@@ -170,7 +160,7 @@ function SubscriptionRow({ sub, index }: { sub: AdminSubscription; index: number
             sx={{
               minWidth: 0, px: 1, py: 0.3, fontSize: '0.65rem', fontWeight: 700,
               color: '#74909A', borderColor: 'rgba(116,144,154,0.3)', textTransform: 'none',
-              border: '1px solid', '&:hover': { bgcolor: 'rgba(116,144,154,0.08)' },
+              border: 0, boxShadow: 'var(--neu-subtle)', '&:hover': { bgcolor: 'rgba(116,144,154,0.08)' },
             }}
           >
             <VisibilityIcon sx={{ fontSize: 13, mr: 0.3 }} />
@@ -182,7 +172,7 @@ function SubscriptionRow({ sub, index }: { sub: AdminSubscription; index: number
               sx={{
                 minWidth: 0, px: 1, py: 0.3, fontSize: '0.65rem', fontWeight: 700,
                 color: TONES.maroon.text, borderColor: 'rgba(185,138,138,0.3)', textTransform: 'none',
-                border: '1px solid', '&:hover': { bgcolor: 'rgba(185,138,138,0.08)' },
+                border: 0, boxShadow: 'var(--neu-subtle)', '&:hover': { bgcolor: 'rgba(185,138,138,0.08)' },
               }}
             >
               <SwapHorizIcon sx={{ fontSize: 13, mr: 0.3 }} />
@@ -195,7 +185,7 @@ function SubscriptionRow({ sub, index }: { sub: AdminSubscription; index: number
               sx={{
                 minWidth: 0, px: 1, py: 0.3, fontSize: '0.65rem', fontWeight: 700,
                 color: '#C06B58', borderColor: 'rgba(192,107,88,0.3)', textTransform: 'none',
-                border: '1px solid', '&:hover': { bgcolor: 'rgba(192,107,88,0.08)' },
+                border: 0, boxShadow: 'var(--neu-subtle)', '&:hover': { bgcolor: 'rgba(192,107,88,0.08)' },
               }}
             >
               <CancelIcon sx={{ fontSize: 13, mr: 0.3 }} />
@@ -264,11 +254,11 @@ export default function SubscriptionsPage() {
   const pagination = usePagination(filtered, PAGE_SIZE)
 
   if (error) {
-    return <EmptyState title="Could not load subscriptions" description={error} />
+    return <Box sx={{ ...raisedSurface, p: 3 }}><EmptyState title="Could not load subscriptions" description={error} /></Box>
   }
 
   return (
-    <Box sx={{ bgcolor: '#0c0c14', minHeight: '100vh', animation: `${fadeIn} 0.3s ease` }}>
+    <Box sx={{ bgcolor: 'background.default' }}>
       <PageHeader
         tone="gold"
         eyebrow="Community"
@@ -276,36 +266,35 @@ export default function SubscriptionsPage() {
         lede="Monitor plan mix, billing health, and recurring revenue across every subscriber."
         icon={<WorkspacePremiumRoundedIcon />}
         stats={[
-          { label: 'Total Subscribers', value: totalSubscribers },
-          { label: 'Monthly Revenue', value: `GH₵ ${monthlyRevenue.toFixed(0)}` },
-          { label: 'Free Users', value: freeUsers },
-          { label: 'Paid Users', value: paidUsers },
+          { label: 'Total Subscribers', value: loading ? <Skeleton width={60} /> : totalSubscribers },
+          { label: 'Monthly Revenue', value: loading ? <Skeleton width={90} /> : `GH₵ ${monthlyRevenue.toFixed(0)}` },
+          { label: 'Free Users', value: loading ? <Skeleton width={60} /> : freeUsers },
+          { label: 'Paid Users', value: loading ? <Skeleton width={60} /> : paidUsers },
         ]}
       />
 
       {/* Revenue breakdown by tier */}
-      <Box sx={{ borderBottom: `1px solid ${B}`, px: 3, py: 2 }}>
+      <Box sx={{ ...raisedSurface, mb: 3, px: 3, py: 2 }}>
         <Typography sx={{ fontSize: '0.68rem', color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.1em', mb: 1.5 }}>
           Revenue by Tier
         </Typography>
         <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-          {revenueByTier.map((r, i) => (
-            <Box key={r.tier} sx={{ flex: 1, minWidth: 140, animation: `${countUp} 0.5s ease ${0.5 + i * 0.1}s both` }}>
+          {revenueByTier.map((r) => (
+            <Box key={r.tier} sx={{ ...insetSurface, p: 2, flex: 1, minWidth: 140, }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
                 <Typography sx={{ fontSize: '0.75rem', color: r.color, fontWeight: 700 }}>{r.name}</Typography>
                 <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontFamily: '"Outfit", monospace' }}>
-                  GH₵ {r.revenue.toFixed(0)}/mo
+                  {loading ? <Skeleton width={90} /> : `GH₵ ${r.revenue.toFixed(0)}/mo`}
                 </Typography>
               </Box>
-              <Box sx={{ width: '100%', height: 4, bgcolor: 'rgba(255,255,255,0.04)', overflow: 'hidden' }}>
+              <Box sx={{ ...progressTrack }}>
                 <Box sx={{
                   width: `${(r.revenue / totalRevForBar) * 100}%`,
                   height: '100%', bgcolor: r.color, transformOrigin: 'left',
-                  animation: `${fillBar} 1s ${0.6 + i * 0.1}s ease both`,
                 }} />
               </Box>
               <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', mt: 0.3 }}>
-                {r.count} subscriber{r.count !== 1 ? 's' : ''}
+                {loading ? <Skeleton width={70} /> : `${r.count} subscriber${r.count !== 1 ? 's' : ''}`}
               </Typography>
             </Box>
           ))}
@@ -313,12 +302,13 @@ export default function SubscriptionsPage() {
       </Box>
 
       {/* Filter bar */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr 1fr 1fr' }, borderBottom: `1px solid ${B}` }}>
-        <Box sx={{ px: 2.5, py: 1.5, borderRight: `1px solid ${B}`, display: 'flex', alignItems: 'center' }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr 1fr 1fr' }, ...raisedSurface, mb: 3 }}>
+        <Box sx={{ px: 2.5, py: 1.5, display: 'flex', alignItems: 'center' }}>
           <TextField
             size="small"
-            variant="standard"
+            variant="outlined"
             placeholder="Search subscribers..."
+            slotProps={{ htmlInput: { 'aria-label': 'Search subscribers...' } }}
             value={search}
             onChange={e => setSearch(e.target.value)}
             fullWidth
@@ -329,19 +319,12 @@ export default function SubscriptionsPage() {
                 </InputAdornment>
               ),
             }}
-            sx={{
-              '& .MuiInput-root': { color: 'text.primary', '&::before': { borderColor: B }, '&::after': { borderColor: TONES.maroon.text } },
-            }}
           />
         </Box>
-        <Box sx={{ px: 2.5, py: 1.5, borderRight: `1px solid ${B}`, display: 'flex', alignItems: 'center' }}>
+        <Box sx={{ px: 2.5, py: 1.5, display: 'flex', alignItems: 'center' }}>
           <TextField
-            select size="small" variant="standard" label="Tier"
+            select size="small" variant="outlined" label="Tier"
             value={tierFilter} onChange={e => setTierFilter(e.target.value)} fullWidth
-            sx={{
-              '& .MuiInput-root': { color: 'text.primary', '&::before': { borderColor: B }, '&::after': { borderColor: TONES.maroon.text } },
-              '& .MuiInputLabel-root': { color: 'text.secondary', fontSize: '0.8rem' },
-            }}
           >
             <MenuItem value="all">All Tiers</MenuItem>
             {Object.values(SubscriptionTier).map(t => (
@@ -349,14 +332,10 @@ export default function SubscriptionsPage() {
             ))}
           </TextField>
         </Box>
-        <Box sx={{ px: 2.5, py: 1.5, borderRight: `1px solid ${B}`, display: 'flex', alignItems: 'center' }}>
+        <Box sx={{ px: 2.5, py: 1.5, display: 'flex', alignItems: 'center' }}>
           <TextField
-            select size="small" variant="standard" label="Status"
+            select size="small" variant="outlined" label="Status"
             value={statusFilter} onChange={e => setStatusFilter(e.target.value)} fullWidth
-            sx={{
-              '& .MuiInput-root': { color: 'text.primary', '&::before': { borderColor: B }, '&::after': { borderColor: TONES.maroon.text } },
-              '& .MuiInputLabel-root': { color: 'text.secondary', fontSize: '0.8rem' },
-            }}
           >
             <MenuItem value="all">All Statuses</MenuItem>
             {Object.values(SubscriptionStatus).map(s => (
@@ -365,8 +344,8 @@ export default function SubscriptionsPage() {
           </TextField>
         </Box>
         <Box sx={{ px: 2.5, py: 1.5, display: 'flex', alignItems: 'center' }}>
-          <Typography sx={{ fontFamily: '"Outfit", monospace', fontSize: '0.82rem', color: 'text.secondary' }}>
-            {filtered.length} subscription{filtered.length !== 1 ? 's' : ''}
+          <Typography sx={{ fontFamily: '"Outfit", monospace', fontVariantNumeric: 'tabular-nums', fontSize: '0.82rem', color: 'text.secondary' }}>
+            {loading ? <Skeleton width={100} /> : `${filtered.length} subscription${filtered.length !== 1 ? 's' : ''}`}
           </Typography>
         </Box>
       </Box>
@@ -375,9 +354,9 @@ export default function SubscriptionsPage() {
       <Box sx={{
         display: { xs: 'none', md: 'grid' },
         gridTemplateColumns: '2fr 0.9fr 0.8fr 0.8fr 1.1fr 1.1fr 2fr',
-        gap: 2, px: 3, py: 1.2,
-        borderBottom: `1px solid ${B}`,
-        bgcolor: 'rgba(255,255,255,0.02)',
+        gap: 2, px: 3, py: 1.2, mb: 2,
+        ...raisedSurface,
+        bgcolor: 'background.paper',
       }}>
         {['User', 'Tier', 'Status', 'Billing', 'Period Start', 'Period End', 'Actions'].map(h => (
           <Typography key={h} sx={{ fontSize: '0.65rem', fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
@@ -387,20 +366,20 @@ export default function SubscriptionsPage() {
       </Box>
 
       {/* Rows */}
-      <Box>
+      <Box sx={{ display: 'grid', gap: 2 }}>
         {loading
-          ? Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} index={i} />)
-          : pagination.page.map((sub, i) => (
-              <SubscriptionRow key={sub.id} sub={sub} index={i} />
+          ? Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} />)
+          : pagination.page.map((sub) => (
+              <SubscriptionRow key={sub.id} sub={sub} />
             ))
         }
       </Box>
 
-      {!loading && <PaginationBar pagination={pagination} accentColor={TONES.maroon.text} />}
+      {!loading && <PaginationBar neumorphic pagination={pagination} accentColor={TONES.maroon.text} />}
 
       {/* Empty state */}
       {!loading && filtered.length === 0 && (
-        <EmptyState variant="search" title="No subscriptions found" description="No subscriptions match your filters. Try adjusting your search criteria." compact />
+        <Box sx={{ ...raisedSurface, p: 3 }}><EmptyState variant="search" title="No subscriptions found" description="No subscriptions match your filters. Try adjusting your search criteria." compact /></Box>
       )}
     </Box>
   )

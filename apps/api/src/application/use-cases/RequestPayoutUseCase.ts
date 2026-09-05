@@ -1,0 +1,123 @@
+import type { Payout, RequestPayoutInput } from '@ubuntu-fund/types';
+import { PayoutEntity } from '../../domain/entities/Payout.js';
+import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js';
+import type { TransferRecipientRepositoryPort } from '../../domain/ports/outbound/TransferRecipientRepositoryPort.js';
+import type { PayoutRepositoryPort } from '../../domain/ports/outbound/PayoutRepositoryPort.js';
+import type { CampaignBalanceRepositoryPort } from '../../domain/ports/outbound/CampaignBalanceRepositoryPort.js';
+import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGatewayPort.js';
+import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
+import { toPayoutDto } from './mappers/payoutDto.js';
+import type { PayoutRequester } from './CreatePayoutRecipientUseCase.js';
+
+const CURRENCY = 'GHS';
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+/**
+ * Owner requests a payout of cleared funds. Creates a PENDING payout awaiting
+ * ADMIN approval — no money moves and no transfer is initiated here.
+ *
+ * CLEARING RULE (documented): a settled donation's beneficiary-net is
+ * immediately eligible for payout — there is no holding period. Operationally,
+ * settlement accrues net funds to `pendingBalance`; this use-case clears exactly
+ * the requested amount from `pending → available` so the later approval can
+ * reserve it. The requestable ceiling is therefore `available + pending`, and a
+ * request over that ceiling is rejected (never a partial or negative balance).
+ */
+export class RequestPayoutUseCase {
+  constructor(
+    private readonly campaignRepo: CampaignRepositoryPort,
+    private readonly transferRecipientRepo: TransferRecipientRepositoryPort,
+    private readonly payoutRepo: PayoutRepositoryPort,
+    private readonly campaignBalanceRepo: CampaignBalanceRepositoryPort,
+    private readonly paymentGateway: PaymentGatewayPort
+  ) {}
+
+  async execute(
+    campaignId: string,
+    input: RequestPayoutInput,
+    requester: PayoutRequester
+  ): Promise<Payout> {
+    if (!this.paymentGateway.isConfigured()) {
+      throw new AppError('Payouts are not configured', 501);
+    }
+
+    const campaign = await this.campaignRepo.findById(campaignId);
+    if (!campaign) {
+      throw new AppError('Campaign not found', 404);
+    }
+
+    const isOwner = campaign.creatorId === requester.userId;
+    const isAdmin = requester.role === 'admin';
+    if (!isOwner && !isAdmin) {
+      throw new AppError('Only the campaign owner can request a payout', 403);
+    }
+
+    const amount = round2(Number(input.amount));
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new AppError('Payout amount must be greater than zero', 422);
+    }
+
+    const recipient =
+      await this.transferRecipientRepo.findLatestByCampaignId(campaignId);
+    if (!recipient) {
+      throw new AppError(
+        'Add a payout recipient before requesting a payout',
+        400
+      );
+    }
+
+    const balance =
+      await this.campaignBalanceRepo.findByCampaignId(campaignId);
+    const available = balance?.availableBalance ?? 0;
+    const pending = balance?.pendingBalance ?? 0;
+    const eligible = round2(available + pending);
+    const currency = balance?.currency ?? recipient.currency ?? CURRENCY;
+
+    if (amount > eligible) {
+      throw new AppError(
+        `Cannot request a payout of ${currency} ${amount.toLocaleString(
+          'en-US'
+        )}; only ${currency} ${eligible.toLocaleString(
+          'en-US'
+        )} is available for payout.`,
+        422
+      );
+    }
+
+    // Clear just enough pending → available so the approval step can reserve the
+    // full requested amount out of `availableBalance`.
+    const needed = round2(amount - available);
+    if (needed > 0) {
+      const cleared = await this.campaignBalanceRepo.clearPendingToAvailable(
+        campaignId,
+        needed
+      );
+      if (!cleared) {
+        throw new AppError(
+          'Insufficient cleared funds for this payout; please try again.',
+          422
+        );
+      }
+    }
+
+    const saved = await this.payoutRepo.create(
+      new PayoutEntity({
+        id: '',
+        campaignId: campaign.id,
+        recipientId: recipient.id,
+        amount,
+        currency,
+        status: 'PENDING',
+        provider: 'paystack',
+        requestedBy: requester.userId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+    );
+
+    return toPayoutDto(saved);
+  }
+}

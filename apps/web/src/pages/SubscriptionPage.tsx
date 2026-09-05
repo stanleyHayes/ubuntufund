@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
@@ -10,6 +11,10 @@ import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
 import DialogActions from '@mui/material/DialogActions'
+import TextField from '@mui/material/TextField'
+import InputAdornment from '@mui/material/InputAdornment'
+import CircularProgress from '@mui/material/CircularProgress'
+import Alert from '@mui/material/Alert'
 import LinearProgress from '@mui/material/LinearProgress'
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
@@ -19,8 +24,9 @@ import CalendarTodayRoundedIcon from '@mui/icons-material/CalendarTodayRounded'
 import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded'
 import CampaignRoundedIcon from '@mui/icons-material/CampaignRounded'
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded'
+import LocalOfferRoundedIcon from '@mui/icons-material/LocalOfferRounded'
 import { keyframes } from '@emotion/react'
-import { SHAPE } from '@ubuntu-fund/ui'
+import { SHAPE, formatCurrency } from '@ubuntu-fund/ui'
 import {
   SubscriptionTier,
   SubscriptionStatus,
@@ -29,6 +35,12 @@ import {
 } from '@ubuntu-fund/types'
 import { useMySubscription } from '@/hooks/useSubscription'
 import { api } from '@/lib/api'
+import {
+  createSubscriptionCheckout,
+  saveSubscriptionCheckoutHandoff,
+  isPaymentsNotConfigured,
+} from '@/lib/subscriptions'
+import { useCouponPreview } from '@/hooks/useCouponPreview'
 
 // ─── Animations ─────────────────────────────────────────────────────────────
 
@@ -43,9 +55,9 @@ const TIER_ORDER = [SubscriptionTier.FREE, SubscriptionTier.STARTER, Subscriptio
 
 const TIER_COLORS: Record<SubscriptionTier, { accent: string; bg: string; banner: string }> = {
   [SubscriptionTier.FREE]: { accent: '#78909C', bg: 'rgba(120,144,156,0.06)', banner: '#78909C' },
-  [SubscriptionTier.STARTER]: { accent: '#1565C0', bg: 'rgba(21,101,192,0.05)', banner: '#1565C0' },
-  [SubscriptionTier.PRO]: { accent: '#2E3D2F', bg: 'rgba(46, 61, 47,0.05)', banner: '#2E3D2F' },
-  [SubscriptionTier.ENTERPRISE]: { accent: '#6A1B9A', bg: 'rgba(106,27,154,0.05)', banner: '#6A1B9A' },
+  [SubscriptionTier.STARTER]: { accent: 'var(--text-info)', bg: 'rgba(21,101,192,0.05)', banner: '#1565C0' },
+  [SubscriptionTier.PRO]: { accent: 'var(--text-brand)', bg: 'rgba(46, 61, 47,0.05)', banner: '#2E3D2F' },
+  [SubscriptionTier.ENTERPRISE]: { accent: 'var(--text-accent)', bg: 'rgba(106,27,154,0.05)', banner: '#6A1B9A' },
 }
 
 interface FeatureRow {
@@ -93,14 +105,14 @@ const FEATURE_SECTIONS: { title: string; rows: FeatureRow[] }[] = [
 function formatCellValue(value: unknown, format?: string): React.ReactNode {
   if (format === 'boolean') {
     return value ? (
-      <CheckRoundedIcon sx={{ fontSize: 18, color: '#2E3D2F' }} />
+      <CheckRoundedIcon sx={{ fontSize: 18, color: 'var(--text-brand)' }} />
     ) : (
-      <CloseRoundedIcon sx={{ fontSize: 18, color: 'rgba(0,0,0,0.15)' }} />
+      <CloseRoundedIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
     )
   }
   if (typeof value === 'number') {
-    if (value === -1) return <Typography sx={{ fontSize: '0.82rem', fontWeight: 700, color: '#2E3D2F' }}>Unlimited</Typography>
-    if (value === 0 && format === 'unlimited') return <CloseRoundedIcon sx={{ fontSize: 18, color: 'rgba(0,0,0,0.15)' }} />
+    if (value === -1) return <Typography sx={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-brand)' }}>Unlimited</Typography>
+    if (value === 0 && format === 'unlimited') return <CloseRoundedIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
     if (format === 'fee') return <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>{value}%</Typography>
     if (format === 'goal') return <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>GH₵ {value.toLocaleString()}</Typography>
     return <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>{value}</Typography>
@@ -111,11 +123,91 @@ function formatCellValue(value: unknown, format?: string): React.ReactNode {
 // ─── Component ──────────────────────────────────────────────────────────────
 
 export function SubscriptionPage() {
+  const navigate = useNavigate()
   const { subscription, isLoading, refetch } = useMySubscription()
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
   const [billingToggle, setBillingToggle] = useState<'monthly' | 'yearly'>('monthly')
   const [actionLoading, setActionLoading] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
+
+  // ── Paid checkout + coupon flow ────────────────────────────────────────────
+  const [selectedTier, setSelectedTier] = useState<SubscriptionTier | null>(null)
+  const [couponCode, setCouponCode] = useState('')
+  const [checkoutLoading, setCheckoutLoading] = useState(false)
+  const [checkoutError, setCheckoutError] = useState<string | null>(null)
+  const [paymentsUnavailable, setPaymentsUnavailable] = useState(false)
+  const { preview, loading: couponLoading, error: couponError, run: runCoupon, clear: clearCoupon } = useCouponPreview()
+
+  const billingCycle: BillingCycle = billingToggle === 'yearly' ? BillingCycle.YEARLY : BillingCycle.MONTHLY
+
+  // Live-quote the coupon whenever the code, plan, or billing cycle changes.
+  useEffect(() => {
+    if (selectedTier && couponCode.trim()) {
+      runCoupon({ code: couponCode, tier: selectedTier, billingCycle })
+    } else {
+      clearCoupon()
+    }
+  }, [couponCode, selectedTier, billingCycle, runCoupon, clearCoupon])
+
+  function openCheckout(tier: SubscriptionTier) {
+    setSelectedTier(tier)
+    setCouponCode('')
+    setCheckoutError(null)
+    setPaymentsUnavailable(false)
+    clearCoupon()
+  }
+
+  function closeCheckout() {
+    if (checkoutLoading) return
+    setSelectedTier(null)
+    setCouponCode('')
+    setCheckoutError(null)
+    setPaymentsUnavailable(false)
+    clearCoupon()
+  }
+
+  async function handleCheckout() {
+    if (!selectedTier) return
+    const tier = selectedTier
+    setCheckoutLoading(true)
+    setCheckoutError(null)
+    setPaymentsUnavailable(false)
+    try {
+      const result = await createSubscriptionCheckout({
+        tier,
+        billingCycle,
+        couponCode: couponCode.trim() || undefined,
+      })
+      if (result.activatedWithoutCharge) {
+        // A coupon zeroed the price — the subscription is already active; show
+        // the success state on the callback page (it polls the checkout status).
+        refetch()
+        navigate(`/subscription/callback?checkout=${encodeURIComponent(result.checkout.id)}`)
+        return
+      }
+      if (result.authorizationUrl) {
+        saveSubscriptionCheckoutHandoff({
+          checkoutId: result.checkout.id,
+          reference: result.reference,
+          tier,
+          billingCycle,
+          finalAmount: result.preview.finalAmount,
+          currency: result.preview.currency,
+        })
+        window.location.assign(result.authorizationUrl)
+        return
+      }
+      setCheckoutError('We could not start checkout. Please try again.')
+    } catch (err) {
+      if (isPaymentsNotConfigured(err)) {
+        setPaymentsUnavailable(true)
+      } else {
+        setCheckoutError(err instanceof Error ? err.message : 'We could not start checkout. Please try again.')
+      }
+    } finally {
+      setCheckoutLoading(false)
+    }
+  }
 
   async function handleCancel() {
     setActionLoading(true)
@@ -294,8 +386,8 @@ export function SubscriptionPage() {
                     fontWeight: 600,
                     fontSize: '0.72rem',
                     bgcolor: 'rgba(46, 61, 47,0.06)',
-                    color: '#2E3D2F',
-                    '& .MuiChip-icon': { color: '#2E3D2F' },
+                    color: 'var(--text-brand)',
+                    '& .MuiChip-icon': { color: 'var(--text-brand)' },
                   }}
                 />
               ))}
@@ -348,7 +440,7 @@ export function SubscriptionPage() {
             >
               {cycle === 'monthly' ? 'Monthly' : 'Yearly'}
               {cycle === 'yearly' && (
-                <Box component="span" sx={{ ml: 1, color: billingToggle === 'yearly' ? '#2F6B46' : '#2E3D2F', fontSize: '0.72rem', fontWeight: 800 }}>
+                <Box component="span" sx={{ ml: 1, color: billingToggle === 'yearly' ? '#2F6B46' : 'var(--text-brand)', fontSize: '0.72rem', fontWeight: 800 }}>
                   Save 17%
                 </Box>
               )}
@@ -371,6 +463,7 @@ export function SubscriptionPage() {
           const isPro = tier === SubscriptionTier.PRO
           const tc = TIER_COLORS[tier]
           const price = billingToggle === 'yearly' ? plan.priceYearly : plan.priceMonthly
+          const canCheckout = !isCurrent && tier !== SubscriptionTier.FREE && tier !== SubscriptionTier.ENTERPRISE
 
           return (
             <Card
@@ -413,7 +506,7 @@ export function SubscriptionPage() {
                     icon={<StarRoundedIcon sx={{ fontSize: '14px !important', color: '#C7A24A !important' }} />}
                     label="Current"
                     size="small"
-                    sx={{ fontWeight: 700, fontSize: '0.68rem', bgcolor: 'rgba(199, 162, 74,0.1)', color: '#E65100' }}
+                    sx={{ fontWeight: 700, fontSize: '0.68rem', bgcolor: 'rgba(199, 162, 74,0.1)', color: 'var(--text-warning)' }}
                   />
                 </Box>
               )}
@@ -468,22 +561,76 @@ export function SubscriptionPage() {
                     ))}
                 </Box>
 
-                <Button
-                  variant={isCurrent ? 'outlined' : isPro ? 'contained' : 'outlined'}
-                  fullWidth
-                  disabled
-                  sx={{
-                    borderRadius: SHAPE.sm,
-                    fontWeight: 700,
-                    fontFamily: '"Outfit", sans-serif',
-                    textTransform: 'none',
-                    py: 1.2,
-                    ...(isPro && !isCurrent && { bgcolor: tc.accent, '&:hover': { bgcolor: '#1C261D' } }),
-                    ...(isCurrent && { borderColor: tc.accent, color: tc.accent }),
-                  }}
-                >
-                  {isCurrent ? 'Current Plan' : 'Billing unavailable'}
-                </Button>
+                {isCurrent ? (
+                  <Button
+                    variant="outlined"
+                    fullWidth
+                    disabled
+                    sx={{
+                      borderRadius: SHAPE.sm,
+                      fontWeight: 700,
+                      fontFamily: '"Outfit", sans-serif',
+                      textTransform: 'none',
+                      py: 1.2,
+                      borderColor: tc.accent,
+                      color: tc.accent,
+                    }}
+                  >
+                    Current Plan
+                  </Button>
+                ) : tier === SubscriptionTier.ENTERPRISE ? (
+                  <Button
+                    variant="outlined"
+                    fullWidth
+                    component="a"
+                    href="mailto:sales@ujimora.com?subject=Enterprise%20plan%20enquiry"
+                    sx={{
+                      borderRadius: SHAPE.sm,
+                      fontWeight: 700,
+                      fontFamily: '"Outfit", sans-serif',
+                      textTransform: 'none',
+                      py: 1.2,
+                      borderColor: tc.accent,
+                      color: tc.accent,
+                    }}
+                  >
+                    Contact sales
+                  </Button>
+                ) : tier === SubscriptionTier.FREE ? (
+                  <Button
+                    variant="outlined"
+                    fullWidth
+                    disabled
+                    sx={{
+                      borderRadius: SHAPE.sm,
+                      fontWeight: 700,
+                      fontFamily: '"Outfit", sans-serif',
+                      textTransform: 'none',
+                      py: 1.2,
+                    }}
+                  >
+                    Free plan
+                  </Button>
+                ) : (
+                  <Button
+                    variant={isPro ? 'contained' : 'outlined'}
+                    fullWidth
+                    onClick={() => openCheckout(tier)}
+                    disabled={!canCheckout}
+                    sx={{
+                      borderRadius: SHAPE.sm,
+                      fontWeight: 700,
+                      fontFamily: '"Outfit", sans-serif',
+                      textTransform: 'none',
+                      py: 1.2,
+                      ...(isPro
+                        ? { bgcolor: tc.banner, color: '#fff', '&:hover': { bgcolor: '#1C261D' } }
+                        : { borderColor: tc.accent, color: tc.accent }),
+                    }}
+                  >
+                    Choose {plan.name}
+                  </Button>
+                )}
               </CardContent>
             </Card>
           )
@@ -508,7 +655,7 @@ export function SubscriptionPage() {
             sx={{
               display: 'grid',
               gridTemplateColumns: { xs: '1.6fr repeat(4, 1fr)', md: '2fr repeat(4, 1fr)' },
-              bgcolor: '#FAFAFA',
+              bgcolor: 'background.paper',
               borderBottom: '1px solid rgba(0,0,0,0.08)',
               position: 'sticky',
               top: 0,
@@ -643,12 +790,14 @@ export function SubscriptionPage() {
             Ready to grow your impact?
           </Typography>
           <Typography sx={{ color: 'text.secondary', mb: 3, maxWidth: 500, mx: 'auto' }}>
-            Paid upgrades will return after verified billing and production payment processing are configured.
+            Upgrade to a paid plan for lower platform fees, more campaigns, and premium features.
+            Have a coupon? Apply it at checkout.
           </Typography>
           <Button
             variant="contained"
             size="large"
-            disabled
+            onClick={() => openCheckout(SubscriptionTier.PRO)}
+            startIcon={<RocketLaunchRoundedIcon />}
             sx={{
               bgcolor: '#2E3D2F',
               fontFamily: '"Outfit", sans-serif',
@@ -659,10 +808,119 @@ export function SubscriptionPage() {
               '&:hover': { bgcolor: '#1C261D' },
             }}
           >
-            Billing unavailable
+            Upgrade to Pro
           </Button>
         </Card>
       )}
+
+      {/* ═══════════ CHECKOUT DIALOG ═══════════ */}
+      <Dialog
+        open={selectedTier !== null}
+        onClose={closeCheckout}
+        fullWidth
+        maxWidth="xs"
+        PaperProps={{ sx: { borderRadius: SHAPE.card } }}
+      >
+        {selectedTier && (() => {
+          const plan = SUBSCRIPTION_PLANS[selectedTier]
+          const basePrice = billingToggle === 'yearly' ? plan.priceYearly : plan.priceMonthly
+          const validCoupon = preview && preview.valid ? preview : null
+          const currency = validCoupon?.currency ?? 'GHS'
+          const finalAmount = validCoupon ? validCoupon.finalAmount : basePrice
+          return (
+            <>
+              <DialogTitle sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 800 }}>
+                Upgrade to {plan.name}
+              </DialogTitle>
+              <DialogContent>
+                <Typography sx={{ color: 'text.secondary', fontSize: '0.85rem', mb: 2 }}>
+                  Billed {billingToggle === 'yearly' ? 'yearly' : 'monthly'}. You can cancel anytime.
+                </Typography>
+
+                <TextField
+                  fullWidth
+                  label="Coupon code (optional)"
+                  value={couponCode}
+                  onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                  disabled={checkoutLoading}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <LocalOfferRoundedIcon sx={{ fontSize: 18, color: 'text.disabled' }} />
+                      </InputAdornment>
+                    ),
+                    endAdornment: couponLoading ? (
+                      <InputAdornment position="end">
+                        <CircularProgress size={16} />
+                      </InputAdornment>
+                    ) : undefined,
+                  }}
+                  sx={{ mb: 1.5 }}
+                />
+
+                {/* Coupon feedback */}
+                {couponError && (
+                  <Typography sx={{ fontSize: '0.78rem', color: 'error.main', mb: 1 }}>{couponError}</Typography>
+                )}
+                {preview && !preview.valid && preview.reason && (
+                  <Typography sx={{ fontSize: '0.78rem', color: 'error.main', mb: 1 }}>{preview.reason}</Typography>
+                )}
+                {validCoupon && validCoupon.discountAmount > 0 && (
+                  <Typography sx={{ fontSize: '0.78rem', color: 'var(--text-success)', fontWeight: 600, mb: 1 }}>
+                    Coupon applied — you save {formatCurrency(validCoupon.discountAmount, currency)}.
+                  </Typography>
+                )}
+
+                {/* Price summary */}
+                <Box sx={{ mt: 1, p: 2, borderRadius: SHAPE.sm, bgcolor: 'rgba(46, 61, 47,0.05)' }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: validCoupon ? 0.5 : 0 }}>
+                    <Typography sx={{ fontSize: '0.85rem', color: 'text.secondary' }}>
+                      {plan.name} · {billingToggle === 'yearly' ? 'Yearly' : 'Monthly'}
+                    </Typography>
+                    <Typography
+                      sx={{
+                        fontSize: '0.85rem',
+                        ...(validCoupon && { textDecoration: 'line-through', color: 'text.disabled' }),
+                      }}
+                    >
+                      {formatCurrency(basePrice, currency)}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                    <Typography sx={{ fontWeight: 800, fontFamily: '"Outfit", sans-serif' }}>Total due today</Typography>
+                    <Typography sx={{ fontWeight: 900, fontSize: '1.2rem', fontFamily: '"Outfit", sans-serif', color: 'primary.dark' }}>
+                      {formatCurrency(finalAmount, currency)}
+                    </Typography>
+                  </Box>
+                </Box>
+
+                {paymentsUnavailable && (
+                  <Alert severity="info" sx={{ mt: 2, borderRadius: SHAPE.sm }}>
+                    Online payments aren't configured yet. Please check back soon — you haven't been charged.
+                  </Alert>
+                )}
+                {checkoutError && (
+                  <Alert severity="error" sx={{ mt: 2, borderRadius: SHAPE.sm }}>{checkoutError}</Alert>
+                )}
+              </DialogContent>
+              <DialogActions sx={{ px: 3, pb: 2 }}>
+                <Button onClick={closeCheckout} disabled={checkoutLoading} sx={{ fontWeight: 600, textTransform: 'none' }}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="contained"
+                  onClick={handleCheckout}
+                  disabled={checkoutLoading}
+                  startIcon={checkoutLoading ? <CircularProgress size={16} color="inherit" /> : undefined}
+                  sx={{ bgcolor: '#2E3D2F', fontWeight: 700, textTransform: 'none', '&:hover': { bgcolor: '#1C261D' } }}
+                >
+                  {checkoutLoading ? 'Starting…' : finalAmount === 0 ? 'Activate plan' : 'Continue to payment'}
+                </Button>
+              </DialogActions>
+            </>
+          )
+        })()}
+      </Dialog>
 
       {/* ═══════════ CANCEL DIALOG ═══════════ */}
       <Dialog open={cancelDialogOpen} onClose={() => setCancelDialogOpen(false)} PaperProps={{ sx: { borderRadius: SHAPE.card } }}>
