@@ -1,6 +1,7 @@
+import { BrandedTextInput as TextInput } from '@/components/BrandedTextInput'
 import { useState } from 'react'
 import { View, ScrollView, StyleSheet, Alert } from 'react-native'
-import { TextInput, Button, Text, Chip } from 'react-native-paper'
+import { Button, Text, Chip } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { CampaignCategory } from '@ubuntu-fund/types'

@@ -24,3 +24,5 @@ export type { ImageUploadProps } from './components/ImageUpload'
 
 export { BrandedDatePicker } from './components/BrandedDatePicker'
 export type { BrandedDatePickerProps } from './components/BrandedDatePicker'
+
+export { BrandedTextField } from './components/BrandedTextField'

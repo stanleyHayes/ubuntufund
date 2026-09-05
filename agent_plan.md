@@ -701,3 +701,22 @@
 - Replaced fixed dark registration text, step connectors, option borders, and inactive icons with theme-aware palette colors. Selected step and billing controls now use matching foreground/background pairs; account icons and sign-in links retain readable brand accents.
 - Added selected-state semantics to account, plan, and billing buttons, active-step semantics, and visible keyboard focus for billing controls.
 - Browser reviewed account selection in dark mode and plan selection in both dark and light modes. Details were filled with temporary preview values only; no account was submitted. Production build, targeted ESLint and whitespace checks pass.
+
+### 2026-09-05 Admin provider theme, role access, and affiliate identity
+
+- Fixed shared admin status-chip foregrounds and alert surfaces for dark neumorphic backgrounds. Payment-provider switches now respect update permission and cannot enable non-wallet integrations that the API rejects; unavailable methods explain why. Provider availability was not changed during verification.
+- Reproduced Roles access denial for the signed-in Platform Admin. The API process was serving an older role policy despite current source granting admin access. Restarted the local API, reloaded the existing session, and verified System roles renders; no user-role/database privilege changes or client-side permission bypass.
+- Admin affiliate listing now enriches names with one batched, name-only user lookup, excluding deleted users. Names appear in the user column, edit dialog, and payout labels, are searchable, and remain after edits. Missing accounts use an explicit unavailable label.
+- Browser verified the current account can view Roles, referral code 37bvcth displays Platform Admin, and provider labels/switch states are readable and accurate. Admin production build and targeted ESLint pass; three isolated access-policy tests pass (admin allowed, ordinary user denied, unknown role empty). No payment toggle or account mutation submitted.
+
+### 2026-09-05 Form icons across applications
+
+- Added a shared branded TextField for web, admin and marketing forms. Email, identity, organization, location, phone, link, amount, search and text fields receive decorative leading icons. Existing adornments, currency units, dropdowns, and custom trailing actions take precedence. Password fields without a custom trailing action get an accessible visibility toggle.
+- Adopted matching Paper/native input components on mobile auth, campaign creation, KYC, donation, refund and comment forms. Existing mobile search icons and date controls remain intact. Added icons to standalone newsletter inputs and coupon multi-select fields; compact pagination controls remain unchanged.
+- All three browser application builds pass. Four component contract tests pass for email semantics, currency preservation, password controls, and multiline/disabled inputs. Browser preview timed out repeatedly; rendered visual review and device review are not claimed. Shared UI and mobile type checks pass. Lint passes for the shared components, adopted form files, and standalone newsletter/coupon fields. Whitespace checks pass.
+
+### 2026-09-05 KYC statistics endpoint and input placeholders
+
+- Traced the dashboard error to its missing GET /kyc/stats endpoint. Added authenticated admin routing, controller/use-case wiring and persisted pending/approved/rejected counts. Today's decisions use reviewedAt within Ghana's UTC day, with an exclusive next-day boundary. Restarted the local API to load the new route.
+- Shared browser and mobile inputs now provide label/type-based placeholders while retaining explicit examples. Empty controlled dropdowns show selection prompts, and coupon selectors expose their existing all-tiers/all-cycles defaults. Existing native search/newsletter fields and date controls already provide hints.
+- Three KYC contract tests pass (day boundaries, repository queries, admin-only routing); six shared-field tests pass, including placeholder preservation and empty selections. Web, admin and marketing builds pass. Shared UI type checking and targeted lint pass. Live unauthenticated GET /api/v1/kyc/stats now returns the expected 401 JSON instead of 404, confirming the restarted API has the route. Mobile and API type checks also pass. The API check completed successfully just before the attempted cancellation; its process had already exited with code 0. The focused KYC contract tests provide route, access, query and day-boundary coverage.

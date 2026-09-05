@@ -30,6 +30,16 @@ function toDomain(doc: KYCVerificationDocument): KYCVerificationRecord {
 }
 
 export class MongoKYCRepository implements KYCRepositoryPort {
+  async getStats(startOfDay: Date, endOfDay: Date) {
+    const reviewedAt = { $gte: startOfDay, $lt: endOfDay };
+    const [pending, approvedToday, rejectedToday] = await Promise.all([
+      KYCVerificationModel.countDocuments({ status: 'pending' }),
+      KYCVerificationModel.countDocuments({ status: 'approved', reviewedAt }),
+      KYCVerificationModel.countDocuments({ status: 'rejected', reviewedAt }),
+    ]);
+    return { pending, approvedToday, rejectedToday };
+  }
+
   async save(record: KYCVerificationRecord): Promise<KYCVerificationRecord> {
     const doc = await KYCVerificationModel.create({
       userId: record.userId,

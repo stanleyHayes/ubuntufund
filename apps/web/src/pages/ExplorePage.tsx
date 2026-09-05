@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
-import TextField from '@mui/material/TextField'
+import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import MenuItem from '@mui/material/MenuItem'
 import InputAdornment from '@mui/material/InputAdornment'
 import { keyframes } from '@emotion/react'

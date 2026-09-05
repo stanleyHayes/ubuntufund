@@ -1,5 +1,6 @@
+import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import { useState } from 'react'
-import { Box, TextField, Button, Typography, Alert, InputAdornment, IconButton, CircularProgress } from '@mui/material'
+import { Box, Button, Typography, Alert, InputAdornment, IconButton, CircularProgress } from '@mui/material'
 import Visibility from '@mui/icons-material/Visibility'
 import VisibilityOff from '@mui/icons-material/VisibilityOff'
 import ArrowForwardRounded from '@mui/icons-material/ArrowForwardRounded'

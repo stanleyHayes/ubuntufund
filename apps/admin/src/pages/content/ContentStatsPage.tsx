@@ -1,4 +1,5 @@
-import { Box, Button, TextField } from '@mui/material'
+import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
+import { Box, Button, } from '@mui/material'
 import AddRoundedIcon from '@mui/icons-material/AddRounded'
 import QueryStatsRoundedIcon from '@mui/icons-material/QueryStatsRounded'
 import { EmptyState } from '@ubuntu-fund/ui'

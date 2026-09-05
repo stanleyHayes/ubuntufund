@@ -1,6 +1,7 @@
+import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import { EmptyState } from '@ubuntu-fund/ui'
 import { useCallback, useEffect, useState } from 'react'
-import { Alert, Avatar, Box, Button, CircularProgress, IconButton, Stack, TextField, Typography } from '@mui/material'
+import { Alert, Avatar, Box, Button, CircularProgress, IconButton, Stack, Typography } from '@mui/material'
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded'
 import type { CampaignComment } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'

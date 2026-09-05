@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
-import TextField from '@mui/material/TextField'
+import { BrandedTextField as TextField, THEME_SKINS, SHAPE } from '@ubuntu-fund/ui'
 import Switch from '@mui/material/Switch'
 import Button from '@mui/material/Button'
 import Alert from '@mui/material/Alert'
@@ -34,6 +34,7 @@ import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded'
 import { keyframes, alpha } from '@mui/material/styles'
 import { Resource, Action, SUBSCRIPTION_PLANS } from '@ubuntu-fund/types'
 import { useAdminPermissions } from '@/context/AdminPermissionContext'
+import { useColorMode } from '@/context/ColorModeContext'
 import PageHeader from '@/components/PageHeader'
 import { TONES } from '@/lib/tones'
 
@@ -204,6 +205,7 @@ export default function SettingsPage() {
   const { can } = useAdminPermissions()
   const canEdit = can(Resource.SETTINGS, Action.UPDATE)
   const navigate = useNavigate()
+  const { darkMode, setDarkMode, skin, setSkin } = useColorMode()
   const [loading, setLoading] = useState(true)
   const [snackOpen, setSnackOpen] = useState(false)
   const [hasChanges, setHasChanges] = useState(false)
@@ -239,8 +241,7 @@ export default function SettingsPage() {
   const [sessionTimeout, setSessionTimeout] = useState('30')
   const [loginAlerts, setLoginAlerts] = useState(true)
 
-  // Appearance
-  const [darkMode, setDarkMode] = useState(true)
+  // Appearance — darkMode & skin live in ColorModeContext (applied instantly)
   const [compactMode, setCompactMode] = useState(false)
   const [showAnimations, setShowAnimations] = useState(true)
 
@@ -582,10 +583,10 @@ export default function SettingsPage() {
         </Grid>
 
         {/* ─── Appearance ─── */}
-        <Grid size={{ xs: 12, lg: 6 }}>
+        <Grid size={{ xs: 12 }}>
           <SectionCard icon={<PaletteRoundedIcon />} title="Appearance" color={TONES.teal.text} delay={0.36}>
-            <SettingRow label="Dark Mode" description="Use dark theme for admin dashboard">
-              <Toggle checked={darkMode} onChange={track(setDarkMode)} />
+            <SettingRow label="Dark Mode" description="Use the low-light theme for the admin console">
+              <Toggle checked={darkMode} onChange={setDarkMode} />
             </SettingRow>
             <SettingRow label="Compact Mode" description="Reduce spacing for denser information display">
               <Toggle checked={compactMode} onChange={track(setCompactMode)} />
@@ -593,6 +594,50 @@ export default function SettingsPage() {
             <SettingRow label="Animations" description="Enable UI animations and transitions">
               <Toggle checked={showAnimations} onChange={track(setShowAnimations)} />
             </SettingRow>
+
+            {/* Theme style — re-skins every surface instantly (persisted per browser) */}
+            <Box sx={{ px: 3, py: 2.5 }}>
+              <Typography sx={{ fontSize: '0.82rem', fontWeight: 600, color: 'text.primary', mb: 0.25 }}>
+                Theme style
+              </Typography>
+              <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', mb: 2 }}>
+                Choose the surface treatment for the console. Applies instantly.
+              </Typography>
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' }, gap: 1.5 }}>
+                {THEME_SKINS.map((s) => {
+                  const active = skin === s.id
+                  return (
+                    <Box
+                      key={s.id}
+                      component="button"
+                      type="button"
+                      onClick={() => setSkin(s.id)}
+                      aria-pressed={active}
+                      sx={{
+                        all: 'unset',
+                        cursor: 'pointer',
+                        p: 1.75,
+                        borderRadius: SHAPE.card,
+                        boxSizing: 'border-box',
+                        border: '1.5px solid',
+                        borderColor: active ? '#C7A24A' : 'divider',
+                        bgcolor: active ? alpha('#C7A24A', 0.1) : 'transparent',
+                        transition: 'border-color .15s ease, background-color .15s ease',
+                        '&:hover': { borderColor: active ? '#C7A24A' : alpha('#C7A24A', 0.5) },
+                        '&:focus-visible': { outline: '2px solid #C7A24A', outlineOffset: 2 },
+                      }}
+                    >
+                      <Typography sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.9rem' }}>
+                        {s.label}
+                      </Typography>
+                      <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', mt: 0.25, lineHeight: 1.4 }}>
+                        {s.blurb}
+                      </Typography>
+                    </Box>
+                  )
+                })}
+              </Box>
+            </Box>
           </SectionCard>
         </Grid>
       </Grid>

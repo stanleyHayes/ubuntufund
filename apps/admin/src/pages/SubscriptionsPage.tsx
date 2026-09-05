@@ -1,6 +1,7 @@
+import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Skeleton, Box, Typography, TextField, MenuItem, InputAdornment, Button } from '@mui/material'
+import { Skeleton, Box, Typography, MenuItem, InputAdornment, Button } from '@mui/material'
 import { raisedSurface, insetSurface, progressTrack } from '@/lib/surfaces'
 import SearchIcon from '@mui/icons-material/Search'
 import { EmptyState } from '@ubuntu-fund/ui'

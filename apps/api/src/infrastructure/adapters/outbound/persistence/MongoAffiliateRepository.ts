@@ -1,3 +1,4 @@
+import { UserModel } from '../../../database/models/UserModel.js';
 import type { Affiliate } from '@ubuntu-fund/types';
 import type { AffiliateRepositoryPort } from '../../../../domain/ports/outbound/AffiliateRepositoryPort.js';
 import {
@@ -65,7 +66,12 @@ export class MongoAffiliateRepository implements AffiliateRepositoryPort {
 
   async findAll(): Promise<Affiliate[]> {
     const docs = await AffiliateModel.find().sort({ createdAt: -1 });
-    return docs.map(toDomain);
+    const users = await UserModel.find({
+      _id: { $in: docs.map((doc) => doc.userId) },
+      deletedAt: null,
+    }).select('_id name').lean();
+    const names = new Map(users.map((user) => [String(user._id), user.name]));
+    return docs.map((doc) => ({ ...toDomain(doc), userName: names.get(doc.userId) }));
   }
 
   async update(affiliate: Affiliate): Promise<Affiliate | null> {

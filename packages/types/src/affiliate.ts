@@ -30,6 +30,8 @@ export type AffiliateCommissionSource = 'subscription'
 export interface Affiliate {
   id: string
   userId: string
+  /** Display name enriched by the admin affiliate listing. */
+  userName?: string
   referralCode: string
   status: AffiliateStatus
   /** Commission % of net paid-subscription revenue; overrides the platform default. */

@@ -1,5 +1,6 @@
+import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import { useState } from 'react'
-import { Alert, Skeleton, Box, Typography, TextField, MenuItem, InputAdornment } from '@mui/material'
+import { Alert, Skeleton, Box, Typography, MenuItem, InputAdornment } from '@mui/material'
 import { raisedSurface, insetSurface } from '@/lib/surfaces'
 import SearchIcon from '@mui/icons-material/Search'
 import VolunteerActivismRoundedIcon from '@mui/icons-material/VolunteerActivismRounded'

@@ -13,10 +13,14 @@ import AccountBalanceRoundedIcon from '@mui/icons-material/AccountBalanceRounded
 import { EmptyState } from '@ubuntu-fund/ui'
 import { useAdminPaymentProviders } from '@/hooks/useApiData'
 import type { PaymentProvider } from '@/hooks/useMockData'
+import { Resource, Action, PaymentMethod } from '@ubuntu-fund/types'
+import { useAdminPermissions } from '@/context/AdminPermissionContext'
 import { api } from '@/lib/api'
 import PageHeader from '@/components/PageHeader'
 
 export default function PaymentProvidersPage() {
+  const { can } = useAdminPermissions()
+  const canUpdate = can(Resource.PAYMENT_PROVIDERS, Action.UPDATE)
   const { data, isLoading, error } = useAdminPaymentProviders()
   const [providers, setProviders] = useState<PaymentProvider[]>([])
   const [busyId, setBusyId] = useState<string | null>(null)
@@ -27,6 +31,7 @@ export default function PaymentProvidersPage() {
   const enabledCount = useMemo(() => providers.filter((provider) => provider.enabled).length, [providers])
 
   async function toggle(provider: PaymentProvider) {
+    if (!canUpdate || busyId !== null || (!provider.enabled && provider.type !== PaymentMethod.WALLET)) return
     setBusyId(provider.id)
     try {
       const updated = await api.patch<PaymentProvider>(`/payment-providers/${provider.id}/toggle`)
@@ -41,10 +46,10 @@ export default function PaymentProvidersPage() {
 
   return (
     <Box sx={{ bgcolor: 'background.default' }}>
-      <PageHeader tone="green" eyebrow="Payments" title="Payment providers" lede="Review persisted provider state and enable only production-ready adapters." icon={<AccountBalanceRoundedIcon />} stats={[{ label: 'Configured', value: isLoading ? <Skeleton width={48} /> : error ? '—' : providers.length }, { label: 'Enabled', value: isLoading ? <Skeleton width={48} /> : error ? '—' : enabledCount }, { label: 'Disabled', value: isLoading ? <Skeleton width={48} /> : error ? '—' : providers.length - enabledCount }]} />
+      <PageHeader tone="green" eyebrow="Payments" title="Payment providers" lede="Manage the payment methods available for campaign donations." icon={<AccountBalanceRoundedIcon />} stats={[{ label: 'Configured', value: isLoading ? <Skeleton width={48} /> : error ? '—' : providers.length }, { label: 'Enabled', value: isLoading ? <Skeleton width={48} /> : error ? '—' : enabledCount }, { label: 'Disabled', value: isLoading ? <Skeleton width={48} /> : error ? '—' : providers.length - enabledCount }]} />
 
       <Alert severity="info" sx={{ mb: 3 }}>
-        Provider definitions and credentials are deployment configuration. This console only toggles persisted availability; unsupported non-wallet adapters are rejected by the API even if an operator attempts to enable them.
+        Campaign donations currently support the Ujimora wallet. Other methods cannot be enabled until their payment integration is ready. These settings apply to campaign donations, not subscription checkout.
       </Alert>
       {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
 
@@ -74,9 +79,11 @@ export default function PaymentProvidersPage() {
                   </Box>
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
-                  <Chip label={busyId === provider.id ? 'Updating…' : provider.enabled ? 'Enabled' : 'Disabled'} color={provider.enabled ? 'success' : 'default'} size="small" />
-                  <Switch checked={provider.enabled} disabled={busyId !== null} onChange={() => toggle(provider)} inputProps={{ 'aria-label': `Toggle ${provider.name}` }} />
+                  <Chip label={busyId === provider.id ? 'Updating…' : provider.enabled ? 'Enabled' : provider.type !== PaymentMethod.WALLET ? 'Not available yet' : 'Disabled'} color={provider.enabled ? 'success' : 'default'} size="small" />
+                  <Switch checked={provider.enabled} disabled={!canUpdate || busyId !== null || (!provider.enabled && provider.type !== PaymentMethod.WALLET)} onChange={() => toggle(provider)} slotProps={{ input: { role: 'switch', 'aria-label': `Toggle ${provider.name}` } }} />
                 </Box>
+                {provider.type !== PaymentMethod.WALLET && <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>Payment integration required before accepting donations.</Typography>}
+                {!canUpdate && <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>Your role has view-only access.</Typography>}
               </CardContent>
             </Card>
           ))}

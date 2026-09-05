@@ -1,6 +1,7 @@
+import { BrandedTextInput as TextInput } from '@/components/BrandedTextInput'
 import { useState } from 'react'
 import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity } from 'react-native'
-import { TextInput, Button, Text } from 'react-native-paper'
+import { Button, Text } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Link, router } from 'expo-router'
 import { brandColors, neumorphism } from '@/theme'

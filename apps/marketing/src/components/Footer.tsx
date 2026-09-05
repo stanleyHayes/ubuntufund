@@ -331,14 +331,18 @@ function Footer() {
                 '&:focus-within': { borderColor: 'rgba(199, 162, 74,0.3)' },
               }}
             >
+              <MailIcon aria-hidden="true" sx={{ alignSelf: 'center', color: '#B6C0B8', fontSize: 20, ml: 1, flexShrink: 0 }} />
               <Box
                 component="input"
+                type="email"
+                aria-label="Newsletter email address"
                 placeholder="your@email.com"
                 value={email}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
                 onKeyDown={(e: React.KeyboardEvent) => e.key === 'Enter' && handleSubscribe()}
                 sx={{
                   flex: 1,
+                  minWidth: 0,
                   border: 'none',
                   outline: 'none',
                   bgcolor: 'transparent',

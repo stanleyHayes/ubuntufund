@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
-import TextField from '@mui/material/TextField'
+import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import MenuItem from '@mui/material/MenuItem'
 import Button from '@mui/material/Button'
 import Alert from '@mui/material/Alert'

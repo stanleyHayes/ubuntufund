@@ -1,8 +1,16 @@
 import { Suspense, useEffect } from 'react'
-import { ThemeProvider, CssBaseline, GlobalStyles, Box } from '@mui/material'
+import { Box } from '@mui/material'
 import { BrowserRouter, Routes, Route, useLocation, Outlet } from 'react-router-dom'
 import { scrollToHash } from '@/lib/scroll'
-import { ujimoraTheme, ttSquaresFontFace, AfricanBanner } from '@ubuntu-fund/ui'
+import { keyframes } from '@emotion/react'
+
+// Route enter animation (reduced-motion aware; applied per pathname key).
+const pageIn = keyframes`
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+`
+import { AfricanBanner } from '@ubuntu-fund/ui'
+import { ColorModeProvider } from '@/context/ColorModeContext'
 import PublicIcon from '@mui/icons-material/Public'
 import DiamondIcon from '@mui/icons-material/Diamond'
 import AutoStoriesIcon from '@mui/icons-material/AutoStories'
@@ -118,7 +126,15 @@ function InnerPageLayout() {
       <Navbar />
       {!hasEditorialHero && <AfricanBanner {...bannerProps} compact navbarOffset={64} />}
       <Box component="main" sx={{ flex: 1 }}>
-        <Outlet />
+        <Box
+          key={pathname}
+          sx={{
+            animation: `${pageIn} 0.32s cubic-bezier(0.22, 1, 0.36, 1)`,
+            '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+          }}
+        >
+          <Outlet />
+        </Box>
       </Box>
       <Footer />
     </Box>
@@ -127,9 +143,7 @@ function InnerPageLayout() {
 
 function App() {
   return (
-    <ThemeProvider theme={ujimoraTheme}>
-      <CssBaseline />
-      <GlobalStyles styles={ttSquaresFontFace} />
+    <ColorModeProvider>
       <Suspense fallback={<SplashScreen />}>
         <BrowserRouter>
           <ScrollToTop />
@@ -153,7 +167,7 @@ function App() {
           </Routes>
         </BrowserRouter>
       </Suspense>
-    </ThemeProvider>
+    </ColorModeProvider>
   )
 }
 

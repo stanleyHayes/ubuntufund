@@ -1,5 +1,6 @@
+import { BrandedNativeInput as TextInput } from '@/components/BrandedNativeInput'
 import { useCallback, useEffect, useState } from 'react'
-import { Alert, StyleSheet, TextInput, View } from 'react-native'
+import { Alert, StyleSheet, View } from 'react-native'
 import { ActivityIndicator, Avatar, Button, IconButton, Text } from 'react-native-paper'
 import type { CampaignComment } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'

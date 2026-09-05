@@ -14,14 +14,16 @@ interface ColorModeValue {
 const ColorModeContext = createContext<ColorModeValue | null>(null)
 const SKINS: ThemeSkin[] = ['neumorphism', 'claymorphism', 'glassmorphism']
 
-// Frosted glass needs a backdrop blur + hairline border on surfaces, and a
-// non-flat backdrop worth blurring — scoped to the glass skin only so the other
-// skins are untouched. Neumorphism/claymorphism keep the theme's flat ground.
+// Minimal + glass define their surface with a border; glass additionally frosts
+// with a backdrop blur over a non-flat ground. Scope the border to those two
+// skins so neumorphism/claymorphism keep their borderless embossed surfaces.
 const skinGlobalStyles = {
+  '[data-skin="minimal"] .MuiPaper-root, [data-skin="minimal"] .MuiCard-root, [data-skin="glassmorphism"] .MuiPaper-root, [data-skin="glassmorphism"] .MuiCard-root': {
+    border: 'var(--neu-border)',
+  },
   '[data-skin="glassmorphism"] .MuiPaper-root, [data-skin="glassmorphism"] .MuiCard-root': {
     backdropFilter: 'var(--neu-backdrop)',
     WebkitBackdropFilter: 'var(--neu-backdrop)',
-    border: 'var(--neu-border)',
   },
   '[data-skin="glassmorphism"] body': {
     backgroundImage:

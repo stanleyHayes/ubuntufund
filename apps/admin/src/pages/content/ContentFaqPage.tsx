@@ -1,4 +1,5 @@
-import { Box, Button, TextField, Autocomplete } from '@mui/material'
+import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
+import { Box, Button, Autocomplete } from '@mui/material'
 import AddRoundedIcon from '@mui/icons-material/AddRounded'
 import QuizRoundedIcon from '@mui/icons-material/QuizRounded'
 import { EmptyState } from '@ubuntu-fund/ui'

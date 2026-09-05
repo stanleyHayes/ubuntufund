@@ -8,6 +8,7 @@ import Avatar from '@mui/material/Avatar'
 import Divider from '@mui/material/Divider'
 import Button from '@mui/material/Button'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
+import MailOutlineIcon from '@mui/icons-material/MailOutline'
 import AccessTimeIcon from '@mui/icons-material/AccessTime'
 import { Link as RouterLink } from 'react-router-dom'
 import { SHAPE } from '@ubuntu-fund/ui'
@@ -742,23 +743,30 @@ function BlogPage() {
               <Typography variant="body2" sx={{ mb: 2.5, opacity: 0.85, lineHeight: 1.6, position: 'relative' }}>
                 Get the latest stories from Ghana's giving community, delivered to your inbox.
               </Typography>
-              <Box
-                component="input"
-                placeholder="Your email"
-                sx={{
-                  width: '100%',
-                  p: 1.5,
-                  borderRadius: SHAPE.card,
-                  border: '1px solid rgba(255,255,255,0.2)',
-                  bgcolor: 'rgba(255,255,255,0.1)',
-                  color: '#fff',
-                  fontSize: '0.875rem',
-                  outline: 'none',
-                  mb: 1.5,
-                  '&::placeholder': { color: 'rgba(255,255,255,0.5)' },
-                  '&:focus': { borderColor: '#C7A24A' },
-                }}
-              />
+              <Box sx={{ position: 'relative' }}>
+                <MailOutlineIcon aria-hidden="true" sx={{ position: 'absolute', top: 14, left: 14, fontSize: 20, color: '#B6C0B8', pointerEvents: 'none' }} />
+                <Box
+                  component="input"
+                  type="email"
+                  aria-label="Newsletter email address"
+                  placeholder="Your email"
+                  sx={{
+                    width: '100%',
+                    p: 1.5,
+                    pl: 5.5,
+                    boxSizing: 'border-box',
+                    borderRadius: SHAPE.card,
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    bgcolor: 'rgba(255,255,255,0.1)',
+                    color: '#fff',
+                    fontSize: '0.875rem',
+                    outline: 'none',
+                    mb: 1.5,
+                    '&::placeholder': { color: 'rgba(255,255,255,0.5)' },
+                    '&:focus': { borderColor: '#C7A24A' },
+                  }}
+                />
+              </Box>
               <Button
                 variant="contained"
                 fullWidth

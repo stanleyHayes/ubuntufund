@@ -1,5 +1,6 @@
+import { BrandedNativeInput as TextInput } from '@/components/BrandedNativeInput'
 import { useState, useEffect } from 'react'
-import { View, ScrollView, StyleSheet, Alert, Modal, TextInput, TouchableOpacity } from 'react-native'
+import { View, ScrollView, StyleSheet, Alert, Modal, TouchableOpacity } from 'react-native'
 import { useLocalSearchParams, Stack } from 'expo-router'
 import { Text, Button, Chip, ActivityIndicator, Surface, Avatar, Icon } from 'react-native-paper'
 import { useCampaign, useUser } from '@/hooks/useCampaigns'

@@ -6,7 +6,10 @@ export type KYCVerificationRecord = KYCVerification;
 /** Narrowed alias for the verification's review status, reused by the persistence model. */
 export type KYCVerificationStatus = KYCVerification['status'];
 
+export interface KYCStats { pending: number; approvedToday: number; rejectedToday: number }
+
 export interface KYCRepositoryPort {
+  getStats(startOfDay: Date, endOfDay: Date): Promise<KYCStats>;
   save(record: KYCVerificationRecord): Promise<KYCVerificationRecord>;
   findById(id: string): Promise<KYCVerificationRecord | null>;
   findByUserId(userId: string): Promise<KYCVerificationRecord[]>;

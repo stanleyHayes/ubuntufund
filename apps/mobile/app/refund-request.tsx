@@ -1,10 +1,10 @@
+import { BrandedNativeInput as TextInput } from '@/components/BrandedNativeInput'
 import { useState, useEffect, useCallback } from 'react'
 import {
   View,
   ScrollView,
   StyleSheet,
   Animated,
-  TextInput,
   TouchableOpacity,
   Alert,
 } from 'react-native'

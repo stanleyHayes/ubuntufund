@@ -1,5 +1,6 @@
+import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import type { ReactNode } from 'react'
-import { Box, Button, TextField, Typography } from '@mui/material'
+import { Box, Button, Typography } from '@mui/material'
 import AddRoundedIcon from '@mui/icons-material/AddRounded'
 import InfoRoundedIcon from '@mui/icons-material/InfoRounded'
 import { useContentBlock } from '@/hooks/useContentBlock'

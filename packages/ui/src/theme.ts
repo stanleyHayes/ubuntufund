@@ -95,15 +95,32 @@ export const NEUMORPHIC_FOREST_VARS = {
 // consumes (var(--neu-surface|raised|raised-hover|subtle|inset)) plus two glass
 // extras (--neu-backdrop, --neu-border). Switching skin = re-applying one var
 // set to :root at runtime — no component rewrites. Neumorphism is the default.
-export type ThemeSkin = 'neumorphism' | 'claymorphism' | 'glassmorphism'
+export type ThemeSkin = 'neumorphism' | 'claymorphism' | 'glassmorphism' | 'minimal'
 
 export const THEME_SKINS: { id: ThemeSkin; label: string; blurb: string }[] = [
   { id: 'neumorphism', label: 'Neumorphism', blurb: 'Soft, embossed surfaces — the Ujimora default.' },
   { id: 'claymorphism', label: 'Claymorphism', blurb: 'Puffy, playful clay with deep soft shadows.' },
   { id: 'glassmorphism', label: 'Glassmorphism', blurb: 'Frosted, translucent panels with a subtle blur.' },
+  { id: 'minimal', label: 'Minimal', blurb: 'Flat, crisp surfaces with hairline borders.' },
 ]
 
 export function getSkinVars(skin: ThemeSkin, dark: boolean): Record<string, string> {
+  if (skin === 'minimal') {
+    const surface = dark ? '#1B211B' : '#FFFFFF'
+    const line = dark ? 'rgba(232,235,227,0.12)' : 'rgba(18,24,15,0.1)'
+    const sh = dark ? 'rgba(0,0,0,0.35)' : 'rgba(18,24,15,0.06)'
+    return {
+      // Flat design: definition comes from a hairline border + a whisper shadow.
+      '--neu-surface': surface,
+      '--neu-raised': `0 1px 2px ${sh}`,
+      '--neu-raised-hover': `0 4px 12px ${sh}`,
+      '--neu-subtle': `0 1px 1px ${sh}`,
+      '--neu-inset': `inset 0 1px 2px ${sh}`,
+      '--neu-backdrop': 'none',
+      '--neu-border': `1px solid ${line}`,
+      '--neu-radius': '12px',
+    }
+  }
   if (skin === 'claymorphism') {
     const surface = dark ? '#20291F' : '#ECE6DD'
     const sh = dark ? 'rgba(0,0,0,0.55)' : 'rgba(148,130,100,0.42)'

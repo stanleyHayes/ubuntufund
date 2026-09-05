@@ -68,6 +68,7 @@ export function createKYCRoutes(
 
   // Admin-only endpoints (registered after the literal segments above so
   // '/:id/approve' never swallows '/identity' or '/status').
+  router.get('/stats', authMiddleware, requireAdmin, controller.getStats);
   router.get('/pending', authMiddleware, requireAdmin, controller.listPending);
   router.put(
     '/:id/approve',

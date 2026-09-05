@@ -1,5 +1,6 @@
+import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import type { ReactNode } from 'react'
-import { Box, TextField, Typography, InputAdornment } from '@mui/material'
+import { Box, Typography, InputAdornment } from '@mui/material'
 import ContactMailRoundedIcon from '@mui/icons-material/ContactMailRounded'
 import EmailRoundedIcon from '@mui/icons-material/EmailRounded'
 import PhoneRoundedIcon from '@mui/icons-material/PhoneRounded'

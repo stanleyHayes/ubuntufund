@@ -1,3 +1,4 @@
+import { GetKYCStatsUseCase } from './application/use-cases/GetKYCStatsUseCase.js';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -823,7 +824,8 @@ export function createApp(): express.Express {
     getKYCStatusUseCase,
     getPendingKYCUseCase,
     approveKYCUseCase,
-    rejectKYCUseCase
+    rejectKYCUseCase,
+    new GetKYCStatsUseCase(kycRepo)
   );
   const collaborationController = new CollaborationController(
     inviteCollaboratorUseCase,

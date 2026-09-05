@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Box, LinearProgress } from '@mui/material'
-import { Outlet, useNavigation } from 'react-router-dom'
+import { Outlet, useNavigation, useLocation } from 'react-router-dom'
+import { keyframes } from '@emotion/react'
+
+// Route enter animation (reduced-motion aware; re-triggered per pathname key).
+const pageIn = keyframes`
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+`
 import Sidebar, { DRAWER_WIDTH } from './Sidebar'
 import TopBar, { TOPBAR_HEIGHT } from './TopBar'
 import Tour, { type TourStep } from '@/components/Tour'
@@ -50,8 +57,14 @@ function tourKey(userId: string | undefined) {
 export default function AdminLayout() {
   const navigation = useNavigation()
   const { user } = useAuth()
+  const { pathname } = useLocation()
   const [tourOpen, setTourOpen] = useState(false)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+
+  // Reset scroll to the top on route change (avoids opening a page mid-scroll).
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0 })
+  }, [pathname])
 
   // Auto-start once per user, desktop only, after the chrome settles.
   useEffect(() => {
@@ -96,7 +109,14 @@ export default function AdminLayout() {
         }}
       >
         <Box sx={{ height: `${TOPBAR_HEIGHT}px` }} />
-        <Box sx={{ p: 3 }}>
+        <Box
+          key={pathname}
+          sx={{
+            p: 3,
+            animation: `${pageIn} 0.3s cubic-bezier(0.22, 1, 0.36, 1)`,
+            '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+          }}
+        >
           <Outlet />
         </Box>
       </Box>

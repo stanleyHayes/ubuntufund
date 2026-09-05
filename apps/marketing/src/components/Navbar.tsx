@@ -3,6 +3,7 @@ import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
 import Box from '@mui/material/Box'
 import IconButton from '@mui/material/IconButton'
+import ThemeMenu from './ThemeMenu'
 import Drawer from '@mui/material/Drawer'
 import Collapse from '@mui/material/Collapse'
 import Tooltip from '@mui/material/Tooltip'
@@ -436,6 +437,7 @@ function Navbar() {
 
           {/* Right cluster: search + outlined CTA */}
           <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 1.5, flexShrink: 0 }}>
+            <ThemeMenu />
             <Tooltip title="Explore campaigns">
               <IconButton
                 aria-label="Explore campaigns"

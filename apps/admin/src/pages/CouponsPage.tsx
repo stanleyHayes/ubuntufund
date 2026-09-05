@@ -1,11 +1,13 @@
+import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import { BrandedDatePicker } from '@ubuntu-fund/ui'
 import { useState, useEffect, useCallback } from 'react'
 import {
-  Box, Typography, TextField, MenuItem, InputAdornment, Button, Skeleton,
+  Box, Typography, MenuItem, InputAdornment, Button, Skeleton,
   Dialog, DialogTitle, DialogContent, DialogActions, IconButton,
   Snackbar, Alert, Select, OutlinedInput, Checkbox, ListItemText,
   FormControl, InputLabel, FormControlLabel, Switch,
 } from '@mui/material'
+import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined'
 import SearchIcon from '@mui/icons-material/Search'
 import AddIcon from '@mui/icons-material/Add'
 import EditIcon from '@mui/icons-material/Edit'
@@ -443,13 +445,14 @@ export default function CouponsPage() {
             helperText="0 = no minimum"
           />
           <FormControl fullWidth size="small">
-            <InputLabel id="coupon-tiers-label">Applies to Tiers</InputLabel>
+            <InputLabel shrink id="coupon-tiers-label">Applies to Tiers</InputLabel>
             <Select
               labelId="coupon-tiers-label"
+              displayEmpty
               multiple
               value={form.appliesToTiers}
               onChange={(e) => setForm({ ...form, appliesToTiers: e.target.value as SubscriptionTier[] })}
-              input={<OutlinedInput label="Applies to Tiers" />}
+              input={<OutlinedInput label="Applies to Tiers" startAdornment={<InputAdornment position="start"><LocalOfferRoundedIcon fontSize="small" /></InputAdornment>} />}
               renderValue={(selected) => selected.length === 0 ? 'All tiers' : selected.map((t) => SUBSCRIPTION_PLANS[t]?.name ?? t).join(', ')}
             >
               {PAID_TIERS.map((t) => (
@@ -461,13 +464,14 @@ export default function CouponsPage() {
             </Select>
           </FormControl>
           <FormControl fullWidth size="small">
-            <InputLabel id="coupon-cycles-label">Applies to Billing Cycles</InputLabel>
+            <InputLabel shrink id="coupon-cycles-label">Applies to Billing Cycles</InputLabel>
             <Select
               labelId="coupon-cycles-label"
+              displayEmpty
               multiple
               value={form.appliesToBillingCycles}
               onChange={(e) => setForm({ ...form, appliesToBillingCycles: e.target.value as BillingCycle[] })}
-              input={<OutlinedInput label="Applies to Billing Cycles" />}
+              input={<OutlinedInput label="Applies to Billing Cycles" startAdornment={<InputAdornment position="start"><CalendarMonthOutlinedIcon fontSize="small" /></InputAdornment>} />}
               renderValue={(selected) => selected.length === 0 ? 'All cycles' : selected.map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join(', ')}
             >
               {Object.values(BillingCycle).map((cycle) => (

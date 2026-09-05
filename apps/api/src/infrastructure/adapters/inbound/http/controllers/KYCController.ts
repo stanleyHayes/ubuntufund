@@ -1,3 +1,4 @@
+import type { GetKYCStatsUseCase } from '../../../../../application/use-cases/GetKYCStatsUseCase.js';
 import type { Response, NextFunction } from 'express';
 import type { AuthenticatedRequest } from '../../middleware/authMiddleware.js';
 import type { SubmitKYCIdentityUseCase } from '../../../../../application/use-cases/SubmitKYCIdentityUseCase.js';
@@ -12,8 +13,15 @@ export class KYCController {
     private readonly getKYCStatusUseCase: GetKYCStatusUseCase,
     private readonly getPendingKYCUseCase: GetPendingKYCUseCase,
     private readonly approveKYCUseCase: ApproveKYCUseCase,
-    private readonly rejectKYCUseCase: RejectKYCUseCase
+    private readonly rejectKYCUseCase: RejectKYCUseCase,
+    private readonly getKYCStatsUseCase: GetKYCStatsUseCase
   ) {}
+
+  getStats = async (_req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      res.json({ data: await this.getKYCStatsUseCase.execute(), message: 'KYC statistics retrieved', status: 200 });
+    } catch (error) { next(error); }
+  };
 
   submitIdentity = async (
     req: AuthenticatedRequest,

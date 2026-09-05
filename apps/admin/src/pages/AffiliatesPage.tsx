@@ -1,7 +1,8 @@
+import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Box, Typography, TextField, MenuItem, InputAdornment, Button, Skeleton,
+  Box, Typography, MenuItem, InputAdornment, Button, Skeleton,
   Dialog, DialogTitle, DialogContent, DialogActions, IconButton,
   Snackbar, Alert, Tabs, Tab,
 } from '@mui/material'
@@ -38,7 +39,6 @@ const payoutStatusColors: Record<PayoutStatus, string> = {
   REVERSED: TONES.maroon.text,
 }
 
-const shortId = (id: string) => (id.length > 12 ? `${id.slice(0, 8)}…${id.slice(-4)}` : id)
 const formatMoney = (amount: number, currency = 'GHS') => `${currency === 'GHS' ? 'GH₵' : currency} ${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const formatDate = (value?: Date | string) => {
   if (!value) return '—'
@@ -124,7 +124,7 @@ export default function AffiliatesPage() {
       if (editStatus !== editing.status) {
         updated = await api.put<Affiliate>(`/affiliates/${editing.id}/status`, { status: editStatus })
       }
-      setAffiliates((prev) => prev.map((a) => (a.id === updated.id ? updated : a)))
+      setAffiliates((prev) => prev.map((a) => (a.id === updated.id ? { ...updated, userName: a.userName } : a)))
       setSnackbar({ open: true, message: 'Affiliate updated', severity: 'success' })
       setEditing(null)
     } catch (e) {
@@ -151,7 +151,7 @@ export default function AffiliatesPage() {
     if (statusFilter !== 'all' && a.status !== statusFilter) return false
     if (search) {
       const q = search.toLowerCase()
-      if (!a.referralCode.toLowerCase().includes(q) && !a.userId.toLowerCase().includes(q) && !(a.accountName ?? '').toLowerCase().includes(q)) return false
+      if (!a.referralCode.toLowerCase().includes(q) && !a.userId.toLowerCase().includes(q) && !(a.accountName ?? '').toLowerCase().includes(q) && !(a.userName ?? '').toLowerCase().includes(q)) return false
     }
     return true
   })
@@ -248,9 +248,9 @@ export default function AffiliatesPage() {
                         {a.referralCode}
                       </Typography>
 
-                      {/* User id */}
-                      <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontFamily: '"Outfit", monospace' }}>
-                        {shortId(a.userId)}
+                      {/* Affiliate account name */}
+                      <Typography sx={{ minWidth: 0, overflowWrap: 'anywhere', fontSize: '0.85rem', color: 'text.primary', fontWeight: 600 }}>
+                        {a.userName || 'User unavailable'}
                       </Typography>
 
                       {/* Status */}
@@ -332,7 +332,7 @@ export default function AffiliatesPage() {
                         sx={{ cursor: 'pointer', minWidth: 0 }}
                       >
                         <Typography sx={{ fontSize: '0.78rem', fontWeight: 700, color: TONES.teal.text, fontFamily: '"Outfit", monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {shortId(p.affiliateId)}
+                          {affiliates.find((a) => a.id === p.affiliateId)?.userName || 'Affiliate unavailable'}
                         </Typography>
                       </Box>
 
@@ -396,7 +396,7 @@ export default function AffiliatesPage() {
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '16px !important' }}>
           {editing && (
             <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>
-              <strong style={{ fontFamily: '"Outfit", monospace' }}>{editing.referralCode}</strong> · user {shortId(editing.userId)}
+              <strong style={{ fontFamily: '"Outfit", monospace' }}>{editing.referralCode}</strong> · {editing.userName || 'User unavailable'}
             </Typography>
           )}
           <TextField

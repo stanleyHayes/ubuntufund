@@ -1,6 +1,7 @@
+import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import { useState, useEffect, useCallback } from 'react'
 import {
-  Box, Typography, TextField, MenuItem, InputAdornment, Chip,
+  Box, Typography, MenuItem, InputAdornment, Chip,
   Dialog, DialogTitle, DialogContent, DialogActions, Button,
 } from '@mui/material'
 import { keyframes } from '@mui/system'
