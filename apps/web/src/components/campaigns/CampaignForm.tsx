@@ -1,24 +1,21 @@
-import { Fragment, useMemo, useRef, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import type { KeyboardEvent, ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import TextField from '@mui/material/TextField'
 import InputAdornment from '@mui/material/InputAdornment'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
-import LinearProgress from '@mui/material/LinearProgress'
 import CircularProgress from '@mui/material/CircularProgress'
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded'
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import ShieldRoundedIcon from '@mui/icons-material/ShieldRounded'
-import CloudUploadRoundedIcon from '@mui/icons-material/CloudUploadRounded'
 import ErrorOutlineRoundedIcon from '@mui/icons-material/ErrorOutlineRounded'
 import { Link as RouterLink } from 'react-router-dom'
 import { CampaignCategory, CampaignPriority } from '@ubuntu-fund/types'
-import { formatCurrency, SHAPE } from '@ubuntu-fund/ui'
+import { formatCurrency, ImageUpload, SHAPE } from '@ubuntu-fund/ui'
 import { useCreateCampaign } from '@/hooks/useCampaigns'
-import { getCloudinaryConfig, uploadToCloudinary } from '@/lib/cloudinary'
 
 // ---------------------------------------------------------------------------
 // Sage & Neutrals palette — brand hexes only (see design system)
@@ -32,10 +29,6 @@ const GOLD = '#C7A24A'
 const GOLD_DARK = '#A07E33'
 const CLAY = '#A5432F'
 const DIVIDER = '#DAD7CD'
-
-// Cloudinary is optional — computed once from public build-time env vars.
-// When null, the cover step falls back to a paste-a-URL input only.
-const CLOUDINARY = getCloudinaryConfig()
 
 // ---------------------------------------------------------------------------
 // Static data
@@ -93,15 +86,6 @@ interface FormErrors {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-function isValidUrl(value: string): boolean {
-  try {
-    const url = new URL(value)
-    return url.protocol === 'http:' || url.protocol === 'https:'
-  } catch {
-    return false
-  }
-}
-
 function parseBeneficiaries(value: string): string[] {
   return value
     .split(',')
@@ -125,8 +109,6 @@ function validate(data: FormData): FormErrors {
   else if (data.description.trim().length < 20) e.description = 'At least 20 characters'
 
   if (parseBeneficiaries(data.beneficiaries).length === 0) e.beneficiaries = 'Name at least one beneficiary'
-
-  if (data.coverImageUrl.trim() && !isValidUrl(data.coverImageUrl.trim())) e.coverImageUrl = 'Enter a valid https:// link'
 
   if (!data.goalAmount) e.goalAmount = 'Set a goal amount'
   else if (Number.isNaN(Number(data.goalAmount))) e.goalAmount = 'Enter a number'
@@ -326,11 +308,6 @@ export function CampaignForm() {
   const [step, setStep] = useState(0)
   const [submitted, setSubmitted] = useState(false)
   const [createdId, setCreatedId] = useState<string | null>(null)
-  const [coverError, setCoverError] = useState(false)
-  // Cloudinary upload state — null progress means "no upload in flight".
-  const [uploadProgress, setUploadProgress] = useState<number | null>(null)
-  const [uploadError, setUploadError] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement | null>(null)
   const { createCampaign, isSubmitting, error: submitError } = useCreateCampaign()
   // Capture "now" once at mount — keeps the render body pure (react-hooks/purity).
   const [nowMs] = useState(() => Date.now())
@@ -360,25 +337,6 @@ export function CampaignForm() {
 
   function handleBack() {
     setStep((s) => Math.max(s - 1, 0))
-  }
-
-  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    // Reset the input so re-selecting the same file fires onChange again.
-    e.target.value = ''
-    if (!file || !CLOUDINARY) return
-    setUploadError(null)
-    setUploadProgress(0)
-    try {
-      const { secureUrl } = await uploadToCloudinary(file, CLOUDINARY, setUploadProgress)
-      setCoverError(false)
-      setFormData((prev) => ({ ...prev, coverImageUrl: secureUrl }))
-      setTouched((t) => ({ ...t, coverImageUrl: true }))
-    } catch (err) {
-      setUploadError(err instanceof Error ? err.message : 'Upload failed. Please try again.')
-    } finally {
-      setUploadProgress(null)
-    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -422,8 +380,6 @@ export function CampaignForm() {
   const durationDays = formData.endDate
     ? Math.max(0, Math.ceil((new Date(formData.endDate).getTime() - nowMs) / 86_400_000))
     : 0
-  const showCover = Boolean(formData.coverImageUrl.trim()) && isValidUrl(formData.coverImageUrl.trim()) && !coverError
-
   // -------------------------------------------------------------------------
   // Success state — preserves the current mock message
   // -------------------------------------------------------------------------
@@ -640,87 +596,15 @@ export function CampaignForm() {
               )}
             </Box>
 
-            <Box>
-              <Eyebrow>Cover image</Eyebrow>
-              {/* Cloudinary upload — only shown when the public env vars are configured. */}
-              {CLOUDINARY && (
-                <Box sx={{ mt: 1, mb: 1.5 }}>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileSelect}
-                    style={{ display: 'none' }}
-                  />
-                  <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1.5 }}>
-                    <Button
-                      type="button"
-                      variant="outlined"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={uploadProgress !== null}
-                      startIcon={
-                        uploadProgress !== null ? (
-                          <CircularProgress size={16} sx={{ color: GOLD_DARK }} />
-                        ) : (
-                          <CloudUploadRoundedIcon />
-                        )
-                      }
-                      sx={{
-                        borderRadius: SHAPE.sm,
-                        borderColor: DIVIDER,
-                        color: FOREST,
-                        '&:hover': { borderColor: SAGE, bgcolor: 'rgba(46, 61, 47, 0.04)' },
-                      }}
-                    >
-                      {uploadProgress !== null ? `Uploading… ${uploadProgress}%` : 'Upload an image'}
-                    </Button>
-                    <Typography sx={{ fontSize: '0.8rem', color: INK_SECONDARY }}>or paste a link below</Typography>
-                  </Box>
-                  {uploadProgress !== null && (
-                    <LinearProgress
-                      variant="determinate"
-                      value={uploadProgress}
-                      sx={{ mt: 1.25, borderRadius: SHAPE.bar, height: 6, '& .MuiLinearProgress-bar': { bgcolor: GOLD } }}
-                    />
-                  )}
-                  {uploadError && (
-                    <Typography sx={{ mt: 1, fontSize: '0.78rem', color: CLAY }}>{uploadError}</Typography>
-                  )}
-                </Box>
-              )}
-              <TextField
-                label="Cover image URL"
-                placeholder="https://…"
-                value={formData.coverImageUrl}
-                onChange={(e) => {
-                  setCoverError(false)
-                  setUploadError(null)
-                  setFormData((prev) => ({ ...prev, coverImageUrl: e.target.value }))
-                }}
-                onBlur={blur('coverImageUrl')}
-                error={errFor('coverImageUrl')}
-                helperText={helperFor('coverImageUrl', 'Optional — a single strong photo helps donors connect.')}
-                fullWidth
-                sx={fieldSx}
-              />
-              {showCover && (
-                <Box
-                  component="img"
-                  src={formData.coverImageUrl.trim()}
-                  alt="Campaign cover preview"
-                  onError={() => setCoverError(true)}
-                  sx={{
-                    display: 'block',
-                    mt: 1.5,
-                    width: '100%',
-                    maxHeight: 200,
-                    objectFit: 'cover',
-                    borderRadius: SHAPE.card,
-                    border: `1px solid ${DIVIDER}`,
-                  }}
-                />
-              )}
-            </Box>
+            <ImageUpload
+              value={formData.coverImageUrl}
+              onChange={(url) => {
+                setFormData((prev) => ({ ...prev, coverImageUrl: url }))
+                setTouched((t) => ({ ...t, coverImageUrl: true }))
+              }}
+              label="Cover image"
+              helperText="Optional — a single strong photo helps donors connect."
+            />
           </>
         )}
 
@@ -889,18 +773,15 @@ export function CampaignForm() {
                 )}
               </ReviewItem>
               <ReviewItem label="Cover image">
-                {showCover ? (
+                {formData.coverImageUrl ? (
                   <Box
                     component="img"
-                    src={formData.coverImageUrl.trim()}
+                    src={formData.coverImageUrl}
                     alt="Campaign cover"
-                    onError={() => setCoverError(true)}
                     sx={{ width: 120, height: 72, objectFit: 'cover', borderRadius: SHAPE.sm, border: `1px solid ${DIVIDER}` }}
                   />
-                ) : formData.coverImageUrl.trim() ? (
-                  formData.coverImageUrl.trim()
                 ) : (
-                  'None added'
+                  'None'
                 )}
               </ReviewItem>
             </ReviewSection>

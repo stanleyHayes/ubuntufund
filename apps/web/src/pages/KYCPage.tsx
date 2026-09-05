@@ -8,9 +8,9 @@ import Stepper from '@mui/material/Stepper'
 import Step from '@mui/material/Step'
 import StepLabel from '@mui/material/StepLabel'
 import Paper from '@mui/material/Paper'
-import CloudUploadIcon from '@mui/icons-material/CloudUpload'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import { keyframes } from '@mui/material/styles'
+import { ImageUpload } from '@ubuntu-fund/ui'
 import { api } from '@/lib/api'
 
 const fadeIn = keyframes`
@@ -138,28 +138,20 @@ export function KYCPage() {
               Upload a clear photo or scan of your government-issued ID. Front and back required for ID cards.
             </Typography>
             <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-              <Box sx={{
-                border: '2px dashed rgba(0,0,0,0.12)',
-                borderRadius: 2,
-                p: 3,
-                textAlign: 'center',
-                bgcolor: idFrontUrl ? 'rgba(46, 61, 47,0.04)' : 'transparent',
-              }}>
-                <CloudUploadIcon sx={{ fontSize: 32, color: idFrontUrl ? '#5E8F72' : 'text.disabled', mb: 1 }} />
-                <Typography sx={{ fontWeight: 600, fontSize: '0.9rem', mb: 0.5 }}>Front Side</Typography>
-                <TextField size="small" placeholder="Document URL" value={idFrontUrl} onChange={(e) => setIdFrontUrl(e.target.value)} fullWidth sx={{ mt: 1 }} />
-              </Box>
-              <Box sx={{
-                border: '2px dashed rgba(0,0,0,0.12)',
-                borderRadius: 2,
-                p: 3,
-                textAlign: 'center',
-                bgcolor: idBackUrl ? 'rgba(46, 61, 47,0.04)' : 'transparent',
-              }}>
-                <CloudUploadIcon sx={{ fontSize: 32, color: idBackUrl ? '#5E8F72' : 'text.disabled', mb: 1 }} />
-                <Typography sx={{ fontWeight: 600, fontSize: '0.9rem', mb: 0.5 }}>Back Side</Typography>
-                <TextField size="small" placeholder="Document URL" value={idBackUrl} onChange={(e) => setIdBackUrl(e.target.value)} fullWidth sx={{ mt: 1 }} />
-              </Box>
+              <ImageUpload
+                value={idFrontUrl}
+                onChange={setIdFrontUrl}
+                label="Front side"
+                helperText="Clear photo or scan of the front of your ID."
+                accept="image/*,application/pdf"
+              />
+              <ImageUpload
+                value={idBackUrl}
+                onChange={setIdBackUrl}
+                label="Back side"
+                helperText="Clear photo or scan of the back of your ID."
+                accept="image/*,application/pdf"
+              />
             </Box>
           </Box>
         )}
@@ -176,18 +168,13 @@ export function KYCPage() {
               <TextField label="Country" value={country} onChange={(e) => setCountry(e.target.value)} fullWidth required />
               <TextField label="Postal Code" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} fullWidth required />
             </Box>
-            <Box sx={{
-              border: '2px dashed rgba(0,0,0,0.12)',
-              borderRadius: 2,
-              p: 3,
-              textAlign: 'center',
-              bgcolor: addressDocUrl ? 'rgba(46, 61, 47,0.04)' : 'transparent',
-            }}>
-              <CloudUploadIcon sx={{ fontSize: 32, color: addressDocUrl ? '#5E8F72' : 'text.disabled', mb: 1 }} />
-              <Typography sx={{ fontWeight: 600, fontSize: '0.9rem', mb: 0.5 }}>Address Proof</Typography>
-              <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary', mb: 1 }}>Utility bill or bank statement (max 3 months old)</Typography>
-              <TextField size="small" placeholder="Document URL" value={addressDocUrl} onChange={(e) => setAddressDocUrl(e.target.value)} fullWidth sx={{ mt: 1 }} />
-            </Box>
+            <ImageUpload
+              value={addressDocUrl}
+              onChange={setAddressDocUrl}
+              label="Address proof"
+              helperText="Utility bill or bank statement (max 3 months old)."
+              accept="image/*,application/pdf"
+            />
           </Box>
         )}
 
@@ -197,17 +184,13 @@ export function KYCPage() {
             <Typography sx={{ color: 'text.secondary', fontSize: '0.9rem' }}>
               Upload a clear selfie holding your ID document. This helps us verify that the ID belongs to you.
             </Typography>
-            <Box sx={{
-              border: '2px dashed rgba(0,0,0,0.12)',
-              borderRadius: 2,
-              p: 3,
-              textAlign: 'center',
-              bgcolor: selfieUrl ? 'rgba(46, 61, 47,0.04)' : 'transparent',
-            }}>
-              <CloudUploadIcon sx={{ fontSize: 40, color: selfieUrl ? '#5E8F72' : 'text.disabled', mb: 1 }} />
-              <Typography sx={{ fontWeight: 600, fontSize: '0.9rem', mb: 0.5 }}>Selfie with ID</Typography>
-              <TextField size="small" placeholder="Selfie URL" value={selfieUrl} onChange={(e) => setSelfieUrl(e.target.value)} fullWidth sx={{ mt: 1 }} />
-            </Box>
+            <ImageUpload
+              value={selfieUrl}
+              onChange={setSelfieUrl}
+              label="Selfie with ID"
+              helperText="Clear selfie holding your ID document."
+              accept="image/*"
+            />
           </Box>
         )}
 

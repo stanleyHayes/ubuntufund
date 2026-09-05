@@ -96,7 +96,7 @@ function HeroSection() {
             >
               Together,{' '}
               <Box component="span" sx={{ color: '#DCC07E' }}>
-                We Rise
+                we fund what matters
               </Box>
             </Typography>
             <Typography
