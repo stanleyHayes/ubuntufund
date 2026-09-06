@@ -13,12 +13,23 @@
 export type DonationIntentStatus =
   | 'CREATED'
   | 'PENDING'
+  | 'REQUIRES_ACTION' // e.g. 3-D Secure / OTP awaiting the contributor
+  | 'PROCESSING' // authorized, provider settling
   | 'SUCCEEDED'
+  | 'REFUND_PENDING'
+  | 'REFUNDED'
+  | 'PARTIALLY_REFUNDED'
+  | 'DISPUTED'
+  | 'CHARGEBACK'
   | 'FAILED'
+  | 'CANCELLED'
   | 'EXPIRED'
 
 /** The payment rail an intent settles through. */
-export type DonationProvider = 'wallet' | 'paystack'
+export type DonationProvider = 'wallet' | 'paystack' | 'flutterwave'
+
+/** How the contributor pays (spec §6 capabilities / §8 payment_method). */
+export type ContributionMethod = 'mobile_money' | 'card' | 'bank' | 'ussd' | 'wallet'
 
 /**
  * A guest-capable donation intent.
@@ -54,6 +65,33 @@ export interface DonationIntent {
   attribution?: string
   createdAt: Date
   updatedAt: Date
+
+  // ── Multi-currency & settlement (spec §8) ─────────────────────────────────
+  // All optional/nullable and additive: legacy GHS records simply omit them
+  // (derive from `amount`/`currency`). New/diaspora contributions populate the
+  // integer-minor-unit fields, which are the financial source of truth.
+  /** Contributor-facing charge (amount + tip) in integer minor units. */
+  originalAmountMinor?: number
+  /** Currency the contributor authorized in (ISO-4217). */
+  originalCurrency?: string
+  /** Amount actually settled by the provider, in minor units. */
+  settlementAmountMinor?: number
+  /** Currency the provider settled in (often the merchant's home currency). */
+  settlementCurrency?: string
+  /** Exact FX rate used/observed (original → settlement); null until known. */
+  fxRate?: number
+  /** Where the FX rate came from (e.g. 'provider', 'manual'). */
+  fxSource?: string
+  /** ISO-3166 alpha-2 contributor country, when safely derivable. */
+  country?: string
+  /** How the contributor paid. */
+  paymentMethod?: ContributionMethod
+  /** Provider fee, minor units of the settlement currency. */
+  providerFeeMinor?: number
+  /** Ujimora platform fee, minor units. */
+  platformFeeMinor?: number
+  /** Net credited to the campaign, minor units. */
+  netCampaignAmountMinor?: number
 }
 
 export type PaymentAttemptStatus = 'initiated' | 'succeeded' | 'failed'
@@ -71,6 +109,20 @@ export interface PaymentAttempt {
   /** Raw provider response, retained for debugging/audit. */
   raw?: Record<string, unknown>
   createdAt: Date
+
+  // ── Attempt detail (spec §8 PaymentAttempt) — all optional/additive ───────
+  /** Requested charge in integer minor units. */
+  requestedAmountMinor?: number
+  /** Requested currency (ISO-4217). */
+  requestedCurrency?: string
+  /** Idempotency key this attempt was created under. */
+  idempotencyKey?: string
+  /** Normalized failure code, when the attempt failed. */
+  failureCode?: string
+  /** Human-readable failure reason. */
+  failureReason?: string
+  /** Hosted checkout URL or provider session id. */
+  checkoutUrlOrSessionId?: string
 }
 
 /**
@@ -92,6 +144,14 @@ export interface CreateDonationIntentInput {
   attribution?: string
   /** Fallback idempotency key when the `Idempotency-Key` header is absent. */
   idempotencyKey?: string
+  /** Contribution currency (ISO-4217). Defaults to the platform currency (GHS). */
+  currency?: string
+  /** ISO-3166 alpha-2 contributor country, when safely known. */
+  country?: string
+  /** Preferred payment method; drives provider routing (spec §7). */
+  paymentMethod?: ContributionMethod
+  /** Explicit provider request; honored only when eligible. */
+  providerPreference?: DonationProvider
 }
 
 /** Body for `POST /donation-intents/:id/payment-attempts`. */

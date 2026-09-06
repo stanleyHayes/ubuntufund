@@ -1,5 +1,6 @@
 import mongoose, { Schema, type Document } from 'mongoose';
 import type {
+  ContributionMethod,
   DonationIntentStatus,
   DonationProvider,
 } from '@ubuntu-fund/types';
@@ -22,17 +23,45 @@ export interface DonationIntentDocument extends Document {
   attribution?: string;
   createdAt: Date;
   updatedAt: Date;
+  // Multi-currency & settlement (spec §8) — optional/additive.
+  originalAmountMinor?: number;
+  originalCurrency?: string;
+  settlementAmountMinor?: number;
+  settlementCurrency?: string;
+  fxRate?: number;
+  fxSource?: string;
+  country?: string;
+  paymentMethod?: ContributionMethod;
+  providerFeeMinor?: number;
+  platformFeeMinor?: number;
+  netCampaignAmountMinor?: number;
 }
 
 const DONATION_INTENT_STATUSES: DonationIntentStatus[] = [
   'CREATED',
   'PENDING',
+  'REQUIRES_ACTION',
+  'PROCESSING',
   'SUCCEEDED',
+  'REFUND_PENDING',
+  'REFUNDED',
+  'PARTIALLY_REFUNDED',
+  'DISPUTED',
+  'CHARGEBACK',
   'FAILED',
+  'CANCELLED',
   'EXPIRED',
 ];
 
-const DONATION_PROVIDERS: DonationProvider[] = ['wallet', 'paystack'];
+const DONATION_PROVIDERS: DonationProvider[] = ['wallet', 'paystack', 'flutterwave'];
+
+const CONTRIBUTION_METHODS: ContributionMethod[] = [
+  'mobile_money',
+  'card',
+  'bank',
+  'ussd',
+  'wallet',
+];
 
 const donationIntentSchema = new Schema<DonationIntentDocument>(
   {
@@ -59,6 +88,19 @@ const donationIntentSchema = new Schema<DonationIntentDocument>(
     // Unique: repeated submits with the same key resolve to one intent.
     idempotencyKey: { type: String, required: true, unique: true },
     attribution: { type: String },
+    // Multi-currency & settlement (spec §8) — all optional; legacy GHS records
+    // omit them and derive from amount/currency.
+    originalAmountMinor: { type: Number },
+    originalCurrency: { type: String },
+    settlementAmountMinor: { type: Number },
+    settlementCurrency: { type: String },
+    fxRate: { type: Number },
+    fxSource: { type: String },
+    country: { type: String },
+    paymentMethod: { type: String, enum: CONTRIBUTION_METHODS },
+    providerFeeMinor: { type: Number },
+    platformFeeMinor: { type: Number },
+    netCampaignAmountMinor: { type: Number },
   },
   { collection: 'donationintents', timestamps: true }
 );

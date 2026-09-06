@@ -1,4 +1,5 @@
 import type {
+  ContributionMethod,
   DonationIntentStatus,
   DonationProvider,
 } from '@ubuntu-fund/types';
@@ -22,18 +23,42 @@ export interface DonationIntentProps {
   attribution?: string;
   createdAt: Date;
   updatedAt: Date;
+  // Multi-currency & settlement (spec §8) — optional/additive; legacy GHS
+  // records omit them and derive from amount/currency.
+  originalAmountMinor?: number;
+  originalCurrency?: string;
+  settlementAmountMinor?: number;
+  settlementCurrency?: string;
+  fxRate?: number;
+  fxSource?: string;
+  country?: string;
+  paymentMethod?: ContributionMethod;
+  providerFeeMinor?: number;
+  platformFeeMinor?: number;
+  netCampaignAmountMinor?: number;
 }
 
 /**
- * Legal state transitions. CREATED can go straight to SUCCEEDED for the
- * synchronous wallet rail; hosted rails move through PENDING first. SUCCEEDED,
- * FAILED, and EXPIRED are terminal (no outgoing transitions).
+ * Legal state transitions (spec §9). CREATED can go straight to SUCCEEDED for
+ * the synchronous wallet rail; hosted rails move through PENDING (and possibly
+ * REQUIRES_ACTION for 3-DS / PROCESSING) first. Post-success money movements —
+ * refunds, disputes, chargebacks — extend out of SUCCEEDED. FAILED, EXPIRED,
+ * CANCELLED, REFUNDED and CHARGEBACK are terminal. A delayed/replayed webhook
+ * can never move a terminal payment backward (transitions are validated).
  */
 const ALLOWED_TRANSITIONS: Record<DonationIntentStatus, DonationIntentStatus[]> = {
-  CREATED: ['PENDING', 'SUCCEEDED', 'FAILED', 'EXPIRED'],
-  PENDING: ['SUCCEEDED', 'FAILED', 'EXPIRED'],
-  SUCCEEDED: [],
+  CREATED: ['PENDING', 'REQUIRES_ACTION', 'PROCESSING', 'SUCCEEDED', 'FAILED', 'EXPIRED', 'CANCELLED'],
+  PENDING: ['REQUIRES_ACTION', 'PROCESSING', 'SUCCEEDED', 'FAILED', 'EXPIRED', 'CANCELLED'],
+  REQUIRES_ACTION: ['PROCESSING', 'SUCCEEDED', 'FAILED', 'EXPIRED', 'CANCELLED'],
+  PROCESSING: ['SUCCEEDED', 'FAILED', 'EXPIRED', 'CANCELLED'],
+  SUCCEEDED: ['REFUND_PENDING', 'PARTIALLY_REFUNDED', 'DISPUTED'],
+  REFUND_PENDING: ['REFUNDED', 'PARTIALLY_REFUNDED', 'FAILED'],
+  PARTIALLY_REFUNDED: ['REFUND_PENDING', 'REFUNDED', 'DISPUTED'],
+  DISPUTED: ['CHARGEBACK', 'SUCCEEDED'],
+  REFUNDED: [],
+  CHARGEBACK: [],
   FAILED: [],
+  CANCELLED: [],
   EXPIRED: [],
 };
 
@@ -109,6 +134,27 @@ export class DonationIntentEntity {
   get updatedAt(): Date {
     return this.props.updatedAt;
   }
+  get originalAmountMinor(): number | undefined {
+    return this.props.originalAmountMinor;
+  }
+  get originalCurrency(): string | undefined {
+    return this.props.originalCurrency;
+  }
+  get settlementAmountMinor(): number | undefined {
+    return this.props.settlementAmountMinor;
+  }
+  get settlementCurrency(): string | undefined {
+    return this.props.settlementCurrency;
+  }
+  get fxRate(): number | undefined {
+    return this.props.fxRate;
+  }
+  get country(): string | undefined {
+    return this.props.country;
+  }
+  get paymentMethod(): ContributionMethod | undefined {
+    return this.props.paymentMethod;
+  }
 
   /** Total the donor is charged: campaign-directed amount plus any tip. */
   get gross(): number {
@@ -150,6 +196,58 @@ export class DonationIntentEntity {
 
   markExpired(): void {
     this.transition('EXPIRED');
+  }
+
+  markRequiresAction(providerRef?: string): void {
+    this.transition('REQUIRES_ACTION');
+    if (providerRef) this.props.providerRef = providerRef;
+  }
+
+  markProcessing(providerRef?: string): void {
+    this.transition('PROCESSING');
+    if (providerRef) this.props.providerRef = providerRef;
+  }
+
+  markCancelled(): void {
+    this.transition('CANCELLED');
+  }
+
+  markRefundPending(): void {
+    this.transition('REFUND_PENDING');
+  }
+
+  markRefunded(): void {
+    this.transition('REFUNDED');
+  }
+
+  markPartiallyRefunded(): void {
+    this.transition('PARTIALLY_REFUNDED');
+  }
+
+  markDisputed(): void {
+    this.transition('DISPUTED');
+  }
+
+  markChargeback(): void {
+    this.transition('CHARGEBACK');
+  }
+
+  /**
+   * Record the verified settlement money split (spec §8) in integer minor units.
+   * Additive: leaves the legacy major-unit `amount`/`currency`/`tip` fields as-is.
+   */
+  recordSettlementFinancials(fields: {
+    originalAmountMinor?: number;
+    originalCurrency?: string;
+    settlementAmountMinor?: number;
+    settlementCurrency?: string;
+    fxRate?: number;
+    fxSource?: string;
+    providerFeeMinor?: number;
+    platformFeeMinor?: number;
+    netCampaignAmountMinor?: number;
+  }): void {
+    this.props = { ...this.props, ...fields, updatedAt: new Date() };
   }
 
   toPlain(): DonationIntentProps {

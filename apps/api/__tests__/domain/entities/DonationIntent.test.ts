@@ -56,6 +56,73 @@ describe('DonationIntentEntity state machine', () => {
   });
 });
 
+describe('DonationIntentEntity extended state machine (spec §9)', () => {
+  it('supports a 3-DS / async card path: PENDING → REQUIRES_ACTION → PROCESSING → SUCCEEDED', () => {
+    const intent = makeIntent({ provider: 'paystack' });
+    intent.markPending('ps');
+    intent.markRequiresAction();
+    expect(intent.status).toBe('REQUIRES_ACTION');
+    intent.markProcessing();
+    expect(intent.status).toBe('PROCESSING');
+    intent.markSucceeded();
+    expect(intent.status).toBe('SUCCEEDED');
+  });
+
+  it('allows a refund lifecycle out of SUCCEEDED', () => {
+    const intent = makeIntent();
+    intent.markSucceeded();
+    intent.markRefundPending();
+    expect(intent.status).toBe('REFUND_PENDING');
+    intent.markRefunded();
+    expect(intent.status).toBe('REFUNDED');
+    expect(intent.isTerminal()).toBe(true);
+  });
+
+  it('allows a dispute → chargeback lifecycle out of SUCCEEDED', () => {
+    const intent = makeIntent();
+    intent.markSucceeded();
+    intent.markDisputed();
+    expect(intent.status).toBe('DISPUTED');
+    intent.markChargeback();
+    expect(intent.status).toBe('CHARGEBACK');
+    expect(intent.isTerminal()).toBe(true);
+  });
+
+  it('a delayed/replayed webhook cannot move a terminal payment backward', () => {
+    const refunded = makeIntent();
+    refunded.markSucceeded();
+    refunded.markRefundPending();
+    refunded.markRefunded();
+    expect(() => refunded.markSucceeded()).toThrow(/Illegal donation-intent transition/);
+
+    const cancelled = makeIntent();
+    cancelled.markCancelled();
+    expect(cancelled.isTerminal()).toBe(true);
+    expect(() => cancelled.markSucceeded()).toThrow(/Illegal/);
+  });
+
+  it('records the verified settlement money split in minor units (additive)', () => {
+    const intent = makeIntent({ amount: 100, currency: 'GHS' });
+    intent.recordSettlementFinancials({
+      originalAmountMinor: 10000,
+      originalCurrency: 'USD',
+      settlementAmountMinor: 155000,
+      settlementCurrency: 'GHS',
+      fxRate: 15.5,
+      fxSource: 'provider',
+      providerFeeMinor: 4650,
+      platformFeeMinor: 3000,
+      netCampaignAmountMinor: 147350,
+    });
+    expect(intent.originalCurrency).toBe('USD');
+    expect(intent.settlementAmountMinor).toBe(155000);
+    expect(intent.fxRate).toBe(15.5);
+    // legacy major-unit fields are left intact
+    expect(intent.amount).toBe(100);
+    expect(intent.currency).toBe('GHS');
+  });
+});
+
 describe('JournalEntryEntity double-entry invariant', () => {
   const breakdown: DonationSettlementBreakdown = {
     amount: 500,

@@ -26,6 +26,17 @@ function toDomain(doc: DonationIntentDocument): DonationIntentEntity {
     attribution: doc.attribution,
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
+    originalAmountMinor: doc.originalAmountMinor,
+    originalCurrency: doc.originalCurrency,
+    settlementAmountMinor: doc.settlementAmountMinor,
+    settlementCurrency: doc.settlementCurrency,
+    fxRate: doc.fxRate,
+    fxSource: doc.fxSource,
+    country: doc.country,
+    paymentMethod: doc.paymentMethod,
+    providerFeeMinor: doc.providerFeeMinor,
+    platformFeeMinor: doc.platformFeeMinor,
+    netCampaignAmountMinor: doc.netCampaignAmountMinor,
   });
 }
 
@@ -50,6 +61,17 @@ export class MongoDonationIntentRepository
       providerRef: p.providerRef,
       idempotencyKey: p.idempotencyKey,
       attribution: p.attribution,
+      originalAmountMinor: p.originalAmountMinor,
+      originalCurrency: p.originalCurrency,
+      settlementAmountMinor: p.settlementAmountMinor,
+      settlementCurrency: p.settlementCurrency,
+      fxRate: p.fxRate,
+      fxSource: p.fxSource,
+      country: p.country,
+      paymentMethod: p.paymentMethod,
+      providerFeeMinor: p.providerFeeMinor,
+      platformFeeMinor: p.platformFeeMinor,
+      netCampaignAmountMinor: p.netCampaignAmountMinor,
     });
     return toDomain(doc);
   }
