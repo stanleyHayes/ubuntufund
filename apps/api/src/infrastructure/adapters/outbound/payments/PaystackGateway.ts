@@ -10,6 +10,7 @@ import type {
   PaymentGatewayPort,
   PaymentGatewayTransferResult,
   PaymentGatewayVerifyResult,
+  ProviderCapabilities,
 } from '../../../../domain/ports/outbound/PaymentGatewayPort.js';
 import { AppError } from '../../inbound/middleware/errorHandler.js';
 import { logger } from '../../../logging/logger.js';
@@ -87,6 +88,20 @@ export class PaystackGateway implements PaymentGatewayPort {
 
   isConfigured(): boolean {
     return this.config.secretKey.length > 0;
+  }
+
+  capabilities(): ProviderCapabilities {
+    // Paystack: Ghana mobile money + cards; presentment in GHS plus the diaspora
+    // currencies Paystack supports for eligible merchants. International-card
+    // acceptance and non-GHS presentment are policy-gated by the PaymentRouter's
+    // feature flags — this only describes what the provider can technically do.
+    return {
+      provider: 'paystack',
+      countries: ['*'],
+      currencies: ['GHS', 'USD', 'GBP', 'EUR', 'CAD', 'NGN', 'ZAR', 'KES'],
+      methods: ['mobile_money', 'card', 'bank', 'ussd'],
+      supportsInternationalCards: true,
+    };
   }
 
   private authHeaders(): Record<string, string> {

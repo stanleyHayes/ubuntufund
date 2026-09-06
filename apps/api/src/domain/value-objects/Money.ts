@@ -1,3 +1,36 @@
+/**
+ * Number of minor units per major unit, by ISO-4217 exponent. Most currencies
+ * are 2 (GHS/USD/GBP/EUR/CAD); a few are 0 or 3. Unknown codes default to 2.
+ * Used to convert between contributor-facing major amounts and the integer
+ * minor units money is stored/settled in (spec §8 — never floats for money).
+ */
+const CURRENCY_MINOR_EXPONENT: Record<string, number> = {
+  JPY: 0,
+  KRW: 0,
+  VND: 0,
+  XOF: 0,
+  XAF: 0,
+  BHD: 3,
+  KWD: 3,
+  OMR: 3,
+  TND: 3,
+};
+
+/** ISO-4217 minor-unit exponent for a currency (default 2). */
+export function minorUnitExponent(currency: string): number {
+  return CURRENCY_MINOR_EXPONENT[currency.toUpperCase()] ?? 2;
+}
+
+/** Convert a major-unit amount to integer minor units for the given currency. */
+export function toMinorUnits(amount: number, currency: string): number {
+  return Math.round(amount * 10 ** minorUnitExponent(currency));
+}
+
+/** Convert integer minor units back to a major-unit amount for the currency. */
+export function fromMinorUnits(minor: number, currency: string): number {
+  return minor / 10 ** minorUnitExponent(currency);
+}
+
 export class Money {
   readonly amount: number;
   readonly currency: string;
@@ -37,6 +70,16 @@ export class Money {
 
   isZero(): boolean {
     return this.amount === 0;
+  }
+
+  /** Build a Money from integer minor units (e.g. pesewas/cents). */
+  static fromMinor(minor: number, currency: string): Money {
+    return new Money(fromMinorUnits(minor, currency), currency);
+  }
+
+  /** This amount as integer minor units for its currency. */
+  toMinor(): number {
+    return toMinorUnits(this.amount, this.currency);
   }
 
   private assertSameCurrency(other: Money): void {

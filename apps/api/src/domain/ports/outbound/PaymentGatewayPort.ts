@@ -92,6 +92,28 @@ export interface PaymentGatewayBalance {
   balance: number;
 }
 
+/** A payment method a provider can accept. */
+export type PaymentMethodKind = 'mobile_money' | 'card' | 'bank' | 'ussd' | 'apple_pay' | 'google_pay';
+
+/**
+ * What a provider adapter can accept (spec §6 `capabilities()`), used by the
+ * {@link PaymentRouter} to pick a rail without the campaign domain knowing any
+ * provider specifics. `['*']` means "any" (e.g. a card provider that accepts
+ * cards from anywhere).
+ */
+export interface ProviderCapabilities {
+  /** Stable provider key, e.g. 'paystack' | 'flutterwave'. */
+  provider: string;
+  /** ISO-3166 alpha-2 country codes the provider serves, or ['*']. */
+  countries: string[];
+  /** ISO-4217 currencies the provider can charge, or ['*']. */
+  currencies: string[];
+  /** Payment methods the provider supports. */
+  methods: PaymentMethodKind[];
+  /** Whether the provider accepts international (non-domestic) cards. */
+  supportsInternationalCards: boolean;
+}
+
 /**
  * A swappable payment gateway (Paystack today). Kept behind this outbound port
  * so the donation-intent + webhook use-cases never depend on a concrete
@@ -100,6 +122,13 @@ export interface PaymentGatewayBalance {
 export interface PaymentGatewayPort {
   /** True once the gateway has the credentials it needs to operate. */
   isConfigured(): boolean;
+
+  /**
+   * What this provider can accept — countries, currencies, methods (spec §6).
+   * The {@link PaymentRouter} reads this to select a rail; pure/synchronous and
+   * safe to call whether or not the gateway is configured.
+   */
+  capabilities(): ProviderCapabilities;
 
   /**
    * Open a hosted checkout for an intent: registers the charge with the
