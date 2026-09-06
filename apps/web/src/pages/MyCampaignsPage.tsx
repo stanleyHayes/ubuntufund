@@ -1,3 +1,5 @@
+import Alert from '@mui/material/Alert'
+import { AccountPageSkeleton, AccountHeading } from '@/components/account/AccountPage'
 import { useState } from 'react'
 import { useMyCampaigns } from '@/hooks/useCampaigns'
 import Box from '@mui/material/Box'
@@ -8,7 +10,6 @@ import Chip from '@mui/material/Chip'
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
 import Snackbar from '@mui/material/Snackbar'
-import Alert from '@mui/material/Alert'
 import Tabs from '@mui/material/Tabs'
 import Tab from '@mui/material/Tab'
 import Divider from '@mui/material/Divider'
@@ -373,8 +374,8 @@ function StatCard({ label, value, color, icon }: { label: string; value: string 
       >
         {icon}
       </Box>
-      <Box>
-        <Typography sx={{ fontWeight: 800, fontSize: '1.25rem', lineHeight: 1.1 }}>
+      <Box sx={{ minWidth: 0 }}>
+        <Typography sx={{ overflowWrap: 'anywhere', fontWeight: 800, fontSize: '1.25rem', lineHeight: 1.1 }}>
           {value}
         </Typography>
         <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 500 }}>
@@ -388,7 +389,7 @@ function StatCard({ label, value, color, icon }: { label: string; value: string 
 // ─── Page ──────────────────────────────────────────────────
 
 export function MyCampaignsPage() {
-  const { campaigns } = useMyCampaigns()
+  const { campaigns, isLoading, error } = useMyCampaigns()
   const [tabIndex, setTabIndex] = useState(0)
   const [shareSnack, setShareSnack] = useState(false)
 
@@ -400,7 +401,6 @@ export function MyCampaignsPage() {
   // Summary stats
   const totalRaised = campaigns.reduce((s, c) => s + c.raisedAmount, 0)
   const activeCampaigns = campaigns.filter((c) => c.status === CampaignStatus.ACTIVE).length
-  const totalDonors = 0
   const fundedCampaigns = campaigns.filter((c) => c.status === CampaignStatus.FUNDED).length
 
   function handleShare(campaignId: string) {
@@ -408,19 +408,23 @@ export function MyCampaignsPage() {
     setShareSnack(true)
   }
 
+  if (isLoading) return <AccountPageSkeleton layout="cards" />
+  if (error) return <Alert severity="error" sx={{ m: 3 }}>{error}</Alert>
+
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
+      <AccountHeading title="My campaigns" description="Manage your fundraisers, track progress, and plan your next update." icon={<CampaignIcon />} />
       {/* Summary stats */}
       <Box sx={{ display: 'flex', gap: 2, mb: 4, flexWrap: 'wrap' }}>
-        <StatCard label="Total Raised" value={`$${(totalRaised / 1000).toFixed(0)}k+`} color="#2E3D2F" icon={<TrendingUpIcon />} />
+        <StatCard label="Total Raised" value={formatCurrency(totalRaised, 'GHS')} color="var(--text-brand)" icon={<TrendingUpIcon />} />
         <StatCard label="Active" value={activeCampaigns} color="#C7A24A" icon={<CampaignIcon />} />
-        <StatCard label="Donors" value={totalDonors} color="#1565C0" icon={<PeopleIcon />} />
-        <StatCard label="Funded" value={fundedCampaigns} color="#8B6F4E" icon={<CheckCircleIcon />} />
+        <StatCard label="Campaigns" value={campaigns.length} color="var(--text-info)" icon={<PeopleIcon />} />
+        <StatCard label="Funded" value={fundedCampaigns} color="var(--text-warning)" icon={<CheckCircleIcon />} />
       </Box>
 
       {/* Tabs + Create button */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', mb: 3, flexWrap: 'wrap', gap: 2 }}>
-        <Tabs
+        <Tabs variant="scrollable" scrollButtons="auto"
           value={tabIndex}
           onChange={(_, v) => setTabIndex(v)}
           sx={{

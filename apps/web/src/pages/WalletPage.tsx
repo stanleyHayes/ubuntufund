@@ -1,3 +1,5 @@
+import AccountBalanceWalletRoundedIcon from '@mui/icons-material/AccountBalanceWalletRounded'
+import { AccountHeading } from '@/components/account/AccountPage'
 import { useState, useEffect } from 'react'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
@@ -70,6 +72,7 @@ export function WalletPage() {
   const [wallets, setWallets] = useState<Wallet[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [txError, setTxError] = useState<string | null>(null)
   const [txLoading, setTxLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -81,27 +84,14 @@ export function WalletPage() {
 
     api.get<Transaction[]>('/wallets/transactions')
       .then(setTransactions)
-      .catch(() => setTransactions([]))
+      .catch((err: Error) => setTxError(err.message))
       .finally(() => setTxLoading(false))
   }, [])
 
   return (
     <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', py: 5 }}>
       <Container maxWidth="lg">
-        <Typography
-          sx={{
-            fontFamily: '"Outfit", sans-serif',
-            fontWeight: 900,
-            fontSize: { xs: '1.5rem', md: '1.8rem' },
-            mb: 1,
-            animation: `${fadeInUp} 0.4s ease`,
-          }}
-        >
-          Wallet
-        </Typography>
-        <Typography sx={{ color: 'text.secondary', mb: 4, animation: `${fadeInUp} 0.4s 0.05s ease both` }}>
-          Review your wallet balance and recorded contribution activity.
-        </Typography>
+        <AccountHeading title="Wallet" description="Your balances and transaction history, in one place." icon={<AccountBalanceWalletRoundedIcon />} />
 
         {/* ===== Wallet Cards ===== */}
         {isLoading ? (
@@ -139,7 +129,7 @@ export function WalletPage() {
                       <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.6)', mb: 0.5 }}>
                         {label}
                       </Typography>
-                      <Typography sx={{ fontSize: '1.75rem', fontFamily: '"Outfit", sans-serif', fontWeight: 900, color: '#fff', lineHeight: 1.1 }}>
+                      <Typography sx={{ overflowWrap: 'anywhere', fontSize: { xs: '1.5rem', md: '1.75rem' }, fontFamily: '"Outfit", sans-serif', fontWeight: 900, color: '#fff', lineHeight: 1.1 }}>
                         {formatCurrency(wallet.balance, wallet.currency)}
                       </Typography>
                     </Box>
@@ -176,7 +166,7 @@ export function WalletPage() {
           Transaction History
         </Typography>
 
-        {txLoading ? (
+        {txError ? <Alert severity="error">{txError}</Alert> : txLoading ? (
           <TableContainer
             component={Paper}
             sx={{ borderRadius: SHAPE.card, boxShadow: 'var(--neu-raised)' }}

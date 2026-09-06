@@ -1,3 +1,4 @@
+import { SESSION_EXPIRED, expireSession, storedAccessToken, tokenExpiresAt } from '@/lib/session'
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import type { ReactNode } from 'react'
 import { loginApi, registerApi, refreshTokenApi } from '@/lib/api'
@@ -11,6 +12,7 @@ interface AuthState {
 }
 
 interface AuthContextValue extends AuthState {
+  sessionExpired: boolean
   login: (email: string, password: string) => Promise<void>
   register: (data: { name: string; email: string; password: string; country?: string; role?: string; organizationName?: string; organizationType?: string; registrationNumber?: string; website?: string; referralCode?: string }) => Promise<void>
   logout: () => void
@@ -39,47 +41,71 @@ function saveToStorage(user: AuthUser, tokens: AuthTokens) {
 function clearStorage() {
   localStorage.removeItem(STORAGE_USER_KEY)
   localStorage.removeItem(STORAGE_TOKENS_KEY)
+  localStorage.removeItem('accessToken')
+  localStorage.removeItem('refreshToken')
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const [sessionExpired, setSessionExpired] = useState(false)
   const [state, setState] = useState<AuthState>(() => {
     const { user, tokens } = loadFromStorage()
     return {
       user,
       tokens,
       isAuthenticated: !!user && !!tokens,
-      isLoading: false,
+      isLoading: !!user && !!tokens?.refreshToken,
     }
   })
 
-  // Try to refresh token on mount if we have stored tokens
   useEffect(() => {
-    const { tokens } = loadFromStorage()
-    if (!tokens?.refreshToken) return
-
-    refreshTokenApi(tokens.refreshToken)
-      .then((newTokens) => {
-        const user = JSON.parse(localStorage.getItem(STORAGE_USER_KEY) ?? 'null')
-        if (user) {
-          saveToStorage(user, newTokens)
-          setState({ user, tokens: newTokens, isAuthenticated: true, isLoading: false })
-        }
-      })
-      .catch(() => {
-        // Refresh failed — clear stale session
-        clearStorage()
-        setState({ user: null, tokens: null, isAuthenticated: false, isLoading: false })
-      })
+    const expired = () => {
+      setSessionExpired(true)
+      setState({ user: null, tokens: null, isAuthenticated: false, isLoading: false })
+    }
+    window.addEventListener(SESSION_EXPIRED, expired)
+    return () => window.removeEventListener(SESSION_EXPIRED, expired)
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    const { user: storedUser, tokens } = loadFromStorage()
+    if (!storedUser || !tokens?.refreshToken) return
+    refreshTokenApi(tokens.refreshToken).then(newTokens => {
+      if (cancelled || storedAccessToken() !== tokens.accessToken) return
+      const { user } = loadFromStorage()
+      if (user) {
+        saveToStorage(user, newTokens)
+        setState({ user, tokens: newTokens, isAuthenticated: true, isLoading: false })
+      }
+    }).catch(() => {
+      if (!cancelled) expireSession(tokens.accessToken)
+    })
+    return () => { cancelled = true }
+  }, [])
+
+  useEffect(() => {
+    const token = state.tokens?.accessToken
+    if (!token || state.isLoading) return
+    const check = () => {
+      const expiry = tokenExpiresAt(token)
+      if (expiry !== null && expiry <= Date.now()) expireSession(token)
+    }
+    check()
+    const timer = window.setInterval(check, 15000)
+    window.addEventListener('focus', check)
+    return () => { window.clearInterval(timer); window.removeEventListener('focus', check) }
+  }, [state.tokens?.accessToken, state.isLoading])
 
   const login = useCallback(async (email: string, password: string) => {
     const { user, tokens } = await loginApi(email, password)
+    setSessionExpired(false)
     saveToStorage(user, tokens)
     setState({ user, tokens, isAuthenticated: true, isLoading: false })
   }, [])
 
   const register = useCallback(async (data: { name: string; email: string; password: string; country?: string; role?: string; organizationName?: string; organizationType?: string; registrationNumber?: string; website?: string; referralCode?: string }) => {
     const { user, tokens } = await registerApi(data)
+    setSessionExpired(false)
     saveToStorage(user, tokens)
     // Referral attributed — drop the stored code so it can't be reused.
     try { localStorage.removeItem('uf_ref') } catch { /* storage unavailable */ }
@@ -88,11 +114,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     clearStorage()
+    setSessionExpired(false)
     setState({ user: null, tokens: null, isAuthenticated: false, isLoading: false })
   }, [])
 
   return (
-    <AuthContext.Provider value={{ ...state, login, register, logout }}>
+    <AuthContext.Provider value={{ ...state, sessionExpired, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   )

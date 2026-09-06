@@ -1,3 +1,5 @@
+import Alert from '@mui/material/Alert'
+import { AccountPageSkeleton } from '@/components/account/AccountPage'
 import { useState } from 'react'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
@@ -142,7 +144,8 @@ function StatCard({ icon, iconColor, label, value, change, changePositive = true
         sx={{
           fontFamily: '"Outfit", sans-serif',
           fontWeight: 900,
-          fontSize: '1.65rem',
+          fontSize: { xs: '1.2rem', sm: '1.65rem' },
+          overflowWrap: 'anywhere',
           color: 'text.primary',
           lineHeight: 1,
           mb: 0.5,
@@ -522,9 +525,12 @@ function QuickActions() {
 export function DashboardPage() {
   const { user } = useAuth()
   const displayName = user?.name?.split(' ')[0] ?? 'there'
-  const { campaigns } = useMyCampaigns()
-  const { donations } = useMyDonations()
+  const { campaigns, isLoading: campaignsLoading, error: campaignsError } = useMyCampaigns()
+  const { donations, isLoading: donationsLoading, error: donationsError } = useMyDonations()
   const recentDonations = donations.slice(0, 5)
+
+  if (campaignsLoading || donationsLoading) return <AccountPageSkeleton layout="cards" />
+  if (campaignsError || donationsError) return <Alert severity="error" sx={{ m: 3 }}>{campaignsError || donationsError}</Alert>
 
   return (
     <Box sx={{ bgcolor: 'background.default', minHeight: '100vh' }}>
@@ -550,6 +556,7 @@ export function DashboardPage() {
           }}
         />
 
+        <CampaignRoundedIcon aria-hidden sx={{ position: 'absolute', right: '12%', top: 5, fontSize: 190, color: '#DCC07E', opacity: .08, transform: 'rotate(-15deg)', pointerEvents: 'none' }} />
         <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
           <Box
             sx={{
@@ -577,7 +584,7 @@ export function DashboardPage() {
                   {displayName}
                 </Box>
               </Typography>
-              <Typography sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.9rem' }}>
+              <Typography sx={{ color: 'rgba(255,255,255,0.75)', fontSize: '0.9rem' }}>
                 Here&apos;s how your campaigns are doing today
               </Typography>
             </Box>
@@ -614,7 +621,7 @@ export function DashboardPage() {
             <StatCard
               icon={<TrendingUpRoundedIcon sx={{ fontSize: 22 }} />}
               iconBg="rgba(46, 61, 47,0.08)"
-              iconColor="#2E3D2F"
+              iconColor="var(--text-brand)"
               label="Total Raised"
               value={formatCurrency(campaigns.reduce((s, c) => s + c.raisedAmount, 0), 'GHS')}
               delay={0.05}
@@ -624,7 +631,7 @@ export function DashboardPage() {
             <StatCard
               icon={<CampaignRoundedIcon sx={{ fontSize: 22 }} />}
               iconBg="rgba(21,101,192,0.08)"
-              iconColor="#1565C0"
+              iconColor="var(--text-info)"
               label="Active Campaigns"
               value={String(campaigns.filter((c) => c.status === 'active').length)}
               delay={0.1}
@@ -634,8 +641,8 @@ export function DashboardPage() {
             <StatCard
               icon={<VolunteerActivismRoundedIcon sx={{ fontSize: 22 }} />}
               iconBg="rgba(199, 162, 74,0.08)"
-              iconColor="#A07E33"
-              label="Donations Received"
+              iconColor="var(--text-warning)"
+              label="Donations Made"
               value={String(donations.length)}
               delay={0.15}
             />
@@ -644,7 +651,7 @@ export function DashboardPage() {
             <StatCard
               icon={<PeopleRoundedIcon sx={{ fontSize: 22 }} />}
               iconBg="rgba(106,27,154,0.08)"
-              iconColor="#6A1B9A"
+              iconColor="var(--text-accent)"
               label="Campaigns Supported"
               value={String(new Set(donations.map((d) => d.campaignId)).size)}
               delay={0.2}

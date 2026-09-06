@@ -1,6 +1,7 @@
+import { expireSession, storedAccessToken } from './session'
 // In production, requests go to '/api/v1' which Vercel rewrites to the API
 // (see vercel.json). Set VITE_API_URL to call an absolute API origin instead.
-const API_BASE = import.meta.env.VITE_API_URL || '/api/v1'
+const API_BASE = import.meta.env?.VITE_API_URL || '/api/v1'
 
 interface ApiOptions extends RequestInit {
   token?: string
@@ -49,6 +50,7 @@ async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
   }
 
   if (!res.ok) {
+    if (res.status === 401 && token) expireSession(token)
     const errorBody = data && typeof data === 'object' ? data as { error?: string; message?: string } : null
     const fallback = res.status === 401
       ? 'The email or password is incorrect.'
@@ -71,15 +73,7 @@ async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
 // ---------------------------------------------------------------------------
 
 async function authedRequest<T>(path: string, options?: RequestInit): Promise<T> {
-  const token = localStorage.getItem('accessToken')
-    ?? (() => {
-      try {
-        const tokens = JSON.parse(localStorage.getItem('uf_tokens') ?? 'null')
-        return tokens?.accessToken ?? null
-      } catch {
-        return null
-      }
-    })()
+  const token = storedAccessToken()
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -92,6 +86,7 @@ async function authedRequest<T>(path: string, options?: RequestInit): Promise<T>
   })
 
   if (!res.ok) {
+    if (res.status === 401 && token) expireSession(token)
     const error = await res.json().catch(() => ({ message: 'Request failed' }))
     throw new Error(error.message ?? error.error ?? `HTTP ${res.status}`)
   }

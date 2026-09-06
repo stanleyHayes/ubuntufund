@@ -1,3 +1,5 @@
+import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded'
+import { AccountPageSkeleton, AccountHeading } from '@/components/account/AccountPage'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
@@ -29,7 +31,6 @@ import { api } from '@/lib/api'
 const FOREST = '#2E3D2F'
 const INK = 'text.primary'
 const INK_SECONDARY = 'text.secondary'
-const GOLD_DARK = '#A07E33'
 const CLAY = '#A5432F'
 const HAIRLINE = '#E7E3D8'
 
@@ -160,7 +161,8 @@ export function SettingsPage() {
   const [snackMessage, setSnackMessage] = useState('Settings saved')
   const [snackSeverity, setSnackSeverity] = useState<'success' | 'error'>('success')
   const [saving, setSaving] = useState(false)
-  const [, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -199,8 +201,8 @@ export function SettingsPage() {
         if (data.showLeaderboards !== undefined) setShowLeaderboards(data.showLeaderboards)
         if (data.publicProfile !== undefined) setPublicProfile(data.publicProfile)
       })
-      .catch(() => {
-        // Keep defaults on failure
+      .catch((error: Error) => {
+        if (!cancelled) setLoadError(error.message)
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -262,21 +264,13 @@ export function SettingsPage() {
 
   const initials = (user?.name ?? 'U').split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase()
 
+  if (loading) return <AccountPageSkeleton layout="settings" />
+  if (loadError) return <Alert severity="error" sx={{ m: 3 }}>{loadError}</Alert>
+
   return (
     <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', py: { xs: 4, md: 6 } }}>
       <Container maxWidth="lg">
-        {/* Header */}
-        <Box sx={{ mb: 4 }}>
-          <Typography sx={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: GOLD_DARK, mb: 0.75 }}>
-            Account
-          </Typography>
-          <Typography sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 900, fontSize: { xs: '1.6rem', md: '2rem' }, color: INK }}>
-            Settings
-          </Typography>
-          <Typography sx={{ color: INK_SECONDARY, mt: 0.5 }}>
-            Manage how Ujimora notifies you and what others can see.
-          </Typography>
-        </Box>
+        <AccountHeading title="Settings" description="Make Ujimora work for you. Manage notifications, privacy, and appearance." icon={<SettingsRoundedIcon />} />
 
         <Grid container spacing={4}>
           {/* Left rail */}

@@ -1,3 +1,4 @@
+import { AccountPageSkeleton, AccountRowsSkeleton } from '@/components/account/AccountPage'
 import { useState, useEffect, useCallback } from 'react'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
@@ -10,7 +11,6 @@ import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
 import Snackbar from '@mui/material/Snackbar'
 import Alert from '@mui/material/Alert'
-import LinearProgress from '@mui/material/LinearProgress'
 import HandshakeRoundedIcon from '@mui/icons-material/HandshakeRounded'
 import ContentCopyRoundedIcon from '@mui/icons-material/ContentCopyRounded'
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded'
@@ -292,7 +292,7 @@ export function AffiliateDashboardPage() {
 
   const [referrals, setReferrals] = useState<AffiliateReferral[]>([])
   const [commissions, setCommissions] = useState<AffiliateCommission[]>([])
-  const [listsLoading, setListsLoading] = useState(false)
+  const [listsLoading, setListsLoading] = useState(true)
   const [listsKey, setListsKey] = useState(0)
 
   const [copied, setCopied] = useState(false)
@@ -360,16 +360,7 @@ export function AffiliateDashboardPage() {
   }, [dashboard, refresh])
 
   // ── Loading ────────────────────────────────────────────────────────────────
-  if (isLoading) {
-    return (
-      <Container maxWidth="lg" sx={{ py: 6 }}>
-        <Box sx={{ maxWidth: 400, mx: 'auto', textAlign: 'center', py: 12 }}>
-          <LinearProgress sx={{ borderRadius: 2, mb: 2 }} />
-          <Typography sx={{ color: 'text.secondary' }}>Loading your affiliate dashboard…</Typography>
-        </Box>
-      </Container>
-    )
-  }
+  if (isLoading) return <AccountPageSkeleton />
 
   // ── Error (only when we have no dashboard to show) ───────────────────────────
   if (error && !enrolled) {
@@ -448,6 +439,7 @@ export function AffiliateDashboardPage() {
             pointerEvents: 'none',
           }}
         />
+        <HandshakeRoundedIcon aria-hidden sx={{ position: 'absolute', right: { xs: -30, md: '8%' }, top: 12, fontSize: 190, color: '#A8C5AE', opacity: .08, transform: 'rotate(-15deg)', pointerEvents: 'none' }} />
         <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
           <Box sx={{ animation: `${fadeInUp} 0.5s ease both` }}>
             <Typography
@@ -465,8 +457,8 @@ export function AffiliateDashboardPage() {
                 Program
               </Box>
             </Typography>
-            <Typography sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.9rem' }}>
-              Share your link, grow the community, and earn commission on every referral.
+            <Typography sx={{ color: 'rgba(255,255,255,0.75)', fontSize: '0.9rem' }}>
+              Share your link, grow the community, and earn commission on qualifying paid subscriptions.
             </Typography>
           </Box>
         </Container>
@@ -650,7 +642,7 @@ export function AffiliateDashboardPage() {
             <ListPanel title="Referrals" count={referrals.length} delay={0.35}>
               {listsLoading ? (
                 <Box sx={{ py: 3 }}>
-                  <LinearProgress sx={{ borderRadius: 2 }} />
+                  <AccountRowsSkeleton />
                 </Box>
               ) : referrals.length === 0 ? (
                 <EmptyState
@@ -674,7 +666,7 @@ export function AffiliateDashboardPage() {
             <ListPanel title="Commissions" count={commissions.length} delay={0.4}>
               {listsLoading ? (
                 <Box sx={{ py: 3 }}>
-                  <LinearProgress sx={{ borderRadius: 2 }} />
+                  <AccountRowsSkeleton />
                 </Box>
               ) : commissions.length === 0 ? (
                 <EmptyState

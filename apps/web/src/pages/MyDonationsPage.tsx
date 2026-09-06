@@ -1,3 +1,5 @@
+import Alert from '@mui/material/Alert'
+import { AccountPageSkeleton, AccountHeading } from '@/components/account/AccountPage'
 import { useState } from 'react'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
@@ -46,7 +48,7 @@ function isRefundEligible(donation: UserDonation): boolean {
 // ---------------------------------------------------------------------------
 
 export function MyDonationsPage() {
-  const { donations, isLoading } = useMyDonations()
+  const { donations, isLoading, error } = useMyDonations()
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [methodFilter, setMethodFilter] = useState<string>('all')
 
@@ -61,34 +63,20 @@ export function MyDonationsPage() {
   const campaignsSupported = new Set(donations.map((d) => d.campaignId)).size
   const avgDonation = nonRefunded.length > 0 ? totalDonated / nonRefunded.length : 0
 
-  if (isLoading) {
-    return (
-      <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', py: 5, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-        <Typography>Loading donations...</Typography>
-      </Box>
-    )
-  }
+  if (isLoading) return <AccountPageSkeleton />
+  if (error) return <Alert severity="error" sx={{ m: 3 }}>{error}</Alert>
 
   return (
     <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', py: 5 }}>
       <Container maxWidth="lg">
-        <Typography
-          sx={{
-            fontFamily: '"Outfit", sans-serif',
-            fontWeight: 900,
-            fontSize: { xs: '1.5rem', md: '1.8rem' },
-            mb: 4,
-          }}
-        >
-          My Donations
-        </Typography>
+        <AccountHeading title="My donations" description="See the causes you support and follow each contribution." icon={<VolunteerActivismRoundedIcon />} />
 
         {/* Stats Bar */}
         <Grid container spacing={2} sx={{ mb: 4 }}>
           {[
-            { icon: <TrendingUpRoundedIcon />, label: 'Total Donated', value: `GH₵ ${Math.round(totalDonated).toLocaleString()}`, color: 'var(--text-brand)', bg: 'rgba(46, 61, 47,0.08)' },
+            { icon: <TrendingUpRoundedIcon />, label: 'Total Donated', value: formatCurrency(totalDonated, 'GHS'), color: 'var(--text-brand)', bg: 'rgba(46, 61, 47,0.08)' },
             { icon: <VolunteerActivismRoundedIcon />, label: 'Campaigns Supported', value: String(campaignsSupported), color: 'var(--text-info)', bg: 'rgba(21,101,192,0.08)' },
-            { icon: <BarChartRoundedIcon />, label: 'Average Donation', value: `GH₵ ${Math.round(avgDonation).toLocaleString()}`, color: 'var(--text-accent)', bg: 'rgba(173,20,87,0.08)' },
+            { icon: <BarChartRoundedIcon />, label: 'Average Donation', value: formatCurrency(avgDonation, 'GHS'), color: 'var(--text-accent)', bg: 'rgba(173,20,87,0.08)' },
           ].map((stat) => (
             <Grid size={{ xs: 12, sm: 4 }} key={stat.label}>
               <Box
@@ -116,8 +104,8 @@ export function MyDonationsPage() {
                 >
                   {stat.icon}
                 </Box>
-                <Box>
-                  <Typography sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 800, fontSize: '1.3rem' }}>
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography sx={{ overflowWrap: 'anywhere', fontFamily: '"Outfit", sans-serif', fontWeight: 800, fontSize: '1.3rem' }}>
                     {stat.value}
                   </Typography>
                   <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary' }}>{stat.label}</Typography>

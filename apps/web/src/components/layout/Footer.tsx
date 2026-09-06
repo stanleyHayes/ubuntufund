@@ -1,3 +1,13 @@
+import ShieldRoundedIcon from '@mui/icons-material/ShieldRounded'
+import DescriptionRoundedIcon from '@mui/icons-material/DescriptionRounded'
+import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded'
+import AccountBalanceWalletRoundedIcon from '@mui/icons-material/AccountBalanceWalletRounded'
+import VolunteerActivismRoundedIcon from '@mui/icons-material/VolunteerActivismRounded'
+import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded'
+import RocketLaunchRoundedIcon from '@mui/icons-material/RocketLaunchRounded'
+import EmojiEventsRoundedIcon from '@mui/icons-material/EmojiEventsRounded'
+import BusinessRoundedIcon from '@mui/icons-material/BusinessRounded'
+import ExploreRoundedIcon from '@mui/icons-material/ExploreRounded'
 import Box from '@mui/material/Box'
 import { BrandLogo } from '@ubuntu-fund/ui'
 import Container from '@mui/material/Container'
@@ -9,26 +19,26 @@ const LINK_COLUMNS = [
   {
     heading: 'Platform',
     links: [
-      { label: 'Explore Campaigns', to: '/explore' },
-      { label: 'Organizations', to: '/organizations' },
-      { label: 'Leaderboard', to: '/leaderboard' },
-      { label: 'Start a Campaign', to: '/campaigns/new' },
+      { icon: ExploreRoundedIcon, label: 'Explore Campaigns', to: '/explore' },
+      { icon: BusinessRoundedIcon, label: 'Organizations', to: '/organizations' },
+      { icon: EmojiEventsRoundedIcon, label: 'Leaderboard', to: '/leaderboard' },
+      { icon: RocketLaunchRoundedIcon, label: 'Start a Campaign', to: '/campaigns/new' },
     ],
   },
   {
     heading: 'Your Account',
     links: [
-      { label: 'Dashboard', to: '/dashboard' },
-      { label: 'My Donations', to: '/donations' },
-      { label: 'Wallet', to: '/wallet' },
-      { label: 'Settings', to: '/settings' },
+      { icon: DashboardRoundedIcon, label: 'Dashboard', to: '/dashboard' },
+      { icon: VolunteerActivismRoundedIcon, label: 'My Donations', to: '/donations' },
+      { icon: AccountBalanceWalletRoundedIcon, label: 'Wallet', to: '/wallet' },
+      { icon: SettingsRoundedIcon, label: 'Settings', to: '/settings' },
     ],
   },
   {
     heading: 'Legal',
     links: [
-      { label: 'Terms of Service', to: '/terms' },
-      { label: 'Privacy Policy', to: '/privacy' },
+      { icon: DescriptionRoundedIcon, label: 'Terms of Service', to: '/terms' },
+      { icon: ShieldRoundedIcon, label: 'Privacy Policy', to: '/privacy' },
     ],
   },
 ]
@@ -115,9 +125,11 @@ export function Footer() {
                     sx={{
                       color: 'rgba(245, 242, 234, 0.72)',
                       '&:hover': { color: '#C7A24A' },
-                      width: 'fit-content',
+                      width: 'fit-content', display: 'inline-flex', alignItems: 'center', gap: 1, minHeight: 36,
+                      '&:focus-visible': { outline: '2px solid #DCC07E', outlineOffset: 4 },
                     }}
                   >
+                    <link.icon aria-hidden sx={{ fontSize: 17, color: '#A8C5AE' }} />
                     {link.label}
                   </Link>
                 ))}

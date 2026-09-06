@@ -15,12 +15,13 @@ interface PermissionContextValue {
 const PermissionContext = createContext<PermissionContextValue | null>(null)
 
 export function PermissionProvider({ children }: { children: ReactNode }) {
-  const { isAuthenticated, tokens } = useAuth()
+  const { isAuthenticated, tokens, isLoading: sessionLoading } = useAuth()
   const [permissions, setPermissions] = useState<PermissionString[]>([])
   const [roleName, setRoleName] = useState('')
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
+    if (sessionLoading) return
     if (!isAuthenticated) {
       setPermissions([])
       setRoleName('')
@@ -56,7 +57,7 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [isAuthenticated, tokens?.accessToken])
+  }, [isAuthenticated, tokens?.accessToken, sessionLoading])
 
   const can = useCallback(
     (resource: Resource, action: Action): boolean => {
