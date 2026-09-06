@@ -27,8 +27,10 @@ This matrix covers user- and organization-facing capabilities that are appropria
 | Leaderboard | `/leaderboard` | `/leaderboard` | `/leaderboard` | Equal |
 | Profile | `/profile` | Profile tab and public profile route | `/profile`, `/users/:id/public` | Equal |
 | Settings and account deletion | `/settings` | `/settings` | profile/settings APIs and `DELETE /profile` | Equal |
-| Appearance (dark mode) | Settings → Appearance | Settings → Appearance | client-side preference (persisted) | Dark mode equal; skins web-only (see below) |
-| Subscription status | `/subscription` | Subscription tab | `/subscriptions/*` | Equal; paid activation blocked |
+| Appearance (dark mode + design skins) | Settings → Appearance + Design finish | Settings → Appearance + Design finish | client-side preference (persisted) | Equal; all 4 skins on both platforms (see Theming) |
+| Subscription plans + paid checkout | `/subscription` | Subscription tab (Paystack checkout sheet) | `/subscriptions/*`, `/subscriptions/checkout` | Equal; live once `PAYSTACK_SECRET_KEY` is set |
+| Coupon codes at checkout | subscribe checkout dialog | subscription checkout sheet | `/coupons/preview` + checkout body | Equal |
+| Affiliate program | `/affiliate` | `/affiliate` (Profile menu) | `/affiliate/*` | Equal |
 | Privacy and terms | `/privacy`, `/terms` | `/privacy`, `/terms` | bundled public copy | Equal |
 
 ## Theming (appearance)
@@ -36,20 +38,25 @@ This matrix covers user- and organization-facing capabilities that are appropria
 - Both clients persist a Light / Dark / System appearance preference, chosen in
   Settings → Appearance. Web reads it from a color-mode context; mobile from a
   color-mode context backed by AsyncStorage, defaulting to the OS setting.
-- The web/admin/marketing **material skins** (neumorphism, claymorphism,
-  glassmorphism, minimal) are CSS-variable / backdrop-filter techniques with no
-  React Native equivalent, so they are intentionally web-only. Mobile keeps its
-  single neumorphic finish in both light and dark.
-- Mobile dark mode was rolled out across every screen via a shared mode-aware
+- All four **material skins** (neumorphism, claymorphism, glassmorphism,
+  minimal) now exist on **both** web and mobile, chosen in Settings → Design
+  finish. Web uses CSS variables / backdrop-filter; mobile uses mode-aware
+  recipe tables (`getNeu(scheme, skin)`), so every surface reading `useNeu()`
+  picks up the finish for free. Mobile glass renders as frosted-translucent
+  panels app-wide plus real `expo-blur` backdrop blur on primary cards via the
+  `GlassSurface` component (real blur is most visible over imagery; flat-
+  background surfaces use the frosted recipe).
+- Mobile dark mode + skins were rolled out across every screen via the shared
   palette (`src/theme.ts`) and the `usePalette()` / `useNeu()` hooks. It compiles
-  and lints clean, but **on-device visual QA in both modes is still required**
-  before it is considered launch-verified (contrast on photo overlays, gold CTAs,
-  and the sage decorative tints on dark backgrounds are the areas to check).
+  and lints clean, but **on-device visual QA across modes and finishes is still
+  required** before it is launch-verified (contrast on photo overlays, gold CTAs,
+  sage decorative tints on dark backgrounds, and the glass frost over each screen
+  are the areas to check).
 
 ## Intentional launch boundaries
 
 - Ujimora Wallet is the only active donation method. Card, mobile-money, and bank adapters are disabled.
-- Paid subscription activation is rejected by the API and disabled in both clients until verified billing exists.
+- Paid subscriptions activate through the Paystack checkout (`POST /subscriptions/checkout`) on both web and mobile; the rail is live once `PAYSTACK_SECRET_KEY` is configured (the same gate as donations and payouts). The direct `POST /subscriptions` and `PUT /subscriptions/upgrade` endpoints still reject paid tiers by design — paid plans must go through checkout.
 - Refund requests are persisted and visible, but approval and settlement are not automatic.
 - External payout and self-service withdrawal controls are not exposed.
 - Universal links remain deferred until the final controlled domain and association files exist.
