@@ -220,13 +220,295 @@ const darkNeu: NeuRecipes = {
   },
 }
 
-export function getNeu(scheme: ColorScheme): NeuRecipes {
-  return scheme === 'dark' ? darkNeu : lightNeu
+// ---------------------------------------------------------------------------
+// Claymorphism — puffy, matte, softly-rounded surfaces (outer shadow + inset
+// highlight/shade). Same NeuRecipes shape, so every surface that reads a recipe
+// through useNeu() gets it for free.
+// ---------------------------------------------------------------------------
+
+const lightClay: NeuRecipes = {
+  raised: {
+    backgroundColor: '#EDE8DF',
+    boxShadow:
+      '8px 10px 22px rgba(72,62,43,0.16), -6px -6px 14px rgba(255,255,255,0.95), inset 3px 3px 6px rgba(255,255,255,0.75), inset -5px -5px 10px rgba(72,62,43,0.06)',
+    shadowColor: '#493F30',
+    shadowOffset: { width: 4, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
+    elevation: 8,
+  },
+  subtle: {
+    backgroundColor: '#EDE8DF',
+    boxShadow:
+      '5px 6px 14px rgba(72,62,43,0.14), -4px -4px 10px rgba(255,255,255,0.9), inset 2px 2px 4px rgba(255,255,255,0.7), inset -3px -3px 7px rgba(72,62,43,0.05)',
+    shadowColor: '#493F30',
+    shadowOffset: { width: 3, height: 5 },
+    shadowOpacity: 0.15,
+    shadowRadius: 9,
+    elevation: 5,
+  },
+  inset: {
+    backgroundColor: '#E4DED3',
+    boxShadow:
+      'inset 5px 5px 10px rgba(72,62,43,0.14), inset -5px -5px 10px rgba(255,255,255,0.92)',
+  },
+  greenRaised: {
+    backgroundColor: '#31402F',
+    boxShadow:
+      '8px 10px 22px rgba(0,0,0,0.4), -5px -5px 12px rgba(94,143,114,0.18), inset 3px 3px 6px rgba(150,190,160,0.16), inset -5px -5px 10px rgba(0,0,0,0.28)',
+    shadowColor: '#000000',
+    shadowOffset: { width: 4, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 14,
+    elevation: 9,
+  },
+  greenSubtle: {
+    backgroundColor: '#31402F',
+    boxShadow:
+      '5px 6px 14px rgba(0,0,0,0.34), -4px -4px 10px rgba(94,143,114,0.14), inset 2px 2px 4px rgba(150,190,160,0.14), inset -3px -3px 7px rgba(0,0,0,0.24)',
+    shadowColor: '#000000',
+    shadowOffset: { width: 3, height: 5 },
+    shadowOpacity: 0.3,
+    shadowRadius: 9,
+    elevation: 6,
+  },
+  greenInset: {
+    backgroundColor: '#2B3A2C',
+    boxShadow:
+      'inset 5px 5px 10px rgba(0,0,0,0.4), inset -5px -5px 10px rgba(94,143,114,0.16)',
+  },
+}
+
+const darkClay: NeuRecipes = {
+  raised: {
+    backgroundColor: '#232019',
+    boxShadow:
+      '8px 10px 22px rgba(0,0,0,0.55), -6px -6px 14px rgba(255,255,255,0.05), inset 3px 3px 6px rgba(255,255,255,0.05), inset -5px -5px 10px rgba(0,0,0,0.5)',
+    shadowColor: '#000000',
+    shadowOffset: { width: 4, height: 8 },
+    shadowOpacity: 0.55,
+    shadowRadius: 14,
+    elevation: 8,
+  },
+  subtle: {
+    backgroundColor: '#232019',
+    boxShadow:
+      '5px 6px 14px rgba(0,0,0,0.5), -4px -4px 10px rgba(255,255,255,0.04), inset 2px 2px 4px rgba(255,255,255,0.04), inset -3px -3px 7px rgba(0,0,0,0.45)',
+    shadowColor: '#000000',
+    shadowOffset: { width: 3, height: 5 },
+    shadowOpacity: 0.5,
+    shadowRadius: 9,
+    elevation: 5,
+  },
+  inset: {
+    backgroundColor: '#1B1813',
+    boxShadow:
+      'inset 5px 5px 10px rgba(0,0,0,0.6), inset -5px -5px 10px rgba(255,255,255,0.04)',
+  },
+  greenRaised: {
+    backgroundColor: '#273327',
+    boxShadow:
+      '8px 10px 22px rgba(0,0,0,0.6), -5px -5px 12px rgba(121,169,140,0.1), inset 3px 3px 6px rgba(121,169,140,0.1), inset -5px -5px 10px rgba(0,0,0,0.5)',
+    shadowColor: '#000000',
+    shadowOffset: { width: 4, height: 8 },
+    shadowOpacity: 0.55,
+    shadowRadius: 14,
+    elevation: 9,
+  },
+  greenSubtle: {
+    backgroundColor: '#273327',
+    boxShadow:
+      '5px 6px 14px rgba(0,0,0,0.55), -4px -4px 10px rgba(121,169,140,0.08), inset 2px 2px 4px rgba(121,169,140,0.08), inset -3px -3px 7px rgba(0,0,0,0.45)',
+    shadowColor: '#000000',
+    shadowOffset: { width: 3, height: 5 },
+    shadowOpacity: 0.5,
+    shadowRadius: 9,
+    elevation: 6,
+  },
+  greenInset: {
+    backgroundColor: '#202B21',
+    boxShadow:
+      'inset 5px 5px 10px rgba(0,0,0,0.6), inset -5px -5px 10px rgba(121,169,140,0.1)',
+  },
+}
+
+// ---------------------------------------------------------------------------
+// Minimal — flat surfaces with a hairline border, no shadow. The calmest finish.
+// ---------------------------------------------------------------------------
+
+const lightMinimal: NeuRecipes = {
+  raised: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: 'rgba(26,46,34,0.10)', elevation: 0 },
+  subtle: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: 'rgba(26,46,34,0.07)', elevation: 0 },
+  inset: { backgroundColor: '#F2EFEA', borderWidth: 1, borderColor: 'rgba(26,46,34,0.08)' },
+  greenRaised: { backgroundColor: '#2E3D2F', elevation: 0 },
+  greenSubtle: { backgroundColor: '#2E3D2F', elevation: 0 },
+  greenInset: { backgroundColor: '#26331F' },
+}
+
+const darkMinimal: NeuRecipes = {
+  raised: { backgroundColor: '#1E1E1E', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', elevation: 0 },
+  subtle: { backgroundColor: '#1E1E1E', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', elevation: 0 },
+  inset: { backgroundColor: '#171717', borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)' },
+  greenRaised: { backgroundColor: '#243026', elevation: 0 },
+  greenSubtle: { backgroundColor: '#243026', elevation: 0 },
+  greenInset: { backgroundColor: '#1F2A20' },
+}
+
+// ---------------------------------------------------------------------------
+// Glassmorphism — translucent frosted panels with a light border. These recipes
+// are the base look everywhere; primary surfaces additionally wrap a real
+// backdrop blur (see {@link getGlass} + the GlassSurface component), which the
+// translucent fill alone can't reproduce.
+// ---------------------------------------------------------------------------
+
+const lightGlass: NeuRecipes = {
+  raised: {
+    backgroundColor: 'rgba(255,255,255,0.55)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.65)',
+    boxShadow: '0px 8px 24px rgba(72,62,43,0.12)',
+    shadowColor: '#493F30',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 14,
+    elevation: 4,
+  },
+  subtle: {
+    backgroundColor: 'rgba(255,255,255,0.42)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.55)',
+    boxShadow: '0px 4px 14px rgba(72,62,43,0.1)',
+    shadowColor: '#493F30',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  inset: {
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.4)',
+  },
+  greenRaised: {
+    backgroundColor: 'rgba(46,61,47,0.5)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+    boxShadow: '0px 8px 24px rgba(0,0,0,0.28)',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.28,
+    shadowRadius: 14,
+    elevation: 5,
+  },
+  greenSubtle: {
+    backgroundColor: 'rgba(46,61,47,0.42)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
+  },
+  greenInset: {
+    backgroundColor: 'rgba(46,61,47,0.34)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+}
+
+const darkGlass: NeuRecipes = {
+  raised: {
+    backgroundColor: 'rgba(40,40,40,0.5)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
+    boxShadow: '0px 8px 24px rgba(0,0,0,0.5)',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5,
+    shadowRadius: 14,
+    elevation: 4,
+  },
+  subtle: {
+    backgroundColor: 'rgba(40,40,40,0.4)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    boxShadow: '0px 4px 14px rgba(0,0,0,0.45)',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.45,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  inset: {
+    backgroundColor: 'rgba(30,30,30,0.45)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  greenRaised: {
+    backgroundColor: 'rgba(36,48,38,0.55)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
+    boxShadow: '0px 8px 24px rgba(0,0,0,0.55)',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.55,
+    shadowRadius: 14,
+    elevation: 5,
+  },
+  greenSubtle: {
+    backgroundColor: 'rgba(36,48,38,0.45)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  greenInset: {
+    backgroundColor: 'rgba(36,48,38,0.38)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+}
+
+// ---------------------------------------------------------------------------
+// Skins
+// ---------------------------------------------------------------------------
+
+export type Skin = 'neumorphism' | 'claymorphism' | 'glassmorphism' | 'minimal'
+
+export const SKINS: { value: Skin; label: string; icon: string }[] = [
+  { value: 'neumorphism', label: 'Neumorphic', icon: 'gesture-tap-button' },
+  { value: 'claymorphism', label: 'Clay', icon: 'blur' },
+  { value: 'glassmorphism', label: 'Glass', icon: 'card-outline' },
+  { value: 'minimal', label: 'Minimal', icon: 'square-outline' },
+]
+
+const NEU_TABLE: Record<Skin, { light: NeuRecipes; dark: NeuRecipes }> = {
+  neumorphism: { light: lightNeu, dark: darkNeu },
+  claymorphism: { light: lightClay, dark: darkClay },
+  glassmorphism: { light: lightGlass, dark: darkGlass },
+  minimal: { light: lightMinimal, dark: darkMinimal },
+}
+
+export function getNeu(scheme: ColorScheme, skin: Skin = 'neumorphism'): NeuRecipes {
+  const table = NEU_TABLE[skin] ?? NEU_TABLE.neumorphism
+  return scheme === 'dark' ? table.dark : table.light
 }
 
 /**
- * Backwards-compatible flat export (LIGHT recipes) for screens not yet migrated
- * to `useNeu()`. Migrated code should read the recipes from the hook.
+ * Config for the real backdrop-blur surfaces used by the glass skin. `tint`
+ * feeds react-native's BlurView; `overlay`/`border` layer a translucent wash and
+ * hairline on top so text stays legible over whatever shows through.
+ */
+export interface GlassConfig {
+  intensity: number
+  tint: 'light' | 'dark'
+  overlay: string
+  border: string
+}
+
+export function getGlass(scheme: ColorScheme): GlassConfig {
+  return scheme === 'dark'
+    ? { intensity: 40, tint: 'dark', overlay: 'rgba(30,30,30,0.35)', border: 'rgba(255,255,255,0.14)' }
+    : { intensity: 40, tint: 'light', overlay: 'rgba(255,255,255,0.4)', border: 'rgba(255,255,255,0.6)' }
+}
+
+/**
+ * Backwards-compatible flat export (LIGHT neumorphism recipes) for any code not
+ * reading recipes from the `useNeu()` hook.
  */
 export const neumorphism = lightNeu
 

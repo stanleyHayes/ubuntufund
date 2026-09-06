@@ -144,6 +144,7 @@ function ThemedApp({
           <Stack.Screen name="leaderboard" options={{ title: 'Leaderboard' }} />
           <Stack.Screen name="invitations" options={{ title: 'Invitations' }} />
           <Stack.Screen name="settings" options={{ title: 'Settings' }} />
+          <Stack.Screen name="affiliate" options={{ title: 'Affiliate' }} />
           <Stack.Screen name="refund-request" options={{ title: 'Request Refund', animation: 'slide_from_bottom' }} />
           <Stack.Screen name="organizations" options={{ title: 'Organizations' }} />
           <Stack.Screen name="organization/[id]" options={{ title: 'Organization' }} />

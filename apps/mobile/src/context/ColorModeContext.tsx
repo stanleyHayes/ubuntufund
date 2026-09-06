@@ -12,9 +12,12 @@ import {
   getPalette,
   getNeu,
   getPaperTheme,
+  getGlass,
   type ColorScheme,
   type Palette,
   type NeuRecipes,
+  type Skin,
+  type GlassConfig,
 } from '@/theme'
 import type { MD3Theme } from 'react-native-paper'
 
@@ -32,20 +35,29 @@ import type { MD3Theme } from 'react-native-paper'
 export type ColorModePreference = 'light' | 'dark' | 'system'
 
 const STORAGE_KEY = 'uf_color_mode'
+const SKIN_STORAGE_KEY = 'uf_skin'
+
+const VALID_SKINS: Skin[] = ['neumorphism', 'claymorphism', 'glassmorphism', 'minimal']
 
 interface ColorModeValue {
   /** The user's stored preference. */
   mode: ColorModePreference
   /** The resolved scheme actually in effect ('light' | 'dark'). */
   scheme: ColorScheme
+  /** The user's chosen design finish. */
+  skin: Skin
   /** Active palette for the resolved scheme. */
   palette: Palette
-  /** Active neumorphism recipes for the resolved scheme. */
+  /** Active surface recipes for the resolved scheme + skin. */
   neu: NeuRecipes
+  /** Backdrop-blur config for the glass skin (use with the GlassSurface component). */
+  glass: GlassConfig
   /** Active react-native-paper theme for the resolved scheme. */
   paperTheme: MD3Theme
-  /** Persist a new preference. */
+  /** Persist a new appearance preference. */
   setMode: (mode: ColorModePreference) => void
+  /** Persist a new design finish. */
+  setSkin: (skin: Skin) => void
 }
 
 const ColorModeContext = createContext<ColorModeValue | undefined>(undefined)
@@ -53,8 +65,9 @@ const ColorModeContext = createContext<ColorModeValue | undefined>(undefined)
 export function ColorModeProvider({ children }: { children: ReactNode }) {
   const system = useColorScheme() // 'light' | 'dark' | null
   const [mode, setModeState] = useState<ColorModePreference>('system')
+  const [skin, setSkinState] = useState<Skin>('neumorphism')
 
-  // Hydrate the persisted preference once on mount.
+  // Hydrate the persisted preferences once on mount.
   useEffect(() => {
     let active = true
     AsyncStorage.getItem(STORAGE_KEY)
@@ -65,6 +78,15 @@ export function ColorModeProvider({ children }: { children: ReactNode }) {
       })
       .catch(() => {
         /* no stored preference (or storage unavailable) — keep 'system' */
+      })
+    AsyncStorage.getItem(SKIN_STORAGE_KEY)
+      .then((stored) => {
+        if (active && stored && (VALID_SKINS as string[]).includes(stored)) {
+          setSkinState(stored as Skin)
+        }
+      })
+      .catch(() => {
+        /* no stored finish — keep 'neumorphism' */
       })
     return () => {
       active = false
@@ -78,6 +100,13 @@ export function ColorModeProvider({ children }: { children: ReactNode }) {
     })
   }
 
+  const setSkin = (next: Skin) => {
+    setSkinState(next)
+    AsyncStorage.setItem(SKIN_STORAGE_KEY, next).catch(() => {
+      /* best-effort persistence; the in-memory choice still applies */
+    })
+  }
+
   const scheme: ColorScheme =
     mode === 'system' ? (system === 'dark' ? 'dark' : 'light') : mode
 
@@ -85,12 +114,15 @@ export function ColorModeProvider({ children }: { children: ReactNode }) {
     () => ({
       mode,
       scheme,
+      skin,
       palette: getPalette(scheme),
-      neu: getNeu(scheme),
+      neu: getNeu(scheme, skin),
+      glass: getGlass(scheme),
       paperTheme: getPaperTheme(scheme),
       setMode,
+      setSkin,
     }),
-    [mode, scheme],
+    [mode, scheme, skin],
   )
 
   return <ColorModeContext.Provider value={value}>{children}</ColorModeContext.Provider>
@@ -109,7 +141,13 @@ export function usePalette(): Palette {
   return useColorMode().palette
 }
 
-/** Just the active neumorphism recipes. */
+/** Just the active surface recipes for the current scheme + skin. */
 export function useNeu(): NeuRecipes {
   return useColorMode().neu
+}
+
+/** The active design finish + its setter. */
+export function useSkin(): { skin: Skin; setSkin: (skin: Skin) => void } {
+  const { skin, setSkin } = useColorMode()
+  return { skin, setSkin }
 }

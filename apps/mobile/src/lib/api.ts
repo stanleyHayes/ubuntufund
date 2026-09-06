@@ -110,7 +110,9 @@ async function authedRequest<T>(path: string, options?: RequestInit): Promise<T>
 
   if (!res.ok) {
     const error = await res.json().catch(() => ({ message: 'Request failed' }))
-    throw new Error(error.message ?? error.error ?? `HTTP ${res.status}`)
+    // Throw ApiError so callers can branch on `status` (e.g. treat a 404 as
+    // "not enrolled"); it still extends Error, so `.message` catches keep working.
+    throw new ApiError(res.status, error.message ?? error.error ?? `HTTP ${res.status}`)
   }
 
   const json = await res.json()

@@ -18,7 +18,7 @@ import {
   useColorMode,
   type ColorModePreference,
 } from '@/context/ColorModeContext'
-import type { Palette, NeuRecipes } from '@/theme'
+import { SKINS, type Palette, type NeuRecipes } from '@/theme'
 import { registerForPushNotificationsAsync, registerPushTokenWithApi } from '@/services/notifications'
 
 interface SettingsData {
@@ -108,6 +108,20 @@ function makeStyles(p: Palette, neu: NeuRecipes) {
     appearanceOptionActive: { ...neu.greenInset },
     appearanceLabel: { fontSize: 12, fontFamily: 'Outfit_700Bold', color: p.text },
     appearanceLabelActive: { color: '#fff' },
+
+    skinRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, padding: 12 },
+    skinOption: {
+      ...neu.subtle,
+      width: '47%',
+      flexGrow: 1,
+      alignItems: 'center',
+      gap: 4,
+      paddingVertical: 14,
+      borderRadius: 12,
+    },
+    skinOptionActive: { ...neu.greenInset },
+    skinLabel: { fontSize: 12, fontFamily: 'Outfit_700Bold', color: p.text },
+    skinLabelActive: { color: '#fff' },
 
     dangerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, minHeight: 44 },
     dangerText: { fontSize: 15, fontFamily: 'Outfit_700Bold', color: p.error },
@@ -233,6 +247,38 @@ function AppearanceRow() {
             <>
               <Icon source={opt.icon} size={20} color={active ? '#fff' : p.primary} />
               <Text style={[styles.appearanceLabel, active && styles.appearanceLabelActive]}>
+                {opt.label}
+              </Text>
+            </>
+          </TouchableRipple>
+        )
+      })}
+    </View>
+  )
+}
+
+// ─── Design finish (skin) ────────────────────────────────────
+
+function SkinRow() {
+  const p = usePalette()
+  const styles = useStyles()
+  const { skin, setSkin } = useColorMode()
+  return (
+    <View style={styles.skinRow}>
+      {SKINS.map((opt) => {
+        const active = skin === opt.value
+        return (
+          <TouchableRipple
+            key={opt.value}
+            style={[styles.skinOption, active && styles.skinOptionActive]}
+            rippleColor={p.ripple}
+            onPress={() => setSkin(opt.value)}
+            accessibilityLabel={`${opt.label} finish`}
+            accessibilityState={{ selected: active }}
+          >
+            <>
+              <Icon source={opt.icon} size={20} color={active ? '#fff' : p.primary} />
+              <Text style={[styles.skinLabel, active && styles.skinLabelActive]}>
                 {opt.label}
               </Text>
             </>
@@ -390,6 +436,12 @@ export default function SettingsScreen() {
             <Text style={styles.sectionTitle}>Appearance</Text>
             <View style={styles.card}>
               <AppearanceRow />
+            </View>
+
+            {/* Design finish */}
+            <Text style={styles.sectionTitle}>Design finish</Text>
+            <View style={styles.card}>
+              <SkinRow />
             </View>
 
             {/* Notifications */}
