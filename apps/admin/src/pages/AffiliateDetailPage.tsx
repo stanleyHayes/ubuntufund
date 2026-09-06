@@ -113,6 +113,7 @@ export default function AffiliateDetailPage() {
   useEffect(() => {
     let cancelled = false
     if (!id) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- clear the loading state when there is no id to fetch
       setLoading(false)
       return
     }

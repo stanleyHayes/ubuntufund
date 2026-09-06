@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { useSearchParams, useNavigate, Link as RouterLink } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
@@ -122,9 +122,12 @@ export function DonateCallbackPage() {
   const reference = searchParams.get('reference') ?? searchParams.get('trxref')
   const explicitId = searchParams.get('intent') ?? searchParams.get('id')
 
-  const handoffRef = useRef<PendingDonation | null>(readHandoff(reference))
+  // Recover the donor's pending-donation handoff once per reference. A ref would
+  // read stale during render (and trips the React Compiler ref rule); useMemo
+  // keeps it a plain, render-safe derivation of the URL reference.
+  const handoff = useMemo(() => readHandoff(reference), [reference])
   const intentId =
-    explicitId ?? handoffRef.current?.intentId ?? intentIdFromReference(reference)
+    explicitId ?? handoff?.intentId ?? intentIdFromReference(reference)
 
   const [phase, setPhase] = useState<Phase>(intentId ? 'resolving' : 'missing')
   const [view, setView] = useState<DonationIntentPublicView | null>(null)
@@ -133,6 +136,7 @@ export function DonateCallbackPage() {
 
   useEffect(() => {
     if (!intentId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional phase reset when the id is lost on a re-run
       setPhase('missing')
       return
     }
@@ -185,7 +189,6 @@ export function DonateCallbackPage() {
     // pollNonce lets "Keep checking" restart the loop after a timeout.
   }, [intentId, pollNonce])
 
-  const handoff = handoffRef.current
   const campaignSlug = handoff?.slug
   const campaignPath = campaignSlug
     ? campaignPublicPath(campaignSlug)

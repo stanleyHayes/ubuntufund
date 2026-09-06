@@ -78,20 +78,28 @@ export function useLiveTotals(
   const hasLiveTotalRef = useRef(false)
 
   // Seed / re-seed from the campaign's known totals until live data arrives.
+  // The seeds resolve asynchronously (the campaign loads after mount), so we sync
+  // them into state here; the set-state-in-effect rule flags it, but seeding from
+  // async-loaded props until the live feed takes over is intended.
   useEffect(() => {
     if (hasLiveTotalRef.current) return
+    /* eslint-disable react-hooks/set-state-in-effect */
     setRaisedAmount(initialRaisedAmount)
     setGoalAmount(initialGoalAmount)
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [initialRaisedAmount, initialGoalAmount])
 
   useEffect(() => {
     if (!enabled || !campaignId) return
     if (typeof EventSource === 'undefined') return
 
-    // Fresh subscription — reset the per-connection buffers.
+    // Fresh subscription — reset the per-connection buffers. Synchronous resets
+    // on subscription setup are intended (a new campaign starts a clean feed).
     hasLiveTotalRef.current = false
+    /* eslint-disable react-hooks/set-state-in-effect */
     setDonations([])
     setLastDonation(null)
+    /* eslint-enable react-hooks/set-state-in-effect */
 
     let es: EventSource
     try {

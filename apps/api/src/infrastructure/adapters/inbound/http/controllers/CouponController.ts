@@ -1,4 +1,4 @@
-import type { Request, Response, NextFunction } from 'express';
+import type { Response, NextFunction } from 'express';
 import type { AuthenticatedRequest } from '../../middleware/authMiddleware.js';
 import type { CreateCouponUseCase } from '../../../../../application/use-cases/CreateCouponUseCase.js';
 import type { ListCouponsUseCase } from '../../../../../application/use-cases/ListCouponsUseCase.js';

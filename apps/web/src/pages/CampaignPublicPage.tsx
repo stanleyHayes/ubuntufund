@@ -59,9 +59,14 @@ export function CampaignPublicPage() {
   useEffect(() => {
     if (!slug) return
     let active = true
+    // Reset view state before each fetch — the standard reset-before-fetch
+    // pattern. The React Compiler set-state-in-effect rule flags these synchronous
+    // resets, but they're correct and intended here (no external store to sync to).
+    /* eslint-disable react-hooks/set-state-in-effect */
     setIsLoading(true)
     setError(null)
     setNotFound(false)
+    /* eslint-enable react-hooks/set-state-in-effect */
 
     getCampaignBySlug(slug)
       .then((data) => {

@@ -30,7 +30,7 @@ function getCloudinaryConfig(): CloudinaryConfig | null {
   // Keep `import.meta.env` as a contiguous literal so Vite statically replaces
   // it in the consuming app — aliasing it via a cast on `import.meta` (e.g.
   // `(import.meta as ...).env`) defeats that replacement and reads undefined.
-  // @ts-ignore `import.meta.env` is injected by Vite in the consuming app.
+  // Typed via the package's vite-env reference so no ts-comment is needed.
   const env = (import.meta.env ?? {}) as Record<string, string | undefined>
   const cloudName = env.VITE_CLOUDINARY_CLOUD_NAME
   const uploadPreset = env.VITE_CLOUDINARY_UPLOAD_PRESET
