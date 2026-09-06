@@ -50,6 +50,13 @@ export interface AffiliateBalanceRepositoryPort {
   markPaidOut(id: string, amount: number): Promise<AffiliateBalance | null>;
 
   /**
+   * Reverse a PAID payout (a settled transfer was reversed): move the funds out
+   * of paid-out and back to available — `paidOutBalance -= amount` and
+   * `availableBalance += amount`. Atomic $inc. Returns the updated balance.
+   */
+  reverseFromPaidOut(id: string, amount: number): Promise<AffiliateBalance | null>;
+
+  /**
    * Reverse a still-held commission (referred subscription refunded before it
    * matured): `pendingBalance -= amount` and `totalEarned -= amount`. Atomic
    * $inc. Returns the updated balance.

@@ -123,6 +123,12 @@ export class HandlePaystackWebhookUseCase {
         await this.handleChargeSuccess(reference, data);
         return;
       case 'charge.failed':
+        // A failed subscription charge fails its checkout; everything else is a
+        // donation attempt.
+        if (reference.startsWith('sub-')) {
+          await this.handleSubscriptionFailed(reference);
+          return;
+        }
         await this.handleChargeFailed(reference, data);
         return;
       case 'transfer.success':
@@ -163,6 +169,17 @@ export class HandlePaystackWebhookUseCase {
       await this.subscriptionCheckoutRepo.findByProviderRef(reference);
     if (!checkout) return;
     await this.settleSubscriptionUseCase.execute(checkout, reference);
+  }
+
+  /**
+   * A failed subscription charge: mark the pending checkout FAILED so it stops
+   * showing as in-progress. Unknown reference is a safe no-op.
+   */
+  private async handleSubscriptionFailed(reference: string): Promise<void> {
+    const checkout =
+      await this.subscriptionCheckoutRepo.findByProviderRef(reference);
+    if (!checkout) return;
+    await this.subscriptionCheckoutRepo.transitionToFailed(checkout.id);
   }
 
   /**

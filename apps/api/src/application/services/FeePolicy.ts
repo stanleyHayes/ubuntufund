@@ -48,13 +48,15 @@ export class FeePolicy {
   ): DonationSettlementBreakdown {
     const roundedAmount = round2(amount);
     const roundedTip = round2(tip);
-    const platformFee = this.platformFee(roundedAmount, platformFeePercent);
     const processorFee = this.processorFee(roundedAmount, provider);
+    // Fees can never exceed the amount: honor the processor fee first, cap the
+    // platform fee at the remainder, and clamp the beneficiary net at 0 — so an
+    // aggressive (admin-editable) plan fee % never crashes settlement.
+    const platformFee = Math.min(
+      this.platformFee(roundedAmount, platformFeePercent),
+      Math.max(0, round2(roundedAmount - processorFee))
+    );
     const beneficiaryNet = round2(roundedAmount - platformFee - processorFee);
-
-    if (beneficiaryNet < 0) {
-      throw new Error('Donation amount does not cover its fees');
-    }
 
     return {
       amount: roundedAmount,
@@ -88,15 +90,14 @@ export class FeePolicy {
     const tip = round2(params.tip);
     const processorFee = round2(params.processorFee);
     const amount = round2(gross - tip);
-    const platformFee = this.platformFee(
-      amount,
-      params.platformFeePercent ?? this.config.platformFeePercent
+    // Fees can never exceed the amount: honor the provider's authoritative
+    // processor fee first, cap the platform fee at the remainder, clamp net at 0
+    // — so an aggressive plan fee % never turns settlement into a webhook 500.
+    const platformFee = Math.min(
+      this.platformFee(amount, params.platformFeePercent ?? this.config.platformFeePercent),
+      Math.max(0, round2(amount - processorFee))
     );
     const beneficiaryNet = round2(amount - platformFee - processorFee);
-
-    if (beneficiaryNet < 0) {
-      throw new Error('Donation amount does not cover its fees');
-    }
 
     return {
       amount,

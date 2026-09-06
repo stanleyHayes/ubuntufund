@@ -56,7 +56,7 @@ export class PlanLimitsService {
 
   /** Resolve a plan via PlanService (DB-backed) when wired, else the code defaults. */
   private async getPlanFor(tier: SubscriptionTier): Promise<SubscriptionPlan> {
-    if (this.planService) return this.getPlanFor(tier)
+    if (this.planService) return this.planService.getPlan(tier)
     return SUBSCRIPTION_PLANS[tier]
   }
 

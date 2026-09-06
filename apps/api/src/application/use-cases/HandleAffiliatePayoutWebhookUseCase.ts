@@ -70,7 +70,7 @@ export class HandleAffiliatePayoutWebhookUseCase {
         payout.affiliateId
       );
       if (balance) {
-        await this.affiliateBalanceRepo.returnToAvailable(
+        await this.affiliateBalanceRepo.reverseFromPaidOut(
           balance.id,
           payout.amount
         );

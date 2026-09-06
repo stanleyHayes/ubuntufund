@@ -123,6 +123,23 @@ export class MongoAffiliateBalanceRepository
     return doc ? toDomain(doc) : null;
   }
 
+  async reverseFromPaidOut(
+    id: string,
+    amount: number
+  ): Promise<AffiliateBalance | null> {
+    // A PAID transfer was reversed: the funds came back, so move them out of
+    // paid-out and back into available (mirrors the campaign payout ledger).
+    const doc = await AffiliateBalanceModel.findByIdAndUpdate(
+      id,
+      {
+        $set: { updatedAt: new Date() },
+        $inc: { paidOutBalance: -amount, availableBalance: amount },
+      },
+      { new: true }
+    );
+    return doc ? toDomain(doc) : null;
+  }
+
   async reverseHeld(
     id: string,
     amount: number

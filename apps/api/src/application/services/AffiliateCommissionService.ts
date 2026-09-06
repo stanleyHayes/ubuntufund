@@ -108,23 +108,27 @@ export class AffiliateCommissionService {
       updatedAt: now,
     });
 
-    // The unique `sourceRef` index makes this the idempotency seam: only the
-    // first settlement of this charge wins the insert.
+    // ATOMIC one-time gate: only the settlement that wins the referral's
+    // pending -> converted transition may accrue. The `pending` read above is a
+    // cheap pre-filter; THIS is the authoritative check. A concurrent second
+    // paid charge for the same referee (e.g. two checkouts / an upgrade racing
+    // the first) loses here and no-ops, so a referee is credited at most once
+    // regardless of how many distinct charges settle — the per-sourceRef index
+    // alone could not guarantee that (different charges have different refs).
+    const converted = await this.referralRepo.markConverted(payingUserId);
+    if (!converted) {
+      return null; // another settlement already converted this referral
+    }
+
+    // Idempotency for a replay of THIS winning charge (same sourceRef).
     const created = await this.commissionRepo.createIfAbsent(commission);
     if (!created) {
       return null; // a duplicate/replayed settlement already recorded it
     }
 
-    // Winning insert only: accrue the held funds and convert the referral.
+    // Winning insert only: accrue the held funds.
     const balance = await this.balanceRepo.ensure(affiliate.id, currency);
     await this.balanceRepo.accrueCommission(balance.id, amount);
-    const converted = await this.referralRepo.markConverted(payingUserId);
-    if (!converted) {
-      logger.warn(
-        { refereeId: payingUserId, sourceRef },
-        'affiliate commission accrued but referral was no longer pending'
-      );
-    }
 
     return created;
   }
