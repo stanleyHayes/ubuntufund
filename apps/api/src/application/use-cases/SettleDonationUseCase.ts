@@ -5,7 +5,7 @@ import {
 } from '@ubuntu-fund/types';
 import { DonationEntity } from '../../domain/entities/Donation.js';
 import type { DonationIntentEntity } from '../../domain/entities/DonationIntent.js';
-import { Money } from '../../domain/value-objects/Money.js';
+import { Money, toMinorUnits, fromMinorUnits } from '../../domain/value-objects/Money.js';
 import type { DonationIntentRepositoryPort } from '../../domain/ports/outbound/DonationIntentRepositoryPort.js';
 import type { DonationRepositoryPort } from '../../domain/ports/outbound/DonationRepositoryPort.js';
 import type { OutboxRepositoryPort } from '../../domain/ports/outbound/OutboxRepositoryPort.js';
@@ -13,6 +13,12 @@ import type { PostDonationJournalUseCase } from './PostDonationJournalUseCase.js
 import type { CampaignLedgerProjector } from '../services/CampaignLedgerProjector.js';
 import type { OutboxDispatcher } from '../services/OutboxDispatcher.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
+import { logger } from '../../infrastructure/logging/logger.js';
+
+/** Round an observed FX rate to 6 dp for storage. */
+function round6(n: number): number {
+  return Math.round(n * 1e6) / 1e6;
+}
 
 /** Sentinel donor id used for guest (unauthenticated) donations. */
 const GUEST_DONOR_ID = 'guest';
@@ -94,6 +100,34 @@ export class SettleDonationUseCase {
     });
 
     await this.projector.projectDonation(settled.campaignId, breakdown);
+
+    // Record the verified settlement money split in integer minor units (spec
+    // §8) — additive and best-effort, so it never fails the settlement. The
+    // ledger/projection above remain the crediting source of truth.
+    try {
+      const settlementCurrency = breakdown.currency;
+      const originalCurrency = settled.originalCurrency ?? settlementCurrency;
+      const originalGross =
+        settled.originalAmountMinor !== undefined
+          ? fromMinorUnits(settled.originalAmountMinor, originalCurrency)
+          : undefined;
+      const hasFx =
+        originalCurrency !== settlementCurrency && originalGross !== undefined && originalGross > 0;
+      await this.donationIntentRepo.recordSettlementFinancials(settled.id, {
+        settlementAmountMinor: toMinorUnits(breakdown.gross, settlementCurrency),
+        settlementCurrency,
+        providerFeeMinor: toMinorUnits(breakdown.processorFee, settlementCurrency),
+        platformFeeMinor: toMinorUnits(breakdown.platformFee, settlementCurrency),
+        netCampaignAmountMinor: toMinorUnits(breakdown.beneficiaryNet, settlementCurrency),
+        fxRate: hasFx ? round6(breakdown.gross / originalGross!) : 1,
+        fxSource: hasFx ? 'provider' : undefined,
+      });
+    } catch (error) {
+      logger.error(
+        { err: error, donationIntentId: settled.id },
+        'failed to record settlement financials (non-fatal)'
+      );
+    }
 
     // ── 3. Durable side-effects (realtime + receipts) via the outbox ─────
     const payload: DonationSucceededPayload = {

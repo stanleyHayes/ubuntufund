@@ -317,6 +317,91 @@ describe('Paystack Integration', () => {
     expect(res.status).toBe(200);
   });
 
+  it('does NOT credit on a currency mismatch — acks but flags for reconciliation (spec §12/§23)', async () => {
+    const { userId, token } = await registerUser(app, uniqueEmail('psmisc'));
+    const campaignId = await createActiveCampaign(app, token, userId);
+    const created = await openPaystackCheckout(app, campaignId, { amount: 200, tip: 20 });
+    const reference = created.body.data.reference as string;
+    const intentId = created.body.data.intent.id as string;
+
+    // Provider reports USD though the GHS intent expected GHS.
+    const event = {
+      event: 'charge.success',
+      data: { reference, amount: 22000, fees: 330, currency: 'USD', status: 'success' },
+    };
+    const raw = JSON.stringify(event);
+    const res = await request(app)
+      .post('/api/v1/webhooks/paystack')
+      .set('x-paystack-signature', sign(raw))
+      .set('Content-Type', 'application/json')
+      .send(raw);
+    expect(res.status).toBe(200); // acknowledged…
+
+    // …but nothing credited: intent still PENDING, no ledger, raised untouched.
+    const intentDoc = await DonationIntentModel.findById(intentId);
+    expect(intentDoc?.status).toBe('PENDING');
+    expect(await JournalEntryModel.findOne({ donationIntentId: intentId })).toBeNull();
+    const campaignRes = await request(app).get(`/api/v1/campaigns/${campaignId}`);
+    expect(campaignRes.body.data.raisedAmount).toBe(0);
+  });
+
+  it('does NOT credit on an amount mismatch (spec §23)', async () => {
+    const { userId, token } = await registerUser(app, uniqueEmail('psmisa'));
+    const campaignId = await createActiveCampaign(app, token, userId);
+    const created = await openPaystackCheckout(app, campaignId, { amount: 200, tip: 20 });
+    const reference = created.body.data.reference as string;
+    const intentId = created.body.data.intent.id as string;
+
+    // Provider reports GH₵999.99, not the expected GH₵220.00.
+    const event = {
+      event: 'charge.success',
+      data: { reference, amount: 99999, fees: 330, currency: 'GHS', status: 'success' },
+    };
+    const raw = JSON.stringify(event);
+    const res = await request(app)
+      .post('/api/v1/webhooks/paystack')
+      .set('x-paystack-signature', sign(raw))
+      .set('Content-Type', 'application/json')
+      .send(raw);
+    expect(res.status).toBe(200);
+
+    const intentDoc = await DonationIntentModel.findById(intentId);
+    expect(intentDoc?.status).toBe('PENDING');
+    expect(await JournalEntryModel.findOne({ donationIntentId: intentId })).toBeNull();
+  });
+
+  it('records the settlement money split in minor units on success (spec §8)', async () => {
+    const { userId, token } = await registerUser(app, uniqueEmail('psset'));
+    const campaignId = await createActiveCampaign(app, token, userId);
+    const created = await openPaystackCheckout(app, campaignId, { amount: 200, tip: 20 });
+    const reference = created.body.data.reference as string;
+    const intentId = created.body.data.intent.id as string;
+
+    const event = {
+      event: 'charge.success',
+      data: { reference, amount: 22000, fees: 330, currency: 'GHS', status: 'success' },
+    };
+    const raw = JSON.stringify(event);
+    await request(app)
+      .post('/api/v1/webhooks/paystack')
+      .set('x-paystack-signature', sign(raw))
+      .set('Content-Type', 'application/json')
+      .send(raw)
+      .expect(200);
+
+    const intentDoc = await DonationIntentModel.findById(intentId);
+    expect(intentDoc?.status).toBe('SUCCEEDED');
+    // Original recorded at creation; settlement recorded on success.
+    expect(intentDoc?.originalCurrency).toBe('GHS');
+    expect(intentDoc?.originalAmountMinor).toBe(22000); // (200 + 20) * 100
+    expect(intentDoc?.settlementCurrency).toBe('GHS');
+    expect(intentDoc?.settlementAmountMinor).toBe(22000);
+    expect(intentDoc?.providerFeeMinor).toBe(330);
+    expect(intentDoc?.platformFeeMinor).toBe(1000); // Free plan 5% of 200
+    expect(intentDoc?.netCampaignAmountMinor).toBe(18670); // 200 - 10 - 3.30
+    expect(intentDoc?.fxRate).toBe(1); // GHS → GHS, no conversion
+  });
+
   it('marks the intent FAILED on charge.failed', async () => {
     const { userId: creatorId, token: creatorToken } = await registerUser(app, uniqueEmail('psfail'));
     const campaignId = await createActiveCampaign(app, creatorToken, creatorId);

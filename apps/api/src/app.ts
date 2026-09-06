@@ -479,7 +479,8 @@ export function createApp(): express.Express {
     paymentGateway,
     planLimitsService,
     walletTxRepo,
-    paymentAttemptRepo
+    paymentAttemptRepo,
+    config.payments
   );
   // Payout settlement: the signed transfer webhook moves an approved payout to
   // its terminal state and clears the campaign balance/ledger accordingly.

@@ -14,6 +14,7 @@ import type {
 } from '../../../../domain/ports/outbound/PaymentGatewayPort.js';
 import { AppError } from '../../inbound/middleware/errorHandler.js';
 import { logger } from '../../../logging/logger.js';
+import { toMinorUnits } from '../../../../domain/value-objects/Money.js';
 
 export interface PaystackGatewayConfig {
   /** Server-only secret key. Empty ⇒ the gateway is disabled. */
@@ -125,13 +126,16 @@ export class PaystackGateway implements PaymentGatewayPort {
     // Our own unique reference — echoed back by Paystack and stored as the
     // intent's providerRef, so the later webhook correlates deterministically.
     const reference = `uf-${intent.id}-${randomUUID().slice(0, 8)}`;
-    // Charge amount + tip, converted to pesewas (minor units).
-    const amount = Math.round((intent.amount + intent.tip) * 100);
+    // Charge amount + tip in the contributor's currency, as integer minor units.
+    // GHS (the platform currency) behaves exactly as before; a diaspora currency
+    // (USD/GBP/…) is charged in its own minor units when multi-currency is on.
+    const currency = intent.currency || CURRENCY;
+    const amount = toMinorUnits(intent.amount + intent.tip, currency);
 
     const body = {
       email: intent.donorEmail,
       amount,
-      currency: CURRENCY,
+      currency,
       reference,
       callback_url: `${this.config.publicWebUrl}/donate/callback`,
       metadata: {

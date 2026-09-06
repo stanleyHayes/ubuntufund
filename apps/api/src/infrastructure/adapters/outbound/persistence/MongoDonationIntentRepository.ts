@@ -131,4 +131,25 @@ export class MongoDonationIntentRepository
     );
     return doc ? toDomain(doc) : null;
   }
+
+  async recordSettlementFinancials(
+    id: string,
+    fields: {
+      settlementAmountMinor?: number;
+      settlementCurrency?: string;
+      fxRate?: number;
+      fxSource?: string;
+      providerFeeMinor?: number;
+      platformFeeMinor?: number;
+      netCampaignAmountMinor?: number;
+    }
+  ): Promise<void> {
+    // Only set the keys actually provided, so a partial update never nulls a
+    // previously-recorded field.
+    const set = Object.fromEntries(
+      Object.entries(fields).filter(([, v]) => v !== undefined)
+    );
+    if (Object.keys(set).length === 0) return;
+    await DonationIntentModel.updateOne({ _id: id }, { $set: set });
+  }
 }

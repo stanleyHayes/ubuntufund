@@ -20,6 +20,12 @@ const createDonationIntentSchema = z.object({
   isAnonymous: z.boolean().optional(),
   attribution: z.string().max(120).optional(),
   idempotencyKey: z.string().max(200).optional(),
+  // Multi-currency / diaspora fields (spec §11). All optional; the use-case
+  // rejects a non-campaign currency unless multi-currency is enabled.
+  currency: z.string().regex(/^[A-Za-z]{3}$/).optional(),
+  country: z.string().regex(/^[A-Za-z]{2}$/).optional(),
+  paymentMethod: z.enum(['mobile_money', 'card', 'bank', 'ussd', 'wallet']).optional(),
+  providerPreference: z.enum(['wallet', 'paystack', 'flutterwave']).optional(),
 });
 
 const recordPaymentAttemptSchema = z.object({

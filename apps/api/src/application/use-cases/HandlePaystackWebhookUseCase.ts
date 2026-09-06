@@ -11,6 +11,7 @@ import type { SubscriptionCheckoutRepositoryPort } from '../../domain/ports/outb
 import type { AffiliateCommissionService } from '../services/AffiliateCommissionService.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 import { logger } from '../../infrastructure/logging/logger.js';
+import { fromMinorUnits } from '../../domain/value-objects/Money.js';
 
 export interface PaystackWebhookInput {
   /** The exact raw request bytes the signature was computed over. */
@@ -210,10 +211,46 @@ export class HandlePaystackWebhookUseCase {
     if (intent.status === 'SUCCEEDED') return;
     if (intent.status === 'FAILED' || intent.status === 'EXPIRED') return;
 
-    const gross = (Number(data.amount) || 0) / 100;
-    const processorFee = (Number(data.fees) || 0) / 100;
     const currency =
       typeof data.currency === 'string' ? data.currency : intent.currency;
+    // Parse the provider's authoritative figures from integer minor units in the
+    // charged currency (spec §8 — no float ÷100 assumption across currencies).
+    const gross = fromMinorUnits(Number(data.amount) || 0, currency);
+    const processorFee = fromMinorUnits(Number(data.fees) || 0, currency);
+
+    // Spec §12/§23: verify the provider's currency + amount match what the intent
+    // expected BEFORE crediting. A mismatch never credits a campaign — it's
+    // logged (no secrets) and left for reconciliation to resolve.
+    const currencyMismatch = currency.toUpperCase() !== intent.currency.toUpperCase();
+    const amountMismatch = Math.abs(gross - intent.gross) > 0.01;
+    if (currencyMismatch || amountMismatch) {
+      logger.warn(
+        {
+          intentId: intent.id,
+          providerRef: reference,
+          expectedCurrency: intent.currency,
+          providerCurrency: currency,
+          expectedGross: intent.gross,
+          providerGross: gross,
+        },
+        'paystack settlement mismatch — not crediting; flagged for reconciliation'
+      );
+      try {
+        await this.paymentAttemptRepo.record({
+          intentId: intent.id,
+          provider: 'paystack',
+          providerRef: reference,
+          status: 'failed',
+          raw: data as Record<string, unknown>,
+        });
+      } catch (error) {
+        logger.error(
+          { err: error, intentId: intent.id },
+          'failed to record paystack mismatch attempt'
+        );
+      }
+      return;
+    }
 
     // Platform fee follows the campaign creator's subscription plan.
     const platformFeePercent =

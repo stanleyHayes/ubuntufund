@@ -29,4 +29,22 @@ export interface DonationIntentRepositoryPort {
     status: DonationIntentStatus,
     providerRef?: string
   ): Promise<DonationIntentEntity | null>;
+
+  /**
+   * Persist the verified settlement money split in integer minor units (spec §8)
+   * once a contribution settles. Additive/best-effort — it records the
+   * settlement/fee/FX figures and never gates crediting.
+   */
+  recordSettlementFinancials(
+    id: string,
+    fields: {
+      settlementAmountMinor?: number;
+      settlementCurrency?: string;
+      fxRate?: number;
+      fxSource?: string;
+      providerFeeMinor?: number;
+      platformFeeMinor?: number;
+      netCampaignAmountMinor?: number;
+    }
+  ): Promise<void>;
 }

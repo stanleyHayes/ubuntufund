@@ -19,6 +19,8 @@ import type { PlanLimitsService } from '../services/PlanLimitsService.js';
 import type { SettleDonationUseCase } from './SettleDonationUseCase.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 import { logger } from '../../infrastructure/logging/logger.js';
+import { toMinorUnits } from '../../domain/value-objects/Money.js';
+import type { PaymentsConfig } from '../../infrastructure/config/index.js';
 
 export interface CreateDonationIntentContext {
   /** Authenticated donor id, or null for a guest checkout. */
@@ -73,7 +75,11 @@ export class CreateDonationIntentUseCase {
     private readonly paymentGateway: PaymentGatewayPort,
     private readonly planLimits: PlanLimitsService,
     private readonly walletTxRepo?: WalletTransactionRepositoryPort,
-    private readonly paymentAttemptRepo?: PaymentAttemptRepositoryPort
+    private readonly paymentAttemptRepo?: PaymentAttemptRepositoryPort,
+    // Optional: when wired, enables currency/country-aware contributions behind
+    // the multi-currency flag. Absent ⇒ contributions are the campaign's
+    // currency only (the unchanged Ghana-MoMo behavior).
+    private readonly paymentsConfig?: PaymentsConfig
   ) {}
 
   async execute(
@@ -117,7 +123,7 @@ export class CreateDonationIntentUseCase {
     if (!campaign.canReceiveDonation()) {
       throw new AppError('Campaign is not accepting donations', 400);
     }
-    const currency = campaign.goalAmount.currency;
+    const currency = this.resolveCurrency(input, campaign.goalAmount.currency);
 
     // Validate live-session attribution belongs to this campaign, if supplied.
     if (input.liveSessionId) {
@@ -189,6 +195,30 @@ export class CreateDonationIntentUseCase {
     return { intent: pending ?? intent, hostedInit: init };
   }
 
+  /**
+   * The currency to charge in. Defaults to the campaign's currency (the
+   * unchanged behavior). A different currency is only honored when the
+   * multi-currency flag is on and the currency is in the supported set —
+   * otherwise it's rejected rather than silently downgraded (spec §11).
+   */
+  private resolveCurrency(
+    input: CreateDonationIntentInput,
+    campaignCurrency: string
+  ): string {
+    const requested = input.currency?.toUpperCase();
+    if (!requested || requested === campaignCurrency.toUpperCase()) {
+      return campaignCurrency;
+    }
+    const cfg = this.paymentsConfig;
+    if (!cfg?.multiCurrencyEnabled) {
+      throw new AppError(`Contributions in ${requested} are not enabled`, 400);
+    }
+    if (!cfg.supportedCurrencies.includes(requested)) {
+      throw new AppError(`Contributions in ${requested} are not supported`, 400);
+    }
+    return requested;
+  }
+
   private async createIntent(
     input: CreateDonationIntentInput,
     ctx: CreateDonationIntentContext,
@@ -214,6 +244,13 @@ export class CreateDonationIntentUseCase {
       attribution: input.attribution,
       createdAt: now,
       updatedAt: now,
+      // Record the contributor-facing charge in minor units + the chosen
+      // currency/country/method up front (spec §8); settlement figures are
+      // filled in later from the verified provider data.
+      originalAmountMinor: toMinorUnits(input.amount + tip, currency),
+      originalCurrency: currency,
+      country: input.country,
+      paymentMethod: input.paymentMethod,
     });
 
     try {
