@@ -13,7 +13,7 @@ const createDonationIntentSchema = z.object({
   liveSessionId: z.string().min(1).optional(),
   amount: z.number().positive(),
   tip: z.number().min(0).optional(),
-  provider: z.enum(['wallet', 'paystack']),
+  provider: z.enum(['wallet', 'paystack', 'flutterwave']),
   donorEmail: z.string().email().optional(),
   donorName: z.string().max(120).optional(),
   message: z.string().max(500).optional(),
@@ -29,7 +29,7 @@ const createDonationIntentSchema = z.object({
 });
 
 const recordPaymentAttemptSchema = z.object({
-  provider: z.enum(['wallet', 'paystack']),
+  provider: z.enum(['wallet', 'paystack', 'flutterwave']),
   providerRef: z.string().max(200).optional(),
   status: z.enum(['initiated', 'succeeded', 'failed']),
   raw: z.record(z.unknown()).optional(),

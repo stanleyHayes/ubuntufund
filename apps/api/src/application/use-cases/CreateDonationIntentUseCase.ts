@@ -79,8 +79,33 @@ export class CreateDonationIntentUseCase {
     // Optional: when wired, enables currency/country-aware contributions behind
     // the multi-currency flag. Absent ⇒ contributions are the campaign's
     // currency only (the unchanged Ghana-MoMo behavior).
-    private readonly paymentsConfig?: PaymentsConfig
+    private readonly paymentsConfig?: PaymentsConfig,
+    // Optional: additional hosted gateways keyed by provider (e.g.
+    // 'flutterwave'). Paystack always resolves to the default `paymentGateway`.
+    private readonly gatewayRegistry?: Map<string, PaymentGatewayPort>
   ) {}
+
+  /** The hosted gateway for a provider, honoring the feature flags. */
+  private resolveHostedGateway(provider: string): PaymentGatewayPort {
+    // Respect the rail flags (spec §16): a rail must be explicitly enabled.
+    if (provider === 'flutterwave' && !this.paymentsConfig?.flutterwaveEnabled) {
+      throw new AppError('Flutterwave payments are not enabled', 400);
+    }
+    if (
+      provider === 'paystack' &&
+      this.paymentsConfig &&
+      !this.paymentsConfig.paystackEnabled
+    ) {
+      throw new AppError('Paystack payments are not enabled', 400);
+    }
+    const gw =
+      this.gatewayRegistry?.get(provider) ??
+      (provider === 'paystack' ? this.paymentGateway : undefined);
+    if (!gw) {
+      throw new AppError(`Payment provider ${provider} is not available`, 501);
+    }
+    return gw;
+  }
 
   async execute(
     input: CreateDonationIntentInput,
@@ -105,14 +130,16 @@ export class CreateDonationIntentUseCase {
       throw new AppError('Wallet donations require an authenticated account', 400);
     }
 
-    // Paystack pre-flight before persisting anything, so a disabled gateway or
-    // a guest with no email never leaves an orphan CREATED intent behind.
-    if (input.provider === 'paystack') {
-      if (!this.paymentGateway.isConfigured()) {
+    // Hosted-rail pre-flight before persisting anything, so a disabled gateway
+    // or a guest with no email never leaves an orphan CREATED intent behind.
+    if (input.provider !== 'wallet') {
+      const gateway = this.resolveHostedGateway(input.provider);
+      if (!gateway.isConfigured()) {
         throw new AppError('Payments are not configured', 501);
       }
       if (!input.donorEmail) {
-        throw new AppError('An email is required to pay with Paystack', 400);
+        const label = input.provider === 'flutterwave' ? 'Flutterwave' : 'Paystack';
+        throw new AppError(`An email is required to pay with ${label}`, 400);
       }
     }
 
@@ -135,9 +162,12 @@ export class CreateDonationIntentUseCase {
 
     const intent = await this.createIntent(input, ctx, currency, tip);
 
-    if (input.provider === 'paystack') {
-      // Hosted rail: open the Paystack checkout and move CREATED → PENDING.
-      return this.initializePaystackIntent(intent);
+    if (input.provider !== 'wallet') {
+      // Hosted rail: open the provider checkout and move CREATED → PENDING.
+      return this.initializeHostedIntent(
+        intent,
+        this.resolveHostedGateway(input.provider)
+      );
     }
 
     // ── Wallet rail (authed donor): debit, then settle synchronously ──────
@@ -157,15 +187,16 @@ export class CreateDonationIntentUseCase {
   }
 
   /**
-   * Open a Paystack hosted checkout for a freshly-created CREATED intent: call
-   * the gateway, move the intent to PENDING with the provider reference, and
-   * record the initiation attempt. The signed `charge.success` webhook settles
-   * it later.
+   * Open a hosted checkout (Paystack or Flutterwave) for a freshly-created
+   * CREATED intent: call the gateway, move the intent to PENDING with the
+   * provider reference, and record the initiation attempt. The signed webhook
+   * settles it later.
    */
-  private async initializePaystackIntent(
-    intent: DonationIntentEntity
+  private async initializeHostedIntent(
+    intent: DonationIntentEntity,
+    gateway: PaymentGatewayPort
   ): Promise<CreateDonationIntentResult> {
-    const init = await this.paymentGateway.initializeTransaction(intent);
+    const init = await gateway.initializeTransaction(intent);
 
     // Store the reference (providerRef) and advance to PENDING so the webhook
     // can correlate the settlement back to this intent.
@@ -180,14 +211,14 @@ export class CreateDonationIntentUseCase {
       try {
         await this.paymentAttemptRepo.record({
           intentId: intent.id,
-          provider: 'paystack',
+          provider: intent.provider,
           providerRef: init.reference,
           status: 'initiated',
         });
       } catch (error) {
         logger.error(
-          { err: error, intentId: intent.id },
-          'failed to record paystack initiation attempt'
+          { err: error, intentId: intent.id, provider: intent.provider },
+          'failed to record hosted-checkout initiation attempt'
         );
       }
     }

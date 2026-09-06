@@ -52,6 +52,8 @@ import { MongoAffiliatePayoutRepository } from './infrastructure/adapters/outbou
 
 // Outbound adapters (payment gateway)
 import { PaystackGateway } from './infrastructure/adapters/outbound/payments/PaystackGateway.js';
+import { FlutterwaveGateway } from './infrastructure/adapters/outbound/payments/FlutterwaveGateway.js';
+import type { PaymentGatewayPort } from './domain/ports/outbound/PaymentGatewayPort.js';
 
 // Application services
 import { AuthTokenService } from './application/services/AuthTokenService.js';
@@ -83,6 +85,7 @@ import { PostDonationJournalUseCase } from './application/use-cases/PostDonation
 import { SettleDonationUseCase } from './application/use-cases/SettleDonationUseCase.js';
 import { CreateDonationIntentUseCase } from './application/use-cases/CreateDonationIntentUseCase.js';
 import { HandlePaystackWebhookUseCase } from './application/use-cases/HandlePaystackWebhookUseCase.js';
+import { HandleFlutterwaveWebhookUseCase } from './application/use-cases/HandleFlutterwaveWebhookUseCase.js';
 import { RecordPaymentAttemptUseCase } from './application/use-cases/RecordPaymentAttemptUseCase.js';
 import { HandlePayoutWebhookUseCase } from './application/use-cases/HandlePayoutWebhookUseCase.js';
 import { ListBanksUseCase } from './application/use-cases/ListBanksUseCase.js';
@@ -219,6 +222,7 @@ import { ShareReportController } from './infrastructure/adapters/inbound/http/co
 import { DonationController } from './infrastructure/adapters/inbound/http/controllers/DonationController.js';
 import { DonationIntentController } from './infrastructure/adapters/inbound/http/controllers/DonationIntentController.js';
 import { PaystackWebhookController } from './infrastructure/adapters/inbound/http/controllers/PaystackWebhookController.js';
+import { FlutterwaveWebhookController } from './infrastructure/adapters/inbound/http/controllers/FlutterwaveWebhookController.js';
 import { PayoutController } from './infrastructure/adapters/inbound/http/controllers/PayoutController.js';
 import { LeaderboardController } from './infrastructure/adapters/inbound/http/controllers/LeaderboardController.js';
 import { NotificationController } from './infrastructure/adapters/inbound/http/controllers/NotificationController.js';
@@ -275,6 +279,7 @@ import {
   createDonationMessageRoutes,
 } from './infrastructure/adapters/inbound/http/routes/donationIntentRoutes.js';
 import { createPaystackWebhookRoutes } from './infrastructure/adapters/inbound/http/routes/paystackWebhookRoutes.js';
+import { createFlutterwaveWebhookRoutes } from './infrastructure/adapters/inbound/http/routes/flutterwaveWebhookRoutes.js';
 import {
   createBankRoutes,
   createCampaignPayoutRoutes,
@@ -373,6 +378,19 @@ export function createApp(): express.Express {
     publicKey: config.paystack.publicKey,
     publicWebUrl: config.publicWebUrl,
   });
+  // Flutterwave — secondary diaspora-card rail. Inert (isConfigured → false)
+  // until a secret key is supplied; enabling also requires PAYMENTS_FLUTTERWAVE_ENABLED.
+  const flutterwaveGateway = new FlutterwaveGateway({
+    secretKey: config.flutterwave.secretKey,
+    publicKey: config.flutterwave.publicKey,
+    webhookHash: config.flutterwave.webhookHash,
+    publicWebUrl: config.publicWebUrl,
+  });
+  // Hosted gateways keyed by provider; the router/use-case pick by provider.
+  const gatewayRegistry = new Map<string, PaymentGatewayPort>([
+    ['paystack', paymentGateway],
+    ['flutterwave', flutterwaveGateway],
+  ]);
 
   // ── Services ─────────────────────────────────────────────────────────
   const tokenService = new AuthTokenService(config.jwtSecret, config.jwtRefreshSecret);
@@ -480,7 +498,8 @@ export function createApp(): express.Express {
     planLimitsService,
     walletTxRepo,
     paymentAttemptRepo,
-    config.payments
+    config.payments,
+    gatewayRegistry
   );
   // Payout settlement: the signed transfer webhook moves an approved payout to
   // its terminal state and clears the campaign balance/ledger accordingly.
@@ -524,6 +543,16 @@ export function createApp(): express.Express {
     settleSubscriptionUseCase,
     handleAffiliatePayoutWebhookUseCase,
     affiliateCommissionService
+  );
+  // Flutterwave settlement: verifies the verif-hash, re-verifies the charge
+  // server-side, then settles through the same donation seam as Paystack.
+  const handleFlutterwaveWebhookUseCase = new HandleFlutterwaveWebhookUseCase(
+    flutterwaveGateway,
+    donationIntentRepo,
+    paymentAttemptRepo,
+    feePolicy,
+    settleDonationUseCase,
+    planLimitsService
   );
   const recordPaymentAttemptUseCase = new RecordPaymentAttemptUseCase(
     donationIntentRepo,
@@ -827,6 +856,9 @@ export function createApp(): express.Express {
   const paystackWebhookController = new PaystackWebhookController(
     handlePaystackWebhookUseCase
   );
+  const flutterwaveWebhookController = new FlutterwaveWebhookController(
+    handleFlutterwaveWebhookUseCase
+  );
   const payoutController = new PayoutController(
     listBanksUseCase,
     createPayoutRecipientUseCase,
@@ -935,6 +967,11 @@ export function createApp(): express.Express {
   app.use(
     '/api/v1/webhooks/paystack',
     createPaystackWebhookRoutes(paystackWebhookController)
+  );
+  // Flutterwave webhook — likewise mounted BEFORE the JSON parser (raw bytes).
+  app.use(
+    '/api/v1/webhooks/flutterwave',
+    createFlutterwaveWebhookRoutes(flutterwaveWebhookController)
   );
 
   app.use(express.json({ limit: '200kb' }));
