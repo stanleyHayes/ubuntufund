@@ -86,6 +86,7 @@ import { SettleDonationUseCase } from './application/use-cases/SettleDonationUse
 import { CreateDonationIntentUseCase } from './application/use-cases/CreateDonationIntentUseCase.js';
 import { HandlePaystackWebhookUseCase } from './application/use-cases/HandlePaystackWebhookUseCase.js';
 import { HandleFlutterwaveWebhookUseCase } from './application/use-cases/HandleFlutterwaveWebhookUseCase.js';
+import { ReconcilePaymentsUseCase } from './application/use-cases/ReconcilePaymentsUseCase.js';
 import { RecordPaymentAttemptUseCase } from './application/use-cases/RecordPaymentAttemptUseCase.js';
 import { HandlePayoutWebhookUseCase } from './application/use-cases/HandlePayoutWebhookUseCase.js';
 import { ListBanksUseCase } from './application/use-cases/ListBanksUseCase.js';
@@ -223,6 +224,7 @@ import { DonationController } from './infrastructure/adapters/inbound/http/contr
 import { DonationIntentController } from './infrastructure/adapters/inbound/http/controllers/DonationIntentController.js';
 import { PaystackWebhookController } from './infrastructure/adapters/inbound/http/controllers/PaystackWebhookController.js';
 import { FlutterwaveWebhookController } from './infrastructure/adapters/inbound/http/controllers/FlutterwaveWebhookController.js';
+import { AdminPaymentsController } from './infrastructure/adapters/inbound/http/controllers/AdminPaymentsController.js';
 import { PayoutController } from './infrastructure/adapters/inbound/http/controllers/PayoutController.js';
 import { LeaderboardController } from './infrastructure/adapters/inbound/http/controllers/LeaderboardController.js';
 import { NotificationController } from './infrastructure/adapters/inbound/http/controllers/NotificationController.js';
@@ -280,6 +282,7 @@ import {
 } from './infrastructure/adapters/inbound/http/routes/donationIntentRoutes.js';
 import { createPaystackWebhookRoutes } from './infrastructure/adapters/inbound/http/routes/paystackWebhookRoutes.js';
 import { createFlutterwaveWebhookRoutes } from './infrastructure/adapters/inbound/http/routes/flutterwaveWebhookRoutes.js';
+import { createAdminPaymentsRoutes } from './infrastructure/adapters/inbound/http/routes/adminPaymentsRoutes.js';
 import {
   createBankRoutes,
   createCampaignPayoutRoutes,
@@ -548,6 +551,16 @@ export function createApp(): express.Express {
   // server-side, then settles through the same donation seam as Paystack.
   const handleFlutterwaveWebhookUseCase = new HandleFlutterwaveWebhookUseCase(
     flutterwaveGateway,
+    donationIntentRepo,
+    paymentAttemptRepo,
+    feePolicy,
+    settleDonationUseCase,
+    planLimitsService
+  );
+  // Reconciliation (spec §13): re-verify stale PENDING hosted intents against
+  // the provider and safely repair missed settlements.
+  const reconcilePaymentsUseCase = new ReconcilePaymentsUseCase(
+    gatewayRegistry,
     donationIntentRepo,
     paymentAttemptRepo,
     feePolicy,
@@ -859,6 +872,11 @@ export function createApp(): express.Express {
   const flutterwaveWebhookController = new FlutterwaveWebhookController(
     handleFlutterwaveWebhookUseCase
   );
+  const adminPaymentsController = new AdminPaymentsController(
+    donationIntentRepo,
+    paymentAttemptRepo,
+    reconcilePaymentsUseCase
+  );
   const payoutController = new PayoutController(
     listBanksUseCase,
     createPayoutRecipientUseCase,
@@ -1016,6 +1034,7 @@ export function createApp(): express.Express {
   api.use('/profile', createProfileRoutes(profileController, authMiddleware));
   api.use('/users', createUserRoutes(profileController));
   api.use('/users', createAdminUserRoutes(adminUserController, authMiddleware, requireAdmin));
+  api.use('/admin', createAdminPaymentsRoutes(adminPaymentsController, authMiddleware, requireAdmin));
   api.use('/donations', createDonationRoutes(donationController, authMiddleware));
   // Post-donation message endpoint, composed onto the /donations resource.
   api.use('/donations', createDonationMessageRoutes(donationIntentController, authMiddleware));

@@ -14,7 +14,7 @@ import type {
 } from '../../../../domain/ports/outbound/PaymentGatewayPort.js';
 import { AppError } from '../../inbound/middleware/errorHandler.js';
 import { logger } from '../../../logging/logger.js';
-import { toMinorUnits } from '../../../../domain/value-objects/Money.js';
+import { toMinorUnits, fromMinorUnits } from '../../../../domain/value-objects/Money.js';
 
 export interface PaystackGatewayConfig {
   /** Server-only secret key. Empty ⇒ the gateway is disabled. */
@@ -231,12 +231,14 @@ export class PaystackGateway implements PaymentGatewayPort {
     }
 
     const data = json.data;
+    const currency = data.currency ?? CURRENCY;
     return {
       status: data.status,
       reference: data.reference,
-      amount: (Number(data.amount) || 0) / 100,
-      fees: (Number(data.fees) || 0) / 100,
-      currency: data.currency ?? CURRENCY,
+      // Paystack returns amounts in integer minor units of the charged currency.
+      amount: fromMinorUnits(Number(data.amount) || 0, currency),
+      fees: fromMinorUnits(Number(data.fees) || 0, currency),
+      currency,
       raw: data,
     };
   }

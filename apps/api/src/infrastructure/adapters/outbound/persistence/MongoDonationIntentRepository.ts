@@ -132,6 +132,49 @@ export class MongoDonationIntentRepository
     return doc ? toDomain(doc) : null;
   }
 
+  async findStalePending(
+    olderThan: Date,
+    limit: number
+  ): Promise<DonationIntentEntity[]> {
+    const docs = await DonationIntentModel.find({
+      status: 'PENDING',
+      providerRef: { $exists: true, $ne: null },
+      provider: { $ne: 'wallet' },
+      updatedAt: { $lt: olderThan },
+    })
+      .sort({ updatedAt: 1 })
+      .limit(limit);
+    return docs.map(toDomain);
+  }
+
+  async searchForAdmin(filters: {
+    providerRef?: string;
+    campaignId?: string;
+    donorEmail?: string;
+    status?: DonationIntentStatus;
+    provider?: string;
+    from?: Date;
+    to?: Date;
+    limit?: number;
+  }): Promise<DonationIntentEntity[]> {
+    const query: Record<string, unknown> = {};
+    if (filters.providerRef) query.providerRef = filters.providerRef;
+    if (filters.campaignId) query.campaignId = filters.campaignId;
+    if (filters.donorEmail) query.donorEmail = filters.donorEmail;
+    if (filters.status) query.status = filters.status;
+    if (filters.provider) query.provider = filters.provider;
+    if (filters.from || filters.to) {
+      query.createdAt = {
+        ...(filters.from ? { $gte: filters.from } : {}),
+        ...(filters.to ? { $lte: filters.to } : {}),
+      };
+    }
+    const docs = await DonationIntentModel.find(query)
+      .sort({ createdAt: -1 })
+      .limit(Math.min(filters.limit ?? 50, 200));
+    return docs.map(toDomain);
+  }
+
   async recordSettlementFinancials(
     id: string,
     fields: {

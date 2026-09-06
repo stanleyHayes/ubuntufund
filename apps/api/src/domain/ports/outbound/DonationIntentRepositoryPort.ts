@@ -31,6 +31,29 @@ export interface DonationIntentRepositoryPort {
   ): Promise<DonationIntentEntity | null>;
 
   /**
+   * Hosted-rail intents still PENDING past `olderThan` (with a providerRef to
+   * correlate). The reconciliation job re-verifies these against the provider to
+   * repair settlements missed by a dropped webhook (spec §13).
+   */
+  findStalePending(olderThan: Date, limit: number): Promise<DonationIntentEntity[]>;
+
+  /**
+   * Admin search over contributions (spec §15) by any combination of provider
+   * reference, campaign, donor email, status, provider and a created-at window.
+   * Newest first, capped by `limit`.
+   */
+  searchForAdmin(filters: {
+    providerRef?: string;
+    campaignId?: string;
+    donorEmail?: string;
+    status?: DonationIntentStatus;
+    provider?: string;
+    from?: Date;
+    to?: Date;
+    limit?: number;
+  }): Promise<DonationIntentEntity[]>;
+
+  /**
    * Persist the verified settlement money split in integer minor units (spec §8)
    * once a contribution settles. Additive/best-effort — it records the
    * settlement/fee/FX figures and never gates crediting.
