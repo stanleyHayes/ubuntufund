@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   View,
   ScrollView,
@@ -15,7 +15,8 @@ import { useCampaigns } from '@/hooks/useCampaigns'
 import { ProgressBar } from '@/components/ProgressBar'
 import { RemoteImage } from '@/components/RemoteImage'
 import { EmptyState } from '@/components/EmptyState'
-import { brandColors, neumorphism } from '@/theme'
+import { usePalette, useNeu } from '@/context/ColorModeContext'
+import type { Palette, NeuRecipes } from '@/theme'
 
 const CATEGORIES: { key: CampaignCategory | null; icon: string; label: string }[] = [
   { key: null, icon: 'earth', label: 'All' },
@@ -45,6 +46,8 @@ function formatCurrency(amount: number) {
 }
 
 function CampaignRow({ campaign, index }: { campaign: Campaign; index: number }) {
+  const p = usePalette()
+  const styles = useStyles()
   const pct = campaign.goalAmount > 0 ? Math.min(campaign.raisedAmount / campaign.goalAmount, 1) : 0
   const [fadeAnim] = useState(() => new Animated.Value(0))
   const [slideAnim] = useState(() => new Animated.Value(20))
@@ -67,13 +70,13 @@ function CampaignRow({ campaign, index }: { campaign: Campaign; index: number })
         <View style={styles.campaignContent}>
           <View style={styles.campaignMeta}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1 }}>
-              <Icon source={CATEGORIES.find((c) => c.key === campaign.category)?.icon ?? 'help-circle'} size={12} color={brandColors.textSecondary} />
+              <Icon source={CATEGORIES.find((c) => c.key === campaign.category)?.icon ?? 'help-circle'} size={12} color={p.textSecondary} />
               <Text style={styles.campaignCategory}>
                 {campaign.category}
               </Text>
             </View>
             {campaign.priority !== 'normal' && (
-              <View style={[styles.priorityDot, { backgroundColor: campaign.priority === 'critical' ? brandColors.error : brandColors.warning }]} />
+              <View style={[styles.priorityDot, { backgroundColor: campaign.priority === 'critical' ? p.error : p.warning }]} />
             )}
           </View>
           <Text style={styles.campaignTitle} numberOfLines={2}>{campaign.title}</Text>
@@ -89,6 +92,8 @@ function CampaignRow({ campaign, index }: { campaign: Campaign; index: number })
 }
 
 export default function ExploreTab() {
+  const p = usePalette()
+  const styles = useStyles()
   const { campaigns, isLoading } = useCampaigns()
   const [search, setSearch] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<CampaignCategory | null>(null)
@@ -117,17 +122,17 @@ export default function ExploreTab() {
       {/* Search */}
       <View style={styles.searchWrap}>
         <View style={styles.searchBar}>
-          <Icon source="magnify" size={16} color={brandColors.textSecondary} />
+          <Icon source="magnify" size={16} color={p.textSecondary} />
           <TextInput
             placeholder="Search campaigns..."
-            placeholderTextColor="rgba(74,90,80,0.55)"
+            placeholderTextColor={`${p.textSecondary}8C`}
             value={search}
             onChangeText={setSearch}
             style={styles.searchInput}
           />
           {search.length > 0 && (
             <TouchableOpacity onPress={() => setSearch('')}>
-              <Icon source="close" size={16} color={brandColors.textSecondary} />
+              <Icon source="close" size={16} color={p.textSecondary} />
             </TouchableOpacity>
           )}
         </View>
@@ -149,7 +154,7 @@ export default function ExploreTab() {
               onPress={() => setSelectedCategory(active ? null : cat.key)}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <Icon source={cat.icon} size={14} color={active ? '#FFFFFF' : brandColors.text} />
+                <Icon source={cat.icon} size={14} color={active ? '#FFFFFF' : p.text} />
                 <Text style={[styles.filterPillText, active && styles.filterPillTextActive]}>
                   {cat.label}
                 </Text>
@@ -199,7 +204,7 @@ export default function ExploreTab() {
 
       {/* Campaign list */}
       {isLoading ? (
-        <ActivityIndicator size="large" style={{ marginTop: 60 }} color={brandColors.primary} />
+        <ActivityIndicator size="large" style={{ marginTop: 60 }} color={p.primary} />
       ) : filtered.length === 0 ? (
         <EmptyState
           icon="magnify"
@@ -218,98 +223,106 @@ export default function ExploreTab() {
   )
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: brandColors.background },
+function makeStyles(p: Palette, neu: NeuRecipes) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: p.background },
 
-  // Lede
-  ledeWrap: { paddingHorizontal: 16, paddingTop: 12 },
-  lede: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary },
+    // Lede
+    ledeWrap: { paddingHorizontal: 16, paddingTop: 12 },
+    lede: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: p.textSecondary },
 
-  // Search
-  searchWrap: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8 },
-  searchBar: {
-    ...neumorphism.inset,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: brandColors.surface,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    height: 44,
-  },
-  searchIcon: { fontSize: 16, marginRight: 8 },
-  searchInput: { flex: 1, fontSize: 14, color: brandColors.text, fontFamily: 'Outfit_400Regular' },
-  searchClear: { fontSize: 16, color: brandColors.textSecondary, paddingLeft: 8 },
+    // Search
+    searchWrap: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8 },
+    searchBar: {
+      ...neu.inset,
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: p.surface,
+      borderRadius: 14,
+      paddingHorizontal: 14,
+      height: 44,
+    },
+    searchIcon: { fontSize: 16, marginRight: 8 },
+    searchInput: { flex: 1, fontSize: 14, color: p.text, fontFamily: 'Outfit_400Regular' },
+    searchClear: { fontSize: 16, color: p.textSecondary, paddingLeft: 8 },
 
-  // Filter pills
-  filterRow: { flexGrow: 0 },
-  filterScroll: { paddingHorizontal: 16, paddingRight: 24, paddingBottom: 10, gap: 8, alignItems: 'center' },
-  filterPill: {
-    ...neumorphism.subtle,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 36,
-    paddingHorizontal: 14,
-    borderRadius: 999,
-    backgroundColor: 'rgba(168,181,160,0.28)',
-  },
-  filterPillActive: { ...neumorphism.greenInset },
-  filterPillText: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: brandColors.text, lineHeight: 18 },
-  filterPillTextActive: { color: '#FFFFFF' },
+    // Filter pills
+    filterRow: { flexGrow: 0 },
+    filterScroll: { paddingHorizontal: 16, paddingRight: 24, paddingBottom: 10, gap: 8, alignItems: 'center' },
+    filterPill: {
+      ...neu.subtle,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      height: 36,
+      paddingHorizontal: 14,
+      borderRadius: 999,
+      backgroundColor: 'rgba(168,181,160,0.28)',
+    },
+    filterPillActive: { ...neu.greenInset },
+    filterPillText: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: p.text, lineHeight: 18 },
+    filterPillTextActive: { color: '#FFFFFF' },
 
-  // Secondary filters
-  secondaryFilters: { paddingHorizontal: 16, paddingBottom: 8 },
-  miniPill: {
-    ...neumorphism.subtle,
-    justifyContent: 'center',
-    height: 30,
-    paddingHorizontal: 12,
-    borderRadius: 999,
-    backgroundColor: 'rgba(168,181,160,0.28)',
-  },
-  miniPillActive: { ...neumorphism.greenInset },
-  miniPillSort: { ...neumorphism.greenSubtle },
-  miniPillText: { fontSize: 11, fontFamily: 'Outfit_700Bold', color: brandColors.textSecondary },
-  miniPillTextActive: { color: '#FFFFFF', fontFamily: 'Outfit_700Bold' },
-  sortDivider: { width: 1, backgroundColor: 'rgba(26,46,34,0.10)', marginHorizontal: 4 },
+    // Secondary filters
+    secondaryFilters: { paddingHorizontal: 16, paddingBottom: 8 },
+    miniPill: {
+      ...neu.subtle,
+      justifyContent: 'center',
+      height: 30,
+      paddingHorizontal: 12,
+      borderRadius: 999,
+      backgroundColor: 'rgba(168,181,160,0.28)',
+    },
+    miniPillActive: { ...neu.greenInset },
+    miniPillSort: { ...neu.greenSubtle },
+    miniPillText: { fontSize: 11, fontFamily: 'Outfit_700Bold', color: p.textSecondary },
+    miniPillTextActive: { color: '#FFFFFF', fontFamily: 'Outfit_700Bold' },
+    sortDivider: { width: 1, backgroundColor: p.border, marginHorizontal: 4 },
 
-  // Results
-  resultsHeader: { paddingHorizontal: 16, paddingBottom: 6 },
-  resultsCount: { fontSize: 12, color: brandColors.textSecondary, fontFamily: 'Outfit_400Regular' },
-  results: { paddingHorizontal: 16 },
+    // Results
+    resultsHeader: { paddingHorizontal: 16, paddingBottom: 6 },
+    resultsCount: { fontSize: 12, color: p.textSecondary, fontFamily: 'Outfit_400Regular' },
+    results: { paddingHorizontal: 16 },
 
-  // Campaign row
-  campaignRow: {
-    ...neumorphism.raised,
-    flexDirection: 'row',
-    backgroundColor: brandColors.surface,
-    borderRadius: 14,
-    overflow: 'hidden',
-    marginBottom: 10,
-  },
-  campaignImage: { width: 100, height: 100 },
-  campaignContent: { flex: 1, padding: 10, justifyContent: 'center' },
-  campaignMeta: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
-  campaignCategory: { fontSize: 11, color: brandColors.textSecondary, fontFamily: 'Outfit_700Bold', flex: 1 },
-  priorityDot: { width: 7, height: 7, borderRadius: 4 },
-  campaignTitle: { fontSize: 14, fontFamily: 'Outfit_700Bold', color: brandColors.text, marginBottom: 6, lineHeight: 18 },
-  campaignStats: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
-  campaignRaised: { fontSize: 12, fontFamily: 'Outfit_700Bold', color: brandColors.primary },
-  campaignPct: { fontSize: 12, fontFamily: 'Outfit_700Bold', color: brandColors.textSecondary },
+    // Campaign row
+    campaignRow: {
+      ...neu.raised,
+      flexDirection: 'row',
+      backgroundColor: p.surface,
+      borderRadius: 14,
+      overflow: 'hidden',
+      marginBottom: 10,
+    },
+    campaignImage: { width: 100, height: 100 },
+    campaignContent: { flex: 1, padding: 10, justifyContent: 'center' },
+    campaignMeta: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
+    campaignCategory: { fontSize: 11, color: p.textSecondary, fontFamily: 'Outfit_700Bold', flex: 1 },
+    priorityDot: { width: 7, height: 7, borderRadius: 4 },
+    campaignTitle: { fontSize: 14, fontFamily: 'Outfit_700Bold', color: p.text, marginBottom: 6, lineHeight: 18 },
+    campaignStats: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
+    campaignRaised: { fontSize: 12, fontFamily: 'Outfit_700Bold', color: p.primary },
+    campaignPct: { fontSize: 12, fontFamily: 'Outfit_700Bold', color: p.textSecondary },
 
-  // Empty
-  emptyState: { alignItems: 'center', paddingTop: 60 },
-  emptyEmoji: { fontSize: 40, marginBottom: 12 },
-  emptyIconTile: {
-    ...neumorphism.subtle,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(168,181,160,0.28)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  emptyTitle: { fontSize: 17, fontFamily: 'Outfit_700Bold', color: brandColors.text, marginBottom: 4 },
-  emptyBody: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary },
-})
+    // Empty
+    emptyState: { alignItems: 'center', paddingTop: 60 },
+    emptyEmoji: { fontSize: 40, marginBottom: 12 },
+    emptyIconTile: {
+      ...neu.subtle,
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: 'rgba(168,181,160,0.28)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 14,
+    },
+    emptyTitle: { fontSize: 17, fontFamily: 'Outfit_700Bold', color: p.text, marginBottom: 4 },
+    emptyBody: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: p.textSecondary },
+  })
+}
+
+function useStyles() {
+  const p = usePalette()
+  const neu = useNeu()
+  return useMemo(() => makeStyles(p, neu), [p, neu])
+}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   View,
   ScrollView,
@@ -12,7 +12,8 @@ import { api } from '@/lib/api'
 import { EmptyState } from '@/components/EmptyState'
 import { SignInRequired } from '@/components/SignInRequired'
 import { FadeInUp } from '@/components/anim/FadeInUp'
-import { brandColors, neumorphism } from '@/theme'
+import { usePalette, useNeu } from '@/context/ColorModeContext'
+import type { Palette, NeuRecipes } from '@/theme'
 
 interface Verification {
   id: string
@@ -61,12 +62,6 @@ const TYPE_ICONS: Record<string, string> = {
   community: 'account-group',
 }
 
-const STATUS_CONFIG: Record<string, { color: string; bg: string; icon: string; label: string }> = {
-  pending: { color: brandColors.warning, bg: 'rgba(185,138,46,0.12)', icon: 'clock-outline', label: 'Pending' },
-  approved: { color: brandColors.success, bg: 'rgba(47,107,70,0.10)', icon: 'check-circle', label: 'Approved' },
-  rejected: { color: brandColors.error, bg: 'rgba(165,67,47,0.10)', icon: 'close-circle', label: 'Rejected' },
-}
-
 function formatDate(date?: string | null) {
   if (!date) return '—'
   const d = new Date(date)
@@ -74,9 +69,113 @@ function formatDate(date?: string | null) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
+function makeStyles(p: Palette, neu: NeuRecipes) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: p.background },
+    listWrap: { paddingHorizontal: 16, paddingTop: 4 },
+
+    infoBanner: {
+      ...neu.inset,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      marginHorizontal: 16,
+      marginTop: 16,
+      marginBottom: 12,
+      padding: 14,
+      backgroundColor: `${p.primary}0F`,
+      borderRadius: 12,
+    },
+    infoText: { flex: 1, fontSize: 13, fontFamily: 'Outfit_400Regular', color: p.text, lineHeight: 18 },
+
+    card: {
+      ...neu.raised,
+      backgroundColor: p.surface,
+      borderRadius: 14,
+      padding: 16,
+      marginBottom: 12,
+    },
+    cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
+    typeIcon: {
+      ...neu.subtle,
+      width: 40,
+      height: 40,
+      borderRadius: 10,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    cardTitle: { fontSize: 16, fontFamily: 'Outfit_700Bold', color: p.text },
+    cardType: { fontSize: 12, fontFamily: 'Outfit_400Regular', color: p.textSecondary, textTransform: 'capitalize', marginTop: 2 },
+
+    statusBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 999,
+    },
+    statusText: { fontSize: 12, fontFamily: 'Outfit_700Bold' },
+
+    rejectionBox: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 8,
+      padding: 10,
+      backgroundColor: `${p.error}14`,
+      borderRadius: 8,
+      marginBottom: 10,
+    },
+    rejectionText: { flex: 1, fontSize: 12, fontFamily: 'Outfit_400Regular', color: p.error, lineHeight: 16 },
+
+    cardMeta: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
+    cardDate: { fontSize: 11, fontFamily: 'Outfit_400Regular', color: p.textSecondary },
+
+    docRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+    docText: { fontSize: 12, fontFamily: 'Outfit_400Regular', color: p.textSecondary },
+
+    skeletonCard: {
+      ...neu.raised,
+      backgroundColor: p.surface,
+      borderRadius: 14,
+      padding: 16,
+      marginBottom: 12,
+    },
+    skeletonHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
+    skeletonIcon: { width: 40, height: 40, backgroundColor: p.skeleton, borderRadius: 10 },
+    skeletonLineWide: { width: '60%', height: 14, backgroundColor: p.skeleton, borderRadius: 4, marginBottom: 6 },
+    skeletonLineNarrow: { width: '40%', height: 10, backgroundColor: p.skeleton, borderRadius: 4 },
+    skeletonLineFooter: { width: '80%', height: 10, backgroundColor: p.skeleton, borderRadius: 4 },
+
+    emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 80, paddingHorizontal: 32 },
+    emptyIconTile: {
+      ...neu.subtle,
+      width: 48,
+      height: 48,
+      borderRadius: 14,
+      backgroundColor: p.skeleton,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 16,
+    },
+    emptyTitle: { fontSize: 16, fontFamily: 'Outfit_700Bold', color: p.text, textAlign: 'center' },
+    emptySubtitle: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: p.textSecondary, marginTop: 6, textAlign: 'center', lineHeight: 18 },
+    retryButton: { borderRadius: 999, marginTop: 16 },
+    buttonContent: { paddingVertical: 4 },
+    buttonLabel: { fontSize: 14, fontFamily: 'Outfit_700Bold', letterSpacing: 0.3 },
+  })
+}
+
+function useStyles() {
+  const p = usePalette()
+  const neu = useNeu()
+  return useMemo(() => makeStyles(p, neu), [p, neu])
+}
+
 // ─── Skeleton ────────────────────────────────────────────────
 
 function SkeletonCard() {
+  const styles = useStyles()
   const [opacity] = useState(() => new Animated.Value(0.3))
   useEffect(() => {
     const anim = Animated.loop(
@@ -106,9 +205,17 @@ function SkeletonCard() {
 
 export default function VerificationScreen() {
   const { user } = useAuth()
+  const p = usePalette()
+  const styles = useStyles()
   const [verifications, setVerifications] = useState<Verification[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  const STATUS_CONFIG: Record<string, { color: string; bg: string; icon: string; label: string }> = {
+    pending: { color: p.warning, bg: `${p.warning}1F`, icon: 'clock-outline', label: 'Pending' },
+    approved: { color: p.success, bg: `${p.success}1A`, icon: 'check-circle', label: 'Approved' },
+    rejected: { color: p.error, bg: `${p.error}1A`, icon: 'close-circle', label: 'Rejected' },
+  }
 
   const fetchVerifications = useCallback(async () => {
     setLoading(true)
@@ -142,8 +249,8 @@ export default function VerificationScreen() {
 
   const headerOptions = {
     title: 'Verification',
-    headerStyle: { backgroundColor: brandColors.primary },
-    headerTintColor: '#FFFFFF',
+    headerStyle: { backgroundColor: p.primary },
+    headerTintColor: p.onPrimary,
     headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
   }
 
@@ -163,7 +270,7 @@ export default function VerificationScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
         {/* Info banner */}
         <View style={styles.infoBanner}>
-          <Icon source="shield-check" size={20} color={brandColors.primary} />
+          <Icon source="shield-check" size={20} color={p.primary} />
           <Text style={styles.infoText}>
             Higher verification levels increase your trust score and unlock more features.
           </Text>
@@ -195,8 +302,8 @@ export default function VerificationScreen() {
                 <FadeInUp key={v.id} index={i}>
                 <View style={styles.card}>
                   <View style={styles.cardHeader}>
-                    <View style={[styles.typeIcon, { backgroundColor: `${brandColors.primary}14` }]}>
-                      <Icon source={TYPE_ICONS[v.type] ?? 'shield'} size={20} color={brandColors.primary} />
+                    <View style={[styles.typeIcon, { backgroundColor: `${p.primary}14` }]}>
+                      <Icon source={TYPE_ICONS[v.type] ?? 'shield'} size={20} color={p.primary} />
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.cardTitle}>{LEVEL_LABELS[v.level] ?? `Level ${v.level}`}</Text>
@@ -210,7 +317,7 @@ export default function VerificationScreen() {
 
                   {v.status === 'rejected' && v.rejectionReason && (
                     <View style={styles.rejectionBox}>
-                      <Icon source="information" size={14} color={brandColors.error} />
+                      <Icon source="information" size={14} color={p.error} />
                       <Text style={styles.rejectionText}>{v.rejectionReason}</Text>
                     </View>
                   )}
@@ -224,7 +331,7 @@ export default function VerificationScreen() {
 
                   {v.documentUrls.length > 0 && (
                     <View style={styles.docRow}>
-                      <Icon source="file-document-outline" size={14} color={brandColors.textSecondary} />
+                      <Icon source="file-document-outline" size={14} color={p.textSecondary} />
                       <Text style={styles.docText}>
                         {v.documentUrls.length} document{v.documentUrls.length !== 1 ? 's' : ''} submitted
                       </Text>
@@ -240,98 +347,3 @@ export default function VerificationScreen() {
     </View>
   )
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: brandColors.background },
-  listWrap: { paddingHorizontal: 16, paddingTop: 4 },
-
-  infoBanner: {
-    ...neumorphism.inset,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 12,
-    padding: 14,
-    backgroundColor: 'rgba(46,61,47,0.06)',
-    borderRadius: 12,
-  },
-  infoText: { flex: 1, fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.text, lineHeight: 18 },
-
-  card: {
-    ...neumorphism.raised,
-    backgroundColor: brandColors.surface,
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 12,
-  },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
-  typeIcon: {
-    ...neumorphism.subtle,
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  cardTitle: { fontSize: 16, fontFamily: 'Outfit_700Bold', color: brandColors.text },
-  cardType: { fontSize: 12, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, textTransform: 'capitalize', marginTop: 2 },
-
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 999,
-  },
-  statusText: { fontSize: 12, fontFamily: 'Outfit_700Bold' },
-
-  rejectionBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    padding: 10,
-    backgroundColor: 'rgba(165,67,47,0.08)',
-    borderRadius: 8,
-    marginBottom: 10,
-  },
-  rejectionText: { flex: 1, fontSize: 12, fontFamily: 'Outfit_400Regular', color: brandColors.error, lineHeight: 16 },
-
-  cardMeta: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
-  cardDate: { fontSize: 11, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary },
-
-  docRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
-  docText: { fontSize: 12, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary },
-
-  skeletonCard: {
-    ...neumorphism.raised,
-    backgroundColor: brandColors.surface,
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 12,
-  },
-  skeletonHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
-  skeletonIcon: { width: 40, height: 40, backgroundColor: 'rgba(168,181,160,0.28)', borderRadius: 10 },
-  skeletonLineWide: { width: '60%', height: 14, backgroundColor: 'rgba(168,181,160,0.28)', borderRadius: 4, marginBottom: 6 },
-  skeletonLineNarrow: { width: '40%', height: 10, backgroundColor: 'rgba(168,181,160,0.28)', borderRadius: 4 },
-  skeletonLineFooter: { width: '80%', height: 10, backgroundColor: 'rgba(168,181,160,0.28)', borderRadius: 4 },
-
-  emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 80, paddingHorizontal: 32 },
-  emptyIconTile: {
-    ...neumorphism.subtle,
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: 'rgba(168,181,160,0.28)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  emptyTitle: { fontSize: 16, fontFamily: 'Outfit_700Bold', color: brandColors.text, textAlign: 'center' },
-  emptySubtitle: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 6, textAlign: 'center', lineHeight: 18 },
-  retryButton: { borderRadius: 999, marginTop: 16 },
-  buttonContent: { paddingVertical: 4 },
-  buttonLabel: { fontSize: 14, fontFamily: 'Outfit_700Bold', letterSpacing: 0.3 },
-})

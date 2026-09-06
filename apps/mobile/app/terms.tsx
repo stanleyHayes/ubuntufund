@@ -1,8 +1,36 @@
+import { useMemo } from 'react'
 import { ScrollView, StyleSheet } from 'react-native'
 import { Text } from 'react-native-paper'
-import { brandColors } from '@/theme'
+import { usePalette } from '@/context/ColorModeContext'
+import type { Palette } from '@/theme'
+
+function makeStyles(p: Palette) {
+  return StyleSheet.create({
+    screen: { flex: 1, backgroundColor: p.background },
+    container: { padding: 24, paddingBottom: 48 },
+    eyebrow: {
+      fontSize: 11,
+      fontFamily: 'Outfit_700Bold',
+      fontWeight: '700',
+      color: p.secondaryDark,
+      textTransform: 'uppercase',
+      letterSpacing: 2,
+      marginBottom: 6,
+    },
+    title: { fontSize: 24, fontFamily: 'Outfit_800ExtraBold', color: p.text, marginBottom: 4 },
+    updated: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: p.textSecondary, marginBottom: 24 },
+    heading: { fontSize: 16, fontFamily: 'Outfit_700Bold', marginTop: 20, marginBottom: 8, color: p.text },
+    body: { fontSize: 14, fontFamily: 'Outfit_400Regular', lineHeight: 22, color: p.textSecondary },
+  })
+}
+
+function useStyles() {
+  const p = usePalette()
+  return useMemo(() => makeStyles(p), [p])
+}
 
 export default function TermsScreen() {
+  const styles = useStyles()
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
       <Text style={styles.eyebrow}>Legal</Text>
@@ -56,21 +84,3 @@ export default function TermsScreen() {
     </ScrollView>
   )
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: brandColors.background },
-  container: { padding: 24, paddingBottom: 48 },
-  eyebrow: {
-    fontSize: 11,
-    fontFamily: 'Outfit_700Bold',
-    fontWeight: '700',
-    color: brandColors.secondaryDark,
-    textTransform: 'uppercase',
-    letterSpacing: 2,
-    marginBottom: 6,
-  },
-  title: { fontSize: 24, fontFamily: 'Outfit_800ExtraBold', color: brandColors.text, marginBottom: 4 },
-  updated: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginBottom: 24 },
-  heading: { fontSize: 16, fontFamily: 'Outfit_700Bold', marginTop: 20, marginBottom: 8, color: brandColors.text },
-  body: { fontSize: 14, fontFamily: 'Outfit_400Regular', lineHeight: 22, color: brandColors.textSecondary },
-})

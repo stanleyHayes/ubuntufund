@@ -1,5 +1,5 @@
 import { BrandedNativeInput as TextInput } from '@/components/BrandedNativeInput'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   View,
   ScrollView,
@@ -15,7 +15,8 @@ import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
 import { EmptyState } from '@/components/EmptyState'
 import { SignInRequired } from '@/components/SignInRequired'
-import { brandColors, neumorphism } from '@/theme'
+import { usePalette, useNeu } from '@/context/ColorModeContext'
+import type { Palette, NeuRecipes } from '@/theme'
 
 interface DonationDetail {
   id: string
@@ -45,9 +46,129 @@ const REASONS = [
   'Other',
 ]
 
+function makeStyles(p: Palette, neu: NeuRecipes) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: p.background },
+
+    headerBlock: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 4 },
+    eyebrow: { fontSize: 11, fontFamily: 'Outfit_700Bold', fontWeight: '700', color: p.secondaryDark, textTransform: 'uppercase', letterSpacing: 2 },
+    pageTitle: { fontSize: 24, fontFamily: 'Outfit_800ExtraBold', color: p.text, marginTop: 4 },
+    pageLede: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: p.textSecondary, marginTop: 4 },
+
+    detailCard: {
+      ...neu.raised,
+      borderRadius: 14,
+      padding: 16,
+      marginBottom: 24,
+    },
+    detailLabel: { fontSize: 11, fontFamily: 'Outfit_700Bold', fontWeight: '700', color: p.secondaryDark, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 2 },
+    detailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: p.border },
+    detailKey: { fontSize: 14, color: p.textSecondary, fontFamily: 'Outfit_400Regular' },
+    detailValue: { fontSize: 14, color: p.text, fontFamily: 'Outfit_400Regular' },
+
+    fieldLabel: { fontSize: 14, fontFamily: 'Outfit_700Bold', color: p.text, marginBottom: 10 },
+
+    reasonOption: {
+      ...neu.subtle,
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 14,
+      borderRadius: 10,
+      marginBottom: 8,
+    },
+    reasonOptionActive: { ...neu.inset },
+    radioOuter: {
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      borderWidth: 2,
+      borderColor: p.textSecondary,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 12,
+    },
+    radioOuterActive: { borderColor: p.primary },
+    radioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: p.primary },
+    reasonText: { fontSize: 14, color: p.textSecondary, fontFamily: 'Outfit_400Regular' },
+    reasonTextActive: { color: p.text, fontFamily: 'Outfit_700Bold' },
+
+    textArea: {
+      ...neu.inset,
+      borderRadius: 10,
+      padding: 14,
+      fontSize: 14,
+      fontFamily: 'Outfit_400Regular',
+      color: p.text,
+      minHeight: 100,
+    },
+
+    policyCard: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 10,
+      backgroundColor: p.skeleton,
+      borderRadius: 10,
+      padding: 14,
+      marginTop: 20,
+    },
+    policyText: { flex: 1, fontSize: 13, color: p.text, lineHeight: 18, fontFamily: 'Outfit_400Regular' },
+
+    submitBtn: { borderRadius: 999, paddingVertical: 4 },
+    bottomBar: {
+      paddingHorizontal: 16,
+      paddingTop: 12,
+      backgroundColor: p.background,
+      borderTopWidth: 1,
+      borderTopColor: p.border,
+    },
+
+    successState: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
+    successIconTile: {
+      ...neu.subtle,
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      backgroundColor: `${p.success}24`,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 16,
+    },
+    successTitle: { fontSize: 22, fontFamily: 'Outfit_800ExtraBold', color: p.text, marginBottom: 8 },
+    successSubtitle: { fontSize: 14, color: p.textSecondary, fontFamily: 'Outfit_400Regular' },
+    refundId: { fontSize: 18, fontFamily: 'Outfit_700Bold', color: p.primary, marginTop: 4, marginBottom: 16 },
+    successNote: { fontSize: 13, color: p.textSecondary, textAlign: 'center', lineHeight: 18, fontFamily: 'Outfit_400Regular' },
+    viewRefundsBtn: { marginTop: 24, borderRadius: 999 },
+    btnLabel: { fontFamily: 'Outfit_700Bold' },
+
+    skeletonLine: { height: 14, backgroundColor: p.skeleton, borderRadius: 4 },
+
+    emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 72, paddingHorizontal: 32 },
+    emptyIconTile: {
+      ...neu.subtle,
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: p.skeleton,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 16,
+    },
+    errorIconTile: { backgroundColor: `${p.error}24` },
+    emptyTitle: { fontSize: 16, fontFamily: 'Outfit_700Bold', color: p.text, textAlign: 'center' },
+    actionBtn: { marginTop: 16, borderRadius: 999 },
+  })
+}
+
+function useStyles() {
+  const p = usePalette()
+  const neu = useNeu()
+  return useMemo(() => makeStyles(p, neu), [p, neu])
+}
+
 // ─── Skeleton ────────────────────────────────────────────────
 
 function FormSkeleton() {
+  const styles = useStyles()
   const [opacity] = useState(() => new Animated.Value(0.3))
   useEffect(() => {
     Animated.loop(
@@ -77,6 +198,8 @@ export default function RefundRequestScreen() {
   const { donationId } = useLocalSearchParams<{ donationId: string }>()
   const { user } = useAuth()
   const insets = useSafeAreaInsets()
+  const p = usePalette()
+  const styles = useStyles()
   const [donation, setDonation] = useState<DonationDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -126,8 +249,8 @@ export default function RefundRequestScreen() {
 
   const headerOptions = {
     title: 'Refund Request',
-    headerStyle: { backgroundColor: brandColors.primary },
-    headerTintColor: '#FFFFFF',
+    headerStyle: { backgroundColor: p.primary },
+    headerTintColor: p.onPrimary,
     headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
   }
 
@@ -146,14 +269,14 @@ export default function RefundRequestScreen() {
         <Stack.Screen
           options={{
             title: 'Refund Request',
-            headerStyle: { backgroundColor: brandColors.primary },
-            headerTintColor: '#FFFFFF',
+            headerStyle: { backgroundColor: p.primary },
+            headerTintColor: p.onPrimary,
             headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
           }}
         />
         <View style={styles.successState}>
           <View style={styles.successIconTile}>
-            <Icon source="check-circle" size={32} color={brandColors.success} />
+            <Icon source="check-circle" size={32} color={p.success} />
           </View>
           <Text style={styles.successTitle}>Refund Request Submitted</Text>
           <Text style={styles.successSubtitle}>Your refund ID is:</Text>
@@ -163,7 +286,7 @@ export default function RefundRequestScreen() {
           </Text>
           <Button
             mode="contained"
-            buttonColor={brandColors.primary}
+            buttonColor={p.primary}
             textColor="#FFFFFF"
             onPress={() => router.push('/my-refunds')}
             style={styles.viewRefundsBtn}
@@ -175,7 +298,7 @@ export default function RefundRequestScreen() {
             mode="text"
             onPress={() => router.back()}
             style={{ marginTop: 8 }}
-            textColor={brandColors.primary}
+            textColor={p.primary}
             labelStyle={styles.btnLabel}
           >
             Go Back
@@ -190,8 +313,8 @@ export default function RefundRequestScreen() {
       <Stack.Screen
         options={{
           title: 'Refund Request',
-          headerStyle: { backgroundColor: brandColors.primary },
-          headerTintColor: '#FFFFFF',
+          headerStyle: { backgroundColor: p.primary },
+          headerTintColor: p.onPrimary,
           headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
         }}
       />
@@ -225,7 +348,7 @@ export default function RefundRequestScreen() {
                 </View>
                 <View style={styles.detailRow}>
                   <Text style={styles.detailKey}>Amount</Text>
-                  <Text style={[styles.detailValue, { color: brandColors.primary, fontFamily: 'Outfit_700Bold' }]}>
+                  <Text style={[styles.detailValue, { color: p.primary, fontFamily: 'Outfit_700Bold' }]}>
                     GH₵ {donation.amount.toLocaleString()}
                   </Text>
                 </View>
@@ -263,7 +386,7 @@ export default function RefundRequestScreen() {
               multiline
               numberOfLines={4}
               placeholder="Describe your reason in more detail..."
-              placeholderTextColor={brandColors.textSecondary}
+              placeholderTextColor={p.textSecondary}
               value={description}
               onChangeText={setDescription}
               textAlignVertical="top"
@@ -271,7 +394,7 @@ export default function RefundRequestScreen() {
 
             {/* Policy Note */}
             <View style={styles.policyCard}>
-              <Icon source="information-outline" size={18} color={brandColors.primary} />
+              <Icon source="information-outline" size={18} color={p.primary} />
               <Text style={styles.policyText}>
                 A 2% processing fee will be deducted from the refund. Refunds typically take 5-7 business days to process.
               </Text>
@@ -285,7 +408,7 @@ export default function RefundRequestScreen() {
         <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
           <Button
             mode="contained"
-            buttonColor={brandColors.primary}
+            buttonColor={p.primary}
             textColor="#FFFFFF"
             onPress={handleSubmit}
             loading={submitting}
@@ -300,114 +423,3 @@ export default function RefundRequestScreen() {
     </View>
   )
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: brandColors.background },
-
-  headerBlock: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 4 },
-  eyebrow: { fontSize: 11, fontFamily: 'Outfit_700Bold', fontWeight: '700', color: brandColors.secondaryDark, textTransform: 'uppercase', letterSpacing: 2 },
-  pageTitle: { fontSize: 24, fontFamily: 'Outfit_800ExtraBold', color: brandColors.text, marginTop: 4 },
-  pageLede: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 4 },
-
-  detailCard: {
-    ...neumorphism.raised,
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 24,
-  },
-  detailLabel: { fontSize: 11, fontFamily: 'Outfit_700Bold', fontWeight: '700', color: brandColors.secondaryDark, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 2 },
-  detailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: 'rgba(26,46,34,0.08)' },
-  detailKey: { fontSize: 14, color: brandColors.textSecondary, fontFamily: 'Outfit_400Regular' },
-  detailValue: { fontSize: 14, color: brandColors.text, fontFamily: 'Outfit_400Regular' },
-
-  fieldLabel: { fontSize: 14, fontFamily: 'Outfit_700Bold', color: brandColors.text, marginBottom: 10 },
-
-  reasonOption: {
-    ...neumorphism.subtle,
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 14,
-    borderRadius: 10,
-    marginBottom: 8,
-  },
-  reasonOptionActive: { ...neumorphism.inset },
-  radioOuter: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: brandColors.textSecondary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  radioOuterActive: { borderColor: brandColors.primary },
-  radioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: brandColors.primary },
-  reasonText: { fontSize: 14, color: brandColors.textSecondary, fontFamily: 'Outfit_400Regular' },
-  reasonTextActive: { color: brandColors.text, fontFamily: 'Outfit_700Bold' },
-
-  textArea: {
-    ...neumorphism.inset,
-    borderRadius: 10,
-    padding: 14,
-    fontSize: 14,
-    fontFamily: 'Outfit_400Regular',
-    color: brandColors.text,
-    minHeight: 100,
-  },
-
-  policyCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-    backgroundColor: 'rgba(168,181,160,0.28)',
-    borderRadius: 10,
-    padding: 14,
-    marginTop: 20,
-  },
-  policyText: { flex: 1, fontSize: 13, color: brandColors.text, lineHeight: 18, fontFamily: 'Outfit_400Regular' },
-
-  submitBtn: { borderRadius: 999, paddingVertical: 4 },
-  bottomBar: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    backgroundColor: brandColors.background,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(26,46,34,0.08)',
-  },
-
-  successState: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
-  successIconTile: {
-    ...neumorphism.subtle,
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: 'rgba(47,107,70,0.14)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  successTitle: { fontSize: 22, fontFamily: 'Outfit_800ExtraBold', color: brandColors.text, marginBottom: 8 },
-  successSubtitle: { fontSize: 14, color: brandColors.textSecondary, fontFamily: 'Outfit_400Regular' },
-  refundId: { fontSize: 18, fontFamily: 'Outfit_700Bold', color: brandColors.primary, marginTop: 4, marginBottom: 16 },
-  successNote: { fontSize: 13, color: brandColors.textSecondary, textAlign: 'center', lineHeight: 18, fontFamily: 'Outfit_400Regular' },
-  viewRefundsBtn: { marginTop: 24, borderRadius: 999 },
-  btnLabel: { fontFamily: 'Outfit_700Bold' },
-
-  skeletonLine: { height: 14, backgroundColor: 'rgba(168,181,160,0.35)', borderRadius: 4 },
-
-  emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 72, paddingHorizontal: 32 },
-  emptyIconTile: {
-    ...neumorphism.subtle,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(168,181,160,0.28)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  errorIconTile: { backgroundColor: 'rgba(165,67,47,0.14)' },
-  emptyTitle: { fontSize: 16, fontFamily: 'Outfit_700Bold', color: brandColors.text, textAlign: 'center' },
-  actionBtn: { marginTop: 16, borderRadius: 999 },
-})

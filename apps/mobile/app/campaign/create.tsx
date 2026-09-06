@@ -1,11 +1,12 @@
 import { BrandedTextInput as TextInput } from '@/components/BrandedTextInput'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { View, ScrollView, StyleSheet, Alert } from 'react-native'
 import { Button, Text, Chip } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { CampaignCategory } from '@ubuntu-fund/types'
-import { brandColors } from '@/theme'
+import { usePalette } from '@/context/ColorModeContext'
+import type { Palette } from '@/theme'
 import { api } from '@/lib/api'
 
 const CATEGORIES = [
@@ -20,6 +21,8 @@ const CATEGORIES = [
 
 export default function CreateCampaignScreen() {
   const insets = useSafeAreaInsets()
+  const p = usePalette()
+  const styles = useStyles()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [goalAmount, setGoalAmount] = useState('')
@@ -62,8 +65,8 @@ export default function CreateCampaignScreen() {
           value={title}
           onChangeText={setTitle}
           mode="outlined"
-          outlineColor="rgba(26,46,34,0.15)"
-          activeOutlineColor={brandColors.primary}
+          outlineColor={p.border}
+          activeOutlineColor={p.primary}
           style={styles.input}
         />
 
@@ -72,8 +75,8 @@ export default function CreateCampaignScreen() {
           value={description}
           onChangeText={setDescription}
           mode="outlined"
-          outlineColor="rgba(26,46,34,0.15)"
-          activeOutlineColor={brandColors.primary}
+          outlineColor={p.border}
+          activeOutlineColor={p.primary}
           multiline
           numberOfLines={5}
           style={styles.input}
@@ -84,8 +87,8 @@ export default function CreateCampaignScreen() {
           value={goalAmount}
           onChangeText={setGoalAmount}
           mode="outlined"
-          outlineColor="rgba(26,46,34,0.15)"
-          activeOutlineColor={brandColors.primary}
+          outlineColor={p.border}
+          activeOutlineColor={p.primary}
           keyboardType="numeric"
           right={<TextInput.Affix text="GHS" />}
           style={styles.input}
@@ -122,7 +125,7 @@ export default function CreateCampaignScreen() {
           onPress={handleSubmit}
           style={styles.submitButton}
           labelStyle={styles.submitLabel}
-          buttonColor={brandColors.secondary}
+          buttonColor={p.secondary}
           textColor="#221B0E"
           disabled={!title || !description || !goalAmount || isSubmitting}
           loading={isSubmitting}
@@ -134,33 +137,40 @@ export default function CreateCampaignScreen() {
   )
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: brandColors.background },
-  content: { padding: 16 },
-  eyebrow: {
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 2,
-    color: brandColors.secondaryDark,
-    marginBottom: 6,
-  },
-  heading: { fontFamily: 'Outfit_700Bold', marginBottom: 4 },
-  subtitle: { color: brandColors.textSecondary, marginBottom: 24 },
-  input: { marginBottom: 16, backgroundColor: brandColors.surface },
-  label: { marginBottom: 8, fontFamily: 'Outfit_700Bold' },
-  categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 },
-  categoryChip: { backgroundColor: 'rgba(168,181,160,0.28)' },
-  categoryChipSelected: { backgroundColor: brandColors.primary },
-  categoryChipText: { color: brandColors.text, fontFamily: 'Outfit_400Regular' },
-  categoryChipTextSelected: { color: '#FFFFFF', fontFamily: 'Outfit_700Bold' },
-  submitButton: { borderRadius: 999, paddingVertical: 4 },
-  submitLabel: { fontSize: 16, fontFamily: 'Outfit_700Bold' },
-  bottomBar: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    backgroundColor: brandColors.background,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(26,46,34,0.08)',
-  },
-})
+function makeStyles(p: Palette) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: p.background },
+    content: { padding: 16 },
+    eyebrow: {
+      fontSize: 11,
+      fontWeight: '700',
+      textTransform: 'uppercase',
+      letterSpacing: 2,
+      color: p.secondaryDark,
+      marginBottom: 6,
+    },
+    heading: { fontFamily: 'Outfit_700Bold', marginBottom: 4 },
+    subtitle: { color: p.textSecondary, marginBottom: 24 },
+    input: { marginBottom: 16, backgroundColor: p.surface },
+    label: { marginBottom: 8, fontFamily: 'Outfit_700Bold' },
+    categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 },
+    categoryChip: { backgroundColor: 'rgba(168,181,160,0.28)' },
+    categoryChipSelected: { backgroundColor: p.primary },
+    categoryChipText: { color: p.text, fontFamily: 'Outfit_400Regular' },
+    categoryChipTextSelected: { color: '#FFFFFF', fontFamily: 'Outfit_700Bold' },
+    submitButton: { borderRadius: 999, paddingVertical: 4 },
+    submitLabel: { fontSize: 16, fontFamily: 'Outfit_700Bold' },
+    bottomBar: {
+      paddingHorizontal: 16,
+      paddingTop: 12,
+      backgroundColor: p.background,
+      borderTopWidth: 1,
+      borderTopColor: p.border,
+    },
+  })
+}
+
+function useStyles() {
+  const p = usePalette()
+  return useMemo(() => makeStyles(p), [p])
+}

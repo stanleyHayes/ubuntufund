@@ -1,50 +1,52 @@
 import { View, StyleSheet } from 'react-native'
 import { Text, Icon } from 'react-native-paper'
 import { VerificationLevel } from '@ubuntu-fund/types'
-import { brandColors } from '../theme'
+import { usePalette } from '@/context/ColorModeContext'
 
 interface TrustBadgeProps {
   level: VerificationLevel
   trustScore: number
 }
 
-const levelConfig: Record<
-  VerificationLevel,
-  { label: string; icon: string; color: string; bg: string }
-> = {
-  [VerificationLevel.NONE]: {
-    label: 'Unverified',
-    icon: 'shield-outline',
-    color: brandColors.textSecondary,
-    bg: 'rgba(74,90,80,0.10)',
-  },
-  [VerificationLevel.EMAIL_PHONE]: {
-    label: 'Basic',
-    icon: 'shield-half-full',
-    color: brandColors.primaryLight,
-    bg: 'rgba(94,143,114,0.14)',
-  },
-  [VerificationLevel.NATIONAL_ID]: {
-    label: 'Verified',
-    icon: 'shield-check',
-    color: brandColors.success,
-    bg: 'rgba(47,107,70,0.10)',
-  },
-  [VerificationLevel.INSTITUTIONAL]: {
-    label: 'Institutional',
-    icon: 'shield-star',
-    color: brandColors.secondaryDark,
-    bg: 'rgba(160,126,51,0.14)',
-  },
-  [VerificationLevel.COMMUNITY]: {
-    label: 'Community Trusted',
-    icon: 'shield-crown',
-    color: brandColors.primary,
-    bg: 'rgba(46,61,47,0.10)',
-  },
-}
-
 export function TrustBadge({ level, trustScore }: TrustBadgeProps) {
+  const p = usePalette()
+
+  const levelConfig: Record<
+    VerificationLevel,
+    { label: string; icon: string; color: string; bg: string }
+  > = {
+    [VerificationLevel.NONE]: {
+      label: 'Unverified',
+      icon: 'shield-outline',
+      color: p.textSecondary,
+      bg: `${p.textSecondary}1A`,
+    },
+    [VerificationLevel.EMAIL_PHONE]: {
+      label: 'Basic',
+      icon: 'shield-half-full',
+      color: p.primaryLight,
+      bg: `${p.primaryLight}24`,
+    },
+    [VerificationLevel.NATIONAL_ID]: {
+      label: 'Verified',
+      icon: 'shield-check',
+      color: p.success,
+      bg: `${p.success}1A`,
+    },
+    [VerificationLevel.INSTITUTIONAL]: {
+      label: 'Institutional',
+      icon: 'shield-star',
+      color: p.secondaryDark,
+      bg: `${p.secondaryDark}24`,
+    },
+    [VerificationLevel.COMMUNITY]: {
+      label: 'Community Trusted',
+      icon: 'shield-crown',
+      color: p.primary,
+      bg: `${p.primary}1A`,
+    },
+  }
+
   const config = levelConfig[level]
 
   return (

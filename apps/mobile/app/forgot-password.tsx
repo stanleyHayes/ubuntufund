@@ -1,14 +1,17 @@
 import { BrandedTextInput as TextInput } from '@/components/BrandedTextInput'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { View, StyleSheet, Platform, KeyboardAvoidingView, ScrollView } from 'react-native'
 import { Button, Text, Icon } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
-import { brandColors, neumorphism } from '@/theme'
+import { usePalette, useNeu } from '@/context/ColorModeContext'
+import type { Palette, NeuRecipes } from '@/theme'
 import { UjimoraLogo } from '@/components/UjimoraLogo'
 import { api } from '@/lib/api'
 
 export default function ForgotPasswordScreen() {
+  const p = usePalette()
+  const styles = useStyles()
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
@@ -52,7 +55,7 @@ export default function ForgotPasswordScreen() {
           {sent ? (
             <View style={styles.successBox}>
               <View style={styles.iconTile}>
-                <Icon source="check-circle" size={28} color={brandColors.success} />
+                <Icon source="check-circle" size={28} color={p.success} />
               </View>
               <Text style={styles.successTitle}>Email sent</Text>
               <Text style={styles.successBody}>
@@ -64,7 +67,7 @@ export default function ForgotPasswordScreen() {
                 style={styles.button}
                 contentStyle={styles.buttonContent}
                 labelStyle={styles.buttonLabel}
-                buttonColor={brandColors.secondary}
+                buttonColor={p.secondary}
                 textColor="#221B0E"
               >
                 Back to Sign In
@@ -89,8 +92,8 @@ export default function ForgotPasswordScreen() {
                 left={<TextInput.Icon icon="email-outline" />}
                 style={styles.input}
                 outlineStyle={styles.inputOutline}
-                outlineColor="rgba(26,46,34,0.10)"
-                activeOutlineColor={brandColors.primary}
+                outlineColor={p.border}
+                activeOutlineColor={p.primary}
                 disabled={loading}
               />
 
@@ -100,7 +103,7 @@ export default function ForgotPasswordScreen() {
                 style={styles.button}
                 contentStyle={styles.buttonContent}
                 labelStyle={styles.buttonLabel}
-                buttonColor={brandColors.primary}
+                buttonColor={p.primary}
                 disabled={!email || loading}
                 loading={loading}
               >
@@ -122,55 +125,63 @@ export default function ForgotPasswordScreen() {
   )
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: brandColors.background },
-  scrollContent: { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 32 },
+function makeStyles(p: Palette, neu: NeuRecipes) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: p.background },
+    scrollContent: { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 32 },
 
-  header: { alignItems: 'center', marginBottom: 28 },
-  eyebrow: {
-    fontSize: 11,
-    fontFamily: 'Outfit_700Bold',
-    textTransform: 'uppercase',
-    letterSpacing: 2,
-    color: '#A07E33',
-    marginTop: 14,
-    marginBottom: 6,
-  },
-  title: { fontSize: 24, fontFamily: 'Outfit_800ExtraBold', color: brandColors.text, textAlign: 'center', marginBottom: 8 },
-  lede: {
-    fontSize: 14,
-    fontFamily: 'Outfit_400Regular',
-    color: brandColors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-    paddingHorizontal: 12,
-  },
+    header: { alignItems: 'center', marginBottom: 28 },
+    eyebrow: {
+      fontSize: 11,
+      fontFamily: 'Outfit_700Bold',
+      textTransform: 'uppercase',
+      letterSpacing: 2,
+      color: p.secondaryDark,
+      marginTop: 14,
+      marginBottom: 6,
+    },
+    title: { fontSize: 24, fontFamily: 'Outfit_800ExtraBold', color: p.text, textAlign: 'center', marginBottom: 8 },
+    lede: {
+      fontSize: 14,
+      fontFamily: 'Outfit_400Regular',
+      color: p.textSecondary,
+      textAlign: 'center',
+      lineHeight: 20,
+      paddingHorizontal: 12,
+    },
 
-  card: {
-    ...neumorphism.raised,
-    backgroundColor: brandColors.surface,
-    borderRadius: 14,
-    padding: 24,
-  },
-  errorBanner: { backgroundColor: 'rgba(165,67,47,0.08)', borderRadius: 10, padding: 12, marginBottom: 16 },
-  errorText: { color: brandColors.error, fontSize: 13, fontFamily: 'Outfit_700Bold', textAlign: 'center' },
-  input: { marginBottom: 20, backgroundColor: brandColors.surface },
-  inputOutline: { borderRadius: 12 },
-  button: { borderRadius: 999, marginBottom: 12 },
-  buttonContent: { paddingVertical: 6 },
-  buttonLabel: { fontSize: 16, fontFamily: 'Outfit_700Bold', letterSpacing: 0.3 },
-  backLabel: { color: brandColors.textSecondary, fontSize: 14, fontFamily: 'Outfit_400Regular' },
+    card: {
+      ...neu.raised,
+      backgroundColor: p.surface,
+      borderRadius: 14,
+      padding: 24,
+    },
+    errorBanner: { backgroundColor: `${p.error}1A`, borderRadius: 10, padding: 12, marginBottom: 16 },
+    errorText: { color: p.error, fontSize: 13, fontFamily: 'Outfit_700Bold', textAlign: 'center' },
+    input: { marginBottom: 20, backgroundColor: p.surface },
+    inputOutline: { borderRadius: 12 },
+    button: { borderRadius: 999, marginBottom: 12 },
+    buttonContent: { paddingVertical: 6 },
+    buttonLabel: { fontSize: 16, fontFamily: 'Outfit_700Bold', letterSpacing: 0.3 },
+    backLabel: { color: p.textSecondary, fontSize: 14, fontFamily: 'Outfit_400Regular' },
 
-  successBox: { alignItems: 'center', paddingVertical: 8 },
-  iconTile: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: 'rgba(168,181,160,0.28)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  successTitle: { fontSize: 18, fontFamily: 'Outfit_700Bold', color: brandColors.text, marginBottom: 8 },
-  successBody: { fontSize: 14, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, textAlign: 'center', lineHeight: 21, marginBottom: 24 },
-})
+    successBox: { alignItems: 'center', paddingVertical: 8 },
+    iconTile: {
+      width: 48,
+      height: 48,
+      borderRadius: 14,
+      backgroundColor: 'rgba(168,181,160,0.28)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 12,
+    },
+    successTitle: { fontSize: 18, fontFamily: 'Outfit_700Bold', color: p.text, marginBottom: 8 },
+    successBody: { fontSize: 14, fontFamily: 'Outfit_400Regular', color: p.textSecondary, textAlign: 'center', lineHeight: 21, marginBottom: 24 },
+  })
+}
+
+function useStyles() {
+  const p = usePalette()
+  const neu = useNeu()
+  return useMemo(() => makeStyles(p, neu), [p, neu])
+}

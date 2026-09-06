@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   View,
   ScrollView,
@@ -14,7 +14,8 @@ import { api } from '@/lib/api'
 import { EmptyState } from '@/components/EmptyState'
 import { SignInRequired } from '@/components/SignInRequired'
 import { FadeInUp } from '@/components/anim/FadeInUp'
-import { brandColors, neumorphism } from '@/theme'
+import { usePalette, useNeu } from '@/context/ColorModeContext'
+import type { Palette, NeuRecipes } from '@/theme'
 
 interface Invitation {
   id: string
@@ -33,9 +34,90 @@ function formatDate(date?: string | null) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
+function makeStyles(p: Palette, neu: NeuRecipes) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: p.background },
+
+    headerBlock: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 4 },
+    eyebrow: { fontSize: 11, fontFamily: 'Outfit_700Bold', fontWeight: '700', color: p.secondaryDark, textTransform: 'uppercase', letterSpacing: 2 },
+    pageTitle: { fontSize: 24, fontFamily: 'Outfit_800ExtraBold', color: p.text, marginTop: 4 },
+    pageLede: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: p.textSecondary, marginTop: 4 },
+
+    listWrap: { paddingHorizontal: 16, paddingTop: 12 },
+
+    invCard: {
+      ...neu.raised,
+      borderRadius: 14,
+      padding: 16,
+      marginBottom: 12,
+    },
+    invCampaign: { fontSize: 17, fontFamily: 'Outfit_700Bold', color: p.text, marginBottom: 10 },
+    invDetail: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
+    invDetailText: { fontSize: 13, color: p.textSecondary, fontFamily: 'Outfit_400Regular' },
+    invDate: { fontSize: 11, color: p.textSecondary, marginTop: 8, marginBottom: 14, fontFamily: 'Outfit_400Regular' },
+
+    invActions: { flexDirection: 'row', gap: 10 },
+    acceptBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      flex: 1,
+      paddingVertical: 13,
+      borderRadius: 999,
+      backgroundColor: p.primary,
+    },
+    acceptBtnText: { fontSize: 14, fontFamily: 'Outfit_700Bold', color: '#fff' },
+    declineBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      flex: 1,
+      paddingVertical: 13,
+      borderRadius: 999,
+      backgroundColor: `${p.error}14`,
+      borderWidth: 1,
+      borderColor: `${p.error}40`,
+    },
+    declineBtnText: { fontSize: 14, fontFamily: 'Outfit_700Bold', color: p.error },
+
+    skeletonCard: {
+      ...neu.raised,
+      borderRadius: 14,
+      padding: 16,
+      marginBottom: 12,
+    },
+    skeletonLine: { height: 14, backgroundColor: p.skeleton, borderRadius: 4 },
+
+    emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 72, paddingHorizontal: 32 },
+    emptyIconTile: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: p.skeleton,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 16,
+    },
+    errorIconTile: { backgroundColor: `${p.error}24` },
+    emptyTitle: { fontSize: 16, fontFamily: 'Outfit_700Bold', color: p.text, textAlign: 'center' },
+    emptySubtitle: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: p.textSecondary, marginTop: 6, textAlign: 'center', lineHeight: 18 },
+    actionBtn: { marginTop: 16, borderRadius: 999 },
+    btnLabel: { fontFamily: 'Outfit_700Bold' },
+  })
+}
+
+function useStyles() {
+  const p = usePalette()
+  const neu = useNeu()
+  return useMemo(() => makeStyles(p, neu), [p, neu])
+}
+
 // ─── Skeleton ────────────────────────────────────────────────
 
 function SkeletonCard() {
+  const styles = useStyles()
   const [opacity] = useState(() => new Animated.Value(0.3))
   useEffect(() => {
     Animated.loop(
@@ -62,6 +144,8 @@ function SkeletonCard() {
 
 export default function InvitationsScreen() {
   const { user } = useAuth()
+  const p = usePalette()
+  const styles = useStyles()
   const [invitations, setInvitations] = useState<Invitation[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -105,8 +189,8 @@ export default function InvitationsScreen() {
 
   const headerOptions = {
     title: 'Invitations',
-    headerStyle: { backgroundColor: brandColors.primary },
-    headerTintColor: '#FFFFFF',
+    headerStyle: { backgroundColor: p.primary },
+    headerTintColor: p.onPrimary,
     headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
   }
 
@@ -156,22 +240,22 @@ export default function InvitationsScreen() {
                 <Text style={styles.invCampaign} numberOfLines={1}>{inv.campaignName}</Text>
 
                 <View style={styles.invDetail}>
-                  <Icon source="account" size={14} color={brandColors.textSecondary} />
+                  <Icon source="account" size={14} color={p.textSecondary} />
                   <Text style={styles.invDetailText}>Invited by {inv.inviterName}</Text>
                 </View>
 
                 <View style={styles.invDetail}>
-                  <Icon source="shield-account" size={14} color={brandColors.textSecondary} />
+                  <Icon source="shield-account" size={14} color={p.textSecondary} />
                   <Text style={styles.invDetailText}>
-                    Role: <Text style={{ fontFamily: 'Outfit_700Bold', color: brandColors.text }}>{inv.role}</Text>
+                    Role: <Text style={{ fontFamily: 'Outfit_700Bold', color: p.text }}>{inv.role}</Text>
                   </Text>
                 </View>
 
                 {inv.revenueShare !== undefined && inv.revenueShare !== null && (
                   <View style={styles.invDetail}>
-                    <Icon source="percent" size={14} color={brandColors.textSecondary} />
+                    <Icon source="percent" size={14} color={p.textSecondary} />
                     <Text style={styles.invDetailText}>
-                      Revenue share: <Text style={{ fontFamily: 'Outfit_700Bold', color: brandColors.primary }}>{inv.revenueShare}%</Text>
+                      Revenue share: <Text style={{ fontFamily: 'Outfit_700Bold', color: p.primary }}>{inv.revenueShare}%</Text>
                     </Text>
                   </View>
                 )}
@@ -201,7 +285,7 @@ export default function InvitationsScreen() {
                     onPress={() => handleRespond(inv.id, false)}
                     disabled={responding === inv.id}
                   >
-                    <Icon source="close" size={16} color={brandColors.error} />
+                    <Icon source="close" size={16} color={p.error} />
                     <Text style={styles.declineBtnText}>Decline</Text>
                   </TouchableOpacity>
                 </View>
@@ -214,75 +298,3 @@ export default function InvitationsScreen() {
     </View>
   )
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: brandColors.background },
-
-  headerBlock: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 4 },
-  eyebrow: { fontSize: 11, fontFamily: 'Outfit_700Bold', fontWeight: '700', color: brandColors.secondaryDark, textTransform: 'uppercase', letterSpacing: 2 },
-  pageTitle: { fontSize: 24, fontFamily: 'Outfit_800ExtraBold', color: brandColors.text, marginTop: 4 },
-  pageLede: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 4 },
-
-  listWrap: { paddingHorizontal: 16, paddingTop: 12 },
-
-  invCard: {
-    ...neumorphism.raised,
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 12,
-  },
-  invCampaign: { fontSize: 17, fontFamily: 'Outfit_700Bold', color: brandColors.text, marginBottom: 10 },
-  invDetail: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
-  invDetailText: { fontSize: 13, color: brandColors.textSecondary, fontFamily: 'Outfit_400Regular' },
-  invDate: { fontSize: 11, color: brandColors.textSecondary, marginTop: 8, marginBottom: 14, fontFamily: 'Outfit_400Regular' },
-
-  invActions: { flexDirection: 'row', gap: 10 },
-  acceptBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    flex: 1,
-    paddingVertical: 13,
-    borderRadius: 999,
-    backgroundColor: brandColors.primary,
-  },
-  acceptBtnText: { fontSize: 14, fontFamily: 'Outfit_700Bold', color: '#fff' },
-  declineBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    flex: 1,
-    paddingVertical: 13,
-    borderRadius: 999,
-    backgroundColor: 'rgba(165,67,47,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(165,67,47,0.25)',
-  },
-  declineBtnText: { fontSize: 14, fontFamily: 'Outfit_700Bold', color: brandColors.error },
-
-  skeletonCard: {
-    ...neumorphism.raised,
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 12,
-  },
-  skeletonLine: { height: 14, backgroundColor: 'rgba(168,181,160,0.35)', borderRadius: 4 },
-
-  emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 72, paddingHorizontal: 32 },
-  emptyIconTile: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(168,181,160,0.28)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  errorIconTile: { backgroundColor: 'rgba(165,67,47,0.14)' },
-  emptyTitle: { fontSize: 16, fontFamily: 'Outfit_700Bold', color: brandColors.text, textAlign: 'center' },
-  emptySubtitle: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 6, textAlign: 'center', lineHeight: 18 },
-  actionBtn: { marginTop: 16, borderRadius: 999 },
-  btnLabel: { fontFamily: 'Outfit_700Bold' },
-})

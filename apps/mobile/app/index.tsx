@@ -1,14 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { Redirect } from 'expo-router'
 import { View, Animated, StyleSheet, Dimensions } from 'react-native'
 import { useAuth } from '@/context/AuthContext'
-import { brandColors } from '@/theme'
+import { usePalette } from '@/context/ColorModeContext'
+import type { Palette } from '@/theme'
 import { UjimoraLogo } from '@/components/UjimoraLogo'
 
 const { width } = Dimensions.get('window')
 
 export default function Index() {
   const { isAuthenticated, isLoading } = useAuth()
+  const styles = useStyles()
 
   const [logoScale] = useState(() => new Animated.Value(0.3))
   const [logoOpacity] = useState(() => new Animated.Value(0))
@@ -74,48 +76,55 @@ export default function Index() {
   )
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: brandColors.primaryDark,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  bgCircle: {
-    position: 'absolute',
-    borderRadius: 9999,
-    backgroundColor: brandColors.primary,
-    opacity: 0.06,
-  },
-  circleTopRight: {
-    width: width * 0.8,
-    height: width * 0.8,
-    top: -width * 0.3,
-    right: -width * 0.3,
-  },
-  circleBottomLeft: {
-    width: width * 0.6,
-    height: width * 0.6,
-    bottom: -width * 0.2,
-    left: -width * 0.2,
-  },
-  titleRow: { flexDirection: 'row', alignItems: 'baseline' },
-  titleWhite: { fontSize: 34, fontFamily: 'Outfit_800ExtraBold', color: '#FFFFFF', letterSpacing: 0.5 },
-  titleGold: { fontSize: 34, fontFamily: 'Outfit_800ExtraBold', color: brandColors.secondary, letterSpacing: 0.5 },
-  tagline: {
-    fontSize: 13,
-    fontFamily: 'Outfit_400Regular',
-    color: 'rgba(255,255,255,0.35)',
-    letterSpacing: 4,
-    textTransform: 'uppercase',
-    marginTop: 10,
-  },
-  loadingDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: brandColors.secondary,
-    position: 'absolute',
-    bottom: 80,
-  },
-})
+function makeStyles(p: Palette) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: p.primaryDark,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    bgCircle: {
+      position: 'absolute',
+      borderRadius: 9999,
+      backgroundColor: p.primary,
+      opacity: 0.06,
+    },
+    circleTopRight: {
+      width: width * 0.8,
+      height: width * 0.8,
+      top: -width * 0.3,
+      right: -width * 0.3,
+    },
+    circleBottomLeft: {
+      width: width * 0.6,
+      height: width * 0.6,
+      bottom: -width * 0.2,
+      left: -width * 0.2,
+    },
+    titleRow: { flexDirection: 'row', alignItems: 'baseline' },
+    titleWhite: { fontSize: 34, fontFamily: 'Outfit_800ExtraBold', color: '#FFFFFF', letterSpacing: 0.5 },
+    titleGold: { fontSize: 34, fontFamily: 'Outfit_800ExtraBold', color: p.secondary, letterSpacing: 0.5 },
+    tagline: {
+      fontSize: 13,
+      fontFamily: 'Outfit_400Regular',
+      color: 'rgba(255,255,255,0.35)',
+      letterSpacing: 4,
+      textTransform: 'uppercase',
+      marginTop: 10,
+    },
+    loadingDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: p.secondary,
+      position: 'absolute',
+      bottom: 80,
+    },
+  })
+}
+
+function useStyles() {
+  const p = usePalette()
+  return useMemo(() => makeStyles(p), [p])
+}

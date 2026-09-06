@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   View,
   ScrollView,
@@ -12,7 +12,13 @@ import { router, Stack } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
 import { SignInRequired } from '@/components/SignInRequired'
-import { brandColors, neumorphism } from '@/theme'
+import {
+  usePalette,
+  useNeu,
+  useColorMode,
+  type ColorModePreference,
+} from '@/context/ColorModeContext'
+import type { Palette, NeuRecipes } from '@/theme'
 import { registerForPushNotificationsAsync, registerPushTokenWithApi } from '@/services/notifications'
 
 interface SettingsData {
@@ -28,6 +34,12 @@ interface SettingsData {
 
 const LANGUAGES = ['English', 'Twi', 'Ga', 'Ewe', 'Hausa']
 
+const APPEARANCE_OPTIONS: { value: ColorModePreference; label: string; icon: string }[] = [
+  { value: 'light', label: 'Light', icon: 'white-balance-sunny' },
+  { value: 'dark', label: 'Dark', icon: 'weather-night' },
+  { value: 'system', label: 'System', icon: 'cellphone-cog' },
+]
+
 const DEFAULT_SETTINGS: SettingsData = {
   emailNotifications: true,
   smsNotifications: false,
@@ -39,9 +51,79 @@ const DEFAULT_SETTINGS: SettingsData = {
   showOnLeaderboard: true,
 }
 
+// Shared style factory — built from the active palette so a mode switch recolors
+// everything. Screens call `useStyles()` (below) to get the memoized result.
+function makeStyles(p: Palette, neu: NeuRecipes) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: p.background },
+
+    sectionTitle: { fontSize: 12, fontFamily: 'Outfit_700Bold', color: p.textSecondary, paddingHorizontal: 20, marginTop: 24, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1 },
+    errorBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 16, marginTop: 16, padding: 12, borderRadius: 12, backgroundColor: `${p.error}1A` },
+    errorBannerText: { flex: 1, fontSize: 13, fontFamily: 'Outfit_500Medium', color: p.error },
+
+    card: {
+      ...neu.raised,
+      marginHorizontal: 16,
+      borderRadius: 14,
+      overflow: 'hidden',
+    },
+
+    toggleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 14,
+      paddingVertical: 14,
+      minHeight: 44,
+      borderBottomWidth: 1,
+      borderBottomColor: p.border,
+    },
+    toggleIcon: {
+      ...neu.subtle,
+      width: 34,
+      height: 34,
+      borderRadius: 8,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 12,
+    },
+    toggleLabel: { flex: 1, fontSize: 15, fontFamily: 'Outfit_700Bold', color: p.text },
+
+    pickerValue: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    pickerValueText: { fontSize: 14, fontFamily: 'Outfit_700Bold', color: p.primary },
+    pickerOptions: { flexDirection: 'row', flexWrap: 'wrap', padding: 12, gap: 8 },
+    pickerOption: { ...neu.subtle, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20 },
+    pickerOptionActive: { ...neu.greenInset },
+    pickerOptionText: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: p.text },
+    pickerOptionTextActive: { color: '#fff' },
+
+    appearanceRow: { flexDirection: 'row', gap: 8, padding: 12 },
+    appearanceOption: {
+      ...neu.subtle,
+      flex: 1,
+      alignItems: 'center',
+      gap: 4,
+      paddingVertical: 12,
+      borderRadius: 12,
+    },
+    appearanceOptionActive: { ...neu.greenInset },
+    appearanceLabel: { fontSize: 12, fontFamily: 'Outfit_700Bold', color: p.text },
+    appearanceLabelActive: { color: '#fff' },
+
+    dangerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, minHeight: 44 },
+    dangerText: { fontSize: 15, fontFamily: 'Outfit_700Bold', color: p.error },
+  })
+}
+
+function useStyles() {
+  const p = usePalette()
+  const neu = useNeu()
+  return useMemo(() => makeStyles(p, neu), [p, neu])
+}
+
 // ─── Skeleton ────────────────────────────────────────────────
 
 function SkeletonToggleRows() {
+  const p = usePalette()
   const [opacity] = useState(() => new Animated.Value(0.3))
   useEffect(() => {
     Animated.loop(
@@ -56,10 +138,10 @@ function SkeletonToggleRows() {
       {[0, 1, 2, 3, 4, 5, 6].map((i) => (
         <View key={i} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
           <View style={{ flex: 1 }}>
-            <View style={{ width: '50%', height: 14, backgroundColor: '#E0E0E0', borderRadius: 4, marginBottom: 4 }} />
-            <View style={{ width: '30%', height: 10, backgroundColor: '#E0E0E0', borderRadius: 4 }} />
+            <View style={{ width: '50%', height: 14, backgroundColor: p.skeleton, borderRadius: 4, marginBottom: 4 }} />
+            <View style={{ width: '30%', height: 10, backgroundColor: p.skeleton, borderRadius: 4 }} />
           </View>
-          <View style={{ width: 44, height: 24, backgroundColor: '#E0E0E0', borderRadius: 12 }} />
+          <View style={{ width: 44, height: 24, backgroundColor: p.skeleton, borderRadius: 12 }} />
         </View>
       ))}
     </Animated.View>
@@ -68,37 +150,43 @@ function SkeletonToggleRows() {
 
 // ─── Toggle Row ──────────────────────────────────────────────
 
-function ToggleRow({ icon, label, value, onToggle, color = brandColors.primary }: {
+function ToggleRow({ icon, label, value, onToggle, color }: {
   icon: string; label: string; value: boolean; onToggle: (v: boolean) => void; color?: string
 }) {
+  const p = usePalette()
+  const styles = useStyles()
+  const tint = color ?? p.primary
   return (
     <View style={styles.toggleRow}>
-      <View style={[styles.toggleIcon, { backgroundColor: `${color}14` }]}>
-        <Icon source={icon} size={18} color={color} />
+      <View style={[styles.toggleIcon, { backgroundColor: `${tint}14` }]}>
+        <Icon source={icon} size={18} color={tint} />
       </View>
       <Text style={styles.toggleLabel}>{label}</Text>
-      <Switch value={value} onValueChange={onToggle} color={brandColors.primary} />
+      <Switch value={value} onValueChange={onToggle} color={p.primary} />
     </View>
   )
 }
 
 // ─── Picker Row ──────────────────────────────────────────────
 
-function PickerRow({ icon, label, value, options, onChange, color = brandColors.primaryLight }: {
+function PickerRow({ icon, label, value, options, onChange, color }: {
   icon: string; label: string; value: string; options: string[]; onChange: (v: string) => void; color?: string
 }) {
+  const p = usePalette()
+  const styles = useStyles()
   const [expanded, setExpanded] = useState(false)
+  const tint = color ?? p.primaryLight
   return (
     <View>
-      <TouchableRipple style={styles.toggleRow} rippleColor="rgba(26,46,34,0.08)" onPress={() => setExpanded(!expanded)}>
+      <TouchableRipple style={styles.toggleRow} rippleColor={p.ripple} onPress={() => setExpanded(!expanded)}>
         <>
-          <View style={[styles.toggleIcon, { backgroundColor: `${color}14` }]}>
-            <Icon source={icon} size={18} color={color} />
+          <View style={[styles.toggleIcon, { backgroundColor: `${tint}14` }]}>
+            <Icon source={icon} size={18} color={tint} />
           </View>
           <Text style={styles.toggleLabel}>{label}</Text>
           <View style={styles.pickerValue}>
             <Text style={styles.pickerValueText}>{value}</Text>
-            <Icon source={expanded ? 'chevron-up' : 'chevron-down'} size={16} color="rgba(26,46,34,0.35)" />
+            <Icon source={expanded ? 'chevron-up' : 'chevron-down'} size={16} color={p.textSecondary} />
           </View>
         </>
       </TouchableRipple>
@@ -108,7 +196,7 @@ function PickerRow({ icon, label, value, options, onChange, color = brandColors.
             <TouchableRipple
               key={opt}
               style={[styles.pickerOption, value === opt && styles.pickerOptionActive]}
-              rippleColor="rgba(26,46,34,0.12)"
+              rippleColor={p.ripple}
               hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
               onPress={() => { onChange(opt); setExpanded(false) }}
             >
@@ -123,10 +211,44 @@ function PickerRow({ icon, label, value, options, onChange, color = brandColors.
   )
 }
 
+// ─── Appearance (light / dark / system) ──────────────────────
+
+function AppearanceRow() {
+  const p = usePalette()
+  const styles = useStyles()
+  const { mode, setMode } = useColorMode()
+  return (
+    <View style={styles.appearanceRow}>
+      {APPEARANCE_OPTIONS.map((opt) => {
+        const active = mode === opt.value
+        return (
+          <TouchableRipple
+            key={opt.value}
+            style={[styles.appearanceOption, active && styles.appearanceOptionActive]}
+            rippleColor={p.ripple}
+            onPress={() => setMode(opt.value)}
+            accessibilityLabel={`${opt.label} appearance`}
+            accessibilityState={{ selected: active }}
+          >
+            <>
+              <Icon source={opt.icon} size={20} color={active ? '#fff' : p.primary} />
+              <Text style={[styles.appearanceLabel, active && styles.appearanceLabelActive]}>
+                {opt.label}
+              </Text>
+            </>
+          </TouchableRipple>
+        )
+      })}
+    </View>
+  )
+}
+
 // ─── Main ────────────────────────────────────────────────────
 
 export default function SettingsScreen() {
   const { user, logout } = useAuth()
+  const p = usePalette()
+  const styles = useStyles()
   const [settings, setSettings] = useState<SettingsData>(DEFAULT_SETTINGS)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -234,8 +356,8 @@ export default function SettingsScreen() {
 
   const headerOptions = {
     title: 'Settings',
-    headerStyle: { backgroundColor: brandColors.primary },
-    headerTintColor: '#FFFFFF',
+    headerStyle: { backgroundColor: p.primary },
+    headerTintColor: p.onPrimary,
     headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
   }
 
@@ -259,10 +381,17 @@ export default function SettingsScreen() {
           <>
             {error ? (
               <View style={styles.errorBanner}>
-                <Icon source="alert-circle-outline" size={18} color={brandColors.error} />
+                <Icon source="alert-circle-outline" size={18} color={p.error} />
                 <Text style={styles.errorBannerText}>{error}</Text>
               </View>
             ) : null}
+
+            {/* Appearance */}
+            <Text style={styles.sectionTitle}>Appearance</Text>
+            <View style={styles.card}>
+              <AppearanceRow />
+            </View>
+
             {/* Notifications */}
             <Text style={styles.sectionTitle}>Notifications</Text>
             <View style={styles.card}>
@@ -276,28 +405,28 @@ export default function SettingsScreen() {
             <Text style={styles.sectionTitle}>Account</Text>
             <View style={styles.card}>
               <View style={styles.toggleRow}>
-                <View style={[styles.toggleIcon, { backgroundColor: `${brandColors.success}14` }]}>
-                  <Icon source="cash" size={18} color={brandColors.success} />
+                <View style={[styles.toggleIcon, { backgroundColor: `${p.success}14` }]}>
+                  <Icon source="cash" size={18} color={p.success} />
                 </View>
                 <Text style={styles.toggleLabel}>Currency</Text>
                 <Text style={styles.pickerValueText}>GHS</Text>
               </View>
-              <PickerRow icon="translate" label="Language" value={settings.language} options={LANGUAGES} onChange={(v) => updateSetting('language', v)} color={brandColors.textSecondary} />
+              <PickerRow icon="translate" label="Language" value={settings.language} options={LANGUAGES} onChange={(v) => updateSetting('language', v)} color={p.textSecondary} />
             </View>
 
             {/* Privacy */}
             <Text style={styles.sectionTitle}>Privacy</Text>
             <View style={styles.card}>
-              <ToggleRow icon="eye-off-outline" label="Anonymous Donations" value={settings.anonymousDonations} onToggle={(v) => updateSetting('anonymousDonations', v)} color={brandColors.textSecondary} />
-              <ToggleRow icon="trophy-outline" label="Show on Leaderboard" value={settings.showOnLeaderboard} onToggle={(v) => updateSetting('showOnLeaderboard', v)} color={brandColors.secondary} />
+              <ToggleRow icon="eye-off-outline" label="Anonymous Donations" value={settings.anonymousDonations} onToggle={(v) => updateSetting('anonymousDonations', v)} color={p.textSecondary} />
+              <ToggleRow icon="trophy-outline" label="Show on Leaderboard" value={settings.showOnLeaderboard} onToggle={(v) => updateSetting('showOnLeaderboard', v)} color={p.secondary} />
             </View>
 
             {/* Danger Zone */}
-            <Text style={[styles.sectionTitle, { color: brandColors.error }]}>Danger Zone</Text>
+            <Text style={[styles.sectionTitle, { color: p.error }]}>Danger Zone</Text>
             <View style={styles.card}>
-              <TouchableRipple style={styles.dangerRow} rippleColor="rgba(165,67,47,0.10)" onPress={handleDeleteAccount}>
+              <TouchableRipple style={styles.dangerRow} rippleColor={`${p.error}1A`} onPress={handleDeleteAccount}>
                 <>
-                  <Icon source="delete-outline" size={20} color={brandColors.error} />
+                  <Icon source="delete-outline" size={20} color={p.error} />
                   <Text style={styles.dangerText}>Delete Account</Text>
                 </>
               </TouchableRipple>
@@ -308,49 +437,3 @@ export default function SettingsScreen() {
     </View>
   )
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: brandColors.background },
-
-  sectionTitle: { fontSize: 12, fontFamily: 'Outfit_700Bold', color: brandColors.textSecondary, paddingHorizontal: 20, marginTop: 24, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1 },
-  errorBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 16, marginTop: 16, padding: 12, borderRadius: 12, backgroundColor: 'rgba(165,67,47,0.10)' },
-  errorBannerText: { flex: 1, fontSize: 13, fontFamily: 'Outfit_500Medium', color: brandColors.error },
-
-  card: {
-    ...neumorphism.raised,
-    marginHorizontal: 16,
-    borderRadius: 14,
-    overflow: 'hidden',
-  },
-
-  toggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    minHeight: 44,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(26,46,34,0.08)',
-  },
-  toggleIcon: {
-    ...neumorphism.subtle,
-    width: 34,
-    height: 34,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  toggleLabel: { flex: 1, fontSize: 15, fontFamily: 'Outfit_700Bold', color: brandColors.text },
-
-  pickerValue: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  pickerValueText: { fontSize: 14, fontFamily: 'Outfit_700Bold', color: brandColors.primary },
-  pickerOptions: { flexDirection: 'row', flexWrap: 'wrap', padding: 12, gap: 8 },
-  pickerOption: { ...neumorphism.subtle, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20 },
-  pickerOptionActive: { ...neumorphism.greenInset },
-  pickerOptionText: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: brandColors.text },
-  pickerOptionTextActive: { color: '#fff' },
-
-  dangerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, minHeight: 44 },
-  dangerText: { fontSize: 15, fontFamily: 'Outfit_700Bold', color: brandColors.error },
-})

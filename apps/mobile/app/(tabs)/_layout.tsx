@@ -1,9 +1,11 @@
+import { useMemo } from 'react'
 import { View, Pressable, StyleSheet } from 'react-native'
 import { Tabs } from 'expo-router'
 import { Icon, Text } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs'
-import { brandColors } from '@/theme'
+import { usePalette } from '@/context/ColorModeContext'
+import type { Palette } from '@/theme'
 
 const TAB_ITEMS: Record<string, { icon: string; iconActive: string; label: string }> = {
   index: { icon: 'home-variant-outline', iconActive: 'home-variant', label: 'Home' },
@@ -20,6 +22,7 @@ const TAB_ITEMS: Record<string, { icon: string; iconActive: string; label: strin
  */
 function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets()
+  const styles = useStyles()
   return (
     <View style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 10) }]}>
       <View style={styles.bar}>
@@ -57,12 +60,13 @@ function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
 }
 
 export default function TabLayout() {
+  const p = usePalette()
   return (
     <Tabs
       tabBar={(props) => <FloatingTabBar {...props} />}
       screenOptions={{
-        headerStyle: { backgroundColor: brandColors.primary },
-        headerTintColor: '#FFFFFF',
+        headerStyle: { backgroundColor: p.primary },
+        headerTintColor: p.onPrimary,
         headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
       }}
     >
@@ -76,38 +80,45 @@ export default function TabLayout() {
   )
 }
 
-const styles = StyleSheet.create({
-  wrap: {
-    backgroundColor: brandColors.background,
-    paddingHorizontal: 16,
-    paddingTop: 8,
-  },
-  bar: {
-    flexDirection: 'row',
-    backgroundColor: brandColors.primaryDark,
-    borderRadius: 999,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-  },
-  item: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 2,
-  },
-  iconCapsule: {
-    paddingHorizontal: 16,
-    paddingVertical: 4,
-    borderRadius: 999,
-  },
-  iconCapsuleActive: {
-    backgroundColor: 'rgba(245,242,234,0.12)',
-  },
-  label: {
-    fontSize: 10,
-    fontFamily: 'Outfit_700Bold',
-    color: 'rgba(245,242,234,0.55)',
-  },
-  labelActive: {
-    color: '#F5F2EA',
-  },
-})
+function makeStyles(p: Palette) {
+  return StyleSheet.create({
+    wrap: {
+      backgroundColor: p.background,
+      paddingHorizontal: 16,
+      paddingTop: 8,
+    },
+    bar: {
+      flexDirection: 'row',
+      backgroundColor: p.primaryDark,
+      borderRadius: 999,
+      paddingVertical: 8,
+      paddingHorizontal: 10,
+    },
+    item: {
+      flex: 1,
+      alignItems: 'center',
+      gap: 2,
+    },
+    iconCapsule: {
+      paddingHorizontal: 16,
+      paddingVertical: 4,
+      borderRadius: 999,
+    },
+    iconCapsuleActive: {
+      backgroundColor: 'rgba(245,242,234,0.12)',
+    },
+    label: {
+      fontSize: 10,
+      fontFamily: 'Outfit_700Bold',
+      color: 'rgba(245,242,234,0.55)',
+    },
+    labelActive: {
+      color: '#F5F2EA',
+    },
+  })
+}
+
+function useStyles() {
+  const p = usePalette()
+  return useMemo(() => makeStyles(p), [p])
+}

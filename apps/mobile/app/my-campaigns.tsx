@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   View,
   ScrollView,
@@ -16,7 +16,8 @@ import { RemoteImage } from '@/components/RemoteImage'
 import { EmptyState } from '@/components/EmptyState'
 import { SignInRequired } from '@/components/SignInRequired'
 import { FadeInUp } from '@/components/anim/FadeInUp'
-import { brandColors, neumorphism } from '@/theme'
+import { usePalette, useNeu } from '@/context/ColorModeContext'
+import type { Palette, NeuRecipes } from '@/theme'
 
 interface Campaign {
   id: string
@@ -39,17 +40,21 @@ function formatCurrency(amount: number) {
   return ghsFormatter.format(amount)
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  active: brandColors.success,
-  draft: brandColors.textSecondary,
-  completed: brandColors.primaryLight,
-  paused: brandColors.warning,
-  cancelled: brandColors.error,
+// Mode-aware status color lookup — `p` comes from whichever component reads it.
+function statusColors(p: Palette): Record<string, string> {
+  return {
+    active: p.success,
+    draft: p.textSecondary,
+    completed: p.primaryLight,
+    paused: p.warning,
+    cancelled: p.error,
+  }
 }
 
 // ─── Skeleton ────────────────────────────────────────────────
 
 function SkeletonCard() {
+  const styles = useStyles()
   const [opacity] = useState(() => new Animated.Value(0.3))
 
   useEffect(() => {
@@ -77,8 +82,10 @@ function SkeletonCard() {
 // ─── Campaign Card ───────────────────────────────────────────
 
 function CampaignCard({ campaign }: { campaign: Campaign }) {
+  const p = usePalette()
+  const styles = useStyles()
   const pct = campaign.goalAmount > 0 ? Math.min(campaign.raisedAmount / campaign.goalAmount, 1) : 0
-  const statusColor = STATUS_COLORS[campaign.status] ?? brandColors.textSecondary
+  const statusColor = statusColors(p)[campaign.status] ?? p.textSecondary
 
   return (
     <TouchableOpacity
@@ -114,14 +121,14 @@ function CampaignCard({ campaign }: { campaign: Campaign }) {
             style={styles.actionBtn}
             onPress={() => router.push(`/campaign/${campaign.id}`)}
           >
-            <Icon source="eye" size={16} color={brandColors.primary} />
+            <Icon source="eye" size={16} color={p.primary} />
             <Text style={styles.actionText}>View</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionBtn}
             onPress={() => router.push(`/campaign/${campaign.id}`)}
           >
-            <Icon source="pencil" size={16} color={brandColors.primary} />
+            <Icon source="pencil" size={16} color={p.primary} />
             <Text style={styles.actionText}>Edit</Text>
           </TouchableOpacity>
         </View>
@@ -134,6 +141,8 @@ function CampaignCard({ campaign }: { campaign: Campaign }) {
 
 export default function MyCampaignsScreen() {
   const { user } = useAuth()
+  const p = usePalette()
+  const styles = useStyles()
   const insets = useSafeAreaInsets()
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [loading, setLoading] = useState(true)
@@ -159,8 +168,8 @@ export default function MyCampaignsScreen() {
 
   const headerOptions = {
     title: 'My Campaigns',
-    headerStyle: { backgroundColor: brandColors.primary },
-    headerTintColor: '#FFFFFF',
+    headerStyle: { backgroundColor: p.primary },
+    headerTintColor: p.onPrimary,
     headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
   }
 
@@ -197,7 +206,7 @@ export default function MyCampaignsScreen() {
           <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 16 }]}>
             <Button
               mode="contained"
-              buttonColor={brandColors.secondary}
+              buttonColor={p.secondary}
               textColor="#221B0E"
               icon="plus"
               onPress={() => router.push('/campaign/create')}
@@ -213,7 +222,7 @@ export default function MyCampaignsScreen() {
           {/* Create button */}
           <Button
             mode="contained"
-            buttonColor={brandColors.secondary}
+            buttonColor={p.secondary}
             textColor="#221B0E"
             icon="plus"
             onPress={() => router.push('/campaign/create')}
@@ -257,78 +266,86 @@ export default function MyCampaignsScreen() {
   )
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: brandColors.background },
+function makeStyles(p: Palette, neu: NeuRecipes) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: p.background },
 
-  headerBlock: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 4 },
-  eyebrow: { fontSize: 11, fontFamily: 'Outfit_700Bold', fontWeight: '700', color: brandColors.secondaryDark, textTransform: 'uppercase', letterSpacing: 2 },
-  pageTitle: { fontSize: 24, fontFamily: 'Outfit_800ExtraBold', color: brandColors.text, marginTop: 4 },
-  pageLede: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 4 },
+    headerBlock: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 4 },
+    eyebrow: { fontSize: 11, fontFamily: 'Outfit_700Bold', fontWeight: '700', color: p.secondaryDark, textTransform: 'uppercase', letterSpacing: 2 },
+    pageTitle: { fontSize: 24, fontFamily: 'Outfit_800ExtraBold', color: p.text, marginTop: 4 },
+    pageLede: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: p.textSecondary, marginTop: 4 },
 
-  createBtn: {
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 8,
-    borderRadius: 999,
-  },
-  listWrap: { paddingHorizontal: 16, paddingTop: 8 },
+    createBtn: {
+      marginHorizontal: 16,
+      marginTop: 16,
+      marginBottom: 8,
+      borderRadius: 999,
+    },
+    listWrap: { paddingHorizontal: 16, paddingTop: 8 },
 
-  // Card
-  card: {
-    ...neumorphism.raised,
-    borderRadius: 14,
-    overflow: 'hidden',
-    marginBottom: 14,
-  },
-  cardImage: { width: '100%', height: 120 },
-  cardImageFallback: { backgroundColor: 'rgba(168,181,160,0.28)' },
-  cardContent: { padding: 14 },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 },
-  cardTitle: { flex: 1, fontSize: 15, fontFamily: 'Outfit_700Bold', color: brandColors.text, marginRight: 8 },
-  statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-  statusText: { fontSize: 11, fontFamily: 'Outfit_700Bold' },
-  cardStats: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
-  cardRaised: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: brandColors.primary },
-  cardGoal: { fontSize: 11, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, flex: 1 },
-  cardPct: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: brandColors.textSecondary },
-  cardActions: { flexDirection: 'row', gap: 12, marginTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(26,46,34,0.08)', paddingTop: 12 },
-  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 8 },
-  actionText: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: brandColors.primary },
+    // Card
+    card: {
+      ...neu.raised,
+      borderRadius: 14,
+      overflow: 'hidden',
+      marginBottom: 14,
+    },
+    cardImage: { width: '100%', height: 120 },
+    cardImageFallback: { backgroundColor: 'rgba(168,181,160,0.28)' },
+    cardContent: { padding: 14 },
+    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 },
+    cardTitle: { flex: 1, fontSize: 15, fontFamily: 'Outfit_700Bold', color: p.text, marginRight: 8 },
+    statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+    statusText: { fontSize: 11, fontFamily: 'Outfit_700Bold' },
+    cardStats: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
+    cardRaised: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: p.primary },
+    cardGoal: { fontSize: 11, fontFamily: 'Outfit_400Regular', color: p.textSecondary, flex: 1 },
+    cardPct: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: p.textSecondary },
+    cardActions: { flexDirection: 'row', gap: 12, marginTop: 12, borderTopWidth: 1, borderTopColor: p.border, paddingTop: 12 },
+    actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 8 },
+    actionText: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: p.primary },
 
-  // Skeleton
-  skeletonCard: {
-    ...neumorphism.raised,
-    borderRadius: 14,
-    overflow: 'hidden',
-    marginBottom: 14,
-  },
-  skeletonImage: { width: '100%', height: 120, backgroundColor: 'rgba(168,181,160,0.28)' },
-  skeletonContent: { padding: 14 },
-  skeletonLine: { height: 14, backgroundColor: 'rgba(168,181,160,0.35)', borderRadius: 4 },
+    // Skeleton
+    skeletonCard: {
+      ...neu.raised,
+      borderRadius: 14,
+      overflow: 'hidden',
+      marginBottom: 14,
+    },
+    skeletonImage: { width: '100%', height: 120, backgroundColor: p.skeleton },
+    skeletonContent: { padding: 14 },
+    skeletonLine: { height: 14, backgroundColor: p.skeleton, borderRadius: 4 },
 
-  // Empty
-  emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 72, paddingHorizontal: 32 },
-  emptyStateFill: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
-  emptyStateCentered: { paddingTop: 0 },
-  bottomBar: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    backgroundColor: brandColors.background,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(26,46,34,0.08)',
-  },
-  createBtnDocked: { borderRadius: 999 },
-  emptyIconTile: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(168,181,160,0.28)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  errorIconTile: { backgroundColor: 'rgba(165,67,47,0.14)' },
-  emptyTitle: { fontSize: 16, fontFamily: 'Outfit_700Bold', color: brandColors.text, textAlign: 'center' },
-  emptySubtitle: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 6, textAlign: 'center' },
-  btnLabel: { fontFamily: 'Outfit_700Bold' },
-})
+    // Empty
+    emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 72, paddingHorizontal: 32 },
+    emptyStateFill: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
+    emptyStateCentered: { paddingTop: 0 },
+    bottomBar: {
+      paddingHorizontal: 16,
+      paddingTop: 12,
+      backgroundColor: p.background,
+      borderTopWidth: 1,
+      borderTopColor: p.border,
+    },
+    createBtnDocked: { borderRadius: 999 },
+    emptyIconTile: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: 'rgba(168,181,160,0.28)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 16,
+    },
+    errorIconTile: { backgroundColor: `${p.error}24` },
+    emptyTitle: { fontSize: 16, fontFamily: 'Outfit_700Bold', color: p.text, textAlign: 'center' },
+    emptySubtitle: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: p.textSecondary, marginTop: 6, textAlign: 'center' },
+    btnLabel: { fontFamily: 'Outfit_700Bold' },
+  })
+}
+
+function useStyles() {
+  const p = usePalette()
+  const neu = useNeu()
+  return useMemo(() => makeStyles(p, neu), [p, neu])
+}

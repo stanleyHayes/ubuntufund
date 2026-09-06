@@ -2,10 +2,13 @@ import { useEffect, useMemo } from 'react'
 import { View, StyleSheet, Animated } from 'react-native'
 import { useRouter } from 'expo-router'
 import { Text, Icon, Button } from 'react-native-paper'
-import { brandColors } from '@/theme'
+import { usePalette } from '@/context/ColorModeContext'
+import type { Palette } from '@/theme'
 
 export default function NotFoundScreen() {
   const router = useRouter()
+  const p = usePalette()
+  const styles = useStyles()
   const fadeAnim = useMemo(() => new Animated.Value(0), [])
   const riseAnim = useMemo(() => new Animated.Value(12), [])
 
@@ -24,7 +27,7 @@ export default function NotFoundScreen() {
         <Text style={styles.eyebrow}>Page Not Found</Text>
 
         <View style={styles.iconTile}>
-          <Icon source="compass-off-outline" size={24} color={brandColors.primary} />
+          <Icon source="compass-off-outline" size={24} color={p.primary} />
         </View>
 
         <Text style={styles.title}>Lost in the journey?</Text>
@@ -34,7 +37,7 @@ export default function NotFoundScreen() {
 
         <Button
           mode="contained"
-          buttonColor={brandColors.secondary}
+          buttonColor={p.secondary}
           textColor="#221B0E"
           style={styles.button}
           contentStyle={styles.buttonContent}
@@ -48,50 +51,57 @@ export default function NotFoundScreen() {
   )
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: brandColors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 32,
-  },
-  content: { alignItems: 'center' },
-  eyebrow: {
-    fontSize: 11,
-    fontFamily: 'Outfit_700Bold',
-    fontWeight: '700',
-    color: brandColors.secondaryDark,
-    textTransform: 'uppercase',
-    letterSpacing: 2,
-    marginBottom: 16,
-  },
-  iconTile: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(168,181,160,0.28)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 20,
-    fontFamily: 'Outfit_700Bold',
-    color: brandColors.text,
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  body: {
-    fontSize: 14,
-    fontFamily: 'Outfit_400Regular',
-    color: brandColors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-    maxWidth: 280,
-    marginBottom: 24,
-  },
-  button: { borderRadius: 999 },
-  buttonContent: { paddingVertical: 4 },
-  buttonLabel: { fontSize: 14, fontFamily: 'Outfit_700Bold', letterSpacing: 0.3 },
-})
+function makeStyles(p: Palette) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: p.background,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 32,
+    },
+    content: { alignItems: 'center' },
+    eyebrow: {
+      fontSize: 11,
+      fontFamily: 'Outfit_700Bold',
+      fontWeight: '700',
+      color: p.secondaryDark,
+      textTransform: 'uppercase',
+      letterSpacing: 2,
+      marginBottom: 16,
+    },
+    iconTile: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: 'rgba(168,181,160,0.28)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 16,
+    },
+    title: {
+      fontSize: 20,
+      fontFamily: 'Outfit_700Bold',
+      color: p.text,
+      textAlign: 'center',
+      marginBottom: 8,
+    },
+    body: {
+      fontSize: 14,
+      fontFamily: 'Outfit_400Regular',
+      color: p.textSecondary,
+      textAlign: 'center',
+      lineHeight: 20,
+      maxWidth: 280,
+      marginBottom: 24,
+    },
+    button: { borderRadius: 999 },
+    buttonContent: { paddingVertical: 4 },
+    buttonLabel: { fontSize: 14, fontFamily: 'Outfit_700Bold', letterSpacing: 0.3 },
+  })
+}
+
+function useStyles() {
+  const p = usePalette()
+  return useMemo(() => makeStyles(p), [p])
+}

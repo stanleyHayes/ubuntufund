@@ -1,18 +1,79 @@
 import { BrandedTextInput as TextInput } from '@/components/BrandedTextInput'
 import { BrandedDateField } from '@/components/BrandedDateField'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { View, ScrollView, StyleSheet } from 'react-native'
 import { Text, Icon, Button, } from 'react-native-paper'
 import { Stack, useRouter } from 'expo-router'
 import { api } from '@/lib/api'
-import { brandColors, neumorphism } from '@/theme'
+import { usePalette, useNeu } from '@/context/ColorModeContext'
+import type { Palette, NeuRecipes } from '@/theme'
 
 interface StepProps {
   onNext?: () => void
   onBack?: () => void
 }
 
+function makeStyles(p: Palette, neu: NeuRecipes) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: p.background },
+    scrollContent: { padding: 16, paddingBottom: 32 },
+
+    progressRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8 },
+    stepItem: { flex: 1, alignItems: 'center', position: 'relative' },
+    stepDot: { width: 28, height: 28, borderRadius: 14, backgroundColor: p.skeleton, alignItems: 'center', justifyContent: 'center' },
+    stepDotActive: { backgroundColor: p.primary },
+    stepDotText: { fontSize: 12, fontFamily: 'Outfit_700Bold', color: p.textSecondary },
+    stepDotTextActive: { color: '#FFFFFF' },
+    stepLabel: { fontSize: 11, fontFamily: 'Outfit_400Regular', color: p.textSecondary, marginTop: 4 },
+    stepLabelActive: { color: p.primary, fontFamily: 'Outfit_700Bold' },
+    stepLine: { position: 'absolute', top: 14, right: '-50%', width: '100%', height: 2, backgroundColor: p.skeleton, zIndex: -1 },
+    stepLineActive: { backgroundColor: p.primary },
+
+    stepContentWrap: { marginTop: 24 },
+    stepCard: {
+      ...neu.raised,
+      backgroundColor: p.surface,
+      borderRadius: 14,
+      padding: 20,
+      gap: 12,
+    },
+    stepTitle: { fontSize: 18, fontFamily: 'Outfit_700Bold', color: p.text, marginBottom: 4 },
+    stepDesc: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: p.textSecondary, marginBottom: 8 },
+
+    input: { backgroundColor: p.surface },
+    inputOutline: { borderRadius: 12 },
+
+    buttonRow: { flexDirection: 'row', gap: 12 },
+    button: { borderRadius: 999, marginTop: 8 },
+    buttonFlex: { flex: 1 },
+    buttonContent: { paddingVertical: 6 },
+    buttonLabel: { fontSize: 15, fontFamily: 'Outfit_700Bold', letterSpacing: 0.3 },
+    buttonLabelSecondary: { fontSize: 15, fontFamily: 'Outfit_700Bold', letterSpacing: 0.3 },
+
+    successWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
+    iconTile: {
+      width: 48,
+      height: 48,
+      borderRadius: 14,
+      backgroundColor: p.skeleton,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 12,
+    },
+    successTitle: { fontSize: 20, fontFamily: 'Outfit_700Bold', color: p.text, textAlign: 'center' },
+    successBody: { fontSize: 14, fontFamily: 'Outfit_400Regular', color: p.textSecondary, marginTop: 8, textAlign: 'center', lineHeight: 20, marginBottom: 16 },
+  })
+}
+
+function useStyles() {
+  const p = usePalette()
+  const neu = useNeu()
+  return useMemo(() => makeStyles(p, neu), [p, neu])
+}
+
 function PersonalInfoStep({ onNext }: StepProps) {
+  const styles = useStyles()
+  const p = usePalette()
   const [fullName, setFullName] = useState('')
   const [dateOfBirth, setDateOfBirth] = useState('')
   const [nationality, setNationality] = useState('')
@@ -21,11 +82,11 @@ function PersonalInfoStep({ onNext }: StepProps) {
   return (
     <View style={styles.stepCard}>
       <Text style={styles.stepTitle}>Personal Information</Text>
-      <TextInput mode="outlined" label="Full Name" value={fullName} onChangeText={setFullName} style={styles.input} outlineStyle={styles.inputOutline} outlineColor="rgba(26,46,34,0.10)" activeOutlineColor={brandColors.primary} />
+      <TextInput mode="outlined" label="Full Name" value={fullName} onChangeText={setFullName} style={styles.input} outlineStyle={styles.inputOutline} outlineColor={p.border} activeOutlineColor={p.primary} />
       <BrandedDateField label="Date of birth" value={dateOfBirth} onChange={setDateOfBirth} maxDate={new Date()} />
-      <TextInput mode="outlined" label="Nationality" value={nationality} onChangeText={setNationality} style={styles.input} outlineStyle={styles.inputOutline} outlineColor="rgba(26,46,34,0.10)" activeOutlineColor={brandColors.primary} />
-      <TextInput mode="outlined" label="ID Number" value={idNumber} onChangeText={setIdNumber} style={styles.input} outlineStyle={styles.inputOutline} outlineColor="rgba(26,46,34,0.10)" activeOutlineColor={brandColors.primary} />
-      <Button mode="contained" onPress={onNext} style={styles.button} contentStyle={styles.buttonContent} labelStyle={styles.buttonLabel} buttonColor={brandColors.primary}>
+      <TextInput mode="outlined" label="Nationality" value={nationality} onChangeText={setNationality} style={styles.input} outlineStyle={styles.inputOutline} outlineColor={p.border} activeOutlineColor={p.primary} />
+      <TextInput mode="outlined" label="ID Number" value={idNumber} onChangeText={setIdNumber} style={styles.input} outlineStyle={styles.inputOutline} outlineColor={p.border} activeOutlineColor={p.primary} />
+      <Button mode="contained" onPress={onNext} style={styles.button} contentStyle={styles.buttonContent} labelStyle={styles.buttonLabel} buttonColor={p.primary}>
         Next
       </Button>
     </View>
@@ -33,6 +94,8 @@ function PersonalInfoStep({ onNext }: StepProps) {
 }
 
 function DocumentStep({ onNext, onBack }: StepProps) {
+  const styles = useStyles()
+  const p = usePalette()
   const [idFront, setIdFront] = useState('')
   const [idBack, setIdBack] = useState('')
 
@@ -40,17 +103,19 @@ function DocumentStep({ onNext, onBack }: StepProps) {
     <View style={styles.stepCard}>
       <Text style={styles.stepTitle}>ID Document</Text>
       <Text style={styles.stepDesc}>Upload front and back of your ID</Text>
-      <TextInput mode="outlined" label="Front URL" value={idFront} onChangeText={setIdFront} style={styles.input} outlineStyle={styles.inputOutline} outlineColor="rgba(26,46,34,0.10)" activeOutlineColor={brandColors.primary} />
-      <TextInput mode="outlined" label="Back URL" value={idBack} onChangeText={setIdBack} style={styles.input} outlineStyle={styles.inputOutline} outlineColor="rgba(26,46,34,0.10)" activeOutlineColor={brandColors.primary} />
+      <TextInput mode="outlined" label="Front URL" value={idFront} onChangeText={setIdFront} style={styles.input} outlineStyle={styles.inputOutline} outlineColor={p.border} activeOutlineColor={p.primary} />
+      <TextInput mode="outlined" label="Back URL" value={idBack} onChangeText={setIdBack} style={styles.input} outlineStyle={styles.inputOutline} outlineColor={p.border} activeOutlineColor={p.primary} />
       <View style={styles.buttonRow}>
-        {onBack && <Button mode="outlined" onPress={onBack} style={[styles.button, styles.buttonFlex]} contentStyle={styles.buttonContent} labelStyle={styles.buttonLabelSecondary} textColor={brandColors.primary}>Back</Button>}
-        <Button mode="contained" onPress={onNext} style={[styles.button, styles.buttonFlex]} contentStyle={styles.buttonContent} labelStyle={styles.buttonLabel} buttonColor={brandColors.primary}>Next</Button>
+        {onBack && <Button mode="outlined" onPress={onBack} style={[styles.button, styles.buttonFlex]} contentStyle={styles.buttonContent} labelStyle={styles.buttonLabelSecondary} textColor={p.primary}>Back</Button>}
+        <Button mode="contained" onPress={onNext} style={[styles.button, styles.buttonFlex]} contentStyle={styles.buttonContent} labelStyle={styles.buttonLabel} buttonColor={p.primary}>Next</Button>
       </View>
     </View>
   )
 }
 
 function AddressStep({ onNext, onBack }: StepProps) {
+  const styles = useStyles()
+  const p = usePalette()
   const [street, setStreet] = useState('')
   const [city, setCity] = useState('')
   const [country, setCountry] = useState('')
@@ -58,28 +123,30 @@ function AddressStep({ onNext, onBack }: StepProps) {
   return (
     <View style={styles.stepCard}>
       <Text style={styles.stepTitle}>Address Verification</Text>
-      <TextInput mode="outlined" label="Street" value={street} onChangeText={setStreet} style={styles.input} outlineStyle={styles.inputOutline} outlineColor="rgba(26,46,34,0.10)" activeOutlineColor={brandColors.primary} />
-      <TextInput mode="outlined" label="City" value={city} onChangeText={setCity} style={styles.input} outlineStyle={styles.inputOutline} outlineColor="rgba(26,46,34,0.10)" activeOutlineColor={brandColors.primary} />
-      <TextInput mode="outlined" label="Country" value={country} onChangeText={setCountry} style={styles.input} outlineStyle={styles.inputOutline} outlineColor="rgba(26,46,34,0.10)" activeOutlineColor={brandColors.primary} />
+      <TextInput mode="outlined" label="Street" value={street} onChangeText={setStreet} style={styles.input} outlineStyle={styles.inputOutline} outlineColor={p.border} activeOutlineColor={p.primary} />
+      <TextInput mode="outlined" label="City" value={city} onChangeText={setCity} style={styles.input} outlineStyle={styles.inputOutline} outlineColor={p.border} activeOutlineColor={p.primary} />
+      <TextInput mode="outlined" label="Country" value={country} onChangeText={setCountry} style={styles.input} outlineStyle={styles.inputOutline} outlineColor={p.border} activeOutlineColor={p.primary} />
       <View style={styles.buttonRow}>
-        {onBack && <Button mode="outlined" onPress={onBack} style={[styles.button, styles.buttonFlex]} contentStyle={styles.buttonContent} labelStyle={styles.buttonLabelSecondary} textColor={brandColors.primary}>Back</Button>}
-        <Button mode="contained" onPress={onNext} style={[styles.button, styles.buttonFlex]} contentStyle={styles.buttonContent} labelStyle={styles.buttonLabel} buttonColor={brandColors.primary}>Next</Button>
+        {onBack && <Button mode="outlined" onPress={onBack} style={[styles.button, styles.buttonFlex]} contentStyle={styles.buttonContent} labelStyle={styles.buttonLabelSecondary} textColor={p.primary}>Back</Button>}
+        <Button mode="contained" onPress={onNext} style={[styles.button, styles.buttonFlex]} contentStyle={styles.buttonContent} labelStyle={styles.buttonLabel} buttonColor={p.primary}>Next</Button>
       </View>
     </View>
   )
 }
 
 function SelfieStep({ onBack, onSubmit, submitting }: StepProps & { onSubmit: () => void; submitting: boolean }) {
+  const styles = useStyles()
+  const p = usePalette()
   const [selfie, setSelfie] = useState('')
 
   return (
     <View style={styles.stepCard}>
       <Text style={styles.stepTitle}>Selfie Verification</Text>
       <Text style={styles.stepDesc}>Upload a selfie holding your ID</Text>
-      <TextInput mode="outlined" label="Selfie URL" value={selfie} onChangeText={setSelfie} style={styles.input} outlineStyle={styles.inputOutline} outlineColor="rgba(26,46,34,0.10)" activeOutlineColor={brandColors.primary} />
+      <TextInput mode="outlined" label="Selfie URL" value={selfie} onChangeText={setSelfie} style={styles.input} outlineStyle={styles.inputOutline} outlineColor={p.border} activeOutlineColor={p.primary} />
       <View style={styles.buttonRow}>
-        {onBack && <Button mode="outlined" onPress={onBack} style={[styles.button, styles.buttonFlex]} contentStyle={styles.buttonContent} labelStyle={styles.buttonLabelSecondary} textColor={brandColors.primary}>Back</Button>}
-        <Button mode="contained" onPress={onSubmit} loading={submitting} disabled={submitting} style={[styles.button, styles.buttonFlex]} contentStyle={styles.buttonContent} labelStyle={styles.buttonLabel} buttonColor={brandColors.primary}>Submit</Button>
+        {onBack && <Button mode="outlined" onPress={onBack} style={[styles.button, styles.buttonFlex]} contentStyle={styles.buttonContent} labelStyle={styles.buttonLabelSecondary} textColor={p.primary}>Back</Button>}
+        <Button mode="contained" onPress={onSubmit} loading={submitting} disabled={submitting} style={[styles.button, styles.buttonFlex]} contentStyle={styles.buttonContent} labelStyle={styles.buttonLabel} buttonColor={p.primary}>Submit</Button>
       </View>
     </View>
   )
@@ -87,6 +154,8 @@ function SelfieStep({ onBack, onSubmit, submitting }: StepProps & { onSubmit: ()
 
 export default function KYCScreen() {
   const router = useRouter()
+  const p = usePalette()
+  const styles = useStyles()
   const [step, setStep] = useState(0)
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
@@ -111,10 +180,10 @@ export default function KYCScreen() {
   if (submitted) {
     return (
       <View style={styles.container}>
-        <Stack.Screen options={{ title: 'KYC Submitted', headerStyle: { backgroundColor: brandColors.primary } }} />
+        <Stack.Screen options={{ title: 'KYC Submitted', headerStyle: { backgroundColor: p.primary } }} />
         <View style={styles.successWrap}>
           <View style={styles.iconTile}>
-            <Icon source="check-circle" size={28} color={brandColors.success} />
+            <Icon source="check-circle" size={28} color={p.success} />
           </View>
           <Text style={styles.successTitle}>Verification submitted</Text>
           <Text style={styles.successBody}>
@@ -126,7 +195,7 @@ export default function KYCScreen() {
             style={styles.button}
             contentStyle={styles.buttonContent}
             labelStyle={styles.buttonLabel}
-            buttonColor={brandColors.secondary}
+            buttonColor={p.secondary}
             textColor="#221B0E"
           >
             Go to Dashboard
@@ -141,8 +210,8 @@ export default function KYCScreen() {
       <Stack.Screen
         options={{
           title: 'KYC Verification',
-          headerStyle: { backgroundColor: brandColors.primary },
-          headerTintColor: '#FFFFFF',
+          headerStyle: { backgroundColor: p.primary },
+          headerTintColor: p.onPrimary,
           headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
         }}
       />
@@ -171,53 +240,3 @@ export default function KYCScreen() {
     </View>
   )
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: brandColors.background },
-  scrollContent: { padding: 16, paddingBottom: 32 },
-
-  progressRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8 },
-  stepItem: { flex: 1, alignItems: 'center', position: 'relative' },
-  stepDot: { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(168,181,160,0.28)', alignItems: 'center', justifyContent: 'center' },
-  stepDotActive: { backgroundColor: brandColors.primary },
-  stepDotText: { fontSize: 12, fontFamily: 'Outfit_700Bold', color: brandColors.textSecondary },
-  stepDotTextActive: { color: '#FFFFFF' },
-  stepLabel: { fontSize: 11, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 4 },
-  stepLabelActive: { color: brandColors.primary, fontFamily: 'Outfit_700Bold' },
-  stepLine: { position: 'absolute', top: 14, right: '-50%', width: '100%', height: 2, backgroundColor: 'rgba(168,181,160,0.28)', zIndex: -1 },
-  stepLineActive: { backgroundColor: brandColors.primary },
-
-  stepContentWrap: { marginTop: 24 },
-  stepCard: {
-    ...neumorphism.raised,
-    backgroundColor: brandColors.surface,
-    borderRadius: 14,
-    padding: 20,
-    gap: 12,
-  },
-  stepTitle: { fontSize: 18, fontFamily: 'Outfit_700Bold', color: brandColors.text, marginBottom: 4 },
-  stepDesc: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginBottom: 8 },
-
-  input: { backgroundColor: brandColors.surface },
-  inputOutline: { borderRadius: 12 },
-
-  buttonRow: { flexDirection: 'row', gap: 12 },
-  button: { borderRadius: 999, marginTop: 8 },
-  buttonFlex: { flex: 1 },
-  buttonContent: { paddingVertical: 6 },
-  buttonLabel: { fontSize: 15, fontFamily: 'Outfit_700Bold', letterSpacing: 0.3 },
-  buttonLabelSecondary: { fontSize: 15, fontFamily: 'Outfit_700Bold', letterSpacing: 0.3 },
-
-  successWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  iconTile: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: 'rgba(168,181,160,0.28)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  successTitle: { fontSize: 20, fontFamily: 'Outfit_700Bold', color: brandColors.text, textAlign: 'center' },
-  successBody: { fontSize: 14, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 8, textAlign: 'center', lineHeight: 20, marginBottom: 16 },
-})

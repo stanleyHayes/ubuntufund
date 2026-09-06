@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   View,
   ScrollView,
@@ -14,7 +14,8 @@ import { ProgressBar } from '@/components/ProgressBar'
 import { EmptyState } from '@/components/EmptyState'
 import { SignInRequired } from '@/components/SignInRequired'
 import { FadeInUp } from '@/components/anim/FadeInUp'
-import { brandColors, neumorphism } from '@/theme'
+import { usePalette, useNeu } from '@/context/ColorModeContext'
+import type { Palette, NeuRecipes } from '@/theme'
 
 interface Campaign {
   id: string
@@ -59,6 +60,7 @@ function formatDate(date?: string | null) {
 // ─── Skeleton ────────────────────────────────────────────────
 
 function SkeletonBlock({ w, h, mb = 0 }: { w: DimensionValue; h: number; mb?: number }) {
+  const p = usePalette()
   const [opacity] = useState(() => new Animated.Value(0.3))
   useEffect(() => {
     Animated.loop(
@@ -73,7 +75,7 @@ function SkeletonBlock({ w, h, mb = 0 }: { w: DimensionValue; h: number; mb?: nu
       style={{
         width: w,
         height: h,
-        backgroundColor: '#E0E0E0',
+        backgroundColor: p.skeleton,
         borderRadius: 8,
         marginBottom: mb,
         opacity,
@@ -108,8 +110,10 @@ function DashboardSkeleton() {
 // ─── Quick Action ────────────────────────────────────────────
 
 function QuickAction({ icon, label, color, onPress }: { icon: string; label: string; color: string; onPress: () => void }) {
+  const p = usePalette()
+  const styles = useStyles()
   return (
-    <TouchableRipple style={styles.quickAction} rippleColor="rgba(26,46,34,0.08)" onPress={onPress}>
+    <TouchableRipple style={styles.quickAction} rippleColor={p.ripple} onPress={onPress}>
       <>
         <View style={[styles.quickActionIcon, { backgroundColor: `${color}14` }]}>
           <Icon source={icon} size={22} color={color} />
@@ -124,6 +128,8 @@ function QuickAction({ icon, label, color, onPress }: { icon: string; label: str
 
 export default function DashboardScreen() {
   const { user } = useAuth()
+  const p = usePalette()
+  const styles = useStyles()
   const isOrganization = user?.role === 'organization'
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -167,8 +173,8 @@ export default function DashboardScreen() {
 
   const headerOptions = {
     title: 'Dashboard',
-    headerStyle: { backgroundColor: brandColors.primary },
-    headerTintColor: '#FFFFFF',
+    headerStyle: { backgroundColor: p.primary },
+    headerTintColor: p.onPrimary,
     headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
   }
 
@@ -201,7 +207,7 @@ export default function DashboardScreen() {
           <>
             <View style={styles.heroCard}>
               <View style={styles.heroIcon}>
-                <Icon source={isOrganization ? 'office-building-outline' : 'account-outline'} size={22} color={brandColors.secondaryDark} />
+                <Icon source={isOrganization ? 'office-building-outline' : 'account-outline'} size={22} color={p.secondaryDark} />
               </View>
               <View style={styles.heroCopy}>
                 <Text style={styles.heroEyebrow}>{isOrganization ? 'Organization workspace' : 'Personal workspace'}</Text>
@@ -216,21 +222,21 @@ export default function DashboardScreen() {
             <View style={styles.statsRow}>
               <FadeInUp index={0} style={styles.statCardWrap}>
                 <View style={styles.statCard}>
-                  <Icon source="cash" size={24} color={brandColors.primary} />
+                  <Icon source="cash" size={24} color={p.primary} />
                   <Text style={styles.statValue}>{formatCurrency(totalRaised)}</Text>
                   <Text style={styles.statLabel}>Total Raised</Text>
                 </View>
               </FadeInUp>
               <FadeInUp index={1} style={styles.statCardWrap}>
                 <View style={styles.statCard}>
-                  <Icon source="bullhorn" size={24} color={brandColors.success} />
+                  <Icon source="bullhorn" size={24} color={p.success} />
                   <Text style={styles.statValue}>{activeCampaigns}</Text>
                   <Text style={styles.statLabel}>Active Campaigns</Text>
                 </View>
               </FadeInUp>
               <FadeInUp index={2} style={styles.statCardWrap}>
                 <View style={styles.statCard}>
-                  <Icon source="heart" size={24} color={brandColors.error} />
+                  <Icon source="heart" size={24} color={p.error} />
                   <Text style={styles.statValue}>{totalDonations}</Text>
                   <Text style={styles.statLabel}>Donations Made</Text>
                 </View>
@@ -240,9 +246,9 @@ export default function DashboardScreen() {
             {/* Quick Actions */}
             <Text style={styles.sectionTitle}>Quick Actions</Text>
             <View style={styles.quickActionsRow}>
-              <QuickAction icon="plus-circle" label="Create Campaign" color={brandColors.primary} onPress={() => router.push('/campaign/create')} />
-              <QuickAction icon="heart-outline" label="View Donations" color={brandColors.error} onPress={() => router.push('/my-donations')} />
-              <QuickAction icon={isOrganization ? 'account-group-outline' : 'account-plus'} label={isOrganization ? 'Collaborators' : 'Invitations'} color={brandColors.secondaryDark} onPress={() => router.push('/invitations')} />
+              <QuickAction icon="plus-circle" label="Create Campaign" color={p.primary} onPress={() => router.push('/campaign/create')} />
+              <QuickAction icon="heart-outline" label="View Donations" color={p.error} onPress={() => router.push('/my-donations')} />
+              <QuickAction icon={isOrganization ? 'account-group-outline' : 'account-plus'} label={isOrganization ? 'Collaborators' : 'Invitations'} color={p.secondaryDark} onPress={() => router.push('/invitations')} />
             </View>
 
             {/* Recent Campaigns */}
@@ -257,7 +263,7 @@ export default function DashboardScreen() {
                     <TouchableRipple
                       key={c.id}
                       style={[styles.listRow, i === recentCampaigns.length - 1 && { borderBottomWidth: 0 }]}
-                      rippleColor="rgba(26,46,34,0.08)"
+                      rippleColor={p.ripple}
                       onPress={() => router.push(`/campaign/${c.id}`)}
                     >
                       <>
@@ -268,7 +274,7 @@ export default function DashboardScreen() {
                             {formatCurrency(c.raisedAmount)} of {formatCurrency(c.goalAmount)}
                           </Text>
                         </View>
-                        <Icon source="chevron-right" size={18} color="rgba(26,46,34,0.3)" />
+                        <Icon source="chevron-right" size={18} color={`${p.text}4D`} />
                       </>
                     </TouchableRipple>
                   )
@@ -307,51 +313,59 @@ export default function DashboardScreen() {
   )
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: brandColors.background },
+function makeStyles(p: Palette, neu: NeuRecipes) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: p.background },
 
-  heroCard: { ...neumorphism.greenRaised, flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginTop: 18, padding: 16, borderRadius: 18, gap: 12 },
-  heroIcon: { ...neumorphism.greenSubtle, width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  heroCopy: { flex: 1 },
-  heroEyebrow: { fontSize: 10, fontFamily: 'Outfit_700Bold', color: brandColors.secondary, textTransform: 'uppercase', letterSpacing: 1 },
-  heroTitle: { marginTop: 2, fontSize: 20, fontFamily: 'Outfit_700Bold', color: '#FFFFFF' },
-  heroBody: { marginTop: 3, fontSize: 12, lineHeight: 17, fontFamily: 'Outfit_400Regular', color: 'rgba(255,255,255,0.72)' },
+    heroCard: { ...neu.greenRaised, flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginTop: 18, padding: 16, borderRadius: 18, gap: 12 },
+    heroIcon: { ...neu.greenSubtle, width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+    heroCopy: { flex: 1 },
+    heroEyebrow: { fontSize: 10, fontFamily: 'Outfit_700Bold', color: p.secondary, textTransform: 'uppercase', letterSpacing: 1 },
+    heroTitle: { marginTop: 2, fontSize: 20, fontFamily: 'Outfit_700Bold', color: '#FFFFFF' },
+    heroBody: { marginTop: 3, fontSize: 12, lineHeight: 17, fontFamily: 'Outfit_400Regular', color: 'rgba(255,255,255,0.72)' },
 
-  statsRow: { flexDirection: 'row', paddingHorizontal: 16, paddingTop: 20, gap: 10 },
-  statCardWrap: { flex: 1 },
-  statCard: {
-    ...neumorphism.raised,
-    borderRadius: 14,
-    padding: 14,
-    alignItems: 'center',
-  },
-  statValue: { fontSize: 18, fontFamily: 'Outfit_700Bold', color: brandColors.text, marginTop: 6 },
-  statLabel: { fontSize: 10, color: brandColors.textSecondary, fontFamily: 'Outfit_400Regular', marginTop: 2 },
+    statsRow: { flexDirection: 'row', paddingHorizontal: 16, paddingTop: 20, gap: 10 },
+    statCardWrap: { flex: 1 },
+    statCard: {
+      ...neu.raised,
+      borderRadius: 14,
+      padding: 14,
+      alignItems: 'center',
+    },
+    statValue: { fontSize: 18, fontFamily: 'Outfit_700Bold', color: p.text, marginTop: 6 },
+    statLabel: { fontSize: 10, color: p.textSecondary, fontFamily: 'Outfit_400Regular', marginTop: 2 },
 
-  sectionTitle: { fontSize: 17, fontFamily: 'Outfit_700Bold', color: brandColors.text, paddingHorizontal: 20, marginTop: 24, marginBottom: 12 },
+    sectionTitle: { fontSize: 17, fontFamily: 'Outfit_700Bold', color: p.text, paddingHorizontal: 20, marginTop: 24, marginBottom: 12 },
 
-  quickActionsRow: { flexDirection: 'row', paddingHorizontal: 16, gap: 10 },
-  quickAction: { ...neumorphism.raised, flex: 1, borderRadius: 14, padding: 14, alignItems: 'center' },
-  quickActionIcon: { ...neumorphism.subtle, width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
-  quickActionLabel: { fontSize: 11, fontFamily: 'Outfit_700Bold', color: brandColors.textSecondary, textAlign: 'center' },
+    quickActionsRow: { flexDirection: 'row', paddingHorizontal: 16, gap: 10 },
+    quickAction: { ...neu.raised, flex: 1, borderRadius: 14, padding: 14, alignItems: 'center' },
+    quickActionIcon: { ...neu.subtle, width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
+    quickActionLabel: { fontSize: 11, fontFamily: 'Outfit_700Bold', color: p.textSecondary, textAlign: 'center' },
 
-  listCard: { ...neumorphism.raised, marginHorizontal: 16, borderRadius: 14, overflow: 'hidden' },
-  listRow: { flexDirection: 'row', alignItems: 'center', padding: 14, minHeight: 44, borderBottomWidth: 1, borderBottomColor: 'rgba(26,46,34,0.08)' },
-  listTitle: { fontSize: 14, fontFamily: 'Outfit_700Bold', color: brandColors.text, marginBottom: 4 },
-  listSub: { fontSize: 11, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 4 },
-  donationAmount: { fontSize: 15, fontFamily: 'Outfit_700Bold', color: brandColors.success },
+    listCard: { ...neu.raised, marginHorizontal: 16, borderRadius: 14, overflow: 'hidden' },
+    listRow: { flexDirection: 'row', alignItems: 'center', padding: 14, minHeight: 44, borderBottomWidth: 1, borderBottomColor: p.border },
+    listTitle: { fontSize: 14, fontFamily: 'Outfit_700Bold', color: p.text, marginBottom: 4 },
+    listSub: { fontSize: 11, fontFamily: 'Outfit_400Regular', color: p.textSecondary, marginTop: 4 },
+    donationAmount: { fontSize: 15, fontFamily: 'Outfit_700Bold', color: p.success },
 
-  noData: { fontSize: 13, color: brandColors.textSecondary, paddingHorizontal: 20, fontFamily: 'Outfit_400Regular' },
-  emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 80, paddingHorizontal: 32 },
-  emptyIconTile: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(168,181,160,0.28)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyTitle: { fontSize: 16, fontFamily: 'Outfit_700Bold', color: brandColors.text, marginTop: 16, textAlign: 'center' },
-  emptyBody: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 4, textAlign: 'center' },
-  emptyAction: { marginTop: 16, borderRadius: 999 },
-})
+    noData: { fontSize: 13, color: p.textSecondary, paddingHorizontal: 20, fontFamily: 'Outfit_400Regular' },
+    emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 80, paddingHorizontal: 32 },
+    emptyIconTile: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: 'rgba(168,181,160,0.28)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    emptyTitle: { fontSize: 16, fontFamily: 'Outfit_700Bold', color: p.text, marginTop: 16, textAlign: 'center' },
+    emptyBody: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: p.textSecondary, marginTop: 4, textAlign: 'center' },
+    emptyAction: { marginTop: 16, borderRadius: 999 },
+  })
+}
+
+function useStyles() {
+  const p = usePalette()
+  const neu = useNeu()
+  return useMemo(() => makeStyles(p, neu), [p, neu])
+}

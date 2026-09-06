@@ -5,19 +5,50 @@ import { router } from 'expo-router'
 import type { Campaign } from '@ubuntu-fund/types'
 import { ProgressBar } from './ProgressBar'
 import { RemoteImage } from './RemoteImage'
-import { brandColors, neumorphism } from '../theme'
+import { usePalette, useNeu } from '@/context/ColorModeContext'
+import type { Palette, NeuRecipes } from '@/theme'
 
 interface CampaignCardProps {
   campaign: Campaign
 }
 
-const priorityColor: Record<string, string> = {
-  critical: brandColors.error,
-  urgent: brandColors.secondaryDark,
-  normal: 'transparent',
+function makeStyles(p: Palette, neu: NeuRecipes) {
+  return StyleSheet.create({
+    card: {
+      ...neu.raised,
+      marginBottom: 16,
+      borderRadius: 14,
+    },
+    cover: { width: '100%', height: 160, borderTopLeftRadius: 14, borderTopRightRadius: 14 },
+    content: { padding: 12, paddingTop: 10 },
+    chipRow: { flexDirection: 'row', gap: 6, marginBottom: 8 },
+    categoryChip: { height: 24, backgroundColor: 'rgba(168,181,160,0.28)' },
+    categoryChipText: { fontSize: 11, fontFamily: 'Outfit_700Bold', color: p.text },
+    priorityChip: { height: 24 },
+    priorityChipText: { fontSize: 11, fontFamily: 'Outfit_700Bold', color: '#FFFFFF' },
+    title: { fontFamily: 'Outfit_700Bold', color: p.text, marginBottom: 4 },
+    description: { color: p.textSecondary, marginBottom: 10, lineHeight: 18 },
+    stats: { flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 4 },
+    raised: { color: p.primary, fontFamily: 'Outfit_700Bold' },
+    muted: { color: p.textSecondary, flex: 1 },
+    daysLeft: { color: p.textSecondary },
+  })
+}
+
+function useStyles() {
+  const p = usePalette()
+  const neu = useNeu()
+  return useMemo(() => makeStyles(p, neu), [p, neu])
 }
 
 export function CampaignCard({ campaign }: CampaignCardProps) {
+  const p = usePalette()
+  const styles = useStyles()
+  const priorityColor: Record<string, string> = {
+    critical: p.error,
+    urgent: p.secondaryDark,
+    normal: 'transparent',
+  }
   const progress = campaign.goalAmount > 0 ? campaign.raisedAmount / campaign.goalAmount : 0
   const [now] = useState(() => Date.now())
   const daysLeft = useMemo(() => {
@@ -75,24 +106,3 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
     </Card>
   )
 }
-
-const styles = StyleSheet.create({
-  card: {
-    ...neumorphism.raised,
-    marginBottom: 16,
-    borderRadius: 14,
-  },
-  cover: { width: '100%', height: 160, borderTopLeftRadius: 14, borderTopRightRadius: 14 },
-  content: { padding: 12, paddingTop: 10 },
-  chipRow: { flexDirection: 'row', gap: 6, marginBottom: 8 },
-  categoryChip: { height: 24, backgroundColor: 'rgba(168,181,160,0.28)' },
-  categoryChipText: { fontSize: 11, fontFamily: 'Outfit_700Bold', color: brandColors.text },
-  priorityChip: { height: 24 },
-  priorityChipText: { fontSize: 11, fontFamily: 'Outfit_700Bold', color: '#FFFFFF' },
-  title: { fontFamily: 'Outfit_700Bold', color: brandColors.text, marginBottom: 4 },
-  description: { color: brandColors.textSecondary, marginBottom: 10, lineHeight: 18 },
-  stats: { flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 4 },
-  raised: { color: brandColors.primary, fontFamily: 'Outfit_700Bold' },
-  muted: { color: brandColors.textSecondary, flex: 1 },
-  daysLeft: { color: brandColors.textSecondary },
-})

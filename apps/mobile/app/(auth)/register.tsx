@@ -1,10 +1,11 @@
 import { BrandedTextInput as TextInput } from '@/components/BrandedTextInput'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { View, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, Pressable } from 'react-native'
 import { Button, Text } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Link, router } from 'expo-router'
-import { brandColors, neumorphism } from '@/theme'
+import { usePalette, useNeu } from '@/context/ColorModeContext'
+import type { Palette, NeuRecipes } from '@/theme'
 import { OrganizationType } from '@ubuntu-fund/types'
 import { useAuth } from '@/context/AuthContext'
 import { UjimoraLogo } from '@/components/UjimoraLogo'
@@ -21,6 +22,8 @@ const ORG_TYPE_OPTIONS: { value: OrganizationType; label: string }[] = [
 ]
 
 export default function RegisterScreen() {
+  const p = usePalette()
+  const styles = useStyles()
   const [accountType, setAccountType] = useState<AccountType>('individual')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -128,8 +131,8 @@ export default function RegisterScreen() {
             left={<TextInput.Icon icon="account-outline" />}
             style={styles.input}
             outlineStyle={styles.inputOutline}
-            outlineColor="rgba(26,46,34,0.14)"
-            activeOutlineColor={brandColors.primary}
+            outlineColor={p.border}
+            activeOutlineColor={p.primary}
             disabled={loading}
           />
           <TextInput
@@ -143,8 +146,8 @@ export default function RegisterScreen() {
             left={<TextInput.Icon icon="email-outline" />}
             style={styles.input}
             outlineStyle={styles.inputOutline}
-            outlineColor="rgba(26,46,34,0.14)"
-            activeOutlineColor={brandColors.primary}
+            outlineColor={p.border}
+            activeOutlineColor={p.primary}
             disabled={loading}
           />
 
@@ -161,8 +164,8 @@ export default function RegisterScreen() {
                 left={<TextInput.Icon icon="domain" />}
                 style={styles.input}
                 outlineStyle={styles.inputOutline}
-                outlineColor="rgba(26,46,34,0.14)"
-                activeOutlineColor={brandColors.primary}
+                outlineColor={p.border}
+                activeOutlineColor={p.primary}
                 disabled={loading}
               />
 
@@ -175,8 +178,8 @@ export default function RegisterScreen() {
                   right={<TextInput.Icon icon={showOrgTypePicker ? 'chevron-up' : 'chevron-down'} onPress={() => setShowOrgTypePicker(!showOrgTypePicker)} />}
                   style={styles.input}
                   outlineStyle={styles.inputOutline}
-                  outlineColor="rgba(26,46,34,0.14)"
-                  activeOutlineColor={brandColors.primary}
+                  outlineColor={p.border}
+                  activeOutlineColor={p.primary}
                   editable={false}
                 />
               </Pressable>
@@ -209,8 +212,8 @@ export default function RegisterScreen() {
                 left={<TextInput.Icon icon="file-document-outline" />}
                 style={styles.input}
                 outlineStyle={styles.inputOutline}
-                outlineColor="rgba(26,46,34,0.14)"
-                activeOutlineColor={brandColors.primary}
+                outlineColor={p.border}
+                activeOutlineColor={p.primary}
                 disabled={loading}
               />
             </>
@@ -236,21 +239,21 @@ export default function RegisterScreen() {
             }
             style={styles.input}
             outlineStyle={styles.inputOutline}
-            outlineColor="rgba(26,46,34,0.14)"
-            activeOutlineColor={brandColors.primary}
+            outlineColor={p.border}
+            activeOutlineColor={p.primary}
             disabled={loading}
           />
 
           {password.length > 0 && password.length < 8 && (
             <View style={styles.hintRow}>
-              <View style={[styles.hintDot, { backgroundColor: brandColors.error }]} />
+              <View style={[styles.hintDot, { backgroundColor: p.error }]} />
               <Text style={styles.hintText}>At least 8 characters required</Text>
             </View>
           )}
           {password.length >= 8 && (
             <View style={styles.hintRow}>
-              <View style={[styles.hintDot, { backgroundColor: brandColors.success }]} />
-              <Text style={[styles.hintText, { color: brandColors.success }]}>Strong password</Text>
+              <View style={[styles.hintDot, { backgroundColor: p.success }]} />
+              <Text style={[styles.hintText, { color: p.success }]}>Strong password</Text>
             </View>
           )}
 
@@ -264,14 +267,14 @@ export default function RegisterScreen() {
             error={!!confirmPassword && !passwordsMatch}
             style={styles.input}
             outlineStyle={styles.inputOutline}
-            outlineColor="rgba(26,46,34,0.14)"
-            activeOutlineColor={brandColors.primary}
+            outlineColor={p.border}
+            activeOutlineColor={p.primary}
             disabled={loading}
           />
           {!!confirmPassword && !passwordsMatch && (
             <View style={styles.hintRow}>
-              <View style={[styles.hintDot, { backgroundColor: brandColors.error }]} />
-              <Text style={[styles.hintText, { color: brandColors.error }]}>Passwords do not match</Text>
+              <View style={[styles.hintDot, { backgroundColor: p.error }]} />
+              <Text style={[styles.hintText, { color: p.error }]}>Passwords do not match</Text>
             </View>
           )}
 
@@ -281,7 +284,7 @@ export default function RegisterScreen() {
             style={styles.button}
             contentStyle={styles.buttonContent}
             labelStyle={styles.buttonLabel}
-            buttonColor={brandColors.primary}
+            buttonColor={p.primary}
             textColor="#F5F2EA"
             disabled={!canSubmit}
             loading={loading}
@@ -308,111 +311,119 @@ export default function RegisterScreen() {
   )
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: brandColors.primaryDark },
-  scroll: { flex: 1 },
-  scrollContent: { flexGrow: 1, backgroundColor: brandColors.primaryDark },
+function makeStyles(p: Palette, neu: NeuRecipes) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: p.primaryDark },
+    scroll: { flex: 1 },
+    scrollContent: { flexGrow: 1, backgroundColor: p.primaryDark },
 
-  stage: {
-    alignItems: 'center',
-    paddingHorizontal: 32,
-    paddingBottom: 32,
-    backgroundColor: brandColors.primaryDark,
-  },
-  stageTitle: {
-    marginTop: 18,
-    fontSize: 22,
-    fontFamily: 'Outfit_800ExtraBold',
-    color: '#F5F2EA',
-    textAlign: 'center',
-  },
-  stageTitleAccent: { color: '#DCC07E', fontFamily: 'Outfit_800ExtraBold' },
-  stageCaption: {
-    marginTop: 8,
-    fontSize: 10,
-    fontFamily: 'Outfit_600SemiBold',
-    letterSpacing: 2.2,
-    textTransform: 'uppercase',
-    color: 'rgba(245,242,234,0.5)',
-  },
+    stage: {
+      alignItems: 'center',
+      paddingHorizontal: 32,
+      paddingBottom: 32,
+      backgroundColor: p.primaryDark,
+    },
+    stageTitle: {
+      marginTop: 18,
+      fontSize: 22,
+      fontFamily: 'Outfit_800ExtraBold',
+      color: '#F5F2EA',
+      textAlign: 'center',
+    },
+    stageTitleAccent: { color: '#DCC07E', fontFamily: 'Outfit_800ExtraBold' },
+    stageCaption: {
+      marginTop: 8,
+      fontSize: 10,
+      fontFamily: 'Outfit_600SemiBold',
+      letterSpacing: 2.2,
+      textTransform: 'uppercase',
+      color: 'rgba(245,242,234,0.5)',
+    },
 
-  sheet: {
-    flexGrow: 1,
-    backgroundColor: brandColors.background,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingHorizontal: 24,
-    paddingTop: 14,
-  },
-  grabber: {
-    alignSelf: 'center',
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(26,46,34,0.14)',
-    marginBottom: 22,
-  },
-  eyebrow: {
-    fontSize: 11,
-    fontFamily: 'Outfit_600SemiBold',
-    textTransform: 'uppercase',
-    letterSpacing: 2,
-    color: '#A07E33',
-    marginBottom: 6,
-  },
-  title: {
-    fontSize: 24,
-    fontFamily: 'Outfit_800ExtraBold',
-    color: brandColors.text,
-    marginBottom: 6,
-  },
-  lede: {
-    fontSize: 14,
-    fontFamily: 'Outfit_400Regular',
-    color: brandColors.textSecondary,
-    lineHeight: 20,
-    marginBottom: 20,
-  },
+    sheet: {
+      flexGrow: 1,
+      backgroundColor: p.background,
+      borderTopLeftRadius: 28,
+      borderTopRightRadius: 28,
+      paddingHorizontal: 24,
+      paddingTop: 14,
+    },
+    grabber: {
+      alignSelf: 'center',
+      width: 40,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: p.border,
+      marginBottom: 22,
+    },
+    eyebrow: {
+      fontSize: 11,
+      fontFamily: 'Outfit_600SemiBold',
+      textTransform: 'uppercase',
+      letterSpacing: 2,
+      color: p.secondaryDark,
+      marginBottom: 6,
+    },
+    title: {
+      fontSize: 24,
+      fontFamily: 'Outfit_800ExtraBold',
+      color: p.text,
+      marginBottom: 6,
+    },
+    lede: {
+      fontSize: 14,
+      fontFamily: 'Outfit_400Regular',
+      color: p.textSecondary,
+      lineHeight: 20,
+      marginBottom: 20,
+    },
 
-  errorBanner: { backgroundColor: 'rgba(165,67,47,0.08)', borderRadius: 10, padding: 12, marginBottom: 16 },
-  errorText: { color: brandColors.error, fontSize: 13, fontFamily: 'Outfit_500Medium', textAlign: 'center' },
-  sectionLabel: {
-    fontSize: 11,
-    fontFamily: 'Outfit_600SemiBold',
-    color: brandColors.textSecondary,
-    letterSpacing: 1.4,
-    textTransform: 'uppercase',
-    marginBottom: 12,
-  },
+    errorBanner: { backgroundColor: `${p.error}1A`, borderRadius: 10, padding: 12, marginBottom: 16 },
+    errorText: { color: p.error, fontSize: 13, fontFamily: 'Outfit_500Medium', textAlign: 'center' },
+    sectionLabel: {
+      fontSize: 11,
+      fontFamily: 'Outfit_600SemiBold',
+      color: p.textSecondary,
+      letterSpacing: 1.4,
+      textTransform: 'uppercase',
+      marginBottom: 12,
+    },
 
-  toggleRow: { ...neumorphism.inset, flexDirection: 'row', borderRadius: 999, padding: 4, marginBottom: 24 },
-  toggleButton: { flex: 1, paddingVertical: 11, alignItems: 'center', borderRadius: 999 },
-  toggleActive: { ...neumorphism.greenSubtle },
-  toggleText: { fontSize: 14, fontFamily: 'Outfit_700Bold', color: brandColors.text },
-  toggleTextActive: { color: '#FFFFFF' },
+    toggleRow: { ...neu.inset, flexDirection: 'row', borderRadius: 999, padding: 4, marginBottom: 24 },
+    toggleButton: { flex: 1, paddingVertical: 11, alignItems: 'center', borderRadius: 999 },
+    toggleActive: { ...neu.greenSubtle },
+    toggleText: { fontSize: 14, fontFamily: 'Outfit_700Bold', color: p.text },
+    toggleTextActive: { color: '#FFFFFF' },
 
-  input: { ...neumorphism.inset, marginBottom: 14 },
-  inputOutline: { borderRadius: 12 },
+    input: { ...neu.inset, marginBottom: 14 },
+    inputOutline: { borderRadius: 12 },
 
-  pickerDropdown: { ...neumorphism.raised, borderRadius: 12, marginTop: -10, marginBottom: 14, overflow: 'hidden' },
-  pickerItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 13, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: 'rgba(26,46,34,0.06)' },
-  pickerItemActive: { backgroundColor: 'rgba(168,181,160,0.28)' },
-  pickerItemText: { fontSize: 14, fontFamily: 'Outfit_400Regular', color: brandColors.text },
-  pickerItemTextActive: { color: brandColors.text, fontFamily: 'Outfit_600SemiBold' },
-  pickerCheck: { width: 8, height: 8, borderRadius: 4, backgroundColor: brandColors.primary },
+    pickerDropdown: { ...neu.raised, borderRadius: 12, marginTop: -10, marginBottom: 14, overflow: 'hidden' },
+    pickerItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 13, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: p.border },
+    pickerItemActive: { backgroundColor: 'rgba(168,181,160,0.28)' },
+    pickerItemText: { fontSize: 14, fontFamily: 'Outfit_400Regular', color: p.text },
+    pickerItemTextActive: { color: p.text, fontFamily: 'Outfit_600SemiBold' },
+    pickerCheck: { width: 8, height: 8, borderRadius: 4, backgroundColor: p.primary },
 
-  hintRow: { flexDirection: 'row', alignItems: 'center', marginTop: -8, marginBottom: 12, paddingLeft: 4 },
-  hintDot: { width: 6, height: 6, borderRadius: 3, marginRight: 8 },
-  hintText: { fontSize: 12, color: brandColors.textSecondary, fontFamily: 'Outfit_400Regular' },
+    hintRow: { flexDirection: 'row', alignItems: 'center', marginTop: -8, marginBottom: 12, paddingLeft: 4 },
+    hintDot: { width: 6, height: 6, borderRadius: 3, marginRight: 8 },
+    hintText: { fontSize: 12, color: p.textSecondary, fontFamily: 'Outfit_400Regular' },
 
-  button: { borderRadius: 999, marginTop: 8, marginBottom: 16 },
-  buttonContent: { paddingVertical: 7 },
-  buttonLabel: { fontSize: 16, fontFamily: 'Outfit_700Bold', letterSpacing: 0.3 },
+    button: { borderRadius: 999, marginTop: 8, marginBottom: 16 },
+    buttonContent: { paddingVertical: 7 },
+    buttonLabel: { fontSize: 16, fontFamily: 'Outfit_700Bold', letterSpacing: 0.3 },
 
-  terms: { fontSize: 12, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, textAlign: 'center', lineHeight: 18, marginBottom: 20 },
-  termsLink: { color: brandColors.primary, fontFamily: 'Outfit_600SemiBold' },
+    terms: { fontSize: 12, fontFamily: 'Outfit_400Regular', color: p.textSecondary, textAlign: 'center', lineHeight: 18, marginBottom: 20 },
+    termsLink: { color: p.primary, fontFamily: 'Outfit_600SemiBold' },
 
-  footer: { flexDirection: 'row', justifyContent: 'center' },
-  footerText: { fontSize: 14, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary },
-  footerLink: { fontSize: 14, color: brandColors.primary, fontFamily: 'Outfit_600SemiBold' },
-})
+    footer: { flexDirection: 'row', justifyContent: 'center' },
+    footerText: { fontSize: 14, fontFamily: 'Outfit_400Regular', color: p.textSecondary },
+    footerLink: { fontSize: 14, color: p.primary, fontFamily: 'Outfit_600SemiBold' },
+  })
+}
+
+function useStyles() {
+  const p = usePalette()
+  const neu = useNeu()
+  return useMemo(() => makeStyles(p, neu), [p, neu])
+}

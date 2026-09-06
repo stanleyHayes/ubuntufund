@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   View,
   ScrollView,
@@ -13,7 +13,8 @@ import { api } from '@/lib/api'
 import { EmptyState } from '@/components/EmptyState'
 import { SignInRequired } from '@/components/SignInRequired'
 import { FadeInUp } from '@/components/anim/FadeInUp'
-import { brandColors, neumorphism } from '@/theme'
+import { usePalette, useNeu } from '@/context/ColorModeContext'
+import type { Palette, NeuRecipes } from '@/theme'
 
 interface Donation {
   id: string
@@ -33,11 +34,14 @@ interface Donation {
 const FILTER_TABS = ['All', 'Completed', 'Pending', 'Refunded'] as const
 type FilterTab = (typeof FILTER_TABS)[number]
 
-const STATUS_COLORS: Record<string, string> = {
-  completed: brandColors.success,
-  pending: brandColors.warning,
-  refunded: brandColors.primaryLight,
-  failed: brandColors.error,
+// Mode-aware status color lookup — `p` comes from whichever component reads it.
+function statusColors(p: Palette): Record<string, string> {
+  return {
+    completed: p.success,
+    pending: p.warning,
+    refunded: p.primaryLight,
+    failed: p.error,
+  }
 }
 
 function formatDate(date?: string | null) {
@@ -50,6 +54,7 @@ function formatDate(date?: string | null) {
 // ─── Skeleton ────────────────────────────────────────────────
 
 function SkeletonRow() {
+  const styles = useStyles()
   const [opacity] = useState(() => new Animated.Value(0.3))
   useEffect(() => {
     Animated.loop(
@@ -74,6 +79,8 @@ function SkeletonRow() {
 
 export default function MyDonationsScreen() {
   const { user } = useAuth()
+  const p = usePalette()
+  const styles = useStyles()
   const [donations, setDonations] = useState<Donation[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -103,8 +110,8 @@ export default function MyDonationsScreen() {
 
   const headerOptions = {
     title: 'My Donations',
-    headerStyle: { backgroundColor: brandColors.primary },
-    headerTintColor: '#FFFFFF',
+    headerStyle: { backgroundColor: p.primary },
+    headerTintColor: p.onPrimary,
     headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
   }
 
@@ -171,7 +178,7 @@ export default function MyDonationsScreen() {
         ) : (
           <View style={styles.listWrap}>
             {filtered.map((d, i) => {
-              const statusColor = STATUS_COLORS[d.status] ?? brandColors.textSecondary
+              const statusColor = statusColors(p)[d.status] ?? p.textSecondary
               const canRefund = d.status === 'completed'
               return (
                 <FadeInUp key={d.id} index={i}>
@@ -222,64 +229,72 @@ export default function MyDonationsScreen() {
   )
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: brandColors.background },
+function makeStyles(p: Palette, neu: NeuRecipes) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: p.background },
 
-  headerBlock: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 4 },
-  eyebrow: { fontSize: 11, fontFamily: 'Outfit_700Bold', fontWeight: '700', color: brandColors.secondaryDark, textTransform: 'uppercase', letterSpacing: 2 },
-  pageTitle: { fontSize: 24, fontFamily: 'Outfit_800ExtraBold', color: brandColors.text, marginTop: 4 },
-  pageLede: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 4 },
+    headerBlock: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 4 },
+    eyebrow: { fontSize: 11, fontFamily: 'Outfit_700Bold', fontWeight: '700', color: p.secondaryDark, textTransform: 'uppercase', letterSpacing: 2 },
+    pageTitle: { fontSize: 24, fontFamily: 'Outfit_800ExtraBold', color: p.text, marginTop: 4 },
+    pageLede: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: p.textSecondary, marginTop: 4 },
 
-  filterScroll: { flexGrow: 0 },
-  filterRow: { paddingHorizontal: 16, paddingVertical: 12, gap: 8, alignItems: 'center' },
-  filterTab: { ...neumorphism.subtle, height: 38, justifyContent: 'center', paddingHorizontal: 16, borderRadius: 999 },
-  filterTabActive: { ...neumorphism.greenInset },
-  filterTabText: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: brandColors.textSecondary },
-  filterTabTextActive: { color: '#fff' },
+    filterScroll: { flexGrow: 0 },
+    filterRow: { paddingHorizontal: 16, paddingVertical: 12, gap: 8, alignItems: 'center' },
+    filterTab: { ...neu.subtle, height: 38, justifyContent: 'center', paddingHorizontal: 16, borderRadius: 999 },
+    filterTabActive: { ...neu.greenInset },
+    filterTabText: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: p.textSecondary },
+    filterTabTextActive: { color: '#fff' },
 
-  listWrap: { paddingHorizontal: 16 },
+    listWrap: { paddingHorizontal: 16 },
 
-  donationCard: {
-    ...neumorphism.raised,
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 10,
-  },
-  donationHeader: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 10 },
-  donationCampaign: { fontSize: 15, fontFamily: 'Outfit_700Bold', color: brandColors.text },
-  donationDate: { fontSize: 11, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 2 },
-  donationAmount: { fontSize: 17, fontFamily: 'Outfit_700Bold', color: brandColors.primary },
-  donationFooter: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  statusChip: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-  statusChipText: { fontSize: 11, fontFamily: 'Outfit_700Bold' },
-  paymentMethod: { fontSize: 11, color: brandColors.textSecondary, fontFamily: 'Outfit_400Regular' },
-  refundBtn: { marginLeft: 'auto' },
-  refundBtnText: { fontSize: 12, fontFamily: 'Outfit_700Bold', color: brandColors.error },
+    donationCard: {
+      ...neu.raised,
+      borderRadius: 14,
+      padding: 14,
+      marginBottom: 10,
+    },
+    donationHeader: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 10 },
+    donationCampaign: { fontSize: 15, fontFamily: 'Outfit_700Bold', color: p.text },
+    donationDate: { fontSize: 11, fontFamily: 'Outfit_400Regular', color: p.textSecondary, marginTop: 2 },
+    donationAmount: { fontSize: 17, fontFamily: 'Outfit_700Bold', color: p.primary },
+    donationFooter: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    statusChip: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+    statusChipText: { fontSize: 11, fontFamily: 'Outfit_700Bold' },
+    paymentMethod: { fontSize: 11, color: p.textSecondary, fontFamily: 'Outfit_400Regular' },
+    refundBtn: { marginLeft: 'auto' },
+    refundBtnText: { fontSize: 12, fontFamily: 'Outfit_700Bold', color: p.error },
 
-  skeletonRow: {
-    ...neumorphism.raised,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 10,
-  },
-  skeletonLine: { height: 14, backgroundColor: 'rgba(168,181,160,0.35)', borderRadius: 4 },
+    skeletonRow: {
+      ...neu.raised,
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderRadius: 14,
+      padding: 14,
+      marginBottom: 10,
+    },
+    skeletonLine: { height: 14, backgroundColor: p.skeleton, borderRadius: 4 },
 
-  emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 72, paddingHorizontal: 32 },
-  emptyIconTile: {
-    ...neumorphism.subtle,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(168,181,160,0.28)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  errorIconTile: { backgroundColor: 'rgba(165,67,47,0.14)' },
-  emptyTitle: { fontSize: 16, fontFamily: 'Outfit_700Bold', color: brandColors.text, textAlign: 'center' },
-  emptySubtitle: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 6, textAlign: 'center' },
-  actionBtn: { marginTop: 16, borderRadius: 999 },
-  btnLabel: { fontFamily: 'Outfit_700Bold' },
-})
+    emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 72, paddingHorizontal: 32 },
+    emptyIconTile: {
+      ...neu.subtle,
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: 'rgba(168,181,160,0.28)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 16,
+    },
+    errorIconTile: { backgroundColor: `${p.error}24` },
+    emptyTitle: { fontSize: 16, fontFamily: 'Outfit_700Bold', color: p.text, textAlign: 'center' },
+    emptySubtitle: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: p.textSecondary, marginTop: 6, textAlign: 'center' },
+    actionBtn: { marginTop: 16, borderRadius: 999 },
+    btnLabel: { fontFamily: 'Outfit_700Bold' },
+  })
+}
+
+function useStyles() {
+  const p = usePalette()
+  const neu = useNeu()
+  return useMemo(() => makeStyles(p, neu), [p, neu])
+}

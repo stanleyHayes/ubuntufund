@@ -1,5 +1,5 @@
 import { BrandedNativeInput as TextInput } from '@/components/BrandedNativeInput'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { View, ScrollView, StyleSheet, Alert, Modal, TouchableOpacity } from 'react-native'
 import { useLocalSearchParams, Stack } from 'expo-router'
 import { Text, Button, Chip, ActivityIndicator, Surface, Avatar, Icon } from 'react-native-paper'
@@ -10,7 +10,8 @@ import { useEnabledPaymentProviders, EnabledPaymentProvider, getProviderIcon } f
 import { ProgressBar } from '@/components/ProgressBar'
 import { TrustBadge } from '@/components/TrustBadge'
 import { shareCampaign } from '@/components/ShareCampaign'
-import { brandColors, neumorphism } from '@/theme'
+import { usePalette, useNeu } from '@/context/ColorModeContext'
+import type { Palette, NeuRecipes } from '@/theme'
 import { api } from '@/lib/api'
 import type { CampaignDonation } from '@ubuntu-fund/types'
 import { CollaboratorRole, type CampaignCollaborator } from '@ubuntu-fund/types'
@@ -23,10 +24,13 @@ const ROLE_LABELS: Record<CollaboratorRole, string> = {
   [CollaboratorRole.FEATURED_PARTNER]: 'Featured Partner',
 }
 
-const priorityStyle: Record<string, { bg: string; text: string }> = {
-  critical: { bg: 'rgba(165,67,47,0.14)', text: brandColors.error },
-  urgent: { bg: 'rgba(185,138,46,0.16)', text: brandColors.warning },
-  normal: { bg: 'rgba(168,181,160,0.28)', text: brandColors.text },
+// Priority tag colors, built from the active palette so a mode switch recolors them.
+function makePriorityStyle(p: Palette): Record<string, { bg: string; text: string }> {
+  return {
+    critical: { bg: `${p.error}24`, text: p.error },
+    urgent: { bg: `${p.warning}29`, text: p.warning },
+    normal: { bg: 'rgba(168,181,160,0.28)', text: p.text },
+  }
 }
 
 const FALLBACK_WALLET_PROVIDER: EnabledPaymentProvider = {
@@ -41,10 +45,176 @@ function formatDate(date?: string | Date | null) {
   return d.toLocaleDateString()
 }
 
+// Shared style factory — built from the active palette so a mode switch recolors
+// everything. The screen calls `useStyles()` (below) to get the memoized result.
+function makeStyles(p: Palette, neu: NeuRecipes) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: p.background },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    heroImage: { width: '100%', height: 240 },
+    content: { padding: 16 },
+    chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
+    chip: { height: 28, backgroundColor: 'rgba(168,181,160,0.28)' },
+    chipText: { fontSize: 12, fontFamily: 'Outfit_400Regular', color: p.text },
+    title: { fontFamily: 'Outfit_700Bold', marginBottom: 16 },
+    progressCard: {
+      ...neu.raised,
+      padding: 16,
+      borderRadius: 14,
+      marginBottom: 16,
+      backgroundColor: p.surface,
+    },
+    statsRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 },
+    raised: { color: p.success, fontFamily: 'Outfit_700Bold' },
+    muted: { color: p.textSecondary },
+    statRight: { alignItems: 'flex-end' },
+    donateButton: { borderRadius: 999, marginBottom: 24, paddingVertical: 4 },
+    donateLabel: { fontSize: 16, fontFamily: 'Outfit_700Bold' },
+    sectionTitle: { fontFamily: 'Outfit_700Bold', marginBottom: 8, marginTop: 8 },
+    description: { lineHeight: 22, color: p.textSecondary, marginBottom: 16 },
+    collaboratorAvatarRow: { flexDirection: 'row', gap: 4, marginBottom: 12 },
+    collaboratorAvatar: { backgroundColor: p.primaryLight },
+    collaboratorCard: {
+      ...neu.raised,
+      padding: 12,
+      borderRadius: 14,
+      marginBottom: 8,
+      backgroundColor: p.surface,
+    },
+    collaboratorRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    collaboratorInfo: { flex: 1 },
+    collaboratorName: { fontFamily: 'Outfit_700Bold' },
+    stillNeeded: { color: p.textSecondary, textAlign: 'center', marginTop: -12, marginBottom: 20, fontFamily: 'Outfit_400Regular' },
+    datesCard: {
+      ...neu.raised,
+      padding: 14,
+      borderRadius: 14,
+      marginBottom: 16,
+      backgroundColor: p.surface,
+    },
+    dateRow: { flexDirection: 'row', justifyContent: 'space-around' },
+    dateItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    dateText: { fontFamily: 'Outfit_700Bold', color: p.text },
+    creatorCard: {
+      ...neu.raised,
+      padding: 14,
+      borderRadius: 14,
+      marginBottom: 16,
+      backgroundColor: p.surface,
+    },
+    creatorRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    creatorInfo: { flex: 1 },
+    creatorNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    donationCard: {
+      ...neu.raised,
+      padding: 12,
+      borderRadius: 14,
+      marginBottom: 8,
+      backgroundColor: p.surface,
+    },
+    donationRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    donationInfo: { flex: 1 },
+    donationAmount: { alignItems: 'flex-end' },
+    paymentMethodsCard: {
+      ...neu.raised,
+      padding: 14,
+      borderRadius: 14,
+      marginBottom: 16,
+      backgroundColor: p.surface,
+    },
+    paymentMethodItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
+    reportButton: { alignSelf: 'flex-end', marginTop: 4 },
+    reportLabel: { fontSize: 13, fontFamily: 'Outfit_700Bold' },
+
+    // Donation modal
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: p.overlay,
+      justifyContent: 'flex-end',
+    },
+    modalSheet: {
+      backgroundColor: p.surface,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      padding: 24,
+      paddingBottom: 36,
+    },
+    modalTitle: { fontFamily: 'Outfit_700Bold', marginBottom: 4 },
+    fieldLabel: { fontFamily: 'Outfit_700Bold', marginBottom: 6, marginTop: 4 },
+    modalInput: {
+      ...neu.inset,
+      borderRadius: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      fontSize: 16,
+      fontFamily: 'Outfit_400Regular',
+      marginBottom: 12,
+      color: p.text,
+    },
+    paymentRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+    paymentOption: {
+      ...neu.subtle,
+      flex: 1,
+      paddingVertical: 10,
+      borderRadius: 12,
+      alignItems: 'center',
+    },
+    paymentOptionActive: {
+      borderColor: p.primary,
+      backgroundColor: `${p.primary}14`,
+    },
+    paymentOptionText: { fontSize: 12, color: p.textSecondary, fontFamily: 'Outfit_700Bold' },
+    paymentOptionTextActive: { color: p.primary },
+    providerList: { gap: 8, marginBottom: 12 },
+    providerOption: {
+      ...neu.subtle,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingVertical: 12,
+      paddingHorizontal: 12,
+      borderRadius: 12,
+      backgroundColor: p.surface,
+    },
+    providerOptionActive: {
+      borderColor: p.primary,
+      backgroundColor: `${p.primary}14`,
+    },
+    providerOptionText: { fontSize: 13, color: p.textSecondary, fontFamily: 'Outfit_700Bold' },
+    providerOptionTextActive: { color: p.primary },
+    paymentFallback: {
+      ...neu.inset,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      borderRadius: 12,
+      backgroundColor: p.surface,
+      marginBottom: 12,
+    },
+    paymentFallbackText: { flex: 1, fontSize: 13, color: p.textSecondary, fontFamily: 'Outfit_400Regular' },
+    modalActions: { flexDirection: 'row', marginTop: 8 },
+    actionRow: { flexDirection: 'row', gap: 12, marginBottom: 8 },
+    shareButton: { flex: 1, borderRadius: 999 },
+    shareLabel: { fontSize: 16, fontFamily: 'Outfit_700Bold' },
+  })
+}
+
+function useStyles() {
+  const p = usePalette()
+  const neu = useNeu()
+  return useMemo(() => makeStyles(p, neu), [p, neu])
+}
+
 export default function CampaignDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const { campaign, isLoading, error } = useCampaign(id ?? '')
   const { user: creator } = useUser(campaign?.creatorId ?? '')
+
+  const p = usePalette()
+  const styles = useStyles()
+  const priorityStyle = useMemo(() => makePriorityStyle(p), [p])
 
   // Collaborators state
   const [collaborators, setCollaborators] = useState<CampaignCollaborator[]>([])
@@ -131,7 +301,7 @@ export default function CampaignDetailScreen() {
   if (isLoading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color={brandColors.primary} />
+        <ActivityIndicator size="large" color={p.primary} />
       </View>
     )
   }
@@ -209,7 +379,7 @@ export default function CampaignDetailScreen() {
               mode="contained"
               style={styles.donateButton}
               labelStyle={styles.donateLabel}
-              buttonColor={brandColors.secondary}
+              buttonColor={p.secondary}
               textColor="#221B0E"
               onPress={() => setDonateModalVisible(true)}
             >
@@ -219,7 +389,7 @@ export default function CampaignDetailScreen() {
               mode="contained"
               style={styles.shareButton}
               labelStyle={styles.shareLabel}
-              buttonColor={brandColors.primary}
+              buttonColor={p.primary}
               textColor="#FFFFFF"
               icon="share-variant"
               onPress={() => {
@@ -259,7 +429,7 @@ export default function CampaignDetailScreen() {
           <Surface style={styles.datesCard} elevation={0}>
             <View style={styles.dateRow}>
               <View style={styles.dateItem}>
-                <Icon source="calendar-start" size={18} color={brandColors.textSecondary} />
+                <Icon source="calendar-start" size={18} color={p.textSecondary} />
                 <View>
                   <Text variant="labelSmall" style={styles.muted}>Started</Text>
                   <Text variant="bodySmall" style={styles.dateText}>
@@ -268,7 +438,7 @@ export default function CampaignDetailScreen() {
                 </View>
               </View>
               <View style={styles.dateItem}>
-                <Icon source="calendar-end" size={18} color={brandColors.textSecondary} />
+                <Icon source="calendar-end" size={18} color={p.textSecondary} />
                 <View>
                   <Text variant="labelSmall" style={styles.muted}>Ends</Text>
                   <Text variant="bodySmall" style={styles.dateText}>
@@ -288,7 +458,7 @@ export default function CampaignDetailScreen() {
               <Avatar.Text
                 size={48}
                 label={(creator?.name ?? '?').charAt(0).toUpperCase()}
-                style={{ backgroundColor: brandColors.primary }}
+                style={{ backgroundColor: p.primary }}
               />
               <View style={styles.creatorInfo}>
                 <View style={styles.creatorNameRow}>
@@ -296,7 +466,7 @@ export default function CampaignDetailScreen() {
                     {creator?.name ?? 'Loading...'}
                   </Text>
                   {creator && creator.verificationLevel >= 2 && (
-                    <Icon source="check-decagram" size={18} color={brandColors.primary} />
+                    <Icon source="check-decagram" size={18} color={p.primary} />
                   )}
                 </View>
                 {creator?.country && (
@@ -323,7 +493,7 @@ export default function CampaignDetailScreen() {
                     <Avatar.Text
                       size={36}
                       label={donation.isAnonymous ? '?' : donation.donorName.charAt(0).toUpperCase()}
-                      style={{ backgroundColor: donation.isAnonymous ? '#9E9E9E' : brandColors.primary }}
+                      style={{ backgroundColor: donation.isAnonymous ? '#9E9E9E' : p.primary }}
                     />
                     <View style={styles.donationInfo}>
                       <Text variant="bodyMedium" style={styles.collaboratorName}>
@@ -351,7 +521,7 @@ export default function CampaignDetailScreen() {
 
           {/* Collaborators */}
           {collabLoading ? (
-            <ActivityIndicator size="small" color={brandColors.primary} style={{ marginVertical: 12 }} />
+            <ActivityIndicator size="small" color={p.primary} style={{ marginVertical: 12 }} />
           ) : collaborators.length > 0 ? (
             <>
               <Text variant="titleMedium" style={styles.sectionTitle}>
@@ -398,7 +568,7 @@ export default function CampaignDetailScreen() {
           <Surface style={styles.paymentMethodsCard} elevation={0}>
             {[{ icon: 'wallet-outline', label: 'Ujimora Wallet' }].map((method) => (
               <View key={method.label} style={styles.paymentMethodItem}>
-                <Icon source={method.icon} size={20} color={brandColors.textSecondary} />
+                <Icon source={method.icon} size={20} color={p.textSecondary} />
                 <Text variant="bodySmall">{method.label}</Text>
               </View>
             ))}
@@ -408,7 +578,7 @@ export default function CampaignDetailScreen() {
           <Button
             mode="text"
             icon="flag-outline"
-            textColor={brandColors.error}
+            textColor={p.error}
             style={styles.reportButton}
             labelStyle={styles.reportLabel}
             onPress={() => Alert.alert(
@@ -451,7 +621,7 @@ export default function CampaignDetailScreen() {
             <TextInput
               style={styles.modalInput}
               placeholder="e.g. 50"
-              placeholderTextColor="rgba(26,46,34,0.35)"
+              placeholderTextColor={`${p.text}59`}
               keyboardType="numeric"
               value={donateAmount}
               onChangeText={setDonateAmount}
@@ -460,10 +630,10 @@ export default function CampaignDetailScreen() {
 
             <Text variant="labelLarge" style={styles.fieldLabel}>Payment Method</Text>
             {providersLoading ? (
-              <ActivityIndicator size="small" color={brandColors.primary} style={{ marginVertical: 12 }} />
+              <ActivityIndicator size="small" color={p.primary} style={{ marginVertical: 12 }} />
             ) : providersError || providers.length === 0 ? (
               <View style={styles.paymentFallback}>
-                <Icon source="wallet" size={20} color={brandColors.primary} />
+                <Icon source="wallet" size={20} color={p.primary} />
                 <Text variant="bodySmall" style={styles.paymentFallbackText}>
                   {providersError ? 'Could not load payment methods. Wallet will be used.' : 'No payment methods available.'}
                 </Text>
@@ -483,7 +653,7 @@ export default function CampaignDetailScreen() {
                     <Icon
                       source={getProviderIcon(provider.type)}
                       size={20}
-                      color={selectedProvider?.id === provider.id ? brandColors.primary : brandColors.textSecondary}
+                      color={selectedProvider?.id === provider.id ? p.primary : p.textSecondary}
                     />
                     <Text
                       style={[
@@ -502,7 +672,7 @@ export default function CampaignDetailScreen() {
             <TextInput
               style={[styles.modalInput, { height: 60, textAlignVertical: 'top' }]}
               placeholder="Leave a message of support..."
-              placeholderTextColor="rgba(26,46,34,0.35)"
+              placeholderTextColor={`${p.text}59`}
               multiline
               value={donateMessage}
               onChangeText={setDonateMessage}
@@ -520,7 +690,7 @@ export default function CampaignDetailScreen() {
               </Button>
               <Button
                 mode="contained"
-                buttonColor={brandColors.primary}
+                buttonColor={p.primary}
                 onPress={handleDonate}
                 style={{ flex: 1, marginLeft: 8, borderRadius: 999 }}
                 disabled={isDonating || !donateAmount || (!providersLoading && providers.length === 0 && !providersError)}
@@ -535,155 +705,3 @@ export default function CampaignDetailScreen() {
     </>
   )
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: brandColors.background },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  heroImage: { width: '100%', height: 240 },
-  content: { padding: 16 },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
-  chip: { height: 28, backgroundColor: 'rgba(168,181,160,0.28)' },
-  chipText: { fontSize: 12, fontFamily: 'Outfit_400Regular', color: brandColors.text },
-  title: { fontFamily: 'Outfit_700Bold', marginBottom: 16 },
-  progressCard: {
-    ...neumorphism.raised,
-    padding: 16,
-    borderRadius: 14,
-    marginBottom: 16,
-    backgroundColor: brandColors.surface,
-  },
-  statsRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 },
-  raised: { color: brandColors.success, fontFamily: 'Outfit_700Bold' },
-  muted: { color: brandColors.textSecondary },
-  statRight: { alignItems: 'flex-end' },
-  donateButton: { borderRadius: 999, marginBottom: 24, paddingVertical: 4 },
-  donateLabel: { fontSize: 16, fontFamily: 'Outfit_700Bold' },
-  sectionTitle: { fontFamily: 'Outfit_700Bold', marginBottom: 8, marginTop: 8 },
-  description: { lineHeight: 22, color: brandColors.textSecondary, marginBottom: 16 },
-  collaboratorAvatarRow: { flexDirection: 'row', gap: 4, marginBottom: 12 },
-  collaboratorAvatar: { backgroundColor: brandColors.primaryLight },
-  collaboratorCard: {
-    ...neumorphism.raised,
-    padding: 12,
-    borderRadius: 14,
-    marginBottom: 8,
-    backgroundColor: brandColors.surface,
-  },
-  collaboratorRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  collaboratorInfo: { flex: 1 },
-  collaboratorName: { fontFamily: 'Outfit_700Bold' },
-  stillNeeded: { color: brandColors.textSecondary, textAlign: 'center', marginTop: -12, marginBottom: 20, fontFamily: 'Outfit_400Regular' },
-  datesCard: {
-    ...neumorphism.raised,
-    padding: 14,
-    borderRadius: 14,
-    marginBottom: 16,
-    backgroundColor: brandColors.surface,
-  },
-  dateRow: { flexDirection: 'row', justifyContent: 'space-around' },
-  dateItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  dateText: { fontFamily: 'Outfit_700Bold', color: brandColors.text },
-  creatorCard: {
-    ...neumorphism.raised,
-    padding: 14,
-    borderRadius: 14,
-    marginBottom: 16,
-    backgroundColor: brandColors.surface,
-  },
-  creatorRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  creatorInfo: { flex: 1 },
-  creatorNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  donationCard: {
-    ...neumorphism.raised,
-    padding: 12,
-    borderRadius: 14,
-    marginBottom: 8,
-    backgroundColor: brandColors.surface,
-  },
-  donationRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  donationInfo: { flex: 1 },
-  donationAmount: { alignItems: 'flex-end' },
-  paymentMethodsCard: {
-    ...neumorphism.raised,
-    padding: 14,
-    borderRadius: 14,
-    marginBottom: 16,
-    backgroundColor: brandColors.surface,
-  },
-  paymentMethodItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
-  reportButton: { alignSelf: 'flex-end', marginTop: 4 },
-  reportLabel: { fontSize: 13, fontFamily: 'Outfit_700Bold' },
-
-  // Donation modal
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalSheet: {
-    backgroundColor: brandColors.surface,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 24,
-    paddingBottom: 36,
-  },
-  modalTitle: { fontFamily: 'Outfit_700Bold', marginBottom: 4 },
-  fieldLabel: { fontFamily: 'Outfit_700Bold', marginBottom: 6, marginTop: 4 },
-  modalInput: {
-    ...neumorphism.inset,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 16,
-    fontFamily: 'Outfit_400Regular',
-    marginBottom: 12,
-    color: brandColors.text,
-  },
-  paymentRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  paymentOption: {
-    ...neumorphism.subtle,
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  paymentOptionActive: {
-    borderColor: brandColors.primary,
-    backgroundColor: 'rgba(46,61,47,0.08)',
-  },
-  paymentOptionText: { fontSize: 12, color: brandColors.textSecondary, fontFamily: 'Outfit_700Bold' },
-  paymentOptionTextActive: { color: brandColors.primary },
-  providerList: { gap: 8, marginBottom: 12 },
-  providerOption: {
-    ...neumorphism.subtle,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    backgroundColor: brandColors.surface,
-  },
-  providerOptionActive: {
-    borderColor: brandColors.primary,
-    backgroundColor: 'rgba(46,61,47,0.08)',
-  },
-  providerOptionText: { fontSize: 13, color: brandColors.textSecondary, fontFamily: 'Outfit_700Bold' },
-  providerOptionTextActive: { color: brandColors.primary },
-  paymentFallback: {
-    ...neumorphism.inset,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    backgroundColor: brandColors.surface,
-    marginBottom: 12,
-  },
-  paymentFallbackText: { flex: 1, fontSize: 13, color: brandColors.textSecondary, fontFamily: 'Outfit_400Regular' },
-  modalActions: { flexDirection: 'row', marginTop: 8 },
-  actionRow: { flexDirection: 'row', gap: 12, marginBottom: 8 },
-  shareButton: { flex: 1, borderRadius: 999 },
-  shareLabel: { fontSize: 16, fontFamily: 'Outfit_700Bold' },
-})

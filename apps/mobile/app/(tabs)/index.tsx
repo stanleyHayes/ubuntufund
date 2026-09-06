@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   View,
   ScrollView,
@@ -20,7 +20,8 @@ import { UjimoraLogo } from '@/components/UjimoraLogo'
 import { RemoteImage } from '@/components/RemoteImage'
 import { FadeInUp } from '@/components/anim/FadeInUp'
 import { PressableScale } from '@/components/anim/PressableScale'
-import { brandColors, neumorphism } from '@/theme'
+import { usePalette, useNeu } from '@/context/ColorModeContext'
+import type { Palette, NeuRecipes } from '@/theme'
 
 const { width } = Dimensions.get('window')
 const CARD_WIDTH = width * 0.78
@@ -64,6 +65,8 @@ function getGreeting() {
 // ─── Featured Campaign Card ──────────────────────────────────
 
 function FeaturedCard({ campaign, index }: { campaign: Campaign; index: number }) {
+  const p = usePalette()
+  const styles = useStyles()
   const pct = campaign.goalAmount > 0 ? Math.min(campaign.raisedAmount / campaign.goalAmount, 1) : 0
   const [fadeAnim] = useState(() => new Animated.Value(0))
   const [slideAnim] = useState(() => new Animated.Value(30))
@@ -87,7 +90,7 @@ function FeaturedCard({ campaign, index }: { campaign: Campaign; index: number }
 
         {/* Priority badge */}
         {campaign.priority !== 'normal' && (
-          <View style={[styles.priorityBadge, { backgroundColor: campaign.priority === 'critical' ? brandColors.error : brandColors.warning }]}>
+          <View style={[styles.priorityBadge, { backgroundColor: campaign.priority === 'critical' ? p.error : p.warning }]}>
             <Text style={styles.priorityText}>{campaign.priority === 'critical' ? 'Critical' : 'Urgent'}</Text>
           </View>
         )}
@@ -105,7 +108,7 @@ function FeaturedCard({ campaign, index }: { campaign: Campaign; index: number }
 
           <Text style={styles.featuredTitle} numberOfLines={2}>{campaign.title}</Text>
 
-          <ProgressBar progress={pct} height={4} backgroundColor="rgba(255,255,255,0.2)" fillColor={brandColors.secondary} />
+          <ProgressBar progress={pct} height={4} backgroundColor="rgba(255,255,255,0.2)" fillColor={p.secondary} />
 
           <View style={styles.featuredStats}>
             <Text style={styles.featuredRaised}>{formatCurrency(campaign.raisedAmount)}</Text>
@@ -121,6 +124,7 @@ function FeaturedCard({ campaign, index }: { campaign: Campaign; index: number }
 // ─── Compact Campaign Row ────────────────────────────────────
 
 function CompactCard({ campaign }: { campaign: Campaign }) {
+  const styles = useStyles()
   const pct = campaign.goalAmount > 0 ? Math.min(campaign.raisedAmount / campaign.goalAmount, 1) : 0
 
   return (
@@ -145,6 +149,7 @@ function CompactCard({ campaign }: { campaign: Campaign }) {
 // ─── Section Header ──────────────────────────────────────────
 
 function SectionHeader({ title, onSeeAll }: { title: string; onSeeAll?: () => void }) {
+  const styles = useStyles()
   return (
     <View style={styles.sectionHeader}>
       <Text style={styles.sectionTitle}>{title}</Text>
@@ -160,6 +165,8 @@ function SectionHeader({ title, onSeeAll }: { title: string; onSeeAll?: () => vo
 // ─── Main Component ──────────────────────────────────────────
 
 export default function HomeTab() {
+  const p = usePalette()
+  const styles = useStyles()
   const { campaigns, isLoading } = useCampaigns()
   const { user } = useAuth()
   const insets = useSafeAreaInsets()
@@ -222,7 +229,7 @@ export default function HomeTab() {
       </View>
 
       {isLoading ? (
-        <ActivityIndicator size="large" style={{ marginTop: 60 }} color={brandColors.primary} />
+        <ActivityIndicator size="large" style={{ marginTop: 60 }} color={p.primary} />
       ) : (
         <>
           {/* ═══ CATEGORIES ═══ */}
@@ -239,7 +246,7 @@ export default function HomeTab() {
                       onPress={() => router.push({ pathname: '/(tabs)/explore', params: { category: cat.key } })}
                     >
                       <View style={styles.categoryEmoji}>
-                        <Icon source={cat.icon} size={20} color={brandColors.primary} />
+                        <Icon source={cat.icon} size={20} color={p.primary} />
                       </View>
                       <Text style={styles.categoryLabel}>{cat.label}</Text>
                       <Text style={styles.categoryCount}>{count}</Text>
@@ -333,162 +340,170 @@ export default function HomeTab() {
 
 // ─── Styles ──────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: brandColors.background },
+function makeStyles(p: Palette, neu: NeuRecipes) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: p.background },
 
-  // Hero
-  hero: {
-    backgroundColor: brandColors.primaryDark,
-    paddingBottom: 24,
-    paddingHorizontal: 20,
-    overflow: 'hidden',
-  },
-  bgCircle: { position: 'absolute', borderRadius: 9999, backgroundColor: brandColors.primary, opacity: 0.06 },
-  circleRight: { width: width * 0.6, height: width * 0.6, top: -width * 0.2, right: -width * 0.2 },
-  circleBottom: { width: width * 0.4, height: width * 0.4, bottom: -width * 0.15, left: -width * 0.1 },
+    // Hero
+    hero: {
+      backgroundColor: p.primaryDark,
+      paddingBottom: 24,
+      paddingHorizontal: 20,
+      overflow: 'hidden',
+    },
+    bgCircle: { position: 'absolute', borderRadius: 9999, backgroundColor: p.primary, opacity: 0.06 },
+    circleRight: { width: width * 0.6, height: width * 0.6, top: -width * 0.2, right: -width * 0.2 },
+    circleBottom: { width: width * 0.4, height: width * 0.4, bottom: -width * 0.15, left: -width * 0.1 },
 
-  greetingRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
-  greeting: { fontSize: 14, color: 'rgba(255,255,255,0.5)', fontFamily: 'Outfit_400Regular' },
-  userName: { fontSize: 24, fontFamily: 'Outfit_800ExtraBold', color: '#FFFFFF', marginTop: 2 },
+    greetingRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
+    greeting: { fontSize: 14, color: 'rgba(255,255,255,0.5)', fontFamily: 'Outfit_400Regular' },
+    userName: { fontSize: 24, fontFamily: 'Outfit_800ExtraBold', color: '#FFFFFF', marginTop: 2 },
 
-  statsRow: {
-    ...neumorphism.greenInset,
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 8,
-  },
-  statBox: { flex: 1, alignItems: 'center' },
-  statDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.08)', marginVertical: 4 },
-  statValue: { fontSize: 18, fontFamily: 'Outfit_700Bold', color: brandColors.secondary },
-  statLabel: { fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 2, fontFamily: 'Outfit_400Regular' },
+    statsRow: {
+      ...neu.greenInset,
+      flexDirection: 'row',
+      backgroundColor: 'rgba(255,255,255,0.06)',
+      borderRadius: 14,
+      paddingVertical: 14,
+      paddingHorizontal: 8,
+    },
+    statBox: { flex: 1, alignItems: 'center' },
+    statDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.08)', marginVertical: 4 },
+    statValue: { fontSize: 18, fontFamily: 'Outfit_700Bold', color: p.secondary },
+    statLabel: { fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 2, fontFamily: 'Outfit_400Regular' },
 
-  // Section
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 12 },
-  sectionTitle: { fontSize: 17, fontFamily: 'Outfit_700Bold', color: brandColors.text },
-  seeAll: { fontSize: 13, color: brandColors.primary, fontFamily: 'Outfit_700Bold' },
+    // Section
+    sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 12 },
+    sectionTitle: { fontSize: 17, fontFamily: 'Outfit_700Bold', color: p.text },
+    seeAll: { fontSize: 13, color: p.primary, fontFamily: 'Outfit_700Bold' },
 
-  // Categories
-  categoryScrollView: { flexGrow: 0 },
-  categoryScroll: { paddingHorizontal: 16, paddingRight: 24, gap: 10, alignItems: 'flex-start' },
-  categoryPill: {
-    ...neumorphism.raised,
-    alignItems: 'center',
-    width: 72,
-    paddingVertical: 10,
-    borderRadius: 18,
-    marginVertical: 8,
-  },
-  categoryEmoji: {
-    ...neumorphism.subtle,
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 6,
-    backgroundColor: 'rgba(168,181,160,0.28)',
-  },
-  categoryLabel: { fontSize: 11, fontFamily: 'Outfit_700Bold', color: brandColors.textSecondary, textAlign: 'center' },
-  categoryCount: { fontSize: 10, fontFamily: 'Outfit_400Regular', color: 'rgba(74,90,80,0.65)', marginTop: 1 },
+    // Categories
+    categoryScrollView: { flexGrow: 0 },
+    categoryScroll: { paddingHorizontal: 16, paddingRight: 24, gap: 10, alignItems: 'flex-start' },
+    categoryPill: {
+      ...neu.raised,
+      alignItems: 'center',
+      width: 72,
+      paddingVertical: 10,
+      borderRadius: 18,
+      marginVertical: 8,
+    },
+    categoryEmoji: {
+      ...neu.subtle,
+      width: 48,
+      height: 48,
+      borderRadius: 14,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 6,
+      backgroundColor: 'rgba(168,181,160,0.28)',
+    },
+    categoryLabel: { fontSize: 11, fontFamily: 'Outfit_700Bold', color: p.textSecondary, textAlign: 'center' },
+    categoryCount: { fontSize: 10, fontFamily: 'Outfit_400Regular', color: `${p.textSecondary}A6`, marginTop: 1 },
 
-  // Featured card
-  featuredCardShell: {
-    ...neumorphism.greenRaised,
-    width: CARD_WIDTH,
-    height: 220,
-    borderRadius: 14,
-  },
-  featuredCard: {
-    width: CARD_WIDTH,
-    height: 220,
-    borderRadius: 14,
-    overflow: 'hidden',
-    backgroundColor: brandColors.primaryDark,
-  },
-  featuredImage: { width: '100%', height: '100%', position: 'absolute' },
-  featuredImageOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
-  priorityBadge: {
-    position: 'absolute',
-    top: 12,
-    left: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  priorityText: { fontSize: 11, fontFamily: 'Outfit_700Bold', color: '#fff' },
-  featuredContent: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 14,
-  },
-  featuredCategoryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  featuredCategoryPill: { backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
-  featuredCategoryText: { fontSize: 11, color: '#fff', fontFamily: 'Outfit_700Bold' },
-  featuredDays: { fontSize: 11, fontFamily: 'Outfit_400Regular', color: 'rgba(255,255,255,0.6)' },
-  featuredTitle: { fontSize: 16, fontFamily: 'Outfit_700Bold', color: '#fff', marginBottom: 8, lineHeight: 21 },
-  featuredStats: { flexDirection: 'row', alignItems: 'center', marginTop: 6 },
-  featuredRaised: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: brandColors.secondary },
-  featuredGoal: { fontSize: 11, fontFamily: 'Outfit_400Regular', color: 'rgba(255,255,255,0.5)', flex: 1 },
-  featuredPct: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: '#fff' },
+    // Featured card
+    featuredCardShell: {
+      ...neu.greenRaised,
+      width: CARD_WIDTH,
+      height: 220,
+      borderRadius: 14,
+    },
+    featuredCard: {
+      width: CARD_WIDTH,
+      height: 220,
+      borderRadius: 14,
+      overflow: 'hidden',
+      backgroundColor: p.primaryDark,
+    },
+    featuredImage: { width: '100%', height: '100%', position: 'absolute' },
+    featuredImageOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: 'rgba(0,0,0,0.4)',
+    },
+    priorityBadge: {
+      position: 'absolute',
+      top: 12,
+      left: 12,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 6,
+    },
+    priorityText: { fontSize: 11, fontFamily: 'Outfit_700Bold', color: '#fff' },
+    featuredContent: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      padding: 14,
+    },
+    featuredCategoryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+    featuredCategoryPill: { backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
+    featuredCategoryText: { fontSize: 11, color: '#fff', fontFamily: 'Outfit_700Bold' },
+    featuredDays: { fontSize: 11, fontFamily: 'Outfit_400Regular', color: 'rgba(255,255,255,0.6)' },
+    featuredTitle: { fontSize: 16, fontFamily: 'Outfit_700Bold', color: '#fff', marginBottom: 8, lineHeight: 21 },
+    featuredStats: { flexDirection: 'row', alignItems: 'center', marginTop: 6 },
+    featuredRaised: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: p.secondary },
+    featuredGoal: { fontSize: 11, fontFamily: 'Outfit_400Regular', color: 'rgba(255,255,255,0.5)', flex: 1 },
+    featuredPct: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: '#fff' },
 
-  // Compact card (urgent)
-  compactCard: {
-    ...neumorphism.raised,
-    flexDirection: 'row',
-    backgroundColor: brandColors.surface,
-    borderRadius: 14,
-    overflow: 'hidden',
-    marginBottom: 10,
-  },
-  compactImage: { width: 90, height: 90 },
-  compactContent: { flex: 1, padding: 10, justifyContent: 'center' },
-  compactTitle: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: brandColors.text, marginBottom: 6, lineHeight: 18 },
-  compactStats: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
-  compactRaised: { fontSize: 12, fontFamily: 'Outfit_700Bold', color: brandColors.primary },
-  compactPct: { fontSize: 12, fontFamily: 'Outfit_700Bold', color: brandColors.textSecondary },
+    // Compact card (urgent)
+    compactCard: {
+      ...neu.raised,
+      flexDirection: 'row',
+      backgroundColor: p.surface,
+      borderRadius: 14,
+      overflow: 'hidden',
+      marginBottom: 10,
+    },
+    compactImage: { width: 90, height: 90 },
+    compactContent: { flex: 1, padding: 10, justifyContent: 'center' },
+    compactTitle: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: p.text, marginBottom: 6, lineHeight: 18 },
+    compactStats: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
+    compactRaised: { fontSize: 12, fontFamily: 'Outfit_700Bold', color: p.primary },
+    compactPct: { fontSize: 12, fontFamily: 'Outfit_700Bold', color: p.textSecondary },
 
-  // Recent cards
-  recentCard: {
-    ...neumorphism.raised,
-    width: SMALL_CARD_WIDTH,
-    borderRadius: 14,
-    overflow: 'hidden',
-    backgroundColor: brandColors.surface,
-  },
-  recentImage: { width: '100%', height: 100 },
-  recentContent: { padding: 10 },
-  recentTitle: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: brandColors.text, marginBottom: 4, lineHeight: 17 },
-  recentAmount: { fontSize: 12, fontFamily: 'Outfit_700Bold', color: brandColors.primary },
+    // Recent cards
+    recentCard: {
+      ...neu.raised,
+      width: SMALL_CARD_WIDTH,
+      borderRadius: 14,
+      overflow: 'hidden',
+      backgroundColor: p.surface,
+    },
+    recentImage: { width: '100%', height: 100 },
+    recentContent: { padding: 10 },
+    recentTitle: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: p.text, marginBottom: 4, lineHeight: 17 },
+    recentAmount: { fontSize: 12, fontFamily: 'Outfit_700Bold', color: p.primary },
 
-  // CTA banner
-  ctaBanner: {
-    boxShadow: '6px 6px 14px rgba(72,62,43,.18), -6px -6px 14px rgba(255,255,255,.9)',
-    marginHorizontal: 16,
-    marginTop: 28,
-    backgroundColor: brandColors.secondary,
-    borderRadius: 14,
-    paddingHorizontal: 20,
-    paddingVertical: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  ctaTitle: { fontSize: 17, fontFamily: 'Outfit_800ExtraBold', color: '#221B0E' },
-  ctaSubtitle: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: 'rgba(34,27,14,0.72)', marginTop: 2 },
-  ctaArrow: {
-    boxShadow: '4px 4px 10px rgba(72,62,43,.18), -4px -4px 10px rgba(255,255,255,.78)',
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-})
+    // CTA banner
+    ctaBanner: {
+      boxShadow: '6px 6px 14px rgba(72,62,43,.18), -6px -6px 14px rgba(255,255,255,.9)',
+      marginHorizontal: 16,
+      marginTop: 28,
+      backgroundColor: p.secondary,
+      borderRadius: 14,
+      paddingHorizontal: 20,
+      paddingVertical: 18,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    ctaTitle: { fontSize: 17, fontFamily: 'Outfit_800ExtraBold', color: '#221B0E' },
+    ctaSubtitle: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: 'rgba(34,27,14,0.72)', marginTop: 2 },
+    ctaArrow: {
+      boxShadow: '4px 4px 10px rgba(72,62,43,.18), -4px -4px 10px rgba(255,255,255,.78)',
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: 'rgba(255,255,255,0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+  })
+}
+
+function useStyles() {
+  const p = usePalette()
+  const neu = useNeu()
+  return useMemo(() => makeStyles(p, neu), [p, neu])
+}

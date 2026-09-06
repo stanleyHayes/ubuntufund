@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { View, ScrollView, StyleSheet, Alert } from 'react-native'
 import { Text, ActivityIndicator, Icon, Button } from 'react-native-paper'
 import {
@@ -7,7 +7,8 @@ import {
   BillingCycle,
   SUBSCRIPTION_PLANS,
 } from '@ubuntu-fund/types'
-import { brandColors, neumorphism } from '@/theme'
+import { usePalette, useNeu } from '@/context/ColorModeContext'
+import type { Palette, NeuRecipes } from '@/theme'
 import { api } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { SignInRequired } from '@/components/SignInRequired'
@@ -29,8 +30,139 @@ const DEFAULT_SUB: SubscriptionData = {
   renewDate: '',
 }
 
+function makeStyles(p: Palette, neu: NeuRecipes) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: p.background },
+    content: { padding: 20, paddingBottom: 40 },
+    centered: { justifyContent: 'center', alignItems: 'center' },
+
+    // Header
+    eyebrow: {
+      fontSize: 11,
+      fontFamily: 'Outfit_700Bold',
+      color: p.secondaryDark,
+      textTransform: 'uppercase',
+      letterSpacing: 2,
+    },
+    title: { fontSize: 26, fontFamily: 'Outfit_800ExtraBold', color: p.text, marginTop: 4 },
+    lede: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: p.textSecondary, marginTop: 6, marginBottom: 20 },
+
+    // Current plan card
+    currentPlanCard: {
+      ...neu.raised,
+      backgroundColor: p.surface,
+      borderRadius: 14,
+      padding: 20,
+      marginBottom: 24,
+    },
+    currentPlanLabel: { fontSize: 11, color: p.secondaryDark, fontFamily: 'Outfit_700Bold', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 4 },
+    currentPlanName: { fontSize: 24, fontFamily: 'Outfit_800ExtraBold', color: p.text, marginBottom: 8 },
+    statusRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+    statusBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
+    statusActive: { backgroundColor: `${p.success}1F` },
+    statusInactive: { backgroundColor: `${p.error}1F` },
+    statusText: { fontSize: 11, fontFamily: 'Outfit_700Bold' },
+    statusTextActive: { color: p.success },
+    statusTextInactive: { color: p.error },
+    billingText: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: p.textSecondary },
+    renewText: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: p.textSecondary, marginBottom: 4 },
+    feeText: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: p.textSecondary },
+
+    // Section title
+    sectionTitle: { fontSize: 18, fontFamily: 'Outfit_700Bold', color: p.text, marginBottom: 12 },
+
+    // Plans row
+    plansScroll: { flexGrow: 0 },
+    plansRow: { paddingBottom: 8, paddingRight: 20, gap: 12, alignItems: 'stretch' },
+
+    // Plan card — fixed height so every CTA docks at the same baseline
+    planCard: {
+      ...neu.raised,
+      backgroundColor: p.surface,
+      borderRadius: 14,
+      padding: 16,
+      width: 220,
+      minHeight: 400,
+      flexDirection: 'column',
+    },
+    planCardPro: { boxShadow: `${neu.raised.boxShadow}, 0 0 0 2px ${p.primary}24` },
+    planCardCurrent: { ...neu.inset },
+    popularBadge: {
+      backgroundColor: p.primary,
+      borderRadius: 999,
+      paddingHorizontal: 10,
+      paddingVertical: 3,
+      alignSelf: 'flex-start',
+      marginBottom: 8,
+    },
+    popularText: { color: '#FFFFFF', fontSize: 10, fontFamily: 'Outfit_700Bold', letterSpacing: 0.5 },
+    planName: { fontSize: 18, fontFamily: 'Outfit_700Bold', color: p.text, marginBottom: 4 },
+    planDesc: { fontSize: 12, fontFamily: 'Outfit_400Regular', color: p.textSecondary, marginBottom: 12 },
+    priceRow: { flexDirection: 'row', alignItems: 'baseline' },
+    planPrice: { fontSize: 28, fontFamily: 'Outfit_800ExtraBold', color: p.text },
+    priceUnit: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: p.textSecondary, marginLeft: 2 },
+    feeLabel: { fontSize: 12, color: p.primary, fontFamily: 'Outfit_700Bold', marginTop: 2, marginBottom: 12 },
+
+    // Features
+    featuresList: { marginBottom: 16 },
+    featureRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 5 },
+    featureItem: { fontSize: 12, fontFamily: 'Outfit_400Regular', color: p.textSecondary, flex: 1 },
+
+    // Plan button — marginTop:auto docks it at the card bottom so CTAs line up
+    planButton: { borderRadius: 999, marginTop: 'auto' },
+    currentChip: {
+      backgroundColor: `${p.textSecondary}47`,
+      borderRadius: 999,
+      paddingVertical: 10,
+      alignItems: 'center',
+      marginTop: 'auto',
+    },
+    currentChipText: { fontSize: 14, fontFamily: 'Outfit_700Bold', color: p.text },
+
+    // Upgrade CTA
+    upgradeCta: {
+      ...neu.raised,
+      backgroundColor: p.surface,
+      borderRadius: 14,
+      padding: 24,
+      marginTop: 24,
+      alignItems: 'center',
+    },
+    upgradeIconTile: {
+      ...neu.subtle,
+      width: 48,
+      height: 48,
+      borderRadius: 14,
+      backgroundColor: `${p.secondary}29`,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    upgradeTitle: { fontSize: 18, fontFamily: 'Outfit_700Bold', color: p.text, marginBottom: 8 },
+    upgradeDesc: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: p.textSecondary, textAlign: 'center', marginBottom: 16, lineHeight: 20 },
+    upgradeButton: { borderRadius: 999, alignSelf: 'stretch' },
+    upgradeButtonContent: { paddingVertical: 4 },
+
+    // Cancel button
+    cancelButton: {
+      marginTop: 16,
+      marginBottom: 8,
+      borderRadius: 999,
+      borderColor: p.error,
+    },
+  })
+}
+
+function useStyles() {
+  const p = usePalette()
+  const neu = useNeu()
+  return useMemo(() => makeStyles(p, neu), [p, neu])
+}
+
 export default function SubscriptionScreen() {
   const { user } = useAuth()
+  const p = usePalette()
+  const styles = useStyles()
   const [currentSub, setCurrentSub] = useState<SubscriptionData>(DEFAULT_SUB)
   const [isLoading, setIsLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(false)
@@ -86,7 +218,7 @@ export default function SubscriptionScreen() {
   if (isLoading) {
     return (
       <View style={[styles.container, styles.centered]}>
-        <ActivityIndicator size="large" color={brandColors.primary} />
+        <ActivityIndicator size="large" color={p.primary} />
       </View>
     )
   }
@@ -167,7 +299,7 @@ export default function SubscriptionScreen() {
                   plan.liveStreaming ? 'Live streaming' : null,
                 ].filter(Boolean).map((feat) => (
                   <View key={feat} style={styles.featureRow}>
-                    <Icon source="check-circle" size={14} color={brandColors.primary} />
+                    <Icon source="check-circle" size={14} color={p.primary} />
                     <Text style={styles.featureItem}>{feat}</Text>
                   </View>
                 ))}
@@ -180,7 +312,7 @@ export default function SubscriptionScreen() {
               ) : (
                 <Button
                   mode="contained"
-                  buttonColor={brandColors.secondary}
+                  buttonColor={p.secondary}
                   textColor="#221B0E"
                   style={styles.planButton}
                   disabled
@@ -198,7 +330,7 @@ export default function SubscriptionScreen() {
       {currentSub.tier === SubscriptionTier.FREE && (
         <View style={styles.upgradeCta}>
           <View style={styles.upgradeIconTile}>
-            <Icon source="crown" size={22} color={brandColors.secondaryDark} />
+            <Icon source="crown" size={22} color={p.secondaryDark} />
           </View>
           <Text style={styles.upgradeTitle}>Paid plans are not yet available</Text>
           <Text style={styles.upgradeDesc}>
@@ -206,7 +338,7 @@ export default function SubscriptionScreen() {
           </Text>
           <Button
             mode="contained"
-            buttonColor={brandColors.secondary}
+            buttonColor={p.secondary}
             textColor="#221B0E"
             style={styles.upgradeButton}
             contentStyle={styles.upgradeButtonContent}
@@ -221,7 +353,7 @@ export default function SubscriptionScreen() {
       {currentSub.tier !== SubscriptionTier.FREE && (
         <Button
           mode="outlined"
-          textColor={brandColors.error}
+          textColor={p.error}
           style={styles.cancelButton}
           disabled={actionLoading}
           onPress={handleCancel}
@@ -232,124 +364,3 @@ export default function SubscriptionScreen() {
     </ScrollView>
   )
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: brandColors.background },
-  content: { padding: 20, paddingBottom: 40 },
-  centered: { justifyContent: 'center', alignItems: 'center' },
-
-  // Header
-  eyebrow: {
-    fontSize: 11,
-    fontFamily: 'Outfit_700Bold',
-    color: brandColors.secondaryDark,
-    textTransform: 'uppercase',
-    letterSpacing: 2,
-  },
-  title: { fontSize: 26, fontFamily: 'Outfit_800ExtraBold', color: brandColors.text, marginTop: 4 },
-  lede: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 6, marginBottom: 20 },
-
-  // Current plan card
-  currentPlanCard: {
-    ...neumorphism.raised,
-    backgroundColor: brandColors.surface,
-    borderRadius: 14,
-    padding: 20,
-    marginBottom: 24,
-  },
-  currentPlanLabel: { fontSize: 11, color: brandColors.secondaryDark, fontFamily: 'Outfit_700Bold', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 4 },
-  currentPlanName: { fontSize: 24, fontFamily: 'Outfit_800ExtraBold', color: brandColors.text, marginBottom: 8 },
-  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
-  statusBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
-  statusActive: { backgroundColor: 'rgba(47,107,70,0.12)' },
-  statusInactive: { backgroundColor: 'rgba(165,67,47,0.12)' },
-  statusText: { fontSize: 11, fontFamily: 'Outfit_700Bold' },
-  statusTextActive: { color: brandColors.success },
-  statusTextInactive: { color: brandColors.error },
-  billingText: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary },
-  renewText: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginBottom: 4 },
-  feeText: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary },
-
-  // Section title
-  sectionTitle: { fontSize: 18, fontFamily: 'Outfit_700Bold', color: brandColors.text, marginBottom: 12 },
-
-  // Plans row
-  plansScroll: { flexGrow: 0 },
-  plansRow: { paddingBottom: 8, paddingRight: 20, gap: 12, alignItems: 'stretch' },
-
-  // Plan card — fixed height so every CTA docks at the same baseline
-  planCard: {
-    ...neumorphism.raised,
-    backgroundColor: brandColors.surface,
-    borderRadius: 14,
-    padding: 16,
-    width: 220,
-    minHeight: 400,
-    flexDirection: 'column',
-  },
-  planCardPro: { boxShadow: '7px 7px 16px rgba(72,62,43,.16), -7px -7px 16px rgba(255,255,255,.96), 0 0 0 2px rgba(46,61,47,.14)' },
-  planCardCurrent: { ...neumorphism.inset },
-  popularBadge: {
-    backgroundColor: brandColors.primary,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    alignSelf: 'flex-start',
-    marginBottom: 8,
-  },
-  popularText: { color: '#FFFFFF', fontSize: 10, fontFamily: 'Outfit_700Bold', letterSpacing: 0.5 },
-  planName: { fontSize: 18, fontFamily: 'Outfit_700Bold', color: brandColors.text, marginBottom: 4 },
-  planDesc: { fontSize: 12, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginBottom: 12 },
-  priceRow: { flexDirection: 'row', alignItems: 'baseline' },
-  planPrice: { fontSize: 28, fontFamily: 'Outfit_800ExtraBold', color: brandColors.text },
-  priceUnit: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginLeft: 2 },
-  feeLabel: { fontSize: 12, color: brandColors.primary, fontFamily: 'Outfit_700Bold', marginTop: 2, marginBottom: 12 },
-
-  // Features
-  featuresList: { marginBottom: 16 },
-  featureRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 5 },
-  featureItem: { fontSize: 12, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, flex: 1 },
-
-  // Plan button — marginTop:auto docks it at the card bottom so CTAs line up
-  planButton: { borderRadius: 999, marginTop: 'auto' },
-  currentChip: {
-    backgroundColor: 'rgba(168,181,160,0.28)',
-    borderRadius: 999,
-    paddingVertical: 10,
-    alignItems: 'center',
-    marginTop: 'auto',
-  },
-  currentChipText: { fontSize: 14, fontFamily: 'Outfit_700Bold', color: brandColors.text },
-
-  // Upgrade CTA
-  upgradeCta: {
-    ...neumorphism.raised,
-    backgroundColor: brandColors.surface,
-    borderRadius: 14,
-    padding: 24,
-    marginTop: 24,
-    alignItems: 'center',
-  },
-  upgradeIconTile: {
-    ...neumorphism.subtle,
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: 'rgba(199,162,74,0.16)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  upgradeTitle: { fontSize: 18, fontFamily: 'Outfit_700Bold', color: brandColors.text, marginBottom: 8 },
-  upgradeDesc: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, textAlign: 'center', marginBottom: 16, lineHeight: 20 },
-  upgradeButton: { borderRadius: 999, alignSelf: 'stretch' },
-  upgradeButtonContent: { paddingVertical: 4 },
-
-  // Cancel button
-  cancelButton: {
-    marginTop: 16,
-    marginBottom: 8,
-    borderRadius: 999,
-    borderColor: brandColors.error,
-  },
-})

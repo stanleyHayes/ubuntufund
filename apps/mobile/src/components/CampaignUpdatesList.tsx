@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { View, ScrollView, StyleSheet, TouchableOpacity } from 'react-native'
 import { Text, Chip, ActivityIndicator, Avatar, Icon, Surface } from 'react-native-paper'
 import type { CampaignUpdate } from '@ubuntu-fund/types'
@@ -6,13 +6,113 @@ import { api } from '@/lib/api'
 import { EmptyState } from '@/components/EmptyState'
 import { RemoteImage } from '@/components/RemoteImage'
 import { FadeInUp } from '@/components/anim/FadeInUp'
-import { brandColors, neumorphism } from '@/theme'
+import { usePalette, useNeu } from '@/context/ColorModeContext'
+import type { Palette, NeuRecipes } from '@/theme'
 
-const typeColors: Record<string, { text: string; bg: string }> = {
-  milestone: { text: brandColors.secondaryDark, bg: 'rgba(199,162,74,0.18)' },
-  general: { text: brandColors.text, bg: 'rgba(168,181,160,0.28)' },
-  thank_you: { text: brandColors.success, bg: 'rgba(47,107,70,0.14)' },
-  urgent: { text: brandColors.warning, bg: 'rgba(185,138,46,0.16)' },
+function makeStyles(p: Palette, neu: NeuRecipes) {
+  return StyleSheet.create({
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
+    updatesEmpty: { paddingTop: 24, paddingBottom: 8 },
+    emptyIconTile: {
+      ...neu.subtle,
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: 'rgba(168,181,160,0.28)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    emptyTitle: {
+      fontSize: 15,
+      fontFamily: 'Outfit_700Bold',
+      color: p.text,
+      marginBottom: 4,
+    },
+    emptyBody: {
+      fontSize: 13,
+      color: p.textSecondary,
+      fontFamily: 'Outfit_400Regular',
+      textAlign: 'center',
+    },
+    list: { padding: 16 },
+    card: {
+      ...neu.raised,
+      padding: 14,
+      borderRadius: 14,
+      marginBottom: 10,
+      backgroundColor: p.surface,
+    },
+    pinnedRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      marginBottom: 8,
+    },
+    pinnedText: {
+      fontSize: 12,
+      color: p.primary,
+      fontFamily: 'Outfit_700Bold',
+    },
+    headerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      marginBottom: 10,
+    },
+    headerInfo: {
+      flex: 1,
+    },
+    authorName: {
+      fontSize: 13,
+      fontFamily: 'Outfit_700Bold',
+      color: p.text,
+    },
+    dateText: {
+      fontSize: 11,
+      color: p.textSecondary,
+      fontFamily: 'Outfit_400Regular',
+    },
+    typeChip: {
+      height: 24,
+      borderRadius: 6,
+    },
+    title: {
+      fontSize: 15,
+      fontFamily: 'Outfit_700Bold',
+      color: p.text,
+      marginBottom: 8,
+      lineHeight: 20,
+    },
+    content: {
+      fontSize: 13,
+      color: p.textSecondary,
+      lineHeight: 20,
+      fontFamily: 'Outfit_400Regular',
+    },
+    readMore: {
+      fontSize: 12,
+      color: p.primary,
+      fontFamily: 'Outfit_700Bold',
+      marginTop: 6,
+      paddingVertical: 6,
+    },
+    mediaScroll: {
+      marginTop: 10,
+    },
+    mediaImage: {
+      width: 120,
+      height: 120,
+      borderRadius: 8,
+      marginRight: 8,
+    },
+  })
+}
+
+function useStyles() {
+  const p = usePalette()
+  const neu = useNeu()
+  return useMemo(() => makeStyles(p, neu), [p, neu])
 }
 
 interface CampaignUpdatesListProps {
@@ -21,6 +121,14 @@ interface CampaignUpdatesListProps {
 }
 
 export function CampaignUpdatesList({ campaignId }: CampaignUpdatesListProps) {
+  const p = usePalette()
+  const styles = useStyles()
+  const typeColors: Record<string, { text: string; bg: string }> = {
+    milestone: { text: p.secondaryDark, bg: `${p.secondary}2E` },
+    general: { text: p.text, bg: 'rgba(168,181,160,0.28)' },
+    thank_you: { text: p.success, bg: `${p.success}24` },
+    urgent: { text: p.warning, bg: `${p.warning}29` },
+  }
   const [updates, setUpdates] = useState<CampaignUpdate[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -61,7 +169,7 @@ export function CampaignUpdatesList({ campaignId }: CampaignUpdatesListProps) {
   if (isLoading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="small" color={brandColors.primary} />
+        <ActivityIndicator size="small" color={p.primary} />
       </View>
     )
   }
@@ -69,7 +177,7 @@ export function CampaignUpdatesList({ campaignId }: CampaignUpdatesListProps) {
   if (error) {
     return (
       <View style={styles.center}>
-        <Text style={{ color: brandColors.error }}>{error}</Text>
+        <Text style={{ color: p.error }}>{error}</Text>
       </View>
     )
   }
@@ -97,7 +205,7 @@ export function CampaignUpdatesList({ campaignId }: CampaignUpdatesListProps) {
           <Surface style={styles.card} elevation={0}>
             {update.isPinned && (
               <View style={styles.pinnedRow}>
-                <Icon source="pin" size={14} color={brandColors.primary} />
+                <Icon source="pin" size={14} color={p.primary} />
                 <Text style={styles.pinnedText}>Pinned</Text>
               </View>
             )}
@@ -106,7 +214,7 @@ export function CampaignUpdatesList({ campaignId }: CampaignUpdatesListProps) {
               <Avatar.Text
                 size={32}
                 label="U"
-                style={{ backgroundColor: brandColors.primary }}
+                style={{ backgroundColor: p.primary }}
               />
               <View style={styles.headerInfo}>
                 <Text style={styles.authorName}>Campaign Update</Text>
@@ -151,101 +259,3 @@ export function CampaignUpdatesList({ campaignId }: CampaignUpdatesListProps) {
     </ScrollView>
   )
 }
-
-const styles = StyleSheet.create({
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  updatesEmpty: { paddingTop: 24, paddingBottom: 8 },
-  emptyIconTile: {
-    ...neumorphism.subtle,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(168,181,160,0.28)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  emptyTitle: {
-    fontSize: 15,
-    fontFamily: 'Outfit_700Bold',
-    color: brandColors.text,
-    marginBottom: 4,
-  },
-  emptyBody: {
-    fontSize: 13,
-    color: brandColors.textSecondary,
-    fontFamily: 'Outfit_400Regular',
-    textAlign: 'center',
-  },
-  list: { padding: 16 },
-  card: {
-    ...neumorphism.raised,
-    padding: 14,
-    borderRadius: 14,
-    marginBottom: 10,
-    backgroundColor: brandColors.surface,
-  },
-  pinnedRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 8,
-  },
-  pinnedText: {
-    fontSize: 12,
-    color: brandColors.primary,
-    fontFamily: 'Outfit_700Bold',
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 10,
-  },
-  headerInfo: {
-    flex: 1,
-  },
-  authorName: {
-    fontSize: 13,
-    fontFamily: 'Outfit_700Bold',
-    color: brandColors.text,
-  },
-  dateText: {
-    fontSize: 11,
-    color: brandColors.textSecondary,
-    fontFamily: 'Outfit_400Regular',
-  },
-  typeChip: {
-    height: 24,
-    borderRadius: 6,
-  },
-  title: {
-    fontSize: 15,
-    fontFamily: 'Outfit_700Bold',
-    color: brandColors.text,
-    marginBottom: 8,
-    lineHeight: 20,
-  },
-  content: {
-    fontSize: 13,
-    color: brandColors.textSecondary,
-    lineHeight: 20,
-    fontFamily: 'Outfit_400Regular',
-  },
-  readMore: {
-    fontSize: 12,
-    color: brandColors.primary,
-    fontFamily: 'Outfit_700Bold',
-    marginTop: 6,
-    paddingVertical: 6,
-  },
-  mediaScroll: {
-    marginTop: 10,
-  },
-  mediaImage: {
-    width: 120,
-    height: 120,
-    borderRadius: 8,
-    marginRight: 8,
-  },
-})

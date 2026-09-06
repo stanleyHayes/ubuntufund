@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   View,
   ScrollView,
@@ -12,7 +12,8 @@ import { api } from '@/lib/api'
 import { EmptyState } from '@/components/EmptyState'
 import { SignInRequired } from '@/components/SignInRequired'
 import { FadeInUp } from '@/components/anim/FadeInUp'
-import { brandColors, neumorphism } from '@/theme'
+import { usePalette, useNeu } from '@/context/ColorModeContext'
+import type { Palette, NeuRecipes } from '@/theme'
 
 interface Refund {
   id: string
@@ -29,13 +30,6 @@ interface Refund {
   createdAt?: string
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  pending: brandColors.warning,
-  processing: brandColors.primaryLight,
-  completed: brandColors.success,
-  failed: brandColors.error,
-}
-
 function formatDate(date?: string | null) {
   if (!date) return '—'
   const d = new Date(date)
@@ -43,9 +37,71 @@ function formatDate(date?: string | null) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
+function makeStyles(p: Palette, neu: NeuRecipes) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: p.background },
+
+    headerBlock: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 4 },
+    eyebrow: { fontSize: 11, fontFamily: 'Outfit_700Bold', fontWeight: '700', color: p.secondaryDark, textTransform: 'uppercase', letterSpacing: 2 },
+    pageTitle: { fontSize: 24, fontFamily: 'Outfit_800ExtraBold', color: p.text, marginTop: 4 },
+    pageLede: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: p.textSecondary, marginTop: 4 },
+
+    listWrap: { paddingHorizontal: 16, paddingTop: 12 },
+
+    refundCard: {
+      ...neu.raised,
+      borderRadius: 14,
+      padding: 16,
+      marginBottom: 12,
+    },
+    refundHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+    refundId: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: p.textSecondary },
+    statusBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, gap: 5 },
+    statusDot: { width: 6, height: 6, borderRadius: 3 },
+    statusText: { fontSize: 11, fontFamily: 'Outfit_700Bold' },
+    refundCampaign: { fontSize: 15, fontFamily: 'Outfit_700Bold', color: p.text, marginBottom: 8 },
+    refundFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+    refundAmount: { fontSize: 17, fontFamily: 'Outfit_700Bold', color: p.primary },
+    refundDate: { fontSize: 12, color: p.textSecondary, fontFamily: 'Outfit_400Regular' },
+    refundReason: { fontSize: 12, color: p.textSecondary, fontFamily: 'Outfit_400Regular', fontStyle: 'italic' },
+
+    skeletonCard: {
+      ...neu.raised,
+      borderRadius: 14,
+      padding: 16,
+      marginBottom: 12,
+    },
+    skeletonLine: { height: 14, backgroundColor: p.skeleton, borderRadius: 4 },
+
+    emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 72, paddingHorizontal: 32 },
+    emptyIconTile: {
+      ...neu.subtle,
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: p.skeleton,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 16,
+    },
+    errorIconTile: { backgroundColor: `${p.error}24` },
+    emptyTitle: { fontSize: 16, fontFamily: 'Outfit_700Bold', color: p.text, textAlign: 'center' },
+    emptySubtitle: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: p.textSecondary, marginTop: 6, textAlign: 'center' },
+    actionBtn: { marginTop: 16, borderRadius: 999 },
+    btnLabel: { fontFamily: 'Outfit_700Bold' },
+  })
+}
+
+function useStyles() {
+  const p = usePalette()
+  const neu = useNeu()
+  return useMemo(() => makeStyles(p, neu), [p, neu])
+}
+
 // ─── Skeleton ────────────────────────────────────────────────
 
 function SkeletonRow() {
+  const styles = useStyles()
   const [opacity] = useState(() => new Animated.Value(0.3))
   useEffect(() => {
     Animated.loop(
@@ -71,9 +127,18 @@ function SkeletonRow() {
 
 export default function MyRefundsScreen() {
   const { user } = useAuth()
+  const p = usePalette()
+  const styles = useStyles()
   const [refunds, setRefunds] = useState<Refund[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  const STATUS_COLORS: Record<string, string> = {
+    pending: p.warning,
+    processing: p.primaryLight,
+    completed: p.success,
+    failed: p.error,
+  }
 
   const fetchRefunds = useCallback(async () => {
     setLoading(true)
@@ -95,8 +160,8 @@ export default function MyRefundsScreen() {
 
   const headerOptions = {
     title: 'My Refunds',
-    headerStyle: { backgroundColor: brandColors.primary },
-    headerTintColor: '#FFFFFF',
+    headerStyle: { backgroundColor: p.primary },
+    headerTintColor: p.onPrimary,
     headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
   }
 
@@ -141,7 +206,7 @@ export default function MyRefundsScreen() {
         ) : (
           <View style={styles.listWrap}>
             {refunds.map((r, i) => {
-              const statusColor = STATUS_COLORS[r.status] ?? brandColors.textSecondary
+              const statusColor = STATUS_COLORS[r.status] ?? p.textSecondary
               return (
                 <FadeInUp key={r.id} index={i}>
                 <View style={styles.refundCard}>
@@ -175,56 +240,3 @@ export default function MyRefundsScreen() {
     </View>
   )
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: brandColors.background },
-
-  headerBlock: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 4 },
-  eyebrow: { fontSize: 11, fontFamily: 'Outfit_700Bold', fontWeight: '700', color: brandColors.secondaryDark, textTransform: 'uppercase', letterSpacing: 2 },
-  pageTitle: { fontSize: 24, fontFamily: 'Outfit_800ExtraBold', color: brandColors.text, marginTop: 4 },
-  pageLede: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 4 },
-
-  listWrap: { paddingHorizontal: 16, paddingTop: 12 },
-
-  refundCard: {
-    ...neumorphism.raised,
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 12,
-  },
-  refundHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  refundId: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: brandColors.textSecondary },
-  statusBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, gap: 5 },
-  statusDot: { width: 6, height: 6, borderRadius: 3 },
-  statusText: { fontSize: 11, fontFamily: 'Outfit_700Bold' },
-  refundCampaign: { fontSize: 15, fontFamily: 'Outfit_700Bold', color: brandColors.text, marginBottom: 8 },
-  refundFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  refundAmount: { fontSize: 17, fontFamily: 'Outfit_700Bold', color: brandColors.primary },
-  refundDate: { fontSize: 12, color: brandColors.textSecondary, fontFamily: 'Outfit_400Regular' },
-  refundReason: { fontSize: 12, color: brandColors.textSecondary, fontFamily: 'Outfit_400Regular', fontStyle: 'italic' },
-
-  skeletonCard: {
-    ...neumorphism.raised,
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 12,
-  },
-  skeletonLine: { height: 14, backgroundColor: 'rgba(168,181,160,0.35)', borderRadius: 4 },
-
-  emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 72, paddingHorizontal: 32 },
-  emptyIconTile: {
-    ...neumorphism.subtle,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(168,181,160,0.28)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  errorIconTile: { backgroundColor: 'rgba(165,67,47,0.14)' },
-  emptyTitle: { fontSize: 16, fontFamily: 'Outfit_700Bold', color: brandColors.text, textAlign: 'center' },
-  emptySubtitle: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 6, textAlign: 'center' },
-  actionBtn: { marginTop: 16, borderRadius: 999 },
-  btnLabel: { fontFamily: 'Outfit_700Bold' },
-})

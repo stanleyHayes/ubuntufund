@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { View, ScrollView, StyleSheet } from 'react-native'
 import { Text, Icon, ActivityIndicator, TouchableRipple } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { brandColors, neumorphism } from '@/theme'
+import { usePalette, useNeu } from '@/context/ColorModeContext'
+import type { Palette, NeuRecipes } from '@/theme'
 import { api } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { EmptyState } from '@/components/EmptyState'
@@ -37,9 +38,118 @@ function isCredit(type: TransactionType) {
   return type === TransactionType.DEPOSIT || type === TransactionType.REFUND
 }
 
+function makeStyles(p: Palette, neu: NeuRecipes) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: p.background },
+    content: { paddingBottom: 32 },
+    centered: { justifyContent: 'center', alignItems: 'center' },
+
+    // Header
+    header: { paddingHorizontal: 20, paddingBottom: 20 },
+    eyebrow: {
+      fontSize: 11,
+      fontFamily: 'Outfit_700Bold',
+      color: p.secondaryDark,
+      textTransform: 'uppercase',
+      letterSpacing: 2,
+    },
+    title: { fontSize: 28, fontFamily: 'Outfit_800ExtraBold', color: p.text, marginTop: 4 },
+    lede: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: p.textSecondary, marginTop: 6 },
+
+    // Balance card
+    balanceCard: {
+      ...neu.raised,
+      backgroundColor: p.surface,
+      marginHorizontal: 20,
+      borderRadius: 14,
+      padding: 20,
+      marginBottom: 28,
+    },
+    balanceLabel: { fontSize: 12, fontFamily: 'Outfit_400Regular', color: p.textSecondary, marginBottom: 4 },
+    balanceValue: { fontSize: 32, fontFamily: 'Outfit_800ExtraBold', color: p.text, marginBottom: 2 },
+    balanceSub: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: p.textSecondary },
+
+    secureNote: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 20, paddingTop: 16, borderTopWidth: 1, borderTopColor: p.border },
+    secureNoteText: { flex: 1, fontSize: 11, lineHeight: 16, fontFamily: 'Outfit_400Regular', color: p.textSecondary },
+
+    // Section
+    sectionTitle: { fontSize: 16, fontFamily: 'Outfit_700Bold', color: p.text, paddingHorizontal: 20, marginBottom: 12 },
+
+    // Wallets
+    walletScrollView: { flexGrow: 0, marginBottom: 28 },
+    walletScroll: { paddingHorizontal: 16, gap: 10, alignItems: 'flex-start' },
+    walletCard: {
+      ...neu.raised,
+      width: 150,
+      padding: 16,
+      borderRadius: 14,
+      backgroundColor: p.surface,
+      overflow: 'hidden',
+    },
+    walletTypeChip: {
+      alignSelf: 'flex-start',
+      backgroundColor: `${p.textSecondary}47`,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 999,
+      marginBottom: 10,
+    },
+    walletTypeText: { fontSize: 11, fontFamily: 'Outfit_700Bold', color: p.text },
+    walletCurrency: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: p.textSecondary, marginBottom: 2 },
+    walletBalance: { fontSize: 20, fontFamily: 'Outfit_800ExtraBold', color: p.text },
+
+    transactionList: { ...neu.raised, marginHorizontal: 20, borderRadius: 14, overflow: 'hidden' },
+    transactionRow: { minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: p.border },
+    transactionRowLast: { borderBottomWidth: 0 },
+    transactionIcon: { ...neu.subtle, width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+    transactionCopy: { flex: 1 },
+    transactionTitle: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: p.text, textTransform: 'capitalize' },
+    transactionDate: { marginTop: 2, fontSize: 10, fontFamily: 'Outfit_400Regular', color: p.textSecondary, textTransform: 'capitalize' },
+    transactionAmount: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: p.text },
+    transactionCredit: { color: p.success },
+
+    // Empty state
+    transactionsEmpty: { paddingTop: 40 },
+    emptyState: { alignItems: 'center', paddingVertical: 40, paddingHorizontal: 32 },
+    emptyIconTile: {
+      ...neu.subtle,
+      width: 48,
+      height: 48,
+      borderRadius: 14,
+      backgroundColor: `${p.textSecondary}47`,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    emptyTitle: { fontSize: 15, fontFamily: 'Outfit_700Bold', color: p.text, textAlign: 'center' },
+    emptyBody: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: p.textSecondary, textAlign: 'center', marginTop: 4, lineHeight: 18 },
+
+    // Error state
+    errorIconTile: {
+      ...neu.subtle,
+      width: 48,
+      height: 48,
+      borderRadius: 14,
+      backgroundColor: `${p.error}1F`,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    errorText: { fontSize: 14, fontFamily: 'Outfit_400Regular', color: p.error, textAlign: 'center' },
+  })
+}
+
+function useStyles() {
+  const p = usePalette()
+  const neu = useNeu()
+  return useMemo(() => makeStyles(p, neu), [p, neu])
+}
+
 export default function WalletTab() {
   const insets = useSafeAreaInsets()
   const { user } = useAuth()
+  const p = usePalette()
+  const styles = useStyles()
   const [wallets, setWallets] = useState<Wallet[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -80,7 +190,7 @@ export default function WalletTab() {
   if (isLoading) {
     return (
       <View style={[styles.container, styles.centered]}>
-        <ActivityIndicator size="large" color={brandColors.primary} />
+        <ActivityIndicator size="large" color={p.primary} />
       </View>
     )
   }
@@ -112,7 +222,7 @@ export default function WalletTab() {
         ))}
 
         <View style={styles.secureNote}>
-          <Icon source="shield-check-outline" size={18} color={brandColors.success} />
+          <Icon source="shield-check-outline" size={18} color={p.success} />
           <Text style={styles.secureNoteText}>Balances update from completed donations, refunds, and verified payment activity.</Text>
         </View>
       </View>
@@ -122,7 +232,7 @@ export default function WalletTab() {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.walletScrollView} contentContainerStyle={styles.walletScroll}>
         {wallets.map((w, i) => (
           <FadeInUp key={w.id} index={i}>
-            <TouchableRipple style={styles.walletCard} rippleColor="rgba(46,61,47,0.10)">
+            <TouchableRipple style={styles.walletCard} rippleColor={p.ripple}>
               <View>
                 <View style={styles.walletTypeChip}>
                   <Text style={styles.walletTypeText}>{WALLET_TYPE_LABEL[w.type] ?? w.type}</Text>
@@ -145,7 +255,7 @@ export default function WalletTab() {
             return (
               <View key={transaction.id} style={[styles.transactionRow, index === transactions.length - 1 && styles.transactionRowLast]}>
                 <View style={styles.transactionIcon}>
-                  <Icon source={transactionIcon(transaction.type)} size={19} color={credit ? brandColors.success : brandColors.primary} />
+                  <Icon source={transactionIcon(transaction.type)} size={19} color={credit ? p.success : p.primary} />
                 </View>
                 <View style={styles.transactionCopy}>
                   <Text style={styles.transactionTitle}>{transaction.type.replaceAll('_', ' ')}</Text>
@@ -162,102 +272,3 @@ export default function WalletTab() {
     </ScrollView>
   )
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: brandColors.background },
-  content: { paddingBottom: 32 },
-  centered: { justifyContent: 'center', alignItems: 'center' },
-
-  // Header
-  header: { paddingHorizontal: 20, paddingBottom: 20 },
-  eyebrow: {
-    fontSize: 11,
-    fontFamily: 'Outfit_700Bold',
-    color: brandColors.secondaryDark,
-    textTransform: 'uppercase',
-    letterSpacing: 2,
-  },
-  title: { fontSize: 28, fontFamily: 'Outfit_800ExtraBold', color: brandColors.text, marginTop: 4 },
-  lede: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 6 },
-
-  // Balance card
-  balanceCard: {
-    ...neumorphism.raised,
-    backgroundColor: brandColors.surface,
-    marginHorizontal: 20,
-    borderRadius: 14,
-    padding: 20,
-    marginBottom: 28,
-  },
-  balanceLabel: { fontSize: 12, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginBottom: 4 },
-  balanceValue: { fontSize: 32, fontFamily: 'Outfit_800ExtraBold', color: brandColors.text, marginBottom: 2 },
-  balanceSub: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary },
-
-  secureNote: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 20, paddingTop: 16, borderTopWidth: 1, borderTopColor: 'rgba(26,46,34,0.08)' },
-  secureNoteText: { flex: 1, fontSize: 11, lineHeight: 16, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary },
-
-  // Section
-  sectionTitle: { fontSize: 16, fontFamily: 'Outfit_700Bold', color: brandColors.text, paddingHorizontal: 20, marginBottom: 12 },
-
-  // Wallets
-  walletScrollView: { flexGrow: 0, marginBottom: 28 },
-  walletScroll: { paddingHorizontal: 16, gap: 10, alignItems: 'flex-start' },
-  walletCard: {
-    ...neumorphism.raised,
-    width: 150,
-    padding: 16,
-    borderRadius: 14,
-    backgroundColor: brandColors.surface,
-    overflow: 'hidden',
-  },
-  walletTypeChip: {
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(168,181,160,0.28)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 999,
-    marginBottom: 10,
-  },
-  walletTypeText: { fontSize: 11, fontFamily: 'Outfit_700Bold', color: brandColors.text },
-  walletCurrency: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: brandColors.textSecondary, marginBottom: 2 },
-  walletBalance: { fontSize: 20, fontFamily: 'Outfit_800ExtraBold', color: brandColors.text },
-
-  transactionList: { ...neumorphism.raised, marginHorizontal: 20, borderRadius: 14, overflow: 'hidden' },
-  transactionRow: { minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(26,46,34,0.08)' },
-  transactionRowLast: { borderBottomWidth: 0 },
-  transactionIcon: { ...neumorphism.subtle, width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  transactionCopy: { flex: 1 },
-  transactionTitle: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: brandColors.text, textTransform: 'capitalize' },
-  transactionDate: { marginTop: 2, fontSize: 10, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, textTransform: 'capitalize' },
-  transactionAmount: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: brandColors.text },
-  transactionCredit: { color: brandColors.success },
-
-  // Empty state
-  transactionsEmpty: { paddingTop: 40 },
-  emptyState: { alignItems: 'center', paddingVertical: 40, paddingHorizontal: 32 },
-  emptyIconTile: {
-    ...neumorphism.subtle,
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: 'rgba(168,181,160,0.28)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  emptyTitle: { fontSize: 15, fontFamily: 'Outfit_700Bold', color: brandColors.text, textAlign: 'center' },
-  emptyBody: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, textAlign: 'center', marginTop: 4, lineHeight: 18 },
-
-  // Error state
-  errorIconTile: {
-    ...neumorphism.subtle,
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: 'rgba(165,67,47,0.12)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  errorText: { fontSize: 14, fontFamily: 'Outfit_400Regular', color: brandColors.error, textAlign: 'center' },
-})

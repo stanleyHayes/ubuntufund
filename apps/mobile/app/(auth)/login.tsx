@@ -1,14 +1,17 @@
 import { BrandedTextInput as TextInput } from '@/components/BrandedTextInput'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity } from 'react-native'
 import { Button, Text } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Link, router } from 'expo-router'
-import { brandColors, neumorphism } from '@/theme'
+import { usePalette, useNeu } from '@/context/ColorModeContext'
+import type { Palette, NeuRecipes } from '@/theme'
 import { useAuth } from '@/context/AuthContext'
 import { UjimoraLogo } from '@/components/UjimoraLogo'
 
 export default function LoginScreen() {
+  const p = usePalette()
+  const styles = useStyles()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [secureEntry, setSecureEntry] = useState(true)
@@ -73,8 +76,8 @@ export default function LoginScreen() {
             left={<TextInput.Icon icon="email-outline" />}
             style={styles.input}
             outlineStyle={styles.inputOutline}
-            outlineColor="rgba(26,46,34,0.14)"
-            activeOutlineColor={brandColors.primary}
+            outlineColor={p.border}
+            activeOutlineColor={p.primary}
             disabled={loading}
           />
 
@@ -95,8 +98,8 @@ export default function LoginScreen() {
             }
             style={styles.input}
             outlineStyle={styles.inputOutline}
-            outlineColor="rgba(26,46,34,0.14)"
-            activeOutlineColor={brandColors.primary}
+            outlineColor={p.border}
+            activeOutlineColor={p.primary}
             disabled={loading}
           />
 
@@ -110,7 +113,7 @@ export default function LoginScreen() {
             style={styles.button}
             contentStyle={styles.buttonContent}
             labelStyle={styles.buttonLabel}
-            buttonColor={brandColors.primary}
+            buttonColor={p.primary}
             textColor="#F5F2EA"
             disabled={!email || !password || loading}
             loading={loading}
@@ -130,92 +133,100 @@ export default function LoginScreen() {
   )
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: brandColors.primaryDark },
-  scroll: { flex: 1 },
-  scrollContent: { flexGrow: 1, backgroundColor: brandColors.primaryDark },
+function makeStyles(p: Palette, neu: NeuRecipes) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: p.primaryDark },
+    scroll: { flex: 1 },
+    scrollContent: { flexGrow: 1, backgroundColor: p.primaryDark },
 
-  stage: {
-    alignItems: 'center',
-    paddingHorizontal: 32,
-    paddingBottom: 44,
-    backgroundColor: brandColors.primaryDark,
-  },
-  stageTitle: {
-    marginTop: 22,
-    fontSize: 26,
-    fontFamily: 'Outfit_800ExtraBold',
-    color: '#F5F2EA',
-    textAlign: 'center',
-  },
-  stageTitleAccent: { color: '#DCC07E', fontFamily: 'Outfit_800ExtraBold' },
-  stageCaption: {
-    marginTop: 10,
-    fontSize: 10,
-    fontFamily: 'Outfit_600SemiBold',
-    letterSpacing: 2.2,
-    textTransform: 'uppercase',
-    color: 'rgba(245,242,234,0.5)',
-  },
+    stage: {
+      alignItems: 'center',
+      paddingHorizontal: 32,
+      paddingBottom: 44,
+      backgroundColor: p.primaryDark,
+    },
+    stageTitle: {
+      marginTop: 22,
+      fontSize: 26,
+      fontFamily: 'Outfit_800ExtraBold',
+      color: '#F5F2EA',
+      textAlign: 'center',
+    },
+    stageTitleAccent: { color: '#DCC07E', fontFamily: 'Outfit_800ExtraBold' },
+    stageCaption: {
+      marginTop: 10,
+      fontSize: 10,
+      fontFamily: 'Outfit_600SemiBold',
+      letterSpacing: 2.2,
+      textTransform: 'uppercase',
+      color: 'rgba(245,242,234,0.5)',
+    },
 
-  sheet: {
-    ...neumorphism.raised,
-    flexGrow: 1,
-    backgroundColor: brandColors.background,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingHorizontal: 24,
-    paddingTop: 14,
-  },
-  grabber: {
-    alignSelf: 'center',
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(26,46,34,0.14)',
-    marginBottom: 22,
-  },
-  eyebrow: {
-    fontSize: 11,
-    fontFamily: 'Outfit_600SemiBold',
-    textTransform: 'uppercase',
-    letterSpacing: 2,
-    color: '#A07E33',
-    marginBottom: 6,
-  },
-  title: {
-    fontSize: 26,
-    fontFamily: 'Outfit_800ExtraBold',
-    color: brandColors.text,
-    marginBottom: 6,
-  },
-  lede: {
-    fontSize: 14,
-    fontFamily: 'Outfit_400Regular',
-    color: brandColors.textSecondary,
-    lineHeight: 20,
-    marginBottom: 20,
-  },
+    sheet: {
+      ...neu.raised,
+      flexGrow: 1,
+      backgroundColor: p.background,
+      borderTopLeftRadius: 28,
+      borderTopRightRadius: 28,
+      paddingHorizontal: 24,
+      paddingTop: 14,
+    },
+    grabber: {
+      alignSelf: 'center',
+      width: 40,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: p.border,
+      marginBottom: 22,
+    },
+    eyebrow: {
+      fontSize: 11,
+      fontFamily: 'Outfit_600SemiBold',
+      textTransform: 'uppercase',
+      letterSpacing: 2,
+      color: p.secondaryDark,
+      marginBottom: 6,
+    },
+    title: {
+      fontSize: 26,
+      fontFamily: 'Outfit_800ExtraBold',
+      color: p.text,
+      marginBottom: 6,
+    },
+    lede: {
+      fontSize: 14,
+      fontFamily: 'Outfit_400Regular',
+      color: p.textSecondary,
+      lineHeight: 20,
+      marginBottom: 20,
+    },
 
-  errorBanner: {
-    backgroundColor: 'rgba(165,67,47,0.08)',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 16,
-  },
-  errorText: { color: brandColors.error, fontSize: 13, fontFamily: 'Outfit_500Medium', textAlign: 'center' },
+    errorBanner: {
+      backgroundColor: `${p.error}1A`,
+      borderRadius: 10,
+      padding: 12,
+      marginBottom: 16,
+    },
+    errorText: { color: p.error, fontSize: 13, fontFamily: 'Outfit_500Medium', textAlign: 'center' },
 
-  input: { ...neumorphism.inset, marginBottom: 14 },
-  inputOutline: { borderRadius: 12 },
+    input: { ...neu.inset, marginBottom: 14 },
+    inputOutline: { borderRadius: 12 },
 
-  forgotRow: { alignSelf: 'flex-end', marginBottom: 20, marginTop: -2 },
-  forgotText: { fontSize: 13, color: brandColors.primary, fontFamily: 'Outfit_600SemiBold' },
+    forgotRow: { alignSelf: 'flex-end', marginBottom: 20, marginTop: -2 },
+    forgotText: { fontSize: 13, color: p.primary, fontFamily: 'Outfit_600SemiBold' },
 
-  button: { borderRadius: 999, marginBottom: 22 },
-  buttonContent: { paddingVertical: 7 },
-  buttonLabel: { fontSize: 16, fontFamily: 'Outfit_700Bold', letterSpacing: 0.3 },
+    button: { borderRadius: 999, marginBottom: 22 },
+    buttonContent: { paddingVertical: 7 },
+    buttonLabel: { fontSize: 16, fontFamily: 'Outfit_700Bold', letterSpacing: 0.3 },
 
-  footer: { flexDirection: 'row', justifyContent: 'center' },
-  footerText: { fontSize: 14, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary },
-  footerLink: { fontSize: 14, color: brandColors.primary, fontFamily: 'Outfit_600SemiBold' },
-})
+    footer: { flexDirection: 'row', justifyContent: 'center' },
+    footerText: { fontSize: 14, fontFamily: 'Outfit_400Regular', color: p.textSecondary },
+    footerLink: { fontSize: 14, color: p.primary, fontFamily: 'Outfit_600SemiBold' },
+  })
+}
+
+function useStyles() {
+  const p = usePalette()
+  const neu = useNeu()
+  return useMemo(() => makeStyles(p, neu), [p, neu])
+}

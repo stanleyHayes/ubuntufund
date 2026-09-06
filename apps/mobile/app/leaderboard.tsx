@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   View,
   ScrollView,
@@ -12,7 +12,8 @@ import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
 import { EmptyState } from '@/components/EmptyState'
 import { FadeInUp } from '@/components/anim/FadeInUp'
-import { brandColors, neumorphism } from '@/theme'
+import { usePalette, useNeu } from '@/context/ColorModeContext'
+import type { Palette, NeuRecipes } from '@/theme'
 
 interface LeaderboardEntry {
   id: string
@@ -36,9 +37,6 @@ const PERIOD_PARAMS: Record<Period, string> = {
   Lifetime: 'lifetime',
 }
 
-// Rank 1-3 badge colors, drawn from the gold family only.
-const MEDAL_COLORS = [brandColors.secondary, brandColors.secondaryDark, brandColors.secondaryLight]
-
 const ghsFormatter = new Intl.NumberFormat('en-GH', { style: 'currency', currency: 'GHS' })
 
 function formatAmount(amount?: number) {
@@ -48,9 +46,91 @@ function formatAmount(amount?: number) {
   return ghsFormatter.format(val)
 }
 
+function makeStyles(p: Palette, neu: NeuRecipes) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: p.background },
+
+    headerBlock: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 4 },
+    eyebrow: { fontSize: 11, fontFamily: 'Outfit_700Bold', fontWeight: '700', color: p.secondaryDark, textTransform: 'uppercase', letterSpacing: 2 },
+    pageTitle: { fontSize: 24, fontFamily: 'Outfit_800ExtraBold', color: p.text, marginTop: 4 },
+    pageLede: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: p.textSecondary, marginTop: 4 },
+
+    periodScroll: { flexGrow: 0 },
+    periodRow: { paddingHorizontal: 16, paddingVertical: 12, gap: 8, alignItems: 'center' },
+    periodTab: { ...neu.subtle, height: 38, justifyContent: 'center', paddingHorizontal: 18, borderRadius: 999 },
+    periodTabActive: { ...neu.greenInset },
+    periodTabText: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: p.textSecondary },
+    periodTabTextActive: { color: '#fff' },
+
+    listWrap: { paddingHorizontal: 16 },
+
+    entryRow: {
+      ...neu.raised,
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderRadius: 14,
+      padding: 12,
+      marginBottom: 8,
+    },
+    entryRowTop: {
+      boxShadow: `${neu.raised.boxShadow}, 0 0 0 2px ${p.secondary}2E`,
+    },
+    entryRowCurrent: {
+      ...neu.inset,
+    },
+
+    rankWrap: { width: 32, alignItems: 'center', marginRight: 8 },
+    rankText: { fontSize: 14, fontFamily: 'Outfit_700Bold', color: p.textSecondary },
+    medalBadge: { width: 26, height: 26, borderRadius: 13, justifyContent: 'center', alignItems: 'center' },
+    medalText: { fontSize: 12, fontFamily: 'Outfit_800ExtraBold', color: '#fff' },
+
+    avatar: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: p.skeleton,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 12,
+    },
+    avatarText: { fontSize: 14, fontFamily: 'Outfit_700Bold', color: p.primary },
+
+    entryName: { fontSize: 14, fontFamily: 'Outfit_700Bold', color: p.text },
+    entrySub: { fontSize: 11, color: p.textSecondary, marginTop: 1, fontFamily: 'Outfit_400Regular' },
+    entryAmount: { fontSize: 15, fontFamily: 'Outfit_700Bold', color: p.text },
+
+    emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 72, paddingHorizontal: 32 },
+    emptyIconTile: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: p.skeleton,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 16,
+    },
+    errorIconTile: { backgroundColor: `${p.error}24` },
+    emptyTitle: { fontSize: 16, fontFamily: 'Outfit_700Bold', color: p.text, textAlign: 'center' },
+    emptySubtitle: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: p.textSecondary, marginTop: 6, textAlign: 'center' },
+    actionBtn: { marginTop: 16, borderRadius: 999 },
+    btnLabel: { fontFamily: 'Outfit_700Bold' },
+
+    skeletonRank: { width: 28, height: 14, backgroundColor: p.skeleton, borderRadius: 4, marginRight: 12 },
+    skeletonAvatar: { width: 40, height: 40, backgroundColor: p.skeleton, borderRadius: 20, marginRight: 12 },
+    skeletonLine: { height: 14, backgroundColor: p.skeleton, borderRadius: 4 },
+  })
+}
+
+function useStyles() {
+  const p = usePalette()
+  const neu = useNeu()
+  return useMemo(() => makeStyles(p, neu), [p, neu])
+}
+
 // ─── Skeleton ────────────────────────────────────────────────
 
 function SkeletonRows() {
+  const styles = useStyles()
   const [opacity] = useState(() => new Animated.Value(0.3))
   useEffect(() => {
     Animated.loop(
@@ -81,10 +161,15 @@ function SkeletonRows() {
 
 export default function LeaderboardScreen() {
   const { user } = useAuth()
+  const p = usePalette()
+  const styles = useStyles()
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activePeriod, setActivePeriod] = useState<Period>('Monthly')
+
+  // Rank 1-3 badge colors, drawn from the gold family only.
+  const MEDAL_COLORS = [p.secondary, p.secondaryDark, p.secondaryLight]
 
   const fetchLeaderboard = useCallback(async () => {
     setLoading(true)
@@ -108,8 +193,8 @@ export default function LeaderboardScreen() {
       <Stack.Screen
         options={{
           title: 'Leaderboard',
-          headerStyle: { backgroundColor: brandColors.primary },
-          headerTintColor: '#FFFFFF',
+          headerStyle: { backgroundColor: p.primary },
+          headerTintColor: p.onPrimary,
           headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
         }}
       />
@@ -196,7 +281,7 @@ export default function LeaderboardScreen() {
 
                   {/* Info */}
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.entryName, isCurrentUser && { color: brandColors.primary }]} numberOfLines={1}>
+                    <Text style={[styles.entryName, isCurrentUser && { color: p.primary }]} numberOfLines={1}>
                       {entry.name}{isCurrentUser ? ' (You)' : ''}
                     </Text>
                     <Text style={styles.entrySub}>
@@ -218,76 +303,3 @@ export default function LeaderboardScreen() {
     </View>
   )
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: brandColors.background },
-
-  headerBlock: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 4 },
-  eyebrow: { fontSize: 11, fontFamily: 'Outfit_700Bold', fontWeight: '700', color: brandColors.secondaryDark, textTransform: 'uppercase', letterSpacing: 2 },
-  pageTitle: { fontSize: 24, fontFamily: 'Outfit_800ExtraBold', color: brandColors.text, marginTop: 4 },
-  pageLede: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 4 },
-
-  periodScroll: { flexGrow: 0 },
-  periodRow: { paddingHorizontal: 16, paddingVertical: 12, gap: 8, alignItems: 'center' },
-  periodTab: { ...neumorphism.subtle, height: 38, justifyContent: 'center', paddingHorizontal: 18, borderRadius: 999 },
-  periodTabActive: { ...neumorphism.greenInset },
-  periodTabText: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: brandColors.textSecondary },
-  periodTabTextActive: { color: '#fff' },
-
-  listWrap: { paddingHorizontal: 16 },
-
-  entryRow: {
-    ...neumorphism.raised,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 14,
-    padding: 12,
-    marginBottom: 8,
-  },
-  entryRowTop: {
-    boxShadow: '7px 7px 16px rgba(72,62,43,0.16), -7px -7px 16px rgba(255,255,255,0.96), 0 0 0 2px rgba(199,162,74,0.18)',
-  },
-  entryRowCurrent: {
-    ...neumorphism.inset,
-  },
-
-  rankWrap: { width: 32, alignItems: 'center', marginRight: 8 },
-  rankText: { fontSize: 14, fontFamily: 'Outfit_700Bold', color: brandColors.textSecondary },
-  medalBadge: { width: 26, height: 26, borderRadius: 13, justifyContent: 'center', alignItems: 'center' },
-  medalText: { fontSize: 12, fontFamily: 'Outfit_800ExtraBold', color: '#fff' },
-
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(168,181,160,0.28)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  avatarText: { fontSize: 14, fontFamily: 'Outfit_700Bold', color: brandColors.primary },
-
-  entryName: { fontSize: 14, fontFamily: 'Outfit_700Bold', color: brandColors.text },
-  entrySub: { fontSize: 11, color: brandColors.textSecondary, marginTop: 1, fontFamily: 'Outfit_400Regular' },
-  entryAmount: { fontSize: 15, fontFamily: 'Outfit_700Bold', color: brandColors.text },
-
-  emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 72, paddingHorizontal: 32 },
-  emptyIconTile: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(168,181,160,0.28)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  errorIconTile: { backgroundColor: 'rgba(165,67,47,0.14)' },
-  emptyTitle: { fontSize: 16, fontFamily: 'Outfit_700Bold', color: brandColors.text, textAlign: 'center' },
-  emptySubtitle: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: brandColors.textSecondary, marginTop: 6, textAlign: 'center' },
-  actionBtn: { marginTop: 16, borderRadius: 999 },
-  btnLabel: { fontFamily: 'Outfit_700Bold' },
-
-  skeletonRank: { width: 28, height: 14, backgroundColor: 'rgba(168,181,160,0.35)', borderRadius: 4, marginRight: 12 },
-  skeletonAvatar: { width: 40, height: 40, backgroundColor: 'rgba(168,181,160,0.35)', borderRadius: 20, marginRight: 12 },
-  skeletonLine: { height: 14, backgroundColor: 'rgba(168,181,160,0.35)', borderRadius: 4 },
-})

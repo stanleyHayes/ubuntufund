@@ -1,5 +1,5 @@
 import { View, StyleSheet } from 'react-native'
-import { brandColors } from '../theme'
+import { usePalette } from '@/context/ColorModeContext'
 
 interface ProgressBarProps {
   progress: number
@@ -12,8 +12,10 @@ export function ProgressBar({
   progress,
   height = 8,
   backgroundColor = 'rgba(168,181,160,0.28)',
-  fillColor = brandColors.primary,
+  fillColor,
 }: ProgressBarProps) {
+  const p = usePalette()
+  const tint = fillColor ?? p.primary
   const clampedProgress = Math.min(Math.max(progress, 0), 1)
 
   return (
@@ -24,7 +26,7 @@ export function ProgressBar({
           {
             width: `${clampedProgress * 100}%`,
             height,
-            backgroundColor: clampedProgress >= 1 ? brandColors.secondary : fillColor,
+            backgroundColor: clampedProgress >= 1 ? p.secondary : tint,
             borderRadius: height / 2,
           },
         ]}

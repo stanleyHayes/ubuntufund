@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   View,
   ScrollView,
@@ -13,7 +13,8 @@ import { router } from 'expo-router'
 import { VerificationLevel } from '@ubuntu-fund/types'
 import { TrustBadge } from '@/components/TrustBadge'
 import { UjimoraLogo } from '@/components/UjimoraLogo'
-import { brandColors, neumorphism } from '@/theme'
+import { usePalette, useNeu } from '@/context/ColorModeContext'
+import type { Palette, NeuRecipes } from '@/theme'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
 
@@ -27,21 +28,25 @@ interface ProfileStats {
   trustScore: number
 }
 
-const MENU_ITEMS: { icon: string; label: string; color: string; route: string }[] = [
-  { icon: 'view-dashboard', label: 'Dashboard', color: brandColors.primary, route: '/dashboard' },
-  { icon: 'bullhorn', label: 'My Campaigns', color: brandColors.success, route: '/my-campaigns' },
-  { icon: 'heart', label: 'My Donations', color: brandColors.error, route: '/my-donations' },
-  { icon: 'wallet', label: 'Wallet', color: brandColors.secondaryDark, route: '/(tabs)/wallet' },
-  { icon: 'trophy', label: 'Leaderboard', color: brandColors.secondary, route: '/leaderboard' },
-  { icon: 'email-open', label: 'Invitations', color: brandColors.textSecondary, route: '/invitations' },
-  { icon: 'shield-check', label: 'Verification', color: brandColors.success, route: '/verification' },
-  { icon: 'crown', label: 'Subscription', color: brandColors.secondary, route: '/(tabs)/subscription' },
-  { icon: 'cog', label: 'Settings', color: brandColors.textSecondary, route: '/settings' },
-  { icon: 'file-document-outline', label: 'Terms of Service', color: brandColors.textSecondary, route: '/terms' },
-  { icon: 'lock-outline', label: 'Privacy Policy', color: brandColors.textSecondary, route: '/privacy' },
+type MenuColorKey = keyof Pick<Palette, 'primary' | 'success' | 'error' | 'secondaryDark' | 'secondary' | 'textSecondary'>
+
+const MENU_ITEMS: { icon: string; label: string; colorKey: MenuColorKey; route: string }[] = [
+  { icon: 'view-dashboard', label: 'Dashboard', colorKey: 'primary', route: '/dashboard' },
+  { icon: 'bullhorn', label: 'My Campaigns', colorKey: 'success', route: '/my-campaigns' },
+  { icon: 'heart', label: 'My Donations', colorKey: 'error', route: '/my-donations' },
+  { icon: 'wallet', label: 'Wallet', colorKey: 'secondaryDark', route: '/(tabs)/wallet' },
+  { icon: 'trophy', label: 'Leaderboard', colorKey: 'secondary', route: '/leaderboard' },
+  { icon: 'email-open', label: 'Invitations', colorKey: 'textSecondary', route: '/invitations' },
+  { icon: 'shield-check', label: 'Verification', colorKey: 'success', route: '/verification' },
+  { icon: 'crown', label: 'Subscription', colorKey: 'secondary', route: '/(tabs)/subscription' },
+  { icon: 'cog', label: 'Settings', colorKey: 'textSecondary', route: '/settings' },
+  { icon: 'file-document-outline', label: 'Terms of Service', colorKey: 'textSecondary', route: '/terms' },
+  { icon: 'lock-outline', label: 'Privacy Policy', colorKey: 'textSecondary', route: '/privacy' },
 ]
 
 export default function ProfileTab() {
+  const p = usePalette()
+  const styles = useStyles()
   const { user, logout } = useAuth()
   const insets = useSafeAreaInsets()
   const [stats, setStats] = useState<ProfileStats | null>(null)
@@ -146,22 +151,25 @@ export default function ProfileTab() {
       {/* ═══ MENU ═══ */}
       <Animated.View style={{ opacity: bodyOpacity, transform: [{ translateY: bodySlide }] }}>
         <View style={styles.menuCard}>
-          {MENU_ITEMS.map((item, i) => (
-            <TouchableRipple
-              key={item.label}
-              style={[styles.menuRow, i === MENU_ITEMS.length - 1 && { borderBottomWidth: 0 }]}
-              rippleColor="rgba(26,46,34,0.08)"
-              onPress={() => router.push(item.route as never)}
-            >
-              <>
-                <View style={[styles.menuIcon, { backgroundColor: `${item.color}14` }]}>
-                  <Icon source={item.icon} size={20} color={item.color} />
-                </View>
-                <Text style={styles.menuLabel}>{item.label}</Text>
-                <Icon source="chevron-right" size={18} color="rgba(26,46,34,0.3)" />
-              </>
-            </TouchableRipple>
-          ))}
+          {MENU_ITEMS.map((item, i) => {
+            const tint = p[item.colorKey]
+            return (
+              <TouchableRipple
+                key={item.label}
+                style={[styles.menuRow, i === MENU_ITEMS.length - 1 && { borderBottomWidth: 0 }]}
+                rippleColor={p.ripple}
+                onPress={() => router.push(item.route as never)}
+              >
+                <>
+                  <View style={[styles.menuIcon, { backgroundColor: `${tint}14` }]}>
+                    <Icon source={item.icon} size={20} color={tint} />
+                  </View>
+                  <Text style={styles.menuLabel}>{item.label}</Text>
+                  <Icon source="chevron-right" size={18} color={`${p.text}4D`} />
+                </>
+              </TouchableRipple>
+            )
+          })}
         </View>
 
         {/* Legal links */}
@@ -180,7 +188,7 @@ export default function ProfileTab() {
           mode="outlined"
           icon="logout"
           onPress={handleLogout}
-          textColor={brandColors.error}
+          textColor={p.error}
           style={styles.logoutBtn}
           contentStyle={styles.logoutBtnContent}
           labelStyle={styles.logoutText}
@@ -196,102 +204,110 @@ export default function ProfileTab() {
   )
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: brandColors.background },
+function makeStyles(p: Palette, neu: NeuRecipes) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: p.background },
 
-  // Hero
-  hero: {
-    backgroundColor: brandColors.primaryDark,
-    paddingBottom: 24,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-    overflow: 'hidden',
-  },
-  bgCircle: { position: 'absolute', borderRadius: 9999, backgroundColor: brandColors.primary, opacity: 0.06 },
-  circleRight: { width: width * 0.5, height: width * 0.5, top: -width * 0.15, right: -width * 0.15 },
-  circleLeft: { width: width * 0.3, height: width * 0.3, bottom: -width * 0.1, left: -width * 0.05 },
+    // Hero
+    hero: {
+      backgroundColor: p.primaryDark,
+      paddingBottom: 24,
+      paddingHorizontal: 20,
+      alignItems: 'center',
+      overflow: 'hidden',
+    },
+    bgCircle: { position: 'absolute', borderRadius: 9999, backgroundColor: p.primary, opacity: 0.06 },
+    circleRight: { width: width * 0.5, height: width * 0.5, top: -width * 0.15, right: -width * 0.15 },
+    circleLeft: { width: width * 0.3, height: width * 0.3, bottom: -width * 0.1, left: -width * 0.05 },
 
-  avatarWrap: { position: 'relative', marginBottom: 12 },
-  avatar: {
-    ...neumorphism.greenRaised,
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: brandColors.secondary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: { fontSize: 28, fontFamily: 'Outfit_800ExtraBold', color: brandColors.text },
-  avatarBadge: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    backgroundColor: brandColors.primaryDark,
-    borderRadius: 12,
-    padding: 2,
-  },
+    avatarWrap: { position: 'relative', marginBottom: 12 },
+    avatar: {
+      ...neu.greenRaised,
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      backgroundColor: p.secondary,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    avatarText: { fontSize: 28, fontFamily: 'Outfit_800ExtraBold', color: p.text },
+    avatarBadge: {
+      position: 'absolute',
+      bottom: -2,
+      right: -2,
+      backgroundColor: p.primaryDark,
+      borderRadius: 12,
+      padding: 2,
+    },
 
-  userName: { fontSize: 22, fontFamily: 'Outfit_800ExtraBold', color: '#FFFFFF', marginBottom: 2 },
-  userEmail: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: 'rgba(255,255,255,0.45)', marginBottom: 12 },
-  trustWrap: { marginBottom: 16 },
+    userName: { fontSize: 22, fontFamily: 'Outfit_800ExtraBold', color: '#FFFFFF', marginBottom: 2 },
+    userEmail: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: 'rgba(255,255,255,0.45)', marginBottom: 12 },
+    trustWrap: { marginBottom: 16 },
 
-  statsRow: {
-    flexDirection: 'row',
-    width: '100%',
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 4,
-    justifyContent: 'center',
-  },
-  statBox: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
-  statDivider: { width: 1, height: 28, backgroundColor: 'rgba(255,255,255,0.08)', marginRight: 8 },
-  statInner: { alignItems: 'center' },
-  statValue: { fontSize: 17, fontFamily: 'Outfit_700Bold', color: brandColors.secondary },
-  statLabel: { fontSize: 10, color: 'rgba(255,255,255,0.4)', fontFamily: 'Outfit_400Regular', marginTop: 2 },
+    statsRow: {
+      flexDirection: 'row',
+      width: '100%',
+      backgroundColor: 'rgba(255,255,255,0.06)',
+      borderRadius: 14,
+      paddingVertical: 14,
+      paddingHorizontal: 4,
+      justifyContent: 'center',
+    },
+    statBox: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+    statDivider: { width: 1, height: 28, backgroundColor: 'rgba(255,255,255,0.08)', marginRight: 8 },
+    statInner: { alignItems: 'center' },
+    statValue: { fontSize: 17, fontFamily: 'Outfit_700Bold', color: p.secondary },
+    statLabel: { fontSize: 10, color: 'rgba(255,255,255,0.4)', fontFamily: 'Outfit_400Regular', marginTop: 2 },
 
-  // Menu
-  menuCard: {
-    ...neumorphism.raised,
-    marginHorizontal: 16,
-    marginTop: 20,
-    borderRadius: 14,
-    overflow: 'hidden',
-  },
-  menuRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    minHeight: 44,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(26,46,34,0.08)',
-  },
-  menuIcon: {
-    ...neumorphism.subtle,
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 14,
-  },
-  menuLabel: { flex: 1, fontSize: 15, fontFamily: 'Outfit_700Bold', color: brandColors.text },
+    // Menu
+    menuCard: {
+      ...neu.raised,
+      marginHorizontal: 16,
+      marginTop: 20,
+      borderRadius: 14,
+      overflow: 'hidden',
+    },
+    menuRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      minHeight: 44,
+      borderBottomWidth: 1,
+      borderBottomColor: p.border,
+    },
+    menuIcon: {
+      ...neu.subtle,
+      width: 38,
+      height: 38,
+      borderRadius: 10,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 14,
+    },
+    menuLabel: { flex: 1, fontSize: 15, fontFamily: 'Outfit_700Bold', color: p.text },
 
-  // Legal
-  legalRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 20, gap: 8 },
-  legalLink: { fontSize: 13, color: brandColors.primary, fontFamily: 'Outfit_700Bold' },
-  legalDot: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: 'rgba(26,46,34,0.25)' },
+    // Legal
+    legalRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 20, gap: 8 },
+    legalLink: { fontSize: 13, color: p.primary, fontFamily: 'Outfit_700Bold' },
+    legalDot: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: `${p.text}40` },
 
-  // Logout
-  logoutBtn: {
-    marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: 999,
-    borderColor: 'rgba(165,67,47,0.3)',
-  },
-  logoutBtnContent: { paddingVertical: 4 },
-  logoutText: { fontSize: 15, fontFamily: 'Outfit_700Bold' },
+    // Logout
+    logoutBtn: {
+      marginHorizontal: 16,
+      marginTop: 16,
+      borderRadius: 999,
+      borderColor: `${p.error}4D`,
+    },
+    logoutBtnContent: { paddingVertical: 4 },
+    logoutText: { fontSize: 15, fontFamily: 'Outfit_700Bold' },
 
-  version: { fontSize: 11, color: 'rgba(26,46,34,0.3)', textAlign: 'center', marginTop: 16, fontFamily: 'Outfit_400Regular' },
-})
+    version: { fontSize: 11, color: `${p.text}4D`, textAlign: 'center', marginTop: 16, fontFamily: 'Outfit_400Regular' },
+  })
+}
+
+function useStyles() {
+  const p = usePalette()
+  const neu = useNeu()
+  return useMemo(() => makeStyles(p, neu), [p, neu])
+}

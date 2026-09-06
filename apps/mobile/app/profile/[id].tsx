@@ -1,18 +1,22 @@
+import { useMemo } from 'react'
 import { View, ScrollView, StyleSheet } from 'react-native'
 import { useLocalSearchParams, Stack } from 'expo-router'
 import { Text, Avatar, ActivityIndicator, Surface, Chip } from 'react-native-paper'
 import { useUser } from '@/hooks/useCampaigns'
 import { TrustBadge } from '@/components/TrustBadge'
-import { brandColors, neumorphism } from '@/theme'
+import { usePalette, useNeu } from '@/context/ColorModeContext'
+import type { Palette, NeuRecipes } from '@/theme'
 
 export default function ProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const { user, isLoading } = useUser(id ?? '')
+  const p = usePalette()
+  const styles = useStyles()
 
   if (isLoading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color={brandColors.primary} />
+        <ActivityIndicator size="large" color={p.primary} />
       </View>
     )
   }
@@ -34,7 +38,7 @@ export default function ProfileScreen() {
             <Avatar.Text
               size={80}
               label={(user.name ?? '?').charAt(0).toUpperCase()}
-              style={{ backgroundColor: brandColors.primary }}
+              style={{ backgroundColor: p.primary }}
             />
             <View style={styles.headerInfo}>
               <Text variant="headlineSmall" style={{ fontFamily: 'Outfit_700Bold' }}>
@@ -78,33 +82,41 @@ export default function ProfileScreen() {
   )
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: brandColors.background },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: brandColors.background },
-  card: {
-    ...neumorphism.raised,
-    marginHorizontal: 16,
-    marginTop: 16,
-    padding: 16,
-    borderRadius: 14,
-    backgroundColor: brandColors.surface,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  headerInfo: {
-    flex: 1,
-  },
-  muted: { color: brandColors.textSecondary },
-  detailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(26,46,34,0.08)',
-  },
-  chip: { height: 28, backgroundColor: 'rgba(168,181,160,0.28)' },
-})
+function makeStyles(p: Palette, neu: NeuRecipes) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: p.background },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: p.background },
+    card: {
+      ...neu.raised,
+      marginHorizontal: 16,
+      marginTop: 16,
+      padding: 16,
+      borderRadius: 14,
+      backgroundColor: p.surface,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 16,
+    },
+    headerInfo: {
+      flex: 1,
+    },
+    muted: { color: p.textSecondary },
+    detailRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: p.border,
+    },
+    chip: { height: 28, backgroundColor: 'rgba(168,181,160,0.28)' },
+  })
+}
+
+function useStyles() {
+  const p = usePalette()
+  const neu = useNeu()
+  return useMemo(() => makeStyles(p, neu), [p, neu])
+}
