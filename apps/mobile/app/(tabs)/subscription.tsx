@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { View, ScrollView, StyleSheet, Alert, Modal } from 'react-native'
 import { Text, ActivityIndicator, Icon, Button, TextInput, TouchableRipple } from 'react-native-paper'
+import { useFocusEffect } from 'expo-router'
 import * as WebBrowser from 'expo-web-browser'
 import * as Linking from 'expo-linking'
 import {
@@ -17,6 +18,7 @@ import { api } from '@/lib/api'
 import {
   createSubscriptionCheckout,
   getSubscriptionCheckoutStatus,
+  isPaymentsNotConfigured,
 } from '@/lib/subscriptions'
 import { previewCoupon } from '@/lib/coupons'
 import { useAuth } from '@/context/AuthContext'
@@ -317,6 +319,10 @@ function CheckoutSheet({
       }
       if (result.authorizationUrl) {
         const returnUrl = Linking.createURL('subscriptions/callback')
+        // Open Paystack's hosted page. We intentionally poll regardless of the
+        // browser result type: Paystack redirects to the server callback (a web
+        // URL, not our app scheme), so a successful payment still comes back as
+        // dismiss/cancel here — only the signed webhook + this poll are trusted.
         await WebBrowser.openAuthSessionAsync(result.authorizationUrl, returnUrl)
         const outcome = await pollCheckout(result.checkout.id)
         onClose()
@@ -338,14 +344,23 @@ function CheckoutSheet({
       }
       setError('Could not start checkout. Please try again.')
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Checkout failed. Please try again.')
+      if (isPaymentsNotConfigured(e)) {
+        setError("Card payments aren't available yet — you haven't been charged. Please try again later.")
+      } else {
+        setError(e instanceof Error ? e.message : 'Checkout failed. Please try again.')
+      }
     } finally {
       setSubmitting(false)
     }
   }
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={submitting ? undefined : onClose}
+    >
       <View style={styles.sheetOverlay}>
         <View style={styles.sheet}>
           <View style={styles.sheetHandle} />
@@ -463,10 +478,14 @@ export default function SubscriptionScreen() {
     }
   }, [])
 
-  useEffect(() => {
-    if (!user) return
-    fetchSubscription()
-  }, [user, fetchSubscription])
+  // Refetch whenever the tab regains focus, so a subscription that settled via
+  // the Paystack webhook (after our ~30s poll window) is reflected without an
+  // app relaunch. Runs on first focus too, replacing the old mount effect.
+  useFocusEffect(
+    useCallback(() => {
+      if (user) fetchSubscription()
+    }, [user, fetchSubscription]),
+  )
 
   const handleCancel = async () => {
     Alert.alert('Cancel Subscription', 'Are you sure you want to cancel?', [

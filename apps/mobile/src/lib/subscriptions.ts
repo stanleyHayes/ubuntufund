@@ -1,9 +1,18 @@
-import { api } from './api'
+import { api, ApiError } from './api'
 import type {
   CreateSubscriptionCheckoutInput,
   SubscriptionCheckout,
   SubscriptionCheckoutResult,
 } from '@ubuntu-fund/types'
+
+/**
+ * True when the API reports the Paystack rail is not configured (501) — i.e. no
+ * `PAYSTACK_SECRET_KEY`. Lets the UI show a reassuring "not charged" message
+ * instead of a raw error, mirroring the web client's PaymentsNotConfiguredError.
+ */
+export function isPaymentsNotConfigured(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 501
+}
 
 // ---------------------------------------------------------------------------
 // Subscription checkout (mobile)

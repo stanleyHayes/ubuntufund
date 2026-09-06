@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { View, ScrollView, StyleSheet, Animated, Share } from 'react-native'
 import { Text, Icon, Button, ActivityIndicator } from 'react-native-paper'
 import { Stack } from 'expo-router'
@@ -60,6 +60,9 @@ function makeStyles(p: Palette, neu: NeuRecipes) {
 
     errorBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 16, marginTop: 16, padding: 12, borderRadius: 12, backgroundColor: `${p.error}1A` },
     errorBannerText: { flex: 1, fontSize: 13, fontFamily: 'Outfit_500Medium', color: p.error },
+    errorState: { alignItems: 'center', gap: 12, marginHorizontal: 16, marginTop: 32, padding: 24 },
+    errorStateText: { fontSize: 14, fontFamily: 'Outfit_500Medium', color: p.textSecondary, textAlign: 'center' },
+    errorRetryButton: { borderRadius: 999, marginTop: 4 },
     successBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 16, marginTop: 16, padding: 12, borderRadius: 12, backgroundColor: `${p.success}1A` },
     successBannerText: { flex: 1, fontSize: 13, fontFamily: 'Outfit_500Medium', color: p.success },
 
@@ -200,16 +203,28 @@ export default function AffiliateScreen() {
   const [payoutError, setPayoutError] = useState<string | null>(null)
   const [payoutSuccess, setPayoutSuccess] = useState(false)
 
+  // Tracks mount so the auto-running fetch never applies a late response after
+  // the user navigates away (matches the referrals/commissions effect's guard).
+  const mounted = useRef(true)
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
+
   const fetchDashboard = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
       const data = await getAffiliateDashboard()
-      setDashboard(data)
+      if (mounted.current) setDashboard(data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load your affiliate dashboard')
+      if (mounted.current) {
+        setError(err instanceof Error ? err.message : 'Failed to load your affiliate dashboard')
+      }
     } finally {
-      setLoading(false)
+      if (mounted.current) setLoading(false)
     }
   }, [])
 
@@ -315,9 +330,19 @@ export default function AffiliateScreen() {
         {loading ? (
           <SkeletonBlocks />
         ) : error && !dashboard ? (
-          <View style={styles.errorBanner}>
-            <Icon source="alert-circle-outline" size={18} color={p.error} />
-            <Text style={styles.errorBannerText}>{error}</Text>
+          <View style={styles.errorState}>
+            <Icon source="alert-circle-outline" size={28} color={p.error} />
+            <Text style={styles.errorStateText}>{error}</Text>
+            <Button
+              mode="contained"
+              buttonColor={p.primary}
+              textColor={p.onPrimary}
+              onPress={fetchDashboard}
+              style={styles.errorRetryButton}
+              accessibilityLabel="Try again"
+            >
+              Try again
+            </Button>
           </View>
         ) : !dashboard ? (
           // ── Not enrolled ──────────────────────────────────────────────

@@ -401,12 +401,14 @@ const lightGlass: NeuRecipes = {
     elevation: 5,
   },
   greenSubtle: {
-    backgroundColor: 'rgba(46,61,47,0.42)',
+    // Kept dark enough that white/cream text on a plain-View glass surface (not
+    // routed through a real BlurView) still clears WCAG AA contrast.
+    backgroundColor: 'rgba(46,61,47,0.58)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.14)',
   },
   greenInset: {
-    backgroundColor: 'rgba(46,61,47,0.34)',
+    backgroundColor: 'rgba(46,61,47,0.72)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.12)',
   },
@@ -452,12 +454,12 @@ const darkGlass: NeuRecipes = {
     elevation: 5,
   },
   greenSubtle: {
-    backgroundColor: 'rgba(36,48,38,0.45)',
+    backgroundColor: 'rgba(36,48,38,0.6)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
   },
   greenInset: {
-    backgroundColor: 'rgba(36,48,38,0.38)',
+    backgroundColor: 'rgba(36,48,38,0.75)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.08)',
   },
@@ -483,9 +485,31 @@ const NEU_TABLE: Record<Skin, { light: NeuRecipes; dark: NeuRecipes }> = {
   minimal: { light: lightMinimal, dark: darkMinimal },
 }
 
+// Zeroed legacy shadow props. Inset recipes are frequently composed on top of a
+// raised/subtle base in a style array (e.g. `[styles.option, active && inset]`);
+// since RN's flattenStyle only overrides keys that appear in the later object, an
+// inset recipe that omits the legacy shadow*/elevation keys lets the base's
+// outward shadow leak under the pressed-in look. Spreading these zeros first
+// guarantees the inset variant clears them.
+const NO_SHADOW = {
+  shadowColor: 'transparent',
+  shadowOffset: { width: 0, height: 0 },
+  shadowOpacity: 0,
+  shadowRadius: 0,
+  elevation: 0,
+} as const
+
+function resetInsetShadows(r: NeuRecipes): NeuRecipes {
+  return {
+    ...r,
+    inset: { ...NO_SHADOW, ...r.inset },
+    greenInset: { ...NO_SHADOW, ...r.greenInset },
+  }
+}
+
 export function getNeu(scheme: ColorScheme, skin: Skin = 'neumorphism'): NeuRecipes {
   const table = NEU_TABLE[skin] ?? NEU_TABLE.neumorphism
-  return scheme === 'dark' ? table.dark : table.light
+  return resetInsetShadows(scheme === 'dark' ? table.dark : table.light)
 }
 
 /**

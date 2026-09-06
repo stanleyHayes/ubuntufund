@@ -6,7 +6,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { useColorScheme } from 'react-native'
+import { useColorScheme, View } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import {
   getPalette,
@@ -66,27 +66,32 @@ export function ColorModeProvider({ children }: { children: ReactNode }) {
   const system = useColorScheme() // 'light' | 'dark' | null
   const [mode, setModeState] = useState<ColorModePreference>('system')
   const [skin, setSkinState] = useState<Skin>('neumorphism')
+  // Gate the first paint until the persisted preferences are read, so a user who
+  // chose dark/glass doesn't see a light/neumorphic flash on cold launch.
+  const [hydrated, setHydrated] = useState(false)
 
-  // Hydrate the persisted preferences once on mount.
+  // Hydrate the persisted preferences once on mount (both reads together so the
+  // mode + skin land in the same render).
   useEffect(() => {
     let active = true
-    AsyncStorage.getItem(STORAGE_KEY)
-      .then((stored) => {
-        if (active && (stored === 'light' || stored === 'dark' || stored === 'system')) {
-          setModeState(stored)
+    Promise.all([
+      AsyncStorage.getItem(STORAGE_KEY),
+      AsyncStorage.getItem(SKIN_STORAGE_KEY),
+    ])
+      .then(([storedMode, storedSkin]) => {
+        if (!active) return
+        if (storedMode === 'light' || storedMode === 'dark' || storedMode === 'system') {
+          setModeState(storedMode)
+        }
+        if (storedSkin && (VALID_SKINS as string[]).includes(storedSkin)) {
+          setSkinState(storedSkin as Skin)
         }
       })
       .catch(() => {
-        /* no stored preference (or storage unavailable) — keep 'system' */
+        /* storage unavailable — fall back to the defaults */
       })
-    AsyncStorage.getItem(SKIN_STORAGE_KEY)
-      .then((stored) => {
-        if (active && stored && (VALID_SKINS as string[]).includes(stored)) {
-          setSkinState(stored as Skin)
-        }
-      })
-      .catch(() => {
-        /* no stored finish — keep 'neumorphism' */
+      .finally(() => {
+        if (active) setHydrated(true)
       })
     return () => {
       active = false
@@ -125,7 +130,17 @@ export function ColorModeProvider({ children }: { children: ReactNode }) {
     [mode, scheme, skin],
   )
 
-  return <ColorModeContext.Provider value={value}>{children}</ColorModeContext.Provider>
+  return (
+    <ColorModeContext.Provider value={value}>
+      {hydrated ? (
+        children
+      ) : (
+        // Neutral themed ground for the ~1 frame before storage resolves, so the
+        // native splash never hands off to a blank screen on a slow device.
+        <View style={{ flex: 1, backgroundColor: value.palette.background }} />
+      )}
+    </ColorModeContext.Provider>
+  )
 }
 
 export function useColorMode(): ColorModeValue {
