@@ -6,7 +6,6 @@ import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import InputAdornment from '@mui/material/InputAdornment'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
-import CircularProgress from '@mui/material/CircularProgress'
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded'
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
@@ -15,7 +14,7 @@ import ShieldRoundedIcon from '@mui/icons-material/ShieldRounded'
 import ErrorOutlineRoundedIcon from '@mui/icons-material/ErrorOutlineRounded'
 import { Link as RouterLink } from 'react-router-dom'
 import { CampaignCategory, CampaignPriority } from '@ubuntu-fund/types'
-import { formatCurrency, ImageUpload, SHAPE } from '@ubuntu-fund/ui'
+import { formatCurrency, ImageUpload, SHAPE, LoadingDots } from '@ubuntu-fund/ui'
 import { useCreateCampaign } from '@/hooks/useCampaigns'
 
 // ---------------------------------------------------------------------------
@@ -900,7 +899,7 @@ export function CampaignForm() {
             color="secondary"
             size="large"
             disabled={isSubmitting}
-            startIcon={isSubmitting ? <CircularProgress size={18} sx={{ color: 'inherit' }} /> : <CheckRoundedIcon />}
+            startIcon={isSubmitting ? <LoadingDots size={6} /> : <CheckRoundedIcon />}
           >
             {isSubmitting ? 'Publishing…' : 'Publish campaign'}
           </Button>

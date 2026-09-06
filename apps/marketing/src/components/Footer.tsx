@@ -7,7 +7,7 @@ import MuiLink from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
 import IconButton from '@mui/material/IconButton'
 import Button from '@mui/material/Button'
-import CircularProgress from '@mui/material/CircularProgress'
+import { LoadingDots } from '@ubuntu-fund/ui'
 import FacebookIcon from '@mui/icons-material/Facebook'
 import XIcon from '@mui/icons-material/X'
 import InstagramIcon from '@mui/icons-material/Instagram'
@@ -367,7 +367,7 @@ function Footer() {
                   fontSize: '0.8rem',
                 }}
               >
-                {subscribeStatus === 'loading' ? <CircularProgress size={16} color="inherit" /> : 'Subscribe'}
+                {subscribeStatus === 'loading' ? <LoadingDots size={6} /> : 'Subscribe'}
               </Button>
             </Box>
             {subscribeStatus === 'success' && (

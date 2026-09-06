@@ -11,7 +11,6 @@ import Tooltip from '@mui/material/Tooltip'
 import Snackbar from '@mui/material/Snackbar'
 import Alert from '@mui/material/Alert'
 import LinearProgress from '@mui/material/LinearProgress'
-import CircularProgress from '@mui/material/CircularProgress'
 import HandshakeRoundedIcon from '@mui/icons-material/HandshakeRounded'
 import ContentCopyRoundedIcon from '@mui/icons-material/ContentCopyRounded'
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded'
@@ -28,6 +27,7 @@ import {
   EmptyState,
   ErrorState,
   NEUMORPHIC_FOREST_VARS,
+  LoadingDots,
 } from '@ubuntu-fund/ui'
 import type {
   AffiliateReferral,
@@ -397,7 +397,7 @@ export function AffiliateDashboardPage() {
               variant="contained"
               onClick={() => void enroll()}
               disabled={isEnrolling}
-              startIcon={isEnrolling ? <CircularProgress size={16} color="inherit" /> : <HandshakeRoundedIcon />}
+              startIcon={isEnrolling ? <LoadingDots size={6} /> : <HandshakeRoundedIcon />}
               sx={{
                 textTransform: 'none',
                 fontWeight: 700,
@@ -575,7 +575,7 @@ export function AffiliateDashboardPage() {
                 fullWidth
                 onClick={handleRequestPayout}
                 disabled={!canRequestPayout || payoutLoading}
-                startIcon={payoutLoading ? <CircularProgress size={16} color="inherit" /> : <PaymentsRoundedIcon />}
+                startIcon={payoutLoading ? <LoadingDots size={6} /> : <PaymentsRoundedIcon />}
                 sx={{
                   mt: 2,
                   textTransform: 'none',

@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
-import { Box, Button, Chip, CircularProgress, Snackbar, Alert, Typography } from '@mui/material'
+import { Box, Button, Chip, Snackbar, Alert, Typography } from '@mui/material'
 import SaveRoundedIcon from '@mui/icons-material/SaveRounded'
-import { ErrorState } from '@ubuntu-fund/ui'
+import { ErrorState, LoadingDots } from '@ubuntu-fund/ui'
 import PageHeader from '@/components/PageHeader'
 import type { Tone } from '@/lib/tones'
 
@@ -92,7 +92,7 @@ export default function ContentEditorLayout({
             )}
             <Button
               variant="contained"
-              startIcon={saving ? <CircularProgress size={16} color="inherit" /> : <SaveRoundedIcon />}
+              startIcon={saving ? <LoadingDots size={6} /> : <SaveRoundedIcon />}
               onClick={handleSave}
               disabled={loading || saving || !isDirty}
               sx={{ borderRadius: 2, px: 3, fontWeight: 700, textTransform: 'none' }}

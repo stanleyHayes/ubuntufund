@@ -13,7 +13,7 @@ import Chip from '@mui/material/Chip'
 import Divider from '@mui/material/Divider'
 import Snackbar from '@mui/material/Snackbar'
 import Alert from '@mui/material/Alert'
-import CircularProgress from '@mui/material/CircularProgress'
+import Skeleton from '@mui/material/Skeleton'
 import NavigateNextIcon from '@mui/icons-material/NavigateNext'
 import GavelRoundedIcon from '@mui/icons-material/GavelRounded'
 import CampaignIcon from '@mui/icons-material/Campaign'
@@ -113,7 +113,14 @@ export default function DisputeDetailPage() {
   }
 
   if (loading) {
-    return <Box sx={{ minHeight: 420, display: 'grid', placeItems: 'center' }}><CircularProgress /></Box>
+    return (
+      <Box sx={{ p: 3, maxWidth: 1400, mx: 'auto' }}>
+        <Skeleton variant="text" width={200} height={20} sx={{ mb: 1 }} />
+        <Skeleton variant="text" width={340} height={40} sx={{ mb: 3 }} />
+        <Skeleton variant="rounded" height={180} sx={{ mb: 3 }} />
+        <Skeleton variant="rounded" height={260} />
+      </Box>
+    )
   }
 
   if (!dispute) {

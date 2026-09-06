@@ -27,7 +27,6 @@ import InputAdornment from '@mui/material/InputAdornment'
 import Switch from '@mui/material/Switch'
 import FormGroup from '@mui/material/FormGroup'
 import FormControlLabel from '@mui/material/FormControlLabel'
-import CircularProgress from '@mui/material/CircularProgress'
 import { keyframes } from '@emotion/react'
 import PlayArrowRoundedIcon from '@mui/icons-material/PlayArrowRounded'
 import StopCircleRoundedIcon from '@mui/icons-material/StopCircleRounded'
@@ -41,6 +40,7 @@ import {
   ErrorState,
   ItemNotFound,
   SHAPE,
+  LoadingDots,
 } from '@ubuntu-fund/ui'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
@@ -401,7 +401,7 @@ export function CampaignLivePage() {
               brandVariant="primary"
               onClick={handleStart}
               disabled={starting}
-              startIcon={starting ? <CircularProgress size={16} color="inherit" /> : <PlayArrowRoundedIcon />}
+              startIcon={starting ? <LoadingDots size={6} /> : <PlayArrowRoundedIcon />}
               sx={{ mt: 2.5, textTransform: 'none', fontWeight: 700, borderRadius: SHAPE.sm, px: 3 }}
             >
               {starting ? 'Starting…' : 'Go LIVE'}
@@ -490,7 +490,7 @@ export function CampaignLivePage() {
                 color="error"
                 onClick={handleEnd}
                 disabled={ending}
-                startIcon={ending ? <CircularProgress size={15} color="inherit" /> : <StopCircleRoundedIcon />}
+                startIcon={ending ? <LoadingDots size={6} /> : <StopCircleRoundedIcon />}
                 sx={{ textTransform: 'none', fontWeight: 700, borderRadius: SHAPE.sm, color: 'var(--text-error)', borderColor: '#A5432F' }}
               >
                 {ending ? 'Ending…' : 'End session'}

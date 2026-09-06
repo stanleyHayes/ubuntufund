@@ -1,6 +1,6 @@
-import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
+import { BrandedTextField as TextField, LoadingDots } from '@ubuntu-fund/ui'
 import { useState } from 'react'
-import { Box, Button, Typography, Alert, InputAdornment, IconButton, CircularProgress } from '@mui/material'
+import { Box, Button, Typography, Alert, InputAdornment, IconButton } from '@mui/material'
 import Visibility from '@mui/icons-material/Visibility'
 import VisibilityOff from '@mui/icons-material/VisibilityOff'
 import ArrowForwardRounded from '@mui/icons-material/ArrowForwardRounded'
@@ -41,7 +41,7 @@ export default function LoginPage() {
         <TextField label="Password" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} fullWidth required autoComplete="current-password" disabled={loading}
           slotProps={{ input: { endAdornment: <InputAdornment position="end"><IconButton type="button" onClick={() => setShowPassword(!showPassword)} edge="end" aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword} disabled={loading}>{showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}</IconButton></InputAdornment> } }} />
         <Box sx={{ textAlign: 'right', mt: -1 }}><RouterLink to="/forgot-password" className="admin-auth-link">Forgot password?</RouterLink></Box>
-        <Button type="submit" variant="contained" fullWidth disabled={loading} endIcon={loading ? <CircularProgress size={18} color="inherit" /> : <ArrowForwardRounded />}>{loading ? 'Signing in…' : 'Sign in to workspace'}</Button>
+        <Button type="submit" variant="contained" fullWidth disabled={loading} endIcon={loading ? <LoadingDots size={6} /> : <ArrowForwardRounded />}>{loading ? 'Signing in…' : 'Sign in to workspace'}</Button>
       </Box>
       <div className="admin-auth-form-note">Use the email address associated with your administrator account.</div>
     </AuthLayout>

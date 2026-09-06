@@ -15,11 +15,10 @@ import DialogActions from '@mui/material/DialogActions'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Switch from '@mui/material/Switch'
 import InputAdornment from '@mui/material/InputAdornment'
-import CircularProgress from '@mui/material/CircularProgress'
 import LayersRoundedIcon from '@mui/icons-material/LayersRounded'
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
-import { BrandedTextField as TextField, EmptyState, ErrorState } from '@ubuntu-fund/ui'
+import { BrandedTextField as TextField, EmptyState, ErrorState, LoadingDots } from '@ubuntu-fund/ui'
 import {
   SubscriptionTier,
   Resource,
@@ -278,7 +277,7 @@ export default function ManagePlansPage() {
                 variant="contained"
                 onClick={handleSave}
                 disabled={saving || !form.name.trim()}
-                startIcon={saving ? <CircularProgress size={16} color="inherit" /> : undefined}
+                startIcon={saving ? <LoadingDots size={6} /> : undefined}
                 sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2 }}
               >
                 {saving ? 'Saving…' : 'Save changes'}

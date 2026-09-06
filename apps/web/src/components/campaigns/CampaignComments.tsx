@@ -1,7 +1,7 @@
 import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import { EmptyState } from '@ubuntu-fund/ui'
 import { useCallback, useEffect, useState } from 'react'
-import { Alert, Avatar, Box, Button, CircularProgress, IconButton, Stack, Typography } from '@mui/material'
+import { Alert, Avatar, Box, Button, IconButton, Skeleton, Stack, Typography } from '@mui/material'
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded'
 import type { CampaignComment } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
@@ -70,7 +70,20 @@ export function CampaignComments({ campaignId, creatorId }: { campaignId: string
       )}
 
       {error ? <Alert severity="error">{error}</Alert> : null}
-      {loading ? <Box sx={{ py: 5, textAlign: 'center' }}><CircularProgress size={28} /></Box> : comments.length === 0 ? (
+      {loading ? (
+        <Stack spacing={1.5}>
+          {[0, 1, 2].map((i) => (
+            <Box key={i} sx={{ display: 'flex', gap: 1.5, p: 2, borderRadius: SHAPE.sm, boxShadow: 'var(--neu-subtle)' }}>
+              <Skeleton variant="circular" width={40} height={40} />
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Skeleton variant="text" width="30%" />
+                <Skeleton variant="text" width="20%" />
+                <Skeleton variant="text" width="92%" sx={{ mt: 0.75 }} />
+              </Box>
+            </Box>
+          ))}
+        </Stack>
+      ) : comments.length === 0 ? (
         <EmptyState variant="noData" compact title="Start a conversation" description="Leave a message of encouragement or a question for the organizer." />
       ) : comments.map((comment) => (
         <Box key={comment.id} sx={{ display: 'flex', gap: 1.5, p: 2, borderRadius: SHAPE.sm, boxShadow: 'var(--neu-subtle)' }}>

@@ -7,7 +7,6 @@ import Button from '@mui/material/Button'
 import Alert from '@mui/material/Alert'
 import Typography from '@mui/material/Typography'
 import Link from '@mui/material/Link'
-import CircularProgress from '@mui/material/CircularProgress'
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded'
 import ApartmentRoundedIcon from '@mui/icons-material/ApartmentRounded'
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded'
@@ -19,7 +18,7 @@ import {
   SubscriptionTier,
   BillingCycle,
 } from '@ubuntu-fund/types'
-import { SHAPE, formatCurrency } from '@ubuntu-fund/ui'
+import { SHAPE, formatCurrency, LoadingDots } from '@ubuntu-fund/ui'
 import { useAuth } from '@/context/AuthContext'
 import { usePlanMap } from '@/hooks/useSubscription'
 import {
@@ -344,7 +343,7 @@ export function RegisterForm() {
           </Button>
         ) : (
           <Button onClick={handleSubmit} variant="contained" color="primary" disabled={submitting}
-            endIcon={submitting ? <CircularProgress size={16} color="inherit" /> : undefined}
+            endIcon={submitting ? <LoadingDots size={6} /> : undefined}
             sx={{ textTransform: 'none', fontWeight: 700, px: 3 }}>
             {submitting ? 'Creating…' : selectedTier === SubscriptionTier.FREE ? 'Create account' : 'Create account & continue'}
           </Button>

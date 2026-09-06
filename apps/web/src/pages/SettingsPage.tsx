@@ -15,14 +15,13 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogActions from '@mui/material/DialogActions'
 import Snackbar from '@mui/material/Snackbar'
 import Alert from '@mui/material/Alert'
-import CircularProgress from '@mui/material/CircularProgress'
 import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded'
 import TuneRoundedIcon from '@mui/icons-material/TuneRounded'
 import ShieldRoundedIcon from '@mui/icons-material/ShieldRounded'
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded'
 import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded'
 import { useNavigate } from 'react-router-dom'
-import { SHAPE, ThemeStylePicker } from '@ubuntu-fund/ui'
+import { SHAPE, ThemeStylePicker, LoadingDots } from '@ubuntu-fund/ui'
 import { useAuth } from '@/context/AuthContext'
 import { useColorMode } from '@/context/ColorModeContext'
 import { api } from '@/lib/api'
@@ -445,7 +444,7 @@ export function SettingsPage() {
 
         {saving && (
           <Box sx={{ position: 'fixed', bottom: 24, right: 24, zIndex: 1200, display: 'flex', alignItems: 'center', gap: 1, bgcolor: FOREST, color: '#F5F2EA', px: 2, py: 1, borderRadius: '999px' }}>
-            <CircularProgress size={15} sx={{ color: '#F5F2EA' }} />
+            <LoadingDots size={6} />
             <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>Saving…</Typography>
           </Box>
         )}

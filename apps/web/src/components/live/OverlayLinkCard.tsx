@@ -17,12 +17,11 @@ import InputAdornment from '@mui/material/InputAdornment'
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
 import Alert from '@mui/material/Alert'
-import CircularProgress from '@mui/material/CircularProgress'
 import LiveTvRoundedIcon from '@mui/icons-material/LiveTvRounded'
 import ContentCopyRoundedIcon from '@mui/icons-material/ContentCopyRounded'
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded'
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
-import { Button, SHAPE } from '@ubuntu-fund/ui'
+import { Button, SHAPE, LoadingDots } from '@ubuntu-fund/ui'
 import { overlayViewUrl, rotateOverlayToken, type LiveSession } from '@/lib/fundraising'
 
 interface OverlayLinkCardProps {
@@ -106,7 +105,7 @@ export function OverlayLinkCard({ session, onRotated }: OverlayLinkCardProps) {
           brandVariant="outline"
           onClick={handleRotate}
           disabled={rotating}
-          startIcon={rotating ? <CircularProgress size={15} color="inherit" /> : <RefreshRoundedIcon />}
+          startIcon={rotating ? <LoadingDots size={6} /> : <RefreshRoundedIcon />}
           sx={{ textTransform: 'none', fontWeight: 700, borderRadius: SHAPE.sm }}
         >
           Rotate token

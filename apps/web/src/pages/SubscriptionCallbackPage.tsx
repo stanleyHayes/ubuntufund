@@ -4,10 +4,9 @@ import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
-import CircularProgress from '@mui/material/CircularProgress'
 import ReplayRoundedIcon from '@mui/icons-material/ReplayRounded'
 import { keyframes } from '@emotion/react'
-import { ItemNotFound, BrandLogo, formatCurrency, SHAPE } from '@ubuntu-fund/ui'
+import { ItemNotFound, BrandLogo, formatCurrency, SHAPE, LoadingDots } from '@ubuntu-fund/ui'
 import { SUBSCRIPTION_PLANS } from '@ubuntu-fund/types'
 import {
   getSubscriptionCheckoutStatus,
@@ -184,7 +183,9 @@ export function SubscriptionCallbackPage() {
         {/* ---- Pending / resolving ---- */}
         {(phase === 'resolving' || phase === 'pending') && (
           <>
-            <CircularProgress sx={{ mb: 3, color: 'secondary.main' }} />
+            <Box sx={{ mb: 3, color: 'secondary.main', display: 'flex', justifyContent: 'center' }}>
+              <LoadingDots size={10} />
+            </Box>
             <Typography variant="h5" component="h1" sx={{ fontWeight: 800, mb: 1 }}>
               Confirming your subscription…
             </Typography>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
-  Box, Typography, Breadcrumbs, Link, CircularProgress, Alert,
+  Box, Typography, Breadcrumbs, Link, Skeleton, Alert,
 } from '@mui/material'
 import NavigateNextIcon from '@mui/icons-material/NavigateNext'
 import HandshakeRoundedIcon from '@mui/icons-material/HandshakeRounded'
@@ -124,7 +124,20 @@ export default function AffiliateDetailPage() {
   }, [id])
 
   if (loading) {
-    return <Box sx={{ minHeight: 420, display: 'grid', placeItems: 'center' }}><CircularProgress /></Box>
+    return (
+      <Box sx={{ p: 3, maxWidth: 1400, mx: 'auto' }}>
+        <Skeleton variant="text" width={220} height={20} sx={{ mb: 1 }} />
+        <Skeleton variant="text" width={360} height={40} sx={{ mb: 3 }} />
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' }, gap: 2, mb: 3 }}>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} variant="rounded" height={96} />
+          ))}
+        </Box>
+        {Array.from({ length: 2 }).map((_, i) => (
+          <Skeleton key={i} variant="rounded" height={220} sx={{ mb: 3 }} />
+        ))}
+      </Box>
+    )
   }
 
   if (!detail) {

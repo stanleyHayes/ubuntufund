@@ -13,7 +13,6 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogActions from '@mui/material/DialogActions'
 import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import InputAdornment from '@mui/material/InputAdornment'
-import CircularProgress from '@mui/material/CircularProgress'
 import Alert from '@mui/material/Alert'
 import LinearProgress from '@mui/material/LinearProgress'
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded'
@@ -26,7 +25,7 @@ import CampaignRoundedIcon from '@mui/icons-material/CampaignRounded'
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded'
 import LocalOfferRoundedIcon from '@mui/icons-material/LocalOfferRounded'
 import { keyframes } from '@emotion/react'
-import { SHAPE, formatCurrency } from '@ubuntu-fund/ui'
+import { SHAPE, formatCurrency, LoadingDots } from '@ubuntu-fund/ui'
 import {
   SubscriptionTier,
   SubscriptionStatus,
@@ -853,7 +852,7 @@ export function SubscriptionPage() {
                     ),
                     endAdornment: couponLoading ? (
                       <InputAdornment position="end">
-                        <CircularProgress size={16} />
+                        <LoadingDots size={6} />
                       </InputAdornment>
                     ) : undefined,
                   }}
@@ -913,7 +912,7 @@ export function SubscriptionPage() {
                   variant="contained"
                   onClick={handleCheckout}
                   disabled={checkoutLoading}
-                  startIcon={checkoutLoading ? <CircularProgress size={16} color="inherit" /> : undefined}
+                  startIcon={checkoutLoading ? <LoadingDots size={6} /> : undefined}
                   sx={{ bgcolor: '#2E3D2F', fontWeight: 700, textTransform: 'none', '&:hover': { bgcolor: '#1C261D' } }}
                 >
                   {checkoutLoading ? 'Starting…' : finalAmount === 0 ? 'Activate plan' : 'Continue to payment'}

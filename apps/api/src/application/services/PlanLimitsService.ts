@@ -1,6 +1,7 @@
 import {
   SubscriptionStatus,
   SubscriptionTier,
+  SUBSCRIPTION_PLANS,
   type SubscriptionPlan,
 } from '@ubuntu-fund/types';
 import type { SubscriptionRepositoryPort } from '../../domain/ports/outbound/SubscriptionRepositoryPort.js';
@@ -47,8 +48,17 @@ export class PlanLimitsService {
   constructor(
     private readonly subscriptionRepo: SubscriptionRepositoryPort,
     private readonly campaignRepo: CampaignRepositoryPort,
-    private readonly planService: PlanService
+    // Optional so unit tests can construct the service without the full DI graph;
+    // when absent, plans resolve from the code-defined SUBSCRIPTION_PLANS defaults
+    // (the same values PlanService itself falls back to). Prod always wires it.
+    private readonly planService?: PlanService
   ) {}
+
+  /** Resolve a plan via PlanService (DB-backed) when wired, else the code defaults. */
+  private async getPlanFor(tier: SubscriptionTier): Promise<SubscriptionPlan> {
+    if (this.planService) return this.getPlanFor(tier)
+    return SUBSCRIPTION_PLANS[tier]
+  }
 
   /**
    * The plan currently in force for a user. Falls back to the Free plan when the
@@ -59,9 +69,9 @@ export class PlanLimitsService {
   async resolvePlan(userId: string): Promise<SubscriptionPlan> {
     const subscription = await this.subscriptionRepo.findByUserId(userId);
     if (!subscription || !ACTIVE_STATUSES.has(subscription.status)) {
-      return this.planService.getPlan(SubscriptionTier.FREE);
+      return this.getPlanFor(SubscriptionTier.FREE);
     }
-    return this.planService.getPlan(subscription.tier);
+    return this.getPlanFor(subscription.tier);
   }
 
   /** The platform revenue cut (%) to apply to donations for this user's plan. */
@@ -79,7 +89,7 @@ export class PlanLimitsService {
   async platformFeePercentForCampaign(campaignId: string): Promise<number> {
     const campaign = await this.campaignRepo.findById(campaignId);
     if (!campaign) {
-      const freePlan = await this.planService.getPlan(SubscriptionTier.FREE);
+      const freePlan = await this.getPlanFor(SubscriptionTier.FREE);
       return freePlan.platformFeePercent;
     }
     return this.platformFeePercent(campaign.creatorId);

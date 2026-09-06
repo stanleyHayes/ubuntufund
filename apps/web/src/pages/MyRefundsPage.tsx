@@ -12,7 +12,7 @@ import TableRow from '@mui/material/TableRow'
 import Paper from '@mui/material/Paper'
 import Button from '@mui/material/Button'
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
-import CircularProgress from '@mui/material/CircularProgress'
+import Skeleton from '@mui/material/Skeleton'
 import { Link as RouterLink } from 'react-router-dom'
 import { formatCurrency, EmptyState, SHAPE } from '@ubuntu-fund/ui'
 import { api } from '@/lib/api'
@@ -56,8 +56,12 @@ export function MyRefundsPage() {
 
   if (isLoading) {
     return (
-      <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <CircularProgress />
+      <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', py: 5 }}>
+        <Container maxWidth="lg">
+          <Skeleton variant="rounded" width={160} height={32} sx={{ mb: 3 }} />
+          <Skeleton variant="text" width={260} sx={{ fontSize: '1.8rem', mb: 4 }} />
+          <Skeleton variant="rounded" height={320} sx={{ borderRadius: SHAPE.card }} />
+        </Container>
       </Box>
     )
   }

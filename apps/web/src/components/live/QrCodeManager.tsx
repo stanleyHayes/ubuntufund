@@ -22,13 +22,12 @@ import Tooltip from '@mui/material/Tooltip'
 import Divider from '@mui/material/Divider'
 import Alert from '@mui/material/Alert'
 import Skeleton from '@mui/material/Skeleton'
-import CircularProgress from '@mui/material/CircularProgress'
 import QrCode2RoundedIcon from '@mui/icons-material/QrCode2Rounded'
 import ContentCopyRoundedIcon from '@mui/icons-material/ContentCopyRounded'
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded'
 import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded'
 import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded'
-import { Button, SHAPE, formatCurrency } from '@ubuntu-fund/ui'
+import { Button, SHAPE, formatCurrency, LoadingDots } from '@ubuntu-fund/ui'
 import {
   createQrCode,
   listCampaignQrCodes,
@@ -158,7 +157,7 @@ export function QrCodeManager({ campaignId, liveSessionId }: QrCodeManagerProps)
                 disabled={busyKind !== null || (kind === 'live' && !liveSessionId)}
                 startIcon={
                   busyKind === kind ? (
-                    <CircularProgress size={15} color="inherit" />
+                    <LoadingDots size={6} />
                   ) : (
                     <QrCode2RoundedIcon />
                   )

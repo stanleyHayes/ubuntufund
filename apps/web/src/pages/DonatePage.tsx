@@ -13,7 +13,6 @@ import Skeleton from '@mui/material/Skeleton'
 import Divider from '@mui/material/Divider'
 import Link from '@mui/material/Link'
 import InputAdornment from '@mui/material/InputAdornment'
-import CircularProgress from '@mui/material/CircularProgress'
 import LockRoundedIcon from '@mui/icons-material/LockRounded'
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
 import { keyframes } from '@emotion/react'
@@ -25,6 +24,7 @@ import {
   BrandLogo,
   formatCurrency,
   SHAPE,
+  LoadingDots,
 } from '@ubuntu-fund/ui'
 import { CampaignStatus } from '@ubuntu-fund/types'
 import {
@@ -534,7 +534,7 @@ export function DonatePage() {
           variant="contained"
           color="secondary"
           disabled={!canSubmit}
-          startIcon={submitting ? <CircularProgress size={18} color="inherit" /> : <LockRoundedIcon />}
+          startIcon={submitting ? <LoadingDots size={6} /> : <LockRoundedIcon />}
           sx={{ py: 1.5, fontSize: '1.05rem', fontWeight: 800 }}
         >
           {submitting

@@ -1,6 +1,6 @@
-import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
+import { BrandedTextField as TextField, LoadingDots } from '@ubuntu-fund/ui'
 import { useState } from 'react'
-import { Box, Button, Typography, Alert, CircularProgress } from '@mui/material'
+import { Box, Button, Typography, Alert } from '@mui/material'
 import ArrowBackRounded from '@mui/icons-material/ArrowBackRounded'
 import ArrowForwardRounded from '@mui/icons-material/ArrowForwardRounded'
 import MarkEmailReadRounded from '@mui/icons-material/MarkEmailReadRounded'
@@ -45,7 +45,7 @@ export default function ForgotPasswordPage() {
         {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
         <Box component="form" className="admin-auth-form" onSubmit={handleSubmit} aria-busy={submitting}>
           <TextField label="Email address" type="email" value={email} onChange={(e) => setEmail(e.target.value)} fullWidth required autoComplete="email" disabled={submitting} />
-          <Button type="submit" variant="contained" fullWidth disabled={submitting} endIcon={submitting ? <CircularProgress size={18} color="inherit" /> : <ArrowForwardRounded />}>{submitting ? 'Sending request…' : 'Send reset link'}</Button>
+          <Button type="submit" variant="contained" fullWidth disabled={submitting} endIcon={submitting ? <LoadingDots size={6} /> : <ArrowForwardRounded />}>{submitting ? 'Sending request…' : 'Send reset link'}</Button>
           <Button component={RouterLink} to="/login" startIcon={<ArrowBackRounded />}>Back to sign in</Button>
         </Box>
         <div className="admin-auth-form-note">For your privacy, the response is the same whether or not the email is registered.</div>
