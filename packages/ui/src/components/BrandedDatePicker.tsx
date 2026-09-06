@@ -29,7 +29,7 @@ export interface BrandedDatePickerProps {
 
 const paperSx = {
   bgcolor: 'background.paper', color: 'text.primary', backgroundImage: 'none',
-  borderRadius: '8px 24px 8px 24px', boxShadow: 'var(--neu-raised)',
+  borderRadius: 'var(--shape-card)', boxShadow: 'var(--neu-raised)',
   border: '1px solid', borderColor: 'divider',
   '& .MuiPickersDay-root, & .MuiPickersDay2-root': { borderRadius: '6px 12px 6px 12px' },
   '& .Mui-selected': { bgcolor: 'primary.main', color: 'primary.contrastText', boxShadow: 'var(--neu-subtle)' },

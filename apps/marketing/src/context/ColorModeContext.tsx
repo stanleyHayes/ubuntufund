@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useLayoutEffect, useMemo, useState, type ReactNode } from 'react'
 import { ThemeProvider } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
 import GlobalStyles from '@mui/material/GlobalStyles'
@@ -37,9 +37,9 @@ export function ColorModeProvider({ children }: { children: ReactNode }) {
     const s = localStorage.getItem('uf_skin')
     return s && (SKINS as string[]).includes(s) ? (s as ThemeSkin) : 'neumorphism'
   })
-  const theme = useMemo(() => createUjimoraTheme(darkMode ? 'dark' : 'light'), [darkMode])
+  const theme = useMemo(() => createUjimoraTheme(darkMode ? 'dark' : 'light', skin), [darkMode, skin])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     applySkinVars(skin, darkMode)
     document.documentElement.dataset.skin = skin
   }, [skin, darkMode])

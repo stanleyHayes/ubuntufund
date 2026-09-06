@@ -1,5 +1,5 @@
 import { alpha, createTheme, type PaletteMode } from '@mui/material/styles'
-import { getNeumorphicTokens, getSkinVars, SHAPE } from '@ubuntu-fund/ui'
+import { getNeumorphicTokens, getSkinVars, SHAPE, type ThemeSkin } from '@ubuntu-fund/ui'
 
 declare module '@mui/material/styles' {
   interface Palette {
@@ -25,9 +25,10 @@ declare module '@mui/material/styles' {
 // subtle|inset) plus the glass extras --neu-backdrop/--neu-border) rather than
 // baking a static shadow in, so switching skin/mode re-skins the console live.
 // `mode` only decides the palette and the default (neumorphism) var seed here.
-export function makeAdminTheme(mode: PaletteMode) {
+export function makeAdminTheme(mode: PaletteMode, skin: ThemeSkin = 'neumorphism') {
   const dark = mode === 'dark'
-  const surface = getNeumorphicTokens(dark).surface
+  const skinVars = getSkinVars(skin, dark)
+  const surface = skin === 'glassmorphism' ? getNeumorphicTokens(dark).surface : skinVars['--neu-surface']
 
   return createTheme({
     palette: {
@@ -43,7 +44,7 @@ export function makeAdminTheme(mode: PaletteMode) {
       },
       background: {
         default: surface,
-        paper: surface,
+        paper: skinVars['--neu-surface'],
       },
       trust: dark
         ? { level1: '#3A4A3E', level2: '#8FAE96', level3: '#C7A24A', level4: '#DCC07E' }
@@ -103,7 +104,7 @@ export function makeAdminTheme(mode: PaletteMode) {
             '&:focus-visible': { outline: '2px solid #C7A24A', outlineOffset: 3 },
             '&.Mui-disabled': { boxShadow: 'none', opacity: 0.58 },
           },
-          outlined: { border: '0 !important', backgroundColor: 'var(--neu-surface)' },
+          outlined: { border: 'var(--neu-border, 0px solid transparent) !important', backgroundColor: 'var(--neu-surface)' },
           text: { boxShadow: 'none', '&:hover': { boxShadow: 'var(--neu-subtle)' }, '&:active': { boxShadow: 'var(--neu-inset)' } },
         },
         defaultProps: {
@@ -139,7 +140,7 @@ export function makeAdminTheme(mode: PaletteMode) {
         styleOverrides: {
           root: {
             minHeight: 30, fontWeight: 600, borderRadius: SHAPE.sm,
-            border: '0 !important', backgroundColor: 'var(--neu-surface)',
+            border: 'var(--neu-border, 0px solid transparent) !important', backgroundColor: 'var(--neu-surface)',
             boxShadow: 'var(--neu-subtle) !important',
             ...(dark ? {
               color: '#E8EBE3',
@@ -156,7 +157,7 @@ export function makeAdminTheme(mode: PaletteMode) {
       MuiIconButton: {
         styleOverrides: {
           root: {
-            border: '0 !important', borderRadius: SHAPE.sm,
+            border: 'var(--neu-border, 0px solid transparent) !important', borderRadius: SHAPE.sm,
             backgroundColor: 'var(--neu-surface)', boxShadow: 'var(--neu-subtle) !important',
             transition: 'transform 160ms ease, box-shadow 160ms ease',
             '&:hover': { boxShadow: 'var(--neu-raised-hover) !important', transform: 'translateY(-1px)' },
@@ -167,7 +168,9 @@ export function makeAdminTheme(mode: PaletteMode) {
       },
       MuiPaper: {
         styleOverrides: {
+          elevation: { boxShadow: 'var(--neu-raised)' },
           root: {
+            borderRadius: SHAPE.card,
             backgroundImage: 'none',
             backgroundColor: 'var(--neu-surface)',
             backdropFilter: 'var(--neu-backdrop, none)',
@@ -180,7 +183,7 @@ export function makeAdminTheme(mode: PaletteMode) {
         styleOverrides: {
           root: {
             borderRadius: SHAPE.sm, backgroundColor: 'var(--neu-surface)', boxShadow: 'var(--neu-inset)',
-            '& .MuiOutlinedInput-notchedOutline': { border: '0 !important' },
+            '& .MuiOutlinedInput-notchedOutline': { border: 'var(--neu-border, 0px solid transparent) !important' },
             '&.Mui-focused': { boxShadow: 'var(--neu-inset), 0 0 0 3px rgba(199,162,74,0.16)' },
           },
         },
@@ -201,9 +204,9 @@ export function makeAdminTheme(mode: PaletteMode) {
       MuiCssBaseline: {
         styleOverrides: {
           ':root': {
-            ...getSkinVars('neumorphism', dark),
+            ...skinVars,
           },
-          body: { backgroundColor: 'var(--neu-surface)', colorScheme: mode },
+          body: { backgroundColor: surface, colorScheme: mode },
         },
       },
     },

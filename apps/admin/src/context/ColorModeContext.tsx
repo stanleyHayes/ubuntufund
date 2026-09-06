@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useLayoutEffect, useMemo, useState, type ReactNode } from 'react'
 import { ThemeProvider } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
 import GlobalStyles from '@mui/material/GlobalStyles'
@@ -13,7 +13,7 @@ interface ColorModeValue {
 }
 
 const ColorModeContext = createContext<ColorModeValue | null>(null)
-const SKINS: ThemeSkin[] = ['neumorphism', 'claymorphism', 'glassmorphism']
+const SKINS: ThemeSkin[] = ['neumorphism', 'claymorphism', 'glassmorphism', 'minimal']
 
 // Frosted glass needs a backdrop blur + hairline border on surfaces, and a
 // non-flat backdrop worth blurring — scoped to the glass skin only so the other
@@ -38,11 +38,11 @@ export function ColorModeProvider({ children }: { children: ReactNode }) {
     const s = localStorage.getItem('uf_admin_skin')
     return s && (SKINS as string[]).includes(s) ? (s as ThemeSkin) : 'neumorphism'
   })
-  const theme = useMemo(() => makeAdminTheme(darkMode ? 'dark' : 'light'), [darkMode])
+  const theme = useMemo(() => makeAdminTheme(darkMode ? 'dark' : 'light', skin), [darkMode, skin])
 
   // Re-apply the skin's CSS vars (inline on :root, so they override the theme's
   // CssBaseline defaults) and stamp data-skin whenever skin or mode changes.
-  useEffect(() => {
+  useLayoutEffect(() => {
     applySkinVars(skin, darkMode)
     document.documentElement.dataset.skin = skin
   }, [skin, darkMode])

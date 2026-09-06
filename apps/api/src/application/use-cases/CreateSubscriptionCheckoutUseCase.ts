@@ -4,7 +4,6 @@ import {
   CouponRedemptionStatus,
   SubscriptionCheckoutStatus,
   SubscriptionTier,
-  SUBSCRIPTION_PLANS,
   type CouponRedemption,
   type CreateSubscriptionCheckoutInput,
   type SubscriptionCheckoutResult,
@@ -14,6 +13,7 @@ import type { CouponRedemptionRepositoryPort } from '../../domain/ports/outbound
 import type { UserRepositoryPort } from '../../domain/ports/outbound/UserRepositoryPort.js';
 import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGatewayPort.js';
 import type { CouponService } from '../services/CouponService.js';
+import type { PlanService } from '../services/PlanService.js';
 import type { SettleSubscriptionUseCase } from './SettleSubscriptionUseCase.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 
@@ -46,7 +46,8 @@ export class CreateSubscriptionCheckoutUseCase {
     private readonly userRepo: UserRepositoryPort,
     private readonly couponService: CouponService,
     private readonly paymentGateway: PaymentGatewayPort,
-    private readonly settleSubscriptionUseCase: SettleSubscriptionUseCase
+    private readonly settleSubscriptionUseCase: SettleSubscriptionUseCase,
+    private readonly planService: PlanService
   ) {}
 
   async execute(
@@ -67,7 +68,9 @@ export class CreateSubscriptionCheckoutUseCase {
       );
     }
 
-    const plan = SUBSCRIPTION_PLANS[tier];
+    // Price from the DB-backed plan (admin-editable), with the code defaults as
+    // the safe fallback baked into PlanService.
+    const plan = await this.planService.getPlan(tier);
     const baseAmount = round2(
       billingCycle === BillingCycle.YEARLY
         ? plan.priceYearly

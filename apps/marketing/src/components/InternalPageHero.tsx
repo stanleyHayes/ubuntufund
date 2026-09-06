@@ -34,10 +34,10 @@ export function InternalPageHero({
       component="section"
       sx={{
         '--neu-surface': '#243126',
-        '--neu-raised': '8px 8px 20px rgba(0,0,0,.38), -8px -8px 20px rgba(94,143,114,.16)',
-        '--neu-raised-hover': '11px 11px 24px rgba(0,0,0,.42), -10px -10px 22px rgba(94,143,114,.18)',
-        '--neu-subtle': '4px 4px 11px rgba(0,0,0,.34), -4px -4px 11px rgba(94,143,114,.14)',
-        '--neu-inset': 'inset 3px 3px 9px rgba(0,0,0,.38), inset -3px -3px 9px rgba(94,143,114,.14)',
+        '--neu-raised': 'var(--forest-raised)',
+        '--neu-raised-hover': 'var(--forest-raised-hover)',
+        '--neu-subtle': 'var(--forest-subtle)',
+        '--neu-inset': 'var(--forest-inset)',
         position: 'relative',
         overflow: 'hidden',
         bgcolor: '#243126',

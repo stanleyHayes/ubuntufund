@@ -77,16 +77,16 @@ function AboutPage() {
               <Typography variant="overline" sx={{ color: '#DCC07E' }}>How the model works</Typography>
               <Typography component="h2" sx={{ mt: 1.5, fontSize: { xs: '2rem', md: '2.8rem' }, fontWeight: 900, lineHeight: 1.05, letterSpacing: '-.035em' }}>One history, shared by everyone involved.</Typography>
               <Typography sx={{ mt: 2.5, color: 'rgba(242,239,234,.64)', lineHeight: 1.75 }}>The product is designed around continuity instead of a collection of disconnected screens.</Typography>
-              <Box component="figure" sx={{ m: 0, mt: 4, overflow: 'hidden', borderRadius: SHAPE.card, boxShadow: '8px 9px 22px rgba(0,0,0,.4), -6px -6px 16px rgba(94,143,114,.12)' }}>
+              <Box component="figure" sx={{ m: 0, mt: 4, overflow: 'hidden', borderRadius: SHAPE.card, boxShadow: 'var(--forest-raised)' }}>
                 <Box component="img" src="/images/about/project-verification.jpg" alt="A Ghanaian project organizer recording progress at a community water site" sx={{ display: 'block', width: '100%', height: { xs: 300, md: 360 }, objectFit: 'cover', objectPosition: 'center 38%' }} />
                 <Typography component="figcaption" sx={{ px: 2.5, py: 2, color: 'rgba(242,239,234,.68)', fontSize: '.78rem', lineHeight: 1.55 }}>Progress becomes more useful when it is documented where the work happens.</Typography>
               </Box>
             </Box>
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2,1fr)' }, gap: 2 }}>
               {OPERATING_MODEL.map((item) => (
-                <Box key={item.number} sx={{ bgcolor: '#243126', boxShadow: '7px 7px 17px rgba(0,0,0,.36), -6px -6px 15px rgba(94,143,114,.13)', borderRadius: SHAPE.card, p: 3 }}>
+                <Box key={item.number} sx={{ bgcolor: '#243126', boxShadow: 'var(--forest-raised)', borderRadius: SHAPE.card, p: 3 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#DCC07E' }}>
-                    <Box sx={{ width: 46, height: 46, display: 'grid', placeItems: 'center', borderRadius: SHAPE.sm, boxShadow: '4px 4px 10px rgba(0,0,0,.32), -4px -4px 10px rgba(94,143,114,.13)', '& svg': { fontSize: 23 } }}>{item.icon}</Box>
+                    <Box sx={{ width: 46, height: 46, display: 'grid', placeItems: 'center', borderRadius: SHAPE.sm, boxShadow: 'var(--forest-raised)', '& svg': { fontSize: 23 } }}>{item.icon}</Box>
                     <Typography sx={{ fontWeight: 900, opacity: .28 }}>{item.number}</Typography>
                   </Box>
                   <Typography component="h3" sx={{ mt: 3, fontSize: '1.15rem', fontWeight: 800 }}>{item.title}</Typography>

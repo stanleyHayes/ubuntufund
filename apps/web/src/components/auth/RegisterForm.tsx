@@ -18,10 +18,10 @@ import {
   OrganizationType,
   SubscriptionTier,
   BillingCycle,
-  SUBSCRIPTION_PLANS,
 } from '@ubuntu-fund/types'
 import { SHAPE, formatCurrency } from '@ubuntu-fund/ui'
 import { useAuth } from '@/context/AuthContext'
+import { usePlanMap } from '@/hooks/useSubscription'
 import {
   createSubscriptionCheckout,
   saveSubscriptionCheckoutHandoff,
@@ -95,6 +95,8 @@ export function RegisterForm() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { register } = useAuth()
+  // DB-backed plans (seeded from SUBSCRIPTION_PLANS so the picker never flashes empty).
+  const plans = usePlanMap()
 
   const [step, setStep] = useState(0)
   const [accountType, setAccountType] = useState<AccountType>(
@@ -298,7 +300,7 @@ export function RegisterForm() {
             </Box>
           </Box>
           {ALL_TIERS.map((tier) => {
-            const plan = SUBSCRIPTION_PLANS[tier]
+            const plan = plans[tier]
             const active = selectedTier === tier
             const price = billingCycle === BillingCycle.YEARLY ? plan.priceYearly : plan.priceMonthly
             return (

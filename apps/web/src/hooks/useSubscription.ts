@@ -99,7 +99,7 @@ export function useSubscriptionPlans(): UseSubscriptionPlansResult {
     let cancelled = false
 
     api
-      .get<SubscriptionPlan[]>('/subscriptions/plans')
+      .get<SubscriptionPlan[]>('/plans')
       .then((data) => {
         if (!cancelled) setPlans(data)
       })
@@ -119,4 +119,44 @@ export function useSubscriptionPlans(): UseSubscriptionPlansResult {
   }, [])
 
   return { plans, isLoading }
+}
+
+// ---------------------------------------------------------------------------
+// usePlanMap
+// ---------------------------------------------------------------------------
+
+/**
+ * The DB-backed plans keyed by tier for display. Seeded from the code-defined
+ * `SUBSCRIPTION_PLANS` so cards render immediately with no flash/empty state,
+ * then overlaid with the live plans from `GET /plans`. A failed fetch keeps the
+ * seeded defaults, so pricing/limits are always shown.
+ */
+export function usePlanMap(): Record<SubscriptionTier, SubscriptionPlan> {
+  const [planMap, setPlanMap] = useState<Record<SubscriptionTier, SubscriptionPlan>>(SUBSCRIPTION_PLANS)
+
+  useEffect(() => {
+    let cancelled = false
+
+    api
+      .get<SubscriptionPlan[]>('/plans')
+      .then((data) => {
+        if (cancelled || !Array.isArray(data)) return
+        setPlanMap((current) => {
+          const next = { ...current }
+          for (const plan of data) {
+            if (plan && plan.tier) next[plan.tier] = plan
+          }
+          return next
+        })
+      })
+      .catch(() => {
+        // Keep the seeded defaults on failure.
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  return planMap
 }

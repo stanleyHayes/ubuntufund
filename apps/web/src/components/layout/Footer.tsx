@@ -42,10 +42,10 @@ export function Footer() {
         bgcolor: '#1C261D',
         color: 'rgba(245, 242, 234, 0.85)',
         '--neu-surface': '#1C261D',
-        '--neu-raised': '6px 6px 14px rgba(7,12,8,0.48), -5px -5px 12px rgba(76,101,82,0.12)',
-        '--neu-raised-hover': '8px 8px 17px rgba(7,12,8,0.52), -7px -7px 15px rgba(76,101,82,0.15)',
-        '--neu-subtle': '3px 3px 8px rgba(7,12,8,0.44), -3px -3px 8px rgba(76,101,82,0.11)',
-        '--neu-inset': 'inset 3px 3px 7px rgba(7,12,8,0.5), inset -3px -3px 7px rgba(76,101,82,0.13)',
+        '--neu-raised': 'var(--forest-raised)',
+        '--neu-raised-hover': 'var(--forest-raised-hover)',
+        '--neu-subtle': 'var(--forest-subtle)',
+        '--neu-inset': 'var(--forest-inset)',
       }}
     >
       <Container maxWidth="lg" sx={{ py: { xs: 5, md: 6 } }}>

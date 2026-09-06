@@ -169,10 +169,10 @@ function Footer() {
         position: 'relative',
         background: 'linear-gradient(180deg, #080f09 0%, #0a1a0d 30%, #0d1f10 60%, #0a1a0d 100%)',
         '--neu-surface': '#0A1A0D',
-        '--neu-raised': '6px 6px 14px rgba(0,0,0,0.58), -5px -5px 12px rgba(50,82,57,0.12)',
-        '--neu-raised-hover': '8px 8px 18px rgba(0,0,0,0.62), -7px -7px 15px rgba(50,82,57,0.16)',
-        '--neu-subtle': '3px 3px 8px rgba(0,0,0,0.54), -3px -3px 8px rgba(50,82,57,0.11)',
-        '--neu-inset': 'inset 3px 3px 7px rgba(0,0,0,0.58), inset -3px -3px 7px rgba(50,82,57,0.13)',
+        '--neu-raised': 'var(--forest-raised)',
+        '--neu-raised-hover': 'var(--forest-raised-hover)',
+        '--neu-subtle': 'var(--forest-subtle)',
+        '--neu-inset': 'var(--forest-inset)',
         overflow: 'hidden',
       }}
     >

@@ -150,7 +150,7 @@ function DefaultSkeleton() {
           key={i}
           sx={{
             border: `1px solid ${HAIRLINE}`,
-            borderRadius: '4px 16px 4px 16px',
+            borderRadius: 'var(--shape-card)',
             bgcolor: 'background.paper',
             p: 3,
             display: 'flex',

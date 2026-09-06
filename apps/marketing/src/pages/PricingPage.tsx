@@ -79,14 +79,14 @@ const TIER_ACCENTS: Record<SubscriptionTier, { color: string; bg: string; gradie
 function formatCellValue(value: unknown, format?: string): React.ReactNode {
   if (format === 'boolean') {
     return value ? (
-      <CheckRoundedIcon sx={{ fontSize: 18, color: '#2E3D2F' }} />
+      <CheckRoundedIcon sx={{ fontSize: 18, color: 'primary.main' }} />
     ) : (
-      <CloseRoundedIcon sx={{ fontSize: 18, color: 'rgba(0,0,0,0.12)' }} />
+      <CloseRoundedIcon sx={{ fontSize: 18, color: 'text.disabled' }} />
     )
   }
   if (typeof value === 'number') {
-    if (value === -1) return <Typography sx={{ fontSize: '0.82rem', fontWeight: 700, color: '#2E3D2F' }}>Unlimited</Typography>
-    if (value === 0 && format === 'unlimited') return <CloseRoundedIcon sx={{ fontSize: 18, color: 'rgba(0,0,0,0.12)' }} />
+    if (value === -1) return <Typography sx={{ fontSize: '0.82rem', fontWeight: 700, color: 'primary.main' }}>Unlimited</Typography>
+    if (value === 0 && format === 'unlimited') return <CloseRoundedIcon sx={{ fontSize: 18, color: 'text.disabled' }} />
     if (format === 'fee') return <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>{value}%</Typography>
     if (format === 'goal') return <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>GH₵ {value.toLocaleString()}</Typography>
     return <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>{value}</Typography>
@@ -236,7 +236,7 @@ function PricingPage() {
                       fontWeight: 700,
                       fontSize: '0.68rem',
                       bgcolor: 'rgba(46, 61, 47,0.08)',
-                      color: '#2E3D2F',
+                      color: 'primary.main',
                     }}
                   />
                 )}
@@ -327,8 +327,8 @@ function PricingPage() {
               sx={{
                 display: 'grid',
                 gridTemplateColumns: { xs: '1.6fr repeat(4, 1fr)', md: '2fr repeat(4, 1fr)' },
-                bgcolor: '#FAFAFA',
-                borderBottom: '1px solid rgba(0,0,0,0.08)',
+                bgcolor: 'background.paper',
+                borderBottom: '1px solid', borderColor: 'divider',
               }}
             >
               <Box sx={{ px: 3, py: 2.5 }}>

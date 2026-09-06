@@ -38,7 +38,7 @@ export default function EditableRow({
     <Box
       sx={{
         border: `1px solid ${HAIRLINE}`,
-        borderRadius: '4px 16px 4px 16px',
+        borderRadius: 'var(--shape-card)',
         bgcolor: 'background.paper',
         p: 2.5,
       }}
@@ -49,7 +49,7 @@ export default function EditableRow({
             sx={{
               width: 24,
               height: 24,
-              borderRadius: '3px 10px 3px 10px',
+              borderRadius: 'var(--shape-card)',
               flexShrink: 0,
               display: 'flex',
               alignItems: 'center',

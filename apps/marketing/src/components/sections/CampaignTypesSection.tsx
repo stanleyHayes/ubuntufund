@@ -12,50 +12,50 @@ import BusinessCenterIcon from '@mui/icons-material/BusinessCenter'
 import HolidayVillageIcon from '@mui/icons-material/HolidayVillage'
 import ChurchIcon from '@mui/icons-material/Church'
 import PaletteIcon from '@mui/icons-material/Palette'
-import { NEUMORPHIC_SMOKE_VARS, SHAPE } from '@ubuntu-fund/ui'
+import { SHAPE } from '@ubuntu-fund/ui'
 
 const campaignTypes = [
   {
     icon: LocalHospitalIcon,
     title: 'Medical',
     description: 'Healthcare costs, surgeries, treatments, and medical emergencies.',
-    accent: '#2E3D2F',
+    accent: 'primary.main',
   },
   {
     icon: SchoolIcon,
     title: 'Education',
     description: 'School fees, scholarships, learning materials, and university funding.',
-    accent: '#C7A24A',
+    accent: 'secondary.main',
   },
   {
     icon: WarningAmberIcon,
     title: 'Emergency',
     description: 'Disaster relief, urgent needs, and crisis response for communities.',
-    accent: '#2E3D2F',
+    accent: 'primary.main',
   },
   {
     icon: BusinessCenterIcon,
     title: 'Business',
     description: 'Startups, small businesses, cooperatives, and entrepreneurial ventures.',
-    accent: '#C7A24A',
+    accent: 'secondary.main',
   },
   {
     icon: HolidayVillageIcon,
     title: 'Community',
     description: 'Infrastructure, clean water, sanitation, and community development projects.',
-    accent: '#2E3D2F',
+    accent: 'primary.main',
   },
   {
     icon: ChurchIcon,
     title: 'Religious',
     description: 'Places of worship, religious events, missions, and faith-based initiatives.',
-    accent: '#C7A24A',
+    accent: 'secondary.main',
   },
   {
     icon: PaletteIcon,
     title: 'Creative',
     description: 'Arts, music, film, cultural projects, and creative work across Ghana.',
-    accent: '#2E3D2F',
+    accent: 'primary.main',
   },
 ]
 
@@ -65,15 +65,14 @@ function CampaignTypesSection() {
       id="campaign-types"
       sx={{
         py: { xs: 8, md: 10 },
-        backgroundColor: '#F2EFEA',
-        ...NEUMORPHIC_SMOKE_VARS,
+        backgroundColor: 'background.default',
       }}
     >
       <Container maxWidth="lg">
         <Box sx={{ textAlign: 'center', mb: { xs: 6, md: 8 } }}>
           <Typography
             variant="overline"
-            sx={{ color: 'secondary.dark' }}
+            sx={{ color: 'var(--text-warning)' }}
           >
             Campaign categories
           </Typography>

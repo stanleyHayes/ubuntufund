@@ -6,7 +6,7 @@ import {
   type PaymentProvider,
   type KYCVerification,
 } from '@/hooks/useMockData'
-import type { Campaign, User, Donation, AiUsageStats, AiUsageLogEntry } from '@ubuntu-fund/types'
+import type { Campaign, User, Donation, AiUsageStats, AiUsageLogEntry, SubscriptionPlan } from '@ubuntu-fund/types'
 
 /**
  * The admin donations feed reads the API's PublicDonationDTO
@@ -168,6 +168,15 @@ export function useAdminReports(): UseApiResult<AnalyticsReports> {
  */
 export function useAdminPaymentProviders(): UseApiResult<PaymentProvider[]> {
   return useApiWithFallback<PaymentProvider[]>('/payment-providers', [])
+}
+
+/**
+ * Fetch the DB-backed subscription plans from the API. `GET /plans` returns the
+ * admin-editable plans (with the code-defined defaults as the server-side
+ * fallback), so an empty result reflects a genuine backend problem.
+ */
+export function useAdminPlans(): UseApiResult<SubscriptionPlan[]> {
+  return useApiWithFallback<SubscriptionPlan[]>('/plans', [])
 }
 
 /**

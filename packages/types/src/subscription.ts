@@ -68,6 +68,32 @@ export interface Subscription {
   updatedAt: Date
 }
 
+/**
+ * The admin-editable fields of a {@link SubscriptionPlan}. Every field is
+ * optional so a plan can be patched one attribute at a time. `tier` is
+ * intentionally absent — it is the plan's immutable identity/key and can never
+ * be changed through an edit.
+ */
+export interface UpdateSubscriptionPlanInput {
+  name?: string
+  description?: string
+  priceMonthly?: number
+  priceYearly?: number
+  platformFeePercent?: number
+  maxActiveCampaigns?: number
+  maxCampaignGoal?: number
+  featuredListing?: boolean
+  prioritySupport?: boolean
+  advancedAnalytics?: boolean
+  customBranding?: boolean
+  escrowSupport?: boolean
+  liveStreaming?: boolean
+  campaignCollaboration?: boolean
+  maxMediaPerCampaign?: number
+  maxTeamMembers?: number
+  maxCollaboratorsPerCampaign?: number
+}
+
 export interface CreateSubscriptionInput {
   tier: SubscriptionTier
   billingCycle: BillingCycle

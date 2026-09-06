@@ -42,10 +42,10 @@ function OrganizationsSection() {
         position: 'relative', overflow: 'hidden', py: { xs: 8, md: 10 },
         background: 'linear-gradient(160deg, #1C261D 0%, #2E3D2F 100%)',
         '--neu-surface': '#233126',
-        '--neu-raised': '8px 8px 18px rgba(8,14,10,0.48), -7px -7px 16px rgba(91,117,98,0.13)',
-        '--neu-raised-hover': '11px 11px 22px rgba(8,14,10,0.52), -9px -9px 19px rgba(91,117,98,0.16)',
-        '--neu-subtle': '4px 4px 10px rgba(8,14,10,0.44), -4px -4px 10px rgba(91,117,98,0.12)',
-        '--neu-inset': 'inset 3px 3px 8px rgba(8,14,10,0.48), inset -3px -3px 8px rgba(91,117,98,0.14)',
+        '--neu-raised': 'var(--forest-raised)',
+        '--neu-raised-hover': 'var(--forest-raised-hover)',
+        '--neu-subtle': 'var(--forest-subtle)',
+        '--neu-inset': 'var(--forest-inset)',
         color: '#fff',
       }}
     >
@@ -131,7 +131,7 @@ function OrganizationsSection() {
                           color: '#DCC07E',
                           backgroundColor: 'var(--neu-surface)',
                           boxShadow: 'var(--neu-subtle)',
-                          borderRadius: '4px 12px 4px 12px',
+                          borderRadius: 'var(--shape-card)',
                         }}
                       >
                         <Icon sx={{ fontSize: 19 }} />

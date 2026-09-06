@@ -26,3 +26,5 @@ export { BrandedDatePicker } from './components/BrandedDatePicker'
 export type { BrandedDatePickerProps } from './components/BrandedDatePicker'
 
 export { BrandedTextField } from './components/BrandedTextField'
+
+export { ThemeStylePicker } from './components/ThemeStylePicker'

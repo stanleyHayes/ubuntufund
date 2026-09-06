@@ -4,6 +4,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 
 import { config } from './infrastructure/config/index.js';
+import { logger } from './infrastructure/logging/logger.js';
 
 // Outbound adapters (repositories)
 import { MongoCampaignRepository } from './infrastructure/adapters/outbound/persistence/MongoCampaignRepository.js';
@@ -25,6 +26,7 @@ import { MongoKYCRepository } from './infrastructure/adapters/outbound/persisten
 import { MongoCollaborationRepository } from './infrastructure/adapters/outbound/persistence/MongoCollaborationRepository.js';
 import { MongoSubscriptionRepository } from './infrastructure/adapters/outbound/persistence/MongoSubscriptionRepository.js';
 import { MongoPaymentProviderRepository } from './infrastructure/adapters/outbound/persistence/MongoPaymentProviderRepository.js';
+import { MongoSubscriptionPlanRepository } from './infrastructure/adapters/outbound/persistence/MongoSubscriptionPlanRepository.js';
 import { MongoDisputeRepository } from './infrastructure/adapters/outbound/persistence/MongoDisputeRepository.js';
 import { MongoAdminUserRepository } from './infrastructure/adapters/outbound/persistence/MongoAdminUserRepository.js';
 import { MongoAnalyticsRepository } from './infrastructure/adapters/outbound/persistence/MongoAnalyticsRepository.js';
@@ -57,6 +59,7 @@ import { QrCodeService } from './application/services/QrCodeService.js';
 import { RealtimeDonationProjector } from './application/services/RealtimeDonationProjector.js';
 import { FeePolicy } from './application/services/FeePolicy.js';
 import { PlanLimitsService } from './application/services/PlanLimitsService.js';
+import { PlanService } from './application/services/PlanService.js';
 import { CouponService } from './application/services/CouponService.js';
 import { AffiliateCommissionService } from './application/services/AffiliateCommissionService.js';
 import { CampaignLedgerProjector } from './application/services/CampaignLedgerProjector.js';
@@ -180,6 +183,8 @@ import { ListAffiliatePayoutsUseCase } from './application/use-cases/ListAffilia
 import { MatureAffiliateCommissionsUseCase } from './application/use-cases/MatureAffiliateCommissionsUseCase.js';
 
 // Use cases — payment providers, moderation, admin
+import { ListPlansUseCase } from './application/use-cases/ListPlansUseCase.js';
+import { UpdatePlanUseCase } from './application/use-cases/UpdatePlanUseCase.js';
 import { ListPaymentProvidersUseCase } from './application/use-cases/ListPaymentProvidersUseCase.js';
 import { GetEnabledPaymentProvidersUseCase } from './application/use-cases/GetEnabledPaymentProvidersUseCase.js';
 import { TogglePaymentProviderUseCase } from './application/use-cases/TogglePaymentProviderUseCase.js';
@@ -225,6 +230,7 @@ import { SubscriptionController } from './infrastructure/adapters/inbound/http/c
 import { CouponController } from './infrastructure/adapters/inbound/http/controllers/CouponController.js';
 import { AffiliateController } from './infrastructure/adapters/inbound/http/controllers/AffiliateController.js';
 import { PaymentProviderController } from './infrastructure/adapters/inbound/http/controllers/PaymentProviderController.js';
+import { PlanController } from './infrastructure/adapters/inbound/http/controllers/PlanController.js';
 import { DisputeController } from './infrastructure/adapters/inbound/http/controllers/DisputeController.js';
 import { AdminReportController } from './infrastructure/adapters/inbound/http/controllers/AdminReportController.js';
 import { CampaignModerationController } from './infrastructure/adapters/inbound/http/controllers/CampaignModerationController.js';
@@ -289,6 +295,7 @@ import {
   createAdminAffiliateRoutes,
 } from './infrastructure/adapters/inbound/http/routes/affiliateRoutes.js';
 import { createPaymentProviderRoutes } from './infrastructure/adapters/inbound/http/routes/paymentProviderRoutes.js';
+import { createPlanRoutes } from './infrastructure/adapters/inbound/http/routes/planRoutes.js';
 import { createDisputeRoutes } from './infrastructure/adapters/inbound/http/routes/disputeRoutes.js';
 import { createAdminReportRoutes } from './infrastructure/adapters/inbound/http/routes/adminReportRoutes.js';
 import { createCampaignModerationRoutes } from './infrastructure/adapters/inbound/http/routes/campaignModerationRoutes.js';
@@ -328,6 +335,13 @@ export function createApp(): express.Express {
   const collaborationRepo = new MongoCollaborationRepository();
   const subscriptionRepo = new MongoSubscriptionRepository();
   const paymentProviderRepo = new MongoPaymentProviderRepository();
+  const subscriptionPlanRepo = new MongoSubscriptionPlanRepository();
+  // Seed the plan matrix once at startup (idempotent — only inserts a tier's row
+  // when absent, never overwriting admin edits). Fire-and-forget; a seed failure
+  // is logged and PlanService still falls back to the code-defined defaults.
+  void subscriptionPlanRepo
+    .seedDefaults()
+    .catch((error) => logger.error({ err: error }, 'subscription plan seed failed'));
   const disputeRepo = new MongoDisputeRepository();
   const adminUserRepo = new MongoAdminUserRepository();
   const analyticsRepo = new MongoAnalyticsRepository();
@@ -379,9 +393,16 @@ export function createApp(): express.Express {
   // through the ledger; the outbox dispatcher turns settled donations into
   // realtime/receipt side-effects durably (swept again on boot).
   const feePolicy = new FeePolicy(config.fees);
+  // DB-backed, admin-editable plans (pricing/limits/benefits). The single source
+  // the rest of the app reads plans through; falls back to SUBSCRIPTION_PLANS.
+  const planService = new PlanService(subscriptionPlanRepo);
   // Resolves a user's subscription plan and enforces its limits (active-campaign
   // count, goal cap, plan feature gates) + the plan-based platform fee rate.
-  const planLimitsService = new PlanLimitsService(subscriptionRepo, campaignRepo);
+  const planLimitsService = new PlanLimitsService(
+    subscriptionRepo,
+    campaignRepo,
+    planService
+  );
   // Coupon validation/pricing for the paid-subscription checkout rail.
   const couponService = new CouponService(couponRepo, couponRedemptionRepo);
   // Awards + claws back the one-time referral commission on a referee's first
@@ -642,7 +663,8 @@ export function createApp(): express.Express {
     userRepo,
     couponService,
     paymentGateway,
-    settleSubscriptionUseCase
+    settleSubscriptionUseCase,
+    planService
   );
   const getSubscriptionCheckoutUseCase = new GetSubscriptionCheckoutUseCase(
     subscriptionCheckoutRepo
@@ -654,7 +676,7 @@ export function createApp(): express.Express {
   const listCouponsUseCase = new ListCouponsUseCase(couponRepo);
   const getCouponUseCase = new GetCouponUseCase(couponRepo);
   const deleteCouponUseCase = new DeleteCouponUseCase(couponRepo);
-  const previewCouponUseCase = new PreviewCouponUseCase(couponService);
+  const previewCouponUseCase = new PreviewCouponUseCase(couponService, planService);
 
   // Affiliate/referral program: owner surface + admin console + payout rail.
   const enrollAffiliateUseCase = new EnrollAffiliateUseCase(
@@ -714,6 +736,8 @@ export function createApp(): express.Express {
     affiliateBalanceRepo
   );
 
+  const listPlansUseCase = new ListPlansUseCase(planService);
+  const updatePlanUseCase = new UpdatePlanUseCase(subscriptionPlanRepo);
   const listPaymentProvidersUseCase = new ListPaymentProvidersUseCase(paymentProviderRepo);
   const getEnabledPaymentProvidersUseCase = new GetEnabledPaymentProvidersUseCase(paymentProviderRepo);
   const togglePaymentProviderUseCase = new TogglePaymentProviderUseCase(paymentProviderRepo);
@@ -870,6 +894,7 @@ export function createApp(): express.Express {
     getEnabledPaymentProvidersUseCase,
     togglePaymentProviderUseCase
   );
+  const planController = new PlanController(listPlansUseCase, updatePlanUseCase);
   const disputeController = new DisputeController(getDisputeUseCase, resolveDisputeUseCase);
   const adminReportController = new AdminReportController(listReportsUseCase, reviewReportUseCase);
   const campaignModerationController = new CampaignModerationController(reviewCampaignUseCase);
@@ -971,6 +996,8 @@ export function createApp(): express.Express {
   api.use('/affiliate', createAffiliateRoutes(affiliateController, authMiddleware));
   api.use('/affiliates', createAdminAffiliateRoutes(affiliateController, authMiddleware, requireAdmin));
   api.use('/payment-providers', createPaymentProviderRoutes(paymentProviderController, authMiddleware, requireAdmin));
+  // Plans: authed display (GET) + admin edit of pricing/limits/benefits (PUT).
+  api.use('/plans', createPlanRoutes(planController, authMiddleware, requireAdmin));
   // Payout rail: bank/telco directory (auth), plus the admin payout console.
   api.use('/banks', createBankRoutes(payoutController, authMiddleware));
   api.use('/payouts', createPayoutRoutes(payoutController, authMiddleware, requireAdmin));

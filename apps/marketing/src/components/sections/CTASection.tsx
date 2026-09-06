@@ -8,7 +8,6 @@ import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import FavoriteRoundedIcon from '@mui/icons-material/FavoriteRounded'
-import { NEUMORPHIC_SMOKE_VARS } from '@ubuntu-fund/ui'
 
 const WEB_APP_URL = import.meta.env.VITE_WEB_APP_URL || 'http://localhost:8200'
 
@@ -18,14 +17,13 @@ function CTASection() {
       sx={{
         position: 'relative', overflow: 'hidden', py: { xs: 8, md: 10 },
         textAlign: 'center',
-        backgroundColor: '#F2EFEA',
-        ...NEUMORPHIC_SMOKE_VARS,
+        backgroundColor: 'background.default',
       }}
     >
       <HomeWatermark variant="leaf" />
       <Container maxWidth="md" sx={{ position: 'relative' }}>
         <Box sx={{ mb: 4, color: 'primary.dark' }}><CommunitySculpture variant="seed" /></Box>
-        <Typography variant="overline" sx={{ color: 'secondary.dark' }}>
+        <Typography variant="overline" sx={{ color: 'var(--text-warning)' }}>
           Get involved
         </Typography>
         <Typography

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
-import { BrandedTextField as TextField, THEME_SKINS, SHAPE } from '@ubuntu-fund/ui'
+import { BrandedTextField as TextField, ThemeStylePicker, SHAPE } from '@ubuntu-fund/ui'
 import Switch from '@mui/material/Switch'
 import Button from '@mui/material/Button'
 import Alert from '@mui/material/Alert'
@@ -597,46 +597,7 @@ export default function SettingsPage() {
 
             {/* Theme style — re-skins every surface instantly (persisted per browser) */}
             <Box sx={{ px: 3, py: 2.5 }}>
-              <Typography sx={{ fontSize: '0.82rem', fontWeight: 600, color: 'text.primary', mb: 0.25 }}>
-                Theme style
-              </Typography>
-              <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', mb: 2 }}>
-                Choose the surface treatment for the console. Applies instantly.
-              </Typography>
-              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' }, gap: 1.5 }}>
-                {THEME_SKINS.map((s) => {
-                  const active = skin === s.id
-                  return (
-                    <Box
-                      key={s.id}
-                      component="button"
-                      type="button"
-                      onClick={() => setSkin(s.id)}
-                      aria-pressed={active}
-                      sx={{
-                        all: 'unset',
-                        cursor: 'pointer',
-                        p: 1.75,
-                        borderRadius: SHAPE.card,
-                        boxSizing: 'border-box',
-                        border: '1.5px solid',
-                        borderColor: active ? '#C7A24A' : 'divider',
-                        bgcolor: active ? alpha('#C7A24A', 0.1) : 'transparent',
-                        transition: 'border-color .15s ease, background-color .15s ease',
-                        '&:hover': { borderColor: active ? '#C7A24A' : alpha('#C7A24A', 0.5) },
-                        '&:focus-visible': { outline: '2px solid #C7A24A', outlineOffset: 2 },
-                      }}
-                    >
-                      <Typography sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.9rem' }}>
-                        {s.label}
-                      </Typography>
-                      <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', mt: 0.25, lineHeight: 1.4 }}>
-                        {s.blurb}
-                      </Typography>
-                    </Box>
-                  )
-                })}
-              </Box>
+              <ThemeStylePicker value={skin} onChange={setSkin} />
             </Box>
           </SectionCard>
         </Grid>

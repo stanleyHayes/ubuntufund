@@ -22,7 +22,7 @@ import ShieldRoundedIcon from '@mui/icons-material/ShieldRounded'
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded'
 import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded'
 import { useNavigate } from 'react-router-dom'
-import { SHAPE, THEME_SKINS } from '@ubuntu-fund/ui'
+import { SHAPE, ThemeStylePicker } from '@ubuntu-fund/ui'
 import { useAuth } from '@/context/AuthContext'
 import { useColorMode } from '@/context/ColorModeContext'
 import { api } from '@/lib/api'
@@ -81,7 +81,7 @@ function SettingsSection({
             color: accent,
             bgcolor: 'var(--neu-surface)',
             boxShadow: 'var(--neu-subtle)',
-            borderRadius: '4px 12px 4px 12px',
+            borderRadius: 'var(--shape-card)',
           }}
         >
           {icon}
@@ -392,31 +392,7 @@ export function SettingsPage() {
                 <ToggleRow label="Dark mode" description="Use Ujimora's low-light color theme" checked={darkMode} onChange={(v) => { setDarkMode(v); persistSettings({ darkMode: v }) }} />
               </Box>
               <Box sx={{ mt: 2.5 }}>
-                <Typography sx={{ fontSize: '0.8rem', fontWeight: 600, color: INK_SECONDARY, mb: 1 }}>Theme style</Typography>
-                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' }, gap: 1.5 }}>
-                  {THEME_SKINS.map((s) => {
-                    const active = skin === s.id
-                    return (
-                      <Box
-                        key={s.id}
-                        component="button"
-                        type="button"
-                        onClick={() => setSkin(s.id)}
-                        aria-pressed={active}
-                        sx={{
-                          all: 'unset', cursor: 'pointer', p: 1.75, borderRadius: SHAPE.card, boxSizing: 'border-box',
-                          border: `1.5px solid ${active ? '#C7A24A' : HAIRLINE}`,
-                          bgcolor: active ? 'rgba(199,162,74,0.08)' : 'transparent',
-                          transition: 'border-color .15s ease, background-color .15s ease',
-                          '&:focus-visible': { outline: '2px solid #C7A24A', outlineOffset: 2 },
-                        }}
-                      >
-                        <Typography sx={{ fontWeight: 700, color: INK, fontSize: '0.9rem' }}>{s.label}</Typography>
-                        <Typography sx={{ fontSize: '0.75rem', color: INK_SECONDARY, mt: 0.25, lineHeight: 1.4 }}>{s.blurb}</Typography>
-                      </Box>
-                    )
-                  })}
-                </Box>
+                <ThemeStylePicker value={skin} onChange={setSkin} />
               </Box>
             </SettingsSection>
 

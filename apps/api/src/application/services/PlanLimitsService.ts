@@ -1,11 +1,11 @@
 import {
   SubscriptionStatus,
   SubscriptionTier,
-  SUBSCRIPTION_PLANS,
   type SubscriptionPlan,
 } from '@ubuntu-fund/types';
 import type { SubscriptionRepositoryPort } from '../../domain/ports/outbound/SubscriptionRepositoryPort.js';
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js';
+import type { PlanService } from './PlanService.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 
 /**
@@ -31,20 +31,23 @@ function isUnlimited(limit: number): boolean {
 /**
  * Resolves a user's effective subscription plan and enforces its limits.
  *
- * The plan matrix (`SUBSCRIPTION_PLANS`) is the single source of truth for
- * per-tier limits — active-campaign count, campaign-goal cap, the platform fee
- * rate, and the boolean feature flags (live streaming, collaboration, …). This
- * service maps a user's active subscription onto that matrix, defaulting to the
- * Free plan when the user has no active subscription, and exposes the guards
- * the use-cases call to enforce it server-side.
+ * {@link PlanService} is the single source of truth for per-tier limits — the
+ * DB-backed, admin-editable plan (active-campaign count, campaign-goal cap, the
+ * platform fee rate, and the boolean feature flags such as live streaming and
+ * collaboration), falling back to the code-defined defaults. This service maps a
+ * user's active subscription onto that plan, defaulting to the Free plan when
+ * the user has no active subscription, and exposes the guards the use-cases call
+ * to enforce it server-side.
  *
- * It reads through the subscription + campaign repository ports only (never the
- * Mongo models directly), keeping it unit-testable with in-memory fakes.
+ * It reads through the subscription + campaign repository ports and PlanService
+ * only (never the Mongo models directly), keeping it unit-testable with
+ * in-memory fakes.
  */
 export class PlanLimitsService {
   constructor(
     private readonly subscriptionRepo: SubscriptionRepositoryPort,
-    private readonly campaignRepo: CampaignRepositoryPort
+    private readonly campaignRepo: CampaignRepositoryPort,
+    private readonly planService: PlanService
   ) {}
 
   /**
@@ -56,12 +59,9 @@ export class PlanLimitsService {
   async resolvePlan(userId: string): Promise<SubscriptionPlan> {
     const subscription = await this.subscriptionRepo.findByUserId(userId);
     if (!subscription || !ACTIVE_STATUSES.has(subscription.status)) {
-      return SUBSCRIPTION_PLANS[SubscriptionTier.FREE];
+      return this.planService.getPlan(SubscriptionTier.FREE);
     }
-    return (
-      SUBSCRIPTION_PLANS[subscription.tier] ??
-      SUBSCRIPTION_PLANS[SubscriptionTier.FREE]
-    );
+    return this.planService.getPlan(subscription.tier);
   }
 
   /** The platform revenue cut (%) to apply to donations for this user's plan. */
@@ -79,7 +79,8 @@ export class PlanLimitsService {
   async platformFeePercentForCampaign(campaignId: string): Promise<number> {
     const campaign = await this.campaignRepo.findById(campaignId);
     if (!campaign) {
-      return SUBSCRIPTION_PLANS[SubscriptionTier.FREE].platformFeePercent;
+      const freePlan = await this.planService.getPlan(SubscriptionTier.FREE);
+      return freePlan.platformFeePercent;
     }
     return this.platformFeePercent(campaign.creatorId);
   }

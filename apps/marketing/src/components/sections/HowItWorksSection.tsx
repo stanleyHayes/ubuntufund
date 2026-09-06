@@ -7,7 +7,7 @@ import Grid from '@mui/material/Grid'
 import CampaignRoundedIcon from '@mui/icons-material/CampaignRounded'
 import ShareRoundedIcon from '@mui/icons-material/ShareRounded'
 import AccountBalanceWalletRoundedIcon from '@mui/icons-material/AccountBalanceWalletRounded'
-import { NEUMORPHIC_SMOKE_VARS, SHAPE } from '@ubuntu-fund/ui'
+import { SHAPE } from '@ubuntu-fund/ui'
 
 const steps = [
   {
@@ -42,14 +42,13 @@ function HowItWorksSection() {
       id="how-it-works"
       sx={{
         position: 'relative', overflow: 'hidden', py: { xs: 8, md: 10 },
-        backgroundColor: '#F2EFEA',
-        ...NEUMORPHIC_SMOKE_VARS,
+        backgroundColor: 'background.default',
       }}
     >
       <HomeWatermark variant="ripple" />
       <Container maxWidth="lg" sx={{ position: 'relative' }}>
         <Box sx={{ textAlign: 'center', mb: { xs: 6, md: 8 } }}>
-          <Typography variant="overline" sx={{ color: '#A07E33' }}>
+          <Typography variant="overline" sx={{ color: 'var(--text-warning)' }}>
             Simple process
           </Typography>
           <Typography
@@ -82,7 +81,7 @@ function HowItWorksSection() {
                   borderRadius: SHAPE.card,
                 }}
               >
-                <Typography variant="overline" sx={{ color: '#A07E33', display: 'block', mb: 2 }}>
+                <Typography variant="overline" sx={{ color: 'var(--text-warning)', display: 'block', mb: 2 }}>
                   Step {step.step}
                 </Typography>
                 <Box

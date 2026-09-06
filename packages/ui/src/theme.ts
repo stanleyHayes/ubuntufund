@@ -34,11 +34,11 @@ declare module '@mui/material/styles' {
 // ---------------------------------------------------------------------------
 export const SHAPE = {
   /** Cards, chart panels, modals, list containers */
-  card: '4px 16px 4px 16px',
+  card: 'var(--shape-card, 4px 16px 4px 16px)',
   /** Chips, badges, icon boxes, small interactive surfaces */
-  sm: '3px 10px 3px 10px',
+  sm: 'var(--shape-sm, 3px 10px 3px 10px)',
   /** Progress bars, scrollbar thumbs, thin indicators */
-  bar: '1px 6px 1px 6px',
+  bar: 'var(--shape-bar, 1px 6px 1px 6px)',
 } as const
 
 // Neumorphism only reads when an element shares its background's colour: the
@@ -82,10 +82,10 @@ export const NEUMORPHIC_WHITE_VARS = {
 // SMOKE highlight, which would bloom into a white halo against the dark ground.
 export const NEUMORPHIC_FOREST_VARS = {
   '--neu-surface': '#233126',
-  '--neu-raised': '6px 6px 14px rgba(8,14,10,0.5), -6px -6px 14px rgba(91,117,98,0.14)',
-  '--neu-raised-hover': '9px 9px 20px rgba(8,14,10,0.55), -8px -8px 18px rgba(91,117,98,0.17)',
-  '--neu-subtle': '4px 4px 9px rgba(8,14,10,0.46), -4px -4px 9px rgba(91,117,98,0.12)',
-  '--neu-inset': 'inset 3px 3px 7px rgba(8,14,10,0.5), inset -3px -3px 7px rgba(91,117,98,0.14)',
+  '--neu-raised': 'var(--forest-raised)',
+  '--neu-raised-hover': 'var(--forest-raised-hover)',
+  '--neu-subtle': 'var(--forest-subtle)',
+  '--neu-inset': 'var(--forest-inset)',
 } as const
 
 // ---------------------------------------------------------------------------
@@ -104,7 +104,7 @@ export const THEME_SKINS: { id: ThemeSkin; label: string; blurb: string }[] = [
   { id: 'minimal', label: 'Minimal', blurb: 'Flat, crisp surfaces with hairline borders.' },
 ]
 
-export function getSkinVars(skin: ThemeSkin, dark: boolean): Record<string, string> {
+function getSurfaceVars(skin: ThemeSkin, dark: boolean): Record<string, string> {
   if (skin === 'minimal') {
     const surface = dark ? '#1B211B' : '#FFFFFF'
     const line = dark ? 'rgba(232,235,227,0.12)' : 'rgba(18,24,15,0.1)'
@@ -160,6 +160,20 @@ export function getSkinVars(skin: ThemeSkin, dark: boolean): Record<string, stri
     '--neu-backdrop': 'none',
     '--neu-border': '0px solid transparent',
     '--neu-radius': '16px',
+  }
+}
+
+/** Semantic geometry and dark-section shadows follow the same selected skin. */
+export function getSkinVars(skin: ThemeSkin, dark: boolean): Record<string, string> {
+  const surface = getSurfaceVars(skin, dark)
+  const forest = getSurfaceVars(skin, true)
+  const rounded = skin !== 'neumorphism'
+  return {
+    ...surface,
+    '--shape-card': rounded ? surface['--neu-radius'] : '4px 16px 4px 16px',
+    '--shape-sm': rounded ? (skin === 'claymorphism' ? '16px' : '10px') : '3px 10px 3px 10px',
+    '--shape-bar': rounded ? '999px' : '1px 6px 1px 6px',
+    ...Object.fromEntries(['raised', 'raised-hover', 'subtle', 'inset'].map(key => [`--forest-${key}`, forest[`--neu-${key}`]])),
   }
 }
 
@@ -265,9 +279,11 @@ export const ttSquaresFontFace = `
   }
 `
 
-export function createUjimoraTheme(mode: PaletteMode = 'light') {
+export function createUjimoraTheme(mode: PaletteMode = 'light', skin: ThemeSkin = 'neumorphism') {
   const dark = mode === 'dark'
   const neu = getNeumorphicTokens(dark)
+  const skinVars = getSkinVars(skin, dark)
+  const ground = skin === 'glassmorphism' ? neu.surface : skinVars['--neu-surface']
   return createTheme({
   palette: {
     mode,
@@ -311,8 +327,8 @@ export function createUjimoraTheme(mode: PaletteMode = 'light') {
       contrastText: dark ? '#172019' : '#F2F5F5',
     },
     background: {
-      default: neu.surface,
-      paper: neu.surface,
+      default: ground,
+      paper: skinVars['--neu-surface'],
     },
     divider: dark ? '#344238' : '#DAD7CD',
     trust: {
@@ -420,7 +436,7 @@ export function createUjimoraTheme(mode: PaletteMode = 'light') {
             backgroundColor: '#A07E33',
           },
         },
-        outlined: { border: '0 !important', backgroundColor: 'var(--neu-surface)' },
+        outlined: { border: 'var(--neu-border, 0px solid transparent) !important', backgroundColor: 'var(--neu-surface)' },
         text: { boxShadow: 'none', '&:hover': { boxShadow: 'var(--neu-subtle)' }, '&:active': { boxShadow: 'var(--neu-inset)' } },
       },
       defaultProps: {
@@ -435,7 +451,7 @@ export function createUjimoraTheme(mode: PaletteMode = 'light') {
       styleOverrides: {
         root: {
           borderRadius: SHAPE.card,
-          border: '0 !important',
+          border: 'var(--neu-border, 0px solid transparent) !important',
           boxShadow: 'var(--neu-raised) !important',
           backgroundColor: 'var(--neu-surface)',
           backgroundImage: 'none',
@@ -459,7 +475,7 @@ export function createUjimoraTheme(mode: PaletteMode = 'light') {
           minHeight: 30,
           fontWeight: 600,
           borderRadius: SHAPE.sm,
-          border: '0 !important',
+          border: 'var(--neu-border, 0px solid transparent) !important',
           backgroundColor: 'var(--neu-surface)',
           boxShadow: 'var(--neu-subtle) !important',
           ...(dark ? {
@@ -470,8 +486,8 @@ export function createUjimoraTheme(mode: PaletteMode = 'light') {
             '&.MuiChip-colorInfo': { color: '#A1C5CF' },
             '&.MuiChip-colorSecondary': { color: '#DCC07E' },
           } : {}),
-          '&.MuiChip-clickable:hover': { boxShadow: `${neu.raisedHover} !important` },
-          '&.MuiChip-clickable:active': { boxShadow: `${neu.inset} !important` },
+          '&.MuiChip-clickable:hover': { boxShadow: 'var(--neu-raised-hover) !important' },
+          '&.MuiChip-clickable:active': { boxShadow: 'var(--neu-inset) !important' },
           '&:focus-visible': { outline: '2px solid #C7A24A', outlineOffset: 2 },
         },
       },
@@ -479,7 +495,7 @@ export function createUjimoraTheme(mode: PaletteMode = 'light') {
     MuiIconButton: {
       styleOverrides: {
         root: {
-          border: '0 !important',
+          border: 'var(--neu-border, 0px solid transparent) !important',
           borderRadius: SHAPE.sm,
           backgroundColor: 'var(--neu-surface)',
           boxShadow: 'var(--neu-subtle) !important',
@@ -491,15 +507,15 @@ export function createUjimoraTheme(mode: PaletteMode = 'light') {
         },
       },
     },
-    MuiPaper: { styleOverrides: { root: { backgroundImage: 'none', backgroundColor: neu.surface } } },
+    MuiPaper: { styleOverrides: { root: { backgroundImage: 'none', backgroundColor: 'var(--neu-surface)', borderRadius: SHAPE.card, border: 'var(--neu-border)', backdropFilter: 'var(--neu-backdrop)', WebkitBackdropFilter: 'var(--neu-backdrop)' }, elevation: { boxShadow: 'var(--neu-raised)' } } },
     MuiOutlinedInput: {
       styleOverrides: {
         root: {
           borderRadius: SHAPE.sm,
           backgroundColor: 'var(--neu-surface)',
           boxShadow: 'var(--neu-inset)',
-          '& .MuiOutlinedInput-notchedOutline': { border: '0 !important' },
-          '&.Mui-focused': { boxShadow: `${neu.inset}, 0 0 0 3px rgba(199,162,74,0.18)` },
+          '& .MuiOutlinedInput-notchedOutline': { border: 'var(--neu-border, 0px solid transparent) !important' },
+          '&.Mui-focused': { boxShadow: 'var(--neu-inset), 0 0 0 3px rgba(199,162,74,0.18)' },
           '&.Mui-disabled': { boxShadow: 'none', opacity: 0.64 },
         },
       },
@@ -507,7 +523,7 @@ export function createUjimoraTheme(mode: PaletteMode = 'light') {
     MuiToggleButton: {
       styleOverrides: {
         root: {
-          border: '0 !important', backgroundColor: 'var(--neu-surface)', boxShadow: 'var(--neu-subtle)',
+          border: 'var(--neu-border, 0px solid transparent) !important', backgroundColor: 'var(--neu-surface)', boxShadow: 'var(--neu-subtle)',
           '&:hover': { backgroundColor: 'var(--neu-surface)', boxShadow: 'var(--neu-raised-hover)' },
           '&.Mui-selected': { backgroundColor: 'var(--neu-surface)', boxShadow: 'var(--neu-inset)' },
           '&.Mui-selected:hover': { backgroundColor: 'var(--neu-surface)' },
@@ -519,15 +535,15 @@ export function createUjimoraTheme(mode: PaletteMode = 'light') {
       styleOverrides: {
         root: {
           borderRadius: SHAPE.sm,
-          '&.Mui-selected': { backgroundColor: neu.surface, boxShadow: neu.inset },
-          '&.Mui-selected:hover': { backgroundColor: neu.surface },
+          '&.Mui-selected': { backgroundColor: 'var(--neu-surface)', boxShadow: 'var(--neu-inset)' },
+          '&.Mui-selected:hover': { backgroundColor: 'var(--neu-surface)' },
         },
       },
     },
     MuiCssBaseline: {
       styleOverrides: {
         ':root': {
-          '--neu-surface': neu.surface,
+          ...skinVars,
           '--text-primary': dark ? '#F3F0E8' : '#1A2E22',
           '--text-secondary': dark ? '#B6C0B8' : '#4A5A50',
           '--text-disabled': dark ? '#7D8B80' : '#858D87',
@@ -537,12 +553,8 @@ export function createUjimoraTheme(mode: PaletteMode = 'light') {
           '--text-error': dark ? '#F0A18E' : '#A5432F',
           '--text-info': dark ? '#A1C5CF' : '#4A6B75',
           '--text-accent': dark ? '#DCB4DE' : '#6A1B9A',
-          '--neu-raised': neu.raised,
-          '--neu-raised-hover': neu.raisedHover,
-          '--neu-subtle': neu.subtle,
-          '--neu-inset': neu.inset,
         },
-        body: { backgroundColor: neu.surface, colorScheme: mode },
+        body: { backgroundColor: ground, colorScheme: mode },
       },
     },
     MuiLinearProgress: {

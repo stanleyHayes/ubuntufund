@@ -31,7 +31,7 @@ import BusinessCenterRoundedIcon from '@mui/icons-material/BusinessCenterRounded
 import TheaterComedyRoundedIcon from '@mui/icons-material/TheaterComedyRounded'
 import SportsSoccerRoundedIcon from '@mui/icons-material/SportsSoccerRounded'
 import { keyframes } from '@mui/material/styles'
-import { NEUMORPHIC_SMOKE_VARS, NEUMORPHIC_FOREST_VARS, SHAPE } from '@ubuntu-fund/ui'
+import { NEUMORPHIC_FOREST_VARS, SHAPE } from '@ubuntu-fund/ui'
 import { InternalPageHero } from '../components/InternalPageHero'
 
 // ─── Animations ──────────────────────────────────────────────────────────────
@@ -223,7 +223,7 @@ function ForOrganizationsPage() {
       </Box>
 
       {/* ═══ Features — Alternating 2-col layout ═══ */}
-      <Box sx={{ py: { xs: 7, md: 10 }, bgcolor: '#F2EFEA', ...NEUMORPHIC_SMOKE_VARS }}>
+      <Box sx={{ py: { xs: 7, md: 10 }, bgcolor: 'background.default' }}>
         <Container maxWidth="lg">
           <Box sx={{ textAlign: 'center', mb: 6 }}>
             <Chip label="Platform" size="small" sx={{ mb: 2, bgcolor: 'rgba(21,101,192,0.08)', color: '#1565C0', fontWeight: 700, fontSize: '0.72rem', letterSpacing: 1, textTransform: 'uppercase' }} />

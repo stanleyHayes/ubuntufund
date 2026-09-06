@@ -1,3 +1,4 @@
+import AccountMenu from './AccountMenu'
 import { useState } from 'react'
 import AppBar from '@mui/material/AppBar'
 import Toolbar from '@mui/material/Toolbar'
@@ -6,10 +7,6 @@ import Button from '@mui/material/Button'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
 import Avatar from '@mui/material/Avatar'
-import Menu from '@mui/material/Menu'
-import MenuItem from '@mui/material/MenuItem'
-import ListItemIcon from '@mui/material/ListItemIcon'
-import Divider from '@mui/material/Divider'
 import IconButton from '@mui/material/IconButton'
 import Drawer from '@mui/material/Drawer'
 import Tooltip from '@mui/material/Tooltip'
@@ -19,11 +16,8 @@ import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded'
 import RocketLaunchRoundedIcon from '@mui/icons-material/RocketLaunchRounded'
-import VolunteerActivismRoundedIcon from '@mui/icons-material/VolunteerActivismRounded'
 import AccountBalanceWalletRoundedIcon from '@mui/icons-material/AccountBalanceWalletRounded'
 import HandshakeRoundedIcon from '@mui/icons-material/HandshakeRounded'
-import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded'
-import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded'
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded'
 import HomeRoundedIcon from '@mui/icons-material/HomeRounded'
 import ExploreRoundedIcon from '@mui/icons-material/ExploreRounded'
@@ -151,10 +145,10 @@ export function Header() {
       sx={{
         bgcolor: '#1C261D',
         '--neu-surface': '#1C261D',
-        '--neu-raised': '6px 6px 14px rgba(7,12,8,0.48), -5px -5px 12px rgba(76,101,82,0.12)',
-        '--neu-raised-hover': '8px 8px 17px rgba(7,12,8,0.52), -7px -7px 15px rgba(76,101,82,0.15)',
-        '--neu-subtle': '3px 3px 8px rgba(7,12,8,0.44), -3px -3px 8px rgba(76,101,82,0.11)',
-        '--neu-inset': 'inset 3px 3px 7px rgba(7,12,8,0.5), inset -3px -3px 7px rgba(76,101,82,0.13)',
+        '--neu-raised': 'var(--forest-raised)',
+        '--neu-raised-hover': 'var(--forest-raised-hover)',
+        '--neu-subtle': 'var(--forest-subtle)',
+        '--neu-inset': 'var(--forest-inset)',
         color: CREAM,
         boxShadow: 'inset 0 -2px 0 rgba(199, 162, 74, 0.45)',
       }}
@@ -222,6 +216,9 @@ export function Header() {
                 component="button"
                 onClick={(e: React.MouseEvent<HTMLElement>) => setMenuAnchor(e.currentTarget)}
                 aria-label="Account menu"
+                aria-haspopup="dialog"
+                aria-expanded={Boolean(menuAnchor)}
+                aria-controls={menuAnchor ? 'account-panel' : undefined}
                 sx={{
                   all: 'unset',
                   cursor: 'pointer',
@@ -245,105 +242,8 @@ export function Header() {
                 </Typography>
                 <ExpandMoreRoundedIcon sx={{ fontSize: 16, color: 'rgba(245, 242, 234, 0.6)' }} />
               </Box>
-              <Menu
-                anchorEl={menuAnchor}
-                open={Boolean(menuAnchor)}
-                onClose={closeMenu}
-                transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-                anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-                slotProps={{
-                  paper: {
-                    sx: {
-                      mt: 1,
-                      width: 320,
-                      maxWidth: 'calc(100vw - 32px)',
-                      borderRadius: '16px',
-                      border: '1px solid #E7E3D8',
-                      '& .MuiMenuItem-root': { py: 1, mx: 1, borderRadius: '10px' },
-                      '& .MuiListItemIcon-root': { color: 'var(--text-success)', minWidth: 34 },
-                    },
-                  },
-                }}
-              >
-                <Box
-                  sx={{
-                    mx: 1,
-                    mb: 0.75,
-                    p: 1.25,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1.25,
-                    borderRadius: '12px',
-                    bgcolor: 'rgba(168, 181, 160, 0.16)',
-                    border: '1px solid #E7E3D8',
-                  }}
-                >
-                  <Avatar sx={{ width: 36, height: 36, bgcolor: '#2E3D2F', color: '#F5F2EA', fontWeight: 700, fontSize: '0.85rem' }}>
-                    {initials}
-                  </Avatar>
-                  <Box sx={{ minWidth: 0 }}>
-                    <Typography variant="body2" noWrap sx={{ fontWeight: 700 }}>
-                      {user?.name}
-                    </Typography>
-                    <Typography variant="caption" noWrap sx={{ color: 'text.secondary', display: 'block' }}>
-                      {user?.email}
-                    </Typography>
-                  </Box>
-                </Box>
-                <MenuItem onClick={() => { closeMenu(); navigate('/dashboard') }}>
-                  <ListItemIcon><DashboardRoundedIcon sx={{ fontSize: 18 }} /></ListItemIcon>
-                  <Box sx={{ minWidth: 0 }}>
-                    <Typography component="span" sx={{ display: 'block', fontWeight: 600, lineHeight: 1.4 }}>Dashboard</Typography>
-                    <Typography component="span" sx={{ display: 'block', mt: 0.25, fontSize: '0.75rem', lineHeight: 1.5, color: 'text.secondary', whiteSpace: 'normal' }}>See your activity at a glance.</Typography>
-                  </Box>
-                </MenuItem>
-                <MenuItem onClick={() => { closeMenu(); navigate('/my-campaigns') }}>
-                  <ListItemIcon><RocketLaunchRoundedIcon sx={{ fontSize: 18 }} /></ListItemIcon>
-                  <Box sx={{ minWidth: 0 }}>
-                    <Typography component="span" sx={{ display: 'block', fontWeight: 600, lineHeight: 1.4 }}>My Campaigns</Typography>
-                    <Typography component="span" sx={{ display: 'block', mt: 0.25, fontSize: '0.75rem', lineHeight: 1.5, color: 'text.secondary', whiteSpace: 'normal' }}>Manage your fundraising campaigns.</Typography>
-                  </Box>
-                </MenuItem>
-                <MenuItem onClick={() => { closeMenu(); navigate('/donations') }}>
-                  <ListItemIcon><VolunteerActivismRoundedIcon sx={{ fontSize: 18 }} /></ListItemIcon>
-                  <Box sx={{ minWidth: 0 }}>
-                    <Typography component="span" sx={{ display: 'block', fontWeight: 600, lineHeight: 1.4 }}>My Donations</Typography>
-                    <Typography component="span" sx={{ display: 'block', mt: 0.25, fontSize: '0.75rem', lineHeight: 1.5, color: 'text.secondary', whiteSpace: 'normal' }}>Review the causes you’ve supported.</Typography>
-                  </Box>
-                </MenuItem>
-                <MenuItem onClick={() => { closeMenu(); navigate('/wallet') }}>
-                  <ListItemIcon><AccountBalanceWalletRoundedIcon sx={{ fontSize: 18 }} /></ListItemIcon>
-                  <Box sx={{ minWidth: 0 }}>
-                    <Typography component="span" sx={{ display: 'block', fontWeight: 600, lineHeight: 1.4 }}>Wallet</Typography>
-                    <Typography component="span" sx={{ display: 'block', mt: 0.25, fontSize: '0.75rem', lineHeight: 1.5, color: 'text.secondary', whiteSpace: 'normal' }}>View balances and transactions.</Typography>
-                  </Box>
-                </MenuItem>
-                <MenuItem onClick={() => { closeMenu(); navigate('/affiliate') }}>
-                  <ListItemIcon><HandshakeRoundedIcon sx={{ fontSize: 18 }} /></ListItemIcon>
-                  <Box sx={{ minWidth: 0 }}>
-                    <Typography component="span" sx={{ display: 'block', fontWeight: 600, lineHeight: 1.4 }}>Affiliate</Typography>
-                    <Typography component="span" sx={{ display: 'block', mt: 0.25, fontSize: '0.75rem', lineHeight: 1.5, color: 'text.secondary', whiteSpace: 'normal' }}>Track referrals and commissions.</Typography>
-                  </Box>
-                </MenuItem>
-                <MenuItem onClick={() => { closeMenu(); navigate('/settings') }}>
-                  <ListItemIcon><SettingsRoundedIcon sx={{ fontSize: 18 }} /></ListItemIcon>
-                  <Box sx={{ minWidth: 0 }}>
-                    <Typography component="span" sx={{ display: 'block', fontWeight: 600, lineHeight: 1.4 }}>Settings</Typography>
-                    <Typography component="span" sx={{ display: 'block', mt: 0.25, fontSize: '0.75rem', lineHeight: 1.5, color: 'text.secondary', whiteSpace: 'normal' }}>Manage your account preferences.</Typography>
-                  </Box>
-                </MenuItem>
-                <Divider />
-                <MenuItem
-                  onClick={() => { closeMenu(); logout(); navigate('/') }}
-                  sx={{ color: 'var(--text-error)', '&:hover': { bgcolor: 'rgba(165, 67, 47, 0.08)' } }}
-                >
-                  <ListItemIcon><LogoutRoundedIcon sx={{ fontSize: 18, color: 'var(--text-error)' }} /></ListItemIcon>
-                  <Box sx={{ minWidth: 0 }}>
-                    <Typography component="span" sx={{ display: 'block', fontWeight: 600, lineHeight: 1.4 }}>Sign out</Typography>
-                    <Typography component="span" sx={{ display: 'block', mt: 0.25, fontSize: '0.75rem', lineHeight: 1.5, color: 'text.secondary', whiteSpace: 'normal' }}>Sign out of your account.</Typography>
-                  </Box>
-                </MenuItem>
-              </Menu>
+              <AccountMenu anchor={menuAnchor} onClose={closeMenu} name={user?.name} email={user?.email} initials={initials}
+                onSignOut={() => { closeMenu(); logout(); navigate('/') }} />
             </Box>
           ) : (
             <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 1.5 }}>
@@ -391,8 +291,8 @@ export function Header() {
               color: CREAM,
               p: 2.5,
               '--neu-surface': '#1C261D',
-              '--neu-subtle': '5px 5px 12px rgba(7,12,8,.5), -4px -4px 10px rgba(76,101,82,.14)',
-              '--neu-raised-hover': '8px 8px 18px rgba(7,12,8,.55), -7px -7px 16px rgba(76,101,82,.16)',
+              '--neu-subtle': 'var(--forest-subtle)',
+              '--neu-raised-hover': 'var(--forest-raised-hover)',
             },
           },
         }}
@@ -407,7 +307,7 @@ export function Header() {
               height: 42,
               color: GOLD_LIGHT,
               bgcolor: '#1C261D !important',
-              boxShadow: '5px 5px 12px rgba(7,12,8,.5), -4px -4px 10px rgba(76,101,82,.14) !important',
+              boxShadow: 'var(--forest-raised) !important',
               '&:hover': { bgcolor: '#1C261D', transform: 'translateY(-1px)' },
             }}
           >
@@ -454,10 +354,8 @@ export function Header() {
               lineHeight: 1.15,
               borderRadius: SHAPE.card,
               bgcolor: '#1C261D',
-              boxShadow: active
-                ? '7px 7px 16px rgba(7,12,8,.54), -6px -6px 14px rgba(76,101,82,.17)'
-                : '5px 5px 12px rgba(7,12,8,.48), -4px -4px 10px rgba(76,101,82,.12)',
-              '&:hover': { bgcolor: '#1C261D', boxShadow: '8px 8px 18px rgba(7,12,8,.55), -7px -7px 16px rgba(76,101,82,.16)', transform: 'translateY(-2px)' },
+              boxShadow: active ? 'var(--forest-inset)' : 'var(--forest-raised)',
+              '&:hover': { bgcolor: '#1C261D', boxShadow: 'var(--forest-raised)', transform: 'translateY(-2px)' },
               '& .MuiSvgIcon-root': { fontSize: 25 },
             }}
           >

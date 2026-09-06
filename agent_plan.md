@@ -720,3 +720,29 @@
 - Traced the dashboard error to its missing GET /kyc/stats endpoint. Added authenticated admin routing, controller/use-case wiring and persisted pending/approved/rejected counts. Today's decisions use reviewedAt within Ghana's UTC day, with an exclusive next-day boundary. Restarted the local API to load the new route.
 - Shared browser and mobile inputs now provide label/type-based placeholders while retaining explicit examples. Empty controlled dropdowns show selection prompts, and coupon selectors expose their existing all-tiers/all-cycles defaults. Existing native search/newsletter fields and date controls already provide hints.
 - Three KYC contract tests pass (day boundaries, repository queries, admin-only routing); six shared-field tests pass, including placeholder preservation and empty selections. Web, admin and marketing builds pass. Shared UI type checking and targeted lint pass. Live unauthenticated GET /api/v1/kyc/stats now returns the expected 401 JSON instead of 404, confirming the restarted API has the route. Mobile and API type checks also pass. The API check completed successfully just before the attempted cancellation; its process had already exited with code 0. The focused KYC contract tests provide route, access, query and day-boundary coverage.
+
+### 2026-09-06 Appearance menu grid redesign
+
+- Replaced the marketing theme list with a responsive two-column card grid, stacking below 360px. Each skin has a distinct icon, title, short description and decorative inline SVG watermark; the active skin has a gold border and checkmark.
+- Added a titled appearance dialog, accessible close control, visible keyboard focus and a separate labeled dark-mode switch. Style changes stay visible in the open panel and use the existing immediate-persistence handlers; dark/light mode remains independent.
+- Marketing production build and whitespace checks pass. Browser preview could not complete because the browser connection timed out; no rendered visual verification is claimed. Targeted lint passes.
+
+### 2026-09-06 Marketing dark-mode surface and navigation fixes
+
+- Corrected desktop dropdown and mobile navigation text, icon tiles, active/hover states and dividers to use paired theme colors. The company menu no longer paints dark titles on dark surfaces.
+- Removed forced light background/shadow-variable overrides from campaign categories, how-it-works, testimonials, CTA, affiliate benefits and organization feature sections. These now inherit the selected mode and material skin, keeping card surfaces and text in sync.
+- Made category icons and step labels theme-aware; fixed the pricing comparison's forced white header and low-contrast availability icons. Fixed forest hero/footer palettes remain explicitly paired with light text.
+- Source audit, marketing production build, targeted lint and whitespace checks pass. Browser-rendered verification is not claimed.
+
+### 2026-09-06 Account menu grid redesign
+
+- Replaced the web account dropdown list with a profile banner and responsive six-card navigation grid. Each destination retains its icon, title and description and adds a decorative SVG watermark, route highlight and visible keyboard focus.
+- Added a close control and separate sign-out action; preserved existing routes and logout behavior. Theme-aware surfaces and text support light and dark mode, with wrapping for long profile details and a single-column layout on narrow screens.
+- Web production build, targeted ESLint and whitespace checks pass. Browser-rendered visual verification is not claimed.
+
+### 2026-09-06 Surface style consistency and settings picker
+
+- Audited skin consumers across web, admin and marketing. Fixed frozen chip hover, input focus and selected-list shadows; theme palettes and baseline tokens now rebuild with the selected skin. Paper surfaces, hairline borders and shared geometry follow the selected finish. Dark-section shadows use skin-specific forest tokens, retaining paired brand colors.
+- Replaced fixed neumorphic overrides in navigation, footers, campaign banners, marketing hero/organization sections and admin auth CSS. Decorative artwork and semantic focus rings remain purpose-specific. Minimal now restores correctly in web/admin; skin effects apply before paint.
+- Redesigned web/admin settings selectors as a shared responsive two-by-two grid with icons, titles, descriptions, SVG watermarks, isolated finish previews, selected-state confirmation and keyboard focus. Each preview intentionally shows its own finish.
+- Three cross-skin regression tests, shared UI type checking, all three browser app production builds, targeted ESLint and whitespace checks pass. Marketing rendered during browser inspection, but opening the appearance menu timed out; full interactive/visual verification remains outstanding.

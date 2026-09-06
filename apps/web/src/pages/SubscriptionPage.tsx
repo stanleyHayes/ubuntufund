@@ -33,7 +33,7 @@ import {
   BillingCycle,
   SUBSCRIPTION_PLANS,
 } from '@ubuntu-fund/types'
-import { useMySubscription } from '@/hooks/useSubscription'
+import { useMySubscription, usePlanMap } from '@/hooks/useSubscription'
 import { api } from '@/lib/api'
 import {
   createSubscriptionCheckout,
@@ -125,6 +125,8 @@ function formatCellValue(value: unknown, format?: string): React.ReactNode {
 export function SubscriptionPage() {
   const navigate = useNavigate()
   const { subscription, isLoading, refetch } = useMySubscription()
+  // DB-backed plans (seeded from SUBSCRIPTION_PLANS so nothing flashes empty).
+  const plans = usePlanMap()
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
   const [billingToggle, setBillingToggle] = useState<'monthly' | 'yearly'>('monthly')
   const [actionLoading, setActionLoading] = useState(false)
@@ -235,7 +237,7 @@ export function SubscriptionPage() {
   }
 
   const currentSub = subscription
-  const currentPlan = SUBSCRIPTION_PLANS[currentSub.tier]
+  const currentPlan = plans[currentSub.tier]
   const colors = TIER_COLORS[currentSub.tier]
   const daysLeft = Math.max(0, Math.ceil((new Date(currentSub.currentPeriodEnd).getTime() - Date.now()) / 86_400_000))
 
@@ -458,7 +460,7 @@ export function SubscriptionPage() {
         }}
       >
         {TIER_ORDER.map((tier, idx) => {
-          const plan = SUBSCRIPTION_PLANS[tier]
+          const plan = plans[tier]
           const isCurrent = tier === currentSub.tier
           const isPro = tier === SubscriptionTier.PRO
           const tc = TIER_COLORS[tier]
@@ -666,7 +668,7 @@ export function SubscriptionPage() {
               <Typography sx={{ fontWeight: 700, fontSize: '0.82rem', color: 'text.secondary' }}>Feature</Typography>
             </Box>
             {TIER_ORDER.map((tier) => {
-              const plan = SUBSCRIPTION_PLANS[tier]
+              const plan = plans[tier]
               const isCurrent = tier === currentSub.tier
               const tc = TIER_COLORS[tier]
               return (
@@ -738,7 +740,7 @@ export function SubscriptionPage() {
                     <Typography sx={{ fontSize: '0.82rem', fontWeight: 500 }}>{row.label}</Typography>
                   </Box>
                   {TIER_ORDER.map((tier) => {
-                    const plan = SUBSCRIPTION_PLANS[tier]
+                    const plan = plans[tier]
                     const isCurrent = tier === currentSub.tier
                     const tc = TIER_COLORS[tier]
                     return (
@@ -822,7 +824,7 @@ export function SubscriptionPage() {
         PaperProps={{ sx: { borderRadius: SHAPE.card } }}
       >
         {selectedTier && (() => {
-          const plan = SUBSCRIPTION_PLANS[selectedTier]
+          const plan = plans[selectedTier]
           const basePrice = billingToggle === 'yearly' ? plan.priceYearly : plan.priceMonthly
           const validCoupon = preview && preview.valid ? preview : null
           const currency = validCoupon?.currency ?? 'GHS'

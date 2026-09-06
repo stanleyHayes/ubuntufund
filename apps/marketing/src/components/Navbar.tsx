@@ -199,7 +199,7 @@ function MegaDropdown({
             }}
           >
             <Box sx={{ px: 2, pt: 1.5, pb: 0.75 }}>
-              <Typography sx={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#999' }}>
+              <Typography sx={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'text.secondary' }}>
                 {menu.label}
               </Typography>
             </Box>
@@ -218,10 +218,10 @@ function MegaDropdown({
                       borderRadius: SHAPE.sm,
                       cursor: 'pointer',
                       transition: 'all 0.15s ease',
-                      bgcolor: active ? 'rgba(46, 61, 47,0.05)' : 'transparent',
+                      bgcolor: active ? 'action.selected' : 'transparent',
                       '&:hover': {
-                        bgcolor: active ? 'rgba(46, 61, 47,0.08)' : '#f8f8f5',
-                        '& .dd-icon': { bgcolor: '#2E3D2F', color: '#fff' },
+                        bgcolor: 'action.hover',
+                        '& .dd-icon': { bgcolor: 'primary.main', color: 'primary.contrastText' },
                         '& .dd-arrow': { opacity: 1, transform: 'translate(0,0)' },
                       },
                     }}
@@ -232,8 +232,8 @@ function MegaDropdown({
                         width: 34,
                         height: 34,
                         borderRadius: SHAPE.sm,
-                        bgcolor: active ? '#2E3D2F' : '#f0f5f0',
-                        color: active ? '#fff' : '#2E3D2F',
+                        bgcolor: active ? 'primary.main' : 'action.hover',
+                        color: active ? 'primary.contrastText' : 'primary.main',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -246,10 +246,10 @@ function MegaDropdown({
                     </Box>
                     <Box sx={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center' }}>
                       <Box>
-                        <Typography sx={{ fontSize: '0.82rem', fontWeight: active ? 700 : 600, color: active ? '#1C261D' : '#1a1a1a', lineHeight: 1.2 }}>
+                        <Typography sx={{ fontSize: '0.82rem', fontWeight: active ? 700 : 600, color: 'text.primary', lineHeight: 1.2 }}>
                           {item.title}
                         </Typography>
-                        <Typography sx={{ fontSize: '0.68rem', color: '#888', lineHeight: 1.35, mt: 0.1 }}>
+                        <Typography sx={{ fontSize: '0.68rem', color: 'text.secondary', lineHeight: 1.35, mt: 0.1 }}>
                           {item.description}
                         </Typography>
                       </Box>
@@ -258,7 +258,7 @@ function MegaDropdown({
                       className="dd-arrow"
                       sx={{
                         fontSize: 12,
-                        color: active ? '#2E3D2F' : '#bbb',
+                        color: active ? 'primary.main' : 'text.secondary',
                         opacity: active ? 0.6 : 0,
                         transform: 'translate(-3px, 3px)',
                         transition: 'all 0.15s ease',
@@ -288,13 +288,13 @@ function MobileMenuGroup({ menu, pathname, onNavigate }: { menu: NavMenu; pathna
         sx={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           px: 2.5, py: 1.5, cursor: 'pointer',
-          '&:hover': { bgcolor: 'rgba(0,0,0,0.02)' },
+          '&:hover': { bgcolor: 'action.hover' },
         }}
       >
-        <Typography sx={{ fontWeight: active ? 700 : 600, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: active ? '#1C261D' : '#1a1a1a' }}>
+        <Typography sx={{ fontWeight: active ? 700 : 600, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'text.primary' }}>
           {menu.label}
         </Typography>
-        <ExpandMoreIcon sx={{ fontSize: 18, color: '#999', transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'none' }} />
+        <ExpandMoreIcon sx={{ fontSize: 18, color: 'text.secondary', transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'none' }} />
       </Box>
       <Collapse in={open}>
         <Box sx={{ pb: 1 }}>
@@ -306,24 +306,24 @@ function MobileMenuGroup({ menu, pathname, onNavigate }: { menu: NavMenu; pathna
                 onClick={() => onNavigate(item.href)}
                 sx={{
                   display: 'flex', gap: 1.5, px: 3, py: 1.25, cursor: 'pointer',
-                  bgcolor: itemActive ? 'rgba(46, 61, 47, 0.08)' : 'transparent',
-                  '&:hover': { bgcolor: itemActive ? 'rgba(46, 61, 47, 0.08)' : 'rgba(0,0,0,0.02)' },
+                  bgcolor: itemActive ? 'action.selected' : 'transparent',
+                  '&:hover': { bgcolor: 'action.hover' },
                 }}
               >
                 <Box sx={{
                   width: 30, height: 30, borderRadius: SHAPE.sm,
-                  bgcolor: itemActive ? '#2E3D2F' : '#f0f5f0',
-                  color: itemActive ? '#fff' : '#2E3D2F',
+                  bgcolor: itemActive ? 'primary.main' : 'action.hover',
+                  color: itemActive ? 'primary.contrastText' : 'primary.main',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                   '& .MuiSvgIcon-root': { fontSize: 15 },
                 }}>
                   {item.icon}
                 </Box>
                 <Box>
-                  <Typography sx={{ fontSize: '0.82rem', fontWeight: itemActive ? 700 : 500, color: itemActive ? '#1C261D' : '#1a1a1a' }}>
+                  <Typography sx={{ fontSize: '0.82rem', fontWeight: itemActive ? 700 : 500, color: 'text.primary' }}>
                     {item.title}
                   </Typography>
-                  <Typography sx={{ fontSize: '0.66rem', color: '#999', lineHeight: 1.3 }}>
+                  <Typography sx={{ fontSize: '0.66rem', color: 'text.secondary', lineHeight: 1.3 }}>
                     {item.description}
                   </Typography>
                 </Box>
@@ -373,10 +373,10 @@ function Navbar() {
           zIndex: 1200,
           bgcolor: FOREST_DARK,
           '--neu-surface': '#1C261D',
-          '--neu-raised': '6px 6px 14px rgba(7,12,8,0.48), -5px -5px 12px rgba(76,101,82,0.12)',
-          '--neu-raised-hover': '8px 8px 17px rgba(7,12,8,0.52), -7px -7px 15px rgba(76,101,82,0.15)',
-          '--neu-subtle': '3px 3px 8px rgba(7,12,8,0.44), -3px -3px 8px rgba(76,101,82,0.11)',
-          '--neu-inset': 'inset 3px 3px 7px rgba(7,12,8,0.5), inset -3px -3px 7px rgba(76,101,82,0.13)',
+          '--neu-raised': 'var(--forest-raised)',
+          '--neu-raised-hover': 'var(--forest-raised-hover)',
+          '--neu-subtle': 'var(--forest-subtle)',
+          '--neu-inset': 'var(--forest-inset)',
           boxShadow: 'inset 0 -2px 0 rgba(199, 162, 74, 0.45)',
         }}
       >
@@ -510,11 +510,11 @@ function Navbar() {
             <CloseIcon sx={{ fontSize: 15 }} />
           </IconButton>
         </Box>
-        <Box sx={{ height: '1px', bgcolor: 'rgba(0,0,0,0.06)' }} />
+        <Box sx={{ height: '1px', bgcolor: 'divider' }} />
         <Box sx={{ py: 1, flex: 1, overflow: 'auto' }}>
           {menus.map((m) => <MobileMenuGroup key={m.label} menu={m} pathname={pathname} onNavigate={handleNav} />)}
         </Box>
-        <Box sx={{ height: '1px', bgcolor: 'rgba(0,0,0,0.06)', mx: 2.5 }} />
+        <Box sx={{ height: '1px', bgcolor: 'divider', mx: 2.5 }} />
         <Box sx={{ p: 2.5 }}>
           <Button
             href={`${WEB_APP_URL}/register`}

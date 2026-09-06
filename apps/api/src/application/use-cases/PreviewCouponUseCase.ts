@@ -1,10 +1,10 @@
 import {
   BillingCycle,
-  SUBSCRIPTION_PLANS,
   type CouponPreview,
   type CouponValidationInput,
 } from '@ubuntu-fund/types';
 import type { CouponService } from '../services/CouponService.js';
+import type { PlanService } from '../services/PlanService.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 
 /** The platform's only settlement currency. */
@@ -23,20 +23,23 @@ function round2(n: number): number {
  * and mapped onto `{ valid: false, reason }`, so it never throws.
  */
 export class PreviewCouponUseCase {
-  constructor(private readonly couponService: CouponService) {}
+  constructor(
+    private readonly couponService: CouponService,
+    private readonly planService: PlanService
+  ) {}
 
   async execute(
     input: CouponValidationInput,
     userId: string
   ): Promise<CouponPreview> {
     const code = input.code.trim().toUpperCase();
-    const plan = SUBSCRIPTION_PLANS[input.tier];
+    // Base price from the DB-backed plan so the preview matches what checkout
+    // will charge (PlanService falls back to the code defaults).
+    const plan = await this.planService.getPlan(input.tier);
     const baseAmount = round2(
-      plan
-        ? input.billingCycle === BillingCycle.YEARLY
-          ? plan.priceYearly
-          : plan.priceMonthly
-        : 0
+      input.billingCycle === BillingCycle.YEARLY
+        ? plan.priceYearly
+        : plan.priceMonthly
     );
 
     try {

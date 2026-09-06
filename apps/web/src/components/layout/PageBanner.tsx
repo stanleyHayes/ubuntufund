@@ -111,7 +111,7 @@ export function PageBanner({
                 flexShrink: 0,
                 color: GOLD,
                 bgcolor: 'rgba(199, 162, 74, 0.14)',
-                borderRadius: '4px 14px 4px 14px',
+                borderRadius: 'var(--shape-card)',
               }}
             >
               {icon}
