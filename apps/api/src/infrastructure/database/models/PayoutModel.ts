@@ -1,10 +1,13 @@
 import mongoose, { Schema, type Document } from 'mongoose';
-import type { PayoutProvider, PayoutStatus } from '@ubuntu-fund/types';
+import type { PayoutProvider, PayoutStatus, PayoutType } from '@ubuntu-fund/types';
 
 export interface PayoutDocument extends Document {
   campaignId: string;
   recipientId: string;
   amount: number;
+  type: PayoutType;
+  fee: number;
+  netAmount: number;
   currency: string;
   status: PayoutStatus;
   provider: PayoutProvider;
@@ -31,6 +34,9 @@ const payoutSchema = new Schema<PayoutDocument>(
     campaignId: { type: String, required: true, index: true },
     recipientId: { type: String, required: true },
     amount: { type: Number, required: true },
+    type: { type: String, default: 'standard' },
+    fee: { type: Number, default: 0 },
+    netAmount: { type: Number },
     currency: { type: String, required: true },
     status: {
       type: String,

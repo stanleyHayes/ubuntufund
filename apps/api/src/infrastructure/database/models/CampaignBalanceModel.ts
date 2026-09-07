@@ -10,6 +10,7 @@ export interface CampaignBalanceDocument extends Document {
   platformFees: number;
   processorFees: number;
   tips: number;
+  payoutFees: number;
   updatedAt: Date;
 }
 
@@ -24,6 +25,7 @@ const campaignBalanceSchema = new Schema<CampaignBalanceDocument>(
     platformFees: { type: Number, default: 0 },
     processorFees: { type: Number, default: 0 },
     tips: { type: Number, default: 0 },
+    payoutFees: { type: Number, default: 0 },
     updatedAt: { type: Date, default: Date.now },
   },
   { collection: 'campaignbalances', timestamps: false }

@@ -79,6 +79,33 @@ Still open (later phases): maker-checker two-person approval for very high-value
 actions; per-tier KYC document requirements; the admin review-queue/compliance UI
 (Phase 5).
 
+## Phase 3 — Payout engine (payout policy delivered 2026-09-07)
+
+Builds on the existing payout flow (request → admin approve → transfer →
+`transfer.*` webbook settles PAID/FAILED/REVERSED, with a guarded state machine):
+
+- **Payout service types + fees (spec §17):** `standard` (free) · `priority`
+  (0.5%, min GHS 10) · `early` (1.0%, min 20) · `urgent` (1.5%, min 30) ·
+  `assisted` (1.5% + GHS 50). All admin-configurable (`PAYOUT_*` env). The fee is
+  deducted from the disbursed amount — the beneficiary receives `amount − fee`;
+  the transfer sends the net; a new `payoutFees` balance bucket retains the fee,
+  and PAID/REVERSED split gross → net + fee. Standard payouts (fee 0) are
+  byte-for-byte unchanged.
+- **Early-withdrawal reserve ceiling:** `early`/`urgent` payouts are capped at
+  `PAYOUT_EARLY_MAX_WITHDRAWAL_PERCENT` (default 80%) of the eligible balance,
+  leaving a reserve.
+
+Tests: fee computation per type (incl. minimums + the fixed assisted charge + the
+never-exceed-amount clamp); a priority payout end-to-end (net transferred, fee
+retained); the early reserve-ceiling rejection.
+
+Still open (Phase 3): **payout batching** — splitting a payout above the provider
+single-transfer ceiling (`PAYOUT_MAX_TRANSFER_AMOUNT`, default GHS 50k) into
+multiple reconciled transfer legs. This is the engineering fallback if Paystack
+does not grant a higher transfer limit (an external gate, plan §13); it is a
+structural change to the settlement flow and is deferred as its own slice.
+Maker-checker two-person approval for very high-value payouts is also open.
+
 ## 1. Repository audit — what already exists
 
 The API is Express + Mongoose, hexagonal (domain / application / infrastructure,

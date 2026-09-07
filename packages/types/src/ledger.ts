@@ -142,6 +142,8 @@ export interface CampaignBalance {
   processorFees: number
   /** Accumulated donor tips collected alongside this campaign's donations. */
   tips: number
+  /** Accumulated Ujimora payout service fees retained (priority/early/assisted). */
+  payoutFees?: number
   updatedAt: Date
 }
 

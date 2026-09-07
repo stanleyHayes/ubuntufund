@@ -374,6 +374,53 @@ describe('Payouts Integration', () => {
     expect(payoutCreditsAfter).toHaveLength(1);
   });
 
+  it('applies a priority payout fee: transfers the net, retains the fee (spec §17)', async () => {
+    const { userId, token } = await registerUser(app, uniqueEmail('priority'));
+    const campaignId = await createActiveCampaign(app, token, userId);
+    const admin = await createAdmin(app, uniqueEmail('admin'));
+
+    await fundCampaign(app, campaignId, 1000); // net 965 available (Free 3.5%)
+    await addRecipient(app, campaignId, token);
+    const reqRes = await request(app)
+      .post(`/api/v1/campaigns/${campaignId}/payouts`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ amount: 965, type: 'priority' });
+    expect(reqRes.status).toBe(201);
+    // Priority fee = max(0.5% of 965 = 4.83, min 10) = 10; net = 955.
+    expect(reqRes.body.data.type).toBe('priority');
+    expect(reqRes.body.data.fee).toBe(10);
+    expect(reqRes.body.data.netAmount).toBe(955);
+
+    const payoutId = reqRes.body.data.id as string;
+    const approveRes = await request(app)
+      .post(`/api/v1/payouts/${payoutId}/approve`)
+      .set('Authorization', `Bearer ${admin.token}`)
+      .send({});
+    const reference = approveRes.body.data.providerRef as string;
+    await sendTransferWebhook(app, 'transfer.success', reference);
+
+    // Gross 965 left available; 955 disbursed (paidOut) + 10 retained (payoutFees).
+    const balance = await CampaignBalanceModel.findOne({ campaignId });
+    expect(balance?.paidOutBalance).toBe(955);
+    expect(balance?.payoutFees).toBe(10);
+    expect(balance?.availableBalance).toBe(0);
+  });
+
+  it('caps an early payout at the reserve ceiling (80% of eligible)', async () => {
+    const { userId, token } = await registerUser(app, uniqueEmail('early'));
+    const campaignId = await createActiveCampaign(app, token, userId);
+
+    await fundCampaign(app, campaignId, 1000); // eligible 965
+    await addRecipient(app, campaignId, token);
+    // 80% of 965 = 772; an early request for 900 exceeds the ceiling.
+    const res = await request(app)
+      .post(`/api/v1/campaigns/${campaignId}/payouts`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ amount: 900, type: 'early' });
+    expect(res.status).toBe(422);
+    expect(res.body.message).toMatch(/capped at 80%/i);
+  });
+
   it('reverts to available on transfer.failed (no funds paid out)', async () => {
     const { userId, token } = await registerUser(app, uniqueEmail('fail'));
     const campaignId = await createActiveCampaign(app, token, userId);

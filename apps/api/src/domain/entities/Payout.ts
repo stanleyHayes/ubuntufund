@@ -1,10 +1,13 @@
-import type { PayoutProvider, PayoutStatus } from '@ubuntu-fund/types';
+import type { PayoutProvider, PayoutStatus, PayoutType } from '@ubuntu-fund/types';
 
 export interface PayoutProps {
   id: string;
   campaignId: string;
   recipientId: string;
   amount: number;
+  type: PayoutType;
+  fee: number;
+  netAmount: number;
   currency: string;
   status: PayoutStatus;
   provider: PayoutProvider;
@@ -61,6 +64,15 @@ export class PayoutEntity {
   }
   get amount(): number {
     return this.props.amount;
+  }
+  get type(): PayoutType {
+    return this.props.type;
+  }
+  get fee(): number {
+    return this.props.fee;
+  }
+  get netAmount(): number {
+    return this.props.netAmount;
   }
   get currency(): string {
     return this.props.currency;

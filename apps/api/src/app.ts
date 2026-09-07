@@ -612,7 +612,8 @@ export function createApp(): express.Express {
     transferRecipientRepo,
     payoutRepo,
     campaignBalanceRepo,
-    paymentGateway
+    paymentGateway,
+    config.payouts
   );
   const approvePayoutUseCase = new ApprovePayoutUseCase(
     payoutRepo,

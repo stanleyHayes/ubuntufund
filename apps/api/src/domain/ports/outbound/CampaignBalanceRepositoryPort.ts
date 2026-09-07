@@ -62,10 +62,15 @@ export interface CampaignBalanceRepositoryPort {
   ): Promise<CampaignBalance | null>;
 
   /**
-   * Confirm a paid-out transfer: `paidOutBalance += amount` (the reserved
-   * in-transit funds have left the platform). Returns the updated balance.
+   * Confirm a paid-out transfer: the reserved gross (net + fee) that left
+   * `availableBalance` splits into `paidOutBalance += netAmount` (disbursed to the
+   * beneficiary) and `payoutFees += fee` (Ujimora's retained service fee).
    */
-  markPaidOut(campaignId: string, amount: number): Promise<CampaignBalance | null>;
+  markPaidOut(
+    campaignId: string,
+    netAmount: number,
+    fee?: number
+  ): Promise<CampaignBalance | null>;
 
   /**
    * Return reserved in-transit funds to `availableBalance` after a failed
@@ -77,11 +82,12 @@ export interface CampaignBalanceRepositoryPort {
   ): Promise<CampaignBalance | null>;
 
   /**
-   * Reverse a previously paid-out transfer: `paidOutBalance -= amount` and
-   * `availableBalance += amount` (money came back to the platform).
+   * Reverse a previously paid-out transfer: the disbursed `netAmount` and retained
+   * `fee` both return to `availableBalance` (money came back to the platform).
    */
   reverseFromPaidOut(
     campaignId: string,
-    amount: number
+    netAmount: number,
+    fee?: number
   ): Promise<CampaignBalance | null>;
 }

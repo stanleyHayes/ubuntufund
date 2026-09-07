@@ -33,7 +33,12 @@ export class HandlePayoutWebhookUseCase {
     const won = await this.payoutRepo.transitionToPaid(payout.id);
     if (!won) return; // idempotent: already PAID or not PROCESSING
 
-    await this.campaignBalanceRepo.markPaidOut(payout.campaignId, payout.amount);
+    // Split the gross into the beneficiary's net + Ujimora's retained payout fee.
+    await this.campaignBalanceRepo.markPaidOut(
+      payout.campaignId,
+      payout.netAmount,
+      payout.fee
+    );
 
     const entry = JournalEntryEntity.forPayoutDisbursement({
       campaignId: payout.campaignId,
@@ -68,7 +73,8 @@ export class HandlePayoutWebhookUseCase {
     if (fromPaid) {
       await this.campaignBalanceRepo.reverseFromPaidOut(
         payout.campaignId,
-        payout.amount
+        payout.netAmount,
+        payout.fee
       );
       const entry = JournalEntryEntity.forPayoutReversal({
         campaignId: payout.campaignId,

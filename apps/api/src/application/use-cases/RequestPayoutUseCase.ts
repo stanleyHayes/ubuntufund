@@ -8,6 +8,8 @@ import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGate
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 import { toPayoutDto } from './mappers/payoutDto.js';
 import type { PayoutRequester } from './CreatePayoutRecipientUseCase.js';
+import { computePayoutFee, isEarlyWithdrawal } from '../services/payoutFee.js';
+import type { PayoutsConfig } from '../../infrastructure/config/index.js';
 
 const CURRENCY = 'GHS';
 
@@ -32,7 +34,8 @@ export class RequestPayoutUseCase {
     private readonly transferRecipientRepo: TransferRecipientRepositoryPort,
     private readonly payoutRepo: PayoutRepositoryPort,
     private readonly campaignBalanceRepo: CampaignBalanceRepositoryPort,
-    private readonly paymentGateway: PaymentGatewayPort
+    private readonly paymentGateway: PaymentGatewayPort,
+    private readonly payoutsConfig: PayoutsConfig
   ) {}
 
   async execute(
@@ -87,6 +90,28 @@ export class RequestPayoutUseCase {
       );
     }
 
+    // Payout service fee + net the beneficiary receives (spec §17). `standard`
+    // is free; the chosen type sets the fee, deducted from the disbursed amount.
+    const type = input.type ?? 'standard';
+    const { fee, netAmount } = computePayoutFee(type, amount, this.payoutsConfig);
+    if (netAmount <= 0) {
+      throw new AppError('The payout fee equals or exceeds the requested amount', 422);
+    }
+
+    // Early/urgent withdrawals may take only a capped share of the eligible
+    // balance, leaving a reserve (spec §17).
+    if (isEarlyWithdrawal(type)) {
+      const earlyCeiling = round2(
+        (eligible * this.payoutsConfig.earlyMaxWithdrawalPercent) / 100
+      );
+      if (amount > earlyCeiling) {
+        throw new AppError(
+          `Early payouts are capped at ${this.payoutsConfig.earlyMaxWithdrawalPercent}% of the eligible balance (max ${currency} ${earlyCeiling.toLocaleString('en-US')}).`,
+          422
+        );
+      }
+    }
+
     // Clear just enough pending → available so the approval step can reserve the
     // full requested amount out of `availableBalance`.
     const needed = round2(amount - available);
@@ -109,6 +134,9 @@ export class RequestPayoutUseCase {
         campaignId: campaign.id,
         recipientId: recipient.id,
         amount,
+        type,
+        fee,
+        netAmount,
         currency,
         status: 'PENDING',
         provider: 'paystack',

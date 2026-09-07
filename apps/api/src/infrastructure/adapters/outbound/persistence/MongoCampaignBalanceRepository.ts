@@ -19,6 +19,7 @@ function toDomain(doc: CampaignBalanceDocument): CampaignBalance {
     platformFees: doc.platformFees,
     processorFees: doc.processorFees,
     tips: doc.tips,
+    payoutFees: doc.payoutFees ?? 0,
     updatedAt: doc.updatedAt,
   };
 }
@@ -117,13 +118,16 @@ export class MongoCampaignBalanceRepository
 
   async markPaidOut(
     campaignId: string,
-    amount: number
+    netAmount: number,
+    fee = 0
   ): Promise<CampaignBalance | null> {
+    // The reserved gross (net + fee) already left `availableBalance`; on payout it
+    // splits into the beneficiary's disbursed net and Ujimora's retained fee.
     const doc = await CampaignBalanceModel.findOneAndUpdate(
       { campaignId },
       {
         $set: { updatedAt: new Date() },
-        $inc: { paidOutBalance: amount },
+        $inc: { paidOutBalance: netAmount, payoutFees: fee },
       },
       { new: true }
     );
@@ -147,13 +151,20 @@ export class MongoCampaignBalanceRepository
 
   async reverseFromPaidOut(
     campaignId: string,
-    amount: number
+    netAmount: number,
+    fee = 0
   ): Promise<CampaignBalance | null> {
+    // Undo a paid transfer: the disbursed net + retained fee both return to the
+    // campaign's available balance (the gross the beneficiary was charged).
     const doc = await CampaignBalanceModel.findOneAndUpdate(
       { campaignId },
       {
         $set: { updatedAt: new Date() },
-        $inc: { paidOutBalance: -amount, availableBalance: amount },
+        $inc: {
+          paidOutBalance: -netAmount,
+          payoutFees: -fee,
+          availableBalance: netAmount + fee,
+        },
       },
       { new: true }
     );

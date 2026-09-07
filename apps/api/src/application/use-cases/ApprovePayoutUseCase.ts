@@ -54,10 +54,11 @@ export class ApprovePayoutUseCase {
       throw new AppError('Payout recipient not found', 404);
     }
 
-    // Never initiate a transfer the platform balance cannot cover.
+    // Never initiate a transfer the platform balance cannot cover. Only the net
+    // (amount − fee) is actually sent to the beneficiary; the fee is retained.
     const balances = await this.paymentGateway.getBalance();
     const gatewayBalance = balances.find((b) => b.currency === payout.currency);
-    if (!gatewayBalance || gatewayBalance.balance < payout.amount) {
+    if (!gatewayBalance || gatewayBalance.balance < payout.netAmount) {
       throw new AppError(
         'Insufficient platform balance to fund this payout',
         422
@@ -96,7 +97,8 @@ export class ApprovePayoutUseCase {
     let transfer;
     try {
       transfer = await this.paymentGateway.initiateTransfer({
-        amount: payout.amount,
+        // Send the net (amount − fee); the fee stays on-platform.
+        amount: payout.netAmount,
         recipientCode: recipient.recipientCode,
         reference,
         reason: `Payout for campaign ${payout.campaignId}`,

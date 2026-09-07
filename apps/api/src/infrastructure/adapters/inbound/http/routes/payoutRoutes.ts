@@ -14,6 +14,7 @@ const createRecipientSchema = z.object({
 
 const requestPayoutSchema = z.object({
   amount: z.number().positive(),
+  type: z.enum(['standard', 'priority', 'early', 'urgent', 'assisted']).optional(),
 });
 
 /**

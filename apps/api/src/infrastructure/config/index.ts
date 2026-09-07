@@ -87,6 +87,26 @@ export interface CampaignsConfig {
   autoApproveMaxTier: number;
 }
 
+/** Payout service fees + reserve policy (spec §17). Admin-configurable. */
+export interface PayoutsConfig {
+  /** Priority payout: `percent`% of the amount, at least `minFee` GHS. */
+  priorityFeePercent: number;
+  priorityMinFee: number;
+  /** Early payout (before campaign end). */
+  earlyFeePercent: number;
+  earlyMinFee: number;
+  /** Urgent early payout. */
+  urgentFeePercent: number;
+  urgentMinFee: number;
+  /** Assisted bank payout: `percent`% + a fixed service charge. */
+  assistedFeePercent: number;
+  assistedFixedFee: number;
+  /** Max % of the eligible balance an early/urgent payout may withdraw (reserve = 100 − this). */
+  earlyMaxWithdrawalPercent: number;
+  /** Provider single-transfer ceiling (GHS); larger payouts must be batched. */
+  maxTransferAmount: number;
+}
+
 export interface AppConfig {
   port: number;
   mongodbUri: string;
@@ -107,6 +127,8 @@ export interface AppConfig {
   affiliate: AffiliateConfig;
   /** Campaign risk-tiering + review thresholds (spec §4). */
   campaigns: CampaignsConfig;
+  /** Payout service fees + reserve policy (spec §17). */
+  payouts: PayoutsConfig;
   /** Public base URL of the donor-facing web app; builds `/c/:slug` targets & canonical URLs. */
   publicWebUrl: string;
   /** Public base URL this API is reachable at; builds short URLs (`/r/:code`). */
@@ -214,6 +236,18 @@ export const config: AppConfig = {
       .filter((v) => Number.isFinite(v) && v > 0)
       .sort((a, b) => a - b),
     autoApproveMaxTier: Number.parseInt(process.env.CAMPAIGN_AUTO_APPROVE_MAX_TIER ?? '2', 10),
+  },
+  payouts: {
+    priorityFeePercent: Number.parseFloat(process.env.PAYOUT_PRIORITY_FEE_PERCENT ?? '0.5'),
+    priorityMinFee: Number.parseFloat(process.env.PAYOUT_PRIORITY_MIN_FEE ?? '10'),
+    earlyFeePercent: Number.parseFloat(process.env.PAYOUT_EARLY_FEE_PERCENT ?? '1.0'),
+    earlyMinFee: Number.parseFloat(process.env.PAYOUT_EARLY_MIN_FEE ?? '20'),
+    urgentFeePercent: Number.parseFloat(process.env.PAYOUT_URGENT_FEE_PERCENT ?? '1.5'),
+    urgentMinFee: Number.parseFloat(process.env.PAYOUT_URGENT_MIN_FEE ?? '30'),
+    assistedFeePercent: Number.parseFloat(process.env.PAYOUT_ASSISTED_FEE_PERCENT ?? '1.5'),
+    assistedFixedFee: Number.parseFloat(process.env.PAYOUT_ASSISTED_FIXED_FEE ?? '50'),
+    earlyMaxWithdrawalPercent: Number.parseFloat(process.env.PAYOUT_EARLY_MAX_WITHDRAWAL_PERCENT ?? '80'),
+    maxTransferAmount: Number.parseFloat(process.env.PAYOUT_MAX_TRANSFER_AMOUNT ?? '50000'),
   },
   publicWebUrl: process.env.PUBLIC_WEB_URL ?? 'http://localhost:18200',
   publicApiUrl:
