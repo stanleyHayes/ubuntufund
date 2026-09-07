@@ -576,6 +576,17 @@ export function createApp(): express.Express {
     campaignLedgerProjector,
     gatewayRegistry
   );
+  // Scheduled reconciliation sweep (spec §13). Production-only + flag-gated so
+  // tests/dev never spawn it; unref'd so it can't hold the process open.
+  if (config.payments.reconciliationEnabled && config.nodeEnv === 'production') {
+    const RECONCILE_INTERVAL_MS = 30 * 60 * 1000;
+    const timer = setInterval(() => {
+      reconcilePaymentsUseCase
+        .reconcileStale({ olderThanMinutes: 30 })
+        .catch((err) => logger.error({ err }, 'scheduled reconciliation failed'));
+    }, RECONCILE_INTERVAL_MS);
+    timer.unref();
+  }
   const recordPaymentAttemptUseCase = new RecordPaymentAttemptUseCase(
     donationIntentRepo,
     paymentAttemptRepo

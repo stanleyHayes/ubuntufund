@@ -10,6 +10,37 @@ rewrite it; preserve Ghana MoMo; never trust the client; every cedi traceable
 provider → attempt → contribution → ledger → balance. Payment convenience must
 not weaken financial correctness.
 
+## Implementation status (2026-09-07)
+
+Phases 1–4 are **built, tested and committed** (~52 payment tests; full API
+suite green). All additive + flag-gated; the Ghana MoMo/Paystack path is
+unchanged and its regression tests still pass.
+
+| Phase | Delivered |
+|---|---|
+| 1 Foundation | `PAYMENTS_*`/`FLUTTERWAVE_*` config + flags; minor-unit `Money` helpers; provider `capabilities()`; `PaymentRouter` (routing rules §7) |
+| 2 Multi-currency | Contribution minor-unit/original/settlement/fx fields + backfill; full state machine (§9); currency/country-aware checkout; int'l-card charge; webhook currency/amount **mismatch guard** (§12/§23); settlement recording (§8) |
+| 3 Flutterwave | `FlutterwaveGateway` (v3) + `verif-hash` webhook that re-verifies server-side + settles through the shared seam; provider-generic routing; `POST /webhooks/flutterwave` |
+| 4 Operations | Reconciliation (`ReconcilePaymentsUseCase` + admin trigger + prod scheduler); admin search/trace (`/admin/payments*`); provider-integrated refunds + **compensating ledger** (§14) |
+
+### Remaining — external gates (cannot be completed by the agent)
+
+- **Flutterwave live keys** — set `FLUTTERWAVE_SECRET_KEY` + `FLUTTERWAVE_WEBHOOK_SECRET_HASH`
+  and `PAYMENTS_FLUTTERWAVE_ENABLED=true`; run the FLW sandbox smoke test. Confirm
+  the v3 endpoints + `verif-hash` scheme against current FLW docs before go-live.
+- **International cards** — confirm Paystack merchant eligibility (§17), then set
+  `PAYMENTS_INTERNATIONAL_CARDS_ENABLED=true` + `PAYMENTS_MULTI_CURRENCY_ENABLED=true`.
+- **Flutterwave refunds** — currently a 501 stub (needs the FLW transaction id +
+  creds); Paystack refunds are fully wired.
+- **Accounting/legal review (§10)** of the refund fee treatment (which fees are
+  returned) — the engineering guarantee (balanced, auditable, compensating,
+  never-edited) is in place; the *policy* is a product-owner/accountant decision.
+- **Observability backend (§19)** — logs already carry contribution/attempt/
+  provider/reference; wiring a metrics store/alerts is ops config.
+- **Scheduled reconciliation** — an in-process 30-min sweep runs in production
+  (flag-gated); a Render cron hitting `POST /admin/reconciliation` is the
+  alternative if the web service sleeps.
+
 ---
 
 ## 1. Repository audit (spec §4)
