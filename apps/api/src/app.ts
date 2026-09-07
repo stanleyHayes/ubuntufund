@@ -42,6 +42,8 @@ import { MongoOutboxRepository } from './infrastructure/adapters/outbound/persis
 import { MongoTransferRecipientRepository } from './infrastructure/adapters/outbound/persistence/MongoTransferRecipientRepository.js';
 import { MongoPayoutRepository } from './infrastructure/adapters/outbound/persistence/MongoPayoutRepository.js';
 import { MongoCampaignSplitRepository } from './infrastructure/adapters/outbound/persistence/MongoCampaignSplitRepository.js';
+import { MongoCampaignBeneficiaryBalanceRepository } from './infrastructure/adapters/outbound/persistence/MongoCampaignBeneficiaryBalanceRepository.js';
+import { MongoCampaignBeneficiaryAccrualRepository } from './infrastructure/adapters/outbound/persistence/MongoCampaignBeneficiaryAccrualRepository.js';
 import { MongoCouponRepository } from './infrastructure/adapters/outbound/persistence/MongoCouponRepository.js';
 import { MongoCouponRedemptionRepository } from './infrastructure/adapters/outbound/persistence/MongoCouponRedemptionRepository.js';
 import { MongoSubscriptionCheckoutRepository } from './infrastructure/adapters/outbound/persistence/MongoSubscriptionCheckoutRepository.js';
@@ -95,6 +97,7 @@ import { ListBanksUseCase } from './application/use-cases/ListBanksUseCase.js';
 import { CreatePayoutRecipientUseCase } from './application/use-cases/CreatePayoutRecipientUseCase.js';
 import { RequestPayoutUseCase } from './application/use-cases/RequestPayoutUseCase.js';
 import { CampaignSplitUseCase } from './application/use-cases/CampaignSplitUseCase.js';
+import { SplitAccrualService } from './application/services/SplitAccrualService.js';
 import { ApprovePayoutUseCase } from './application/use-cases/ApprovePayoutUseCase.js';
 import { ListCampaignPayoutsUseCase } from './application/use-cases/ListCampaignPayoutsUseCase.js';
 import { ListPayoutsUseCase } from './application/use-cases/ListPayoutsUseCase.js';
@@ -446,10 +449,24 @@ export function createApp(): express.Express {
       holdDays: config.affiliate.holdDays,
     }
   );
+  // Split-proceeds accrual (spec §17): distributes a settled donation's
+  // beneficiary-net across the active split's per-beneficiary buckets. Behind
+  // the splitProceedsEnabled flag (default off, pending Ghana legal §6).
+  const campaignBeneficiaryBalanceRepo =
+    new MongoCampaignBeneficiaryBalanceRepository();
+  const campaignBeneficiaryAccrualRepo =
+    new MongoCampaignBeneficiaryAccrualRepository();
+  const splitAccrualService = new SplitAccrualService(
+    config.splitProceedsEnabled,
+    campaignSplitRepo,
+    campaignBeneficiaryBalanceRepo,
+    campaignBeneficiaryAccrualRepo
+  );
   const campaignLedgerProjector = new CampaignLedgerProjector(
     campaignRepo,
     campaignBalanceRepo,
-    ledgerRepo
+    ledgerRepo,
+    splitAccrualService
   );
   const outboxDispatcher = new OutboxDispatcher(
     outboxRepo,
@@ -920,7 +937,9 @@ export function createApp(): express.Express {
   // Split-proceeds: owner-managed, versioned beneficiary allocations (spec §17).
   const campaignSplitUseCase = new CampaignSplitUseCase(
     campaignRepo,
-    campaignSplitRepo
+    campaignSplitRepo,
+    campaignBeneficiaryBalanceRepo,
+    campaignBeneficiaryAccrualRepo
   );
   const campaignSplitController = new CampaignSplitController(
     campaignSplitUseCase

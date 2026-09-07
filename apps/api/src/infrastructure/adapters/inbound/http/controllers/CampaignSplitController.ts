@@ -104,6 +104,41 @@ export class CampaignSplitController {
     }
   };
 
+  /** GET /campaigns/:id/split/beneficiaries — per-beneficiary balances (owner/admin). */
+  listBeneficiaryBalances = async (
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const balances = await this.splitUseCase.listBeneficiaryBalances(
+        req.params.id as string,
+        { userId: req.userId!, role: req.userRole }
+      );
+      res.json({ data: balances, message: 'Beneficiary balances', status: 200 });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /** GET /campaigns/:id/split/beneficiaries/:beneficiaryId/statement (owner/admin/self). */
+  getBeneficiaryStatement = async (
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const statement = await this.splitUseCase.getBeneficiaryStatement(
+        req.params.id as string,
+        req.params.beneficiaryId as string,
+        { userId: req.userId!, role: req.userRole }
+      );
+      res.json({ data: statement, message: 'Beneficiary statement', status: 200 });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   private parseVersion(raw: string | undefined): number {
     const version = Number(raw);
     if (!Number.isInteger(version) || version < 1) {

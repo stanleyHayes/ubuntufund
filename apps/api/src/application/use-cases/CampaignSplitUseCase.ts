@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import type {
   BeneficiaryConsentStatus,
+  BeneficiaryStatement,
+  CampaignBeneficiaryBalance,
   CampaignSplitDisclosure,
   CampaignSplitVersion,
   CreateSplitInput,
@@ -8,8 +10,13 @@ import type {
 import { CampaignSplitVersionEntity } from '../../domain/entities/CampaignSplitVersion.js';
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js';
 import type { CampaignSplitRepositoryPort } from '../../domain/ports/outbound/CampaignSplitRepositoryPort.js';
+import type { CampaignBeneficiaryBalanceRepositoryPort } from '../../domain/ports/outbound/CampaignBeneficiaryBalanceRepositoryPort.js';
+import type { CampaignBeneficiaryAccrualRepositoryPort } from '../../domain/ports/outbound/CampaignBeneficiaryAccrualRepositoryPort.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
-import { toSplitDto, toSplitDisclosure } from './mappers/splitDto.js';
+import { toSplitDto, toSplitDisclosure, toBeneficiaryStatement } from './mappers/splitDto.js';
+
+/** The platform's only settlement currency. */
+const CURRENCY = 'GHS';
 
 export interface SplitRequester {
   userId: string;
@@ -26,7 +33,9 @@ export interface SplitRequester {
 export class CampaignSplitUseCase {
   constructor(
     private readonly campaignRepo: CampaignRepositoryPort,
-    private readonly splitRepo: CampaignSplitRepositoryPort
+    private readonly splitRepo: CampaignSplitRepositoryPort,
+    private readonly beneficiaryBalanceRepo: CampaignBeneficiaryBalanceRepositoryPort,
+    private readonly accrualRepo: CampaignBeneficiaryAccrualRepositoryPort
   ) {}
 
   /** Owner/admin: create a new (draft) split version for a campaign. */
@@ -162,6 +171,43 @@ export class CampaignSplitUseCase {
       throw new AppError('Split version could not be activated', 409);
     }
     return toSplitDto(activated);
+  }
+
+  /** Owner/admin: the per-beneficiary balances accrued for this campaign. */
+  async listBeneficiaryBalances(
+    campaignId: string,
+    requester: SplitRequester
+  ): Promise<CampaignBeneficiaryBalance[]> {
+    await this.assertOwnerOrAdmin(campaignId, requester);
+    return this.beneficiaryBalanceRepo.listByCampaign(campaignId);
+  }
+
+  /**
+   * A beneficiary's statement for a campaign: current balance + accrual history.
+   * Visible to the campaign owner/admin or the beneficiary themselves.
+   */
+  async getBeneficiaryStatement(
+    campaignId: string,
+    beneficiaryId: string,
+    requester: SplitRequester
+  ): Promise<BeneficiaryStatement> {
+    const isSelf = requester.userId === beneficiaryId;
+    if (!isSelf) {
+      await this.assertOwnerOrAdmin(campaignId, requester);
+    }
+    const balance =
+      (await this.beneficiaryBalanceRepo.findOne(campaignId, beneficiaryId, CURRENCY)) ??
+      {
+        campaignId,
+        beneficiaryId,
+        currency: CURRENCY,
+        pendingBalance: 0,
+        availableBalance: 0,
+        paidOutBalance: 0,
+        updatedAt: new Date(),
+      };
+    const accruals = await this.accrualRepo.listByBeneficiary(campaignId, beneficiaryId);
+    return toBeneficiaryStatement(campaignId, beneficiaryId, balance, accruals);
   }
 
   private async assertOwnerOrAdmin(

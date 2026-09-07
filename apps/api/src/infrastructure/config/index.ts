@@ -135,6 +135,12 @@ export interface AppConfig {
   campaigns: CampaignsConfig;
   /** Payout service fees + reserve policy (spec §17). */
   payouts: PayoutsConfig;
+  /**
+   * Split-proceeds multi-beneficiary accrual + per-beneficiary payouts (spec §17
+   * split). Default OFF: the economic-expectation model needs Ghana legal
+   * sign-off (plan §6) before it may be enabled in production.
+   */
+  splitProceedsEnabled: boolean;
   /** Public base URL of the donor-facing web app; builds `/c/:slug` targets & canonical URLs. */
   publicWebUrl: string;
   /** Public base URL this API is reachable at; builds short URLs (`/r/:code`). */
@@ -256,6 +262,7 @@ export const config: AppConfig = {
     maxTransferAmount: Number.parseFloat(process.env.PAYOUT_MAX_TRANSFER_AMOUNT ?? '50000'),
     dualApprovalAmount: Number.parseFloat(process.env.PAYOUT_DUAL_APPROVAL_AMOUNT ?? '0'),
   },
+  splitProceedsEnabled: process.env.SPLIT_PROCEEDS_ENABLED === 'true',
   publicWebUrl: process.env.PUBLIC_WEB_URL ?? 'http://localhost:18200',
   publicApiUrl:
     process.env.PUBLIC_API_URL ??

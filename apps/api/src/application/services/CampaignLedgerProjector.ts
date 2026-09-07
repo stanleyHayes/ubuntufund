@@ -2,6 +2,7 @@ import type { DonationSettlementBreakdown } from '@ubuntu-fund/types';
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js';
 import type { CampaignBalanceRepositoryPort } from '../../domain/ports/outbound/CampaignBalanceRepositoryPort.js';
 import type { LedgerRepositoryPort } from '../../domain/ports/outbound/LedgerRepositoryPort.js';
+import type { SplitAccrualService } from './SplitAccrualService.js';
 import { logger } from '../../infrastructure/logging/logger.js';
 
 /**
@@ -17,7 +18,14 @@ export class CampaignLedgerProjector {
   constructor(
     private readonly campaignRepo: CampaignRepositoryPort,
     private readonly campaignBalanceRepo: CampaignBalanceRepositoryPort,
-    private readonly ledgerRepo: LedgerRepositoryPort
+    private readonly ledgerRepo: LedgerRepositoryPort,
+    /**
+     * Optional split-proceeds accrual (spec §17). When present + enabled, a
+     * settled donation's beneficiary-net is additionally distributed across the
+     * campaign's active split's per-beneficiary buckets. A no-op otherwise, so
+     * the campaign-level projection is unchanged.
+     */
+    private readonly splitAccrualService?: SplitAccrualService
   ) {}
 
   /**
@@ -28,7 +36,8 @@ export class CampaignLedgerProjector {
    */
   async projectDonation(
     campaignId: string,
-    breakdown: DonationSettlementBreakdown
+    breakdown: DonationSettlementBreakdown,
+    donationIntentId?: string
   ): Promise<void> {
     // raisedAmount is credited through the ledger settlement (this seam) only.
     const credited = await this.campaignRepo.incrementRaised(
@@ -52,6 +61,13 @@ export class CampaignLedgerProjector {
       processorFee: breakdown.processorFee,
       tip: breakdown.tip,
     });
+
+    // Split-proceeds accrual (spec §17): distribute the beneficiary-net across
+    // the active split's per-beneficiary buckets. No-op unless the flag is on,
+    // the donation intent is known, and the campaign runs an active split.
+    if (donationIntentId && this.splitAccrualService) {
+      await this.splitAccrualService.accrue(campaignId, donationIntentId, breakdown);
+    }
   }
 
   /**
@@ -64,7 +80,8 @@ export class CampaignLedgerProjector {
   async reverseDonation(
     campaignId: string,
     currency: string,
-    split: { amount: number; beneficiaryNet: number; platformFee: number; processorFee: number }
+    split: { amount: number; beneficiaryNet: number; platformFee: number; processorFee: number },
+    donationIntentId?: string
   ): Promise<boolean> {
     const reversed = await this.campaignBalanceRepo.applyRefund(campaignId, currency, {
       amount: split.amount,
@@ -74,6 +91,16 @@ export class CampaignLedgerProjector {
       tip: 0,
     });
     if (!reversed) return false;
+
+    // Reverse the per-beneficiary split accrual by the exact amounts credited
+    // (spec §17). No-op unless split-proceeds is enabled for this donation.
+    if (donationIntentId && this.splitAccrualService) {
+      await this.splitAccrualService.reverse(
+        campaignId,
+        donationIntentId,
+        split.beneficiaryNet
+      );
+    }
     // Reduce the raised projection too. Uses reverseRaised (no active/endDate
     // guard) so a funded/ended campaign still claws back — and, like
     // projectDonation, logs rather than silently dropping it if the campaign

@@ -90,3 +90,56 @@ export interface CampaignSplitDisclosure {
     consent: BeneficiaryConsentStatus
   }[]
 }
+
+/**
+ * A per-`(campaign, beneficiary)` balance read model (spec §17 / ADR-3). Mirrors
+ * the campaign-level buckets so a beneficiary's cleared share can be paid out
+ * independently. Amounts are in major units (GHS).
+ */
+export interface CampaignBeneficiaryBalance {
+  campaignId: string
+  beneficiaryId: string
+  currency: string
+  /** Accrued from settled donations, not yet cleared for payout. */
+  pendingBalance: number
+  /** Cleared and available for the beneficiary to withdraw. */
+  availableBalance: number
+  /** Already disbursed to the beneficiary. */
+  paidOutBalance: number
+  updatedAt: Date
+}
+
+/**
+ * The immutable record of how one settled donation's beneficiary-net was split
+ * across beneficiaries — the source of truth for reversing a refund by the
+ * exact amounts credited (never a re-derivation that a later amendment could
+ * skew). Keyed by the donation intent, so it is written exactly once.
+ */
+export interface CampaignBeneficiaryAccrual {
+  campaignId: string
+  donationIntentId: string
+  splitVersion: number
+  currency: string
+  entries: { beneficiaryId: string; amount: number }[]
+  reversed: boolean
+  createdAt: Date
+}
+
+/** One line of a beneficiary's statement. */
+export interface BeneficiaryStatementEntry {
+  at: Date
+  kind: 'accrual' | 'refund'
+  amount: number
+  currency: string
+  donationIntentId: string
+  splitVersion: number
+}
+
+/** A beneficiary's statement for a campaign: current balance + accrual history. */
+export interface BeneficiaryStatement {
+  campaignId: string
+  beneficiaryId: string
+  currency: string
+  balance: CampaignBeneficiaryBalance
+  entries: BeneficiaryStatementEntry[]
+}

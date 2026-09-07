@@ -99,7 +99,7 @@ export class SettleDonationUseCase {
       memo: `donation ${donation.id} via ${settled.provider}`,
     });
 
-    await this.projector.projectDonation(settled.campaignId, breakdown);
+    await this.projector.projectDonation(settled.campaignId, breakdown, settled.id);
 
     // Record the verified settlement money split in integer minor units (spec
     // §8) — additive and best-effort, so it never fails the settlement. The

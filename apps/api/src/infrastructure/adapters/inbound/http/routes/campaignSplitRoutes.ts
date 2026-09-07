@@ -45,6 +45,16 @@ export function createCampaignSplitRoutes(
     splitController.createSplit
   );
   router.get('/:id/split/versions', authMiddleware, splitController.listVersions);
+  router.get(
+    '/:id/split/beneficiaries',
+    authMiddleware,
+    splitController.listBeneficiaryBalances
+  );
+  router.get(
+    '/:id/split/beneficiaries/:beneficiaryId/statement',
+    authMiddleware,
+    splitController.getBeneficiaryStatement
+  );
   router.post(
     '/:id/split/:version/consent',
     authMiddleware,

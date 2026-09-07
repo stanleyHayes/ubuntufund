@@ -157,12 +157,12 @@ export class ProcessRefundUseCase {
     // 3. Reverse the campaign projection (guarded again for the race). If this is
     //    blocked, the money already moved at the provider — do NOT release the
     //    claim; flag for manual reconciliation instead.
-    const reversed = await this.projector.reverseDonation(intent.campaignId, currency, {
-      amount: refundAmount,
-      beneficiaryNet,
-      platformFee,
-      processorFee,
-    });
+    const reversed = await this.projector.reverseDonation(
+      intent.campaignId,
+      currency,
+      { amount: refundAmount, beneficiaryNet, platformFee, processorFee },
+      intent.id
+    );
     if (!reversed) {
       logger.error(
         { intentId: intent.id, providerRef: intent.providerRef, refundRef: refund.reference },
