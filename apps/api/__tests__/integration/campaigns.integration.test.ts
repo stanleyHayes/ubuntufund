@@ -118,8 +118,23 @@ describe('Campaigns Integration', () => {
 
       expect(res.status).toBe(201);
       expect(res.body.data.title).toBe('Verified Creator Campaign');
-      expect(res.body.data.status).toBe('pending_review');
+      // Tier 1 (goal ≤ GHS 10k) auto-approves and goes live immediately (spec §4).
+      expect(res.body.data.status).toBe('active');
+      expect(res.body.data.tier).toBe(1);
       expect(res.body.data.creatorId).toBe(userId);
+    });
+
+    it('holds a high-tier campaign for manual compliance review (Tier 4)', async () => {
+      const { userId, token } = await registerUser(app, uniqueEmail('bigcampaign'));
+      await setVerificationLevel(userId, 3);
+      await seedSubscription(userId, SubscriptionTier.ORGANIZATION); // 1M goal cap
+      const res = await request(app)
+        .post('/api/v1/campaigns')
+        .set('Authorization', `Bearer ${token}`)
+        .send(campaignPayload({ title: 'Major Programme', goalAmount: 300000 }));
+      expect(res.status).toBe(201);
+      expect(res.body.data.tier).toBe(4); // goal > GHS 250k
+      expect(res.body.data.status).toBe('pending_review');
     });
 
     it('rejects unauthenticated requests', async () => {
@@ -234,12 +249,16 @@ describe('Campaigns Integration', () => {
         uniqueEmail('approvecreator')
       );
       await setVerificationLevel(creatorId, 2);
+      await seedSubscription(creatorId, SubscriptionTier.ORGANIZATION); // 1M goal cap
 
+      // A high-tier (Tier 4) campaign is held for manual review, so there is
+      // something for the admin to approve.
       const createRes = await request(app)
         .post('/api/v1/campaigns')
         .set('Authorization', `Bearer ${creatorToken}`)
-        .send(campaignPayload({ title: 'Needs Approval' }));
+        .send(campaignPayload({ title: 'Needs Approval', goalAmount: 300000 }));
       expect(createRes.status).toBe(201);
+      expect(createRes.body.data.status).toBe('pending_review');
       const campaignId = createRes.body.data.id;
 
       const { token: adminToken } = await createAdmin(app, uniqueEmail('approveadmin'));

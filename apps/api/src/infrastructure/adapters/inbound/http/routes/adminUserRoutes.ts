@@ -17,6 +17,13 @@ export function createAdminUserRoutes(
 
   router.get('/', authMiddleware, requireAdmin, controller.list);
   router.get('/:id', authMiddleware, requireAdmin, controller.getById);
+  // Compliance-approved campaign-goal ceiling (spec §18).
+  router.put(
+    '/:id/compliance-limit',
+    authMiddleware,
+    requireAdmin,
+    controller.setComplianceLimit
+  );
 
   return router;
 }

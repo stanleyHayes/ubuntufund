@@ -25,6 +25,7 @@ function toDomain(doc: CampaignDocument): CampaignEntity {
     endDate: doc.endDate,
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
+    tier: doc.tier,
   });
 }
 
@@ -48,6 +49,7 @@ export class MongoCampaignRepository implements CampaignRepositoryPort {
       imageUrls: plain.imageUrls,
       startDate: plain.startDate,
       endDate: plain.endDate,
+      tier: plain.tier,
     });
     return toDomain(doc);
   }

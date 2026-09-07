@@ -16,6 +16,8 @@ export interface UserProps {
   organizationType?: OrganizationType;
   registrationNumber?: string;
   website?: string;
+  /** Compliance-approved campaign-goal ceiling (spec §18); undefined = plan cap only. */
+  complianceApprovedCampaignLimit?: number;
   emailVerified: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -59,6 +61,15 @@ export class UserEntity {
   }
   get trustScore(): TrustScore {
     return this.props.trustScore;
+  }
+  get complianceApprovedCampaignLimit(): number | undefined {
+    return this.props.complianceApprovedCampaignLimit;
+  }
+
+  /** Set (or clear, with undefined) the compliance-approved campaign ceiling. */
+  setComplianceApprovedCampaignLimit(limit: number | undefined): void {
+    this.props.complianceApprovedCampaignLimit = limit;
+    this.props.updatedAt = new Date();
   }
   get country(): string | undefined {
     return this.props.country;

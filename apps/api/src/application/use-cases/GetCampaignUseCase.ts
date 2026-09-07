@@ -23,6 +23,7 @@ function toDTO(entity: CampaignEntity): Campaign {
     endDate: plain.endDate,
     createdAt: plain.createdAt,
     updatedAt: plain.updatedAt,
+    tier: plain.tier,
   };
 }
 

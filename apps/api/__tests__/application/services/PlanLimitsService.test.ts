@@ -139,6 +139,33 @@ describe('PlanLimitsService', () => {
       expect((err as { statusCode?: number }).statusCode).toBe(422)
     })
 
+    it('enforces the tighter compliance cap (effective = MIN(plan, compliance))', async () => {
+      // Free plan caps at 10000; a compliance limit of 6000 binds tighter.
+      let err: unknown;
+      try {
+        await service.assertCanCreateCampaign('user-1', 8000, 6000);
+      } catch (e) {
+        err = e;
+      }
+      expect((err as { statusCode?: number }).statusCode).toBe(422);
+      expect((err as Error).message).toMatch(/compliance review/i);
+    });
+
+    it('a compliance cap at/above the plan cap never lifts the effective ceiling', async () => {
+      // Free plan 10000, compliance 50000 → effective MIN = 10000; 8000 is fine.
+      await expect(
+        service.assertCanCreateCampaign('user-1', 8000, 50000)
+      ).resolves.toBeUndefined();
+      // …but 12000 still exceeds the plan cap (compliance can't raise it).
+      let err: unknown;
+      try {
+        await service.assertCanCreateCampaign('user-1', 12000, 50000);
+      } catch (e) {
+        err = e;
+      }
+      expect((err as { statusCode?: number }).statusCode).toBe(422);
+    });
+
     it('treats an unlimited cap (-1) as no ceiling', async () => {
       vi.mocked(subscriptionRepo.findByUserId).mockResolvedValue(
         makeSubscription(SubscriptionTier.ENTERPRISE)

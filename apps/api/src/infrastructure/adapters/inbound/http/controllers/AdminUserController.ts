@@ -2,12 +2,32 @@ import type { Response, NextFunction } from 'express';
 import type { AuthenticatedRequest } from '../../middleware/authMiddleware.js';
 import type { ListUsersUseCase } from '../../../../../application/use-cases/ListUsersUseCase.js';
 import type { GetAdminUserUseCase } from '../../../../../application/use-cases/GetAdminUserUseCase.js';
+import type { SetComplianceLimitUseCase } from '../../../../../application/use-cases/SetComplianceLimitUseCase.js';
 
 export class AdminUserController {
   constructor(
     private readonly listUsersUseCase: ListUsersUseCase,
-    private readonly getAdminUserUseCase: GetAdminUserUseCase
+    private readonly getAdminUserUseCase: GetAdminUserUseCase,
+    private readonly setComplianceLimitUseCase: SetComplianceLimitUseCase
   ) {}
+
+  /** PUT /users/:id/compliance-limit — set/clear the compliance-approved goal cap. */
+  setComplianceLimit = async (
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const body = (req.body ?? {}) as { limit?: number | null };
+      const result = await this.setComplianceLimitUseCase.execute({
+        userId: String(req.params.id),
+        limit: body.limit === undefined ? null : body.limit,
+      });
+      res.json({ data: result, message: 'Compliance limit updated', status: 200 });
+    } catch (error) {
+      next(error);
+    }
+  };
 
   getById = async (
     req: AuthenticatedRequest,

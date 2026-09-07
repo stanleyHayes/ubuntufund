@@ -23,6 +23,7 @@ function toDomain(doc: UserDocument): UserEntity {
     organizationType: doc.organizationType,
     registrationNumber: doc.registrationNumber,
     website: doc.website,
+    complianceApprovedCampaignLimit: doc.complianceApprovedCampaignLimit,
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
   });
@@ -79,6 +80,7 @@ export class MongoUserRepository implements UserRepositoryPort {
         organizationType: plain.organizationType,
         registrationNumber: plain.registrationNumber,
         website: plain.website,
+        complianceApprovedCampaignLimit: plain.complianceApprovedCampaignLimit,
       },
       { new: true }
     );

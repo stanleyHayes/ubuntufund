@@ -52,9 +52,32 @@ owner's direction — plans are **fully admin-managed**, not hard-coded:
 - This **supersedes ADR-1's** "keep the enum as authority" stance: the enum is now
   just the seed identity; the DB is authoritative and extensible.
 
-Still open in this phase's scope (Phase 2 in the plan): the compliance-approved
-limit + review-status **publish gate** (`effective_limit = MIN(plan, compliance)`)
-— the plan/active-count/goal-cap guard exists; the compliance half does not yet.
+## Phase 2 — Compliance & review workflow (delivered 2026-09-07)
+
+Extends the EXISTING review workflow (campaigns already default to
+`pending_review`; `ReviewCampaignUseCase` approves/blocks; mutations are
+auto-audited) with risk tiering and the compliance limit gate:
+
+- **Campaign tier 1–5** derived from the goal against admin-configurable
+  thresholds (`CAMPAIGN_TIER_THRESHOLDS`, default GHS 10k/50k/250k/1M) and stored
+  on the campaign (stable, indexed, surfaced in read DTOs). `deriveCampaignTier`
+  is a pure domain function.
+- **Tier-based auto-approval:** tiers ≤ `CAMPAIGN_AUTO_APPROVE_MAX_TIER` (default
+  2) go live immediately (ACTIVE); higher tiers are held in PENDING_REVIEW for
+  manual compliance review. Without the config, every campaign is reviewed
+  (legacy-safe).
+- **Compliance publish gate:** `User.complianceApprovedCampaignLimit` +
+  `PlanLimitsService` now enforce the effective goal cap =
+  `MIN(plan cap, compliance cap)` (spec §18); compliance can only tighten, never
+  lift, the plan cap. New admin endpoint `PUT /users/:id/compliance-limit`
+  (auto-audited).
+
+Tests: tier derivation + review thresholds; the MIN(plan, compliance) gate;
+tier-based create status (auto-approve vs review). Full API suite green.
+
+Still open (later phases): maker-checker two-person approval for very high-value
+actions; per-tier KYC document requirements; the admin review-queue/compliance UI
+(Phase 5).
 
 ## 1. Repository audit — what already exists
 

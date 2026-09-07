@@ -201,6 +201,7 @@ import { ReviewReportUseCase } from './application/use-cases/ReviewReportUseCase
 import { ReviewCampaignUseCase } from './application/use-cases/ReviewCampaignUseCase.js';
 import { ListUsersUseCase } from './application/use-cases/ListUsersUseCase.js';
 import { GetAdminUserUseCase } from './application/use-cases/GetAdminUserUseCase.js';
+import { SetComplianceLimitUseCase } from './application/use-cases/SetComplianceLimitUseCase.js';
 import { GetPlatformOverviewUseCase } from './application/use-cases/GetPlatformOverviewUseCase.js';
 import { SubscribeNewsletterUseCase } from './application/use-cases/SubscribeNewsletterUseCase.js';
 import { ListNewsletterSubscribersUseCase } from './application/use-cases/ListNewsletterSubscribersUseCase.js';
@@ -465,7 +466,7 @@ export function createApp(): express.Express {
   const forgotPasswordUseCase = new ForgotPasswordUseCase(userRepo);
   const resetPasswordUseCase = new ResetPasswordUseCase(userRepo, tokenService);
 
-  const createCampaignUseCase = new CreateCampaignUseCase(campaignRepo, userRepo, planLimitsService);
+  const createCampaignUseCase = new CreateCampaignUseCase(campaignRepo, userRepo, planLimitsService, config.campaigns);
   const getCampaignUseCase = new GetCampaignUseCase(campaignRepo, donationRepo);
   const getCampaignBySlugUseCase = new GetCampaignBySlugUseCase(
     campaignRepo,
@@ -814,6 +815,7 @@ export function createApp(): express.Express {
   const reviewCampaignUseCase = new ReviewCampaignUseCase(campaignRepo);
   const listUsersUseCase = new ListUsersUseCase(adminUserRepo);
   const getAdminUserUseCase = new GetAdminUserUseCase(adminUserRepo);
+  const setComplianceLimitUseCase = new SetComplianceLimitUseCase(userRepo);
   const getPlatformOverviewUseCase = new GetPlatformOverviewUseCase(analyticsRepo);
   const subscribeNewsletterUseCase = new SubscribeNewsletterUseCase(newsletterRepo);
   const listNewsletterSubscribersUseCase = new ListNewsletterSubscribersUseCase(newsletterRepo);
@@ -974,7 +976,8 @@ export function createApp(): express.Express {
   const campaignModerationController = new CampaignModerationController(reviewCampaignUseCase);
   const adminUserController = new AdminUserController(
     listUsersUseCase,
-    getAdminUserUseCase
+    getAdminUserUseCase,
+    setComplianceLimitUseCase
   );
   const analyticsController = new AnalyticsController(getPlatformOverviewUseCase);
   const newsletterController = new NewsletterController(

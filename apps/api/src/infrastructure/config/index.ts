@@ -71,6 +71,22 @@ export interface PaymentsConfig {
   fxSource: string;
 }
 
+/** Campaign risk-tiering + review policy (spec §4). Admin-configurable. */
+export interface CampaignsConfig {
+  /**
+   * Ascending goal boundaries that split campaigns into tiers 1–5. A goal is in
+   * tier `1 + (number of thresholds it exceeds)`. Default (GHS): 10k/50k/250k/1M
+   * → Tier 1 ≤10k, 2 ≤50k, 3 ≤250k, 4 ≤1M, 5 >1M.
+   */
+  tierThresholds: number[];
+  /**
+   * The highest tier that is auto-approved (goes live immediately). Campaigns
+   * above this tier are held in PENDING_REVIEW for manual compliance review.
+   * Default 2 (Tiers 1–2 automated; 3+ manual), per the v6 tier table.
+   */
+  autoApproveMaxTier: number;
+}
+
 export interface AppConfig {
   port: number;
   mongodbUri: string;
@@ -89,6 +105,8 @@ export interface AppConfig {
   payments: PaymentsConfig;
   /** Referral/affiliate commission policy (rate + hold window). */
   affiliate: AffiliateConfig;
+  /** Campaign risk-tiering + review thresholds (spec §4). */
+  campaigns: CampaignsConfig;
   /** Public base URL of the donor-facing web app; builds `/c/:slug` targets & canonical URLs. */
   publicWebUrl: string;
   /** Public base URL this API is reachable at; builds short URLs (`/r/:code`). */
@@ -186,6 +204,16 @@ export const config: AppConfig = {
   affiliate: {
     commissionPercent: Number.parseFloat(process.env.AFFILIATE_COMMISSION_PERCENT ?? '10'),
     holdDays: Number.parseInt(process.env.AFFILIATE_HOLD_DAYS ?? '14', 10),
+  },
+  campaigns: {
+    // GHS goal boundaries for tiers 1–5; override with CAMPAIGN_TIER_THRESHOLDS
+    // (comma-separated, ascending).
+    tierThresholds: (process.env.CAMPAIGN_TIER_THRESHOLDS ?? '10000,50000,250000,1000000')
+      .split(',')
+      .map((v) => Number.parseFloat(v.trim()))
+      .filter((v) => Number.isFinite(v) && v > 0)
+      .sort((a, b) => a - b),
+    autoApproveMaxTier: Number.parseInt(process.env.CAMPAIGN_AUTO_APPROVE_MAX_TIER ?? '2', 10),
   },
   publicWebUrl: process.env.PUBLIC_WEB_URL ?? 'http://localhost:18200',
   publicApiUrl:

@@ -52,6 +52,12 @@ export interface Campaign {
   reviewNotes?: string
   reviewedBy?: string
   reviewedAt?: Date
+  /**
+   * Risk/value tier 1–5 (spec §4), derived from the goal against admin-configured
+   * thresholds at creation and stored so historical tiering is stable. Higher
+   * tiers require manual compliance review before going live.
+   */
+  tier?: number
 }
 
 /**

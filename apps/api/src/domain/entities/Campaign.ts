@@ -23,6 +23,8 @@ export interface CampaignProps {
   endDate: Date;
   createdAt: Date;
   updatedAt: Date;
+  /** Risk/value tier 1–5 (spec §4), derived from the goal at creation. */
+  tier?: number;
 }
 
 export class CampaignEntity {
@@ -79,6 +81,9 @@ export class CampaignEntity {
   }
   get updatedAt(): Date {
     return this.props.updatedAt;
+  }
+  get tier(): number | undefined {
+    return this.props.tier;
   }
 
   canReceiveDonation(): boolean {

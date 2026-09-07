@@ -105,7 +105,8 @@ export class PlanLimitsService {
    */
   async assertCanCreateCampaign(
     userId: string,
-    goalAmount: number
+    goalAmount: number,
+    complianceApprovedLimit?: number
   ): Promise<void> {
     const plan = await this.resolvePlan(userId);
 
@@ -121,14 +122,29 @@ export class PlanLimitsService {
       }
     }
 
-    if (!isUnlimited(plan.maxCampaignGoal) && goalAmount > plan.maxCampaignGoal) {
+    // Effective goal ceiling = MIN(plan cap, compliance-approved cap); either -1
+    // or undefined means "no ceiling" (spec §18: effective = MIN(plan, compliance)).
+    const effectiveCap = this.effectiveGoalCap(plan.maxCampaignGoal, complianceApprovedLimit);
+    if (effectiveCap !== undefined && goalAmount > effectiveCap) {
+      const complianceBinds =
+        complianceApprovedLimit !== undefined &&
+        complianceApprovedLimit >= 0 &&
+        (isUnlimited(plan.maxCampaignGoal) || complianceApprovedLimit < plan.maxCampaignGoal);
       throw new AppError(
-        `Your ${plan.name} plan caps campaign goals at GHS ${plan.maxCampaignGoal.toLocaleString(
-          'en-US'
-        )}. Upgrade for a higher goal.`,
+        complianceBinds
+          ? `A compliance review has capped your campaign goals at GHS ${effectiveCap.toLocaleString('en-US')}.`
+          : `Your ${plan.name} plan caps campaign goals at GHS ${effectiveCap.toLocaleString('en-US')}. Upgrade for a higher goal.`,
         422
       );
     }
+  }
+
+  /** MIN of the finite (>= 0) caps; undefined when both are unlimited. */
+  private effectiveGoalCap(planCap: number, complianceCap?: number): number | undefined {
+    const caps: number[] = [];
+    if (planCap >= 0) caps.push(planCap);
+    if (complianceCap !== undefined && complianceCap >= 0) caps.push(complianceCap);
+    return caps.length ? Math.min(...caps) : undefined;
   }
 
   /**

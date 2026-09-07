@@ -146,6 +146,9 @@ describe('Donations Integration', () => {
       })
       .expect(201);
     const campaignId = createRes.body.data.id;
+    // A small (Tier 1) campaign now auto-approves to active; force it back to
+    // pending_review so we exercise the "not accepting donations" guard.
+    await CampaignModel.findByIdAndUpdate(campaignId, { status: 'pending_review' });
 
     const { token: donorToken } = await registerUser(app, uniqueEmail('pendingdonor'));
     const walletId = await getWalletId(app, donorToken);

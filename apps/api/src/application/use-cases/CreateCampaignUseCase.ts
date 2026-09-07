@@ -10,12 +10,21 @@ import type { UserRepositoryPort } from '../../domain/ports/outbound/UserReposit
 import type { PlanLimitsService } from '../services/PlanLimitsService.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 import { generateUniqueSlug } from '../utils/slug.js';
+import {
+  deriveCampaignTier,
+  tierRequiresManualReview,
+} from '../../domain/services/campaignTier.js';
+import type { CampaignsConfig } from '../../infrastructure/config/index.js';
 
 export class CreateCampaignUseCase {
   constructor(
     private readonly campaignRepo: CampaignRepositoryPort,
     private readonly userRepo: UserRepositoryPort,
-    private readonly planLimits: PlanLimitsService
+    private readonly planLimits: PlanLimitsService,
+    // Risk-tiering + review policy (spec §4). Optional so existing unit tests that
+    // don't exercise tiering still construct the use-case; absent ⇒ no tier is
+    // assigned and every campaign is held for review (the pre-tiering behaviour).
+    private readonly campaignsConfig?: CampaignsConfig
   ) {}
 
   async execute(input: CreateCampaignInput, creatorId: string): Promise<Campaign> {
@@ -32,14 +41,31 @@ export class CreateCampaignUseCase {
       );
     }
 
-    // Enforce the creator's subscription-plan limits: active-campaign count
-    // (403 over the cap) and the campaign-goal ceiling (422 over the cap).
-    await this.planLimits.assertCanCreateCampaign(creatorId, input.goalAmount);
+    // Enforce the creator's subscription-plan limits AND the compliance-approved
+    // ceiling: active-campaign count (403) and the effective goal cap =
+    // MIN(plan cap, compliance cap) (422 over the cap).
+    await this.planLimits.assertCanCreateCampaign(
+      creatorId,
+      input.goalAmount,
+      user.complianceApprovedCampaignLimit
+    );
 
     const slug = await generateUniqueSlug(input.title, async (candidate) => {
       const existing = await this.campaignRepo.findBySlug(candidate);
       return existing !== null;
     });
+
+    // Risk-tier the campaign (spec §4). Low tiers auto-approve (go live now);
+    // high tiers are held in PENDING_REVIEW for manual compliance review. Without
+    // the tiering config, keep the legacy "everything is reviewed" behaviour.
+    let tier: number | undefined;
+    let status = CampaignStatus.PENDING_REVIEW;
+    if (this.campaignsConfig) {
+      tier = deriveCampaignTier(input.goalAmount, this.campaignsConfig.tierThresholds);
+      status = tierRequiresManualReview(tier, this.campaignsConfig.autoApproveMaxTier)
+        ? CampaignStatus.PENDING_REVIEW
+        : CampaignStatus.ACTIVE;
+    }
 
     const now = new Date();
     const campaign = new CampaignEntity({
@@ -51,7 +77,7 @@ export class CreateCampaignUseCase {
       raisedAmount: new Money(0, input.currency),
       category: input.category,
       priority: input.priority,
-      status: CampaignStatus.PENDING_REVIEW,
+      status,
       creatorId,
       beneficiaries: input.beneficiaries,
       imageUrls: input.imageUrls ?? [],
@@ -59,6 +85,7 @@ export class CreateCampaignUseCase {
       endDate: new Date(input.endDate),
       createdAt: now,
       updatedAt: now,
+      tier,
     });
 
     const saved = await this.campaignRepo.save(campaign);
@@ -82,6 +109,7 @@ export class CreateCampaignUseCase {
       endDate: plain.endDate,
       createdAt: plain.createdAt,
       updatedAt: plain.updatedAt,
+      tier: plain.tier,
     };
   }
 }
