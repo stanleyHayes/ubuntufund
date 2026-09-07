@@ -131,4 +131,18 @@ export class PayoutController {
       next(error);
     }
   };
+
+  /** GET /payouts/review-queue — payouts needing admin action (NEEDS_REVIEW/PENDING). */
+  reviewQueue = async (
+    _req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const payouts = await this.listPayoutsUseCase.reviewQueue();
+      res.json({ data: payouts, message: 'Payout review queue', status: 200 });
+    } catch (error) {
+      next(error);
+    }
+  };
 }

@@ -76,6 +76,12 @@ export function createPayoutRoutes(
   const router = Router();
 
   router.get('/', authMiddleware, adminGuard, payoutController.listAll);
+  router.get(
+    '/review-queue',
+    authMiddleware,
+    adminGuard,
+    payoutController.reviewQueue
+  );
   router.post(
     '/:id/approve',
     authMiddleware,

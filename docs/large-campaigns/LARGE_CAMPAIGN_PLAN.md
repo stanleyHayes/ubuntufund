@@ -228,6 +228,32 @@ percentage split a regulated investment offer?) is a Ghana-legal sign-off
 (external gate §6). The engineering is complete and dark behind the flag until
 that clears.
 
+## Phase 5 — High-value & admin config (backend delivered 2026-09-07)
+
+Per the sign-off, the **non-gated backend** is delivered; admin-console UI wiring
+is a separate, approved pass (the console is still mostly fixtures — see the
+admin-mock note), and the specific config **values** remain gated on §6.
+
+- **Config value-diff audit (ADR-5):** the global `auditMutation` middleware
+  already records every authenticated mutation (who/what/when). This adds the
+  semantic **old→new value diff** for the sensitive money/commercial changes it
+  intentionally omits: `UpdatePlanUseCase` records each changed pricing/fee/limit
+  field (`subscription-plan.update`), and `SetComplianceLimitUseCase` records the
+  before/after limit + the admin's reason (`compliance-limit.set`). Written via a
+  best-effort `AuditLogRepositoryPort` into the existing immutable `AuditLogModel`
+  (new optional `changes`/`reason` fields), so a failed audit never fails the
+  action.
+- **Payout review-queue backend:** `GET /payouts/review-queue` (admin) returns
+  the payouts needing action — `NEEDS_REVIEW` (a batched payout that settled only
+  partially) and `PENDING` (awaiting approval, including a maker-checker payout
+  with one approval but not the second) — the backend for the Phase 5 "payout
+  approval queue" dashboard.
+
+Tests: config-audit unit suite (plan diff, no-op-when-unchanged, compliance
+before/after + reason). Deferred (gated): the versioned-config store with
+effective-dating + grandfathering (needs D2 + §6 value sign-off) and the admin
+dashboards' UI (needs the admin→real-API wiring approval).
+
 ## 1. Repository audit — what already exists
 
 The API is Express + Mongoose, hexagonal (domain / application / infrastructure,
@@ -373,28 +399,27 @@ should not silently pick them:
 
 ---
 
-_Status (updated 2026-09-07): **Phases 0, 1, 2, 3 (3a fees + 3b maker-checker &
-batching) and 4a (split config + consent + distribution core) are delivered,
-tested and shipped** — all additive and behind config, with the small-campaign
-GHS flow's full regression suite green at every step (291 tests). Sensitive
-admin/config mutations are already captured by the global immutable audit log
-(`AuditLogModel` + `auditMutation`)._
+_Status (updated 2026-09-07): **Phases 0–5 are delivered, tested and shipped** —
+all additive and behind config, with the small-campaign GHS flow's full
+regression suite green at every step (305 tests). Phases 1–3 are live; Phase 4
+(split-proceeds 4a/4b/4c) is complete + adversarially reviewed (12 findings
+verified & fixed) but dark behind `SPLIT_PROCEEDS_ENABLED` (default off); Phase 5
+ships the config value-diff audit + the payout review-queue backend._
 
-_Remaining work is genuinely gated, not merely unbuilt:_
+_What remains is genuinely gated on a Ujimora decision or an external approval,
+not on engineering:_
 
-- _**Phase 4b/4c (per-beneficiary accrual + payouts):** building the accrual in
-  isolation would create a diverging shadow ledger (the campaign-level payout
-  clears campaign `pendingBalance` while per-beneficiary buckets would not).
-  Reconciling requires per-beneficiary disbursement, gated on per-beneficiary KYC
-  depth (**D5**) and the split-proceeds economic-expectation legal review (§6).
-  The `distributeByShares` core and `lockActive` seam are in place for a clean
-  extension once those land._
-- _**Phase 5 versioned config values + effective-dating/grandfathering:** the
-  audit mechanism exists; the values are gated on **§6 real fee/limit sign-off**
-  and grandfathering on **D2**._
-- _**Phase 5 admin dashboards:** gated on the admin → real-API wiring approval
-  (a separate, offered-but-not-yet-approved follow-up) plus the value sign-offs._
+- _**Split-proceeds go-live:** the economic-expectation legal review (§6) before
+  `SPLIT_PROCEEDS_ENABLED` is flipped on._
+- _**Versioned config store** (effective-dating + grandfathering): gated on **D2**
+  (grandfathering) and **§6** (real fee/limit value sign-off)._
+- _**Admin dashboards' UI:** the backends exist; wiring the admin console off its
+  fixtures to the real API is a separate, offered-but-not-yet-approved pass._
+- _**Payout-settlement durability** (a reconciliation/outbox so a crash between a
+  payout's state transition and its balance write cannot strand funds) — a
+  pre-existing follow-up across all payout rails, surfaced by the Phase 4 review._
+- _**External gates (§6):** BoG/PSP custody, Paystack registered-business + higher
+  transfer limit, and the Ghana legal/compliance review._
 
 _Net: every phase that can be completed without a genuine external gate or a
-reserved product/legal decision (D2/D5, §6) is done. The open items each need a
-Ujimora decision or an external approval to proceed._
+reserved product/legal decision is done._

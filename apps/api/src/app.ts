@@ -41,6 +41,7 @@ import { MongoPaymentAttemptRepository } from './infrastructure/adapters/outboun
 import { MongoOutboxRepository } from './infrastructure/adapters/outbound/persistence/MongoOutboxRepository.js';
 import { MongoTransferRecipientRepository } from './infrastructure/adapters/outbound/persistence/MongoTransferRecipientRepository.js';
 import { MongoPayoutRepository } from './infrastructure/adapters/outbound/persistence/MongoPayoutRepository.js';
+import { MongoAuditLogRepository } from './infrastructure/adapters/outbound/persistence/MongoAuditLogRepository.js';
 import { MongoCampaignSplitRepository } from './infrastructure/adapters/outbound/persistence/MongoCampaignSplitRepository.js';
 import { MongoCampaignBeneficiaryBalanceRepository } from './infrastructure/adapters/outbound/persistence/MongoCampaignBeneficiaryBalanceRepository.js';
 import { MongoCampaignBeneficiaryAccrualRepository } from './infrastructure/adapters/outbound/persistence/MongoCampaignBeneficiaryAccrualRepository.js';
@@ -383,6 +384,7 @@ export function createApp(): express.Express {
   const outboxRepo = new MongoOutboxRepository();
   const transferRecipientRepo = new MongoTransferRecipientRepository();
   const payoutRepo = new MongoPayoutRepository();
+  const auditLogRepo = new MongoAuditLogRepository();
   const campaignSplitRepo = new MongoCampaignSplitRepository();
   const couponRepo = new MongoCouponRepository();
   const couponRedemptionRepo = new MongoCouponRedemptionRepository();
@@ -849,7 +851,7 @@ export function createApp(): express.Express {
   );
 
   const listPlansUseCase = new ListPlansUseCase(planService);
-  const updatePlanUseCase = new UpdatePlanUseCase(subscriptionPlanRepo);
+  const updatePlanUseCase = new UpdatePlanUseCase(subscriptionPlanRepo, auditLogRepo);
   const createPlanUseCase = new CreatePlanUseCase(subscriptionPlanRepo);
   const listPaymentProvidersUseCase = new ListPaymentProvidersUseCase(paymentProviderRepo);
   const getEnabledPaymentProvidersUseCase = new GetEnabledPaymentProvidersUseCase(paymentProviderRepo);
@@ -862,7 +864,7 @@ export function createApp(): express.Express {
   const reviewCampaignUseCase = new ReviewCampaignUseCase(campaignRepo);
   const listUsersUseCase = new ListUsersUseCase(adminUserRepo);
   const getAdminUserUseCase = new GetAdminUserUseCase(adminUserRepo);
-  const setComplianceLimitUseCase = new SetComplianceLimitUseCase(userRepo);
+  const setComplianceLimitUseCase = new SetComplianceLimitUseCase(userRepo, auditLogRepo);
   const getPlatformOverviewUseCase = new GetPlatformOverviewUseCase(analyticsRepo);
   const subscribeNewsletterUseCase = new SubscribeNewsletterUseCase(newsletterRepo);
   const listNewsletterSubscribersUseCase = new ListNewsletterSubscribersUseCase(newsletterRepo);

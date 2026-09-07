@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
+import type { AuthenticatedRequest } from '../../middleware/authMiddleware.js';
 import type { CreatePlanInput, UpdateSubscriptionPlanInput } from '@ubuntu-fund/types';
 import type { ListPlansUseCase } from '../../../../../application/use-cases/ListPlansUseCase.js';
 import type { UpdatePlanUseCase } from '../../../../../application/use-cases/UpdatePlanUseCase.js';
@@ -43,7 +44,7 @@ export class PlanController {
 
   /** PUT /plans/:tier — admin only. Patches a plan's pricing/limits/benefits. */
   update = async (
-    req: Request,
+    req: AuthenticatedRequest,
     res: Response,
     next: NextFunction
   ): Promise<void> => {
@@ -51,7 +52,8 @@ export class PlanController {
       const tier = String(req.params.tier);
       const plan = await this.updatePlanUseCase.execute(
         tier,
-        req.body as UpdateSubscriptionPlanInput
+        req.body as UpdateSubscriptionPlanInput,
+        req.userId ? { userId: req.userId, role: req.userRole } : undefined
       );
       res.json({ data: plan, message: 'Plan updated', status: 200 });
     } catch (error) {

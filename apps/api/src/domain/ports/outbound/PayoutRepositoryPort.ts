@@ -1,5 +1,5 @@
 import type { PayoutEntity } from '../../entities/Payout.js';
-import type { PayoutLeg, PayoutLegStatus } from '@ubuntu-fund/types';
+import type { PayoutLeg, PayoutLegStatus, PayoutStatus } from '@ubuntu-fund/types';
 
 export interface PayoutRepositoryPort {
   create(payout: PayoutEntity): Promise<PayoutEntity>;
@@ -11,6 +11,9 @@ export interface PayoutRepositoryPort {
   findByLegReference(reference: string): Promise<PayoutEntity | null>;
   /** All payouts, newest first (admin console). */
   findAll(): Promise<PayoutEntity[]>;
+
+  /** Payouts in any of the given statuses, newest first (admin review queue). */
+  findByStatuses(statuses: PayoutStatus[]): Promise<PayoutEntity[]>;
 
   /**
    * Maker-checker (spec §16): atomically record the FIRST admin approval of a

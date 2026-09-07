@@ -3,7 +3,14 @@ import type {
   UpdateSubscriptionPlanInput,
 } from '@ubuntu-fund/types';
 import type { SubscriptionPlanRepositoryPort } from '../../domain/ports/outbound/SubscriptionPlanRepositoryPort.js';
+import type { AuditLogRepositoryPort } from '../../domain/ports/outbound/AuditLogRepositoryPort.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
+
+/** Who is making the change, for the audit trail (ADR-5). */
+export interface AuditActor {
+  userId: string;
+  role?: string;
+}
 
 /** Money fields that must be zero or positive. */
 const NON_NEGATIVE_FIELDS: (keyof UpdateSubscriptionPlanInput)[] = [
@@ -53,11 +60,18 @@ const EDITABLE_FIELDS: (keyof UpdateSubscriptionPlanInput)[] = [
  * before anything is written.
  */
 export class UpdatePlanUseCase {
-  constructor(private readonly planRepo: SubscriptionPlanRepositoryPort) {}
+  constructor(
+    private readonly planRepo: SubscriptionPlanRepositoryPort,
+    // Optional (ADR-5): records the old→new value diff for the pricing/fee/limit
+    // change. Absent → no semantic audit entry (the HTTP middleware still logs
+    // the mutation).
+    private readonly auditLog?: AuditLogRepositoryPort
+  ) {}
 
   async execute(
     tier: string,
-    patch: UpdateSubscriptionPlanInput
+    patch: UpdateSubscriptionPlanInput,
+    actor?: AuditActor
   ): Promise<SubscriptionPlan> {
     if (!tier.trim()) {
       throw new AppError('A tier id is required', 422);
@@ -87,12 +101,42 @@ export class UpdatePlanUseCase {
     if (!existing) {
       await this.planRepo.seedDefaults();
     }
+    // Capture the pre-update state for the audit diff (seeded default if new).
+    const before = existing ?? (await this.planRepo.findByTier(tier));
 
     const updated = await this.planRepo.update(tier, clean);
     if (!updated) {
       throw new AppError('Plan not found', 404);
     }
+
+    await this.auditChange(tier, before, updated, clean, actor);
     return updated;
+  }
+
+  /** Record the old→new diff of the changed plan fields (ADR-5). */
+  private async auditChange(
+    tier: string,
+    before: SubscriptionPlan | null,
+    after: SubscriptionPlan,
+    patch: UpdateSubscriptionPlanInput,
+    actor?: AuditActor
+  ): Promise<void> {
+    if (!this.auditLog || !actor || !before) return;
+    const beforeRec = before as unknown as Record<string, unknown>;
+    const afterRec = after as unknown as Record<string, unknown>;
+    const changes = Object.keys(patch)
+      .filter((field) => beforeRec[field] !== afterRec[field])
+      .map((field) => ({ field, before: beforeRec[field], after: afterRec[field] }));
+    if (changes.length === 0) return;
+    await this.auditLog.record({
+      actorId: actor.userId,
+      actorRole: actor.role,
+      action: 'subscription-plan.update',
+      resource: `plan:${tier}`,
+      details: `Plan ${tier}: ${changes.map((c) => c.field).join(', ')} changed`,
+      changes,
+      severity: 'warning',
+    });
   }
 
   private validate(patch: UpdateSubscriptionPlanInput): void {

@@ -18,10 +18,13 @@ export class AdminUserController {
     next: NextFunction
   ): Promise<void> => {
     try {
-      const body = (req.body ?? {}) as { limit?: number | null };
+      const body = (req.body ?? {}) as { limit?: number | null; reason?: string };
       const result = await this.setComplianceLimitUseCase.execute({
         userId: String(req.params.id),
         limit: body.limit === undefined ? null : body.limit,
+        actorId: req.userId,
+        actorRole: req.userRole,
+        reason: body.reason,
       });
       res.json({ data: result, message: 'Compliance limit updated', status: 200 });
     } catch (error) {

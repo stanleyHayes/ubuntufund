@@ -2,6 +2,13 @@ import mongoose, { Schema, type Document } from 'mongoose';
 
 export type AuditSeverity = 'info' | 'warning' | 'critical';
 
+/** A single field's old→new value diff on a sensitive config change (ADR-5). */
+export interface AuditChange {
+  field: string;
+  before: unknown;
+  after: unknown;
+}
+
 export interface AuditLogDocument extends Document {
   actorId: string;
   actorRole?: string;
@@ -14,6 +21,10 @@ export interface AuditLogDocument extends Document {
   statusCode: number;
   ip?: string;
   userAgent?: string;
+  /** Old→new values for a sensitive money/commercial config change (ADR-5). */
+  changes?: AuditChange[];
+  /** Optional free-text reason an admin gave for the change. */
+  reason?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -36,6 +47,16 @@ const auditLogSchema = new Schema<AuditLogDocument>(
     statusCode: { type: Number, required: true },
     ip: { type: String },
     userAgent: { type: String },
+    changes: {
+      type: [
+        new Schema<AuditChange>(
+          { field: { type: String, required: true }, before: Schema.Types.Mixed, after: Schema.Types.Mixed },
+          { _id: false }
+        ),
+      ],
+      default: undefined,
+    },
+    reason: { type: String },
   },
   { timestamps: true }
 );

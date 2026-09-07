@@ -1,6 +1,6 @@
 import { PayoutEntity } from '../../../../domain/entities/Payout.js';
 import type { PayoutRepositoryPort } from '../../../../domain/ports/outbound/PayoutRepositoryPort.js';
-import type { PayoutLeg, PayoutLegStatus } from '@ubuntu-fund/types';
+import type { PayoutLeg, PayoutLegStatus, PayoutStatus } from '@ubuntu-fund/types';
 import {
   PayoutModel,
   type PayoutDocument,
@@ -79,6 +79,13 @@ export class MongoPayoutRepository implements PayoutRepositoryPort {
 
   async findAll(): Promise<PayoutEntity[]> {
     const docs = await PayoutModel.find().sort({ createdAt: -1 });
+    return docs.map(toDomain);
+  }
+
+  async findByStatuses(statuses: PayoutStatus[]): Promise<PayoutEntity[]> {
+    const docs = await PayoutModel.find({ status: { $in: statuses } }).sort({
+      createdAt: -1,
+    });
     return docs.map(toDomain);
   }
 
