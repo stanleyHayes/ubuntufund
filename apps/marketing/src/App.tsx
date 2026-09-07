@@ -24,15 +24,15 @@ import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import LandingPage from './pages/LandingPage'
 import AboutPage from './pages/AboutPage'
-import TermsPage from './pages/TermsPage'
-import PrivacyPage from './pages/PrivacyPage'
 import ContactPage from './pages/ContactPage'
 import PricingPage from './pages/PricingPage'
 import BlogPage from './pages/BlogPage'
 import BlogDetailPage from './pages/BlogDetailPage'
 import HelpPage from './pages/HelpPage'
-import RefundPolicyPage from './pages/RefundPolicyPage'
+import LegalIndexPage from './pages/LegalIndexPage'
+import LegalPolicyPage from './pages/LegalPolicyPage'
 import ForOrganizationsPage from './pages/ForOrganizationsPage'
+import { LEGAL_POLICIES } from './data/legal'
 import NotFoundPage from './pages/NotFoundPage'
 import SplashScreen from './components/SplashScreen'
 
@@ -119,7 +119,10 @@ function getBannerConfig(pathname: string) {
 function InnerPageLayout() {
   const { pathname } = useLocation()
   const bannerProps = getBannerConfig(pathname)
-  const hasEditorialHero = ['/about', '/blog', '/contact', '/pricing', '/help', '/for-organizations', '/terms', '/privacy', '/refund-policy'].includes(pathname)
+  const legalRoutes = ['/legal', ...LEGAL_POLICIES.map((p) => p.route)]
+  const hasEditorialHero =
+    ['/about', '/blog', '/contact', '/pricing', '/help', '/for-organizations'].includes(pathname) ||
+    legalRoutes.includes(pathname)
 
   return (
     <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -153,15 +156,21 @@ function App() {
             {/* Inner pages get the banner */}
             <Route element={<InnerPageLayout />}>
               <Route path="/about" element={<AboutPage />} />
-              <Route path="/terms" element={<TermsPage />} />
-              <Route path="/privacy" element={<PrivacyPage />} />
               <Route path="/contact" element={<ContactPage />} />
               <Route path="/pricing" element={<PricingPage />} />
               <Route path="/blog" element={<BlogPage />} />
               <Route path="/blog/:slug" element={<BlogDetailPage />} />
               <Route path="/help" element={<HelpPage />} />
-              <Route path="/refund-policy" element={<RefundPolicyPage />} />
               <Route path="/for-organizations" element={<ForOrganizationsPage />} />
+              {/* Legal & policy pages — hub + one route per policy, all sourced from data/legal */}
+              <Route path="/legal" element={<LegalIndexPage />} />
+              {LEGAL_POLICIES.map((policy) => (
+                <Route
+                  key={policy.slug}
+                  path={policy.route}
+                  element={<LegalPolicyPage slug={policy.slug} />}
+                />
+              ))}
             </Route>
             <Route path="*" element={<NotFoundPage />} />
           </Routes>

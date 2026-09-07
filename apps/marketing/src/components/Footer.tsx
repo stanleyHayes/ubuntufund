@@ -26,6 +26,8 @@ import AutoStoriesIcon from '@mui/icons-material/AutoStories'
 import GavelIcon from '@mui/icons-material/Gavel'
 import LockIcon from '@mui/icons-material/Lock'
 import SyncAltIcon from '@mui/icons-material/SyncAlt'
+import PolicyIcon from '@mui/icons-material/Policy'
+import MenuBookIcon from '@mui/icons-material/MenuBook'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { scrollToHash } from '@/lib/scroll'
 import { SHAPE } from '@ubuntu-fund/ui'
@@ -69,9 +71,11 @@ const footerSections = [
   {
     title: 'Legal',
     links: [
-      { label: 'Terms of Service', to: '/terms', icon: <GavelIcon sx={{ fontSize: 15 }} /> },
-      { label: 'Privacy Policy', to: '/privacy', icon: <LockIcon sx={{ fontSize: 15 }} /> },
-      { label: 'Refund Policy', to: '/refund-policy', icon: <SyncAltIcon sx={{ fontSize: 15 }} /> },
+      { label: 'Terms of Use', to: '/terms', icon: <GavelIcon sx={{ fontSize: 15 }} /> },
+      { label: 'Privacy Notice', to: '/privacy', icon: <LockIcon sx={{ fontSize: 15 }} /> },
+      { label: 'Payout & Refund', to: '/refund-policy', icon: <SyncAltIcon sx={{ fontSize: 15 }} /> },
+      { label: 'Acceptable Use', to: '/acceptable-use', icon: <PolicyIcon sx={{ fontSize: 15 }} /> },
+      { label: 'All policies', to: '/legal', icon: <MenuBookIcon sx={{ fontSize: 15 }} /> },
     ],
   },
 ]

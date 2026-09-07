@@ -23,6 +23,8 @@ interface LegalPageLayoutProps {
   introduction: string
   sections: LegalSection[]
   contact: ReactNode
+  /** Human-readable effective/updated date shown in the sidebar chip. */
+  effectiveDate?: string
 }
 
 export function LegalPageLayout({
@@ -36,6 +38,7 @@ export function LegalPageLayout({
   introduction,
   sections,
   contact,
+  effectiveDate = 'Updated recently',
 }: LegalPageLayoutProps) {
   return (
     <Box component="main" sx={{ flex: 1, pb: { xs: 8, md: 12 }, bgcolor: 'background.default' }}>
@@ -52,7 +55,7 @@ export function LegalPageLayout({
       <Container maxWidth="lg" sx={{ mt: { xs: 5, md: 8 } }}>
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '240px minmax(0, 1fr)' }, gap: { xs: 4, md: 6 }, alignItems: 'start' }}>
           <Box sx={{ position: { md: 'sticky' }, top: { md: 92 }, p: 2.5, borderRadius: SHAPE.card, bgcolor: 'var(--neu-surface)', boxShadow: 'var(--neu-subtle)' }}>
-            <Chip label="Updated 15 Jan 2026" size="small" sx={{ display: 'flex', width: 'fit-content', mb: 2.5, boxShadow: 'var(--neu-subtle)' }} />
+            <Chip label={effectiveDate} size="small" sx={{ display: 'flex', width: 'fit-content', mb: 2.5, boxShadow: 'var(--neu-subtle)' }} />
             <Typography variant="overline" color="text.secondary" sx={{ display: 'block', lineHeight: 1.3 }}>On this page</Typography>
             <Stack component="nav" spacing={0.35} sx={{ mt: 1.5 }}>
               {sections.map((section) => (
