@@ -87,6 +87,7 @@ import { CreateDonationIntentUseCase } from './application/use-cases/CreateDonat
 import { HandlePaystackWebhookUseCase } from './application/use-cases/HandlePaystackWebhookUseCase.js';
 import { HandleFlutterwaveWebhookUseCase } from './application/use-cases/HandleFlutterwaveWebhookUseCase.js';
 import { ReconcilePaymentsUseCase } from './application/use-cases/ReconcilePaymentsUseCase.js';
+import { ProcessRefundUseCase } from './application/use-cases/ProcessRefundUseCase.js';
 import { RecordPaymentAttemptUseCase } from './application/use-cases/RecordPaymentAttemptUseCase.js';
 import { HandlePayoutWebhookUseCase } from './application/use-cases/HandlePayoutWebhookUseCase.js';
 import { ListBanksUseCase } from './application/use-cases/ListBanksUseCase.js';
@@ -567,6 +568,14 @@ export function createApp(): express.Express {
     settleDonationUseCase,
     planLimitsService
   );
+  // Admin-initiated, provider-integrated refund with compensating ledger (spec §14).
+  const processRefundUseCase = new ProcessRefundUseCase(
+    donationIntentRepo,
+    campaignBalanceRepo,
+    ledgerRepo,
+    campaignLedgerProjector,
+    gatewayRegistry
+  );
   const recordPaymentAttemptUseCase = new RecordPaymentAttemptUseCase(
     donationIntentRepo,
     paymentAttemptRepo
@@ -875,7 +884,8 @@ export function createApp(): express.Express {
   const adminPaymentsController = new AdminPaymentsController(
     donationIntentRepo,
     paymentAttemptRepo,
-    reconcilePaymentsUseCase
+    reconcilePaymentsUseCase,
+    processRefundUseCase
   );
   const payoutController = new PayoutController(
     listBanksUseCase,

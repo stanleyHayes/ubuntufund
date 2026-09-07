@@ -8,6 +8,7 @@ import type {
   PaymentGatewayBank,
   PaymentGatewayInitResult,
   PaymentGatewayPort,
+  PaymentGatewayRefundResult,
   PaymentGatewayTransferResult,
   PaymentGatewayVerifyResult,
   ProviderCapabilities,
@@ -220,6 +221,13 @@ export class FlutterwaveGateway implements PaymentGatewayPort {
     } catch {
       return false;
     }
+  }
+
+  async refundPayment(): Promise<PaymentGatewayRefundResult> {
+    // Flutterwave refunds correlate on the FLW transaction id (not our tx_ref)
+    // and need live credentials; not wired here yet. Refund a Flutterwave
+    // contribution from the Flutterwave dashboard until this is implemented.
+    throw new AppError('Flutterwave refunds are not enabled', 501);
   }
 
   // ── Payouts (Transfers) — not wired for Flutterwave; payouts stay on Paystack.

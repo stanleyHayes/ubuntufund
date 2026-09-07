@@ -8,6 +8,7 @@ import type {
   PaymentGatewayBank,
   PaymentGatewayInitResult,
   PaymentGatewayPort,
+  PaymentGatewayRefundResult,
   PaymentGatewayTransferResult,
   PaymentGatewayVerifyResult,
   ProviderCapabilities,
@@ -240,6 +241,38 @@ export class PaystackGateway implements PaymentGatewayPort {
       fees: fromMinorUnits(Number(data.fees) || 0, currency),
       currency,
       raw: data,
+    };
+  }
+
+  async refundPayment(
+    reference: string,
+    amountMajor?: number,
+    currency = CURRENCY
+  ): Promise<PaymentGatewayRefundResult> {
+    if (!this.isConfigured()) {
+      throw new AppError('Payments are not configured', 501);
+    }
+    // Paystack /refund correlates on the transaction reference; `amount` (minor
+    // units) is optional — omit for a full refund.
+    const body: Record<string, unknown> = { transaction: reference };
+    if (amountMajor !== undefined) {
+      body.amount = toMinorUnits(amountMajor, currency);
+    }
+    const json = await this.request<{ status?: string; id?: number | string }>(
+      'POST',
+      '/refund',
+      body
+    );
+    if (!json.status || !json.data) {
+      throw new AppError(
+        `Paystack refund failed: ${json.message ?? 'unknown error'}`,
+        502
+      );
+    }
+    return {
+      status: json.data.status ?? 'pending',
+      reference: json.data.id !== undefined ? String(json.data.id) : undefined,
+      raw: json.data as Record<string, unknown>,
     };
   }
 

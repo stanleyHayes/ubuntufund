@@ -242,4 +242,79 @@ export class JournalEntryEntity {
       ],
     });
   }
+
+  /**
+   * Build the balanced COMPENSATING entry for a refund (spec §14): the mirror of
+   * the donation's campaign/beneficiary/fee legs, posted as a NEW entry — the
+   * original settlement journal is never edited. Credits the campaign account
+   * (reducing raised) and debits back the beneficiary-net + fees for the
+   * refunded portion. `amount` must equal beneficiaryNet + platformFee +
+   * processorFee (the campaign-directed portion refunded). Tips are not
+   * reversed (kept by the platform). The exact fee treatment is a §10
+   * accountant-review item; the engineering guarantee is a balanced, auditable,
+   * append-only record.
+   */
+  static forDonationRefund(refs: {
+    campaignId: string;
+    donationId?: string;
+    donationIntentId?: string;
+    amount: number;
+    beneficiaryNet: number;
+    platformFee: number;
+    processorFee: number;
+    currency: string;
+    memo?: string;
+  }): JournalEntryEntity {
+    const amount = round2(refs.amount);
+    const beneficiaryNet = round2(refs.beneficiaryNet);
+    const platformFee = round2(refs.platformFee);
+    const processorFee = round2(refs.processorFee);
+    if (amount <= 0) {
+      throw new Error('Refund amount must be greater than zero');
+    }
+    if (amount !== round2(beneficiaryNet + platformFee + processorFee)) {
+      throw new Error('Refund amount must equal beneficiaryNet + platformFee + processorFee');
+    }
+    const lines: DraftJournalLine[] = [
+      {
+        accountKind: 'campaign',
+        accountOwnerId: refs.campaignId,
+        direction: 'credit',
+        amount,
+        currency: refs.currency,
+      },
+      {
+        accountKind: 'beneficiary',
+        accountOwnerId: refs.campaignId,
+        direction: 'debit',
+        amount: beneficiaryNet,
+        currency: refs.currency,
+      },
+    ];
+    if (platformFee > 0) {
+      lines.push({
+        accountKind: 'platform_fee',
+        accountOwnerId: PLATFORM_ACCOUNT_OWNER,
+        direction: 'debit',
+        amount: platformFee,
+        currency: refs.currency,
+      });
+    }
+    if (processorFee > 0) {
+      lines.push({
+        accountKind: 'processor_fee',
+        accountOwnerId: PLATFORM_ACCOUNT_OWNER,
+        direction: 'debit',
+        amount: processorFee,
+        currency: refs.currency,
+      });
+    }
+    return new JournalEntryEntity({
+      donationId: refs.donationId,
+      donationIntentId: refs.donationIntentId,
+      memo: refs.memo ?? `refund for donation ${refs.donationId ?? refs.donationIntentId}`,
+      currency: refs.currency,
+      lines,
+    });
+  }
 }

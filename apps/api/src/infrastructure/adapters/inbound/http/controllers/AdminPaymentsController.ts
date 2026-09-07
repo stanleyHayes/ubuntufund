@@ -4,6 +4,8 @@ import type { DonationIntentEntity } from '../../../../../domain/entities/Donati
 import type { DonationIntentRepositoryPort } from '../../../../../domain/ports/outbound/DonationIntentRepositoryPort.js';
 import type { PaymentAttemptRepositoryPort } from '../../../../../domain/ports/outbound/PaymentAttemptRepositoryPort.js';
 import type { ReconcilePaymentsUseCase } from '../../../../../application/use-cases/ReconcilePaymentsUseCase.js';
+import type { ProcessRefundUseCase } from '../../../../../application/use-cases/ProcessRefundUseCase.js';
+import type { AuthenticatedRequest } from '../../middleware/authMiddleware.js';
 import { AppError } from '../../middleware/errorHandler.js';
 
 /** A contribution as the admin console sees it — normalized, no provider secrets. */
@@ -39,8 +41,24 @@ export class AdminPaymentsController {
   constructor(
     private readonly donationIntentRepo: DonationIntentRepositoryPort,
     private readonly paymentAttemptRepo: PaymentAttemptRepositoryPort,
-    private readonly reconcilePaymentsUseCase: ReconcilePaymentsUseCase
+    private readonly reconcilePaymentsUseCase: ReconcilePaymentsUseCase,
+    private readonly processRefundUseCase: ProcessRefundUseCase
   ) {}
+
+  /** POST /admin/payments/:id/refund — refund a contribution (spec §14). */
+  refund = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const body = (req.body ?? {}) as { amount?: number };
+      const result = await this.processRefundUseCase.execute(
+        String(req.params.id),
+        { amount: typeof body.amount === 'number' ? body.amount : undefined },
+        req.userId ?? 'unknown-admin'
+      );
+      res.json({ data: result, status: 'success' });
+    } catch (error) {
+      next(error);
+    }
+  };
 
   /** GET /admin/payments — search contributions (spec §15). */
   search = async (req: Request, res: Response, next: NextFunction): Promise<void> => {

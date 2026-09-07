@@ -18,6 +18,7 @@ export function createAdminPaymentsRoutes(
   router.get('/payments', authMiddleware, requireAdmin, controller.search);
   router.get('/payments/:id', authMiddleware, requireAdmin, controller.timeline);
   router.post('/payments/:id/reconcile', authMiddleware, requireAdmin, controller.reconcileOne);
+  router.post('/payments/:id/refund', authMiddleware, requireAdmin, controller.refund);
   router.post('/reconciliation', authMiddleware, requireAdmin, controller.runReconciliation);
   return router;
 }

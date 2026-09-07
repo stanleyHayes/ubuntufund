@@ -55,6 +55,30 @@ export class CampaignLedgerProjector {
   }
 
   /**
+   * Reverse a refunded contribution's split from the campaign projections
+   * (spec §14): guarded on the balance read model so it only claws back funds
+   * still pending (not yet disbursed). Returns false when pending is short —
+   * the caller must NOT proceed (funds already paid out; needs manual clawback).
+   * On success it also reduces the campaign's raised total.
+   */
+  async reverseDonation(
+    campaignId: string,
+    currency: string,
+    split: { amount: number; beneficiaryNet: number; platformFee: number; processorFee: number }
+  ): Promise<boolean> {
+    const reversed = await this.campaignBalanceRepo.applyRefund(campaignId, currency, {
+      amount: split.amount,
+      beneficiaryNet: split.beneficiaryNet,
+      platformFee: split.platformFee,
+      processorFee: split.processorFee,
+      tip: 0,
+    });
+    if (!reversed) return false;
+    await this.campaignRepo.incrementRaised(campaignId, -split.amount, currency);
+    return true;
+  }
+
+  /**
    * (Re)derive a campaign's raised total purely from posted `campaign`-account
    * debit lines — the authoritative ledger-sourced figure, for reconciliation
    * or verification against the projected `raisedAmount`.

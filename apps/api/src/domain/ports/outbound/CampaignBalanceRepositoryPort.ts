@@ -25,6 +25,19 @@ export interface CampaignBalanceRepositoryPort {
     delta: CampaignBalanceDelta
   ): Promise<CampaignBalance>;
 
+  /**
+   * Reverse a refunded contribution's split from the buckets (spec §14).
+   * Guarded on `pendingBalance >= beneficiaryNet` so a refund can only claw back
+   * funds that have NOT been disbursed; returns null when pending is short (the
+   * funds were already paid out — needs a manual clawback). Reduces totalRaised,
+   * pendingBalance, fees and tips.
+   */
+  applyRefund(
+    campaignId: string,
+    currency: string,
+    delta: CampaignBalanceDelta
+  ): Promise<CampaignBalance | null>;
+
   // ── Payout lifecycle (pending → available → in-transit → paidOut) ─────────
 
   /**

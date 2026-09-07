@@ -85,6 +85,15 @@ export interface PaymentGatewayTransferResult {
   raw: Record<string, unknown>;
 }
 
+/** Result of a provider refund request. */
+export interface PaymentGatewayRefundResult {
+  /** Provider status for the refund ('pending' | 'processed' | 'failed' | …). */
+  status: string;
+  /** Provider refund reference/id, when returned. */
+  reference?: string;
+  raw: Record<string, unknown>;
+}
+
 /** A single-currency balance held with the provider. */
 export interface PaymentGatewayBalance {
   currency: string;
@@ -151,6 +160,17 @@ export interface PaymentGatewayPort {
 
   /** Server-verify a transaction by reference (callback confirmation rail). */
   verifyTransaction(reference: string): Promise<PaymentGatewayVerifyResult>;
+
+  /**
+   * Refund a settled transaction by its provider reference (spec §14). Omit
+   * `amountMajor` for a full refund; pass it (in MAJOR currency units) for a
+   * partial refund. Throws 501 when the provider can't refund here.
+   */
+  refundPayment(
+    reference: string,
+    amountMajor?: number,
+    currency?: string
+  ): Promise<PaymentGatewayRefundResult>;
 
   /**
    * Verify a webhook's authenticity from its raw request body and the

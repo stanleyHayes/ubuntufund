@@ -57,6 +57,30 @@ export class MongoCampaignBalanceRepository
     return toDomain(doc!);
   }
 
+  async applyRefund(
+    campaignId: string,
+    _currency: string,
+    delta: CampaignBalanceDelta
+  ): Promise<CampaignBalance | null> {
+    // Guarded on pendingBalance so a refund never claws back already-disbursed
+    // funds; reverses the donation's buckets when the money is still pending.
+    const doc = await CampaignBalanceModel.findOneAndUpdate(
+      { campaignId, pendingBalance: { $gte: delta.beneficiaryNet } },
+      {
+        $set: { updatedAt: new Date() },
+        $inc: {
+          totalRaised: -delta.amount,
+          pendingBalance: -delta.beneficiaryNet,
+          platformFees: -delta.platformFee,
+          processorFees: -delta.processorFee,
+          tips: -delta.tip,
+        },
+      },
+      { new: true }
+    );
+    return doc ? toDomain(doc) : null;
+  }
+
   async clearPendingToAvailable(
     campaignId: string,
     amount: number

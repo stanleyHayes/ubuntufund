@@ -155,6 +155,15 @@ export class DonationIntentEntity {
   get paymentMethod(): ContributionMethod | undefined {
     return this.props.paymentMethod;
   }
+  get providerFeeMinor(): number | undefined {
+    return this.props.providerFeeMinor;
+  }
+  get platformFeeMinor(): number | undefined {
+    return this.props.platformFeeMinor;
+  }
+  get netCampaignAmountMinor(): number | undefined {
+    return this.props.netCampaignAmountMinor;
+  }
 
   /** Total the donor is charged: campaign-directed amount plus any tip. */
   get gross(): number {

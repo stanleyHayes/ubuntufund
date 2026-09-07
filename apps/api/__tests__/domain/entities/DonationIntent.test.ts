@@ -157,6 +157,39 @@ describe('JournalEntryEntity double-entry invariant', () => {
       )
     ).toThrow(/beneficiaryNet must equal/);
   });
+
+  it('builds a balanced compensating refund entry (mirror of the donation legs)', () => {
+    const entry = JournalEntryEntity.forDonationRefund({
+      campaignId: 'campaign-1',
+      amount: 500,
+      beneficiaryNet: 450,
+      platformFee: 30,
+      processorFee: 20,
+      currency: 'GHS',
+    });
+    expect(entry.totalDebits()).toBe(entry.totalCredits());
+    const campaignCredit = entry.lines.find(
+      (l) => l.accountKind === 'campaign' && l.direction === 'credit'
+    );
+    expect(campaignCredit?.amount).toBe(500);
+    const beneficiaryDebit = entry.lines.find(
+      (l) => l.accountKind === 'beneficiary' && l.direction === 'debit'
+    );
+    expect(beneficiaryDebit?.amount).toBe(450);
+  });
+
+  it('rejects a refund entry whose amount does not equal net + fees', () => {
+    expect(() =>
+      JournalEntryEntity.forDonationRefund({
+        campaignId: 'c',
+        amount: 500,
+        beneficiaryNet: 400,
+        platformFee: 30,
+        processorFee: 20,
+        currency: 'GHS',
+      })
+    ).toThrow(/must equal beneficiaryNet/);
+  });
 });
 
 describe('FeePolicy', () => {
