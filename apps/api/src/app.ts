@@ -630,8 +630,10 @@ export function createApp(): express.Express {
   const reconcilePayoutsUseCase = new ReconcilePayoutsUseCase(
     payoutRepo,
     beneficiaryPayoutRepo,
+    affiliatePayoutRepo,
     handlePayoutWebhookUseCase,
     handleBeneficiaryPayoutWebhookUseCase,
+    handleAffiliatePayoutWebhookUseCase,
     paymentGateway
   );
   // Scheduled reconciliation sweep (spec §13). Production-only + flag-gated so

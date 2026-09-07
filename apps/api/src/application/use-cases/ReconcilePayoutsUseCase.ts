@@ -1,5 +1,6 @@
 import type { PayoutRepositoryPort } from '../../domain/ports/outbound/PayoutRepositoryPort.js';
 import type { BeneficiaryPayoutRepositoryPort } from '../../domain/ports/outbound/BeneficiaryPayoutRepositoryPort.js';
+import type { AffiliatePayoutRepositoryPort } from '../../domain/ports/outbound/AffiliatePayoutRepositoryPort.js';
 import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGatewayPort.js';
 import { logger } from '../../infrastructure/logging/logger.js';
 
@@ -30,15 +31,18 @@ export interface ReconcilePayoutSummary {
  * the transfer against the provider and drives the SAME settlement handler the
  * webhook would — which is idempotent (gated by the atomic state transition), so
  * a payout already settled by a late webhook is a harmless no-op. Covers the
- * campaign and per-beneficiary rails; batched payouts (reconciled per-leg) and
- * pending/OTP transfers are left untouched.
+ * campaign, per-beneficiary and affiliate single-transfer rails, and batched
+ * campaign payouts (each still-in-flight leg reconciled by its own reference).
+ * Pending/OTP transfers are left untouched.
  */
 export class ReconcilePayoutsUseCase {
   constructor(
     private readonly payoutRepo: PayoutRepositoryPort,
     private readonly beneficiaryPayoutRepo: BeneficiaryPayoutRepositoryPort,
+    private readonly affiliatePayoutRepo: AffiliatePayoutRepositoryPort,
     private readonly handlePayoutWebhookUseCase: PayoutWebhookHandler,
     private readonly handleBeneficiaryPayoutWebhookUseCase: PayoutWebhookHandler,
+    private readonly handleAffiliatePayoutWebhookUseCase: PayoutWebhookHandler,
     private readonly paymentGateway: PaymentGatewayPort
   ) {}
 
@@ -76,6 +80,29 @@ export class ReconcilePayoutsUseCase {
           this.handleBeneficiaryPayoutWebhookUseCase,
           summary
         );
+      }
+    }
+
+    const affiliate = await this.affiliatePayoutRepo.findStuckProcessing(cutoff);
+    for (const payout of affiliate) {
+      if (payout.providerRef) {
+        await this.reconcileOne(
+          payout.providerRef,
+          this.handleAffiliatePayoutWebhookUseCase,
+          summary
+        );
+      }
+    }
+
+    // Batched campaign payouts: reconcile each still-in-flight leg by its own
+    // reference; the leg-aware webhook handler settles the leg and reconciles
+    // the batch to PAID/NEEDS_REVIEW once every leg is terminal.
+    const batched = await this.payoutRepo.findStuckBatchedProcessing(cutoff);
+    for (const payout of batched) {
+      for (const leg of payout.legs ?? []) {
+        if (leg.status === 'queued' || leg.status === 'submitted') {
+          await this.reconcileOne(leg.reference, this.handlePayoutWebhookUseCase, summary);
+        }
       }
     }
 

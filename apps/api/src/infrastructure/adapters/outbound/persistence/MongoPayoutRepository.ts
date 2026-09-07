@@ -99,6 +99,15 @@ export class MongoPayoutRepository implements PayoutRepositoryPort {
     return docs.map(toDomain);
   }
 
+  async findStuckBatchedProcessing(olderThan: Date): Promise<PayoutEntity[]> {
+    const docs = await PayoutModel.find({
+      status: 'PROCESSING',
+      legs: { $exists: true, $ne: [] },
+      updatedAt: { $lt: olderThan },
+    }).sort({ updatedAt: 1 });
+    return docs.map(toDomain);
+  }
+
   async recordFirstApproval(
     id: string,
     makerId: string

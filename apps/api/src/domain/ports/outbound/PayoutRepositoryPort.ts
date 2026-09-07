@@ -23,6 +23,12 @@ export interface PayoutRepositoryPort {
   findStuckProcessing(olderThan: Date): Promise<PayoutEntity[]>;
 
   /**
+   * Batched (multi-leg) payouts stuck in PROCESSING since before `olderThan`;
+   * their legs are reconciled individually by leg reference.
+   */
+  findStuckBatchedProcessing(olderThan: Date): Promise<PayoutEntity[]>;
+
+  /**
    * Maker-checker (spec §16): atomically record the FIRST admin approval of a
    * high-value payout — set `firstApprovedBy`/`firstApprovedAt` while it is still
    * PENDING and not yet first-approved. Returns the updated payout, or null when

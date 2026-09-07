@@ -67,6 +67,15 @@ export class MongoAffiliatePayoutRepository
     return docs.map(toDomain);
   }
 
+  async findStuckProcessing(olderThan: Date): Promise<AffiliatePayoutEntity[]> {
+    const docs = await AffiliatePayoutModel.find({
+      status: 'PROCESSING',
+      providerRef: { $exists: true },
+      updatedAt: { $lt: olderThan },
+    }).sort({ updatedAt: 1 });
+    return docs.map(toDomain);
+  }
+
   async transitionToProcessing(
     id: string,
     fields: { approvedBy: string; providerRef: string; transferCode?: string }

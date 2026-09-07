@@ -5,6 +5,7 @@ import {
 } from '../../../src/application/use-cases/ReconcilePayoutsUseCase.js';
 import type { PayoutRepositoryPort } from '../../../src/domain/ports/outbound/PayoutRepositoryPort.js';
 import type { BeneficiaryPayoutRepositoryPort } from '../../../src/domain/ports/outbound/BeneficiaryPayoutRepositoryPort.js';
+import type { AffiliatePayoutRepositoryPort } from '../../../src/domain/ports/outbound/AffiliatePayoutRepositoryPort.js';
 import type { PaymentGatewayPort } from '../../../src/domain/ports/outbound/PaymentGatewayPort.js';
 
 function handlerSpy(): PayoutWebhookHandler & {
@@ -26,18 +27,26 @@ function handlerSpy(): PayoutWebhookHandler & {
 }
 
 const stuckPayout = (providerRef: string) => ({ providerRef }) as never;
+const batchedPayout = (legs: { reference: string; status: string }[]) =>
+  ({ legs }) as never;
 
 function build(opts: {
   campaignRefs: string[];
   beneficiaryRefs?: string[];
+  affiliateRefs?: string[];
+  batched?: { reference: string; status: string }[][];
   verify: (ref: string) => { status: string };
   configured?: boolean;
 }) {
   const campaignHandler = handlerSpy();
   const beneficiaryHandler = handlerSpy();
+  const affiliateHandler = handlerSpy();
   const payoutRepo = {
     async findStuckProcessing() {
       return opts.campaignRefs.map(stuckPayout);
+    },
+    async findStuckBatchedProcessing() {
+      return (opts.batched ?? []).map(batchedPayout);
     },
   } as unknown as PayoutRepositoryPort;
   const beneficiaryRepo = {
@@ -45,6 +54,11 @@ function build(opts: {
       return (opts.beneficiaryRefs ?? []).map(stuckPayout);
     },
   } as unknown as BeneficiaryPayoutRepositoryPort;
+  const affiliateRepo = {
+    async findStuckProcessing() {
+      return (opts.affiliateRefs ?? []).map(stuckPayout);
+    },
+  } as unknown as AffiliatePayoutRepositoryPort;
   const gateway = {
     isConfigured: () => opts.configured ?? true,
     verifyTransfer: vi.fn(async (ref: string) => ({
@@ -58,11 +72,13 @@ function build(opts: {
   const useCase = new ReconcilePayoutsUseCase(
     payoutRepo,
     beneficiaryRepo,
+    affiliateRepo,
     campaignHandler,
     beneficiaryHandler,
+    affiliateHandler,
     gateway
   );
-  return { useCase, campaignHandler, beneficiaryHandler, gateway };
+  return { useCase, campaignHandler, beneficiaryHandler, affiliateHandler, gateway };
 }
 
 describe('ReconcilePayoutsUseCase', () => {
@@ -104,33 +120,45 @@ describe('ReconcilePayoutsUseCase', () => {
   });
 
   it('counts a verify error without throwing', async () => {
-    const campaignHandler = handlerSpy();
-    const beneficiaryHandler = handlerSpy();
-    const payoutRepo = {
-      async findStuckProcessing() {
-        return [stuckPayout('boom')];
-      },
-    } as unknown as PayoutRepositoryPort;
-    const beneficiaryRepo = {
-      async findStuckProcessing() {
-        return [];
-      },
-    } as unknown as BeneficiaryPayoutRepositoryPort;
-    const gateway = {
-      isConfigured: () => true,
-      verifyTransfer: async () => {
+    const { useCase } = build({
+      campaignRefs: ['boom'],
+      verify: () => {
         throw new Error('provider 502');
       },
-    } as unknown as PaymentGatewayPort;
-    const useCase = new ReconcilePayoutsUseCase(
-      payoutRepo,
-      beneficiaryRepo,
-      campaignHandler,
-      beneficiaryHandler,
-      gateway
-    );
+    });
     const summary = await useCase.reconcileStale({ olderThanMinutes: 30 });
     expect(summary).toMatchObject({ scanned: 1, errored: 1, settled: 0 });
+  });
+
+  it('reconciles the affiliate rail', async () => {
+    const { useCase, affiliateHandler } = build({
+      campaignRefs: [],
+      affiliateRefs: ['aff-1'],
+      verify: () => ({ status: 'success' }),
+    });
+    const summary = await useCase.reconcileStale({ olderThanMinutes: 30 });
+    expect(summary.settled).toBe(1);
+    expect(affiliateHandler.calls).toEqual([{ m: 'success', ref: 'aff-1' }]);
+  });
+
+  it('reconciles each still-in-flight leg of a batched payout, skipping terminal legs', async () => {
+    const { useCase, campaignHandler } = build({
+      campaignRefs: [],
+      batched: [
+        [
+          { reference: 'leg-a', status: 'submitted' },
+          { reference: 'leg-b', status: 'success' }, // terminal → skipped
+          { reference: 'leg-c', status: 'queued' },
+        ],
+      ],
+      verify: (ref) => ({ a: { status: 'success' }, c: { status: 'failed' } }[ref[4]!]!),
+    });
+    const summary = await useCase.reconcileStale({ olderThanMinutes: 30 });
+    expect(summary.scanned).toBe(2); // only leg-a + leg-c
+    expect(campaignHandler.calls).toEqual([
+      { m: 'success', ref: 'leg-a' },
+      { m: 'failed', ref: 'leg-c' },
+    ]);
   });
 
   it('no-ops when the gateway is not configured', async () => {

@@ -9,6 +9,9 @@ export interface AffiliatePayoutRepositoryPort {
   /** All affiliate payouts, newest first (admin console). */
   findAll(): Promise<AffiliatePayoutEntity[]>;
 
+  /** Payouts stuck in PROCESSING since before `olderThan` (missed webhook). */
+  findStuckProcessing(olderThan: Date): Promise<AffiliatePayoutEntity[]>;
+
   /**
    * Atomically move PENDING → PROCESSING, stamping the approver, our unique
    * transfer reference, and (optionally) the provider transfer code. Returns the

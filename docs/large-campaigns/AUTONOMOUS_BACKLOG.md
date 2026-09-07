@@ -19,9 +19,10 @@ Rules of engagement carried across sessions:
   endpoints `GET /beneficiary-payouts` + `/beneficiary-payouts/review-queue`
   (findAll/findByStatuses + use-case listAll/reviewQueue, admin-gated) + a
   "Beneficiary" view on the admin Payouts page (list, Verify KYC, Approve).
-- [ ] **G2 — Reconciliation completeness.** Extend `ReconcilePayoutsUseCase` to
-  the affiliate rail; add batched-payout per-leg reconciliation (verify each
-  leg's transfer, drive per-leg settlement).
+- [x] **G2 — Reconciliation completeness.** DONE. `ReconcilePayoutsUseCase` now
+  also reconciles the affiliate rail (`findStuckProcessing`) and batched campaign
+  payouts per-leg (`findStuckBatchedProcessing` → each queued/submitted leg
+  re-verified + driven through the leg-aware webhook handler).
 - [ ] **G3 — Compliance-limit admin control.** UI to set/clear a user's
   `complianceApprovedCampaignLimit` (with reason → audit) from the console
   (UserDetailPage or a compliance view).
@@ -47,6 +48,7 @@ sessions — the test gate needs it; only at the very end.
 ## Done
 
 - **G1** (2026-09-07) — beneficiary-payout admin operability.
+- **G2** (2026-09-07) — reconciliation completeness (affiliate + batched legs).
 
 ## Hard gates (NOT to be done autonomously — need the user / an external party)
 
