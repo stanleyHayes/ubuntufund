@@ -1,7 +1,6 @@
-import {
-  SubscriptionTier,
-  type SubscriptionPlan,
-  type UpdateSubscriptionPlanInput,
+import type {
+  SubscriptionPlan,
+  UpdateSubscriptionPlanInput,
 } from '@ubuntu-fund/types';
 import type { SubscriptionPlanRepositoryPort } from '../../domain/ports/outbound/SubscriptionPlanRepositoryPort.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
@@ -40,6 +39,11 @@ const EDITABLE_FIELDS: (keyof UpdateSubscriptionPlanInput)[] = [
   'escrowSupport',
   'liveStreaming',
   'campaignCollaboration',
+  'sortOrder',
+  'active',
+  'isPublic',
+  'accentColor',
+  'popular',
 ];
 
 /**
@@ -52,11 +56,11 @@ export class UpdatePlanUseCase {
   constructor(private readonly planRepo: SubscriptionPlanRepositoryPort) {}
 
   async execute(
-    tier: SubscriptionTier,
+    tier: string,
     patch: UpdateSubscriptionPlanInput
   ): Promise<SubscriptionPlan> {
-    if (!Object.values(SubscriptionTier).includes(tier)) {
-      throw new AppError('Unknown subscription tier', 404);
+    if (!tier.trim()) {
+      throw new AppError('A tier id is required', 422);
     }
 
     // Keep only the editable fields; drop `tier` and any other smuggled/unknown

@@ -1,14 +1,15 @@
 import mongoose, { Schema, type Document } from 'mongoose';
-import { SubscriptionTier } from '@ubuntu-fund/types';
 
 /**
  * A persisted, admin-editable subscription plan. Keyed by its `tier` (unique),
  * which is the plan's immutable identity — every other field can be edited from
- * the admin console. The document mirrors the `SubscriptionPlan` interface;
+ * the admin console. `tier` is a free-form string (NOT constrained to the seed
+ * enum) so administrators can add NEW tiers from the dashboard without a code
+ * change. The document mirrors the `SubscriptionPlan` interface;
  * `SUBSCRIPTION_PLANS` remains the seed + safe fallback when a row is absent.
  */
 export interface SubscriptionPlanDocument extends Document {
-  tier: SubscriptionTier;
+  tier: string;
   name: string;
   description: string;
   priceMonthly: number;
@@ -26,15 +27,20 @@ export interface SubscriptionPlanDocument extends Document {
   maxTeamMembers: number;
   campaignCollaboration: boolean;
   maxCollaboratorsPerCampaign: number;
+  sortOrder: number;
+  active: boolean;
+  isPublic: boolean;
+  accentColor: string;
+  popular: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
 
 const subscriptionPlanSchema = new Schema<SubscriptionPlanDocument>(
   {
+    // Free-form so admins can add new tiers; uniqueness is the only constraint.
     tier: {
       type: String,
-      enum: Object.values(SubscriptionTier),
       required: true,
       unique: true,
       index: true,
@@ -57,6 +63,11 @@ const subscriptionPlanSchema = new Schema<SubscriptionPlanDocument>(
     maxTeamMembers: { type: Number, required: true, min: -1 },
     campaignCollaboration: { type: Boolean, default: false },
     maxCollaboratorsPerCampaign: { type: Number, required: true, min: -1 },
+    sortOrder: { type: Number, default: 0 },
+    active: { type: Boolean, default: true },
+    isPublic: { type: Boolean, default: true },
+    accentColor: { type: String, default: '#78909C' },
+    popular: { type: Boolean, default: false },
   },
   {
     timestamps: true,

@@ -36,6 +36,10 @@ const PAGE_SIZE = 10
 // Coupons discount paid checkouts, so FREE is never a valid applicability.
 const PAID_TIERS = Object.values(SubscriptionTier).filter((t) => t !== SubscriptionTier.FREE)
 
+/** Display name for a tier id (falls back to the id for admin-added tiers). */
+const planLabel = (t: string): string =>
+  (SUBSCRIPTION_PLANS as Record<string, { name: string }>)[t]?.name ?? t
+
 interface CouponForm {
   code: string
   description: string
@@ -44,7 +48,7 @@ interface CouponForm {
   maxRedemptions: number
   perUserLimit: number
   minSubtotal: number
-  appliesToTiers: SubscriptionTier[]
+  appliesToTiers: string[]
   appliesToBillingCycles: BillingCycle[]
   validFrom: string
   validUntil: string
@@ -308,7 +312,7 @@ export default function CouponsPage() {
               pagination.page.map((c) => {
                 const limitLabel = c.maxRedemptions && c.maxRedemptions > 0 ? c.maxRedemptions.toLocaleString() : '∞'
                 const appliesTiers = c.appliesToTiers?.length
-                  ? c.appliesToTiers.map((t) => SUBSCRIPTION_PLANS[t]?.name ?? t).join(', ')
+                  ? c.appliesToTiers.map((t) => planLabel(t)).join(', ')
                   : 'All tiers'
                 return (
                   <Box key={c.id} sx={{
@@ -451,14 +455,14 @@ export default function CouponsPage() {
               displayEmpty
               multiple
               value={form.appliesToTiers}
-              onChange={(e) => setForm({ ...form, appliesToTiers: e.target.value as SubscriptionTier[] })}
+              onChange={(e) => setForm({ ...form, appliesToTiers: e.target.value as string[] })}
               input={<OutlinedInput label="Applies to Tiers" startAdornment={<InputAdornment position="start"><LocalOfferRoundedIcon fontSize="small" /></InputAdornment>} />}
-              renderValue={(selected) => selected.length === 0 ? 'All tiers' : selected.map((t) => SUBSCRIPTION_PLANS[t]?.name ?? t).join(', ')}
+              renderValue={(selected) => selected.length === 0 ? 'All tiers' : selected.map((t) => planLabel(t)).join(', ')}
             >
               {PAID_TIERS.map((t) => (
                 <MenuItem key={t} value={t}>
                   <Checkbox checked={form.appliesToTiers.includes(t)} size="small" />
-                  <ListItemText primary={SUBSCRIPTION_PLANS[t]?.name ?? t} />
+                  <ListItemText primary={planLabel(t)} />
                 </MenuItem>
               ))}
             </Select>

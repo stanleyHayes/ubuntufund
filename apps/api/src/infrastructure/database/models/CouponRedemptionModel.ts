@@ -1,9 +1,5 @@
 import mongoose, { Schema, type Document } from 'mongoose';
-import {
-  CouponRedemptionStatus,
-  SubscriptionTier,
-  BillingCycle,
-} from '@ubuntu-fund/types';
+import { CouponRedemptionStatus, BillingCycle } from '@ubuntu-fund/types';
 
 export interface CouponRedemptionDocument extends Document {
   couponId: string;
@@ -11,7 +7,7 @@ export interface CouponRedemptionDocument extends Document {
   userId: string;
   subscriptionId?: string;
   checkoutId?: string;
-  tier: SubscriptionTier;
+  tier: string;
   billingCycle: BillingCycle;
   status: CouponRedemptionStatus;
   baseAmount: number;
@@ -32,7 +28,6 @@ const couponRedemptionSchema = new Schema<CouponRedemptionDocument>(
     checkoutId: { type: String },
     tier: {
       type: String,
-      enum: Object.values(SubscriptionTier),
       required: true,
     },
     billingCycle: {

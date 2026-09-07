@@ -131,8 +131,9 @@ export function useSubscriptionPlans(): UseSubscriptionPlansResult {
  * then overlaid with the live plans from `GET /plans`. A failed fetch keeps the
  * seeded defaults, so pricing/limits are always shown.
  */
-export function usePlanMap(): Record<SubscriptionTier, SubscriptionPlan> {
-  const [planMap, setPlanMap] = useState<Record<SubscriptionTier, SubscriptionPlan>>(SUBSCRIPTION_PLANS)
+export function usePlanMap(): Record<string, SubscriptionPlan> {
+  // Keyed by the (string) tier id so admin-ADDED tiers from GET /plans render too.
+  const [planMap, setPlanMap] = useState<Record<string, SubscriptionPlan>>(SUBSCRIPTION_PLANS)
 
   useEffect(() => {
     let cancelled = false

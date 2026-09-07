@@ -260,9 +260,9 @@ describe('Paystack Integration', () => {
     // The creator is on the Free plan (5% platform fee).
     const balance = await CampaignBalanceModel.findOne({ campaignId });
     expect(balance?.totalRaised).toBe(200);
-    expect(balance?.pendingBalance).toBe(186.7); // 200 - 3.30 processor - 10.00 platform (Free 5%)
+    expect(balance?.pendingBalance).toBe(189.7); // 200 - 3.30 processor - 7.00 platform (Free 3.5%)
     expect(balance?.processorFees).toBe(3.3);
-    expect(balance?.platformFees).toBe(10);
+    expect(balance?.platformFees).toBe(7);
     expect(balance?.tips).toBe(20);
   });
 
@@ -397,8 +397,8 @@ describe('Paystack Integration', () => {
     expect(intentDoc?.settlementCurrency).toBe('GHS');
     expect(intentDoc?.settlementAmountMinor).toBe(22000);
     expect(intentDoc?.providerFeeMinor).toBe(330);
-    expect(intentDoc?.platformFeeMinor).toBe(1000); // Free plan 5% of 200
-    expect(intentDoc?.netCampaignAmountMinor).toBe(18670); // 200 - 10 - 3.30
+    expect(intentDoc?.platformFeeMinor).toBe(700); // Free plan 3.5% of 200
+    expect(intentDoc?.netCampaignAmountMinor).toBe(18970); // 200 - 7 - 3.30
     expect(intentDoc?.fxRate).toBe(1); // GHS → GHS, no conversion
   });
 

@@ -19,9 +19,20 @@ import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import {
   SubscriptionTier,
   SUBSCRIPTION_PLANS,
+  type SubscriptionPlan,
 } from '@ubuntu-fund/types'
 
-const TIER_ORDER = [SubscriptionTier.FREE, SubscriptionTier.STARTER, SubscriptionTier.PRO, SubscriptionTier.ENTERPRISE]
+// Public, active plans in admin-set order — data-driven, so any tier (including
+// admin-added ones seeded into SUBSCRIPTION_PLANS) renders automatically.
+const PLANS = Object.values(SUBSCRIPTION_PLANS)
+  .filter((p) => p.isPublic && p.active)
+  .sort((a, b) => a.sortOrder - b.sortOrder || a.priceMonthly - b.priceMonthly)
+
+/** Accent styling derived from a plan's own colour — no hardcoded per-tier map. */
+function accentOf(plan: SubscriptionPlan): { color: string; bg: string; gradient: string } {
+  const color = plan.accentColor
+  return { color, bg: `${color}14`, gradient: `linear-gradient(135deg, ${color}cc, ${color})` }
+}
 
 const WEB_APP_REGISTER = '/register' // adjust to actual web app URL in production
 
@@ -29,7 +40,7 @@ const WEB_APP_REGISTER = '/register' // adjust to actual web app URL in producti
 
 interface FeatureRow {
   label: string
-  key: keyof (typeof SUBSCRIPTION_PLANS)[SubscriptionTier.FREE]
+  key: keyof SubscriptionPlan
   format?: 'boolean' | 'fee' | 'goal' | 'unlimited'
 }
 
@@ -69,13 +80,6 @@ const FEATURE_SECTIONS: { title: string; rows: FeatureRow[] }[] = [
   },
 ]
 
-const TIER_ACCENTS: Record<SubscriptionTier, { color: string; bg: string; gradient: string }> = {
-  [SubscriptionTier.FREE]: { color: '#78909C', bg: 'rgba(120,144,156,0.05)', gradient: 'linear-gradient(135deg, #90A4AE, #78909C)' },
-  [SubscriptionTier.STARTER]: { color: '#1565C0', bg: 'rgba(21,101,192,0.04)', gradient: 'linear-gradient(135deg, #74909A, #1565C0)' },
-  [SubscriptionTier.PRO]: { color: '#2E3D2F', bg: 'rgba(46, 61, 47,0.04)', gradient: 'linear-gradient(135deg, #A8B5A0, #2E3D2F)' },
-  [SubscriptionTier.ENTERPRISE]: { color: '#6A1B9A', bg: 'rgba(106,27,154,0.04)', gradient: 'linear-gradient(135deg, #AB47BC, #6A1B9A)' },
-}
-
 function formatCellValue(value: unknown, format?: string): React.ReactNode {
   if (format === 'boolean') {
     return value ? (
@@ -92,13 +96,6 @@ function formatCellValue(value: unknown, format?: string): React.ReactNode {
     return <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>{value}</Typography>
   }
   return String(value)
-}
-
-const CTA_LABELS: Record<SubscriptionTier, string> = {
-  [SubscriptionTier.FREE]: 'Get Started Free',
-  [SubscriptionTier.STARTER]: 'Billing unavailable',
-  [SubscriptionTier.PRO]: 'Billing unavailable',
-  [SubscriptionTier.ENTERPRISE]: 'Contact support',
 }
 
 const faqs = [
@@ -198,17 +195,17 @@ function PricingPage() {
         <Box
           sx={{
             display: 'grid',
-            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' },
+            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: `repeat(${PLANS.length}, minmax(0, 1fr))` },
             gap: 3,
             mb: 10,
           }}
         >
-          {TIER_ORDER.map((tier) => {
-            const plan = SUBSCRIPTION_PLANS[tier]
-            const isPro = tier === SubscriptionTier.PRO
+          {PLANS.map((plan) => {
+            const tier = plan.tier
+            const isPro = plan.popular === true
             const isEnterprise = tier === SubscriptionTier.ENTERPRISE
             const price = yearly ? plan.priceYearly : plan.priceMonthly
-            const tc = TIER_ACCENTS[tier]
+            const tc = accentOf(plan)
 
             return (
               <Card
@@ -297,8 +294,7 @@ function PricingPage() {
                     variant={isPro ? 'contained' : 'outlined'}
                     fullWidth
                     size="large"
-                    href={tier === SubscriptionTier.FREE ? WEB_APP_REGISTER : isEnterprise ? '/contact' : undefined}
-                    disabled={tier !== SubscriptionTier.FREE && !isEnterprise}
+                    href={isEnterprise ? '/contact' : WEB_APP_REGISTER}
                     sx={{
                       borderRadius: SHAPE.sm,
                       fontWeight: 700,
@@ -307,7 +303,7 @@ function PricingPage() {
                       ...(isPro && { bgcolor: tc.color, '&:hover': { bgcolor: '#1C261D' } }),
                     }}
                   >
-                    {CTA_LABELS[tier]}
+                    {price === 0 ? 'Get Started Free' : isEnterprise ? 'Contact sales' : `Choose ${plan.name}`}
                   </Button>
                 </CardContent>
               </Card>
@@ -326,7 +322,7 @@ function PricingPage() {
             <Box
               sx={{
                 display: 'grid',
-                gridTemplateColumns: { xs: '1.6fr repeat(4, 1fr)', md: '2fr repeat(4, 1fr)' },
+                gridTemplateColumns: { xs: `1.6fr repeat(${PLANS.length}, 1fr)`, md: `2fr repeat(${PLANS.length}, 1fr)` },
                 bgcolor: 'background.paper',
                 borderBottom: '1px solid', borderColor: 'divider',
               }}
@@ -334,13 +330,12 @@ function PricingPage() {
               <Box sx={{ px: 3, py: 2.5 }}>
                 <Typography sx={{ fontWeight: 700, fontSize: '0.85rem', color: 'text.secondary' }}>Feature</Typography>
               </Box>
-              {TIER_ORDER.map((tier) => {
-                const plan = SUBSCRIPTION_PLANS[tier]
-                const isPro = tier === SubscriptionTier.PRO
-                const tc = TIER_ACCENTS[tier]
+              {PLANS.map((plan) => {
+                const isPro = plan.popular === true
+                const tc = accentOf(plan)
                 return (
                   <Box
-                    key={tier}
+                    key={plan.tier}
                     sx={{
                       px: 1.5,
                       py: 2.5,
@@ -380,13 +375,13 @@ function PricingPage() {
                 <Box
                   sx={{
                     display: 'grid',
-                    gridTemplateColumns: { xs: '1.6fr repeat(4, 1fr)', md: '2fr repeat(4, 1fr)' },
+                    gridTemplateColumns: { xs: `1.6fr repeat(${PLANS.length}, 1fr)`, md: `2fr repeat(${PLANS.length}, 1fr)` },
                     bgcolor: 'rgba(0,0,0,0.02)',
                     borderBottom: '1px solid rgba(0,0,0,0.06)',
                     borderTop: '1px solid rgba(0,0,0,0.06)',
                   }}
                 >
-                  <Box sx={{ px: 3, py: 1.25, gridColumn: 'span 5' }}>
+                  <Box sx={{ px: 3, py: 1.25, gridColumn: `span ${PLANS.length + 1}` }}>
                     <Typography sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'text.secondary' }}>
                       {section.title}
                     </Typography>
@@ -399,7 +394,7 @@ function PricingPage() {
                     key={row.key}
                     sx={{
                       display: 'grid',
-                      gridTemplateColumns: { xs: '1.6fr repeat(4, 1fr)', md: '2fr repeat(4, 1fr)' },
+                      gridTemplateColumns: { xs: `1.6fr repeat(${PLANS.length}, 1fr)`, md: `2fr repeat(${PLANS.length}, 1fr)` },
                       borderBottom: ri < section.rows.length - 1 ? '1px solid rgba(0,0,0,0.04)' : 'none',
                       transition: 'background-color 0.15s',
                       '&:hover': { bgcolor: 'rgba(0,0,0,0.01)' },
@@ -408,13 +403,12 @@ function PricingPage() {
                     <Box sx={{ px: 3, py: 1.75, display: 'flex', alignItems: 'center' }}>
                       <Typography sx={{ fontSize: '0.85rem', fontWeight: 500 }}>{row.label}</Typography>
                     </Box>
-                    {TIER_ORDER.map((tier) => {
-                      const plan = SUBSCRIPTION_PLANS[tier]
-                      const isPro = tier === SubscriptionTier.PRO
-                      const tc = TIER_ACCENTS[tier]
+                    {PLANS.map((plan) => {
+                      const isPro = plan.popular === true
+                      const tc = accentOf(plan)
                       return (
                         <Box
-                          key={tier}
+                          key={plan.tier}
                           sx={{
                             px: 1.5,
                             py: 1.75,

@@ -10,6 +10,7 @@ import {
   SubscriptionCheckoutStatus,
   BillingCycle,
   SUBSCRIPTION_PLANS,
+  type SubscriptionPlan,
   type CouponPreview,
 } from '@ubuntu-fund/types'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
@@ -34,10 +35,13 @@ function formatGhs(n: number): string {
   return `GH₵ ${n.toFixed(2)}`
 }
 
-const TIER_ORDER = [SubscriptionTier.FREE, SubscriptionTier.STARTER, SubscriptionTier.PRO, SubscriptionTier.ENTERPRISE]
+/** Order plans cheapest → richest by the admin-set sortOrder. */
+function bySortOrder(a: SubscriptionPlan, b: SubscriptionPlan): number {
+  return a.sortOrder - b.sortOrder || a.priceMonthly - b.priceMonthly
+}
 
 interface SubscriptionData {
-  tier: SubscriptionTier
+  tier: string
   status: SubscriptionStatus
   billingCycle: BillingCycle
   renewDate: string
@@ -239,11 +243,13 @@ async function pollCheckout(id: string): Promise<CheckoutOutcome> {
 
 function CheckoutSheet({
   tier,
+  plans,
   visible,
   onClose,
   onActivated,
 }: {
-  tier: SubscriptionTier | null
+  tier: string | null
+  plans: Record<string, SubscriptionPlan>
   visible: boolean
   onClose: () => void
   onActivated: () => Promise<void> | void
@@ -295,7 +301,8 @@ function CheckoutSheet({
 
   if (!tier) return null
 
-  const plan = SUBSCRIPTION_PLANS[tier]
+  const plan = plans[tier]
+  if (!plan) return null
   const baseAmount = billingCycle === BillingCycle.YEARLY ? plan.priceYearly : plan.priceMonthly
   const validCoupon = preview?.valid ? preview : null
   const finalAmount = validCoupon ? validCoupon.finalAmount : baseAmount
@@ -465,7 +472,10 @@ export default function SubscriptionScreen() {
   const [currentSub, setCurrentSub] = useState<SubscriptionData>(DEFAULT_SUB)
   const [isLoading, setIsLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(false)
-  const [checkoutTier, setCheckoutTier] = useState<SubscriptionTier | null>(null)
+  const [checkoutTier, setCheckoutTier] = useState<string | null>(null)
+  // DB-backed plans (seeded from SUBSCRIPTION_PLANS, overlaid from GET /plans) so
+  // admin-added tiers appear here too.
+  const [plans, setPlans] = useState<Record<string, SubscriptionPlan>>(SUBSCRIPTION_PLANS)
 
   const fetchSubscription = useCallback(async () => {
     try {
@@ -486,6 +496,27 @@ export default function SubscriptionScreen() {
       if (user) fetchSubscription()
     }, [user, fetchSubscription]),
   )
+
+  // Overlay the live, admin-managed plans over the seeded defaults.
+  useEffect(() => {
+    let cancelled = false
+    api
+      .get<SubscriptionPlan[]>('/plans')
+      .then((data) => {
+        if (cancelled || !Array.isArray(data)) return
+        setPlans((current) => {
+          const next = { ...current }
+          for (const pl of data) if (pl && pl.tier) next[pl.tier] = pl
+          return next
+        })
+      })
+      .catch(() => {
+        // Keep the seeded defaults on failure.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const handleCancel = async () => {
     Alert.alert('Cancel Subscription', 'Are you sure you want to cancel?', [
@@ -509,7 +540,10 @@ export default function SubscriptionScreen() {
     ])
   }
 
-  const currentPlan = SUBSCRIPTION_PLANS[currentSub.tier]
+  const orderedPlans = Object.values(plans)
+    .filter((pl) => pl.active !== false && pl.isPublic !== false)
+    .sort(bySortOrder)
+  const currentPlan = plans[currentSub.tier] ?? SUBSCRIPTION_PLANS[SubscriptionTier.FREE]
 
   if (!user) {
     return (
@@ -559,12 +593,12 @@ export default function SubscriptionScreen() {
       {/* Plan comparison - horizontal scroll */}
       <Text style={styles.sectionTitle}>Compare Plans</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.plansScroll} contentContainerStyle={styles.plansRow}>
-        {TIER_ORDER.map((tier, i) => {
-          const plan = SUBSCRIPTION_PLANS[tier]
+        {orderedPlans.map((plan, i) => {
+          const tier = plan.tier
           const isCurrent = tier === currentSub.tier
-          const isPro = tier === SubscriptionTier.PRO
+          const isPro = plan.popular === true
           const isEnterprise = tier === SubscriptionTier.ENTERPRISE
-          const isFree = tier === SubscriptionTier.FREE
+          const isFree = plan.priceMonthly === 0
 
           return (
             <FadeInUp key={tier} index={i}>
@@ -689,6 +723,7 @@ export default function SubscriptionScreen() {
 
     <CheckoutSheet
       tier={checkoutTier}
+      plans={plans}
       visible={checkoutTier !== null}
       onClose={() => setCheckoutTier(null)}
       onActivated={fetchSubscription}

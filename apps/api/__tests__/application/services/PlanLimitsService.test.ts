@@ -60,7 +60,7 @@ describe('PlanLimitsService', () => {
     it('defaults to the Free plan when the user has no subscription', async () => {
       const plan = await service.resolvePlan('user-1')
       expect(plan.tier).toBe(SubscriptionTier.FREE)
-      expect(plan.platformFeePercent).toBe(5)
+      expect(plan.platformFeePercent).toBe(3.5)
     })
 
     it('maps an active subscription to its tier plan', async () => {
@@ -69,7 +69,7 @@ describe('PlanLimitsService', () => {
       )
       const plan = await service.resolvePlan('user-1')
       expect(plan.tier).toBe(SubscriptionTier.PRO)
-      expect(plan.platformFeePercent).toBe(2)
+      expect(plan.platformFeePercent).toBe(2.5)
     })
 
     it('falls back to Free when the subscription is not active', async () => {
@@ -82,15 +82,15 @@ describe('PlanLimitsService', () => {
   })
 
   describe('platformFeePercent', () => {
-    it('returns the plan rate for the user (Free 5%)', async () => {
-      await expect(service.platformFeePercent('user-1')).resolves.toBe(5)
+    it('returns the plan rate for the user (Free 3.5%)', async () => {
+      await expect(service.platformFeePercent('user-1')).resolves.toBe(3.5)
     })
 
-    it('returns the Enterprise rate (1%) for an enterprise subscriber', async () => {
+    it('returns the Enterprise rate (1.25%) for an enterprise subscriber', async () => {
       vi.mocked(subscriptionRepo.findByUserId).mockResolvedValue(
         makeSubscription(SubscriptionTier.ENTERPRISE)
       )
-      await expect(service.platformFeePercent('user-1')).resolves.toBe(1)
+      await expect(service.platformFeePercent('user-1')).resolves.toBe(1.25)
     })
   })
 
@@ -106,14 +106,14 @@ describe('PlanLimitsService', () => {
       )
       await expect(
         service.platformFeePercentForCampaign('camp-1')
-      ).resolves.toBe(3.5)
+      ).resolves.toBe(3.0)
     })
 
     it('falls back to the Free rate for a missing campaign', async () => {
       vi.mocked(campaignRepo.findById).mockResolvedValue(null)
       await expect(
         service.platformFeePercentForCampaign('missing')
-      ).resolves.toBe(5)
+      ).resolves.toBe(3.5)
     })
   })
 
@@ -132,7 +132,7 @@ describe('PlanLimitsService', () => {
     it('throws 422 when the goal exceeds the plan cap', async () => {
       let err: unknown
       try {
-        await service.assertCanCreateCampaign('user-1', 6000) // Free cap = 5000
+        await service.assertCanCreateCampaign('user-1', 12000) // Free cap = 10000
       } catch (e) {
         err = e
       }

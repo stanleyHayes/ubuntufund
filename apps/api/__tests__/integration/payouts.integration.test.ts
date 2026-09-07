@@ -89,8 +89,8 @@ async function createActiveCampaign(
 /**
  * Settle a `donationAmount` donation on a campaign via the authoritative
  * charge.success webhook (no processor fee, no tip), leaving beneficiary-net in
- * `pendingBalance`. The creator is on the Free plan (5% platform fee), so the
- * net cleared is `donationAmount * 0.95`.
+ * `pendingBalance`. The creator is on the Free plan (3.5% platform fee), so the
+ * net cleared is `donationAmount * 0.965`.
  */
 async function fundCampaign(
   app: Express,
@@ -262,14 +262,14 @@ describe('Payouts Integration', () => {
     const campaignId = await createActiveCampaign(app, token, userId);
     const admin = await createAdmin(app, uniqueEmail('admin'));
 
-    await fundCampaign(app, campaignId, 1000); // pending net 950 (Free 5%)
+    await fundCampaign(app, campaignId, 1000); // pending net 965 (Free 3.5%)
     await addRecipient(app, campaignId, token);
 
     // Owner requests a payout of the full cleared amount.
     const reqRes = await request(app)
       .post(`/api/v1/campaigns/${campaignId}/payouts`)
       .set('Authorization', `Bearer ${token}`)
-      .send({ amount: 950 });
+      .send({ amount: 965 });
     expect(reqRes.status).toBe(201);
     expect(reqRes.body.data.status).toBe('PENDING');
     const payoutId = reqRes.body.data.id as string;
@@ -277,7 +277,7 @@ describe('Payouts Integration', () => {
     // Requesting clears pending → available (no reservation yet).
     let balance = await CampaignBalanceModel.findOne({ campaignId });
     expect(balance?.pendingBalance).toBe(0);
-    expect(balance?.availableBalance).toBe(950);
+    expect(balance?.availableBalance).toBe(965);
 
     // Admin approves → transfer initiated, funds reserved out of available.
     const approveRes = await request(app)
@@ -323,7 +323,7 @@ describe('Payouts Integration', () => {
     const reqRes = await request(app)
       .post(`/api/v1/campaigns/${campaignId}/payouts`)
       .set('Authorization', `Bearer ${token}`)
-      .send({ amount: 950 });
+      .send({ amount: 965 });
     const payoutId = reqRes.body.data.id as string;
     const approveRes = await request(app)
       .post(`/api/v1/payouts/${payoutId}/approve`)
@@ -339,7 +339,7 @@ describe('Payouts Integration', () => {
     expect(payout?.status).toBe('PAID');
 
     let balance = await CampaignBalanceModel.findOne({ campaignId });
-    expect(balance?.paidOutBalance).toBe(950);
+    expect(balance?.paidOutBalance).toBe(965);
     expect(balance?.availableBalance).toBe(0);
     expect(balance?.pendingBalance).toBe(0);
 
@@ -350,14 +350,14 @@ describe('Payouts Integration', () => {
       direction: 'credit',
     });
     expect(payoutCredits).toHaveLength(1);
-    expect(payoutCredits[0]!.amount).toBe(950);
+    expect(payoutCredits[0]!.amount).toBe(965);
     const beneficiaryDebits = await JournalLineModel.find({
       accountKind: 'beneficiary',
       accountOwnerId: campaignId,
       direction: 'debit',
     });
     expect(beneficiaryDebits).toHaveLength(1);
-    expect(beneficiaryDebits[0]!.amount).toBe(950);
+    expect(beneficiaryDebits[0]!.amount).toBe(965);
 
     // Duplicate webhook is a no-op: still PAID, balances + ledger unchanged.
     const dup = await sendTransferWebhook(app, 'transfer.success', reference);
@@ -365,7 +365,7 @@ describe('Payouts Integration', () => {
     payout = await PayoutModel.findById(payoutId);
     expect(payout?.status).toBe('PAID');
     balance = await CampaignBalanceModel.findOne({ campaignId });
-    expect(balance?.paidOutBalance).toBe(950);
+    expect(balance?.paidOutBalance).toBe(965);
     const payoutCreditsAfter = await JournalLineModel.find({
       accountKind: 'payout',
       accountOwnerId: campaignId,
@@ -384,7 +384,7 @@ describe('Payouts Integration', () => {
     const reqRes = await request(app)
       .post(`/api/v1/campaigns/${campaignId}/payouts`)
       .set('Authorization', `Bearer ${token}`)
-      .send({ amount: 950 });
+      .send({ amount: 965 });
     const payoutId = reqRes.body.data.id as string;
     const approveRes = await request(app)
       .post(`/api/v1/payouts/${payoutId}/approve`)
@@ -403,7 +403,7 @@ describe('Payouts Integration', () => {
     expect(payout?.status).toBe('FAILED');
 
     balance = await CampaignBalanceModel.findOne({ campaignId });
-    expect(balance?.availableBalance).toBe(950); // returned
+    expect(balance?.availableBalance).toBe(965); // returned
     expect(balance?.paidOutBalance).toBe(0);
 
     // No payout journal entry was posted (nothing left the platform).
@@ -424,7 +424,7 @@ describe('Payouts Integration', () => {
     const reqRes = await request(app)
       .post(`/api/v1/campaigns/${campaignId}/payouts`)
       .set('Authorization', `Bearer ${token}`)
-      .send({ amount: 950 });
+      .send({ amount: 965 });
     const payoutId = reqRes.body.data.id as string;
     const approveRes = await request(app)
       .post(`/api/v1/payouts/${payoutId}/approve`)
@@ -441,7 +441,7 @@ describe('Payouts Integration', () => {
 
     const balance = await CampaignBalanceModel.findOne({ campaignId });
     expect(balance?.paidOutBalance).toBe(0);
-    expect(balance?.availableBalance).toBe(950);
+    expect(balance?.availableBalance).toBe(965);
 
     // One disbursement + one reversing entry: net payout credits === debits.
     const payoutLines = await JournalLineModel.find({
@@ -454,15 +454,15 @@ describe('Payouts Integration', () => {
     const debits = payoutLines
       .filter((l) => l.direction === 'debit')
       .reduce((s, l) => s + l.amount, 0);
-    expect(credits).toBe(950);
-    expect(debits).toBe(950);
+    expect(credits).toBe(965);
+    expect(debits).toBe(965);
   });
 
   it('cannot request a payout larger than the eligible balance', async () => {
     const { userId, token } = await registerUser(app, uniqueEmail('over'));
     const campaignId = await createActiveCampaign(app, token, userId);
 
-    await fundCampaign(app, campaignId, 1000); // eligible net 950
+    await fundCampaign(app, campaignId, 1000); // eligible net 965
     await addRecipient(app, campaignId, token);
 
     const res = await request(app)

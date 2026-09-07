@@ -14,9 +14,11 @@ import { AppError } from '../../infrastructure/adapters/inbound/middleware/error
  * Used by {@link PlanLimitsService.assertFeature} so callers can only gate on a
  * real on/off capability (e.g. `liveStreaming`, `campaignCollaboration`).
  */
-export type PlanBooleanFeature = {
-  [K in keyof SubscriptionPlan]: SubscriptionPlan[K] extends boolean ? K : never;
-}[keyof SubscriptionPlan];
+export type PlanBooleanFeature = NonNullable<
+  {
+    [K in keyof SubscriptionPlan]: SubscriptionPlan[K] extends boolean ? K : never;
+  }[keyof SubscriptionPlan]
+>;
 
 /** A subscription only unlocks its plan while it is actually in force. */
 const ACTIVE_STATUSES: ReadonlySet<SubscriptionStatus> = new Set([
@@ -55,9 +57,10 @@ export class PlanLimitsService {
   ) {}
 
   /** Resolve a plan via PlanService (DB-backed) when wired, else the code defaults. */
-  private async getPlanFor(tier: SubscriptionTier): Promise<SubscriptionPlan> {
+  private async getPlanFor(tier: string): Promise<SubscriptionPlan> {
     if (this.planService) return this.planService.getPlan(tier)
-    return SUBSCRIPTION_PLANS[tier]
+    const seeds = SUBSCRIPTION_PLANS as Record<string, SubscriptionPlan>
+    return seeds[tier] ?? seeds[SubscriptionTier.FREE]
   }
 
   /**

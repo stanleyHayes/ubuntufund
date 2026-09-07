@@ -3,7 +3,7 @@ import { SubscriptionTier, SubscriptionStatus, BillingCycle } from '@ubuntu-fund
 
 export interface SubscriptionDocument extends Document {
   userId: string;
-  tier: SubscriptionTier;
+  tier: string;
   status: SubscriptionStatus;
   billingCycle: BillingCycle;
   currentPeriodStart: Date;
@@ -17,9 +17,9 @@ export interface SubscriptionDocument extends Document {
 const subscriptionSchema = new Schema<SubscriptionDocument>(
   {
     userId: { type: String, required: true, index: true, unique: true },
+    // Free-form so a user can hold an admin-added tier; defaults to the free tier.
     tier: {
       type: String,
-      enum: Object.values(SubscriptionTier),
       required: true,
       default: SubscriptionTier.FREE,
     },

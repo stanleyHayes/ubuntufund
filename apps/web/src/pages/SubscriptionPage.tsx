@@ -30,7 +30,7 @@ import {
   SubscriptionTier,
   SubscriptionStatus,
   BillingCycle,
-  SUBSCRIPTION_PLANS,
+  type SubscriptionPlan,
 } from '@ubuntu-fund/types'
 import { useMySubscription, usePlanMap } from '@/hooks/useSubscription'
 import { api } from '@/lib/api'
@@ -50,18 +50,33 @@ const fadeInUp = keyframes`
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
-const TIER_ORDER = [SubscriptionTier.FREE, SubscriptionTier.STARTER, SubscriptionTier.PRO, SubscriptionTier.ENTERPRISE]
-
-const TIER_COLORS: Record<SubscriptionTier, { accent: string; bg: string; banner: string }> = {
+// Curated colours for the built-in tiers; any other (admin-added) tier falls back
+// to its own accentColor — so the page renders every tier with no hardcoded map.
+const KNOWN_TIER_COLORS: Record<string, { accent: string; bg: string; banner: string }> = {
   [SubscriptionTier.FREE]: { accent: '#78909C', bg: 'rgba(120,144,156,0.06)', banner: '#78909C' },
   [SubscriptionTier.STARTER]: { accent: 'var(--text-info)', bg: 'rgba(21,101,192,0.05)', banner: '#1565C0' },
   [SubscriptionTier.PRO]: { accent: 'var(--text-brand)', bg: 'rgba(46, 61, 47,0.05)', banner: '#2E3D2F' },
+  [SubscriptionTier.ORGANIZATION]: { accent: '#8B6F4E', bg: 'rgba(139,111,78,0.06)', banner: '#8B6F4E' },
   [SubscriptionTier.ENTERPRISE]: { accent: 'var(--text-accent)', bg: 'rgba(106,27,154,0.05)', banner: '#6A1B9A' },
+}
+
+function colorsOf(plan: SubscriptionPlan): { accent: string; bg: string; banner: string } {
+  return (
+    KNOWN_TIER_COLORS[plan.tier] ?? {
+      accent: plan.accentColor,
+      bg: `${plan.accentColor}14`,
+      banner: plan.accentColor,
+    }
+  )
+}
+
+function bySortOrder(a: SubscriptionPlan, b: SubscriptionPlan): number {
+  return a.sortOrder - b.sortOrder || a.priceMonthly - b.priceMonthly
 }
 
 interface FeatureRow {
   label: string
-  key: keyof (typeof SUBSCRIPTION_PLANS)[SubscriptionTier.FREE]
+  key: keyof SubscriptionPlan
   format?: 'boolean' | 'number' | 'fee' | 'goal' | 'unlimited'
 }
 
@@ -126,13 +141,17 @@ export function SubscriptionPage() {
   const { subscription, isLoading, refetch } = useMySubscription()
   // DB-backed plans (seeded from SUBSCRIPTION_PLANS so nothing flashes empty).
   const plans = usePlanMap()
+  // Public, active plans in admin-set order — data-driven so admin-added tiers show.
+  const orderedPlans = Object.values(plans)
+    .filter((p) => p.active !== false && p.isPublic !== false)
+    .sort(bySortOrder)
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
   const [billingToggle, setBillingToggle] = useState<'monthly' | 'yearly'>('monthly')
   const [actionLoading, setActionLoading] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
 
   // ── Paid checkout + coupon flow ────────────────────────────────────────────
-  const [selectedTier, setSelectedTier] = useState<SubscriptionTier | null>(null)
+  const [selectedTier, setSelectedTier] = useState<string | null>(null)
   const [couponCode, setCouponCode] = useState('')
   const [checkoutLoading, setCheckoutLoading] = useState(false)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
@@ -150,7 +169,7 @@ export function SubscriptionPage() {
     }
   }, [couponCode, selectedTier, billingCycle, runCoupon, clearCoupon])
 
-  function openCheckout(tier: SubscriptionTier) {
+  function openCheckout(tier: string) {
     setSelectedTier(tier)
     setCouponCode('')
     setCheckoutError(null)
@@ -237,7 +256,9 @@ export function SubscriptionPage() {
 
   const currentSub = subscription
   const currentPlan = plans[currentSub.tier]
-  const colors = TIER_COLORS[currentSub.tier]
+  const colors = currentPlan
+    ? colorsOf(currentPlan)
+    : { accent: '#78909C', bg: 'rgba(120,144,156,0.06)', banner: '#78909C' }
   const daysLeft = Math.max(0, Math.ceil((new Date(currentSub.currentPeriodEnd).getTime() - Date.now()) / 86_400_000))
 
   return (
@@ -453,16 +474,16 @@ export function SubscriptionPage() {
       <Box
         sx={{
           display: 'grid',
-          gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' },
+          gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: `repeat(${orderedPlans.length}, minmax(0, 1fr))` },
           gap: 2.5,
           mb: 8,
         }}
       >
-        {TIER_ORDER.map((tier, idx) => {
-          const plan = plans[tier]
+        {orderedPlans.map((plan, idx) => {
+          const tier = plan.tier
           const isCurrent = tier === currentSub.tier
-          const isPro = tier === SubscriptionTier.PRO
-          const tc = TIER_COLORS[tier]
+          const isPro = plan.popular === true
+          const tc = colorsOf(plan)
           const price = billingToggle === 'yearly' ? plan.priceYearly : plan.priceMonthly
           const canCheckout = !isCurrent && tier !== SubscriptionTier.FREE && tier !== SubscriptionTier.ENTERPRISE
 
@@ -655,7 +676,7 @@ export function SubscriptionPage() {
           <Box
             sx={{
               display: 'grid',
-              gridTemplateColumns: { xs: '1.6fr repeat(4, 1fr)', md: '2fr repeat(4, 1fr)' },
+              gridTemplateColumns: { xs: `1.6fr repeat(${orderedPlans.length}, 1fr)`, md: `2fr repeat(${orderedPlans.length}, 1fr)` },
               bgcolor: 'background.paper',
               borderBottom: '1px solid rgba(0,0,0,0.08)',
               position: 'sticky',
@@ -666,10 +687,10 @@ export function SubscriptionPage() {
             <Box sx={{ px: 3, py: 2 }}>
               <Typography sx={{ fontWeight: 700, fontSize: '0.82rem', color: 'text.secondary' }}>Feature</Typography>
             </Box>
-            {TIER_ORDER.map((tier) => {
-              const plan = plans[tier]
+            {orderedPlans.map((plan) => {
+              const tier = plan.tier
               const isCurrent = tier === currentSub.tier
-              const tc = TIER_COLORS[tier]
+              const tc = colorsOf(plan)
               return (
                 <Box
                   key={tier}
@@ -710,13 +731,13 @@ export function SubscriptionPage() {
               <Box
                 sx={{
                   display: 'grid',
-                  gridTemplateColumns: { xs: '1.6fr repeat(4, 1fr)', md: '2fr repeat(4, 1fr)' },
+                  gridTemplateColumns: { xs: `1.6fr repeat(${orderedPlans.length}, 1fr)`, md: `2fr repeat(${orderedPlans.length}, 1fr)` },
                   bgcolor: 'rgba(0,0,0,0.02)',
                   borderBottom: '1px solid rgba(0,0,0,0.06)',
                   borderTop: '1px solid rgba(0,0,0,0.06)',
                 }}
               >
-                <Box sx={{ px: 3, py: 1.25, gridColumn: 'span 5' }}>
+                <Box sx={{ px: 3, py: 1.25, gridColumn: `span ${orderedPlans.length + 1}` }}>
                   <Typography sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'text.secondary' }}>
                     {section.title}
                   </Typography>
@@ -729,7 +750,7 @@ export function SubscriptionPage() {
                   key={row.key}
                   sx={{
                     display: 'grid',
-                    gridTemplateColumns: { xs: '1.6fr repeat(4, 1fr)', md: '2fr repeat(4, 1fr)' },
+                    gridTemplateColumns: { xs: `1.6fr repeat(${orderedPlans.length}, 1fr)`, md: `2fr repeat(${orderedPlans.length}, 1fr)` },
                     borderBottom: ri < section.rows.length - 1 ? '1px solid rgba(0,0,0,0.04)' : 'none',
                     transition: 'background-color 0.15s',
                     '&:hover': { bgcolor: 'rgba(0,0,0,0.01)' },
@@ -738,10 +759,10 @@ export function SubscriptionPage() {
                   <Box sx={{ px: 3, py: 1.75, display: 'flex', alignItems: 'center' }}>
                     <Typography sx={{ fontSize: '0.82rem', fontWeight: 500 }}>{row.label}</Typography>
                   </Box>
-                  {TIER_ORDER.map((tier) => {
-                    const plan = plans[tier]
+                  {orderedPlans.map((plan) => {
+                    const tier = plan.tier
                     const isCurrent = tier === currentSub.tier
-                    const tc = TIER_COLORS[tier]
+                    const tc = colorsOf(plan)
                     return (
                       <Box
                         key={tier}

@@ -14,6 +14,7 @@ import {
   SubscriptionStatus,
   BillingCycle,
   SUBSCRIPTION_PLANS,
+  type SubscriptionPlan,
   Resource,
   Action,
 } from '@ubuntu-fund/types'
@@ -29,11 +30,19 @@ import { TONES } from '@/lib/tones'
 // ---------------------------------------------------------------------------
 // Tier colors
 // ---------------------------------------------------------------------------
-const tierColors: Record<SubscriptionTier, string> = {
+// Curated colours for built-in tiers; any other (admin-added) tier falls back
+// to a neutral. String-keyed so a custom tier id never breaks the lookup.
+const tierColors: Record<string, string> = {
   [SubscriptionTier.FREE]: '#78909C',
   [SubscriptionTier.STARTER]: '#74909A',
   [SubscriptionTier.PRO]: TONES.maroon.text,
+  [SubscriptionTier.ORGANIZATION]: '#8B6F4E',
   [SubscriptionTier.ENTERPRISE]: '#C7A24A',
+}
+
+/** Seed plan for a tier id (may be undefined for an admin-added custom tier). */
+function seedPlan(tier: string): SubscriptionPlan | undefined {
+  return (SUBSCRIPTION_PLANS as Record<string, SubscriptionPlan>)[tier]
 }
 
 const statusColors: Record<SubscriptionStatus, string> = {
@@ -82,7 +91,7 @@ function SubscriptionRow({ sub }: { sub: AdminSubscription }) {
   const navigate = useNavigate()
   const { can } = useAdminPermissions()
   const canUpdate = can(Resource.SUBSCRIPTIONS, Action.UPDATE)
-  const tierColor = tierColors[sub.tier]
+  const tierColor = tierColors[sub.tier] ?? '#78909C'
   const statusColor = statusColors[sub.status]
 
   return (
@@ -120,7 +129,7 @@ function SubscriptionRow({ sub }: { sub: AdminSubscription }) {
         }}>
           <Box sx={{ width: 6, height: 6, bgcolor: tierColor, flexShrink: 0 }} />
           <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: tierColor, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            {SUBSCRIPTION_PLANS[sub.tier].name}
+            {seedPlan(sub.tier)?.name ?? sub.tier}
           </Typography>
         </Box>
       </Box>
@@ -229,16 +238,18 @@ export default function SubscriptionsPage() {
   const monthlyRevenue = subscriptions
     .filter((subscription) => subscription.status === SubscriptionStatus.ACTIVE && subscription.tier !== SubscriptionTier.FREE)
     .reduce((sum, subscription) => {
-      const plan = SUBSCRIPTION_PLANS[subscription.tier]
+      const plan = seedPlan(subscription.tier)
+      if (!plan) return sum
       return sum + (subscription.billingCycle === BillingCycle.MONTHLY ? plan.priceMonthly : plan.priceYearly / 12)
     }, 0)
   const revenueByTier = Object.values(SubscriptionTier).filter((tier) => tier !== SubscriptionTier.FREE).map((tier) => {
     const active = subscriptions.filter((subscription) => subscription.tier === tier && subscription.status === SubscriptionStatus.ACTIVE)
     const revenue = active.reduce((sum, subscription) => {
-      const plan = SUBSCRIPTION_PLANS[subscription.tier]
+      const plan = seedPlan(subscription.tier)
+      if (!plan) return sum
       return sum + (subscription.billingCycle === BillingCycle.MONTHLY ? plan.priceMonthly : plan.priceYearly / 12)
     }, 0)
-    return { tier, name: SUBSCRIPTION_PLANS[tier].name, count: active.length, revenue, color: tierColors[tier] }
+    return { tier, name: seedPlan(tier)?.name ?? tier, count: active.length, revenue, color: tierColors[tier] ?? '#78909C' }
   })
   const totalRevForBar = Math.max(1, revenueByTier.reduce((sum, row) => sum + row.revenue, 0))
 
@@ -329,7 +340,7 @@ export default function SubscriptionsPage() {
           >
             <MenuItem value="all">All Tiers</MenuItem>
             {Object.values(SubscriptionTier).map(t => (
-              <MenuItem key={t} value={t}>{SUBSCRIPTION_PLANS[t].name}</MenuItem>
+              <MenuItem key={t} value={t}>{seedPlan(t)?.name ?? t}</MenuItem>
             ))}
           </TextField>
         </Box>

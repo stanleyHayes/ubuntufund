@@ -203,7 +203,7 @@ describe('CreateCampaignUseCase', () => {
 
     let thrown: unknown
     try {
-      await freeUseCase.execute({ ...validInput, goalAmount: 6000 }, 'user-1')
+      await freeUseCase.execute({ ...validInput, goalAmount: 12000 }, 'user-1')
     } catch (err) {
       thrown = err
     }
@@ -213,7 +213,7 @@ describe('CreateCampaignUseCase', () => {
   })
 
   it('allows a higher goal on a plan with a higher cap', async () => {
-    // Starter plan caps goals at GHS 25000; a 20000 goal is allowed.
+    // Plus (starter) plan caps goals at GHS 50000; a 20000 goal is allowed.
     const starterUseCase = new CreateCampaignUseCase(
       campaignRepo,
       userRepo,

@@ -190,6 +190,7 @@ import { MatureAffiliateCommissionsUseCase } from './application/use-cases/Matur
 // Use cases — payment providers, moderation, admin
 import { ListPlansUseCase } from './application/use-cases/ListPlansUseCase.js';
 import { UpdatePlanUseCase } from './application/use-cases/UpdatePlanUseCase.js';
+import { CreatePlanUseCase } from './application/use-cases/CreatePlanUseCase.js';
 import { ListPaymentProvidersUseCase } from './application/use-cases/ListPaymentProvidersUseCase.js';
 import { GetEnabledPaymentProvidersUseCase } from './application/use-cases/GetEnabledPaymentProvidersUseCase.js';
 import { TogglePaymentProviderUseCase } from './application/use-cases/TogglePaymentProviderUseCase.js';
@@ -801,6 +802,7 @@ export function createApp(): express.Express {
 
   const listPlansUseCase = new ListPlansUseCase(planService);
   const updatePlanUseCase = new UpdatePlanUseCase(subscriptionPlanRepo);
+  const createPlanUseCase = new CreatePlanUseCase(subscriptionPlanRepo);
   const listPaymentProvidersUseCase = new ListPaymentProvidersUseCase(paymentProviderRepo);
   const getEnabledPaymentProvidersUseCase = new GetEnabledPaymentProvidersUseCase(paymentProviderRepo);
   const togglePaymentProviderUseCase = new TogglePaymentProviderUseCase(paymentProviderRepo);
@@ -966,7 +968,7 @@ export function createApp(): express.Express {
     getEnabledPaymentProvidersUseCase,
     togglePaymentProviderUseCase
   );
-  const planController = new PlanController(listPlansUseCase, updatePlanUseCase);
+  const planController = new PlanController(listPlansUseCase, updatePlanUseCase, createPlanUseCase);
   const disputeController = new DisputeController(getDisputeUseCase, resolveDisputeUseCase);
   const adminReportController = new AdminReportController(listReportsUseCase, reviewReportUseCase);
   const campaignModerationController = new CampaignModerationController(reviewCampaignUseCase);

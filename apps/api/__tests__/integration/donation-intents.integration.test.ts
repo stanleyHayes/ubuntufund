@@ -149,11 +149,11 @@ describe('Donation Intents Integration', () => {
     expect(campaignDebit?.amount).toBe(500);
 
     // Campaign balance read model: beneficiary-net pending, tip tracked.
-    // The creator is on the Free plan (5% platform fee): net = 500 - 25.
+    // The creator is on the Free plan (3.5% platform fee): net = 500 - 17.50.
     const balance = await CampaignBalanceModel.findOne({ campaignId });
     expect(balance?.totalRaised).toBe(500);
-    expect(balance?.pendingBalance).toBe(475); // 500 - 25.00 platform (Free 5%)
-    expect(balance?.platformFees).toBe(25);
+    expect(balance?.pendingBalance).toBe(482.5); // 500 - 17.50 platform (Free 3.5%)
+    expect(balance?.platformFees).toBe(17.5);
     expect(balance?.availableBalance).toBe(0);
     expect(balance?.tips).toBe(50);
 
@@ -171,7 +171,7 @@ describe('Donation Intents Integration', () => {
     void donorId;
   });
 
-  it('applies the campaign creator\'s plan platform fee rate (Pro 2%, not Free 5%)', async () => {
+  it('applies the campaign creator\'s plan platform fee rate (Pro 2.5%, not Free 3.5%)', async () => {
     const { userId: creatorId, token: creatorToken } = await registerUser(app, uniqueEmail('procreator'));
     const campaignId = await createActiveCampaign(app, creatorToken, creatorId);
     // Put the creator on the Pro plan (2% platform fee).
@@ -196,10 +196,10 @@ describe('Donation Intents Integration', () => {
       .send({ campaignId, amount: 500, provider: 'wallet', isAnonymous: false });
     expect(res.status).toBe(201);
 
-    // Pro plan → 2% of 500 = 10 platform fee, net 490 (vs Free 5% = 25 / net 475).
+    // Pro plan → 2.5% of 500 = 12.50 platform fee, net 487.50 (vs Free 3.5% = 17.50 / net 482.50).
     const balance = await CampaignBalanceModel.findOne({ campaignId });
-    expect(balance?.platformFees).toBe(10);
-    expect(balance?.pendingBalance).toBe(490);
+    expect(balance?.platformFees).toBe(12.5);
+    expect(balance?.pendingBalance).toBe(487.5);
   });
 
   it('is idempotent: the same Idempotency-Key never charges twice', async () => {

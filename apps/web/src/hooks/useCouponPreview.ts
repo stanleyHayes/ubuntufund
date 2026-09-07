@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { CouponPreview, SubscriptionTier, BillingCycle } from '@ubuntu-fund/types'
+import type { CouponPreview, BillingCycle } from '@ubuntu-fund/types'
 import { previewCoupon } from '@/lib/coupons'
 
 // ---------------------------------------------------------------------------
@@ -16,7 +16,7 @@ const DEBOUNCE_MS = 400
 
 interface CouponPreviewArgs {
   code: string
-  tier: SubscriptionTier
+  tier: string
   billingCycle: BillingCycle
 }
 

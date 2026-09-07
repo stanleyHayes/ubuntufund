@@ -1,7 +1,12 @@
+// The v6 commercial model uses five tiers: Community / Plus / Pro / Organization
+// / Enterprise. The enum VALUES are kept stable (free/starter/pro/enterprise) so
+// existing subscription records need no migration — `free` presents as Community
+// and `starter` as Plus; only `organization` is genuinely new.
 export enum SubscriptionTier {
   FREE = 'free',
   STARTER = 'starter',
   PRO = 'pro',
+  ORGANIZATION = 'organization',
   ENTERPRISE = 'enterprise',
 }
 
@@ -19,7 +24,13 @@ export enum BillingCycle {
 }
 
 export interface SubscriptionPlan {
-  tier: SubscriptionTier
+  /**
+   * Plan identity/key. The built-in seed plans use the {@link SubscriptionTier}
+   * values, but this is a free-form string so administrators can add NEW tiers
+   * from the dashboard without a code change. Treat it as an opaque id, never as
+   * a fixed enum.
+   */
+  tier: string
   name: string
   description: string
   /** Monthly price in GHS */
@@ -52,12 +63,26 @@ export interface SubscriptionPlan {
   campaignCollaboration: boolean
   /** Max collaborators per campaign (-1 = unlimited) */
   maxCollaboratorsPerCampaign: number
+  // ── Admin-managed presentation & lifecycle (v6 §16) ───────────────────────
+  /** Display order, cheapest → richest; admins reorder without a deploy. */
+  sortOrder: number
+  /** Whether the plan is currently offered. Inactive plans are hidden from
+   * selection but preserved so existing subscribers are not broken. */
+  active: boolean
+  /** Whether the plan appears on the public pricing surface (vs internal/
+   * negotiated-only plans such as Enterprise). */
+  isPublic: boolean
+  /** UI accent colour (hex), so clients render any tier — including admin-added
+   * ones — without a hardcoded per-tier colour map. */
+  accentColor: string
+  /** Optional "most popular" highlight on the pricing surface. */
+  popular?: boolean
 }
 
 export interface Subscription {
   id: string
   userId: string
-  tier: SubscriptionTier
+  tier: string
   status: SubscriptionStatus
   billingCycle: BillingCycle
   currentPeriodStart: Date
@@ -92,15 +117,51 @@ export interface UpdateSubscriptionPlanInput {
   maxMediaPerCampaign?: number
   maxTeamMembers?: number
   maxCollaboratorsPerCampaign?: number
+  sortOrder?: number
+  active?: boolean
+  isPublic?: boolean
+  accentColor?: string
+  popular?: boolean
+}
+
+/**
+ * Payload to CREATE a new plan/tier from the admin dashboard. `tier` is the new
+ * plan's opaque id (any unused slug). All commercial fields are required so a new
+ * plan is fully specified; presentation fields default sensibly if omitted.
+ */
+export interface CreatePlanInput {
+  tier: string
+  name: string
+  description: string
+  priceMonthly: number
+  priceYearly: number
+  platformFeePercent: number
+  maxActiveCampaigns: number
+  maxCampaignGoal: number
+  featuredListing?: boolean
+  prioritySupport?: boolean
+  advancedAnalytics?: boolean
+  customBranding?: boolean
+  maxMediaPerCampaign?: number
+  escrowSupport?: boolean
+  liveStreaming?: boolean
+  maxTeamMembers?: number
+  campaignCollaboration?: boolean
+  maxCollaboratorsPerCampaign?: number
+  sortOrder?: number
+  active?: boolean
+  isPublic?: boolean
+  accentColor?: string
+  popular?: boolean
 }
 
 export interface CreateSubscriptionInput {
-  tier: SubscriptionTier
+  tier: string
   billingCycle: BillingCycle
 }
 
 export interface UpgradeSubscriptionInput {
-  tier: SubscriptionTier
+  tier: string
   billingCycle?: BillingCycle
 }
 
@@ -117,7 +178,7 @@ export enum SubscriptionCheckoutStatus {
 }
 
 export interface CreateSubscriptionCheckoutInput {
-  tier: SubscriptionTier // must be a paid tier
+  tier: string // must be a paid tier
   billingCycle: BillingCycle
   couponCode?: string
 }
@@ -125,7 +186,7 @@ export interface CreateSubscriptionCheckoutInput {
 export interface SubscriptionCheckout {
   id: string
   userId: string
-  tier: SubscriptionTier
+  tier: string
   billingCycle: BillingCycle
   status: SubscriptionCheckoutStatus
   baseAmount: number
@@ -152,7 +213,7 @@ export interface SubscriptionCheckoutResult {
 
 /** The plan limits that should be enforced */
 export interface PlanLimits {
-  tier: SubscriptionTier
+  tier: string
   maxActiveCampaigns: number
   maxCampaignGoal: number
   platformFeePercent: number
@@ -165,17 +226,22 @@ export interface PlanLimits {
   maxCollaboratorsPerCampaign: number
 }
 
-/** Predefined plan configurations */
+/**
+ * Seed plan configurations (v6 commercial model). These are the INITIAL values
+ * only — plans are DB-backed and admin-editable, and administrators may add
+ * further tiers from the dashboard. Code reads plans through the API/PlanService,
+ * never this constant directly (except as the seed + offline fallback).
+ */
 export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
   [SubscriptionTier.FREE]: {
     tier: SubscriptionTier.FREE,
-    name: 'Free',
-    description: 'Get started with basic crowdfunding',
+    name: 'Community',
+    description: 'Free for individuals and small community causes',
     priceMonthly: 0,
     priceYearly: 0,
-    platformFeePercent: 5,
+    platformFeePercent: 3.5,
     maxActiveCampaigns: 1,
-    maxCampaignGoal: 5000,
+    maxCampaignGoal: 10000,
     featuredListing: false,
     prioritySupport: false,
     advancedAnalytics: false,
@@ -186,65 +252,106 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
     maxTeamMembers: 1,
     campaignCollaboration: false,
     maxCollaboratorsPerCampaign: 0,
+    sortOrder: 0,
+    active: true,
+    isPublic: true,
+    accentColor: '#78909C',
   },
   [SubscriptionTier.STARTER]: {
     tier: SubscriptionTier.STARTER,
-    name: 'Starter',
-    description: 'For individuals and small causes',
-    priceMonthly: 9.99,
-    priceYearly: 99,
-    platformFeePercent: 3.5,
+    name: 'Plus',
+    description: 'For serious individual fundraisers running a few causes',
+    priceMonthly: 49,
+    priceYearly: 490,
+    platformFeePercent: 3.0,
     maxActiveCampaigns: 3,
-    maxCampaignGoal: 25000,
+    maxCampaignGoal: 50000,
     featuredListing: false,
     prioritySupport: false,
     advancedAnalytics: false,
-    customBranding: false,
+    customBranding: true,
     maxMediaPerCampaign: 10,
     escrowSupport: false,
     liveStreaming: false,
-    maxTeamMembers: 2,
+    maxTeamMembers: 1,
     campaignCollaboration: false,
     maxCollaboratorsPerCampaign: 0,
+    sortOrder: 1,
+    active: true,
+    isPublic: true,
+    accentColor: '#1565C0',
   },
   [SubscriptionTier.PRO]: {
     tier: SubscriptionTier.PRO,
     name: 'Pro',
-    description: 'For serious fundraisers and organizations',
-    priceMonthly: 29.99,
-    priceYearly: 299,
-    platformFeePercent: 2,
+    description: 'For creators, groups and frequent fundraisers',
+    priceMonthly: 149,
+    priceYearly: 1490,
+    platformFeePercent: 2.5,
     maxActiveCampaigns: 10,
-    maxCampaignGoal: 100000,
+    maxCampaignGoal: 250000,
     featuredListing: true,
     prioritySupport: true,
     advancedAnalytics: true,
-    customBranding: false,
+    customBranding: true,
     maxMediaPerCampaign: 25,
-    escrowSupport: false,
+    escrowSupport: true,
     liveStreaming: true,
-    maxTeamMembers: 5,
+    maxTeamMembers: 3,
     campaignCollaboration: true,
     maxCollaboratorsPerCampaign: 3,
+    sortOrder: 2,
+    active: true,
+    isPublic: true,
+    accentColor: '#2E3D2F',
+    popular: true,
+  },
+  [SubscriptionTier.ORGANIZATION]: {
+    tier: SubscriptionTier.ORGANIZATION,
+    name: 'Organization',
+    description: 'For NGOs, churches, schools and associations',
+    priceMonthly: 399,
+    priceYearly: 3990,
+    platformFeePercent: 2.0,
+    maxActiveCampaigns: 25,
+    maxCampaignGoal: 1000000,
+    featuredListing: true,
+    prioritySupport: true,
+    advancedAnalytics: true,
+    customBranding: true,
+    maxMediaPerCampaign: 50,
+    escrowSupport: true,
+    liveStreaming: true,
+    maxTeamMembers: 10,
+    campaignCollaboration: true,
+    maxCollaboratorsPerCampaign: 10,
+    sortOrder: 3,
+    active: true,
+    isPublic: true,
+    accentColor: '#8B6F4E',
   },
   [SubscriptionTier.ENTERPRISE]: {
     tier: SubscriptionTier.ENTERPRISE,
     name: 'Enterprise',
-    description: 'For NGOs, hospitals, schools, and large organizations',
-    priceMonthly: 99.99,
-    priceYearly: 999,
-    platformFeePercent: 1,
-    maxActiveCampaigns: -1, // unlimited
-    maxCampaignGoal: -1, // unlimited
+    description: 'For large institutions and major programs (from GHS 1,500; negotiated)',
+    priceMonthly: 1500,
+    priceYearly: 15000,
+    platformFeePercent: 1.25,
+    maxActiveCampaigns: -1, // unlimited (fair-use / negotiated)
+    maxCampaignGoal: -1, // unlimited (GHS 5M+ subject to approval)
     featuredListing: true,
     prioritySupport: true,
     advancedAnalytics: true,
-    customBranding: false,
+    customBranding: true,
     maxMediaPerCampaign: -1, // unlimited
-    escrowSupport: false,
+    escrowSupport: true,
     liveStreaming: true,
     maxTeamMembers: -1, // unlimited
     campaignCollaboration: true,
     maxCollaboratorsPerCampaign: -1, // unlimited
+    sortOrder: 4,
+    active: true,
+    isPublic: true,
+    accentColor: '#6A1B9A',
   },
 }

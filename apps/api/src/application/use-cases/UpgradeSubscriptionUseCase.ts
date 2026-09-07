@@ -14,12 +14,18 @@ const PERIOD_DAYS: Record<BillingCycle, number> = {
   [BillingCycle.YEARLY]: 365,
 };
 
-const TIER_RANK: Record<SubscriptionTier, number> = {
+// Coarse rank of the built-in seed tiers, used only to reject a downgrade via
+// this endpoint. Admin-added tiers are unknown here and rank above the seeds, so
+// a downgrade FROM a custom tier is still blocked. The authoritative ordering is
+// each plan's `sortOrder`; a fuller ranking lands when paid upgrades are enabled.
+const TIER_RANK: Record<string, number> = {
   [SubscriptionTier.FREE]: 0,
   [SubscriptionTier.STARTER]: 1,
   [SubscriptionTier.PRO]: 2,
-  [SubscriptionTier.ENTERPRISE]: 3,
+  [SubscriptionTier.ORGANIZATION]: 3,
+  [SubscriptionTier.ENTERPRISE]: 4,
 };
+const rankOf = (tier: string): number => TIER_RANK[tier] ?? 99;
 
 export class UpgradeSubscriptionUseCase {
   constructor(private readonly subscriptionRepo: SubscriptionRepositoryPort) {}
@@ -37,7 +43,7 @@ export class UpgradeSubscriptionUseCase {
       throw new AppError('Already subscribed to this tier', 409);
     }
 
-    if (TIER_RANK[input.tier] < TIER_RANK[existing.tier]) {
+    if (rankOf(input.tier) < rankOf(existing.tier)) {
       throw new AppError(
         'Cannot downgrade via the upgrade endpoint; use POST /subscriptions instead',
         400

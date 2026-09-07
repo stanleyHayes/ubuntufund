@@ -6,13 +6,13 @@ import {
 import type { SubscriptionPlanRepositoryPort } from '../../domain/ports/outbound/SubscriptionPlanRepositoryPort.js';
 import { logger } from '../../infrastructure/logging/logger.js';
 
-/** Stable display/order of tiers (cheapest → richest). */
-const TIER_ORDER: SubscriptionTier[] = [
-  SubscriptionTier.FREE,
-  SubscriptionTier.STARTER,
-  SubscriptionTier.PRO,
-  SubscriptionTier.ENTERPRISE,
-];
+/** Seed plans keyed by their (string) tier id, for fallback lookups. */
+const SEEDS = SUBSCRIPTION_PLANS as Record<string, SubscriptionPlan>;
+
+/** Order a plan list cheapest → richest by admin-set sortOrder, then price. */
+function bySortOrder(a: SubscriptionPlan, b: SubscriptionPlan): number {
+  return a.sortOrder - b.sortOrder || a.priceMonthly - b.priceMonthly;
+}
 
 /**
  * The single source of truth the rest of the app reads plan pricing + limits
@@ -29,29 +29,36 @@ export class PlanService {
    * A read failure is logged and swallowed, returning the default so callers
    * (limit enforcement, checkout pricing) keep working.
    */
-  async getPlan(tier: SubscriptionTier): Promise<SubscriptionPlan> {
+  async getPlan(tier: string): Promise<SubscriptionPlan> {
     try {
       const plan = await this.planRepo.findByTier(tier);
-      return plan ?? SUBSCRIPTION_PLANS[tier];
+      // DB row → seed for that tier → the free seed (safe floor for an unknown
+      // or since-deleted tier, so limit enforcement never crashes).
+      return plan ?? SEEDS[tier] ?? SEEDS[SubscriptionTier.FREE];
     } catch (error) {
       logger.error({ err: error, tier }, 'plan lookup failed; using default');
-      return SUBSCRIPTION_PLANS[tier];
+      return SEEDS[tier] ?? SEEDS[SubscriptionTier.FREE];
     }
   }
 
   /**
-   * Every tier's plan in a stable order — the DB row where one exists, the
-   * seeded default otherwise. A read failure falls back to the full default set
-   * so the plans surface is never empty.
+   * Every plan in a stable cheapest→richest order: the union of the persisted
+   * plans (including admin-ADDED tiers) and any seed tier not yet in the DB,
+   * sorted by the admin-set `sortOrder`. A read failure falls back to the full
+   * seed set so the plans surface is never empty.
    */
   async getAllPlans(): Promise<SubscriptionPlan[]> {
     try {
       const rows = await this.planRepo.findAll();
       const byTier = new Map(rows.map((plan) => [plan.tier, plan]));
-      return TIER_ORDER.map((tier) => byTier.get(tier) ?? SUBSCRIPTION_PLANS[tier]);
+      // Ensure the built-in seed tiers always appear, even before seeding runs.
+      for (const seed of Object.values(SUBSCRIPTION_PLANS)) {
+        if (!byTier.has(seed.tier)) byTier.set(seed.tier, seed);
+      }
+      return [...byTier.values()].sort(bySortOrder);
     } catch (error) {
       logger.error({ err: error }, 'plan list failed; using defaults');
-      return TIER_ORDER.map((tier) => SUBSCRIPTION_PLANS[tier]);
+      return Object.values(SUBSCRIPTION_PLANS).sort(bySortOrder);
     }
   }
 }

@@ -1,4 +1,4 @@
-import type { SubscriptionTier, BillingCycle } from './subscription'
+import type { BillingCycle } from './subscription'
 
 // Coupons discount a paid-subscription checkout. Money is in GHS major units
 // (mirroring subscription.ts prices). A coupon is redeemed idempotently on the
@@ -26,7 +26,7 @@ export interface Coupon {
   redemptions: number // running count of CONSUMED redemptions
   perUserLimit?: number // undefined/0 = unlimited per user
   minSubtotal?: number // optional GHS floor the base price must meet
-  appliesToTiers: SubscriptionTier[] // empty = all paid tiers
+  appliesToTiers: string[] // empty = all paid tiers
   appliesToBillingCycles: BillingCycle[] // empty = all cycles
   validFrom?: Date
   validUntil?: Date
@@ -43,7 +43,7 @@ export interface CreateCouponInput {
   maxRedemptions?: number
   perUserLimit?: number
   minSubtotal?: number
-  appliesToTiers?: SubscriptionTier[]
+  appliesToTiers?: string[]
   appliesToBillingCycles?: BillingCycle[]
   validFrom?: string // ISO strings over the wire; the use-case coerces to Date
   validUntil?: string
@@ -57,7 +57,7 @@ export interface UpdateCouponInput {
   maxRedemptions?: number
   perUserLimit?: number
   minSubtotal?: number
-  appliesToTiers?: SubscriptionTier[]
+  appliesToTiers?: string[]
   appliesToBillingCycles?: BillingCycle[]
   validFrom?: string
   validUntil?: string
@@ -71,7 +71,7 @@ export interface CouponRedemption {
   userId: string
   subscriptionId?: string
   checkoutId?: string
-  tier: SubscriptionTier
+  tier: string
   billingCycle: BillingCycle
   status: CouponRedemptionStatus
   baseAmount: number
@@ -86,7 +86,7 @@ export interface CouponRedemption {
 export interface CouponValidationInput {
   // POST /coupons/preview body
   code: string
-  tier: SubscriptionTier
+  tier: string
   billingCycle: BillingCycle
 }
 

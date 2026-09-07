@@ -136,10 +136,10 @@ describe('Refunds (spec §14)', () => {
     const campaignId = await createActiveCampaign(app, token, userId);
     const { intentId } = await settleDonation(app, campaignId);
 
-    // Settled: raised 200, pending 186.70 (200 - 10 platform - 3.30 processor).
+    // Settled: raised 200, pending 189.70 (200 - 7 platform (Free 3.5%) - 3.30 processor).
     let balance = await CampaignBalanceModel.findOne({ campaignId });
     expect(balance?.totalRaised).toBe(200);
-    expect(balance?.pendingBalance).toBe(186.7);
+    expect(balance?.pendingBalance).toBe(189.7);
 
     const res = await request(app)
       .post(`/api/v1/admin/payments/${intentId}/refund`)

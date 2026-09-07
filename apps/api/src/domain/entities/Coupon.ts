@@ -1,5 +1,5 @@
 import { CouponDiscountType } from '@ubuntu-fund/types';
-import type { SubscriptionTier, BillingCycle } from '@ubuntu-fund/types';
+import type { BillingCycle } from '@ubuntu-fund/types';
 
 export interface CouponProps {
   id: string;
@@ -12,7 +12,7 @@ export interface CouponProps {
   redemptions: number; // running count of CONSUMED redemptions
   perUserLimit?: number; // undefined/0 = unlimited per user
   minSubtotal?: number; // optional GHS floor the base price must meet
-  appliesToTiers: SubscriptionTier[]; // empty = all paid tiers
+  appliesToTiers: string[]; // empty = all paid tiers
   appliesToBillingCycles: BillingCycle[]; // empty = all cycles
   validFrom?: Date;
   validUntil?: Date;
@@ -79,7 +79,7 @@ export class CouponEntity {
   get minSubtotal(): number | undefined {
     return this.props.minSubtotal;
   }
-  get appliesToTiers(): SubscriptionTier[] {
+  get appliesToTiers(): string[] {
     return this.props.appliesToTiers;
   }
   get appliesToBillingCycles(): BillingCycle[] {
@@ -110,7 +110,7 @@ export class CouponEntity {
   }
 
   /** Whether the coupon covers the chosen tier + billing cycle (empty list = all). */
-  appliesTo(tier: SubscriptionTier, billingCycle: BillingCycle): boolean {
+  appliesTo(tier: string, billingCycle: BillingCycle): boolean {
     const tierOk =
       this.props.appliesToTiers.length === 0 ||
       this.props.appliesToTiers.includes(tier);

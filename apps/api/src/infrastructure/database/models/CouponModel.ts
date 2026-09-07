@@ -1,9 +1,5 @@
 import mongoose, { Schema, type Document } from 'mongoose';
-import {
-  CouponDiscountType,
-  SubscriptionTier,
-  BillingCycle,
-} from '@ubuntu-fund/types';
+import { CouponDiscountType, BillingCycle } from '@ubuntu-fund/types';
 
 export interface CouponDocument extends Document {
   code: string;
@@ -15,7 +11,7 @@ export interface CouponDocument extends Document {
   redemptions: number;
   perUserLimit?: number;
   minSubtotal?: number;
-  appliesToTiers: SubscriptionTier[];
+  appliesToTiers: string[];
   appliesToBillingCycles: BillingCycle[];
   validFrom?: Date;
   validUntil?: Date;
@@ -50,9 +46,9 @@ const couponSchema = new Schema<CouponDocument>(
     perUserLimit: { type: Number },
     minSubtotal: { type: Number },
     // Empty = applies to all paid tiers / all cycles.
+    // Free-form tier ids (admin-added tiers included); empty = all paid tiers.
     appliesToTiers: {
       type: [String],
-      enum: Object.values(SubscriptionTier),
       default: [],
     },
     appliesToBillingCycles: {

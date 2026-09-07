@@ -7,7 +7,7 @@ import Button from '@mui/material/Button'
 import ReplayRoundedIcon from '@mui/icons-material/ReplayRounded'
 import { keyframes } from '@emotion/react'
 import { ItemNotFound, BrandLogo, formatCurrency, SHAPE, LoadingDots } from '@ubuntu-fund/ui'
-import { SUBSCRIPTION_PLANS } from '@ubuntu-fund/types'
+import { SUBSCRIPTION_PLANS, type SubscriptionPlan } from '@ubuntu-fund/types'
 import {
   getSubscriptionCheckoutStatus,
   readSubscriptionHandoff,
@@ -149,7 +149,9 @@ export function SubscriptionCallbackPage() {
   }, [checkoutId, pollNonce])
 
   const tier = view?.tier ?? handoff?.tier
-  const planName = tier ? SUBSCRIPTION_PLANS[tier]?.name : undefined
+  const planName = tier
+    ? (SUBSCRIPTION_PLANS as Record<string, SubscriptionPlan>)[tier]?.name
+    : undefined
   const chargedAmount = view?.finalAmount ?? handoff?.finalAmount
   const currency = view?.currency ?? handoff?.currency ?? 'GHS'
   const activatedWithoutCharge = chargedAmount === 0

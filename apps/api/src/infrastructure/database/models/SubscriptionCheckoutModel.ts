@@ -1,13 +1,12 @@
 import mongoose, { Schema, type Document } from 'mongoose';
 import {
   SubscriptionCheckoutStatus,
-  SubscriptionTier,
   BillingCycle,
 } from '@ubuntu-fund/types';
 
 export interface SubscriptionCheckoutDocument extends Document {
   userId: string;
-  tier: SubscriptionTier;
+  tier: string;
   billingCycle: BillingCycle;
   status: SubscriptionCheckoutStatus;
   baseAmount: number;
@@ -24,9 +23,9 @@ export interface SubscriptionCheckoutDocument extends Document {
 const subscriptionCheckoutSchema = new Schema<SubscriptionCheckoutDocument>(
   {
     userId: { type: String, required: true, index: true },
+    // Free-form so a checkout can target an admin-added tier.
     tier: {
       type: String,
-      enum: Object.values(SubscriptionTier),
       required: true,
     },
     billingCycle: {

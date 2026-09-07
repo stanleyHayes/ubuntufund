@@ -155,7 +155,7 @@ describe('Campaigns Integration', () => {
       const res = await request(app)
         .post('/api/v1/campaigns')
         .set('Authorization', `Bearer ${token}`)
-        .send(campaignPayload({ title: 'Too Ambitious', goalAmount: 6000 })); // Free caps at 5000
+        .send(campaignPayload({ title: 'Too Ambitious', goalAmount: 12000 })); // Free caps at 10000
       expect(res.status).toBe(422);
       expect(res.body.message).toMatch(/caps campaign goals/i);
 
@@ -166,7 +166,7 @@ describe('Campaigns Integration', () => {
     it('lifts the goal ceiling on a higher plan', async () => {
       const { userId, token } = await registerUser(app, uniqueEmail('starter'));
       await setVerificationLevel(userId, 2);
-      await seedSubscription(userId, SubscriptionTier.STARTER); // caps goals at 25000
+      await seedSubscription(userId, SubscriptionTier.STARTER); // Plus caps goals at 50000
 
       const res = await request(app)
         .post('/api/v1/campaigns')

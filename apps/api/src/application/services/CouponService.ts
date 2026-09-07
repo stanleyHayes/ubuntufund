@@ -1,4 +1,4 @@
-import type { SubscriptionTier, BillingCycle } from '@ubuntu-fund/types';
+import type { BillingCycle } from '@ubuntu-fund/types';
 import type { CouponEntity } from '../../domain/entities/Coupon.js';
 import type { CouponRepositoryPort } from '../../domain/ports/outbound/CouponRepositoryPort.js';
 import type { CouponRedemptionRepositoryPort } from '../../domain/ports/outbound/CouponRedemptionRepositoryPort.js';
@@ -11,7 +11,7 @@ function round2(n: number): number {
 export interface ValidateAndPriceInput {
   /** Raw code from the client; matched UPPERCASE. */
   code: string;
-  tier: SubscriptionTier;
+  tier: string;
   billingCycle: BillingCycle;
   /** The redeeming user, for the per-user limit. */
   userId: string;

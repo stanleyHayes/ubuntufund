@@ -19,7 +19,6 @@ import type {
   CreateSubscriptionCheckoutInput,
   SubscriptionCheckout,
   SubscriptionCheckoutResult,
-  SubscriptionTier,
   BillingCycle,
 } from '@ubuntu-fund/types'
 
@@ -112,7 +111,7 @@ const HANDOFF_KEY = 'uf_pending_subscriptions'
 export interface PendingSubscription {
   checkoutId: string
   reference?: string
-  tier: SubscriptionTier
+  tier: string
   billingCycle: BillingCycle
   finalAmount: number
   currency: string

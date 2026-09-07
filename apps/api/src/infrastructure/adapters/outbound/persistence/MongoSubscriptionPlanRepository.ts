@@ -1,6 +1,7 @@
 import {
   SUBSCRIPTION_PLANS,
   SubscriptionTier,
+  type CreatePlanInput,
   type SubscriptionPlan,
   type UpdateSubscriptionPlanInput,
 } from '@ubuntu-fund/types';
@@ -31,6 +32,11 @@ function toDomain(doc: SubscriptionPlanDocument): SubscriptionPlan {
     maxTeamMembers: doc.maxTeamMembers,
     campaignCollaboration: doc.campaignCollaboration,
     maxCollaboratorsPerCampaign: doc.maxCollaboratorsPerCampaign,
+    sortOrder: doc.sortOrder ?? 0,
+    active: doc.active ?? true,
+    isPublic: doc.isPublic ?? true,
+    accentColor: doc.accentColor ?? '#78909C',
+    popular: doc.popular ?? false,
   };
 }
 
@@ -42,13 +48,24 @@ export class MongoSubscriptionPlanRepository
     return docs.map(toDomain);
   }
 
-  async findByTier(tier: SubscriptionTier): Promise<SubscriptionPlan | null> {
+  async findByTier(tier: string): Promise<SubscriptionPlan | null> {
     const doc = await SubscriptionPlanModel.findOne({ tier });
     return doc ? toDomain(doc) : null;
   }
 
+  async create(input: CreatePlanInput): Promise<SubscriptionPlan | null> {
+    // Unique tier key: a duplicate create is a no-op (returns null).
+    const existing = await SubscriptionPlanModel.findOne({ tier: input.tier });
+    if (existing) return null;
+    const doc = await SubscriptionPlanModel.create({
+      ...input,
+      description: input.description ?? '',
+    });
+    return toDomain(doc);
+  }
+
   async update(
-    tier: SubscriptionTier,
+    tier: string,
     patch: UpdateSubscriptionPlanInput
   ): Promise<SubscriptionPlan | null> {
     // `tier` is the immutable key; only the editable fields in `patch` are set.

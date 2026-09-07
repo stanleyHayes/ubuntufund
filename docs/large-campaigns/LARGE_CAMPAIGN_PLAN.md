@@ -30,6 +30,32 @@ system rather than by rewriting it.
 
 ---
 
+## Phase 1 — Commercial foundation (delivered 2026-09-07)
+
+The subscription/commercial layer is now the **v6 model**, and — per the product
+owner's direction — plans are **fully admin-managed**, not hard-coded:
+
+- **v6 plan set** seeded: Community / Plus / Pro / Organization / Enterprise in
+  **GHS** (0 / 49 / 149 / 399 / 1,500+), fees 3.5 / 3.0 / 2.5 / 2.0 / 1.25%, goal
+  caps 10k / 50k / 250k / 1M / unlimited, active-campaign counts 1 / 3 / 10 / 25 /
+  unlimited. The existing tier enum values are unchanged (`free`→Community,
+  `starter`→Plus), so **no subscriber migration** is needed.
+- **Tiers are admin-managed + API-driven.** `tier` is now a free-form string (the
+  DB models no longer enum-constrain it), so admins can **add new tiers** from the
+  dashboard. New plan attributes: `sortOrder`, `active`, `isPublic`, `accentColor`,
+  `popular`. New `POST /plans` (create) alongside `PUT /plans/:tier`; `PlanService`
+  returns all DB plans (admin-added included) ordered by `sortOrder`. The
+  `SUBSCRIPTION_PLANS` constant is now only the **seed + offline fallback**.
+- **Every surface renders plans dynamically** from the API/seed sorted by
+  `sortOrder`, coloured by `accentColor` — marketing pricing, web subscription,
+  admin (create dialog + editor), and mobile — with no hardcoded per-tier maps.
+- This **supersedes ADR-1's** "keep the enum as authority" stance: the enum is now
+  just the seed identity; the DB is authoritative and extensible.
+
+Still open in this phase's scope (Phase 2 in the plan): the compliance-approved
+limit + review-status **publish gate** (`effective_limit = MIN(plan, compliance)`)
+— the plan/active-count/goal-cap guard exists; the compliance half does not yet.
+
 ## 1. Repository audit — what already exists
 
 The API is Express + Mongoose, hexagonal (domain / application / infrastructure,

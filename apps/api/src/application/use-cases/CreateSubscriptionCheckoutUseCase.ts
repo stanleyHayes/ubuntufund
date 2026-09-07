@@ -71,6 +71,13 @@ export class CreateSubscriptionCheckoutUseCase {
     // Price from the DB-backed plan (admin-editable), with the code defaults as
     // the safe fallback baked into PlanService.
     const plan = await this.planService.getPlan(tier);
+    // Tier ids are free-form (admins can add tiers), so validate the requested
+    // tier resolves to a REAL, active plan — getPlan falls back to the free plan
+    // for an unknown tier, so a mismatch means the tier does not exist. This stops
+    // a client self-activating an arbitrary/inactive tier for free.
+    if (plan.tier !== tier || plan.active === false) {
+      throw new AppError('That subscription plan is not available', 400);
+    }
     const baseAmount = round2(
       billingCycle === BillingCycle.YEARLY
         ? plan.priceYearly
