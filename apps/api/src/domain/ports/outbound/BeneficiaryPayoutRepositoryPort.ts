@@ -10,6 +10,9 @@ export interface BeneficiaryPayoutRepositoryPort {
     beneficiaryId: string
   ): Promise<BeneficiaryPayoutEntity[]>;
 
+  /** Payouts stuck in PROCESSING since before `olderThan` (missed webhook). */
+  findStuckProcessing(olderThan: Date): Promise<BeneficiaryPayoutEntity[]>;
+
   /**
    * Maker-checker: atomically record the FIRST admin approval (set
    * firstApprovedBy/At while PENDING and not yet first-approved). Null when

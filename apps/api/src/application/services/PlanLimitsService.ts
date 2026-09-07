@@ -95,6 +95,12 @@ export class PlanLimitsService {
       const freePlan = await this.getPlanFor(SubscriptionTier.FREE);
       return freePlan.platformFeePercent;
     }
+    // Fee grandfathering (ADR-5): a campaign charges the rate locked at creation,
+    // so a mid-campaign plan-fee change never surprises the organizer. Legacy
+    // campaigns without a lock fall back to the organizer's live plan rate.
+    if (campaign.lockedPlatformFeePercent !== undefined) {
+      return campaign.lockedPlatformFeePercent;
+    }
     return this.platformFeePercent(campaign.creatorId);
   }
 

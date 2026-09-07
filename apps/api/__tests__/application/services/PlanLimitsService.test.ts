@@ -199,4 +199,31 @@ describe('PlanLimitsService', () => {
       ).resolves.toBeUndefined()
     })
   })
+
+  describe('platformFeePercentForCampaign — fee grandfathering (ADR-5)', () => {
+    it('uses the campaign\'s locked fee, ignoring a later plan-fee change', async () => {
+      // Organizer is on a plan whose live fee is now 1.0%, but the campaign
+      // locked 3.5% at creation — donations must still be charged 3.5%.
+      subscriptionRepo.findByUserId = vi
+        .fn()
+        .mockResolvedValue(makeSubscription(SubscriptionTier.ENTERPRISE)) // low live fee
+      campaignRepo.findById = vi.fn().mockResolvedValue({
+        creatorId: 'user-1',
+        lockedPlatformFeePercent: 3.5,
+      })
+      await expect(service.platformFeePercentForCampaign('c-1')).resolves.toBe(3.5)
+    })
+
+    it('falls back to the live plan rate for a legacy campaign with no lock', async () => {
+      subscriptionRepo.findByUserId = vi
+        .fn()
+        .mockResolvedValue(makeSubscription(SubscriptionTier.FREE))
+      campaignRepo.findById = vi.fn().mockResolvedValue({
+        creatorId: 'user-1',
+        lockedPlatformFeePercent: undefined,
+      })
+      // Free plan's live platform fee (v6 = 3.5%).
+      await expect(service.platformFeePercentForCampaign('c-1')).resolves.toBe(3.5)
+    })
+  })
 })

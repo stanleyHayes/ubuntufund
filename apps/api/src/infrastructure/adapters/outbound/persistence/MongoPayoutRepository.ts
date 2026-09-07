@@ -89,6 +89,16 @@ export class MongoPayoutRepository implements PayoutRepositoryPort {
     return docs.map(toDomain);
   }
 
+  async findStuckProcessing(olderThan: Date): Promise<PayoutEntity[]> {
+    const docs = await PayoutModel.find({
+      status: 'PROCESSING',
+      providerRef: { $exists: true },
+      legs: { $exists: false }, // single-transfer only; batched reconciled per-leg
+      updatedAt: { $lt: olderThan },
+    }).sort({ updatedAt: 1 });
+    return docs.map(toDomain);
+  }
+
   async recordFirstApproval(
     id: string,
     makerId: string

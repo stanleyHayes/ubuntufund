@@ -25,6 +25,8 @@ export interface CampaignProps {
   updatedAt: Date;
   /** Risk/value tier 1–5 (spec §4), derived from the goal at creation. */
   tier?: number;
+  /** Platform fee % locked from the organizer's plan at creation (ADR-5). */
+  lockedPlatformFeePercent?: number;
 }
 
 export class CampaignEntity {
@@ -84,6 +86,9 @@ export class CampaignEntity {
   }
   get tier(): number | undefined {
     return this.props.tier;
+  }
+  get lockedPlatformFeePercent(): number | undefined {
+    return this.props.lockedPlatformFeePercent;
   }
 
   canReceiveDonation(): boolean {

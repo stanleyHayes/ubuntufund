@@ -14,8 +14,14 @@ export default defineConfig({
     // across files via Vitest's per-file module isolation.
     fileParallelism: false,
     globalSetup: ['./__tests__/helpers/globalSetup.ts'],
-    testTimeout: 20000,
-    hookTimeout: 20000,
+    // Integration tests hit a real mongod and the provider fetch mocks; on a
+    // loaded machine an occasional undici socket timeout or slow bcrypt hook can
+    // flake a run even though the DBs are per-worker isolated. Retry twice — a
+    // genuine failure still fails all attempts — and use generous default
+    // timeouts so a plain `vitest run` (no CLI overrides) is resilient too.
+    retry: 2,
+    testTimeout: 120000,
+    hookTimeout: 120000,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

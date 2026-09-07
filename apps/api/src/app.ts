@@ -93,6 +93,7 @@ import { CreateDonationIntentUseCase } from './application/use-cases/CreateDonat
 import { HandlePaystackWebhookUseCase } from './application/use-cases/HandlePaystackWebhookUseCase.js';
 import { HandleFlutterwaveWebhookUseCase } from './application/use-cases/HandleFlutterwaveWebhookUseCase.js';
 import { ReconcilePaymentsUseCase } from './application/use-cases/ReconcilePaymentsUseCase.js';
+import { ReconcilePayoutsUseCase } from './application/use-cases/ReconcilePayoutsUseCase.js';
 import { ProcessRefundUseCase } from './application/use-cases/ProcessRefundUseCase.js';
 import { RecordPaymentAttemptUseCase } from './application/use-cases/RecordPaymentAttemptUseCase.js';
 import { HandlePayoutWebhookUseCase } from './application/use-cases/HandlePayoutWebhookUseCase.js';
@@ -623,6 +624,16 @@ export function createApp(): express.Express {
     campaignLedgerProjector,
     gatewayRegistry
   );
+  // Payout reconciliation: repair payouts stuck in PROCESSING (a missed/delayed
+  // transfer webhook) by re-verifying against the provider and driving the same
+  // idempotent settlement handlers.
+  const reconcilePayoutsUseCase = new ReconcilePayoutsUseCase(
+    payoutRepo,
+    beneficiaryPayoutRepo,
+    handlePayoutWebhookUseCase,
+    handleBeneficiaryPayoutWebhookUseCase,
+    paymentGateway
+  );
   // Scheduled reconciliation sweep (spec §13). Production-only + flag-gated so
   // tests/dev never spawn it; unref'd so it can't hold the process open.
   if (config.payments.reconciliationEnabled && config.nodeEnv === 'production') {
@@ -631,6 +642,9 @@ export function createApp(): express.Express {
       reconcilePaymentsUseCase
         .reconcileStale({ olderThanMinutes: 30 })
         .catch((err) => logger.error({ err }, 'scheduled reconciliation failed'));
+      reconcilePayoutsUseCase
+        .reconcileStale({ olderThanMinutes: 30 })
+        .catch((err) => logger.error({ err }, 'scheduled payout reconciliation failed'));
     }, RECONCILE_INTERVAL_MS);
     timer.unref();
   }
@@ -949,7 +963,8 @@ export function createApp(): express.Express {
     donationIntentRepo,
     paymentAttemptRepo,
     reconcilePaymentsUseCase,
-    processRefundUseCase
+    processRefundUseCase,
+    reconcilePayoutsUseCase
   );
   const payoutController = new PayoutController(
     listBanksUseCase,

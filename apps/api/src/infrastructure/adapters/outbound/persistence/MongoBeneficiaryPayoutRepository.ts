@@ -91,6 +91,15 @@ export class MongoBeneficiaryPayoutRepository
     return doc ? toDomain(doc) : null;
   }
 
+  async findStuckProcessing(olderThan: Date): Promise<BeneficiaryPayoutEntity[]> {
+    const docs = await BeneficiaryPayoutModel.find({
+      status: 'PROCESSING',
+      providerRef: { $exists: true },
+      updatedAt: { $lt: olderThan },
+    }).sort({ updatedAt: 1 });
+    return docs.map(toDomain);
+  }
+
   async transitionToProcessing(
     id: string,
     fields: { approvedBy: string; providerRef: string }

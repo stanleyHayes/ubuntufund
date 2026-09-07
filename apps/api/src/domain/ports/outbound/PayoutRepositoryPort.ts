@@ -16,6 +16,13 @@ export interface PayoutRepositoryPort {
   findByStatuses(statuses: PayoutStatus[]): Promise<PayoutEntity[]>;
 
   /**
+   * Single-transfer payouts stuck in PROCESSING since before `olderThan` (a
+   * provider webhook was missed/delayed). Batched payouts are excluded — their
+   * per-leg reconciliation is a separate concern.
+   */
+  findStuckProcessing(olderThan: Date): Promise<PayoutEntity[]>;
+
+  /**
    * Maker-checker (spec §16): atomically record the FIRST admin approval of a
    * high-value payout — set `firstApprovedBy`/`firstApprovedAt` while it is still
    * PENDING and not yet first-approved. Returns the updated payout, or null when

@@ -67,6 +67,10 @@ export class CreateCampaignUseCase {
         : CampaignStatus.ACTIVE;
     }
 
+    // Lock the platform fee % from the organizer's plan at creation (ADR-5
+    // grandfathering), so a later admin fee change never surprises this campaign.
+    const lockedPlatformFeePercent = await this.planLimits.platformFeePercent(creatorId);
+
     const now = new Date();
     const campaign = new CampaignEntity({
       id: '', // Will be assigned by the repository
@@ -86,6 +90,7 @@ export class CreateCampaignUseCase {
       createdAt: now,
       updatedAt: now,
       tier,
+      lockedPlatformFeePercent,
     });
 
     const saved = await this.campaignRepo.save(campaign);

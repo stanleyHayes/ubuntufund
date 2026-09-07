@@ -58,6 +58,13 @@ export interface Campaign {
    * tiers require manual compliance review before going live.
    */
   tier?: number
+  /**
+   * The platform fee % locked at creation from the organizer's plan (spec §18 /
+   * ADR-5 grandfathering). Donations to this campaign are charged at this rate,
+   * so an admin changing plan fees mid-campaign never surprises the organizer.
+   * Legacy campaigns without a lock fall back to the organizer's live plan rate.
+   */
+  lockedPlatformFeePercent?: number
 }
 
 /**

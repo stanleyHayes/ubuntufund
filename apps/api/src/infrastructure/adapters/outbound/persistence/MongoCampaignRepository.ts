@@ -26,6 +26,7 @@ function toDomain(doc: CampaignDocument): CampaignEntity {
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
     tier: doc.tier,
+    lockedPlatformFeePercent: doc.lockedPlatformFeePercent,
   });
 }
 
@@ -50,6 +51,7 @@ export class MongoCampaignRepository implements CampaignRepositoryPort {
       startDate: plain.startDate,
       endDate: plain.endDate,
       tier: plain.tier,
+      lockedPlatformFeePercent: plain.lockedPlatformFeePercent,
     });
     return toDomain(doc);
   }

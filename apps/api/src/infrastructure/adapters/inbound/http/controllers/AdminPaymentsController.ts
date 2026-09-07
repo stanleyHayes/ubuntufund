@@ -4,6 +4,7 @@ import type { DonationIntentEntity } from '../../../../../domain/entities/Donati
 import type { DonationIntentRepositoryPort } from '../../../../../domain/ports/outbound/DonationIntentRepositoryPort.js';
 import type { PaymentAttemptRepositoryPort } from '../../../../../domain/ports/outbound/PaymentAttemptRepositoryPort.js';
 import type { ReconcilePaymentsUseCase } from '../../../../../application/use-cases/ReconcilePaymentsUseCase.js';
+import type { ReconcilePayoutsUseCase } from '../../../../../application/use-cases/ReconcilePayoutsUseCase.js';
 import type { ProcessRefundUseCase } from '../../../../../application/use-cases/ProcessRefundUseCase.js';
 import type { AuthenticatedRequest } from '../../middleware/authMiddleware.js';
 import { AppError } from '../../middleware/errorHandler.js';
@@ -42,7 +43,8 @@ export class AdminPaymentsController {
     private readonly donationIntentRepo: DonationIntentRepositoryPort,
     private readonly paymentAttemptRepo: PaymentAttemptRepositoryPort,
     private readonly reconcilePaymentsUseCase: ReconcilePaymentsUseCase,
-    private readonly processRefundUseCase: ProcessRefundUseCase
+    private readonly processRefundUseCase: ProcessRefundUseCase,
+    private readonly reconcilePayoutsUseCase: ReconcilePayoutsUseCase
   ) {}
 
   /** POST /admin/payments/:id/refund — refund a contribution (spec §14). */
@@ -139,6 +141,23 @@ export class AdminPaymentsController {
       const summary = await this.reconcilePaymentsUseCase.reconcileStale({
         olderThanMinutes: body.olderThanMinutes,
         limit: body.limit,
+      });
+      res.json({ data: summary, status: 'success' });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /** POST /admin/reconciliation/payouts — reconcile stuck-PROCESSING payouts. */
+  runPayoutReconciliation = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const body = (req.body ?? {}) as { olderThanMinutes?: number };
+      const summary = await this.reconcilePayoutsUseCase.reconcileStale({
+        olderThanMinutes: body.olderThanMinutes ?? 30,
       });
       res.json({ data: summary, status: 'success' });
     } catch (error) {
