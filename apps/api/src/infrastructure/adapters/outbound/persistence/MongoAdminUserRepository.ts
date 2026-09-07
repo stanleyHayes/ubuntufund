@@ -19,6 +19,7 @@ function toRecord(doc: UserDocument): AdminUserRecord {
     trustScore: doc.trustScore,
     country: doc.country,
     emailVerified: doc.emailVerified,
+    complianceApprovedCampaignLimit: doc.complianceApprovedCampaignLimit,
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
   };

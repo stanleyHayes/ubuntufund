@@ -1,7 +1,9 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Box, Typography } from '@mui/material'
+import { Alert, Box, TextField, Typography } from '@mui/material'
 import Button from '@mui/material/Button'
+import GavelRoundedIcon from '@mui/icons-material/GavelRounded'
+import { api } from '@/lib/api'
 import { keyframes } from '@mui/system'
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser'
 import PauseCircleOutlineIcon from '@mui/icons-material/PauseCircleOutline'
@@ -43,6 +45,108 @@ function trustColor(score: number): string {
   if (score >= 70) return '#5E8F72'
   if (score >= 40) return '#D3A95C'
   return '#C06B58'
+}
+
+/** Current compliance limit rendered for display. */
+function describeLimit(limit?: number): string {
+  if (limit === undefined) return 'None (plan cap only)'
+  if (limit === -1) return 'Unlimited (approved)'
+  return `GHS ${limit.toLocaleString('en-US')}`
+}
+
+/**
+ * Set/clear a user's compliance-approved campaign-goal ceiling (spec §18). The
+ * effective goal cap is MIN(plan cap, this); the change is audited server-side
+ * with the given reason.
+ */
+function ComplianceLimitControl({ userId, current }: { userId: string; current?: number }) {
+  const [value, setValue] = useState<string>(
+    current === undefined ? '' : current === -1 ? 'unlimited' : String(current),
+  )
+  const [reason, setReason] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState<string | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+  const [saved, setSaved] = useState<number | undefined>(current)
+
+  const save = async () => {
+    setSaving(true)
+    setErr(null)
+    setMsg(null)
+    try {
+      const v = value.trim().toLowerCase()
+      let limit: number | null
+      if (v === '') limit = null
+      else if (v === 'unlimited' || v === '-1') limit = -1
+      else {
+        const n = Number(v)
+        if (!Number.isFinite(n) || n < 0) {
+          throw new Error('Enter a non-negative amount, "unlimited", or leave blank to clear')
+        }
+        limit = n
+      }
+      await api.put(`/users/${userId}/compliance-limit`, { limit, reason: reason.trim() || undefined })
+      setSaved(limit === null ? undefined : limit)
+      setMsg('Compliance limit updated.')
+      setReason('')
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Update failed')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const fieldSx = {
+    '& .MuiInputBase-input': { color: '#E6E6F0', fontFamily: '"Outfit", sans-serif' },
+    '& .MuiOutlinedInput-notchedOutline': { borderColor: '#2A2A3A' },
+    '& .MuiInputLabel-root': { color: '#8A8AA0' },
+  }
+
+  return (
+    <Box sx={{ p: 2.5, borderBottom: `1px solid ${B}` }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+        <GavelRoundedIcon sx={{ fontSize: 18, color: '#8FA0C8' }} />
+        <Typography sx={{ fontSize: '0.7rem', color: '#8A8AA0', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+          Compliance limit
+        </Typography>
+      </Box>
+      <Typography sx={{ fontSize: '0.85rem', color: '#E6E6F0', mb: 1.5 }}>
+        {describeLimit(saved)}
+      </Typography>
+      <TextField
+        size="small"
+        fullWidth
+        label='Amount / "unlimited" / blank to clear'
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        sx={{ ...fieldSx, mb: 1 }}
+      />
+      <TextField
+        size="small"
+        fullWidth
+        label="Reason (optional)"
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        sx={{ ...fieldSx, mb: 1 }}
+      />
+      {msg && <Alert severity="success" sx={{ mb: 1, py: 0 }}>{msg}</Alert>}
+      {err && <Alert severity="error" sx={{ mb: 1, py: 0 }}>{err}</Alert>}
+      <Button
+        variant="outlined"
+        fullWidth
+        size="small"
+        disabled={saving}
+        onClick={save}
+        sx={{
+          color: '#8FA0C8', borderColor: '#8FA0C8', textTransform: 'none',
+          fontFamily: '"Outfit", sans-serif',
+          '&:hover': { borderColor: '#8FA0C8', bgcolor: 'rgba(143,160,200,0.08)' },
+        }}
+      >
+        {saving ? 'Saving…' : 'Save limit'}
+      </Button>
+    </Box>
+  )
 }
 
 export default function UserDetailPage() {
@@ -253,6 +357,7 @@ export default function UserDetailPage() {
               Ban
             </Button>
           </Box>
+          <ComplianceLimitControl userId={id ?? ''} current={user.complianceApprovedCampaignLimit} />
           {/* Trust Score display */}
           <Box sx={{ p: 2.5, flex: 1 }}>
             <Typography sx={{ fontSize: '0.65rem', textTransform: 'uppercase', color: '#6B6B80', letterSpacing: 0.8, mb: 0.5 }}>

@@ -65,23 +65,33 @@ export class MongoUserRepository implements UserRepositoryPort {
 
   async update(user: UserEntity): Promise<UserEntity> {
     const plain = user.toPlain();
+    const $set: Record<string, unknown> = {
+      name: plain.name,
+      avatarUrl: plain.avatarUrl,
+      role: plain.role,
+      verificationLevel: plain.verificationLevel,
+      trustScore: plain.trustScore.value,
+      passwordHash: plain.passwordHash,
+      country: plain.country,
+      emailVerified: plain.emailVerified,
+      organizationName: plain.organizationName,
+      organizationType: plain.organizationType,
+      registrationNumber: plain.registrationNumber,
+      website: plain.website,
+    };
+    // Mongoose ignores `undefined` on $set, so clearing a compliance limit must
+    // $unset the field rather than set it to undefined (otherwise the old value
+    // persists). Set it explicitly when present.
+    const update: Record<string, unknown> = { $set };
+    if (plain.complianceApprovedCampaignLimit === undefined) {
+      update.$unset = { complianceApprovedCampaignLimit: 1 };
+    } else {
+      $set.complianceApprovedCampaignLimit = plain.complianceApprovedCampaignLimit;
+    }
+
     const doc = await UserModel.findByIdAndUpdate(
       { _id: plain.id, deletedAt: { $exists: false } },
-      {
-        name: plain.name,
-        avatarUrl: plain.avatarUrl,
-        role: plain.role,
-        verificationLevel: plain.verificationLevel,
-        trustScore: plain.trustScore.value,
-        passwordHash: plain.passwordHash,
-        country: plain.country,
-        emailVerified: plain.emailVerified,
-        organizationName: plain.organizationName,
-        organizationType: plain.organizationType,
-        registrationNumber: plain.registrationNumber,
-        website: plain.website,
-        complianceApprovedCampaignLimit: plain.complianceApprovedCampaignLimit,
-      },
+      update,
       { new: true }
     );
 

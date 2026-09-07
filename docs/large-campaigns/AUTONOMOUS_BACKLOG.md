@@ -23,9 +23,11 @@ Rules of engagement carried across sessions:
   also reconciles the affiliate rail (`findStuckProcessing`) and batched campaign
   payouts per-leg (`findStuckBatchedProcessing` → each queued/submitted leg
   re-verified + driven through the leg-aware webhook handler).
-- [ ] **G3 — Compliance-limit admin control.** UI to set/clear a user's
-  `complianceApprovedCampaignLimit` (with reason → audit) from the console
-  (UserDetailPage or a compliance view).
+- [x] **G3 — Compliance-limit admin control.** DONE. A Compliance-limit control
+  on the admin UserDetailPage (set amount/"unlimited"/clear + reason) → PUT
+  /users/:id/compliance-limit (audited). Surfaced the field on the admin user
+  record + shared User type. Fixed a real bug: clearing never persisted because
+  Mongoose ignores `undefined` on $set — now `$unset`.
 - [ ] **G4 — Split-proceeds admin views.** Per-campaign: the active split +
   versions, per-beneficiary balances/statements (read-only), wired to the API.
 - [ ] **G5 — Idempotent payout settlement (durability).** Make the balance
@@ -49,6 +51,7 @@ sessions — the test gate needs it; only at the very end.
 
 - **G1** (2026-09-07) — beneficiary-payout admin operability.
 - **G2** (2026-09-07) — reconciliation completeness (affiliate + batched legs).
+- **G3** (2026-09-07) — compliance-limit admin control (+ clear-persistence fix).
 
 ## Hard gates (NOT to be done autonomously — need the user / an external party)
 

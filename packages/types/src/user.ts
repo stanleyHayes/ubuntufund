@@ -97,6 +97,11 @@ export interface User {
   kycStatus: KYCStatus
   kycVerifiedAt?: Date
   kycLevel: KYCLevel
+  /**
+   * Compliance-approved campaign-goal ceiling (spec §18): the effective goal cap
+   * is MIN(plan cap, this). `-1` = approved unlimited; undefined = no override.
+   */
+  complianceApprovedCampaignLimit?: number
   createdAt: Date
   updatedAt: Date
 }
