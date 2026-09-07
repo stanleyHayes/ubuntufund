@@ -15,6 +15,7 @@ import { CampaignStatus, CollaboratorRole, type CampaignCollaborator } from '@ub
 import { ItemNotFound, EmptyState } from '@ubuntu-fund/ui'
 import { api } from '@/lib/api'
 import PageHeader from '@/components/PageHeader'
+import SplitProceedsSection from '@/components/SplitProceedsSection'
 
 const ROLE_LABELS: Record<CollaboratorRole, string> = {
   [CollaboratorRole.CO_OWNER]: 'Co-Owner',
@@ -452,6 +453,9 @@ export default function CampaignDetailPage() {
           ))}
         </Box>
       )}
+
+      {/* Split-proceeds (read-only) */}
+      <SplitProceedsSection campaignId={id ?? ''} />
 
       {/* Bottom: Recent donations */}
       <Box sx={{ borderBottom: `1px solid ${B}`, p: 2.5 }}>

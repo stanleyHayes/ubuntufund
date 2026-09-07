@@ -28,8 +28,11 @@ Rules of engagement carried across sessions:
   /users/:id/compliance-limit (audited). Surfaced the field on the admin user
   record + shared User type. Fixed a real bug: clearing never persisted because
   Mongoose ignores `undefined` on $set — now `$unset`.
-- [ ] **G4 — Split-proceeds admin views.** Per-campaign: the active split +
-  versions, per-beneficiary balances/statements (read-only), wired to the API.
+- [x] **G4 — Split-proceeds admin views.** DONE. A read-only Split-proceeds
+  section on the admin CampaignDetailPage (SplitProceedsSection component):
+  active split beneficiaries + shares + consent, per-beneficiary balances, and
+  version history — wired to GET /campaigns/:id/split, /split/versions,
+  /split/beneficiaries. Graceful "no split configured" for ordinary campaigns.
 - [ ] **G5 — Idempotent payout settlement (durability).** Make the balance
   effect idempotent per-payout/-leg (guard set on the balance doc) so the
   settlement effect can be safely re-applied by reconciliation and a crash
@@ -52,6 +55,7 @@ sessions — the test gate needs it; only at the very end.
 - **G1** (2026-09-07) — beneficiary-payout admin operability.
 - **G2** (2026-09-07) — reconciliation completeness (affiliate + batched legs).
 - **G3** (2026-09-07) — compliance-limit admin control (+ clear-persistence fix).
+- **G4** (2026-09-07) — split-proceeds admin views (read-only).
 
 ## Hard gates (NOT to be done autonomously — need the user / an external party)
 
