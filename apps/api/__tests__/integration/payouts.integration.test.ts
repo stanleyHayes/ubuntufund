@@ -6,6 +6,10 @@ const PAYSTACK_SECRET = 'sk_test_paystack_secret_for_payout_tests';
 process.env.PAYSTACK_SECRET_KEY = PAYSTACK_SECRET;
 process.env.PAYSTACK_PUBLIC_KEY = 'pk_test_paystack_public_for_payout_tests';
 process.env.PUBLIC_WEB_URL = 'https://give.example.test';
+// Maker-checker kicks in at GHS 40k: every existing single-transfer test below
+// stays under it (single approval), while the dual-approval + batching tests go
+// over it. Set before createTestApp() reads config.
+process.env.PAYOUT_DUAL_APPROVAL_AMOUNT = '40000';
 
 import {
   describe,
@@ -503,6 +507,134 @@ describe('Payouts Integration', () => {
       .reduce((s, l) => s + l.amount, 0);
     expect(credits).toBe(965);
     expect(debits).toBe(965);
+  });
+
+  // Maker-checker + batching (spec §16, §17). These share one owner and two
+  // admins to stay under the 30/15-min auth rate limit the whole file draws on.
+  describe('high-value payouts: maker-checker + batching', () => {
+    let owner: { userId: string; token: string };
+    let admin1: { userId: string; token: string };
+    let admin2: { userId: string; token: string };
+
+    beforeAll(async () => {
+      owner = await registerUser(app, uniqueEmail('hv-owner'));
+      admin1 = await createAdmin(app, uniqueEmail('hv-admin1'));
+      admin2 = await createAdmin(app, uniqueEmail('hv-admin2'));
+    });
+
+    async function fundedCampaignWithRecipient(
+      donation: number
+    ): Promise<string> {
+      const campaignId = await createActiveCampaign(app, owner.token, owner.userId);
+      await fundCampaign(app, campaignId, donation);
+      await addRecipient(app, campaignId, owner.token);
+      return campaignId;
+    }
+
+    function requestPayout(campaignId: string, amount: number) {
+      return request(app)
+        .post(`/api/v1/campaigns/${campaignId}/payouts`)
+        .set('Authorization', `Bearer ${owner.token}`)
+        .send({ amount });
+    }
+
+    function approve(payoutId: string, token: string) {
+      return request(app)
+        .post(`/api/v1/payouts/${payoutId}/approve`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({});
+    }
+
+    it('requires two distinct admins to approve a high-value payout (maker-checker)', async () => {
+      const campaignId = await fundedCampaignWithRecipient(50000); // net 48250
+      const reqRes = await requestPayout(campaignId, 48250); // ≥ 40k, ≤ 50k ceiling
+      expect(reqRes.status).toBe(201);
+      const payoutId = reqRes.body.data.id as string;
+
+      // First approval records the maker, stays PENDING, reserves nothing.
+      const first = await approve(payoutId, admin1.token);
+      expect(first.status).toBe(200);
+      expect(first.body.data.status).toBe('PENDING');
+      expect(first.body.data.firstApprovedBy).toBe(admin1.userId);
+      let balance = await CampaignBalanceModel.findOne({ campaignId });
+      expect(balance?.availableBalance).toBe(48250); // not reserved yet
+
+      // The same admin cannot be both maker and checker.
+      const sameAdmin = await approve(payoutId, admin1.token);
+      expect(sameAdmin.status).toBe(409);
+
+      // A second, distinct admin initiates the transfer.
+      const second = await approve(payoutId, admin2.token);
+      expect(second.status).toBe(200);
+      expect(second.body.data.status).toBe('PROCESSING');
+      expect(second.body.data.approvedBy).toBe(admin2.userId);
+      balance = await CampaignBalanceModel.findOne({ campaignId });
+      expect(balance?.availableBalance).toBe(0); // now reserved
+    });
+
+    it('splits a payout above the ceiling into legs and settles PAID when all succeed', async () => {
+      const campaignId = await fundedCampaignWithRecipient(120000); // net 115800
+      const reqRes = await requestPayout(campaignId, 115800);
+      expect(reqRes.status).toBe(201);
+      const payoutId = reqRes.body.data.id as string;
+
+      // Dual approval (≥ 40k); the checker triggers the batched transfer.
+      await approve(payoutId, admin1.token).expect(200);
+      const approved = await approve(payoutId, admin2.token);
+      expect(approved.status).toBe(200);
+      expect(approved.body.data.status).toBe('PROCESSING');
+      expect(approved.body.data.legs).toHaveLength(3);
+
+      const payout = await PayoutModel.findById(payoutId);
+      const legs = payout!.legs!;
+      expect(legs.map((l) => l.amount)).toEqual([50000, 50000, 15800]);
+
+      // Each leg's transfer.success settles that leg; the last drives PAID.
+      for (const leg of legs) {
+        await sendTransferWebhook(app, 'transfer.success', leg.reference);
+      }
+
+      const settled = await PayoutModel.findById(payoutId);
+      expect(settled?.status).toBe('PAID');
+
+      const balance = await CampaignBalanceModel.findOne({ campaignId });
+      expect(balance?.paidOutBalance).toBe(115800);
+      expect(balance?.availableBalance).toBe(0);
+      expect(balance?.payoutFees).toBe(0);
+
+      // One disbursement journal per settled leg, summing to the net.
+      const payoutCredits = await JournalLineModel.find({
+        accountKind: 'payout',
+        accountOwnerId: campaignId,
+        direction: 'credit',
+      });
+      expect(payoutCredits).toHaveLength(3);
+      expect(payoutCredits.reduce((s, l) => s + l.amount, 0)).toBe(115800);
+    });
+
+    it('flags a batched payout NEEDS_REVIEW when a leg fails after others sent', async () => {
+      const campaignId = await fundedCampaignWithRecipient(120000);
+      const reqRes = await requestPayout(campaignId, 115800);
+      const payoutId = reqRes.body.data.id as string;
+
+      await approve(payoutId, admin1.token).expect(200);
+      await approve(payoutId, admin2.token).expect(200);
+
+      const payout = await PayoutModel.findById(payoutId);
+      const legs = payout!.legs!;
+
+      // Two legs succeed, the third fails — money already left on the winners.
+      await sendTransferWebhook(app, 'transfer.success', legs[0]!.reference);
+      await sendTransferWebhook(app, 'transfer.success', legs[1]!.reference);
+      await sendTransferWebhook(app, 'transfer.failed', legs[2]!.reference);
+
+      const settled = await PayoutModel.findById(payoutId);
+      expect(settled?.status).toBe('NEEDS_REVIEW');
+
+      const balance = await CampaignBalanceModel.findOne({ campaignId });
+      expect(balance?.paidOutBalance).toBe(100000); // legs 0 + 1 disbursed
+      expect(balance?.availableBalance).toBe(15800); // leg 2 returned
+    });
   });
 
   it('cannot request a payout larger than the eligible balance', async () => {

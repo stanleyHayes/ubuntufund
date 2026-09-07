@@ -23,6 +23,9 @@ export interface AffiliatePayoutProps {
  *                REVERSED (transfer.reversed before we observed success)
  *   PAID       → REVERSED (transfer.reversed of a settled transfer)
  *   FAILED / REVERSED are terminal.
+ *
+ * Affiliate payouts are single-transfer only; NEEDS_REVIEW (a batched-payout
+ * outcome) is unreachable here but present to satisfy the shared status type.
  */
 const ALLOWED_TRANSITIONS: Record<PayoutStatus, PayoutStatus[]> = {
   PENDING: ['PROCESSING', 'FAILED'],
@@ -30,6 +33,7 @@ const ALLOWED_TRANSITIONS: Record<PayoutStatus, PayoutStatus[]> = {
   PAID: ['REVERSED'],
   FAILED: [],
   REVERSED: [],
+  NEEDS_REVIEW: [],
 };
 
 /**

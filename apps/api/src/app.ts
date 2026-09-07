@@ -619,7 +619,8 @@ export function createApp(): express.Express {
     payoutRepo,
     transferRecipientRepo,
     campaignBalanceRepo,
-    paymentGateway
+    paymentGateway,
+    config.payouts
   );
   const listCampaignPayoutsUseCase = new ListCampaignPayoutsUseCase(
     campaignRepo,

@@ -105,6 +105,12 @@ export interface PayoutsConfig {
   earlyMaxWithdrawalPercent: number;
   /** Provider single-transfer ceiling (GHS); larger payouts must be batched. */
   maxTransferAmount: number;
+  /**
+   * Maker-checker threshold (GHS): a payout whose gross amount is at least this
+   * needs two distinct admin approvals before its transfer initiates. `0`
+   * disables dual approval (single approval for every payout).
+   */
+  dualApprovalAmount: number;
 }
 
 export interface AppConfig {
@@ -248,6 +254,7 @@ export const config: AppConfig = {
     assistedFixedFee: Number.parseFloat(process.env.PAYOUT_ASSISTED_FIXED_FEE ?? '50'),
     earlyMaxWithdrawalPercent: Number.parseFloat(process.env.PAYOUT_EARLY_MAX_WITHDRAWAL_PERCENT ?? '80'),
     maxTransferAmount: Number.parseFloat(process.env.PAYOUT_MAX_TRANSFER_AMOUNT ?? '50000'),
+    dualApprovalAmount: Number.parseFloat(process.env.PAYOUT_DUAL_APPROVAL_AMOUNT ?? '0'),
   },
   publicWebUrl: process.env.PUBLIC_WEB_URL ?? 'http://localhost:18200',
   publicApiUrl:

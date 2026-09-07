@@ -1,5 +1,6 @@
 import { PayoutEntity } from '../../../../domain/entities/Payout.js';
 import type { PayoutRepositoryPort } from '../../../../domain/ports/outbound/PayoutRepositoryPort.js';
+import type { PayoutLeg, PayoutLegStatus } from '@ubuntu-fund/types';
 import {
   PayoutModel,
   type PayoutDocument,
@@ -21,6 +22,15 @@ function toDomain(doc: PayoutDocument): PayoutEntity {
     transferCode: doc.transferCode,
     requestedBy: doc.requestedBy,
     approvedBy: doc.approvedBy,
+    firstApprovedBy: doc.firstApprovedBy,
+    firstApprovedAt: doc.firstApprovedAt,
+    legs: doc.legs?.map((l) => ({
+      index: l.index,
+      amount: l.amount,
+      reference: l.reference,
+      transferCode: l.transferCode,
+      status: l.status,
+    })),
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
   });
@@ -62,9 +72,96 @@ export class MongoPayoutRepository implements PayoutRepositoryPort {
     return doc ? toDomain(doc) : null;
   }
 
+  async findByLegReference(reference: string): Promise<PayoutEntity | null> {
+    const doc = await PayoutModel.findOne({ 'legs.reference': reference });
+    return doc ? toDomain(doc) : null;
+  }
+
   async findAll(): Promise<PayoutEntity[]> {
     const docs = await PayoutModel.find().sort({ createdAt: -1 });
     return docs.map(toDomain);
+  }
+
+  async recordFirstApproval(
+    id: string,
+    makerId: string
+  ): Promise<PayoutEntity | null> {
+    const doc = await PayoutModel.findOneAndUpdate(
+      { _id: id, status: 'PENDING', firstApprovedBy: { $exists: false } },
+      { $set: { firstApprovedBy: makerId, firstApprovedAt: new Date() } },
+      { new: true }
+    );
+    return doc ? toDomain(doc) : null;
+  }
+
+  async transitionToProcessingBatched(
+    id: string,
+    fields: { approvedBy: string; providerRef: string; legs: PayoutLeg[] }
+  ): Promise<PayoutEntity | null> {
+    const doc = await PayoutModel.findOneAndUpdate(
+      { _id: id, status: 'PENDING' },
+      {
+        $set: {
+          status: 'PROCESSING',
+          approvedBy: fields.approvedBy,
+          providerRef: fields.providerRef,
+          legs: fields.legs,
+        },
+      },
+      { new: true }
+    );
+    return doc ? toDomain(doc) : null;
+  }
+
+  async setLegStatus(
+    id: string,
+    reference: string,
+    from: PayoutLegStatus[],
+    to: PayoutLegStatus,
+    extra?: { transferCode?: string }
+  ): Promise<PayoutEntity | null> {
+    const doc = await PayoutModel.findOneAndUpdate(
+      {
+        _id: id,
+        legs: { $elemMatch: { reference, status: { $in: from } } },
+      },
+      {
+        $set: {
+          'legs.$[leg].status': to,
+          ...(extra?.transferCode
+            ? { 'legs.$[leg].transferCode': extra.transferCode }
+            : {}),
+        },
+      },
+      {
+        new: true,
+        arrayFilters: [{ 'leg.reference': reference, 'leg.status': { $in: from } }],
+      }
+    );
+    return doc ? toDomain(doc) : null;
+  }
+
+  async transitionBatchedToPaid(id: string): Promise<PayoutEntity | null> {
+    // PROCESSING → PAID only when no leg is in a non-success state.
+    const doc = await PayoutModel.findOneAndUpdate(
+      {
+        _id: id,
+        status: 'PROCESSING',
+        legs: { $not: { $elemMatch: { status: { $ne: 'success' } } } },
+      },
+      { $set: { status: 'PAID' } },
+      { new: true }
+    );
+    return doc ? toDomain(doc) : null;
+  }
+
+  async flagNeedsReview(id: string): Promise<PayoutEntity | null> {
+    const doc = await PayoutModel.findOneAndUpdate(
+      { _id: id, status: { $in: ['PROCESSING', 'PAID'] } },
+      { $set: { status: 'NEEDS_REVIEW' } },
+      { new: true }
+    );
+    return doc ? toDomain(doc) : null;
   }
 
   async transitionToProcessing(

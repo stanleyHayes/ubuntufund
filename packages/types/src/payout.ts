@@ -25,6 +25,44 @@ export type PayoutStatus =
   | 'PAID'
   | 'FAILED'
   | 'REVERSED'
+  /**
+   * A batched (multi-leg) payout that did not settle cleanly: at least one
+   * transfer leg failed or reversed while others succeeded. Real money already
+   * left on the successful legs and cannot be un-sent, so the payout is frozen
+   * for manual admin reconciliation rather than auto-resolved. Terminal.
+   */
+  | 'NEEDS_REVIEW'
+
+/** State of one transfer leg of a batched payout (spec §17 / ADR-4). */
+export type PayoutLegStatus =
+  /** Created, not yet submitted to the provider. */
+  | 'queued'
+  /** Submitted to the provider; awaiting the transfer webhook. */
+  | 'submitted'
+  /** Provider confirmed `transfer.success` for this leg. */
+  | 'success'
+  /** Provider `transfer.failed` (or submission was rejected) — funds returned. */
+  | 'failed'
+  /** Provider `transfer.reversed` a previously-successful leg. */
+  | 'reversed'
+
+/**
+ * One transfer of a batched payout. A payout whose net exceeds the provider's
+ * single-transfer ceiling (`PAYOUT_MAX_TRANSFER_AMOUNT`) is split into several
+ * legs, each ≤ the ceiling, each with its own idempotency reference the
+ * `transfer.*` webhook correlates on. Single-transfer payouts have no legs.
+ */
+export interface PayoutLeg {
+  /** 0-based position within the batch. */
+  index: number
+  /** Leg amount transferred (major units, GHS); the legs sum to `netAmount`. */
+  amount: number
+  /** Unique provider transfer reference for this leg; the webhook correlates on it. */
+  reference: string
+  /** Provider transfer handle, once the leg is submitted. */
+  transferCode?: string
+  status: PayoutLegStatus
+}
 
 /**
  * The payout service requested (spec §17). `standard` is free and post-close;
@@ -103,7 +141,24 @@ export interface Payout {
   /** Provider transfer handle returned when the transfer is initiated. */
   transferCode?: string
   requestedBy: string
+  /**
+   * The admin who gave the final (transfer-initiating) approval. For a
+   * maker-checker payout this is the checker; {@link Payout.firstApprovedBy} is
+   * the maker.
+   */
   approvedBy?: string
+  /**
+   * Maker-checker (spec §16 / ADR-4): the first admin to approve a high-value
+   * payout (≥ `PAYOUT_DUAL_APPROVAL_AMOUNT`). The payout stays PENDING until a
+   * second, different admin approves. Undefined for single-approval payouts.
+   */
+  firstApprovedBy?: string
+  firstApprovedAt?: Date
+  /**
+   * Transfer legs for a batched payout (net > the single-transfer ceiling).
+   * Undefined/empty for an ordinary single-transfer payout.
+   */
+  legs?: PayoutLeg[]
   createdAt: Date
   updatedAt: Date
 }

@@ -1,4 +1,9 @@
-import type { PayoutProvider, PayoutStatus, PayoutType } from '@ubuntu-fund/types';
+import type {
+  PayoutLeg,
+  PayoutProvider,
+  PayoutStatus,
+  PayoutType,
+} from '@ubuntu-fund/types';
 
 export interface PayoutProps {
   id: string;
@@ -15,6 +20,9 @@ export interface PayoutProps {
   transferCode?: string;
   requestedBy: string;
   approvedBy?: string;
+  firstApprovedBy?: string;
+  firstApprovedAt?: Date;
+  legs?: PayoutLeg[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -24,16 +32,19 @@ export interface PayoutProps {
  *
  *   PENDING    → PROCESSING (admin approves + transfer initiated) | FAILED
  *   PROCESSING → PAID (transfer.success) | FAILED (transfer.failed) |
- *                REVERSED (transfer.reversed before we observed success)
- *   PAID       → REVERSED (transfer.reversed of a settled transfer)
- *   FAILED / REVERSED are terminal.
+ *                REVERSED (transfer.reversed before we observed success) |
+ *                NEEDS_REVIEW (a batched payout that settled only partially)
+ *   PAID       → REVERSED (transfer.reversed of a settled transfer) |
+ *                NEEDS_REVIEW (a leg of a settled batched payout reversed)
+ *   FAILED / REVERSED / NEEDS_REVIEW are terminal.
  */
 const ALLOWED_TRANSITIONS: Record<PayoutStatus, PayoutStatus[]> = {
   PENDING: ['PROCESSING', 'FAILED'],
-  PROCESSING: ['PAID', 'FAILED', 'REVERSED'],
-  PAID: ['REVERSED'],
+  PROCESSING: ['PAID', 'FAILED', 'REVERSED', 'NEEDS_REVIEW'],
+  PAID: ['REVERSED', 'NEEDS_REVIEW'],
   FAILED: [],
   REVERSED: [],
+  NEEDS_REVIEW: [],
 };
 
 /**
@@ -94,6 +105,19 @@ export class PayoutEntity {
   }
   get approvedBy(): string | undefined {
     return this.props.approvedBy;
+  }
+  get firstApprovedBy(): string | undefined {
+    return this.props.firstApprovedBy;
+  }
+  get firstApprovedAt(): Date | undefined {
+    return this.props.firstApprovedAt;
+  }
+  get legs(): PayoutLeg[] | undefined {
+    return this.props.legs;
+  }
+  /** A batched (multi-leg) payout has one or more transfer legs. */
+  get isBatched(): boolean {
+    return (this.props.legs?.length ?? 0) > 0;
   }
   get createdAt(): Date {
     return this.props.createdAt;

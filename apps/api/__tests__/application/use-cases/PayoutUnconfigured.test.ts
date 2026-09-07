@@ -40,6 +40,21 @@ describe('Payouts — disabled without a Paystack secret key', () => {
 
   const requester = { userId: 'user-1', role: 'admin' };
 
+  // A full payouts config; the 501 guard runs before any of it is read.
+  const payoutsConfig = {
+    priorityFeePercent: 0.5,
+    priorityMinFee: 10,
+    earlyFeePercent: 1.0,
+    earlyMinFee: 20,
+    urgentFeePercent: 1.5,
+    urgentMinFee: 30,
+    assistedFeePercent: 1.5,
+    assistedFixedFee: 50,
+    earlyMaxWithdrawalPercent: 80,
+    maxTransferAmount: 50000,
+    dualApprovalAmount: 0,
+  };
+
   it('reports the gateway as not configured', () => {
     expect(gateway.isConfigured()).toBe(false);
   });
@@ -77,7 +92,8 @@ describe('Payouts — disabled without a Paystack secret key', () => {
       recipientRepo,
       payoutRepo,
       balanceRepo,
-      gateway
+      gateway,
+      payoutsConfig
     );
     await expect(
       useCase.execute('campaign-1', { amount: 100 }, requester)
@@ -89,7 +105,8 @@ describe('Payouts — disabled without a Paystack secret key', () => {
       payoutRepo,
       recipientRepo,
       balanceRepo,
-      gateway
+      gateway,
+      payoutsConfig
     );
     await expect(
       useCase.execute('payout-1', requester)

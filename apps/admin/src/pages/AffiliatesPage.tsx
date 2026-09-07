@@ -37,6 +37,7 @@ const payoutStatusColors: Record<PayoutStatus, string> = {
   PAID: TONES.green.text,
   FAILED: TONES.clay.text,
   REVERSED: TONES.maroon.text,
+  NEEDS_REVIEW: TONES.gold.text,
 }
 
 const formatMoney = (amount: number, currency = 'GHS') => `${currency === 'GHS' ? 'GH₵' : currency} ${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`

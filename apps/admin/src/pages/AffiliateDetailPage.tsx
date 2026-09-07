@@ -60,6 +60,7 @@ const payoutStatusColors: Record<PayoutStatus, string> = {
   PAID: TONES.green.text,
   FAILED: TONES.clay.text,
   REVERSED: TONES.maroon.text,
+  NEEDS_REVIEW: TONES.gold.text,
 }
 
 const shortId = (id: string) => (id.length > 12 ? `${id.slice(0, 8)}…${id.slice(-4)}` : id)

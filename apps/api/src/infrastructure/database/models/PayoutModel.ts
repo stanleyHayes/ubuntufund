@@ -1,5 +1,11 @@
 import mongoose, { Schema, type Document } from 'mongoose';
-import type { PayoutProvider, PayoutStatus, PayoutType } from '@ubuntu-fund/types';
+import type {
+  PayoutLeg,
+  PayoutLegStatus,
+  PayoutProvider,
+  PayoutStatus,
+  PayoutType,
+} from '@ubuntu-fund/types';
 
 export interface PayoutDocument extends Document {
   campaignId: string;
@@ -15,6 +21,9 @@ export interface PayoutDocument extends Document {
   transferCode?: string;
   requestedBy: string;
   approvedBy?: string;
+  firstApprovedBy?: string;
+  firstApprovedAt?: Date;
+  legs?: PayoutLeg[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -25,9 +34,29 @@ const PAYOUT_STATUSES: PayoutStatus[] = [
   'PAID',
   'FAILED',
   'REVERSED',
+  'NEEDS_REVIEW',
+];
+
+const PAYOUT_LEG_STATUSES: PayoutLegStatus[] = [
+  'queued',
+  'submitted',
+  'success',
+  'failed',
+  'reversed',
 ];
 
 const PAYOUT_PROVIDERS: PayoutProvider[] = ['paystack'];
+
+const payoutLegSchema = new Schema<PayoutLeg>(
+  {
+    index: { type: Number, required: true },
+    amount: { type: Number, required: true },
+    reference: { type: String, required: true },
+    transferCode: { type: String },
+    status: { type: String, enum: PAYOUT_LEG_STATUSES, default: 'queued' },
+  },
+  { _id: false }
+);
 
 const payoutSchema = new Schema<PayoutDocument>(
   {
@@ -52,8 +81,15 @@ const payoutSchema = new Schema<PayoutDocument>(
     transferCode: { type: String },
     requestedBy: { type: String, required: true, index: true },
     approvedBy: { type: String },
+    firstApprovedBy: { type: String },
+    firstApprovedAt: { type: Date },
+    legs: { type: [payoutLegSchema], default: undefined },
   },
   { collection: 'payouts', timestamps: true }
 );
+
+// A leg's transfer reference is globally unique so a transfer webhook correlates
+// to exactly one leg of one payout (sparse: payouts without legs are exempt).
+payoutSchema.index({ 'legs.reference': 1 }, { unique: true, sparse: true });
 
 export const PayoutModel = mongoose.model<PayoutDocument>('Payout', payoutSchema);

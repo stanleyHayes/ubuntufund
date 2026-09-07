@@ -79,7 +79,7 @@ Still open (later phases): maker-checker two-person approval for very high-value
 actions; per-tier KYC document requirements; the admin review-queue/compliance UI
 (Phase 5).
 
-## Phase 3 — Payout engine (payout policy delivered 2026-09-07)
+## Phase 3 — Payout engine (delivered 2026-09-07)
 
 Builds on the existing payout flow (request → admin approve → transfer →
 `transfer.*` webbook settles PAID/FAILED/REVERSED, with a guarded state machine):
@@ -94,17 +94,38 @@ Builds on the existing payout flow (request → admin approve → transfer →
 - **Early-withdrawal reserve ceiling:** `early`/`urgent` payouts are capped at
   `PAYOUT_EARLY_MAX_WITHDRAWAL_PERCENT` (default 80%) of the eligible balance,
   leaving a reserve.
+- **Maker-checker two-person approval (spec §16 / ADR-4):** a payout whose gross
+  is ≥ `PAYOUT_DUAL_APPROVAL_AMOUNT` (default `0` = disabled) needs two distinct
+  admins. The first records the maker (`firstApprovedBy`) and leaves the payout
+  PENDING with nothing reserved; a second, different admin initiates the transfer
+  (the same admin is rejected 409). Below the threshold, a single approval as
+  before.
+- **Payout batching (spec §17 / ADR-4):** a payout whose net exceeds the provider
+  single-transfer ceiling (`PAYOUT_MAX_TRANSFER_AMOUNT`, default GHS 50k) is split
+  by `splitIntoTransferLegs` into ≤-ceiling legs (exact, in pesewas — no drift),
+  each an immutable `PayoutLeg` with its own idempotency reference the webhook
+  correlates on. Per-leg settlement moves that leg's amount in-transit → paidOut
+  with its own disbursement journal; the batch settles **PAID** only when every
+  leg succeeds, and **NEEDS_REVIEW** (new terminal state, frozen for manual
+  reconciliation) if any leg fails/reverses after another already sent — real
+  money that cannot be un-sent. If no leg leaves the platform, the whole payout
+  cleanly rolls back to FAILED with the full reservation returned. Single-transfer
+  payouts (≤ ceiling) keep their exact original code path.
 
-Tests: fee computation per type (incl. minimums + the fixed assisted charge + the
-never-exceed-amount clamp); a priority payout end-to-end (net transferred, fee
-retained); the early reserve-ceiling rejection.
+Tests: fee computation per type; the split function (fills/remainder/exact-pesewa
+sum/guards); a priority payout end-to-end; the early reserve-ceiling rejection;
+maker-checker (maker PENDING + no reserve, same-admin 409, second admin PROCESSING);
+a batched payout split into 3 legs settling PAID (paidOut + 3 journals); a batched
+partial failure → NEEDS_REVIEW (2 legs paid, 1 returned).
 
-Still open (Phase 3): **payout batching** — splitting a payout above the provider
-single-transfer ceiling (`PAYOUT_MAX_TRANSFER_AMOUNT`, default GHS 50k) into
-multiple reconciled transfer legs. This is the engineering fallback if Paystack
-does not grant a higher transfer limit (an external gate, plan §13); it is a
-structural change to the settlement flow and is deferred as its own slice.
-Maker-checker two-person approval for very high-value payouts is also open.
+Scoped for money-safety — batching today covers **standard (fee-free)** large
+payouts, so legs sum exactly to the reservation (net = gross) and the bucket math
+is unambiguous. Expedited (fee-bearing) payouts above the ceiling are rejected
+(422) pending two sign-offs the plan reserves: the reviewed **higher transfer
+limit** from Paystack (external gate, §6/§13) and the **partial-failure fee/ledger
+policy** for expedited large disbursements (product/finance, §5). The
+fee-waive-on-partial default and per-leg journaling are ready to extend once those
+land.
 
 ## 1. Repository audit — what already exists
 

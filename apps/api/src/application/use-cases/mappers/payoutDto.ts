@@ -19,6 +19,9 @@ export function toPayoutDto(entity: PayoutEntity): Payout {
     transferCode: p.transferCode,
     requestedBy: p.requestedBy,
     approvedBy: p.approvedBy,
+    firstApprovedBy: p.firstApprovedBy,
+    firstApprovedAt: p.firstApprovedAt,
+    legs: p.legs,
     createdAt: p.createdAt,
     updatedAt: p.updatedAt,
   };
