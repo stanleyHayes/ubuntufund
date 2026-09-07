@@ -33,14 +33,33 @@ Rules of engagement carried across sessions:
   active split beneficiaries + shares + consent, per-beneficiary balances, and
   version history — wired to GET /campaigns/:id/split, /split/versions,
   /split/beneficiaries. Graceful "no split configured" for ordinary campaigns.
-- [ ] **G5 — Idempotent payout settlement (durability).** Make the balance
-  effect idempotent per-payout/-leg (guard set on the balance doc) so the
-  settlement effect can be safely re-applied by reconciliation and a crash
-  between the state transition and the balance write is fully repairable. Closes
-  the review's crash-window finding without requiring transactions. **Money-
-  critical — adversarial review before commit.**
-- [ ] **G6 — Versioned commercial-config store (ADR-5 mechanism).** Only if it
-  can be built usefully without the §6 value sign-off; else leave for the user.
+- [~] **G5 — Idempotent payout settlement (durability). DEFERRED to a supervised
+  change (not done autonomously — too risky).** Investigation showed the full,
+  correct fix needs THREE coupled changes to money-critical cores: (1) a
+  `settledRefs` guard on all three balance models (campaign/beneficiary/affiliate)
+  + markPaidOut/returnToAvailable/reverseFromPaidOut signature changes + every
+  caller; (2) **payout-journal idempotency in the immutable ledger** — `postEntry`
+  currently dedupes ONLY on `donationIntentId`, so payout disbursement/reversal
+  journals would double-post if re-run; this needs a new payout-ref dedup key +
+  unique index + extended postEntry logic; (3) restructuring all four payout
+  webhook handlers to gate the money effect on `settledRefs` instead of the state
+  transition (so reconciliation can repair a PAID-but-unsettled payout). The
+  window it closes is a crash in the sub-millisecond gap between the atomic state
+  transition and the balance $inc — extremely rare, and a read-model discrepancy
+  (paidOut bucket short) rather than real money loss (the transfer genuinely
+  settles at the provider). Verdict: an unsupervised change to settlement + the
+  immutable ledger carries double-credit/double-journal risk that outweighs the
+  benefit. The proper fix is MongoDB transactions (a production replica set) OR
+  the ledger-dedup + settledRefs work above, done under review. **Left for the
+  user / a supervised session.**
+- [~] **G6 — Versioned commercial-config store (ADR-5 mechanism). GATED — left
+  for the user.** The two behaviourally-valuable pieces of ADR-5 are already
+  shipped: the config **value-diff audit** (Phase 5) and **fee grandfathering**
+  (a campaign locks its plan fee % at creation). A full effective-dated config
+  store *replacing* the env/DB config is only useful once the sensitive VALUES
+  (fees/limits/reserves/tier thresholds) are signed off (§6); building a large
+  parallel config subsystem speculatively, with no approved values to serve, is
+  over-engineering. Per the loop rule, left for the user.
 
 ## Terminal step (ONCE, after all gaps are done or only gated items remain)
 
@@ -56,6 +75,16 @@ sessions — the test gate needs it; only at the very end.
 - **G2** (2026-09-07) — reconciliation completeness (affiliate + batched legs).
 - **G3** (2026-09-07) — compliance-limit admin control (+ clear-persistence fix).
 - **G4** (2026-09-07) — split-proceeds admin views (read-only).
+- **G5** (2026-09-07) — DEFERRED (too risky unsupervised — see above).
+- **G6** (2026-09-07) — GATED on §6 value sign-off — left for the user.
+
+## Loop concluded 2026-09-07
+
+All autonomously-buildable gaps (G1–G4) are shipped, tested and pushed to main.
+G5 (idempotent settlement) is deferred to a supervised change and G6 (versioned
+config store) is gated on §6 — only those two remain, both requiring a user
+decision / supervised work, so the loop stops here per its own rules. Terminal
+cleanup (kill background tasks + `docker rm -f uf-test-mongo`) done at stop.
 
 ## Hard gates (NOT to be done autonomously — need the user / an external party)
 
