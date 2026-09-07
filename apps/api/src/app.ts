@@ -41,6 +41,7 @@ import { MongoPaymentAttemptRepository } from './infrastructure/adapters/outboun
 import { MongoOutboxRepository } from './infrastructure/adapters/outbound/persistence/MongoOutboxRepository.js';
 import { MongoTransferRecipientRepository } from './infrastructure/adapters/outbound/persistence/MongoTransferRecipientRepository.js';
 import { MongoPayoutRepository } from './infrastructure/adapters/outbound/persistence/MongoPayoutRepository.js';
+import { MongoCampaignSplitRepository } from './infrastructure/adapters/outbound/persistence/MongoCampaignSplitRepository.js';
 import { MongoCouponRepository } from './infrastructure/adapters/outbound/persistence/MongoCouponRepository.js';
 import { MongoCouponRedemptionRepository } from './infrastructure/adapters/outbound/persistence/MongoCouponRedemptionRepository.js';
 import { MongoSubscriptionCheckoutRepository } from './infrastructure/adapters/outbound/persistence/MongoSubscriptionCheckoutRepository.js';
@@ -93,6 +94,7 @@ import { HandlePayoutWebhookUseCase } from './application/use-cases/HandlePayout
 import { ListBanksUseCase } from './application/use-cases/ListBanksUseCase.js';
 import { CreatePayoutRecipientUseCase } from './application/use-cases/CreatePayoutRecipientUseCase.js';
 import { RequestPayoutUseCase } from './application/use-cases/RequestPayoutUseCase.js';
+import { CampaignSplitUseCase } from './application/use-cases/CampaignSplitUseCase.js';
 import { ApprovePayoutUseCase } from './application/use-cases/ApprovePayoutUseCase.js';
 import { ListCampaignPayoutsUseCase } from './application/use-cases/ListCampaignPayoutsUseCase.js';
 import { ListPayoutsUseCase } from './application/use-cases/ListPayoutsUseCase.js';
@@ -229,6 +231,7 @@ import { PaystackWebhookController } from './infrastructure/adapters/inbound/htt
 import { FlutterwaveWebhookController } from './infrastructure/adapters/inbound/http/controllers/FlutterwaveWebhookController.js';
 import { AdminPaymentsController } from './infrastructure/adapters/inbound/http/controllers/AdminPaymentsController.js';
 import { PayoutController } from './infrastructure/adapters/inbound/http/controllers/PayoutController.js';
+import { CampaignSplitController } from './infrastructure/adapters/inbound/http/controllers/CampaignSplitController.js';
 import { LeaderboardController } from './infrastructure/adapters/inbound/http/controllers/LeaderboardController.js';
 import { NotificationController } from './infrastructure/adapters/inbound/http/controllers/NotificationController.js';
 import { OrganizationController } from './infrastructure/adapters/inbound/http/controllers/OrganizationController.js';
@@ -291,6 +294,7 @@ import {
   createCampaignPayoutRoutes,
   createPayoutRoutes,
 } from './infrastructure/adapters/inbound/http/routes/payoutRoutes.js';
+import { createCampaignSplitRoutes } from './infrastructure/adapters/inbound/http/routes/campaignSplitRoutes.js';
 import { createCampaignDonationRoutes } from './infrastructure/adapters/inbound/http/routes/campaignDonationRoutes.js';
 import { createLeaderboardRoutes } from './infrastructure/adapters/inbound/http/routes/leaderboardRoutes.js';
 import { createNotificationRoutes } from './infrastructure/adapters/inbound/http/routes/notificationRoutes.js';
@@ -367,6 +371,7 @@ export function createApp(): express.Express {
   const outboxRepo = new MongoOutboxRepository();
   const transferRecipientRepo = new MongoTransferRecipientRepository();
   const payoutRepo = new MongoPayoutRepository();
+  const campaignSplitRepo = new MongoCampaignSplitRepository();
   const couponRepo = new MongoCouponRepository();
   const couponRedemptionRepo = new MongoCouponRedemptionRepository();
   const subscriptionCheckoutRepo = new MongoSubscriptionCheckoutRepository();
@@ -912,6 +917,14 @@ export function createApp(): express.Express {
     listCampaignPayoutsUseCase,
     listPayoutsUseCase
   );
+  // Split-proceeds: owner-managed, versioned beneficiary allocations (spec §17).
+  const campaignSplitUseCase = new CampaignSplitUseCase(
+    campaignRepo,
+    campaignSplitRepo
+  );
+  const campaignSplitController = new CampaignSplitController(
+    campaignSplitUseCase
+  );
   const leaderboardController = new LeaderboardController(getLeaderboardUseCase, getLeaderboardStatsUseCase);
   const notificationController = new NotificationController(
     getMyNotificationsUseCase,
@@ -1047,6 +1060,7 @@ export function createApp(): express.Express {
   api.use('/campaigns', createCampaignModerationRoutes(campaignModerationController, authMiddleware, requireAdmin));
   api.use('/campaigns', createCampaignQrRoutes(shortLinkController, authMiddleware));
   api.use('/campaigns', createCampaignPayoutRoutes(payoutController, authMiddleware));
+  api.use('/campaigns', createCampaignSplitRoutes(campaignSplitController, authMiddleware));
   api.use(
     '/campaigns',
     createCampaignLiveSessionRoutes(liveSessionController, realtimeController, authMiddleware)

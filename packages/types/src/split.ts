@@ -1,0 +1,92 @@
+/**
+ * Split-proceeds multi-beneficiary (spec §17 split / ADR-3).
+ *
+ * A campaign may share its cleared net across several beneficiaries by
+ * percentage. Allocations are held in **basis points** (1 bp = 1/100 of a
+ * percent) as integers — never floats — and always total {@link SPLIT_TOTAL_BPS}
+ * (10000 = 100%). A split is captured as an **immutable version**: amendments
+ * fork a new version applied only prospectively, so historical accruals stay
+ * anchored to the split that was in force when the money arrived.
+ */
+
+/** Basis points that a full (100%) allocation must sum to. */
+export const SPLIT_TOTAL_BPS = 10000
+
+/**
+ * Lifecycle of a split version:
+ *  - draft:      being configured / collecting beneficiary consent; not in force
+ *  - active:     the split currently governing accruals (at most one per campaign)
+ *  - superseded: a prior version replaced by a newer active one (kept for history)
+ */
+export type SplitStatus = 'draft' | 'active' | 'superseded'
+
+/** A beneficiary's consent to their allocation on a specific version. */
+export type BeneficiaryConsentStatus = 'pending' | 'accepted' | 'declined'
+
+/** One beneficiary's share of a split version. */
+export interface BeneficiaryAllocation {
+  /** Stable id for the beneficiary within the campaign (provided, or generated). */
+  beneficiaryId: string
+  /** Display name shown in donor-facing disclosure. */
+  name: string
+  /** Optional contact used to request consent. */
+  email?: string
+  /** Allocation share in basis points; the allocations sum to SPLIT_TOTAL_BPS. */
+  shareBps: number
+  /** This beneficiary's consent to this version's allocation. */
+  consent: BeneficiaryConsentStatus
+  consentAt?: Date
+}
+
+/**
+ * An immutable snapshot of a campaign's beneficiary split. A campaign can have
+ * many versions over time; exactly one is `active`. A version `locked`s the
+ * moment the first contribution accrues against it — thereafter it is read-only
+ * and any change must fork a new version.
+ */
+export interface CampaignSplitVersion {
+  id: string
+  campaignId: string
+  /** Monotonic version number (1-based); an amendment creates version n+1. */
+  version: number
+  status: SplitStatus
+  allocations: BeneficiaryAllocation[]
+  /** Set once the first successful contribution accrues; edits then must amend. */
+  locked: boolean
+  lockedAt?: Date
+  /** The user (campaign owner or admin) who created this version. */
+  createdBy: string
+  createdAt: Date
+  updatedAt: Date
+}
+
+/** Owner input for one allocation when creating/amending a split. */
+export interface CreateSplitAllocationInput {
+  /** Optional stable id; generated when omitted. */
+  beneficiaryId?: string
+  name: string
+  email?: string
+  shareBps: number
+}
+
+/** Owner input to create (or amend) a campaign's split. */
+export interface CreateSplitInput {
+  allocations: CreateSplitAllocationInput[]
+}
+
+/**
+ * Donor-facing disclosure of the active split: who receives the proceeds and in
+ * what proportion. Exposes names + shares only — no beneficiary contact detail.
+ */
+export interface CampaignSplitDisclosure {
+  campaignId: string
+  version: number
+  locked: boolean
+  beneficiaries: {
+    name: string
+    shareBps: number
+    /** Convenience percentage (shareBps / 100), e.g. 2500 bps → 25. */
+    sharePercent: number
+    consent: BeneficiaryConsentStatus
+  }[]
+}

@@ -127,6 +127,49 @@ policy** for expedited large disbursements (product/finance, §5). The
 fee-waive-on-partial default and per-leg journaling are ready to extend once those
 land.
 
+## Phase 4 — Split-proceeds multi-beneficiary (4a delivered 2026-09-07)
+
+Splitting a campaign's cleared net among several beneficiaries by percentage
+(spec §17 split / ADR-3). Built in money-safe slices; **4a (configuration +
+consent + the distribution core)** is delivered:
+
+- **Deterministic distribution (the crown jewel):** `distributeByShares(totalMinor,
+  sharesBps)` apportions an amount across percentage shares by the
+  **largest-remainder method** in minor units (pesewas), so the parts always sum
+  **exactly** to the total — no cedi created or lost, fully deterministic.
+  Exhaustively unit-tested (even splits, leftover assignment, zero shares, exact
+  sums, invalid inputs).
+- **Immutable versioned splits:** `CampaignSplitVersion` holds
+  `BeneficiaryAllocation` rows with shares in **basis points** (integers, never
+  float) that must total 10000 (validated at construction: ≥ 2 beneficiaries,
+  each 1–10000 bps, unique ids). Amendments fork a new version; exactly one is
+  `active` (the repository supersedes the prior atomically).
+- **Consent + activation:** per-beneficiary consent (`pending`/`accepted`/
+  `declined`); activation requires every beneficiary to have accepted. Owner/admin
+  (or the beneficiary for their own id) records consent; a locked version rejects
+  consent changes (must amend).
+- **Lock-on-first-contribution:** `lockActive` repository seam is in place; the
+  4b accrual will call it when the first contribution lands, freezing the split
+  the money arrived under.
+- **Donor-facing disclosure:** `GET /campaigns/:id/split` (public) exposes the
+  active split's names + shares + consent — no beneficiary contact detail.
+- Endpoints: `POST /campaigns/:id/split` (create draft), `GET …/split` (public
+  disclosure), `GET …/split/versions` (owner/admin), `POST …/split/:v/consent`,
+  `POST …/split/:v/activate`. Tests: distribution unit suite + an integration
+  suite (create/validate/forbid-non-owner/consent-gated activation/disclosure/
+  prospective amendment).
+
+**Still open (4b/4c):** per-`(campaign, beneficiary)` ledger buckets +
+accrual — hooking `distributeByShares` into the settlement seam
+(`CampaignLedgerProjector.projectDonation` → `applyDonation`) so each settled
+donation's beneficiary-net is distributed across the locked split, with
+proportional refund reversal; per-beneficiary statements; and per-beneficiary
+payouts (a beneficiary requests against their own cleared share, reusing the
+payout rail — which requires each beneficiary to be a KYC'd transfer recipient).
+The split-proceeds **economic-expectation model** (is a percentage split a
+regulated investment offer?) is a Ghana-legal sign-off (external gate §6) that
+gates going live, not the engineering.
+
 ## 1. Repository audit — what already exists
 
 The API is Express + Mongoose, hexagonal (domain / application / infrastructure,
