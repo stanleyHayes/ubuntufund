@@ -1,5 +1,6 @@
 import { BeneficiaryPayoutEntity } from '../../../../domain/entities/BeneficiaryPayout.js';
 import type { BeneficiaryPayoutRepositoryPort } from '../../../../domain/ports/outbound/BeneficiaryPayoutRepositoryPort.js';
+import type { PayoutStatus } from '@ubuntu-fund/types';
 import {
   BeneficiaryPayoutModel,
   type BeneficiaryPayoutDocument,
@@ -65,6 +66,20 @@ export class MongoBeneficiaryPayoutRepository
     const docs = await BeneficiaryPayoutModel.find({ campaignId }).sort({
       createdAt: -1,
     });
+    return docs.map(toDomain);
+  }
+
+  async findAll(): Promise<BeneficiaryPayoutEntity[]> {
+    const docs = await BeneficiaryPayoutModel.find().sort({ createdAt: -1 });
+    return docs.map(toDomain);
+  }
+
+  async findByStatuses(
+    statuses: PayoutStatus[]
+  ): Promise<BeneficiaryPayoutEntity[]> {
+    const docs = await BeneficiaryPayoutModel.find({
+      status: { $in: statuses },
+    }).sort({ createdAt: -1 });
     return docs.map(toDomain);
   }
 

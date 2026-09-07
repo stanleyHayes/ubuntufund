@@ -1,10 +1,15 @@
 import type { BeneficiaryPayoutEntity } from '../../entities/BeneficiaryPayout.js';
+import type { PayoutStatus } from '@ubuntu-fund/types';
 
 export interface BeneficiaryPayoutRepositoryPort {
   create(payout: BeneficiaryPayoutEntity): Promise<BeneficiaryPayoutEntity>;
   findById(id: string): Promise<BeneficiaryPayoutEntity | null>;
   findByProviderRef(providerRef: string): Promise<BeneficiaryPayoutEntity | null>;
   findByCampaign(campaignId: string): Promise<BeneficiaryPayoutEntity[]>;
+  /** All beneficiary payouts, newest first (admin console). */
+  findAll(): Promise<BeneficiaryPayoutEntity[]>;
+  /** Beneficiary payouts in any of the given statuses (admin review queue). */
+  findByStatuses(statuses: PayoutStatus[]): Promise<BeneficiaryPayoutEntity[]>;
   findByCampaignAndBeneficiary(
     campaignId: string,
     beneficiaryId: string

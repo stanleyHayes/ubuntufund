@@ -250,6 +250,24 @@ describe('Beneficiary payout Integration (flag on, spec §17)', () => {
       .set('Authorization', `Bearer ${owner.token}`)
       .send({ amount: 579 })
       .expect(201);
+
+    // Admin operability: the pending payout appears in the global list + queue.
+    const all = await request(app)
+      .get('/api/v1/beneficiary-payouts')
+      .set('Authorization', `Bearer ${admin.token}`)
+      .expect(200);
+    expect(all.body.data.some((p: { id: string }) => p.id === reqRes.body.data.id)).toBe(true);
+    const queue = await request(app)
+      .get('/api/v1/beneficiary-payouts/review-queue')
+      .set('Authorization', `Bearer ${admin.token}`)
+      .expect(200);
+    expect(queue.body.data.some((p: { id: string }) => p.id === reqRes.body.data.id)).toBe(true);
+    // A non-admin cannot list them.
+    await request(app)
+      .get('/api/v1/beneficiary-payouts')
+      .set('Authorization', `Bearer ${owner.token}`)
+      .expect(403);
+
     // No KYC verification → approval is refused.
     const approve = await request(app)
       .post(`/api/v1/beneficiary-payouts/${reqRes.body.data.id}/approve`)

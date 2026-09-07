@@ -15,10 +15,10 @@ Rules of engagement carried across sessions:
 
 ## Gaps (ordered)
 
-- [ ] **G1 — Beneficiary-payout admin operability.** Global admin endpoints
-  (`GET /beneficiary-payouts`, `/beneficiary-payouts/review-queue`) + wire a
-  "Beneficiary payouts" section into the admin Payouts page (list, KYC-verify,
-  approve). No money-logic change — list + reuse existing approve/verify.
+- [x] **G1 — Beneficiary-payout admin operability.** DONE. Global admin
+  endpoints `GET /beneficiary-payouts` + `/beneficiary-payouts/review-queue`
+  (findAll/findByStatuses + use-case listAll/reviewQueue, admin-gated) + a
+  "Beneficiary" view on the admin Payouts page (list, Verify KYC, Approve).
 - [ ] **G2 — Reconciliation completeness.** Extend `ReconcilePayoutsUseCase` to
   the affiliate rail; add batched-payout per-leg reconciliation (verify each
   leg's transfer, drive per-leg settlement).
@@ -46,7 +46,7 @@ sessions — the test gate needs it; only at the very end.
 
 ## Done
 
-- (none yet — this loop just started 2026-09-07)
+- **G1** (2026-09-07) — beneficiary-payout admin operability.
 
 ## Hard gates (NOT to be done autonomously — need the user / an external party)
 

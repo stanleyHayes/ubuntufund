@@ -98,4 +98,32 @@ export class BeneficiaryPayoutController {
       next(error);
     }
   };
+
+  /** GET /beneficiary-payouts — every beneficiary payout (admin). */
+  listAll = async (
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const payouts = await this.useCase.listAll(this.requester(req));
+      res.json({ data: payouts, message: 'Beneficiary payouts', status: 200 });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /** GET /beneficiary-payouts/review-queue — payouts needing action (admin). */
+  reviewQueue = async (
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const payouts = await this.useCase.reviewQueue(this.requester(req));
+      res.json({ data: payouts, message: 'Beneficiary payout review queue', status: 200 });
+    } catch (error) {
+      next(error);
+    }
+  };
 }

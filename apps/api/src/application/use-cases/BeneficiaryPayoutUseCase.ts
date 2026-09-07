@@ -315,11 +315,36 @@ export class BeneficiaryPayoutUseCase {
     return payouts.map(toBeneficiaryPayoutDto);
   }
 
+  /** Admin: every beneficiary payout across the platform, newest first. */
+  async listAll(requester: SplitRequester): Promise<BeneficiaryPayout[]> {
+    this.assertEnabled();
+    this.assertAdmin(requester);
+    const payouts = await this.payoutRepo.findAll();
+    return payouts.map(toBeneficiaryPayoutDto);
+  }
+
+  /**
+   * Admin review queue: beneficiary payouts needing action — NEEDS_REVIEW and
+   * PENDING (awaiting KYC/approval, incl. a maker-checker first approval).
+   */
+  async reviewQueue(requester: SplitRequester): Promise<BeneficiaryPayout[]> {
+    this.assertEnabled();
+    this.assertAdmin(requester);
+    const payouts = await this.payoutRepo.findByStatuses(['NEEDS_REVIEW', 'PENDING']);
+    return payouts.map(toBeneficiaryPayoutDto);
+  }
+
   // ---- helpers ------------------------------------------------------------
 
   private assertEnabled(): void {
     if (!this.enabled) {
       throw new AppError('Split-proceeds payouts are not enabled', 404);
+    }
+  }
+
+  private assertAdmin(requester: SplitRequester): void {
+    if (requester.role !== 'admin') {
+      throw new AppError('Admin access required', 403);
     }
   }
 

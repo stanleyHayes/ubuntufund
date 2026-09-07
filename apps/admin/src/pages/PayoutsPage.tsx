@@ -12,7 +12,7 @@ import {
 } from '@mui/material'
 import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded'
 import { EmptyState } from '@ubuntu-fund/ui'
-import type { Payout, PayoutStatus } from '@ubuntu-fund/types'
+import type { BeneficiaryPayout, Payout, PayoutStatus } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
 import { raisedSurface, insetSurface } from '@/lib/surfaces'
 import { TONES } from '@/lib/tones'
@@ -115,24 +115,90 @@ function Detail({ label, value }: { label: string; value: string }) {
   )
 }
 
+function BeneficiaryCard({
+  payout,
+  onApprove,
+  onVerifyKyc,
+  busy,
+}: {
+  payout: BeneficiaryPayout
+  onApprove: (id: string) => void
+  onVerifyKyc: (campaignId: string, beneficiaryId: string) => void
+  busy: boolean
+}) {
+  const awaitingSecond = payout.status === 'PENDING' && Boolean(payout.firstApprovedBy)
+  return (
+    <Box sx={{ ...raisedSurface, p: 3 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2 }}>
+        <Box>
+          <Typography sx={{ fontWeight: 700, fontSize: 18 }}>{money(payout.amount, payout.currency)}</Typography>
+          <Typography sx={{ fontSize: 12, opacity: 0.7 }}>
+            Beneficiary {payout.beneficiaryId} · campaign {payout.campaignId}
+          </Typography>
+        </Box>
+        <Chip
+          label={payout.status.replace('_', ' ')}
+          size="small"
+          sx={{ color: STATUS_TONE[payout.status], fontWeight: 700, bgcolor: 'transparent', border: `1px solid ${STATUS_TONE[payout.status]}` }}
+        />
+      </Box>
+      <Box sx={{ ...insetSurface, px: 1.5, py: 1.5, mt: 2, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+        {payout.providerRef && <Detail label="Reference" value={payout.providerRef} />}
+        {payout.firstApprovedBy && <Detail label="1st approval" value={payout.firstApprovedBy} />}
+        {payout.approvedBy && <Detail label="Approved by" value={payout.approvedBy} />}
+      </Box>
+      {awaitingSecond && (
+        <Alert severity="info" sx={{ mt: 2, py: 0.5 }}>
+          Maker-checker: a first approval is recorded; a second, different admin must approve.
+        </Alert>
+      )}
+      {payout.status === 'PENDING' && (
+        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+          <Button
+            size="small"
+            disabled={busy}
+            onClick={() => onVerifyKyc(payout.campaignId, payout.beneficiaryId)}
+          >
+            Verify KYC
+          </Button>
+          <Button variant="contained" size="small" disabled={busy} onClick={() => onApprove(payout.id)}>
+            {awaitingSecond ? 'Give 2nd approval' : 'Approve'}
+          </Button>
+        </Box>
+      )}
+    </Box>
+  )
+}
+
+type View = 'queue' | 'all' | 'beneficiary'
+
 export default function PayoutsPage() {
-  const [view, setView] = useState<'queue' | 'all'>('queue')
+  const [view, setView] = useState<View>('queue')
   const [payouts, setPayouts] = useState<Payout[]>([])
+  const [benePayouts, setBenePayouts] = useState<BeneficiaryPayout[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [approvingId, setApprovingId] = useState<string | null>(null)
 
+  const isBeneficiary = view === 'beneficiary'
+
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const path = view === 'queue' ? '/payouts/review-queue' : '/payouts'
-      const data = await api.get<Payout[]>(path)
-      setPayouts(Array.isArray(data) ? data : [])
+      if (view === 'beneficiary') {
+        const data = await api.get<BeneficiaryPayout[]>('/beneficiary-payouts/review-queue')
+        setBenePayouts(Array.isArray(data) ? data : [])
+      } else {
+        const path = view === 'queue' ? '/payouts/review-queue' : '/payouts'
+        const data = await api.get<Payout[]>(path)
+        setPayouts(Array.isArray(data) ? data : [])
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load payouts')
       setPayouts([])
+      setBenePayouts([])
     } finally {
       setLoading(false)
     }
@@ -163,8 +229,44 @@ export default function PayoutsPage() {
     [load]
   )
 
-  const needsReview = payouts.filter((p) => p.status === 'NEEDS_REVIEW').length
-  const pending = payouts.filter((p) => p.status === 'PENDING').length
+  const approveBeneficiary = useCallback(
+    async (id: string) => {
+      setApprovingId(id)
+      setNotice(null)
+      try {
+        const updated = await api.post<BeneficiaryPayout>(`/beneficiary-payouts/${id}/approve`, {})
+        setNotice(
+          updated.status === 'PENDING'
+            ? 'First approval recorded — a second admin must approve.'
+            : 'Beneficiary payout approved; the transfer is initiating.'
+        )
+        await load()
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Approval failed')
+      } finally {
+        setApprovingId(null)
+      }
+    },
+    [load]
+  )
+
+  const verifyKyc = useCallback(
+    async (campaignId: string, beneficiaryId: string) => {
+      setNotice(null)
+      try {
+        await api.post(`/campaigns/${campaignId}/split/beneficiaries/${beneficiaryId}/verify-kyc`, {})
+        setNotice('Beneficiary KYC verified.')
+        await load()
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'KYC verification failed')
+      }
+    },
+    [load]
+  )
+
+  const source = isBeneficiary ? benePayouts : payouts
+  const needsReview = source.filter((p) => p.status === 'NEEDS_REVIEW').length
+  const pending = source.filter((p) => p.status === 'PENDING').length
 
   return (
     <Box>
@@ -185,10 +287,11 @@ export default function PayoutsPage() {
           size="small"
           exclusive
           value={view}
-          onChange={(_, v) => v && setView(v)}
+          onChange={(_, v) => v && setView(v as View)}
         >
           <ToggleButton value="queue">Review queue</ToggleButton>
           <ToggleButton value="all">All payouts</ToggleButton>
+          <ToggleButton value="beneficiary">Beneficiary</ToggleButton>
         </ToggleButtonGroup>
         <Button size="small" onClick={() => void load()} disabled={loading}>
           Refresh
@@ -204,15 +307,29 @@ export default function PayoutsPage() {
             <Skeleton key={i} variant="rounded" height={140} />
           ))}
         </Stack>
-      ) : payouts.length === 0 ? (
+      ) : source.length === 0 ? (
         <EmptyState
-          title={view === 'queue' ? 'Nothing needs attention' : 'No payouts yet'}
+          title={view === 'all' ? 'No payouts yet' : 'Nothing needs attention'}
           description={
-            view === 'queue'
-              ? 'No payouts are awaiting approval or flagged for review.'
-              : 'Campaign payouts will appear here once organizers request them.'
+            isBeneficiary
+              ? 'No beneficiary payouts are awaiting KYC, approval, or review.'
+              : view === 'queue'
+                ? 'No payouts are awaiting approval or flagged for review.'
+                : 'Campaign payouts will appear here once organizers request them.'
           }
         />
+      ) : isBeneficiary ? (
+        <Stack spacing={2}>
+          {benePayouts.map((p) => (
+            <BeneficiaryCard
+              key={p.id}
+              payout={p}
+              onApprove={approveBeneficiary}
+              onVerifyKyc={verifyKyc}
+              busy={approvingId === p.id}
+            />
+          ))}
+        </Stack>
       ) : (
         <Stack spacing={2}>
           {payouts.map((p) => (

@@ -59,6 +59,8 @@ export function createBeneficiaryPayoutRoutes(
   adminGuard: typeof requireAdmin
 ): Router {
   const router = Router();
+  router.get('/', authMiddleware, adminGuard, controller.listAll);
+  router.get('/review-queue', authMiddleware, adminGuard, controller.reviewQueue);
   router.post('/:payoutId/approve', authMiddleware, adminGuard, controller.approve);
   return router;
 }
