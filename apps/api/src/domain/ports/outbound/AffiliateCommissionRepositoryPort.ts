@@ -1,3 +1,4 @@
+import type { AffiliateCommissionStatus } from '@ubuntu-fund/types';
 import type { AffiliateCommissionEntity } from '../../entities/AffiliateCommission.js';
 
 export interface AffiliateCommissionRepositoryPort {
@@ -29,5 +30,18 @@ export interface AffiliateCommissionRepositoryPort {
    */
   update(
     commission: AffiliateCommissionEntity
+  ): Promise<AffiliateCommissionEntity | null>;
+
+  /**
+   * Atomically move a commission from `from` to `to`, only while it is still in
+   * `from`. Returns the updated commission, or null when it is no longer in
+   * `from` (another writer won the race). This is the exactly-once seam for a
+   * reversal: only the caller that flips the status may unwind the balance, so a
+   * replayed refund/chargeback can never double-decrement.
+   */
+  transitionStatus(
+    id: string,
+    from: AffiliateCommissionStatus,
+    to: AffiliateCommissionStatus
   ): Promise<AffiliateCommissionEntity | null>;
 }

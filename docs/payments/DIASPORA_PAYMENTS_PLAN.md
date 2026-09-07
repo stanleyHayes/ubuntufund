@@ -23,6 +23,48 @@ unchanged and its regression tests still pass.
 | 3 Flutterwave | `FlutterwaveGateway` (v3) + `verif-hash` webhook that re-verifies server-side + settles through the shared seam; provider-generic routing; `POST /webhooks/flutterwave` |
 | 4 Operations | Reconciliation (`ReconcilePaymentsUseCase` + admin trigger + prod scheduler); admin search/trace (`/admin/payments*`); provider-integrated refunds + **compensating ledger** (§14) |
 
+### Code-review hardening (2026-09-07)
+
+An adversarial multi-dimension review of the money code ran before merge and
+found real defects; all confirmed critical/high/medium findings are fixed:
+
+- **Double-refund on retry (CRITICAL).** `ProcessRefundUseCase` now takes an
+  atomic per-intent claim (`claimRefund`) BEFORE any provider call, tracks a
+  cumulative `refundedAmountMinor`, caps the total at the original amount, and
+  releases the claim if the provider call throws. A retried **full** refund is
+  rejected (409) and the intent lands in terminal `REFUNDED`; a **partial**
+  refund is retry-safe when an `Idempotency-Key` (header or body) is supplied,
+  and the cumulative cap bounds every path so refunds can never exceed principal.
+- **Currency precision (CRITICAL).** `Money` and `FeePolicy` round to each
+  currency's own minor-unit exponent (0/2/3dp), never a hardcoded 2dp, so fee
+  splits reconcile exactly (`amount === net + platform + processor`) for
+  non-2-decimal currencies. GHS/USD behaviour is unchanged.
+- **Reconciliation overwrite (HIGH).** The `failed` branch uses an atomic
+  `markFailedIfPending`, so a stale sweep can never revert a
+  concurrently-`SUCCEEDED` intent to `FAILED`.
+- **Refund raised-projection (HIGH).** `reverseDonation` uses a new
+  `reverseRaised` (no active/endDate guard) so a refund claws back the raised
+  total even on a funded/ended campaign, and logs rather than silently dropping
+  it if the campaign is gone.
+- **International-card flag (HIGH).** The live charge path enforces
+  `PAYMENTS_INTERNATIONAL_CARDS_ENABLED` — an international card contribution is
+  rejected when the flag is off, not just hidden at checkout.
+- **Webhook amount tolerance (MEDIUM).** The Paystack/Flutterwave/reconcile
+  currency-mismatch guards use a half-minor-unit tolerance per currency instead
+  of a flat `0.01`.
+- **Affiliate reversal (MEDIUM).** `reverseForSourceRef` claims the reversal via
+  an atomic status transition before unwinding the balance, so a replayed
+  refund/chargeback can't double-decrement.
+- **Ledger raised sum (PLAUSIBLE, dead code).** `sumCampaignRaised` now nets
+  campaign debits minus credits, so the (currently unused) ledger-derived raised
+  figure stays correct once refunds are posted.
+
+Known, documented, non-blocking: provider enablement has two controls — the
+`PAYMENTS_*` env flags gate the charge path (operational source of truth), while
+the `PaymentProviderEntity` DB registry drives the public storefront list.
+Aligning the admin DB toggle to also gate charging is a follow-up; today an
+operator disables a rail via the env flag.
+
 ### Remaining — external gates (cannot be completed by the agent)
 
 - **Flutterwave live keys** — set `FLUTTERWAVE_SECRET_KEY` + `FLUTTERWAVE_WEBHOOK_SECRET_HASH`

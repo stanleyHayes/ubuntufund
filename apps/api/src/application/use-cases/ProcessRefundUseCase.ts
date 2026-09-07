@@ -1,5 +1,9 @@
 import { JournalEntryEntity } from '../../domain/entities/JournalEntry.js';
-import { fromMinorUnits } from '../../domain/value-objects/Money.js';
+import {
+  fromMinorUnits,
+  minorUnitExponent,
+  toMinorUnits,
+} from '../../domain/value-objects/Money.js';
 import type { DonationIntentRepositoryPort } from '../../domain/ports/outbound/DonationIntentRepositoryPort.js';
 import type { CampaignBalanceRepositoryPort } from '../../domain/ports/outbound/CampaignBalanceRepositoryPort.js';
 import type { LedgerRepositoryPort } from '../../domain/ports/outbound/LedgerRepositoryPort.js';
@@ -8,13 +12,16 @@ import type { CampaignLedgerProjector } from '../services/CampaignLedgerProjecto
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 import { logger } from '../../infrastructure/logging/logger.js';
 
-function round2(n: number): number {
-  return Math.round(n * 100) / 100;
-}
-
 export interface ProcessRefundInput {
   /** Refunded campaign-directed amount in MAJOR units; omit for a full refund. */
   amount?: number;
+  /**
+   * Idempotency key for this refund request (e.g. an `Idempotency-Key` header).
+   * When supplied, a repeated request with the same key is an exact no-op — the
+   * only way to make a *partial* refund fully retry-safe. A full refund is
+   * already idempotent without it (it lands the intent in terminal REFUNDED).
+   */
+  idempotencyKey?: string;
 }
 
 export interface ProcessRefundResult {
@@ -62,16 +69,25 @@ export class ProcessRefundUseCase {
       throw new AppError(`Refunds are not available for ${intent.provider}`, 501);
     }
 
-    const fullAmount = intent.amount;
-    const refundAmount = round2(input.amount ?? fullAmount);
+    // All money math is in the settlement currency at its own minor-unit
+    // precision — never a hardcoded 2dp.
+    const currency = intent.settlementCurrency ?? intent.currency;
+    const roundCur = (n: number): number => {
+      const factor = 10 ** minorUnitExponent(currency);
+      return Math.round(n * factor) / factor;
+    };
+
+    const fullAmount = roundCur(intent.amount);
+    const refundAmount = roundCur(input.amount ?? fullAmount);
     if (refundAmount <= 0 || refundAmount > fullAmount) {
       throw new AppError('Refund amount must be between 0 and the contribution amount', 400);
     }
-    const isPartial = refundAmount < fullAmount;
+
+    const maxMinor = toMinorUnits(fullAmount, currency);
+    const amountMinor = toMinorUnits(refundAmount, currency);
 
     // Split the refunded amount into net/fee legs, proportional to the recorded
     // settlement, so the compensating entry balances and the buckets unwind.
-    const currency = intent.settlementCurrency ?? intent.currency;
     const settledNet =
       intent.netCampaignAmountMinor !== undefined
         ? fromMinorUnits(intent.netCampaignAmountMinor, currency)
@@ -81,10 +97,10 @@ export class ProcessRefundUseCase {
         ? fromMinorUnits(intent.platformFeeMinor, currency)
         : 0;
     const fraction = refundAmount / fullAmount;
-    const beneficiaryNet = round2(settledNet * fraction);
-    const platformFee = round2(settledPlatformFee * fraction);
+    const beneficiaryNet = roundCur(settledNet * fraction);
+    const platformFee = roundCur(settledPlatformFee * fraction);
     // Absorb rounding into the processor-fee leg so amount === net+platform+processor.
-    const processorFee = round2(refundAmount - beneficiaryNet - platformFee);
+    const processorFee = roundCur(refundAmount - beneficiaryNet - platformFee);
 
     // Guard: only refund funds still pending (not disbursed) — check before we
     // touch the provider, so we never refund money we can't reverse locally.
@@ -96,14 +112,51 @@ export class ProcessRefundUseCase {
       );
     }
 
-    // 1. Refund at the provider (real money movement).
-    const refund = await gateway.refundPayment(
-      intent.providerRef,
-      isPartial ? refundAmount : undefined,
-      intent.currency
+    // 1. ATOMIC CLAIM before any provider call — reserves this refund against the
+    //    intent and caps the cumulative total at the original amount. A retried
+    //    request (same key) or an over-refund is rejected here, so the provider
+    //    is never asked to refund twice.
+    const claimed = await this.donationIntentRepo.claimRefund(
+      intent.id,
+      amountMinor,
+      maxMinor,
+      input.idempotencyKey
     );
+    if (!claimed) {
+      throw new AppError(
+        'This refund was already processed or would exceed the refundable amount',
+        409
+      );
+    }
+    const cumulativeMinor = claimed.refundedAmountMinor ?? amountMinor;
+    const isPartial = cumulativeMinor < maxMinor;
+    // A single full refund (this leg is the whole original, nothing refunded
+    // before) tells the provider to do a full refund (undefined amount);
+    // anything else is an explicit partial-amount refund.
+    const isSingleFullRefund = amountMinor === maxMinor && cumulativeMinor === maxMinor;
 
-    // 2. Reverse the campaign projection (guarded again for the race).
+    let refund: { reference?: string };
+    try {
+      // 2. Refund at the provider (real money movement).
+      refund = await gateway.refundPayment(
+        intent.providerRef,
+        isSingleFullRefund ? undefined : refundAmount,
+        intent.currency
+      );
+    } catch (error) {
+      // Provider call failed — release the reservation so the amount is
+      // refundable again, then surface the error.
+      await this.donationIntentRepo.releaseRefundClaim(
+        intent.id,
+        amountMinor,
+        input.idempotencyKey
+      );
+      throw error;
+    }
+
+    // 3. Reverse the campaign projection (guarded again for the race). If this is
+    //    blocked, the money already moved at the provider — do NOT release the
+    //    claim; flag for manual reconciliation instead.
     const reversed = await this.projector.reverseDonation(intent.campaignId, currency, {
       amount: refundAmount,
       beneficiaryNet,
@@ -121,7 +174,7 @@ export class ProcessRefundUseCase {
       );
     }
 
-    // 3. Post the balanced compensating journal (append-only; NOT keyed on the
+    // 4. Post the balanced compensating journal (append-only; NOT keyed on the
     // intent id, so it never collapses into the original settlement entry).
     await this.ledgerRepo.postEntry(
       JournalEntryEntity.forDonationRefund({
@@ -135,7 +188,8 @@ export class ProcessRefundUseCase {
       })
     );
 
-    // 4. Transition the intent (full → REFUNDED terminal; part → PARTIALLY_REFUNDED).
+    // 5. Transition the intent (fully refunded → REFUNDED terminal; otherwise
+    // PARTIALLY_REFUNDED). Cumulative total decides, not this single leg.
     await this.donationIntentRepo.updateStatus(
       intent.id,
       isPartial ? 'PARTIALLY_REFUNDED' : 'REFUNDED',

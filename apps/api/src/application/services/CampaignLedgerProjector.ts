@@ -74,7 +74,21 @@ export class CampaignLedgerProjector {
       tip: 0,
     });
     if (!reversed) return false;
-    await this.campaignRepo.incrementRaised(campaignId, -split.amount, currency);
+    // Reduce the raised projection too. Uses reverseRaised (no active/endDate
+    // guard) so a funded/ended campaign still claws back — and, like
+    // projectDonation, logs rather than silently dropping it if the campaign
+    // can't be found.
+    const decremented = await this.campaignRepo.reverseRaised(
+      campaignId,
+      split.amount,
+      currency
+    );
+    if (!decremented) {
+      logger.warn(
+        { campaignId, amount: split.amount },
+        'raised projection not reversed on refund: campaign not found for currency'
+      );
+    }
     return true;
   }
 

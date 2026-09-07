@@ -203,6 +203,72 @@ describe('Refunds (spec §14)', () => {
     expect(res.body.message).toMatch(/settled contribution can be refunded/);
   });
 
+  it('is idempotent: a retried full refund is rejected and never double-refunds', async () => {
+    const { userId, token } = await registerUser(app, uniqueEmail('refund5'));
+    const campaignId = await createActiveCampaign(app, token, userId);
+    const { intentId } = await settleDonation(app, campaignId);
+
+    await request(app)
+      .post(`/api/v1/admin/payments/${intentId}/refund`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({})
+      .expect(200);
+
+    // A network double-submit must NOT refund again. The intent is now terminal
+    // REFUNDED, so the retry is rejected (400 terminal-state guard, or 409 from
+    // the atomic cap) — either way, no second refund.
+    const retry = await request(app)
+      .post(`/api/v1/admin/payments/${intentId}/refund`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({});
+    expect([400, 409]).toContain(retry.status);
+    expect(retry.body.message).toMatch(
+      /settled contribution can be refunded|already processed|exceed the refundable/i
+    );
+
+    // Cumulative refunded is EXACTLY the original — not double.
+    const intentDoc = await DonationIntentModel.findById(intentId);
+    expect(intentDoc?.status).toBe('REFUNDED');
+    expect(intentDoc?.refundedAmountMinor).toBe(20000); // 200.00 GHS, once
+
+    // The projection is reversed exactly once (not pushed negative).
+    const balance = await CampaignBalanceModel.findOne({ campaignId });
+    expect(balance?.totalRaised).toBe(0);
+    expect(balance?.pendingBalance).toBe(0);
+  });
+
+  it('caps cumulative refunds at the original amount, then completes on the remainder', async () => {
+    const { userId, token } = await registerUser(app, uniqueEmail('refund6'));
+    const campaignId = await createActiveCampaign(app, token, userId);
+    const { intentId } = await settleDonation(app, campaignId);
+
+    // Refund GH₵100 of GH₵200 → PARTIALLY_REFUNDED.
+    await request(app)
+      .post(`/api/v1/admin/payments/${intentId}/refund`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ amount: 100 })
+      .expect(200);
+
+    // A further GH₵150 would exceed the remaining GH₵100 → rejected, no refund.
+    await request(app)
+      .post(`/api/v1/admin/payments/${intentId}/refund`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ amount: 150 })
+      .expect(409);
+
+    // The remaining GH₵100 completes it → REFUNDED, cumulative exactly original.
+    const done = await request(app)
+      .post(`/api/v1/admin/payments/${intentId}/refund`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ amount: 100 })
+      .expect(200);
+    expect(done.body.data.status).toBe('REFUNDED');
+
+    const intentDoc = await DonationIntentModel.findById(intentId);
+    expect(intentDoc?.status).toBe('REFUNDED');
+    expect(intentDoc?.refundedAmountMinor).toBe(20000);
+  });
+
   it('forbids a non-admin from refunding', async () => {
     const { userId, token } = await registerUser(app, uniqueEmail('refund4'));
     const campaignId = await createActiveCampaign(app, token, userId);

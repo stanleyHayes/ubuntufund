@@ -2,6 +2,7 @@ import type {
   DonationProvider,
   DonationSettlementBreakdown,
 } from '@ubuntu-fund/types';
+import { minorUnitExponent } from '../../domain/value-objects/Money.js';
 
 export interface FeePolicyConfig {
   /** Platform revenue cut, as a percentage of the campaign-directed amount. */
@@ -12,8 +13,15 @@ export interface FeePolicyConfig {
   paystackFlatFee: number;
 }
 
-function round2(n: number): number {
-  return Math.round(n * 100) / 100;
+/**
+ * Round a money amount to its currency's own minor-unit precision (2dp for
+ * GHS/USD, 0 for XOF/JPY, 3 for KWD). Never a hardcoded 2dp — so fee splits
+ * still sum exactly (amount === net + platform + processor) for non-2-decimal
+ * currencies. GHS/USD behaviour is unchanged (exponent 2).
+ */
+function roundMoney(n: number, currency: string): number {
+  const factor = 10 ** minorUnitExponent(currency);
+  return Math.round(n * factor) / factor;
 }
 
 /**
@@ -29,14 +37,22 @@ function round2(n: number): number {
 export class FeePolicy {
   constructor(private readonly config: FeePolicyConfig) {}
 
-  private platformFee(amount: number, platformFeePercent: number): number {
-    return round2((amount * platformFeePercent) / 100);
+  private platformFee(
+    amount: number,
+    platformFeePercent: number,
+    currency: string
+  ): number {
+    return roundMoney((amount * platformFeePercent) / 100, currency);
   }
 
-  private processorFee(amount: number, provider: DonationProvider): number {
+  private processorFee(
+    amount: number,
+    provider: DonationProvider,
+    currency: string
+  ): number {
     if (provider === 'wallet') return 0;
-    const pct = round2((amount * this.config.paystackFeePercent) / 100);
-    return round2(pct + this.config.paystackFlatFee);
+    const pct = roundMoney((amount * this.config.paystackFeePercent) / 100, currency);
+    return roundMoney(pct + this.config.paystackFlatFee, currency);
   }
 
   computeBreakdown(
@@ -46,17 +62,17 @@ export class FeePolicy {
     provider: DonationProvider,
     platformFeePercent: number = this.config.platformFeePercent
   ): DonationSettlementBreakdown {
-    const roundedAmount = round2(amount);
-    const roundedTip = round2(tip);
-    const processorFee = this.processorFee(roundedAmount, provider);
+    const roundedAmount = roundMoney(amount, currency);
+    const roundedTip = roundMoney(tip, currency);
+    const processorFee = this.processorFee(roundedAmount, provider, currency);
     // Fees can never exceed the amount: honor the processor fee first, cap the
     // platform fee at the remainder, and clamp the beneficiary net at 0 — so an
     // aggressive (admin-editable) plan fee % never crashes settlement.
     const platformFee = Math.min(
-      this.platformFee(roundedAmount, platformFeePercent),
-      Math.max(0, round2(roundedAmount - processorFee))
+      this.platformFee(roundedAmount, platformFeePercent, currency),
+      Math.max(0, roundMoney(roundedAmount - processorFee, currency))
     );
-    const beneficiaryNet = round2(roundedAmount - platformFee - processorFee);
+    const beneficiaryNet = roundMoney(roundedAmount - platformFee - processorFee, currency);
 
     return {
       amount: roundedAmount,
@@ -64,7 +80,7 @@ export class FeePolicy {
       processorFee,
       platformFee,
       beneficiaryNet,
-      gross: round2(roundedAmount + roundedTip),
+      gross: roundMoney(roundedAmount + roundedTip, currency),
       currency,
     };
   }
@@ -86,18 +102,23 @@ export class FeePolicy {
     providerRef?: string;
     platformFeePercent?: number;
   }): DonationSettlementBreakdown {
-    const gross = round2(params.gross);
-    const tip = round2(params.tip);
-    const processorFee = round2(params.processorFee);
-    const amount = round2(gross - tip);
+    const currency = params.currency;
+    const gross = roundMoney(params.gross, currency);
+    const tip = roundMoney(params.tip, currency);
+    const processorFee = roundMoney(params.processorFee, currency);
+    const amount = roundMoney(gross - tip, currency);
     // Fees can never exceed the amount: honor the provider's authoritative
     // processor fee first, cap the platform fee at the remainder, clamp net at 0
     // — so an aggressive plan fee % never turns settlement into a webhook 500.
     const platformFee = Math.min(
-      this.platformFee(amount, params.platformFeePercent ?? this.config.platformFeePercent),
-      Math.max(0, round2(amount - processorFee))
+      this.platformFee(
+        amount,
+        params.platformFeePercent ?? this.config.platformFeePercent,
+        currency
+      ),
+      Math.max(0, roundMoney(amount - processorFee, currency))
     );
-    const beneficiaryNet = round2(amount - platformFee - processorFee);
+    const beneficiaryNet = roundMoney(amount - platformFee - processorFee, currency);
 
     return {
       amount,
@@ -106,7 +127,7 @@ export class FeePolicy {
       platformFee,
       beneficiaryNet,
       gross,
-      currency: params.currency,
+      currency,
       providerRef: params.providerRef,
     };
   }

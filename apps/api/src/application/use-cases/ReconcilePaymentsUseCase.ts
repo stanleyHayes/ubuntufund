@@ -7,6 +7,7 @@ import type { PlanLimitsService } from '../services/PlanLimitsService.js';
 import type { SettleDonationUseCase } from './SettleDonationUseCase.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 import { logger } from '../../infrastructure/logging/logger.js';
+import { minorUnitExponent } from '../../domain/value-objects/Money.js';
 
 /** Per-intent reconciliation outcome. */
 export type ReconcileOutcome =
@@ -100,7 +101,9 @@ export class ReconcilePaymentsUseCase {
     if (verified.status === 'success') {
       const currencyMismatch =
         verified.currency.toUpperCase() !== intent.currency.toUpperCase();
-      const amountMismatch = Math.abs(verified.amount - intent.gross) > 0.01;
+      const amountTolerance = 0.5 / 10 ** minorUnitExponent(intent.currency);
+      const amountMismatch =
+        Math.abs(verified.amount - intent.gross) > amountTolerance;
       if (currencyMismatch || amountMismatch) {
         logger.warn(
           {
@@ -135,8 +138,14 @@ export class ReconcilePaymentsUseCase {
     }
 
     if (verified.status === 'failed') {
-      await this.donationIntentRepo.updateStatus(intent.id, 'FAILED', intent.providerRef);
-      return 'failed';
+      // Atomic guard: only fail an intent still PENDING. A webhook may have
+      // settled it to SUCCEEDED between the stale scan and now — never overwrite
+      // a credited intent back to FAILED.
+      const failed = await this.donationIntentRepo.markFailedIfPending(
+        intent.id,
+        intent.providerRef
+      );
+      return failed ? 'failed' : 'pending';
     }
 
     // 'pending' / 'abandoned' / anything non-terminal — try again next sweep.

@@ -35,6 +35,9 @@ export interface DonationIntentDocument extends Document {
   providerFeeMinor?: number;
   platformFeeMinor?: number;
   netCampaignAmountMinor?: number;
+  // Refund tracking (spec §14).
+  refundedAmountMinor?: number;
+  refundKeys?: string[];
 }
 
 const DONATION_INTENT_STATUSES: DonationIntentStatus[] = [
@@ -101,6 +104,10 @@ const donationIntentSchema = new Schema<DonationIntentDocument>(
     providerFeeMinor: { type: Number },
     platformFeeMinor: { type: Number },
     netCampaignAmountMinor: { type: Number },
+    // Refund tracking (spec §14): cumulative refunded minor units + the
+    // idempotency keys already applied, so a replayed refund can't double-refund.
+    refundedAmountMinor: { type: Number },
+    refundKeys: { type: [String], default: undefined },
   },
   { collection: 'donationintents', timestamps: true }
 );

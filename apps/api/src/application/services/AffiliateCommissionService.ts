@@ -149,30 +149,41 @@ export class AffiliateCommissionService {
     if (!commission) {
       return; // nothing was ever accrued for this charge
     }
-    if (commission.status === 'reversed' || commission.status === 'cancelled') {
+    const prior = commission.status;
+    if (prior === 'reversed' || prior === 'cancelled') {
       return; // already terminal
+    }
+
+    // Atomically claim the reversal: flip the status out of its current bucket
+    // FIRST, and only the writer that wins may unwind the balance. A replayed
+    // refund/chargeback for the same charge loses here and no-ops, so the
+    // balance is never double-decremented.
+    const claimed = await this.commissionRepo.transitionStatus(
+      commission.id,
+      prior,
+      'reversed'
+    );
+    if (!claimed) {
+      return; // another reversal already handled this commission
     }
 
     const balance = await this.balanceRepo.findByAffiliateId(
       commission.affiliateId
     );
 
-    if (commission.status === 'held') {
+    if (prior === 'held') {
       if (balance) {
         await this.balanceRepo.reverseHeld(balance.id, commission.amount);
       }
-    } else if (commission.status === 'available') {
+    } else if (prior === 'available') {
       if (balance) {
         await this.balanceRepo.reverseAvailable(balance.id, commission.amount);
       }
-    } else if (commission.status === 'paid') {
+    } else if (prior === 'paid') {
       logger.warn(
         { sourceRef, commissionId: commission.id, amount: commission.amount },
         'reversing an already-paid affiliate commission; manual clawback required'
       );
     }
-
-    commission.markReversed();
-    await this.commissionRepo.update(commission);
   }
 }

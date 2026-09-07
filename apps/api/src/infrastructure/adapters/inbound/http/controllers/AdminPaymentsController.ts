@@ -48,10 +48,18 @@ export class AdminPaymentsController {
   /** POST /admin/payments/:id/refund — refund a contribution (spec §14). */
   refund = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const body = (req.body ?? {}) as { amount?: number };
+      const body = (req.body ?? {}) as { amount?: number; idempotencyKey?: string };
+      // A stable per-refund key (header or body) makes even partial refunds
+      // exactly-once under a client retry; full refunds are idempotent anyway.
+      const headerKey = req.header('idempotency-key');
+      const idempotencyKey =
+        headerKey ?? (typeof body.idempotencyKey === 'string' ? body.idempotencyKey : undefined);
       const result = await this.processRefundUseCase.execute(
         String(req.params.id),
-        { amount: typeof body.amount === 'number' ? body.amount : undefined },
+        {
+          amount: typeof body.amount === 'number' ? body.amount : undefined,
+          idempotencyKey,
+        },
         req.userId ?? 'unknown-admin'
       );
       res.json({ data: result, status: 'success' });

@@ -36,6 +36,12 @@ export interface DonationIntentProps {
   providerFeeMinor?: number;
   platformFeeMinor?: number;
   netCampaignAmountMinor?: number;
+  // Cumulative refunded campaign-amount in minor units (spec §14). Absent on
+  // never-refunded intents. The refund claim caps against the original amount.
+  refundedAmountMinor?: number;
+  // Idempotency keys of refunds already applied — a repeated refund with the
+  // same key is a no-op (exactly-once, even for partial refunds).
+  refundKeys?: string[];
 }
 
 /**
@@ -163,6 +169,12 @@ export class DonationIntentEntity {
   }
   get netCampaignAmountMinor(): number | undefined {
     return this.props.netCampaignAmountMinor;
+  }
+  get refundedAmountMinor(): number | undefined {
+    return this.props.refundedAmountMinor;
+  }
+  get refundKeys(): string[] | undefined {
+    return this.props.refundKeys;
   }
 
   /** Total the donor is charged: campaign-directed amount plus any tip. */

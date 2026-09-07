@@ -1,3 +1,4 @@
+import type { AffiliateCommissionStatus } from '@ubuntu-fund/types';
 import { AffiliateCommissionEntity } from '../../../../domain/entities/AffiliateCommission.js';
 import type { AffiliateCommissionRepositoryPort } from '../../../../domain/ports/outbound/AffiliateCommissionRepositoryPort.js';
 import {
@@ -94,6 +95,21 @@ export class MongoAffiliateCommissionRepository
     const doc = await AffiliateCommissionModel.findByIdAndUpdate(
       c.id,
       { $set: { status: c.status } },
+      { new: true }
+    );
+    return doc ? toDomain(doc) : null;
+  }
+
+  async transitionStatus(
+    id: string,
+    from: AffiliateCommissionStatus,
+    to: AffiliateCommissionStatus
+  ): Promise<AffiliateCommissionEntity | null> {
+    // Conditional atomic transition: only the writer that flips `from`→`to` wins,
+    // so a replayed reversal can't unwind the balance twice.
+    const doc = await AffiliateCommissionModel.findOneAndUpdate(
+      { _id: id, status: from },
+      { $set: { status: to } },
       { new: true }
     );
     return doc ? toDomain(doc) : null;

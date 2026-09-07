@@ -37,6 +37,8 @@ function toDomain(doc: DonationIntentDocument): DonationIntentEntity {
     providerFeeMinor: doc.providerFeeMinor,
     platformFeeMinor: doc.platformFeeMinor,
     netCampaignAmountMinor: doc.netCampaignAmountMinor,
+    refundedAmountMinor: doc.refundedAmountMinor,
+    refundKeys: doc.refundKeys,
   });
 }
 
@@ -132,6 +134,20 @@ export class MongoDonationIntentRepository
     return doc ? toDomain(doc) : null;
   }
 
+  async markFailedIfPending(
+    id: string,
+    providerRef?: string
+  ): Promise<DonationIntentEntity | null> {
+    // Conditional atomic transition: only fires while still PENDING, so a stale
+    // reconciliation sweep can never clobber a concurrently-SUCCEEDED intent.
+    const doc = await DonationIntentModel.findOneAndUpdate(
+      { _id: id, status: 'PENDING' },
+      { $set: { status: 'FAILED', ...(providerRef ? { providerRef } : {}) } },
+      { new: true }
+    );
+    return doc ? toDomain(doc) : null;
+  }
+
   async findStalePending(
     olderThan: Date,
     limit: number
@@ -173,6 +189,50 @@ export class MongoDonationIntentRepository
       .sort({ createdAt: -1 })
       .limit(Math.min(filters.limit ?? 50, 200));
     return docs.map(toDomain);
+  }
+
+  async claimRefund(
+    id: string,
+    amountMinor: number,
+    maxMinor: number,
+    idempotencyKey?: string
+  ): Promise<DonationIntentEntity | null> {
+    // Atomic reservation: fires only while refundable, within the cap, and (when
+    // a key is given) not already applied. The $expr caps the cumulative total;
+    // the refundKeys guard makes a keyed retry an exact no-op (partials included).
+    const filter: Record<string, unknown> = {
+      _id: id,
+      status: { $in: ['SUCCEEDED', 'PARTIALLY_REFUNDED'] },
+      $expr: {
+        $lte: [
+          { $add: [{ $ifNull: ['$refundedAmountMinor', 0] }, amountMinor] },
+          maxMinor,
+        ],
+      },
+    };
+    if (idempotencyKey) filter.refundKeys = { $ne: idempotencyKey };
+
+    const update: Record<string, unknown> = {
+      $inc: { refundedAmountMinor: amountMinor },
+    };
+    if (idempotencyKey) update.$push = { refundKeys: idempotencyKey };
+
+    const doc = await DonationIntentModel.findOneAndUpdate(filter, update, {
+      new: true,
+    });
+    return doc ? toDomain(doc) : null;
+  }
+
+  async releaseRefundClaim(
+    id: string,
+    amountMinor: number,
+    idempotencyKey?: string
+  ): Promise<void> {
+    const update: Record<string, unknown> = {
+      $inc: { refundedAmountMinor: -amountMinor },
+    };
+    if (idempotencyKey) update.$pull = { refundKeys: idempotencyKey };
+    await DonationIntentModel.updateOne({ _id: id }, update);
   }
 
   async recordSettlementFinancials(

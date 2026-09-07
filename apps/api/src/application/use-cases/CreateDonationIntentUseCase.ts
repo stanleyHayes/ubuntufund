@@ -151,6 +151,7 @@ export class CreateDonationIntentUseCase {
       throw new AppError('Campaign is not accepting donations', 400);
     }
     const currency = this.resolveCurrency(input, campaign.goalAmount.currency);
+    this.assertInternationalCardAllowed(input, currency);
 
     // Validate live-session attribution belongs to this campaign, if supplied.
     if (input.liveSessionId) {
@@ -248,6 +249,27 @@ export class CreateDonationIntentUseCase {
       throw new AppError(`Contributions in ${requested} are not supported`, 400);
     }
     return requested;
+  }
+
+  /**
+   * Enforce the international-cards flag (spec §11/§16/§17) on the live charge
+   * path — not just at checkout presentation. A card contribution that is
+   * international (non-GHS currency, or an explicit non-GH country) is rejected
+   * unless the flag is on. Domestic GHS card / mobile-money / wallet are
+   * unaffected, so the Ghana rail behaves exactly as before.
+   */
+  private assertInternationalCardAllowed(
+    input: CreateDonationIntentInput,
+    currency: string
+  ): void {
+    if (input.provider === 'wallet') return;
+    if (input.paymentMethod !== 'card') return;
+    const isInternational =
+      currency.toUpperCase() !== 'GHS' ||
+      (input.country ? input.country.toUpperCase() !== 'GH' : false);
+    if (isInternational && !this.paymentsConfig?.internationalCardsEnabled) {
+      throw new AppError('International card contributions are not enabled', 400);
+    }
   }
 
   private async createIntent(

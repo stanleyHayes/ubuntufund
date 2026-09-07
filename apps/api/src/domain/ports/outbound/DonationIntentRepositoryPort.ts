@@ -31,6 +31,17 @@ export interface DonationIntentRepositoryPort {
   ): Promise<DonationIntentEntity | null>;
 
   /**
+   * Atomically mark a still-PENDING intent FAILED. Returns the updated intent,
+   * or null when it is no longer PENDING (e.g. a webhook settled it to SUCCEEDED
+   * first). Used by reconciliation so a stale sweep can never overwrite a
+   * concurrently-settled intent back to FAILED.
+   */
+  markFailedIfPending(
+    id: string,
+    providerRef?: string
+  ): Promise<DonationIntentEntity | null>;
+
+  /**
    * Hosted-rail intents still PENDING past `olderThan` (with a providerRef to
    * correlate). The reconciliation job re-verifies these against the provider to
    * repair settlements missed by a dropped webhook (spec §13).
@@ -52,6 +63,32 @@ export interface DonationIntentRepositoryPort {
     to?: Date;
     limit?: number;
   }): Promise<DonationIntentEntity[]>;
+
+  /**
+   * Atomically reserve `amountMinor` of refund against a refundable intent
+   * (spec §14) BEFORE any provider call, so a retried refund request can never
+   * double-refund. The reservation succeeds only while the intent is SUCCEEDED
+   * or PARTIALLY_REFUNDED, the cumulative refunded total stays within
+   * `maxMinor` (the original campaign amount), and — when an `idempotencyKey` is
+   * supplied — that key has not already been applied. Returns the updated intent
+   * (with `refundedAmountMinor` incremented), or null when the claim is rejected.
+   */
+  claimRefund(
+    id: string,
+    amountMinor: number,
+    maxMinor: number,
+    idempotencyKey?: string
+  ): Promise<DonationIntentEntity | null>;
+
+  /**
+   * Release a refund reservation made by {@link claimRefund} when the downstream
+   * provider call fails, so the amount becomes refundable again. Idempotent.
+   */
+  releaseRefundClaim(
+    id: string,
+    amountMinor: number,
+    idempotencyKey?: string
+  ): Promise<void>;
 
   /**
    * Persist the verified settlement money split in integer minor units (spec §8)

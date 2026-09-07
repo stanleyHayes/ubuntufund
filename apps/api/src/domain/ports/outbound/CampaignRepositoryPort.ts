@@ -22,4 +22,13 @@ export interface CampaignRepositoryPort {
    * when the campaign cannot accept the donation.
    */
   incrementRaised(campaignId: string, amount: number, currency: string): Promise<CampaignEntity | null>;
+
+  /**
+   * Atomically reduce raisedAmount by `amount` for a refund reversal (spec §14).
+   * Unlike {@link incrementRaised} this does NOT require the campaign to be
+   * active/unexpired — a refund must claw back the raised total even on a funded
+   * or ended campaign. Clamps at zero; returns the updated campaign, or null when
+   * no matching campaign (id + currency) exists.
+   */
+  reverseRaised(campaignId: string, amount: number, currency: string): Promise<CampaignEntity | null>;
 }

@@ -173,4 +173,25 @@ export class MongoCampaignRepository implements CampaignRepositoryPort {
     }
     return toDomain(doc);
   }
+
+  async reverseRaised(
+    campaignId: string,
+    amount: number,
+    currency: string
+  ): Promise<CampaignEntity | null> {
+    // A refund reversal must reduce the raised total regardless of campaign
+    // state (funded/ended included) — so, unlike incrementRaised, no active/
+    // endDate guard. Scoped to the campaign + currency; never goes negative.
+    const doc = await CampaignModel.findOneAndUpdate(
+      { _id: campaignId, currency, deletedAt: { $exists: false } },
+      { $inc: { raisedAmount: -Math.abs(amount) } },
+      { new: true }
+    );
+    if (!doc) return null;
+    if (doc.raisedAmount < 0) {
+      doc.raisedAmount = 0;
+      await doc.save();
+    }
+    return toDomain(doc);
+  }
 }

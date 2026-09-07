@@ -129,16 +129,31 @@ export class MongoLedgerRepository implements LedgerRepositoryPort {
   }
 
   async sumCampaignRaised(campaignId: string, currency: string): Promise<number> {
+    // Net raised = campaign-account debits (donations) MINUS credits (refund
+    // compensating entries, spec §14). Summing debits alone would overstate the
+    // total once refunds are posted, so the two directions are netted.
     const rows = await JournalLineModel.aggregate<{ _id: null; total: number }>([
       {
         $match: {
           accountKind: 'campaign',
           accountOwnerId: campaignId,
-          direction: 'debit',
           currency,
         },
       },
-      { $group: { _id: null, total: { $sum: '$amount' } } },
+      {
+        $group: {
+          _id: null,
+          total: {
+            $sum: {
+              $cond: [
+                { $eq: ['$direction', 'debit'] },
+                '$amount',
+                { $multiply: ['$amount', -1] },
+              ],
+            },
+          },
+        },
+      },
     ]);
     return rows[0]?.total ?? 0;
   }

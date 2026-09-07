@@ -6,6 +6,7 @@ import type { PlanLimitsService } from '../services/PlanLimitsService.js';
 import type { SettleDonationUseCase } from './SettleDonationUseCase.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 import { logger } from '../../infrastructure/logging/logger.js';
+import { minorUnitExponent } from '../../domain/value-objects/Money.js';
 
 export interface FlutterwaveWebhookInput {
   rawBody: Buffer;
@@ -89,7 +90,9 @@ export class HandleFlutterwaveWebhookUseCase {
     // Match provider currency + amount against the intent before crediting.
     const currencyMismatch =
       verified.currency.toUpperCase() !== intent.currency.toUpperCase();
-    const amountMismatch = Math.abs(verified.amount - intent.gross) > 0.01;
+    // Half a minor unit in the intent's currency, not a flat 0.01 (spec §8).
+    const amountTolerance = 0.5 / 10 ** minorUnitExponent(intent.currency);
+    const amountMismatch = Math.abs(verified.amount - intent.gross) > amountTolerance;
     if (currencyMismatch || amountMismatch) {
       logger.warn(
         {

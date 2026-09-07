@@ -42,7 +42,11 @@ export class Money {
     if (!currency || currency.length < 2) {
       throw new Error('Invalid currency code');
     }
-    this.amount = Math.round(amount * 100) / 100;
+    // Round to the currency's own minor-unit precision (2 for GHS/USD/…, 0 for
+    // XOF/JPY, 3 for KWD/BHD) — never a hardcoded 2dp, so minor-unit round-trips
+    // and fee splits stay exact for non-2-decimal currencies (spec §8).
+    const factor = 10 ** minorUnitExponent(currency);
+    this.amount = Math.round(amount * factor) / factor;
     this.currency = currency.toUpperCase();
   }
 

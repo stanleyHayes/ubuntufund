@@ -11,7 +11,7 @@ import type { SubscriptionCheckoutRepositoryPort } from '../../domain/ports/outb
 import type { AffiliateCommissionService } from '../services/AffiliateCommissionService.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 import { logger } from '../../infrastructure/logging/logger.js';
-import { fromMinorUnits } from '../../domain/value-objects/Money.js';
+import { fromMinorUnits, minorUnitExponent } from '../../domain/value-objects/Money.js';
 
 export interface PaystackWebhookInput {
   /** The exact raw request bytes the signature was computed over. */
@@ -222,7 +222,10 @@ export class HandlePaystackWebhookUseCase {
     // expected BEFORE crediting. A mismatch never credits a campaign — it's
     // logged (no secrets) and left for reconciliation to resolve.
     const currencyMismatch = currency.toUpperCase() !== intent.currency.toUpperCase();
-    const amountMismatch = Math.abs(gross - intent.gross) > 0.01;
+    // Tolerance is half a minor unit in the charged currency, not a flat 0.01 —
+    // so 0- and 3-decimal currencies aren't compared with a 2-decimal slop.
+    const amountTolerance = 0.5 / 10 ** minorUnitExponent(currency);
+    const amountMismatch = Math.abs(gross - intent.gross) > amountTolerance;
     if (currencyMismatch || amountMismatch) {
       logger.warn(
         {
