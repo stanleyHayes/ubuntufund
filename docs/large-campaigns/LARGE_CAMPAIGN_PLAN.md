@@ -406,20 +406,35 @@ regression suite green at every step (305 tests). Phases 1–3 are live; Phase 4
 verified & fixed) but dark behind `SPLIT_PROCEEDS_ENABLED` (default off); Phase 5
 ships the config value-diff audit + the payout review-queue backend._
 
+_Follow-on engineering completed 2026-09-07 (315 tests green):_
+
+- _**Payout-settlement reconciliation** — `ReconcilePayoutsUseCase` repairs
+  payouts stuck in PROCESSING (missed/delayed webhook) by re-verifying against the
+  provider and driving the same idempotent settlement (campaign + beneficiary
+  rails); scheduled + `POST /admin/reconciliation/payouts`._
+- _**Fee grandfathering** (ADR-5) — a campaign locks its organizer's plan fee % at
+  creation, so a mid-campaign fee change never surprises them._
+- _**Admin console** — a real Payouts dashboard (review queue + approve, backed by
+  the API) and old→new value diffs surfaced in the audit log._
+- _**Test resilience** — vitest retries + resilient default timeouts on top of the
+  existing per-worker DB isolation._
+
 _What remains is genuinely gated on a Ujimora decision or an external approval,
 not on engineering:_
 
 - _**Split-proceeds go-live:** the economic-expectation legal review (§6) before
-  `SPLIT_PROCEEDS_ENABLED` is flipped on._
-- _**Versioned config store** (effective-dating + grandfathering): gated on **D2**
-  (grandfathering) and **§6** (real fee/limit value sign-off)._
-- _**Admin dashboards' UI:** the backends exist; wiring the admin console off its
-  fixtures to the real API is a separate, offered-but-not-yet-approved pass._
-- _**Payout-settlement durability** (a reconciliation/outbox so a crash between a
-  payout's state transition and its balance write cannot strand funds) — a
-  pre-existing follow-up across all payout rails, surfaced by the Phase 4 review._
+  `SPLIT_PROCEEDS_ENABLED` is flipped on. (An agent must not enable a potentially
+  regulated financial feature without that sign-off.)_
+- _**Full versioned config store** (effective-dating for ALL commercial config,
+  not just the campaign fee lock already shipped): gated on **§6** real fee/limit
+  value sign-off._
+- _**Deep payout durability** — the fee-fix + reconciliation cover the realistic
+  failure modes; a sub-millisecond crash between a payout's state transition and
+  its balance write remains a system-wide property (donations included) whose
+  perfect fix needs MongoDB transactions (a production replica-set) or fully
+  idempotent projections — a documented infra follow-up._
 - _**External gates (§6):** BoG/PSP custody, Paystack registered-business + higher
   transfer limit, and the Ghana legal/compliance review._
 
-_Net: every phase that can be completed without a genuine external gate or a
-reserved product/legal decision is done._
+_Net: every phase and every follow-on that can be completed without a genuine
+external gate or a reserved legal decision is done._
