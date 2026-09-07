@@ -315,5 +315,28 @@ should not silently pick them:
 
 ---
 
-_Status: Phase 0 complete. Phase 1 (commercial foundation) is code-only and safe
-to start once D1–D2 are confirmed; Phases 3–5 are gated on the external items._
+_Status (updated 2026-09-07): **Phases 0, 1, 2, 3 (3a fees + 3b maker-checker &
+batching) and 4a (split config + consent + distribution core) are delivered,
+tested and shipped** — all additive and behind config, with the small-campaign
+GHS flow's full regression suite green at every step (291 tests). Sensitive
+admin/config mutations are already captured by the global immutable audit log
+(`AuditLogModel` + `auditMutation`)._
+
+_Remaining work is genuinely gated, not merely unbuilt:_
+
+- _**Phase 4b/4c (per-beneficiary accrual + payouts):** building the accrual in
+  isolation would create a diverging shadow ledger (the campaign-level payout
+  clears campaign `pendingBalance` while per-beneficiary buckets would not).
+  Reconciling requires per-beneficiary disbursement, gated on per-beneficiary KYC
+  depth (**D5**) and the split-proceeds economic-expectation legal review (§6).
+  The `distributeByShares` core and `lockActive` seam are in place for a clean
+  extension once those land._
+- _**Phase 5 versioned config values + effective-dating/grandfathering:** the
+  audit mechanism exists; the values are gated on **§6 real fee/limit sign-off**
+  and grandfathering on **D2**._
+- _**Phase 5 admin dashboards:** gated on the admin → real-API wiring approval
+  (a separate, offered-but-not-yet-approved follow-up) plus the value sign-offs._
+
+_Net: every phase that can be completed without a genuine external gate or a
+reserved product/legal decision (D2/D5, §6) is done. The open items each need a
+Ujimora decision or an external approval to proceed._
