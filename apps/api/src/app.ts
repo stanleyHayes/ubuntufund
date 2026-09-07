@@ -44,6 +44,8 @@ import { MongoPayoutRepository } from './infrastructure/adapters/outbound/persis
 import { MongoCampaignSplitRepository } from './infrastructure/adapters/outbound/persistence/MongoCampaignSplitRepository.js';
 import { MongoCampaignBeneficiaryBalanceRepository } from './infrastructure/adapters/outbound/persistence/MongoCampaignBeneficiaryBalanceRepository.js';
 import { MongoCampaignBeneficiaryAccrualRepository } from './infrastructure/adapters/outbound/persistence/MongoCampaignBeneficiaryAccrualRepository.js';
+import { MongoBeneficiaryRecipientRepository } from './infrastructure/adapters/outbound/persistence/MongoBeneficiaryRecipientRepository.js';
+import { MongoBeneficiaryPayoutRepository } from './infrastructure/adapters/outbound/persistence/MongoBeneficiaryPayoutRepository.js';
 import { MongoCouponRepository } from './infrastructure/adapters/outbound/persistence/MongoCouponRepository.js';
 import { MongoCouponRedemptionRepository } from './infrastructure/adapters/outbound/persistence/MongoCouponRedemptionRepository.js';
 import { MongoSubscriptionCheckoutRepository } from './infrastructure/adapters/outbound/persistence/MongoSubscriptionCheckoutRepository.js';
@@ -98,6 +100,8 @@ import { CreatePayoutRecipientUseCase } from './application/use-cases/CreatePayo
 import { RequestPayoutUseCase } from './application/use-cases/RequestPayoutUseCase.js';
 import { CampaignSplitUseCase } from './application/use-cases/CampaignSplitUseCase.js';
 import { SplitAccrualService } from './application/services/SplitAccrualService.js';
+import { BeneficiaryPayoutUseCase } from './application/use-cases/BeneficiaryPayoutUseCase.js';
+import { HandleBeneficiaryPayoutWebhookUseCase } from './application/use-cases/HandleBeneficiaryPayoutWebhookUseCase.js';
 import { ApprovePayoutUseCase } from './application/use-cases/ApprovePayoutUseCase.js';
 import { ListCampaignPayoutsUseCase } from './application/use-cases/ListCampaignPayoutsUseCase.js';
 import { ListPayoutsUseCase } from './application/use-cases/ListPayoutsUseCase.js';
@@ -235,6 +239,7 @@ import { FlutterwaveWebhookController } from './infrastructure/adapters/inbound/
 import { AdminPaymentsController } from './infrastructure/adapters/inbound/http/controllers/AdminPaymentsController.js';
 import { PayoutController } from './infrastructure/adapters/inbound/http/controllers/PayoutController.js';
 import { CampaignSplitController } from './infrastructure/adapters/inbound/http/controllers/CampaignSplitController.js';
+import { BeneficiaryPayoutController } from './infrastructure/adapters/inbound/http/controllers/BeneficiaryPayoutController.js';
 import { LeaderboardController } from './infrastructure/adapters/inbound/http/controllers/LeaderboardController.js';
 import { NotificationController } from './infrastructure/adapters/inbound/http/controllers/NotificationController.js';
 import { OrganizationController } from './infrastructure/adapters/inbound/http/controllers/OrganizationController.js';
@@ -298,6 +303,10 @@ import {
   createPayoutRoutes,
 } from './infrastructure/adapters/inbound/http/routes/payoutRoutes.js';
 import { createCampaignSplitRoutes } from './infrastructure/adapters/inbound/http/routes/campaignSplitRoutes.js';
+import {
+  createCampaignBeneficiaryPayoutRoutes,
+  createBeneficiaryPayoutRoutes,
+} from './infrastructure/adapters/inbound/http/routes/beneficiaryPayoutRoutes.js';
 import { createCampaignDonationRoutes } from './infrastructure/adapters/inbound/http/routes/campaignDonationRoutes.js';
 import { createLeaderboardRoutes } from './infrastructure/adapters/inbound/http/routes/leaderboardRoutes.js';
 import { createNotificationRoutes } from './infrastructure/adapters/inbound/http/routes/notificationRoutes.js';
@@ -456,6 +465,17 @@ export function createApp(): express.Express {
     new MongoCampaignBeneficiaryBalanceRepository();
   const campaignBeneficiaryAccrualRepo =
     new MongoCampaignBeneficiaryAccrualRepository();
+  const beneficiaryRecipientRepo = new MongoBeneficiaryRecipientRepository();
+  const beneficiaryPayoutRepo = new MongoBeneficiaryPayoutRepository();
+  // Per-beneficiary payout settlement (spec §17): the signed `bpay-` transfer
+  // webhook moves the beneficiary + mirrored campaign buckets to terminal state.
+  const handleBeneficiaryPayoutWebhookUseCase =
+    new HandleBeneficiaryPayoutWebhookUseCase(
+      beneficiaryPayoutRepo,
+      campaignBeneficiaryBalanceRepo,
+      campaignBalanceRepo,
+      ledgerRepo
+    );
   const splitAccrualService = new SplitAccrualService(
     config.splitProceedsEnabled,
     campaignSplitRepo,
@@ -570,7 +590,8 @@ export function createApp(): express.Express {
     subscriptionCheckoutRepo,
     settleSubscriptionUseCase,
     handleAffiliatePayoutWebhookUseCase,
-    affiliateCommissionService
+    affiliateCommissionService,
+    handleBeneficiaryPayoutWebhookUseCase
   );
   // Flutterwave settlement: verifies the verif-hash, re-verifies the charge
   // server-side, then settles through the same donation seam as Paystack.
@@ -635,7 +656,9 @@ export function createApp(): express.Express {
     payoutRepo,
     campaignBalanceRepo,
     paymentGateway,
-    config.payouts
+    config.payouts,
+    campaignSplitRepo,
+    config.splitProceedsEnabled
   );
   const approvePayoutUseCase = new ApprovePayoutUseCase(
     payoutRepo,
@@ -944,6 +967,23 @@ export function createApp(): express.Express {
   const campaignSplitController = new CampaignSplitController(
     campaignSplitUseCase
   );
+  // Per-beneficiary payouts (spec §17, behind the split-proceeds flag): register
+  // a beneficiary recipient, admin KYC-verify, request + admin-approve a `bpay-`
+  // transfer of the beneficiary's cleared share.
+  const beneficiaryPayoutUseCase = new BeneficiaryPayoutUseCase(
+    config.splitProceedsEnabled,
+    campaignRepo,
+    campaignSplitRepo,
+    campaignBeneficiaryBalanceRepo,
+    campaignBalanceRepo,
+    beneficiaryRecipientRepo,
+    beneficiaryPayoutRepo,
+    paymentGateway,
+    config.payouts.dualApprovalAmount
+  );
+  const beneficiaryPayoutController = new BeneficiaryPayoutController(
+    beneficiaryPayoutUseCase
+  );
   const leaderboardController = new LeaderboardController(getLeaderboardUseCase, getLeaderboardStatsUseCase);
   const notificationController = new NotificationController(
     getMyNotificationsUseCase,
@@ -1080,6 +1120,14 @@ export function createApp(): express.Express {
   api.use('/campaigns', createCampaignQrRoutes(shortLinkController, authMiddleware));
   api.use('/campaigns', createCampaignPayoutRoutes(payoutController, authMiddleware));
   api.use('/campaigns', createCampaignSplitRoutes(campaignSplitController, authMiddleware));
+  api.use(
+    '/campaigns',
+    createCampaignBeneficiaryPayoutRoutes(beneficiaryPayoutController, authMiddleware, requireAdmin)
+  );
+  api.use(
+    '/beneficiary-payouts',
+    createBeneficiaryPayoutRoutes(beneficiaryPayoutController, authMiddleware, requireAdmin)
+  );
   api.use(
     '/campaigns',
     createCampaignLiveSessionRoutes(liveSessionController, realtimeController, authMiddleware)

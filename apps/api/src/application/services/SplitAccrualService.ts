@@ -68,6 +68,7 @@ export class SplitAccrualService {
       splitVersion: split.version,
       currency,
       entries,
+      reversedMinor: 0,
       reversed: false,
       createdAt: new Date(),
     });
@@ -85,32 +86,45 @@ export class SplitAccrualService {
   }
 
   /**
-   * Reverse a refunded donation's per-beneficiary accrual. Reverses proportional
-   * to the original split (exact, in pesewas), guarded per beneficiary so a
-   * short pending bucket (the beneficiary already withdrew) is logged for manual
-   * clawback rather than driven negative.
+   * Reverse a refunded donation's per-beneficiary accrual and report the amount
+   * ACTUALLY clawed back from the beneficiaries' pending buckets (major units),
+   * or `null` when this donation had no split accrual (not a split donation).
+   *
+   * Runs regardless of the current flag — an accrual recorded while the feature
+   * was on must still reverse if it is later turned off (else the campaign
+   * aggregate and beneficiary buckets would diverge). Reverses proportional to
+   * the original split (exact, in pesewas), capped at what remains un-reversed
+   * so successive PARTIAL refunds can never reverse more than was accrued, and
+   * guarded per beneficiary so a short bucket (the beneficiary already withdrew)
+   * is logged for manual clawback rather than driven negative — that portion is
+   * excluded from the returned actual, so the caller does not over-subtract the
+   * campaign aggregate.
    */
   async reverse(
     campaignId: string,
     donationIntentId: string,
     refundedNet: number
-  ): Promise<void> {
-    if (!this.enabled) return;
-
+  ): Promise<number | null> {
     const accrual = await this.accrualRepo.findByDonationIntent(donationIntentId);
-    if (!accrual || accrual.reversed) return;
+    if (!accrual) return null; // not a split donation
+    if (accrual.reversed) return 0;
 
     const refundedMinor = toMinor(refundedNet);
-    if (refundedMinor <= 0) return;
+    if (refundedMinor <= 0) return 0;
 
     const weights = accrual.entries.map((e) => toMinor(e.amount));
     const totalMinor = weights.reduce((a, b) => a + b, 0);
-    if (totalMinor <= 0) return;
-    const cappedMinor = Math.min(refundedMinor, totalMinor);
+    if (totalMinor <= 0) return 0;
+
+    const remainingMinor = totalMinor - accrual.reversedMinor;
+    const cappedMinor = Math.min(refundedMinor, remainingMinor);
+    if (cappedMinor <= 0) return 0;
 
     const parts = distributeByShares(cappedMinor, weights);
+    let actualMinor = 0;
     for (let i = 0; i < accrual.entries.length; i += 1) {
-      const amount = toMajor(parts[i]!);
+      const partMinor = parts[i]!;
+      const amount = toMajor(partMinor);
       if (amount <= 0) continue;
       const beneficiaryId = accrual.entries[i]!.beneficiaryId;
       const ok = await this.beneficiaryBalanceRepo.reversePending(
@@ -119,7 +133,9 @@ export class SplitAccrualService {
         accrual.currency,
         amount
       );
-      if (!ok) {
+      if (ok) {
+        actualMinor += partMinor;
+      } else {
         logger.warn(
           { campaignId, beneficiaryId, donationIntentId, amount },
           'split refund: beneficiary pending short — manual clawback needed'
@@ -127,9 +143,9 @@ export class SplitAccrualService {
       }
     }
 
-    // Mark fully reversed only when the whole accrual has been refunded.
-    if (cappedMinor >= totalMinor) {
-      await this.accrualRepo.markReversed(donationIntentId);
-    }
+    // Advance the cumulative reversed by the refunded portion (flags
+    // fully-reversed at the total), regardless of per-beneficiary shortfalls.
+    await this.accrualRepo.recordReversal(donationIntentId, cappedMinor, totalMinor);
+    return toMajor(actualMinor);
   }
 }

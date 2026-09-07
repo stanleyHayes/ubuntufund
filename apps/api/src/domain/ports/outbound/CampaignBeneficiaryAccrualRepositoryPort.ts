@@ -17,8 +17,16 @@ export interface CampaignBeneficiaryAccrualRepositoryPort {
     donationIntentId: string
   ): Promise<CampaignBeneficiaryAccrual | null>;
 
-  /** Atomically flag an accrual reversed; false when already reversed. */
-  markReversed(donationIntentId: string): Promise<boolean>;
+  /**
+   * Atomically add `minorReversed` to the accrual's cumulative reversed amount,
+   * flagging it fully `reversed` once the cumulative reaches `totalMinor`. So
+   * successive partial refunds can never reverse more than was accrued.
+   */
+  recordReversal(
+    donationIntentId: string,
+    minorReversed: number,
+    totalMinor: number
+  ): Promise<void>;
 
   /** Accruals touching a beneficiary (for their statement), newest first. */
   listByBeneficiary(

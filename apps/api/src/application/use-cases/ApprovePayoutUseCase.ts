@@ -287,13 +287,20 @@ export class ApprovePayoutUseCase {
     return toPayoutDto(updated ?? processing);
   }
 
-  /** Undo a reservation + PROCESSING transition when initiation fails. */
+  /**
+   * Undo a reservation + PROCESSING transition when initiation fails. Gate the
+   * money return on WINNING the terminal transition: if a transfer.failed webhook
+   * already settled this payout (returning the reservation) while we were
+   * suspended in initiateTransfer, we must not return it again — exactly one of
+   * {this rollback, the webhook} restores the reservation.
+   */
   private async rollback(
     payoutId: string,
     campaignId: string,
     amount: number
   ): Promise<void> {
+    const failed = await this.payoutRepo.transitionToFailed(payoutId);
+    if (!failed) return;
     await this.campaignBalanceRepo.returnToAvailable(campaignId, amount);
-    await this.payoutRepo.transitionToFailed(payoutId);
   }
 }

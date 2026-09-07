@@ -9,6 +9,8 @@
  * anchored to the split that was in force when the money arrived.
  */
 
+import type { PayoutProvider, PayoutRecipientType, PayoutStatus } from './payout'
+
 /** Basis points that a full (100%) allocation must sum to. */
 export const SPLIT_TOTAL_BPS = 10000
 
@@ -121,6 +123,10 @@ export interface CampaignBeneficiaryAccrual {
   splitVersion: number
   currency: string
   entries: { beneficiaryId: string; amount: number }[]
+  /** Cumulative amount already reversed (in minor units/pesewas), so successive
+   *  partial refunds can never reverse more than was accrued. */
+  reversedMinor: number
+  /** True once the full accrual has been reversed. */
   reversed: boolean
   createdAt: Date
 }
@@ -142,4 +148,66 @@ export interface BeneficiaryStatement {
   currency: string
   balance: CampaignBeneficiaryBalance
   entries: BeneficiaryStatementEntry[]
+}
+
+/**
+ * A beneficiary's own provider-registered payout destination (spec §17 / ADR-3,
+ * D5). Each beneficiary who receives a share must register a bank/mobile-money
+ * account and be KYC-verified by an admin before their share can be disbursed.
+ */
+export interface BeneficiaryRecipient {
+  id: string
+  campaignId: string
+  beneficiaryId: string
+  type: PayoutRecipientType
+  accountNumber: string
+  bankCode: string
+  accountName: string
+  /** Opaque provider recipient handle; addresses transfers. */
+  recipientCode: string
+  currency: string
+  /** Admin must verify the beneficiary's KYC before their payout is approvable. */
+  kycVerified: boolean
+  kycVerifiedBy?: string
+  kycVerifiedAt?: Date
+  createdBy: string
+  createdAt: Date
+}
+
+/**
+ * A disbursement of one beneficiary's cleared share (spec §17 / ADR-3). Its own
+ * `bpay-` transfer rail, isolated from the campaign-level payout engine; every
+ * money move mirrors into the campaign aggregate buckets so they never diverge.
+ */
+export interface BeneficiaryPayout {
+  id: string
+  campaignId: string
+  beneficiaryId: string
+  recipientId: string
+  amount: number
+  currency: string
+  status: PayoutStatus
+  provider: PayoutProvider
+  providerRef?: string
+  transferCode?: string
+  requestedBy: string
+  approvedBy?: string
+  /** Maker-checker (spec §16): the first admin to approve a high-value payout. */
+  firstApprovedBy?: string
+  firstApprovedAt?: Date
+  createdAt: Date
+  updatedAt: Date
+}
+
+/** Owner/beneficiary input to register a beneficiary's payout recipient. */
+export interface RegisterBeneficiaryRecipientInput {
+  type: PayoutRecipientType
+  accountNumber: string
+  bankCode: string
+  accountName: string
+}
+
+/** Beneficiary/owner input to request a payout of a beneficiary's cleared share. */
+export interface RequestBeneficiaryPayoutInput {
+  amount: number
 }

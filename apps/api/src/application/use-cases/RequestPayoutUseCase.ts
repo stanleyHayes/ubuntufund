@@ -4,6 +4,7 @@ import type { CampaignRepositoryPort } from '../../domain/ports/outbound/Campaig
 import type { TransferRecipientRepositoryPort } from '../../domain/ports/outbound/TransferRecipientRepositoryPort.js';
 import type { PayoutRepositoryPort } from '../../domain/ports/outbound/PayoutRepositoryPort.js';
 import type { CampaignBalanceRepositoryPort } from '../../domain/ports/outbound/CampaignBalanceRepositoryPort.js';
+import type { CampaignSplitRepositoryPort } from '../../domain/ports/outbound/CampaignSplitRepositoryPort.js';
 import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGatewayPort.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 import { toPayoutDto } from './mappers/payoutDto.js';
@@ -35,7 +36,12 @@ export class RequestPayoutUseCase {
     private readonly payoutRepo: PayoutRepositoryPort,
     private readonly campaignBalanceRepo: CampaignBalanceRepositoryPort,
     private readonly paymentGateway: PaymentGatewayPort,
-    private readonly payoutsConfig: PayoutsConfig
+    private readonly payoutsConfig: PayoutsConfig,
+    // Split-proceeds (spec §17): when enabled and the campaign runs an active
+    // split, campaign-level payouts are blocked in favour of per-beneficiary
+    // payouts. Optional/flag-gated so the ordinary flow is unaffected.
+    private readonly campaignSplitRepo?: CampaignSplitRepositoryPort,
+    private readonly splitProceedsEnabled = false
   ) {}
 
   async execute(
@@ -56,6 +62,18 @@ export class RequestPayoutUseCase {
     const isAdmin = requester.role === 'admin';
     if (!isOwner && !isAdmin) {
       throw new AppError('Only the campaign owner can request a payout', 403);
+    }
+
+    // A split campaign disburses per beneficiary; the campaign-level payout is
+    // blocked so the two paths can never both move the same funds.
+    if (this.splitProceedsEnabled && this.campaignSplitRepo) {
+      const activeSplit = await this.campaignSplitRepo.findActive(campaignId);
+      if (activeSplit) {
+        throw new AppError(
+          'This campaign shares proceeds; request per-beneficiary payouts instead',
+          409
+        );
+      }
     }
 
     const amount = round2(Number(input.amount));

@@ -11,6 +11,7 @@ export interface CampaignBeneficiaryAccrualDocument extends Document {
   splitVersion: number;
   currency: string;
   entries: AccrualEntry[];
+  reversedMinor: number;
   reversed: boolean;
   createdAt: Date;
 }
@@ -29,6 +30,7 @@ const schema = new Schema<CampaignBeneficiaryAccrualDocument>(
     splitVersion: { type: Number, required: true },
     currency: { type: String, required: true },
     entries: { type: [entrySchema], required: true },
+    reversedMinor: { type: Number, default: 0 },
     reversed: { type: Boolean, default: false },
   },
   { collection: 'campaign_beneficiary_accruals', timestamps: { createdAt: true, updatedAt: false } }

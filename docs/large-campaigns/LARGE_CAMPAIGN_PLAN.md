@@ -127,11 +127,16 @@ policy** for expedited large disbursements (product/finance, §5). The
 fee-waive-on-partial default and per-leg journaling are ready to extend once those
 land.
 
-## Phase 4 — Split-proceeds multi-beneficiary (4a delivered 2026-09-07)
+## Phase 4 — Split-proceeds multi-beneficiary (delivered 2026-09-07, flag-gated)
 
 Splitting a campaign's cleared net among several beneficiaries by percentage
-(spec §17 split / ADR-3). Built in money-safe slices; **4a (configuration +
-consent + the distribution core)** is delivered:
+(spec §17 split / ADR-3). Built in money-safe slices behind
+`SPLIT_PROCEEDS_ENABLED` (default OFF — the economic-expectation model needs
+Ghana legal sign-off, §6, before it may be enabled). **4a (config + consent +
+distribution core), 4b (accrual + buckets + statements) and 4c (per-beneficiary
+payouts) are all delivered:**
+
+**4a — configuration + consent + the distribution core:**
 
 - **Deterministic distribution (the crown jewel):** `distributeByShares(totalMinor,
   sharesBps)` apportions an amount across percentage shares by the
@@ -159,16 +164,69 @@ consent + the distribution core)** is delivered:
   suite (create/validate/forbid-non-owner/consent-gated activation/disclosure/
   prospective amendment).
 
-**Still open (4b/4c):** per-`(campaign, beneficiary)` ledger buckets +
-accrual — hooking `distributeByShares` into the settlement seam
-(`CampaignLedgerProjector.projectDonation` → `applyDonation`) so each settled
-donation's beneficiary-net is distributed across the locked split, with
-proportional refund reversal; per-beneficiary statements; and per-beneficiary
-payouts (a beneficiary requests against their own cleared share, reusing the
-payout rail — which requires each beneficiary to be a KYC'd transfer recipient).
-The split-proceeds **economic-expectation model** (is a percentage split a
-regulated investment offer?) is a Ghana-legal sign-off (external gate §6) that
-gates going live, not the engineering.
+**4b — per-beneficiary accrual + buckets + statements:** on a settled donation,
+`SplitAccrualService` distributes the beneficiary-net across the active split's
+per-`(campaign, beneficiary)` buckets (`distributeByShares`, exact pesewa split),
+hooked into `CampaignLedgerProjector.projectDonation`. The split **locks on the
+first accrual**. Each donation's exact split is recorded immutably
+(`CampaignBeneficiaryAccrual`, keyed by donation intent) so a refund reverses the
+precise amounts credited — proportional for a partial refund, guarded so a short
+bucket (beneficiary already withdrew) is logged for manual clawback. Idempotent
+per donation. Balances + statements exposed at `/campaigns/:id/split/beneficiaries`.
+
+**4c — per-beneficiary payouts (D5: KYC each beneficiary, admin approves):** an
+isolated `bpay-` transfer rail (mirroring the affiliate rail, leaving the
+campaign payout engine untouched). A beneficiary registers a payout recipient, an
+admin KYC-verifies them, the beneficiary/owner requests a payout of their cleared
+share, and an admin approves + initiates the transfer; the signed `bpay-` webhook
+settles it. **Every bucket move is applied to the per-beneficiary bucket
+(authoritative) and mirrored into the campaign aggregate**, so they never diverge;
+campaign-level payouts are **blocked** while a split is active (409, "request
+per-beneficiary payouts instead"). Approval requires KYC-verified (422 otherwise).
+
+Tests: distribution unit + split-config integration (4a); `SplitAccrualService`
+unit (distribution, idempotency, full/partial reversal, no-ops) + a flag-on
+accrual integration (4b); a full beneficiary-payout lifecycle integration
+(register → KYC → request → approve → settle, with campaign-mirror assertions),
+the KYC-gate rejection, and the campaign-payout block (4c).
+
+**Adversarial review (2026-09-07):** a 4-dimension review workflow (money
+correctness, idempotency/concurrency, refund reversal, authz) with per-finding
+adversarial verification confirmed 12 issues; the money-correctness and control
+defects were fixed and covered by tests:
+
+- Refund of a split donation subtracted the **full** beneficiary-net from the
+  campaign aggregate while the per-beneficiary claw-back only reversed what was
+  still pending → the `campaign ≥ Σbeneficiary` invariant broke after a
+  beneficiary had withdrawn. **Fixed:** reverse per-beneficiary first and drop
+  the campaign aggregate by exactly the amount actually clawed back.
+- Approve-rollback (both the beneficiary rail **and** the pre-existing campaign
+  rail) returned the reservation unconditionally; a racing `transfer.failed`
+  webhook could double-credit it. **Fixed:** gate the return on winning the
+  terminal transition.
+- Partial-refund reversal capped each leg at the full accrual total and marked
+  the accrual reversed prematurely → over-reversal across successive partials.
+  **Fixed:** track cumulative `reversedMinor` and cap at the remaining.
+- Reversal was flag-gated, so toggling the feature off between accrual and refund
+  stranded the beneficiary side. **Fixed:** reversal always runs when an accrual
+  exists (only accrual is flag-gated).
+- A campaign-aggregate mirror short at approval logged-and-proceeded (money out on
+  a broken invariant). **Fixed:** fail loud + return the beneficiary reservation.
+- The beneficiary rail lacked the campaign rail's maker-checker. **Fixed:** added
+  dual-approval parity (`PAYOUT_DUAL_APPROVAL_AMOUNT`).
+
+Known limitations documented (not regressions — pre-existing across all payout
+rails): the payout webhook money effect is not atomic with the winning state
+transition (a crash in the sub-millisecond window between them strands the funds;
+proper fix is a **payout-settlement reconciliation/outbox**, like donations have),
+and a fully-covered request can create multiple PENDING payouts (approval's
+guarded reserve still prevents double-spend). Both are follow-ups, safe behind the
+default-off flag.
+
+Gating that remains: the split-proceeds **economic-expectation model** (is a
+percentage split a regulated investment offer?) is a Ghana-legal sign-off
+(external gate §6). The engineering is complete and dark behind the flag until
+that clears.
 
 ## 1. Repository audit — what already exists
 

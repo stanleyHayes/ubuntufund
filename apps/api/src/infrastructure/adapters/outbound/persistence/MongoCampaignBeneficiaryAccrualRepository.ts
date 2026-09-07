@@ -17,6 +17,7 @@ function toDomain(
       beneficiaryId: e.beneficiaryId,
       amount: e.amount,
     })),
+    reversedMinor: doc.reversedMinor ?? 0,
     reversed: doc.reversed,
     createdAt: doc.createdAt,
   };
@@ -36,6 +37,7 @@ export class MongoCampaignBeneficiaryAccrualRepository
         splitVersion: accrual.splitVersion,
         currency: accrual.currency,
         entries: accrual.entries,
+        reversedMinor: accrual.reversedMinor,
         reversed: accrual.reversed,
       });
       return true;
@@ -60,13 +62,20 @@ export class MongoCampaignBeneficiaryAccrualRepository
     return doc ? toDomain(doc) : null;
   }
 
-  async markReversed(donationIntentId: string): Promise<boolean> {
+  async recordReversal(
+    donationIntentId: string,
+    minorReversed: number,
+    totalMinor: number
+  ): Promise<void> {
     const doc = await CampaignBeneficiaryAccrualModel.findOneAndUpdate(
-      { donationIntentId, reversed: false },
-      { $set: { reversed: true } },
+      { donationIntentId },
+      { $inc: { reversedMinor: minorReversed } },
       { new: true }
     );
-    return doc !== null;
+    if (doc && (doc.reversedMinor ?? 0) >= totalMinor && !doc.reversed) {
+      doc.reversed = true;
+      await doc.save();
+    }
   }
 
   async listByBeneficiary(

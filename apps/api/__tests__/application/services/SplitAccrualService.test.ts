@@ -64,11 +64,11 @@ function makeFakes(campaignId: string, hasSplit = true) {
     async findByDonationIntent(id: string) {
       return accruals.get(id) ?? null;
     },
-    async markReversed(id: string) {
+    async recordReversal(id: string, minor: number, total: number) {
       const a = accruals.get(id);
-      if (!a || a.reversed) return false;
-      a.reversed = true;
-      return true;
+      if (!a) return;
+      a.reversedMinor += minor;
+      if (a.reversedMinor >= total) a.reversed = true;
     },
   } as unknown as CampaignBeneficiaryAccrualRepositoryPort;
 
@@ -126,10 +126,29 @@ describe('SplitAccrualService', () => {
   it('reverses a full refund by the exact amounts credited', async () => {
     const svc = new SplitAccrualService(true, f.splitRepo, f.balanceRepo, f.accrualRepo);
     await svc.accrue(campaignId, 'don-1', breakdown(965));
-    await svc.reverse(campaignId, 'don-1', 965);
+    const actual = await svc.reverse(campaignId, 'don-1', 965);
+    expect(actual).toBe(965); // fully clawed back
     expect(f.pending.get('A')).toBe(0);
     expect(f.pending.get('B')).toBe(0);
     expect(f.accruals.get('don-1')?.reversed).toBe(true);
+  });
+
+  it('returns only the amount ACTUALLY clawed back when a beneficiary already withdrew', async () => {
+    const svc = new SplitAccrualService(true, f.splitRepo, f.balanceRepo, f.accrualRepo);
+    await svc.accrue(campaignId, 'don-1', breakdown(1000)); // A 600, B 400
+    f.pending.set('B', 0); // B already withdrew their share
+    const actual = await svc.reverse(campaignId, 'don-1', 1000);
+    // A's 600 reversed; B's 400 could not be (short) → actual excludes it, so
+    // the caller subtracts only 600 from the campaign aggregate (no over-claw).
+    expect(actual).toBe(600);
+    expect(f.pending.get('A')).toBe(0);
+    expect(f.accruals.get('don-1')?.reversed).toBe(true);
+  });
+
+  it('returns null for a non-split donation (no accrual recorded)', async () => {
+    const svc = new SplitAccrualService(true, f.splitRepo, f.balanceRepo, f.accrualRepo);
+    const actual = await svc.reverse(campaignId, 'never-accrued', 500);
+    expect(actual).toBeNull();
   });
 
   it('reverses a partial refund proportionally, leaving the accrual open', async () => {
@@ -139,6 +158,18 @@ describe('SplitAccrualService', () => {
     expect(f.pending.get('A')).toBe(300);
     expect(f.pending.get('B')).toBe(200);
     expect(f.accruals.get('don-1')?.reversed).toBe(false);
+  });
+
+  it('never over-reverses across successive partial refunds', async () => {
+    const svc = new SplitAccrualService(true, f.splitRepo, f.balanceRepo, f.accrualRepo);
+    await svc.accrue(campaignId, 'don-1', breakdown(1000)); // A 600, B 400
+    await svc.reverse(campaignId, 'don-1', 500); // A 300, B 200
+    await svc.reverse(campaignId, 'don-1', 500); // remaining exactly → A 0, B 0
+    await svc.reverse(campaignId, 'don-1', 500); // accrual already fully reversed → no-op
+    expect(f.pending.get('A')).toBe(0);
+    expect(f.pending.get('B')).toBe(0);
+    expect(f.accruals.get('don-1')?.reversed).toBe(true);
+    expect(f.accruals.get('don-1')?.reversedMinor).toBe(100000);
   });
 
   it('is a no-op when the flag is off', async () => {

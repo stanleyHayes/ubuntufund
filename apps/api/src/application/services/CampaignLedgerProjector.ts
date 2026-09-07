@@ -83,24 +83,29 @@ export class CampaignLedgerProjector {
     split: { amount: number; beneficiaryNet: number; platformFee: number; processorFee: number },
     donationIntentId?: string
   ): Promise<boolean> {
+    // Split-proceeds (spec §17): reverse the per-beneficiary accrual FIRST and
+    // learn how much is actually still clawable from pending. The campaign
+    // aggregate then drops by exactly that — never a beneficiary's already-
+    // withdrawn share — so `campaign pending >= Σ beneficiary pending` holds.
+    // For a non-split donation the full beneficiary-net is reversed as before.
+    let pendingReversal = split.beneficiaryNet;
+    if (donationIntentId && this.splitAccrualService) {
+      const actual = await this.splitAccrualService.reverse(
+        campaignId,
+        donationIntentId,
+        split.beneficiaryNet
+      );
+      if (actual !== null) pendingReversal = actual; // this was a split donation
+    }
+
     const reversed = await this.campaignBalanceRepo.applyRefund(campaignId, currency, {
       amount: split.amount,
-      beneficiaryNet: split.beneficiaryNet,
+      beneficiaryNet: pendingReversal,
       platformFee: split.platformFee,
       processorFee: split.processorFee,
       tip: 0,
     });
     if (!reversed) return false;
-
-    // Reverse the per-beneficiary split accrual by the exact amounts credited
-    // (spec §17). No-op unless split-proceeds is enabled for this donation.
-    if (donationIntentId && this.splitAccrualService) {
-      await this.splitAccrualService.reverse(
-        campaignId,
-        donationIntentId,
-        split.beneficiaryNet
-      );
-    }
     // Reduce the raised projection too. Uses reverseRaised (no active/endDate
     // guard) so a funded/ended campaign still claws back — and, like
     // projectDonation, logs rather than silently dropping it if the campaign
