@@ -14,6 +14,7 @@ import CampaignDetailPage from './pages/CampaignDetailPage'
 import UsersPage from './pages/UsersPage'
 import UserDetailPage from './pages/UserDetailPage'
 import DonationsPage from './pages/DonationsPage'
+import PayoutsPage from './pages/PayoutsPage'
 import DisputesPage from './pages/DisputesPage'
 import ReportsPage from './pages/ReportsPage'
 import VerificationsPage from './pages/VerificationsPage'
@@ -74,6 +75,7 @@ export const router = createBrowserRouter([
       { path: 'users', element: <RequirePermission resource={Resource.USERS}><UsersPage /></RequirePermission> },
       { path: 'users/:id', element: <RequirePermission resource={Resource.USERS}><UserDetailPage /></RequirePermission> },
       { path: 'donations', element: <RequirePermission resource={Resource.DONATIONS}><DonationsPage /></RequirePermission> },
+      { path: 'payouts', element: <RequirePermission resource={Resource.DONATIONS}><PayoutsPage /></RequirePermission> },
       { path: 'disputes', element: <RequirePermission resource={Resource.DISPUTES}><DisputesPage /></RequirePermission> },
       { path: 'disputes/:id', element: <RequirePermission resource={Resource.DISPUTES}><DisputeDetailPage /></RequirePermission> },
       { path: 'reports', element: <RequirePermission resource={Resource.ANALYTICS}><ReportsPage /></RequirePermission> },

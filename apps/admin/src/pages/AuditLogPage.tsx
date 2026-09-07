@@ -17,6 +17,12 @@ const surfaceSx = {
 
 type Severity = 'info' | 'warning' | 'critical'
 
+interface AuditChange {
+  field: string
+  before: unknown
+  after: unknown
+}
+
 interface AuditEntry {
   id: string
   timestamp: string | Date
@@ -25,6 +31,14 @@ interface AuditEntry {
   resource: string
   details: string
   severity: Severity
+  /** Old→new value diff for a sensitive config change (ADR-5). */
+  changes?: AuditChange[]
+  reason?: string
+}
+
+function fmt(v: unknown): string {
+  if (v === undefined || v === null) return '—'
+  return typeof v === 'object' ? JSON.stringify(v) : String(v)
 }
 
 const severityColors: Record<Severity, string> = {
@@ -133,9 +147,29 @@ export default function AuditLogPage() {
                 <Typography sx={{ px: 1.25, py: 0.75, borderRadius: SHAPE.sm, boxShadow: 'var(--neu-inset)', color, fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', overflowWrap: 'anywhere' }}>
                   {entry.action}
                 </Typography>
-                <Typography variant="body2" sx={{ flex: '1 1 260px', minWidth: 0, color: 'text.secondary', overflowWrap: 'anywhere' }}>
-                  {entry.details}
-                </Typography>
+                <Box sx={{ flex: '1 1 260px', minWidth: 0 }}>
+                  <Typography variant="body2" sx={{ color: 'text.secondary', overflowWrap: 'anywhere' }}>
+                    {entry.details}
+                  </Typography>
+                  {entry.changes && entry.changes.length > 0 && (
+                    <Box sx={{ mt: 0.75, display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+                      {entry.changes.map((c) => (
+                        <Typography
+                          key={c.field}
+                          variant="caption"
+                          sx={{ fontFamily: 'monospace', color: 'text.secondary', overflowWrap: 'anywhere' }}
+                        >
+                          {c.field}: {fmt(c.before)} → {fmt(c.after)}
+                        </Typography>
+                      ))}
+                    </Box>
+                  )}
+                  {entry.reason && (
+                    <Typography variant="caption" sx={{ display: 'block', mt: 0.5, fontStyle: 'italic', color: 'text.secondary' }}>
+                      Reason: {entry.reason}
+                    </Typography>
+                  )}
+                </Box>
               </Box>
             </Box>
           )

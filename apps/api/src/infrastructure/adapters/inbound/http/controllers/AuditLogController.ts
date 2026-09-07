@@ -41,6 +41,9 @@ export class AuditLogController {
             resource: entry.resource,
             details: entry.details,
             severity: entry.severity,
+            // Old→new value diff for sensitive money/commercial config (ADR-5).
+            changes: entry.changes ?? undefined,
+            reason: entry.reason ?? undefined,
           })),
           total,
           page,

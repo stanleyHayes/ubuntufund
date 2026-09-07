@@ -17,6 +17,7 @@ import HistoryEduRoundedIcon from '@mui/icons-material/HistoryEduRounded'
 import RocketLaunchRoundedIcon from '@mui/icons-material/RocketLaunchRounded'
 import PeopleRoundedIcon from '@mui/icons-material/PeopleRounded'
 import VolunteerActivismRoundedIcon from '@mui/icons-material/VolunteerActivismRounded'
+import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded'
 import WorkspacePremiumRoundedIcon from '@mui/icons-material/WorkspacePremiumRounded'
 import GavelRoundedIcon from '@mui/icons-material/GavelRounded'
 import VerifiedUserRoundedIcon from '@mui/icons-material/VerifiedUserRounded'
@@ -71,6 +72,7 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Campaigns', path: '/campaigns', icon: <RocketLaunchRoundedIcon /> },
       { label: 'Users', path: '/users', icon: <PeopleRoundedIcon /> },
       { label: 'Donations', path: '/donations', icon: <VolunteerActivismRoundedIcon /> },
+      { label: 'Payouts', path: '/payouts', icon: <PaymentsRoundedIcon /> },
       { label: 'Subscriptions', path: '/subscriptions', icon: <WorkspacePremiumRoundedIcon /> },
     ],
   },
