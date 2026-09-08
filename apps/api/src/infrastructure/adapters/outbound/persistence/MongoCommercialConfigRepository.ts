@@ -22,18 +22,23 @@ export class MongoCommercialConfigRepository
   implements CommercialConfigRepositoryPort
 {
   async getEffectiveValue(key: string, at: Date): Promise<number | null> {
+    // `createdAt` breaks ties on an identical `effectiveFrom` (e.g. two changes
+    // scheduled for the same date-only instant) so the LATEST write wins — a
+    // correction is never silently masked by the row it replaced.
     const doc = await CommercialConfigModel.findOne({
       key,
       effectiveFrom: { $lte: at },
-    }).sort({ effectiveFrom: -1 });
+    }).sort({ effectiveFrom: -1, createdAt: -1 });
     return doc ? doc.value : null;
   }
 
   async getEffectiveMap(keys: string[], at: Date): Promise<Record<string, number>> {
-    // Newest-effective row per key at `at`, in one aggregation.
+    // Newest-effective row per key at `at`, in one aggregation. The `createdAt`
+    // secondary sort makes the newest write win on an identical `effectiveFrom`
+    // (see getEffectiveValue).
     const rows = await CommercialConfigModel.aggregate<{ _id: string; value: number }>([
       { $match: { key: { $in: keys }, effectiveFrom: { $lte: at } } },
-      { $sort: { effectiveFrom: -1 } },
+      { $sort: { effectiveFrom: -1, createdAt: -1 } },
       { $group: { _id: '$key', value: { $first: '$value' } } },
     ]);
     const map: Record<string, number> = {};

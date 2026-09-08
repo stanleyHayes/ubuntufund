@@ -41,6 +41,7 @@ export function CreatorDashboardPage() {
   const [tipsEnabled, setTipsEnabled] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [snack, setSnack] = useState('')
 
   const [withdrawOpen, setWithdrawOpen] = useState(false)
@@ -54,19 +55,23 @@ export function CreatorDashboardPage() {
 
   const load = useCallback(async () => {
     setLoading(true)
+    setLoadError(null)
     try {
+      // /creators/me returns 200 { profile: null } for a genuine first-time
+      // creator, so a thrown error here is a REAL failure (5xx, network, expired
+      // session) — surface it instead of showing an empty claim form.
       const me = await api.get<{ profile: Profile | null; balance: Balance | null }>('/creators/me')
       setProfile(me.profile)
       setBalance(me.balance)
       if (me.profile) {
         setHandle(me.profile.handle); setDisplayName(me.profile.displayName)
         setTagline(me.profile.tagline ?? ''); setBio(me.profile.bio ?? ''); setTipsEnabled(me.profile.tipsEnabled)
-      }
-      if (me.profile) {
         const p = await api.get<Payout[]>('/creators/me/payouts')
         setPayouts(p)
       }
-    } catch { /* first-time creators have no page yet */ }
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'We couldn’t load your creator page. Please try again.')
+    }
     finally { setLoading(false) }
   }, [])
 
@@ -101,6 +106,21 @@ export function CreatorDashboardPage() {
   const pageUrl = profile ? `${window.location.origin}/creators/${profile.handle}` : ''
 
   if (loading) return <Box sx={{ minHeight: '60vh', display: 'grid', placeItems: 'center' }}><LoadingDots /></Box>
+
+  if (loadError) {
+    return (
+      <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', py: { xs: 4, md: 6 } }}>
+        <Container maxWidth="sm">
+          <Alert
+            severity="error"
+            action={<Button color="inherit" size="small" onClick={() => void load()}>Try again</Button>}
+          >
+            {loadError}
+          </Alert>
+        </Container>
+      </Box>
+    )
+  }
 
   return (
     <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', py: { xs: 4, md: 6 } }}>

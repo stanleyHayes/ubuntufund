@@ -18,6 +18,7 @@ function toDomain(doc: TipDocument): TipEntity {
     providerRef: doc.providerRef,
     platformFee: doc.platformFee,
     netAmount: doc.netAmount,
+    settlementApplied: doc.settlementApplied,
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
   });
@@ -85,5 +86,24 @@ export class MongoTipRepository implements TipRepositoryPort {
       { new: true }
     );
     return doc ? toDomain(doc) : null;
+  }
+
+  async markSettlementApplied(id: string): Promise<void> {
+    // CAS on SUCCEEDED so a non-terminal tip is never flagged settled.
+    await TipModel.updateOne(
+      { _id: id, status: 'SUCCEEDED' },
+      { $set: { settlementApplied: true } }
+    );
+  }
+
+  async findSucceededUnsettled(olderThan: Date, limit = 100): Promise<TipEntity[]> {
+    const docs = await TipModel.find({
+      status: 'SUCCEEDED',
+      settlementApplied: false,
+      updatedAt: { $lt: olderThan },
+    })
+      .sort({ updatedAt: 1 })
+      .limit(limit);
+    return docs.map(toDomain);
   }
 }

@@ -22,6 +22,8 @@ export interface TipProps {
   /** Platform fee retained on the tip (major units); net = amount − fee. */
   platformFee: number;
   netAmount: number;
+  /** G7: whether the SUCCEEDED tip's balance credit has been recorded. */
+  settlementApplied?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -57,6 +59,9 @@ export class TipEntity {
   }
   get netAmount(): number {
     return this.props.netAmount;
+  }
+  get settlementApplied(): boolean {
+    return this.props.settlementApplied ?? false;
   }
   get message(): string | undefined {
     return this.props.message;

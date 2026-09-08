@@ -13,12 +13,27 @@ export class CommercialConfigService {
   /** The numeric keys an admin may override (the PayoutsConfig fields). */
   readonly keys: (keyof PayoutsConfig)[];
 
+  /**
+   * PayoutsConfig fields consumed only at APPROVE time (ApprovePayoutUseCase and
+   * BeneficiaryPayoutUseCase read these from the static env config, not this
+   * store). They are deliberately NOT overridable here: advertising them would
+   * let an admin "set" a maker-checker threshold or transfer ceiling that
+   * silently never takes effect. They stay env-configured (a deploy-time change),
+   * which is appropriate for a security/limit control.
+   */
+  private static readonly APPROVE_TIME_ONLY: ReadonlySet<string> = new Set([
+    'dualApprovalAmount',
+    'maxTransferAmount',
+  ]);
+
   constructor(
     private readonly repo: CommercialConfigRepositoryPort,
     private readonly defaults: PayoutsConfig
   ) {
     this.keys = Object.keys(defaults).filter(
-      (k) => typeof (defaults as unknown as Record<string, unknown>)[k] === 'number'
+      (k) =>
+        typeof (defaults as unknown as Record<string, unknown>)[k] === 'number' &&
+        !CommercialConfigService.APPROVE_TIME_ONLY.has(k)
     ) as (keyof PayoutsConfig)[];
   }
 

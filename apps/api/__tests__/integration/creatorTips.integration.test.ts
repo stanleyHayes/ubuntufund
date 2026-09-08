@@ -14,6 +14,9 @@ import {
   dropTestDatabase,
   disconnectTestDatabase,
 } from '../helpers/testDatabase.js';
+import { TipModel } from '../../src/infrastructure/database/models/TipModel.js';
+import { CreatorBalanceModel } from '../../src/infrastructure/database/models/CreatorBalanceModel.js';
+import { UserModel } from '../../src/infrastructure/database/models/UserModel.js';
 
 function uniqueEmail(label: string): string {
   return `${label}-${randomUUID()}@example.com`;
@@ -117,6 +120,64 @@ describe('Creator tip jar (buy-me-a-coffee) — receive loop', () => {
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
     expect(me2.body.data.balance.availableBalance).toBe(50);
+  });
+
+  it('reconcile re-credits a SUCCEEDED tip whose balance credit was lost (crash after the status transition)', async () => {
+    const reg = await request(app)
+      .post('/api/v1/auth/register')
+      .send({ email: uniqueEmail('lostcredit'), password: 'SecurePass123', name: 'Yaa Creator' })
+      .expect(201);
+    const token = reg.body.data.tokens.accessToken as string;
+    const userId = reg.body.data.user.id as string;
+    const handle = `yaa-${randomUUID().slice(0, 6)}`;
+    await request(app)
+      .post('/api/v1/creators/profile')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ handle, displayName: 'Yaa Creator' })
+      .expect(200);
+
+    const tip = await request(app)
+      .post(`/api/v1/creators/${handle}/tips`)
+      .send({ amount: 40, supporterEmail: 'fan2@example.com', supporterName: 'Abena' })
+      .expect(201);
+    const reference = tip.body.data.reference as string;
+
+    // Simulate the crash window: the tip transitioned to SUCCEEDED but the
+    // balance credit never landed (settlementApplied stays false). Backdate it so
+    // the stale sweep sees it.
+    await TipModel.updateOne({ providerRef: reference }, { $set: { status: 'SUCCEEDED', settlementApplied: false } });
+    await TipModel.updateOne(
+      { providerRef: reference },
+      { $set: { updatedAt: new Date(Date.now() - 3600_000) } },
+      { timestamps: false }
+    );
+    // Not credited yet.
+    expect((await CreatorBalanceModel.findOne({ userId }))?.availableBalance ?? 0).toBe(0);
+
+    // Admin runs the payment reconciliation sweep → the uncredited tip is repaired.
+    const admReg = await request(app).post('/api/v1/auth/register').send({ email: uniqueEmail('tipadm'), password: 'SecurePass123', name: 'Adm' }).expect(201);
+    await UserModel.findByIdAndUpdate(admReg.body.data.user.id, { role: 'admin' });
+    const admLogin = await request(app).post('/api/v1/auth/login').send({ email: admReg.body.data.user.email, password: 'SecurePass123' }).expect(200);
+    const sweep = await request(app)
+      .post('/api/v1/admin/reconciliation')
+      .set('Authorization', `Bearer ${admLogin.body.data.tokens.accessToken}`)
+      .send({ olderThanMinutes: 1 })
+      .expect(200);
+    expect(sweep.body.data.tipsRepaired).toBeGreaterThanOrEqual(1);
+
+    // The creator is now credited, and the tip is flagged settled.
+    const me = await request(app).get('/api/v1/creators/me').set('Authorization', `Bearer ${token}`).expect(200);
+    expect(me.body.data.balance.availableBalance).toBe(40);
+    expect(me.body.data.balance.totalReceived).toBe(40);
+
+    // A second sweep does not double-credit (settleRef-idempotent + settled flag).
+    await request(app)
+      .post('/api/v1/admin/reconciliation')
+      .set('Authorization', `Bearer ${admLogin.body.data.tokens.accessToken}`)
+      .send({ olderThanMinutes: 1 })
+      .expect(200);
+    const me2 = await request(app).get('/api/v1/creators/me').set('Authorization', `Bearer ${token}`).expect(200);
+    expect(me2.body.data.balance.availableBalance).toBe(40);
   });
 
   it('rejects a taken handle with 409', async () => {

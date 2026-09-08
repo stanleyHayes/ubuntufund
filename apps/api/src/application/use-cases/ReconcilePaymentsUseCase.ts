@@ -1,6 +1,8 @@
 import type { DonationIntentEntity } from '../../domain/entities/DonationIntent.js';
+import type { TipEntity } from '../../domain/entities/Tip.js';
 import type { DonationIntentRepositoryPort } from '../../domain/ports/outbound/DonationIntentRepositoryPort.js';
 import type { PaymentAttemptRepositoryPort } from '../../domain/ports/outbound/PaymentAttemptRepositoryPort.js';
+import type { TipRepositoryPort } from '../../domain/ports/outbound/TipRepositoryPort.js';
 import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGatewayPort.js';
 import type { FeePolicy } from '../services/FeePolicy.js';
 import type { PlanLimitsService } from '../services/PlanLimitsService.js';
@@ -8,6 +10,11 @@ import type { SettleDonationUseCase } from './SettleDonationUseCase.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 import { logger } from '../../infrastructure/logging/logger.js';
 import { minorUnitExponent } from '../../domain/value-objects/Money.js';
+
+/** The tip-credit repair seam the reconciler drives; {@link HandleTipWebhookUseCase} satisfies it. */
+export interface TipCreditRepairer {
+  creditSucceededTip(tip: TipEntity): Promise<void>;
+}
 
 /** Per-intent reconciliation outcome. */
 export type ReconcileOutcome =
@@ -24,6 +31,8 @@ export interface ReconcileSummary {
   mismatched: number;
   pending: number;
   skipped: number;
+  /** SUCCEEDED-but-uncredited creator tips whose balance credit was re-applied. */
+  tipsRepaired: number;
 }
 
 /**
@@ -44,7 +53,12 @@ export class ReconcilePaymentsUseCase {
     private readonly paymentAttemptRepo: PaymentAttemptRepositoryPort,
     private readonly feePolicy: FeePolicy,
     private readonly settleDonationUseCase: SettleDonationUseCase,
-    private readonly planLimits: PlanLimitsService
+    private readonly planLimits: PlanLimitsService,
+    // Optional creator tip-collect repair: re-credit SUCCEEDED-but-uncredited
+    // tips (a crash between the status transition and the credit). Absent, the
+    // sweep behaves exactly as before.
+    private readonly tipRepo?: TipRepositoryPort,
+    private readonly tipCreditRepairer?: TipCreditRepairer
   ) {}
 
   /** Reconcile stale PENDING hosted intents older than `olderThanMinutes`. */
@@ -63,13 +77,35 @@ export class ReconcilePaymentsUseCase {
       mismatched: 0,
       pending: 0,
       skipped: 0,
+      tipsRepaired: 0,
     };
     for (const intent of stale) {
       const outcome = await this.reconcileOne(intent);
       summary[outcome] += 1;
     }
+    summary.tipsRepaired = await this.repairUncreditedTips(cutoff, limit);
     logger.info({ ...summary }, 'payment reconciliation sweep complete');
     return summary;
+  }
+
+  /**
+   * Re-credit SUCCEEDED tips whose balance credit never landed. The credit is
+   * settleRef-idempotent, so a tip that actually settled is a harmless no-op.
+   * Returns how many tips were re-driven.
+   */
+  private async repairUncreditedTips(cutoff: Date, limit: number): Promise<number> {
+    if (!this.tipRepo || !this.tipCreditRepairer) return 0;
+    const stuck = await this.tipRepo.findSucceededUnsettled(cutoff, limit);
+    let repaired = 0;
+    for (const tip of stuck) {
+      try {
+        await this.tipCreditRepairer.creditSucceededTip(tip);
+        repaired += 1;
+      } catch (error) {
+        logger.error({ err: error, tipId: tip.id }, 'reconcile: tip credit repair failed');
+      }
+    }
+    return repaired;
   }
 
   /** Reconcile a single intent by id (admin action). Throws 404 if unknown. */

@@ -13,6 +13,12 @@ export interface CreatorPayoutRepositoryPort {
     fields: { providerRef: string; transferCode?: string; recipientCode?: string }
   ): Promise<CreatorPayoutEntity | null>;
 
+  /** Best-effort: record the provider transfer/recipient codes on an in-flight withdrawal. */
+  attachTransferDetails(
+    id: string,
+    fields: { transferCode?: string; recipientCode?: string }
+  ): Promise<void>;
+
   transitionToPaid(id: string): Promise<CreatorPayoutEntity | null>;
   transitionToFailed(id: string): Promise<CreatorPayoutEntity | null>;
   transitionPaidToReversed(id: string): Promise<CreatorPayoutEntity | null>;

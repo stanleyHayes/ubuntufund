@@ -15,6 +15,12 @@ export interface TipDocument extends Document {
   providerRef: string;
   platformFee: number;
   netAmount: number;
+  /**
+   * G7: set true once the SUCCEEDED tip's balance credit has landed. The credit
+   * is a separate write from the PENDING→SUCCEEDED transition, so a crash between
+   * them leaves a SUCCEEDED-but-uncredited tip; reconciliation re-drives those.
+   */
+  settlementApplied: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -36,6 +42,7 @@ const schema = new Schema<TipDocument>(
     providerRef: { type: String, unique: true, sparse: true },
     platformFee: { type: Number, default: 0 },
     netAmount: { type: Number, default: 0 },
+    settlementApplied: { type: Boolean, default: false },
   },
   { collection: 'tips', timestamps: true }
 );

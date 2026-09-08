@@ -35,6 +35,8 @@ export function CreatorTipPage() {
   const [page, setPage] = useState<CreatorPage | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
+  const [loadError, setLoadError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
 
   const [amount, setAmount] = useState(25)
   const [name, setName] = useState('')
@@ -45,13 +47,19 @@ export function CreatorTipPage() {
 
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
+    setLoading(true); setNotFound(false); setLoadError(false)
     api.get<CreatorPage>(`/creators/${handle}`)
       .then((data) => { if (!cancelled) { setPage(data); if (data.presetAmounts?.[0]) setAmount(data.presetAmounts[0]) } })
-      .catch((err) => { if (!cancelled) setNotFound(err instanceof ApiError && err.status === 404) })
+      .catch((err) => {
+        if (cancelled) return
+        // Only a real 404 means "no such creator"; anything else (5xx, network)
+        // is a transient error the visitor can retry — don't imply the page is gone.
+        if (err instanceof ApiError && err.status === 404) setNotFound(true)
+        else setLoadError(true)
+      })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
-  }, [handle])
+  }, [handle, reloadKey])
 
   async function handleSupport() {
     setError(null)
@@ -72,11 +80,22 @@ export function CreatorTipPage() {
   if (loading) {
     return <Box sx={{ minHeight: '60vh', display: 'grid', placeItems: 'center' }}><LoadingDots /></Box>
   }
-  if (notFound || !page) {
+  if (notFound) {
     return (
       <Container maxWidth="sm" sx={{ py: 10, textAlign: 'center' }}>
         <Typography variant="h5" sx={{ fontWeight: 800, mb: 1 }}>Page not found</Typography>
         <Typography sx={{ color: INK_SECONDARY }}>We couldn’t find a creator at @{handle}.</Typography>
+      </Container>
+    )
+  }
+  if (loadError || !page) {
+    return (
+      <Container maxWidth="sm" sx={{ py: 10, textAlign: 'center' }}>
+        <Typography variant="h5" sx={{ fontWeight: 800, mb: 1 }}>Something went wrong</Typography>
+        <Typography sx={{ color: INK_SECONDARY, mb: 3 }}>We couldn’t load @{handle} just now. Please try again.</Typography>
+        <Button variant="contained" onClick={() => setReloadKey((k) => k + 1)} sx={{ borderRadius: '999px', fontWeight: 800, textTransform: 'none', px: 4 }}>
+          Try again
+        </Button>
       </Container>
     )
   }

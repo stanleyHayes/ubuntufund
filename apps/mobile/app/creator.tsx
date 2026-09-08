@@ -48,6 +48,7 @@ export default function CreatorDashboardScreen() {
   const [tipsEnabled, setTipsEnabled] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [snack, setSnack] = useState('')
 
   const [wOpen, setWOpen] = useState(false)
@@ -61,7 +62,11 @@ export default function CreatorDashboardScreen() {
 
   const load = useCallback(async () => {
     setLoading(true)
+    setLoadError(null)
     try {
+      // getMyCreator returns { profile: null } for a genuine first-time creator,
+      // so a thrown error here is a REAL failure (5xx, network, expired session) —
+      // surface it instead of showing an empty claim form.
       const me = await getMyCreator()
       setProfile(me.profile); setBalance(me.balance)
       if (me.profile) {
@@ -69,7 +74,9 @@ export default function CreatorDashboardScreen() {
         setTagline(me.profile.tagline ?? ''); setBio(me.profile.bio ?? ''); setTipsEnabled(me.profile.tipsEnabled)
         setPayouts(await listMyPayouts())
       }
-    } catch { /* first-time creators have no page yet */ }
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'We couldn’t load your creator page.')
+    }
     finally { setLoading(false) }
   }, [])
 
@@ -97,6 +104,18 @@ export default function CreatorDashboardScreen() {
   const pageUrl = profile ? `${WEB_BASE}/creators/${profile.handle}` : ''
 
   if (loading) return <View style={styles.center}><ActivityIndicator color={p.primary} /></View>
+
+  if (loadError) {
+    return (
+      <View style={styles.container}>
+        <Stack.Screen options={{ title: 'Creator page' }} />
+        <View style={styles.center}>
+          <Text style={[styles.err, { textAlign: 'center', marginBottom: 12 }]}>{loadError}</Text>
+          <Button mode="contained" onPress={() => void load()} labelStyle={{ fontFamily: 'Outfit_700Bold' }}>Try again</Button>
+        </View>
+      </View>
+    )
+  }
 
   return (
     <View style={styles.container}>

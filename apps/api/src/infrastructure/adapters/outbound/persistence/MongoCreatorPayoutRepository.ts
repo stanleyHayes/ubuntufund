@@ -75,6 +75,21 @@ export class MongoCreatorPayoutRepository implements CreatorPayoutRepositoryPort
     return doc ? toDomain(doc) : null;
   }
 
+  async attachTransferDetails(
+    id: string,
+    fields: { transferCode?: string; recipientCode?: string }
+  ): Promise<void> {
+    await CreatorPayoutModel.updateOne(
+      { _id: id },
+      {
+        $set: {
+          ...(fields.transferCode ? { transferCode: fields.transferCode } : {}),
+          ...(fields.recipientCode ? { recipientCode: fields.recipientCode } : {}),
+        },
+      }
+    );
+  }
+
   private async transition(
     id: string,
     from: PayoutStatus,

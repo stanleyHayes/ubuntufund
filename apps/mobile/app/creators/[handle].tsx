@@ -40,6 +40,8 @@ export default function CreatorTipScreen() {
   const [page, setPage] = useState<CreatorPage | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
+  const [loadError, setLoadError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
   const [amount, setAmount] = useState('25')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -49,13 +51,19 @@ export default function CreatorTipScreen() {
 
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
+    setLoading(true); setNotFound(false); setLoadError(false)
     getCreatorByHandle(String(handle))
       .then((data) => { if (!cancelled) { setPage(data); if (data.presetAmounts?.[0]) setAmount(String(data.presetAmounts[0])) } })
-      .catch((err) => { if (!cancelled) setNotFound(err instanceof ApiError && err.status === 404) })
+      .catch((err) => {
+        if (cancelled) return
+        // Only a real 404 means "no such creator"; anything else is a transient
+        // error the visitor can retry — don't imply the page is gone.
+        if (err instanceof ApiError && err.status === 404) setNotFound(true)
+        else setLoadError(true)
+      })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
-  }, [handle])
+  }, [handle, reloadKey])
 
   async function support() {
     setError(null)
@@ -74,11 +82,20 @@ export default function CreatorTipScreen() {
   const fmt = (n: number) => `${page?.currency === 'GHS' ? 'GH₵' : ''}${n.toLocaleString()}`
 
   if (loading) return <View style={styles.center}><ActivityIndicator color={p.primary} /></View>
-  if (notFound || !page) {
+  if (notFound) {
     return (
       <View style={styles.center}>
         <Text style={styles.name}>Page not found</Text>
         <Text style={styles.tagline}>No creator at @{handle}.</Text>
+      </View>
+    )
+  }
+  if (loadError || !page) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.name}>Something went wrong</Text>
+        <Text style={[styles.tagline, { marginBottom: 16 }]}>We couldn’t load @{handle} just now.</Text>
+        <Button mode="contained" onPress={() => setReloadKey((k) => k + 1)} labelStyle={{ fontFamily: 'Outfit_700Bold' }}>Try again</Button>
       </View>
     )
   }

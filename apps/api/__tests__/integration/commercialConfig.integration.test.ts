@@ -83,6 +83,40 @@ describe('Commercial config store (ADR-5 / G6)', () => {
     expect(now.body.data.resolved[key]).toBe(base); // future value not yet effective
   });
 
+  it('breaks an equal-effectiveFrom tie by newest write (a same-day correction wins)', async () => {
+    const token = await adminToken();
+    const key = 'assistedFixedFee';
+    const eff = '2026-01-01T00:00:00.000Z'; // identical instant for both writes
+    await request(app)
+      .put(`/api/v1/admin/commercial-config/${key}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ value: 99, effectiveFrom: eff, reason: 'first' })
+      .expect(200);
+    await request(app)
+      .put(`/api/v1/admin/commercial-config/${key}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ value: 42, effectiveFrom: eff, reason: 'correction' })
+      .expect(200);
+
+    const res = await request(app).get('/api/v1/admin/commercial-config').set('Authorization', `Bearer ${token}`).expect(200);
+    expect(res.body.data.resolved[key]).toBe(42); // newest write on an identical effectiveFrom wins
+  });
+
+  it('does not expose approve-time-only keys (dualApprovalAmount / maxTransferAmount) as overridable', async () => {
+    const token = await adminToken();
+    const cfg = await request(app).get('/api/v1/admin/commercial-config').set('Authorization', `Bearer ${token}`).expect(200);
+    expect(cfg.body.data.keys).toContain('priorityFeePercent');
+    expect(cfg.body.data.keys).not.toContain('dualApprovalAmount');
+    expect(cfg.body.data.keys).not.toContain('maxTransferAmount');
+    // A PUT to an approve-time-only key is rejected as unknown, so the admin is
+    // never shown a control that would silently not take effect.
+    await request(app)
+      .put('/api/v1/admin/commercial-config/dualApprovalAmount')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ value: 10000 })
+      .expect(400);
+  });
+
   it('rejects an unknown key (400) and a non-admin (403)', async () => {
     const token = await adminToken();
     await request(app)

@@ -16,4 +16,14 @@ export interface TipRepositoryPort {
   transitionToSucceeded(providerRef: string): Promise<TipEntity | null>;
   /** Atomically move a tip PENDING → FAILED. Null when not PENDING. */
   transitionToFailed(providerRef: string): Promise<TipEntity | null>;
+
+  /** G7 compare-and-set: flag a SUCCEEDED tip's balance credit as recorded. */
+  markSettlementApplied(id: string): Promise<void>;
+  /**
+   * SUCCEEDED tips whose balance credit never landed (crash between the status
+   * transition and the credit), older than `olderThan`. Migration-safe: only
+   * rows with `settlementApplied === false` — legacy tips (field absent) were
+   * already credited under the old path and are never re-driven.
+   */
+  findSucceededUnsettled(olderThan: Date, limit?: number): Promise<TipEntity[]>;
 }

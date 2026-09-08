@@ -666,7 +666,10 @@ export function createApp(): express.Express {
     paymentAttemptRepo,
     feePolicy,
     settleDonationUseCase,
-    planLimitsService
+    planLimitsService,
+    // Creator tip-collect repair: re-credit SUCCEEDED-but-uncredited tips.
+    tipRepo,
+    handleTipWebhookUseCase
   );
   // Admin-initiated, provider-integrated refund with compensating ledger (spec §14).
   const processRefundUseCase = new ProcessRefundUseCase(

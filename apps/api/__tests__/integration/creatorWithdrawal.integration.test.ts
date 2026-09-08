@@ -27,6 +27,8 @@ function sign(raw: string): string {
 
 describe('Creator withdrawal — transfer rail', () => {
   let app: Express;
+  // Toggled by a test to simulate a provider recipient-creation failure.
+  let failRecipient = false;
 
   beforeAll(async () => {
     await connectTestDatabase();
@@ -39,7 +41,10 @@ describe('Creator withdrawal — transfer rail', () => {
           ? (JSON.parse((opts as { body: string }).body) as Record<string, unknown>)
           : {};
         const json = (p: unknown) => ({ ok: true, status: 200, json: async () => p }) as unknown as Response;
-        if (u.includes('/transferrecipient')) return json({ status: true, data: { recipient_code: `RCP_${randomUUID().slice(0, 8)}` } });
+        if (u.includes('/transferrecipient')) {
+          if (failRecipient) throw new Error('recipient creation failed');
+          return json({ status: true, data: { recipient_code: `RCP_${randomUUID().slice(0, 8)}` } });
+        }
         if (u.includes('/balance')) return json({ status: true, data: [{ currency: 'GHS', balance: 100_000_000 }] });
         if (u.includes('/transfer/verify/')) {
           const ref = decodeURIComponent(u.split('/transfer/verify/')[1] ?? '');
@@ -152,6 +157,32 @@ describe('Creator withdrawal — transfer rail', () => {
     const bal = await CreatorBalanceModel.findOne({ userId });
     expect(bal?.paidOutBalance).toBe(100); // reconciled to PAID
     expect(bal?.availableBalance).toBe(0);
+  });
+
+  it('a recipient-creation failure returns the reservation and marks the payout FAILED (never stranded PENDING)', async () => {
+    const { token, userId } = await creatorWithBalance(60);
+    failRecipient = true;
+    try {
+      await request(app)
+        .post('/api/v1/creators/withdraw')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ amount: 40, recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'X' } })
+        .expect(502);
+    } finally {
+      failRecipient = false;
+    }
+
+    // The reservation is returned in full — no silent balance loss.
+    const bal = await CreatorBalanceModel.findOne({ userId });
+    expect(bal?.availableBalance).toBe(60);
+
+    // The payout reached PROCESSING (providerRef persisted BEFORE the fallible
+    // provider call) so the rollback could win a terminal transition: it ends
+    // FAILED + settled, never orphaned in PENDING.
+    const payout = await CreatorPayoutModel.findOne({ creatorUserId: userId });
+    expect(payout?.status).toBe('FAILED');
+    expect(payout?.settlementApplied).toBe(true);
+    expect(payout?.providerRef).toMatch(/^cpay-/);
   });
 
   it('returns the reservation when the transfer webhook reports failure', async () => {
