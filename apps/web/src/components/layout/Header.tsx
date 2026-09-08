@@ -34,7 +34,7 @@ import { useAuth } from '@/context/AuthContext'
 
 const NAV_LINKS = [
   { label: 'Home', to: '/' },
-  { label: 'Explore', to: '/explore' },
+  { label: 'Campaigns', to: '/explore' },
   { label: 'Organizations', to: '/organizations' },
   { label: 'Leaderboard', to: '/leaderboard' },
 ]
@@ -147,6 +147,9 @@ export function Header() {
       elevation={0}
       sx={{
         bgcolor: '#1C261D',
+        // Square the bar: it's a full-width MuiPaper, and the theme rounds every
+        // Paper (SHAPE.card), which left rounded corners exposing the page behind.
+        borderRadius: 0,
         '--neu-surface': '#1C261D',
         '--neu-raised': 'var(--forest-raised)',
         '--neu-raised-hover': 'var(--forest-raised-hover)',
@@ -320,7 +323,7 @@ export function Header() {
         <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 1.5 }}>
         {[
           { label: 'Home', to: '/', icon: <HomeRoundedIcon /> },
-          { label: 'Explore', to: '/explore', icon: <ExploreRoundedIcon /> },
+          { label: 'Campaigns', to: '/explore', icon: <ExploreRoundedIcon /> },
           { label: 'Organizations', to: '/organizations', icon: <BusinessRoundedIcon /> },
           { label: 'Leaderboard', to: '/leaderboard', icon: <EmojiEventsRoundedIcon /> },
           ...(isAuthenticated
