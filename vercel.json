@@ -7,7 +7,7 @@
   "rewrites": [
     {
       "source": "/api/v1/:path*",
-      "destination": "https://ujimora-api.onrender.com/api/v1/:path*"
+      "destination": "https://api.ujimora.com/api/v1/:path*"
     },
     { "source": "/(.*)", "destination": "/" }
   ]
