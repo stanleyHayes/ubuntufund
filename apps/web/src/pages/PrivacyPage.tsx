@@ -60,8 +60,11 @@ export function PrivacyPage() {
           For privacy-related inquiries, contact us at privacy@ujimora.com or write to: Ujimora, Accra, Ghana.
         </Typography>
 
+        <Typography variant="h5">Crypto payment records</Typography>
+        <Typography>Where you use crypto checkout, payment records may include wallet addresses, network, asset, transaction hash, memo or tag, quote, campaign-currency value and provider references. We use relevant records to match and confirm contributions, investigate failures and support required compliance checks with payment partners. Blockchain transactions can be public and persistent; hiding your name on a campaign does not make a blockchain transfer anonymous. We cannot erase records on public blockchains.</Typography>
+
         <Typography variant="body2" sx={{ mt: 6, color: 'text.secondary' }}>
-          Last updated: 7 September 2026
+          Last updated: 8 September 2026
         </Typography>
       </Box>
     </Container>

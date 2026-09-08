@@ -30,6 +30,7 @@ export const featureGroups = [
     id: 'payments', icon: PaymentsRounded, title: 'Follow the money with clarity',
     description: 'From a contribution to a withdrawal, keep the details in view.',
     features: [
+      ['Crypto contributions, where enabled', 'Review the exact crypto amount and campaign-currency value, use the supported network, and follow confirmation in checkout. See the Crypto Contribution Guide in our footer.'],
       ['More ways to contribute', 'Use your wallet or the payment methods offered for your country and currency at checkout. Available methods depend on provider configuration.'],
       ['Payout requests and review', 'Track payout status and review applicable fees and requirements. Campaign payouts follow eligibility and approval checks.'],
       ['Shared proceeds for eligible campaigns', 'Where enabled, agreed beneficiary allocations keep split proceeds, consent, and individual payout records organised. Contact us about availability.'],

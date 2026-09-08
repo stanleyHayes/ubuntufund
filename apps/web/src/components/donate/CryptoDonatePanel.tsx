@@ -5,7 +5,9 @@ import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import Alert from '@mui/material/Alert'
 import AlertTitle from '@mui/material/AlertTitle'
-import Chip from '@mui/material/Chip'
+import Skeleton from '@mui/material/Skeleton'
+import ArrowDownwardRoundedIcon from '@mui/icons-material/ArrowDownwardRounded'
+import ScheduleRoundedIcon from '@mui/icons-material/ScheduleRounded'
 import IconButton from '@mui/material/IconButton'
 import ContentCopyRoundedIcon from '@mui/icons-material/ContentCopyRounded'
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
@@ -26,7 +28,7 @@ import {
 import { getDonationIntentStatus } from '@/lib/fundraising'
 
 const FOREST = '#2E3D2F'
-const GOLD = '#C7A24A'
+const GOLD = '#DCC07E'
 
 interface Props {
   campaignId: string
@@ -75,7 +77,8 @@ export function CryptoDonatePanel({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [now, setNow] = useState(Date.now())
-  const [copied, setCopied] = useState(false)
+  const [copied, setCopied] = useState<string | null>(null)
+  const [assetsLoading, setAssetsLoading] = useState(true)
 
   useEffect(() => {
     let active = true
@@ -83,7 +86,8 @@ export function CryptoDonatePanel({
       .then((r) => {
         if (active && r.enabled) setAssets(r.assets)
       })
-      .catch(() => {})
+      .catch(() => { if (active) setError('Could not load crypto options. Please reload to try again.') })
+      .finally(() => { if (active) setAssetsLoading(false) })
     return () => {
       active = false
     }
@@ -127,7 +131,7 @@ export function CryptoDonatePanel({
   const quoteExpired = Boolean(quote) && quoteSecondsLeft <= 0
 
   const getQuote = useCallback(async () => {
-    if (!asset || !network) return
+    if (!asset || !network || !amountValid || !emailValid) return
     setBusy(true)
     setError(null)
     try {
@@ -139,10 +143,10 @@ export function CryptoDonatePanel({
     } finally {
       setBusy(false)
     }
-  }, [asset, network, campaignId, amount])
+  }, [asset, network, campaignId, amount, amountValid, emailValid])
 
   const continueToDeposit = useCallback(async () => {
-    if (!quote) return
+    if (!quote || quoteExpired || quote.fiatAmount !== amount || !amountValid || !emailValid) return
     setBusy(true)
     setError(null)
     try {
@@ -160,211 +164,196 @@ export function CryptoDonatePanel({
     } finally {
       setBusy(false)
     }
-  }, [quote, campaignId, donorEmail, donorName, message, isAnonymous])
+  }, [quote, quoteExpired, amount, amountValid, emailValid, campaignId, donorEmail, donorName, message, isAnonymous])
 
   function reset() {
     setPhase('select')
     setQuote(null)
     setDeposit(null)
     setError(null)
+    setCopied(null)
   }
 
-  function copyAddress() {
-    if (!deposit) return
-    navigator.clipboard?.writeText(deposit.walletAddress).then(
-      () => {
-        setCopied(true)
-        setTimeout(() => setCopied(false), 1800)
-      },
-      () => {},
-    )
+  async function copyValue(value: string, label: string) {
+    try {
+      await navigator.clipboard.writeText(value)
+      setCopied(label)
+      setError(null)
+    } catch {
+      setError('Copy is unavailable. Select and copy the payment details below.')
+    }
   }
 
-  const card = { p: 2.5, borderRadius: SHAPE.card, bgcolor: 'background.paper', boxShadow: 'var(--neu-raised)' }
+  const card = { p: { xs: 2, sm: 3 }, borderRadius: SHAPE.card, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', boxShadow: 'var(--neu-subtle)' }
+  const primaryButton = { borderRadius: '999px', minHeight: 48, textTransform: 'none' as const, fontWeight: 800 }
+  const step = phase === 'select' ? 0 : phase === 'quoted' ? 1 : 2
+  const staleQuote = Boolean(quote && quote.fiatAmount !== amount)
+  const networkLabel = (id: string) => assets.flatMap((a) => a.networks).find((n) => n.id === id)?.label ?? id
 
-  // ── Confirmed ──────────────────────────────────────────────────────────────
-  if (phase === 'confirmed') {
+  const progress = (
+    <Box component="ol" aria-label="Contribution steps" sx={{ display: 'flex', listStyle: 'none', m: 0, mb: 3, p: 0, gap: 1 }}>
+      {['Choose', 'Review', 'Transfer'].map((label, i) => (
+        <Box component="li" key={label} aria-current={step === i ? 'step' : undefined} sx={{ flex: 1, borderTop: '3px solid', borderColor: i <= step ? 'primary.main' : 'divider', pt: 1, fontSize: '.75rem', fontWeight: 700, color: i <= step ? 'text.primary' : 'text.secondary' }}>
+          {i + 1}. {label}
+        </Box>
+      ))}
+    </Box>
+  )
+
+  function summary(value: CryptoQuote | CryptoDepositView) {
     return (
-      <Box sx={{ ...card, textAlign: 'center' }}>
-        <CheckCircleRoundedIcon sx={{ fontSize: 56, color: 'var(--text-success)', mb: 1 }} />
-        <Typography sx={{ fontWeight: 900, fontSize: '1.2rem', color: FOREST }}>
-          Contribution confirmed
+      <Box sx={{ bgcolor: '#1C261D', color: '#F5F2EA', borderRadius: 3, p: { xs: 2, sm: 3 }, mb: 2.5 }}>
+        <Typography sx={{ fontSize: '.75rem', color: '#C5CCC2', mb: .5 }}>You send exactly</Typography>
+        <Typography sx={{ fontSize: { xs: '1.65rem', sm: '2rem' }, fontWeight: 800, lineHeight: 1.2, overflowWrap: 'anywhere', fontVariantNumeric: 'tabular-nums' }}>
+          {value.cryptoAmount} <Box component="span" sx={{ color: GOLD }}>{value.asset}</Box>
         </Typography>
-        <Typography sx={{ color: 'text.secondary', mt: 0.5, mb: 2.5 }}>
-          Thank you! Your {formatCurrency(amount, 'GHS')} contribution has been credited to the campaign.
-        </Typography>
-        <Button component={RouterLink} to={campaignPath} variant="contained" sx={{ borderRadius: '999px', fontWeight: 800, textTransform: 'none', px: 4 }}>
-          Back to campaign
-        </Button>
+        <Typography sx={{ fontSize: '.8rem', mt: 1, color: '#DCC07E' }}>{networkLabel(value.network)} network</Typography>
+        <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', mt: 2, pt: 2, borderTop: '1px solid rgba(255,255,255,.16)' }}>
+          <ArrowDownwardRoundedIcon sx={{ color: GOLD, fontSize: 20 }} />
+          <Box>
+            <Typography sx={{ color: '#C5CCC2', fontSize: '.75rem' }}>Campaign receives</Typography>
+            <Typography sx={{ fontSize: '1.25rem', fontWeight: 750 }}>{formatCurrency(value.fiatAmount, value.fiatCurrency)}</Typography>
+          </Box>
+        </Box>
       </Box>
     )
   }
 
-  // ── Failed ────────────────────────────────────────────────────────────────
+  function paymentDetail(label: string, value: string) {
+    return (
+      <Box sx={{ mt: 1.5 }}>
+        <Typography sx={{ fontSize: '.75rem', fontWeight: 700, mb: .75 }}>{label}</Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1.5, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
+          <Typography sx={{ flex: 1, minWidth: 0, fontSize: '.8rem', overflowWrap: 'anywhere', fontFamily: 'monospace', userSelect: 'all' }}>{value}</Typography>
+          <IconButton onClick={() => void copyValue(value, label)} aria-label={`Copy ${label.toLowerCase()}`} sx={{ width: 44, height: 44 }}>
+            {copied === label ? <CheckCircleRoundedIcon color="success" /> : <ContentCopyRoundedIcon sx={{ fontSize: 20 }} />}
+          </IconButton>
+        </Box>
+      </Box>
+    )
+  }
+
+  if (phase === 'confirmed') {
+    return (
+      <Box sx={{ ...card, textAlign: 'center', py: 5 }} role="status">
+        <CheckCircleRoundedIcon sx={{ fontSize: 56, color: 'success.main', mb: 2 }} />
+        <Typography variant="h5" sx={{ fontWeight: 800 }}>Your contribution is confirmed</Typography>
+        <Typography sx={{ color: 'text.secondary', mt: 1, mb: 3 }}>
+          {formatCurrency(deposit?.fiatAmount ?? amount, deposit?.fiatCurrency ?? 'GHS')} has been credited to the campaign. Thank you for making a difference.
+        </Typography>
+        <Button component={RouterLink} to={campaignPath} variant="contained" sx={primaryButton}>Back to campaign</Button>
+      </Box>
+    )
+  }
+
   if (phase === 'failed') {
     return (
       <Box sx={card}>
-        <Alert severity="error" sx={{ mb: 2 }}>
-          This contribution didn’t complete. No funds were credited. If you sent crypto, contact support with your transaction hash.
-        </Alert>
-        <Button onClick={reset} variant="outlined" sx={{ borderRadius: '999px', textTransform: 'none', fontWeight: 700 }}>
-          Start over
-        </Button>
+        <Typography variant="h6" sx={{ fontWeight: 800, mb: 2 }}>Contribution not completed</Typography>
+        <Alert severity="warning" sx={{ mb: 2 }}>No contribution has been credited. If you already sent crypto, contact support with your transaction hash before trying again.</Alert>
+        {deposit && paymentDetail('Payment reference', deposit.donationIntentId)}
+        <Button onClick={reset} variant="outlined" sx={{ ...primaryButton, mt: 2 }}>Start over</Button>
       </Box>
     )
   }
 
-  // ── Deposit (awaiting payment) ──────────────────────────────────────────────
   if (phase === 'deposit' && deposit) {
     const expired = depositSecondsLeft <= 0
     return (
       <Box sx={card}>
-        <Typography sx={{ fontWeight: 800, color: FOREST, mb: 0.5 }}>
-          Send {deposit.cryptoAmount} {deposit.asset}
-        </Typography>
-        <Typography sx={{ color: 'text.secondary', fontSize: '0.85rem', mb: 2 }}>
-          on <strong>{deposit.network}</strong> · campaign receives {formatCurrency(deposit.fiatAmount, deposit.fiatCurrency)}
-        </Typography>
-
-        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
-          <Box sx={{ p: 1.5, bgcolor: '#fff', borderRadius: SHAPE.sm, border: '1px solid rgba(46,61,47,0.12)' }}>
-            <QRCodeCanvas value={deposit.walletAddress} size={168} fgColor={FOREST} />
-          </Box>
-        </Box>
-
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1.25, borderRadius: SHAPE.sm, bgcolor: 'action.hover', mb: 2 }}>
-          <Typography sx={{ flex: 1, fontSize: '0.8rem', wordBreak: 'break-all', fontFamily: 'monospace', color: FOREST }}>
-            {deposit.walletAddress}
-          </Typography>
-          <IconButton size="small" onClick={copyAddress} aria-label="Copy address">
-            <ContentCopyRoundedIcon sx={{ fontSize: 18 }} />
-          </IconButton>
-        </Box>
-        {copied && (
-          <Typography sx={{ fontSize: '0.78rem', color: 'var(--text-success)', mb: 1.5 }}>Address copied</Typography>
-        )}
-
-        <Alert severity="warning" icon={<WarningAmberRoundedIcon />} sx={{ mb: 2 }}>
-          <AlertTitle sx={{ fontWeight: 800 }}>Send only {deposit.asset} on {deposit.network}</AlertTitle>
-          Sending any other asset or using a different network will permanently lose your funds.
+        {progress}
+        <Typography variant="h6" sx={{ fontWeight: 800, mb: .5 }}>Complete your transfer</Typography>
+        <Typography sx={{ color: 'text.secondary', fontSize: '.875rem', mb: 2.5 }}>Open your wallet and use the exact details below.</Typography>
+        {summary(deposit)}
+        <Alert severity="warning" icon={<WarningAmberRoundedIcon />} sx={{ mb: 2.5 }}>
+          <AlertTitle sx={{ fontWeight: 800 }}>Send only {deposit.asset} on {networkLabel(deposit.network)}</AlertTitle>
+          Using another asset or network can permanently lose your funds.
         </Alert>
-
         {expired ? (
-          <Alert severity="info" sx={{ mb: 2 }}>
-            This address’s quote window has passed. If you haven’t sent yet, start a new quote for a fresh rate.
-          </Alert>
+          <Alert severity="warning" sx={{ mb: 2 }}>The payment window has closed. Do not send to this address now. If you already sent, keep this page open while we check for confirmation.</Alert>
         ) : (
-          <Typography sx={{ fontSize: '0.85rem', color: 'text.secondary', textAlign: 'center', mb: 1 }}>
-            Rate locked · window closes in <strong>{mmss(depositSecondsLeft)}</strong>
-          </Typography>
+          <>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, mb: 2 }}>
+              <Box sx={{ p: 2, bgcolor: '#fff', borderRadius: 3, border: '1px solid #E0E5DE' }}>
+                <QRCodeCanvas value={deposit.walletAddress} size={168} fgColor={FOREST} title="Payment wallet address" />
+              </Box>
+              <Typography sx={{ fontSize: '.75rem', color: 'text.secondary' }}>Scan the address with your wallet</Typography>
+            </Box>
+            {paymentDetail('Wallet address', deposit.walletAddress)}
+            {deposit.addressTag && paymentDetail('Required memo / tag', deposit.addressTag)}
+            {deposit.addressTag && <Typography sx={{ mt: 1, fontSize: '.8rem', color: 'text.secondary' }}>Include this memo / tag in your transfer. The QR code contains the address only.</Typography>}
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: .75, mt: 2 }}>
+              <ScheduleRoundedIcon sx={{ fontSize: 16 }} />
+              <Typography sx={{ fontSize: '.8rem', fontVariantNumeric: 'tabular-nums' }}>Send within {mmss(depositSecondsLeft)}</Typography>
+            </Box>
+          </>
         )}
-
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, color: 'text.secondary', mt: 1 }}>
-          <LoadingDots size={6} />
-          <Typography sx={{ fontSize: '0.85rem', fontWeight: 600 }}>
-            Waiting for your transaction — this page updates automatically.
-          </Typography>
+        {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
+        <Typography role="status" sx={{ color: 'success.main', fontSize: '.8rem', mt: 1 }}>{copied ? `${copied} copied` : ''}</Typography>
+        <Box role="status" sx={{ p: 2, mt: 2, bgcolor: 'action.hover', borderRadius: 2 }}>
+          <Typography sx={{ fontWeight: 750, fontSize: '.875rem' }}>Waiting for confirmation</Typography>
+          <Typography sx={{ color: 'text.secondary', fontSize: '.8rem', mt: .5 }}>This page checks automatically. Your contribution appears after the transfer is confirmed.</Typography>
         </Box>
       </Box>
     )
   }
 
-  // ── Quoted ─────────────────────────────────────────────────────────────────
   if (phase === 'quoted' && quote) {
     return (
       <Box sx={card}>
-        <Box sx={{ textAlign: 'center', mb: 2 }}>
-          <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.5 }}>You send</Typography>
-          <Typography sx={{ fontWeight: 900, fontSize: '2rem', color: FOREST }}>
-            {quote.cryptoAmount} {quote.asset}
-          </Typography>
-          <Typography sx={{ color: 'text.secondary', fontSize: '0.9rem' }}>
-            on {quote.network} · campaign receives {formatCurrency(quote.fiatAmount, quote.fiatCurrency)}
-          </Typography>
-          <Typography sx={{ color: 'text.secondary', fontSize: '0.8rem', mt: 0.5 }}>
-            1 {quote.asset} = {formatCurrency(quote.rate, quote.fiatCurrency)}
-          </Typography>
+        {progress}
+        <Typography variant="h6" sx={{ fontWeight: 800, mb: .5 }}>Review your contribution</Typography>
+        <Typography sx={{ color: 'text.secondary', fontSize: '.875rem', mb: 2.5 }}>Check the amount and network before getting your payment address.</Typography>
+        {summary(quote)}
+        <Box sx={{ fontSize: '.8rem', color: 'text.secondary', mb: 2.5 }}>
+          <Typography sx={{ fontSize: 'inherit' }}>Exchange rate: 1 {quote.asset} = {formatCurrency(quote.rate, quote.fiatCurrency)}</Typography>
+          {quote.providerFeeFiat !== undefined && <Typography sx={{ fontSize: 'inherit', mt: .5 }}>Provider fee: {formatCurrency(quote.providerFeeFiat, quote.fiatCurrency)}</Typography>}
+          {quote.networkFeeFiat !== undefined && <Typography sx={{ fontSize: 'inherit', mt: .5 }}>Network fee: {formatCurrency(quote.networkFeeFiat, quote.fiatCurrency)}</Typography>}
         </Box>
-
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-
-        {quoteExpired ? (
-          <Alert severity="warning" sx={{ mb: 2 }}>This quote has expired. Get a fresh one to lock the current rate.</Alert>
+        {quoteExpired || staleQuote ? (
+          <Alert severity="warning" sx={{ mb: 2 }}>{staleQuote ? 'Your contribution amount changed. Get an updated quote.' : 'This quote expired. Refresh it to get the current rate.'}</Alert>
         ) : (
-          <Typography sx={{ textAlign: 'center', fontSize: '0.85rem', color: GOLD, fontWeight: 700, mb: 2 }}>
-            Quote expires in {mmss(quoteSecondsLeft)}
-          </Typography>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mb: 2, color: 'text.secondary' }}>
+            <ScheduleRoundedIcon sx={{ fontSize: 18 }} />
+            <Typography sx={{ fontSize: '.8rem', fontVariantNumeric: 'tabular-nums' }}>Rate reserved for {mmss(quoteSecondsLeft)}</Typography>
+          </Box>
         )}
-
-        <Box sx={{ display: 'flex', gap: 1.5 }}>
-          <Button onClick={reset} variant="outlined" sx={{ flex: 1, borderRadius: '999px', textTransform: 'none', fontWeight: 700 }}>
-            Change
-          </Button>
-          {quoteExpired ? (
-            <Button onClick={getQuote} disabled={busy} variant="contained" sx={{ flex: 2, borderRadius: '999px', textTransform: 'none', fontWeight: 800 }}>
-              New quote
-            </Button>
-          ) : (
-            <Button onClick={continueToDeposit} disabled={busy} variant="contained" startIcon={busy ? <LoadingDots size={6} /> : undefined} sx={{ flex: 2, borderRadius: '999px', textTransform: 'none', fontWeight: 800 }}>
-              Continue
-            </Button>
-          )}
-        </Box>
+        {!emailValid && <Alert severity="info" sx={{ mb: 2 }}>Enter a valid email above to continue.</Alert>}
+        <Button fullWidth onClick={quoteExpired || staleQuote ? getQuote : continueToDeposit} disabled={busy || !amountValid || !emailValid} variant="contained" startIcon={busy ? <LoadingDots size={6} /> : undefined} sx={primaryButton}>
+          {busy ? 'Please wait…' : quoteExpired || staleQuote ? 'Refresh quote' : 'Get payment address'}
+        </Button>
+        <Button fullWidth onClick={reset} disabled={busy} sx={{ ...primaryButton, mt: .75 }}>Change currency or network</Button>
       </Box>
     )
   }
 
-  // ── Select asset + network ──────────────────────────────────────────────────
   return (
     <Box sx={card}>
-      <Typography sx={{ fontWeight: 800, color: FOREST, mb: 1.5 }}>Pay with crypto</Typography>
-
-      <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary', mb: 1 }}>Asset</Typography>
-      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
-        {assets.map((a) => (
-          <Chip
-            key={a.asset}
-            label={a.asset}
-            onClick={() => { setAsset(a.asset); setNetwork(null) }}
-            variant={asset === a.asset ? 'filled' : 'outlined'}
-            color={asset === a.asset ? 'primary' : 'default'}
-            sx={{ fontWeight: 700 }}
-          />
+      {progress}
+      <Typography variant="h6" sx={{ fontWeight: 800, mb: .5 }}>Contribute with crypto</Typography>
+      <Typography sx={{ color: 'text.secondary', fontSize: '.875rem', mb: 3 }}>Choose what’s in your wallet. You’ll review the exact amount before transferring.</Typography>
+      <Typography sx={{ fontSize: '.8rem', fontWeight: 750, mb: 1 }}>Choose your currency</Typography>
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 1, mb: 3 }}>
+        {assetsLoading ? [0, 1].map((n) => <Skeleton key={n} variant="rounded" height={76} />) : assets.map((a) => (
+          <Button key={a.asset} aria-pressed={asset === a.asset} onClick={() => { setAsset(a.asset); setNetwork(null) }} sx={{ textTransform: 'none', p: 1.5, minWidth: 0, justifyContent: 'space-between', border: '1px solid', borderColor: asset === a.asset ? 'primary.main' : 'divider', bgcolor: asset === a.asset ? 'action.selected' : 'transparent', borderRadius: 2, textAlign: 'left' }}>
+            <Box sx={{ minWidth: 0 }}><Typography sx={{ fontWeight: 800 }}>{a.asset}</Typography><Typography sx={{ fontSize: '.7rem', color: 'text.secondary', overflowWrap: 'anywhere' }}>{a.label}</Typography></Box>
+            {asset === a.asset && <CheckCircleRoundedIcon sx={{ fontSize: 18, ml: .5 }} />}
+          </Button>
         ))}
       </Box>
-
-      {asset && (
-        <>
-          <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary', mb: 1 }}>Network</Typography>
-          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
-            {networks.map((n) => (
-              <Chip
-                key={n.id}
-                label={n.label}
-                onClick={() => setNetwork(n.id)}
-                variant={network === n.id ? 'filled' : 'outlined'}
-                color={network === n.id ? 'primary' : 'default'}
-                sx={{ fontWeight: 700 }}
-              />
-            ))}
-          </Box>
-        </>
-      )}
-
+      {!assetsLoading && !assets.length && !error && <Alert severity="info" sx={{ mb: 2 }}>Crypto is currently unavailable. Choose Card / Mobile Money to contribute.</Alert>}
+      {asset && <>
+        <Typography sx={{ fontSize: '.8rem', fontWeight: 750, mb: .5 }}>Choose the network</Typography>
+        <Typography sx={{ fontSize: '.8rem', color: 'text.secondary', mb: 1.5 }}>Match the network you’ll use in your wallet.</Typography>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 3 }}>{networks.map((n) => (
+          <Button key={n.id} aria-pressed={network === n.id} onClick={() => setNetwork(n.id)} variant={network === n.id ? 'contained' : 'outlined'} sx={{ ...primaryButton, px: 2, minHeight: 44 }}>{n.label}</Button>
+        ))}</Box>
+      </>}
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      {!amountValid && <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary', mb: 1 }}>Enter an amount above to get a quote.</Typography>}
-      {amountValid && !emailValid && <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary', mb: 1 }}>Enter your email above so we can send a receipt.</Typography>}
-
-      <Button
-        onClick={getQuote}
-        disabled={busy || !amountValid || !emailValid || !asset || !network}
-        variant="contained"
-        fullWidth
-        startIcon={busy ? <LoadingDots size={6} /> : undefined}
-        sx={{ borderRadius: '999px', py: 1.3, fontWeight: 800, textTransform: 'none' }}
-      >
-        {busy ? 'Getting quote…' : 'Get a quote'}
-      </Button>
+      {!amountValid && <Typography sx={{ fontSize: '.8rem', color: 'text.secondary', mb: 1.5 }}>Enter a contribution amount above to continue.</Typography>}
+      {amountValid && !emailValid && <Typography sx={{ fontSize: '.8rem', color: 'text.secondary', mb: 1.5 }}>Enter your email above for your receipt.</Typography>}
+      <Button onClick={getQuote} disabled={busy || !amountValid || !emailValid || !asset || !network} variant="contained" fullWidth startIcon={busy ? <LoadingDots size={6} /> : undefined} sx={primaryButton}>{busy ? 'Getting quote…' : 'Review quote'}</Button>
     </Box>
   )
 }

@@ -32,7 +32,7 @@ export const LEGAL_ENTITY = {
     report: 'trust@ujimora.com',
   },
   minAge: 18,
-  effectiveDate: '7 September 2026',
+  effectiveDate: '8 September 2026',
   governingLaw: 'Ghana',
 } as const
 
@@ -108,6 +108,7 @@ export const LEGAL_POLICIES: LegalPolicy[] = [
       'Welcome to Ujimora. These Terms of Use govern your use of our crowdfunding platform. Please read them carefully before creating an account, publishing a campaign, or making a contribution.',
     effectiveDate: LEGAL_ENTITY.effectiveDate,
     sections: [
+      { title: "Crypto contributions, where available", content: "Crypto is an optional contribution method only where offered at checkout. Review the supported asset, network, exact amount, campaign-currency value and payment window before sending. A quote is not a completed contribution; campaign credit follows provider confirmation. Crypto contributions are not an investment, savings product or promise of returns. Availability does not represent regulatory approval or an endorsement of an asset." },
       {
         title: '1. About Ujimora',
         content: `${companyClause()} Contact: ${E.support}; legal: ${E.legal}.`,
@@ -218,6 +219,7 @@ Circumvention of subscription, campaign, payment or risk controls.`,
       'At Ujimora, we are committed to protecting your privacy and the security of your personal information. This notice explains how we collect, use, share, retain, and protect data when you use the platform.',
     effectiveDate: LEGAL_ENTITY.effectiveDate,
     sections: [
+      { title: "Blockchain and crypto payment information", content: "Where you use crypto checkout, payment records may include wallet addresses, network, asset, transaction hash, memo or tag, quote, campaign-currency value and provider references. We use relevant records to match and confirm contributions, investigate failures and support required compliance checks with payment partners. Blockchain transactions can be public and persistent; hiding your name on a campaign does not make a blockchain transfer anonymous. We cannot erase records on public blockchains." },
       {
         title: '1. Controller and scope',
         content: `${companyClause()} Contact: ${E.support}; privacy: ${E.privacy}. Ujimora acts as data controller for personal data it determines how and why to process, subject to any processor or controller allocation agreed with payment, identity and infrastructure partners.`,
@@ -315,6 +317,7 @@ Send marketing only where permitted and with applicable choice or consent.`,
       'This Campaign Organizer Agreement supplements the Ujimora Terms of Use and applies whenever an individual or organization creates or controls a campaign.',
     effectiveDate: LEGAL_ENTITY.effectiveDate,
     sections: [
+      { title: "Campaign credit from crypto contributions", content: "Where crypto contributions are enabled, campaign credit is recorded in the campaign currency after confirmation, using the accepted payment value. A pending transfer or unaccepted quote is not available campaign proceeds. Crypto acceptance does not by itself provide crypto payouts or change beneficiary allocations, payout review or applicable fees." },
       {
         title: '1. Incorporation',
         content:
@@ -396,6 +399,7 @@ Send marketing only where permitted and with applicable choice or consent.`,
       'These Contributor & Donor Terms apply when you contribute to a Ujimora campaign. They explain the nature of a contribution, refunds, disputes, and campaigns with multiple beneficiaries.',
     effectiveDate: LEGAL_ENTITY.effectiveDate,
     sections: [
+      { title: "Sending a crypto contribution", content: "Use only the asset, network, address and required memo or tag shown for your payment. Review the quoted campaign-currency value, exchange rate and any fees shown; your wallet may also charge sending fees. Obtain a fresh quote if it expires before you proceed. Do not send after the payment window closes. Wrong-network transfers, incorrect addresses and missing tags can cause permanent loss. If you have already sent and confirmation is delayed, contact support with the campaign, payment reference and transaction hash before sending again. Never share private keys or recovery phrases." },
       {
         title: '1. Scope',
         content: 'These terms apply when a person contributes to a Ujimora campaign.',
@@ -470,6 +474,7 @@ Send marketing only where permitted and with applicable choice or consent.`,
       'This policy explains how payouts and refunds work on Ujimora: the standard payout window, the optional priority, early and assisted payout services, the holds that can apply, and how failed or cancelled campaigns are handled.',
     effectiveDate: LEGAL_ENTITY.effectiveDate,
     sections: [
+      { title: "Crypto transfers and refund review", content: "A completed blockchain transfer cannot simply be reversed. Contact support with the campaign reference, payment reference and transaction hash to request review. Do not send another transfer to resolve a delayed payment unless instructed through verified support. Any eligible refund depends on applicable rights, provider capabilities and the circumstances of the payment; confirm the currency, amount, conversion basis, fees and destination with support. Do not assume the same crypto quantity will be returned or that an exchange sending address can receive refunds. This does not limit applicable statutory rights." },
       {
         title: '1. Standard payout',
         content:
@@ -543,6 +548,7 @@ Initial recommended early-withdrawal ceiling: 80% of the eligible available bala
       'This policy protects contributors, organizers, regulated partners and Ujimora from unlawful, deceptive or harmful fundraising. It sets out what is prohibited, what needs enhanced review, and how Ujimora enforces the rules.',
     effectiveDate: LEGAL_ENTITY.effectiveDate,
     sections: [
+      { title: "Crypto payment misuse", content: "Do not use contributions to conceal the source of funds, evade sanctions or verification, route prohibited transactions, or operate an unapproved exchange or investment scheme. Do not ask contributors to send to substitute wallet addresses outside the checkout or to disclose private keys or recovery phrases." },
       {
         title: '1. Purpose',
         content:

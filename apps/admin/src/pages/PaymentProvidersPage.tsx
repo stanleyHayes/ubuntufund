@@ -16,6 +16,7 @@ import type { PaymentProvider } from '@/hooks/useMockData'
 import { Resource, Action, PaymentMethod } from '@ubuntu-fund/types'
 import { useAdminPermissions } from '@/context/AdminPermissionContext'
 import { api } from '@/lib/api'
+import CryptoOperations from '@/components/payments/CryptoOperations'
 import PageHeader from '@/components/PageHeader'
 
 export default function PaymentProvidersPage() {
@@ -48,8 +49,9 @@ export default function PaymentProvidersPage() {
     <Box sx={{ bgcolor: 'background.default' }}>
       <PageHeader tone="green" eyebrow="Payments" title="Payment providers" lede="Manage the payment methods available for campaign donations." icon={<AccountBalanceRoundedIcon />} stats={[{ label: 'Configured', value: isLoading ? <Skeleton width={48} /> : error ? '—' : providers.length }, { label: 'Enabled', value: isLoading ? <Skeleton width={48} /> : error ? '—' : enabledCount }, { label: 'Disabled', value: isLoading ? <Skeleton width={48} /> : error ? '—' : providers.length - enabledCount }]} />
 
+      <CryptoOperations />
       <Alert severity="info" sx={{ mb: 3 }}>
-        Campaign donations currently support the Ujimora wallet. Other methods cannot be enabled until their payment integration is ready. These settings apply to campaign donations, not subscription checkout.
+        These switches manage the legacy wallet provider configuration. Paystack checkout and crypto availability are configured separately; the crypto panel above shows current checkout options.
       </Alert>
       {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
 

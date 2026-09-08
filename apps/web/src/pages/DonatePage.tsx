@@ -534,7 +534,8 @@ export function DonatePage() {
               if (v) setPayMode(v)
             }}
             fullWidth
-            sx={{ mb: 2.5 }}
+            aria-label="Contribution payment method"
+            sx={{ mb: 2.5, p: .5, gap: .5, bgcolor: 'action.hover', borderRadius: 3, "& .MuiToggleButtonGroup-grouped": { border: 0, borderRadius: '16px !important', minHeight: 52 }, "& .Mui-selected": { boxShadow: 'var(--neu-subtle)' } }}
           >
             <ToggleButton value="fiat" sx={{ textTransform: 'none', fontWeight: 700, py: 1 }}>
               Card / Mobile Money

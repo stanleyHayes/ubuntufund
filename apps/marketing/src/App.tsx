@@ -16,6 +16,7 @@ import GroupsIcon from '@mui/icons-material/Groups'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import LandingPage from './pages/LandingPage'
+import CryptoGuidePage from './pages/CryptoGuidePage'
 import FeaturesPage from './pages/FeaturesPage'
 import AboutPage from './pages/AboutPage'
 import ContactPage from './pages/ContactPage'
@@ -105,7 +106,7 @@ function InnerPageLayout() {
   const bannerProps = getBannerConfig(pathname)
   const legalRoutes = ['/legal', ...LEGAL_POLICIES.map((p) => p.route)]
   const hasEditorialHero =
-    ['/features', '/about', '/blog', '/contact', '/pricing', '/help', '/for-organizations'].includes(pathname) ||
+    ['/crypto', '/features', '/about', '/blog', '/contact', '/pricing', '/help', '/for-organizations'].includes(pathname) ||
     legalRoutes.includes(pathname)
 
   return (
@@ -133,6 +134,7 @@ function App() {
             <Route element={<InnerPageLayout />}>
               <Route path="/about" element={<AboutPage />} />
               <Route path="/contact" element={<ContactPage />} />
+              <Route path="/crypto" element={<CryptoGuidePage />} />
               <Route path="/features" element={<FeaturesPage />} />
               <Route path="/pricing" element={<PricingPage />} />
               <Route path="/blog" element={<BlogPage />} />

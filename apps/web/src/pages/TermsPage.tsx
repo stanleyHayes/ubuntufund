@@ -60,8 +60,11 @@ export function TermsPage() {
           These terms shall be governed by and construed in accordance with the laws of the Republic of Ghana. Any disputes shall be resolved through arbitration in Accra, Ghana.
         </Typography>
 
+        <Typography variant="h5">Crypto contributions</Typography>
+        <Typography>Use only the asset, network, address and required memo or tag shown for your payment. Review the quoted campaign-currency value, exchange rate and any fees shown; your wallet may also charge sending fees. Obtain a fresh quote if it expires before you proceed. Do not send after the payment window closes. Wrong-network transfers, incorrect addresses and missing tags can cause permanent loss. If you have already sent and confirmation is delayed, contact support with the campaign, payment reference and transaction hash before sending again. Never share private keys or recovery phrases. A completed blockchain transfer cannot simply be reversed. Contact support with the campaign reference, payment reference and transaction hash to request review. Do not send another transfer to resolve a delayed payment unless instructed through verified support. Any eligible refund depends on applicable rights, provider capabilities and the circumstances of the payment; confirm the currency, amount, conversion basis, fees and destination with support. Do not assume the same crypto quantity will be returned or that an exchange sending address can receive refunds. This does not limit applicable statutory rights.</Typography>
+
         <Typography variant="body2" sx={{ mt: 6, color: 'text.secondary' }}>
-          Last updated: 7 September 2026
+          Last updated: 8 September 2026
         </Typography>
       </Box>
     </Container>
