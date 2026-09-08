@@ -4,6 +4,7 @@ import { Outlet, useLocation } from 'react-router-dom'
 import { keyframes } from '@emotion/react'
 import { Header } from './Header'
 import { Footer } from './Footer'
+import { MobileBottomNav } from './MobileBottomNav'
 
 // Enter transition for each route. Keying the wrapper on the pathname remounts
 // it on navigation, re-triggering the animation. Reduced-motion users get none.
@@ -22,7 +23,13 @@ export function Layout() {
   }, [pathname])
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+    <Box sx={{
+      '--mobile-nav-height': { xs: 'calc(98px + env(safe-area-inset-bottom, 0px))', md: '0px' },
+      display: 'flex', flexDirection: 'column', minHeight: '100vh',
+      '& .MuiSnackbar-anchorOriginBottomLeft, & .MuiSnackbar-anchorOriginBottomCenter, & .MuiSnackbar-anchorOriginBottomRight': {
+        bottom: { xs: 'calc(var(--mobile-nav-height) + 16px)', md: 24 },
+      },
+    }}>
       <Header />
       <Box component="main" sx={{ flex: 1 }}>
         <Box
@@ -36,6 +43,7 @@ export function Layout() {
         </Box>
       </Box>
       <Footer />
+      <MobileBottomNav />
     </Box>
   )
 }

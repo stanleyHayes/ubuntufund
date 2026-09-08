@@ -471,7 +471,7 @@ export function SettingsPage() {
         </Dialog>
 
         {saving && (
-          <Box sx={{ position: 'fixed', bottom: 24, right: 24, zIndex: 1200, display: 'flex', alignItems: 'center', gap: 1, bgcolor: FOREST, color: '#F5F2EA', px: 2, py: 1, borderRadius: '999px' }}>
+          <Box sx={{ position: 'fixed', bottom: 'calc(var(--mobile-nav-height, 0px) + 24px)', right: 24, zIndex: 1200, display: 'flex', alignItems: 'center', gap: 1, bgcolor: FOREST, color: '#F5F2EA', px: 2, py: 1, borderRadius: '999px' }}>
             <LoadingDots size={6} />
             <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>Saving…</Typography>
           </Box>

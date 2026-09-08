@@ -50,6 +50,8 @@
 
 ## UX, Theming & Admin Polish — GOAL: fix all + ship multi-theme
 
+- ✅ 2026-09-08 — Client web mobile bottom navigation: floating glass pill with translucent forest tint, backdrop blur, glossy highlights, rounded ends, a soft shadow, 12px edge spacing, and five persistent tabs (Home, Explore, Start, Dashboard, Profile), centered gold campaign action, active pills, safe-area support, and content/notification clearance. Bottom clearance lives inside the footer so its background continues behind the floating pill; browser assertions cover footer extent and text clearance. Desktop navigation retained. Verified web type-check, lint, and Playwright navigation at 390px/320px and desktop hiding at 1280px. Local API was unavailable during the browser check; authenticated campaign submission was not exercised.
+
 > Added 2026-09-05. Consolidates a run of QA + design requests. ◻ planned · 🔄 in progress · ✅ done.
 
 ### Multi-theme design system (web + admin)

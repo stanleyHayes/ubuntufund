@@ -216,7 +216,7 @@ export function Header() {
           {/* Right cluster */}
           {isAuthenticated ? (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
-              <Box sx={{ display: { xs: 'none', sm: 'inline-flex' } }}>
+              <Box sx={{ display: { xs: 'none', md: 'inline-flex' } }}>
                 <CtaButton to="/campaigns/new">Start a Campaign</CtaButton>
               </Box>
               <Box

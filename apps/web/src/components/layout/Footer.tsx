@@ -49,6 +49,7 @@ export function Footer() {
       component="footer"
       sx={{
         mt: 'auto',
+        pb: 'var(--mobile-nav-height, 0px)',
         bgcolor: '#1C261D',
         color: 'rgba(245, 242, 234, 0.85)',
         '--neu-surface': '#1C261D',
