@@ -48,15 +48,24 @@ function build(opts: {
     async findStuckBatchedProcessing() {
       return (opts.batched ?? []).map(batchedPayout);
     },
+    async findTerminalUnsettled() {
+      return [];
+    },
   } as unknown as PayoutRepositoryPort;
   const beneficiaryRepo = {
     async findStuckProcessing() {
       return (opts.beneficiaryRefs ?? []).map(stuckPayout);
     },
+    async findTerminalUnsettled() {
+      return [];
+    },
   } as unknown as BeneficiaryPayoutRepositoryPort;
   const affiliateRepo = {
     async findStuckProcessing() {
       return (opts.affiliateRefs ?? []).map(stuckPayout);
+    },
+    async findTerminalUnsettled() {
+      return [];
     },
   } as unknown as AffiliatePayoutRepositoryPort;
   const gateway = {

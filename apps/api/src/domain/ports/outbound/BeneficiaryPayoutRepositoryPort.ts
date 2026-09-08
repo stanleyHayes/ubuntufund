@@ -18,6 +18,17 @@ export interface BeneficiaryPayoutRepositoryPort {
   /** Payouts stuck in PROCESSING since before `olderThan` (missed webhook). */
   findStuckProcessing(olderThan: Date): Promise<BeneficiaryPayoutEntity[]>;
 
+  /** Flag a payout's terminal balance/ledger effect as applied (G5, idempotent). */
+  markSettlementApplied(id: string): Promise<void>;
+
+  /**
+   * PAID or FAILED payouts whose settlement effect was not recorded (a crash
+   * between the state transition and the balance write), older than `olderThan`.
+   * Matched by `settlementApplied: false` so legacy payouts (field absent) are
+   * never re-applied. REVERSED is excluded (see PayoutRepositoryPort).
+   */
+  findTerminalUnsettled(olderThan: Date): Promise<BeneficiaryPayoutEntity[]>;
+
   /**
    * Maker-checker: atomically record the FIRST admin approval (set
    * firstApprovedBy/At while PENDING and not yet first-approved). Null when

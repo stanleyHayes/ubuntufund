@@ -39,22 +39,38 @@ export interface AffiliateBalanceRepositoryPort {
 
   /**
    * Return reserved in-transit funds to `availableBalance` after a failed
-   * transfer (no paid-out amount was ever recorded).
+   * transfer (no paid-out amount was ever recorded). When `settleRef` is given
+   * the move is applied at most once per key (G5 idempotency), so a
+   * reconciliation re-drive is a no-op.
    */
-  returnToAvailable(id: string, amount: number): Promise<AffiliateBalance | null>;
+  returnToAvailable(
+    id: string,
+    amount: number,
+    settleRef?: string
+  ): Promise<AffiliateBalance | null>;
 
   /**
    * Confirm a paid-out transfer: `paidOutBalance += amount` (the reserved
-   * in-transit funds have left the platform). Returns the updated balance.
+   * in-transit funds have left the platform). When `settleRef` is given the move
+   * is applied at most once per key. Returns the updated balance.
    */
-  markPaidOut(id: string, amount: number): Promise<AffiliateBalance | null>;
+  markPaidOut(
+    id: string,
+    amount: number,
+    settleRef?: string
+  ): Promise<AffiliateBalance | null>;
 
   /**
    * Reverse a PAID payout (a settled transfer was reversed): move the funds out
    * of paid-out and back to available — `paidOutBalance -= amount` and
-   * `availableBalance += amount`. Atomic $inc. Returns the updated balance.
+   * `availableBalance += amount`. When `settleRef` is given the move is applied
+   * at most once per key. Atomic $inc. Returns the updated balance.
    */
-  reverseFromPaidOut(id: string, amount: number): Promise<AffiliateBalance | null>;
+  reverseFromPaidOut(
+    id: string,
+    amount: number,
+    settleRef?: string
+  ): Promise<AffiliateBalance | null>;
 
   /**
    * Reverse a still-held commission (referred subscription refunded before it

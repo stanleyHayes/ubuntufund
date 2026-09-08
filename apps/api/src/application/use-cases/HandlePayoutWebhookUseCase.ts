@@ -36,26 +36,119 @@ export class HandlePayoutWebhookUseCase {
     if (payout && !payout.isBatched) {
       const won = await this.payoutRepo.transitionToPaid(payout.id);
       if (!won) return; // idempotent: already PAID or not PROCESSING
-
-      // Split the gross into the beneficiary's net + Ujimora's retained payout fee.
-      await this.campaignBalanceRepo.markPaidOut(
-        payout.campaignId,
-        payout.netAmount,
-        payout.fee
-      );
-
-      const entry = JournalEntryEntity.forPayoutDisbursement({
-        campaignId: payout.campaignId,
-        amount: payout.amount,
-        currency: payout.currency,
-        memo: `payout ${payout.id} settled (${reference})`,
-      });
-      await this.ledgerRepo.postEntry(entry);
+      await this.applyDisbursement(payout, `pout:${payout.id}`, payout.amount, payout.netAmount, payout.fee, reference);
       return;
     }
 
     const batched = await this.payoutRepo.findByLegReference(reference);
     if (batched) await this.onLegSuccess(batched, reference);
+  }
+
+  /**
+   * Reconciliation repair (G5): re-apply the terminal settlement effect for a
+   * single-transfer payout whose balance/ledger write did not complete (a crash
+   * between the state transition and the effect). Idempotent — a no-op if the
+   * effect already landed (guarded by the same settleRef the webhook uses).
+   *
+   *  - PAID   → re-apply the disbursement (paidOut += net, disbursement journal).
+   *  - FAILED → re-return the reservation a crash stranded out of availableBalance.
+   *
+   * REVERSED is intentionally NOT repaired here: an unsettled REVERSED payout
+   * cannot be distinguished from a PAID-then-reversed crash, so replaying either
+   * the return or the reversal risks a double-credit — that case needs per-effect
+   * tracking (deferred). Batched payouts are repaired by {@link repairBatched}.
+   */
+  async repairSettlement(payoutId: string): Promise<void> {
+    const payout = await this.payoutRepo.findById(payoutId);
+    if (!payout || payout.isBatched) return;
+    if (payout.status === 'PAID') {
+      await this.applyDisbursement(
+        payout,
+        `pout:${payout.id}`,
+        payout.amount,
+        payout.netAmount,
+        payout.fee,
+        'reconcile'
+      );
+    } else if (payout.status === 'FAILED') {
+      await this.campaignBalanceRepo.returnToAvailable(
+        payout.campaignId,
+        payout.amount,
+        `pout:${payout.id}:returned`
+      );
+      await this.payoutRepo.markSettlementApplied(payout.id);
+    }
+  }
+
+  /**
+   * Reconciliation repair (G5) for a batched payout stuck in PROCESSING: a crash
+   * after a leg's atomic status transition but before its balance/ledger effect,
+   * or before {@link reconcileBatch} finalized the batch. Re-applies every
+   * terminal leg's effect — idempotent, guarded by the leg settleRef and journal
+   * externalRef so an already-applied leg is a no-op — then re-runs finalization
+   * so an all-terminal batch reaches PAID / NEEDS_REVIEW.
+   */
+  async repairBatched(payoutId: string): Promise<void> {
+    const payout = await this.payoutRepo.findById(payoutId);
+    if (!payout || !payout.isBatched || payout.status !== 'PROCESSING') return;
+    for (const leg of payout.legs ?? []) {
+      if (leg.status === 'success') {
+        await this.campaignBalanceRepo.markPaidOut(
+          payout.campaignId,
+          leg.amount,
+          0,
+          `leg:${leg.reference}:paid`
+        );
+        await this.ledgerRepo.postEntry(
+          JournalEntryEntity.forPayoutDisbursement({
+            campaignId: payout.campaignId,
+            amount: leg.amount,
+            currency: payout.currency,
+            memo: `payout ${payout.id} leg ${leg.index + 1} settled (reconcile)`,
+            externalRef: `leg:${leg.reference}:paid`,
+          })
+        );
+      } else if (leg.status === 'failed') {
+        await this.campaignBalanceRepo.returnToAvailable(
+          payout.campaignId,
+          leg.amount,
+          `leg:${leg.reference}:returned`
+        );
+      }
+      // A 'reversed' leg is intentionally NOT re-driven here: its forward :paid
+      // credit may have been stranded by a crash, and reverseFromPaidOut has no
+      // floor guard, so replaying it could drive paidOut negative. onLegReversed
+      // already flags the batch NEEDS_REVIEW (reconcileBatch below does too), so a
+      // human reconciles it — see G7 for the reversal-crash durability work.
+      // queued / submitted legs are still in flight — reconciled per-leg.
+    }
+    await this.reconcileBatch(payoutId);
+  }
+
+  /**
+   * Apply a settled payout's disbursement to the campaign balance + ledger,
+   * idempotently keyed by `settleKey` so a duplicate webhook OR a reconciliation
+   * re-run applies it at most once. `gross` journals; `net`/`fee` split the
+   * balance. Also flags the payout settlement-applied (a reconciliation index).
+   */
+  private async applyDisbursement(
+    payout: PayoutEntity,
+    settleKey: string,
+    gross: number,
+    net: number,
+    fee: number,
+    reference: string
+  ): Promise<void> {
+    await this.campaignBalanceRepo.markPaidOut(payout.campaignId, net, fee, `${settleKey}:paid`);
+    const entry = JournalEntryEntity.forPayoutDisbursement({
+      campaignId: payout.campaignId,
+      amount: gross,
+      currency: payout.currency,
+      memo: `payout ${payout.id} settled (${reference})`,
+      externalRef: `${settleKey}:paid`,
+    });
+    await this.ledgerRepo.postEntry(entry);
+    await this.payoutRepo.markSettlementApplied(payout.id);
   }
 
   async handleFailed(reference: string): Promise<void> {
@@ -67,8 +160,10 @@ export class HandlePayoutWebhookUseCase {
       // Nothing was disbursed — return the reservation to availableBalance.
       await this.campaignBalanceRepo.returnToAvailable(
         payout.campaignId,
-        payout.amount
+        payout.amount,
+        `pout:${payout.id}:returned`
       );
+      await this.payoutRepo.markSettlementApplied(payout.id);
       return;
     }
 
@@ -86,13 +181,15 @@ export class HandlePayoutWebhookUseCase {
         await this.campaignBalanceRepo.reverseFromPaidOut(
           payout.campaignId,
           payout.netAmount,
-          payout.fee
+          payout.fee,
+          `pout:${payout.id}:reversed`
         );
         const entry = JournalEntryEntity.forPayoutReversal({
           campaignId: payout.campaignId,
           amount: payout.amount,
           currency: payout.currency,
           memo: `payout ${payout.id} reversed (${reference})`,
+          externalRef: `pout:${payout.id}:reversed`,
         });
         await this.ledgerRepo.postEntry(entry);
         return;
@@ -105,7 +202,8 @@ export class HandlePayoutWebhookUseCase {
       if (fromProcessing) {
         await this.campaignBalanceRepo.returnToAvailable(
           payout.campaignId,
-          payout.amount
+          payout.amount,
+          `pout:${payout.id}:returned`
         );
       }
       // Otherwise not in a reversible state — idempotent no-op.
@@ -140,13 +238,15 @@ export class HandlePayoutWebhookUseCase {
     await this.campaignBalanceRepo.markPaidOut(
       payout.campaignId,
       leg.amount,
-      0
+      0,
+      `leg:${reference}:paid`
     );
     const entry = JournalEntryEntity.forPayoutDisbursement({
       campaignId: payout.campaignId,
       amount: leg.amount,
       currency: payout.currency,
       memo: `payout ${payout.id} leg ${leg.index + 1} settled (${reference})`,
+      externalRef: `leg:${reference}:paid`,
     });
     await this.ledgerRepo.postEntry(entry);
 
@@ -170,7 +270,8 @@ export class HandlePayoutWebhookUseCase {
 
     await this.campaignBalanceRepo.returnToAvailable(
       payout.campaignId,
-      leg.amount
+      leg.amount,
+      `leg:${reference}:returned`
     );
     await this.reconcileBatch(payout.id);
   }
@@ -197,13 +298,15 @@ export class HandlePayoutWebhookUseCase {
     await this.campaignBalanceRepo.reverseFromPaidOut(
       payout.campaignId,
       leg.amount,
-      0
+      0,
+      `leg:${reference}:reversed`
     );
     const entry = JournalEntryEntity.forPayoutReversal({
       campaignId: payout.campaignId,
       amount: leg.amount,
       currency: payout.currency,
       memo: `payout ${payout.id} leg ${leg.index + 1} reversed (${reference})`,
+      externalRef: `leg:${reference}:reversed`,
     });
     await this.ledgerRepo.postEntry(entry);
     await this.payoutRepo.flagNeedsReview(payout.id);

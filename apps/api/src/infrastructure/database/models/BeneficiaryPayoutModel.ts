@@ -15,6 +15,7 @@ export interface BeneficiaryPayoutDocument extends Document {
   approvedBy?: string;
   firstApprovedBy?: string;
   firstApprovedAt?: Date;
+  settlementApplied?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -49,6 +50,7 @@ const schema = new Schema<BeneficiaryPayoutDocument>(
     transferCode: { type: String },
     requestedBy: { type: String, required: true },
     approvedBy: { type: String },
+    settlementApplied: { type: Boolean, default: false, index: true },
   },
   { collection: 'beneficiary_payouts', timestamps: true }
 );

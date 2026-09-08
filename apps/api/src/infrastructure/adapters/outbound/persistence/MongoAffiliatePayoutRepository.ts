@@ -76,6 +76,25 @@ export class MongoAffiliatePayoutRepository
     return docs.map(toDomain);
   }
 
+  async markSettlementApplied(id: string): Promise<void> {
+    await AffiliatePayoutModel.updateOne(
+      { _id: id },
+      { $set: { settlementApplied: true } }
+    );
+  }
+
+  async findTerminalUnsettled(
+    olderThan: Date
+  ): Promise<AffiliatePayoutEntity[]> {
+    const docs = await AffiliatePayoutModel.find({
+      status: { $in: ['PAID', 'FAILED'] },
+      // Exact `false`, not `$ne: true`: legacy payouts predate the field.
+      settlementApplied: false,
+      updatedAt: { $lt: olderThan },
+    }).sort({ updatedAt: 1 });
+    return docs.map(toDomain);
+  }
+
   async transitionToProcessing(
     id: string,
     fields: { approvedBy: string; providerRef: string; transferCode?: string }

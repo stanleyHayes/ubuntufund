@@ -39,28 +39,34 @@ export interface CampaignBeneficiaryBalanceRepositoryPort {
     amount: number
   ): Promise<boolean>;
 
-  /** Return an in-transit reservation to available (payout failed). */
+  /**
+   * Return an in-transit reservation to available (payout failed). `settleRef`,
+   * when given, makes the effect at-most-once per key (G5 durability).
+   */
   returnToAvailable(
     campaignId: string,
     beneficiaryId: string,
     currency: string,
-    amount: number
+    amount: number,
+    settleRef?: string
   ): Promise<void>;
 
-  /** Move in-transit → paid-out on a settled payout. */
+  /** Move in-transit → paid-out on a settled payout (idempotent per settleRef). */
   markPaidOut(
     campaignId: string,
     beneficiaryId: string,
     currency: string,
-    amount: number
+    amount: number,
+    settleRef?: string
   ): Promise<void>;
 
-  /** Reverse paid-out → available on a reversed payout. */
+  /** Reverse paid-out → available on a reversed payout (idempotent per settleRef). */
   reverseFromPaidOut(
     campaignId: string,
     beneficiaryId: string,
     currency: string,
-    amount: number
+    amount: number,
+    settleRef?: string
   ): Promise<void>;
 
   findOne(

@@ -21,6 +21,25 @@ function toDomain(doc: AffiliateBalanceDocument): AffiliateBalance {
 export class MongoAffiliateBalanceRepository
   implements AffiliateBalanceRepositoryPort
 {
+  /**
+   * Match filter for an idempotent bucket move: when `settleRef` is given, only
+   * matches while the key has NOT already been applied, so the atomic
+   * findOneAndUpdate fires at most once per settlement (a duplicate webhook or a
+   * reconciliation re-drive is a no-op).
+   */
+  private settleFilter(
+    id: string,
+    settleRef?: string
+  ): Record<string, unknown> {
+    return settleRef
+      ? { _id: id, settledRefs: { $ne: settleRef } }
+      : { _id: id };
+  }
+
+  private settleAdd(settleRef?: string): Record<string, unknown> {
+    return settleRef ? { $addToSet: { settledRefs: settleRef } } : {};
+  }
+
   async findByAffiliateId(
     affiliateId: string
   ): Promise<AffiliateBalance | null> {
@@ -92,15 +111,18 @@ export class MongoAffiliateBalanceRepository
 
   async returnToAvailable(
     id: string,
-    amount: number
+    amount: number,
+    settleRef?: string
   ): Promise<AffiliateBalance | null> {
     // Failed transfer: the reserved in-transit funds return to available. No
-    // paid-out amount was ever recorded, so this is a pure additive $inc.
-    const doc = await AffiliateBalanceModel.findByIdAndUpdate(
-      id,
+    // paid-out amount was ever recorded, so this is a pure additive $inc —
+    // guarded idempotent per settleRef when given.
+    const doc = await AffiliateBalanceModel.findOneAndUpdate(
+      this.settleFilter(id, settleRef),
       {
         $set: { updatedAt: new Date() },
         $inc: { availableBalance: amount },
+        ...this.settleAdd(settleRef),
       },
       { new: true }
     );
@@ -109,14 +131,16 @@ export class MongoAffiliateBalanceRepository
 
   async markPaidOut(
     id: string,
-    amount: number
+    amount: number,
+    settleRef?: string
   ): Promise<AffiliateBalance | null> {
     // Confirmed transfer: the reserved in-transit funds have left the platform.
-    const doc = await AffiliateBalanceModel.findByIdAndUpdate(
-      id,
+    const doc = await AffiliateBalanceModel.findOneAndUpdate(
+      this.settleFilter(id, settleRef),
       {
         $set: { updatedAt: new Date() },
         $inc: { paidOutBalance: amount },
+        ...this.settleAdd(settleRef),
       },
       { new: true }
     );
@@ -125,15 +149,17 @@ export class MongoAffiliateBalanceRepository
 
   async reverseFromPaidOut(
     id: string,
-    amount: number
+    amount: number,
+    settleRef?: string
   ): Promise<AffiliateBalance | null> {
     // A PAID transfer was reversed: the funds came back, so move them out of
     // paid-out and back into available (mirrors the campaign payout ledger).
-    const doc = await AffiliateBalanceModel.findByIdAndUpdate(
-      id,
+    const doc = await AffiliateBalanceModel.findOneAndUpdate(
+      this.settleFilter(id, settleRef),
       {
         $set: { updatedAt: new Date() },
         $inc: { paidOutBalance: -amount, availableBalance: amount },
+        ...this.settleAdd(settleRef),
       },
       { new: true }
     );

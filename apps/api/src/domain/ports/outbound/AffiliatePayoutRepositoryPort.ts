@@ -12,6 +12,17 @@ export interface AffiliatePayoutRepositoryPort {
   /** Payouts stuck in PROCESSING since before `olderThan` (missed webhook). */
   findStuckProcessing(olderThan: Date): Promise<AffiliatePayoutEntity[]>;
 
+  /** Flag a payout's terminal balance effect as applied (G5, idempotent). */
+  markSettlementApplied(id: string): Promise<void>;
+
+  /**
+   * PAID or FAILED payouts whose settlement effect was not recorded (a crash
+   * between the state transition and the balance write), older than `olderThan`.
+   * Matched by `settlementApplied: false` so legacy payouts (field absent) are
+   * never re-applied. REVERSED is excluded (see PayoutRepositoryPort).
+   */
+  findTerminalUnsettled(olderThan: Date): Promise<AffiliatePayoutEntity[]>;
+
   /**
    * Atomically move PENDING → PROCESSING, stamping the approver, our unique
    * transfer reference, and (optionally) the provider transfer code. Returns the

@@ -116,18 +116,35 @@ export class MongoCampaignBalanceRepository
     return doc ? toDomain(doc) : null;
   }
 
+  /**
+   * Build the atomic filter for a settlement effect: when a `settleRef` is
+   * given, match only if it has NOT been applied (idempotency guard); the
+   * accompanying `$addToSet` records it so a re-run is a no-op.
+   */
+  private settleFilter(campaignId: string, settleRef?: string) {
+    return settleRef
+      ? { campaignId, settledRefs: { $ne: settleRef } }
+      : { campaignId };
+  }
+
+  private settleAdd(settleRef?: string) {
+    return settleRef ? { $addToSet: { settledRefs: settleRef } } : {};
+  }
+
   async markPaidOut(
     campaignId: string,
     netAmount: number,
-    fee = 0
+    fee = 0,
+    settleRef?: string
   ): Promise<CampaignBalance | null> {
     // The reserved gross (net + fee) already left `availableBalance`; on payout it
     // splits into the beneficiary's disbursed net and Ujimora's retained fee.
     const doc = await CampaignBalanceModel.findOneAndUpdate(
-      { campaignId },
+      this.settleFilter(campaignId, settleRef),
       {
         $set: { updatedAt: new Date() },
         $inc: { paidOutBalance: netAmount, payoutFees: fee },
+        ...this.settleAdd(settleRef),
       },
       { new: true }
     );
@@ -136,13 +153,15 @@ export class MongoCampaignBalanceRepository
 
   async returnToAvailable(
     campaignId: string,
-    amount: number
+    amount: number,
+    settleRef?: string
   ): Promise<CampaignBalance | null> {
     const doc = await CampaignBalanceModel.findOneAndUpdate(
-      { campaignId },
+      this.settleFilter(campaignId, settleRef),
       {
         $set: { updatedAt: new Date() },
         $inc: { availableBalance: amount },
+        ...this.settleAdd(settleRef),
       },
       { new: true }
     );
@@ -152,12 +171,13 @@ export class MongoCampaignBalanceRepository
   async reverseFromPaidOut(
     campaignId: string,
     netAmount: number,
-    fee = 0
+    fee = 0,
+    settleRef?: string
   ): Promise<CampaignBalance | null> {
     // Undo a paid transfer: the disbursed net + retained fee both return to the
     // campaign's available balance (the gross the beneficiary was charged).
     const doc = await CampaignBalanceModel.findOneAndUpdate(
-      { campaignId },
+      this.settleFilter(campaignId, settleRef),
       {
         $set: { updatedAt: new Date() },
         $inc: {
@@ -165,6 +185,7 @@ export class MongoCampaignBalanceRepository
           payoutFees: -fee,
           availableBalance: netAmount + fee,
         },
+        ...this.settleAdd(settleRef),
       },
       { new: true }
     );

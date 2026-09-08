@@ -24,6 +24,8 @@ export interface PayoutDocument extends Document {
   firstApprovedBy?: string;
   firstApprovedAt?: Date;
   legs?: PayoutLeg[];
+  /** True once the terminal balance/ledger effect has been applied (G5). */
+  settlementApplied?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -84,6 +86,7 @@ const payoutSchema = new Schema<PayoutDocument>(
     firstApprovedBy: { type: String },
     firstApprovedAt: { type: Date },
     legs: { type: [payoutLegSchema], default: undefined },
+    settlementApplied: { type: Boolean, default: false, index: true },
   },
   { collection: 'payouts', timestamps: true }
 );

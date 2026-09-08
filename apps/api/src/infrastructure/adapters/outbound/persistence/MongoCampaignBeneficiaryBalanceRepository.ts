@@ -91,15 +91,31 @@ export class MongoCampaignBeneficiaryBalanceRepository
     });
   }
 
+  /** Idempotency guard for a settlement effect keyed by settleRef (G5). */
+  private settleFilter(
+    campaignId: string,
+    beneficiaryId: string,
+    currency: string,
+    settleRef?: string
+  ) {
+    const base = { campaignId, beneficiaryId, currency };
+    return settleRef ? { ...base, settledRefs: { $ne: settleRef } } : base;
+  }
+
+  private settleAdd(settleRef?: string) {
+    return settleRef ? { $addToSet: { settledRefs: settleRef } } : {};
+  }
+
   async returnToAvailable(
     campaignId: string,
     beneficiaryId: string,
     currency: string,
-    amount: number
+    amount: number,
+    settleRef?: string
   ): Promise<void> {
     await CampaignBeneficiaryBalanceModel.updateOne(
-      { campaignId, beneficiaryId, currency },
-      { $set: { updatedAt: new Date() }, $inc: { availableBalance: amount } }
+      this.settleFilter(campaignId, beneficiaryId, currency, settleRef),
+      { $set: { updatedAt: new Date() }, $inc: { availableBalance: amount }, ...this.settleAdd(settleRef) }
     );
   }
 
@@ -107,11 +123,12 @@ export class MongoCampaignBeneficiaryBalanceRepository
     campaignId: string,
     beneficiaryId: string,
     currency: string,
-    amount: number
+    amount: number,
+    settleRef?: string
   ): Promise<void> {
     await CampaignBeneficiaryBalanceModel.updateOne(
-      { campaignId, beneficiaryId, currency },
-      { $set: { updatedAt: new Date() }, $inc: { paidOutBalance: amount } }
+      this.settleFilter(campaignId, beneficiaryId, currency, settleRef),
+      { $set: { updatedAt: new Date() }, $inc: { paidOutBalance: amount }, ...this.settleAdd(settleRef) }
     );
   }
 
@@ -119,13 +136,15 @@ export class MongoCampaignBeneficiaryBalanceRepository
     campaignId: string,
     beneficiaryId: string,
     currency: string,
-    amount: number
+    amount: number,
+    settleRef?: string
   ): Promise<void> {
     await CampaignBeneficiaryBalanceModel.updateOne(
-      { campaignId, beneficiaryId, currency },
+      this.settleFilter(campaignId, beneficiaryId, currency, settleRef),
       {
         $set: { updatedAt: new Date() },
         $inc: { paidOutBalance: -amount, availableBalance: amount },
+        ...this.settleAdd(settleRef),
       }
     );
   }

@@ -352,10 +352,11 @@ export class BeneficiaryPayoutUseCase {
     campaignId: string,
     beneficiaryId: string,
     currency: string,
-    amount: number
+    amount: number,
+    settleRef?: string
   ): Promise<void> {
-    await this.beneficiaryBalanceRepo.returnToAvailable(campaignId, beneficiaryId, currency, amount);
-    await this.campaignBalanceRepo.returnToAvailable(campaignId, amount);
+    await this.beneficiaryBalanceRepo.returnToAvailable(campaignId, beneficiaryId, currency, amount, settleRef);
+    await this.campaignBalanceRepo.returnToAvailable(campaignId, amount, settleRef);
   }
 
   private async rollback(
@@ -371,7 +372,17 @@ export class BeneficiaryPayoutUseCase {
     // return it a second time. Exactly one of {this, the webhook} restores it.
     const failed = await this.payoutRepo.transitionToFailed(payoutId);
     if (!failed) return;
-    await this.returnReservation(campaignId, beneficiaryId, currency, amount);
+    // Return with the shared settleRef + flag settlement-applied so this
+    // rollback-produced FAILED payout is not re-detected as unsettled and
+    // double-returned (on BOTH buckets) by the reconciliation repair.
+    await this.returnReservation(
+      campaignId,
+      beneficiaryId,
+      currency,
+      amount,
+      `bpay:${payoutId}:returned`
+    );
+    await this.payoutRepo.markSettlementApplied(payoutId);
   }
 
   private async assertOwnerOrAdmin(

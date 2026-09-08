@@ -28,6 +28,23 @@ export interface PayoutRepositoryPort {
    */
   findStuckBatchedProcessing(olderThan: Date): Promise<PayoutEntity[]>;
 
+  /** Flag a payout's terminal balance/ledger effect as applied (G5, idempotent). */
+  markSettlementApplied(id: string): Promise<void>;
+
+  /**
+   * Single-transfer payouts that reached a repairable terminal state (PAID or
+   * FAILED) whose settlement effect has NOT been recorded as applied (a crash
+   * between the state transition and the balance write) and that are older than
+   * `olderThan` — the reconciliation-repair candidates.
+   *
+   * Matched by `settlementApplied: false` (not `$ne: true`): only G5-era payouts
+   * carry the field, so payouts that predate it — already settled by the old
+   * code — are never mis-detected as unsettled and re-applied. REVERSED is
+   * excluded: an unsettled REVERSED payout cannot be told apart from a
+   * PAID-then-reversed crash, so its repair needs per-effect tracking (deferred).
+   */
+  findTerminalUnsettled(olderThan: Date): Promise<PayoutEntity[]>;
+
   /**
    * Maker-checker (spec §16): atomically record the FIRST admin approval of a
    * high-value payout — set `firstApprovedBy`/`firstApprovedAt` while it is still

@@ -117,18 +117,30 @@ export class ApproveAffiliatePayoutUseCase {
     return toAffiliatePayoutDto(updated ?? processing);
   }
 
-  /** Undo a reservation + PROCESSING transition when initiation fails. */
+  /**
+   * Undo a reservation + PROCESSING transition when initiation fails. Gate the
+   * money return on WINNING the terminal transition (so a raced transfer.failed
+   * webhook doesn't return it twice), and return with the same settleRef +
+   * settlement-applied flag the webhook uses, so this FAILED payout is never
+   * re-detected as unsettled and double-returned by the reconciliation repair.
+   */
   private async rollback(
     payoutId: string,
     affiliateId: string,
     amount: number
   ): Promise<void> {
+    const failed = await this.affiliatePayoutRepo.transitionToFailed(payoutId);
+    if (!failed) return;
     const balance = await this.affiliateBalanceRepo.findByAffiliateId(
       affiliateId
     );
     if (balance) {
-      await this.affiliateBalanceRepo.returnToAvailable(balance.id, amount);
+      await this.affiliateBalanceRepo.returnToAvailable(
+        balance.id,
+        amount,
+        `aff:${payoutId}:returned`
+      );
     }
-    await this.affiliatePayoutRepo.transitionToFailed(payoutId);
+    await this.affiliatePayoutRepo.markSettlementApplied(payoutId);
   }
 }

@@ -11,6 +11,8 @@ export interface AffiliatePayoutDocument extends Document {
   transferCode?: string;
   requestedBy: string;
   approvedBy?: string;
+  /** G5: the terminal balance effect has been recorded as applied (reconciliation index). */
+  settlementApplied?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -44,6 +46,7 @@ const affiliatePayoutSchema = new Schema<AffiliatePayoutDocument>(
     transferCode: { type: String },
     requestedBy: { type: String, required: true, index: true },
     approvedBy: { type: String },
+    settlementApplied: { type: Boolean, default: false, index: true },
   },
   { collection: 'affiliatepayouts', timestamps: true }
 );

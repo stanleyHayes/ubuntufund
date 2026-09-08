@@ -17,6 +17,12 @@ export interface DraftJournalLine {
 export interface JournalEntryProps {
   donationId?: string;
   donationIntentId?: string;
+  /**
+   * A caller-supplied idempotency key for non-donation entries (e.g. payout
+   * disbursement/reversal, which have no donation intent). Posting is exactly-
+   * once per externalRef, so re-running a settlement never double-posts.
+   */
+  externalRef?: string;
   memo: string;
   currency: string;
   lines: DraftJournalLine[];
@@ -45,6 +51,9 @@ export class JournalEntryEntity {
   }
   get donationIntentId(): string | undefined {
     return this.props.donationIntentId;
+  }
+  get externalRef(): string | undefined {
+    return this.props.externalRef;
   }
   get memo(): string {
     return this.props.memo;
@@ -178,12 +187,14 @@ export class JournalEntryEntity {
     amount: number;
     currency: string;
     memo?: string;
+    externalRef?: string;
   }): JournalEntryEntity {
     const amount = round2(refs.amount);
     if (amount <= 0) {
       throw new Error('Payout amount must be greater than zero');
     }
     return new JournalEntryEntity({
+      externalRef: refs.externalRef,
       memo: refs.memo ?? `payout for campaign ${refs.campaignId}`,
       currency: refs.currency,
       lines: [
@@ -216,12 +227,14 @@ export class JournalEntryEntity {
     amount: number;
     currency: string;
     memo?: string;
+    externalRef?: string;
   }): JournalEntryEntity {
     const amount = round2(refs.amount);
     if (amount <= 0) {
       throw new Error('Payout amount must be greater than zero');
     }
     return new JournalEntryEntity({
+      externalRef: refs.externalRef,
       memo: refs.memo ?? `payout reversal for campaign ${refs.campaignId}`,
       currency: refs.currency,
       lines: [

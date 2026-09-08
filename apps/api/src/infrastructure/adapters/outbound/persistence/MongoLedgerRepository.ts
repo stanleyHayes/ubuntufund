@@ -69,11 +69,17 @@ export class MongoLedgerRepository implements LedgerRepositoryPort {
 
   async postEntry(entry: JournalEntryEntity): Promise<JournalEntry> {
     const intentId = entry.donationIntentId;
+    const externalRef = entry.externalRef;
 
-    // Idempotency: a settled intent posts exactly one entry. Return the
-    // existing one rather than double-posting on a retry.
+    // Idempotency: a settled intent — or a payout settlement keyed by
+    // externalRef — posts exactly one entry. Return the existing one rather than
+    // double-posting on a retry (a duplicate webhook or a reconciliation re-run).
     if (intentId) {
       const existing = await this.findEntryByDonationIntentId(intentId);
+      if (existing) return existing;
+    }
+    if (externalRef) {
+      const existing = await this.findEntryByExternalRef(externalRef);
       if (existing) return existing;
     }
 
@@ -82,15 +88,22 @@ export class MongoLedgerRepository implements LedgerRepositoryPort {
       entryDoc = await JournalEntryModel.create({
         donationId: entry.donationId,
         donationIntentId: intentId,
+        externalRef,
         memo: entry.memo,
         currency: entry.currency,
         createdAt: new Date(),
       });
     } catch (error) {
-      // Lost a race to post the same intent's entry — resolve to the winner.
-      if (intentId && isDuplicateKeyError(error)) {
-        const existing = await this.findEntryByDonationIntentId(intentId);
-        if (existing) return existing;
+      // Lost a race to post the same entry — resolve to the winner.
+      if (isDuplicateKeyError(error)) {
+        if (intentId) {
+          const existing = await this.findEntryByDonationIntentId(intentId);
+          if (existing) return existing;
+        }
+        if (externalRef) {
+          const existing = await this.findEntryByExternalRef(externalRef);
+          if (existing) return existing;
+        }
       }
       throw error;
     }
@@ -121,6 +134,18 @@ export class MongoLedgerRepository implements LedgerRepositoryPort {
     donationIntentId: string
   ): Promise<JournalEntry | null> {
     const entry = await JournalEntryModel.findOne({ donationIntentId });
+    if (!entry) return null;
+    const lines = await JournalLineModel.find({
+      journalEntryId: entry._id!.toString(),
+    });
+    return entryToDomain(entry, lines);
+  }
+
+  /** Resolve a payout-settlement entry by its idempotency key. */
+  private async findEntryByExternalRef(
+    externalRef: string
+  ): Promise<JournalEntry | null> {
+    const entry = await JournalEntryModel.findOne({ externalRef });
     if (!entry) return null;
     const lines = await JournalLineModel.find({
       journalEntryId: entry._id!.toString(),

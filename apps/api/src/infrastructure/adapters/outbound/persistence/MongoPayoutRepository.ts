@@ -108,6 +108,22 @@ export class MongoPayoutRepository implements PayoutRepositoryPort {
     return docs.map(toDomain);
   }
 
+  async markSettlementApplied(id: string): Promise<void> {
+    await PayoutModel.updateOne({ _id: id }, { $set: { settlementApplied: true } });
+  }
+
+  async findTerminalUnsettled(olderThan: Date): Promise<PayoutEntity[]> {
+    const docs = await PayoutModel.find({
+      status: { $in: ['PAID', 'FAILED'] },
+      legs: { $exists: false }, // single-transfer only
+      // Exact `false`, not `$ne: true`: legacy payouts predate the field (absent)
+      // and were already settled by the old code — they must never be repaired.
+      settlementApplied: false,
+      updatedAt: { $lt: olderThan },
+    }).sort({ updatedAt: 1 });
+    return docs.map(toDomain);
+  }
+
   async recordFirstApproval(
     id: string,
     makerId: string

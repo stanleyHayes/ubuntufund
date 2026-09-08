@@ -7,6 +7,7 @@ export interface CampaignBeneficiaryBalanceDocument extends Document {
   pendingBalance: number;
   availableBalance: number;
   paidOutBalance: number;
+  settledRefs: string[];
   updatedAt: Date;
 }
 
@@ -18,6 +19,7 @@ const schema = new Schema<CampaignBeneficiaryBalanceDocument>(
     pendingBalance: { type: Number, default: 0 },
     availableBalance: { type: Number, default: 0 },
     paidOutBalance: { type: Number, default: 0 },
+    settledRefs: { type: [String], default: [] },
     updatedAt: { type: Date, default: Date.now },
   },
   { collection: 'campaign_beneficiary_balances', timestamps: false }

@@ -69,7 +69,8 @@ export interface CampaignBalanceRepositoryPort {
   markPaidOut(
     campaignId: string,
     netAmount: number,
-    fee?: number
+    fee?: number,
+    settleRef?: string
   ): Promise<CampaignBalance | null>;
 
   /**
@@ -78,7 +79,8 @@ export interface CampaignBalanceRepositoryPort {
    */
   returnToAvailable(
     campaignId: string,
-    amount: number
+    amount: number,
+    settleRef?: string
   ): Promise<CampaignBalance | null>;
 
   /**
@@ -88,6 +90,14 @@ export interface CampaignBalanceRepositoryPort {
   reverseFromPaidOut(
     campaignId: string,
     netAmount: number,
-    fee?: number
+    fee?: number,
+    settleRef?: string
   ): Promise<CampaignBalance | null>;
 }
+
+/**
+ * `settleRef` (all three effects): an optional idempotency key. When provided,
+ * the balance effect is applied AT MOST ONCE per key (guarded by a `settledRefs`
+ * set on the balance doc), so a duplicate webhook or a reconciliation re-run can
+ * never double-apply it. Omitted → unconditional (legacy) behaviour.
+ */

@@ -26,21 +26,25 @@ export class HandleBeneficiaryPayoutWebhookUseCase {
     const won = await this.payoutRepo.transitionToPaid(payout.id);
     if (!won) return; // idempotent
 
+    const key = `bpay:${payout.id}`;
     await this.beneficiaryBalanceRepo.markPaidOut(
       payout.campaignId,
       payout.beneficiaryId,
       payout.currency,
-      payout.amount
+      payout.amount,
+      `${key}:paid`
     );
-    await this.campaignBalanceRepo.markPaidOut(payout.campaignId, payout.amount, 0);
+    await this.campaignBalanceRepo.markPaidOut(payout.campaignId, payout.amount, 0, `${key}:paid`);
 
     const entry = JournalEntryEntity.forPayoutDisbursement({
       campaignId: payout.campaignId,
       amount: payout.amount,
       currency: payout.currency,
       memo: `beneficiary payout ${payout.id} settled (${reference})`,
+      externalRef: `${key}:paid`,
     });
     await this.ledgerRepo.postEntry(entry);
+    await this.payoutRepo.markSettlementApplied(payout.id);
   }
 
   async handleFailed(reference: string): Promise<void> {
@@ -49,33 +53,39 @@ export class HandleBeneficiaryPayoutWebhookUseCase {
     const won = await this.payoutRepo.transitionToFailed(payout.id);
     if (!won) return;
 
+    const key = `bpay:${payout.id}`;
     await this.beneficiaryBalanceRepo.returnToAvailable(
       payout.campaignId,
       payout.beneficiaryId,
       payout.currency,
-      payout.amount
+      payout.amount,
+      `${key}:returned`
     );
-    await this.campaignBalanceRepo.returnToAvailable(payout.campaignId, payout.amount);
+    await this.campaignBalanceRepo.returnToAvailable(payout.campaignId, payout.amount, `${key}:returned`);
+    await this.payoutRepo.markSettlementApplied(payout.id);
   }
 
   async handleReversed(reference: string): Promise<void> {
     const payout = await this.payoutRepo.findByProviderRef(reference);
     if (!payout) return;
 
+    const key = `bpay:${payout.id}`;
     const fromPaid = await this.payoutRepo.transitionPaidToReversed(payout.id);
     if (fromPaid) {
       await this.beneficiaryBalanceRepo.reverseFromPaidOut(
         payout.campaignId,
         payout.beneficiaryId,
         payout.currency,
-        payout.amount
+        payout.amount,
+        `${key}:reversed`
       );
-      await this.campaignBalanceRepo.reverseFromPaidOut(payout.campaignId, payout.amount, 0);
+      await this.campaignBalanceRepo.reverseFromPaidOut(payout.campaignId, payout.amount, 0, `${key}:reversed`);
       const entry = JournalEntryEntity.forPayoutReversal({
         campaignId: payout.campaignId,
         amount: payout.amount,
         currency: payout.currency,
         memo: `beneficiary payout ${payout.id} reversed (${reference})`,
+        externalRef: `${key}:reversed`,
       });
       await this.ledgerRepo.postEntry(entry);
       return;
@@ -87,9 +97,58 @@ export class HandleBeneficiaryPayoutWebhookUseCase {
         payout.campaignId,
         payout.beneficiaryId,
         payout.currency,
-        payout.amount
+        payout.amount,
+        `${key}:returned`
       );
-      await this.campaignBalanceRepo.returnToAvailable(payout.campaignId, payout.amount);
+      await this.campaignBalanceRepo.returnToAvailable(payout.campaignId, payout.amount, `${key}:returned`);
+    }
+  }
+
+  /**
+   * Reconciliation repair (G5): re-apply the terminal settlement effect for a
+   * beneficiary payout whose balance/ledger write did not complete (a crash
+   * between the state transition and the effect). Every move is re-driven on BOTH
+   * the beneficiary bucket and the campaign mirror with the same settleRef, so a
+   * crash that updated only one bucket is reconverged; each write is idempotent,
+   * so a fully-applied effect is a no-op.
+   *
+   *  - PAID   → re-apply the disbursement to both buckets + the journal.
+   *  - FAILED → re-return the reservation to both buckets.
+   *
+   * REVERSED is not repaired here (see {@link HandlePayoutWebhookUseCase.repairSettlement}).
+   */
+  async repairSettlement(payoutId: string): Promise<void> {
+    const payout = await this.payoutRepo.findById(payoutId);
+    if (!payout) return;
+    const key = `bpay:${payout.id}`;
+    if (payout.status === 'PAID') {
+      await this.beneficiaryBalanceRepo.markPaidOut(
+        payout.campaignId,
+        payout.beneficiaryId,
+        payout.currency,
+        payout.amount,
+        `${key}:paid`
+      );
+      await this.campaignBalanceRepo.markPaidOut(payout.campaignId, payout.amount, 0, `${key}:paid`);
+      const entry = JournalEntryEntity.forPayoutDisbursement({
+        campaignId: payout.campaignId,
+        amount: payout.amount,
+        currency: payout.currency,
+        memo: `beneficiary payout ${payout.id} settled (reconcile)`,
+        externalRef: `${key}:paid`,
+      });
+      await this.ledgerRepo.postEntry(entry);
+      await this.payoutRepo.markSettlementApplied(payout.id);
+    } else if (payout.status === 'FAILED') {
+      await this.beneficiaryBalanceRepo.returnToAvailable(
+        payout.campaignId,
+        payout.beneficiaryId,
+        payout.currency,
+        payout.amount,
+        `${key}:returned`
+      );
+      await this.campaignBalanceRepo.returnToAvailable(payout.campaignId, payout.amount, `${key}:returned`);
+      await this.payoutRepo.markSettlementApplied(payout.id);
     }
   }
 }

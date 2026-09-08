@@ -33,8 +33,13 @@ export class HandleAffiliatePayoutWebhookUseCase {
       payout.affiliateId
     );
     if (balance) {
-      await this.affiliateBalanceRepo.markPaidOut(balance.id, payout.amount);
+      await this.affiliateBalanceRepo.markPaidOut(
+        balance.id,
+        payout.amount,
+        `aff:${payout.id}:paid`
+      );
     }
+    await this.affiliatePayoutRepo.markSettlementApplied(payout.id);
   }
 
   async handleFailed(reference: string): Promise<void> {
@@ -51,9 +56,11 @@ export class HandleAffiliatePayoutWebhookUseCase {
     if (balance) {
       await this.affiliateBalanceRepo.returnToAvailable(
         balance.id,
-        payout.amount
+        payout.amount,
+        `aff:${payout.id}:returned`
       );
     }
+    await this.affiliatePayoutRepo.markSettlementApplied(payout.id);
   }
 
   async handleReversed(reference: string): Promise<void> {
@@ -72,7 +79,8 @@ export class HandleAffiliatePayoutWebhookUseCase {
       if (balance) {
         await this.affiliateBalanceRepo.reverseFromPaidOut(
           balance.id,
-          payout.amount
+          payout.amount,
+          `aff:${payout.id}:reversed`
         );
       }
       return;
@@ -89,10 +97,43 @@ export class HandleAffiliatePayoutWebhookUseCase {
       if (balance) {
         await this.affiliateBalanceRepo.returnToAvailable(
           balance.id,
-          payout.amount
+          payout.amount,
+          `aff:${payout.id}:returned`
         );
       }
     }
     // Otherwise not in a reversible state — idempotent no-op.
+  }
+
+  /**
+   * Reconciliation repair (G5): re-apply the terminal settlement effect for an
+   * affiliate payout whose balance write did not complete (a crash between the
+   * state transition and the effect). Idempotent via the same settleRef the
+   * webhook uses. PAID → re-credit paidOut; FAILED → re-return the reservation.
+   * REVERSED is not repaired here (see HandlePayoutWebhookUseCase.repairSettlement).
+   */
+  async repairSettlement(payoutId: string): Promise<void> {
+    const payout = await this.affiliatePayoutRepo.findById(payoutId);
+    if (!payout) return;
+    if (payout.status !== 'PAID' && payout.status !== 'FAILED') return;
+    const balance = await this.affiliateBalanceRepo.findByAffiliateId(
+      payout.affiliateId
+    );
+    if (balance) {
+      if (payout.status === 'PAID') {
+        await this.affiliateBalanceRepo.markPaidOut(
+          balance.id,
+          payout.amount,
+          `aff:${payout.id}:paid`
+        );
+      } else {
+        await this.affiliateBalanceRepo.returnToAvailable(
+          balance.id,
+          payout.amount,
+          `aff:${payout.id}:returned`
+        );
+      }
+    }
+    await this.affiliatePayoutRepo.markSettlementApplied(payout.id);
   }
 }

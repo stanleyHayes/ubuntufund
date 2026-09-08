@@ -301,6 +301,14 @@ export class ApprovePayoutUseCase {
   ): Promise<void> {
     const failed = await this.payoutRepo.transitionToFailed(payoutId);
     if (!failed) return;
-    await this.campaignBalanceRepo.returnToAvailable(campaignId, amount);
+    // Return with the same settleRef the webhook/reconciler use AND flag
+    // settlement-applied, so this rollback-produced FAILED payout is never
+    // re-detected as unsettled and double-returned by the reconciliation repair.
+    await this.campaignBalanceRepo.returnToAvailable(
+      campaignId,
+      amount,
+      `pout:${payoutId}:returned`
+    );
+    await this.payoutRepo.markSettlementApplied(payoutId);
   }
 }

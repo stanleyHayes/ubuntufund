@@ -115,6 +115,22 @@ export class MongoBeneficiaryPayoutRepository
     return docs.map(toDomain);
   }
 
+  async markSettlementApplied(id: string): Promise<void> {
+    await BeneficiaryPayoutModel.updateOne({ _id: id }, { $set: { settlementApplied: true } });
+  }
+
+  async findTerminalUnsettled(
+    olderThan: Date
+  ): Promise<BeneficiaryPayoutEntity[]> {
+    const docs = await BeneficiaryPayoutModel.find({
+      status: { $in: ['PAID', 'FAILED'] },
+      // Exact `false`, not `$ne: true`: legacy payouts predate the field.
+      settlementApplied: false,
+      updatedAt: { $lt: olderThan },
+    }).sort({ updatedAt: 1 });
+    return docs.map(toDomain);
+  }
+
   async transitionToProcessing(
     id: string,
     fields: { approvedBy: string; providerRef: string }

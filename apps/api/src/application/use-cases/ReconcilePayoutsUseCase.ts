@@ -13,6 +13,13 @@ export interface PayoutWebhookHandler {
   handleSuccess(reference: string): Promise<void>;
   handleFailed(reference: string): Promise<void>;
   handleReversed(reference: string): Promise<void>;
+  /** Re-apply the (idempotent) settlement effect for a terminal-but-unsettled payout. */
+  repairSettlement?(payoutId: string): Promise<void>;
+  /**
+   * Re-apply every terminal leg's (idempotent) effect for a batched payout stuck
+   * in PROCESSING and re-run its finalization. Only the campaign handler batches.
+   */
+  repairBatched?(payoutId: string): Promise<void>;
 }
 
 export interface ReconcilePayoutSummary {
@@ -21,6 +28,8 @@ export interface ReconcilePayoutSummary {
   failed: number;
   reversed: number;
   pending: number;
+  /** PAID-but-unsettled payouts whose idempotent settlement effect was re-applied. */
+  repaired: number;
   errored: number;
 }
 
@@ -55,6 +64,7 @@ export class ReconcilePayoutsUseCase {
       failed: 0,
       reversed: 0,
       pending: 0,
+      repaired: 0,
       errored: 0,
     };
     if (!this.paymentGateway.isConfigured()) return summary;
@@ -99,11 +109,39 @@ export class ReconcilePayoutsUseCase {
     // the batch to PAID/NEEDS_REVIEW once every leg is terminal.
     const batched = await this.payoutRepo.findStuckBatchedProcessing(cutoff);
     for (const payout of batched) {
+      // Re-apply any terminal leg whose effect a crash left unapplied FIRST —
+      // before reconciling in-flight legs. Batch finalization (transitionBatchedToPaid)
+      // checks leg STATUS, not whether each leg's effect landed, so a sibling leg
+      // completing in this same sweep could otherwise flip the batch to PAID and
+      // strand the crashed leg's effect (repairBatched only runs while PROCESSING).
+      // Idempotent per leg settleRef, so re-applying an already-applied leg is a no-op.
+      await this.handlePayoutWebhookUseCase.repairBatched?.(payout.id);
       for (const leg of payout.legs ?? []) {
         if (leg.status === 'queued' || leg.status === 'submitted') {
           await this.reconcileOne(leg.reference, this.handlePayoutWebhookUseCase, summary);
         }
       }
+    }
+
+    // Repair terminal-but-unsettled payouts (a crash between the state transition
+    // and the balance/ledger write). The repair re-applies the SAME idempotent
+    // effect, so a payout that actually settled is a harmless no-op.
+    const paidUnsettled = await this.payoutRepo.findTerminalUnsettled(cutoff);
+    for (const payout of paidUnsettled) {
+      await this.handlePayoutWebhookUseCase.repairSettlement?.(payout.id);
+      summary.repaired += 1;
+    }
+    const beneUnsettled =
+      await this.beneficiaryPayoutRepo.findTerminalUnsettled(cutoff);
+    for (const payout of beneUnsettled) {
+      await this.handleBeneficiaryPayoutWebhookUseCase.repairSettlement?.(payout.id);
+      summary.repaired += 1;
+    }
+    const affUnsettled =
+      await this.affiliatePayoutRepo.findTerminalUnsettled(cutoff);
+    for (const payout of affUnsettled) {
+      await this.handleAffiliatePayoutWebhookUseCase.repairSettlement?.(payout.id);
+      summary.repaired += 1;
     }
 
     return summary;
