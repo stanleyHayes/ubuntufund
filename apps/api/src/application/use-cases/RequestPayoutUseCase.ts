@@ -41,7 +41,13 @@ export class RequestPayoutUseCase {
     // split, campaign-level payouts are blocked in favour of per-beneficiary
     // payouts. Optional/flag-gated so the ordinary flow is unaffected.
     private readonly campaignSplitRepo?: CampaignSplitRepositoryPort,
-    private readonly splitProceedsEnabled = false
+    private readonly splitProceedsEnabled = false,
+    // ADR-5 (G6): when wired, fee/reserve values resolve from the versioned
+    // commercial-config store (overrides layered over the env defaults). Absent,
+    // the static `payoutsConfig` is used unchanged.
+    private readonly configService?: {
+      resolvePayoutsConfig(): Promise<PayoutsConfig>;
+    }
   ) {}
 
   async execute(
@@ -110,8 +116,13 @@ export class RequestPayoutUseCase {
 
     // Payout service fee + net the beneficiary receives (spec §17). `standard`
     // is free; the chosen type sets the fee, deducted from the disbursed amount.
+    // Fee/reserve values come from the versioned commercial-config store when
+    // wired (ADR-5), else the static env config.
+    const cfg = this.configService
+      ? await this.configService.resolvePayoutsConfig()
+      : this.payoutsConfig;
     const type = input.type ?? 'standard';
-    const { fee, netAmount } = computePayoutFee(type, amount, this.payoutsConfig);
+    const { fee, netAmount } = computePayoutFee(type, amount, cfg);
     if (netAmount <= 0) {
       throw new AppError('The payout fee equals or exceeds the requested amount', 422);
     }
@@ -120,11 +131,11 @@ export class RequestPayoutUseCase {
     // balance, leaving a reserve (spec §17).
     if (isEarlyWithdrawal(type)) {
       const earlyCeiling = round2(
-        (eligible * this.payoutsConfig.earlyMaxWithdrawalPercent) / 100
+        (eligible * cfg.earlyMaxWithdrawalPercent) / 100
       );
       if (amount > earlyCeiling) {
         throw new AppError(
-          `Early payouts are capped at ${this.payoutsConfig.earlyMaxWithdrawalPercent}% of the eligible balance (max ${currency} ${earlyCeiling.toLocaleString('en-US')}).`,
+          `Early payouts are capped at ${cfg.earlyMaxWithdrawalPercent}% of the eligible balance (max ${currency} ${earlyCeiling.toLocaleString('en-US')}).`,
           422
         );
       }

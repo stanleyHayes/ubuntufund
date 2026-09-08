@@ -202,6 +202,9 @@ import { MongoCreatorPayoutRepository } from './infrastructure/adapters/outbound
 import { RequestCreatorWithdrawalUseCase } from './application/use-cases/RequestCreatorWithdrawalUseCase.js';
 import { HandleCreatorPayoutWebhookUseCase } from './application/use-cases/HandleCreatorPayoutWebhookUseCase.js';
 import { createCreatorRoutes } from './infrastructure/adapters/inbound/http/routes/creatorRoutes.js';
+import { MongoCommercialConfigRepository } from './infrastructure/adapters/outbound/persistence/MongoCommercialConfigRepository.js';
+import { CommercialConfigService } from './application/services/CommercialConfigService.js';
+import { createCommercialConfigRoutes } from './infrastructure/adapters/inbound/http/routes/commercialConfigRoutes.js';
 import { ListAffiliatesUseCase } from './application/use-cases/ListAffiliatesUseCase.js';
 import { GetAffiliateDetailUseCase } from './application/use-cases/GetAffiliateDetailUseCase.js';
 import { SetAffiliateCommissionRateUseCase } from './application/use-cases/SetAffiliateCommissionRateUseCase.js';
@@ -717,6 +720,13 @@ export function createApp(): express.Express {
     transferRecipientRepo,
     paymentGateway
   );
+  // ADR-5 (G6): versioned, effective-dated commercial config — overrides layered
+  // over the env defaults, so behaviour is unchanged until an admin sets a value.
+  const commercialConfigRepo = new MongoCommercialConfigRepository();
+  const commercialConfigService = new CommercialConfigService(
+    commercialConfigRepo,
+    config.payouts
+  );
   const requestPayoutUseCase = new RequestPayoutUseCase(
     campaignRepo,
     transferRecipientRepo,
@@ -725,7 +735,8 @@ export function createApp(): express.Express {
     paymentGateway,
     config.payouts,
     campaignSplitRepo,
-    config.splitProceedsEnabled
+    config.splitProceedsEnabled,
+    commercialConfigService
   );
   const approvePayoutUseCase = new ApprovePayoutUseCase(
     payoutRepo,
@@ -1230,6 +1241,10 @@ export function createApp(): express.Express {
       payoutRepo: creatorPayoutRepo,
       authMiddleware,
     })
+  );
+  api.use(
+    '/admin/commercial-config',
+    createCommercialConfigRoutes({ service: commercialConfigService, authMiddleware, requireAdmin })
   );
   api.use('/notifications', createNotificationRoutes(notificationController, authMiddleware));
   api.use('/organizations', createOrganizationRoutes(organizationController));

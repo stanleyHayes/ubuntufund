@@ -55,14 +55,21 @@ Rules of engagement carried across sessions:
   affiliate PAID+FAILED windows and the batched-leg window. See **G7** for the
   reversal-specific edges intentionally deferred. Tests: `payoutIdempotency.integration`
   (4) + `payoutRepairExtensions.integration` (4, incl. the legacy-safety assertion).
-- [~] **G6 — Versioned commercial-config store (ADR-5 mechanism). GATED — left
-  for the user.** The two behaviourally-valuable pieces of ADR-5 are already
-  shipped: the config **value-diff audit** (Phase 5) and **fee grandfathering**
-  (a campaign locks its plan fee % at creation). A full effective-dated config
-  store *replacing* the env/DB config is only useful once the sensitive VALUES
-  (fees/limits/reserves/tier thresholds) are signed off (§6); building a large
-  parallel config subsystem speculatively, with no approved values to serve, is
-  over-engineering. Per the loop rule, left for the user.
+- [x] **G6 — Versioned commercial-config store (ADR-5). DONE (2026-09-08, §6
+  cleared).** The value-diff audit + fee grandfathering were already shipped; this
+  adds the effective-dated store itself. `CommercialConfig` rows are versioned per
+  key with an `effectiveFrom`, so a change can be scheduled and history preserved
+  (the store IS the audit trail). `CommercialConfigService.resolvePayoutsConfig()`
+  layers the currently-effective overrides over the env defaults (cached, TTL 30s,
+  invalidated on write) — so behaviour is IDENTICAL until an admin sets a value.
+  Wired into RequestPayoutUseCase's fee/reserve reads via an OPTIONAL service param
+  (env fallback when absent → no behaviour change, backward-compatible for tests).
+  Admin CRUD: GET /admin/commercial-config (resolved + defaults + keys),
+  GET /admin/commercial-config/:key/history, PUT /admin/commercial-config/:key
+  (value + optional effectiveFrom + reason). Tests: commercialConfig.integration
+  (defaults→override→history, future-dated not-yet-effective, unknown-key 400,
+  non-admin 403). Follow-up: onboard more commercial keys (plan limits, tier
+  thresholds) through the service as needed.
 - [x] **G7 — Reversal-crash settlement durability. DONE (supervised, 2026-09-08).**
   Built + two adversarial reviews (the second caught, and this pass fixed, four
   real defects in the first cut). REVERSED payouts are now repairable:
@@ -112,7 +119,8 @@ sessions — the test gate needs it; only at the very end.
 - **G4** (2026-09-07) — split-proceeds admin views (read-only).
 - **G5** (2026-09-08) — DONE (supervised): idempotent settlement + reconciliation
   repair across campaign/beneficiary/affiliate + batched legs; migration-safe.
-- **G6** (2026-09-07) — GATED on §6 value sign-off — left for the user.
+- **G6** (2026-09-08) — DONE (§6 cleared): versioned effective-dated commercial-
+  config store + service (env-fallback overlay) + admin CRUD, wired into payout fees.
 - **G7** (2026-09-08) — DONE (supervised): REVERSED-crash repair via reversedFrom
   + status-guarded settlement flag; legacy-safe (no forward re-drive); two reviews.
 
