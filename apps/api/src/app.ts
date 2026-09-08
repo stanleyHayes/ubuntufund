@@ -191,6 +191,14 @@ import { SetAffiliatePayoutRecipientUseCase } from './application/use-cases/SetA
 import { RequestAffiliatePayoutUseCase } from './application/use-cases/RequestAffiliatePayoutUseCase.js';
 import { ApproveAffiliatePayoutUseCase } from './application/use-cases/ApproveAffiliatePayoutUseCase.js';
 import { HandleAffiliatePayoutWebhookUseCase } from './application/use-cases/HandleAffiliatePayoutWebhookUseCase.js';
+import { MongoCreatorProfileRepository } from './infrastructure/adapters/outbound/persistence/MongoCreatorProfileRepository.js';
+import { MongoCreatorBalanceRepository } from './infrastructure/adapters/outbound/persistence/MongoCreatorBalanceRepository.js';
+import { MongoTipRepository } from './infrastructure/adapters/outbound/persistence/MongoTipRepository.js';
+import { SaveCreatorProfileUseCase } from './application/use-cases/SaveCreatorProfileUseCase.js';
+import { GetCreatorByHandleUseCase } from './application/use-cases/GetCreatorByHandleUseCase.js';
+import { CreateTipIntentUseCase } from './application/use-cases/CreateTipIntentUseCase.js';
+import { HandleTipWebhookUseCase } from './application/use-cases/HandleTipWebhookUseCase.js';
+import { createCreatorRoutes } from './infrastructure/adapters/inbound/http/routes/creatorRoutes.js';
 import { ListAffiliatesUseCase } from './application/use-cases/ListAffiliatesUseCase.js';
 import { GetAffiliateDetailUseCase } from './application/use-cases/GetAffiliateDetailUseCase.js';
 import { SetAffiliateCommissionRateUseCase } from './application/use-cases/SetAffiliateCommissionRateUseCase.js';
@@ -582,6 +590,32 @@ export function createApp(): express.Express {
   // approved campaign/affiliate payouts on transfer.* events, settles paid
   // subscriptions on sub- charges, and claws back affiliate commission on a
   // subscription refund.
+  // Creator tip-jar (buy-me-a-coffee): a self-contained rail — tips collect via
+  // the shared payment gateway (`tip-` reference) and credit a per-creator
+  // balance; withdrawal reuses the transfer rail.
+  const creatorProfileRepo = new MongoCreatorProfileRepository();
+  const creatorBalanceRepo = new MongoCreatorBalanceRepository();
+  const tipRepo = new MongoTipRepository();
+  const saveCreatorProfileUseCase = new SaveCreatorProfileUseCase(
+    creatorProfileRepo,
+    creatorBalanceRepo
+  );
+  const getCreatorByHandleUseCase = new GetCreatorByHandleUseCase(
+    creatorProfileRepo,
+    tipRepo
+  );
+  const createTipIntentUseCase = new CreateTipIntentUseCase(
+    creatorProfileRepo,
+    tipRepo,
+    creatorBalanceRepo,
+    paymentGateway,
+    Number.parseFloat(process.env.TIP_PLATFORM_FEE_PERCENT ?? '0')
+  );
+  const handleTipWebhookUseCase = new HandleTipWebhookUseCase(
+    tipRepo,
+    creatorBalanceRepo
+  );
+
   const handlePaystackWebhookUseCase = new HandlePaystackWebhookUseCase(
     paymentGateway,
     donationIntentRepo,
@@ -594,7 +628,8 @@ export function createApp(): express.Express {
     settleSubscriptionUseCase,
     handleAffiliatePayoutWebhookUseCase,
     affiliateCommissionService,
-    handleBeneficiaryPayoutWebhookUseCase
+    handleBeneficiaryPayoutWebhookUseCase,
+    handleTipWebhookUseCase
   );
   // Flutterwave settlement: verifies the verif-hash, re-verifies the charge
   // server-side, then settles through the same donation seam as Paystack.
@@ -1169,6 +1204,17 @@ export function createApp(): express.Express {
   // Guest-capable donation-intent + ledger rail.
   api.use('/donation-intents', createDonationIntentRoutes(donationIntentController, optionalAuthMiddleware));
   api.use('/leaderboard', createLeaderboardRoutes(leaderboardController));
+  api.use(
+    '/creators',
+    createCreatorRoutes({
+      saveProfile: saveCreatorProfileUseCase,
+      getByHandle: getCreatorByHandleUseCase,
+      createTip: createTipIntentUseCase,
+      profileRepo: creatorProfileRepo,
+      balanceRepo: creatorBalanceRepo,
+      authMiddleware,
+    })
+  );
   api.use('/notifications', createNotificationRoutes(notificationController, authMiddleware));
   api.use('/organizations', createOrganizationRoutes(organizationController));
   api.use('/refunds', createRefundRoutes(refundController, authMiddleware));

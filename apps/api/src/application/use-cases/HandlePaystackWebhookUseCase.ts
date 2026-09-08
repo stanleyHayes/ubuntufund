@@ -8,6 +8,7 @@ import type { HandlePayoutWebhookUseCase } from './HandlePayoutWebhookUseCase.js
 import type { SettleSubscriptionUseCase } from './SettleSubscriptionUseCase.js';
 import type { HandleAffiliatePayoutWebhookUseCase } from './HandleAffiliatePayoutWebhookUseCase.js';
 import type { HandleBeneficiaryPayoutWebhookUseCase } from './HandleBeneficiaryPayoutWebhookUseCase.js';
+import type { HandleTipWebhookUseCase } from './HandleTipWebhookUseCase.js';
 import type { SubscriptionCheckoutRepositoryPort } from '../../domain/ports/outbound/SubscriptionCheckoutRepositoryPort.js';
 import type { AffiliateCommissionService } from '../services/AffiliateCommissionService.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
@@ -84,7 +85,9 @@ export class HandlePaystackWebhookUseCase {
     private readonly affiliateCommissionService?: AffiliateCommissionService,
     // Optional split-proceeds rail: settles `bpay-` beneficiary payouts. Absent
     // (flag off / not wired), a `bpay-` transfer event is a safe no-op.
-    private readonly handleBeneficiaryPayoutWebhookUseCase?: HandleBeneficiaryPayoutWebhookUseCase
+    private readonly handleBeneficiaryPayoutWebhookUseCase?: HandleBeneficiaryPayoutWebhookUseCase,
+    // Optional creator tip-jar rail: settles `tip-` charges to a creator balance.
+    private readonly handleTipWebhookUseCase?: HandleTipWebhookUseCase
   ) {}
 
   async execute(input: PaystackWebhookInput): Promise<void> {
@@ -119,19 +122,27 @@ export class HandlePaystackWebhookUseCase {
 
     switch (event.event) {
       case 'charge.success':
-        // Paid-subscription checkouts (`sub-`) settle on their own rail; every
-        // other reference is a donation intent.
+        // Paid-subscription checkouts (`sub-`) and creator tips (`tip-`) settle
+        // on their own rails; every other reference is a donation intent.
         if (reference.startsWith('sub-')) {
           await this.handleSubscriptionSuccess(reference);
+          return;
+        }
+        if (reference.startsWith('tip-')) {
+          await this.handleTipWebhookUseCase?.handleSuccess(reference);
           return;
         }
         await this.handleChargeSuccess(reference, data);
         return;
       case 'charge.failed':
-        // A failed subscription charge fails its checkout; everything else is a
-        // donation attempt.
+        // A failed subscription charge fails its checkout; a failed tip fails the
+        // tip; everything else is a donation attempt.
         if (reference.startsWith('sub-')) {
           await this.handleSubscriptionFailed(reference);
+          return;
+        }
+        if (reference.startsWith('tip-')) {
+          await this.handleTipWebhookUseCase?.handleFailed(reference);
           return;
         }
         await this.handleChargeFailed(reference, data);
