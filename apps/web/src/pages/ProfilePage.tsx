@@ -367,7 +367,19 @@ export function ProfilePage() {
               to="/kyc"
               variant="outlined"
               size="small"
-              sx={{ color: '#fff', borderColor: 'rgba(255,255,255,0.25)', borderRadius: 2, textTransform: 'none', fontWeight: 600 }}
+              sx={{
+                color: '#fff',
+                // Override the theme's light neu-surface fill — this button sits on
+                // the dark header, so it needs a translucent-dark fill for the
+                // white label to read (matches the meta chips).
+                backgroundColor: 'rgba(255,255,255,0.12)',
+                borderColor: 'rgba(255,255,255,0.3)',
+                boxShadow: 'none',
+                borderRadius: 2,
+                textTransform: 'none',
+                fontWeight: 600,
+                '&:hover': { backgroundColor: 'rgba(255,255,255,0.22)', borderColor: '#fff', boxShadow: 'none' },
+              }}
             >
               KYC Verification
             </Button>
@@ -381,11 +393,15 @@ export function ProfilePage() {
               onClick={() => setTab(0)}
               sx={{
                 color: '#fff',
+                // Same as the KYC button — override the light neu-surface fill so
+                // the white label reads on the dark header.
+                backgroundColor: 'rgba(255,255,255,0.12)',
                 borderColor: 'rgba(255,255,255,0.25)',
+                boxShadow: 'none',
                 borderRadius: SHAPE.sm,
                 textTransform: 'none',
                 fontWeight: 600,
-                '&:hover': { borderColor: '#fff', bgcolor: 'rgba(255,255,255,0.08)' },
+                '&:hover': { borderColor: '#fff', backgroundColor: 'rgba(255,255,255,0.22)', boxShadow: 'none' },
               }}
             >
               Edit Profile
