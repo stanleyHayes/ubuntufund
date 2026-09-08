@@ -46,3 +46,80 @@ services:
         sync: false
       - key: CLOUDINARY_API_SECRET
         sync: false
+      # ── Commercial config (fees, limits, flags). All non-secret, so they are
+      # committed literals set to the API's built-in defaults — made explicit so
+      # prod never runs on a hidden default. Blank numeric values would parse to
+      # NaN, so these are literals, not sync:false; edit here + redeploy to change.
+      - key: SPLIT_PROCEEDS_ENABLED
+        value: "true" # split-proceeds campaigns ON in prod (§6 cleared)
+      - key: LOG_LEVEL
+        value: info
+      # Preview/estimate fees only — the real Paystack fee comes from the webhook.
+      - key: PLATFORM_FEE_PERCENT
+        value: "0" # platform fee is plan-driven (Community 3.5% … Org 2.0%); this is a fallback
+      - key: PAYSTACK_FEE_PERCENT
+        value: "0"
+      - key: PAYSTACK_FLAT_FEE
+        value: "0"
+      - key: TIP_PLATFORM_FEE_PERCENT
+        value: "0"
+      # Payment rails / currencies (multi-rail flags default OFF).
+      - key: PAYMENTS_PAYSTACK_ENABLED
+        value: "true"
+      - key: PAYMENTS_FLUTTERWAVE_ENABLED
+        value: "false"
+      - key: PAYMENTS_INTERNATIONAL_CARDS_ENABLED
+        value: "false"
+      - key: PAYMENTS_MULTI_CURRENCY_ENABLED
+        value: "false"
+      - key: PAYMENTS_DEFAULT_PROVIDER
+        value: paystack
+      - key: PAYMENTS_RECONCILIATION_ENABLED
+        value: "true" # scheduled payout/tip reconciliation sweep ON in prod
+      - key: PAYMENTS_SUPPORTED_CURRENCIES
+        value: "GHS,USD,GBP,EUR,CAD"
+      - key: PAYMENTS_FX_SOURCE
+        value: provider
+      # Flutterwave rail — secrets; blank = rail disabled (safe). Paste in the
+      # dashboard only when you enable Flutterwave.
+      - key: FLUTTERWAVE_SECRET_KEY
+        sync: false
+      - key: FLUTTERWAVE_PUBLIC_KEY
+        sync: false
+      - key: FLUTTERWAVE_WEBHOOK_SECRET_HASH
+        sync: false
+      # Affiliate program (one-time commission on first paid subscription).
+      - key: AFFILIATE_COMMISSION_PERCENT
+        value: "10"
+      - key: AFFILIATE_HOLD_DAYS
+        value: "14"
+      # Campaign tiering — GHS goal thresholds (tiers 1–5); auto-approve ≤ tier N.
+      - key: CAMPAIGN_TIER_THRESHOLDS
+        value: "10000,50000,250000,1000000"
+      - key: CAMPAIGN_AUTO_APPROVE_MAX_TIER
+        value: "2"
+      # Payout service fees / limits (GHS) — these match the published Payout &
+      # Refund policy (priority 0.5% / early 1.0% / urgent 1.5% / assisted 1.5%+50,
+      # 80% early-withdrawal ceiling, dual-approval disabled at 0).
+      - key: PAYOUT_PRIORITY_FEE_PERCENT
+        value: "0.5"
+      - key: PAYOUT_PRIORITY_MIN_FEE
+        value: "10"
+      - key: PAYOUT_EARLY_FEE_PERCENT
+        value: "1.0"
+      - key: PAYOUT_EARLY_MIN_FEE
+        value: "20"
+      - key: PAYOUT_URGENT_FEE_PERCENT
+        value: "1.5"
+      - key: PAYOUT_URGENT_MIN_FEE
+        value: "30"
+      - key: PAYOUT_ASSISTED_FEE_PERCENT
+        value: "1.5"
+      - key: PAYOUT_ASSISTED_FIXED_FEE
+        value: "50"
+      - key: PAYOUT_EARLY_MAX_WITHDRAWAL_PERCENT
+        value: "80"
+      - key: PAYOUT_MAX_TRANSFER_AMOUNT
+        value: "50000"
+      - key: PAYOUT_DUAL_APPROVAL_AMOUNT
+        value: "0"

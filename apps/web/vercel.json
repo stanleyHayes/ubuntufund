@@ -1,0 +1,14 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "cd ../.. && npx turbo build --filter=@ubuntu-fund/web",
+  "outputDirectory": "dist",
+  "installCommand": "cd ../.. && npm install",
+  "framework": "vite",
+  "rewrites": [
+    {
+      "source": "/api/v1/:path*",
+      "destination": "https://ujimora-api.onrender.com/api/v1/:path*"
+    },
+    { "source": "/(.*)", "destination": "/" }
+  ]
+}
