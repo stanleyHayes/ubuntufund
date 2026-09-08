@@ -21,6 +21,7 @@ import HandshakeRoundedIcon from '@mui/icons-material/HandshakeRounded'
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded'
 import WorkspacePremiumRoundedIcon from '@mui/icons-material/WorkspacePremiumRounded'
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded'
+import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded'
 import HomeRoundedIcon from '@mui/icons-material/HomeRounded'
 import ExploreRoundedIcon from '@mui/icons-material/ExploreRounded'
@@ -333,6 +334,7 @@ export function Header() {
                 { label: 'Start Campaign', to: '/campaigns/new', icon: <RocketLaunchRoundedIcon /> },
                 { label: 'Wallet', to: '/wallet', icon: <AccountBalanceWalletRoundedIcon /> },
                 { label: 'Affiliate', to: '/affiliate', icon: <HandshakeRoundedIcon /> },
+                { label: 'Creator page', to: '/creator', icon: <StorefrontRoundedIcon /> },
                 { label: 'Subscription', to: '/subscription', icon: <WorkspacePremiumRoundedIcon /> },
                 { label: 'Settings', to: '/settings', icon: <SettingsRoundedIcon /> },
               ]

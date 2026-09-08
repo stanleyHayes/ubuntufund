@@ -33,6 +33,8 @@ const CampaignPublicPage = lazy(() => import('./pages/CampaignPublicPage').then(
 const DonatePage = lazy(() => import('./pages/DonatePage').then((m) => ({ default: m.DonatePage })))
 const DonateCallbackPage = lazy(() => import('./pages/DonateCallbackPage').then((m) => ({ default: m.DonateCallbackPage })))
 const CampaignLivePage = lazy(() => import('./pages/CampaignLivePage').then((m) => ({ default: m.CampaignLivePage })))
+const CreatorTipPage = lazy(() => import('./pages/CreatorTipPage').then((m) => ({ default: m.CreatorTipPage })))
+const CreatorDashboardPage = lazy(() => import('./pages/CreatorDashboardPage').then((m) => ({ default: m.CreatorDashboardPage })))
 
 export const router = createBrowserRouter([
   // Auth pages — standalone immersive layout (no header/footer)
@@ -61,6 +63,8 @@ export const router = createBrowserRouter([
       { path: 'donations/refund/:donationId', element: <RequireAuth><RefundRequestPage /></RequireAuth> },
       { path: 'refunds', element: <RequireAuth><MyRefundsPage /></RequireAuth> },
       { path: 'settings', element: <RequireAuth><SettingsPage /></RequireAuth> },
+      { path: 'creators/:handle', element: <CreatorTipPage /> },
+      { path: 'creator', element: <RequireAuth><CreatorDashboardPage /></RequireAuth> },
       { path: 'my-campaigns', element: <RequireAuth><MyCampaignsPage /></RequireAuth> },
       { path: 'subscription', element: <RequireAuth><SubscriptionPage /></RequireAuth> },
       { path: 'subscription/callback', element: <SubscriptionCallbackPage /> },

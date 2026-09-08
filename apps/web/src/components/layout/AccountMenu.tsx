@@ -12,6 +12,7 @@ import HandshakeRoundedIcon from '@mui/icons-material/HandshakeRounded'
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded'
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded'
 import WorkspacePremiumRoundedIcon from '@mui/icons-material/WorkspacePremiumRounded'
+import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import ArrowOutwardRoundedIcon from '@mui/icons-material/ArrowOutwardRounded'
@@ -25,6 +26,7 @@ const destinations = [
   { title: 'My Donations', description: 'Revisit the causes you support.', to: '/donations', icon: VolunteerActivismRoundedIcon },
   { title: 'Wallet', description: 'Balances and transactions.', to: '/wallet', icon: AccountBalanceWalletRoundedIcon },
   { title: 'Affiliate', description: 'Referrals and commissions.', to: '/affiliate', icon: HandshakeRoundedIcon },
+  { title: 'Creator page', description: 'Your tip jar and balance.', to: '/creator', icon: StorefrontRoundedIcon },
   { title: 'Subscription', description: 'Your plan and billing.', to: '/subscription', icon: WorkspacePremiumRoundedIcon },
   { title: 'Settings', description: 'Make your account yours.', to: '/settings', icon: SettingsRoundedIcon },
 ]
