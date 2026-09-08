@@ -35,3 +35,14 @@ services:
         sync: false
       - key: PAYSTACK_PUBLIC_KEY
         sync: false
+      # Cloudinary — image/PDF uploads (KYC documents, campaign covers) go through
+      # the server-side signed proxy (POST /uploads/image), so the API needs the
+      # account credentials. Reusing the dev cloud for now: the cloud name is
+      # public (it also ships in the web bundle), but paste the API key + secret
+      # in the dashboard — same values as dev; never commit the secret.
+      - key: CLOUDINARY_CLOUD_NAME
+        value: dvoqbonr2
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
