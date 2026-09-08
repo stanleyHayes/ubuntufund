@@ -1,4 +1,5 @@
 import { AffiliatePayoutEntity } from '../../../../domain/entities/AffiliatePayout.js';
+import type { PayoutStatus } from '@ubuntu-fund/types';
 import type { AffiliatePayoutRepositoryPort } from '../../../../domain/ports/outbound/AffiliatePayoutRepositoryPort.js';
 import {
   AffiliatePayoutModel,
@@ -17,6 +18,7 @@ function toDomain(doc: AffiliatePayoutDocument): AffiliatePayoutEntity {
     transferCode: doc.transferCode,
     requestedBy: doc.requestedBy,
     approvedBy: doc.approvedBy,
+    reversedFrom: doc.reversedFrom,
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
   });
@@ -76,9 +78,13 @@ export class MongoAffiliatePayoutRepository
     return docs.map(toDomain);
   }
 
-  async markSettlementApplied(id: string): Promise<void> {
+  async markSettlementApplied(
+    id: string,
+    expectedStatus?: PayoutStatus
+  ): Promise<void> {
+    // Compare-and-set on status (G7) — see PayoutRepositoryPort.
     await AffiliatePayoutModel.updateOne(
-      { _id: id },
+      { _id: id, ...(expectedStatus ? { status: expectedStatus } : {}) },
       { $set: { settlementApplied: true } }
     );
   }
@@ -87,10 +93,14 @@ export class MongoAffiliatePayoutRepository
     olderThan: Date
   ): Promise<AffiliatePayoutEntity[]> {
     const docs = await AffiliatePayoutModel.find({
-      status: { $in: ['PAID', 'FAILED'] },
       // Exact `false`, not `$ne: true`: legacy payouts predate the field.
       settlementApplied: false,
       updatedAt: { $lt: olderThan },
+      // REVERSED repairable only when reversedFrom is recorded (G7-era).
+      $or: [
+        { status: { $in: ['PAID', 'FAILED'] } },
+        { status: 'REVERSED', reversedFrom: { $exists: true } },
+      ],
     }).sort({ updatedAt: 1 });
     return docs.map(toDomain);
   }
@@ -147,9 +157,11 @@ export class MongoAffiliatePayoutRepository
   async transitionPaidToReversed(
     id: string
   ): Promise<AffiliatePayoutEntity | null> {
+    // Record reversedFrom + RESET settlementApplied so a crashed reverse is
+    // repairable (G7).
     const doc = await AffiliatePayoutModel.findOneAndUpdate(
       { _id: id, status: 'PAID' },
-      { $set: { status: 'REVERSED' } },
+      { $set: { status: 'REVERSED', reversedFrom: 'PAID', settlementApplied: false } },
       { new: true }
     );
     return doc ? toDomain(doc) : null;
@@ -160,7 +172,7 @@ export class MongoAffiliatePayoutRepository
   ): Promise<AffiliatePayoutEntity | null> {
     const doc = await AffiliatePayoutModel.findOneAndUpdate(
       { _id: id, status: 'PROCESSING' },
-      { $set: { status: 'REVERSED' } },
+      { $set: { status: 'REVERSED', reversedFrom: 'PROCESSING', settlementApplied: false } },
       { new: true }
     );
     return doc ? toDomain(doc) : null;

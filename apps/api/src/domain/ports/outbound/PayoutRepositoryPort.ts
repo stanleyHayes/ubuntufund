@@ -28,8 +28,13 @@ export interface PayoutRepositoryPort {
    */
   findStuckBatchedProcessing(olderThan: Date): Promise<PayoutEntity[]>;
 
-  /** Flag a payout's terminal balance/ledger effect as applied (G5, idempotent). */
-  markSettlementApplied(id: string): Promise<void>;
+  /**
+   * Flag a payout's terminal balance/ledger effect as applied (G5, idempotent).
+   * When `expectedStatus` is given the flag is set only if the payout is STILL in
+   * that status (compare-and-set) — so a repair cannot flag a payout that has
+   * since transitioned and now owes a different effect (G7).
+   */
+  markSettlementApplied(id: string, expectedStatus?: PayoutStatus): Promise<void>;
 
   /**
    * Single-transfer payouts that reached a repairable terminal state (PAID or

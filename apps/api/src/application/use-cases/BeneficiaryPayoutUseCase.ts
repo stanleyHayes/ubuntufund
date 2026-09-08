@@ -382,7 +382,7 @@ export class BeneficiaryPayoutUseCase {
       amount,
       `bpay:${payoutId}:returned`
     );
-    await this.payoutRepo.markSettlementApplied(payoutId);
+    await this.payoutRepo.markSettlementApplied(payoutId, 'FAILED');
   }
 
   private async assertOwnerOrAdmin(

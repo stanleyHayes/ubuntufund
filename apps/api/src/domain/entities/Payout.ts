@@ -23,6 +23,8 @@ export interface PayoutProps {
   firstApprovedBy?: string;
   firstApprovedAt?: Date;
   legs?: PayoutLeg[];
+  /** For a REVERSED payout, the status it reversed from (G7 repair). */
+  reversedFrom?: 'PAID' | 'PROCESSING';
   createdAt: Date;
   updatedAt: Date;
 }
@@ -114,6 +116,9 @@ export class PayoutEntity {
   }
   get legs(): PayoutLeg[] | undefined {
     return this.props.legs;
+  }
+  get reversedFrom(): 'PAID' | 'PROCESSING' | undefined {
+    return this.props.reversedFrom;
   }
   /** A batched (multi-leg) payout has one or more transfer legs. */
   get isBatched(): boolean {

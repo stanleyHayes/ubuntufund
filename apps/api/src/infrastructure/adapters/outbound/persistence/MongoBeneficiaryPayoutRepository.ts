@@ -22,6 +22,7 @@ function toDomain(doc: BeneficiaryPayoutDocument): BeneficiaryPayoutEntity {
     approvedBy: doc.approvedBy,
     firstApprovedBy: doc.firstApprovedBy,
     firstApprovedAt: doc.firstApprovedAt,
+    reversedFrom: doc.reversedFrom,
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
   });
@@ -115,18 +116,29 @@ export class MongoBeneficiaryPayoutRepository
     return docs.map(toDomain);
   }
 
-  async markSettlementApplied(id: string): Promise<void> {
-    await BeneficiaryPayoutModel.updateOne({ _id: id }, { $set: { settlementApplied: true } });
+  async markSettlementApplied(
+    id: string,
+    expectedStatus?: PayoutStatus
+  ): Promise<void> {
+    // Compare-and-set on status (G7) — see PayoutRepositoryPort.
+    await BeneficiaryPayoutModel.updateOne(
+      { _id: id, ...(expectedStatus ? { status: expectedStatus } : {}) },
+      { $set: { settlementApplied: true } }
+    );
   }
 
   async findTerminalUnsettled(
     olderThan: Date
   ): Promise<BeneficiaryPayoutEntity[]> {
     const docs = await BeneficiaryPayoutModel.find({
-      status: { $in: ['PAID', 'FAILED'] },
       // Exact `false`, not `$ne: true`: legacy payouts predate the field.
       settlementApplied: false,
       updatedAt: { $lt: olderThan },
+      // REVERSED repairable only when reversedFrom is recorded (G7-era).
+      $or: [
+        { status: { $in: ['PAID', 'FAILED'] } },
+        { status: 'REVERSED', reversedFrom: { $exists: true } },
+      ],
     }).sort({ updatedAt: 1 });
     return docs.map(toDomain);
   }
@@ -180,12 +192,26 @@ export class MongoBeneficiaryPayoutRepository
   transitionToFailed(id: string): Promise<BeneficiaryPayoutEntity | null> {
     return this.transition(id, 'PROCESSING', 'FAILED');
   }
-  transitionPaidToReversed(id: string): Promise<BeneficiaryPayoutEntity | null> {
-    return this.transition(id, 'PAID', 'REVERSED');
-  }
-  transitionProcessingToReversed(
+  // Record reversedFrom + RESET settlementApplied: the reversal is a new owed
+  // effect, repairable if a crash leaves it unapplied (G7).
+  async transitionPaidToReversed(
     id: string
   ): Promise<BeneficiaryPayoutEntity | null> {
-    return this.transition(id, 'PROCESSING', 'REVERSED');
+    const doc = await BeneficiaryPayoutModel.findOneAndUpdate(
+      { _id: id, status: 'PAID' },
+      { $set: { status: 'REVERSED', reversedFrom: 'PAID', settlementApplied: false } },
+      { new: true }
+    );
+    return doc ? toDomain(doc) : null;
+  }
+  async transitionProcessingToReversed(
+    id: string
+  ): Promise<BeneficiaryPayoutEntity | null> {
+    const doc = await BeneficiaryPayoutModel.findOneAndUpdate(
+      { _id: id, status: 'PROCESSING' },
+      { $set: { status: 'REVERSED', reversedFrom: 'PROCESSING', settlementApplied: false } },
+      { new: true }
+    );
+    return doc ? toDomain(doc) : null;
   }
 }

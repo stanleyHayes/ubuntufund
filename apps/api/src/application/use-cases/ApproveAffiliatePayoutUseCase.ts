@@ -141,6 +141,6 @@ export class ApproveAffiliatePayoutUseCase {
         `aff:${payoutId}:returned`
       );
     }
-    await this.affiliatePayoutRepo.markSettlementApplied(payoutId);
+    await this.affiliatePayoutRepo.markSettlementApplied(payoutId, 'FAILED');
   }
 }

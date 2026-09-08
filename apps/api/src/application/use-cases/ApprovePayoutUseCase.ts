@@ -309,6 +309,6 @@ export class ApprovePayoutUseCase {
       amount,
       `pout:${payoutId}:returned`
     );
-    await this.payoutRepo.markSettlementApplied(payoutId);
+    await this.payoutRepo.markSettlementApplied(payoutId, 'FAILED');
   }
 }

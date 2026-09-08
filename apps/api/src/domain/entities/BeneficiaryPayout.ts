@@ -15,6 +15,8 @@ export interface BeneficiaryPayoutProps {
   approvedBy?: string;
   firstApprovedBy?: string;
   firstApprovedAt?: Date;
+  /** For a REVERSED payout, the status it reversed from (G7 repair). */
+  reversedFrom?: 'PAID' | 'PROCESSING';
   createdAt: Date;
   updatedAt: Date;
 }
@@ -84,6 +86,9 @@ export class BeneficiaryPayoutEntity {
   }
   get firstApprovedBy(): string | undefined {
     return this.props.firstApprovedBy;
+  }
+  get reversedFrom(): 'PAID' | 'PROCESSING' | undefined {
+    return this.props.reversedFrom;
   }
 
   canTransitionTo(next: PayoutStatus): boolean {

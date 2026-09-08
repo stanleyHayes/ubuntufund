@@ -11,6 +11,8 @@ export interface AffiliatePayoutProps {
   transferCode?: string;
   requestedBy: string;
   approvedBy?: string;
+  /** For a REVERSED payout, the status it reversed from (G7 repair). */
+  reversedFrom?: 'PAID' | 'PROCESSING';
   createdAt: Date;
   updatedAt: Date;
 }
@@ -84,6 +86,9 @@ export class AffiliatePayoutEntity {
   }
   get approvedBy(): string | undefined {
     return this.props.approvedBy;
+  }
+  get reversedFrom(): 'PAID' | 'PROCESSING' | undefined {
+    return this.props.reversedFrom;
   }
   get createdAt(): Date {
     return this.props.createdAt;

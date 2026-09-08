@@ -31,6 +31,7 @@ function toDomain(doc: PayoutDocument): PayoutEntity {
       transferCode: l.transferCode,
       status: l.status,
     })),
+    reversedFrom: doc.reversedFrom,
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
   });
@@ -108,18 +109,34 @@ export class MongoPayoutRepository implements PayoutRepositoryPort {
     return docs.map(toDomain);
   }
 
-  async markSettlementApplied(id: string): Promise<void> {
-    await PayoutModel.updateOne({ _id: id }, { $set: { settlementApplied: true } });
+  async markSettlementApplied(
+    id: string,
+    expectedStatus?: PayoutStatus
+  ): Promise<void> {
+    // Compare-and-set on status: a repair that ran the effect for one status must
+    // NOT flag a payout that has since transitioned (e.g. a stale PAID repair
+    // racing a reversal), or the newly-owed effect would be lost and never
+    // re-selected. Omitting expectedStatus keeps the old unconditional behaviour.
+    await PayoutModel.updateOne(
+      { _id: id, ...(expectedStatus ? { status: expectedStatus } : {}) },
+      { $set: { settlementApplied: true } }
+    );
   }
 
   async findTerminalUnsettled(olderThan: Date): Promise<PayoutEntity[]> {
     const docs = await PayoutModel.find({
-      status: { $in: ['PAID', 'FAILED'] },
       legs: { $exists: false }, // single-transfer only
       // Exact `false`, not `$ne: true`: legacy payouts predate the field (absent)
-      // and were already settled by the old code — they must never be repaired.
+      // and were already settled by the old code — never repaired.
       settlementApplied: false,
       updatedAt: { $lt: olderThan },
+      // REVERSED is repairable ONLY when reversedFrom is recorded (a G7-era
+      // reversal). A pre-G7 REVERSED payout has no reversedFrom and cannot be
+      // safely repaired, so it is excluded rather than re-scanned forever.
+      $or: [
+        { status: { $in: ['PAID', 'FAILED'] } },
+        { status: 'REVERSED', reversedFrom: { $exists: true } },
+      ],
     }).sort({ updatedAt: 1 });
     return docs.map(toDomain);
   }
@@ -256,9 +273,11 @@ export class MongoPayoutRepository implements PayoutRepositoryPort {
   }
 
   async transitionPaidToReversed(id: string): Promise<PayoutEntity | null> {
+    // Record the source status and RESET settlementApplied: the payout now owes a
+    // NEW (reverse) effect, so a crash before it lands is repairable (G7).
     const doc = await PayoutModel.findOneAndUpdate(
       { _id: id, status: 'PAID' },
-      { $set: { status: 'REVERSED' } },
+      { $set: { status: 'REVERSED', reversedFrom: 'PAID', settlementApplied: false } },
       { new: true }
     );
     return doc ? toDomain(doc) : null;
@@ -269,7 +288,7 @@ export class MongoPayoutRepository implements PayoutRepositoryPort {
   ): Promise<PayoutEntity | null> {
     const doc = await PayoutModel.findOneAndUpdate(
       { _id: id, status: 'PROCESSING' },
-      { $set: { status: 'REVERSED' } },
+      { $set: { status: 'REVERSED', reversedFrom: 'PROCESSING', settlementApplied: false } },
       { new: true }
     );
     return doc ? toDomain(doc) : null;

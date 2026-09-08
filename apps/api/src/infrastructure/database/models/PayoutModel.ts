@@ -26,6 +26,13 @@ export interface PayoutDocument extends Document {
   legs?: PayoutLeg[];
   /** True once the terminal balance/ledger effect has been applied (G5). */
   settlementApplied?: boolean;
+  /**
+   * The status a REVERSED payout came from (G7): 'PAID' (a settled transfer
+   * bounced — owes reverseFromPaidOut) or 'PROCESSING' (reversed before we saw
+   * success — owes returnToAvailable). Lets the reconciler repair a reversal
+   * whose effect a crash left unapplied.
+   */
+  reversedFrom?: 'PAID' | 'PROCESSING';
   createdAt: Date;
   updatedAt: Date;
 }
@@ -87,6 +94,7 @@ const payoutSchema = new Schema<PayoutDocument>(
     firstApprovedAt: { type: Date },
     legs: { type: [payoutLegSchema], default: undefined },
     settlementApplied: { type: Boolean, default: false, index: true },
+    reversedFrom: { type: String, enum: ['PAID', 'PROCESSING'] },
   },
   { collection: 'payouts', timestamps: true }
 );

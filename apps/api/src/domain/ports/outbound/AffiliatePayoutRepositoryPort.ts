@@ -1,4 +1,5 @@
 import type { AffiliatePayoutEntity } from '../../entities/AffiliatePayout.js';
+import type { PayoutStatus } from '@ubuntu-fund/types';
 
 export interface AffiliatePayoutRepositoryPort {
   create(payout: AffiliatePayoutEntity): Promise<AffiliatePayoutEntity>;
@@ -13,7 +14,7 @@ export interface AffiliatePayoutRepositoryPort {
   findStuckProcessing(olderThan: Date): Promise<AffiliatePayoutEntity[]>;
 
   /** Flag a payout's terminal balance effect as applied (G5, idempotent). */
-  markSettlementApplied(id: string): Promise<void>;
+  markSettlementApplied(id: string, expectedStatus?: PayoutStatus): Promise<void>;
 
   /**
    * PAID or FAILED payouts whose settlement effect was not recorded (a crash

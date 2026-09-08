@@ -18,8 +18,12 @@ export interface BeneficiaryPayoutRepositoryPort {
   /** Payouts stuck in PROCESSING since before `olderThan` (missed webhook). */
   findStuckProcessing(olderThan: Date): Promise<BeneficiaryPayoutEntity[]>;
 
-  /** Flag a payout's terminal balance/ledger effect as applied (G5, idempotent). */
-  markSettlementApplied(id: string): Promise<void>;
+  /**
+   * Flag a payout's terminal balance/ledger effect as applied (G5, idempotent).
+   * `expectedStatus` makes it a compare-and-set on status (G7) so a repair cannot
+   * flag a payout that has since transitioned.
+   */
+  markSettlementApplied(id: string, expectedStatus?: PayoutStatus): Promise<void>;
 
   /**
    * PAID or FAILED payouts whose settlement effect was not recorded (a crash

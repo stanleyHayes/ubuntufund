@@ -13,6 +13,8 @@ export interface AffiliatePayoutDocument extends Document {
   approvedBy?: string;
   /** G5: the terminal balance effect has been recorded as applied (reconciliation index). */
   settlementApplied?: boolean;
+  /** For a REVERSED payout, the status it reversed from (G7 repair). */
+  reversedFrom?: 'PAID' | 'PROCESSING';
   createdAt: Date;
   updatedAt: Date;
 }
@@ -47,6 +49,7 @@ const affiliatePayoutSchema = new Schema<AffiliatePayoutDocument>(
     requestedBy: { type: String, required: true, index: true },
     approvedBy: { type: String },
     settlementApplied: { type: Boolean, default: false, index: true },
+    reversedFrom: { type: String, enum: ['PAID', 'PROCESSING'] },
   },
   { collection: 'affiliatepayouts', timestamps: true }
 );

@@ -52,19 +52,22 @@ export class HandlePayoutWebhookUseCase {
    *
    *  - PAID   → re-apply the disbursement (paidOut += net, disbursement journal).
    *  - FAILED → re-return the reservation a crash stranded out of availableBalance.
+   *  - REVERSED → replay the reverse effect the payout owes, disambiguated by
+   *    `reversedFrom` (G7): 'PROCESSING' → return the reservation; 'PAID' → re-drive
+   *    the forward disbursement (so paidOut can't go negative) then reverse it.
+   *    A legacy REVERSED payout has no `reversedFrom` and is skipped (its
+   *    settlementApplied is also absent, so the finder never selects it).
    *
-   * REVERSED is intentionally NOT repaired here: an unsettled REVERSED payout
-   * cannot be distinguished from a PAID-then-reversed crash, so replaying either
-   * the return or the reversal risks a double-credit — that case needs per-effect
-   * tracking (deferred). Batched payouts are repaired by {@link repairBatched}.
+   * Batched payouts are repaired by {@link repairBatched}.
    */
   async repairSettlement(payoutId: string): Promise<void> {
     const payout = await this.payoutRepo.findById(payoutId);
     if (!payout || payout.isBatched) return;
+    const settleKey = `pout:${payout.id}`;
     if (payout.status === 'PAID') {
       await this.applyDisbursement(
         payout,
-        `pout:${payout.id}`,
+        settleKey,
         payout.amount,
         payout.netAmount,
         payout.fee,
@@ -74,10 +77,53 @@ export class HandlePayoutWebhookUseCase {
       await this.campaignBalanceRepo.returnToAvailable(
         payout.campaignId,
         payout.amount,
-        `pout:${payout.id}:returned`
+        `${settleKey}:returned`
       );
-      await this.payoutRepo.markSettlementApplied(payout.id);
+      await this.payoutRepo.markSettlementApplied(payout.id, 'FAILED');
+    } else if (payout.status === 'REVERSED') {
+      if (payout.reversedFrom === 'PROCESSING') {
+        await this.campaignBalanceRepo.returnToAvailable(
+          payout.campaignId,
+          payout.amount,
+          `${settleKey}:returned`
+        );
+        await this.payoutRepo.markSettlementApplied(payout.id, 'REVERSED');
+      } else if (payout.reversedFrom === 'PAID') {
+        await this.applyReversalFromPaid(payout, settleKey, 'reconcile');
+      }
+      // reversedFrom absent → legacy REVERSED, not repairable (finder excludes it).
     }
+  }
+
+  /**
+   * The PAID→REVERSED effect (G7): move paidOut → available and post the reversing
+   * journal, idempotent per the `:reversed` settleRef / externalRef, then flag
+   * settlement-applied (guarded on REVERSED). Does NOT re-drive the forward — that
+   * would double-credit a legacy payout whose original forward never recorded a
+   * `:paid` settleRef. The rare forward-crash-then-reverse race (paidOut short)
+   * is a documented read-model edge, not corrected here.
+   */
+  private async applyReversalFromPaid(
+    payout: PayoutEntity,
+    settleKey: string,
+    reference: string
+  ): Promise<void> {
+    await this.campaignBalanceRepo.reverseFromPaidOut(
+      payout.campaignId,
+      payout.netAmount,
+      payout.fee,
+      `${settleKey}:reversed`
+    );
+    await this.ledgerRepo.postEntry(
+      JournalEntryEntity.forPayoutReversal({
+        campaignId: payout.campaignId,
+        amount: payout.amount,
+        currency: payout.currency,
+        memo: `payout ${payout.id} reversed (${reference})`,
+        externalRef: `${settleKey}:reversed`,
+      })
+    );
+    await this.payoutRepo.markSettlementApplied(payout.id, 'REVERSED');
   }
 
   /**
@@ -126,12 +172,12 @@ export class HandlePayoutWebhookUseCase {
   }
 
   /**
-   * Apply a settled payout's disbursement to the campaign balance + ledger,
-   * idempotently keyed by `settleKey` so a duplicate webhook OR a reconciliation
-   * re-run applies it at most once. `gross` journals; `net`/`fee` split the
-   * balance. Also flags the payout settlement-applied (a reconciliation index).
+   * Apply ONLY the forward disbursement balance + ledger effect, idempotently
+   * keyed by `${settleKey}:paid`. `gross` journals; `net`/`fee` split the balance.
+   * Does NOT flag settlement-applied — callers decide (the reversal path re-drives
+   * this first, then reverses, then flags). A duplicate call is a no-op.
    */
-  private async applyDisbursement(
+  private async applyForwardDisbursement(
     payout: PayoutEntity,
     settleKey: string,
     gross: number,
@@ -148,7 +194,23 @@ export class HandlePayoutWebhookUseCase {
       externalRef: `${settleKey}:paid`,
     });
     await this.ledgerRepo.postEntry(entry);
-    await this.payoutRepo.markSettlementApplied(payout.id);
+  }
+
+  /**
+   * A settled payout's disbursement: the forward effect + the settlement-applied
+   * flag (a reconciliation index). Idempotent so a duplicate webhook OR a
+   * reconciliation re-run applies it at most once.
+   */
+  private async applyDisbursement(
+    payout: PayoutEntity,
+    settleKey: string,
+    gross: number,
+    net: number,
+    fee: number,
+    reference: string
+  ): Promise<void> {
+    await this.applyForwardDisbursement(payout, settleKey, gross, net, fee, reference);
+    await this.payoutRepo.markSettlementApplied(payout.id, 'PAID');
   }
 
   async handleFailed(reference: string): Promise<void> {
@@ -163,7 +225,7 @@ export class HandlePayoutWebhookUseCase {
         payout.amount,
         `pout:${payout.id}:returned`
       );
-      await this.payoutRepo.markSettlementApplied(payout.id);
+      await this.payoutRepo.markSettlementApplied(payout.id, 'FAILED');
       return;
     }
 
@@ -175,23 +237,11 @@ export class HandlePayoutWebhookUseCase {
     const payout = await this.payoutRepo.findByProviderRef(reference);
     if (payout && !payout.isBatched) {
       // A reversal of an already-settled (PAID) transfer: money came back —
-      // move paidOut → available and post the reversing journal.
+      // move paidOut → available and post the reversing journal (idempotent per
+      // :reversed), flagging settlement-applied.
       const fromPaid = await this.payoutRepo.transitionPaidToReversed(payout.id);
       if (fromPaid) {
-        await this.campaignBalanceRepo.reverseFromPaidOut(
-          payout.campaignId,
-          payout.netAmount,
-          payout.fee,
-          `pout:${payout.id}:reversed`
-        );
-        const entry = JournalEntryEntity.forPayoutReversal({
-          campaignId: payout.campaignId,
-          amount: payout.amount,
-          currency: payout.currency,
-          memo: `payout ${payout.id} reversed (${reference})`,
-          externalRef: `pout:${payout.id}:reversed`,
-        });
-        await this.ledgerRepo.postEntry(entry);
+        await this.applyReversalFromPaid(payout, `pout:${payout.id}`, reference);
         return;
       }
 
@@ -205,6 +255,7 @@ export class HandlePayoutWebhookUseCase {
           payout.amount,
           `pout:${payout.id}:returned`
         );
+        await this.payoutRepo.markSettlementApplied(payout.id, 'REVERSED');
       }
       // Otherwise not in a reversible state — idempotent no-op.
       return;

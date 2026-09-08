@@ -63,41 +63,38 @@ Rules of engagement carried across sessions:
   (fees/limits/reserves/tier thresholds) are signed off (§6); building a large
   parallel config subsystem speculatively, with no approved values to serve, is
   over-engineering. Per the loop rule, left for the user.
-- [ ] **G7 — Reversal-crash settlement durability (the residual G5 edges).** The
-  G5 repair intentionally covers PAID + FAILED but NOT REVERSED, because an
-  unsettled REVERSED payout cannot be told apart from a **PAID-then-reversed
-  crash** using the single `settlementApplied` flag: replaying the return vs. the
-  reversal risks a double-credit. Closing this correctly needs per-effect tracking
-  (e.g. record WHICH effect key a terminal payout owes, or store the pre-reversal
-  status) rather than one boolean. Bundled here (all same root — reverse effect on
-  a half-applied forward):
-  - REVERSED-but-unsettled repair (single-transfer + beneficiary mirror + affiliate).
-  - `reverseFromPaidOut` has no `paidOutBalance >= amount` floor guard, so an
-    out-of-order reversal that outruns a crashed forward `markPaidOut` can drive
-    `paidOutBalance`/`payoutFees` negative (campaign + beneficiary balances). A
-    floor guard alone would mask the divergence, so it must land WITH the
-    per-effect repair, not before it.
-  - Beneficiary reverse-effect mirror atomicity (a crash between the beneficiary
-    and campaign reverse writes) — reconverged once the REVERSED repair re-drives
-    both buckets idempotently.
-  - Pre-existing `onLegReversed` reversal-crash: a batched leg reversed after its
-    forward `:paid` credit was stranded drives `paidOutBalance` negative (same
-    root; repairBatched deliberately does NOT re-drive reversed legs to avoid
-    adding a second instance — they go to NEEDS_REVIEW for a human).
-  - **Transient deploy caveat (review-confirmed, benign):** `findTerminalUnsettled`
-    matches exact `settlementApplied: false`, which excludes payouts that predate
-    the field (absent). A payout created before G5 deploy, still PROCESSING at
-    deploy, that then crashes in the sub-ms settlement window after deploy would
-    have the field absent and be missed by the repair (an under-credited bucket,
-    recoverable via admin reconciliation). This cohort is finite and drains as the
-    pre-field payouts reach terminal states — a one-time backfill (`settlementApplied`
-    true on existing-terminal, false on existing-non-terminal payouts, mirroring
-    `backfillContributionMoney`) closes it if desired. The exact-`false` predicate
-    is kept deliberately: it prevents the *catastrophic* legacy double-apply, and
-    trades it only for this benign transient under-apply.
-  Low probability (a crash in the ms between an atomic transition and the balance
-  write, specifically on a reversal). Not money loss at the provider — a read-model
-  divergence. Deferred as a focused, separately-reviewed pass.
+- [x] **G7 — Reversal-crash settlement durability. DONE (supervised, 2026-09-08).**
+  Built + two adversarial reviews (the second caught, and this pass fixed, four
+  real defects in the first cut). REVERSED payouts are now repairable:
+  - **Per-effect disambiguation:** the reversal transitions record `reversedFrom`
+    ('PAID' | 'PROCESSING') and RESET `settlementApplied=false`, so the reconciler
+    knows which reverse effect a crashed REVERSED payout still owes (return vs.
+    reverse-from-paidOut). `findTerminalUnsettled` now covers PAID/FAILED/REVERSED,
+    but REVERSED **only when `reversedFrom` exists** — a pre-G7 REVERSED payout is
+    excluded (no endless re-scan).
+  - **Status-guarded settlement flag:** `markSettlementApplied(id, expectedStatus)`
+    is a compare-and-set on status (`updateOne({_id,status})`). Fixes a lost-update
+    where a stale forward repair could clobber the `false` a concurrent reversal
+    set, silently dropping the reverse effect forever.
+  - **No forward re-drive:** the first cut re-drove the forward disbursement before
+    reversing (to prevent negative paidOut). Review showed that double-credits a
+    **legacy** payout whose original forward never recorded a `:paid` settleRef, so
+    it was removed. The reverse repair is now just the idempotent reverse effect
+    (`reverseFromPaidOut` :reversed + journal / `returnToAvailable` :returned),
+    legacy-safe on all three rails + the beneficiary campaign mirror.
+  - Tests: `payoutRepairExtensions.integration` (12) incl. REVERSED PAID/PROCESSING
+    per rail, the legacy-REVERSED finder exclusion, and idempotency.
+  **Remaining documented edges (rare, read-model only, not money loss):**
+  - Forward-crash-then-reverse race (forward `markPaidOut` crashed, then a reversal
+    arrives before the forward repair): `reverseFromPaidOut` drives `paidOut`
+    negative by net. Rare (crash + race); the re-drive that would fix it is unsafe
+    for legacy, so it is left as a documented read-model anomaly (available stays
+    correct; a floor guard would mask the divergence).
+  - Pre-existing `onLegReversed` batched reversal-crash (same class; NEEDS_REVIEW
+    for a human — repairBatched deliberately doesn't touch reversed legs).
+  - Transient deploy caveat: exact-`false` `settlementApplied` excludes pre-field
+    payouts (prevents the catastrophic legacy double-apply, trades only a benign
+    transient under-apply — a one-time backfill closes it if desired).
 
 ## Terminal step (ONCE, after all gaps are done or only gated items remain)
 
@@ -116,7 +113,8 @@ sessions — the test gate needs it; only at the very end.
 - **G5** (2026-09-08) — DONE (supervised): idempotent settlement + reconciliation
   repair across campaign/beneficiary/affiliate + batched legs; migration-safe.
 - **G6** (2026-09-07) — GATED on §6 value sign-off — left for the user.
-- **G7** (2026-09-08) — OPEN: reversal-crash durability edges deferred from G5.
+- **G7** (2026-09-08) — DONE (supervised): REVERSED-crash repair via reversedFrom
+  + status-guarded settlement flag; legacy-safe (no forward re-drive); two reviews.
 
 ## Loop concluded 2026-09-07
 
