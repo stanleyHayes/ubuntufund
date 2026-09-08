@@ -123,3 +123,24 @@ services:
         value: "50000"
       - key: PAYOUT_DUAL_APPROVAL_AMOUNT
         value: "0"
+      # ── Crypto donation rail (2nd payment rail). Ships OFF: keep
+      # CRYPTO_PAYMENTS_ENABLED "false" until a real provider is onboarded and
+      # the Ghana legal review clears. Non-secret settings are committed literals
+      # (numeric ones MUST be literals, not blank — blank parses to NaN). Flip
+      # ENABLED to "true" and set PRIMARY_PROVIDER to the live provider when ready.
+      - key: CRYPTO_PAYMENTS_ENABLED
+        value: "false"
+      - key: CRYPTO_PRIMARY_PROVIDER
+        value: mock # swap to yellowcard | paychant | bitnob when a real adapter lands
+      - key: CRYPTO_ALLOWED_ASSETS
+        value: "USDT,USDC"
+      - key: CRYPTO_MIN_GHS
+        value: "10"
+      - key: CRYPTO_MAX_GHS
+        value: "100000"
+      - key: CRYPTO_QUOTE_TTL_SECONDS
+        value: "900"
+      # Provider webhook signing secret — paste in the dashboard only when you
+      # enable a crypto provider (blank = mock/dev default; rail is OFF anyway).
+      - key: CRYPTO_MOCK_WEBHOOK_SECRET
+        sync: false
