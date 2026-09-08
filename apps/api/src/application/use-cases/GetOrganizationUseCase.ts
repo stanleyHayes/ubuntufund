@@ -109,14 +109,14 @@ export class GetOrganizationUseCase {
       slug: deriveOrganizationSlug(record.name),
       description: '',
       logoUrl: record.avatarUrl ?? '',
-      coverUrl: '',
+      coverUrl: record.coverUrl ?? '',
       city: '',
       website: record.website,
       founded: record.createdAt.getFullYear(),
       impactStatement:
         campaigns.length > 0
           ? `${record.name} has raised ${currency} ${totalRaised.toLocaleString()} across ${campaigns.length} campaign${campaigns.length !== 1 ? 's' : ''} on Ujimora.`
-          : `${record.name} is a verified organization on Ujimora.`,
+          : `${record.name} is an organization on Ujimora.`,
       campaignCount: campaigns.length,
       totalRaised,
       currency,

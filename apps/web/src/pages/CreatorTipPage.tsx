@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
@@ -45,21 +45,23 @@ export function CreatorTipPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    let cancelled = false
+  const load = useCallback(async () => {
     setLoading(true); setNotFound(false); setLoadError(false)
-    api.get<CreatorPage>(`/creators/${handle}`)
-      .then((data) => { if (!cancelled) { setPage(data); if (data.presetAmounts?.[0]) setAmount(data.presetAmounts[0]) } })
-      .catch((err) => {
-        if (cancelled) return
-        // Only a real 404 means "no such creator"; anything else (5xx, network)
-        // is a transient error the visitor can retry — don't imply the page is gone.
-        if (err instanceof ApiError && err.status === 404) setNotFound(true)
-        else setLoadError(true)
-      })
-      .finally(() => { if (!cancelled) setLoading(false) })
-    return () => { cancelled = true }
-  }, [handle, reloadKey])
+    try {
+      const data = await api.get<CreatorPage>(`/creators/${handle}`)
+      setPage(data)
+      if (data.presetAmounts?.[0]) setAmount(data.presetAmounts[0])
+    } catch (err) {
+      // Only a real 404 means "no such creator"; anything else (5xx, network) is
+      // a transient error the visitor can retry — don't imply the page is gone.
+      if (err instanceof ApiError && err.status === 404) setNotFound(true)
+      else setLoadError(true)
+    } finally {
+      setLoading(false)
+    }
+  }, [handle])
+
+  useEffect(() => { void load() }, [load, reloadKey])
 
   async function handleSupport() {
     setError(null)

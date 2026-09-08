@@ -1,5 +1,6 @@
+import { EmptyReport, type EmptyReportKind } from '@/components/EmptyReport'
 import { useMemo } from 'react'
-import { Box, Typography, Chip, LinearProgress } from '@mui/material'
+import { Box, Typography, Chip, LinearProgress, Skeleton } from '@mui/material'
 import { keyframes } from '@mui/system'
 import { BarChart } from '@mui/x-charts/BarChart'
 import { PieChart } from '@mui/x-charts/PieChart'
@@ -48,15 +49,21 @@ function Section({
   children,
   delay = 0,
   action,
+  loading, error, empty, kind,
 }: {
   title: string
   children: React.ReactNode
   delay?: number
   action?: React.ReactNode
+  loading: boolean
+  error: string | null
+  empty: boolean
+  kind: EmptyReportKind
 }) {
   return (
-    <Box
+    <Box component="section" aria-label={title}
       sx={{
+        minWidth: 0,
         animation: `${fadeIn} 0.4s ease ${delay}s both`,
       }}
     >
@@ -74,7 +81,11 @@ function Section({
         </Typography>
         {action}
       </Box>
-      {children}
+      {loading ? <Skeleton variant="rounded" height={320} sx={{ borderRadius: SHAPE.card }} /> : error || empty ? (
+        <Box sx={{ bgcolor: CARD_BG, borderRadius: SHAPE.card, boxShadow: 'var(--neu-raised)', border: 'var(--neu-border)', backdropFilter: 'var(--neu-backdrop)', p: 2, minHeight: 320 }}>
+          <EmptyReport kind={kind} error={!!error} />
+        </Box>
+      ) : children}
     </Box>
   )
 }
@@ -229,10 +240,10 @@ function FraudMetricCard({ metric, value, change }: { metric: string; value: num
 // ---------------------------------------------------------------------------
 export default function OverviewPage() {
   const { data: stats } = useAdminStats()
-  const { data: reports } = useAdminReports()
-  const { data: users } = useAdminUsers()
-  const { data: campaigns } = useAdminCampaigns()
-  const { data: donations } = useAdminDonations()
+  const { data: reports, isLoading: reportsLoading, error: reportsError } = useAdminReports()
+  const { data: users, isLoading: usersLoading, error: usersError } = useAdminUsers()
+  const { data: campaigns, isLoading: campaignsLoading, error: campaignsError } = useAdminCampaigns()
+  const { data: donations, isLoading: donationsLoading, error: donationsError } = useAdminDonations()
 
   // No activity-feed endpoint exists; derive a recent-activity list from the
   // real donations feed (each row embeds donor + campaign names).
@@ -325,7 +336,7 @@ export default function OverviewPage() {
 
       {/* ═══ ROW 2: Donation trend + Category breakdown ═══ */}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '2fr 1fr' }, gap: 3, mt: 4 }}>
-        <Section title="Donation Trend (9 Months)" delay={0.1}>
+        <Section title="Donation Trend (9 Months)" kind="trends" loading={reportsLoading} error={reportsError} empty={donationTrend.length === 0} delay={0.1}>
           <Box
             sx={{
               bgcolor: CARD_BG,
@@ -365,7 +376,7 @@ export default function OverviewPage() {
           </Box>
         </Section>
 
-        <Section title="Campaign Categories" delay={0.15}>
+        <Section title="Campaign Categories" kind="categories" loading={reportsLoading} error={reportsError} empty={!categoryBreakdown.some((category) => category.value > 0)} delay={0.15}>
           <Box
             sx={{
               bgcolor: CARD_BG,
@@ -419,7 +430,7 @@ export default function OverviewPage() {
 
       {/* ═══ ROW 3: Campaign status + Activity feed ═══ */}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3, mt: 4 }}>
-        <Section title="Campaign Status Breakdown" delay={0.2}>
+        <Section title="Campaign Status Breakdown" kind="campaigns" loading={campaignsLoading} error={campaignsError} empty={campaigns.length === 0} delay={0.2}>
           <Box
             sx={{
               bgcolor: CARD_BG,
@@ -453,7 +464,7 @@ export default function OverviewPage() {
           </Box>
         </Section>
 
-        <Section title="Recent Activity" delay={0.25}>
+        <Section title="Recent Activity" kind="activity" loading={donationsLoading} error={donationsError} empty={activity.length === 0} delay={0.25}>
           <Box
             sx={{
               bgcolor: CARD_BG,
@@ -476,7 +487,7 @@ export default function OverviewPage() {
       {/* ═══ ROW 4: Top campaigns + Verification + Payment methods ═══ */}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr 1fr' }, gap: 3, mt: 4 }}>
         {/* Top Campaigns */}
-        <Section title="Top Campaigns by Raised" delay={0.3}>
+        <Section title="Top Campaigns by Raised" kind="topCampaigns" loading={campaignsLoading} error={campaignsError} empty={topCampaigns.length === 0} delay={0.3}>
           <Box
             sx={{
               bgcolor: CARD_BG,
@@ -549,7 +560,7 @@ export default function OverviewPage() {
         </Section>
 
         {/* Verification Levels */}
-        <Section title="User Verification Levels" delay={0.35}>
+        <Section title="User Verification Levels" kind="verification" loading={usersLoading} error={usersError} empty={users.length === 0} delay={0.35}>
           <Box
             sx={{
               bgcolor: CARD_BG,
@@ -601,7 +612,7 @@ export default function OverviewPage() {
         </Section>
 
         {/* Payment Methods */}
-        <Section title="Payment Methods" delay={0.4}>
+        <Section title="Payment Methods" kind="payments" loading={donationsLoading} error={donationsError} empty={donationsByMethod.length === 0} delay={0.4}>
           <Box
             sx={{
               bgcolor: CARD_BG,
@@ -645,7 +656,7 @@ export default function OverviewPage() {
       {/* ═══ ROW 5: Geographic + Trust Score + Fraud ═══ */}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3, mt: 4 }}>
         {/* Geographic Distribution */}
-        <Section title="Geographic Distribution" delay={0.45} action={<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'text.secondary' }}><PublicIcon sx={{ fontSize: 14 }} /><Typography sx={{ fontSize: '0.62rem' }}>8 regions</Typography></Box>}>
+        <Section title="Geographic Distribution" kind="geography" loading={reportsLoading} error={reportsError} empty={geoData.length === 0} delay={0.45} action={<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'text.secondary' }}><PublicIcon sx={{ fontSize: 14 }} /><Typography sx={{ fontSize: '0.62rem' }}>{reportsLoading || reportsError ? '—' : `${geoData.length} region${geoData.length === 1 ? '' : 's'}`}</Typography></Box>}>
           <Box
             sx={{
               bgcolor: CARD_BG,
@@ -661,7 +672,7 @@ export default function OverviewPage() {
         </Section>
 
         {/* Trust Score Distribution */}
-        <Section title="Trust Score Distribution" delay={0.5}>
+        <Section title="Trust Score Distribution" kind="trust" loading={usersLoading} error={usersError} empty={users.length === 0} delay={0.5}>
           <Box
             sx={{
               bgcolor: CARD_BG,
@@ -699,7 +710,7 @@ export default function OverviewPage() {
       {/* ═══ ROW 6: Fraud & Safety Metrics ═══ */}
       <Box sx={{ mt: 4, mb: 2 }}>
         <Section
-          title="Fraud & Safety Metrics"
+          title="Fraud & Safety Metrics" kind="safety" loading={reportsLoading} error={reportsError} empty={fraudMetrics.length === 0}
           delay={0.55}
           action={
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'text.secondary' }}>

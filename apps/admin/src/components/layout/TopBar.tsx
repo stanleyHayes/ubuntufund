@@ -37,7 +37,7 @@ export const TOPBAR_HEIGHT = UTILITY_BAR_HEIGHT + MAIN_BAR_HEIGHT
 
 const Search = styled('div')(({ theme }) => ({
   position: 'relative',
-  borderRadius: 999,
+  borderRadius: 'var(--shape-input, 6px)',
   backgroundColor: alpha(theme.palette.common.white, 0.06),
   '&:hover': {
     backgroundColor: alpha(theme.palette.common.white, 0.1),

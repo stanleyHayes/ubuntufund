@@ -8,6 +8,7 @@ export interface UserProps {
   name: string;
   passwordHash: string;
   avatarUrl?: string;
+  coverUrl?: string;
   role: UserRole;
   verificationLevel: VerificationLevel;
   trustScore: TrustScore;

@@ -56,6 +56,22 @@ describe('PlanLimitsService', () => {
     service = new PlanLimitsService(subscriptionRepo, campaignRepo)
   })
 
+  it('does not grant paid limits past the billing or trial end', async () => {
+    const expired = makeSubscription(SubscriptionTier.PRO);
+    expired.currentPeriodEnd = new Date(Date.now() - 1);
+    vi.mocked(subscriptionRepo.findByUserId).mockResolvedValue(expired);
+    expect((await service.resolvePlan('user-1')).tier).toBe(SubscriptionTier.FREE);
+    const trial = makeSubscription(SubscriptionTier.PRO, SubscriptionStatus.TRIALING);
+    trial.trialEnd = new Date(Date.now() - 1);
+    vi.mocked(subscriptionRepo.findByUserId).mockResolvedValue(trial);
+    expect((await service.resolvePlan('user-1')).tier).toBe(SubscriptionTier.FREE);
+  });
+
+  it('rejects non-finite goals instead of treating them as below the cap', async () => {
+    await expect(service.assertCanCreateCampaign('user-1', NaN)).rejects.toThrow('finite positive');
+    await expect(service.assertCanCreateCampaign('user-1', Infinity)).rejects.toThrow('finite positive');
+  });
+
   describe('resolvePlan', () => {
     it('defaults to the Free plan when the user has no subscription', async () => {
       const plan = await service.resolvePlan('user-1')

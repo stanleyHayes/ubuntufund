@@ -1,3 +1,5 @@
+import { usePagination } from '@/hooks/usePagination'
+import PaginationBar from '@/components/PaginationBar'
 import { useMemo } from 'react'
 import { Box, Typography, Skeleton } from '@mui/material'
 import { raisedSurface, insetSurface, progressTrack } from '@/lib/surfaces'
@@ -152,6 +154,7 @@ function StatCard({ label, value, icon, color }: StatCardProps) {
 export default function AiUsagePage() {
   const { data: stats, isLoading: statsLoading, error: statsError } = useAiUsageStats()
   const { data: log, isLoading: logLoading, error: logError } = useAiUsageLog()
+  const logPagination = usePagination(log, 12)
   const mostUsed = useMemo(() => getMostUsedAction(log), [log])
   const avgLength = useMemo(() => getAverageTextLength(log), [log])
 
@@ -376,7 +379,7 @@ export default function AiUsagePage() {
                 </Typography>
               </Box>
               {log.length === 0 && <Typography variant="body2" color="text.secondary" sx={{ px: 2.5, pb: 2.5 }}>{logError ? 'Recent activity is unavailable.' : 'No recent activity.'}</Typography>}
-              {log.slice(0, 20).map((entry) => {
+              {logPagination.page.map((entry) => {
                 const isSuccess = entry.status === 'success'
                 const statusColor = isSuccess ? '#8FAE96' : '#C06B58'
                 const StatusIcon = isSuccess ? CheckCircleRoundedIcon : ErrorRoundedIcon
@@ -445,6 +448,7 @@ export default function AiUsagePage() {
                   </Box>
                 )
               })}
+              <PaginationBar neumorphic pagination={logPagination} />
             </Box>
           </Box>
         </>

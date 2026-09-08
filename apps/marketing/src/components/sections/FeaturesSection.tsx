@@ -5,58 +5,11 @@ import Typography from '@mui/material/Typography'
 import Grid from '@mui/material/Grid'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
-import VerifiedUserIcon from '@mui/icons-material/VerifiedUser'
-import CurrencyExchangeIcon from '@mui/icons-material/CurrencyExchange'
-import PaymentsIcon from '@mui/icons-material/Payments'
-import LiveTvIcon from '@mui/icons-material/LiveTv'
-import PublicIcon from '@mui/icons-material/Public'
-import LockIcon from '@mui/icons-material/Lock'
+import Button from '@mui/material/Button'
 import { SHAPE } from '@ubuntu-fund/ui'
+import { featureGroups } from '../../data/features'
 
-const features = [
-  {
-    icon: VerifiedUserIcon,
-    title: 'Trust system',
-    description:
-      'Multi-level verification builds confidence. Verified campaigns earn trust badges so donors give with certainty.',
-    accent: '#2E3D2F',
-  },
-  {
-    icon: CurrencyExchangeIcon,
-    title: 'Cedi-first records',
-    description:
-      'Campaign goals, wallet balances, and donation records use Ghanaian cedis (GHS) throughout the product.',
-    accent: '#C7A24A',
-  },
-  {
-    icon: PaymentsIcon,
-    title: 'Wallet contributions',
-    description:
-      'The internal Ujimora Wallet is the active launch method. External payment rails remain disabled until verified.',
-    accent: '#2E3D2F',
-  },
-  {
-    icon: LiveTvIcon,
-    title: 'Live progress',
-    description:
-      'Follow campaign totals, goals, updates, supporter comments, and persisted donation activity as they change.',
-    accent: '#C7A24A',
-  },
-  {
-    icon: PublicIcon,
-    title: 'Shareable campaigns',
-    description:
-      'Publish a clear campaign story and share its public page with supporters wherever your community is located.',
-    accent: '#2E3D2F',
-  },
-  {
-    icon: LockIcon,
-    title: 'Accountable records',
-    description:
-      'Review workflows, audit trails, reporting, moderation, and soft deletion protect users without erasing operational history.',
-    accent: '#C7A24A',
-  },
-]
+const features = featureGroups.map(group => ({ icon: group.icon, title: group.title, description: group.description, id: group.id }))
 
 function FeaturesSection() {
   return (
@@ -114,7 +67,7 @@ function FeaturesSection() {
                       borderRadius: SHAPE.sm,
                       backgroundColor: 'var(--neu-surface)',
                       boxShadow: 'var(--neu-subtle)',
-                      color: feature.accent,
+                      color: 'primary.main',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -129,6 +82,7 @@ function FeaturesSection() {
                   <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.7 }}>
                     {feature.description}
                   </Typography>
+                  <Button href={`/features#${feature.id}`} sx={{ mt: 2 }}>Explore features</Button>
                 </CardContent>
               </Card>
             </Grid>

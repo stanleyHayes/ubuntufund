@@ -1,3 +1,6 @@
+import { usePagination } from '@/hooks/usePagination'
+import PaginationBar from '@/components/PaginationBar'
+import { EmptyReport } from '@/components/EmptyReport'
 import { Alert, Box, Skeleton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from '@mui/material'
 import { SHAPE } from '@ubuntu-fund/ui'
 import { TONES } from '@/lib/tones'
@@ -14,6 +17,8 @@ const panelSx = {
   borderRadius: SHAPE.card,
   bgcolor: 'background.paper',
   boxShadow: 'var(--neu-raised)',
+  border: 'var(--neu-border)',
+  backdropFilter: 'var(--neu-backdrop)',
 }
 
 const chartSx = {
@@ -26,14 +31,6 @@ function ReportPanel({ title, children }: { title: string; children: React.React
     <Box component="section" aria-label={title} sx={panelSx}>
       <Typography component="h2" variant="h6" sx={{ mb: 2 }}>{title}</Typography>
       {children}
-    </Box>
-  )
-}
-
-function EmptyReport({ children }: { children: React.ReactNode }) {
-  return (
-    <Box sx={{ p: 3, borderRadius: SHAPE.sm, boxShadow: 'var(--neu-inset)' }}>
-      <Typography variant="body2" color="text.secondary">{children}</Typography>
     </Box>
   )
 }
@@ -54,6 +51,7 @@ export default function ReportsPage() {
   const trend = reports.donationTrend
   const categories = reports.categoryBreakdown
   const geoData = reports.geographicData
+  const geoPagination = usePagination(geoData, 12)
   const fraudMetrics = reports.fraudMetrics
 
   const statusBreakdown = [
@@ -100,7 +98,7 @@ export default function ReportsPage() {
         )) : (
           <>
             <ReportPanel title="Monthly Donation Trends">
-              {reportsError ? <EmptyReport>Donation trends are unavailable.</EmptyReport> : trend.length === 0 ? <EmptyReport>No donation history is available yet.</EmptyReport> : (
+              {reportsError ? <EmptyReport kind="trends" error /> : trend.length === 0 ? <EmptyReport kind="trends" /> : (
                 <LineChart
                   sx={chartSx}
                   xAxis={[{ data: trend.map(t => t.month), scaleType: 'band' }]}
@@ -111,7 +109,7 @@ export default function ReportsPage() {
               )}
             </ReportPanel>
             <ReportPanel title="Donations by Category">
-              {reportsError ? <EmptyReport>Donation categories are unavailable.</EmptyReport> : categories.length === 0 ? <EmptyReport>No category totals are available yet.</EmptyReport> : (
+              {reportsError ? <EmptyReport kind="categories" error /> : categories.length === 0 ? <EmptyReport kind="categories" /> : (
                 <PieChart
                   sx={chartSx}
                   colors={[TONES.green.text, TONES.gold.text, TONES.clay.text, TONES.teal.text, TONES.maroon.text, '#B5C9BA', '#DCC07E']}
@@ -122,13 +120,14 @@ export default function ReportsPage() {
               )}
             </ReportPanel>
             <ReportPanel title="Geographic Distribution">
-              {reportsError ? <EmptyReport>Geographic totals are unavailable.</EmptyReport> : geoData.length === 0 ? <EmptyReport>No geographic activity is available yet.</EmptyReport> : (
+              {reportsError ? <EmptyReport kind="geography" error /> : geoData.length === 0 ? <EmptyReport kind="geography" /> : (
+                <Box>
                 <TableContainer sx={{ borderRadius: SHAPE.sm, boxShadow: 'var(--neu-inset)' }}>
                   <Table size="small" aria-label="Geographic distribution" sx={{ '& td, & th': { px: 2, py: 1.5 }, '& td': { fontVariantNumeric: 'tabular-nums' } }}>
                     <TableHead><TableRow>
                       <TableCell>Region</TableCell><TableCell align="right">Campaigns</TableCell><TableCell align="right">Donations</TableCell>
                     </TableRow></TableHead>
-                    <TableBody>{geoData.map(row => (
+                    <TableBody>{geoPagination.page.map(row => (
                       <TableRow key={row.country} hover>
                         <TableCell component="th" scope="row">{row.country}</TableCell>
                         <TableCell align="right">{row.campaigns}</TableCell>
@@ -137,10 +136,12 @@ export default function ReportsPage() {
                     ))}</TableBody>
                   </Table>
                 </TableContainer>
+                <PaginationBar pagination={geoPagination} />
+                </Box>
               )}
             </ReportPanel>
             <ReportPanel title="Campaign Status Breakdown">
-              {campaignsError ? <EmptyReport>Campaign status counts are unavailable.</EmptyReport> : (
+              {campaignsError ? <EmptyReport kind="campaigns" error /> : campaigns.length === 0 ? <EmptyReport kind="campaigns" /> : (
                 <Box component="dl" sx={{ m: 0, display: 'grid', gap: 2.5 }}>
                   {statusBreakdown.map(s => (
                     <Box key={s.status}>

@@ -22,6 +22,7 @@ export interface ProfileDTO {
   email: string;
   name: string;
   avatarUrl?: string;
+  coverUrl?: string;
   role: UserRole;
   verificationLevel: VerificationLevel;
   trustScore: number;
@@ -140,6 +141,7 @@ export class GetProfileUseCase {
       email: userPlain.email.value,
       name: userPlain.name,
       avatarUrl: userPlain.avatarUrl,
+      coverUrl: userPlain.coverUrl,
       role: userPlain.role,
       verificationLevel: userPlain.verificationLevel,
       trustScore: userPlain.trustScore.value,

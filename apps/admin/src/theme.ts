@@ -179,10 +179,11 @@ export function makeAdminTheme(mode: PaletteMode, skin: ThemeSkin = 'neumorphism
           },
         },
       },
+      MuiFilledInput: { styleOverrides: { root: { borderRadius: `${SHAPE.input} !important` } } },
       MuiOutlinedInput: {
         styleOverrides: {
           root: {
-            borderRadius: SHAPE.sm, backgroundColor: 'var(--neu-surface)', boxShadow: 'var(--neu-inset)',
+            borderRadius: `${SHAPE.input} !important`, backgroundColor: 'var(--neu-surface)', boxShadow: 'var(--neu-inset)',
             '& .MuiOutlinedInput-notchedOutline': { border: 'var(--neu-border, 0px solid transparent) !important' },
             '&.Mui-focused': { boxShadow: 'var(--neu-inset), 0 0 0 3px rgba(199,162,74,0.16)' },
           },

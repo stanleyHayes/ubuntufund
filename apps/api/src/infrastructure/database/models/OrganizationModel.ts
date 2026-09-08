@@ -12,6 +12,7 @@ export interface OrganizationUserDocument extends Document {
   email: string;
   name: string;
   avatarUrl?: string;
+  coverUrl?: string;
   role: UserRole;
   verificationLevel: VerificationLevel;
   country?: string;
@@ -30,6 +31,7 @@ const organizationUserSchema = new Schema<OrganizationUserDocument>(
     email: { type: String, required: true },
     name: { type: String, required: true },
     avatarUrl: { type: String },
+    coverUrl: { type: String },
     role: {
       type: String,
       enum: Object.values(UserRole),

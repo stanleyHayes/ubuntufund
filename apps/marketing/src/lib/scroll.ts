@@ -4,7 +4,7 @@ export function scrollToHash(hash: string) {
   const attempt = () => {
     const el = document.getElementById(hash)
     if (el) {
-      el.scrollIntoView({ behavior: 'smooth' })
+      el.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' })
     } else if (Date.now() - started < 1500) {
       requestAnimationFrame(attempt)
     }

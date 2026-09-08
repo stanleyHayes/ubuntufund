@@ -20,8 +20,15 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     throw new Error('Your session has expired. Please sign in again.')
   }
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ message: 'Request failed' }))
-    throw new Error(err.message || `HTTP ${res.status}`)
+    const err = await res.json().catch(() => null)
+    const fallback = res.status === 404
+      ? 'This API endpoint is unavailable (404). Refresh and try again.'
+      : res.status === 403
+        ? 'Your account does not have permission to perform this action.'
+        : res.status >= 500
+          ? 'The server could not complete this request. Please try again.'
+          : `Request failed (HTTP ${res.status}).`
+    throw new Error(err?.message || err?.error || fallback)
   }
   const json = await res.json()
   return json.data ?? json

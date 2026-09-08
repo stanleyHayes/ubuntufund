@@ -10,6 +10,8 @@ import type { ProfileDTO } from './GetProfileUseCase.js';
 
 export interface UpdateProfileInput {
   name?: string;
+  avatarUrl?: string;
+  coverUrl?: string;
   phone?: string;
   bio?: string;
   country?: string;
@@ -38,12 +40,14 @@ export class UpdateProfileUseCase {
     }
 
     let updatedUser = user;
-    if (input.name !== undefined || input.country !== undefined) {
+    if (input.name !== undefined || input.country !== undefined || input.avatarUrl !== undefined || input.coverUrl !== undefined) {
       const plain = user.toPlain();
       const nextUser = new UserEntity({
         ...plain,
         name: input.name ?? plain.name,
         country: input.country ?? plain.country,
+        avatarUrl: input.avatarUrl ?? plain.avatarUrl,
+        coverUrl: input.coverUrl ?? plain.coverUrl,
       });
       updatedUser = await this.userRepo.update(nextUser);
     }
@@ -81,6 +85,7 @@ export class UpdateProfileUseCase {
       email: userPlain.email.value,
       name: userPlain.name,
       avatarUrl: userPlain.avatarUrl,
+      coverUrl: userPlain.coverUrl,
       role: userPlain.role,
       verificationLevel: userPlain.verificationLevel,
       trustScore: userPlain.trustScore.value,

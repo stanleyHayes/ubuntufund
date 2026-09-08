@@ -754,3 +754,200 @@
 - Added consistent icon headings and decorative watermarks, improved dark-mode contrast and amount wrapping, corrected the campaigns dollar label/fabricated donor count and dashboard donations-made label, and added icons/focus states to all web footer links.
 - Four session regression tests pass, covering both API clients, late responses, permission errors, unauthenticated login failures, token precedence and expiry parsing. Browser interaction timed out; rendered visual review is not claimed.
 - Final web production build, web TypeScript check, targeted lint and whitespace checks pass. The initial TypeScript run caught an incorrectly placed settings loading return; it was moved outside the effect and the full check rerun successfully.
+
+### 2026-09-08 — Organization type selector
+
+- ✅ Replaced the registration dropdown with six responsive choice cards, each with a distinct icon, title, description, and selected checkmark. Uses existing theme colors and native radios for keyboard navigation; preserves API enum values and clears type validation on selection.
+- Files: `apps/web/src/components/auth/OrganizationTypePicker.tsx`, `apps/web/src/components/auth/RegisterForm.tsx`.
+- Verification: web TypeScript check and production build passed; targeted ESLint and `git diff --check` passed. Browser visual review not performed.
+
+### 2026-09-08 — Profile header redesign
+
+- ✅ Rebuilt the profile header with a compact gold avatar, left-aligned identity, readable bio, separate verification panel, and flat edit/share actions. Responsive stacked mobile layout; removed decorative glow/wave and hard-coded trust score, verification level, and join date. Zero-month streak is hidden.
+- Edit profile now scrolls to the settings and focuses the name field. Existing verification navigation and share action retained.
+- File: `apps/web/src/pages/ProfilePage.tsx`.
+- Verification: web TypeScript, production build, targeted ESLint and diff checks passed. Inspected desktop (1440px) and mobile (390px) browser previews with mocked API data; edit focus and mobile overflow checks passed. These previews do not verify live account data.
+
+### 2026-09-08 — Profile header skin parity
+
+- ✅ Replaced fixed header colors, radii, and shadow suppression with palette and shared skin tokens. Avatar, edit/share controls, verification panel, and icon inset follow the selected skin. Glass adds a subtle backdrop for its translucent panel; light/dark mode remains independent.
+- Verification: TypeScript, production build, targeted ESLint, and diff checks passed. Browser screenshots captured all four skins in both modes at desktop and mobile widths using mocked profile API data. Visually inspected the eight-way desktop comparison and dark-glass mobile view; all eight mobile overflow and edit-focus checks passed.
+- Visual comparison: `/tmp/profile-skins/comparison.html` and `/tmp/profile-skins/comparison.png`.
+
+### 2026-09-08 — Campaign search and sort redesign
+
+- ✅ Replaced the square search/sort fields with a labeled search surface, clear-search action, and custom sort menu with icons, descriptions, and selected checkmark. Uses shared skin surfaces, shadows, borders, blur, and geometry; mobile controls stack. Search trims surrounding whitespace before matching campaign titles.
+- Files: `apps/web/src/components/campaigns/CampaignSearchBar.tsx`, `apps/web/src/pages/ExplorePage.tsx`.
+- Verification: web TypeScript, build, targeted ESLint, and diff checks passed. Captured and inspected an eight-way desktop skin/mode comparison and dark-glass mobile menu. Browser checks with mocked empty campaign responses passed for search clearing, sort selection, menu dismissal, and mobile overflow in all eight variants. No live campaign-data verification claimed.
+- Preview: `/tmp/campaign-search/comparison.png`; mobile menu: `/tmp/campaign-search/mobile-menu.png`.
+
+### 2026-09-08 — Organization profile and cover images
+
+- ✅ Missing or failed covers render a theme-aware patterned default; missing or failed profile images render organization initials. Owners have Change cover / Change photo editors with device upload, hosted HTTPS link, preview, save, and reset-to-default. Validation/save errors stay in the editor; successful saves show confirmation. Visitors have no editing controls.
+- Added cover persistence through the user model/entity/repository and organization projection; authenticated profile updates accept avatar/cover URLs and public organization reads return saved values. Removed the unconditional verified-organization claim from the empty impact copy.
+- Verification: API and web type-checks, web production build, targeted ESLint, and diff checks passed. Database-backed integration test covers persistence to personal/public reads, reset, authentication, URL validation, and cross-account protection. Mocked browser checks cover broken/empty images, both saves, reload/reset, mobile layout, and visitor controls; inspected desktop fallback and mobile editor. Device upload uses the existing Cloudinary helper; live provider upload not exercised.
+- Visual artifacts: `/tmp/organization-image-fallback.png`, `/tmp/organization-image-editor.png`, `/tmp/organization-image-skins.png`.
+
+### 2026-09-08 — Pricing layout and plan guidance
+
+- ✅ Split plan selection into a three-column personal/growth group and a wider organization/enterprise row. Added a prominent Pro recommendation, audience-fit labels, and an inline current-plan status. Kept public custom tiers and the existing checkout/contact actions. Shared skin tokens control surfaces, geometry, borders, and shadows.
+- Prices stay together; yearly monthly-equivalent amounts retain cents. Removed the blanket 17% savings claim because live plan prices can differ.
+- Verification: web type-check, production build, targeted ESLint and diff checks passed. Browser previews with seeded fallback plans exercised four skins, annual toggle, Pro checkout dialog, and mobile card overflow; inspected light/dark desktop layouts. No purchase submitted.
+- Previews: `/tmp/pricing-redesign-light.png`, `/tmp/pricing-redesign-dark.png`.
+
+### 2026-09-08 — Admin report empty states
+
+- ✅ Replaced one-line report notices with tailored empty states for monthly donations, categories, geography, and campaign status. Each has a distinct icon, clear heading, explanatory copy, and a short report-purpose caption. Shared skin surfaces, borders, shadows, and palette keep all themes consistent.
+- Request failures have a separate cloud-off illustration, failure message, and Retry reports action. Empty campaign status uses the same treatment instead of zero-value bars. Loading skeletons and populated reports are preserved.
+- File: `apps/admin/src/pages/ReportsPage.tsx`. Admin type-check, production build, targeted ESLint, and diff checks passed.
+- Browser verification: captured all eight skin/mode combinations with mocked empty reports; error-to-retry recovery and mobile panel overflow checks passed. Preview sessions suppress the first-visit tour to inspect the actual panels. Visual artifacts: `/tmp/report-empty-skins.png`, `/tmp/report-empty-category.png`, `/tmp/report-empty-mobile.png`.
+
+### 2026-09-08 — Overview empty-state coverage
+
+- ✅ Extracted the Reports treatment into shared `EmptyReport` and applied it to all ten Overview sections, including the five screenshot targets: top campaigns, campaign categories, geography, status, and recent activity. Also covers donation trends, verification, payment methods, trust scores, and safety metrics.
+- Each section handles loading skeletons, request errors with retry, empty data, and populated content separately. Removed the fixed eight-region claim; category charts with no positive totals render the empty state.
+- Verification: mocked browser checks passed for the original nine empty sections, all five requested mobile states, region count, and report-error retry recovery. Inspected `/tmp/overview-empty-states.png` and captured `/tmp/overview-empty-mobile.png`. The additional safety section follows the same shared component.
+- Final admin TypeScript, production build, targeted ESLint, and diff checks passed after adding safety-metrics coverage.
+
+### 2026-09-08 — Admin pagination coverage
+
+- ✅ Added shared pagination (12 records initially) to campaign/beneficiary payouts, AI activity, plan management, and the geographic report table. Existing core admin lists retain their pagination. Payout view changes reset their pages; AI activity no longer silently slices at 20.
+- Fixed Contact Submissions and Testimonials to request the selected page size, refetch when it changes, reset on status/type filtering, and retain controls for smaller result sets. These pages now use the admin session token rather than public-app storage keys.
+- Verification: admin TypeScript and production build passed; targeted lint and diff checks passed. Mocked browser verification exercised payout row limits, next/last navigation, page-size reset, mobile controls, and server pagination request parameters. Preview: `/tmp/admin-pagination-mobile.png`.
+
+### 2026-09-08 — Payout request failure
+
+- ✅ Reproduced live HTML 404 for `/api/v1/payouts/review-queue` through admin port 8400 and API port 8100. Existing API watcher/child had been running since September 6 and had not picked up current routes. Restarted that local API from current source; observed an authenticated live review-queue request returning 200. All payout routes now respond with authentication protection instead of missing-route HTML.
+- Admin API errors now preserve server messages/errors and provide meaningful non-JSON HTTP fallbacks. Payout request failures render a failure state instead of “Nothing needs attention.”
+- Verification: new database-backed integration test confirms three admin list endpoints return arrays, require authentication, and deny non-admins. Browser HTML-404/refresh recovery check passed. Admin TypeScript, lint, production build, and diff checks passed. No payout was approved or transferred.
+
+### 2026-09-08 — Marketing feature content refresh
+
+- ✅ Added `/features` with six linked categories covering creator pages, tips and withdrawals, collaboration, campaign updates and LIVE, organisation profiles, checkout methods, payout review and split proceeds, plans/coupons/referrals, verification/reporting, and appearance skins/image defaults. Availability language reflects plan, configuration, and eligibility constraints.
+- Added Features navigation and footer entry, replaced the homepage feature previews, and refreshed organisation, pricing FAQ, help FAQ, and signup CTA copy. Removed stale paid-billing-paused and wallet-only claims; organisation plan CTA now links to the API-driven pricing page.
+- Verification: marketing TypeScript, ESLint, and production build passed (existing module-type and bundle-size warnings only). Browser checks passed for six sections, six homepage links, organisation pricing link, absence of stale paused copy, zero page errors, and no horizontal overflow at 390px. Visually inspected `/tmp/marketing-features-desktop.png` and `/tmp/marketing-features-mobile.png`. No deployment performed.
+
+### 2026-09-08 — About page operating model spacing
+
+- ✅ Replaced the stretched two-by-two operating-model cards with four compact numbered rows beside the existing editorial image. Added concise supporting details, improved body contrast, and balanced desktop column widths. Semantic ordered steps stack naturally on mobile; forest shadows, borders, blur, and corners respect the selected skin.
+- Corrected the About hero trust link to the actual section and updated contribution wording to include current payment methods.
+- Verification: TypeScript, marketing lint, production build, and diff checks passed (existing build-size/module-type warnings). Browser verified four steps across all four skins at 1440, 768, and 390px with no horizontal overflow or page errors. Inspected desktop, mobile, and minimal-skin screenshots at `/tmp/about-journey-{desktop,mobile,minimal}.png`.
+
+### 2026-09-08 — About commitments redesign
+
+- ✅ Replaced three separate recessed cards with a unified editorial panel: distinct principle icons, category labels, numbered markers, fine dividers, concise descriptions, and practical takeaways. Revised the section heading and aligned the adjacent philosophy panel without stretching either column.
+- Uses shared surface, shadow, border, blur, and shape tokens for all design skins.
+- Verification: marketing TypeScript, lint, build, and diff checks passed. Browser checked three commitments in light/dark modes across all four skins at desktop/mobile widths with no overflow or page errors. Inspected `/tmp/commitments-dark-1440.png` and `/tmp/commitments-light-390.png`. Existing module-type and bundle-size warnings remain.
+
+### 2026-09-08 — Confirmed leadership profile
+
+- ✅ Replaced the launch-team placeholder with Stanley Asoku Hayford, his supplied root portrait (copied into marketing public assets), short engineering bio, and Founder & Principal Engineer · NeuroDyne Corp title verified on neurodyne.dev. Added portfolio/company links and LinkedIn, GitHub, X, and Instagram links read from the live portfolio.
+- Updated CMS seed defaults and provided a narrow fallback for existing `Ujimora Team` CMS placeholders, while preserving real edited leadership records. Portrait uses initials fallback if loading fails.
+- Verification: marketing TypeScript, lint, production build, and diff checks passed. Browser confirmed the live legacy CMS record renders Stanley, portrait loads, six external links render, placeholder copy is absent, and mobile has no overflow. Inspected `/tmp/stanley-profile-mobile.png`.
+
+### 2026-09-08 — Squarer form controls
+
+- ✅ Added independent `SHAPE.input` / `--shape-input` token fixed at 6px across skins. Shared web/marketing and admin outlined/filled controls enforce this radius over older page overrides; adjusted custom admin search, campaign search, newsletter fields, and admin auth styles.
+- Card, button, chip, and other surface shape tokens remain unchanged.
+- Verification: admin, web, and marketing TypeScript and production builds passed; targeted ESLint and diff checks passed. Browser computed all outlined field radii as 6px on admin login, web login, and marketing contact after cycling skin preferences. Inspected `/tmp/admin-input-radius.png`.
+
+### 2026-09-08 — Features page illustrations
+
+- ✅ Added three existing original SVG scenes for creators, collaboration, and growth with short captions and light/dark colours. Added quiet category-icon watermarks behind feature content, hidden from assistive technology. Balanced creator cards vertically and let odd final cards span the row.
+- Verification: marketing TypeScript, lint, production build, and diff checks passed. Browser verified three accessible SVG illustrations in light/dark desktop/mobile layouts with no overflow or page errors; inspected `/tmp/features-art-final.png` and `/tmp/features-art-mobile-dark.png`.
+
+### 2026-09-08 — Full-row leadership profile
+
+- ✅ Moved leadership out of the philosophy card into its own full-width section below the commitments. Enlarged the portrait beside the biography; mobile stacks the photo above the content.
+- Replaced loose text buttons with two descriptive destination tiles and a compact social-icon row with accessible link names, hover/focus states, and 44px targets.
+- Verification: marketing TypeScript, lint, production build, and diff checks passed. Browser confirmed the independent section, six preserved links, and no desktop/mobile overflow; inspected `/tmp/leadership-wide-1440.png` and `/tmp/leadership-wide-390.png`.
+
+### 2026-09-08 — Marketing pricing parity and contrast
+
+- ✅ Matched subscription-page audience grouping: up to three personal/growth cards, then two organisation/enterprise cards. Added fit labels, a gold Pro recommendation outline/action, and theme-aware fees/checkmarks instead of unreadable configured accent colours.
+- Updated cycle controls with selected-state semantics and readable colours, preserved yearly decimal precision, linked paid choices to the web subscription page, removed stale preview-only copy, and made detailed comparison horizontally scrollable on narrow screens.
+- Browser verification: light/dark desktop and mobile, yearly toggle, two groups, no overflow/page errors; inspected `/tmp/pricing-group-dark.png`. Marketing type-check, lint, build, and diff checks run for this change.
+
+### 2026-09-08 — Marketing page transitions
+
+- ✅ Added coordinated 150ms outgoing fade and 380ms incoming reveal across marketing routes, including the homepage. Routes retain the outgoing content during exit; pending route changes cancel cleanly. Removed the duplicate inner-page entry animation.
+- Same-origin native links now use SPA navigation while preserving router links, external links, modified/new-tab clicks, downloads, and same-page anchors. Scroll reset follows the displayed page. Keyboard navigation and reduced-motion preferences bypass animation; reduced-motion hash scrolling is immediate.
+- Verification: marketing TypeScript, lint, production build, and diff checks passed. Browser verified document-preserving navigation, Back, section hashes, reduced-motion CSS, rapid successive routes, and no page errors.
+
+### 2026-09-08 — Campaign creation plan enforcement and workflow audit
+
+- ✅ Added authenticated `/campaigns/creation-options` resolving the same DB-backed effective plan/compliance cap as server creation. Form fails closed when limits cannot load, shows the current cap/usage, and blocks excessive goals or unavailable capacity. Server now rejects non-finite goals, invalid/end dates, non-GHS campaign goals, and excess media; entitlement reads do not silently substitute seed caps after DB read failures. Paid entitlements expire by billing/trial end as well as status.
+- ✅ Found and fixed a browser submit-default bug: the goal-step Continue button could become a submit button during its click and publish before the review step. Cancelled that click default and blocked submission outside review. Preserved regression in `apps/web/e2e/campaign-plan-enforcement.spec.ts`.
+- ✅ Added creation-time editor invitations and optional split allocations, gated by server-provided capabilities. Split draft creation/activation requires the owner's current collaboration + escrow features and the platform split flag. Invitations retain server feature/count guards; accepting old invitations rechecks current owner entitlement/count. Positive collaboration revenue shares require escrow entitlement.
+- ✅ Optional setup failures retain the created campaign and offer retry of only unfinished requests. Split setup remains a draft until explicit beneficiary acceptance recording and activation; owners can return to this workflow on the campaign detail page. Success copy follows actual campaign status. Sharing on live success now offers WhatsApp, Facebook, X, LinkedIn, copy/Instagram, and native device sharing; sharing is not artificially paywalled.
+- ✅ Restarted the stale local API watcher (old process did not recognise the new endpoint) from current source with polling enabled; live creation-options now returns the expected unauthenticated 401 instead of treating it as an invalid campaign ID.
+- Verification: 26 targeted unit tests, 11 integration tests across creation enforcement/split configuration/accrual/beneficiary payouts passed across runs. Updated eligible split fixtures to Pro and its 2.5% fee rather than retaining Free-plan assumptions. Playwright regression passed with mocked UI API responses: cap enforcement, no creation before review, one creation, failed invite retry, one split, social menu. API/web TypeScript, targeted lint, web production build, and diff checks passed. No production campaigns, invitations, subscriptions, or payouts were modified by verification.
+
+### 2026-09-08 — Blog newsletter shadow correction
+
+- ✅ Scoped the dark blog newsletter panel to the shared forest surface variables so its gold Subscribe button uses the selected skin's dark shadows instead of a bright light-mode halo. Input, card, and button shapes retain their existing skin settings.
+- Verification: marketing TypeScript and targeted ESLint passed. Browser checked `/blog` in light and dark modes; Subscribe uses dark/sage shadows in both. Inspected `/tmp/blog-newsletter-light.png`.
+
+### 2026-09-08 — Explain campaign creation eligibility accurately
+
+- ✅ Replaced the combined campaign/verification limit warning with explicit API reasons: verification required, verification campaign allowance exhausted, or active plan capacity exhausted. Unverified first-time creators see a verification explanation and `/kyc` action instead of an upgrade prompt.
+- Verification: integration regression passed for zero-campaign unverified, verified eligible, and active-plan-full accounts. Mocked browser verified verification copy and `/kyc` link. Web TypeScript and targeted lint passed. API TypeScript is blocked by the existing payout repository missing `attachTransferDetails`; no payout files changed in this slice.
+
+### 2026-09-08 — Blog newsletter skin surfaces
+
+- ✅ Newsletter panel now consumes skin shadow, border, and blur tokens; email field uses the skin's inset surface. Glass receives a translucent forest background. Preserved gold CTA, forest colors, and 6px input corners; improved placeholder and keyboard-focus visibility.
+- Verification: browser checked all four skins and inspected neumorphic/clay screenshots. Marketing TypeScript, targeted lint, and diff checks passed.
+
+### 2026-09-08 — Admin users and member detail redesign
+
+- ✅ Removed the detail page's hard-coded black/purple background and pale text; profile, compliance, activity, loading, and error states now follow semantic theme colors and selected skin surfaces. Added avatar fallbacks, readable account metadata, verification guidance, and a back link.
+- ✅ Replaced inert Verify/Suspend/Ban controls with a working verification-workspace link; preserved compliance-limit saving. Added pagination for loaded member activity and explicit activity errors/loading rather than false empty results. Activity remains sourced from the existing recent platform feeds.
+- ✅ Simplified user directory cards, widened desktop columns, preserved pagination, reset pages on filter changes, and added clear-filters recovery.
+- Verification: admin TypeScript, targeted ESLint, production build, and diff checks passed. Browser used mocked API data on both routes across four skins, light/dark and 390/1440 widths: no overflow or page errors. Inspected desktop screenshots after dismissing the onboarding tour. No live user records were changed.
+
+### 2026-09-08 — Category icons and admin collection views
+
+- ✅ Replaced creation-category diamonds with distinct category icons and a generic fallback; raised/inset surfaces and blur follow the selected skin with an explicit selected border and accessible pressed state.
+- Category management audit: creation uses the shared CampaignCategory enum, with matching API enum validation. No admin category CRUD exists. Used the owner's offered UI-only scope; adding arbitrary categories still requires a shared schema/code change.
+- ✅ Added reusable Cards/Table control and horizontally scrollable semantic table for admin users/campaigns. Each collection remembers its layout locally; both layouts share filters and pagination. Filter changes reset to the first page. Removed campaign cards' fabricated update counts and inert moderation buttons; records link to campaign detail.
+- Verification: admin/web TypeScript, targeted lint, admin build, diff checks passed. Mocked browser checked table rows, card switching, reload persistence, light/dark desktop layouts and narrow layouts. Category selection and seven icons checked in all four skins; inspected category and table screenshots.
+
+### 2026-09-08 — Help support card redesign
+
+- ✅ Replaced pale cards and white halos in the forest contact band with dark skin-aware surfaces, gold inset icon holders, readable descriptions, and clear contact links. Skin geometry, shadows and glass blur remain responsive to appearance settings; mobile cards stack.
+- Replaced conflicting response-time promises with practical contact guidance.
+- Verification: marketing TypeScript and targeted lint passed; browser checked all four skins at desktop/mobile widths without horizontal overflow. Inspected `/tmp/help-support-neumorphism.png`.
+
+### 2026-09-08 — Searchable KYC nationality
+
+- ✅ Replaced free-text nationality with a searchable country autocomplete, retaining a string in the existing API payload. Only listed selections are accepted; clearing/unmatched typing cannot advance the nationality step or submit. Popup surfaces follow the selected skin and existing input geometry.
+- Verification: web TypeScript and targeted lint passed. Browser checked Ghana search/selection, clearing, unmatched input blocking, and keyboard Canada selection. No KYC submission sent.
+
+### 2026-09-08 — Subtle help accordion borders
+
+- ✅ Replaced bright fixed FAQ outlines with low-opacity forest/sage borders for light/dark modes. Hover and expanded outlines stay subtle; selected skin surfaces remain intact.
+- Verification: marketing TypeScript and diff checks passed; browser checked FAQ border styling and expansion.
+
+### 2026-09-08 — Consistent 4 MB image limit
+
+- ✅ Reduced shared upload label and browser size validation from 10 MB to 4 MB. Profile/cover editors reuse the same exported limit for validation and messaging. Upload transport remains direct to Cloudinary.
+- Verification: web TypeScript, targeted lint, and diff checks passed.
+
+### 2026-09-08 — Responsive KYC steps and uploads
+
+- ✅ Replaced the overflowing mobile stepper with current-step text and a compact four-part indicator. Desktop retains labelled steps. Front/back uploads and paired address fields now stack below 600px, with shrinkable columns above that width and reduced mobile padding.
+- Verification: browser traversed all four steps at 320/390/768px with no horizontal overflow; upload positions confirmed vertical stacking on phones and side-by-side at tablet width. Inspected mobile screenshot. Web TypeScript, targeted lint, and diff checks passed. No documents uploaded or KYC submitted.
+
+### 2026-09-08 — Support card SVG watermarks
+
+- ✅ Added oversized, low-opacity gold email/chat/group SVG watermarks in support card corners, clipped within skin surfaces and excluded from interaction/accessibility. Inspected browser screenshot `/tmp/help-watermarks.png`; lint and diff checks passed.
+
+### 2026-09-08 — Personal and organisation image editing
+
+- ✅ Added personal profile cover display/default and visible Change cover / Change profile image controls using the shared editor. Images load independently of analytics, save through the authenticated profile endpoint, and render immediately. Broken covers fall back safely; avatars retain initials. Organisation owner controls already existed; clarified Change logo label.
+- Verification: web TypeScript and targeted lint passed. Mocked browser checked personal avatar/cover saves, reload display, restore default, and 390px overflow; checked organisation owner controls save avatar/cover fields and visitors cannot see editors. Shared editor retains 4 MB validation and upload/URL preview. No live account records changed.
+
+### 2026-09-08 — Default profile artwork
+
+- ✅ Added local SVG fallback artwork: personal portrait, organisation building, and linked-shape landscape cover. Applied to personal and organisation profiles and organisation directory logos. Uploaded images take priority; missing/failed avatar images render artwork via Avatar fallback, while failed covers expose the background art. Artwork inherits semantic skin colors and needs no external image request.
+- Verification: web TypeScript, targeted lint, diff checks passed; inspected mobile profile fallback screenshot with no horizontal overflow.

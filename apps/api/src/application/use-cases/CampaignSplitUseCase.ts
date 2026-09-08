@@ -1,3 +1,4 @@
+import type { PlanLimitsService } from '../services/PlanLimitsService.js';
 import { randomUUID } from 'node:crypto';
 import type {
   BeneficiaryConsentStatus,
@@ -35,8 +36,18 @@ export class CampaignSplitUseCase {
     private readonly campaignRepo: CampaignRepositoryPort,
     private readonly splitRepo: CampaignSplitRepositoryPort,
     private readonly beneficiaryBalanceRepo: CampaignBeneficiaryBalanceRepositoryPort,
-    private readonly accrualRepo: CampaignBeneficiaryAccrualRepositoryPort
+    private readonly accrualRepo: CampaignBeneficiaryAccrualRepositoryPort,
+    private readonly planLimits: PlanLimitsService,
+    private readonly splitEnabled: boolean
   ) {}
+
+  private async assertSplitPlan(campaignId: string): Promise<void> {
+    if (!this.splitEnabled) throw new AppError('Split proceeds are not enabled', 403);
+    const campaign = await this.campaignRepo.findById(campaignId);
+    if (!campaign) throw new AppError('Campaign not found', 404);
+    await this.planLimits.assertFeature(campaign.creatorId, 'campaignCollaboration', 'shared campaign proceeds');
+    await this.planLimits.assertFeature(campaign.creatorId, 'escrowSupport', 'split proceeds');
+  }
 
   /** Owner/admin: create a new (draft) split version for a campaign. */
   async createSplit(
@@ -45,6 +56,7 @@ export class CampaignSplitUseCase {
     requester: SplitRequester
   ): Promise<CampaignSplitVersion> {
     await this.assertOwnerOrAdmin(campaignId, requester);
+    await this.assertSplitPlan(campaignId);
 
     if (!input.allocations || input.allocations.length === 0) {
       throw new AppError('At least one allocation is required', 400);
@@ -153,6 +165,7 @@ export class CampaignSplitUseCase {
     requester: SplitRequester
   ): Promise<CampaignSplitVersion> {
     await this.assertOwnerOrAdmin(campaignId, requester);
+    await this.assertSplitPlan(campaignId);
     const target = await this.splitRepo.findByCampaignAndVersion(
       campaignId,
       version

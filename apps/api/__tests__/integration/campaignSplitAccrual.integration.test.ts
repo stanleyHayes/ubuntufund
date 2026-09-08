@@ -1,3 +1,4 @@
+import { SubscriptionModel } from '../../src/infrastructure/database/models/SubscriptionModel.js';
 import { createHmac, randomUUID } from 'node:crypto';
 
 // Split-proceeds accrual runs only with the flag on; the Paystack rail reads its
@@ -43,6 +44,7 @@ async function registerUser(app: Express, email: string) {
 
 async function createActiveCampaign(app: Express, token: string, userId: string) {
   await UserModel.findByIdAndUpdate(userId, { verificationLevel: 2 });
+  await SubscriptionModel.findOneAndUpdate({ userId }, { userId, tier: 'pro', status: 'active', billingCycle: 'monthly', currentPeriodStart: new Date(), currentPeriodEnd: new Date(Date.now() + 30 * 86400000) }, { upsert: true });
   const res = await request(app)
     .post('/api/v1/campaigns')
     .set('Authorization', `Bearer ${token}`)
@@ -160,12 +162,12 @@ describe('Split-proceeds accrual Integration (flag on, spec §17)', () => {
       .send({})
       .expect(200);
 
-    // A donation settles: net 965 (Free 3.5%) → 60/40 = 579 / 386.
+    // A donation settles: net 975 (Pro 2.5%) → 60/40 = 585 / 390.
     await fundCampaign(app, campaignId, 1000);
 
     // Campaign-level projection is unchanged (still tracks the full net).
     const campaignBalance = await CampaignBalanceModel.findOne({ campaignId });
-    expect(campaignBalance?.pendingBalance).toBe(965);
+    expect(campaignBalance?.pendingBalance).toBe(975);
 
     // Per-beneficiary buckets accrued exactly.
     const balancesRes = await request(app)
@@ -177,8 +179,8 @@ describe('Split-proceeds accrual Integration (flag on, spec §17)', () => {
         (b) => [b.beneficiaryId, b.pendingBalance]
       )
     );
-    expect(byId[ama.beneficiaryId]).toBe(579);
-    expect(byId[kofi.beneficiaryId]).toBe(386);
+    expect(byId[ama.beneficiaryId]).toBe(585);
+    expect(byId[kofi.beneficiaryId]).toBe(390);
 
     // The split locked on the first contribution.
     const disclosure = await request(app).get(`/api/v1/campaigns/${campaignId}/split`);
@@ -189,11 +191,11 @@ describe('Split-proceeds accrual Integration (flag on, spec §17)', () => {
       .get(`/api/v1/campaigns/${campaignId}/split/beneficiaries/${ama.beneficiaryId}/statement`)
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
-    expect(statement.body.data.balance.pendingBalance).toBe(579);
+    expect(statement.body.data.balance.pendingBalance).toBe(585);
     expect(statement.body.data.entries).toHaveLength(1);
     expect(statement.body.data.entries[0]).toMatchObject({
       kind: 'accrual',
-      amount: 579,
+      amount: 585,
       splitVersion: 1,
     });
   });
@@ -210,6 +212,6 @@ describe('Split-proceeds accrual Integration (flag on, spec §17)', () => {
     expect(balancesRes.body.data).toHaveLength(0);
     // Campaign-level projection still works normally.
     const campaignBalance = await CampaignBalanceModel.findOne({ campaignId });
-    expect(campaignBalance?.pendingBalance).toBe(965);
+    expect(campaignBalance?.pendingBalance).toBe(975);
   });
 });

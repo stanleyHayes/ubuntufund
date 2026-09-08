@@ -54,32 +54,32 @@
         {
           "category": "Donations",
           "question": "How do I make a donation?",
-          "answer": "Browse campaigns and choose Donate. During launch readiness, confirmed contributions use your Ujimora Wallet balance. External payment methods remain disabled until their provider integrations are verified."
+          "answer": "Browse campaigns and choose Donate. Choose your Ujimora Wallet or an available payment method at checkout. Methods depend on your country, currency, and provider availability. Review the total before confirming."
         },
         {
           "category": "Donations",
           "question": "Is there a minimum or maximum donation?",
-          "answer": "The amount must be positive and cannot exceed your available Ujimora Wallet balance. Campaign and account limits may also apply."
+          "answer": "The amount must be positive, and campaign and account limits may apply. When you pay from your Ujimora Wallet, it cannot exceed your available balance."
         },
         {
           "category": "Donations",
           "question": "Can I get a refund on my donation?",
-          "answer": "You can submit a refund request from your donation history. Requests are recorded for review, but approval and wallet settlement are not automatic and no processing time is guaranteed."
+          "answer": "You can submit a refund request from your donation history. Requests are recorded for review, but approval and settlement are not automatic and no processing time is guaranteed."
         },
         {
           "category": "Payments",
           "question": "What payment methods are accepted?",
-          "answer": "Ujimora Wallet is the only live payment method currently enabled. Mobile money, cards, and bank transfer remain disabled until their production payment adapters and compliance reviews are complete."
+          "answer": "Ujimora Wallet is always available. Mobile money and card payments are offered through our payment provider at checkout where enabled for your region; bank transfer availability depends on provider configuration."
         },
         {
           "category": "Payments",
           "question": "How do I withdraw my campaign funds?",
-          "answer": "Self-service campaign withdrawals are not currently available. Campaign organizers should contact support for the controlled disbursement process while production payout rails are being finalized."
+          "answer": "Request a payout from your dashboard once your campaign's funds are cleared and eligible. Standard payouts follow verification and compliance checks; optional priority, early, and assisted payouts are available with disclosed fees where enabled."
         },
         {
           "category": "Payments",
           "question": "What are the platform fees?",
-          "answer": "Current plan pricing and platform fees are shown on the pricing page. External payment-processing fees are not charged while those payment methods remain disabled."
+          "answer": "Platform fees depend on your plan — see the pricing page for current rates. Any applicable payment-processing or payout fees are shown before you confirm a transaction."
         },
         {
           "category": "Trust & safety",
@@ -104,7 +104,7 @@
         {
           "category": "Organizations",
           "question": "What features are available for organizations?",
-          "answer": "Organizations have a dedicated workspace, member collaboration, campaign management, updates, comments, donation history, and review status across web and mobile. Paid billing and external integrations are not available yet."
+          "answer": "Organizations have a dedicated workspace, member collaboration, campaign management, updates, comments, donation history, and review status across web and mobile. Paid organization plans are available — compare tiers and pricing on the pricing page."
         }
       ]
     }
@@ -133,7 +133,7 @@
         "body": "Ujima is a Swahili term — one of the seven Kwanzaa principles — meaning \"collective work and responsibility.\" It's the heartbeat of our platform: we build and sustain our community together. When one community thrives, we all thrive; when one person gives, the ripple touches countless lives."
       },
       "team": [
-        { "name": "Ujimora Team", "role": "Launch team", "initials": "UF", "bio": "Named leadership profiles will be published after owner verification and consent." }
+        { "name": "Stanley Asoku Hayford", "role": "Founder & Principal Engineer · NeuroDyne Corp", "initials": "SH", "bio": "Software engineer building digital products and infrastructure, with a focus on education, community development, and solving practical problems through technology.", "image": "/images/about/stanley.png", "website": "https://www.stanleyhayford.com/", "companyUrl": "https://www.neurodyne.dev/", "socials": [{ "label": "LinkedIn", "href": "https://www.linkedin.com/in/stanley-asoku-hayford/" }, { "label": "GitHub", "href": "https://github.com/stanleyHayes" }, { "label": "X", "href": "https://x.com/sa_hayford" }, { "label": "Instagram", "href": "https://instagram.com/hayford.stanley" }] }
       ]
     }
   },

@@ -64,8 +64,8 @@ function ContactSubmissionsPage() {
   const pagination = usePagination({ totalItems, pageSize: 20 })
 
   const getAuthHeaders = (): Record<string, string> => {
-    const token = localStorage.getItem('accessToken')
-      ?? (() => { try { return JSON.parse(localStorage.getItem('uf_tokens') ?? 'null')?.accessToken } catch { return null } })()
+    const token = localStorage.getItem('uf_admin_token')
+      ?? (() => { try { return JSON.parse(localStorage.getItem('uf_admin_tokens') ?? 'null')?.accessToken } catch { return null } })()
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
     if (token) headers['Authorization'] = `Bearer ${token}`
     return headers
@@ -75,7 +75,7 @@ function ContactSubmissionsPage() {
     setLoading(true)
     try {
       const headers = getAuthHeaders()
-      const params = new URLSearchParams({ page: String(pagination.currentPage), pageSize: '20' })
+      const params = new URLSearchParams({ page: String(pagination.currentPage), pageSize: String(pagination.pageSize) })
       if (statusFilter !== 'all') params.set('status', statusFilter)
       if (typeFilter !== 'all') params.set('inquiryType', typeFilter)
 
@@ -97,7 +97,7 @@ function ContactSubmissionsPage() {
     } finally {
       setLoading(false)
     }
-  }, [pagination.currentPage, statusFilter, typeFilter])
+  }, [pagination.currentPage, pagination.pageSize, statusFilter, typeFilter])
 
   useEffect(() => { fetchData() }, [fetchData])
 
@@ -159,7 +159,7 @@ function ContactSubmissionsPage() {
         />
         <TextField
           select size="small" value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
+          onChange={(e) => { setStatusFilter(e.target.value); pagination.goToPage(1) }}
           sx={{ width: 150, '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: 'rgba(255,255,255,0.03)' } }}
         >
           <MenuItem value="all">All Status</MenuItem>
@@ -170,7 +170,7 @@ function ContactSubmissionsPage() {
         </TextField>
         <TextField
           select size="small" value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value)}
+          onChange={(e) => { setTypeFilter(e.target.value); pagination.goToPage(1) }}
           sx={{ width: 160, '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: 'rgba(255,255,255,0.03)' } }}
         >
           <MenuItem value="all">All Types</MenuItem>
@@ -270,7 +270,7 @@ function ContactSubmissionsPage() {
         )}
       </Box>
 
-      {totalItems > 20 && (
+      {totalItems > 0 && (
         <Box sx={{ mt: 2 }}>
           <PaginationBar pagination={pagination} />
         </Box>

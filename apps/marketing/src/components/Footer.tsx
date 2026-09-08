@@ -48,6 +48,7 @@ const footerSections = [
     title: 'Platform',
     links: [
       { label: 'How It Works', to: '/#how-it-works', anchor: true, icon: <TimelineIcon sx={{ fontSize: 15 }} /> },
+      { label: 'Features', to: '/features', icon: <CategoryIcon sx={{ fontSize: 15 }} /> },
       { label: 'Campaign Types', to: '/#campaign-types', anchor: true, icon: <CategoryIcon sx={{ fontSize: 15 }} /> },
       { label: 'Pricing', to: '/pricing', icon: <DiamondIcon sx={{ fontSize: 15 }} /> },
       { label: 'For Organizations', to: '/for-organizations', icon: <BusinessIcon sx={{ fontSize: 15 }} /> },
@@ -329,7 +330,7 @@ function Footer() {
                 gap: 1,
                 bgcolor: 'rgba(255,255,255,0.04)',
                 border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: SHAPE.card,
+                borderRadius: SHAPE.input,
                 p: 0.5,
                 transition: 'border-color 0.2s ease',
                 '&:focus-within': { borderColor: 'rgba(199, 162, 74,0.3)' },

@@ -19,7 +19,7 @@ export { PaymentMethods } from './components/PaymentMethods'
 export type { PaymentMethodsProps, PaymentMethodData } from './components/PaymentMethods'
 export { BrandLogo } from './components/BrandLogo'
 export type { BrandLogoProps } from './components/BrandLogo'
-export { ImageUpload } from './components/ImageUpload'
+export { ImageUpload, MAX_IMAGE_UPLOAD_MB } from './components/ImageUpload'
 export type { ImageUploadProps } from './components/ImageUpload'
 
 export { BrandedDatePicker } from './components/BrandedDatePicker'

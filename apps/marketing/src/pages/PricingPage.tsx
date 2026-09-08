@@ -9,7 +9,6 @@ import Chip from '@mui/material/Chip'
 import Accordion from '@mui/material/Accordion'
 import AccordionSummary from '@mui/material/AccordionSummary'
 import AccordionDetails from '@mui/material/AccordionDetails'
-import Alert from '@mui/material/Alert'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import { SHAPE } from '@ubuntu-fund/ui'
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded'
@@ -28,13 +27,13 @@ const PLANS = Object.values(SUBSCRIPTION_PLANS)
   .filter((p) => p.isPublic && p.active)
   .sort((a, b) => a.sortOrder - b.sortOrder || a.priceMonthly - b.priceMonthly)
 
-/** Accent styling derived from a plan's own colour — no hardcoded per-tier map. */
-function accentOf(plan: SubscriptionPlan): { color: string; bg: string; gradient: string } {
-  const color = plan.accentColor
-  return { color, bg: `${color}14`, gradient: `linear-gradient(135deg, ${color}cc, ${color})` }
+// Use semantic colours so accents remain readable in every skin and mode.
+function accentOf() {
+  return { color: 'primary.main', bg: 'action.hover', gradient: 'linear-gradient(90deg, #C7A24A, #DCC07E)' }
 }
 
-const WEB_APP_REGISTER = '/register' // adjust to actual web app URL in production
+const WEB_APP_URL = import.meta.env.VITE_WEB_APP_URL || 'http://localhost:8200'
+const WEB_APP_REGISTER = `${WEB_APP_URL}/register`
 
 // ─── Comparison table data ───────────────────────────────────────────────────
 
@@ -101,31 +100,31 @@ function formatCellValue(value: unknown, format?: string): React.ReactNode {
 const faqs = [
   {
     question: 'When are platform fees charged?',
-    answer: 'The Free plan currently defines a platform fee in product configuration. Self-service external disbursement is not available during launch readiness.',
+    answer: 'Platform fees vary by plan. Review the applicable contribution and payout fees before confirming a transaction.',
   },
   {
     question: 'What payment methods are supported?',
-    answer: 'Ujimora Wallet is the only active launch method. External payment and payout providers remain disabled until their adapters and compliance checks are complete.',
+    answer: 'Use your Ujimora Wallet or choose from the payment methods available at checkout for your country and currency. Payout methods and eligibility depend on your account and provider availability.',
   },
   {
     question: 'Can I switch plans at any time?',
-    answer: 'Paid plan activation is disabled until a verified billing integration is available. Existing Free accounts can continue without entering payment details.',
+    answer: 'Manage your plan from the subscription page in your account. Review the new price, billing cycle, and applicable terms before confirming a change.',
   },
   {
     question: 'Is there a free trial?',
-    answer: 'The Free plan does not require a card. Paid trials are not offered while paid billing is unavailable.',
+    answer: 'You can start with the Community plan without a paid subscription. Check the current checkout for any trial or promotional offers.',
   },
   {
     question: 'How does yearly billing work?',
-    answer: 'Yearly prices are planning references only. Ujimora does not currently collect monthly or yearly subscription payments.',
+    answer: 'Yearly plans display an equivalent monthly price and the full annual total. The annual total is billed for the year.',
   },
   {
     question: 'What happens if I cancel my subscription?',
-    answer: 'There is no paid billing cycle to cancel during launch readiness. Account deletion is separate and uses soft deletion to preserve required operational records.',
+    answer: 'Check your subscription page for cancellation options and the effective date. Account deletion is a separate action.',
   },
   {
     question: 'Are there any hidden fees?',
-    answer: 'No external processing fees are charged while external methods are disabled. Any future fee schedule must be shown before a payment is confirmed.',
+    answer: 'Compare platform fees here and review any applicable processing or withdrawal fees in the relevant payment flow.',
   },
 ]
 
@@ -137,11 +136,11 @@ function PricingPage() {
       <InternalPageHero
         eyebrow="Plans and limits"
         title="Clear pricing without hidden promises"
-        description="Start with the available Free plan. Paid tiers remain previews until verified billing and entitlement flows are connected."
+        description="Start with a personal cause, grow your fundraising, or give your organisation room to do more."
         icon={<PaymentsRoundedIcon />}
-        panelLabel="Launch status"
-        panelTitle="No card required and no paid checkout active today."
-        panelBody="Any future fee is shown before payment confirmation."
+        panelLabel="Find your fit"
+        panelTitle="The right tools for every stage of your cause."
+        panelBody="Compare campaign limits, platform fees, and included tools before choosing a plan."
         primaryAction={{ label: 'Create a free account', href: WEB_APP_REGISTER }}
       />
       <Container maxWidth="lg">
@@ -151,15 +150,11 @@ function PricingPage() {
             Simple, Transparent Pricing
           </Typography>
           <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 400, maxWidth: 600, mx: 'auto', mb: 4 }}>
-            Start with the Free plan. Paid plan checkout remains unavailable until verified billing is connected.
+            Choose the campaign capacity and support you need. Review your billing total before confirming checkout.
           </Typography>
 
-          <Alert severity="info" sx={{ maxWidth: 760, mx: 'auto', mb: 4, textAlign: 'left' }}>
-            Paid tiers and prices are previews only. No paid entitlement can be activated and no subscription payment is collected today.
-          </Alert>
-
           {/* Monthly/Yearly toggle */}
-          <Box sx={{ display: 'inline-flex', borderRadius: SHAPE.sm, border: '1px solid rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+          <Box sx={{ display: 'inline-flex', borderRadius: SHAPE.sm, border: '1px solid', borderColor: 'divider', overflow: 'hidden' }}>
             {(['monthly', 'yearly'] as const).map((cycle) => {
               const isActive = (cycle === 'yearly') === yearly
               return (
@@ -167,11 +162,12 @@ function PricingPage() {
                   key={cycle}
                   component="button"
                   onClick={() => setYearly(cycle === 'yearly')}
+                  aria-pressed={isActive}
                   sx={{
                     px: 3.5, py: 1.2,
                     border: 'none',
-                    bgcolor: isActive ? '#1a1a1a' : 'transparent',
-                    color: isActive ? '#fff' : 'text.secondary',
+                    bgcolor: isActive ? 'primary.main' : 'transparent',
+                    color: isActive ? 'primary.contrastText' : 'text.secondary',
                     fontWeight: 700,
                     fontSize: '0.88rem',
                     cursor: 'pointer',
@@ -180,63 +176,45 @@ function PricingPage() {
                   }}
                 >
                   {cycle === 'monthly' ? 'Monthly' : 'Yearly'}
-                  {cycle === 'yearly' && (
-                    <Box component="span" sx={{ ml: 1, color: isActive ? '#A8B5A0' : '#2E3D2F', fontSize: '0.72rem', fontWeight: 800 }}>
-                      Price preview
-                    </Box>
-                  )}
+
                 </Box>
               )
             })}
           </Box>
         </Box>
 
-        {/* Plan cards */}
-        <Box
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: `repeat(${PLANS.length}, minmax(0, 1fr))` },
-            gap: 3,
-            mb: 10,
-          }}
-        >
-          {PLANS.map((plan) => {
+        {/* Same audience grouping as the account subscription page. */}
+        {[
+          { title: 'For personal causes & growing fundraisers', description: 'Start small or build momentum with more campaigns and tools.', plans: PLANS.filter(plan => plan.tier !== SubscriptionTier.ORGANIZATION && plan.tier !== SubscriptionTier.ENTERPRISE) },
+          { title: 'For organisations & larger teams', description: 'Support ongoing programmes and more complex fundraising needs.', plans: PLANS.filter(plan => plan.tier === SubscriptionTier.ORGANIZATION || plan.tier === SubscriptionTier.ENTERPRISE) },
+        ].filter(group => group.plans.length).map((group, groupIndex) => (
+          <Box component="section" key={group.title} sx={{ mb: 7 }}>
+            <Typography component="h2" variant="h5" sx={{ mb: 1 }}>{group.title}</Typography>
+            <Typography color="text.secondary" sx={{ mb: 3 }}>{group.description}</Typography>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0,1fr)', sm: 'repeat(2,minmax(0,1fr))', md: `repeat(${Math.min(group.plans.length, groupIndex === 0 ? 3 : 2)},minmax(0,1fr))` }, gap: 3 }}>
+          {group.plans.map((plan) => {
             const tier = plan.tier
             const isPro = plan.popular === true
             const isEnterprise = tier === SubscriptionTier.ENTERPRISE
             const price = yearly ? plan.priceYearly : plan.priceMonthly
-            const tc = accentOf(plan)
+            const tc = accentOf()
 
             return (
               <Card
                 key={tier}
                 elevation={0}
                 sx={{
-                  border: isPro ? `2px solid ${tc.color}` : '1px solid rgba(0,0,0,0.08)',
+                  border: 'var(--neu-border)',
+                  outline: isPro ? '2px solid' : undefined, outlineColor: 'secondary.main', minWidth: 0,
                   borderRadius: SHAPE.card,
                   position: 'relative',
                   display: 'flex',
                   flexDirection: 'column',
                 }}
               >
-                {isPro && (
-                  <Box sx={{ position: 'absolute', top: -1, left: 0, right: 0, height: 3, background: tc.gradient }} />
-                )}
-                {isPro && (
-                  <Chip
-                    label="Most Popular"
-                    size="small"
-                    sx={{
-                      position: 'absolute',
-                      top: 12,
-                      right: 12,
-                      fontWeight: 700,
-                      fontSize: '0.68rem',
-                      bgcolor: 'rgba(46, 61, 47,0.08)',
-                      color: 'primary.main',
-                    }}
-                  />
-                )}
+                <Box sx={{ px: 3, py: 1.5, borderBottom: '1px solid', borderColor: 'divider', bgcolor: isPro ? 'action.hover' : 'transparent' }}>
+                  <Chip size="small" label={isPro ? 'Recommended for growth' : tier === SubscriptionTier.ORGANIZATION ? 'Best fit for organisations' : isEnterprise ? 'For complex needs' : plan.priceMonthly === 0 ? 'Start here' : 'For a growing cause'} sx={{ color: 'text.primary', fontWeight: 700, maxWidth: '100%' }} />
+                </Box>
                 <CardContent sx={{ p: 3.5, flex: 1, display: 'flex', flexDirection: 'column' }}>
                   <Typography sx={{ fontWeight: 800, fontSize: '1.15rem', mb: 0.25 }}>
                     {plan.name}
@@ -251,8 +229,8 @@ function PricingPage() {
                       <Typography sx={{ fontWeight: 800, fontSize: '1.4rem' }}>Custom</Typography>
                     ) : (
                       <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
-                        <Typography sx={{ fontWeight: 900, fontSize: '2.2rem', lineHeight: 1 }}>
-                          GH₵ {yearly ? Math.round(price / 12) : price}
+                        <Typography sx={{ fontWeight: 900, fontSize: { xs: '1.85rem', md: '2.2rem' }, lineHeight: 1.2, whiteSpace: 'nowrap' }}>
+                          GH₵ {new Intl.NumberFormat('en-GH', { maximumFractionDigits: 2 }).format(yearly ? price / 12 : price)}
                         </Typography>
                         <Typography sx={{ color: 'text.secondary', fontSize: '0.82rem' }}>/mo</Typography>
                       </Box>
@@ -294,13 +272,13 @@ function PricingPage() {
                     variant={isPro ? 'contained' : 'outlined'}
                     fullWidth
                     size="large"
-                    href={isEnterprise ? '/contact' : WEB_APP_REGISTER}
+                    href={isEnterprise ? '/contact' : price === 0 ? WEB_APP_REGISTER : `${WEB_APP_URL}/subscription`}
                     sx={{
                       borderRadius: SHAPE.sm,
                       fontWeight: 700,
                       textTransform: 'none',
                       py: 1.2,
-                      ...(isPro && { bgcolor: tc.color, '&:hover': { bgcolor: '#1C261D' } }),
+                      ...(isPro && { bgcolor: 'secondary.main', color: 'secondary.contrastText', '&:hover': { bgcolor: 'secondary.light' } }),
                     }}
                   >
                     {price === 0 ? 'Get Started Free' : isEnterprise ? 'Contact sales' : `Choose ${plan.name}`}
@@ -309,7 +287,9 @@ function PricingPage() {
               </Card>
             )
           })}
-        </Box>
+            </Box>
+          </Box>
+        ))}
 
         {/* Feature comparison table */}
         <Box sx={{ mb: 10 }}>
@@ -317,7 +297,7 @@ function PricingPage() {
             Detailed Comparison
           </Typography>
 
-          <Box sx={{ borderRadius: SHAPE.card, boxShadow: 'var(--neu-raised)', overflow: 'hidden' }}>
+          <Box role="region" aria-label="Plan comparison" tabIndex={0} sx={{ borderRadius: SHAPE.card, boxShadow: 'var(--neu-raised)', overflowX: 'auto', '& > div': { minWidth: 800 } }}>
             {/* Header */}
             <Box
               sx={{
@@ -332,7 +312,7 @@ function PricingPage() {
               </Box>
               {PLANS.map((plan) => {
                 const isPro = plan.popular === true
-                const tc = accentOf(plan)
+                const tc = accentOf()
                 return (
                   <Box
                     key={plan.tier}
@@ -405,7 +385,7 @@ function PricingPage() {
                     </Box>
                     {PLANS.map((plan) => {
                       const isPro = plan.popular === true
-                      const tc = accentOf(plan)
+                      const tc = accentOf()
                       return (
                         <Box
                           key={plan.tier}

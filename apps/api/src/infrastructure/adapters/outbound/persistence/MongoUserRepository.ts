@@ -14,6 +14,7 @@ function toDomain(doc: UserDocument): UserEntity {
     name: doc.name,
     passwordHash: doc.passwordHash,
     avatarUrl: doc.avatarUrl,
+    coverUrl: doc.coverUrl,
     role: doc.role,
     verificationLevel: doc.verificationLevel,
     trustScore: new TrustScore(doc.trustScore),
@@ -37,6 +38,7 @@ export class MongoUserRepository implements UserRepositoryPort {
       name: plain.name,
       passwordHash: plain.passwordHash,
       avatarUrl: plain.avatarUrl,
+      coverUrl: plain.coverUrl,
       role: plain.role,
       verificationLevel: plain.verificationLevel,
       trustScore: plain.trustScore.value,
@@ -68,6 +70,7 @@ export class MongoUserRepository implements UserRepositoryPort {
     const $set: Record<string, unknown> = {
       name: plain.name,
       avatarUrl: plain.avatarUrl,
+      coverUrl: plain.coverUrl,
       role: plain.role,
       verificationLevel: plain.verificationLevel,
       trustScore: plain.trustScore.value,

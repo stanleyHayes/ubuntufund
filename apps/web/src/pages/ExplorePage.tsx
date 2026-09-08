@@ -1,11 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
-import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
-import MenuItem from '@mui/material/MenuItem'
-import InputAdornment from '@mui/material/InputAdornment'
 import { keyframes } from '@emotion/react'
-import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import LocalHospitalRoundedIcon from '@mui/icons-material/LocalHospitalRounded'
 import SchoolRoundedIcon from '@mui/icons-material/SchoolRounded'
@@ -17,6 +13,7 @@ import PaletteRoundedIcon from '@mui/icons-material/PaletteRounded'
 import { CampaignCategory, CampaignStatus } from '@ubuntu-fund/types'
 import type { Campaign } from '@ubuntu-fund/types'
 import { EmptyState } from '@ubuntu-fund/ui'
+import { CampaignSearchBar, type CampaignSort } from '@/components/campaigns/CampaignSearchBar'
 import { CampaignCard } from '@/components/campaigns/CampaignCard'
 import { PageBanner } from '@/components/layout/PageBanner'
 import { useCampaigns } from '@/hooks/useCampaigns'
@@ -52,8 +49,6 @@ const STATUS_LABELS: Record<string, string> = {
   [CampaignStatus.PENDING_REVIEW]: 'Pending Review',
   [CampaignStatus.EXPIRED]: 'Expired',
 }
-
-type SortOption = 'most_funded' | 'newest'
 
 const PER_PAGE = 6
 
@@ -103,7 +98,7 @@ export function ExplorePage() {
   const [search, setSearch] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<CampaignCategory | null>(null)
   const [selectedStatus, setSelectedStatus] = useState<CampaignStatus | null>(null)
-  const [sort, setSort] = useState<SortOption>('most_funded')
+  const [sort, setSort] = useState<CampaignSort>('most_funded')
   const [page, setPage] = useState(0)
 
   // Reset page on filter change
@@ -118,7 +113,7 @@ export function ExplorePage() {
     // of throwing "campaigns.filter is not a function".
     let result: Campaign[] = Array.isArray(campaigns) ? [...campaigns] : []
     if (search.trim()) {
-      const q = search.toLowerCase()
+      const q = search.trim().toLowerCase()
       result = result.filter((c) => c.title.toLowerCase().includes(q))
     }
     if (selectedCategory) result = result.filter((c) => c.category === selectedCategory)
@@ -144,67 +139,7 @@ export function ExplorePage() {
 
       {/* ═══ FILTERS ═══ */}
       <Box sx={{ maxWidth: 1200, mx: 'auto', px: { xs: 2, md: 3 }, py: 3 }}>
-        <Box
-          sx={{
-            display: 'flex',
-            gap: 2,
-            mb: 2,
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            animation: `${fadeIn} 0.4s 0.2s ease both`,
-          }}
-        >
-          {/* Search */}
-          <TextField
-            placeholder="Search campaigns..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            size="small"
-            variant="outlined"
-            sx={{
-              flex: 1,
-              minWidth: 220,
-              '& .MuiOutlinedInput-root': {
-                borderRadius: 0,
-                bgcolor: 'background.paper',
-                '& fieldset': { borderColor: 'rgba(0,0,0,0.08)' },
-                '&:hover fieldset': { borderColor: 'rgba(46, 61, 47,0.3)' },
-                '&.Mui-focused fieldset': { borderColor: '#2E3D2F', borderWidth: '1.5px' },
-              },
-            }}
-            slotProps={{
-              input: {
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchRoundedIcon sx={{ color: 'var(--text-secondary)', fontSize: 20 }} />
-                  </InputAdornment>
-                ),
-              },
-            }}
-          />
-
-          {/* Sort */}
-          <TextField
-            select
-            value={sort}
-            onChange={(e) => setSort(e.target.value as SortOption)}
-            size="small"
-            label="Sort by"
-            sx={{
-              minWidth: 160,
-              '& .MuiOutlinedInput-root': {
-                borderRadius: 0,
-                bgcolor: 'background.paper',
-                '& fieldset': { borderColor: 'rgba(0,0,0,0.08)' },
-                '&.Mui-focused fieldset': { borderColor: '#2E3D2F' },
-              },
-              '& .MuiInputLabel-root': { fontSize: '0.82rem' },
-            }}
-          >
-            <MenuItem value="most_funded">Most Funded %</MenuItem>
-            <MenuItem value="newest">Newest</MenuItem>
-          </TextField>
-        </Box>
+        <CampaignSearchBar search={search} onSearch={setSearch} sort={sort} onSort={setSort} />
 
         {/* Category tags */}
         <Box sx={{ mb: 3, overflow: 'visible', animation: `${fadeIn} 0.4s 0.3s ease both` }}>

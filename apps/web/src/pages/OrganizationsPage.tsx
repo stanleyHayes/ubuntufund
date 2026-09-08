@@ -1,3 +1,4 @@
+import { ProfileArtwork } from '@/components/profile/ProfileArtwork'
 import { useState, useEffect } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import { PageBanner } from '@/components/layout/PageBanner'
@@ -154,7 +155,7 @@ export function OrganizationsPage() {
                     fontSize: '1.2rem',
                   }}
                 >
-                  {org.name.charAt(0)}
+                  <ProfileArtwork variant="organization" />
                 </Avatar>
 
                 {/* Name + verified */}

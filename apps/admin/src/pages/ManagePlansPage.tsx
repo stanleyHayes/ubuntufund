@@ -1,3 +1,5 @@
+import { usePagination } from '@/hooks/usePagination'
+import PaginationBar from '@/components/PaginationBar'
 import { useEffect, useMemo, useState } from 'react'
 import Box from '@mui/material/Box'
 import Card from '@mui/material/Card'
@@ -99,6 +101,7 @@ export default function ManagePlansPage() {
     () => [...plans].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.priceMonthly - b.priceMonthly),
     [plans],
   )
+  const pagination = usePagination(ordered, 12)
   const paidCount = useMemo(() => plans.filter((plan) => plan.priceMonthly > 0).length, [plans])
 
   function openEdit(plan: SubscriptionPlan) {
@@ -230,7 +233,7 @@ export default function ManagePlansPage() {
         )
       ) : (
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', xl: 'repeat(4, minmax(0, 1fr))' }, gap: 2.5 }}>
-          {ordered.map((plan) => {
+          {pagination.page.map((plan) => {
             const features = FEATURE_TOGGLES.filter((toggle) => plan[toggle.key]).map((toggle) => toggle.label)
             return (
               <Card key={plan.tier} sx={{ ...raisedSurface, height: '100%' }}>
@@ -285,6 +288,7 @@ export default function ManagePlansPage() {
       )}
 
       {/* Edit dialog */}
+      {!isLoading && <PaginationBar neumorphic pagination={pagination} />}
       <Dialog open={editing !== null} onClose={closeEdit} maxWidth="sm" fullWidth>
         {form && (
           <>

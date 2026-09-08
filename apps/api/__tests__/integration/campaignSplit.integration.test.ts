@@ -1,3 +1,5 @@
+process.env.SPLIT_PROCEEDS_ENABLED = 'true';
+import { SubscriptionModel } from '../../src/infrastructure/database/models/SubscriptionModel.js';
 import { randomUUID } from 'node:crypto';
 import { describe, it, beforeAll, afterAll, expect } from 'vitest';
 import request from 'supertest';
@@ -28,6 +30,7 @@ async function registerUser(app: Express, email: string) {
 
 async function createCampaign(app: Express, token: string, userId: string) {
   await UserModel.findByIdAndUpdate(userId, { verificationLevel: 2 });
+  await SubscriptionModel.findOneAndUpdate({ userId }, { userId, tier: 'pro', status: 'active', billingCycle: 'monthly', currentPeriodStart: new Date(), currentPeriodEnd: new Date(Date.now() + 30 * 86400000) }, { upsert: true });
   const res = await request(app)
     .post('/api/v1/campaigns')
     .set('Authorization', `Bearer ${token}`)

@@ -76,8 +76,8 @@ function TestimonialsPage() {
   const pagination = usePagination({ totalItems, pageSize: 20 })
 
   const getAuthHeaders = (): Record<string, string> => {
-    const token = localStorage.getItem('accessToken')
-      ?? (() => { try { return JSON.parse(localStorage.getItem('uf_tokens') ?? 'null')?.accessToken } catch { return null } })()
+    const token = localStorage.getItem('uf_admin_token')
+      ?? (() => { try { return JSON.parse(localStorage.getItem('uf_admin_tokens') ?? 'null')?.accessToken } catch { return null } })()
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
     if (token) headers['Authorization'] = `Bearer ${token}`
     return headers
@@ -87,7 +87,7 @@ function TestimonialsPage() {
     setLoading(true)
     try {
       const headers = getAuthHeaders()
-      const params = new URLSearchParams({ page: String(pagination.currentPage), pageSize: '20' })
+      const params = new URLSearchParams({ page: String(pagination.currentPage), pageSize: String(pagination.pageSize) })
       if (statusFilter !== 'all') params.set('status', statusFilter)
 
       const [listRes, statsRes] = await Promise.all([
@@ -108,7 +108,7 @@ function TestimonialsPage() {
     } finally {
       setLoading(false)
     }
-  }, [pagination.currentPage, statusFilter])
+  }, [pagination.currentPage, pagination.pageSize, statusFilter])
 
   useEffect(() => { fetchData() }, [fetchData])
 
@@ -220,7 +220,7 @@ function TestimonialsPage() {
         />
         <TextField
           select size="small" value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
+          onChange={(e) => { setStatusFilter(e.target.value); pagination.goToPage(1) }}
           sx={{ width: 150, '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: 'rgba(255,255,255,0.03)' } }}
         >
           <MenuItem value="all">All Status</MenuItem>
@@ -319,7 +319,7 @@ function TestimonialsPage() {
         )}
       </Box>
 
-      {totalItems > 20 && (
+      {totalItems > 0 && (
         <Box sx={{ mt: 2 }}>
           <PaginationBar pagination={pagination} accentColor={ACCENT} />
         </Box>

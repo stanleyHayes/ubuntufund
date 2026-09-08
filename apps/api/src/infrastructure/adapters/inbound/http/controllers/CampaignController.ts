@@ -7,14 +7,44 @@ import type { GetCampaignBySlugUseCase } from '../../../../../application/use-ca
 import type { SetCampaignSlugUseCase } from '../../../../../application/use-cases/SetCampaignSlugUseCase.js';
 import { AppError } from '../../middleware/errorHandler.js';
 
+import type { PlanLimitsService } from '../../../../../application/services/PlanLimitsService.js';
+import type { UserRepositoryPort } from '../../../../../domain/ports/outbound/UserRepositoryPort.js';
+import type { CampaignRepositoryPort } from '../../../../../domain/ports/outbound/CampaignRepositoryPort.js';
+
 export class CampaignController {
   constructor(
     private readonly createCampaignUseCase: CreateCampaignUseCase,
     private readonly getCampaignUseCase: GetCampaignUseCase,
     private readonly donateToCampaignUseCase: DonateToCampaignUseCase,
     private readonly getCampaignBySlugUseCase: GetCampaignBySlugUseCase,
-    private readonly setCampaignSlugUseCase: SetCampaignSlugUseCase
+    private readonly setCampaignSlugUseCase: SetCampaignSlugUseCase,
+    private readonly planLimits: PlanLimitsService,
+    private readonly userRepo: UserRepositoryPort,
+    private readonly campaignRepo: CampaignRepositoryPort,
+    private readonly splitEnabled: boolean
   ) {}
+
+  creationOptions = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const userId = req.userId!;
+      const [plan, user, activeCount, totalCount] = await Promise.all([
+        this.planLimits.resolvePlan(userId), this.userRepo.findById(userId),
+        this.campaignRepo.countActiveByCreator(userId), this.campaignRepo.countByCreatorId(userId),
+      ]);
+      if (!user) throw new AppError('User not found', 404);
+      const creationBlockReason = !user.canCreateCampaign(totalCount)
+        ? (user.getCampaignLimit() === 0 ? 'verification_required' : 'verification_limit')
+        : plan.maxActiveCampaigns >= 0 && activeCount >= plan.maxActiveCampaigns
+          ? 'plan_limit' : null;
+      res.json({ data: {
+        plan, maxGoal: this.planLimits.effectiveGoalCap(plan.maxCampaignGoal, user.complianceApprovedCampaignLimit) ?? null,
+        activeCount, totalCount, verificationCampaignLimit: user.getCampaignLimit(),
+        canCreate: creationBlockReason === null, creationBlockReason,
+        canSplit: this.splitEnabled && plan.campaignCollaboration && plan.escrowSupport,
+        splitEnabled: this.splitEnabled,
+      } });
+    } catch (error) { next(error); }
+  };
 
   create = async (
     req: AuthenticatedRequest,

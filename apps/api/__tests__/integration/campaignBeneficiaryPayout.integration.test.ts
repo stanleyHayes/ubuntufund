@@ -1,3 +1,4 @@
+import { SubscriptionModel } from '../../src/infrastructure/database/models/SubscriptionModel.js';
 import { createHmac, randomUUID } from 'node:crypto';
 
 const PAYSTACK_SECRET = 'sk_test_beneficiary_payout_secret';
@@ -48,6 +49,7 @@ async function createAdmin(app: Express, email: string) {
 }
 async function createActiveCampaign(app: Express, token: string, userId: string) {
   await UserModel.findByIdAndUpdate(userId, { verificationLevel: 2 });
+  await SubscriptionModel.findOneAndUpdate({ userId }, { userId, tier: 'pro', status: 'active', billingCycle: 'monthly', currentPeriodStart: new Date(), currentPeriodEnd: new Date(Date.now() + 30 * 86400000) }, { upsert: true });
   const res = await request(app)
     .post('/api/v1/campaigns')
     .set('Authorization', `Bearer ${token}`)
@@ -164,7 +166,7 @@ describe('Beneficiary payout Integration (flag on, spec §17)', () => {
       .send({})
       .expect(200);
 
-    // Fund → Ama accrues 579, Kofi 386.
+    // Fund → Ama accrues 585, Kofi 390.
     await fundCampaign(app, campaignId, 1000);
 
     // Owner registers Ama's payout recipient; admin verifies KYC.
@@ -183,7 +185,7 @@ describe('Beneficiary payout Integration (flag on, spec §17)', () => {
     const reqRes = await request(app)
       .post(`/api/v1/campaigns/${campaignId}/split/beneficiaries/${ama.beneficiaryId}/payouts`)
       .set('Authorization', `Bearer ${owner.token}`)
-      .send({ amount: 579 });
+      .send({ amount: 585 });
     expect(reqRes.status).toBe(201);
     expect(reqRes.body.data.status).toBe('PENDING');
     const payoutId = reqRes.body.data.id as string;
@@ -206,14 +208,14 @@ describe('Beneficiary payout Integration (flag on, spec §17)', () => {
       .get(`/api/v1/campaigns/${campaignId}/split/beneficiaries/${ama.beneficiaryId}/statement`)
       .set('Authorization', `Bearer ${owner.token}`)
       .expect(200);
-    expect(statement.body.data.balance.paidOutBalance).toBe(579);
+    expect(statement.body.data.balance.paidOutBalance).toBe(585);
     expect(statement.body.data.balance.pendingBalance).toBe(0);
     expect(statement.body.data.balance.availableBalance).toBe(0);
 
-    // Campaign aggregate mirrored: 579 paid out, Kofi's 386 still pending.
+    // Campaign aggregate mirrored: 585 paid out, Kofi's 390 still pending.
     const campaignBalance = await CampaignBalanceModel.findOne({ campaignId });
-    expect(campaignBalance?.paidOutBalance).toBe(579);
-    expect(campaignBalance?.pendingBalance).toBe(386);
+    expect(campaignBalance?.paidOutBalance).toBe(585);
+    expect(campaignBalance?.pendingBalance).toBe(390);
     expect(campaignBalance?.availableBalance).toBe(0);
   });
 
@@ -248,7 +250,7 @@ describe('Beneficiary payout Integration (flag on, spec §17)', () => {
     const reqRes = await request(app)
       .post(`/api/v1/campaigns/${campaignId}/split/beneficiaries/${ama.beneficiaryId}/payouts`)
       .set('Authorization', `Bearer ${owner.token}`)
-      .send({ amount: 579 })
+      .send({ amount: 585 })
       .expect(201);
 
     // Admin operability: the pending payout appears in the global list + queue.

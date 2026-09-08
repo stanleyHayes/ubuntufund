@@ -21,6 +21,7 @@ function toDomain(doc: OrganizationUserDocument): OrganizationRecord {
     name: doc.organizationName ?? doc.name,
     email: doc.email,
     avatarUrl: doc.avatarUrl,
+    coverUrl: doc.coverUrl,
     country: doc.country,
     role: doc.role,
     verificationLevel: doc.verificationLevel,

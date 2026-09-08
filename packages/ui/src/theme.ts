@@ -33,6 +33,8 @@ declare module '@mui/material/styles' {
 //   pill  — circular elements keep their natural shape (avatars, dots)
 // ---------------------------------------------------------------------------
 export const SHAPE = {
+  /** Form controls stay gently squared across every skin. */
+  input: 'var(--shape-input, 6px)',
   /** Cards, chart panels, modals, list containers */
   card: 'var(--shape-card, 4px 16px 4px 16px)',
   /** Chips, badges, icon boxes, small interactive surfaces */
@@ -170,6 +172,7 @@ export function getSkinVars(skin: ThemeSkin, dark: boolean): Record<string, stri
   const rounded = skin !== 'neumorphism'
   return {
     ...surface,
+    '--shape-input': '6px',
     '--shape-card': rounded ? surface['--neu-radius'] : '4px 16px 4px 16px',
     '--shape-sm': rounded ? (skin === 'claymorphism' ? '16px' : '10px') : '3px 10px 3px 10px',
     '--shape-bar': rounded ? '999px' : '1px 6px 1px 6px',
@@ -508,10 +511,12 @@ export function createUjimoraTheme(mode: PaletteMode = 'light', skin: ThemeSkin 
       },
     },
     MuiPaper: { styleOverrides: { root: { backgroundImage: 'none', backgroundColor: 'var(--neu-surface)', borderRadius: SHAPE.card, border: 'var(--neu-border)', backdropFilter: 'var(--neu-backdrop)', WebkitBackdropFilter: 'var(--neu-backdrop)' }, elevation: { boxShadow: 'var(--neu-raised)' } } },
+    MuiFilledInput: { styleOverrides: { root: { borderRadius: `${SHAPE.input} !important` } } },
     MuiOutlinedInput: {
       styleOverrides: {
         root: {
-          borderRadius: SHAPE.sm,
+          // Keep field shape consistent despite older page-level radius overrides.
+          borderRadius: `${SHAPE.input} !important`,
           backgroundColor: 'var(--neu-surface)',
           boxShadow: 'var(--neu-inset)',
           '& .MuiOutlinedInput-notchedOutline': { border: 'var(--neu-border, 0px solid transparent) !important' },

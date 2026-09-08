@@ -29,13 +29,14 @@ export class PlanService {
    * A read failure is logged and swallowed, returning the default so callers
    * (limit enforcement, checkout pricing) keep working.
    */
-  async getPlan(tier: string): Promise<SubscriptionPlan> {
+  async getPlan(tier: string, strict = false): Promise<SubscriptionPlan> {
     try {
       const plan = await this.planRepo.findByTier(tier);
       // DB row → seed for that tier → the free seed (safe floor for an unknown
       // or since-deleted tier, so limit enforcement never crashes).
       return plan ?? SEEDS[tier] ?? SEEDS[SubscriptionTier.FREE];
     } catch (error) {
+      if (strict) throw error;
       logger.error({ err: error, tier }, 'plan lookup failed; using default');
       return SEEDS[tier] ?? SEEDS[SubscriptionTier.FREE];
     }

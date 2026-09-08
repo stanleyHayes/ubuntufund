@@ -435,24 +435,29 @@ export function SubscriptionPage() {
         </CardContent>
       </Card>
 
+      <Box data-plan-selection>
       {/* ═══════════ PLAN CARDS ═══════════ */}
       <Box sx={{ textAlign: 'center', mb: 4, animation: `${fadeInUp} 0.4s 0.15s ease both` }}>
         <Typography variant="h5" sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 800, mb: 1.5 }}>
-          Choose Your Plan
+          Find the right fit for your next campaign
         </Typography>
 
+        <Typography sx={{ color: 'text.secondary', mb: 2.5, maxWidth: 580, mx: 'auto', lineHeight: 1.6 }}>
+          Start with a personal cause, grow your fundraising, or give your organization room to do more.
+        </Typography>
         {/* Billing toggle */}
-        <Box sx={{ display: 'inline-flex', borderRadius: SHAPE.sm, border: '1px solid rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+        <Box sx={{ display: 'inline-flex', borderRadius: SHAPE.sm, border: 'var(--neu-border)', boxShadow: 'var(--neu-inset)', bgcolor: 'var(--neu-surface)', overflow: 'hidden' }}>
           {(['monthly', 'yearly'] as const).map((cycle) => (
             <Box
               key={cycle}
               component="button"
+              aria-pressed={billingToggle === cycle}
               onClick={() => setBillingToggle(cycle)}
               sx={{
                 px: 3, py: 1,
                 border: 'none',
-                bgcolor: billingToggle === cycle ? '#1a1a1a' : 'transparent',
-                color: billingToggle === cycle ? '#fff' : 'text.secondary',
+                bgcolor: billingToggle === cycle ? 'primary.main' : 'transparent',
+                color: billingToggle === cycle ? 'primary.contrastText' : 'text.secondary',
                 fontWeight: 700,
                 fontSize: '0.82rem',
                 fontFamily: '"Outfit", sans-serif',
@@ -461,28 +466,24 @@ export function SubscriptionPage() {
               }}
             >
               {cycle === 'monthly' ? 'Monthly' : 'Yearly'}
-              {cycle === 'yearly' && (
-                <Box component="span" sx={{ ml: 1, color: billingToggle === 'yearly' ? '#2F6B46' : 'var(--text-brand)', fontSize: '0.72rem', fontWeight: 800 }}>
-                  Save 17%
-                </Box>
-              )}
+
             </Box>
           ))}
         </Box>
       </Box>
 
-      <Box
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: `repeat(${orderedPlans.length}, minmax(0, 1fr))` },
-          gap: 2.5,
-          mb: 8,
-        }}
-      >
-        {orderedPlans.map((plan, idx) => {
+      {[
+        { title: 'For personal causes & growing fundraisers', description: 'Choose the campaign capacity and support you need.', plans: orderedPlans.filter((plan) => plan.tier !== SubscriptionTier.ORGANIZATION && plan.tier !== SubscriptionTier.ENTERPRISE) },
+        { title: 'For organizations & larger teams', description: 'More room for ongoing programs and larger fundraising needs.', plans: orderedPlans.filter((plan) => plan.tier === SubscriptionTier.ORGANIZATION || plan.tier === SubscriptionTier.ENTERPRISE).sort((a, b) => a.tier === SubscriptionTier.ENTERPRISE ? 1 : b.tier === SubscriptionTier.ENTERPRISE ? -1 : 0) },
+      ].filter((group) => group.plans.length).map((group, groupIndex) => <Box key={group.title} sx={{ mb: 5 }}>
+        <Typography component="h2" sx={{ fontSize: '1.1rem', fontWeight: 700, mb: 0.5 }}>{group.title}</Typography>
+        <Typography sx={{ color: 'text.secondary', fontSize: '0.85rem', mb: 2.5 }}>{group.description}</Typography>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))', md: `repeat(${Math.min(group.plans.length, groupIndex === 0 ? 3 : 2)}, minmax(0, 1fr))` }, gap: 3, alignItems: 'stretch' }}>
+        {group.plans.map((plan) => {
           const tier = plan.tier
           const isCurrent = tier === currentSub.tier
-          const isPro = plan.popular === true
+          const isPro = tier === SubscriptionTier.PRO || plan.popular === true
+          const fitLabel = isPro ? 'Recommended for growth' : tier === SubscriptionTier.ORGANIZATION ? 'Best fit for organizations' : tier === SubscriptionTier.ENTERPRISE ? 'For complex needs' : tier === SubscriptionTier.FREE ? 'Start here' : tier === SubscriptionTier.STARTER ? 'For a growing cause' : 'More ways to fundraise'
           const tc = colorsOf(plan)
           const price = billingToggle === 'yearly' ? plan.priceYearly : plan.priceMonthly
           const canCheckout = !isCurrent && tier !== SubscriptionTier.FREE && tier !== SubscriptionTier.ENTERPRISE
@@ -492,51 +493,32 @@ export function SubscriptionPage() {
               key={tier}
               elevation={0}
               sx={{
-                border: isCurrent ? `2px solid ${tc.accent}` : '1px solid rgba(0,0,0,0.08)',
+                border: 'var(--neu-border)',
+                outline: isPro ? '2px solid' : undefined, outlineColor: 'secondary.main',
+                bgcolor: 'var(--neu-surface)', backdropFilter: 'var(--neu-backdrop)', minWidth: 0,
                 borderRadius: SHAPE.card,
                 position: 'relative',
                 display: 'flex',
                 flexDirection: 'column',
-                animation: `${fadeInUp} 0.4s ${0.2 + idx * 0.06}s ease both`,
+                '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
                 transition: 'border-color 0.2s ease',
                 '&:hover': {
                   borderColor: isCurrent ? tc.accent : 'rgba(0,0,0,0.18)',
                 },
               }}
             >
-              {isPro && (
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    top: -1,
-                    left: 0,
-                    right: 0,
-                    height: 3,
-                    bgcolor: tc.banner,
-                  }}
-                />
-              )}
-              {isCurrent && (
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    top: 12,
-                    right: 12,
-                  }}
-                >
-                  <Chip
-                    icon={<StarRoundedIcon sx={{ fontSize: '14px !important', color: '#C7A24A !important' }} />}
-                    label="Current"
-                    size="small"
-                    sx={{ fontWeight: 700, fontSize: '0.68rem', bgcolor: 'rgba(199, 162, 74,0.1)', color: 'var(--text-warning)' }}
-                  />
-                </Box>
-              )}
+              <Box sx={{ px: 3, py: 1.25, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1,
+                bgcolor: isPro ? 'secondary.main' : 'action.hover', color: isPro ? 'secondary.contrastText' : 'text.secondary' }}>
+                <Typography sx={{ display: 'flex', alignItems: 'center', gap: 0.75, color: isPro ? 'secondary.contrastText' : 'text.secondary', fontSize: '0.73rem', fontWeight: 700 }}>
+                  {isPro && <StarRoundedIcon sx={{ fontSize: 16 }} />}{fitLabel}
+                </Typography>
+                {isCurrent && <Typography sx={{ fontSize: '0.7rem', fontWeight: 700 }}>Current plan</Typography>}
+              </Box>
               <CardContent sx={{ p: 3, flex: 1, display: 'flex', flexDirection: 'column' }}>
-                <Typography sx={{ fontWeight: 800, fontSize: '1.1rem', fontFamily: '"Outfit", sans-serif', mb: 0.25 }}>
+                <Typography sx={{ fontWeight: 800, fontSize: '1.35rem', fontFamily: '"Outfit", sans-serif', mb: 0.5 }}>
                   {plan.name}
                 </Typography>
-                <Typography sx={{ color: 'text.secondary', fontSize: '0.78rem', mb: 2.5, lineHeight: 1.4 }}>
+                <Typography sx={{ color: 'text.secondary', fontSize: '0.85rem', mb: 2.5, minHeight: 44, lineHeight: 1.6 }}>
                   {plan.description}
                 </Typography>
 
@@ -545,9 +527,9 @@ export function SubscriptionPage() {
                   {tier === SubscriptionTier.ENTERPRISE ? (
                     <Typography sx={{ fontWeight: 800, fontSize: '1.3rem', fontFamily: '"Outfit", sans-serif' }}>Custom</Typography>
                   ) : (
-                    <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
-                      <Typography sx={{ fontWeight: 900, fontSize: '2rem', fontFamily: '"Outfit", sans-serif', lineHeight: 1 }}>
-                        GH₵ {billingToggle === 'yearly' ? Math.round(price / 12) : price}
+                    <Box sx={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: 0.5 }}>
+                      <Typography sx={{ fontWeight: 900, fontSize: '2rem', whiteSpace: 'nowrap', fontFamily: '"Outfit", sans-serif', lineHeight: 1.2 }}>
+                        {formatCurrency(billingToggle === 'yearly' ? price / 12 : price, 'GHS')}
                       </Typography>
                       <Typography sx={{ color: 'text.secondary', fontSize: '0.78rem' }}>
                         /mo
@@ -562,7 +544,7 @@ export function SubscriptionPage() {
                 </Box>
 
                 {/* Key features */}
-                <Box sx={{ flex: 1, mb: 2.5 }}>
+                <Box sx={{ flex: 1, mb: 3, pt: 2, borderTop: '1px solid', borderColor: 'divider', display: 'grid', gridTemplateColumns: groupIndex === 1 ? { xs: '1fr', lg: 'repeat(2, minmax(0, 1fr))' } : '1fr', alignContent: 'start', gap: 1 }}>
                   {[
                     `${plan.platformFeePercent}% platform fee`,
                     plan.maxActiveCampaigns === -1 ? 'Unlimited campaigns' : `${plan.maxActiveCampaigns} active campaign${plan.maxActiveCampaigns !== 1 ? 's' : ''}`,
@@ -578,7 +560,7 @@ export function SubscriptionPage() {
                     .map((feat) => (
                       <Box key={feat as string} sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.75 }}>
                         <CheckRoundedIcon sx={{ fontSize: 15, color: tc.accent, flexShrink: 0 }} />
-                        <Typography sx={{ fontSize: '0.78rem', lineHeight: 1.3 }}>{feat}</Typography>
+                        <Typography sx={{ fontSize: '0.83rem', lineHeight: 1.5 }}>{feat}</Typography>
                       </Box>
                     ))}
                 </Box>
@@ -646,7 +628,7 @@ export function SubscriptionPage() {
                       textTransform: 'none',
                       py: 1.2,
                       ...(isPro
-                        ? { bgcolor: tc.banner, color: '#fff', '&:hover': { bgcolor: '#1C261D' } }
+                        ? { bgcolor: 'primary.main', color: 'primary.contrastText', '&:hover': { bgcolor: 'primary.dark' } }
                         : { borderColor: tc.accent, color: tc.accent }),
                     }}
                   >
@@ -657,6 +639,8 @@ export function SubscriptionPage() {
             </Card>
           )
         })}
+        </Box>
+      </Box>)}
       </Box>
 
       {/* ═══════════ FEATURE COMPARISON TABLE ═══════════ */}

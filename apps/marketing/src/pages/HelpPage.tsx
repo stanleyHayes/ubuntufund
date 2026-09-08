@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { SHAPE } from '@ubuntu-fund/ui'
+import { NEUMORPHIC_FOREST_VARS, SHAPE } from '@ubuntu-fund/ui'
 import { useContent } from '../hooks/useContent'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
@@ -68,9 +68,9 @@ const FAQ_CATEGORIES_STATIC: FaqCategory[] = [
     icon: <VolunteerActivismRoundedIcon />,
     label: 'Donations',
     questions: [
-      { q: 'How do I make a donation?', a: 'Browse campaigns and choose Donate. During launch readiness, confirmed contributions use your Ujimora Wallet balance. External payment methods remain disabled until their provider integrations are verified.' },
-      { q: 'Is there a minimum or maximum donation?', a: 'The amount must be positive and cannot exceed your available Ujimora Wallet balance. Campaign and account limits may also apply.' },
-      { q: 'Can I get a refund on my donation?', a: 'You can submit a refund request from your donation history. Requests are recorded for review, but approval and wallet settlement are not automatic and no processing time is guaranteed.' },
+      { q: 'How do I make a donation?', a: 'Browse campaigns and choose Donate. Choose your Ujimora Wallet or an available payment method at checkout. Methods depend on your country, currency, and provider availability. Review the total before confirming.' },
+      { q: 'Is there a minimum or maximum donation?', a: 'The amount must be positive, and campaign and account limits may apply. When you pay from your Ujimora Wallet, it cannot exceed your available balance.' },
+      { q: 'Can I get a refund on my donation?', a: 'You can submit a refund request from your donation history. Requests are recorded for review, but approval and settlement are not automatic and no processing time is guaranteed.' },
     ],
   },
   {
@@ -78,9 +78,9 @@ const FAQ_CATEGORIES_STATIC: FaqCategory[] = [
     icon: <PaymentsRoundedIcon />,
     label: 'Payments',
     questions: [
-      { q: 'What payment methods are accepted?', a: 'Ujimora Wallet is the only active method during launch readiness. Mobile money, card, and bank integrations will be listed only after their provider adapters are verified.' },
-      { q: 'How do I withdraw my campaign funds?', a: 'Self-service withdrawals are not available yet. Contact support for operational assistance; do not treat a displayed wallet balance as an external payout guarantee.' },
-      { q: 'What are the platform fees?', a: 'The Free plan currently defines a 5% platform fee in the product configuration. External payment processing fees are not charged while those payment methods remain disabled.' },
+      { q: 'What payment methods are accepted?', a: 'Ujimora Wallet is always available. Mobile money and card payments are offered through our payment provider at checkout where enabled for your region; bank transfer availability depends on provider configuration.' },
+      { q: 'How do I withdraw my campaign funds?', a: 'Request a payout from your dashboard once your funds are cleared and eligible. Standard payouts follow verification and compliance checks; optional priority and early payouts are available with disclosed fees where enabled.' },
+      { q: 'What are the platform fees?', a: 'Platform fees depend on your plan. Check the Pricing page for current rates and review any applicable payment or withdrawal fees before confirming a transaction.' },
     ],
   },
   {
@@ -99,7 +99,7 @@ const FAQ_CATEGORIES_STATIC: FaqCategory[] = [
     label: 'Organizations',
     questions: [
       { q: 'How do I register as an organization?', a: 'During registration, select "Organization" as your account type. Provide your organization name, registration number, and type (NGO, hospital, school, etc.). Complete verification with official documents for priority trust status.' },
-      { q: 'What features are available for organizations?', a: 'Organizations have a dedicated workspace, member collaboration, campaign management, updates, comments, donation history, and review status across web and mobile. Paid billing and external integrations are not available yet.' },
+      { q: 'What features are available for organizations?', a: 'Organizations have a dedicated workspace, member collaboration, campaign management, updates, comments, donation history, and review status across web and mobile. Paid organization plans are available — compare tiers and pricing on the pricing page.' },
     ],
   },
 ]
@@ -126,7 +126,7 @@ const QUICK_LINKS = [
 ]
 
 const CONTACT_OPTIONS = [
-  { icon: <EmailRoundedIcon />, title: 'Email support', desc: 'support@ujimora.com', detail: 'Response within 24 hours', action: 'Send email', href: 'mailto:support@ujimora.com' },
+  { icon: <EmailRoundedIcon />, title: 'Email support', desc: 'support@ujimora.com', detail: 'Include your campaign link, if relevant', action: 'Send email', href: 'mailto:support@ujimora.com' },
   { icon: <ChatBubbleOutlineRoundedIcon />, title: 'Contact form', desc: 'Send the team a detailed support request', detail: 'Available from the contact page', action: 'Contact support', href: '/contact' },
   { icon: <GroupsRoundedIcon />, title: 'Organization help', desc: 'Get help with verification and team access', detail: 'Handled by the support team', action: 'Contact support', href: '/contact' },
 ]
@@ -348,14 +348,15 @@ function HelpPage() {
                     elevation={0}
                     disableGutters
                     sx={{
-                      border: '1px solid #E7E3D8',
+                      border: '1px solid',
+                      borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(182,192,184,0.10)' : 'rgba(46,61,47,0.10)',
                       borderRadius: SHAPE.sm,
                       mb: 1.5,
                       bgcolor: 'background.paper',
                       '&::before': { display: 'none' },
                       transition: 'border-color 0.2s ease',
-                      '&:hover': { borderColor: 'secondary.light' },
-                      '&.Mui-expanded': { borderColor: 'secondary.main' },
+                      '&:hover': { borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(182,192,184,0.18)' : 'rgba(46,61,47,0.18)' },
+                      '&.Mui-expanded': { borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(182,192,184,0.18)' : 'rgba(46,61,47,0.18)' },
                     }}
                   >
                     <AccordionSummary
@@ -403,6 +404,7 @@ function HelpPage() {
       {/* ═══ Contact CTA (the one dark forest band) ═══ */}
       <Box
         sx={{
+          ...NEUMORPHIC_FOREST_VARS,
           background: 'linear-gradient(160deg, #1C261D, #2E3D2F)',
           py: { xs: 8, md: 10 },
         }}
@@ -416,19 +418,22 @@ function HelpPage() {
               Still need help?
             </Typography>
             <Typography sx={{ color: 'rgba(245,242,234,0.75)', maxWidth: 640, mx: 'auto', lineHeight: 1.7 }}>
-              Our support team is available Monday through Saturday, 8am-8pm GMT. We typically respond within a few hours.
+              Choose the best way to reach us. Share a little context so the team can help with your account, campaign, or organization.
             </Typography>
           </Box>
 
           <Grid container spacing={3} alignItems="stretch">
             {CONTACT_OPTIONS.map((opt) => (
-              <Grid size={{ xs: 12, sm: 6, md: 4 }} key={opt.title}>
-                <Card elevation={0} sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                  <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, flex: 1 }}>
+              <Grid size={{ xs: 12, md: 4 }} key={opt.title}>
+                <Card elevation={0} sx={{ position: 'relative', isolation: 'isolate', overflow: 'hidden', height: '100%', display: 'flex', flexDirection: 'column', bgcolor: '#28382B', color: '#F3F0E8', border: '1px solid rgba(182,192,184,0.16)', boxShadow: 'var(--neu-raised)', backdropFilter: 'var(--neu-backdrop)', '[data-skin="glassmorphism"] &': { bgcolor: 'rgba(70,91,74,0.28)' } }}>
+                  <Box aria-hidden="true" sx={{ position: 'absolute', top: -12, right: -10, color: '#DCC07E', opacity: 0.065, pointerEvents: 'none', transform: 'rotate(-12deg)', '& svg': { display: 'block', fontSize: { xs: 132, md: 156 } } }}>
+                    {opt.icon}
+                  </Box>
+                  <CardContent sx={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 2.5, flex: 1, p: 3, '&:last-child': { pb: 3 } }}>
                     <Box
                       sx={{
-                        width: 44, height: 44, borderRadius: SHAPE.sm,
-                        bgcolor: 'rgba(46,61,47,0.08)', color: 'primary.main',
+                        width: 52, height: 52, borderRadius: SHAPE.sm,
+                        bgcolor: '#2E3D2F', color: '#DCC07E', boxShadow: 'var(--neu-inset)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         '& svg': { fontSize: 22 },
                       }}
@@ -436,9 +441,9 @@ function HelpPage() {
                       {opt.icon}
                     </Box>
                     <Box sx={{ flex: 1 }}>
-                      <Typography sx={{ fontWeight: 700, fontSize: '0.95rem' }}>{opt.title}</Typography>
-                      <Typography sx={{ fontSize: '0.82rem', color: 'text.secondary', mt: 0.25 }}>{opt.desc}</Typography>
-                      <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', mt: 0.5 }}>{opt.detail}</Typography>
+                      <Typography sx={{ fontWeight: 800, fontSize: '1.1rem' }}>{opt.title}</Typography>
+                      <Typography sx={{ fontSize: '0.9rem', color: '#D1D9CF', mt: 0.75, overflowWrap: 'anywhere' }}>{opt.desc}</Typography>
+                      <Typography sx={{ fontSize: '0.8rem', color: '#B6C0B8', mt: 1 }}>{opt.detail}</Typography>
                     </Box>
                     <Button
                       href={opt.href}
@@ -446,12 +451,14 @@ function HelpPage() {
                       endIcon={<ArrowForwardRoundedIcon sx={{ fontSize: '16px !important' }} />}
                       sx={{
                         alignSelf: 'flex-start',
-                        borderRadius: '999px',
+                        borderRadius: SHAPE.sm,
                         textTransform: 'none',
                         fontWeight: 600,
                         fontSize: '0.85rem',
-                        color: 'text.primary',
-                        '&:hover': { bgcolor: 'rgba(46,61,47,0.06)' },
+                        color: '#DCC07E',
+                        px: 1.5,
+                        '&:hover': { bgcolor: 'rgba(220,192,126,0.08)' },
+                        '&:focus-visible': { outline: '2px solid #DCC07E', outlineOffset: 3 },
                       }}
                     >
                       {opt.action}

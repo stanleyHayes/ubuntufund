@@ -60,7 +60,7 @@ const menus: NavMenu[] = [
   {
     label: 'Product',
     items: [
-      { icon: <AutoAwesomeIcon />, title: 'Features', description: 'Review workflows, wallet giving, and verification', href: '/#features', anchor: true },
+      { icon: <AutoAwesomeIcon />, title: 'Features', description: 'Creator tips, collaboration, payments, and more', href: '/features' },
       { icon: <TimelineIcon />, title: 'How It Works', description: 'Three-step process from creation to impact', href: '/#how-it-works', anchor: true },
       { icon: <VolunteerActivismIcon />, title: 'Campaign Types', description: 'Medical, education, community, and more', href: '/#campaign-types', anchor: true },
       { icon: <ShieldIcon />, title: 'Trust System', description: 'Multi-level verification and scoring', href: '/#features', anchor: true },

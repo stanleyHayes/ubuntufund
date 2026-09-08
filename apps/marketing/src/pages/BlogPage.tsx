@@ -11,7 +11,7 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import MailOutlineIcon from '@mui/icons-material/MailOutline'
 import AccessTimeIcon from '@mui/icons-material/AccessTime'
 import { Link as RouterLink } from 'react-router-dom'
-import { SHAPE } from '@ubuntu-fund/ui'
+import { NEUMORPHIC_FOREST_VARS, SHAPE } from '@ubuntu-fund/ui'
 import AutoStoriesRoundedIcon from '@mui/icons-material/AutoStoriesRounded'
 import { InternalPageHero } from '../components/InternalPageHero'
 
@@ -703,9 +703,17 @@ function BlogPage() {
             {/* Newsletter card */}
             <Box
               sx={{
+                ...NEUMORPHIC_FOREST_VARS,
                 borderRadius: SHAPE.card,
+                boxShadow: 'var(--neu-raised)',
+                border: 'var(--neu-border)',
+                backdropFilter: 'var(--neu-backdrop)',
                 p: 3.5,
                 background: 'linear-gradient(135deg, #1C261D 0%, #2E3D2F 100%)',
+                '[data-skin="glassmorphism"] &': {
+                  background: 'linear-gradient(135deg, rgba(28,38,29,0.94), rgba(46,61,47,0.88))',
+                  border: '1px solid rgba(255,255,255,0.18)',
+                },
                 color: '#fff',
                 position: 'relative',
                 overflow: 'hidden',
@@ -755,15 +763,17 @@ function BlogPage() {
                     p: 1.5,
                     pl: 5.5,
                     boxSizing: 'border-box',
-                    borderRadius: SHAPE.card,
+                    borderRadius: SHAPE.input,
                     border: '1px solid rgba(255,255,255,0.2)',
                     bgcolor: 'rgba(255,255,255,0.1)',
+                    boxShadow: 'var(--neu-inset)',
+                    backdropFilter: 'var(--neu-backdrop)',
                     color: '#fff',
                     fontSize: '0.875rem',
                     outline: 'none',
                     mb: 1.5,
-                    '&::placeholder': { color: 'rgba(255,255,255,0.5)' },
-                    '&:focus': { borderColor: '#C7A24A' },
+                    '&::placeholder': { color: '#B6C0B8', opacity: 1 },
+                    '&:focus-visible': { outline: '2px solid #C7A24A', outlineOffset: 2, borderColor: '#C7A24A' },
                   }}
                 />
               </Box>

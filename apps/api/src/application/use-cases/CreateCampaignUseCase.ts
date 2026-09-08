@@ -28,6 +28,8 @@ export class CreateCampaignUseCase {
   ) {}
 
   async execute(input: CreateCampaignInput, creatorId: string): Promise<Campaign> {
+    if (input.currency !== 'GHS') throw new AppError('Campaign goals must be in GHS', 422);
+    if (!Number.isFinite(new Date(input.endDate).getTime()) || new Date(input.endDate).getTime() <= Date.now()) throw new AppError('End date must be in the future', 422);
     const user = await this.userRepo.findById(creatorId);
     if (!user) {
       throw new AppError('User not found', 404);
@@ -47,7 +49,8 @@ export class CreateCampaignUseCase {
     await this.planLimits.assertCanCreateCampaign(
       creatorId,
       input.goalAmount,
-      user.complianceApprovedCampaignLimit
+      user.complianceApprovedCampaignLimit,
+      input.imageUrls?.length ?? 0
     );
 
     const slug = await generateUniqueSlug(input.title, async (candidate) => {

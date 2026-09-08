@@ -52,6 +52,10 @@ export class InviteCollaboratorUseCase {
       );
     }
 
+    if (input.revenueSharePercent > 0) {
+      await this.planLimits.assertFeature(campaign.creatorId, 'escrowSupport', 'shared proceeds');
+    }
+
     const invitee = await this.userRepo.findByEmail(input.userEmail);
     if (!invitee) {
       throw new AppError('User not found', 404);

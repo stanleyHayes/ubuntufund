@@ -80,7 +80,7 @@ function CTASection() {
           variant="body2"
           sx={{ color: 'text.secondary', mt: 3 }}
         >
-          The Free plan needs no card. External payment and payout rails remain disabled until verified.
+          Explore current plans, start a campaign, or set up a creator tip jar. Payment methods and fees are shown in the relevant checkout flow.
         </Typography>
       </Container>
     </Box>

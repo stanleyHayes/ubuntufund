@@ -1,3 +1,5 @@
+import type { PlanLimitsService } from '../services/PlanLimitsService.js';
+import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js';
 import type { CampaignCollaborator } from '@ubuntu-fund/types';
 import type { CollaborationRepositoryPort } from '../../domain/ports/outbound/CollaborationRepositoryPort.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
@@ -10,7 +12,7 @@ export interface RespondToCollaborationRequest {
 }
 
 export class RespondToCollaborationUseCase {
-  constructor(private readonly collaborationRepo: CollaborationRepositoryPort) {}
+  constructor(private readonly collaborationRepo: CollaborationRepositoryPort, private readonly campaignRepo?: CampaignRepositoryPort, private readonly planLimits?: PlanLimitsService) {}
 
   async execute(
     input: RespondToCollaborationRequest,
@@ -33,6 +35,14 @@ export class RespondToCollaborationUseCase {
     }
 
     if (input.accept) {
+      if (this.campaignRepo && this.planLimits) {
+        const campaign = await this.campaignRepo.findById(collaboration.campaignId);
+        if (!campaign) throw new AppError('Campaign not found', 404);
+        await this.planLimits.assertFeature(campaign.creatorId, 'campaignCollaboration', 'campaign collaboration');
+        const plan = await this.planLimits.resolvePlan(campaign.creatorId);
+        const accepted = (await this.collaborationRepo.findByCampaignId(campaign.id)).filter(item => item.status === 'accepted').length;
+        if (plan.maxCollaboratorsPerCampaign >= 0 && accepted >= plan.maxCollaboratorsPerCampaign) throw new AppError('The campaign owner has reached their collaborator limit', 403);
+      }
       collaboration.accept();
     } else {
       collaboration.decline();

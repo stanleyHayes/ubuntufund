@@ -6,6 +6,7 @@ export interface UserDocument extends Document {
   name: string;
   passwordHash: string;
   avatarUrl?: string;
+  coverUrl?: string;
   role: UserRole;
   verificationLevel: VerificationLevel;
   trustScore: number;
@@ -33,6 +34,7 @@ const userSchema = new Schema<UserDocument>(
     name: { type: String, required: true },
     passwordHash: { type: String, required: true },
     avatarUrl: { type: String },
+    coverUrl: { type: String },
     role: {
       type: String,
       enum: Object.values(UserRole),

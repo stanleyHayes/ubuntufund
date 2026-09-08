@@ -1,11 +1,12 @@
+import { CollectionTable, CollectionViewSwitch, useCollectionView } from '@/components/CollectionView'
 import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Alert, Skeleton, Box, Typography, MenuItem, InputAdornment } from '@mui/material'
-import { raisedSurface, insetSurface, progressTrack } from '@/lib/surfaces'
+import { Link as RouterLink } from 'react-router-dom'
+import { Alert, Skeleton, Box, Typography, MenuItem, InputAdornment, Avatar, Chip, Button } from '@mui/material'
+import { raisedSurface, insetSurface } from '@/lib/surfaces'
 import SearchIcon from '@mui/icons-material/Search'
 import PeopleRoundedIcon from '@mui/icons-material/PeopleRounded'
-import { EmptyState } from '@ubuntu-fund/ui'
+import { EmptyState, SHAPE } from '@ubuntu-fund/ui'
 import { UserRole, VerificationLevel } from '@ubuntu-fund/types'
 import type { User } from '@ubuntu-fund/types'
 import { useAdminUsers } from '@/hooks/useApiData'
@@ -13,12 +14,6 @@ import { usePagination } from '@/hooks/usePagination'
 import PaginationBar from '@/components/PaginationBar'
 import PageHeader from '@/components/PageHeader'
 
-
-const roleColors: Record<string, string> = {
-  [UserRole.ADMIN]: '#C06B58',
-  [UserRole.ORGANIZATION]: '#DCC07E',
-  [UserRole.USER]: '#74909A',
-}
 
 const verificationLabels: Record<number, string> = {
   [VerificationLevel.NONE]: 'Unverified',
@@ -66,89 +61,28 @@ function SkeletonCard() {
 }
 
 function UserCard({ user }: { user: User }) {
-  const navigate = useNavigate()
-  const roleColor = roleColors[user.role] || '#74909A'
-  const trustColor = user.trustScore >= 70 ? '#5E8F72' : user.trustScore >= 40 ? '#D3A95C' : '#C06B58'
-
-  return (
-    <Box
-      onClick={() => navigate(`/users/${user.id}`)}
-      role="link"
-      tabIndex={0}
-      onKeyDown={event => { if (event.target === event.currentTarget && event.key === 'Enter') navigate(`/users/${user.id}`) }}
-      sx={{
-        position: 'relative', overflow: 'hidden',
-        ...raisedSurface,
-        p: 3, cursor: 'pointer',
-        transition: 'box-shadow 160ms ease',
-        '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
-        '&:hover': { boxShadow: 'var(--neu-raised-hover)' },
-        '&:focus-visible': { outline: '2px solid', outlineColor: 'secondary.main', outlineOffset: 3 },
-      }}
-    >
-      {/* Avatar + Name + Role */}
-      <Box sx={{ display: 'flex', gap: 1.5, mb: 1.2, position: 'relative', zIndex: 1 }}>
-        <Box sx={{
-          width: 40, height: 40, ...insetSurface,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0,
-        }}>
-          <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, ...insetSurface, px: 1, py: 0.5, color: roleColor, letterSpacing: '0.05em' }}>
-            {initials(user.name)}
-          </Typography>
-        </Box>
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography sx={{ fontWeight: 700, fontSize: '0.95rem', color: 'text.primary', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {user.name}
-            </Typography>
-            <Typography sx={{
-              fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase',
-              ...insetSurface, px: 1, py: 0.5, color: roleColor, letterSpacing: '0.08em', flexShrink: 0,
-            }}>
-              {user.role}
-            </Typography>
-          </Box>
-          <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {user.email}
-          </Typography>
-        </Box>
-      </Box>
-
-      {/* Separator */}
-      <Box sx={{ ...insetSurface, px: 1.5, pb: 1.5, mt: 1.5, pt: 1.5, position: 'relative', zIndex: 1 }}>
-        {/* Trust Score */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.8 }}>
-          <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>Trust Score</Typography>
-          <Typography sx={{ fontSize: '0.9rem', fontFamily: '"Outfit", monospace', fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: trustColor }}>
-            {user.trustScore}
-          </Typography>
-        </Box>
-        <Box sx={{ ...progressTrack }}>
-          <Box sx={{ width: `${Math.max(0, Math.min(100, user.trustScore))}%`, height: '100%', bgcolor: trustColor, transition: 'width 0.6s ease' }} />
-        </Box>
-      </Box>
-
-      {/* Verification */}
-      <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary', mt: 1.2, position: 'relative', zIndex: 1 }}>
-        {verificationLabels[user.verificationLevel] ?? 'Unknown'}
-      </Typography>
-
-      {/* Country + Joined */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.8, position: 'relative', zIndex: 1 }}>
-        <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>
-          {user.country || 'Unknown'}
-        </Typography>
-        <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>
-          {new Date(user.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
-        </Typography>
-      </Box>
+  return <Box component={RouterLink} to={`/users/${user.id}`} sx={{
+    ...raisedSurface, border: 'var(--neu-border)', backdropFilter: 'var(--neu-backdrop)',
+    p: 2.5, color: 'text.primary', textDecoration: 'none', display: 'flex', flexDirection: 'column', gap: 2,
+    '&:hover': { boxShadow: 'var(--neu-raised-hover)' },
+    '&:focus-visible': { outline: '2px solid', outlineColor: 'primary.main', outlineOffset: 3 },
+  }}>
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+      <Avatar src={user.avatarUrl} alt={user.name} sx={{ width: 48, height: 48, borderRadius: SHAPE.sm, bgcolor: 'primary.main', color: 'primary.contrastText', fontWeight: 700 }}>{initials(user.name)}</Avatar>
+      <Box sx={{ minWidth: 0 }}><Typography sx={{ fontWeight: 800, overflowWrap: 'anywhere' }}>{user.name}</Typography><Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>{user.email}</Typography></Box>
     </Box>
-  )
+    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}><Chip label={user.role} size="small" /><Chip label={verificationLabels[user.verificationLevel] ?? 'Unknown verification'} size="small" variant="outlined" /></Box>
+    <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, borderTop: 1, borderColor: 'divider', pt: 2, mt: 'auto' }}>
+      <Box><Typography variant="caption" color="text.secondary">Trust score</Typography><Typography fontWeight={700}>{user.trustScore} / 100</Typography></Box>
+      <Box sx={{ textAlign: 'right' }}><Typography variant="caption" color="text.secondary">Joined</Typography><Typography variant="body2">{new Date(user.createdAt).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}</Typography></Box>
+    </Box>
+    <Typography variant="body2" sx={{ color: 'primary.main', fontWeight: 700 }}>View member record →</Typography>
+  </Box>
 }
 
 export default function UsersPage() {
   const { data: users, isLoading: loading, error } = useAdminUsers()
+  const { view, changeView } = useCollectionView('users')
   const PAGE_SIZE = 12
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('all')
@@ -162,7 +96,7 @@ export default function UsersPage() {
   const pagination = usePagination(filtered, PAGE_SIZE)
 
   return (
-    <Box sx={{ bgcolor: 'background.default' }}>
+    <Box sx={{ color: 'text.primary', minWidth: 0 }}>
       <Box>
         <PageHeader
           tone="gold"
@@ -176,7 +110,7 @@ export default function UsersPage() {
       {error && <Alert severity="error" sx={{ mb: 3 }}>Could not load users. Refresh the page to try again.</Alert>}
 
       {/* Filter bar */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr 1fr' }, ...raisedSurface, mb: 3 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'minmax(0, 2fr) minmax(150px, 1fr) auto' }, ...raisedSurface, mb: 3 }}>
         <Box sx={{ px: 2.5, py: 1.5, display: 'flex', alignItems: 'center' }}>
           <TextField
             size="small"
@@ -184,7 +118,7 @@ export default function UsersPage() {
             placeholder="Search users..."
             slotProps={{ htmlInput: { 'aria-label': 'Search users...' } }}
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={e => { setSearch(e.target.value); pagination.goToPage(1) }}
             fullWidth
             InputProps={{
               startAdornment: (
@@ -202,7 +136,7 @@ export default function UsersPage() {
             variant="outlined"
             label="Role"
             value={roleFilter}
-            onChange={e => setRoleFilter(e.target.value)}
+            onChange={e => { setRoleFilter(e.target.value); pagination.goToPage(1) }}
             fullWidth
           >
             <MenuItem value="all">All Roles</MenuItem>
@@ -218,10 +152,16 @@ export default function UsersPage() {
         </Box>
       </Box>
 
+      <CollectionViewSwitch view={view} onChange={changeView} />
+      {!loading && !error && filtered.length > 0 && view === 'table' ? <CollectionTable label="Users" columns={['Member', 'Role', 'Verification', 'Trust score', 'Joined']} rows={pagination.page.map(user => ({ id: user.id, cells: [
+        <Box><Button component={RouterLink} to={`/users/${user.id}`} sx={{ justifyContent: 'flex-start', textAlign: 'left' }}>{user.name}</Button><Typography variant="body2" color="text.secondary">{user.email}</Typography></Box>,
+        user.role, verificationLabels[user.verificationLevel] ?? 'Unknown', `${user.trustScore} / 100`, new Date(user.createdAt).toLocaleDateString(),
+      ] }))} /> : (
+      <>
       {/* Grid */}
       <Box sx={{
         display: 'grid',
-        gap: 3, gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))', md: 'repeat(3, minmax(0, 1fr))', lg: 'repeat(4, minmax(0, 1fr))' },
+        gap: 3, gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(3, minmax(0, 1fr))' },
       }}>
         {loading
           ? Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)
@@ -231,11 +171,12 @@ export default function UsersPage() {
         }
       </Box>
 
-      {!loading && <PaginationBar neumorphic pagination={pagination} accentColor="#8FAE96" />}
+      </>)}
+      {!loading && !error && <PaginationBar neumorphic pagination={pagination} accentColor="#8FAE96" />}
 
       {/* Empty state */}
       {!loading && !error && filtered.length === 0 && (
-        <Box sx={{ ...raisedSurface, p: 3 }}><EmptyState variant="search" title="No users found" description="No users match your filters. Try adjusting your search criteria." compact /></Box>
+        <Box sx={{ ...raisedSurface, p: 3 }}><EmptyState variant="search" title="No users found" description="No users match your filters. Try adjusting your search criteria." compact /><Button onClick={() => { setSearch(''); setRoleFilter('all'); pagination.goToPage(1) }}>Clear filters</Button></Box>
       )}
     </Box>
   )

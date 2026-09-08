@@ -1,77 +1,29 @@
-import { useState, useCallback } from 'react'
-import Button from '@mui/material/Button'
-import Snackbar from '@mui/material/Snackbar'
+import { useState } from 'react'
+import { Button, Menu, MenuItem, ListItemIcon, Snackbar } from '@mui/material'
 import ShareRounded from '@mui/icons-material/ShareRounded'
+import ContentCopyRounded from '@mui/icons-material/ContentCopyRounded'
+import WhatsApp from '@mui/icons-material/WhatsApp'
+import Facebook from '@mui/icons-material/Facebook'
+import X from '@mui/icons-material/X'
+import LinkedIn from '@mui/icons-material/LinkedIn'
 
-interface ShareCampaignButtonProps {
-  campaignId: string
-  title: string
-  url: string
-}
-
-export function ShareCampaignButton({
-  campaignId: _campaignId,
-  title,
-  url,
-}: ShareCampaignButtonProps) {
-  const [snackOpen, setSnackOpen] = useState(false)
-
-  const copyToClipboard = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(url)
-      setSnackOpen(true)
-    } catch {
-      const textarea = document.createElement('textarea')
-      textarea.value = url
-      document.body.appendChild(textarea)
-      textarea.select()
-      try {
-        if (!document.execCommand('copy')) throw new Error('Copy failed')
-        setSnackOpen(true)
-      } catch {
-        alert('Failed to copy link')
-      } finally {
-        document.body.removeChild(textarea)
-      }
-    }
-  }, [url])
-
-  const handleShare = useCallback(() => {
-    // Try native Web Share API first (mobile-friendly)
-    if (navigator.share) {
-      void navigator.share({
-        title: `Support ${title}`,
-        text: `Check out this campaign on Ujimora`,
-        url,
-      }).catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === 'AbortError') return
-        void copyToClipboard()
-      })
-    } else {
-      // Fall back to clipboard copy
-      void copyToClipboard()
-    }
-  }, [copyToClipboard, title, url])
-
-  return (
-    <>
-      <Button
-        variant="outlined"
-        size="small"
-        startIcon={<ShareRounded />}
-        onClick={handleShare}
-        aria-label={`Share ${title}`}
-      >
-        Share
-      </Button>
-
-      <Snackbar
-        open={snackOpen}
-        autoHideDuration={3000}
-        onClose={() => setSnackOpen(false)}
-        message="Link copied to clipboard!"
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      />
-    </>
-  )
+interface ShareCampaignButtonProps { campaignId: string; title: string; url: string }
+export function ShareCampaignButton({ title, url }: ShareCampaignButtonProps) {
+  const [anchor, setAnchor] = useState<HTMLElement | null>(null)
+  const [message, setMessage] = useState('')
+  const links = [
+    { name: 'WhatsApp', icon: WhatsApp, href: `https://wa.me/?text=${encodeURIComponent(`Support ${title}: ${url}`)}` },
+    { name: 'Facebook', icon: Facebook, href: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}` },
+    { name: 'X', icon: X, href: `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(`Support ${title}`)}` },
+    { name: 'LinkedIn', icon: LinkedIn, href: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}` },
+  ]
+  return <>
+    <Button variant="outlined" size="small" startIcon={<ShareRounded />} onClick={e => setAnchor(e.currentTarget)} aria-label={`Share ${title}`} aria-haspopup="menu" aria-expanded={!!anchor}>Share</Button>
+    <Menu anchorEl={anchor} open={!!anchor} onClose={() => setAnchor(null)}>
+      {links.map(link => <MenuItem key={link.name} component="a" href={link.href} target="_blank" rel="noopener noreferrer" onClick={() => setAnchor(null)}><ListItemIcon><link.icon fontSize="small" /></ListItemIcon>{link.name}</MenuItem>)}
+      <MenuItem onClick={async () => { setAnchor(null); try { await navigator.clipboard.writeText(url); setMessage('Campaign link copied') } catch { setMessage('Could not copy the link. Use your browser’s address bar to copy it.') } }}><ListItemIcon><ContentCopyRounded fontSize="small" /></ListItemIcon>Copy link / share on Instagram</MenuItem>
+      {typeof navigator.share === 'function' && <MenuItem onClick={async () => { setAnchor(null); try { await navigator.share({ title, url }) } catch (error) { if (!(error instanceof DOMException && error.name === 'AbortError')) setMessage('Sharing failed. Try copying the link.') } }}><ListItemIcon><ShareRounded fontSize="small" /></ListItemIcon>More sharing options</MenuItem>}
+    </Menu>
+    <Snackbar open={!!message} autoHideDuration={4000} message={message} onClose={() => setMessage('')} />
+  </>
 }

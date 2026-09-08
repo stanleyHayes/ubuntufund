@@ -847,7 +847,7 @@ export function createApp(): express.Express {
   const removeCollaboratorUseCase = new RemoveCollaboratorUseCase(campaignRepo, collaborationRepo);
   const listCampaignCollaboratorsUseCase = new ListCampaignCollaboratorsUseCase(campaignRepo, collaborationRepo);
   const listMyCollaborationInvitationsUseCase = new ListMyCollaborationInvitationsUseCase(collaborationRepo, campaignRepo);
-  const respondToCollaborationUseCase = new RespondToCollaborationUseCase(collaborationRepo);
+  const respondToCollaborationUseCase = new RespondToCollaborationUseCase(collaborationRepo, campaignRepo, planLimitsService);
 
   const getMySubscriptionUseCase = new GetMySubscriptionUseCase(subscriptionRepo);
   const subscribeUseCase = new SubscribeUseCase(subscriptionRepo);
@@ -974,7 +974,8 @@ export function createApp(): express.Express {
     getCampaignUseCase,
     donateToCampaignUseCase,
     getCampaignBySlugUseCase,
-    setCampaignSlugUseCase
+    setCampaignSlugUseCase,
+    planLimitsService, userRepo, campaignRepo, config.splitProceedsEnabled
   );
   const shortLinkController = new ShortLinkController(
     createShortLinkUseCase,
@@ -1051,7 +1052,8 @@ export function createApp(): express.Express {
     campaignRepo,
     campaignSplitRepo,
     campaignBeneficiaryBalanceRepo,
-    campaignBeneficiaryAccrualRepo
+    campaignBeneficiaryAccrualRepo,
+    planLimitsService, config.splitProceedsEnabled
   );
   const campaignSplitController = new CampaignSplitController(
     campaignSplitUseCase

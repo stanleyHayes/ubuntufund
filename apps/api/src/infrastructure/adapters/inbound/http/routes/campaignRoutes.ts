@@ -46,6 +46,7 @@ export function createCampaignRoutes(
   const router = Router();
 
   router.get('/', controller.list);
+  router.get('/creation-options', authMiddleware, controller.creationOptions);
   router.get('/mine', authMiddleware, controller.listMine);
   // Public read by vanity slug (distinct 3-segment path — never shadows /:id).
   router.get('/slug/:slug/public', controller.getBySlugPublic);

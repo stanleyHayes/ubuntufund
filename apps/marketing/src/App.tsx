@@ -1,14 +1,7 @@
-import { Suspense, useEffect } from 'react'
+import { Suspense } from 'react'
 import { Box } from '@mui/material'
 import { BrowserRouter, Routes, Route, useLocation, Outlet } from 'react-router-dom'
-import { scrollToHash } from '@/lib/scroll'
-import { keyframes } from '@emotion/react'
-
-// Route enter animation (reduced-motion aware; applied per pathname key).
-const pageIn = keyframes`
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: none; }
-`
+import PageTransitions from './components/PageTransitions'
 import { AfricanBanner } from '@ubuntu-fund/ui'
 import { ColorModeProvider } from '@/context/ColorModeContext'
 import PublicIcon from '@mui/icons-material/Public'
@@ -23,6 +16,7 @@ import GroupsIcon from '@mui/icons-material/Groups'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import LandingPage from './pages/LandingPage'
+import FeaturesPage from './pages/FeaturesPage'
 import AboutPage from './pages/AboutPage'
 import ContactPage from './pages/ContactPage'
 import PricingPage from './pages/PricingPage'
@@ -100,16 +94,6 @@ const BANNER_CONFIG: Record<string, { title: string; subtitle?: string; descript
 }
 
 /** Layout for inner pages (not landing). Navbar → Banner → Content → Footer. */
-function ScrollToTop() {
-  const { pathname, hash } = useLocation()
-  useEffect(() => {
-    // Hash links land on their section; plain route changes start at the top.
-    if (hash) scrollToHash(hash.slice(1))
-    else window.scrollTo(0, 0)
-  }, [pathname, hash])
-  return null
-}
-
 function getBannerConfig(pathname: string) {
   if (BANNER_CONFIG[pathname]) return BANNER_CONFIG[pathname]
   if (pathname.startsWith('/blog/')) return BANNER_CONFIG['/blog']
@@ -121,7 +105,7 @@ function InnerPageLayout() {
   const bannerProps = getBannerConfig(pathname)
   const legalRoutes = ['/legal', ...LEGAL_POLICIES.map((p) => p.route)]
   const hasEditorialHero =
-    ['/about', '/blog', '/contact', '/pricing', '/help', '/for-organizations'].includes(pathname) ||
+    ['/features', '/about', '/blog', '/contact', '/pricing', '/help', '/for-organizations'].includes(pathname) ||
     legalRoutes.includes(pathname)
 
   return (
@@ -129,15 +113,7 @@ function InnerPageLayout() {
       <Navbar />
       {!hasEditorialHero && <AfricanBanner {...bannerProps} compact navbarOffset={64} />}
       <Box component="main" sx={{ flex: 1 }}>
-        <Box
-          key={pathname}
-          sx={{
-            animation: `${pageIn} 0.32s cubic-bezier(0.22, 1, 0.36, 1)`,
-            '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
-          }}
-        >
-          <Outlet />
-        </Box>
+        <Outlet />
       </Box>
       <Footer />
     </Box>
@@ -149,14 +125,15 @@ function App() {
     <ColorModeProvider>
       <Suspense fallback={<SplashScreen />}>
         <BrowserRouter>
-          <ScrollToTop />
-          <Routes>
+          <PageTransitions>{location => (
+          <Routes location={location}>
             {/* Landing page is fully self-contained — no banner */}
             <Route path="/" element={<LandingPage />} />
             {/* Inner pages get the banner */}
             <Route element={<InnerPageLayout />}>
               <Route path="/about" element={<AboutPage />} />
               <Route path="/contact" element={<ContactPage />} />
+              <Route path="/features" element={<FeaturesPage />} />
               <Route path="/pricing" element={<PricingPage />} />
               <Route path="/blog" element={<BlogPage />} />
               <Route path="/blog/:slug" element={<BlogDetailPage />} />
@@ -174,6 +151,7 @@ function App() {
             </Route>
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
+          )}</PageTransitions>
         </BrowserRouter>
       </Suspense>
     </ColorModeProvider>

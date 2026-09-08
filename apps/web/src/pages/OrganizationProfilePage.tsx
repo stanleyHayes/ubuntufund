@@ -1,3 +1,4 @@
+import { ProfileArtwork } from '@/components/profile/ProfileArtwork'
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -27,6 +28,9 @@ import { CurrencyDisplay, EmptyState, ItemNotFound, SHAPE } from '@ubuntu-fund/u
 import { CampaignCategory } from '@ubuntu-fund/types'
 import type { Campaign } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
+import { useAuth } from '@/context/AuthContext'
+import { ProfileImageEditor } from '@/components/profile/ProfileImageEditor'
+import PhotoCameraRoundedIcon from '@mui/icons-material/PhotoCameraRounded'
 import { CampaignCard } from '@/components/campaigns/CampaignCard'
 
 interface Organization {
@@ -84,6 +88,10 @@ function formatNumber(n: number): string {
 export function OrganizationProfilePage() {
   const { slug } = useParams<{ slug: string }>()
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const [failedCover, setFailedCover] = useState<string | null>(null)
+  const [imageEditor, setImageEditor] = useState<'coverUrl' | 'avatarUrl' | null>(null)
+  const [imageSaved, setImageSaved] = useState(false)
   const [following, setFollowing] = useState(false)
   const [snackOpen, setSnackOpen] = useState(false)
   const [org, setOrg] = useState<Organization | null>(null)
@@ -158,27 +166,19 @@ export function OrganizationProfilePage() {
       <Box
         sx={{
           position: 'relative',
-          height: { xs: 240, md: 340 },
+          height: { xs: user?.id === org.id ? 370 : 300, md: 340 },
           overflow: 'hidden',
         }}
       >
-        <Box
-          component="img"
-          src={org.coverUrl}
-          alt={`${org.name} cover`}
-          sx={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-          }}
-        />
-        <Box
-          sx={{
-            position: 'absolute',
-            inset: 0,
-            background: 'linear-gradient(180deg, transparent 30%, rgba(0,0,0,0.65) 100%)',
-          }}
-        />
+        <Box data-cover-fallback sx={{ position: 'absolute', inset: 0, bgcolor: 'background.default',
+          backgroundImage: 'linear-gradient(125deg, transparent 35%, rgba(199,162,74,0.2)), repeating-linear-gradient(135deg, transparent, transparent 48px, rgba(128,148,110,0.12) 48px, rgba(128,148,110,0.12) 50px)',
+          boxShadow: 'var(--neu-inset)' }}><ProfileArtwork variant="cover" /></Box>
+        {org.coverUrl && failedCover !== org.coverUrl && <Box component="img" src={org.coverUrl} alt={`${org.name} cover`}
+          onError={() => setFailedCover(org.coverUrl)} sx={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />}
+        {org.coverUrl && failedCover !== org.coverUrl && <Box sx={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent, rgba(0,0,0,0.8))' }} />}
+        {user?.id === org.id && <Button startIcon={<PhotoCameraRoundedIcon />} onClick={() => setImageEditor('coverUrl')}
+          sx={{ position: 'absolute', right: 16, top: 16, bgcolor: 'var(--neu-surface)', color: 'text.primary', borderRadius: SHAPE.sm,
+            border: 'var(--neu-border)', backdropFilter: 'var(--neu-backdrop)', boxShadow: 'var(--neu-subtle)', '&:hover': { bgcolor: 'background.paper' } }}>Change cover</Button>}
 
         {/* Organization info overlaid on cover */}
         <Container
@@ -195,22 +195,25 @@ export function OrganizationProfilePage() {
             flexDirection: { xs: 'column', sm: 'row' },
           }}
         >
+          <Box>
           <Avatar
             src={org.logoUrl}
             alt={org.name}
             sx={{
               width: { xs: 80, md: 100 },
               height: { xs: 80, md: 100 },
-              border: '4px solid #fff',
+              border: '4px solid', borderColor: 'background.default', bgcolor: 'secondary.main', color: 'secondary.contrastText', borderRadius: SHAPE.card,
               animation: `${fadeInUp} 0.6s ease-out`,
             }}
-          />
+          ><ProfileArtwork variant="organization" /></Avatar>
+          {user?.id === org.id && <Button size="small" onClick={() => setImageEditor('avatarUrl')} sx={{ mt: 1, bgcolor: 'var(--neu-surface)', color: 'text.primary', borderRadius: SHAPE.sm, boxShadow: 'var(--neu-subtle)' }}>Change logo</Button>}
+          </Box>
           <Box sx={{ flex: 1, animation: `${fadeInUp} 0.6s ease-out 0.1s both` }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
               <Typography
                 variant="h4"
                 component="h1"
-                sx={{ fontWeight: 800, color: '#fff' }}
+                sx={{ fontWeight: 800, color: org.coverUrl && failedCover !== org.coverUrl ? '#fff' : 'text.primary' }}
               >
                 {org.name}
               </Typography>
@@ -220,14 +223,14 @@ export function OrganizationProfilePage() {
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <LocationOnRoundedIcon sx={{ color: 'rgba(255,255,255,0.8)', fontSize: 18 }} />
-                <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.9)' }}>
-                  {org.city}, {org.country}
+                <LocationOnRoundedIcon sx={{ color: org.coverUrl && failedCover !== org.coverUrl ? 'rgba(255,255,255,0.8)' : 'text.secondary', fontSize: 18 }} />
+                <Typography variant="body2" sx={{ color: org.coverUrl && failedCover !== org.coverUrl ? 'rgba(255,255,255,0.9)' : 'text.secondary' }}>
+                  {[org.city, org.country].filter(Boolean).join(', ') || 'Location not added'}
                 </Typography>
               </Box>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <CalendarTodayRoundedIcon sx={{ color: 'rgba(255,255,255,0.8)', fontSize: 18 }} />
-                <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.9)' }}>
+                <CalendarTodayRoundedIcon sx={{ color: org.coverUrl && failedCover !== org.coverUrl ? 'rgba(255,255,255,0.8)' : 'text.secondary', fontSize: 18 }} />
+                <Typography variant="body2" sx={{ color: org.coverUrl && failedCover !== org.coverUrl ? 'rgba(255,255,255,0.9)' : 'text.secondary' }}>
                   Founded {org.founded}
                 </Typography>
               </Box>
@@ -406,6 +409,14 @@ export function OrganizationProfilePage() {
         </Box>
       </Container>
 
+      {imageEditor && <ProfileImageEditor kind={imageEditor} currentUrl={imageEditor === 'coverUrl' ? org.coverUrl : org.logoUrl}
+        onClose={() => setImageEditor(null)} onSaved={(url) => {
+          setOrg({ ...org, [imageEditor === 'coverUrl' ? 'coverUrl' : 'logoUrl']: url })
+          setFailedCover(null); setImageEditor(null); setImageSaved(true)
+        }} />}
+      <Snackbar open={imageSaved} autoHideDuration={4000} onClose={() => setImageSaved(false)}>
+        <Alert severity="success" onClose={() => setImageSaved(false)}>Image updated.</Alert>
+      </Snackbar>
       {/* ─── Snackbar ──────────────────────────────────── */}
       <Snackbar
         open={snackOpen}

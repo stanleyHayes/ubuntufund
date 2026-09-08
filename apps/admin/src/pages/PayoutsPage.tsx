@@ -1,3 +1,5 @@
+import { usePagination } from '@/hooks/usePagination'
+import PaginationBar from '@/components/PaginationBar'
 import { useCallback, useEffect, useState } from 'react'
 import {
   Alert,
@@ -264,6 +266,8 @@ export default function PayoutsPage() {
     [load]
   )
 
+  const payoutPagination = usePagination(payouts, 12)
+  const beneficiaryPagination = usePagination(benePayouts, 12)
   const source = isBeneficiary ? benePayouts : payouts
   const needsReview = source.filter((p) => p.status === 'NEEDS_REVIEW').length
   const pending = source.filter((p) => p.status === 'PENDING').length
@@ -287,7 +291,7 @@ export default function PayoutsPage() {
           size="small"
           exclusive
           value={view}
-          onChange={(_, v) => v && setView(v as View)}
+          onChange={(_, v) => v && (setView(v as View), payoutPagination.goToPage(1), beneficiaryPagination.goToPage(1))}
         >
           <ToggleButton value="queue">Review queue</ToggleButton>
           <ToggleButton value="all">All payouts</ToggleButton>
@@ -307,6 +311,8 @@ export default function PayoutsPage() {
             <Skeleton key={i} variant="rounded" height={140} />
           ))}
         </Stack>
+      ) : error ? (
+        <EmptyState title="Payouts couldn’t be loaded" description="The request failed. Retry to retrieve the latest payouts." />
       ) : source.length === 0 ? (
         <EmptyState
           title={view === 'all' ? 'No payouts yet' : 'Nothing needs attention'}
@@ -320,7 +326,7 @@ export default function PayoutsPage() {
         />
       ) : isBeneficiary ? (
         <Stack spacing={2}>
-          {benePayouts.map((p) => (
+          {beneficiaryPagination.page.map((p) => (
             <BeneficiaryCard
               key={p.id}
               payout={p}
@@ -332,11 +338,12 @@ export default function PayoutsPage() {
         </Stack>
       ) : (
         <Stack spacing={2}>
-          {payouts.map((p) => (
+          {payoutPagination.page.map((p) => (
             <PayoutCard key={p.id} payout={p} onApprove={approve} approving={approvingId === p.id} />
           ))}
         </Stack>
       )}
+      {!loading && !error && source.length > 0 && <PaginationBar neumorphic pagination={isBeneficiary ? beneficiaryPagination : payoutPagination} />}
     </Box>
   )
 }

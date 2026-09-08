@@ -8,9 +8,7 @@ import CardContent from '@mui/material/CardContent'
 import Chip from '@mui/material/Chip'
 import Stack from '@mui/material/Stack'
 import Avatar from '@mui/material/Avatar'
-import Divider from '@mui/material/Divider'
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
-import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded'
 import BarChartRoundedIcon from '@mui/icons-material/BarChartRounded'
 import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded'
@@ -63,7 +61,7 @@ const FEATURES = [
   { icon: <GroupsRoundedIcon />, title: 'Campaign Collaboration', description: 'Invite collaborators and manage shared campaign work through accountable invitation flows.', color: '#1565C0' },
   { icon: <BarChartRoundedIcon />, title: 'Live Campaign Progress', description: 'Track verified campaign totals, goals, donation activity, updates, and supporter comments.', color: '#C7A24A' },
   { icon: <ReceiptLongRoundedIcon />, title: 'Donation History', description: 'Review persisted donation and wallet activity with clear dates, amounts, and payment methods.', color: '#C75B39' },
-  { icon: <SyncRoundedIcon />, title: 'Web and Mobile Access', description: 'Use the same organization identity and campaign data across the responsive web and mobile apps.', color: '#6A1B9A' },
+  { icon: <SyncRoundedIcon />, title: 'Your Organisation Profile', description: 'Personalise your public page with a profile image and cover, and bring your campaigns, followers, and impact together.', color: '#6A1B9A' },
   { icon: <VerifiedUserRoundedIcon />, title: 'Verification Workflow', description: 'Submit organization and identity information for review by the platform trust team.', color: '#00695C' },
   { icon: <SecurityRoundedIcon />, title: 'Moderated Community', description: 'Campaign reporting, disputes, audit trails, soft deletion, and comment moderation protect records and users.', color: '#424242' },
   { icon: <SupportAgentRoundedIcon />, title: 'Human Support', description: 'Contact the support team for onboarding, controlled disbursement, and account assistance.', color: '#AD1457' },
@@ -86,13 +84,7 @@ const STATS = [
 const TESTIMONIALS = [
   { quote: 'Operational figures come from persisted campaigns and donations—not invented marketing counters.', name: 'Evidence first', role: 'Platform commitment', org: 'Transparent reporting', initials: '01', color: '#2E3D2F', stat: 'Real', statLabel: 'Data source' },
   { quote: 'Campaign, account, update, and comment deletion preserves records through soft-delete controls.', name: 'Records preserved', role: 'Platform commitment', org: 'Accountable operations', initials: '02', color: '#C7A24A', stat: 'Soft', statLabel: 'Deletion model' },
-  { quote: 'Unavailable payment rails and paid plans stay disabled until verified production adapters are configured.', name: 'No false checkout', role: 'Platform commitment', org: 'Payment integrity', initials: '03', color: '#C75B39', stat: 'Live', statLabel: 'Rails only' },
-]
-
-const PRICING_TIERS = [
-  { name: 'Free', price: 'GH₵ 0', period: '', description: 'The currently available organization plan', features: ['1 active campaign', 'Up to GH₵ 5,000 goal', 'Campaign updates and comments', 'Wallet donation history'], cta: 'Create an account', highlighted: true },
-  { name: 'Pro', price: 'Paused', period: '', description: 'Unavailable until verified billing is integrated', features: ['No payment is collected', 'No entitlement is activated', 'Store-compliant checkout required', 'Availability will be announced'], cta: 'Billing unavailable', highlighted: false },
-  { name: 'Enterprise', price: 'Planned', period: '', description: 'For institutions requiring contracted support', features: ['Requirements review', 'Compliance review', 'Controlled onboarding', 'No self-service purchase'], cta: 'Contact support', highlighted: false },
+  { quote: 'Checkout shows the payment methods available for your country and currency. Review the applicable fees before confirming.', name: 'Clear checkout', role: 'Platform commitment', org: 'Payment integrity', initials: '03', color: '#C75B39', stat: 'Live', statLabel: 'Rails only' },
 ]
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -110,8 +102,8 @@ function ForOrganizationsPage() {
         icon={<GroupsRoundedIcon />}
         panelLabel="Organization workspace"
         panelTitle="Roles, campaign progress, records, and review status in one place."
-        panelBody="The Free organization plan is available while paid billing remains paused."
-        primaryAction={{ label: 'Create an organization account', href: `${WEB_APP_URL}/register` }}
+        panelBody="Compare plans for campaign limits, team tools, and support as your organisation grows."
+        primaryAction={{ label: 'Create an organization account', href: `${WEB_APP_URL}/register?role=organization` }}
         secondaryAction={{ label: 'Contact support', href: '/contact' }}
       />
 
@@ -363,94 +355,16 @@ function ForOrganizationsPage() {
         </Container>
       </Box>
 
-      {/* ═══ Pricing — Elevated center card ═══ */}
-      <Box
-        sx={{
-          py: { xs: 7, md: 10 },
-          background: 'linear-gradient(180deg, #f8faf8 0%, #fff 100%)',
-          position: 'relative',
-        }}
-      >
-        <Container maxWidth="md">
-          <Box sx={{ textAlign: 'center', mb: 6 }}>
-            <Chip label="Pricing" size="small" sx={{ mb: 2, bgcolor: 'rgba(106,27,154,0.08)', color: '#6A1B9A', fontWeight: 700, fontSize: '0.72rem', letterSpacing: 1, textTransform: 'uppercase' }} />
-            <Typography variant="h3" sx={{ fontWeight: 900, mb: 1, fontSize: { xs: '1.8rem', md: '2.4rem' } }}>
-              Simple, Transparent <Box component="span" sx={{ color: 'primary.main' }}>Pricing</Box>
-            </Typography>
-            <Typography sx={{ color: 'text.secondary', fontSize: '1.02rem' }}>Start free. Scale as you grow.</Typography>
-          </Box>
-
-          <Grid container spacing={3} alignItems="center">
-            {PRICING_TIERS.map((tier, i) => (
-              <Grid size={{ xs: 12, md: 4 }} key={tier.name}>
-                <Card
-                  elevation={0}
-                  sx={{
-                    border: '1px solid',
-                    borderColor: tier.highlighted ? 'primary.main' : 'divider',
-                    borderRadius: SHAPE.card,
-                    position: 'relative',
-                    overflow: 'visible',
-                    animation: `${fadeSlide} 0.4s ease ${0.15 + i * 0.08}s both`,
-                    ...(tier.highlighted && {
-                      zIndex: 2,
-                      borderWidth: 2,
-                    }),
-                  }}
-                >
-                  {tier.highlighted && (
-                    <Chip
-                      label="Most Popular"
-                      size="small"
-                      sx={{
-                        position: 'absolute',
-                        top: -14,
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        bgcolor: 'primary.main',
-                        color: '#fff',
-                        fontWeight: 700,
-                        fontSize: '0.72rem',
-                        px: 1,
-                        height: 28,
-                      }}
-                    />
-                  )}
-                  <CardContent sx={{ p: { xs: 3, md: 3.5 }, display: 'flex', flexDirection: 'column', height: '100%' }}>
-                    <Typography sx={{ fontWeight: 700, fontSize: '0.95rem', mb: 1, color: 'text.secondary' }}>{tier.name}</Typography>
-                    <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5, mb: 0.5 }}>
-                      <Typography sx={{ fontWeight: 900, fontSize: '2.2rem', color: 'text.primary', lineHeight: 1 }}>{tier.price}</Typography>
-                      {tier.period && <Typography sx={{ color: 'text.secondary', fontSize: '0.88rem' }}>{tier.period}</Typography>}
-                    </Box>
-                    <Typography sx={{ fontSize: '0.82rem', color: 'text.secondary', mb: 3 }}>{tier.description}</Typography>
-                    <Divider sx={{ mb: 2.5 }} />
-                    <Stack spacing={1.5} sx={{ flex: 1, mb: 3 }}>
-                      {tier.features.map((f) => (
-                        <Box key={f} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                          <CheckCircleRoundedIcon sx={{ fontSize: 18, color: 'primary.main', mt: '2px', flexShrink: 0 }} />
-                          <Typography sx={{ fontSize: '0.85rem', lineHeight: 1.4 }}>{f}</Typography>
-                        </Box>
-                      ))}
-                    </Stack>
-                    <Button
-                      variant={tier.highlighted ? 'contained' : 'outlined'}
-                      color="primary"
-                      fullWidth
-                      sx={{
-                        borderRadius: SHAPE.sm,
-                        py: 1.4,
-                        fontWeight: 700,
-                        textTransform: 'none',
-                        fontSize: '0.92rem',
-                      }}
-                    >
-                      {tier.cta}
-                    </Button>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
+      <Box component="section" sx={{ py: { xs: 7, md: 10 }, bgcolor: 'background.default' }}>
+        <Container maxWidth="md" sx={{ textAlign: 'center' }}>
+          <Typography variant="overline" color="text.secondary">Plans for your next chapter</Typography>
+          <Typography variant="h3" sx={{ my: 2 }}>Room for your organisation to grow</Typography>
+          <Typography color="text.secondary" sx={{ mb: 4 }}>Compare current campaign limits, fees, collaboration tools, and support across our plans. Find the right fit for your team, or talk to us about enterprise requirements.</Typography>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="center">
+            <Button variant="contained" href="/pricing">Compare plans</Button>
+            <Button variant="outlined" href="/features#campaigns">Explore organisation features</Button>
+            <Button href="/contact">Talk to our team</Button>
+          </Stack>
         </Container>
       </Box>
 

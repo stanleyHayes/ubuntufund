@@ -32,6 +32,7 @@ import {
 import { useCampaign } from '@/hooks/useCampaigns'
 import { ReportCampaignDialog } from '@/components/campaigns/ReportCampaignDialog'
 import { CollaboratorSection } from '@/components/campaigns/CollaboratorSection'
+import { CampaignSplitSetup } from '@/components/campaigns/CampaignSplitSetup'
 import { ShareCampaignButton } from '@/components/campaigns/ShareCampaignButton'
 import { CampaignQRCode } from '@/components/campaigns/CampaignQRCode'
 import { CampaignUpdates } from '@/components/campaigns/CampaignUpdates'
@@ -430,6 +431,7 @@ function CampaignDetailContent() {
             </Box>
           </Box>
 
+          {currentUser?.id === campaign.creatorId && <CampaignSplitSetup campaignId={campaign.id} />}
           {/* Share & Embed */}
           <Box component="details" sx={{ mt: 4, p: 3, borderRadius: SHAPE.card, boxShadow: 'var(--neu-inset)', '& > summary': { cursor: 'pointer', fontWeight: 700 }, '& > div': { mt: 2 } }}><Box component="summary">Share this campaign · QR code</Box>
             <Box sx={{ flex: 1, p: 3, bgcolor: 'action.hover', borderRadius: SHAPE.card }}>

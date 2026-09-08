@@ -14,6 +14,7 @@ export interface OrganizationRecord {
   name: string;
   email: string;
   avatarUrl?: string;
+  coverUrl?: string;
   country?: string;
   role: UserRole;
   verificationLevel: VerificationLevel;

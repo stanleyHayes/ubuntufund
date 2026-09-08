@@ -58,7 +58,7 @@ export class PlanLimitsService {
 
   /** Resolve a plan via PlanService (DB-backed) when wired, else the code defaults. */
   private async getPlanFor(tier: string): Promise<SubscriptionPlan> {
-    if (this.planService) return this.planService.getPlan(tier)
+    if (this.planService) return this.planService.getPlan(tier, true)
     const seeds = SUBSCRIPTION_PLANS as Record<string, SubscriptionPlan>
     return seeds[tier] ?? seeds[SubscriptionTier.FREE]
   }
@@ -72,6 +72,11 @@ export class PlanLimitsService {
   async resolvePlan(userId: string): Promise<SubscriptionPlan> {
     const subscription = await this.subscriptionRepo.findByUserId(userId);
     if (!subscription || !ACTIVE_STATUSES.has(subscription.status)) {
+      return this.getPlanFor(SubscriptionTier.FREE);
+    }
+    const expiry = new Date(subscription.currentPeriodEnd).getTime();
+    const trialExpired = subscription.status === SubscriptionStatus.TRIALING && subscription.trialEnd && new Date(subscription.trialEnd).getTime() <= Date.now();
+    if (subscription.tier !== SubscriptionTier.FREE && (!Number.isFinite(expiry) || expiry <= Date.now() || trialExpired)) {
       return this.getPlanFor(SubscriptionTier.FREE);
     }
     return this.getPlanFor(subscription.tier);
@@ -112,7 +117,8 @@ export class PlanLimitsService {
   async assertCanCreateCampaign(
     userId: string,
     goalAmount: number,
-    complianceApprovedLimit?: number
+    complianceApprovedLimit?: number,
+    mediaCount = 0
   ): Promise<void> {
     const plan = await this.resolvePlan(userId);
 
@@ -126,6 +132,11 @@ export class PlanLimitsService {
           403
         );
       }
+    }
+
+    if (!Number.isFinite(goalAmount) || goalAmount <= 0) throw new AppError('Goal must be a finite positive amount', 422);
+    if (plan.maxMediaPerCampaign >= 0 && mediaCount > plan.maxMediaPerCampaign) {
+      throw new AppError(`Your ${plan.name} plan allows ${plan.maxMediaPerCampaign} media uploads per campaign.`, 422);
     }
 
     // Effective goal ceiling = MIN(plan cap, compliance-approved cap); either -1
@@ -146,7 +157,7 @@ export class PlanLimitsService {
   }
 
   /** MIN of the finite (>= 0) caps; undefined when both are unlimited. */
-  private effectiveGoalCap(planCap: number, complianceCap?: number): number | undefined {
+  effectiveGoalCap(planCap: number, complianceCap?: number): number | undefined {
     const caps: number[] = [];
     if (planCap >= 0) caps.push(planCap);
     if (complianceCap !== undefined && complianceCap >= 0) caps.push(complianceCap);

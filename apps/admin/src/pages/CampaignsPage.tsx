@@ -1,14 +1,11 @@
+import { CollectionTable, CollectionViewSwitch, useCollectionView } from '@/components/CollectionView'
 import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link as RouterLink } from 'react-router-dom'
 import { Alert, Skeleton, Box, Typography, MenuItem, InputAdornment, Button } from '@mui/material'
 import { raisedSurface, insetSurface, progressTrack } from '@/lib/surfaces'
 import SearchIcon from '@mui/icons-material/Search'
 import RocketLaunchRoundedIcon from '@mui/icons-material/RocketLaunchRounded'
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'
-import BlockIcon from '@mui/icons-material/Block'
-import DoNotDisturbIcon from '@mui/icons-material/DoNotDisturb'
-import CampaignIcon from '@mui/icons-material/Campaign'
 import { EmptyState, SHAPE } from '@ubuntu-fund/ui'
 import { CampaignStatus, CampaignCategory } from '@ubuntu-fund/types'
 import type { Campaign } from '@ubuntu-fund/types'
@@ -129,71 +126,17 @@ function CampaignCard({ campaign }: { campaign: Campaign }) {
         <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>
           {new Date(campaign.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
         </Typography>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-          <CampaignIcon sx={{ fontSize: 12, color: 'text.secondary' }} />
-          <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary', fontFamily: '"Outfit", monospace' }}>
-            {Math.floor(campaign.id.charCodeAt(campaign.id.length - 1) % 8)} updates
-          </Typography>
-        </Box>
+        <Typography variant="caption" color="primary.main">View campaign →</Typography>
       </Box>
 
-      {/* Action buttons */}
-      <Box sx={{ display: 'flex', gap: 1, mt: 1.5, position: 'relative', zIndex: 1 }}>
-        {campaign.status === CampaignStatus.PENDING_REVIEW && (
-          <>
-            <Button
-              size="small"
-              variant="outlined"
-              startIcon={<CheckCircleOutlineIcon sx={{ fontSize: 14 }} />}
-              onClick={(e) => { e.stopPropagation(); }}
-              sx={{
-                color: '#5E8F72', borderColor: '#5E8F72',
-                fontSize: '0.65rem', textTransform: 'none', minWidth: 'auto',
-                fontFamily: '"Outfit", sans-serif',
-                '&:hover': { borderColor: '#5E8F72', bgcolor: 'rgba(76,175,80,0.08)' },
-              }}
-            >
-              Approve
-            </Button>
-            <Button
-              size="small"
-              variant="outlined"
-              startIcon={<DoNotDisturbIcon sx={{ fontSize: 14 }} />}
-              onClick={(e) => { e.stopPropagation(); }}
-              sx={{
-                color: '#C06B58', borderColor: '#C06B58',
-                fontSize: '0.65rem', textTransform: 'none', minWidth: 'auto',
-                fontFamily: '"Outfit", sans-serif',
-                '&:hover': { borderColor: '#C06B58', bgcolor: 'rgba(192,107,88,0.08)' },
-              }}
-            >
-              Reject
-            </Button>
-          </>
-        )}
-        {campaign.status !== CampaignStatus.BLOCKED && (
-          <Button
-            size="small"
-            variant="outlined"
-            startIcon={<BlockIcon sx={{ fontSize: 14 }} />}
-            onClick={(e) => { e.stopPropagation(); }}
-            sx={{
-              color: '#C06B58', borderColor: '#C06B58',
-              fontSize: '0.65rem', textTransform: 'none', minWidth: 'auto',
-              fontFamily: '"Outfit", sans-serif',
-              '&:hover': { borderColor: '#C06B58', bgcolor: 'rgba(192,107,88,0.08)' },
-            }}
-          >
-            Block
-          </Button>
-        )}
-      </Box>
+
     </Box>
   )
 }
 
 export default function CampaignsPage() {
   const { data: campaigns, isLoading: loading, error } = useAdminCampaigns()
+  const { view, changeView } = useCollectionView('campaigns')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [activeTab, setActiveTab] = useState<'all' | 'pending'>('all')
@@ -207,7 +150,7 @@ export default function CampaignsPage() {
     return true
   })
 
-  const pagination = usePagination(filtered, 9)
+  const pagination = usePagination(filtered, 12)
 
   return (
     <Box sx={{ bgcolor: 'background.default' }}>
@@ -227,7 +170,7 @@ export default function CampaignsPage() {
           component="button"
           type="button"
           aria-pressed={activeTab === 'all'}
-          onClick={() => setActiveTab('all')}
+          onClick={() => { setActiveTab('all'); pagination.goToPage(1) }}
           sx={{
             px: 3, py: 1.5, cursor: 'pointer',
             border: 0, borderRadius: SHAPE.sm, bgcolor: 'background.paper',
@@ -245,7 +188,7 @@ export default function CampaignsPage() {
           component="button"
           type="button"
           aria-pressed={activeTab === 'pending'}
-          onClick={() => setActiveTab('pending')}
+          onClick={() => { setActiveTab('pending'); pagination.goToPage(1) }}
           sx={{
             px: 3, py: 1.5, cursor: 'pointer',
             border: 0, borderRadius: SHAPE.sm, bgcolor: 'background.paper',
@@ -272,7 +215,7 @@ export default function CampaignsPage() {
             placeholder="Search campaigns..."
             slotProps={{ htmlInput: { 'aria-label': 'Search campaigns...' } }}
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={e => { setSearch(e.target.value); pagination.goToPage(1) }}
             fullWidth
             InputProps={{
               startAdornment: (
@@ -290,7 +233,7 @@ export default function CampaignsPage() {
             variant="outlined"
             label="Status"
             value={statusFilter}
-            onChange={e => setStatusFilter(e.target.value)}
+            onChange={e => { setStatusFilter(e.target.value); pagination.goToPage(1) }}
             fullWidth
           >
             <MenuItem value="all">All Statuses</MenuItem>
@@ -306,7 +249,7 @@ export default function CampaignsPage() {
             variant="outlined"
             label="Category"
             value={categoryFilter}
-            onChange={e => setCategoryFilter(e.target.value)}
+            onChange={e => { setCategoryFilter(e.target.value); pagination.goToPage(1) }}
             fullWidth
           >
             <MenuItem value="all">All Categories</MenuItem>
@@ -322,6 +265,11 @@ export default function CampaignsPage() {
         </Box>
       </Box>
 
+      <CollectionViewSwitch view={view} onChange={changeView} />
+      {!loading && !error && filtered.length > 0 && view === 'table' ? <CollectionTable label="Campaigns" columns={['Campaign', 'Category', 'Status', 'Raised', 'Goal', 'Created']} rows={pagination.page.map(c => ({ id: c.id, cells: [
+        <Button component={RouterLink} to={`/campaigns/${c.id}`} sx={{ textAlign: 'left', justifyContent: 'flex-start' }}>{c.title}</Button>, c.category, c.status.replaceAll('_', ' '), `GH₵ ${c.raisedAmount.toLocaleString()}`, `GH₵ ${c.goalAmount.toLocaleString()}`, new Date(c.createdAt).toLocaleDateString(),
+      ] }))} /> : (
+      <>
       {/* Grid */}
       <Box sx={{
         display: 'grid',
@@ -335,6 +283,7 @@ export default function CampaignsPage() {
         }
       </Box>
 
+      </>)}
       {/* Pagination */}
       {!loading && <PaginationBar neumorphic pagination={pagination} accentColor="#5E8F72" />}
 

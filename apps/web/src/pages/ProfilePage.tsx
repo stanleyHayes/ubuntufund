@@ -1,3 +1,6 @@
+import { ProfileArtwork } from '@/components/profile/ProfileArtwork'
+import { ProfileImageEditor } from '@/components/profile/ProfileImageEditor'
+import PhotoCameraRoundedIcon from '@mui/icons-material/PhotoCameraRounded'
 import { useState, useEffect } from 'react'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
@@ -27,7 +30,8 @@ import CampaignRoundedIcon from '@mui/icons-material/CampaignRounded'
 import EmojiEventsRoundedIcon from '@mui/icons-material/EmojiEventsRounded'
 import LocalFireDepartmentRoundedIcon from '@mui/icons-material/LocalFireDepartmentRounded'
 import LocationOnRoundedIcon from '@mui/icons-material/LocationOnRounded'
-import CalendarTodayRoundedIcon from '@mui/icons-material/CalendarTodayRounded'
+import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
+import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined'
 import StarRoundedIcon from '@mui/icons-material/StarRounded'
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded'
 import PeopleRoundedIcon from '@mui/icons-material/PeopleRounded'
@@ -40,8 +44,8 @@ import GroupsRoundedIcon from '@mui/icons-material/GroupsRounded'
 import AccountBalanceRoundedIcon from '@mui/icons-material/AccountBalanceRounded'
 import PaletteRoundedIcon from '@mui/icons-material/PaletteRounded'
 import { keyframes } from '@mui/material/styles'
-import { TrustBadge, SHAPE } from '@ubuntu-fund/ui'
-import { VerificationLevel, CampaignCategory } from '@ubuntu-fund/types'
+import { SHAPE } from '@ubuntu-fund/ui'
+import { CampaignCategory } from '@ubuntu-fund/types'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
 import { Link as RouterLink } from 'react-router-dom'
@@ -142,6 +146,16 @@ function StatCard({ icon, value, label, color, delay }: { icon: React.ReactNode;
 export function ProfilePage() {
   const { user } = useAuth()
   const [tab, setTab] = useState(0)
+  const [images, setImages] = useState({ avatarUrl: '', coverUrl: '' })
+  const [imageEditor, setImageEditor] = useState<'avatarUrl' | 'coverUrl' | null>(null)
+  const [failedCover, setFailedCover] = useState('')
+  useEffect(() => {
+    let cancelled = false
+    api.get<{ avatarUrl?: string; coverUrl?: string }>('/profile').then(profile => {
+      if (!cancelled) setImages({ avatarUrl: profile.avatarUrl ?? '', coverUrl: profile.coverUrl ?? '' })
+    }).catch(() => { /* Keep the default images when the profile cannot load. */ })
+    return () => { cancelled = true }
+  }, [])
   const [impact, setImpact] = useState<ProfileImpact>(DEFAULT_IMPACT)
   const [impactLoading, setImpactLoading] = useState(true)
 
@@ -195,14 +209,6 @@ export function ProfilePage() {
     return () => { cancelled = true }
   }, [])
 
-  const verificationLevel = VerificationLevel.EMAIL_PHONE
-  const trustScore = 72
-
-  const initials = user?.name
-    ?.split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase() ?? '?'
 
   async function handleSaveProfile() {
     if (profileSaving) return
@@ -248,182 +254,88 @@ export function ProfilePage() {
 
   return (
     <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', pb: 6 }}>
-      {/* ═══ Hero Section ═══ */}
-      <Box
-        sx={{
-          position: 'relative',
-          bgcolor: '#1C261D',
-          pt: 5,
-          pb: 12,
-          overflow: 'hidden',
-        }}
-      >
-        {/* Kente pattern overlay */}
-        <Box
-          sx={{
-            position: 'absolute',
-            inset: 0,
-            opacity: 0.06,
-            backgroundImage: 'none',
-            pointerEvents: 'none',
-          }}
-        />
-        {/* Subtle radial glow */}
-        <Box
-          sx={{
-            position: 'absolute',
-            top: '30%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: 500,
-            height: 500,
-            borderRadius: '50%',
-            bgcolor: 'rgba(199, 162, 74,0.06)',
-            pointerEvents: 'none',
-          }}
-        />
-        <Container maxWidth="md" sx={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
-          {/* Avatar */}
-          <Box sx={{ position: 'relative', display: 'inline-block', mb: 2, animation: `${fadeIn} 0.5s ease both` }}>
-            <Avatar
-              sx={{
-                width: 110,
-                height: 110,
-                bgcolor: '#C7A24A',
-                fontSize: '2.5rem',
-                fontWeight: 900,
-                border: '4px solid rgba(255,255,255,0.3)',
-                mx: 'auto',
-              }}
-            >
-              {initials}
-            </Avatar>
-            {/* Trust score ring */}
-            <Box
-              sx={{
-                position: 'absolute',
-                bottom: -4,
-                right: -4,
-                width: 36,
-                height: 36,
-                borderRadius: '50%',
-                bgcolor: '#2E3D2F',
-                border: '3px solid #1C261D',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Typography sx={{ color: '#fff', fontSize: '0.65rem', fontWeight: 900 }}>{trustScore}</Typography>
-            </Box>
-          </Box>
-
-          {/* Name & Meta */}
-          <Typography
-            sx={{
-              fontWeight: 900,
-              fontSize: '1.8rem',
-              color: '#fff',
-              mb: 0.5,
-              animation: `${fadeIn} 0.5s ease 0.1s both`,
-            }}
-          >
-            {user?.name ?? 'User'}
-          </Typography>
-          <Typography
-            sx={{
-              color: 'rgba(255,255,255,0.6)',
-              fontSize: '0.9rem',
-              mb: 2,
-              animation: `${fadeIn} 0.5s ease 0.15s both`,
-            }}
-          >
-            {bio}
-          </Typography>
-
-          {/* Meta chips */}
-          <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'center', flexWrap: 'wrap', mb: 2, animation: `${fadeIn} 0.5s ease 0.2s both` }}>
-            <Chip
-              icon={<LocationOnRoundedIcon sx={{ fontSize: 16, color: 'rgba(255,255,255,0.7) !important' }} />}
-              label={country}
-              size="small"
-              sx={{ bgcolor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.8)', fontWeight: 600, border: '1px solid rgba(255,255,255,0.1)' }}
-            />
-            <Chip
-              icon={<CalendarTodayRoundedIcon sx={{ fontSize: 14, color: 'rgba(255,255,255,0.7) !important' }} />}
-              label="Joined Mar 2026"
-              size="small"
-              sx={{ bgcolor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.8)', fontWeight: 600, border: '1px solid rgba(255,255,255,0.1)' }}
-            />
-            <TrustBadge level={verificationLevel} />
-            <Chip
-              icon={<LocalFireDepartmentRoundedIcon sx={{ fontSize: 16, color: '#FF8F00 !important' }} />}
-              label={`${impact.streak}-mo streak`}
-              size="small"
-              sx={{ bgcolor: 'rgba(199, 162, 74,0.15)', color: '#FFD54F', fontWeight: 700, border: '1px solid rgba(199, 162, 74,0.2)' }}
-            />
-            <Button
-              component={RouterLink}
-              to="/kyc"
-              variant="outlined"
-              size="small"
-              sx={{
-                color: '#fff',
-                // Override the theme's light neu-surface fill — this button sits on
-                // the dark header, so it needs a translucent-dark fill for the
-                // white label to read (matches the meta chips).
-                backgroundColor: 'rgba(255,255,255,0.12)',
-                borderColor: 'rgba(255,255,255,0.3)',
-                boxShadow: 'none',
-                borderRadius: 2,
-                textTransform: 'none',
-                fontWeight: 600,
-                '&:hover': { backgroundColor: 'rgba(255,255,255,0.22)', borderColor: '#fff', boxShadow: 'none' },
-              }}
-            >
-              KYC Verification
-            </Button>
-          </Box>
-
-          {/* Action buttons */}
-          <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'center', animation: `${fadeIn} 0.5s ease 0.25s both` }}>
-            <Button
-              variant="outlined"
-              startIcon={<EditRoundedIcon />}
-              onClick={() => setTab(0)}
-              sx={{
-                color: '#fff',
-                // Same as the KYC button — override the light neu-surface fill so
-                // the white label reads on the dark header.
-                backgroundColor: 'rgba(255,255,255,0.12)',
-                borderColor: 'rgba(255,255,255,0.25)',
-                boxShadow: 'none',
-                borderRadius: SHAPE.sm,
-                textTransform: 'none',
-                fontWeight: 600,
-                '&:hover': { borderColor: '#fff', backgroundColor: 'rgba(255,255,255,0.22)', boxShadow: 'none' },
-              }}
-            >
-              Edit Profile
-            </Button>
-            <Tooltip title="Share profile">
-              <IconButton
-                onClick={handleShare}
-                sx={{ color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.15)', '&:hover': { color: '#fff', borderColor: 'rgba(255,255,255,0.3)' } }}
-              >
-                <ShareRoundedIcon fontSize="small" />
+      <Container maxWidth="md" sx={{ pt: 3 }}>
+        <Box sx={{ height: { xs: 160, sm: 240 }, position: 'relative', overflow: 'hidden', borderRadius: SHAPE.card, bgcolor: 'background.paper', backgroundImage: 'radial-gradient(ellipse at 80% 20%, rgba(199,162,74,0.22), transparent 65%)', boxShadow: 'var(--neu-inset)', border: 'var(--neu-border)' }}>
+          <ProfileArtwork variant="cover" />
+          {images.coverUrl && failedCover !== images.coverUrl && <Box component="img" src={images.coverUrl} alt="Your profile cover" onError={() => setFailedCover(images.coverUrl)} sx={{ position: 'relative', width: '100%', height: '100%', objectFit: 'cover' }} />}
+          <Button startIcon={<PhotoCameraRoundedIcon />} onClick={() => setImageEditor('coverUrl')} sx={{ position: 'absolute', bottom: 16, right: 16, bgcolor: 'background.paper', color: 'text.primary', boxShadow: 'var(--neu-subtle)', '&:hover': { bgcolor: 'background.paper' } }}>Change cover</Button>
+        </Box>
+      </Container>
+      {imageEditor && <ProfileImageEditor kind={imageEditor} currentUrl={images[imageEditor]} onClose={() => setImageEditor(null)} onSaved={url => { setImages(current => ({ ...current, [imageEditor]: url })); setFailedCover(''); setImageEditor(null); setProfileSnack(true) }} />}
+      {/* Profile identity */}
+      <Box data-profile-header sx={{ bgcolor: 'background.default', color: 'text.primary', borderBottom: '1px solid', borderColor: 'divider',
+        '[data-skin="glassmorphism"] &': { backgroundImage: 'radial-gradient(ellipse at 85% 50%, rgba(199,162,74,0.20), transparent 55%), radial-gradient(ellipse at 5% 10%, rgba(87,126,98,0.15), transparent 55%)' }, pt: { xs: 3, md: 5 }, pb: { xs: 4, md: 5 } }}>
+        <Container maxWidth="md">
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, mb: { xs: 3, md: 4 } }}>
+            <Typography sx={{ fontSize: '0.68rem', letterSpacing: '0.16em', textTransform: 'uppercase', fontWeight: 700, color: 'text.primary' }}>
+              Your community profile
+            </Typography>
+            <Tooltip title="Copy profile link">
+              <IconButton aria-label="Copy profile link" onClick={handleShare} sx={{ width: 40, height: 40, borderRadius: SHAPE.sm,
+                color: 'text.primary', bgcolor: 'var(--neu-surface)', border: 'var(--neu-border)', boxShadow: 'var(--neu-subtle) !important', backdropFilter: 'var(--neu-backdrop)',
+                '&:hover': { bgcolor: 'action.hover', boxShadow: 'var(--neu-raised-hover) !important' }, '&:focus-visible': { outline: '2px solid', outlineColor: 'primary.main', outlineOffset: 3 } }}>
+                <ShareRoundedIcon sx={{ fontSize: 18 }} />
               </IconButton>
             </Tooltip>
           </Box>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1fr) 240px' }, gap: { xs: 3, md: 4 }, alignItems: 'stretch' }}>
+            <Box sx={{ minWidth: 0 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5, mb: 2.5 }}>
+                <Avatar src={images.avatarUrl} alt={user?.name ?? 'Profile'} sx={{ width: { xs: 72, sm: 88 }, height: { xs: 72, sm: 88 }, borderRadius: SHAPE.card,
+                  bgcolor: 'secondary.main', color: 'secondary.contrastText', fontSize: { xs: '1.6rem', sm: '2rem' }, fontWeight: 800,
+                  border: 'var(--neu-border)', boxShadow: 'var(--neu-subtle)', flexShrink: 0 }}>
+                  <ProfileArtwork />
+                </Avatar>
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography component="h1" sx={{ fontWeight: 700, fontSize: { xs: '1.7rem', sm: '2.2rem' }, lineHeight: 1.12,
+                    letterSpacing: '-0.035em', overflowWrap: 'anywhere', color: 'text.primary' }}>
+                    {user?.name ?? 'Your profile'}
+                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 1.25, color: 'text.secondary' }}>
+                    <LocationOnRoundedIcon sx={{ fontSize: 16 }} />
+                    <Typography sx={{ fontSize: '0.82rem' }}>{country}</Typography>
+                  </Box>
+                </Box>
+              </Box>
+              <Typography sx={{ maxWidth: 500, color: 'text.secondary', fontSize: '0.92rem', lineHeight: 1.75, overflowWrap: 'anywhere' }}>{bio}</Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2, mt: 3 }}>
+                <Button startIcon={<PhotoCameraRoundedIcon />} onClick={() => setImageEditor('avatarUrl')}>Change profile image</Button>
+                <Button startIcon={<EditRoundedIcon sx={{ fontSize: 18 }} />} onClick={() => {
+                  setTab(0)
+                  document.getElementById('profile-settings')?.scrollIntoView({ block: 'start', behavior: 'instant' })
+                  window.requestAnimationFrame(() => document.getElementById('profile-full-name')?.focus({ preventScroll: true }))
+                }} sx={{ px: 2.25, py: 1, borderRadius: SHAPE.sm, bgcolor: 'secondary.main', color: 'secondary.contrastText', boxShadow: 'var(--neu-subtle) !important',
+                  border: 'var(--neu-border)', fontWeight: 700, textTransform: 'none',
+                  '&:hover': { bgcolor: 'secondary.light', boxShadow: 'var(--neu-raised-hover) !important' }, '&:focus-visible': { outline: '2px solid', outlineColor: 'primary.main', outlineOffset: 3 } }}>
+                  Edit profile
+                </Button>
+                {!impactLoading && impact.streak > 0 && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, color: 'text.primary' }}>
+                    <LocalFireDepartmentRoundedIcon sx={{ fontSize: 19 }} />
+                    <Typography sx={{ fontSize: '0.78rem', fontWeight: 500 }}>{impact.streak}-month giving streak</Typography>
+                  </Box>
+                )}
+              </Box>
+            </Box>
+            <Box sx={{ p: 2.5, bgcolor: 'var(--neu-surface)', border: 'var(--neu-border)', boxShadow: 'var(--neu-raised)', backdropFilter: 'var(--neu-backdrop)', WebkitBackdropFilter: 'var(--neu-backdrop)', borderRadius: SHAPE.card, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+              <Box sx={{ display: 'grid', placeItems: 'center', width: 40, height: 40, borderRadius: SHAPE.sm, bgcolor: 'var(--neu-surface)', color: 'primary.main', boxShadow: 'var(--neu-inset)', mb: 2 }}>
+                <ShieldOutlinedIcon sx={{ fontSize: 23 }} />
+              </Box>
+              <Typography component="h2" sx={{ fontWeight: 600, fontSize: '1rem', color: 'text.primary', mb: 0.75 }}>Build trust with your community</Typography>
+              <Typography sx={{ fontSize: '0.8rem', lineHeight: 1.65, color: 'text.secondary', mb: 2.5 }}>Manage your identity verification and review your account status.</Typography>
+              <Button component={RouterLink} to="/kyc" endIcon={<ArrowForwardRoundedIcon sx={{ fontSize: 16 }} />}
+                sx={{ mt: 'auto', p: 0, minHeight: 32, minWidth: 0, fontSize: '0.8rem', fontWeight: 700, textTransform: 'none',
+                  bgcolor: 'transparent', color: 'text.primary', border: 0, borderRadius: SHAPE.sm, boxShadow: 'none !important',
+                  '&:hover': { bgcolor: 'transparent', color: 'text.primary', boxShadow: 'none !important', textDecoration: 'underline' },
+                  '&:focus-visible': { outline: '2px solid', outlineColor: 'primary.main', outlineOffset: 4 } }}>
+                View verification
+              </Button>
+            </Box>
+          </Box>
         </Container>
-
-        {/* Bottom wave */}
-        <svg style={{ position: 'absolute', bottom: -1, left: 0, width: '100%' }} viewBox="0 0 1440 60" preserveAspectRatio="none">
-          <path d="M0,20 C240,60 480,0 720,30 C960,60 1200,0 1440,20 L1440,60 L0,60Z" fill="#F2EFEA" />
-        </svg>
       </Box>
 
-      <Container maxWidth="md" sx={{ mt: -6, position: 'relative', zIndex: 2 }}>
+      <Container maxWidth="md" sx={{ mt: 3, position: 'relative' }}>
         {impactLoading && (
           <Box sx={{ mb: 4 }}>
             <LinearProgress sx={{ borderRadius: SHAPE.bar }} />
@@ -627,6 +539,7 @@ export function ProfilePage() {
           }}
         >
           <Tabs
+            id="profile-settings"
             value={tab}
             onChange={(_, v) => setTab(v)}
             variant="scrollable"
@@ -648,7 +561,7 @@ export function ProfilePage() {
             <TabPanel value={tab} index={0}>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, maxWidth: '100%' }}>
                 {profileError && <Alert severity="error">{profileError}</Alert>}
-                <TextField label="Full Name" value={name} onChange={(e) => setName(e.target.value)} fullWidth />
+                <TextField id="profile-full-name" label="Full Name" value={name} onChange={(e) => setName(e.target.value)} fullWidth />
                 <TextField label="Phone Number" value={phone} onChange={(e) => setPhone(e.target.value)} fullWidth />
                 <Box>
                   <TextField label="Bio" value={bio} onChange={(e) => setBio(e.target.value)} multiline rows={3} fullWidth placeholder="Tell us about yourself..." />

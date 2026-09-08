@@ -15,7 +15,11 @@ const notificationPreferencesSchema = z
   })
   .partial();
 
+const imageUrlSchema = z.union([z.literal(''), z.string().url().max(2048).refine((value) => value.startsWith('https://'), 'Use an HTTPS image URL')]).optional();
+
 const updateProfileSchema = z.object({
+  avatarUrl: imageUrlSchema,
+  coverUrl: imageUrlSchema,
   name: z.string().min(2).max(100).optional(),
   phone: z.string().max(30).optional(),
   bio: z.string().max(1000).optional(),
