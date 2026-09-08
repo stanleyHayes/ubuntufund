@@ -9,6 +9,7 @@ import type { SettleSubscriptionUseCase } from './SettleSubscriptionUseCase.js';
 import type { HandleAffiliatePayoutWebhookUseCase } from './HandleAffiliatePayoutWebhookUseCase.js';
 import type { HandleBeneficiaryPayoutWebhookUseCase } from './HandleBeneficiaryPayoutWebhookUseCase.js';
 import type { HandleTipWebhookUseCase } from './HandleTipWebhookUseCase.js';
+import type { HandleCreatorPayoutWebhookUseCase } from './HandleCreatorPayoutWebhookUseCase.js';
 import type { SubscriptionCheckoutRepositoryPort } from '../../domain/ports/outbound/SubscriptionCheckoutRepositoryPort.js';
 import type { AffiliateCommissionService } from '../services/AffiliateCommissionService.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
@@ -87,7 +88,9 @@ export class HandlePaystackWebhookUseCase {
     // (flag off / not wired), a `bpay-` transfer event is a safe no-op.
     private readonly handleBeneficiaryPayoutWebhookUseCase?: HandleBeneficiaryPayoutWebhookUseCase,
     // Optional creator tip-jar rail: settles `tip-` charges to a creator balance.
-    private readonly handleTipWebhookUseCase?: HandleTipWebhookUseCase
+    private readonly handleTipWebhookUseCase?: HandleTipWebhookUseCase,
+    // Optional creator-withdrawal rail: settles `cpay-` transfers.
+    private readonly handleCreatorPayoutWebhookUseCase?: HandleCreatorPayoutWebhookUseCase
   ) {}
 
   async execute(input: PaystackWebhookInput): Promise<void> {
@@ -156,6 +159,10 @@ export class HandlePaystackWebhookUseCase {
           await this.handleAffiliatePayoutWebhookUseCase.handleSuccess(reference);
           return;
         }
+        if (reference.startsWith('cpay-')) {
+          await this.handleCreatorPayoutWebhookUseCase?.handleSuccess(reference);
+          return;
+        }
         await this.handlePayoutWebhookUseCase.handleSuccess(reference);
         return;
       case 'transfer.failed':
@@ -167,6 +174,10 @@ export class HandlePaystackWebhookUseCase {
           await this.handleAffiliatePayoutWebhookUseCase.handleFailed(reference);
           return;
         }
+        if (reference.startsWith('cpay-')) {
+          await this.handleCreatorPayoutWebhookUseCase?.handleFailed(reference);
+          return;
+        }
         await this.handlePayoutWebhookUseCase.handleFailed(reference);
         return;
       case 'transfer.reversed':
@@ -176,6 +187,10 @@ export class HandlePaystackWebhookUseCase {
         }
         if (reference.startsWith('aff-')) {
           await this.handleAffiliatePayoutWebhookUseCase.handleReversed(reference);
+          return;
+        }
+        if (reference.startsWith('cpay-')) {
+          await this.handleCreatorPayoutWebhookUseCase?.handleReversed(reference);
           return;
         }
         await this.handlePayoutWebhookUseCase.handleReversed(reference);

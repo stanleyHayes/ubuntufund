@@ -198,6 +198,9 @@ import { SaveCreatorProfileUseCase } from './application/use-cases/SaveCreatorPr
 import { GetCreatorByHandleUseCase } from './application/use-cases/GetCreatorByHandleUseCase.js';
 import { CreateTipIntentUseCase } from './application/use-cases/CreateTipIntentUseCase.js';
 import { HandleTipWebhookUseCase } from './application/use-cases/HandleTipWebhookUseCase.js';
+import { MongoCreatorPayoutRepository } from './infrastructure/adapters/outbound/persistence/MongoCreatorPayoutRepository.js';
+import { RequestCreatorWithdrawalUseCase } from './application/use-cases/RequestCreatorWithdrawalUseCase.js';
+import { HandleCreatorPayoutWebhookUseCase } from './application/use-cases/HandleCreatorPayoutWebhookUseCase.js';
 import { createCreatorRoutes } from './infrastructure/adapters/inbound/http/routes/creatorRoutes.js';
 import { ListAffiliatesUseCase } from './application/use-cases/ListAffiliatesUseCase.js';
 import { GetAffiliateDetailUseCase } from './application/use-cases/GetAffiliateDetailUseCase.js';
@@ -615,6 +618,16 @@ export function createApp(): express.Express {
     tipRepo,
     creatorBalanceRepo
   );
+  const creatorPayoutRepo = new MongoCreatorPayoutRepository();
+  const requestCreatorWithdrawalUseCase = new RequestCreatorWithdrawalUseCase(
+    creatorPayoutRepo,
+    creatorBalanceRepo,
+    paymentGateway
+  );
+  const handleCreatorPayoutWebhookUseCase = new HandleCreatorPayoutWebhookUseCase(
+    creatorPayoutRepo,
+    creatorBalanceRepo
+  );
 
   const handlePaystackWebhookUseCase = new HandlePaystackWebhookUseCase(
     paymentGateway,
@@ -629,7 +642,8 @@ export function createApp(): express.Express {
     handleAffiliatePayoutWebhookUseCase,
     affiliateCommissionService,
     handleBeneficiaryPayoutWebhookUseCase,
-    handleTipWebhookUseCase
+    handleTipWebhookUseCase,
+    handleCreatorPayoutWebhookUseCase
   );
   // Flutterwave settlement: verifies the verif-hash, re-verifies the charge
   // server-side, then settles through the same donation seam as Paystack.
@@ -1210,8 +1224,10 @@ export function createApp(): express.Express {
       saveProfile: saveCreatorProfileUseCase,
       getByHandle: getCreatorByHandleUseCase,
       createTip: createTipIntentUseCase,
+      requestWithdrawal: requestCreatorWithdrawalUseCase,
       profileRepo: creatorProfileRepo,
       balanceRepo: creatorBalanceRepo,
+      payoutRepo: creatorPayoutRepo,
       authMiddleware,
     })
   );

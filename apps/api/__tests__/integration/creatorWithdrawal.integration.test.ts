@@ -1,0 +1,135 @@
+import { createHmac, randomUUID } from 'node:crypto';
+
+const PAYSTACK_SECRET = 'sk_test_creator_withdrawal_secret';
+process.env.PAYSTACK_SECRET_KEY = PAYSTACK_SECRET;
+process.env.PAYSTACK_PUBLIC_KEY = 'pk_test_creator_withdrawal_public';
+process.env.PUBLIC_WEB_URL = 'https://give.example.test';
+
+import { describe, it, beforeAll, afterAll, expect, vi } from 'vitest';
+import request from 'supertest';
+import type { Express } from 'express';
+import { createTestApp } from '../helpers/testApp.js';
+import {
+  connectTestDatabase,
+  dropTestDatabase,
+  disconnectTestDatabase,
+} from '../helpers/testDatabase.js';
+import { CreatorBalanceModel } from '../../src/infrastructure/database/models/CreatorBalanceModel.js';
+
+function uniqueEmail(label: string): string {
+  return `${label}-${randomUUID()}@example.com`;
+}
+function sign(raw: string): string {
+  return createHmac('sha512', PAYSTACK_SECRET).update(raw).digest('hex');
+}
+
+describe('Creator withdrawal — transfer rail', () => {
+  let app: Express;
+
+  beforeAll(async () => {
+    await connectTestDatabase();
+    app = await createTestApp();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: unknown, opts: unknown) => {
+        const u = String(url);
+        const body = (opts as { body?: string })?.body
+          ? (JSON.parse((opts as { body: string }).body) as Record<string, unknown>)
+          : {};
+        const json = (p: unknown) => ({ ok: true, status: 200, json: async () => p }) as unknown as Response;
+        if (u.includes('/transferrecipient')) return json({ status: true, data: { recipient_code: `RCP_${randomUUID().slice(0, 8)}` } });
+        if (u.includes('/balance')) return json({ status: true, data: [{ currency: 'GHS', balance: 100_000_000 }] });
+        if (u.includes('/transfer')) return json({ status: true, data: { transfer_code: `TRF_${randomUUID().slice(0, 8)}`, status: 'pending', reference: body.reference } });
+        throw new Error(`unexpected fetch ${u}`);
+      })
+    );
+  });
+  afterAll(async () => {
+    await dropTestDatabase();
+    await disconnectTestDatabase();
+    vi.unstubAllGlobals();
+  });
+
+  async function creatorWithBalance(available: number) {
+    const reg = await request(app)
+      .post('/api/v1/auth/register')
+      .send({ email: uniqueEmail('cw'), password: 'SecurePass123', name: 'With Draw' })
+      .expect(201);
+    const token = reg.body.data.tokens.accessToken as string;
+    const userId = reg.body.data.user.id as string;
+    const handle = `wd-${randomUUID().slice(0, 6)}`;
+    await request(app)
+      .post('/api/v1/creators/profile')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ handle, displayName: 'With Draw' })
+      .expect(200);
+    // Fund the tip balance directly.
+    await CreatorBalanceModel.updateOne(
+      { userId },
+      { $set: { userId, currency: 'GHS', availableBalance: available } },
+      { upsert: true }
+    );
+    return { token, userId };
+  }
+
+  it('withdraws available funds and settles paidOut on the transfer webhook', async () => {
+    const { token, userId } = await creatorWithBalance(200);
+
+    const wd = await request(app)
+      .post('/api/v1/creators/withdraw')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ amount: 120, recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } })
+      .expect(201);
+    expect(wd.body.data.status).toBe('PROCESSING');
+    const reference = wd.body.data.reference as string;
+    expect(reference.startsWith('cpay-')).toBe(true);
+
+    // Reserved out of available immediately.
+    let bal = await CreatorBalanceModel.findOne({ userId });
+    expect(bal?.availableBalance).toBe(80);
+
+    // Provider confirms the transfer → paidOut is credited.
+    const raw = JSON.stringify({ event: 'transfer.success', data: { reference, status: 'success' } });
+    await request(app)
+      .post('/api/v1/webhooks/paystack')
+      .set('x-paystack-signature', sign(raw))
+      .set('Content-Type', 'application/json')
+      .send(raw)
+      .expect(200);
+
+    bal = await CreatorBalanceModel.findOne({ userId });
+    expect(bal?.availableBalance).toBe(80);
+    expect(bal?.paidOutBalance).toBe(120);
+
+    // Duplicate webhook is a no-op.
+    await request(app).post('/api/v1/webhooks/paystack').set('x-paystack-signature', sign(raw)).set('Content-Type', 'application/json').send(raw).expect(200);
+    bal = await CreatorBalanceModel.findOne({ userId });
+    expect(bal?.paidOutBalance).toBe(120);
+  });
+
+  it('rejects a withdrawal above the available balance with 400', async () => {
+    const { token } = await creatorWithBalance(30);
+    await request(app)
+      .post('/api/v1/creators/withdraw')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ amount: 100, recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'X' } })
+      .expect(400);
+  });
+
+  it('returns the reservation when the transfer webhook reports failure', async () => {
+    const { token, userId } = await creatorWithBalance(50);
+    const wd = await request(app)
+      .post('/api/v1/creators/withdraw')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ amount: 50, recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'X' } })
+      .expect(201);
+    const reference = wd.body.data.reference as string;
+    expect((await CreatorBalanceModel.findOne({ userId }))?.availableBalance).toBe(0);
+
+    const raw = JSON.stringify({ event: 'transfer.failed', data: { reference, status: 'failed' } });
+    await request(app).post('/api/v1/webhooks/paystack').set('x-paystack-signature', sign(raw)).set('Content-Type', 'application/json').send(raw).expect(200);
+    const bal = await CreatorBalanceModel.findOne({ userId });
+    expect(bal?.availableBalance).toBe(50); // reservation returned
+    expect(bal?.paidOutBalance).toBe(0);
+  });
+});

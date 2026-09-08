@@ -111,4 +111,21 @@ export class MongoCreatorBalanceRepository
     );
     return doc ? toDomain(doc) : null;
   }
+
+  async reverseFromPaidOut(
+    userId: string,
+    net: number,
+    settleRef?: string
+  ): Promise<CreatorBalance | null> {
+    const doc = await CreatorBalanceModel.findOneAndUpdate(
+      this.settleFilter(userId, settleRef),
+      {
+        $set: { updatedAt: new Date() },
+        $inc: { paidOutBalance: -net, availableBalance: net },
+        ...this.settleAdd(settleRef),
+      },
+      { new: true }
+    );
+    return doc ? toDomain(doc) : null;
+  }
 }
