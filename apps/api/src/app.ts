@@ -314,6 +314,22 @@ import {
 import { createPaystackWebhookRoutes } from './infrastructure/adapters/inbound/http/routes/paystackWebhookRoutes.js';
 import { createFlutterwaveWebhookRoutes } from './infrastructure/adapters/inbound/http/routes/flutterwaveWebhookRoutes.js';
 import { createAdminPaymentsRoutes } from './infrastructure/adapters/inbound/http/routes/adminPaymentsRoutes.js';
+// ── Crypto donation rail (Crypto Donations plan) ────────────────────────────
+import type { CryptoPaymentProviderPort } from './domain/ports/outbound/CryptoPaymentProviderPort.js';
+import { MockCryptoProvider } from './infrastructure/adapters/outbound/crypto/MockCryptoProvider.js';
+import { MongoCryptoQuoteRepository } from './infrastructure/adapters/outbound/persistence/MongoCryptoQuoteRepository.js';
+import { MongoCryptoWebhookEventRepository } from './infrastructure/adapters/outbound/persistence/MongoCryptoWebhookEventRepository.js';
+import { GetCryptoAssetsUseCase } from './application/use-cases/GetCryptoAssetsUseCase.js';
+import { CreateCryptoQuoteUseCase } from './application/use-cases/CreateCryptoQuoteUseCase.js';
+import { CreateCryptoDepositUseCase } from './application/use-cases/CreateCryptoDepositUseCase.js';
+import { HandleCryptoWebhookUseCase } from './application/use-cases/HandleCryptoWebhookUseCase.js';
+import { ReconcileCryptoUseCase } from './application/use-cases/ReconcileCryptoUseCase.js';
+import { CryptoController } from './infrastructure/adapters/inbound/http/controllers/CryptoController.js';
+import { CryptoWebhookController } from './infrastructure/adapters/inbound/http/controllers/CryptoWebhookController.js';
+import { createCryptoRoutes } from './infrastructure/adapters/inbound/http/routes/cryptoRoutes.js';
+import { createCryptoDonationRoutes } from './infrastructure/adapters/inbound/http/routes/cryptoDonationRoutes.js';
+import { createCryptoWebhookRoutes } from './infrastructure/adapters/inbound/http/routes/cryptoWebhookRoutes.js';
+import { createCryptoAdminRoutes } from './infrastructure/adapters/inbound/http/routes/cryptoAdminRoutes.js';
 import {
   createBankRoutes,
   createCampaignPayoutRoutes,
@@ -557,6 +573,65 @@ export function createApp(): express.Express {
     outboxRepo,
     outboxDispatcher
   );
+  // ── Crypto donation rail (Crypto Donations plan) ─────────────────────────
+  // A provider-neutral second rail, OFF by default (config.crypto.enabled). The
+  // built-in sandbox `mock` provider implements the full CryptoPaymentProvider
+  // port so dev/tests run quote→deposit→confirm→settle end-to-end without an
+  // external account; real adapters (Yellow Card / Paychant / Bitnob) drop in
+  // behind the same port. Crypto settles through the shared SettleDonation seam,
+  // so campaign totals, beneficiary splits, fees, ledger and receipts are reused
+  // unchanged — and the fiat (Paystack) flow is untouched.
+  const cryptoQuoteRepo = new MongoCryptoQuoteRepository();
+  const cryptoWebhookEventRepo = new MongoCryptoWebhookEventRepository();
+  const mockCryptoProvider = new MockCryptoProvider(
+    config.crypto.mockWebhookSecret,
+    config.crypto.quoteTtlSeconds
+  );
+  const cryptoProvidersByName = new Map<string, CryptoPaymentProviderPort>([
+    [mockCryptoProvider.provider, mockCryptoProvider],
+  ]);
+  const primaryCryptoProvider =
+    cryptoProvidersByName.get(config.crypto.primaryProvider) ?? mockCryptoProvider;
+  const getCryptoAssetsUseCase = new GetCryptoAssetsUseCase(
+    primaryCryptoProvider,
+    config.crypto
+  );
+  const createCryptoQuoteUseCase = new CreateCryptoQuoteUseCase(
+    primaryCryptoProvider,
+    config.crypto,
+    campaignRepo,
+    cryptoQuoteRepo
+  );
+  const createCryptoDepositUseCase = new CreateCryptoDepositUseCase(
+    primaryCryptoProvider,
+    config.crypto,
+    campaignRepo,
+    cryptoQuoteRepo,
+    donationIntentRepo
+  );
+  const handleCryptoWebhookUseCase = new HandleCryptoWebhookUseCase(
+    cryptoProvidersByName,
+    donationIntentRepo,
+    cryptoWebhookEventRepo,
+    campaignRepo,
+    feePolicy,
+    planLimitsService,
+    settleDonationUseCase
+  );
+  const reconcileCryptoUseCase = new ReconcileCryptoUseCase(
+    donationIntentRepo,
+    cryptoProvidersByName,
+    handleCryptoWebhookUseCase
+  );
+  const cryptoController = new CryptoController(
+    getCryptoAssetsUseCase,
+    createCryptoQuoteUseCase,
+    createCryptoDepositUseCase
+  );
+  const cryptoWebhookController = new CryptoWebhookController(
+    handleCryptoWebhookUseCase
+  );
+
   const createDonationIntentUseCase = new CreateDonationIntentUseCase(
     campaignRepo,
     liveSessionRepo,
@@ -709,6 +784,11 @@ export function createApp(): express.Express {
       reconcilePayoutsUseCase
         .reconcileStale({ olderThanMinutes: 30 })
         .catch((err) => logger.error({ err }, 'scheduled payout reconciliation failed'));
+      if (config.crypto.enabled) {
+        reconcileCryptoUseCase
+          .reconcileStale({ olderThanMinutes: 30 })
+          .catch((err) => logger.error({ err }, 'scheduled crypto reconciliation failed'));
+      }
     }, RECONCILE_INTERVAL_MS);
     timer.unref();
   }
@@ -1182,6 +1262,11 @@ export function createApp(): express.Express {
     '/api/v1/webhooks/flutterwave',
     createFlutterwaveWebhookRoutes(flutterwaveWebhookController)
   );
+  // Crypto provider webhooks — raw body (its own parser) for signature checks.
+  app.use(
+    '/api/v1/webhooks/crypto',
+    createCryptoWebhookRoutes(cryptoWebhookController)
+  );
 
   app.use(express.json({ limit: '200kb' }));
   app.use(requestLogger);
@@ -1211,6 +1296,10 @@ export function createApp(): express.Express {
   api.use('/campaigns', createCampaignQrRoutes(shortLinkController, authMiddleware));
   api.use('/campaigns', createCampaignPayoutRoutes(payoutController, authMiddleware));
   api.use('/campaigns', createCampaignSplitRoutes(campaignSplitController, authMiddleware));
+  // Crypto rail (Crypto Donations plan §17): public asset/network discovery +
+  // campaign-scoped quote/deposit. OFF unless config.crypto.enabled.
+  api.use('/payments/crypto', createCryptoRoutes(cryptoController));
+  api.use('/campaigns', createCryptoDonationRoutes(cryptoController));
   api.use(
     '/campaigns',
     createCampaignBeneficiaryPayoutRoutes(beneficiaryPayoutController, authMiddleware, requireAdmin)
@@ -1235,6 +1324,7 @@ export function createApp(): express.Express {
   api.use('/users', createUserRoutes(profileController));
   api.use('/users', createAdminUserRoutes(adminUserController, authMiddleware, requireAdmin));
   api.use('/admin', createAdminPaymentsRoutes(adminPaymentsController, authMiddleware, requireAdmin));
+  api.use('/admin', createCryptoAdminRoutes(reconcileCryptoUseCase, authMiddleware, requireAdmin));
   api.use('/donations', createDonationRoutes(donationController, authMiddleware));
   // Post-donation message endpoint, composed onto the /donations resource.
   api.use('/donations', createDonationMessageRoutes(donationIntentController, authMiddleware));

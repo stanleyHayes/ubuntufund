@@ -1,7 +1,9 @@
 import type {
   ContributionMethod,
+  CryptoAsset,
   DonationIntentStatus,
   DonationProvider,
+  PaymentRail,
 } from '@ubuntu-fund/types';
 
 export interface DonationIntentProps {
@@ -42,6 +44,16 @@ export interface DonationIntentProps {
   // Idempotency keys of refunds already applied — a repeated refund with the
   // same key is a no-op (exactly-once, even for partial refunds).
   refundKeys?: string[];
+  // ── Crypto rail (Crypto Donations plan §6) — optional/additive ────────────
+  paymentRail?: PaymentRail;
+  cryptoAsset?: CryptoAsset;
+  cryptoNetwork?: string;
+  walletAddress?: string;
+  transactionHash?: string;
+  confirmationCount?: number;
+  requiredConfirmations?: number;
+  quoteId?: string;
+  quoteExpiresAt?: Date;
 }
 
 /**
@@ -175,6 +187,41 @@ export class DonationIntentEntity {
   }
   get refundKeys(): string[] | undefined {
     return this.props.refundKeys;
+  }
+  get paymentRail(): PaymentRail | undefined {
+    return this.props.paymentRail;
+  }
+  get cryptoAsset(): CryptoAsset | undefined {
+    return this.props.cryptoAsset;
+  }
+  get cryptoNetwork(): string | undefined {
+    return this.props.cryptoNetwork;
+  }
+  get walletAddress(): string | undefined {
+    return this.props.walletAddress;
+  }
+  get transactionHash(): string | undefined {
+    return this.props.transactionHash;
+  }
+  get confirmationCount(): number | undefined {
+    return this.props.confirmationCount;
+  }
+  get requiredConfirmations(): number | undefined {
+    return this.props.requiredConfirmations;
+  }
+  get quoteId(): string | undefined {
+    return this.props.quoteId;
+  }
+  get quoteExpiresAt(): Date | undefined {
+    return this.props.quoteExpiresAt;
+  }
+
+  /** Record on-chain progress observed from a provider webhook (additive). */
+  recordCryptoFields(fields: {
+    transactionHash?: string;
+    confirmationCount?: number;
+  }): void {
+    this.props = { ...this.props, ...fields, updatedAt: new Date() };
   }
 
   /** Total the donor is charged: campaign-directed amount plus any tip. */

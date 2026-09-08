@@ -25,8 +25,16 @@ export type DonationIntentStatus =
   | 'CANCELLED'
   | 'EXPIRED'
 
-/** The payment rail an intent settles through. */
-export type DonationProvider = 'wallet' | 'paystack' | 'flutterwave'
+import type { CryptoAsset, CryptoProvider, PaymentRail } from './crypto'
+
+/**
+ * The payment rail an intent settles through. Fiat rails (wallet, Paystack,
+ * Flutterwave) plus the provider-neutral crypto providers (plan §2). Crypto
+ * donations never traverse the fiat gateway paths — they have their own
+ * quote/deposit/webhook use-cases — so adding the crypto values here is purely
+ * additive to the fiat flow.
+ */
+export type DonationProvider = 'wallet' | 'paystack' | 'flutterwave' | CryptoProvider
 
 /** How the contributor pays (spec §6 capabilities / §8 payment_method). */
 export type ContributionMethod = 'mobile_money' | 'card' | 'bank' | 'ussd' | 'wallet'
@@ -92,6 +100,29 @@ export interface DonationIntent {
   platformFeeMinor?: number
   /** Net credited to the campaign, minor units. */
   netCampaignAmountMinor?: number
+
+  // ── Crypto rail (Crypto Donations plan §6) — all optional/additive ────────
+  // Absent ⇒ a fiat donation (unchanged). Present ⇒ a crypto contribution whose
+  // GHS-equivalent (in the minor-unit fields above) credits the campaign only
+  // once CONFIRMED.
+  /** FIAT (default/legacy) or CRYPTO. */
+  paymentRail?: PaymentRail
+  /** The crypto asset the contributor sent. */
+  cryptoAsset?: CryptoAsset
+  /** The blockchain network the deposit was made on. */
+  cryptoNetwork?: string
+  /** Provider-issued destination address for this deposit. */
+  walletAddress?: string
+  /** On-chain transaction hash, once observed. */
+  transactionHash?: string
+  /** Confirmations observed so far. */
+  confirmationCount?: number
+  /** Confirmations required before CONFIRMED (from the network config). */
+  requiredConfirmations?: number
+  /** The accepted quote's id (locks the rate). */
+  quoteId?: string
+  /** When the accepted quote expires; a deposit past this is EXPIRED. */
+  quoteExpiresAt?: Date
 }
 
 export type PaymentAttemptStatus = 'initiated' | 'succeeded' | 'failed'

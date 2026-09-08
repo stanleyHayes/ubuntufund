@@ -49,6 +49,27 @@ export interface DonationIntentRepositoryPort {
   findStalePending(olderThan: Date, limit: number): Promise<DonationIntentEntity[]>;
 
   /**
+   * Crypto intents still in flight (PENDING/PROCESSING) past `olderThan`. The
+   * crypto reconciler re-checks these against the provider (Crypto Donations §7/§8).
+   */
+  findStaleCrypto(olderThan: Date, limit: number): Promise<DonationIntentEntity[]>;
+
+  /**
+   * Move a crypto intent PENDING → PROCESSING on first deposit detection,
+   * recording the tx hash + confirmations. Atomic on PENDING (duplicate = no-op).
+   */
+  markCryptoProcessing(
+    id: string,
+    fields: { transactionHash?: string; confirmationCount?: number }
+  ): Promise<DonationIntentEntity | null>;
+
+  /** Best-effort update of on-chain progress (tx hash / confirmations). */
+  recordCryptoProgress(
+    id: string,
+    fields: { transactionHash?: string; confirmationCount?: number }
+  ): Promise<void>;
+
+  /**
    * Admin search over contributions (spec §15) by any combination of provider
    * reference, campaign, donor email, status, provider and a created-at window.
    * Newest first, capped by `limit`.

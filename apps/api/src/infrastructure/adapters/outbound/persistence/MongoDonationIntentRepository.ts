@@ -39,6 +39,15 @@ function toDomain(doc: DonationIntentDocument): DonationIntentEntity {
     netCampaignAmountMinor: doc.netCampaignAmountMinor,
     refundedAmountMinor: doc.refundedAmountMinor,
     refundKeys: doc.refundKeys,
+    paymentRail: doc.paymentRail,
+    cryptoAsset: doc.cryptoAsset,
+    cryptoNetwork: doc.cryptoNetwork,
+    walletAddress: doc.walletAddress,
+    transactionHash: doc.transactionHash,
+    confirmationCount: doc.confirmationCount,
+    requiredConfirmations: doc.requiredConfirmations,
+    quoteId: doc.quoteId,
+    quoteExpiresAt: doc.quoteExpiresAt,
   });
 }
 
@@ -74,6 +83,15 @@ export class MongoDonationIntentRepository
       providerFeeMinor: p.providerFeeMinor,
       platformFeeMinor: p.platformFeeMinor,
       netCampaignAmountMinor: p.netCampaignAmountMinor,
+      paymentRail: p.paymentRail,
+      cryptoAsset: p.cryptoAsset,
+      cryptoNetwork: p.cryptoNetwork,
+      walletAddress: p.walletAddress,
+      transactionHash: p.transactionHash,
+      confirmationCount: p.confirmationCount,
+      requiredConfirmations: p.requiredConfirmations,
+      quoteId: p.quoteId,
+      quoteExpiresAt: p.quoteExpiresAt,
     });
     return toDomain(doc);
   }
@@ -102,9 +120,10 @@ export class MongoDonationIntentRepository
     providerRef?: string
   ): Promise<DonationIntentEntity | null> {
     // Conditional atomic transition: only fires while the intent is still
-    // CREATED or PENDING, so exactly one settlement ever wins.
+    // CREATED, PENDING or PROCESSING (the crypto rail confirms from PROCESSING),
+    // so exactly one settlement ever wins.
     const doc = await DonationIntentModel.findOneAndUpdate(
-      { _id: id, status: { $in: ['CREATED', 'PENDING'] } },
+      { _id: id, status: { $in: ['CREATED', 'PENDING', 'PROCESSING'] } },
       {
         $set: {
           status: 'SUCCEEDED',
@@ -156,11 +175,66 @@ export class MongoDonationIntentRepository
       status: 'PENDING',
       providerRef: { $exists: true, $ne: null },
       provider: { $ne: 'wallet' },
+      // The crypto rail has its own reconciler ({@link findStaleCrypto}); never
+      // hand a crypto intent to the fiat gateway verifier.
+      paymentRail: { $ne: 'CRYPTO' },
       updatedAt: { $lt: olderThan },
     })
       .sort({ updatedAt: 1 })
       .limit(limit);
     return docs.map(toDomain);
+  }
+
+  /**
+   * Crypto intents still in flight (PENDING = awaiting payment, or PROCESSING =
+   * awaiting confirmations) past `olderThan`. The crypto reconciler re-checks
+   * these against the provider to repair a missed webhook (§7/§8).
+   */
+  async findStaleCrypto(
+    olderThan: Date,
+    limit: number
+  ): Promise<DonationIntentEntity[]> {
+    const docs = await DonationIntentModel.find({
+      paymentRail: 'CRYPTO',
+      status: { $in: ['PENDING', 'PROCESSING'] },
+      providerRef: { $exists: true, $ne: null },
+      updatedAt: { $lt: olderThan },
+    })
+      .sort({ updatedAt: 1 })
+      .limit(limit);
+    return docs.map(toDomain);
+  }
+
+  /**
+   * Move a crypto intent PENDING → PROCESSING when the provider first detects
+   * the deposit, recording the tx hash + confirmations. Atomic on the PENDING
+   * guard so a duplicate detection is a no-op.
+   */
+  async markCryptoProcessing(
+    id: string,
+    fields: { transactionHash?: string; confirmationCount?: number }
+  ): Promise<DonationIntentEntity | null> {
+    const set: Record<string, unknown> = { status: 'PROCESSING' };
+    if (fields.transactionHash !== undefined) set.transactionHash = fields.transactionHash;
+    if (fields.confirmationCount !== undefined) set.confirmationCount = fields.confirmationCount;
+    const doc = await DonationIntentModel.findOneAndUpdate(
+      { _id: id, status: 'PENDING' },
+      { $set: set },
+      { new: true }
+    );
+    return doc ? toDomain(doc) : null;
+  }
+
+  /** Best-effort update of on-chain progress (tx hash / confirmations). */
+  async recordCryptoProgress(
+    id: string,
+    fields: { transactionHash?: string; confirmationCount?: number }
+  ): Promise<void> {
+    const set = Object.fromEntries(
+      Object.entries(fields).filter(([, v]) => v !== undefined)
+    );
+    if (Object.keys(set).length === 0) return;
+    await DonationIntentModel.updateOne({ _id: id }, { $set: set });
   }
 
   async searchForAdmin(filters: {

@@ -1,8 +1,10 @@
 import mongoose, { Schema, type Document } from 'mongoose';
 import type {
   ContributionMethod,
+  CryptoAsset,
   DonationIntentStatus,
   DonationProvider,
+  PaymentRail,
 } from '@ubuntu-fund/types';
 
 export interface DonationIntentDocument extends Document {
@@ -38,6 +40,16 @@ export interface DonationIntentDocument extends Document {
   // Refund tracking (spec §14).
   refundedAmountMinor?: number;
   refundKeys?: string[];
+  // Crypto rail (Crypto Donations plan §6) — optional/additive.
+  paymentRail?: PaymentRail;
+  cryptoAsset?: CryptoAsset;
+  cryptoNetwork?: string;
+  walletAddress?: string;
+  transactionHash?: string;
+  confirmationCount?: number;
+  requiredConfirmations?: number;
+  quoteId?: string;
+  quoteExpiresAt?: Date;
 }
 
 const DONATION_INTENT_STATUSES: DonationIntentStatus[] = [
@@ -56,7 +68,16 @@ const DONATION_INTENT_STATUSES: DonationIntentStatus[] = [
   'EXPIRED',
 ];
 
-const DONATION_PROVIDERS: DonationProvider[] = ['wallet', 'paystack', 'flutterwave'];
+const DONATION_PROVIDERS: DonationProvider[] = [
+  'wallet',
+  'paystack',
+  'flutterwave',
+  // Crypto rail providers (Crypto Donations plan §2); `mock` is the sandbox.
+  'mock',
+  'yellowcard',
+  'paychant',
+  'bitnob',
+];
 
 const CONTRIBUTION_METHODS: ContributionMethod[] = [
   'mobile_money',
@@ -108,6 +129,16 @@ const donationIntentSchema = new Schema<DonationIntentDocument>(
     // idempotency keys already applied, so a replayed refund can't double-refund.
     refundedAmountMinor: { type: Number },
     refundKeys: { type: [String], default: undefined },
+    // Crypto rail (Crypto Donations plan §6) — optional/additive.
+    paymentRail: { type: String, enum: ['FIAT', 'CRYPTO'] },
+    cryptoAsset: { type: String },
+    cryptoNetwork: { type: String },
+    walletAddress: { type: String },
+    transactionHash: { type: String },
+    confirmationCount: { type: Number },
+    requiredConfirmations: { type: Number },
+    quoteId: { type: String },
+    quoteExpiresAt: { type: Date },
   },
   { collection: 'donationintents', timestamps: true }
 );

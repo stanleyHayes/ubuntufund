@@ -14,6 +14,12 @@ const CURRENCY_MINOR_EXPONENT: Record<string, number> = {
   KWD: 3,
   OMR: 3,
   TND: 3,
+  // Crypto assets (Crypto Donations plan §6) — stablecoins 6dp, BTC 8dp — so
+  // minor-unit conversions of an original crypto amount are correctly scaled
+  // (e.g. the FX rate SettleDonation derives from original→settlement).
+  USDT: 6,
+  USDC: 6,
+  BTC: 8,
 };
 
 /** ISO-4217 minor-unit exponent for a currency (default 2). */

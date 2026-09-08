@@ -141,10 +141,30 @@ export interface AppConfig {
    * sign-off (plan §6) before it may be enabled in production.
    */
   splitProceedsEnabled: boolean;
+  /** Crypto donation rail (Crypto Donations plan). Default OFF: needs provider
+   * onboarding + Ghana legal/compliance sign-off (§16) before production. */
+  crypto: CryptoConfig;
   /** Public base URL of the donor-facing web app; builds `/c/:slug` targets & canonical URLs. */
   publicWebUrl: string;
   /** Public base URL this API is reachable at; builds short URLs (`/r/:code`). */
   publicApiUrl: string;
+}
+
+/** Crypto donation rail configuration (Crypto Donations plan §23). */
+export interface CryptoConfig {
+  /** Master switch — crypto donations are rejected unless true (§22). */
+  enabled: boolean;
+  /** Which provider adapter handles crypto (default the built-in sandbox). */
+  primaryProvider: string;
+  /** Server-side asset allowlist; the frontend never dictates supported assets. */
+  allowedAssets: string[];
+  /** Min/max GHS-equivalent per crypto contribution. */
+  minGhs: number;
+  maxGhs: number;
+  /** How long a quote stays valid before a deposit against it is rejected (§9). */
+  quoteTtlSeconds: number;
+  /** HMAC secret the built-in sandbox provider signs/verifies webhooks with. */
+  mockWebhookSecret: string;
 }
 
 function requireEnv(name: string): string {
@@ -263,6 +283,21 @@ export const config: AppConfig = {
     dualApprovalAmount: Number.parseFloat(process.env.PAYOUT_DUAL_APPROVAL_AMOUNT ?? '0'),
   },
   splitProceedsEnabled: process.env.SPLIT_PROCEEDS_ENABLED === 'true',
+  // Crypto rail defaults OFF (§22/§23). The sandbox `mock` provider is the
+  // default so dev/tests exercise the full flow without an external account.
+  crypto: {
+    enabled: process.env.CRYPTO_PAYMENTS_ENABLED === 'true',
+    primaryProvider: process.env.CRYPTO_PRIMARY_PROVIDER ?? 'mock',
+    allowedAssets: (process.env.CRYPTO_ALLOWED_ASSETS ?? 'USDT,USDC')
+      .split(',')
+      .map((s) => s.trim().toUpperCase())
+      .filter(Boolean),
+    minGhs: Number.parseFloat(process.env.CRYPTO_MIN_GHS ?? '10'),
+    maxGhs: Number.parseFloat(process.env.CRYPTO_MAX_GHS ?? '100000'),
+    quoteTtlSeconds: Number.parseInt(process.env.CRYPTO_QUOTE_TTL_SECONDS ?? '900', 10),
+    mockWebhookSecret:
+      process.env.CRYPTO_MOCK_WEBHOOK_SECRET ?? 'mock-crypto-webhook-secret-dev',
+  },
   publicWebUrl: process.env.PUBLIC_WEB_URL ?? 'http://localhost:18200',
   publicApiUrl:
     process.env.PUBLIC_API_URL ??
