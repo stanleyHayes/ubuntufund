@@ -34,6 +34,10 @@ import {
   campaignPublicPath,
   type CampaignPublicView,
 } from '@/lib/fundraising'
+import { getCryptoAssets } from '@/lib/crypto'
+import { CryptoDonatePanel } from '@/components/donate/CryptoDonatePanel'
+import ToggleButton from '@mui/material/ToggleButton'
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 
 // ---------------------------------------------------------------------------
 // Animations
@@ -114,6 +118,10 @@ export function DonatePage() {
   const [message, setMessage] = useState('')
   const [isAnonymous, setIsAnonymous] = useState(false)
 
+  // Payment rail: fiat (Paystack) by default; crypto shown only when enabled.
+  const [cryptoEnabled, setCryptoEnabled] = useState(false)
+  const [payMode, setPayMode] = useState<'fiat' | 'crypto'>('fiat')
+
   // Submit state
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
@@ -155,6 +163,19 @@ export function DonatePage() {
       active = false
     }
   }, [slug])
+
+  // Crypto rail availability (server-driven; the toggle is hidden when off).
+  useEffect(() => {
+    let active = true
+    getCryptoAssets()
+      .then((r) => {
+        if (active) setCryptoEnabled(r.enabled && r.assets.length > 0)
+      })
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [])
 
   const amountValue = parseAmount(amount)
   const tipValue = tip.trim() ? parseAmount(tip) : 0
@@ -504,68 +525,104 @@ export function DonatePage() {
           sx={{ mb: 3, display: 'block' }}
         />
 
-        {/* Accepted payment methods (routed securely through Paystack) */}
-        <Box
-          sx={{
-            p: 2.5,
-            mb: 3,
-            borderRadius: SHAPE.card,
-            bgcolor: 'action.hover',
-          }}
-        >
-          <PaymentMethods
-            compact
-            title="You can pay with"
-            categories={['mobile_money', 'card']}
-          />
-        </Box>
-
-        {submitError && (
-          <Alert severity="error" sx={{ mb: 3, borderRadius: SHAPE.sm }}>
-            {submitError}
-          </Alert>
+        {/* Payment rail: fiat (Paystack) or crypto (shown only when enabled) */}
+        {cryptoEnabled && (
+          <ToggleButtonGroup
+            value={payMode}
+            exclusive
+            onChange={(_, v) => {
+              if (v) setPayMode(v)
+            }}
+            fullWidth
+            sx={{ mb: 2.5 }}
+          >
+            <ToggleButton value="fiat" sx={{ textTransform: 'none', fontWeight: 700, py: 1 }}>
+              Card / Mobile Money
+            </ToggleButton>
+            <ToggleButton value="crypto" sx={{ textTransform: 'none', fontWeight: 700, py: 1 }}>
+              Crypto
+            </ToggleButton>
+          </ToggleButtonGroup>
         )}
 
-        {/* Submit */}
-        <Button
-          type="submit"
-          fullWidth
-          size="large"
-          variant="contained"
-          color="secondary"
-          disabled={!canSubmit}
-          startIcon={submitting ? <LoadingDots size={6} /> : <LockRoundedIcon />}
-          sx={{ py: 1.5, fontSize: '1.05rem', fontWeight: 800 }}
-        >
-          {submitting
-            ? 'Starting secure checkout…'
-            : totalCharge > 0
-              ? `Donate ${formatCurrency(totalCharge, 'GHS')}`
-              : 'Continue to payment'}
-        </Button>
+        {payMode === 'crypto' ? (
+          <CryptoDonatePanel
+            campaignId={campaign.id}
+            amount={amountValid ? amountValue : 0}
+            amountValid={amountValid}
+            donorEmail={donorEmail.trim()}
+            emailValid={emailValid}
+            donorName={donorName.trim() || undefined}
+            message={message.trim() || undefined}
+            isAnonymous={isAnonymous}
+            campaignPath={backToCampaign}
+          />
+        ) : (
+          <>
+            {/* Accepted payment methods (routed securely through Paystack) */}
+            <Box
+              sx={{
+                p: 2.5,
+                mb: 3,
+                borderRadius: SHAPE.card,
+                bgcolor: 'action.hover',
+              }}
+            >
+              <PaymentMethods
+                compact
+                title="You can pay with"
+                categories={['mobile_money', 'card']}
+              />
+            </Box>
 
-        <Box
-          sx={{
-            mt: 2.5,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: 1.25,
-          }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, color: 'text.secondary' }}>
-            <LockRoundedIcon sx={{ fontSize: 16 }} />
-            <Typography variant="caption" sx={{ fontWeight: 600 }}>
-              You'll choose card or mobile money on the next, secure step.
-            </Typography>
-          </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
-              Powered by
-            </Typography>
-            <BrandLogo size={18} />
-          </Box>
-        </Box>
+            {submitError && (
+              <Alert severity="error" sx={{ mb: 3, borderRadius: SHAPE.sm }}>
+                {submitError}
+              </Alert>
+            )}
+
+            {/* Submit */}
+            <Button
+              type="submit"
+              fullWidth
+              size="large"
+              variant="contained"
+              color="secondary"
+              disabled={!canSubmit}
+              startIcon={submitting ? <LoadingDots size={6} /> : <LockRoundedIcon />}
+              sx={{ py: 1.5, fontSize: '1.05rem', fontWeight: 800 }}
+            >
+              {submitting
+                ? 'Starting secure checkout…'
+                : totalCharge > 0
+                  ? `Donate ${formatCurrency(totalCharge, 'GHS')}`
+                  : 'Continue to payment'}
+            </Button>
+
+            <Box
+              sx={{
+                mt: 2.5,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 1.25,
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, color: 'text.secondary' }}>
+                <LockRoundedIcon sx={{ fontSize: 16 }} />
+                <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                  You'll choose card or mobile money on the next, secure step.
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  Powered by
+                </Typography>
+                <BrandLogo size={18} />
+              </Box>
+            </Box>
+          </>
+        )}
       </Box>
     </Container>
   )
