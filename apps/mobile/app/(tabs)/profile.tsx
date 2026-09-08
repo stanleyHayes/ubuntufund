@@ -40,6 +40,7 @@ const MENU_ITEMS: { icon: string; label: string; colorKey: MenuColorKey; route: 
   { icon: 'shield-check', label: 'Verification', colorKey: 'success', route: '/verification' },
   { icon: 'crown', label: 'Subscription', colorKey: 'secondary', route: '/(tabs)/subscription' },
   { icon: 'account-cash', label: 'Affiliate', colorKey: 'success', route: '/affiliate' },
+  { icon: 'storefront', label: 'Creator page', colorKey: 'secondaryDark', route: '/creator' },
   { icon: 'cog', label: 'Settings', colorKey: 'textSecondary', route: '/settings' },
   { icon: 'file-document-outline', label: 'Terms of Service', colorKey: 'textSecondary', route: '/terms' },
   { icon: 'lock-outline', label: 'Privacy Policy', colorKey: 'textSecondary', route: '/privacy' },

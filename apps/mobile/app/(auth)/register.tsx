@@ -9,6 +9,7 @@ import type { Palette, NeuRecipes } from '@/theme'
 import { OrganizationType } from '@ubuntu-fund/types'
 import { useAuth } from '@/context/AuthContext'
 import { UjimoraLogo } from '@/components/UjimoraLogo'
+import { PasswordStrength } from '@/components/PasswordStrength'
 
 type AccountType = 'individual' | 'organization'
 
@@ -243,6 +244,8 @@ export default function RegisterScreen() {
             activeOutlineColor={p.primary}
             disabled={loading}
           />
+
+          <PasswordStrength value={password} />
 
           {password.length > 0 && password.length < 8 && (
             <View style={styles.hintRow}>
