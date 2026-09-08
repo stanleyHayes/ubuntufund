@@ -1,6 +1,7 @@
 import type { PayoutRepositoryPort } from '../../domain/ports/outbound/PayoutRepositoryPort.js';
 import type { BeneficiaryPayoutRepositoryPort } from '../../domain/ports/outbound/BeneficiaryPayoutRepositoryPort.js';
 import type { AffiliatePayoutRepositoryPort } from '../../domain/ports/outbound/AffiliatePayoutRepositoryPort.js';
+import type { CreatorPayoutRepositoryPort } from '../../domain/ports/outbound/CreatorPayoutRepositoryPort.js';
 import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGatewayPort.js';
 import { logger } from '../../infrastructure/logging/logger.js';
 
@@ -52,7 +53,10 @@ export class ReconcilePayoutsUseCase {
     private readonly handlePayoutWebhookUseCase: PayoutWebhookHandler,
     private readonly handleBeneficiaryPayoutWebhookUseCase: PayoutWebhookHandler,
     private readonly handleAffiliatePayoutWebhookUseCase: PayoutWebhookHandler,
-    private readonly paymentGateway: PaymentGatewayPort
+    private readonly paymentGateway: PaymentGatewayPort,
+    // Optional creator-withdrawal rail (`cpay-`): reconciled the same way when wired.
+    private readonly handleCreatorPayoutWebhookUseCase?: PayoutWebhookHandler,
+    private readonly creatorPayoutRepo?: CreatorPayoutRepositoryPort
   ) {}
 
   async reconcileStale(opts: {
@@ -104,6 +108,19 @@ export class ReconcilePayoutsUseCase {
       }
     }
 
+    if (this.creatorPayoutRepo && this.handleCreatorPayoutWebhookUseCase) {
+      const creator = await this.creatorPayoutRepo.findStuckProcessing(cutoff);
+      for (const payout of creator) {
+        if (payout.providerRef) {
+          await this.reconcileOne(
+            payout.providerRef,
+            this.handleCreatorPayoutWebhookUseCase,
+            summary
+          );
+        }
+      }
+    }
+
     // Batched campaign payouts: reconcile each still-in-flight leg by its own
     // reference; the leg-aware webhook handler settles the leg and reconciles
     // the batch to PAID/NEEDS_REVIEW once every leg is terminal.
@@ -142,6 +159,13 @@ export class ReconcilePayoutsUseCase {
     for (const payout of affUnsettled) {
       await this.handleAffiliatePayoutWebhookUseCase.repairSettlement?.(payout.id);
       summary.repaired += 1;
+    }
+    if (this.creatorPayoutRepo && this.handleCreatorPayoutWebhookUseCase) {
+      const creatorUnsettled = await this.creatorPayoutRepo.findTerminalUnsettled(cutoff);
+      for (const payout of creatorUnsettled) {
+        await this.handleCreatorPayoutWebhookUseCase.repairSettlement?.(payout.id);
+        summary.repaired += 1;
+      }
     }
 
     return summary;

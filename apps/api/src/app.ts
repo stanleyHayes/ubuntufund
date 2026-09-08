@@ -686,7 +686,9 @@ export function createApp(): express.Express {
     handlePayoutWebhookUseCase,
     handleBeneficiaryPayoutWebhookUseCase,
     handleAffiliatePayoutWebhookUseCase,
-    paymentGateway
+    paymentGateway,
+    handleCreatorPayoutWebhookUseCase,
+    creatorPayoutRepo
   );
   // Scheduled reconciliation sweep (spec §13). Production-only + flag-gated so
   // tests/dev never spawn it; unref'd so it can't hold the process open.

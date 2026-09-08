@@ -15,6 +15,8 @@ import {
   disconnectTestDatabase,
 } from '../helpers/testDatabase.js';
 import { CreatorBalanceModel } from '../../src/infrastructure/database/models/CreatorBalanceModel.js';
+import { CreatorPayoutModel } from '../../src/infrastructure/database/models/CreatorPayoutModel.js';
+import { UserModel } from '../../src/infrastructure/database/models/UserModel.js';
 
 function uniqueEmail(label: string): string {
   return `${label}-${randomUUID()}@example.com`;
@@ -39,6 +41,10 @@ describe('Creator withdrawal — transfer rail', () => {
         const json = (p: unknown) => ({ ok: true, status: 200, json: async () => p }) as unknown as Response;
         if (u.includes('/transferrecipient')) return json({ status: true, data: { recipient_code: `RCP_${randomUUID().slice(0, 8)}` } });
         if (u.includes('/balance')) return json({ status: true, data: [{ currency: 'GHS', balance: 100_000_000 }] });
+        if (u.includes('/transfer/verify/')) {
+          const ref = decodeURIComponent(u.split('/transfer/verify/')[1] ?? '');
+          return json({ status: true, data: { status: 'success', reference: ref, transfer_code: 'TRF_x' } });
+        }
         if (u.includes('/transfer')) return json({ status: true, data: { transfer_code: `TRF_${randomUUID().slice(0, 8)}`, status: 'pending', reference: body.reference } });
         throw new Error(`unexpected fetch ${u}`);
       })
@@ -114,6 +120,38 @@ describe('Creator withdrawal — transfer rail', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({ amount: 100, recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'X' } })
       .expect(400);
+  });
+
+  it('reconciles a stuck-PROCESSING withdrawal whose webhook was missed', async () => {
+    const { token, userId } = await creatorWithBalance(100);
+    const wd = await request(app)
+      .post('/api/v1/creators/withdraw')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ amount: 100, recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'X' } })
+      .expect(201);
+    const reference = wd.body.data.reference as string;
+
+    // Simulate a missed webhook: still PROCESSING, backdated so the sweep sees it as stale.
+    await CreatorPayoutModel.updateOne(
+      { providerRef: reference },
+      { $set: { updatedAt: new Date(Date.now() - 3600_000) } },
+      { timestamps: false }
+    );
+    expect((await CreatorBalanceModel.findOne({ userId }))?.paidOutBalance).toBe(0);
+
+    // An admin runs the reconciliation sweep → the provider reports success → settled.
+    const admReg = await request(app).post('/api/v1/auth/register').send({ email: uniqueEmail('recadm'), password: 'SecurePass123', name: 'Adm' }).expect(201);
+    await UserModel.findByIdAndUpdate(admReg.body.data.user.id, { role: 'admin' });
+    const admLogin = await request(app).post('/api/v1/auth/login').send({ email: admReg.body.data.user.email, password: 'SecurePass123' }).expect(200);
+    await request(app)
+      .post('/api/v1/admin/reconciliation/payouts')
+      .set('Authorization', `Bearer ${admLogin.body.data.tokens.accessToken}`)
+      .send({ olderThanMinutes: 1 })
+      .expect(200);
+
+    const bal = await CreatorBalanceModel.findOne({ userId });
+    expect(bal?.paidOutBalance).toBe(100); // reconciled to PAID
+    expect(bal?.availableBalance).toBe(0);
   });
 
   it('returns the reservation when the transfer webhook reports failure', async () => {
