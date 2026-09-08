@@ -18,6 +18,9 @@ import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded'
 import RocketLaunchRoundedIcon from '@mui/icons-material/RocketLaunchRounded'
 import AccountBalanceWalletRoundedIcon from '@mui/icons-material/AccountBalanceWalletRounded'
 import HandshakeRoundedIcon from '@mui/icons-material/HandshakeRounded'
+import PersonRoundedIcon from '@mui/icons-material/PersonRounded'
+import WorkspacePremiumRoundedIcon from '@mui/icons-material/WorkspacePremiumRounded'
+import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded'
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded'
 import HomeRoundedIcon from '@mui/icons-material/HomeRounded'
 import ExploreRoundedIcon from '@mui/icons-material/ExploreRounded'
@@ -323,9 +326,12 @@ export function Header() {
           ...(isAuthenticated
             ? [
                 { label: 'Dashboard', to: '/dashboard', icon: <DashboardRoundedIcon /> },
+                { label: 'Profile', to: '/profile', icon: <PersonRoundedIcon /> },
                 { label: 'Start Campaign', to: '/campaigns/new', icon: <RocketLaunchRoundedIcon /> },
                 { label: 'Wallet', to: '/wallet', icon: <AccountBalanceWalletRoundedIcon /> },
                 { label: 'Affiliate', to: '/affiliate', icon: <HandshakeRoundedIcon /> },
+                { label: 'Subscription', to: '/subscription', icon: <WorkspacePremiumRoundedIcon /> },
+                { label: 'Settings', to: '/settings', icon: <SettingsRoundedIcon /> },
               ]
             : [
                 { label: 'Login', to: '/login', icon: <LoginRoundedIcon /> },

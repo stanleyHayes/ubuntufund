@@ -18,6 +18,7 @@ import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
 import Divider from '@mui/material/Divider'
 import KYCStatus from '@/components/KYCStatus'
+import { PasswordStrength } from '@/components/auth/PasswordStrength'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import ShareRoundedIcon from '@mui/icons-material/ShareRounded'
 import FavoriteRoundedIcon from '@mui/icons-material/FavoriteRounded'
@@ -654,7 +655,10 @@ export function ProfilePage() {
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, maxWidth: '100%' }}>
                 {passwordError && <Alert severity="error">{passwordError}</Alert>}
                 <TextField label="Current Password" type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} fullWidth />
-                <TextField label="New Password" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} fullWidth helperText="Minimum 8 characters" />
+                <Box>
+                  <TextField label="New Password" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} fullWidth helperText="Minimum 8 characters" />
+                  <PasswordStrength value={newPassword} />
+                </Box>
                 <TextField
                   label="Confirm New Password" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} fullWidth
                   error={confirmPassword.length > 0 && confirmPassword !== newPassword}

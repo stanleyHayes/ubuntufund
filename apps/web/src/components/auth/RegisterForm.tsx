@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
-import MenuItem from '@mui/material/MenuItem'
+import { OrganizationTypePicker } from './OrganizationTypePicker'
+import { PasswordStrength } from './PasswordStrength'
 import Button from '@mui/material/Button'
 import Alert from '@mui/material/Alert'
 import Typography from '@mui/material/Typography'
@@ -14,7 +15,6 @@ import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import { Link as RouterLink } from 'react-router-dom'
 import {
-  OrganizationType,
   SubscriptionTier,
   BillingCycle,
 } from '@ubuntu-fund/types'
@@ -33,15 +33,6 @@ const GOLD_DARK = 'var(--text-warning)'
 const INK_SECONDARY = 'text.secondary'
 
 type AccountType = 'individual' | 'organization'
-
-const ORG_TYPE_LABELS: Record<OrganizationType, string> = {
-  [OrganizationType.NGO]: 'NGO / Non-profit',
-  [OrganizationType.HOSPITAL]: 'Hospital / Health',
-  [OrganizationType.SCHOOL]: 'School / Education',
-  [OrganizationType.RELIGIOUS]: 'Religious body',
-  [OrganizationType.GOVERNMENT]: 'Government / Public',
-  [OrganizationType.OTHER]: 'Other',
-}
 
 const STEPS = ['Account', 'Details', 'Plan'] as const
 
@@ -265,14 +256,18 @@ export function RegisterForm() {
           {isOrg && (
             <>
               <TextField label="Organization name" value={organizationName} onChange={(e) => setOrganizationName(e.target.value)} error={!!errors.organizationName} helperText={errors.organizationName} fullWidth required />
-              <TextField select label="Organization type" value={organizationType} onChange={(e) => setOrganizationType(e.target.value)} error={!!errors.organizationType} helperText={errors.organizationType} fullWidth required>
-                {Object.values(OrganizationType).map((t) => <MenuItem key={t} value={t}>{ORG_TYPE_LABELS[t]}</MenuItem>)}
-              </TextField>
+              <OrganizationTypePicker value={organizationType} onChange={(value) => {
+                setOrganizationType(value)
+                setErrors((current) => ({ ...current, organizationType: undefined }))
+              }} error={errors.organizationType} />
             </>
           )}
           <TextField label={isOrg ? 'Contact name' : 'Full name'} value={name} onChange={(e) => setName(e.target.value)} error={!!errors.name} helperText={errors.name} fullWidth required autoComplete="name" />
           <TextField label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} error={!!errors.email} helperText={errors.email} fullWidth required autoComplete="email" />
-          <TextField label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} error={!!errors.password} helperText={errors.password} fullWidth required autoComplete="new-password" />
+          <Box>
+            <TextField label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} error={!!errors.password} helperText={errors.password} fullWidth required autoComplete="new-password" />
+            <PasswordStrength value={password} />
+          </Box>
           <TextField label="Confirm password" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} error={!!errors.confirmPassword} helperText={errors.confirmPassword} fullWidth required autoComplete="new-password" />
           {isOrg && (
             <>

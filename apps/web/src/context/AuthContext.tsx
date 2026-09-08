@@ -1,4 +1,4 @@
-import { SESSION_EXPIRED, expireSession, storedAccessToken, tokenExpiresAt } from '@/lib/session'
+import { SESSION_EXPIRED, expireSession, forceExpireSession, storedAccessToken, tokenExpiresAt } from '@/lib/session'
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import type { ReactNode } from 'react'
 import { loginApi, registerApi, refreshTokenApi } from '@/lib/api'
@@ -52,7 +52,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return {
       user,
       tokens,
-      isAuthenticated: !!user && !!tokens,
+      // Require a real access token — a tokens object that exists but carries no
+      // usable access token must NOT read as authenticated (it would let a
+      // protected page mount, 401, and dead-end instead of prompting sign-in).
+      isAuthenticated: !!user && !!tokens?.accessToken,
       isLoading: !!user && !!tokens?.refreshToken,
     }
   })
@@ -78,7 +81,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setState({ user, tokens: newTokens, isAuthenticated: true, isLoading: false })
       }
     }).catch(() => {
-      if (!cancelled) expireSession(tokens.accessToken)
+      if (cancelled) return
+      // Refresh failed → this session is unrecoverable. Sign out so protected
+      // pages show the sign-in prompt (not a stuck skeleton or a dead-end),
+      // unless a newer login has already replaced this session's refresh token.
+      const current = loadFromStorage().tokens
+      if (!current || current.refreshToken === tokens.refreshToken) forceExpireSession()
     })
     return () => { cancelled = true }
   }, [])

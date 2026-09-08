@@ -5,6 +5,11 @@ import { fileURLToPath } from 'node:url'
 export default defineConfig({
   plugins: [react()],
   resolve: {
+    // Force a single React instance. packages/ui is consumed as source and
+    // resolves the hoisted root react, while the app has its own nested copy
+    // (version drift: root 19.2.0 vs app 19.2.3); without dedupe that's two
+    // Reacts → "Invalid hook call" in the ThemeProvider.
+    dedupe: ['react', 'react-dom'],
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },

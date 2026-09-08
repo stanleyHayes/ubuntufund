@@ -83,9 +83,9 @@ export function OrganizationsPage() {
   return (
     <>
       <PageBanner
-        eyebrow="Verified partners"
+        eyebrow="Partners & organizations"
         title="Organizations"
-        subtitle="Trusted organizations driving impact across Ghana. Follow their work and support their campaigns."
+        subtitle="Organizations driving impact across Ghana. Follow their work and support their campaigns — a verified badge marks those that have completed KYB."
         icon={<PeopleRoundedIcon sx={{ fontSize: 22 }} />}
       />
       <Container maxWidth="lg" sx={{ py: 8 }}>
@@ -188,7 +188,7 @@ export function OrganizationsPage() {
                     overflow: 'hidden',
                   }}
                 >
-                  Verified organization with {org.campaignCount} active campaign{org.campaignCount !== 1 ? 's' : ''} on Ujimora.
+                  {org.verified ? 'Verified organization' : 'Organization'} with {org.campaignCount} active campaign{org.campaignCount !== 1 ? 's' : ''} on Ujimora.
                 </Typography>
 
                 {/* Spacer */}

@@ -5,6 +5,9 @@ import { fileURLToPath } from 'node:url'
 export default defineConfig({
   plugins: [react()],
   resolve: {
+    // Force a single React instance (see marketing/web) — guards against a
+    // nested react copy from version drift causing "Invalid hook call".
+    dedupe: ['react', 'react-dom'],
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },

@@ -1,4 +1,4 @@
-import { expireSession, storedAccessToken } from './session'
+import { expireSession, forceExpireSession, storedAccessToken } from './session'
 // In production, requests go to '/api/v1' which Vercel rewrites to the API
 // (see vercel.json). Set VITE_API_URL to call an absolute API origin instead.
 const API_BASE = import.meta.env?.VITE_API_URL || '/api/v1'
@@ -86,9 +86,17 @@ async function authedRequest<T>(path: string, options?: RequestInit): Promise<T>
   })
 
   if (!res.ok) {
-    if (res.status === 401 && token) expireSession(token)
+    // Any 401 on an authed request means this session can no longer act — expire
+    // it so protected pages fall back to the sign-in prompt instead of a
+    // dead-end error. Guarded by the token we actually sent (so a late reply
+    // from an old token can't sign out a fresher login); if we sent none, hard
+    // expire. Throw ApiError so callers can react to the status (e.g. 401).
+    if (res.status === 401) {
+      if (token) expireSession(token)
+      else forceExpireSession()
+    }
     const error = await res.json().catch(() => ({ message: 'Request failed' }))
-    throw new Error(error.message ?? error.error ?? `HTTP ${res.status}`)
+    throw new ApiError(res.status, error.message ?? error.error ?? `HTTP ${res.status}`)
   }
 
   const json = await res.json()

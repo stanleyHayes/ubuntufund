@@ -22,11 +22,12 @@ import TuneRoundedIcon from '@mui/icons-material/TuneRounded'
 import ShieldRoundedIcon from '@mui/icons-material/ShieldRounded'
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded'
 import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link as RouterLink } from 'react-router-dom'
 import { SHAPE, ThemeStylePicker, LoadingDots } from '@ubuntu-fund/ui'
 import { useAuth } from '@/context/AuthContext'
 import { useColorMode } from '@/context/ColorModeContext'
-import { api } from '@/lib/api'
+import { api, ApiError } from '@/lib/api'
+import { SignInPrompt } from '@/components/auth/SignInPrompt'
 
 const FOREST = '#2E3D2F'
 const INK = 'text.primary'
@@ -134,7 +135,7 @@ function ToggleRow({
 }
 
 export function SettingsPage() {
-  const { user, logout } = useAuth()
+  const { user, logout, isLoading: authLoading } = useAuth()
   const { darkMode, setDarkMode, skin, setSkin } = useColorMode()
   const navigate = useNavigate()
 
@@ -162,12 +163,19 @@ export function SettingsPage() {
   const [snackSeverity, setSnackSeverity] = useState<'success' | 'error'>('success')
   const [saving, setSaving] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [loadStatus, setLoadStatus] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
+    // Wait for auth to settle (token refresh on load) before fetching, so the
+    // request never races the refresh and 401s on a stale token.
+    if (authLoading) return
     let cancelled = false
+    setLoading(true)
+    setLoadError(null)
+    setLoadStatus(null)
     api.get<{
       notificationPreferences?: {
         email?: boolean
@@ -202,13 +210,15 @@ export function SettingsPage() {
         if (data.publicProfile !== undefined) setPublicProfile(data.publicProfile)
       })
       .catch((error: Error) => {
-        if (!cancelled) setLoadError(error.message)
+        if (cancelled) return
+        setLoadError(error.message)
+        setLoadStatus(error instanceof ApiError ? error.status : null)
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
       })
     return () => { cancelled = true }
-  }, [setDarkMode])
+  }, [authLoading, setDarkMode])
 
   const persistSettings = useCallback((overrides: Record<string, unknown> = {}) => {
     if (saveTimer.current) clearTimeout(saveTimer.current)
@@ -264,8 +274,32 @@ export function SettingsPage() {
 
   const initials = (user?.name ?? 'U').split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase()
 
-  if (loading) return <AccountPageSkeleton layout="settings" />
-  if (loadError) return <Alert severity="error" sx={{ m: 3 }}>{loadError}</Alert>
+  if (authLoading || loading) return <AccountPageSkeleton layout="settings" />
+  // A rejected session gets a friendly sign-in path, not a dead-end error.
+  if (loadStatus === 401)
+    return (
+      <SignInPrompt
+        title="Please sign in again"
+        description="Your session ended. Sign in to manage your settings — we’ll bring you right back here."
+      />
+    )
+  // Any other load failure is recoverable: retry, or head home.
+  if (loadError)
+    return (
+      <Box sx={{ minHeight: '70vh', display: 'grid', placeItems: 'center', bgcolor: 'background.default', px: 2 }}>
+        <Box sx={{ maxWidth: 460, textAlign: 'center' }}>
+          <Alert severity="error" sx={{ mb: 3, textAlign: 'left' }}>{loadError}</Alert>
+          <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Button variant="contained" color="primary" onClick={() => window.location.reload()} sx={{ borderRadius: '999px', textTransform: 'none', fontWeight: 700, px: 3 }}>
+              Try again
+            </Button>
+            <Button component={RouterLink} to="/dashboard" variant="text" sx={{ borderRadius: '999px', textTransform: 'none', fontWeight: 700, px: 3 }}>
+              Go to dashboard
+            </Button>
+          </Box>
+        </Box>
+      </Box>
+    )
 
   return (
     <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', py: { xs: 4, md: 6 } }}>
