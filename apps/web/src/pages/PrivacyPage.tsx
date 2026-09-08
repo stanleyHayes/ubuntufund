@@ -61,7 +61,7 @@ export function PrivacyPage() {
         </Typography>
 
         <Typography variant="body2" sx={{ mt: 6, color: 'text.secondary' }}>
-          Last updated: March 2026
+          Last updated: 7 September 2026
         </Typography>
       </Box>
     </Container>

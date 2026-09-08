@@ -10,10 +10,10 @@ import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded'
 
 /**
  * Single source of truth for the operating-entity facts referenced across every
- * legal/policy page. Fill `registrationNumber` and `registeredAddress` to finalise
- * the registered-company clause; until then {@link companyClause} renders a clause
- * with no fabricated registration data. `brand` is the product/service name;
- * `companyName` is the legal entity that operates it.
+ * legal/policy page. `brand` is the product/service name; `companyName` is the
+ * legal entity that operates it. {@link companyClause} degrades gracefully if
+ * `registrationNumber` or `registeredAddress` is ever cleared, rendering a clause
+ * with no fabricated registration data rather than a blank.
  */
 export const LEGAL_ENTITY = {
   brand: 'Ujimora',

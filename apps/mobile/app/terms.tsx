@@ -35,7 +35,7 @@ export default function TermsScreen() {
     <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
       <Text style={styles.eyebrow}>Legal</Text>
       <Text style={styles.title}>Terms of Service</Text>
-      <Text style={styles.updated}>Last updated: March 2026</Text>
+      <Text style={styles.updated}>Last updated: 7 September 2026</Text>
 
       <Text style={styles.heading}>1. Acceptance of Terms</Text>
       <Text style={styles.body}>

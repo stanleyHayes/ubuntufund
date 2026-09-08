@@ -33,7 +33,7 @@ const testimonials = [
     name: 'No false checkout',
     role: 'Payment readiness principle',
     quote:
-      'Only the internal Ujimora Wallet flow is available during launch readiness. External payment methods stay disabled until verified provider adapters are connected.',
+      'Checkout only ever offers a payment method once its provider integration is verified and live, so a supporter is never shown a way to pay that cannot actually complete.',
   },
 ]
 

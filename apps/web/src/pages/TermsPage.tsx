@@ -37,7 +37,7 @@ export function TermsPage() {
 
         <Typography variant="h5">6. Fees</Typography>
         <Typography>
-          The current launch configuration uses the Free plan and Ujimora Wallet only. Any future platform or processing fee must be displayed before a transaction and reflected in the applicable published policy.
+          Ujimora offers a free Community plan alongside paid Plus, Pro, Organization, and Enterprise plans, with platform fees that vary by plan. Any applicable platform, processing, or payout fee is displayed before a transaction and reflected in the applicable published policy.
         </Typography>
 
         <Typography variant="h5">7. Prohibited Conduct</Typography>
@@ -61,7 +61,7 @@ export function TermsPage() {
         </Typography>
 
         <Typography variant="body2" sx={{ mt: 6, color: 'text.secondary' }}>
-          Last updated: March 2026
+          Last updated: 7 September 2026
         </Typography>
       </Box>
     </Container>

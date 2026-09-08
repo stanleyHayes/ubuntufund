@@ -35,7 +35,7 @@ export default function PrivacyScreen() {
     <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
       <Text style={styles.eyebrow}>Privacy</Text>
       <Text style={styles.title}>Privacy Policy</Text>
-      <Text style={styles.updated}>Last updated: March 2026</Text>
+      <Text style={styles.updated}>Last updated: 7 September 2026</Text>
 
       <Text style={styles.heading}>1. Information We Collect</Text>
       <Text style={styles.body}>
