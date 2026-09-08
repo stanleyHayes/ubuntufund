@@ -1,35 +1,36 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" fill="none">
-  <!-- Background -->
+  <!-- Ground -->
   <rect width="1200" height="630" fill="#F2EFEA"/>
-  <!-- Green accent strip at top -->
+
+  <!-- Top forest strip + kente accent bar (house device) -->
   <rect width="1200" height="6" fill="#2E3D2F"/>
-  <!-- Kente pattern bar -->
-  <rect x="0" y="6" width="300" height="3" fill="#2E3D2F"/>
+  <rect x="0"   y="6" width="300" height="3" fill="#2E3D2F"/>
   <rect x="300" y="6" width="300" height="3" fill="#C7A24A"/>
-  <rect x="600" y="6" width="300" height="3" fill="#8D6E63"/>
+  <rect x="600" y="6" width="300" height="3" fill="#8B6F4E"/>
   <rect x="900" y="6" width="300" height="3" fill="#1C261D"/>
 
-  <!-- Logo icon -->
-  <g transform="translate(100, 200)">
-    <circle cx="60" cy="60" r="56" fill="#2E3D2F"/>
-    <circle cx="60" cy="60" r="45" fill="none" stroke="#5E8F72" stroke-width="2" opacity="0.5"/>
-    <path d="M38 35v30c0 13 9.5 22 22 22s22-9 22-22V35" fill="none" stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
-    <circle cx="38" cy="28" r="6" fill="#C7A24A"/>
-    <circle cx="82" cy="28" r="6" fill="#C7A24A"/>
-    <circle cx="60" cy="92" r="4.5" fill="#C7A24A"/>
-    <rect x="24" y="108" width="72" height="4" rx="2" fill="#C7A24A" opacity="0.8"/>
+  <!-- Faint motif watermark: oversized brand mark, bottom-right -->
+  <g transform="translate(940, 360) scale(9)" opacity="0.06">
+    <rect x="30" y="10" width="28" height="28" rx="11" transform="rotate(45 44 24)" fill="none" stroke="#2E3D2F" stroke-width="4"/>
+    <rect x="8"  y="10" width="28" height="28" rx="3"  transform="rotate(45 22 24)" fill="none" stroke="#2E3D2F" stroke-width="4"/>
   </g>
 
-  <!-- Title -->
-  <text x="260" y="250" font-family="'Inter', 'Helvetica Neue', Arial, sans-serif" font-size="64" font-weight="700" fill="#2E3D2F">Ubuntu</text>
-  <text x="542" y="250" font-family="'Inter', 'Helvetica Neue', Arial, sans-serif" font-size="64" font-weight="700" fill="#C7A24A">Fund</text>
+  <!-- Brand mark (two rotated squares — sage + gold) -->
+  <g transform="translate(96, 232) scale(3.5)">
+    <rect x="30" y="10" width="28" height="28" rx="11" transform="rotate(45 44 24)" fill="none" stroke="#A8B5A0" stroke-width="4"/>
+    <rect x="8"  y="10" width="28" height="28" rx="3"  transform="rotate(45 22 24)" fill="none" stroke="#C7A24A" stroke-width="4"/>
+    <path d="M 33.5 13.5 A 11 11 0 0 1 38 11.2" fill="none" stroke="#A8B5A0" stroke-width="4" stroke-linecap="round" transform="rotate(45 44 24)"/>
+  </g>
+
+  <!-- Eyebrow -->
+  <text x="322" y="272" font-family="'Arial Black', 'Helvetica Neue', Arial, sans-serif" font-size="21" font-weight="700" letter-spacing="4" fill="#8B6F4E">GHANA&#8217;S TRUST INFRASTRUCTURE FOR GIVING</text>
+
+  <!-- Wordmark -->
+  <text x="320" y="352" font-family="'Arial Black', 'Helvetica Neue', Arial, sans-serif" font-size="86" font-weight="900" fill="#2E3D2F">Ujimora</text>
 
   <!-- Tagline -->
-  <text x="260" y="300" font-family="'Inter', 'Helvetica Neue', Arial, sans-serif" font-size="28" font-weight="400" fill="#616161">Pan-African Crowdfunding Platform</text>
+  <text x="322" y="404" font-family="'Helvetica Neue', Arial, sans-serif" font-size="32" font-weight="500" fill="#4A4A42">Together, we fund what matters.</text>
 
-  <!-- Subtitle -->
-  <text x="260" y="345" font-family="'Inter', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="400" fill="#9E9E9E" letter-spacing="3">TOGETHER, WE RISE</text>
-
-  <!-- Bottom accent -->
-  <rect y="620" width="1200" height="10" fill="#2E3D2F"/>
+  <!-- Bottom forest strip -->
+  <rect y="624" width="1200" height="6" fill="#2E3D2F"/>
 </svg>

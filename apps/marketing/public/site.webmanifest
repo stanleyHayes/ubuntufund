@@ -1,0 +1,15 @@
+{
+  "name": "Ujimora — Ghana's Trust Infrastructure for Giving",
+  "short_name": "Ujimora",
+  "description": "Ghana's crowdfunding platform built on trust. Transparent fundraising with verified campaigns, escrow protection, and community trust scores.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F2EFEA",
+  "theme_color": "#2E3D2F",
+  "icons": [
+    { "src": "/favicon-192x192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/favicon-512x512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/favicon.svg", "type": "image/svg+xml", "sizes": "any" }
+  ]
+}

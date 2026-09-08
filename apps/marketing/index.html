@@ -11,12 +11,16 @@
     <meta name="keywords" content="crowdfunding, Ghana, donations, fundraising, trust, giving, campaigns, Ujima, community, escrow, verified, transparent, mobile money, MoMo" />
     <meta name="author" content="Ujimora" />
     <meta name="theme-color" content="#2E3D2F" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
 
-    <!-- Favicon -->
+    <!-- Favicon (square, solid tile; .ico first so Google & browsers resolve it) -->
+    <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
@@ -24,18 +28,59 @@
     <meta property="og:title" content="Ujimora - Ghana's Trust Infrastructure for Giving" />
     <meta property="og:description" content="Ghana's crowdfunding platform built on trust. Transparent fundraising with verified campaigns, escrow protection, and community trust scores." />
     <meta property="og:image" content="https://ujimora.com/og-image.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Ujimora — Ghana's trust infrastructure for giving" />
     <meta property="og:site_name" content="Ujimora" />
-    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale" content="en_GH" />
 
     <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:url" content="https://ujimora.com/" />
-    <meta property="twitter:title" content="Ujimora - Ghana's Trust Infrastructure for Giving" />
-    <meta property="twitter:description" content="Ghana's crowdfunding platform built on trust. Transparent fundraising with verified campaigns, escrow protection, and community trust scores." />
-    <meta property="twitter:image" content="https://ujimora.com/og-image.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@ujimora" />
+    <meta name="twitter:url" content="https://ujimora.com/" />
+    <meta name="twitter:title" content="Ujimora - Ghana's Trust Infrastructure for Giving" />
+    <meta name="twitter:description" content="Ghana's crowdfunding platform built on trust. Transparent fundraising with verified campaigns, escrow protection, and community trust scores." />
+    <meta name="twitter:image" content="https://ujimora.com/og-image.png" />
+    <meta name="twitter:image:alt" content="Ujimora — Ghana's trust infrastructure for giving" />
 
     <!-- Canonical -->
     <link rel="canonical" href="https://ujimora.com/" />
+
+    <!-- Structured data: Organization + WebSite (rich results / knowledge panel) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://ujimora.com/#organization",
+          "name": "Ujimora",
+          "url": "https://ujimora.com/",
+          "logo": "https://ujimora.com/favicon-512x512.png",
+          "image": "https://ujimora.com/og-image.png",
+          "description": "Ghana's crowdfunding platform built on trust — transparent fundraising with verified campaigns, escrow protection, and community trust scores.",
+          "email": "hello@ujimora.com",
+          "areaServed": { "@type": "Country", "name": "Ghana" },
+          "sameAs": [
+            "https://facebook.com/ujimora",
+            "https://x.com/ujimora",
+            "https://instagram.com/ujimora",
+            "https://linkedin.com/company/ujimora"
+          ]
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://ujimora.com/#website",
+          "url": "https://ujimora.com/",
+          "name": "Ujimora",
+          "description": "Ghana's trust infrastructure for giving.",
+          "publisher": { "@id": "https://ujimora.com/#organization" },
+          "inLanguage": "en-GH"
+        }
+      ]
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>
