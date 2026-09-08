@@ -1,5 +1,12 @@
 import { randomUUID } from 'node:crypto';
-import { describe, it, beforeAll, afterAll, expect } from 'vitest';
+
+// Must be set before createTestApp() dynamically imports the app (config reads
+// these at load time). Fake values — the Cloudinary call itself is stubbed.
+process.env.CLOUDINARY_CLOUD_NAME = 'test_cloud';
+process.env.CLOUDINARY_API_KEY = 'test_key_123456';
+process.env.CLOUDINARY_API_SECRET = 'test_secret_do_not_use_000';
+
+import { describe, it, beforeAll, afterAll, expect, vi } from 'vitest';
 import request from 'supertest';
 import type { Express } from 'express';
 import { createTestApp } from '../helpers/testApp.js';
@@ -13,68 +20,86 @@ function uniqueEmail(label: string): string {
   return `${label}-${randomUUID()}@example.com`;
 }
 
-async function registerUser(app: Express, email: string) {
-  const res = await request(app)
-    .post('/api/v1/auth/register')
-    .send({ email, password: 'SecurePass123', name: 'Upload Test User' })
-    .expect(201);
+const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]); // PNG magic bytes
 
-  return { token: res.body.data.tokens.accessToken as string };
-}
-
-describe('Uploads (Cloudinary sign) Integration', () => {
+describe('Image upload proxy (server-side signed Cloudinary)', () => {
   let app: Express;
-  // This suite asserts the "Cloudinary not configured" 501 behaviour, so the app
-  // MUST be built with the Cloudinary creds absent regardless of the developer's
-  // local .env. config/index.ts reads these at construction time via dotenv
-  // (override:false), so an empty string assigned before createTestApp() survives
-  // — a `delete` would let dotenv repopulate it from .env. Originals are restored
-  // in afterAll to avoid leaking into later files.
-  const CLOUDINARY_ENV_KEYS = [
-    'CLOUDINARY_CLOUD_NAME',
-    'CLOUDINARY_API_KEY',
-    'CLOUDINARY_API_SECRET',
-  ] as const;
-  const savedCloudinaryEnv: Partial<Record<(typeof CLOUDINARY_ENV_KEYS)[number], string | undefined>> = {};
+  let uploadedTo: string[] = [];
 
   beforeAll(async () => {
-    for (const key of CLOUDINARY_ENV_KEYS) {
-      savedCloudinaryEnv[key] = process.env[key];
-      process.env[key] = '';
-    }
     await connectTestDatabase();
     app = await createTestApp();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: unknown) => {
+        const u = String(url);
+        if (u.includes('/auto/upload')) {
+          uploadedTo.push(u);
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              secure_url: 'https://res.cloudinary.com/test_cloud/image/upload/v1/ujimora/kyc/abc.png',
+            }),
+          } as unknown as Response;
+        }
+        throw new Error(`unexpected fetch ${u}`);
+      })
+    );
   });
-
   afterAll(async () => {
-    for (const key of CLOUDINARY_ENV_KEYS) {
-      const value = savedCloudinaryEnv[key];
-      if (value === undefined) delete process.env[key];
-      else process.env[key] = value;
-    }
     await dropTestDatabase();
     await disconnectTestDatabase();
+    vi.unstubAllGlobals();
   });
 
-  describe('POST /api/v1/uploads/sign', () => {
-    it('returns a clean 501 when Cloudinary is not configured', async () => {
-      // The test environment sets no CLOUDINARY_* creds, so the feature is
-      // disabled — the endpoint must respond 501, never crash.
-      const { token } = await registerUser(app, uniqueEmail('uploader'));
+  async function authToken(): Promise<string> {
+    const reg = await request(app)
+      .post('/api/v1/auth/register')
+      .send({ email: uniqueEmail('uploader'), password: 'SecurePass123', name: 'Up Loader' })
+      .expect(201);
+    return reg.body.data.tokens.accessToken as string;
+  }
 
-      const res = await request(app)
-        .post('/api/v1/uploads/sign')
-        .set('Authorization', `Bearer ${token}`)
-        .send({ folder: 'campaigns' });
+  it('rejects an unauthenticated upload with 401', async () => {
+    await request(app)
+      .post('/api/v1/uploads/image?folder=kyc')
+      .set('Content-Type', 'image/png')
+      .send(PNG)
+      .expect(401);
+  });
 
-      expect(res.status).toBe(501);
-      expect(typeof res.body.message).toBe('string');
-      expect(res.body.message.length).toBeGreaterThan(0);
-    });
+  it('uploads an authenticated image through the server and returns the secure URL', async () => {
+    const token = await authToken();
+    uploadedTo = [];
+    const res = await request(app)
+      .post('/api/v1/uploads/image?folder=kyc')
+      .set('Authorization', `Bearer ${token}`)
+      .set('Content-Type', 'image/png')
+      .send(PNG)
+      .expect(200);
 
-    it('returns 401 when unauthenticated', async () => {
-      const res = await request(app).post('/api/v1/uploads/sign').send({});
-      expect(res.status).toBe(401);
-    });
+    expect(res.body.data.url).toContain('res.cloudinary.com');
+    // The server forwarded to the signed Cloudinary endpoint (never the browser).
+    expect(uploadedTo.some((u) => u.includes('/v1_1/test_cloud/auto/upload'))).toBe(true);
+  });
+
+  it('rejects a disallowed content-type with 415', async () => {
+    const token = await authToken();
+    await request(app)
+      .post('/api/v1/uploads/image?folder=kyc')
+      .set('Authorization', `Bearer ${token}`)
+      .set('Content-Type', 'text/plain')
+      .send(Buffer.from('not an image'))
+      .expect(415);
+  });
+
+  it('rejects an empty body with 400', async () => {
+    const token = await authToken();
+    await request(app)
+      .post('/api/v1/uploads/image?folder=kyc')
+      .set('Authorization', `Bearer ${token}`)
+      .set('Content-Type', 'image/png')
+      .expect(400);
   });
 });

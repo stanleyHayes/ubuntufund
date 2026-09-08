@@ -76,7 +76,7 @@ function uploadToCloudinary(
   })
 }
 
-const MAX_MB = 10
+export const MAX_IMAGE_UPLOAD_MB = 4
 
 export interface ImageUploadProps {
   /** Current uploaded asset URL ('' when none). */
@@ -94,6 +94,13 @@ export interface ImageUploadProps {
   /** External error message (e.g. validation). */
   error?: string
   disabled?: boolean
+  /**
+   * Optional uploader. When provided, files are uploaded through this function
+   * (e.g. via the app's own server-side proxy) instead of straight to
+   * Cloudinary — more reliable, since a same-origin request isn't blocked by an
+   * ad-blocker / restrictive network. Resolves with the stored https URL.
+   */
+  uploadFn?: (file: File, onProgress: (percent: number) => void) => Promise<string>
 }
 
 /**
@@ -111,26 +118,32 @@ export function ImageUpload({
   aspectRatio = 16 / 9,
   error,
   disabled,
+  uploadFn,
 }: ImageUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [progress, setProgress] = useState<number | null>(null)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const config = getCloudinaryConfig()
+  // Uploading is possible when EITHER an injected uploader is given (preferred)
+  // or the direct Cloudinary env config is present.
+  const canUpload = !!uploadFn || !!config
   const busy = progress !== null
   const isPdf = value && /\.pdf($|\?)/i.test(value)
 
   const handleFile = useCallback(
     async (file: File | undefined) => {
-      if (!file || !config) return
-      if (file.size > MAX_MB * 1024 * 1024) {
-        setUploadError(`File is too large (max ${MAX_MB}MB).`)
+      if (!file || (!uploadFn && !config)) return
+      if (file.size > MAX_IMAGE_UPLOAD_MB * 1024 * 1024) {
+        setUploadError(`File is too large (max ${MAX_IMAGE_UPLOAD_MB}MB).`)
         return
       }
       setUploadError(null)
       setProgress(0)
       try {
-        const url = await uploadToCloudinary(file, config, setProgress)
+        const url = uploadFn
+          ? await uploadFn(file, setProgress)
+          : await uploadToCloudinary(file, config as CloudinaryConfig, setProgress)
         onChange(url)
       } catch (err) {
         setUploadError(err instanceof Error ? err.message : 'Upload failed. Please try again.')
@@ -138,7 +151,7 @@ export function ImageUpload({
         setProgress(null)
       }
     },
-    [config, onChange],
+    [config, onChange, uploadFn],
   )
 
   return (
@@ -171,7 +184,7 @@ export function ImageUpload({
             />
           )}
           <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
-            <Button type="button" size="small" variant="outlined" disabled={disabled || busy || !config}
+            <Button type="button" size="small" variant="outlined" disabled={disabled || busy || !canUpload}
               onClick={() => inputRef.current?.click()}
               sx={{ borderRadius: SHAPE.sm, borderColor: DIVIDER, color: FOREST }}>
               Replace
@@ -184,7 +197,7 @@ export function ImageUpload({
             </Button>
           </Box>
         </Box>
-      ) : config ? (
+      ) : canUpload ? (
         /* Empty → dropzone */
         <Box
           role="button"
@@ -212,7 +225,7 @@ export function ImageUpload({
             <>
               <CloudUploadRoundedIcon sx={{ fontSize: 32, color: SAGE }} />
               <Typography sx={{ fontSize: '0.9rem', color: FOREST, fontWeight: 600 }}>Click to upload or drag &amp; drop</Typography>
-              <Typography sx={{ fontSize: '0.78rem', color: INK_SECONDARY }}>{accept.includes('pdf') ? 'Image or PDF' : 'PNG, JPG or WebP'} · up to {MAX_MB}MB</Typography>
+              <Typography sx={{ fontSize: '0.78rem', color: INK_SECONDARY }}>{accept.includes('pdf') ? 'Image or PDF' : 'PNG, JPG or WebP'} · up to {MAX_IMAGE_UPLOAD_MB}MB</Typography>
             </>
           )}
         </Box>

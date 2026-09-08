@@ -1,3 +1,5 @@
+import Autocomplete from '@mui/material/Autocomplete'
+import { COUNTRY_OPTIONS } from '@/data/countries'
 import { BrandedDatePicker } from '@ubuntu-fund/ui'
 import { useState } from 'react'
 import Box from '@mui/material/Box'
@@ -15,6 +17,12 @@ import { ImageUpload } from '@ubuntu-fund/ui'
 import { Link as RouterLink } from 'react-router-dom'
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
 import { api } from '@/lib/api'
+import { uploadImageViaApi } from '@/lib/uploadImage'
+
+// Upload KYC documents through our own API (browser → API → Cloudinary) so an
+// ad-blocker or restrictive network can't block the direct Cloudinary request.
+const uploadKycDoc = (file: File, onProgress: (percent: number) => void) =>
+  uploadImageViaApi(file, 'kyc', onProgress)
 
 const fadeIn = keyframes`
   from { opacity: 0; transform: translateY(16px); }
@@ -51,6 +59,8 @@ export function KYCPage() {
   const [selfieUrl, setSelfieUrl] = useState('')
 
   function handleNext() {
+    if (activeStep === 0 && !nationality) { setError('Select your nationality from the list.'); return }
+    setError(null)
     if (activeStep < steps.length - 1) {
       setActiveStep((prev) => prev + 1)
     }
@@ -63,6 +73,7 @@ export function KYCPage() {
   }
 
   async function handleSubmit() {
+    if (!COUNTRY_OPTIONS.some(option => option.label === nationality)) { setActiveStep(0); setError('Select your nationality from the list.'); return }
     setSubmitting(true)
     setError(null)
     try {
@@ -112,7 +123,7 @@ export function KYCPage() {
   }
 
   return (
-    <Container maxWidth="md" sx={{ py: 6, animation: `${fadeIn} 0.4s ease` }}>
+    <Container maxWidth="md" sx={{ minWidth: 0, width: '100%', px: { xs: 2, sm: 3 }, py: { xs: 3, sm: 6 }, animation: `${fadeIn} 0.4s ease` }}>
       <Button
         component={RouterLink}
         to="/profile"
@@ -128,7 +139,11 @@ export function KYCPage() {
         Complete the steps below to verify your identity and unlock full platform access.
       </Typography>
 
-      <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
+      <Box sx={{ display: { xs: 'block', sm: 'none' }, mb: 3 }} aria-label={`Step ${activeStep + 1} of ${steps.length}: ${steps[activeStep]}`}>
+        <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1 }}>Step {activeStep + 1} of {steps.length} · <Box component="span" sx={{ color: 'text.primary', fontWeight: 700 }}>{steps[activeStep]}</Box></Typography>
+        <Box aria-hidden="true" sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 1 }}>{steps.map((label, index) => <Box key={label} sx={{ height: 5, borderRadius: 1, bgcolor: index <= activeStep ? 'primary.main' : 'action.disabledBackground' }} />)}</Box>
+      </Box>
+      <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 4, display: { xs: 'none', sm: 'flex' }, minWidth: 0 }}>
         {steps.map((label) => (
           <Step key={label}>
             <StepLabel>{label}</StepLabel>
@@ -136,13 +151,23 @@ export function KYCPage() {
         ))}
       </Stepper>
 
-      <Paper elevation={0} sx={{ p: { xs: 3, sm: 4 }, boxShadow: 'var(--neu-raised)', borderRadius: 3 }}>
+      <Paper elevation={0} sx={{ minWidth: 0, p: { xs: 2, sm: 4 }, boxShadow: 'var(--neu-raised)', borderRadius: 3 }}>
         {activeStep === 0 && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
             <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>Personal Information</Typography>
             <TextField label="Full Name (as on ID)" value={fullName} onChange={(e) => setFullName(e.target.value)} fullWidth required />
             <BrandedDatePicker label="Date of Birth"  value={dateOfBirth} onChange={setDateOfBirth} maxDate={new Date().toLocaleDateString('en-CA')} fullWidth  required />
-            <TextField label="Nationality" value={nationality} onChange={(e) => setNationality(e.target.value)} fullWidth required />
+            <Autocomplete
+              options={COUNTRY_OPTIONS}
+              value={COUNTRY_OPTIONS.find(option => option.label === nationality) ?? null}
+              onChange={(_, option) => { setNationality(option?.label ?? ''); setError(null) }}
+              isOptionEqualToValue={(option, value) => option.code === value.code}
+              autoHighlight
+              fullWidth
+              noOptionsText="No matching country. Try another search."
+              slotProps={{ paper: { sx: { bgcolor: 'background.paper', boxShadow: 'var(--neu-raised)', border: 'var(--neu-border)', backdropFilter: 'var(--neu-backdrop)' } } }}
+              renderInput={(params) => <TextField {...params} label="Nationality" placeholder="Search country of nationality" helperText="Select the country of nationality shown on your identity document." required />}
+            />
             <TextField label="ID Number" value={idNumber} onChange={(e) => setIdNumber(e.target.value)} fullWidth required helperText="National ID, Passport, or Driver's License number" />
           </Box>
         )}
@@ -153,10 +178,11 @@ export function KYCPage() {
             <Typography sx={{ color: 'text.secondary', fontSize: '0.9rem' }}>
               Upload a clear photo or scan of your government-issued ID. Front and back required for ID cards.
             </Typography>
-            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))' }, gap: 2 }}>
               <ImageUpload
                 value={idFrontUrl}
                 onChange={setIdFrontUrl}
+                uploadFn={uploadKycDoc}
                 label="Front side"
                 helperText="Clear photo or scan of the front of your ID."
                 accept="image/*,application/pdf"
@@ -164,6 +190,7 @@ export function KYCPage() {
               <ImageUpload
                 value={idBackUrl}
                 onChange={setIdBackUrl}
+                uploadFn={uploadKycDoc}
                 label="Back side"
                 helperText="Clear photo or scan of the back of your ID."
                 accept="image/*,application/pdf"
@@ -176,17 +203,18 @@ export function KYCPage() {
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
             <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>Address Verification</Typography>
             <TextField label="Street Address" value={street} onChange={(e) => setStreet(e.target.value)} fullWidth required />
-            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))' }, gap: 2 }}>
               <TextField label="City" value={city} onChange={(e) => setCity(e.target.value)} fullWidth required />
               <TextField label="State/Province" value={state} onChange={(e) => setState(e.target.value)} fullWidth required />
             </Box>
-            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))' }, gap: 2 }}>
               <TextField label="Country" value={country} onChange={(e) => setCountry(e.target.value)} fullWidth required />
               <TextField label="Postal Code" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} fullWidth required />
             </Box>
             <ImageUpload
               value={addressDocUrl}
               onChange={setAddressDocUrl}
+              uploadFn={uploadKycDoc}
               label="Address proof"
               helperText="Utility bill or bank statement (max 3 months old)."
               accept="image/*,application/pdf"
@@ -203,6 +231,7 @@ export function KYCPage() {
             <ImageUpload
               value={selfieUrl}
               onChange={setSelfieUrl}
+              uploadFn={uploadKycDoc}
               label="Selfie with ID"
               helperText="Clear selfie holding your ID document."
               accept="image/*"

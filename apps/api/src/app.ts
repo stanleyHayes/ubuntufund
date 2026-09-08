@@ -23,6 +23,7 @@ import { MongoNotificationRepository } from './infrastructure/adapters/outbound/
 import { MongoOrganizationRepository } from './infrastructure/adapters/outbound/persistence/MongoOrganizationRepository.js';
 import { MongoRefundRepository } from './infrastructure/adapters/outbound/persistence/MongoRefundRepository.js';
 import { MongoKYCRepository } from './infrastructure/adapters/outbound/persistence/MongoKYCRepository.js';
+import { CloudinaryUploader } from './infrastructure/adapters/outbound/media/CloudinaryUploader.js';
 import { MongoCollaborationRepository } from './infrastructure/adapters/outbound/persistence/MongoCollaborationRepository.js';
 import { MongoSubscriptionRepository } from './infrastructure/adapters/outbound/persistence/MongoSubscriptionRepository.js';
 import { MongoPaymentProviderRepository } from './infrastructure/adapters/outbound/persistence/MongoPaymentProviderRepository.js';
@@ -375,6 +376,10 @@ export function createApp(): express.Express {
   const organizationRepo = new MongoOrganizationRepository();
   const refundRepo = new MongoRefundRepository();
   const kycRepo = new MongoKYCRepository();
+  // Server-side signed image/PDF upload proxy (KYC docs, campaign covers, etc.):
+  // browser → API → Cloudinary, so uploads are same-origin and never blocked by
+  // a client ad-blocker, and the Cloudinary secret stays server-side.
+  const cloudinaryUploader = new CloudinaryUploader(config.cloudinary);
   const collaborationRepo = new MongoCollaborationRepository();
   const subscriptionRepo = new MongoSubscriptionRepository();
   const paymentProviderRepo = new MongoPaymentProviderRepository();
@@ -1273,7 +1278,7 @@ export function createApp(): express.Express {
   api.use('/analytics', createAnalyticsRoutes(analyticsController, authMiddleware, requireAdmin));
   api.use('/newsletter', createNewsletterRoutes(newsletterController, authMiddleware, requireAdmin));
   api.use('/content', createContentRoutes(siteContentController, authMiddleware, requireAdmin));
-  api.use('/uploads', createUploadRoutes(uploadController, authMiddleware));
+  api.use('/uploads', createUploadRoutes(uploadController, cloudinaryUploader, authMiddleware));
   api.use('/audit', createAuditLogRoutes(auditLogController, authMiddleware, requireAdmin));
   api.use('/rbac', createRbacRoutes(authMiddleware));
   api.use('/testimonials', createTestimonialRoutes(testimonialController, authMiddleware, requireAdmin));

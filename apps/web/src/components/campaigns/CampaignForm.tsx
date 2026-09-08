@@ -1,3 +1,11 @@
+import LocalHospitalRoundedIcon from '@mui/icons-material/LocalHospitalRounded'
+import SchoolRoundedIcon from '@mui/icons-material/SchoolRounded'
+import EmergencyRoundedIcon from '@mui/icons-material/EmergencyRounded'
+import BusinessCenterRoundedIcon from '@mui/icons-material/BusinessCenterRounded'
+import Diversity3RoundedIcon from '@mui/icons-material/Diversity3Rounded'
+import ChurchRoundedIcon from '@mui/icons-material/ChurchRounded'
+import PaletteRoundedIcon from '@mui/icons-material/PaletteRounded'
+import CategoryRoundedIcon from '@mui/icons-material/CategoryRounded'
 import { BrandedDatePicker } from '@ubuntu-fund/ui'
 import { Fragment, useMemo, useState } from 'react'
 import type { KeyboardEvent, ReactNode } from 'react'
@@ -13,9 +21,16 @@ import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import ShieldRoundedIcon from '@mui/icons-material/ShieldRounded'
 import ErrorOutlineRoundedIcon from '@mui/icons-material/ErrorOutlineRounded'
 import { Link as RouterLink } from 'react-router-dom'
-import { CampaignCategory, CampaignPriority } from '@ubuntu-fund/types'
+import { CampaignCategory, CampaignPriority, CampaignStatus, CollaboratorRole } from '@ubuntu-fund/types'
 import { formatCurrency, ImageUpload, SHAPE, LoadingDots } from '@ubuntu-fund/ui'
 import { useCreateCampaign } from '@/hooks/useCampaigns'
+import Alert from '@mui/material/Alert'
+import { api } from '@/lib/api'
+import { uploadImageViaApi } from '@/lib/uploadImage'
+import { useCampaignCreationOptions } from '@/hooks/useCampaignCreationOptions'
+import { CampaignCreationExtras, type SplitRow } from './CampaignCreationExtras'
+import { ShareCampaignButton } from './ShareCampaignButton'
+import { CampaignSplitSetup } from './CampaignSplitSetup'
 
 // ---------------------------------------------------------------------------
 // Sage & Neutrals palette — brand hexes only (see design system)
@@ -33,6 +48,8 @@ const DIVIDER = '#DAD7CD'
 // ---------------------------------------------------------------------------
 // Static data
 // ---------------------------------------------------------------------------
+const CATEGORY_ICONS = { medical: LocalHospitalRoundedIcon, education: SchoolRoundedIcon, emergency: EmergencyRoundedIcon, business: BusinessCenterRoundedIcon, community: Diversity3RoundedIcon, religious: ChurchRoundedIcon, creative: PaletteRoundedIcon }
+
 const CATEGORIES = Object.values(CampaignCategory).map((value) => ({
   value,
   label: value.charAt(0).toUpperCase() + value.slice(1).replace(/_/g, ' '),
@@ -40,8 +57,8 @@ const CATEGORIES = Object.values(CampaignCategory).map((value) => ({
 
 const PRIORITIES: { value: CampaignPriority; label: string; blurb: string; tone: string; tint: string }[] = [
   { value: CampaignPriority.NORMAL, label: 'Normal', blurb: 'A steady campaign with standard listing.', tone: FOREST, tint: 'rgba(46, 61, 47, 0.07)' },
-  { value: CampaignPriority.URGENT, label: 'Urgent', blurb: 'Time-sensitive need — boosted visibility.', tone: GOLD_DARK, tint: 'rgba(199, 162, 74, 0.12)' },
-  { value: CampaignPriority.CRITICAL, label: 'Critical', blurb: 'Life-or-death need — front-page priority.', tone: CLAY, tint: 'rgba(165, 67, 47, 0.10)' },
+  { value: CampaignPriority.URGENT, label: 'Urgent', blurb: 'A time-sensitive need with a near-term deadline.', tone: GOLD_DARK, tint: 'rgba(199, 162, 74, 0.12)' },
+  { value: CampaignPriority.CRITICAL, label: 'Critical', blurb: 'An immediate, critical need requiring urgent attention.', tone: CLAY, tint: 'rgba(165, 67, 47, 0.10)' },
 ]
 
 const STEPS = [
@@ -111,7 +128,7 @@ function validate(data: FormData): FormErrors {
   if (parseBeneficiaries(data.beneficiaries).length === 0) e.beneficiaries = 'Name at least one beneficiary'
 
   if (!data.goalAmount) e.goalAmount = 'Set a goal amount'
-  else if (Number.isNaN(Number(data.goalAmount))) e.goalAmount = 'Enter a number'
+  else if (!Number.isFinite(Number(data.goalAmount))) e.goalAmount = 'Enter a number'
   else if (Number(data.goalAmount) <= 0) e.goalAmount = 'Goal must be greater than zero'
 
   if (!data.endDate) e.endDate = 'Choose an end date'
@@ -292,6 +309,19 @@ function ReviewItem({ label, children }: { label: string; children: ReactNode })
 // CampaignForm — a self-contained stepwise creation wizard
 // ---------------------------------------------------------------------------
 export function CampaignForm() {
+  const { options, error: optionsError, retry } = useCampaignCreationOptions()
+  const [invitations, setInvitations] = useState('')
+  const [split, setSplit] = useState(false)
+  const [rows, setRows] = useState<SplitRow[]>([{ name: '', email: '', percent: '50' }, { name: '', email: '', percent: '50' }])
+  const [setupErrors, setSetupErrors] = useState<string[]>([])
+  const [pendingSetup, setPendingSetup] = useState<{ path: string; payload: unknown; label: string }[]>([])
+  const [setupBusy, setSetupBusy] = useState(false)
+  const [createdStatus, setCreatedStatus] = useState<CampaignStatus | null>(null)
+  const inviteEmails = [...new Set(invitations.split(/[\s,;]+/).map(email => email.trim().toLowerCase()).filter(Boolean))]
+  const extrasError = inviteEmails.length && !options?.plan.campaignCollaboration ? 'Your plan does not include invitations.'
+    : inviteEmails.some(email => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) ? 'Enter valid collaborator email addresses.'
+    : options && options.plan.maxCollaboratorsPerCampaign >= 0 && inviteEmails.length > options.plan.maxCollaboratorsPerCampaign ? `Your plan allows ${options.plan.maxCollaboratorsPerCampaign} collaborators.`
+    : split && (!options?.canSplit || rows.some(row => !row.name.trim() || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(row.email) || !Number.isFinite(Number(row.percent)) || Number(row.percent) <= 0 || !/^\d+(\.\d{1,2})?$/.test(row.percent)) || rows.reduce((sum, row) => sum + Math.round(Number(row.percent) * 100), 0) !== 10000) ? 'Check split eligibility, names, emails, and shares totalling 100% (up to two decimals).' : ''
   const [formData, setFormData] = useState<FormData>({
     title: '',
     summary: '',
@@ -312,7 +342,12 @@ export function CampaignForm() {
   // Capture "now" once at mount — keeps the render body pure (react-hooks/purity).
   const [nowMs] = useState(() => Date.now())
 
-  const errors = useMemo(() => validate(formData), [formData])
+  const errors = useMemo(() => {
+    const result = validate(formData)
+    if (options?.maxGoal != null && Number(formData.goalAmount) > options.maxGoal) result.goalAmount = `Your current limit is ${formatCurrency(options.maxGoal)}. Reduce the goal or change your plan.`
+    if (formData.coverImageUrl && options?.plan.maxMediaPerCampaign === 0) result.coverImageUrl = 'Your plan does not include campaign images.'
+    return result
+  }, [formData, options])
   const isStepValid = STEP_FIELDS[step].every((f) => !errors[f])
 
   const errFor = (f: keyof FormErrors) => Boolean(touched[f] && errors[f])
@@ -330,7 +365,10 @@ export function CampaignForm() {
     setTouched((t) => ({ ...t, category: true }))
   }
 
-  function handleNext() {
+  function handleNext(event: React.MouseEvent<HTMLButtonElement>) {
+    // The same button becomes a submit button on the final step. Cancel this
+    // click default before React updates its type, so Continue never publishes.
+    event.preventDefault()
     if (!isStepValid) return
     setStep((s) => Math.min(s + 1, STEPS.length - 1))
   }
@@ -339,9 +377,22 @@ export function CampaignForm() {
     setStep((s) => Math.max(s - 1, 0))
   }
 
+  async function retrySetup() {
+    setSetupBusy(true)
+    const failed: typeof pendingSetup = []
+    const messages: string[] = []
+    for (const action of pendingSetup) {
+      try { await api.post(action.path, action.payload) }
+      catch (error) { failed.push(action); messages.push(`${action.label}: ${error instanceof Error ? error.message : 'failed'}`) }
+    }
+    setPendingSetup(failed); setSetupErrors(messages); setSetupBusy(false)
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    const all = validate(formData)
+    if (step !== STEPS.length - 1) return
+    if (!options?.canCreate || extrasError || setupBusy) return
+    const all = errors
     if (Object.keys(all).length > 0) {
       setTouched({ title: true, summary: true, category: true, description: true, beneficiaries: true, coverImageUrl: true, goalAmount: true, endDate: true })
       // Jump back to the first step that still has an error.
@@ -366,10 +417,23 @@ export function CampaignForm() {
         endDate: new Date(`${formData.endDate}T00:00:00.000Z`).toISOString(),
         priority: formData.priority,
       })
-      // The api client returns the created campaign; guard for the demo
-      // account (which yields an empty payload) so we still show success.
-      const id = created && typeof created === 'object' && 'id' in created ? String(created.id) : null
-      setCreatedId(id && id.length > 0 ? id : null)
+      if (!created?.id) throw new Error('Campaign creation did not return an ID')
+      setCreatedId(created.id)
+      setCreatedStatus(created.status)
+      setSetupBusy(true)
+      const failures: string[] = []
+      const pending: typeof pendingSetup = []
+      for (const email of inviteEmails) {
+        try { await api.post(`/campaigns/${created.id}/collaborators/invite`, { userEmail: email, role: CollaboratorRole.EDITOR, revenueSharePercent: 0 }) }
+        catch (error) { pending.push({ path: `/campaigns/${created.id}/collaborators/invite`, payload: { userEmail: email, role: CollaboratorRole.EDITOR, revenueSharePercent: 0 }, label: `Invitation to ${email}` }); failures.push(`Invitation to ${email}: ${error instanceof Error ? error.message : 'failed'}`) }
+      }
+      if (split) {
+        try { await api.post(`/campaigns/${created.id}/split`, { allocations: rows.map(row => ({ name: row.name.trim(), email: row.email.trim(), shareBps: Math.round(Number(row.percent) * 100) })) }) }
+        catch (error) { pending.push({ path: `/campaigns/${created.id}/split`, payload: { allocations: rows.map(row => ({ name: row.name.trim(), email: row.email.trim(), shareBps: Math.round(Number(row.percent) * 100) })) }, label: 'Split draft' }); failures.push(`Split draft: ${error instanceof Error ? error.message : 'could not be saved'}`) }
+      }
+      setPendingSetup(pending)
+      setSetupErrors(failures)
+      setSetupBusy(false)
       setSubmitted(true)
     } catch {
       // Error surfaced via `submitError`; stay on the review step so the user
@@ -410,9 +474,13 @@ export function CampaignForm() {
           {formData.title || 'Your campaign'} is on its way
         </Typography>
         <Typography sx={{ mt: 1.5, color: INK_SECONDARY, maxWidth: 440, mx: 'auto', lineHeight: 1.6 }}>
-          Your campaign has been submitted and is now pending review by our team. Once live, every cedi raised is tracked and
-          every donor is thanked.
+          {createdStatus === CampaignStatus.ACTIVE ? 'Your campaign is live. Share it with your community.' : 'Your campaign is awaiting review. You can share it once it is live.'}
         </Typography>
+        {setupErrors.map(message => <Alert severity="warning" key={message} sx={{ mt: 2, textAlign: 'left' }}>Campaign created, but {message}. Retry the unfinished setup below; do not recreate the campaign.</Alert>)}
+        {!!pendingSetup.length && <Button sx={{ mt: 2 }} disabled={setupBusy} onClick={retrySetup}>{setupBusy ? 'Retrying…' : 'Retry unfinished setup'}</Button>}
+        {split && !setupErrors.some(message => message.startsWith('Split draft')) && <Alert severity="info" sx={{ mt: 2 }}>Split saved as a draft. Beneficiary consent and activation are still required.</Alert>}
+        {createdId && split && !setupErrors.some(message => message.startsWith('Split draft')) && <CampaignSplitSetup campaignId={createdId} />}
+        {createdId && createdStatus === CampaignStatus.ACTIVE && <Box sx={{ mt: 2 }}><ShareCampaignButton campaignId={createdId} title={formData.title} url={`${window.location.origin}/campaigns/${createdId}`} /></Box>}
         <Box sx={{ mt: 3.5, display: 'flex', gap: 1.5, justifyContent: 'center', flexWrap: 'wrap' }}>
           <Button
             component={RouterLink}
@@ -435,6 +503,23 @@ export function CampaignForm() {
 
   return (
     <Box component="form" onSubmit={handleSubmit} noValidate>
+      {!options && !optionsError && <Alert severity="info" sx={{ mb: 2 }}>Checking your campaign limits…</Alert>}
+      {optionsError && <Alert severity="error" action={<Button onClick={retry}>Retry</Button>} sx={{ mb: 2 }}>{optionsError}</Alert>}
+      {options && <Alert severity={options.canCreate ? 'info' : 'warning'} sx={{ mb: 2 }}>
+        <Typography variant="body2">{options.plan.name}: {options.maxGoal === null ? 'No goal limit' : `Goals up to ${formatCurrency(options.maxGoal)}`} · {options.activeCount} active/pending campaigns.</Typography>
+        {!options.canCreate && <Typography variant="body2" sx={{ mt: 0.5 }}>
+          {options.creationBlockReason === 'verification_required'
+            ? 'Complete account verification before creating your first campaign. You have not reached your plan’s campaign limit.'
+            : options.creationBlockReason === 'verification_limit'
+              ? `Your current verification level allows ${options.verificationCampaignLimit} campaigns in total. Review your verification to create more.`
+              : options.creationBlockReason === 'plan_limit'
+                ? 'Your plan’s active campaign limit has been reached. Finish an existing campaign or change your plan to create another.'
+                : 'Campaign creation is currently unavailable. Review your account verification and plan eligibility.'}
+        </Typography>}
+        <Button component={RouterLink} to={options.creationBlockReason?.startsWith('verification_') ? '/kyc' : '/subscription'} size="small">
+          {options.creationBlockReason?.startsWith('verification_') ? 'Review verification' : 'Manage plan'}
+        </Button>
+      </Alert>}
       <WizardStepper current={step} />
 
       {/* Step heading */}
@@ -495,6 +580,7 @@ export function CampaignForm() {
               <Box role="group" aria-label="Category" sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
                 {CATEGORIES.map((c) => {
                   const selected = formData.category === c.value
+                  const CategoryIcon = CATEGORY_ICONS[c.value as keyof typeof CATEGORY_ICONS] ?? CategoryRoundedIcon
                   return (
                     <Box
                       key={c.value}
@@ -519,7 +605,9 @@ export function CampaignForm() {
                         borderRadius: SHAPE.sm,
                         border: '1.5px solid',
                         borderColor: selected ? GOLD : DIVIDER,
-                        bgcolor: selected ? 'rgba(199, 162, 74, 0.12)' : 'transparent',
+                        bgcolor: 'background.paper',
+                        boxShadow: selected ? 'var(--neu-inset)' : 'var(--neu-subtle)',
+                        backdropFilter: 'var(--neu-backdrop)',
                         color: selected ? 'text.primary' : INK_SECONDARY,
                         fontSize: '0.85rem',
                         fontWeight: selected ? 700 : 600,
@@ -529,7 +617,7 @@ export function CampaignForm() {
                         '&:focus-visible': { outline: `2px solid ${GOLD}`, outlineOffset: 2 },
                       }}
                     >
-                      <DiamondBullet color={selected ? GOLD : SAGE} />
+                      <CategoryIcon sx={{ fontSize: 22, color: selected ? 'primary.main' : 'text.secondary' }} />
                       {c.label}
                     </Box>
                   )
@@ -604,6 +692,7 @@ export function CampaignForm() {
                 setFormData((prev) => ({ ...prev, coverImageUrl: url }))
                 setTouched((t) => ({ ...t, coverImageUrl: true }))
               }}
+              uploadFn={(file, onProgress) => uploadImageViaApi(file, 'campaigns', onProgress)}
               label="Cover image"
               helperText="Optional — a single strong photo helps donors connect."
             />
@@ -824,7 +913,7 @@ export function CampaignForm() {
             >
               <ShieldRoundedIcon sx={{ fontSize: 18, color: 'primary.main', mt: 0.1 }} />
               <Typography sx={{ fontSize: '0.82rem', lineHeight: 1.5 }}>
-                Your campaign is reviewed by our team before it goes live. You can still edit any step above.
+                Campaigns may go live immediately or require review, depending on the applicable checks. You can still edit any step above.
               </Typography>
             </Box>
           </Box>
@@ -832,6 +921,8 @@ export function CampaignForm() {
       </Box>
 
       {/* Inline submit error — keeps the wizard on the review step on failure */}
+      {step === 3 && options && <CampaignCreationExtras options={options} invitations={invitations} setInvitations={setInvitations} split={split} setSplit={setSplit} rows={rows} setRows={setRows} />}
+      {step === 3 && extrasError && <Alert severity="warning" sx={{ mt: 2 }}>{extrasError}</Alert>}
       {step === STEPS.length - 1 && submitError && (
         <Box
           role="alert"
@@ -874,7 +965,7 @@ export function CampaignForm() {
         <Button
           type="button"
           onClick={handleBack}
-          disabled={step === 0 || isSubmitting}
+          disabled={step === 0 || isSubmitting || setupBusy}
           startIcon={<ArrowBackRoundedIcon />}
           sx={{ color: 'primary.main', visibility: step === 0 ? 'hidden' : 'visible' }}
         >
@@ -885,7 +976,7 @@ export function CampaignForm() {
           <Button
             type="button"
             onClick={handleNext}
-            disabled={!isStepValid}
+            disabled={!isStepValid || !options?.canCreate}
             variant="contained"
             color="secondary"
             endIcon={<ArrowForwardRoundedIcon />}
@@ -898,10 +989,10 @@ export function CampaignForm() {
             variant="contained"
             color="secondary"
             size="large"
-            disabled={isSubmitting}
+            disabled={isSubmitting || setupBusy || !options?.canCreate || !!extrasError || Object.keys(errors).length > 0}
             startIcon={isSubmitting ? <LoadingDots size={6} /> : <CheckRoundedIcon />}
           >
-            {isSubmitting ? 'Publishing…' : 'Publish campaign'}
+            {isSubmitting || setupBusy ? 'Setting up campaign…' : 'Publish campaign'}
           </Button>
         )}
       </Box>
