@@ -12,6 +12,8 @@ import Paper from '@mui/material/Paper'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import { keyframes } from '@mui/material/styles'
 import { ImageUpload } from '@ubuntu-fund/ui'
+import { Link as RouterLink } from 'react-router-dom'
+import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
 import { api } from '@/lib/api'
 
 const fadeIn = keyframes`
@@ -97,15 +99,28 @@ export function KYCPage() {
         <Typography sx={{ color: 'text.secondary', mb: 4 }}>
           Your documents are under review. We'll notify you once the review is complete.
         </Typography>
-        <Button variant="contained" href="/dashboard" sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700 }}>
-          Go to Dashboard
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'center', flexWrap: 'wrap' }}>
+          <Button component={RouterLink} to="/profile" variant="outlined" sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700 }}>
+            Back to profile
+          </Button>
+          <Button component={RouterLink} to="/dashboard" variant="contained" sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700 }}>
+            Go to Dashboard
+          </Button>
+        </Box>
       </Container>
     )
   }
 
   return (
     <Container maxWidth="md" sx={{ py: 6, animation: `${fadeIn} 0.4s ease` }}>
+      <Button
+        component={RouterLink}
+        to="/profile"
+        startIcon={<ArrowBackRoundedIcon />}
+        sx={{ mb: 2, textTransform: 'none', fontWeight: 600, color: 'text.secondary', boxShadow: 'none', '&:hover': { boxShadow: 'none', bgcolor: 'action.hover' } }}
+      >
+        Back to profile
+      </Button>
       <Typography variant="h4" sx={{ fontWeight: 900, mb: 1, textAlign: 'center' }}>
         KYC Verification
       </Typography>
