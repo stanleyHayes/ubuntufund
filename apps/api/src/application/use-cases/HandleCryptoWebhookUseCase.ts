@@ -1,3 +1,4 @@
+import { cryptoToMinor } from '../services/cryptoMoney.js';
 import type { CryptoWebhookEvent } from '@ubuntu-fund/types';
 import type { DonationIntentEntity } from '../../domain/entities/DonationIntent.js';
 import type { CryptoPaymentProviderPort } from '../../domain/ports/outbound/CryptoPaymentProviderPort.js';
@@ -8,7 +9,6 @@ import type { FeePolicy } from '../services/FeePolicy.js';
 import type { PlanLimitsService } from '../services/PlanLimitsService.js';
 import type { SettleDonationUseCase } from './SettleDonationUseCase.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
-import { logger } from '../../infrastructure/logging/logger.js';
 
 export type CryptoWebhookOutcome = 'ok' | 'duplicate' | 'ignored';
 
@@ -42,21 +42,16 @@ export class HandleCryptoWebhookUseCase {
     const provider = this.providersByName.get(providerName);
     if (!provider) throw new AppError('Unknown crypto provider', 404);
 
-    const event = provider.verifyWebhook(headers, rawBody);
+    const event = await provider.verifyWebhook(headers, rawBody);
     if (!event) throw new AppError('Invalid crypto webhook signature', 401);
 
-    // Idempotency: a duplicate (provider, eventId) is skipped before any effect.
-    const fresh = await this.webhookEventRepo.recordIfNew(
-      providerName,
-      event.eventId,
-      event.type
-    );
-    if (!fresh) return 'duplicate';
-
     const intent = await this.intentRepo.findByProviderRef(event.providerRef);
-    if (!intent || intent.paymentRail !== 'CRYPTO') return 'ignored';
-
+    if (!intent || intent.paymentRail !== 'CRYPTO') throw new AppError('Crypto intent not ready; retry webhook', 503);
+    if (intent.provider !== providerName) throw new AppError('Crypto provider mismatch', 409);
+    // Settlement is idempotent. Record delivery only AFTER success so failures can retry.
     await this.applyEvent(intent, event);
+    const fresh = await this.webhookEventRepo.recordIfNew(providerName, event.eventId, event.type);
+    if (!fresh) return 'duplicate';
     return 'ok';
   }
 
@@ -86,6 +81,7 @@ export class HandleCryptoWebhookUseCase {
     intent: DonationIntentEntity,
     event: CryptoWebhookEvent
   ): Promise<void> {
+    if (intent.provider !== 'mock' && (event.cryptoAmount === undefined || !intent.cryptoAsset || cryptoToMinor(event.cryptoAmount, intent.cryptoAsset) !== intent.originalAmountMinor)) throw new AppError('Crypto deposit amount requires review', 409);
     const required = intent.requiredConfirmations ?? 1;
     if (event.confirmations !== undefined && event.confirmations < required) {
       // Detected but not yet final — record progress, stay PROCESSING.
@@ -120,14 +116,6 @@ export class HandleCryptoWebhookUseCase {
       transactionHash: event.transactionHash,
       confirmationCount: event.confirmations,
     });
-    try {
-      await this.settleDonationUseCase.execute(intent, breakdown);
-    } catch (error) {
-      // A concurrent settle already won the exactly-once gate → harmless.
-      logger.warn(
-        { err: error, donationIntentId: intent.id },
-        'crypto settle: intent already settled (idempotent)'
-      );
-    }
+    await this.settleDonationUseCase.execute(intent, breakdown);
   }
 }

@@ -16,17 +16,23 @@ export interface CryptoAssetsResult {
 export class GetCryptoAssetsUseCase {
   constructor(
     private readonly provider: CryptoPaymentProviderPort,
-    private readonly config: CryptoConfig
+    private readonly config: CryptoConfig,
+    private readonly fallbackProviders: CryptoPaymentProviderPort[] = []
   ) {}
 
   async execute(): Promise<CryptoAssetsResult> {
-    if (!this.config.enabled || !this.provider.isConfigured()) {
-      return { enabled: false, assets: [] };
+    if (!this.config.enabled) return { enabled: false, assets: [] };
+    const assets = new Map<string, CryptoAssetInfo>();
+    for (const provider of [this.provider, ...this.fallbackProviders]) {
+      if (!provider.isConfigured()) continue;
+      try {
+        for (const asset of await provider.getSupportedAssets()) {
+          if (!this.config.allowedAssets.includes(asset.asset)) continue;
+          const previous = assets.get(asset.asset);
+          assets.set(asset.asset, previous ? { ...previous, networks: [...previous.networks, ...asset.networks.filter(n => !previous.networks.some(p => p.id === n.id))] } : asset);
+        }
+      } catch { /* Expose only reachable, configured providers. */ }
     }
-    const supported = await this.provider.getSupportedAssets();
-    const assets = supported.filter((a) =>
-      this.config.allowedAssets.includes(a.asset)
-    );
-    return { enabled: true, assets };
+    return { enabled: assets.size > 0, assets: [...assets.values()] };
   }
 }

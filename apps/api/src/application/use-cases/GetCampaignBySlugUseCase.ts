@@ -50,7 +50,9 @@ export class GetCampaignBySlugUseCase {
   ) {}
 
   async execute(slug: string): Promise<CampaignPublicView | null> {
-    const entity = await this.campaignRepo.findBySlug(slug);
+    // Older campaigns have no vanity slug; their public links use the Mongo ID.
+    const entity = await this.campaignRepo.findBySlug(slug)
+      ?? (/^[a-f0-9]{24}$/i.test(slug) ? await this.campaignRepo.findById(slug) : null);
     if (!entity) return null;
 
     const dto = toDTO(entity);

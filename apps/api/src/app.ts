@@ -1,3 +1,5 @@
+import { BitnobCryptoProvider } from './infrastructure/adapters/outbound/crypto/BitnobCryptoProvider.js';
+import { WalletTopUpService } from './infrastructure/adapters/outbound/payments/WalletTopUpService.js';
 import { GetKYCStatsUseCase } from './application/use-cases/GetKYCStatsUseCase.js';
 import express from 'express';
 import cors from 'cors';
@@ -587,27 +589,41 @@ export function createApp(): express.Express {
     config.crypto.mockWebhookSecret,
     config.crypto.quoteTtlSeconds
   );
-  const cryptoProvidersByName = new Map<string, CryptoPaymentProviderPort>([
-    [mockCryptoProvider.provider, mockCryptoProvider],
-  ]);
-  const primaryCryptoProvider =
-    cryptoProvidersByName.get(config.crypto.primaryProvider) ?? mockCryptoProvider;
+  const bitnobCryptoProvider = new BitnobCryptoProvider({
+    clientId: process.env.BITNOB_CLIENT_ID ?? '', clientSecret: process.env.BITNOB_CLIENT_SECRET ?? '',
+    webhookSecret: process.env.BITNOB_WEBHOOK_SECRET ?? '', baseUrl: 'https://api.bitnob.com',
+    networks: (process.env.BITNOB_ALLOWED_NETWORKS ?? '').split(',').map(s => s.trim()).filter(Boolean),
+    quoteTtlSeconds: config.crypto.quoteTtlSeconds,
+  });
+  const cryptoProvidersByName = new Map<string, CryptoPaymentProviderPort>([[bitnobCryptoProvider.provider, bitnobCryptoProvider]]);
+  if (process.env.NODE_ENV !== 'production') cryptoProvidersByName.set('mock', mockCryptoProvider);
+  const configuredCryptoProvider = cryptoProvidersByName.get(config.crypto.primaryProvider);
+  if (!configuredCryptoProvider && config.crypto.enabled) throw new Error('Unknown or unsafe CRYPTO_PRIMARY_PROVIDER. Production cannot use mock crypto.');
+  const primaryCryptoProvider = configuredCryptoProvider ?? bitnobCryptoProvider;
+  const cryptoFallbackProviders = (process.env.CRYPTO_FALLBACK_PROVIDERS ?? '').split(',').map(s => s.trim()).filter(Boolean).map(name => {
+    const provider = cryptoProvidersByName.get(name);
+    if (!provider) throw new Error('Unknown or unsafe CRYPTO_FALLBACK_PROVIDERS entry');
+    return provider;
+  });
   const getCryptoAssetsUseCase = new GetCryptoAssetsUseCase(
     primaryCryptoProvider,
-    config.crypto
+    config.crypto,
+    cryptoFallbackProviders
   );
   const createCryptoQuoteUseCase = new CreateCryptoQuoteUseCase(
     primaryCryptoProvider,
     config.crypto,
     campaignRepo,
-    cryptoQuoteRepo
+    cryptoQuoteRepo,
+    cryptoFallbackProviders
   );
   const createCryptoDepositUseCase = new CreateCryptoDepositUseCase(
     primaryCryptoProvider,
     config.crypto,
     campaignRepo,
     cryptoQuoteRepo,
-    donationIntentRepo
+    donationIntentRepo,
+    cryptoProvidersByName
   );
   const handleCryptoWebhookUseCase = new HandleCryptoWebhookUseCase(
     cryptoProvidersByName,
@@ -712,6 +728,7 @@ export function createApp(): express.Express {
     creatorBalanceRepo
   );
 
+  const walletTopUps = new WalletTopUpService(paymentGateway, config.payments.paystackEnabled, config.paystack.secretKey.startsWith('sk_live_') ? 'live' : 'test');
   const handlePaystackWebhookUseCase = new HandlePaystackWebhookUseCase(
     paymentGateway,
     donationIntentRepo,
@@ -726,7 +743,8 @@ export function createApp(): express.Express {
     affiliateCommissionService,
     handleBeneficiaryPayoutWebhookUseCase,
     handleTipWebhookUseCase,
-    handleCreatorPayoutWebhookUseCase
+    handleCreatorPayoutWebhookUseCase,
+    walletTopUps
   );
   // Flutterwave settlement: verifies the verif-hash, re-verifies the charge
   // server-side, then settles through the same donation seam as Paystack.
@@ -778,6 +796,7 @@ export function createApp(): express.Express {
   if (config.payments.reconciliationEnabled && config.nodeEnv === 'production') {
     const RECONCILE_INTERVAL_MS = 30 * 60 * 1000;
     const timer = setInterval(() => {
+      void walletTopUps.reconcile().catch(err => logger.error({ err }, 'wallet top-up reconciliation failed'));
       reconcilePaymentsUseCase
         .reconcileStale({ olderThanMinutes: 30 })
         .catch((err) => logger.error({ err }, 'scheduled reconciliation failed'));
@@ -1078,7 +1097,7 @@ export function createApp(): express.Express {
     campaignRepo,
     liveSessionRepo
   );
-  const walletController = new WalletController(walletRepo, walletTxRepo);
+  const walletController = new WalletController(walletRepo, walletTxRepo, walletTopUps);
   const profileController = new ProfileController(
     getProfileUseCase,
     updateProfileUseCase,

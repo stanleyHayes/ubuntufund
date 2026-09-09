@@ -181,7 +181,7 @@ export class PaystackGateway implements PaymentGatewayPort {
 
     // Our own unique reference — echoed back by Paystack and stored as the
     // charge's providerRef, so the later webhook correlates deterministically.
-    const reference = `${params.referencePrefix}-${randomUUID().slice(0, 8)}`;
+    const reference = params.reference ?? `${params.referencePrefix}-${randomUUID().slice(0, 8)}`;
     // Charge amount, converted to pesewas (minor units).
     const amount = Math.round(params.amount * 100);
 

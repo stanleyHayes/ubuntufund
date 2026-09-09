@@ -23,7 +23,10 @@ export function useEnabledPaymentProviders() {
       .then((data) => {
         if (cancelled) return
         if (!Array.isArray(data) || data.some((provider) => !provider || typeof provider.name !== 'string' || typeof provider.slug !== 'string' || typeof provider.type !== 'string')) throw new Error('Invalid payment provider response')
-        setProviders(data)
+        // Existing provider records may still carry the pre-rebrand name.
+        setProviders(data.map(provider => provider.type === 'wallet' && provider.slug === 'wallet'
+          ? { ...provider, name: 'Ujimora Wallet' }
+          : provider))
         setError(null)
       })
       .catch((err: Error) => {

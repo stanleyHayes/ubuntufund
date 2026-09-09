@@ -16,14 +16,15 @@ export class CreateCryptoQuoteUseCase {
     private readonly provider: CryptoPaymentProviderPort,
     private readonly config: CryptoConfig,
     private readonly campaignRepo: CampaignRepositoryPort,
-    private readonly quoteRepo: CryptoQuoteRepositoryPort
+    private readonly quoteRepo: CryptoQuoteRepositoryPort,
+    private readonly fallbackProviders: CryptoPaymentProviderPort[] = []
   ) {}
 
   async execute(
     campaignId: string,
     input: CreateCryptoQuoteInput
   ): Promise<CryptoQuote> {
-    if (!this.config.enabled || !this.provider.isConfigured()) {
+    if (!this.config.enabled || ![this.provider, ...this.fallbackProviders].some(p => p.isConfigured())) {
       throw new AppError('Crypto donations are not enabled', 400);
     }
     if (!this.config.allowedAssets.includes(input.asset)) {
@@ -48,30 +49,27 @@ export class CreateCryptoQuoteUseCase {
     const fiatCurrency = campaign.goalAmount.currency;
 
     // Asset + network must be a provider-supported, allowlisted pair (§15/§22).
-    const supported = await this.provider.getSupportedAssets();
-    const assetInfo = supported.find(
-      (a) => a.asset === input.asset && this.config.allowedAssets.includes(a.asset)
-    );
-    if (!assetInfo) throw new AppError(`${input.asset} is not supported`, 400);
-    const network = assetInfo.networks.find((n) => n.id === input.network);
-    if (!network) {
-      throw new AppError(
-        `${input.network} is not a supported network for ${input.asset}`,
-        400
-      );
+    // Only read-only discovery/quoting may fail over. Issued deposits stay pinned.
+    let selection: { provider: CryptoPaymentProviderPort; quote: CryptoQuote; requiredConfirmations: number } | undefined;
+    let unavailable = false;
+    for (const provider of [this.provider, ...this.fallbackProviders]) {
+      if (!provider.isConfigured()) continue;
+      try {
+        const assets = await provider.getSupportedAssets();
+        const network = assets.find(a => a.asset === input.asset)?.networks.find(n => n.id === input.network);
+        if (!network) continue;
+        const quote = await provider.getQuote({ fiatAmount, fiatCurrency, asset: input.asset, network: input.network });
+        selection = { provider, quote, requiredConfirmations: network.requiredConfirmations };
+        break;
+      } catch { unavailable = true; }
     }
-
-    const quote = await this.provider.getQuote({
-      fiatAmount,
-      fiatCurrency,
-      asset: input.asset,
-      network: input.network,
-    });
+    if (!selection) throw new AppError(unavailable ? 'Crypto providers are temporarily unavailable' : 'Unsupported asset or network', unavailable ? 503 : 400);
+    const { quote, provider, requiredConfirmations } = selection;
 
     await this.quoteRepo.save({
       quoteId: quote.quoteId,
       campaignId,
-      provider: this.provider.provider,
+      provider: provider.provider,
       asset: quote.asset,
       network: quote.network,
       fiatCurrency: quote.fiatCurrency,
@@ -80,7 +78,7 @@ export class CreateCryptoQuoteUseCase {
       rate: quote.rate,
       providerFeeFiat: quote.providerFeeFiat ?? 0,
       networkFeeFiat: quote.networkFeeFiat ?? 0,
-      requiredConfirmations: network.requiredConfirmations,
+      requiredConfirmations,
       expiresAt: new Date(quote.expiresAt),
     });
 

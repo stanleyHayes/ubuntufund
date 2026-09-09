@@ -1,3 +1,8 @@
+import Button from '@mui/material/Button'
+import { BrandedTextField } from '@ubuntu-fund/ui'
+import { useSearchParams } from 'react-router-dom'
+import { request } from '@/lib/api'
+import { storedAccessToken } from '@/lib/session'
 import AccountBalanceWalletRoundedIcon from '@mui/icons-material/AccountBalanceWalletRounded'
 import { AccountHeading } from '@/components/account/AccountPage'
 import { useState, useEffect } from 'react'
@@ -69,6 +74,13 @@ function formatTxType(type: TransactionType): string {
 // ---------------------------------------------------------------------------
 
 export function WalletPage() {
+  const [searchParams] = useSearchParams()
+  const [topUpConfig, setTopUpConfig] = useState<{ enabled: boolean; mode: string } | null>(null)
+  const [topUpAmount, setTopUpAmount] = useState('')
+  const [topUpBusy, setTopUpBusy] = useState(false)
+  const [topUpError, setTopUpError] = useState('')
+  const [topUpStatus, setTopUpStatus] = useState('')
+  const [revision, setRevision] = useState(0)
   const [wallets, setWallets] = useState<Wallet[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -77,6 +89,7 @@ export function WalletPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    api.get<{ enabled: boolean; mode: string }>('/wallets/topups/config').then(setTopUpConfig).catch(() => setTopUpConfig({ enabled: false, mode: 'test' }))
     api.get<Wallet[]>('/wallets')
       .then(setWallets)
       .catch((err: Error) => setError(err.message))
@@ -86,13 +99,54 @@ export function WalletPage() {
       .then(setTransactions)
       .catch((err: Error) => setTxError(err.message))
       .finally(() => setTxLoading(false))
-  }, [])
+  }, [revision])
+
+  const returnedReference = searchParams.get('reference') ?? searchParams.get('trxref')
+  useEffect(() => {
+    if (!returnedReference?.startsWith('wtop-')) return
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout>
+    let attempts = 0
+    async function check() {
+      try {
+        const result = await api.get<{ status: string }>(`/wallets/topups/${encodeURIComponent(returnedReference!)}`)
+        if (cancelled) return
+        if (result.status === 'completed' || result.status === 'failed') {
+          const storageKey = sessionStorage.getItem(`ujimora-topup-reference-${returnedReference}`)
+          if (storageKey) sessionStorage.removeItem(storageKey)
+          setTopUpStatus(result.status === 'completed' ? 'Your wallet has been funded.' : 'Payment was not completed. You can start a new top-up.'); setRevision(value => value + 1); return }
+        setTopUpStatus('Payment is awaiting confirmation. Your balance updates after Paystack confirms it.')
+        if (++attempts < 12) timer = setTimeout(check, 5000)
+      } catch (err) { if (!cancelled) setTopUpError(err instanceof Error ? err.message : 'Could not verify top-up. Refresh to retry.') }
+    }
+    void check()
+    return () => { cancelled = true; clearTimeout(timer) }
+  }, [returnedReference])
+
+  async function fundWallet(walletId: string) {
+    setTopUpBusy(true); setTopUpError('')
+    const amount = Number(topUpAmount)
+    const storageKey = `ujimora-topup-${walletId}-${amount}`
+    try {
+      const key = sessionStorage.getItem(storageKey) ?? crypto.randomUUID()
+      sessionStorage.setItem(storageKey, key)
+      const response = await request<{ data: { authorizationUrl?: string; reference: string; status: string } }>('/wallets/topups', { method: 'POST', token: storedAccessToken() ?? undefined, headers: { 'Idempotency-Key': key }, body: JSON.stringify({ walletId, amount }) })
+      const result = response.data
+      if (result.status === 'completed') { setTopUpStatus('This top-up is already completed.'); sessionStorage.removeItem(storageKey); setRevision(value => value + 1); return }
+      sessionStorage.setItem(`ujimora-topup-reference-${result.reference}`, storageKey)
+      if (!result.authorizationUrl?.startsWith('https://') || result.status === 'failed') { window.location.assign(`/wallet?reference=${encodeURIComponent(result.reference)}`); return }
+      window.location.assign(result.authorizationUrl)
+    } catch (err) { setTopUpError(err instanceof Error ? err.message : 'Could not start top-up.') }
+    finally { setTopUpBusy(false) }
+  }
 
   return (
     <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', py: 5 }}>
       <Container maxWidth="lg">
         <AccountHeading title="Wallet" description="Your balances and transaction history, in one place." icon={<AccountBalanceWalletRoundedIcon />} />
 
+        {topUpStatus && <Alert severity="info" sx={{ mb: 2 }}>{topUpStatus}</Alert>}
+        {topUpError && <Alert severity="error" sx={{ mb: 2 }}>{topUpError}</Alert>}
         {/* ===== Wallet Cards ===== */}
         {isLoading ? (
           <Grid container spacing={3} sx={{ mb: 6 }}>
@@ -143,9 +197,14 @@ export function WalletPage() {
                           Updated {new Date(wallet.updatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
                         </Typography>
                       </Box>
-                      <Alert severity="info" icon={false} sx={{ py: 0.5, fontSize: '0.78rem' }}>
-                        External deposits and withdrawals are unavailable until verified payment and payout providers are connected.
-                      </Alert>
+                      {wallet.currency === 'GHS' && topUpConfig?.enabled && <Box sx={{ display: 'grid', gap: 1.5 }}>
+                        {topUpConfig.mode === 'test' && <Alert severity="info">Test payments only. No real money moves in this mode.</Alert>}
+                        <BrandedTextField label="Top-up amount (GHS)" type="number" value={topUpAmount} onChange={event => setTopUpAmount(event.target.value)} disabled={topUpBusy} helperText="GHS 1–10,000. Pay securely by card or MoMo." />
+                        <Button variant="contained" disabled={topUpBusy || !topUpAmount || Number(topUpAmount) < 1 || Number(topUpAmount) > 10000} onClick={() => fundWallet(wallet.id)}>{topUpBusy ? 'Opening checkout…' : 'Fund wallet'}</Button>
+                        <Typography variant="caption" color="text.secondary">Your balance is credited only after payment confirmation. The full top-up amount reaches your wallet.</Typography>
+                      </Box>}
+                      {topUpConfig && !topUpConfig.enabled && <Alert severity="info">Wallet funding is not configured yet.</Alert>}
+                      <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>External withdrawals are not available from this wallet.</Typography>
                     </CardContent>
                   </Card>
                 </Grid>

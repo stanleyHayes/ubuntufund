@@ -970,3 +970,39 @@
 - ✅ Fixed detail dialog rendering only document metadata despite receiving file URLs. Each document now shows an image preview or PDF viewer plus a labelled Open original link, using the existing themed surfaces.
 - ✅ Added loading skeletons, image-preview failure recovery, invalid/missing URL messaging, safe HTTP(S) links, distinct document numbering, missing-date fallback and zero-document guidance for GPS submissions.
 - Verification: four component regressions passed for image loading, failed previews, PDF query-string URLs and unsafe URLs. Admin TypeScript, targeted lint, production build and diff checks passed. Production member documents were not accessed; PDF availability remains dependent on the upload host/browser.
+
+### 2026-09-09 — Profile upload consistency and campaign display accuracy
+
+- ✅ Profile/cover editor now reuses campaign creation's shared ImageUpload control with preview, progress, replace/remove, the 4 MB cap and the same API upload transport (`profiles` folder). Square avatar and landscape cover previews retain explicit save/default controls. Save/close are disabled during upload.
+- ✅ Fixed light-mode semantic chip text colors against the shared pale surface, including Critical and Urgent; existing dark-mode colors remain intact.
+- ✅ Confirmed the dashboard campaign card hardcoded 147 supporters and four initials. Replaced them with API donorCount, correct singular/plural text and a neutral people icon. Verified `/campaigns/mine` already populates distinct donor counts via the donation repository.
+- Verification: three mocked browser regressions passed for zero/one supporter counts, Critical badge computed color, and profile/cover upload plus save payloads. Inspected campaign urgency and image-editor screenshots. Web/UI TypeScript, targeted lint, production web build and diff checks passed; existing large-chunk warnings remain. No live member images changed.
+
+### 2026-09-09 — Legacy wallet provider branding
+
+- ✅ Canonical platform wallet providers now display Ujimora Wallet in the shared enabled-provider hook, even when persisted API records contain the old UbuntuFund name. Provider identifiers, availability and payment behavior are unchanged.
+- Verification: mocked campaign-detail browser regression passed using the legacy API name and asserting Ujimora Wallet in How to donate. Web TypeScript, targeted lint and diff checks passed.
+
+### 2026-09-09 — Campaign checkout access and wallet funding investigation
+
+- ✅ Campaign detail's primary Donate now CTA and How to donate section link to the existing card/MoMo checkout without depending on the wallet-provider list. Existing-balance wallet donations remain secondary. Closed campaigns disable checkout links.
+- ✅ Public campaign resolution falls back to a valid Mongo ID when a vanity slug is missing, so legacy detail pages can use checkout. Added regression for ID resolution and missing-slug handling.
+- ✅ Wallet and campaign copy explain that external top-ups are not implemented and hosted donations fund the campaign directly, not the user's wallet.
+- Production read-only findings: enabled-provider endpoint returns only the legacy-named wallet; crypto-assets endpoint returns enabled:false and no assets. Render blueprint enables Paystack but requires dashboard-provided keys. Local production env has a Paystack test key; this does not establish deployed key mode or payment readiness. No access to deployed secret configuration was established and no payment transaction was initiated.
+- Crypto blocker: app.ts registers only MockCryptoProvider; enabling the feature is not a live-provider integration. Production crypto remains disabled pending real provider implementation/configuration.
+- Wallet finding: registration creates a zero-GHS wallet; wallet routes are read-only. No self-service top-up initialization/webhook flow exists. depositAtomic calls in donation use cases compensate failed wallet debits rather than load external funds.
+- Verification: nine mocked browser tests passed, covering guest checkout navigation for slug/legacy ID campaigns with no wallet providers, crypto off/on flows at mobile/desktop, and the earlier profile/branding fixes. Legacy public API regression, web/API type checks, targeted lint, production web build and diff checks passed. Large bundle advisories remain. Hosted payment configuration and real settlement are not externally verified.
+
+### 2026-09-09 — Wallet funding and real crypto providers (engineering implemented; external acceptance pending)
+
+- Scope: Paystack-verified wallet top-ups with atomic ledger/balance settlement; current-contract crypto provider implementation and provider-pinned routing. Existing unrelated profile/campaign changes remain pending in this worktree.
+- Provider research: supplied crypto DOCX names Yellow Card, Paychant and Bitnob. Current Bitnob documentation supports address issuance, authenticated rates, signed deposit webhooks and transaction reconciliation. Yellow Card custody docs expose vault/address creation but the documented transaction-list example currently describes sends; receipt correlation/reconciliation requires provider confirmation before it can act as a reliable fallback. Paychant primarily documents a hosted on/off-ramp widget.
+- Live keys: Paystack approval pending per owner; build/test against test-mode contracts. Crypto sandbox credentials requested; no live enablement or claim of external verification.
+
+- ✅ Added authenticated Paystack wallet top-up checkout, availability/test-mode display, owner-only status verification, signed webhook dispatch and pending-payment reconciliation. Wallet balance, history and balanced journal settle atomically with duplicate-credit protection. The full top-up credits the wallet; Ujimora absorbs processor fees.
+- ✅ Implemented Bitnob against its current HMAC API: allowlisted USDT/USDC networks, decimal quotes, idempotent receiving addresses, signed webhooks and authenticated receipt reconciliation. Exact amount/asset/network verification precedes campaign settlement. Production excludes mock providers.
+- ✅ Added ordered quote/discovery fallback routing and provider-pinned deposits. Only Bitnob is a real registered adapter; Yellow Card requires authoritative receive contracts and sandbox verification before it can be registered. No second live adapter is claimed.
+- Verification: 22 payment integration tests passed across wallet, Bitnob, existing Paystack and crypto suites; latest targeted rerun passed 11 tests. Provider-routing contract passed. API, web and admin TypeScript checks passed. Provider calls are mocked; no credentialed sandbox or live payment was run.
+- Setup, limits and provider sources: `docs/payments/wallet-funding-and-crypto-providers.md`. Crypto remains disabled pending credentials and sandbox acceptance. Paystack live keys remain pending owner approval. This entry supersedes the earlier no-top-up/read-only-wallet findings for the local implementation, not the deployed application.
+- Browser verification: two wallet top-up regressions passed, covering authenticated/idempotent hosted checkout, pending-to-confirmed feedback and initialization failure. Targeted lint and diff checks passed.
+- Owner confirmed Bitnob account creation and authorized commit/push. Bitnob is the initial provider; secondary-provider onboarding remains deferred. Crypto stays disabled until credentials and sandbox verification are complete.

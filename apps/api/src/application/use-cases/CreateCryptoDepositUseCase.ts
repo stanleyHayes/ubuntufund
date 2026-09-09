@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import type {
   CreateCryptoDepositInput,
   CryptoDepositView,
@@ -40,7 +40,8 @@ export class CreateCryptoDepositUseCase {
     private readonly config: CryptoConfig,
     private readonly campaignRepo: CampaignRepositoryPort,
     private readonly quoteRepo: CryptoQuoteRepositoryPort,
-    private readonly intentRepo: DonationIntentRepositoryPort
+    private readonly intentRepo: DonationIntentRepositoryPort,
+    private readonly providersByName?: Map<string, CryptoPaymentProviderPort>
   ) {}
 
   async execute(
@@ -48,13 +49,16 @@ export class CreateCryptoDepositUseCase {
     input: CreateCryptoDepositInput,
     ctx: CreateCryptoDepositContext
   ): Promise<CryptoDepositView> {
-    if (!this.config.enabled || !this.provider.isConfigured()) {
+    if (!this.config.enabled) {
       throw new AppError('Crypto donations are not enabled', 400);
     }
 
     // Idempotency: a repeated submit returns the same deposit — no second intent.
     const existing = await this.intentRepo.findByIdempotencyKey(ctx.idempotencyKey);
-    if (existing) return this.toView(existing);
+    if (existing) {
+      if (existing.campaignId !== campaignId || existing.quoteId !== input.quoteId) throw new AppError('Idempotency key belongs to another contribution', 409);
+      return this.toView(existing);
+    }
 
     const quote = await this.quoteRepo.findByQuoteId(input.quoteId);
     if (!quote || quote.campaignId !== campaignId) {
@@ -74,8 +78,10 @@ export class CreateCryptoDepositUseCase {
     }
 
     // Our correlation reference; the provider echoes it on the webhook.
-    const reference = `cryp-${randomUUID()}`;
-    const deposit = await this.provider.createDeposit({
+    const selected = this.providersByName?.get(quote.provider) ?? (quote.provider === this.provider.provider ? this.provider : undefined);
+    if (!selected?.isConfigured()) throw new AppError('The quoted provider is unavailable; request a new quote', 503);
+    const reference = `cryp-${createHash('sha256').update(`${campaignId}:${ctx.idempotencyKey}`).digest('hex')}`;
+    const deposit = await selected.createDeposit({
       quote: {
         quoteId: quote.quoteId,
         asset: quote.asset,

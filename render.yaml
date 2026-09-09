@@ -131,7 +131,7 @@ services:
       - key: CRYPTO_PAYMENTS_ENABLED
         value: "false"
       - key: CRYPTO_PRIMARY_PROVIDER
-        value: mock # swap to yellowcard | paychant | bitnob when a real adapter lands
+        value: bitnob # remains OFF until credentials and sandbox acceptance are complete
       - key: CRYPTO_ALLOWED_ASSETS
         value: "USDT,USDC"
       - key: CRYPTO_MIN_GHS
@@ -140,7 +140,5 @@ services:
         value: "100000"
       - key: CRYPTO_QUOTE_TTL_SECONDS
         value: "900"
-      # Provider webhook signing secret — paste in the dashboard only when you
-      # enable a crypto provider (blank = mock/dev default; rail is OFF anyway).
-      - key: CRYPTO_MOCK_WEBHOOK_SECRET
-        sync: false
+      # Set BITNOB_CLIENT_ID, BITNOB_CLIENT_SECRET, BITNOB_WEBHOOK_SECRET and
+      # BITNOB_ALLOWED_NETWORKS in Render after provider onboarding. No mock in production.

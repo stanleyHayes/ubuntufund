@@ -13,6 +13,8 @@ export interface JournalLineDocument extends Document {
 }
 
 const LEDGER_ACCOUNT_KINDS: LedgerAccountKind[] = [
+  'wallet',
+  'payment_clearing',
   'campaign',
   'platform_fee',
   'processor_fee',

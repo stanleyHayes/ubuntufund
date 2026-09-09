@@ -21,6 +21,8 @@
  *                     posts the opposite balanced entry)
  */
 export type LedgerAccountKind =
+  | 'wallet'
+  | 'payment_clearing'
   | 'campaign'
   | 'platform_fee'
   | 'processor_fee'

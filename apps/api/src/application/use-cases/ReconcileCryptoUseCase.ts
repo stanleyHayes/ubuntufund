@@ -82,6 +82,7 @@ export class ReconcileCryptoUseCase {
         providerRef: intent.providerRef,
         transactionHash: status.transactionHash,
         confirmations: status.confirmations,
+        cryptoAmount: status.cryptoAmount,
         raw: {},
       });
       if (type === 'deposit.confirmed') summary.settled += 1;

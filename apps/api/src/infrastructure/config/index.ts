@@ -287,7 +287,7 @@ export const config: AppConfig = {
   // default so dev/tests exercise the full flow without an external account.
   crypto: {
     enabled: process.env.CRYPTO_PAYMENTS_ENABLED === 'true',
-    primaryProvider: process.env.CRYPTO_PRIMARY_PROVIDER ?? 'mock',
+    primaryProvider: process.env.CRYPTO_PRIMARY_PROVIDER ?? (process.env.NODE_ENV === 'production' ? 'bitnob' : 'mock'),
     allowedAssets: (process.env.CRYPTO_ALLOWED_ASSETS ?? 'USDT,USDC')
       .split(',')
       .map((s) => s.trim().toUpperCase())

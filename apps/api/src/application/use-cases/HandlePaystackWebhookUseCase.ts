@@ -90,7 +90,8 @@ export class HandlePaystackWebhookUseCase {
     // Optional creator tip-jar rail: settles `tip-` charges to a creator balance.
     private readonly handleTipWebhookUseCase?: HandleTipWebhookUseCase,
     // Optional creator-withdrawal rail: settles `cpay-` transfers.
-    private readonly handleCreatorPayoutWebhookUseCase?: HandleCreatorPayoutWebhookUseCase
+    private readonly handleCreatorPayoutWebhookUseCase?: HandleCreatorPayoutWebhookUseCase,
+    private readonly walletTopUps?: { settle(reference: string): Promise<void> }
   ) {}
 
   async execute(input: PaystackWebhookInput): Promise<void> {
@@ -125,6 +126,7 @@ export class HandlePaystackWebhookUseCase {
 
     switch (event.event) {
       case 'charge.success':
+        if (reference.startsWith('wtop-')) { await this.walletTopUps?.settle(reference); return; }
         // Paid-subscription checkouts (`sub-`) and creator tips (`tip-`) settle
         // on their own rails; every other reference is a donation intent.
         if (reference.startsWith('sub-')) {

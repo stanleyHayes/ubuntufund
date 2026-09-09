@@ -21,6 +21,8 @@ export interface InitializeChargeParams {
   amount: number;
   /** Prefix for our unique transaction reference (e.g. 'sub' → 'sub_…'). */
   referencePrefix: string;
+  /** Pre-persisted reference for recoverable non-donation charges. */
+  reference?: string;
   /** Arbitrary payload forwarded to the provider and echoed on the webhook. */
   metadata?: Record<string, unknown>;
   /** Path appended to the configured callback base to return the payer. */

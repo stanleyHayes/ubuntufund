@@ -25,6 +25,7 @@ export interface CryptoDepositRequest {
 /** Provider-side status of a deposit, polled during reconciliation (§5 GetDeposit). */
 export interface CryptoDepositStatus {
   status: 'pending' | 'detected' | 'confirmed' | 'failed';
+  cryptoAmount?: number;
   transactionHash?: string;
   confirmations?: number;
 }
@@ -65,5 +66,5 @@ export interface CryptoPaymentProviderPort {
   verifyWebhook(
     headers: Record<string, string | string[] | undefined>,
     rawBody: string
-  ): CryptoWebhookEvent | null;
+  ): CryptoWebhookEvent | null | Promise<CryptoWebhookEvent | null>;
 }

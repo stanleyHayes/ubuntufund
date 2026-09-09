@@ -214,10 +214,11 @@ function CampaignDetailContent() {
           color="secondary"
           size="large"
           sx={{ px: 4 }}
-          onClick={handleOpenDonate}
-          disabled={!acceptsCampaignDonation(campaign) || providersLoading || !!providersError || walletProviders.length === 0}
+          component={RouterLink}
+          to={`/c/${encodeURIComponent(campaign.slug || campaign.id)}/donate`}
+          disabled={!acceptsCampaignDonation(campaign)}
         >
-          {!acceptsCampaignDonation(campaign) ? 'Donations closed' : currentUser ? 'Donate with wallet' : 'Sign in to donate'}
+          {!acceptsCampaignDonation(campaign) ? 'Donations closed' : 'Donate now'}
         </Button>
         {campaign.status === CampaignStatus.ACTIVE && (
           <CurrencyDisplay
@@ -418,10 +419,15 @@ function CampaignDetailContent() {
             <Box component="section" aria-labelledby="payment-heading" sx={{ p: { xs: 2.5, md: 3 }, borderRadius: SHAPE.card, bgcolor: 'background.paper', boxShadow: 'var(--neu-inset)', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
               <Typography variant="overline" color="text.secondary">Your contribution</Typography>
               <Typography id="payment-heading" component="h2" variant="h6" sx={{ fontWeight: 800, mb: 2.5 }}>How to donate</Typography>
+              <Box sx={{ mb: 3 }}>
+                <Typography sx={{ fontWeight: 800, fontSize: '1.05rem' }}>Card or Mobile Money</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: .5, mb: 2 }}>Continue to secure checkout to pay by card or MoMo. Crypto appears there when available. You do not need to fund a Ujimora wallet first.</Typography>
+                <Button component={RouterLink} to={`/c/${encodeURIComponent(campaign.slug || campaign.id)}/donate`} fullWidth variant="contained" disabled={!acceptsCampaignDonation(campaign)}>Continue to checkout</Button>
+              </Box>
               {providersLoading ? <Skeleton height={90} /> : providersError ? <Alert severity="warning">Payment methods could not be loaded. Refresh the page to try again.</Alert> : walletProviders.length > 0 ? <>
                 <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
                   <Box sx={{ width: 48, height: 48, flexShrink: 0, display: 'grid', placeItems: 'center', borderRadius: SHAPE.sm, color: 'var(--text-warning)', bgcolor: 'background.paper', boxShadow: 'var(--neu-subtle)' }}><AccountBalanceWalletOutlinedIcon /></Box>
-                  <Box sx={{ minWidth: 0 }}><Typography sx={{ fontWeight: 800, fontSize: '1.05rem', overflowWrap: 'anywhere' }}>{walletProviders[0].name}</Typography><Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, lineHeight: 1.7 }}>Your donation comes from your wallet balance.</Typography></Box>
+                  <Box sx={{ minWidth: 0 }}><Typography sx={{ fontWeight: 800, fontSize: '1.05rem', overflowWrap: 'anywhere' }}>{walletProviders[0].name}</Typography><Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, lineHeight: 1.7 }}>Use your wallet balance, or add funds from the Wallet page.</Typography></Box>
                 </Box>
                 <Box sx={{ mt: 'auto', pt: 3 }}>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>{!acceptsCampaignDonation(campaign) ? 'This campaign is not accepting donations.' : currentUser ? 'Choose an amount to support this campaign.' : 'Sign in to use your Ujimora wallet.'}</Typography>

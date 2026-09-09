@@ -7,7 +7,6 @@ import Typography from '@mui/material/Typography'
 import Grid from '@mui/material/Grid'
 import Button from '@mui/material/Button'
 import Avatar from '@mui/material/Avatar'
-import AvatarGroup from '@mui/material/AvatarGroup'
 import Chip from '@mui/material/Chip'
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
@@ -299,25 +298,9 @@ function CampaignRow({ campaign, index }: { campaign: Campaign; index: number })
       {/* Bottom row: donors + action */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <AvatarGroup
-            max={3}
-            sx={{
-              '& .MuiAvatar-root': {
-                width: 24,
-                height: 24,
-                fontSize: '0.6rem',
-                border: '2px solid #fff',
-                bgcolor: 'primary.main',
-              },
-            }}
-          >
-            <Avatar>K</Avatar>
-            <Avatar>F</Avatar>
-            <Avatar>T</Avatar>
-            <Avatar>+</Avatar>
-          </AvatarGroup>
+          <PeopleRoundedIcon sx={{ fontSize: 20, color: 'text.secondary' }} />
           <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>
-            147 supporters
+            {(campaign.donorCount ?? 0).toLocaleString()} {(campaign.donorCount ?? 0) === 1 ? 'supporter' : 'supporters'}
           </Typography>
         </Box>
 

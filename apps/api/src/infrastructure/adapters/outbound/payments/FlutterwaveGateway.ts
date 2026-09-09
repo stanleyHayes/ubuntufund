@@ -160,7 +160,7 @@ export class FlutterwaveGateway implements PaymentGatewayPort {
     if (!params.email) {
       throw new AppError('An email is required to pay with Flutterwave', 400);
     }
-    const reference = `${params.referencePrefix}-${randomUUID().slice(0, 8)}`;
+    const reference = params.reference ?? `${params.referencePrefix}-${randomUUID().slice(0, 8)}`;
     const body = {
       tx_ref: reference,
       amount: params.amount,
