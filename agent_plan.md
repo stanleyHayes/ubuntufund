@@ -964,3 +964,9 @@
 - ✅ Admin login excludes stale bearer tokens and displays credential errors instead of incorrectly calling every login 401 an expired session. Protected-request expiry clears all three authentication storage entries; incomplete stored sessions no longer restore authenticated state.
 - Verification: API address-validation/model regression passed; three mocked Playwright tests passed for mobile GPS submission, dependent location resets and quick-action navigation. Four admin HTTP authentication regression tests passed. Web/admin/API type checks, targeted lint, web/admin builds and diff checks passed. Inspected mobile address screenshot. Live admin credentials and provider verification were not exercised.
 - Build note: country-state-city's worldwide dataset adds a large KYC route chunk (about 2.4 MB gzip); it is isolated from the initial application bundle by route loading. Builds retain chunk-size warnings.
+
+### 2026-09-09 — Admin KYC document visibility
+
+- ✅ Fixed detail dialog rendering only document metadata despite receiving file URLs. Each document now shows an image preview or PDF viewer plus a labelled Open original link, using the existing themed surfaces.
+- ✅ Added loading skeletons, image-preview failure recovery, invalid/missing URL messaging, safe HTTP(S) links, distinct document numbering, missing-date fallback and zero-document guidance for GPS submissions.
+- Verification: four component regressions passed for image loading, failed previews, PDF query-string URLs and unsafe URLs. Admin TypeScript, targeted lint, production build and diff checks passed. Production member documents were not accessed; PDF availability remains dependent on the upload host/browser.

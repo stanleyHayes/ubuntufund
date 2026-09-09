@@ -1,3 +1,4 @@
+import { KYCDocumentPreview } from './KYCDocumentPreview'
 import { Box, Button, DialogActions, DialogContent, DialogTitle, Typography } from '@mui/material'
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser'
 import WarningAmberIcon from '@mui/icons-material/WarningAmber'
@@ -123,10 +124,11 @@ export function KYCDetailDialog({
           <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', color: 'text.secondary', letterSpacing: '0.05em', mb: 1.5 }}>
             Documents ({verification.documents.length})
           </Typography>
+          {verification.documents.length === 0 && <Typography variant="body2" color="text.secondary">No document files were submitted. Check the address details below for GhanaPost GPS evidence.</Typography>}
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
             {verification.documents.map((doc, idx) => (
               <Box
-                key={idx}
+                key={`${idx}-${doc.url}`}
                 sx={{
                   p: 1.5,
 
@@ -136,7 +138,7 @@ export function KYCDetailDialog({
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
                   <Typography sx={{ fontSize: '0.8rem', fontWeight: 600, color: 'text.primary', flex: 1 }}>
-                    {doc.type.replace('_', ' ')}
+                    {doc.type.replaceAll('_', ' ')} · {idx + 1}
                   </Typography>
                   {doc.verifiedAt && (
                     <Typography sx={{ fontSize: '0.65rem', color: '#8FAE96', fontWeight: 600 }}>
@@ -145,8 +147,9 @@ export function KYCDetailDialog({
                   )}
                 </Box>
                 <Typography sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>
-                  Uploaded: {new Date(doc.uploadedAt).toLocaleDateString()}
+                  Uploaded: {doc.uploadedAt && !Number.isNaN(new Date(doc.uploadedAt).getTime()) ? new Date(doc.uploadedAt).toLocaleDateString() : 'Date unavailable'}
                 </Typography>
+                <KYCDocumentPreview url={doc.url} label={`${doc.type.replaceAll('_', ' ')} ${idx + 1}`} />
               </Box>
             ))}
           </Box>
