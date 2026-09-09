@@ -3,6 +3,12 @@
 > Active completion pass started: 2026-08-09
 > Goal: production-complete web, mobile, API, marketing, admin, and organization experiences with App Store readiness, CMS-backed public content, soft deletion, and verified frontend/backend parity.
 
+## Browser session persistence — 2026-09-09
+
+- ✅ Member web and admin automatically renew the 15-minute access token while the browser session is active. A separate one-hour inactivity timeout tracks pointer, keyboard, touch and scroll activity across tabs; background API polling and renewal do not extend it. The persisted timestamp also expires sessions after sleep/reopening.
+- ✅ Requests renew near-expiry tokens before sending, concurrent renewals share a request, temporary provider/network failures preserve local login, and revoked refresh tokens still sign out. Late renewals cannot resurrect a signed-out session or overwrite a newer login. Backend token lifetimes remain unchanged; no Render variables are needed.
+- Verification: web 39 tests, admin 15 tests, existing session-expiry node tests 4; web/admin/UI type checks and lints; web/admin builds; unused-code audit. Browser inactivity is a client session policy, not server-side refresh-token revocation.
+
 ## Verified unfinished-feature audit — 2026-09-09
 
 - ✅ Built real AI campaign writing and admin usage tracking, request quotas, preview/apply protection, and Render configuration. Live OpenAI activation awaits the server-side key and deployment smoke check.

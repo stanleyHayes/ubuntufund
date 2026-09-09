@@ -1,7 +1,7 @@
-import { SESSION_EXPIRED, expireSession, forceExpireSession, storedAccessToken, tokenExpiresAt } from '@/lib/session'
+import { SESSION_EXPIRED, browserSession } from '@/lib/session'
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import type { ReactNode } from 'react'
-import { loginApi, registerApi, refreshTokenApi } from '@/lib/api'
+import { loginApi, registerApi } from '@/lib/api'
 import type { AuthUser, AuthTokens } from '@/lib/api'
 
 interface AuthState {
@@ -34,16 +34,12 @@ function loadFromStorage(): { user: AuthUser | null; tokens: AuthTokens | null }
 }
 
 function saveToStorage(user: AuthUser, tokens: AuthTokens) {
+  browserSession.resetActivity()
   localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(user))
   localStorage.setItem(STORAGE_TOKENS_KEY, JSON.stringify(tokens))
 }
 
-function clearStorage() {
-  localStorage.removeItem(STORAGE_USER_KEY)
-  localStorage.removeItem(STORAGE_TOKENS_KEY)
-  localStorage.removeItem('accessToken')
-  localStorage.removeItem('refreshToken')
-}
+function clearStorage() { browserSession.clear() }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [sessionExpired, setSessionExpired] = useState(false)
@@ -56,7 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // usable access token must NOT read as authenticated (it would let a
       // protected page mount, 401, and dead-end instead of prompting sign-in).
       isAuthenticated: !!user && !!tokens?.accessToken,
-      isLoading: !!user && !!tokens?.refreshToken,
+      isLoading: false,
     }
   })
 
@@ -69,40 +65,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener(SESSION_EXPIRED, expired)
   }, [])
 
-  useEffect(() => {
-    let cancelled = false
-    const { user: storedUser, tokens } = loadFromStorage()
-    if (!storedUser || !tokens?.refreshToken) return
-    refreshTokenApi(tokens.refreshToken).then(newTokens => {
-      if (cancelled || storedAccessToken() !== tokens.accessToken) return
-      const { user } = loadFromStorage()
-      if (user) {
-        saveToStorage(user, newTokens)
-        setState({ user, tokens: newTokens, isAuthenticated: true, isLoading: false })
-      }
-    }).catch(() => {
-      if (cancelled) return
-      // Refresh failed → this session is unrecoverable. Sign out so protected
-      // pages show the sign-in prompt (not a stuck skeleton or a dead-end),
-      // unless a newer login has already replaced this session's refresh token.
-      const current = loadFromStorage().tokens
-      if (!current || current.refreshToken === tokens.refreshToken) forceExpireSession()
-    })
-    return () => { cancelled = true }
-  }, [])
-
-  useEffect(() => {
-    const token = state.tokens?.accessToken
-    if (!token || state.isLoading) return
-    const check = () => {
-      const expiry = tokenExpiresAt(token)
-      if (expiry !== null && expiry <= Date.now()) expireSession(token)
-    }
-    check()
-    const timer = window.setInterval(check, 15000)
-    window.addEventListener('focus', check)
-    return () => { window.clearInterval(timer); window.removeEventListener('focus', check) }
-  }, [state.tokens?.accessToken, state.isLoading])
+  useEffect(() => browserSession.start(() => {
+    const { user, tokens } = loadFromStorage()
+    setState({ user, tokens, isAuthenticated: !!user && !!tokens?.accessToken, isLoading: false })
+  }), [])
 
   const login = useCallback(async (email: string, password: string) => {
     const { user, tokens } = await loginApi(email, password)

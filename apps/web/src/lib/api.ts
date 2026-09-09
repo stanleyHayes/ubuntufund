@@ -1,4 +1,4 @@
-import { expireSession, forceExpireSession, storedAccessToken } from './session'
+import { browserSession, expireSession, forceExpireSession, storedAccessToken } from './session'
 // In production, requests go to '/api/v1' which Vercel rewrites to the API
 // (see vercel.json). Set VITE_API_URL to call an absolute API origin instead.
 export const API_BASE = import.meta.env?.VITE_API_URL || '/api/v1'
@@ -18,7 +18,10 @@ class ApiError extends Error {
 }
 
 async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
-  const { token, headers: customHeaders, ...fetchOptions } = options
+  const { token: suppliedToken, headers: customHeaders, ...fetchOptions } = options
+  const token = suppliedToken && suppliedToken === storedAccessToken()
+    ? await browserSession.ensureAccessToken() : suppliedToken
+  if (suppliedToken && !token) throw new ApiError(401, 'Your session has expired. Please sign in again.')
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -73,7 +76,9 @@ async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
 // ---------------------------------------------------------------------------
 
 async function authedRequest<T>(path: string, options?: RequestInit): Promise<T> {
-  const token = storedAccessToken()
+  const hadToken = storedAccessToken()
+  const token = await browserSession.ensureAccessToken()
+  if (hadToken && !token) throw new ApiError(401, 'Your session has expired. Please sign in again.')
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -167,12 +172,5 @@ export async function registerApi(data: {
   return res.data
 }
 
-export async function refreshTokenApi(refreshToken: string): Promise<AuthTokens> {
-  const res = await request<{ data: AuthTokens }>('/auth/refresh', {
-    method: 'POST',
-    body: JSON.stringify({ refreshToken }),
-  })
-  return res.data
-}
 
 export { request, ApiError }

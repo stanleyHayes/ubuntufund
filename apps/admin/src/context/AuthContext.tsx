@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useCallback } from 'react'
+import { browserSession } from '@/lib/session'
+import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import type { ReactNode } from 'react'
 import { api } from '@/lib/api'
 
@@ -45,16 +46,13 @@ function loadFromStorage(): { user: AuthUser | null; tokens: AuthTokens | null }
 }
 
 function saveToStorage(user: AuthUser, tokens: AuthTokens) {
+  browserSession.resetActivity()
   localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(user))
   localStorage.setItem(STORAGE_TOKENS_KEY, JSON.stringify(tokens))
   localStorage.setItem(STORAGE_TOKEN_KEY, tokens.accessToken)
 }
 
-function clearStorage() {
-  localStorage.removeItem(STORAGE_USER_KEY)
-  localStorage.removeItem(STORAGE_TOKENS_KEY)
-  localStorage.removeItem(STORAGE_TOKEN_KEY)
-}
+function clearStorage() { browserSession.clear() }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>(() => {
@@ -66,6 +64,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoading: false,
     }
   })
+
+  useEffect(() => browserSession.start(() => {
+    const { user, tokens } = loadFromStorage()
+    setState({ user, tokens, isAuthenticated: !!user && !!tokens?.accessToken, isLoading: false })
+  }), [])
 
   const login = useCallback(async (email: string, password: string) => {
     const res = await api.post<{ user: AuthUser; tokens: AuthTokens }>('/auth/login', { email, password })
