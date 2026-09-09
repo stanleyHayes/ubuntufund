@@ -1,7 +1,7 @@
 import mongoose, { Schema, type Document } from 'mongoose';
 import type { LiveSessionStatus } from '@ubuntu-fund/types';
 
-export interface LiveSessionStatsSubdoc {
+interface LiveSessionStatsSubdoc {
   scans: number;
   checkoutStarts: number;
   successfulDonations: number;

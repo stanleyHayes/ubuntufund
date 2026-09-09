@@ -1,4 +1,3 @@
-import type { CreatorBalanceDocument } from '../../../infrastructure/database/models/CreatorBalanceModel.js';
 
 export interface CreatorBalance {
   userId: string;
@@ -10,8 +9,6 @@ export interface CreatorBalance {
   platformFees: number;
   payoutFees: number;
 }
-
-export type { CreatorBalanceDocument };
 
 export interface CreatorBalanceRepositoryPort {
   /** Upsert a zeroed balance on first activity, returning it either way. */

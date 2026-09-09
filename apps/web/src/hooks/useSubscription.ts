@@ -83,45 +83,6 @@ export function useMySubscription(): UseMySubscriptionResult {
 }
 
 // ---------------------------------------------------------------------------
-// useSubscriptionPlans
-// ---------------------------------------------------------------------------
-
-interface UseSubscriptionPlansResult {
-  plans: SubscriptionPlan[]
-  isLoading: boolean
-}
-
-export function useSubscriptionPlans(): UseSubscriptionPlansResult {
-  const [plans, setPlans] = useState<SubscriptionPlan[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-
-  useEffect(() => {
-    let cancelled = false
-
-    api
-      .get<SubscriptionPlan[]>('/plans')
-      .then((data) => {
-        if (!cancelled) setPlans(data)
-      })
-      .catch(() => {
-        // Fall back to the static plan definitions from the types package
-        if (!cancelled) {
-          setPlans(Object.values(SUBSCRIPTION_PLANS))
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false)
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  return { plans, isLoading }
-}
-
-// ---------------------------------------------------------------------------
 // usePlanMap
 // ---------------------------------------------------------------------------
 

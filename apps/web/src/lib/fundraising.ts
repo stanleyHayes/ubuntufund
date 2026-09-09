@@ -25,25 +25,7 @@ import type {
 } from '@ubuntu-fund/types'
 
 // --- Re-exported contract types (import from this module in the UI) ---------
-export type {
-  CampaignPublicView,
-  CampaignSocialPreview,
-  CreateDonationIntentInput,
-  DonationIntentPublicView,
-  DonationIntentStatus,
-  DonationProvider,
-  PaystackCheckoutInit,
-  LiveSession,
-  StartLiveSessionInput,
-  UpdateLiveSessionInput,
-  LiveSessionPublicView,
-  LiveSessionStatus,
-  QrKind,
-  CreateQrCodeInput,
-  QrCodeResponse,
-  ShortLink,
-  ShortLinkView,
-} from '@ubuntu-fund/types'
+export type { CampaignPublicView, CreateDonationIntentInput, DonationIntentPublicView, LiveSession, StartLiveSessionInput, LiveSessionPublicView, QrKind, CreateQrCodeInput, QrCodeResponse, ShortLinkView } from '@ubuntu-fund/types'
 
 // The API base the browser talks to. In production `/api/v1` is rewritten to
 // the API; set VITE_API_URL to point at an absolute origin instead.

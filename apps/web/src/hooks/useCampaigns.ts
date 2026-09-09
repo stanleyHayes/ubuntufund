@@ -100,7 +100,7 @@ export function useMyCampaigns(): UseCampaignsResult {
 // ---------------------------------------------------------------------------
 
 /** Payload sent to POST /campaigns. `imageUrls` carries the cover image. */
-export interface CreateCampaignPayload {
+interface CreateCampaignPayload {
   title: string
   summary: string
   category: CampaignCategory

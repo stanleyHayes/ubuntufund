@@ -2,7 +2,7 @@ import type { SiteContentRepositoryPort } from '../../domain/ports/outbound/Site
 import { logger } from '../logging/logger.js';
 import siteContentDefaultsJson from './siteContentDefaults.json';
 
-export interface SiteContentDefault {
+interface SiteContentDefault {
   key: string;
   type: string;
   data: unknown;
@@ -14,7 +14,7 @@ export interface SiteContentDefault {
  * shared with `scripts/seed-dev.mjs` so the boot seed and the dev seed never
  * drift.
  */
-export function loadSiteContentDefaults(): SiteContentDefault[] {
+function loadSiteContentDefaults(): SiteContentDefault[] {
   return siteContentDefaultsJson as unknown as SiteContentDefault[];
 }
 

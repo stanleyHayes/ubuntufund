@@ -80,31 +80,6 @@ export function useCreateCampaignUpdate() {
   return { create, isLoading, error }
 }
 
-export function useUpdateCampaignUpdate() {
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const update = async (
-    campaignId: string,
-    updateId: string,
-    input: Partial<CreateCampaignUpdateInput>
-  ): Promise<CampaignUpdate | null> => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const result = await api.put<CampaignUpdate>(`/campaigns/${campaignId}/updates/${updateId}`, input)
-      return result
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update')
-      return null
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  return { update, isLoading, error }
-}
-
 export function useDeleteCampaignUpdate() {
   const [isLoading, setIsLoading] = useState(false)
 

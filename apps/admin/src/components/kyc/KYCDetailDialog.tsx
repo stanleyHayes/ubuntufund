@@ -2,7 +2,7 @@ import { KYCDocumentPreview } from './KYCDocumentPreview'
 import { Box, Button, DialogActions, DialogContent, DialogTitle, Typography } from '@mui/material'
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser'
 import WarningAmberIcon from '@mui/icons-material/WarningAmber'
-import type { KYCVerification } from '@/hooks/useMockData'
+import type { KYCVerification } from '@/types/api'
 import { useAdminPermissions } from '@/context/AdminPermissionContext'
 import { Resource, Action } from '@ubuntu-fund/types'
 
@@ -38,7 +38,7 @@ interface KYCDetailDialogProps {
   onRequestMore: () => void
 }
 
-export function KYCDetailDialog({
+function KYCDetailDialog({
   verification,
   onClose,
   onApprove,

@@ -1,6 +1,6 @@
 import mongoose, { Schema, type Document } from 'mongoose';
 
-export type ContactStatus = 'new' | 'in_progress' | 'resolved' | 'archived';
+type ContactStatus = 'new' | 'in_progress' | 'resolved' | 'archived';
 
 export interface ContactSubmissionDocument extends Document {
   name: string; email: string; subject: string;

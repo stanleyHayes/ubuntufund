@@ -4,7 +4,7 @@
 
 export type LeaderboardPeriod = 'daily' | 'monthly' | 'yearly' | 'lifetime';
 export type LeaderboardCategory = 'all' | 'user' | 'organization';
-export type LeaderboardDonorRole = 'user' | 'organization';
+type LeaderboardDonorRole = 'user' | 'organization';
 
 export interface LeaderboardQueryParams {
   period: LeaderboardPeriod;

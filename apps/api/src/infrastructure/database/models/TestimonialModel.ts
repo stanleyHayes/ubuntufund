@@ -1,6 +1,6 @@
 import mongoose, { Schema, type Document } from 'mongoose';
 
-export type TestimonialStatus = 'draft' | 'published' | 'archived';
+type TestimonialStatus = 'draft' | 'published' | 'archived';
 
 export interface TestimonialDocument extends Document {
   name: string;

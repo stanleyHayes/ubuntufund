@@ -5,7 +5,7 @@ import type {
 } from '@ubuntu-fund/types';
 
 /** On-chain decimals per asset (stablecoins 6, BTC 8). */
-export function cryptoDecimals(asset: CryptoAsset): number {
+function cryptoDecimals(asset: CryptoAsset): number {
   return asset === 'BTC' ? 8 : 6;
 }
 

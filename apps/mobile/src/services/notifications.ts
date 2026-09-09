@@ -39,14 +39,6 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
   }
 }
 
-export async function unregisterPushToken(token: string): Promise<void> {
-  try {
-    await api.delete('/notifications/push/unregister', { token })
-  } catch {
-    // Silently fail — token may already be invalid
-  }
-}
-
 export async function registerPushTokenWithApi(
   token: string,
   platform: 'ios' | 'android' | 'web'
@@ -86,41 +78,4 @@ export function setupNotificationHandlers(
     receivedSubscription.remove()
     responseSubscription.remove()
   }
-}
-
-export async function getPushNotificationSettings(): Promise<{
-  donations: boolean
-  comments: boolean
-  milestones: boolean
-  campaigns: boolean
-} | null> {
-  try {
-    const data = await api.get<{
-      pushNotificationPreferences?: {
-        donations: boolean
-        comments: boolean
-        milestones: boolean
-        campaigns: boolean
-      }
-    }>('/profile')
-    return data.pushNotificationPreferences ?? {
-      donations: true,
-      comments: true,
-      milestones: true,
-      campaigns: true,
-    }
-  } catch {
-    return null
-  }
-}
-
-export async function updatePushNotificationPreferences(
-  preferences: {
-    donations?: boolean
-    comments?: boolean
-    milestones?: boolean
-    campaigns?: boolean
-  }
-): Promise<void> {
-  await api.put('/profile', { pushNotificationPreferences: preferences })
 }

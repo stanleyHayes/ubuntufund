@@ -7,7 +7,7 @@ import { getPolicyBySlug } from '../data/legal'
  * slug, so every policy page shares one faithful source of content and layout.
  * An unknown slug redirects to the legal index rather than 404-ing.
  */
-export function LegalPolicyPage({ slug }: { slug: string }) {
+function LegalPolicyPage({ slug }: { slug: string }) {
   const policy = getPolicyBySlug(slug)
   if (!policy) return <Navigate to="/legal" replace />
 

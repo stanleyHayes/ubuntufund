@@ -31,14 +31,22 @@ export interface AiUsageStats {
   totalRequests: number
   requestsToday: number
   requestsThisMonth: number
-  lastUsedAt: Date
+  lastUsedAt: string | null
+  enabled: boolean
+  inputTokens: number
+  outputTokens: number
+  errors: number
 }
 
 export interface AiUsageLogEntry {
   id: string
   action: AiWritingAction
-  timestamp: Date
+  timestamp: string
+  userId: string
+  model: string
+  inputTokens: number
+  outputTokens: number
   inputLength: number
   outputLength: number
-  status: 'success' | 'error'
+  status: 'pending' | 'success' | 'error'
 }

@@ -1,6 +1,6 @@
 import mongoose, { Schema, type Document } from 'mongoose';
 
-export interface NotificationPreferencesSubdocument {
+interface NotificationPreferencesSubdocument {
   email: boolean;
   sms: boolean;
   push: boolean;

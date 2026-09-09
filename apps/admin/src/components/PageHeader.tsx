@@ -3,7 +3,7 @@ import { Box, Typography } from '@mui/material'
 import { SHAPE } from '@ubuntu-fund/ui'
 import { TONES, type Tone } from '@/lib/tones'
 
-export interface PageHeaderStat {
+interface PageHeaderStat {
   label: string
   value: ReactNode
 }

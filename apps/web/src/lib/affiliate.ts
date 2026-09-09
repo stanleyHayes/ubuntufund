@@ -16,22 +16,10 @@ import type {
   AffiliateReferral,
   AffiliateCommission,
   AffiliatePayout,
-  SetAffiliatePayoutRecipientInput,
 } from '@ubuntu-fund/types'
 
 // --- Re-exported contract types (import from this module in the UI) ---------
-export type {
-  Affiliate,
-  AffiliateDashboard,
-  AffiliateBalance,
-  AffiliateStats,
-  AffiliateReferral,
-  AffiliateReferralStatus,
-  AffiliateCommission,
-  AffiliateCommissionStatus,
-  AffiliatePayout,
-  SetAffiliatePayoutRecipientInput,
-} from '@ubuntu-fund/types'
+export type { Affiliate, AffiliateDashboard, AffiliateReferral, AffiliateCommission, AffiliatePayout } from '@ubuntu-fund/types'
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -88,16 +76,6 @@ export function listReferrals(): Promise<AffiliateReferral[]> {
 /** The current user's commission ledger (`GET /affiliate/commissions`). */
 export function listCommissions(): Promise<AffiliateCommission[]> {
   return api.get<AffiliateCommission[]>('/affiliate/commissions')
-}
-
-/**
- * Register a payout destination (`POST /affiliate/payout-recipient`) — a GhIPSS
- * bank account or mobile-money wallet the affiliate's commission is paid to.
- */
-export function setPayoutRecipient(
-  input: SetAffiliatePayoutRecipientInput,
-): Promise<Affiliate> {
-  return api.post<Affiliate>('/affiliate/payout-recipient', input)
 }
 
 /** Request a payout of available commission (`POST /affiliate/payouts`). */

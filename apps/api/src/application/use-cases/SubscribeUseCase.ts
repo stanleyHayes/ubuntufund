@@ -25,7 +25,7 @@ export class SubscribeUseCase {
 
   async execute(input: CreateSubscriptionInput, userId: string): Promise<Subscription> {
     if (input.tier !== SubscriptionTier.FREE) {
-      throw new AppError('Paid subscriptions require a verified billing checkout and are not available yet', 409);
+      throw new AppError('Paid subscriptions require the Paystack billing checkout', 409);
     }
     const periodDays = PERIOD_DAYS[input.billingCycle];
     if (periodDays === undefined) {

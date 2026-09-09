@@ -8,7 +8,7 @@ export interface CloudinaryConfig {
   apiSecret: string;
 }
 
-export interface FeeConfig {
+interface FeeConfig {
   /** Platform revenue cut, as a % of the campaign-directed donation amount. */
   platformFeePercent: number;
   /** Paystack percentage fee (used by the hosted-payment phase). */
@@ -17,7 +17,7 @@ export interface FeeConfig {
   paystackFlatFee: number;
 }
 
-export interface PaystackConfig {
+interface PaystackConfig {
   /**
    * Paystack secret key (server-only). Empty string disables the Paystack rail
    * entirely — `POST /donation-intents` with `provider: 'paystack'` then
@@ -29,14 +29,14 @@ export interface PaystackConfig {
   publicKey: string;
 }
 
-export interface AffiliateConfig {
+interface AffiliateConfig {
   /** Referral commission cut, as a % of the referee's first paid subscription. */
   commissionPercent: number;
   /** Days a newly accrued commission stays 'held' before it matures to 'available'. */
   holdDays: number;
 }
 
-export interface FlutterwaveConfig {
+interface FlutterwaveConfig {
   /** Flutterwave secret key (server-only). Empty ⇒ the Flutterwave rail is disabled. */
   secretKey: string;
   /** Flutterwave public key — safe to expose to the client. */
@@ -114,6 +114,7 @@ export interface PayoutsConfig {
 }
 
 export interface AppConfig {
+  aiWriting: { enabled: boolean; apiKey: string; model: string; dailyLimit: number; globalDailyLimit: number };
   liveVideo: { url: string; apiKey: string; apiSecret: string };
   port: number;
   mongodbUri: string;
@@ -200,7 +201,13 @@ const defaultDevOrigins = [
   'http://localhost:19006',
 ];
 
+function aiLimit(name: string, fallback: number): number {
+  const value = Number(process.env[name] ?? fallback);
+  if (!Number.isInteger(value) || value < 1 || value > 100000) throw new Error(`${name} must be an integer between 1 and 100000`);
+  return value;
+}
 export const config: AppConfig = {
+  aiWriting: { enabled: process.env.AI_WRITING_ENABLED === 'true', apiKey: process.env.OPENAI_API_KEY ?? '', model: process.env.AI_WRITING_MODEL ?? 'gpt-4.1-mini', dailyLimit: aiLimit('AI_WRITING_DAILY_LIMIT', 20), globalDailyLimit: aiLimit('AI_WRITING_GLOBAL_DAILY_LIMIT', 500) },
   liveVideo: { url: process.env.LIVEKIT_URL ?? '', apiKey: process.env.LIVEKIT_API_KEY ?? '', apiSecret: process.env.LIVEKIT_API_SECRET ?? '' },
   port: parseInt(process.env.PORT ?? '4000', 10),
   mongodbUri: requireEnv('MONGODB_URI'),

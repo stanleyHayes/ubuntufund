@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { beforeEach, describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { ThemeProvider } from '@mui/material/styles'
@@ -49,13 +49,9 @@ const mockCampaigns: Campaign[] = [
   },
 ]
 
-vi.mock('@/hooks/useCampaigns', () => ({
-  useCampaigns: () => ({
-    campaigns: mockCampaigns,
-    isLoading: false,
-    error: null,
-  }),
-}))
+vi.mock('@/hooks/useCampaigns', () => ({ useCampaigns: vi.fn() }))
+import { useCampaigns } from '@/hooks/useCampaigns'
+beforeEach(() => { vi.mocked(useCampaigns).mockReturnValue({ campaigns: mockCampaigns, isLoading: false, error: null }) })
 
 vi.mock('@/hooks/useLeaderboard', () => ({
   useFeaturedDonors: () => ({
@@ -83,13 +79,13 @@ function renderWithProviders(ui: React.ReactElement) {
 describe('HomePage', () => {
   it('renders the campaigns heading', () => {
     renderWithProviders(<HomePage />)
-    expect(screen.getByText('Campaigns')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'A little support. A lasting impact.' })).toBeInTheDocument()
   })
 
   it('renders the campaigns description', () => {
     renderWithProviders(<HomePage />)
     expect(
-      screen.getByText(/Discover verified campaigns across Ghana/)
+      screen.getByText(/Discover campaigns across Ghana/)
     ).toBeInTheDocument()
   })
 
@@ -108,17 +104,12 @@ describe('HomePage', () => {
     ).toBeInTheDocument()
   })
 
-  it('shows loading spinner when campaigns are loading', () => {
-    vi.doMock('@/hooks/useCampaigns', () => ({
-      useCampaigns: () => ({
-        campaigns: [],
-        isLoading: true,
-        error: null,
-      }),
-    }))
-
-    renderWithProviders(<HomePage />)
-    expect(screen.getByText('Campaigns')).toBeInTheDocument()
+  it('keeps the heading visible and hides cards while campaigns load', () => {
+    vi.mocked(useCampaigns).mockReturnValue({ campaigns: [], isLoading: true, error: null })
+    const { container } = renderWithProviders(<HomePage />)
+    expect(screen.getByRole('heading', { name: 'A little support. A lasting impact.' })).toBeInTheDocument()
+    expect(screen.queryByText('Clean Water for Tamale')).not.toBeInTheDocument()
+    expect(container.querySelectorAll('.MuiSkeleton-root')).toHaveLength(6)
   })
 
   it('renders the start campaign banner section', () => {

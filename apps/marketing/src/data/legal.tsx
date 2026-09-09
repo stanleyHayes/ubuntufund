@@ -43,7 +43,7 @@ const E = LEGAL_ENTITY.emails
  * Privacy Notice. Omits registration number / registered office gracefully while
  * those config values are empty, so a live page never states a fabricated fact.
  */
-export function companyClause(): string {
+function companyClause(): string {
   const { brand, companyName, jurisdiction, registrationNumber, registeredAddress } = LEGAL_ENTITY
   let clause = `operated by ${companyName}`
   clause += registrationNumber
@@ -53,7 +53,7 @@ export function companyClause(): string {
   return `The ${brand} website, applications and crowdfunding services are ${clause} (“${brand}”, “we”, “us”).`
 }
 
-export interface LegalSection {
+interface LegalSection {
   title: string
   content: string
 }

@@ -3,7 +3,7 @@ import type { ShortLinkEntity } from '../../../domain/entities/ShortLink.js';
 import { buildShortUrl } from '../../utils/shortLinkTarget.js';
 
 /** Shared mapper from the domain entity to the wire-format DTO. */
-export function toShortLinkDto(entity: ShortLinkEntity): ShortLink {
+function toShortLinkDto(entity: ShortLinkEntity): ShortLink {
   const plain = entity.toPlain();
   return {
     id: plain.id,

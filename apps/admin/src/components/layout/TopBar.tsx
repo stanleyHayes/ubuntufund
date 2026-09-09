@@ -31,8 +31,8 @@ import { useAdminPermissions } from '@/context/AdminPermissionContext'
 import { api } from '@/lib/api'
 import { HAIRLINE, WASH, ON_FILL } from '@/lib/tones'
 
-export const UTILITY_BAR_HEIGHT = 34
-export const MAIN_BAR_HEIGHT = 64
+const UTILITY_BAR_HEIGHT = 34
+const MAIN_BAR_HEIGHT = 64
 export const TOPBAR_HEIGHT = UTILITY_BAR_HEIGHT + MAIN_BAR_HEIGHT
 
 const Search = styled('div')(({ theme }) => ({

@@ -35,6 +35,17 @@ services:
         sync: false
       - key: PAYSTACK_PUBLIC_KEY
         sync: false
+      # OpenAI campaign writing. Add the server-only key manually on existing services.
+      - key: AI_WRITING_ENABLED
+        value: "true"
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: AI_WRITING_MODEL
+        value: gpt-4.1-mini
+      - key: AI_WRITING_DAILY_LIMIT
+        value: "20"
+      - key: AI_WRITING_GLOBAL_DAILY_LIMIT
+        value: "500"
       # LiveKit — in-app camera/microphone broadcasting and guest playback.
       # Set these on ujimora-api > Environment. Existing Blueprint services do
       # not auto-create new sync:false variables; add them manually, then deploy.

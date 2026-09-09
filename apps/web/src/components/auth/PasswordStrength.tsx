@@ -12,7 +12,7 @@ export interface PasswordRule {
   required?: boolean
 }
 
-export function passwordRules(pw: string): PasswordRule[] {
+function passwordRules(pw: string): PasswordRule[] {
   return [
     { label: 'At least 8 characters', met: pw.length >= 8, required: true },
     { label: 'An uppercase letter (A–Z)', met: /[A-Z]/.test(pw) },
@@ -20,11 +20,6 @@ export function passwordRules(pw: string): PasswordRule[] {
     { label: 'A number (0–9)', met: /\d/.test(pw) },
     { label: 'A symbol (!?@#…)', met: /[^A-Za-z0-9]/.test(pw) },
   ]
-}
-
-/** True when the password clears the hard requirement (backend: min 8). */
-export function passwordMeetsMinimum(pw: string): boolean {
-  return pw.length >= 8
 }
 
 const LEVELS = [

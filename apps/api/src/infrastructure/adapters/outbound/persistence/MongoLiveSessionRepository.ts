@@ -31,6 +31,8 @@ function toDomain(doc: LiveSessionDocument): LiveSessionEntity {
 
 export class MongoLiveSessionRepository implements LiveSessionRepositoryPort {
   async save(session: LiveSessionEntity): Promise<LiveSessionEntity> {
+    // The partial unique index must exist before concurrent first broadcasts.
+    await LiveSessionModel.init();
     const plain = session.toPlain();
     const doc = await LiveSessionModel.create({
       campaignId: plain.campaignId,

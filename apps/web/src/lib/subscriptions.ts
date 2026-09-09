@@ -33,7 +33,7 @@ export { SubscriptionCheckoutStatus } from '@ubuntu-fund/types'
 // Reuse the single `PaymentsNotConfiguredError` class so `instanceof` and the
 // narrowing helper behave identically whether the 501 surfaces from a donation
 // intent or a subscription checkout.
-export { PaymentsNotConfiguredError, isPaymentsNotConfigured }
+export { isPaymentsNotConfigured }
 
 // ---------------------------------------------------------------------------
 // Internal helpers

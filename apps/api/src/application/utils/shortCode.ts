@@ -6,7 +6,7 @@ const ALPHABET = '23456789abcdefghjkmnpqrstuvwxyz';
 const DEFAULT_LENGTH = 7;
 
 /** Generate a random short code (default 7 chars) from the readable alphabet. */
-export function generateShortCode(length: number = DEFAULT_LENGTH): string {
+function generateShortCode(length: number = DEFAULT_LENGTH): string {
   const bytes = randomBytes(length);
   let out = '';
   for (let i = 0; i < length; i++) {

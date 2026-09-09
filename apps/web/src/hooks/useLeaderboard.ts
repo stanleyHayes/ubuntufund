@@ -14,13 +14,13 @@ export interface LeaderboardEntry {
   isAnonymous: boolean
 }
 
-export interface LeaderboardStats {
+interface LeaderboardStats {
   totalAmount: number
   totalDonations: number
   totalDonors: number
 }
 
-export interface FeaturedDonors {
+interface FeaturedDonors {
   topAllTime: LeaderboardEntry[]
   topThisMonth: LeaderboardEntry[]
 }

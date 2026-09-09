@@ -26,6 +26,7 @@ import BlogDetailPage from './pages/BlogDetailPage'
 import HelpPage from './pages/HelpPage'
 import LegalIndexPage from './pages/LegalIndexPage'
 import LegalPolicyPage from './pages/LegalPolicyPage'
+import AffiliateProgramPage from './pages/AffiliateProgramPage'
 import ForOrganizationsPage from './pages/ForOrganizationsPage'
 import { LEGAL_POLICIES } from './data/legal'
 import NotFoundPage from './pages/NotFoundPage'
@@ -106,7 +107,7 @@ function InnerPageLayout() {
   const bannerProps = getBannerConfig(pathname)
   const legalRoutes = ['/legal', ...LEGAL_POLICIES.map((p) => p.route)]
   const hasEditorialHero =
-    ['/crypto', '/features', '/about', '/blog', '/contact', '/pricing', '/help', '/for-organizations'].includes(pathname) ||
+    ['/affiliates', '/crypto', '/features', '/about', '/blog', '/contact', '/pricing', '/help', '/for-organizations'].includes(pathname) ||
     legalRoutes.includes(pathname)
 
   return (
@@ -140,6 +141,7 @@ function App() {
               <Route path="/blog" element={<BlogPage />} />
               <Route path="/blog/:slug" element={<BlogDetailPage />} />
               <Route path="/help" element={<HelpPage />} />
+              <Route path="/affiliates" element={<AffiliateProgramPage />} />
               <Route path="/for-organizations" element={<ForOrganizationsPage />} />
               {/* Legal & policy pages — hub + one route per policy, all sourced from data/legal */}
               <Route path="/legal" element={<LegalIndexPage />} />

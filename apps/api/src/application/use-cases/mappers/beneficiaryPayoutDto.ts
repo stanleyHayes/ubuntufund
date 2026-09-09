@@ -1,4 +1,4 @@
-import type { BeneficiaryPayout, BeneficiaryRecipient } from '@ubuntu-fund/types';
+import type { BeneficiaryPayout } from '@ubuntu-fund/types';
 import type { BeneficiaryPayoutEntity } from '../../../domain/entities/BeneficiaryPayout.js';
 
 export function toBeneficiaryPayoutDto(
@@ -23,11 +23,4 @@ export function toBeneficiaryPayoutDto(
     createdAt: p.createdAt,
     updatedAt: p.updatedAt,
   };
-}
-
-/** The recipient DTO is already a plain shape; re-exported for symmetry. */
-export function toBeneficiaryRecipientDto(
-  recipient: BeneficiaryRecipient
-): BeneficiaryRecipient {
-  return recipient;
 }

@@ -1,7 +1,7 @@
 import { KYCStatus, KYCLevel } from '@ubuntu-fund/types';
 import type { KYCRepositoryPort } from '../../domain/ports/outbound/KYCRepositoryPort.js';
 
-export interface KYCStatusVerificationDTO {
+interface KYCStatusVerificationDTO {
   id: string;
   type: string;
   status: string;

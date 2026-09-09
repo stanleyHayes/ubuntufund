@@ -46,5 +46,3 @@ export function useContent<T>(key: string, fallback: T): T {
 
   return content
 }
-
-export default useContent

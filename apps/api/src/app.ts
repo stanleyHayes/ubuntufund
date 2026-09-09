@@ -1,3 +1,6 @@
+import { AiWritingService } from './application/services/AiWritingService.js';
+import { OpenAiWritingProvider } from './infrastructure/adapters/outbound/ai/OpenAiWritingProvider.js';
+import { createAiWritingRoutes } from './infrastructure/adapters/inbound/http/routes/aiWritingRoutes.js';
 import { BitnobCryptoProvider } from './infrastructure/adapters/outbound/crypto/BitnobCryptoProvider.js';
 import { WalletTopUpService } from './infrastructure/adapters/outbound/payments/WalletTopUpService.js';
 import { GetKYCStatsUseCase } from './application/use-cases/GetKYCStatsUseCase.js';
@@ -1398,6 +1401,7 @@ export function createApp(): express.Express {
   api.use('/content', createContentRoutes(siteContentController, authMiddleware, requireAdmin));
   api.use('/uploads', createUploadRoutes(uploadController, cloudinaryUploader, authMiddleware));
   api.use('/audit', createAuditLogRoutes(auditLogController, authMiddleware, requireAdmin));
+  api.use('/ai-writing', createAiWritingRoutes(new AiWritingService(new OpenAiWritingProvider(config.aiWriting), config.aiWriting.dailyLimit, config.aiWriting.globalDailyLimit), authMiddleware, requireAdmin));
   api.use('/rbac', createRbacRoutes(authMiddleware));
   api.use('/testimonials', createTestimonialRoutes(testimonialController, authMiddleware, requireAdmin));
   api.use('/contact', createContactRoutes(contactController, authMiddleware, requireAdmin));

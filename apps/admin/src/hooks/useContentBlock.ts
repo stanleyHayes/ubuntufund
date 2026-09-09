@@ -5,7 +5,7 @@ import { api } from '@/lib/api'
  * A single headless-CMS content block as returned by the API.
  * Mirrors the `SiteContentRecord` contract from `apps/api`.
  */
-export interface SiteContentRecord<T = unknown> {
+interface SiteContentRecord<T = unknown> {
   key: string
   type: string
   data: T

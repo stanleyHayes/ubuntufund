@@ -5,8 +5,8 @@ import {
   type Dispute,
   type PaymentProvider,
   type KYCVerification,
-} from '@/hooks/useMockData'
-import type { Campaign, User, Donation, AiUsageStats, AiUsageLogEntry, SubscriptionPlan } from '@ubuntu-fund/types'
+} from '@/types/api'
+import type { Campaign, User, Donation, SubscriptionPlan } from '@ubuntu-fund/types'
 
 /**
  * The admin donations feed reads the API's PublicDonationDTO
@@ -177,26 +177,6 @@ export function useAdminPaymentProviders(): UseApiResult<PaymentProvider[]> {
  */
 export function useAdminPlans(): UseApiResult<SubscriptionPlan[]> {
   return useApiWithFallback<SubscriptionPlan[]>('/plans', [])
-}
-
-/**
- * Fetch AI writing usage stats from the API.
- */
-export function useAiUsageStats(): UseApiResult<AiUsageStats> {
-  return useApiWithFallback<AiUsageStats>('/ai-writing/stats', {
-    userId: '',
-    totalRequests: 0,
-    requestsToday: 0,
-    requestsThisMonth: 0,
-    lastUsedAt: new Date(0),
-  })
-}
-
-/**
- * Fetch AI writing usage log from the API.
- */
-export function useAiUsageLog(): UseApiResult<AiUsageLogEntry[]> {
-  return useApiWithFallback<AiUsageLogEntry[]>('/ai-writing/usage', [])
 }
 
 /**

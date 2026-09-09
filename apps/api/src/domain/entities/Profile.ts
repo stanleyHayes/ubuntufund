@@ -7,7 +7,7 @@ export interface NotificationPreferences {
   marketingEmails: boolean;
 }
 
-export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
+const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   email: true,
   sms: false,
   push: false,

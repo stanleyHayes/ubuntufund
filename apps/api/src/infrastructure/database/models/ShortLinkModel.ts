@@ -1,7 +1,7 @@
 import mongoose, { Schema, type Document } from 'mongoose';
 import type { QrKind } from '@ubuntu-fund/types';
 
-export interface ShortLinkScanSubdoc {
+interface ShortLinkScanSubdoc {
   source?: string;
   scannedAt: Date;
 }

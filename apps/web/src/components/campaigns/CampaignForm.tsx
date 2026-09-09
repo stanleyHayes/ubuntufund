@@ -1,3 +1,4 @@
+import AiWritingAssistant from './AiWritingAssistant'
 import LocalHospitalRoundedIcon from '@mui/icons-material/LocalHospitalRounded'
 import SchoolRoundedIcon from '@mui/icons-material/SchoolRounded'
 import EmergencyRoundedIcon from '@mui/icons-material/EmergencyRounded'
@@ -633,6 +634,7 @@ export function CampaignForm() {
         {/* ----------------------------- STEP 2: STORY ----------------------------- */}
         {step === 1 && (
           <>
+            <AiWritingAssistant value={formData.description} onApply={(description) => setFormData(prev => ({ ...prev, description }))} />
             <TextField
               label="Your story"
               placeholder="Describe the situation, what the funds will do, and the impact it will have."

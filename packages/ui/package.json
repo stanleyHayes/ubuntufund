@@ -17,10 +17,11 @@
     "react-dom": "^19.0.0"
   },
   "dependencies": {
-    "@gsap/react": "^2.1.2",
     "@mui/x-date-pickers": "^8.29.3",
     "@ubuntu-fund/types": "*",
-    "dayjs": "^1.11.23",
-    "gsap": "^3.15.0"
+    "dayjs": "^1.11.23"
+  },
+  "devDependencies": {
+    "vite": "^8.2.2"
   }
 }

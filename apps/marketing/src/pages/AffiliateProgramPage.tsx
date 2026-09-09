@@ -55,7 +55,7 @@ const pulse = keyframes`
 const STATS = [
   { value: '10%', label: 'Referral commission', icon: <PercentRoundedIcon />, color: '#2E3D2F' },
   { value: 'One-time', label: 'Per referred member', icon: <LoyaltyRoundedIcon />, color: '#C7A24A' },
-  { value: 'GHS', label: 'Wallet payouts', icon: <AccountBalanceWalletRoundedIcon />, color: '#C75B39' },
+  { value: 'GHS', label: 'Payouts', icon: <AccountBalanceWalletRoundedIcon />, color: '#C75B39' },
   { value: '14-day', label: 'Clearance window', icon: <ScheduleRoundedIcon />, color: '#6A1B9A' },
 ]
 
@@ -101,7 +101,7 @@ const BENEFITS = [
   },
   {
     icon: <AccountBalanceWalletRoundedIcon />,
-    title: 'Paid to your wallet',
+    title: 'Choose your payout destination',
     description: 'Register a payout destination and request your available balance in Ghana Cedis once commissions clear review.',
     color: '#C7A24A',
   },
@@ -161,14 +161,14 @@ const FAQS = [
 // ─── Component ───────────────────────────────────────────────────────────────
 
 function AffiliateProgramPage() {
-  const WEB_APP_URL = import.meta.env.VITE_WEB_APP_URL || 'http://localhost:8200'
+  const WEB_APP_URL = import.meta.env.VITE_WEB_APP_URL || 'https://app.ujimora.com'
 
   return (
     <Box component="main" sx={{ flex: 1 }}>
       <InternalPageHero
         eyebrow="Affiliate program"
         title="Turn your network into lasting impact"
-        description="Share Ujimora with the causes and creators around you. When someone you refer upgrades to a paid plan, you earn a commission paid straight to your wallet."
+        description="Share Ujimora with the causes and creators around you. When someone you refer upgrades to a paid plan, you earn a commission paid to your registered payout destination."
         icon={<LoyaltyRoundedIcon />}
         panelLabel="How you earn"
         panelTitle="A one-time 10% commission on every referred member's first paid subscription."

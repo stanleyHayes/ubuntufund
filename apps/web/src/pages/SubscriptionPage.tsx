@@ -958,5 +958,3 @@ export function SubscriptionPage() {
     </Container>
   )
 }
-
-export default SubscriptionPage

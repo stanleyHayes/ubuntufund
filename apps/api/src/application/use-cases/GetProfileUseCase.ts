@@ -40,14 +40,14 @@ export interface ProfileDTO {
   updatedAt: Date;
 }
 
-export interface RecentDonationDTO {
+interface RecentDonationDTO {
   campaign: string;
   amount: number;
   currency: string;
   date: string;
 }
 
-export interface BadgeDTO {
+interface BadgeDTO {
   icon: string;
   label: string;
   desc: string;

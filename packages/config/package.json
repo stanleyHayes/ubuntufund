@@ -3,7 +3,6 @@
   "version": "0.0.0",
   "private": true,
   "exports": {
-    "./typescript/*": "./typescript/*.json",
-    "./eslint": "./eslint/base.js"
+    "./typescript/*": "./typescript/*.json"
   }
 }

@@ -17,7 +17,6 @@
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
-    "@gsap/react": "^2.1.2",
     "@livekit/components-react": "^2.9.24",
     "@livekit/components-styles": "^1.2.0",
     "@mui/icons-material": "^7.3.9",
@@ -26,7 +25,6 @@
     "@ubuntu-fund/types": "*",
     "@ubuntu-fund/ui": "*",
     "country-state-city": "^3.2.1",
-    "gsap": "^3.15.0",
     "livekit-client": "^2.22.3",
     "qrcode.react": "^4.2.0",
     "react": "19.2.3",
@@ -40,6 +38,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
+    "@vitest/coverage-v8": "^4.1.2",
     "jsdom": "^29.0.1",
     "vite": "^8.0.3",
     "vitest": "^4.1.2"

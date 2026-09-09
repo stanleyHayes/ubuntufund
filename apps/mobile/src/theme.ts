@@ -50,7 +50,7 @@ export interface Palette {
   ripple: string
 }
 
-export const lightPalette: Palette = {
+const lightPalette: Palette = {
   primary: '#2E3D2F',
   primaryLight: '#5E8F72',
   primaryDark: '#1C261D',
@@ -72,7 +72,7 @@ export const lightPalette: Palette = {
   ripple: 'rgba(26,46,34,0.08)',
 }
 
-export const darkPalette: Palette = {
+const darkPalette: Palette = {
   // Green lightens so it reads as both a fill and as text/icon on dark.
   primary: '#79A98C',
   primaryLight: '#8FBBA0',
@@ -100,14 +100,6 @@ export type ColorScheme = 'light' | 'dark'
 export function getPalette(scheme: ColorScheme): Palette {
   return scheme === 'dark' ? darkPalette : lightPalette
 }
-
-/**
- * Backwards-compatible flat export. Points at the LIGHT palette so any screen
- * not yet migrated to the mode-aware `usePalette()` hook keeps its original
- * appearance and keeps compiling. New/migrated code should read the palette
- * from the hook instead.
- */
-export const brandColors = lightPalette
 
 // ---------------------------------------------------------------------------
 // Neumorphism recipes (mode-aware)
@@ -530,12 +522,6 @@ export function getGlass(scheme: ColorScheme): GlassConfig {
     : { intensity: 40, tint: 'light', overlay: 'rgba(255,255,255,0.4)', border: 'rgba(255,255,255,0.6)' }
 }
 
-/**
- * Backwards-compatible flat export (LIGHT neumorphism recipes) for any code not
- * reading recipes from the `useNeu()` hook.
- */
-export const neumorphism = lightNeu
-
 // ---------------------------------------------------------------------------
 // Fonts + Paper themes
 // ---------------------------------------------------------------------------
@@ -561,7 +547,7 @@ const fontConfig = {
 
 const fonts = configureFonts({ config: fontConfig })
 
-export const lightTheme: MD3Theme = {
+const lightTheme: MD3Theme = {
   ...MD3LightTheme,
   fonts,
   colors: {
@@ -580,7 +566,7 @@ export const lightTheme: MD3Theme = {
   },
 }
 
-export const darkTheme: MD3Theme = {
+const darkTheme: MD3Theme = {
   ...MD3DarkTheme,
   fonts,
   colors: {

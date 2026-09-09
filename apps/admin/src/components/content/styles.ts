@@ -1,8 +1,5 @@
 import type { SxProps, Theme } from '@mui/material'
 
-/** Hairline retained only for non-surface separators in dense editor content. */
-export const CONTENT_HAIRLINE = 'rgba(232, 235, 227, 0.10)'
-
 /** Consistent rounded field styling for the CMS editors. */
 export const fieldSx: SxProps<Theme> = {
   '& .MuiOutlinedInput-root': {

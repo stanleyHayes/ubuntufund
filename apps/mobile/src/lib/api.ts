@@ -188,4 +188,4 @@ export async function refreshTokenApi(refreshToken: string): Promise<AuthTokens>
   })
 }
 
-export { request, ApiError }
+export { ApiError }

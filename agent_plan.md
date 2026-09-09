@@ -3,6 +3,14 @@
 > Active completion pass started: 2026-08-09
 > Goal: production-complete web, mobile, API, marketing, admin, and organization experiences with App Store readiness, CMS-backed public content, soft deletion, and verified frontend/backend parity.
 
+## Verified unfinished-feature audit — 2026-09-09
+
+- ✅ Built real AI campaign writing and admin usage tracking, request quotas, preview/apply protection, and Render configuration. Live OpenAI activation awaits the server-side key and deployment smoke check.
+- ✅ Removed mock RBAC editing/invitation forms; retained canonical read-only roles and working authorization. Published affiliate marketing route/navigation/sitemap in source.
+- ✅ Removed verified dead modules/dependencies and cleaned unused exports/types; `npm run lint:unused` is clean with explicit tooling/runtime exceptions.
+- ✅ Verified workspace type checks/lints and four app builds; web 32, admin 15, mobile 5 tests passed. API 376/379 initially passed, then all 14 affected live/wallet/AI integration tests passed on an isolated replica set after fixing live-session index readiness. AI provider/quota tests: 9 passed.
+- Evidence and corrected audit claims: `docs/reviews/unfinished-features-audit-2026-09-09.md`. Activation: `docs/ai-writing.md`. Changes are local; no production provider generation or deployment claimed.
+
 ## African Feature Roadmap — GOAL: build all of the below
 
 > Added 2026-09-05 from the crowdfunding-landscape research verdict (survey of Kickstarter/Indiegogo/GoFundMe/Patreon/Kiva/M-Changa/LaunchGood + African payments, diaspora, trust, and community-finance context).

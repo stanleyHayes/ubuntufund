@@ -51,6 +51,7 @@ const footerSections = [
       { label: 'Crypto Contribution Guide', to: '/crypto', icon: <SyncAltIcon sx={{ fontSize: 15 }} /> },
       { label: 'Features', to: '/features', icon: <CategoryIcon sx={{ fontSize: 15 }} /> },
       { label: 'Campaign Types', to: '/#campaign-types', anchor: true, icon: <CategoryIcon sx={{ fontSize: 15 }} /> },
+      { label: 'Affiliate program', to: '/affiliates', icon: <BusinessIcon sx={{ fontSize: 15 }} /> },
       { label: 'Pricing', to: '/pricing', icon: <DiamondIcon sx={{ fontSize: 15 }} /> },
       { label: 'For Organizations', to: '/for-organizations', icon: <BusinessIcon sx={{ fontSize: 15 }} /> },
     ],

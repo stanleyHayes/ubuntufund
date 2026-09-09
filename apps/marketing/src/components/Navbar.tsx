@@ -72,6 +72,7 @@ const menus: NavMenu[] = [
       { icon: <PublicIcon />, title: 'About Us', description: 'Our mission and the team behind Ujimora', href: '/about' },
       { icon: <AutoStoriesIcon />, title: 'Blog', description: 'Stories, updates, and insights from Ghana', href: '/blog' },
       { icon: <DiamondIcon />, title: 'Pricing', description: 'Transparent fees — free for personal campaigns', href: '/pricing' },
+      { icon: <GroupsIcon />, title: 'Affiliate program', description: 'Refer new members and earn commission', href: '/affiliates' },
       { icon: <GroupsIcon />, title: 'For Organizations', description: 'Enterprise tools for institutions and NGOs', href: '/for-organizations' },
     ],
   },

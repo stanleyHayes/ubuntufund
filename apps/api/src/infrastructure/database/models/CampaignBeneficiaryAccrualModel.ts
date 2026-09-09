@@ -1,6 +1,6 @@
 import mongoose, { Schema, type Document } from 'mongoose';
 
-export interface AccrualEntry {
+interface AccrualEntry {
   beneficiaryId: string;
   amount: number;
 }

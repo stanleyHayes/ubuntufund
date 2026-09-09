@@ -160,9 +160,3 @@ export function usePalette(): Palette {
 export function useNeu(): NeuRecipes {
   return useColorMode().neu
 }
-
-/** The active design finish + its setter. */
-export function useSkin(): { skin: Skin; setSkin: (skin: Skin) => void } {
-  const { skin, setSkin } = useColorMode()
-  return { skin, setSkin }
-}

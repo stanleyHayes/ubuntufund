@@ -4,7 +4,7 @@ import { randomBytes } from 'node:crypto';
  * Slugs the platform reserves for its own routes / brand paths. A campaign can
  * never take one of these as a vanity handle (case-insensitive).
  */
-export const RESERVED_SLUGS = new Set<string>([
+const RESERVED_SLUGS = new Set<string>([
   'api',
   'admin',
   'www',
@@ -50,7 +50,7 @@ const MAX_SLUG_LENGTH = 60;
 const MIN_SLUG_LENGTH = 3;
 
 /** Vanity slug shape: lowercase ascii words joined by single hyphens. */
-export const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 /**
  * Normalize arbitrary text to a kebab-case ascii slug: strip diacritics, lower
