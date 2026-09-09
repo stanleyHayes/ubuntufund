@@ -32,6 +32,7 @@ const KYCPage = lazy(() => import('./pages/KYCPage').then((m) => ({ default: m.K
 const CampaignPublicPage = lazy(() => import('./pages/CampaignPublicPage').then((m) => ({ default: m.CampaignPublicPage })))
 const DonatePage = lazy(() => import('./pages/DonatePage').then((m) => ({ default: m.DonatePage })))
 const DonateCallbackPage = lazy(() => import('./pages/DonateCallbackPage').then((m) => ({ default: m.DonateCallbackPage })))
+const WatchLivePage = lazy(() => import('./pages/WatchLivePage').then(m => ({ default: m.WatchLivePage })))
 const CampaignLivePage = lazy(() => import('./pages/CampaignLivePage').then((m) => ({ default: m.CampaignLivePage })))
 const CreatorTipPage = lazy(() => import('./pages/CreatorTipPage').then((m) => ({ default: m.CreatorTipPage })))
 const CreatorDashboardPage = lazy(() => import('./pages/CreatorDashboardPage').then((m) => ({ default: m.CreatorDashboardPage })))
@@ -52,6 +53,8 @@ export const router = createBrowserRouter([
       { path: 'organizations/:slug', element: <OrganizationProfilePage /> },
       { path: 'leaderboard', element: <LeaderboardPage /> },
       { path: 'campaigns/:id', element: <CampaignDetailPage /> },
+      { path: 'live/:sessionId', element: <WatchLivePage /> },
+      { path: 'c/:slug/live/:sessionId', element: <WatchLivePage /> },
       { path: 'campaigns/:id/live', element: <RequireAuth><CampaignLivePage /></RequireAuth> },
       { path: 'campaigns/new', element: <RequireAuth><CreateCampaignPage /></RequireAuth> },
       { path: 'c/:slug', element: <CampaignPublicPage /> },

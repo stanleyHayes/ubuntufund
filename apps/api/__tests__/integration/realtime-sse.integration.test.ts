@@ -292,6 +292,12 @@ describe('Realtime SSE gateway', () => {
 
     const frame = await conn.waitFor((f) => f.event === 'donation');
     expect(JSON.parse(frame.data as string)).toMatchObject({ amount: 100 });
+    await request(app).patch(`/api/v1/live-sessions/${sessionId}`).set('Authorization', `Bearer ${token}`).send({ privacyMode: true, showAmounts: false }).expect(200);
+    const replay = await openSse(port, `/api/v1/live-sessions/${sessionId}/events?token=${overlayToken}`);
+    open.push(replay);
+    const privateFrame = await replay.waitFor(f => f.event === 'donation');
+    expect(JSON.parse(privateFrame.data as string)).toMatchObject({ name: 'Anonymous', amount: null });
+    expect(JSON.parse(privateFrame.data as string).message).toBeUndefined();
   });
 
   it('404s the SSE feed for an unknown campaign', async () => {

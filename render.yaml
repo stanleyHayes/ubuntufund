@@ -35,6 +35,16 @@ services:
         sync: false
       - key: PAYSTACK_PUBLIC_KEY
         sync: false
+      # LiveKit — in-app camera/microphone broadcasting and guest playback.
+      # Set these on ujimora-api > Environment. Existing Blueprint services do
+      # not auto-create new sync:false variables; add them manually, then deploy.
+      # URL format: wss://your-project.livekit.cloud. Never use VITE_ for secrets.
+      - key: LIVEKIT_URL
+        sync: false
+      - key: LIVEKIT_API_KEY
+        sync: false
+      - key: LIVEKIT_API_SECRET
+        sync: false
       # Cloudinary — image/PDF uploads (KYC documents, campaign covers) go through
       # the server-side signed proxy (POST /uploads/image), so the API needs the
       # account credentials. Reusing the dev cloud for now: the cloud name is

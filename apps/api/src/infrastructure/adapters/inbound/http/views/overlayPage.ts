@@ -126,6 +126,9 @@ export const OVERLAY_PAGE_HTML = `<!DOCTYPE html>
     .alert, .milestone.show, .milestone.hide { animation: none; opacity: 1; transform: none; }
     .bar .fill { transition: none; }
   }
+
+  @media (max-width: 600px) { .panel { left: 16px; right: 16px; bottom: 16px; padding: 16px; } .panel .row { display: block; } .panel .title { max-width: 100%; font-size: 1.1rem; } .panel .totals { text-align: left; } .panel .raised { font-size: 1.4rem; } .alerts { left: 16px; width: calc(100% - 32px); } .meta { font-size: .75rem; } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition: none !important; } }
 </style>
 </head>
 <body>
@@ -152,6 +155,7 @@ export const OVERLAY_PAGE_HTML = `<!DOCTYPE html>
 (function () {
   "use strict";
 
+  var params = new URLSearchParams(location.search);
   // Session API base is this page's path minus the trailing /overlay/view.
   var sessionBase = location.pathname.replace(/\\/overlay\\/view\\/?$/, "");
   var token = new URLSearchParams(location.search).get("token") || "";
@@ -165,6 +169,9 @@ export const OVERLAY_PAGE_HTML = `<!DOCTYPE html>
 
   var goalAmount = 0;
   var seenMilestones = {};
+  var stream = null;
+  var refreshTimer = null;
+  var lastPrivacy = "";
 
   function money(v) {
     if (v === null || v === undefined) return "GH₵ —";
@@ -196,6 +203,15 @@ export const OVERLAY_PAGE_HTML = `<!DOCTYPE html>
   }
 
   function renderInitial(v) {
+    if (v.status === "ended") {
+      if (stream) stream.close();
+      clearInterval(refreshTimer);
+      alertsEl.textContent = "";
+      setStatus("This broadcast has ended", true);
+    }
+    var privacy = JSON.stringify(v.config || {});
+    if (lastPrivacy && lastPrivacy !== privacy) alertsEl.textContent = "";
+    lastPrivacy = privacy;
     panel.hidden = false;
     if (v.title) titleEl.textContent = v.title;
     renderGoal(v.campaignRaisedAmount, v.campaignGoalAmount);
@@ -246,7 +262,7 @@ export const OVERLAY_PAGE_HTML = `<!DOCTYPE html>
   function loadInitial() {
     fetch(sessionBase + "/overlay" + qs, { headers: { Accept: "application/json" } })
       .then(function (r) {
-        if (r.status === 403) throw new Error("This overlay link is invalid or was revoked.");
+        if (r.status === 403) { if (stream) stream.close(); clearInterval(refreshTimer); alertsEl.textContent = ""; throw new Error("This overlay link is invalid or was revoked."); }
         if (r.status === 404) throw new Error("Live session not found.");
         if (!r.ok) throw new Error("Could not load overlay (" + r.status + ").");
         return r.json();
@@ -256,7 +272,7 @@ export const OVERLAY_PAGE_HTML = `<!DOCTYPE html>
   }
 
   function connect() {
-    var es = new EventSource(sessionBase + "/events" + qs);
+    var es = stream = new EventSource(sessionBase + "/events" + qs);
     es.addEventListener("open", function () { setStatus("Live"); });
     es.addEventListener("donation", function (ev) {
       try { pushAlert(JSON.parse(ev.data)); } catch (e) {}
@@ -268,8 +284,7 @@ export const OVERLAY_PAGE_HTML = `<!DOCTYPE html>
         if (d.sessionAmountRaised !== undefined) {
           sessionRaisedEl.textContent = d.sessionAmountRaised === null ? "hidden" : money(d.sessionAmountRaised);
         }
-        var n = parseInt(donationsEl.textContent, 10);
-        donationsEl.textContent = String((isNaN(n) ? 0 : n) + 1);
+        // Authoritative donation count is refreshed from the overlay snapshot.
       } catch (e) {}
     });
     es.addEventListener("milestone", function (ev) {
@@ -278,8 +293,15 @@ export const OVERLAY_PAGE_HTML = `<!DOCTYPE html>
     es.onerror = function () { setStatus("Reconnecting…", true); };
   }
 
-  loadInitial();
-  connect();
+  if (params.get("preview") === "1") {
+    var amount = Number(params.get("raised"));
+    var goal = Number(params.get("goal"));
+    renderInitial({ title: params.get("title") || "Your live fundraiser", campaignRaisedAmount: Number.isFinite(amount) ? Math.max(0, amount) : 0, campaignGoalAmount: Number.isFinite(goal) ? Math.max(0, goal) : 0, totals: { amountRaised: 0, successfulDonations: 0 } });
+  } else {
+    loadInitial();
+    connect();
+    refreshTimer = setInterval(loadInitial, 10000);
+  }
 })();
 </script>
 </body>

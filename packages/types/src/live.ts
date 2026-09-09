@@ -76,6 +76,7 @@ export interface UpdateLiveSessionInput {
  * Omits the overlay token and honors the host's amount-visibility choice.
  */
 export interface LiveSessionPublicView {
+  currency?: string
   id: string
   campaignId: string
   title?: string

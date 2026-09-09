@@ -7,10 +7,7 @@
 // QR codes (QrCodeManager), and toggle donor-privacy while streaming. Reuses
 // the existing LiveDonationFeed for the donor stream.
 //
-// Note: the API intentionally returns the secret overlay token only to the
-// owner at start/rotate/update time — there is no "get active session" read —
-// so the active session is held in component state and mirrored to
-// sessionStorage so an accidental refresh doesn't drop the controls.
+// Active controls are recovered from the owner-only server endpoint.
 // ---------------------------------------------------------------------------
 
 import { useCallback, useEffect, useState } from 'react'
@@ -54,6 +51,8 @@ import type { Campaign } from '@ubuntu-fund/types'
 import { useLiveTotals } from '@/hooks/useLiveTotals'
 import { LiveDonationFeed } from '@/components/LiveDonationFeed'
 import { OverlayLinkCard } from '@/components/live/OverlayLinkCard'
+import { LiveVideoPanel } from '@/components/live/LiveVideoPanel'
+import { LiveBroadcastPreview } from '@/components/live/LiveBroadcastPreview'
 import { QrCodeManager } from '@/components/live/QrCodeManager'
 
 const fadeInUp = keyframes`
@@ -63,26 +62,20 @@ const fadeInUp = keyframes`
 
 const PANEL_SX = {
   p: { xs: 2.25, md: 3 },
-  border: '1.5px solid rgba(46,61,47,0.12)',
+  border: 'var(--neu-border)',
+  boxShadow: 'var(--neu-raised)',
+  backdropFilter: 'var(--neu-backdrop)',
   borderRadius: SHAPE.card,
-  bgcolor: 'background.paper',
+  bgcolor: 'var(--neu-surface)',
 } as const
 
 function storageKeyFor(id: string) {
   return `uf_live_session:${id}`
 }
 
-function persistSession(id: string | undefined, session: LiveSession | null) {
+function persistSession(id: string | undefined, _session: LiveSession | null) {
   if (!id) return
-  try {
-    if (session && session.status === 'active') {
-      sessionStorage.setItem(storageKeyFor(id), JSON.stringify(session))
-    } else {
-      sessionStorage.removeItem(storageKeyFor(id))
-    }
-  } catch {
-    /* storage unavailable — session simply won't survive a refresh */
-  }
+  try { sessionStorage.removeItem(storageKeyFor(id)) } catch { /* Storage may be unavailable. */ }
 }
 
 export function CampaignLivePage() {
@@ -104,6 +97,8 @@ export function CampaignLivePage() {
   const [startShowAmounts, setStartShowAmounts] = useState(true)
   const [startPrivacyMode, setStartPrivacyMode] = useState(false)
 
+  const [videoEnabled, setVideoEnabled] = useState<boolean | null>(null)
+  useEffect(() => { api.get<{ enabled: boolean }>('/live-sessions/video/config').then(value => setVideoEnabled(value.enabled)).catch(() => setVideoEnabled(false)) }, [])
   const [starting, setStarting] = useState(false)
   const [ending, setEnding] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
@@ -126,20 +121,21 @@ export function CampaignLivePage() {
     loadCampaign()
   }, [loadCampaign])
 
-  // Restore an in-flight session held from before a refresh.
+  // The server owns session lifecycle; browser storage can be stale after end/rotation.
+  const [sessionLoading, setSessionLoading] = useState(true)
+  const [sessionError, setSessionError] = useState<string | null>(null)
   useEffect(() => {
-    if (!id) return
-    try {
-      const raw = sessionStorage.getItem(storageKeyFor(id))
-      if (!raw) return
-      const restored = JSON.parse(raw) as LiveSession
-      if (restored?.id && restored.overlayToken && restored.status === 'active') {
-        setSession(restored)
-      }
-    } catch {
-      /* ignore malformed / unavailable storage */
-    }
-  }, [id])
+    if (!id || !isOwner) return
+    let cancelled = false
+    setSessionLoading(true)
+    const recover = () => api.get<LiveSession | null>(`/campaigns/${id}/live-sessions/active`).then(active => {
+      if (!cancelled) { setSession(active); persistSession(id, null); setSessionError(null) }
+    }).catch((error: Error) => { if (!cancelled) setSessionError(error.message) })
+      .finally(() => { if (!cancelled) setSessionLoading(false) })
+    void recover()
+    const timer = setInterval(recover, 10000)
+    return () => { cancelled = true; clearInterval(timer) }
+  }, [id, isOwner])
 
   // --- Live totals (only while a session is active) ----------------------
   const live = useLiveTotals(id, {
@@ -158,7 +154,7 @@ export function CampaignLivePage() {
     try {
       const amount = Number(targetAmount)
       const created = await startLiveSession(id, {
-        title: title.trim() || undefined,
+        title: title.trim() || campaign?.title,
         targetAmount: Number.isFinite(amount) && amount > 0 ? amount : undefined,
         showDonorNames: startShowNames,
         showDonorMessages: startShowMessages,
@@ -172,7 +168,7 @@ export function CampaignLivePage() {
     } finally {
       setStarting(false)
     }
-  }, [id, title, targetAmount, startShowNames, startShowMessages, startShowAmounts, startPrivacyMode])
+  }, [id, campaign?.title, title, targetAmount, startShowNames, startShowMessages, startShowAmounts, startPrivacyMode])
 
   const handleEnd = useCallback(async () => {
     if (!session) return
@@ -280,24 +276,25 @@ export function CampaignLivePage() {
   const sessionActive = !!session && session.status === 'active'
 
   return (
-    <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', py: 5 }}>
-      <Container maxWidth="lg">
+    <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', py: 5, '@media (prefers-reduced-motion: reduce)': { '& *': { animation: 'none !important' } } }}>
+      <Container maxWidth="xl">
         {/* ===== Header ===== */}
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
           spacing={1}
           alignItems={{ xs: 'flex-start', sm: 'center' }}
-          sx={{ mb: 1, animation: `${fadeInUp} 0.4s ease` }}
+          sx={{ mb: 1, animation: `${fadeInUp} 0.4s ease`, '@media (prefers-reduced-motion: reduce)': { animation: 'none' } }}
         >
           <Typography
+            component="h1"
             sx={{
               fontFamily: '"Outfit", sans-serif',
               fontWeight: 900,
-              fontSize: { xs: '1.5rem', md: '1.85rem' },
+              fontSize: { xs: '2rem', md: '2.75rem' },
               lineHeight: 1.15,
             }}
           >
-            LIVE control room
+            Go live
           </Typography>
           {sessionActive && (
             <Stack
@@ -329,22 +326,28 @@ export function CampaignLivePage() {
           {campaign.title}
         </Typography>
 
+        {videoEnabled === false && <Alert severity="info" sx={{ mb: 3 }}>In-app broadcasting is awaiting video-service setup. You can prepare your session here; broadcasting will be available once it is connected.</Alert>}
+        {sessionError && <Alert severity="error" sx={{ mb: 3 }}>Could not recover your live session: {sessionError}. Refresh to retry.</Alert>}
         {actionError && (
           <Alert severity="error" sx={{ borderRadius: SHAPE.card, mb: 3 }} onClose={() => setActionError(null)}>
             {actionError}
           </Alert>
         )}
 
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'minmax(0, 1.65fr) minmax(340px, 1fr)' }, gap: { xs: 3, md: 4 }, alignItems: 'start' }}>
+        <Box sx={{ ...PANEL_SX, minWidth: 0, gridColumn: sessionActive ? '1 / -1' : undefined }}>
+          {sessionActive && session && <Box sx={{ mb: 3 }}><LiveVideoPanel sessionId={session.id} host /><Typography sx={{ mt: 2, mb: 1, fontWeight: 700 }}>Share your broadcast</Typography><TextField label="Viewer link" fullWidth value={`${window.location.origin}/live/${session.id}`} InputProps={{ readOnly: true }} onFocus={e => e.target.select()} /></Box>}
+          <LiveBroadcastPreview session={sessionActive ? session : null} title={title.trim() || campaign.title} raised={campaign.raisedAmount} goal={campaign.goalAmount} />
+        </Box>
         {!sessionActive ? (
           /* ================= Start panel ================= */
-          <Box sx={{ ...PANEL_SX, maxWidth: 620, animation: `${fadeInUp} 0.4s 0.1s ease both` }}>
+          <Box sx={{ ...PANEL_SX, minWidth: 0 }}>
             <Stack direction="row" spacing={1.25} alignItems="center" sx={{ mb: 0.5 }}>
               <PlayArrowRoundedIcon sx={{ color: 'primary.main' }} />
-              <Typography sx={{ fontWeight: 800, fontSize: '1.15rem' }}>Start a LIVE session</Typography>
+              <Typography sx={{ fontWeight: 800, fontSize: '1.15rem' }}>Session setup</Typography>
             </Stack>
             <Typography sx={{ color: 'text.secondary', fontSize: '0.88rem', mb: 3 }}>
-              Turn this campaign into a real-time event with an OBS overlay, dynamic QR codes, and a
-              live donor feed. You control what donor details are shown.
+              Name your event, set a target, and choose what your audience sees. Start when you’re ready.
             </Typography>
 
             <TextField
@@ -400,11 +403,11 @@ export function CampaignLivePage() {
             <Button
               brandVariant="primary"
               onClick={handleStart}
-              disabled={starting}
+              disabled={starting || sessionLoading || !!sessionError || !videoEnabled}
               startIcon={starting ? <LoadingDots size={6} /> : <PlayArrowRoundedIcon />}
-              sx={{ mt: 2.5, textTransform: 'none', fontWeight: 700, borderRadius: SHAPE.sm, px: 3 }}
+              sx={{ mt: 2.5, width: '100%', py: 1.5, textTransform: 'none', fontWeight: 700, borderRadius: SHAPE.sm, px: 3 }}
             >
-              {starting ? 'Starting…' : 'Go LIVE'}
+              {sessionLoading ? 'Checking session…' : starting ? 'Starting…' : 'Go LIVE'}
             </Button>
           </Box>
         ) : (
@@ -412,7 +415,8 @@ export function CampaignLivePage() {
           <Box
             sx={{
               display: 'grid',
-              gridTemplateColumns: { xs: '1fr', md: '1.2fr 1fr' },
+              gridColumn: '1 / -1',
+              gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(0, 1.2fr) minmax(0, 1fr)' },
               gap: 3,
               animation: `${fadeInUp} 0.4s 0.1s ease both`,
             }}
@@ -453,7 +457,7 @@ export function CampaignLivePage() {
                 </Box>
                 <Box>
                   <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                    Donations
+                    Recent donations
                   </Typography>
                   <Typography sx={{ fontWeight: 900, fontSize: '1.6rem' }}>{live.donations.length}</Typography>
                 </Box>
@@ -497,7 +501,7 @@ export function CampaignLivePage() {
               </Button>
             </Box>
 
-            {/* Overlay link */}
+            {/* Overlay link (optional external broadcasting) */}
             <Box sx={PANEL_SX}>
               <OverlayLinkCard session={session} onRotated={handleRotated} />
             </Box>
@@ -568,6 +572,7 @@ export function CampaignLivePage() {
             </Box>
           </Box>
         )}
+        </Box>
       </Container>
     </Box>
   )

@@ -1,5 +1,5 @@
 import AccountMenu from './AccountMenu'
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import AppBar from '@mui/material/AppBar'
 import Toolbar from '@mui/material/Toolbar'
 import Typography from '@mui/material/Typography'
@@ -30,7 +30,8 @@ import EmojiEventsRoundedIcon from '@mui/icons-material/EmojiEventsRounded'
 import LoginRoundedIcon from '@mui/icons-material/LoginRounded'
 import PersonAddAltRoundedIcon from '@mui/icons-material/PersonAddAltRounded'
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
-import { SHAPE, BrandLogo } from '@ubuntu-fund/ui'
+import { SHAPE, BrandLogo, getSkinVars } from '@ubuntu-fund/ui'
+import { useColorMode } from '@/context/ColorModeContext'
 import { useAuth } from '@/context/AuthContext'
 
 const NAV_LINKS = [
@@ -131,6 +132,7 @@ export function Header() {
   const navigate = useNavigate()
   const { user, isAuthenticated, logout } = useAuth()
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null)
+  const { skin } = useColorMode()
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   const initials = (user?.name ?? 'U')
@@ -292,14 +294,15 @@ export function Header() {
         slotProps={{
           paper: {
             sx: {
-              width: '88vw',
-              maxWidth: 390,
-              bgcolor: '#1C261D',
+              ...getSkinVars(skin, true),
+              width: '92vw',
+              maxWidth: 420,
+              bgcolor: 'var(--neu-surface)',
+              backgroundImage: 'radial-gradient(ellipse at top right, rgba(199,162,74,.1), transparent 55%)',
+              border: 'var(--neu-border)',
+              backdropFilter: 'var(--neu-backdrop)',
               color: CREAM,
               p: 2.5,
-              '--neu-surface': '#1C261D',
-              '--neu-subtle': 'var(--forest-subtle)',
-              '--neu-raised-hover': 'var(--forest-raised-hover)',
             },
           },
         }}
@@ -313,7 +316,7 @@ export function Header() {
               width: 42,
               height: 42,
               color: GOLD_LIGHT,
-              bgcolor: '#1C261D !important',
+              bgcolor: 'var(--neu-surface) !important',
               boxShadow: 'var(--forest-raised) !important',
               '&:hover': { bgcolor: '#1C261D', transform: 'translateY(-1px)' },
             }}
@@ -342,18 +345,23 @@ export function Header() {
                 { label: 'Login', to: '/login', icon: <LoginRoundedIcon /> },
                 { label: 'Get Started', to: '/register', icon: <PersonAddAltRoundedIcon /> },
               ]),
-        ].map((link) => {
+        ].map((link, index) => {
           const active = isLinkActive(pathname, link.to)
           return (
+          <Fragment key={link.to}>
+          {(index === 0 || index === 4) && <Typography sx={{ gridColumn: '1 / -1', mt: index === 4 ? 2 : 0, mb: .5, color: GOLD_LIGHT, fontSize: '.68rem', fontWeight: 700, letterSpacing: '.16em', textTransform: 'uppercase' }}>{index === 0 ? 'Explore Ujimora' : isAuthenticated ? 'Your workspace' : 'Join the community'}</Typography>}
           <Button
-            key={link.to}
+            aria-current={active ? 'page' : undefined}
             component={RouterLink}
             to={link.to}
             onClick={() => setDrawerOpen(false)}
             fullWidth
             sx={{
               minWidth: 0,
-              minHeight: 112,
+              minHeight: 98,
+              position: 'relative',
+              overflow: 'hidden',
+              isolation: 'isolate',
               p: 2,
               alignItems: 'flex-start',
               justifyContent: 'space-between',
@@ -364,17 +372,28 @@ export function Header() {
               fontWeight: 700,
               lineHeight: 1.15,
               borderRadius: SHAPE.card,
-              bgcolor: '#1C261D',
+              bgcolor: 'var(--neu-surface)',
+              border: 'var(--neu-border)',
+              backdropFilter: 'var(--neu-backdrop)',
               boxShadow: active ? 'var(--forest-inset)' : 'var(--forest-raised)',
               '&:hover': { bgcolor: '#1C261D', boxShadow: 'var(--forest-raised)', transform: 'translateY(-2px)' },
-              '& .MuiSvgIcon-root': { fontSize: 25 },
+              '& > .menu-icon .MuiSvgIcon-root': { fontSize: 22 },
+              '&.Mui-focusVisible': { outline: '2px solid #DCC07E', outlineOffset: 3 },
+              '@media (prefers-reduced-motion: reduce)': { transition: 'none', '&:hover': { transform: 'none' } },
             }}
           >
-            <Box sx={{ color: active ? GOLD_LIGHT : 'rgba(220,192,126,.72)', lineHeight: 0 }}>{link.icon}</Box>
+            <Box aria-hidden="true" sx={{ position: 'absolute', right: -10, bottom: -14, transform: 'rotate(-14deg)', color: GOLD_LIGHT, opacity: .09, pointerEvents: 'none', zIndex: -1, '& .MuiSvgIcon-root': { fontSize: 100 } }}>{link.icon}</Box>
+            <Box className="menu-icon" sx={{ color: active ? GOLD_LIGHT : 'rgba(220,192,126,.72)', lineHeight: 0 }}>{link.icon}</Box>
             <Typography sx={{ fontSize: '.86rem', fontWeight: 750, color: 'inherit' }}>{link.label}</Typography>
           </Button>
+          </Fragment>
           )
         })}
+        </Box>
+        <Box sx={{ position: 'relative', overflow: 'hidden', mt: 3, pt: 2.5, pb: 1, borderTop: '1px solid rgba(220,192,126,.18)' }}>
+          <Box component="svg" aria-hidden="true" viewBox="0 0 180 80" sx={{ width: 150, height: 70, position: 'absolute', right: -12, top: -2, color: GOLD_LIGHT, opacity: .12, pointerEvents: 'none' }}><rect x="22" y="18" width="43" height="43" rx="6" transform="rotate(45 43 40)" fill="none" stroke="currentColor" strokeWidth="3" /><circle cx="88" cy="40" r="27" fill="none" stroke="currentColor" strokeWidth="3" /><path d="M117 40h42m-10-10 10 10-10 10" fill="none" stroke="currentColor" strokeWidth="2" /></Box>
+          <Typography sx={{ fontWeight: 700, fontSize: '.9rem', color: CREAM }}>One chain. Many hands.</Typography>
+          <Typography sx={{ fontSize: '.75rem', color: 'rgba(245,242,234,.65)', mt: .5 }}>Make a difference, together.</Typography>
         </Box>
         {isAuthenticated && (
           <Button

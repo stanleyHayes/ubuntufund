@@ -12,7 +12,8 @@ import type { LiveSessionRequester } from './StartLiveSessionUseCase.js';
 export class EndLiveSessionUseCase {
   constructor(
     private readonly liveSessionRepo: LiveSessionRepositoryPort,
-    private readonly campaignRepo: CampaignRepositoryPort
+    private readonly campaignRepo: CampaignRepositoryPort,
+    private readonly video?: { closeRoom(id: string): Promise<void> }
   ) {}
 
   async execute(
@@ -30,6 +31,7 @@ export class EndLiveSessionUseCase {
       return toLiveSessionDto(session);
     }
 
+    await this.video?.closeRoom(session.id);
     session.end();
     const updated = await this.liveSessionRepo.update(session);
     return toLiveSessionDto(updated);

@@ -203,6 +203,7 @@ export function DonatePage() {
     try {
       const result = await createDonationIntent({
         campaignId: campaign.id,
+        liveSessionId: searchParams.get('liveSessionId') || undefined,
         amount: amountValue,
         tip: tipValid && Number.isFinite(tipValue) && tipValue > 0 ? tipValue : undefined,
         provider: 'paystack',

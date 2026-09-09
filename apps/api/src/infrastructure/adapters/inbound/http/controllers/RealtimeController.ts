@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
+import type { LiveSessionEntity } from '../../../../../domain/entities/LiveSession.js';
 import type { CampaignRepositoryPort } from '../../../../../domain/ports/outbound/CampaignRepositoryPort.js';
 import type { LiveSessionRepositoryPort } from '../../../../../domain/ports/outbound/LiveSessionRepositoryPort.js';
 import {
@@ -88,7 +89,11 @@ export class RealtimeController {
       if (!token || token !== session.overlayToken) {
         throw new AppError('Invalid overlay token', 403);
       }
-      this.stream(req, res, liveChannel(sessionId));
+      if (!session.isActive()) throw new AppError('This live session has ended', 409);
+      this.stream(req, res, liveChannel(sessionId), async () => {
+        const current = await this.liveSessionRepo.findById(sessionId);
+        return current?.isActive() && current.overlayToken === token ? current : null;
+      });
     } catch (error) {
       next(error);
     }
@@ -99,7 +104,7 @@ export class RealtimeController {
    * buffered events after `Last-Event-ID`, subscribe for live events, start the
    * heartbeat, and clean everything up when the client disconnects.
    */
-  private stream(req: Request, res: Response, channel: string): void {
+  private stream(req: Request, res: Response, channel: string, sessionGuard?: () => Promise<LiveSessionEntity | null>): void {
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache, no-transform',
@@ -110,24 +115,44 @@ export class RealtimeController {
     // Advise clients to wait 3s before reconnecting after a drop.
     res.write('retry: 3000\n\n');
 
-    // Replay anything missed since the client's last seen id.
+    let closed = false;
+    let queue = Promise.resolve();
+    const deliver = (event: BusEvent) => {
+      queue = queue.then(async () => {
+        if (closed) return;
+        if (!sessionGuard) { writeSseEvent(res, event); return; }
+        const session = await sessionGuard();
+        if (!session) { finish(); return; }
+        const data = { ...(event.data as Record<string, unknown>) };
+        if (event.type === 'donation') {
+          if (!session.namesVisible()) data.name = 'Anonymous';
+          if (!session.messagesVisible()) delete data.message;
+          if (!session.amountsVisible()) data.amount = null;
+        }
+        if (!session.amountsVisible()) {
+          if ('sessionAmountRaised' in data) data.sessionAmountRaised = null;
+          if (event.type === 'milestone') data.raisedAmount = null;
+        }
+        if (!closed) writeSseEvent(res, { ...event, data });
+      }).catch(() => finish());
+    };
     const lastEventId = parseLastEventId(req);
-    for (const event of this.eventBus.getBufferedEvents(channel, lastEventId)) {
-      writeSseEvent(res, event);
-    }
-
-    const unsubscribe = this.eventBus.subscribe(channel, (event) => {
-      writeSseEvent(res, event);
-    });
-
+    for (const event of this.eventBus.getBufferedEvents(channel, lastEventId)) deliver(event);
+    const unsubscribe = this.eventBus.subscribe(channel, deliver);
     const heartbeat = setInterval(() => {
-      res.write(`: heartbeat ${Date.now()}\n\n`);
+      queue = queue.then(async () => {
+        if (closed) return;
+        if (sessionGuard && !(await sessionGuard())) { finish(); return; }
+        if (!closed) res.write(`: heartbeat ${Date.now()}\n\n`);
+      }).catch(() => finish());
     }, HEARTBEAT_MS);
-
-    req.on('close', () => {
+    function finish() {
+      if (closed) return;
+      closed = true;
       clearInterval(heartbeat);
       unsubscribe();
       res.end();
-    });
+    }
+    req.on('close', finish);
   }
 }

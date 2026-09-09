@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import type { AuthenticatedRequest } from '../../middleware/authMiddleware.js';
+import type { GetActiveLiveSessionUseCase } from '../../../../../application/use-cases/GetActiveLiveSessionUseCase.js';
 import type { StartLiveSessionUseCase } from '../../../../../application/use-cases/StartLiveSessionUseCase.js';
 import type { EndLiveSessionUseCase } from '../../../../../application/use-cases/EndLiveSessionUseCase.js';
 import type { UpdateLiveSessionPrivacyUseCase } from '../../../../../application/use-cases/UpdateLiveSessionPrivacyUseCase.js';
@@ -7,6 +8,8 @@ import type { RotateOverlayTokenUseCase } from '../../../../../application/use-c
 import type { GetLiveSessionPublicUseCase } from '../../../../../application/use-cases/GetLiveSessionPublicUseCase.js';
 import type { GetLiveSessionOverlayUseCase } from '../../../../../application/use-cases/GetLiveSessionOverlayUseCase.js';
 import { AppError } from '../../middleware/errorHandler.js';
+import type { LiveVideoService } from '../../../outbound/video/LiveVideoService.js';
+import { config } from '../../../../config/index.js';
 import { OVERLAY_PAGE_HTML } from '../views/overlayPage.js';
 
 function firstQueryValue(value: unknown): string | undefined {
@@ -22,8 +25,28 @@ export class LiveSessionController {
     private readonly updateLiveSessionPrivacyUseCase: UpdateLiveSessionPrivacyUseCase,
     private readonly rotateOverlayTokenUseCase: RotateOverlayTokenUseCase,
     private readonly getLiveSessionPublicUseCase: GetLiveSessionPublicUseCase,
-    private readonly getLiveSessionOverlayUseCase: GetLiveSessionOverlayUseCase
+    private readonly getLiveSessionOverlayUseCase: GetLiveSessionOverlayUseCase,
+    private readonly getActiveLiveSessionUseCase: GetActiveLiveSessionUseCase,
+    private readonly video: LiveVideoService
   ) {}
+
+  videoConfig = (_req: Request, res: Response) => { res.json({ data: { enabled: this.video.enabled } }); };
+  hostVideoToken = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try { res.set('Cache-Control', 'no-store').json({ data: await this.video.join(req.params.id as string, req.userId!) }); } catch (error) { next(error); }
+  };
+  viewerVideoToken = async (req: Request, res: Response, next: NextFunction) => {
+    try { res.set('Cache-Control', 'no-store').json({ data: await this.video.join(req.params.id as string) }); } catch (error) { next(error); }
+  };
+
+  getPublicActive = async (req: Request, res: Response, next: NextFunction) => {
+    try { res.set('Cache-Control', 'no-store').json({ data: await this.getActiveLiveSessionUseCase.publicView(req.params.id as string) }); } catch (error) { next(error); }
+  };
+  getActive = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const data = await this.getActiveLiveSessionUseCase.execute(req.params.id as string, { userId: req.userId!, role: req.userRole });
+      res.set('Cache-Control', 'no-store').json({ data });
+    } catch (error) { next(error); }
+  };
 
   /** POST /campaigns/:id/live-sessions — start a session (owner/admin). */
   start = async (
@@ -163,10 +186,16 @@ export class LiveSessionController {
     // THIS response only. Safe because the page embeds no user-controlled data
     // (donor text arrives via fetch and is rendered with textContent, never
     // inlined into the HTML).
+    // Allow the configured web app to embed this static overlay preview.
+    const frameOrigins = config.corsOrigins.flatMap(origin => {
+      try { const url = new URL(origin); return /^https?:$/.test(url.protocol) ? [url.origin] : []; } catch { return []; }
+    });
+    res.removeHeader('X-Frame-Options');
     res.setHeader(
       'Content-Security-Policy',
       [
         "default-src 'self'",
+        `frame-ancestors 'self' ${frameOrigins.join(' ')}`,
         "script-src 'self' 'unsafe-inline'",
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
         "font-src 'self' https://fonts.gstatic.com",
@@ -176,6 +205,7 @@ export class LiveSessionController {
     );
     res
       .type('html')
+      .set('Referrer-Policy', 'no-referrer')
       .set('Cache-Control', 'public, max-age=300')
       .send(OVERLAY_PAGE_HTML);
   };

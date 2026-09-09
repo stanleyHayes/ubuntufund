@@ -117,6 +117,8 @@ import { ResolveShortLinkUseCase } from './application/use-cases/ResolveShortLin
 import { ListCampaignQrCodesUseCase } from './application/use-cases/ListCampaignQrCodesUseCase.js';
 
 // Use cases — live sessions
+import { LiveVideoService } from './infrastructure/adapters/outbound/video/LiveVideoService.js';
+import { GetActiveLiveSessionUseCase } from './application/use-cases/GetActiveLiveSessionUseCase.js';
 import { StartLiveSessionUseCase } from './application/use-cases/StartLiveSessionUseCase.js';
 import { EndLiveSessionUseCase } from './application/use-cases/EndLiveSessionUseCase.js';
 import { UpdateLiveSessionPrivacyUseCase } from './application/use-cases/UpdateLiveSessionPrivacyUseCase.js';
@@ -876,6 +878,7 @@ export function createApp(): express.Express {
     config.publicApiUrl
   );
 
+  const liveVideo = new LiveVideoService(config.liveVideo, liveSessionRepo, campaignRepo);
   const startLiveSessionUseCase = new StartLiveSessionUseCase(
     liveSessionRepo,
     campaignRepo,
@@ -883,7 +886,8 @@ export function createApp(): express.Express {
   );
   const endLiveSessionUseCase = new EndLiveSessionUseCase(
     liveSessionRepo,
-    campaignRepo
+    campaignRepo,
+    liveVideo
   );
   const updateLiveSessionPrivacyUseCase = new UpdateLiveSessionPrivacyUseCase(
     liveSessionRepo,
@@ -894,7 +898,8 @@ export function createApp(): express.Express {
     campaignRepo
   );
   const getLiveSessionPublicUseCase = new GetLiveSessionPublicUseCase(
-    liveSessionRepo
+    liveSessionRepo,
+    campaignRepo
   );
   const getLiveSessionOverlayUseCase = new GetLiveSessionOverlayUseCase(
     liveSessionRepo,
@@ -1090,7 +1095,9 @@ export function createApp(): express.Express {
     updateLiveSessionPrivacyUseCase,
     rotateOverlayTokenUseCase,
     getLiveSessionPublicUseCase,
-    getLiveSessionOverlayUseCase
+    getLiveSessionOverlayUseCase,
+    new GetActiveLiveSessionUseCase(liveSessionRepo, campaignRepo),
+    liveVideo
   );
   const realtimeController = new RealtimeController(
     eventBus,

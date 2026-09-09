@@ -35,6 +35,8 @@ export function createCampaignLiveSessionRoutes(
 ): Router {
   const router = Router();
 
+  router.get('/:id/active-live', liveSessionController.getPublicActive);
+  router.get('/:id/live-sessions/active', authMiddleware, liveSessionController.getActive);
   router.post(
     '/:id/live-sessions',
     authMiddleware,
@@ -61,6 +63,9 @@ export function createLiveSessionRoutes(
 ): Router {
   const router = Router();
 
+  router.get('/video/config', liveSessionController.videoConfig);
+  router.post('/:id/video/host-token', authMiddleware, liveSessionController.hostVideoToken);
+  router.post('/:id/video/viewer-token', liveSessionController.viewerVideoToken);
   router.get('/:id/public', liveSessionController.getPublic);
   router.get('/:id/overlay', liveSessionController.getOverlay);
   router.get('/:id/overlay/view', liveSessionController.getOverlayView);

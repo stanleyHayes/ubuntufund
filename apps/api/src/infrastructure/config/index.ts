@@ -114,6 +114,7 @@ export interface PayoutsConfig {
 }
 
 export interface AppConfig {
+  liveVideo: { url: string; apiKey: string; apiSecret: string };
   port: number;
   mongodbUri: string;
   jwtSecret: string;
@@ -200,6 +201,7 @@ const defaultDevOrigins = [
 ];
 
 export const config: AppConfig = {
+  liveVideo: { url: process.env.LIVEKIT_URL ?? '', apiKey: process.env.LIVEKIT_API_KEY ?? '', apiSecret: process.env.LIVEKIT_API_SECRET ?? '' },
   port: parseInt(process.env.PORT ?? '4000', 10),
   mongodbUri: requireEnv('MONGODB_URI'),
   jwtSecret,

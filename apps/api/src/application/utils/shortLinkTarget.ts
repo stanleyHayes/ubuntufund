@@ -30,7 +30,7 @@ export function buildShortLinkTarget(
     case 'live':
       return params.liveSessionId
         ? `${campaign}/live/${encodeURIComponent(params.liveSessionId)}`
-        : `${campaign}/live`;
+        : campaign;
     case 'amount': {
       const donate = `${campaign}/donate`;
       return params.presetAmount != null

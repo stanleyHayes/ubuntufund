@@ -42,6 +42,10 @@ export class StartLiveSessionUseCase {
       );
     }
 
+    if (!campaign.canReceiveDonation()) throw new AppError('Only an active campaign can go live', 409);
+    const existing = await this.liveSessionRepo.findActiveByCampaignId(campaign.id);
+    if (existing) return toLiveSessionDto(existing);
+
     // LIVE fundraising is a plan feature, gated against the campaign owner's
     // plan (not the requester's — an admin starting on the owner's behalf still
     // uses the owner's entitlement).
@@ -75,7 +79,15 @@ export class StartLiveSessionUseCase {
       },
     });
 
-    const saved = await this.liveSessionRepo.save(session);
-    return toLiveSessionDto(saved);
+    try {
+      const saved = await this.liveSessionRepo.save(session);
+      return toLiveSessionDto(saved);
+    } catch (error) {
+      if ((error as { code?: number }).code === 11000) {
+        const concurrent = await this.liveSessionRepo.findActiveByCampaignId(campaign.id);
+        if (concurrent) return toLiveSessionDto(concurrent);
+      }
+      throw error;
+    }
   }
 }

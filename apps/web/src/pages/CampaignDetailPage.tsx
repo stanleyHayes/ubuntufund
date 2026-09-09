@@ -58,6 +58,14 @@ function CampaignDetailContent() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { campaign, isLoading, error, refresh } = useCampaign(id ?? '')
+  const [liveSessionId, setLiveSessionId] = useState<string | null>(null)
+  useEffect(() => {
+    if (!campaign?.id) return
+    let stopped = false
+    const load = () => api.get<{ id: string } | null>(`/campaigns/${campaign.id}/active-live`).then(value => { if (!stopped) setLiveSessionId(value?.id ?? null) }).catch(() => {})
+    void load(); const timer = setInterval(load, 15000)
+    return () => { stopped = true; clearInterval(timer) }
+  }, [campaign?.id])
   const [collaborators, setCollaborators] = useState<CampaignCollaborator[]>([])
   const [collaboratorError, setCollaboratorError] = useState(false)
 
@@ -209,6 +217,7 @@ function CampaignDetailContent() {
 
       {/* Donation CTA */}
       <Box sx={{ display: 'flex', gap: 1.5, flexDirection: 'column', alignItems: 'stretch' }}>
+        {liveSessionId && <Button component={RouterLink} to={`/live/${liveSessionId}`} variant="outlined" color="primary">Watch live broadcast</Button>}
         <Button
           variant="contained"
           color="secondary"

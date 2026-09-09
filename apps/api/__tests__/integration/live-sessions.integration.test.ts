@@ -116,6 +116,26 @@ describe('Live sessions + realtime projector', () => {
     await disconnectTestDatabase();
   });
 
+  it('recovers owner controls, prevents duplicate starts and exposes only the public view to guests', async () => {
+    const { userId, token } = await registerUser(app, uniqueEmail('recover'));
+    const campaignId = await createActiveCampaign(app, token, userId);
+    const starts = await Promise.all([1, 2].map(() => request(app).post(`/api/v1/campaigns/${campaignId}/live-sessions`).set('Authorization', `Bearer ${token}`).send({ title: 'One broadcast' })));
+    expect(starts.map(result => result.status)).toEqual([201, 201]);
+    expect(starts[0].body.data.id).toBe(starts[1].body.data.id);
+    const active = await request(app).get(`/api/v1/campaigns/${campaignId}/live-sessions/active`).set('Authorization', `Bearer ${token}`).expect(200);
+    expect(active.body.data.overlayToken).toBe(starts[0].body.data.overlayToken);
+    await request(app).get(`/api/v1/campaigns/${campaignId}/live-sessions/active`).expect(401);
+    const other = await registerUser(app, uniqueEmail('other-host'));
+    await request(app).get(`/api/v1/campaigns/${campaignId}/live-sessions/active`).set('Authorization', `Bearer ${other.token}`).expect(403);
+    const publicView = await request(app).get(`/api/v1/campaigns/${campaignId}/active-live`).expect(200);
+    expect(publicView.body.data.id).toBe(active.body.data.id);
+    expect(publicView.body.data.overlayToken).toBeUndefined();
+    await request(app).patch(`/api/v1/live-sessions/${active.body.data.id}`).set('Authorization', `Bearer ${token}`).send({ status: 'ended' }).expect(200);
+    const ended = await request(app).get(`/api/v1/campaigns/${campaignId}/live-sessions/active`).set('Authorization', `Bearer ${token}`).expect(200);
+    expect(ended.body.data).toBeNull();
+    await request(app).get(`/api/v1/live-sessions/${active.body.data.id}/events?token=${active.body.data.overlayToken}`).expect(409);
+  });
+
   it('starts a session for the owner and returns an overlay token', async () => {
     const { userId, token } = await registerUser(app, uniqueEmail('host'));
     const campaignId = await createActiveCampaign(app, token, userId);

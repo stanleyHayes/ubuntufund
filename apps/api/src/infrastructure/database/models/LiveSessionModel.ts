@@ -71,6 +71,8 @@ const liveSessionSchema = new Schema<LiveSessionDocument>(
   { timestamps: true }
 );
 
+liveSessionSchema.index({ campaignId: 1 }, { unique: true, partialFilterExpression: { status: 'active' }, name: 'one_active_session_per_campaign' });
+
 export const LiveSessionModel = mongoose.model<LiveSessionDocument>(
   'LiveSession',
   liveSessionSchema
