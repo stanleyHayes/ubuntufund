@@ -1,3 +1,4 @@
+import { LoadingDots } from '@ubuntu-fund/ui'
 import { useState, useEffect } from 'react'
 import { Link as RouterLink, useParams, useNavigate } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -360,7 +361,7 @@ function CampaignDetailContent() {
               }
             }}
           >
-            {donating ? 'Submitting...' : 'Confirm Donation'}
+            {donating ? <><LoadingDots size={6} /> <span>Submitting...</span></> : 'Confirm Donation'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -415,7 +416,7 @@ function CampaignDetailContent() {
               <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
                 <Avatar src={creator?.avatarUrl} alt="" sx={{ width: 48, height: 48, bgcolor: 'primary.main', color: 'primary.contrastText', fontWeight: 700, flexShrink: 0 }}>{creator?.name?.charAt(0).toUpperCase() ?? '?'}</Avatar>
                 <Box sx={{ minWidth: 0, flex: 1 }}>
-                  <Typography sx={{ fontWeight: 800, fontSize: '1.05rem', overflowWrap: 'anywhere' }}>{creator?.name ?? (creatorLoading ? 'Loading organizer…' : 'Organizer details unavailable')}</Typography>
+                  <Typography sx={{ fontWeight: 800, fontSize: '1.05rem', overflowWrap: 'anywhere' }}>{creator?.name ?? (creatorLoading ? <Skeleton component="span" width={160} sx={{ display: 'inline-block' }} /> : 'Organizer details unavailable')}</Typography>
                   {creator?.country && <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>{creator.country}</Typography>}
                   {creator && <Box sx={{ mt: 1.25, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1, '& .MuiChip-root': { bgcolor: 'background.paper', color: creator.verificationLevel > 0 ? 'primary.main' : 'text.secondary', boxShadow: 'var(--neu-subtle)', fontSize: '0.7rem', minHeight: 24 } }}><Typography variant="caption" color="text.secondary">Verification</Typography><TrustBadge level={creator.verificationLevel} /></Box>}
                 </Box>

@@ -478,7 +478,7 @@ export function CampaignForm() {
           {createdStatus === CampaignStatus.ACTIVE ? 'Your campaign is live. Share it with your community.' : 'Your campaign is awaiting review. You can share it once it is live.'}
         </Typography>
         {setupErrors.map(message => <Alert severity="warning" key={message} sx={{ mt: 2, textAlign: 'left' }}>Campaign created, but {message}. Retry the unfinished setup below; do not recreate the campaign.</Alert>)}
-        {!!pendingSetup.length && <Button sx={{ mt: 2 }} disabled={setupBusy} onClick={retrySetup}>{setupBusy ? 'Retrying…' : 'Retry unfinished setup'}</Button>}
+        {!!pendingSetup.length && <Button sx={{ mt: 2 }} disabled={setupBusy} onClick={retrySetup}>{setupBusy ? <><LoadingDots size={6} /> <span>Retrying…</span></> : 'Retry unfinished setup'}</Button>}
         {split && !setupErrors.some(message => message.startsWith('Split draft')) && <Alert severity="info" sx={{ mt: 2 }}>Split saved as a draft. Beneficiary consent and activation are still required.</Alert>}
         {createdId && split && !setupErrors.some(message => message.startsWith('Split draft')) && <CampaignSplitSetup campaignId={createdId} />}
         {createdId && createdStatus === CampaignStatus.ACTIVE && <Box sx={{ mt: 2 }}><ShareCampaignButton campaignId={createdId} title={formData.title} url={`${window.location.origin}/campaigns/${createdId}`} /></Box>}
@@ -992,7 +992,7 @@ export function CampaignForm() {
             color="secondary"
             size="large"
             disabled={isSubmitting || setupBusy || !options?.canCreate || !!extrasError || Object.keys(errors).length > 0}
-            startIcon={isSubmitting ? <LoadingDots size={6} /> : <CheckRoundedIcon />}
+            startIcon={isSubmitting || setupBusy ? <LoadingDots size={6} /> : <CheckRoundedIcon />}
           >
             {isSubmitting || setupBusy ? 'Setting up campaign…' : 'Publish campaign'}
           </Button>

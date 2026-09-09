@@ -14,7 +14,7 @@ import DialogActions from '@mui/material/DialogActions'
 import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import InputAdornment from '@mui/material/InputAdornment'
 import Alert from '@mui/material/Alert'
-import LinearProgress from '@mui/material/LinearProgress'
+import Skeleton from '@mui/material/Skeleton'
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import StarRoundedIcon from '@mui/icons-material/StarRounded'
@@ -246,9 +246,14 @@ export function SubscriptionPage() {
   if (isLoading || !subscription) {
     return (
       <Container maxWidth="lg" sx={{ py: 6 }}>
-        <Box sx={{ maxWidth: 400, mx: 'auto', textAlign: 'center', py: 12 }}>
-          <LinearProgress sx={{ borderRadius: 2, mb: 2 }} />
-          <Typography sx={{ color: 'text.secondary' }}>Loading your subscription...</Typography>
+        <Box aria-busy="true" aria-label="Loading subscription" sx={{ '& .MuiSkeleton-root': { '@media (prefers-reduced-motion: reduce)': { animation: 'none' } } }}>
+          <Skeleton width={220} height={48} />
+          <Skeleton width="55%" sx={{ mb: 5 }} />
+          <Skeleton variant="rounded" height={280} sx={{ borderRadius: SHAPE.card, mb: 6 }} />
+          <Skeleton width={200} height={36} sx={{ mb: 3 }} />
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 3 }}>
+            {[0, 1, 2].map(i => <Skeleton key={i} variant="rounded" height={360} sx={{ borderRadius: SHAPE.card }} />)}
+          </Box>
         </Box>
       </Container>
     )
@@ -857,7 +862,7 @@ export function SubscriptionPage() {
                     ),
                     endAdornment: couponLoading ? (
                       <InputAdornment position="end">
-                        <LoadingDots size={6} />
+                        <Skeleton width={36} height={24} aria-label="Checking coupon" />
                       </InputAdornment>
                     ) : undefined,
                   }}
@@ -951,7 +956,7 @@ export function SubscriptionPage() {
             disabled={actionLoading}
             sx={{ fontWeight: 600, textTransform: 'none' }}
           >
-            {actionLoading ? 'Cancelling...' : 'Confirm Cancel'}
+            {actionLoading ? <><LoadingDots size={6} /> <span>Cancelling...</span></> : 'Confirm Cancel'}
           </Button>
         </DialogActions>
       </Dialog>

@@ -1,3 +1,4 @@
+import { LoadingDots } from '@ubuntu-fund/ui'
 import { EmptyState } from '@ubuntu-fund/ui'
 import { useState } from 'react'
 import Box from '@mui/material/Box'
@@ -336,7 +337,7 @@ export function CollaboratorSection({
             disabled={inviteLoading || !inviteEmail.trim()}
             onClick={handleInviteSubmit}
           >
-            {inviteLoading ? 'Sending...' : 'Send Invite'}
+            {inviteLoading ? <><LoadingDots size={6} /> <span>Sending...</span></> : 'Send Invite'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -357,7 +358,7 @@ export function CollaboratorSection({
             disabled={deleteLoading}
             onClick={handleDeleteConfirm}
           >
-            {deleteLoading ? 'Removing...' : 'Remove'}
+            {deleteLoading ? <><LoadingDots size={6} /> <span>Removing...</span></> : 'Remove'}
           </Button>
         </DialogActions>
       </Dialog>

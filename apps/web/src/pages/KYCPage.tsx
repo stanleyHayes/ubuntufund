@@ -1,3 +1,4 @@
+import { LoadingDots } from '@ubuntu-fund/ui'
 import { Country, State, City } from 'country-state-city'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
@@ -295,7 +296,7 @@ export function KYCPage() {
               disabled={submitting}
               sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2, px: 4 }}
             >
-              {submitting ? 'Submitting...' : 'Submit Verification'}
+              {submitting ? <><LoadingDots size={6} /> <span>Submitting...</span></> : 'Submit Verification'}
             </Button>
           ) : (
             <Button

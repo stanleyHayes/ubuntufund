@@ -1,3 +1,4 @@
+import { LoadingDots } from '@ubuntu-fund/ui'
 import { useState } from 'react'
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
@@ -166,7 +167,7 @@ export function CreateUpdateDialog({
             onClick={handleSubmit}
             disabled={isLoading || !title.trim() || !content.trim()}
           >
-            {isLoading ? 'Posting...' : 'Post Update'}
+            {isLoading ? <><LoadingDots size={6} /> <span>Posting...</span></> : 'Post Update'}
           </Button>
         )}
       </DialogActions>

@@ -1,3 +1,4 @@
+import { LoadingDots } from '@ubuntu-fund/ui'
 import { useState, useEffect } from 'react'
 import { useParams, Link as RouterLink, useNavigate } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -241,7 +242,7 @@ export function RefundRequestPage() {
                 onClick={() => setConfirmOpen(true)}
                 sx={{ borderRadius: SHAPE.sm, px: 4, textTransform: 'none', fontWeight: 700 }}
               >
-                {submitting ? 'Submitting...' : 'Submit Request'}
+                {submitting ? <><LoadingDots size={6} /> <span>Submitting...</span></> : 'Submit Request'}
               </Button>
             </Box>
           </Box>

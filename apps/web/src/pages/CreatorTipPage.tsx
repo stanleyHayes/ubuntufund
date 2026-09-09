@@ -1,3 +1,4 @@
+import { AccountPageSkeleton } from '@/components/account/AccountPage'
 import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -80,7 +81,7 @@ export function CreatorTipPage() {
   }
 
   if (loading) {
-    return <Box sx={{ minHeight: '60vh', display: 'grid', placeItems: 'center' }}><LoadingDots /></Box>
+    return <AccountPageSkeleton layout="cards" />
   }
   if (notFound) {
     return (

@@ -1,3 +1,4 @@
+import Skeleton from '@mui/material/Skeleton'
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded'
 import { AccountPageSkeleton, AccountHeading } from '@/components/account/AccountPage'
 import { useState, useEffect, useRef, useCallback } from 'react'
@@ -23,7 +24,7 @@ import ShieldRoundedIcon from '@mui/icons-material/ShieldRounded'
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded'
 import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded'
 import { useNavigate, Link as RouterLink } from 'react-router-dom'
-import { SHAPE, ThemeStylePicker, LoadingDots } from '@ubuntu-fund/ui'
+import { SHAPE, ThemeStylePicker } from '@ubuntu-fund/ui'
 import { useAuth } from '@/context/AuthContext'
 import { useColorMode } from '@/context/ColorModeContext'
 import { api, ApiError } from '@/lib/api'
@@ -472,7 +473,7 @@ export function SettingsPage() {
 
         {saving && (
           <Box sx={{ position: 'fixed', bottom: 'calc(var(--mobile-nav-height, 0px) + 24px)', right: 24, zIndex: 1200, display: 'flex', alignItems: 'center', gap: 1, bgcolor: FOREST, color: '#F5F2EA', px: 2, py: 1, borderRadius: '999px' }}>
-            <LoadingDots size={6} />
+            <Skeleton variant="rounded" width={40} height={16} sx={{ bgcolor: 'rgba(245,242,234,.2)' }} />
             <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>Saving…</Typography>
           </Box>
         )}

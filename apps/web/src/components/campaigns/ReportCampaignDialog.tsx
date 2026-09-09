@@ -1,3 +1,4 @@
+import { LoadingDots } from '@ubuntu-fund/ui'
 import { useState } from 'react'
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
@@ -143,7 +144,7 @@ export function ReportCampaignDialog({
             onClick={handleSubmit}
             disabled={loading || !reason}
           >
-            {loading ? 'Submitting...' : 'Submit Report'}
+            {loading ? <><LoadingDots size={6} /> <span>Submitting...</span></> : 'Submit Report'}
           </Button>
         )}
       </DialogActions>

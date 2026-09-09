@@ -1,3 +1,4 @@
+import Skeleton from '@mui/material/Skeleton'
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { useSearchParams, useNavigate, Link as RouterLink } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -8,7 +9,7 @@ import Snackbar from '@mui/material/Snackbar'
 import IosShareRoundedIcon from '@mui/icons-material/IosShareRounded'
 import ReplayRoundedIcon from '@mui/icons-material/ReplayRounded'
 import { keyframes } from '@emotion/react'
-import { ItemNotFound, BrandLogo, formatCurrency, SHAPE, LoadingDots } from '@ubuntu-fund/ui'
+import { ItemNotFound, BrandLogo, formatCurrency, SHAPE } from '@ubuntu-fund/ui'
 import {
   getDonationIntentStatus,
   campaignPublicPath,
@@ -251,7 +252,7 @@ export function DonateCallbackPage() {
         {(phase === 'resolving' || phase === 'pending') && (
           <>
             <Box sx={{ mb: 3, color: 'secondary.main', display: 'flex', justifyContent: 'center' }}>
-              <LoadingDots size={10} />
+              <Box aria-busy="true" aria-label="Loading payment confirmation" sx={{ width: '100%' }}><Skeleton variant="rounded" height={100} sx={{ mb: 2 }} /><Skeleton width="80%" sx={{ mx: 'auto' }} /><Skeleton width="55%" sx={{ mx: 'auto' }} /></Box>
             </Box>
             <Typography variant="h5" component="h1" sx={{ fontWeight: 800, mb: 1 }}>
               Confirming your payment…

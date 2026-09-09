@@ -1,3 +1,4 @@
+import { LoadingDots } from '@ubuntu-fund/ui'
 import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -73,7 +74,7 @@ export function LoginForm() {
         fullWidth
         disabled={submitting}
       >
-        {submitting ? 'Signing in...' : 'Sign In'}
+        {submitting ? <><LoadingDots size={6} /> <span>Signing in...</span></> : 'Sign In'}
       </Button>
 
       <Typography variant="body2" align="center" color="text.secondary">

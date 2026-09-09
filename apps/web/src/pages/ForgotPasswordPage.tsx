@@ -1,3 +1,4 @@
+import { LoadingDots } from '@ubuntu-fund/ui'
 import { useState } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
@@ -501,7 +502,7 @@ export function ForgotPasswordPage() {
                   },
                 }}
               >
-                {loading ? 'Sending...' : 'Send reset link'}
+                {loading ? <><LoadingDots size={6} /> <span>Sending...</span></> : 'Send reset link'}
               </Box>
             </Box>
 

@@ -1,3 +1,4 @@
+import { AccountPageSkeleton } from '@/components/account/AccountPage'
 import { useState, useEffect, useCallback } from 'react'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
@@ -105,7 +106,7 @@ export function CreatorDashboardPage() {
   const fmt = (n: number) => `GH₵${(n ?? 0).toLocaleString()}`
   const pageUrl = profile ? `${window.location.origin}/creators/${profile.handle}` : ''
 
-  if (loading) return <Box sx={{ minHeight: '60vh', display: 'grid', placeItems: 'center' }}><LoadingDots /></Box>
+  if (loading) return <AccountPageSkeleton layout="cards" />
 
   if (loadError) {
     return (
@@ -156,7 +157,7 @@ export function CreatorDashboardPage() {
           <FormControlLabel control={<Switch checked={tipsEnabled} onChange={(_, v) => setTipsEnabled(v)} />} label="Accept tips" sx={{ mb: 1 }} />
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
           <Button onClick={saveProfile} disabled={saving} variant="contained" sx={{ borderRadius: '999px', fontWeight: 800, textTransform: 'none', px: 4 }}>
-            {saving ? 'Saving…' : profile ? 'Save changes' : 'Create my page'}
+            {saving ? <><LoadingDots size={6} /> <span>Saving…</span></> : profile ? 'Save changes' : 'Create my page'}
           </Button>
         </Box>
 
@@ -190,7 +191,7 @@ export function CreatorDashboardPage() {
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setWithdrawOpen(false)} sx={{ textTransform: 'none' }}>Cancel</Button>
-          <Button onClick={withdraw} disabled={wSubmitting} variant="contained" sx={{ textTransform: 'none', fontWeight: 700 }}>{wSubmitting ? 'Starting…' : 'Withdraw'}</Button>
+          <Button onClick={withdraw} disabled={wSubmitting} variant="contained" sx={{ textTransform: 'none', fontWeight: 700 }}>{wSubmitting ? <><LoadingDots size={6} /> <span>Starting…</span></> : 'Withdraw'}</Button>
         </DialogActions>
       </Dialog>
 

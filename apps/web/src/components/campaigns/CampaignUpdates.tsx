@@ -1,3 +1,4 @@
+import { LoadingDots } from '@ubuntu-fund/ui'
 import { useState } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
@@ -262,7 +263,7 @@ export function CampaignUpdates({ campaignId, isCreator }: CampaignUpdatesProps)
             disabled={isDeleting}
             onClick={handleDeleteConfirm}
           >
-            {isDeleting ? 'Deleting...' : 'Delete'}
+            {isDeleting ? <><LoadingDots size={6} /> <span>Deleting...</span></> : 'Delete'}
           </Button>
         </DialogActions>
       </Dialog>

@@ -1,3 +1,5 @@
+import { LoadingDots } from '@ubuntu-fund/ui'
+import Skeleton from '@mui/material/Skeleton'
 import { useEffect, useRef, useState } from 'react'
 import { Alert, Box, Button, MenuItem, Stack, TextField, Typography } from '@mui/material'
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded'
@@ -110,7 +112,7 @@ export default function AiWritingAssistant({
             AI writing is currently unavailable. You can continue writing your story below.
           </Alert>
         )}
-        {!config && !error && <Typography role="status">Loading assistant…</Typography>}
+        {!config && !error && <Box aria-busy="true" aria-label="Loading writing assistant"><Skeleton variant="rounded" height={56} /><Skeleton width="60%" /></Box>}
         {config?.enabled && (
           <>
             <TextField
@@ -170,7 +172,7 @@ export default function AiWritingAssistant({
                 }
                 onClick={generate}
               >
-                {busy ? 'Writing…' : 'Get suggestion'}
+                {busy ? <><LoadingDots size={6} /> <span>Writing…</span></> : 'Get suggestion'}
               </Button>
               <Typography variant="caption" color="text.secondary">
                 {config.remainingRequests} of {config.dailyLimit} requests left today · resets at

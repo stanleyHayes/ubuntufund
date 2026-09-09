@@ -1,3 +1,4 @@
+import { LoadingDots } from '@ubuntu-fund/ui'
 import Button from '@mui/material/Button'
 import { BrandedTextField } from '@ubuntu-fund/ui'
 import { useSearchParams } from 'react-router-dom'
@@ -200,7 +201,7 @@ export function WalletPage() {
                       {wallet.currency === 'GHS' && topUpConfig?.enabled && <Box sx={{ display: 'grid', gap: 1.5 }}>
                         {topUpConfig.mode === 'test' && <Alert severity="info">Test payments only. No real money moves in this mode.</Alert>}
                         <BrandedTextField label="Top-up amount (GHS)" type="number" value={topUpAmount} onChange={event => setTopUpAmount(event.target.value)} disabled={topUpBusy} helperText="GHS 1–10,000. Pay securely by card or MoMo." />
-                        <Button variant="contained" disabled={topUpBusy || !topUpAmount || Number(topUpAmount) < 1 || Number(topUpAmount) > 10000} onClick={() => fundWallet(wallet.id)}>{topUpBusy ? 'Opening checkout…' : 'Fund wallet'}</Button>
+                        <Button variant="contained" disabled={topUpBusy || !topUpAmount || Number(topUpAmount) < 1 || Number(topUpAmount) > 10000} onClick={() => fundWallet(wallet.id)}>{topUpBusy ? <><LoadingDots size={6} /> <span>Opening checkout…</span></> : 'Fund wallet'}</Button>
                         <Typography variant="caption" color="text.secondary">Your balance is credited only after payment confirmation. The full top-up amount reaches your wallet.</Typography>
                       </Box>}
                       {topUpConfig && !topUpConfig.enabled && <Alert severity="info">Wallet funding is not configured yet.</Alert>}

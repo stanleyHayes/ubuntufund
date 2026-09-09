@@ -1,3 +1,4 @@
+import { LoadingDots } from '@ubuntu-fund/ui'
 import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import { EmptyState } from '@ubuntu-fund/ui'
 import { useCallback, useEffect, useState } from 'react'
@@ -62,7 +63,7 @@ export function CampaignComments({ campaignId, creatorId }: { campaignId: string
           <TextField fullWidth multiline minRows={2} maxRows={6} value={content} onChange={(event) => setContent(event.target.value)} inputProps={{ maxLength: 1000 }} placeholder="Share encouragement or ask a respectful question…" />
           <Box sx={{ mt: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography variant="caption" color="text.secondary">{content.length}/1000</Typography>
-            <Button variant="contained" disabled={submitting || !content.trim()} onClick={() => void submit()}>{submitting ? 'Posting…' : 'Post comment'}</Button>
+            <Button variant="contained" disabled={submitting || !content.trim()} onClick={() => void submit()}>{submitting ? <><LoadingDots size={6} /> <span>Posting…</span></> : 'Post comment'}</Button>
           </Box>
         </Box>
       ) : (

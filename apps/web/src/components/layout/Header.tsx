@@ -302,7 +302,14 @@ export function Header() {
               border: 'var(--neu-border)',
               backdropFilter: 'var(--neu-backdrop)',
               color: CREAM,
+              height: '100dvh',
+              boxSizing: 'border-box',
+              overflowY: 'auto',
               p: 2.5,
+              pb: 'calc(20px + env(safe-area-inset-bottom, 0px))',
+              // Keep the footer and navigation at their natural height on short screens.
+              // The drawer scrolls instead of shrinking and clipping its flex children.
+              '& > *': { flexShrink: 0 },
             },
           },
         }}

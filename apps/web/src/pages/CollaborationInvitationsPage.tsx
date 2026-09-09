@@ -1,3 +1,4 @@
+import { LoadingDots } from '@ubuntu-fund/ui'
 import { useState, useEffect } from 'react'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
@@ -161,7 +162,7 @@ export function CollaborationInvitationsPage() {
                     disabled={respondingId === inv.id}
                     sx={{ textTransform: 'none', fontWeight: 600 }}
                   >
-                    {respondingId === inv.id ? 'Accepting...' : 'Accept'}
+                    {respondingId === inv.id ? <><LoadingDots size={6} /> <span>Accepting...</span></> : 'Accept'}
                   </Button>
                   <Button
                     variant="outlined"
@@ -172,7 +173,7 @@ export function CollaborationInvitationsPage() {
                     disabled={respondingId === inv.id}
                     sx={{ textTransform: 'none', fontWeight: 600 }}
                   >
-                    {respondingId === inv.id ? 'Declining...' : 'Decline'}
+                    {respondingId === inv.id ? <><LoadingDots size={6} /> <span>Declining...</span></> : 'Decline'}
                   </Button>
                 </Box>
               </CardContent>

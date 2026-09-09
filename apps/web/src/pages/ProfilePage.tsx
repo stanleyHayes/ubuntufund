@@ -1,3 +1,4 @@
+import { LoadingDots } from '@ubuntu-fund/ui'
 import { ProfileArtwork } from '@/components/profile/ProfileArtwork'
 import { ProfileImageEditor } from '@/components/profile/ProfileImageEditor'
 import PhotoCameraRoundedIcon from '@mui/icons-material/PhotoCameraRounded'
@@ -10,7 +11,7 @@ import Button from '@mui/material/Button'
 import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import Tabs from '@mui/material/Tabs'
 import Tab from '@mui/material/Tab'
-import LinearProgress from '@mui/material/LinearProgress'
+import { AccountPageSkeleton } from '@/components/account/AccountPage'
 import Snackbar from '@mui/material/Snackbar'
 import Alert from '@mui/material/Alert'
 import Chip from '@mui/material/Chip'
@@ -252,6 +253,8 @@ export function ProfilePage() {
     setShareSnack(true)
   }
 
+  if (impactLoading) return <AccountPageSkeleton layout="cards" />
+
   return (
     <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', pb: 6 }}>
       <Container maxWidth="md" sx={{ pt: 3 }}>
@@ -336,11 +339,6 @@ export function ProfilePage() {
       </Box>
 
       <Container maxWidth="md" sx={{ mt: 3, position: 'relative' }}>
-        {impactLoading && (
-          <Box sx={{ mb: 4 }}>
-            <LinearProgress sx={{ borderRadius: SHAPE.bar }} />
-          </Box>
-        )}
         {/* ═══ Stats Grid ═══ */}
         <Grid container spacing={2} sx={{ mb: 4 }}>
           <Grid size={{ xs: 6, sm: 3 }}>
@@ -574,7 +572,7 @@ export function ProfilePage() {
                   disabled={profileSaving}
                   sx={{ alignSelf: 'flex-start', borderRadius: SHAPE.sm, px: 4, fontWeight: 700, textTransform: 'none' }}
                 >
-                  {profileSaving ? 'Saving...' : 'Save Changes'}
+                  {profileSaving ? <><LoadingDots size={6} /> <span>Saving...</span></> : 'Save Changes'}
                 </Button>
               </Box>
             </TabPanel>
@@ -600,7 +598,7 @@ export function ProfilePage() {
                   disabled={passwordSaving}
                   sx={{ alignSelf: 'flex-start', borderRadius: SHAPE.sm, px: 4, fontWeight: 700, textTransform: 'none' }}
                 >
-                  {passwordSaving ? 'Updating...' : 'Update Password'}
+                  {passwordSaving ? <><LoadingDots size={6} /> <span>Updating...</span></> : 'Update Password'}
                 </Button>
               </Box>
             </TabPanel>

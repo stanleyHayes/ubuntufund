@@ -404,7 +404,7 @@ export function CampaignLivePage() {
               brandVariant="primary"
               onClick={handleStart}
               disabled={starting || sessionLoading || !!sessionError || !videoEnabled}
-              startIcon={starting ? <LoadingDots size={6} /> : <PlayArrowRoundedIcon />}
+              startIcon={sessionLoading || starting ? <LoadingDots size={6} /> : <PlayArrowRoundedIcon />}
               sx={{ mt: 2.5, width: '100%', py: 1.5, textTransform: 'none', fontWeight: 700, borderRadius: SHAPE.sm, px: 3 }}
             >
               {sessionLoading ? 'Checking session…' : starting ? 'Starting…' : 'Go LIVE'}
