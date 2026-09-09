@@ -20,6 +20,8 @@ const addressSchema = z.object({
   city: z.string().max(100).optional(),
   state: z.string().max(100).optional(),
   country: z.string().max(100).optional(),
+  proofMethod: z.enum(['ghana_post_gps', 'document']).optional(),
+  gpsAddress: z.string().trim().toUpperCase().regex(/^[A-Z]{2}-[0-9]{3,5}-[0-9]{4}$/, 'Invalid GhanaPost GPS address').optional(),
   postalCode: z.string().max(20).optional(),
 });
 
@@ -39,6 +41,16 @@ const documentInputSchema = z.object({
 const submitIdentitySchema = z.object({
   personalInfo: personalInfoSchema.optional(),
   documents: z.array(documentInputSchema).default([]),
+}).superRefine((data, ctx) => {
+  const address = data.personalInfo?.address;
+  if (!address?.proofMethod) return; // Preserve older clients' submissions.
+  const issue = (message: string) => ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['personalInfo', 'address'], message });
+  if (!address.country?.trim() || !address.city?.trim()) issue('Country and city are required.');
+  if (address.proofMethod === 'ghana_post_gps') {
+    if (address.country !== 'Ghana' || !address.gpsAddress) issue('A Ghana address and GhanaPost GPS code are required.');
+  } else if (!address.street?.trim() || !data.documents.some(doc => doc.type === 'utility_bill' || doc.type === 'bank_statement')) {
+    issue('Street address and an address proof document are required.');
+  }
 });
 
 const approveSchema = z.object({

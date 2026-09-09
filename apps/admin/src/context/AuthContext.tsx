@@ -37,6 +37,7 @@ function loadFromStorage(): { user: AuthUser | null; tokens: AuthTokens | null }
     const user = JSON.parse(localStorage.getItem(STORAGE_USER_KEY) ?? 'null')
     const tokensStr = localStorage.getItem(STORAGE_TOKENS_KEY)
     const tokens = tokensStr ? JSON.parse(tokensStr) : null
+    if (!localStorage.getItem(STORAGE_TOKEN_KEY)) return { user: null, tokens: null }
     return { user, tokens }
   } catch {
     return { user: null, tokens: null }

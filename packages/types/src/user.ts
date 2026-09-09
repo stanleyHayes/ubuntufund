@@ -46,6 +46,8 @@ export interface KYCAddress {
   state?: string
   /** Country — defaults to 'Ghana'; the platform operates in Ghana only */
   country?: string
+  proofMethod?: 'ghana_post_gps' | 'document'
+  gpsAddress?: string
   postalCode?: string
 }
 

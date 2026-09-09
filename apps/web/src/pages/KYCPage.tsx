@@ -1,3 +1,6 @@
+import { Country, State, City } from 'country-state-city'
+import ToggleButton from '@mui/material/ToggleButton'
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Autocomplete from '@mui/material/Autocomplete'
 import { COUNTRY_OPTIONS } from '@/data/countries'
 import { BrandedDatePicker } from '@ubuntu-fund/ui'
@@ -51,7 +54,23 @@ export function KYCPage() {
   const [street, setStreet] = useState('')
   const [city, setCity] = useState('')
   const [state, setState] = useState('')
-  const [country, setCountry] = useState('')
+  const [country, setCountry] = useState('Ghana')
+  const [countryCode, setCountryCode] = useState('GH')
+  const [stateCode, setStateCode] = useState('')
+  const [proofMethod, setProofMethod] = useState<'ghana_post_gps' | 'document'>('ghana_post_gps')
+  const [gpsAddress, setGpsAddress] = useState('')
+  const countries = Country.getAllCountries()
+  const states = State.getStatesOfCountry(countryCode)
+  const cities = stateCode ? City.getCitiesOfState(countryCode, stateCode) : []
+  const dropdownProps = { paper: { sx: { bgcolor: 'background.paper', color: 'text.primary', boxShadow: 'var(--neu-raised)', border: 'var(--neu-border)', backdropFilter: 'var(--neu-backdrop)', '& .MuiAutocomplete-option[aria-selected="true"]': { bgcolor: 'action.selected', color: 'primary.main' } } } }
+
+  function addressError() {
+    if (!country || !city.trim() || (states.length > 0 && !state)) return 'Select your country, region and city.'
+    if (proofMethod === 'ghana_post_gps') {
+      if (countryCode !== 'GH' || !/^[A-Z]{2}-[0-9]{3,5}-[0-9]{4}$/.test(gpsAddress.trim())) return 'Enter a GhanaPost GPS address, for example GA-183-8164.'
+    } else if (!street.trim() || !addressDocUrl) return 'Enter your street address and upload proof of address.'
+    return null
+  }
   const [postalCode, setPostalCode] = useState('')
   const [addressDocUrl, setAddressDocUrl] = useState('')
 
@@ -60,6 +79,7 @@ export function KYCPage() {
 
   function handleNext() {
     if (activeStep === 0 && !nationality) { setError('Select your nationality from the list.'); return }
+    if (activeStep === 2) { const message = addressError(); if (message) { setError(message); return } }
     setError(null)
     if (activeStep < steps.length - 1) {
       setActiveStep((prev) => prev + 1)
@@ -74,6 +94,8 @@ export function KYCPage() {
 
   async function handleSubmit() {
     if (!COUNTRY_OPTIONS.some(option => option.label === nationality)) { setActiveStep(0); setError('Select your nationality from the list.'); return }
+    const message = addressError()
+    if (message) { setActiveStep(2); setError(message); return }
     setSubmitting(true)
     setError(null)
     try {
@@ -83,12 +105,12 @@ export function KYCPage() {
           dateOfBirth: dateOfBirth ? new Date(dateOfBirth).toISOString() : undefined,
           nationality,
           idNumber,
-          address: { street, city, state, country, postalCode },
+          address: { city: city.trim(), state, country, proofMethod, ...(proofMethod === 'document' ? { street: street.trim(), postalCode: postalCode.trim() } : {}), ...(proofMethod === 'ghana_post_gps' ? { gpsAddress: gpsAddress.trim() } : {}) },
         },
         documents: [
           ...(idFrontUrl ? [{ type: 'id_card' as const, url: idFrontUrl }] : []),
           ...(idBackUrl ? [{ type: 'id_card' as const, url: idBackUrl }] : []),
-          ...(addressDocUrl ? [{ type: 'utility_bill' as const, url: addressDocUrl }] : []),
+          ...(proofMethod === 'document' && addressDocUrl ? [{ type: 'utility_bill' as const, url: addressDocUrl }] : []),
           ...(selfieUrl ? [{ type: 'passport' as const, url: selfieUrl }] : []),
         ],
       })
@@ -202,23 +224,35 @@ export function KYCPage() {
         {activeStep === 2 && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
             <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>Address Verification</Typography>
-            <TextField label="Street Address" value={street} onChange={(e) => setStreet(e.target.value)} fullWidth required />
+            <Typography color="text.secondary">Select your location, then choose how to provide your address.</Typography>
+            <Autocomplete options={countries} getOptionLabel={(option) => option.name} value={countries.find(option => option.isoCode === countryCode) ?? null}
+              onChange={(_, option) => { setCountry(option?.name ?? ''); setCountryCode(option?.isoCode ?? ''); setState(''); setStateCode(''); setCity(''); setGpsAddress(''); setPostalCode(''); if (option?.isoCode !== 'GH') setProofMethod('document'); setError(null) }}
+              isOptionEqualToValue={(a, b) => a.isoCode === b.isoCode} autoHighlight fullWidth slotProps={dropdownProps}
+              renderInput={(params) => <TextField {...params} label="Country" required placeholder="Search countries" />} />
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))' }, gap: 2 }}>
-              <TextField label="City" value={city} onChange={(e) => setCity(e.target.value)} fullWidth required />
-              <TextField label="State/Province" value={state} onChange={(e) => setState(e.target.value)} fullWidth required />
+              {states.length > 0 ? <Autocomplete options={states} getOptionLabel={(option) => option.name} value={states.find(option => option.isoCode === stateCode) ?? null}
+                onChange={(_, option) => { setState(option?.name ?? ''); setStateCode(option?.isoCode ?? ''); setCity('') }}
+                isOptionEqualToValue={(a, b) => a.isoCode === b.isoCode} autoHighlight fullWidth slotProps={dropdownProps}
+                renderInput={(params) => <TextField {...params} label={countryCode === 'GH' ? 'Region' : 'State / Province'} required placeholder="Search regions" />} />
+                : <TextField label="State / Province (optional)" value={state} disabled={!countryCode} onChange={(e) => setState(e.target.value)} fullWidth />}
+              <Autocomplete freeSolo options={[...new Set(cities.map(option => option.name))]} value={city} inputValue={city}
+                onInputChange={(_, value) => setCity(value)} onChange={(_, value) => setCity(value ?? '')} disabled={!countryCode || (states.length > 0 && !stateCode)}
+                autoHighlight fullWidth slotProps={dropdownProps}
+                renderInput={(params) => <TextField {...params} label="City / Town" required helperText="Select a city or type your town if it is not listed." />} />
             </Box>
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))' }, gap: 2 }}>
-              <TextField label="Country" value={country} onChange={(e) => setCountry(e.target.value)} fullWidth required />
-              <TextField label="Postal Code" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} fullWidth required />
-            </Box>
-            <ImageUpload
-              value={addressDocUrl}
-              onChange={setAddressDocUrl}
-              uploadFn={uploadKycDoc}
-              label="Address proof"
-              helperText="Utility bill or bank statement (max 3 months old)."
-              accept="image/*,application/pdf"
-            />
+            <Typography sx={{ fontWeight: 700 }}>Proof of address</Typography>
+            {countryCode === 'GH' && <ToggleButtonGroup exclusive value={proofMethod} onChange={(_, value) => { if (value) { setProofMethod(value); setError(null) } }} fullWidth aria-label="Proof of address method" sx={{ '& .MuiToggleButton-root': { flex: 1, textTransform: 'none', '&.Mui-selected': { color: 'primary.main', bgcolor: 'action.selected', borderColor: 'primary.main' } } }}>
+              <ToggleButton value="ghana_post_gps">GhanaPost GPS</ToggleButton>
+              <ToggleButton value="document">Upload document</ToggleButton>
+            </ToggleButtonGroup>}
+            {proofMethod === 'ghana_post_gps' && countryCode === 'GH' ? <>
+              <TextField label="GhanaPost GPS address" value={gpsAddress} onChange={(e) => { setGpsAddress(e.target.value.toUpperCase().replace(/\s/g, '')); setError(null) }} fullWidth required placeholder="GA-183-8164" helperText="Enter the digital address for your home. It will be reviewed with your identity details." />
+              <Button component="a" href="https://ghanapostgps.com/" target="_blank" rel="noopener noreferrer" sx={{ alignSelf: 'flex-start', textTransform: 'none' }}>Find my GhanaPost GPS address</Button>
+            </> : <>
+              <TextField label="Street Address" value={street} onChange={(e) => setStreet(e.target.value)} fullWidth required autoComplete="street-address" />
+              <TextField label="Postal Code (optional)" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} fullWidth autoComplete="postal-code" />
+              <ImageUpload value={addressDocUrl} onChange={setAddressDocUrl} uploadFn={uploadKycDoc} label="Address proof" helperText="Utility bill or bank statement (max 3 months old)." accept="image/*,application/pdf" />
+            </>}
           </Box>
         )}
 

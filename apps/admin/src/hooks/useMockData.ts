@@ -74,6 +74,8 @@ export interface KYCVerification {
       city?: string
       state?: string
       country?: string
+      proofMethod?: 'ghana_post_gps' | 'document'
+      gpsAddress?: string
       postalCode?: string
     }
   }

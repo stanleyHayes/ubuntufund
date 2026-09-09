@@ -955,3 +955,12 @@
 
 - ✅ Added local SVG fallback artwork: personal portrait, organisation building, and linked-shape landscape cover. Applied to personal and organisation profiles and organisation directory logos. Uploaded images take priority; missing/failed avatar images render artwork via Avatar fallback, while failed covers expose the background art. Artwork inherits semantic skin colors and needs no external image request.
 - Verification: web TypeScript, targeted lint, diff checks passed; inspected mobile profile fallback screenshot with no horizontal overflow.
+
+### 2026-09-09 — KYC address selection, dashboard actions, and admin sign-in
+
+- ✅ Added `country-state-city` searchable country/region/city controls using the brand's themed dropdown surfaces. Country/region changes reset dependent selections; unlisted towns allow manual entry and postal code is optional.
+- ✅ Ghana residents can choose GhanaPost GPS or document proof. GPS format is validated, persisted in the KYC record and shown to admin reviewers; document submissions require street address and proof upload. GPS remains subject to manual review, with no automatic location/ownership verification. Older clients retain their existing API contract.
+- ✅ Dashboard New Campaign, Invite Friends and My Donations navigate to creation, the affiliate invitation workspace and donation history.
+- ✅ Admin login excludes stale bearer tokens and displays credential errors instead of incorrectly calling every login 401 an expired session. Protected-request expiry clears all three authentication storage entries; incomplete stored sessions no longer restore authenticated state.
+- Verification: API address-validation/model regression passed; three mocked Playwright tests passed for mobile GPS submission, dependent location resets and quick-action navigation. Four admin HTTP authentication regression tests passed. Web/admin/API type checks, targeted lint, web/admin builds and diff checks passed. Inspected mobile address screenshot. Live admin credentials and provider verification were not exercised.
+- Build note: country-state-city's worldwide dataset adds a large KYC route chunk (about 2.4 MB gzip); it is isolated from the initial application bundle by route loading. Builds retain chunk-size warnings.

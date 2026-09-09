@@ -208,6 +208,7 @@ export function KYCDetailDialog({
                   </Typography>
                   <Typography sx={{ fontSize: '0.85rem', color: 'text.primary' }}>
                     {[
+                      verification.personalInfo.address.gpsAddress && `GhanaPost GPS: ${verification.personalInfo.address.gpsAddress}`,
                       verification.personalInfo.address.street,
                       verification.personalInfo.address.city,
                       verification.personalInfo.address.state,

@@ -3,7 +3,8 @@
 const API_BASE = import.meta.env.VITE_API_URL || '/api/v1'
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const token = localStorage.getItem('uf_admin_token')
+  const isPublicAuth = ['/auth/login', '/auth/forgot-password', '/auth/reset-password'].includes(path)
+  const token = isPublicAuth ? null : localStorage.getItem('uf_admin_token')
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -12,8 +13,10 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   // An expired/absent session (401 = bad or missing token, distinct from a 403
   // permission denial) should bounce to login rather than leave the page throwing
   // silent errors — e.g. the TopBar's notification poll spamming the console.
-  if (res.status === 401) {
+  if (res.status === 401 && !isPublicAuth) {
     localStorage.removeItem('uf_admin_token')
+    localStorage.removeItem('uf_admin_tokens')
+    localStorage.removeItem('uf_admin_user')
     if (!window.location.pathname.startsWith('/login')) {
       window.location.assign('/login')
     }
@@ -21,7 +24,9 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   }
   if (!res.ok) {
     const err = await res.json().catch(() => null)
-    const fallback = res.status === 404
+    const fallback = res.status === 401
+      ? 'The email or password is incorrect. Please try again.'
+      : res.status === 404
       ? 'This API endpoint is unavailable (404). Refresh and try again.'
       : res.status === 403
         ? 'Your account does not have permission to perform this action.'

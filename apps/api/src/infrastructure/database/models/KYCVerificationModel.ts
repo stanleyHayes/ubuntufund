@@ -62,6 +62,8 @@ const addressSchema = new Schema<KYCAddress>(
     city: { type: String },
     state: { type: String },
     country: { type: String },
+    proofMethod: { type: String, enum: ['ghana_post_gps', 'document'] },
+    gpsAddress: { type: String },
     postalCode: { type: String },
   },
   { _id: false }

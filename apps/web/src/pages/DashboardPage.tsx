@@ -456,8 +456,8 @@ function DonationFeed({ donations }: { donations: UserDonation[] }) {
 function QuickActions() {
   const actions = [
     { icon: <AddRoundedIcon />, label: 'New Campaign', to: '/campaigns/new', color: 'var(--text-brand)', bg: 'rgba(46, 61, 47,0.08)' },
-    { icon: <PeopleRoundedIcon />, label: 'Invite Friends', to: '#', color: 'var(--text-info)', bg: 'rgba(21,101,192,0.08)' },
-    { icon: <VolunteerActivismRoundedIcon />, label: 'My Donations', to: '#', color: 'var(--text-accent)', bg: 'rgba(173,20,87,0.08)' },
+    { icon: <PeopleRoundedIcon />, label: 'Invite Friends', to: '/affiliate', color: 'var(--text-info)', bg: 'rgba(21,101,192,0.08)' },
+    { icon: <VolunteerActivismRoundedIcon />, label: 'My Donations', to: '/donations', color: 'var(--text-accent)', bg: 'rgba(173,20,87,0.08)' },
   ]
 
   return (
