@@ -1,8 +1,8 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import type { ReactNode } from 'react'
-import AsyncStorage from '@react-native-async-storage/async-storage'
-import * as SecureStore from 'expo-secure-store'
-import { loginApi, registerApi, refreshTokenApi } from '@/lib/api'
+import { AppState, View } from 'react-native'
+import { accessToken, endSession, establishSession, expireIdleSession, hydrateSession, observeSession, recordActivity, sessionSnapshot } from '@/lib/session'
+import { loginApi, registerApi } from '@/lib/api'
 import type { AuthUser, AuthTokens } from '@/lib/api'
 
 interface AuthState {
@@ -29,48 +29,6 @@ interface AuthContextValue extends AuthState {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
-const STORAGE_USER_KEY = 'uf_user'
-const STORAGE_TOKENS_KEY = 'uf_tokens'
-
-async function loadFromStorage(): Promise<{ user: AuthUser | null; tokens: AuthTokens | null }> {
-  try {
-    const [userRaw, secureTokensRaw, legacyTokensRaw] = await Promise.all([
-      AsyncStorage.getItem(STORAGE_USER_KEY),
-      SecureStore.getItemAsync(STORAGE_TOKENS_KEY),
-      AsyncStorage.getItem(STORAGE_TOKENS_KEY),
-    ])
-    const tokensRaw = secureTokensRaw ?? legacyTokensRaw
-    if (!secureTokensRaw && legacyTokensRaw) {
-      await SecureStore.setItemAsync(STORAGE_TOKENS_KEY, legacyTokensRaw, {
-        keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
-      })
-      await AsyncStorage.removeItem(STORAGE_TOKENS_KEY)
-    }
-    return {
-      user: userRaw ? JSON.parse(userRaw) : null,
-      tokens: tokensRaw ? JSON.parse(tokensRaw) : null,
-    }
-  } catch {
-    return { user: null, tokens: null }
-  }
-}
-
-async function saveToStorage(user: AuthUser, tokens: AuthTokens) {
-  await Promise.all([
-    AsyncStorage.setItem(STORAGE_USER_KEY, JSON.stringify(user)),
-    SecureStore.setItemAsync(STORAGE_TOKENS_KEY, JSON.stringify(tokens), {
-      keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
-    }),
-  ])
-}
-
-async function clearStorage() {
-  await Promise.all([
-    AsyncStorage.removeItem(STORAGE_USER_KEY),
-    SecureStore.deleteItemAsync(STORAGE_TOKENS_KEY),
-  ])
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({
     user: null,
@@ -79,41 +37,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading: true,
   })
 
-  // Hydrate from storage on mount
   useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      const { user, tokens } = await loadFromStorage()
-
-      if (cancelled) return
-
-      if (!user || !tokens?.refreshToken) {
-        setState({ user: null, tokens: null, isAuthenticated: false, isLoading: false })
-        return
-      }
-
-      // Try to refresh the token
-      try {
-        const newTokens = await refreshTokenApi(tokens.refreshToken)
-        await saveToStorage(user, newTokens)
-        if (!cancelled) {
-          setState({ user, tokens: newTokens, isAuthenticated: true, isLoading: false })
-        }
-      } catch {
-        // Refresh failed — clear stale session
-        await clearStorage()
-        if (!cancelled) {
-          setState({ user: null, tokens: null, isAuthenticated: false, isLoading: false })
-        }
-      }
-    })()
-
-    return () => { cancelled = true }
+    let mounted = true
+    const sync = () => {
+      if (!mounted) return
+      const session = sessionSnapshot()
+      setState({ user: session?.user ?? null, tokens: session?.tokens ?? null, isAuthenticated: !!session, isLoading: false })
+    }
+    const unsubscribe = observeSession(sync)
+    void hydrateSession().then(async () => { sync(); try { await accessToken() } catch { /* Offline sessions are retained. */ } }).catch(sync)
+    const tick = () => { if (!expireIdleSession() && AppState.currentState === 'active') void accessToken().catch(() => {}) }
+    const timer = setInterval(tick, 30000)
+    const appState = AppState.addEventListener('change', value => { if (value === 'active') tick() })
+    return () => { mounted = false; unsubscribe(); clearInterval(timer); appState.remove() }
   }, [])
 
   const login = useCallback(async (email: string, password: string) => {
     const { user, tokens } = await loginApi(email, password)
-    await saveToStorage(user, tokens)
+    await establishSession(user, tokens)
     setState({ user, tokens, isAuthenticated: true, isLoading: false })
 
   }, [])
@@ -129,19 +70,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     registrationNumber?: string
   }) => {
     const { user, tokens } = await registerApi(data)
-    await saveToStorage(user, tokens)
+    await establishSession(user, tokens)
     setState({ user, tokens, isAuthenticated: true, isLoading: false })
 
   }, [])
 
   const logout = useCallback(async () => {
-    await clearStorage()
+    await endSession()
     setState({ user: null, tokens: null, isAuthenticated: false, isLoading: false })
   }, [])
 
   return (
     <AuthContext.Provider value={{ ...state, login, register, logout }}>
-      {children}
+      <View style={{ flex: 1 }} onTouchStart={recordActivity}>{children}</View>
     </AuthContext.Provider>
   )
 }

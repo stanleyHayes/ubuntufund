@@ -2,7 +2,7 @@
 
 Last source audit: 2026-09-09
 
-**Native mobile is not at parity with current web.** See [the current audit](docs/reviews/mobile-web-parity-2026-09-09.md). Unchanged “Equal” rows below are historical scope claims, not newly verified end-to-end acceptance.
+**The audited native gaps are implemented locally; authenticated simulator checks passed for the flows recorded in the report; physical-device and live-provider acceptance remain open.** See [the implementation report](docs/reviews/mobile-parity-implementation-2026-09-09.md). Unchanged “Equal” rows below are historical scope claims, not newly verified end-to-end acceptance.
 
 This matrix covers user- and organization-facing capabilities that are appropriate on both clients. Admin operations remain in the dedicated web admin console.
 
@@ -16,7 +16,7 @@ This matrix covers user- and organization-facing capabilities that are appropria
 | Campaign updates | campaign detail | campaign detail | `/campaigns/:id/updates` | Equal |
 | Campaign comments | campaign detail | campaign detail | `/campaigns/:id/comments` | Equal |
 | Report campaign | campaign detail | campaign detail | `/reports` | Equal |
-| Create campaign | `/campaigns/new` | `/campaign/create` | `POST /campaigns` | Partial: native lacks live limit feedback, image workflow and AI |
+| Create campaign | `/campaigns/new` | `/campaign/create` | `POST /campaigns` | Implemented locally: live limits, cover upload/crop, AI review/apply, collaborators and split setup |
 | Own campaigns | `/my-campaigns` | `/my-campaigns` | `/campaigns/mine` | Equal |
 | Dashboard | `/dashboard` | `/dashboard` | scoped campaign, donation, wallet APIs | Equal |
 | Donation history | `/donations` | `/my-donations` | `/donations/mine` | Equal |
@@ -25,16 +25,18 @@ This matrix covers user- and organization-facing capabilities that are appropria
 | Organization directory | `/organizations` | `/organizations` | `/organizations` | Equal |
 | Organization profile and campaigns | `/organizations/:slug` | `/organization/:id` | `/organizations/:slugOrId`, `/:id/campaigns` | Equal |
 | Collaboration invitations | `/invitations` | `/invitations` | `/collaborations/invitations` | Equal |
-| KYC submission/status | `/kyc` | `/kyc`, `/verification` | `/kyc/*` and `/verifications/*` | Not equal: native KYC posts placeholder data; see audit |
+| KYC submission/status | `/kyc` | `/kyc`, `/verification` | `/kyc/*` and `/verifications/*` | Implemented locally: actual inputs, uploads, GPS and address proof; payload tests pass |
 | Leaderboard | `/leaderboard` | `/leaderboard` | `/leaderboard` | Equal |
-| Profile | `/profile` | Profile tab and public profile route | `/profile`, `/users/:id/public` | Partial: native lacks web profile/cover editing |
+| Profile | `/profile` | Profile tab and public profile route | `/profile`, `/users/:id/public` | Implemented locally: native profile/cover editing and upload |
 | Settings and account deletion | `/settings` | `/settings` | profile/settings APIs and `DELETE /profile` | Equal |
 | Appearance (dark mode + design skins) | Settings → Appearance + Design finish | Settings → Appearance + Design finish | client-side preference (persisted) | Equal; all 4 skins on both platforms (see Theming) |
 | Subscription plans + paid checkout | `/subscription` | Subscription tab (Paystack checkout sheet) | `/subscriptions/*`, `/subscriptions/checkout` | Equal; live once `PAYSTACK_SECRET_KEY` is set |
 | Paid creator profile donations | `/creator`, `/creators/:handle` | `/creator`, `/creators/[handle]` | `/creators/*`; active paid plan required; plan-rate withdrawal fee | Native fee/policy contract aligned; shared launch gaps in `docs/creator-donations.md` |
 | Coupon codes at checkout | subscribe checkout dialog | subscription checkout sheet | `/coupons/preview` + checkout body | Equal |
 | Affiliate program | `/affiliate` | `/affiliate` (Profile menu) | `/affiliate/*` | Equal |
-| Privacy and terms | `/privacy`, `/terms` | `/privacy`, `/terms` | bundled public copy | Equal |
+| All legal policies | `/legal` and eight policy routes | Same routes, offline content | Shared `packages/types/src/legal.ts` | Web browser and native iOS public-route checks pass |
+| Wallet funding and crypto | Wallet/checkout | Wallet/checkout | Top-ups, donation intents and crypto APIs | Implemented; provider acceptance pending |
+| Live host/viewer | Campaign studio/public watch | `/campaign/live`, `/live/:sessionId` | Live sessions and LiveKit tokens | Native builds pass; physical media acceptance pending |
 
 ## Theming (appearance)
 
@@ -58,7 +60,7 @@ This matrix covers user- and organization-facing capabilities that are appropria
 
 ## Current implementation boundaries
 
-- Native campaign donations currently support wallet only. Web has hosted Paystack card/MoMo checkout and provider-gated crypto. Native wallet top-up UI is missing.
+- Native now supports wallet, hosted card/MoMo, available crypto and wallet funding, with persisted pending payments and server confirmation. Live-provider acceptance remains separate.
 - Paid subscriptions activate through the Paystack checkout (`POST /subscriptions/checkout`) on both web and mobile; the rail is live once `PAYSTACK_SECRET_KEY` is configured (the same gate as donations and payouts). The direct `POST /subscriptions` and `PUT /subscriptions/upgrade` endpoints still reject paid tiers by design — paid plans must go through checkout.
 - Refund requests are persisted and visible, but approval and settlement are not automatic.
 - Creator self-service withdrawals are exposed on web and native; current plan fees are previewed before confirmation.
@@ -69,3 +71,7 @@ This matrix covers user- and organization-facing capabilities that are appropria
 - Exercise every row against one shared production-like API account on a physical iPhone/iPad and a responsive web browser.
 - Confirm error, loading, empty, permission-denied, and deleted-record states with seeded test data.
 - Verify notification delivery, deep links, VoiceOver, Dynamic Type, reduced motion, safe areas, and keyboard avoidance on device.
+
+## Legal parity update — 9 September 2026
+
+All eight marketing policies now share `packages/types/src/legal.ts` with web and native. Both apps expose `/legal` and every policy route. Native content is bundled for offline reading. The web legal reading experience is redesigned and route-loading errors provide recovery actions. Source/type/browser checks are complete; native simulator checks passed for the collection, every policy route, section jumps and light/dark reading layouts; deployed asset-routing verification is pending. See `docs/reviews/legal-parity-2026-09-09.md`.

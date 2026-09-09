@@ -1,7 +1,8 @@
+import { SkeletonLoader, Button } from '@/components/Loading'
 import { BrandedTextInput as TextInput } from '@/components/BrandedTextInput'
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { View, ScrollView, StyleSheet, ActivityIndicator, Share, useWindowDimensions } from 'react-native'
-import { Text, Button, Switch, Portal, Dialog, Chip, SegmentedButtons, Snackbar } from 'react-native-paper'
+import { View, ScrollView, StyleSheet, Share, useWindowDimensions } from 'react-native'
+import { Text, Switch, Portal, Dialog, Chip, SegmentedButtons, Snackbar } from 'react-native-paper'
 import { Stack, router } from 'expo-router'
 import {
   getMyCreator, saveCreatorProfile, requestWithdrawal, listMyPayouts,
@@ -106,7 +107,7 @@ export default function CreatorDashboardScreen() {
   const fmt = (n: number) => `GH₵${(n ?? 0).toLocaleString()}`
   const pageUrl = profile ? `${WEB_BASE}/creators/${profile.handle}` : ''
 
-  if (loading) return <View style={styles.center}><ActivityIndicator color={p.primary} /></View>
+  if (loading) return <View style={styles.center}><SkeletonLoader color={p.primary} /></View>
 
   if (loadError) {
     return (
@@ -123,7 +124,7 @@ export default function CreatorDashboardScreen() {
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ title: 'Creator page' }} />
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={styles.content}>
         <Text style={styles.title}>Your creator page</Text>
 
         {profile && balance && (
@@ -180,7 +181,7 @@ export default function CreatorDashboardScreen() {
         <Dialog visible={wOpen} onDismiss={() => setWOpen(false)}>
           <Dialog.Title>Withdraw funds</Dialog.Title>
           <Dialog.ScrollArea style={{ maxHeight: height * 0.6, paddingHorizontal: 0 }}>
-          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: 12, padding: 24 }}>
+          <ScrollView automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: 12, padding: 24 }}>
             <TextInput label="Amount" keyboardType="numeric" value={wAmount} onChangeText={setWAmount} />
             <SegmentedButtons value={wType} onValueChange={setWType} buttons={[{ value: 'mobile_money', label: 'Mobile money' }, { value: 'ghipss', label: 'Bank' }]} />
             <TextInput label={wType === 'mobile_money' ? 'Phone number' : 'Account number'} value={wAccount} onChangeText={setWAccount} />

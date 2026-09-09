@@ -171,8 +171,8 @@ export default function OrganizationsScreen() {
       <Stack.Screen
         options={{
           title: 'Organizations',
-          headerStyle: { backgroundColor: p.primary },
-          headerTintColor: p.onPrimary,
+          headerStyle: { backgroundColor: p.background },
+          headerTintColor: p.text,
           headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
         }}
       />

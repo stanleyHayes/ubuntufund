@@ -1,124 +1,47 @@
-import { useMemo } from 'react'
-import { View, Pressable, StyleSheet } from 'react-native'
-import { Tabs } from 'expo-router'
+import { View, Pressable } from 'react-native'
+import { Tabs, router } from 'expo-router'
 import { Icon, Text } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs'
 import { usePalette } from '@/context/ColorModeContext'
-import type { Palette } from '@/theme'
+import { GlassSurface } from '@/components/GlassSurface'
 
-const TAB_ITEMS: Record<string, { icon: string; iconActive: string; label: string }> = {
-  index: { icon: 'home-variant-outline', iconActive: 'home-variant', label: 'Home' },
-  explore: { icon: 'compass-outline', iconActive: 'compass', label: 'Explore' },
-  subscription: { icon: 'crown-outline', iconActive: 'crown', label: 'Plans' },
-  wallet: { icon: 'wallet-outline', iconActive: 'wallet', label: 'Wallet' },
-  profile: { icon: 'account-outline', iconActive: 'account', label: 'Profile' },
+const items: Record<string, { icon: string; label: string }> = {
+  index: { icon: 'home-outline', label: 'Home' },
+  explore: { icon: 'compass-outline', label: 'Explore' },
+  create: { icon: 'plus', label: 'Start' },
+  dashboard: { icon: 'view-dashboard-outline', label: 'Dashboard' },
+  profile: { icon: 'account-outline', label: 'Profile' },
 }
-
-/**
- * Floating pill tab bar: detached forest capsule on a parchment strip,
- * active item's icon sits in a soft cream capsule (WhatsApp-style).
- * Rendered in normal flow so screens keep their own scroll padding.
- */
-function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
-  const insets = useSafeAreaInsets()
-  const styles = useStyles()
-  return (
-    <View style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 10) }]}>
-      <View style={styles.bar}>
-        {state.routes
-          .filter((route) => TAB_ITEMS[route.name])
-          .map((route) => {
-            const focused = state.routes[state.index].key === route.key
-            const item = TAB_ITEMS[route.name]
-            return (
-              <Pressable
-                key={route.key}
-                style={styles.item}
-                onPress={() => {
-                  const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true })
-                  if (!focused && !event.defaultPrevented) navigation.navigate(route.name)
-                }}
-                accessibilityRole="button"
-                accessibilityState={focused ? { selected: true } : {}}
-                accessibilityLabel={item.label}
-              >
-                <View style={[styles.iconCapsule, focused && styles.iconCapsuleActive]}>
-                  <Icon
-                    source={focused ? item.iconActive : item.icon}
-                    size={22}
-                    color={focused ? '#F5F2EA' : 'rgba(245,242,234,0.55)'}
-                  />
-                </View>
-                <Text style={[styles.label, focused && styles.labelActive]}>{item.label}</Text>
-              </Pressable>
-            )
-          })}
-      </View>
-    </View>
-  )
+function TabBar({ state, navigation }: BottomTabBarProps) {
+  const p = usePalette(); const insets = useSafeAreaInsets()
+  return <View style={{ paddingHorizontal: 14, paddingTop: 8, paddingBottom: Math.max(insets.bottom, 10), backgroundColor: p.background }}>
+    <GlassSurface style={{ borderRadius: 36, paddingHorizontal: 8, paddingVertical: 8 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>{['index', 'explore', 'create', 'dashboard', 'profile'].map(name => {
+        const route = state.routes.find(r => r.name === name)!
+        const active = state.routes[state.index].key === route.key
+        const item = items[name]
+        return <Pressable key={name} accessibilityRole="tab" accessibilityLabel={item.label} accessibilityState={{ selected: active }} style={{ flex: 1, minHeight: 54, alignItems: 'center', justifyContent: 'center', gap: 3, borderRadius: 24 }} onPress={() => {
+          if (name === 'create') { router.push('/campaign/create'); return }
+          const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true })
+          if (!event.defaultPrevented) navigation.navigate(name)
+        }}>
+          <View style={{ padding: 7, borderRadius: 22, backgroundColor: name === 'create' ? p.primary : active ? p.skeleton : 'transparent' }}><Icon source={item.icon} size={name === 'create' ? 26 : 22} color={name === 'create' ? p.onPrimary : active ? p.primary : p.textSecondary} /></View>
+          <Text style={{ fontSize: 10, color: active ? p.primary : p.textSecondary, fontFamily: 'Outfit_700Bold' }}>{item.label}</Text>
+        </Pressable>
+      })}</View>
+    </GlassSurface>
+  </View>
 }
-
 export default function TabLayout() {
   const p = usePalette()
-  return (
-    <Tabs
-      tabBar={(props) => <FloatingTabBar {...props} />}
-      screenOptions={{
-        headerStyle: { backgroundColor: p.primary },
-        headerTintColor: p.onPrimary,
-        headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
-      }}
-    >
-      <Tabs.Screen name="index" options={{ title: 'Home', headerShown: false }} />
-      <Tabs.Screen name="explore" options={{ title: 'Explore' }} />
-      <Tabs.Screen name="subscription" options={{ title: 'Plans' }} />
-      <Tabs.Screen name="create" options={{ href: null }} />
-      <Tabs.Screen name="wallet" options={{ title: 'Wallet', headerShown: false }} />
-      <Tabs.Screen name="profile" options={{ title: 'Profile', headerShown: false }} />
-    </Tabs>
-  )
-}
-
-function makeStyles(p: Palette) {
-  return StyleSheet.create({
-    wrap: {
-      backgroundColor: p.background,
-      paddingHorizontal: 16,
-      paddingTop: 8,
-    },
-    bar: {
-      flexDirection: 'row',
-      backgroundColor: p.primaryDark,
-      borderRadius: 999,
-      paddingVertical: 8,
-      paddingHorizontal: 10,
-    },
-    item: {
-      flex: 1,
-      alignItems: 'center',
-      gap: 2,
-    },
-    iconCapsule: {
-      paddingHorizontal: 16,
-      paddingVertical: 4,
-      borderRadius: 999,
-    },
-    iconCapsuleActive: {
-      backgroundColor: 'rgba(245,242,234,0.12)',
-    },
-    label: {
-      fontSize: 10,
-      fontFamily: 'Outfit_700Bold',
-      color: 'rgba(245,242,234,0.55)',
-    },
-    labelActive: {
-      color: '#F5F2EA',
-    },
-  })
-}
-
-function useStyles() {
-  const p = usePalette()
-  return useMemo(() => makeStyles(p), [p])
+  return <Tabs tabBar={props => <TabBar {...props} />} screenOptions={{ headerStyle: { backgroundColor: p.background }, headerTintColor: p.text, headerTitleStyle: { fontFamily: 'Outfit_700Bold' } }}>
+    <Tabs.Screen name="index" options={{ title: 'Home', headerShown: false }} />
+    <Tabs.Screen name="explore" options={{ title: 'Explore' }} />
+    <Tabs.Screen name="create" options={{ title: 'Start' }} />
+    <Tabs.Screen name="dashboard" options={{ title: 'Dashboard', headerShown: false }} />
+    <Tabs.Screen name="profile" options={{ title: 'Profile', headerShown: false }} />
+    <Tabs.Screen name="subscription" options={{ href: null, title: 'Plans' }} />
+    <Tabs.Screen name="wallet" options={{ href: null, title: 'Wallet', headerShown: false }} />
+  </Tabs>
 }

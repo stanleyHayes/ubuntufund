@@ -1,7 +1,8 @@
+import { SkeletonLoader } from '@/components/Loading'
 import { useMemo } from 'react'
 import { View, ScrollView, StyleSheet } from 'react-native'
 import { useLocalSearchParams, Stack } from 'expo-router'
-import { Text, Avatar, ActivityIndicator, Surface, Chip } from 'react-native-paper'
+import { Text, Avatar, Surface, Chip } from 'react-native-paper'
 import { useUser } from '@/hooks/useCampaigns'
 import { TrustBadge } from '@/components/TrustBadge'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
@@ -16,7 +17,7 @@ export default function ProfileScreen() {
   if (isLoading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color={p.primary} />
+        <SkeletonLoader size="large" color={p.primary} />
       </View>
     )
   }

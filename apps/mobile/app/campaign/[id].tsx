@@ -1,17 +1,17 @@
-import { BrandedNativeInput as TextInput } from '@/components/BrandedNativeInput'
+import { SkeletonLoader } from '@/components/Loading'
 import { useState, useEffect, useMemo } from 'react'
-import { View, ScrollView, StyleSheet, Alert, Modal, TouchableOpacity } from 'react-native'
-import { useLocalSearchParams, Stack } from 'expo-router'
-import { Text, Button, Chip, ActivityIndicator, Surface, Avatar, Icon } from 'react-native-paper'
+import { View, ScrollView, StyleSheet, Alert } from 'react-native'
+import { useLocalSearchParams, Stack, router } from 'expo-router'
+import { Text, Button, Chip, Surface, Avatar, Icon } from 'react-native-paper'
 import { useCampaign, useUser } from '@/hooks/useCampaigns'
 import { RemoteImage } from '@/components/RemoteImage'
 import { FadeInUp } from '@/components/anim/FadeInUp'
-import { useEnabledPaymentProviders, EnabledPaymentProvider, getProviderIcon } from '@/hooks/useEnabledPaymentProviders'
 import { ProgressBar } from '@/components/ProgressBar'
 import { TrustBadge } from '@/components/TrustBadge'
 import { shareCampaign } from '@/components/ShareCampaign'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
 import type { Palette, NeuRecipes } from '@/theme'
+import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
 import type { CampaignDonation } from '@ubuntu-fund/types'
 import { CollaboratorRole, type CampaignCollaborator } from '@ubuntu-fund/types'
@@ -31,10 +31,6 @@ function makePriorityStyle(p: Palette): Record<string, { bg: string; text: strin
     urgent: { bg: `${p.warning}29`, text: p.warning },
     normal: { bg: 'rgba(168,181,160,0.28)', text: p.text },
   }
-}
-
-const FALLBACK_WALLET_PROVIDER: EnabledPaymentProvider = {
-  id: 'fallback-wallet', name: 'Wallet', slug: 'wallet', type: 'wallet', isDefault: true, feePercent: 0,
 }
 
 // Guarded date formatter — an absent or unparseable date renders "—", never "Invalid Date".
@@ -209,9 +205,14 @@ function useStyles() {
 
 export default function CampaignDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
+  const { user: signedInUser } = useAuth()
+  const [activeLive, setActiveLive] = useState<{ id: string } | null>(null)
+  useEffect(() => { let active = true; const load = () => api.get<{ id: string } | null>(`/campaigns/${id}/active-live`).then(value => { if (active) setActiveLive(value) }).catch(() => {}); void load(); const timer = setInterval(load, 15000); return () => { active = false; clearInterval(timer) } }, [id])
   const { campaign, isLoading, error } = useCampaign(id ?? '')
   const { user: creator } = useUser(campaign?.creatorId ?? '')
 
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 60000); return () => clearInterval(timer) }, [])
   const p = usePalette()
   const styles = useStyles()
   const priorityStyle = useMemo(() => makePriorityStyle(p), [p])
@@ -220,29 +221,9 @@ export default function CampaignDetailScreen() {
   const [collaborators, setCollaborators] = useState<CampaignCollaborator[]>([])
   const [collabLoading, setCollabLoading] = useState(true)
 
-  // Donation modal state
-  const [donateModalVisible, setDonateModalVisible] = useState(false)
-  const [donateAmount, setDonateAmount] = useState('')
-  const [donateMessage, setDonateMessage] = useState('')
-  const [selectedProvider, setSelectedProvider] = useState<EnabledPaymentProvider | null>(null)
-  const [isDonating, setIsDonating] = useState(false)
-
-  const { providers, isLoading: providersLoading, error: providersError } = useEnabledPaymentProviders()
-
-  useEffect(() => {
-    if (selectedProvider) return
-    if (providers.length > 0) {
-      const defaultProvider = providers.find((p) => p.isDefault) ?? providers[0]
-      setSelectedProvider(defaultProvider)
-    } else if (providersError) {
-      setSelectedProvider(FALLBACK_WALLET_PROVIDER)
-    }
-  }, [providers, providersError, selectedProvider])
-
   useEffect(() => {
     if (!id) return
     let cancelled = false
-    setCollabLoading(true)
     api
       .get<CampaignCollaborator[] | { items: CampaignCollaborator[] }>(`/campaigns/${id}/collaborators`)
       .then((data) => {
@@ -260,48 +241,10 @@ export default function CampaignDetailScreen() {
     return () => { cancelled = true }
   }, [id])
 
-  const handleDonate = async () => {
-    const amount = Number(donateAmount)
-    if (!amount || amount <= 0) {
-      Alert.alert('Invalid Amount', 'Please enter a valid donation amount.')
-      return
-    }
-
-    if (!selectedProvider) {
-      Alert.alert('No Payment Method', 'Please select a payment method.')
-      return
-    }
-
-    if (selectedProvider.type !== 'wallet') {
-      Alert.alert('Payment Method Unavailable', 'This provider is not configured for live payments.')
-      return
-    }
-
-    setIsDonating(true)
-    try {
-      await api.post(`/campaigns/${id}/donate`, {
-        amount,
-        currency: campaign?.currency ?? 'GHS',
-        paymentMethod: selectedProvider.slug,
-        message: donateMessage || undefined,
-        isAnonymous: false,
-      })
-      setDonateModalVisible(false)
-      setDonateAmount('')
-      setDonateMessage('')
-      setSelectedProvider(null)
-      Alert.alert('Thank You!', 'Your donation was submitted successfully.')
-    } catch (err: unknown) {
-      Alert.alert('Donation Failed', err instanceof Error ? err.message : 'Something went wrong. Please try again.')
-    } finally {
-      setIsDonating(false)
-    }
-  }
-
   if (isLoading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color={p.primary} />
+        <SkeletonLoader size="large" color={p.primary} />
       </View>
     )
   }
@@ -317,12 +260,15 @@ export default function CampaignDetailScreen() {
   const progress = campaign.goalAmount > 0 ? campaign.raisedAmount / campaign.goalAmount : 0
   const daysLeft = Math.max(
     0,
-    Math.ceil((new Date(campaign.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+    Math.ceil((new Date(campaign.endDate).getTime() - now) / (1000 * 60 * 60 * 24))
   )
 
   return (
     <>
       <Stack.Screen options={{ title: campaign.title }} />
+      {activeLive && <Button mode="contained" icon="video" onPress={() => router.push(`/live/${activeLive.id}`)}>Watch live broadcast</Button>}
+      {signedInUser?.id === campaign.creatorId && <Button icon="cog" onPress={() => router.push({ pathname: '/campaign/manage', params: { id } })}>Manage campaign</Button>}
+      {signedInUser?.id === campaign.creatorId && <Button icon="video-plus" onPress={() => router.push({ pathname: '/campaign/live', params: { id } })}>Go live</Button>}
       <ScrollView style={styles.container}>
         <RemoteImage uri={campaign.imageUrls[0]} style={styles.heroImage} />
 
@@ -381,7 +327,7 @@ export default function CampaignDetailScreen() {
               labelStyle={styles.donateLabel}
               buttonColor={p.secondary}
               textColor="#221B0E"
-              onPress={() => setDonateModalVisible(true)}
+              onPress={() => router.push(`/donate/${id}`)}
             >
               Donate Now
             </Button>
@@ -521,7 +467,7 @@ export default function CampaignDetailScreen() {
 
           {/* Collaborators */}
           {collabLoading ? (
-            <ActivityIndicator size="small" color={p.primary} style={{ marginVertical: 12 }} />
+            <SkeletonLoader size="small" color={p.primary} style={{ marginVertical: 12 }} />
           ) : collaborators.length > 0 ? (
             <>
               <Text variant="titleMedium" style={styles.sectionTitle}>
@@ -601,107 +547,7 @@ export default function CampaignDetailScreen() {
         </FadeInUp>
       </ScrollView>
 
-      {/* Donation Modal */}
-      <Modal
-        visible={donateModalVisible}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setDonateModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalSheet}>
-            <Text variant="titleLarge" style={styles.modalTitle}>
-              Donate to Campaign
-            </Text>
-            <Text variant="bodySmall" style={[styles.muted, { marginBottom: 16 }]}>
-              {campaign.title}
-            </Text>
 
-            <Text variant="labelLarge" style={styles.fieldLabel}>Amount (GHS)</Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder="e.g. 50"
-              placeholderTextColor={`${p.text}59`}
-              keyboardType="numeric"
-              value={donateAmount}
-              onChangeText={setDonateAmount}
-              editable={!isDonating}
-            />
-
-            <Text variant="labelLarge" style={styles.fieldLabel}>Payment Method</Text>
-            {providersLoading ? (
-              <ActivityIndicator size="small" color={p.primary} style={{ marginVertical: 12 }} />
-            ) : providersError || providers.length === 0 ? (
-              <View style={styles.paymentFallback}>
-                <Icon source="wallet" size={20} color={p.primary} />
-                <Text variant="bodySmall" style={styles.paymentFallbackText}>
-                  {providersError ? 'Could not load payment methods. Wallet will be used.' : 'No payment methods available.'}
-                </Text>
-              </View>
-            ) : (
-              <View style={styles.providerList}>
-                {providers.map((provider) => (
-                  <TouchableOpacity
-                    key={provider.id}
-                    style={[
-                      styles.providerOption,
-                      selectedProvider?.id === provider.id && styles.providerOptionActive,
-                    ]}
-                    onPress={() => setSelectedProvider(provider)}
-                    disabled={isDonating}
-                  >
-                    <Icon
-                      source={getProviderIcon(provider.type)}
-                      size={20}
-                      color={selectedProvider?.id === provider.id ? p.primary : p.textSecondary}
-                    />
-                    <Text
-                      style={[
-                        styles.providerOptionText,
-                        selectedProvider?.id === provider.id && styles.providerOptionTextActive,
-                      ]}
-                    >
-                      {provider.name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
-
-            <Text variant="labelLarge" style={styles.fieldLabel}>Message (optional)</Text>
-            <TextInput
-              style={[styles.modalInput, { height: 60, textAlignVertical: 'top' }]}
-              placeholder="Leave a message of support..."
-              placeholderTextColor={`${p.text}59`}
-              multiline
-              value={donateMessage}
-              onChangeText={setDonateMessage}
-              editable={!isDonating}
-            />
-
-            <View style={styles.modalActions}>
-              <Button
-                mode="outlined"
-                onPress={() => setDonateModalVisible(false)}
-                style={{ flex: 1, marginRight: 8, borderRadius: 999 }}
-                disabled={isDonating}
-              >
-                Cancel
-              </Button>
-              <Button
-                mode="contained"
-                buttonColor={p.primary}
-                onPress={handleDonate}
-                style={{ flex: 1, marginLeft: 8, borderRadius: 999 }}
-                disabled={isDonating || !donateAmount || (!providersLoading && providers.length === 0 && !providersError)}
-                loading={isDonating}
-              >
-                {isDonating ? 'Processing...' : 'Confirm'}
-              </Button>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </>
   )
 }

@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { api } from '@/lib/api'
 import type { Campaign, CampaignDetail } from '@ubuntu-fund/types'
 import type { User } from '@ubuntu-fund/types'
 
 interface UseCampaignsResult {
+  refetch: () => void
   campaigns: Campaign[]
   isLoading: boolean
   error: string | null
@@ -21,9 +22,11 @@ interface UseUserResult {
 }
 
 export function useCampaigns(): UseCampaignsResult {
+  const [retry, setRetry] = useState(0)
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const refetch = useCallback(() => { setIsLoading(true); setError(null); setRetry(value => value + 1) }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -43,9 +46,9 @@ export function useCampaigns(): UseCampaignsResult {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [retry])
 
-  return { campaigns, isLoading, error }
+  return { campaigns, isLoading, error, refetch }
 }
 
 export function useCampaign(id: string): UseCampaignResult {

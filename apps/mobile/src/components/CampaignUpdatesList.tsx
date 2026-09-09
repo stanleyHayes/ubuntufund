@@ -1,6 +1,7 @@
+import { SkeletonLoader } from '@/components/Loading'
 import { useState, useEffect, useMemo } from 'react'
 import { View, ScrollView, StyleSheet, TouchableOpacity } from 'react-native'
-import { Text, Chip, ActivityIndicator, Avatar, Icon, Surface } from 'react-native-paper'
+import { Text, Chip, Avatar, Icon, Surface } from 'react-native-paper'
 import type { CampaignUpdate } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
 import { EmptyState } from '@/components/EmptyState'
@@ -169,7 +170,7 @@ export function CampaignUpdatesList({ campaignId }: CampaignUpdatesListProps) {
   if (isLoading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="small" color={p.primary} />
+        <SkeletonLoader size="small" color={p.primary} />
       </View>
     )
   }

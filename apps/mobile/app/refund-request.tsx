@@ -1,3 +1,4 @@
+import { Button } from '@/components/Loading'
 import { BrandedNativeInput as TextInput } from '@/components/BrandedNativeInput'
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
@@ -8,7 +9,7 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native'
-import { Text, Icon, Button } from 'react-native-paper'
+import { Text, Icon, } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, Stack, useLocalSearchParams } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'
@@ -249,8 +250,8 @@ export default function RefundRequestScreen() {
 
   const headerOptions = {
     title: 'Refund Request',
-    headerStyle: { backgroundColor: p.primary },
-    headerTintColor: p.onPrimary,
+    headerStyle: { backgroundColor: p.background },
+    headerTintColor: p.text,
     headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
   }
 
@@ -269,8 +270,8 @@ export default function RefundRequestScreen() {
         <Stack.Screen
           options={{
             title: 'Refund Request',
-            headerStyle: { backgroundColor: p.primary },
-            headerTintColor: p.onPrimary,
+            headerStyle: { backgroundColor: p.background },
+            headerTintColor: p.text,
             headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
           }}
         />
@@ -313,8 +314,8 @@ export default function RefundRequestScreen() {
       <Stack.Screen
         options={{
           title: 'Refund Request',
-          headerStyle: { backgroundColor: p.primary },
-          headerTintColor: p.onPrimary,
+          headerStyle: { backgroundColor: p.background },
+          headerTintColor: p.text,
           headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
         }}
       />

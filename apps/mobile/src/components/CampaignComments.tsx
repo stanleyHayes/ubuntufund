@@ -1,7 +1,8 @@
+import { SkeletonLoader, Button } from '@/components/Loading'
 import { BrandedNativeInput as TextInput } from '@/components/BrandedNativeInput'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Alert, StyleSheet, View } from 'react-native'
-import { ActivityIndicator, Avatar, Button, IconButton, Text } from 'react-native-paper'
+import { Avatar, IconButton, Text } from 'react-native-paper'
 import type { CampaignComment } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
@@ -64,7 +65,7 @@ export function CampaignComments({ campaignId, creatorId }: { campaignId: string
     }
   }
 
-  if (loading) return <ActivityIndicator style={styles.loader} color={p.primary} />
+  if (loading) return <SkeletonLoader style={styles.loader} color={p.primary} />
 
   return (
     <View style={styles.wrap}>

@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ScrollView, StyleSheet, View } from 'react-native'
-import { ActivityIndicator, Button, Chip, Icon, Text } from 'react-native-paper'
-import { Stack, useLocalSearchParams } from 'expo-router'
+import { SkeletonLoader } from '@/components/Loading'
+import { useCallback, useMemo, useState } from 'react'
+import { ScrollView, StyleSheet, View, Image, Share, Linking } from 'react-native'
+import { Button, Chip, Icon, Text } from 'react-native-paper'
+import { Stack, useLocalSearchParams, router, useFocusEffect } from 'expo-router'
 import type { Campaign, CampaignCategory } from '@ubuntu-fund/types'
+import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
 import { CampaignCard } from '@/components/CampaignCard'
+import { GlassSurface } from '@/components/GlassSurface'
 import { EmptyState } from '@/components/EmptyState'
 import { usePalette } from '@/context/ColorModeContext'
 import type { Palette } from '@/theme'
@@ -13,6 +16,8 @@ interface OrganizationDetail {
   id: string
   name: string
   description: string
+  logoUrl?: string
+  coverUrl?: string
   country: string
   city: string
   verified: boolean
@@ -27,6 +32,7 @@ interface OrganizationDetail {
 
 export default function OrganizationProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
+  const { user } = useAuth()
   const p = usePalette()
   const styles = useStyles()
   const [organization, setOrganization] = useState<OrganizationDetail | null>(null)
@@ -52,10 +58,10 @@ export default function OrganizationProfileScreen() {
     }
   }, [id])
 
-  useEffect(() => { load() }, [load])
+  useFocusEffect(useCallback(() => { void load() }, [load]))
 
   if (loading) {
-    return <View style={styles.center}><Stack.Screen options={{ title: 'Organization' }} /><ActivityIndicator size="large" /></View>
+    return <View style={styles.center}><Stack.Screen options={{ title: 'Organization' }} /><SkeletonLoader size="large" /></View>
   }
 
   if (!organization) {
@@ -65,26 +71,34 @@ export default function OrganizationProfileScreen() {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <Stack.Screen options={{ title: organization.name }} />
-      <View style={styles.hero}>
+      {organization.coverUrl && <Image source={{ uri: organization.coverUrl }} style={{ width: '100%', height: 180, borderRadius: 18 }} />}
+      <GlassSurface style={styles.hero}>
+        {organization.logoUrl && <Image source={{ uri: organization.logoUrl }} style={{ width: 72, height: 72, borderRadius: 18 }} />}
+        {user?.id === organization.id && <Button onPress={() => router.push('/profile/edit')}>Edit organization profile and images</Button>}
         <View style={styles.iconTile}><Icon source="office-building" size={30} color="#FFFFFF" /></View>
         <View style={styles.titleRow}>
           <Text style={styles.title}>{organization.name}</Text>
           {organization.verified && <Icon source="check-decagram" size={20} color={p.success} />}
         </View>
-        <Text style={styles.meta}>{[organization.city, organization.country].filter(Boolean).join(', ') || 'Ghana'} · Founded {organization.founded}</Text>
+        <Text style={styles.meta}>{[[organization.city, organization.country].filter(Boolean).join(', '), organization.founded ? `Founded ${organization.founded}` : ''].filter(Boolean).join(' · ')}</Text>
         <Text style={styles.statement}>{organization.impactStatement}</Text>
         <View style={styles.stats}>
           <View><Text style={styles.statValue}>{organization.campaignCount}</Text><Text style={styles.statLabel}>Campaigns</Text></View>
           <View><Text style={styles.statValue}>{organization.currency} {organization.totalRaised.toLocaleString()}</Text><Text style={styles.statLabel}>Raised</Text></View>
         </View>
         {organization.categories.length > 0 && <View style={styles.chips}>{organization.categories.map((category) => <Chip key={category} compact>{category}</Chip>)}</View>}
-      </View>
+        {organization.description ? <Text selectable style={styles.statement}>{organization.description}</Text> : null}
+        <View style={styles.chips}>
+          <Button icon="share-variant" onPress={() => { void Share.share({ message: `Support ${organization.name} on Ujimora: https://app.ujimora.com/organizations/${encodeURIComponent(id)}` }).catch(() => setError('Could not open sharing. Please try again.')) }}>Share</Button>
+          {organization.website && /^https?:\/\//i.test(organization.website) && <Button icon="open-in-new" onPress={() => { void Linking.openURL(organization.website!).catch(() => setError('Could not open this website.')) }}>Visit website</Button>}
+        </View>
+      </GlassSurface>
 
       <Text style={styles.sectionTitle}>Campaigns</Text>
       {campaigns.length === 0 ? (
         <EmptyState variant="default" icon="bullhorn-outline" title="No campaigns yet" />
       ) : campaigns.map((campaign) => <CampaignCard key={campaign.id} campaign={campaign} />)}
-      {error && <Button onPress={load}>Retry</Button>}
+      {error && <Text accessibilityRole="alert" style={{ color: p.error }}>{error}</Text>}
     </ScrollView>
   )
 }
@@ -94,7 +108,7 @@ function makeStyles(p: Palette) {
     screen: { flex: 1, backgroundColor: p.background },
     content: { padding: 16, paddingBottom: 40, gap: 14 },
     center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: p.background, padding: 24 },
-    hero: { backgroundColor: p.surface, borderRadius: 18, padding: 20, gap: 10 },
+    hero: { borderRadius: 18, padding: 20, gap: 10 },
     iconTile: { width: 54, height: 54, borderRadius: 16, backgroundColor: p.primary, alignItems: 'center', justifyContent: 'center' },
     titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     title: { flex: 1, fontFamily: 'Outfit_800ExtraBold', fontSize: 24, color: p.text },

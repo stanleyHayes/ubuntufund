@@ -1,3 +1,6 @@
+import { LegalPage } from './pages/LegalPage'
+import { LEGAL_POLICIES } from '@ubuntu-fund/types/src/legal'
+import { RouteError } from './components/RouteError'
 import { lazy } from 'react'
 import { createBrowserRouter } from 'react-router-dom'
 import { Layout } from './components/layout/Layout'
@@ -9,8 +12,6 @@ const CreateCampaignPage = lazy(() => import('./pages/CreateCampaignPage').then(
 const LoginPage = lazy(() => import('./pages/LoginPage').then((m) => ({ default: m.LoginPage })))
 const RegisterPage = lazy(() => import('./pages/RegisterPage').then((m) => ({ default: m.RegisterPage })))
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })))
-const TermsPage = lazy(() => import('./pages/TermsPage').then((m) => ({ default: m.TermsPage })))
-const PrivacyPage = lazy(() => import('./pages/PrivacyPage').then((m) => ({ default: m.PrivacyPage })))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })))
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage })))
 const ProfilePage = lazy(() => import('./pages/ProfilePage').then((m) => ({ default: m.ProfilePage })))
@@ -39,13 +40,14 @@ const CreatorDashboardPage = lazy(() => import('./pages/CreatorDashboardPage').t
 
 export const router = createBrowserRouter([
   // Auth pages — standalone immersive layout (no header/footer)
-  { path: 'login', element: <LoginPage /> },
-  { path: 'register', element: <RegisterPage /> },
-  { path: 'forgot-password', element: <ForgotPasswordPage /> },
+  { path: 'login', element: <LoginPage />, errorElement: <RouteError /> },
+  { path: 'register', element: <RegisterPage />, errorElement: <RouteError /> },
+  { path: 'forgot-password', element: <ForgotPasswordPage />, errorElement: <RouteError /> },
   // Main app — standard layout with header/footer
   {
     path: '/',
     element: <Layout />,
+    errorElement: <RouteError />,
     children: [
       { index: true, element: <HomePage /> },
       { path: 'explore', element: <ExplorePage /> },
@@ -75,8 +77,8 @@ export const router = createBrowserRouter([
       { path: 'wallet', element: <RequireAuth><WalletPage /></RequireAuth> },
       { path: 'invitations', element: <RequireAuth><CollaborationInvitationsPage /></RequireAuth> },
       { path: 'kyc', element: <RequireAuth><KYCPage /></RequireAuth> },
-      { path: 'terms', element: <TermsPage /> },
-      { path: 'privacy', element: <PrivacyPage /> },
+      { path: 'legal', element: <LegalPage /> },
+      ...LEGAL_POLICIES.map(policy => ({ path: policy.slug, element: <LegalPage slug={policy.slug} /> })),
       { path: '*', element: <NotFoundPage /> },
     ],
   },

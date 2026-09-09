@@ -249,8 +249,8 @@ export default function VerificationScreen() {
 
   const headerOptions = {
     title: 'Verification',
-    headerStyle: { backgroundColor: p.primary },
-    headerTintColor: p.onPrimary,
+    headerStyle: { backgroundColor: p.background },
+    headerTintColor: p.text,
     headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
   }
 

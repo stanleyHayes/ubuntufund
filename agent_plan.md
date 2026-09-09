@@ -3,6 +3,32 @@
 > Active completion pass started: 2026-08-09
 > Goal: production-complete web, mobile, API, marketing, admin, and organization experiences with App Store readiness, CMS-backed public content, soft deletion, and verified frontend/backend parity.
 
+## Admin settings mobile table — 2026-09-09
+
+- Fixed horizontal scrolling for the subscription-tier fee table, constrained it to the phone viewport, added a mobile swipe hint and keyboard-focusable named region. Read-only viewers can scroll the informational table.
+- Verification: admin TypeScript, lint, 15 tests and production build passed. Chromium checks at 390px confirmed no page overflow, keyboard scrolling and the Price column fully reachable for editable and read-only roles (mocked API permissions).
+- Published together with the accumulated native parity and shared legal-page work; physical-device/provider acceptance limitations remain recorded below.
+
+## Active goal: native mobile feature and design parity — 2026-09-09
+
+Owner: Codex. Status: engineering parity pass complete locally; physical-device/provider acceptance remains external. Scope: current web user-facing capabilities and native design equivalents, with provider/device acceptance tracked separately.
+
+| Work | Status | Acceptance |
+|---|---|---|
+| KYC, uploads, address/GPS | ENGINEERING IMPLEMENTED | Actual entered data/uploads reach API; validation, retry and branded selection |
+| Session refresh/inactivity | ENGINEERING IMPLEMENTED | Single-flight refresh, transient-error preservation, idle expiry, late-refresh guards |
+| Payment checkout/crypto and wallet funding | ENGINEERING IMPLEMENTED | Real API contracts, idempotency, provider-confirmed status |
+| Campaign creation, media, AI and management | ENGINEERING IMPLEMENTED | Live limits, upload/crop, preview/apply AI, validation |
+| Profiles, organizations and creator flows | ENGINEERING IMPLEMENTED | Native image/cover editing, owner authorization, paid policy |
+| Live host/viewer | ENGINEERING IMPLEMENTED | Native transport, permissions, recovery, donation attribution |
+| Navigation, loading, skins and accessibility | ENGINEERING IMPLEMENTED | Matching destinations, skeletons/dots, branded surfaces/watermarks |
+| Legal pages and policy collection | ENGINEERING IMPLEMENTED | Shared eight-policy source, native offline pages, web redesign/recovery; web browser and native simulator policy checks pass |
+| Remaining routes and final verification | ENGINEERING VERIFIED; EXTERNAL ACCEPTANCE OPEN | Route/contract inventory, tests and native bundle/runtime review |
+
+Current evidence: mobile TypeScript and lint pass; 21 native logic tests pass. iOS, Android and Expo web Metro exports pass. The ReplayKit broadcast extension compiles for the simulator. Web legal checks: 40 unit tests and three browser scenarios pass (all eight policies, phone layout/anchors, four skins in both modes). Full iOS simulator build and installation passed with ad-hoc signing. Public home loads real API data. Legal hub, all eight direct policy links, section jumps and light/dark reading layouts passed native walkthrough. Signed-in checks passed for profile, wallet funding entry, subscription selection/keyboard layout, KYC validation and nationality selection, paid creator restrictions, and owner live studio. Campaign creation correctly enforces the account’s full active-campaign allowance. All four appearances were checked; original preferences were restored. No provider transaction or live broadcast was initiated. Expo Doctor passes 19/20 checks, with remaining SDK patch/navigation-version advisories documented in the report; the actual dependency graph is valid. Implementation details: `docs/reviews/mobile-parity-implementation-2026-09-09.md`. Connected iPhone is paired; Xcode Personal Team is signed in but has no valid signing identity and Xcode explicitly cannot provision the app because Personal Teams do not support its Push Notifications capability. This is not physical-device acceptance.
+
+Maintain evidence here as each slice completes. Physical device/provider acceptance is distinct from engineering completion.
+
 ## Native mobile parity audit — 2026-09-09
 
 - Published the completed pricing/paid-creator slice to main (`4e3ddad`), verified remote SHA.

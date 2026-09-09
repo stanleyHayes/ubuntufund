@@ -355,7 +355,7 @@ export default function SettingsPage() {
       <Grid container spacing={3} sx={!canEdit ? { pointerEvents: 'none', opacity: 0.6 } : undefined}>
 
         {/* ─── Platform Fees by Subscription Tier ─── */}
-        <Grid size={{ xs: 12 }}>
+        <Grid size={{ xs: 12 }} sx={{ minWidth: 0, pointerEvents: 'auto' }}>
           <SectionCard
             icon={<MonetizationOnRoundedIcon />}
             title="Platform Fees by Subscription Tier"
@@ -384,8 +384,23 @@ export default function SettingsPage() {
               <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary', mb: 2.5 }}>
                 Platform fees are determined by the user&apos;s subscription tier. To modify these fees, go to Manage Plans.
               </Typography>
-              <TableContainer sx={{ borderRadius: 2, border: '1px solid', borderColor: 'divider', overflow: 'hidden' }}>
-                <Table size="small">
+              <Typography sx={{ display: { xs: 'block', md: 'none' }, fontSize: '0.75rem', color: 'text.secondary', mb: 1 }}>
+                Swipe horizontally to see all plan details.
+              </Typography>
+              <TableContainer
+                role="region"
+                aria-label="Platform fees by subscription tier"
+                tabIndex={0}
+                sx={{
+                  maxWidth: '100%',
+                  borderRadius: 2,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  overflowX: 'auto',
+                  '&:focus-visible': { outline: '2px solid', outlineColor: 'primary.main', outlineOffset: 2 },
+                }}
+              >
+                <Table size="small" sx={{ minWidth: 680 }}>
                   <TableHead>
                     <TableRow sx={{ bgcolor: alpha('#fff', 0.03) }}>
                       <TableCell sx={{ fontWeight: 700, fontSize: '0.78rem', color: 'text.secondary', borderColor: 'divider', py: 1.5 }}>Tier</TableCell>

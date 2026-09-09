@@ -1,6 +1,7 @@
+import { SkeletonLoader, Button } from '@/components/Loading'
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { View, ScrollView, StyleSheet, Animated, Share } from 'react-native'
-import { Text, Icon, Button, ActivityIndicator } from 'react-native-paper'
+import { Text, Icon, } from 'react-native-paper'
 import { Stack } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'
 import { SignInRequired } from '@/components/SignInRequired'
@@ -306,8 +307,8 @@ export default function AffiliateScreen() {
 
   const headerOptions = {
     title: 'Affiliate',
-    headerStyle: { backgroundColor: p.primary },
-    headerTintColor: p.onPrimary,
+    headerStyle: { backgroundColor: p.background },
+    headerTintColor: p.text,
     headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
   }
 
@@ -497,7 +498,7 @@ export default function AffiliateScreen() {
               </View>
               {listsLoading ? (
                 <View style={styles.listLoading}>
-                  <ActivityIndicator animating color={p.primary} />
+                  <SkeletonLoader animating color={p.primary} />
                 </View>
               ) : referrals.length === 0 ? (
                 <Text style={styles.emptyListText}>No referrals yet</Text>
@@ -539,7 +540,7 @@ export default function AffiliateScreen() {
               </View>
               {listsLoading ? (
                 <View style={styles.listLoading}>
-                  <ActivityIndicator animating color={p.primary} />
+                  <SkeletonLoader animating color={p.primary} />
                 </View>
               ) : commissions.length === 0 ? (
                 <Text style={styles.emptyListText}>No commissions yet</Text>

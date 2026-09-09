@@ -72,7 +72,37 @@
         }
       ],
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Choose photos for your Ujimora campaigns, profile and verification.",
+          "cameraPermission": "Take a photo for your campaign, profile or identity verification.",
+          "microphonePermission": "Broadcast your voice in live campaign sessions."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Use your location to fill your verification address."
+        }
+      ],
+      [
+        "@livekit/react-native-expo-plugin",
+        {
+          "android": {
+            "enableScreenShareService": true
+          }
+        }
+      ],
+      [
+        "@config-plugins/react-native-webrtc",
+        {
+          "cameraPermission": "Broadcast your camera to Ujimora viewers.",
+          "microphonePermission": "Broadcast your voice to Ujimora viewers."
+        }
+      ],
+      "./plugins/withBroadcastExtension"
     ]
   }
 }

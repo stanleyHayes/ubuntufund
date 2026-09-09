@@ -1,4 +1,4 @@
-import * as SecureStore from 'expo-secure-store'
+import { accessToken, configureRefresh } from './session'
 
 // In dev, the API runs on your machine. Android emulator uses 10.0.2.2 for localhost.
 // iOS simulator and physical devices (with Expo) use the LAN IP.
@@ -6,7 +6,7 @@ import * as SecureStore from 'expo-secure-store'
 import { Platform } from 'react-native'
 import Constants from 'expo-constants'
 
-// Expo Go on physical device: use the debugger host IP
+// Expo development client on physical device: use the debugger host IP
 // Android emulator: 10.0.2.2 maps to host localhost
 // iOS simulator: localhost works directly
 // Canonical port is 8100; override locally with EXPO_PUBLIC_API_PORT when the
@@ -31,7 +31,7 @@ function getApiBase(): string {
   const expoHost = Constants.expoConfig?.hostUri?.split(':')[0]
 
   if (expoHost && expoHost !== 'localhost') {
-    // Physical device via Expo Go — use the LAN IP
+    // Physical device via a development client — use the LAN IP
     return `http://${expoHost}:${API_PORT}/api/v1`
   }
 
@@ -42,7 +42,7 @@ function getApiBase(): string {
   return `http://localhost:${API_PORT}/api/v1`
 }
 
-const API_BASE = getApiBase()
+export const API_BASE = getApiBase()
 
 class ApiError extends Error {
   constructor(
@@ -88,16 +88,8 @@ async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
 
 // --- Authenticated request helper ---
 
-async function authedRequest<T>(path: string, options?: RequestInit): Promise<T> {
-  let token: string | null = null
-  try {
-    const tokensRaw = await SecureStore.getItemAsync('uf_tokens')
-    const tokens = tokensRaw ? JSON.parse(tokensRaw) : null
-    token = tokens?.accessToken ?? null
-  } catch {
-    // ignore
-  }
-
+async function authedRequest<T>(path: string, options?: RequestInit, retried = false): Promise<T> {
+  const token = await accessToken()
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -108,6 +100,10 @@ async function authedRequest<T>(path: string, options?: RequestInit): Promise<T>
     headers: { ...headers, ...(options?.headers as Record<string, string>) },
   })
 
+  if (res.status === 401 && token && !retried) {
+    const renewed = await accessToken(true)
+    if (renewed) return authedRequest<T>(path, options, true)
+  }
   if (!res.ok) {
     const error = await res.json().catch(() => ({ message: 'Request failed' }))
     // Throw ApiError so callers can branch on `status` (e.g. treat a 404 as
@@ -122,9 +118,11 @@ async function authedRequest<T>(path: string, options?: RequestInit): Promise<T>
 }
 
 export const api = {
+  patch: <T>(path: string, body?: unknown) => authedRequest<T>(path, { method: 'PATCH', body: JSON.stringify(body) }),
+  upload: <T>(path: string, body: ArrayBuffer, contentType: string) => authedRequest<T>(path, { method: 'POST', body, headers: { 'Content-Type': contentType } }),
   get: <T>(path: string) => authedRequest<T>(path),
-  post: <T>(path: string, body?: unknown) =>
-    authedRequest<T>(path, { method: 'POST', body: JSON.stringify(body) }),
+  post: <T>(path: string, body?: unknown, headers?: Record<string, string>) =>
+    authedRequest<T>(path, { method: 'POST', body: JSON.stringify(body), headers }),
   put: <T>(path: string, body?: unknown) =>
     authedRequest<T>(path, { method: 'PUT', body: JSON.stringify(body) }),
   delete: <T>(path: string, body?: unknown) =>
@@ -189,3 +187,5 @@ export async function refreshTokenApi(refreshToken: string): Promise<AuthTokens>
 }
 
 export { ApiError }
+
+configureRefresh(refreshTokenApi)

@@ -1,7 +1,8 @@
+import { SkeletonLoader, Button } from '@/components/Loading'
 import { BrandedTextInput as TextInput } from '@/components/BrandedTextInput'
 import { useState, useEffect, useMemo } from 'react'
-import { View, ScrollView, StyleSheet, ActivityIndicator } from 'react-native'
-import { Text, Button, Avatar } from 'react-native-paper'
+import { View, ScrollView, StyleSheet, } from 'react-native'
+import { Text, Avatar } from 'react-native-paper'
 import { Stack, useLocalSearchParams } from 'expo-router'
 import * as WebBrowser from 'expo-web-browser'
 import { ApiError } from '@/lib/api'
@@ -81,7 +82,7 @@ export default function CreatorTipScreen() {
 
   const fmt = (n: number) => `${page?.currency === 'GHS' ? 'GH₵' : ''}${n.toLocaleString()}`
 
-  if (loading) return <View style={styles.center}><ActivityIndicator color={p.primary} /></View>
+  if (loading) return <View style={styles.center}><SkeletonLoader color={p.primary} /></View>
   if (notFound) {
     return (
       <View style={styles.center}>
@@ -104,7 +105,7 @@ export default function CreatorTipScreen() {
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ title: page.displayName }} />
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={styles.content}>
         <View style={styles.header}>
           {page.avatarUrl ? <Avatar.Image size={84} source={{ uri: page.avatarUrl }} /> : <Avatar.Text size={84} label={initials} />}
           <Text style={styles.name}>{page.displayName}</Text>

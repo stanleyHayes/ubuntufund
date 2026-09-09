@@ -1,242 +1,87 @@
+import { useAuth } from '@/context/AuthContext'
+import { SignInRequired } from '@/components/SignInRequired'
+import { useState } from 'react'
+import { View, ScrollView, KeyboardAvoidingView, Platform } from 'react-native'
+import { Text, Snackbar, ProgressBar } from 'react-native-paper'
+import { Stack, router } from 'expo-router'
+import { Country, State, City } from 'country-state-city'
+import * as Location from 'expo-location'
 import { BrandedTextInput as TextInput } from '@/components/BrandedTextInput'
 import { BrandedDateField } from '@/components/BrandedDateField'
-import { useState, useMemo } from 'react'
-import { View, ScrollView, StyleSheet } from 'react-native'
-import { Text, Icon, Button, } from 'react-native-paper'
-import { Stack, useRouter } from 'expo-router'
-import { api } from '@/lib/api'
+import { SelectionField } from '@/components/SelectionField'
+import { MediaUploadField } from '@/components/MediaUploadField'
+import { Button } from '@/components/Loading'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
-import type { Palette, NeuRecipes } from '@/theme'
+import { api } from '@/lib/api'
+import { buildKycSubmission, emptyKycDraft, validateKycStep, type KycDraft } from '@/lib/kyc'
 
-interface StepProps {
-  onNext?: () => void
-  onBack?: () => void
-}
-
-function makeStyles(p: Palette, neu: NeuRecipes) {
-  return StyleSheet.create({
-    container: { flex: 1, backgroundColor: p.background },
-    scrollContent: { padding: 16, paddingBottom: 32 },
-
-    progressRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8 },
-    stepItem: { flex: 1, alignItems: 'center', position: 'relative' },
-    stepDot: { width: 28, height: 28, borderRadius: 14, backgroundColor: p.skeleton, alignItems: 'center', justifyContent: 'center' },
-    stepDotActive: { backgroundColor: p.primary },
-    stepDotText: { fontSize: 12, fontFamily: 'Outfit_700Bold', color: p.textSecondary },
-    stepDotTextActive: { color: '#FFFFFF' },
-    stepLabel: { fontSize: 11, fontFamily: 'Outfit_400Regular', color: p.textSecondary, marginTop: 4 },
-    stepLabelActive: { color: p.primary, fontFamily: 'Outfit_700Bold' },
-    stepLine: { position: 'absolute', top: 14, right: '-50%', width: '100%', height: 2, backgroundColor: p.skeleton, zIndex: -1 },
-    stepLineActive: { backgroundColor: p.primary },
-
-    stepContentWrap: { marginTop: 24 },
-    stepCard: {
-      ...neu.raised,
-      backgroundColor: p.surface,
-      borderRadius: 14,
-      padding: 20,
-      gap: 12,
-    },
-    stepTitle: { fontSize: 18, fontFamily: 'Outfit_700Bold', color: p.text, marginBottom: 4 },
-    stepDesc: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: p.textSecondary, marginBottom: 8 },
-
-    input: { backgroundColor: p.surface },
-    inputOutline: { borderRadius: 12 },
-
-    buttonRow: { flexDirection: 'row', gap: 12 },
-    button: { borderRadius: 999, marginTop: 8 },
-    buttonFlex: { flex: 1 },
-    buttonContent: { paddingVertical: 6 },
-    buttonLabel: { fontSize: 15, fontFamily: 'Outfit_700Bold', letterSpacing: 0.3 },
-    buttonLabelSecondary: { fontSize: 15, fontFamily: 'Outfit_700Bold', letterSpacing: 0.3 },
-
-    successWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-    iconTile: {
-      width: 48,
-      height: 48,
-      borderRadius: 14,
-      backgroundColor: p.skeleton,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: 12,
-    },
-    successTitle: { fontSize: 20, fontFamily: 'Outfit_700Bold', color: p.text, textAlign: 'center' },
-    successBody: { fontSize: 14, fontFamily: 'Outfit_400Regular', color: p.textSecondary, marginTop: 8, textAlign: 'center', lineHeight: 20, marginBottom: 16 },
-  })
-}
-
-function useStyles() {
-  const p = usePalette()
-  const neu = useNeu()
-  return useMemo(() => makeStyles(p, neu), [p, neu])
-}
-
-function PersonalInfoStep({ onNext }: StepProps) {
-  const styles = useStyles()
-  const p = usePalette()
-  const [fullName, setFullName] = useState('')
-  const [dateOfBirth, setDateOfBirth] = useState('')
-  const [nationality, setNationality] = useState('')
-  const [idNumber, setIdNumber] = useState('')
-
-  return (
-    <View style={styles.stepCard}>
-      <Text style={styles.stepTitle}>Personal Information</Text>
-      <TextInput mode="outlined" label="Full Name" value={fullName} onChangeText={setFullName} style={styles.input} outlineStyle={styles.inputOutline} outlineColor={p.border} activeOutlineColor={p.primary} />
-      <BrandedDateField label="Date of birth" value={dateOfBirth} onChange={setDateOfBirth} maxDate={new Date()} />
-      <TextInput mode="outlined" label="Nationality" value={nationality} onChangeText={setNationality} style={styles.input} outlineStyle={styles.inputOutline} outlineColor={p.border} activeOutlineColor={p.primary} />
-      <TextInput mode="outlined" label="ID Number" value={idNumber} onChangeText={setIdNumber} style={styles.input} outlineStyle={styles.inputOutline} outlineColor={p.border} activeOutlineColor={p.primary} />
-      <Button mode="contained" onPress={onNext} style={styles.button} contentStyle={styles.buttonContent} labelStyle={styles.buttonLabel} buttonColor={p.primary}>
-        Next
-      </Button>
-    </View>
-  )
-}
-
-function DocumentStep({ onNext, onBack }: StepProps) {
-  const styles = useStyles()
-  const p = usePalette()
-  const [idFront, setIdFront] = useState('')
-  const [idBack, setIdBack] = useState('')
-
-  return (
-    <View style={styles.stepCard}>
-      <Text style={styles.stepTitle}>ID Document</Text>
-      <Text style={styles.stepDesc}>Upload front and back of your ID</Text>
-      <TextInput mode="outlined" label="Front URL" value={idFront} onChangeText={setIdFront} style={styles.input} outlineStyle={styles.inputOutline} outlineColor={p.border} activeOutlineColor={p.primary} />
-      <TextInput mode="outlined" label="Back URL" value={idBack} onChangeText={setIdBack} style={styles.input} outlineStyle={styles.inputOutline} outlineColor={p.border} activeOutlineColor={p.primary} />
-      <View style={styles.buttonRow}>
-        {onBack && <Button mode="outlined" onPress={onBack} style={[styles.button, styles.buttonFlex]} contentStyle={styles.buttonContent} labelStyle={styles.buttonLabelSecondary} textColor={p.primary}>Back</Button>}
-        <Button mode="contained" onPress={onNext} style={[styles.button, styles.buttonFlex]} contentStyle={styles.buttonContent} labelStyle={styles.buttonLabel} buttonColor={p.primary}>Next</Button>
-      </View>
-    </View>
-  )
-}
-
-function AddressStep({ onNext, onBack }: StepProps) {
-  const styles = useStyles()
-  const p = usePalette()
-  const [street, setStreet] = useState('')
-  const [city, setCity] = useState('')
-  const [country, setCountry] = useState('')
-
-  return (
-    <View style={styles.stepCard}>
-      <Text style={styles.stepTitle}>Address Verification</Text>
-      <TextInput mode="outlined" label="Street" value={street} onChangeText={setStreet} style={styles.input} outlineStyle={styles.inputOutline} outlineColor={p.border} activeOutlineColor={p.primary} />
-      <TextInput mode="outlined" label="City" value={city} onChangeText={setCity} style={styles.input} outlineStyle={styles.inputOutline} outlineColor={p.border} activeOutlineColor={p.primary} />
-      <TextInput mode="outlined" label="Country" value={country} onChangeText={setCountry} style={styles.input} outlineStyle={styles.inputOutline} outlineColor={p.border} activeOutlineColor={p.primary} />
-      <View style={styles.buttonRow}>
-        {onBack && <Button mode="outlined" onPress={onBack} style={[styles.button, styles.buttonFlex]} contentStyle={styles.buttonContent} labelStyle={styles.buttonLabelSecondary} textColor={p.primary}>Back</Button>}
-        <Button mode="contained" onPress={onNext} style={[styles.button, styles.buttonFlex]} contentStyle={styles.buttonContent} labelStyle={styles.buttonLabel} buttonColor={p.primary}>Next</Button>
-      </View>
-    </View>
-  )
-}
-
-function SelfieStep({ onBack, onSubmit, submitting }: StepProps & { onSubmit: () => void; submitting: boolean }) {
-  const styles = useStyles()
-  const p = usePalette()
-  const [selfie, setSelfie] = useState('')
-
-  return (
-    <View style={styles.stepCard}>
-      <Text style={styles.stepTitle}>Selfie Verification</Text>
-      <Text style={styles.stepDesc}>Upload a selfie holding your ID</Text>
-      <TextInput mode="outlined" label="Selfie URL" value={selfie} onChangeText={setSelfie} style={styles.input} outlineStyle={styles.inputOutline} outlineColor={p.border} activeOutlineColor={p.primary} />
-      <View style={styles.buttonRow}>
-        {onBack && <Button mode="outlined" onPress={onBack} style={[styles.button, styles.buttonFlex]} contentStyle={styles.buttonContent} labelStyle={styles.buttonLabelSecondary} textColor={p.primary}>Back</Button>}
-        <Button mode="contained" onPress={onSubmit} loading={submitting} disabled={submitting} style={[styles.button, styles.buttonFlex]} contentStyle={styles.buttonContent} labelStyle={styles.buttonLabel} buttonColor={p.primary}>Submit</Button>
-      </View>
-    </View>
-  )
-}
-
+const countries = Country.getAllCountries().map(c => ({ value: c.name, label: `${c.flag} ${c.name}` }))
+const steps = ['Personal information', 'ID documents', 'Address verification', 'Selfie']
 export default function KYCScreen() {
-  const router = useRouter()
-  const p = usePalette()
-  const styles = useStyles()
+  const { user } = useAuth()
+  const p = usePalette(); const neu = useNeu()
+  const [draft, setDraft] = useState<KycDraft>(emptyKycDraft)
   const [step, setStep] = useState(0)
-  const [submitting, setSubmitting] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [uploads, setUploads] = useState(0)
+  const [locating, setLocating] = useState(false)
+  const [error, setError] = useState('')
   const [submitted, setSubmitted] = useState(false)
-
-  const steps = ['Personal', 'ID Doc', 'Address', 'Selfie']
-
-  async function handleSubmit() {
-    setSubmitting(true)
+  const change = <K extends keyof KycDraft>(key: K, value: KycDraft[K]) => setDraft(d => ({ ...d, [key]: value }))
+  const country = Country.getAllCountries().find(c => c.name === draft.country)
+  const states = State.getStatesOfCountry(country?.isoCode || '')
+  const region = states.find(s => s.name === draft.state)
+  const cities = region ? City.getCitiesOfState(country!.isoCode, region.isoCode) : []
+  function next() { const issue = validateKycStep(draft, step); if (issue) { setError(issue); return } setError(''); setStep(s => s + 1) }
+  async function locate() {
+    setLocating(true)
     try {
-      await api.post('/kyc/identity', {
-        personalInfo: { fullName: '', nationality: '' },
-        documents: [{ type: 'id_card', url: 'https://example.com/doc.pdf' }],
-      })
-      setSubmitted(true)
-    } catch {
-      // ignore
-    } finally {
-      setSubmitting(false)
-    }
+      if (!(await Location.requestForegroundPermissionsAsync()).granted) throw new Error('Location permission was declined. You can choose your address manually.')
+      const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })
+      const [address] = await Location.reverseGeocodeAsync(position.coords)
+      if (!address) throw new Error('No address was found. Choose your address manually.')
+      const foundCountry = Country.getAllCountries().find(c => c.isoCode === address.isoCountryCode)
+      setDraft(d => ({ ...d, country: foundCountry?.name || d.country, state: address.region || '', city: address.city || address.subregion || '', street: [address.streetNumber, address.street].filter(Boolean).join(' '), postalCode: address.postalCode || '', proofMethod: foundCountry?.isoCode === 'GH' ? d.proofMethod : 'document' }))
+    } catch (e) { setError(e instanceof Error ? e.message : 'Could not find your location.') }
+    finally { setLocating(false) }
   }
-
-  if (submitted) {
-    return (
-      <View style={styles.container}>
-        <Stack.Screen options={{ title: 'KYC Submitted', headerStyle: { backgroundColor: p.primary } }} />
-        <View style={styles.successWrap}>
-          <View style={styles.iconTile}>
-            <Icon source="check-circle" size={28} color={p.success} />
-          </View>
-          <Text style={styles.successTitle}>Verification submitted</Text>
-          <Text style={styles.successBody}>
-            Your documents are under review. We'll notify you once complete.
-          </Text>
-          <Button
-            mode="contained"
-            onPress={() => router.push('/dashboard')}
-            style={styles.button}
-            contentStyle={styles.buttonContent}
-            labelStyle={styles.buttonLabel}
-            buttonColor={p.secondary}
-            textColor="#221B0E"
-          >
-            Go to Dashboard
-          </Button>
-        </View>
-      </View>
-    )
+  async function submit() {
+    setBusy(true); setError('')
+    try { await api.post('/kyc/identity', buildKycSubmission(draft)); setSubmitted(true) }
+    catch (e) { setError(e instanceof Error ? e.message : 'Submission failed. Please try again.') }
+    finally { setBusy(false) }
   }
-
-  return (
-    <View style={styles.container}>
-      <Stack.Screen
-        options={{
-          title: 'KYC Verification',
-          headerStyle: { backgroundColor: p.primary },
-          headerTintColor: p.onPrimary,
-          headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
-        }}
-      />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* Progress */}
-        <View style={styles.progressRow}>
-          {steps.map((s, i) => (
-            <View key={s} style={styles.stepItem}>
-              <View style={[styles.stepDot, i <= step && styles.stepDotActive]}>
-                <Text style={[styles.stepDotText, i <= step && styles.stepDotTextActive]}>{i + 1}</Text>
-              </View>
-              <Text style={[styles.stepLabel, i <= step && styles.stepLabelActive]}>{s}</Text>
-              {i < steps.length - 1 && <View style={[styles.stepLine, i < step && styles.stepLineActive]} />}
-            </View>
-          ))}
+  const field = (label: string, key: keyof KycDraft) => <TextInput label={label} value={draft[key]} onChangeText={v => change(key, v)} mode="outlined" />
+  const upload = (label: string, key: 'idFront' | 'idBack' | 'addressDoc' | 'selfie', document = false) => <MediaUploadField label={label} value={draft[key]} onChange={v => change(key, v)} document={document} onBusyChange={v => setUploads(n => n + (v ? 1 : -1))} />
+  if (!user) return <SignInRequired what="identity verification" />
+  return <KeyboardAvoidingView style={{ flex: 1, backgroundColor: p.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <Stack.Screen options={{ title: 'Identity verification' }} />
+    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 20, gap: 20, paddingBottom: 60 }}>
+      {submitted ? <View style={{ gap: 16 }}><Text variant="headlineMedium">Verification submitted</Text><Text>Your information and documents are under review. Follow your status from Verification.</Text><Button mode="contained" onPress={() => router.replace('/verification')}>View verification status</Button></View> : <>
+        <Text style={{ color: p.text, fontFamily: 'Outfit_800ExtraBold', fontSize: 26 }}>Verify your identity</Text>
+        <Text style={{ color: p.textSecondary }}>Step {step + 1} of 4 · {steps[step]}</Text>
+        <ProgressBar progress={(step + 1) / 4} color={p.primary} />
+        <View style={{ ...neu.raised, backgroundColor: p.surface, borderRadius: 24, padding: 20, gap: 16 }}>
+          {step === 0 && <>{field('Full name', 'fullName')}<BrandedDateField label="Date of birth" value={draft.dateOfBirth} onChange={v => change('dateOfBirth', v)} maxDate={new Date()} /><SelectionField label="Nationality" value={draft.nationality} options={countries} onChange={v => change('nationality', v)} />{field('ID number', 'idNumber')}</>}
+          {step === 1 && <>{upload('Front of your ID', 'idFront', true)}{upload('Back of your ID', 'idBack', true)}</>}
+          {step === 2 && <>
+            <Button icon="crosshairs-gps" loading={locating} disabled={locating} onPress={() => void locate()}>Use my location</Button>
+            <Text style={{ color: p.textSecondary }}>Check the address found by GPS. A location reading does not generate a GhanaPost digital address.</Text>
+            <SelectionField label="Country" value={draft.country} options={countries} onChange={v => setDraft(d => ({ ...d, country: v, state: '', city: '', proofMethod: v === 'Ghana' ? d.proofMethod : 'document' }))} />
+            {states.length ? <SelectionField label="State or province" value={draft.state} options={states.map(s => ({ value: s.name, label: s.name }))} onChange={v => setDraft(d => ({ ...d, state: v, city: '' }))} /> : field('State or province', 'state')}
+            {cities.length > 0 && <SelectionField label="Choose a city" value={draft.city} options={Array.from(new Set(cities.map(c => c.name))).map(name => ({ value: name, label: name }))} onChange={v => change('city', v)} />}
+            {field('City or town', 'city')}
+            <SelectionField label="Proof of address" value={draft.proofMethod} options={[...(draft.country === 'Ghana' ? [{ value: 'ghana_post_gps', label: 'GhanaPost GPS address' }] : []), { value: 'document', label: 'Upload a document' }]} onChange={v => change('proofMethod', v as KycDraft['proofMethod'])} />
+            {draft.proofMethod === 'ghana_post_gps' ? field('GhanaPost GPS address', 'gpsAddress') : <>{field('Street address', 'street')}{field('Postal code (optional)', 'postalCode')}{upload('Utility bill or bank statement', 'addressDoc', true)}</>}
+          </>}
+          {step === 3 && <><Text style={{ color: p.textSecondary }}>Take or choose a clear selfie holding your ID.</Text>{upload('Selfie holding your ID', 'selfie')}</>}
         </View>
-
-        {/* Step content */}
-        <View style={styles.stepContentWrap}>
-          {step === 0 && <PersonalInfoStep onNext={() => setStep(1)} />}
-          {step === 1 && <DocumentStep onNext={() => setStep(2)} onBack={() => setStep(0)} />}
-          {step === 2 && <AddressStep onNext={() => setStep(3)} onBack={() => setStep(1)} />}
-          {step === 3 && <SelfieStep onBack={() => setStep(2)} onSubmit={handleSubmit} submitting={submitting} />}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
+          {step > 0 && <Button disabled={busy || uploads > 0} onPress={() => { setError(''); setStep(s => s - 1) }}>Back</Button>}
+          <Button mode="contained" loading={busy} disabled={busy || uploads > 0} onPress={step === 3 ? () => void submit() : next}>{step === 3 ? 'Submit verification' : 'Continue'}</Button>
         </View>
-      </ScrollView>
-    </View>
-  )
+      </>}
+    </ScrollView>
+    <Snackbar visible={!!error} duration={Infinity} onDismiss={() => setError('')} action={{ label: 'Dismiss', onPress: () => setError('') }}>{error}</Snackbar>
+  </KeyboardAvoidingView>
 }

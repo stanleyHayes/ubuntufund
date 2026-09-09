@@ -61,3 +61,7 @@ Official references:
 - https://docs.livekit.io/reference/components/react/component/livekitroom/
 - https://docs.livekit.io/reference/server-sdk-js/
 - https://docs.livekit.io/home/server/generating-tokens
+
+## Native mobile implementation
+
+The Expo app now includes host/viewer routes, LiveKit native transport and an iOS ReplayKit extension. Build and signing requirements, supported capture behavior and outstanding device acceptance are recorded in [the native implementation report](reviews/mobile-parity-implementation-2026-09-09.md). This is local engineering evidence, not confirmation of production or physical-device media acceptance.

@@ -1,6 +1,9 @@
+import { SkeletonLoader } from '@/components/Loading'
+import { WalletFunding } from '@/components/WalletFunding'
+import { useCallback } from 'react'
 import { useState, useEffect, useMemo } from 'react'
 import { View, ScrollView, StyleSheet } from 'react-native'
-import { Text, Icon, ActivityIndicator, TouchableRipple } from 'react-native-paper'
+import { Text, Icon, TouchableRipple } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
 import type { Palette, NeuRecipes } from '@/theme'
@@ -152,6 +155,8 @@ export default function WalletTab() {
   const styles = useStyles()
   const [wallets, setWallets] = useState<Wallet[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [revision, setRevision] = useState(0)
+  const refreshed = useCallback(() => setRevision(n => n + 1), [])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -174,7 +179,7 @@ export default function WalletTab() {
         if (!cancelled) setIsLoading(false)
       })
     return () => { cancelled = true }
-  }, [user])
+  }, [user, revision])
 
   const primary = wallets[0]
   const secondary = wallets.slice(1)
@@ -190,7 +195,7 @@ export default function WalletTab() {
   if (isLoading) {
     return (
       <View style={[styles.container, styles.centered]}>
-        <ActivityIndicator size="large" color={p.primary} />
+        <SkeletonLoader size="large" color={p.primary} />
       </View>
     )
   }
@@ -204,7 +209,7 @@ export default function WalletTab() {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <ScrollView automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled" style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <Text style={styles.eyebrow}>WALLET</Text>
         <Text style={styles.title}>Your Balance</Text>
@@ -226,6 +231,8 @@ export default function WalletTab() {
           <Text style={styles.secureNoteText}>Balances update from completed donations, refunds, and verified payment activity.</Text>
         </View>
       </View>
+
+      {wallets.find(w => w.currency === 'GHS') && <WalletFunding walletId={wallets.find(w => w.currency === 'GHS')!.id} onComplete={refreshed} />}
 
       {/* ═══ WALLETS ═══ */}
       <Text style={styles.sectionTitle}>My Wallets</Text>

@@ -110,8 +110,8 @@ export default function MyDonationsScreen() {
 
   const headerOptions = {
     title: 'My Donations',
-    headerStyle: { backgroundColor: p.primary },
-    headerTintColor: p.onPrimary,
+    headerStyle: { backgroundColor: p.background },
+    headerTintColor: p.text,
     headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
   }
 

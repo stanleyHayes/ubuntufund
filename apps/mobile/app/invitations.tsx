@@ -1,3 +1,4 @@
+import { SkeletonLoader } from '@/components/Loading'
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   View,
@@ -7,7 +8,7 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native'
-import { Text, Icon, ActivityIndicator } from 'react-native-paper'
+import { Text, Icon, } from 'react-native-paper'
 import { Stack } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
@@ -189,8 +190,8 @@ export default function InvitationsScreen() {
 
   const headerOptions = {
     title: 'Invitations',
-    headerStyle: { backgroundColor: p.primary },
-    headerTintColor: p.onPrimary,
+    headerStyle: { backgroundColor: p.background },
+    headerTintColor: p.text,
     headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
   }
 
@@ -270,7 +271,7 @@ export default function InvitationsScreen() {
                     disabled={responding === inv.id}
                   >
                     {responding === inv.id ? (
-                      <ActivityIndicator size="small" color="#fff" />
+                      <SkeletonLoader size="small" color="#fff" />
                     ) : (
                       <>
                         <Icon source="check" size={16} color="#fff" />

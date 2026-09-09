@@ -38,7 +38,10 @@ const LINK_COLUMNS = [
     heading: 'Legal',
     links: [
       { icon: DescriptionRoundedIcon, label: 'Terms of Service', to: '/terms' },
-      { icon: ShieldRoundedIcon, label: 'Privacy Policy', to: '/privacy' },
+      { icon: ShieldRoundedIcon, label: 'Privacy Notice', to: '/privacy' },
+      { icon: DescriptionRoundedIcon, label: 'Payout & refund', to: '/refund-policy' },
+      { icon: ShieldRoundedIcon, label: 'Acceptable use', to: '/acceptable-use' },
+      { icon: DescriptionRoundedIcon, label: 'All policies', to: '/legal' },
     ],
   },
 ]

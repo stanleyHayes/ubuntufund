@@ -1,15 +1,18 @@
+import { SignInRequired } from '@/components/SignInRequired'
+import { SkeletonLoader } from '@/components/Loading'
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   View,
+  Image,
   ScrollView,
   StyleSheet,
   Animated,
   Dimensions,
   TouchableOpacity,
 } from 'react-native'
-import { Text, Icon, ActivityIndicator, Button, TouchableRipple } from 'react-native-paper'
+import { Text, Icon, Button, TouchableRipple } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { router } from 'expo-router'
+import { router, useFocusEffect } from 'expo-router'
 import { VerificationLevel } from '@ubuntu-fund/types'
 import { TrustBadge } from '@/components/TrustBadge'
 import { UjimoraLogo } from '@/components/UjimoraLogo'
@@ -21,6 +24,8 @@ import { api } from '@/lib/api'
 const { width } = Dimensions.get('window')
 
 interface ProfileStats {
+  avatarUrl?: string
+  coverUrl?: string
   campaignsCount: number
   totalDonated: number
   totalRaised: number
@@ -31,6 +36,7 @@ interface ProfileStats {
 type MenuColorKey = keyof Pick<Palette, 'primary' | 'success' | 'error' | 'secondaryDark' | 'secondary' | 'textSecondary'>
 
 const MENU_ITEMS: { icon: string; label: string; colorKey: MenuColorKey; route: string }[] = [
+  { icon: 'account-edit', label: 'Edit profile and images', colorKey: 'primary', route: '/profile/edit' },
   { icon: 'view-dashboard', label: 'Dashboard', colorKey: 'primary', route: '/dashboard' },
   { icon: 'bullhorn', label: 'My Campaigns', colorKey: 'success', route: '/my-campaigns' },
   { icon: 'heart', label: 'My Donations', colorKey: 'error', route: '/my-donations' },
@@ -42,7 +48,8 @@ const MENU_ITEMS: { icon: string; label: string; colorKey: MenuColorKey; route: 
   { icon: 'account-cash', label: 'Affiliate', colorKey: 'success', route: '/affiliate' },
   { icon: 'storefront', label: 'Creator page', colorKey: 'secondaryDark', route: '/creator' },
   { icon: 'cog', label: 'Settings', colorKey: 'textSecondary', route: '/settings' },
-  { icon: 'file-document-outline', label: 'Terms of Service', colorKey: 'textSecondary', route: '/terms' },
+  { icon: 'book-open-page-variant-outline', label: 'All policies', colorKey: 'textSecondary', route: '/legal' },
+  { icon: 'file-document-outline', label: 'Terms of Use', colorKey: 'textSecondary', route: '/terms' },
   { icon: 'lock-outline', label: 'Privacy Policy', colorKey: 'textSecondary', route: '/privacy' },
 ]
 
@@ -53,6 +60,7 @@ export default function ProfileTab() {
   const insets = useSafeAreaInsets()
   const [stats, setStats] = useState<ProfileStats | null>(null)
   const [statsLoading, setStatsLoading] = useState(true)
+  const [statsError, setStatsError] = useState('')
 
   const [heroOpacity] = useState(() => new Animated.Value(0))
   const [heroSlide] = useState(() => new Animated.Value(20))
@@ -60,18 +68,20 @@ export default function ProfileTab() {
   const [bodySlide] = useState(() => new Animated.Value(30))
 
   const fetchProfile = useCallback(async () => {
+    if (!user) { setStatsLoading(false); return }
     setStatsLoading(true)
+    setStatsError('')
     try {
       const data = await api.get<ProfileStats>('/profile')
       setStats(data)
-    } catch {
-      // silently fail — show zeros
+    } catch (error) {
+      setStatsError(error instanceof Error ? error.message : 'Your profile could not be loaded.')
     } finally {
       setStatsLoading(false)
     }
-  }, [])
+  }, [user])
 
-  useEffect(() => { fetchProfile() }, [fetchProfile])
+  useFocusEffect(useCallback(() => { void fetchProfile() }, [fetchProfile]))
 
   useEffect(() => {
     if (!statsLoading) {
@@ -97,8 +107,11 @@ export default function ProfileTab() {
     router.replace('/(auth)/login')
   }
 
+  if (!user) return <View style={{ flex: 1, backgroundColor: p.background, paddingBottom: 110 }}><SignInRequired what="profile" /><Button onPress={() => router.push('/legal')}>Legal & trust · All policies</Button></View>
+
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      {stats?.coverUrl && <Image accessibilityLabel="Your cover image" source={{ uri: stats.coverUrl }} style={{ width: '100%', height: 170 }} />}
       {/* ═══ HERO ═══ */}
       <View style={[styles.hero, { paddingTop: insets.top + 12 }]}>
         <View style={[styles.bgCircle, styles.circleRight]} />
@@ -108,7 +121,7 @@ export default function ProfileTab() {
           {/* Avatar */}
           <View style={styles.avatarWrap}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{initials}</Text>
+              <>{stats?.avatarUrl ? <Image source={{ uri: stats.avatarUrl }} style={{ width: '100%', height: '100%', borderRadius: 50 }} /> : <Text style={styles.avatarText}>{initials}</Text>}</>
             </View>
             <View style={styles.avatarBadge}>
               <UjimoraLogo size={20} />
@@ -128,7 +141,9 @@ export default function ProfileTab() {
           {/* Stats */}
           <View style={styles.statsRow}>
             {statsLoading ? (
-              <ActivityIndicator size="small" color="rgba(255,255,255,0.5)" />
+              <SkeletonLoader size="small" color="rgba(255,255,255,0.5)" />
+            ) : statsError ? (
+              <View><Text accessibilityRole="alert" style={{ color: 'white' }}>{statsError}</Text><Button textColor="white" onPress={() => void fetchProfile()}>Try again</Button></View>
             ) : (
               <>
                 {[

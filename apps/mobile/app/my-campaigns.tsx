@@ -168,8 +168,8 @@ export default function MyCampaignsScreen() {
 
   const headerOptions = {
     title: 'My Campaigns',
-    headerStyle: { backgroundColor: p.primary },
-    headerTintColor: p.onPrimary,
+    headerStyle: { backgroundColor: p.background },
+    headerTintColor: p.text,
     headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
   }
 

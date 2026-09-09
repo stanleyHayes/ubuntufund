@@ -1,3 +1,4 @@
+import { recordActivity } from '@/lib/session'
 import { useState, type ComponentProps } from 'react'
 import { TextInput as PaperTextInput, useTheme } from 'react-native-paper'
 
@@ -25,7 +26,7 @@ function Input(props: Omit<ComponentProps<typeof PaperTextInput>, 'ref'>) {
     : props.keyboardType === 'url' || /url|website/.test(label) ? 'https://example.com'
     : props.keyboardType === 'numeric' || props.keyboardType === 'decimal-pad' ? '0'
     : label ? `Enter ${label}` : props.secureTextEntry ? 'Enter your password' : 'Enter details')
-  return <PaperTextInput {...props} placeholder={placeholder}
+  return <PaperTextInput {...props} onChangeText={value => { recordActivity(); props.onChangeText?.(value) }} placeholder={placeholder}
     secureTextEntry={props.secureTextEntry && !visible}
     left={props.left !== undefined ? props.left : <PaperTextInput.Icon icon={icon} color={theme.colors.onSurfaceVariant} accessible={false} />}
     right={props.right !== undefined ? props.right : props.secureTextEntry ? <PaperTextInput.Icon

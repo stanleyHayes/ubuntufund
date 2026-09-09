@@ -160,8 +160,8 @@ export default function MyRefundsScreen() {
 
   const headerOptions = {
     title: 'My Refunds',
-    headerStyle: { backgroundColor: p.primary },
-    headerTintColor: p.onPrimary,
+    headerStyle: { backgroundColor: p.background },
+    headerTintColor: p.text,
     headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
   }
 

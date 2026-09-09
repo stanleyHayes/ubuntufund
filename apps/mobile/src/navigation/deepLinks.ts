@@ -1,3 +1,4 @@
+import { LEGAL_POLICIES } from '@ubuntu-fund/types/src/legal'
 import * as Linking from 'expo-linking'
 
 export const linking = {
@@ -22,6 +23,8 @@ export const linking = {
       invitations: 'invitations',
       'refund-request': 'refund-request',
       'my-refunds': 'my-refunds',
+      legal: 'legal',
+      ...Object.fromEntries(LEGAL_POLICIES.map(policy => [policy.slug, policy.slug])),
       terms: 'terms',
       privacy: 'privacy',
       '+not-found': '*',

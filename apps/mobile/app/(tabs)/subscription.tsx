@@ -1,6 +1,7 @@
+import { SkeletonLoader, Button } from '@/components/Loading'
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { View, ScrollView, StyleSheet, Alert, Modal } from 'react-native'
-import { Text, ActivityIndicator, Icon, Button, TextInput, TouchableRipple } from 'react-native-paper'
+import { View, ScrollView, StyleSheet, Alert, Modal, KeyboardAvoidingView, Platform } from 'react-native'
+import { Text, Icon, TextInput, TouchableRipple } from 'react-native-paper'
 import { useFocusEffect } from 'expo-router'
 import * as WebBrowser from 'expo-web-browser'
 import * as Linking from 'expo-linking'
@@ -277,6 +278,8 @@ function CheckoutSheet({
 
   // Debounced coupon preview (soft endpoint — never throws).
   useEffect(() => {
+    const requests = reqId
+    const id = ++requests.current
     if (!tier) return
     const code = couponCode.trim()
     if (!code) {
@@ -284,7 +287,6 @@ function CheckoutSheet({
       setPreviewing(false)
       return
     }
-    const id = ++reqId.current
     setPreviewing(true)
     const timer = setTimeout(async () => {
       try {
@@ -296,7 +298,7 @@ function CheckoutSheet({
         if (id === reqId.current) setPreviewing(false)
       }
     }, 400)
-    return () => clearTimeout(timer)
+    return () => { clearTimeout(timer); requests.current++ }
   }, [couponCode, tier, billingCycle])
 
   if (!tier) return null
@@ -339,7 +341,7 @@ function CheckoutSheet({
         } else if (outcome === 'failed' || outcome === 'expired') {
           Alert.alert(
             'Payment not completed',
-            "Your payment didn't go through and you haven't been charged. Please try again.",
+            "This checkout was not completed. Check your payment account before starting a new checkout.",
           )
         } else {
           Alert.alert(
@@ -368,8 +370,8 @@ function CheckoutSheet({
       animationType="slide"
       onRequestClose={submitting ? undefined : onClose}
     >
-      <View style={styles.sheetOverlay}>
-        <View style={styles.sheet}>
+      <KeyboardAvoidingView style={styles.sheetOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" style={{ flexGrow: 0, maxHeight: '90%', backgroundColor: p.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24 }} contentContainerStyle={styles.sheet}>
           <View style={styles.sheetHandle} />
           <Text style={styles.sheetTitle}>{plan.name} plan</Text>
           <Text style={styles.sheetSub}>{plan.description}</Text>
@@ -412,7 +414,7 @@ function CheckoutSheet({
             style={styles.couponInput}
             right={
               previewing ? (
-                <TextInput.Icon icon={() => <ActivityIndicator size={16} color={p.primary} />} />
+                <TextInput.Icon icon={() => <SkeletonLoader size={16} color={p.primary} />} />
               ) : undefined
             }
           />
@@ -459,8 +461,8 @@ function CheckoutSheet({
           <TouchableRipple style={styles.sheetCancel} onPress={submitting ? undefined : onClose}>
             <Text style={styles.sheetCancelText}>Cancel</Text>
           </TouchableRipple>
-        </View>
-      </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </Modal>
   )
 }
@@ -556,7 +558,7 @@ export default function SubscriptionScreen() {
   if (isLoading) {
     return (
       <View style={[styles.container, styles.centered]}>
-        <ActivityIndicator size="large" color={p.primary} />
+        <SkeletonLoader size="large" color={p.primary} />
       </View>
     )
   }

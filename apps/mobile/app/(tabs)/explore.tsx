@@ -1,3 +1,4 @@
+import { SkeletonLoader } from '@/components/Loading'
 import { useState, useEffect, useMemo } from 'react'
 import {
   View,
@@ -7,7 +8,7 @@ import {
   TouchableOpacity,
   TextInput,
 } from 'react-native'
-import { Text, ActivityIndicator, Icon } from 'react-native-paper'
+import { Text, Icon } from 'react-native-paper'
 import { router } from 'expo-router'
 import { CampaignCategory, CampaignStatus } from '@ubuntu-fund/types'
 import type { Campaign } from '@ubuntu-fund/types'
@@ -204,7 +205,7 @@ export default function ExploreTab() {
 
       {/* Campaign list */}
       {isLoading ? (
-        <ActivityIndicator size="large" style={{ marginTop: 60 }} color={p.primary} />
+        <SkeletonLoader size="large" style={{ marginTop: 60 }} color={p.primary} />
       ) : filtered.length === 0 ? (
         <EmptyState
           icon="magnify"

@@ -145,7 +145,7 @@ export default function DashboardScreen() {
     try {
       const [campaignsRes, donationsRes] = await Promise.all([
         api.get<Campaign[]>('/campaigns/mine'),
-        api.get<Donation[]>('/donations/mine').catch(() => [] as Donation[]),
+        api.get<Donation[]>('/donations/mine'),
       ])
 
       const campaigns = Array.isArray(campaignsRes) ? campaignsRes : []
@@ -173,8 +173,8 @@ export default function DashboardScreen() {
 
   const headerOptions = {
     title: 'Dashboard',
-    headerStyle: { backgroundColor: p.primary },
-    headerTintColor: p.onPrimary,
+    headerStyle: { backgroundColor: p.background },
+    headerTintColor: p.text,
     headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
   }
 

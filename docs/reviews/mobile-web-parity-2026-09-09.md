@@ -2,6 +2,10 @@
 
 9 September 2026. Source and contract audit of the Expo native app (`apps/mobile`) against the React web app (`apps/web`). Responsive web is not the native app. This is not a physical-device visual or live-payment acceptance report.
 
+## Follow-up implementation
+
+The initial findings below describe the pre-implementation baseline. See [the implementation and acceptance report](mobile-parity-implementation-2026-09-09.md) for the current local changes, build evidence and outstanding runtime checks.
+
 ## Verdict
 
 Mobile shares brand colors, Outfit typography and four selectable appearance finishes, but it does not have feature or redesign parity with the current web application. Historical “Equal” entries in `FEATURE_PARITY.md` were too broad. Several recent web improvements have not been ported.

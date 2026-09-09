@@ -1,3 +1,4 @@
+import { SkeletonLoader, PageSkeleton, Button } from '@/components/Loading'
 import { useState, useEffect, useMemo } from 'react'
 import {
   View,
@@ -8,7 +9,7 @@ import {
   FlatList,
   TouchableOpacity,
 } from 'react-native'
-import { Text, ActivityIndicator, Icon } from 'react-native-paper'
+import { Text, Icon } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import type { Campaign } from '@ubuntu-fund/types'
@@ -167,7 +168,7 @@ function SectionHeader({ title, onSeeAll }: { title: string; onSeeAll?: () => vo
 export default function HomeTab() {
   const p = usePalette()
   const styles = useStyles()
-  const { campaigns, isLoading } = useCampaigns()
+  const { campaigns, isLoading, error, refetch } = useCampaigns()
   const { user } = useAuth()
   const insets = useSafeAreaInsets()
 
@@ -190,6 +191,9 @@ export default function HomeTab() {
       Animated.spring(heroSlide, { toValue: 0, friction: 8, tension: 50, useNativeDriver: true }),
     ]).start()
   }, [heroOpacity, heroSlide])
+
+  if (isLoading) return <PageSkeleton />
+  if (error) return <View style={{ flex: 1, backgroundColor: p.background, padding: 24, paddingTop: insets.top + 24, gap: 16 }}><Text variant="headlineSmall">Could not load campaigns</Text><Text accessibilityRole="alert">{error}</Text><Button mode="contained" onPress={refetch}>Try again</Button></View>
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -216,7 +220,7 @@ export default function HomeTab() {
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statBox}>
-              <Text style={styles.statValue}>GH₵ {(totalRaised / 1000).toFixed(0)}K+</Text>
+              <Text style={styles.statValue}>{formatCurrency(totalRaised)}</Text>
               <Text style={styles.statLabel}>Total Raised</Text>
             </View>
             <View style={styles.statDivider} />
@@ -229,7 +233,7 @@ export default function HomeTab() {
       </View>
 
       {isLoading ? (
-        <ActivityIndicator size="large" style={{ marginTop: 60 }} color={p.primary} />
+        <SkeletonLoader size="large" style={{ marginTop: 60 }} color={p.primary} />
       ) : (
         <>
           {/* ═══ CATEGORIES ═══ */}

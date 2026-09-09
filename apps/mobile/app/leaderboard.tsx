@@ -193,8 +193,8 @@ export default function LeaderboardScreen() {
       <Stack.Screen
         options={{
           title: 'Leaderboard',
-          headerStyle: { backgroundColor: p.primary },
-          headerTintColor: p.onPrimary,
+          headerStyle: { backgroundColor: p.background },
+          headerTintColor: p.text,
           headerTitleStyle: { fontFamily: 'Outfit_700Bold' },
         }}
       />
