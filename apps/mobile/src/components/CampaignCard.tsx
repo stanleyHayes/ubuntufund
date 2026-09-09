@@ -1,6 +1,7 @@
+import { Chip } from '@/components/Chip'
 import { useMemo, useState } from 'react'
 import { StyleSheet, View } from 'react-native'
-import { Card, Text, Chip } from 'react-native-paper'
+import { Card, Text } from 'react-native-paper'
 import { router } from 'expo-router'
 import type { Campaign } from '@ubuntu-fund/types'
 import { ProgressBar } from './ProgressBar'
@@ -22,9 +23,9 @@ function makeStyles(p: Palette, neu: NeuRecipes) {
     cover: { width: '100%', height: 160, borderTopLeftRadius: 14, borderTopRightRadius: 14 },
     content: { padding: 12, paddingTop: 10 },
     chipRow: { flexDirection: 'row', gap: 6, marginBottom: 8 },
-    categoryChip: { height: 24, backgroundColor: 'rgba(168,181,160,0.28)' },
+    categoryChip: { backgroundColor: 'rgba(168,181,160,0.28)' },
     categoryChipText: { fontSize: 11, fontFamily: 'Outfit_700Bold', color: p.text },
-    priorityChip: { height: 24 },
+    priorityChip: { },
     priorityChipText: { fontSize: 11, fontFamily: 'Outfit_700Bold', color: '#FFFFFF' },
     title: { fontFamily: 'Outfit_700Bold', color: p.text, marginBottom: 4 },
     description: { color: p.textSecondary, marginBottom: 10, lineHeight: 18 },

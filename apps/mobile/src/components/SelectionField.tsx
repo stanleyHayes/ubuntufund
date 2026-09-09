@@ -1,6 +1,7 @@
+import { Button } from '@/components/Loading'
 import { useMemo, useState } from 'react'
 import { FlatList, View, useWindowDimensions } from 'react-native'
-import { Button, Dialog, List, Portal, Searchbar, Text } from 'react-native-paper'
+import { Dialog, List, Portal, Searchbar, Text } from 'react-native-paper'
 import { usePalette } from '@/context/ColorModeContext'
 
 export interface Choice { value: string; label: string }

@@ -1,7 +1,7 @@
 import { useEffect, useState, type ComponentProps } from 'react'
 import { Animated, View, AccessibilityInfo, type ActivityIndicatorProps } from 'react-native'
 import { Button as PaperButton } from 'react-native-paper'
-import { usePalette } from '@/context/ColorModeContext'
+import { useColorMode, usePalette } from '@/context/ColorModeContext'
 
 function Pulse({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
   const [opacity] = useState(() => new Animated.Value(0.5))
@@ -33,8 +33,26 @@ export function LoadingDots({ color }: { color?: string }) {
 }
 
 /** Paper-compatible button with the same animated-dot loading treatment as web. */
-export function Button({ loading, icon, ...props }: ComponentProps<typeof PaperButton>) {
-  return <PaperButton {...props} accessibilityState={{ ...props.accessibilityState, busy: !!loading }} icon={loading ? ({ color }) => <LoadingDots color={color} /> : icon} />
+export function Button({ loading, icon, style, contentStyle, onPressIn, onPressOut, ...props }: ComponentProps<typeof PaperButton>) {
+  const { palette: p, neu, skin } = useColorMode()
+  const [pressed, setPressed] = useState(false)
+  const filled = props.mode === 'contained' || props.mode === 'contained-tonal' || props.mode === 'elevated'
+  const textOnly = !props.mode || props.mode === 'text'
+  const radius = skin === 'claymorphism' ? 22 : skin === 'minimal' ? 10 : 16
+  const backgroundColor = props.disabled ? p.skeleton : props.buttonColor ?? (filled ? p.primary : textOnly ? 'transparent' : p.surface)
+  const recipe = pressed || props.disabled ? neu.inset : filled && backgroundColor === p.primary ? neu.greenSubtle : neu.subtle
+  const textColor = props.textColor ?? (filled ? p.onPrimary : p.primary)
+  return <Animated.View style={[style, textOnly ? undefined : recipe, { backgroundColor, borderRadius: radius, overflow: 'visible' }, textOnly ? undefined : { borderWidth: 1, borderColor: props.mode === 'outlined' ? p.border : 'transparent' }]}>
+    <PaperButton {...props}
+      style={{ borderRadius: radius, borderWidth: 0, backgroundColor: 'transparent', elevation: 0, boxShadow: 'none', shadowOpacity: 0 }}
+      contentStyle={[{ minHeight: 44 }, contentStyle]}
+      labelStyle={[{ fontFamily: 'Outfit_700Bold' }, props.labelStyle]}
+      buttonColor="transparent" textColor={textColor}
+      onPressIn={event => { setPressed(true); onPressIn?.(event) }}
+      onPressOut={event => { setPressed(false); onPressOut?.(event) }}
+      accessibilityState={{ ...props.accessibilityState, busy: !!loading }}
+      icon={loading ? ({ color }) => <LoadingDots color={color} /> : icon} />
+  </Animated.View>
 }
 
 export function Skeleton({ height = 24, width = '100%' }: { height?: number; width?: number | `${number}%` }) {

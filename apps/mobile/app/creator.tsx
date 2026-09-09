@@ -1,8 +1,9 @@
+import { Chip } from '@/components/Chip'
 import { SkeletonLoader, Button } from '@/components/Loading'
 import { BrandedTextInput as TextInput } from '@/components/BrandedTextInput'
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { View, ScrollView, StyleSheet, Share, useWindowDimensions } from 'react-native'
-import { Text, Switch, Portal, Dialog, Chip, SegmentedButtons, Snackbar } from 'react-native-paper'
+import { Text, Switch, Portal, Dialog, SegmentedButtons, Snackbar } from 'react-native-paper'
 import { Stack, router } from 'expo-router'
 import {
   getMyCreator, saveCreatorProfile, requestWithdrawal, listMyPayouts,

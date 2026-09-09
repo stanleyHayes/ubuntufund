@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { View } from 'react-native'
-import { Text, Button } from 'react-native-paper'
+import { Text } from 'react-native-paper'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { api } from '@/lib/api'
-import { PageSkeleton } from '@/components/Loading'
+import { PageSkeleton, Button } from '@/components/Loading'
 import { usePalette } from '@/context/ColorModeContext'
 export default function SharedCampaign() {
   const { slug, donate, amount } = useLocalSearchParams<{ slug: string; donate?: string; amount?: string }>()

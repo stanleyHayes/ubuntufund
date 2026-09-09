@@ -1,6 +1,7 @@
+import { Button } from '@/components/Loading'
 import { useState } from 'react'
 import { View } from 'react-native'
-import { Button } from 'react-native-paper'
+
 import { DatePickerModal, enGB, registerTranslation } from 'react-native-paper-dates'
 import { usePalette } from '@/context/ColorModeContext'
 

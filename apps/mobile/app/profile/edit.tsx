@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
-import { ScrollView, View } from 'react-native'
+import { ScrollView, View, Image, StyleSheet } from 'react-native'
 import { Text, Snackbar } from 'react-native-paper'
 import { Stack } from 'expo-router'
 import { Country } from 'country-state-city'
 import { api } from '@/lib/api'
 import { sessionSnapshot, establishSession } from '@/lib/session'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
+import { GlassSurface } from '@/components/GlassSurface'
+import { UjimoraLogo } from '@/components/UjimoraLogo'
 import { MediaUploadField } from '@/components/MediaUploadField'
 import { BrandedTextInput as TextInput } from '@/components/BrandedTextInput'
 import { SelectionField } from '@/components/SelectionField'
@@ -43,10 +45,33 @@ export default function EditProfile() {
   if (!profile && !error) return <PageSkeleton />
   return <View style={{ flex: 1, backgroundColor: p.background }}><Stack.Screen options={{ title: 'Edit profile' }} /><ScrollView automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 20, gap: 20, paddingBottom: 60 }}>
     {profile ? <>
-      <Text variant="headlineMedium">Your profile</Text>
-      <MediaUploadField label="Cover image" folder="profiles" value={profile.coverUrl} onChange={v => update('coverUrl', v)} crop aspect={[16, 9]} onBusyChange={v => setUploads(n => n + (v ? 1 : -1))} />
-      <MediaUploadField label="Profile image" folder="profiles" value={profile.avatarUrl} onChange={v => update('avatarUrl', v)} crop onBusyChange={v => setUploads(n => n + (v ? 1 : -1))} />
+      <View style={{ gap: 6 }}>
+        <Text variant="headlineMedium" style={{ color: p.text, fontFamily: 'Outfit_700Bold' }}>Make it yours</Text>
+        <Text style={{ color: p.textSecondary }}>Your cover and photo, together as people see them.</Text>
+      </View>
+      <GlassSurface style={{ borderRadius: 28, padding: 12 }}>
+        <View style={{ height: 168, borderRadius: 20, overflow: 'hidden', backgroundColor: p.primaryDark }}>
+          <View style={{ position: 'absolute', right: -16, top: -20, opacity: 0.35 }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants"><UjimoraLogo size={150} /></View>
+          {profile.coverUrl ? <Image accessibilityLabel="Cover preview" source={{ uri: profile.coverUrl }} resizeMode="cover" style={StyleSheet.absoluteFill} /> : null}
+        </View>
+        <View style={{ alignItems: 'center', marginTop: -48 }}>
+          <View style={{ width: 106, height: 106, borderRadius: 53, padding: 5, backgroundColor: p.surface }}>
+            <View style={{ width: 96, height: 96, borderRadius: 48, overflow: 'hidden', backgroundColor: p.secondary, alignItems: 'center', justifyContent: 'center' }}>
+              {profile.avatarUrl ? <Image accessibilityLabel="Profile photo preview" source={{ uri: profile.avatarUrl }} resizeMode="cover" style={StyleSheet.absoluteFill} /> : <UjimoraLogo size={46} />}
+            </View>
+          </View>
+          <Text style={{ color: p.text, fontSize: 20, fontFamily: 'Outfit_700Bold', marginTop: 8, textAlign: 'center' }}>{profile.name || 'Your name'}</Text>
+          <Text style={{ color: p.textSecondary, fontSize: 12, marginTop: 4, marginBottom: 18 }}>Profile preview</Text>
+        </View>
+        <View style={{ paddingHorizontal: 4, borderTopWidth: 1, borderTopColor: p.border, paddingTop: 8, gap: 4 }}>
+          <MediaUploadField compact label="Cover image" folder="profiles" value={profile.coverUrl} onChange={v => update('coverUrl', v)} crop aspect={[16, 9]} onBusyChange={v => setUploads(n => n + (v ? 1 : -1))} />
+          <View style={{ height: 1, backgroundColor: p.border }} />
+          <MediaUploadField compact label="Profile photo" folder="profiles" value={profile.avatarUrl} onChange={v => update('avatarUrl', v)} crop onBusyChange={v => setUploads(n => n + (v ? 1 : -1))} />
+          <Text style={{ color: p.textSecondary, fontSize: 12, paddingVertical: 8 }}>Images up to 4 MB. Tap Save profile below to apply your changes.</Text>
+        </View>
+      </GlassSurface>
       <View style={{ ...neu.raised, backgroundColor: p.surface, borderRadius: 24, padding: 20, gap: 16 }}>
+        <Text variant="titleLarge" style={{ color: p.text }}>About you</Text>
         {(['name', 'phone', 'bio'] as const).map(key => <TextInput key={key} label={key} value={profile[key]} onChangeText={v => update(key, v)} multiline={key === 'bio'} />)}
         <SelectionField label="Country" value={profile.country} options={Country.getAllCountries().map(c => ({ value: c.name, label: c.name }))} onChange={v => update('country', v)} />
         <Button loading={busy} disabled={busy || uploads > 0 || !profile.name.trim()} mode="contained" onPress={() => void save()}>Save profile</Button>

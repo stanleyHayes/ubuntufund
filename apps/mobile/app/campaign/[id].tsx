@@ -1,8 +1,9 @@
-import { SkeletonLoader } from '@/components/Loading'
+import { Chip } from '@/components/Chip'
+import { SkeletonLoader, Button } from '@/components/Loading'
 import { useState, useEffect, useMemo } from 'react'
 import { View, ScrollView, StyleSheet, Alert } from 'react-native'
 import { useLocalSearchParams, Stack, router } from 'expo-router'
-import { Text, Button, Chip, Surface, Avatar, Icon } from 'react-native-paper'
+import { Text, Surface, Avatar, Icon } from 'react-native-paper'
 import { useCampaign, useUser } from '@/hooks/useCampaigns'
 import { RemoteImage } from '@/components/RemoteImage'
 import { FadeInUp } from '@/components/anim/FadeInUp'
@@ -50,8 +51,8 @@ function makeStyles(p: Palette, neu: NeuRecipes) {
     heroImage: { width: '100%', height: 240 },
     content: { padding: 16 },
     chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
-    chip: { height: 28, backgroundColor: 'rgba(168,181,160,0.28)' },
-    chipText: { fontSize: 12, fontFamily: 'Outfit_400Regular', color: p.text },
+    chip: { minHeight: 32, borderRadius: 10, justifyContent: 'center', backgroundColor: 'rgba(168,181,160,0.28)' },
+    chipText: { fontSize: 12, lineHeight: 18, marginVertical: 6, fontFamily: 'Outfit_600SemiBold', color: p.text },
     title: { fontFamily: 'Outfit_700Bold', marginBottom: 16 },
     progressCard: {
       ...neu.raised,
@@ -64,7 +65,7 @@ function makeStyles(p: Palette, neu: NeuRecipes) {
     raised: { color: p.success, fontFamily: 'Outfit_700Bold' },
     muted: { color: p.textSecondary },
     statRight: { alignItems: 'flex-end' },
-    donateButton: { borderRadius: 999, marginBottom: 24, paddingVertical: 4 },
+    donateButton: { flex: 1, borderRadius: 28, overflow: 'hidden' },
     donateLabel: { fontSize: 16, fontFamily: 'Outfit_700Bold' },
     sectionTitle: { fontFamily: 'Outfit_700Bold', marginBottom: 8, marginTop: 8 },
     description: { lineHeight: 22, color: p.textSecondary, marginBottom: 16 },
@@ -80,7 +81,7 @@ function makeStyles(p: Palette, neu: NeuRecipes) {
     collaboratorRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     collaboratorInfo: { flex: 1 },
     collaboratorName: { fontFamily: 'Outfit_700Bold' },
-    stillNeeded: { color: p.textSecondary, textAlign: 'center', marginTop: -12, marginBottom: 20, fontFamily: 'Outfit_400Regular' },
+    stillNeeded: { color: p.textSecondary, textAlign: 'center', marginTop: 2, marginBottom: 20, fontFamily: 'Outfit_400Regular' },
     datesCard: {
       ...neu.raised,
       padding: 14,
@@ -191,8 +192,9 @@ function makeStyles(p: Palette, neu: NeuRecipes) {
     },
     paymentFallbackText: { flex: 1, fontSize: 13, color: p.textSecondary, fontFamily: 'Outfit_400Regular' },
     modalActions: { flexDirection: 'row', marginTop: 8 },
-    actionRow: { flexDirection: 'row', gap: 12, marginBottom: 8 },
-    shareButton: { flex: 1, borderRadius: 999 },
+    actionRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8 },
+    shareButton: { flex: 1, borderRadius: 28, overflow: 'hidden' },
+    actionContent: { minHeight: 48 },
     shareLabel: { fontSize: 16, fontFamily: 'Outfit_700Bold' },
   })
 }
@@ -275,7 +277,7 @@ export default function CampaignDetailScreen() {
         <FadeInUp style={styles.content}>
           <View style={styles.chipRow}>
             <Chip style={styles.chip} textStyle={styles.chipText}>
-              {campaign.category}
+              {campaign.category.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
             </Chip>
             <Chip
               style={[
@@ -287,10 +289,10 @@ export default function CampaignDetailScreen() {
                 { color: (priorityStyle[campaign.priority] ?? priorityStyle.normal).text },
               ]}
             >
-              {campaign.priority}
+              {campaign.priority.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
             </Chip>
             <Chip style={styles.chip} textStyle={styles.chipText}>
-              {campaign.status.replace(/_/g, ' ').toUpperCase()}
+              {campaign.status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
             </Chip>
           </View>
 
@@ -324,6 +326,7 @@ export default function CampaignDetailScreen() {
             <Button
               mode="contained"
               style={styles.donateButton}
+              contentStyle={styles.actionContent}
               labelStyle={styles.donateLabel}
               buttonColor={p.secondary}
               textColor="#221B0E"
@@ -334,9 +337,10 @@ export default function CampaignDetailScreen() {
             <Button
               mode="contained"
               style={styles.shareButton}
+              contentStyle={styles.actionContent}
               labelStyle={styles.shareLabel}
               buttonColor={p.primary}
-              textColor="#FFFFFF"
+              textColor={p.onPrimary}
               icon="share-variant"
               onPress={() => {
                 if (campaign) shareCampaign(campaign)
@@ -501,7 +505,7 @@ export default function CampaignDetailScreen() {
           </Text>
           <View style={styles.chipRow}>
             {campaign.beneficiaries.map((b) => (
-              <Chip key={b} style={styles.chip}>
+              <Chip key={b} style={styles.chip} textStyle={styles.chipText}>
                 {b}
               </Chip>
             ))}

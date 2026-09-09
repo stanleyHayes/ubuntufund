@@ -1,7 +1,8 @@
+import { Chip } from '@/components/Chip'
 import { SkeletonLoader } from '@/components/Loading'
 import { useState, useEffect, useMemo } from 'react'
 import { View, ScrollView, StyleSheet, TouchableOpacity } from 'react-native'
-import { Text, Chip, Avatar, Icon, Surface } from 'react-native-paper'
+import { Text, Avatar, Icon, Surface } from 'react-native-paper'
 import type { CampaignUpdate } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
 import { EmptyState } from '@/components/EmptyState'
@@ -75,7 +76,6 @@ function makeStyles(p: Palette, neu: NeuRecipes) {
       fontFamily: 'Outfit_400Regular',
     },
     typeChip: {
-      height: 24,
       borderRadius: 6,
     },
     title: {

@@ -1,6 +1,7 @@
+import { Button } from '@/components/Loading'
 import { useRef } from 'react'
 import { ScrollView, View } from 'react-native'
-import { Text, Button, TouchableRipple } from 'react-native-paper'
+import { Text, TouchableRipple } from 'react-native-paper'
 import { useRouter, type Href } from 'expo-router'
 import Svg, { G, Rect, Circle } from 'react-native-svg'
 import { LEGAL_POLICIES, getPolicyBySlug } from '@ubuntu-fund/types/src/legal'

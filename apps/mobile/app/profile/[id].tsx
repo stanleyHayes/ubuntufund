@@ -1,8 +1,9 @@
+import { Chip } from '@/components/Chip'
 import { SkeletonLoader } from '@/components/Loading'
 import { useMemo } from 'react'
 import { View, ScrollView, StyleSheet } from 'react-native'
 import { useLocalSearchParams, Stack } from 'expo-router'
-import { Text, Avatar, Surface, Chip } from 'react-native-paper'
+import { Text, Avatar, Surface } from 'react-native-paper'
 import { useUser } from '@/hooks/useCampaigns'
 import { TrustBadge } from '@/components/TrustBadge'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
@@ -112,7 +113,7 @@ function makeStyles(p: Palette, neu: NeuRecipes) {
       borderBottomWidth: 1,
       borderBottomColor: p.border,
     },
-    chip: { height: 28, backgroundColor: 'rgba(168,181,160,0.28)' },
+    chip: { backgroundColor: 'rgba(168,181,160,0.28)' },
   })
 }
 

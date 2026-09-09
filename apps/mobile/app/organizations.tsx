@@ -1,3 +1,4 @@
+import { Button } from '@/components/Loading'
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   View,
@@ -7,7 +8,7 @@ import {
   TouchableOpacity,
   TextInput,
 } from 'react-native'
-import { Text, Icon, Button } from 'react-native-paper'
+import { Text, Icon } from 'react-native-paper'
 import { router, Stack } from 'expo-router'
 import { api } from '@/lib/api'
 import { usePalette, useNeu } from '@/context/ColorModeContext'

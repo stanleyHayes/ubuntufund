@@ -3,6 +3,32 @@
 > Active completion pass started: 2026-08-09
 > Goal: production-complete web, mobile, API, marketing, admin, and organization experiences with App Store readiness, CMS-backed public content, soft deletion, and verified frontend/backend parity.
 
+## Native chip and button material styling — 2026-09-09
+
+- Shared chips now apply the active subtle surface recipe and material-specific corners while retaining semantic urgency colors. Shared buttons apply raised/inset recipes, selected material corners, readable foregrounds and pressed states; loading dots and accessibility state are preserved. Remaining direct Paper Button imports were migrated to the shared control.
+- Verified campaign chips and Donate/Share surfaces in the running simulator. Mobile TypeScript, lint and 21 logic tests passed. Included in the mobile polish release.
+
+## Native campaign actions and chip rendering — 2026-09-09
+
+- Removed the Donate button’s extra bottom margin that stretched Share; both actions now have matching content height and rounded clipping, with normal spacing before the remaining-goal text.
+- Audited mobile chips and custom badges. Replaced Paper informational chips across campaign details/cards/updates, beneficiaries, organization categories, public profiles and creator payout status with a shared text-sized component. Removed fixed 24/28px heights, normalized label spacing and allowed long labels to wrap. Custom padding-based badges did not have the fixed-height problem.
+- Beneficiary chip visually checked in the signed-in simulator; mobile TypeScript and lint passed. Included in the mobile polish release.
+
+## Native input appearance correction — 2026-09-09
+
+- Removed Paper’s default purple surfaceVariant from light/dark themes. Shared inputs now use the selected material’s inset recipe, rounded shape, brand text/icons and full focus/error border rather than the stock underline. Subscription coupon input also uses this component.
+- Mobile TypeScript and lint passed; the simulator profile editor visibly renders warm inset fields instead of purple fills. Included in the mobile polish release.
+
+## Native profile editor refinement — 2026-09-09
+
+- Replaced separate image-upload cards with one appearance-aware cover/avatar/name preview matching the profile composition. Cover fills its frame; the profile photo is circular and overlaps the cover.
+- Compact, labeled change/camera/remove controls retain existing upload, crop, error and save guards. Identity fields remain below in About you. Verified real images and controls in the signed-in iOS simulator; mobile TypeScript and lint passed. Included in the mobile polish release.
+
+## Native profile header refinement — 2026-09-09
+
+- Joined the cover and avatar with a 52px overlap and theme-colored photo border; removed the duplicate safe-area gap, added a rounded cover and separate settings/header row, and linked Edit images directly to profile editing.
+- Identity and statistics now use readable appearance colors. The cover edit control stays above the avatar on narrow screens. Verified the actual cover/profile photos in the signed-in iOS simulator; mobile TypeScript and lint passed. Included in the mobile polish release.
+
 ## Admin settings mobile table — 2026-09-09
 
 - Fixed horizontal scrolling for the subscription-tier fee table, constrained it to the phone viewport, added a mobile swipe hint and keyboard-focusable named region. Read-only viewers can scroll the informational table.

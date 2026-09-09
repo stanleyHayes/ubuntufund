@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { View, Image } from 'react-native'
-import { Text } from 'react-native-paper'
+import { Text, IconButton } from 'react-native-paper'
 import * as ImagePicker from 'expo-image-picker'
 import * as DocumentPicker from 'expo-document-picker'
 import { File } from 'expo-file-system'
@@ -8,8 +8,8 @@ import { Button } from './Loading'
 import { api } from '@/lib/api'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
 
-export function MediaUploadField({ label, value, onChange, folder = 'kyc', document = false, crop = false, aspect = [1, 1], onBusyChange }: {
-  label: string; value: string; onChange: (url: string) => void; folder?: string; document?: boolean; crop?: boolean; aspect?: [number, number]; onBusyChange?: (busy: boolean) => void
+export function MediaUploadField({ label, value, onChange, folder = 'kyc', document = false, crop = false, aspect = [1, 1], onBusyChange, compact = false }: {
+  label: string; value: string; onChange: (url: string) => void; folder?: string; document?: boolean; crop?: boolean; aspect?: [number, number]; onBusyChange?: (busy: boolean) => void; compact?: boolean
 }) {
   const p = usePalette()
   const neu = useNeu()
@@ -37,6 +37,15 @@ export function MediaUploadField({ label, value, onChange, folder = 'kyc', docum
     } catch (e) { setError(e instanceof Error ? e.message : 'Upload failed. Please try again.') }
     finally { setBusy(false); onBusyChange?.(false) }
   }
+  if (compact) return <View style={{ gap: 4 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
+      <Text style={{ color: p.text, fontFamily: 'Outfit_700Bold', flexGrow: 1, minWidth: 88 }}>{label}</Text>
+      <Button mode="text" icon="image-edit-outline" loading={busy} disabled={busy} accessibilityLabel={`Choose ${label.toLowerCase()}`} onPress={() => void pick('library')}>{value ? 'Change' : 'Add'}</Button>
+      <IconButton icon="camera-outline" size={22} style={{ margin: 0 }} accessibilityLabel={`Take ${label.toLowerCase()}`} disabled={busy} onPress={() => void pick('camera')} />
+      {value ? <IconButton icon="trash-can-outline" size={20} iconColor={p.textSecondary} style={{ margin: 0 }} accessibilityLabel={`Remove ${label.toLowerCase()}`} disabled={busy} onPress={() => onChange('')} /> : null}
+    </View>
+    {error ? <Text accessibilityRole="alert" style={{ color: p.error }}>{error}</Text> : null}
+  </View>
   return <View style={{ ...neu.inset, backgroundColor: p.surface, padding: 16, borderRadius: 16, gap: 10 }}>
     <Text style={{ color: p.text, fontFamily: 'Outfit_700Bold' }}>{label}</Text>
     {value && !/\.pdf(?:\?|$)/i.test(value) ? <Image accessibilityLabel={label} source={{ uri: value }} style={{ width: '100%', height: 150, borderRadius: 12 }} resizeMode="contain" /> : null}

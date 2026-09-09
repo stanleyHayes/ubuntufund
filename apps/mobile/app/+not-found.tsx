@@ -1,7 +1,8 @@
+import { Button } from '@/components/Loading'
 import { useEffect, useMemo } from 'react'
 import { View, StyleSheet, Animated } from 'react-native'
 import { useRouter } from 'expo-router'
-import { Text, Icon, Button } from 'react-native-paper'
+import { Text, Icon } from 'react-native-paper'
 import { usePalette } from '@/context/ColorModeContext'
 import type { Palette } from '@/theme'
 

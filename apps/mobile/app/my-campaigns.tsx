@@ -1,3 +1,4 @@
+import { Button } from '@/components/Loading'
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   View,
@@ -6,7 +7,7 @@ import {
   Animated,
   TouchableOpacity,
 } from 'react-native'
-import { Text, Icon, Button } from 'react-native-paper'
+import { Text, Icon } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, Stack } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'

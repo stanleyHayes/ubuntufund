@@ -1,5 +1,5 @@
 import { SignInRequired } from '@/components/SignInRequired'
-import { SkeletonLoader } from '@/components/Loading'
+import { SkeletonLoader, Button } from '@/components/Loading'
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   View,
@@ -7,10 +7,9 @@ import {
   ScrollView,
   StyleSheet,
   Animated,
-  Dimensions,
   TouchableOpacity,
 } from 'react-native'
-import { Text, Icon, Button, TouchableRipple } from 'react-native-paper'
+import { Text, Icon, TouchableRipple } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useFocusEffect } from 'expo-router'
 import { VerificationLevel } from '@ubuntu-fund/types'
@@ -21,7 +20,6 @@ import type { Palette, NeuRecipes } from '@/theme'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
 
-const { width } = Dimensions.get('window')
 
 interface ProfileStats {
   avatarUrl?: string
@@ -63,7 +61,6 @@ export default function ProfileTab() {
   const [statsError, setStatsError] = useState('')
 
   const [heroOpacity] = useState(() => new Animated.Value(0))
-  const [heroSlide] = useState(() => new Animated.Value(20))
   const [bodyOpacity] = useState(() => new Animated.Value(0))
   const [bodySlide] = useState(() => new Animated.Value(30))
 
@@ -88,7 +85,6 @@ export default function ProfileTab() {
       Animated.sequence([
         Animated.parallel([
           Animated.timing(heroOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
-          Animated.spring(heroSlide, { toValue: 0, friction: 8, tension: 50, useNativeDriver: true }),
         ]),
         Animated.parallel([
           Animated.timing(bodyOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
@@ -96,7 +92,7 @@ export default function ProfileTab() {
         ]),
       ]).start()
     }
-  }, [bodyOpacity, bodySlide, heroOpacity, heroSlide, statsLoading])
+  }, [bodyOpacity, bodySlide, heroOpacity, statsLoading])
 
   const displayName = user?.name ?? 'User'
   const displayEmail = user?.email ?? ''
@@ -111,17 +107,33 @@ export default function ProfileTab() {
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {stats?.coverUrl && <Image accessibilityLabel="Your cover image" source={{ uri: stats.coverUrl }} style={{ width: '100%', height: 170 }} />}
       {/* ═══ HERO ═══ */}
-      <View style={[styles.hero, { paddingTop: insets.top + 12 }]}>
-        <View style={[styles.bgCircle, styles.circleRight]} />
-        <View style={[styles.bgCircle, styles.circleLeft]} />
+      <View style={[styles.hero, { paddingTop: insets.top + 8 }]}>
+        <View style={styles.headerRow}>
+          <Text style={styles.headerTitle}>Your profile</Text>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Settings" onPress={() => router.push('/settings')} style={styles.settingsButton}>
+            <Icon source="cog-outline" size={23} color={p.text} />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.cover}>
+          {stats?.coverUrl ? (
+            <Image accessibilityLabel="Your cover image" source={{ uri: stats.coverUrl }} resizeMode="cover" style={StyleSheet.absoluteFill} />
+          ) : (
+            <View style={styles.coverArtwork} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+              <UjimoraLogo size={160} />
+            </View>
+          )}
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Edit profile and images" onPress={() => router.push('/profile/edit')} style={styles.editImages}>
+            <Icon source="image-edit-outline" size={17} color="#FFFFFF" />
+            <Text style={styles.editImagesLabel}>Edit images</Text>
+          </TouchableOpacity>
+        </View>
 
-        <Animated.View style={{ opacity: heroOpacity, transform: [{ translateY: heroSlide }], alignItems: 'center', width: '100%' }}>
+        <Animated.View style={{ opacity: heroOpacity, alignItems: 'center', width: '100%', marginTop: -52 }}>
           {/* Avatar */}
           <View style={styles.avatarWrap}>
             <View style={styles.avatar}>
-              <>{stats?.avatarUrl ? <Image source={{ uri: stats.avatarUrl }} style={{ width: '100%', height: '100%', borderRadius: 50 }} /> : <Text style={styles.avatarText}>{initials}</Text>}</>
+              <>{stats?.avatarUrl ? <Image source={{ uri: stats.avatarUrl }} accessibilityLabel="Your profile photo" style={{ width: '100%', height: '100%', borderRadius: 50 }} /> : <Text style={styles.avatarText}>{initials}</Text>}</>
             </View>
             <View style={styles.avatarBadge}>
               <UjimoraLogo size={20} />
@@ -141,9 +153,9 @@ export default function ProfileTab() {
           {/* Stats */}
           <View style={styles.statsRow}>
             {statsLoading ? (
-              <SkeletonLoader size="small" color="rgba(255,255,255,0.5)" />
+              <SkeletonLoader size="small" color={p.skeleton} />
             ) : statsError ? (
-              <View><Text accessibilityRole="alert" style={{ color: 'white' }}>{statsError}</Text><Button textColor="white" onPress={() => void fetchProfile()}>Try again</Button></View>
+              <View><Text accessibilityRole="alert" style={{ color: p.error }}>{statsError}</Text><Button textColor={p.primary} onPress={() => void fetchProfile()}>Try again</Button></View>
             ) : (
               <>
                 {[
@@ -227,22 +239,23 @@ function makeStyles(p: Palette, neu: NeuRecipes) {
 
     // Hero
     hero: {
-      backgroundColor: p.primaryDark,
-      paddingBottom: 24,
-      paddingHorizontal: 20,
+      backgroundColor: p.background,
+      paddingBottom: 4,
+      paddingHorizontal: 16,
       alignItems: 'center',
-      overflow: 'hidden',
     },
-    bgCircle: { position: 'absolute', borderRadius: 9999, backgroundColor: p.primary, opacity: 0.06 },
-    circleRight: { width: width * 0.5, height: width * 0.5, top: -width * 0.15, right: -width * 0.15 },
-    circleLeft: { width: width * 0.3, height: width * 0.3, bottom: -width * 0.1, left: -width * 0.05 },
-
-    avatarWrap: { position: 'relative', marginBottom: 12 },
+    headerRow: { width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+    headerTitle: { fontSize: 22, fontFamily: 'Outfit_700Bold', color: p.text },
+    settingsButton: { ...neu.subtle, width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+    cover: { width: '100%', height: 180, borderRadius: 24, overflow: 'hidden', backgroundColor: p.primaryDark },
+    coverArtwork: { position: 'absolute', right: -16, top: -22, opacity: 0.35, transform: [{ rotate: '-18deg' }] },
+    editImages: { position: 'absolute', right: 12, top: 12, flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44, paddingHorizontal: 12, borderRadius: 22, backgroundColor: 'rgba(18,24,15,0.82)' },
+    editImagesLabel: { fontSize: 12, fontFamily: 'Outfit_700Bold', color: '#FFFFFF' },
+    avatarWrap: { position: 'relative', marginBottom: 12, padding: 5, borderRadius: 57, backgroundColor: p.background },
     avatar: {
-      ...neu.greenRaised,
-      width: 80,
-      height: 80,
-      borderRadius: 40,
+      width: 100,
+      height: 100,
+      borderRadius: 50,
       backgroundColor: p.secondary,
       justifyContent: 'center',
       alignItems: 'center',
@@ -250,31 +263,31 @@ function makeStyles(p: Palette, neu: NeuRecipes) {
     avatarText: { fontSize: 28, fontFamily: 'Outfit_800ExtraBold', color: p.text },
     avatarBadge: {
       position: 'absolute',
-      bottom: -2,
-      right: -2,
-      backgroundColor: p.primaryDark,
-      borderRadius: 12,
-      padding: 2,
+      bottom: 5,
+      right: 2,
+      backgroundColor: p.background,
+      borderRadius: 16,
+      padding: 4,
     },
 
-    userName: { fontSize: 22, fontFamily: 'Outfit_800ExtraBold', color: '#FFFFFF', marginBottom: 2 },
-    userEmail: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: 'rgba(255,255,255,0.45)', marginBottom: 12 },
+    userName: { fontSize: 22, fontFamily: 'Outfit_800ExtraBold', color: p.text, marginBottom: 4, textAlign: 'center' },
+    userEmail: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: p.textSecondary, marginBottom: 12, textAlign: 'center' },
     trustWrap: { marginBottom: 16 },
 
     statsRow: {
       flexDirection: 'row',
       width: '100%',
-      backgroundColor: 'rgba(255,255,255,0.06)',
+      ...neu.subtle,
       borderRadius: 14,
       paddingVertical: 14,
       paddingHorizontal: 4,
       justifyContent: 'center',
     },
     statBox: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
-    statDivider: { width: 1, height: 28, backgroundColor: 'rgba(255,255,255,0.08)', marginRight: 8 },
+    statDivider: { width: 1, height: 28, backgroundColor: p.border, marginRight: 8 },
     statInner: { alignItems: 'center' },
-    statValue: { fontSize: 17, fontFamily: 'Outfit_700Bold', color: p.secondary },
-    statLabel: { fontSize: 10, color: 'rgba(255,255,255,0.4)', fontFamily: 'Outfit_400Regular', marginTop: 2 },
+    statValue: { fontSize: 17, fontFamily: 'Outfit_700Bold', color: p.text },
+    statLabel: { fontSize: 10, color: p.textSecondary, fontFamily: 'Outfit_400Regular', marginTop: 2 },
 
     // Menu
     menuCard: {
