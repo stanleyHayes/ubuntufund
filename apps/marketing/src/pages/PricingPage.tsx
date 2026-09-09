@@ -1,4 +1,6 @@
-import { useState } from 'react'
+import Alert from '@mui/material/Alert'
+import Skeleton from '@mui/material/Skeleton'
+import { useEffect, useState } from 'react'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
@@ -17,29 +19,22 @@ import { InternalPageHero } from '../components/InternalPageHero'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import {
   SubscriptionTier,
-  SUBSCRIPTION_PLANS,
   type SubscriptionPlan,
 } from '@ubuntu-fund/types'
-
-// Public, active plans in admin-set order — data-driven, so any tier (including
-// admin-added ones seeded into SUBSCRIPTION_PLANS) renders automatically.
-const PLANS = Object.values(SUBSCRIPTION_PLANS)
-  .filter((p) => p.isPublic && p.active)
-  .sort((a, b) => a.sortOrder - b.sortOrder || a.priceMonthly - b.priceMonthly)
 
 // Use semantic colours so accents remain readable in every skin and mode.
 function accentOf() {
   return { color: 'primary.main', bg: 'action.hover', gradient: 'linear-gradient(90deg, #C7A24A, #DCC07E)' }
 }
 
-const WEB_APP_URL = import.meta.env.VITE_WEB_APP_URL || 'http://localhost:8200'
+const WEB_APP_URL = import.meta.env.VITE_WEB_APP_URL || 'https://app.ujimora.com'
 const WEB_APP_REGISTER = `${WEB_APP_URL}/register`
 
 // ─── Comparison table data ───────────────────────────────────────────────────
 
 interface FeatureRow {
   label: string
-  key: keyof SubscriptionPlan
+  key: keyof SubscriptionPlan | 'creatorDonations'
   format?: 'boolean' | 'fee' | 'goal' | 'unlimited'
 }
 
@@ -67,6 +62,7 @@ const FEATURE_SECTIONS: { title: string; rows: FeatureRow[] }[] = [
       { label: 'Custom branding', key: 'customBranding', format: 'boolean' },
       { label: 'Escrow & milestones', key: 'escrowSupport', format: 'boolean' },
       { label: 'Live streaming', key: 'liveStreaming', format: 'boolean' },
+      { label: 'Creator profile donations (active paid plans)', key: 'creatorDonations', format: 'boolean' },
     ],
   },
   {
@@ -130,6 +126,23 @@ const faqs = [
 
 function PricingPage() {
   const [yearly, setYearly] = useState(false)
+  const [plans, setPlans] = useState<SubscriptionPlan[] | null>(null)
+  const [error, setError] = useState(false)
+  const [retry, setRetry] = useState(0)
+  useEffect(() => {
+    let active = true
+    fetch(`${import.meta.env.VITE_API_URL || '/api/v1'}/plans/public`).then(async response => {
+      if (!response.ok) throw new Error('Plans unavailable')
+      const payload = await response.json()
+      if (!Array.isArray(payload.data) || !payload.data.length) throw new Error('Plans unavailable')
+      if (active) setPlans(payload.data)
+    }).catch(() => { if (active) setError(true) })
+    return () => { active = false }
+  }, [retry])
+  if (!plans) return <Container maxWidth="lg" sx={{ py: 8 }}>
+    <Typography variant="h3" sx={{ mb: 3 }}>Plans and pricing</Typography>
+    {error ? <Alert severity="error" action={<Button onClick={() => { setError(false); setRetry(value => value + 1) }}>Retry</Button>}>Current pricing could not be loaded. Please try again.</Alert> : <Box aria-busy="true" aria-label="Loading current pricing" sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 3 }}>{[0, 1, 2].map(i => <Skeleton key={i} variant="rounded" height={400} />)}</Box>}</Container>
+  const PLANS = plans
 
   return (
     <Box component="main" sx={{ flex: 1, pb: 10 }}>
@@ -150,7 +163,7 @@ function PricingPage() {
             Simple, Transparent Pricing
           </Typography>
           <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 400, maxWidth: 600, mx: 'auto', mb: 4 }}>
-            Choose the campaign capacity and support you need. Review your billing total before confirming checkout.
+            Choose the campaign capacity and support you need. Review your billing total before confirming checkout. Account-specific compliance limits may reduce your maximum campaign goal. Creator donations require an active paid subscription; creator withdrawals deduct your current plan’s platform-fee percentage. Free does not include creator donations.
           </Typography>
 
           {/* Monthly/Yearly toggle */}
@@ -257,6 +270,7 @@ function PricingPage() {
                       plan.customBranding && 'Custom branding',
                       plan.escrowSupport && 'Escrow & milestones',
                       plan.liveStreaming && 'Live streaming',
+                      plan.tier !== 'free' && (plan.priceMonthly > 0 || plan.priceYearly > 0) && 'Creator donations on your profile',
                       plan.campaignCollaboration && 'Campaign collaboration',
                     ]
                       .filter(Boolean)
@@ -398,7 +412,7 @@ function PricingPage() {
                             ...(isPro && { bgcolor: tc.bg }),
                           }}
                         >
-                          {formatCellValue(plan[row.key], row.format)}
+                          {formatCellValue(row.key === 'creatorDonations' ? plan.tier !== 'free' && (plan.priceMonthly > 0 || plan.priceYearly > 0) : plan[row.key], row.format)}
                         </Box>
                       )
                     })}

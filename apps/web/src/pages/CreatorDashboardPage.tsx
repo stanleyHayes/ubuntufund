@@ -27,10 +27,11 @@ const INK_SECONDARY = 'text.secondary'
 
 interface Balance { availableBalance: number; paidOutBalance: number; totalReceived: number; currency: string }
 interface Profile { handle: string; displayName: string; tagline?: string; bio?: string; tipsEnabled: boolean; presetAmounts: number[]; thankYouMessage?: string; currency: string }
-interface Payout { id: string; amount: number; status: string; createdAt: string }
+interface Payout { id: string; amount: number; fee?: number; netAmount?: number; status: string; createdAt: string }
 
 export function CreatorDashboardPage() {
   const [loading, setLoading] = useState(true)
+  const [policy, setPolicy] = useState<{ eligible: boolean; planName: string; feePercent: number } | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [balance, setBalance] = useState<Balance | null>(null)
   const [payouts, setPayouts] = useState<Payout[]>([])
@@ -61,7 +62,8 @@ export function CreatorDashboardPage() {
       // /creators/me returns 200 { profile: null } for a genuine first-time
       // creator, so a thrown error here is a REAL failure (5xx, network, expired
       // session) — surface it instead of showing an empty claim form.
-      const me = await api.get<{ profile: Profile | null; balance: Balance | null }>('/creators/me')
+      const me = await api.get<{ profile: Profile | null; balance: Balance | null; policy: { eligible: boolean; planName: string; feePercent: number } }>('/creators/me')
+      setPolicy(me.policy)
       setProfile(me.profile)
       setBalance(me.balance)
       if (me.profile) {
@@ -93,7 +95,7 @@ export function CreatorDashboardPage() {
     setWError(null); setWSubmitting(true)
     try {
       await api.post('/creators/withdraw', {
-        amount: wAmount,
+        amount: wAmount, expectedFeePercent: policy?.feePercent,
         recipient: { type: wType, accountNumber: wAccount, bankCode: wBank, accountName: wName || displayName },
       })
       setWithdrawOpen(false); setSnack('Withdrawal started')
@@ -147,16 +149,17 @@ export function CreatorDashboardPage() {
           </Box>
         )}
 
+        {!policy?.eligible && <Alert severity="info" sx={{ mb: 3 }} action={<Button href="/subscription">View plans</Button>}>Creator donations require an active paid plan. Upgrade to receive new tips. You can still withdraw your existing balance.</Alert>}
         {/* Setup / edit */}
         <Box sx={{ p: { xs: 2.5, sm: 3.5 }, borderRadius: SHAPE.card, bgcolor: 'background.paper', boxShadow: 'var(--neu-raised)' }}>
           <Typography sx={{ fontWeight: 800, fontSize: '1.05rem', color: INK, mb: 2 }}>{profile ? 'Edit your page' : 'Claim your page'}</Typography>
-          <TextField label="Handle (your link)" value={handle} onChange={(e) => setHandle(e.target.value.toLowerCase())} fullWidth sx={{ mb: 2 }} helperText="letters, numbers, - or _ · your link becomes /creators/your-handle" disabled={!!profile} />
-          <TextField label="Display name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} fullWidth sx={{ mb: 2 }} />
-          <TextField label="Tagline" value={tagline} onChange={(e) => setTagline(e.target.value)} fullWidth sx={{ mb: 2 }} placeholder="What you do in a line" />
-          <TextField label="About you" value={bio} onChange={(e) => setBio(e.target.value)} fullWidth multiline minRows={3} sx={{ mb: 2 }} />
-          <FormControlLabel control={<Switch checked={tipsEnabled} onChange={(_, v) => setTipsEnabled(v)} />} label="Accept tips" sx={{ mb: 1 }} />
+          <TextField label="Handle (your link)" value={handle} onChange={(e) => setHandle(e.target.value.toLowerCase())} fullWidth sx={{ mb: 2 }} helperText="letters, numbers, - or _ · your link becomes /creators/your-handle" disabled={!!profile || !policy?.eligible} />
+          <TextField disabled={!policy?.eligible} label="Display name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} fullWidth sx={{ mb: 2 }} />
+          <TextField disabled={!policy?.eligible} label="Tagline" value={tagline} onChange={(e) => setTagline(e.target.value)} fullWidth sx={{ mb: 2 }} placeholder="What you do in a line" />
+          <TextField disabled={!policy?.eligible} label="About you" value={bio} onChange={(e) => setBio(e.target.value)} fullWidth multiline minRows={3} sx={{ mb: 2 }} />
+          <FormControlLabel control={<Switch disabled={!policy?.eligible} checked={!!policy?.eligible && tipsEnabled} onChange={(_, v) => setTipsEnabled(v)} />} label="Accept tips" sx={{ mb: 1 }} />
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-          <Button onClick={saveProfile} disabled={saving} variant="contained" sx={{ borderRadius: '999px', fontWeight: 800, textTransform: 'none', px: 4 }}>
+          <Button onClick={saveProfile} disabled={saving || !policy?.eligible} variant="contained" sx={{ borderRadius: '999px', fontWeight: 800, textTransform: 'none', px: 4 }}>
             {saving ? <><LoadingDots size={6} /> <span>Saving…</span></> : profile ? 'Save changes' : 'Create my page'}
           </Button>
         </Box>
@@ -167,7 +170,7 @@ export function CreatorDashboardPage() {
             <Typography sx={{ fontWeight: 800, color: INK, mb: 1.5 }}>Withdrawals</Typography>
             {payouts.map((p) => (
               <Box key={p.id} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2, mb: 1, borderRadius: SHAPE.sm, bgcolor: 'background.paper', boxShadow: 'var(--neu-subtle)' }}>
-                <Typography sx={{ fontWeight: 700, color: INK }}>{fmt(p.amount)}</Typography>
+                <Box><Typography sx={{ fontWeight: 700, color: INK }}>{fmt(p.amount)}</Typography><Typography variant="caption">Fee {fmt(p.fee ?? 0)} · Net transfer {fmt(p.netAmount ?? p.amount)}</Typography></Box>
                 <Chip size="small" label={p.status} color={p.status === 'PAID' ? 'success' : p.status === 'FAILED' ? 'error' : 'default'} />
               </Box>
             ))}
@@ -187,11 +190,12 @@ export function CreatorDashboardPage() {
           <TextField label={wType === 'mobile_money' ? 'Phone number' : 'Account number'} value={wAccount} onChange={(e) => setWAccount(e.target.value)} fullWidth sx={{ mb: 2 }} />
           <TextField label={wType === 'mobile_money' ? 'Network code (e.g. MTN)' : 'Bank code'} value={wBank} onChange={(e) => setWBank(e.target.value)} fullWidth sx={{ mb: 2 }} />
           <TextField label="Account name" value={wName} onChange={(e) => setWName(e.target.value)} fullWidth placeholder={displayName} />
+          {policy && <Alert severity="info" sx={{ mt: 2 }}>{policy.planName} transfer fee: {policy.feePercent}%. Fee: GH₵{(Math.round(wAmount * policy.feePercent) / 100).toFixed(2)} · You receive: GH₵{(Math.round((wAmount - Math.round(wAmount * policy.feePercent) / 100) * 100) / 100).toFixed(2)}. The full requested amount is deducted from your creator balance.</Alert>}
           {wError && <Alert severity="error" sx={{ mt: 2 }}>{wError}</Alert>}
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setWithdrawOpen(false)} sx={{ textTransform: 'none' }}>Cancel</Button>
-          <Button onClick={withdraw} disabled={wSubmitting} variant="contained" sx={{ textTransform: 'none', fontWeight: 700 }}>{wSubmitting ? <><LoadingDots size={6} /> <span>Starting…</span></> : 'Withdraw'}</Button>
+          <Button onClick={withdraw} disabled={wSubmitting || !policy || !Number.isFinite(wAmount) || wAmount <= 0} variant="contained" sx={{ textTransform: 'none', fontWeight: 700 }}>{wSubmitting ? <><LoadingDots size={6} /> <span>Starting…</span></> : 'Withdraw'}</Button>
         </DialogActions>
       </Dialog>
 

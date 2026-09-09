@@ -1,3 +1,4 @@
+import type { PlanLimitsService } from '../services/PlanLimitsService.js';
 import type { CreatorProfileRepositoryPort } from '../../domain/ports/outbound/CreatorProfileRepositoryPort.js';
 import type { TipRepositoryPort } from '../../domain/ports/outbound/TipRepositoryPort.js';
 import type { CreatorBalanceRepositoryPort } from '../../domain/ports/outbound/CreatorBalanceRepositoryPort.js';
@@ -28,13 +29,14 @@ export class CreateTipIntentUseCase {
     private readonly tipRepo: TipRepositoryPort,
     private readonly balanceRepo: CreatorBalanceRepositoryPort,
     private readonly gateway: PaymentGatewayPort,
-    /** Platform cut as a percent of the tip (0 = creator keeps everything). */
-    private readonly platformFeePercent = 0
+    /** Live paid-plan entitlement; fees are deducted at withdrawal. */
+    private readonly plans: PlanLimitsService
   ) {}
 
   async execute(handle: string, input: CreateTipInput) {
     const creator = await this.profileRepo.findByHandle(handle);
     if (!creator) throw new AppError('Creator not found', 404);
+    await this.plans.assertCreatorDonations(creator.userId);
     if (!creator.tipsEnabled) {
       throw new AppError('This creator is not accepting tips right now.', 409);
     }
@@ -45,7 +47,7 @@ export class CreateTipIntentUseCase {
       throw new AppError('An email is required to pay.', 400);
     }
 
-    const fee = round2((input.amount * this.platformFeePercent) / 100);
+    const fee = 0; // Plan fee is charged once, on withdrawal.
     const net = round2(input.amount - fee);
 
     const init = await this.gateway.initializeCharge({

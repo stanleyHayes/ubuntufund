@@ -1,3 +1,4 @@
+import type { PlanLimitsService } from '../../../../../application/services/PlanLimitsService.js';
 import { Router, type Response, type NextFunction } from 'express';
 import type { AuthenticatedRequest, createAuthMiddleware } from '../../middleware/authMiddleware.js';
 import type { SaveCreatorProfileUseCase } from '../../../../../application/use-cases/SaveCreatorProfileUseCase.js';
@@ -14,6 +15,7 @@ import type { CreatorPayoutRepositoryPort } from '../../../../../domain/ports/ou
  * settles via the Paystack webhook (`tip-` reference).
  */
 export function createCreatorRoutes(deps: {
+  planLimits: PlanLimitsService;
   saveProfile: SaveCreatorProfileUseCase;
   getByHandle: GetCreatorByHandleUseCase;
   createTip: CreateTipIntentUseCase;
@@ -47,7 +49,7 @@ export function createCreatorRoutes(deps: {
         const profile = await deps.profileRepo.findByUserId(req.userId!);
         const balance = await deps.balanceRepo.findByUserId(req.userId!);
         res.json({
-          data: { profile: profile ? profile.toPlain() : null, balance },
+          data: { profile: profile ? profile.toPlain() : null, balance, policy: await deps.planLimits.creatorPolicy(req.userId!) },
           message: 'Creator dashboard',
           status: 200,
         });

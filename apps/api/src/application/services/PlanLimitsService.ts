@@ -82,6 +82,19 @@ export class PlanLimitsService {
     return this.getPlanFor(subscription.tier);
   }
 
+  /** Paid-only creator entitlement and the effective plan rate for withdrawals. */
+  async creatorPolicy(userId: string) {
+    const [plan, subscription] = await Promise.all([this.resolvePlan(userId), this.subscriptionRepo.findByUserId(userId)]);
+    const eligible = !!subscription && subscription.status === SubscriptionStatus.ACTIVE &&
+      new Date(subscription.currentPeriodEnd).getTime() > Date.now() && plan.active &&
+      plan.tier !== SubscriptionTier.FREE && (plan.priceMonthly > 0 || plan.priceYearly > 0);
+    return { eligible, planName: plan.name, feePercent: plan.platformFeePercent };
+  }
+
+  async assertCreatorDonations(userId: string): Promise<void> {
+    if (!(await this.creatorPolicy(userId)).eligible) throw new AppError('Creator donations require an active paid subscription. Upgrade your plan to enable your creator page.', 403);
+  }
+
   /** The platform revenue cut (%) to apply to donations for this user's plan. */
   async platformFeePercent(userId: string): Promise<number> {
     const plan = await this.resolvePlan(userId);

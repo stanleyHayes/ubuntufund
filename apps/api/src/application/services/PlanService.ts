@@ -19,7 +19,7 @@ function bySortOrder(a: SubscriptionPlan, b: SubscriptionPlan): number {
  * through. It resolves a tier's plan from the DB (where admins edit it) and
  * falls back to the code-defined {@link SUBSCRIPTION_PLANS} whenever a row is
  * missing OR a read throws — so pricing, limits, and feature gates never break
- * even if the database is unavailable.
+ * for display-only callers. Strict callers propagate read failures.
  */
 export class PlanService {
   constructor(private readonly planRepo: SubscriptionPlanRepositoryPort) {}
@@ -27,7 +27,7 @@ export class PlanService {
   /**
    * The plan for a tier: the DB row when present, otherwise the seeded default.
    * A read failure is logged and swallowed, returning the default so callers
-   * (limit enforcement, checkout pricing) keep working.
+   * can explicitly choose fallback behavior. Strict enforcement and checkout callers propagate failures.
    */
   async getPlan(tier: string, strict = false): Promise<SubscriptionPlan> {
     try {
@@ -46,9 +46,9 @@ export class PlanService {
    * Every plan in a stable cheapest→richest order: the union of the persisted
    * plans (including admin-ADDED tiers) and any seed tier not yet in the DB,
    * sorted by the admin-set `sortOrder`. A read failure falls back to the full
-   * seed set so the plans surface is never empty.
+   * seed set unless strict is requested (for example, public pricing).
    */
-  async getAllPlans(): Promise<SubscriptionPlan[]> {
+  async getAllPlans(strict = false): Promise<SubscriptionPlan[]> {
     try {
       const rows = await this.planRepo.findAll();
       const byTier = new Map(rows.map((plan) => [plan.tier, plan]));
@@ -58,6 +58,7 @@ export class PlanService {
       }
       return [...byTier.values()].sort(bySortOrder);
     } catch (error) {
+      if (strict) throw error;
       logger.error({ err: error }, 'plan list failed; using defaults');
       return Object.values(SUBSCRIPTION_PLANS).sort(bySortOrder);
     }

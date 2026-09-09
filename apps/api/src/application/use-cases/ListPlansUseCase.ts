@@ -8,7 +8,7 @@ import type { PlanService } from '../services/PlanService.js';
 export class ListPlansUseCase {
   constructor(private readonly planService: PlanService) {}
 
-  execute(): Promise<SubscriptionPlan[]> {
-    return this.planService.getAllPlans();
+  execute(strict = false): Promise<SubscriptionPlan[]> {
+    return this.planService.getAllPlans(strict);
   }
 }

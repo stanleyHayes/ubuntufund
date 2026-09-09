@@ -1,3 +1,5 @@
+import { SubscriptionPlanModel } from '../../src/infrastructure/database/models/SubscriptionPlanModel.js';
+import { SubscriptionModel } from '../../src/infrastructure/database/models/SubscriptionModel.js';
 import { createHmac, randomUUID } from 'node:crypto';
 
 const PAYSTACK_SECRET = 'sk_test_creator_withdrawal_secret';
@@ -29,6 +31,8 @@ describe('Creator withdrawal — transfer rail', () => {
   let app: Express;
   // Toggled by a test to simulate a provider recipient-creation failure.
   let failRecipient = false;
+  let failTransfer = false;
+  let transferAmount: unknown;
 
   beforeAll(async () => {
     await connectTestDatabase();
@@ -50,7 +54,11 @@ describe('Creator withdrawal — transfer rail', () => {
           const ref = decodeURIComponent(u.split('/transfer/verify/')[1] ?? '');
           return json({ status: true, data: { status: 'success', reference: ref, transfer_code: 'TRF_x' } });
         }
-        if (u.includes('/transfer')) return json({ status: true, data: { transfer_code: `TRF_${randomUUID().slice(0, 8)}`, status: 'pending', reference: body.reference } });
+        if (u.includes('/transfer')) {
+          transferAmount = body.amount;
+          if (failTransfer) throw new Error('transfer response timed out');
+          return json({ status: true, data: { transfer_code: `TRF_${randomUUID().slice(0, 8)}`, status: 'pending', reference: body.reference } });
+        }
         throw new Error(`unexpected fetch ${u}`);
       })
     );
@@ -68,6 +76,7 @@ describe('Creator withdrawal — transfer rail', () => {
       .expect(201);
     const token = reg.body.data.tokens.accessToken as string;
     const userId = reg.body.data.user.id as string;
+    await SubscriptionModel.create({ userId, tier: 'starter', status: 'active', billingCycle: 'monthly', currentPeriodStart: new Date(), currentPeriodEnd: new Date(Date.now() + 86400000) });
     const handle = `wd-${randomUUID().slice(0, 6)}`;
     await request(app)
       .post('/api/v1/creators/profile')
@@ -89,9 +98,11 @@ describe('Creator withdrawal — transfer rail', () => {
     const wd = await request(app)
       .post('/api/v1/creators/withdraw')
       .set('Authorization', `Bearer ${token}`)
-      .send({ amount: 120, recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } })
+      .send({ expectedFeePercent: 3, amount: 120, recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } })
       .expect(201);
     expect(wd.body.data.status).toBe('PROCESSING');
+    expect(wd.body.data).toMatchObject({ amount: 120, fee: 3.6, feePercent: 3, netAmount: 116.4 });
+    expect(transferAmount).toBe(11640);
     const reference = wd.body.data.reference as string;
     expect(reference.startsWith('cpay-')).toBe(true);
 
@@ -110,12 +121,12 @@ describe('Creator withdrawal — transfer rail', () => {
 
     bal = await CreatorBalanceModel.findOne({ userId });
     expect(bal?.availableBalance).toBe(80);
-    expect(bal?.paidOutBalance).toBe(120);
+    expect(bal?.paidOutBalance).toBe(116.4);
 
     // Duplicate webhook is a no-op.
     await request(app).post('/api/v1/webhooks/paystack').set('x-paystack-signature', sign(raw)).set('Content-Type', 'application/json').send(raw).expect(200);
     bal = await CreatorBalanceModel.findOne({ userId });
-    expect(bal?.paidOutBalance).toBe(120);
+    expect(bal?.paidOutBalance).toBe(116.4);
   });
 
   it('rejects a withdrawal above the available balance with 400', async () => {
@@ -123,7 +134,7 @@ describe('Creator withdrawal — transfer rail', () => {
     await request(app)
       .post('/api/v1/creators/withdraw')
       .set('Authorization', `Bearer ${token}`)
-      .send({ amount: 100, recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'X' } })
+      .send({ expectedFeePercent: 3, amount: 100, recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'X' } })
       .expect(400);
   });
 
@@ -132,7 +143,7 @@ describe('Creator withdrawal — transfer rail', () => {
     const wd = await request(app)
       .post('/api/v1/creators/withdraw')
       .set('Authorization', `Bearer ${token}`)
-      .send({ amount: 100, recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'X' } })
+      .send({ expectedFeePercent: 3, amount: 100, recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'X' } })
       .expect(201);
     const reference = wd.body.data.reference as string;
 
@@ -155,7 +166,8 @@ describe('Creator withdrawal — transfer rail', () => {
       .expect(200);
 
     const bal = await CreatorBalanceModel.findOne({ userId });
-    expect(bal?.paidOutBalance).toBe(100); // reconciled to PAID
+    expect(bal?.paidOutBalance).toBe(97); // reconciled to PAID
+    expect(bal?.payoutFees).toBe(3);
     expect(bal?.availableBalance).toBe(0);
   });
 
@@ -166,7 +178,7 @@ describe('Creator withdrawal — transfer rail', () => {
       await request(app)
         .post('/api/v1/creators/withdraw')
         .set('Authorization', `Bearer ${token}`)
-        .send({ amount: 40, recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'X' } })
+        .send({ expectedFeePercent: 3, amount: 40, recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'X' } })
         .expect(502);
     } finally {
       failRecipient = false;
@@ -190,7 +202,7 @@ describe('Creator withdrawal — transfer rail', () => {
     const wd = await request(app)
       .post('/api/v1/creators/withdraw')
       .set('Authorization', `Bearer ${token}`)
-      .send({ amount: 50, recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'X' } })
+      .send({ expectedFeePercent: 3, amount: 50, recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'X' } })
       .expect(201);
     const reference = wd.body.data.reference as string;
     expect((await CreatorBalanceModel.findOne({ userId }))?.availableBalance).toBe(0);
@@ -201,4 +213,73 @@ describe('Creator withdrawal — transfer rail', () => {
     expect(bal?.availableBalance).toBe(50); // reservation returned
     expect(bal?.paidOutBalance).toBe(0);
   });
+  it('keeps an existing balance withdrawable after downgrade, requires fee review, and reverses net plus fee once', async () => {
+    const { token, userId } = await creatorWithBalance(100);
+    await SubscriptionModel.updateOne({ userId }, { $set: { tier: 'free' } });
+    const body = { amount: 100, recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'X' } };
+    await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${token}`).send({ ...body, expectedFeePercent: 3 }).expect(409);
+    expect((await CreatorBalanceModel.findOne({ userId }))?.availableBalance).toBe(100);
+    const wd = await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${token}`).send({ ...body, expectedFeePercent: 3.5 }).expect(201);
+    expect(wd.body.data).toMatchObject({ amount: 100, fee: 3.5, netAmount: 96.5 });
+    expect(transferAmount).toBe(9650);
+    for (const event of ['transfer.success', 'transfer.success', 'transfer.reversed', 'transfer.reversed']) {
+      const raw = JSON.stringify({ event, data: { reference: wd.body.data.reference } });
+      await request(app).post('/api/v1/webhooks/paystack').set('x-paystack-signature', sign(raw)).set('Content-Type', 'application/json').send(raw).expect(200);
+      const balance = await CreatorBalanceModel.findOne({ userId });
+      if (event === 'transfer.success') {
+        expect(balance?.paidOutBalance).toBe(96.5);
+        expect(balance?.payoutFees).toBe(3.5);
+      } else {
+        expect(balance?.availableBalance).toBe(100);
+        expect(balance?.paidOutBalance).toBe(0);
+        expect(balance?.payoutFees).toBe(0);
+      }
+    }
+  });
+
+  it('keeps funds reserved after an ambiguous transfer timeout until provider settlement', async () => {
+    const { token, userId } = await creatorWithBalance(100);
+    failTransfer = true;
+    let wd;
+    try {
+      wd = await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${token}`).send({ expectedFeePercent: 3, amount: 100, recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'X' } }).expect(201);
+    } finally { failTransfer = false; }
+    expect(wd.body.data.status).toBe('PROCESSING');
+    expect((await CreatorBalanceModel.findOne({ userId }))?.availableBalance).toBe(0);
+    const raw = JSON.stringify({ event: 'transfer.success', data: { reference: wd.body.data.reference } });
+    await request(app).post('/api/v1/webhooks/paystack').set('x-paystack-signature', sign(raw)).set('Content-Type', 'application/json').send(raw).expect(200);
+    expect((await CreatorBalanceModel.findOne({ userId }))?.paidOutBalance).toBe(97);
+  });
+
+  it('uses live admin plan fees and keeps the payout snapshot after the plan changes', async () => {
+    const { token, userId } = await creatorWithBalance(100);
+    const original = await SubscriptionPlanModel.findOne({ tier: 'starter' });
+    expect(original).toBeTruthy();
+    try {
+      await SubscriptionPlanModel.updateOne({ tier: 'starter' }, { $set: { platformFeePercent: 4 } });
+      const wd = await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${token}`).send({ expectedFeePercent: 4, amount: 100, recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'X' } }).expect(201);
+      expect(wd.body.data).toMatchObject({ fee: 4, netAmount: 96 });
+      expect(transferAmount).toBe(9600);
+      await SubscriptionPlanModel.updateOne({ tier: 'starter' }, { $set: { platformFeePercent: 5 } });
+      const raw = JSON.stringify({ event: 'transfer.success', data: { reference: wd.body.data.reference } });
+      await request(app).post('/api/v1/webhooks/paystack').set('x-paystack-signature', sign(raw)).set('Content-Type', 'application/json').send(raw).expect(200);
+      const balance = await CreatorBalanceModel.findOne({ userId });
+      expect(balance?.paidOutBalance).toBe(96);
+      expect(balance?.payoutFees).toBe(4);
+    } finally {
+      await SubscriptionPlanModel.updateOne({ tier: 'starter' }, { $set: { platformFeePercent: original!.platformFeePercent } });
+    }
+  });
+
+  it('settles historical withdrawals without fee fields under their original zero-fee terms', async () => {
+    const { userId } = await creatorWithBalance(0);
+    const reference = `cpay-legacy-${randomUUID()}`;
+    await CreatorPayoutModel.create({ creatorUserId: userId, amount: 100, currency: 'GHS', status: 'PROCESSING', provider: 'paystack', providerRef: reference });
+    const raw = JSON.stringify({ event: 'transfer.success', data: { reference } });
+    await request(app).post('/api/v1/webhooks/paystack').set('x-paystack-signature', sign(raw)).set('Content-Type', 'application/json').send(raw).expect(200);
+    const balance = await CreatorBalanceModel.findOne({ userId });
+    expect(balance?.paidOutBalance).toBe(100);
+    expect(balance?.payoutFees).toBe(0);
+  });
+
 });

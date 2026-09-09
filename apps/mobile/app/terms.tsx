@@ -35,7 +35,7 @@ export default function TermsScreen() {
     <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
       <Text style={styles.eyebrow}>Legal</Text>
       <Text style={styles.title}>Terms of Service</Text>
-      <Text style={styles.updated}>Last updated: 7 September 2026</Text>
+      <Text style={styles.updated}>Last updated: 9 September 2026</Text>
 
       <Text style={styles.heading}>1. Acceptance of Terms</Text>
       <Text style={styles.body}>
@@ -62,7 +62,10 @@ export default function TermsScreen() {
         Donations are voluntary contributions. While we verify campaigns, Ujimora does not guarantee specific outcomes. Refund eligibility is governed by our Refund Policy.
       </Text>
 
-      <Text style={styles.heading}>6. Privacy</Text>
+      <Text style={styles.heading}>Creator profile donations</Text>
+        <Text style={styles.body}>Creator profile donations require an active, unexpired paid subscription. Free plans and trials cannot enable a creator page or accept new tips. If your paid entitlement ends, new tip checkouts are disabled; existing balances remain withdrawable. Each creator withdrawal deducts the current effective plan’s platform-fee percentage from the requested amount. The fee and net transfer are shown before confirmation and fixed for that withdrawal. The same platform fee is not also deducted when a new tip is received. A failed or reversed transfer restores the full requested amount, including the Ujimora fee. Existing withdrawals keep their original fee terms.</Text>
+
+        <Text style={styles.heading}>6. Privacy</Text>
       <Text style={styles.body}>
         Your use of Ujimora is also governed by our Privacy Policy, which describes how we collect, use, and protect your information.
       </Text>

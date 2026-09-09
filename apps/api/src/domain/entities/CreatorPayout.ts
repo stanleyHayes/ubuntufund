@@ -5,6 +5,9 @@ export interface CreatorPayoutProps {
   id: string;
   creatorUserId: string;
   amount: number;
+  fee?: number;
+  feePercent?: number;
+  netAmount?: number;
   currency: string;
   status: PayoutStatus;
   provider: PayoutProvider;
@@ -35,6 +38,8 @@ export class CreatorPayoutEntity {
   get amount(): number {
     return this.props.amount;
   }
+  get fee(): number { return this.props.fee ?? 0; }
+  get netAmount(): number { return this.props.netAmount ?? this.props.amount; }
   get currency(): string {
     return this.props.currency;
   }

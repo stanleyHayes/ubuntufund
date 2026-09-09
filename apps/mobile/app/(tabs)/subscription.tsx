@@ -637,6 +637,7 @@ export default function SubscriptionScreen() {
                   plan.customBranding ? 'Custom branding' : null,
                   plan.escrowSupport ? 'Escrow support' : null,
                   plan.liveStreaming ? 'Live streaming' : null,
+                  plan.tier !== 'free' && (plan.priceMonthly > 0 || plan.priceYearly > 0) ? 'Creator profile donations on web (active paid plan)' : null,
                 ].filter(Boolean).map((feat) => (
                   <View key={feat} style={styles.featureRow}>
                     <Icon source="check-circle" size={14} color={p.primary} />
@@ -692,7 +693,7 @@ export default function SubscriptionScreen() {
           </View>
           <Text style={styles.upgradeTitle}>Unlock more with Pro</Text>
           <Text style={styles.upgradeDesc}>
-            Lower platform fees, more active campaigns, and premium features. Upgrade anytime — cancel whenever you like.
+            Lower platform fees, more active campaigns, and premium features. Active paid plans include creator profile donations on web; creator withdrawals deduct the current plan’s platform-fee percentage. Free plans and trials do not include creator donations.
           </Text>
           <Button
             mode="contained"

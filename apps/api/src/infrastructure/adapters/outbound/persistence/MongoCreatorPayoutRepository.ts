@@ -10,7 +10,7 @@ function toDomain(doc: CreatorPayoutDocument): CreatorPayoutEntity {
   return new CreatorPayoutEntity({
     id: doc._id!.toString(),
     creatorUserId: doc.creatorUserId,
-    amount: doc.amount,
+    amount: doc.amount, fee: doc.fee, feePercent: doc.feePercent, netAmount: doc.netAmount,
     currency: doc.currency,
     status: doc.status,
     provider: doc.provider,
@@ -30,7 +30,7 @@ export class MongoCreatorPayoutRepository implements CreatorPayoutRepositoryPort
     const p = payout.toPlain();
     const doc = await CreatorPayoutModel.create({
       creatorUserId: p.creatorUserId,
-      amount: p.amount,
+      amount: p.amount, fee: p.fee, feePercent: p.feePercent, netAmount: p.netAmount,
       currency: p.currency,
       status: p.status,
       provider: p.provider,

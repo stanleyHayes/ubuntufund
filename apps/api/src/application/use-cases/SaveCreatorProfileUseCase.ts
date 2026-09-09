@@ -1,3 +1,4 @@
+import type { PlanLimitsService } from '../services/PlanLimitsService.js';
 import type { CreatorProfileRepositoryPort } from '../../domain/ports/outbound/CreatorProfileRepositoryPort.js';
 import type { CreatorBalanceRepositoryPort } from '../../domain/ports/outbound/CreatorBalanceRepositoryPort.js';
 import { CreatorProfileEntity } from '../../domain/entities/CreatorProfile.js';
@@ -23,10 +24,12 @@ export interface SaveCreatorProfileInput {
 export class SaveCreatorProfileUseCase {
   constructor(
     private readonly profileRepo: CreatorProfileRepositoryPort,
-    private readonly balanceRepo: CreatorBalanceRepositoryPort
+    private readonly balanceRepo: CreatorBalanceRepositoryPort,
+    private readonly plans: PlanLimitsService
   ) {}
 
   async execute(userId: string, input: SaveCreatorProfileInput) {
+    await this.plans.assertCreatorDonations(userId);
     const handle = CreatorProfileEntity.normalizeHandle(input.handle);
     if (!CreatorProfileEntity.isValidHandle(handle)) {
       throw new AppError(

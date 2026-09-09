@@ -705,18 +705,20 @@ export function createApp(): express.Express {
   const tipRepo = new MongoTipRepository();
   const saveCreatorProfileUseCase = new SaveCreatorProfileUseCase(
     creatorProfileRepo,
-    creatorBalanceRepo
+    creatorBalanceRepo,
+    planLimitsService
   );
   const getCreatorByHandleUseCase = new GetCreatorByHandleUseCase(
     creatorProfileRepo,
-    tipRepo
+    tipRepo,
+    planLimitsService
   );
   const createTipIntentUseCase = new CreateTipIntentUseCase(
     creatorProfileRepo,
     tipRepo,
     creatorBalanceRepo,
     paymentGateway,
-    Number.parseFloat(process.env.TIP_PLATFORM_FEE_PERCENT ?? '0')
+    planLimitsService
   );
   const handleTipWebhookUseCase = new HandleTipWebhookUseCase(
     tipRepo,
@@ -726,7 +728,8 @@ export function createApp(): express.Express {
   const requestCreatorWithdrawalUseCase = new RequestCreatorWithdrawalUseCase(
     creatorPayoutRepo,
     creatorBalanceRepo,
-    paymentGateway
+    paymentGateway,
+    planLimitsService
   );
   const handleCreatorPayoutWebhookUseCase = new HandleCreatorPayoutWebhookUseCase(
     creatorPayoutRepo,
@@ -1363,6 +1366,7 @@ export function createApp(): express.Express {
   api.use(
     '/creators',
     createCreatorRoutes({
+      planLimits: planLimitsService,
       saveProfile: saveCreatorProfileUseCase,
       getByHandle: getCreatorByHandleUseCase,
       createTip: createTipIntentUseCase,

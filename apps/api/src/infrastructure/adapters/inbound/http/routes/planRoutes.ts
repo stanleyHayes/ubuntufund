@@ -78,6 +78,8 @@ export function createPlanRoutes(
 ): Router {
   const router = Router();
 
+  router.get('/public', controller.publicList);
+
   // Authed display: pricing/limits for the web + admin surfaces.
   router.get('/', authMiddleware, controller.list);
 

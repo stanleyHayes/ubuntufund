@@ -10,8 +10,8 @@ export const featureGroups = [
     id: 'creators', icon: VolunteerActivismRounded, title: 'A new way to support creators',
     description: 'Turn appreciation into support with a personal tip jar.',
     features: [
-      ['Your own creator page', 'Set up a creator profile and share your public tip link with people who value your work.'],
-      ['Tips and withdrawals', 'Receive tips, follow your available balance, and request withdrawals from your creator dashboard. Fees and withdrawal requirements apply.'],
+      ['Your own creator page', 'With an active paid plan, set up a creator profile and share your public tip link. Free plans and trials do not include creator donations.'],
+      ['Tips and withdrawals', 'Receive tips, follow your available balance, and request withdrawals from your creator dashboard. Withdrawals deduct your current plan’s platform-fee percentage; review the fee and net transfer before confirming.'],
     ],
     action: 'Set up your tip jar', path: '/creator',
   },

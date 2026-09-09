@@ -25,7 +25,7 @@ export default function FeaturesPage() {
         icon={<VolunteerActivismRounded />}
         panelLabel="Meet the creator tip jar"
         panelTitle="Give your supporters a place to say thank you."
-        panelBody="A shareable creator page, tips from your community, and a dashboard to manage your balance and withdrawals."
+        panelBody="Included with active paid plans: a shareable creator page, tips from your community, and withdrawals at your plan’s platform-fee rate."
         primaryAction={{ label: 'Create your account', href: `${webUrl}/register` }}
         secondaryAction={{ label: 'Compare plans', href: '/pricing' }}
       />

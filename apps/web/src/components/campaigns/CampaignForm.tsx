@@ -345,7 +345,7 @@ export function CampaignForm() {
 
   const errors = useMemo(() => {
     const result = validate(formData)
-    if (options?.maxGoal != null && Number(formData.goalAmount) > options.maxGoal) result.goalAmount = `Your current limit is ${formatCurrency(options.maxGoal)}. Reduce the goal or change your plan.`
+    if (options?.maxGoal != null && Number(formData.goalAmount) > options.maxGoal) result.goalAmount = `Your current limit is ${formatCurrency(options.maxGoal)}. Reduce the goal. A higher plan does not override an account-specific compliance cap.`
     if (formData.coverImageUrl && options?.plan.maxMediaPerCampaign === 0) result.coverImageUrl = 'Your plan does not include campaign images.'
     return result
   }, [formData, options])
@@ -508,6 +508,7 @@ export function CampaignForm() {
       {optionsError && <Alert severity="error" action={<Button onClick={retry}>Retry</Button>} sx={{ mb: 2 }}>{optionsError}</Alert>}
       {options && <Alert severity={options.canCreate ? 'info' : 'warning'} sx={{ mb: 2 }}>
         <Typography variant="body2">{options.plan.name}: {options.maxGoal === null ? 'No goal limit' : `Goals up to ${formatCurrency(options.maxGoal)}`} · {options.activeCount} active/pending campaigns.</Typography>
+        {options.maxGoal !== null && (options.plan.maxCampaignGoal < 0 || options.maxGoal < options.plan.maxCampaignGoal) && <Typography variant="body2">Your account has a compliance limit below this plan’s maximum. Contact support for a review before increasing your goal.</Typography>}
         {!options.canCreate && <Typography variant="body2" sx={{ mt: 0.5 }}>
           {options.creationBlockReason === 'verification_required'
             ? 'Complete account verification before creating your first campaign. You have not reached your plan’s campaign limit.'

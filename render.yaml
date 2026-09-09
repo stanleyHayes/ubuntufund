@@ -82,8 +82,7 @@ services:
         value: "0"
       - key: PAYSTACK_FLAT_FEE
         value: "0"
-      - key: TIP_PLATFORM_FEE_PERCENT
-        value: "0"
+      # Creator donation fees use the live subscription plan at withdrawal.
       # Payment rails / currencies (multi-rail flags default OFF).
       - key: PAYMENTS_PAYSTACK_ENABLED
         value: "true"

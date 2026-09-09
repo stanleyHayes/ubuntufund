@@ -177,3 +177,7 @@ flake** (it moves between files across runs and every affected file passes in
 isolation — the vitest config documents the shared-process caveat). New coverage:
 short-links (15), live-sessions (8), realtime-SSE (4), donation-intents (6),
 Paystack (8), EventBus + domain units.
+
+## Creator profile donations
+
+Creator donations require an active paid subscription; Free and trial accounts cannot enable them or receive new tips. Withdrawals deduct the current effective plan’s platform-fee percentage, with the fee and net amount reviewed before confirmation. Existing balances remain withdrawable after downgrade. See [creator donation policy and API contract](docs/creator-donations.md). Deploy API and web together; no new credentials are required and `TIP_PLATFORM_FEE_PERCENT` is no longer used.

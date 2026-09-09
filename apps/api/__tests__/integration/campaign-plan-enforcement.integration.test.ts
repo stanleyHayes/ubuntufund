@@ -41,3 +41,23 @@ it('uses live plan caps for form options and POST, rejects expired privileges, a
   await SubscriptionModel.findOneAndUpdate({ userId }, { currentPeriodEnd: new Date(Date.now() + 86400000 * 30) });
   await request(app).post(`/api/v1/campaigns/${campaignId}/split`).set('Authorization', `Bearer ${token}`).send({ allocations }).expect(201);
 });
+
+it('keeps public pricing and creation on the same live Free plan while preserving account caps', async () => {
+  await SubscriptionPlanModel.findOneAndUpdate({ tier: SubscriptionTier.FREE }, { ...SUBSCRIPTION_PLANS[SubscriptionTier.FREE], maxCampaignGoal: 10000 }, { upsert: true });
+  await SubscriptionPlanModel.findOneAndUpdate({ tier: SubscriptionTier.ENTERPRISE }, { ...SUBSCRIPTION_PLANS[SubscriptionTier.ENTERPRISE], isPublic: false }, { upsert: true });
+  const pricing = await request(app).get('/api/v1/plans/public').expect(200);
+  expect(pricing.body.data.find((plan: { tier: string }) => plan.tier === 'free').maxCampaignGoal).toBe(10000);
+  expect(pricing.body.data.some((plan: { tier: string }) => plan.tier === 'enterprise')).toBe(false);
+  await request(app).put('/api/v1/plans/free').send({ maxCampaignGoal: 20000 }).expect(401);
+  const signup = await request(app).post('/api/v1/auth/register').send({ email: `goal-${randomUUID()}@example.test`, name: 'Goal Test', password: 'SecurePass123' }).expect(201);
+  const token = signup.body.data.tokens.accessToken, userId = signup.body.data.user.id;
+  await UserModel.findByIdAndUpdate(userId, { verificationLevel: VerificationLevel.NATIONAL_ID });
+  const options = () => request(app).get('/api/v1/campaigns/creation-options').set('Authorization', `Bearer ${token}`);
+  expect((await options().expect(200)).body.data.maxGoal).toBe(10000);
+  await UserModel.findByIdAndUpdate(userId, { complianceApprovedCampaignLimit: 5000 });
+  expect((await options().expect(200)).body.data.maxGoal).toBe(5000);
+  const input = { title: 'Goal boundary campaign', description: 'Supplies for our local community school', goalAmount: 10000, currency: 'GHS', category: 'education', priority: 'normal', beneficiaries: ['School'], endDate: new Date(Date.now() + 86400000 * 30).toISOString() };
+  await request(app).post('/api/v1/campaigns').set('Authorization', `Bearer ${token}`).send(input).expect(422);
+  await UserModel.findByIdAndUpdate(userId, { $unset: { complianceApprovedCampaignLimit: 1 } });
+  await request(app).post('/api/v1/campaigns').set('Authorization', `Bearer ${token}`).send(input).expect(201);
+});

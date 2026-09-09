@@ -108,6 +108,7 @@ export const LEGAL_POLICIES: LegalPolicy[] = [
       'Welcome to Ujimora. These Terms of Use govern your use of our crowdfunding platform. Please read them carefully before creating an account, publishing a campaign, or making a contribution.',
     effectiveDate: LEGAL_ENTITY.effectiveDate,
     sections: [
+      { title: 'Creator profile donations and withdrawal fees', content: 'Creator profile donations require an active, unexpired paid subscription. Free plans and trials cannot enable a creator page or accept new tips. If your paid entitlement ends, new tip checkouts are disabled; existing balances remain withdrawable. Each creator withdrawal deducts the current effective plan’s platform-fee percentage from the requested amount. The fee and net transfer are shown before confirmation and fixed for that withdrawal. The same platform fee is not also deducted when a new tip is received. A failed or reversed transfer restores the full requested amount, including the Ujimora fee. Existing withdrawals keep their original fee terms.' },
       { title: "Crypto contributions, where available", content: "Crypto is an optional contribution method only where offered at checkout. Review the supported asset, network, exact amount, campaign-currency value and payment window before sending. A quote is not a completed contribution; campaign credit follows provider confirmation. Crypto contributions are not an investment, savings product or promise of returns. Availability does not represent regulatory approval or an endorsement of an asset." },
       {
         title: '1. About Ujimora',
@@ -396,13 +397,14 @@ Send marketing only where permitted and with applicable choice or consent.`,
     panelTitle: 'Give with clear information about where your contribution goes.',
     panelBody: 'These terms apply whenever you contribute to a campaign — including campaigns with multiple beneficiaries.',
     introduction:
-      'These Contributor & Donor Terms apply when you contribute to a Ujimora campaign. They explain the nature of a contribution, refunds, disputes, and campaigns with multiple beneficiaries.',
+      'These Contributor & Donor Terms apply when you contribute to a Ujimora campaign or creator profile. They explain the nature of a contribution, refunds, disputes, and campaigns with multiple beneficiaries.',
     effectiveDate: LEGAL_ENTITY.effectiveDate,
     sections: [
+      { title: 'Creator profile donations and withdrawal fees', content: 'Creator profile donations require an active, unexpired paid subscription. Free plans and trials cannot enable a creator page or accept new tips. If your paid entitlement ends, new tip checkouts are disabled; existing balances remain withdrawable. Each creator withdrawal deducts the current effective plan’s platform-fee percentage from the requested amount. The fee and net transfer are shown before confirmation and fixed for that withdrawal. The same platform fee is not also deducted when a new tip is received. A failed or reversed transfer restores the full requested amount, including the Ujimora fee. Existing withdrawals keep their original fee terms.' },
       { title: "Sending a crypto contribution", content: "Use only the asset, network, address and required memo or tag shown for your payment. Review the quoted campaign-currency value, exchange rate and any fees shown; your wallet may also charge sending fees. Obtain a fresh quote if it expires before you proceed. Do not send after the payment window closes. Wrong-network transfers, incorrect addresses and missing tags can cause permanent loss. If you have already sent and confirmation is delayed, contact support with the campaign, payment reference and transaction hash before sending again. Never share private keys or recovery phrases." },
       {
         title: '1. Scope',
-        content: 'These terms apply when a person contributes to a Ujimora campaign.',
+        content: 'These terms apply when a person contributes to a Ujimora campaign or makes a direct donation to a creator profile.',
       },
       {
         title: '2. Nature of contribution',
@@ -474,6 +476,7 @@ Send marketing only where permitted and with applicable choice or consent.`,
       'This policy explains how payouts and refunds work on Ujimora: the standard payout window, the optional priority, early and assisted payout services, the holds that can apply, and how failed or cancelled campaigns are handled.',
     effectiveDate: LEGAL_ENTITY.effectiveDate,
     sections: [
+      { title: 'Creator profile donations and withdrawal fees', content: 'Creator profile donations require an active, unexpired paid subscription. Free plans and trials cannot enable a creator page or accept new tips. If your paid entitlement ends, new tip checkouts are disabled; existing balances remain withdrawable. Each creator withdrawal deducts the current effective plan’s platform-fee percentage from the requested amount. The fee and net transfer are shown before confirmation and fixed for that withdrawal. The same platform fee is not also deducted when a new tip is received. A failed or reversed transfer restores the full requested amount, including the Ujimora fee. Existing withdrawals keep their original fee terms.' },
       { title: "Crypto transfers and refund review", content: "A completed blockchain transfer cannot simply be reversed. Contact support with the campaign reference, payment reference and transaction hash to request review. Do not send another transfer to resolve a delayed payment unless instructed through verified support. Any eligible refund depends on applicable rights, provider capabilities and the circumstances of the payment; confirm the currency, amount, conversion basis, fees and destination with support. Do not assume the same crypto quantity will be returned or that an exchange sending address can receive refunds. This does not limit applicable statutory rights." },
       {
         title: '1. Standard payout',
@@ -662,6 +665,7 @@ Marketing: advertising and attribution technologies, if introduced.`,
       'These terms explain how Ujimora subscription plans are billed and managed, including renewal, cancellation, upgrades, downgrades and price changes.',
     effectiveDate: LEGAL_ENTITY.effectiveDate,
     sections: [
+      { title: 'Creator profile donations and withdrawal fees', content: 'Creator profile donations require an active, unexpired paid subscription. Free plans and trials cannot enable a creator page or accept new tips. If your paid entitlement ends, new tip checkouts are disabled; existing balances remain withdrawable. Each creator withdrawal deducts the current effective plan’s platform-fee percentage from the requested amount. The fee and net transfer are shown before confirmation and fixed for that withdrawal. The same platform fee is not also deducted when a new tip is received. A failed or reversed transfer restores the full requested amount, including the Ujimora fee. Existing withdrawals keep their original fee terms.' },
       {
         title: '1. Plans',
         content:

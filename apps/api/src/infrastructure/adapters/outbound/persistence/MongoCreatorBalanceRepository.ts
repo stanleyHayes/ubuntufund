@@ -115,13 +115,14 @@ export class MongoCreatorBalanceRepository
   async reverseFromPaidOut(
     userId: string,
     net: number,
-    settleRef?: string
+    settleRef?: string,
+    fee = 0
   ): Promise<CreatorBalance | null> {
     const doc = await CreatorBalanceModel.findOneAndUpdate(
       this.settleFilter(userId, settleRef),
       {
         $set: { updatedAt: new Date() },
-        $inc: { paidOutBalance: -net, availableBalance: net },
+        $inc: { paidOutBalance: -net, payoutFees: -fee, availableBalance: net + fee },
         ...this.settleAdd(settleRef),
       },
       { new: true }

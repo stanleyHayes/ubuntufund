@@ -1,3 +1,4 @@
+import { SubscriptionModel } from '../../src/infrastructure/database/models/SubscriptionModel.js';
 import { createHmac, randomUUID } from 'node:crypto';
 
 const PAYSTACK_SECRET = 'sk_test_creator_tips_secret';
@@ -60,6 +61,7 @@ describe('Creator tip jar (buy-me-a-coffee) — receive loop', () => {
       .send({ email: uniqueEmail('creator'), password: 'SecurePass123', name: 'Ama Creator' })
       .expect(201);
     const token = reg.body.data.tokens.accessToken as string;
+    await SubscriptionModel.create({ userId: reg.body.data.user.id, tier: 'starter', status: 'active', billingCycle: 'monthly', currentPeriodStart: new Date(), currentPeriodEnd: new Date(Date.now() + 86400000) });
     const handle = `ama-${randomUUID().slice(0, 6)}`;
 
     // Claim the creator page.
@@ -129,6 +131,7 @@ describe('Creator tip jar (buy-me-a-coffee) — receive loop', () => {
       .expect(201);
     const token = reg.body.data.tokens.accessToken as string;
     const userId = reg.body.data.user.id as string;
+    await SubscriptionModel.create({ userId, tier: 'starter', status: 'active', billingCycle: 'monthly', currentPeriodStart: new Date(), currentPeriodEnd: new Date(Date.now() + 86400000) });
     const handle = `yaa-${randomUUID().slice(0, 6)}`;
     await request(app)
       .post('/api/v1/creators/profile')
@@ -183,8 +186,34 @@ describe('Creator tip jar (buy-me-a-coffee) — receive loop', () => {
   it('rejects a taken handle with 409', async () => {
     const reg1 = await request(app).post('/api/v1/auth/register').send({ email: uniqueEmail('c1'), password: 'SecurePass123', name: 'One' }).expect(201);
     const reg2 = await request(app).post('/api/v1/auth/register').send({ email: uniqueEmail('c2'), password: 'SecurePass123', name: 'Two' }).expect(201);
+    for (const reg of [reg1, reg2]) await SubscriptionModel.create({ userId: reg.body.data.user.id, tier: 'starter', status: 'active', billingCycle: 'monthly', currentPeriodStart: new Date(), currentPeriodEnd: new Date(Date.now() + 86400000) });
     const handle = `dup-${randomUUID().slice(0, 6)}`;
     await request(app).post('/api/v1/creators/profile').set('Authorization', `Bearer ${reg1.body.data.tokens.accessToken}`).send({ handle, displayName: 'One' }).expect(200);
     await request(app).post('/api/v1/creators/profile').set('Authorization', `Bearer ${reg2.body.data.tokens.accessToken}`).send({ handle, displayName: 'Two' }).expect(409);
   });
+  it('blocks Free setup and expired or trial creator donations, including direct API access', async () => {
+    const reg = await request(app).post('/api/v1/auth/register').send({ email: uniqueEmail('paid-gate'), password: 'SecurePass123', name: 'Paid Creator' }).expect(201);
+    const token = reg.body.data.tokens.accessToken;
+    const userId = reg.body.data.user.id;
+    const handle = `paid-${randomUUID().slice(0, 6)}`;
+    const profile = { handle, displayName: 'Paid Creator' };
+    await request(app).post('/api/v1/creators/profile').set('Authorization', `Bearer ${token}`).send(profile).expect(403);
+    const free = await request(app).get('/api/v1/creators/me').set('Authorization', `Bearer ${token}`).expect(200);
+    expect(free.body.data.policy.eligible).toBe(false);
+    await SubscriptionModel.create({ userId, tier: 'starter', status: 'active', billingCycle: 'monthly', currentPeriodStart: new Date(), currentPeriodEnd: new Date(Date.now() + 86400000) });
+    await request(app).post('/api/v1/creators/profile').set('Authorization', `Bearer ${token}`).send(profile).expect(200);
+    expect((await request(app).get(`/api/v1/creators/${handle}`).expect(200)).body.data.tipsEnabled).toBe(true);
+    for (const update of [
+      { currentPeriodEnd: new Date(Date.now() - 1000) },
+      { currentPeriodEnd: new Date(Date.now() + 86400000), status: 'trialing' },
+      { status: 'active', tier: 'free' },
+    ]) {
+      await SubscriptionModel.updateOne({ userId }, { $set: update });
+      expect((await request(app).get(`/api/v1/creators/${handle}`).expect(200)).body.data.tipsEnabled).toBe(false);
+      const callsBefore = vi.mocked(fetch).mock.calls.length;
+      await request(app).post(`/api/v1/creators/${handle}/tips`).send({ amount: 20, supporterEmail: 'fan@example.com' }).expect(403);
+      expect(vi.mocked(fetch).mock.calls.length).toBe(callsBefore);
+    }
+  });
+
 });

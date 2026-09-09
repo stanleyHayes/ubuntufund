@@ -1,3 +1,4 @@
+import type { PlanLimitsService } from '../services/PlanLimitsService.js';
 import { randomUUID } from 'node:crypto';
 import type { CreatorPayoutRepositoryPort } from '../../domain/ports/outbound/CreatorPayoutRepositoryPort.js';
 import type { CreatorBalanceRepositoryPort } from '../../domain/ports/outbound/CreatorBalanceRepositoryPort.js';
@@ -8,6 +9,7 @@ import { logger } from '../../infrastructure/logging/logger.js';
 
 export interface CreatorWithdrawalInput {
   amount: number;
+  expectedFeePercent?: number;
   recipient: {
     type: 'mobile_money' | 'ghipss';
     accountNumber: string;
@@ -28,25 +30,22 @@ export interface CreatorWithdrawalInput {
  * so money is never returned to available while it may still be in flight, and a
  * failure is always correlatable to a persisted, terminal-transitionable record.
  *
- * Documented residual (identical to the other single-transfer rails): if
- * `initiateTransfer` throws on an UNCERTAIN outcome (a network timeout where the
- * provider actually queued the transfer), the rollback returns the reservation
- * while that money is in flight. Reconciliation cannot recover it because the
- * rollback already moved the payout to FAILED. This is the accepted trade-off for
- * not stranding the far-more-common definite-failure case in PROCESSING.
+ * Once transfer initiation is attempted, an error leaves funds reserved in
+ * PROCESSING until a signed webhook or reconciliation resolves the outcome.
  */
 export class RequestCreatorWithdrawalUseCase {
   constructor(
     private readonly payoutRepo: CreatorPayoutRepositoryPort,
     private readonly balanceRepo: CreatorBalanceRepositoryPort,
-    private readonly gateway: PaymentGatewayPort
+    private readonly gateway: PaymentGatewayPort,
+    private readonly plans: PlanLimitsService
   ) {}
 
   async execute(userId: string, input: CreatorWithdrawalInput) {
     if (!this.gateway.isConfigured()) {
       throw new AppError('Withdrawals are not available right now.', 503);
     }
-    if (!input.amount || input.amount <= 0) {
+    if (!Number.isFinite(input.amount) || input.amount <= 0 || !Number.isSafeInteger(Math.round(input.amount * 100)) || input.amount !== Math.round(input.amount * 100) / 100) {
       throw new AppError('Enter a withdrawal amount.', 400);
     }
     const r = input.recipient;
@@ -56,6 +55,13 @@ export class RequestCreatorWithdrawalUseCase {
 
     const balance = await this.balanceRepo.findByUserId(userId);
     const currency = balance?.currency ?? 'GHS';
+
+    const policy = await this.plans.creatorPolicy(userId);
+    const feePercent = policy.feePercent;
+    if (input.expectedFeePercent !== feePercent) throw new AppError('Your withdrawal fee has changed. Refresh your creator dashboard and review the new fee.', 409);
+    const fee = Math.round(input.amount * feePercent) / 100;
+    const netAmount = Math.round((input.amount - fee) * 100) / 100;
+    if (!Number.isFinite(fee) || fee < 0 || netAmount <= 0) throw new AppError('The withdrawal amount must exceed the fee.', 422);
 
     // Reserve first (atomic, guarded on availableBalance ≥ amount).
     const reserved = await this.balanceRepo.reserveForPayout(userId, input.amount);
@@ -72,7 +78,7 @@ export class RequestCreatorWithdrawalUseCase {
         new CreatorPayoutEntity({
           id: '',
           creatorUserId: userId,
-          amount: input.amount,
+          amount: input.amount, fee, feePercent, netAmount,
           currency,
           status: 'PENDING',
           provider: 'paystack',
@@ -104,6 +110,7 @@ export class RequestCreatorWithdrawalUseCase {
       throw new AppError('Could not start the withdrawal. Please try again.', 502);
     }
 
+    let transferAttempted = false;
     let recipientCode = '';
     let transferCode: string | undefined;
     try {
@@ -114,8 +121,9 @@ export class RequestCreatorWithdrawalUseCase {
         bankCode: r.bankCode,
         currency,
       });
+      transferAttempted = true;
       const transfer = await this.gateway.initiateTransfer({
-        amount: input.amount,
+        amount: netAmount,
         recipientCode,
         reference,
         reason: 'Ujimora creator withdrawal',
@@ -123,6 +131,7 @@ export class RequestCreatorWithdrawalUseCase {
       transferCode = transfer.transferCode;
     } catch (err) {
       logger.error({ err, payoutId: payout.id }, 'creator withdrawal initiation failed');
+      if (transferAttempted) return { id: payout.id, status: 'PROCESSING' as const, amount: input.amount, fee, feePercent, netAmount, currency, reference };
       await this.rollback(payout.id, userId, input.amount);
       throw new AppError('Could not start the withdrawal. Please try again.', 502);
     }
@@ -139,7 +148,7 @@ export class RequestCreatorWithdrawalUseCase {
     return {
       id: payout.id,
       status: 'PROCESSING' as const,
-      amount: input.amount,
+      amount: input.amount, fee, feePercent, netAmount,
       currency,
       reference,
     };

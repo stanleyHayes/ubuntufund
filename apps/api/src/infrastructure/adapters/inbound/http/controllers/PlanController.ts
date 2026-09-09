@@ -26,6 +26,14 @@ export class PlanController {
     }
   };
 
+  /** Public marketing reads exactly the active, visible live commercial plans. */
+  publicList = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const plans = await this.listPlansUseCase.execute(true);
+      res.set('Cache-Control', 'no-store').json({ data: plans.filter(plan => plan.active && plan.isPublic) });
+    } catch (error) { next(error); }
+  };
+
   /** POST /plans — admin only. Adds a new plan/tier. */
   create = async (
     req: Request,

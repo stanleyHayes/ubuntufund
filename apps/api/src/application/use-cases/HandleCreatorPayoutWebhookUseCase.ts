@@ -21,8 +21,8 @@ export class HandleCreatorPayoutWebhookUseCase {
     if (!won) return; // idempotent
     await this.balanceRepo.markPaidOut(
       payout.creatorUserId,
-      payout.amount,
-      0,
+      payout.netAmount,
+      payout.fee,
       `cpay:${payout.id}:paid`
     );
     await this.payoutRepo.markSettlementApplied(payout.id, 'PAID');
@@ -48,8 +48,9 @@ export class HandleCreatorPayoutWebhookUseCase {
     if (fromPaid) {
       await this.balanceRepo.reverseFromPaidOut(
         payout.creatorUserId,
-        payout.amount,
-        `cpay:${payout.id}:reversed`
+        payout.netAmount,
+        `cpay:${payout.id}:reversed`,
+        payout.fee
       );
       await this.payoutRepo.markSettlementApplied(payout.id, 'REVERSED');
       return;
@@ -71,7 +72,7 @@ export class HandleCreatorPayoutWebhookUseCase {
     if (!payout) return;
     const key = `cpay:${payout.id}`;
     if (payout.status === 'PAID') {
-      await this.balanceRepo.markPaidOut(payout.creatorUserId, payout.amount, 0, `${key}:paid`);
+      await this.balanceRepo.markPaidOut(payout.creatorUserId, payout.netAmount, payout.fee, `${key}:paid`);
       await this.payoutRepo.markSettlementApplied(payout.id, 'PAID');
     } else if (payout.status === 'FAILED') {
       await this.balanceRepo.returnToAvailable(payout.creatorUserId, payout.amount, `${key}:returned`);
@@ -81,7 +82,7 @@ export class HandleCreatorPayoutWebhookUseCase {
         await this.balanceRepo.returnToAvailable(payout.creatorUserId, payout.amount, `${key}:returned`);
         await this.payoutRepo.markSettlementApplied(payout.id, 'REVERSED');
       } else if (payout.reversedFrom === 'PAID') {
-        await this.balanceRepo.reverseFromPaidOut(payout.creatorUserId, payout.amount, `${key}:reversed`);
+        await this.balanceRepo.reverseFromPaidOut(payout.creatorUserId, payout.netAmount, `${key}:reversed`, payout.fee);
         await this.payoutRepo.markSettlementApplied(payout.id, 'REVERSED');
       }
     }

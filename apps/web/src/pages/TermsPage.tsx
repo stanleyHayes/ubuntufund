@@ -40,6 +40,9 @@ export function TermsPage() {
           Ujimora offers a free Community plan alongside paid Plus, Pro, Organization, and Enterprise plans, with platform fees that vary by plan. Any applicable platform, processing, or payout fee is displayed before a transaction and reflected in the applicable published policy.
         </Typography>
 
+        <Typography variant="h5">Creator profile donations</Typography>
+        <Typography>Creator profile donations require an active, unexpired paid subscription. Free plans and trials cannot enable a creator page or accept new tips. If your paid entitlement ends, new tip checkouts are disabled; existing balances remain withdrawable. Each creator withdrawal deducts the current effective plan’s platform-fee percentage from the requested amount. The fee and net transfer are shown before confirmation and fixed for that withdrawal. The same platform fee is not also deducted when a new tip is received. A failed or reversed transfer restores the full requested amount, including the Ujimora fee. Existing withdrawals keep their original fee terms.</Typography>
+
         <Typography variant="h5">7. Prohibited Conduct</Typography>
         <Typography>
           Users may not use Ujimora for fraudulent purposes, money laundering, terrorist financing, or any illegal activity. We reserve the right to block campaigns and accounts that violate these terms.
@@ -64,7 +67,7 @@ export function TermsPage() {
         <Typography>Use only the asset, network, address and required memo or tag shown for your payment. Review the quoted campaign-currency value, exchange rate and any fees shown; your wallet may also charge sending fees. Obtain a fresh quote if it expires before you proceed. Do not send after the payment window closes. Wrong-network transfers, incorrect addresses and missing tags can cause permanent loss. If you have already sent and confirmation is delayed, contact support with the campaign, payment reference and transaction hash before sending again. Never share private keys or recovery phrases. A completed blockchain transfer cannot simply be reversed. Contact support with the campaign reference, payment reference and transaction hash to request review. Do not send another transfer to resolve a delayed payment unless instructed through verified support. Any eligible refund depends on applicable rights, provider capabilities and the circumstances of the payment; confirm the currency, amount, conversion basis, fees and destination with support. Do not assume the same crypto quantity will be returned or that an exchange sending address can receive refunds. This does not limit applicable statutory rights.</Typography>
 
         <Typography variant="body2" sx={{ mt: 6, color: 'text.secondary' }}>
-          Last updated: 8 September 2026
+          Last updated: 9 September 2026
         </Typography>
       </Box>
     </Container>

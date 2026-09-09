@@ -276,7 +276,7 @@ export function SubscriptionPage() {
         Subscription
       </Typography>
       <Typography sx={{ color: 'text.secondary', mb: 5, animation: `${fadeInUp} 0.4s 0.05s ease both` }}>
-        Manage your plan, billing, and features.
+        Manage your plan, billing, and features. Creator donations are included with active paid plans; withdrawals deduct your plan’s platform-fee percentage.
       </Typography>
 
       {/* ═══════════ ACTIVE PLAN CARD ═══════════ */}
@@ -400,6 +400,7 @@ export function SubscriptionPage() {
               currentPlan.customBranding && 'Custom Branding',
               currentPlan.escrowSupport && 'Escrow',
               currentPlan.liveStreaming && 'Live Streaming',
+              currentSub.status === 'active' && new Date(currentSub.currentPeriodEnd).getTime() > Date.now() && currentPlan.tier !== 'free' && (currentPlan.priceMonthly > 0 || currentPlan.priceYearly > 0) && 'Creator profile donations',
               currentPlan.campaignCollaboration && 'Collaboration',
             ]
               .filter(Boolean)
@@ -559,6 +560,7 @@ export function SubscriptionPage() {
                     plan.advancedAnalytics && 'Advanced analytics',
                     plan.escrowSupport && 'Escrow & milestones',
                     plan.liveStreaming && 'Live streaming',
+                      plan.tier !== 'free' && (plan.priceMonthly > 0 || plan.priceYearly > 0) && 'Creator donations on your profile',
                     plan.campaignCollaboration && 'Campaign collaboration',
                   ]
                     .filter(Boolean)

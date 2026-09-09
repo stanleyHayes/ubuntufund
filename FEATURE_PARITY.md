@@ -29,6 +29,7 @@ This matrix covers user- and organization-facing capabilities that are appropria
 | Settings and account deletion | `/settings` | `/settings` | profile/settings APIs and `DELETE /profile` | Equal |
 | Appearance (dark mode + design skins) | Settings → Appearance + Design finish | Settings → Appearance + Design finish | client-side preference (persisted) | Equal; all 4 skins on both platforms (see Theming) |
 | Subscription plans + paid checkout | `/subscription` | Subscription tab (Paystack checkout sheet) | `/subscriptions/*`, `/subscriptions/checkout` | Equal; live once `PAYSTACK_SECRET_KEY` is set |
+| Paid creator profile donations | `/creator`, `/creators/:handle` | No dedicated creator UI | `/creators/*`; active paid plan required; plan-rate withdrawal fee | Web/backend implemented; separate launch gaps in `docs/creator-donations.md` |
 | Coupon codes at checkout | subscribe checkout dialog | subscription checkout sheet | `/coupons/preview` + checkout body | Equal |
 | Affiliate program | `/affiliate` | `/affiliate` (Profile menu) | `/affiliate/*` | Equal |
 | Privacy and terms | `/privacy`, `/terms` | `/privacy`, `/terms` | bundled public copy | Equal |

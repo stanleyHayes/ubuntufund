@@ -35,6 +35,6 @@ export interface CreatorBalanceRepositoryPort {
   returnToAvailable(userId: string, amount: number, settleRef?: string): Promise<CreatorBalance | null>;
   /** Confirm a paid-out withdrawal: paidOutBalance += net, payoutFees += fee. */
   markPaidOut(userId: string, net: number, fee: number, settleRef?: string): Promise<CreatorBalance | null>;
-  /** Reverse a paid-out withdrawal (bounced): paidOut -= net, available += net. */
-  reverseFromPaidOut(userId: string, net: number, settleRef?: string): Promise<CreatorBalance | null>;
+  /** Reverse a paid-out withdrawal (bounced): paidOut -= net, payoutFees -= fee, available += net + fee. */
+  reverseFromPaidOut(userId: string, net: number, settleRef?: string, fee?: number): Promise<CreatorBalance | null>;
 }

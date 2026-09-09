@@ -74,3 +74,7 @@ frontend env file — everything `VITE_`-prefixed is shipped to the browser.
 [.github/workflows/ci.yml](.github/workflows/ci.yml) runs lint, type-check,
 unit tests (against a MongoDB service container), Playwright e2e (with the
 real API booted), and builds — on every push/PR to `main`.
+
+## Creator profile donations
+
+Creator donations require an active paid subscription; Free and trial accounts cannot enable them or receive new tips. Withdrawals deduct the current effective plan’s platform-fee percentage, with the fee and net amount reviewed before confirmation. Existing balances remain withdrawable after downgrade. See [creator donation policy and API contract](docs/creator-donations.md). Deploy API and web together; no new credentials are required and `TIP_PLATFORM_FEE_PERCENT` is no longer used.

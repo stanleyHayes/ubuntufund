@@ -4,6 +4,9 @@ import type { PayoutProvider, PayoutStatus } from '@ubuntu-fund/types';
 export interface CreatorPayoutDocument extends Document {
   creatorUserId: string;
   amount: number;
+  fee?: number;
+  feePercent?: number;
+  netAmount?: number;
   currency: string;
   status: PayoutStatus;
   provider: PayoutProvider;
@@ -30,6 +33,7 @@ const schema = new Schema<CreatorPayoutDocument>(
   {
     creatorUserId: { type: String, required: true, index: true },
     amount: { type: Number, required: true },
+    fee: Number, feePercent: Number, netAmount: Number,
     currency: { type: String, required: true, default: 'GHS' },
     status: { type: String, enum: PAYOUT_STATUSES, required: true, default: 'PENDING', index: true },
     provider: { type: String, default: 'paystack' },
