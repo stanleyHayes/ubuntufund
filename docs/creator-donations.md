@@ -34,7 +34,7 @@ These are seed defaults, not guaranteed production prices. Admin-managed values 
 
 ## Deployment and verification
 
-No new secret or database migration is required. `TIP_PLATFORM_FEE_PERCENT` is obsolete and ignored; it has been removed from `render.yaml`. Paystack checkout, Transfers and signed webhooks still require the existing provider configuration. Deploy API and web together because withdrawals now require explicit fee consent.
+No new secret or database migration is required. `TIP_PLATFORM_FEE_PERCENT` is obsolete and ignored; it has been removed from `render.yaml`. Paystack checkout, Transfers and signed webhooks still require the existing provider configuration. Deploy API and compatible web/native clients together because withdrawals now require explicit fee consent. Native creator screens read the same policy and submit `expectedFeePercent`; older native clients must update before withdrawing.
 
 Targeted integration coverage includes Free/expired/trial restrictions, public eligibility, duplicate tip credits, fee preview rejection, net transfer amounts, withdrawal after downgrade, duplicate settlement/reversal, recipient failure and ambiguous transfer errors. Providers are mocked; no real-money transaction is claimed.
 

@@ -1,6 +1,8 @@
 # Ujimora Web and Mobile Feature Parity
 
-Last verified: 2026-09-06
+Last source audit: 2026-09-09
+
+**Native mobile is not at parity with current web.** See [the current audit](docs/reviews/mobile-web-parity-2026-09-09.md). Unchanged “Equal” rows below are historical scope claims, not newly verified end-to-end acceptance.
 
 This matrix covers user- and organization-facing capabilities that are appropriate on both clients. Admin operations remain in the dedicated web admin console.
 
@@ -14,7 +16,7 @@ This matrix covers user- and organization-facing capabilities that are appropria
 | Campaign updates | campaign detail | campaign detail | `/campaigns/:id/updates` | Equal |
 | Campaign comments | campaign detail | campaign detail | `/campaigns/:id/comments` | Equal |
 | Report campaign | campaign detail | campaign detail | `/reports` | Equal |
-| Create campaign | `/campaigns/new` | Create tab and `/campaign/create` | `POST /campaigns` | Equal |
+| Create campaign | `/campaigns/new` | `/campaign/create` | `POST /campaigns` | Partial: native lacks live limit feedback, image workflow and AI |
 | Own campaigns | `/my-campaigns` | `/my-campaigns` | `/campaigns/mine` | Equal |
 | Dashboard | `/dashboard` | `/dashboard` | scoped campaign, donation, wallet APIs | Equal |
 | Donation history | `/donations` | `/my-donations` | `/donations/mine` | Equal |
@@ -23,13 +25,13 @@ This matrix covers user- and organization-facing capabilities that are appropria
 | Organization directory | `/organizations` | `/organizations` | `/organizations` | Equal |
 | Organization profile and campaigns | `/organizations/:slug` | `/organization/:id` | `/organizations/:slugOrId`, `/:id/campaigns` | Equal |
 | Collaboration invitations | `/invitations` | `/invitations` | `/collaborations/invitations` | Equal |
-| KYC submission/status | `/kyc` | `/kyc`, `/verification` | `/kyc/*` and `/verifications/*` | Equal |
+| KYC submission/status | `/kyc` | `/kyc`, `/verification` | `/kyc/*` and `/verifications/*` | Not equal: native KYC posts placeholder data; see audit |
 | Leaderboard | `/leaderboard` | `/leaderboard` | `/leaderboard` | Equal |
-| Profile | `/profile` | Profile tab and public profile route | `/profile`, `/users/:id/public` | Equal |
+| Profile | `/profile` | Profile tab and public profile route | `/profile`, `/users/:id/public` | Partial: native lacks web profile/cover editing |
 | Settings and account deletion | `/settings` | `/settings` | profile/settings APIs and `DELETE /profile` | Equal |
 | Appearance (dark mode + design skins) | Settings → Appearance + Design finish | Settings → Appearance + Design finish | client-side preference (persisted) | Equal; all 4 skins on both platforms (see Theming) |
 | Subscription plans + paid checkout | `/subscription` | Subscription tab (Paystack checkout sheet) | `/subscriptions/*`, `/subscriptions/checkout` | Equal; live once `PAYSTACK_SECRET_KEY` is set |
-| Paid creator profile donations | `/creator`, `/creators/:handle` | No dedicated creator UI | `/creators/*`; active paid plan required; plan-rate withdrawal fee | Web/backend implemented; separate launch gaps in `docs/creator-donations.md` |
+| Paid creator profile donations | `/creator`, `/creators/:handle` | `/creator`, `/creators/[handle]` | `/creators/*`; active paid plan required; plan-rate withdrawal fee | Native fee/policy contract aligned; shared launch gaps in `docs/creator-donations.md` |
 | Coupon codes at checkout | subscribe checkout dialog | subscription checkout sheet | `/coupons/preview` + checkout body | Equal |
 | Affiliate program | `/affiliate` | `/affiliate` (Profile menu) | `/affiliate/*` | Equal |
 | Privacy and terms | `/privacy`, `/terms` | `/privacy`, `/terms` | bundled public copy | Equal |
@@ -54,12 +56,12 @@ This matrix covers user- and organization-facing capabilities that are appropria
   sage decorative tints on dark backgrounds, and the glass frost over each screen
   are the areas to check).
 
-## Intentional launch boundaries
+## Current implementation boundaries
 
-- Ujimora Wallet is the only active donation method. Card, mobile-money, and bank adapters are disabled.
+- Native campaign donations currently support wallet only. Web has hosted Paystack card/MoMo checkout and provider-gated crypto. Native wallet top-up UI is missing.
 - Paid subscriptions activate through the Paystack checkout (`POST /subscriptions/checkout`) on both web and mobile; the rail is live once `PAYSTACK_SECRET_KEY` is configured (the same gate as donations and payouts). The direct `POST /subscriptions` and `PUT /subscriptions/upgrade` endpoints still reject paid tiers by design — paid plans must go through checkout.
 - Refund requests are persisted and visible, but approval and settlement are not automatic.
-- External payout and self-service withdrawal controls are not exposed.
+- Creator self-service withdrawals are exposed on web and native; current plan fees are previewed before confirmation.
 - Universal links remain deferred until the final controlled domain and association files exist.
 
 ## Manual parity checks still required

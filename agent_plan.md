@@ -3,18 +3,26 @@
 > Active completion pass started: 2026-08-09
 > Goal: production-complete web, mobile, API, marketing, admin, and organization experiences with App Store readiness, CMS-backed public content, soft deletion, and verified frontend/backend parity.
 
+## Native mobile parity audit — 2026-09-09
+
+- Published the completed pricing/paid-creator slice to main (`4e3ddad`), verified remote SHA.
+- Audited native routes, payment/API clients, KYC state flow, profile/media, theme/nav, loading and session handling. Native is not at feature/design parity with web. Critical finding: native KYC posts placeholder information instead of step input.
+- Fixed native creator compatibility with the new fee consent contract, paid-plan upgrade/disabled states, fee/net history and default public URL. Corrected the earlier mistaken “no native creator UI” documentation.
+- Validation: mobile TypeScript and lint passed; the five existing native logic tests passed (these do not exercise creator UI).
+- Remaining gaps and prioritized completion work: `docs/reviews/mobile-web-parity-2026-09-09.md`. This is a source audit, not physical-device visual or provider acceptance.
+
 ## Pricing and creator donation review — 2026-09-09
 
 - ✅ Public pricing now reads active/public live plans from `/plans/public`; creation and marketing share plan data. Account-specific compliance caps are explained and preserved. Integration tests cover Free GHS 10,000 and a separate GHS 5,000 cap.
 - Reviewed creator tip checkout, settlement and withdrawal: 10 targeted integration tests passed. Not launch-complete: missing `/tip/callback`, input/amount/currency validation gaps, and payout verification remain. Ambiguous-transfer handling is fixed by the paid-creator follow-up. Details: `docs/reviews/pricing-and-creator-donations-2026-09-09.md`.
-- Production database access was unavailable; no production plan or compliance value was changed. Changes are local pending publication.
+- Production database access was unavailable; no production plan or compliance value was changed. Published to main in `4e3ddad`.
 
 ## Paid creator donations and plan withdrawal fees — 2026-09-09
 
 - ✅ API and web restrict creator setup/new tips to active, unexpired paid plans. Free/trial/expired profiles cannot receive new tips; existing funds remain withdrawable.
 - ✅ Creator withdrawals quote the current plan platform-fee percentage, require confirmation of that rate, persist gross/fee/net and send the net amount. Settlement and reversal use the immutable payout fee snapshot; ambiguous transfer errors keep funds reserved for reconciliation.
 - ✅ Pricing, features, marketing/member/mobile terms, deployment guide, feature parity and fundraising docs reflect the policy. Canonical contract: `docs/creator-donations.md`.
-- Verification: 15 targeted API integration tests, two browser regressions and 39 web tests passed. API/web/marketing/mobile type checks, API/web/marketing lint and web/marketing builds passed (existing bundle-size advisories). Paystack is mocked and MongoDB local. Separate creator launch gaps remain recorded in the pricing review; no live-money acceptance claimed. Changes are local pending publication.
+- Verification: 15 targeted API integration tests, two browser regressions and 39 web tests passed. API/web/marketing/mobile type checks, API/web/marketing lint and web/marketing builds passed (existing bundle-size advisories). Paystack is mocked and MongoDB local. Separate creator launch gaps remain recorded in the pricing review; no live-money acceptance claimed. Published to main in `4e3ddad`.
 
 ## Browser session persistence — 2026-09-09
 

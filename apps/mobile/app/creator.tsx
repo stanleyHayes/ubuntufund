@@ -1,16 +1,16 @@
 import { BrandedTextInput as TextInput } from '@/components/BrandedTextInput'
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { View, ScrollView, StyleSheet, ActivityIndicator, Share } from 'react-native'
+import { View, ScrollView, StyleSheet, ActivityIndicator, Share, useWindowDimensions } from 'react-native'
 import { Text, Button, Switch, Portal, Dialog, Chip, SegmentedButtons, Snackbar } from 'react-native-paper'
-import { Stack } from 'expo-router'
+import { Stack, router } from 'expo-router'
 import {
   getMyCreator, saveCreatorProfile, requestWithdrawal, listMyPayouts,
-  type CreatorProfile, type CreatorBalance, type CreatorPayout,
+  type CreatorProfile, type CreatorBalance, type CreatorPayout, type CreatorPolicy,
 } from '@/lib/creators'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
 import type { Palette, NeuRecipes } from '@/theme'
 
-const WEB_BASE = process.env.EXPO_PUBLIC_WEB_URL?.replace(/\/$/, '') || 'https://ujimora.com'
+const WEB_BASE = process.env.EXPO_PUBLIC_WEB_URL?.replace(/\/$/, '') || 'https://app.ujimora.com'
 
 function makeStyles(p: Palette, neu: NeuRecipes) {
   return StyleSheet.create({
@@ -32,11 +32,13 @@ function makeStyles(p: Palette, neu: NeuRecipes) {
 }
 
 export default function CreatorDashboardScreen() {
+  const { height } = useWindowDimensions()
   const p = usePalette()
   const neu = useNeu()
   const styles = useMemo(() => makeStyles(p, neu), [p, neu])
 
   const [loading, setLoading] = useState(true)
+  const [policy, setPolicy] = useState<CreatorPolicy | null>(null)
   const [profile, setProfile] = useState<CreatorProfile | null>(null)
   const [balance, setBalance] = useState<CreatorBalance | null>(null)
   const [payouts, setPayouts] = useState<CreatorPayout[]>([])
@@ -68,7 +70,7 @@ export default function CreatorDashboardScreen() {
       // so a thrown error here is a REAL failure (5xx, network, expired session) —
       // surface it instead of showing an empty claim form.
       const me = await getMyCreator()
-      setProfile(me.profile); setBalance(me.balance)
+      setPolicy(me.policy); setProfile(me.profile); setBalance(me.balance)
       if (me.profile) {
         setHandle(me.profile.handle); setDisplayName(me.profile.displayName)
         setTagline(me.profile.tagline ?? ''); setBio(me.profile.bio ?? ''); setTipsEnabled(me.profile.tipsEnabled)
@@ -92,9 +94,10 @@ export default function CreatorDashboardScreen() {
   }
 
   async function withdraw() {
+    if (!policy) return
     setWError(null); setWSubmitting(true)
     try {
-      await requestWithdrawal({ amount: Number(wAmount), recipient: { type: wType as 'mobile_money' | 'ghipss', accountNumber: wAccount, bankCode: wBank, accountName: wName || displayName } })
+      await requestWithdrawal({ amount: Number(wAmount), expectedFeePercent: policy.feePercent, recipient: { type: wType as 'mobile_money' | 'ghipss', accountNumber: wAccount, bankCode: wBank, accountName: wName || displayName } })
       setWOpen(false); setSnack('Withdrawal started'); await load()
     } catch (err) { setWError(err instanceof Error ? err.message : 'Could not start the withdrawal.') }
     finally { setWSubmitting(false) }
@@ -138,18 +141,24 @@ export default function CreatorDashboardScreen() {
           </View>
         )}
 
+        {!policy?.eligible && <View style={styles.card}>
+          <Text style={styles.cardTitle}>Unlock creator donations</Text>
+          <Text style={styles.sub}>An active paid plan is required to receive new tips. You can still withdraw your existing balance.</Text>
+          <Button onPress={() => router.push('/(tabs)/subscription')}>View plans</Button>
+        </View>}
+
         <View style={styles.card}>
           <Text style={styles.cardTitle}>{profile ? 'Edit your page' : 'Claim your page'}</Text>
-          <TextInput label="Handle (your link)" value={handle} onChangeText={(t) => setHandle(t.toLowerCase())} autoCapitalize="none" disabled={!!profile} />
-          <TextInput label="Display name" value={displayName} onChangeText={setDisplayName} />
-          <TextInput label="Tagline" value={tagline} onChangeText={setTagline} />
-          <TextInput label="About you" value={bio} onChangeText={setBio} multiline />
+          <TextInput label="Handle (your link)" value={handle} onChangeText={(t) => setHandle(t.toLowerCase())} autoCapitalize="none" disabled={!!profile || !policy?.eligible} />
+          <TextInput disabled={!policy?.eligible} label="Display name" value={displayName} onChangeText={setDisplayName} />
+          <TextInput disabled={!policy?.eligible} label="Tagline" value={tagline} onChangeText={setTagline} />
+          <TextInput disabled={!policy?.eligible} label="About you" value={bio} onChangeText={setBio} multiline />
           <View style={styles.switchRow}>
             <Text style={styles.sub}>Accept tips</Text>
-            <Switch value={tipsEnabled} onValueChange={setTipsEnabled} />
+            <Switch disabled={!policy?.eligible} value={!!policy?.eligible && tipsEnabled} onValueChange={setTipsEnabled} />
           </View>
           {error ? <Text style={styles.err}>{error}</Text> : null}
-          <Button mode="contained" loading={saving} disabled={saving} onPress={save} labelStyle={{ fontFamily: 'Outfit_700Bold' }}>
+          <Button mode="contained" loading={saving} disabled={saving || !policy?.eligible} onPress={save} labelStyle={{ fontFamily: 'Outfit_700Bold' }}>
             {profile ? 'Save changes' : 'Create my page'}
           </Button>
         </View>
@@ -159,7 +168,7 @@ export default function CreatorDashboardScreen() {
             <Text style={styles.cardTitle}>Withdrawals</Text>
             {payouts.map((po) => (
               <View key={po.id} style={styles.payoutRow}>
-                <Text style={{ fontFamily: 'Outfit_700Bold', color: p.text }}>{fmt(po.amount)}</Text>
+                <View style={{ flex: 1 }}><Text style={{ fontFamily: 'Outfit_700Bold', color: p.text }}>{fmt(po.amount)}</Text><Text style={styles.sub}>Fee {fmt(po.fee ?? 0)} · Net {fmt(po.netAmount ?? po.amount)}</Text></View>
                 <Chip compact>{po.status}</Chip>
               </View>
             ))}
@@ -170,17 +179,20 @@ export default function CreatorDashboardScreen() {
       <Portal>
         <Dialog visible={wOpen} onDismiss={() => setWOpen(false)}>
           <Dialog.Title>Withdraw funds</Dialog.Title>
-          <Dialog.Content style={{ gap: 12 }}>
+          <Dialog.ScrollArea style={{ maxHeight: height * 0.6, paddingHorizontal: 0 }}>
+          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: 12, padding: 24 }}>
             <TextInput label="Amount" keyboardType="numeric" value={wAmount} onChangeText={setWAmount} />
             <SegmentedButtons value={wType} onValueChange={setWType} buttons={[{ value: 'mobile_money', label: 'Mobile money' }, { value: 'ghipss', label: 'Bank' }]} />
             <TextInput label={wType === 'mobile_money' ? 'Phone number' : 'Account number'} value={wAccount} onChangeText={setWAccount} />
             <TextInput label={wType === 'mobile_money' ? 'Network (e.g. MTN)' : 'Bank code'} value={wBank} onChangeText={setWBank} />
             <TextInput label="Account name" value={wName} onChangeText={setWName} placeholder={displayName} />
+            {policy && <Text style={styles.sub}>{policy.planName} transfer fee: {policy.feePercent}%. Fee: {fmt(Math.round(Number(wAmount) * policy.feePercent) / 100)} · You receive: {fmt(Math.round((Number(wAmount) - Math.round(Number(wAmount) * policy.feePercent) / 100) * 100) / 100)}. The full requested amount is deducted from your creator balance.</Text>}
             {wError ? <Text style={styles.err}>{wError}</Text> : null}
-          </Dialog.Content>
+          </ScrollView>
+          </Dialog.ScrollArea>
           <Dialog.Actions>
             <Button onPress={() => setWOpen(false)}>Cancel</Button>
-            <Button mode="contained" loading={wSubmitting} disabled={wSubmitting} onPress={withdraw}>Withdraw</Button>
+            <Button mode="contained" loading={wSubmitting} disabled={wSubmitting || !policy || !Number.isFinite(Number(wAmount)) || Number(wAmount) <= 0} onPress={withdraw}>Withdraw</Button>
           </Dialog.Actions>
         </Dialog>
       </Portal>

@@ -35,9 +35,17 @@ export interface CreatorProfile {
   currency: string
 }
 
+export interface CreatorPolicy {
+  eligible: boolean
+  planName: string
+  feePercent: number
+}
+
 export interface CreatorPayout {
   id: string
   amount: number
+  fee?: number
+  netAmount?: number
   status: string
   createdAt: string
 }
@@ -63,12 +71,13 @@ export function createTip(
   return api.post(`/creators/${handle}/tips`, input)
 }
 
-export function getMyCreator(): Promise<{ profile: CreatorProfile | null; balance: CreatorBalance | null }> {
+export function getMyCreator(): Promise<{ profile: CreatorProfile | null; balance: CreatorBalance | null; policy: CreatorPolicy }> {
   return api.get('/creators/me')
 }
 
 export function requestWithdrawal(input: {
   amount: number
+  expectedFeePercent: number
   recipient: { type: 'mobile_money' | 'ghipss'; accountNumber: string; bankCode: string; accountName: string }
 }): Promise<{ id: string; status: string; amount: number }> {
   return api.post('/creators/withdraw', input)
