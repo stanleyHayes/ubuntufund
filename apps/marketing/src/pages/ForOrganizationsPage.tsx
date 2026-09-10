@@ -1,3 +1,4 @@
+import { MarketingFacts } from '../components/MarketingFacts'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
@@ -39,20 +40,12 @@ const fadeSlide = keyframes`
   to   { opacity: 1; transform: translateY(0); }
 `
 
-const countIn = keyframes`
-  from { opacity: 0; transform: scale(0.5); }
-  to   { opacity: 1; transform: scale(1); }
-`
 
 const float = keyframes`
   0%, 100% { transform: translateY(0) rotate(0deg); }
   50% { transform: translateY(-8px) rotate(1deg); }
 `
 
-const pulse = keyframes`
-  0%, 100% { opacity: 0.06; }
-  50% { opacity: 0.14; }
-`
 
 // ─── Data (unchanged) ────────────────────────────────────────────────────────
 
@@ -75,10 +68,10 @@ const ORG_TYPES = [
 ]
 
 const STATS = [
-  { value: '1', label: 'Shared Workspace', icon: <GroupsRoundedIcon />, color: '#2E3D2F' },
-  { value: 'Live', label: 'Campaign Totals', icon: <VolunteerActivismRoundedIcon />, color: '#C7A24A' },
-  { value: 'GHS', label: 'Launch Currency', icon: <PublicRoundedIcon />, color: '#C75B39' },
-  { value: '4-Step', label: 'Trust Review', icon: <SecurityRoundedIcon />, color: '#6A1B9A' },
+  { value: '1', label: 'Shared Workspace', icon: <GroupsRoundedIcon /> },
+  { value: 'Live', label: 'Campaign Totals', icon: <VolunteerActivismRoundedIcon /> },
+  { value: 'GHS', label: 'Launch Currency', icon: <PublicRoundedIcon /> },
+  { value: '4-Step', label: 'Trust Review', icon: <SecurityRoundedIcon /> },
 ]
 
 const TESTIMONIALS = [
@@ -107,69 +100,7 @@ function ForOrganizationsPage() {
         secondaryAction={{ label: 'Contact support', href: '/contact' }}
       />
 
-      {/* ═══ Stats — Full-bleed dark strip ═══ */}
-      <Box
-        sx={{
-          background: 'linear-gradient(135deg, #121218 0%, #1a1a28 100%)',
-          py: { xs: 5, md: 6 },
-          position: 'relative',
-          overflow: 'hidden',
-        }}
-      >
-        {/* Decorative grid */}
-        <Box sx={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(76,175,80,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(76,175,80,0.03) 1px, transparent 1px)', backgroundSize: '60px 60px', pointerEvents: 'none', animation: `${pulse} 6s ease infinite` }} />
-        {/* Glow orbs */}
-        <Box sx={{ position: 'absolute', width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(46, 61, 47,0.08), transparent 70%)', top: -200, left: '10%', pointerEvents: 'none' }} />
-        <Box sx={{ position: 'absolute', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(199, 162, 74,0.06), transparent 70%)', bottom: -150, right: '15%', pointerEvents: 'none' }} />
-
-        <Container maxWidth="md" sx={{ position: 'relative', zIndex: 1 }}>
-          <Grid container spacing={3}>
-            {STATS.map((stat, i) => (
-              <Grid size={{ xs: 6, sm: 3 }} key={stat.label}>
-                <Box
-                  sx={{
-                    textAlign: 'center',
-                    animation: `${countIn} 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) ${i * 0.1}s both`,
-                  }}
-                >
-                  <Box
-                    sx={{
-                      width: 56,
-                      height: 56,
-                      borderRadius: SHAPE.sm,
-                      background: `linear-gradient(135deg, ${stat.color}20, ${stat.color}08)`,
-                      border: `1px solid ${stat.color}25`,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      mx: 'auto',
-                      mb: 2,
-                      color: stat.color,
-                      '& svg': { fontSize: 26 },
-                    }}
-                  >
-                    {stat.icon}
-                  </Box>
-                  <Typography
-                    sx={{
-                      fontWeight: 900,
-                      fontSize: { xs: '1.6rem', md: '2rem' },
-                      color: '#DCC07E',
-                      lineHeight: 1,
-                      mb: 0.5,
-                    }}
-                  >
-                    {stat.value}
-                  </Typography>
-                  <Typography sx={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.45)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>
-                    {stat.label}
-                  </Typography>
-                </Box>
-              </Grid>
-            ))}
-          </Grid>
-        </Container>
-      </Box>
+      <MarketingFacts items={STATS} label="Organization features at a glance" />
 
       {/* ═══ Who Is This For — Horizontal scroll feel ═══ */}
       <Box sx={{ py: { xs: 7, md: 10 }, position: 'relative', overflow: 'hidden' }}>

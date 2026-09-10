@@ -1,5 +1,11 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-10 — Watermarks, payout skeletons and marketing facts
+
+- Restored decorative icon watermarks in the compact account menu at the user's request. Saved-account loading now uses themed web/native skeletons; failures stop loading and offer retry. A regression test covers pending, failure and recovery; four focused web tests and web/mobile type checks pass.
+- Replaced affiliate/organization hardcoded near-black stats strips and multicolor icons with shared MarketingFacts cards using current theme and material variables, subtle watermarks, gold accents, and responsive two/four-column layout. Marketing type check and focused lint pass.
+- Payout accounts/plan controls/creator imagery release d1be581 deployed successfully to API, web and admin. Public creator response includes the existing profile portrait and cover. Watermark/skeleton follow-ups also deployed to web. Native updates still need a new binary.
+
 ### 2026-09-10 — Dedicated payout accounts, material-aware navigation and creator imagery
 
 - Added authenticated /payout-accounts web/native pages and menu entries beside Settings. Users can save/remove multiple bank/MoMo destinations, see masked details and verification state, and select them for campaign or creator payouts. Campaign bindings remain immutable snapshots. Legacy account-entry paths also pass through the saved-account allowance in production.
