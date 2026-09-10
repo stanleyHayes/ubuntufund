@@ -23,11 +23,11 @@ function passwordRules(pw: string): PasswordRule[] {
 }
 
 const LEVELS = [
-  { label: 'Too weak', color: '#A5432F' }, // clay
-  { label: 'Weak', color: '#A5432F' },
-  { label: 'Fair', color: '#C7A24A' }, // gold
-  { label: 'Good', color: '#6B8E5A' }, // sage-green
-  { label: 'Strong', color: '#2E3D2F' }, // forest
+  { label: 'Too weak', color: 'error.main' }, // clay
+  { label: 'Weak', color: 'error.main' },
+  { label: 'Fair', color: 'warning.main' }, // gold
+  { label: 'Good', color: 'success.main' }, // sage-green
+  { label: 'Strong', color: 'success.main' }, // forest
 ]
 
 function scoreOf(pw: string): number {
@@ -65,7 +65,7 @@ export function PasswordStrength({
               flex: 1,
               height: 5,
               borderRadius: 999,
-              bgcolor: i < filled ? level.color : 'rgba(46, 61, 47, 0.12)',
+              bgcolor: i < filled ? level.color : 'action.disabledBackground',
               transition: 'background-color 160ms ease',
             }}
           />
@@ -83,15 +83,15 @@ export function PasswordStrength({
               sx={{ display: 'flex', alignItems: 'center', gap: 0.75, fontSize: '0.74rem' }}
             >
               {r.met ? (
-                <CheckRoundedIcon sx={{ fontSize: 15, color: '#2E7D32' }} />
+                <CheckRoundedIcon sx={{ fontSize: 15, color: 'success.main' }} />
               ) : (
-                <CloseRoundedIcon sx={{ fontSize: 15, color: r.required ? '#A5432F' : 'text.disabled' }} />
+                <CloseRoundedIcon sx={{ fontSize: 15, color: r.required ? 'error.main' : 'text.disabled' }} />
               )}
               <Typography
                 component="span"
                 sx={{
                   fontSize: '0.74rem',
-                  color: r.met ? 'text.secondary' : r.required ? '#A5432F' : 'text.secondary',
+                  color: r.met ? 'text.secondary' : r.required ? 'error.main' : 'text.secondary',
                   textDecoration: r.met ? 'none' : 'none',
                 }}
               >

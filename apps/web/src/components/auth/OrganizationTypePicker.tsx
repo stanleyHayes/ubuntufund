@@ -1,7 +1,7 @@
 import { useId } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
-import { alpha } from '@mui/material/styles'
+import { SHAPE } from '@ubuntu-fund/ui'
 import VolunteerActivismRoundedIcon from '@mui/icons-material/VolunteerActivismRounded'
 import LocalHospitalRoundedIcon from '@mui/icons-material/LocalHospitalRounded'
 import SchoolRoundedIcon from '@mui/icons-material/SchoolRounded'
@@ -45,16 +45,18 @@ export function OrganizationTypePicker({ value, onChange, error }: {
                 aria-labelledby={`${id}-${option}-title`} aria-describedby={`${id}-${option}-description`}
                 sx={{ position: 'absolute', width: 1, height: 1, opacity: 0,
                   '&:focus-visible + .organization-option': { outline: '2px solid', outlineColor: 'primary.main', outlineOffset: 3 } }} />
-              <Box className="organization-option" sx={(theme) => ({
+              <Box className="organization-option" sx={{
                 display: 'flex', alignItems: 'flex-start', gap: 1.25, p: 1.5, height: '100%', boxSizing: 'border-box',
-                borderRadius: '14px', border: '1.5px solid',
+                borderRadius: SHAPE.card, border: '1.5px solid',
                 borderColor: selected ? 'primary.main' : error ? 'error.main' : 'divider',
-                bgcolor: selected ? alpha(theme.palette.primary.main, 0.08) : 'background.paper',
+                bgcolor: 'background.paper',
+                boxShadow: selected ? 'var(--neu-inset)' : 'var(--neu-raised)',
+                backdropFilter: 'var(--neu-backdrop, none)',
                 transition: 'background-color 150ms ease, border-color 150ms ease',
-                '&:hover': { borderColor: 'primary.main', bgcolor: alpha(theme.palette.primary.main, selected ? 0.1 : 0.04) },
+                '&:hover': { boxShadow: selected ? 'var(--neu-inset)' : 'var(--neu-raised-hover)' },
                 '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
-              })}>
-                <Box sx={{ display: 'grid', placeItems: 'center', width: 34, height: 34, flexShrink: 0, borderRadius: '10px',
+              }}>
+                <Box sx={{ display: 'grid', placeItems: 'center', width: 34, height: 34, flexShrink: 0, borderRadius: SHAPE.sm,
                   bgcolor: selected ? 'primary.main' : 'action.hover', color: selected ? 'primary.contrastText' : 'primary.main' }}>
                   <Icon sx={{ fontSize: 20 }} />
                 </Box>

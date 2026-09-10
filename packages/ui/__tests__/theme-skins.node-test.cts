@@ -34,3 +34,15 @@ test('interactive components inherit the selected shadows instead of frozen neum
   assert.match(c.MuiOutlinedInput.styleOverrides.root['&.Mui-focused'].boxShadow, /var\(--neu-inset\)/)
   assert.match(c.MuiCard.styleOverrides.root.border, /var\(--neu-border/)
 })
+
+test('dark text remains legible across all appearance surfaces', () => {
+  const { getContrastRatio } = require('@mui/material/styles')
+  for (const { id } of THEME_SKINS) {
+    const theme = createUjimoraTheme('dark', id)
+    // Glass is layered over the same dark forest ground.
+    const ground = theme.palette.background.default
+    for (const foreground of [theme.palette.text.primary, theme.palette.text.secondary, theme.palette.primary.main, theme.palette.success.main, theme.palette.secondary.dark]) {
+      assert.ok(getContrastRatio(foreground, ground) >= 4.5, `${id}: ${foreground} against ${ground}`)
+    }
+  }
+})

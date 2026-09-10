@@ -1,5 +1,11 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-10 — Brighter dark text and appearance-aware signup choices
+
+- Brightened shared dark primary/secondary/brand text and semantic dark variants, keeping light-mode colors and subtle border tokens unchanged. Password strength now uses semantic success/warning/error colors rather than a dark forest label.
+- Account/plan/organization choices now use active-skin raised/inset surfaces, backdrop treatment and shape variables. Selected items retain their check/radio and subtle outline.
+- Validation: four shared skin/contrast tests pass across all appearance finishes; registration flow tests pass. Local browser confirmed settled dark account text rgb(192,220,199) over rgb(32,41,31), and Strong password text rgb(141,201,161). Shared UI/web/admin/marketing type checks, focused lint and web build pass. No complete route-by-route visual audit claimed.
+
 ### 2026-09-10 — Organization identity and team workspace
 
 - Profile/auth responses now retain organizationName separately from the contact name. Web profile/header prefer the organization name; the contact remains editable as Contact person, with a Managed by label.

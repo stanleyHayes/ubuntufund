@@ -326,39 +326,39 @@ export function createUjimoraTheme(mode: PaletteMode = 'light', skin: ThemeSkin 
       // warm parchment ground. Derived from the brand palette, not framework
       // defaults — semantic states are brand-tinted (clay error, ochre warning).
       primary: {
-        main: dark ? '#A8C5AE' : '#2E3D2F',
+        main: dark ? '#C0DCC7' : '#2E3D2F',
         light: '#A8B5A0',
-        dark: dark ? '#8FAE96' : '#1C261D',
+        dark: dark ? '#AFCDB7' : '#1C261D',
         contrastText: dark ? '#172019' : '#F5F2EA',
       },
       secondary: {
         main: '#C7A24A',
         light: '#DCC07E',
-        dark: '#A07E33',
+        dark: dark ? '#DFC782' : '#A07E33',
         contrastText: '#221B0E',
       },
       success: {
         main: dark ? '#8DC9A1' : '#2F6B46',
         light: '#5E8F72',
-        dark: '#1F4B30',
+        dark: dark ? '#9FD8B1' : '#1F4B30',
         contrastText: dark ? '#172019' : '#F5F2EA',
       },
       warning: {
         main: dark ? '#DCC07E' : '#B98A2E',
         light: '#D3A95C',
-        dark: '#8F6A20',
+        dark: dark ? '#E3C989' : '#8F6A20',
         contrastText: '#221B0E',
       },
       error: {
         main: dark ? '#F0A18E' : '#A5432F',
         light: '#C06B58',
-        dark: '#7D3223',
+        dark: dark ? '#F2B09F' : '#7D3223',
         contrastText: dark ? '#172019' : '#F9F4EF',
       },
       info: {
         main: dark ? '#A1C5CF' : '#4A6B75',
         light: '#74909A',
-        dark: '#354E56',
+        dark: dark ? '#B5D6DF' : '#354E56',
         contrastText: dark ? '#172019' : '#F2F5F5',
       },
       background: {
@@ -373,8 +373,8 @@ export function createUjimoraTheme(mode: PaletteMode = 'light', skin: ThemeSkin 
         level4: '#2E3D2F',
       },
       text: {
-        primary: dark ? '#F3F0E8' : '#1A2E22',
-        secondary: dark ? '#B6C0B8' : '#4A5A50',
+        primary: dark ? '#F7F5EF' : '#1A2E22',
+        secondary: dark ? '#CFD7D0' : '#4A5A50',
       },
     },
     typography: {
@@ -522,7 +522,7 @@ export function createUjimoraTheme(mode: PaletteMode = 'light', skin: ThemeSkin 
             boxShadow: 'var(--neu-subtle) !important',
             ...(dark
               ? {
-                  '&.MuiChip-colorPrimary': { color: '#A8C5AE' },
+                  '&.MuiChip-colorPrimary': { color: '#C0DCC7' },
                   '&.MuiChip-colorSuccess': { color: '#8DC9A1' },
                   '&.MuiChip-colorError': { color: '#F0A18E' },
                   '&.MuiChip-colorWarning': { color: '#DCC07E' },
@@ -628,10 +628,10 @@ export function createUjimoraTheme(mode: PaletteMode = 'light', skin: ThemeSkin 
             ...skinVars,
             '--border-subtle': dark ? 'rgba(168,181,160,0.14)' : 'rgba(46,61,47,0.12)',
             '--border-selected': dark ? 'rgba(199,162,74,0.38)' : 'rgba(143,106,32,0.30)',
-            '--text-primary': dark ? '#F3F0E8' : '#1A2E22',
-            '--text-secondary': dark ? '#B6C0B8' : '#4A5A50',
+            '--text-primary': dark ? '#F7F5EF' : '#1A2E22',
+            '--text-secondary': dark ? '#CFD7D0' : '#4A5A50',
             '--text-disabled': dark ? '#7D8B80' : '#858D87',
-            '--text-brand': dark ? '#A8C5AE' : '#2E3D2F',
+            '--text-brand': dark ? '#C0DCC7' : '#2E3D2F',
             '--text-success': dark ? '#8DC9A1' : '#2F6B46',
             '--text-warning': dark ? '#DCC07E' : '#8F6A20',
             '--text-error': dark ? '#F0A18E' : '#A5432F',

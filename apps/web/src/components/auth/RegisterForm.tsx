@@ -283,7 +283,10 @@ export function RegisterForm() {
                   width: '100%',
                   border: '1.5px solid',
                   borderColor: active ? 'secondary.main' : 'divider',
-                  bgcolor: active ? 'rgba(199,162,74,0.08)' : 'transparent',
+                  bgcolor: 'background.paper',
+                  boxShadow: active ? 'var(--neu-inset)' : 'var(--neu-raised)',
+                  backdropFilter: 'var(--neu-backdrop, none)',
+                  '&:hover': { boxShadow: active ? 'var(--neu-inset)' : 'var(--neu-raised-hover)' },
                   transition: 'border-color .15s ease, background-color .15s ease',
                   '&:focus-visible': { outline: `2px solid ${GOLD}`, outlineOffset: 2 },
                 }}
@@ -428,6 +431,8 @@ export function RegisterForm() {
               sx={{
                 display: 'inline-flex',
                 borderRadius: SHAPE.sm,
+                boxShadow: 'var(--neu-inset)',
+                bgcolor: 'background.paper',
                 overflow: 'hidden',
                 border: '1px solid',
                 borderColor: 'divider',
@@ -487,7 +492,10 @@ export function RegisterForm() {
                   borderRadius: SHAPE.card,
                   border: '1.5px solid',
                   borderColor: active ? 'secondary.main' : 'divider',
-                  bgcolor: active ? 'rgba(199,162,74,0.08)' : 'transparent',
+                  bgcolor: 'background.paper',
+                  boxShadow: active ? 'var(--neu-inset)' : 'var(--neu-raised)',
+                  backdropFilter: 'var(--neu-backdrop, none)',
+                  '&:hover': { boxShadow: active ? 'var(--neu-inset)' : 'var(--neu-raised-hover)' },
                   '&:focus-visible': { outline: `2px solid ${GOLD}`, outlineOffset: 2 },
                 }}
               >
