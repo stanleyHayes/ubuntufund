@@ -1,6 +1,6 @@
 import type { Account } from '@/components/account/SavedPayoutAccounts'
 import { useCallback, useEffect, useState } from 'react'
-import { Accordion, AccordionSummary, AccordionDetails, Alert, Box, Button, MenuItem, TextField, Typography } from '@mui/material'
+import { Accordion, AccordionSummary, AccordionDetails, Alert, Box, Button, MenuItem, TextField, Typography, Skeleton } from '@mui/material'
 import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded'
 import type { Payout, PayoutType } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
@@ -26,7 +26,7 @@ export function CampaignCashout({ campaignId, initiallyExpanded = false }: { cam
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
   const [revision, setRevision] = useState(0)
-  const refresh = useCallback(() => setRevision(v => v + 1), [])
+  const refresh = useCallback(() => { setError(''); setRevision(v => v + 1) }, [])
   useEffect(() => {
     if (!expanded) return
     let active = true
@@ -70,7 +70,12 @@ export function CampaignCashout({ campaignId, initiallyExpanded = false }: { cam
     <AccordionDetails>
       {error && <Alert severity="error" action={<Button onClick={refresh}>Retry</Button>}>{error}</Alert>}
       {notice && <Alert severity="success" sx={{ mb: 2 }}>{notice}</Alert>}
-      {!options ? <Typography>Loading payout details…</Typography> : <>
+      {!options ? !error ? <Box role="status" aria-label="Loading payout details" aria-busy="true" sx={{ display: 'grid', gap: 2, '& .MuiSkeleton-root': { '@media (prefers-reduced-motion: reduce)': { animation: 'none' } } }}>
+        <Skeleton width="55%" height={40} /><Skeleton width="95%" /><Skeleton width="80%" />
+        <Skeleton variant="rounded" height={56} /><Skeleton variant="rounded" height={56} />
+        <Skeleton variant="rounded" width={160} height={44} />
+        <Skeleton width="35%" height={32} /><Skeleton variant="rounded" height={90} />
+      </Box> : null : <>
         <Typography variant="h6">{money(options.eligible)} eligible balance</Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>Based on settled campaign proceeds after the regular plan and payment fees. Early cashout adds a separate service fee. Requests require admin approval and sufficient Paystack transfer balance. Test payments cannot be withdrawn as real money.</Typography>
         {options.recipient && <Alert severity="info" sx={{ mb: 2 }}>Payout account: {options.recipient.accountName} · ending {options.recipient.last4}</Alert>}

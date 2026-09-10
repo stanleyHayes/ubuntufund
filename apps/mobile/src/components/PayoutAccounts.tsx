@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { View } from 'react-native'
 import { Text } from 'react-native-paper'
 import { api } from '@/lib/api'
-import { Button } from './Loading'
+import { Button, Skeleton } from './Loading'
 import { SelectionField } from './SelectionField'
 import { CampaignCashout } from './CampaignCashout'
 export function PayoutAccounts() {
@@ -38,7 +38,7 @@ export function PayoutAccounts() {
         Each campaign has its own bank or MoMo payout account. Choose a campaign to set it up or
         review it.
       </Text>
-      {loading && <Text>Loading campaigns…</Text>}
+      {loading && <View accessibilityLabel="Loading campaigns" accessibilityState={{ busy: true }}><Skeleton height={56} /></View>}
       {error && (
         <>
           <Text accessibilityRole="alert">{error}</Text>

@@ -4,7 +4,7 @@ import { View } from 'react-native'
 import { Text } from 'react-native-paper'
 import type { Payout, PayoutType } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
-import { Button } from './Loading'
+import { Button, Skeleton } from './Loading'
 import { BrandedTextInput as Input } from './BrandedTextInput'
 import { SelectionField } from './SelectionField'
 import { useNeu } from '@/context/ColorModeContext'
@@ -28,6 +28,7 @@ export function CampaignCashout({ campaignId }: { campaignId: string }) {
     } catch(e) { setError(e instanceof Error ? e.message : 'Could not save cashout request.') } finally { setBusy(false) }
   }
   return <View style={{ ...neu.raised, padding: 20, borderRadius: 20, gap: 16 }}><Text variant="titleLarge">Cashout & payout history</Text>{error && <Text accessibilityRole="alert">{error}</Text>}{notice && <Text accessibilityRole="alert">{notice}</Text>}
+    {!options && !error && <View accessibilityLabel="Loading payout details" accessibilityState={{ busy: true }} style={{ gap: 16 }}><Skeleton width="65%" height={36} /><Skeleton height={56} /><Skeleton height={56} /><Skeleton width="50%" height={44} /><Skeleton height={90} /></View>}
     {options && <><Text variant="titleMedium">GHS {options.eligible.toFixed(2)} eligible balance</Text><Text>The regular plan fee is already deducted. Early cashout adds a service fee. Test funds cannot pay out real money.</Text>{options.recipient && <Text>Account: {options.recipient.accountName} · ending {options.recipient.last4}</Text>}
     {options.recipient && <Text>{options.recipient.verificationStatus === 'name_matched' ? 'Registered name matched. Ownership and receiving capacity still require review.' : 'Account needs admin verification before transfer.'}{options.recipient.resolvedAccountName ? ` Provider name: ${options.recipient.resolvedAccountName}` : ''}</Text>}
     <SelectionField label="Saved payout account" value={savedAccountId} onChange={setSavedAccountId} options={[{value:'',label:'Add a new account'},...accounts.map(a=>({value:a.id,label:`${a.accountName} · ${a.bankCode} · ${a.last4}`}))]} />

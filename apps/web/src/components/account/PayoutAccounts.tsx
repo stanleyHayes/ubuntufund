@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Alert, Box, Button, MenuItem, TextField, Typography } from '@mui/material'
+import { Alert, Box, Button, MenuItem, TextField, Typography, Skeleton } from '@mui/material'
 import { useMyCampaigns } from '@/hooks/useCampaigns'
 import { CampaignCashout } from '@/components/campaigns/CampaignCashout'
 export function PayoutAccounts() {
@@ -14,7 +14,7 @@ export function PayoutAccounts() {
       </Typography>
       {error && <Alert severity="error">{error}</Alert>}
       {isLoading ? (
-        <Typography>Loading campaigns…</Typography>
+        <Box role="status" aria-label="Loading campaigns" aria-busy="true" sx={{ mt: 2 }}><Skeleton variant="rounded" height={56} sx={{ '@media (prefers-reduced-motion: reduce)': { animation: 'none' } }} /></Box>
       ) : campaigns.length ? (
         <TextField
           select
