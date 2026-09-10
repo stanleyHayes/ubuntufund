@@ -2,7 +2,7 @@ import type { ComponentProps } from 'react'
 import { Pressable as NativePressable, TouchableOpacity as NativeTouchableOpacity } from 'react-native'
 import { SegmentedButtons as PaperSegmentedButtons, IconButton as PaperIconButton, TouchableRipple as PaperTouchableRipple } from 'react-native-paper'
 
-export const BUTTON_RADIUS = 18
+export const BUTTON_RADIUS = 9
 const rounded = { borderRadius: BUTTON_RADIUS }
 
 export function TouchableOpacity({ style, ...props }: ComponentProps<typeof NativeTouchableOpacity>) {

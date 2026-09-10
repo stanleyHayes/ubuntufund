@@ -34,7 +34,7 @@ declare module '@mui/material/styles' {
 // ---------------------------------------------------------------------------
 export const SHAPE = {
   /** Consistent rounded action buttons across all surface finishes. */
-  button: '18px',
+  button: '9px',
   /** Form controls stay gently squared across every skin. */
   input: 'var(--shape-input, 6px)',
   /** Cards, chart panels, modals, list containers */
