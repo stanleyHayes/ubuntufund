@@ -85,12 +85,12 @@ describe('CampaignCard', () => {
 
   it('shows the supporter count when donors exist', () => {
     renderWithProviders(<CampaignCard campaign={{ ...mockCampaign, donorCount: 147 }} />)
-    expect(screen.getByText('147')).toBeInTheDocument()
+    expect(screen.getByText('147 supporters')).toBeInTheDocument()
   })
 
   it('invites the first supporter when nobody has donated', () => {
     renderWithProviders(<CampaignCard campaign={{ ...mockCampaign, donorCount: 0 }} />)
-    expect(screen.getByText(/be first/i)).toBeInTheDocument()
+    expect(screen.getByText(/be the first/i)).toBeInTheDocument()
   })
 
   it('shows days left for active campaigns', () => {

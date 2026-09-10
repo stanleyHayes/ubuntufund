@@ -23,7 +23,7 @@ interface CampaignCardProps {
 }
 
 const MS_PER_DAY = 86_400_000
-const MEDIA_HEIGHT = 170
+const MEDIA_HEIGHT = 190
 
 // Sage & Neutrals tokens.
 const FOREST = '#2E3D2F'
@@ -32,8 +32,6 @@ const SAGE = '#A8B5A0'
 const INK = 'text.primary'
 const INK_SECONDARY = 'text.secondary'
 const GOLD = '#C7A24A'
-const GOLD_DARK = 'var(--text-warning)'
-const SUCCESS = 'var(--text-success)'
 const CLAY = '#A5432F'
 const WARN = '#B98A2E'
 
@@ -130,7 +128,7 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
   const urgent = daysLeft > 0 && daysLeft <= 7 && !funded
   const priorityTone =
     campaign.priority === 'critical' ? CLAY : campaign.priority === 'urgent' ? WARN : null
-  const fillColor = funded ? SUCCESS : 'primary.main'
+  const fillColor = funded ? SAGE : GOLD
 
   async function copyLink() {
     try {
@@ -162,10 +160,11 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
         height: '100%',
         position: 'relative',
         overflow: 'hidden',
+        borderRadius: '24px !important',
         transition: 'transform 160ms ease, box-shadow 160ms ease',
         '&:hover': { transform: 'translateY(-2px)', boxShadow: 'var(--neu-raised-hover) !important' },
         '&:hover .cta-arrow': { transform: 'translateX(3px)' },
-        '@media (prefers-reduced-motion: reduce)': { '&:hover .cta-arrow': { transform: 'none' } },
+        '@media (prefers-reduced-motion: reduce)': { transition: 'none', '&:hover': { transform: 'none' }, '&:hover .cta-arrow': { transform: 'none' } },
       }}
     >
       {/* Kebab lives outside the link area so the card stays a single link target. */}
@@ -175,11 +174,11 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
         onClick={(e) => setMenuAnchor(e.currentTarget)}
         sx={{
           position: 'absolute',
-          top: 10,
-          right: 10,
+          top: 14,
+          right: 14,
           zIndex: 3,
-          width: 30,
-          height: 30,
+          width: 36,
+          height: 36,
           color: 'text.primary',
           bgcolor: 'var(--neu-surface)',
         }}
@@ -233,38 +232,17 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
             />
           )}
 
-          {/* Category chip, top-left */}
-          <Box
-            sx={{
-              position: 'absolute',
-              top: 12,
-              left: 12,
-              display: 'inline-flex',
-              alignItems: 'center',
-              px: 1.1,
-              py: 0.4,
-              bgcolor: 'rgba(245, 242, 234, 0.94)',
-              borderRadius: '999px',
-            }}
-          >
-            <Typography
-              sx={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.04em', color: FOREST }}
-            >
-              {formatCategory(campaign.category)}
-            </Typography>
-          </Box>
-
           {/* Priority flag (only when critical/urgent) — a small colored tab, bottom-left */}
           {priorityTone && (
             <Box
               sx={{
                 position: 'absolute',
-                bottom: 0,
-                left: 0,
+                top: 14,
+                left: 14,
                 px: 1.1,
                 py: 0.4,
                 bgcolor: priorityTone,
-                borderTopRightRadius: SHAPE.sm,
+                borderRadius: '6px',
               }}
             >
               <Typography
@@ -277,12 +255,15 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
         </Box>
 
         {/* ── Body ── */}
-        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', p: 2.25 }}>
+        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', p: 2.5 }}>
+          <Typography sx={{ color: INK_SECONDARY, fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', mb: 1 }}>
+            {formatCategory(campaign.category)}
+          </Typography>
           <Typography
             component="h3"
             sx={{
               fontWeight: 800,
-              fontSize: '1.06rem',
+              fontSize: '1.25rem',
               lineHeight: 1.3,
               color: INK,
               display: '-webkit-box',
@@ -290,71 +271,45 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
               WebkitBoxOrient: 'vertical',
               overflow: 'hidden',
               minHeight: '2.75em',
-              mb: 1.5,
+              mb: 2,
             }}
           >
             {campaign.title}
           </Typography>
 
-          {/* Progress bar */}
-          <Box
-            role="progressbar"
-            aria-label={`${pct}% funded`}
-            aria-valuenow={pct}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            sx={{ height: 7, borderRadius: SHAPE.bar, bgcolor: 'rgba(168, 181, 160, 0.30)', overflow: 'hidden' }}
-          >
-            <Box
-              sx={{
-                height: '100%',
-                width: '100%',
-                bgcolor: fillColor,
-                transformOrigin: 'left center',
-                transform: `scaleX(${pct / 100})`,
-                transition: 'transform 320ms cubic-bezier(0.4, 0, 0.2, 1)',
-                '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
-              }}
-            />
-          </Box>
-
-          {/* Amounts */}
-          <Box sx={{ mt: 1.25, display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 1 }}>
-            <Box sx={{ minWidth: 0 }}>
-              <Typography component="span" sx={{ display: 'block', fontWeight: 800, fontSize: '1.15rem', color: INK, fontVariantNumeric: 'tabular-nums' }}>
+          <Box sx={{ bgcolor: FOREST_DARK, color: '#F2EFEA', p: 2, borderRadius: '16px', mt: 'auto' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 1, mb: 1.5 }}>
+              <Typography sx={{ fontWeight: 700, fontSize: '1.5rem', letterSpacing: '-0.035em', fontVariantNumeric: 'tabular-nums' }}>
                 {cedis(campaign.raisedAmount)}
+                <Box component="span" sx={{ fontSize: '0.7rem', fontWeight: 400, letterSpacing: 0, color: '#C5CEBF', ml: 0.7 }}>raised</Box>
               </Typography>
-              <Typography component="span" sx={{ display: 'block', fontSize: '0.78rem', color: INK_SECONDARY, mt: 0.4 }}>
-                raised of {cedis(campaign.goalAmount)}
-              </Typography>
+              <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: GOLD }}>{funded ? 'Funded' : `${pct}%`}</Typography>
             </Box>
-            <Typography
-              component="span"
-              sx={{ fontWeight: 800, fontSize: '0.92rem', color: funded ? SUCCESS : GOLD_DARK, whiteSpace: 'nowrap' }}
-            >
-              {funded ? 'Funded' : `${pct}%`}
-            </Typography>
+            <Box role="progressbar" aria-label={`${pct}% funded`} aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}
+              sx={{ height: 5, borderRadius: SHAPE.bar, bgcolor: 'rgba(168,181,160,0.22)', overflow: 'hidden' }}>
+              <Box sx={{ height: '100%', width: '100%', bgcolor: fillColor, transformOrigin: 'left', transform: `scaleX(${pct / 100})` }} />
+            </Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, mt: 1.2 }}>
+              <Typography sx={{ fontSize: '0.72rem', color: '#C5CEBF' }}>Goal {cedis(campaign.goalAmount)}</Typography>
+              <Typography sx={{ fontSize: '0.72rem', color: '#C5CEBF' }}>{funded ? 'Goal reached' : `${cedis(Math.max(0, campaign.goalAmount - campaign.raisedAmount))} to go`}</Typography>
+            </Box>
           </Box>
 
           {/* Meta footer: supporters + days-left, then the hover CTA arrow */}
           <Box
             sx={{
               mt: 2,
-              pt: 2,
-              borderTop: '1px solid',
-              borderColor: 'divider',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
               gap: 1,
-              boxShadow: '0 -9px 14px -16px rgba(38,55,44,0.4)',
             }}
           >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0, color: INK_SECONDARY }}>
               <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
                 <GroupsRoundedIcon sx={{ fontSize: 16 }} />
                 <Typography component="span" sx={{ fontSize: '0.78rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                  {supporters > 0 ? supporters.toLocaleString() : 'Be first'}
+                  {supporters > 0 ? `${supporters.toLocaleString()} supporter${supporters === 1 ? '' : 's'}` : 'Be the first'}
                 </Typography>
               </Box>
               <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, color: urgent ? 'error.main' : INK_SECONDARY }}>
@@ -364,10 +319,13 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
                 </Typography>
               </Box>
             </Box>
-            <ArrowForwardRoundedIcon
-              className="cta-arrow"
-              sx={{ fontSize: 18, color: GOLD_DARK, transition: 'transform 150ms ease', flexShrink: 0 }}
-            />
+
+          </Box>
+          <Box sx={{ mt: 2.25, pt: 1.75, borderTop: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Typography sx={{ fontSize: '0.82rem', fontWeight: 700 }}>View campaign</Typography>
+            <Box sx={{ width: 30, height: 30, borderRadius: '50%', bgcolor: 'rgba(199,162,74,0.16)', display: 'grid', placeItems: 'center' }}>
+              <ArrowForwardRoundedIcon className="cta-arrow" sx={{ fontSize: 17, color: INK, transition: 'transform 150ms ease' }} />
+            </Box>
           </Box>
         </Box>
       </CardActionArea>

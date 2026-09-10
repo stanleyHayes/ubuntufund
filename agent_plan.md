@@ -1,5 +1,10 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-10 — Publish remaining campaign-card preview
+
+- User requested commit and push after local preview. Published the remaining campaign-card redesign: larger media/title, category in the body, forest funding summary with gold progress, clear goal/remaining amount, supporter labels and View campaign footer.
+- Eleven campaign-card tests, focused lint and diff checks pass. The final shared button radius is 9px (420de21), halved from the initial 18px at the user's request. Local documents, images and generated output remain untracked.
+
 ### 2026-09-10 — Uniform rounded buttons
 
 - User requested the rounded rectangle button shape from their reference across all buttons. Added an 18px action radius and shared web/admin baseline so CTA, icon, toggle, raw HTML and menu buttons override legacy page-specific corner shapes without changing material, palette or input shapes.
