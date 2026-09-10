@@ -1,3 +1,4 @@
+import { AutomaticPayoutSettings } from '@/components/AutomaticPayoutSettings'
 import { EarlyCashoutSettings } from '@/components/EarlyCashoutSettings'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -111,7 +112,10 @@ function SectionCard({
         overflow: 'hidden',
         animation: `${fadeSlide} 0.4s ease ${delay}s both`,
         transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-        '&:hover': { transform: 'translateY(-2px)', boxShadow: 'var(--neu-raised-hover) !important' },
+        '&:hover': {
+          transform: 'translateY(-2px)',
+          boxShadow: 'var(--neu-raised-hover) !important',
+        },
       }}
     >
       <Box
@@ -136,7 +140,9 @@ function SectionCard({
         }}
       >
         <Box sx={{ color, display: 'flex', '& svg': { fontSize: 22 } }}>{icon}</Box>
-        <Typography sx={{ fontWeight: 700, fontSize: '0.95rem', color: 'text.primary', flex: 1 }}>{title}</Typography>
+        <Typography sx={{ fontWeight: 700, fontSize: '0.95rem', color: 'text.primary', flex: 1 }}>
+          {title}
+        </Typography>
         {badge}
       </Box>
       <Box sx={{ '& > *:not(:last-child)': { boxShadow: '0 9px 14px -16px rgba(0,0,0,0.85)' } }}>
@@ -148,7 +154,15 @@ function SectionCard({
 
 // ─── Number Input ────────────────────────────────────────────────────────────
 
-function NumberInput({ value, onChange, suffix }: { value: string; onChange: (v: string) => void; suffix?: string }) {
+function NumberInput({
+  value,
+  onChange,
+  suffix,
+}: {
+  value: string
+  onChange: (v: string) => void
+  suffix?: string
+}) {
   return (
     <TextField
       value={value}
@@ -158,7 +172,11 @@ function NumberInput({ value, onChange, suffix }: { value: string; onChange: (v:
       slotProps={{
         input: {
           endAdornment: suffix ? (
-            <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', ml: 0.5, whiteSpace: 'nowrap' }}>{suffix}</Typography>
+            <Typography
+              sx={{ fontSize: '0.75rem', color: 'text.secondary', ml: 0.5, whiteSpace: 'nowrap' }}
+            >
+              {suffix}
+            </Typography>
           ) : undefined,
         },
       }}
@@ -252,7 +270,10 @@ export default function SettingsPage() {
   }, [])
 
   function track<T>(setter: (v: T) => void) {
-    return (v: T) => { setter(v); setHasChanges(true) }
+    return (v: T) => {
+      setter(v)
+      setHasChanges(true)
+    }
   }
 
   function handleSave() {
@@ -261,8 +282,11 @@ export default function SettingsPage() {
   }
 
   function handleReset() {
-    setProcessingFee('2.9'); setFixedFee('0.30'); setWithdrawalFee('1.5')
-    setMinDonation('1'); setMaxDuration('90')
+    setProcessingFee('2.9')
+    setFixedFee('0.30')
+    setWithdrawalFee('1.5')
+    setMinDonation('1')
+    setMaxDuration('90')
     setHasChanges(false)
   }
 
@@ -270,10 +294,27 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+      <Box
+        sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}
+      >
         <Box sx={{ textAlign: 'center' }}>
-          <Box sx={{ width: 48, height: 48, borderRadius: '50%', border: '3px solid', borderColor: 'divider', borderTopColor: 'primary.main', animation: 'spin 0.8s linear infinite', mx: 'auto', mb: 2, '@keyframes spin': { to: { transform: 'rotate(360deg)' } } }} />
-          <Typography sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>Loading settings...</Typography>
+          <Box
+            sx={{
+              width: 48,
+              height: 48,
+              borderRadius: '50%',
+              border: '3px solid',
+              borderColor: 'divider',
+              borderTopColor: 'primary.main',
+              animation: 'spin 0.8s linear infinite',
+              mx: 'auto',
+              mb: 2,
+              '@keyframes spin': { to: { transform: 'rotate(360deg)' } },
+            }}
+          />
+          <Typography sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
+            Loading settings...
+          </Typography>
         </Box>
       </Box>
     )
@@ -282,6 +323,7 @@ export default function SettingsPage() {
   return (
     <Box>
       <EarlyCashoutSettings canEdit={canEdit} />
+      <AutomaticPayoutSettings canEdit={canEdit} />
       {/* Header */}
       <PageHeader
         tone="green"
@@ -295,7 +337,12 @@ export default function SettingsPage() {
               <Tooltip title="Reset to defaults">
                 <IconButton
                   onClick={handleReset}
-                  sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, '&:hover': { borderColor: 'warning.main', color: 'warning.main' } }}
+                  sx={{
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    borderRadius: 2,
+                    '&:hover': { borderColor: 'warning.main', color: 'warning.main' },
+                  }}
                 >
                   <RestoreRoundedIcon fontSize="small" />
                 </IconButton>
@@ -354,8 +401,11 @@ export default function SettingsPage() {
         </Alert>
       )}
 
-      <Grid container spacing={3} sx={!canEdit ? { pointerEvents: 'none', opacity: 0.6 } : undefined}>
-
+      <Grid
+        container
+        spacing={3}
+        sx={!canEdit ? { pointerEvents: 'none', opacity: 0.6 } : undefined}
+      >
         {/* ─── Platform Fees by Subscription Tier ─── */}
         <Grid size={{ xs: 12 }} sx={{ minWidth: 0, pointerEvents: 'auto' }}>
           <SectionCard
@@ -384,9 +434,17 @@ export default function SettingsPage() {
           >
             <Box sx={{ px: 3, py: 2.5 }}>
               <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary', mb: 2.5 }}>
-                Platform fees are determined by the user&apos;s subscription tier. To modify these fees, go to Manage Plans.
+                Platform fees are determined by the user&apos;s subscription tier. To modify these
+                fees, go to Manage Plans.
               </Typography>
-              <Typography sx={{ display: { xs: 'block', md: 'none' }, fontSize: '0.75rem', color: 'text.secondary', mb: 1 }}>
+              <Typography
+                sx={{
+                  display: { xs: 'block', md: 'none' },
+                  fontSize: '0.75rem',
+                  color: 'text.secondary',
+                  mb: 1,
+                }}
+              >
                 Swipe horizontally to see all plan details.
               </Typography>
               <TableContainer
@@ -399,17 +457,75 @@ export default function SettingsPage() {
                   border: '1px solid',
                   borderColor: 'divider',
                   overflowX: 'auto',
-                  '&:focus-visible': { outline: '2px solid', outlineColor: 'primary.main', outlineOffset: 2 },
+                  '&:focus-visible': {
+                    outline: '2px solid',
+                    outlineColor: 'primary.main',
+                    outlineOffset: 2,
+                  },
                 }}
               >
                 <Table size="small" sx={{ minWidth: 680 }}>
                   <TableHead>
                     <TableRow sx={{ bgcolor: alpha('#fff', 0.03) }}>
-                      <TableCell sx={{ fontWeight: 700, fontSize: '0.78rem', color: 'text.secondary', borderColor: 'divider', py: 1.5 }}>Tier</TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.78rem', color: 'text.secondary', borderColor: 'divider', py: 1.5 }}>Platform Fee</TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.78rem', color: 'text.secondary', borderColor: 'divider', py: 1.5 }}>Max Campaigns</TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.78rem', color: 'text.secondary', borderColor: 'divider', py: 1.5 }}>Max Goal</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.78rem', color: 'text.secondary', borderColor: 'divider', py: 1.5 }}>Price</TableCell>
+                      <TableCell
+                        sx={{
+                          fontWeight: 700,
+                          fontSize: '0.78rem',
+                          color: 'text.secondary',
+                          borderColor: 'divider',
+                          py: 1.5,
+                        }}
+                      >
+                        Tier
+                      </TableCell>
+                      <TableCell
+                        align="center"
+                        sx={{
+                          fontWeight: 700,
+                          fontSize: '0.78rem',
+                          color: 'text.secondary',
+                          borderColor: 'divider',
+                          py: 1.5,
+                        }}
+                      >
+                        Platform Fee
+                      </TableCell>
+                      <TableCell
+                        align="center"
+                        sx={{
+                          fontWeight: 700,
+                          fontSize: '0.78rem',
+                          color: 'text.secondary',
+                          borderColor: 'divider',
+                          py: 1.5,
+                        }}
+                      >
+                        Max Campaigns
+                      </TableCell>
+                      <TableCell
+                        align="center"
+                        sx={{
+                          fontWeight: 700,
+                          fontSize: '0.78rem',
+                          color: 'text.secondary',
+                          borderColor: 'divider',
+                          py: 1.5,
+                        }}
+                      >
+                        Max Goal
+                      </TableCell>
+                      <TableCell
+                        align="right"
+                        sx={{
+                          fontWeight: 700,
+                          fontSize: '0.78rem',
+                          color: 'text.secondary',
+                          borderColor: 'divider',
+                          py: 1.5,
+                        }}
+                      >
+                        Price
+                      </TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -426,12 +542,33 @@ export default function SettingsPage() {
                         >
                           <TableCell sx={{ borderColor: 'divider', py: 1.5 }}>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                              <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: tierColor, flexShrink: 0 }} />
+                              <Box
+                                sx={{
+                                  width: 8,
+                                  height: 8,
+                                  borderRadius: '50%',
+                                  bgcolor: tierColor,
+                                  flexShrink: 0,
+                                }}
+                              />
                               <Box>
-                                <Typography sx={{ fontWeight: 700, fontSize: '0.85rem', color: 'text.primary', lineHeight: 1.3 }}>
+                                <Typography
+                                  sx={{
+                                    fontWeight: 700,
+                                    fontSize: '0.85rem',
+                                    color: 'text.primary',
+                                    lineHeight: 1.3,
+                                  }}
+                                >
                                   {plan.name}
                                 </Typography>
-                                <Typography sx={{ fontSize: '0.7rem', color: 'text.secondary', lineHeight: 1.3 }}>
+                                <Typography
+                                  sx={{
+                                    fontSize: '0.7rem',
+                                    color: 'text.secondary',
+                                    lineHeight: 1.3,
+                                  }}
+                                >
                                   {plan.description}
                                 </Typography>
                               </Box>
@@ -453,18 +590,30 @@ export default function SettingsPage() {
                             />
                           </TableCell>
                           <TableCell align="center" sx={{ borderColor: 'divider', py: 1.5 }}>
-                            <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: 'text.primary' }}>
-                              {plan.maxActiveCampaigns === -1 ? 'Unlimited' : plan.maxActiveCampaigns}
+                            <Typography
+                              sx={{ fontSize: '0.85rem', fontWeight: 600, color: 'text.primary' }}
+                            >
+                              {plan.maxActiveCampaigns === -1
+                                ? 'Unlimited'
+                                : plan.maxActiveCampaigns}
                             </Typography>
                           </TableCell>
                           <TableCell align="center" sx={{ borderColor: 'divider', py: 1.5 }}>
-                            <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: 'text.primary' }}>
-                              {plan.maxCampaignGoal === -1 ? 'Unlimited' : `GH₵ ${plan.maxCampaignGoal.toLocaleString()}`}
+                            <Typography
+                              sx={{ fontSize: '0.85rem', fontWeight: 600, color: 'text.primary' }}
+                            >
+                              {plan.maxCampaignGoal === -1
+                                ? 'Unlimited'
+                                : `GH₵ ${plan.maxCampaignGoal.toLocaleString()}`}
                             </Typography>
                           </TableCell>
                           <TableCell align="right" sx={{ borderColor: 'divider', py: 1.5 }}>
-                            <Typography sx={{ fontSize: '0.85rem', fontWeight: 700, color: 'text.primary' }}>
-                              {plan.priceMonthly === 0 ? 'Free' : `GH₵ ${plan.priceMonthly.toLocaleString()}/mo`}
+                            <Typography
+                              sx={{ fontSize: '0.85rem', fontWeight: 700, color: 'text.primary' }}
+                            >
+                              {plan.priceMonthly === 0
+                                ? 'Free'
+                                : `GH₵ ${plan.priceMonthly.toLocaleString()}/mo`}
                             </Typography>
                           </TableCell>
                         </TableRow>
@@ -479,14 +628,25 @@ export default function SettingsPage() {
 
         {/* ─── Global Payment Fees ─── */}
         <Grid size={{ xs: 12, lg: 6 }}>
-          <SectionCard icon={<MonetizationOnRoundedIcon />} title="Payment Processing" color="#8FAE96" delay={0.06}>
-            <SettingRow label="Processing Fee" description="Payment processor percentage (e.g. Stripe)">
+          <SectionCard
+            icon={<MonetizationOnRoundedIcon />}
+            title="Payment Processing"
+            color="#8FAE96"
+            delay={0.06}
+          >
+            <SettingRow
+              label="Processing Fee"
+              description="Payment processor percentage (e.g. Stripe)"
+            >
               <NumberInput value={processingFee} onChange={track(setProcessingFee)} suffix="%" />
             </SettingRow>
             <SettingRow label="Fixed Fee" description="Per-transaction flat charge">
               <NumberInput value={fixedFee} onChange={track(setFixedFee)} suffix="GHS" />
             </SettingRow>
-            <SettingRow label="Withdrawal Fee" description="Fee when withdrawing to bank/mobile money">
+            <SettingRow
+              label="Withdrawal Fee"
+              description="Fee when withdrawing to bank/mobile money"
+            >
               <NumberInput value={withdrawalFee} onChange={track(setWithdrawalFee)} suffix="%" />
             </SettingRow>
           </SectionCard>
@@ -494,13 +654,22 @@ export default function SettingsPage() {
 
         {/* ─── Global Campaign Limits ─── */}
         <Grid size={{ xs: 12, lg: 6 }}>
-          <SectionCard icon={<TuneRoundedIcon />} title="Global Campaign Limits" color="#74909A" delay={0.12}>
+          <SectionCard
+            icon={<TuneRoundedIcon />}
+            title="Global Campaign Limits"
+            color="#74909A"
+            delay={0.12}
+          >
             <Box sx={{ px: 3, py: 1.5, bgcolor: alpha('#74909A', 0.04) }}>
               <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>
-                These are platform-wide limits. Per-tier limits (max campaigns, max goal) are configured in Manage Plans.
+                These are platform-wide limits. Per-tier limits (max campaigns, max goal) are
+                configured in Manage Plans.
               </Typography>
             </Box>
-            <SettingRow label="Maximum Duration" description="Longest campaign runtime allowed on the platform">
+            <SettingRow
+              label="Maximum Duration"
+              description="Longest campaign runtime allowed on the platform"
+            >
               <NumberInput value={maxDuration} onChange={track(setMaxDuration)} suffix="days" />
             </SettingRow>
             <SettingRow label="Minimum Donation" description="Smallest accepted donation amount">
@@ -511,8 +680,16 @@ export default function SettingsPage() {
 
         {/* ─── Verification ─── */}
         <Grid size={{ xs: 12, lg: 6 }}>
-          <SectionCard icon={<VerifiedUserRoundedIcon />} title="Verification Requirements" color={TONES.maroon.text} delay={0.18}>
-            <SettingRow label="Email Verification" description="Require verified email to create campaigns">
+          <SectionCard
+            icon={<VerifiedUserRoundedIcon />}
+            title="Verification Requirements"
+            color={TONES.maroon.text}
+            delay={0.18}
+          >
+            <SettingRow
+              label="Email Verification"
+              description="Require verified email to create campaigns"
+            >
               <Toggle checked={emailRequired} onChange={track(setEmailRequired)} />
             </SettingRow>
             <SettingRow label="Phone Verification" description="Require verified phone number">
@@ -521,27 +698,48 @@ export default function SettingsPage() {
             <SettingRow label="National ID" description="Require government-issued ID upload">
               <Toggle checked={nationalIdRequired} onChange={track(setNationalIdRequired)} />
             </SettingRow>
-            <SettingRow label="Institutional Verification" description="Require institutional partner vouching">
+            <SettingRow
+              label="Institutional Verification"
+              description="Require institutional partner vouching"
+            >
               <Toggle checked={institutionalRequired} onChange={track(setInstitutionalRequired)} />
             </SettingRow>
-            <SettingRow label="Auto-Approve Campaigns" description="Automatically approve campaigns from trusted users">
+            <SettingRow
+              label="Auto-Approve Campaigns"
+              description="Automatically approve campaigns from trusted users"
+            >
               <Toggle checked={autoApprove} onChange={track(setAutoApprove)} />
             </SettingRow>
             {autoApprove && (
               <Box sx={{ px: 3, py: 2.5 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    mb: 1.5,
+                  }}
+                >
                   <Typography sx={{ fontSize: '0.82rem', fontWeight: 600, color: 'text.primary' }}>
                     Minimum Trust Score
                   </Typography>
                   <Chip
                     label={autoApproveScore}
                     size="small"
-                    sx={{ bgcolor: TONES.maroon.solid, color: '#fff', fontWeight: 700, minWidth: 40 }}
+                    sx={{
+                      bgcolor: TONES.maroon.solid,
+                      color: '#fff',
+                      fontWeight: 700,
+                      minWidth: 40,
+                    }}
                   />
                 </Box>
                 <Slider
                   value={autoApproveScore}
-                  onChange={(_, v) => { setAutoApproveScore(v as number); setHasChanges(true) }}
+                  onChange={(_, v) => {
+                    setAutoApproveScore(v as number)
+                    setHasChanges(true)
+                  }}
                   min={0}
                   max={100}
                   sx={{
@@ -550,7 +748,11 @@ export default function SettingsPage() {
                     '& .MuiSlider-track': { height: 6 },
                     '& .MuiSlider-thumb': { width: 18, height: 18 },
                   }}
-                  marks={[{ value: 0, label: '0' }, { value: 50, label: '50' }, { value: 100, label: '100' }]}
+                  marks={[
+                    { value: 0, label: '0' },
+                    { value: 50, label: '50' },
+                    { value: 100, label: '100' },
+                  ]}
                 />
               </Box>
             )}
@@ -559,8 +761,16 @@ export default function SettingsPage() {
 
         {/* ─── Notifications ─── */}
         <Grid size={{ xs: 12, lg: 6 }}>
-          <SectionCard icon={<NotificationsActiveRoundedIcon />} title="Notifications" color="#D3A95C" delay={0.24}>
-            <SettingRow label="Campaign Submissions" description="Alert when new campaigns are submitted for review">
+          <SectionCard
+            icon={<NotificationsActiveRoundedIcon />}
+            title="Notifications"
+            color="#D3A95C"
+            delay={0.24}
+          >
+            <SettingRow
+              label="Campaign Submissions"
+              description="Alert when new campaigns are submitted for review"
+            >
               <Toggle checked={notifCampaigns} onChange={track(setNotifCampaigns)} />
             </SettingRow>
             <SettingRow label="Dispute Alerts" description="Notify on new disputes and escalations">
@@ -584,14 +794,21 @@ export default function SettingsPage() {
         {/* ─── Security ─── */}
         <Grid size={{ xs: 12, lg: 6 }}>
           <SectionCard icon={<SecurityRoundedIcon />} title="Security" color="#C06B58" delay={0.3}>
-            <SettingRow label="Two-Factor Authentication" description="Require 2FA for all admin accounts">
+            <SettingRow
+              label="Two-Factor Authentication"
+              description="Require 2FA for all admin accounts"
+            >
               <Toggle checked={twoFactor} onChange={track(setTwoFactor)} />
             </SettingRow>
             <SettingRow label="IP Whitelist" description="Restrict admin access to specific IPs">
               <Toggle checked={ipWhitelist} onChange={track(setIpWhitelist)} />
             </SettingRow>
             <SettingRow label="Session Timeout" description="Auto-logout after inactivity">
-              <NumberInput value={sessionTimeout} onChange={track(setSessionTimeout)} suffix="min" />
+              <NumberInput
+                value={sessionTimeout}
+                onChange={track(setSessionTimeout)}
+                suffix="min"
+              />
             </SettingRow>
             <SettingRow label="Login Alerts" description="Email notification on admin login">
               <Toggle checked={loginAlerts} onChange={track(setLoginAlerts)} />
@@ -601,11 +818,22 @@ export default function SettingsPage() {
 
         {/* ─── Appearance ─── */}
         <Grid size={{ xs: 12 }}>
-          <SectionCard icon={<PaletteRoundedIcon />} title="Appearance" color={TONES.teal.text} delay={0.36}>
-            <SettingRow label="Dark Mode" description="Use the low-light theme for the admin console">
+          <SectionCard
+            icon={<PaletteRoundedIcon />}
+            title="Appearance"
+            color={TONES.teal.text}
+            delay={0.36}
+          >
+            <SettingRow
+              label="Dark Mode"
+              description="Use the low-light theme for the admin console"
+            >
               <Toggle checked={darkMode} onChange={setDarkMode} />
             </SettingRow>
-            <SettingRow label="Compact Mode" description="Reduce spacing for denser information display">
+            <SettingRow
+              label="Compact Mode"
+              description="Reduce spacing for denser information display"
+            >
               <Toggle checked={compactMode} onChange={track(setCompactMode)} />
             </SettingRow>
             <SettingRow label="Animations" description="Enable UI animations and transitions">
@@ -621,7 +849,12 @@ export default function SettingsPage() {
       </Grid>
 
       {/* Snackbar */}
-      <Snackbar open={snackOpen} autoHideDuration={3000} onClose={() => setSnackOpen(false)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+      <Snackbar
+        open={snackOpen}
+        autoHideDuration={3000}
+        onClose={() => setSnackOpen(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
         <Alert
           onClose={() => setSnackOpen(false)}
           icon={<CheckCircleRoundedIcon />}

@@ -96,6 +96,22 @@ export class RequestPayoutUseCase {
       throw new AppError('Payout amount must be greater than zero', 422)
     }
 
+    const requestKey = input.idempotencyKey
+      ? `${requester.userId}:${input.idempotencyKey}`
+      : undefined
+    if (requestKey && this.payoutRepo.findByRequestKey) {
+      const previous = await this.payoutRepo.findByRequestKey(requestKey)
+      if (previous) {
+        if (
+          previous.campaignId !== campaignId ||
+          previous.amount !== amount ||
+          previous.type !== (input.type ?? 'standard') ||
+          previous.provider !== (wallet ? 'ujimora_wallet' : 'paystack')
+        )
+          throw new AppError('Request key already used with different details', 409)
+        return toPayoutDto(previous)
+      }
+    }
     const reference = wallet
       ? `wallet-request:${campaign.creatorId}:${input.idempotencyKey}`
       : undefined
@@ -123,7 +139,8 @@ export class RequestPayoutUseCase {
     const pending = balance?.pendingBalance ?? 0
     const eligible = round2(available + pending)
     const currency = balance?.currency ?? recipient.currency ?? CURRENCY
-    if (wallet && currency !== 'GHS') throw new AppError('Ujimora Wallet transfers require GHS', 422)
+    if (wallet && currency !== 'GHS')
+      throw new AppError('Ujimora Wallet transfers require GHS', 422)
 
     if (amount > eligible) {
       throw new AppError(
@@ -178,6 +195,7 @@ export class RequestPayoutUseCase {
     const saved = await this.payoutRepo.create(
       new PayoutEntity({
         id: '',
+        requestKey,
         campaignId: campaign.id,
         recipientId: recipient.id,
         amount,

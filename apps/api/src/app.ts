@@ -1,3 +1,6 @@
+import { AutomaticPayoutService } from './infrastructure/adapters/outbound/payments/AutomaticPayoutService.js'
+import { automaticPayoutRoutes } from './infrastructure/adapters/inbound/http/routes/automaticPayoutRoutes.js'
+import { PayoutTransferControlUseCase } from './application/use-cases/PayoutTransferControlUseCase.js'
 import { createAdminActionRoutes } from './infrastructure/adapters/inbound/http/routes/adminActionRoutes.js'
 import { MongoWalletPayoutRepository } from './infrastructure/adapters/outbound/persistence/MongoWalletPayoutRepository.js'
 import { PayoutAccountService } from './application/services/PayoutAccountService.js'
@@ -848,7 +851,7 @@ export function createApp(): express.Express {
   // Scheduled reconciliation sweep (spec §13). Production-only + flag-gated so
   // tests/dev never spawn it; unref'd so it can't hold the process open.
   if (config.payments.reconciliationEnabled && config.nodeEnv === 'production') {
-    const RECONCILE_INTERVAL_MS = 30 * 60 * 1000
+    const RECONCILE_INTERVAL_MS = 5 * 60 * 1000
     const timer = setInterval(() => {
       void walletTopUps
         .reconcile()
@@ -857,7 +860,7 @@ export function createApp(): express.Express {
         .reconcileStale({ olderThanMinutes: 30 })
         .catch((err) => logger.error({ err }, 'scheduled reconciliation failed'))
       reconcilePayoutsUseCase
-        .reconcileStale({ olderThanMinutes: 30 })
+        .reconcileStale({ olderThanMinutes: 1 })
         .catch((err) => logger.error({ err }, 'scheduled payout reconciliation failed'))
       if (config.crypto.enabled) {
         reconcileCryptoUseCase
@@ -1222,6 +1225,8 @@ export function createApp(): express.Express {
       transferRecipientRepo,
       commercialConfigService,
     ),
+    new AutomaticPayoutService(approvePayoutUseCase, payoutRepo, config.payouts),
+    new PayoutTransferControlUseCase(payoutRepo, paymentGateway, handlePayoutWebhookUseCase),
   )
   // Split-proceeds: owner-managed, versioned beneficiary allocations (spec §17).
   const campaignSplitUseCase = new CampaignSplitUseCase(
@@ -1493,6 +1498,12 @@ export function createApp(): express.Express {
   api.use('/plans', createPlanRoutes(planController, authMiddleware, requireAdmin))
   // Payout rail: bank/telco directory (auth), plus the admin payout console.
   api.use('/banks', createBankRoutes(payoutController, authMiddleware))
+  api.use(
+    automaticPayoutRoutes(
+      authMiddleware,
+      new PayoutTransferControlUseCase(payoutRepo, paymentGateway, handlePayoutWebhookUseCase),
+    ),
+  )
   api.use('/payouts', createPayoutRoutes(payoutController, authMiddleware, requireAdmin))
   api.use('/disputes', createDisputeRoutes(disputeController, authMiddleware, requireAdmin))
   api.use('/reports', createAdminReportRoutes(adminReportController, authMiddleware, requireAdmin))

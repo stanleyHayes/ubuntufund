@@ -1,10 +1,7 @@
-import { PayoutEntity } from '../../../../domain/entities/Payout.js';
-import type { PayoutRepositoryPort } from '../../../../domain/ports/outbound/PayoutRepositoryPort.js';
-import type { PayoutLeg, PayoutLegStatus, PayoutStatus } from '@ubuntu-fund/types';
-import {
-  PayoutModel,
-  type PayoutDocument,
-} from '../../../database/models/PayoutModel.js';
+import { PayoutEntity } from '../../../../domain/entities/Payout.js'
+import type { PayoutRepositoryPort } from '../../../../domain/ports/outbound/PayoutRepositoryPort.js'
+import type { PayoutLeg, PayoutLegStatus, PayoutStatus } from '@ubuntu-fund/types'
+import { PayoutModel, type PayoutDocument } from '../../../database/models/PayoutModel.js'
 
 function toDomain(doc: PayoutDocument): PayoutEntity {
   return new PayoutEntity({
@@ -20,6 +17,9 @@ function toDomain(doc: PayoutDocument): PayoutEntity {
     provider: doc.provider,
     providerRef: doc.providerRef,
     transferCode: doc.transferCode,
+    providerStatus: doc.providerStatus,
+    automationReason: doc.automationReason,
+    requestKey: doc.requestKey,
     requestedBy: doc.requestedBy,
     approvedBy: doc.approvedBy,
     firstApprovedBy: doc.firstApprovedBy,
@@ -34,13 +34,21 @@ function toDomain(doc: PayoutDocument): PayoutEntity {
     reversedFrom: doc.reversedFrom,
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
-  });
+  })
 }
 
 export class MongoPayoutRepository implements PayoutRepositoryPort {
+  async findByRequestKey(requestKey: string): Promise<PayoutEntity | null> {
+    const doc = await PayoutModel.findOne({ requestKey })
+    return doc ? toDomain(doc) : null
+  }
+  async setProviderStatus(id: string, providerStatus: string): Promise<void> {
+    await PayoutModel.updateOne({ _id: id, status: 'PROCESSING' }, { $set: { providerStatus } })
+  }
   async create(payout: PayoutEntity): Promise<PayoutEntity> {
-    const p = payout.toPlain();
+    const p = payout.toPlain()
     const doc = await PayoutModel.create({
+      requestKey: p.requestKey,
       campaignId: p.campaignId,
       recipientId: p.recipientId,
       amount: p.amount,
@@ -54,40 +62,40 @@ export class MongoPayoutRepository implements PayoutRepositoryPort {
       transferCode: p.transferCode,
       requestedBy: p.requestedBy,
       approvedBy: p.approvedBy,
-    });
-    return toDomain(doc);
+    })
+    return toDomain(doc)
   }
 
   async findById(id: string): Promise<PayoutEntity | null> {
-    const doc = await PayoutModel.findById(id);
-    return doc ? toDomain(doc) : null;
+    const doc = await PayoutModel.findById(id)
+    return doc ? toDomain(doc) : null
   }
 
   async findByCampaignId(campaignId: string): Promise<PayoutEntity[]> {
-    const docs = await PayoutModel.find({ campaignId }).sort({ createdAt: -1 });
-    return docs.map(toDomain);
+    const docs = await PayoutModel.find({ campaignId }).sort({ createdAt: -1 })
+    return docs.map(toDomain)
   }
 
   async findByProviderRef(providerRef: string): Promise<PayoutEntity | null> {
-    const doc = await PayoutModel.findOne({ providerRef });
-    return doc ? toDomain(doc) : null;
+    const doc = await PayoutModel.findOne({ providerRef })
+    return doc ? toDomain(doc) : null
   }
 
   async findByLegReference(reference: string): Promise<PayoutEntity | null> {
-    const doc = await PayoutModel.findOne({ 'legs.reference': reference });
-    return doc ? toDomain(doc) : null;
+    const doc = await PayoutModel.findOne({ 'legs.reference': reference })
+    return doc ? toDomain(doc) : null
   }
 
   async findAll(): Promise<PayoutEntity[]> {
-    const docs = await PayoutModel.find().sort({ createdAt: -1 });
-    return docs.map(toDomain);
+    const docs = await PayoutModel.find().sort({ createdAt: -1 })
+    return docs.map(toDomain)
   }
 
   async findByStatuses(statuses: PayoutStatus[]): Promise<PayoutEntity[]> {
     const docs = await PayoutModel.find({ status: { $in: statuses } }).sort({
       createdAt: -1,
-    });
-    return docs.map(toDomain);
+    })
+    return docs.map(toDomain)
   }
 
   async findStuckProcessing(olderThan: Date): Promise<PayoutEntity[]> {
@@ -96,8 +104,8 @@ export class MongoPayoutRepository implements PayoutRepositoryPort {
       providerRef: { $exists: true },
       legs: { $exists: false }, // single-transfer only; batched reconciled per-leg
       updatedAt: { $lt: olderThan },
-    }).sort({ updatedAt: 1 });
-    return docs.map(toDomain);
+    }).sort({ updatedAt: 1 })
+    return docs.map(toDomain)
   }
 
   async findStuckBatchedProcessing(olderThan: Date): Promise<PayoutEntity[]> {
@@ -105,22 +113,19 @@ export class MongoPayoutRepository implements PayoutRepositoryPort {
       status: 'PROCESSING',
       legs: { $exists: true, $ne: [] },
       updatedAt: { $lt: olderThan },
-    }).sort({ updatedAt: 1 });
-    return docs.map(toDomain);
+    }).sort({ updatedAt: 1 })
+    return docs.map(toDomain)
   }
 
-  async markSettlementApplied(
-    id: string,
-    expectedStatus?: PayoutStatus
-  ): Promise<void> {
+  async markSettlementApplied(id: string, expectedStatus?: PayoutStatus): Promise<void> {
     // Compare-and-set on status: a repair that ran the effect for one status must
     // NOT flag a payout that has since transitioned (e.g. a stale PAID repair
     // racing a reversal), or the newly-owed effect would be lost and never
     // re-selected. Omitting expectedStatus keeps the old unconditional behaviour.
     await PayoutModel.updateOne(
       { _id: id, ...(expectedStatus ? { status: expectedStatus } : {}) },
-      { $set: { settlementApplied: true } }
-    );
+      { $set: { settlementApplied: true } },
+    )
   }
 
   async findTerminalUnsettled(olderThan: Date): Promise<PayoutEntity[]> {
@@ -137,25 +142,22 @@ export class MongoPayoutRepository implements PayoutRepositoryPort {
         { status: { $in: ['PAID', 'FAILED'] } },
         { status: 'REVERSED', reversedFrom: { $exists: true } },
       ],
-    }).sort({ updatedAt: 1 });
-    return docs.map(toDomain);
+    }).sort({ updatedAt: 1 })
+    return docs.map(toDomain)
   }
 
-  async recordFirstApproval(
-    id: string,
-    makerId: string
-  ): Promise<PayoutEntity | null> {
+  async recordFirstApproval(id: string, makerId: string): Promise<PayoutEntity | null> {
     const doc = await PayoutModel.findOneAndUpdate(
       { _id: id, status: 'PENDING', firstApprovedBy: { $exists: false } },
       { $set: { firstApprovedBy: makerId, firstApprovedAt: new Date() } },
-      { new: true }
-    );
-    return doc ? toDomain(doc) : null;
+      { new: true },
+    )
+    return doc ? toDomain(doc) : null
   }
 
   async transitionToProcessingBatched(
     id: string,
-    fields: { approvedBy: string; providerRef: string; legs: PayoutLeg[] }
+    fields: { approvedBy: string; providerRef: string; legs: PayoutLeg[] },
   ): Promise<PayoutEntity | null> {
     const doc = await PayoutModel.findOneAndUpdate(
       { _id: id, status: 'PENDING' },
@@ -167,9 +169,9 @@ export class MongoPayoutRepository implements PayoutRepositoryPort {
           legs: fields.legs,
         },
       },
-      { new: true }
-    );
-    return doc ? toDomain(doc) : null;
+      { new: true },
+    )
+    return doc ? toDomain(doc) : null
   }
 
   async setLegStatus(
@@ -177,7 +179,7 @@ export class MongoPayoutRepository implements PayoutRepositoryPort {
     reference: string,
     from: PayoutLegStatus[],
     to: PayoutLegStatus,
-    extra?: { transferCode?: string }
+    extra?: { transferCode?: string },
   ): Promise<PayoutEntity | null> {
     const doc = await PayoutModel.findOneAndUpdate(
       {
@@ -187,17 +189,15 @@ export class MongoPayoutRepository implements PayoutRepositoryPort {
       {
         $set: {
           'legs.$[leg].status': to,
-          ...(extra?.transferCode
-            ? { 'legs.$[leg].transferCode': extra.transferCode }
-            : {}),
+          ...(extra?.transferCode ? { 'legs.$[leg].transferCode': extra.transferCode } : {}),
         },
       },
       {
         new: true,
         arrayFilters: [{ 'leg.reference': reference, 'leg.status': { $in: from } }],
-      }
-    );
-    return doc ? toDomain(doc) : null;
+      },
+    )
+    return doc ? toDomain(doc) : null
   }
 
   async transitionBatchedToPaid(id: string): Promise<PayoutEntity | null> {
@@ -209,23 +209,23 @@ export class MongoPayoutRepository implements PayoutRepositoryPort {
         legs: { $not: { $elemMatch: { status: { $ne: 'success' } } } },
       },
       { $set: { status: 'PAID' } },
-      { new: true }
-    );
-    return doc ? toDomain(doc) : null;
+      { new: true },
+    )
+    return doc ? toDomain(doc) : null
   }
 
   async flagNeedsReview(id: string): Promise<PayoutEntity | null> {
     const doc = await PayoutModel.findOneAndUpdate(
       { _id: id, status: { $in: ['PROCESSING', 'PAID'] } },
       { $set: { status: 'NEEDS_REVIEW' } },
-      { new: true }
-    );
-    return doc ? toDomain(doc) : null;
+      { new: true },
+    )
+    return doc ? toDomain(doc) : null
   }
 
   async transitionToProcessing(
     id: string,
-    fields: { approvedBy: string; providerRef: string; transferCode?: string }
+    fields: { approvedBy: string; providerRef: string; transferCode?: string },
   ): Promise<PayoutEntity | null> {
     const doc = await PayoutModel.findOneAndUpdate(
       { _id: id, status: 'PENDING' },
@@ -237,39 +237,32 @@ export class MongoPayoutRepository implements PayoutRepositoryPort {
           ...(fields.transferCode ? { transferCode: fields.transferCode } : {}),
         },
       },
-      { new: true }
-    );
-    return doc ? toDomain(doc) : null;
+      { new: true },
+    )
+    return doc ? toDomain(doc) : null
   }
 
-  async attachTransferCode(
-    id: string,
-    transferCode: string
-  ): Promise<PayoutEntity | null> {
-    const doc = await PayoutModel.findByIdAndUpdate(
-      id,
-      { $set: { transferCode } },
-      { new: true }
-    );
-    return doc ? toDomain(doc) : null;
+  async attachTransferCode(id: string, transferCode: string): Promise<PayoutEntity | null> {
+    const doc = await PayoutModel.findByIdAndUpdate(id, { $set: { transferCode } }, { new: true })
+    return doc ? toDomain(doc) : null
   }
 
   async transitionToPaid(id: string): Promise<PayoutEntity | null> {
     const doc = await PayoutModel.findOneAndUpdate(
       { _id: id, status: 'PROCESSING' },
       { $set: { status: 'PAID' } },
-      { new: true }
-    );
-    return doc ? toDomain(doc) : null;
+      { new: true },
+    )
+    return doc ? toDomain(doc) : null
   }
 
   async transitionToFailed(id: string): Promise<PayoutEntity | null> {
     const doc = await PayoutModel.findOneAndUpdate(
       { _id: id, status: 'PROCESSING' },
       { $set: { status: 'FAILED' } },
-      { new: true }
-    );
-    return doc ? toDomain(doc) : null;
+      { new: true },
+    )
+    return doc ? toDomain(doc) : null
   }
 
   async transitionPaidToReversed(id: string): Promise<PayoutEntity | null> {
@@ -278,19 +271,17 @@ export class MongoPayoutRepository implements PayoutRepositoryPort {
     const doc = await PayoutModel.findOneAndUpdate(
       { _id: id, status: 'PAID' },
       { $set: { status: 'REVERSED', reversedFrom: 'PAID', settlementApplied: false } },
-      { new: true }
-    );
-    return doc ? toDomain(doc) : null;
+      { new: true },
+    )
+    return doc ? toDomain(doc) : null
   }
 
-  async transitionProcessingToReversed(
-    id: string
-  ): Promise<PayoutEntity | null> {
+  async transitionProcessingToReversed(id: string): Promise<PayoutEntity | null> {
     const doc = await PayoutModel.findOneAndUpdate(
       { _id: id, status: 'PROCESSING' },
       { $set: { status: 'REVERSED', reversedFrom: 'PROCESSING', settlementApplied: false } },
-      { new: true }
-    );
-    return doc ? toDomain(doc) : null;
+      { new: true },
+    )
+    return doc ? toDomain(doc) : null
   }
 }

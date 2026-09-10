@@ -14,7 +14,12 @@ export function createAdminActionRoutes(auth: ReturnType<typeof createAuthMiddle
   router.get('/action-center', auth, requireAdmin, async (_req, res, next) => {
     try {
       const counts = await Promise.all([
-        PayoutModel.countDocuments({ status: { $in: ['PENDING', 'NEEDS_REVIEW'] } }),
+        PayoutModel.countDocuments({
+          $or: [
+            { status: { $in: ['PENDING', 'NEEDS_REVIEW'] } },
+            { status: 'PROCESSING', providerStatus: 'otp' },
+          ],
+        }),
         BeneficiaryPayoutModel.countDocuments({ status: { $in: ['PENDING', 'NEEDS_REVIEW'] } }),
         CampaignModel.countDocuments({ status: 'pending_review', deletedAt: null }),
         KYCVerificationModel.countDocuments({ status: 'pending' }),

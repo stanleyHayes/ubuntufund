@@ -73,10 +73,20 @@ export class ApprovePayoutUseCase {
     }
   }
 
+  async executeAutomatic(payoutId: string): Promise<Payout> {
+    return this.execute(
+      payoutId,
+      { userId: 'system:auto-payout', role: 'admin' },
+      'Automatic payout under recorded destination review and configured limits.',
+      true,
+    )
+  }
+
   async execute(
     payoutId: string,
     requester: PayoutRequester,
     reviewNote?: string,
+    automatic = false,
   ): Promise<Payout> {
     if (requester.role !== 'admin') {
       throw new AppError('Only an admin can approve a payout', 403)
@@ -114,7 +124,14 @@ export class ApprovePayoutUseCase {
         'Record beneficiary ownership and receiving-capacity review before approving (at least 20 characters).',
         422,
       )
-    if (payout.provider !== 'ujimora_wallet') {
+    if (
+      automatic &&
+      (payout.provider !== 'paystack' ||
+        (this.payoutsConfig.dualApprovalAmount > 0 &&
+          payout.amount >= this.payoutsConfig.dualApprovalAmount))
+    )
+      throw new AppError('Manual approval required', 409)
+    if (payout.provider !== 'ujimora_wallet' && !automatic) {
       if (!this.transferRecipientRepo.recordReview)
         throw new AppError('Recipient review storage is unavailable', 503)
       await this.transferRecipientRepo.recordReview(
@@ -228,11 +245,12 @@ export class ApprovePayoutUseCase {
       throw new AppError('Failed to initiate payout transfer', 502)
     }
 
-    if (transfer.status === 'failed') {
+    if (['failed', 'abandoned', 'blocked', 'rejected'].includes(transfer.status)) {
       await this.rollback(processing.id, payout.campaignId, payout.amount)
       throw new AppError('Payout transfer was rejected by the provider', 502)
     }
 
+    await this.payoutRepo.setProviderStatus?.(payout.id, transfer.status)
     const updated = await this.payoutRepo.attachTransferCode(payout.id, transfer.transferCode)
     return toPayoutDto(updated ?? processing)
   }
@@ -278,7 +296,7 @@ export class ApprovePayoutUseCase {
           reference: leg.reference,
           reason: `Payout for campaign ${payout.campaignId} (leg ${leg.index + 1}/${legs.length})`,
         })
-        if (transfer.status === 'failed') {
+        if (['failed', 'abandoned', 'blocked', 'rejected'].includes(transfer.status)) {
           failed.push(leg)
           continue
         }

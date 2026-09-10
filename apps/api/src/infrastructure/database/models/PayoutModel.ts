@@ -18,6 +18,10 @@ export interface PayoutDocument extends Document {
   status: PayoutStatus
   provider: PayoutProvider
   providerRef?: string
+  providerStatus?: string
+  automationReason?: string
+  requestKey?: string
+  autoClaimed?: boolean
   transferCode?: string
   requestedBy: string
   approvedBy?: string
@@ -71,6 +75,10 @@ const payoutLegSchema = new Schema<PayoutLeg>(
 
 const payoutSchema = new Schema<PayoutDocument>(
   {
+    providerStatus: String,
+    automationReason: String,
+    requestKey: { type: String, unique: true, sparse: true },
+    autoClaimed: Boolean,
     campaignId: { type: String, required: true, index: true },
     recipientId: { type: String, required: true },
     amount: { type: Number, required: true },

@@ -138,6 +138,8 @@ export interface Payout {
   provider: PayoutProvider
   /** Our unique transfer reference; the webhook correlates back on this. */
   providerRef?: string
+  providerStatus?: string
+  automationReason?: string
   /** Provider transfer handle returned when the transfer is initiated. */
   transferCode?: string
   requestedBy: string

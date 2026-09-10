@@ -30,7 +30,14 @@ const statuses: Record<Payout['status'], { label: string; detail: string }> = {
   },
 }
 export function PayoutHistoryCard({ payout }: { payout: Payout }) {
-  const state = statuses[payout.status]
+  const state =
+    payout.status === 'PROCESSING' && payout.providerStatus === 'otp'
+      ? {
+          label: 'Awaiting authorization',
+          detail:
+            'The admin team must authorize this transfer with Paystack. You do not need to enter an OTP.',
+        }
+      : statuses[payout.status]
   const wallet = payout.provider === 'ujimora_wallet'
   const Icon = wallet ? AccountBalanceWalletRounded : AccountBalanceRounded
   const money = (amount: number) =>
@@ -165,7 +172,13 @@ export function PayoutHistoryCard({ payout }: { payout: Payout }) {
         color="text.secondary"
         sx={{ display: 'block', mt: 2.5, overflowWrap: 'anywhere' }}
       >
-        Reference · {payout.id}
+        Request · {payout.id}
+        {payout.providerRef && (
+          <>
+            <br />
+            Paystack reference · {payout.providerRef}
+          </>
+        )}
       </Typography>
     </Box>
   )

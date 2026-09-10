@@ -136,6 +136,7 @@ export function CampaignCashout({ campaignId }: { campaignId: string }) {
           requestKey.current = { details, key: randomUUID() }
         const p = await api.post<Payout>(`/campaigns/${campaignId}/payouts`, {
           amount: value,
+          idempotencyKey: requestKey.current.key,
           type,
           ...(destination === 'ujimora_wallet'
             ? { destination, idempotencyKey: requestKey.current.key }
@@ -143,7 +144,7 @@ export function CampaignCashout({ campaignId }: { campaignId: string }) {
         })
         requestKey.current = { details: '', key: '' }
         setNotice(
-          `Request awaiting admin approval. Fee GHS ${p.fee.toFixed(2)}; net GHS ${p.netAmount.toFixed(2)}. No transfer sent yet.`,
+          `Request ${p.id}: ${p.status === 'PENDING' ? 'awaiting admin review' : p.status === 'PAID' ? 'completed' : p.providerStatus === 'otp' ? 'awaiting Paystack authorization' : 'processing'}. Fee GHS ${p.fee.toFixed(2)}; net GHS ${p.netAmount.toFixed(2)}.`,
         )
         setAmount('')
       }
@@ -315,6 +316,18 @@ export function CampaignCashout({ campaignId }: { campaignId: string }) {
             onChangeText={setAmount}
             keyboardType="decimal-pad"
           />
+          <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+            {[25, 50, 100].map((percent) => (
+              <Button
+                key={percent}
+                mode="outlined"
+                disabled={busy || !Number.isFinite(cap) || cap <= 0}
+                onPress={() => setAmount(round((cap * percent) / 100).toFixed(2))}
+              >
+                {percent === 100 ? 'Max' : `${percent}%`}
+              </Button>
+            ))}
+          </View>
           <Text>Maximum GHS {cap.toFixed(2)}</Text>
           {value > 0 && Number.isFinite(fee) && (
             <View style={{ gap: 8, paddingVertical: 12 }}>
@@ -366,7 +379,10 @@ export function CampaignCashout({ campaignId }: { campaignId: string }) {
           )}
           {history.map((p) => (
             <Text key={p.id}>
-              GHS {p.amount.toFixed(2)} · {p.type} · {p.status}
+              GHS {p.amount.toFixed(2)} · {p.type} ·{' '}
+              {p.status === 'PROCESSING' && p.providerStatus === 'otp'
+                ? 'Awaiting Paystack authorization'
+                : p.status}
             </Text>
           ))}
         </>

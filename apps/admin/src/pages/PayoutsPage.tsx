@@ -1,3 +1,4 @@
+import { PayoutTransferControls } from '@/components/PayoutTransferControls'
 import { useSearchParams } from 'react-router-dom'
 import { usePagination } from '@/hooks/usePagination'
 import PaginationBar from '@/components/PaginationBar'
@@ -39,10 +40,12 @@ function PayoutCard({
   payout,
   onApprove,
   approving,
+  onUpdated,
 }: {
   payout: Payout
   onApprove: (id: string, reviewNote: string) => void
   approving: boolean
+  onUpdated: () => void
 }) {
   const [recipient, setRecipient] = useState<{
     accountName: string
@@ -85,7 +88,11 @@ function PayoutCard({
           </Typography>
         </Box>
         <Chip
-          label={payout.status.replace('_', ' ')}
+          label={
+            payout.status === 'PROCESSING' && payout.providerStatus === 'otp'
+              ? 'Awaiting Paystack authorization'
+              : payout.status.replace('_', ' ')
+          }
           size="small"
           sx={{
             color: STATUS_TONE[payout.status],
@@ -120,6 +127,12 @@ function PayoutCard({
         {payout.approvedBy && <Detail label="Approved by" value={payout.approvedBy} />}
       </Box>
 
+      {payout.automationReason && (
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+          {payout.automationReason}
+        </Typography>
+      )}
+      <PayoutTransferControls payout={payout} onUpdated={onUpdated} />
       {needsReview && (
         <Alert severity="warning" sx={{ mt: 2, py: 0.5 }}>
           Partially settled — some transfer legs failed after others were sent. Manual
@@ -293,29 +306,44 @@ export default function PayoutsPage() {
 
   const isBeneficiary = view === 'beneficiary'
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      if (view === 'beneficiary') {
-        const data = await api.get<BeneficiaryPayout[]>('/beneficiary-payouts/review-queue')
-        setBenePayouts(Array.isArray(data) ? data : [])
-      } else {
-        const path = view === 'queue' ? '/payouts/review-queue' : '/payouts'
-        const data = await api.get<Payout[]>(path)
-        setPayouts(Array.isArray(data) ? data : [])
+  const load = useCallback(
+    async (quiet = false) => {
+      if (!quiet) setLoading(true)
+      setError(null)
+      try {
+        if (view === 'beneficiary') {
+          const data = await api.get<BeneficiaryPayout[]>('/beneficiary-payouts/review-queue')
+          setBenePayouts(Array.isArray(data) ? data : [])
+        } else {
+          const path = view === 'queue' ? '/payouts/review-queue' : '/payouts'
+          const data = await api.get<Payout[]>(path)
+          setPayouts(Array.isArray(data) ? data : [])
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load payouts')
+        setPayouts([])
+        setBenePayouts([])
+      } finally {
+        setLoading(false)
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load payouts')
-      setPayouts([])
-      setBenePayouts([])
-    } finally {
-      setLoading(false)
-    }
-  }, [view])
+    },
+    [view],
+  )
 
   useEffect(() => {
     void load()
+  }, [load])
+
+  useEffect(() => {
+    const update = () => {
+      if (!document.hidden) void load(true)
+    }
+    const timer = setInterval(update, 30000)
+    window.addEventListener('focus', update)
+    return () => {
+      clearInterval(timer)
+      window.removeEventListener('focus', update)
+    }
   }, [load])
 
   const approve = useCallback(
@@ -502,6 +530,7 @@ export default function PayoutsPage() {
               payout={p}
               onApprove={approve}
               approving={approvingId === p.id}
+              onUpdated={() => void load()}
             />
           ))}
         </Stack>

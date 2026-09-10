@@ -25,6 +25,7 @@ describe('owner money flow', () => {
     )
     render(<CampaignCashout campaignId="campaign" initiallyExpanded />)
     expect(screen.getByRole('status', { name: 'Loading payout details' })).toBeInTheDocument()
+    await waitFor(() => expect(resolve).toBeTypeOf('function'))
     await act(async () => resolve(opts))
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
     expect(screen.getByText('No payout requests yet')).toBeInTheDocument()
@@ -62,6 +63,12 @@ describe('owner money flow', () => {
     expect(screen.getByText('GHS 5,200.00')).toBeInTheDocument()
     expect(screen.getByText('GHS -260.00')).toBeInTheDocument()
     expect(screen.getByText('GHS -102.38')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '25%' }))
+    expect(screen.getByLabelText('Cashout amount (GHS)')).toHaveValue(1209.41)
+    fireEvent.click(screen.getByRole('button', { name: '50%' }))
+    expect(screen.getByLabelText('Cashout amount (GHS)')).toHaveValue(2418.81)
+    fireEvent.click(screen.getByRole('button', { name: 'Max' }))
+    expect(screen.getByLabelText('Cashout amount (GHS)')).toHaveValue(4837.62)
     fireEvent.change(screen.getByLabelText('Cashout amount (GHS)'), { target: { value: '100' } })
     expect(screen.getByText('You receive')).toBeInTheDocument()
     expect(screen.getAllByText('GHS 100.00')).toHaveLength(2)
@@ -128,7 +135,12 @@ describe('owner money flow', () => {
     vi.mocked(api.get).mockImplementation(async (path) =>
       path === '/payout-accounts' ? { accounts: [] } : path.endsWith('payout-options') ? opts : [],
     )
-    vi.mocked(api.post).mockResolvedValue({ fee: 0, netAmount: 100 })
+    vi.mocked(api.post).mockResolvedValue({
+      id: 'payout',
+      status: 'PENDING',
+      fee: 0,
+      netAmount: 100,
+    })
     render(<CampaignCashout campaignId="campaign" />)
     expect(api.get).not.toHaveBeenCalled()
     fireEvent.click(screen.getByText('Cashout & payout history'))
@@ -138,10 +150,11 @@ describe('owner money flow', () => {
     await waitFor(() =>
       expect(api.post).toHaveBeenCalledWith('/campaigns/campaign/payouts', {
         amount: 100,
+        idempotencyKey: expect.any(String),
         type: 'standard',
       }),
     )
-    expect(await screen.findByText(/No transfer has been sent yet/)).toBeInTheDocument()
+    expect(await screen.findByText(/awaiting admin review/)).toBeInTheDocument()
   })
   it('disables a request above eligible proceeds', async () => {
     vi.mocked(api.get).mockImplementation(async (path) =>

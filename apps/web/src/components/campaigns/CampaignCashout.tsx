@@ -71,6 +71,18 @@ export function CampaignCashout({
   }, [])
   useEffect(() => {
     if (!expanded) return
+    const update = () => {
+      if (!document.hidden) refresh()
+    }
+    const timer = setInterval(update, 30000)
+    window.addEventListener('focus', update)
+    return () => {
+      clearInterval(timer)
+      window.removeEventListener('focus', update)
+    }
+  }, [expanded, refresh])
+  useEffect(() => {
+    if (!expanded) return
     let active = true
     api
       .get<{ accounts: Account[] }>('/payout-accounts')
@@ -80,10 +92,12 @@ export function CampaignCashout({
       .catch((e) => {
         if (active) setError(e.message)
       })
-    Promise.all([
-      api.get<Options>(`/campaigns/${campaignId}/payout-options`),
-      api.get<Payout[]>(`/campaigns/${campaignId}/payouts`),
-    ])
+    api
+      .get<Payout[]>(`/campaigns/${campaignId}/payouts`)
+      .then(
+        async (h) =>
+          [await api.get<Options>(`/campaigns/${campaignId}/payout-options`), h] as const,
+      )
       .then(([o, h]) => {
         if (active) {
           setOptions(o)
@@ -181,13 +195,14 @@ export function CampaignCashout({
         requestKey.current = { details, key: crypto.randomUUID() }
       const p = await api.post<Payout>(`/campaigns/${campaignId}/payouts`, {
         amount: value,
+        idempotencyKey: requestKey.current.key,
         type,
         ...(destination === 'ujimora_wallet'
           ? { destination, idempotencyKey: requestKey.current.key }
           : {}),
       })
       setNotice(
-        `Request ${p.id} submitted for admin review. Fee: ${money(p.fee)}. You receive: ${money(p.netAmount)}. No transfer has been sent yet.`,
+        `Request ${p.id}: ${p.status === 'PENDING' ? 'awaiting admin review' : p.status === 'PAID' ? 'completed' : p.providerStatus === 'otp' ? 'awaiting Paystack authorization by the admin' : 'processing'}. Fee: ${money(p.fee)}. You receive: ${money(p.netAmount)}.`,
       )
       requestKey.current = { details: '', key: '' }
       setAmount('')
@@ -469,6 +484,25 @@ export function CampaignCashout({
                     </MenuItem>
                   ))}
               </TextField>
+            </Box>
+            <Box
+              role="group"
+              aria-label="Choose cashout amount"
+              sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}
+            >
+              {[25, 50, 100].map((percent) => (
+                <Button
+                  key={percent}
+                  size="small"
+                  variant="outlined"
+                  disabled={busy || !Number.isFinite(cap) || cap <= 0}
+                  aria-pressed={amount !== '' && value === round((cap * percent) / 100)}
+                  onClick={() => setAmount(round((cap * percent) / 100).toFixed(2))}
+                  sx={{ borderColor: 'divider' }}
+                >
+                  {percent === 100 ? 'Max' : `${percent}%`}
+                </Button>
+              ))}
             </Box>
             <Typography variant="body2">
               Maximum for this service: {money(cap)}.{' '}
