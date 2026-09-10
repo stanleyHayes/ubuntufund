@@ -5,7 +5,9 @@
 - Fixed a confirmed test-payment incident: Paystack reported a successful GHS 250 charge (GHS 200 donation + GHS 50 tip), while the public intent remained PENDING. The callback only polled stored status, so a missed webhook could not recover during the return flow.
 - Added rate-limited public `POST /donation-intents/:id/verify`, bound to the stored payment reference. It verifies with server-side provider credentials and reuses existing reconciliation and exactly-once settlement. Amount, currency, reference, fee validity, and terminal-state guards remain enforced; donor PII is excluded.
 - Web callback requests verification on return and periodically during polling. An unmatched reference no longer falls back to a different last checkout. Timeout copy now describes the actual unconfirmed state and invites secure rechecking.
-- Validation: 18 API tests (including real reconciliation/settlement use cases and guest HTTP routing), 4 callback component tests, API/web type checks, targeted ESLint, web production build, and diff checks passed. Production publish and transaction recovery verification pending below.
+- Validation: 18 API tests (including real reconciliation/settlement use cases and guest HTTP routing), 4 callback component tests, API/web type checks, targeted ESLint, web production build, and diff checks passed.
+- Published `4a96767`; Vercel web and Render API deployments succeeded. Production verification of the reported reference returned SUCCEEDED at 09:19 UTC, recovering the existing GHS 200 donation plus GHS 50 tip without creating another charge.
+- CI's default npm version rejected the existing npm-11 workspace lockfile before reaching checks. Pinned CI to the repository's declared npm 11.12.1; a clean-install dry run with that exact version passes. No dependency versions or lockfile were changed.
 
 > Active completion pass started: 2026-08-09
 > Goal: production-complete web, mobile, API, marketing, admin, and organization experiences with App Store readiness, CMS-backed public content, soft deletion, and verified frontend/backend parity.
