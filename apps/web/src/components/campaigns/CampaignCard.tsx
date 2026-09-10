@@ -1,3 +1,4 @@
+import { useEntrance } from '@/components/motion/useEntrance'
 import { useMemo, useState } from 'react'
 import Card from '@mui/material/Card'
 import CardActionArea from '@mui/material/CardActionArea'
@@ -105,6 +106,7 @@ export function CoverPlaceholder({
 }
 
 export function CampaignCard({ campaign }: CampaignCardProps) {
+  const entrance = useEntrance<HTMLDivElement>()
   const [now] = useState(() => Date.now())
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null)
   const [copied, setCopied] = useState(false)
@@ -156,6 +158,7 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
 
   return (
     <Card
+      ref={entrance}
       sx={{
         height: '100%',
         position: 'relative',

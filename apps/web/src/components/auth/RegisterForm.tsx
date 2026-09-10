@@ -14,10 +14,7 @@ import CheckRoundedIcon from '@mui/icons-material/CheckRounded'
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import { Link as RouterLink } from 'react-router-dom'
-import {
-  SubscriptionTier,
-  BillingCycle,
-} from '@ubuntu-fund/types'
+import { SubscriptionTier, BillingCycle } from '@ubuntu-fund/types'
 import { SHAPE, formatCurrency, LoadingDots } from '@ubuntu-fund/ui'
 import { useAuth } from '@/context/AuthContext'
 import { usePlanMap } from '@/hooks/useSubscription'
@@ -56,24 +53,49 @@ function Stepper({ current }: { current: number }) {
         const done = i < current
         const active = i === current
         return (
-          <Box key={label} aria-current={active ? 'step' : undefined} sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: i < STEPS.length - 1 ? 1 : '0 0 auto' }}>
+          <Box
+            key={label}
+            aria-current={active ? 'step' : undefined}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              flex: i < STEPS.length - 1 ? 1 : '0 0 auto',
+            }}
+          >
             <Box
               sx={{
-                width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '0.75rem', fontWeight: 700,
+                width: 26,
+                height: 26,
+                borderRadius: '50%',
+                flexShrink: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '0.75rem',
+                fontWeight: 700,
                 bgcolor: done || active ? FOREST : 'transparent',
                 color: done || active ? 'primary.contrastText' : INK_SECONDARY,
-                border: '1.5px solid', borderColor: done || active ? 'primary.main' : 'divider',
-                transition: 'all .2s ease',
+                border: '1.5px solid',
+                borderColor: done || active ? 'primary.main' : 'divider',
+                transition: 'background-color 180ms ease, color 180ms ease, box-shadow 180ms ease',
               }}
             >
               {done ? <CheckRoundedIcon sx={{ fontSize: 15 }} /> : i + 1}
             </Box>
-            <Typography sx={{ fontSize: '0.72rem', fontWeight: active ? 700 : 500, color: active ? FOREST : INK_SECONDARY, whiteSpace: 'nowrap' }}>
+            <Typography
+              sx={{
+                fontSize: '0.72rem',
+                fontWeight: active ? 700 : 500,
+                color: active ? FOREST : INK_SECONDARY,
+                whiteSpace: 'nowrap',
+              }}
+            >
               {label}
             </Typography>
-            {i < STEPS.length - 1 && <Box sx={{ flex: 1, height: 2, bgcolor: done ? FOREST : 'divider', mx: 0.5 }} />}
+            {i < STEPS.length - 1 && (
+              <Box sx={{ flex: 1, height: 2, bgcolor: done ? FOREST : 'divider', mx: 0.5 }} />
+            )}
           </Box>
         )
       })}
@@ -118,7 +140,8 @@ export function RegisterForm() {
     if (isOrg) {
       if (!organizationName.trim()) e.organizationName = 'Organization name is required'
       if (!organizationType) e.organizationType = 'Select an organization type'
-      if (website.trim() && !/^https?:\/\/.+/i.test(website.trim())) e.website = 'Enter a full URL (https://…)'
+      if (website.trim() && !/^https?:\/\/.+/i.test(website.trim()))
+        e.website = 'Enter a full URL (https://…)'
     }
     return e
   }
@@ -210,16 +233,32 @@ export function RegisterForm() {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column' }}>
       <Stepper current={step} />
-      {apiError && <Alert severity="error" sx={{ mb: 2 }}>{apiError}</Alert>}
+      {apiError && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {apiError}
+        </Alert>
+      )}
 
       {/* STEP 1 — Account type */}
       {step === 0 && (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <Typography sx={{ fontSize: '0.9rem', color: INK_SECONDARY, mb: 0.5 }}>Who are you fundraising as?</Typography>
-          {([
-            { type: 'individual' as const, icon: <PersonRoundedIcon />, title: 'Individual', blurb: 'Raise for yourself, family, or a personal cause.' },
-            { type: 'organization' as const, icon: <ApartmentRoundedIcon />, title: 'Organization', blurb: 'NGO, hospital, school, church, or business.' },
-          ]).map((opt) => {
+        <Box className="uf-auth-step" sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <Typography sx={{ fontSize: '0.9rem', color: INK_SECONDARY, mb: 0.5 }}>
+            Who are you fundraising as?
+          </Typography>
+          {[
+            {
+              type: 'individual' as const,
+              icon: <PersonRoundedIcon />,
+              title: 'Individual',
+              blurb: 'Raise for yourself, family, or a personal cause.',
+            },
+            {
+              type: 'organization' as const,
+              icon: <ApartmentRoundedIcon />,
+              title: 'Organization',
+              blurb: 'NGO, hospital, school, church, or business.',
+            },
+          ].map((opt) => {
             const active = accountType === opt.type
             return (
               <Box
@@ -229,20 +268,42 @@ export function RegisterForm() {
                 aria-pressed={active}
                 onClick={() => setAccountType(opt.type)}
                 sx={{
-                  all: 'unset', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 2, p: 2,
-                  borderRadius: SHAPE.card, boxSizing: 'border-box', width: '100%',
-                  border: '1.5px solid', borderColor: active ? 'secondary.main' : 'divider',
+                  all: 'unset',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 2,
+                  p: 2,
+                  borderRadius: SHAPE.card,
+                  boxSizing: 'border-box',
+                  width: '100%',
+                  border: '1.5px solid',
+                  borderColor: active ? 'secondary.main' : 'divider',
                   bgcolor: active ? 'rgba(199,162,74,0.08)' : 'transparent',
                   transition: 'border-color .15s ease, background-color .15s ease',
                   '&:focus-visible': { outline: `2px solid ${GOLD}`, outlineOffset: 2 },
                 }}
               >
-                <Box sx={{ width: 44, height: 44, borderRadius: SHAPE.sm, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: active ? GOLD : 'action.hover', color: active ? 'secondary.contrastText' : FOREST, flexShrink: 0 }}>
+                <Box
+                  sx={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: SHAPE.sm,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    bgcolor: active ? GOLD : 'action.hover',
+                    color: active ? 'secondary.contrastText' : FOREST,
+                    flexShrink: 0,
+                  }}
+                >
                   {opt.icon}
                 </Box>
                 <Box>
                   <Typography sx={{ fontWeight: 700, color: FOREST }}>{opt.title}</Typography>
-                  <Typography sx={{ fontSize: '0.82rem', color: INK_SECONDARY }}>{opt.blurb}</Typography>
+                  <Typography sx={{ fontSize: '0.82rem', color: INK_SECONDARY }}>
+                    {opt.blurb}
+                  </Typography>
                 </Box>
               </Box>
             )
@@ -252,27 +313,91 @@ export function RegisterForm() {
 
       {/* STEP 2 — Details */}
       {step === 1 && (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.25 }}>
+        <Box className="uf-auth-step" sx={{ display: 'flex', flexDirection: 'column', gap: 2.25 }}>
           {isOrg && (
             <>
-              <TextField label="Organization name" value={organizationName} onChange={(e) => setOrganizationName(e.target.value)} error={!!errors.organizationName} helperText={errors.organizationName} fullWidth required />
-              <OrganizationTypePicker value={organizationType} onChange={(value) => {
-                setOrganizationType(value)
-                setErrors((current) => ({ ...current, organizationType: undefined }))
-              }} error={errors.organizationType} />
+              <TextField
+                label="Organization name"
+                value={organizationName}
+                onChange={(e) => setOrganizationName(e.target.value)}
+                error={!!errors.organizationName}
+                helperText={errors.organizationName}
+                fullWidth
+                required
+              />
+              <OrganizationTypePicker
+                value={organizationType}
+                onChange={(value) => {
+                  setOrganizationType(value)
+                  setErrors((current) => ({ ...current, organizationType: undefined }))
+                }}
+                error={errors.organizationType}
+              />
             </>
           )}
-          <TextField label={isOrg ? 'Contact name' : 'Full name'} value={name} onChange={(e) => setName(e.target.value)} error={!!errors.name} helperText={errors.name} fullWidth required autoComplete="name" />
-          <TextField label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} error={!!errors.email} helperText={errors.email} fullWidth required autoComplete="email" />
+          <TextField
+            label={isOrg ? 'Contact name' : 'Full name'}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            error={!!errors.name}
+            helperText={errors.name}
+            fullWidth
+            required
+            autoComplete="name"
+          />
+          <TextField
+            label="Email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            error={!!errors.email}
+            helperText={errors.email}
+            fullWidth
+            required
+            autoComplete="email"
+          />
           <Box>
-            <TextField label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} error={!!errors.password} helperText={errors.password} fullWidth required autoComplete="new-password" />
+            <TextField
+              label="Password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              error={!!errors.password}
+              helperText={errors.password}
+              fullWidth
+              required
+              autoComplete="new-password"
+            />
             <PasswordStrength value={password} />
           </Box>
-          <TextField label="Confirm password" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} error={!!errors.confirmPassword} helperText={errors.confirmPassword} fullWidth required autoComplete="new-password" />
+          <TextField
+            label="Confirm password"
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            error={!!errors.confirmPassword}
+            helperText={errors.confirmPassword}
+            fullWidth
+            required
+            autoComplete="new-password"
+          />
           {isOrg && (
             <>
-              <TextField label="Registration number (optional)" value={registrationNumber} onChange={(e) => setRegistrationNumber(e.target.value)} fullWidth />
-              <TextField label="Website (optional)" value={website} onChange={(e) => setWebsite(e.target.value)} error={!!errors.website} helperText={errors.website} placeholder="https://" fullWidth />
+              <TextField
+                label="Registration number (optional)"
+                value={registrationNumber}
+                onChange={(e) => setRegistrationNumber(e.target.value)}
+                fullWidth
+              />
+              <TextField
+                label="Website (optional)"
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
+                error={!!errors.website}
+                helperText={errors.website}
+                placeholder="https://"
+                fullWidth
+              />
             </>
           )}
         </Box>
@@ -280,14 +405,51 @@ export function RegisterForm() {
 
       {/* STEP 3 — Plan */}
       {step === 2 && (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
-            <Typography sx={{ fontSize: '0.9rem', color: INK_SECONDARY }}>Choose a plan — you can change it anytime.</Typography>
-            <Box sx={{ display: 'inline-flex', borderRadius: SHAPE.sm, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }}>
+        <Box className="uf-auth-step" sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: 1,
+            }}
+          >
+            <Typography sx={{ fontSize: '0.9rem', color: INK_SECONDARY }}>
+              Choose a plan — you can change it anytime.
+            </Typography>
+            <Box
+              sx={{
+                display: 'inline-flex',
+                borderRadius: SHAPE.sm,
+                overflow: 'hidden',
+                border: '1px solid',
+                borderColor: 'divider',
+              }}
+            >
               {[BillingCycle.MONTHLY, BillingCycle.YEARLY].map((c) => (
-                <Box key={c} component="button" type="button" aria-pressed={billingCycle === c} onClick={() => setBillingCycle(c)}
-                  sx={{ all: 'unset', cursor: 'pointer', px: 1.5, py: 0.5, fontSize: '0.75rem', fontWeight: 700, '&:focus-visible': { outline: '2px solid', outlineColor: 'secondary.main', outlineOffset: -2 },
-                    bgcolor: billingCycle === c ? FOREST : 'transparent', color: billingCycle === c ? 'primary.contrastText' : INK_SECONDARY }}>
+                <Box
+                  key={c}
+                  component="button"
+                  type="button"
+                  aria-pressed={billingCycle === c}
+                  onClick={() => setBillingCycle(c)}
+                  sx={{
+                    all: 'unset',
+                    cursor: 'pointer',
+                    px: 1.5,
+                    py: 0.5,
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    '&:focus-visible': {
+                      outline: '2px solid',
+                      outlineColor: 'secondary.main',
+                      outlineOffset: -2,
+                    },
+                    bgcolor: billingCycle === c ? FOREST : 'transparent',
+                    color: billingCycle === c ? 'primary.contrastText' : INK_SECONDARY,
+                  }}
+                >
                   {c === BillingCycle.MONTHLY ? 'Monthly' : 'Yearly · save'}
                 </Box>
               ))}
@@ -296,27 +458,65 @@ export function RegisterForm() {
           {ALL_TIERS.map((tier) => {
             const plan = plans[tier]
             const active = selectedTier === tier
-            const price = billingCycle === BillingCycle.YEARLY ? plan.priceYearly : plan.priceMonthly
+            const price =
+              billingCycle === BillingCycle.YEARLY ? plan.priceYearly : plan.priceMonthly
             return (
-              <Box key={tier} component="button" type="button" aria-pressed={active} onClick={() => setSelectedTier(tier)}
-                sx={{ all: 'unset', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 2, p: 2, width: '100%', boxSizing: 'border-box',
-                  borderRadius: SHAPE.card, border: '1.5px solid', borderColor: active ? 'secondary.main' : 'divider',
+              <Box
+                key={tier}
+                component="button"
+                type="button"
+                aria-pressed={active}
+                onClick={() => setSelectedTier(tier)}
+                sx={{
+                  all: 'unset',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 2,
+                  p: 2,
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  borderRadius: SHAPE.card,
+                  border: '1.5px solid',
+                  borderColor: active ? 'secondary.main' : 'divider',
                   bgcolor: active ? 'rgba(199,162,74,0.08)' : 'transparent',
-                  '&:focus-visible': { outline: `2px solid ${GOLD}`, outlineOffset: 2 } }}>
-                <Box sx={{ width: 22, height: 22, flexShrink: 0, borderRadius: '50%', border: '2px solid', borderColor: active ? 'secondary.main' : 'text.secondary', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {active && <Box sx={{ width: 11, height: 11, borderRadius: '50%', bgcolor: GOLD }} />}
+                  '&:focus-visible': { outline: `2px solid ${GOLD}`, outlineOffset: 2 },
+                }}
+              >
+                <Box
+                  sx={{
+                    width: 22,
+                    height: 22,
+                    flexShrink: 0,
+                    borderRadius: '50%',
+                    border: '2px solid',
+                    borderColor: active ? 'secondary.main' : 'text.secondary',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {active && (
+                    <Box sx={{ width: 11, height: 11, borderRadius: '50%', bgcolor: GOLD }} />
+                  )}
                 </Box>
                 <Box sx={{ flex: 1, minWidth: 0 }}>
                   <Typography sx={{ fontWeight: 700, color: FOREST }}>{plan.name}</Typography>
                   <Typography sx={{ fontSize: '0.8rem', color: INK_SECONDARY }}>
-                    {plan.maxActiveCampaigns === -1 ? 'Unlimited' : plan.maxActiveCampaigns} campaign{plan.maxActiveCampaigns === 1 ? '' : 's'} · {plan.platformFeePercent}% fee
+                    {plan.maxActiveCampaigns === -1 ? 'Unlimited' : plan.maxActiveCampaigns}{' '}
+                    campaign{plan.maxActiveCampaigns === 1 ? '' : 's'} · {plan.platformFeePercent}%
+                    fee
                   </Typography>
                 </Box>
                 <Box sx={{ textAlign: 'right', flexShrink: 0 }}>
                   <Typography sx={{ fontWeight: 800, color: FOREST }}>
                     {price === 0 ? 'Free' : formatCurrency(price, 'GHS')}
                   </Typography>
-                  {price > 0 && <Typography sx={{ fontSize: '0.7rem', color: INK_SECONDARY }}>/{billingCycle === BillingCycle.YEARLY ? 'yr' : 'mo'}</Typography>}
+                  {price > 0 && (
+                    <Typography sx={{ fontSize: '0.7rem', color: INK_SECONDARY }}>
+                      /{billingCycle === BillingCycle.YEARLY ? 'yr' : 'mo'}
+                    </Typography>
+                  )}
                 </Box>
               </Box>
             )
@@ -327,27 +527,52 @@ export function RegisterForm() {
       {/* Nav */}
       <Box sx={{ display: 'flex', gap: 1.5, mt: 3 }}>
         {step > 0 && (
-          <Button onClick={back} disabled={submitting} startIcon={<ArrowBackRoundedIcon />} sx={{ color: FOREST, textTransform: 'none', fontWeight: 700 }}>
+          <Button
+            onClick={back}
+            disabled={submitting}
+            startIcon={<ArrowBackRoundedIcon />}
+            sx={{ color: FOREST, textTransform: 'none', fontWeight: 700 }}
+          >
             Back
           </Button>
         )}
         <Box sx={{ flex: 1 }} />
         {step < STEPS.length - 1 ? (
-          <Button onClick={next} variant="contained" color="primary" endIcon={<ArrowForwardRoundedIcon />} sx={{ textTransform: 'none', fontWeight: 700, px: 3 }}>
+          <Button
+            onClick={next}
+            variant="contained"
+            color="primary"
+            endIcon={<ArrowForwardRoundedIcon />}
+            sx={{ textTransform: 'none', fontWeight: 700, px: 3 }}
+          >
             Continue
           </Button>
         ) : (
-          <Button onClick={handleSubmit} variant="contained" color="primary" disabled={submitting}
+          <Button
+            onClick={handleSubmit}
+            variant="contained"
+            color="primary"
+            disabled={submitting}
             endIcon={submitting ? <LoadingDots size={6} /> : undefined}
-            sx={{ textTransform: 'none', fontWeight: 700, px: 3 }}>
-            {submitting ? 'Creating…' : selectedTier === SubscriptionTier.FREE ? 'Create account' : 'Create account & continue'}
+            sx={{ textTransform: 'none', fontWeight: 700, px: 3 }}
+          >
+            {submitting
+              ? 'Creating…'
+              : selectedTier === SubscriptionTier.FREE
+                ? 'Create account'
+                : 'Create account & continue'}
           </Button>
         )}
       </Box>
 
       <Typography variant="body2" align="center" color="text.secondary" sx={{ mt: 3 }}>
         Already have an account?{' '}
-        <Link component={RouterLink} to="/login" underline="hover" sx={{ color: GOLD_DARK, fontWeight: 600 }}>
+        <Link
+          component={RouterLink}
+          to="/login"
+          underline="hover"
+          sx={{ color: GOLD_DARK, fontWeight: 600 }}
+        >
           Sign in
         </Link>
       </Typography>

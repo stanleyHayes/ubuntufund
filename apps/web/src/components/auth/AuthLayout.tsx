@@ -40,6 +40,9 @@ export function AuthLayout({ eyebrow, title, subtitle, children }: AuthLayoutPro
       {/* Brand panel */}
       <Box
         sx={{
+          position: 'relative',
+          isolation: 'isolate',
+          overflow: 'hidden',
           background: 'linear-gradient(160deg, #1C261D 0%, #2E3D2F 100%)',
           color: '#F5F2EA',
           display: 'flex',
@@ -50,6 +53,31 @@ export function AuthLayout({ eyebrow, title, subtitle, children }: AuthLayoutPro
           minHeight: { xs: 148, md: 'auto' },
         }}
       >
+        <Box aria-hidden sx={{ position: 'absolute', inset: 0, zIndex: -1, pointerEvents: 'none' }}>
+          {[0, 1].map((i) => (
+            <Box
+              key={i}
+              className="uf-auth-watermark"
+              sx={{
+                position: 'absolute',
+                width: { xs: 160, md: 320 },
+                height: { xs: 160, md: 320 },
+                right: i ? -150 : -60,
+                top: i ? '46%' : '-6%',
+                border: '1px solid rgba(220,192,126,.18)',
+                borderRadius: i ? '30%' : '18%',
+                transform: 'rotate(35deg)',
+                '&:after': {
+                  content: '\"\"',
+                  position: 'absolute',
+                  inset: 22,
+                  border: '1px solid rgba(168,181,160,.12)',
+                  borderRadius: 'inherit',
+                },
+              }}
+            />
+          ))}
+        </Box>
         <Box
           component={RouterLink}
           to="/"
@@ -59,9 +87,15 @@ export function AuthLayout({ eyebrow, title, subtitle, children }: AuthLayoutPro
           <BrandLogo size={38} onDark />
         </Box>
 
-        <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+        <Box className="uf-auth-brand-copy" sx={{ display: { xs: 'none', md: 'block' } }}>
           {/* Unity chain */}
-          <Box component="svg" viewBox="0 0 220 60" aria-hidden sx={{ width: 170, display: 'block', mb: 3 }}>
+          <Box
+            component="svg"
+            className="uf-auth-chain"
+            viewBox="0 0 220 60"
+            aria-hidden
+            sx={{ width: 170, display: 'block', mb: 3 }}
+          >
             {[0, 1, 2, 3].map((i) => (
               <rect
                 key={i}
@@ -98,7 +132,10 @@ export function AuthLayout({ eyebrow, title, subtitle, children }: AuthLayoutPro
             {VALUE_PROPS.map((prop) => (
               <Box key={prop} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.25 }}>
                 <CheckCircleRoundedIcon sx={{ fontSize: 18, color: '#A8B5A0', mt: 0.2 }} />
-                <Typography variant="body2" sx={{ color: 'rgba(245, 242, 234, 0.8)', lineHeight: 1.55 }}>
+                <Typography
+                  variant="body2"
+                  sx={{ color: 'rgba(245, 242, 234, 0.8)', lineHeight: 1.55 }}
+                >
                   {prop}
                 </Typography>
               </Box>
@@ -129,12 +166,13 @@ export function AuthLayout({ eyebrow, title, subtitle, children }: AuthLayoutPro
           justifyContent: 'center',
           px: { xs: 2.5, sm: 4 },
           py: { xs: 4, md: 6 },
-          '& input:-webkit-autofill, & input:-webkit-autofill:hover, & input:-webkit-autofill:focus': {
-            WebkitBoxShadow: '0 0 0 100px var(--neu-surface) inset !important',
-            WebkitTextFillColor: 'currentColor',
-            caretColor: 'currentColor',
-            transition: 'background-color 9999s ease-out 0s',
-          },
+          '& input:-webkit-autofill, & input:-webkit-autofill:hover, & input:-webkit-autofill:focus':
+            {
+              WebkitBoxShadow: '0 0 0 100px var(--neu-surface) inset !important',
+              WebkitTextFillColor: 'currentColor',
+              caretColor: 'currentColor',
+              transition: 'background-color 9999s ease-out 0s',
+            },
         }}
       >
         <Tooltip title={darkMode ? 'Use light theme' : 'Use dark theme'}>
@@ -154,7 +192,7 @@ export function AuthLayout({ eyebrow, title, subtitle, children }: AuthLayoutPro
             {darkMode ? <LightModeRoundedIcon /> : <DarkModeRoundedIcon />}
           </IconButton>
         </Tooltip>
-        <Box sx={{ width: '100%', maxWidth: 420 }}>
+        <Box className="uf-auth-form" sx={{ width: '100%', maxWidth: 420 }}>
           {(eyebrow || title) && (
             <Box sx={{ mb: 3 }}>
               {eyebrow && (
@@ -186,7 +224,10 @@ export function AuthLayout({ eyebrow, title, subtitle, children }: AuthLayoutPro
                 </Typography>
               )}
               {subtitle && (
-                <Typography variant="body2" sx={{ mt: 1, color: 'text.secondary', lineHeight: 1.6 }}>
+                <Typography
+                  variant="body2"
+                  sx={{ mt: 1, color: 'text.secondary', lineHeight: 1.6 }}
+                >
                   {subtitle}
                 </Typography>
               )}

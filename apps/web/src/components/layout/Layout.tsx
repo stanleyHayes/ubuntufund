@@ -1,17 +1,9 @@
 import { useEffect } from 'react'
 import Box from '@mui/material/Box'
 import { Outlet, useLocation } from 'react-router-dom'
-import { keyframes } from '@emotion/react'
 import { Header } from './Header'
 import { Footer } from './Footer'
 import { MobileBottomNav } from './MobileBottomNav'
-
-// Enter transition for each route. Keying the wrapper on the pathname remounts
-// it on navigation, re-triggering the animation. Reduced-motion users get none.
-const pageIn = keyframes`
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: none; }
-`
 
 export function Layout() {
   const { pathname } = useLocation()
@@ -23,22 +15,21 @@ export function Layout() {
   }, [pathname])
 
   return (
-    <Box sx={{
-      '--mobile-nav-height': { xs: 'calc(98px + env(safe-area-inset-bottom, 0px))', md: '0px' },
-      display: 'flex', flexDirection: 'column', minHeight: '100vh',
-      '& .MuiSnackbar-anchorOriginBottomLeft, & .MuiSnackbar-anchorOriginBottomCenter, & .MuiSnackbar-anchorOriginBottomRight': {
-        bottom: { xs: 'calc(var(--mobile-nav-height) + 16px)', md: 24 },
-      },
-    }}>
+    <Box
+      sx={{
+        '--mobile-nav-height': { xs: 'calc(98px + env(safe-area-inset-bottom, 0px))', md: '0px' },
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: '100vh',
+        '& .MuiSnackbar-anchorOriginBottomLeft, & .MuiSnackbar-anchorOriginBottomCenter, & .MuiSnackbar-anchorOriginBottomRight':
+          {
+            bottom: { xs: 'calc(var(--mobile-nav-height) + 16px)', md: 24 },
+          },
+      }}
+    >
       <Header />
       <Box component="main" sx={{ flex: 1 }}>
-        <Box
-          key={pathname}
-          sx={{
-            animation: `${pageIn} 0.32s cubic-bezier(0.22, 1, 0.36, 1)`,
-            '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
-          }}
-        >
+        <Box key={pathname} className="uf-page-enter">
           <Outlet />
         </Box>
       </Box>

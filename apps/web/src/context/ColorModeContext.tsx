@@ -1,8 +1,22 @@
-import { createContext, useCallback, useContext, useLayoutEffect, useMemo, useState, type ReactNode } from 'react'
-import { ThemeProvider } from '@mui/material/styles'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useLayoutEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react'
+import useMediaQuery from '@mui/material/useMediaQuery'
+import { createTheme, ThemeProvider } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
 import GlobalStyles from '@mui/material/GlobalStyles'
-import { createUjimoraTheme, ttSquaresFontFace, applySkinVars, type ThemeSkin } from '@ubuntu-fund/ui'
+import {
+  createUjimoraTheme,
+  ttSquaresFontFace,
+  applySkinVars,
+  type ThemeSkin,
+} from '@ubuntu-fund/ui'
 
 interface ColorModeValue {
   darkMode: boolean
@@ -18,9 +32,10 @@ const SKINS: ThemeSkin[] = ['neumorphism', 'claymorphism', 'glassmorphism', 'min
 // with a backdrop blur over a non-flat ground. Scope the border to those two
 // skins so neumorphism/claymorphism keep their borderless embossed surfaces.
 const skinGlobalStyles = {
-  '[data-skin="minimal"] .MuiPaper-root, [data-skin="minimal"] .MuiCard-root, [data-skin="glassmorphism"] .MuiPaper-root, [data-skin="glassmorphism"] .MuiCard-root': {
-    border: 'var(--neu-border)',
-  },
+  '[data-skin="minimal"] .MuiPaper-root, [data-skin="minimal"] .MuiCard-root, [data-skin="glassmorphism"] .MuiPaper-root, [data-skin="glassmorphism"] .MuiCard-root':
+    {
+      border: 'var(--neu-border)',
+    },
   '[data-skin="glassmorphism"] .MuiPaper-root, [data-skin="glassmorphism"] .MuiCard-root': {
     backdropFilter: 'var(--neu-backdrop)',
     WebkitBackdropFilter: 'var(--neu-backdrop)',
@@ -33,12 +48,35 @@ const skinGlobalStyles = {
 } as const
 
 export function ColorModeProvider({ children }: { children: ReactNode }) {
-  const [darkMode, setDarkModeState] = useState(() => localStorage.getItem('uf_color_mode') === 'dark')
+  const [darkMode, setDarkModeState] = useState(
+    () => localStorage.getItem('uf_color_mode') === 'dark',
+  )
   const [skin, setSkinState] = useState<ThemeSkin>(() => {
     const s = localStorage.getItem('uf_skin')
     return s && (SKINS as string[]).includes(s) ? (s as ThemeSkin) : 'neumorphism'
   })
-  const theme = useMemo(() => createUjimoraTheme(darkMode ? 'dark' : 'light', skin), [darkMode, skin])
+  const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
+  const theme = useMemo(
+    () =>
+      createTheme(createUjimoraTheme(darkMode ? 'dark' : 'light', skin), {
+        transitions: {
+          easing: {
+            easeOut: 'cubic-bezier(.22, 1, .36, 1)',
+            easeInOut: 'cubic-bezier(.4, 0, .2, 1)',
+          },
+          duration: {
+            shortest: reducedMotion ? 0 : 120,
+            shorter: reducedMotion ? 0 : 160,
+            short: reducedMotion ? 0 : 200,
+            standard: reducedMotion ? 0 : 240,
+            complex: reducedMotion ? 0 : 280,
+            enteringScreen: reducedMotion ? 0 : 240,
+            leavingScreen: reducedMotion ? 0 : 160,
+          },
+        },
+      }),
+    [darkMode, skin, reducedMotion],
+  )
 
   // Re-apply the skin's CSS vars (inline on :root, so they override the theme's
   // CssBaseline defaults) and stamp data-skin whenever skin or mode changes.
@@ -49,12 +87,20 @@ export function ColorModeProvider({ children }: { children: ReactNode }) {
 
   const setDarkMode = useCallback((enabled: boolean) => {
     setDarkModeState(enabled)
-    try { localStorage.setItem('uf_color_mode', enabled ? 'dark' : 'light') } catch { /* private mode */ }
+    try {
+      localStorage.setItem('uf_color_mode', enabled ? 'dark' : 'light')
+    } catch {
+      /* private mode */
+    }
   }, [])
 
   const setSkin = useCallback((next: ThemeSkin) => {
     setSkinState(next)
-    try { localStorage.setItem('uf_skin', next) } catch { /* private mode */ }
+    try {
+      localStorage.setItem('uf_skin', next)
+    } catch {
+      /* private mode */
+    }
   }, [])
 
   return (

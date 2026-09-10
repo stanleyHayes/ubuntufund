@@ -1,5 +1,12 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-10 — Smooth motion across the web app
+
+- Added auth content staggering, finite watermark entrances and a chain-line draw on login/registration. Registration steps enter softly; focusing the form cancels decorative entrance motion. Preserved existing font, palette, materials, rounded controls and watermarks.
+- Shared web motion covers route fades, account headings, visible campaign/payout cards, button press/hover feedback, alerts, tabs and progress changes. Theme durations align MUI menus/dialogs/collapses. Card reveals run once per mount with observer cleanup, no persistent hidden content and no extra animation dependency.
+- OS reduced-motion preference disables CSS effects and sets MUI transition durations to zero; runtime card animations cancel on preference changes or focus. Existing donation celebration respects the same preference.
+- Validation: web build/type check, focused lint, 14 motion/campaign-card tests pass. Browser preview was interrupted by concurrent user activity, so rendered auth motion has not been visually verified in this slice. Applies to mobile web; native and separate marketing app were not changed.
+
 ### 2026-09-10 — Explain and reconcile campaign payout calculations
 
 - Audited campaign 6aa184c66d4e5ed850d9e640 against production donation records. GHS 4,200 in hosted gifts and GHS 1,000 in a legacy wallet gift explain GHS 5,200 raised. The wallet gift had debited the donor and incremented raised, but bypassed payout accounting. Redirected the legacy donation endpoint through donation-intent settlement and aligned wallet fees with the campaign creation-rate lock used by Paystack.

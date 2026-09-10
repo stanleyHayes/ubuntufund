@@ -1,3 +1,4 @@
+import { useEntrance } from '@/components/motion/useEntrance'
 import { Box, Button, Typography } from '@mui/material'
 import SmartphoneRounded from '@mui/icons-material/SmartphoneRounded'
 import AccountBalanceRounded from '@mui/icons-material/AccountBalanceRounded'
@@ -17,10 +18,11 @@ export function PayoutAccountCard({
   busy: boolean
   onRemove: () => void
 }) {
+  const entrance = useEntrance<HTMLDivElement>()
   const brand = payoutAccountBrand(account.bankCode, institutionName)
   const matched = account.verificationStatus === 'name_matched'
   return (
-    <Box sx={{ minWidth: 0 }}>
+    <Box ref={entrance} sx={{ minWidth: 0 }}>
       <Box
         sx={{
           position: 'relative',
@@ -123,7 +125,7 @@ export function PayoutAccountCard({
         <Box
           sx={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 2 }}
         >
-          <Box sx={{ minWidth: 0 }}>
+          <Box ref={entrance} sx={{ minWidth: 0 }}>
             <Typography
               sx={{
                 fontSize: '.6rem',
