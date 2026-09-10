@@ -12,7 +12,7 @@ const schema = new Schema<{ _id: string; userId: string; accounts: SavedPayoutAc
         {
           id: String,
           fingerprint: String,
-          type: String,
+          type: { type: String, enum: ['ghipss', 'mobile_money'], required: true },
           accountNumber: String,
           bankCode: String,
           accountName: String,
