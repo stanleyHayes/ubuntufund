@@ -1290,3 +1290,9 @@ Maintain evidence here as each slice completes. Physical device/provider accepta
 
 - Supersedes the preceding ascending tier-row layout: centered descending hierarchy with Legendary at the peak, Trailblazer/Genesis Donor paired above centered Legend, then Epic/Rare pairs and centered Common. Added subtle connecting lines/nodes and centered tier headings; narrow screens stack without changing badge order or requirements.
 - Web type check, lint, production build and diff check passed.
+
+### 2026-09-10 — Admin profile save repair
+
+- Found admin profile initialized only from the auth summary, never fetched saved profile/preferences, and always submitted country:'' although API requires at least two characters when provided.
+- Load persisted profile before enabling editing; show skeleton and retry on load failure. Trim fields, omit unset optional country, retain existing contact/preferences, update auth display name after confirmed save, and show actionable server errors persistently.
+- Three profile regressions passed (load/save without country, save error retains data, load failure/retry); admin type check, targeted lint, diff check and build passed. No live user profile or password was modified during verification.

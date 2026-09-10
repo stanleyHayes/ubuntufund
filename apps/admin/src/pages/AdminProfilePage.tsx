@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import Skeleton from '@mui/material/Skeleton'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
@@ -109,11 +110,11 @@ const inputSx = {
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function AdminProfilePage() {
-  const { user } = useAuth()
+  const { user, updateName } = useAuth()
 
   // Profile fields
   const [name, setName] = useState(user?.name ?? '')
-  const [email] = useState(user?.email ?? '')
+  const [email, setEmail] = useState(user?.email ?? '')
   const [phone, setPhone] = useState('')
   const [country, setCountry] = useState('')
   const [bio, setBio] = useState('')
@@ -135,13 +136,36 @@ export default function AdminProfilePage() {
   const [snack, setSnack] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({ open: false, message: '', severity: 'success' })
   const [passwordError, setPasswordError] = useState('')
 
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
+  const [revision, setRevision] = useState(0)
+  useEffect(() => {
+    let active = true
+    setLoading(true)
+    setLoadError('')
+    api.get<{ name: string; email: string; phone?: string; country?: string; bio?: string; language?: string; notificationPreferences?: { email?: boolean; push?: boolean } }>('/profile')
+      .then(profile => {
+        if (!active) return
+        setName(profile.name); setEmail(profile.email); setPhone(profile.phone ?? '')
+        setCountry(profile.country ?? ''); setBio(profile.bio ?? '')
+        setLanguage(profile.language ?? 'en')
+        setEmailNotifs(profile.notificationPreferences?.email ?? true)
+        setPushNotifs(profile.notificationPreferences?.push ?? true)
+      })
+      .catch(error => { if (active) setLoadError(error instanceof Error ? error.message : 'Could not load profile') })
+      .finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [revision])
+
   async function handleSaveProfile() {
     setSaving(true)
     try {
-      await api.put('/profile', { name, phone, country, bio })
+      const result = await api.put<{ name: string }>('/profile', { name: name.trim(), phone: phone.trim(), ...(country.trim() ? { country: country.trim() } : {}), bio: bio.trim() })
+      setName(result.name)
+      updateName(result.name)
       setSnack({ open: true, message: 'Profile updated successfully', severity: 'success' })
-    } catch {
-      setSnack({ open: true, message: 'Failed to update profile', severity: 'error' })
+    } catch (error) {
+      setSnack({ open: true, message: error instanceof Error ? error.message : 'Failed to update profile', severity: 'error' })
     } finally {
       setSaving(false)
     }
@@ -168,8 +192,8 @@ export default function AdminProfilePage() {
       setNewPassword('')
       setConfirmPassword('')
       setSnack({ open: true, message: 'Password changed successfully', severity: 'success' })
-    } catch {
-      setSnack({ open: true, message: 'Failed to change password', severity: 'error' })
+    } catch (error) {
+      setSnack({ open: true, message: error instanceof Error ? error.message : 'Failed to change password', severity: 'error' })
     } finally {
       setSaving(false)
     }
@@ -183,12 +207,15 @@ export default function AdminProfilePage() {
         language,
       })
       setSnack({ open: true, message: 'Preferences saved', severity: 'success' })
-    } catch {
-      setSnack({ open: true, message: 'Failed to save preferences', severity: 'error' })
+    } catch (error) {
+      setSnack({ open: true, message: error instanceof Error ? error.message : 'Failed to save preferences', severity: 'error' })
     } finally {
       setSaving(false)
     }
   }
+
+  if (loading) return <Box aria-label="Loading profile" role="status" sx={{ display: 'grid', gap: 3 }}><Skeleton height={100} /><Skeleton variant="rounded" height={300} /><Skeleton variant="rounded" height={180} /></Box>
+  if (loadError) return <Alert severity="error" action={<Button onClick={() => setRevision(r => r + 1)}>Retry</Button>}>{loadError}</Alert>
 
   return (
     <Box>
@@ -535,7 +562,7 @@ export default function AdminProfilePage() {
       </Grid>
 
       {/* Snackbar */}
-      <Snackbar open={snack.open} autoHideDuration={3000} onClose={() => setSnack((s) => ({ ...s, open: false }))} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+      <Snackbar open={snack.open} autoHideDuration={snack.severity === 'error' ? null : 4000} onClose={() => setSnack((s) => ({ ...s, open: false }))} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
         <Alert
           onClose={() => setSnack((s) => ({ ...s, open: false }))}
           icon={<CheckCircleRoundedIcon />}
