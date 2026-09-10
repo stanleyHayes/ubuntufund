@@ -878,17 +878,22 @@ export function LeaderboardPage() {
                     Unlock achievements by donating, supporting campaigns, and being an active member of the community.
                   </Typography>
                 </Box>
-                <Box
-                  sx={{
-                    display: 'grid',
-                    gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(4, minmax(0, 1fr))' },
-                    gap: 2,
-                    maxWidth: 1120,
-                    mx: 'auto',
-                  }}
-                >
-                  {[...PIONEER_BADGES, ...DONATION_LEVEL_BADGES].map((badge, i) => (
-                    <BadgeCard key={badge.id} badge={badge} delay={0.7 + i * 0.05} />
+                <Box sx={{ maxWidth: 1120, mx: 'auto', display: 'grid', gap: 3 }}>
+                  {(['common', 'rare', 'epic', 'legendary'] as const).map((rarity, tier) => (
+                    <Box component="section" aria-label={`${RARITY_LABELS[rarity].label} badges`} key={rarity}
+                      sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '160px minmax(0, 1fr)' }, gap: 2, alignItems: 'start' }}>
+                      <Box sx={{ py: 1, pl: 2, borderLeft: '2px solid', borderColor: 'divider' }}>
+                        <Typography variant="caption" color="text.secondary">TIER {tier + 1}</Typography>
+                        <Typography component="h3" variant="h6" sx={{ fontWeight: 800, color: RARITY_LABELS[rarity].color }}>
+                          {RARITY_LABELS[rarity].label}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(3, minmax(0, 1fr))' }, gap: 2 }}>
+                        {[...DONATION_LEVEL_BADGES, ...PIONEER_BADGES].filter(badge => badge.rarity === rarity).map((badge, index) => (
+                          <BadgeCard key={badge.id} badge={badge} delay={0.7 + tier * 0.05 + index * 0.03} />
+                        ))}
+                      </Box>
+                    </Box>
                   ))}
                 </Box>
               </Box>

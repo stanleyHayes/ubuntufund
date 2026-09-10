@@ -1280,3 +1280,8 @@ Maintain evidence here as each slice completes. Physical device/provider accepta
 - AI writing usage uses one shared illustrated empty state and skeleton loading; user names replace user IDs in usage rows.
 - Role cards use distinct role icons/watermarks and permission/resource counts; expanded permissions use an accessible View/Create/Edit/Delete matrix. Actual roles and permission grants are unchanged.
 - Validation: 13 API tests and three AI usage UI tests passed; API/admin type checks, targeted lint, diff checks and admin production build passed. Existing admin bundle-size advisory remains.
+
+### 2026-09-10 — Badge hierarchy
+
+- Replaced the mixed badge grid with labeled Common → Rare → Epic → Legendary tiers. Each badge appears once under its existing rarity; thresholds and award logic are unchanged. Rows stack on narrow screens and retain themed cards/subtle dividers.
+- Web type check, targeted lint, production build and diff check passed; existing bundle-size advisories remain.
