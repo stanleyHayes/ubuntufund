@@ -161,7 +161,7 @@ export function CampaignCashout({
           : { type: recipientType, bankCode, accountName, accountNumber },
       )
       setNotice(
-        'Account submitted. Check the name-verification result below; beneficiary ownership is reviewed before transfer.',
+        'Payout account saved. No cashout has been requested yet. Enter an amount below and select Request cashout to send it to admin for review.',
       )
       refresh()
     } catch (e) {
@@ -186,7 +186,7 @@ export function CampaignCashout({
           : {}),
       })
       setNotice(
-        `Request submitted for admin review. Fee: ${money(p.fee)}. You receive: ${money(p.netAmount)}. No transfer has been sent yet.`,
+        `Request ${p.id} submitted for admin review. Fee: ${money(p.fee)}. You receive: ${money(p.netAmount)}. No transfer has been sent yet.`,
       )
       requestKey.current = { details: '', key: '' }
       setAmount('')

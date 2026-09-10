@@ -1,5 +1,14 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-10 — Notification inboxes and payout review visibility
+
+- Live read-only audit: Help Us Keep Our Digital Platform Running has GHS 5,200 raised and status funded; campaign, creator and beneficiary payout collections contain zero requests. Saved-account beneficiary review is distinct from a submitted cashout. No request was fabricated and no funds were transferred.
+- Added a shared, responsive notification bell to web/admin with unread counts, inbox, mark-read/all-read, skeletons, retry feedback and 30-second/focus refresh. Dashboard notifications synchronize read state with the bell.
+- Admin action-center endpoint counts actual pending campaign/beneficiary payouts, campaigns, identity checks, disputes and new contacts. Admin-only authentication protects counts; visible links honor frontend resource permissions. Bell links and sidebar badges lead to review queues and refresh after payout approvals/navigation.
+- Spaced payout view controls using selected appearance surfaces and mobile wrapping; beneficiary links select the correct view. Empty queues now explain that saved accounts are not cashout requests. Account-save feedback directs owners to enter an amount and request cashout; successful submissions include the payout ID.
+- Validation: ten web money/inbox tests and admin action-center integration pass (401/403 guards, pending request visibility, status/count reconciliation). API/web/admin type checks and web/admin builds pass using project TypeScript; existing bundle-size warnings remain. No production payout or native release performed. Live deployment acceptance remains separate from source/build checks.
+
+
 ### 2026-09-10 — Searchable banks, Telecel naming and subtle borders
 
 - Replaced long bank selects with a reusable searchable autocomplete on saved accounts, campaign cashout and creator withdrawal. The dropdown has bounded height, keyboard selection and name filtering; provider codes remain the submitted value. Native selection already provides a searchable dialog.

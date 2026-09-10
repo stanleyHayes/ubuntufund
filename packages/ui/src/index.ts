@@ -30,3 +30,4 @@ export { LoadingDots } from './components/LoadingDots'
 export type { LoadingDotsProps } from './components/LoadingDots'
 
 export { ThemeStylePicker } from './components/ThemeStylePicker'
+export { NotificationBell } from './components/NotificationBell'

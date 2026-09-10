@@ -1,3 +1,4 @@
+import { createAdminActionRoutes } from './infrastructure/adapters/inbound/http/routes/adminActionRoutes.js'
 import { MongoWalletPayoutRepository } from './infrastructure/adapters/outbound/persistence/MongoWalletPayoutRepository.js'
 import { PayoutAccountService } from './application/services/PayoutAccountService.js'
 import { MongoPayoutAccountRepository } from './infrastructure/adapters/outbound/persistence/MongoPayoutAccountRepository.js'
@@ -1466,6 +1467,7 @@ export function createApp(): express.Express {
       requireAdmin,
     }),
   )
+  api.use('/admin', createAdminActionRoutes(authMiddleware))
   api.use('/notifications', createNotificationRoutes(notificationController, authMiddleware))
   api.use('/organizations', createOrganizationRoutes(organizationController))
   api.use('/refunds', createRefundRoutes(refundController, authMiddleware))

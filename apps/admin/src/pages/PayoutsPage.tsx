@@ -1,3 +1,4 @@
+import { useSearchParams } from 'react-router-dom'
 import { usePagination } from '@/hooks/usePagination'
 import PaginationBar from '@/components/PaginationBar'
 import { useCallback, useEffect, useState } from 'react'
@@ -278,7 +279,11 @@ function BeneficiaryCard({
 type View = 'queue' | 'all' | 'beneficiary'
 
 export default function PayoutsPage() {
-  const [view, setView] = useState<View>('queue')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const requestedView = searchParams.get('view')
+  const view: View =
+    requestedView === 'all' || requestedView === 'beneficiary' ? requestedView : 'queue'
+  const setView = (value: View) => setSearchParams(value === 'queue' ? {} : { view: value })
   const [payouts, setPayouts] = useState<Payout[]>([])
   const [benePayouts, setBenePayouts] = useState<BeneficiaryPayout[]>([])
   const [loading, setLoading] = useState(true)
@@ -325,6 +330,7 @@ export default function PayoutsPage() {
             : 'Payout approved; the transfer is initiating.',
         )
         await load()
+        window.dispatchEvent(new Event('ujimora:admin-actions-changed'))
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Approval failed')
       } finally {
@@ -346,6 +352,7 @@ export default function PayoutsPage() {
             : 'Beneficiary payout approved; the transfer is initiating.',
         )
         await load()
+        window.dispatchEvent(new Event('ujimora:admin-actions-changed'))
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Approval failed')
       } finally {
@@ -365,6 +372,7 @@ export default function PayoutsPage() {
         )
         setNotice('Beneficiary KYC verified.')
         await load()
+        window.dispatchEvent(new Event('ujimora:admin-actions-changed'))
       } catch (err) {
         setError(err instanceof Error ? err.message : 'KYC verification failed')
       }
@@ -399,9 +407,31 @@ export default function PayoutsPage() {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 2,
         }}
       >
         <ToggleButtonGroup
+          aria-label="Payout views"
+          sx={{
+            gap: 1,
+            flexWrap: 'wrap',
+            '& .MuiToggleButtonGroup-grouped': {
+              m: '0 !important',
+              px: 2,
+              py: 1.25,
+              border: '0 !important',
+              borderRadius: 'var(--shape-button, 10px) !important',
+              bgcolor: 'var(--neu-surface)',
+              boxShadow: 'var(--neu-subtle)',
+              textTransform: 'none',
+              '&.Mui-selected': {
+                color: 'text.primary',
+                bgcolor: 'action.selected',
+                boxShadow: 'var(--neu-inset)',
+              },
+            },
+          }}
           size="small"
           exclusive
           value={view}
@@ -448,7 +478,7 @@ export default function PayoutsPage() {
             isBeneficiary
               ? 'No beneficiary payouts are awaiting KYC, approval, or review.'
               : view === 'queue'
-                ? 'No payouts are awaiting approval or flagged for review.'
+                ? 'No submitted cashout requests are awaiting review. Saving a payout account does not submit a cashout. The organizer must enter an amount and select Request cashout in the campaign’s Cashout & payout history section.'
                 : 'Campaign payouts will appear here once organizers request them.'
           }
         />

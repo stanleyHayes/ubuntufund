@@ -1,14 +1,8 @@
+import { Chip } from '@mui/material'
+import { useAdminActions } from '@/context/AdminActionContext'
 import { useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import {
-  Drawer,
-  Box,
-  Typography,
-  Collapse,
-  Avatar,
-  IconButton,
-  Tooltip,
-} from '@mui/material'
+import { Drawer, Box, Typography, Collapse, Avatar, IconButton, Tooltip } from '@mui/material'
 import { BrandLogo } from '@ubuntu-fund/ui'
 import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded'
 import InsightsRoundedIcon from '@mui/icons-material/InsightsRounded'
@@ -83,7 +77,11 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Disputes', path: '/disputes', icon: <GavelRoundedIcon /> },
       { label: 'Verifications', path: '/verifications', icon: <VerifiedUserRoundedIcon /> },
       { label: 'KYC Review', path: '/kyc-review', icon: <BadgeRoundedIcon /> },
-      { label: 'Contact Inbox', path: '/contact-submissions', icon: <MarkEmailUnreadRoundedIcon /> },
+      {
+        label: 'Contact Inbox',
+        path: '/contact-submissions',
+        icon: <MarkEmailUnreadRoundedIcon />,
+      },
     ],
   },
   {
@@ -112,7 +110,11 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Plans', path: '/plans', icon: <LayersRoundedIcon /> },
       { label: 'Coupons', path: '/coupons', icon: <LocalOfferRoundedIcon /> },
       { label: 'Affiliates', path: '/affiliates', icon: <ShareRoundedIcon /> },
-      { label: 'Payment Providers', path: '/payment-providers', icon: <AccountBalanceRoundedIcon /> },
+      {
+        label: 'Payment Providers',
+        path: '/payment-providers',
+        icon: <AccountBalanceRoundedIcon />,
+      },
       { label: 'Roles', path: '/roles', icon: <AdminPanelSettingsRoundedIcon /> },
     ],
   },
@@ -131,6 +133,11 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
+  const { items: actions } = useAdminActions()
+  const countFor = (path: string) =>
+    actions
+      .filter((item) => item.href.split('?')[0] === path)
+      .reduce((sum, item) => sum + item.count, 0)
   const location = useLocation()
   const navigate = useNavigate()
   const { user, logout } = useAuth()
@@ -139,7 +146,7 @@ export default function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
     () =>
       NAV_GROUPS.find((g) => g.items.some((i) => isPathActive(location.pathname, i.path)))
         ?.heading ?? NAV_GROUPS[0].heading,
-    [location.pathname]
+    [location.pathname],
   )
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => ({
     [activeGroup]: true,
@@ -173,7 +180,16 @@ export default function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
           >
             Ujimora
           </Typography>
-          <Typography variant="caption" sx={{ color: '#C7A24A', letterSpacing: '0.14em', textTransform: 'uppercase', fontSize: '0.6rem', fontWeight: 700 }}>
+          <Typography
+            variant="caption"
+            sx={{
+              color: '#C7A24A',
+              letterSpacing: '0.14em',
+              textTransform: 'uppercase',
+              fontSize: '0.6rem',
+              fontWeight: 700,
+            }}
+          >
             Admin Console
           </Typography>
         </Box>
@@ -272,7 +288,10 @@ export default function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
                       <Box
                         key={item.path}
                         component="button"
-                        onClick={() => { navigate(item.path); onClose?.() }}
+                        onClick={() => {
+                          navigate(item.path)
+                          onClose?.()
+                        }}
                         aria-current={active ? 'page' : undefined}
                         sx={{
                           all: 'unset',
@@ -314,9 +333,7 @@ export default function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
                           transition: 'background-color 0.15s ease, box-shadow 0.15s ease',
                           '&:hover': { bgcolor: active ? '#8FAE96' : WASH },
                           '&:focus-visible': { outline: '2px solid #C7A24A', outlineOffset: -2 },
-                          '&:hover .nav-tile': active
-                            ? {}
-                            : { bgcolor: '#C7A24A', color: ON_FILL },
+                          '&:hover .nav-tile': active ? {} : { bgcolor: '#C7A24A', color: ON_FILL },
                         }}
                       >
                         <Box
@@ -349,6 +366,14 @@ export default function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
                         >
                           {item.label}
                         </Typography>
+                        {countFor(item.path) > 0 && (
+                          <Chip
+                            size="small"
+                            label={countFor(item.path)}
+                            aria-label={`${countFor(item.path)} pending actions`}
+                            sx={{ ml: 'auto' }}
+                          />
+                        )}
                       </Box>
                     )
                   })}
@@ -372,7 +397,16 @@ export default function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
           gap: 1.25,
         }}
       >
-        <Avatar sx={{ width: 34, height: 34, bgcolor: '#8FAE96', color: ON_FILL, fontSize: '0.8rem', fontWeight: 700 }}>
+        <Avatar
+          sx={{
+            width: 34,
+            height: 34,
+            bgcolor: '#8FAE96',
+            color: ON_FILL,
+            fontSize: '0.8rem',
+            fontWeight: 700,
+          }}
+        >
           {initials}
         </Avatar>
         <Box sx={{ minWidth: 0, flex: 1 }}>

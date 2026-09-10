@@ -31,7 +31,7 @@ import EmojiEventsRoundedIcon from '@mui/icons-material/EmojiEventsRounded'
 import LoginRoundedIcon from '@mui/icons-material/LoginRounded'
 import PersonAddAltRoundedIcon from '@mui/icons-material/PersonAddAltRounded'
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
-import { SHAPE, BrandLogo, getSkinVars } from '@ubuntu-fund/ui'
+import { SHAPE, BrandLogo, getSkinVars, NotificationBell } from '@ubuntu-fund/ui'
 import { useColorMode } from '@/context/ColorModeContext'
 import { useAuth } from '@/context/AuthContext'
 
@@ -224,6 +224,7 @@ export function Header() {
           {/* Right cluster */}
           {isAuthenticated ? (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
+              <NotificationBell api={api} />
               <Box sx={{ display: { xs: 'none', md: 'inline-flex' } }}>
                 <CtaButton to="/campaigns/new">Start a Campaign</CtaButton>
               </Box>

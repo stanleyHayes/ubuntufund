@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react'
+import { NotificationBell } from '@ubuntu-fund/ui'
+import { AdminActionInbox, useAdminActions } from '@/context/AdminActionContext'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   AppBar,
   Toolbar,
   IconButton,
-  Badge,
   Avatar,
   Menu,
   MenuItem,
@@ -18,7 +19,6 @@ import {
 import { alpha, styled } from '@mui/material/styles'
 import SearchIcon from '@mui/icons-material/Search'
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
-import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded'
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded'
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded'
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded'
@@ -66,31 +66,18 @@ const StyledInputBase = styled(InputBase)(({ theme }) => ({
   },
 }))
 
-export default function TopBar({ onReplayTour, onOpenNav }: { onReplayTour: () => void; onOpenNav?: () => void }) {
+export default function TopBar({
+  onReplayTour,
+  onOpenNav,
+}: {
+  onReplayTour: () => void
+  onOpenNav?: () => void
+}) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
-  const [unread, setUnread] = useState(0)
+  const { total } = useAdminActions()
   const navigate = useNavigate()
   const { user, logout } = useAuth()
   const { roleName } = useAdminPermissions()
-
-  const fetchUnread = useCallback(() => {
-    api
-      .get<{ count: number }>('/notifications/unread-count')
-      .then((r) => setUnread(r.count))
-      .catch(() => {
-        // Badge is best-effort; a failed poll should never surface an error.
-      })
-  }, [])
-
-  useEffect(() => {
-    fetchUnread()
-    const interval = setInterval(fetchUnread, 30_000)
-    window.addEventListener('focus', fetchUnread)
-    return () => {
-      clearInterval(interval)
-      window.removeEventListener('focus', fetchUnread)
-    }
-  }, [fetchUnread])
 
   const initials = (user?.name ?? 'Admin')
     .split(' ')
@@ -138,7 +125,7 @@ export default function TopBar({ onReplayTour, onOpenNav }: { onReplayTour: () =
           Giving Across Ghana · Admin Console
         </Typography>
         <Link
-          href="https://ujimora.vercel.app"
+          href="https://app.ujimora.com"
           target="_blank"
           rel="noreferrer"
           underline="none"
@@ -166,7 +153,15 @@ export default function TopBar({ onReplayTour, onOpenNav }: { onReplayTour: () =
           borderBottom: `1px solid ${HAIRLINE}`,
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0, flexGrow: { xs: 1, sm: 0 } }}>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            minWidth: 0,
+            flexGrow: { xs: 1, sm: 0 },
+          }}
+        >
           <IconButton
             edge="start"
             color="inherit"
@@ -176,36 +171,24 @@ export default function TopBar({ onReplayTour, onOpenNav }: { onReplayTour: () =
           >
             <MenuRoundedIcon />
           </IconButton>
-          <Search data-tour="search" sx={{ width: { xs: '100%', sm: 320 }, flexGrow: { xs: 1, sm: 0 } }}>
+          <Search
+            data-tour="search"
+            sx={{ width: { xs: '100%', sm: 320 }, flexGrow: { xs: 1, sm: 0 } }}
+          >
             <SearchIconWrapper>
               <SearchIcon />
             </SearchIconWrapper>
-            <StyledInputBase placeholder="Search campaigns, users, donations..." sx={{ width: '100%' }} />
+            <StyledInputBase
+              placeholder="Search campaigns, users, donations..."
+              sx={{ width: '100%' }}
+            />
           </Search>
         </Box>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <IconButton
-            size="large"
-            color="inherit"
-            data-tour="bell"
-            aria-label={`Notifications (${unread} unread)`}
-            onClick={fetchUnread}
-          >
-            <Badge
-              badgeContent={unread}
-              max={9}
-              sx={{
-                '& .MuiBadge-badge': {
-                  bgcolor: '#7D3223',
-                  color: '#F9F4EF',
-                  boxShadow: '0 0 0 1px rgba(232, 235, 227, 0.3)',
-                },
-              }}
-            >
-              <NotificationsRoundedIcon />
-            </Badge>
-          </IconButton>
+          <NotificationBell api={api} attentionCount={total}>
+            <AdminActionInbox />
+          </NotificationBell>
 
           <Divider orientation="vertical" flexItem sx={{ mx: 1, borderColor: HAIRLINE }} />
 
@@ -228,7 +211,16 @@ export default function TopBar({ onReplayTour, onOpenNav }: { onReplayTour: () =
               '&:focus-visible': { outline: '2px solid #C7A24A', outlineOffset: 2 },
             }}
           >
-            <Avatar sx={{ width: 30, height: 30, bgcolor: '#8FAE96', color: ON_FILL, fontSize: '0.78rem', fontWeight: 700 }}>
+            <Avatar
+              sx={{
+                width: 30,
+                height: 30,
+                bgcolor: '#8FAE96',
+                color: ON_FILL,
+                fontSize: '0.78rem',
+                fontWeight: 700,
+              }}
+            >
               {initials}
             </Avatar>
             <Typography variant="body2" sx={{ fontWeight: 600, maxWidth: 120 }} noWrap>
@@ -268,7 +260,9 @@ export default function TopBar({ onReplayTour, onOpenNav }: { onReplayTour: () =
                 bgcolor: WASH,
               }}
             >
-              <Avatar sx={{ width: 36, height: 36, bgcolor: '#8FAE96', color: ON_FILL, fontWeight: 700 }}>
+              <Avatar
+                sx={{ width: 36, height: 36, bgcolor: '#8FAE96', color: ON_FILL, fontWeight: 700 }}
+              >
                 {initials}
               </Avatar>
               <Box sx={{ minWidth: 0 }}>
@@ -281,8 +275,16 @@ export default function TopBar({ onReplayTour, onOpenNav }: { onReplayTour: () =
               </Box>
             </Box>
 
-            <MenuItem onClick={() => { closeMenu(); navigate('/profile') }} sx={{ alignItems: 'flex-start' }}>
-              <ListItemIcon sx={{ mt: 0.25 }}><PersonRoundedIcon sx={{ fontSize: 18 }} /></ListItemIcon>
+            <MenuItem
+              onClick={() => {
+                closeMenu()
+                navigate('/profile')
+              }}
+              sx={{ alignItems: 'flex-start' }}
+            >
+              <ListItemIcon sx={{ mt: 0.25 }}>
+                <PersonRoundedIcon sx={{ fontSize: 18 }} />
+              </ListItemIcon>
               <Box>
                 Profile
                 <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary' }}>
@@ -290,8 +292,16 @@ export default function TopBar({ onReplayTour, onOpenNav }: { onReplayTour: () =
                 </Typography>
               </Box>
             </MenuItem>
-            <MenuItem onClick={() => { closeMenu(); navigate('/settings') }} sx={{ alignItems: 'flex-start' }}>
-              <ListItemIcon sx={{ mt: 0.25 }}><SettingsRoundedIcon sx={{ fontSize: 18 }} /></ListItemIcon>
+            <MenuItem
+              onClick={() => {
+                closeMenu()
+                navigate('/settings')
+              }}
+              sx={{ alignItems: 'flex-start' }}
+            >
+              <ListItemIcon sx={{ mt: 0.25 }}>
+                <SettingsRoundedIcon sx={{ fontSize: 18 }} />
+              </ListItemIcon>
               <Box>
                 Settings
                 <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary' }}>
@@ -299,8 +309,15 @@ export default function TopBar({ onReplayTour, onOpenNav }: { onReplayTour: () =
                 </Typography>
               </Box>
             </MenuItem>
-            <MenuItem onClick={() => { closeMenu(); onReplayTour() }}>
-              <ListItemIcon><MapRoundedIcon sx={{ fontSize: 18 }} /></ListItemIcon>
+            <MenuItem
+              onClick={() => {
+                closeMenu()
+                onReplayTour()
+              }}
+            >
+              <ListItemIcon>
+                <MapRoundedIcon sx={{ fontSize: 18 }} />
+              </ListItemIcon>
               <Box>
                 Replay tour
                 <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary' }}>
@@ -310,10 +327,16 @@ export default function TopBar({ onReplayTour, onOpenNav }: { onReplayTour: () =
             </MenuItem>
             <Divider sx={{ borderColor: HAIRLINE }} />
             <MenuItem
-              onClick={() => { closeMenu(); logout(); navigate('/login') }}
+              onClick={() => {
+                closeMenu()
+                logout()
+                navigate('/login')
+              }}
               sx={{ color: '#C06B58' }}
             >
-              <ListItemIcon><LogoutRoundedIcon sx={{ fontSize: 18, color: '#C06B58' }} /></ListItemIcon>
+              <ListItemIcon>
+                <LogoutRoundedIcon sx={{ fontSize: 18, color: '#C06B58' }} />
+              </ListItemIcon>
               Sign out
             </MenuItem>
           </Menu>

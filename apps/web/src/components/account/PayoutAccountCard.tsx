@@ -173,7 +173,7 @@ export function PayoutAccountCard({
             <InfoOutlined sx={{ fontSize: 16 }} />
           )}
           <Typography variant="caption">
-            {matched ? 'Registered name matched' : 'Needs beneficiary review'}
+            {matched ? 'Registered name matched' : 'Ownership review at cashout'}
           </Typography>
         </Box>
         <Button

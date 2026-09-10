@@ -1,3 +1,4 @@
+import { AdminActionProvider } from '@/context/AdminActionContext'
 import { useEffect, useState } from 'react'
 import { Box, LinearProgress } from '@mui/material'
 import { Outlet, useNavigation, useLocation } from 'react-router-dom'
@@ -81,46 +82,48 @@ export default function AdminLayout() {
   }
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
-      {navigation.state !== 'idle' && (
-        <LinearProgress
-          sx={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            zIndex: 2200,
-            height: 2,
-            bgcolor: 'transparent',
-            '& .MuiLinearProgress-bar': { bgcolor: '#C7A24A' },
-          }}
-        />
-      )}
-      <Sidebar mobileOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
-      <TopBar onReplayTour={() => setTourOpen(true)} onOpenNav={() => setMobileNavOpen(true)} />
-      <Box
-        component="main"
-        sx={{
-          flexGrow: 1,
-          width: { xs: '100%', md: `calc(100% - ${DRAWER_WIDTH}px)` },
-          minWidth: 0,
-          bgcolor: 'background.default',
-          minHeight: '100vh',
-        }}
-      >
-        <Box sx={{ height: `${TOPBAR_HEIGHT}px` }} />
+    <AdminActionProvider>
+      <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+        {navigation.state !== 'idle' && (
+          <LinearProgress
+            sx={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              zIndex: 2200,
+              height: 2,
+              bgcolor: 'transparent',
+              '& .MuiLinearProgress-bar': { bgcolor: '#C7A24A' },
+            }}
+          />
+        )}
+        <Sidebar mobileOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
+        <TopBar onReplayTour={() => setTourOpen(true)} onOpenNav={() => setMobileNavOpen(true)} />
         <Box
-          key={pathname}
+          component="main"
           sx={{
-            p: 3,
-            animation: `${pageIn} 0.3s cubic-bezier(0.22, 1, 0.36, 1)`,
-            '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+            flexGrow: 1,
+            width: { xs: '100%', md: `calc(100% - ${DRAWER_WIDTH}px)` },
+            minWidth: 0,
+            bgcolor: 'background.default',
+            minHeight: '100vh',
           }}
         >
-          <Outlet />
+          <Box sx={{ height: `${TOPBAR_HEIGHT}px` }} />
+          <Box
+            key={pathname}
+            sx={{
+              p: 3,
+              animation: `${pageIn} 0.3s cubic-bezier(0.22, 1, 0.36, 1)`,
+              '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+            }}
+          >
+            <Outlet />
+          </Box>
         </Box>
+        {tourOpen && <Tour steps={ADMIN_TOUR} onDone={closeTour} />}
       </Box>
-      {tourOpen && <Tour steps={ADMIN_TOUR} onDone={closeTour} />}
-    </Box>
+    </AdminActionProvider>
   )
 }
