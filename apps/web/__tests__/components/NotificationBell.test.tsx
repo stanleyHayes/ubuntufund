@@ -44,7 +44,7 @@ describe('notification bell', () => {
     )
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
     expect(
-      await screen.findByText('You’re all caught up. New updates will appear here.'),
+      await screen.findByText('You’re all caught up'),
     ).toBeInTheDocument()
   })
 })

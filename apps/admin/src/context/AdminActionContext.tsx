@@ -1,3 +1,5 @@
+import TaskAltRounded from '@mui/icons-material/TaskAltRounded'
+import ArrowForwardRounded from '@mui/icons-material/ArrowForwardRounded'
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 import { Alert, Box, Button, Chip, Skeleton, Typography } from '@mui/material'
 import { Link, useLocation } from 'react-router-dom'
@@ -75,9 +77,45 @@ export function AdminActionInbox() {
       ) : (
         <>
           {!items.some((item) => item.count > 0) && (
-            <Typography variant="body2" color="text.secondary">
-              No pending reviews.
-            </Typography>
+            <Box
+              sx={{
+                position: 'relative',
+                overflow: 'hidden',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1.5,
+                p: 2,
+                mt: 1,
+                borderRadius: 'var(--shape-card, 16px)',
+                bgcolor: 'var(--neu-surface)',
+                boxShadow: 'var(--neu-subtle)',
+              }}
+            >
+              <TaskAltRounded
+                aria-hidden="true"
+                sx={{ color: 'text.secondary', fontSize: 26, flexShrink: 0 }}
+              />
+              <Box sx={{ position: 'relative' }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 750 }}>
+                  Reviews are up to date
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  No pending items need your attention.
+                </Typography>
+              </Box>
+              <TaskAltRounded
+                aria-hidden="true"
+                sx={{
+                  position: 'absolute',
+                  right: -12,
+                  bottom: -22,
+                  fontSize: 105,
+                  opacity: 0.045,
+                  transform: 'rotate(-18deg)',
+                  pointerEvents: 'none',
+                }}
+              />
+            </Box>
           )}
           {items
             .filter((item) => item.count > 0)
@@ -87,8 +125,29 @@ export function AdminActionInbox() {
                 component={Link}
                 to={item.href}
                 fullWidth
-                sx={{ justifyContent: 'space-between', gap: 2, my: 0.75, px: 1.5, py: 1 }}
+                sx={{
+                  position: 'relative',
+                  overflow: 'hidden',
+                  justifyContent: 'space-between',
+                  gap: 2,
+                  my: 1,
+                  px: 2,
+                  py: 1.5,
+                  boxShadow: 'var(--neu-subtle)',
+                  bgcolor: 'var(--neu-surface)',
+                }}
               >
+                <ArrowForwardRounded
+                  aria-hidden="true"
+                  sx={{
+                    position: 'absolute',
+                    right: 12,
+                    fontSize: 85,
+                    opacity: 0.04,
+                    transform: 'rotate(-35deg)',
+                    pointerEvents: 'none',
+                  }}
+                />
                 <span>{item.title}</span>
                 <Chip size="small" label={item.count} />
               </Button>

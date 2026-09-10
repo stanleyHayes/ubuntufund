@@ -1,3 +1,5 @@
+import { EmptyState } from './EmptyState'
+import LinkRounded from '@mui/icons-material/LinkRounded'
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { Alert, Badge, Box, Button, IconButton, Popover, Skeleton, Typography } from '@mui/material'
 import NotificationsRounded from '@mui/icons-material/NotificationsRounded'
@@ -107,9 +109,43 @@ export function NotificationBell({
           },
         }}
       >
-        <Box sx={{ p: 2 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="h6">Notifications</Typography>
+        <Box sx={{ p: { xs: 2, sm: 2.5 } }}>
+          <Box
+            sx={{
+              position: 'relative',
+              overflow: 'hidden',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: 2,
+              pb: 2.5,
+              borderBottom: '1px solid',
+              borderColor: 'divider',
+            }}
+          >
+            <NotificationsRounded
+              aria-hidden="true"
+              sx={{
+                position: 'absolute',
+                right: 44,
+                top: -25,
+                fontSize: 132,
+                opacity: 0.045,
+                transform: 'rotate(-18deg)',
+                pointerEvents: 'none',
+              }}
+            />
+            <Box sx={{ position: 'relative' }}>
+              <Typography
+                variant="overline"
+                sx={{ color: 'text.secondary', letterSpacing: '.15em', fontSize: 10 }}
+              >
+                Your activity
+              </Typography>
+              <Typography variant="h6" sx={{ fontWeight: 800 }}>
+                Notifications
+              </Typography>
+            </Box>
             <IconButton
               sx={{
                 flexShrink: 0,
@@ -159,20 +195,61 @@ export function NotificationBell({
                 )}
               </Box>
               {!error && !items.length && (
-                <Typography color="text.secondary" sx={{ py: 3 }}>
-                  You’re all caught up. New updates will appear here.
-                </Typography>
+                <Box
+                  sx={{
+                    position: 'relative',
+                    overflow: 'hidden',
+                    mt: 1.5,
+                    borderRadius: 'var(--shape-card, 18px)',
+                    '& > .MuiBox-root': { boxSizing: 'border-box', bgcolor: 'var(--neu-surface)' },
+                  }}
+                >
+                  <LinkRounded
+                    aria-hidden="true"
+                    sx={{
+                      position: 'absolute',
+                      right: -32,
+                      bottom: -28,
+                      fontSize: 180,
+                      zIndex: 1,
+                      transform: 'rotate(-35deg)',
+                      color: 'text.secondary',
+                      opacity: 0.045,
+                      pointerEvents: 'none',
+                    }}
+                  />
+                  <EmptyState
+                    compact
+                    title="You’re all caught up"
+                    description="Your donations, campaign updates and account news will appear here."
+                  />
+                </Box>
               )}
               {items.map((item) => (
                 <Box
                   key={item.id}
                   sx={{
-                    p: 1.5,
-                    my: 1,
+                    position: 'relative',
+                    overflow: 'hidden',
+                    p: 2,
+                    my: 1.5,
+                    boxShadow: 'var(--neu-subtle)',
                     borderRadius: 2,
                     bgcolor: item.read ? 'transparent' : 'action.hover',
                   }}
                 >
+                  <NotificationsRounded
+                    aria-hidden="true"
+                    sx={{
+                      position: 'absolute',
+                      right: -12,
+                      bottom: -14,
+                      fontSize: 90,
+                      opacity: 0.035,
+                      transform: 'rotate(-18deg)',
+                      pointerEvents: 'none',
+                    }}
+                  />
                   <Typography variant="subtitle2" sx={{ fontWeight: item.read ? 500 : 800 }}>
                     {!item.read && (
                       <Box

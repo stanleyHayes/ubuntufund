@@ -1,5 +1,11 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-10 — Illustrated notification empty states
+
+- Replaced the plain empty inbox with the shared illustrated EmptyState, compact typography and inset appearance surface. Added oversized bell/chain watermarks to the panel and subtle icon watermarks to notification rows.
+- Admin empty review queue now uses a compact completed-review card with a check watermark; pending action links use matching surfaces and arrow watermarks.
+- Validation: web/admin type checks and two inbox behavior tests pass. Isolated mobile browser preview at 390px shows no horizontal overflow. No notification backend behavior changed.
+
 ### 2026-09-10 — Notification inboxes and payout review visibility
 
 - Live read-only audit: Help Us Keep Our Digital Platform Running has GHS 5,200 raised and status funded; campaign, creator and beneficiary payout collections contain zero requests. Saved-account beneficiary review is distinct from a submitted cashout. No request was fabricated and no funds were transferred.
