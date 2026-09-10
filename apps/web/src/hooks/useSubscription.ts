@@ -122,3 +122,19 @@ export function usePlanMap(): Record<string, SubscriptionPlan> {
 
   return planMap
 }
+
+/** Signup must show confirmed public prices, never seeded commercial defaults. */
+export function useSignupPlans() {
+  const [plans, setPlans] = useState<Record<string, SubscriptionPlan>>({})
+  const [error, setError] = useState(false)
+  const [attempt, setAttempt] = useState(0)
+  useEffect(() => {
+    let active = true
+    api.get<SubscriptionPlan[]>('/plans/public').then(rows => {
+      if (!Array.isArray(rows) || !rows.length) throw new Error('Plans unavailable')
+      if (active) setPlans(Object.fromEntries(rows.map(plan => [plan.tier, plan])))
+    }).catch(() => { if (active) setError(true) })
+    return () => { active = false }
+  }, [attempt])
+  return { plans, error, retry: () => { setError(false); setAttempt(value => value + 1) } }
+}

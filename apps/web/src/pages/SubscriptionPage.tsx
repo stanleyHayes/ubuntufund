@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
@@ -35,6 +35,7 @@ import {
 import { useMySubscription, usePlanMap } from '@/hooks/useSubscription'
 import { api } from '@/lib/api'
 import {
+  readSubscriptionHandoff,
   createSubscriptionCheckout,
   saveSubscriptionCheckoutHandoff,
   isPaymentsNotConfigured,
@@ -138,6 +139,8 @@ function formatCellValue(value: unknown, format?: string): React.ReactNode {
 
 export function SubscriptionPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const [lastCheckout] = useState(() => readSubscriptionHandoff(null))
   const { subscription, isLoading, refetch } = useMySubscription()
   // DB-backed plans (seeded from SUBSCRIPTION_PLANS so nothing flashes empty).
   const plans = usePlanMap()
@@ -146,15 +149,15 @@ export function SubscriptionPage() {
     .filter((p) => p.active !== false && p.isPublic !== false)
     .sort(bySortOrder)
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
-  const [billingToggle, setBillingToggle] = useState<'monthly' | 'yearly'>('monthly')
+  const [billingToggle, setBillingToggle] = useState<'monthly' | 'yearly'>(searchParams.get('billingCycle') === 'yearly' ? 'yearly' : 'monthly')
   const [actionLoading, setActionLoading] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
 
   // ── Paid checkout + coupon flow ────────────────────────────────────────────
-  const [selectedTier, setSelectedTier] = useState<string | null>(null)
+  const [selectedTier, setSelectedTier] = useState<string | null>(searchParams.get('tier'))
   const [couponCode, setCouponCode] = useState('')
   const [checkoutLoading, setCheckoutLoading] = useState(false)
-  const [checkoutError, setCheckoutError] = useState<string | null>(null)
+  const [checkoutError, setCheckoutError] = useState<string | null>(searchParams.has('checkoutError') ? 'Your account is ready, but we couldn’t open payment. Your paid plan is not active yet. Check your payment status before retrying.' : null)
   const [paymentsUnavailable, setPaymentsUnavailable] = useState(false)
   const { preview, loading: couponLoading, error: couponError, run: runCoupon, clear: clearCoupon } = useCouponPreview()
 
@@ -268,6 +271,7 @@ export function SubscriptionPage() {
 
   return (
     <Container maxWidth="lg" sx={{ py: 6 }}>
+      {lastCheckout && <Alert severity="info" sx={{ mb: 3 }} action={<Button href={`/subscription/callback?checkout=${encodeURIComponent(lastCheckout.checkoutId)}`}>Check payment</Button>}>Returning from payment? Check your latest checkout before starting another payment.</Alert>}
       {/* Page header */}
       <Typography
         variant="h4"
@@ -836,6 +840,7 @@ export function SubscriptionPage() {
       >
         {selectedTier && (() => {
           const plan = plans[selectedTier]
+          if (!plan) return <DialogContent><Alert severity="info">This plan is unavailable. Close this window to choose another plan.</Alert><Button onClick={closeCheckout}>Choose another plan</Button></DialogContent>
           const basePrice = billingToggle === 'yearly' ? plan.priceYearly : plan.priceMonthly
           const validCoupon = preview && preview.valid ? preview : null
           const currency = validCoupon?.currency ?? 'GHS'

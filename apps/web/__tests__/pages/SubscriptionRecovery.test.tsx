@@ -14,9 +14,17 @@ describe('subscription return UI',()=>{
   expect(api.post).toHaveBeenCalledWith('/subscriptions/checkout/reference/sub-dee42508/verify')
  });
  it('keeps the View plans action on one line',async()=>{
-  vi.mocked(api.get).mockResolvedValue({profile:null,balance:null,policy:{eligible:false,planName:'Free',feePercent:0}})
+  vi.mocked(api.get).mockImplementation(async path => path === '/payout-accounts' ? { accounts: [] } : path.endsWith('/payouts') ? [] : {profile:null,balance:null,policy:{eligible:false,planName:'Free',feePercent:0}})
   render(<MemoryRouter><CreatorDashboardPage/></MemoryRouter>)
   const link=await screen.findByRole('link',{name:'View plans'})
   expect(link).toHaveStyle({whiteSpace:'nowrap',flexShrink:'0'})
  });
+ it('keeps the annual plan on payment retry without claiming no debit',async()=>{
+  vi.mocked(api.post).mockResolvedValue({id:'checkout',status:'failed',tier:'enterprise',billingCycle:'yearly',finalAmount:999,currency:'GHS'})
+  render(<MemoryRouter initialEntries={['/subscription/callback?checkout=checkout']}><SubscriptionCallbackPage/></MemoryRouter>)
+  const retry = await screen.findByRole('link',{name:'Try again'})
+  expect(retry).toHaveAttribute('href','/subscription?tier=enterprise&billingCycle=yearly')
+  expect(screen.queryByText(/you haven't been charged/)).not.toBeInTheDocument()
+ });
+
 })

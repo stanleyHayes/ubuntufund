@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
+import Skeleton from '@mui/material/Skeleton'
 import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import { OrganizationTypePicker } from './OrganizationTypePicker'
 import { PasswordStrength } from './PasswordStrength'
@@ -17,11 +18,10 @@ import { Link as RouterLink } from 'react-router-dom'
 import { SubscriptionTier, BillingCycle } from '@ubuntu-fund/types'
 import { SHAPE, formatCurrency, LoadingDots } from '@ubuntu-fund/ui'
 import { useAuth } from '@/context/AuthContext'
-import { usePlanMap } from '@/hooks/useSubscription'
+import { useSignupPlans } from '@/hooks/useSubscription'
 import {
   createSubscriptionCheckout,
   saveSubscriptionCheckoutHandoff,
-  isPaymentsNotConfigured,
 } from '@/lib/subscriptions'
 
 const FOREST = 'primary.main'
@@ -110,7 +110,7 @@ export function RegisterForm() {
   const [searchParams] = useSearchParams()
   const { register } = useAuth()
   // DB-backed plans (seeded from SUBSCRIPTION_PLANS so the picker never flashes empty).
-  const plans = usePlanMap()
+  const { plans, error: plansError, retry: retryPlans } = useSignupPlans()
 
   const [step, setStep] = useState(0)
   const [accountType, setAccountType] = useState<AccountType>(
@@ -168,6 +168,7 @@ export function RegisterForm() {
 
   async function handleSubmit() {
     setApiError('')
+    if (!plans[selectedTier]) return
     setSubmitting(true)
     try {
       let referralCode: string | undefined
@@ -220,13 +221,10 @@ export function RegisterForm() {
           window.location.assign(result.authorizationUrl)
           return
         }
-        navigate('/dashboard')
-      } catch (err) {
-        // Payments disabled or transient checkout error — account is created.
-        if (!isPaymentsNotConfigured(err)) {
-          // Still land them in-app; they can upgrade from Subscription.
-        }
-        navigate('/dashboard')
+        navigate(`/subscription?tier=${encodeURIComponent(selectedTier)}&billingCycle=${billingCycle}&checkoutError=1`)
+      } catch {
+        // Registration succeeded. Retry payment from the signed-in subscription page.
+        navigate(`/subscription?tier=${encodeURIComponent(selectedTier)}&billingCycle=${billingCycle}&checkoutError=1`)
       }
     } catch (err) {
       setApiError(err instanceof Error ? err.message : 'Registration failed. Please try again.')
@@ -463,7 +461,9 @@ export function RegisterForm() {
               ))}
             </Box>
           </Box>
-          {ALL_TIERS.map((tier) => {
+          {plansError && <Alert severity="error" action={<Button onClick={retryPlans}>Retry</Button>}>We couldn’t load current prices. Please retry before choosing a plan.</Alert>}
+          {!plansError && Object.keys(plans).length === 0 && <Box aria-label="Loading current plans" aria-busy="true">{[0, 1, 2].map(row => <Skeleton key={row} variant="rounded" height={84} sx={{ mb: 2 }} />)}</Box>}
+          {ALL_TIERS.filter(tier => plans[tier]).map((tier) => {
             const plan = plans[tier]
             const active = selectedTier === tier
             const price =
@@ -522,7 +522,7 @@ export function RegisterForm() {
                   </Typography>
                   {price > 0 && (
                     <Typography sx={{ fontSize: '0.7rem', color: INK_SECONDARY }}>
-                      /{billingCycle === BillingCycle.YEARLY ? 'yr' : 'mo'}
+                      {billingCycle === BillingCycle.YEARLY ? 'per year · billed yearly' : 'per month'}
                     </Typography>
                   )}
                 </Box>
@@ -560,7 +560,7 @@ export function RegisterForm() {
             onClick={handleSubmit}
             variant="contained"
             color="primary"
-            disabled={submitting}
+            disabled={submitting || !plans[selectedTier]}
             endIcon={submitting ? <LoadingDots size={6} /> : undefined}
             sx={{ textTransform: 'none', fontWeight: 700, px: 3 }}
           >

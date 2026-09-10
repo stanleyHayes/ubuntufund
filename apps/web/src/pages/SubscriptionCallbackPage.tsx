@@ -156,6 +156,7 @@ export function SubscriptionCallbackPage() {
     : undefined
   const chargedAmount = view?.finalAmount ?? handoff?.finalAmount
   const currency = view?.currency ?? handoff?.currency ?? 'GHS'
+  const retryPath = `${subscriptionPath()}?${new URLSearchParams({ ...(tier ? { tier } : {}), billingCycle: view?.billingCycle ?? handoff?.billingCycle ?? 'monthly' })}`
   const activatedWithoutCharge = chargedAmount === 0
 
   // --- Missing reference ----------------------------------------------------
@@ -249,12 +250,12 @@ export function SubscriptionCallbackPage() {
             <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 400, mx: 'auto', mb: 4 }}>
               {phase === 'expired'
                 ? "This checkout expired. Check your payment account before starting another checkout."
-                : "Your payment couldn't be completed and you haven't been charged. This is usually temporary — please try again."}
+                : "Your payment wasn’t confirmed. Your account is still available, but this paid plan has not activated. Check your payment account before retrying; if you were debited, contact support with your payment reference."}
             </Typography>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, justifyContent: 'center' }}>
               <Button
                 component={RouterLink}
-                to={subscriptionPath()}
+                to={retryPath}
                 variant="contained"
                 color="secondary"
                 startIcon={<ReplayRoundedIcon />}

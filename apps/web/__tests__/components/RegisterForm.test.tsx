@@ -4,8 +4,11 @@ import { MemoryRouter } from 'react-router-dom'
 import { ThemeProvider } from '@mui/material/styles'
 import { ujimoraTheme } from '@ubuntu-fund/ui'
 import { RegisterForm } from '@/components/auth/RegisterForm'
-vi.mock('@/context/AuthContext', () => ({ useAuth: () => ({ register: vi.fn() }) }))
-vi.mock('@/hooks/useSubscription', () => ({ usePlanMap: () => Object.fromEntries(['free', 'starter', 'pro', 'enterprise'].map(name => [name, { name, priceMonthly: 0, priceYearly: 0, maxActiveCampaigns: 1, platformFeePercent: 5 }])) }))
+const mocks = vi.hoisted(() => ({ register: vi.fn().mockResolvedValue(undefined), checkout: vi.fn(), navigate: vi.fn() }))
+vi.mock('react-router-dom', async importOriginal => ({ ...await importOriginal<typeof import('react-router-dom')>(), useNavigate: () => mocks.navigate }))
+vi.mock('@/lib/subscriptions', () => ({ createSubscriptionCheckout: mocks.checkout, saveSubscriptionCheckoutHandoff: vi.fn() }))
+vi.mock('@/context/AuthContext', () => ({ useAuth: () => ({ register: mocks.register }) }))
+vi.mock('@/hooks/useSubscription', () => ({ useSignupPlans: () => ({ plans: Object.fromEntries(['free', 'starter', 'pro', 'enterprise'].map(name => [name, { name, priceMonthly: name === 'enterprise' ? 99.99 : 0, priceYearly: name === 'enterprise' ? 999 : 0, maxActiveCampaigns: 1, platformFeePercent: 5 }])), error: false, retry: vi.fn() }) }))
 vi.mock('@/components/auth/OrganizationTypePicker', () => ({ OrganizationTypePicker: ({ value, onChange }: { value: string; onChange: (value: string) => void }) => <input aria-label="Organization type" value={value} onChange={e => onChange(e.target.value)} /> }))
 const mount = (role = '') => render(<ThemeProvider theme={ujimoraTheme}><MemoryRouter initialEntries={['/register' + role]}><RegisterForm /></MemoryRouter></ThemeProvider>)
 const next = () => fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
@@ -29,4 +32,16 @@ describe('registration steps', () => {
     expect(screen.getByText('Choose a plan — you can change it anytime.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Create account' })).toBeInTheDocument()
   })
+  it('keeps yearly selection when checkout initialization fails after signup', async () => {
+    mocks.checkout.mockRejectedValue(new Error('Provider unavailable'))
+    mount(); next()
+    fill(/Full name/, 'Test Person'); fill(/^Email/, 'test@example.com'); fill(/^Password/, 'securePassword1'); fill(/Confirm password/, 'securePassword1'); next()
+    fireEvent.click(screen.getByRole('button', { name: 'Yearly · save' }))
+    fireEvent.click(screen.getByRole('button', { name: /enterprise/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Create account & continue' }))
+    await vi.waitFor(() => expect(mocks.checkout).toHaveBeenCalledWith({ tier: 'enterprise', billingCycle: 'yearly' }))
+    expect(mocks.register).toHaveBeenCalledTimes(1)
+    expect(mocks.navigate).toHaveBeenCalledWith('/subscription?tier=enterprise&billingCycle=yearly&checkoutError=1')
+  })
+
 })

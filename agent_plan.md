@@ -1,5 +1,11 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-10 — Signup pricing and payment recovery
+
+- Verified live public prices: Enterprise GHS 99.99 monthly / GHS 999 yearly. Signup previously requested authenticated `/plans`, then silently displayed outdated seeded prices. It now loads `/plans/public`, blocks checkout while prices are unavailable, and labels annual totals clearly.
+- Checkout initialization failure preserves the created account and routes to subscription payment with the selected plan/yearly cycle and visible feedback. Failed checkout retries preserve the same selection. Added a latest-checkout verification link for users returning from payment; removed the unsupported claim that a failed payment means no debit.
+- Validation: 8 web flow/pricing tests and 10 API verification tests pass (failed/abandoned payments never activate plans); web type check, focused lint and build pass. No payment initiated. Hosted cancellation visual behavior remains unverified.
+
 ### 2026-09-10 — Campaign recovery and shorter organization registration
 
 - Fixed admin response unwrapping of `data: null`: a valid no-active-split response previously became an envelope object and crashed beneficiary rendering. Added guarded split data, separate error/retry state, and regression coverage.
