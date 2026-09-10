@@ -593,13 +593,6 @@ export function createApp(): express.Express {
     donationRepo,
   )
   const setCampaignSlugUseCase = new SetCampaignSlugUseCase(campaignRepo)
-  const donateToCampaignUseCase = new DonateToCampaignUseCase(
-    campaignRepo,
-    donationRepo,
-    walletRepo,
-    walletTxRepo,
-    realtimeDonationProjector,
-  )
 
   // Donation-intent rail: guest-capable checkout backed by the immutable
   // ledger. settleDonation() is the seam Phase 4 (Paystack) also calls.
@@ -709,6 +702,7 @@ export function createApp(): express.Express {
     config.payments,
     gatewayRegistry,
   )
+  const donateToCampaignUseCase = new DonateToCampaignUseCase(createDonationIntentUseCase)
   // Payout settlement: the signed transfer webhook moves an approved payout to
   // its terminal state and clears the campaign balance/ledger accordingly.
   const handlePayoutWebhookUseCase = new HandlePayoutWebhookUseCase(

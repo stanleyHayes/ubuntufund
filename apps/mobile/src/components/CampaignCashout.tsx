@@ -1,3 +1,5 @@
+import { campaignPayoutBreakdownRows } from '@ubuntu-fund/types'
+import type { CampaignPayoutBreakdown } from '@ubuntu-fund/types'
 import { randomUUID } from 'expo-crypto'
 import { EmptyState } from './EmptyState'
 import type { SavedAccount } from './SavedPayoutAccounts'
@@ -11,6 +13,7 @@ import { BrandedTextInput as Input } from './BrandedTextInput'
 import { SelectionField } from './SelectionField'
 import { useNeu } from '@/context/ColorModeContext'
 type Options = {
+  breakdown?: CampaignPayoutBreakdown
   eligible: number
   requiresEarlyCashout: boolean
   fees: Record<string, number>
@@ -128,11 +131,14 @@ export function CampaignCashout({ campaignId }: { campaignId: string }) {
         )
       } else {
         const details = JSON.stringify({ campaignId, amount: value, type, destination })
-        if (requestKey.current.details !== details) requestKey.current = { details, key: randomUUID() }
+        if (requestKey.current.details !== details)
+          requestKey.current = { details, key: randomUUID() }
         const p = await api.post<Payout>(`/campaigns/${campaignId}/payouts`, {
           amount: value,
           type,
-          ...(destination === 'ujimora_wallet' ? { destination, idempotencyKey: requestKey.current.key } : {}),
+          ...(destination === 'ujimora_wallet'
+            ? { destination, idempotencyKey: requestKey.current.key }
+            : {}),
         })
         requestKey.current = { details: '', key: '' }
         setNotice(
@@ -168,9 +174,41 @@ export function CampaignCashout({ campaignId }: { campaignId: string }) {
       {options && (
         <>
           <Text variant="titleMedium">GHS {options.eligible.toFixed(2)} eligible balance</Text>
+          {options.breakdown && (
+            <View style={{ gap: 10, paddingVertical: 16 }}>
+              <Text variant="titleSmall">How your balance is calculated</Text>
+              {options.breakdown.lockedPlatformFeePercent !== undefined && (
+                <Text>
+                  Campaign plan rate: {options.breakdown.lockedPlatformFeePercent}% (locked at
+                  creation). Upgrading does not change this campaign’s rate.
+                </Text>
+              )}
+              {campaignPayoutBreakdownRows(options.breakdown).map((row) => (
+                <View
+                  key={row.label}
+                  style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}
+                >
+                  <Text style={{ flex: 1 }}>{row.label}</Text>
+                  <Text style={{ fontWeight: '700' }}>GHS {row.amount.toFixed(2)}</Text>
+                </View>
+              ))}
+              <Text variant="bodySmall">
+                These are recorded fees per donation, rounded per payment. Plan changes can mean
+                different rates. They are not charged again at cashout. Optional Ujimora tips are
+                separate.
+              </Text>
+              {options.breakdown.raisedDifference !== 0 && (
+                <Text>
+                  The campaign total differs from accounted donations by GHS{' '}
+                  {Math.abs(options.breakdown.raisedDifference).toFixed(2)}. This is not a fee and
+                  needs reconciliation before it can be included.
+                </Text>
+              )}
+            </View>
+          )}
           <Text>
-            The regular plan fee is already deducted. Early cashout adds a service fee. Test funds
-            cannot pay out real money.
+            Eligible proceeds may await clearance. Admin approval is required. Test funds cannot pay
+            out real money.
           </Text>
           <SelectionField
             label="Receive funds in"
@@ -278,9 +316,25 @@ export function CampaignCashout({ campaignId }: { campaignId: string }) {
           />
           <Text>Maximum GHS {cap.toFixed(2)}</Text>
           {value > 0 && Number.isFinite(fee) && (
-            <Text>
-              Estimated fee GHS {fee.toFixed(2)} · You receive GHS {(value - fee).toFixed(2)}
-            </Text>
+            <View style={{ gap: 8, paddingVertical: 12 }}>
+              {[
+                ['Amount requested', value],
+                ['Additional cashout service fee', -fee],
+                ['You receive', round(value - fee)],
+              ].map(([label, amount]) => (
+                <View
+                  key={String(label)}
+                  style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}
+                >
+                  <Text style={{ flex: 1 }}>{label}</Text>
+                  <Text style={{ fontWeight: '700' }}>GHS {Number(amount).toFixed(2)}</Text>
+                </View>
+              ))}
+              <Text variant="bodySmall">
+                Plan and processing fees are already deducted. Only the selected cashout service fee
+                is subtracted here.
+              </Text>
+            </View>
           )}
           <Button
             mode="contained"

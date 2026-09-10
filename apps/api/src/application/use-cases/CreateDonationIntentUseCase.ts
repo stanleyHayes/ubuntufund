@@ -1,32 +1,29 @@
-import {
-  TransactionType,
-  type CreateDonationIntentInput,
-} from '@ubuntu-fund/types';
-import { DonationIntentEntity } from '../../domain/entities/DonationIntent.js';
-import { Money } from '../../domain/value-objects/Money.js';
-import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js';
-import type { LiveSessionRepositoryPort } from '../../domain/ports/outbound/LiveSessionRepositoryPort.js';
-import type { WalletRepositoryPort } from '../../domain/ports/outbound/WalletRepositoryPort.js';
-import type { WalletTransactionRepositoryPort } from '../../domain/ports/outbound/WalletTransactionRepositoryPort.js';
-import type { DonationIntentRepositoryPort } from '../../domain/ports/outbound/DonationIntentRepositoryPort.js';
-import type { PaymentAttemptRepositoryPort } from '../../domain/ports/outbound/PaymentAttemptRepositoryPort.js';
+import { TransactionType, type CreateDonationIntentInput } from '@ubuntu-fund/types'
+import { DonationIntentEntity } from '../../domain/entities/DonationIntent.js'
+import { Money } from '../../domain/value-objects/Money.js'
+import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js'
+import type { LiveSessionRepositoryPort } from '../../domain/ports/outbound/LiveSessionRepositoryPort.js'
+import type { WalletRepositoryPort } from '../../domain/ports/outbound/WalletRepositoryPort.js'
+import type { WalletTransactionRepositoryPort } from '../../domain/ports/outbound/WalletTransactionRepositoryPort.js'
+import type { DonationIntentRepositoryPort } from '../../domain/ports/outbound/DonationIntentRepositoryPort.js'
+import type { PaymentAttemptRepositoryPort } from '../../domain/ports/outbound/PaymentAttemptRepositoryPort.js'
 import type {
   PaymentGatewayInitResult,
   PaymentGatewayPort,
-} from '../../domain/ports/outbound/PaymentGatewayPort.js';
-import type { FeePolicy } from '../services/FeePolicy.js';
-import type { PlanLimitsService } from '../services/PlanLimitsService.js';
-import type { SettleDonationUseCase } from './SettleDonationUseCase.js';
-import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
-import { logger } from '../../infrastructure/logging/logger.js';
-import { toMinorUnits } from '../../domain/value-objects/Money.js';
-import type { PaymentsConfig } from '../../infrastructure/config/index.js';
+} from '../../domain/ports/outbound/PaymentGatewayPort.js'
+import type { FeePolicy } from '../services/FeePolicy.js'
+import type { PlanLimitsService } from '../services/PlanLimitsService.js'
+import type { SettleDonationUseCase } from './SettleDonationUseCase.js'
+import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js'
+import { logger } from '../../infrastructure/logging/logger.js'
+import { toMinorUnits } from '../../domain/value-objects/Money.js'
+import type { PaymentsConfig } from '../../infrastructure/config/index.js'
 
 export interface CreateDonationIntentContext {
   /** Authenticated donor id, or null for a guest checkout. */
-  donorUserId: string | null;
+  donorUserId: string | null
   /** Resolved idempotency key (Idempotency-Key header, body, or generated). */
-  idempotencyKey: string;
+  idempotencyKey: string
 }
 
 /**
@@ -35,17 +32,13 @@ export interface CreateDonationIntentContext {
  * authorization URL / access code / reference the donor is sent to.
  */
 export interface CreateDonationIntentResult {
-  intent: DonationIntentEntity;
-  hostedInit?: PaymentGatewayInitResult;
+  intent: DonationIntentEntity
+  hostedInit?: PaymentGatewayInitResult
 }
 
 /** Duplicate-key detection for the idempotencyKey unique index. */
 function isDuplicateKeyError(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    (error as { code?: number }).code === 11000
-  );
+  return typeof error === 'object' && error !== null && (error as { code?: number }).code === 11000
 }
 
 /**
@@ -82,109 +75,98 @@ export class CreateDonationIntentUseCase {
     private readonly paymentsConfig?: PaymentsConfig,
     // Optional: additional hosted gateways keyed by provider (e.g.
     // 'flutterwave'). Paystack always resolves to the default `paymentGateway`.
-    private readonly gatewayRegistry?: Map<string, PaymentGatewayPort>
+    private readonly gatewayRegistry?: Map<string, PaymentGatewayPort>,
   ) {}
 
   /** The hosted gateway for a provider, honoring the feature flags. */
   private resolveHostedGateway(provider: string): PaymentGatewayPort {
     // Respect the rail flags (spec §16): a rail must be explicitly enabled.
     if (provider === 'flutterwave' && !this.paymentsConfig?.flutterwaveEnabled) {
-      throw new AppError('Flutterwave payments are not enabled', 400);
+      throw new AppError('Flutterwave payments are not enabled', 400)
     }
-    if (
-      provider === 'paystack' &&
-      this.paymentsConfig &&
-      !this.paymentsConfig.paystackEnabled
-    ) {
-      throw new AppError('Paystack payments are not enabled', 400);
+    if (provider === 'paystack' && this.paymentsConfig && !this.paymentsConfig.paystackEnabled) {
+      throw new AppError('Paystack payments are not enabled', 400)
     }
     const gw =
       this.gatewayRegistry?.get(provider) ??
-      (provider === 'paystack' ? this.paymentGateway : undefined);
+      (provider === 'paystack' ? this.paymentGateway : undefined)
     if (!gw) {
-      throw new AppError(`Payment provider ${provider} is not available`, 501);
+      throw new AppError(`Payment provider ${provider} is not available`, 501)
     }
-    return gw;
+    return gw
   }
 
   async execute(
     input: CreateDonationIntentInput,
-    ctx: CreateDonationIntentContext
+    ctx: CreateDonationIntentContext,
   ): Promise<CreateDonationIntentResult> {
     // Idempotency: an existing intent for this key is returned unchanged, so a
     // retry never creates a second intent or charges twice.
-    const existing = await this.donationIntentRepo.findByIdempotencyKey(
-      ctx.idempotencyKey
-    );
-    if (existing) return { intent: existing };
+    const existing = await this.donationIntentRepo.findByIdempotencyKey(ctx.idempotencyKey)
+    if (existing) return { intent: existing }
 
     if (input.amount <= 0) {
-      throw new AppError('Donation amount must be greater than zero', 400);
+      throw new AppError('Donation amount must be greater than zero', 400)
     }
-    const tip = input.tip ?? 0;
+    const tip = input.tip ?? 0
     if (tip < 0) {
-      throw new AppError('Tip cannot be negative', 400);
+      throw new AppError('Tip cannot be negative', 400)
     }
 
     if (input.provider === 'wallet' && ctx.donorUserId === null) {
-      throw new AppError('Wallet donations require an authenticated account', 400);
+      throw new AppError('Wallet donations require an authenticated account', 400)
     }
 
     // Hosted-rail pre-flight before persisting anything, so a disabled gateway
     // or a guest with no email never leaves an orphan CREATED intent behind.
     if (input.provider !== 'wallet') {
-      const gateway = this.resolveHostedGateway(input.provider);
+      const gateway = this.resolveHostedGateway(input.provider)
       if (!gateway.isConfigured()) {
-        throw new AppError('Payments are not configured', 501);
+        throw new AppError('Payments are not configured', 501)
       }
       if (!input.donorEmail) {
-        const label = input.provider === 'flutterwave' ? 'Flutterwave' : 'Paystack';
-        throw new AppError(`An email is required to pay with ${label}`, 400);
+        const label = input.provider === 'flutterwave' ? 'Flutterwave' : 'Paystack'
+        throw new AppError(`An email is required to pay with ${label}`, 400)
       }
     }
 
-    const campaign = await this.campaignRepo.findById(input.campaignId);
+    const campaign = await this.campaignRepo.findById(input.campaignId)
     if (!campaign) {
-      throw new AppError('Campaign not found', 404);
+      throw new AppError('Campaign not found', 404)
     }
     if (!campaign.canReceiveDonation()) {
-      throw new AppError('Campaign is not accepting donations', 400);
+      throw new AppError('Campaign is not accepting donations', 400)
     }
-    const currency = this.resolveCurrency(input, campaign.goalAmount.currency);
-    this.assertInternationalCardAllowed(input, currency);
+    const currency = this.resolveCurrency(input, campaign.goalAmount.currency)
+    this.assertInternationalCardAllowed(input, currency)
 
     // Validate live-session attribution belongs to this campaign, if supplied.
     if (input.liveSessionId) {
-      const session = await this.liveSessionRepo.findById(input.liveSessionId);
+      const session = await this.liveSessionRepo.findById(input.liveSessionId)
       if (!session || session.campaignId !== input.campaignId) {
-        throw new AppError('Live session does not belong to this campaign', 400);
+        throw new AppError('Live session does not belong to this campaign', 400)
       }
     }
 
-    const intent = await this.createIntent(input, ctx, currency, tip);
+    const intent = await this.createIntent(input, ctx, currency, tip)
 
     if (input.provider !== 'wallet') {
       // Hosted rail: open the provider checkout and move CREATED → PENDING.
-      return this.initializeHostedIntent(
-        intent,
-        this.resolveHostedGateway(input.provider)
-      );
+      return this.initializeHostedIntent(intent, this.resolveHostedGateway(input.provider))
     }
 
     // ── Wallet rail (authed donor): debit, then settle synchronously ──────
     // The platform fee follows the campaign creator's subscription plan, not a
     // flat rate. Resolve it here (creator known) and pass it into the split.
-    const platformFeePercent = await this.planLimits.platformFeePercent(
-      campaign.creatorId
-    );
+    const platformFeePercent = await this.planLimits.platformFeePercentForCampaign(campaign.id)
     const settled = await this.settleWalletIntent(
       intent,
       ctx.donorUserId!,
       currency,
       tip,
-      platformFeePercent
-    );
-    return { intent: settled };
+      platformFeePercent,
+    )
+    return { intent: settled }
   }
 
   /**
@@ -195,17 +177,13 @@ export class CreateDonationIntentUseCase {
    */
   private async initializeHostedIntent(
     intent: DonationIntentEntity,
-    gateway: PaymentGatewayPort
+    gateway: PaymentGatewayPort,
   ): Promise<CreateDonationIntentResult> {
-    const init = await gateway.initializeTransaction(intent);
+    const init = await gateway.initializeTransaction(intent)
 
     // Store the reference (providerRef) and advance to PENDING so the webhook
     // can correlate the settlement back to this intent.
-    const pending = await this.donationIntentRepo.updateStatus(
-      intent.id,
-      'PENDING',
-      init.reference
-    );
+    const pending = await this.donationIntentRepo.updateStatus(intent.id, 'PENDING', init.reference)
 
     // Audit trail for the checkout (best-effort; never fails the request).
     if (this.paymentAttemptRepo) {
@@ -215,16 +193,16 @@ export class CreateDonationIntentUseCase {
           provider: intent.provider,
           providerRef: init.reference,
           status: 'initiated',
-        });
+        })
       } catch (error) {
         logger.error(
           { err: error, intentId: intent.id, provider: intent.provider },
-          'failed to record hosted-checkout initiation attempt'
-        );
+          'failed to record hosted-checkout initiation attempt',
+        )
       }
     }
 
-    return { intent: pending ?? intent, hostedInit: init };
+    return { intent: pending ?? intent, hostedInit: init }
   }
 
   /**
@@ -233,22 +211,19 @@ export class CreateDonationIntentUseCase {
    * multi-currency flag is on and the currency is in the supported set —
    * otherwise it's rejected rather than silently downgraded (spec §11).
    */
-  private resolveCurrency(
-    input: CreateDonationIntentInput,
-    campaignCurrency: string
-  ): string {
-    const requested = input.currency?.toUpperCase();
+  private resolveCurrency(input: CreateDonationIntentInput, campaignCurrency: string): string {
+    const requested = input.currency?.toUpperCase()
     if (!requested || requested === campaignCurrency.toUpperCase()) {
-      return campaignCurrency;
+      return campaignCurrency
     }
-    const cfg = this.paymentsConfig;
+    const cfg = this.paymentsConfig
     if (!cfg?.multiCurrencyEnabled) {
-      throw new AppError(`Contributions in ${requested} are not enabled`, 400);
+      throw new AppError(`Contributions in ${requested} are not enabled`, 400)
     }
     if (!cfg.supportedCurrencies.includes(requested)) {
-      throw new AppError(`Contributions in ${requested} are not supported`, 400);
+      throw new AppError(`Contributions in ${requested} are not supported`, 400)
     }
-    return requested;
+    return requested
   }
 
   /**
@@ -258,17 +233,14 @@ export class CreateDonationIntentUseCase {
    * unless the flag is on. Domestic GHS card / mobile-money / wallet are
    * unaffected, so the Ghana rail behaves exactly as before.
    */
-  private assertInternationalCardAllowed(
-    input: CreateDonationIntentInput,
-    currency: string
-  ): void {
-    if (input.provider === 'wallet') return;
-    if (input.paymentMethod !== 'card') return;
+  private assertInternationalCardAllowed(input: CreateDonationIntentInput, currency: string): void {
+    if (input.provider === 'wallet') return
+    if (input.paymentMethod !== 'card') return
     const isInternational =
       currency.toUpperCase() !== 'GHS' ||
-      (input.country ? input.country.toUpperCase() !== 'GH' : false);
+      (input.country ? input.country.toUpperCase() !== 'GH' : false)
     if (isInternational && !this.paymentsConfig?.internationalCardsEnabled) {
-      throw new AppError('International card contributions are not enabled', 400);
+      throw new AppError('International card contributions are not enabled', 400)
     }
   }
 
@@ -276,9 +248,9 @@ export class CreateDonationIntentUseCase {
     input: CreateDonationIntentInput,
     ctx: CreateDonationIntentContext,
     currency: string,
-    tip: number
+    tip: number,
   ): Promise<DonationIntentEntity> {
-    const now = new Date();
+    const now = new Date()
     const draft = new DonationIntentEntity({
       id: '',
       campaignId: input.campaignId,
@@ -304,19 +276,17 @@ export class CreateDonationIntentUseCase {
       originalCurrency: currency,
       country: input.country,
       paymentMethod: input.paymentMethod,
-    });
+    })
 
     try {
-      return await this.donationIntentRepo.create(draft);
+      return await this.donationIntentRepo.create(draft)
     } catch (error) {
       // Lost a race on the same idempotency key — resolve to the winner.
       if (isDuplicateKeyError(error)) {
-        const winner = await this.donationIntentRepo.findByIdempotencyKey(
-          ctx.idempotencyKey
-        );
-        if (winner) return winner;
+        const winner = await this.donationIntentRepo.findByIdempotencyKey(ctx.idempotencyKey)
+        if (winner) return winner
       }
-      throw error;
+      throw error
     }
   }
 
@@ -325,36 +295,32 @@ export class CreateDonationIntentUseCase {
     donorUserId: string,
     currency: string,
     tip: number,
-    platformFeePercent: number
+    platformFeePercent: number,
   ): Promise<DonationIntentEntity> {
     // A concurrent retry may have already settled this intent.
-    if (intent.status === 'SUCCEEDED') return intent;
+    if (intent.status === 'SUCCEEDED') return intent
 
     const breakdown = this.feePolicy.computeBreakdown(
       intent.amount,
       tip,
       currency,
       'wallet',
-      platformFeePercent
-    );
+      platformFeePercent,
+    )
 
-    const wallets = await this.walletRepo.findByUserId(donorUserId);
-    const wallet = wallets.find((w) => w.balance.currency === currency);
+    const wallets = await this.walletRepo.findByUserId(donorUserId)
+    const wallet = wallets.find((w) => w.balance.currency === currency)
     if (!wallet) {
-      await this.donationIntentRepo.updateStatus(intent.id, 'FAILED');
-      throw new AppError('No wallet found for this currency', 400);
+      await this.donationIntentRepo.updateStatus(intent.id, 'FAILED')
+      throw new AppError('No wallet found for this currency', 400)
     }
 
     // Charge amount + tip atomically; fails rather than overdrawing.
-    const grossCharge = new Money(breakdown.gross, currency);
-    const debited = await this.walletRepo.withdrawIfSufficient(
-      wallet.id,
-      donorUserId,
-      grossCharge
-    );
+    const grossCharge = new Money(breakdown.gross, currency)
+    const debited = await this.walletRepo.withdrawIfSufficient(wallet.id, donorUserId, grossCharge)
     if (!debited) {
-      await this.donationIntentRepo.updateStatus(intent.id, 'FAILED');
-      throw new AppError('Insufficient wallet balance', 400);
+      await this.donationIntentRepo.updateStatus(intent.id, 'FAILED')
+      throw new AppError('Insufficient wallet balance', 400)
     }
 
     // Record the wallet attempt (best-effort; never fails the donation).
@@ -364,20 +330,20 @@ export class CreateDonationIntentUseCase {
           intentId: intent.id,
           provider: 'wallet',
           status: 'succeeded',
-        });
+        })
       } catch (error) {
-        logger.error({ err: error, intentId: intent.id }, 'failed to record wallet payment attempt');
+        logger.error({ err: error, intentId: intent.id }, 'failed to record wallet payment attempt')
       }
     }
 
-    let settled: DonationIntentEntity;
+    let settled: DonationIntentEntity
     try {
-      settled = await this.settleDonationUseCase.execute(intent, breakdown);
+      settled = await this.settleDonationUseCase.execute(intent, breakdown)
     } catch (error) {
       // Settlement failed after the debit landed — refund so no money is lost.
-      await this.walletRepo.depositAtomic(wallet.id, donorUserId, grossCharge);
-      await this.donationIntentRepo.updateStatus(intent.id, 'FAILED');
-      throw error;
+      await this.walletRepo.depositAtomic(wallet.id, donorUserId, grossCharge)
+      await this.donationIntentRepo.updateStatus(intent.id, 'FAILED')
+      throw error
     }
 
     // Wallet ledger row for the donor's transaction history (best-effort).
@@ -391,12 +357,12 @@ export class CreateDonationIntentUseCase {
           currency,
           reference: `donation-intent:${intent.id}`,
           metadata: { campaignId: intent.campaignId, tip },
-        });
+        })
       } catch (error) {
-        logger.error({ err: error, intentId: intent.id }, 'failed to record donation transaction');
+        logger.error({ err: error, intentId: intent.id }, 'failed to record donation transaction')
       }
     }
 
-    return settled;
+    return settled
   }
 }

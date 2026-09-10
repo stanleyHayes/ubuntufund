@@ -1,5 +1,13 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-10 — Explain and reconcile campaign payout calculations
+
+- Audited campaign 6aa184c66d4e5ed850d9e640 against production donation records. GHS 4,200 in hosted gifts and GHS 1,000 in a legacy wallet gift explain GHS 5,200 raised. The wallet gift had debited the donor and incremented raised, but bypassed payout accounting. Redirected the legacy donation endpoint through donation-intent settlement and aligned wallet fees with the campaign creation-rate lock used by Paystack.
+- Campaign rate is locked at 5%, created before the Pro upgrade (current admin-configured Pro rate 2%). Hosted processor fees total GHS 102.38 on GHS 5,250 checkout gross, including GHS 1,050 optional platform tips. No processing fee applies to the wallet gift.
+- Added a dry-run-first, transactional repair script with matching wallet-debit evidence, exact raised-gap guard, balanced journal and repeat protection. Applied to wallet donation 6aa298931946784f2361eb26: GHS 1,000 gross, GHS 50 locked plan fee, GHS 950 net. Verified repeat is a no-op. Production eligible balance corrected from GHS 3,887.62 to GHS 4,837.62; raised stays GHS 5,200. No external transfer initiated.
+- Web/native cashout now shows recorded raised/plan fees/processor fees/prior payouts/reserves/eligible balance, the campaign locked rate, discrepancy warnings, and a separate requested-amount/service-fee/net quote. Fixed non-standard service copy incorrectly claiming standard fees. Historical fees are not recalculated from today's plan or charged twice.
+- Validation: 24 focused API tests, 8 web flow tests, and the real-Mongo repair test pass; API/web/mobile type checks and focused lint pass. Native source still needs a build; no native release claimed.
+
 ### 2026-09-10 — Wallet destinations and branded saved accounts
 
 - Fixed saved payout account validation (358620f): embedded account `type` now has an explicit Mongoose field definition. Regression coverage validates bank and MoMo subdocuments.

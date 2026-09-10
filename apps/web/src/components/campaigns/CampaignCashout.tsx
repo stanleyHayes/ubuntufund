@@ -1,3 +1,5 @@
+import { campaignPayoutBreakdownRows } from '@ubuntu-fund/types'
+import type { CampaignPayoutBreakdown } from '@ubuntu-fund/types'
 import { EmptyState } from '@ubuntu-fund/ui'
 import type { Account } from '@/components/account/SavedPayoutAccounts'
 import { useCallback, useEffect, useState, useRef } from 'react'
@@ -19,6 +21,7 @@ import type { Payout, PayoutType } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
 
 type Options = {
+  breakdown?: CampaignPayoutBreakdown
   requiresEarlyCashout?: boolean
   eligible: number
   currency: string
@@ -240,10 +243,75 @@ export function CampaignCashout({
         ) : (
           <>
             <Typography variant="h6">{money(options.eligible)} eligible balance</Typography>
+            {options.breakdown && (
+              <Box
+                sx={{
+                  my: 2,
+                  p: { xs: 2, sm: 3 },
+                  borderRadius: 2,
+                  bgcolor: 'background.paper',
+                  boxShadow: 'var(--neu-inset)',
+                }}
+              >
+                <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>
+                  How your balance is calculated
+                </Typography>
+                {options.breakdown.lockedPlatformFeePercent !== undefined && (
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    Campaign plan rate: {options.breakdown.lockedPlatformFeePercent}% (locked when
+                    this campaign was created). Upgrading your plan does not change this campaign’s
+                    locked rate.
+                  </Typography>
+                )}
+                {campaignPayoutBreakdownRows(options.breakdown).map((row, index, rows) => (
+                  <Box
+                    key={row.label}
+                    sx={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      gap: 2,
+                      py: 1,
+                      ...(index === rows.length - 1
+                        ? { borderTop: '1px solid', borderColor: 'divider', mt: 1 }
+                        : {}),
+                    }}
+                  >
+                    <Typography variant="body2">{row.label}</Typography>
+                    <Typography
+                      variant="body2"
+                      fontWeight={700}
+                      sx={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}
+                    >
+                      {money(row.amount)}
+                    </Typography>
+                  </Box>
+                ))}
+                <Typography variant="caption" component="p" color="text.secondary" sx={{ mt: 2 }}>
+                  Fees above are the amounts recorded for each donation, rounded per payment.
+                  Paystack fees apply to the full checkout payment, including any optional tip.
+                  Wallet donations have no payment processing fee. Plan changes can result in
+                  different rates across donations. They are not charged again when you cash out.
+                  Optional tips to Ujimora are separate from campaign funds.
+                </Typography>
+                {options.breakdown.tips > 0 && (
+                  <Typography variant="caption" component="p" sx={{ mt: 1 }}>
+                    Optional tips to Ujimora: {money(options.breakdown.tips)}. These are in addition
+                    to the campaign total and are not payable to the organizer.
+                  </Typography>
+                )}
+                {options.breakdown.raisedDifference !== 0 && (
+                  <Alert severity="warning" sx={{ mt: 2 }}>
+                    The campaign total and accounted donations differ by{' '}
+                    {money(Math.abs(options.breakdown.raisedDifference))}. This is not a fee. The
+                    difference needs reconciliation before it can be included in the payout balance.
+                  </Alert>
+                )}
+              </Box>
+            )}
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Based on settled campaign proceeds after the regular plan and payment fees. Early
-              cashout adds a separate service fee. Requests require admin approval and sufficient
-              Paystack transfer balance. Test payments cannot be withdrawn as real money.
+              Eligible balance includes recorded proceeds awaiting clearance. Requests require admin
+              approval; bank and MoMo transfers also require provider funding. Test payments cannot
+              be withdrawn as real money.
             </Typography>
             <TextField
               select
@@ -408,12 +476,34 @@ export function CampaignCashout({
               Maximum for this service: {money(cap)}.{' '}
               {type === 'early' || type === 'urgent'
                 ? `Keeps ${100 - f.earlyMaxWithdrawalPercent}% of the current eligible balance in reserve.`
-                : 'Standard cashout has no Ujimora service fee.'}
+                : type === 'standard'
+                  ? 'Standard cashout has no additional Ujimora service fee.'
+                  : 'The selected service adds the fee shown below.'}
             </Typography>
             {value > 0 && Number.isFinite(fee) && (
-              <Typography sx={{ my: 1 }}>
-                Estimated fee {money(fee)} · You receive {money(value - fee)}
-              </Typography>
+              <Box
+                sx={{ my: 2, p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}
+              >
+                {[
+                  ['Amount requested', value],
+                  ['Additional cashout service fee', -fee],
+                  ['You receive', round(value - fee)],
+                ].map(([label, amount]) => (
+                  <Box
+                    key={String(label)}
+                    sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, py: 0.5 }}
+                  >
+                    <Typography fontWeight={label === 'You receive' ? 700 : 400}>
+                      {label}
+                    </Typography>
+                    <Typography fontWeight={700}>{money(Number(amount))}</Typography>
+                  </Box>
+                ))}
+                <Typography variant="caption" color="text.secondary">
+                  Plan and payment processing fees above are already deducted. This quote subtracts
+                  only the selected cashout service fee.
+                </Typography>
+              </Box>
             )}
             <Button
               variant="contained"

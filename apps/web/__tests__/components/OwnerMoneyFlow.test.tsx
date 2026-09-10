@@ -29,6 +29,43 @@ describe('owner money flow', () => {
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
     expect(screen.getByText('No payout requests yet')).toBeInTheDocument()
   })
+  it('explains actual fees and the locked rate without charging them again in the cashout quote', async () => {
+    vi.mocked(api.get).mockImplementation(async (path) =>
+      path === '/payout-accounts'
+        ? { accounts: [] }
+        : path.endsWith('payout-options')
+          ? {
+              ...opts,
+              eligible: 4837.62,
+              breakdown: {
+                raised: 5200,
+                accountedRaised: 5200,
+                raisedDifference: 0,
+                platformFees: 260,
+                processorFees: 102.38,
+                netProceeds: 4837.62,
+                paidOut: 0,
+                payoutFees: 0,
+                reservedOrAdjustments: 0,
+                pending: 4837.62,
+                available: 0,
+                eligible: 4837.62,
+                lockedPlatformFeePercent: 5,
+                tips: 1050,
+              },
+            }
+          : [],
+    )
+    render(<CampaignCashout campaignId="campaign" initiallyExpanded />)
+    await screen.findByText('How your balance is calculated')
+    expect(screen.getByText(/Campaign plan rate: 5%/)).toBeInTheDocument()
+    expect(screen.getByText('GHS 5,200.00')).toBeInTheDocument()
+    expect(screen.getByText('GHS -260.00')).toBeInTheDocument()
+    expect(screen.getByText('GHS -102.38')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Cashout amount (GHS)'), { target: { value: '100' } })
+    expect(screen.getByText('You receive')).toBeInTheDocument()
+    expect(screen.getAllByText('GHS 100.00')).toHaveLength(2)
+  })
   it('requests a wallet transfer without bank details and retains the key after a network error', async () => {
     vi.mocked(api.get).mockImplementation(async (path) =>
       path === '/payout-accounts'

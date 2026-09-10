@@ -191,3 +191,41 @@ export interface PayoutQuote {
   netAmount: number
   currency: string
 }
+
+/** Recorded campaign accounting totals, in major currency units. */
+export interface CampaignPayoutBreakdown {
+  raised: number
+  lockedPlatformFeePercent?: number
+  tips: number
+  accountedRaised: number
+  raisedDifference: number
+  platformFees: number
+  processorFees: number
+  netProceeds: number
+  paidOut: number
+  payoutFees: number
+  reservedOrAdjustments: number
+  pending: number
+  available: number
+  eligible: number
+}
+
+/** A shared explanation for web and native, based on recorded fees, not today's plan. */
+export function campaignPayoutBreakdownRows(
+  b: CampaignPayoutBreakdown,
+): { label: string; amount: number }[] {
+  return [
+    { label: 'Campaign total raised', amount: b.raised },
+    ...(b.raisedDifference !== 0
+      ? [{ label: 'Difference awaiting reconciliation', amount: -b.raisedDifference }]
+      : []),
+    { label: 'Ujimora plan fees already deducted', amount: -b.platformFees },
+    { label: 'Payment processing fees already deducted', amount: -b.processorFees },
+    ...(b.paidOut ? [{ label: 'Already paid out or moved to wallet', amount: -b.paidOut }] : []),
+    ...(b.payoutFees ? [{ label: 'Previous cashout service fees', amount: -b.payoutFees }] : []),
+    ...(b.reservedOrAdjustments
+      ? [{ label: 'Reserved funds / balance adjustments', amount: -b.reservedOrAdjustments }]
+      : []),
+    { label: 'Remaining eligible balance', amount: b.eligible },
+  ]
+}
