@@ -10,6 +10,7 @@ import IosShareRoundedIcon from '@mui/icons-material/IosShareRounded'
 import ReplayRoundedIcon from '@mui/icons-material/ReplayRounded'
 import { keyframes } from '@emotion/react'
 import { ItemNotFound, BrandLogo, formatCurrency, SHAPE } from '@ubuntu-fund/ui'
+import { DonationCelebration } from '@/components/donate/DonationCelebration'
 import {
   getDonationIntentStatus,
   verifyDonationIntent,
@@ -25,12 +26,6 @@ import {
 const fadeInUp = keyframes`
   from { opacity: 0; transform: translateY(16px); }
   to   { opacity: 1; transform: translateY(0); }
-`
-
-const popIn = keyframes`
-  0%   { transform: scale(0.6); opacity: 0; }
-  60%  { transform: scale(1.05); }
-  100% { transform: scale(1); opacity: 1; }
 `
 
 // ---------------------------------------------------------------------------
@@ -76,41 +71,6 @@ const POLL_INTERVAL_MS = 2000
 const MAX_ATTEMPTS = 15 // ~30s
 
 type Phase = 'resolving' | 'pending' | 'succeeded' | 'failed' | 'expired' | 'timeout' | 'missing'
-
-// ---------------------------------------------------------------------------
-// Celebratory check mark
-// ---------------------------------------------------------------------------
-
-function SuccessMark() {
-  return (
-    <Box
-      aria-hidden
-      sx={{
-        width: 96,
-        height: 96,
-        mx: 'auto',
-        mb: 3,
-        borderRadius: '50%',
-        bgcolor: 'rgba(47, 107, 70, 0.12)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        animation: `${popIn} 0.5s ease both`,
-        '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
-      }}
-    >
-      <svg width="52" height="52" viewBox="0 0 24 24" fill="none">
-        <path
-          d="M20 6L9 17l-5-5"
-          stroke="#2F6B46"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    </Box>
-  )
-}
 
 // ---------------------------------------------------------------------------
 // DonateCallbackPage — Paystack return / status confirmation
@@ -259,6 +219,7 @@ export function DonateCallbackPage() {
           boxShadow: 'var(--neu-raised)',
           bgcolor: 'background.paper',
           animation: `${fadeInUp} 0.45s ease both`,
+          '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
         }}
       >
         {/* ---- Pending / resolving ---- */}
@@ -279,10 +240,10 @@ export function DonateCallbackPage() {
 
         {/* ---- Succeeded ---- */}
         {phase === 'succeeded' && (
-          <>
-            <SuccessMark />
+          <Box role="status" aria-live="polite">
+            <DonationCelebration />
             <Typography variant="h4" component="h1" sx={{ fontWeight: 900, mb: 1 }}>
-              Thank you!
+              Thank you for showing up.
             </Typography>
             {donationAmount != null && (
               <Typography variant="h6" color="secondary.dark" sx={{ fontWeight: 800, mb: 1 }}>
@@ -291,12 +252,12 @@ export function DonateCallbackPage() {
             )}
             <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 420, mx: 'auto', mb: 1 }}>
               {handoff?.title
-                ? `You've made a real difference to "${handoff.title}".`
-                : "You've made a real difference."}
-              {tipAmount > 0 && ` Thank you for the extra ${formatCurrency(tipAmount, 'GHS')} tip too.`}
+                ? `You’re now part of the story behind “${handoff.title}”.`
+                : 'One act of kindness. A community moving forward together.'}
+              {tipAmount > 0 && ` And thank you for the extra ${formatCurrency(tipAmount, 'GHS')} tip to support Ujimora.`}
             </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 4 }}>
-              A receipt is on its way to your email.
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 4, maxWidth: 360, mx: 'auto', whiteSpace: 'normal' }}>
+              Your support is confirmed. You can return to your campaign whenever you’re ready.
             </Typography>
 
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, justifyContent: 'center' }}>
@@ -313,7 +274,7 @@ export function DonateCallbackPage() {
                 Back to campaign
               </Button>
             </Box>
-          </>
+          </Box>
         )}
 
         {/* ---- Failed / expired ---- */}

@@ -1,5 +1,11 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-10 — Donation return celebration
+
+- Confirmed donations now celebrate with gold/sage confetti and small heart particles following gravity, drag, spin and flutter, plus a damped-spring success medallion and warmer thank-you copy. A Celebrate again action replays decoration without calling payment verification or creating a charge.
+- Motion mounts only after SUCCEEDED. Desktop uses 68 particles, mobile 44; bursts finish within about four seconds. Animations cancel and particles clear on unmount, hidden tabs, or switching to reduced motion. Reduced-motion users receive a static confirmation with no replay control.
+- Four callback tests pass, including success-only particle mounting and replay not re-verifying payment. Web type-check, focused lint and production build pass. Browser checks confirmed desktop/mobile particle counts, zero particles with reduced motion (including on load), and automatic cleanup after completion. No new animation dependency.
+
 ### 2026-09-10 — Guest donation feed repair
 
 - Reproduced the deployed campaign Donations tab returning `400 Invalid ID format` after a guest contribution settled. Its sentinel donor ID (`guest`) was passed to the MongoDB user lookup.

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { DonateCallbackPage } from '@/pages/DonateCallbackPage'
 import { getDonationIntentStatus, verifyDonationIntent } from '@/lib/fundraising'
@@ -35,6 +35,9 @@ describe('Donation return confirmation', () => {
     await waitFor(() => expect(verifyDonationIntent).toHaveBeenCalledWith(id,reference))
     expect(await screen.findByRole('heading', {name:/thank|success/i})).toBeInTheDocument()
     expect(getDonationIntentStatus).not.toHaveBeenCalled()
+    expect(screen.getByTestId('donation-particles')).toHaveAttribute('aria-hidden', 'true')
+    fireEvent.click(screen.getByRole('button', {name:'Celebrate again'}))
+    expect(verifyDonationIntent).toHaveBeenCalledTimes(1)
   })
 
   it('does not substitute the last checkout for an unmatched return reference', async () => {
@@ -56,5 +59,6 @@ describe('Donation return confirmation', () => {
     show()
     await waitFor(() => expect(verifyDonationIntent).toHaveBeenCalled())
     expect(screen.queryByRole('heading',{name:/thank|success/i})).not.toBeInTheDocument()
+    expect(screen.queryByTestId('donation-particles')).not.toBeInTheDocument()
   })
 })
