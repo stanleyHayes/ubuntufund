@@ -27,6 +27,7 @@ export interface LeaderboardDonorRecord {
 export interface LeaderboardStatsRecord {
   totalAmount: number;
   totalDonations: number;
+  /** Distinct registered donor IDs; guest gifts remain in amount/donation totals. */
   totalDonors: number;
 }
 

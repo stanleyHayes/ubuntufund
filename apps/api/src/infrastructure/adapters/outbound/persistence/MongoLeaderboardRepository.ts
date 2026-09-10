@@ -1,4 +1,4 @@
-import type { PipelineStage } from 'mongoose';
+import { isObjectIdOrHexString, type PipelineStage } from 'mongoose';
 import { UserRole } from '@ubuntu-fund/types';
 import { DonationModel } from '../../../database/models/DonationModel.js';
 import { UserModel } from '../../../database/models/UserModel.js';
@@ -43,7 +43,7 @@ export class MongoLeaderboardRepository implements LeaderboardRepositoryPort {
     const { category, limit } = params;
     const groups = await this.aggregateDonorTotals(params.period);
 
-    const donorIds = groups.map((g) => g._id);
+    const donorIds = groups.map((g) => g._id).filter(isObjectIdOrHexString);
     const users = await UserModel.find({ _id: { $in: donorIds } });
     const userById = new Map(users.map((u) => [u._id!.toString(), u]));
 
@@ -85,7 +85,7 @@ export class MongoLeaderboardRepository implements LeaderboardRepositoryPort {
 
     let relevant = groups;
     if (category !== 'all') {
-      const donorIds = groups.map((g) => g._id);
+      const donorIds = groups.map((g) => g._id).filter(isObjectIdOrHexString);
       const users = await UserModel.find({
         _id: { $in: donorIds },
         role: category,
@@ -98,7 +98,8 @@ export class MongoLeaderboardRepository implements LeaderboardRepositoryPort {
       (acc, g) => ({
         totalAmount: acc.totalAmount + g.totalDonated,
         totalDonations: acc.totalDonations + g.donationCount,
-        totalDonors: acc.totalDonors + 1,
+        // Guest records share a sentinel; they are not one identifiable donor.
+        totalDonors: acc.totalDonors + (isObjectIdOrHexString(g._id) ? 1 : 0),
       }),
       { totalAmount: 0, totalDonations: 0, totalDonors: 0 }
     );

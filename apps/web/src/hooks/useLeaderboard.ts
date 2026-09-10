@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { api } from '@/lib/api'
 
 export interface LeaderboardEntry {
@@ -37,6 +37,7 @@ interface UseLeaderboardResult {
   stats: LeaderboardStats
   isLoading: boolean
   error: string | null
+  refresh: () => void
 }
 
 export function useLeaderboard(
@@ -48,6 +49,21 @@ export function useLeaderboard(
   const [stats, setStats] = useState<LeaderboardStats>({ totalAmount: 0, totalDonations: 0, totalDonors: 0 })
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  const [revision, setRevision] = useState(0)
+  const refresh = useCallback(() => setRevision(value => value + 1), [])
+
+  useEffect(() => {
+    const refreshVisible = () => { if (!document.hidden) refresh() }
+    const timer = window.setInterval(refreshVisible, 30_000)
+    window.addEventListener('focus', refreshVisible)
+    document.addEventListener('visibilitychange', refreshVisible)
+    return () => {
+      window.clearInterval(timer)
+      window.removeEventListener('focus', refreshVisible)
+      document.removeEventListener('visibilitychange', refreshVisible)
+    }
+  }, [refresh])
 
   useEffect(() => {
     let cancelled = false
@@ -78,6 +94,7 @@ export function useLeaderboard(
         }
       })
       .finally(() => {
+        clearTimeout(id)
         if (!cancelled) setIsLoading(false)
       })
 
@@ -85,9 +102,9 @@ export function useLeaderboard(
       cancelled = true
       clearTimeout(id)
     }
-  }, [period, category, limit])
+  }, [period, category, limit, revision])
 
-  return { entries, stats, isLoading, error }
+  return { entries, stats, isLoading, error, refresh }
 }
 
 interface UseFeaturedDonorsResult {

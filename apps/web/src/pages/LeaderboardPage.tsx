@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import Box from '@mui/material/Box'
+import Alert from '@mui/material/Alert'
 import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
 import Avatar from '@mui/material/Avatar'
@@ -384,7 +385,7 @@ function LeaderboardEmptyState() {
             fontSize: { xs: '1.8rem', md: '2.4rem' },
           }}
         >
-          Be the First Legend
+          Every act of generosity matters
         </Typography>
 
         <Typography
@@ -392,8 +393,8 @@ function LeaderboardEmptyState() {
           color="text.secondary"
           sx={{ maxWidth: 520, mx: 'auto', mb: 1, fontSize: '1.05rem', lineHeight: 1.7 }}
         >
-          The leaderboard is waiting for its first hero. Start a campaign or make a donation
-          and claim your place in Ujimora history.
+          No ranked donors for these filters yet. Donate while signed in to an individual
+          or organization account to appear here. Guest gifts still support their campaigns.
         </Typography>
 
         <Box
@@ -409,7 +410,7 @@ function LeaderboardEmptyState() {
           }}
         >
           <MilitaryTechRounded sx={{ fontSize: 18 }} />
-          First movers earn exclusive legendary badges — forever
+          Thank you for helping this community grow
         </Box>
 
         {/* CTA Buttons */}
@@ -648,7 +649,7 @@ export function LeaderboardPage() {
   const [mode, setMode] = useState<SortMode>('amount')
   const [period, setPeriod] = useState<Period>('lifetime')
   const [category, setCategory] = useState<Category>('all')
-  const { entries: leaderboardEntries, stats, isLoading } = useLeaderboard(period, category)
+  const { entries: leaderboardEntries, stats, isLoading, error, refresh } = useLeaderboard(period, category)
 
   const sorted = useMemo(() => getSorted(leaderboardEntries, mode), [leaderboardEntries, mode])
   const top3 = sorted.slice(0, 3)
@@ -674,28 +675,32 @@ export function LeaderboardPage() {
         <ToggleBar options={CATEGORY_OPTIONS} value={category} onChange={setCategory} />
       </Box>
 
-      {/* Empty State */}
-      {isEmpty ? (
-        <LeaderboardEmptyState />
-      ) : (
-        <>
+      {error && <Alert severity="error" sx={{ mb: 3 }} action={<Button color="inherit" onClick={refresh}>Retry</Button>}>
+        We couldn’t load the leaderboard. Please try again.
+      </Alert>}
+      {!error && <>
           {/* Stats Summary */}
           <Box sx={{ display: 'flex', justifyContent: 'center', gap: 4, mb: 5, flexWrap: 'wrap' }}>
             {[
               { icon: <VolunteerActivismRounded sx={{ color: '#C7A24A' }} />, label: 'Total Donations', value: stats.totalDonations.toLocaleString() },
               { icon: <TrendingUpRounded sx={{ color: '#C7A24A' }} />, label: 'Total Amount', value: `GH₵ ${stats.totalAmount.toLocaleString()}` },
-              { icon: <EmojiEventsRounded sx={{ color: '#C7A24A' }} />, label: 'Total Donors', value: stats.totalDonors.toLocaleString() },
+              { icon: <EmojiEventsRounded sx={{ color: '#C7A24A' }} />, label: 'Registered Donors', value: stats.totalDonors.toLocaleString() },
             ].map((stat) => (
               <Card key={stat.label} sx={{ minWidth: 180, textAlign: 'center', borderRadius: 3 }} elevation={0}>
                 <CardContent sx={{ py: 2.5 }}>
                   {stat.icon}
-                  <Typography variant="h5" sx={{ fontWeight: 800, mt: 0.5 }}>{stat.value}</Typography>
+                  <Typography variant="h5" sx={{ fontWeight: 800, mt: 0.5 }}>{isLoading ? <Skeleton width={90} sx={{ mx: 'auto' }} /> : stat.value}</Typography>
                   <Typography variant="caption" color="text.secondary">{stat.label}</Typography>
                 </CardContent>
               </Card>
             ))}
           </Box>
 
+          <Typography color="text.secondary" variant="body2" sx={{ textAlign: 'center', mb: 4 }}>
+            Rankings celebrate individual and organization accounts. All-category donation totals include guest gifts;
+            guest donors are excluded from the registered donor count. Updates refresh automatically every 30 seconds.
+          </Typography>
+          {isEmpty ? <LeaderboardEmptyState /> : <>
           {/* Sort Toggle */}
           <Box sx={{ display: 'flex', justifyContent: 'center', mb: 5 }}>
             <ToggleBar
@@ -889,8 +894,9 @@ export function LeaderboardPage() {
               </Box>
             </>
           )}
+          </>}
         </>
-      )}
+      }
       </Container>
     </>
   )

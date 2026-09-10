@@ -1,5 +1,13 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-10 — Leaderboard guest aggregation and refresh repair
+
+- Reproduced production leaderboard returning 400 Invalid ID format while stats reported two confirmed guest gifts totaling GHS 4,200. Filter invalid/sentinel IDs before Mongo user lookups in rankings and category stats; featured rankings use the same repaired repository.
+- Guest amounts/counts remain in Everyone totals, but the shared guest sentinel no longer counts as one registered person. Existing individual/organization ranking eligibility remains unchanged. Historical guest gifts are not reassigned to accounts.
+- Web now shows totals even when rankings are empty, explains guest eligibility, surfaces loading failures with Retry, and refreshes every 30 seconds and on focus/visibility return. Fixed a loading-timer race exposed by the hook tests.
+- Validation: four repository regressions and three hook tests pass; API/web type checks and targeted lint pass. Browser checks verified GHS 4,200 with empty rankings and the failure/retry state. Existing unrelated CampaignLivePage CI failure remains outside this change.
+
+
 ### 2026-09-10 — Donation return celebration
 
 - Confirmed donations now celebrate with gold/sage confetti and small heart particles following gravity, drag, spin and flutter, plus a damped-spring success medallion and warmer thank-you copy. A Celebrate again action replays decoration without calling payment verification or creating a charge.
