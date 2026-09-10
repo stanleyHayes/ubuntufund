@@ -45,7 +45,7 @@ import GroupsRoundedIcon from '@mui/icons-material/GroupsRounded'
 import AccountBalanceRoundedIcon from '@mui/icons-material/AccountBalanceRounded'
 import PaletteRoundedIcon from '@mui/icons-material/PaletteRounded'
 import { keyframes } from '@mui/material/styles'
-import { SHAPE } from '@ubuntu-fund/ui'
+import { SHAPE, EmptyState } from '@ubuntu-fund/ui'
 import { CampaignCategory } from '@ubuntu-fund/types'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
@@ -145,27 +145,22 @@ function StatCard({ icon, value, label, color, delay }: { icon: React.ReactNode;
 // ─── Profile Page ────────────────────────────────────────────────────────────
 
 export function ProfilePage() {
-  const { user } = useAuth()
+  const { user, updateName } = useAuth()
   const [tab, setTab] = useState(0)
   const [images, setImages] = useState({ avatarUrl: '', coverUrl: '' })
   const [imageEditor, setImageEditor] = useState<'avatarUrl' | 'coverUrl' | null>(null)
   const [failedCover, setFailedCover] = useState('')
-  useEffect(() => {
-    let cancelled = false
-    api.get<{ avatarUrl?: string; coverUrl?: string }>('/profile').then(profile => {
-      if (!cancelled) setImages({ avatarUrl: profile.avatarUrl ?? '', coverUrl: profile.coverUrl ?? '' })
-    }).catch(() => { /* Keep the default images when the profile cannot load. */ })
-    return () => { cancelled = true }
-  }, [])
   const [impact, setImpact] = useState<ProfileImpact>(DEFAULT_IMPACT)
   const [impactLoading, setImpactLoading] = useState(true)
 
   // Edit Profile state
   const [name, setName] = useState(user?.name ?? '')
-  const [phone, setPhone] = useState('+233 24 123 4567')
-  const [bio, setBio] = useState('Passionate about education and community development across Ghana. Believer in the power of collective giving.')
-  // Ghana launch: country is fixed
-  const country = 'Ghana'
+  const [phone, setPhone] = useState('')
+  const [bio, setBio] = useState('')
+  const [country, setCountry] = useState('')
+  const [profileLoadError, setProfileLoadError] = useState(false)
+  const [loadAttempt, setLoadAttempt] = useState(0)
+  const [savedName, setSavedName] = useState(user?.name ?? '')
   const [profileSnack, setProfileSnack] = useState(false)
   const [profileSaving, setProfileSaving] = useState(false)
   const [profileError, setProfileError] = useState<string | null>(null)
@@ -188,19 +183,30 @@ export function ProfilePage() {
     async function fetchImpact() {
       setImpactLoading(true)
       try {
-        const [profile, analytics] = await Promise.all([
-          api.get<Partial<ProfileImpact>>('/profile'),
+        const [profileResult, analyticsResult] = await Promise.allSettled([
+          api.get<Partial<ProfileImpact> & { name?: string; phone?: string; bio?: string; country?: string; avatarUrl?: string; coverUrl?: string }>('/profile'),
           api.get<Partial<ProfileImpact>>('/analytics/overview'),
         ])
         if (!cancelled) {
+          if (profileResult.status === 'rejected') { setProfileLoadError(true); return }
+          const profile = profileResult.value
+          setProfileLoadError(false)
+          setName(profile.name ?? '')
+          setSavedName(profile.name ?? '')
+          setPhone(profile.phone ?? '')
+          setBio(profile.bio ?? '')
+          setCountry(profile.country ?? '')
+          setImages({ avatarUrl: profile.avatarUrl ?? '', coverUrl: profile.coverUrl ?? '' })
+          const analytics = analyticsResult.status === 'fulfilled' ? analyticsResult.value : {}
           const merged: ProfileImpact = { ...DEFAULT_IMPACT, ...profile, ...analytics }
           setImpact(merged)
-          setInterests(merged.interestedCategories)
+          setInterests(merged.interestedCategories ?? [])
         }
       } catch {
         // On failure, keep defaults (zeros / empty arrays)
         if (!cancelled) {
           setImpact(DEFAULT_IMPACT)
+          setProfileLoadError(true)
         }
       } finally {
         if (!cancelled) setImpactLoading(false)
@@ -208,15 +214,20 @@ export function ProfilePage() {
     }
     fetchImpact()
     return () => { cancelled = true }
-  }, [])
+  }, [loadAttempt])
 
 
   async function handleSaveProfile() {
-    if (profileSaving) return
+    if (profileSaving || profileLoadError || impactLoading) return
     setProfileSaving(true)
     setProfileError(null)
     try {
-      await api.put('/profile', { name, phone, bio, country })
+      const saved = await api.put<{ name: string; phone?: string; bio?: string }>('/profile', { name: name.trim(), phone: phone.trim(), bio: bio.trim() })
+      setName(saved.name)
+      setSavedName(saved.name)
+      setPhone(saved.phone ?? '')
+      setBio(saved.bio ?? '')
+      updateName(saved.name)
       setProfileSnack(true)
     } catch (err) {
       setProfileError(err instanceof Error ? err.message : 'Failed to save profile.')
@@ -254,6 +265,7 @@ export function ProfilePage() {
   }
 
   if (impactLoading) return <AccountPageSkeleton layout="cards" />
+  if (profileLoadError) return <Box sx={{ p: 4 }}><EmptyState variant="error" title="Your profile couldn’t load" description="Please retry to view or edit your saved details." action={<Button onClick={() => { setImpactLoading(true); setLoadAttempt(value => value + 1) }}>Retry</Button>} /></Box>
 
   return (
     <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', pb: 6 }}>
@@ -292,7 +304,7 @@ export function ProfilePage() {
                 <Box sx={{ minWidth: 0 }}>
                   <Typography component="h1" sx={{ fontWeight: 700, fontSize: { xs: '1.7rem', sm: '2.2rem' }, lineHeight: 1.12,
                     letterSpacing: '-0.035em', overflowWrap: 'anywhere', color: 'text.primary' }}>
-                    {user?.name ?? 'Your profile'}
+                    {savedName || 'Your profile'}
                   </Typography>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 1.25, color: 'text.secondary' }}>
                     <LocationOnRoundedIcon sx={{ fontSize: 16 }} />
@@ -564,7 +576,7 @@ export function ProfilePage() {
                 <Box>
                   <TextField label="Bio" value={bio} onChange={(e) => setBio(e.target.value)} multiline rows={3} fullWidth placeholder="Tell us about yourself..." />
                 </Box>
-                <TextField label="Country" value={country} fullWidth disabled />
+                <TextField label="Country" value={country} placeholder="Not provided" fullWidth disabled />
                 <Button
                   variant="contained"
                   color="primary"

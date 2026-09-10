@@ -1,5 +1,11 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-10 — Real web profile fields
+
+- Removed hardcoded sample bio and phone, and stopped forcing Ghana into profile saves. Load name, phone, bio, country and images from the authenticated profile endpoint; missing optional fields remain blank.
+- Profile loading uses a skeleton; failed reads block editing and offer illustrated retry. Analytics failure no longer prevents profile details loading. Successful saves update the profile heading and authenticated name cache.
+- Validation: three profile regression tests cover saved values, blank optional fields, save payload/name synchronization and failed-load recovery. Web type check, focused lint and build pass. Existing stored values were not rewritten or deleted.
+
 ### 2026-09-10 — Signup pricing and payment recovery
 
 - Verified live public prices: Enterprise GHS 99.99 monthly / GHS 999 yearly. Signup previously requested authenticated `/plans`, then silently displayed outdated seeded prices. It now loads `/plans/public`, blocks checkout while prices are unavailable, and labels annual totals clearly.

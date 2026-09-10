@@ -15,6 +15,7 @@ interface AuthContextValue extends AuthState {
   sessionExpired: boolean
   login: (email: string, password: string) => Promise<void>
   register: (data: { name: string; email: string; password: string; country?: string; role?: string; organizationName?: string; organizationType?: string; registrationNumber?: string; website?: string; referralCode?: string }) => Promise<void>
+  updateName: (name: string) => void
   logout: () => void
 }
 
@@ -86,6 +87,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState({ user, tokens, isAuthenticated: true, isLoading: false })
   }, [])
 
+  const updateName = useCallback((name: string) => {
+    setState(previous => {
+      if (!previous.user) return previous
+      const user = { ...previous.user, name }
+      try { localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(user)) } catch { /* Current session still updates. */ }
+      return { ...previous, user }
+    })
+  }, [])
+
   const logout = useCallback(() => {
     clearStorage()
     setSessionExpired(false)
@@ -93,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ ...state, sessionExpired, login, register, logout }}>
+    <AuthContext.Provider value={{ ...state, sessionExpired, login, register, updateName, logout }}>
       {children}
     </AuthContext.Provider>
   )
