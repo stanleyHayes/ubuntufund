@@ -129,8 +129,6 @@ export default function CreatorTipScreen() {
           </View>
         </View>
 
-        {page.bio ? <View style={styles.card}><Text style={styles.bio}>{page.bio}</Text></View> : null}
-
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Support {page.displayName.split(' ')[0]}</Text>
           {!page.tipsEnabled ? (
@@ -158,6 +156,8 @@ export default function CreatorTipScreen() {
             </>
           )}
         </View>
+
+        {page.bio ? <View style={styles.card}><Text style={styles.bio}>{page.bio}</Text></View> : null}
 
         {page.recentTips.length > 0 && (
           <View>

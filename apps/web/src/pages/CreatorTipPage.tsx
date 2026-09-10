@@ -131,12 +131,6 @@ export function CreatorTipPage() {
           </Box>
         </Box>
 
-        {page.bio && (
-          <Box sx={{ p: 3, mb: 3, borderRadius: SHAPE.card, bgcolor: 'background.paper', boxShadow: 'var(--neu-raised)' }}>
-            <Typography sx={{ color: INK_SECONDARY, lineHeight: 1.7 }}>{page.bio}</Typography>
-          </Box>
-        )}
-
         <Typography sx={{ textAlign: 'center', color: INK_SECONDARY, mb: 2 }}>Choose an amount → Pay securely with Paystack → Receive confirmation. No Ujimora account needed.</Typography>
         {/* Tip form */}
         <Box component="form" onSubmit={e => { e.preventDefault(); void handleSupport() }} sx={{ p: { xs: 2.5, sm: 3.5 }, borderRadius: SHAPE.card, bgcolor: 'background.paper', boxShadow: 'var(--neu-raised)' }}>
@@ -184,6 +178,13 @@ export function CreatorTipPage() {
             </>
           )}
         </Box>
+
+        {page.bio && (
+          <Box sx={{ p: 3, mb: 3, borderRadius: SHAPE.card, bgcolor: 'background.paper', boxShadow: 'var(--neu-raised)' }}>
+            <Typography sx={{ fontWeight: 800, color: INK, mb: 1 }}>About {page.displayName.split(' ')[0]}</Typography>
+            <Typography sx={{ color: INK_SECONDARY, lineHeight: 1.7, whiteSpace: 'pre-line' }}>{page.bio}</Typography>
+          </Box>
+        )}
 
         {/* Recent supporters */}
         {page.recentTips.length > 0 && (
