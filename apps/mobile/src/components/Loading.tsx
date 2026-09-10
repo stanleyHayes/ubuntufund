@@ -1,6 +1,7 @@
 import { useEffect, useState, type ComponentProps } from 'react'
 import { Animated, View, AccessibilityInfo, type ActivityIndicatorProps } from 'react-native'
 import { Button as PaperButton } from 'react-native-paper'
+import { BUTTON_RADIUS } from './RoundedControls'
 import { useColorMode, usePalette } from '@/context/ColorModeContext'
 
 function Pulse({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
@@ -34,11 +35,11 @@ export function LoadingDots({ color }: { color?: string }) {
 
 /** Paper-compatible button with the same animated-dot loading treatment as web. */
 export function Button({ loading, icon, style, contentStyle, onPressIn, onPressOut, ...props }: ComponentProps<typeof PaperButton>) {
-  const { palette: p, neu, skin } = useColorMode()
+  const { palette: p, neu } = useColorMode()
   const [pressed, setPressed] = useState(false)
   const filled = props.mode === 'contained' || props.mode === 'contained-tonal' || props.mode === 'elevated'
   const textOnly = !props.mode || props.mode === 'text'
-  const radius = skin === 'claymorphism' ? 22 : skin === 'minimal' ? 10 : 16
+  const radius = BUTTON_RADIUS
   const backgroundColor = props.disabled ? p.skeleton : props.buttonColor ?? (filled ? p.primary : textOnly ? 'transparent' : p.surface)
   const recipe = pressed || props.disabled ? neu.inset : filled && backgroundColor === p.primary ? neu.greenSubtle : neu.subtle
   const textColor = props.textColor ?? (filled ? p.onPrimary : p.primary)

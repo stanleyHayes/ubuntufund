@@ -1,5 +1,6 @@
+import { Pressable, BUTTON_RADIUS } from '@/components/RoundedControls'
 import { useState } from 'react'
-import { Animated, Pressable } from 'react-native'
+import { Animated } from 'react-native'
 import type { ReactNode } from 'react'
 import type {
   GestureResponderEvent,
@@ -49,7 +50,7 @@ export function PressableScale({
 
   return (
     <Pressable onPressIn={handlePressIn} onPressOut={handlePressOut} {...rest}>
-      <Animated.View style={[{ transform: [{ scale }] }, style]}>
+      <Animated.View style={[{ transform: [{ scale }] }, style, { borderRadius: BUTTON_RADIUS }]}>
         {children}
       </Animated.View>
     </Pressable>

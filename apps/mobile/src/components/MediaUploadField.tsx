@@ -1,6 +1,7 @@
+import { IconButton } from '@/components/RoundedControls'
 import { useState } from 'react'
 import { View, Image } from 'react-native'
-import { Text, IconButton } from 'react-native-paper'
+import { Text } from 'react-native-paper'
 import * as ImagePicker from 'expo-image-picker'
 import * as DocumentPicker from 'expo-document-picker'
 import { File } from 'expo-file-system'

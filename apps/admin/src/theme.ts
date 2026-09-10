@@ -1,5 +1,5 @@
 import { alpha, createTheme, type PaletteMode } from '@mui/material/styles'
-import { getNeumorphicTokens, getSkinVars, SHAPE, type ThemeSkin } from '@ubuntu-fund/ui'
+import { getNeumorphicTokens, getSkinVars, SHAPE, ROUNDED_BUTTON_STYLES, type ThemeSkin } from '@ubuntu-fund/ui'
 
 declare module '@mui/material/styles' {
   interface Palette {
@@ -204,6 +204,7 @@ export function makeAdminTheme(mode: PaletteMode, skin: ThemeSkin = 'neumorphism
       },
       MuiCssBaseline: {
         styleOverrides: {
+          ...ROUNDED_BUTTON_STYLES,
           ':root': {
             ...skinVars,
           },

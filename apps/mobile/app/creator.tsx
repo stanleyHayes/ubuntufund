@@ -1,3 +1,4 @@
+import { SegmentedButtons } from '@/components/RoundedControls'
 import { api } from '@/lib/api'
 import { SelectionField } from '@/components/SelectionField'
 import type { SavedAccount } from '@/components/SavedPayoutAccounts'
@@ -6,7 +7,7 @@ import { SkeletonLoader, Button } from '@/components/Loading'
 import { BrandedTextInput as TextInput } from '@/components/BrandedTextInput'
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { View, ScrollView, StyleSheet, Share, useWindowDimensions } from 'react-native'
-import { Text, Switch, Portal, Dialog, SegmentedButtons, Snackbar } from 'react-native-paper'
+import { Text, Switch, Portal, Dialog, Snackbar } from 'react-native-paper'
 import { Stack, router } from 'expo-router'
 import {
   getMyCreator, saveCreatorProfile, requestWithdrawal, listMyPayouts,

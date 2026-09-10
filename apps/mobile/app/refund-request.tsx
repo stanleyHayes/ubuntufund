@@ -1,15 +1,9 @@
+import { TouchableOpacity } from '@/components/RoundedControls'
 import { Button } from '@/components/Loading'
 import { BrandedNativeInput as TextInput } from '@/components/BrandedNativeInput'
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import {
-  View,
-  ScrollView,
-  StyleSheet,
-  Animated,
-  TouchableOpacity,
-  Alert,
-} from 'react-native'
-import { Text, Icon, } from 'react-native-paper'
+import { View, ScrollView, StyleSheet, Animated, Alert } from 'react-native'
+import { Text, Icon } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, Stack, useLocalSearchParams } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'

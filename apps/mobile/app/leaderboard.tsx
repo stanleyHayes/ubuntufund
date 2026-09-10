@@ -1,12 +1,6 @@
+import { TouchableOpacity } from '@/components/RoundedControls'
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import {
-  AppState,
-  View,
-  ScrollView,
-  StyleSheet,
-  Animated,
-  TouchableOpacity,
-} from 'react-native'
+import { AppState, View, ScrollView, StyleSheet, Animated } from 'react-native'
 import { Text } from 'react-native-paper'
 import { Stack } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'

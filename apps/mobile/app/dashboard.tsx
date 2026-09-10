@@ -1,13 +1,8 @@
+import { TouchableRipple } from '@/components/RoundedControls'
 import { OwnerNotifications } from '@/components/OwnerNotifications'
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import {
-  View,
-  ScrollView,
-  StyleSheet,
-  Animated,
-  type DimensionValue,
-} from 'react-native'
-import { Text, Icon, TouchableRipple } from 'react-native-paper'
+import { View, ScrollView, StyleSheet, Animated, type DimensionValue } from 'react-native'
+import { Text, Icon } from 'react-native-paper'
 import { router, Stack } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'

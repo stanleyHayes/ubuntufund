@@ -1,4 +1,5 @@
-import { View, Pressable } from 'react-native'
+import { Pressable } from '@/components/RoundedControls'
+import { View } from 'react-native'
 import { Tabs, router } from 'expo-router'
 import { Icon, Text } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'

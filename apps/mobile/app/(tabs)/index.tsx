@@ -1,14 +1,7 @@
+import { TouchableOpacity } from '@/components/RoundedControls'
 import { SkeletonLoader, PageSkeleton, Button } from '@/components/Loading'
 import { useState, useEffect, useMemo } from 'react'
-import {
-  View,
-  ScrollView,
-  StyleSheet,
-  Animated,
-  Dimensions,
-  FlatList,
-  TouchableOpacity,
-} from 'react-native'
+import { View, ScrollView, StyleSheet, Animated, Dimensions, FlatList } from 'react-native'
 import { Text, Icon } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'

@@ -1,13 +1,7 @@
+import { TouchableOpacity } from '@/components/RoundedControls'
 import { SkeletonLoader } from '@/components/Loading'
 import { useState, useEffect, useMemo } from 'react'
-import {
-  View,
-  ScrollView,
-  StyleSheet,
-  Animated,
-  TouchableOpacity,
-  TextInput,
-} from 'react-native'
+import { View, ScrollView, StyleSheet, Animated, TextInput } from 'react-native'
 import { Text, Icon } from 'react-native-paper'
 import { router } from 'expo-router'
 import { CampaignCategory, CampaignStatus } from '@ubuntu-fund/types'

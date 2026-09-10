@@ -33,6 +33,8 @@ declare module '@mui/material/styles' {
 //   pill  — circular elements keep their natural shape (avatars, dots)
 // ---------------------------------------------------------------------------
 export const SHAPE = {
+  /** Consistent rounded action buttons across all surface finishes. */
+  button: '18px',
   /** Form controls stay gently squared across every skin. */
   input: 'var(--shape-input, 6px)',
   /** Cards, chart panels, modals, list containers */
@@ -41,6 +43,13 @@ export const SHAPE = {
   sm: 'var(--shape-sm, 3px 10px 3px 10px)',
   /** Progress bars, scrollbar thumbs, thin indicators */
   bar: 'var(--shape-bar, 1px 6px 1px 6px)',
+} as const
+
+// Explicitly override legacy page-level radii while keeping selection indicators intact.
+export const ROUNDED_BUTTON_STYLES = {
+  'button, input[type="button"], input[type="submit"], input[type="reset"], .MuiButtonBase-root:not(.MuiCheckbox-root):not(.MuiRadio-root):not(.MuiSwitch-switchBase)': {
+    borderRadius: `${SHAPE.button} !important`,
+  },
 } as const
 
 // Neumorphism only reads when an element shares its background's colour: the
@@ -410,7 +419,7 @@ export function createUjimoraTheme(mode: PaletteMode = 'light', skin: ThemeSkin 
     MuiButton: {
       styleOverrides: {
         root: {
-          borderRadius: SHAPE.sm,
+          borderRadius: SHAPE.button,
           padding: '10px 24px',
           minHeight: 44,
           fontSize: '0.9375rem',
@@ -506,7 +515,7 @@ export function createUjimoraTheme(mode: PaletteMode = 'light', skin: ThemeSkin 
       styleOverrides: {
         root: {
           border: 'var(--neu-border, 0px solid transparent) !important',
-          borderRadius: SHAPE.sm,
+          borderRadius: SHAPE.button,
           backgroundColor: 'var(--neu-surface)',
           boxShadow: 'var(--neu-subtle) !important',
           transition: 'transform 160ms ease, box-shadow 160ms ease',
@@ -554,6 +563,7 @@ export function createUjimoraTheme(mode: PaletteMode = 'light', skin: ThemeSkin 
     },
     MuiCssBaseline: {
       styleOverrides: {
+        ...ROUNDED_BUTTON_STYLES,
         ':root': {
           ...skinVars,
           '--text-primary': dark ? '#F3F0E8' : '#1A2E22',

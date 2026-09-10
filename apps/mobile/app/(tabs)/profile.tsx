@@ -1,15 +1,9 @@
+import { TouchableOpacity, TouchableRipple } from '@/components/RoundedControls'
 import { SignInRequired } from '@/components/SignInRequired'
 import { SkeletonLoader, Button } from '@/components/Loading'
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import {
-  View,
-  Image,
-  ScrollView,
-  StyleSheet,
-  Animated,
-  TouchableOpacity,
-} from 'react-native'
-import { Text, Icon, TouchableRipple } from 'react-native-paper'
+import { View, Image, ScrollView, StyleSheet, Animated } from 'react-native'
+import { Text, Icon } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useFocusEffect } from 'expo-router'
 import { VerificationLevel } from '@ubuntu-fund/types'

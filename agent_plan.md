@@ -1,5 +1,11 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-10 — Uniform rounded buttons
+
+- User requested the rounded rectangle button shape from their reference across all buttons. Added an 18px action radius and shared web/admin baseline so CTA, icon, toggle, raw HTML and menu buttons override legacy page-specific corner shapes without changing material, palette or input shapes.
+- Native shared Button and rounded touch/icon/segmented controls now use 18px across screens, including animated actions. Preserved interaction props, pressed styles and accessibility. Native changes require a new binary.
+- Web/admin/marketing/mobile type checks and targeted lint pass. Existing unpublished campaign-card preview is untouched.
+
 ### 2026-09-10 — Watermarks, payout skeletons and marketing facts
 
 - Restored decorative icon watermarks in the compact account menu at the user's request. Saved-account loading now uses themed web/native skeletons; failures stop loading and offer retry. A regression test covers pending, failure and recovery; four focused web tests and web/mobile type checks pass.

@@ -1,12 +1,7 @@
+import { TouchableOpacity } from '@/components/RoundedControls'
 import { Button } from '@/components/Loading'
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import {
-  View,
-  ScrollView,
-  StyleSheet,
-  Animated,
-  TouchableOpacity,
-} from 'react-native'
+import { View, ScrollView, StyleSheet, Animated } from 'react-native'
 import { Text, Icon } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, Stack } from 'expo-router'

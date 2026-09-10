@@ -1,14 +1,8 @@
+import { TouchableOpacity } from '@/components/RoundedControls'
 import { SkeletonLoader } from '@/components/Loading'
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import {
-  View,
-  ScrollView,
-  StyleSheet,
-  Animated,
-  TouchableOpacity,
-  Alert,
-} from 'react-native'
-import { Text, Icon, } from 'react-native-paper'
+import { View, ScrollView, StyleSheet, Animated, Alert } from 'react-native'
+import { Text, Icon } from 'react-native-paper'
 import { Stack } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
