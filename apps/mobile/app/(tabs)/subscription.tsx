@@ -1,3 +1,4 @@
+import { recoverPendingSubscription } from '@/lib/subscriptions'
 import { BrandedTextInput as TextInput } from '@/components/BrandedTextInput'
 import { SkeletonLoader, Button } from '@/components/Loading'
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
@@ -482,6 +483,7 @@ export default function SubscriptionScreen() {
 
   const fetchSubscription = useCallback(async () => {
     try {
+      await recoverPendingSubscription().catch(() => undefined)
       const data = await api.get<SubscriptionData>('/subscriptions/mine')
       setCurrentSub(data)
     } catch {

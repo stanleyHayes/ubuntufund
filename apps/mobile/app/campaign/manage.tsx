@@ -1,3 +1,4 @@
+import { CampaignCashout } from '@/components/CampaignCashout'
 import { useEffect, useState } from 'react'
 import { ScrollView } from 'react-native'
 import { Text } from 'react-native-paper'
@@ -16,5 +17,5 @@ export default function CampaignManagement() {
   if (error) return <><Text accessibilityRole="alert">{error}</Text><Button onPress={() => { setError(''); setRetry(value => value + 1) }}>Try again</Button></>
   if (!campaign) return <PageSkeleton />
   if (campaign.creatorId !== user.id) return <Text>Only the campaign owner can manage these settings.</Text>
-  return <ScrollView automaticallyAdjustKeyboardInsets style={{ backgroundColor: p.background, flex: 1 }} keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 20, paddingBottom: 60, gap: 24 }}><Stack.Screen options={{ title: 'Manage campaign' }} /><Text variant="headlineMedium">{campaign.title}</Text><CollaboratorManager campaignId={id} /><SplitManager campaignId={id} /><QrManager campaignId={id} /></ScrollView>
+  return <ScrollView automaticallyAdjustKeyboardInsets style={{ backgroundColor: p.background, flex: 1 }} keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 20, paddingBottom: 60, gap: 24 }}><Stack.Screen options={{ title: 'Manage campaign' }} /><Text variant="headlineMedium">{campaign.title}</Text><CampaignCashout campaignId={id} /><CollaboratorManager campaignId={id} /><SplitManager campaignId={id} /><QrManager campaignId={id} /></ScrollView>
 }

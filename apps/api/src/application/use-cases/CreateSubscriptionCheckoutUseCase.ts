@@ -181,7 +181,7 @@ export class CreateSubscriptionCheckoutUseCase {
       email: user.email.value,
       amount: finalAmount,
       referencePrefix: 'sub',
-      callbackPath: '/subscription/callback',
+      callbackPath: `/subscription/callback?checkout=${encodeURIComponent(checkout.id)}`,
       metadata: { checkoutId: checkout.id, userId, tier, billingCycle, couponId },
     });
 

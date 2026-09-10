@@ -1,3 +1,4 @@
+import { donationIntentRateLimiter } from '../../middleware/rateLimiter.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { SubscriptionTier, BillingCycle } from '@ubuntu-fund/types';
@@ -41,6 +42,8 @@ export function createSubscriptionRoutes(
     controller.createCheckout
   );
   router.get('/checkout/:id', authMiddleware, controller.getCheckout);
+  router.post('/checkout/reference/:reference/verify', authMiddleware, donationIntentRateLimiter, controller.verifyCheckoutReference);
+  router.post('/checkout/:id/verify', authMiddleware, donationIntentRateLimiter, controller.verifyCheckout);
 
   router.post(
     '/',

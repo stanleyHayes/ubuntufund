@@ -94,7 +94,7 @@ export async function createSubscriptionCheckout(
  * status settles to `SUCCEEDED` / `FAILED` / `EXPIRED`.
  */
 export function getSubscriptionCheckoutStatus(id: string): Promise<SubscriptionCheckout> {
-  return api.get<SubscriptionCheckout>(`/subscriptions/checkout/${encodeURIComponent(id)}`)
+  return api.post<SubscriptionCheckout>(`/subscriptions/checkout/${encodeURIComponent(id)}/verify`)
 }
 
 // ---------------------------------------------------------------------------
@@ -137,7 +137,7 @@ export function readSubscriptionHandoff(reference: string | null): PendingSubscr
     const raw = localStorage.getItem(HANDOFF_KEY)
     if (!raw) return null
     const store: Record<string, PendingSubscription> = JSON.parse(raw)
-    if (reference && store[reference]) return store[reference]
+    if (reference) return store[reference] ?? null
     return store.__last ?? null
   } catch {
     return null
@@ -156,4 +156,8 @@ export function subscriptionPath(): string {
 /** In-app path to the user dashboard. */
 export function dashboardPath(): string {
   return '/dashboard'
+}
+
+export function verifySubscriptionReference(reference: string): Promise<SubscriptionCheckout> {
+  return api.post<SubscriptionCheckout>(`/subscriptions/checkout/reference/${encodeURIComponent(reference)}/verify`)
 }

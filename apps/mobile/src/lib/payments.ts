@@ -4,7 +4,7 @@ import { randomUUID } from 'expo-crypto'
 import { api } from './api'
 import { sessionSnapshot } from './session'
 
-export interface PendingPayment { id: string; status: string; authorizationUrl?: string; storageKey: string }
+export interface PendingPayment { id: string; status: string; reference?: string; authorizationUrl?: string; storageKey: string }
 export function paymentScope(kind: string, target: string) { return `ujimora:${sessionSnapshot()?.user.id || 'guest'}:${kind}:${target}` }
 const keyRequests = new Map<string, Promise<string>>()
 export async function paymentKey(scope: string, input: unknown) {
@@ -31,7 +31,7 @@ export async function checkout(scope: string, path: string, input: unknown, topu
   const key = await paymentKey(scope, input)
   const response = await api.post<Record<string, unknown>>(path, input, { 'Idempotency-Key': key })
   const intent = (response.intent || response) as { id: string; status: string }
-  const payment: PendingPayment = { id: topup ? String(response.reference) : intent.id, status: intent.status, authorizationUrl: (response.authorizationUrl || response.authorization_url) as string | undefined, storageKey: scope }
+  const payment: PendingPayment = { id: topup ? String(response.reference) : intent.id, status: intent.status, reference: response.reference as string | undefined, authorizationUrl: (response.authorizationUrl || response.authorization_url) as string | undefined, storageKey: scope }
   if (!payment.id || payment.id === 'undefined') throw new Error('Payment reference was not returned. Retry to recover the same request.')
   await savePending(scope, payment)
   return payment

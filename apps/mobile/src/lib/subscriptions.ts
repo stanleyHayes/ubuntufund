@@ -1,3 +1,5 @@
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import { sessionSnapshot } from './session'
 import { api, ApiError } from './api'
 import type {
   CreateSubscriptionCheckoutInput,
@@ -27,11 +29,20 @@ export function isPaymentsNotConfigured(error: unknown): boolean {
 export async function createSubscriptionCheckout(
   input: CreateSubscriptionCheckoutInput,
 ): Promise<SubscriptionCheckoutResult> {
-  return api.post<SubscriptionCheckoutResult>('/subscriptions/checkout', input)
+  const result = await api.post<SubscriptionCheckoutResult>('/subscriptions/checkout', input)
+  if (!result.activatedWithoutCharge) await AsyncStorage.setItem(`ujimora:subscription:${sessionSnapshot()?.user.id}`, result.checkout.id)
+  return result
 }
 
 export async function getSubscriptionCheckoutStatus(
   id: string,
 ): Promise<SubscriptionCheckout> {
-  return api.get<SubscriptionCheckout>(`/subscriptions/checkout/${id}`)
+  const result = await api.post<SubscriptionCheckout>(`/subscriptions/checkout/${encodeURIComponent(id)}/verify`)
+  if (result.status !== 'pending') await AsyncStorage.removeItem(`ujimora:subscription:${sessionSnapshot()?.user.id}`)
+  return result
+}
+
+export async function recoverPendingSubscription(): Promise<void> {
+  const id = await AsyncStorage.getItem(`ujimora:subscription:${sessionSnapshot()?.user.id}`)
+  if (id) await getSubscriptionCheckoutStatus(id)
 }

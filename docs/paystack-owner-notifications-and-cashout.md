@@ -31,7 +31,7 @@ Campaign proceeds are distinct from personal wallet deposits, creator withdrawal
 | Urgent | 1.5%, minimum GHS 30 | 80% of current eligible proceeds |
 | Assisted | 1.5% + GHS 50 | Eligible campaign proceeds |
 
-**Open policy decision:** the existing backend does not restrict standard cashout to ended/fully funded campaigns. Owners can therefore choose standard while a campaign is still active. This audit does not silently change that access rule. The early/urgent reserve is calculated per request against the current eligible balance, not a permanent lifetime reserve. Repeated withdrawals can reduce the retained fraction of cumulative proceeds. A lasting campaign reserve and closure rule need a single agreed policy enforced again at approval time.
+**Confirmed early-cashout policy:** while a campaign is before its end date and below its goal, standard/priority/assisted requests are rejected. Owners must choose early or urgent cashout. Approval repeats this check so old pending requests cannot bypass it. Admin → Platform Settings → Early cashout surcharge controls `earlyFeePercent`; this is additional to the plan fee already taken during donation settlement, not a second charge of that plan fee. Urgent fees cannot undercut the configured early surcharge. The reserve remains per current eligible balance; a permanent lifetime reserve is not introduced by this change.
 
 ## Paystack dashboard steps
 

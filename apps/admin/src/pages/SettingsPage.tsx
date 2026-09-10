@@ -1,3 +1,4 @@
+import { EarlyCashoutSettings } from '@/components/EarlyCashoutSettings'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -280,6 +281,7 @@ export default function SettingsPage() {
 
   return (
     <Box>
+      <EarlyCashoutSettings canEdit={canEdit} />
       {/* Header */}
       <PageHeader
         tone="green"

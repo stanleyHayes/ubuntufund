@@ -1,3 +1,4 @@
+import { OwnerNotifications } from '@/components/OwnerNotifications'
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   View,
@@ -192,6 +193,7 @@ export default function DashboardScreen() {
       <Stack.Screen options={headerOptions} />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+        <OwnerNotifications />
         {loading ? (
           <DashboardSkeleton />
         ) : error ? (

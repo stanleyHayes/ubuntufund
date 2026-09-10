@@ -10,11 +10,12 @@ import { paymentKey, checkout, loadPending, clearPending, isPaymentSuccess, cryp
 beforeEach(() => { data.clear(); post.mockReset() })
 describe('mobile payment recovery', () => {
   it('reuses a persisted idempotency key after an ambiguous checkout failure', async () => {
-    post.mockRejectedValueOnce(new Error('network interrupted')).mockResolvedValueOnce({ intent: { id: 'intent-1', status: 'PENDING' }, authorization_url: 'https://checkout.test/1' })
+    post.mockRejectedValueOnce(new Error('network interrupted')).mockResolvedValueOnce({ intent: { id: 'intent-1', status: 'PENDING' }, reference: 'uf-intent-1-reference', authorization_url: 'https://checkout.test/1' })
     await expect(checkout('campaign', '/donation-intents', { amount: 100 })).rejects.toThrow()
     const payment = await checkout('campaign', '/donation-intents', { amount: 100 })
     expect(post.mock.calls[0][2]).toEqual(post.mock.calls[1][2])
     expect(await loadPending('campaign')).toEqual(payment)
+    expect(payment.reference).toBe('uf-intent-1-reference')
     expect(isPaymentSuccess(payment.status)).toBe(false)
   })
   it('shares keys for concurrent submissions but resets them for an explicitly new payment', async () => {

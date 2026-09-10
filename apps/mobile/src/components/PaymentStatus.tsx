@@ -1,3 +1,4 @@
+import { DonationCelebration } from './DonationCelebration'
 import { useCallback, useEffect, useState, useRef } from 'react'
 import { AppState, View } from 'react-native'
 import { Text } from 'react-native-paper'
@@ -23,11 +24,13 @@ export function PaymentStatus({ payment, topup = false, onComplete, onReset, onS
     const ticket = generation.current
     setChecking(true)
     try {
-      const result = await api.get<{ status: string }>(topup ? `/wallets/topups/${encodeURIComponent(payment.id)}` : `/donation-intents/${encodeURIComponent(payment.id)}/public`)
+      const result = !topup && payment.reference
+        ? await api.post<{ status: string }>(`/donation-intents/${encodeURIComponent(payment.id)}/verify`, { reference: payment.reference })
+        : await api.get<{ status: string }>(topup ? `/wallets/topups/${encodeURIComponent(payment.id)}` : `/donation-intents/${encodeURIComponent(payment.id)}/public`)
       if (alive.current && ticket === generation.current) { setStatus(result.status); setError('') }
     } catch (e) { if (alive.current && ticket === generation.current) setError(e instanceof Error ? e.message : 'Could not check payment status.') }
     finally { inFlight.current = false; if (alive.current) setChecking(false) }
-  }, [payment.id, topup])
+  }, [payment.id, payment.reference, topup])
   const success = isPaymentSuccess(status)
   useEffect(() => { if (success && !notified.current) { notified.current = true; onComplete?.() } }, [success, onComplete])
   useEffect(() => { onStatusChange?.(status) }, [status, onStatusChange])
@@ -39,6 +42,7 @@ export function PaymentStatus({ payment, topup = false, onComplete, onReset, onS
     return () => { clearInterval(timer); listener.remove() }
   }, [refresh, status])
   return <View style={{ ...neu.raised, backgroundColor: p.surface, padding: 20, borderRadius: 24, gap: 12 }}>
+    {success && !topup && <DonationCelebration />}
     <Text variant="titleLarge">{success ? (topup ? 'Wallet funded' : 'Thank you for your support') : isPaymentTerminal(status) ? 'Payment was not completed' : 'Awaiting payment confirmation'}</Text>
     {!isPaymentTerminal(status) && <><Skeleton height={12} /><Text>Your balance updates only after provider confirmation. Closing checkout does not confirm or cancel a payment.</Text></>}
     <Text selectable>Reference: {payment.id}</Text><Text>Status: {status}</Text>

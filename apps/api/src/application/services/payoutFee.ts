@@ -30,7 +30,7 @@ export function computePayoutFee(
       fee = Math.max(round2((amount * cfg.earlyFeePercent) / 100), cfg.earlyMinFee);
       break;
     case 'urgent':
-      fee = Math.max(round2((amount * cfg.urgentFeePercent) / 100), cfg.urgentMinFee);
+      fee = Math.max(round2((amount * cfg.urgentFeePercent) / 100), cfg.urgentMinFee, round2((amount * cfg.earlyFeePercent) / 100), cfg.earlyMinFee);
       break;
     case 'assisted':
       fee = round2((amount * cfg.assistedFeePercent) / 100 + cfg.assistedFixedFee);
@@ -46,4 +46,9 @@ export function computePayoutFee(
 /** Early-withdrawal payout types are subject to the reserve ceiling (spec §17). */
 export function isEarlyWithdrawal(type: PayoutType): boolean {
   return type === 'early' || type === 'urgent';
+}
+
+/** A campaign is early until its end date or funding goal is reached. */
+export function campaignNeedsEarlyCashout(campaign: { endDate: Date; raisedAmount: { amount: number }; goalAmount: { amount: number } }): boolean {
+  return new Date(campaign.endDate).getTime() > Date.now() && campaign.raisedAmount.amount < campaign.goalAmount.amount;
 }

@@ -149,7 +149,7 @@ export function CreatorDashboardPage() {
           </Box>
         )}
 
-        {!policy?.eligible && <Alert severity="info" sx={{ mb: 3 }} action={<Button href="/subscription">View plans</Button>}>Creator donations require an active paid plan. Upgrade to receive new tips. You can still withdraw your existing balance.</Alert>}
+        {!policy?.eligible && <Alert severity="info" sx={{ mb: 3 }} action={<Button href="/subscription" sx={{ whiteSpace: 'nowrap', flexShrink: 0, minWidth: 'max-content' }}>View plans</Button>}>Creator donations require an active paid plan. Upgrade to receive new tips. You can still withdraw your existing balance.</Alert>}
         {/* Setup / edit */}
         <Box sx={{ p: { xs: 2.5, sm: 3.5 }, borderRadius: SHAPE.card, bgcolor: 'background.paper', boxShadow: 'var(--neu-raised)' }}>
           <Typography sx={{ fontWeight: 800, fontSize: '1.05rem', color: INK, mb: 2 }}>{profile ? 'Edit your page' : 'Claim your page'}</Typography>

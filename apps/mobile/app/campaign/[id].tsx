@@ -210,7 +210,7 @@ export default function CampaignDetailScreen() {
   const { user: signedInUser } = useAuth()
   const [activeLive, setActiveLive] = useState<{ id: string } | null>(null)
   useEffect(() => { let active = true; const load = () => api.get<{ id: string } | null>(`/campaigns/${id}/active-live`).then(value => { if (active) setActiveLive(value) }).catch(() => {}); void load(); const timer = setInterval(load, 15000); return () => { active = false; clearInterval(timer) } }, [id])
-  const { campaign, isLoading, error } = useCampaign(id ?? '')
+  const { campaign, isLoading, error, donationError } = useCampaign(id ?? '')
   const { user: creator } = useUser(campaign?.creatorId ?? '')
 
   const [now, setNow] = useState(() => Date.now())
@@ -432,6 +432,7 @@ export default function CampaignDetailScreen() {
           </Surface>
 
           {/* Recent Donations */}
+          {donationError && <Text accessibilityRole="alert">{donationError}</Text>}
           {campaign.donations && campaign.donations.length > 0 && (
             <>
               <Text variant="titleMedium" style={styles.sectionTitle}>

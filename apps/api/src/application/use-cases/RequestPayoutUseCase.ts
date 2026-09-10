@@ -9,7 +9,7 @@ import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGate
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 import { toPayoutDto } from './mappers/payoutDto.js';
 import type { PayoutRequester } from './CreatePayoutRecipientUseCase.js';
-import { computePayoutFee, isEarlyWithdrawal } from '../services/payoutFee.js';
+import { computePayoutFee, isEarlyWithdrawal, campaignNeedsEarlyCashout } from '../services/payoutFee.js';
 import type { PayoutsConfig } from '../../infrastructure/config/index.js';
 
 const CURRENCY = 'GHS';
@@ -122,6 +122,9 @@ export class RequestPayoutUseCase {
       ? await this.configService.resolvePayoutsConfig()
       : this.payoutsConfig;
     const type = input.type ?? 'standard';
+    if (campaignNeedsEarlyCashout(campaign) && !isEarlyWithdrawal(type)) {
+      throw new AppError('This campaign is still active and below its goal. Select early or urgent cashout; the additional service fee applies on top of the plan fee already deducted at settlement.', 422);
+    }
     const { fee, netAmount } = computePayoutFee(type, amount, cfg);
     if (netAmount <= 0) {
       throw new AppError('The payout fee equals or exceeds the requested amount', 422);

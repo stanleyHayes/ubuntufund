@@ -19,6 +19,16 @@ export class SubscriptionController {
     private readonly getSubscriptionCheckoutUseCase: GetSubscriptionCheckoutUseCase
   ) {}
 
+  verifyCheckoutReference = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try { res.json({ data: await this.getSubscriptionCheckoutUseCase.verifyReference(req.params.reference as string, req.userId!) }); }
+    catch (error) { next(error); }
+  };
+
+  verifyCheckout = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try { res.json({ data: await this.getSubscriptionCheckoutUseCase.verify(req.params.id as string, req.userId!) }); }
+    catch (error) { next(error); }
+  };
+
   list = async (_req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
       const items = await this.listSubscriptionsUseCase.execute();

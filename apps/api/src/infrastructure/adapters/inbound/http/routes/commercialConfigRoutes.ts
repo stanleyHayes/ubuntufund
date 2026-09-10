@@ -61,6 +61,7 @@ export function createCommercialConfigRoutes(deps: {
         if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
           throw new AppError('value must be a non-negative number.', 400);
         }
+        if ((key.endsWith('Percent') || key === 'earlyMaxWithdrawalPercent') && value > 100) throw new AppError('Percentage cannot exceed 100.', 400);
         const eff = effectiveFrom ? new Date(effectiveFrom) : new Date();
         if (Number.isNaN(eff.getTime())) {
           throw new AppError('effectiveFrom is not a valid date.', 400);

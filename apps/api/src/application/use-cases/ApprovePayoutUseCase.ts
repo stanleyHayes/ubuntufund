@@ -1,3 +1,5 @@
+import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js';
+import { campaignNeedsEarlyCashout, isEarlyWithdrawal } from '../services/payoutFee.js';
 import { TransferOutcomeUnknownError } from '../../domain/errors/TransferOutcomeUnknownError.js';
 import { randomUUID } from 'node:crypto';
 import type { Payout, PayoutLeg } from '@ubuntu-fund/types';
@@ -39,7 +41,8 @@ export class ApprovePayoutUseCase {
     private readonly transferRecipientRepo: TransferRecipientRepositoryPort,
     private readonly campaignBalanceRepo: CampaignBalanceRepositoryPort,
     private readonly paymentGateway: PaymentGatewayPort,
-    private readonly payoutsConfig: PayoutsConfig
+    private readonly payoutsConfig: PayoutsConfig,
+    private readonly campaigns?: CampaignRepositoryPort
   ) {}
 
   async execute(payoutId: string, requester: PayoutRequester): Promise<Payout> {
@@ -59,6 +62,14 @@ export class ApprovePayoutUseCase {
         `Payout cannot be approved in state ${payout.status}`,
         409
       );
+    }
+
+    if (this.campaigns) {
+      const campaign = await this.campaigns.findById(payout.campaignId);
+      if (!campaign) throw new AppError('Campaign not found', 404);
+      if (campaignNeedsEarlyCashout(campaign) && !isEarlyWithdrawal(payout.type)) {
+        throw new AppError('Early cashout requires an early or urgent request with its additional fee. This request cannot bypass that fee.', 422);
+      }
     }
 
     // Maker-checker: a high-value payout needs two distinct admin approvals.

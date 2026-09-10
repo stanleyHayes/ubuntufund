@@ -877,7 +877,7 @@ export function createApp(): express.Express {
     transferRecipientRepo,
     campaignBalanceRepo,
     paymentGateway,
-    config.payouts
+    config.payouts, campaignRepo
   );
   const listCampaignPayoutsUseCase = new ListCampaignPayoutsUseCase(
     campaignRepo,
@@ -994,7 +994,7 @@ export function createApp(): express.Express {
     planService
   );
   const getSubscriptionCheckoutUseCase = new GetSubscriptionCheckoutUseCase(
-    subscriptionCheckoutRepo
+    subscriptionCheckoutRepo, paymentGateway, settleSubscriptionUseCase
   );
 
   // Coupons: admin CRUD + an authed pre-checkout preview.

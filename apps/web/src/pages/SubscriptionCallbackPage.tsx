@@ -11,6 +11,7 @@ import { ItemNotFound, BrandLogo, formatCurrency, SHAPE } from '@ubuntu-fund/ui'
 import { SUBSCRIPTION_PLANS, type SubscriptionPlan } from '@ubuntu-fund/types'
 import {
   getSubscriptionCheckoutStatus,
+  verifySubscriptionReference,
   readSubscriptionHandoff,
   subscriptionPath,
   dashboardPath,
@@ -94,13 +95,13 @@ export function SubscriptionCallbackPage() {
   const [handoff] = useState(() => readSubscriptionHandoff(reference))
   const checkoutId = explicitId ?? handoff?.checkoutId ?? null
 
-  const [phase, setPhase] = useState<Phase>(checkoutId ? 'resolving' : 'missing')
+  const [phase, setPhase] = useState<Phase>(checkoutId || reference ? 'resolving' : 'missing')
   const [view, setView] = useState<SubscriptionCheckout | null>(null)
   const [pollNonce, setPollNonce] = useState(0)
 
   useEffect(() => {
     // The missing case is already the initial phase; nothing to poll.
-    if (!checkoutId) return
+    if (!checkoutId && !reference) return
 
     let active = true
     let attempts = 0
@@ -109,7 +110,7 @@ export function SubscriptionCallbackPage() {
     async function poll() {
       attempts += 1
       try {
-        const status = await getSubscriptionCheckoutStatus(checkoutId as string)
+        const status = reference ? await verifySubscriptionReference(reference) : await getSubscriptionCheckoutStatus(checkoutId as string)
         if (!active) return
         setView(status)
 
@@ -147,7 +148,7 @@ export function SubscriptionCallbackPage() {
       if (timer) clearTimeout(timer)
     }
     // pollNonce lets "Keep checking" restart the loop after a timeout.
-  }, [checkoutId, pollNonce])
+  }, [checkoutId, reference, pollNonce])
 
   const tier = view?.tier ?? handoff?.tier
   const planName = tier
@@ -219,7 +220,7 @@ export function SubscriptionCallbackPage() {
                   : 'Your payment is confirmed.'}
             </Typography>
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 4 }}>
-              A receipt is on its way to your email.
+              You can review your active plan on the subscription page.
             </Typography>
 
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, justifyContent: 'center' }}>
@@ -247,7 +248,7 @@ export function SubscriptionCallbackPage() {
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 400, mx: 'auto', mb: 4 }}>
               {phase === 'expired'
-                ? "Your checkout session timed out before payment completed. You haven't been charged — you can try again."
+                ? "This checkout expired. Check your payment account before starting another checkout."
                 : "Your payment couldn't be completed and you haven't been charged. This is usually temporary — please try again."}
             </Typography>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, justifyContent: 'center' }}>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
+  AppState,
   View,
   ScrollView,
   StyleSheet,
@@ -27,11 +28,11 @@ interface LeaderboardEntry {
   isAnonymous?: boolean
 }
 
-const PERIODS = ['Weekly', 'Monthly', 'Yearly', 'Lifetime'] as const
+const PERIODS = ['Today', 'Monthly', 'Yearly', 'Lifetime'] as const
 type Period = (typeof PERIODS)[number]
 
 const PERIOD_PARAMS: Record<Period, string> = {
-  Weekly: 'weekly',
+  Today: 'daily',
   Monthly: 'monthly',
   Yearly: 'yearly',
   Lifetime: 'lifetime',
@@ -163,10 +164,11 @@ export default function LeaderboardScreen() {
   const { user } = useAuth()
   const p = usePalette()
   const styles = useStyles()
+  const [stats, setStats] = useState({ totalAmount: 0, totalDonations: 0, totalDonors: 0 })
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activePeriod, setActivePeriod] = useState<Period>('Monthly')
+  const [activePeriod, setActivePeriod] = useState<Period>('Lifetime')
 
   // Rank 1-3 badge colors, drawn from the gold family only.
   const MEDAL_COLORS = [p.secondary, p.secondaryDark, p.secondaryLight]
@@ -177,6 +179,7 @@ export default function LeaderboardScreen() {
     try {
       const res = await api.get<LeaderboardEntry[]>(`/leaderboard?period=${PERIOD_PARAMS[activePeriod]}`)
       setEntries(Array.isArray(res) ? res : [])
+      setStats(await api.get(`/leaderboard/stats?period=${PERIOD_PARAMS[activePeriod]}`))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load leaderboard')
     } finally {
@@ -185,7 +188,10 @@ export default function LeaderboardScreen() {
   }, [activePeriod])
 
   useEffect(() => {
-    fetchLeaderboard()
+    void fetchLeaderboard()
+    const timer = setInterval(() => { if (AppState.currentState === 'active') void fetchLeaderboard() }, 30000)
+    const listener = AppState.addEventListener('change', state => { if (state === 'active') void fetchLeaderboard() })
+    return () => { clearInterval(timer); listener.remove() }
   }, [fetchLeaderboard])
 
   return (
@@ -228,6 +234,7 @@ export default function LeaderboardScreen() {
       </ScrollView>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+        {!loading && !error && <View style={{ padding: 16, gap: 8 }}><Text variant="titleLarge">{formatAmount(stats.totalAmount)} raised · {stats.totalDonations} donations</Text><Text>{stats.totalDonors} registered donors. Guest gifts count toward totals, but not named rankings.</Text></View>}
         {loading ? (
           <SkeletonRows />
         ) : error ? (

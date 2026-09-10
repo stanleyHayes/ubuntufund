@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { AppState } from 'react-native'
 import { api } from '@/lib/api'
 import type { Campaign, CampaignDetail } from '@ubuntu-fund/types'
 import type { User } from '@ubuntu-fund/types'
@@ -12,6 +13,7 @@ interface UseCampaignsResult {
 
 interface UseCampaignResult {
   campaign: CampaignDetail | null
+  donationError: string | null
   isLoading: boolean
   error: string | null
 }
@@ -55,27 +57,31 @@ export function useCampaign(id: string): UseCampaignResult {
   const [campaign, setCampaign] = useState<CampaignDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-
+  const [donationError, setDonationError] = useState<string | null>(null)
   useEffect(() => {
     if (!id) return
-    let cancelled = false
-    api
-      .get<CampaignDetail>(`/campaigns/${id}`)
-      .then((data) => {
-        if (!cancelled) setCampaign(data)
-      })
-      .catch((err) => {
-        if (!cancelled) setError(err.message)
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false)
-      })
-    return () => {
-      cancelled = true
+    let active = true
+    let loading = false
+    const load = async () => {
+      if (loading) return
+      loading = true
+      try {
+        const data = await api.get<CampaignDetail>(`/campaigns/${id}`)
+        if (!active) return
+        setCampaign(data); setError(null)
+        try {
+          const donations = await api.get<{ items: NonNullable<CampaignDetail['donations']> }>(`/campaigns/${id}/donations?pageSize=5`)
+          if (active) { setCampaign({ ...data, donations: donations.items }); setDonationError(null) }
+        } catch { if (active) setDonationError('Recent donations could not be loaded. We will retry shortly.') }
+      } catch (e) { if (active) setError(e instanceof Error ? e.message : 'Could not load campaign.') }
+      finally { loading = false; if (active) setIsLoading(false) }
     }
+    void load()
+    const timer = setInterval(() => { if (AppState.currentState === 'active') void load() }, 30000)
+    const listener = AppState.addEventListener('change', state => { if (state === 'active') void load() })
+    return () => { active = false; clearInterval(timer); listener.remove() }
   }, [id])
-
-  return { campaign, isLoading, error }
+  return { campaign, isLoading, error, donationError }
 }
 
 export function useUser(userId: string): UseUserResult {

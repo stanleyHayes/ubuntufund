@@ -4,7 +4,7 @@ import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded'
 import type { Payout, PayoutType } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
 
-type Options = { eligible: number; currency: string; fees: Record<string, number>; recipient: { accountName: string; last4: string; type: string } | null }
+type Options = { requiresEarlyCashout?: boolean; eligible: number; currency: string; fees: Record<string, number>; recipient: { accountName: string; last4: string; type: string } | null }
 type Bank = { code: string; name: string }
 const types: PayoutType[] = ['standard', 'priority', 'early', 'urgent', 'assisted']
 const round = (n: number) => Math.round(n * 100) / 100
@@ -28,7 +28,7 @@ export function CampaignCashout({ campaignId }: { campaignId: string }) {
     if (!expanded) return
     let active = true
     Promise.all([api.get<Options>(`/campaigns/${campaignId}/payout-options`), api.get<Payout[]>(`/campaigns/${campaignId}/payouts`)])
-      .then(([o, h]) => { if (active) { setOptions(o); setHistory(h); setError('') } })
+      .then(([o, h]) => { if (active) { setOptions(o); setType(current => o.requiresEarlyCashout && current !== 'early' && current !== 'urgent' ? 'early' : current); setHistory(h); setError('') } })
       .catch(e => { if (active) setError(e.message) })
     return () => { active = false }
   }, [campaignId, expanded, revision])
@@ -40,7 +40,7 @@ export function CampaignCashout({ campaignId }: { campaignId: string }) {
   }, [expanded, recipientType])
   const value = Number(amount)
   const f = options?.fees ?? {}
-  const fee = type === 'standard' ? 0 : Math.min(value, round(type === 'assisted' ? value * f.assistedFeePercent / 100 + f.assistedFixedFee : Math.max(round(value * f[`${type}FeePercent`] / 100), f[`${type}MinFee`])))
+  const fee = type === 'standard' ? 0 : Math.min(value, round(type === 'assisted' ? value * f.assistedFeePercent / 100 + f.assistedFixedFee : Math.max(round(value * f[`${type}FeePercent`] / 100), f[`${type}MinFee`], ...(type === 'urgent' ? [round(value * f.earlyFeePercent / 100), f.earlyMinFee] : []))))
   const cap = options ? round(options.eligible * (type === 'early' || type === 'urgent' ? f.earlyMaxWithdrawalPercent / 100 : 1)) : 0
   const valid = Boolean(options?.recipient) && Number.isFinite(value) && value > fee && value <= cap
   const money = (n: number) => `${options?.currency ?? 'GHS'} ${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -68,7 +68,7 @@ export function CampaignCashout({ campaignId }: { campaignId: string }) {
       {notice && <Alert severity="success" sx={{ mb: 2 }}>{notice}</Alert>}
       {!options ? <Typography>Loading payout details…</Typography> : <>
         <Typography variant="h6">{money(options.eligible)} eligible balance</Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>Based on settled campaign proceeds after payment fees. Requests require admin approval and sufficient Paystack transfer balance. Test payments cannot be withdrawn as real money.</Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>Based on settled campaign proceeds after the regular plan and payment fees. Early cashout adds a separate service fee. Requests require admin approval and sufficient Paystack transfer balance. Test payments cannot be withdrawn as real money.</Typography>
         {options.recipient && <Alert severity="info" sx={{ mb: 2 }}>Payout account: {options.recipient.accountName} · ending {options.recipient.last4}</Alert>}
         <Typography sx={{ fontWeight: 700, mb: 1 }}>{options.recipient ? 'Change payout account' : 'Add your payout account'}</Typography>
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2, mb: 2 }}>
@@ -80,7 +80,7 @@ export function CampaignCashout({ campaignId }: { campaignId: string }) {
         <Button disabled={busy || !bankCode || !accountName.trim() || !accountNumber.trim()} onClick={() => void saveRecipient()}>Save payout account</Button>
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2, my: 3 }}>
           <TextField label="Cashout amount (GHS)" type="number" value={amount} onChange={e => setAmount(e.target.value)} slotProps={{ htmlInput: { min: 0.01, step: 0.01 } }} />
-          <TextField select label="Cashout service" value={type} onChange={e => setType(e.target.value as PayoutType)}>{types.map(t => <MenuItem key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</MenuItem>)}</TextField>
+          <TextField select label="Cashout service" value={type} onChange={e => setType(e.target.value as PayoutType)}>{types.filter(t => !options.requiresEarlyCashout || t === 'early' || t === 'urgent').map(t => <MenuItem key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</MenuItem>)}</TextField>
         </Box>
         <Typography variant="body2">Maximum for this service: {money(cap)}. {type === 'early' || type === 'urgent' ? `Keeps ${100 - f.earlyMaxWithdrawalPercent}% of the current eligible balance in reserve.` : 'Standard cashout has no Ujimora service fee.'}</Typography>
         {value > 0 && Number.isFinite(fee) && <Typography sx={{ my: 1 }}>Estimated fee {money(fee)} · You receive {money(value - fee)}</Typography>}

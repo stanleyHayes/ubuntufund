@@ -1,3 +1,4 @@
+import { campaignNeedsEarlyCashout } from '../services/payoutFee.js';
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js';
 import type { CampaignBalanceRepositoryPort } from '../../domain/ports/outbound/CampaignBalanceRepositoryPort.js';
 import type { TransferRecipientRepositoryPort } from '../../domain/ports/outbound/TransferRecipientRepositoryPort.js';
@@ -22,6 +23,7 @@ export class GetCampaignPayoutOptionsUseCase {
       currency: balance?.currency ?? 'GHS',
       eligible: Math.round(((balance?.pendingBalance ?? 0) + (balance?.availableBalance ?? 0)) * 100) / 100,
       fees,
+      requiresEarlyCashout: campaignNeedsEarlyCashout(campaign),
       recipient: recipient ? { accountName: recipient.accountName, last4: recipient.accountNumber.slice(-4), type: recipient.type } : null,
     };
   }
