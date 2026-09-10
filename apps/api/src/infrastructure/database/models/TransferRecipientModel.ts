@@ -10,6 +10,12 @@ export interface TransferRecipientDocument extends Document {
   accountName: string;
   recipientCode: string;
   currency: string;
+  verificationStatus?: 'name_matched' | 'needs_review';
+  resolvedAccountName?: string;
+  reviewedBy?: string;
+  reviewNote?: string;
+  reviewedAt?: Date;
+  reviews?: { payoutId: string; reviewedBy: string; reviewNote: string; reviewedAt: Date }[];
   createdAt: Date;
 }
 
@@ -25,6 +31,12 @@ const transferRecipientSchema = new Schema<TransferRecipientDocument>(
     accountName: { type: String, required: true },
     recipientCode: { type: String, required: true, index: true },
     currency: { type: String, required: true },
+    verificationStatus: { type: String, enum: ['name_matched', 'needs_review'], default: 'needs_review' },
+    resolvedAccountName: String,
+    reviewedBy: String,
+    reviewNote: String,
+    reviewedAt: Date,
+    reviews: [{ payoutId: String, reviewedBy: String, reviewNote: String, reviewedAt: Date }],
     createdAt: { type: Date, default: Date.now, index: true },
   },
   { collection: 'transferrecipients', timestamps: false }

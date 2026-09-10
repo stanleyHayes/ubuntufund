@@ -24,7 +24,7 @@ export class GetCampaignPayoutOptionsUseCase {
       eligible: Math.round(((balance?.pendingBalance ?? 0) + (balance?.availableBalance ?? 0)) * 100) / 100,
       fees,
       requiresEarlyCashout: campaignNeedsEarlyCashout(campaign),
-      recipient: recipient ? { accountName: recipient.accountName, last4: recipient.accountNumber.slice(-4), type: recipient.type } : null,
+      recipient: recipient ? { accountName: recipient.accountName, last4: recipient.accountNumber.slice(-4), type: recipient.type, verificationStatus: recipient.toPlain().verificationStatus ?? 'needs_review', resolvedAccountName: recipient.toPlain().resolvedAccountName } : null,
     };
   }
 }

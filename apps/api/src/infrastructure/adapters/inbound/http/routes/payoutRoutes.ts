@@ -1,3 +1,4 @@
+import { donationIntentRateLimiter } from '../../middleware/rateLimiter.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import type { PayoutController } from '../controllers/PayoutController.js';
@@ -7,9 +8,9 @@ import type { requireAdmin } from '../../middleware/requireRole.js';
 
 const createRecipientSchema = z.object({
   type: z.enum(['ghipss', 'mobile_money']),
-  accountNumber: z.string().min(1).max(50),
-  bankCode: z.string().min(1).max(20),
-  accountName: z.string().min(1).max(200),
+  accountNumber: z.string().trim().min(1).max(50),
+  bankCode: z.string().trim().min(1).max(20),
+  accountName: z.string().trim().min(1).max(200),
 });
 
 const requestPayoutSchema = z.object({
@@ -49,6 +50,7 @@ export function createCampaignPayoutRoutes(
   router.post(
     '/:id/payout-recipient',
     authMiddleware,
+    donationIntentRateLimiter,
     validate(createRecipientSchema),
     payoutController.createRecipient
   );
@@ -77,6 +79,7 @@ export function createPayoutRoutes(
   const router = Router();
 
   router.get('/', authMiddleware, adminGuard, payoutController.listAll);
+  router.get('/:id/recipient', authMiddleware, adminGuard, payoutController.recipientDetails);
   router.get(
     '/review-queue',
     authMiddleware,
@@ -87,6 +90,7 @@ export function createPayoutRoutes(
     '/:id/approve',
     authMiddleware,
     adminGuard,
+    validate(z.object({ reviewNote: z.string().trim().min(20).max(2000) })),
     payoutController.approvePayout
   );
 

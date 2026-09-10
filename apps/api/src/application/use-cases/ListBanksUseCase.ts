@@ -17,7 +17,7 @@ export class ListBanksUseCase {
       currency ?? DEFAULT_CURRENCY,
       type
     );
-    return banks.map((b) => ({
+    return banks.filter(b => b.active !== false && b.name.trim().toLowerCase() !== 'bank of ghana').map((b) => ({
       name: b.name,
       code: b.code,
       currency: b.currency,

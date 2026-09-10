@@ -4,12 +4,12 @@ import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded'
 import type { Payout, PayoutType } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
 
-type Options = { requiresEarlyCashout?: boolean; eligible: number; currency: string; fees: Record<string, number>; recipient: { accountName: string; last4: string; type: string } | null }
+type Options = { requiresEarlyCashout?: boolean; eligible: number; currency: string; fees: Record<string, number>; recipient: { accountName: string; last4: string; type: string; verificationStatus?: string; resolvedAccountName?: string } | null }
 type Bank = { code: string; name: string }
 const types: PayoutType[] = ['standard', 'priority', 'early', 'urgent', 'assisted']
 const round = (n: number) => Math.round(n * 100) / 100
-export function CampaignCashout({ campaignId }: { campaignId: string }) {
-  const [expanded, setExpanded] = useState(false)
+export function CampaignCashout({ campaignId, initiallyExpanded = false }: { campaignId: string; initiallyExpanded?: boolean }) {
+  const [expanded, setExpanded] = useState(initiallyExpanded)
   const [options, setOptions] = useState<Options | null>(null)
   const [history, setHistory] = useState<Payout[]>([])
   const [banks, setBanks] = useState<Bank[]>([])
@@ -48,7 +48,7 @@ export function CampaignCashout({ campaignId }: { campaignId: string }) {
     setBusy(true); setError(''); setNotice('')
     try {
       await api.post(`/campaigns/${campaignId}/payout-recipient`, { type: recipientType, bankCode, accountName, accountNumber })
-      setNotice('Payout account saved.'); refresh()
+      setNotice('Account submitted. Check the name-verification result below; beneficiary ownership is reviewed before transfer.'); refresh()
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not save payout account.') }
     finally { setBusy(false) }
   }
@@ -61,7 +61,7 @@ export function CampaignCashout({ campaignId }: { campaignId: string }) {
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not request cashout.') }
     finally { setBusy(false) }
   }
-  return <Accordion expanded={expanded} onChange={(_, open) => setExpanded(open)} sx={{ my: 3 }}>
+  return <Accordion id="payout-account" expanded={expanded} onChange={(_, open) => setExpanded(open)} sx={{ my: 3 }}>
     <AccordionSummary expandIcon={<ExpandMoreRounded />}><Typography sx={{ fontWeight: 800 }}>Cashout & payout history</Typography></AccordionSummary>
     <AccordionDetails>
       {error && <Alert severity="error" action={<Button onClick={refresh}>Retry</Button>}>{error}</Alert>}
@@ -70,6 +70,7 @@ export function CampaignCashout({ campaignId }: { campaignId: string }) {
         <Typography variant="h6">{money(options.eligible)} eligible balance</Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>Based on settled campaign proceeds after the regular plan and payment fees. Early cashout adds a separate service fee. Requests require admin approval and sufficient Paystack transfer balance. Test payments cannot be withdrawn as real money.</Typography>
         {options.recipient && <Alert severity="info" sx={{ mb: 2 }}>Payout account: {options.recipient.accountName} · ending {options.recipient.last4}</Alert>}
+        {options.recipient && <Alert severity={options.recipient.verificationStatus === 'name_matched' ? 'info' : 'warning'} sx={{ mb: 2 }}>{options.recipient.verificationStatus === 'name_matched' ? 'Registered account name matched. Ownership and receiving capacity still require review.' : 'Account verification needs admin review. Saving this account does not confirm it can receive funds.'}{options.recipient.resolvedAccountName && ` Provider name: ${options.recipient.resolvedAccountName}.`}</Alert>}
         <Typography sx={{ fontWeight: 700, mb: 1 }}>{options.recipient ? 'Change payout account' : 'Add your payout account'}</Typography>
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2, mb: 2 }}>
           <TextField select label="Account type" value={recipientType} onChange={e => { setRecipientType(e.target.value); setBankCode('') }}><MenuItem value="mobile_money">Mobile money</MenuItem><MenuItem value="ghipss">Bank account</MenuItem></TextField>
@@ -77,7 +78,8 @@ export function CampaignCashout({ campaignId }: { campaignId: string }) {
           <TextField label="Account holder name" value={accountName} onChange={e => setAccountName(e.target.value)} />
           <TextField label="Account or mobile money number" value={accountNumber} onChange={e => setAccountNumber(e.target.value)} />
         </Box>
-        <Button disabled={busy || !bankCode || !accountName.trim() || !accountNumber.trim()} onClick={() => void saveRecipient()}>Save payout account</Button>
+        <Button disabled={busy || !bankCode || !accountName.trim() || !accountNumber.trim()} onClick={() => void saveRecipient()}>Verify & save payout account</Button>
+        <Alert severity="info" sx={{ mt: 2 }}>Before cashout, confirm your account can receive the net amount. MoMo has wallet-balance and transaction limits that vary by network and verification tier. We cannot read your balance or remaining allowance. MTN: *170# → My Wallet → Check Wallet Limits. For larger payouts, consider a verified bank account or ask your network about a wallet upgrade. Never share your MoMo PIN.</Alert>
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2, my: 3 }}>
           <TextField label="Cashout amount (GHS)" type="number" value={amount} onChange={e => setAmount(e.target.value)} slotProps={{ htmlInput: { min: 0.01, step: 0.01 } }} />
           <TextField select label="Cashout service" value={type} onChange={e => setType(e.target.value as PayoutType)}>{types.filter(t => !options.requiresEarlyCashout || t === 'early' || t === 'urgent').map(t => <MenuItem key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</MenuItem>)}</TextField>
@@ -87,6 +89,7 @@ export function CampaignCashout({ campaignId }: { campaignId: string }) {
         <Button variant="contained" sx={{ mt: 2 }} disabled={busy || !valid} onClick={() => void requestPayout()}>{busy ? 'Saving…' : 'Request cashout'}</Button>
         <Typography variant="h6" sx={{ mt: 4 }}>Payout history</Typography>
         <Button size="small" onClick={refresh}>Refresh status</Button>
+        <Typography variant="body2" color="text.secondary">Pending requests await review. Processing transfers must be confirmed before retrying. For failed or reversed transfers, refresh your balance and correct the account or its limits before submitting a new request. If review is needed, contact support with the payout reference; do not submit a duplicate.</Typography>
         {history.length === 0 && <Typography color="text.secondary">No payout requests yet.</Typography>}
         {history.map(p => <Box key={p.id} sx={{ py: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}><Typography>{money(p.amount)} · {p.type} · {p.status.replaceAll('_', ' ')}</Typography><Typography variant="body2" color="text.secondary">Fee {money(p.fee)} · Net {money(p.netAmount)} · {new Date(p.createdAt).toLocaleDateString()}</Typography></Box>)}
       </>}

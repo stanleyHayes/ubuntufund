@@ -7,6 +7,18 @@ vi.mock('@/lib/api', () => ({ api: { get: vi.fn(), post: vi.fn(), put: vi.fn() }
 afterEach(() => vi.resetAllMocks())
 const opts = { eligible: 1000, currency: 'GHS', recipient: { accountName: 'Owner', last4: '4567', type: 'mobile_money' }, fees: { earlyMaxWithdrawalPercent: 80, earlyFeePercent: 1, earlyMinFee: 20 } }
 describe('owner money flow', () => {
+  it('shows unresolved destination review and capacity guidance during onboarding', async () => {
+    vi.mocked(api.get).mockImplementation(async path => path.endsWith('payout-options') ? opts : [])
+    render(<CampaignCashout campaignId="campaign" initiallyExpanded />)
+    expect(await screen.findByText(/Account verification needs admin review/)).toBeInTheDocument()
+    expect(screen.getByText(/We cannot read your balance or remaining allowance/)).toBeInTheDocument()
+    expect(api.post).not.toHaveBeenCalled()
+  })
+  it('distinguishes a name match from ownership approval', async () => {
+    vi.mocked(api.get).mockImplementation(async path => path.endsWith('payout-options') ? {...opts,recipient:{...opts.recipient,verificationStatus:'name_matched',resolvedAccountName:'Owner'}} : [])
+    render(<CampaignCashout campaignId="campaign" initiallyExpanded />)
+    expect(await screen.findByText(/Ownership and receiving capacity still require review/)).toBeInTheDocument()
+  })
   it('loads cashout details only when opened and submits an explicit request', async () => {
     vi.mocked(api.get).mockImplementation(async path => path.endsWith('payout-options') ? opts : [])
     vi.mocked(api.post).mockResolvedValue({ fee: 0, netAmount: 100 })

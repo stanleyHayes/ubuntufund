@@ -10,6 +10,11 @@ export interface TransferRecipientProps {
   accountName: string;
   recipientCode: string;
   currency: string;
+  verificationStatus?: 'name_matched' | 'needs_review';
+  resolvedAccountName?: string;
+  reviewedBy?: string;
+  reviewNote?: string;
+  reviewedAt?: Date;
   createdAt: Date;
 }
 

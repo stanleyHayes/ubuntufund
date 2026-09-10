@@ -327,6 +327,13 @@ export class PaystackGateway implements PaymentGatewayPort {
     }));
   }
 
+  async resolveAccount(accountNumber: string, bankCode: string): Promise<{ accountName: string }> {
+    const query = new URLSearchParams({ account_number: accountNumber, bank_code: bankCode });
+    const json = await this.request<{ account_name?: string }>('GET', `/bank/resolve?${query}`);
+    if (!json.status || !json.data?.account_name?.trim()) throw new AppError('Account name could not be verified. Submit for payout review or choose another account.', 422);
+    return { accountName: json.data.account_name.trim() };
+  }
+
   async createTransferRecipient(
     params: CreateTransferRecipientParams
   ): Promise<string> {

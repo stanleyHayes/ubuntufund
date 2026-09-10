@@ -19,8 +19,8 @@ describe('ambiguous transfer outcomes', () => {
     const repo = { findById: vi.fn(async () => p), transitionToProcessing: vi.fn(async () => ({ ...p, status: 'PROCESSING' })), transitionToFailed: vi.fn() };
     const balances = { reserveForPayout: vi.fn(async () => ({})), returnToAvailable: vi.fn() };
     const provider = { isConfigured: () => true, getBalance: async () => [{ currency: 'GHS', balance: 1000 }], initiateTransfer: vi.fn().mockRejectedValue(new TransferOutcomeUnknownError()) };
-    const uc = new ApprovePayoutUseCase(repo as never, { findById: async () => ({ recipientCode: 'RCP_test' }) } as never, balances as never, provider as never, { dualApprovalAmount: 0, maxTransferAmount: 50000 } as never);
-    await expect(uc.execute('payout', { userId: 'admin', role: 'admin' })).rejects.toThrow('confirmation is pending');
+    const uc = new ApprovePayoutUseCase(repo as never, { recordReview: vi.fn(async () => {}), findById: async () => ({ recipientCode: 'RCP_test' }) } as never, balances as never, provider as never, { dualApprovalAmount: 0, maxTransferAmount: 50000 } as never);
+    await expect(uc.execute('payout', { userId: 'admin', role: 'admin' }, 'Owner identity and receiving capacity reviewed')).rejects.toThrow('confirmation is pending');
     expect(repo.transitionToProcessing).toHaveBeenCalled(); expect(repo.transitionToFailed).not.toHaveBeenCalled(); expect(balances.returnToAvailable).not.toHaveBeenCalled();
   });
 });

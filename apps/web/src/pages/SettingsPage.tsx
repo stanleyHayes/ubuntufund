@@ -1,3 +1,4 @@
+import { PayoutAccounts } from '@/components/account/PayoutAccounts'
 import Skeleton from '@mui/material/Skeleton'
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded'
 import { AccountPageSkeleton, AccountHeading } from '@/components/account/AccountPage'
@@ -307,6 +308,7 @@ export function SettingsPage() {
       <Container maxWidth="lg">
         <AccountHeading title="Settings" description="Make Ujimora work for you. Manage notifications, privacy, and appearance." icon={<SettingsRoundedIcon />} />
 
+            <PayoutAccounts />
         <Grid container spacing={4}>
           {/* Left rail */}
           <Grid size={{ xs: 12, md: 4, lg: 3.5 }}>

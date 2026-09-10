@@ -193,6 +193,8 @@ export interface PaymentGatewayPort {
    * Register a payout recipient with the provider and return its opaque
    * recipient code (addresses transfers). Throws a 501 when unconfigured.
    */
+  resolveAccount?(accountNumber: string, bankCode: string): Promise<{ accountName: string }>;
+
   createTransferRecipient(params: CreateTransferRecipientParams): Promise<string>;
 
   /**

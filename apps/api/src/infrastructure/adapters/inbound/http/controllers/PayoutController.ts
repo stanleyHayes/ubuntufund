@@ -32,6 +32,11 @@ export class PayoutController {
     } catch (error) { next(error); }
   };
 
+  recipientDetails = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try { res.json({ data: await this.approvePayoutUseCase.recipientDetails(req.params.id as string, { userId: req.userId!, role: req.userRole }) }); }
+    catch (error) { next(error); }
+  };
+
   /** GET /banks?currency=GHS&type=mobile_money — bank / telco directory. */
   listBanks = async (
     req: Request,
@@ -119,7 +124,8 @@ export class PayoutController {
     try {
       const payout = await this.approvePayoutUseCase.execute(
         req.params.id as string,
-        { userId: req.userId!, role: req.userRole }
+        { userId: req.userId!, role: req.userRole },
+        req.body.reviewNote
       );
       res.json({ data: payout, message: 'Payout approved', status: 200 });
     } catch (error) {

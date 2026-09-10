@@ -58,3 +58,15 @@ A Paystack merchant receipt goes to the Paystack business contact; it is separat
 39 focused backend tests cover notification/Resend behavior, owner-only options, unconfirmed transfer reservations, fee calculations, batching and reconciliation; three owner-screen tests cover explicit cashout submission, balance bounds and inbox read actions. API/web type checks and focused lint pass. Desktop/mobile browser checks used mocked account/balance data. Local database integration tests require MongoDB and were not run; this is not a live-money end-to-end sign-off.
 
 Sources: [Paystack single transfers](https://paystack.com/docs/transfers/single-transfers/), [managing transfers](https://paystack.com/docs/transfers/managing-transfers/), [transfer API](https://paystack.com/docs/api/transfer/), [Resend idempotency](https://resend.com/docs/dashboard/emails/idempotency-keys).
+
+## Payout setup and verification (2026-09-10)
+
+Owners can select a campaign under Settings → Payout accounts, or use the account setup shown immediately after campaign creation. Destinations remain per campaign. Split campaigns use the separate beneficiary setup.
+
+Saving calls Paystack account resolution before recipient registration. A name match is not proof of ownership, a guarantee of receiving capacity, or proof of a live transfer in test mode. Unresolved/mismatching/legacy destinations require manual evidence review. Admin Payouts → Review payout destination shows the account bound to that payout; approval requires a written ownership/beneficiary authorization and capacity review. Review history records payout ID, admin, note and timestamp. No review means no transfer. Changing a campaign destination does not redirect an already requested payout.
+
+MoMo balances and remaining allowances are not exposed by the integrated Paystack API. Ask the owner to confirm current wallet capacity and applicable tier/transaction limits with the network. MTN's published guidance is *170# → My Wallet → Check Wallet Limits. Never collect the wallet PIN. Larger payouts may need a verified bank account or a network-approved wallet upgrade. The service rejects automatic batching of oversized MoMo payouts; it does not divide payments to evade wallet limits.
+
+Pending/processing/ambiguous transfers must be reconciled by their original reference before retry. Failed or reversed transfers require a refreshed balance and correction of the destination or limit issue; partial transfers remain in review. Previous reservation/reconciliation safeguards remain in effect.
+
+Provider references: https://paystack.com/docs/identity-verification/verify-account-number/ and https://help-center.mtn.com.gh/hc/en-us/articles/36652928033042-What-is-the-highest-amount-of-money-I-can-send-via-MTN-Mobile-Money

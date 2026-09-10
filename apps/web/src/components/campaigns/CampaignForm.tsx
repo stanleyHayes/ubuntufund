@@ -1,3 +1,4 @@
+import { CampaignCashout } from './CampaignCashout'
 import AiWritingAssistant from './AiWritingAssistant'
 import LocalHospitalRoundedIcon from '@mui/icons-material/LocalHospitalRounded'
 import SchoolRoundedIcon from '@mui/icons-material/SchoolRounded'
@@ -480,6 +481,7 @@ export function CampaignForm() {
         {setupErrors.map(message => <Alert severity="warning" key={message} sx={{ mt: 2, textAlign: 'left' }}>Campaign created, but {message}. Retry the unfinished setup below; do not recreate the campaign.</Alert>)}
         {!!pendingSetup.length && <Button sx={{ mt: 2 }} disabled={setupBusy} onClick={retrySetup}>{setupBusy ? <><LoadingDots size={6} /> <span>Retrying…</span></> : 'Retry unfinished setup'}</Button>}
         {split && !setupErrors.some(message => message.startsWith('Split draft')) && <Alert severity="info" sx={{ mt: 2 }}>Split saved as a draft. Beneficiary consent and activation are still required.</Alert>}
+        {createdId && !split && <Box sx={{ textAlign: 'left', mt: 3 }}><Typography variant="h6">Next: set up your payout account</Typography><Typography>Add an account now so receiving your campaign funds is ready for review.</Typography><CampaignCashout campaignId={createdId} initiallyExpanded /></Box>}
         {createdId && split && !setupErrors.some(message => message.startsWith('Split draft')) && <CampaignSplitSetup campaignId={createdId} />}
         {createdId && createdStatus === CampaignStatus.ACTIVE && <Box sx={{ mt: 2 }}><ShareCampaignButton campaignId={createdId} title={formData.title} url={`${window.location.origin}/campaigns/${createdId}`} /></Box>}
         <Box sx={{ mt: 3.5, display: 'flex', gap: 1.5, justifyContent: 'center', flexWrap: 'wrap' }}>

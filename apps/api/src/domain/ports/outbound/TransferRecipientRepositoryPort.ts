@@ -1,6 +1,7 @@
 import type { TransferRecipientEntity } from '../../entities/TransferRecipient.js';
 
 export interface TransferRecipientRepositoryPort {
+  recordReview?(id: string, reviewedBy: string, reviewNote: string, payoutId: string): Promise<void>;
   create(recipient: TransferRecipientEntity): Promise<TransferRecipientEntity>;
   findById(id: string): Promise<TransferRecipientEntity | null>;
   findByCampaignId(campaignId: string): Promise<TransferRecipientEntity[]>;

@@ -1,5 +1,14 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-10 — Payout onboarding and recipient verification
+
+- Added per-campaign payout account selection/setup to web and native Settings, and an expanded setup step immediately after campaign creation. Existing campaign-specific destinations remain explicit; split campaigns retain beneficiary setup.
+- Account saving resolves the registered name through server-side Paystack account resolution. Name matches are labeled separately from ownership; mismatches, unsupported resolution, failures and legacy accounts require review. No wallet balance, remaining allowance or guaranteed transfer success is claimed.
+- Admin approval loads the immutable payout destination and requires a beneficiary ownership/authorization and receiving-capacity review note. Reviews are persisted with admin, time and payout ID before approval/reservation; both maker-checker approvals are recorded. Legacy clients cannot approve without review.
+- Added MoMo limit guidance, bank-account alternative, pending/failed/reversed recovery guidance, and blocked automatic batching of oversized MoMo payouts. No transfer, test charge or payout-account registration was initiated during verification.
+- Validation: 32 focused API tests, 5 web money-flow tests, 24 mobile logic tests and all four application type checks pass. Native UI source still requires an updated app build; no device walkthrough or store release is claimed. Prior campaign-card preview remains unpublished.
+
+
 ### 2026-09-10 — Subscription recovery, early surcharge and mobile parity
 
 - Fixed View plans wrapping on the creator dashboard. Added owner-authenticated subscription verification by checkout ID and by stored provider reference, validating amount/currency/reference before reusing settlement. New callback URLs include checkout IDs; old links no longer depend on browser storage or fall back to unrelated handoffs.

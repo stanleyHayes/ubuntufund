@@ -11,6 +11,7 @@ import {
   ToggleButton,
   ToggleButtonGroup,
   Typography,
+  TextField,
 } from '@mui/material'
 import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded'
 import { EmptyState } from '@ubuntu-fund/ui'
@@ -39,9 +40,13 @@ function PayoutCard({
   approving,
 }: {
   payout: Payout
-  onApprove: (id: string) => void
+  onApprove: (id: string, reviewNote: string) => void
   approving: boolean
 }) {
+  const [recipient, setRecipient] = useState<{accountName:string;resolvedAccountName?:string;accountNumber:string;bankCode:string;type:string;verificationStatus:string} | null>(null)
+  const [reviewNote, setReviewNote] = useState('')
+  const [reviewError, setReviewError] = useState('')
+  async function loadRecipient() { try { setRecipient(await api.get(`/payouts/${payout.id}/recipient`)); setReviewError('') } catch(e) {setReviewError(e instanceof Error ? e.message : 'Could not load recipient')} }
   const needsReview = payout.status === 'NEEDS_REVIEW'
   const awaitingSecond = payout.status === 'PENDING' && Boolean(payout.firstApprovedBy)
   return (
@@ -91,12 +96,15 @@ function PayoutCard({
       )}
 
       {payout.status === 'PENDING' && (
-        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
+        <Box sx={{ mt: 2 }}>
+          <Button onClick={() => void loadRecipient()}>Review payout destination</Button>
+          {reviewError && <Alert severity="error">{reviewError}</Alert>}
+          {recipient && <><Alert severity={recipient.verificationStatus === 'name_matched' ? 'info' : 'warning'}>Supplied name: {recipient.accountName}. Provider name: {recipient.resolvedAccountName ?? 'Unresolved — obtain independent verification'}. Account: {recipient.accountNumber} · {recipient.bankCode} · {recipient.type}. Name matching alone does not prove ownership or receiving capacity.</Alert><TextField fullWidth multiline minRows={3} sx={{ my: 2 }} label="Beneficiary and capacity review" helperText="Record evidence of ownership or beneficiary authorization and ability to receive the net payout. For MoMo, confirm wallet tier and available capacity with the owner. Do not enter PINs or identity document numbers." value={reviewNote} onChange={e => setReviewNote(e.target.value)} /></>}
           <Button
             variant="contained"
             size="small"
-            disabled={approving}
-            onClick={() => onApprove(payout.id)}
+            disabled={approving || !recipient || reviewNote.trim().length < 20}
+            onClick={() => onApprove(payout.id, reviewNote)}
           >
             {approving ? 'Approving…' : awaitingSecond ? 'Give 2nd approval' : 'Approve'}
           </Button>
@@ -211,11 +219,11 @@ export default function PayoutsPage() {
   }, [load])
 
   const approve = useCallback(
-    async (id: string) => {
+    async (id: string, reviewNote: string) => {
       setApprovingId(id)
       setNotice(null)
       try {
-        const updated = await api.post<Payout>(`/payouts/${id}/approve`, {})
+        const updated = await api.post<Payout>(`/payouts/${id}/approve`, { reviewNote })
         setNotice(
           updated.status === 'PENDING'
             ? 'First approval recorded — a second admin must approve.'
