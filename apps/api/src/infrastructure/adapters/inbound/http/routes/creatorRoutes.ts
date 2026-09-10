@@ -1,3 +1,7 @@
+import { z } from 'zod';
+import { validate } from '../../middleware/validate.js';
+import { donationIntentRateLimiter } from '../../middleware/rateLimiter.js';
+import type { VerifyCreatorTipUseCase } from '../../../../../application/use-cases/VerifyCreatorTipUseCase.js';
 import type { PlanLimitsService } from '../../../../../application/services/PlanLimitsService.js';
 import { Router, type Response, type NextFunction } from 'express';
 import type { AuthenticatedRequest, createAuthMiddleware } from '../../middleware/authMiddleware.js';
@@ -15,6 +19,7 @@ import type { CreatorPayoutRepositoryPort } from '../../../../../domain/ports/ou
  * settles via the Paystack webhook (`tip-` reference).
  */
 export function createCreatorRoutes(deps: {
+  verifyTip: VerifyCreatorTipUseCase;
   planLimits: PlanLimitsService;
   saveProfile: SaveCreatorProfileUseCase;
   getByHandle: GetCreatorByHandleUseCase;
@@ -85,6 +90,10 @@ export function createCreatorRoutes(deps: {
     }
   );
 
+  router.post('/tips/verify', donationIntentRateLimiter, validate(z.object({ reference: z.string().regex(/^tip-[a-zA-Z0-9-]{8,100}$/) })), async (req, res, next) => {
+    try { res.json({ data: await deps.verifyTip.execute(req.body.reference) }); } catch (error) { next(error); }
+  });
+
   // --- Public: view + tip a creator ---
   router.get(
     '/:handle',
@@ -100,6 +109,8 @@ export function createCreatorRoutes(deps: {
 
   router.post(
     '/:handle/tips',
+    donationIntentRateLimiter,
+    validate(z.object({ amount: z.number().finite().positive().multipleOf(0.01), supporterEmail: z.string().trim().email().max(254), supporterName: z.string().trim().max(100).optional(), message: z.string().trim().max(1000).optional(), isAnonymous: z.boolean().optional() })),
     async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
       try {
         const result = await deps.createTip.execute(req.params.handle as string, {

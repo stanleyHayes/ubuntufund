@@ -137,9 +137,11 @@ export default function CreatorDashboardScreen() {
               Withdraw
             </Button>
             <View style={styles.linkRow}>
-              <Text style={styles.link} numberOfLines={1}>{pageUrl}</Text>
+              <Text style={styles.link}>{pageUrl}</Text>
               <Button compact mode="text" onPress={() => Share.share({ message: pageUrl })}>Share</Button>
             </View>
+            <Button onPress={() => router.push(`/creators/${profile.handle}`)}>Preview public page</Button>
+            <Text style={styles.sub}>Visitors see your profile and support form. Balance, payout details and editing controls stay private.</Text>
           </View>
         )}
 
@@ -151,7 +153,7 @@ export default function CreatorDashboardScreen() {
 
         <View style={styles.card}>
           <Text style={styles.cardTitle}>{profile ? 'Edit your page' : 'Claim your page'}</Text>
-          <TextInput label="Handle (your link)" value={handle} onChangeText={(t) => setHandle(t.toLowerCase())} autoCapitalize="none" disabled={!!profile || !policy?.eligible} />
+          <TextInput label="Handle (your link)" value={handle} onChangeText={(t) => setHandle(t.toLowerCase())} autoCapitalize="none" editable={!profile && !!policy?.eligible} disabled={!policy?.eligible} />
           <TextInput disabled={!policy?.eligible} label="Display name" value={displayName} onChangeText={setDisplayName} />
           <TextInput disabled={!policy?.eligible} label="Tagline" value={tagline} onChangeText={setTagline} />
           <TextInput disabled={!policy?.eligible} label="About you" value={bio} onChangeText={setBio} multiline />

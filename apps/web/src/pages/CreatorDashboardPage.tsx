@@ -21,7 +21,6 @@ import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
 import { SHAPE, LoadingDots } from '@ubuntu-fund/ui'
 import { api } from '@/lib/api'
 
-const FOREST = '#2E3D2F'
 const INK = 'text.primary'
 const INK_SECONDARY = 'text.secondary'
 
@@ -135,17 +134,19 @@ export function CreatorDashboardPage() {
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2, mb: 2 }}>
               <Box>
                 <Typography sx={{ fontSize: '0.75rem', color: INK_SECONDARY, textTransform: 'uppercase', letterSpacing: 0.5 }}>Available to withdraw</Typography>
-                <Typography sx={{ fontWeight: 900, fontSize: '2rem', color: FOREST }}>{fmt(balance.availableBalance)}</Typography>
+                <Typography sx={{ fontWeight: 900, fontSize: '2rem', color: INK }}>{fmt(balance.availableBalance)}</Typography>
                 <Typography sx={{ fontSize: '0.8rem', color: INK_SECONDARY }}>Received {fmt(balance.totalReceived)} · Withdrawn {fmt(balance.paidOutBalance)}</Typography>
               </Box>
-              <Button variant="contained" disabled={balance.availableBalance <= 0} onClick={() => { setWAmount(balance.availableBalance); setWithdrawOpen(true) }} sx={{ borderRadius: '999px', fontWeight: 800, textTransform: 'none', px: 3 }}>
+              <Button variant="contained" disabled={balance.availableBalance <= 0} onClick={() => { setWAmount(balance.availableBalance); setWithdrawOpen(true) }} sx={{ borderRadius: '999px', fontWeight: 800, textTransform: 'none', px: 3, '&.Mui-disabled': { color: 'text.secondary', bgcolor: 'action.disabledBackground' } }}>
                 Withdraw
               </Button>
             </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1.5, borderRadius: SHAPE.sm, bgcolor: 'rgba(46,61,47,0.06)' }}>
-              <Typography noWrap sx={{ fontSize: '0.85rem', color: INK, flex: 1 }}>{pageUrl}</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1.5, borderRadius: SHAPE.sm, bgcolor: 'action.hover', flexWrap: { xs: 'wrap', sm: 'nowrap' } }}>
+              <Typography sx={{ minWidth: 0, overflowWrap: 'anywhere', fontSize: '0.85rem', color: INK, flex: 1 }}>{pageUrl}</Typography>
               <Button size="small" startIcon={<ContentCopyRoundedIcon sx={{ fontSize: 16 }} />} onClick={() => { navigator.clipboard?.writeText(pageUrl); setSnack('Link copied') }} sx={{ textTransform: 'none' }}>Copy</Button>
             </Box>
+            <Button href={pageUrl} target="_blank" rel="noopener noreferrer" sx={{ mt: 1, whiteSpace: 'nowrap' }}>Preview public page</Button>
+            <Typography variant="body2" color="text.secondary">Visitors see your public profile and support form. Your balance, payout details and editing controls stay private.</Typography>
           </Box>
         )}
 
@@ -153,7 +154,7 @@ export function CreatorDashboardPage() {
         {/* Setup / edit */}
         <Box sx={{ p: { xs: 2.5, sm: 3.5 }, borderRadius: SHAPE.card, bgcolor: 'background.paper', boxShadow: 'var(--neu-raised)' }}>
           <Typography sx={{ fontWeight: 800, fontSize: '1.05rem', color: INK, mb: 2 }}>{profile ? 'Edit your page' : 'Claim your page'}</Typography>
-          <TextField label="Handle (your link)" value={handle} onChange={(e) => setHandle(e.target.value.toLowerCase())} fullWidth sx={{ mb: 2 }} helperText="letters, numbers, - or _ · your link becomes /creators/your-handle" disabled={!!profile || !policy?.eligible} />
+          <TextField label="Handle (your link)" value={handle} onChange={(e) => setHandle(e.target.value.toLowerCase())} fullWidth sx={{ mb: 2 }} helperText="letters, numbers, - or _ · your link becomes /creators/your-handle" disabled={!policy?.eligible} slotProps={{ input: { readOnly: !!profile } }} />
           <TextField disabled={!policy?.eligible} label="Display name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} fullWidth sx={{ mb: 2 }} />
           <TextField disabled={!policy?.eligible} label="Tagline" value={tagline} onChange={(e) => setTagline(e.target.value)} fullWidth sx={{ mb: 2 }} placeholder="What you do in a line" />
           <TextField disabled={!policy?.eligible} label="About you" value={bio} onChange={(e) => setBio(e.target.value)} fullWidth multiline minRows={3} sx={{ mb: 2 }} />

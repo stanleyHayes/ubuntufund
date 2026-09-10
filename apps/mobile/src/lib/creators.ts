@@ -66,7 +66,7 @@ export function saveCreatorProfile(input: {
 
 export function createTip(
   handle: string,
-  input: { amount: number; supporterEmail: string; supporterName?: string; message?: string }
+  input: { amount: number; supporterEmail: string; supporterName?: string; message?: string; isAnonymous?: boolean }
 ): Promise<{ checkoutUrl: string; reference: string; tipId: string }> {
   return api.post(`/creators/${handle}/tips`, input)
 }

@@ -1,5 +1,14 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-10 — Creator visibility and public support return flow
+
+- Confirmed unauthenticated GET /creators/pontifex returns the public profile with tips enabled, GHS 10/25/50/100 presets and no private payout/balance fields. Shared creator pages are public routes; the owner dashboard remains authenticated.
+- Fixed the dark-mode balance contrast and muted immutable handle, allowed shared links to wrap, added public-page preview and private/public explanations. Native owner view also gains preview/readable handle.
+- Found and fixed missing /tip/callback route. New guest confirmation verifies stored reference/amount/currency with Paystack before existing idempotent tip settlement, handles pending/failure/retry, returns only public confirmation fields and celebrates only confirmed success. Tip intent is persisted with a full UUID reference before checkout initialization.
+- Added anonymous-support controls and disclosure of public names/messages and private email on web/native support forms. Native browser return can verify and retry pending payment status without recharging. Native changes require a new build.
+- Validation: 8 focused API tests, 5 web callback/dashboard checks, 24 existing mobile logic tests, API/web/mobile type checks and targeted lint pass. No live tip or withdrawal was initiated; real-provider settlement remains unexercised for this new creator callback.
+
+
 ### 2026-09-10 — Payout onboarding and recipient verification
 
 - Added per-campaign payout account selection/setup to web and native Settings, and an expanded setup step immediately after campaign creation. Existing campaign-specific destinations remain explicit; split campaigns retain beneficiary setup.

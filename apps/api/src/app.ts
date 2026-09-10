@@ -1,3 +1,4 @@
+import { VerifyCreatorTipUseCase } from './application/use-cases/VerifyCreatorTipUseCase.js';
 import { ResendOwnerNotifications } from './infrastructure/adapters/outbound/ResendOwnerNotifications.js';
 import { GetCampaignPayoutOptionsUseCase } from './application/use-cases/GetCampaignPayoutOptionsUseCase.js';
 import { DonationOwnerNotifier } from './application/services/DonationOwnerNotifier.js';
@@ -1389,6 +1390,7 @@ export function createApp(): express.Express {
       saveProfile: saveCreatorProfileUseCase,
       getByHandle: getCreatorByHandleUseCase,
       createTip: createTipIntentUseCase,
+      verifyTip: new VerifyCreatorTipUseCase(tipRepo, creatorProfileRepo, paymentGateway, handleTipWebhookUseCase),
       requestWithdrawal: requestCreatorWithdrawalUseCase,
       profileRepo: creatorProfileRepo,
       balanceRepo: creatorBalanceRepo,

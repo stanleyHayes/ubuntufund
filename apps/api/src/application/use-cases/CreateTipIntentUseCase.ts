@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { PlanLimitsService } from '../services/PlanLimitsService.js';
 import type { CreatorProfileRepositoryPort } from '../../domain/ports/outbound/CreatorProfileRepositoryPort.js';
 import type { TipRepositoryPort } from '../../domain/ports/outbound/TipRepositoryPort.js';
@@ -40,7 +41,7 @@ export class CreateTipIntentUseCase {
     if (!creator.tipsEnabled) {
       throw new AppError('This creator is not accepting tips right now.', 409);
     }
-    if (!input.amount || input.amount <= 0) {
+    if (!Number.isFinite(input.amount) || input.amount <= 0) {
       throw new AppError('Enter a tip amount.', 400);
     }
     if (!input.supporterEmail) {
@@ -50,13 +51,7 @@ export class CreateTipIntentUseCase {
     const fee = 0; // Plan fee is charged once, on withdrawal.
     const net = round2(input.amount - fee);
 
-    const init = await this.gateway.initializeCharge({
-      email: input.supporterEmail,
-      amount: input.amount,
-      referencePrefix: 'tip',
-      metadata: { type: 'tip', creatorUserId: creator.userId, handle: creator.handle },
-      callbackPath: '/tip/callback',
-    });
+    const reference = `tip-${randomUUID()}`;
 
     const now = new Date();
     const tip = await this.tipRepo.create(
@@ -71,8 +66,9 @@ export class CreateTipIntentUseCase {
         message: input.message,
         isAnonymous: input.isAnonymous ?? false,
         status: 'PENDING',
+        settlementApplied: false,
         provider: 'paystack',
-        providerRef: init.reference,
+        providerRef: reference,
         platformFee: fee,
         netAmount: net,
         createdAt: now,
@@ -81,6 +77,16 @@ export class CreateTipIntentUseCase {
     );
     // Make sure a balance row exists so the later credit lands cleanly.
     await this.balanceRepo.ensure(creator.userId, creator.currency);
+
+    const init = await this.gateway.initializeCharge({
+      email: input.supporterEmail,
+      amount: input.amount,
+      referencePrefix: 'tip',
+      reference,
+      metadata: { type: 'tip', creatorUserId: creator.userId, handle: creator.handle },
+      callbackPath: '/tip/callback',
+    });
+
 
     return {
       checkoutUrl: init.authorizationUrl,

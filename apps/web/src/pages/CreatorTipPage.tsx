@@ -1,3 +1,5 @@
+import Checkbox from '@mui/material/Checkbox'
+import FormControlLabel from '@mui/material/FormControlLabel'
 import { AccountPageSkeleton } from '@/components/account/AccountPage'
 import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
@@ -40,6 +42,7 @@ export function CreatorTipPage() {
   const [reloadKey, setReloadKey] = useState(0)
 
   const [amount, setAmount] = useState(25)
+  const [anonymous, setAnonymous] = useState(false)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [message, setMessage] = useState('')
@@ -66,12 +69,12 @@ export function CreatorTipPage() {
 
   async function handleSupport() {
     setError(null)
-    if (!amount || amount <= 0) { setError('Choose an amount.'); return }
+    if (!Number.isFinite(amount) || amount <= 0) { setError('Choose an amount.'); return }
     if (!email) { setError('Enter your email so we can send a receipt.'); return }
     setSubmitting(true)
     try {
       const res = await api.post<{ checkoutUrl: string }>(`/creators/${handle}/tips`, {
-        amount, supporterEmail: email, supporterName: name || undefined, message: message || undefined,
+        amount, supporterEmail: email.trim(), supporterName: name.trim() || undefined, message: message.trim() || undefined, isAnonymous: anonymous,
       })
       window.location.href = res.checkoutUrl
     } catch (err) {
@@ -134,10 +137,11 @@ export function CreatorTipPage() {
           </Box>
         )}
 
+        <Typography sx={{ textAlign: 'center', color: INK_SECONDARY, mb: 2 }}>Choose an amount → Pay securely with Paystack → Receive confirmation. No Ujimora account needed.</Typography>
         {/* Tip form */}
-        <Box sx={{ p: { xs: 2.5, sm: 3.5 }, borderRadius: SHAPE.card, bgcolor: 'background.paper', boxShadow: 'var(--neu-raised)' }}>
+        <Box component="form" onSubmit={e => { e.preventDefault(); void handleSupport() }} sx={{ p: { xs: 2.5, sm: 3.5 }, borderRadius: SHAPE.card, bgcolor: 'background.paper', boxShadow: 'var(--neu-raised)' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-            <VolunteerActivismRoundedIcon sx={{ color: FOREST }} />
+            <VolunteerActivismRoundedIcon sx={{ color: 'text.primary' }} />
             <Typography sx={{ fontWeight: 800, fontSize: '1.1rem', color: INK }}>Support {page.displayName.split(' ')[0]}</Typography>
           </Box>
           {!page.tipsEnabled ? (
@@ -159,14 +163,16 @@ export function CreatorTipPage() {
               <TextField
                 label="Amount" type="number" value={amount}
                 onChange={(e) => setAmount(Number(e.target.value))}
-                fullWidth sx={{ mb: 2 }} inputProps={{ min: 1 }}
+                fullWidth sx={{ mb: 2 }} inputProps={{ min: 1, step: 0.01 }}
               />
               <TextField label="Your name (optional)" value={name} onChange={(e) => setName(e.target.value)} fullWidth sx={{ mb: 2 }} />
               <TextField label="Email (for your receipt)" type="email" value={email} onChange={(e) => setEmail(e.target.value)} fullWidth required sx={{ mb: 2 }} />
               <TextField label="Say something nice (optional)" value={message} onChange={(e) => setMessage(e.target.value)} fullWidth multiline minRows={2} sx={{ mb: 2 }} />
+              <FormControlLabel control={<Checkbox checked={anonymous} onChange={(_, value) => setAnonymous(value)} />} label="Show my support anonymously" />
+              <Typography variant="body2" sx={{ color: INK_SECONDARY, mb: 2 }}>Your name and message may appear in recent supporters. Anonymous support hides your name. Your email is private. Available payment methods are shown by Paystack.</Typography>
               {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
               <Button
-                onClick={handleSupport}
+                type="submit"
                 disabled={submitting}
                 variant="contained"
                 fullWidth

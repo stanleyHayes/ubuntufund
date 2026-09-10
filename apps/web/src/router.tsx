@@ -1,3 +1,4 @@
+import { CreatorTipCallbackPage } from './pages/CreatorTipCallbackPage'
 import { LegalPage } from './pages/LegalPage'
 import { LEGAL_POLICIES } from '@ubuntu-fund/types/src/legal'
 import { RouteError } from './components/RouteError'
@@ -68,6 +69,7 @@ export const router = createBrowserRouter([
       { path: 'donations/refund/:donationId', element: <RequireAuth><RefundRequestPage /></RequireAuth> },
       { path: 'refunds', element: <RequireAuth><MyRefundsPage /></RequireAuth> },
       { path: 'settings', element: <RequireAuth><SettingsPage /></RequireAuth> },
+      { path: 'tip/callback', element: <CreatorTipCallbackPage /> },
       { path: 'creators/:handle', element: <CreatorTipPage /> },
       { path: 'creator', element: <RequireAuth><CreatorDashboardPage /></RequireAuth> },
       { path: 'my-campaigns', element: <RequireAuth><MyCampaignsPage /></RequireAuth> },

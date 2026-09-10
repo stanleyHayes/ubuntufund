@@ -2,10 +2,11 @@ import { SkeletonLoader, Button } from '@/components/Loading'
 import { BrandedTextInput as TextInput } from '@/components/BrandedTextInput'
 import { useState, useEffect, useMemo } from 'react'
 import { View, ScrollView, StyleSheet, } from 'react-native'
-import { Text, Avatar } from 'react-native-paper'
+import { Text, Avatar, Checkbox } from 'react-native-paper'
 import { Stack, useLocalSearchParams } from 'expo-router'
 import * as WebBrowser from 'expo-web-browser'
-import { ApiError } from '@/lib/api'
+import { DonationCelebration } from '@/components/DonationCelebration'
+import { ApiError, api } from '@/lib/api'
 import { getCreatorByHandle, createTip, type CreatorPage } from '@/lib/creators'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
 import type { Palette, NeuRecipes } from '@/theme'
@@ -38,6 +39,13 @@ export default function CreatorTipScreen() {
   const neu = useNeu()
   const styles = useMemo(() => makeStyles(p, neu), [p, neu])
 
+  const [anonymous, setAnonymous] = useState(false)
+  const [paymentRef, setPaymentRef] = useState('')
+  const [paymentStatus, setPaymentStatus] = useState('')
+  async function checkPayment(reference: string) {
+    try { const result = await api.post<{status:string}>('/creators/tips/verify', {reference}); setPaymentStatus(result.status); if(result.status === 'SUCCEEDED') setReloadKey(k => k + 1) }
+    catch { setPaymentStatus('PENDING') }
+  }
   const [page, setPage] = useState<CreatorPage | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
@@ -69,12 +77,14 @@ export default function CreatorTipScreen() {
   async function support() {
     setError(null)
     const amt = Number(amount)
-    if (!amt || amt <= 0) { setError('Choose an amount.'); return }
+    if (!Number.isFinite(amt) || amt <= 0) { setError('Choose an amount.'); return }
     if (!email) { setError('Enter your email for a receipt.'); return }
     setSubmitting(true)
     try {
-      const res = await createTip(String(handle), { amount: amt, supporterEmail: email, supporterName: name || undefined, message: message || undefined })
+      const res = await createTip(String(handle), { amount: amt, supporterEmail: email, supporterName: name || undefined, message: message || undefined, isAnonymous: anonymous })
+      setPaymentRef(res.reference)
       await WebBrowser.openBrowserAsync(res.checkoutUrl)
+      await checkPayment(res.reference)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not start checkout.')
     } finally { setSubmitting(false) }
@@ -106,6 +116,9 @@ export default function CreatorTipScreen() {
     <View style={styles.container}>
       <Stack.Screen options={{ title: page.displayName }} />
       <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={styles.content}>
+        {paymentStatus === 'SUCCEEDED' && <><DonationCelebration /><Text style={styles.cardTitle}>Thank you! Your support is confirmed.</Text></>}
+        {paymentStatus === 'PENDING' && <><Text style={styles.tagline}>Confirmation is pending. Please do not pay again.</Text><Button onPress={() => void checkPayment(paymentRef)}>Check payment</Button></>}
+        {paymentStatus === 'FAILED' && <Text style={styles.err}>Payment was not completed. Contact support if you see a debit before trying again.</Text>}
         <View style={styles.header}>
           {page.avatarUrl ? <Avatar.Image size={84} source={{ uri: page.avatarUrl }} /> : <Avatar.Text size={84} label={initials} />}
           <Text style={styles.name}>{page.displayName}</Text>
@@ -124,7 +137,8 @@ export default function CreatorTipScreen() {
             <Text style={styles.tagline}>This creator isn’t accepting tips right now.</Text>
           ) : (
             <>
-              <View style={styles.presetRow}>
+              <Text style={styles.tagline}>Choose an amount, pay securely with Paystack, then receive confirmation. No Ujimora account needed.</Text>
+            <View style={styles.presetRow}>
                 {page.presetAmounts.map((a) => (
                   <Button key={a} mode={Number(amount) === a ? 'contained' : 'outlined'} compact onPress={() => setAmount(String(a))} labelStyle={{ fontFamily: 'Outfit_700Bold' }}>
                     {fmt(a)}
@@ -135,8 +149,10 @@ export default function CreatorTipScreen() {
               <TextInput label="Your name (optional)" value={name} onChangeText={setName} />
               <TextInput label="Email (for your receipt)" keyboardType="email-address" autoCapitalize="none" value={email} onChangeText={setEmail} />
               <TextInput label="Say something nice (optional)" value={message} onChangeText={setMessage} multiline />
+              <Checkbox.Item label="Show my support anonymously" status={anonymous ? 'checked' : 'unchecked'} onPress={() => setAnonymous(v => !v)} />
+              <Text style={styles.tagline}>Your name and message may appear publicly. Anonymous support hides your name. Your email stays private.</Text>
               {error ? <Text style={styles.err}>{error}</Text> : null}
-              <Button mode="contained" loading={submitting} disabled={submitting} onPress={support} icon="heart" labelStyle={{ fontFamily: 'Outfit_700Bold' }}>
+              <Button mode="contained" loading={submitting} disabled={submitting || paymentStatus === 'PENDING'} onPress={support} icon="heart" labelStyle={{ fontFamily: 'Outfit_700Bold' }}>
                 {submitting ? 'Starting…' : `Support ${fmt(Number(amount) || 0)}`}
               </Button>
             </>
