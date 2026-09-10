@@ -187,6 +187,9 @@ export default function AccountMenu({
                 p: 1.5,
                 minHeight: 62,
                 minWidth: 0,
+                position: 'relative',
+                overflow: 'hidden',
+                isolation: 'isolate',
                 color: 'text.primary',
                 borderRadius: SHAPE.sm,
                 border: 'var(--neu-border)',
@@ -201,6 +204,20 @@ export default function AccountMenu({
                 },
               }}
             >
+              <Icon
+                aria-hidden="true"
+                sx={{
+                  position: 'absolute',
+                  right: -9,
+                  bottom: -14,
+                  fontSize: 92,
+                  transform: 'rotate(-16deg)',
+                  color: active ? 'secondary.main' : 'primary.main',
+                  opacity: 0.09,
+                  pointerEvents: 'none',
+                  zIndex: -1,
+                }}
+              />
               <Icon
                 sx={{
                   fontSize: 21,
