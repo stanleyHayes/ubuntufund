@@ -24,11 +24,21 @@ interface EmptyStateProps {
 
 function makeStyles(p: Palette) {
   return StyleSheet.create({
-    wrap: { alignItems: 'center', justifyContent: 'center', paddingVertical: 36, paddingHorizontal: 24, borderRadius: 20, backgroundColor: 'rgba(168,181,160,0.10)' },
+    wrap: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 36,
+      paddingHorizontal: 24,
+      borderRadius: 20,
+      backgroundColor: 'rgba(168,181,160,0.10)',
+    },
     iconTile: {
       width: 64,
       height: 64,
-      borderTopLeftRadius: 10, borderTopRightRadius: 22, borderBottomLeftRadius: 22, borderBottomRightRadius: 10,
+      borderTopLeftRadius: 10,
+      borderTopRightRadius: 22,
+      borderBottomLeftRadius: 22,
+      borderBottomRightRadius: 10,
       backgroundColor: 'rgba(168,181,160,0.28)',
       alignItems: 'center',
       justifyContent: 'center',
@@ -76,7 +86,27 @@ export function EmptyState({
   const isError = variant === 'error'
   const tint = ctaColor ?? p.primary
   return (
-    <View style={[styles.wrap, style]}>
+    <View style={[styles.wrap, { overflow: 'hidden' }, style]}>
+      <View
+        pointerEvents="none"
+        accessible={false}
+        style={{
+          position: 'absolute',
+          right: -22,
+          bottom: -22,
+          opacity: 0.05,
+          transform: [{ rotate: '-18deg' }],
+        }}
+      >
+        <Icon source={icon} size={170} color={p.primary} />
+      </View>
+      <View
+        pointerEvents="none"
+        accessible={false}
+        style={{ position: 'absolute', left: -25, top: -30, opacity: 0.04 }}
+      >
+        <Icon source="link-variant" size={125} color={p.primary} />
+      </View>
       <View style={[styles.iconTile, isError && styles.iconTileError]}>
         <Icon source={icon} size={28} color={isError ? p.error : p.primary} />
       </View>

@@ -5,7 +5,8 @@ import { randomUUID } from 'expo-crypto'
 import { EmptyState } from './EmptyState'
 import type { SavedAccount } from './SavedPayoutAccounts'
 import { useEffect, useState, useRef } from 'react'
-import { View } from 'react-native'
+import { AppState, View } from 'react-native'
+import { PayoutHistoryCard } from './PayoutHistoryCard'
 import { Text } from 'react-native-paper'
 import type { Payout, PayoutType } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
@@ -59,10 +60,12 @@ export function CampaignCashout({ campaignId }: { campaignId: string }) {
   const [revision, setRevision] = useState(0)
   useEffect(() => {
     let active = true
-    Promise.all([
-      api.get<Options>(`/campaigns/${campaignId}/payout-options`),
-      api.get<Payout[]>(`/campaigns/${campaignId}/payouts`),
-    ])
+    api
+      .get<Payout[]>(`/campaigns/${campaignId}/payouts`)
+      .then(async (history) => {
+        const options = await api.get<Options>(`/campaigns/${campaignId}/payout-options`)
+        return [options, history] as const
+      })
       .then(([o, h]) => {
         if (active) {
           setOptions(o)
@@ -78,6 +81,19 @@ export function CampaignCashout({ campaignId }: { campaignId: string }) {
       active = false
     }
   }, [campaignId, revision])
+  useEffect(() => {
+    const refresh = () => setRevision((r) => r + 1)
+    const timer = setInterval(() => {
+      if (AppState.currentState === 'active') refresh()
+    }, 30000)
+    const listener = AppState.addEventListener('change', (state) => {
+      if (state === 'active') refresh()
+    })
+    return () => {
+      clearInterval(timer)
+      listener.remove()
+    }
+  }, [])
   useEffect(() => {
     let active = true
     api
@@ -378,12 +394,7 @@ export function CampaignCashout({ campaignId }: { campaignId: string }) {
             />
           )}
           {history.map((p) => (
-            <Text key={p.id}>
-              GHS {p.amount.toFixed(2)} · {p.type} ·{' '}
-              {p.status === 'PROCESSING' && p.providerStatus === 'otp'
-                ? 'Awaiting Paystack authorization'
-                : p.status}
-            </Text>
+            <PayoutHistoryCard key={p.id} payout={p} />
           ))}
         </>
       )}

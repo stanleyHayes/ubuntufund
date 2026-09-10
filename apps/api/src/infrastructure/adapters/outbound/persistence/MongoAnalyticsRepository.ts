@@ -1,4 +1,4 @@
-import type { PipelineStage } from 'mongoose';
+import { isObjectIdOrHexString, type PipelineStage } from 'mongoose';
 import { CampaignStatus } from '@ubuntu-fund/types';
 import type {
   AnalyticsReportRecord,
@@ -139,7 +139,7 @@ export class MongoAnalyticsRepository implements AnalyticsRepositoryPort {
       };
     });
 
-    const campaignIds = donationsByCampaign.map((row) => row._id);
+    const campaignIds = donationsByCampaign.map((row) => row._id).filter(isObjectIdOrHexString);
     const campaigns = await CampaignModel.find({ _id: { $in: campaignIds }, deletedAt: null })
       .select('_id category creatorId')
       .lean();
@@ -154,7 +154,8 @@ export class MongoAnalyticsRepository implements AnalyticsRepositoryPort {
       .sort((a, b) => b.value - a.value);
 
     const userIds = [...new Set([...donationsByDonor.map((row) => row._id), ...campaignsByCreator.map((row) => row._id)])];
-    const users = await UserModel.find({ _id: { $in: userIds }, deletedAt: null }).select('_id country').lean();
+    // Guest/system donor identifiers are valid donation records, not Mongo user IDs.
+    const users = await UserModel.find({ _id: { $in: userIds.filter(isObjectIdOrHexString) }, deletedAt: null }).select('_id country').lean();
     const userCountry = new Map(users.map((user) => [user._id.toString(), user.country?.trim() || 'Unspecified']));
     const geographic = new Map<string, { campaigns: number; donations: number }>();
     for (const row of campaignsByCreator) {

@@ -1,14 +1,67 @@
-import { useCallback, useEffect, useState } from 'react'
-import { AppState, View } from 'react-native'
-import { Text } from 'react-native-paper'
-import { api } from '@/lib/api'
-import { Button } from './Loading'
-import { useNeu } from '@/context/ColorModeContext'
-type Notice = { id: string; title: string; message: string; read: boolean }
-export function OwnerNotifications() {
-  const neu = useNeu(); const [items, setItems] = useState<Notice[]>([]); const [error, setError] = useState(''); const [revision, setRevision] = useState(0)
-  const refresh = useCallback(() => setRevision(v => v + 1), [])
-  useEffect(() => { let active = true; api.get<Notice[]>('/notifications').then(r => { if (active) { setItems(r); setError('') } }).catch(e => { if (active) setError(e.message) }); return () => { active = false } }, [revision])
-  useEffect(() => { const timer = setInterval(() => { if (AppState.currentState === 'active') refresh() }, 30000); const listener = AppState.addEventListener('change', s => { if (s === 'active') refresh() }); return () => { clearInterval(timer); listener.remove() } }, [refresh])
-  return <View style={{ ...neu.raised, margin: 16, padding: 20, borderRadius: 20, gap: 12 }}><Text variant="titleLarge">Notifications</Text>{error ? <><Text accessibilityRole="alert">{error}</Text><Button onPress={refresh}>Retry</Button></> : items.length === 0 ? <Text>New campaign donations will appear here.</Text> : items.slice(0, 10).map(n => <View key={n.id} style={{ gap: 6 }}><Text variant="titleSmall">{n.title}{n.read ? '' : ' · New'}</Text><Text>{n.message}</Text>{!n.read && <Button onPress={() => { void api.put(`/notifications/${n.id}/read`, {}).then(refresh).catch(e => setError(e.message)) }}>Mark as read</Button>}</View>)}</View>
+import { View } from 'react-native'
+import { Text, Icon } from 'react-native-paper'
+import { useNotifications } from '@/context/NotificationContext'
+import { usePalette } from '@/context/ColorModeContext'
+import { Button, Skeleton } from './Loading'
+import { EmptyState } from './EmptyState'
+import { GlassSurface } from './GlassSurface'
+export function OwnerNotifications({ showTitle = true }: { showTitle?: boolean }) {
+  const { items, error, loading, refresh, markRead } = useNotifications()
+  const palette = usePalette()
+  return (
+    <View style={{ padding: 16, gap: 16 }}>
+      {showTitle && (
+        <Text variant="titleLarge" style={{ fontFamily: 'Outfit_700Bold' }}>
+          Notifications
+        </Text>
+      )}
+      {loading ? (
+        <View accessibilityLabel="Loading notifications" style={{ gap: 12 }}>
+          <Skeleton height={90} />
+          <Skeleton height={90} />
+          <Skeleton height={90} />
+        </View>
+      ) : error ? (
+        <EmptyState
+          icon="cloud-off-outline"
+          variant="error"
+          title="Notifications couldn’t load"
+          subtitle={error}
+          ctaLabel="Retry"
+          onCtaPress={refresh}
+        />
+      ) : items.length === 0 ? (
+        <EmptyState
+          icon="bell-check-outline"
+          title="You’re all caught up"
+          subtitle="Donation updates and payout news will appear here."
+        />
+      ) : (
+        items.map((n) => (
+          <GlassSurface key={n.id} style={{ padding: 20, borderRadius: 18, overflow: 'hidden' }}>
+            <View
+              pointerEvents="none"
+              accessible={false}
+              style={{ position: 'absolute', right: -12, top: -8, opacity: 0.05 }}
+            >
+              <Icon source="bell-outline" size={100} color={palette.primary} />
+            </View>
+            <Text variant="titleMedium">
+              {n.title}
+              {n.read ? '' : ' · New'}
+            </Text>
+            <Text style={{ marginTop: 8, color: palette.textSecondary }}>{n.message}</Text>
+            {!n.read && (
+              <Button
+                onPress={() => void markRead(n.id)}
+                style={{ alignSelf: 'flex-start', marginTop: 8 }}
+              >
+                Mark as read
+              </Button>
+            )}
+          </GlassSurface>
+        ))
+      )}
+    </View>
+  )
 }

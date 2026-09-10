@@ -1261,3 +1261,12 @@ Maintain evidence here as each slice completes. Physical device/provider accepta
 - Added 25%, 50%, Max cashout shortcuts on web and native mobile, based on the selected service cap and rounded to pesewas.
 - Validation: 25 targeted API tests and eight owner UI tests passed, including concurrent refresh without a webhook, duplicate settlement, policy race limits, expired MoMo review, OTP controls and exact decimal shortcuts. API/admin/web/mobile type checks and admin/web production builds passed; existing bundle-size advisories remain. Lifecycle test now waits for uniqueness indexes before concurrent requests.
 - External acceptance: production test payout is reconciled and visible. Automatic payout policy remains off; Paystack OTP preferences and optional approval URL have not been changed or provider-tested. Native updates require a new app build. Setup: docs/payments/automatic-payouts.md.
+
+
+### 2026-09-10 — Reports guest-ID crash and native mobile parity
+
+- Reproduced production report failure read-only: MongoAnalyticsRepository.getReports threw CastError for donorId `guest`. Filtered non-Mongo IDs from user/campaign lookups while retaining donations in totals and Unspecified geography. The corrected query against production returns total GHS 5,200, Business GHS 5,200, Ghana GHS 1,000 and Unspecified GHS 4,200; fraud metrics return successfully. No production data modified.
+- Native mobile: cashout loads history before balance, refreshes every 30 seconds while active and on foreground; payout cards show net/gross/fee/status and selectable request/provider references with themed surfaces and watermarks.
+- Added authenticated global notification bell and unread badge, shared inbox state, skeleton/error/illustrated empty states, mark-as-read and foreground polling. Logout invalidates in-flight responses. Shared native empty states now include icon/link watermarks.
+- Verification: guest/legacy analytics integration regression passed; 26 mobile tests passed including notification shared state and stale-response logout isolation; API/mobile type checks and targeted lint passed. iOS/Android Metro export acceptance recorded below. No physical-device visual acceptance or store release is claimed; installed clients need an updated app build.
+- iOS and Android production JavaScript/Hermes exports both passed. Outputs remain in /tmp; no store binary was built or published.
