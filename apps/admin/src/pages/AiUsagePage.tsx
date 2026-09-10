@@ -1,10 +1,11 @@
+import { EmptyState } from '@ubuntu-fund/ui'
 import { useEffect, useState } from 'react'
 import {
   Alert,
   Box,
   Button,
   Chip,
-  CircularProgress,
+  Skeleton,
   Pagination,
   Stack,
   Table,
@@ -93,7 +94,7 @@ export default function AiUsagePage() {
       )}
       {loading ? (
         <Stack alignItems="center" sx={{ p: 5 }}>
-          <CircularProgress aria-label="Loading AI usage" />
+          <Skeleton variant="rounded" width="100%" height={240} aria-label="Loading AI usage" />
         </Stack>
       ) : (
         !error &&
@@ -105,13 +106,21 @@ export default function AiUsagePage() {
                 ? 'The writing provider is configured. Successful and failed attempts count toward daily limits.'
                 : 'AI writing is disabled or missing its provider configuration. Historical usage remains available.'}
             </Alert>
-            <Typography color="text.secondary" sx={{ mb: 2 }}>
-              {stats.lastUsedAt
-                ? `Last request: ${new Date(stats.lastUsedAt).toLocaleString()}`
-                : 'No writing requests yet.'}
-            </Typography>
+            {stats.lastUsedAt && (
+              <Typography color="text.secondary" sx={{ mb: 2 }}>
+                Last request: {new Date(stats.lastUsedAt).toLocaleString()}
+              </Typography>
+            )}
             {usage.data.length === 0 ? (
-              <Typography sx={{ p: 3 }}>No requests on this page.</Typography>
+              <EmptyState
+                icon={<AutoAwesomeRoundedIcon />}
+                title={
+                  usage.pagination.totalPages > 1
+                    ? 'No requests on this page'
+                    : 'Your writing activity starts here'
+                }
+                description="Requests will appear here when someone uses AI writing to draft or improve their campaign. You’ll see the task, result and usage for each request."
+              />
             ) : (
               <TableContainer
                 sx={{
@@ -123,7 +132,7 @@ export default function AiUsagePage() {
                 <Table aria-label="AI writing usage">
                   <TableHead>
                     <TableRow>
-                      {['Time', 'User ID', 'Task', 'Status', 'Model', 'Input / output tokens'].map(
+                      {['Time', 'User', 'Task', 'Status', 'Model', 'Input / output tokens'].map(
                         (label) => (
                           <TableCell key={label}>{label}</TableCell>
                         ),
@@ -134,7 +143,7 @@ export default function AiUsagePage() {
                     {usage.data.map((entry) => (
                       <TableRow key={entry.id}>
                         <TableCell>{new Date(entry.timestamp).toLocaleString()}</TableCell>
-                        <TableCell>{entry.userId}</TableCell>
+                        <TableCell>{entry.userName ?? 'Unavailable account'}</TableCell>
                         <TableCell>{entry.action.toLowerCase().replaceAll('_', ' ')}</TableCell>
                         <TableCell>
                           <Chip

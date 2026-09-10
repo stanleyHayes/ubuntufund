@@ -83,7 +83,8 @@ function PayoutCard({
             {money(payout.amount, payout.currency)}
           </Typography>
           <Typography sx={{ fontSize: 12, opacity: 0.7 }}>
-            Campaign {payout.campaignId} · {payout.type} ·{' '}
+            {payout.campaignTitle ?? 'Campaign payout'} ·{' '}
+            {payout.type.charAt(0).toUpperCase() + payout.type.slice(1)} ·{' '}
             {payout.provider === 'ujimora_wallet' ? 'Ujimora Wallet' : 'Bank / MoMo'}
           </Typography>
         </Box>
@@ -91,7 +92,9 @@ function PayoutCard({
           label={
             payout.status === 'PROCESSING' && payout.providerStatus === 'otp'
               ? 'Awaiting Paystack authorization'
-              : payout.status.replace('_', ' ')
+              : payout.status === 'PAID'
+                ? 'Completed'
+                : payout.status.replace('_', ' ').toLowerCase()
           }
           size="small"
           sx={{
@@ -116,15 +119,21 @@ function PayoutCard({
       >
         <Detail label="Fee" value={money(payout.fee, payout.currency)} />
         <Detail label="Net" value={money(payout.netAmount, payout.currency)} />
-        {payout.providerRef && <Detail label="Reference" value={payout.providerRef} />}
         {payout.legs && payout.legs.length > 0 && (
           <Detail
             label="Legs"
             value={`${payout.legs.length} (${payout.legs.filter((l) => l.status === 'success').length} settled)`}
           />
         )}
-        {payout.firstApprovedBy && <Detail label="1st approval" value={payout.firstApprovedBy} />}
-        {payout.approvedBy && <Detail label="Approved by" value={payout.approvedBy} />}
+        {payout.firstApprovedBy && (
+          <Detail
+            label="1st approval"
+            value={payout.firstApprovedByName ?? 'Unavailable account'}
+          />
+        )}
+        {payout.approvedBy && (
+          <Detail label="Approved by" value={payout.approvedByName ?? 'Unavailable account'} />
+        )}
       </Box>
 
       {payout.automationReason && (

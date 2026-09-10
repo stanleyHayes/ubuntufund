@@ -312,7 +312,7 @@ export class HandlePaystackWebhookUseCase {
       platformFeePercent,
     });
 
-    await this.settleDonationUseCase.execute(intent, breakdown);
+    await this.settleDonationUseCase.execute(intent, breakdown, data.channel);
 
     // Record the successful attempt (best-effort; never fails the settlement).
     try {

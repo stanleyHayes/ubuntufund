@@ -1270,3 +1270,13 @@ Maintain evidence here as each slice completes. Physical device/provider accepta
 - Added authenticated global notification bell and unread badge, shared inbox state, skeleton/error/illustrated empty states, mark-as-read and foreground polling. Logout invalidates in-flight responses. Shared native empty states now include icon/link watermarks.
 - Verification: guest/legacy analytics integration regression passed; 26 mobile tests passed including notification shared state and stale-response logout isolation; API/mobile type checks and targeted lint passed. iOS/Android Metro export acceptance recorded below. No physical-device visual acceptance or store release is claimed; installed clients need an updated app build.
 - iOS and Android production JavaScript/Hermes exports both passed. Outputs remain in /tmp; no store binary was built or published.
+
+
+### 2026-09-10 — Readable admin records and card/empty-state redesign
+
+- Audit logs now batch-resolve actor names and campaign/payout descriptions, support searching actor names, and preserve raw actions/paths/actor references under technical details. Read-only production verification resolves the reported approval to Ujimora Admin, campaign title and GHS 4,837.62. Missing accounts have a readable fallback.
+- Campaign payout console resolves campaign titles and approver names, labels paid as Completed and collapses provider references/codes into technical details. Raw references remain unchanged.
+- Donation cards use payment-method icons and ghost watermarks, clear donor/campaign hierarchy, a single currency amount and full wrapping campaign titles. New Paystack settlements record verified MoMo/bank channels rather than always Card; existing donation records were not relabeled without verification.
+- AI writing usage uses one shared illustrated empty state and skeleton loading; user names replace user IDs in usage rows.
+- Role cards use distinct role icons/watermarks and permission/resource counts; expanded permissions use an accessible View/Create/Edit/Delete matrix. Actual roles and permission grants are unchanged.
+- Validation: 13 API tests and three AI usage UI tests passed; API/admin type checks, targeted lint, diff checks and admin production build passed. Existing admin bundle-size advisory remains.

@@ -1,6 +1,6 @@
 import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import { useState, useEffect } from 'react'
-import { Alert, Box, Pagination, Skeleton, Typography, } from '@mui/material'
+import { Alert, Box, Pagination, Skeleton, Typography } from '@mui/material'
 import { SHAPE, EmptyState } from '@ubuntu-fund/ui'
 import SearchIcon from '@mui/icons-material/Search'
 import InputAdornment from '@mui/material/InputAdornment'
@@ -28,6 +28,9 @@ interface AuditEntry {
   timestamp: string | Date
   user: string
   action: string
+  actionLabel?: string
+  summary?: string
+  actorId?: string
   resource: string
   details: string
   severity: Severity
@@ -58,27 +61,32 @@ export default function AuditLogPage() {
 
   useEffect(() => {
     let cancelled = false
-    const timer = window.setTimeout(async () => {
-      setLoading(true)
-      try {
-        const params = new URLSearchParams({ page: String(page + 1), pageSize: String(perPage) })
-        if (search.trim()) params.set('search', search.trim())
-        const result = await api.get<{ items: AuditEntry[]; total: number }>(`/audit?${params}`)
-        if (!cancelled) {
-          setAuditEntries(result.items)
-          setTotal(result.total)
-          setError(null)
+    const timer = window.setTimeout(
+      async () => {
+        setLoading(true)
+        try {
+          const params = new URLSearchParams({ page: String(page + 1), pageSize: String(perPage) })
+          if (search.trim()) params.set('search', search.trim())
+          const result = await api.get<{ items: AuditEntry[]; total: number }>(`/audit?${params}`)
+          if (!cancelled) {
+            setAuditEntries(result.items)
+            setTotal(result.total)
+            setError(null)
+          }
+        } catch (requestError) {
+          if (!cancelled) {
+            setAuditEntries([])
+            setTotal(0)
+            setError(
+              requestError instanceof Error ? requestError.message : 'Could not load the audit log',
+            )
+          }
+        } finally {
+          if (!cancelled) setLoading(false)
         }
-      } catch (requestError) {
-        if (!cancelled) {
-          setAuditEntries([])
-          setTotal(0)
-          setError(requestError instanceof Error ? requestError.message : 'Could not load the audit log')
-        }
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }, search ? 250 : 0)
+      },
+      search ? 250 : 0,
+    )
 
     return () => {
       cancelled = true
@@ -102,100 +110,239 @@ export default function AuditLogPage() {
         icon={<HistoryEduRoundedIcon />}
       />
 
-      <Box sx={{ ...surfaceSx, p: 2.5, mb: 3, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+      <Box
+        sx={{
+          ...surfaceSx,
+          p: 2.5,
+          mb: 3,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 2,
+          flexWrap: 'wrap',
+        }}
+      >
         <TextField
           size="small"
           placeholder="Search audit log..."
           value={search}
-          onChange={e => { setSearch(e.target.value); setPage(0) }}
+          onChange={(e) => {
+            setSearch(e.target.value)
+            setPage(0)
+          }}
           slotProps={{
             htmlInput: { 'aria-label': 'Search audit log' },
-            input: { startAdornment: <InputAdornment position="start"><SearchIcon sx={{ color: 'text.secondary', fontSize: 20 }} /></InputAdornment> },
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
+                </InputAdornment>
+              ),
+            },
           }}
           sx={{ flex: '1 1 240px' }}
         />
         <Box sx={{ px: 2, py: 1, borderRadius: SHAPE.sm, boxShadow: 'var(--neu-inset)' }}>
-          <Typography variant="body2" color="text.secondary" sx={{ fontVariantNumeric: 'tabular-nums' }}>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ fontVariantNumeric: 'tabular-nums' }}
+          >
             {loading ? <Skeleton width={70} /> : error ? 'Unavailable' : `${total} entries`}
           </Typography>
         </Box>
       </Box>
 
-      <Box component="section" aria-label="Audit entries" aria-busy={loading} sx={{ display: 'grid', gap: 2 }}>
-        {loading ? Array.from({ length: 8 }, (_, i) => (
-          <Box key={i} sx={{ ...surfaceSx, p: 2.5 }}>
-            <Skeleton width="45%" height={22} />
-            <Skeleton width="80%" height={28} sx={{ mt: 1 }} />
-          </Box>
-        )) : auditEntries.map(entry => {
-          const color = severityColors[entry.severity]
-          return (
-            <Box component="article" key={entry.id} sx={{ ...surfaceSx, p: 2.5, minWidth: 0 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1.5, mb: 1.5 }}>
-                <Box aria-hidden="true" sx={{ width: 36, height: 36, display: 'grid', placeItems: 'center', color, borderRadius: SHAPE.sm, boxShadow: 'var(--neu-inset)' }}>
-                  <HistoryEduRoundedIcon sx={{ fontSize: 19 }} />
-                </Box>
-                <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, overflowWrap: 'anywhere' }}>{entry.user}</Typography>
-                <Typography component="time" sx={{ fontSize: '0.75rem', color: 'text.secondary', fontVariantNumeric: 'tabular-nums' }}>
-                  {formatTimestamp(entry.timestamp)}
-                </Typography>
-                <Box sx={{ ml: { sm: 'auto' }, px: 1.25, py: 0.5, borderRadius: SHAPE.sm, boxShadow: 'var(--neu-subtle)', color }}>
-                  <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'capitalize' }}>{entry.severity}</Typography>
-                </Box>
+      <Box
+        component="section"
+        aria-label="Audit entries"
+        aria-busy={loading}
+        sx={{ display: 'grid', gap: 2 }}
+      >
+        {loading
+          ? Array.from({ length: 8 }, (_, i) => (
+              <Box key={i} sx={{ ...surfaceSx, p: 2.5 }}>
+                <Skeleton width="45%" height={22} />
+                <Skeleton width="80%" height={28} sx={{ mt: 1 }} />
               </Box>
-              <Box sx={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: 1.5 }}>
-                <Typography sx={{ px: 1.25, py: 0.75, borderRadius: SHAPE.sm, boxShadow: 'var(--neu-inset)', color, fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', overflowWrap: 'anywhere' }}>
-                  {entry.action}
-                </Typography>
-                <Box sx={{ flex: '1 1 260px', minWidth: 0 }}>
-                  <Typography variant="body2" sx={{ color: 'text.secondary', overflowWrap: 'anywhere' }}>
-                    {entry.details}
-                  </Typography>
-                  {entry.changes && entry.changes.length > 0 && (
-                    <Box sx={{ mt: 0.75, display: 'flex', flexDirection: 'column', gap: 0.25 }}>
-                      {entry.changes.map((c) => (
-                        <Typography
-                          key={c.field}
-                          variant="caption"
-                          sx={{ fontFamily: 'monospace', color: 'text.secondary', overflowWrap: 'anywhere' }}
-                        >
-                          {c.field}: {fmt(c.before)} → {fmt(c.after)}
-                        </Typography>
-                      ))}
+            ))
+          : auditEntries.map((entry) => {
+              const color = severityColors[entry.severity]
+              return (
+                <Box component="article" key={entry.id} sx={{ ...surfaceSx, p: 2.5, minWidth: 0 }}>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      flexWrap: 'wrap',
+                      gap: 1.5,
+                      mb: 1.5,
+                    }}
+                  >
+                    <Box
+                      aria-hidden="true"
+                      sx={{
+                        width: 36,
+                        height: 36,
+                        display: 'grid',
+                        placeItems: 'center',
+                        color,
+                        borderRadius: SHAPE.sm,
+                        boxShadow: 'var(--neu-inset)',
+                      }}
+                    >
+                      <HistoryEduRoundedIcon sx={{ fontSize: 19 }} />
                     </Box>
-                  )}
-                  {entry.reason && (
-                    <Typography variant="caption" sx={{ display: 'block', mt: 0.5, fontStyle: 'italic', color: 'text.secondary' }}>
-                      Reason: {entry.reason}
+                    <Typography
+                      sx={{ fontSize: '0.85rem', fontWeight: 600, overflowWrap: 'anywhere' }}
+                    >
+                      {entry.user}
                     </Typography>
-                  )}
+                    <Typography
+                      component="time"
+                      sx={{
+                        fontSize: '0.75rem',
+                        color: 'text.secondary',
+                        fontVariantNumeric: 'tabular-nums',
+                      }}
+                    >
+                      {formatTimestamp(entry.timestamp)}
+                    </Typography>
+                    <Box
+                      sx={{
+                        ml: { sm: 'auto' },
+                        px: 1.25,
+                        py: 0.5,
+                        borderRadius: SHAPE.sm,
+                        boxShadow: 'var(--neu-subtle)',
+                        color,
+                      }}
+                    >
+                      <Typography
+                        sx={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'capitalize' }}
+                      >
+                        {entry.severity}
+                      </Typography>
+                    </Box>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: 1.5 }}>
+                    <Typography
+                      sx={{
+                        px: 1.25,
+                        py: 0.75,
+                        borderRadius: SHAPE.sm,
+                        boxShadow: 'var(--neu-inset)',
+                        color,
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                        textTransform: 'uppercase',
+                        overflowWrap: 'anywhere',
+                      }}
+                    >
+                      {entry.actionLabel ?? entry.action}
+                    </Typography>
+                    <Box sx={{ flex: '1 1 260px', minWidth: 0 }}>
+                      <Typography
+                        variant="body2"
+                        sx={{ color: 'text.secondary', overflowWrap: 'anywhere' }}
+                      >
+                        {entry.summary ?? entry.details}
+                      </Typography>
+                      <Box
+                        component="details"
+                        sx={{ mt: 1, color: 'text.secondary', overflowWrap: 'anywhere' }}
+                      >
+                        <Typography
+                          component="summary"
+                          variant="caption"
+                          sx={{ cursor: 'pointer' }}
+                        >
+                          Technical details
+                        </Typography>
+                        <Typography variant="caption" component="div">
+                          {entry.details}
+                        </Typography>
+                        {entry.actorId && (
+                          <Typography variant="caption" component="div">
+                            Account reference: {entry.actorId}
+                          </Typography>
+                        )}
+                        <Typography variant="caption" component="div">
+                          Event: {entry.action}
+                        </Typography>
+                      </Box>
+                      {entry.changes && entry.changes.length > 0 && (
+                        <Box sx={{ mt: 0.75, display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+                          {entry.changes.map((c) => (
+                            <Typography
+                              key={c.field}
+                              variant="caption"
+                              sx={{
+                                fontFamily: 'monospace',
+                                color: 'text.secondary',
+                                overflowWrap: 'anywhere',
+                              }}
+                            >
+                              {c.field}: {fmt(c.before)} → {fmt(c.after)}
+                            </Typography>
+                          ))}
+                        </Box>
+                      )}
+                      {entry.reason && (
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            display: 'block',
+                            mt: 0.5,
+                            fontStyle: 'italic',
+                            color: 'text.secondary',
+                          }}
+                        >
+                          Reason: {entry.reason}
+                        </Typography>
+                      )}
+                    </Box>
+                  </Box>
                 </Box>
-              </Box>
-            </Box>
-          )
-        })}
+              )
+            })}
         {!loading && error && <Alert severity="error">{error}</Alert>}
-        {!loading && !error && auditEntries.length === 0 && (
-          search ? (
-            <Box sx={{ ...surfaceSx, p: 3 }}><EmptyState
-              variant="search"
-              title="No audit entries match this search"
-              description="Try a different search term to find the authenticated change you're looking for."
-              compact
-            /></Box>
+        {!loading &&
+          !error &&
+          auditEntries.length === 0 &&
+          (search ? (
+            <Box sx={{ ...surfaceSx, p: 3 }}>
+              <EmptyState
+                variant="search"
+                title="No audit entries match this search"
+                description="Try a different search term to find the authenticated change you're looking for."
+                compact
+              />
+            </Box>
           ) : (
-            <Box sx={{ ...surfaceSx, p: 3 }}><EmptyState
-              variant="noData"
-              title="No audit entries yet"
-              description="Authenticated changes made across the console will be recorded here as they happen."
-              compact
-            /></Box>
-          )
-        )}
+            <Box sx={{ ...surfaceSx, p: 3 }}>
+              <EmptyState
+                variant="noData"
+                title="No audit entries yet"
+                description="Authenticated changes made across the console will be recorded here as they happen."
+                compact
+              />
+            </Box>
+          ))}
       </Box>
 
       {total > perPage && (
-        <Box sx={{ ...surfaceSx, mt: 3, p: 2.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+        <Box
+          sx={{
+            ...surfaceSx,
+            mt: 3,
+            p: 2.5,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 2,
+          }}
+        >
           <Typography variant="body2" color="text.secondary">
             Showing {page * perPage + 1}–{Math.min((page + 1) * perPage, total)} of {total}
           </Typography>
@@ -213,8 +360,17 @@ export default function AuditLogPage() {
                 bgcolor: 'background.paper',
                 boxShadow: 'var(--neu-subtle)',
                 '&:hover': { boxShadow: 'var(--neu-raised-hover)' },
-                '&.Mui-selected': { bgcolor: 'background.paper', color: 'primary.main', boxShadow: 'var(--neu-inset)', fontWeight: 700 },
-                '&.Mui-focusVisible': { outline: '2px solid', outlineColor: 'secondary.main', outlineOffset: 2 },
+                '&.Mui-selected': {
+                  bgcolor: 'background.paper',
+                  color: 'primary.main',
+                  boxShadow: 'var(--neu-inset)',
+                  fontWeight: 700,
+                },
+                '&.Mui-focusVisible': {
+                  outline: '2px solid',
+                  outlineColor: 'secondary.main',
+                  outlineOffset: 2,
+                },
                 '&.Mui-disabled, &.MuiPaginationItem-ellipsis': { boxShadow: 'none' },
               },
             }}

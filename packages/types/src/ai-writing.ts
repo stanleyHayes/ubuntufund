@@ -39,6 +39,7 @@ export interface AiUsageStats {
 }
 
 export interface AiUsageLogEntry {
+  userName?: string
   id: string
   action: AiWritingAction
   timestamp: string

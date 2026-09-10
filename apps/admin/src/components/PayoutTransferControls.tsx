@@ -40,12 +40,17 @@ export function PayoutTransferControls({
   if (payout.provider !== 'paystack' || payout.legs?.length || !payout.providerRef) return null
   return (
     <Box sx={{ mt: 2 }}>
-      <Typography variant="caption" sx={{ display: 'block', overflowWrap: 'anywhere' }}>
-        Paystack reference · {payout.providerRef}
-      </Typography>
-      {payout.transferCode && (
-        <Typography variant="caption">Transfer code · {payout.transferCode}</Typography>
-      )}
+      <Box component="details" sx={{ overflowWrap: 'anywhere' }}>
+        <Typography component="summary" variant="caption" sx={{ cursor: 'pointer' }}>
+          Technical details
+        </Typography>
+        <Typography variant="caption" sx={{ display: 'block', overflowWrap: 'anywhere' }}>
+          Paystack reference · {payout.providerRef}
+        </Typography>
+        {payout.transferCode && (
+          <Typography variant="caption">Transfer code · {payout.transferCode}</Typography>
+        )}
+      </Box>
       {error && <Alert severity="error">{error}</Alert>}
       {notice && <Alert severity="success">{notice}</Alert>}
       {payout.status === 'PROCESSING' && payout.providerStatus === 'otp' && (

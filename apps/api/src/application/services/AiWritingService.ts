@@ -1,3 +1,5 @@
+import { isObjectIdOrHexString } from 'mongoose'
+import { UserModel } from '../../infrastructure/database/models/UserModel.js'
 import type { AiWritingRequest } from '@ubuntu-fund/types'
 import type { AiWritingProviderPort } from '../../domain/ports/outbound/AiWritingProviderPort.js'
 import { AiQuotaModel, AiUsageModel } from '../../infrastructure/database/models/AiUsageModel.js'
@@ -118,8 +120,18 @@ export class AiWritingService {
         .lean(),
       AiUsageModel.countDocuments(),
     ])
+    const users = await UserModel.find({
+      _id: { $in: rows.map((row) => row.userId).filter(isObjectIdOrHexString) },
+    })
+      .select('_id name')
+      .lean()
+    const names = new Map(users.map((user) => [user._id.toString(), user.name]))
     return {
-      data: rows.map(({ _id, __v, ...row }) => ({ ...row, id: _id.toString() })),
+      data: rows.map(({ _id, __v, ...row }) => ({
+        ...row,
+        userName: names.get(row.userId) || 'Unavailable account',
+        id: _id.toString(),
+      })),
       pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) },
     }
   }

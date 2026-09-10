@@ -21,8 +21,12 @@ function round6(n: number): number {
 }
 
 /** Maps a payment provider onto the legacy donation's payment method. */
-function providerToPaymentMethod(provider: string): PaymentMethod {
-  return provider === 'wallet' ? PaymentMethod.WALLET : PaymentMethod.CARD;
+export function providerToPaymentMethod(provider: string, channel?: unknown): PaymentMethod {
+  if (provider === 'wallet') return PaymentMethod.WALLET;
+  if (channel === 'mobile_money') return PaymentMethod.MOBILE_MONEY;
+  if (channel === 'bank_transfer' || channel === 'bank') return PaymentMethod.BANK_TRANSFER;
+  if (channel === 'crypto' || provider === 'bitnob') return PaymentMethod.CRYPTO;
+  return PaymentMethod.CARD;
 }
 
 /**
@@ -55,7 +59,8 @@ export class SettleDonationUseCase {
 
   async execute(
     intent: DonationIntentEntity,
-    breakdown: DonationSettlementBreakdown
+    breakdown: DonationSettlementBreakdown,
+    verifiedChannel?: unknown
   ): Promise<DonationIntentEntity> {
     // ── 1. Exactly-once settlement gate ──────────────────────────────────
     const settled = await this.donationIntentRepo.transitionToSucceeded(
@@ -82,7 +87,7 @@ export class SettleDonationUseCase {
         campaignId: settled.campaignId,
         donorId,
         amount: new Money(breakdown.amount, breakdown.currency),
-        paymentMethod: providerToPaymentMethod(settled.provider),
+        paymentMethod: providerToPaymentMethod(settled.provider, verifiedChannel),
         message: settled.message,
         isAnonymous: settled.isAnonymous,
         createdAt: new Date(),

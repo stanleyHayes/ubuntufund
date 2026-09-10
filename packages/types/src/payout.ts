@@ -121,6 +121,9 @@ export interface TransferRecipient {
  * ledger; the gateway converts to pesewas at the provider boundary.
  */
 export interface Payout {
+  campaignTitle?: string
+  approvedByName?: string
+  firstApprovedByName?: string
   id: string
   campaignId: string
   recipientId: string

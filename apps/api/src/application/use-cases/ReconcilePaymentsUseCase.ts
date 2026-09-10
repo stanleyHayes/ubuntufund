@@ -171,7 +171,7 @@ export class ReconcilePaymentsUseCase {
         providerRef: intent.providerRef,
         platformFeePercent,
       });
-      await this.settleDonationUseCase.execute(intent, breakdown);
+      await this.settleDonationUseCase.execute(intent, breakdown, verified.raw?.channel);
       await this.safeRecordAttempt(intent, 'succeeded', verified.raw);
       return 'repaired';
     }

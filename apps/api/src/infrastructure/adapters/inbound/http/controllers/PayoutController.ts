@@ -1,3 +1,6 @@
+import { isObjectIdOrHexString } from 'mongoose'
+import { CampaignModel } from '../../../../database/models/CampaignModel.js'
+import { UserModel } from '../../../../database/models/UserModel.js'
 import type { PayoutTransferControlUseCase } from '../../../../../application/use-cases/PayoutTransferControlUseCase.js'
 import type { AutomaticPayoutService } from '../../../outbound/payments/AutomaticPayoutService.js'
 import type { GetCampaignPayoutOptionsUseCase } from '../../../../../application/use-cases/GetCampaignPayoutOptionsUseCase.js'
@@ -60,6 +63,37 @@ export class PayoutController {
     } catch (error) {
       next(error)
     }
+  }
+
+  private async adminLabels(payouts: import('@ubuntu-fund/types').Payout[]) {
+    const [campaigns, users] = await Promise.all([
+      CampaignModel.find({
+        _id: { $in: payouts.map((p) => p.campaignId).filter(isObjectIdOrHexString) },
+      })
+        .select('_id title')
+        .lean(),
+      UserModel.find({
+        _id: {
+          $in: payouts
+            .flatMap((p) => [p.approvedBy, p.firstApprovedBy])
+            .filter(isObjectIdOrHexString),
+        },
+      })
+        .select('_id name')
+        .lean(),
+    ])
+    const names = new Map(users.map((u) => [u._id.toString(), u.name]))
+    const titles = new Map(campaigns.map((c) => [c._id.toString(), c.title]))
+    const name = (id?: string) =>
+      id
+        ? names.get(id) || (id.startsWith('system') ? 'System automation' : 'Unavailable account')
+        : undefined
+    return payouts.map((p) => ({
+      ...p,
+      campaignTitle: titles.get(p.campaignId) || 'Unavailable campaign',
+      approvedByName: name(p.approvedBy),
+      firstApprovedByName: name(p.firstApprovedBy),
+    }))
   }
 
   private async refreshProcessing(payouts: import('@ubuntu-fund/types').Payout[]) {
@@ -179,7 +213,7 @@ export class PayoutController {
   ): Promise<void> => {
     try {
       const payouts = await this.listPayoutsUseCase.execute()
-      const refreshed = await this.refreshProcessing(payouts)
+      const refreshed = await this.adminLabels(await this.refreshProcessing(payouts))
       res.json({ data: refreshed, message: 'Payouts retrieved', status: 200 })
     } catch (error) {
       next(error)
@@ -195,7 +229,7 @@ export class PayoutController {
     try {
       const payouts = await this.listPayoutsUseCase.reviewQueue()
       res.json({
-        data: (await this.refreshProcessing(payouts)).filter((p) =>
+        data: (await this.adminLabels(await this.refreshProcessing(payouts))).filter((p) =>
           ['PENDING', 'PROCESSING', 'NEEDS_REVIEW'].includes(p.status),
         ),
         message: 'Payout review queue',
