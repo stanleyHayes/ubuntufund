@@ -87,6 +87,7 @@ export interface KYCVerification {
 }
 
 export interface User {
+  organizationName?: string
   id: string
   email: string
   name: string

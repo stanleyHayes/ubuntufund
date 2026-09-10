@@ -160,6 +160,7 @@ export function ProfilePage() {
   const [country, setCountry] = useState('')
   const [profileLoadError, setProfileLoadError] = useState(false)
   const [loadAttempt, setLoadAttempt] = useState(0)
+  const [organizationName, setOrganizationName] = useState(user?.organizationName ?? '')
   const [savedName, setSavedName] = useState(user?.name ?? '')
   const [profileSnack, setProfileSnack] = useState(false)
   const [profileSaving, setProfileSaving] = useState(false)
@@ -184,13 +185,14 @@ export function ProfilePage() {
       setImpactLoading(true)
       try {
         const [profileResult, analyticsResult] = await Promise.allSettled([
-          api.get<Partial<ProfileImpact> & { name?: string; phone?: string; bio?: string; country?: string; avatarUrl?: string; coverUrl?: string }>('/profile'),
+          api.get<Partial<ProfileImpact> & { name?: string; organizationName?: string; phone?: string; bio?: string; country?: string; avatarUrl?: string; coverUrl?: string }>('/profile'),
           api.get<Partial<ProfileImpact>>('/analytics/overview'),
         ])
         if (!cancelled) {
           if (profileResult.status === 'rejected') { setProfileLoadError(true); return }
           const profile = profileResult.value
           setProfileLoadError(false)
+          setOrganizationName(profile.organizationName ?? '')
           setName(profile.name ?? '')
           setSavedName(profile.name ?? '')
           setPhone(profile.phone ?? '')
@@ -304,7 +306,7 @@ export function ProfilePage() {
                 <Box sx={{ minWidth: 0 }}>
                   <Typography component="h1" sx={{ fontWeight: 700, fontSize: { xs: '1.7rem', sm: '2.2rem' }, lineHeight: 1.12,
                     letterSpacing: '-0.035em', overflowWrap: 'anywhere', color: 'text.primary' }}>
-                    {savedName || 'Your profile'}
+                    {organizationName || savedName || 'Your profile'}
                   </Typography>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 1.25, color: 'text.secondary' }}>
                     <LocationOnRoundedIcon sx={{ fontSize: 16 }} />
@@ -312,6 +314,7 @@ export function ProfilePage() {
                   </Box>
                 </Box>
               </Box>
+              {organizationName && <Typography color="text.secondary">Managed by {savedName}</Typography>}
               <Typography sx={{ maxWidth: 500, color: 'text.secondary', fontSize: '0.92rem', lineHeight: 1.75, overflowWrap: 'anywhere' }}>{bio}</Typography>
               <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2, mt: 3 }}>
                 <Button startIcon={<PhotoCameraRoundedIcon />} onClick={() => setImageEditor('avatarUrl')}>Change profile image</Button>
@@ -539,6 +542,7 @@ export function ProfilePage() {
           </CardContent>
         </Card>
 
+        <Button component={RouterLink} to="/organization-team" startIcon={<PeopleRoundedIcon />} sx={{ mb: 3 }}>Organization workspace & team</Button>
         {/* ═══ Settings Tabs ═══ */}
         <Card
           elevation={0}
@@ -571,7 +575,7 @@ export function ProfilePage() {
             <TabPanel value={tab} index={0}>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, maxWidth: '100%' }}>
                 {profileError && <Alert severity="error">{profileError}</Alert>}
-                <TextField id="profile-full-name" label="Full Name" value={name} onChange={(e) => setName(e.target.value)} fullWidth />
+                <TextField id="profile-full-name" label={organizationName ? 'Contact person' : 'Full Name'} value={name} onChange={(e) => setName(e.target.value)} fullWidth />
                 <TextField label="Phone Number" value={phone} onChange={(e) => setPhone(e.target.value)} fullWidth />
                 <Box>
                   <TextField label="Bio" value={bio} onChange={(e) => setBio(e.target.value)} multiline rows={3} fullWidth placeholder="Tell us about yourself..." />

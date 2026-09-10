@@ -21,6 +21,7 @@ export interface ProfileDTO {
   id: string;
   email: string;
   name: string;
+  organizationName?: string;
   avatarUrl?: string;
   coverUrl?: string;
   role: UserRole;
@@ -140,6 +141,7 @@ export class GetProfileUseCase {
       id: userPlain.id,
       email: userPlain.email.value,
       name: userPlain.name,
+      organizationName: userPlain.organizationName,
       avatarUrl: userPlain.avatarUrl,
       coverUrl: userPlain.coverUrl,
       role: userPlain.role,

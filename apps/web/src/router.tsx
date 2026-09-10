@@ -1,3 +1,4 @@
+import { OrganizationTeamPage } from './pages/OrganizationTeamPage'
 import { PayoutAccountsPage } from './pages/PayoutAccountsPage'
 import { CreatorTipCallbackPage } from './pages/CreatorTipCallbackPage'
 import { LegalPage } from './pages/LegalPage'
@@ -53,6 +54,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <HomePage /> },
       { path: 'explore', element: <ExplorePage /> },
+      { path: 'organization-team', element: <RequireAuth><OrganizationTeamPage /></RequireAuth> },
       { path: 'organizations', element: <OrganizationsPage /> },
       { path: 'organizations/:slug', element: <OrganizationProfilePage /> },
       { path: 'leaderboard', element: <LeaderboardPage /> },

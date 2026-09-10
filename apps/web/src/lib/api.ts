@@ -127,6 +127,7 @@ export interface AuthTokens {
 }
 
 export interface AuthUser {
+  organizationName?: string
   id: string
   name: string
   email: string

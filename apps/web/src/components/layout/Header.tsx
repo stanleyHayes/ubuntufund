@@ -134,13 +134,14 @@ export function Header() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const { user, isAuthenticated, logout } = useAuth()
+  const [organizationName, setOrganizationName] = useState(user?.organizationName ?? '')
   const [avatarUrl, setAvatarUrl] = useState('')
-  useEffect(() => { if (!user?.id) return; let active = true; api.get<{avatarUrl?:string}>('/profile').then(p => { if(active) setAvatarUrl(p.avatarUrl || '') }).catch(() => {}); return () => {active=false} }, [user?.id, pathname])
+  useEffect(() => { if (!user?.id) return; let active = true; api.get<{avatarUrl?:string; organizationName?:string}>('/profile').then(p => { if(active) { setAvatarUrl(p.avatarUrl || ''); setOrganizationName(p.organizationName || '') } }).catch(() => {}); return () => {active=false} }, [user?.id, pathname])
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null)
   const { skin } = useColorMode()
   const [drawerOpen, setDrawerOpen] = useState(false)
 
-  const initials = (user?.name ?? 'U')
+  const initials = (organizationName || user?.name || 'U')
     .split(' ')
     .map((p) => p[0])
     .slice(0, 2)
@@ -257,11 +258,11 @@ export function Header() {
                   {initials}
                 </Avatar>
                 <Typography variant="body2" sx={{ fontWeight: 600, display: { xs: 'none', sm: 'block' }, maxWidth: 110 }} noWrap>
-                  {(user?.name ?? '').split(' ')[0]}
+                  {organizationName || (user?.name ?? '').split(' ')[0]}
                 </Typography>
                 <ExpandMoreRoundedIcon sx={{ fontSize: 16, color: 'rgba(245, 242, 234, 0.6)' }} />
               </Box>
-              <AccountMenu anchor={menuAnchor} onClose={closeMenu} name={user?.name} email={user?.email} initials={initials} avatarUrl={avatarUrl}
+              <AccountMenu anchor={menuAnchor} onClose={closeMenu} name={organizationName || user?.name} email={user?.email} initials={initials} avatarUrl={avatarUrl}
                 onSignOut={() => { closeMenu(); logout(); navigate('/') }} />
             </Box>
           ) : (

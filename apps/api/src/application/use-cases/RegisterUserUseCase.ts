@@ -125,6 +125,7 @@ export class RegisterUserUseCase {
         id: savedUser.id,
         email: savedUser.email.value,
         name: savedUser.name,
+        organizationName: savedUser.organizationName,
         avatarUrl: savedUser.avatarUrl,
         role: savedUser.role,
         verificationLevel: savedUser.verificationLevel,

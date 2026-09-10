@@ -40,4 +40,12 @@ describe('saved profile details', () => {
   fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
   expect(await screen.findByLabelText('Full Name')).toHaveValue('Recovered name')
  })
+ it('uses organization identity while retaining a separate contact person', async () => {
+  vi.mocked(api.get).mockResolvedValue({ name: 'Contact Person', organizationName: 'Community Foundation' })
+  mount()
+  expect(await screen.findByLabelText('Contact person')).toHaveValue('Contact Person')
+  expect(screen.getByText('Community Foundation')).toBeInTheDocument()
+  expect(screen.getByText('Managed by Contact Person')).toBeInTheDocument()
+ })
+
 })

@@ -36,6 +36,7 @@ export class LoginUserUseCase {
         id: user.id,
         email: user.email.value,
         name: user.name,
+        organizationName: user.organizationName,
         avatarUrl: user.avatarUrl,
         role: user.role,
         verificationLevel: user.verificationLevel,

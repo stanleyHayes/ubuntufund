@@ -1,3 +1,4 @@
+import { createOrganizationTeamRoutes } from './infrastructure/adapters/inbound/http/routes/organizationTeamRoutes.js'
 import { AutomaticPayoutService } from './infrastructure/adapters/outbound/payments/AutomaticPayoutService.js'
 import { automaticPayoutRoutes } from './infrastructure/adapters/inbound/http/routes/automaticPayoutRoutes.js'
 import { PayoutTransferControlUseCase } from './application/use-cases/PayoutTransferControlUseCase.js'
@@ -1474,6 +1475,7 @@ export function createApp(): express.Express {
   )
   api.use('/admin', createAdminActionRoutes(authMiddleware))
   api.use('/notifications', createNotificationRoutes(notificationController, authMiddleware))
+  api.use('/organization-team', createOrganizationTeamRoutes(authMiddleware))
   api.use('/organizations', createOrganizationRoutes(organizationController))
   api.use('/refunds', createRefundRoutes(refundController, authMiddleware))
   api.use('/kyc', createKYCRoutes(kycController, authMiddleware, requireAdmin))

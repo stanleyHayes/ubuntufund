@@ -84,6 +84,7 @@ export class UpdateProfileUseCase {
       id: userPlain.id,
       email: userPlain.email.value,
       name: userPlain.name,
+      organizationName: userPlain.organizationName,
       avatarUrl: userPlain.avatarUrl,
       coverUrl: userPlain.coverUrl,
       role: userPlain.role,

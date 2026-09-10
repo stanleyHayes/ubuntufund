@@ -1,5 +1,13 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-10 — Organization identity and team workspace
+
+- Profile/auth responses now retain organizationName separately from the contact name. Web profile/header prefer the organization name; the contact remains editable as Contact person, with a Managed by label.
+- Added authenticated organization workspace and email-bound in-app invitations with seven-day expiry and verified-email acceptance. Owner can assign Administrator, Campaign Editor or Viewer, change roles and revoke access; administrators cannot grant or remove administrator access.
+- Server checks organization membership for every workspace action. Administrators manage organization name/website and invitations; editors publish campaign updates with their own author identity; viewers are read-only. Existing payout/wallet authorization remains unchanged and no organization finance delegation is introduced.
+- Entry: Profile → Organization workspace & team. Invitations are in-app, with a copyable workspace link; no invitation email is sent. Existing accounts and ownership are preserved.
+- Validation: two API integration scenarios cover authentication, organization scoping, email verification, invitation replay/expiry, role changes, campaign-update authorship and revocation; six web tests cover profile identity and role-dependent controls. API/web type checks, focused web lint and web production build pass. Production visual acceptance and external email delivery are not claimed.
+
 ### 2026-09-10 — Real web profile fields
 
 - Removed hardcoded sample bio and phone, and stopped forcing Ghana into profile saves. Load name, phone, bio, country and images from the authenticated profile endpoint; missing optional fields remain blank.
