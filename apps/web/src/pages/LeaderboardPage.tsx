@@ -872,29 +872,38 @@ export function LeaderboardPage() {
                     }}
                   />
                   <Typography variant="h5" sx={{ fontWeight: 900, mb: 0.5 }}>
-                    Earn Badges as You Give
+                    Rise Through the Ranks
                   </Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 460, mx: 'auto' }}>
-                    Unlock achievements by donating, supporting campaigns, and being an active member of the community.
+                    Earn badges as you give. The rarest achievements sit at the peak — explore the ranks and the milestones behind each badge.
                   </Typography>
                 </Box>
-                <Box sx={{ maxWidth: 1120, mx: 'auto', display: 'grid', gap: 3 }}>
-                  {(['common', 'rare', 'epic', 'legendary'] as const).map((rarity, tier) => (
-                    <Box component="section" aria-label={`${RARITY_LABELS[rarity].label} badges`} key={rarity}
-                      sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '160px minmax(0, 1fr)' }, gap: 2, alignItems: 'start' }}>
-                      <Box sx={{ py: 1, pl: 2, borderLeft: '2px solid', borderColor: 'divider' }}>
-                        <Typography variant="caption" color="text.secondary">TIER {tier + 1}</Typography>
-                        <Typography component="h3" variant="h6" sx={{ fontWeight: 800, color: RARITY_LABELS[rarity].color }}>
-                          {RARITY_LABELS[rarity].label}
-                        </Typography>
+                <Box sx={{ maxWidth: 1120, mx: 'auto', mt: 5 }}>
+                  {(['legendary', 'epic', 'rare', 'common'] as const).map((rarity, tier) => {
+                    const badges = [...PIONEER_BADGES, ...DONATION_LEVEL_BADGES].filter(badge => badge.rarity === rarity)
+                    const tierColor = rarity === 'epic' ? '#AB47BC' : RARITY_LABELS[rarity].color
+                    return (
+                      <Box component="section" aria-label={`${RARITY_LABELS[rarity].label} badges`} key={rarity}
+                        sx={{ position: 'relative', pt: tier === 0 ? 0 : 4, pb: rarity === 'common' ? 0 : 4,
+                          '&::before': { content: '""', position: 'absolute', left: '50%', top: tier === 0 ? 50 : 0, bottom: 0, width: '1px', bgcolor: 'divider', zIndex: 0 } }}>
+                        {tier > 0 && <Box aria-hidden sx={{ position: 'absolute', top: 0, left: '25%', right: '25%', height: '1px', bgcolor: 'divider', '&::after': { content: '""', width: 7, height: 7, borderRadius: '50%', bgcolor: tierColor, opacity: 0.35, position: 'absolute', left: 'calc(50% - 3px)', top: -3 } }} />}
+                        <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1.5, mb: 3 }}>
+                          <Box aria-hidden sx={{ width: 28, height: '1px', bgcolor: tierColor, opacity: 0.35 }} />
+                          <Typography component="h3" variant="overline" sx={{ fontWeight: 800, letterSpacing: 3, color: tierColor, bgcolor: 'background.default', px: 1 }}>
+                            {RARITY_LABELS[rarity].label}
+                          </Typography>
+                          <Box aria-hidden sx={{ width: 28, height: '1px', bgcolor: tierColor, opacity: 0.35 }} />
+                        </Box>
+                        <Box sx={{ position: 'relative', display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' }, gap: 3, maxWidth: rarity === 'rare' ? 900 : 1060, mx: 'auto' }}>
+                          {badges.map((badge, index) => (
+                            <Box key={badge.id} sx={{ minWidth: 0, ...(badges.length % 2 === 1 && index === badges.length - 1 ? { gridColumn: { sm: '1 / -1' }, width: { xs: '100%', sm: 'calc(50% - 12px)' }, mx: 'auto' } : {}) }}>
+                              <BadgeCard badge={badge} delay={0.7 + tier * 0.05 + index * 0.03} />
+                            </Box>
+                          ))}
+                        </Box>
                       </Box>
-                      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(3, minmax(0, 1fr))' }, gap: 2 }}>
-                        {[...DONATION_LEVEL_BADGES, ...PIONEER_BADGES].filter(badge => badge.rarity === rarity).map((badge, index) => (
-                          <BadgeCard key={badge.id} badge={badge} delay={0.7 + tier * 0.05 + index * 0.03} />
-                        ))}
-                      </Box>
-                    </Box>
-                  ))}
+                    )
+                  })}
                 </Box>
               </Box>
             </>
