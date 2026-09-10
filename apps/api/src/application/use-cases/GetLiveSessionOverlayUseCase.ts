@@ -4,7 +4,7 @@ import type { CampaignRepositoryPort } from '../../domain/ports/outbound/Campaig
 import type { DonationRepositoryPort } from '../../domain/ports/outbound/DonationRepositoryPort.js';
 import type { UserRepositoryPort } from '../../domain/ports/outbound/UserRepositoryPort.js';
 import type { LiveSessionEntity } from '../../domain/entities/LiveSession.js';
-import type { DonationEntity } from '../../domain/entities/Donation.js';
+import { GUEST_DONOR_ID, type DonationEntity } from '../../domain/entities/Donation.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 
 /** How many recent donors the overlay renders. */
@@ -79,7 +79,9 @@ export class GetLiveSessionOverlayUseCase {
   ): Promise<LiveOverlayDonor> {
     const showName = !donation.isAnonymous && session.namesVisible();
     let name = 'Anonymous';
-    if (showName) {
+    if (showName && donation.donorId === GUEST_DONOR_ID) {
+      name = 'Guest donor';
+    } else if (showName) {
       const user = await this.userRepo.findById(donation.donorId);
       name = user?.name ?? 'Anonymous';
     }

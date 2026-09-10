@@ -1,6 +1,9 @@
 import { Money } from '../value-objects/Money.js';
 import { PaymentMethod } from '@ubuntu-fund/types';
 
+/** Guest checkout has no associated user record. Never use this as a user ID. */
+export const GUEST_DONOR_ID = 'guest';
+
 export interface DonationProps {
   id: string;
   campaignId: string;

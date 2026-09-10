@@ -13,6 +13,7 @@ import {
   liveChannel,
 } from '../../infrastructure/realtime/EventBus.js';
 import { logger } from '../../infrastructure/logging/logger.js';
+import { GUEST_DONOR_ID } from '../../domain/entities/Donation.js';
 
 /** Goal thresholds (percent) that fire a `milestone` event when crossed. */
 const MILESTONES = [25, 50, 75, 100];
@@ -176,6 +177,7 @@ export class RealtimeDonationProjector {
     if (donation.isAnonymous) return 'Anonymous';
     // Guests carry no user record — trust the pre-resolved name they supplied.
     if (donation.donorName) return donation.donorName;
+    if (donation.donorId === GUEST_DONOR_ID) return 'Guest donor';
     const user = await this.userRepo.findById(donation.donorId);
     return user?.name ?? 'Anonymous';
   }

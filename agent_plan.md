@@ -1,5 +1,11 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-10 — Guest donation feed repair
+
+- Reproduced the deployed campaign Donations tab returning `400 Invalid ID format` after a guest contribution settled. Its sentinel donor ID (`guest`) was passed to the MongoDB user lookup.
+- Shared the existing guest ID constant with campaign/recent donation feeds, live overlay reads, and realtime projection. Guest entries skip account lookup and display Guest donor; anonymous entries retain their privacy behavior. Registered donor names/avatars still resolve normally. No donation amounts or settlement records are changed.
+- Regression coverage exercises guest/anonymous campaign lists, registered donors, recent activity, overlay privacy, and realtime publication. All 27 focused tests (9 new feed tests plus 18 payment-verification regressions), API type-check, targeted ESLint and diff checks pass. Existing full CI has an unrelated CampaignLivePage test expecting a Go LIVE button; this change does not claim that full suite is green.
+
 ### 2026-09-10 — Hosted donation callback verification
 
 - Fixed a confirmed test-payment incident: Paystack reported a successful GHS 250 charge (GHS 200 donation + GHS 50 tip), while the public intent remained PENDING. The callback only polled stored status, so a missed webhook could not recover during the return flow.

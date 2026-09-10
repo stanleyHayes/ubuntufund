@@ -3,7 +3,7 @@ import {
   type DonationSettlementBreakdown,
   type DonationSucceededPayload,
 } from '@ubuntu-fund/types';
-import { DonationEntity } from '../../domain/entities/Donation.js';
+import { DonationEntity, GUEST_DONOR_ID } from '../../domain/entities/Donation.js';
 import type { DonationIntentEntity } from '../../domain/entities/DonationIntent.js';
 import { Money, toMinorUnits, fromMinorUnits } from '../../domain/value-objects/Money.js';
 import type { DonationIntentRepositoryPort } from '../../domain/ports/outbound/DonationIntentRepositoryPort.js';
@@ -19,9 +19,6 @@ import { logger } from '../../infrastructure/logging/logger.js';
 function round6(n: number): number {
   return Math.round(n * 1e6) / 1e6;
 }
-
-/** Sentinel donor id used for guest (unauthenticated) donations. */
-const GUEST_DONOR_ID = 'guest';
 
 /** Maps a payment provider onto the legacy donation's payment method. */
 function providerToPaymentMethod(provider: string): PaymentMethod {

@@ -1,4 +1,4 @@
-import type { DonationEntity } from '../../domain/entities/Donation.js';
+import { GUEST_DONOR_ID, type DonationEntity } from '../../domain/entities/Donation.js';
 import type { DonationRepositoryPort } from '../../domain/ports/outbound/DonationRepositoryPort.js';
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js';
 import type { UserRepositoryPort } from '../../domain/ports/outbound/UserRepositoryPort.js';
@@ -39,7 +39,7 @@ export class ListRecentDonationsUseCase {
   private async toDTO(donation: DonationEntity): Promise<PublicDonationDTO> {
     const [campaign, donor] = await Promise.all([
       this.campaignRepo.findById(donation.campaignId),
-      donation.isAnonymous
+      donation.isAnonymous || donation.donorId === GUEST_DONOR_ID
         ? Promise.resolve(null)
         : this.userRepo.findById(donation.donorId),
     ]);
@@ -47,7 +47,7 @@ export class ListRecentDonationsUseCase {
     return {
       id: donation.id,
       donorId: donation.donorId,
-      donorName: donor ? donor.name : undefined,
+      donorName: donor ? donor.name : donation.donorId === GUEST_DONOR_ID && !donation.isAnonymous ? 'Guest donor' : undefined,
       campaignId: donation.campaignId,
       campaignTitle: campaign ? campaign.title : 'Campaign',
       amount: donation.amount.amount,

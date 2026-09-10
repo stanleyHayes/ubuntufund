@@ -3,7 +3,7 @@ import type {
   PaginatedResponse,
   PaginationParams,
 } from '@ubuntu-fund/types';
-import type { DonationEntity } from '../../domain/entities/Donation.js';
+import { GUEST_DONOR_ID, type DonationEntity } from '../../domain/entities/Donation.js';
 import type { DonationRepositoryPort } from '../../domain/ports/outbound/DonationRepositoryPort.js';
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js';
 import type { UserRepositoryPort } from '../../domain/ports/outbound/UserRepositoryPort.js';
@@ -47,13 +47,14 @@ export class ListCampaignDonationsUseCase {
   }
 
   private async toDTO(donation: DonationEntity): Promise<CampaignDonation> {
-    const donor = donation.isAnonymous
+    const isGuest = donation.donorId === GUEST_DONOR_ID;
+    const donor = donation.isAnonymous || isGuest
       ? null
       : await this.userRepo.findById(donation.donorId);
 
     return {
       id: donation.id,
-      donorName: donor ? donor.name : 'Anonymous',
+      donorName: donor ? donor.name : isGuest && !donation.isAnonymous ? 'Guest donor' : 'Anonymous',
       donorAvatarUrl: donor?.avatarUrl,
       amount: donation.amount.amount,
       currency: donation.amount.currency,
