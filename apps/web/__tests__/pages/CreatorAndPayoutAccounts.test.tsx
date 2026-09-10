@@ -14,15 +14,25 @@ afterEach(() => vi.resetAllMocks())
 describe('creator and saved accounts', () => {
   it('replaces loading skeletons with retry on failure and recovers', async () => {
     let rejectRequest!: (error: Error) => void
-    vi.mocked(api.get).mockImplementation((path) => path === '/payout-accounts'
-      ? new Promise((_, reject) => { rejectRequest = reject }) : Promise.resolve([]))
-    render(<MemoryRouter><SavedPayoutAccounts /></MemoryRouter>)
+    vi.mocked(api.get).mockImplementation((path) =>
+      path === '/payout-accounts'
+        ? new Promise((_, reject) => {
+            rejectRequest = reject
+          })
+        : Promise.resolve([]),
+    )
+    render(
+      <MemoryRouter>
+        <SavedPayoutAccounts />
+      </MemoryRouter>,
+    )
     expect(screen.getByRole('status', { name: 'Loading payout accounts' })).toBeInTheDocument()
     rejectRequest(new Error('Request failed'))
     expect(await screen.findByRole('alert')).toHaveTextContent('Request failed')
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
-    vi.mocked(api.get).mockImplementation(async path => path === '/payout-accounts'
-      ? { planName: 'Plus', limit: 2, accounts: [] } : [])
+    vi.mocked(api.get).mockImplementation(async (path) =>
+      path === '/payout-accounts' ? { planName: 'Plus', limit: 2, accounts: [] } : [],
+    )
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
     expect(await screen.findByText(/Plus · 0/)).toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
@@ -104,7 +114,7 @@ describe('creator and saved accounts', () => {
     )
     vi.mocked(api.delete).mockResolvedValue({ planName: 'Pro', limit: 3, accounts: [] })
     render(<SavedPayoutAccounts />)
-    fireEvent.click(await screen.findByRole('button', { name: 'Remove saved account' }))
+    fireEvent.click(await screen.findByRole('button', { name: /Remove saved account/ }))
     await waitFor(() => expect(api.delete).toHaveBeenCalledWith('/payout-accounts/a'))
     expect(await screen.findByText(/Removed from saved accounts/)).toBeInTheDocument()
   })

@@ -77,7 +77,7 @@ export interface PayoutLeg {
 export type PayoutType = 'standard' | 'priority' | 'early' | 'urgent' | 'assisted'
 
 /** The only payout provider today. */
-export type PayoutProvider = 'paystack'
+export type PayoutProvider = 'paystack' | 'ujimora_wallet'
 
 /**
  * A bank or mobile-money telco as returned by the provider's bank directory.
@@ -173,6 +173,8 @@ export interface CreatePayoutRecipientInput {
 
 /** Owner input for requesting a payout of cleared funds. */
 export interface RequestPayoutInput {
+  destination?: PayoutProvider
+  idempotencyKey?: string
   amount: number
   /** The payout service; defaults to `standard` (free). */
   type?: PayoutType

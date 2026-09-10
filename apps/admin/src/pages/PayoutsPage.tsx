@@ -43,10 +43,24 @@ function PayoutCard({
   onApprove: (id: string, reviewNote: string) => void
   approving: boolean
 }) {
-  const [recipient, setRecipient] = useState<{accountName:string;resolvedAccountName?:string;accountNumber:string;bankCode:string;type:string;verificationStatus:string} | null>(null)
+  const [recipient, setRecipient] = useState<{
+    accountName: string
+    resolvedAccountName?: string
+    accountNumber: string
+    bankCode: string
+    type: string
+    verificationStatus: string
+  } | null>(null)
   const [reviewNote, setReviewNote] = useState('')
   const [reviewError, setReviewError] = useState('')
-  async function loadRecipient() { try { setRecipient(await api.get(`/payouts/${payout.id}/recipient`)); setReviewError('') } catch(e) {setReviewError(e instanceof Error ? e.message : 'Could not load recipient')} }
+  async function loadRecipient() {
+    try {
+      setRecipient(await api.get(`/payouts/${payout.id}/recipient`))
+      setReviewError('')
+    } catch (e) {
+      setReviewError(e instanceof Error ? e.message : 'Could not load recipient')
+    }
+  }
   const needsReview = payout.status === 'NEEDS_REVIEW'
   const awaitingSecond = payout.status === 'PENDING' && Boolean(payout.firstApprovedBy)
   return (
@@ -57,28 +71,49 @@ function PayoutCard({
         borderLeft: needsReview ? `3px solid ${TONES.clay.text}` : undefined,
       }}
     >
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2 }}>
+      <Box
+        sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2 }}
+      >
         <Box>
           <Typography sx={{ fontWeight: 700, fontSize: 18 }}>
             {money(payout.amount, payout.currency)}
           </Typography>
           <Typography sx={{ fontSize: 12, opacity: 0.7 }}>
-            Campaign {payout.campaignId} · {payout.type}
+            Campaign {payout.campaignId} · {payout.type} ·{' '}
+            {payout.provider === 'ujimora_wallet' ? 'Ujimora Wallet' : 'Bank / MoMo'}
           </Typography>
         </Box>
         <Chip
           label={payout.status.replace('_', ' ')}
           size="small"
-          sx={{ color: STATUS_TONE[payout.status], fontWeight: 700, bgcolor: 'transparent', border: `1px solid ${STATUS_TONE[payout.status]}` }}
+          sx={{
+            color: STATUS_TONE[payout.status],
+            fontWeight: 700,
+            bgcolor: 'transparent',
+            border: `1px solid ${STATUS_TONE[payout.status]}`,
+          }}
         />
       </Box>
 
-      <Box sx={{ ...insetSurface, px: 1.5, py: 1.5, mt: 2, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+      <Box
+        sx={{
+          ...insetSurface,
+          px: 1.5,
+          py: 1.5,
+          mt: 2,
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: 1,
+        }}
+      >
         <Detail label="Fee" value={money(payout.fee, payout.currency)} />
         <Detail label="Net" value={money(payout.netAmount, payout.currency)} />
         {payout.providerRef && <Detail label="Reference" value={payout.providerRef} />}
         {payout.legs && payout.legs.length > 0 && (
-          <Detail label="Legs" value={`${payout.legs.length} (${payout.legs.filter((l) => l.status === 'success').length} settled)`} />
+          <Detail
+            label="Legs"
+            value={`${payout.legs.length} (${payout.legs.filter((l) => l.status === 'success').length} settled)`}
+          />
         )}
         {payout.firstApprovedBy && <Detail label="1st approval" value={payout.firstApprovedBy} />}
         {payout.approvedBy && <Detail label="Approved by" value={payout.approvedBy} />}
@@ -86,12 +121,14 @@ function PayoutCard({
 
       {needsReview && (
         <Alert severity="warning" sx={{ mt: 2, py: 0.5 }}>
-          Partially settled — some transfer legs failed after others were sent. Manual reconciliation required.
+          Partially settled — some transfer legs failed after others were sent. Manual
+          reconciliation required.
         </Alert>
       )}
       {awaitingSecond && (
         <Alert severity="info" sx={{ mt: 2, py: 0.5 }}>
-          Maker-checker: a first approval is recorded; a second, different admin must approve to disburse.
+          Maker-checker: a first approval is recorded; a second, different admin must approve to
+          disburse.
         </Alert>
       )}
 
@@ -99,7 +136,39 @@ function PayoutCard({
         <Box sx={{ mt: 2 }}>
           <Button onClick={() => void loadRecipient()}>Review payout destination</Button>
           {reviewError && <Alert severity="error">{reviewError}</Alert>}
-          {recipient && <><Alert severity={recipient.verificationStatus === 'name_matched' ? 'info' : 'warning'}>Supplied name: {recipient.accountName}. Provider name: {recipient.resolvedAccountName ?? 'Unresolved — obtain independent verification'}. Account: {recipient.accountNumber} · {recipient.bankCode} · {recipient.type}. Name matching alone does not prove ownership or receiving capacity.</Alert><TextField fullWidth multiline minRows={3} sx={{ my: 2 }} label="Beneficiary and capacity review" helperText="Record evidence of ownership or beneficiary authorization and ability to receive the net payout. For MoMo, confirm wallet tier and available capacity with the owner. Do not enter PINs or identity document numbers." value={reviewNote} onChange={e => setReviewNote(e.target.value)} /></>}
+          {recipient && (
+            <>
+              {payout.provider === 'ujimora_wallet' ? (
+                <Alert severity="info">
+                  Ujimora Wallet belonging to campaign owner {recipient.accountNumber}. Approval
+                  credits the net amount internally; no bank or MoMo transfer is sent.
+                </Alert>
+              ) : (
+                <Alert
+                  severity={recipient.verificationStatus === 'name_matched' ? 'info' : 'warning'}
+                >
+                  Supplied name: {recipient.accountName}. Provider name:{' '}
+                  {recipient.resolvedAccountName ?? 'Unresolved — obtain independent verification'}.
+                  Account: {recipient.accountNumber} · {recipient.bankCode} · {recipient.type}. Name
+                  matching alone does not prove ownership or receiving capacity.
+                </Alert>
+              )}
+              <TextField
+                fullWidth
+                multiline
+                minRows={3}
+                sx={{ my: 2 }}
+                label={
+                  payout.provider === 'ujimora_wallet'
+                    ? 'Owner and wallet transfer review'
+                    : 'Beneficiary and capacity review'
+                }
+                helperText="Record evidence of ownership or beneficiary authorization and ability to receive the net payout. For MoMo, confirm wallet tier and available capacity with the owner. Do not enter PINs or identity document numbers."
+                value={reviewNote}
+                onChange={(e) => setReviewNote(e.target.value)}
+              />
+            </>
+          )}
           <Button
             variant="contained"
             size="small"
@@ -117,7 +186,9 @@ function PayoutCard({
 function Detail({ label, value }: { label: string; value: string }) {
   return (
     <Box>
-      <Typography sx={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5, opacity: 0.6 }}>
+      <Typography
+        sx={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5, opacity: 0.6 }}
+      >
         {label}
       </Typography>
       <Typography sx={{ fontSize: 13, wordBreak: 'break-all' }}>{value}</Typography>
@@ -139,9 +210,13 @@ function BeneficiaryCard({
   const awaitingSecond = payout.status === 'PENDING' && Boolean(payout.firstApprovedBy)
   return (
     <Box sx={{ ...raisedSurface, p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2 }}>
+      <Box
+        sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2 }}
+      >
         <Box>
-          <Typography sx={{ fontWeight: 700, fontSize: 18 }}>{money(payout.amount, payout.currency)}</Typography>
+          <Typography sx={{ fontWeight: 700, fontSize: 18 }}>
+            {money(payout.amount, payout.currency)}
+          </Typography>
           <Typography sx={{ fontSize: 12, opacity: 0.7 }}>
             Beneficiary {payout.beneficiaryId} · campaign {payout.campaignId}
           </Typography>
@@ -149,10 +224,25 @@ function BeneficiaryCard({
         <Chip
           label={payout.status.replace('_', ' ')}
           size="small"
-          sx={{ color: STATUS_TONE[payout.status], fontWeight: 700, bgcolor: 'transparent', border: `1px solid ${STATUS_TONE[payout.status]}` }}
+          sx={{
+            color: STATUS_TONE[payout.status],
+            fontWeight: 700,
+            bgcolor: 'transparent',
+            border: `1px solid ${STATUS_TONE[payout.status]}`,
+          }}
         />
       </Box>
-      <Box sx={{ ...insetSurface, px: 1.5, py: 1.5, mt: 2, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+      <Box
+        sx={{
+          ...insetSurface,
+          px: 1.5,
+          py: 1.5,
+          mt: 2,
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: 1,
+        }}
+      >
         {payout.providerRef && <Detail label="Reference" value={payout.providerRef} />}
         {payout.firstApprovedBy && <Detail label="1st approval" value={payout.firstApprovedBy} />}
         {payout.approvedBy && <Detail label="Approved by" value={payout.approvedBy} />}
@@ -171,7 +261,12 @@ function BeneficiaryCard({
           >
             Verify KYC
           </Button>
-          <Button variant="contained" size="small" disabled={busy} onClick={() => onApprove(payout.id)}>
+          <Button
+            variant="contained"
+            size="small"
+            disabled={busy}
+            onClick={() => onApprove(payout.id)}
+          >
             {awaitingSecond ? 'Give 2nd approval' : 'Approve'}
           </Button>
         </Box>
@@ -227,7 +322,7 @@ export default function PayoutsPage() {
         setNotice(
           updated.status === 'PENDING'
             ? 'First approval recorded — a second admin must approve.'
-            : 'Payout approved; the transfer is initiating.'
+            : 'Payout approved; the transfer is initiating.',
         )
         await load()
       } catch (err) {
@@ -236,7 +331,7 @@ export default function PayoutsPage() {
         setApprovingId(null)
       }
     },
-    [load]
+    [load],
   )
 
   const approveBeneficiary = useCallback(
@@ -248,7 +343,7 @@ export default function PayoutsPage() {
         setNotice(
           updated.status === 'PENDING'
             ? 'First approval recorded — a second admin must approve.'
-            : 'Beneficiary payout approved; the transfer is initiating.'
+            : 'Beneficiary payout approved; the transfer is initiating.',
         )
         await load()
       } catch (err) {
@@ -257,21 +352,24 @@ export default function PayoutsPage() {
         setApprovingId(null)
       }
     },
-    [load]
+    [load],
   )
 
   const verifyKyc = useCallback(
     async (campaignId: string, beneficiaryId: string) => {
       setNotice(null)
       try {
-        await api.post(`/campaigns/${campaignId}/split/beneficiaries/${beneficiaryId}/verify-kyc`, {})
+        await api.post(
+          `/campaigns/${campaignId}/split/beneficiaries/${beneficiaryId}/verify-kyc`,
+          {},
+        )
         setNotice('Beneficiary KYC verified.')
         await load()
       } catch (err) {
         setError(err instanceof Error ? err.message : 'KYC verification failed')
       }
     },
-    [load]
+    [load],
   )
 
   const payoutPagination = usePagination(payouts, 12)
@@ -294,12 +392,23 @@ export default function PayoutsPage() {
         ]}
       />
 
-      <Box sx={{ mt: 3, mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <Box
+        sx={{
+          mt: 3,
+          mb: 2,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}
+      >
         <ToggleButtonGroup
           size="small"
           exclusive
           value={view}
-          onChange={(_, v) => v && (setView(v as View), payoutPagination.goToPage(1), beneficiaryPagination.goToPage(1))}
+          onChange={(_, v) =>
+            v &&
+            (setView(v as View), payoutPagination.goToPage(1), beneficiaryPagination.goToPage(1))
+          }
         >
           <ToggleButton value="queue">Review queue</ToggleButton>
           <ToggleButton value="all">All payouts</ToggleButton>
@@ -310,8 +419,16 @@ export default function PayoutsPage() {
         </Button>
       </Box>
 
-      {notice && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setNotice(null)}>{notice}</Alert>}
-      {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
+      {notice && (
+        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setNotice(null)}>
+          {notice}
+        </Alert>
+      )}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
 
       {loading ? (
         <Stack spacing={2}>
@@ -320,7 +437,10 @@ export default function PayoutsPage() {
           ))}
         </Stack>
       ) : error ? (
-        <EmptyState title="Payouts couldn’t be loaded" description="The request failed. Retry to retrieve the latest payouts." />
+        <EmptyState
+          title="Payouts couldn’t be loaded"
+          description="The request failed. Retry to retrieve the latest payouts."
+        />
       ) : source.length === 0 ? (
         <EmptyState
           title={view === 'all' ? 'No payouts yet' : 'Nothing needs attention'}
@@ -347,11 +467,21 @@ export default function PayoutsPage() {
       ) : (
         <Stack spacing={2}>
           {payoutPagination.page.map((p) => (
-            <PayoutCard key={p.id} payout={p} onApprove={approve} approving={approvingId === p.id} />
+            <PayoutCard
+              key={p.id}
+              payout={p}
+              onApprove={approve}
+              approving={approvingId === p.id}
+            />
           ))}
         </Stack>
       )}
-      {!loading && !error && source.length > 0 && <PaginationBar neumorphic pagination={isBeneficiary ? beneficiaryPagination : payoutPagination} />}
+      {!loading && !error && source.length > 0 && (
+        <PaginationBar
+          neumorphic
+          pagination={isBeneficiary ? beneficiaryPagination : payoutPagination}
+        />
+      )}
     </Box>
   )
 }

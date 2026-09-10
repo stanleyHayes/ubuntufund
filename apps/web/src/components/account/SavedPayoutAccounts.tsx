@@ -1,7 +1,7 @@
+import { PayoutAccountCard } from './PayoutAccountCard'
+import { EmptyState } from '@ubuntu-fund/ui'
 import { useEffect, useState } from 'react'
 import { Alert, Box, Button, MenuItem, TextField, Typography, Skeleton } from '@mui/material'
-import AccountBalanceRounded from '@mui/icons-material/AccountBalanceRounded'
-import SmartphoneRounded from '@mui/icons-material/SmartphoneRounded'
 import { api } from '@/lib/api'
 export type Account = {
   id: string
@@ -15,6 +15,22 @@ type Data = { planName: string; limit: number; accounts: Account[] }
 export function SavedPayoutAccounts() {
   const [data, setData] = useState<Data | null>(null)
   const [loading, setLoading] = useState(true)
+  const [directory, setDirectory] = useState<{ name: string; code: string }[]>([])
+  useEffect(() => {
+    let active = true
+    Promise.all(
+      ['mobile_money', 'ghipss'].map((type) =>
+        api.get<{ name: string; code: string }[]>(`/banks?currency=GHS&type=${type}`),
+      ),
+    )
+      .then((values) => {
+        if (active) setDirectory(values.flat())
+      })
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [])
   const [banks, setBanks] = useState<{ name: string; code: string }[]>([])
   const [type, setType] = useState('mobile_money')
   const [bankCode, setBank] = useState('')
@@ -132,37 +148,22 @@ export function SavedPayoutAccounts() {
             }}
           >
             {data.accounts.map((a) => (
-              <Box
+              <PayoutAccountCard
                 key={a.id}
-                sx={{
-                  p: 3,
-                  bgcolor: 'var(--neu-surface)',
-                  border: 'var(--neu-border)',
-                  borderRadius: 'var(--shape-card)',
-                  boxShadow: 'var(--neu-raised)',
-                  backdropFilter: 'var(--neu-backdrop)',
-                }}
-              >
-                {a.type === 'ghipss' ? <AccountBalanceRounded /> : <SmartphoneRounded />}
-                <Typography sx={{ fontWeight: 800, mt: 2 }}>{a.accountName}</Typography>
-                <Typography color="text.secondary">
-                  {a.bankCode} · Ending {a.last4}
-                </Typography>
-                <Typography variant="body2" sx={{ mt: 1 }}>
-                  {a.verificationStatus === 'name_matched'
-                    ? 'Registered name matched'
-                    : 'Needs beneficiary review'}
-                </Typography>
-                <Button disabled={busy} onClick={() => void remove(a.id)} sx={{ mt: 2 }}>
-                  Remove saved account
-                </Button>
-              </Box>
+                account={a}
+                institutionName={directory.find((b) => b.code === a.bankCode)?.name}
+                busy={busy}
+                onRemove={() => void remove(a.id)}
+              />
             ))}
           </Box>
           {!data.accounts.length && (
-            <Typography sx={{ mb: 3 }}>
-              Add a bank account or mobile-money wallet to receive your funds.
-            </Typography>
+            <EmptyState
+              compact
+              variant="noData"
+              title="No saved payout accounts"
+              description="Add a bank account or mobile-money wallet below to receive your funds."
+            />
           )}
           {full ? (
             <Alert

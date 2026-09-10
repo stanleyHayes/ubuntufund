@@ -1,6 +1,8 @@
+import { payoutAccountBrand } from '@ubuntu-fund/types'
+import { EmptyState } from './EmptyState'
 import { useEffect, useState } from 'react'
 import { View } from 'react-native'
-import { Text } from 'react-native-paper'
+import { Text, Icon } from 'react-native-paper'
 import { api } from '@/lib/api'
 import { Button, Skeleton } from './Loading'
 import { BrandedTextInput as Input } from './BrandedTextInput'
@@ -19,6 +21,22 @@ export function SavedPayoutAccounts() {
   const neu = useNeu()
   const [data, setData] = useState<Data | null>(null)
   const [loading, setLoading] = useState(true)
+  const [directory, setDirectory] = useState<{ name: string; code: string }[]>([])
+  useEffect(() => {
+    let active = true
+    Promise.all(
+      ['mobile_money', 'ghipss'].map((type) =>
+        api.get<{ name: string; code: string }[]>(`/banks?currency=GHS&type=${type}`),
+      ),
+    )
+      .then((values) => {
+        if (active) setDirectory(values.flat())
+      })
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [])
   const [banks, setBanks] = useState<{ code: string; name: string }[]>([])
   const [type, setType] = useState('mobile_money')
   const [bankCode, setBank] = useState('')
@@ -112,22 +130,133 @@ export function SavedPayoutAccounts() {
             {data.planName} · {data.accounts.length} / {data.limit < 0 ? 'Unlimited' : data.limit}{' '}
             saved
           </Text>
-          {data.accounts.map((a) => (
-            <View key={a.id} style={{ ...neu.raised, padding: 20, borderRadius: 20, gap: 8 }}>
-              <Text variant="titleMedium">{a.accountName}</Text>
-              <Text>
-                {a.bankCode} · Ending {a.last4}
-              </Text>
-              <Text>
-                {a.verificationStatus === 'name_matched'
-                  ? 'Registered name matched'
-                  : 'Needs beneficiary review'}
-              </Text>
-              <Button disabled={busy} onPress={() => void remove(a.id)}>
-                Remove saved account
-              </Button>
-            </View>
-          ))}
+          {!data.accounts.length && (
+            <EmptyState
+              icon="wallet-outline"
+              title="No saved payout accounts"
+              subtitle="Add a bank account or mobile-money wallet below."
+            />
+          )}
+          {data.accounts.map((a) => {
+            const brand = payoutAccountBrand(
+              a.bankCode,
+              directory.find((b) => b.code === a.bankCode)?.name,
+            )
+            return (
+              <View key={a.id} style={{ gap: 10 }}>
+                <View
+                  style={{
+                    ...neu.raised,
+                    backgroundColor: brand.background,
+                    borderRadius: 22,
+                    padding: 24,
+                    minHeight: 225,
+                    overflow: 'hidden',
+                    justifyContent: 'space-between',
+                    gap: 24,
+                  }}
+                >
+                  <Text
+                    accessible={false}
+                    style={{
+                      position: 'absolute',
+                      right: -10,
+                      top: 50,
+                      fontSize: 110,
+                      lineHeight: 120,
+                      fontFamily: 'Outfit_800ExtraBold',
+                      opacity: 0.1,
+                      color: brand.foreground,
+                      transform: [{ rotate: '-16deg' }],
+                    }}
+                  >
+                    {brand.mark}
+                  </Text>
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontFamily: 'Outfit_700Bold',
+                        fontSize: 19,
+                        color: brand.foreground,
+                      }}
+                    >
+                      {brand.label}
+                    </Text>
+                    <Icon
+                      source={a.type === 'ghipss' ? 'bank' : 'cellphone'}
+                      size={24}
+                      color={brand.foreground}
+                    />
+                  </View>
+                  <View>
+                    <Text style={{ fontSize: 10, letterSpacing: 1.5, color: brand.foreground }}>
+                      PAYOUT ACCOUNT
+                    </Text>
+                    <Text
+                      accessibilityLabel={`Account ending ${a.last4}`}
+                      style={{ fontSize: 28, letterSpacing: 3, color: brand.foreground }}
+                    >
+                      •••• {a.last4}
+                    </Text>
+                  </View>
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-end',
+                      gap: 16,
+                    }}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={{
+                          fontSize: 9,
+                          letterSpacing: 1,
+                          color: brand.foreground,
+                          opacity: 0.8,
+                        }}
+                      >
+                        ACCOUNT HOLDER
+                      </Text>
+                      <Text
+                        style={{
+                          fontFamily: 'Outfit_700Bold',
+                          color: brand.foreground,
+                          marginTop: 4,
+                        }}
+                      >
+                        {a.accountName}
+                      </Text>
+                    </View>
+                    <Text style={{ fontSize: 10, color: brand.foreground }}>UJIMORA</Text>
+                  </View>
+                </View>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <Text variant="bodySmall">
+                    {a.verificationStatus === 'name_matched'
+                      ? 'Registered name matched'
+                      : 'Needs beneficiary review'}
+                  </Text>
+                  <Button disabled={busy} onPress={() => void remove(a.id)}>
+                    Remove saved account
+                  </Button>
+                </View>
+              </View>
+            )
+          })}
           {data.limit < 0 || data.accounts.length < data.limit ? (
             <>
               <SelectionField

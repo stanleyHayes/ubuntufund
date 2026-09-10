@@ -1,8 +1,8 @@
-import type { PayoutRepositoryPort } from '../../domain/ports/outbound/PayoutRepositoryPort.js';
-import type { CampaignBalanceRepositoryPort } from '../../domain/ports/outbound/CampaignBalanceRepositoryPort.js';
-import type { LedgerRepositoryPort } from '../../domain/ports/outbound/LedgerRepositoryPort.js';
-import type { PayoutEntity } from '../../domain/entities/Payout.js';
-import { JournalEntryEntity } from '../../domain/entities/JournalEntry.js';
+import type { PayoutRepositoryPort } from '../../domain/ports/outbound/PayoutRepositoryPort.js'
+import type { CampaignBalanceRepositoryPort } from '../../domain/ports/outbound/CampaignBalanceRepositoryPort.js'
+import type { LedgerRepositoryPort } from '../../domain/ports/outbound/LedgerRepositoryPort.js'
+import type { PayoutEntity } from '../../domain/entities/Payout.js'
+import { JournalEntryEntity } from '../../domain/entities/JournalEntry.js'
 
 /**
  * Applies Paystack transfer webhooks to the payout + ledger read models. All
@@ -28,20 +28,28 @@ export class HandlePayoutWebhookUseCase {
   constructor(
     private readonly payoutRepo: PayoutRepositoryPort,
     private readonly campaignBalanceRepo: CampaignBalanceRepositoryPort,
-    private readonly ledgerRepo: LedgerRepositoryPort
+    private readonly ledgerRepo: LedgerRepositoryPort,
   ) {}
 
   async handleSuccess(reference: string): Promise<void> {
-    const payout = await this.payoutRepo.findByProviderRef(reference);
+    const payout = await this.payoutRepo.findByProviderRef(reference)
+    if (payout?.provider === 'ujimora_wallet') return
     if (payout && !payout.isBatched) {
-      const won = await this.payoutRepo.transitionToPaid(payout.id);
-      if (!won) return; // idempotent: already PAID or not PROCESSING
-      await this.applyDisbursement(payout, `pout:${payout.id}`, payout.amount, payout.netAmount, payout.fee, reference);
-      return;
+      const won = await this.payoutRepo.transitionToPaid(payout.id)
+      if (!won) return // idempotent: already PAID or not PROCESSING
+      await this.applyDisbursement(
+        payout,
+        `pout:${payout.id}`,
+        payout.amount,
+        payout.netAmount,
+        payout.fee,
+        reference,
+      )
+      return
     }
 
-    const batched = await this.payoutRepo.findByLegReference(reference);
-    if (batched) await this.onLegSuccess(batched, reference);
+    const batched = await this.payoutRepo.findByLegReference(reference)
+    if (batched) await this.onLegSuccess(batched, reference)
   }
 
   /**
@@ -61,9 +69,9 @@ export class HandlePayoutWebhookUseCase {
    * Batched payouts are repaired by {@link repairBatched}.
    */
   async repairSettlement(payoutId: string): Promise<void> {
-    const payout = await this.payoutRepo.findById(payoutId);
-    if (!payout || payout.isBatched) return;
-    const settleKey = `pout:${payout.id}`;
+    const payout = await this.payoutRepo.findById(payoutId)
+    if (!payout || payout.isBatched) return
+    const settleKey = `pout:${payout.id}`
     if (payout.status === 'PAID') {
       await this.applyDisbursement(
         payout,
@@ -71,25 +79,25 @@ export class HandlePayoutWebhookUseCase {
         payout.amount,
         payout.netAmount,
         payout.fee,
-        'reconcile'
-      );
+        'reconcile',
+      )
     } else if (payout.status === 'FAILED') {
       await this.campaignBalanceRepo.returnToAvailable(
         payout.campaignId,
         payout.amount,
-        `${settleKey}:returned`
-      );
-      await this.payoutRepo.markSettlementApplied(payout.id, 'FAILED');
+        `${settleKey}:returned`,
+      )
+      await this.payoutRepo.markSettlementApplied(payout.id, 'FAILED')
     } else if (payout.status === 'REVERSED') {
       if (payout.reversedFrom === 'PROCESSING') {
         await this.campaignBalanceRepo.returnToAvailable(
           payout.campaignId,
           payout.amount,
-          `${settleKey}:returned`
-        );
-        await this.payoutRepo.markSettlementApplied(payout.id, 'REVERSED');
+          `${settleKey}:returned`,
+        )
+        await this.payoutRepo.markSettlementApplied(payout.id, 'REVERSED')
       } else if (payout.reversedFrom === 'PAID') {
-        await this.applyReversalFromPaid(payout, settleKey, 'reconcile');
+        await this.applyReversalFromPaid(payout, settleKey, 'reconcile')
       }
       // reversedFrom absent → legacy REVERSED, not repairable (finder excludes it).
     }
@@ -106,14 +114,14 @@ export class HandlePayoutWebhookUseCase {
   private async applyReversalFromPaid(
     payout: PayoutEntity,
     settleKey: string,
-    reference: string
+    reference: string,
   ): Promise<void> {
     await this.campaignBalanceRepo.reverseFromPaidOut(
       payout.campaignId,
       payout.netAmount,
       payout.fee,
-      `${settleKey}:reversed`
-    );
+      `${settleKey}:reversed`,
+    )
     await this.ledgerRepo.postEntry(
       JournalEntryEntity.forPayoutReversal({
         campaignId: payout.campaignId,
@@ -121,9 +129,9 @@ export class HandlePayoutWebhookUseCase {
         currency: payout.currency,
         memo: `payout ${payout.id} reversed (${reference})`,
         externalRef: `${settleKey}:reversed`,
-      })
-    );
-    await this.payoutRepo.markSettlementApplied(payout.id, 'REVERSED');
+      }),
+    )
+    await this.payoutRepo.markSettlementApplied(payout.id, 'REVERSED')
   }
 
   /**
@@ -135,16 +143,16 @@ export class HandlePayoutWebhookUseCase {
    * so an all-terminal batch reaches PAID / NEEDS_REVIEW.
    */
   async repairBatched(payoutId: string): Promise<void> {
-    const payout = await this.payoutRepo.findById(payoutId);
-    if (!payout || !payout.isBatched || payout.status !== 'PROCESSING') return;
+    const payout = await this.payoutRepo.findById(payoutId)
+    if (!payout || !payout.isBatched || payout.status !== 'PROCESSING') return
     for (const leg of payout.legs ?? []) {
       if (leg.status === 'success') {
         await this.campaignBalanceRepo.markPaidOut(
           payout.campaignId,
           leg.amount,
           0,
-          `leg:${leg.reference}:paid`
-        );
+          `leg:${leg.reference}:paid`,
+        )
         await this.ledgerRepo.postEntry(
           JournalEntryEntity.forPayoutDisbursement({
             campaignId: payout.campaignId,
@@ -152,14 +160,14 @@ export class HandlePayoutWebhookUseCase {
             currency: payout.currency,
             memo: `payout ${payout.id} leg ${leg.index + 1} settled (reconcile)`,
             externalRef: `leg:${leg.reference}:paid`,
-          })
-        );
+          }),
+        )
       } else if (leg.status === 'failed') {
         await this.campaignBalanceRepo.returnToAvailable(
           payout.campaignId,
           leg.amount,
-          `leg:${leg.reference}:returned`
-        );
+          `leg:${leg.reference}:returned`,
+        )
       }
       // A 'reversed' leg is intentionally NOT re-driven here: its forward :paid
       // credit may have been stranded by a crash, and reverseFromPaidOut has no
@@ -168,7 +176,7 @@ export class HandlePayoutWebhookUseCase {
       // human reconciles it — see G7 for the reversal-crash durability work.
       // queued / submitted legs are still in flight — reconciled per-leg.
     }
-    await this.reconcileBatch(payoutId);
+    await this.reconcileBatch(payoutId)
   }
 
   /**
@@ -183,17 +191,17 @@ export class HandlePayoutWebhookUseCase {
     gross: number,
     net: number,
     fee: number,
-    reference: string
+    reference: string,
   ): Promise<void> {
-    await this.campaignBalanceRepo.markPaidOut(payout.campaignId, net, fee, `${settleKey}:paid`);
+    await this.campaignBalanceRepo.markPaidOut(payout.campaignId, net, fee, `${settleKey}:paid`)
     const entry = JournalEntryEntity.forPayoutDisbursement({
       campaignId: payout.campaignId,
       amount: gross,
       currency: payout.currency,
       memo: `payout ${payout.id} settled (${reference})`,
       externalRef: `${settleKey}:paid`,
-    });
-    await this.ledgerRepo.postEntry(entry);
+    })
+    await this.ledgerRepo.postEntry(entry)
   }
 
   /**
@@ -207,62 +215,63 @@ export class HandlePayoutWebhookUseCase {
     gross: number,
     net: number,
     fee: number,
-    reference: string
+    reference: string,
   ): Promise<void> {
-    await this.applyForwardDisbursement(payout, settleKey, gross, net, fee, reference);
-    await this.payoutRepo.markSettlementApplied(payout.id, 'PAID');
+    await this.applyForwardDisbursement(payout, settleKey, gross, net, fee, reference)
+    await this.payoutRepo.markSettlementApplied(payout.id, 'PAID')
   }
 
   async handleFailed(reference: string): Promise<void> {
-    const payout = await this.payoutRepo.findByProviderRef(reference);
+    const payout = await this.payoutRepo.findByProviderRef(reference)
+    if (payout?.provider === 'ujimora_wallet') return
     if (payout && !payout.isBatched) {
-      const won = await this.payoutRepo.transitionToFailed(payout.id);
-      if (!won) return; // idempotent
+      const won = await this.payoutRepo.transitionToFailed(payout.id)
+      if (!won) return // idempotent
 
       // Nothing was disbursed — return the reservation to availableBalance.
       await this.campaignBalanceRepo.returnToAvailable(
         payout.campaignId,
         payout.amount,
-        `pout:${payout.id}:returned`
-      );
-      await this.payoutRepo.markSettlementApplied(payout.id, 'FAILED');
-      return;
+        `pout:${payout.id}:returned`,
+      )
+      await this.payoutRepo.markSettlementApplied(payout.id, 'FAILED')
+      return
     }
 
-    const batched = await this.payoutRepo.findByLegReference(reference);
-    if (batched) await this.onLegFailed(batched, reference);
+    const batched = await this.payoutRepo.findByLegReference(reference)
+    if (batched) await this.onLegFailed(batched, reference)
   }
 
   async handleReversed(reference: string): Promise<void> {
-    const payout = await this.payoutRepo.findByProviderRef(reference);
+    const payout = await this.payoutRepo.findByProviderRef(reference)
+    if (payout?.provider === 'ujimora_wallet') return
     if (payout && !payout.isBatched) {
       // A reversal of an already-settled (PAID) transfer: money came back —
       // move paidOut → available and post the reversing journal (idempotent per
       // :reversed), flagging settlement-applied.
-      const fromPaid = await this.payoutRepo.transitionPaidToReversed(payout.id);
+      const fromPaid = await this.payoutRepo.transitionPaidToReversed(payout.id)
       if (fromPaid) {
-        await this.applyReversalFromPaid(payout, `pout:${payout.id}`, reference);
-        return;
+        await this.applyReversalFromPaid(payout, `pout:${payout.id}`, reference)
+        return
       }
 
       // A reversal seen before we observed success: treat like a failure —
       // return the reservation, no journal was ever posted.
-      const fromProcessing =
-        await this.payoutRepo.transitionProcessingToReversed(payout.id);
+      const fromProcessing = await this.payoutRepo.transitionProcessingToReversed(payout.id)
       if (fromProcessing) {
         await this.campaignBalanceRepo.returnToAvailable(
           payout.campaignId,
           payout.amount,
-          `pout:${payout.id}:returned`
-        );
-        await this.payoutRepo.markSettlementApplied(payout.id, 'REVERSED');
+          `pout:${payout.id}:returned`,
+        )
+        await this.payoutRepo.markSettlementApplied(payout.id, 'REVERSED')
       }
       // Otherwise not in a reversible state — idempotent no-op.
-      return;
+      return
     }
 
-    const batched = await this.payoutRepo.findByLegReference(reference);
-    if (batched) await this.onLegReversed(batched, reference);
+    const batched = await this.payoutRepo.findByLegReference(reference)
+    if (batched) await this.onLegReversed(batched, reference)
   }
 
   // ---- Batched (multi-leg) settlement -------------------------------------
@@ -272,59 +281,53 @@ export class HandlePayoutWebhookUseCase {
    * paidOut and journal it (a large standard payout carries no fee, so each leg
    * is pure net), then reconcile the batch.
    */
-  private async onLegSuccess(
-    payout: PayoutEntity,
-    reference: string
-  ): Promise<void> {
-    const leg = payout.legs?.find((l) => l.reference === reference);
-    if (!leg) return;
+  private async onLegSuccess(payout: PayoutEntity, reference: string): Promise<void> {
+    const leg = payout.legs?.find((l) => l.reference === reference)
+    if (!leg) return
     const won = await this.payoutRepo.setLegStatus(
       payout.id,
       reference,
       ['queued', 'submitted'],
-      'success'
-    );
-    if (!won) return; // idempotent
+      'success',
+    )
+    if (!won) return // idempotent
 
     await this.campaignBalanceRepo.markPaidOut(
       payout.campaignId,
       leg.amount,
       0,
-      `leg:${reference}:paid`
-    );
+      `leg:${reference}:paid`,
+    )
     const entry = JournalEntryEntity.forPayoutDisbursement({
       campaignId: payout.campaignId,
       amount: leg.amount,
       currency: payout.currency,
       memo: `payout ${payout.id} leg ${leg.index + 1} settled (${reference})`,
       externalRef: `leg:${reference}:paid`,
-    });
-    await this.ledgerRepo.postEntry(entry);
+    })
+    await this.ledgerRepo.postEntry(entry)
 
-    await this.reconcileBatch(payout.id);
+    await this.reconcileBatch(payout.id)
   }
 
   /** A batched leg failed: return that leg's reservation, then reconcile. */
-  private async onLegFailed(
-    payout: PayoutEntity,
-    reference: string
-  ): Promise<void> {
-    const leg = payout.legs?.find((l) => l.reference === reference);
-    if (!leg) return;
+  private async onLegFailed(payout: PayoutEntity, reference: string): Promise<void> {
+    const leg = payout.legs?.find((l) => l.reference === reference)
+    if (!leg) return
     const won = await this.payoutRepo.setLegStatus(
       payout.id,
       reference,
       ['queued', 'submitted'],
-      'failed'
-    );
-    if (!won) return; // idempotent
+      'failed',
+    )
+    if (!won) return // idempotent
 
     await this.campaignBalanceRepo.returnToAvailable(
       payout.campaignId,
       leg.amount,
-      `leg:${reference}:returned`
-    );
-    await this.reconcileBatch(payout.id);
+      `leg:${reference}:returned`,
+    )
+    await this.reconcileBatch(payout.id)
   }
 
   /**
@@ -332,35 +335,27 @@ export class HandlePayoutWebhookUseCase {
    * with a reversing journal, and flag the whole payout for manual review — a
    * reversal on a partially/fully disbursed batch always needs a human.
    */
-  private async onLegReversed(
-    payout: PayoutEntity,
-    reference: string
-  ): Promise<void> {
-    const leg = payout.legs?.find((l) => l.reference === reference);
-    if (!leg) return;
-    const won = await this.payoutRepo.setLegStatus(
-      payout.id,
-      reference,
-      ['success'],
-      'reversed'
-    );
-    if (!won) return; // idempotent
+  private async onLegReversed(payout: PayoutEntity, reference: string): Promise<void> {
+    const leg = payout.legs?.find((l) => l.reference === reference)
+    if (!leg) return
+    const won = await this.payoutRepo.setLegStatus(payout.id, reference, ['success'], 'reversed')
+    if (!won) return // idempotent
 
     await this.campaignBalanceRepo.reverseFromPaidOut(
       payout.campaignId,
       leg.amount,
       0,
-      `leg:${reference}:reversed`
-    );
+      `leg:${reference}:reversed`,
+    )
     const entry = JournalEntryEntity.forPayoutReversal({
       campaignId: payout.campaignId,
       amount: leg.amount,
       currency: payout.currency,
       memo: `payout ${payout.id} leg ${leg.index + 1} reversed (${reference})`,
       externalRef: `leg:${reference}:reversed`,
-    });
-    await this.ledgerRepo.postEntry(entry);
-    await this.payoutRepo.flagNeedsReview(payout.id);
+    })
+    await this.ledgerRepo.postEntry(entry)
+    await this.payoutRepo.flagNeedsReview(payout.id)
   }
 
   /**
@@ -370,18 +365,16 @@ export class HandlePayoutWebhookUseCase {
    * webhook makes the call. Atomic guards keep it exactly-once.
    */
   private async reconcileBatch(payoutId: string): Promise<void> {
-    const p = await this.payoutRepo.findById(payoutId);
-    if (!p || !p.isBatched || p.status !== 'PROCESSING') return;
-    const legs = p.legs ?? [];
-    const inFlight = legs.some(
-      (l) => l.status === 'queued' || l.status === 'submitted'
-    );
-    if (inFlight) return;
-    const allSuccess = legs.every((l) => l.status === 'success');
+    const p = await this.payoutRepo.findById(payoutId)
+    if (!p || !p.isBatched || p.status !== 'PROCESSING') return
+    const legs = p.legs ?? []
+    const inFlight = legs.some((l) => l.status === 'queued' || l.status === 'submitted')
+    if (inFlight) return
+    const allSuccess = legs.every((l) => l.status === 'success')
     if (allSuccess) {
-      await this.payoutRepo.transitionBatchedToPaid(payoutId);
+      await this.payoutRepo.transitionBatchedToPaid(payoutId)
     } else {
-      await this.payoutRepo.flagNeedsReview(payoutId);
+      await this.payoutRepo.flagNeedsReview(payoutId)
     }
   }
 }

@@ -67,20 +67,37 @@ export function saveCreatorProfile(input: {
 
 export function createTip(
   handle: string,
-  input: { amount: number; supporterEmail: string; supporterName?: string; message?: string; isAnonymous?: boolean }
+  input: {
+    amount: number
+    supporterEmail: string
+    supporterName?: string
+    message?: string
+    isAnonymous?: boolean
+  },
 ): Promise<{ checkoutUrl: string; reference: string; tipId: string }> {
   return api.post(`/creators/${handle}/tips`, input)
 }
 
-export function getMyCreator(): Promise<{ profile: CreatorProfile | null; balance: CreatorBalance | null; policy: CreatorPolicy }> {
+export function getMyCreator(): Promise<{
+  profile: CreatorProfile | null
+  balance: CreatorBalance | null
+  policy: CreatorPolicy
+}> {
   return api.get('/creators/me')
 }
 
 export function requestWithdrawal(input: {
+  destination?: 'paystack' | 'ujimora_wallet'
+  idempotencyKey?: string
   amount: number
   expectedFeePercent: number
   savedAccountId?: string
-  recipient?: { type: 'mobile_money' | 'ghipss'; accountNumber: string; bankCode: string; accountName: string }
+  recipient?: {
+    type: 'mobile_money' | 'ghipss'
+    accountNumber: string
+    bankCode: string
+    accountName: string
+  }
 }): Promise<{ id: string; status: string; amount: number }> {
   return api.post('/creators/withdraw', input)
 }

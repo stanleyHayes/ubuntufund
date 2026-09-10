@@ -1,21 +1,25 @@
-import type { Payout, RequestPayoutInput } from '@ubuntu-fund/types';
-import { PayoutEntity } from '../../domain/entities/Payout.js';
-import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js';
-import type { TransferRecipientRepositoryPort } from '../../domain/ports/outbound/TransferRecipientRepositoryPort.js';
-import type { PayoutRepositoryPort } from '../../domain/ports/outbound/PayoutRepositoryPort.js';
-import type { CampaignBalanceRepositoryPort } from '../../domain/ports/outbound/CampaignBalanceRepositoryPort.js';
-import type { CampaignSplitRepositoryPort } from '../../domain/ports/outbound/CampaignSplitRepositoryPort.js';
-import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGatewayPort.js';
-import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
-import { toPayoutDto } from './mappers/payoutDto.js';
-import type { PayoutRequester } from './CreatePayoutRecipientUseCase.js';
-import { computePayoutFee, isEarlyWithdrawal, campaignNeedsEarlyCashout } from '../services/payoutFee.js';
-import type { PayoutsConfig } from '../../infrastructure/config/index.js';
+import type { Payout, RequestPayoutInput } from '@ubuntu-fund/types'
+import { PayoutEntity } from '../../domain/entities/Payout.js'
+import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js'
+import type { TransferRecipientRepositoryPort } from '../../domain/ports/outbound/TransferRecipientRepositoryPort.js'
+import type { PayoutRepositoryPort } from '../../domain/ports/outbound/PayoutRepositoryPort.js'
+import type { CampaignBalanceRepositoryPort } from '../../domain/ports/outbound/CampaignBalanceRepositoryPort.js'
+import type { CampaignSplitRepositoryPort } from '../../domain/ports/outbound/CampaignSplitRepositoryPort.js'
+import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGatewayPort.js'
+import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js'
+import { toPayoutDto } from './mappers/payoutDto.js'
+import type { PayoutRequester } from './CreatePayoutRecipientUseCase.js'
+import {
+  computePayoutFee,
+  isEarlyWithdrawal,
+  campaignNeedsEarlyCashout,
+} from '../services/payoutFee.js'
+import type { PayoutsConfig } from '../../infrastructure/config/index.js'
 
-const CURRENCY = 'GHS';
+const CURRENCY = 'GHS'
 
 function round2(n: number): number {
-  return Math.round(n * 100) / 100;
+  return Math.round(n * 100) / 100
 }
 
 /**
@@ -46,72 +50,88 @@ export class RequestPayoutUseCase {
     // commercial-config store (overrides layered over the env defaults). Absent,
     // the static `payoutsConfig` is used unchanged.
     private readonly configService?: {
-      resolvePayoutsConfig(): Promise<PayoutsConfig>;
-    }
+      resolvePayoutsConfig(): Promise<PayoutsConfig>
+    },
   ) {}
 
   async execute(
     campaignId: string,
     input: RequestPayoutInput,
-    requester: PayoutRequester
+    requester: PayoutRequester,
   ): Promise<Payout> {
-    if (!this.paymentGateway.isConfigured()) {
-      throw new AppError('Payouts are not configured', 501);
+    const wallet = input.destination === 'ujimora_wallet'
+    if (input.destination && !['paystack', 'ujimora_wallet'].includes(input.destination))
+      throw new AppError('Unsupported payout destination', 422)
+    if (wallet && !/^[0-9a-f-]{36}$/i.test(input.idempotencyKey ?? ''))
+      throw new AppError('A transfer request key is required', 422)
+    if (!wallet && !this.paymentGateway.isConfigured()) {
+      throw new AppError('Payouts are not configured', 501)
     }
 
-    const campaign = await this.campaignRepo.findById(campaignId);
+    const campaign = await this.campaignRepo.findById(campaignId)
     if (!campaign) {
-      throw new AppError('Campaign not found', 404);
+      throw new AppError('Campaign not found', 404)
     }
 
-    const isOwner = campaign.creatorId === requester.userId;
-    const isAdmin = requester.role === 'admin';
+    const isOwner = campaign.creatorId === requester.userId
+    const isAdmin = requester.role === 'admin'
     if (!isOwner && !isAdmin) {
-      throw new AppError('Only the campaign owner can request a payout', 403);
+      throw new AppError('Only the campaign owner can request a payout', 403)
     }
 
     // A split campaign disburses per beneficiary; the campaign-level payout is
     // blocked so the two paths can never both move the same funds.
     if (this.splitProceedsEnabled && this.campaignSplitRepo) {
-      const activeSplit = await this.campaignSplitRepo.findActive(campaignId);
+      const activeSplit = await this.campaignSplitRepo.findActive(campaignId)
       if (activeSplit) {
         throw new AppError(
           'This campaign shares proceeds; request per-beneficiary payouts instead',
-          409
-        );
+          409,
+        )
       }
     }
 
-    const amount = round2(Number(input.amount));
+    const amount = round2(Number(input.amount))
     if (!Number.isFinite(amount) || amount <= 0) {
-      throw new AppError('Payout amount must be greater than zero', 422);
+      throw new AppError('Payout amount must be greater than zero', 422)
     }
 
-    const recipient =
-      await this.transferRecipientRepo.findLatestByCampaignId(campaignId);
+    const reference = wallet
+      ? `wallet-request:${campaign.creatorId}:${input.idempotencyKey}`
+      : undefined
+    if (reference) {
+      const previous = await this.payoutRepo.findByProviderRef(reference)
+      if (previous) {
+        if (
+          previous.campaignId !== campaignId ||
+          previous.amount !== amount ||
+          previous.type !== (input.type ?? 'standard')
+        )
+          throw new AppError('Request key already used with different details', 409)
+        return toPayoutDto(previous)
+      }
+    }
+    const recipient = wallet
+      ? { id: `wallet:${campaign.creatorId}`, currency: 'GHS' }
+      : await this.transferRecipientRepo.findLatestByCampaignId(campaignId)
     if (!recipient) {
-      throw new AppError(
-        'Add a payout recipient before requesting a payout',
-        400
-      );
+      throw new AppError('Add a payout recipient before requesting a payout', 400)
     }
 
-    const balance =
-      await this.campaignBalanceRepo.findByCampaignId(campaignId);
-    const available = balance?.availableBalance ?? 0;
-    const pending = balance?.pendingBalance ?? 0;
-    const eligible = round2(available + pending);
-    const currency = balance?.currency ?? recipient.currency ?? CURRENCY;
+    const balance = await this.campaignBalanceRepo.findByCampaignId(campaignId)
+    const available = balance?.availableBalance ?? 0
+    const pending = balance?.pendingBalance ?? 0
+    const eligible = round2(available + pending)
+    const currency = balance?.currency ?? recipient.currency ?? CURRENCY
+    if (wallet && currency !== 'GHS') throw new AppError('Ujimora Wallet transfers require GHS', 422)
 
     if (amount > eligible) {
       throw new AppError(
         `Cannot request a payout of ${currency} ${amount.toLocaleString(
-          'en-US'
-        )}; only ${currency} ${eligible.toLocaleString(
-          'en-US'
-        )} is available for payout.`,
-        422
-      );
+          'en-US',
+        )}; only ${currency} ${eligible.toLocaleString('en-US')} is available for payout.`,
+        422,
+      )
     }
 
     // Payout service fee + net the beneficiary receives (spec §17). `standard`
@@ -120,43 +140,38 @@ export class RequestPayoutUseCase {
     // wired (ADR-5), else the static env config.
     const cfg = this.configService
       ? await this.configService.resolvePayoutsConfig()
-      : this.payoutsConfig;
-    const type = input.type ?? 'standard';
+      : this.payoutsConfig
+    const type = input.type ?? 'standard'
     if (campaignNeedsEarlyCashout(campaign) && !isEarlyWithdrawal(type)) {
-      throw new AppError('This campaign is still active and below its goal. Select early or urgent cashout; the additional service fee applies on top of the plan fee already deducted at settlement.', 422);
+      throw new AppError(
+        'This campaign is still active and below its goal. Select early or urgent cashout; the additional service fee applies on top of the plan fee already deducted at settlement.',
+        422,
+      )
     }
-    const { fee, netAmount } = computePayoutFee(type, amount, cfg);
+    const { fee, netAmount } = computePayoutFee(type, amount, cfg)
     if (netAmount <= 0) {
-      throw new AppError('The payout fee equals or exceeds the requested amount', 422);
+      throw new AppError('The payout fee equals or exceeds the requested amount', 422)
     }
 
     // Early/urgent withdrawals may take only a capped share of the eligible
     // balance, leaving a reserve (spec §17).
     if (isEarlyWithdrawal(type)) {
-      const earlyCeiling = round2(
-        (eligible * cfg.earlyMaxWithdrawalPercent) / 100
-      );
+      const earlyCeiling = round2((eligible * cfg.earlyMaxWithdrawalPercent) / 100)
       if (amount > earlyCeiling) {
         throw new AppError(
           `Early payouts are capped at ${cfg.earlyMaxWithdrawalPercent}% of the eligible balance (max ${currency} ${earlyCeiling.toLocaleString('en-US')}).`,
-          422
-        );
+          422,
+        )
       }
     }
 
     // Clear just enough pending → available so the approval step can reserve the
     // full requested amount out of `availableBalance`.
-    const needed = round2(amount - available);
+    const needed = round2(amount - available)
     if (needed > 0) {
-      const cleared = await this.campaignBalanceRepo.clearPendingToAvailable(
-        campaignId,
-        needed
-      );
+      const cleared = await this.campaignBalanceRepo.clearPendingToAvailable(campaignId, needed)
       if (!cleared) {
-        throw new AppError(
-          'Insufficient cleared funds for this payout; please try again.',
-          422
-        );
+        throw new AppError('Insufficient cleared funds for this payout; please try again.', 422)
       }
     }
 
@@ -171,13 +186,14 @@ export class RequestPayoutUseCase {
         netAmount,
         currency,
         status: 'PENDING',
-        provider: 'paystack',
+        provider: wallet ? 'ujimora_wallet' : 'paystack',
+        providerRef: reference,
         requestedBy: requester.userId,
         createdAt: new Date(),
         updatedAt: new Date(),
-      })
-    );
+      }),
+    )
 
-    return toPayoutDto(saved);
+    return toPayoutDto(saved)
   }
 }

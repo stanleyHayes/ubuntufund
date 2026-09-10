@@ -1,5 +1,12 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-10 — Wallet destinations and branded saved accounts
+
+- Fixed saved payout account validation (358620f): embedded account `type` now has an explicit Mongoose field definition. Regression coverage validates bank and MoMo subdocuments.
+- Campaign cashout and creator earnings can select Ujimora Wallet alongside bank/MoMo. Campaign wallet payouts retain admin review, dual approval, early fees and reserve rules. Creator wallet transfers retain live plan fees. Transactional wallet credits, source balances, history and balanced journals commit together; retry keys prevent duplicate credits and provider webhooks ignore internal payouts.
+- Replaced plain saved accounts with provider-colored card faces, masked numbers, large lettering watermarks and curved detail. MTN yellow, Telecel red, AT blue and supported bank treatments share web/native branding. Review status and removal sit below the face. Browser inspection confirmed the saved MTN card and illustrated payout-history empty state. Manage saved accounts is a quieter link.
+- Validation: 61 focused API tests (including real Mongo transaction/concurrency/rollback tests), 11 web flow tests and 24 mobile logic tests pass. API/web/admin/mobile type checks, focused lint and diff checks pass. No live funds were moved; native source requires a new build. Wallet earnings credit is implemented; external withdrawal of the wallet balance itself is outside this slice.
+
 ### 2026-09-10 — Cashout skeletons and organizer card
 
 - Campaign cashout and campaign selection now use web/native skeletons instead of loading text. Initial cashout errors hide the skeleton; web retry clears the error. Five owner money-flow tests and web/native type checks pass. Pushed ba7e7fa.

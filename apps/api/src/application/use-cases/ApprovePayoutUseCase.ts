@@ -1,3 +1,4 @@
+import type { WalletPayoutPort } from '../../domain/ports/outbound/WalletPayoutPort.js'
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js'
 import { campaignNeedsEarlyCashout, isEarlyWithdrawal } from '../services/payoutFee.js'
 import { TransferOutcomeUnknownError } from '../../domain/errors/TransferOutcomeUnknownError.js'
@@ -43,12 +44,21 @@ export class ApprovePayoutUseCase {
     private readonly paymentGateway: PaymentGatewayPort,
     private readonly payoutsConfig: PayoutsConfig,
     private readonly campaigns?: CampaignRepositoryPort,
+    private readonly walletPayouts?: WalletPayoutPort,
   ) {}
 
   async recipientDetails(payoutId: string, requester: PayoutRequester) {
     if (requester.role !== 'admin') throw new AppError('Admin access required', 403)
     const payout = await this.payoutRepo.findById(payoutId)
     if (!payout) throw new AppError('Payout not found', 404)
+    if (payout.provider === 'ujimora_wallet')
+      return {
+        accountName: 'Ujimora Wallet',
+        accountNumber: payout.recipientId.slice(7),
+        bankCode: 'Ujimora',
+        type: 'ujimora_wallet',
+        verificationStatus: 'internal_wallet',
+      }
     const recipient = await this.transferRecipientRepo.findById(payout.recipientId)
     if (!recipient) throw new AppError('Payout recipient not found', 404)
     const p = recipient.toPlain()
@@ -71,14 +81,13 @@ export class ApprovePayoutUseCase {
     if (requester.role !== 'admin') {
       throw new AppError('Only an admin can approve a payout', 403)
     }
-    if (!this.paymentGateway.isConfigured()) {
-      throw new AppError('Payouts are not configured', 501)
-    }
 
     const payout = await this.payoutRepo.findById(payoutId)
     if (!payout) {
       throw new AppError('Payout not found', 404)
     }
+    if (payout.provider !== 'ujimora_wallet' && !this.paymentGateway.isConfigured())
+      throw new AppError('Payouts are not configured', 501)
     if (payout.status !== 'PENDING') {
       throw new AppError(`Payout cannot be approved in state ${payout.status}`, 409)
     }
@@ -86,6 +95,11 @@ export class ApprovePayoutUseCase {
     if (this.campaigns) {
       const campaign = await this.campaigns.findById(payout.campaignId)
       if (!campaign) throw new AppError('Campaign not found', 404)
+      if (
+        payout.provider === 'ujimora_wallet' &&
+        payout.recipientId !== `wallet:${campaign.creatorId}`
+      )
+        throw new AppError('Wallet destination must belong to the campaign owner', 409)
       if (campaignNeedsEarlyCashout(campaign) && !isEarlyWithdrawal(payout.type)) {
         throw new AppError(
           'Early cashout requires an early or urgent request with its additional fee. This request cannot bypass that fee.',
@@ -100,15 +114,21 @@ export class ApprovePayoutUseCase {
         'Record beneficiary ownership and receiving-capacity review before approving (at least 20 characters).',
         422,
       )
-    if (!this.transferRecipientRepo.recordReview)
-      throw new AppError('Recipient review storage is unavailable', 503)
-    await this.transferRecipientRepo.recordReview(
-      payout.recipientId,
-      requester.userId,
-      reviewNote.trim(),
-      payoutId,
-    )
+    if (payout.provider !== 'ujimora_wallet') {
+      if (!this.transferRecipientRepo.recordReview)
+        throw new AppError('Recipient review storage is unavailable', 503)
+      await this.transferRecipientRepo.recordReview(
+        payout.recipientId,
+        requester.userId,
+        reviewNote.trim(),
+        payoutId,
+      )
+    }
 
+    if (payout.provider === 'ujimora_wallet') {
+      if (!this.walletPayouts) throw new AppError('Wallet transfers unavailable', 503)
+      await this.walletPayouts.recordCampaignReview(payout.id, requester.userId, reviewNote.trim())
+    }
     // Maker-checker: a high-value payout needs two distinct admin approvals.
     const dualThreshold = this.payoutsConfig.dualApprovalAmount
     if (dualThreshold > 0 && payout.amount >= dualThreshold) {
@@ -124,6 +144,13 @@ export class ApprovePayoutUseCase {
         throw new AppError('A second, different admin must approve this high-value payout', 409)
       }
       // A distinct second admin is approving — proceed to initiate the transfer.
+    }
+
+    if (payout.provider === 'ujimora_wallet') {
+      if (!this.walletPayouts || !this.campaigns)
+        throw new AppError('Wallet transfers unavailable', 503)
+      await this.walletPayouts.settleCampaign(payout.id, requester.userId, reviewNote.trim())
+      return toPayoutDto((await this.payoutRepo.findById(payout.id))!)
     }
 
     const recipient = await this.transferRecipientRepo.findById(payout.recipientId)

@@ -20,3 +20,5 @@ export * from './coupon'
 export * from './affiliate'
 export * from './split'
 export * from './crypto'
+
+export { payoutAccountBrand } from './payoutBrand'
