@@ -1,6 +1,7 @@
 import type { DonationSucceededPayload, OutboxRecord } from '@ubuntu-fund/types';
 import type { OutboxRepositoryPort } from '../../domain/ports/outbound/OutboxRepositoryPort.js';
 import type { RealtimeDonationProjector } from './RealtimeDonationProjector.js';
+import type { DonationOwnerNotifier } from './DonationOwnerNotifier.js';
 import { logger } from '../../infrastructure/logging/logger.js';
 
 /** How many pending rows the boot sweep drains per pass. */
@@ -20,7 +21,8 @@ const SWEEP_BATCH = 100;
 export class OutboxDispatcher {
   constructor(
     private readonly outboxRepo: OutboxRepositoryPort,
-    private readonly realtimeProjector: RealtimeDonationProjector
+    private readonly realtimeProjector: RealtimeDonationProjector,
+    private readonly ownerNotifier?: DonationOwnerNotifier
   ) {}
 
   /**
@@ -91,11 +93,6 @@ export class OutboxDispatcher {
       }
     );
 
-    // Receipt side-effect: registered donors could be emailed / notified here.
-    // Kept as a durable, logged hook until the receipts channel is wired.
-    logger.info(
-      { donationId: payload.donationId, campaignId: payload.campaignId },
-      'donation receipt side-effect dispatched'
-    );
+    await this.ownerNotifier?.notify(payload);
   }
 }

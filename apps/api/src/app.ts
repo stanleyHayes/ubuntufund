@@ -1,3 +1,6 @@
+import { ResendOwnerNotifications } from './infrastructure/adapters/outbound/ResendOwnerNotifications.js';
+import { GetCampaignPayoutOptionsUseCase } from './application/use-cases/GetCampaignPayoutOptionsUseCase.js';
+import { DonationOwnerNotifier } from './application/services/DonationOwnerNotifier.js';
 import { AiWritingService } from './application/services/AiWritingService.js';
 import { OpenAiWritingProvider } from './infrastructure/adapters/outbound/ai/OpenAiWritingProvider.js';
 import { createAiWritingRoutes } from './infrastructure/adapters/inbound/http/routes/aiWritingRoutes.js';
@@ -536,8 +539,21 @@ export function createApp(): express.Express {
   );
   const outboxDispatcher = new OutboxDispatcher(
     outboxRepo,
-    realtimeDonationProjector
+    realtimeDonationProjector,
+    new DonationOwnerNotifier(campaignRepo, notificationRepo, new ResendOwnerNotifications(process.env.RESEND_API_KEY ?? '', process.env.FROM_EMAIL ?? '', config.publicWebUrl))
   );
+
+  if (config.nodeEnv === 'production') {
+    let sweeping = false;
+    const notificationTimer = setInterval(async () => {
+      if (sweeping) return;
+      sweeping = true;
+      try { await outboxDispatcher.sweepPending(); }
+      catch (err) { logger.error({ err }, 'notification outbox retry failed'); }
+      finally { sweeping = false; }
+    }, 60_000);
+    notificationTimer.unref();
+  }
 
   // ── Use cases ────────────────────────────────────────────────────────
   const registerUserUseCase = new RegisterUserUseCase(
@@ -1159,7 +1175,8 @@ export function createApp(): express.Express {
     requestPayoutUseCase,
     approvePayoutUseCase,
     listCampaignPayoutsUseCase,
-    listPayoutsUseCase
+    listPayoutsUseCase,
+    new GetCampaignPayoutOptionsUseCase(campaignRepo, campaignBalanceRepo, transferRecipientRepo, commercialConfigService)
   );
   // Split-proceeds: owner-managed, versioned beneficiary allocations (spec §17).
   const campaignSplitUseCase = new CampaignSplitUseCase(

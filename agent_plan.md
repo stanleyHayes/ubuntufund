@@ -1,5 +1,14 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-10 — Owner donation notifications and campaign cashout audit
+
+- Wired settled gifts to a deduplicated owner inbox and optional Resend email, honoring email/campaign-update preferences and anonymous donor privacy. Added independent minute-based outbox retry and the web Dashboard inbox.
+- Added owner-only payout options and a web campaign cashout panel with bank/MoMo recipient setup, configured fee preview, request submission and payout history. Request remains distinct from admin approval/transfer.
+- Fixed ambiguous Paystack transfer errors releasing potentially sent funds on campaign/beneficiary/affiliate rails; single and batched reservations now remain held for reference-based reconciliation. Creator rail already preserved ambiguous attempts.
+- Verified Resend's ujimora.com domain status and Paystack test balance through read-only provider calls. No money moved or historical emails sent. API runtime email variables and actual mailbox delivery still require deployment validation.
+- 39 focused API tests and 3 owner-screen tests pass; API/web type-check, focused lint, and desktop/mobile mocked browser checks pass. See docs/paystack-owner-notifications-and-cashout.md for operational steps and the open standard/early-withdrawal policy decision. Prior card redesign remains a separate local preview.
+
+
 ### 2026-09-10 — Leaderboard guest aggregation and refresh repair
 
 - Reproduced production leaderboard returning 400 Invalid ID format while stats reported two confirmed guest gifts totaling GHS 4,200. Filter invalid/sentinel IDs before Mongo user lookups in rankings and category stats; featured rankings use the same repaired repository.

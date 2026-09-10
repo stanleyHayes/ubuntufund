@@ -1,3 +1,4 @@
+import { TransferOutcomeUnknownError } from '../../../../domain/errors/TransferOutcomeUnknownError.js';
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import type { DonationIntentEntity } from '../../../../domain/entities/DonationIntent.js';
 import type {
@@ -373,6 +374,9 @@ export class PaystackGateway implements PaymentGatewayPort {
       '/transfer',
       body
     );
+    if (json.status !== false && (!json.data?.transfer_code || !json.data?.status)) {
+      throw new TransferOutcomeUnknownError();
+    }
     if (!json.status || !json.data) {
       throw new AppError(
         `Paystack transfer failed: ${json.message ?? 'unknown error'}`,
@@ -445,6 +449,7 @@ export class PaystackGateway implements PaymentGatewayPort {
       });
     } catch (error) {
       logger.error({ err: error, path }, 'paystack request failed');
+      if (path === '/transfer' && method === 'POST') throw new TransferOutcomeUnknownError();
       throw new AppError('Payment provider is unreachable', 502);
     }
 
@@ -453,8 +458,10 @@ export class PaystackGateway implements PaymentGatewayPort {
       json = (await res.json()) as PaystackEnvelope<T>;
     } catch (error) {
       logger.error({ err: error, path, httpStatus: res.status }, 'paystack response was not JSON');
+      if (path === '/transfer' && method === 'POST') throw new TransferOutcomeUnknownError();
       throw new AppError('Payment provider returned an invalid response', 502);
     }
+    if (path === '/transfer' && method === 'POST' && res.status >= 500) throw new TransferOutcomeUnknownError();
     return json;
   }
 }

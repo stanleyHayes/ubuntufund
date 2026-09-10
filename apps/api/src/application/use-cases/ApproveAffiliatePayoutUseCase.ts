@@ -1,3 +1,4 @@
+import { TransferOutcomeUnknownError } from '../../domain/errors/TransferOutcomeUnknownError.js';
 import { randomUUID } from 'node:crypto';
 import type { AffiliatePayout } from '@ubuntu-fund/types';
 import type { AffiliatePayoutRepositoryPort } from '../../domain/ports/outbound/AffiliatePayoutRepositoryPort.js';
@@ -96,6 +97,9 @@ export class ApproveAffiliatePayoutUseCase {
         reason: `Affiliate payout ${payout.id}`,
       });
     } catch (error) {
+      if (error instanceof TransferOutcomeUnknownError) {
+        throw new AppError(error.message, 502);
+      }
       await this.rollback(processing.id, payout.affiliateId, payout.amount);
       logger.error(
         { err: error, payoutId: payout.id },

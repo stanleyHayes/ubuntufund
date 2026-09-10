@@ -1,3 +1,4 @@
+import type { GetCampaignPayoutOptionsUseCase } from '../../../../../application/use-cases/GetCampaignPayoutOptionsUseCase.js';
 import type { Request, Response, NextFunction } from 'express';
 import type { AuthenticatedRequest } from '../../middleware/authMiddleware.js';
 import type { ListBanksUseCase } from '../../../../../application/use-cases/ListBanksUseCase.js';
@@ -20,8 +21,16 @@ export class PayoutController {
     private readonly requestPayoutUseCase: RequestPayoutUseCase,
     private readonly approvePayoutUseCase: ApprovePayoutUseCase,
     private readonly listCampaignPayoutsUseCase: ListCampaignPayoutsUseCase,
-    private readonly listPayoutsUseCase: ListPayoutsUseCase
+    private readonly listPayoutsUseCase: ListPayoutsUseCase,
+    private readonly payoutOptions?: GetCampaignPayoutOptionsUseCase
   ) {}
+
+  getOptions = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const data = await this.payoutOptions!.execute(req.params.id as string, { userId: req.userId!, role: req.userRole });
+      res.json({ data });
+    } catch (error) { next(error); }
+  };
 
   /** GET /banks?currency=GHS&type=mobile_money — bank / telco directory. */
   listBanks = async (

@@ -1,3 +1,4 @@
+import { TransferOutcomeUnknownError } from '../../domain/errors/TransferOutcomeUnknownError.js';
 import { randomUUID } from 'node:crypto';
 import type {
   BeneficiaryPayout,
@@ -290,6 +291,9 @@ export class BeneficiaryPayoutUseCase {
         reason: `Beneficiary payout for campaign ${payout.campaignId}`,
       });
     } catch (error) {
+      if (error instanceof TransferOutcomeUnknownError) {
+        throw new AppError(error.message, 502);
+      }
       await this.rollback(payout.id, payout.campaignId, payout.beneficiaryId, payout.currency, payout.amount);
       logger.error({ err: error, payoutId: payout.id }, 'beneficiary payout initiation failed');
       if (error instanceof AppError) throw error;

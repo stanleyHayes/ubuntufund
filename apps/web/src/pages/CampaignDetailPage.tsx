@@ -1,3 +1,4 @@
+import { CampaignCashout } from '@/components/campaigns/CampaignCashout'
 import { LoadingDots } from '@ubuntu-fund/ui'
 import { useState, useEffect } from 'react'
 import { Link as RouterLink, useParams, useNavigate } from 'react-router-dom'
@@ -447,7 +448,7 @@ function CampaignDetailContent() {
             </Box>
           </Box>
 
-          {currentUser?.id === campaign.creatorId && <CampaignSplitSetup campaignId={campaign.id} />}
+          {currentUser?.id === campaign.creatorId && <><CampaignCashout campaignId={campaign.id} /><CampaignSplitSetup campaignId={campaign.id} /></>}
           {/* Share & Embed */}
           <Box component="details" sx={{ mt: 4, p: 3, borderRadius: SHAPE.card, boxShadow: 'var(--neu-inset)', '& > summary': { cursor: 'pointer', fontWeight: 700 }, '& > div': { mt: 2 } }}><Box component="summary">Share this campaign · QR code</Box>
             <Box sx={{ flex: 1, p: 3, bgcolor: 'action.hover', borderRadius: SHAPE.card }}>

@@ -58,6 +58,7 @@ export function createCampaignPayoutRoutes(
     validate(requestPayoutSchema),
     payoutController.requestPayout
   );
+  router.get('/:id/payout-options', authMiddleware, payoutController.getOptions);
   router.get('/:id/payouts', authMiddleware, payoutController.listCampaignPayouts);
 
   return router;

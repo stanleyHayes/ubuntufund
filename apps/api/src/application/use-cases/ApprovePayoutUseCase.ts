@@ -1,3 +1,4 @@
+import { TransferOutcomeUnknownError } from '../../domain/errors/TransferOutcomeUnknownError.js';
 import { randomUUID } from 'node:crypto';
 import type { Payout, PayoutLeg } from '@ubuntu-fund/types';
 import type { PayoutRepositoryPort } from '../../domain/ports/outbound/PayoutRepositoryPort.js';
@@ -158,6 +159,9 @@ export class ApprovePayoutUseCase {
         reason: `Payout for campaign ${payout.campaignId}`,
       });
     } catch (error) {
+      if (error instanceof TransferOutcomeUnknownError) {
+        throw new AppError(error.message, 502);
+      }
       await this.rollback(processing.id, payout.campaignId, payout.amount);
       logger.error(
         { err: error, payoutId: payout.id },
@@ -242,7 +246,12 @@ export class ApprovePayoutUseCase {
           { err: error, payoutId: payout.id, leg: leg.reference },
           'payout leg initiation failed'
         );
-        failed.push(leg);
+        if (error instanceof TransferOutcomeUnknownError) {
+          // Keep this queued leg reserved; verify its existing reference later.
+          submitted += 1;
+        } else {
+          failed.push(leg);
+        }
       }
     }
 

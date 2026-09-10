@@ -8,6 +8,7 @@ export interface NotificationDocument extends Document {
   read: boolean;
   createdAt: Date;
   updatedAt: Date;
+  emailSentAt?: Date;
 }
 
 const notificationSchema = new Schema<NotificationDocument>(
@@ -16,6 +17,7 @@ const notificationSchema = new Schema<NotificationDocument>(
     title: { type: String, required: true },
     body: { type: String, required: true },
     type: { type: String, default: 'general' },
+    emailSentAt: { type: Date },
     read: { type: Boolean, default: false, index: true },
   },
   {

@@ -20,13 +20,17 @@ function toDomain(doc: NotificationDocument): NotificationEntity {
 export class MongoNotificationRepository implements NotificationRepositoryPort {
   async save(notification: NotificationEntity): Promise<NotificationEntity> {
     const plain = notification.toPlain();
-    const doc = await NotificationModel.create({
-      userId: plain.userId,
-      title: plain.title,
-      body: plain.body,
-      type: plain.type,
-      read: plain.read,
-    });
+    const fields = {
+      userId: plain.userId, title: plain.title, body: plain.body,
+      type: plain.type, read: plain.read, createdAt: plain.createdAt,
+    };
+    // A deterministic event ID makes delivery retries atomic and preserves read state.
+    const doc = plain.id
+      ? await NotificationModel.findOneAndUpdate(
+          { _id: plain.id }, { $setOnInsert: fields },
+          { upsert: true, new: true, setDefaultsOnInsert: true }
+        )
+      : await NotificationModel.create(fields);
     return toDomain(doc);
   }
 
