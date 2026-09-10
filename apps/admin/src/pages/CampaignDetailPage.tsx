@@ -1,3 +1,6 @@
+import { raisedSurface } from '@/lib/surfaces'
+import { DonationCard } from './DonationsPage'
+import Skeleton from '@mui/material/Skeleton'
 import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import { BrandedDatePicker } from '@ubuntu-fund/ui'
 import { useEffect, useState } from 'react'
@@ -25,14 +28,11 @@ const ROLE_LABELS: Record<CollaboratorRole, string> = {
 
 const fadeIn = keyframes`from{opacity:0}to{opacity:1}`
 const slideIn = keyframes`from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}`
-const B = 'rgba(255,255,255,0.06)'
+const B = 'var(--mui-palette-divider, rgba(128,140,126,0.18))'
 
 function Skel({ w, h }: { w?: string | number; h?: number }) {
   return (
-    <Box sx={{
-      width: w || '100%', height: h || 14,
-      bgcolor: 'rgba(255,255,255,0.04)',
-    }} />
+    <Skeleton variant="rounded" width={w || '100%'} height={h || 14} />
   )
 }
 
@@ -47,7 +47,7 @@ const statusColors: Record<string, string> = {
 
 export default function CampaignDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const { data: campaign, isLoading: loading } = useAdminCampaign(id ?? '')
+  const { data: campaign, isLoading: loading, error: campaignError } = useAdminCampaign(id ?? '')
   const { data: donations } = useAdminCampaignDonations(id ?? '')
   const navigate = useNavigate()
   const [collaborators, setCollaborators] = useState<CampaignCollaborator[]>([])
@@ -80,7 +80,7 @@ export default function CampaignDetailPage() {
 
   if (loading) {
     return (
-      <Box sx={{ bgcolor: '#0c0c14', minHeight: '100vh' }}>
+      <Box sx={{ bgcolor: 'background.default', minHeight: '100vh' }}>
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(4, 1fr)' } }}>
           {[0, 1, 2, 3].map(i => (
             <Box key={i} sx={{ p: 2.5, borderRight: `1px solid ${B}`, borderBottom: `1px solid ${B}` }}>
@@ -90,7 +90,7 @@ export default function CampaignDetailPage() {
             </Box>
           ))}
         </Box>
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '3fr 1fr' } }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 2fr) minmax(280px, 1fr)' }, gap: 3 }}>
           <Box sx={{ p: 2.5, borderRight: `1px solid ${B}`, borderBottom: `1px solid ${B}` }}>
             <Skel w={300} h={24} />
             <Box sx={{ mt: 2 }}><Skel h={60} /></Box>
@@ -116,20 +116,22 @@ export default function CampaignDetailPage() {
     )
   }
 
+  if (campaignError) return <EmptyState variant="error" title="Campaign couldn’t load" description="We couldn’t retrieve this campaign. Please try again." action={<Button onClick={() => window.location.reload()}>Try again</Button>} />
+
   if (!campaign) {
     return (
-      <Box sx={{ bgcolor: '#0c0c14', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <ItemNotFound itemType="Campaign" onBack={() => navigate('/campaigns')} backLabel="Back to Campaigns" />
       </Box>
     )
   }
 
-  const progress = Math.min(Math.round((campaign.raisedAmount / campaign.goalAmount) * 100), 100)
+  const progress = campaign.goalAmount > 0 ? Math.min(Math.round((campaign.raisedAmount / campaign.goalAmount) * 100), 100) : 0
   const daysRemaining = Math.max(0, Math.ceil((new Date(campaign.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
   const statusColor = statusColors[campaign.status] || '#78909C'
 
   return (
-    <Box sx={{ bgcolor: '#0c0c14', minHeight: '100vh', animation: `${fadeIn} 0.4s ease` }}>
+    <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', animation: `${fadeIn} 0.4s ease`, '& *': { '@media (prefers-reduced-motion: reduce)': { animation: 'none !important', transition: 'none !important' } } }}>
       <Box sx={{ px: 2.5, pt: 2.5 }}>
         <PageHeader
           tone="gold"
@@ -147,15 +149,17 @@ export default function CampaignDetailPage() {
       </Box>
 
       {/* Main content */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '3fr 1fr' } }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 2fr) minmax(280px, 1fr)' }, gap: 3 }}>
         {/* Left: Campaign info */}
         <Box sx={{
-          p: 2.5,
+          ...raisedSurface, p: 3,
           borderRight: `1px solid ${B}`,
           borderBottom: `1px solid ${B}`,
           animation: `${slideIn} 0.4s ease 0.25s both`,
         }}>
-          <Typography sx={{ fontSize: '0.88rem', color: '#A0A0B0', lineHeight: 1.7, mb: 2 }}>
+          {campaign.imageUrls?.[0] && <Box component="img" src={campaign.imageUrls[0]} alt={campaign.title} onError={e => { e.currentTarget.style.display = 'none' }} sx={{ width: '100%', maxHeight: 360, objectFit: 'cover', borderRadius: 3, mb: 3 }} />}
+          <Typography component="h2" variant="h6" fontWeight={800} sx={{ mb: 2 }}>About this campaign</Typography>
+          <Typography sx={{ fontSize: '0.88rem', color: 'text.secondary', lineHeight: 1.8, mb: 3, whiteSpace: 'pre-line' }}>
             {campaign.description}
           </Typography>
 
@@ -165,17 +169,17 @@ export default function CampaignDetailPage() {
           {/* Info grid */}
           <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', mb: 2.5 }}>
             {[
-              { label: 'Creator ID', value: campaign.creatorId },
+              { label: 'Campaign owner', value: 'View organizer profile' },
               { label: 'Category', value: campaign.category.toUpperCase() },
               { label: 'Currency', value: campaign.currency },
               { label: 'Start / End', value: `${new Date(campaign.startDate).toLocaleDateString()} - ${new Date(campaign.endDate).toLocaleDateString()}` },
             ].map((item, i) => (
               <Box key={i}>
-                <Typography sx={{ fontSize: '0.65rem', textTransform: 'uppercase', color: '#6B6B80', letterSpacing: 0.8, mb: 0.3 }}>
+                <Typography sx={{ fontSize: '0.65rem', textTransform: 'uppercase', color: 'text.secondary', letterSpacing: 0.8, mb: 0.3 }}>
                   {item.label}
                 </Typography>
-                <Typography sx={{ fontSize: '0.85rem', color: '#E0E0E8' }}>
-                  {item.value}
+                <Typography sx={{ fontSize: '0.85rem', color: 'text.primary' }}>
+                  {item.label === 'Campaign owner' ? <Button onClick={() => navigate(`/users/${campaign.creatorId}`)} size="small">{item.value}</Button> : item.value}
                 </Typography>
               </Box>
             ))}
@@ -190,20 +194,21 @@ export default function CampaignDetailPage() {
               transition: 'width 0.6s ease',
             }} />
           </Box>
-          <Typography sx={{ fontSize: '0.7rem', color: '#6B6B80', mt: 0.8 }}>
+          <Typography sx={{ fontSize: '0.7rem', color: 'text.secondary', mt: 0.8 }}>
             {progress}% funded
           </Typography>
         </Box>
 
         {/* Right: Actions */}
         <Box sx={{
+          ...raisedSurface,
           borderBottom: `1px solid ${B}`,
           animation: `${slideIn} 0.4s ease 0.3s both`,
           display: 'flex', flexDirection: 'column',
         }}>
           {/* Status chip */}
           <Box sx={{ p: 2.5, borderBottom: `1px solid ${B}` }}>
-            <Typography sx={{ fontSize: '0.65rem', textTransform: 'uppercase', color: '#6B6B80', letterSpacing: 1, mb: 1, fontFamily: '"Outfit", sans-serif' }}>
+            <Typography sx={{ fontSize: '0.65rem', textTransform: 'uppercase', color: 'text.secondary', letterSpacing: 1, mb: 1, fontFamily: '"Outfit", sans-serif' }}>
               Current Status
             </Typography>
             <Chip
@@ -357,16 +362,16 @@ export default function CampaignDetailPage() {
           {/* Review history */}
           {(campaign.reviewNotes || campaign.reviewedBy) && (
             <Box sx={{ p: 2.5, borderBottom: `1px solid ${B}` }}>
-              <Typography sx={{ fontSize: '0.65rem', textTransform: 'uppercase', color: '#6B6B80', letterSpacing: 1, mb: 1, fontFamily: '"Outfit", sans-serif' }}>
+              <Typography sx={{ fontSize: '0.65rem', textTransform: 'uppercase', color: 'text.secondary', letterSpacing: 1, mb: 1, fontFamily: '"Outfit", sans-serif' }}>
                 Review History
               </Typography>
               {campaign.reviewNotes && (
-                <Typography sx={{ fontSize: '0.82rem', color: '#A0A0B0', mb: 1, lineHeight: 1.5 }}>
+                <Typography sx={{ fontSize: '0.82rem', color: 'text.secondary', mb: 1, lineHeight: 1.5 }}>
                   {campaign.reviewNotes}
                 </Typography>
               )}
               {campaign.reviewedBy && (
-                <Typography sx={{ fontSize: '0.72rem', color: '#6B6B80' }}>
+                <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>
                   By {campaign.reviewedBy}
                   {campaign.reviewedAt && ` · ${new Date(campaign.reviewedAt).toLocaleDateString()}`}
                 </Typography>
@@ -379,9 +384,9 @@ export default function CampaignDetailPage() {
               variant="outlined"
               fullWidth
               sx={{
-                color: '#A0A0B0', borderColor: '#A0A0B0',
+                color: 'text.secondary', borderColor: 'divider',
                 fontFamily: '"Outfit", sans-serif', textTransform: 'none',
-                '&:hover': { borderColor: '#fff', bgcolor: 'rgba(255,255,255,0.05)' },
+                '&:hover': { borderColor: 'divider', bgcolor: 'rgba(255,255,255,0.05)' },
               }}
               onClick={() => setEditOpen(true)}
             >
@@ -407,8 +412,8 @@ export default function CampaignDetailPage() {
       </Box>
 
       {/* Collaborators */}
-      <Box sx={{ borderBottom: `1px solid ${B}`, p: 2.5 }}>
-        <Typography sx={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#6B6B80', letterSpacing: 1, mb: 1.5, fontFamily: '"Outfit", sans-serif' }}>
+      <Box sx={{ mt: 3, p: 2.5 }}>
+        <Typography sx={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'text.secondary', letterSpacing: 1, mb: 1.5, fontFamily: '"Outfit", sans-serif' }}>
           Collaborators
         </Typography>
       </Box>
@@ -434,16 +439,16 @@ export default function CampaignDetailPage() {
             >
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <Box>
-                  <Typography sx={{ fontSize: '0.95rem', fontWeight: 700, color: '#fff', fontFamily: '"Outfit", monospace' }}>
+                  <Typography sx={{ fontSize: '0.95rem', fontWeight: 700, color: 'text.primary', fontFamily: '"Outfit", monospace' }}>
                     {c.displayName}
                   </Typography>
-                  <Typography sx={{ fontSize: '0.72rem', color: '#A0A0B0', mt: 0.5 }}>
+                  <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary', mt: 0.5 }}>
                     {ROLE_LABELS[c.role]}
                   </Typography>
-                  <Typography sx={{ fontSize: '0.68rem', color: '#6B6B80', mt: 0.3 }}>
+                  <Typography sx={{ fontSize: '0.68rem', color: 'text.secondary', mt: 0.3 }}>
                     Revenue share: {c.revenueSharePercent}%
                   </Typography>
-                  <Typography sx={{ fontSize: '0.65rem', color: '#6B6B80', mt: 0.3, textTransform: 'uppercase' }}>
+                  <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', mt: 0.3, textTransform: 'uppercase' }}>
                     {c.status}
                   </Typography>
                 </Box>
@@ -455,66 +460,38 @@ export default function CampaignDetailPage() {
       )}
 
       {/* Split-proceeds (read-only) */}
-      <SplitProceedsSection campaignId={id ?? ''} />
+      <SplitProceedsSection key={id} campaignId={id ?? ''} />
 
       {/* Bottom: Recent donations */}
-      <Box sx={{ borderBottom: `1px solid ${B}`, p: 2.5 }}>
-        <Typography sx={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#6B6B80', letterSpacing: 1, mb: 1.5, fontFamily: '"Outfit", sans-serif' }}>
+      <Box sx={{ mt: 3, p: 2.5 }}>
+        <Typography sx={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'text.secondary', letterSpacing: 1, mb: 1.5, fontFamily: '"Outfit", sans-serif' }}>
           Recent Donations
         </Typography>
       </Box>
       {donations.length === 0 ? (
         <EmptyState variant="noData" title="No donations yet" description="This campaign hasn't received any donations." compact />
       ) : (
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' } }}>
-          {donations.slice(0, 8).map((d, i) => (
-            <Box
-              key={d.id}
-              sx={{
-                p: 2,
-                borderRight: `1px solid ${B}`,
-                borderBottom: `1px solid ${B}`,
-                borderTop: '2px solid rgba(116,144,154,0.25)',
-                borderLeft: '2px solid rgba(116,144,154,0.25)',
-                animation: `${slideIn} 0.4s ease ${0.35 + i * 0.04}s both`,
-                transition: 'background 0.2s',
-                '&:hover': { bgcolor: 'rgba(255,255,255,0.02)' },
-              }}
-            >
-              <Typography sx={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff', fontFamily: '"Outfit", monospace' }}>
-                GH₵ {d.amount.toLocaleString()}
-              </Typography>
-              <Typography sx={{ fontSize: '0.72rem', color: '#A0A0B0', mt: 0.5 }}>
-                {/* Real CampaignDonation embeds donorName; mock rows carry donorId. */}
-                {d.isAnonymous ? 'Anonymous' : (d.donorName ?? d.donorId)}
-              </Typography>
-              <Typography sx={{ fontSize: '0.68rem', color: '#6B6B80', mt: 0.3 }}>
-                {new Date(d.createdAt).toLocaleDateString()}
-              </Typography>
-              {d.paymentMethod && (
-                <Typography sx={{ fontSize: '0.65rem', color: '#6B6B80', mt: 0.3, textTransform: 'uppercase' }}>
-                  {d.paymentMethod.replace('_', ' ')}
-                </Typography>
-              )}
-            </Box>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, minmax(0, 1fr))' }, gap: 2 }}>
+          {donations.slice(0, 8).map((d) => (
+            <DonationCard key={d.id} donation={d} donorName={d.donorName ?? 'Guest donor'} campaignTitle={campaign.title} />
           ))}
         </Box>
       )}
 
       {/* Edit Dialog */}
-      <Dialog open={editOpen} onClose={() => setEditOpen(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { bgcolor: '#0c0c14', color: '#fff' } }}>
+      <Dialog open={editOpen} onClose={() => setEditOpen(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { bgcolor: 'background.default', color: 'text.primary' } }}>
         <DialogTitle sx={{ fontWeight: 700, fontFamily: '"Outfit", sans-serif' }}>Edit Campaign</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <TextField label="Title" defaultValue={campaign?.title} id="admin-edit-title" fullWidth sx={{ '& .MuiInputBase-root': { color: '#fff', bgcolor: 'rgba(255,255,255,0.03)' } }} />
-          <TextField label="Description" defaultValue={campaign?.description} id="admin-edit-description" multiline rows={3} fullWidth sx={{ '& .MuiInputBase-root': { color: '#fff', bgcolor: 'rgba(255,255,255,0.03)' } }} />
-          <TextField label="Goal Amount" type="number" defaultValue={campaign?.goalAmount} id="admin-edit-goal" fullWidth sx={{ '& .MuiInputBase-root': { color: '#fff', bgcolor: 'rgba(255,255,255,0.03)' } }} />
-          <TextField label="Category" defaultValue={campaign?.category} id="admin-edit-category" fullWidth sx={{ '& .MuiInputBase-root': { color: '#fff', bgcolor: 'rgba(255,255,255,0.03)' } }} />
-          <TextField label="Priority" defaultValue={campaign?.priority} id="admin-edit-priority" fullWidth sx={{ '& .MuiInputBase-root': { color: '#fff', bgcolor: 'rgba(255,255,255,0.03)' } }} />
-          <TextField label="Beneficiaries (comma separated)" defaultValue={campaign?.beneficiaries?.join(', ')} id="admin-edit-beneficiaries" fullWidth sx={{ '& .MuiInputBase-root': { color: '#fff', bgcolor: 'rgba(255,255,255,0.03)' } }} />
-          <BrandedDatePicker label="End Date" mode="datetime" defaultValue={campaign?.endDate ? new Date(campaign.endDate).toISOString() : ''} id="admin-edit-endDate" fullWidth sx={{ '& .MuiInputBase-root': { color: '#fff', bgcolor: 'rgba(255,255,255,0.03)' } }}  />
+          <TextField label="Title" defaultValue={campaign?.title} id="admin-edit-title" fullWidth sx={{ '& .MuiInputBase-root': { color: 'text.primary', bgcolor: 'rgba(255,255,255,0.03)' } }} />
+          <TextField label="Description" defaultValue={campaign?.description} id="admin-edit-description" multiline rows={3} fullWidth sx={{ '& .MuiInputBase-root': { color: 'text.primary', bgcolor: 'rgba(255,255,255,0.03)' } }} />
+          <TextField label="Goal Amount" type="number" defaultValue={campaign?.goalAmount} id="admin-edit-goal" fullWidth sx={{ '& .MuiInputBase-root': { color: 'text.primary', bgcolor: 'rgba(255,255,255,0.03)' } }} />
+          <TextField label="Category" defaultValue={campaign?.category} id="admin-edit-category" fullWidth sx={{ '& .MuiInputBase-root': { color: 'text.primary', bgcolor: 'rgba(255,255,255,0.03)' } }} />
+          <TextField label="Priority" defaultValue={campaign?.priority} id="admin-edit-priority" fullWidth sx={{ '& .MuiInputBase-root': { color: 'text.primary', bgcolor: 'rgba(255,255,255,0.03)' } }} />
+          <TextField label="Beneficiaries (comma separated)" defaultValue={campaign?.beneficiaries?.join(', ')} id="admin-edit-beneficiaries" fullWidth sx={{ '& .MuiInputBase-root': { color: 'text.primary', bgcolor: 'rgba(255,255,255,0.03)' } }} />
+          <BrandedDatePicker label="End Date" mode="datetime" defaultValue={campaign?.endDate ? new Date(campaign.endDate).toISOString() : ''} id="admin-edit-endDate" fullWidth sx={{ '& .MuiInputBase-root': { color: 'text.primary', bgcolor: 'rgba(255,255,255,0.03)' } }}  />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setEditOpen(false)} sx={{ color: '#A0A0B0' }}>Cancel</Button>
+          <Button onClick={() => setEditOpen(false)} sx={{ color: 'text.secondary' }}>Cancel</Button>
           <Button
             variant="contained"
             disabled={editLoading}
@@ -552,13 +529,13 @@ export default function CampaignDetailPage() {
       </Dialog>
 
       {/* Delete Confirmation */}
-      <Dialog open={deleteOpen} onClose={() => setDeleteOpen(false)} maxWidth="xs" fullWidth PaperProps={{ sx: { bgcolor: '#0c0c14', color: '#fff' } }}>
+      <Dialog open={deleteOpen} onClose={() => setDeleteOpen(false)} maxWidth="xs" fullWidth PaperProps={{ sx: { bgcolor: 'background.default', color: 'text.primary' } }}>
         <DialogTitle sx={{ fontWeight: 700, fontFamily: '"Outfit", sans-serif' }}>Delete Campaign</DialogTitle>
         <DialogContent>
-          <Typography sx={{ color: '#A0A0B0' }}>Are you sure you want to delete this campaign? This cannot be undone.</Typography>
+          <Typography sx={{ color: 'text.secondary' }}>Are you sure you want to delete this campaign? This cannot be undone.</Typography>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setDeleteOpen(false)} sx={{ color: '#A0A0B0' }}>Cancel</Button>
+          <Button onClick={() => setDeleteOpen(false)} sx={{ color: 'text.secondary' }}>Cancel</Button>
           <Button
             variant="contained"
             color="error"

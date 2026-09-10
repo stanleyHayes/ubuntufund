@@ -34,4 +34,10 @@ describe('admin authentication errors', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ data }), { status: 200 })))
     await expect(api.post('/auth/login', {})).resolves.toEqual(data)
   })
+  it('preserves a null data payload for campaigns without an active split', async () => {
+    localStorage.setItem('uf_admin_token', 'test-token')
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: null, message: 'No active split', status: 200 }), { status: 200 })))
+    await expect(api.get('/campaigns/example/split')).resolves.toBeNull()
+  })
+
 })

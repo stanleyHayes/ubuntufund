@@ -35,7 +35,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     throw new Error(err?.message || err?.error || fallback)
   }
   const json = await res.json()
-  return json.data ?? json
+  return json !== null && typeof json === 'object' && Object.prototype.hasOwnProperty.call(json, 'data') ? json.data : json
 }
 
 export const api = {

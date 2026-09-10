@@ -31,7 +31,8 @@ const INK_SECONDARY = 'text.secondary'
 
 type AccountType = 'individual' | 'organization'
 
-const STEPS = ['Account', 'Details', 'Plan'] as const
+const PERSONAL_STEPS = ['Account', 'Details', 'Plan']
+const ORGANIZATION_STEPS = ['Account', 'Organization', 'Contact', 'Plan']
 
 const PAID_TIERS = [SubscriptionTier.STARTER, SubscriptionTier.PRO, SubscriptionTier.ENTERPRISE]
 const ALL_TIERS = [SubscriptionTier.FREE, ...PAID_TIERS]
@@ -46,10 +47,10 @@ interface FieldErrors {
   website?: string
 }
 
-function Stepper({ current }: { current: number }) {
+function Stepper({ current, steps }: { current: number; steps: string[] }) {
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
-      {STEPS.map((label, i) => {
+      {steps.map((label, i) => {
         const done = i < current
         const active = i === current
         return (
@@ -60,7 +61,7 @@ function Stepper({ current }: { current: number }) {
               display: 'flex',
               alignItems: 'center',
               gap: 1,
-              flex: i < STEPS.length - 1 ? 1 : '0 0 auto',
+              flex: i < steps.length - 1 ? 1 : '0 0 auto',
             }}
           >
             <Box
@@ -85,6 +86,7 @@ function Stepper({ current }: { current: number }) {
             </Box>
             <Typography
               sx={{
+                display: { xs: active ? 'block' : 'none', sm: 'block' },
                 fontSize: '0.72rem',
                 fontWeight: active ? 700 : 500,
                 color: active ? FOREST : INK_SECONDARY,
@@ -93,7 +95,7 @@ function Stepper({ current }: { current: number }) {
             >
               {label}
             </Typography>
-            {i < STEPS.length - 1 && (
+            {i < steps.length - 1 && (
               <Box sx={{ flex: 1, height: 2, bgcolor: done ? FOREST : 'divider', mx: 0.5 }} />
             )}
           </Box>
@@ -130,6 +132,9 @@ export function RegisterForm() {
 
   const isOrg = accountType === 'organization'
 
+  const steps = isOrg ? ORGANIZATION_STEPS : PERSONAL_STEPS
+  const contactStep = isOrg ? 2 : 1
+
   function validateDetails(): FieldErrors {
     const e: FieldErrors = {}
     if (!name.trim()) e.name = isOrg ? 'Contact name is required' : 'Name is required'
@@ -137,23 +142,24 @@ export function RegisterForm() {
     if (!password) e.password = 'Password is required'
     else if (password.length < 8) e.password = 'Password must be at least 8 characters'
     if (password !== confirmPassword) e.confirmPassword = 'Passwords do not match'
-    if (isOrg) {
+    if (isOrg && step === 1) {
       if (!organizationName.trim()) e.organizationName = 'Organization name is required'
       if (!organizationType) e.organizationType = 'Select an organization type'
       if (website.trim() && !/^https?:\/\/.+/i.test(website.trim()))
         e.website = 'Enter a full URL (https://…)'
     }
-    return e
+    const keys: (keyof FieldErrors)[] = isOrg && step === 1 ? ['organizationName', 'organizationType', 'website'] : ['name', 'email', 'password', 'confirmPassword']
+    return Object.fromEntries(Object.entries(e).filter(([key]) => keys.includes(key as keyof FieldErrors)))
   }
 
   function next() {
     setApiError('')
-    if (step === 1) {
+    if (step > 0) {
       const e = validateDetails()
       setErrors(e)
       if (Object.keys(e).length > 0) return
     }
-    setStep((s) => Math.min(s + 1, STEPS.length - 1))
+    setStep((s) => Math.min(s + 1, steps.length - 1))
   }
   function back() {
     setApiError('')
@@ -224,7 +230,7 @@ export function RegisterForm() {
       }
     } catch (err) {
       setApiError(err instanceof Error ? err.message : 'Registration failed. Please try again.')
-      setStep(1) // send them back to the details step to fix/retry
+      setStep(contactStep) // Keep entered details so the contact can fix/retry.
     } finally {
       setSubmitting(false)
     }
@@ -232,7 +238,7 @@ export function RegisterForm() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-      <Stepper current={step} />
+      <Stepper current={step} steps={steps} />
       {apiError && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {apiError}
@@ -312,9 +318,9 @@ export function RegisterForm() {
       )}
 
       {/* STEP 2 — Details */}
-      {step === 1 && (
+      {step > 0 && step < steps.length - 1 && (
         <Box className="uf-auth-step" sx={{ display: 'flex', flexDirection: 'column', gap: 2.25 }}>
-          {isOrg && (
+          {isOrg && step === 1 && (
             <>
               <TextField
                 label="Organization name"
@@ -335,6 +341,7 @@ export function RegisterForm() {
               />
             </>
           )}
+          {step === contactStep && <>
           <TextField
             label={isOrg ? 'Contact name' : 'Full name'}
             value={name}
@@ -381,7 +388,8 @@ export function RegisterForm() {
             required
             autoComplete="new-password"
           />
-          {isOrg && (
+          </>}
+          {isOrg && step === 1 && (
             <>
               <TextField
                 label="Registration number (optional)"
@@ -404,7 +412,7 @@ export function RegisterForm() {
       )}
 
       {/* STEP 3 — Plan */}
-      {step === 2 && (
+      {step === steps.length - 1 && (
         <Box className="uf-auth-step" sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <Box
             sx={{
@@ -537,7 +545,7 @@ export function RegisterForm() {
           </Button>
         )}
         <Box sx={{ flex: 1 }} />
-        {step < STEPS.length - 1 ? (
+        {step < steps.length - 1 ? (
           <Button
             onClick={next}
             variant="contained"

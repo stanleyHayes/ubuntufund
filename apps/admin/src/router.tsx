@@ -1,3 +1,4 @@
+import RouteErrorPage from './components/RouteErrorPage'
 import type { ReactNode } from 'react'
 import { createBrowserRouter } from 'react-router-dom'
 import { Resource, Action } from '@ubuntu-fund/types'
@@ -58,10 +59,11 @@ function RequirePermission({
 }
 
 export const router = createBrowserRouter([
-  { path: '/login', element: <LoginPage /> },
-  { path: '/forgot-password', element: <ForgotPasswordPage /> },
+  { path: '/login', errorElement: <RouteErrorPage />, element: <LoginPage /> },
+  { path: '/forgot-password', errorElement: <RouteErrorPage />, element: <ForgotPasswordPage /> },
   {
     path: '/',
+    errorElement: <RouteErrorPage />,
     element: (
       <AuthGuard>
         <AdminLayout />

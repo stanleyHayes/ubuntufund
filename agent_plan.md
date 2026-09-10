@@ -1,5 +1,12 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-10 — Campaign recovery and shorter organization registration
+
+- Fixed admin response unwrapping of `data: null`: a valid no-active-split response previously became an envelope object and crashed beneficiary rendering. Added guarded split data, separate error/retry state, and regression coverage.
+- Campaign detail now uses appearance-aware surfaces and text instead of the purple background, a cover image, spaced content/actions, organizer navigation and shared payment-method donation cards. Added branded router error recovery with illustrated empty state, reload/dashboard actions and no public stack trace.
+- Organization registration now has Account → Organization → Contact → Plan, preserving entered values and validating fields on their own step. Individual registration stays at three steps. Compact step labels support narrow screens.
+- Validation: 8 admin regression tests and 2 registration flow tests pass; admin/web type checks and production builds pass. Build size warnings remain. Production visual acceptance is not yet verified.
+
 ### 2026-09-10 — Payout history cards
 
 - Replaced compressed payout history text with appearance-aware cards: destination icon, friendly status chip, prominent net amount, status-specific guidance, requested amount/service fee/date and request reference. Added an oversized wallet watermark and responsive detail layout.
