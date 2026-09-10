@@ -1,3 +1,4 @@
+import { PayoutHistoryCard } from './PayoutHistoryCard'
 import { payoutInstitutionName } from '@ubuntu-fund/types'
 import { BankPicker } from '@/components/account/BankPicker'
 import { campaignPayoutBreakdownRows } from '@ubuntu-fund/types'
@@ -510,18 +511,24 @@ export function CampaignCashout({
             >
               {busy ? 'Saving…' : 'Request cashout'}
             </Button>
-            <Typography variant="h6" sx={{ mt: 4 }}>
-              Payout history
-            </Typography>
-            <Button size="small" onClick={refresh}>
-              Refresh status
-            </Button>
-            <Typography variant="body2" color="text.secondary">
-              Pending requests await review. Processing transfers must be confirmed before retrying.
-              For failed or reversed transfers, refresh your balance and correct the account or its
-              limits before submitting a new request. If review is needed, contact support with the
-              payout reference; do not submit a duplicate.
-            </Typography>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: 1.5,
+                mt: 4,
+                mb: 1,
+              }}
+            >
+              <Typography variant="h6" sx={{ fontWeight: 800 }}>
+                Payout history
+              </Typography>
+              <Button size="small" onClick={refresh}>
+                Refresh status
+              </Button>
+            </Box>
             {history.length === 0 && (
               <EmptyState
                 compact
@@ -531,15 +538,7 @@ export function CampaignCashout({
               />
             )}
             {history.map((p) => (
-              <Box key={p.id} sx={{ py: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
-                <Typography>
-                  {money(p.amount)} · {p.type} · {p.status.replaceAll('_', ' ')}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Fee {money(p.fee)} · Net {money(p.netAmount)} ·{' '}
-                  {new Date(p.createdAt).toLocaleDateString()}
-                </Typography>
-              </Box>
+              <PayoutHistoryCard key={p.id} payout={p} />
             ))}
           </>
         )}

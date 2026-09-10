@@ -1,5 +1,11 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-10 — Payout history cards
+
+- Replaced compressed payout history text with appearance-aware cards: destination icon, friendly status chip, prominent net amount, status-specific guidance, requested amount/service fee/date and request reference. Added an oversized wallet watermark and responsive detail layout.
+- Removed the repeated general status paragraph; each request now explains its own state. Amounts remain sourced from the recorded payout, with its own currency.
+- Validation: web type check and eight money-flow tests pass. Inspected the pending card in an isolated 390px dark-mode browser preview. No payment behavior changed.
+
 ### 2026-09-10 — Illustrated notification empty states
 
 - Replaced the plain empty inbox with the shared illustrated EmptyState, compact typography and inset appearance surface. Added oversized bell/chain watermarks to the panel and subtle icon watermarks to notification rows.
