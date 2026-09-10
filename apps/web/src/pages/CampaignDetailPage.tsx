@@ -1,3 +1,4 @@
+import { CampaignOrganizer } from '@/components/campaigns/CampaignOrganizer'
 import { CampaignCashout } from '@/components/campaigns/CampaignCashout'
 import { LoadingDots } from '@ubuntu-fund/ui'
 import { useState, useEffect } from 'react'
@@ -20,10 +21,9 @@ import PeopleOutlineRoundedIcon from '@mui/icons-material/PeopleOutlineRounded'
 import CalendarTodayRoundedIcon from '@mui/icons-material/CalendarTodayRounded'
 import { CoverPlaceholder } from '@/components/campaigns/CampaignCard'
 import FlagRoundedIcon from '@mui/icons-material/FlagRounded'
-import { CurrencyDisplay, PaymentMethods, ErrorState, ItemNotFound, TrustBadge, SHAPE, type PaymentMethodData } from '@ubuntu-fund/ui'
+import { CurrencyDisplay, PaymentMethods, ErrorState, ItemNotFound, SHAPE, type PaymentMethodData } from '@ubuntu-fund/ui'
 import Tabs from '@mui/material/Tabs'
 import Tab from '@mui/material/Tab'
-import Avatar from '@mui/material/Avatar'
 import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined'
 import { useAuth } from '@/context/AuthContext'
 import { useUser } from '@/hooks/useUser'
@@ -411,21 +411,7 @@ function CampaignDetailContent() {
           />
 
           <Box id="campaign-details" sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' }, gap: 3, mt: 3, scrollMarginTop: 100 }}>
-            <Box component="section" aria-labelledby="organizer-heading" sx={{ p: { xs: 2.5, md: 3 }, borderRadius: SHAPE.card, bgcolor: 'background.paper', boxShadow: 'var(--neu-inset)', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-              <Typography variant="overline" color="text.secondary">Behind the campaign</Typography>
-              <Typography id="organizer-heading" component="h2" variant="h6" sx={{ fontWeight: 800, mb: 2.5 }}>Meet the organizer</Typography>
-              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
-                <Avatar src={creator?.avatarUrl} alt="" sx={{ width: 48, height: 48, bgcolor: 'primary.main', color: 'primary.contrastText', fontWeight: 700, flexShrink: 0 }}>{creator?.name?.charAt(0).toUpperCase() ?? '?'}</Avatar>
-                <Box sx={{ minWidth: 0, flex: 1 }}>
-                  <Typography sx={{ fontWeight: 800, fontSize: '1.05rem', overflowWrap: 'anywhere' }}>{creator?.name ?? (creatorLoading ? <Skeleton component="span" width={160} sx={{ display: 'inline-block' }} /> : 'Organizer details unavailable')}</Typography>
-                  {creator?.country && <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>{creator.country}</Typography>}
-                  {creator && <Box sx={{ mt: 1.25, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1, '& .MuiChip-root': { bgcolor: 'background.paper', color: creator.verificationLevel > 0 ? 'primary.main' : 'text.secondary', boxShadow: 'var(--neu-subtle)', fontSize: '0.7rem', minHeight: 24 } }}><Typography variant="caption" color="text.secondary">Verification</Typography><TrustBadge level={creator.verificationLevel} /></Box>}
-                </Box>
-              </Box>
-              <Box component="dl" sx={{ m: 0, mt: 3, pt: 2.5, borderTop: '1px solid', borderColor: 'divider', display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 2 }}>
-                {[{ label: 'Started', date: campaign.startDate }, { label: 'Closes', date: campaign.endDate }].map(({ label, date }) => <Box key={label} sx={{ minWidth: 0 }}><Typography component="dt" variant="caption" color="text.secondary">{label}</Typography><Typography component="dd" sx={{ m: 0, mt: 0.5, fontWeight: 600, fontSize: '0.85rem', overflowWrap: 'anywhere' }}>{new Date(date).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</Typography></Box>)}
-              </Box>
-            </Box>
+            <CampaignOrganizer creator={creator} loading={creatorLoading} startDate={campaign.startDate} endDate={campaign.endDate} />
 
             <Box component="section" aria-labelledby="payment-heading" sx={{ p: { xs: 2.5, md: 3 }, borderRadius: SHAPE.card, bgcolor: 'background.paper', boxShadow: 'var(--neu-inset)', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
               <Typography variant="overline" color="text.secondary">Your contribution</Typography>

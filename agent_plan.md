@@ -1,5 +1,10 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-10 — Cashout skeletons and organizer card
+
+- Campaign cashout and campaign selection now use web/native skeletons instead of loading text. Initial cashout errors hide the skeleton; web retry clears the error. Five owner money-flow tests and web/native type checks pass. Pushed ba7e7fa.
+- Redesigned campaign organizer as a compact, theme-aware card: larger portrait, name/location, separate verification row, date footer, gold detail and subtle person watermark. Removed stretch to match the taller checkout panel. Public identity data and verification semantics stay unchanged; loading retains skeletons. Local browser inspection, web type check and focused lint pass. Responsive spacing and text wrapping support mobile web.
+
 ### 2026-09-10 — Publish remaining campaign-card preview
 
 - User requested commit and push after local preview. Published the remaining campaign-card redesign: larger media/title, category in the body, forest funding summary with gold progress, clear goal/remaining amount, supporter labels and View campaign footer.
