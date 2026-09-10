@@ -31,6 +31,7 @@ function toDomain(doc: SubscriptionPlanDocument): SubscriptionPlan {
     liveStreaming: doc.liveStreaming,
     maxTeamMembers: doc.maxTeamMembers,
     campaignCollaboration: doc.campaignCollaboration,
+    maxPayoutAccounts: doc.maxPayoutAccounts ?? SUBSCRIPTION_PLANS[doc.tier as SubscriptionTier]?.maxPayoutAccounts ?? 1,
     maxCollaboratorsPerCampaign: doc.maxCollaboratorsPerCampaign,
     sortOrder: doc.sortOrder ?? 0,
     active: doc.active ?? true,

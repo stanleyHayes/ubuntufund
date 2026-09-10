@@ -1,3 +1,6 @@
+import { PayoutAccountService } from './application/services/PayoutAccountService.js';
+import { MongoPayoutAccountRepository } from './infrastructure/adapters/outbound/persistence/MongoPayoutAccountRepository.js';
+import { createPayoutAccountRoutes } from './infrastructure/adapters/inbound/http/routes/payoutAccountRoutes.js';
 import { VerifyCreatorTipUseCase } from './application/use-cases/VerifyCreatorTipUseCase.js';
 import { ResendOwnerNotifications } from './infrastructure/adapters/outbound/ResendOwnerNotifications.js';
 import { GetCampaignPayoutOptionsUseCase } from './application/use-cases/GetCampaignPayoutOptionsUseCase.js';
@@ -729,7 +732,9 @@ export function createApp(): express.Express {
   const getCreatorByHandleUseCase = new GetCreatorByHandleUseCase(
     creatorProfileRepo,
     tipRepo,
-    planLimitsService
+    planLimitsService,
+    userRepo,
+    profileRepo
   );
   const createTipIntentUseCase = new CreateTipIntentUseCase(
     creatorProfileRepo,
@@ -743,11 +748,13 @@ export function createApp(): express.Express {
     creatorBalanceRepo
   );
   const creatorPayoutRepo = new MongoCreatorPayoutRepository();
+  const payoutAccounts = new PayoutAccountService(new MongoPayoutAccountRepository(), paymentGateway, planLimitsService);
   const requestCreatorWithdrawalUseCase = new RequestCreatorWithdrawalUseCase(
     creatorPayoutRepo,
     creatorBalanceRepo,
     paymentGateway,
-    planLimitsService
+    planLimitsService,
+    payoutAccounts
   );
   const handleCreatorPayoutWebhookUseCase = new HandleCreatorPayoutWebhookUseCase(
     creatorPayoutRepo,
@@ -853,7 +860,8 @@ export function createApp(): express.Express {
   const createPayoutRecipientUseCase = new CreatePayoutRecipientUseCase(
     campaignRepo,
     transferRecipientRepo,
-    paymentGateway
+    paymentGateway,
+    payoutAccounts
   );
   // ADR-5 (G6): versioned, effective-dated commercial config — overrides layered
   // over the env defaults, so behaviour is unchanged until an admin sets a value.
@@ -1382,6 +1390,7 @@ export function createApp(): express.Express {
   api.use('/donations', createDonationMessageRoutes(donationIntentController, authMiddleware));
   // Guest-capable donation-intent + ledger rail.
   api.use('/donation-intents', createDonationIntentRoutes(donationIntentController, optionalAuthMiddleware));
+  api.use('/payout-accounts', createPayoutAccountRoutes(payoutAccounts, authMiddleware));
   api.use('/leaderboard', createLeaderboardRoutes(leaderboardController));
   api.use(
     '/creators',

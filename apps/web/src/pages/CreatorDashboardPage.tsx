@@ -1,3 +1,4 @@
+import type { Account } from '@/components/account/SavedPayoutAccounts'
 import { AccountPageSkeleton } from '@/components/account/AccountPage'
 import { useState, useEffect, useCallback } from 'react'
 import Box from '@mui/material/Box'
@@ -45,6 +46,9 @@ export function CreatorDashboardPage() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [snack, setSnack] = useState('')
 
+  const [accounts, setAccounts] = useState<Account[]>([])
+  const [savedAccountId, setSavedAccountId] = useState('')
+  useEffect(() => { let active=true; api.get<{accounts:Account[]}>('/payout-accounts').then(d=>{if(active)setAccounts(d.accounts)}).catch(()=>{}); return()=>{active=false} }, [])
   const [withdrawOpen, setWithdrawOpen] = useState(false)
   const [wAmount, setWAmount] = useState(0)
   const [wType, setWType] = useState<'mobile_money' | 'ghipss'>('mobile_money')
@@ -95,7 +99,7 @@ export function CreatorDashboardPage() {
     try {
       await api.post('/creators/withdraw', {
         amount: wAmount, expectedFeePercent: policy?.feePercent,
-        recipient: { type: wType, accountNumber: wAccount, bankCode: wBank, accountName: wName || displayName },
+        ...(savedAccountId ? { savedAccountId } : { recipient: { type: wType, accountNumber: wAccount, bankCode: wBank, accountName: wName || displayName } }),
       })
       setWithdrawOpen(false); setSnack('Withdrawal started')
       await load()
@@ -153,6 +157,7 @@ export function CreatorDashboardPage() {
         {!policy?.eligible && <Alert severity="info" sx={{ mb: 3 }} action={<Button href="/subscription" sx={{ whiteSpace: 'nowrap', flexShrink: 0, minWidth: 'max-content' }}>View plans</Button>}>Creator donations require an active paid plan. Upgrade to receive new tips. You can still withdraw your existing balance.</Alert>}
         {/* Setup / edit */}
         <Box sx={{ p: { xs: 2.5, sm: 3.5 }, borderRadius: SHAPE.card, bgcolor: 'background.paper', boxShadow: 'var(--neu-raised)' }}>
+          <Button href="/profile" sx={{ mb: 2 }}>Edit your profile photo & cover</Button>
           <Typography sx={{ fontWeight: 800, fontSize: '1.05rem', color: INK, mb: 2 }}>{profile ? 'Edit your page' : 'Claim your page'}</Typography>
           <TextField label="Handle (your link)" value={handle} onChange={(e) => setHandle(e.target.value.toLowerCase())} fullWidth sx={{ mb: 2 }} helperText="letters, numbers, - or _ · your link becomes /creators/your-handle" disabled={!policy?.eligible} slotProps={{ input: { readOnly: !!profile } }} />
           <TextField disabled={!policy?.eligible} label="Display name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} fullWidth sx={{ mb: 2 }} />
@@ -183,7 +188,10 @@ export function CreatorDashboardPage() {
       <Dialog open={withdrawOpen} onClose={() => setWithdrawOpen(false)} maxWidth="xs" fullWidth>
         <DialogTitle sx={{ fontWeight: 800 }}>Withdraw funds</DialogTitle>
         <DialogContent>
+          <TextField select fullWidth label="Saved payout account" value={savedAccountId} onChange={e=>setSavedAccountId(e.target.value)} sx={{my:2}}><MenuItem value="">Enter a new account</MenuItem>{accounts.map(a=><MenuItem key={a.id} value={a.id}>{a.accountName} · {a.bankCode} · {a.last4}</MenuItem>)}</TextField><Button href="/payout-accounts">Manage payout accounts</Button>
+
           <TextField label="Amount" type="number" value={wAmount} onChange={(e) => setWAmount(Number(e.target.value))} fullWidth sx={{ mt: 1, mb: 2 }} />
+          {!savedAccountId && <>
           <TextField select label="Destination" value={wType} onChange={(e) => setWType(e.target.value as 'mobile_money' | 'ghipss')} fullWidth sx={{ mb: 2 }}>
             <MenuItem value="mobile_money">Mobile money</MenuItem>
             <MenuItem value="ghipss">Bank account</MenuItem>
@@ -191,6 +199,7 @@ export function CreatorDashboardPage() {
           <TextField label={wType === 'mobile_money' ? 'Phone number' : 'Account number'} value={wAccount} onChange={(e) => setWAccount(e.target.value)} fullWidth sx={{ mb: 2 }} />
           <TextField label={wType === 'mobile_money' ? 'Network code (e.g. MTN)' : 'Bank code'} value={wBank} onChange={(e) => setWBank(e.target.value)} fullWidth sx={{ mb: 2 }} />
           <TextField label="Account name" value={wName} onChange={(e) => setWName(e.target.value)} fullWidth placeholder={displayName} />
+          </>}
           {policy && <Alert severity="info" sx={{ mt: 2 }}>{policy.planName} transfer fee: {policy.feePercent}%. Fee: GH₵{(Math.round(wAmount * policy.feePercent) / 100).toFixed(2)} · You receive: GH₵{(Math.round((wAmount - Math.round(wAmount * policy.feePercent) / 100) * 100) / 100).toFixed(2)}. The full requested amount is deducted from your creator balance.</Alert>}
           {wError && <Alert severity="error" sx={{ mt: 2 }}>{wError}</Alert>}
         </DialogContent>

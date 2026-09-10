@@ -1,3 +1,4 @@
+import type { PayoutAccountService } from '../services/PayoutAccountService.js';
 import type { PlanLimitsService } from '../services/PlanLimitsService.js';
 import { randomUUID } from 'node:crypto';
 import type { CreatorPayoutRepositoryPort } from '../../domain/ports/outbound/CreatorPayoutRepositoryPort.js';
@@ -10,7 +11,8 @@ import { logger } from '../../infrastructure/logging/logger.js';
 export interface CreatorWithdrawalInput {
   amount: number;
   expectedFeePercent?: number;
-  recipient: {
+  savedAccountId?: string;
+  recipient?: {
     type: 'mobile_money' | 'ghipss';
     accountNumber: string;
     bankCode: string;
@@ -38,7 +40,8 @@ export class RequestCreatorWithdrawalUseCase {
     private readonly payoutRepo: CreatorPayoutRepositoryPort,
     private readonly balanceRepo: CreatorBalanceRepositoryPort,
     private readonly gateway: PaymentGatewayPort,
-    private readonly plans: PlanLimitsService
+    private readonly plans: PlanLimitsService,
+    private readonly accounts?: PayoutAccountService
   ) {}
 
   async execute(userId: string, input: CreatorWithdrawalInput) {
@@ -48,7 +51,9 @@ export class RequestCreatorWithdrawalUseCase {
     if (!Number.isFinite(input.amount) || input.amount <= 0 || !Number.isSafeInteger(Math.round(input.amount * 100)) || input.amount !== Math.round(input.amount * 100) / 100) {
       throw new AppError('Enter a withdrawal amount.', 400);
     }
-    const r = input.recipient;
+    const savedAccount = this.accounts ? (input.savedAccountId ? await this.accounts.get(userId, input.savedAccountId) : input.recipient ? await this.accounts.add(userId, input.recipient) : undefined) : undefined;
+    const r = savedAccount ?? input.recipient;
+    if (savedAccount && savedAccount.verificationStatus !== 'name_matched') throw new AppError('This payout account needs verification. Choose an account with a matched registered name before withdrawing creator funds.', 422);
     if (!r?.accountNumber || !r?.bankCode || !r?.accountName) {
       throw new AppError('A payout destination (account, bank/telco, name) is required.', 400);
     }
@@ -114,7 +119,7 @@ export class RequestCreatorWithdrawalUseCase {
     let recipientCode = '';
     let transferCode: string | undefined;
     try {
-      recipientCode = await this.gateway.createTransferRecipient({
+      recipientCode = savedAccount?.recipientCode ?? await this.gateway.createTransferRecipient({
         type: r.type,
         name: r.accountName,
         accountNumber: r.accountNumber,

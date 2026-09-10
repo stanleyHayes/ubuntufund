@@ -1,4 +1,3 @@
-import { PayoutAccounts } from '@/components/PayoutAccounts'
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   View,
@@ -433,7 +432,7 @@ export default function SettingsScreen() {
               </View>
             ) : null}
 
-            <PayoutAccounts />
+
             {/* Appearance */}
             <Text style={styles.sectionTitle}>Appearance</Text>
             <View style={styles.card}>

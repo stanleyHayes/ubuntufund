@@ -8,7 +8,7 @@ const LIMIT_FIELDS: (keyof CreatePlanInput)[] = [
   'maxCampaignGoal',
   'maxMediaPerCampaign',
   'maxTeamMembers',
-  'maxCollaboratorsPerCampaign',
+  'maxCollaboratorsPerCampaign', 'maxPayoutAccounts',
 ];
 
 /**

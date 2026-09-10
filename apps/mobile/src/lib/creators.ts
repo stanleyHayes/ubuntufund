@@ -9,6 +9,7 @@ export interface CreatorPage {
   displayName: string
   tagline?: string
   bio?: string
+  coverUrl?: string
   avatarUrl?: string
   tipsEnabled: boolean
   presetAmounts: number[]
@@ -78,7 +79,8 @@ export function getMyCreator(): Promise<{ profile: CreatorProfile | null; balanc
 export function requestWithdrawal(input: {
   amount: number
   expectedFeePercent: number
-  recipient: { type: 'mobile_money' | 'ghipss'; accountNumber: string; bankCode: string; accountName: string }
+  savedAccountId?: string
+  recipient?: { type: 'mobile_money' | 'ghipss'; accountNumber: string; bankCode: string; accountName: string }
 }): Promise<{ id: string; status: string; amount: number }> {
   return api.post('/creators/withdraw', input)
 }

@@ -51,7 +51,7 @@ export function createCampaignPayoutRoutes(
     '/:id/payout-recipient',
     authMiddleware,
     donationIntentRateLimiter,
-    validate(createRecipientSchema),
+    validate(z.union([z.object({ savedAccountId: z.string().uuid() }), createRecipientSchema])),
     payoutController.createRecipient
   );
   router.post(

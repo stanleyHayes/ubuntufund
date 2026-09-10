@@ -1,7 +1,7 @@
 import { SkeletonLoader, Button } from '@/components/Loading'
 import { BrandedTextInput as TextInput } from '@/components/BrandedTextInput'
-import { useState, useEffect, useMemo } from 'react'
-import { View, ScrollView, StyleSheet, } from 'react-native'
+import { useState, useEffect, useMemo, useRef } from 'react'
+import { View, Image, ScrollView, StyleSheet } from 'react-native'
 import { Text, Avatar, Checkbox } from 'react-native-paper'
 import { Stack, useLocalSearchParams } from 'expo-router'
 import * as WebBrowser from 'expo-web-browser'
@@ -18,15 +18,40 @@ function makeStyles(p: Palette, neu: NeuRecipes) {
     center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
     header: { alignItems: 'center', marginBottom: 20 },
     name: { fontSize: 22, fontFamily: 'Outfit_700Bold', color: p.text, marginTop: 12 },
-    tagline: { fontSize: 14, fontFamily: 'Outfit_400Regular', color: p.textSecondary, marginTop: 4, textAlign: 'center' },
+    tagline: {
+      fontSize: 14,
+      fontFamily: 'Outfit_400Regular',
+      color: p.textSecondary,
+      marginTop: 4,
+      textAlign: 'center',
+    },
     statsRow: { flexDirection: 'row', gap: 28, marginTop: 16 },
     statVal: { fontSize: 18, fontFamily: 'Outfit_700Bold', color: p.text, textAlign: 'center' },
-    statLbl: { fontSize: 11, fontFamily: 'Outfit_400Regular', color: p.textSecondary, textTransform: 'uppercase', textAlign: 'center' },
-    card: { ...neu.raised, backgroundColor: p.surface, borderRadius: 14, padding: 18, gap: 12, marginBottom: 16 },
+    statLbl: {
+      fontSize: 11,
+      fontFamily: 'Outfit_400Regular',
+      color: p.textSecondary,
+      textTransform: 'uppercase',
+      textAlign: 'center',
+    },
+    card: {
+      ...neu.raised,
+      backgroundColor: p.surface,
+      borderRadius: 14,
+      padding: 18,
+      gap: 12,
+      marginBottom: 16,
+    },
     cardTitle: { fontSize: 17, fontFamily: 'Outfit_700Bold', color: p.text, marginBottom: 4 },
     presetRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     bio: { fontSize: 14, fontFamily: 'Outfit_400Regular', color: p.textSecondary, lineHeight: 22 },
-    tipRow: { ...neu.subtle, backgroundColor: p.surface, borderRadius: 10, padding: 12, marginBottom: 8 },
+    tipRow: {
+      ...neu.subtle,
+      backgroundColor: p.surface,
+      borderRadius: 10,
+      padding: 12,
+      marginBottom: 8,
+    },
     tipName: { fontSize: 14, fontFamily: 'Outfit_700Bold', color: p.text },
     tipMsg: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: p.textSecondary, marginTop: 4 },
     err: { color: p.error, fontFamily: 'Outfit_400Regular', fontSize: 13 },
@@ -39,12 +64,20 @@ export default function CreatorTipScreen() {
   const neu = useNeu()
   const styles = useMemo(() => makeStyles(p, neu), [p, neu])
 
+  const amountInput = useRef<{ focus(): void } | null>(null)
+  const [custom, setCustom] = useState(false)
+  const [failedCover, setFailedCover] = useState('')
   const [anonymous, setAnonymous] = useState(false)
   const [paymentRef, setPaymentRef] = useState('')
   const [paymentStatus, setPaymentStatus] = useState('')
   async function checkPayment(reference: string) {
-    try { const result = await api.post<{status:string}>('/creators/tips/verify', {reference}); setPaymentStatus(result.status); if(result.status === 'SUCCEEDED') setReloadKey(k => k + 1) }
-    catch { setPaymentStatus('PENDING') }
+    try {
+      const result = await api.post<{ status: string }>('/creators/tips/verify', { reference })
+      setPaymentStatus(result.status)
+      if (result.status === 'SUCCEEDED') setReloadKey((k) => k + 1)
+    } catch {
+      setPaymentStatus('PENDING')
+    }
   }
   const [page, setPage] = useState<CreatorPage | null>(null)
   const [loading, setLoading] = useState(true)
@@ -60,9 +93,16 @@ export default function CreatorTipScreen() {
 
   useEffect(() => {
     let cancelled = false
-    setLoading(true); setNotFound(false); setLoadError(false)
+    setLoading(true)
+    setNotFound(false)
+    setLoadError(false)
     getCreatorByHandle(String(handle))
-      .then((data) => { if (!cancelled) { setPage(data); if (data.presetAmounts?.[0]) setAmount(String(data.presetAmounts[0])) } })
+      .then((data) => {
+        if (!cancelled) {
+          setPage(data)
+          if (data.presetAmounts?.[0]) setAmount(String(data.presetAmounts[0]))
+        }
+      })
       .catch((err) => {
         if (cancelled) return
         // Only a real 404 means "no such creator"; anything else is a transient
@@ -70,29 +110,52 @@ export default function CreatorTipScreen() {
         if (err instanceof ApiError && err.status === 404) setNotFound(true)
         else setLoadError(true)
       })
-      .finally(() => { if (!cancelled) setLoading(false) })
-    return () => { cancelled = true }
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [handle, reloadKey])
 
   async function support() {
     setError(null)
     const amt = Number(amount)
-    if (!Number.isFinite(amt) || amt <= 0) { setError('Choose an amount.'); return }
-    if (!email) { setError('Enter your email for a receipt.'); return }
+    if (!Number.isFinite(amt) || amt <= 0) {
+      setError('Choose an amount.')
+      return
+    }
+    if (!email) {
+      setError('Enter your email for a receipt.')
+      return
+    }
     setSubmitting(true)
     try {
-      const res = await createTip(String(handle), { amount: amt, supporterEmail: email, supporterName: name || undefined, message: message || undefined, isAnonymous: anonymous })
+      const res = await createTip(String(handle), {
+        amount: amt,
+        supporterEmail: email,
+        supporterName: name || undefined,
+        message: message || undefined,
+        isAnonymous: anonymous,
+      })
       setPaymentRef(res.reference)
       await WebBrowser.openBrowserAsync(res.checkoutUrl)
       await checkPayment(res.reference)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not start checkout.')
-    } finally { setSubmitting(false) }
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const fmt = (n: number) => `${page?.currency === 'GHS' ? 'GH₵' : ''}${n.toLocaleString()}`
 
-  if (loading) return <View style={styles.center}><SkeletonLoader color={p.primary} /></View>
+  if (loading)
+    return (
+      <View style={styles.center}>
+        <SkeletonLoader color={p.primary} />
+      </View>
+    )
   if (notFound) {
     return (
       <View style={styles.center}>
@@ -105,27 +168,97 @@ export default function CreatorTipScreen() {
     return (
       <View style={styles.center}>
         <Text style={styles.name}>Something went wrong</Text>
-        <Text style={[styles.tagline, { marginBottom: 16 }]}>We couldn’t load @{handle} just now.</Text>
-        <Button mode="contained" onPress={() => setReloadKey((k) => k + 1)} labelStyle={{ fontFamily: 'Outfit_700Bold' }}>Try again</Button>
+        <Text style={[styles.tagline, { marginBottom: 16 }]}>
+          We couldn’t load @{handle} just now.
+        </Text>
+        <Button
+          mode="contained"
+          onPress={() => setReloadKey((k) => k + 1)}
+          labelStyle={{ fontFamily: 'Outfit_700Bold' }}
+        >
+          Try again
+        </Button>
       </View>
     )
   }
-  const initials = page.displayName.split(' ').map((s) => s[0]).slice(0, 2).join('').toUpperCase()
+  const initials = page.displayName
+    .split(' ')
+    .map((s) => s[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase()
 
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ title: page.displayName }} />
       <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={styles.content}>
-        {paymentStatus === 'SUCCEEDED' && <><DonationCelebration /><Text style={styles.cardTitle}>Thank you! Your support is confirmed.</Text></>}
-        {paymentStatus === 'PENDING' && <><Text style={styles.tagline}>Confirmation is pending. Please do not pay again.</Text><Button onPress={() => void checkPayment(paymentRef)}>Check payment</Button></>}
-        {paymentStatus === 'FAILED' && <Text style={styles.err}>Payment was not completed. Contact support if you see a debit before trying again.</Text>}
+        {paymentStatus === 'SUCCEEDED' && (
+          <>
+            <DonationCelebration />
+            <Text style={styles.cardTitle}>Thank you! Your support is confirmed.</Text>
+          </>
+        )}
+        {paymentStatus === 'PENDING' && (
+          <>
+            <Text style={styles.tagline}>Confirmation is pending. Please do not pay again.</Text>
+            <Button onPress={() => void checkPayment(paymentRef)}>Check payment</Button>
+          </>
+        )}
+        {paymentStatus === 'FAILED' && (
+          <Text style={styles.err}>
+            Payment was not completed. Contact support if you see a debit before trying again.
+          </Text>
+        )}
+        <View
+          style={{
+            height: 180,
+            backgroundColor: p.primaryDark,
+            borderRadius: 24,
+            overflow: 'hidden',
+            marginBottom: -36,
+          }}
+        >
+          {page.coverUrl && failedCover !== page.coverUrl ? (
+            <Image
+              source={{ uri: page.coverUrl }}
+              onError={() => setFailedCover(page.coverUrl || '')}
+              accessibilityLabel={`${page.displayName}'s cover`}
+              style={StyleSheet.absoluteFill}
+              resizeMode="cover"
+            />
+          ) : (
+            <View
+              style={{
+                position: 'absolute',
+                right: 30,
+                top: 30,
+                width: 130,
+                height: 130,
+                borderRadius: 32,
+                borderWidth: 2,
+                borderColor: p.primary,
+                transform: [{ rotate: '30deg' }],
+              }}
+            />
+          )}
+        </View>
         <View style={styles.header}>
-          {page.avatarUrl ? <Avatar.Image size={84} source={{ uri: page.avatarUrl }} /> : <Avatar.Text size={84} label={initials} />}
+          {page.avatarUrl ? (
+            <Avatar.Image size={84} source={{ uri: page.avatarUrl }} />
+          ) : (
+            <Avatar.Text size={84} label={initials} />
+          )}
           <Text style={styles.name}>{page.displayName}</Text>
           {page.tagline ? <Text style={styles.tagline}>{page.tagline}</Text> : null}
           <View style={styles.statsRow}>
-            <View><Text style={styles.statVal}>{page.supporterCount}</Text><Text style={styles.statLbl}>Supporters</Text></View>
-            <View><Text style={styles.statVal}>{fmt(page.totalReceived)}</Text><Text style={styles.statLbl}>Received</Text></View>
+            <View>
+              <Text style={styles.statVal}>{page.supporterCount}</Text>
+              <Text style={styles.statLbl}>Supporters</Text>
+            </View>
+            <View>
+              <Text style={styles.statVal}>{fmt(page.totalReceived)}</Text>
+              <Text style={styles.statLbl}>Received</Text>
+            </View>
           </View>
         </View>
 
@@ -135,36 +268,99 @@ export default function CreatorTipScreen() {
             <Text style={styles.tagline}>This creator isn’t accepting tips right now.</Text>
           ) : (
             <>
-              <Text style={styles.tagline}>Choose an amount, pay securely with Paystack, then receive confirmation. No Ujimora account needed.</Text>
-            <View style={styles.presetRow}>
+              <Text style={styles.tagline}>
+                Choose an amount, pay securely with Paystack, then receive confirmation. No Ujimora
+                account needed.
+              </Text>
+              <View style={styles.presetRow}>
                 {page.presetAmounts.map((a) => (
-                  <Button key={a} mode={Number(amount) === a ? 'contained' : 'outlined'} compact onPress={() => setAmount(String(a))} labelStyle={{ fontFamily: 'Outfit_700Bold' }}>
+                  <Button
+                    key={a}
+                    mode={!custom && Number(amount) === a ? 'contained' : 'outlined'}
+                    compact
+                    onPress={() => {
+                      setCustom(false)
+                      setAmount(String(a))
+                    }}
+                    labelStyle={{ fontFamily: 'Outfit_700Bold' }}
+                  >
                     {fmt(a)}
                   </Button>
                 ))}
               </View>
-              <TextInput label="Amount" keyboardType="numeric" value={amount} onChangeText={setAmount} />
+              <Button
+                mode={custom ? 'contained' : 'outlined'}
+                onPress={() => {
+                  setCustom(true)
+                  amountInput.current?.focus()
+                }}
+              >
+                Custom amount
+              </Button>
+              <TextInput
+                inputRef={(input) => {
+                  amountInput.current = input
+                }}
+                label="Your amount (GHS)"
+                keyboardType="decimal-pad"
+                value={amount}
+                onChangeText={(v) => {
+                  setCustom(true)
+                  setAmount(v)
+                }}
+              />
               <TextInput label="Your name (optional)" value={name} onChangeText={setName} />
-              <TextInput label="Email (for your receipt)" keyboardType="email-address" autoCapitalize="none" value={email} onChangeText={setEmail} />
-              <TextInput label="Say something nice (optional)" value={message} onChangeText={setMessage} multiline />
-              <Checkbox.Item label="Show my support anonymously" status={anonymous ? 'checked' : 'unchecked'} onPress={() => setAnonymous(v => !v)} />
-              <Text style={styles.tagline}>Your name and message may appear publicly. Anonymous support hides your name. Your email stays private.</Text>
+              <TextInput
+                label="Email (for your receipt)"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                value={email}
+                onChangeText={setEmail}
+              />
+              <TextInput
+                label="Say something nice (optional)"
+                value={message}
+                onChangeText={setMessage}
+                multiline
+              />
+              <Checkbox.Item
+                label="Show my support anonymously"
+                status={anonymous ? 'checked' : 'unchecked'}
+                onPress={() => setAnonymous((v) => !v)}
+              />
+              <Text style={styles.tagline}>
+                Your name and message may appear publicly. Anonymous support hides your name. Your
+                email stays private.
+              </Text>
               {error ? <Text style={styles.err}>{error}</Text> : null}
-              <Button mode="contained" loading={submitting} disabled={submitting || paymentStatus === 'PENDING'} onPress={support} icon="heart" labelStyle={{ fontFamily: 'Outfit_700Bold' }}>
+              <Button
+                mode="contained"
+                loading={submitting}
+                disabled={submitting || paymentStatus === 'PENDING'}
+                onPress={support}
+                icon="heart"
+                labelStyle={{ fontFamily: 'Outfit_700Bold' }}
+              >
                 {submitting ? 'Starting…' : `Support ${fmt(Number(amount) || 0)}`}
               </Button>
             </>
           )}
         </View>
 
-        {page.bio ? <View style={styles.card}><Text style={styles.bio}>{page.bio}</Text></View> : null}
+        {page.bio ? (
+          <View style={styles.card}>
+            <Text style={styles.bio}>{page.bio}</Text>
+          </View>
+        ) : null}
 
         {page.recentTips.length > 0 && (
           <View>
             <Text style={[styles.cardTitle, { marginBottom: 8 }]}>Recent supporters</Text>
             {page.recentTips.map((t, i) => (
               <View key={i} style={styles.tipRow}>
-                <Text style={styles.tipName}>{t.supporterName} · {fmt(t.amount)}</Text>
+                <Text style={styles.tipName}>
+                  {t.supporterName} · {fmt(t.amount)}
+                </Text>
                 {t.message ? <Text style={styles.tipMsg}>“{t.message}”</Text> : null}
               </View>
             ))}

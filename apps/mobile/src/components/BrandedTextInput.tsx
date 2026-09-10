@@ -19,7 +19,7 @@ export function fieldIcon(hint: string, numeric = false): string {
   return 'text-box-outline'
 }
 
-function Input(props: Omit<ComponentProps<typeof PaperTextInput>, 'ref'>) {
+function Input({ inputRef, ...props }: Omit<ComponentProps<typeof PaperTextInput>, 'ref'> & { inputRef?: (input: { focus(): void } | null) => void }) {
   const theme = useTheme<MD3Theme>()
   const { palette: p, neu, skin } = useColorMode()
   const [focused, setFocused] = useState(false)
@@ -32,7 +32,7 @@ function Input(props: Omit<ComponentProps<typeof PaperTextInput>, 'ref'>) {
     : label ? `Enter ${label}` : props.secureTextEntry ? 'Enter your password' : 'Enter details')
   const radius = skin === 'claymorphism' ? 22 : skin === 'minimal' ? 12 : 16
   return <View style={[props.style, neu.inset, { borderRadius: radius, borderWidth: 1, borderColor: props.error ? p.error : focused ? p.primary : p.border }]}>
-    <PaperTextInput {...props}
+    <PaperTextInput {...props} ref={inputRef}
     style={{ backgroundColor: 'transparent', borderRadius: radius }}
     contentStyle={[{ fontFamily: 'Outfit_400Regular', color: p.text }, props.contentStyle]}
     theme={{ ...theme, roundness: radius, colors: { ...theme.colors, primary: p.primary, onSurface: p.text, onSurfaceVariant: p.textSecondary, surfaceVariant: 'transparent' } }}

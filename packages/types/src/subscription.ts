@@ -62,6 +62,7 @@ export interface SubscriptionPlan {
   /** Whether campaign collaboration (co-campaigns) is available */
   campaignCollaboration: boolean
   /** Max collaborators per campaign (-1 = unlimited) */
+  maxPayoutAccounts?: number
   maxCollaboratorsPerCampaign: number
   // ── Admin-managed presentation & lifecycle (v6 §16) ───────────────────────
   /** Display order, cheapest → richest; admins reorder without a deploy. */
@@ -116,6 +117,7 @@ export interface UpdateSubscriptionPlanInput {
   campaignCollaboration?: boolean
   maxMediaPerCampaign?: number
   maxTeamMembers?: number
+  maxPayoutAccounts?: number
   maxCollaboratorsPerCampaign?: number
   sortOrder?: number
   active?: boolean
@@ -147,6 +149,7 @@ export interface CreatePlanInput {
   liveStreaming?: boolean
   maxTeamMembers?: number
   campaignCollaboration?: boolean
+  maxPayoutAccounts?: number
   maxCollaboratorsPerCampaign?: number
   sortOrder?: number
   active?: boolean
@@ -251,6 +254,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
     liveStreaming: false,
     maxTeamMembers: 1,
     campaignCollaboration: false,
+    maxPayoutAccounts: 1,
     maxCollaboratorsPerCampaign: 0,
     sortOrder: 0,
     active: true,
@@ -275,6 +279,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
     liveStreaming: false,
     maxTeamMembers: 1,
     campaignCollaboration: false,
+    maxPayoutAccounts: 2,
     maxCollaboratorsPerCampaign: 0,
     sortOrder: 1,
     active: true,
@@ -299,6 +304,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
     liveStreaming: true,
     maxTeamMembers: 3,
     campaignCollaboration: true,
+    maxPayoutAccounts: 3,
     maxCollaboratorsPerCampaign: 3,
     sortOrder: 2,
     active: true,
@@ -324,6 +330,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
     liveStreaming: true,
     maxTeamMembers: 10,
     campaignCollaboration: true,
+    maxPayoutAccounts: 5,
     maxCollaboratorsPerCampaign: 10,
     sortOrder: 3,
     active: true,
@@ -348,6 +355,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
     liveStreaming: true,
     maxTeamMembers: -1, // unlimited
     campaignCollaboration: true,
+    maxPayoutAccounts: -1,
     maxCollaboratorsPerCampaign: -1, // unlimited
     sortOrder: 4,
     active: true,

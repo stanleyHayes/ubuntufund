@@ -1,3 +1,4 @@
+import type { PayoutAccountService } from '../services/PayoutAccountService.js'
 import type { CreatePayoutRecipientInput, TransferRecipient } from '@ubuntu-fund/types'
 import { TransferRecipientEntity } from '../../domain/entities/TransferRecipient.js'
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js'
@@ -24,11 +25,12 @@ export class CreatePayoutRecipientUseCase {
     private readonly campaignRepo: CampaignRepositoryPort,
     private readonly transferRecipientRepo: TransferRecipientRepositoryPort,
     private readonly paymentGateway: PaymentGatewayPort,
+    private readonly accounts?: PayoutAccountService,
   ) {}
 
   async execute(
     campaignId: string,
-    input: CreatePayoutRecipientInput,
+    input: CreatePayoutRecipientInput | { savedAccountId: string },
     requester: PayoutRequester,
   ): Promise<TransferRecipient> {
     if (!this.paymentGateway.isConfigured()) {
@@ -45,6 +47,13 @@ export class CreatePayoutRecipientUseCase {
     if (!isOwner && !isAdmin) {
       throw new AppError('Only the campaign owner can add a payout recipient', 403)
     }
+
+    if (this.accounts) {
+      const account = 'savedAccountId' in input ? await this.accounts.get(campaign.creatorId, input.savedAccountId) : await this.accounts.add(campaign.creatorId, input);
+      const saved = await this.transferRecipientRepo.create(new TransferRecipientEntity({ ...account, id: '', campaignId: campaign.id, createdBy: requester.userId, currency: CURRENCY, createdAt: new Date() }));
+      return toTransferRecipientDto(saved);
+    }
+    if ('savedAccountId' in input) throw new AppError('Saved payout accounts unavailable', 503);
 
     if (!input.accountNumber || !input.bankCode || !input.accountName) {
       throw new AppError('accountNumber, bankCode and accountName are required', 400)

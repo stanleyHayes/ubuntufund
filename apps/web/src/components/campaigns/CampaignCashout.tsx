@@ -1,3 +1,4 @@
+import type { Account } from '@/components/account/SavedPayoutAccounts'
 import { useCallback, useEffect, useState } from 'react'
 import { Accordion, AccordionSummary, AccordionDetails, Alert, Box, Button, MenuItem, TextField, Typography } from '@mui/material'
 import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded'
@@ -12,6 +13,8 @@ export function CampaignCashout({ campaignId, initiallyExpanded = false }: { cam
   const [expanded, setExpanded] = useState(initiallyExpanded)
   const [options, setOptions] = useState<Options | null>(null)
   const [history, setHistory] = useState<Payout[]>([])
+  const [accounts, setAccounts] = useState<Account[]>([])
+  const [savedAccountId, setSavedAccountId] = useState('')
   const [banks, setBanks] = useState<Bank[]>([])
   const [recipientType, setRecipientType] = useState('mobile_money')
   const [bankCode, setBankCode] = useState('')
@@ -27,6 +30,7 @@ export function CampaignCashout({ campaignId, initiallyExpanded = false }: { cam
   useEffect(() => {
     if (!expanded) return
     let active = true
+    api.get<{accounts:Account[]}>('/payout-accounts').then(d => { if(active) setAccounts(d.accounts) }).catch(e => { if(active) setError(e.message) })
     Promise.all([api.get<Options>(`/campaigns/${campaignId}/payout-options`), api.get<Payout[]>(`/campaigns/${campaignId}/payouts`)])
       .then(([o, h]) => { if (active) { setOptions(o); setType(current => o.requiresEarlyCashout && current !== 'early' && current !== 'urgent' ? 'early' : current); setHistory(h); setError('') } })
       .catch(e => { if (active) setError(e.message) })
@@ -47,7 +51,7 @@ export function CampaignCashout({ campaignId, initiallyExpanded = false }: { cam
   async function saveRecipient() {
     setBusy(true); setError(''); setNotice('')
     try {
-      await api.post(`/campaigns/${campaignId}/payout-recipient`, { type: recipientType, bankCode, accountName, accountNumber })
+      await api.post(`/campaigns/${campaignId}/payout-recipient`, savedAccountId ? { savedAccountId } : { type: recipientType, bankCode, accountName, accountNumber })
       setNotice('Account submitted. Check the name-verification result below; beneficiary ownership is reviewed before transfer.'); refresh()
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not save payout account.') }
     finally { setBusy(false) }
@@ -71,14 +75,16 @@ export function CampaignCashout({ campaignId, initiallyExpanded = false }: { cam
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>Based on settled campaign proceeds after the regular plan and payment fees. Early cashout adds a separate service fee. Requests require admin approval and sufficient Paystack transfer balance. Test payments cannot be withdrawn as real money.</Typography>
         {options.recipient && <Alert severity="info" sx={{ mb: 2 }}>Payout account: {options.recipient.accountName} · ending {options.recipient.last4}</Alert>}
         {options.recipient && <Alert severity={options.recipient.verificationStatus === 'name_matched' ? 'info' : 'warning'} sx={{ mb: 2 }}>{options.recipient.verificationStatus === 'name_matched' ? 'Registered account name matched. Ownership and receiving capacity still require review.' : 'Account verification needs admin review. Saving this account does not confirm it can receive funds.'}{options.recipient.resolvedAccountName && ` Provider name: ${options.recipient.resolvedAccountName}.`}</Alert>}
+        <TextField select fullWidth label="Use a saved payout account" value={savedAccountId} onChange={e => setSavedAccountId(e.target.value)} sx={{ my: 2 }}><MenuItem value="">Add a new account</MenuItem>{accounts.map(a => <MenuItem key={a.id} value={a.id}>{a.accountName} · {a.bankCode} · {a.last4}</MenuItem>)}</TextField>
+        <Button href="/payout-accounts">Manage saved accounts</Button>
         <Typography sx={{ fontWeight: 700, mb: 1 }}>{options.recipient ? 'Change payout account' : 'Add your payout account'}</Typography>
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2, mb: 2 }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2, mb: 2, ...(savedAccountId ? { display: 'none' } : {}) }}>
           <TextField select label="Account type" value={recipientType} onChange={e => { setRecipientType(e.target.value); setBankCode('') }}><MenuItem value="mobile_money">Mobile money</MenuItem><MenuItem value="ghipss">Bank account</MenuItem></TextField>
           <TextField select label="Bank or mobile network" value={bankCode} onChange={e => setBankCode(e.target.value)}>{banks.map(b => <MenuItem key={b.code} value={b.code}>{b.name}</MenuItem>)}</TextField>
           <TextField label="Account holder name" value={accountName} onChange={e => setAccountName(e.target.value)} />
           <TextField label="Account or mobile money number" value={accountNumber} onChange={e => setAccountNumber(e.target.value)} />
         </Box>
-        <Button disabled={busy || !bankCode || !accountName.trim() || !accountNumber.trim()} onClick={() => void saveRecipient()}>Verify & save payout account</Button>
+        <Button disabled={busy || (!savedAccountId && (!bankCode || !accountName.trim() || !accountNumber.trim()))} onClick={() => void saveRecipient()}>Verify & save payout account</Button>
         <Alert severity="info" sx={{ mt: 2 }}>Before cashout, confirm your account can receive the net amount. MoMo has wallet-balance and transaction limits that vary by network and verification tier. We cannot read your balance or remaining allowance. MTN: *170# → My Wallet → Check Wallet Limits. For larger payouts, consider a verified bank account or ask your network about a wallet upgrade. Never share your MoMo PIN.</Alert>
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2, my: 3 }}>
           <TextField label="Cashout amount (GHS)" type="number" value={amount} onChange={e => setAmount(e.target.value)} slotProps={{ htmlInput: { min: 0.01, step: 0.01 } }} />

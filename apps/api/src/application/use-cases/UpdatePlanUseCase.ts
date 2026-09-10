@@ -24,7 +24,7 @@ const LIMIT_FIELDS: (keyof UpdateSubscriptionPlanInput)[] = [
   'maxCampaignGoal',
   'maxMediaPerCampaign',
   'maxTeamMembers',
-  'maxCollaboratorsPerCampaign',
+  'maxCollaboratorsPerCampaign', 'maxPayoutAccounts',
 ];
 
 /**

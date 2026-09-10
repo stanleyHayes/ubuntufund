@@ -26,6 +26,7 @@ export interface SubscriptionPlanDocument extends Document {
   liveStreaming: boolean;
   maxTeamMembers: number;
   campaignCollaboration: boolean;
+  maxPayoutAccounts?: number;
   maxCollaboratorsPerCampaign: number;
   sortOrder: number;
   active: boolean;
@@ -62,6 +63,7 @@ const subscriptionPlanSchema = new Schema<SubscriptionPlanDocument>(
     liveStreaming: { type: Boolean, default: false },
     maxTeamMembers: { type: Number, required: true, min: -1 },
     campaignCollaboration: { type: Boolean, default: false },
+    maxPayoutAccounts: { type: Number, min: -1 },
     maxCollaboratorsPerCampaign: { type: Number, required: true, min: -1 },
     sortOrder: { type: Number, default: 0 },
     active: { type: Boolean, default: true },

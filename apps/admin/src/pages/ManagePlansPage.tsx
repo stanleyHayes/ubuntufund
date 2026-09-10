@@ -49,6 +49,7 @@ const NUMERIC_LIMITS: { key: keyof SubscriptionPlan; label: string; unlimited?: 
   { key: 'maxCampaignGoal', label: 'Max campaign goal (GH₵)', unlimited: true },
   { key: 'maxMediaPerCampaign', label: 'Max media per campaign', unlimited: true },
   { key: 'maxTeamMembers', label: 'Max team members', unlimited: true },
+  { key: 'maxPayoutAccounts', label: 'Saved payout accounts', unlimited: true },
   { key: 'maxCollaboratorsPerCampaign', label: 'Max collaborators per campaign', unlimited: true },
 ]
 
@@ -72,6 +73,7 @@ function blankPlan(nextSortOrder: number): SubscriptionPlan {
     customBranding: false, maxMediaPerCampaign: 3, escrowSupport: false,
     liveStreaming: false, maxTeamMembers: 1, campaignCollaboration: false,
     maxCollaboratorsPerCampaign: 0,
+    maxPayoutAccounts: 1,
     sortOrder: nextSortOrder, active: true, isPublic: true, accentColor: '#2E3D2F', popular: false,
   }
 }
@@ -251,6 +253,7 @@ export default function ManagePlansPage() {
                       ['Yearly price', plan.priceYearly === 0 ? 'Free' : `GH₵ ${plan.priceYearly.toLocaleString()}`],
                       ['Platform fee', `${plan.platformFeePercent}%`],
                       ['Active campaigns', limitDisplay(plan.maxActiveCampaigns)],
+                      ['Payout accounts', limitDisplay(plan.maxPayoutAccounts ?? 1)],
                       ['Campaign goal', plan.maxCampaignGoal === -1 ? 'Unlimited' : `GH₵ ${plan.maxCampaignGoal.toLocaleString()}`],
                     ].map(([label, value]) => (
                       <Box key={label}>

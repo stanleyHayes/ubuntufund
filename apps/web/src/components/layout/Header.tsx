@@ -1,5 +1,6 @@
+import { api } from '@/lib/api'
 import AccountMenu from './AccountMenu'
-import { Fragment, useState } from 'react'
+import { Fragment, useState, useEffect } from 'react'
 import AppBar from '@mui/material/AppBar'
 import Toolbar from '@mui/material/Toolbar'
 import Typography from '@mui/material/Typography'
@@ -107,7 +108,7 @@ function CtaButton({ to, children }: { to: string; children: React.ReactNode }) 
       to={to}
       endIcon={<ArrowForwardRoundedIcon sx={{ fontSize: 16 }} />}
       sx={{
-        borderRadius: '999px',
+        borderRadius: SHAPE.sm,
         px: 2.5,
         py: 0.85,
         fontFamily: '"Outfit", sans-serif',
@@ -117,7 +118,9 @@ function CtaButton({ to, children }: { to: string; children: React.ReactNode }) 
         letterSpacing: '0.05em',
         color: GOLD_LIGHT,
         border: `1.5px solid rgba(199, 162, 74, 0.55)`,
-        bgcolor: 'transparent',
+        bgcolor: 'var(--neu-surface)',
+        boxShadow: 'var(--neu-raised)',
+        backdropFilter: 'var(--neu-backdrop)',
         transition: 'background-color 160ms ease, color 160ms ease, border-color 160ms ease',
         '&:hover': { bgcolor: GOLD, color: '#1C261D', borderColor: GOLD },
       }}
@@ -131,6 +134,8 @@ export function Header() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const { user, isAuthenticated, logout } = useAuth()
+  const [avatarUrl, setAvatarUrl] = useState('')
+  useEffect(() => { if (!user?.id) return; let active = true; api.get<{avatarUrl?:string}>('/profile').then(p => { if(active) setAvatarUrl(p.avatarUrl || '') }).catch(() => {}); return () => {active=false} }, [user?.id, pathname])
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null)
   const { skin } = useColorMode()
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -149,6 +154,7 @@ export function Header() {
       position="sticky"
       elevation={0}
       sx={{
+        ...getSkinVars(skin, true),
         bgcolor: '#1C261D',
         // Square the bar: it's a full-width MuiPaper, and the theme rounds every
         // Paper (SHAPE.card), which left rounded corners exposing the page behind.
@@ -237,13 +243,16 @@ export function Header() {
                   height: 40,
                   pl: 0.5,
                   pr: 1,
-                  borderRadius: '999px',
-                  border: '1px solid rgba(245, 242, 234, 0.22)',
+                  borderRadius: SHAPE.sm,
+                  border: 'var(--neu-border)',
+                  bgcolor: 'var(--neu-surface)',
+                  boxShadow: 'var(--neu-subtle)',
+                  backdropFilter: 'var(--neu-backdrop)',
                   '&:hover': { bgcolor: 'rgba(245, 242, 234, 0.08)' },
                   '&:focus-visible': { outline: '2px solid #C7A24A', outlineOffset: 2 },
                 }}
               >
-                <Avatar sx={{ width: 30, height: 30, bgcolor: '#A8B5A0', color: '#1C261D', fontSize: '0.75rem', fontWeight: 700 }}>
+                <Avatar src={avatarUrl} sx={{ width: 30, height: 30, bgcolor: '#A8B5A0', color: '#1C261D', fontSize: '0.75rem', fontWeight: 700 }}>
                   {initials}
                 </Avatar>
                 <Typography variant="body2" sx={{ fontWeight: 600, display: { xs: 'none', sm: 'block' }, maxWidth: 110 }} noWrap>
@@ -251,7 +260,7 @@ export function Header() {
                 </Typography>
                 <ExpandMoreRoundedIcon sx={{ fontSize: 16, color: 'rgba(245, 242, 234, 0.6)' }} />
               </Box>
-              <AccountMenu anchor={menuAnchor} onClose={closeMenu} name={user?.name} email={user?.email} initials={initials}
+              <AccountMenu anchor={menuAnchor} onClose={closeMenu} name={user?.name} email={user?.email} initials={initials} avatarUrl={avatarUrl}
                 onSignOut={() => { closeMenu(); logout(); navigate('/') }} />
             </Box>
           ) : (
@@ -346,6 +355,7 @@ export function Header() {
                 { label: 'Affiliate', to: '/affiliate', icon: <HandshakeRoundedIcon /> },
                 { label: 'Creator page', to: '/creator', icon: <StorefrontRoundedIcon /> },
                 { label: 'Subscription', to: '/subscription', icon: <WorkspacePremiumRoundedIcon /> },
+                { label: 'Payout accounts', to: '/payout-accounts', icon: <AccountBalanceWalletRoundedIcon /> },
                 { label: 'Settings', to: '/settings', icon: <SettingsRoundedIcon /> },
               ]
             : [

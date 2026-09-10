@@ -45,6 +45,7 @@ const MENU_ITEMS: { icon: string; label: string; colorKey: MenuColorKey; route: 
   { icon: 'crown', label: 'Subscription', colorKey: 'secondary', route: '/(tabs)/subscription' },
   { icon: 'account-cash', label: 'Affiliate', colorKey: 'success', route: '/affiliate' },
   { icon: 'storefront', label: 'Creator page', colorKey: 'secondaryDark', route: '/creator' },
+  { icon: 'bank', label: 'Payout accounts', colorKey: 'textSecondary', route: '/payout-accounts' },
   { icon: 'cog', label: 'Settings', colorKey: 'textSecondary', route: '/settings' },
   { icon: 'book-open-page-variant-outline', label: 'All policies', colorKey: 'textSecondary', route: '/legal' },
   { icon: 'file-document-outline', label: 'Terms of Use', colorKey: 'textSecondary', route: '/terms' },

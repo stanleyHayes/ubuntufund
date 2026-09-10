@@ -1,3 +1,4 @@
+import { PayoutAccountsPage } from './pages/PayoutAccountsPage'
 import { CreatorTipCallbackPage } from './pages/CreatorTipCallbackPage'
 import { LegalPage } from './pages/LegalPage'
 import { LEGAL_POLICIES } from '@ubuntu-fund/types/src/legal'
@@ -71,6 +72,7 @@ export const router = createBrowserRouter([
       { path: 'settings', element: <RequireAuth><SettingsPage /></RequireAuth> },
       { path: 'tip/callback', element: <CreatorTipCallbackPage /> },
       { path: 'creators/:handle', element: <CreatorTipPage /> },
+      { path: 'payout-accounts', element: <RequireAuth><PayoutAccountsPage /></RequireAuth> },
       { path: 'creator', element: <RequireAuth><CreatorDashboardPage /></RequireAuth> },
       { path: 'my-campaigns', element: <RequireAuth><MyCampaignsPage /></RequireAuth> },
       { path: 'subscription', element: <RequireAuth><SubscriptionPage /></RequireAuth> },

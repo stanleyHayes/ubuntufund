@@ -1,5 +1,14 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-10 — Dedicated payout accounts, material-aware navigation and creator imagery
+
+- Added authenticated /payout-accounts web/native pages and menu entries beside Settings. Users can save/remove multiple bank/MoMo destinations, see masked details and verification state, and select them for campaign or creator payouts. Campaign bindings remain immutable snapshots. Legacy account-entry paths also pass through the saved-account allowance in production.
+- User confirmed defaults: Community 1, Plus 2, Pro 3, Organization 5, Enterprise unlimited. maxPayoutAccounts is editable for existing/custom plans in Admin → Plans; -1 means unlimited and 0 blocks new saves. Existing saved destinations remain usable on downgrade. Duplicate Ghana phone formats resolve to one saved account. Per-user document and atomic conditional append enforce the count under competing saves; owner-scoped lookup/remove prevents cross-account selection.
+- Creator withdrawals reuse saved recipients; unresolved names cannot initiate creator transfers. Campaign payout ownership/capacity review and reservation safeguards remain enforced. No account was registered or transferred during testing.
+- Replaced oversized account-menu tiles with compact two-column rows and material-aware controls (skin geometry, shadows, border and backdrop). Header and menu use the signed-in profile portrait. Public creator page uses public profile portrait/cover, preserving profile privacy; branded fallback stays available. Desktop support panel sits beside the profile, mobile stacks it; Custom amount focuses the editable amount on both clients. Profile-image editing stays in the existing profile editor.
+- Validation: 50 focused API tests, 11 web flow tests and 24 native logic tests pass, plus API/web/admin/mobile type checks. Native source requires a new build; no native store release or real transfer is claimed. Prior campaign-card preview remains separate and unpublished.
+
+
 ### 2026-09-10 — Creator visibility and public support return flow
 
 - Confirmed unauthenticated GET /creators/pontifex returns the public profile with tips enabled, GHS 10/25/50/100 presets and no private payout/balance fields. Shared creator pages are public routes; the owner dashboard remains authenticated.

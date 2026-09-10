@@ -1,3 +1,4 @@
+import type { SavedAccount } from './SavedPayoutAccounts'
 import { useEffect, useState } from 'react'
 import { View } from 'react-native'
 import { Text } from 'react-native-paper'
@@ -10,6 +11,8 @@ import { useNeu } from '@/context/ColorModeContext'
 type Options = { eligible: number; requiresEarlyCashout: boolean; fees: Record<string, number>; recipient: { accountName: string; last4: string; verificationStatus?: string; resolvedAccountName?: string } | null }
 const round = (n: number) => Math.round(n * 100) / 100
 export function CampaignCashout({ campaignId }: { campaignId: string }) {
+  const [accounts, setAccounts] = useState<SavedAccount[]>([]); const [savedAccountId, setSavedAccountId] = useState('');
+  useEffect(() => { let active=true; api.get<{accounts:SavedAccount[]}>('/payout-accounts').then(d=>{if(active)setAccounts(d.accounts)}).catch(()=>{}); return()=>{active=false} }, [])
   const neu = useNeu(); const [options, setOptions] = useState<Options | null>(null); const [history, setHistory] = useState<Payout[]>([])
   const [banks, setBanks] = useState<{ code: string; name: string }[]>([]); const [rail, setRail] = useState('mobile_money'); const [bankCode, setBank] = useState(''); const [name, setName] = useState(''); const [account, setAccount] = useState(''); const [amount, setAmount] = useState(''); const [type, setType] = useState<PayoutType>('standard'); const [error, setError] = useState(''); const [notice, setNotice] = useState(''); const [busy, setBusy] = useState(false); const [revision, setRevision] = useState(0)
   useEffect(() => { let active = true; Promise.all([api.get<Options>(`/campaigns/${campaignId}/payout-options`), api.get<Payout[]>(`/campaigns/${campaignId}/payouts`)]).then(([o,h]) => { if (active) { setOptions(o); setHistory(h); setType(t => o.requiresEarlyCashout && !['early','urgent'].includes(t) ? 'early' : t); setError('') } }).catch(e => { if (active) setError(e.message) }); return () => { active = false } }, [campaignId, revision])
@@ -19,7 +22,7 @@ export function CampaignCashout({ campaignId }: { campaignId: string }) {
   async function submit(recipient: boolean) {
     setBusy(true); setError(''); setNotice('')
     try {
-      if (recipient) { await api.post(`/campaigns/${campaignId}/payout-recipient`, { type: rail, accountNumber: account, accountName: name, bankCode }); setNotice('Account submitted. Check the verification result below; ownership is reviewed before transfer.') }
+      if (recipient) { await api.post(`/campaigns/${campaignId}/payout-recipient`, savedAccountId ? {savedAccountId} : { type: rail, accountNumber: account, accountName: name, bankCode }); setNotice('Account submitted. Check the verification result below; ownership is reviewed before transfer.') }
       else { const p = await api.post<Payout>(`/campaigns/${campaignId}/payouts`, { amount: value, type }); setNotice(`Request awaiting admin approval. Fee GHS ${p.fee.toFixed(2)}; net GHS ${p.netAmount.toFixed(2)}. No transfer sent yet.`); setAmount('') }
       setRevision(r => r + 1)
     } catch(e) { setError(e instanceof Error ? e.message : 'Could not save cashout request.') } finally { setBusy(false) }
@@ -27,10 +30,11 @@ export function CampaignCashout({ campaignId }: { campaignId: string }) {
   return <View style={{ ...neu.raised, padding: 20, borderRadius: 20, gap: 16 }}><Text variant="titleLarge">Cashout & payout history</Text>{error && <Text accessibilityRole="alert">{error}</Text>}{notice && <Text accessibilityRole="alert">{notice}</Text>}
     {options && <><Text variant="titleMedium">GHS {options.eligible.toFixed(2)} eligible balance</Text><Text>The regular plan fee is already deducted. Early cashout adds a service fee. Test funds cannot pay out real money.</Text>{options.recipient && <Text>Account: {options.recipient.accountName} · ending {options.recipient.last4}</Text>}
     {options.recipient && <Text>{options.recipient.verificationStatus === 'name_matched' ? 'Registered name matched. Ownership and receiving capacity still require review.' : 'Account needs admin verification before transfer.'}{options.recipient.resolvedAccountName ? ` Provider name: ${options.recipient.resolvedAccountName}` : ''}</Text>}
-    <SelectionField label="Account type" value={rail} onChange={v => { setRail(v); setBank('') }} options={[{value:'mobile_money',label:'Mobile money'},{value:'ghipss',label:'Bank account'}]} />
+    <SelectionField label="Saved payout account" value={savedAccountId} onChange={setSavedAccountId} options={[{value:'',label:'Add a new account'},...accounts.map(a=>({value:a.id,label:`${a.accountName} · ${a.bankCode} · ${a.last4}`}))]} />
+    {!savedAccountId && <><SelectionField label="Account type" value={rail} onChange={v => { setRail(v); setBank('') }} options={[{value:'mobile_money',label:'Mobile money'},{value:'ghipss',label:'Bank account'}]} />
     <SelectionField label="Bank or mobile network" value={bankCode} onChange={setBank} options={banks.map(b => ({value:b.code,label:b.name}))} />
     <Input label="Account holder name" value={name} onChangeText={setName}/><Input label="Account or phone number" value={account} onChangeText={setAccount} keyboardType="phone-pad"/>
-    <Button disabled={busy || !name.trim() || !account.trim() || !bankCode} onPress={() => void submit(true)}>Verify & save payout account</Button>
+    </>}<Button disabled={busy || (!savedAccountId && (!name.trim() || !account.trim() || !bankCode))} onPress={() => void submit(true)}>Verify & save payout account</Button>
     <Text>Check that your account can receive the net payout. MoMo wallet-balance and transaction limits vary by network and verification tier. We cannot read your balance or remaining allowance. MTN: *170# → My Wallet → Check Wallet Limits. Consider a verified bank account for larger payouts or ask your network about upgrading your wallet. Never share your MoMo PIN.</Text>
     <SelectionField label="Cashout service" value={type} onChange={v => setType(v as PayoutType)} options={(options.requiresEarlyCashout ? ['early','urgent'] : ['standard','priority','early','urgent','assisted']).map(t => ({value:t,label:t.charAt(0).toUpperCase()+t.slice(1)}))}/>
     <Input label="Cashout amount (GHS)" value={amount} onChangeText={setAmount} keyboardType="decimal-pad"/><Text>Maximum GHS {cap.toFixed(2)}</Text>

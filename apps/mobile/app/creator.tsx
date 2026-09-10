@@ -1,3 +1,6 @@
+import { api } from '@/lib/api'
+import { SelectionField } from '@/components/SelectionField'
+import type { SavedAccount } from '@/components/SavedPayoutAccounts'
 import { Chip } from '@/components/Chip'
 import { SkeletonLoader, Button } from '@/components/Loading'
 import { BrandedTextInput as TextInput } from '@/components/BrandedTextInput'
@@ -45,6 +48,8 @@ export default function CreatorDashboardScreen() {
   const [balance, setBalance] = useState<CreatorBalance | null>(null)
   const [payouts, setPayouts] = useState<CreatorPayout[]>([])
 
+  const [accounts,setAccounts]=useState<SavedAccount[]>([]);const [savedAccountId,setSavedAccountId]=useState('');
+  useEffect(()=>{let active=true;api.get<{accounts:SavedAccount[]}>('/payout-accounts').then(d=>{if(active)setAccounts(d.accounts)}).catch(()=>{});return()=>{active=false}},[])
   const [handle, setHandle] = useState('')
   const [displayName, setDisplayName] = useState('')
   const [tagline, setTagline] = useState('')
@@ -99,7 +104,7 @@ export default function CreatorDashboardScreen() {
     if (!policy) return
     setWError(null); setWSubmitting(true)
     try {
-      await requestWithdrawal({ amount: Number(wAmount), expectedFeePercent: policy.feePercent, recipient: { type: wType as 'mobile_money' | 'ghipss', accountNumber: wAccount, bankCode: wBank, accountName: wName || displayName } })
+      await requestWithdrawal({ amount: Number(wAmount), expectedFeePercent: policy.feePercent, ...(savedAccountId ? {savedAccountId} : {recipient: { type: wType as 'mobile_money' | 'ghipss', accountNumber: wAccount, bankCode: wBank, accountName: wName || displayName }}) })
       setWOpen(false); setSnack('Withdrawal started'); await load()
     } catch (err) { setWError(err instanceof Error ? err.message : 'Could not start the withdrawal.') }
     finally { setWSubmitting(false) }
@@ -152,6 +157,7 @@ export default function CreatorDashboardScreen() {
         </View>}
 
         <View style={styles.card}>
+          <Button onPress={()=>router.push('/profile/edit')}>Edit your photo & cover</Button>
           <Text style={styles.cardTitle}>{profile ? 'Edit your page' : 'Claim your page'}</Text>
           <TextInput label="Handle (your link)" value={handle} onChangeText={(t) => setHandle(t.toLowerCase())} autoCapitalize="none" editable={!profile && !!policy?.eligible} disabled={!policy?.eligible} />
           <TextInput disabled={!policy?.eligible} label="Display name" value={displayName} onChangeText={setDisplayName} />
@@ -196,6 +202,7 @@ export default function CreatorDashboardScreen() {
           </Dialog.ScrollArea>
           <Dialog.Actions>
             <Button onPress={() => setWOpen(false)}>Cancel</Button>
+            <SelectionField label="Saved payout account" value={savedAccountId} onChange={setSavedAccountId} options={[{value:'',label:'Use entered account'},...accounts.map(a=>({value:a.id,label:`${a.accountName} · ${a.bankCode} · ${a.last4}`}))]}/><Button onPress={()=>{setWOpen(false);router.push('/payout-accounts')}}>Manage payout accounts</Button>
             <Button mode="contained" loading={wSubmitting} disabled={wSubmitting || !policy || !Number.isFinite(Number(wAmount)) || Number(wAmount) <= 0} onPress={withdraw}>Withdraw</Button>
           </Dialog.Actions>
         </Dialog>
