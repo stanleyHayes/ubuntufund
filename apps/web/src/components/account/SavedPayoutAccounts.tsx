@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Alert, Box, Button, MenuItem, TextField, Typography } from '@mui/material'
+import { Alert, Box, Button, MenuItem, TextField, Typography, Skeleton } from '@mui/material'
 import AccountBalanceRounded from '@mui/icons-material/AccountBalanceRounded'
 import SmartphoneRounded from '@mui/icons-material/SmartphoneRounded'
 import { api } from '@/lib/api'
@@ -14,6 +14,7 @@ export type Account = {
 type Data = { planName: string; limit: number; accounts: Account[] }
 export function SavedPayoutAccounts() {
   const [data, setData] = useState<Data | null>(null)
+  const [loading, setLoading] = useState(true)
   const [banks, setBanks] = useState<{ name: string; code: string }[]>([])
   const [type, setType] = useState('mobile_money')
   const [bankCode, setBank] = useState('')
@@ -25,6 +26,8 @@ export function SavedPayoutAccounts() {
   const [retry, setRetry] = useState(0)
   useEffect(() => {
     let active = true
+    setLoading(true)
+    setError('')
     api
       .get<Data>('/payout-accounts')
       .then((v) => {
@@ -35,6 +38,9 @@ export function SavedPayoutAccounts() {
       })
       .catch((e) => {
         if (active) setError(e.message)
+      })
+      .finally(() => {
+        if (active) setLoading(false)
       })
     return () => {
       active = false
@@ -239,9 +245,31 @@ export function SavedPayoutAccounts() {
             does not change a destination already attached to a campaign or payout.
           </Typography>
         </>
-      ) : (
-        <Typography>Loading payout accounts…</Typography>
-      )}
+      ) : loading && !error ? (
+        <Box
+          role="status"
+          aria-label="Loading payout accounts"
+          aria-busy="true"
+          sx={{
+            display: 'grid',
+            gap: 2,
+            '& .MuiSkeleton-root': {
+              borderRadius: 'var(--shape-sm)',
+              '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+            },
+          }}
+        >
+          <Skeleton variant="text" width="45%" height={36} />
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
+            <Skeleton variant="rounded" height={130} />
+            <Skeleton variant="rounded" height={130} />
+          </Box>
+          <Skeleton variant="text" width="35%" height={32} />
+          <Skeleton variant="rounded" height={56} />
+          <Skeleton variant="rounded" height={56} />
+          <Skeleton variant="rounded" width={190} height={44} />
+        </Box>
+      ) : null}
     </Box>
   )
 }

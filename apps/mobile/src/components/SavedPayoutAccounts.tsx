@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { View } from 'react-native'
 import { Text } from 'react-native-paper'
 import { api } from '@/lib/api'
-import { Button } from './Loading'
+import { Button, Skeleton } from './Loading'
 import { BrandedTextInput as Input } from './BrandedTextInput'
 import { SelectionField } from './SelectionField'
 import { useNeu } from '@/context/ColorModeContext'
@@ -18,6 +18,7 @@ type Data = { planName: string; limit: number; accounts: SavedAccount[] }
 export function SavedPayoutAccounts() {
   const neu = useNeu()
   const [data, setData] = useState<Data | null>(null)
+  const [loading, setLoading] = useState(true)
   const [banks, setBanks] = useState<{ code: string; name: string }[]>([])
   const [type, setType] = useState('mobile_money')
   const [bankCode, setBank] = useState('')
@@ -28,6 +29,8 @@ export function SavedPayoutAccounts() {
   const [retry, setRetry] = useState(0)
   useEffect(() => {
     let active = true
+    setLoading(true)
+    setError('')
     api
       .get<Data>('/payout-accounts')
       .then((d) => {
@@ -38,6 +41,9 @@ export function SavedPayoutAccounts() {
       })
       .catch((e) => {
         if (active) setError(e.message)
+      })
+      .finally(() => {
+        if (active) setLoading(false)
       })
     return () => {
       active = false
@@ -87,7 +93,19 @@ export function SavedPayoutAccounts() {
       <Text variant="headlineMedium">Payout accounts</Text>
       {error && <Text accessibilityRole="alert">{error}</Text>}
       {!data ? (
-        <Text>Loading your accounts…</Text>
+        loading && !error ? (
+          <View
+            accessibilityLabel="Loading payout accounts"
+            accessibilityState={{ busy: true }}
+            style={{ gap: 16 }}
+          >
+            <Skeleton width="55%" height={28} />
+            <Skeleton height={130} />
+            <Skeleton height={56} />
+            <Skeleton height={56} />
+            <Skeleton width="60%" height={44} />
+          </View>
+        ) : null
       ) : (
         <>
           <Text>
