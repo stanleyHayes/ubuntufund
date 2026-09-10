@@ -114,6 +114,7 @@ import { ApprovePayoutUseCase } from './application/use-cases/ApprovePayoutUseCa
 import { ListCampaignPayoutsUseCase } from './application/use-cases/ListCampaignPayoutsUseCase.js';
 import { ListPayoutsUseCase } from './application/use-cases/ListPayoutsUseCase.js';
 import { GetDonationIntentPublicUseCase } from './application/use-cases/GetDonationIntentPublicUseCase.js';
+import { VerifyDonationIntentUseCase } from './application/use-cases/VerifyDonationIntentUseCase.js';
 import { AddDonationMessageUseCase } from './application/use-cases/AddDonationMessageUseCase.js';
 import { CreateShortLinkUseCase } from './application/use-cases/CreateShortLinkUseCase.js';
 import { ResolveShortLinkUseCase } from './application/use-cases/ResolveShortLinkUseCase.js';
@@ -1136,7 +1137,8 @@ export function createApp(): express.Express {
     createDonationIntentUseCase,
     recordPaymentAttemptUseCase,
     getDonationIntentPublicUseCase,
-    addDonationMessageUseCase
+    addDonationMessageUseCase,
+    new VerifyDonationIntentUseCase(donationIntentRepo, reconcilePaymentsUseCase)
   );
   const paystackWebhookController = new PaystackWebhookController(
     handlePaystackWebhookUseCase

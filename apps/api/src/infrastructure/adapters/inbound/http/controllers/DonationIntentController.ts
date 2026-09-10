@@ -5,6 +5,7 @@ import type { CreateDonationIntentUseCase } from '../../../../../application/use
 import type { RecordPaymentAttemptUseCase } from '../../../../../application/use-cases/RecordPaymentAttemptUseCase.js';
 import type { GetDonationIntentPublicUseCase } from '../../../../../application/use-cases/GetDonationIntentPublicUseCase.js';
 import type { AddDonationMessageUseCase } from '../../../../../application/use-cases/AddDonationMessageUseCase.js';
+import type { VerifyDonationIntentUseCase } from '../../../../../application/use-cases/VerifyDonationIntentUseCase.js';
 import { toDonationIntentPublicView } from '../../../../../application/use-cases/GetDonationIntentPublicUseCase.js';
 
 function firstHeaderValue(value: unknown): string | undefined {
@@ -18,7 +19,8 @@ export class DonationIntentController {
     private readonly createDonationIntentUseCase: CreateDonationIntentUseCase,
     private readonly recordPaymentAttemptUseCase: RecordPaymentAttemptUseCase,
     private readonly getDonationIntentPublicUseCase: GetDonationIntentPublicUseCase,
-    private readonly addDonationMessageUseCase: AddDonationMessageUseCase
+    private readonly addDonationMessageUseCase: AddDonationMessageUseCase,
+    private readonly verifyDonationIntentUseCase: VerifyDonationIntentUseCase
   ) {}
 
   /** POST /donation-intents — PUBLIC (guests allowed). Optional auth. */
@@ -109,6 +111,17 @@ export class DonationIntentController {
         message: 'Donation intent retrieved',
         status: 200,
       });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /** POST /donation-intents/:id/verify — verify a guest's hosted checkout server-side. */
+  verify = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const view = await this.verifyDonationIntentUseCase.execute(String(req.params.id), req.body.reference);
+      res.setHeader('Cache-Control', 'no-store');
+      res.json({ data: view, message: 'Payment status verified', status: 200 });
     } catch (error) {
       next(error);
     }

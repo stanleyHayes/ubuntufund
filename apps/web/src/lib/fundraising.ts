@@ -150,6 +150,11 @@ export function getDonationIntentStatus(id: string): Promise<DonationIntentPubli
   return api.get<DonationIntentPublicView>(`/donation-intents/${id}/public`)
 }
 
+/** Ask the server to confirm the hosted charge when a webhook has not arrived. */
+export function verifyDonationIntent(id: string, reference: string): Promise<DonationIntentPublicView> {
+  return api.post<DonationIntentPublicView>(`/donation-intents/${encodeURIComponent(id)}/verify`, { reference })
+}
+
 // ---------------------------------------------------------------------------
 // Campaigns (public, by slug)
 // ---------------------------------------------------------------------------

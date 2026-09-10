@@ -439,6 +439,7 @@ export class PaystackGateway implements PaymentGatewayPort {
     try {
       res = await fetch(`${PaystackGateway.BASE_URL}${path}`, {
         method,
+        signal: AbortSignal.timeout(10_000),
         headers: this.authHeaders(),
         body: body === undefined ? undefined : JSON.stringify(body),
       });

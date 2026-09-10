@@ -12,6 +12,7 @@ import { keyframes } from '@emotion/react'
 import { ItemNotFound, BrandLogo, formatCurrency, SHAPE } from '@ubuntu-fund/ui'
 import {
   getDonationIntentStatus,
+  verifyDonationIntent,
   campaignPublicPath,
   donatePath,
   type DonationIntentPublicView,
@@ -53,7 +54,7 @@ function readHandoff(reference: string | null): PendingDonation | null {
     const raw = localStorage.getItem(HANDOFF_KEY)
     if (!raw) return null
     const store: Record<string, PendingDonation> = JSON.parse(raw)
-    if (reference && store[reference]) return store[reference]
+    if (reference) return store[reference] ?? null
     return store.__last ?? null
   } catch {
     return null
@@ -128,7 +129,8 @@ export function DonateCallbackPage() {
   // keeps it a plain, render-safe derivation of the URL reference.
   const handoff = useMemo(() => readHandoff(reference), [reference])
   const intentId =
-    explicitId ?? handoff?.intentId ?? intentIdFromReference(reference)
+    intentIdFromReference(reference) ?? explicitId ?? handoff?.intentId
+  const paymentReference = reference ?? handoff?.reference
 
   const [phase, setPhase] = useState<Phase>(intentId ? 'resolving' : 'missing')
   const [view, setView] = useState<DonationIntentPublicView | null>(null)
@@ -149,7 +151,18 @@ export function DonateCallbackPage() {
     async function poll() {
       attempts += 1
       try {
-        const status = await getDonationIntentStatus(intentId as string)
+        // Retry provider verification every third poll; intervening polls read
+        // our settled status. Neither redirect parameters nor receipts prove it.
+        let status: DonationIntentPublicView
+        if (paymentReference && attempts % 3 === 1) {
+          try {
+            status = await verifyDonationIntent(intentId as string, paymentReference)
+          } catch {
+            status = await getDonationIntentStatus(intentId as string)
+          }
+        } else {
+          status = await getDonationIntentStatus(intentId as string)
+        }
         if (!active) return
         setView(status)
 
@@ -188,7 +201,7 @@ export function DonateCallbackPage() {
       if (timer) clearTimeout(timer)
     }
     // pollNonce lets "Keep checking" restart the loop after a timeout.
-  }, [intentId, pollNonce])
+  }, [intentId, paymentReference, pollNonce])
 
   const campaignSlug = handoff?.slug
   const campaignPath = campaignSlug
@@ -341,8 +354,8 @@ export function DonateCallbackPage() {
               Still confirming your payment
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 420, mx: 'auto', mb: 4 }}>
-              This is taking a little longer than usual. Your payment is verified securely in the
-              background, so if it went through you'll get an email receipt shortly — no need to pay again.
+              We haven’t confirmed this payment yet. If you received a Paystack receipt, don’t pay
+              again. Choose Keep checking to verify its status securely.
             </Typography>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, justifyContent: 'center' }}>
               <Button

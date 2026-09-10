@@ -118,6 +118,7 @@ export class ReconcilePaymentsUseCase {
   }
 
   private async reconcileOne(intent: DonationIntentEntity): Promise<ReconcileOutcome> {
+    if (intent.status !== 'PENDING' && intent.status !== 'CREATED') return 'skipped';
     if (!intent.providerRef) return 'skipped';
     const gateway = this.gatewayRegistry.get(intent.provider);
     if (!gateway || !gateway.isConfigured()) return 'skipped';
@@ -138,9 +139,11 @@ export class ReconcilePaymentsUseCase {
       const currencyMismatch =
         verified.currency.toUpperCase() !== intent.currency.toUpperCase();
       const amountTolerance = 0.5 / 10 ** minorUnitExponent(intent.currency);
-      const amountMismatch =
+      const amountMismatch = !Number.isFinite(verified.amount) ||
         Math.abs(verified.amount - intent.gross) > amountTolerance;
-      if (currencyMismatch || amountMismatch) {
+      const referenceMismatch = verified.reference !== intent.providerRef;
+      const invalidFees = !Number.isFinite(verified.fees) || verified.fees < 0 || verified.fees > verified.amount;
+      if (currencyMismatch || amountMismatch || referenceMismatch || invalidFees) {
         logger.warn(
           {
             intentId: intent.id,

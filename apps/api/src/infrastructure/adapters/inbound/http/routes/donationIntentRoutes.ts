@@ -67,6 +67,12 @@ export function createDonationIntentRoutes(
   );
 
   router.get('/:id/public', controller.getPublic);
+  router.post(
+    '/:id/verify',
+    donationIntentRateLimiter,
+    validate(z.object({ reference: z.string().min(1).max(200) })),
+    controller.verify
+  );
 
   return router;
 }
