@@ -112,3 +112,14 @@ describe('Payouts — disabled without a Paystack secret key', () => {
     await expect(useCase.execute('GHS')).rejects.toBeInstanceOf(AppError)
   })
 })
+
+it('uses Telecel branding without changing the Paystack recipient code', async () => {
+  const list = new ListBanksUseCase({
+    listBanks: async () => [
+      { name: 'Vodafone', code: 'VOD', currency: 'GHS', type: 'mobile_money', active: true },
+    ],
+  } as never)
+  expect(await list.execute('GHS', 'mobile_money')).toEqual([
+    { name: 'Telecel Cash', code: 'VOD', currency: 'GHS', type: 'mobile_money', active: true },
+  ])
+})

@@ -23,7 +23,12 @@ import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import ShieldRoundedIcon from '@mui/icons-material/ShieldRounded'
 import ErrorOutlineRoundedIcon from '@mui/icons-material/ErrorOutlineRounded'
 import { Link as RouterLink } from 'react-router-dom'
-import { CampaignCategory, CampaignPriority, CampaignStatus, CollaboratorRole } from '@ubuntu-fund/types'
+import {
+  CampaignCategory,
+  CampaignPriority,
+  CampaignStatus,
+  CollaboratorRole,
+} from '@ubuntu-fund/types'
 import { formatCurrency, ImageUpload, SHAPE, LoadingDots } from '@ubuntu-fund/ui'
 import { useCreateCampaign } from '@/hooks/useCampaigns'
 import Alert from '@mui/material/Alert'
@@ -45,29 +50,85 @@ const INK_SECONDARY = 'text.secondary'
 const GOLD = '#C7A24A'
 const GOLD_DARK = 'var(--text-warning)'
 const CLAY = 'var(--text-error)'
-const DIVIDER = '#DAD7CD'
+const DIVIDER = 'var(--border-subtle)'
 
 // ---------------------------------------------------------------------------
 // Static data
 // ---------------------------------------------------------------------------
-const CATEGORY_ICONS = { medical: LocalHospitalRoundedIcon, education: SchoolRoundedIcon, emergency: EmergencyRoundedIcon, business: BusinessCenterRoundedIcon, community: Diversity3RoundedIcon, religious: ChurchRoundedIcon, creative: PaletteRoundedIcon }
+const CATEGORY_ICONS = {
+  medical: LocalHospitalRoundedIcon,
+  education: SchoolRoundedIcon,
+  emergency: EmergencyRoundedIcon,
+  business: BusinessCenterRoundedIcon,
+  community: Diversity3RoundedIcon,
+  religious: ChurchRoundedIcon,
+  creative: PaletteRoundedIcon,
+}
 
 const CATEGORIES = Object.values(CampaignCategory).map((value) => ({
   value,
   label: value.charAt(0).toUpperCase() + value.slice(1).replace(/_/g, ' '),
 }))
 
-const PRIORITIES: { value: CampaignPriority; label: string; blurb: string; tone: string; tint: string }[] = [
-  { value: CampaignPriority.NORMAL, label: 'Normal', blurb: 'A steady campaign with standard listing.', tone: FOREST, tint: 'rgba(46, 61, 47, 0.07)' },
-  { value: CampaignPriority.URGENT, label: 'Urgent', blurb: 'A time-sensitive need with a near-term deadline.', tone: GOLD_DARK, tint: 'rgba(199, 162, 74, 0.12)' },
-  { value: CampaignPriority.CRITICAL, label: 'Critical', blurb: 'An immediate, critical need requiring urgent attention.', tone: CLAY, tint: 'rgba(165, 67, 47, 0.10)' },
+const PRIORITIES: {
+  value: CampaignPriority
+  label: string
+  blurb: string
+  tone: string
+  tint: string
+}[] = [
+  {
+    value: CampaignPriority.NORMAL,
+    label: 'Normal',
+    blurb: 'A steady campaign with standard listing.',
+    tone: FOREST,
+    tint: 'rgba(46, 61, 47, 0.07)',
+  },
+  {
+    value: CampaignPriority.URGENT,
+    label: 'Urgent',
+    blurb: 'A time-sensitive need with a near-term deadline.',
+    tone: GOLD_DARK,
+    tint: 'rgba(199, 162, 74, 0.12)',
+  },
+  {
+    value: CampaignPriority.CRITICAL,
+    label: 'Critical',
+    blurb: 'An immediate, critical need requiring urgent attention.',
+    tone: CLAY,
+    tint: 'rgba(165, 67, 47, 0.10)',
+  },
 ]
 
 const STEPS = [
-  { key: 'basics', label: 'Basics', hint: 'Title & category', heading: 'The essentials', sub: 'What is this campaign, and where does it belong?' },
-  { key: 'story', label: 'Story', hint: 'Details & media', heading: 'Your story', sub: 'Explain the need and who it helps.' },
-  { key: 'goal', label: 'Goal & timeline', hint: 'Target & dates', heading: 'Goal & timeline', sub: 'How much, by when, and how urgent.' },
-  { key: 'review', label: 'Review', hint: 'Confirm & publish', heading: 'Review & publish', sub: 'Check everything, then send it for review.' },
+  {
+    key: 'basics',
+    label: 'Basics',
+    hint: 'Title & category',
+    heading: 'The essentials',
+    sub: 'What is this campaign, and where does it belong?',
+  },
+  {
+    key: 'story',
+    label: 'Story',
+    hint: 'Details & media',
+    heading: 'Your story',
+    sub: 'Explain the need and who it helps.',
+  },
+  {
+    key: 'goal',
+    label: 'Goal & timeline',
+    hint: 'Target & dates',
+    heading: 'Goal & timeline',
+    sub: 'How much, by when, and how urgent.',
+  },
+  {
+    key: 'review',
+    label: 'Review',
+    hint: 'Confirm & publish',
+    heading: 'Review & publish',
+    sub: 'Check everything, then send it for review.',
+  },
 ] as const
 
 // Fields validated on each step (priority always has a value)
@@ -127,7 +188,8 @@ function validate(data: FormData): FormErrors {
   if (!data.description.trim()) e.description = 'Tell your story'
   else if (data.description.trim().length < 20) e.description = 'At least 20 characters'
 
-  if (parseBeneficiaries(data.beneficiaries).length === 0) e.beneficiaries = 'Name at least one beneficiary'
+  if (parseBeneficiaries(data.beneficiaries).length === 0)
+    e.beneficiaries = 'Name at least one beneficiary'
 
   if (!data.goalAmount) e.goalAmount = 'Set a goal amount'
   else if (!Number.isFinite(Number(data.goalAmount))) e.goalAmount = 'Enter a number'
@@ -168,7 +230,13 @@ function DiamondBullet({ color = GOLD, size = 7 }: { color?: string; size?: numb
   return (
     <Box
       aria-hidden
-      sx={{ width: size, height: size, flex: '0 0 auto', bgcolor: color, transform: 'rotate(45deg)' }}
+      sx={{
+        width: size,
+        height: size,
+        flex: '0 0 auto',
+        bgcolor: color,
+        transform: 'rotate(45deg)',
+      }}
     />
   )
 }
@@ -192,7 +260,9 @@ function WizardStepper({ current }: { current: number }) {
         <Eyebrow>
           Step {current + 1} of {STEPS.length}
         </Eyebrow>
-        <Typography sx={{ fontWeight: 800, fontSize: '1.05rem', color: INK, mt: 0.25 }}>{STEPS[current].label}</Typography>
+        <Typography sx={{ fontWeight: 800, fontSize: '1.05rem', color: INK, mt: 0.25 }}>
+          {STEPS[current].label}
+        </Typography>
       </Box>
 
       <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
@@ -201,7 +271,15 @@ function WizardStepper({ current }: { current: number }) {
           const active = i === current
           return (
             <Fragment key={s.key}>
-              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: '0 0 auto', px: { xs: 0, sm: 0.5 } }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  flex: '0 0 auto',
+                  px: { xs: 0, sm: 0.5 },
+                }}
+              >
                 <Box
                   sx={{
                     width: 36,
@@ -217,7 +295,8 @@ function WizardStepper({ current }: { current: number }) {
                     bgcolor: active ? GOLD : done ? FOREST : 'transparent',
                     color: active ? FOREST_DARK : done ? '#F5F2EA' : INK_SECONDARY,
                     boxShadow: active ? `0 0 0 4px rgba(199, 162, 74, 0.18)` : 'none',
-                    transition: 'background-color 200ms ease, border-color 200ms ease, box-shadow 200ms ease',
+                    transition:
+                      'background-color 200ms ease, border-color 200ms ease, box-shadow 200ms ease',
                     '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
                   }}
                 >
@@ -279,10 +358,26 @@ function WizardStepper({ current }: { current: number }) {
 // ---------------------------------------------------------------------------
 // Review helpers
 // ---------------------------------------------------------------------------
-function ReviewSection({ title, onEdit, children }: { title: string; onEdit: () => void; children: ReactNode }) {
+function ReviewSection({
+  title,
+  onEdit,
+  children,
+}: {
+  title: string
+  onEdit: () => void
+  children: ReactNode
+}) {
   return (
-    <Box sx={{ py: 2, borderTop: `1px solid ${DIVIDER}`, '&:first-of-type': { borderTop: 'none', pt: 0 } }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.25 }}>
+    <Box
+      sx={{
+        py: 2,
+        borderTop: `1px solid ${DIVIDER}`,
+        '&:first-of-type': { borderTop: 'none', pt: 0 },
+      }}
+    >
+      <Box
+        sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.25 }}
+      >
         <Eyebrow>{title}</Eyebrow>
         <Button
           type="button"
@@ -300,8 +395,17 @@ function ReviewSection({ title, onEdit, children }: { title: string; onEdit: () 
 
 function ReviewItem({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '148px 1fr' }, gap: { xs: 0.25, sm: 2 }, alignItems: 'start' }}>
-      <Typography sx={{ fontSize: '0.8rem', color: INK_SECONDARY, fontWeight: 600 }}>{label}</Typography>
+    <Box
+      sx={{
+        display: 'grid',
+        gridTemplateColumns: { xs: '1fr', sm: '148px 1fr' },
+        gap: { xs: 0.25, sm: 2 },
+        alignItems: 'start',
+      }}
+    >
+      <Typography sx={{ fontSize: '0.8rem', color: INK_SECONDARY, fontWeight: 600 }}>
+        {label}
+      </Typography>
       <Box sx={{ fontSize: '0.9rem', color: INK, lineHeight: 1.55 }}>{children}</Box>
     </Box>
   )
@@ -314,16 +418,46 @@ export function CampaignForm() {
   const { options, error: optionsError, retry } = useCampaignCreationOptions()
   const [invitations, setInvitations] = useState('')
   const [split, setSplit] = useState(false)
-  const [rows, setRows] = useState<SplitRow[]>([{ name: '', email: '', percent: '50' }, { name: '', email: '', percent: '50' }])
+  const [rows, setRows] = useState<SplitRow[]>([
+    { name: '', email: '', percent: '50' },
+    { name: '', email: '', percent: '50' },
+  ])
   const [setupErrors, setSetupErrors] = useState<string[]>([])
-  const [pendingSetup, setPendingSetup] = useState<{ path: string; payload: unknown; label: string }[]>([])
+  const [pendingSetup, setPendingSetup] = useState<
+    { path: string; payload: unknown; label: string }[]
+  >([])
   const [setupBusy, setSetupBusy] = useState(false)
   const [createdStatus, setCreatedStatus] = useState<CampaignStatus | null>(null)
-  const inviteEmails = [...new Set(invitations.split(/[\s,;]+/).map(email => email.trim().toLowerCase()).filter(Boolean))]
-  const extrasError = inviteEmails.length && !options?.plan.campaignCollaboration ? 'Your plan does not include invitations.'
-    : inviteEmails.some(email => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) ? 'Enter valid collaborator email addresses.'
-    : options && options.plan.maxCollaboratorsPerCampaign >= 0 && inviteEmails.length > options.plan.maxCollaboratorsPerCampaign ? `Your plan allows ${options.plan.maxCollaboratorsPerCampaign} collaborators.`
-    : split && (!options?.canSplit || rows.some(row => !row.name.trim() || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(row.email) || !Number.isFinite(Number(row.percent)) || Number(row.percent) <= 0 || !/^\d+(\.\d{1,2})?$/.test(row.percent)) || rows.reduce((sum, row) => sum + Math.round(Number(row.percent) * 100), 0) !== 10000) ? 'Check split eligibility, names, emails, and shares totalling 100% (up to two decimals).' : ''
+  const inviteEmails = [
+    ...new Set(
+      invitations
+        .split(/[\s,;]+/)
+        .map((email) => email.trim().toLowerCase())
+        .filter(Boolean),
+    ),
+  ]
+  const extrasError =
+    inviteEmails.length && !options?.plan.campaignCollaboration
+      ? 'Your plan does not include invitations.'
+      : inviteEmails.some((email) => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))
+        ? 'Enter valid collaborator email addresses.'
+        : options &&
+            options.plan.maxCollaboratorsPerCampaign >= 0 &&
+            inviteEmails.length > options.plan.maxCollaboratorsPerCampaign
+          ? `Your plan allows ${options.plan.maxCollaboratorsPerCampaign} collaborators.`
+          : split &&
+              (!options?.canSplit ||
+                rows.some(
+                  (row) =>
+                    !row.name.trim() ||
+                    !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(row.email) ||
+                    !Number.isFinite(Number(row.percent)) ||
+                    Number(row.percent) <= 0 ||
+                    !/^\d+(\.\d{1,2})?$/.test(row.percent),
+                ) ||
+                rows.reduce((sum, row) => sum + Math.round(Number(row.percent) * 100), 0) !== 10000)
+            ? 'Check split eligibility, names, emails, and shares totalling 100% (up to two decimals).'
+            : ''
   const [formData, setFormData] = useState<FormData>({
     title: '',
     summary: '',
@@ -346,14 +480,17 @@ export function CampaignForm() {
 
   const errors = useMemo(() => {
     const result = validate(formData)
-    if (options?.maxGoal != null && Number(formData.goalAmount) > options.maxGoal) result.goalAmount = `Your current limit is ${formatCurrency(options.maxGoal)}. Reduce the goal. A higher plan does not override an account-specific compliance cap.`
-    if (formData.coverImageUrl && options?.plan.maxMediaPerCampaign === 0) result.coverImageUrl = 'Your plan does not include campaign images.'
+    if (options?.maxGoal != null && Number(formData.goalAmount) > options.maxGoal)
+      result.goalAmount = `Your current limit is ${formatCurrency(options.maxGoal)}. Reduce the goal. A higher plan does not override an account-specific compliance cap.`
+    if (formData.coverImageUrl && options?.plan.maxMediaPerCampaign === 0)
+      result.coverImageUrl = 'Your plan does not include campaign images.'
     return result
   }, [formData, options])
   const isStepValid = STEP_FIELDS[step].every((f) => !errors[f])
 
   const errFor = (f: keyof FormErrors) => Boolean(touched[f] && errors[f])
-  const helperFor = (f: keyof FormErrors, fallback?: ReactNode): ReactNode => (touched[f] && errors[f] ? errors[f] : fallback)
+  const helperFor = (f: keyof FormErrors, fallback?: ReactNode): ReactNode =>
+    touched[f] && errors[f] ? errors[f] : fallback
   const blur = (f: keyof FormErrors) => () => setTouched((t) => ({ ...t, [f]: true }))
 
   function change(field: keyof FormData) {
@@ -384,10 +521,16 @@ export function CampaignForm() {
     const failed: typeof pendingSetup = []
     const messages: string[] = []
     for (const action of pendingSetup) {
-      try { await api.post(action.path, action.payload) }
-      catch (error) { failed.push(action); messages.push(`${action.label}: ${error instanceof Error ? error.message : 'failed'}`) }
+      try {
+        await api.post(action.path, action.payload)
+      } catch (error) {
+        failed.push(action)
+        messages.push(`${action.label}: ${error instanceof Error ? error.message : 'failed'}`)
+      }
     }
-    setPendingSetup(failed); setSetupErrors(messages); setSetupBusy(false)
+    setPendingSetup(failed)
+    setSetupErrors(messages)
+    setSetupBusy(false)
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -396,9 +539,20 @@ export function CampaignForm() {
     if (!options?.canCreate || extrasError || setupBusy) return
     const all = errors
     if (Object.keys(all).length > 0) {
-      setTouched({ title: true, summary: true, category: true, description: true, beneficiaries: true, coverImageUrl: true, goalAmount: true, endDate: true })
+      setTouched({
+        title: true,
+        summary: true,
+        category: true,
+        description: true,
+        beneficiaries: true,
+        coverImageUrl: true,
+        goalAmount: true,
+        endDate: true,
+      })
       // Jump back to the first step that still has an error.
-      const firstBad = Object.keys(STEP_FIELDS).find((k) => STEP_FIELDS[Number(k)].some((f) => all[f]))
+      const firstBad = Object.keys(STEP_FIELDS).find((k) =>
+        STEP_FIELDS[Number(k)].some((f) => all[f]),
+      )
       if (firstBad !== undefined) setStep(Number(firstBad))
       return
     }
@@ -426,12 +580,48 @@ export function CampaignForm() {
       const failures: string[] = []
       const pending: typeof pendingSetup = []
       for (const email of inviteEmails) {
-        try { await api.post(`/campaigns/${created.id}/collaborators/invite`, { userEmail: email, role: CollaboratorRole.EDITOR, revenueSharePercent: 0 }) }
-        catch (error) { pending.push({ path: `/campaigns/${created.id}/collaborators/invite`, payload: { userEmail: email, role: CollaboratorRole.EDITOR, revenueSharePercent: 0 }, label: `Invitation to ${email}` }); failures.push(`Invitation to ${email}: ${error instanceof Error ? error.message : 'failed'}`) }
+        try {
+          await api.post(`/campaigns/${created.id}/collaborators/invite`, {
+            userEmail: email,
+            role: CollaboratorRole.EDITOR,
+            revenueSharePercent: 0,
+          })
+        } catch (error) {
+          pending.push({
+            path: `/campaigns/${created.id}/collaborators/invite`,
+            payload: { userEmail: email, role: CollaboratorRole.EDITOR, revenueSharePercent: 0 },
+            label: `Invitation to ${email}`,
+          })
+          failures.push(
+            `Invitation to ${email}: ${error instanceof Error ? error.message : 'failed'}`,
+          )
+        }
       }
       if (split) {
-        try { await api.post(`/campaigns/${created.id}/split`, { allocations: rows.map(row => ({ name: row.name.trim(), email: row.email.trim(), shareBps: Math.round(Number(row.percent) * 100) })) }) }
-        catch (error) { pending.push({ path: `/campaigns/${created.id}/split`, payload: { allocations: rows.map(row => ({ name: row.name.trim(), email: row.email.trim(), shareBps: Math.round(Number(row.percent) * 100) })) }, label: 'Split draft' }); failures.push(`Split draft: ${error instanceof Error ? error.message : 'could not be saved'}`) }
+        try {
+          await api.post(`/campaigns/${created.id}/split`, {
+            allocations: rows.map((row) => ({
+              name: row.name.trim(),
+              email: row.email.trim(),
+              shareBps: Math.round(Number(row.percent) * 100),
+            })),
+          })
+        } catch (error) {
+          pending.push({
+            path: `/campaigns/${created.id}/split`,
+            payload: {
+              allocations: rows.map((row) => ({
+                name: row.name.trim(),
+                email: row.email.trim(),
+                shareBps: Math.round(Number(row.percent) * 100),
+              })),
+            },
+            label: 'Split draft',
+          })
+          failures.push(
+            `Split draft: ${error instanceof Error ? error.message : 'could not be saved'}`,
+          )
+        }
       }
       setPendingSetup(pending)
       setSetupErrors(failures)
@@ -475,16 +665,61 @@ export function CampaignForm() {
         <Typography sx={{ mt: 1, fontWeight: 800, fontSize: '1.5rem', color: INK }}>
           {formData.title || 'Your campaign'} is on its way
         </Typography>
-        <Typography sx={{ mt: 1.5, color: INK_SECONDARY, maxWidth: 440, mx: 'auto', lineHeight: 1.6 }}>
-          {createdStatus === CampaignStatus.ACTIVE ? 'Your campaign is live. Share it with your community.' : 'Your campaign is awaiting review. You can share it once it is live.'}
+        <Typography
+          sx={{ mt: 1.5, color: INK_SECONDARY, maxWidth: 440, mx: 'auto', lineHeight: 1.6 }}
+        >
+          {createdStatus === CampaignStatus.ACTIVE
+            ? 'Your campaign is live. Share it with your community.'
+            : 'Your campaign is awaiting review. You can share it once it is live.'}
         </Typography>
-        {setupErrors.map(message => <Alert severity="warning" key={message} sx={{ mt: 2, textAlign: 'left' }}>Campaign created, but {message}. Retry the unfinished setup below; do not recreate the campaign.</Alert>)}
-        {!!pendingSetup.length && <Button sx={{ mt: 2 }} disabled={setupBusy} onClick={retrySetup}>{setupBusy ? <><LoadingDots size={6} /> <span>Retrying…</span></> : 'Retry unfinished setup'}</Button>}
-        {split && !setupErrors.some(message => message.startsWith('Split draft')) && <Alert severity="info" sx={{ mt: 2 }}>Split saved as a draft. Beneficiary consent and activation are still required.</Alert>}
-        {createdId && !split && <Box sx={{ textAlign: 'left', mt: 3 }}><Typography variant="h6">Next: set up your payout account</Typography><Typography>Add an account now so receiving your campaign funds is ready for review.</Typography><CampaignCashout campaignId={createdId} initiallyExpanded /></Box>}
-        {createdId && split && !setupErrors.some(message => message.startsWith('Split draft')) && <CampaignSplitSetup campaignId={createdId} />}
-        {createdId && createdStatus === CampaignStatus.ACTIVE && <Box sx={{ mt: 2 }}><ShareCampaignButton campaignId={createdId} title={formData.title} url={`${window.location.origin}/campaigns/${createdId}`} /></Box>}
-        <Box sx={{ mt: 3.5, display: 'flex', gap: 1.5, justifyContent: 'center', flexWrap: 'wrap' }}>
+        {setupErrors.map((message) => (
+          <Alert severity="warning" key={message} sx={{ mt: 2, textAlign: 'left' }}>
+            Campaign created, but {message}. Retry the unfinished setup below; do not recreate the
+            campaign.
+          </Alert>
+        ))}
+        {!!pendingSetup.length && (
+          <Button sx={{ mt: 2 }} disabled={setupBusy} onClick={retrySetup}>
+            {setupBusy ? (
+              <>
+                <LoadingDots size={6} /> <span>Retrying…</span>
+              </>
+            ) : (
+              'Retry unfinished setup'
+            )}
+          </Button>
+        )}
+        {split && !setupErrors.some((message) => message.startsWith('Split draft')) && (
+          <Alert severity="info" sx={{ mt: 2 }}>
+            Split saved as a draft. Beneficiary consent and activation are still required.
+          </Alert>
+        )}
+        {createdId && !split && (
+          <Box sx={{ textAlign: 'left', mt: 3 }}>
+            <Typography variant="h6">Next: set up your payout account</Typography>
+            <Typography>
+              Add an account now so receiving your campaign funds is ready for review.
+            </Typography>
+            <CampaignCashout campaignId={createdId} initiallyExpanded />
+          </Box>
+        )}
+        {createdId &&
+          split &&
+          !setupErrors.some((message) => message.startsWith('Split draft')) && (
+            <CampaignSplitSetup campaignId={createdId} />
+          )}
+        {createdId && createdStatus === CampaignStatus.ACTIVE && (
+          <Box sx={{ mt: 2 }}>
+            <ShareCampaignButton
+              campaignId={createdId}
+              title={formData.title}
+              url={`${window.location.origin}/campaigns/${createdId}`}
+            />
+          </Box>
+        )}
+        <Box
+          sx={{ mt: 3.5, display: 'flex', gap: 1.5, justifyContent: 'center', flexWrap: 'wrap' }}
+        >
           <Button
             component={RouterLink}
             to={createdId ? `/campaigns/${createdId}` : '/my-campaigns'}
@@ -506,29 +741,62 @@ export function CampaignForm() {
 
   return (
     <Box component="form" onSubmit={handleSubmit} noValidate>
-      {!options && !optionsError && <Alert severity="info" sx={{ mb: 2 }}>Checking your campaign limits…</Alert>}
-      {optionsError && <Alert severity="error" action={<Button onClick={retry}>Retry</Button>} sx={{ mb: 2 }}>{optionsError}</Alert>}
-      {options && <Alert severity={options.canCreate ? 'info' : 'warning'} sx={{ mb: 2 }}>
-        <Typography variant="body2">{options.plan.name}: {options.maxGoal === null ? 'No goal limit' : `Goals up to ${formatCurrency(options.maxGoal)}`} · {options.activeCount} active/pending campaigns.</Typography>
-        {options.maxGoal !== null && (options.plan.maxCampaignGoal < 0 || options.maxGoal < options.plan.maxCampaignGoal) && <Typography variant="body2">Your account has a compliance limit below this plan’s maximum. Contact support for a review before increasing your goal.</Typography>}
-        {!options.canCreate && <Typography variant="body2" sx={{ mt: 0.5 }}>
-          {options.creationBlockReason === 'verification_required'
-            ? 'Complete account verification before creating your first campaign. You have not reached your plan’s campaign limit.'
-            : options.creationBlockReason === 'verification_limit'
-              ? `Your current verification level allows ${options.verificationCampaignLimit} campaigns in total. Review your verification to create more.`
-              : options.creationBlockReason === 'plan_limit'
-                ? 'Your plan’s active campaign limit has been reached. Finish an existing campaign or change your plan to create another.'
-                : 'Campaign creation is currently unavailable. Review your account verification and plan eligibility.'}
-        </Typography>}
-        <Button component={RouterLink} to={options.creationBlockReason?.startsWith('verification_') ? '/kyc' : '/subscription'} size="small">
-          {options.creationBlockReason?.startsWith('verification_') ? 'Review verification' : 'Manage plan'}
-        </Button>
-      </Alert>}
+      {!options && !optionsError && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Checking your campaign limits…
+        </Alert>
+      )}
+      {optionsError && (
+        <Alert severity="error" action={<Button onClick={retry}>Retry</Button>} sx={{ mb: 2 }}>
+          {optionsError}
+        </Alert>
+      )}
+      {options && (
+        <Alert severity={options.canCreate ? 'info' : 'warning'} sx={{ mb: 2 }}>
+          <Typography variant="body2">
+            {options.plan.name}:{' '}
+            {options.maxGoal === null
+              ? 'No goal limit'
+              : `Goals up to ${formatCurrency(options.maxGoal)}`}{' '}
+            · {options.activeCount} active/pending campaigns.
+          </Typography>
+          {options.maxGoal !== null &&
+            (options.plan.maxCampaignGoal < 0 ||
+              options.maxGoal < options.plan.maxCampaignGoal) && (
+              <Typography variant="body2">
+                Your account has a compliance limit below this plan’s maximum. Contact support for a
+                review before increasing your goal.
+              </Typography>
+            )}
+          {!options.canCreate && (
+            <Typography variant="body2" sx={{ mt: 0.5 }}>
+              {options.creationBlockReason === 'verification_required'
+                ? 'Complete account verification before creating your first campaign. You have not reached your plan’s campaign limit.'
+                : options.creationBlockReason === 'verification_limit'
+                  ? `Your current verification level allows ${options.verificationCampaignLimit} campaigns in total. Review your verification to create more.`
+                  : options.creationBlockReason === 'plan_limit'
+                    ? 'Your plan’s active campaign limit has been reached. Finish an existing campaign or change your plan to create another.'
+                    : 'Campaign creation is currently unavailable. Review your account verification and plan eligibility.'}
+            </Typography>
+          )}
+          <Button
+            component={RouterLink}
+            to={options.creationBlockReason?.startsWith('verification_') ? '/kyc' : '/subscription'}
+            size="small"
+          >
+            {options.creationBlockReason?.startsWith('verification_')
+              ? 'Review verification'
+              : 'Manage plan'}
+          </Button>
+        </Alert>
+      )}
       <WizardStepper current={step} />
 
       {/* Step heading */}
       <Box sx={{ mb: 2.5 }}>
-        <Typography sx={{ fontWeight: 800, fontSize: '1.2rem', color: INK }}>{meta.heading}</Typography>
+        <Typography sx={{ fontWeight: 800, fontSize: '1.2rem', color: INK }}>
+          {meta.heading}
+        </Typography>
         <Typography variant="body2" sx={{ color: INK_SECONDARY, mt: 0.25 }}>
           {meta.sub}
         </Typography>
@@ -541,7 +809,9 @@ export function CampaignForm() {
           display: 'flex',
           flexDirection: 'column',
           gap: 2.75,
-          '@media (prefers-reduced-motion: no-preference)': { animation: 'wizardStepIn 220ms ease' },
+          '@media (prefers-reduced-motion: no-preference)': {
+            animation: 'wizardStepIn 220ms ease',
+          },
           '@keyframes wizardStepIn': {
             from: { opacity: 0, transform: 'translateY(4px)' },
             to: { opacity: 1, transform: 'none' },
@@ -581,10 +851,15 @@ export function CampaignForm() {
 
             <Box>
               <Eyebrow>Category</Eyebrow>
-              <Box role="group" aria-label="Category" sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+              <Box
+                role="group"
+                aria-label="Category"
+                sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}
+              >
                 {CATEGORIES.map((c) => {
                   const selected = formData.category === c.value
-                  const CategoryIcon = CATEGORY_ICONS[c.value as keyof typeof CATEGORY_ICONS] ?? CategoryRoundedIcon
+                  const CategoryIcon =
+                    CATEGORY_ICONS[c.value as keyof typeof CATEGORY_ICONS] ?? CategoryRoundedIcon
                   return (
                     <Box
                       key={c.value}
@@ -608,7 +883,9 @@ export function CampaignForm() {
                         userSelect: 'none',
                         borderRadius: SHAPE.sm,
                         border: '1.5px solid',
-                        borderColor: selected ? GOLD : DIVIDER,
+                        borderColor: selected
+                          ? 'color-mix(in srgb, #C7A24A 60%, transparent)'
+                          : DIVIDER,
                         bgcolor: 'background.paper',
                         boxShadow: selected ? 'var(--neu-inset)' : 'var(--neu-subtle)',
                         backdropFilter: 'var(--neu-backdrop)',
@@ -617,18 +894,26 @@ export function CampaignForm() {
                         fontWeight: selected ? 700 : 600,
                         transition: 'border-color 160ms ease, background-color 160ms ease',
                         '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
-                        '&:hover': { borderColor: selected ? GOLD : SAGE },
+                        '&:hover': {
+                          borderColor: selected
+                            ? GOLD
+                            : 'color-mix(in srgb, #A8B5A0 35%, transparent)',
+                        },
                         '&:focus-visible': { outline: `2px solid ${GOLD}`, outlineOffset: 2 },
                       }}
                     >
-                      <CategoryIcon sx={{ fontSize: 22, color: selected ? 'primary.main' : 'text.secondary' }} />
+                      <CategoryIcon
+                        sx={{ fontSize: 22, color: selected ? 'primary.main' : 'text.secondary' }}
+                      />
                       {c.label}
                     </Box>
                   )
                 })}
               </Box>
               {errFor('category') && (
-                <Typography sx={{ mt: 1, fontSize: '0.75rem', color: CLAY }}>{errors.category}</Typography>
+                <Typography sx={{ mt: 1, fontSize: '0.75rem', color: CLAY }}>
+                  {errors.category}
+                </Typography>
               )}
             </Box>
           </>
@@ -637,7 +922,10 @@ export function CampaignForm() {
         {/* ----------------------------- STEP 2: STORY ----------------------------- */}
         {step === 1 && (
           <>
-            <AiWritingAssistant value={formData.description} onApply={(description) => setFormData(prev => ({ ...prev, description }))} />
+            <AiWritingAssistant
+              value={formData.description}
+              onApply={(description) => setFormData((prev) => ({ ...prev, description }))}
+            />
             <TextField
               label="Your story"
               placeholder="Describe the situation, what the funds will do, and the impact it will have."
@@ -645,7 +933,10 @@ export function CampaignForm() {
               onChange={change('description')}
               onBlur={blur('description')}
               error={errFor('description')}
-              helperText={helperFor('description', `${formData.description.trim().length} characters · aim for a full, honest picture`)}
+              helperText={helperFor(
+                'description',
+                `${formData.description.trim().length} characters · aim for a full, honest picture`,
+              )}
               fullWidth
               multiline
               rows={6}
@@ -660,7 +951,10 @@ export function CampaignForm() {
                 onChange={change('beneficiaries')}
                 onBlur={blur('beneficiaries')}
                 error={errFor('beneficiaries')}
-                helperText={helperFor('beneficiaries', 'Separate multiple beneficiaries with commas.')}
+                helperText={helperFor(
+                  'beneficiaries',
+                  'Separate multiple beneficiaries with commas.',
+                )}
                 fullWidth
                 sx={fieldSx}
               />
@@ -742,12 +1036,14 @@ export function CampaignForm() {
             <Box>
               <BrandedDatePicker
                 label="End date"
-
                 value={formData.endDate}
                 onChange={(value) => setFormData((prev) => ({ ...prev, endDate: value }))}
                 onBlur={blur('endDate')}
                 error={errFor('endDate')}
-                helperText={helperFor('endDate', 'When should the campaign stop accepting donations?')}
+                helperText={helperFor(
+                  'endDate',
+                  'When should the campaign stop accepting donations?',
+                )}
                 fullWidth
                 sx={fieldSx}
                 minDate={todayIso}
@@ -803,10 +1099,18 @@ export function CampaignForm() {
                         <DiamondBullet color={p.tone} size={9} />
                       </Box>
                       <Box>
-                        <Typography sx={{ fontWeight: 700, color: selected ? 'primary.main' : INK, fontSize: '0.95rem' }}>
+                        <Typography
+                          sx={{
+                            fontWeight: 700,
+                            color: selected ? 'primary.main' : INK,
+                            fontSize: '0.95rem',
+                          }}
+                        >
                           {p.label}
                         </Typography>
-                        <Typography sx={{ fontSize: '0.8rem', color: INK_SECONDARY, mt: 0.1 }}>{p.blurb}</Typography>
+                        <Typography sx={{ fontSize: '0.8rem', color: INK_SECONDARY, mt: 0.1 }}>
+                          {p.blurb}
+                        </Typography>
                       </Box>
                     </Box>
                   )
@@ -831,7 +1135,9 @@ export function CampaignForm() {
               <ReviewItem label="Title">{formData.title || '—'}</ReviewItem>
               <ReviewItem label="Summary">{formData.summary || '—'}</ReviewItem>
               <ReviewItem label="Category">
-                {formData.category ? CATEGORIES.find((c) => c.value === formData.category)?.label : '—'}
+                {formData.category
+                  ? CATEGORIES.find((c) => c.value === formData.category)?.label
+                  : '—'}
               </ReviewItem>
             </ReviewSection>
 
@@ -874,7 +1180,13 @@ export function CampaignForm() {
                     component="img"
                     src={formData.coverImageUrl}
                     alt="Campaign cover"
-                    sx={{ width: 120, height: 72, objectFit: 'cover', borderRadius: SHAPE.sm, border: `1px solid ${DIVIDER}` }}
+                    sx={{
+                      width: 120,
+                      height: 72,
+                      objectFit: 'cover',
+                      borderRadius: SHAPE.sm,
+                      border: `1px solid ${DIVIDER}`,
+                    }}
                   />
                 ) : (
                   'None'
@@ -899,7 +1211,9 @@ export function CampaignForm() {
               </ReviewItem>
               <ReviewItem label="Priority">
                 <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}>
-                  <DiamondBullet color={PRIORITIES.find((p) => p.value === formData.priority)?.tone ?? FOREST} />
+                  <DiamondBullet
+                    color={PRIORITIES.find((p) => p.value === formData.priority)?.tone ?? FOREST}
+                  />
                   {PRIORITIES.find((p) => p.value === formData.priority)?.label}
                 </Box>
               </ReviewItem>
@@ -918,7 +1232,8 @@ export function CampaignForm() {
             >
               <ShieldRoundedIcon sx={{ fontSize: 18, color: 'primary.main', mt: 0.1 }} />
               <Typography sx={{ fontSize: '0.82rem', lineHeight: 1.5 }}>
-                Campaigns may go live immediately or require review, depending on the applicable checks. You can still edit any step above.
+                Campaigns may go live immediately or require review, depending on the applicable
+                checks. You can still edit any step above.
               </Typography>
             </Box>
           </Box>
@@ -926,8 +1241,22 @@ export function CampaignForm() {
       </Box>
 
       {/* Inline submit error — keeps the wizard on the review step on failure */}
-      {step === 3 && options && <CampaignCreationExtras options={options} invitations={invitations} setInvitations={setInvitations} split={split} setSplit={setSplit} rows={rows} setRows={setRows} />}
-      {step === 3 && extrasError && <Alert severity="warning" sx={{ mt: 2 }}>{extrasError}</Alert>}
+      {step === 3 && options && (
+        <CampaignCreationExtras
+          options={options}
+          invitations={invitations}
+          setInvitations={setInvitations}
+          split={split}
+          setSplit={setSplit}
+          rows={rows}
+          setRows={setRows}
+        />
+      )}
+      {step === 3 && extrasError && (
+        <Alert severity="warning" sx={{ mt: 2 }}>
+          {extrasError}
+        </Alert>
+      )}
       {step === STEPS.length - 1 && submitError && (
         <Box
           role="alert"
@@ -994,7 +1323,13 @@ export function CampaignForm() {
             variant="contained"
             color="secondary"
             size="large"
-            disabled={isSubmitting || setupBusy || !options?.canCreate || !!extrasError || Object.keys(errors).length > 0}
+            disabled={
+              isSubmitting ||
+              setupBusy ||
+              !options?.canCreate ||
+              !!extrasError ||
+              Object.keys(errors).length > 0
+            }
             startIcon={isSubmitting || setupBusy ? <LoadingDots size={6} /> : <CheckRoundedIcon />}
           >
             {isSubmitting || setupBusy ? 'Setting up campaign…' : 'Publish campaign'}

@@ -1,3 +1,4 @@
+import { payoutInstitutionName } from '@ubuntu-fund/types'
 import { campaignPayoutBreakdownRows } from '@ubuntu-fund/types'
 import type { CampaignPayoutBreakdown } from '@ubuntu-fund/types'
 import { randomUUID } from 'expo-crypto'
@@ -249,7 +250,7 @@ export function CampaignCashout({ campaignId }: { campaignId: string }) {
                   { value: '', label: 'Add a new account' },
                   ...accounts.map((a) => ({
                     value: a.id,
-                    label: `${a.accountName} · ${a.bankCode} · ${a.last4}`,
+                    label: `${a.accountName} · ${payoutInstitutionName(a.bankCode, a.bankCode)} · ${a.last4}`,
                   })),
                 ]}
               />

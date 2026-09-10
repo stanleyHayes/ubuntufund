@@ -11,7 +11,7 @@ const INK = 'text.primary'
 const INK_SECONDARY = 'text.secondary'
 const GOLD = '#C7A24A'
 const GOLD_DARK = '#A07E33'
-const DIVIDER = '#DAD7CD'
+const DIVIDER = 'var(--border-subtle)'
 
 const ROADMAP = [
   { label: 'Basics', hint: 'Title, summary & category' },
@@ -48,88 +48,99 @@ export function CreateCampaignPage() {
         icon={<RocketLaunchRoundedIcon sx={{ fontSize: 22 }} />}
       />
       <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', py: { xs: 4, md: 7 } }}>
-      <Container maxWidth="lg">
-        <Box
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: { xs: '1fr', md: 'minmax(240px, 320px) 1fr' },
-            gap: { xs: 3.5, md: 6 },
-            alignItems: 'start',
-          }}
-        >
-          {/* ---------------------------- Encouragement rail ---------------------------- */}
-          <Box component="aside" sx={{ position: { md: 'sticky' }, top: { md: 32 } }}>
-            <Typography sx={{ color: INK_SECONDARY, lineHeight: 1.65, maxWidth: 420 }}>
-              From Accra to Tamale, Ujimora helps everyday Ghanaians raise funds with trust built in — every cedi tracked,
-              every donor thanked. Take it one step at a time; you can review everything before it goes live.
-            </Typography>
-
-            {/* Static roadmap — hidden on mobile where the stepper leads */}
-            <Box sx={{ display: { xs: 'none', md: 'block' }, mt: 4 }}>
-              <Eyebrow>What we&apos;ll cover</Eyebrow>
-              <Box sx={{ mt: 1.75, display: 'grid', gap: 1.75 }}>
-                {ROADMAP.map((r, i) => (
-                  <Box key={r.label} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
-                    <Box
-                      sx={{
-                        width: 24,
-                        height: 24,
-                        mt: 0.2,
-                        flex: '0 0 auto',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        borderRadius: SHAPE.sm,
-                        border: `1.5px solid ${DIVIDER}`,
-                        fontSize: '0.72rem',
-                        fontWeight: 800,
-                        color: 'primary.main',
-                      }}
-                    >
-                      {i + 1}
-                    </Box>
-                    <Box>
-                      <Typography sx={{ fontWeight: 700, fontSize: '0.9rem', color: INK }}>{r.label}</Typography>
-                      <Typography sx={{ fontSize: '0.8rem', color: INK_SECONDARY }}>{r.hint}</Typography>
-                    </Box>
-                  </Box>
-                ))}
-              </Box>
-
-              <Box
-                sx={{
-                  mt: 4,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1.25,
-                  fontSize: '0.72rem',
-                  fontWeight: 600,
-                  letterSpacing: '0.12em',
-                  textTransform: 'uppercase',
-                  color: INK_SECONDARY,
-                }}
-              >
-                <Box aria-hidden sx={{ width: 8, height: 8, bgcolor: GOLD, transform: 'rotate(45deg)' }} />
-                <Box aria-hidden sx={{ width: 8, height: 8, bgcolor: SAGE, transform: 'rotate(45deg)' }} />
-                One chain · Many hands · Ujima
-              </Box>
-            </Box>
-          </Box>
-
-          {/* ------------------------------- Wizard card ------------------------------- */}
+        <Container maxWidth="lg">
           <Box
             sx={{
-              bgcolor: 'background.paper',
-              border: '1px solid #E7E3D8',
-              borderRadius: SHAPE.card,
-              px: { xs: 2.5, sm: 4 },
-              py: { xs: 3, sm: 4 },
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', md: 'minmax(240px, 320px) 1fr' },
+              gap: { xs: 3.5, md: 6 },
+              alignItems: 'start',
             }}
           >
-            <CampaignForm />
+            {/* ---------------------------- Encouragement rail ---------------------------- */}
+            <Box component="aside" sx={{ position: { md: 'sticky' }, top: { md: 32 } }}>
+              <Typography sx={{ color: INK_SECONDARY, lineHeight: 1.65, maxWidth: 420 }}>
+                From Accra to Tamale, Ujimora helps everyday Ghanaians raise funds with trust built
+                in — every cedi tracked, every donor thanked. Take it one step at a time; you can
+                review everything before it goes live.
+              </Typography>
+
+              {/* Static roadmap — hidden on mobile where the stepper leads */}
+              <Box sx={{ display: { xs: 'none', md: 'block' }, mt: 4 }}>
+                <Eyebrow>What we&apos;ll cover</Eyebrow>
+                <Box sx={{ mt: 1.75, display: 'grid', gap: 1.75 }}>
+                  {ROADMAP.map((r, i) => (
+                    <Box key={r.label} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
+                      <Box
+                        sx={{
+                          width: 24,
+                          height: 24,
+                          mt: 0.2,
+                          flex: '0 0 auto',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          borderRadius: SHAPE.sm,
+                          border: `1.5px solid ${DIVIDER}`,
+                          fontSize: '0.72rem',
+                          fontWeight: 800,
+                          color: 'primary.main',
+                        }}
+                      >
+                        {i + 1}
+                      </Box>
+                      <Box>
+                        <Typography sx={{ fontWeight: 700, fontSize: '0.9rem', color: INK }}>
+                          {r.label}
+                        </Typography>
+                        <Typography sx={{ fontSize: '0.8rem', color: INK_SECONDARY }}>
+                          {r.hint}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  ))}
+                </Box>
+
+                <Box
+                  sx={{
+                    mt: 4,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1.25,
+                    fontSize: '0.72rem',
+                    fontWeight: 600,
+                    letterSpacing: '0.12em',
+                    textTransform: 'uppercase',
+                    color: INK_SECONDARY,
+                  }}
+                >
+                  <Box
+                    aria-hidden
+                    sx={{ width: 8, height: 8, bgcolor: GOLD, transform: 'rotate(45deg)' }}
+                  />
+                  <Box
+                    aria-hidden
+                    sx={{ width: 8, height: 8, bgcolor: SAGE, transform: 'rotate(45deg)' }}
+                  />
+                  One chain · Many hands · Ujima
+                </Box>
+              </Box>
+            </Box>
+
+            {/* ------------------------------- Wizard card ------------------------------- */}
+            <Box
+              sx={{
+                bgcolor: 'background.paper',
+                border: `1px solid ${DIVIDER}`,
+                borderRadius: SHAPE.card,
+                px: { xs: 2.5, sm: 4 },
+                py: { xs: 3, sm: 4 },
+              }}
+            >
+              <CampaignForm />
+            </Box>
           </Box>
-        </Box>
-      </Container>
+        </Container>
       </Box>
     </>
   )

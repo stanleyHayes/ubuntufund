@@ -21,4 +21,4 @@ export * from './affiliate'
 export * from './split'
 export * from './crypto'
 
-export { payoutAccountBrand } from './payoutBrand'
+export { payoutAccountBrand, payoutInstitutionName } from './payoutBrand'

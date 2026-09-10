@@ -1,3 +1,4 @@
+import { payoutInstitutionName } from '@ubuntu-fund/types'
 import { randomUUID } from 'expo-crypto'
 import { SegmentedButtons } from '@/components/RoundedControls'
 import { api } from '@/lib/api'
@@ -395,7 +396,7 @@ export default function CreatorDashboardScreen() {
                       { value: '', label: 'Use entered account' },
                       ...accounts.map((a) => ({
                         value: a.id,
-                        label: `${a.accountName} · ${a.bankCode} · ${a.last4}`,
+                        label: `${a.accountName} · ${payoutInstitutionName(a.bankCode, a.bankCode)} · ${a.last4}`,
                       })),
                     ]}
                   />

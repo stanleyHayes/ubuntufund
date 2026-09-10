@@ -1,3 +1,5 @@
+import { payoutInstitutionName } from '@ubuntu-fund/types'
+import { BankPicker } from '@/components/account/BankPicker'
 import type { Account } from '@/components/account/SavedPayoutAccounts'
 import { AccountPageSkeleton } from '@/components/account/AccountPage'
 import { useRef, useState, useEffect, useCallback } from 'react'
@@ -92,6 +94,24 @@ export function CreatorDashboardPage() {
   const [wType, setWType] = useState<'mobile_money' | 'ghipss'>('mobile_money')
   const [wAccount, setWAccount] = useState('')
   const [wBank, setWBank] = useState('')
+  const [withdrawBanks, setWithdrawBanks] = useState<{ name: string; code: string }[]>([])
+  useEffect(() => {
+    if (!withdrawOpen) return
+    let active = true
+    setWithdrawBanks([])
+    api
+      .get<{ name: string; code: string }[]>(`/banks?currency=GHS&type=${wType}`)
+      .then((banks) => {
+        if (active) setWithdrawBanks(banks)
+      })
+      .catch(() => {
+        if (active)
+          setWError('Could not load banks. Close and reopen the withdrawal form to retry.')
+      })
+    return () => {
+      active = false
+    }
+  }, [withdrawOpen, wType])
   const [wName, setWName] = useState('')
   const [wSubmitting, setWSubmitting] = useState(false)
   const [wError, setWError] = useState<string | null>(null)
@@ -502,7 +522,7 @@ export function CreatorDashboardPage() {
                 <MenuItem value="">Enter a new account</MenuItem>
                 {accounts.map((a) => (
                   <MenuItem key={a.id} value={a.id}>
-                    {a.accountName} · {a.bankCode} · {a.last4}
+                    {a.accountName} · {payoutInstitutionName(a.bankCode, a.bankCode)} · {a.last4}
                   </MenuItem>
                 ))}
               </TextField>
@@ -531,7 +551,10 @@ export function CreatorDashboardPage() {
                 select
                 label="Destination"
                 value={wType}
-                onChange={(e) => setWType(e.target.value as 'mobile_money' | 'ghipss')}
+                onChange={(e) => {
+                  setWType(e.target.value as 'mobile_money' | 'ghipss')
+                  setWBank('')
+                }}
                 fullWidth
                 sx={{ mb: 2 }}
               >
@@ -545,13 +568,9 @@ export function CreatorDashboardPage() {
                 fullWidth
                 sx={{ mb: 2 }}
               />
-              <TextField
-                label={wType === 'mobile_money' ? 'Network code (e.g. MTN)' : 'Bank code'}
-                value={wBank}
-                onChange={(e) => setWBank(e.target.value)}
-                fullWidth
-                sx={{ mb: 2 }}
-              />
+              <Box sx={{ mb: 2 }}>
+                <BankPicker banks={withdrawBanks} value={wBank} onChange={setWBank} required />
+              </Box>
               <TextField
                 label="Account name"
                 value={wName}

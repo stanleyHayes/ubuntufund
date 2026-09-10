@@ -34,7 +34,7 @@ describe('creator and saved accounts', () => {
       path === '/payout-accounts' ? { planName: 'Plus', limit: 2, accounts: [] } : [],
     )
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
-    expect(await screen.findByText(/Plus · 0/)).toBeInTheDocument()
+    expect(await screen.findByText('Plus plan')).toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
   it('uses creator imagery and exposes an explicit custom amount control', async () => {
@@ -86,7 +86,9 @@ describe('creator and saved accounts', () => {
         : [],
     )
     render(<SavedPayoutAccounts />)
-    expect(await screen.findByText('Community · 1 / 1 saved')).toBeInTheDocument()
+    expect(await screen.findByText('Community plan')).toBeInTheDocument()
+    expect(screen.getByText('1 of 1 saved')).toBeInTheDocument()
+    expect(screen.getByText('All account slots used')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Verify & save account' })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'View plans' })).toHaveAttribute(
       'href',

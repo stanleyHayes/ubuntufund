@@ -2,7 +2,7 @@ import { payoutAccountBrand } from '@ubuntu-fund/types'
 import { EmptyState } from './EmptyState'
 import { useEffect, useState } from 'react'
 import { View } from 'react-native'
-import { Text, Icon } from 'react-native-paper'
+import { Text, Icon, ProgressBar } from 'react-native-paper'
 import { api } from '@/lib/api'
 import { Button, Skeleton } from './Loading'
 import { BrandedTextInput as Input } from './BrandedTextInput'
@@ -126,10 +126,28 @@ export function SavedPayoutAccounts() {
         ) : null
       ) : (
         <>
-          <Text>
-            {data.planName} · {data.accounts.length} / {data.limit < 0 ? 'Unlimited' : data.limit}{' '}
-            saved
-          </Text>
+          <View style={{ gap: 8, paddingVertical: 16 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
+              <Text variant="labelLarge">{data.planName} plan</Text>
+              <Text>
+                {data.accounts.length}
+                {data.limit >= 0 ? ` of ${data.limit}` : ''} saved
+              </Text>
+            </View>
+            {data.limit > 0 && (
+              <ProgressBar
+                progress={Math.min(1, data.accounts.length / data.limit)}
+                accessibilityLabel="Saved payout account capacity"
+              />
+            )}
+            <Text variant="bodySmall">
+              {data.limit < 0
+                ? 'Unlimited payout accounts'
+                : data.accounts.length >= data.limit
+                  ? 'All account slots used'
+                  : `${data.limit - data.accounts.length} account slots available`}
+            </Text>
+          </View>
           {!data.accounts.length && (
             <EmptyState
               icon="wallet-outline"

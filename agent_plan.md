@@ -1,5 +1,12 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-10 — Searchable banks, Telecel naming and subtle borders
+
+- Replaced long bank selects with a reusable searchable autocomplete on saved accounts, campaign cashout and creator withdrawal. The dropdown has bounded height, keyboard selection and name filtering; provider codes remain the submitted value. Native selection already provides a searchable dialog.
+- Normalized legacy Vodafone directory labels to Telecel Cash on the API and web, retaining VOD routing codes. Saved-account option labels use the same naming on web/native. Replaced plain plan/count text with a plan/capacity indicator, remaining slots, and unlimited/full states.
+- Softened structural borders throughout the shared web/admin/marketing theme, including Box/card/paper/button/input/divider/table surfaces. Removed bright hardcoded campaign wizard/category outlines; selected borders use muted gold and keyboard focus keeps its separate outline. Preserved skin materials and card watermarks.
+- Validation: 14 web flow/picker tests, 7 API bank/payout checks, all five app type checks, focused lint and web production build pass. Native source changes require a new build; no live account save or payout was initiated.
+
 ### 2026-09-10 — Smooth motion across the web app
 
 - Added auth content staggering, finite watermark entrances and a chain-line draw on login/registration. Registration steps enter softly; focusing the form cancels decorative entrance motion. Preserved existing font, palette, materials, rounded controls and watermarks.

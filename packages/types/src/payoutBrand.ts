@@ -59,3 +59,9 @@ export function payoutAccountBrand(code: string, institutionName?: string) {
     }
   )
 }
+
+/** Display current provider branding without changing Paystack's routing codes. */
+export function payoutInstitutionName(name: string, code = ''): string {
+  if (/vodafone|telecel/i.test(name) || /^(vod|vodafone)$/i.test(code)) return 'Telecel Cash'
+  return name
+}

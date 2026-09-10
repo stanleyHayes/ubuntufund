@@ -1,7 +1,17 @@
+import { BankPicker } from '@/components/account/BankPicker'
 import { PayoutAccountCard } from './PayoutAccountCard'
 import { EmptyState } from '@ubuntu-fund/ui'
 import { useEffect, useState } from 'react'
-import { Alert, Box, Button, MenuItem, TextField, Typography, Skeleton } from '@mui/material'
+import {
+  Alert,
+  Box,
+  Button,
+  MenuItem,
+  TextField,
+  Typography,
+  Skeleton,
+  LinearProgress,
+} from '@mui/material'
 import { api } from '@/lib/api'
 export type Account = {
   id: string
@@ -134,10 +144,43 @@ export function SavedPayoutAccounts() {
             }}
           >
             <Typography variant="h6">Your payout destinations</Typography>
-            <Typography color="text.secondary">
-              {data.planName} · {data.accounts.length} / {data.limit < 0 ? 'Unlimited' : data.limit}{' '}
-              saved
-            </Typography>
+            <Box sx={{ minWidth: 210, p: 1.5, borderRadius: 2, bgcolor: 'action.hover' }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  gap: 3,
+                  alignItems: 'baseline',
+                }}
+              >
+                <Typography
+                  variant="caption"
+                  sx={{ fontWeight: 700, color: 'var(--text-warning)' }}
+                >
+                  {data.planName} plan
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                  {data.accounts.length}
+                  {data.limit >= 0 ? ` of ${data.limit}` : ''} saved
+                </Typography>
+              </Box>
+              {data.limit > 0 && (
+                <LinearProgress
+                  aria-label="Saved payout account capacity"
+                  variant="determinate"
+                  value={Math.min(100, (data.accounts.length / data.limit) * 100)}
+                  color="secondary"
+                  sx={{ height: 4, my: 1 }}
+                />
+              )}
+              <Typography variant="caption" color="text.secondary">
+                {data.limit < 0
+                  ? 'Unlimited payout accounts'
+                  : full
+                    ? 'All account slots used'
+                    : `${data.limit - data.accounts.length} account ${data.limit - data.accounts.length === 1 ? 'slot' : 'slots'} available`}
+              </Typography>
+            </Box>
           </Box>
           <Box
             sx={{
@@ -209,19 +252,13 @@ export function SavedPayoutAccounts() {
                   <MenuItem value="mobile_money">Mobile money</MenuItem>
                   <MenuItem value="ghipss">Bank account</MenuItem>
                 </TextField>
-                <TextField
-                  select
-                  required
-                  label="Bank or network"
+                <BankPicker
+                  banks={banks}
                   value={bankCode}
-                  onChange={(e) => setBank(e.target.value)}
-                >
-                  {banks.map((b) => (
-                    <MenuItem key={b.code} value={b.code}>
-                      {b.name}
-                    </MenuItem>
-                  ))}
-                </TextField>
+                  onChange={setBank}
+                  label="Bank or network"
+                  required
+                />
                 <TextField
                   required
                   label="Registered account name"

@@ -1,3 +1,5 @@
+import { payoutInstitutionName } from '@ubuntu-fund/types'
+import { BankPicker } from '@/components/account/BankPicker'
 import { campaignPayoutBreakdownRows } from '@ubuntu-fund/types'
 import type { CampaignPayoutBreakdown } from '@ubuntu-fund/types'
 import { EmptyState } from '@ubuntu-fund/ui'
@@ -363,7 +365,7 @@ export function CampaignCashout({
                   <MenuItem value="">Add a new account</MenuItem>
                   {accounts.map((a) => (
                     <MenuItem key={a.id} value={a.id}>
-                      {a.accountName} · {a.bankCode} · {a.last4}
+                      {a.accountName} · {payoutInstitutionName(a.bankCode, a.bankCode)} · {a.last4}
                     </MenuItem>
                   ))}
                 </TextField>
@@ -401,18 +403,13 @@ export function CampaignCashout({
                     <MenuItem value="mobile_money">Mobile money</MenuItem>
                     <MenuItem value="ghipss">Bank account</MenuItem>
                   </TextField>
-                  <TextField
-                    select
-                    label="Bank or mobile network"
+                  <BankPicker
+                    banks={banks}
                     value={bankCode}
-                    onChange={(e) => setBankCode(e.target.value)}
-                  >
-                    {banks.map((b) => (
-                      <MenuItem key={b.code} value={b.code}>
-                        {b.name}
-                      </MenuItem>
-                    ))}
-                  </TextField>
+                    onChange={setBankCode}
+                    label="Bank or mobile network"
+                    required
+                  />
                   <TextField
                     label="Account holder name"
                     value={accountName}
