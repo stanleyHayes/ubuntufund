@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { BillingCycle, CouponDiscountType } from '@ubuntu-fund/types';
+import {
+  BillingCycle,
+  CouponCommissionBase,
+  CouponDiscountType,
+  CouponSurface,
+} from '@ubuntu-fund/types';
 import { CouponEntity, type CouponProps } from '../../../src/domain/entities/Coupon.js';
 import { CouponService } from '../../../src/application/services/CouponService.js';
 import type { CouponRepositoryPort } from '../../../src/domain/ports/outbound/CouponRepositoryPort.js';
@@ -23,6 +28,8 @@ function coupon(overrides: Partial<CouponProps> = {}): CouponEntity {
     redemptions: 0,
     appliesToTiers: [],
     appliesToBillingCycles: [],
+    appliesToSurfaces: [],
+    commissionBase: CouponCommissionBase.POST_COUPON,
     newUsersOnly: false,
     allowedEmails: [],
     active: true,
@@ -130,5 +137,53 @@ describe('pricing through the service', () => {
   it('rejects an expired coupon', async () => {
     const { price } = build(coupon({ validUntil: new Date('2020-01-01') }));
     await expect(price()).rejects.toThrow(/expired/i);
+  });
+});
+
+describe('surface gating', () => {
+  function priceOn(c: CouponEntity, surface?: CouponSurface) {
+    const couponRepo = { findByCode: vi.fn(async () => c) } as never;
+    const redemptionRepo = { countByCouponAndUser: vi.fn(async () => 0) } as never;
+    const elig: CouponEligibilityPort = {
+      emailFor: vi.fn(async () => 'ama@example.com'),
+      hasPaidBefore: vi.fn(async () => false),
+    };
+    return new CouponService(couponRepo, redemptionRepo, elig).validateAndPrice({
+      code: 'launch50',
+      tier: 'pro',
+      billingCycle: BillingCycle.MONTHLY,
+      userId: 'user-1',
+      baseAmount: 200,
+      surface,
+    });
+  }
+
+  it('defaults to the subscription surface when the caller names none', async () => {
+    await expect(priceOn(coupon({ appliesToSurfaces: [] }))).resolves.toMatchObject({
+      discountAmount: 100,
+    });
+  });
+
+  it('refuses a donation-only coupon at subscription checkout', async () => {
+    await expect(
+      priceOn(coupon({ appliesToSurfaces: [CouponSurface.DONATION] }))
+    ).rejects.toThrow(/cannot be used here/i);
+  });
+
+  it('refuses a subscription coupon on the donation surface', async () => {
+    // The pre-surfaces default has to hold in both directions, or an old
+    // coupon becomes redeemable somewhere it was never meant for.
+    await expect(
+      priceOn(coupon({ appliesToSurfaces: [] }), CouponSurface.DONATION)
+    ).rejects.toThrow(/cannot be used here/i);
+  });
+
+  it('admits a coupon scoped to the surface being used', async () => {
+    await expect(
+      priceOn(
+        coupon({ appliesToSurfaces: [CouponSurface.DONATION] }),
+        CouponSurface.DONATION
+      )
+    ).resolves.toMatchObject({ discountAmount: 100 });
   });
 });

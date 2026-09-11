@@ -1,4 +1,4 @@
-import { CouponDiscountType } from '@ubuntu-fund/types';
+import { CouponCommissionBase, CouponDiscountType, CouponSurface } from '@ubuntu-fund/types';
 import type { BillingCycle } from '@ubuntu-fund/types';
 import { roundToCurrency } from '../value-objects/Money.js';
 
@@ -17,6 +17,10 @@ export interface CouponProps {
   minSubtotal?: number; // optional GHS floor the base price must meet
   appliesToTiers: string[]; // empty = all paid tiers
   appliesToBillingCycles: BillingCycle[]; // empty = all cycles
+  /** Where this coupon may be redeemed. Empty = subscription only. */
+  appliesToSurfaces: CouponSurface[];
+  /** Which amount an affiliate commission is computed from. */
+  commissionBase: CouponCommissionBase;
   /** Restrict to customers who have never completed a paid checkout. */
   newUsersOnly: boolean;
   /** Named recipients, lowercased. Empty = open to anyone. */
@@ -93,6 +97,12 @@ export class CouponEntity {
   get maxDiscountAmount(): number | undefined {
     return this.props.maxDiscountAmount;
   }
+  get appliesToSurfaces(): CouponSurface[] {
+    return this.props.appliesToSurfaces;
+  }
+  get commissionBase(): CouponCommissionBase {
+    return this.props.commissionBase;
+  }
   get newUsersOnly(): boolean {
     return this.props.newUsersOnly;
   }
@@ -121,6 +131,21 @@ export class CouponEntity {
     if (this.props.validFrom && now < this.props.validFrom) return false;
     if (this.props.validUntil && now > this.props.validUntil) return false;
     return true;
+  }
+
+  /**
+   * Whether the coupon may be redeemed on this surface.
+   *
+   * An empty list means subscription-only rather than "everywhere". Every
+   * coupon created before surfaces existed has an empty list, and reading that
+   * as "all surfaces" would silently turn existing subscription promotions
+   * into donation-fee waivers.
+   */
+  appliesToSurface(surface: CouponSurface): boolean {
+    if (this.props.appliesToSurfaces.length === 0) {
+      return surface === CouponSurface.SUBSCRIPTION;
+    }
+    return this.props.appliesToSurfaces.includes(surface);
   }
 
   /** Whether the coupon covers the chosen tier + billing cycle (empty list = all). */

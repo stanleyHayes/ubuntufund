@@ -18,6 +18,8 @@ import {
   CouponDiscountType,
   SubscriptionTier,
   BillingCycle,
+  CouponSurface,
+  CouponCommissionBase,
   SUBSCRIPTION_PLANS,
   Resource,
   Action,
@@ -32,6 +34,19 @@ import { raisedSurface, insetSurface } from '@/lib/surfaces'
 import { TONES } from '@/lib/tones'
 
 const ACCENT = TONES.gold.text
+
+const SURFACE_LABEL: Record<CouponSurface, string> = {
+  [CouponSurface.SUBSCRIPTION]: 'Subscriptions',
+  [CouponSurface.DONATION]: 'Donations',
+  [CouponSurface.PAYOUT_FEE]: 'Withdrawal fees',
+}
+
+/** What the platform actually gives up on each surface, in plain terms. */
+const SURFACE_HINT: Record<CouponSurface, string> = {
+  [CouponSurface.SUBSCRIPTION]: 'The subscriber pays less',
+  [CouponSurface.DONATION]: 'Platform fee waived — the campaign receives more',
+  [CouponSurface.PAYOUT_FEE]: 'Lower fee on a withdrawal',
+}
 const PAGE_SIZE = 10
 // Coupons discount paid checkouts, so FREE is never a valid applicability.
 const PAID_TIERS = Object.values(SubscriptionTier).filter((t) => t !== SubscriptionTier.FREE)
@@ -47,6 +62,10 @@ interface CouponForm {
   amount: number
   /** Ceiling on a percentage discount. 0 = none. */
   maxDiscountAmount: number
+  /** Where the coupon may be redeemed. Empty = subscription only. */
+  appliesToSurfaces: CouponSurface[]
+  /** Which amount an affiliate commission is computed from. */
+  commissionBase: CouponCommissionBase
   /** Restrict to customers who have never completed a paid checkout. */
   newUsersOnly: boolean
   /** Named recipients, one per line in the field; empty = open to anyone. */
@@ -67,6 +86,8 @@ const emptyForm: CouponForm = {
   discountType: CouponDiscountType.PERCENT,
   amount: 10,
   maxDiscountAmount: 0,
+  appliesToSurfaces: [],
+  commissionBase: CouponCommissionBase.POST_COUPON,
   newUsersOnly: false,
   allowedEmails: '',
   maxRedemptions: 0,
@@ -161,6 +182,8 @@ export default function CouponsPage() {
       discountType: coupon.discountType,
       amount: coupon.amount,
       maxDiscountAmount: coupon.maxDiscountAmount ?? 0,
+      appliesToSurfaces: coupon.appliesToSurfaces ?? [],
+      commissionBase: coupon.commissionBase ?? CouponCommissionBase.POST_COUPON,
       newUsersOnly: coupon.newUsersOnly ?? false,
       allowedEmails: (coupon.allowedEmails ?? []).join('\n'),
       maxRedemptions: coupon.maxRedemptions ?? 0,
@@ -184,6 +207,8 @@ export default function CouponsPage() {
           discountType: form.discountType,
           amount: form.amount,
           maxDiscountAmount: form.maxDiscountAmount || 0,
+          appliesToSurfaces: form.appliesToSurfaces,
+          commissionBase: form.commissionBase,
           newUsersOnly: form.newUsersOnly,
           allowedEmails: parseEmails(form.allowedEmails),
           maxRedemptions: form.maxRedemptions || 0,
@@ -205,6 +230,8 @@ export default function CouponsPage() {
           discountType: form.discountType,
           amount: form.amount,
           maxDiscountAmount: form.maxDiscountAmount || undefined,
+          appliesToSurfaces: form.appliesToSurfaces,
+          commissionBase: form.commissionBase,
           newUsersOnly: form.newUsersOnly,
           allowedEmails: parseEmails(form.allowedEmails),
           maxRedemptions: form.maxRedemptions || undefined,
@@ -523,6 +550,38 @@ export default function CouponsPage() {
               ))}
             </Select>
           </FormControl>
+          <FormControl fullWidth size="small">
+            <InputLabel shrink id="coupon-surfaces-label">Where it can be used</InputLabel>
+            <Select
+              labelId="coupon-surfaces-label"
+              displayEmpty
+              multiple
+              value={form.appliesToSurfaces}
+              onChange={(e) => setForm({ ...form, appliesToSurfaces: e.target.value as CouponSurface[] })}
+              input={<OutlinedInput label="Where it can be used" />}
+              renderValue={(selected) =>
+                selected.length === 0
+                  ? 'Subscriptions only'
+                  : selected.map((v) => SURFACE_LABEL[v]).join(', ')
+              }
+            >
+              {Object.values(CouponSurface).map((surface) => (
+                <MenuItem key={surface} value={surface}>
+                  <Checkbox checked={form.appliesToSurfaces.includes(surface)} size="small" />
+                  <ListItemText primary={SURFACE_LABEL[surface]} secondary={SURFACE_HINT[surface]} />
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <TextField
+            select fullWidth size="small" label="Affiliate commission on a discounted sale"
+            value={form.commissionBase}
+            onChange={(e) => setForm({ ...form, commissionBase: e.target.value as CouponCommissionBase })}
+            helperText="Which amount a referrer's commission is calculated from."
+          >
+            <MenuItem value={CouponCommissionBase.POST_COUPON}>Amount actually charged</MenuItem>
+            <MenuItem value={CouponCommissionBase.LIST_PRICE}>Full list price</MenuItem>
+          </TextField>
           <Box sx={{ display: 'flex', gap: 2 }}>
             <BrandedDatePicker
               fullWidth size="small" label="Valid From" 

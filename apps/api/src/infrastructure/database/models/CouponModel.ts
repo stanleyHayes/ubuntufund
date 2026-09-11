@@ -1,5 +1,10 @@
 import mongoose, { Schema, type Document } from 'mongoose';
-import { CouponDiscountType, BillingCycle } from '@ubuntu-fund/types';
+import {
+  CouponDiscountType,
+  BillingCycle,
+  CouponSurface,
+  CouponCommissionBase,
+} from '@ubuntu-fund/types';
 
 export interface CouponDocument extends Document {
   code: string;
@@ -14,6 +19,8 @@ export interface CouponDocument extends Document {
   appliesToTiers: string[];
   appliesToBillingCycles: BillingCycle[];
   maxDiscountAmount?: number;
+  appliesToSurfaces: CouponSurface[];
+  commissionBase: CouponCommissionBase;
   newUsersOnly: boolean;
   allowedEmails: string[];
   validFrom?: Date;
@@ -60,6 +67,18 @@ const couponSchema = new Schema<CouponDocument>(
       type: [String],
       enum: Object.values(BillingCycle),
       default: [],
+    },
+    // Empty = subscription only, which is what every pre-existing coupon is.
+    appliesToSurfaces: {
+      type: [String],
+      enum: Object.values(CouponSurface),
+      default: [],
+    },
+    commissionBase: {
+      type: String,
+      enum: Object.values(CouponCommissionBase),
+      required: true,
+      default: CouponCommissionBase.POST_COUPON,
     },
     // "Has never completed a paid checkout", not "signed up recently".
     newUsersOnly: { type: Boolean, required: true, default: false },

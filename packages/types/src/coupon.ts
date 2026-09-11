@@ -4,6 +4,42 @@ import type { BillingCycle } from './subscription'
 // (mirroring subscription.ts prices). A coupon is redeemed idempotently on the
 // signed Paystack webhook — the redemption counter only ever moves there.
 
+/**
+ * Where a coupon may be redeemed. Chosen per coupon, and more than one is
+ * allowed — an empty list means SUBSCRIPTION, so every coupon that existed
+ * before this field keeps behaving exactly as it did.
+ *
+ * There is deliberately no TIP surface. A creator tip charges no fee when it
+ * is sent (`CreateTipIntentUseCase` sets fee = 0; the plan fee is taken once,
+ * on withdrawal), so the only thing a tip-time coupon could discount is the
+ * creator's own earnings — an admin-owned coupon reducing a creator's income.
+ * The fee a creator actually pays is the withdrawal fee, which is PAYOUT_FEE.
+ */
+export enum CouponSurface {
+  /** Reduce the price of a paid-subscription checkout. The customer pays less. */
+  SUBSCRIPTION = 'subscription',
+  /**
+   * Waive part of the platform fee on a donation. The donor pays the same and
+   * the campaign receives more; the platform forgoes fee revenue. Framed this
+   * way on purpose — discounting what the donor pays would quietly reduce what
+   * the campaign raises, and the cost here is bounded by the fee itself.
+   */
+  DONATION = 'donation',
+  /** Reduce the platform fee on a withdrawal. The recipient receives more. */
+  PAYOUT_FEE = 'payout_fee',
+}
+
+/**
+ * Which amount an affiliate's commission is computed from when a coupon
+ * discounted the sale.
+ */
+export enum CouponCommissionBase {
+  /** What was actually charged. Protects margin; a 100%-off sale pays nothing. */
+  POST_COUPON = 'post_coupon',
+  /** The plan's list price, so a promotion does not penalise the referrer. */
+  LIST_PRICE = 'list_price',
+}
+
 export enum CouponDiscountType {
   PERCENT = 'percent',
   FIXED = 'fixed',
@@ -44,6 +80,10 @@ export interface Coupon {
    * user who registered months ago and is only now upgrading is still a new
    * customer, and cancelling does not make a returning one new again.
    */
+  /** Where this coupon may be redeemed. Empty = subscription only. */
+  appliesToSurfaces: CouponSurface[]
+  /** Which amount an affiliate commission is computed from on a discounted sale. */
+  commissionBase: CouponCommissionBase
   newUsersOnly: boolean
   /**
    * Named recipients, lowercased. Empty = open to anyone who meets the other
@@ -69,6 +109,8 @@ export interface CreateCouponInput {
   appliesToTiers?: string[]
   appliesToBillingCycles?: BillingCycle[]
   maxDiscountAmount?: number
+  appliesToSurfaces?: CouponSurface[]
+  commissionBase?: CouponCommissionBase
   newUsersOnly?: boolean
   allowedEmails?: string[]
   validFrom?: string // ISO strings over the wire; the use-case coerces to Date
@@ -86,6 +128,8 @@ export interface UpdateCouponInput {
   appliesToTiers?: string[]
   appliesToBillingCycles?: BillingCycle[]
   maxDiscountAmount?: number
+  appliesToSurfaces?: CouponSurface[]
+  commissionBase?: CouponCommissionBase
   newUsersOnly?: boolean
   allowedEmails?: string[]
   validFrom?: string

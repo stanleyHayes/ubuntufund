@@ -1,4 +1,5 @@
 import {
+  CouponCommissionBase,
   CouponDiscountType,
   type Coupon,
   type CreateCouponInput,
@@ -77,6 +78,8 @@ export class CreateCouponUseCase {
       minSubtotal: input.minSubtotal,
       appliesToTiers: input.appliesToTiers ?? [],
       appliesToBillingCycles: input.appliesToBillingCycles ?? [],
+      appliesToSurfaces: input.appliesToSurfaces ?? [],
+      commissionBase: input.commissionBase ?? CouponCommissionBase.POST_COUPON,
       newUsersOnly: input.newUsersOnly ?? false,
       // Normalised on the way in: the check compares by string equality, so a
       // list typed with capitals or stray spaces would match nobody.

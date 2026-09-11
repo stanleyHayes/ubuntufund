@@ -69,6 +69,7 @@ import { MongoBeneficiaryPayoutRepository } from './infrastructure/adapters/outb
 import { MongoCouponRepository } from './infrastructure/adapters/outbound/persistence/MongoCouponRepository.js'
 import { MongoCouponRedemptionRepository } from './infrastructure/adapters/outbound/persistence/MongoCouponRedemptionRepository.js'
 import { MongoCouponEligibility } from './infrastructure/adapters/outbound/persistence/MongoCouponEligibility.js'
+import { AffiliateCodePricing } from './application/services/AffiliateCodePricing.js'
 import { MongoSubscriptionCheckoutRepository } from './infrastructure/adapters/outbound/persistence/MongoSubscriptionCheckoutRepository.js'
 import { MongoAffiliateRepository } from './infrastructure/adapters/outbound/persistence/MongoAffiliateRepository.js'
 import { MongoAffiliateReferralRepository } from './infrastructure/adapters/outbound/persistence/MongoAffiliateReferralRepository.js'
@@ -1059,6 +1060,11 @@ export function createApp(): express.Express {
     paymentGateway,
     settleSubscriptionUseCase,
     planService,
+    new AffiliateCodePricing(
+      affiliateRepo,
+      affiliateReferralRepo,
+      config.affiliate.referralDiscountPercent,
+    ),
   )
   const getSubscriptionCheckoutUseCase = new GetSubscriptionCheckoutUseCase(
     subscriptionCheckoutRepo,

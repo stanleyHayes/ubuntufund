@@ -65,6 +65,14 @@ export class UpdateCouponUseCase {
         input.maxDiscountAmount !== undefined
           ? input.maxDiscountAmount
           : current.maxDiscountAmount,
+      appliesToSurfaces:
+        input.appliesToSurfaces !== undefined
+          ? input.appliesToSurfaces
+          : current.appliesToSurfaces,
+      commissionBase:
+        input.commissionBase !== undefined
+          ? input.commissionBase
+          : current.commissionBase,
       newUsersOnly:
         input.newUsersOnly !== undefined
           ? input.newUsersOnly

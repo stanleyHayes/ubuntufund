@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CouponDiscountType } from '@ubuntu-fund/types';
+import { CouponCommissionBase, CouponDiscountType, CouponSurface } from '@ubuntu-fund/types';
 import { BillingCycle } from '@ubuntu-fund/types';
 import { CouponEntity, type CouponProps } from '../../src/domain/entities/Coupon.js';
 
@@ -19,6 +19,8 @@ function coupon(overrides: Partial<CouponProps> = {}): CouponEntity {
     redemptions: 0,
     appliesToTiers: [],
     appliesToBillingCycles: [],
+    appliesToSurfaces: [],
+    commissionBase: CouponCommissionBase.POST_COUPON,
     newUsersOnly: false,
     allowedEmails: [],
     active: true,
@@ -190,5 +192,28 @@ describe('allowedEmails', () => {
     // Treating an unknown email as allowed would turn a coupon meant for one
     // person into a public one the moment a lookup fails.
     expect(coupon({ allowedEmails: ['ama@example.com'] }).allowsEmail(null)).toBe(false);
+  });
+});
+
+describe('appliesToSurface', () => {
+  it('treats an empty list as subscription-only, not as every surface', () => {
+    // Every coupon created before surfaces existed has an empty list. Reading
+    // that as "all surfaces" would silently turn live subscription promotions
+    // into donation-fee waivers the moment this shipped.
+    const c = coupon({ appliesToSurfaces: [] });
+    expect(c.appliesToSurface(CouponSurface.SUBSCRIPTION)).toBe(true);
+    expect(c.appliesToSurface(CouponSurface.DONATION)).toBe(false);
+    expect(c.appliesToSurface(CouponSurface.PAYOUT_FEE)).toBe(false);
+  });
+
+  it('admits exactly the surfaces it was given', () => {
+    const c = coupon({
+      appliesToSurfaces: [CouponSurface.DONATION, CouponSurface.PAYOUT_FEE],
+    });
+    expect(c.appliesToSurface(CouponSurface.DONATION)).toBe(true);
+    expect(c.appliesToSurface(CouponSurface.PAYOUT_FEE)).toBe(true);
+    // Naming other surfaces takes subscription away, which is the point of an
+    // explicit list.
+    expect(c.appliesToSurface(CouponSurface.SUBSCRIPTION)).toBe(false);
   });
 });

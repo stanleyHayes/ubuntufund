@@ -49,6 +49,16 @@ interface AffiliateConfig {
   commissionPercent: number;
   /** Days a newly accrued commission stays 'held' before it matures to 'available'. */
   holdDays: number;
+  /**
+   * Discount a referee gets for entering an affiliate's referral code at
+   * checkout, as a % of the plan price.
+   *
+   * 0 (the default) disables the behaviour entirely: an affiliate code typed
+   * into the coupon box is then just an unknown coupon, exactly as before.
+   * Set it above zero and one code does both jobs — the referee saves and the
+   * referrer still earns.
+   */
+  referralDiscountPercent: number;
 }
 
 interface FlutterwaveConfig {
@@ -282,6 +292,12 @@ export const config: AppConfig = {
   affiliate: {
     commissionPercent: envNumber(process.env.AFFILIATE_COMMISSION_PERCENT, 10),
     holdDays: envNumber(process.env.AFFILIATE_HOLD_DAYS, 14),
+    // Off by default: enabling a discount on every referral is a pricing
+    // decision, not something a deploy should start doing on its own.
+    referralDiscountPercent: envNumber(
+      process.env.AFFILIATE_REFERRAL_DISCOUNT_PERCENT,
+      0
+    ),
   },
   campaigns: {
     // GHS goal boundaries for tiers 1–5; override with CAMPAIGN_TIER_THRESHOLDS

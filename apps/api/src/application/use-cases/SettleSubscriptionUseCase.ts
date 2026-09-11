@@ -1,5 +1,6 @@
 import {
   BillingCycle,
+  CouponCommissionBase,
   SubscriptionStatus,
   type Subscription,
   type SubscriptionCheckout,
@@ -102,11 +103,27 @@ export class SettleSubscriptionUseCase {
     }
 
     // ── 4. One-time affiliate commission (best-effort, idempotent) ───────
+    //
+    // Which amount the commission is computed from is the coupon's choice.
+    // Charging it on finalAmount protects margin but penalises a referrer for
+    // a promotion they did not control — and a 100%-off coupon pays them
+    // nothing at all while still spending their one-time conversion. A coupon
+    // may instead elect LIST_PRICE and make the referrer whole. Absent a
+    // coupon, or on any lookup failure, the post-coupon amount stands: that is
+    // the existing behaviour and the cheaper of the two.
+    let commissionBaseAmount = settled.finalAmount;
+    if (settled.couponId) {
+      const coupon = await this.couponRepo.findById(settled.couponId);
+      if (coupon?.commissionBase === CouponCommissionBase.LIST_PRICE) {
+        commissionBaseAmount = settled.baseAmount;
+      }
+    }
+
     if (this.affiliateCommissionService) {
       try {
         await this.affiliateCommissionService.recordSubscriptionCommission({
           payingUserId: settled.userId,
-          chargedAmount: settled.finalAmount,
+          chargedAmount: commissionBaseAmount,
           currency: settled.currency,
           sourceRef: reference,
         });

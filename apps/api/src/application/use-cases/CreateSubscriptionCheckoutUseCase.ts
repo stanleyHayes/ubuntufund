@@ -16,6 +16,10 @@ import type { CouponService } from '../services/CouponService.js';
 import type { PlanService } from '../services/PlanService.js';
 import type { SettleSubscriptionUseCase } from './SettleSubscriptionUseCase.js';
 import { roundToCurrency } from '../../domain/value-objects/Money.js';
+import type {
+  AffiliateCodePricing,
+  AffiliateCodeQuote,
+} from '../services/AffiliateCodePricing.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 
 /** Platform billing currency; subscription plan prices are quoted in GHS. */
@@ -44,7 +48,13 @@ export class CreateSubscriptionCheckoutUseCase {
     private readonly couponService: CouponService,
     private readonly paymentGateway: PaymentGatewayPort,
     private readonly settleSubscriptionUseCase: SettleSubscriptionUseCase,
-    private readonly planService: PlanService
+    private readonly planService: PlanService,
+    /**
+     * Optional: lets an affiliate's referral code act as a discount code.
+     * Absent (or with a zero discount configured), an unknown code stays
+     * unknown and the behaviour is exactly what it was.
+     */
+    private readonly affiliateCodePricing?: AffiliateCodePricing
   ) {}
 
   async execute(
@@ -95,20 +105,47 @@ export class CreateSubscriptionCheckoutUseCase {
     let couponCode: string | undefined;
     /** Carried from the priced coupon so the seat claim below knows the cap. */
     let perUserLimit: number | undefined;
+    /** Set instead when the code turned out to be an affiliate's, not a coupon's. */
+    let affiliateCode: AffiliateCodeQuote | null = null;
     if (input.couponCode?.trim()) {
-      const pricing = await this.couponService.validateAndPrice({
-        code: input.couponCode,
-        tier,
-        billingCycle,
-        userId,
-        baseAmount,
-      });
-      discountAmount = pricing.discountAmount;
-      finalAmount = pricing.finalAmount;
-      currency = pricing.currency;
-      couponId = pricing.coupon.id;
-      couponCode = pricing.coupon.code;
-      perUserLimit = pricing.coupon.perUserLimit;
+      try {
+        const pricing = await this.couponService.validateAndPrice({
+          code: input.couponCode,
+          tier,
+          billingCycle,
+          userId,
+          baseAmount,
+        });
+        discountAmount = pricing.discountAmount;
+        finalAmount = pricing.finalAmount;
+        currency = pricing.currency;
+        couponId = pricing.coupon.id;
+        couponCode = pricing.coupon.code;
+        perUserLimit = pricing.coupon.perUserLimit;
+      } catch (err) {
+        // Not a coupon? It may be an affiliate's referral code. One box, one
+        // code: the referee gets the discount and the referrer still earns.
+        //
+        // Only a genuinely unknown code falls through. A coupon that exists but
+        // was refused — expired, exhausted, wrong plan — must keep its own
+        // message, or a customer sees "invalid code" for a coupon that is
+        // merely out of date.
+        const unknownCode =
+          err instanceof AppError && err.message === 'Coupon not found';
+        const quote = unknownCode
+          ? await this.affiliateCodePricing?.quote(
+              input.couponCode,
+              userId,
+              baseAmount,
+              currency
+            )
+          : null;
+        if (!quote) throw err;
+
+        discountAmount = quote.discountAmount;
+        finalAmount = quote.finalAmount;
+        affiliateCode = quote;
+      }
     }
 
     const preview = { baseAmount, discountAmount, finalAmount, currency };
@@ -130,6 +167,17 @@ export class CreateSubscriptionCheckoutUseCase {
       createdAt: now,
       updatedAt: now,
     });
+
+    // Attribution for an affiliate code, written before the charge opens so the
+    // commission can be credited when settlement runs. Best-effort by design:
+    // a payment must not fail because an attribution row could not be written.
+    if (affiliateCode && this.affiliateCodePricing) {
+      await this.affiliateCodePricing.attachReferral(
+        affiliateCode.affiliateId,
+        userId,
+        affiliateCode.code
+      );
+    }
 
     let redemption: CouponRedemption | undefined;
     if (couponId && couponCode) {

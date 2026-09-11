@@ -1,4 +1,4 @@
-import type { BillingCycle } from '@ubuntu-fund/types';
+import { CouponSurface, type BillingCycle } from '@ubuntu-fund/types';
 import type { CouponEntity } from '../../domain/entities/Coupon.js';
 import type { CouponRepositoryPort } from '../../domain/ports/outbound/CouponRepositoryPort.js';
 import type { CouponRedemptionRepositoryPort } from '../../domain/ports/outbound/CouponRedemptionRepositoryPort.js';
@@ -15,6 +15,11 @@ export interface ValidateAndPriceInput {
   userId: string;
   /** The plan's list price (GHS major units) before any discount. */
   baseAmount: number;
+  /**
+   * Where the coupon is being redeemed. Defaults to SUBSCRIPTION, which is
+   * what every caller meant before surfaces existed.
+   */
+  surface?: CouponSurface;
 }
 
 export interface CouponPricing {
@@ -56,6 +61,11 @@ export class CouponService {
     const coupon = await this.couponRepo.findByCode(code);
     if (!coupon) {
       throw new AppError('Coupon not found', 422);
+    }
+
+    const surface = input.surface ?? CouponSurface.SUBSCRIPTION;
+    if (!coupon.appliesToSurface(surface)) {
+      throw new AppError('This coupon cannot be used here', 422);
     }
 
     const now = new Date();

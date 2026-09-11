@@ -1,6 +1,12 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { SubscriptionTier, BillingCycle, CouponDiscountType } from '@ubuntu-fund/types';
+import {
+  SubscriptionTier,
+  BillingCycle,
+  CouponDiscountType,
+  CouponSurface,
+  CouponCommissionBase,
+} from '@ubuntu-fund/types';
 import type { CouponController } from '../controllers/CouponController.js';
 import { validate } from '../../middleware/validate.js';
 import type { createAuthMiddleware } from '../../middleware/authMiddleware.js';
@@ -21,6 +27,8 @@ const createCouponSchema = z.object({
   appliesToTiers: z.array(z.string().min(1).max(60)).optional(),
   appliesToBillingCycles: z.array(z.nativeEnum(BillingCycle)).optional(),
   maxDiscountAmount: z.number().nonnegative().optional(),
+  appliesToSurfaces: z.array(z.nativeEnum(CouponSurface)).optional(),
+  commissionBase: z.nativeEnum(CouponCommissionBase).optional(),
   newUsersOnly: z.boolean().optional(),
   allowedEmails: z.array(z.string().email()).max(500).optional(),
   validFrom: z.string().optional(),
@@ -42,6 +50,8 @@ const updateCouponSchema = z.object({
   appliesToTiers: z.array(z.string().min(1).max(60)).optional(),
   appliesToBillingCycles: z.array(z.nativeEnum(BillingCycle)).optional(),
   maxDiscountAmount: z.number().nonnegative().optional(),
+  appliesToSurfaces: z.array(z.nativeEnum(CouponSurface)).optional(),
+  commissionBase: z.nativeEnum(CouponCommissionBase).optional(),
   newUsersOnly: z.boolean().optional(),
   allowedEmails: z.array(z.string().email()).max(500).optional(),
   validFrom: z.string().optional(),

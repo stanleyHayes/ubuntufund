@@ -18,6 +18,8 @@ export function toCouponDto(entity: CouponEntity): Coupon {
     minSubtotal: c.minSubtotal,
     appliesToTiers: c.appliesToTiers,
     appliesToBillingCycles: c.appliesToBillingCycles,
+    appliesToSurfaces: c.appliesToSurfaces,
+    commissionBase: c.commissionBase,
     newUsersOnly: c.newUsersOnly,
     allowedEmails: c.allowedEmails,
     validFrom: c.validFrom,
