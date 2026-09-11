@@ -154,7 +154,7 @@ function PricingPage() {
   const PLANS = plans
 
   return (
-    <Box component="main" sx={{ flex: 1, pb: 10 }}>
+    <Box sx={{ flex: 1, pb: 10 }}>
       <InternalPageHero
         eyebrow="Plans and limits"
         title="Clear pricing without hidden promises"

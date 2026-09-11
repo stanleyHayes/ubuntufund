@@ -220,77 +220,17 @@ export function applySkinVars(skin: ThemeSkin, dark: boolean, el?: HTMLElement):
   for (const [k, v] of Object.entries(vars)) target.style.setProperty(k, v)
 }
 
+/**
+ * The webfonts, injected as global styles by each app's ColorModeContext.
+ *
+ * Named `ttSquaresFontFace` for a display face that is no longer used: ten
+ * TT Squares @font-face rules were declared here but no `fontFamily` anywhere
+ * in the product ever asked for them — every type scale resolves to
+ * "Outfit", "Inter", … — so ten .otf files shipped in each app's public/
+ * folder and were never fetched. The export name is kept because three apps
+ * import it.
+ */
 export const ttSquaresFontFace = `
-  @font-face {
-    font-family: 'TT Squares';
-    src: url('/fonts/Squares Thin.otf') format('opentype');
-    font-weight: 100;
-    font-style: normal;
-    font-display: swap;
-  }
-  @font-face {
-    font-family: 'TT Squares';
-    src: url('/fonts/Squares Thin Italic.otf') format('opentype');
-    font-weight: 100;
-    font-style: italic;
-    font-display: swap;
-  }
-  @font-face {
-    font-family: 'TT Squares';
-    src: url('/fonts/Squares Light.otf') format('opentype');
-    font-weight: 300;
-    font-style: normal;
-    font-display: swap;
-  }
-  @font-face {
-    font-family: 'TT Squares';
-    src: url('/fonts/Squares Light italic.otf') format('opentype');
-    font-weight: 300;
-    font-style: italic;
-    font-display: swap;
-  }
-  @font-face {
-    font-family: 'TT Squares';
-    src: url('/fonts/Squares Regular.otf') format('opentype');
-    font-weight: 400;
-    font-style: normal;
-    font-display: swap;
-  }
-  @font-face {
-    font-family: 'TT Squares';
-    src: url('/fonts/Squares Italic.otf') format('opentype');
-    font-weight: 400;
-    font-style: italic;
-    font-display: swap;
-  }
-  @font-face {
-    font-family: 'TT Squares';
-    src: url('/fonts/Squares Bold.otf') format('opentype');
-    font-weight: 700;
-    font-style: normal;
-    font-display: swap;
-  }
-  @font-face {
-    font-family: 'TT Squares';
-    src: url('/fonts/Squares Bold Italic.otf') format('opentype');
-    font-weight: 700;
-    font-style: italic;
-    font-display: swap;
-  }
-  @font-face {
-    font-family: 'TT Squares';
-    src: url('/fonts/Squares Black.otf') format('opentype');
-    font-weight: 900;
-    font-style: normal;
-    font-display: swap;
-  }
-  @font-face {
-    font-family: 'TT Squares';
-    src: url('/fonts/Squares Black Italic.otf') format('opentype');
-    font-weight: 900;
-    font-style: italic;
-    font-display: swap;
-  }
   /* Outfit variable font — body text (latin + latin-ext subsets) */
   @font-face {
     font-family: 'Outfit';

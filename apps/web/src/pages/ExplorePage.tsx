@@ -333,7 +333,7 @@ export function ExplorePage() {
           >
             {paginated.map((campaign, index) => (
               <Box key={campaign.id} sx={{ animation: `${fadeInUp} 0.4s ease ${index * 0.06}s both` }}>
-                <CampaignCard campaign={campaign} />
+                <CampaignCard campaign={campaign} priority={index < 3} />
               </Box>
             ))}
           </Box>

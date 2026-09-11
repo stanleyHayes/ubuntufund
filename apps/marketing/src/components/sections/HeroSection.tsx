@@ -220,7 +220,14 @@ function HeroSection() {
           </Box>
 
           <Box className="hero-art" sx={{ flex: 1, width: '100%', minWidth: 0, maxWidth: 560, position: 'relative', pb: 2 }}>
+            {/* A 1536px, 640KB original was being delivered into a box that is
+                560px at its widest — most of those bytes were thrown away after
+                download. srcset lets the browser pick by its own layout and
+                pixel density instead; the full-size file stays the src so any
+                client that ignores srcset still renders. */}
             <Box component="img" className="home-art-image" src="/images/home/community-garden.jpg"
+              srcSet="/images/home/community-garden-560w.jpg 560w, /images/home/community-garden-1120w.jpg 1120w, /images/home/community-garden.jpg 1536w"
+              sizes="(max-width: 899px) 100vw, 560px"
               alt="Illustration of neighbors planning a community garden in a Ghanaian courtyard"
               width={1536} height={1024} fetchPriority="high"
               sx={{ width: '100%', height: 'auto', boxShadow: '20px 25px 60px rgba(0,0,0,.25)' }} />

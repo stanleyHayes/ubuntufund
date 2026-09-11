@@ -598,7 +598,7 @@ function BlogPage() {
     activeCategory === 'All' ? rest : rest.filter((p) => p.category === activeCategory)
 
   return (
-    <Box component="main" sx={{ flex: 1, pb: 10 }}>
+    <Box sx={{ flex: 1, pb: 10 }}>
       <InternalPageHero
         eyebrow="Ujimora journal"
         title="Field notes for trustworthy fundraising"

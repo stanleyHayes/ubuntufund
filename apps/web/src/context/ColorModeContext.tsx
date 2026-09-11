@@ -17,6 +17,7 @@ import {
   applySkinVars,
   revealThemeChange,
   themeTransitionStyles,
+  reducedMotionStyles,
   type ThemeSkin,
 } from '@ubuntu-fund/ui'
 
@@ -115,6 +116,7 @@ export function ColorModeProvider({ children }: { children: ReactNode }) {
         <GlobalStyles styles={ttSquaresFontFace} />
         <GlobalStyles styles={skinGlobalStyles} />
         <GlobalStyles styles={themeTransitionStyles} />
+        <GlobalStyles styles={reducedMotionStyles} />
         {children}
       </ThemeProvider>
     </ColorModeContext.Provider>

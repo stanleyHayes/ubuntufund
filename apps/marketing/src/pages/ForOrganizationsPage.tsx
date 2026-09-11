@@ -94,7 +94,7 @@ function ForOrganizationsPage() {
   const WEB_APP_URL = import.meta.env.VITE_WEB_APP_URL || 'http://localhost:8200'
 
   return (
-    <Box component="main" sx={{ flex: 1 }}>
+    <Box sx={{ flex: 1 }}>
 
       <InternalPageHero
         eyebrow="For organizations"

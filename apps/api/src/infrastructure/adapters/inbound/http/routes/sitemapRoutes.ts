@@ -98,5 +98,34 @@ export function createSitemapRoutes(): Router {
     }
   });
 
+  /**
+   * api.ujimora.com has no robots.txt, so crawlers get the API's JSON 404 for
+   * it and fall back to assuming the whole host is fair game.
+   *
+   * Deliberately NOT `Disallow: /`. The browser calls /api/v1 on its own
+   * origin and Vercel rewrites it here, so blocking this host would be
+   * harmless today — but the moment anyone points VITE_API_URL at the absolute
+   * origin, a blanket Disallow stops Googlebot fetching the data the SPA needs
+   * to render, and every campaign page renders empty. Disallow controls
+   * FETCHING; the thing actually wanted here is "fetch freely, index nothing",
+   * which is what the X-Robots-Tag header on API responses says.
+   *
+   * What is blocked is only what no crawler should ever walk: callbacks and
+   * webhook endpoints, which carry provider references in their URLs.
+   */
+  router.get('/robots.txt', (_req, res) => {
+    res.type('text/plain');
+    res.set('Cache-Control', 'public, max-age=86400');
+    res.send(
+      [
+        'User-agent: *',
+        'Allow: /',
+        'Disallow: /api/v1/webhooks/',
+        'Disallow: /api/v1/payouts/paystack-approval',
+        '',
+      ].join('\n')
+    );
+  });
+
   return router;
 }

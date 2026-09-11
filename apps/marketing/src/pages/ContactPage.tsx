@@ -160,7 +160,7 @@ function ContactPage() {
   }
 
   return (
-    <Box component="main" sx={{ flex: 1, pb: { xs: 8, md: 10 } }}>
+    <Box sx={{ flex: 1, pb: { xs: 8, md: 10 } }}>
       <InternalPageHero
         eyebrow="Get in touch"
         title="Bring us the full context"

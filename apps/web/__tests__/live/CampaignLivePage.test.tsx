@@ -26,7 +26,10 @@ describe('live broadcast workspace', () => {
     expect(document.documentElement.dataset.skin).toBe(skin)
     expect(document.documentElement.style.getPropertyValue('--neu-raised')).not.toBe('')
     await screen.findByText(/In-app broadcasting is awaiting/)
-    expect(screen.getByRole('button', { name: 'Go LIVE' })).toBeDisabled()
+    // findBy, not getBy: the button reads 'Checking session…' until the session
+    // lookup resolves, and that request is independent of the video-config one
+    // behind the text above — so whichever settles first varies per run.
+    expect(await screen.findByRole('button', { name: 'Go LIVE' })).toBeDisabled()
     expect(screen.getByTitle('Broadcast preview')).toHaveAttribute('src', expect.stringContaining('preview=1'))
   })
   it('starts video-ready sessions and recovers controls from the server after remount', async () => {

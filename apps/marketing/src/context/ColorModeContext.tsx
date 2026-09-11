@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useLayoutEffect, useMemo, useSt
 import { ThemeProvider } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
 import GlobalStyles from '@mui/material/GlobalStyles'
-import { createUjimoraTheme, ttSquaresFontFace, applySkinVars, revealThemeChange, themeTransitionStyles, type ThemeSkin } from '@ubuntu-fund/ui'
+import { createUjimoraTheme, ttSquaresFontFace, applySkinVars, revealThemeChange, themeTransitionStyles, reducedMotionStyles, type ThemeSkin } from '@ubuntu-fund/ui'
 
 interface ColorModeValue {
   darkMode: boolean
@@ -64,6 +64,7 @@ export function ColorModeProvider({ children }: { children: ReactNode }) {
         <GlobalStyles styles={ttSquaresFontFace} />
         <GlobalStyles styles={skinGlobalStyles} />
         <GlobalStyles styles={themeTransitionStyles} />
+        <GlobalStyles styles={reducedMotionStyles} />
         {children}
       </ThemeProvider>
     </ColorModeContext.Provider>

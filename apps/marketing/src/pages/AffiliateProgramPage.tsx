@@ -165,7 +165,7 @@ function AffiliateProgramPage() {
   const WEB_APP_URL = import.meta.env.VITE_WEB_APP_URL || 'https://app.ujimora.com'
 
   return (
-    <Box component="main" sx={{ flex: 1 }}>
+    <Box sx={{ flex: 1 }}>
       <InternalPageHero
         eyebrow="Affiliate program"
         title="Turn your network into lasting impact"

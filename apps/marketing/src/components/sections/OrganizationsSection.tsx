@@ -82,6 +82,8 @@ function OrganizationsSection() {
             </Typography>
             <Box component="figure" sx={{ m: 0, mb: 4 }}>
               <Box component="img" className="home-art-image" src="/images/home/community-learning.jpg"
+                srcSet="/images/home/community-learning-560w.jpg 560w, /images/home/community-learning-1120w.jpg 1120w, /images/home/community-learning.jpg 1536w"
+                sizes="(max-width: 899px) 100vw, 460px"
                 alt="Illustration of a Ghanaian team arranging books and learning supplies together"
                 width={1536} height={1024} loading="lazy" decoding="async" sx={{ width: '100%', height: 'auto' }} />
               <Typography component="figcaption" sx={{ mt: 1.5, fontSize: '.75rem', color: '#B5C9BA' }}>

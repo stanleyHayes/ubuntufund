@@ -21,6 +21,15 @@ import type { Campaign } from '@ubuntu-fund/types'
 
 interface CampaignCardProps {
   campaign: Campaign
+  /**
+   * Render the cover eagerly, for cards that are above the fold.
+   *
+   * A lazy image is invisible to the browser's preload scanner, so it is not
+   * requested until layout reaches it — on the first row that means the
+   * Largest Contentful Paint element starts downloading late, on purpose.
+   * Below the fold, lazy is exactly right and stays the default.
+   */
+  priority?: boolean
 }
 
 const MS_PER_DAY = 86_400_000
@@ -105,7 +114,7 @@ export function CoverPlaceholder({
   )
 }
 
-export function CampaignCard({ campaign }: CampaignCardProps) {
+export function CampaignCard({ campaign, priority = false }: CampaignCardProps) {
   const entrance = useEntrance<HTMLDivElement>()
   const [now] = useState(() => Date.now())
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null)
@@ -230,8 +239,12 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
             <Box
               component="img"
               src={cover}
+              // Decorative on purpose: this image sits inside a link that
+              // already announces the campaign title, so alt text here would
+              // make a screen reader read the same name twice per card.
               alt=""
-              loading="lazy"
+              loading={priority ? 'eager' : 'lazy'}
+              fetchPriority={priority ? 'high' : undefined}
               onError={() => setImgBroken(true)}
               sx={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
             />

@@ -21,7 +21,7 @@ import { InternalPageHero } from '../components/InternalPageHero'
 import { useContent } from '../hooks/useContent'
 import { useSeo, SITE_ORIGIN } from '@/lib/seo'
 
-interface TeamMember { name: string; role: string; initials: string; bio: string; image?: string; website?: string; companyUrl?: string; socials?: { label: string; href: string }[] }
+interface TeamMember { name: string; role: string; initials: string; bio: string; image?: string; /** Only the built-in profile ships one; a CMS record renders its single image. */ imageSrcSet?: string; website?: string; companyUrl?: string; socials?: { label: string; href: string }[] }
 
 const SOCIAL_ICONS = { LinkedIn: LinkedInIcon, GitHub: GitHubIcon, X: XIcon, Instagram: InstagramIcon }
 
@@ -59,7 +59,7 @@ function AboutPage() {
   // Older CMS records still contain the launch placeholder.
   const leader = !cmsLeader || cmsLeader.name === 'Ujimora Team' ? STANLEY_PROFILE : cmsLeader
   return (
-    <Box component="main" sx={{ flex: 1, bgcolor: 'background.default', pb: { xs: 8, md: 12 } }}>
+    <Box sx={{ flex: 1, bgcolor: 'background.default', pb: { xs: 8, md: 12 } }}>
       <InternalPageHero eyebrow="About Ujimora" title={about.hero.title} description={about.hero.subtitle} icon={<PublicRoundedIcon />} panelLabel="Built in Ghana" panelTitle="Giving infrastructure shaped around local communities." panelBody="Cedi-first records. Human review. Transparent campaign histories." primaryAction={{ label: 'How trust works', href: '#operating-model' }} secondaryAction={{ label: 'Talk to our team', href: '/contact' }} />
 
       <Container maxWidth="lg" sx={{ mt: { xs: 6, md: 10 } }}>
@@ -74,7 +74,7 @@ function AboutPage() {
               component="figure"
               sx={{ m: 0, position: 'relative', overflow: 'hidden', minHeight: { xs: 280, md: 360 }, borderRadius: SHAPE.card, boxShadow: 'var(--neu-raised)' }}
             >
-              <Box component="img" src="/images/about/community-planning.jpg" alt="A Ghanaian community group planning a shared project together" sx={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+              <Box component="img" src="/images/about/community-planning.jpg" srcSet="/images/about/community-planning-700w.jpg 700w, /images/about/community-planning-1400w.jpg 1400w, /images/about/community-planning.jpg 1800w" sizes="(max-width: 899px) 100vw, 46vw" alt="A Ghanaian community group planning a shared project together" sx={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
               <Box component="figcaption" sx={{ position: 'absolute', left: 18, right: 18, bottom: 18, bgcolor: 'rgba(36,49,38,.9)', color: '#F2EFEA', borderRadius: SHAPE.sm, px: 2, py: 1.35, backdropFilter: 'blur(8px)', fontSize: '.78rem', lineHeight: 1.5 }}>
                 Strong campaigns begin with a shared understanding of the need, the plan, and who is responsible.
               </Box>
@@ -98,7 +98,7 @@ function AboutPage() {
               <Typography component="h2" id="operating-model-title" sx={{ mt: 1.5, fontSize: { xs: '2rem', md: '2.8rem' }, fontWeight: 900, lineHeight: 1.05, letterSpacing: '-.035em' }}>One history, shared by everyone involved.</Typography>
               <Typography sx={{ mt: 2.5, color: 'rgba(242,239,234,.64)', lineHeight: 1.75 }}>From the first appeal to the latest update, follow four connected steps that keep the purpose, the people, and the progress in view.</Typography>
               <Box component="figure" sx={{ m: 0, mt: 4, overflow: 'hidden', borderRadius: SHAPE.card, boxShadow: 'var(--forest-raised)' }}>
-                <Box component="img" src="/images/about/project-verification.jpg" alt="A Ghanaian project organizer recording progress at a community water site" sx={{ display: 'block', width: '100%', height: { xs: 300, md: 360 }, objectFit: 'cover', objectPosition: 'center 38%' }} />
+                <Box component="img" src="/images/about/project-verification.jpg" srcSet="/images/about/project-verification-700w.jpg 700w, /images/about/project-verification-1400w.jpg 1400w, /images/about/project-verification.jpg 1280w" sizes="(max-width: 899px) 100vw, 46vw" loading="lazy" decoding="async" alt="A Ghanaian project organizer recording progress at a community water site" sx={{ display: 'block', width: '100%', height: { xs: 300, md: 360 }, objectFit: 'cover', objectPosition: 'center 38%' }} />
                 <Typography component="figcaption" sx={{ px: 2.5, py: 2, color: 'rgba(242,239,234,.68)', fontSize: '.78rem', lineHeight: 1.55 }}>Progress becomes more useful when it is documented where the work happens.</Typography>
               </Box>
             </Box>
@@ -150,7 +150,7 @@ function AboutPage() {
             </Box>
           </Box>
           <Box sx={{ bgcolor: 'var(--neu-surface)', boxShadow: 'var(--neu-raised)', borderRadius: SHAPE.card, overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-            <Box component="img" src="/images/about/shared-progress.jpg" alt="Ghanaian community members reviewing photographs of project progress" sx={{ width: '100%', height: { xs: 245, md: 285 }, objectFit: 'cover', display: 'block' }} />
+            <Box component="img" src="/images/about/shared-progress.jpg" srcSet="/images/about/shared-progress-700w.jpg 700w, /images/about/shared-progress-1400w.jpg 1400w, /images/about/shared-progress.jpg 1800w" sizes="(max-width: 899px) 100vw, 46vw" loading="lazy" decoding="async" alt="Ghanaian community members reviewing photographs of project progress" sx={{ width: '100%', height: { xs: 245, md: 285 }, objectFit: 'cover', display: 'block' }} />
             <Box sx={{ p: { xs: 3.5, md: 5 }, pt: { xs: 3, md: 4 } }}>
             <Box>
               <Box sx={{ width: 58, height: 58, display: 'grid', placeItems: 'center', borderRadius: SHAPE.sm, boxShadow: 'var(--neu-subtle)', color: 'primary.main' }}><GroupsRoundedIcon /></Box>
@@ -163,7 +163,7 @@ function AboutPage() {
           </Box>
         </Box>
         <Box component="section" id="leadership" aria-labelledby="leadership-name" sx={{ mt: { xs: 7, md: 10 }, scrollMarginTop: 90, bgcolor: 'var(--neu-surface)', boxShadow: 'var(--neu-raised)', border: 'var(--neu-border)', backdropFilter: 'var(--neu-backdrop)', borderRadius: SHAPE.card, overflow: 'hidden', display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'minmax(0,.85fr) minmax(0,1.4fr)' } }}>
-          <Avatar variant="square" src={leader.image} alt={leader.name} sx={{ width: '100%', height: { xs: 300, sm: 380, md: '100%' }, minHeight: { md: 500 }, bgcolor: 'primary.main', color: 'primary.contrastText', fontSize: '5rem', '& img': { objectPosition: '50% 35%' } }}>{leader.initials}</Avatar>
+          <Avatar variant="square" src={leader.image} alt={leader.name} imgProps={{ srcSet: leader.imageSrcSet, sizes: '(max-width: 899px) 100vw, 46vw', loading: 'lazy', decoding: 'async' }} sx={{ width: '100%', height: { xs: 300, sm: 380, md: '100%' }, minHeight: { md: 500 }, bgcolor: 'primary.main', color: 'primary.contrastText', fontSize: '5rem', '& img': { objectPosition: '50% 35%' } }}>{leader.initials}</Avatar>
           <Box sx={{ p: { xs: 3, sm: 4, md: 5 } }}>
             <Typography variant="overline" color="text.secondary">The person behind the platform</Typography>
             <Typography component="h2" id="leadership-name" sx={{ mt: 1.5, fontSize: { xs: '2rem', md: '2.6rem' }, fontWeight: 900, letterSpacing: '-.035em', lineHeight: 1.12 }}>{leader.name}</Typography>

@@ -175,7 +175,7 @@ function HelpPage() {
   }
 
   return (
-    <Box component="main" sx={{ flex: 1 }}>
+    <Box sx={{ flex: 1 }}>
 
       <InternalPageHero
         eyebrow="Support"

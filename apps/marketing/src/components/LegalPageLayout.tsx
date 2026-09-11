@@ -41,7 +41,7 @@ export function LegalPageLayout({
   effectiveDate = 'Updated recently',
 }: LegalPageLayoutProps) {
   return (
-    <Box component="main" sx={{ flex: 1, pb: { xs: 8, md: 12 }, bgcolor: 'background.default' }}>
+    <Box sx={{ flex: 1, pb: { xs: 8, md: 12 }, bgcolor: 'background.default' }}>
       <InternalPageHero
         eyebrow={eyebrow}
         title={title}

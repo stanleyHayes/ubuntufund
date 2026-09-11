@@ -1366,6 +1366,21 @@ export function createApp(): express.Express {
   const app = express()
   app.disable('x-powered-by')
   app.use(helmet())
+
+  // Fetchable, never indexable.
+  //
+  // robots.txt on this host deliberately allows crawling, because Googlebot
+  // must be able to fetch API responses to render the SPA's campaign pages.
+  // That leaves JSON endpoints themselves eligible for indexing — Google does
+  // index raw JSON when it finds it — so every API response says noindex
+  // outright. The sitemap is the one thing here meant for crawlers, and it is
+  // not a page, so it is exempt along with robots.txt itself.
+  app.use((req, res, next) => {
+    if (req.path !== '/sitemap.xml' && req.path !== '/robots.txt') {
+      res.set('X-Robots-Tag', 'noindex, nofollow')
+    }
+    next()
+  })
   app.use(
     cors({
       origin: config.corsOrigins.length > 0 ? config.corsOrigins : true,

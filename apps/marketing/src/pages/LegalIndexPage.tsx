@@ -21,7 +21,7 @@ function LegalIndexPage() {
   })
 
   return (
-    <Box component="main" sx={{ flex: 1, pb: { xs: 8, md: 12 }, bgcolor: 'background.default' }}>
+    <Box sx={{ flex: 1, pb: { xs: 8, md: 12 }, bgcolor: 'background.default' }}>
       <InternalPageHero
         eyebrow="Legal & policies"
         title="Policies & agreements"

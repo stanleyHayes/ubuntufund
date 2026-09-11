@@ -114,6 +114,9 @@ function InnerPageLayout() {
     <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <Navbar />
       {!hasEditorialHero && <AfricanBanner {...bannerProps} compact navbarOffset={64} />}
+      {/* The one <main> for every inner page. Pages rendered into this
+          Outlet must NOT declare their own — nested landmarks are invalid,
+          and a screen reader then lists two "main" regions to skip to. */}
       <Box component="main" sx={{ flex: 1 }}>
         <Outlet />
       </Box>

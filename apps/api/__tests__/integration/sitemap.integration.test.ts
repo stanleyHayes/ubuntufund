@@ -75,3 +75,31 @@ it('lists indexable campaigns under their canonical slug URL, and nothing else',
   expect((res.text.match(/<url>/g) ?? []).length).toBe((res.text.match(/<\/url>/g) ?? []).length)
   expect(res.text).toContain('</urlset>')
 })
+
+/**
+ * The API host answered its JSON 404 for /robots.txt, so crawlers assumed the
+ * whole host was fair game.
+ *
+ * The subtle part is what this must NOT do. The browser calls /api/v1 on the
+ * app's own origin and Vercel rewrites it here — but point VITE_API_URL at the
+ * absolute origin and a blanket `Disallow: /` would stop Googlebot fetching
+ * the data the SPA renders from, blanking every campaign page. Fetching stays
+ * open; the X-Robots-Tag header is what keeps the JSON out of the index.
+ */
+it('allows crawling the API host but marks every response noindex', async () => {
+  const robots = await request(app).get('/robots.txt').expect(200)
+  expect(robots.headers['content-type']).toMatch(/text\/plain/)
+  expect(robots.text).toContain('Allow: /')
+  expect(robots.text, 'a blanket Disallow would blank every rendered campaign page')
+    .not.toMatch(/^Disallow: \/$/m)
+  // Reference-bearing endpoints no crawler should ever walk.
+  expect(robots.text).toContain('Disallow: /api/v1/webhooks/')
+
+  const api = await request(app).get('/api/v1/campaigns')
+  expect(api.headers['x-robots-tag']).toBe('noindex, nofollow')
+
+  // The sitemap is for crawlers; telling them not to follow it defeats it.
+  const sitemap = await request(app).get('/sitemap.xml').expect(200)
+  expect(sitemap.headers['x-robots-tag']).toBeUndefined()
+  expect(robots.headers['x-robots-tag']).toBeUndefined()
+})

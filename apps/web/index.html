@@ -13,6 +13,23 @@
     <meta name="theme-color" content="#2E3D2F" />
     <meta name="robots" content="index, follow, max-image-preview:large" />
 
+    <!-- Resource hints.
+         The Outfit @font-face rules are injected by JavaScript at runtime
+         (GlobalStyles in ColorModeContext), so the browser cannot discover the
+         font until React has mounted — it renders the fallback face first and
+         reflows when Outfit finally lands. Preloading it here starts the fetch
+         during HTML parse instead. Only the latin subset: latin-ext covers
+         accented Latin that most visitors never render, and preloading an
+         unused font wastes the request it saves.
+
+         res.cloudinary.com serves every campaign cover, which is the LCP
+         element on campaign and explore pages. Opening the TLS connection up
+         front removes a DNS + TLS round trip from the critical path, which on
+         a Ghanaian mobile connection is worth more than it sounds. -->
+    <link rel="preload" href="/fonts/Outfit-Variable-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preconnect" href="https://res.cloudinary.com" crossorigin />
+    <link rel="dns-prefetch" href="https://res.cloudinary.com" />
+
     <!-- Favicon (square, solid tile; .ico first so Google & browsers resolve it) -->
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
