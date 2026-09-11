@@ -212,7 +212,7 @@ export default function VerificationScreen() {
   const [error, setError] = useState<string | null>(null)
 
   const STATUS_CONFIG: Record<string, { color: string; bg: string; icon: string; label: string }> = {
-    pending: { color: p.warning, bg: `${p.warning}1F`, icon: 'clock-outline', label: 'Pending' },
+    pending: { color: p.warningText, bg: `${p.warning}1F`, icon: 'clock-outline', label: 'Pending' },
     approved: { color: p.success, bg: `${p.success}1A`, icon: 'check-circle', label: 'Approved' },
     rejected: { color: p.error, bg: `${p.error}1A`, icon: 'close-circle', label: 'Rejected' },
   }

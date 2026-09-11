@@ -99,6 +99,22 @@ export class MongoCampaignBalanceRepository
     return doc ? toDomain(doc) : null;
   }
 
+  async returnAvailableToPending(
+    campaignId: string,
+    amount: number
+  ): Promise<CampaignBalance | null> {
+    // Guarded on availableBalance so a race can never drive it negative.
+    const doc = await CampaignBalanceModel.findOneAndUpdate(
+      { campaignId, availableBalance: { $gte: amount } },
+      {
+        $set: { updatedAt: new Date() },
+        $inc: { availableBalance: -amount, pendingBalance: amount },
+      },
+      { new: true }
+    );
+    return doc ? toDomain(doc) : null;
+  }
+
   async reserveForPayout(
     campaignId: string,
     amount: number

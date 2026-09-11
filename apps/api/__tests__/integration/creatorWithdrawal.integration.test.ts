@@ -134,6 +134,7 @@ describe('Creator withdrawal — transfer rail', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({
         expectedFeePercent: 3,
+        idempotencyKey: randomUUID(),
         amount: 120,
         recipient: {
           type: 'mobile_money',
@@ -187,6 +188,7 @@ describe('Creator withdrawal — transfer rail', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({
         expectedFeePercent: 3,
+        idempotencyKey: randomUUID(),
         amount: 100,
         recipient: {
           type: 'mobile_money',
@@ -205,6 +207,7 @@ describe('Creator withdrawal — transfer rail', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({
         expectedFeePercent: 3,
+        idempotencyKey: randomUUID(),
         amount: 100,
         recipient: {
           type: 'mobile_money',
@@ -255,6 +258,7 @@ describe('Creator withdrawal — transfer rail', () => {
         .set('Authorization', `Bearer ${token}`)
         .send({
           expectedFeePercent: 3,
+          idempotencyKey: randomUUID(),
           amount: 40,
           recipient: {
             type: 'mobile_money',
@@ -282,6 +286,7 @@ describe('Creator withdrawal — transfer rail', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({
         expectedFeePercent: 3,
+        idempotencyKey: randomUUID(),
         amount: 50,
         recipient: {
           type: 'mobile_money',
@@ -320,13 +325,13 @@ describe('Creator withdrawal — transfer rail', () => {
     await request(app)
       .post('/api/v1/creators/withdraw')
       .set('Authorization', `Bearer ${token}`)
-      .send({ ...body, expectedFeePercent: 3 })
+      .send({ ...body, expectedFeePercent: 3, idempotencyKey: randomUUID() })
       .expect(409)
     expect((await CreatorBalanceModel.findOne({ userId }))?.availableBalance).toBe(100)
     const wd = await request(app)
       .post('/api/v1/creators/withdraw')
       .set('Authorization', `Bearer ${token}`)
-      .send({ ...body, expectedFeePercent: 3.5 })
+      .send({ ...body, expectedFeePercent: 3.5, idempotencyKey: randomUUID() })
       .expect(201)
     expect(wd.body.data).toMatchObject({ amount: 100, fee: 3.5, netAmount: 96.5 })
     expect(transferAmount).toBe(9650)
@@ -365,6 +370,7 @@ describe('Creator withdrawal — transfer rail', () => {
         .set('Authorization', `Bearer ${token}`)
         .send({
           expectedFeePercent: 3,
+          idempotencyKey: randomUUID(),
           amount: 100,
           recipient: {
             type: 'mobile_money',
@@ -406,6 +412,7 @@ describe('Creator withdrawal — transfer rail', () => {
         .set('Authorization', `Bearer ${token}`)
         .send({
           expectedFeePercent: 4,
+          idempotencyKey: randomUUID(),
           amount: 100,
           recipient: {
             type: 'mobile_money',

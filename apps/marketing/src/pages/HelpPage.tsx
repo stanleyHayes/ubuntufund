@@ -425,7 +425,7 @@ function HelpPage() {
           <Grid container spacing={3} alignItems="stretch">
             {CONTACT_OPTIONS.map((opt) => (
               <Grid size={{ xs: 12, md: 4 }} key={opt.title}>
-                <Card elevation={0} sx={{ position: 'relative', isolation: 'isolate', overflow: 'hidden', height: '100%', display: 'flex', flexDirection: 'column', bgcolor: '#28382B', color: '#F3F0E8', border: '1px solid rgba(182,192,184,0.16)', boxShadow: 'var(--neu-raised)', backdropFilter: 'var(--neu-backdrop)', '[data-skin="glassmorphism"] &': { bgcolor: 'rgba(70,91,74,0.28)' } }}>
+                <Card elevation={0} sx={{ position: 'relative', isolation: 'isolate', overflow: 'hidden', height: '100%', display: 'flex', flexDirection: 'column', bgcolor: '#28382B', color: '#F7F5EF', border: '1px solid rgba(207,215,208,0.16)', boxShadow: 'var(--forest-raised)', backdropFilter: 'var(--neu-backdrop)', '[data-skin="glassmorphism"] &': { bgcolor: 'rgba(70,91,74,0.28)' } }}>
                   <Box aria-hidden="true" sx={{ position: 'absolute', top: -12, right: -10, color: '#DCC07E', opacity: 0.065, pointerEvents: 'none', transform: 'rotate(-12deg)', '& svg': { display: 'block', fontSize: { xs: 132, md: 156 } } }}>
                     {opt.icon}
                   </Box>
@@ -443,7 +443,7 @@ function HelpPage() {
                     <Box sx={{ flex: 1 }}>
                       <Typography sx={{ fontWeight: 800, fontSize: '1.1rem' }}>{opt.title}</Typography>
                       <Typography sx={{ fontSize: '0.9rem', color: '#D1D9CF', mt: 0.75, overflowWrap: 'anywhere' }}>{opt.desc}</Typography>
-                      <Typography sx={{ fontSize: '0.8rem', color: '#B6C0B8', mt: 1 }}>{opt.detail}</Typography>
+                      <Typography sx={{ fontSize: '0.8rem', color: '#CFD7D0', mt: 1 }}>{opt.detail}</Typography>
                     </Box>
                     <Button
                       href={opt.href}

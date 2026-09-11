@@ -157,14 +157,16 @@ export class MongoCampaignRepository implements CampaignRepositoryPort {
     amount: number,
     currency: string
   ): Promise<CampaignEntity | null> {
+    // Called only from the post-settlement projection seam: by this point the
+    // money has moved and the journal is posted, so the credit is not optional.
+    // A `status: 'active'` + `endDate` guard here dropped the credit whenever a
+    // campaign flipped to funded (or elapsed) between validation and settlement
+    // — a concurrent donation that tipped the goal, say — leaving raisedAmount
+    // permanently understated against the ledger. Eligibility is decided earlier
+    // by `canReceiveDonation()`; this mirrors `reverseRaised` below, which omits
+    // the same guards for the same reason.
     const doc = await CampaignModel.findOneAndUpdate(
-      {
-        _id: campaignId,
-        deletedAt: { $exists: false },
-        status: 'active',
-        currency,
-        endDate: { $gt: new Date() },
-      },
+      { _id: campaignId, deletedAt: { $exists: false }, currency },
       { $inc: { raisedAmount: amount } },
       { new: true }
     );

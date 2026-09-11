@@ -321,10 +321,31 @@ export class ApprovePayoutUseCase {
     if (submitted === 0) {
       // Nothing left the platform — clean rollback: return the whole reservation
       // once and mark FAILED (symmetric with a single-transfer initiation failure).
-      await this.campaignBalanceRepo.returnToAvailable(payout.campaignId, payout.amount)
-      await this.payoutRepo.transitionToFailed(payout.id)
+      //
+      // Both halves of that have to be idempotent. A `transfer.failed` webhook
+      // for a leg whose transfer existed at the provider can land while a later
+      // leg is still in flight, and it returns that leg keyed
+      // `leg:<ref>:returned`. So: claim each leg first and only count the ones
+      // we win, then gate the gross return on winning the terminal transition
+      // and key it — exactly as the single-transfer rollback() below does.
+      let returnedByWebhook = 0
       for (const leg of legs) {
-        await this.payoutRepo.setLegStatus(payout.id, leg.reference, ['queued'], 'failed')
+        const won = await this.payoutRepo.setLegStatus(
+          payout.id,
+          leg.reference,
+          ['queued'],
+          'failed',
+        )
+        if (!won) returnedByWebhook += leg.amount
+      }
+      const failedNow = await this.payoutRepo.transitionToFailed(payout.id)
+      if (failedNow) {
+        await this.campaignBalanceRepo.returnToAvailable(
+          payout.campaignId,
+          payout.amount - returnedByWebhook,
+          `pout:${payout.id}:returned`,
+        )
+        await this.payoutRepo.markSettlementApplied(payout.id, 'FAILED')
       }
       throw new AppError('Payout transfer was rejected by the provider', 502)
     }
@@ -335,7 +356,13 @@ export class ApprovePayoutUseCase {
     for (const leg of failed) {
       const won = await this.payoutRepo.setLegStatus(payout.id, leg.reference, ['queued'], 'failed')
       if (won) {
-        await this.campaignBalanceRepo.returnToAvailable(payout.campaignId, leg.amount)
+        // Key it: the reconciler's repairBatched credits every `failed` leg as
+        // `leg:<ref>:returned`, so an unkeyed credit here is handed out twice.
+        await this.campaignBalanceRepo.returnToAvailable(
+          payout.campaignId,
+          leg.amount,
+          `leg:${leg.reference}:returned`,
+        )
       }
     }
 

@@ -38,6 +38,11 @@ export interface CreatorWithdrawalInput {
  * Once transfer initiation is attempted, an error leaves funds reserved in
  * PROCESSING until a signed webhook or reconciliation resolves the outcome.
  */
+/** Duplicate-key detection for the requestKey unique index. */
+function isDuplicateKeyError(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && (error as { code?: number }).code === 11000
+}
+
 export class RequestCreatorWithdrawalUseCase {
   constructor(
     private readonly payoutRepo: CreatorPayoutRepositoryPort,
@@ -52,6 +57,13 @@ export class RequestCreatorWithdrawalUseCase {
     const wallet = input.destination === 'ujimora_wallet'
     if (input.destination && !['paystack', 'ujimora_wallet'].includes(input.destination))
       throw new AppError('Unsupported withdrawal destination', 422)
+    // Both rails move real money, so both need the key — the bank rail used to
+    // validate it only on the wallet branch, which meant a retried or
+    // double-tapped POST reserved and transferred the amount twice.
+    if (!/^[0-9a-f-]{36}$/i.test(input.idempotencyKey ?? ''))
+      throw new AppError('A transfer request key is required', 422)
+    const replay = await this.payoutRepo.findByRequestKey(input.idempotencyKey as string)
+    if (replay) return replay
     if (!wallet && !this.gateway.isConfigured()) {
       throw new AppError('Withdrawals are not available right now.', 503)
     }
@@ -80,8 +92,6 @@ export class RequestCreatorWithdrawalUseCase {
 
     if (wallet) {
       if (!this.walletPayouts) throw new AppError('Wallet transfers unavailable', 503)
-      if (!/^[0-9a-f-]{36}$/i.test(input.idempotencyKey ?? ''))
-        throw new AppError('A transfer request key is required', 422)
       return this.walletPayouts.transferCreator({
         userId,
         amount: input.amount,
@@ -131,13 +141,21 @@ export class RequestCreatorWithdrawalUseCase {
           status: 'PENDING',
           provider: 'paystack',
           recipientName: r.accountName,
+          requestKey: input.idempotencyKey,
           createdAt: new Date(),
           updatedAt: new Date(),
         }),
       )
     } catch (err) {
-      logger.error({ err, userId }, 'creator withdrawal: payout record creation failed')
       await this.balanceRepo.returnToAvailable(userId, input.amount)
+      // A concurrent request with the same key won the unique index. Its record
+      // is authoritative; this one reserved nothing net (returned above) and
+      // replays the winner rather than starting a second transfer.
+      if (isDuplicateKeyError(err)) {
+        const winner = await this.payoutRepo.findByRequestKey(input.idempotencyKey as string)
+        if (winner) return winner
+      }
+      logger.error({ err, userId }, 'creator withdrawal: payout record creation failed')
       throw new AppError('Could not start the withdrawal. Please try again.', 502)
     }
 

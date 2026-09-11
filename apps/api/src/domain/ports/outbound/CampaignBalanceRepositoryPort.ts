@@ -52,6 +52,16 @@ export interface CampaignBalanceRepositoryPort {
   ): Promise<CampaignBalance | null>;
 
   /**
+   * Inverse of `clearPendingToAvailable`, for compensating a clear whose payout
+   * then failed to be created. Atomic and guarded on `availableBalance >=
+   * amount`. Returns the updated balance, or null when available is short.
+   */
+  returnAvailableToPending(
+    campaignId: string,
+    amount: number
+  ): Promise<CampaignBalance | null>;
+
+  /**
    * Reserve funds for an approved payout: `availableBalance -= amount` (the
    * money is now in transit). Atomic and guarded on `availableBalance >=
    * amount`. Returns the updated balance, or null when available is short.

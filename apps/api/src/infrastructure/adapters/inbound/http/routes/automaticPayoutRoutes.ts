@@ -9,6 +9,9 @@ import type { AuthenticatedRequest, createAuthMiddleware } from '../../middlewar
 import { requireAdmin } from '../../middleware/requireRole.js'
 import { validate } from '../../middleware/validate.js'
 import { donationIntentRateLimiter } from '../../middleware/rateLimiter.js'
+import { logger } from '../../../../logging/logger.js'
+import { createHmac, timingSafeEqual } from 'node:crypto'
+import { config } from '../../../../config/index.js'
 import {
   AutomaticPayoutPolicyModel,
   automaticPayoutDefaults,
@@ -33,6 +36,49 @@ const policySchema = z
       p.mobileMoneyMaxAmount <= p.maxAmount,
     'Limits must increase from MoMo to per-request to owner/day to platform/day.',
   )
+/**
+ * Authenticates Paystack's transfer-approval callback by HMAC over the raw body.
+ *
+ * Fail-closed is safe here: Transfer Approval is NOT enabled on the Paystack
+ * dashboard (both "Confirm transfers" boxes unchecked, both Approval URLs
+ * empty), so Paystack never calls this route today and the only traffic it can
+ * receive is unsolicited. Left open, its 200/400 answer is an exact-match oracle
+ * over a payout reference, its minor-unit amount and the recipient code.
+ *
+ * If you later enable Transfer Approval and it turns out Paystack does not sign
+ * these the way it signs webhooks, every transfer would be declined — so the
+ * refusal is logged loudly with `signaturePresent:false`, and the escape hatch
+ * is one variable: `PAYSTACK_APPROVAL_REQUIRE_SIGNATURE=false`.
+ *
+ * Returns true when the request may proceed.
+ */
+function approvalSignatureOk(req: {
+  headers: Record<string, unknown>
+  rawBody?: Buffer
+}): boolean {
+  const required = process.env.PAYSTACK_APPROVAL_REQUIRE_SIGNATURE !== 'false'
+  const header = req.headers['x-paystack-signature']
+  const signature = typeof header === 'string' ? header : undefined
+  const secret = config.paystack.secretKey
+
+  if (!signature || !req.rawBody || !secret) {
+    logger.warn(
+      { signaturePresent: Boolean(signature), rawBodyCaptured: Boolean(req.rawBody), required },
+      'paystack transfer approval: unsigned request',
+    )
+    return !required
+  }
+
+  const expected = Buffer.from(createHmac('sha512', secret).update(req.rawBody).digest('hex'))
+  const provided = Buffer.from(signature)
+  const valid = expected.length === provided.length && timingSafeEqual(expected, provided)
+  logger[valid ? 'info' : 'warn'](
+    { signaturePresent: true, valid, required },
+    'paystack transfer approval: signature checked',
+  )
+  return valid || !required
+}
+
 export function automaticPayoutRoutes(
   auth: ReturnType<typeof createAuthMiddleware>,
   controls: PayoutTransferControlUseCase,
@@ -100,8 +146,17 @@ export function automaticPayoutRoutes(
   )
   // Paystack approval requests authorize only a transfer already reserved by Ujimora.
   // No secret in the URL and no transfer/ledger mutation occurs here.
+  // Deliberately NOT per-IP rate limited: Paystack calls this once per transfer
+  // from shared, bursty source IPs, and a throttled call here means a DECLINED
+  // transfer, not a retry. The oracle risk (the 200/400 answer confirms a
+  // reference + exact minor-unit amount + recipient code) is handled by the
+  // signature check above instead, which costs legitimate traffic nothing.
   router.post('/payouts/paystack-approval', async (req, res) => {
     try {
+      if (!approvalSignatureOk(req as never)) {
+        res.sendStatus(400)
+        return
+      }
       const body = req.body
       if (
         typeof body?.reference !== 'string' ||
@@ -187,7 +242,15 @@ export function automaticPayoutRoutes(
         return
       }
       res.sendStatus(400)
-    } catch {
+    } catch (error) {
+      // 400 tells Paystack "do not approve", which is the safe default for a
+      // transfer we cannot currently vouch for. It used to be indistinguishable
+      // from a genuine mismatch, so a transient Mongo error silently declined a
+      // transfer the platform had already reserved funds for.
+      logger.error(
+        { err: error, reference: (req.body as { reference?: unknown })?.reference },
+        'paystack transfer approval check failed; declining',
+      )
       res.sendStatus(400)
     }
   })

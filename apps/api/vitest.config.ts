@@ -14,6 +14,8 @@ export default defineConfig({
     // across files via Vitest's per-file module isolation.
     fileParallelism: false,
     globalSetup: ['./__tests__/helpers/globalSetup.ts'],
+    // Clears the process-wide rate-limiter counters before each test.
+    setupFiles: ['./__tests__/helpers/testSetup.ts'],
     // Integration tests hit a real mongod and the provider fetch mocks; on a
     // loaded machine an occasional undici socket timeout or slow bcrypt hook can
     // flake a run even though the DBs are per-worker isolated. Retry twice — a

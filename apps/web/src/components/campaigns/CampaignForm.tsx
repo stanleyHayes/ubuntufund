@@ -899,7 +899,7 @@ export function CampaignForm() {
                             ? GOLD
                             : 'color-mix(in srgb, #A8B5A0 35%, transparent)',
                         },
-                        '&:focus-visible': { outline: `2px solid ${GOLD}`, outlineOffset: 2 },
+                        '&:focus-visible': { outline: '2px solid var(--focus-ring)', outlineOffset: 2 },
                       }}
                     >
                       <CategoryIcon
@@ -1092,7 +1092,7 @@ export function CampaignForm() {
                         transition: 'border-color 160ms ease, background-color 160ms ease',
                         '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
                         '&:hover': { borderColor: selected ? p.tone : SAGE },
-                        '&:focus-visible': { outline: `2px solid ${GOLD}`, outlineOffset: 2 },
+                        '&:focus-visible': { outline: '2px solid var(--focus-ring)', outlineOffset: 2 },
                       }}
                     >
                       <Box sx={{ mt: 0.6 }}>

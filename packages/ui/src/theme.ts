@@ -314,8 +314,173 @@ export const ttSquaresFontFace = `
   }
 `
 
+// ---------------------------------------------------------------------------
+// Semantic colour ramps — the single source of truth
+// ---------------------------------------------------------------------------
+// Each brand colour is authored once, per mode, and everything downstream is
+// derived from it: the MUI palette, the MuiChip label overrides, the
+// `--text-*` custom properties and the keyboard focus ring. Previously the same
+// hex was typed out in three independent places, so a one-colour change was a
+// three-place edit and the copies drifted — a Chip label and a
+// `var(--text-warning)` consumer could render two different golds side by side.
+//
+// The dark ramps read the opposite way round from MUI's light-mode contract,
+// and deliberately so:
+//   light — the brightest tint. MUI derives standard/outlined Alert text from
+//           `.light` in dark mode, so it has to clear AA against the ground.
+//   main  — the everyday text / fill colour.
+//   dark  — the *hover* tone. On a dark ground a control has to get brighter to
+//           read as lifted, so this sits just above `main`, not below it.
+//
+// `text` is the tone guaranteed to clear 4.5:1 against every ground in that
+// mode. It equals `main` everywhere except light-mode warning, whose fill-grade
+// ochre only reaches 2.7:1 and must not be used for label text.
+// ---------------------------------------------------------------------------
+type SemanticRamp = {
+  main: string
+  light: string
+  dark: string
+  contrastText: string
+  text: string
+}
+
+type BrandTokens = {
+  primary: SemanticRamp
+  secondary: SemanticRamp
+  success: SemanticRamp
+  warning: SemanticRamp
+  error: SemanticRamp
+  info: SemanticRamp
+  textPrimary: string
+  textSecondary: string
+  textDisabled: string
+  textAccent: string
+  /** Keyboard focus ring. Must clear 3:1 against every ground (WCAG 1.4.11). */
+  focusRing: string
+  divider: string
+  borderSelected: string
+}
+
+export function getBrandTokens(dark: boolean): BrandTokens {
+  if (dark) {
+    return {
+      primary: {
+        main: '#C0DCC7',
+        light: '#D6E8DB',
+        dark: '#CCE6D5',
+        contrastText: '#172019',
+        text: '#C0DCC7',
+      },
+      secondary: {
+        main: '#C7A24A',
+        light: '#E4CF95',
+        dark: '#DFC782',
+        contrastText: '#221B0E',
+        text: '#C7A24A',
+      },
+      success: {
+        main: '#8DC9A1',
+        light: '#A9DCBB',
+        dark: '#9FD8B1',
+        contrastText: '#172019',
+        text: '#8DC9A1',
+      },
+      warning: {
+        main: '#DCC07E',
+        light: '#E9D5A0',
+        dark: '#E3C989',
+        contrastText: '#221B0E',
+        text: '#DCC07E',
+      },
+      error: {
+        main: '#F0A18E',
+        light: '#F6C3B6',
+        dark: '#F2B09F',
+        contrastText: '#172019',
+        text: '#F0A18E',
+      },
+      info: {
+        main: '#A1C5CF',
+        light: '#C4DEE6',
+        dark: '#B5D6DF',
+        contrastText: '#172019',
+        text: '#A1C5CF',
+      },
+      textPrimary: '#F7F5EF',
+      textSecondary: '#CFD7D0',
+      textDisabled: '#8B998E',
+      textAccent: '#DCB4DE',
+      focusRing: '#C7A24A',
+      divider: 'rgba(168,181,160,0.14)',
+      borderSelected: 'rgba(199,162,74,0.38)',
+    }
+  }
+  return {
+    primary: {
+      main: '#2E3D2F',
+      light: '#A8B5A0',
+      dark: '#1C261D',
+      contrastText: '#F5F2EA',
+      text: '#2E3D2F',
+    },
+    secondary: {
+      main: '#C7A24A',
+      light: '#DCC07E',
+      dark: '#A07E33',
+      contrastText: '#221B0E',
+      text: '#7F5E1C',
+    },
+    success: {
+      main: '#2F6B46',
+      light: '#5E8F72',
+      dark: '#1F4B30',
+      contrastText: '#F5F2EA',
+      text: '#2F6B46',
+    },
+    warning: {
+      main: '#B98A2E',
+      light: '#D3A95C',
+      dark: '#8F6A20',
+      contrastText: '#221B0E',
+      // Fill-grade ochre only reaches 2.7:1 on parchment; labels use this.
+      text: '#7F5E1C',
+    },
+    error: {
+      main: '#A5432F',
+      light: '#C06B58',
+      dark: '#7D3223',
+      contrastText: '#F9F4EF',
+      text: '#A5432F',
+    },
+    info: {
+      main: '#4A6B75',
+      light: '#74909A',
+      dark: '#354E56',
+      contrastText: '#F2F5F5',
+      text: '#4A6B75',
+    },
+    textPrimary: '#1A2E22',
+    textSecondary: '#4A5A50',
+    textDisabled: '#7A827C',
+    textAccent: '#6A1B9A',
+    // Brand gold reaches only 1.9:1 on parchment — too faint to locate focus.
+    focusRing: '#8F6A20',
+    divider: 'rgba(46,61,47,0.12)',
+    borderSelected: 'rgba(143,106,32,0.30)',
+  }
+}
+
+/** Palette slice for MUI — the ramp minus the `text` tone it does not model. */
+const paletteEntry = ({ main, light, dark, contrastText }: SemanticRamp) => ({
+  main,
+  light,
+  dark,
+  contrastText,
+})
+
 export function createUjimoraTheme(mode: PaletteMode = 'light', skin: ThemeSkin = 'neumorphism') {
   const dark = mode === 'dark'
+  const brand = getBrandTokens(dark)
   const neu = getNeumorphicTokens(dark)
   const skinVars = getSkinVars(skin, dark)
   const ground = skin === 'glassmorphism' ? neu.surface : skinVars['--neu-surface']
@@ -325,47 +490,17 @@ export function createUjimoraTheme(mode: PaletteMode = 'light', skin: ThemeSkin 
       // Sage & Neutrals system: deep forest structure, burnished gold action,
       // warm parchment ground. Derived from the brand palette, not framework
       // defaults — semantic states are brand-tinted (clay error, ochre warning).
-      primary: {
-        main: dark ? '#C0DCC7' : '#2E3D2F',
-        light: '#A8B5A0',
-        dark: dark ? '#AFCDB7' : '#1C261D',
-        contrastText: dark ? '#172019' : '#F5F2EA',
-      },
-      secondary: {
-        main: '#C7A24A',
-        light: '#DCC07E',
-        dark: dark ? '#DFC782' : '#A07E33',
-        contrastText: '#221B0E',
-      },
-      success: {
-        main: dark ? '#8DC9A1' : '#2F6B46',
-        light: '#5E8F72',
-        dark: dark ? '#9FD8B1' : '#1F4B30',
-        contrastText: dark ? '#172019' : '#F5F2EA',
-      },
-      warning: {
-        main: dark ? '#DCC07E' : '#B98A2E',
-        light: '#D3A95C',
-        dark: dark ? '#E3C989' : '#8F6A20',
-        contrastText: '#221B0E',
-      },
-      error: {
-        main: dark ? '#F0A18E' : '#A5432F',
-        light: '#C06B58',
-        dark: dark ? '#F2B09F' : '#7D3223',
-        contrastText: dark ? '#172019' : '#F9F4EF',
-      },
-      info: {
-        main: dark ? '#A1C5CF' : '#4A6B75',
-        light: '#74909A',
-        dark: dark ? '#B5D6DF' : '#354E56',
-        contrastText: dark ? '#172019' : '#F2F5F5',
-      },
+      primary: paletteEntry(brand.primary),
+      secondary: paletteEntry(brand.secondary),
+      success: paletteEntry(brand.success),
+      warning: paletteEntry(brand.warning),
+      error: paletteEntry(brand.error),
+      info: paletteEntry(brand.info),
       background: {
         default: ground,
         paper: skinVars['--neu-surface'],
       },
-      divider: dark ? 'rgba(168,181,160,0.14)' : 'rgba(46,61,47,0.12)',
+      divider: brand.divider,
       trust: {
         level1: '#DAD7CD',
         level2: '#A8B5A0',
@@ -373,8 +508,11 @@ export function createUjimoraTheme(mode: PaletteMode = 'light', skin: ThemeSkin 
         level4: '#2E3D2F',
       },
       text: {
-        primary: dark ? '#F7F5EF' : '#1A2E22',
-        secondary: dark ? '#CFD7D0' : '#4A5A50',
+        primary: brand.textPrimary,
+        secondary: brand.textSecondary,
+        // Without this MUI falls back to its own rgba white/black wash, which
+        // bypasses `--text-disabled` and gives the app two disabled greys.
+        disabled: brand.textDisabled,
       },
     },
     typography: {
@@ -451,12 +589,16 @@ export function createUjimoraTheme(mode: PaletteMode = 'light', skin: ThemeSkin 
             '&:hover': { boxShadow: 'var(--neu-raised-hover)', transform: 'translateY(-1px)' },
             '&:active': { boxShadow: 'var(--neu-inset)', transform: 'translateY(1px)' },
             '&:focus-visible': {
-              outline: '2px solid #C7A24A',
+              outline: '2px solid var(--focus-ring)',
               outlineOffset: 3,
             },
             '&.Mui-disabled': { boxShadow: 'none', opacity: 0.58 },
             '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
           },
+          // Deliberately mode-independent: the forest fill with parchment text
+          // is the brand's button look in both modes and already clears AA
+          // (11.5:1), so it is left exactly as designed rather than being
+          // derived from the palette.
           containedPrimary: {
             backgroundColor: '#2E3D2F',
             color: '#F5F2EA',
@@ -520,26 +662,17 @@ export function createUjimoraTheme(mode: PaletteMode = 'light', skin: ThemeSkin 
             border: 'var(--neu-border, 0px solid transparent) !important',
             backgroundColor: 'var(--neu-surface)',
             boxShadow: 'var(--neu-subtle) !important',
-            ...(dark
-              ? {
-                  '&.MuiChip-colorPrimary': { color: '#C0DCC7' },
-                  '&.MuiChip-colorSuccess': { color: '#8DC9A1' },
-                  '&.MuiChip-colorError': { color: '#F0A18E' },
-                  '&.MuiChip-colorWarning': { color: '#DCC07E' },
-                  '&.MuiChip-colorInfo': { color: '#A1C5CF' },
-                  '&.MuiChip-colorSecondary': { color: '#DCC07E' },
-                }
-              : {
-                  '&.MuiChip-colorPrimary': { color: '#2E3D2F' },
-                  '&.MuiChip-colorSuccess': { color: '#2F6B46' },
-                  '&.MuiChip-colorError': { color: '#A5432F' },
-                  '&.MuiChip-colorWarning': { color: '#765510' },
-                  '&.MuiChip-colorInfo': { color: '#355C69' },
-                  '&.MuiChip-colorSecondary': { color: '#765510' },
-                }),
+            // Chips render their colour as a label on the surface fill, so they
+            // take the text-grade tone rather than the fill-grade `main`.
+            '&.MuiChip-colorPrimary': { color: brand.primary.text },
+            '&.MuiChip-colorSecondary': { color: brand.secondary.text },
+            '&.MuiChip-colorSuccess': { color: brand.success.text },
+            '&.MuiChip-colorWarning': { color: brand.warning.text },
+            '&.MuiChip-colorError': { color: brand.error.text },
+            '&.MuiChip-colorInfo': { color: brand.info.text },
             '&.MuiChip-clickable:hover': { boxShadow: 'var(--neu-raised-hover) !important' },
             '&.MuiChip-clickable:active': { boxShadow: 'var(--neu-inset) !important' },
-            '&:focus-visible': { outline: '2px solid #C7A24A', outlineOffset: 2 },
+            '&:focus-visible': { outline: '2px solid var(--focus-ring)', outlineOffset: 2 },
           },
         },
       },
@@ -556,7 +689,7 @@ export function createUjimoraTheme(mode: PaletteMode = 'light', skin: ThemeSkin 
               transform: 'translateY(-1px)',
             },
             '&:active': { boxShadow: 'var(--neu-inset) !important', transform: 'translateY(1px)' },
-            '&:focus-visible': { outline: '2px solid #C7A24A', outlineOffset: 2 },
+            '&:focus-visible': { outline: '2px solid var(--focus-ring)', outlineOffset: 2 },
             '&.Mui-disabled': { boxShadow: 'none !important', opacity: 0.48 },
           },
         },
@@ -626,17 +759,18 @@ export function createUjimoraTheme(mode: PaletteMode = 'light', skin: ThemeSkin 
           ...ROUNDED_BUTTON_STYLES,
           ':root': {
             ...skinVars,
-            '--border-subtle': dark ? 'rgba(168,181,160,0.14)' : 'rgba(46,61,47,0.12)',
-            '--border-selected': dark ? 'rgba(199,162,74,0.38)' : 'rgba(143,106,32,0.30)',
-            '--text-primary': dark ? '#F7F5EF' : '#1A2E22',
-            '--text-secondary': dark ? '#CFD7D0' : '#4A5A50',
-            '--text-disabled': dark ? '#7D8B80' : '#858D87',
-            '--text-brand': dark ? '#C0DCC7' : '#2E3D2F',
-            '--text-success': dark ? '#8DC9A1' : '#2F6B46',
-            '--text-warning': dark ? '#DCC07E' : '#8F6A20',
-            '--text-error': dark ? '#F0A18E' : '#A5432F',
-            '--text-info': dark ? '#A1C5CF' : '#4A6B75',
-            '--text-accent': dark ? '#DCB4DE' : '#6A1B9A',
+            '--border-subtle': brand.divider,
+            '--border-selected': brand.borderSelected,
+            '--text-primary': brand.textPrimary,
+            '--text-secondary': brand.textSecondary,
+            '--text-disabled': brand.textDisabled,
+            '--text-brand': brand.primary.text,
+            '--text-success': brand.success.text,
+            '--text-warning': brand.warning.text,
+            '--text-error': brand.error.text,
+            '--text-info': brand.info.text,
+            '--text-accent': brand.textAccent,
+            '--focus-ring': brand.focusRing,
           },
           // One subtle outline language across shared app surfaces. Width, material,
           // selected fill and keyboard focus outlines retain their own semantics.
@@ -645,7 +779,7 @@ export function createUjimoraTheme(mode: PaletteMode = 'light', skin: ThemeSkin 
               borderColor: 'var(--border-subtle) !important',
             },
           '.MuiOutlinedInput-root:has(input:focus-visible), .MuiOutlinedInput-root:has(textarea:focus-visible)':
-            { outline: '2px solid var(--text-warning)', outlineOffset: 2 },
+            { outline: '2px solid var(--focus-ring)', outlineOffset: 2 },
           '.Mui-selected, [aria-pressed="true"], [aria-selected="true"]': {
             borderColor: 'var(--border-selected) !important',
           },

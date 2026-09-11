@@ -752,7 +752,7 @@ function BlogPage() {
                 Get the latest stories from Ghana's giving community, delivered to your inbox.
               </Typography>
               <Box sx={{ position: 'relative' }}>
-                <MailOutlineIcon aria-hidden="true" sx={{ position: 'absolute', top: 14, left: 14, fontSize: 20, color: '#B6C0B8', pointerEvents: 'none' }} />
+                <MailOutlineIcon aria-hidden="true" sx={{ position: 'absolute', top: 14, left: 14, fontSize: 20, color: '#CFD7D0', pointerEvents: 'none' }} />
                 <Box
                   component="input"
                   type="email"
@@ -772,7 +772,7 @@ function BlogPage() {
                     fontSize: '0.875rem',
                     outline: 'none',
                     mb: 1.5,
-                    '&::placeholder': { color: '#B6C0B8', opacity: 1 },
+                    '&::placeholder': { color: '#CFD7D0', opacity: 1 },
                     '&:focus-visible': { outline: '2px solid #C7A24A', outlineOffset: 2, borderColor: '#C7A24A' },
                   }}
                 />

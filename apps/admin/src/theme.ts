@@ -1,5 +1,5 @@
 import { alpha, createTheme, type PaletteMode } from '@mui/material/styles'
-import { getNeumorphicTokens, getSkinVars, SHAPE, ROUNDED_BUTTON_STYLES, type ThemeSkin } from '@ubuntu-fund/ui'
+import { getBrandTokens, getNeumorphicTokens, getSkinVars, SHAPE, ROUNDED_BUTTON_STYLES, type ThemeSkin } from '@ubuntu-fund/ui'
 
 declare module '@mui/material/styles' {
   interface Palette {
@@ -28,13 +28,17 @@ declare module '@mui/material/styles' {
 export function makeAdminTheme(mode: PaletteMode, skin: ThemeSkin = 'neumorphism') {
   const dark = mode === 'dark'
   const skinVars = getSkinVars(skin, dark)
+  const brand = getBrandTokens(dark)
   const surface = skin === 'glassmorphism' ? getNeumorphicTokens(dark).surface : skinVars['--neu-surface']
 
   return createTheme({
     palette: {
       mode,
+      // The console keeps its own slightly cooler brand green, but `dark` is the
+      // hover tone: on a dark ground it has to brighten past `main`, not recede
+      // to #5E8F72, which measured 4.0:1 and failed AA.
       primary: dark
-        ? { main: '#8FAE96', light: '#B5C9BA', dark: '#5E8F72', contrastText: '#0E1916' }
+        ? { main: '#8FAE96', light: '#B5C9BA', dark: '#A9C4AF', contrastText: '#0E1916' }
         : { main: '#2E3D2F', light: '#A8B5A0', dark: '#1C261D', contrastText: '#F5F2EA' },
       secondary: {
         main: '#C7A24A',
@@ -50,21 +54,18 @@ export function makeAdminTheme(mode: PaletteMode, skin: ThemeSkin = 'neumorphism
         ? { level1: '#3A4A3E', level2: '#8FAE96', level3: '#C7A24A', level4: '#DCC07E' }
         : { level1: '#DAD7CD', level2: '#A8B5A0', level3: '#C7A24A', level4: '#2E3D2F' },
       text: dark
-        ? { primary: '#E8EBE3', secondary: '#9FAF9F' }
-        : { primary: '#1A2E22', secondary: '#4A5A50' },
+        ? { primary: '#E8EBE3', secondary: '#9FAF9F', disabled: brand.textDisabled }
+        : { primary: '#1A2E22', secondary: '#4A5A50', disabled: brand.textDisabled },
       divider: dark ? 'rgba(232, 235, 227, 0.08)' : '#DAD7CD',
-      error: {
-        main: dark ? '#C06B58' : '#A5432F',
-      },
-      warning: {
-        main: dark ? '#D3A95C' : '#B98A2E',
-      },
-      success: {
-        main: dark ? '#8FAE96' : '#2F6B46',
-      },
-      info: {
-        main: dark ? '#74909A' : '#4A6B75',
-      },
+      // Semantic states come from the shared ramp so the console and the app
+      // cannot drift apart. Admin's own dark error (#C06B58, 3.9:1) and info
+      // (#74909A, 4.4:1) both sat under AA.
+      error: { main: brand.error.main, light: brand.error.light, dark: brand.error.dark },
+      warning: { main: brand.warning.main, light: brand.warning.light, dark: brand.warning.dark },
+      success: dark
+        ? { main: '#8FAE96', light: brand.success.light, dark: '#A9C4AF' }
+        : { main: '#2F6B46', light: brand.success.light, dark: brand.success.dark },
+      info: { main: brand.info.main, light: brand.info.light, dark: brand.info.dark },
     },
     typography: {
       fontFamily: '"Outfit", "Inter", "Roboto", "Helvetica", "Arial", sans-serif',
@@ -207,6 +208,21 @@ export function makeAdminTheme(mode: PaletteMode, skin: ThemeSkin = 'neumorphism
           ...ROUNDED_BUTTON_STYLES,
           ':root': {
             ...skinVars,
+            // Shared @ubuntu-fund/ui components style themselves from these.
+            // Admin defined none of them, so those components silently fell
+            // back to `inherit` on every console screen.
+            '--border-subtle': brand.divider,
+            '--border-selected': brand.borderSelected,
+            '--text-primary': dark ? '#E8EBE3' : '#1A2E22',
+            '--text-secondary': dark ? '#9FAF9F' : '#4A5A50',
+            '--text-disabled': brand.textDisabled,
+            '--text-brand': dark ? '#8FAE96' : '#2E3D2F',
+            '--text-success': dark ? '#8FAE96' : '#2F6B46',
+            '--text-warning': brand.warning.text,
+            '--text-error': brand.error.text,
+            '--text-info': brand.info.text,
+            '--text-accent': brand.textAccent,
+            '--focus-ring': brand.focusRing,
           },
           body: { backgroundColor: surface, colorScheme: mode },
         },

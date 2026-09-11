@@ -474,13 +474,18 @@ export function ProfilePage() {
                       fontWeight: 600,
                       fontSize: '0.82rem',
                       borderRadius: SHAPE.sm,
-                      bgcolor: active ? 'primary.main' : 'rgba(0,0,0,0.04)',
-                      color: active ? '#fff' : 'text.primary',
+                      // `primary.contrastText`, not a literal white: the dark
+                      // palette fills these with pale sage, where white text
+                      // measures 1.5:1. Black-on-black washes are likewise
+                      // invisible in dark mode, so these use action tokens.
+                      bgcolor: active ? 'primary.main' : 'action.hover',
+                      color: active ? 'primary.contrastText' : 'text.primary',
                       border: '1px solid',
-                      borderColor: active ? 'primary.main' : 'rgba(0,0,0,0.08)',
-                      transition: 'all 0.2s ease',
+                      borderColor: active ? 'primary.main' : 'divider',
+                      transition: 'background-color 0.2s ease, border-color 0.2s ease',
+                      '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
                       '&:hover': {
-                        bgcolor: active ? 'primary.dark' : 'rgba(0,0,0,0.08)',
+                        bgcolor: active ? 'primary.dark' : 'action.selected',
                       },
                     }}
                   />

@@ -287,8 +287,9 @@ export function RegisterForm() {
                   boxShadow: active ? 'var(--neu-inset)' : 'var(--neu-raised)',
                   backdropFilter: 'var(--neu-backdrop, none)',
                   '&:hover': { boxShadow: active ? 'var(--neu-inset)' : 'var(--neu-raised-hover)' },
-                  transition: 'border-color .15s ease, background-color .15s ease',
-                  '&:focus-visible': { outline: `2px solid ${GOLD}`, outlineOffset: 2 },
+                  transition: 'box-shadow .15s ease, border-color .15s ease',
+                  '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
+                  '&:focus-visible': { outline: '2px solid var(--focus-ring)', outlineOffset: 2 },
                 }}
               >
                 <Box
@@ -496,7 +497,9 @@ export function RegisterForm() {
                   boxShadow: active ? 'var(--neu-inset)' : 'var(--neu-raised)',
                   backdropFilter: 'var(--neu-backdrop, none)',
                   '&:hover': { boxShadow: active ? 'var(--neu-inset)' : 'var(--neu-raised-hover)' },
-                  '&:focus-visible': { outline: `2px solid ${GOLD}`, outlineOffset: 2 },
+                  transition: 'box-shadow .15s ease, border-color .15s ease',
+                  '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
+                  '&:focus-visible': { outline: '2px solid var(--focus-ring)', outlineOffset: 2 },
                 }}
               >
                 <Box

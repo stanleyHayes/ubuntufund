@@ -28,6 +28,11 @@ export interface Palette {
   error: string
   success: string
   warning: string
+  /**
+   * Text-grade ochre. `warning` is the fill-grade tone and reaches only 2.7:1
+   * on the light ground, so labels and sentences use this instead.
+   */
+  warningText: string
   /** App background (screen ground). */
   background: string
   /** Default card / raised-surface ground. */
@@ -60,6 +65,7 @@ const lightPalette: Palette = {
   error: '#A5432F',
   success: '#2F6B46',
   warning: '#B98A2E',
+  warningText: '#7F5E1C',
   background: '#F2EFEA',
   surface: '#F2EFEA',
   surfaceWhite: '#FFFFFF',
@@ -83,6 +89,7 @@ const darkPalette: Palette = {
   error: '#EF6E58',
   success: '#5FB07E',
   warning: '#D8B24E',
+  warningText: '#D8B24E',
   background: '#121212',
   surface: '#1E1E1E',
   surfaceWhite: '#242424',

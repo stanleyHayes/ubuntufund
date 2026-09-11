@@ -31,8 +31,18 @@ export interface ReconcilePayoutSummary {
   pending: number
   /** PAID-but-unsettled payouts whose idempotent settlement effect was re-applied. */
   repaired: number
+  /** Batched payouts stuck past the dwell window and handed to a human. */
+  escalated: number
   errored: number
 }
+
+/**
+ * How long a batched payout may sit in PROCESSING with in-flight legs before it
+ * is escalated to NEEDS_REVIEW. Long enough that a merely slow provider webhook
+ * is never escalated; short enough that reserved funds are not stranded for
+ * days without anyone noticing.
+ */
+const STUCK_BATCH_ESCALATION_MS = 24 * 60 * 60 * 1000
 
 /**
  * Reconciles payouts stuck in PROCESSING (a provider `transfer.*` webhook was
@@ -67,6 +77,7 @@ export class ReconcilePayoutsUseCase {
       reversed: 0,
       pending: 0,
       repaired: 0,
+      escalated: 0,
       errored: 0,
     }
     if (!this.paymentGateway.isConfigured()) return summary
@@ -126,10 +137,44 @@ export class ReconcilePayoutsUseCase {
       // completing in this same sweep could otherwise flip the batch to PAID and
       // strand the crashed leg's effect (repairBatched only runs while PROCESSING).
       // Idempotent per leg settleRef, so re-applying an already-applied leg is a no-op.
-      await this.handlePayoutWebhookUseCase.repairBatched?.(payout.id)
-      for (const leg of payout.legs ?? []) {
-        if (leg.status === 'queued' || leg.status === 'submitted') {
-          await this.reconcileOne(leg.reference, this.handlePayoutWebhookUseCase, summary)
+      try {
+        await this.handlePayoutWebhookUseCase.repairBatched?.(payout.id)
+      } catch (error) {
+        logger.error({ error, payoutId: payout.id }, 'payout reconciliation: batch repair failed')
+        summary.errored += 1
+      }
+      const inFlight = (payout.legs ?? []).filter(
+        (leg) => leg.status === 'queued' || leg.status === 'submitted',
+      )
+      for (const leg of inFlight) {
+        await this.reconcileOne(leg.reference, this.handlePayoutWebhookUseCase, summary)
+      }
+
+      // Escalate a batch that has sat in PROCESSING past the dwell window.
+      //
+      // A leg whose POST /transfer aborted before reaching Paystack is counted
+      // as submitted but never gets a transfer code, so no webhook arrives and
+      // verifyTransfer throws on the unknown reference every sweep — the batch
+      // was pinned in PROCESSING forever with the campaign's gross reserved out
+      // of availableBalance and no admin path to recover it (approve needs
+      // PENDING; transfer-control and the reconcile script both reject batched
+      // payouts). We deliberately do NOT auto-fail the leg: the transfer may
+      // genuinely exist at the provider, and returning the reservation on a
+      // transfer that later succeeds would double-spend. Escalating instead puts
+      // it in front of a human with the money still reserved — safe either way.
+      const stuckSince = Date.now() - new Date(payout.updatedAt).getTime()
+      if (inFlight.length > 0 && stuckSince >= STUCK_BATCH_ESCALATION_MS) {
+        const flagged = await this.payoutRepo.flagNeedsReview(payout.id)
+        if (flagged) {
+          summary.escalated += 1
+          logger.warn(
+            {
+              payoutId: payout.id,
+              hoursStuck: Math.round(stuckSince / 3_600_000),
+              legs: inFlight.map((leg) => ({ reference: leg.reference, status: leg.status })),
+            },
+            'payout reconciliation: batched payout stuck past dwell window; escalated for review',
+          )
         }
       }
     }
@@ -182,18 +227,29 @@ export class ReconcilePayoutsUseCase {
     }
 
     // Drive the same idempotent settlement the webhook would.
-    if (status === 'success') {
-      await handler.handleSuccess(reference)
-      summary.settled += 1
-    } else if (['failed', 'abandoned', 'blocked', 'rejected'].includes(status)) {
-      await handler.handleFailed(reference)
-      summary.failed += 1
-    } else if (status === 'reversed') {
-      await handler.handleReversed(reference)
-      summary.reversed += 1
-    } else {
-      // pending / otp / receipt / unknown — the provider hasn't decided; leave it.
-      summary.pending += 1
+    //
+    // This has to be caught too, not just the verify above. The sweep walks every
+    // rail in one pass, so an exception escaping here (a Mongo WriteConflict, a
+    // throwing flagNeedsReview) aborted the whole run — and because the poison
+    // payout sorts first on every tick, reconciliation stayed blocked and every
+    // other payout kept its funds reserved indefinitely.
+    try {
+      if (status === 'success') {
+        await handler.handleSuccess(reference)
+        summary.settled += 1
+      } else if (['failed', 'abandoned', 'blocked', 'rejected'].includes(status)) {
+        await handler.handleFailed(reference)
+        summary.failed += 1
+      } else if (status === 'reversed') {
+        await handler.handleReversed(reference)
+        summary.reversed += 1
+      } else {
+        // pending / otp / receipt / unknown — the provider hasn't decided; leave it.
+        summary.pending += 1
+      }
+    } catch (error) {
+      logger.error({ error, reference, status }, 'payout reconciliation: settlement failed')
+      summary.errored += 1
     }
   }
 }

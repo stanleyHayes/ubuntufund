@@ -338,7 +338,7 @@ function Footer() {
                 '&:focus-within': { borderColor: 'rgba(199, 162, 74,0.3)' },
               }}
             >
-              <MailIcon aria-hidden="true" sx={{ alignSelf: 'center', color: '#B6C0B8', fontSize: 20, ml: 1, flexShrink: 0 }} />
+              <MailIcon aria-hidden="true" sx={{ alignSelf: 'center', color: '#CFD7D0', fontSize: 20, ml: 1, flexShrink: 0 }} />
               <Box
                 component="input"
                 type="email"

@@ -38,7 +38,7 @@ export function WalletFunding({ walletId, onComplete }: { walletId: string; onCo
   return <View style={{ ...neu.raised, backgroundColor: p.surface, padding: 20, borderRadius: 24, gap: 12, marginBottom: 20 }}>
     <Text variant="titleLarge">Fund your wallet</Text>
     <Text>Use card or mobile money to add funds. Your wallet is credited after payment verification.</Text>
-    {config.mode === 'test' && <Text style={{ color: p.warning }}>Test mode: this checkout does not collect live money.</Text>}
+    {config.mode === 'test' && <Text style={{ color: p.warningText }}>Test mode: this checkout does not collect live money.</Text>}
     {config.enabled ? <>
       <TextInput label="Top-up amount (GHS)" keyboardType="decimal-pad" value={amount} onChangeText={setAmount} />
       <Button mode="contained" loading={busy} disabled={busy || !Number.isFinite(Number(amount)) || Number(amount) <= 0 || Number(amount) > 10000 || Number(amount) !== Math.round(Number(amount) * 100) / 100} onPress={() => void fund()}>Fund wallet</Button>

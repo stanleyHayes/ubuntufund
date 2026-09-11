@@ -1,4 +1,5 @@
 import { isObjectIdOrHexString } from 'mongoose'
+import { logger } from '../../../../logging/logger.js'
 import { CampaignModel } from '../../../../database/models/CampaignModel.js'
 import { UserModel } from '../../../../database/models/UserModel.js'
 import type { PayoutTransferControlUseCase } from '../../../../../application/use-cases/PayoutTransferControlUseCase.js'
@@ -105,7 +106,12 @@ export class PayoutController {
       candidates.map(async (p) => {
         try {
           return await this.transferControls!.execute(p.id, 'refresh')
-        } catch {
+        } catch (error) {
+          // Degrade to the stored row — a refresh failure must not break the
+          // list — but never silently. This swallowed the provider/payout
+          // mismatch detector (AppError 409) and provider 429s, so a tampered
+          // or mis-correlated transfer looked exactly like a pending one.
+          logger.warn({ error, payoutId: p.id }, 'payout refresh failed; serving stored status')
           return p
         }
       }),

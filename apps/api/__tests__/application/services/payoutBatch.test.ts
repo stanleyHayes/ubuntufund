@@ -31,9 +31,23 @@ describe('splitIntoTransferLegs (spec §17 / ADR-4)', () => {
   });
 
   it('handles a fractional remainder cleanly', () => {
+    // The remainder would be GHS 0.50 — below the provider's transfer minimum,
+    // so it would be rejected only AFTER the 50k leg had already moved. The
+    // shortfall is borrowed from the full leg instead; the total is unchanged.
     const legs = splitIntoTransferLegs(50000.5, 50000);
-    expect(legs).toEqual([50000, 0.5]);
+    expect(legs).toEqual([49999.5, 1]);
     expect(sum(legs)).toBeCloseTo(50000.5, 2);
+  });
+
+  it('never emits a leg below the provider transfer minimum', () => {
+    for (const net of [50000.01, 50000.5, 50000.99, 100000.01, 150000.25]) {
+      const legs = splitIntoTransferLegs(net, 50000);
+      expect(sum(legs)).toBeCloseTo(net, 2);
+      for (const leg of legs) {
+        expect(leg).toBeGreaterThanOrEqual(1);
+        expect(leg).toBeLessThanOrEqual(50000);
+      }
+    }
   });
 
   it('rejects non-positive or non-finite inputs', () => {

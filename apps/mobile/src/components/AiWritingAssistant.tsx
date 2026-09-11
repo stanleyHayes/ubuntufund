@@ -41,7 +41,7 @@ export function AiWritingAssistant({ text, onApply }: { text: string; onApply: (
       <Button loading={busy} disabled={busy || !config.remainingRequests || !(text || prompt).trim() || (text || prompt).length > 12000} onPress={() => void generate()}>Generate preview</Button>
       {preview && <>
         <Text selectable>{preview.result}</Text>
-        {preview.original !== text && <Text style={{ color: p.warning }}>Your story changed. Generate a new preview to keep your latest edits.</Text>}
+        {preview.original !== text && <Text style={{ color: p.warningText }}>Your story changed. Generate a new preview to keep your latest edits.</Text>}
         <Button mode="contained" disabled={preview.original !== text} onPress={() => { onApply(preview.result); setPreview(null) }}>Apply to story</Button>
         <Button onPress={() => setPreview(null)}>Discard</Button>
       </>}

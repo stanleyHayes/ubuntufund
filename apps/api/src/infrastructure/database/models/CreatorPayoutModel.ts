@@ -11,6 +11,8 @@ export interface CreatorPayoutDocument extends Document {
   status: PayoutStatus;
   provider: PayoutProvider;
   providerRef?: string;
+  /** Client-supplied idempotency key; unique so a retried POST cannot pay twice. */
+  requestKey?: string;
   transferCode?: string;
   recipientCode?: string;
   recipientName?: string;
@@ -38,6 +40,7 @@ const schema = new Schema<CreatorPayoutDocument>(
     status: { type: String, enum: PAYOUT_STATUSES, required: true, default: 'PENDING', index: true },
     provider: { type: String, default: 'paystack' },
     providerRef: { type: String, unique: true, sparse: true },
+    requestKey: { type: String, unique: true, sparse: true },
     transferCode: { type: String },
     recipientCode: { type: String },
     recipientName: { type: String },

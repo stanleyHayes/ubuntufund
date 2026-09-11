@@ -43,16 +43,23 @@ export function OrganizationTypePicker({ value, onChange, error }: {
               <Box component="input" type="radio" name={`${id}-organization-type`} value={option}
                 checked={selected} onChange={() => onChange(option)} required
                 aria-labelledby={`${id}-${option}-title`} aria-describedby={`${id}-${option}-description`}
-                sx={{ position: 'absolute', width: 1, height: 1, opacity: 0,
+                // Units matter: MUI's sizing transform reads a bare `1` as
+                // `100%`, which turned this into a full-size transparent overlay
+                // that swallowed every hover on the card beneath it.
+                sx={{ position: 'absolute', width: '1px', height: '1px', opacity: 0, pointerEvents: 'none',
                   '&:focus-visible + .organization-option': { outline: '2px solid', outlineColor: 'primary.main', outlineOffset: 3 } }} />
-              <Box className="organization-option" sx={{
+              {/* `Mui-selected` opts this card into the theme's selected-border
+                  rule; without it the global `!important` border token wins and
+                  selected, unselected and invalid all paint the same hairline. */}
+              <Box className={`organization-option${selected ? ' Mui-selected' : ''}`} sx={{
                 display: 'flex', alignItems: 'flex-start', gap: 1.25, p: 1.5, height: '100%', boxSizing: 'border-box',
                 borderRadius: SHAPE.card, border: '1.5px solid',
-                borderColor: selected ? 'primary.main' : error ? 'error.main' : 'divider',
+                // Only `!important` can outrank that same global rule.
+                borderColor: error && !selected ? 'error.main !important' : 'divider',
                 bgcolor: 'background.paper',
                 boxShadow: selected ? 'var(--neu-inset)' : 'var(--neu-raised)',
                 backdropFilter: 'var(--neu-backdrop, none)',
-                transition: 'background-color 150ms ease, border-color 150ms ease',
+                transition: 'box-shadow 150ms ease, border-color 150ms ease',
                 '&:hover': { boxShadow: selected ? 'var(--neu-inset)' : 'var(--neu-raised-hover)' },
                 '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
               }}>

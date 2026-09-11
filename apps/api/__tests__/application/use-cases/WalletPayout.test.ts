@@ -21,7 +21,11 @@ const campaign = {
 }
 function requestSetup() {
   const recipients = { findLatestByCampaignId: vi.fn() }
-  const payouts = { findByProviderRef: vi.fn(async () => null), create: vi.fn(async (p) => p) }
+  const payouts = {
+    findByProviderRef: vi.fn(async () => null),
+    findByRequestKey: vi.fn(async () => null),
+    create: vi.fn(async (p) => p),
+  }
   const balances = {
     findByCampaignId: async () => ({ availableBalance: 1000, pendingBalance: 0, currency: 'GHS' }),
     clearPendingToAvailable: vi.fn(),
@@ -131,7 +135,7 @@ describe('wallet payout policy', () => {
     }
     const accounts = { add: vi.fn() }
     const uc = new RequestCreatorWithdrawalUseCase(
-      {} as never,
+      { findByRequestKey: async () => null } as never,
       { findByUserId: async () => ({ currency: 'GHS' }) } as never,
       { isConfigured: () => false } as never,
       { creatorPolicy: async () => ({ feePercent: 5 }) } as never,

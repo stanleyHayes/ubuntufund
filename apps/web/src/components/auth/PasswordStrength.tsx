@@ -2,41 +2,18 @@ import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
+import { passwordRules, passwordScore, passwordLevel } from '@ubuntu-fund/types'
 
-// The backend requires 8+ characters (min); the rest are strength boosters that
-// make a password meaningfully harder to guess. We surface both — what's
-// REQUIRED and what's recommended — so the member always knows what's missing.
-export interface PasswordRule {
-  label: string
-  met: boolean
-  required?: boolean
-}
-
-function passwordRules(pw: string): PasswordRule[] {
-  return [
-    { label: 'At least 8 characters', met: pw.length >= 8, required: true },
-    { label: 'An uppercase letter (A–Z)', met: /[A-Z]/.test(pw) },
-    { label: 'A lowercase letter (a–z)', met: /[a-z]/.test(pw) },
-    { label: 'A number (0–9)', met: /\d/.test(pw) },
-    { label: 'A symbol (!?@#…)', met: /[^A-Za-z0-9]/.test(pw) },
-  ]
-}
-
-const LEVELS = [
-  { label: 'Too weak', color: 'error.main' }, // clay
-  { label: 'Weak', color: 'error.main' },
-  { label: 'Fair', color: 'warning.main' }, // gold
-  { label: 'Good', color: 'success.main' }, // sage-green
-  { label: 'Strong', color: 'success.main' }, // forest
-]
-
-function scoreOf(pw: string): number {
-  if (!pw) return 0
-  const rules = passwordRules(pw)
-  let score = rules.filter((r) => r.met).length // 0–5
-  if (pw.length >= 12 && score >= 3) score = Math.min(5, score + 1) // length bonus
-  // Map 0–6 met-ish signal into 1–4 filled segments.
-  return Math.max(1, Math.min(4, score - 1))
+// One distinct colour per reachable tier, each clearing AA in both modes.
+// `warning.main` is the fill-grade ochre and reaches only 2.7:1 on parchment,
+// so the label takes the text-grade token. Good and Strong are split across
+// `main` and `dark` — previously both were `success.main`, so the meter showed
+// no colour change at all across the top half of the scale.
+const LEVEL_COLORS: Record<string, { bar: string; label: string }> = {
+  Weak: { bar: 'error.main', label: 'error.main' },
+  Fair: { bar: 'warning.dark', label: 'var(--text-warning)' },
+  Good: { bar: 'success.main', label: 'success.main' },
+  Strong: { bar: 'success.dark', label: 'success.dark' },
 }
 
 /**
@@ -51,9 +28,10 @@ export function PasswordStrength({
   showChecklist?: boolean
 }) {
   if (!value) return null
-  const filled = scoreOf(value) // 1–4
-  const level = LEVELS[Math.min(LEVELS.length - 1, filled)]
   const rules = passwordRules(value)
+  const filled = passwordScore(value, rules) // 1–4
+  const level = passwordLevel(filled)
+  const { bar, label } = LEVEL_COLORS[level]
 
   return (
     <Box sx={{ mt: 1, mb: 0.5 }} aria-live="polite">
@@ -65,41 +43,43 @@ export function PasswordStrength({
               flex: 1,
               height: 5,
               borderRadius: 999,
-              bgcolor: i < filled ? level.color : 'action.disabledBackground',
+              bgcolor: i < filled ? bar : 'action.disabledBackground',
               transition: 'background-color 160ms ease',
+              '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
             }}
           />
         ))}
       </Box>
-      <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: level.color, mb: showChecklist ? 1 : 0 }}>
-        Password strength: {level.label}
+      <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: label, mb: showChecklist ? 1 : 0 }}>
+        Password strength: {level}
       </Typography>
       {showChecklist && (
         <Box component="ul" sx={{ listStyle: 'none', p: 0, m: 0, display: 'grid', gap: 0.4 }}>
-          {rules.map((r) => (
-            <Box
-              component="li"
-              key={r.label}
-              sx={{ display: 'flex', alignItems: 'center', gap: 0.75, fontSize: '0.74rem' }}
-            >
-              {r.met ? (
-                <CheckRoundedIcon sx={{ fontSize: 15, color: 'success.main' }} />
-              ) : (
-                <CloseRoundedIcon sx={{ fontSize: 15, color: r.required ? 'error.main' : 'text.disabled' }} />
-              )}
-              <Typography
-                component="span"
-                sx={{
-                  fontSize: '0.74rem',
-                  color: r.met ? 'text.secondary' : r.required ? 'error.main' : 'text.secondary',
-                  textDecoration: r.met ? 'none' : 'none',
-                }}
+          {rules.map((r) => {
+            const missing = !r.met && Boolean(r.required)
+            return (
+              <Box
+                component="li"
+                key={r.label}
+                sx={{ display: 'flex', alignItems: 'center', gap: 0.75, fontSize: '0.74rem' }}
               >
-                {r.label}
-                {r.required && !r.met ? ' (required)' : ''}
-              </Typography>
-            </Box>
-          ))}
+                {r.met ? (
+                  <CheckRoundedIcon sx={{ fontSize: 15, color: 'success.main' }} />
+                ) : (
+                  <CloseRoundedIcon
+                    sx={{ fontSize: 15, color: missing ? 'error.main' : 'text.disabled' }}
+                  />
+                )}
+                <Typography
+                  component="span"
+                  sx={{ fontSize: '0.74rem', color: missing ? 'error.main' : 'text.secondary' }}
+                >
+                  {r.label}
+                  {missing ? ' (required)' : ''}
+                </Typography>
+              </Box>
+            )
+          })}
         </Box>
       )}
     </Box>

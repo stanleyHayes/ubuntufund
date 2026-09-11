@@ -2,6 +2,21 @@ import * as dotenv from 'dotenv';
 
 dotenv.config();
 
+/**
+ * Numeric env var with a guaranteed-finite fallback.
+ *
+ * `envNumber(process.env.X, 50000)` looks safe but is not: `??`
+ * only catches undefined, so a var present-but-blank (`PAYOUT_X=` in a .env, or
+ * an empty value in a deploy dashboard) parses to NaN. NaN then propagates
+ * silently — every `amount >= NaN` comparison is false, so a blank
+ * PAYOUT_DUAL_APPROVAL_AMOUNT disables maker-checker approval entirely rather
+ * than failing loudly.
+ */
+function envNumber(raw: string | undefined, fallback: number): number {
+  const parsed = Number.parseFloat((raw ?? '').trim());
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
 export interface CloudinaryConfig {
   cloudName: string;
   apiKey: string;
@@ -209,7 +224,7 @@ function aiLimit(name: string, fallback: number): number {
 export const config: AppConfig = {
   aiWriting: { enabled: process.env.AI_WRITING_ENABLED === 'true', apiKey: process.env.OPENAI_API_KEY ?? '', model: process.env.AI_WRITING_MODEL ?? 'gpt-4.1-mini', dailyLimit: aiLimit('AI_WRITING_DAILY_LIMIT', 20), globalDailyLimit: aiLimit('AI_WRITING_GLOBAL_DAILY_LIMIT', 500) },
   liveVideo: { url: process.env.LIVEKIT_URL ?? '', apiKey: process.env.LIVEKIT_API_KEY ?? '', apiSecret: process.env.LIVEKIT_API_SECRET ?? '' },
-  port: parseInt(process.env.PORT ?? '4000', 10),
+  port: envNumber(process.env.PORT, 4000),
   mongodbUri: requireEnv('MONGODB_URI'),
   jwtSecret,
   jwtRefreshSecret,
@@ -230,9 +245,9 @@ export const config: AppConfig = {
   // configured. The Paystack rail (Phase 4) supplies the processor's real fee
   // at settlement time regardless of these preview defaults.
   fees: {
-    platformFeePercent: Number.parseFloat(process.env.PLATFORM_FEE_PERCENT ?? '0'),
-    paystackFeePercent: Number.parseFloat(process.env.PAYSTACK_FEE_PERCENT ?? '0'),
-    paystackFlatFee: Number.parseFloat(process.env.PAYSTACK_FLAT_FEE ?? '0'),
+    platformFeePercent: envNumber(process.env.PLATFORM_FEE_PERCENT, 0),
+    paystackFeePercent: envNumber(process.env.PAYSTACK_FEE_PERCENT, 0),
+    paystackFlatFee: envNumber(process.env.PAYSTACK_FLAT_FEE, 0),
   },
   // Absent secret key ⇒ the Paystack rail is disabled (501), the wallet rail
   // keeps working. The secret key is server-only; never expose it to clients.
@@ -265,8 +280,8 @@ export const config: AppConfig = {
   // Affiliate commission is one-time on the referee's first paid subscription;
   // it accrues 'held' for `holdDays` before maturing to 'available'.
   affiliate: {
-    commissionPercent: Number.parseFloat(process.env.AFFILIATE_COMMISSION_PERCENT ?? '10'),
-    holdDays: Number.parseInt(process.env.AFFILIATE_HOLD_DAYS ?? '14', 10),
+    commissionPercent: envNumber(process.env.AFFILIATE_COMMISSION_PERCENT, 10),
+    holdDays: envNumber(process.env.AFFILIATE_HOLD_DAYS, 14),
   },
   campaigns: {
     // GHS goal boundaries for tiers 1–5; override with CAMPAIGN_TIER_THRESHOLDS
@@ -276,20 +291,20 @@ export const config: AppConfig = {
       .map((v) => Number.parseFloat(v.trim()))
       .filter((v) => Number.isFinite(v) && v > 0)
       .sort((a, b) => a - b),
-    autoApproveMaxTier: Number.parseInt(process.env.CAMPAIGN_AUTO_APPROVE_MAX_TIER ?? '2', 10),
+    autoApproveMaxTier: envNumber(process.env.CAMPAIGN_AUTO_APPROVE_MAX_TIER, 2),
   },
   payouts: {
-    priorityFeePercent: Number.parseFloat(process.env.PAYOUT_PRIORITY_FEE_PERCENT ?? '0.5'),
-    priorityMinFee: Number.parseFloat(process.env.PAYOUT_PRIORITY_MIN_FEE ?? '10'),
-    earlyFeePercent: Number.parseFloat(process.env.PAYOUT_EARLY_FEE_PERCENT ?? '1.0'),
-    earlyMinFee: Number.parseFloat(process.env.PAYOUT_EARLY_MIN_FEE ?? '20'),
-    urgentFeePercent: Number.parseFloat(process.env.PAYOUT_URGENT_FEE_PERCENT ?? '1.5'),
-    urgentMinFee: Number.parseFloat(process.env.PAYOUT_URGENT_MIN_FEE ?? '30'),
-    assistedFeePercent: Number.parseFloat(process.env.PAYOUT_ASSISTED_FEE_PERCENT ?? '1.5'),
-    assistedFixedFee: Number.parseFloat(process.env.PAYOUT_ASSISTED_FIXED_FEE ?? '50'),
-    earlyMaxWithdrawalPercent: Number.parseFloat(process.env.PAYOUT_EARLY_MAX_WITHDRAWAL_PERCENT ?? '80'),
-    maxTransferAmount: Number.parseFloat(process.env.PAYOUT_MAX_TRANSFER_AMOUNT ?? '50000'),
-    dualApprovalAmount: Number.parseFloat(process.env.PAYOUT_DUAL_APPROVAL_AMOUNT ?? '0'),
+    priorityFeePercent: envNumber(process.env.PAYOUT_PRIORITY_FEE_PERCENT, 0.5),
+    priorityMinFee: envNumber(process.env.PAYOUT_PRIORITY_MIN_FEE, 10),
+    earlyFeePercent: envNumber(process.env.PAYOUT_EARLY_FEE_PERCENT, 1.0),
+    earlyMinFee: envNumber(process.env.PAYOUT_EARLY_MIN_FEE, 20),
+    urgentFeePercent: envNumber(process.env.PAYOUT_URGENT_FEE_PERCENT, 1.5),
+    urgentMinFee: envNumber(process.env.PAYOUT_URGENT_MIN_FEE, 30),
+    assistedFeePercent: envNumber(process.env.PAYOUT_ASSISTED_FEE_PERCENT, 1.5),
+    assistedFixedFee: envNumber(process.env.PAYOUT_ASSISTED_FIXED_FEE, 50),
+    earlyMaxWithdrawalPercent: envNumber(process.env.PAYOUT_EARLY_MAX_WITHDRAWAL_PERCENT, 80),
+    maxTransferAmount: envNumber(process.env.PAYOUT_MAX_TRANSFER_AMOUNT, 50000),
+    dualApprovalAmount: envNumber(process.env.PAYOUT_DUAL_APPROVAL_AMOUNT, 0),
   },
   splitProceedsEnabled: process.env.SPLIT_PROCEEDS_ENABLED === 'true',
   // Crypto rail defaults OFF (§22/§23). The sandbox `mock` provider is the
@@ -301,14 +316,14 @@ export const config: AppConfig = {
       .split(',')
       .map((s) => s.trim().toUpperCase())
       .filter(Boolean),
-    minGhs: Number.parseFloat(process.env.CRYPTO_MIN_GHS ?? '10'),
-    maxGhs: Number.parseFloat(process.env.CRYPTO_MAX_GHS ?? '100000'),
-    quoteTtlSeconds: Number.parseInt(process.env.CRYPTO_QUOTE_TTL_SECONDS ?? '900', 10),
+    minGhs: envNumber(process.env.CRYPTO_MIN_GHS, 10),
+    maxGhs: envNumber(process.env.CRYPTO_MAX_GHS, 100000),
+    quoteTtlSeconds: envNumber(process.env.CRYPTO_QUOTE_TTL_SECONDS, 900),
     mockWebhookSecret:
       process.env.CRYPTO_MOCK_WEBHOOK_SECRET ?? 'mock-crypto-webhook-secret-dev',
   },
   publicWebUrl: process.env.PUBLIC_WEB_URL ?? 'http://localhost:18200',
   publicApiUrl:
     process.env.PUBLIC_API_URL ??
-    `http://localhost:${parseInt(process.env.PORT ?? '4000', 10)}`,
+    `http://localhost:${envNumber(process.env.PORT, 4000)}`,
 };

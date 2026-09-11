@@ -5,6 +5,7 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "scripts": {
+    "test": "tsx --test \"__tests__/*.node-test.cts\"",
     "type-check": "tsc --noEmit",
     "lint": "eslint src/"
   },

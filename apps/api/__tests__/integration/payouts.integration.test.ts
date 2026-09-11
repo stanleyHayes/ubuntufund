@@ -134,18 +134,35 @@ async function fundCampaign(
     .expect(200);
 }
 
+/**
+ * Close the campaign so a `standard` payout is permitted.
+ *
+ * `campaignNeedsEarlyCashout` (added 2026-09-10) rejects a standard cashout
+ * while a campaign is still running AND below goal — the owner must pick the
+ * fee-bearing early/urgent type instead. These tests exercise payout lifecycle
+ * mechanics, not fee-type selection, so they close the campaign first: that is
+ * what a standard cashout means. Called after funding, so the donation still
+ * settles against a live campaign.
+ */
+async function endCampaign(campaignId: string) {
+  await CampaignModel.findByIdAndUpdate(campaignId, {
+    endDate: new Date(Date.now() - 24 * 60 * 60 * 1000),
+  });
+}
+
 async function addRecipient(
   app: Express,
   campaignId: string,
-  ownerToken: string
+  ownerToken: string,
+  type: 'mobile_money' | 'ghipss' = 'mobile_money'
 ) {
   return request(app)
     .post(`/api/v1/campaigns/${campaignId}/payout-recipient`)
     .set('Authorization', `Bearer ${ownerToken}`)
     .send({
-      type: 'mobile_money',
+      type,
       accountNumber: '0551234567',
-      bankCode: 'MTN',
+      bankCode: type === 'ghipss' ? '030100' : 'MTN',
       accountName: 'Jane Beneficiary',
     });
 }
@@ -267,6 +284,7 @@ describe('Payouts Integration', () => {
     const admin = await createAdmin(app, uniqueEmail('admin'));
 
     await fundCampaign(app, campaignId, 1000); // pending net 965 (Free 3.5%)
+    await endCampaign(campaignId);
     await addRecipient(app, campaignId, token);
 
     // Owner requests a payout of the full cleared amount.
@@ -287,7 +305,7 @@ describe('Payouts Integration', () => {
     const approveRes = await request(app)
       .post(`/api/v1/payouts/${payoutId}/approve`)
       .set('Authorization', `Bearer ${admin.token}`)
-      .send({});
+      .send({ reviewNote: 'Verified owner identity, destination ownership and receiving capacity for this payout.' });
     expect(approveRes.status).toBe(200);
     expect(approveRes.body.data.status).toBe('PROCESSING');
     expect(approveRes.body.data.providerRef).toMatch(/^pout-/);
@@ -303,6 +321,7 @@ describe('Payouts Integration', () => {
     const { userId, token } = await registerUser(app, uniqueEmail('noadmin'));
     const campaignId = await createActiveCampaign(app, token, userId);
     await fundCampaign(app, campaignId, 1000);
+    await endCampaign(campaignId);
     await addRecipient(app, campaignId, token);
     const reqRes = await request(app)
       .post(`/api/v1/campaigns/${campaignId}/payouts`)
@@ -313,7 +332,7 @@ describe('Payouts Integration', () => {
     const res = await request(app)
       .post(`/api/v1/payouts/${payoutId}/approve`)
       .set('Authorization', `Bearer ${token}`)
-      .send({});
+      .send({ reviewNote: 'Verified owner identity, destination ownership and receiving capacity for this payout.' });
     expect(res.status).toBe(403);
   });
 
@@ -323,6 +342,7 @@ describe('Payouts Integration', () => {
     const admin = await createAdmin(app, uniqueEmail('admin'));
 
     await fundCampaign(app, campaignId, 1000);
+    await endCampaign(campaignId);
     await addRecipient(app, campaignId, token);
     const reqRes = await request(app)
       .post(`/api/v1/campaigns/${campaignId}/payouts`)
@@ -332,7 +352,7 @@ describe('Payouts Integration', () => {
     const approveRes = await request(app)
       .post(`/api/v1/payouts/${payoutId}/approve`)
       .set('Authorization', `Bearer ${admin.token}`)
-      .send({});
+      .send({ reviewNote: 'Verified owner identity, destination ownership and receiving capacity for this payout.' });
     const reference = approveRes.body.data.providerRef as string;
 
     // transfer.success → PAID.
@@ -384,6 +404,7 @@ describe('Payouts Integration', () => {
     const admin = await createAdmin(app, uniqueEmail('admin'));
 
     await fundCampaign(app, campaignId, 1000); // net 965 available (Free 3.5%)
+    await endCampaign(campaignId);
     await addRecipient(app, campaignId, token);
     const reqRes = await request(app)
       .post(`/api/v1/campaigns/${campaignId}/payouts`)
@@ -399,7 +420,7 @@ describe('Payouts Integration', () => {
     const approveRes = await request(app)
       .post(`/api/v1/payouts/${payoutId}/approve`)
       .set('Authorization', `Bearer ${admin.token}`)
-      .send({});
+      .send({ reviewNote: 'Verified owner identity, destination ownership and receiving capacity for this payout.' });
     const reference = approveRes.body.data.providerRef as string;
     await sendTransferWebhook(app, 'transfer.success', reference);
 
@@ -431,6 +452,7 @@ describe('Payouts Integration', () => {
     const admin = await createAdmin(app, uniqueEmail('admin'));
 
     await fundCampaign(app, campaignId, 1000);
+    await endCampaign(campaignId);
     await addRecipient(app, campaignId, token);
     const reqRes = await request(app)
       .post(`/api/v1/campaigns/${campaignId}/payouts`)
@@ -440,7 +462,7 @@ describe('Payouts Integration', () => {
     const approveRes = await request(app)
       .post(`/api/v1/payouts/${payoutId}/approve`)
       .set('Authorization', `Bearer ${admin.token}`)
-      .send({});
+      .send({ reviewNote: 'Verified owner identity, destination ownership and receiving capacity for this payout.' });
     const reference = approveRes.body.data.providerRef as string;
 
     // Reserved out of available.
@@ -471,6 +493,7 @@ describe('Payouts Integration', () => {
     const admin = await createAdmin(app, uniqueEmail('admin'));
 
     await fundCampaign(app, campaignId, 1000);
+    await endCampaign(campaignId);
     await addRecipient(app, campaignId, token);
     const reqRes = await request(app)
       .post(`/api/v1/campaigns/${campaignId}/payouts`)
@@ -480,7 +503,7 @@ describe('Payouts Integration', () => {
     const approveRes = await request(app)
       .post(`/api/v1/payouts/${payoutId}/approve`)
       .set('Authorization', `Bearer ${admin.token}`)
-      .send({});
+      .send({ reviewNote: 'Verified owner identity, destination ownership and receiving capacity for this payout.' });
     const reference = approveRes.body.data.providerRef as string;
 
     await sendTransferWebhook(app, 'transfer.success', reference);
@@ -522,12 +545,22 @@ describe('Payouts Integration', () => {
       admin2 = await createAdmin(app, uniqueEmail('hv-admin2'));
     });
 
+    // A fresh owner per campaign: the free plan caps a user at 3 campaigns, and
+    // a single shared owner ran out partway through this group — the failed
+    // create then surfaced as a confusing 403 on the next addRecipient.
+    //
+    // The recipient is a bank account, not MoMo: ApprovePayoutUseCase refuses to
+    // split an above-ceiling payout to a mobile-money destination
+    // ("MoMo transfers are not automatically split to work around wallet limits"),
+    // and splitting is exactly what this group exercises.
     async function fundedCampaignWithRecipient(
       donation: number
     ): Promise<string> {
+      owner = await registerUser(app, uniqueEmail('hv-owner'));
       const campaignId = await createActiveCampaign(app, owner.token, owner.userId);
       await fundCampaign(app, campaignId, donation);
-      await addRecipient(app, campaignId, owner.token);
+      await endCampaign(campaignId);
+      await addRecipient(app, campaignId, owner.token, 'ghipss');
       return campaignId;
     }
 
@@ -542,7 +575,7 @@ describe('Payouts Integration', () => {
       return request(app)
         .post(`/api/v1/payouts/${payoutId}/approve`)
         .set('Authorization', `Bearer ${token}`)
-        .send({});
+        .send({ reviewNote: 'Verified owner identity, destination ownership and receiving capacity for this payout.' });
     }
 
     it('requires two distinct admins to approve a high-value payout (maker-checker)', async () => {
@@ -642,6 +675,7 @@ describe('Payouts Integration', () => {
     const campaignId = await createActiveCampaign(app, token, userId);
 
     await fundCampaign(app, campaignId, 1000); // eligible net 965
+    await endCampaign(campaignId);
     await addRecipient(app, campaignId, token);
 
     const res = await request(app)
@@ -659,6 +693,7 @@ describe('Payouts Integration', () => {
     const { userId, token } = await registerUser(app, uniqueEmail('norcp'));
     const campaignId = await createActiveCampaign(app, token, userId);
     await fundCampaign(app, campaignId, 1000);
+    await endCampaign(campaignId);
 
     const res = await request(app)
       .post(`/api/v1/campaigns/${campaignId}/payouts`)

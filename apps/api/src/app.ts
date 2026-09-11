@@ -853,21 +853,36 @@ export function createApp(): express.Express {
   // tests/dev never spawn it; unref'd so it can't hold the process open.
   if (config.payments.reconciliationEnabled && config.nodeEnv === 'production') {
     const RECONCILE_INTERVAL_MS = 5 * 60 * 1000
+    // Guarded against overlap: a sweep that outruns the interval (a large stale
+    // backlog, or a slow provider) would otherwise have a second pass select the
+    // same payouts and re-drive their settlement concurrently with the first.
+    let reconcileInFlight = false
     const timer = setInterval(() => {
-      void walletTopUps
-        .reconcile()
-        .catch((err) => logger.error({ err }, 'wallet top-up reconciliation failed'))
-      reconcilePaymentsUseCase
-        .reconcileStale({ olderThanMinutes: 30 })
-        .catch((err) => logger.error({ err }, 'scheduled reconciliation failed'))
-      reconcilePayoutsUseCase
-        .reconcileStale({ olderThanMinutes: 1 })
-        .catch((err) => logger.error({ err }, 'scheduled payout reconciliation failed'))
-      if (config.crypto.enabled) {
-        reconcileCryptoUseCase
-          .reconcileStale({ olderThanMinutes: 30 })
-          .catch((err) => logger.error({ err }, 'scheduled crypto reconciliation failed'))
+      if (reconcileInFlight) {
+        logger.warn('reconciliation sweep still running; skipping this tick')
+        return
       }
+      reconcileInFlight = true
+      void (async () => {
+        try {
+          await walletTopUps
+            .reconcile()
+            .catch((err) => logger.error({ err }, 'wallet top-up reconciliation failed'))
+          await reconcilePaymentsUseCase
+            .reconcileStale({ olderThanMinutes: 30 })
+            .catch((err) => logger.error({ err }, 'scheduled reconciliation failed'))
+          await reconcilePayoutsUseCase
+            .reconcileStale({ olderThanMinutes: 1 })
+            .catch((err) => logger.error({ err }, 'scheduled payout reconciliation failed'))
+          if (config.crypto.enabled) {
+            await reconcileCryptoUseCase
+              .reconcileStale({ olderThanMinutes: 30 })
+              .catch((err) => logger.error({ err }, 'scheduled crypto reconciliation failed'))
+          }
+        } finally {
+          reconcileInFlight = false
+        }
+      })()
     }, RECONCILE_INTERVAL_MS)
     timer.unref()
   }
@@ -958,9 +973,9 @@ export function createApp(): express.Express {
     campaignRepo,
   )
   const getCampaignUpdatesUseCase = new GetCampaignUpdatesUseCase(campaignUpdateRepo, campaignRepo)
-  const updateCampaignUpdateUseCase = new UpdateCampaignUpdateUseCase(campaignUpdateRepo)
-  const deleteCampaignUpdateUseCase = new DeleteCampaignUpdateUseCase(campaignUpdateRepo)
-  const pinCampaignUpdateUseCase = new PinCampaignUpdateUseCase(campaignUpdateRepo)
+  const updateCampaignUpdateUseCase = new UpdateCampaignUpdateUseCase(campaignUpdateRepo, campaignRepo)
+  const deleteCampaignUpdateUseCase = new DeleteCampaignUpdateUseCase(campaignUpdateRepo, campaignRepo)
+  const pinCampaignUpdateUseCase = new PinCampaignUpdateUseCase(campaignUpdateRepo, campaignRepo)
   const campaignCommentUseCases = new CampaignCommentUseCases(
     campaignCommentRepo,
     campaignRepo,
@@ -1364,7 +1379,17 @@ export function createApp(): express.Express {
   // Crypto provider webhooks — raw body (its own parser) for signature checks.
   app.use('/api/v1/webhooks/crypto', createCryptoWebhookRoutes(cryptoWebhookController))
 
-  app.use(express.json({ limit: '200kb' }))
+  // `verify` stashes the exact bytes so a route can check an HMAC over them.
+  // Re-serialising the parsed object is not equivalent — key order and
+  // whitespace change the digest.
+  app.use(
+    express.json({
+      limit: '200kb',
+      verify: (req, _res, buf) => {
+        ;(req as express.Request & { rawBody?: Buffer }).rawBody = buf
+      },
+    }),
+  )
   app.use(requestLogger)
 
   app.get('/health', (_req, res) => {

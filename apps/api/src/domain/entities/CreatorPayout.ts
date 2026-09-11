@@ -12,6 +12,7 @@ export interface CreatorPayoutProps {
   status: PayoutStatus;
   provider: PayoutProvider;
   providerRef?: string;
+  requestKey?: string;
   transferCode?: string;
   recipientCode?: string;
   recipientName?: string;

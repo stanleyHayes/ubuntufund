@@ -41,18 +41,22 @@ describe('cashout options', () => {
     expect(balances.findByCampaignId).not.toHaveBeenCalled()
   })
   it('returns net eligible proceeds and only the account suffix', async () => {
-    expect(await uc.execute('campaign', { userId: 'owner' })).toMatchObject({
+    const result = await uc.execute('campaign', { userId: 'owner' })
+    expect(result).toMatchObject({
       requiresEarlyCashout: false,
       eligible: 100,
       currency: 'GHS',
       fees: { earlyMaxWithdrawalPercent: 80 },
-      recipient: {
-        accountName: 'Owner',
-        last4: '4567',
-        type: 'mobile_money',
-        verificationStatus: 'needs_review',
-        resolvedAccountName: undefined,
-      },
+    })
+    // Exhaustive, not toMatchObject: the guarantee in this test's name is about
+    // what is ABSENT. toMatchObject ignores extra keys, so it passed just as
+    // happily if the full accountNumber were added to the payload.
+    expect(result.recipient).toEqual({
+      accountName: 'Owner',
+      last4: '4567',
+      type: 'mobile_money',
+      verificationStatus: 'needs_review',
+      resolvedAccountName: undefined,
     })
   })
 })

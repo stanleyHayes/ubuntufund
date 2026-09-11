@@ -179,8 +179,11 @@ export function CreatorDashboardPage() {
       await api.post('/creators/withdraw', {
         amount: wAmount,
         expectedFeePercent: policy?.feePercent,
+        // Both rails need the key: the bank rail has no other way to tell a
+        // retry from a second intentional withdrawal.
+        idempotencyKey: requestKey.current.key,
         ...(destination === 'ujimora_wallet'
-          ? { destination, idempotencyKey: requestKey.current.key }
+          ? { destination }
           : savedAccountId
             ? { savedAccountId }
             : {

@@ -15,6 +15,7 @@ function toDomain(doc: CreatorPayoutDocument): CreatorPayoutEntity {
     status: doc.status,
     provider: doc.provider,
     providerRef: doc.providerRef,
+    requestKey: doc.requestKey,
     transferCode: doc.transferCode,
     recipientCode: doc.recipientCode,
     recipientName: doc.recipientName,
@@ -35,12 +36,18 @@ export class MongoCreatorPayoutRepository implements CreatorPayoutRepositoryPort
       status: p.status,
       provider: p.provider,
       recipientName: p.recipientName,
+      requestKey: p.requestKey,
     });
     return toDomain(doc);
   }
 
   async findById(id: string): Promise<CreatorPayoutEntity | null> {
     const doc = await CreatorPayoutModel.findById(id);
+    return doc ? toDomain(doc) : null;
+  }
+
+  async findByRequestKey(requestKey: string): Promise<CreatorPayoutEntity | null> {
+    const doc = await CreatorPayoutModel.findOne({ requestKey });
     return doc ? toDomain(doc) : null;
   }
 

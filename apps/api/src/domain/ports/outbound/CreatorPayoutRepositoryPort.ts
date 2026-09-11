@@ -5,6 +5,7 @@ export interface CreatorPayoutRepositoryPort {
   create(payout: CreatorPayoutEntity): Promise<CreatorPayoutEntity>;
   findById(id: string): Promise<CreatorPayoutEntity | null>;
   findByProviderRef(providerRef: string): Promise<CreatorPayoutEntity | null>;
+  findByRequestKey(requestKey: string): Promise<CreatorPayoutEntity | null>;
   findByCreator(creatorUserId: string, limit?: number): Promise<CreatorPayoutEntity[]>;
 
   /** Attach the provider transfer + recipient details and move PENDING → PROCESSING. */

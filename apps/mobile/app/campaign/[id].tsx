@@ -29,7 +29,7 @@ const ROLE_LABELS: Record<CollaboratorRole, string> = {
 function makePriorityStyle(p: Palette): Record<string, { bg: string; text: string }> {
   return {
     critical: { bg: `${p.error}24`, text: p.error },
-    urgent: { bg: `${p.warning}29`, text: p.warning },
+    urgent: { bg: `${p.warning}29`, text: p.warningText },
     normal: { bg: 'rgba(168,181,160,0.28)', text: p.text },
   }
 }

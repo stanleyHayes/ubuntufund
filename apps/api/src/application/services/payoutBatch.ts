@@ -16,8 +16,20 @@
  * remainder leg last; there is never a zero-value leg. A `netAmount` at or
  * below the ceiling yields a single leg equal to the whole amount.
  *
+ * A remainder below {@link MIN_LEG_MINOR} is topped up out of the preceding
+ * full leg rather than sent as-is: providers reject sub-minimum transfers, and
+ * because legs are submitted in order, that rejection lands only AFTER the
+ * earlier legs have moved real money — leaving the batch in NEEDS_REVIEW over
+ * what can be as little as one pesewa.
+ *
  * @throws if either argument is not a positive, finite number.
  */
+/**
+ * Smallest leg worth submitting, in minor units (GHS 1.00). Providers reject
+ * transfers below roughly this, so a leg under it is a guaranteed failure.
+ */
+const MIN_LEG_MINOR = 100;
+
 export function splitIntoTransferLegs(
   netAmount: number,
   maxTransferAmount: number
@@ -36,7 +48,18 @@ export function splitIntoTransferLegs(
   const remainder = net - fullLegs * max;
 
   const legs: number[] = Array.from({ length: fullLegs }, () => max);
-  if (remainder > 0) legs.push(remainder);
+  if (remainder > 0) {
+    if (remainder < MIN_LEG_MINOR && fullLegs > 0) {
+      // Borrow the shortfall from the last full leg. It has room: it sits at the
+      // ceiling, and MIN_LEG_MINOR is far below it, so both legs stay within
+      // [MIN_LEG_MINOR, max] and the total is unchanged.
+      const shortfall = MIN_LEG_MINOR - remainder;
+      legs[legs.length - 1] -= shortfall;
+      legs.push(MIN_LEG_MINOR);
+    } else {
+      legs.push(remainder);
+    }
+  }
 
   // net > 0 guarantees at least one leg (a net ≤ max yields [net]).
   return legs.map((m) => m / 100);

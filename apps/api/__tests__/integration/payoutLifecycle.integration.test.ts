@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto'
+import { createHmac, randomUUID } from 'node:crypto'
 import { beforeAll, afterAll, it, expect, vi } from 'vitest'
 import request from 'supertest'
 import type { Express } from 'express'
@@ -16,6 +16,20 @@ import { PayoutModel } from '../../src/infrastructure/database/models/PayoutMode
 import { JournalEntryModel } from '../../src/infrastructure/database/models/JournalEntryModel.js'
 process.env.PAYSTACK_SECRET_KEY = 'sk_test_lifecycle'
 let app: Express
+
+/**
+ * Paystack's transfer-approval route authenticates by HMAC-SHA512 over the raw
+ * request body, so these calls are signed exactly as the webhook route's are.
+ */
+function approvalRequest(app: Express, payload: Record<string, unknown>) {
+  const raw = JSON.stringify(payload)
+  return request(app)
+    .post('/api/v1/payouts/paystack-approval')
+    .set('x-paystack-signature', createHmac('sha512', process.env.PAYSTACK_SECRET_KEY ?? '').update(raw).digest('hex'))
+    .set('Content-Type', 'application/json')
+    .send(raw)
+}
+
 beforeAll(async () => {
   await connectTestDatabase()
   app = await createTestApp()
@@ -130,13 +144,9 @@ it('request → approval → OTP → provider success → admin and owner refres
     .send({ reviewNote: 'Verified owner and receiving capacity for this test payout.' })
     .expect(200)
   expect(approved.body.data.providerStatus).toBe('otp')
-  await request(app)
-    .post('/api/v1/payouts/paystack-approval')
-    .send({ reference, amount: 100000, currency: 'GHS', recipient: recipient.recipientCode })
+  await approvalRequest(app, { reference, amount: 100000, currency: 'GHS', recipient: recipient.recipientCode })
     .expect(200)
-  await request(app)
-    .post('/api/v1/payouts/paystack-approval')
-    .send({ reference, amount: 100001, currency: 'GHS', recipient: recipient.recipientCode })
+  await approvalRequest(app, { reference, amount: 100001, currency: 'GHS', recipient: recipient.recipientCode })
     .expect(400)
   providerStatus = 'success'
   const results = await Promise.all([
@@ -157,8 +167,6 @@ it('request → approval → OTP → provider success → admin and owner refres
   expect(balance?.availableBalance).toBe(0)
   expect((await PayoutModel.findById(pid))?.settlementApplied).toBe(true)
   expect(await JournalEntryModel.countDocuments({ externalRef: `pout:${pid}:paid` })).toBe(1)
-  await request(app)
-    .post('/api/v1/payouts/paystack-approval')
-    .send({ reference, amount: 100000, currency: 'GHS', recipient: recipient.recipientCode })
+  await approvalRequest(app, { reference, amount: 100000, currency: 'GHS', recipient: recipient.recipientCode })
     .expect(400)
 })

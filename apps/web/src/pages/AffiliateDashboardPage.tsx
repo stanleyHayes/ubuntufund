@@ -439,7 +439,7 @@ export function AffiliateDashboardPage() {
             pointerEvents: 'none',
           }}
         />
-        <HandshakeRoundedIcon aria-hidden sx={{ position: 'absolute', right: { xs: -30, md: '8%' }, top: 12, fontSize: 190, color: '#A8C5AE', opacity: .08, transform: 'rotate(-15deg)', pointerEvents: 'none' }} />
+        <HandshakeRoundedIcon aria-hidden sx={{ position: 'absolute', right: { xs: -30, md: '8%' }, top: 12, fontSize: 190, color: '#C0DCC7', opacity: .08, transform: 'rotate(-15deg)', pointerEvents: 'none' }} />
         <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
           <Box sx={{ animation: `${fadeInUp} 0.5s ease both` }}>
             <Typography

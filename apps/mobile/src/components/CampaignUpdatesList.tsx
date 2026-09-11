@@ -129,7 +129,7 @@ export function CampaignUpdatesList({ campaignId }: CampaignUpdatesListProps) {
     milestone: { text: p.secondaryDark, bg: `${p.secondary}2E` },
     general: { text: p.text, bg: 'rgba(168,181,160,0.28)' },
     thank_you: { text: p.success, bg: `${p.success}24` },
-    urgent: { text: p.warning, bg: `${p.warning}29` },
+    urgent: { text: p.warningText, bg: `${p.warning}29` },
   }
   const [updates, setUpdates] = useState<CampaignUpdate[]>([])
   const [isLoading, setIsLoading] = useState(true)

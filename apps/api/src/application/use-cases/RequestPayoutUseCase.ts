@@ -33,6 +33,11 @@ function round2(n: number): number {
  * reserve it. The requestable ceiling is therefore `available + pending`, and a
  * request over that ceiling is rejected (never a partial or negative balance).
  */
+/** Duplicate-key detection for the requestKey unique index. */
+function isDuplicateKeyError(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && (error as { code?: number }).code === 11000
+}
+
 export class RequestPayoutUseCase {
   constructor(
     private readonly campaignRepo: CampaignRepositoryPort,
@@ -192,25 +197,43 @@ export class RequestPayoutUseCase {
       }
     }
 
-    const saved = await this.payoutRepo.create(
-      new PayoutEntity({
-        id: '',
-        requestKey,
-        campaignId: campaign.id,
-        recipientId: recipient.id,
-        amount,
-        type,
-        fee,
-        netAmount,
-        currency,
-        status: 'PENDING',
-        provider: wallet ? 'ujimora_wallet' : 'paystack',
-        providerRef: reference,
-        requestedBy: requester.userId,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }),
-    )
+    let saved: PayoutEntity
+    try {
+      saved = await this.payoutRepo.create(
+        new PayoutEntity({
+          id: '',
+          requestKey,
+          campaignId: campaign.id,
+          recipientId: recipient.id,
+          amount,
+          type,
+          fee,
+          netAmount,
+          currency,
+          status: 'PENDING',
+          provider: wallet ? 'ujimora_wallet' : 'paystack',
+          providerRef: reference,
+          requestedBy: requester.userId,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }),
+      )
+    } catch (error) {
+      // The findByRequestKey check above is a read, so two concurrent requests
+      // with the same key both reach this create and the loser hits the unique
+      // index. That E11000 is not mapped by the error handler, so it surfaced as
+      // a 500 instead of the idempotent replay — and, worse, this request had
+      // already run the non-idempotent clearPendingToAvailable, permanently
+      // understating pendingBalance. Compensate, then replay the winner.
+      if (isDuplicateKeyError(error) && requestKey && this.payoutRepo.findByRequestKey) {
+        if (needed > 0) {
+          await this.campaignBalanceRepo.returnAvailableToPending(campaignId, needed)
+        }
+        const winner = await this.payoutRepo.findByRequestKey(requestKey)
+        if (winner) return toPayoutDto(winner)
+      }
+      throw error
+    }
 
     return toPayoutDto(saved)
   }

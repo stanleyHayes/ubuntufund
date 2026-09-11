@@ -21,6 +21,10 @@ export class AuditLogController {
             name: { $regex: search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' },
           })
             .select('_id')
+            // Sorted so the 200-doc cap is deterministic: unsorted, Mongo may
+            // return a different 200 matches per call, so the same audit search
+            // silently surfaced different actors run to run.
+            .sort({ _id: 1 })
             .limit(200)
             .lean()
         : []

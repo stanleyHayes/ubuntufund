@@ -26,6 +26,11 @@ export function providerToPaymentMethod(provider: string, channel?: unknown): Pa
   if (channel === 'mobile_money') return PaymentMethod.MOBILE_MONEY;
   if (channel === 'bank_transfer' || channel === 'bank') return PaymentMethod.BANK_TRANSFER;
   if (channel === 'crypto' || provider === 'bitnob') return PaymentMethod.CRYPTO;
+  // Apple Pay / Google Pay are card-funded wallets: Paystack reports them as
+  // their own channel but settles them on the card rails, and CARD is the
+  // enum's meaning here. Listed explicitly so it reads as a decision rather
+  // than an accident of the fallthrough below.
+  if (channel === 'apple_pay' || channel === 'google_pay') return PaymentMethod.CARD;
   return PaymentMethod.CARD;
 }
 

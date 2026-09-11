@@ -161,6 +161,13 @@ export class AutomaticPayoutService {
         claimed = claim.modifiedCount === 1
       })
     } catch {
+      // `claimed` was assigned inside the callback, but withTransaction rethrows
+      // when the COMMIT fails — the callback having finished says nothing about
+      // whether its writes survived. Leaving the flag set initiated a real
+      // transfer whose autoClaimed marker and daily-budget increments had both
+      // been rolled back, making that amount free budget. Falling back to manual
+      // review is the safe direction.
+      claimed = false
       reason =
         'Automatic checks could not complete or a daily limit was reached. Manual review required.'
     } finally {
@@ -171,7 +178,21 @@ export class AutomaticPayoutService {
       try {
         return await this.approve.executeAutomatic(payout.id)
       } catch {
-        reason = 'Automatic initiation needs attention. Check provider status before retrying.'
+        // executeAutomatic has already moved the payout off PENDING, so the
+        // PENDING-filtered write below matched nothing and the payout kept its
+        // stale "reviewed destination and limits passed" reason — a stuck or
+        // failed transfer labelled as having passed every check. Write it by id.
+        await PayoutModel.updateOne(
+          { _id: payout.id },
+          {
+            $set: {
+              automationReason:
+                'Automatic initiation needs attention. Check provider status before retrying.',
+            },
+          },
+        )
+        const attempted = await this.payouts.findById(payout.id)
+        return attempted ? toPayoutDto(attempted) : payout
       }
     }
     await PayoutModel.updateOne(

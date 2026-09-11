@@ -355,7 +355,14 @@ export class HandlePayoutWebhookUseCase {
       externalRef: `leg:${reference}:reversed`,
     })
     await this.ledgerRepo.postEntry(entry)
-    await this.payoutRepo.flagNeedsReview(payout.id)
+    // Defer the terminal decision to reconcileBatch: NEEDS_REVIEW is terminal and
+    // the batched sweep only selects PROCESSING payouts, so flagging it here
+    // while sibling legs were still queued/submitted removed the payout from
+    // reconciliation for good and stranded those legs' reservations out of
+    // availableBalance with no admin path to recover them. reconcileBatch no-ops
+    // while any leg is in flight and still lands on NEEDS_REVIEW once they
+    // settle, because a reversed leg can never be all-success.
+    await this.reconcileBatch(payout.id)
   }
 
   /**

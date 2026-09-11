@@ -36,6 +36,20 @@ interface FlwWebhookEvent {
  * The FLW rail settles through the exact same domain seam as Paystack — the
  * campaign/ledger code stays provider-agnostic.
  */
+/**
+ * Flutterwave reports the rail in `payment_type` ('mobilemoneygh', 'mobilemoney',
+ * 'banktransfer', 'account', 'card', …). Normalise it onto the channel vocabulary
+ * `providerToPaymentMethod` understands; unknown values fall through to CARD.
+ */
+function flutterwaveChannel(paymentType: unknown): string | undefined {
+  if (typeof paymentType !== 'string') return undefined;
+  const type = paymentType.toLowerCase();
+  if (type.includes('mobilemoney') || type.includes('mobile_money') || type.includes('ussd'))
+    return 'mobile_money';
+  if (type.includes('bank') || type === 'account') return 'bank_transfer';
+  return undefined;
+}
+
 export class HandleFlutterwaveWebhookUseCase {
   constructor(
     private readonly gateway: PaymentGatewayPort,
@@ -120,7 +134,10 @@ export class HandleFlutterwaveWebhookUseCase {
       platformFeePercent,
     });
 
-    await this.settleDonationUseCase.execute(intent, breakdown);
+    // Without a channel the donation is stored as CARD. Flutterwave's dominant
+    // African rail is mobile money, so every one of those was mislabelled.
+    const paymentType = (verified.raw as { payment_type?: unknown } | undefined)?.payment_type;
+    await this.settleDonationUseCase.execute(intent, breakdown, flutterwaveChannel(paymentType));
     await this.safeRecordAttempt(intent.id, txRef, 'succeeded', verified.raw);
   }
 

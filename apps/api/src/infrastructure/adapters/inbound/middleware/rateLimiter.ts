@@ -9,8 +9,25 @@ interface WindowState {
  * Fixed-window in-memory rate limiter. Per-process only — swap the Map for a
  * Redis store when running more than one API instance.
  */
+/** Every limiter's window map, so tests can clear them between cases. */
+const allWindows: Map<string, WindowState>[] = [];
+
+/**
+ * Clear every limiter's counters.
+ *
+ * These limiters are process-wide singletons keyed by IP, and the whole test
+ * suite runs as one process from one address. A long integration file legitimately
+ * exceeds 300 requests — and with `retry: 2`, one genuine failure re-runs and
+ * triples its share — so later tests in the same file started getting 429s that
+ * had nothing to do with what they were asserting. Test-only.
+ */
+export function resetRateLimiters(): void {
+  for (const windows of allWindows) windows.clear();
+}
+
 function createRateLimiter(options: { windowMs: number; max: number; scope: string }) {
   const windows = new Map<string, WindowState>();
+  allWindows.push(windows);
 
   // Drop expired windows so the map cannot grow unbounded.
   const sweeper = setInterval(() => {

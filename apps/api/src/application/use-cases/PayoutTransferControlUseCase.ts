@@ -1,4 +1,5 @@
 import type { Payout } from '@ubuntu-fund/types'
+import { toMinorUnits } from '../../domain/value-objects/Money.js'
 import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGatewayPort.js'
 import type { PayoutRepositoryPort } from '../../domain/ports/outbound/PayoutRepositoryPort.js'
 import type { HandlePayoutWebhookUseCase } from './HandlePayoutWebhookUseCase.js'
@@ -22,9 +23,16 @@ export class PayoutTransferControlUseCase {
     if (payout.provider !== 'paystack' || payout.isBatched || !payout.providerRef)
       throw new AppError('Use the reconciliation queue for this payout.', 409)
     const result = await this.gateway.verifyTransfer(payout.providerRef)
+    // A missing/non-numeric amount is a verification-data problem, not evidence
+    // of tampering. Folding it into the comparison below made `NaN !== x` always
+    // true, so the payout wedged in a permanent 409 whose message blamed a
+    // mismatch. Still refuses to settle — just says why, and distinguishably.
+    const providerAmountMinor = Number(result.raw?.amount)
+    if (!Number.isFinite(providerAmountMinor))
+      throw new AppError('Provider did not return a verifiable transfer amount.', 502)
     if (
       result.reference !== payout.providerRef ||
-      Number(result.raw?.amount) !== Math.round(payout.netAmount * 100) ||
+      providerAmountMinor !== toMinorUnits(payout.netAmount, payout.currency) ||
       result.raw?.currency !== payout.currency
     )
       throw new AppError('Provider transfer details do not match this payout.', 409)

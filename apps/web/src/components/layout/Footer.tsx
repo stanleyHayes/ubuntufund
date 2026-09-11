@@ -133,7 +133,7 @@ export function Footer() {
                       '&:focus-visible': { outline: '2px solid #DCC07E', outlineOffset: 4 },
                     }}
                   >
-                    <link.icon aria-hidden sx={{ fontSize: 17, color: '#A8C5AE' }} />
+                    <link.icon aria-hidden sx={{ fontSize: 17, color: '#C0DCC7' }} />
                     {link.label}
                   </Link>
                 ))}

@@ -116,6 +116,8 @@ export class HandleCryptoWebhookUseCase {
       transactionHash: event.transactionHash,
       confirmationCount: event.confirmations,
     });
-    await this.settleDonationUseCase.execute(intent, breakdown);
+    // Every settlement on this rail is crypto; providerToPaymentMethod only
+    // special-cased 'bitnob', so yellowcard/paychant donations became CARD.
+    await this.settleDonationUseCase.execute(intent, breakdown, 'crypto');
   }
 }
