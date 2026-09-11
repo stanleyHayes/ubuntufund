@@ -6,20 +6,12 @@ import {
 import { CouponEntity } from '../../domain/entities/Coupon.js';
 import type { CouponRepositoryPort } from '../../domain/ports/outbound/CouponRepositoryPort.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
+import { toCouponDate } from './couponDates.js';
 import { toCouponDto } from './mappers/couponDto.js';
 
 /** The platform's only settlement currency. */
 const CURRENCY = 'GHS';
 
-/** Coerce an optional ISO date string to a Date, rejecting an unparseable one. */
-function toDate(value: string | undefined, field: string): Date | undefined {
-  if (!value) return undefined;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    throw new AppError(`Invalid ${field} date`, 400);
-  }
-  return date;
-}
 
 /**
  * Create a discount coupon (admin console). The code is normalised to UPPERCASE
@@ -51,8 +43,8 @@ export class CreateCouponUseCase {
       throw new AppError('Percent coupon amount cannot exceed 100', 400);
     }
 
-    const validFrom = toDate(input.validFrom, 'validFrom');
-    const validUntil = toDate(input.validUntil, 'validUntil');
+    const validFrom = toCouponDate(input.validFrom, 'validFrom', 'start');
+    const validUntil = toCouponDate(input.validUntil, 'validUntil', 'end');
     if (validFrom && validUntil && validFrom > validUntil) {
       throw new AppError('validFrom cannot be after validUntil', 400);
     }

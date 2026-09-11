@@ -22,9 +22,19 @@ function toDomain(doc: CouponRedemptionDocument): CouponRedemption {
     finalAmount: doc.finalAmount,
     currency: doc.currency,
     providerRef: doc.providerRef,
+    seat: doc.seat,
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
   };
+}
+
+/** Mongo's duplicate-key error, however the driver surfaces it. */
+function isDuplicateKey(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    (error as { code?: number }).code === 11000
+  );
 }
 
 export class MongoCouponRedemptionRepository
@@ -45,8 +55,38 @@ export class MongoCouponRedemptionRepository
       finalAmount: redemption.finalAmount,
       currency: redemption.currency,
       providerRef: redemption.providerRef,
+      seat: redemption.seat,
     });
     return toDomain(doc);
+  }
+
+  async createWithSeat(
+    redemption: CouponRedemption,
+    perUserLimit: number | undefined
+  ): Promise<CouponRedemption | null> {
+    // No cap: no seat to claim, and no unique index to satisfy.
+    if (!perUserLimit || perUserLimit <= 0) return this.create(redemption);
+
+    // Start at the number of seats already held rather than always at 0, so the
+    // common case is one insert. Seats are only ever contended when two
+    // checkouts race, and the loop below is what resolves that.
+    let seat = await this.countByCouponAndUser(
+      redemption.couponId,
+      redemption.userId
+    );
+
+    while (seat < perUserLimit) {
+      try {
+        return await this.create({ ...redemption, seat });
+      } catch (error) {
+        // E11000 means another checkout claimed this ordinal between the count
+        // and the insert — exactly the race this exists to lose safely. Any
+        // other error is a real failure and must not be swallowed.
+        if (!isDuplicateKey(error)) throw error;
+        seat += 1;
+      }
+    }
+    return null;
   }
 
   async findById(id: string): Promise<CouponRedemption | null> {
@@ -102,7 +142,12 @@ export class MongoCouponRedemptionRepository
   async markReleased(id: string): Promise<CouponRedemption | null> {
     const doc = await CouponRedemptionModel.findOneAndUpdate(
       { _id: id, status: CouponRedemptionStatus.PENDING },
-      { $set: { status: CouponRedemptionStatus.RELEASED } },
+      {
+        $set: { status: CouponRedemptionStatus.RELEASED },
+        // Return the ordinal to the pool. Leaving it set would keep the unique
+        // index occupied, so a user whose payment failed could never retry.
+        $unset: { seat: 1 },
+      },
       { new: true }
     );
     return doc ? toDomain(doc) : null;

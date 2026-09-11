@@ -79,6 +79,16 @@ export interface CouponRedemption {
   finalAmount: number
   currency: string
   providerRef?: string // Paystack reference; correlates the webhook
+  /**
+   * 0-based ordinal of the per-user seat this redemption holds.
+   *
+   * Present only when the coupon caps per-user redemptions. A unique index on
+   * (couponId, userId, seat) is what actually enforces that cap: counting first
+   * and inserting afterwards lets two concurrent checkouts both read the same
+   * count and both pass. Released back to undefined when the slot is freed, so
+   * a failed checkout does not burn the seat forever.
+   */
+  seat?: number
   createdAt: Date
   updatedAt: Date
 }

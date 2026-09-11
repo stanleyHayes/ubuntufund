@@ -9,6 +9,23 @@ import type { CouponRedemption } from '@ubuntu-fund/types';
  */
 export interface CouponRedemptionRepositoryPort {
   create(redemption: CouponRedemption): Promise<CouponRedemption>;
+
+  /**
+   * Open a PENDING slot, claiming a per-user seat atomically.
+   *
+   * `perUserLimit` falsy means unlimited: no seat is assigned and this behaves
+   * exactly like `create`. Otherwise the seat ordinal is claimed through a
+   * unique index, so concurrent checkouts cannot both take the last one —
+   * whichever loses the collision retries at the next ordinal and is refused
+   * once that would exceed the limit.
+   *
+   * Returns null when every seat is taken. Callers translate that into the
+   * same 422 the pre-flight count produces.
+   */
+  createWithSeat(
+    redemption: CouponRedemption,
+    perUserLimit: number | undefined
+  ): Promise<CouponRedemption | null>;
   findById(id: string): Promise<CouponRedemption | null>;
   /** Correlate a settlement webhook back to its redemption by Paystack reference. */
   findByProviderRef(providerRef: string): Promise<CouponRedemption | null>;
@@ -33,7 +50,13 @@ export interface CouponRedemptionRepositoryPort {
 
   /** Settle a slot: PENDING → CONSUMED. Returns the updated redemption, or null. */
   markConsumed(id: string): Promise<CouponRedemption | null>;
-  /** Free a slot: PENDING → RELEASED. Returns the updated redemption, or null. */
+  /**
+   * Free a slot: PENDING → RELEASED, returning its per-user seat to the pool.
+   *
+   * Called when a checkout fails or is abandoned. Without it a failed payment
+   * permanently consumes one of the user's allowed redemptions, and RELEASED —
+   * the status `countByCouponAndUser` excludes — is never reachable.
+   */
   markReleased(id: string): Promise<CouponRedemption | null>;
   /** Link the activated subscription once the checkout settles. */
   attachSubscription(

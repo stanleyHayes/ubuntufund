@@ -12,6 +12,7 @@ import type { HandleTipWebhookUseCase } from './HandleTipWebhookUseCase.js';
 import type { HandleCreatorPayoutWebhookUseCase } from './HandleCreatorPayoutWebhookUseCase.js';
 import type { SubscriptionCheckoutRepositoryPort } from '../../domain/ports/outbound/SubscriptionCheckoutRepositoryPort.js';
 import type { AffiliateCommissionService } from '../services/AffiliateCommissionService.js';
+import type { CouponRedemptionRepositoryPort } from '../../domain/ports/outbound/CouponRedemptionRepositoryPort.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 import { logger } from '../../infrastructure/logging/logger.js';
 import { fromMinorUnits, minorUnitExponent } from '../../domain/value-objects/Money.js';
@@ -91,7 +92,10 @@ export class HandlePaystackWebhookUseCase {
     private readonly handleTipWebhookUseCase?: HandleTipWebhookUseCase,
     // Optional creator-withdrawal rail: settles `cpay-` transfers.
     private readonly handleCreatorPayoutWebhookUseCase?: HandleCreatorPayoutWebhookUseCase,
-    private readonly walletTopUps?: { settle(reference: string): Promise<void> }
+    private readonly walletTopUps?: { settle(reference: string): Promise<void> },
+    // Optional: when wired, a failed subscription charge frees the coupon seat
+    // the checkout was holding. Absent, the slot simply stays PENDING.
+    private readonly couponRedemptionRepo?: CouponRedemptionRepositoryPort
   ) {}
 
   async execute(input: PaystackWebhookInput): Promise<void> {
@@ -225,6 +229,14 @@ export class HandlePaystackWebhookUseCase {
       await this.subscriptionCheckoutRepo.findByProviderRef(reference);
     if (!checkout) return;
     await this.subscriptionCheckoutRepo.transitionToFailed(checkout.id);
+    // Free the coupon seat the checkout was holding. Without this a declined
+    // card permanently spends one of the user's allowed redemptions: the slot
+    // stays PENDING forever, and PENDING counts against the per-user limit.
+    if (this.couponRedemptionRepo && checkout.couponId) {
+      const redemption =
+        await this.couponRedemptionRepo.findByProviderRef(reference);
+      if (redemption) await this.couponRedemptionRepo.markReleased(redemption.id);
+    }
   }
 
   /**

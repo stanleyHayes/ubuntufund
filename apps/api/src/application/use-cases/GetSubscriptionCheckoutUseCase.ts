@@ -2,6 +2,7 @@ import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGate
 import type { SettleSubscriptionUseCase } from './SettleSubscriptionUseCase.js';
 import type { SubscriptionCheckout } from '@ubuntu-fund/types';
 import type { SubscriptionCheckoutRepositoryPort } from '../../domain/ports/outbound/SubscriptionCheckoutRepositoryPort.js';
+import type { CouponRedemptionRepositoryPort } from '../../domain/ports/outbound/CouponRedemptionRepositoryPort.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 
 /**
@@ -13,7 +14,10 @@ export class GetSubscriptionCheckoutUseCase {
   constructor(
     private readonly subscriptionCheckoutRepo: SubscriptionCheckoutRepositoryPort,
     private readonly gateway?: PaymentGatewayPort,
-    private readonly settle?: SettleSubscriptionUseCase
+    private readonly settle?: SettleSubscriptionUseCase,
+    // Optional: frees the coupon seat when verification confirms the charge
+    // failed, mirroring the webhook rail.
+    private readonly couponRedemptionRepo?: CouponRedemptionRepositoryPort
   ) {}
 
   async execute(id: string, userId: string): Promise<SubscriptionCheckout> {
@@ -42,6 +46,16 @@ export class GetSubscriptionCheckoutUseCase {
       await this.settle.execute(checkout, checkout.providerRef);
     } else if (verified.status === 'failed') {
       await this.subscriptionCheckoutRepo.transitionToFailed(checkout.id);
+      // Same reasoning as the webhook path: a PENDING slot still counts against
+      // the per-user limit, so leaving it burns the seat on a failed payment.
+      if (this.couponRedemptionRepo && checkout.couponId) {
+        const redemption = await this.couponRedemptionRepo.findByProviderRef(
+          checkout.providerRef
+        );
+        if (redemption) {
+          await this.couponRedemptionRepo.markReleased(redemption.id);
+        }
+      }
     }
     return this.execute(id, userId);
   }

@@ -93,6 +93,8 @@ export class CreateSubscriptionCheckoutUseCase {
     let currency = DEFAULT_CURRENCY;
     let couponId: string | undefined;
     let couponCode: string | undefined;
+    /** Carried from the priced coupon so the seat claim below knows the cap. */
+    let perUserLimit: number | undefined;
     if (input.couponCode?.trim()) {
       const pricing = await this.couponService.validateAndPrice({
         code: input.couponCode,
@@ -106,6 +108,7 @@ export class CreateSubscriptionCheckoutUseCase {
       currency = pricing.currency;
       couponId = pricing.coupon.id;
       couponCode = pricing.coupon.code;
+      perUserLimit = pricing.coupon.perUserLimit;
     }
 
     const preview = { baseAmount, discountAmount, finalAmount, currency };
@@ -132,22 +135,41 @@ export class CreateSubscriptionCheckoutUseCase {
     if (couponId && couponCode) {
       // No counter increment yet — the coupon's global count only moves when the
       // charge settles.
-      redemption = await this.couponRedemptionRepo.create({
-        id: '',
-        couponId,
-        code: couponCode,
-        userId,
-        checkoutId: checkout.id,
-        tier,
-        billingCycle,
-        status: CouponRedemptionStatus.PENDING,
-        baseAmount,
-        discountAmount,
-        finalAmount,
-        currency,
-        createdAt: now,
-        updatedAt: now,
-      });
+      // createWithSeat, not create: the per-user cap was checked by a count in
+      // CouponService, and a count is a read. Two checkouts submitted together
+      // both saw room. The seat is claimed through a unique index here, so only
+      // one of them can actually take the last one.
+      redemption =
+        (await this.couponRedemptionRepo.createWithSeat(
+          {
+            id: '',
+            couponId,
+            code: couponCode,
+            userId,
+            checkoutId: checkout.id,
+            tier,
+            billingCycle,
+            status: CouponRedemptionStatus.PENDING,
+            baseAmount,
+            discountAmount,
+            finalAmount,
+            currency,
+            createdAt: now,
+            updatedAt: now,
+          },
+          perUserLimit
+        )) ?? undefined;
+
+      if (!redemption) {
+        // Lost the race for the last seat. Fail the checkout rather than let the
+        // charge open: the alternative is taking money at a discounted price the
+        // user was no longer entitled to.
+        await this.subscriptionCheckoutRepo.transitionToFailed(checkout.id);
+        throw new AppError(
+          'You have already used this coupon the maximum number of times',
+          422
+        );
+      }
     }
 
     // ── Coupon-zeroed: activate immediately, no Paystack charge ───────────

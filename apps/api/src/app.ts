@@ -806,6 +806,7 @@ export function createApp(): express.Express {
     handleTipWebhookUseCase,
     handleCreatorPayoutWebhookUseCase,
     walletTopUps,
+    couponRedemptionRepo,
   )
   // Flutterwave settlement: verifies the verif-hash, re-verifies the charge
   // server-side, then settles through the same donation seam as Paystack.
@@ -1062,6 +1063,7 @@ export function createApp(): express.Express {
     subscriptionCheckoutRepo,
     paymentGateway,
     settleSubscriptionUseCase,
+    couponRedemptionRepo,
   )
 
   // Coupons: admin CRUD + an authed pre-checkout preview.
