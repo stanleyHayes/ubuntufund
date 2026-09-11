@@ -551,6 +551,7 @@ export function createApp(): express.Express {
         process.env.RESEND_API_KEY ?? '',
         process.env.FROM_EMAIL ?? '',
         config.publicWebUrl,
+        process.env.REPLY_TO_EMAIL || undefined,
       ),
     ),
   )
