@@ -66,13 +66,28 @@ export function CampaignCashout({ campaignId }: { campaignId: string }) {
         const options = await api.get<Options>(`/campaigns/${campaignId}/payout-options`)
         return [options, history] as const
       })
-      .then(([o, h]) => {
-        if (active) {
-          setOptions(o)
-          setHistory(h)
-          setType((t) => (o.requiresEarlyCashout && !['early', 'urgent'].includes(t) ? 'early' : t))
-          setError('')
-        }
+      .then(async ([o, h]) => {
+        if (!active) return
+        setOptions(o)
+        setHistory(h)
+        setType((t) => (o.requiresEarlyCashout && !['early', 'urgent'].includes(t) ? 'early' : t))
+        setError('')
+
+        // Listing payouts is a pure read now, so ask the provider explicitly for
+        // any still in flight. A server-side per-payout lease bounds this, so
+        // repeated opens still cause at most one provider call per window.
+        const inFlight = h.filter((p) => p.status === 'PROCESSING' && !p.legs?.length)
+        if (!inFlight.length) return
+        const settled = await Promise.all(
+          inFlight.map((p) =>
+            api
+              .post<Payout | null>(`/campaigns/${campaignId}/payouts/${p.id}/refresh`)
+              .catch(() => null),
+          ),
+        )
+        if (!active) return
+        const byId = new Map(settled.filter(Boolean).map((p) => [p!.id, p!]))
+        if (byId.size) setHistory((rows) => rows.map((row) => byId.get(row.id) ?? row))
       })
       .catch((e) => {
         if (active) setError(e.message)

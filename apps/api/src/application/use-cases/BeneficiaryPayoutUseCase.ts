@@ -286,6 +286,7 @@ export class BeneficiaryPayoutUseCase {
     try {
       transfer = await this.paymentGateway.initiateTransfer({
         amount: payout.amount,
+        currency: payout.currency,
         recipientCode: recipient.recipientCode,
         reference,
         reason: `Beneficiary payout for campaign ${payout.campaignId}`,

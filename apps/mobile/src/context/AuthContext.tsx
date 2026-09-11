@@ -23,6 +23,7 @@ interface AuthContextValue extends AuthState {
     organizationName?: string
     organizationType?: string
     registrationNumber?: string
+    referralCode?: string
   }) => Promise<void>
   logout: () => Promise<void>
 }
@@ -68,6 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     organizationName?: string
     organizationType?: string
     registrationNumber?: string
+    referralCode?: string
   }) => {
     const { user, tokens } = await registerApi(data)
     await establishSession(user, tokens)

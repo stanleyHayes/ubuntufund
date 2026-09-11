@@ -144,11 +144,22 @@ export class MongoCampaignRepository implements CampaignRepositoryPort {
     });
   }
 
+  /**
+   * Campaigns occupying one of the plan's concurrent-campaign slots.
+   *
+   * FUNDED counts: now that overfunding is allowed, reaching the goal no longer
+   * closes a campaign, so a funded one is still live and collecting. Excluding
+   * it would let a creator run unlimited simultaneous campaigns simply by
+   * getting each to its goal. Only campaigns that are genuinely finished or
+   * never started (EXPIRED / BLOCKED / DRAFT) free their slot.
+   */
   async countActiveByCreator(creatorId: string): Promise<number> {
     return CampaignModel.countDocuments({
       creatorId,
       deletedAt: { $exists: false },
-      status: { $in: [CampaignStatus.ACTIVE, CampaignStatus.PENDING_REVIEW] },
+      status: {
+        $in: [CampaignStatus.ACTIVE, CampaignStatus.PENDING_REVIEW, CampaignStatus.FUNDED],
+      },
     });
   }
 

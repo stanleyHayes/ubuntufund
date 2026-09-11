@@ -10,6 +10,19 @@ import Avatar from '@mui/material/Avatar'
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
 import Snackbar from '@mui/material/Snackbar'
+import Dialog from '@mui/material/Dialog'
+import DialogTitle from '@mui/material/DialogTitle'
+import DialogContent from '@mui/material/DialogContent'
+import DialogActions from '@mui/material/DialogActions'
+import EditRoundedIcon from '@mui/icons-material/EditRounded'
+import { BrandedTextField } from '@ubuntu-fund/ui'
+import {
+  REFERRAL_CODE_MAX,
+  normalizeReferralCode,
+  referralCodeProblemMessage,
+  validateReferralCode,
+} from '@ubuntu-fund/types'
+import { updateReferralCode } from '@/lib/affiliate'
 import Alert from '@mui/material/Alert'
 import HandshakeRoundedIcon from '@mui/icons-material/HandshakeRounded'
 import ContentCopyRoundedIcon from '@mui/icons-material/ContentCopyRounded'
@@ -296,6 +309,11 @@ export function AffiliateDashboardPage() {
   const [listsKey, setListsKey] = useState(0)
 
   const [copied, setCopied] = useState(false)
+  const [codeOpen, setCodeOpen] = useState(false)
+  const [codeDraft, setCodeDraft] = useState('')
+  const [codeSaving, setCodeSaving] = useState(false)
+  const [codeError, setCodeError] = useState<string | null>(null)
+  const [codeSaved, setCodeSaved] = useState(false)
   const [payoutLoading, setPayoutLoading] = useState(false)
   const [payoutError, setPayoutError] = useState<string | null>(null)
   const [payoutSuccess, setPayoutSuccess] = useState(false)
@@ -341,6 +359,34 @@ export function AffiliateDashboardPage() {
       setCopied(true)
     }
   }, [dashboard])
+
+  // Validate as the affiliate types so the taken/reserved answer is the only
+  // surprise the server can add.
+  const codeProblem = codeDraft.trim() ? validateReferralCode(codeDraft) : null
+  const codeUnchanged =
+    normalizeReferralCode(codeDraft) === normalizeReferralCode(dashboard?.affiliate.referralCode ?? '')
+
+  const openCodeDialog = useCallback(() => {
+    setCodeDraft(dashboard?.affiliate.referralCode ?? '')
+    setCodeError(null)
+    setCodeOpen(true)
+  }, [dashboard])
+
+  const handleSaveCode = useCallback(async () => {
+    if (codeProblem || codeUnchanged) return
+    setCodeSaving(true)
+    setCodeError(null)
+    try {
+      await updateReferralCode(normalizeReferralCode(codeDraft))
+      await refresh()
+      setCodeOpen(false)
+      setCodeSaved(true)
+    } catch (err) {
+      setCodeError(err instanceof Error ? err.message : 'Could not update your code.')
+    } finally {
+      setCodeSaving(false)
+    }
+  }, [codeDraft, codeProblem, codeUnchanged, refresh])
 
   const handleRequestPayout = useCallback(async () => {
     const available = dashboard?.stats.availableBalance ?? 0
@@ -494,6 +540,16 @@ export function AffiliateDashboardPage() {
                     '& .MuiChip-label': { px: 1 },
                   }}
                 />
+                <Tooltip title="Choose your own code">
+                  <IconButton
+                    onClick={openCodeDialog}
+                    size="small"
+                    aria-label="Edit referral code"
+                    sx={{ color: 'text.secondary', flexShrink: 0 }}
+                  >
+                    <EditRoundedIcon sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </Tooltip>
               </Box>
               <Box
                 sx={{
@@ -688,6 +744,76 @@ export function AffiliateDashboardPage() {
         </Grid>
       </Container>
 
+      <Dialog
+        open={codeOpen}
+        onClose={() => !codeSaving && setCodeOpen(false)}
+        fullWidth
+        maxWidth="xs"
+        slotProps={{ paper: { sx: { borderRadius: SHAPE.card, boxShadow: 'var(--neu-raised)' } } }}
+      >
+        <DialogTitle sx={{ fontWeight: 800, fontSize: '1.05rem' }}>Choose your referral code</DialogTitle>
+        <DialogContent>
+          <Typography sx={{ fontSize: '0.85rem', color: 'text.secondary', mb: 2 }}>
+            Use something people will remember — your name, brand or handle.
+          </Typography>
+          <BrandedTextField
+            fullWidth
+            autoFocus
+            label="Referral code"
+            value={codeDraft}
+            onChange={(e) => {
+              setCodeDraft(e.target.value)
+              setCodeError(null)
+            }}
+            error={Boolean(codeProblem || codeError)}
+            helperText={
+              codeError ??
+              (codeProblem
+                ? referralCodeProblemMessage(codeProblem)
+                : 'Letters and numbers, with single hyphens between them.')
+            }
+            slotProps={{ htmlInput: { maxLength: REFERRAL_CODE_MAX, autoCapitalize: 'none', spellCheck: false } }}
+          />
+          <Box
+            sx={{
+              mt: 2,
+              p: 1.5,
+              borderRadius: SHAPE.sm,
+              bgcolor: 'var(--neu-surface)',
+              boxShadow: 'var(--neu-inset)',
+            }}
+          >
+            <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary', wordBreak: 'break-all' }}>
+              {`${referralLink.split('?')[0]}?ref=${normalizeReferralCode(codeDraft) || 'your-code'}`}
+            </Typography>
+          </Box>
+          <Typography sx={{ mt: 2, fontSize: '0.78rem', color: 'var(--text-warning)' }}>
+            Links you already shared with your old code will stop counting. Commission
+            you have already earned is not affected.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5 }}>
+          <Button onClick={() => setCodeOpen(false)} disabled={codeSaving} sx={{ color: 'text.secondary' }}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            color="secondary"
+            onClick={handleSaveCode}
+            disabled={codeSaving || Boolean(codeProblem) || codeUnchanged || !codeDraft.trim()}
+          >
+            {codeSaving ? 'Saving…' : 'Save code'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={codeSaved}
+        autoHideDuration={4000}
+        onClose={() => setCodeSaved(false)}
+        message="Referral code updated — share your new link"
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      />
       <Snackbar
         open={copied}
         autoHideDuration={2000}

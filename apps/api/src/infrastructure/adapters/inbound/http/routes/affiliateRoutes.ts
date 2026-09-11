@@ -1,10 +1,16 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { AffiliateStatus } from '@ubuntu-fund/types';
+import { AffiliateStatus, REFERRAL_CODE_MAX, REFERRAL_CODE_MIN } from '@ubuntu-fund/types';
 import type { AffiliateController } from '../controllers/AffiliateController.js';
 import { validate } from '../../middleware/validate.js';
 import type { createAuthMiddleware } from '../../middleware/authMiddleware.js';
 import type { requireAdmin } from '../../middleware/requireRole.js';
+
+// Shape only; the use case applies the shared format/reserved/uniqueness rules
+// so the API and both clients cannot drift on what a valid code is.
+const referralCodeSchema = z.object({
+  referralCode: z.string().trim().min(REFERRAL_CODE_MIN).max(REFERRAL_CODE_MAX),
+});
 
 const setRecipientSchema = z.object({
   type: z.enum(['ghipss', 'mobile_money']),
@@ -42,6 +48,12 @@ export function createAffiliateRoutes(
 
   router.post('/enroll', authMiddleware, affiliateController.enroll);
   router.get('/', authMiddleware, affiliateController.dashboard);
+  router.put(
+    '/referral-code',
+    authMiddleware,
+    validate(referralCodeSchema),
+    affiliateController.updateReferralCode
+  );
   router.get('/referrals', authMiddleware, affiliateController.referrals);
   router.get('/commissions', authMiddleware, affiliateController.commissions);
   router.post(

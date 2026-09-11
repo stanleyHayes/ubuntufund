@@ -49,7 +49,7 @@ export class WalletTopUpService {
       if ((error as { code?: number }).code === 11000) throw new AppError('This top-up is already being processed', 409);
       throw error;
     }
-    const result = await this.gateway.initializeCharge({ email: user.email, amount: minor / 100, referencePrefix: 'wtop', reference: topup.reference, callbackPath: '/wallet', metadata: { purpose: 'wallet_topup' } });
+    const result = await this.gateway.initializeCharge({ email: user.email, amount: minor / 100, currency: 'GHS', referencePrefix: 'wtop', reference: topup.reference, callbackPath: '/wallet', metadata: { purpose: 'wallet_topup' } });
     if (result.reference !== topup.reference || !result.authorizationUrl.startsWith('https://')) throw new AppError('Invalid checkout response', 502);
     topup.authorizationUrl = result.authorizationUrl;
     await topup.save();

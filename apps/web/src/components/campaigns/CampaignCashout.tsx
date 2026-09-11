@@ -98,17 +98,33 @@ export function CampaignCashout({
         async (h) =>
           [await api.get<Options>(`/campaigns/${campaignId}/payout-options`), h] as const,
       )
-      .then(([o, h]) => {
-        if (active) {
-          setOptions(o)
-          setType((current) =>
-            o.requiresEarlyCashout && current !== 'early' && current !== 'urgent'
-              ? 'early'
-              : current,
-          )
-          setHistory(h)
-          setError('')
-        }
+      .then(async ([o, h]) => {
+        if (!active) return
+        setOptions(o)
+        setType((current) =>
+          o.requiresEarlyCashout && current !== 'early' && current !== 'urgent'
+            ? 'early'
+            : current,
+        )
+        setHistory(h)
+        setError('')
+
+        // Listing payouts is a pure read now, so ask the provider explicitly for
+        // any that are still in flight. The server keeps a per-payout lease, so
+        // polling from several tabs still produces at most one provider call per
+        // window — the owner keeps seeing PROCESSING -> PAID without an admin.
+        const inFlight = h.filter((p) => p.status === 'PROCESSING' && !p.legs?.length)
+        if (!inFlight.length) return
+        const settled = await Promise.all(
+          inFlight.map((p) =>
+            api
+              .post<Payout | null>(`/campaigns/${campaignId}/payouts/${p.id}/refresh`)
+              .catch(() => null),
+          ),
+        )
+        if (!active) return
+        const byId = new Map(settled.filter(Boolean).map((p) => [p!.id, p!]))
+        if (byId.size) setHistory((rows) => rows.map((row) => byId.get(row.id) ?? row))
       })
       .catch((e) => {
         if (active) setError(e.message)

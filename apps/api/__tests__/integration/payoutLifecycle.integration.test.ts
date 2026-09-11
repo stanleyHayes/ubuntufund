@@ -149,6 +149,20 @@ it('request → approval → OTP → provider success → admin and owner refres
   await approvalRequest(app, { reference, amount: 100001, currency: 'GHS', recipient: recipient.recipientCode })
     .expect(400)
   providerStatus = 'success'
+  // Refreshing is an explicit command now — the GETs below are pure reads and
+  // can no longer settle money as a side effect of a page load. Two concurrent
+  // refreshes exercise the per-payout lease: only one may reach the provider,
+  // and the journal assertion further down proves the effect landed once.
+  await Promise.all([
+    request(app)
+      .post(`/api/v1/campaigns/${cid}/payouts/${pid}/refresh`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200),
+    request(app)
+      .post(`/api/v1/campaigns/${cid}/payouts/${pid}/refresh`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200),
+  ])
   const results = await Promise.all([
     request(app)
       .get(`/api/v1/campaigns/${cid}/payouts`)

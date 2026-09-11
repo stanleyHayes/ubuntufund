@@ -16,6 +16,12 @@ import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import { Link as RouterLink } from 'react-router-dom'
 import { SubscriptionTier, BillingCycle } from '@ubuntu-fund/types'
+import {
+  REFERRAL_CODE_MAX,
+  normalizeReferralCode,
+  referralCodeProblemMessage,
+  validateReferralCode,
+} from '@ubuntu-fund/types'
 import { SHAPE, formatCurrency, LoadingDots } from '@ubuntu-fund/ui'
 import { useAuth } from '@/context/AuthContext'
 import { useSignupPlans } from '@/hooks/useSubscription'
@@ -126,11 +132,23 @@ export function RegisterForm() {
   const [website, setWebsite] = useState('')
   const [billingCycle, setBillingCycle] = useState<BillingCycle>(BillingCycle.MONTHLY)
   const [selectedTier, setSelectedTier] = useState<SubscriptionTier>(SubscriptionTier.FREE)
+  // Seeded from the ?ref= link App.tsx stored. Editable, because a code shared
+  // by word of mouth, on a flyer, or clicked on another device never reaches
+  // localStorage — without a field those referrals were simply lost.
+  const [referralCode, setReferralCode] = useState(() => {
+    try {
+      return localStorage.getItem('uf_ref')?.trim() ?? ''
+    } catch {
+      return ''
+    }
+  })
   const [errors, setErrors] = useState<FieldErrors>({})
   const [apiError, setApiError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   const isOrg = accountType === 'organization'
+  // Optional field: only validate once something is typed.
+  const referralProblem = referralCode.trim() ? validateReferralCode(referralCode) : null
 
   const steps = isOrg ? ORGANIZATION_STEPS : PERSONAL_STEPS
   const contactStep = isOrg ? 2 : 1
@@ -171,18 +189,13 @@ export function RegisterForm() {
     if (!plans[selectedTier]) return
     setSubmitting(true)
     try {
-      let referralCode: string | undefined
-      try {
-        referralCode = localStorage.getItem('uf_ref')?.trim() || undefined
-      } catch {
-        referralCode = undefined
-      }
+      const referral = normalizeReferralCode(referralCode) || undefined
       // 1) Create the account (critical — a failure here blocks signup).
       await register({
         name: name.trim(),
         email: email.trim(),
         password,
-        referralCode,
+        referralCode: referral,
         ...(isOrg
           ? {
               role: 'organization',
@@ -390,6 +403,19 @@ export function RegisterForm() {
             required
             autoComplete="new-password"
           />
+          <TextField
+            label="Referral code (optional)"
+            value={referralCode}
+            onChange={(e) => setReferralCode(e.target.value)}
+            error={Boolean(referralProblem)}
+            helperText={
+              referralProblem
+                ? referralCodeProblemMessage(referralProblem)
+                : 'Were you invited? Enter their code so they get credit.'
+            }
+            fullWidth
+            slotProps={{ htmlInput: { maxLength: REFERRAL_CODE_MAX, autoCapitalize: 'none', spellCheck: false } }}
+          />
           </>}
           {isOrg && step === 1 && (
             <>
@@ -430,11 +456,15 @@ export function RegisterForm() {
             </Typography>
             <Box
               sx={{
+                // Matches the pricing page's segmented control: the container is
+                // the recessed well, the active segment sits raised inside it.
+                // SHAPE.button, not SHAPE.sm, so it shares the buttons' radius.
                 display: 'inline-flex',
-                borderRadius: SHAPE.sm,
+                gap: 0.5,
+                p: 0.5,
+                borderRadius: SHAPE.button,
                 boxShadow: 'var(--neu-inset)',
                 bgcolor: 'background.paper',
-                overflow: 'hidden',
                 border: '1px solid',
                 borderColor: 'divider',
               }}
@@ -453,6 +483,10 @@ export function RegisterForm() {
                     py: 0.5,
                     fontSize: '0.75rem',
                     fontWeight: 700,
+                    borderRadius: SHAPE.button,
+                    boxShadow: billingCycle === c ? 'var(--neu-raised)' : 'none',
+                    transition: 'background-color .15s ease, color .15s ease, box-shadow .15s ease',
+                    '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
                     '&:focus-visible': {
                       outline: '2px solid',
                       outlineColor: 'secondary.main',

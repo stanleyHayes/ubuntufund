@@ -18,4 +18,12 @@ export interface AffiliateRepositoryPort {
    * exists for `affiliate.id`.
    */
   update(affiliate: Affiliate): Promise<Affiliate | null>;
+
+  /**
+   * Set a chosen referral code. Separate from `update` because the code is an
+   * identifier that resolves signups — it must only ever change through this
+   * deliberate path, never as a side effect of saving other fields. Returns null
+   * when no record matches, or when the unique index rejects a taken code.
+   */
+  updateReferralCode(affiliateId: string, referralCode: string): Promise<Affiliate | null>;
 }

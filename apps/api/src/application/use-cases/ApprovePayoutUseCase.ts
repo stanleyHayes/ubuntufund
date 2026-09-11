@@ -229,6 +229,7 @@ export class ApprovePayoutUseCase {
     let transfer
     try {
       transfer = await this.paymentGateway.initiateTransfer({
+        currency: payout.currency,
         // Send the net (amount − fee); the fee stays on-platform.
         amount: payout.netAmount,
         recipientCode: recipient.recipientCode,
@@ -292,6 +293,7 @@ export class ApprovePayoutUseCase {
       try {
         const transfer = await this.paymentGateway.initiateTransfer({
           amount: leg.amount,
+          currency: payout.currency,
           recipientCode: recipient.recipientCode,
           reference: leg.reference,
           reason: `Payout for campaign ${payout.campaignId} (leg ${leg.index + 1}/${legs.length})`,

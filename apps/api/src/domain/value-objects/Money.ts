@@ -37,6 +37,23 @@ export function fromMinorUnits(minor: number, currency: string): number {
   return minor / 10 ** minorUnitExponent(currency);
 }
 
+/**
+ * Round a major-unit amount to the currency's own precision.
+ *
+ * The counterpart to `toMinorUnits` for values that stay in major units: fees,
+ * net amounts, balances. Use this instead of the `Math.round(n * 100) / 100`
+ * idiom, which silently assumes every currency has two decimal places — it
+ * produces unrepresentable values like 1234.56 XOF (a zero-decimal currency)
+ * and 12.345 KWD rounded to 12.35 when KWD carries three.
+ *
+ * Identical to `Math.round(n * 100) / 100` for GHS/USD and every other
+ * 2-decimal currency, so it is a safe drop-in.
+ */
+export function roundToCurrency(amount: number, currency: string): number {
+  const factor = 10 ** minorUnitExponent(currency);
+  return Math.round(amount * factor) / factor;
+}
+
 export class Money {
   readonly amount: number;
   readonly currency: string;
@@ -51,8 +68,7 @@ export class Money {
     // Round to the currency's own minor-unit precision (2 for GHS/USD/…, 0 for
     // XOF/JPY, 3 for KWD/BHD) — never a hardcoded 2dp, so minor-unit round-trips
     // and fee splits stay exact for non-2-decimal currencies (spec §8).
-    const factor = 10 ** minorUnitExponent(currency);
-    this.amount = Math.round(amount * factor) / factor;
+    this.amount = roundToCurrency(amount, currency);
     this.currency = currency.toUpperCase();
   }
 

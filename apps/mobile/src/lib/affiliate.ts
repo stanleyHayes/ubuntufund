@@ -26,6 +26,16 @@ export async function enrollAffiliate(): Promise<Affiliate> {
   return api.post<Affiliate>('/affiliate/enroll')
 }
 
+/**
+ * Replace the auto-generated referral code with a chosen one.
+ *
+ * Retires the previous code: links already shared under it stop attributing.
+ * Commission already earned is keyed by affiliate id, so it is unaffected.
+ */
+export async function updateAffiliateReferralCode(referralCode: string): Promise<Affiliate> {
+  return api.put<Affiliate>('/affiliate/referral-code', { referralCode })
+}
+
 export async function listAffiliateReferrals(): Promise<AffiliateReferral[]> {
   return api.get<AffiliateReferral[]>('/affiliate/referrals')
 }

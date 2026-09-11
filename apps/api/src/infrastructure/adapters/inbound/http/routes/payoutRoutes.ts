@@ -64,6 +64,9 @@ export function createCampaignPayoutRoutes(
   )
   router.get('/:id/payout-options', authMiddleware, payoutController.getOptions)
   router.get('/:id/payouts', authMiddleware, payoutController.listCampaignPayouts)
+  // Refreshing asks the provider and can settle money, so it is a command, not
+  // part of the GET above. Bounded server-side by a per-payout lease.
+  router.post('/:id/payouts/:payoutId/refresh', authMiddleware, payoutController.refreshPayout)
 
   return router
 }

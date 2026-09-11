@@ -192,6 +192,9 @@ export class RequestCreatorWithdrawalUseCase {
       transferAttempted = true
       const transfer = await this.gateway.initiateTransfer({
         amount: netAmount,
+        // Derived from the creator's balance above; without it the transfer was
+        // sent as GHS whatever currency that balance is held in.
+        currency,
         recipientCode,
         reference,
         reason: 'Ujimora creator withdrawal',

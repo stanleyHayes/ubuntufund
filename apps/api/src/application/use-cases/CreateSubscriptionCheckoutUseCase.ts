@@ -180,6 +180,9 @@ export class CreateSubscriptionCheckoutUseCase {
     const init = await this.paymentGateway.initializeCharge({
       email: user.email.value,
       amount: finalAmount,
+      // The plan's own currency, not the platform default: without it the
+      // charge was scaled and labelled GHS whatever the plan was priced in.
+      currency,
       referencePrefix: 'sub',
       callbackPath: `/subscription/callback?checkout=${encodeURIComponent(checkout.id)}`,
       metadata: { checkoutId: checkout.id, userId, tier, billingCycle, couponId },

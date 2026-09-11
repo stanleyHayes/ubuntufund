@@ -5,10 +5,16 @@ import { useState, useMemo } from 'react'
 import { View, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native'
 import { Text } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Link, router } from 'expo-router'
+import { Link, router, useLocalSearchParams } from 'expo-router'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
 import type { Palette, NeuRecipes } from '@/theme'
 import { OrganizationType } from '@ubuntu-fund/types'
+import {
+  REFERRAL_CODE_MAX,
+  normalizeReferralCode,
+  referralCodeProblemMessage,
+  validateReferralCode,
+} from '@ubuntu-fund/types'
 import { useAuth } from '@/context/AuthContext'
 import { UjimoraLogo } from '@/components/UjimoraLogo'
 import { PasswordStrength } from '@/components/PasswordStrength'
@@ -41,12 +47,23 @@ export default function RegisterScreen() {
   const [registrationNumber, setRegistrationNumber] = useState('')
   const [showOrgTypePicker, setShowOrgTypePicker] = useState(false)
 
+  // Mobile previously captured no referral at all, so every install-then-signup
+  // was unattributed. A ?ref= deep link seeds the field; it stays editable for
+  // codes shared by word of mouth or on a flyer.
+  const { ref: refParam } = useLocalSearchParams<{ ref?: string }>()
+  const [referralCode, setReferralCode] = useState(
+    typeof refParam === 'string' ? refParam.trim() : ''
+  )
+  const referralProblem = referralCode.trim() ? validateReferralCode(referralCode) : null
+
   const { register } = useAuth()
   const insets = useSafeAreaInsets()
 
   const handleRegister = async () => {
     setError('')
     const payload: Record<string, string> = { name, email, password, country: 'Ghana' }
+    const referral = normalizeReferralCode(referralCode)
+    if (referral) payload.referralCode = referral
     if (accountType === 'organization') {
       payload.role = 'organization'
       payload.organizationName = orgName
@@ -282,6 +299,41 @@ export default function RegisterScreen() {
               <Text style={[styles.hintText, { color: p.error }]}>Passwords do not match</Text>
             </View>
           )}
+
+          <TextInput
+            label="Referral code (optional)"
+            value={referralCode}
+            onChangeText={setReferralCode}
+            mode="outlined"
+            autoCapitalize="none"
+            autoCorrect={false}
+            maxLength={REFERRAL_CODE_MAX}
+            left={<TextInput.Icon icon="ticket-percent-outline" />}
+            error={!!referralProblem}
+            style={styles.input}
+            outlineStyle={styles.inputOutline}
+            outlineColor={p.border}
+            activeOutlineColor={p.primary}
+            disabled={loading}
+          />
+          <View style={styles.hintRow}>
+            <View
+              style={[
+                styles.hintDot,
+                { backgroundColor: referralProblem ? p.error : p.textSecondary },
+              ]}
+            />
+            <Text
+              style={[
+                styles.hintText,
+                { color: referralProblem ? p.error : p.textSecondary },
+              ]}
+            >
+              {referralProblem
+                ? referralCodeProblemMessage(referralProblem)
+                : 'Were you invited? Enter their code so they get credit.'}
+            </Text>
+          </View>
 
           <Button
             mode="contained"

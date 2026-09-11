@@ -1,6 +1,7 @@
 import type { Response, NextFunction } from 'express';
 import type { AuthenticatedRequest } from '../../middleware/authMiddleware.js';
 import type { EnrollAffiliateUseCase } from '../../../../../application/use-cases/EnrollAffiliateUseCase.js';
+import type { UpdateAffiliateReferralCodeUseCase } from '../../../../../application/use-cases/UpdateAffiliateReferralCodeUseCase.js';
 import type { GetAffiliateDashboardUseCase } from '../../../../../application/use-cases/GetAffiliateDashboardUseCase.js';
 import type { ListMyAffiliateReferralsUseCase } from '../../../../../application/use-cases/ListMyAffiliateReferralsUseCase.js';
 import type { ListMyAffiliateCommissionsUseCase } from '../../../../../application/use-cases/ListMyAffiliateCommissionsUseCase.js';
@@ -26,7 +27,8 @@ export class AffiliateController {
     private readonly setAffiliateCommissionRateUseCase: SetAffiliateCommissionRateUseCase,
     private readonly updateAffiliateStatusUseCase: UpdateAffiliateStatusUseCase,
     private readonly listAffiliatePayoutsUseCase: ListAffiliatePayoutsUseCase,
-    private readonly approveAffiliatePayoutUseCase: ApproveAffiliatePayoutUseCase
+    private readonly approveAffiliatePayoutUseCase: ApproveAffiliatePayoutUseCase,
+    private readonly updateAffiliateReferralCodeUseCase: UpdateAffiliateReferralCodeUseCase
   ) {}
 
   // ── Owner ('me') ──────────────────────────────────────────────────────────
@@ -43,6 +45,27 @@ export class AffiliateController {
         data: affiliate,
         message: 'Enrolled in affiliate program',
         status: 201,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /** PUT /affiliate/referral-code — choose a custom referral code. */
+  updateReferralCode = async (
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const affiliate = await this.updateAffiliateReferralCodeUseCase.execute(
+        req.userId!,
+        req.body.referralCode
+      );
+      res.json({
+        data: affiliate,
+        message: 'Referral code updated',
+        status: 200,
       });
     } catch (error) {
       next(error);

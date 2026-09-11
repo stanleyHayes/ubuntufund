@@ -1,4 +1,5 @@
 import { PayoutEntity } from '../../../../domain/entities/Payout.js'
+import { PayoutCheckLeaseModel } from '../../../database/models/PayoutCheckLeaseModel.js'
 import type { PayoutRepositoryPort } from '../../../../domain/ports/outbound/PayoutRepositoryPort.js'
 import type { PayoutLeg, PayoutLegStatus, PayoutStatus } from '@ubuntu-fund/types'
 import { PayoutModel, type PayoutDocument } from '../../../database/models/PayoutModel.js'
@@ -44,6 +45,37 @@ export class MongoPayoutRepository implements PayoutRepositoryPort {
   }
   async setProviderStatus(id: string, providerStatus: string): Promise<void> {
     await PayoutModel.updateOne({ _id: id, status: 'PROCESSING' }, { $set: { providerStatus } })
+  }
+
+  async tryLeaseProviderCheck(
+    id: string,
+    ttlMs: number,
+  ): Promise<{ acquired: boolean; nextCheckAt: Date }> {
+    const now = new Date()
+    const nextCheckAt = new Date(now.getTime() + ttlMs)
+    try {
+      // Upsert-as-lock: the filter cannot match an UNEXPIRED lease, so Mongo
+      // attempts an insert on a duplicate _id and raises E11000 rather than
+      // extending someone else's window. First-ever check: no doc, insert wins.
+      await PayoutCheckLeaseModel.updateOne(
+        { _id: id, expiresAt: { $lte: now } },
+        { $set: { expiresAt: nextCheckAt } },
+        { upsert: true },
+      )
+      return { acquired: true, nextCheckAt }
+    } catch (error) {
+      if ((error as { code?: number }).code !== 11000) throw error
+      const held = await PayoutCheckLeaseModel.findById(id).lean()
+      return { acquired: false, nextCheckAt: held?.expiresAt ?? nextCheckAt }
+    }
+  }
+
+  async extendProviderCheckLease(id: string, ttlMs: number): Promise<void> {
+    await PayoutCheckLeaseModel.updateOne(
+      { _id: id },
+      { $set: { expiresAt: new Date(Date.now() + ttlMs) } },
+      { upsert: true },
+    )
   }
   async create(payout: PayoutEntity): Promise<PayoutEntity> {
     const p = payout.toPlain()

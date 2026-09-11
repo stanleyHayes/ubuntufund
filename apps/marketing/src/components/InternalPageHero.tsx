@@ -61,7 +61,32 @@ export function InternalPageHero({
             {(primaryAction || secondaryAction) && (
               <Box sx={{ mt: 4, display: 'flex', flexWrap: 'wrap', gap: 2 }}>
                 {primaryAction && <Button variant="contained" color="secondary" href={primaryAction.href} endIcon={<ArrowForwardRoundedIcon />}>{primaryAction.label}</Button>}
-                {secondaryAction && <Button href={secondaryAction.href} sx={{ color: '#F5F2EA' }}>{secondaryAction.label}</Button>}
+                {/* Explicit surface rather than `variant="outlined"`. The outlined
+                    override fills with var(--neu-surface), which this hero sets to
+                    #243126 — the exact colour of its own background — and the
+                    neumorphism skin's --neu-border is 0px transparent, so an outlined
+                    button here is a same-colour rectangle with no edge. The home
+                    hero's "Donate Now" only reads because its ground is a gradient
+                    while its surface is flat. Forest fill + the raised shadow gives
+                    this the same weight as the gold primary beside it. */}
+                {secondaryAction && (
+                  <Button
+                    href={secondaryAction.href}
+                    sx={{
+                      backgroundColor: '#2E3D2F',
+                      color: '#F5F2EA',
+                      borderRadius: SHAPE.button,
+                      boxShadow: 'var(--neu-raised)',
+                      px: 3,
+                      '&:hover': {
+                        backgroundColor: '#35462F',
+                        boxShadow: 'var(--neu-raised-hover)',
+                      },
+                    }}
+                  >
+                    {secondaryAction.label}
+                  </Button>
+                )}
               </Box>
             )}
           </Box>

@@ -91,8 +91,19 @@ export class CampaignEntity {
     return this.props.lockedPlatformFeePercent;
   }
 
+  /**
+   * Overfunding is allowed: reaching the goal marks a campaign FUNDED but does
+   * not close it. A campaign that is doing well should keep its momentum until
+   * its end date rather than going dark at its best moment — and this is also
+   * what stops a refund from stranding it, since `reverseRaised` drops
+   * `raisedAmount` back below the goal without ever restoring ACTIVE.
+   *
+   * FUNDED therefore means "goal met, still open". Only the end date, or an
+   * explicit DRAFT / PENDING_REVIEW / BLOCKED / EXPIRED state, closes a campaign.
+   */
   canReceiveDonation(): boolean {
-    return this.props.status === 'active' && !this.isExpired();
+    const open: CampaignStatus[] = ['active' as CampaignStatus, 'funded' as CampaignStatus];
+    return open.includes(this.props.status) && !this.isExpired();
   }
 
   isExpired(): boolean {
@@ -111,7 +122,8 @@ export class CampaignEntity {
     this.props.raisedAmount = this.props.raisedAmount.add(amount);
     this.props.updatedAt = new Date();
 
-    if (this.isFunded()) {
+    // Mark the milestone; never downgrade a campaign that is already FUNDED.
+    if (this.isFunded() && this.props.status === ('active' as CampaignStatus)) {
       this.props.status = 'funded' as CampaignStatus;
     }
   }

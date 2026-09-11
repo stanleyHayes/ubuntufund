@@ -4,6 +4,16 @@ import type { PayoutLeg, PayoutLegStatus, PayoutStatus } from '@ubuntu-fund/type
 export interface PayoutRepositoryPort {
   findByRequestKey?(key: string): Promise<PayoutEntity | null>
   setProviderStatus?(id: string, status: string): Promise<void>
+
+  /**
+   * Try to take the provider-verification lease for `id`. Atomic across API
+   * instances: N concurrent callers produce exactly ONE provider call per
+   * window. Returns whether this caller won, and when the next check is due.
+   */
+  tryLeaseProviderCheck(id: string, ttlMs: number): Promise<{ acquired: boolean; nextCheckAt: Date }>
+
+  /** Push the lease out (provider error / mismatch) so we stop hot-looping. */
+  extendProviderCheckLease(id: string, ttlMs: number): Promise<void>
   create(payout: PayoutEntity): Promise<PayoutEntity>
   findById(id: string): Promise<PayoutEntity | null>
   findByCampaignId(campaignId: string): Promise<PayoutEntity[]>

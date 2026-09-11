@@ -92,6 +92,7 @@ export class ApproveAffiliatePayoutUseCase {
     try {
       transfer = await this.paymentGateway.initiateTransfer({
         amount: payout.amount,
+        currency: payout.currency,
         recipientCode: affiliate.recipientCode,
         reference,
         reason: `Affiliate payout ${payout.id}`,

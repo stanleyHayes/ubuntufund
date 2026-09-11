@@ -206,6 +206,7 @@ import { SettleSubscriptionUseCase } from './application/use-cases/SettleSubscri
 
 // Use cases — affiliate/referral program
 import { EnrollAffiliateUseCase } from './application/use-cases/EnrollAffiliateUseCase.js'
+import { UpdateAffiliateReferralCodeUseCase } from './application/use-cases/UpdateAffiliateReferralCodeUseCase.js'
 import { GetAffiliateDashboardUseCase } from './application/use-cases/GetAffiliateDashboardUseCase.js'
 import { ListMyAffiliateReferralsUseCase } from './application/use-cases/ListMyAffiliateReferralsUseCase.js'
 import { ListMyAffiliateCommissionsUseCase } from './application/use-cases/ListMyAffiliateCommissionsUseCase.js'
@@ -1071,6 +1072,7 @@ export function createApp(): express.Express {
 
   // Affiliate/referral program: owner surface + admin console + payout rail.
   const enrollAffiliateUseCase = new EnrollAffiliateUseCase(affiliateRepo, affiliateBalanceRepo)
+  const updateAffiliateReferralCodeUseCase = new UpdateAffiliateReferralCodeUseCase(affiliateRepo)
   const getAffiliateDashboardUseCase = new GetAffiliateDashboardUseCase(
     affiliateRepo,
     affiliateBalanceRepo,
@@ -1243,6 +1245,7 @@ export function createApp(): express.Express {
     ),
     new AutomaticPayoutService(approvePayoutUseCase, payoutRepo, config.payouts),
     new PayoutTransferControlUseCase(payoutRepo, paymentGateway, handlePayoutWebhookUseCase),
+    payoutRepo,
   )
   // Split-proceeds: owner-managed, versioned beneficiary allocations (spec §17).
   const campaignSplitUseCase = new CampaignSplitUseCase(
@@ -1326,6 +1329,7 @@ export function createApp(): express.Express {
     updateAffiliateStatusUseCase,
     listAffiliatePayoutsUseCase,
     approveAffiliatePayoutUseCase,
+    updateAffiliateReferralCodeUseCase,
   )
   const paymentProviderController = new PaymentProviderController(
     listPaymentProvidersUseCase,

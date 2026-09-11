@@ -17,8 +17,15 @@ export interface PaymentGatewayInitResult {
 export interface InitializeChargeParams {
   /** Payer's email; the provider requires it to open a transaction. */
   email: string
-  /** Amount in MAJOR currency units (GHS); the gateway converts to pesewas. */
+  /** Amount in MAJOR units of `currency`; the gateway converts to minor units. */
   amount: number
+  /**
+   * ISO currency for `amount`. Defaults to the platform currency (GHS) when
+   * omitted. Pass it whenever the amount belongs to another currency — the
+   * gateway derives BOTH the minor-unit scale and the label it settles against
+   * from this one value, so omitting it means the charge is labelled GHS.
+   */
+  currency?: string
   /** Prefix for our unique transaction reference (e.g. 'sub' → 'sub_…'). */
   referencePrefix: string
   /** Pre-persisted reference for recoverable non-donation charges. */
@@ -68,8 +75,14 @@ export interface CreateTransferRecipientParams {
 
 /** Params for initiating a transfer to a registered recipient. */
 export interface InitiateTransferParams {
-  /** Amount in MAJOR currency units (GHS); the gateway converts to pesewas. */
+  /** Amount in MAJOR units of `currency`; the gateway converts to minor units. */
   amount: number
+  /**
+   * ISO currency for `amount`. Defaults to the platform currency (GHS). The
+   * gateway derives both the scale and the transfer's currency from it, so a
+   * payout in another currency must pass it or it is sent as GHS.
+   */
+  currency?: string
   /** Provider recipient handle to pay. */
   recipientCode: string
   /** Our unique idempotency reference; the webhook correlates on it. */

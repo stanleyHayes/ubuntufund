@@ -172,13 +172,20 @@ export class PaystackGateway implements PaymentGatewayPort {
     // Our own unique reference — echoed back by Paystack and stored as the
     // charge's providerRef, so the later webhook correlates deterministically.
     const reference = params.reference ?? `${params.referencePrefix}-${randomUUID().slice(0, 8)}`
-    // Charge amount, converted to pesewas (minor units).
-    const amount = Math.round(params.amount * 100)
+    // Scale and label MUST come from the same currency. Previously this pinned
+    // `currency: CURRENCY` and scaled by a hardcoded 100, so a caller holding a
+    // non-GHS amount (a subscription priced in pricing.currency, a tip in
+    // creator.currency) had its currency silently dropped and was charged as
+    // GHS. Fixing only the scale would have been worse — a correctly-scaled
+    // amount under the wrong label. `initializeTransaction` above already
+    // derives both from the intent; this is the same rule.
+    const currency = params.currency || CURRENCY
+    const amount = toMinorUnits(params.amount, currency)
 
     const body = {
       email: params.email,
       amount,
-      currency: CURRENCY,
+      currency,
       reference,
       callback_url: `${this.config.publicWebUrl}${params.callbackPath ?? '/donate/callback'}`,
       metadata: params.metadata,
@@ -323,14 +330,18 @@ export class PaystackGateway implements PaymentGatewayPort {
     if (!this.isConfigured()) {
       throw new AppError('Payments are not configured', 501)
     }
+    // Same rule as the charge path: one currency drives both the minor-unit
+    // scale and the label Paystack settles against. A payout whose amount
+    // belongs to `payout.currency` must not be sent as a GHS transfer of the
+    // same number.
+    const currency = params.currency || CURRENCY
     const body = {
       source: 'balance',
-      // Amount to Paystack is in pesewas (minor units).
-      amount: Math.round(params.amount * 100),
+      amount: toMinorUnits(params.amount, currency),
       recipient: params.recipientCode,
       reference: params.reference,
       reason: params.reason,
-      currency: CURRENCY,
+      currency,
     }
     const json = await this.request<PaystackTransferData>('POST', '/transfer', body)
     if (json.status !== false && (!json.data?.transfer_code || !json.data?.status)) {

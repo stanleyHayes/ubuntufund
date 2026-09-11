@@ -78,6 +78,18 @@ export function listCommissions(): Promise<AffiliateCommission[]> {
   return api.get<AffiliateCommission[]>('/affiliate/commissions')
 }
 
+/**
+ * Replace the auto-generated referral code with a chosen one
+ * (`PUT /affiliate/referral-code`).
+ *
+ * Retires the previous code: links already shared under it stop attributing.
+ * Referrals and commissions already earned are keyed by affiliate id, not code,
+ * so they are unaffected.
+ */
+export function updateReferralCode(referralCode: string): Promise<Affiliate> {
+  return api.put<Affiliate>('/affiliate/referral-code', { referralCode })
+}
+
 /** Request a payout of available commission (`POST /affiliate/payouts`). */
 export function requestPayout(amount: number): Promise<AffiliatePayout> {
   return api.post<AffiliatePayout>('/affiliate/payouts', { amount })

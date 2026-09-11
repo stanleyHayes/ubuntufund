@@ -1,15 +1,17 @@
 import { SkeletonLoader, Button } from '@/components/Loading'
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { View, ScrollView, StyleSheet, Animated, Share } from 'react-native'
-import { Text, Icon, } from 'react-native-paper'
+import { View, ScrollView, StyleSheet, Animated, Share, Pressable } from 'react-native'
+import { Text, Icon, Portal, Dialog, Snackbar } from 'react-native-paper'
 import { Stack } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'
 import { SignInRequired } from '@/components/SignInRequired'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
 import type { Palette, NeuRecipes } from '@/theme'
+import { BrandedTextInput as TextInput } from '@/components/BrandedTextInput'
 import {
   getAffiliateDashboard,
   enrollAffiliate,
+  updateAffiliateReferralCode,
   listAffiliateReferrals,
   listAffiliateCommissions,
   requestAffiliatePayout,
@@ -20,6 +22,12 @@ import type {
   AffiliateReferralStatus,
   AffiliateCommission,
   AffiliateCommissionStatus,
+} from '@ubuntu-fund/types'
+import {
+  REFERRAL_CODE_MAX,
+  normalizeReferralCode,
+  referralCodeProblemMessage,
+  validateReferralCode,
 } from '@ubuntu-fund/types'
 
 // ---------------------------------------------------------------------------
@@ -90,6 +98,11 @@ function makeStyles(p: Palette, neu: NeuRecipes) {
     cardTitle: { fontSize: 15, fontFamily: 'Outfit_700Bold', color: p.text },
     codeBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, backgroundColor: `${p.secondary}24` },
     codeBadgeText: { fontSize: 12, fontFamily: 'Outfit_700Bold', color: p.secondaryDark },
+    codeEditButton: { padding: 4, borderRadius: 999 },
+    codeHint: { fontSize: 12, fontFamily: 'Outfit_400Regular', marginTop: 6 },
+    codePreview: { ...neu.inset, borderRadius: 10, padding: 12, marginTop: 12 },
+    codePreviewText: { fontSize: 12, fontFamily: 'Outfit_400Regular', color: p.textSecondary },
+    codeWarning: { fontSize: 12, fontFamily: 'Outfit_400Regular', color: p.warningText, marginTop: 12 },
     linkBox: { ...neu.inset, flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 10, paddingVertical: 12, paddingLeft: 14, paddingRight: 8 },
     linkText: { flex: 1, fontSize: 13, fontFamily: 'Outfit_400Regular', color: p.textSecondary },
     shareBtn: { marginTop: 14, borderRadius: 999 },
@@ -200,6 +213,12 @@ export default function AffiliateScreen() {
   const [commissions, setCommissions] = useState<AffiliateCommission[]>([])
   const [listsLoading, setListsLoading] = useState(false)
 
+  const [codeOpen, setCodeOpen] = useState(false)
+  const [codeDraft, setCodeDraft] = useState('')
+  const [codeSaving, setCodeSaving] = useState(false)
+  const [codeError, setCodeError] = useState<string | null>(null)
+  const [codeSaved, setCodeSaved] = useState(false)
+
   const [payoutLoading, setPayoutLoading] = useState(false)
   const [payoutError, setPayoutError] = useState<string | null>(null)
   const [payoutSuccess, setPayoutSuccess] = useState(false)
@@ -233,6 +252,34 @@ export default function AffiliateScreen() {
     if (!user) return
     fetchDashboard()
   }, [user, fetchDashboard])
+
+  // Validate as they type so "taken" is the only answer the server can add.
+  const codeProblem = codeDraft.trim() ? validateReferralCode(codeDraft) : null
+  const codeUnchanged =
+    normalizeReferralCode(codeDraft) ===
+    normalizeReferralCode(dashboard?.affiliate.referralCode ?? '')
+
+  const openCodeDialog = useCallback(() => {
+    setCodeDraft(dashboard?.affiliate.referralCode ?? '')
+    setCodeError(null)
+    setCodeOpen(true)
+  }, [dashboard])
+
+  const handleSaveCode = useCallback(async () => {
+    if (codeProblem || codeUnchanged) return
+    setCodeSaving(true)
+    setCodeError(null)
+    try {
+      await updateAffiliateReferralCode(normalizeReferralCode(codeDraft))
+      await fetchDashboard()
+      setCodeOpen(false)
+      setCodeSaved(true)
+    } catch (err) {
+      setCodeError(err instanceof Error ? err.message : 'Could not update your code.')
+    } finally {
+      setCodeSaving(false)
+    }
+  }, [codeDraft, codeProblem, codeUnchanged, fetchDashboard])
 
   // Load the referral + commission ledgers once enrolled — re-runs whenever a
   // fresh `dashboard` object lands (initial load, post-enroll, post-payout),
@@ -392,6 +439,15 @@ export default function AffiliateScreen() {
                 <View style={styles.codeBadge}>
                   <Text style={styles.codeBadgeText}>{dashboard.affiliate.referralCode}</Text>
                 </View>
+                <Pressable
+                  onPress={openCodeDialog}
+                  accessibilityRole="button"
+                  accessibilityLabel="Edit referral code"
+                  hitSlop={8}
+                  style={styles.codeEditButton}
+                >
+                  <Icon source="pencil-outline" size={16} color={p.textSecondary} />
+                </Pressable>
               </View>
               <View style={styles.linkBox}>
                 <Text style={styles.linkText} numberOfLines={1} ellipsizeMode="tail">
@@ -579,6 +635,74 @@ export default function AffiliateScreen() {
           </>
         )}
       </ScrollView>
+
+      <Portal>
+        <Dialog visible={codeOpen} onDismiss={() => !codeSaving && setCodeOpen(false)}>
+          <Dialog.Title>Choose your referral code</Dialog.Title>
+          <Dialog.Content>
+            <Text style={[styles.codePreviewText, { marginBottom: 12 }]}>
+              Use something people will remember — your name, brand or handle.
+            </Text>
+            <TextInput
+              label="Referral code"
+              value={codeDraft}
+              onChangeText={(value) => {
+                setCodeDraft(value)
+                setCodeError(null)
+              }}
+              mode="outlined"
+              autoCapitalize="none"
+              autoCorrect={false}
+              maxLength={REFERRAL_CODE_MAX}
+              error={!!codeProblem || !!codeError}
+              disabled={codeSaving}
+            />
+            <Text
+              style={[
+                styles.codeHint,
+                { color: codeProblem || codeError ? p.error : p.textSecondary },
+              ]}
+            >
+              {codeError ??
+                (codeProblem
+                  ? referralCodeProblemMessage(codeProblem)
+                  : 'Letters and numbers, with single hyphens between them.')}
+            </Text>
+            <View style={styles.codePreview}>
+              <Text style={styles.codePreviewText}>
+                {`${dashboard?.referralLink.split('?')[0] ?? ''}?ref=${
+                  normalizeReferralCode(codeDraft) || 'your-code'
+                }`}
+              </Text>
+            </View>
+            <Text style={styles.codeWarning}>
+              Links you already shared with your old code will stop counting. Commission
+              you have already earned is not affected.
+            </Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button mode="text" onPress={() => setCodeOpen(false)} disabled={codeSaving}>
+              Cancel
+            </Button>
+            <Button
+              mode="contained"
+              onPress={handleSaveCode}
+              loading={codeSaving}
+              disabled={codeSaving || !!codeProblem || codeUnchanged || !codeDraft.trim()}
+            >
+              Save code
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
+
+      <Snackbar
+        visible={codeSaved}
+        onDismiss={() => setCodeSaved(false)}
+        duration={4000}
+      >
+        Referral code updated — share your new link
+      </Snackbar>
     </View>
   )
 }

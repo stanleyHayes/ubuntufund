@@ -94,4 +94,23 @@ export class MongoAffiliateRepository implements AffiliateRepositoryPort {
     );
     return doc ? toDomain(doc) : null;
   }
+
+  async updateReferralCode(
+    affiliateId: string,
+    referralCode: string
+  ): Promise<Affiliate | null> {
+    try {
+      const doc = await AffiliateModel.findByIdAndUpdate(
+        affiliateId,
+        { $set: { referralCode } },
+        { new: true, runValidators: true }
+      );
+      return doc ? toDomain(doc) : null;
+    } catch (error) {
+      // The unique index is the real arbiter: two affiliates can pass the
+      // availability check concurrently and only one write can win.
+      if ((error as { code?: number }).code === 11000) return null;
+      throw error;
+    }
+  }
 }

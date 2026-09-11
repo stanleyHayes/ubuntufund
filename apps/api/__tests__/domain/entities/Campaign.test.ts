@@ -40,8 +40,18 @@ describe('CampaignEntity', () => {
       expect(campaign.canReceiveDonation()).toBe(false)
     })
 
-    it('returns false for a funded campaign', () => {
+    it('keeps a funded campaign open so it can overfund', () => {
+      // Reaching the goal marks the milestone but does not close the campaign:
+      // a campaign that is doing well keeps its momentum until its end date.
       const campaign = makeCampaign({ status: CampaignStatus.FUNDED })
+      expect(campaign.canReceiveDonation()).toBe(true)
+    })
+
+    it('closes a funded campaign once its end date passes', () => {
+      const campaign = makeCampaign({
+        status: CampaignStatus.FUNDED,
+        endDate: new Date(Date.now() - 1000),
+      })
       expect(campaign.canReceiveDonation()).toBe(false)
     })
 

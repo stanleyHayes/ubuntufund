@@ -171,6 +171,7 @@ export async function registerApi(data: {
   organizationName?: string
   organizationType?: string
   registrationNumber?: string
+  referralCode?: string
 }): Promise<RegisterResponse> {
   // request() unwraps the envelope, so this resolves to { user, tokens }.
   return request<RegisterResponse>('/auth/register', {

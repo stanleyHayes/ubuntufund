@@ -81,6 +81,9 @@ export class CreateTipIntentUseCase {
     const init = await this.gateway.initializeCharge({
       email: input.supporterEmail,
       amount: input.amount,
+      // The tip is quoted in the creator's currency; the balance row above is
+      // created in it too, so the charge must agree.
+      currency: creator.currency,
       referencePrefix: 'tip',
       reference,
       metadata: { type: 'tip', creatorUserId: creator.userId, handle: creator.handle },

@@ -21,5 +21,6 @@ export * from './affiliate'
 export * from './split'
 export * from './crypto'
 export * from './password'
+export * from './referralCode'
 
 export { payoutAccountBrand, payoutInstitutionName } from './payoutBrand'

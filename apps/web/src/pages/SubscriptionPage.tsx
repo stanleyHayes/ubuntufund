@@ -456,7 +456,12 @@ export function SubscriptionPage() {
           Start with a personal cause, grow your fundraising, or give your organization room to do more.
         </Typography>
         {/* Billing toggle */}
-        <Box sx={{ display: 'inline-flex', borderRadius: SHAPE.sm, border: 'var(--neu-border)', boxShadow: 'var(--neu-inset)', bgcolor: 'var(--neu-surface)', overflow: 'hidden' }}>
+        {/* Segmented control: the container is the recessed well and the active
+            segment sits raised inside it. It used SHAPE.sm — the diamond-cut
+            radius — while every button uses SHAPE.button, so it read as a
+            different family; and with overflow:hidden and no padding the two
+            segments covered the well edge to edge, which is why it looked flat. */}
+        <Box sx={{ display: 'inline-flex', gap: 0.5, p: 0.5, borderRadius: SHAPE.button, border: 'var(--neu-border)', boxShadow: 'var(--neu-inset)', bgcolor: 'var(--neu-surface)' }}>
           {(['monthly', 'yearly'] as const).map((cycle) => (
             <Box
               key={cycle}
@@ -466,13 +471,16 @@ export function SubscriptionPage() {
               sx={{
                 px: 3, py: 1,
                 border: 'none',
+                borderRadius: SHAPE.button,
                 bgcolor: billingToggle === cycle ? 'primary.main' : 'transparent',
                 color: billingToggle === cycle ? 'primary.contrastText' : 'text.secondary',
+                boxShadow: billingToggle === cycle ? 'var(--neu-raised)' : 'none',
                 fontWeight: 700,
                 fontSize: '0.82rem',
                 fontFamily: '"Outfit", sans-serif',
                 cursor: 'pointer',
-                transition: 'all 0.2s',
+                transition: 'background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease',
+                '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
               }}
             >
               {cycle === 'monthly' ? 'Monthly' : 'Yearly'}
