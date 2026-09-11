@@ -5,11 +5,8 @@ import type { AffiliateRepositoryPort } from '../../domain/ports/outbound/Affili
 import type { AffiliateReferralRepositoryPort } from '../../domain/ports/outbound/AffiliateReferralRepositoryPort.js';
 import type { AffiliateCommissionRepositoryPort } from '../../domain/ports/outbound/AffiliateCommissionRepositoryPort.js';
 import type { AffiliateBalanceRepositoryPort } from '../../domain/ports/outbound/AffiliateBalanceRepositoryPort.js';
+import { roundToCurrency } from '../../domain/value-objects/Money.js';
 import { logger } from '../../infrastructure/logging/logger.js';
-
-function round2(n: number): number {
-  return Math.round(n * 100) / 100;
-}
 
 const MS_PER_DAY = 86_400_000;
 
@@ -87,7 +84,12 @@ export class AffiliateCommissionService {
       affiliate.commissionRate > 0
         ? affiliate.commissionRate
         : this.config.commissionPercent;
-    const amount = round2((chargedAmount * commissionRate) / 100);
+    // Rounded to the charge's own currency (identical to 2dp for GHS) so the
+    // accrued amount is always representable in the balance's currency.
+    const amount = roundToCurrency(
+      (chargedAmount * commissionRate) / 100,
+      currency
+    );
 
     const now = new Date();
     const maturesAt = new Date(now.getTime() + this.config.holdDays * MS_PER_DAY);
@@ -100,7 +102,7 @@ export class AffiliateCommissionService {
       sourceRef,
       amount,
       currency,
-      baseAmount: round2(chargedAmount),
+      baseAmount: roundToCurrency(chargedAmount, currency),
       commissionRate,
       status: 'held',
       maturesAt,

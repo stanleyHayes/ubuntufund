@@ -15,14 +15,11 @@ import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGate
 import type { CouponService } from '../services/CouponService.js';
 import type { PlanService } from '../services/PlanService.js';
 import type { SettleSubscriptionUseCase } from './SettleSubscriptionUseCase.js';
+import { roundToCurrency } from '../../domain/value-objects/Money.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 
 /** Platform billing currency; subscription plan prices are quoted in GHS. */
 const DEFAULT_CURRENCY = 'GHS';
-
-function round2(n: number): number {
-  return Math.round(n * 100) / 100;
-}
 
 /**
  * Opens a paid-subscription checkout for the authenticated user — the
@@ -78,10 +75,11 @@ export class CreateSubscriptionCheckoutUseCase {
     if (plan.tier !== tier || plan.active === false) {
       throw new AppError('That subscription plan is not available', 400);
     }
-    const baseAmount = round2(
+    const baseAmount = roundToCurrency(
       billingCycle === BillingCycle.YEARLY
         ? plan.priceYearly
-        : plan.priceMonthly
+        : plan.priceMonthly,
+      DEFAULT_CURRENCY
     );
 
     const user = await this.userRepo.findById(userId);
@@ -91,7 +89,7 @@ export class CreateSubscriptionCheckoutUseCase {
 
     // ── Price it (with a coupon when supplied; 422 propagates on invalid) ──
     let discountAmount = 0;
-    let finalAmount = round2(baseAmount);
+    let finalAmount = roundToCurrency(baseAmount, DEFAULT_CURRENCY);
     let currency = DEFAULT_CURRENCY;
     let couponId: string | undefined;
     let couponCode: string | undefined;

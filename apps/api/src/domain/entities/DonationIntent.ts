@@ -5,6 +5,7 @@ import type {
   DonationProvider,
   PaymentRail,
 } from '@ubuntu-fund/types';
+import { roundToCurrency } from '../value-objects/Money.js';
 
 export interface DonationIntentProps {
   id: string;
@@ -226,7 +227,7 @@ export class DonationIntentEntity {
 
   /** Total the donor is charged: campaign-directed amount plus any tip. */
   get gross(): number {
-    return Math.round((this.props.amount + this.props.tip) * 100) / 100;
+    return roundToCurrency(this.props.amount + this.props.tip, this.props.currency);
   }
 
   isTerminal(): boolean {

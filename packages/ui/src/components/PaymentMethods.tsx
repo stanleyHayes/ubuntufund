@@ -408,7 +408,13 @@ export function PaymentMethods({
                   sx={{
                     fontSize: '0.66rem',
                     fontWeight: 700,
-                    color: group.meta.color,
+                    // The rail accent stays as the dot, the border and the tint
+                    // above — it is the identity cue. It is NOT usable as label
+                    // text: each accent fails AA in one mode or the other
+                    // (card #2E3D2F is 1.44:1 on the dark ground, wallet
+                    // #C7A24A is 2.11:1 on parchment). The label takes a text
+                    // token so it reads in both.
+                    color: 'text.secondary',
                     textTransform: 'uppercase',
                     letterSpacing: '0.16em',
                   }}
@@ -468,7 +474,7 @@ export function PaymentMethods({
         <Typography
           variant="caption"
           sx={{
-            color: '#2E3D2F',
+            color: 'text.secondary',
             fontSize: '0.7rem',
             fontWeight: 600,
           }}

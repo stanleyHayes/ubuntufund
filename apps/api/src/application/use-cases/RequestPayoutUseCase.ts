@@ -1,5 +1,6 @@
 import type { Payout, RequestPayoutInput } from '@ubuntu-fund/types'
 import { PayoutEntity } from '../../domain/entities/Payout.js'
+import { roundToCurrency } from '../../domain/value-objects/Money.js'
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js'
 import type { TransferRecipientRepositoryPort } from '../../domain/ports/outbound/TransferRecipientRepositoryPort.js'
 import type { PayoutRepositoryPort } from '../../domain/ports/outbound/PayoutRepositoryPort.js'
@@ -142,8 +143,8 @@ export class RequestPayoutUseCase {
     const balance = await this.campaignBalanceRepo.findByCampaignId(campaignId)
     const available = balance?.availableBalance ?? 0
     const pending = balance?.pendingBalance ?? 0
-    const eligible = round2(available + pending)
     const currency = balance?.currency ?? recipient.currency ?? CURRENCY
+    const eligible = roundToCurrency(available + pending, currency)
     if (wallet && currency !== 'GHS')
       throw new AppError('Ujimora Wallet transfers require GHS', 422)
 
@@ -178,7 +179,10 @@ export class RequestPayoutUseCase {
     // Early/urgent withdrawals may take only a capped share of the eligible
     // balance, leaving a reserve (spec §17).
     if (isEarlyWithdrawal(type)) {
-      const earlyCeiling = round2((eligible * cfg.earlyMaxWithdrawalPercent) / 100)
+      const earlyCeiling = roundToCurrency(
+        (eligible * cfg.earlyMaxWithdrawalPercent) / 100,
+        currency,
+      )
       if (amount > earlyCeiling) {
         throw new AppError(
           `Early payouts are capped at ${cfg.earlyMaxWithdrawalPercent}% of the eligible balance (max ${currency} ${earlyCeiling.toLocaleString('en-US')}).`,
@@ -189,7 +193,7 @@ export class RequestPayoutUseCase {
 
     // Clear just enough pending → available so the approval step can reserve the
     // full requested amount out of `availableBalance`.
-    const needed = round2(amount - available)
+    const needed = roundToCurrency(amount - available, currency)
     if (needed > 0) {
       const cleared = await this.campaignBalanceRepo.clearPendingToAvailable(campaignId, needed)
       if (!cleared) {

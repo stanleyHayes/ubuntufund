@@ -2,6 +2,7 @@ import { campaignNeedsEarlyCashout } from '../services/payoutFee.js'
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js'
 import type { CampaignBalanceRepositoryPort } from '../../domain/ports/outbound/CampaignBalanceRepositoryPort.js'
 import type { TransferRecipientRepositoryPort } from '../../domain/ports/outbound/TransferRecipientRepositoryPort.js'
+import { roundToCurrency } from '../../domain/value-objects/Money.js'
 import type { PayoutsConfig } from '../../infrastructure/config/index.js'
 import type { PayoutRequester } from './CreatePayoutRecipientUseCase.js'
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js'
@@ -24,7 +25,8 @@ export class GetCampaignPayoutOptionsUseCase {
       this.recipients.findLatestByCampaignId(id),
       this.config.resolvePayoutsConfig(),
     ])
-    const round = (value: number) => Math.round(value * 100) / 100
+    const currency = balance?.currency ?? 'GHS'
+    const round = (value: number) => roundToCurrency(value, currency)
     const accountedRaised = round(balance?.totalRaised ?? 0)
     const platformFees = round(balance?.platformFees ?? 0)
     const processorFees = round(balance?.processorFees ?? 0)
@@ -50,9 +52,8 @@ export class GetCampaignPayoutOptionsUseCase {
         available: round(balance?.availableBalance ?? 0),
         eligible,
       },
-      currency: balance?.currency ?? 'GHS',
-      eligible:
-        Math.round(((balance?.pendingBalance ?? 0) + (balance?.availableBalance ?? 0)) * 100) / 100,
+      currency,
+      eligible: round((balance?.pendingBalance ?? 0) + (balance?.availableBalance ?? 0)),
       fees,
       requiresEarlyCashout: campaignNeedsEarlyCashout(campaign),
       recipient: recipient

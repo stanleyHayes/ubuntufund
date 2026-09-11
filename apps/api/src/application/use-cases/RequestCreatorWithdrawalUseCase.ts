@@ -6,6 +6,7 @@ import type { CreatorPayoutRepositoryPort } from '../../domain/ports/outbound/Cr
 import type { CreatorBalanceRepositoryPort } from '../../domain/ports/outbound/CreatorBalanceRepositoryPort.js'
 import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGatewayPort.js'
 import { CreatorPayoutEntity } from '../../domain/entities/CreatorPayout.js'
+import { roundToCurrency } from '../../domain/value-objects/Money.js'
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js'
 import { logger } from '../../infrastructure/logging/logger.js'
 
@@ -86,7 +87,10 @@ export class RequestCreatorWithdrawalUseCase {
         409,
       )
     const fee = Math.round(input.amount * feePercent) / 100
-    const netAmount = Math.round((input.amount - fee) * 100) / 100
+    // Rounded to the balance's own currency precision — this is the amount that
+    // actually leaves over the transfer rail, so it must be expressible in that
+    // currency (0dp for XOF/XAF, 3dp for KWD) and not a hardcoded 2dp.
+    const netAmount = roundToCurrency(input.amount - fee, currency)
     if (!Number.isFinite(fee) || fee < 0 || netAmount <= 0)
       throw new AppError('The withdrawal amount must exceed the fee.', 422)
 

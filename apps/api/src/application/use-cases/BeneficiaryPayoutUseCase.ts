@@ -6,6 +6,7 @@ import type {
   RegisterBeneficiaryRecipientInput,
 } from '@ubuntu-fund/types';
 import { BeneficiaryPayoutEntity } from '../../domain/entities/BeneficiaryPayout.js';
+import { roundToCurrency } from '../../domain/value-objects/Money.js';
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js';
 import type { CampaignSplitRepositoryPort } from '../../domain/ports/outbound/CampaignSplitRepositoryPort.js';
 import type { CampaignBeneficiaryBalanceRepositoryPort } from '../../domain/ports/outbound/CampaignBeneficiaryBalanceRepositoryPort.js';
@@ -18,7 +19,13 @@ import { logger } from '../../infrastructure/logging/logger.js';
 import { toBeneficiaryPayoutDto } from './mappers/beneficiaryPayoutDto.js';
 
 const CURRENCY = 'GHS';
-const round2 = (n: number): number => Math.round(n * 100) / 100;
+/**
+ * Round to the currency's own minor-unit precision. Every amount in this file
+ * is denominated in `CURRENCY` (balances are keyed by it, payouts carry it), so
+ * the rounding follows that code rather than a hardcoded two decimal places.
+ */
+const roundMoney = (n: number, currency: string): number =>
+  roundToCurrency(n, currency);
 
 export interface SplitRequester {
   userId: string;
@@ -130,7 +137,7 @@ export class BeneficiaryPayoutUseCase {
       throw new AppError('Register a payout recipient before requesting a payout', 400);
     }
 
-    const amount = round2(Number(rawAmount));
+    const amount = roundMoney(Number(rawAmount), CURRENCY);
     if (!Number.isFinite(amount) || amount <= 0) {
       throw new AppError('Payout amount must be greater than zero', 422);
     }
@@ -138,7 +145,7 @@ export class BeneficiaryPayoutUseCase {
     const balance = await this.beneficiaryBalanceRepo.findOne(campaignId, beneficiaryId, CURRENCY);
     const available = balance?.availableBalance ?? 0;
     const pending = balance?.pendingBalance ?? 0;
-    const eligible = round2(available + pending);
+    const eligible = roundMoney(available + pending, CURRENCY);
     if (amount > eligible) {
       throw new AppError(
         `Cannot request a payout of ${CURRENCY} ${amount}; only ${CURRENCY} ${eligible} is available.`,
@@ -148,7 +155,7 @@ export class BeneficiaryPayoutUseCase {
 
     // Clear just enough of the beneficiary's pending → available (mirroring the
     // campaign aggregate) so the approval step can reserve the full amount.
-    const needed = round2(amount - available);
+    const needed = roundMoney(amount - available, CURRENCY);
     if (needed > 0) {
       const cleared = await this.beneficiaryBalanceRepo.clearPendingToAvailable(
         campaignId,

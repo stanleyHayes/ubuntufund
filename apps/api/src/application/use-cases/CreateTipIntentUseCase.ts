@@ -5,6 +5,7 @@ import type { TipRepositoryPort } from '../../domain/ports/outbound/TipRepositor
 import type { CreatorBalanceRepositoryPort } from '../../domain/ports/outbound/CreatorBalanceRepositoryPort.js';
 import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGatewayPort.js';
 import { TipEntity } from '../../domain/entities/Tip.js';
+import { roundToCurrency } from '../../domain/value-objects/Money.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 
 export interface CreateTipInput {
@@ -15,8 +16,6 @@ export interface CreateTipInput {
   message?: string;
   isAnonymous?: boolean;
 }
-
-const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /**
  * Open a hosted checkout for a one-off tip to a creator. Reuses the shared
@@ -49,7 +48,7 @@ export class CreateTipIntentUseCase {
     }
 
     const fee = 0; // Plan fee is charged once, on withdrawal.
-    const net = round2(input.amount - fee);
+    const net = roundToCurrency(input.amount - fee, creator.currency);
 
     const reference = `tip-${randomUUID()}`;
 

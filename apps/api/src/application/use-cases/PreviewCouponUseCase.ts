@@ -5,15 +5,11 @@ import {
 } from '@ubuntu-fund/types';
 import type { CouponService } from '../services/CouponService.js';
 import type { PlanService } from '../services/PlanService.js';
+import { roundToCurrency } from '../../domain/value-objects/Money.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 
-/** The platform's only settlement currency. */
+/** The platform's only settlement currency, and the one plan prices are in. */
 const CURRENCY = 'GHS';
-
-/** Round to 2 decimal places (money is in GHS major units). */
-function round2(n: number): number {
-  return Math.round(n * 100) / 100;
-}
 
 /**
  * Quote a coupon against a paid-plan checkout without charging anything: resolve
@@ -36,10 +32,11 @@ export class PreviewCouponUseCase {
     // Base price from the DB-backed plan so the preview matches what checkout
     // will charge (PlanService falls back to the code defaults).
     const plan = await this.planService.getPlan(input.tier);
-    const baseAmount = round2(
+    const baseAmount = roundToCurrency(
       input.billingCycle === BillingCycle.YEARLY
         ? plan.priceYearly
-        : plan.priceMonthly
+        : plan.priceMonthly,
+      CURRENCY
     );
 
     try {

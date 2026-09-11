@@ -1,5 +1,6 @@
 import { CouponDiscountType } from '@ubuntu-fund/types';
 import type { BillingCycle } from '@ubuntu-fund/types';
+import { roundToCurrency } from '../value-objects/Money.js';
 
 export interface CouponProps {
   id: string;
@@ -19,11 +20,6 @@ export interface CouponProps {
   active: boolean;
   createdAt: Date;
   updatedAt: Date;
-}
-
-/** Round to 2 decimal places (money is in GHS major units). */
-function round2(n: number): number {
-  return Math.round(n * 100) / 100;
 }
 
 /**
@@ -133,17 +129,22 @@ export class CouponEntity {
   }
 
   /**
-   * Discount yielded against `baseAmount`, rounded to 2dp and clamped so the
-   * resulting finalAmount can never drop below zero (a FIXED coupon larger than
-   * the base collapses to the base itself, zeroing the charge).
+   * Discount yielded against `baseAmount`, rounded to the coupon currency's own
+   * minor-unit precision (2dp for GHS) and clamped so the resulting finalAmount
+   * can never drop below zero (a FIXED coupon larger than the base collapses to
+   * the base itself, zeroing the charge).
    */
   computeDiscount(baseAmount: number): number {
+    const currency = this.props.currency;
     const raw =
       this.props.discountType === CouponDiscountType.PERCENT
         ? (baseAmount * this.props.amount) / 100
         : this.props.amount;
-    const clamped = Math.min(round2(raw), round2(baseAmount));
-    return round2(Math.max(0, clamped));
+    const clamped = Math.min(
+      roundToCurrency(raw, currency),
+      roundToCurrency(baseAmount, currency)
+    );
+    return roundToCurrency(Math.max(0, clamped), currency);
   }
 
   toPlain(): CouponProps {

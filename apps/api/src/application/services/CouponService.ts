@@ -2,11 +2,8 @@ import type { BillingCycle } from '@ubuntu-fund/types';
 import type { CouponEntity } from '../../domain/entities/Coupon.js';
 import type { CouponRepositoryPort } from '../../domain/ports/outbound/CouponRepositoryPort.js';
 import type { CouponRedemptionRepositoryPort } from '../../domain/ports/outbound/CouponRedemptionRepositoryPort.js';
+import { roundToCurrency } from '../../domain/value-objects/Money.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
-
-function round2(n: number): number {
-  return Math.round(n * 100) / 100;
-}
 
 export interface ValidateAndPriceInput {
   /** Raw code from the client; matched UPPERCASE. */
@@ -105,12 +102,18 @@ export class CouponService {
       }
     }
 
+    // Round to the quote's own currency (the coupon's) rather than a hardcoded
+    // 2dp: identical for GHS, but keeps the quote representable in a 0- or
+    // 3-decimal currency.
     const discountAmount = coupon.computeDiscount(baseAmount);
-    const finalAmount = round2(baseAmount - discountAmount);
+    const finalAmount = roundToCurrency(
+      baseAmount - discountAmount,
+      coupon.currency
+    );
 
     return {
       coupon,
-      baseAmount: round2(baseAmount),
+      baseAmount: roundToCurrency(baseAmount, coupon.currency),
       discountAmount,
       finalAmount,
       currency: coupon.currency,

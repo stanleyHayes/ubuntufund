@@ -4,6 +4,7 @@ import type {
   LedgerAccountKind,
 } from '@ubuntu-fund/types';
 import { PLATFORM_ACCOUNT_OWNER } from '@ubuntu-fund/types';
+import { roundToCurrency } from '../value-objects/Money.js';
 
 /** A journal line before persistence — no ids assigned yet. */
 export interface DraftJournalLine {
@@ -28,9 +29,9 @@ export interface JournalEntryProps {
   lines: DraftJournalLine[];
 }
 
-/** Round to 2 decimal places (the ledger's minor-unit precision). */
-function round2(n: number): number {
-  return Math.round(n * 100) / 100;
+/** Round to the currency's own minor-unit precision (the ledger's precision). */
+function round(n: number, currency: string): number {
+  return roundToCurrency(n, currency);
 }
 
 /**
@@ -66,18 +67,20 @@ export class JournalEntryEntity {
   }
 
   totalDebits(): number {
-    return round2(
+    return round(
       this.props.lines
         .filter((l) => l.direction === 'debit')
-        .reduce((sum, l) => sum + l.amount, 0)
+        .reduce((sum, l) => sum + l.amount, 0),
+      this.props.currency
     );
   }
 
   totalCredits(): number {
-    return round2(
+    return round(
       this.props.lines
         .filter((l) => l.direction === 'credit')
-        .reduce((sum, l) => sum + l.amount, 0)
+        .reduce((sum, l) => sum + l.amount, 0),
+      this.props.currency
     );
   }
 
@@ -106,7 +109,10 @@ export class JournalEntryEntity {
     const { amount, tip, processorFee, platformFee, beneficiaryNet, currency } =
       breakdown;
 
-    if (round2(beneficiaryNet) !== round2(amount - platformFee - processorFee)) {
+    if (
+      round(beneficiaryNet, currency) !==
+      round(amount - platformFee - processorFee, currency)
+    ) {
       throw new Error('beneficiaryNet must equal amount - platformFee - processorFee');
     }
     if (beneficiaryNet < 0) {
@@ -121,14 +127,14 @@ export class JournalEntryEntity {
       accountKind: 'campaign',
       accountOwnerId: campaign,
       direction: 'debit',
-      amount: round2(amount),
+      amount: round(amount, currency),
       currency,
     });
     lines.push({
       accountKind: 'beneficiary',
       accountOwnerId: campaign,
       direction: 'credit',
-      amount: round2(beneficiaryNet),
+      amount: round(beneficiaryNet, currency),
       currency,
     });
     if (platformFee > 0) {
@@ -136,7 +142,7 @@ export class JournalEntryEntity {
         accountKind: 'platform_fee',
         accountOwnerId: PLATFORM_ACCOUNT_OWNER,
         direction: 'credit',
-        amount: round2(platformFee),
+        amount: round(platformFee, currency),
         currency,
       });
     }
@@ -145,7 +151,7 @@ export class JournalEntryEntity {
         accountKind: 'processor_fee',
         accountOwnerId: PLATFORM_ACCOUNT_OWNER,
         direction: 'credit',
-        amount: round2(processorFee),
+        amount: round(processorFee, currency),
         currency,
       });
     }
@@ -156,14 +162,14 @@ export class JournalEntryEntity {
         accountKind: 'tip',
         accountOwnerId: PLATFORM_ACCOUNT_OWNER,
         direction: 'debit',
-        amount: round2(tip),
+        amount: round(tip, currency),
         currency,
       });
       lines.push({
         accountKind: 'platform_fee',
         accountOwnerId: PLATFORM_ACCOUNT_OWNER,
         direction: 'credit',
-        amount: round2(tip),
+        amount: round(tip, currency),
         currency,
       });
     }
@@ -189,7 +195,7 @@ export class JournalEntryEntity {
     memo?: string;
     externalRef?: string;
   }): JournalEntryEntity {
-    const amount = round2(refs.amount);
+    const amount = round(refs.amount, refs.currency);
     if (amount <= 0) {
       throw new Error('Payout amount must be greater than zero');
     }
@@ -229,7 +235,7 @@ export class JournalEntryEntity {
     memo?: string;
     externalRef?: string;
   }): JournalEntryEntity {
-    const amount = round2(refs.amount);
+    const amount = round(refs.amount, refs.currency);
     if (amount <= 0) {
       throw new Error('Payout amount must be greater than zero');
     }
@@ -278,14 +284,14 @@ export class JournalEntryEntity {
     currency: string;
     memo?: string;
   }): JournalEntryEntity {
-    const amount = round2(refs.amount);
-    const beneficiaryNet = round2(refs.beneficiaryNet);
-    const platformFee = round2(refs.platformFee);
-    const processorFee = round2(refs.processorFee);
+    const amount = round(refs.amount, refs.currency);
+    const beneficiaryNet = round(refs.beneficiaryNet, refs.currency);
+    const platformFee = round(refs.platformFee, refs.currency);
+    const processorFee = round(refs.processorFee, refs.currency);
     if (amount <= 0) {
       throw new Error('Refund amount must be greater than zero');
     }
-    if (amount !== round2(beneficiaryNet + platformFee + processorFee)) {
+    if (amount !== round(beneficiaryNet + platformFee + processorFee, refs.currency)) {
       throw new Error('Refund amount must equal beneficiaryNet + platformFee + processorFee');
     }
     const lines: DraftJournalLine[] = [

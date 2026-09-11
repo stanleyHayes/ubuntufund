@@ -3,6 +3,7 @@ import type {
   RefundRepositoryPort,
   RefundStatus,
 } from '../../domain/ports/outbound/RefundRepositoryPort.js';
+import { roundToCurrency } from '../../domain/value-objects/Money.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 
 /** 2% processing fee, per the refund policy shown on the request-refund page. */
@@ -43,8 +44,10 @@ export class RequestRefundUseCase {
     }
 
     const amount = donation.amount.amount;
-    const fee = Math.round(amount * REFUND_FEE_RATE * 100) / 100;
-    const netAmount = Math.round((amount - fee) * 100) / 100;
+    // Round to the donation's own currency precision, not a hardcoded 2dp.
+    const currency = donation.amount.currency;
+    const fee = roundToCurrency(amount * REFUND_FEE_RATE, currency);
+    const netAmount = roundToCurrency(amount - fee, currency);
 
     const saved = await this.refundRepo.save({
       id: '', // Assigned by repository
@@ -56,7 +59,7 @@ export class RequestRefundUseCase {
       amount,
       fee,
       netAmount,
-      currency: donation.amount.currency,
+      currency,
       status: 'pending',
       createdAt: new Date(),
       updatedAt: new Date(),
