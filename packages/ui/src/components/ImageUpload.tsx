@@ -14,12 +14,18 @@ import { SHAPE } from '../theme'
 //   VITE_CLOUDINARY_CLOUD_NAME · VITE_CLOUDINARY_UPLOAD_PRESET (unsigned preset)
 // When either is missing, uploads are treated as not configured.
 
-const FOREST = '#2E3D2F'
-const SAGE = '#A8B5A0'
-const GOLD = '#C7A24A'
-const CLAY = '#A5432F'
-const DIVIDER = 'rgba(46,61,47,0.18)'
-const INK_SECONDARY = 'rgba(18,24,15,0.6)'
+// Mode-aware CSS custom properties, not fixed hexes. These were light-mode-only
+// literals, so in dark mode the component painted as if it were still on
+// parchment: the primary text (#2E3D2F) measured 1.44:1 on the dark ground and
+// the error text 2.73:1 — the upload prompt and its hint were effectively
+// invisible. The theme publishes these on :root for both modes, and unlike a
+// palette path string they also work inside the template-literal borders below.
+const FOREST = 'var(--text-primary)'
+const SAGE = 'var(--text-brand)'
+const GOLD = 'var(--text-warning)'
+const CLAY = 'var(--text-error)'
+const DIVIDER = 'var(--border-subtle)'
+const INK_SECONDARY = 'var(--text-secondary)'
 
 interface CloudinaryConfig {
   cloudName: string
@@ -211,7 +217,7 @@ export function ImageUpload({
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             gap: 1, textAlign: 'center', p: 4, cursor: disabled ? 'default' : 'pointer',
             border: `1.5px dashed ${dragOver ? SAGE : DIVIDER}`,
-            bgcolor: dragOver ? 'rgba(168,181,160,0.12)' : 'transparent',
+            bgcolor: dragOver ? 'action.hover' : 'transparent',
             borderRadius: SHAPE.card, transition: 'border-color .15s ease, background-color .15s ease',
             outline: 'none', '&:focus-visible': { borderColor: SAGE, boxShadow: `0 0 0 3px rgba(168,181,160,0.35)` },
           }}
@@ -231,7 +237,7 @@ export function ImageUpload({
         </Box>
       ) : (
         /* Cloudinary not configured */
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, p: 2.5, border: `1.5px dashed ${DIVIDER}`, borderRadius: SHAPE.card, bgcolor: 'rgba(46,61,47,0.03)' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, p: 2.5, border: `1.5px dashed ${DIVIDER}`, borderRadius: SHAPE.card, bgcolor: 'action.hover' }}>
           <ImageRoundedIcon sx={{ color: SAGE }} />
           <Typography sx={{ fontSize: '0.82rem', color: INK_SECONDARY }}>
             Image uploads aren’t enabled yet. Add <code>VITE_CLOUDINARY_CLOUD_NAME</code> and <code>VITE_CLOUDINARY_UPLOAD_PRESET</code> to turn this on.

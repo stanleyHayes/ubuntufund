@@ -710,6 +710,14 @@ export function createUjimoraTheme(mode: PaletteMode = 'light', skin: ThemeSkin 
       MuiFilledInput: { styleOverrides: { root: { borderRadius: `${SHAPE.input} !important` } } },
       MuiOutlinedInput: {
         styleOverrides: {
+          input: {
+            // MUI's default placeholder opacity is 0.42, which lands at 3.76:1
+            // on the dark ground and only 2.40:1 on parchment — below AA for
+            // text, and this app leans on placeholders as worked examples
+            // (BrandedTextField supplies one wherever a field lacks it). 0.7
+            // clears 4.5:1 in both modes while still reading as a placeholder.
+            '&::placeholder': { opacity: 0.7 },
+          },
           root: {
             // Keep field shape consistent despite older page-level radius overrides.
             borderRadius: `${SHAPE.input} !important`,
