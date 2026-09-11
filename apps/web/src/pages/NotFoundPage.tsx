@@ -6,8 +6,20 @@ import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined'
 import { Link as RouterLink } from 'react-router-dom'
 import { SHAPE } from '@ubuntu-fund/ui'
+import { useLocation } from 'react-router-dom'
+import { useSeo } from '@/lib/seo'
 
 export function NotFoundPage() {
+  const { pathname } = useLocation()
+  // A SPA serves 200 OK for a URL that does not exist, so without this the
+  // page is a textbook soft 404: indexable, and carrying whatever canonical
+  // the previously-visited route left in the head.
+  useSeo({
+    title: 'Page not found | Ujimora',
+    description: 'That page does not exist. Browse live campaigns on Ujimora instead.',
+    path: pathname,
+    robots: 'noindex, follow',
+  })
   return (
     <Container maxWidth="lg" sx={{ py: { xs: 6, md: 10 } }}>
       <Box sx={{ minHeight: { md: '55vh' }, display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: '1fr 1fr' }, alignItems: 'center', gap: { xs: 5, md: 8 } }}>

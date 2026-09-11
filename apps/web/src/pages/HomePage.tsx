@@ -13,8 +13,9 @@ import { Link as RouterLink } from 'react-router-dom'
 import { CampaignGrid } from '@/components/campaigns/CampaignGrid'
 import { StartCampaignBanner } from '@/components/campaigns/StartCampaignBanner'
 import { GlobalActivityFeed } from '@/components/GlobalActivityFeed'
-import { SHAPE } from '@ubuntu-fund/ui'
+import { SHAPE, breadcrumbList } from '@ubuntu-fund/ui'
 import { useCampaigns } from '@/hooks/useCampaigns'
+import { useSeo, SITE_ORIGIN } from '@/lib/seo'
 import { useFeaturedDonors } from '@/hooks/useLeaderboard'
 
 const HOME_CAMPAIGN_LIMIT = 6
@@ -114,6 +115,14 @@ function FeaturedDonorsSection() {
 
 export function HomePage() {
   const { campaigns, isLoading } = useCampaigns()
+
+  useSeo({
+    title: 'Ujimora — fundraise and give in Ghana',
+    description:
+      'Raise money for what matters in Ghana and support campaigns you trust. Give by mobile money or card in seconds, and follow every cedi to where it lands.',
+    path: '/',
+    jsonLd: breadcrumbList(SITE_ORIGIN, [{ name: 'Home' }]),
+  })
 
   return (
     <>

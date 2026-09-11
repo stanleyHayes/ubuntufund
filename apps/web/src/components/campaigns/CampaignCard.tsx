@@ -16,7 +16,7 @@ import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import ContentCopyRoundedIcon from '@mui/icons-material/ContentCopyRounded'
 import IosShareRoundedIcon from '@mui/icons-material/IosShareRounded'
 import { Link as RouterLink } from 'react-router-dom'
-import { SHAPE } from '@ubuntu-fund/ui'
+import { SHAPE, sizedImageUrl } from '@ubuntu-fund/ui'
 import type { Campaign } from '@ubuntu-fund/types'
 
 interface CampaignCardProps {
@@ -123,7 +123,9 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
       : 0
   const funded = pct >= 100
   const supporters = campaign.donorCount ?? 0
-  const cover = campaign.imageUrls?.[0]
+  // Cards are ~400px at their widest; the stored original is whatever the
+  // organiser uploaded, often a multi-megabyte phone photo. Sized at delivery.
+  const cover = sizedImageUrl(campaign.imageUrls?.[0], { width: 400 })
   const fullUrl = `${window.location.origin}${href}`
 
   const daysLabel = daysLeft > 0 ? `${daysLeft} day${daysLeft === 1 ? '' : 's'} left` : 'Ended'

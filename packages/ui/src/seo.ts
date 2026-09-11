@@ -29,6 +29,19 @@ export interface SeoMeta {
   description: string
   /** Root-relative, no trailing slash (except '/'). Becomes the canonical. */
   path: string
+  /**
+   * Absolute canonical on ANOTHER origin, overriding `path`.
+   *
+   * For content this app re-serves verbatim from elsewhere — the legal
+   * policies live at both ujimora.com and app.ujimora.com, word for word.
+   * Two indexable copies of the same document split their ranking signals and
+   * let a crawler pick the wrong one; a cross-domain canonical consolidates
+   * them onto the public site instead of throwing one copy away with noindex.
+   *
+   * og:url and twitter:url still use this app's own URL: those describe the
+   * page being shared, not the indexing target.
+   */
+  canonicalUrl?: string
   image?: string
   imageAlt?: string
   type?: 'website' | 'article'
@@ -100,7 +113,7 @@ export function applySeo(meta: SeoMeta, origin: string, defaults: { image: strin
   metaName('title', meta.title)
   metaName('description', meta.description)
   metaName('robots', meta.robots ?? 'index, follow, max-image-preview:large')
-  setCanonical(url)
+  setCanonical(meta.canonicalUrl ?? url)
 
   metaProperty('og:type', meta.type ?? 'website')
   metaProperty('og:url', url)
@@ -125,10 +138,10 @@ export function applySeo(meta: SeoMeta, origin: string, defaults: { image: strin
  */
 export function createUseSeo(origin: string, defaults: { image: string; imageAlt: string }) {
   return function useSeo(meta: SeoMeta): void {
-    const { title, description, path, image, imageAlt, type, robots, jsonLd } = meta
+    const { title, description, path, canonicalUrl, image, imageAlt, type, robots, jsonLd } = meta
     const jsonLdKey = jsonLd ? JSON.stringify(jsonLd) : ''
     useLayoutEffect(() => {
-      applySeo({ title, description, path, image, imageAlt, type, robots, jsonLd }, origin, defaults)
+      applySeo({ title, description, path, canonicalUrl, image, imageAlt, type, robots, jsonLd }, origin, defaults)
       // No cleanup: the next route overwrites every value, and clearing on
       // unmount would blank the head for a frame during navigation.
       //
@@ -137,6 +150,6 @@ export function createUseSeo(origin: string, defaults: { image: string; imageAlt
       // directly would rewrite the head in a loop. The serialised form is the
       // stable value, and it changes exactly when the content does.
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [title, description, path, image, imageAlt, type, robots, jsonLdKey])
+    }, [title, description, path, canonicalUrl, image, imageAlt, type, robots, jsonLdKey])
   }
 }

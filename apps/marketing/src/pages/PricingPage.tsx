@@ -12,7 +12,7 @@ import Accordion from '@mui/material/Accordion'
 import AccordionSummary from '@mui/material/AccordionSummary'
 import AccordionDetails from '@mui/material/AccordionDetails'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
-import { SHAPE } from '@ubuntu-fund/ui'
+import { SHAPE, breadcrumbList } from '@ubuntu-fund/ui'
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded'
 import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded'
 import { InternalPageHero } from '../components/InternalPageHero'
@@ -21,7 +21,7 @@ import {
   SubscriptionTier,
   type SubscriptionPlan,
 } from '@ubuntu-fund/types'
-import { useSeo } from '@/lib/seo'
+import { useSeo, SITE_ORIGIN } from '@/lib/seo'
 
 // Use semantic colours so accents remain readable in every skin and mode.
 function accentOf() {
@@ -146,6 +146,7 @@ function PricingPage() {
     description: 'Compare Ujimora plans side by side: active campaign limits, cedi goal caps, platform fees, team seats and included tools, billed monthly or yearly.',
     path: '/pricing',
     type: 'website',
+    jsonLd: breadcrumbList(SITE_ORIGIN, [{ name: 'Home', path: '/' }, { name: 'Pricing' }]),
   })
   if (!plans) return <Container maxWidth="lg" sx={{ py: 8 }}>
     <Typography variant="h3" sx={{ mb: 3 }}>Plans and pricing</Typography>

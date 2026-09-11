@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { NEUMORPHIC_FOREST_VARS, SHAPE } from '@ubuntu-fund/ui'
+import { NEUMORPHIC_FOREST_VARS, SHAPE, breadcrumbList } from '@ubuntu-fund/ui'
 import { useContent } from '../hooks/useContent'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
@@ -29,7 +29,7 @@ import MenuBookRoundedIcon from '@mui/icons-material/MenuBookRounded'
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import SupportAgentRoundedIcon from '@mui/icons-material/SupportAgentRounded'
 import { InternalPageHero } from '../components/InternalPageHero'
-import { useSeo } from '@/lib/seo'
+import { useSeo, SITE_ORIGIN } from '@/lib/seo'
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -140,6 +140,7 @@ function HelpPage() {
     description: 'Search answers on starting a campaign, donating in cedis, wallet and mobile money payments, verification and trust scores, and organization accounts.',
     path: '/help',
     type: 'website',
+    jsonLd: breadcrumbList(SITE_ORIGIN, [{ name: 'Home', path: '/' }, { name: 'Help center' }]),
   })
   const [search, setSearch] = useState('')
   const [activeCategory, setActiveCategory] = useState<string | null>(null)

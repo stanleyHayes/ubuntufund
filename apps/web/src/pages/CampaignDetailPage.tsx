@@ -1,6 +1,6 @@
 import { CampaignOrganizer } from '@/components/campaigns/CampaignOrganizer'
 import { CampaignCashout } from '@/components/campaigns/CampaignCashout'
-import { LoadingDots } from '@ubuntu-fund/ui'
+import { LoadingDots, sizedImageUrl, breadcrumbList } from '@ubuntu-fund/ui'
 import { useState, useEffect } from 'react'
 import { Link as RouterLink, useParams, useNavigate } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -46,7 +46,7 @@ import { CampaignDonationHistory } from '@/components/campaigns/CampaignDonation
 import { api } from '@/lib/api'
 import { acceptsCampaignDonation, validWalletDonationAmount, walletDonationProviders } from '@/lib/campaignDetailPolicy'
 import { useEnabledPaymentProviders } from '@/hooks/useEnabledPaymentProviders'
-import { useSeo } from '@/lib/seo'
+import { useSeo, SITE_ORIGIN } from '@/lib/seo'
 
 function formatCategory(category: string): string {
   return category.charAt(0).toUpperCase() + category.slice(1).replace(/_/g, ' ')
@@ -140,6 +140,15 @@ function CampaignDetailContent() {
     type: 'article',
     image: cover && /^https?:\/\//i.test(cover) ? cover : undefined,
     robots: campaign && UNINDEXED_STATUSES.includes(campaign.status) ? 'noindex, follow' : undefined,
+    // The trail replaces the bare URL under the search result, so a campaign
+    // shows its path through the site rather than `app.ujimora.com/c/...`.
+    jsonLd: campaign
+      ? breadcrumbList(SITE_ORIGIN, [
+          { name: 'Home', path: '/' },
+          { name: 'Explore', path: '/explore' },
+          { name: campaign.title },
+        ])
+      : undefined,
   })
 
   const walletProviders = walletDonationProviders(enabledProviders)
@@ -240,7 +249,7 @@ function CampaignDetailContent() {
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(0, 1.6fr) minmax(0, 1fr)' }, gap: { xs: 3, md: 4 }, alignItems: 'stretch' }}>
         <Box sx={{ borderRadius: SHAPE.card, overflow: 'hidden', boxShadow: 'var(--neu-raised)', minWidth: 0, bgcolor: 'background.paper' }}>
           {campaign.imageUrls[0] ? (
-            <Box component="img" src={campaign.imageUrls[0]} alt={campaign.title} sx={{ width: '100%', height: { xs: 260, md: '100%' }, minHeight: { md: 400 }, objectFit: 'cover', display: 'block' }} />
+            <Box component="img" src={sizedImageUrl(campaign.imageUrls[0], { width: 900 })} alt={campaign.title} sx={{ width: '100%', height: { xs: 260, md: '100%' }, minHeight: { md: 400 }, objectFit: 'cover', display: 'block' }} />
           ) : <CoverPlaceholder category={campaign.category} height={400} />}
         </Box>
         <Box component="aside" aria-label="Support this campaign" sx={{ p: { xs: 2.5, md: 3.5 }, borderRadius: SHAPE.card, bgcolor: 'background.paper', boxShadow: 'var(--neu-raised)', minWidth: 0 }}>

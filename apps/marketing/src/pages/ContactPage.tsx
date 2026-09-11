@@ -3,7 +3,7 @@ import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
 import Grid from '@mui/material/Grid'
-import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
+import { BrandedTextField as TextField, breadcrumbList } from '@ubuntu-fund/ui'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
@@ -32,7 +32,7 @@ import YouTubeIcon from '@mui/icons-material/YouTube'
 import { SHAPE } from '@ubuntu-fund/ui'
 import { useContent } from '../hooks/useContent'
 import { InternalPageHero } from '../components/InternalPageHero'
-import { useSeo } from '@/lib/seo'
+import { useSeo, SITE_ORIGIN } from '@/lib/seo'
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -95,6 +95,7 @@ function ContactPage() {
     description: 'Message the Ujimora team about your account, a campaign problem, a partnership idea, or a bug, and see the response times we publish for each request.',
     path: '/contact',
     type: 'website',
+    jsonLd: breadcrumbList(SITE_ORIGIN, [{ name: 'Home', path: '/' }, { name: 'Contact' }]),
   })
   // Runtime CMS: contact details + social links (key 'contact'), falling back to the
   // hardcoded defaults when the CMS is unreachable.

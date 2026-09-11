@@ -8,9 +8,18 @@ import Skeleton from '@mui/material/Skeleton'
 import { Button, CurrencyDisplay, SHAPE } from '@ubuntu-fund/ui'
 import { getLiveSessionPublic, type LiveSessionPublicView } from '@/lib/fundraising'
 import { LiveVideoPanel } from '@/components/live/LiveVideoPanel'
+import { useSeo } from '@/lib/seo'
 
 export function WatchLivePage() {
   const { sessionId } = useParams()
+  // A broadcast exists only while it is running; indexing one guarantees a
+  // result that is dead by the time anyone clicks it.
+  useSeo({
+    title: 'Live fundraiser | Ujimora',
+    description: 'Watch a live fundraiser on Ujimora and give as it happens.',
+    path: `/live/${encodeURIComponent(sessionId ?? '')}`,
+    robots: 'noindex, follow',
+  })
   const [session, setSession] = useState<LiveSessionPublicView | null>(null)
   const [error, setError] = useState('')
   useEffect(() => {

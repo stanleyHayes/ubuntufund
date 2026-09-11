@@ -9,6 +9,7 @@ import { keyframes } from '@emotion/react'
 import { SHAPE } from '@ubuntu-fund/ui'
 import { AuthLayout } from '../components/auth/AuthLayout'
 import { api } from '@/lib/api'
+import { useSeo } from '@/lib/seo'
 
 // ---------------------------------------------------------------------------
 // Animations
@@ -225,6 +226,12 @@ function DoodleLockKey() {
 // ---------------------------------------------------------------------------
 
 export function ForgotPasswordPage() {
+  useSeo({
+    title: 'Reset your password | Ujimora',
+    description: 'Send yourself a password reset link for your Ujimora account.',
+    path: '/forgot-password',
+    robots: 'noindex, follow',
+  })
   const [email, setEmail] = useState('')
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)

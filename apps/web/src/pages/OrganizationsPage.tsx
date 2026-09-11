@@ -16,8 +16,9 @@ import LocationOnRoundedIcon from '@mui/icons-material/LocationOnRounded'
 import PeopleRoundedIcon from '@mui/icons-material/PeopleRounded'
 import CampaignRoundedIcon from '@mui/icons-material/CampaignRounded'
 import { keyframes } from '@mui/material/styles'
-import { EmptyState, SHAPE } from '@ubuntu-fund/ui'
+import { EmptyState, SHAPE, breadcrumbList } from '@ubuntu-fund/ui'
 import { api } from '@/lib/api'
+import { useSeo, SITE_ORIGIN } from '@/lib/seo'
 
 interface ApiOrg {
   id: string
@@ -53,6 +54,14 @@ const fadeInUp = keyframes`
 export function OrganizationsPage() {
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [isLoading, setIsLoading] = useState(true)
+
+  useSeo({
+    title: 'Organizations fundraising in Ghana | Ujimora',
+    description:
+      'Browse the verified organizations and charities raising funds on Ujimora — see where in Ghana they work, what they have raised in cedis, and which campaigns are live.',
+    path: '/organizations',
+    jsonLd: breadcrumbList(SITE_ORIGIN, [{ name: 'Home', path: '/' }, { name: 'Organizations' }]),
+  })
 
   useEffect(() => {
     async function load() {

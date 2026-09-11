@@ -30,9 +30,9 @@ import BusinessCenterRoundedIcon from '@mui/icons-material/BusinessCenterRounded
 import TheaterComedyRoundedIcon from '@mui/icons-material/TheaterComedyRounded'
 import SportsSoccerRoundedIcon from '@mui/icons-material/SportsSoccerRounded'
 import { keyframes } from '@mui/material/styles'
-import { NEUMORPHIC_FOREST_VARS, SHAPE } from '@ubuntu-fund/ui'
+import { NEUMORPHIC_FOREST_VARS, SHAPE, breadcrumbList } from '@ubuntu-fund/ui'
 import { InternalPageHero } from '../components/InternalPageHero'
-import { useSeo } from '@/lib/seo'
+import { useSeo, SITE_ORIGIN } from '@/lib/seo'
 
 // ─── Animations ──────────────────────────────────────────────────────────────
 
@@ -89,6 +89,7 @@ function ForOrganizationsPage() {
     description: 'A shared workspace for Ghanaian NGOs, hospitals, schools, and faith groups to prepare campaigns, invite collaborators, track donations, and pass trust review.',
     path: '/for-organizations',
     type: 'website',
+    jsonLd: breadcrumbList(SITE_ORIGIN, [{ name: 'Home', path: '/' }, { name: 'For organizations' }]),
   })
   const WEB_APP_URL = import.meta.env.VITE_WEB_APP_URL || 'http://localhost:8200'
 

@@ -314,6 +314,7 @@ import { auditMutation } from './infrastructure/adapters/inbound/middleware/audi
 
 import { createAuthRoutes } from './infrastructure/adapters/inbound/http/routes/authRoutes.js'
 import { createCampaignRoutes } from './infrastructure/adapters/inbound/http/routes/campaignRoutes.js'
+import { createSitemapRoutes } from './infrastructure/adapters/inbound/http/routes/sitemapRoutes.js'
 import {
   createCampaignQrRoutes,
   createShortLinkPublicRoutes,
@@ -1568,6 +1569,10 @@ export function createApp(): express.Express {
   // Public short-link surface, mounted at the app root (outside /api/v1) so the
   // QR/redirect URLs stay short and shareable: GET /r/:code, /qr/:code.svg,
   // /qr/:code.png.
+  // Served from the API because campaigns are dynamic; exposed at
+  // app.ujimora.com/sitemap.xml via a rewrite, since a sitemap may only list
+  // URLs on the host that serves it.
+  app.use('/', createSitemapRoutes())
   app.use('/', createShortLinkPublicRoutes(shortLinkController))
 
   app.use(errorHandler)

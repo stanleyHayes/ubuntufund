@@ -1,6 +1,16 @@
 import { Box, Button, Container, Stack, Typography } from '@mui/material'
 import { Link } from 'react-router-dom'
 import { LEGAL_POLICIES, getPolicyBySlug } from '@ubuntu-fund/types/src/legal'
+import { useSeo } from '@/lib/seo'
+
+/**
+ * The public site is where these documents live and where sitemap.xml lists
+ * them. The app re-serves the identical text at app.ujimora.com so a signed-in
+ * user never leaves the product to read the terms — nine URL pairs, word for
+ * word. Left alone, each pair splits its ranking signals and a crawler picks
+ * whichever it likes; these copies name the ujimora.com original instead.
+ */
+const MARKETING_ORIGIN = 'https://ujimora.com'
 
 const surface = { bgcolor: 'var(--neu-surface)', boxShadow: 'var(--neu-raised)', borderRadius: '24px' }
 function Watermark() {
@@ -8,6 +18,15 @@ function Watermark() {
 }
 export function LegalPage({ slug }: { slug?: string }) {
   const policy = slug ? getPolicyBySlug(slug) : undefined
+  const path = policy ? policy.route : '/legal'
+  useSeo({
+    title: policy ? `${policy.title} | Ujimora` : 'Legal & trust | Ujimora',
+    description:
+      policy?.description ??
+      'Read the policies that guide giving, fundraising and using Ujimora — terms, privacy, refunds, payouts and community standards.',
+    path,
+    canonicalUrl: `${MARKETING_ORIGIN}${path}`,
+  })
   return <Container component="section" maxWidth="lg" sx={{ py: { xs: 4, md: 7 } }}>
     <Box sx={{ ...surface, position: 'relative', overflow: 'hidden', p: { xs: 3, md: 5 }, mb: 4 }}>
       <Watermark />

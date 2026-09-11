@@ -12,12 +12,12 @@ import AccountBalanceRoundedIcon from '@mui/icons-material/AccountBalanceRounded
 import PaletteRoundedIcon from '@mui/icons-material/PaletteRounded'
 import { CampaignCategory, CampaignStatus } from '@ubuntu-fund/types'
 import type { Campaign } from '@ubuntu-fund/types'
-import { EmptyState } from '@ubuntu-fund/ui'
+import { EmptyState, breadcrumbList } from '@ubuntu-fund/ui'
 import { CampaignSearchBar, type CampaignSort } from '@/components/campaigns/CampaignSearchBar'
 import { CampaignCard } from '@/components/campaigns/CampaignCard'
 import { PageBanner } from '@/components/layout/PageBanner'
 import { useCampaigns } from '@/hooks/useCampaigns'
-import { useSeo } from '@/lib/seo'
+import { useSeo, SITE_ORIGIN } from '@/lib/seo'
 
 // ─── Animations ─────────────────────────────────────────────
 
@@ -107,6 +107,7 @@ export function ExplorePage() {
     description:
       'Browse fundraising campaigns across Ghana \u2014 medical, education, emergency, business and community. Filter by category or status, or search by name.',
     path: '/explore',
+    jsonLd: breadcrumbList(SITE_ORIGIN, [{ name: 'Home', path: '/' }, { name: 'Explore' }]),
   })
 
   // Reset page on filter change

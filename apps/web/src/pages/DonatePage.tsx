@@ -35,6 +35,7 @@ import {
   type CampaignPublicView,
 } from '@/lib/fundraising'
 import { getCryptoAssets } from '@/lib/crypto'
+import { useSeo, SITE_ORIGIN } from '@/lib/seo'
 import { CryptoDonatePanel } from '@/components/donate/CryptoDonatePanel'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
@@ -127,6 +128,17 @@ export function DonatePage() {
   const [submitError, setSubmitError] = useState('')
   const [paymentsDisabled, setPaymentsDisabled] = useState(false)
   const [touchedEmail, setTouchedEmail] = useState(false)
+
+  useSeo({
+    title: campaign ? `Donate to ${campaign.title} | Ujimora` : 'Donate | Ujimora',
+    description:
+      'Choose an amount in cedis and give securely by mobile money or card. No account needed, and your receipt arrives by email.',
+    // A checkout form has nothing to rank for on its own, and it splits signals
+    // with the campaign page that links to it — so it points there instead.
+    path: `/c/${encodeURIComponent(slug ?? '')}/donate`,
+    canonicalUrl: `${SITE_ORIGIN}/c/${encodeURIComponent(slug ?? '')}`,
+    robots: 'noindex, follow',
+  })
 
   // Seed the amount from ?amount= (once, if valid)
   useEffect(() => {

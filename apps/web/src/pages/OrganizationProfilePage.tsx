@@ -24,7 +24,7 @@ import PersonAddRoundedIcon from '@mui/icons-material/PersonAddRounded'
 import PersonRemoveRoundedIcon from '@mui/icons-material/PersonRemoveRounded'
 import CampaignRoundedIcon from '@mui/icons-material/CampaignRounded'
 import { keyframes } from '@mui/material/styles'
-import { CurrencyDisplay, EmptyState, ItemNotFound, SHAPE } from '@ubuntu-fund/ui'
+import { CurrencyDisplay, EmptyState, ItemNotFound, SHAPE, breadcrumbList, organization } from '@ubuntu-fund/ui'
 import { CampaignCategory } from '@ubuntu-fund/types'
 import type { Campaign } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
@@ -32,7 +32,7 @@ import { useAuth } from '@/context/AuthContext'
 import { ProfileImageEditor } from '@/components/profile/ProfileImageEditor'
 import PhotoCameraRoundedIcon from '@mui/icons-material/PhotoCameraRounded'
 import { CampaignCard } from '@/components/campaigns/CampaignCard'
-import { useSeo } from '@/lib/seo'
+import { useSeo, SITE_ORIGIN } from '@/lib/seo'
 
 interface Organization {
   id: string
@@ -145,6 +145,28 @@ export function OrganizationProfilePage() {
       : 'Open an organization on Ujimora to see who they are, where in Ghana they work, what they have raised in cedis and which campaigns are running.',
     path: `/organizations/${encodeURIComponent(org?.slug || slug || '')}`,
     image: orgImage && /^https?:\/\//i.test(orgImage) ? orgImage : undefined,
+    // An organization profile is a real entity claim, so it gets an identity
+    // node alongside the trail. Only fields the record actually holds are
+    // emitted — `organization()` drops the rest rather than asserting blanks.
+    jsonLd: org
+      ? [
+          breadcrumbList(SITE_ORIGIN, [
+            { name: 'Home', path: '/' },
+            { name: 'Organizations', path: '/organizations' },
+            { name: org.name },
+          ]),
+          organization({
+            name: org.name,
+            url: `${SITE_ORIGIN}/organizations/${encodeURIComponent(org.slug)}`,
+            description: org.description || org.impactStatement || undefined,
+            logo: org.logoUrl && /^https?:\/\//i.test(org.logoUrl) ? org.logoUrl : undefined,
+            areaServed: org.country || undefined,
+            // The organization declared this itself; a guessed social handle
+            // would be an assertion that two entities are the same.
+            sameAs: org.website ? [org.website] : undefined,
+          }),
+        ]
+      : undefined,
   })
 
   if (!slug || isLoading) {

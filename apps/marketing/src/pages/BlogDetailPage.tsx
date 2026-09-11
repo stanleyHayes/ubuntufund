@@ -10,9 +10,9 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import AccessTimeIcon from '@mui/icons-material/AccessTime'
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday'
 import { useParams, useNavigate, useLocation, Link as RouterLink } from 'react-router-dom'
-import { SHAPE, ItemNotFound } from '@ubuntu-fund/ui'
+import { SHAPE, ItemNotFound, breadcrumbList } from '@ubuntu-fund/ui'
 import { blogPosts, CATEGORY_COLORS } from './BlogPage'
-import { useSeo } from '@/lib/seo'
+import { useSeo, SITE_ORIGIN } from '@/lib/seo'
 
 // Editorial fallback copy. This intentionally avoids invented impact metrics,
 // customer quotes, or claims about payment providers that are not live.
@@ -60,6 +60,13 @@ function BlogDetailPage() {
     path: post ? `/blog/${post.slug}` : pathname.replace(/\/+$/, '') || '/blog',
     type: post ? 'article' : 'website',
     robots: post ? undefined : 'noindex, follow',
+    jsonLd: post
+      ? breadcrumbList(SITE_ORIGIN, [
+          { name: 'Home', path: '/' },
+          { name: 'Blog', path: '/blog' },
+          { name: post.title },
+        ])
+      : undefined,
   })
 
   if (!post) {
@@ -154,9 +161,13 @@ function BlogDetailPage() {
             boxShadow: 'var(--neu-raised)',
           }}
         >
-          {/* Title */}
+          {/* Title — `component="h1"` keeps the h3 styling but makes this the
+              page's actual top-level heading. The outline previously started at
+              h4 and jumped to h3, so a post had no h1 at all. Purely semantic:
+              the rendered styles are unchanged. */}
           <Typography
             variant="h3"
+            component="h1"
             sx={{
               fontWeight: 900,
               lineHeight: 1.2,

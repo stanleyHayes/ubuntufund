@@ -16,10 +16,10 @@ import Button from '@mui/material/Button'
 import Container from '@mui/material/Container'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import { SHAPE } from '@ubuntu-fund/ui'
+import { SHAPE, breadcrumbList } from '@ubuntu-fund/ui'
 import { InternalPageHero } from '../components/InternalPageHero'
 import { useContent } from '../hooks/useContent'
-import { useSeo } from '@/lib/seo'
+import { useSeo, SITE_ORIGIN } from '@/lib/seo'
 
 interface TeamMember { name: string; role: string; initials: string; bio: string; image?: string; website?: string; companyUrl?: string; socials?: { label: string; href: string }[] }
 
@@ -52,6 +52,7 @@ function AboutPage() {
     description: 'Why Ujimora exists, how campaign records, review and updates fit together, and the Ghanaian team building clearer trust infrastructure for giving.',
     path: '/about',
     type: 'website',
+    jsonLd: breadcrumbList(SITE_ORIGIN, [{ name: 'Home', path: '/' }, { name: 'About' }]),
   })
   const about = useContent('about', ABOUT_FALLBACK)
   const cmsLeader = about.team?.[0]

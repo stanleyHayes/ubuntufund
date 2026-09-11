@@ -18,13 +18,14 @@ import {
   BrandLogo,
   SHAPE,
 } from '@ubuntu-fund/ui'
+import { breadcrumbList } from '@ubuntu-fund/ui'
 import { CampaignStatus } from '@ubuntu-fund/types'
 import {
   getCampaignBySlug,
   donatePath,
   type CampaignPublicView,
 } from '@/lib/fundraising'
-import { useSeo } from '@/lib/seo'
+import { useSeo, SITE_ORIGIN } from '@/lib/seo'
 
 // ---------------------------------------------------------------------------
 // Animations
@@ -128,6 +129,13 @@ export function CampaignPublicPage() {
     type: 'article',
     image: shareImage && /^https?:\/\//i.test(shareImage) ? shareImage : undefined,
     robots: campaign && UNINDEXED_STATUSES.includes(campaign.status) ? 'noindex, follow' : undefined,
+    jsonLd: campaign
+      ? breadcrumbList(SITE_ORIGIN, [
+          { name: 'Home', path: '/' },
+          { name: 'Explore', path: '/explore' },
+          { name: campaign.title },
+        ])
+      : undefined,
   })
 
   if (isLoading) {

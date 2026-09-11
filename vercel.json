@@ -9,6 +9,13 @@
       "source": "/api/v1/:path*",
       "destination": "https://api.ujimora.com/api/v1/:path*"
     },
-    { "source": "/(.*)", "destination": "/" }
+    {
+      "source": "/sitemap.xml",
+      "destination": "https://api.ujimora.com/sitemap.xml"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/"
+    }
   ]
 }

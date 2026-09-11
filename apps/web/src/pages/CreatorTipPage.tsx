@@ -13,9 +13,9 @@ import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import Alert from '@mui/material/Alert'
 import FavoriteRoundedIcon from '@mui/icons-material/FavoriteRounded'
 import VolunteerActivismRoundedIcon from '@mui/icons-material/VolunteerActivismRounded'
-import { SHAPE, LoadingDots } from '@ubuntu-fund/ui'
+import { SHAPE, LoadingDots, breadcrumbList } from '@ubuntu-fund/ui'
 import { api, ApiError } from '@/lib/api'
-import { useSeo } from '@/lib/seo'
+import { useSeo, SITE_ORIGIN } from '@/lib/seo'
 
 const FOREST = '#2E3D2F'
 const INK = 'text.primary'
@@ -102,6 +102,9 @@ export function CreatorTipPage() {
       : 'Back a creator on Ujimora: pick an amount in cedis, add a message of support, and pay by mobile money or card. No account needed to send a tip.',
     path: `/creators/${encodeURIComponent(page?.handle || handle)}`,
     image: creatorImage && /^https?:\/\//i.test(creatorImage) ? creatorImage : undefined,
+    jsonLd: page
+      ? breadcrumbList(SITE_ORIGIN, [{ name: 'Home', path: '/' }, { name: page.displayName }])
+      : undefined,
   })
 
   async function handleSupport() {
@@ -232,7 +235,11 @@ export function CreatorTipPage() {
             >
               {initials}
             </Avatar>
+            {/* The creator's name is this page's subject, so it is the h1.
+                It rendered as a <p>, leaving the page with no heading at all.
+                Semantics only — the sx below is unchanged, so it looks the same. */}
             <Typography
+              component="h1"
               sx={{ fontWeight: 900, fontSize: { xs: '1.8rem', md: '2.5rem' }, color: INK }}
             >
               {page.displayName}

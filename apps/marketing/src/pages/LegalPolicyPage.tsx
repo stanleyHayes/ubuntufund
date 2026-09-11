@@ -1,7 +1,8 @@
 import { Navigate } from 'react-router-dom'
 import { LegalPageLayout } from '../components/LegalPageLayout'
 import { getPolicyBySlug } from '../data/legal'
-import { useSeo } from '@/lib/seo'
+import { useSeo, SITE_ORIGIN } from '@/lib/seo'
+import { breadcrumbList } from '@ubuntu-fund/ui'
 
 /**
  * Search-result copy, one entry per policy route. The shared policy data carries
@@ -44,6 +45,13 @@ function LegalPolicyPage({ slug }: { slug: string }) {
     path: policy?.route ?? '/legal',
     type: 'website',
     robots: policy ? undefined : 'noindex, follow',
+    jsonLd: policy
+      ? breadcrumbList(SITE_ORIGIN, [
+          { name: 'Home', path: '/' },
+          { name: 'Legal', path: '/legal' },
+          { name: policy.title },
+        ])
+      : undefined,
   })
 
   if (!policy) return <Navigate to="/legal" replace />

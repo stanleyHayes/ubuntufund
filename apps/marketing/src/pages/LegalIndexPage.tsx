@@ -4,10 +4,10 @@ import Typography from '@mui/material/Typography'
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import MenuBookRoundedIcon from '@mui/icons-material/MenuBookRounded'
 import { Link as RouterLink } from 'react-router-dom'
-import { SHAPE } from '@ubuntu-fund/ui'
+import { SHAPE, breadcrumbList } from '@ubuntu-fund/ui'
 import { InternalPageHero } from '../components/InternalPageHero'
 import { LEGAL_ENTITY, LEGAL_POLICIES } from '../data/legal'
-import { useSeo } from '@/lib/seo'
+import { useSeo, SITE_ORIGIN } from '@/lib/seo'
 
 /** The `/legal` hub: one card per policy, linking to its dedicated page. */
 function LegalIndexPage() {
@@ -17,6 +17,7 @@ function LegalIndexPage() {
       'Every policy that governs Ujimora in one place: terms of use, privacy, organizer and contributor terms, payouts and refunds, acceptable use and cookies.',
     path: '/legal',
     type: 'website',
+    jsonLd: breadcrumbList(SITE_ORIGIN, [{ name: 'Home', path: '/' }, { name: 'Legal' }]),
   })
 
   return (

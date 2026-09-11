@@ -2,7 +2,8 @@ import { Accordion, AccordionDetails, AccordionSummary, Alert, Box, Container, L
 import CurrencyExchangeRoundedIcon from '@mui/icons-material/CurrencyExchangeRounded'
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded'
 import { InternalPageHero } from '../components/InternalPageHero'
-import { useSeo } from '@/lib/seo'
+import { useSeo, SITE_ORIGIN } from '@/lib/seo'
+import { breadcrumbList } from '@ubuntu-fund/ui'
 
 const questions = [
   ['Why can’t I see Crypto at checkout?', 'Crypto appears only when it is enabled and supported currencies are available. Use one of the other payment methods shown if the option is missing.'],
@@ -18,6 +19,7 @@ export default function CryptoGuidePage() {
     description: 'How the optional crypto checkout works: pick a supported currency and network, check the quote before it expires, then send with any required memo or tag.',
     path: '/crypto',
     type: 'website',
+    jsonLd: breadcrumbList(SITE_ORIGIN, [{ name: 'Home', path: '/' }, { name: 'Crypto guide' }]),
   })
   return <>
     <InternalPageHero eyebrow="Contribution guide" title="Understand your crypto contribution." description="A guide to the optional crypto checkout: the amount you send, the network you use, and when your contribution is confirmed." icon={<CurrencyExchangeRoundedIcon />} panelLabel="One campaign currency" panelTitle="Crypto sent. Campaign value shown clearly." panelBody="Checkout shows the crypto amount alongside the campaign-currency value. Contributions are credited after provider confirmation." />

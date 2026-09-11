@@ -30,10 +30,10 @@ import AllInclusiveRounded from '@mui/icons-material/AllInclusiveRounded'
 import PeopleRounded from '@mui/icons-material/PeopleRounded'
 import BusinessRounded from '@mui/icons-material/BusinessRounded'
 import GroupsRounded from '@mui/icons-material/GroupsRounded'
-import { SHAPE } from '@ubuntu-fund/ui'
+import { SHAPE, breadcrumbList } from '@ubuntu-fund/ui'
 import { keyframes } from '@mui/material/styles'
 import { PageBanner } from '@/components/layout/PageBanner'
-import { useSeo } from '@/lib/seo'
+import { useSeo, SITE_ORIGIN } from '@/lib/seo'
 import { useLeaderboard } from '@/hooks/useLeaderboard'
 import type { LeaderboardEntry, Period, Category } from '@/hooks/useLeaderboard'
 
@@ -657,6 +657,7 @@ export function LeaderboardPage() {
     description:
       'See the people and organizations giving the most on Ujimora, ranked by cedis donated or number of donations \u2014 today, this month, this year or all time.',
     path: '/leaderboard',
+    jsonLd: breadcrumbList(SITE_ORIGIN, [{ name: 'Home', path: '/' }, { name: 'Leaderboard' }]),
   })
 
   const sorted = useMemo(() => getSorted(leaderboardEntries, mode), [leaderboardEntries, mode])

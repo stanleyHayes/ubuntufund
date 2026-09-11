@@ -11,10 +11,10 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import MailOutlineIcon from '@mui/icons-material/MailOutline'
 import AccessTimeIcon from '@mui/icons-material/AccessTime'
 import { Link as RouterLink } from 'react-router-dom'
-import { NEUMORPHIC_FOREST_VARS, SHAPE } from '@ubuntu-fund/ui'
+import { NEUMORPHIC_FOREST_VARS, SHAPE, breadcrumbList } from '@ubuntu-fund/ui'
 import AutoStoriesRoundedIcon from '@mui/icons-material/AutoStoriesRounded'
 import { InternalPageHero } from '../components/InternalPageHero'
-import { useSeo } from '@/lib/seo'
+import { useSeo, SITE_ORIGIN } from '@/lib/seo'
 
 // ─── Data ──────────────────────────────────────────────────
 
@@ -588,6 +588,7 @@ function BlogPage() {
       'Practical guidance on campaign records, verification, diaspora giving and responsible fundraising in Ghana, from the Ujimora editorial team.',
     path: '/blog',
     type: 'website',
+    jsonLd: breadcrumbList(SITE_ORIGIN, [{ name: 'Home', path: '/' }, { name: 'Blog' }]),
   })
 
   const featured = blogPosts.find((p) => p.featured)!
