@@ -39,7 +39,7 @@ import { InternalPageHero } from '../components/InternalPageHero'
 // Channels and social links are assembled from this inside the component (icons are JSX
 // and stay in code).
 const CONTACT_FALLBACK = {
-  email: 'hello@ujimora.com',
+  email: 'support@ujimora.com',
   phone: '',
   address: '',
   hours: 'Support availability is confirmed by email',
@@ -62,7 +62,7 @@ const INQUIRY_TYPES = [
 const FAQ = [
   { q: 'How long does it take to get a response?', a: 'Response times vary during launch readiness. Submit the form with enough detail for the team to route and investigate your request.' },
   { q: 'I have an issue with my campaign. Who should I contact?', a: 'Select "Campaign support" as your inquiry type and include the campaign link plus a concise description. Do not send passwords or access tokens.' },
-  { q: 'How can I partner with Ujimora?', a: 'We welcome partnerships with NGOs, corporations, and government bodies. Select "Partnership" as your inquiry type, or email partnerships@ujimora.com directly.' },
+  { q: 'How can I partner with Ujimora?', a: 'We welcome partnerships with NGOs, corporations, and government bodies. Select "Partnership" as your inquiry type, or email sales@ujimora.com directly.' },
   { q: 'Where are your offices located?', a: 'No public walk-in office is listed during launch readiness. Use the contact form before attempting an in-person visit.' },
   { q: 'How do I report suspected fraud?', a: 'Use the campaign report action or email trust@ujimora.com with the campaign link and relevant evidence. Do not publish sensitive identity documents.' },
 ]

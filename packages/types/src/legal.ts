@@ -14,12 +14,23 @@ export const LEGAL_ENTITY = {
   // published here — they are not required on public legal pages.
   registrationNumber: 'BN843072020',
   registeredAddress: 'UNN House, Nii Osae Ntifu Avenue, East Legon, Accra, Greater Accra, Ghana',
+  // Five real mailboxes, addressed by what they are FOR rather than by name, so
+  // policy copy keeps reading naturally and re-splitting one out later is a
+  // one-line change here rather than an edit across every legal page:
+  //   support@ — support, general enquiries and refunds
+  //   trust@   — trust & safety, fraud and campaign reports
+  //   legal@   — legal notices and data-protection requests
+  //   sales@   — sales and partnerships
+  //   no-reply@ — outbound transactional sender only (see FROM_EMAIL)
   emails: {
     support: 'support@ujimora.com',
     legal: 'legal@ujimora.com',
-    privacy: 'privacy@ujimora.com',
-    refunds: 'refunds@ujimora.com',
+    // Data-protection requests are handled by the same legal function.
+    privacy: 'legal@ujimora.com',
+    // Refunds are a support workflow, not a separate desk.
+    refunds: 'support@ujimora.com',
     report: 'trust@ujimora.com',
+    sales: 'sales@ujimora.com',
   },
   minAge: 18,
   effectiveDate: '8 September 2026',

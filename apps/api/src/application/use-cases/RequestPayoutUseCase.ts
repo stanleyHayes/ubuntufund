@@ -171,7 +171,7 @@ export class RequestPayoutUseCase {
         422,
       )
     }
-    const { fee, netAmount } = computePayoutFee(type, amount, cfg)
+    const { fee, netAmount } = computePayoutFee(type, amount, cfg, currency)
     if (netAmount <= 0) {
       throw new AppError('The payout fee equals or exceeds the requested amount', 422)
     }

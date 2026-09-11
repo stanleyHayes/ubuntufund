@@ -31,7 +31,7 @@ import { SignInRequired } from '@/components/SignInRequired'
 import { GlassSurface } from '@/components/GlassSurface'
 import { FadeInUp } from '@/components/anim/FadeInUp'
 
-const ENTERPRISE_CONTACT = 'mailto:hello@ujimora.com?subject=Enterprise%20plan%20enquiry'
+const ENTERPRISE_CONTACT = 'mailto:sales@ujimora.com?subject=Enterprise%20plan%20enquiry'
 const POLL_INTERVAL_MS = 2000
 const MAX_POLL_ATTEMPTS = 15 // ~30s
 
