@@ -39,7 +39,7 @@ import { InternalPageHero } from '../components/InternalPageHero'
 // Channels and social links are assembled from this inside the component (icons are JSX
 // and stay in code).
 const CONTACT_FALLBACK = {
-  email: 'support@ujimora.com',
+  email: 'info@ujimora.com',
   phone: '',
   address: '',
   hours: 'Support availability is confirmed by email',
