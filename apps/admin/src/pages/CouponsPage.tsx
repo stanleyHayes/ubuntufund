@@ -45,6 +45,12 @@ interface CouponForm {
   description: string
   discountType: CouponDiscountType
   amount: number
+  /** Ceiling on a percentage discount. 0 = none. */
+  maxDiscountAmount: number
+  /** Restrict to customers who have never completed a paid checkout. */
+  newUsersOnly: boolean
+  /** Named recipients, one per line in the field; empty = open to anyone. */
+  allowedEmails: string
   maxRedemptions: number
   perUserLimit: number
   minSubtotal: number
@@ -60,6 +66,9 @@ const emptyForm: CouponForm = {
   description: '',
   discountType: CouponDiscountType.PERCENT,
   amount: 10,
+  maxDiscountAmount: 0,
+  newUsersOnly: false,
+  allowedEmails: '',
   maxRedemptions: 0,
   perUserLimit: 0,
   minSubtotal: 0,
@@ -69,6 +78,16 @@ const emptyForm: CouponForm = {
   validUntil: '',
   active: true,
 }
+
+/** One address per line or comma-separated; blanks and duplicates dropped. */
+const parseEmails = (raw: string): string[] => [
+  ...new Set(
+    raw
+      .split(/[\n,;]+/)
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean)
+  ),
+]
 
 const toDateInput = (value?: Date | string): string => {
   if (!value) return ''
@@ -141,6 +160,9 @@ export default function CouponsPage() {
       description: coupon.description ?? '',
       discountType: coupon.discountType,
       amount: coupon.amount,
+      maxDiscountAmount: coupon.maxDiscountAmount ?? 0,
+      newUsersOnly: coupon.newUsersOnly ?? false,
+      allowedEmails: (coupon.allowedEmails ?? []).join('\n'),
       maxRedemptions: coupon.maxRedemptions ?? 0,
       perUserLimit: coupon.perUserLimit ?? 0,
       minSubtotal: coupon.minSubtotal ?? 0,
@@ -161,6 +183,9 @@ export default function CouponsPage() {
           description: form.description || undefined,
           discountType: form.discountType,
           amount: form.amount,
+          maxDiscountAmount: form.maxDiscountAmount || 0,
+          newUsersOnly: form.newUsersOnly,
+          allowedEmails: parseEmails(form.allowedEmails),
           maxRedemptions: form.maxRedemptions || 0,
           perUserLimit: form.perUserLimit || 0,
           minSubtotal: form.minSubtotal || 0,
@@ -179,6 +204,9 @@ export default function CouponsPage() {
           description: form.description || undefined,
           discountType: form.discountType,
           amount: form.amount,
+          maxDiscountAmount: form.maxDiscountAmount || undefined,
+          newUsersOnly: form.newUsersOnly,
+          allowedEmails: parseEmails(form.allowedEmails),
           maxRedemptions: form.maxRedemptions || undefined,
           perUserLimit: form.perUserLimit || undefined,
           minSubtotal: form.minSubtotal || undefined,
@@ -428,6 +456,15 @@ export default function CouponsPage() {
               }}
             />
           </Box>
+          {form.discountType === CouponDiscountType.PERCENT && (
+            <TextField
+              fullWidth size="small" label="Maximum discount (optional)" type="number"
+              value={form.maxDiscountAmount}
+              onChange={(e) => setForm({ ...form, maxDiscountAmount: parseFloat(e.target.value) || 0 })}
+              helperText="0 = no ceiling. Caps what this percentage can take off a large plan."
+              InputProps={{ endAdornment: <InputAdornment position="end">GH₵</InputAdornment> }}
+            />
+          )}
           <Box sx={{ display: 'flex', gap: 2 }}>
             <TextField
               fullWidth size="small" label="Max Redemptions" type="number"
@@ -500,6 +537,17 @@ export default function CouponsPage() {
               
             />
           </Box>
+          <TextField
+            fullWidth size="small" label="Limit to specific people (optional)"
+            multiline minRows={2}
+            value={form.allowedEmails}
+            onChange={(e) => setForm({ ...form, allowedEmails: e.target.value })}
+            helperText="One email per line. Leave blank to let anyone use the code."
+          />
+          <FormControlLabel
+            control={<Switch checked={form.newUsersOnly} onChange={(e) => setForm({ ...form, newUsersOnly: e.target.checked })} />}
+            label="First-time subscribers only"
+          />
           <FormControlLabel
             control={<Switch checked={form.active} onChange={(e) => setForm({ ...form, active: e.target.checked })} />}
             label="Active"

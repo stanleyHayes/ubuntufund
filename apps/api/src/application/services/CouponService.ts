@@ -2,6 +2,7 @@ import type { BillingCycle } from '@ubuntu-fund/types';
 import type { CouponEntity } from '../../domain/entities/Coupon.js';
 import type { CouponRepositoryPort } from '../../domain/ports/outbound/CouponRepositoryPort.js';
 import type { CouponRedemptionRepositoryPort } from '../../domain/ports/outbound/CouponRedemptionRepositoryPort.js';
+import type { CouponEligibilityPort } from '../../domain/ports/outbound/CouponEligibilityPort.js';
 import { roundToCurrency } from '../../domain/value-objects/Money.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 
@@ -39,7 +40,13 @@ export interface CouponPricing {
 export class CouponService {
   constructor(
     private readonly couponRepo: CouponRepositoryPort,
-    private readonly redemptionRepo: CouponRedemptionRepositoryPort
+    private readonly redemptionRepo: CouponRedemptionRepositoryPort,
+    /**
+     * Answers the targeting questions (is this a returning customer, what is
+     * their email). Lives here rather than in the two callers so a preview and
+     * the checkout it precedes can never disagree about eligibility.
+     */
+    private readonly eligibility: CouponEligibilityPort
   ) {}
 
   async validateAndPrice(input: ValidateAndPriceInput): Promise<CouponPricing> {
@@ -76,6 +83,19 @@ export class CouponService {
         'This coupon does not apply to the selected billing cycle',
         422
       );
+    }
+
+    // Targeting. Both queries are skipped entirely unless the coupon carries
+    // the corresponding restriction, so an ordinary coupon costs nothing extra.
+    if (coupon.allowedEmails.length > 0) {
+      const email = await this.eligibility.emailFor(userId);
+      if (!coupon.allowsEmail(email)) {
+        throw new AppError('This coupon is not available on your account', 422);
+      }
+    }
+
+    if (coupon.newUsersOnly && (await this.eligibility.hasPaidBefore(userId))) {
+      throw new AppError('This coupon is for first-time subscribers only', 422);
     }
 
     if (!coupon.meetsMinSubtotal(baseAmount)) {

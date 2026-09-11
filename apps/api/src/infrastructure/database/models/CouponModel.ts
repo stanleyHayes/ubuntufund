@@ -13,6 +13,9 @@ export interface CouponDocument extends Document {
   minSubtotal?: number;
   appliesToTiers: string[];
   appliesToBillingCycles: BillingCycle[];
+  maxDiscountAmount?: number;
+  newUsersOnly: boolean;
+  allowedEmails: string[];
   validFrom?: Date;
   validUntil?: Date;
   active: boolean;
@@ -37,6 +40,8 @@ const couponSchema = new Schema<CouponDocument>(
       required: true,
     },
     amount: { type: Number, required: true },
+    // Ceiling on what a PERCENT coupon may take off. Falsy = no ceiling.
+    maxDiscountAmount: { type: Number },
     currency: { type: String, required: true, default: 'GHS' },
     // Falsy (absent/0) = unlimited global cap.
     maxRedemptions: { type: Number },
@@ -56,6 +61,10 @@ const couponSchema = new Schema<CouponDocument>(
       enum: Object.values(BillingCycle),
       default: [],
     },
+    // "Has never completed a paid checkout", not "signed up recently".
+    newUsersOnly: { type: Boolean, required: true, default: false },
+    // Named recipients, lowercased on write. Empty = open to anyone.
+    allowedEmails: { type: [String], default: [], lowercase: true },
     validFrom: { type: Date },
     validUntil: { type: Date },
     active: { type: Boolean, required: true, default: true },

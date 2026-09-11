@@ -14,8 +14,15 @@ const createCouponSchema = z.object({
   maxRedemptions: z.number().int().nonnegative().optional(),
   perUserLimit: z.number().int().nonnegative().optional(),
   minSubtotal: z.number().nonnegative().optional(),
-  appliesToTiers: z.array(z.nativeEnum(SubscriptionTier)).optional(),
+  // Free-form tier ids, not the built-in enum: PlanService supports
+  // admin-added tiers and the schema documents this field as free-form, so
+  // validating against SubscriptionTier made a coupon impossible to scope to
+  // any tier an admin created.
+  appliesToTiers: z.array(z.string().min(1).max(60)).optional(),
   appliesToBillingCycles: z.array(z.nativeEnum(BillingCycle)).optional(),
+  maxDiscountAmount: z.number().nonnegative().optional(),
+  newUsersOnly: z.boolean().optional(),
+  allowedEmails: z.array(z.string().email()).max(500).optional(),
   validFrom: z.string().optional(),
   validUntil: z.string().optional(),
   active: z.boolean().optional(),
@@ -28,8 +35,15 @@ const updateCouponSchema = z.object({
   maxRedemptions: z.number().int().nonnegative().optional(),
   perUserLimit: z.number().int().nonnegative().optional(),
   minSubtotal: z.number().nonnegative().optional(),
-  appliesToTiers: z.array(z.nativeEnum(SubscriptionTier)).optional(),
+  // Free-form tier ids, not the built-in enum: PlanService supports
+  // admin-added tiers and the schema documents this field as free-form, so
+  // validating against SubscriptionTier made a coupon impossible to scope to
+  // any tier an admin created.
+  appliesToTiers: z.array(z.string().min(1).max(60)).optional(),
   appliesToBillingCycles: z.array(z.nativeEnum(BillingCycle)).optional(),
+  maxDiscountAmount: z.number().nonnegative().optional(),
+  newUsersOnly: z.boolean().optional(),
+  allowedEmails: z.array(z.string().email()).max(500).optional(),
   validFrom: z.string().optional(),
   validUntil: z.string().optional(),
   active: z.boolean().optional(),

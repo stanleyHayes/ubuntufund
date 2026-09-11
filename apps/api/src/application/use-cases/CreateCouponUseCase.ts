@@ -12,6 +12,12 @@ import { toCouponDto } from './mappers/couponDto.js';
 /** The platform's only settlement currency. */
 const CURRENCY = 'GHS';
 
+/** Lowercase, trim and drop blanks, so an allowlist compares by equality. */
+export function normaliseEmails(emails: string[] | undefined): string[] {
+  if (!emails) return [];
+  return [...new Set(emails.map((e) => e.trim().toLowerCase()).filter(Boolean))];
+}
+
 
 /**
  * Create a discount coupon (admin console). The code is normalised to UPPERCASE
@@ -43,6 +49,13 @@ export class CreateCouponUseCase {
       throw new AppError('Percent coupon amount cannot exceed 100', 400);
     }
 
+    if (
+      input.maxDiscountAmount !== undefined &&
+      (typeof input.maxDiscountAmount !== 'number' || input.maxDiscountAmount < 0)
+    ) {
+      throw new AppError('Coupon maximum discount cannot be negative', 400);
+    }
+
     const validFrom = toCouponDate(input.validFrom, 'validFrom', 'start');
     const validUntil = toCouponDate(input.validUntil, 'validUntil', 'end');
     if (validFrom && validUntil && validFrom > validUntil) {
@@ -56,6 +69,7 @@ export class CreateCouponUseCase {
       description: input.description,
       discountType: input.discountType,
       amount: input.amount,
+      maxDiscountAmount: input.maxDiscountAmount,
       currency: CURRENCY,
       maxRedemptions: input.maxRedemptions,
       redemptions: 0,
@@ -63,6 +77,10 @@ export class CreateCouponUseCase {
       minSubtotal: input.minSubtotal,
       appliesToTiers: input.appliesToTiers ?? [],
       appliesToBillingCycles: input.appliesToBillingCycles ?? [],
+      newUsersOnly: input.newUsersOnly ?? false,
+      // Normalised on the way in: the check compares by string equality, so a
+      // list typed with capitals or stray spaces would match nobody.
+      allowedEmails: normaliseEmails(input.allowedEmails),
       validFrom,
       validUntil,
       active: input.active ?? true,

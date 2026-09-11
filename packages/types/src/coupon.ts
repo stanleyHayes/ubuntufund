@@ -21,6 +21,15 @@ export interface Coupon {
   description?: string
   discountType: CouponDiscountType
   amount: number // percent (0-100) when PERCENT; GHS off when FIXED
+  /**
+   * Ceiling on what a PERCENT coupon may take off, in the coupon's currency.
+   *
+   * Without one, "30% off" costs a fixed fraction of whatever the customer
+   * buys — harmless on a starter plan, considerably less so on an enterprise
+   * annual one. Ignored for FIXED coupons, whose amount is already the cap.
+   * Undefined/0 = no ceiling.
+   */
+  maxDiscountAmount?: number
   currency: string // 'GHS' (only meaningful for FIXED)
   maxRedemptions?: number // undefined/0 = unlimited (global)
   redemptions: number // running count of CONSUMED redemptions
@@ -28,6 +37,20 @@ export interface Coupon {
   minSubtotal?: number // optional GHS floor the base price must meet
   appliesToTiers: string[] // empty = all paid tiers
   appliesToBillingCycles: BillingCycle[] // empty = all cycles
+  /**
+   * Restrict to customers who have never completed a paid checkout.
+   *
+   * Deliberately "has not paid before" rather than "signed up recently": a
+   * user who registered months ago and is only now upgrading is still a new
+   * customer, and cancelling does not make a returning one new again.
+   */
+  newUsersOnly: boolean
+  /**
+   * Named recipients, lowercased. Empty = open to anyone who meets the other
+   * rules. A coupon with a list fails closed — an unresolvable user is not on
+   * it.
+   */
+  allowedEmails: string[]
   validFrom?: Date
   validUntil?: Date
   active: boolean
@@ -45,6 +68,9 @@ export interface CreateCouponInput {
   minSubtotal?: number
   appliesToTiers?: string[]
   appliesToBillingCycles?: BillingCycle[]
+  maxDiscountAmount?: number
+  newUsersOnly?: boolean
+  allowedEmails?: string[]
   validFrom?: string // ISO strings over the wire; the use-case coerces to Date
   validUntil?: string
   active?: boolean
@@ -59,6 +85,9 @@ export interface UpdateCouponInput {
   minSubtotal?: number
   appliesToTiers?: string[]
   appliesToBillingCycles?: BillingCycle[]
+  maxDiscountAmount?: number
+  newUsersOnly?: boolean
+  allowedEmails?: string[]
   validFrom?: string
   validUntil?: string
   active?: boolean

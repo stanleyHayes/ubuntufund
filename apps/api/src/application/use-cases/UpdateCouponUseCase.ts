@@ -7,6 +7,7 @@ import { CouponEntity } from '../../domain/entities/Coupon.js';
 import type { CouponRepositoryPort } from '../../domain/ports/outbound/CouponRepositoryPort.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 import { toCouponDate } from './couponDates.js';
+import { normaliseEmails } from './CreateCouponUseCase.js';
 import { toCouponDto } from './mappers/couponDto.js';
 
 
@@ -36,6 +37,9 @@ export class UpdateCouponUseCase {
     if (discountType === CouponDiscountType.PERCENT && amount > 100) {
       throw new AppError('Percent coupon amount cannot exceed 100', 400);
     }
+    if (input.maxDiscountAmount !== undefined && input.maxDiscountAmount < 0) {
+      throw new AppError('Coupon maximum discount cannot be negative', 400);
+    }
 
     const validFrom =
       input.validFrom !== undefined
@@ -57,6 +61,18 @@ export class UpdateCouponUseCase {
           : current.description,
       discountType,
       amount,
+      maxDiscountAmount:
+        input.maxDiscountAmount !== undefined
+          ? input.maxDiscountAmount
+          : current.maxDiscountAmount,
+      newUsersOnly:
+        input.newUsersOnly !== undefined
+          ? input.newUsersOnly
+          : current.newUsersOnly,
+      allowedEmails:
+        input.allowedEmails !== undefined
+          ? normaliseEmails(input.allowedEmails)
+          : current.allowedEmails,
       maxRedemptions:
         input.maxRedemptions !== undefined
           ? input.maxRedemptions

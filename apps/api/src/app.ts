@@ -68,6 +68,7 @@ import { MongoBeneficiaryRecipientRepository } from './infrastructure/adapters/o
 import { MongoBeneficiaryPayoutRepository } from './infrastructure/adapters/outbound/persistence/MongoBeneficiaryPayoutRepository.js'
 import { MongoCouponRepository } from './infrastructure/adapters/outbound/persistence/MongoCouponRepository.js'
 import { MongoCouponRedemptionRepository } from './infrastructure/adapters/outbound/persistence/MongoCouponRedemptionRepository.js'
+import { MongoCouponEligibility } from './infrastructure/adapters/outbound/persistence/MongoCouponEligibility.js'
 import { MongoSubscriptionCheckoutRepository } from './infrastructure/adapters/outbound/persistence/MongoSubscriptionCheckoutRepository.js'
 import { MongoAffiliateRepository } from './infrastructure/adapters/outbound/persistence/MongoAffiliateRepository.js'
 import { MongoAffiliateReferralRepository } from './infrastructure/adapters/outbound/persistence/MongoAffiliateReferralRepository.js'
@@ -502,7 +503,7 @@ export function createApp(): express.Express {
   // count, goal cap, plan feature gates) + the plan-based platform fee rate.
   const planLimitsService = new PlanLimitsService(subscriptionRepo, campaignRepo, planService)
   // Coupon validation/pricing for the paid-subscription checkout rail.
-  const couponService = new CouponService(couponRepo, couponRedemptionRepo)
+  const couponService = new CouponService(couponRepo, couponRedemptionRepo, new MongoCouponEligibility())
   // Awards + claws back the one-time referral commission on a referee's first
   // paid subscription (rate + hold window from config.affiliate).
   const affiliateCommissionService = new AffiliateCommissionService(

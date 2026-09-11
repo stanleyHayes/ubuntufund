@@ -19,6 +19,8 @@ function coupon(overrides: Partial<CouponProps> = {}): CouponEntity {
     redemptions: 0,
     appliesToTiers: [],
     appliesToBillingCycles: [],
+    newUsersOnly: false,
+    allowedEmails: [],
     active: true,
     createdAt: new Date('2026-01-01'),
     updatedAt: new Date('2026-01-01'),
@@ -135,5 +137,58 @@ describe('limits', () => {
 
   it('treats a falsy minimum as no floor', () => {
     expect(coupon({ minSubtotal: undefined }).meetsMinSubtotal(0)).toBe(true);
+  });
+});
+
+describe('maxDiscountAmount', () => {
+  it('caps a percentage at the ceiling', () => {
+    // "30% off" is cheap on a starter plan and expensive on an enterprise
+    // annual one; the ceiling is what stops the second case.
+    const c = coupon({ amount: 30, maxDiscountAmount: 50 });
+    expect(c.computeDiscount(100)).toBe(30);
+    expect(c.computeDiscount(1000)).toBe(50);
+  });
+
+  it('is ignored for a fixed coupon, whose amount is already its own cap', () => {
+    const c = coupon({
+      discountType: CouponDiscountType.FIXED,
+      amount: 80,
+      maxDiscountAmount: 50,
+    });
+    expect(c.computeDiscount(1000)).toBe(80);
+  });
+
+  it('still cannot discount more than the base', () => {
+    const c = coupon({ amount: 100, maxDiscountAmount: 500 });
+    expect(c.computeDiscount(60)).toBe(60);
+  });
+
+  it('treats a falsy ceiling as no ceiling', () => {
+    expect(coupon({ amount: 30, maxDiscountAmount: 0 }).computeDiscount(1000)).toBe(300);
+    expect(coupon({ amount: 30, maxDiscountAmount: undefined }).computeDiscount(1000)).toBe(300);
+  });
+
+  it('refuses a negative ceiling', () => {
+    expect(() => coupon({ maxDiscountAmount: -1 })).toThrow(/cannot be negative/i);
+  });
+});
+
+describe('allowedEmails', () => {
+  it('is open to everyone when the list is empty', () => {
+    expect(coupon({ allowedEmails: [] }).allowsEmail('anyone@example.com')).toBe(true);
+    expect(coupon({ allowedEmails: [] }).allowsEmail(null)).toBe(true);
+  });
+
+  it('admits only the named recipients, ignoring case and padding', () => {
+    const c = coupon({ allowedEmails: ['ama@example.com'] });
+    expect(c.allowsEmail('ama@example.com')).toBe(true);
+    expect(c.allowsEmail('  AMA@Example.COM ')).toBe(true);
+    expect(c.allowsEmail('kofi@example.com')).toBe(false);
+  });
+
+  it('fails closed when the email cannot be resolved', () => {
+    // Treating an unknown email as allowed would turn a coupon meant for one
+    // person into a public one the moment a lookup fails.
+    expect(coupon({ allowedEmails: ['ama@example.com'] }).allowsEmail(null)).toBe(false);
   });
 });

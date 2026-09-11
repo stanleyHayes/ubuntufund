@@ -8,6 +8,8 @@ export interface CouponProps {
   description?: string;
   discountType: CouponDiscountType;
   amount: number; // percent (0-100) when PERCENT; GHS off when FIXED
+  /** Ceiling on a PERCENT discount, in the coupon currency. Falsy = none. */
+  maxDiscountAmount?: number;
   currency: string; // 'GHS' (only meaningful for FIXED)
   maxRedemptions?: number; // undefined/0 = unlimited (global)
   redemptions: number; // running count of CONSUMED redemptions
@@ -15,6 +17,10 @@ export interface CouponProps {
   minSubtotal?: number; // optional GHS floor the base price must meet
   appliesToTiers: string[]; // empty = all paid tiers
   appliesToBillingCycles: BillingCycle[]; // empty = all cycles
+  /** Restrict to customers who have never completed a paid checkout. */
+  newUsersOnly: boolean;
+  /** Named recipients, lowercased. Empty = open to anyone. */
+  allowedEmails: string[];
   validFrom?: Date;
   validUntil?: Date;
   active: boolean;
@@ -41,6 +47,9 @@ export class CouponEntity {
     }
     if (props.discountType === CouponDiscountType.PERCENT && props.amount > 100) {
       throw new Error('Percent coupon amount cannot exceed 100');
+    }
+    if (props.maxDiscountAmount !== undefined && props.maxDiscountAmount < 0) {
+      throw new Error('Coupon maximum discount cannot be negative');
     }
     this.props = { ...props };
   }
@@ -80,6 +89,15 @@ export class CouponEntity {
   }
   get appliesToBillingCycles(): BillingCycle[] {
     return this.props.appliesToBillingCycles;
+  }
+  get maxDiscountAmount(): number | undefined {
+    return this.props.maxDiscountAmount;
+  }
+  get newUsersOnly(): boolean {
+    return this.props.newUsersOnly;
+  }
+  get allowedEmails(): string[] {
+    return this.props.allowedEmails;
   }
   get validFrom(): Date | undefined {
     return this.props.validFrom;
@@ -136,15 +154,37 @@ export class CouponEntity {
    */
   computeDiscount(baseAmount: number): number {
     const currency = this.props.currency;
-    const raw =
-      this.props.discountType === CouponDiscountType.PERCENT
-        ? (baseAmount * this.props.amount) / 100
-        : this.props.amount;
+    const isPercent = this.props.discountType === CouponDiscountType.PERCENT;
+    const raw = isPercent
+      ? (baseAmount * this.props.amount) / 100
+      : this.props.amount;
+
+    // The ceiling applies to percentages only: a FIXED coupon's amount already
+    // is its own cap, and honouring maxDiscountAmount there would just be a
+    // second, confusable way to write the same number.
+    const capped =
+      isPercent && this.props.maxDiscountAmount
+        ? Math.min(raw, this.props.maxDiscountAmount)
+        : raw;
+
     const clamped = Math.min(
-      roundToCurrency(raw, currency),
+      roundToCurrency(capped, currency),
       roundToCurrency(baseAmount, currency)
     );
     return roundToCurrency(Math.max(0, clamped), currency);
+  }
+
+  /**
+   * Whether this user's email is among the named recipients.
+   *
+   * Fails closed: a coupon with a list and no resolvable email is not
+   * redeemable. The alternative — treating an unknown email as allowed —
+   * turns a targeted coupon into a public one the moment a lookup hiccups.
+   */
+  allowsEmail(email: string | null): boolean {
+    if (this.props.allowedEmails.length === 0) return true;
+    if (!email) return false;
+    return this.props.allowedEmails.includes(email.toLowerCase().trim());
   }
 
   toPlain(): CouponProps {
