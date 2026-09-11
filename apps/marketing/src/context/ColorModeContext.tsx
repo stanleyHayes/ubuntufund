@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useLayoutEffect, useMemo, useSt
 import { ThemeProvider } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
 import GlobalStyles from '@mui/material/GlobalStyles'
-import { createUjimoraTheme, ttSquaresFontFace, applySkinVars, type ThemeSkin } from '@ubuntu-fund/ui'
+import { createUjimoraTheme, ttSquaresFontFace, applySkinVars, revealThemeChange, themeTransitionStyles, type ThemeSkin } from '@ubuntu-fund/ui'
 
 interface ColorModeValue {
   darkMode: boolean
@@ -45,7 +45,10 @@ export function ColorModeProvider({ children }: { children: ReactNode }) {
   }, [skin, darkMode])
 
   const setDarkMode = useCallback((enabled: boolean) => {
-    setDarkModeState(enabled)
+    // Circular reveal from wherever the member touched; falls straight
+    // through to a plain swap without View Transitions or under
+    // prefers-reduced-motion.
+    revealThemeChange(() => setDarkModeState(enabled))
     try { localStorage.setItem('uf_color_mode', enabled ? 'dark' : 'light') } catch { /* private mode */ }
   }, [])
 
@@ -60,6 +63,7 @@ export function ColorModeProvider({ children }: { children: ReactNode }) {
         <CssBaseline />
         <GlobalStyles styles={ttSquaresFontFace} />
         <GlobalStyles styles={skinGlobalStyles} />
+        <GlobalStyles styles={themeTransitionStyles} />
         {children}
       </ThemeProvider>
     </ColorModeContext.Provider>
