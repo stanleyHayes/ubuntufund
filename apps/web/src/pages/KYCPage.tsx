@@ -1,3 +1,4 @@
+import { useSeo } from '@/lib/seo'
 import { LoadingDots } from '@ubuntu-fund/ui'
 import { Country, State, City } from 'country-state-city'
 import ToggleButton from '@mui/material/ToggleButton'
@@ -36,6 +37,13 @@ const fadeIn = keyframes`
 const steps = ['Personal Info', 'ID Document', 'Address Proof', 'Selfie Verification']
 
 export function KYCPage() {
+  useSeo({
+    title: 'Identity verification | Ujimora',
+    description:
+      'Verify your identity on Ujimora. Add your personal details, upload an ID document and a selfie, and unlock full access to fundraising and payouts.',
+    path: '/kyc',
+    robots: 'noindex, nofollow',
+  })
   const [activeStep, setActiveStep] = useState(0)
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)

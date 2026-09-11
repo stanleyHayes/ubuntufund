@@ -7,9 +7,18 @@ import { Link as RouterLink } from 'react-router-dom'
 import { SHAPE } from '@ubuntu-fund/ui'
 import { InternalPageHero } from '../components/InternalPageHero'
 import { LEGAL_ENTITY, LEGAL_POLICIES } from '../data/legal'
+import { useSeo } from '@/lib/seo'
 
 /** The `/legal` hub: one card per policy, linking to its dedicated page. */
 function LegalIndexPage() {
+  useSeo({
+    title: 'Legal policies and agreements | Ujimora',
+    description:
+      'Every policy that governs Ujimora in one place: terms of use, privacy, organizer and contributor terms, payouts and refunds, acceptable use and cookies.',
+    path: '/legal',
+    type: 'website',
+  })
+
   return (
     <Box component="main" sx={{ flex: 1, pb: { xs: 8, md: 12 }, bgcolor: 'background.default' }}>
       <InternalPageHero

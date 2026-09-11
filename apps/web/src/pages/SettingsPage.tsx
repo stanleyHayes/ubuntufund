@@ -1,3 +1,4 @@
+import { useSeo } from '@/lib/seo'
 import Skeleton from '@mui/material/Skeleton'
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded'
 import { AccountPageSkeleton, AccountHeading } from '@/components/account/AccountPage'
@@ -136,6 +137,13 @@ function ToggleRow({
 }
 
 export function SettingsPage() {
+  useSeo({
+    title: 'Account settings | Ujimora',
+    description:
+      'Choose how Ujimora contacts you, set your language and appearance, control what other people can see about you, and close your account if you wish.',
+    path: '/settings',
+    robots: 'noindex, nofollow',
+  })
   const { user, logout, isLoading: authLoading } = useAuth()
   const { darkMode, setDarkMode, skin, setSkin } = useColorMode()
   const navigate = useNavigate()

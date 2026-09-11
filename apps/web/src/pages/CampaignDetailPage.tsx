@@ -46,9 +46,33 @@ import { CampaignDonationHistory } from '@/components/campaigns/CampaignDonation
 import { api } from '@/lib/api'
 import { acceptsCampaignDonation, validWalletDonationAmount, walletDonationProviders } from '@/lib/campaignDetailPolicy'
 import { useEnabledPaymentProviders } from '@/hooks/useEnabledPaymentProviders'
+import { useSeo } from '@/lib/seo'
 
 function formatCategory(category: string): string {
   return category.charAt(0).toUpperCase() + category.slice(1).replace(/_/g, ' ')
+}
+
+/** Statuses a campaign page must never be indexed in — it is not public yet, or no longer is. */
+const UNINDEXED_STATUSES: CampaignStatus[] = [
+  CampaignStatus.DRAFT,
+  CampaignStatus.PENDING_REVIEW,
+  CampaignStatus.BLOCKED,
+]
+
+/** Collapse whitespace and trim to `max` characters at a word boundary. */
+function clip(text: string, max: number): string {
+  const clean = text.replace(/\s+/g, ' ').trim()
+  if (clean.length <= max) return clean
+  const cut = clean.slice(0, max - 1)
+  const space = cut.lastIndexOf(' ')
+  return `${(space > max * 0.6 ? cut.slice(0, space) : cut).replace(/[\s.,;:\u2014-]+$/, '')}\u2026`
+}
+
+/** Meta description built from the organizer's own story, topped up when it is very short. */
+function campaignDescription(story: string): string {
+  const blurb = clip(story || '', 155)
+  if (blurb.length >= 100) return blurb
+  return `${blurb ? `${blurb} ` : ''}Donate by mobile money or card on Ujimora.`
 }
 
 export function CampaignDetailPage() {
@@ -100,6 +124,23 @@ function CampaignDetailContent() {
   const [activeTab, setActiveTab] = useState(0)
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false)
   const { create: createUpdate, isLoading: creatingUpdate } = useCreateCampaignUpdate()
+
+  // /campaigns/:id, /c/:slug and /c/:id all resolve to this same campaign, so
+  // every one of them declares the slug form canonical — one public URL rather
+  // than three competing for the same ranking signals.
+  const cover = campaign?.imageUrls?.[0]
+  useSeo({
+    title: campaign ? `${clip(campaign.title, 46)} | Ujimora` : 'Campaign | Ujimora',
+    description: campaign
+      ? campaignDescription(campaign.description)
+      : 'Read the story behind this fundraiser on Ujimora, see how close it is to its cedi goal, and donate securely by mobile money or card in seconds.',
+    path: campaign
+      ? `/c/${encodeURIComponent(campaign.slug || campaign.id)}`
+      : `/campaigns/${encodeURIComponent(id ?? '')}`,
+    type: 'article',
+    image: cover && /^https?:\/\//i.test(cover) ? cover : undefined,
+    robots: campaign && UNINDEXED_STATUSES.includes(campaign.status) ? 'noindex, follow' : undefined,
+  })
 
   const walletProviders = walletDonationProviders(enabledProviders)
   function handleOpenDonate() {

@@ -1,3 +1,4 @@
+import { useSeo } from '@/lib/seo'
 import { OwnerNotifications } from '@/components/account/OwnerNotifications'
 import Alert from '@mui/material/Alert'
 import { AccountPageSkeleton } from '@/components/account/AccountPage'
@@ -507,6 +508,13 @@ function QuickActions() {
 // ---------------------------------------------------------------------------
 
 export function DashboardPage() {
+  useSeo({
+    title: 'Your dashboard | Ujimora',
+    description:
+      'Your private Ujimora dashboard: how your campaigns are progressing, the donations you have made recently, and the totals you have raised in cedis.',
+    path: '/dashboard',
+    robots: 'noindex, nofollow',
+  })
   const { user } = useAuth()
   const displayName = user?.name?.split(' ')[0] ?? 'there'
   const { campaigns, isLoading: campaignsLoading, error: campaignsError } = useMyCampaigns()

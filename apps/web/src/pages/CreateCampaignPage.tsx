@@ -1,3 +1,4 @@
+import { useSeo } from '@/lib/seo'
 import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
 import Box from '@mui/material/Box'
@@ -39,6 +40,13 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
 }
 
 export function CreateCampaignPage() {
+  useSeo({
+    title: 'Start a campaign | Ujimora',
+    description:
+      'Create a new fundraiser on Ujimora: tell your story, set the cedi goal and deadline, and review the whole campaign yourself before it goes live.',
+    path: '/campaigns/new',
+    robots: 'noindex, nofollow',
+  })
   return (
     <>
       <PageBanner

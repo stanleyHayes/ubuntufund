@@ -32,6 +32,7 @@ import { useAuth } from '@/context/AuthContext'
 import { ProfileImageEditor } from '@/components/profile/ProfileImageEditor'
 import PhotoCameraRoundedIcon from '@mui/icons-material/PhotoCameraRounded'
 import { CampaignCard } from '@/components/campaigns/CampaignCard'
+import { useSeo } from '@/lib/seo'
 
 interface Organization {
   id: string
@@ -83,6 +84,22 @@ function formatNumber(n: number): string {
   return n.toString()
 }
 
+/** Collapse whitespace and trim to `max` characters at a word boundary. */
+function clip(text: string, max: number): string {
+  const clean = text.replace(/\s+/g, ' ').trim()
+  if (clean.length <= max) return clean
+  const cut = clean.slice(0, max - 1)
+  const space = cut.lastIndexOf(' ')
+  return `${(space > max * 0.6 ? cut.slice(0, space) : cut).replace(/[\s.,;:\u2014-]+$/, '')}\u2026`
+}
+
+/** Meta description built from the organization's own words, topped up when they are very short. */
+function organizationDescription(org: Organization): string {
+  const blurb = clip(org.description || org.impactStatement || '', 155)
+  if (blurb.length >= 95) return blurb
+  return `${blurb ? `${blurb} ` : ''}See their campaigns and total raised in cedis on Ujimora.`
+}
+
 // ─── Component ──────────────────────────────────────────────
 
 export function OrganizationProfilePage() {
@@ -119,6 +136,16 @@ export function OrganizationProfilePage() {
       .finally(() => { if (!cancelled) setIsLoading(false) })
     return () => { cancelled = true }
   }, [slug])
+
+  const orgImage = org?.coverUrl || org?.logoUrl
+  useSeo({
+    title: org ? `${clip(org.name, 44)} | Ujimora` : 'Organization | Ujimora',
+    description: org
+      ? organizationDescription(org)
+      : 'Open an organization on Ujimora to see who they are, where in Ghana they work, what they have raised in cedis and which campaigns are running.',
+    path: `/organizations/${encodeURIComponent(org?.slug || slug || '')}`,
+    image: orgImage && /^https?:\/\//i.test(orgImage) ? orgImage : undefined,
+  })
 
   if (!slug || isLoading) {
     return (

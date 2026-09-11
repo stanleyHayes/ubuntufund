@@ -32,6 +32,7 @@ import SportsSoccerRoundedIcon from '@mui/icons-material/SportsSoccerRounded'
 import { keyframes } from '@mui/material/styles'
 import { NEUMORPHIC_FOREST_VARS, SHAPE } from '@ubuntu-fund/ui'
 import { InternalPageHero } from '../components/InternalPageHero'
+import { useSeo } from '@/lib/seo'
 
 // ─── Animations ──────────────────────────────────────────────────────────────
 
@@ -83,6 +84,12 @@ const TESTIMONIALS = [
 // ─── Component ───────────────────────────────────────────────────────────────
 
 function ForOrganizationsPage() {
+  useSeo({
+    title: 'Organization workspace for NGOs and institutions | Ujimora',
+    description: 'A shared workspace for Ghanaian NGOs, hospitals, schools, and faith groups to prepare campaigns, invite collaborators, track donations, and pass trust review.',
+    path: '/for-organizations',
+    type: 'website',
+  })
   const WEB_APP_URL = import.meta.env.VITE_WEB_APP_URL || 'http://localhost:8200'
 
   return (

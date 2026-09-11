@@ -1,3 +1,4 @@
+import { useSeo } from '@/lib/seo'
 import { AccountPageSkeleton, AccountRowsSkeleton } from '@/components/account/AccountPage'
 import { useState, useEffect, useCallback } from 'react'
 import Box from '@mui/material/Box'
@@ -301,6 +302,13 @@ function ListPanel({
 // ---------------------------------------------------------------------------
 
 export function AffiliateDashboardPage() {
+  useSeo({
+    title: 'Affiliate dashboard | Ujimora',
+    description:
+      'Track the referrals and commissions you have earned sharing Ujimora, choose your own referral code and link, and request a payout of your balance.',
+    path: '/affiliate',
+    robots: 'noindex, nofollow',
+  })
   const { dashboard, enrolled, isLoading, isEnrolling, error, enroll, refresh } = useAffiliate()
 
   const [referrals, setReferrals] = useState<AffiliateReferral[]>([])

@@ -1,3 +1,4 @@
+import { useSeo } from '@/lib/seo'
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -138,6 +139,13 @@ function formatCellValue(value: unknown, format?: string): React.ReactNode {
 // ─── Component ──────────────────────────────────────────────────────────────
 
 export function SubscriptionPage() {
+  useSeo({
+    title: 'Your subscription plan | Ujimora',
+    description:
+      'See the Ujimora plan you are on, switch between monthly and yearly billing, apply a coupon or cancel, and check the platform fee your plan carries.',
+    path: '/subscription',
+    robots: 'noindex, nofollow',
+  })
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [lastCheckout] = useState(() => readSubscriptionHandoff(null))

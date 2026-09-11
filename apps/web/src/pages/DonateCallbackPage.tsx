@@ -1,3 +1,4 @@
+import { useSeo } from '@/lib/seo'
 import Skeleton from '@mui/material/Skeleton'
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { useSearchParams, useNavigate, Link as RouterLink } from 'react-router-dom'
@@ -78,6 +79,13 @@ type Phase = 'resolving' | 'pending' | 'succeeded' | 'failed' | 'expired' | 'tim
 // ---------------------------------------------------------------------------
 
 export function DonateCallbackPage() {
+  useSeo({
+    title: 'Confirming your donation | Ujimora',
+    description:
+      'Ujimora is confirming the donation you just paid for. Stay on this page while we check with the payment provider, and please do not pay again.',
+    path: '/donate/callback',
+    robots: 'noindex, nofollow',
+  })
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
 

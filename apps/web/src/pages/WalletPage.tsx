@@ -1,3 +1,4 @@
+import { useSeo } from '@/lib/seo'
 import { LoadingDots } from '@ubuntu-fund/ui'
 import Button from '@mui/material/Button'
 import { BrandedTextField } from '@ubuntu-fund/ui'
@@ -75,6 +76,13 @@ function formatTxType(type: TransactionType): string {
 // ---------------------------------------------------------------------------
 
 export function WalletPage() {
+  useSeo({
+    title: 'Wallet and balances | Ujimora',
+    description:
+      'Check your Ujimora wallet balance in cedis, top it up where that is enabled, and read the full history of money moving in and out of your account.',
+    path: '/wallet',
+    robots: 'noindex, nofollow',
+  })
   const [searchParams] = useSearchParams()
   const [topUpConfig, setTopUpConfig] = useState<{ enabled: boolean; mode: string } | null>(null)
   const [topUpAmount, setTopUpAmount] = useState('')

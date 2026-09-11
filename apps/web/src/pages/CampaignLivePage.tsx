@@ -10,6 +10,7 @@
 // Active controls are recovered from the owner-only server endpoint.
 // ---------------------------------------------------------------------------
 
+import { useSeo } from '@/lib/seo'
 import { useCallback, useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -69,6 +70,14 @@ const PANEL_SX = {
   bgcolor: 'var(--neu-surface)',
 } as const
 
+function clip(text: string, max: number): string {
+  const clean = text.replace(/\s+/g, ' ').trim()
+  if (clean.length <= max) return clean
+  const cut = clean.slice(0, max - 1)
+  const space = cut.lastIndexOf(' ')
+  return `${(space > max * 0.6 ? cut.slice(0, space) : cut).replace(/[\s.,;:\u2014-]+$/, '')}\u2026`
+}
+
 function storageKeyFor(id: string) {
   return `uf_live_session:${id}`
 }
@@ -86,6 +95,15 @@ export function CampaignLivePage() {
   const [campaign, setCampaign] = useState<Campaign | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+
+  const liveCampaignName = clip(campaign?.title ?? '', 30)
+  useSeo({
+    title: liveCampaignName ? `Go live: ${liveCampaignName} | Ujimora` : 'Go live | Ujimora',
+    description:
+      'Start a live fundraising session for your campaign, set a target for the stream, and choose whether donor names, messages and amounts are shown.',
+    path: `/campaigns/${encodeURIComponent(id ?? '')}/live`,
+    robots: 'noindex, nofollow',
+  })
 
   const [session, setSession] = useState<LiveSession | null>(null)
 

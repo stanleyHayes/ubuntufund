@@ -1,3 +1,4 @@
+import { useSeo } from '@/lib/seo'
 import Alert from '@mui/material/Alert'
 import { AccountPageSkeleton, AccountHeading } from '@/components/account/AccountPage'
 import { useState } from 'react'
@@ -48,6 +49,13 @@ function isRefundEligible(donation: UserDonation): boolean {
 // ---------------------------------------------------------------------------
 
 export function MyDonationsPage() {
+  useSeo({
+    title: 'My donations | Ujimora',
+    description:
+      'Every donation you have made through Ujimora in one list, filtered by status or payment method, with the total you have given so far in cedis.',
+    path: '/donations',
+    robots: 'noindex, nofollow',
+  })
   const { donations, isLoading, error } = useMyDonations()
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [methodFilter, setMethodFilter] = useState<string>('all')

@@ -5,6 +5,7 @@ import { InternalPageHero } from '../components/InternalPageHero'
 import ProductIllustration from '../components/ProductIllustration'
 import { useColorMode } from '../context/ColorModeContext'
 import { featureGroups } from '../data/features'
+import { useSeo } from '@/lib/seo'
 
 const webUrl = import.meta.env.VITE_WEB_APP_URL || 'http://localhost:8200'
 
@@ -15,6 +16,12 @@ const illustrations = {
 } as const
 
 export default function FeaturesPage() {
+  useSeo({
+    title: 'Features for campaigns, creators and teams | Ujimora',
+    description: "Explore Ujimora's tools: campaign updates and collaboration, creator tip jars, contributions and payouts, verification checks, referrals and themes.",
+    path: '/features',
+    type: 'website',
+  })
   const { darkMode } = useColorMode()
   return (
     <>

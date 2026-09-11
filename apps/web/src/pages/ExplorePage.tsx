@@ -17,6 +17,7 @@ import { CampaignSearchBar, type CampaignSort } from '@/components/campaigns/Cam
 import { CampaignCard } from '@/components/campaigns/CampaignCard'
 import { PageBanner } from '@/components/layout/PageBanner'
 import { useCampaigns } from '@/hooks/useCampaigns'
+import { useSeo } from '@/lib/seo'
 
 // ─── Animations ─────────────────────────────────────────────
 
@@ -100,6 +101,13 @@ export function ExplorePage() {
   const [selectedStatus, setSelectedStatus] = useState<CampaignStatus | null>(null)
   const [sort, setSort] = useState<CampaignSort>('most_funded')
   const [page, setPage] = useState(0)
+
+  useSeo({
+    title: 'Explore campaigns in Ghana | Ujimora',
+    description:
+      'Browse fundraising campaigns across Ghana \u2014 medical, education, emergency, business and community. Filter by category or status, or search by name.',
+    path: '/explore',
+  })
 
   // Reset page on filter change
   useEffect(() => {

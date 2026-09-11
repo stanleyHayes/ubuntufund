@@ -1,3 +1,4 @@
+import { useSeo } from '@/lib/seo'
 import { LoadingDots } from '@ubuntu-fund/ui'
 import { useState, useEffect } from 'react'
 import { useParams, Link as RouterLink, useNavigate } from 'react-router-dom'
@@ -17,6 +18,14 @@ import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
 import { formatCurrency, ItemNotFound, SHAPE } from '@ubuntu-fund/ui'
 import { api } from '@/lib/api'
+
+function clip(text: string, max: number): string {
+  const clean = text.replace(/\s+/g, ' ').trim()
+  if (clean.length <= max) return clean
+  const cut = clean.slice(0, max - 1)
+  const space = cut.lastIndexOf(' ')
+  return `${(space > max * 0.6 ? cut.slice(0, space) : cut).replace(/[\s.,;:\u2014-]+$/, '')}\u2026`
+}
 
 const REFUND_REASONS = [
   'Campaign not delivering',
@@ -40,6 +49,15 @@ export function RefundRequestPage() {
       .then(setDonation)
       .catch(() => setDonation(null))
   }, [donationId])
+
+  const refundCampaign = clip(donation?.campaignName ?? '', 28)
+  useSeo({
+    title: refundCampaign ? `Refund request: ${refundCampaign} | Ujimora` : 'Request a refund | Ujimora',
+    description:
+      'Ask for a refund on a donation you made through Ujimora. Check the payment details, pick a reason, and send the request to our team for review.',
+    path: `/donations/refund/${encodeURIComponent(donationId ?? '')}`,
+    robots: 'noindex, nofollow',
+  })
 
   const [reason, setReason] = useState('')
   const [description, setDescription] = useState('')

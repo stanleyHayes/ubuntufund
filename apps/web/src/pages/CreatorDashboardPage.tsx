@@ -1,3 +1,4 @@
+import { useSeo } from '@/lib/seo'
 import { payoutInstitutionName } from '@ubuntu-fund/types'
 import { BankPicker } from '@/components/account/BankPicker'
 import type { Account } from '@/components/account/SavedPayoutAccounts'
@@ -53,6 +54,13 @@ interface Payout {
 }
 
 export function CreatorDashboardPage() {
+  useSeo({
+    title: 'Your creator page | Ujimora',
+    description:
+      'Set up your Ujimora creator page and shareable tip link, edit your handle, tagline and bio, and follow the tips and payouts you have received.',
+    path: '/creator',
+    robots: 'noindex, nofollow',
+  })
   const [loading, setLoading] = useState(true)
   const [policy, setPolicy] = useState<{
     eligible: boolean

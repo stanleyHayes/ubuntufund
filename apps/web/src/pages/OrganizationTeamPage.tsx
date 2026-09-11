@@ -1,3 +1,4 @@
+import { useSeo } from '@/lib/seo'
 import { useEffect, useState } from 'react'
 import {
   Alert,
@@ -48,6 +49,13 @@ const surface = {
   minWidth: 0,
 }
 export function OrganizationTeamPage() {
+  useSeo({
+    title: 'Organization team | Ujimora',
+    description:
+      'Run your Ujimora organization workspace: invite colleagues by email, give each of them a role, and keep track of the campaigns you manage together.',
+    path: '/organization-team',
+    robots: 'noindex, nofollow',
+  })
   const [workspaces, setWorkspaces] = useState<Workspace[]>([])
   const [selected, setSelected] = useState('')
   const [detail, setDetail] = useState<Detail | null>(null)

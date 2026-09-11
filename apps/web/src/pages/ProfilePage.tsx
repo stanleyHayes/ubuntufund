@@ -1,3 +1,4 @@
+import { useSeo } from '@/lib/seo'
 import { LoadingDots } from '@ubuntu-fund/ui'
 import { ProfileArtwork } from '@/components/profile/ProfileArtwork'
 import { ProfileImageEditor } from '@/components/profile/ProfileImageEditor'
@@ -145,6 +146,13 @@ function StatCard({ icon, value, label, color, delay }: { icon: React.ReactNode;
 // ─── Profile Page ────────────────────────────────────────────────────────────
 
 export function ProfilePage() {
+  useSeo({
+    title: 'Your profile | Ujimora',
+    description:
+      'Update the photo, name and bio on your Ujimora profile, change your password, check your verification badge and see the impact you have made.',
+    path: '/profile',
+    robots: 'noindex, nofollow',
+  })
   const { user, updateName } = useAuth()
   const [tab, setTab] = useState(0)
   const [images, setImages] = useState({ avatarUrl: '', coverUrl: '' })

@@ -21,6 +21,7 @@ import {
   SubscriptionTier,
   type SubscriptionPlan,
 } from '@ubuntu-fund/types'
+import { useSeo } from '@/lib/seo'
 
 // Use semantic colours so accents remain readable in every skin and mode.
 function accentOf() {
@@ -139,6 +140,13 @@ function PricingPage() {
     }).catch(() => { if (active) setError(true) })
     return () => { active = false }
   }, [retry])
+  // Before the early return below: the head must be set even while plans load.
+  useSeo({
+    title: 'Pricing and plans | Ujimora',
+    description: 'Compare Ujimora plans side by side: active campaign limits, cedi goal caps, platform fees, team seats and included tools, billed monthly or yearly.',
+    path: '/pricing',
+    type: 'website',
+  })
   if (!plans) return <Container maxWidth="lg" sx={{ py: 8 }}>
     <Typography variant="h3" sx={{ mb: 3 }}>Plans and pricing</Typography>
     {error ? <Alert severity="error" action={<Button onClick={() => { setError(false); setRetry(value => value + 1) }}>Retry</Button>}>Current pricing could not be loaded. Please try again.</Alert> : <Box aria-busy="true" aria-label="Loading current pricing" sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 3 }}>{[0, 1, 2].map(i => <Skeleton key={i} variant="rounded" height={400} />)}</Box>}</Container>

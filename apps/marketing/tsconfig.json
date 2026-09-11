@@ -11,6 +11,10 @@
     "isolatedModules": true,
     "jsx": "react-jsx",
     "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    // `__tests__` is in `include`, and the sitemap test reads files from disk to
+    // assert the sitemap covers every route. Without this the node builtins it
+    // imports fail type-check even though @types/node resolves at runtime.
+    "types": ["node", "vite/client"],
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]

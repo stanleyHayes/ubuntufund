@@ -1,3 +1,4 @@
+import { useSeo } from '@/lib/seo'
 import Skeleton from '@mui/material/Skeleton'
 import { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate, Link as RouterLink } from 'react-router-dom'
@@ -84,6 +85,13 @@ function SuccessMark() {
 // ---------------------------------------------------------------------------
 
 export function SubscriptionCallbackPage() {
+  useSeo({
+    title: 'Confirming your subscription | Ujimora',
+    description:
+      'Ujimora is confirming the plan payment you just made. Wait on this page for the result before you start another checkout for your subscription.',
+    path: '/subscription/callback',
+    robots: 'noindex, nofollow',
+  })
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
 

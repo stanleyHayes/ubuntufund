@@ -29,6 +29,7 @@ import MenuBookRoundedIcon from '@mui/icons-material/MenuBookRounded'
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import SupportAgentRoundedIcon from '@mui/icons-material/SupportAgentRounded'
 import { InternalPageHero } from '../components/InternalPageHero'
+import { useSeo } from '@/lib/seo'
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -134,6 +135,12 @@ const CONTACT_OPTIONS = [
 // ─── Component ───────────────────────────────────────────────────────────────
 
 function HelpPage() {
+  useSeo({
+    title: 'Help center: campaigns, giving, payouts | Ujimora',
+    description: 'Search answers on starting a campaign, donating in cedis, wallet and mobile money payments, verification and trust scores, and organization accounts.',
+    path: '/help',
+    type: 'website',
+  })
   const [search, setSearch] = useState('')
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
 

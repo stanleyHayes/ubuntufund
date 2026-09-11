@@ -33,6 +33,7 @@ import GroupsRounded from '@mui/icons-material/GroupsRounded'
 import { SHAPE } from '@ubuntu-fund/ui'
 import { keyframes } from '@mui/material/styles'
 import { PageBanner } from '@/components/layout/PageBanner'
+import { useSeo } from '@/lib/seo'
 import { useLeaderboard } from '@/hooks/useLeaderboard'
 import type { LeaderboardEntry, Period, Category } from '@/hooks/useLeaderboard'
 
@@ -650,6 +651,13 @@ export function LeaderboardPage() {
   const [period, setPeriod] = useState<Period>('lifetime')
   const [category, setCategory] = useState<Category>('all')
   const { entries: leaderboardEntries, stats, isLoading, error, refresh } = useLeaderboard(period, category)
+
+  useSeo({
+    title: 'Donor leaderboard | Ujimora',
+    description:
+      'See the people and organizations giving the most on Ujimora, ranked by cedis donated or number of donations \u2014 today, this month, this year or all time.',
+    path: '/leaderboard',
+  })
 
   const sorted = useMemo(() => getSorted(leaderboardEntries, mode), [leaderboardEntries, mode])
   const top3 = sorted.slice(0, 3)

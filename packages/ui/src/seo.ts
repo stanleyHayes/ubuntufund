@@ -131,6 +131,12 @@ export function createUseSeo(origin: string, defaults: { image: string; imageAlt
       applySeo({ title, description, path, image, imageAlt, type, robots, jsonLd }, origin, defaults)
       // No cleanup: the next route overwrites every value, and clearing on
       // unmount would blank the head for a frame during navigation.
+      //
+      // `jsonLdKey` stands in for `jsonLd` on purpose. Callers pass an object
+      // literal, whose identity changes on every render, so depending on it
+      // directly would rewrite the head in a loop. The serialised form is the
+      // stable value, and it changes exactly when the content does.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [title, description, path, image, imageAlt, type, robots, jsonLdKey])
   }
 }

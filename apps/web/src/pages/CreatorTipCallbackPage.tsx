@@ -1,3 +1,4 @@
+import { useSeo } from '@/lib/seo'
 import { useEffect, useState } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { Alert, Box, Button, Container, Typography } from '@mui/material'
@@ -5,6 +6,13 @@ import { api } from '@/lib/api'
 import { DonationCelebration } from '@/components/donate/DonationCelebration'
 type Result = { status: string; amount: number; currency: string; handle?: string; displayName?: string; thankYouMessage?: string }
 export function CreatorTipCallbackPage() {
+  useSeo({
+    title: 'Confirming your tip | Ujimora',
+    description:
+      'Ujimora is checking your tip payment with Paystack. Wait here for the result rather than sending the creator a second payment for the same tip.',
+    path: '/tip/callback',
+    robots: 'noindex, nofollow',
+  })
   const [params] = useSearchParams()
   const reference = params.get('reference') || params.get('trxref') || ''
   const [result, setResult] = useState<Result | null>(null)

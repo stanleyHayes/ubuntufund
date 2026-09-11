@@ -32,6 +32,7 @@ import YouTubeIcon from '@mui/icons-material/YouTube'
 import { SHAPE } from '@ubuntu-fund/ui'
 import { useContent } from '../hooks/useContent'
 import { InternalPageHero } from '../components/InternalPageHero'
+import { useSeo } from '@/lib/seo'
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -89,6 +90,12 @@ const eyebrowSx = {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 function ContactPage() {
+  useSeo({
+    title: 'Contact support and partnerships | Ujimora',
+    description: 'Message the Ujimora team about your account, a campaign problem, a partnership idea, or a bug, and see the response times we publish for each request.',
+    path: '/contact',
+    type: 'website',
+  })
   // Runtime CMS: contact details + social links (key 'contact'), falling back to the
   // hardcoded defaults when the CMS is unreachable.
   const contact = useContent('contact', CONTACT_FALLBACK)

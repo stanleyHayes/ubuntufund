@@ -19,6 +19,7 @@ import Typography from '@mui/material/Typography'
 import { SHAPE } from '@ubuntu-fund/ui'
 import { InternalPageHero } from '../components/InternalPageHero'
 import { useContent } from '../hooks/useContent'
+import { useSeo } from '@/lib/seo'
 
 interface TeamMember { name: string; role: string; initials: string; bio: string; image?: string; website?: string; companyUrl?: string; socials?: { label: string; href: string }[] }
 
@@ -46,6 +47,12 @@ const COMMITMENTS = [
 ]
 
 function AboutPage() {
+  useSeo({
+    title: 'About Ujimora: our mission, model and team',
+    description: 'Why Ujimora exists, how campaign records, review and updates fit together, and the Ghanaian team building clearer trust infrastructure for giving.',
+    path: '/about',
+    type: 'website',
+  })
   const about = useContent('about', ABOUT_FALLBACK)
   const cmsLeader = about.team?.[0]
   // Older CMS records still contain the launch placeholder.

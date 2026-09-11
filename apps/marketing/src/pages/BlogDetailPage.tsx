@@ -9,9 +9,10 @@ import Grid from '@mui/material/Grid'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import AccessTimeIcon from '@mui/icons-material/AccessTime'
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday'
-import { useParams, useNavigate, Link as RouterLink } from 'react-router-dom'
+import { useParams, useNavigate, useLocation, Link as RouterLink } from 'react-router-dom'
 import { SHAPE, ItemNotFound } from '@ubuntu-fund/ui'
 import { blogPosts, CATEGORY_COLORS } from './BlogPage'
+import { useSeo } from '@/lib/seo'
 
 // Editorial fallback copy. This intentionally avoids invented impact metrics,
 // customer quotes, or claims about payment providers that are not live.
@@ -26,11 +27,40 @@ function generateBody(post: (typeof blogPosts)[number]): string[] {
   ]
 }
 
+/** Trim editorial copy to a search-result limit on a word boundary. */
+function clampText(text: string, max: number): string {
+  if (text.length <= max) return text
+  const cut = text.slice(0, max - 1)
+  const space = cut.lastIndexOf(' ')
+  return `${(space > max * 0.6 ? cut.slice(0, space) : cut).replace(/[\s,.;:—-]+$/, '')}…`
+}
+
+/** Post titles run long, so the brand suffix is dropped before the title is. */
+function brandedTitle(title: string): string {
+  const branded = `${title} | Ujimora`
+  return branded.length <= 60 ? branded : clampText(title, 60)
+}
+
 function BlogDetailPage() {
   const { slug } = useParams<{ slug: string }>()
   const post = blogPosts.find((p) => p.slug === slug)
 
   const navigate = useNavigate()
+  const { pathname } = useLocation()
+
+  useSeo({
+    title: post ? brandedTitle(post.title) : 'Article not found | Ujimora blog',
+    description: post
+      ? clampText(post.excerpt, 158)
+      : 'This article is no longer available. Browse the Ujimora journal for current guidance on verification, campaign records and fundraising in Ghana.',
+    // An unknown slug still returns HTTP 200 from the SPA rewrite, so it needs
+    // the same soft-404 defence as the catch-all page: noindex, plus a canonical
+    // that stays self-referential. Pointing a noindexed URL's canonical at /blog
+    // invites Google to apply that noindex to /blog itself.
+    path: post ? `/blog/${post.slug}` : pathname.replace(/\/+$/, '') || '/blog',
+    type: post ? 'article' : 'website',
+    robots: post ? undefined : 'noindex, follow',
+  })
 
   if (!post) {
     return (

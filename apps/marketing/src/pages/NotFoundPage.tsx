@@ -1,8 +1,9 @@
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
-import { Link as RouterLink } from 'react-router-dom'
+import { Link as RouterLink, useLocation } from 'react-router-dom'
 import { SHAPE } from '@ubuntu-fund/ui'
+import { useSeo } from '@/lib/seo'
 
 const keyframes = `
   @keyframes sunsetShift {
@@ -138,6 +139,19 @@ function ShootingStars() {
 }
 
 export default function NotFoundPage() {
+  const { pathname } = useLocation()
+
+  // Both SPAs serve this page with HTTP 200 for any unknown URL, so noindex is
+  // the only thing stopping every mistyped path becoming an indexable soft-404.
+  // The canonical stays self-referential rather than pointing at the homepage.
+  useSeo({
+    title: 'Page not found | Ujimora',
+    description:
+      'This page has drifted beyond the horizon. Head back to the Ujimora homepage to find campaigns, pricing, help articles and the rest of the site.',
+    path: pathname.replace(/\/+$/, '') || '/',
+    robots: 'noindex, follow',
+  })
+
   return (
     <Box
       sx={{

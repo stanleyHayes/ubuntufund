@@ -1,3 +1,4 @@
+import { useSeo } from '@/lib/seo'
 import { LoadingDots } from '@ubuntu-fund/ui'
 import { useState, useEffect } from 'react'
 import Box from '@mui/material/Box'
@@ -32,6 +33,13 @@ const ROLE_COLORS: Record<CollaboratorRole, 'primary' | 'secondary' | 'info'> = 
 }
 
 export function CollaborationInvitationsPage() {
+  useSeo({
+    title: 'Collaboration invitations | Ujimora',
+    description:
+      'Pending invitations from other Ujimora campaign creators who want you on their team. Read what each one is asking for, then accept or decline.',
+    path: '/invitations',
+    robots: 'noindex, nofollow',
+  })
   const [invitations, setInvitations] = useState<CampaignCollaborator[]>([])
   const [campaignNames, setCampaignNames] = useState<Record<string, string>>({})
   const [snackMessage, setSnackMessage] = useState('')

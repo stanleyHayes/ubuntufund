@@ -1,3 +1,4 @@
+import { useSeo } from '@/lib/seo'
 import Alert from '@mui/material/Alert'
 import { AccountPageSkeleton, AccountHeading } from '@/components/account/AccountPage'
 import { useState } from 'react'
@@ -389,6 +390,13 @@ function StatCard({ label, value, color, icon }: { label: string; value: string 
 // ─── Page ──────────────────────────────────────────────────
 
 export function MyCampaignsPage() {
+  useSeo({
+    title: 'My campaigns | Ujimora',
+    description:
+      'Manage the fundraisers you run on Ujimora: filter by draft, active or funded, see how much each has raised in cedis, and copy a link to share.',
+    path: '/my-campaigns',
+    robots: 'noindex, nofollow',
+  })
   const { campaigns, isLoading, error } = useMyCampaigns()
   const [tabIndex, setTabIndex] = useState(0)
   const [shareSnack, setShareSnack] = useState(false)

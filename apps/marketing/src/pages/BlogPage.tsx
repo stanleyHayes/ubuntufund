@@ -14,6 +14,7 @@ import { Link as RouterLink } from 'react-router-dom'
 import { NEUMORPHIC_FOREST_VARS, SHAPE } from '@ubuntu-fund/ui'
 import AutoStoriesRoundedIcon from '@mui/icons-material/AutoStoriesRounded'
 import { InternalPageHero } from '../components/InternalPageHero'
+import { useSeo } from '@/lib/seo'
 
 // ─── Data ──────────────────────────────────────────────────
 
@@ -580,6 +581,14 @@ function BlogCard({ post, variant = 'vertical' }: { post: BlogPost; variant?: 'v
 
 function BlogPage() {
   const [activeCategory, setActiveCategory] = useState('All')
+
+  useSeo({
+    title: 'Fundraising field notes | Ujimora blog',
+    description:
+      'Practical guidance on campaign records, verification, diaspora giving and responsible fundraising in Ghana, from the Ujimora editorial team.',
+    path: '/blog',
+    type: 'website',
+  })
 
   const featured = blogPosts.find((p) => p.featured)!
   const rest = blogPosts.filter((p) => !p.featured)

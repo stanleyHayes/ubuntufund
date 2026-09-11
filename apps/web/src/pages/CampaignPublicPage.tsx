@@ -24,6 +24,7 @@ import {
   donatePath,
   type CampaignPublicView,
 } from '@/lib/fundraising'
+import { useSeo } from '@/lib/seo'
 
 // ---------------------------------------------------------------------------
 // Animations
@@ -36,6 +37,29 @@ const fadeInUp = keyframes`
 
 function formatCategory(category: string): string {
   return category.charAt(0).toUpperCase() + category.slice(1).replace(/_/g, ' ')
+}
+
+/** Statuses a campaign page must never be indexed in — it is not public yet, or no longer is. */
+const UNINDEXED_STATUSES: CampaignStatus[] = [
+  CampaignStatus.DRAFT,
+  CampaignStatus.PENDING_REVIEW,
+  CampaignStatus.BLOCKED,
+]
+
+/** Collapse whitespace and trim to `max` characters at a word boundary. */
+function clip(text: string, max: number): string {
+  const clean = text.replace(/\s+/g, ' ').trim()
+  if (clean.length <= max) return clean
+  const cut = clean.slice(0, max - 1)
+  const space = cut.lastIndexOf(' ')
+  return `${(space > max * 0.6 ? cut.slice(0, space) : cut).replace(/[\s.,;:\u2014-]+$/, '')}\u2026`
+}
+
+/** Meta description built from the organizer's own story, topped up when it is very short. */
+function campaignDescription(story: string): string {
+  const blurb = clip(story || '', 155)
+  if (blurb.length >= 100) return blurb
+  return `${blurb ? `${blurb} ` : ''}Donate by mobile money or card on Ujimora.`
 }
 
 function looksLikeNotFound(message: string): boolean {
@@ -90,6 +114,21 @@ export function CampaignPublicPage() {
       active = false
     }
   }, [slug])
+
+  // This slug URL is the one public shape for a campaign: /campaigns/:id and
+  // /c/:id resolve to the same fundraiser and canonicalise here, so the page
+  // names itself off the campaign's own slug rather than whatever was typed.
+  const shareImage = campaign?.socialPreview?.imageUrl ?? campaign?.imageUrls?.[0]
+  useSeo({
+    title: campaign ? `${clip(campaign.title, 46)} | Ujimora` : 'Support a campaign | Ujimora',
+    description: campaign
+      ? campaignDescription(campaign.socialPreview?.summary || campaign.description)
+      : 'See what this Ghanaian fundraiser is raising for, how far along it is towards its cedi goal, and donate by mobile money or card — no account needed.',
+    path: `/c/${encodeURIComponent(campaign?.slug || slug || '')}`,
+    type: 'article',
+    image: shareImage && /^https?:\/\//i.test(shareImage) ? shareImage : undefined,
+    robots: campaign && UNINDEXED_STATUSES.includes(campaign.status) ? 'noindex, follow' : undefined,
+  })
 
   if (isLoading) {
     return (

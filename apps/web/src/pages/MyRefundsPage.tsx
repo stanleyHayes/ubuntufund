@@ -1,3 +1,4 @@
+import { useSeo } from '@/lib/seo'
 import { useState, useEffect } from 'react'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
@@ -44,6 +45,13 @@ const STATUS_CONFIG: Record<string, { bg: string; color: string }> = {
 // ---------------------------------------------------------------------------
 
 export function MyRefundsPage() {
+  useSeo({
+    title: 'My refund requests | Ujimora',
+    description:
+      'Follow the refund requests you have raised on Ujimora: the campaign, the amount, the reason you gave, and how far each request has got in review.',
+    path: '/refunds',
+    robots: 'noindex, nofollow',
+  })
   const [refunds, setRefunds] = useState<Refund[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
