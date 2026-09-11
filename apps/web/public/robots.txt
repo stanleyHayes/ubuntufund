@@ -1,7 +1,40 @@
+# app.ujimora.com — the product.
+#
+# Public surfaces (campaigns, organizations, creator tip pages, explore and the
+# leaderboard) are the long-tail search surface and stay crawlable. Everything
+# that needs a session, and every payment callback, is blocked: callback URLs
+# carry provider references in the query string, so they must never be indexed.
 User-agent: *
 Allow: /
+
+# Authenticated areas
 Disallow: /dashboard
 Disallow: /settings
 Disallow: /kyc
-Disallow: /creator
 Disallow: /my-campaigns
+Disallow: /profile
+Disallow: /donations
+Disallow: /refunds
+Disallow: /payout-accounts
+Disallow: /subscription
+Disallow: /affiliate
+Disallow: /wallet
+Disallow: /invitations
+Disallow: /organization-team
+Disallow: /campaigns/new
+
+# The creator dashboard only. The `$` anchor matters: a bare `Disallow: /creator`
+# is a prefix match, so it also blocked /creators/:handle — the public creator
+# tip pages, which are content we want indexed.
+Disallow: /creator$
+
+# Payment and provider callbacks — transient, per-user, and reference-bearing.
+Disallow: /donate/callback
+Disallow: /tip/callback
+Disallow: /subscription/callback
+
+# Live sessions are ephemeral; the campaign page is the durable URL.
+Disallow: /live/
+Disallow: /*/live/
+
+Sitemap: https://app.ujimora.com/sitemap.xml

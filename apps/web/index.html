@@ -24,7 +24,7 @@
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://ujimora.com/" />
+    <meta property="og:url" content="https://app.ujimora.com/" />
     <meta property="og:title" content="Ujimora — Trusted Crowdfunding in Ghana" />
     <meta property="og:description" content="Ghana&apos;s trust infrastructure for giving. Discover and support verified campaigns across Ghana. Together, we fund what matters." />
     <meta property="og:image" content="https://ujimora.com/og-image.png" />
@@ -38,14 +38,20 @@
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@ujimora" />
-    <meta name="twitter:url" content="https://ujimora.com/" />
+    <meta name="twitter:url" content="https://app.ujimora.com/" />
     <meta name="twitter:title" content="Ujimora — Trusted Crowdfunding in Ghana" />
     <meta name="twitter:description" content="Ghana&apos;s trust infrastructure for giving. Discover and support verified campaigns across Ghana. Together, we fund what matters." />
     <meta name="twitter:image" content="https://ujimora.com/og-image.png" />
     <meta name="twitter:image:alt" content="Ujimora — Trusted crowdfunding in Ghana" />
 
-    <!-- Canonical -->
-    <link rel="canonical" href="https://ujimora.com/" />
+    <!-- Canonical is set per route at runtime (src/hooks/useSeo.ts).
+         Deliberately absent here: vercel.json rewrites /(.*) -> / so this head is
+         served for every path, and a static canonical pointing at the marketing
+         homepage told Google that every campaign, creator and organization page
+         was a duplicate of ujimora.com/ — a cross-domain canonical Google
+         honours, which made the whole long-tail surface ineligible to rank.
+         With none present, Google self-canonicalises until the hook supplies
+         the real URL. -->
   </head>
   <body>
     <div id="root"></div>

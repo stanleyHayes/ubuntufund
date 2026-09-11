@@ -1,5 +1,6 @@
 export { ujimoraTheme, createUjimoraTheme, getBrandTokens, getNeumorphicTokens, NEUMORPHIC_SMOKE_VARS, NEUMORPHIC_WHITE_VARS, NEUMORPHIC_FOREST_VARS, ttSquaresFontFace, SHAPE, ROUNDED_BUTTON_STYLES, getSkinVars, applySkinVars, THEME_SKINS } from './theme'
 export { revealThemeChange, themeTransitionStyles } from './themeTransition'
+export { applySeo, createUseSeo, type SeoMeta } from './seo'
 export type { ThemeSkin } from './theme'
 export { Button } from './components/Button'
 export { Card } from './components/Card'
