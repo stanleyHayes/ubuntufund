@@ -16,7 +16,8 @@ const registerSchema = z
     organizationName: z.string().min(2).max(160).optional(),
     organizationType: z.nativeEnum(OrganizationType).optional(),
     registrationNumber: z.string().max(100).optional(),
-    website: z.string().url().max(500).optional(),
+    website: z.string().trim().url().max(500).optional(),
+    needsWebsite: z.boolean().optional(),
     referralCode: z.string().min(3).max(24).optional(),
   })
   .superRefine((value, context) => {

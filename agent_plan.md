@@ -1,5 +1,12 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-12 — Organization website requests
+
+- Organization web signup shows an optional, unchecked “Does your organization need a website?” checkbox while Website is blank. Entering a URL clears the selection; the accompanying copy identifies Neurodyne Corp Ltd as the contact company.
+- Saved `needsWebsite` on the account, retained through repository updates and registration/login responses. Server only records true for an explicit organization opt-in with no website. Admin account details show the request for follow-up.
+- Signed-in organizations with a saved request see a notice that parent company Neurodyne Corp Ltd will contact them, with links to https://neurodyne.dev and mailto:info@neurodyne.dev.
+- Validation: 6 API integration and 9 web component tests pass; API/web/admin type checks, focused lint, web production build and diff checks pass. Existing build chunk-size advisory remains. No production deployment or external contact was performed; native mobile UI and browser visual acceptance are outside this change.
+
 ### 2026-09-12 — Campaign-style team photo uploads
 
 - Replaced About-page team Photo URL fields with the shared campaign ImageUpload component: file selection/drag-drop, progress, square portrait preview, replace/remove and 4 MB limit. Authenticated admin uploads use the existing API profiles upload endpoint.

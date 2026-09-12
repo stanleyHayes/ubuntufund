@@ -87,6 +87,7 @@ export interface KYCVerification {
 }
 
 export interface User {
+  needsWebsite?: boolean
   organizationName?: string
   id: string
   email: string
@@ -117,6 +118,7 @@ export interface CreateUserInput {
   country?: string
   role?: UserRole
   /** Organization-specific fields */
+  needsWebsite?: boolean
   organizationName?: string
   organizationType?: OrganizationType
   registrationNumber?: string

@@ -14,7 +14,7 @@ interface AuthState {
 interface AuthContextValue extends AuthState {
   sessionExpired: boolean
   login: (email: string, password: string) => Promise<void>
-  register: (data: { name: string; email: string; password: string; country?: string; role?: string; organizationName?: string; organizationType?: string; registrationNumber?: string; website?: string; referralCode?: string }) => Promise<void>
+  register: (data: { name: string; email: string; password: string; country?: string; role?: string; organizationName?: string; organizationType?: string; registrationNumber?: string; website?: string; needsWebsite?: boolean; referralCode?: string }) => Promise<void>
   updateName: (name: string) => void
   logout: () => void
 }
@@ -78,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState({ user, tokens, isAuthenticated: true, isLoading: false })
   }, [])
 
-  const register = useCallback(async (data: { name: string; email: string; password: string; country?: string; role?: string; organizationName?: string; organizationType?: string; registrationNumber?: string; website?: string; referralCode?: string }) => {
+  const register = useCallback(async (data: { name: string; email: string; password: string; country?: string; role?: string; organizationName?: string; organizationType?: string; registrationNumber?: string; website?: string; needsWebsite?: boolean; referralCode?: string }) => {
     const { user, tokens } = await registerApi(data)
     setSessionExpired(false)
     saveToStorage(user, tokens)

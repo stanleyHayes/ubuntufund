@@ -20,6 +20,7 @@ function toRecord(doc: UserDocument): AdminUserRecord {
     country: doc.country,
     emailVerified: doc.emailVerified,
     complianceApprovedCampaignLimit: doc.complianceApprovedCampaignLimit,
+    needsWebsite: doc.needsWebsite ?? false,
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
   };

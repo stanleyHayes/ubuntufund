@@ -3,6 +3,7 @@ import Box from '@mui/material/Box'
 import { Outlet, useLocation } from 'react-router-dom'
 import { Header } from './Header'
 import { Footer } from './Footer'
+import { WebsiteRequestNotice } from '../auth/WebsiteRequestNotice'
 import { MobileBottomNav } from './MobileBottomNav'
 
 export function Layout() {
@@ -29,6 +30,7 @@ export function Layout() {
     >
       <Header />
       <Box component="main" sx={{ flex: 1 }}>
+        <WebsiteRequestNotice />
         <Box key={pathname} className="uf-page-enter">
           <Outlet />
         </Box>

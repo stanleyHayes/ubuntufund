@@ -127,6 +127,7 @@ export interface AuthTokens {
 }
 
 export interface AuthUser {
+  needsWebsite?: boolean
   organizationName?: string
   id: string
   name: string
@@ -160,6 +161,7 @@ export async function registerApi(data: {
   password: string
   country?: string
   role?: string
+  needsWebsite?: boolean
   organizationName?: string
   organizationType?: string
   registrationNumber?: string

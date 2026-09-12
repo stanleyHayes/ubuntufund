@@ -17,6 +17,7 @@ export interface UserProps {
   organizationType?: OrganizationType;
   registrationNumber?: string;
   website?: string;
+  needsWebsite?: boolean;
   /** Compliance-approved campaign-goal ceiling (spec §18); undefined = plan cap only. */
   complianceApprovedCampaignLimit?: number;
   emailVerified: boolean;
@@ -86,6 +87,9 @@ export class UserEntity {
   }
   get registrationNumber(): string | undefined {
     return this.props.registrationNumber;
+  }
+  get needsWebsite(): boolean {
+    return this.props.needsWebsite ?? false;
   }
   get website(): string | undefined {
     return this.props.website;

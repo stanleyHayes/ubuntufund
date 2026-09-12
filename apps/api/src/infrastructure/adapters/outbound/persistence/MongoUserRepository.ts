@@ -24,6 +24,7 @@ function toDomain(doc: UserDocument): UserEntity {
     organizationType: doc.organizationType,
     registrationNumber: doc.registrationNumber,
     website: doc.website,
+    needsWebsite: doc.needsWebsite,
     complianceApprovedCampaignLimit: doc.complianceApprovedCampaignLimit,
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
@@ -48,6 +49,7 @@ export class MongoUserRepository implements UserRepositoryPort {
       organizationType: plain.organizationType,
       registrationNumber: plain.registrationNumber,
       website: plain.website,
+      needsWebsite: plain.needsWebsite,
     });
     return toDomain(doc);
   }
@@ -81,6 +83,7 @@ export class MongoUserRepository implements UserRepositoryPort {
       organizationType: plain.organizationType,
       registrationNumber: plain.registrationNumber,
       website: plain.website,
+      needsWebsite: plain.needsWebsite,
     };
     // Mongoose ignores `undefined` on $set, so clearing a compliance limit must
     // $unset the field rather than set it to undefined (otherwise the old value

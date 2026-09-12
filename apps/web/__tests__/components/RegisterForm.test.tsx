@@ -44,4 +44,27 @@ describe('registration steps', () => {
     expect(mocks.navigate).toHaveBeenCalledWith('/subscription?tier=enterprise&billingCycle=yearly&checkoutError=1')
   })
 
+  it('offers an unchecked website request only while the organization website is blank', () => {
+    mount('?role=organization'); next()
+    const checkbox = screen.getByRole('checkbox', { name: 'Does your organization need a website?' })
+    expect(checkbox).not.toBeChecked()
+    fireEvent.click(checkbox)
+    expect(checkbox).toBeChecked()
+    fill(/Website \(optional\)/, 'https://example.com')
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+    fill(/Website \(optional\)/, '   ')
+    expect(screen.getByRole('checkbox')).not.toBeChecked()
+  })
+
+  it('attaches the website request to organization signup', async () => {
+    mocks.register.mockClear()
+    mount('?role=organization'); next()
+    fill(/Organization name/, 'Community Foundation'); fill(/Organization type/, 'ngo')
+    fireEvent.click(screen.getByRole('checkbox'))
+    next()
+    fill(/Contact name/, 'Contact Person'); fill(/^Email/, 'contact@example.com'); fill(/^Password/, 'securePassword1'); fill(/Confirm password/, 'securePassword1'); next()
+    fireEvent.click(screen.getByRole('button', { name: 'Create account' }))
+    await vi.waitFor(() => expect(mocks.register).toHaveBeenCalledWith(expect.objectContaining({ role: 'organization', needsWebsite: true, website: undefined })))
+  })
+
 })

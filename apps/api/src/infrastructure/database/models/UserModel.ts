@@ -16,6 +16,7 @@ export interface UserDocument extends Document {
   organizationType?: OrganizationType;
   registrationNumber?: string;
   website?: string;
+  needsWebsite?: boolean;
   /**
    * Compliance-approved campaign-goal ceiling (spec §18). When set, the effective
    * campaign limit is MIN(plan cap, this). Undefined = no compliance restriction
@@ -54,6 +55,7 @@ const userSchema = new Schema<UserDocument>(
     organizationType: { type: String, enum: Object.values(OrganizationType) },
     registrationNumber: { type: String, trim: true },
     website: { type: String, trim: true },
+    needsWebsite: { type: Boolean, default: false },
     complianceApprovedCampaignLimit: { type: Number },
     deletedAt: { type: Date, index: true },
     deletedBy: { type: String },

@@ -145,6 +145,7 @@ export default function UserDetailPage() {
           <Box component="dl" sx={{ m: 0, display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2.5, py: 3, borderTop: 1, borderBottom: 1, borderColor: 'divider' }}>
             {[
               ['Country', user.country || 'Not provided'],
+              ...(user.role === 'organization' ? [['Website request', user.needsWebsite ? 'Website requested — Neurodyne Corp Ltd follow-up' : 'Not requested']] : []),
               ['Joined', new Date(user.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })],
               ['Verification', verificationLabels[user.verificationLevel] ?? 'Unknown'],
               ['Account ID', user.id],

@@ -7,6 +7,8 @@ import { OrganizationTypePicker } from './OrganizationTypePicker'
 import { PasswordStrength } from './PasswordStrength'
 import Button from '@mui/material/Button'
 import Alert from '@mui/material/Alert'
+import Checkbox from '@mui/material/Checkbox'
+import FormControlLabel from '@mui/material/FormControlLabel'
 import Typography from '@mui/material/Typography'
 import Link from '@mui/material/Link'
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded'
@@ -130,6 +132,7 @@ export function RegisterForm() {
   const [organizationType, setOrganizationType] = useState('')
   const [registrationNumber, setRegistrationNumber] = useState('')
   const [website, setWebsite] = useState('')
+  const [needsWebsite, setNeedsWebsite] = useState(false)
   const [billingCycle, setBillingCycle] = useState<BillingCycle>(BillingCycle.MONTHLY)
   const [selectedTier, setSelectedTier] = useState<SubscriptionTier>(SubscriptionTier.FREE)
   // Seeded from the ?ref= link App.tsx stored. Editable, because a code shared
@@ -203,6 +206,7 @@ export function RegisterForm() {
               organizationType,
               registrationNumber: registrationNumber.trim() || undefined,
               website: website.trim() || undefined,
+              needsWebsite: !website.trim() && needsWebsite,
             }
           : {}),
       })
@@ -428,12 +432,26 @@ export function RegisterForm() {
               <TextField
                 label="Website (optional)"
                 value={website}
-                onChange={(e) => setWebsite(e.target.value)}
+                onChange={(e) => {
+                  setWebsite(e.target.value)
+                  if (e.target.value.trim()) setNeedsWebsite(false)
+                }}
                 error={!!errors.website}
                 helperText={errors.website}
                 placeholder="https://"
                 fullWidth
               />
+              {!website.trim() && (
+                <Box>
+                  <FormControlLabel
+                    control={<Checkbox checked={needsWebsite} onChange={(event) => setNeedsWebsite(event.target.checked)} />}
+                    label="Does your organization need a website?"
+                  />
+                  <Typography variant="body2" color="text.secondary">
+                    Optional. Check this box to request contact from our parent company, Neurodyne Corp Ltd, about a website for your organization.
+                  </Typography>
+                </Box>
+              )}
             </>
           )}
         </Box>

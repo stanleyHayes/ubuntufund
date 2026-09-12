@@ -22,6 +22,7 @@ export interface AdminUserRecord {
   trustScore: number;
   country?: string;
   emailVerified: boolean;
+  needsWebsite?: boolean;
   /** Compliance-approved campaign-goal ceiling (spec §18); -1 = unlimited. */
   complianceApprovedCampaignLimit?: number;
   createdAt: Date;
