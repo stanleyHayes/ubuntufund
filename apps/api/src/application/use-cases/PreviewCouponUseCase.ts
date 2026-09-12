@@ -69,21 +69,28 @@ export class PreviewCouponUseCase {
       // affiliate's referral code, which discounts just the same.
       const unknownCode = err instanceof AppError && err.message === 'Coupon not found';
       if (unknownCode && this.affiliateCodePricing) {
-        const quote = await this.affiliateCodePricing.quote(
-          code,
-          userId,
-          baseAmount,
-          CURRENCY
-        );
-        if (quote) {
-          return {
-            valid: true,
-            code: quote.code,
+        try {
+          const quote = await this.affiliateCodePricing.quote(
+            code,
+            userId,
             baseAmount,
-            discountAmount: quote.discountAmount,
-            finalAmount: quote.finalAmount,
-            currency: CURRENCY,
-          };
+            CURRENCY
+          );
+          if (quote) {
+            return {
+              valid: true,
+              code: quote.code,
+              baseAmount,
+              discountAmount: quote.discountAmount,
+              finalAmount: quote.finalAmount,
+              currency: CURRENCY,
+            };
+          }
+        } catch {
+          // This endpoint's whole contract is that it never throws — callers
+          // render `valid: false` rather than handling an error. A database
+          // blip inside the affiliate lookup must degrade to "no discount",
+          // not 500 a page that was only quoting a price.
         }
       }
 

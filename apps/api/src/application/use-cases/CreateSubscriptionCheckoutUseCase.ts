@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import {
   BillingCycle,
   CouponRedemptionStatus,
+  CouponSurface,
   SubscriptionCheckoutStatus,
   SubscriptionTier,
   type CouponRedemption,
@@ -145,6 +146,12 @@ export class CreateSubscriptionCheckoutUseCase {
         discountAmount = quote.discountAmount;
         finalAmount = quote.finalAmount;
         affiliateCode = quote;
+        // Record the code even though there is no coupon record behind it.
+        // Without it the checkout persists a non-zero discountAmount attached
+        // to nothing, and neither the admin console nor finance can say where
+        // the money went. couponId stays unset on purpose — settlement keys
+        // coupon redemption off it, and this is not a coupon.
+        couponCode = quote.code;
       }
     }
 
@@ -195,6 +202,10 @@ export class CreateSubscriptionCheckoutUseCase {
             code: couponCode,
             userId,
             checkoutId: checkout.id,
+            // Without this, "no surface" would mean both "written before
+            // surfaces existed" and "a current subscription redemption", and a
+            // query for SUBSCRIPTION rows would return nothing.
+            surface: CouponSurface.SUBSCRIPTION,
             tier,
             billingCycle,
             status: CouponRedemptionStatus.PENDING,

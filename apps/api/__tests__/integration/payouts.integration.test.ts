@@ -32,6 +32,7 @@ import { UserModel } from '../../src/infrastructure/database/models/UserModel.js
 import { CampaignModel } from '../../src/infrastructure/database/models/CampaignModel.js';
 import { CampaignBalanceModel } from '../../src/infrastructure/database/models/CampaignBalanceModel.js';
 import { PayoutModel } from '../../src/infrastructure/database/models/PayoutModel.js';
+import { CouponModel } from '../../src/infrastructure/database/models/CouponModel.js';
 import { JournalLineModel } from '../../src/infrastructure/database/models/JournalLineModel.js';
 import { CampaignCategory, CampaignPriority } from '@ubuntu-fund/types';
 
@@ -730,4 +731,109 @@ describe('Payouts Integration', () => {
     expect(Array.isArray(res.body.data)).toBe(true);
     expect(res.body.data[0].code).toBe('MTN');
   });
+
+  describe('a coupon on the withdrawal fee', () => {
+    /**
+     * End to end, because the whole point is that the discount reaches the
+     * money. The coupon reduces the SERVICE FEE, never the amount withdrawn:
+     * the organizer receives more and the platform forgoes fee revenue.
+     */
+    it('lowers the fee and raises the net, and redeems exactly once', async () => {
+      const { userId, token } = await registerUser(app, uniqueEmail('feecoupon'));
+      const campaignId = await createActiveCampaign(app, token, userId);
+      await fundCampaign(app, campaignId, 1000);
+      await endCampaign(campaignId);
+      await addRecipient(app, campaignId, token);
+
+      await CouponModel.create({
+        code: 'HALFFEE',
+        discountType: 'percent',
+        amount: 50,
+        currency: 'GHS',
+        redemptions: 0,
+        maxRedemptions: 5,
+        appliesToSurfaces: ['payout_fee'],
+        active: true,
+      });
+
+      // Priority carries a fee; standard is free and has nothing to discount.
+      const plain = await request(app)
+        .post(`/api/v1/campaigns/${campaignId}/payouts`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ amount: 400, type: 'priority' });
+      expect(plain.status).toBe(201);
+      const fullFee = plain.body.data.fee as number;
+      expect(fullFee).toBeGreaterThan(0);
+
+      const discounted = await request(app)
+        .post(`/api/v1/campaigns/${campaignId}/payouts`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ amount: 400, type: 'priority', couponCode: 'HALFFEE' });
+      expect(discounted.status).toBe(201);
+
+      expect(discounted.body.data.fee).toBe(fullFee / 2);
+      // The withdrawn amount is untouched; only the fee moved.
+      expect(discounted.body.data.amount).toBe(400);
+      expect(discounted.body.data.netAmount).toBe(400 - fullFee / 2);
+
+      const coupon = await CouponModel.findOne({ code: 'HALFFEE' });
+      expect(coupon!.redemptions, 'redeemed once, for the one payout').toBe(1);
+    });
+
+    it('refuses a code on a standard payout, which has no fee to discount', async () => {
+      // Otherwise the organizer spends a redemption and receives nothing.
+      const { userId, token } = await registerUser(app, uniqueEmail('freefee'));
+      const campaignId = await createActiveCampaign(app, token, userId);
+      await fundCampaign(app, campaignId, 1000);
+      await endCampaign(campaignId);
+      await addRecipient(app, campaignId, token);
+
+      await CouponModel.create({
+        code: 'NOFEE',
+        discountType: 'percent',
+        amount: 50,
+        currency: 'GHS',
+        redemptions: 0,
+        appliesToSurfaces: ['payout_fee'],
+        active: true,
+      });
+
+      const res = await request(app)
+        .post(`/api/v1/campaigns/${campaignId}/payouts`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ amount: 400, couponCode: 'NOFEE' });
+
+      expect(res.status).toBe(422);
+      const coupon = await CouponModel.findOne({ code: 'NOFEE' });
+      expect(coupon!.redemptions).toBe(0);
+    });
+
+    it('refuses a subscription coupon, and spends nothing', async () => {
+      const { userId, token } = await registerUser(app, uniqueEmail('subcoupon'));
+      const campaignId = await createActiveCampaign(app, token, userId);
+      await fundCampaign(app, campaignId, 1000);
+      await endCampaign(campaignId);
+      await addRecipient(app, campaignId, token);
+
+      // No surfaces = subscription only, which is every pre-existing coupon.
+      await CouponModel.create({
+        code: 'SUBONLY',
+        discountType: 'percent',
+        amount: 50,
+        currency: 'GHS',
+        redemptions: 0,
+        active: true,
+      });
+
+      const res = await request(app)
+        .post(`/api/v1/campaigns/${campaignId}/payouts`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ amount: 400, type: 'priority', couponCode: 'SUBONLY' });
+
+      expect(res.status).toBe(422);
+      const coupon = await CouponModel.findOne({ code: 'SUBONLY' });
+      expect(coupon!.redemptions).toBe(0);
+    });
+  });
+
 });

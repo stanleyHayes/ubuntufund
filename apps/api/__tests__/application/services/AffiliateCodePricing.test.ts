@@ -123,3 +123,41 @@ describe('attaching the referral', () => {
     await expect(pricing.attachReferral('aff-1', 'buyer', 'ama-gh')).resolves.toBeUndefined();
   });
 });
+
+describe('the discount only exists to buy a commission', () => {
+  it('is refused once the referral has already converted', async () => {
+    // The commission is once per referee ever. Without this the discount would
+    // recur on every renewal and upgrade while earning the referrer nothing —
+    // pure cash out the door, repeatable indefinitely.
+    const { pricing } = build(affiliate(), 20, {
+      id: 'ref-1',
+      referrerId: 'aff-1',
+      status: 'converted',
+    });
+    await expect(pricing.quote('ama-gh', 'buyer', 200, 'GHS')).resolves.toBeNull();
+  });
+
+  it('is refused when the buyer was referred by someone else', async () => {
+    // This affiliate will be credited nothing — refereeId is unique, so their
+    // code cannot take over the existing referral. Granting the discount would
+    // be the platform paying for a conversion nobody earns.
+    const { pricing } = build(affiliate(), 20, {
+      id: 'ref-1',
+      referrerId: 'aff-other',
+      status: 'pending',
+    });
+    await expect(pricing.quote('ama-gh', 'buyer', 200, 'GHS')).resolves.toBeNull();
+  });
+
+  it('is granted while this affiliate\'s own referral is still pending', async () => {
+    // The one case that does earn: the commission fires at settlement.
+    const { pricing } = build(affiliate(), 20, {
+      id: 'ref-1',
+      referrerId: 'aff-1',
+      status: 'pending',
+    });
+    await expect(pricing.quote('ama-gh', 'buyer', 200, 'GHS')).resolves.toMatchObject({
+      discountAmount: 40,
+    });
+  });
+});

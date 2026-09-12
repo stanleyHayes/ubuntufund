@@ -178,6 +178,30 @@ describe('releasing a slot', () => {
     expect(retry, 'the released seat must be reclaimable').not.toBeNull();
   });
 
+  it('reclaims a freed LOW seat while a higher one is still held', async () => {
+    // Releasing punches gaps in the ordinal space, so seats are not densely
+    // packed from zero. Searching from the redemption COUNT assumed they were:
+    // with seat 0 freed and seat 1 consumed, the count is 1, the search starts
+    // at 1, collides, and refuses a seat the user plainly owns — permanently,
+    // because the consumed seat never moves and the count never changes.
+    const couponId = await seedCoupon({ perUserLimit: 2 });
+
+    const [a, b] = await Promise.all([
+      redemptionRepo.createWithSeat(slot(couponId, 'user-1'), 2),
+      redemptionRepo.createWithSeat(slot(couponId, 'user-1'), 2),
+    ]);
+    const low = [a, b].find((r) => r!.seat === 0)!;
+    const high = [a, b].find((r) => r!.seat === 1)!;
+
+    await redemptionRepo.markReleased(low.id);
+    await redemptionRepo.markConsumed(high.id);
+    expect(await redemptionRepo.countByCouponAndUser(couponId, 'user-1')).toBe(1);
+
+    const retry = await redemptionRepo.createWithSeat(slot(couponId, 'user-1'), 2);
+    expect(retry, 'seat 0 is free and the user is entitled to it').not.toBeNull();
+    expect(retry!.seat).toBe(0);
+  });
+
   it('clears the ordinal, so the unique index no longer holds it', async () => {
     const couponId = await seedCoupon({ perUserLimit: 2 });
     const first = await redemptionRepo.createWithSeat(slot(couponId, 'user-1'), 2);
@@ -290,6 +314,62 @@ describe('pricing a payout-fee coupon', () => {
         { ...slot(couponId, 'creator-1'), surface: CouponSurface.PAYOUT_FEE },
         1
       )
+    ).toBeNull();
+  });
+});
+
+describe('a payout that never happens must not spend the coupon', () => {
+  /**
+   * The first cut of the payout rail redeemed the coupon as soon as it priced
+   * it — before the early-withdrawal ceiling check, before the balance clear,
+   * and before the insert whose duplicate-key path succeeds by returning the
+   * original payout. A rejected request therefore burned a redemption on a
+   * withdrawal that never existed, and a retried one burned another each time.
+   *
+   * The seat is now claimed PENDING immediately before the insert and released
+   * if it fails, so these two properties have to hold.
+   */
+
+  it('a released seat leaves the global counter untouched', async () => {
+    const couponId = await seedCoupon({ maxRedemptions: 1, perUserLimit: 1 });
+
+    const held = await redemptionRepo.createWithSeat(
+      { ...slot(couponId, 'organizer-1'), surface: CouponSurface.PAYOUT_FEE },
+      1
+    );
+    expect(held).not.toBeNull();
+
+    // The insert failed, so the seat goes back and nothing was ever consumed.
+    await redemptionRepo.markReleased(held!.id);
+
+    const after = await CouponModel.findById(couponId);
+    expect(after!.redemptions, 'a failed payout must not consume a redemption').toBe(0);
+    expect(await redemptionRepo.countByCouponAndUser(couponId, 'organizer-1')).toBe(0);
+  });
+
+  it('lets the organizer retry with the same coupon afterwards', async () => {
+    // The whole point: a ceiling rejection or a duplicate-key replay must not
+    // cost the organizer their one allowed use.
+    const couponId = await seedCoupon({ maxRedemptions: 1, perUserLimit: 1 });
+
+    const first = await redemptionRepo.createWithSeat(
+      { ...slot(couponId, 'organizer-1'), surface: CouponSurface.PAYOUT_FEE },
+      1
+    );
+    await redemptionRepo.markReleased(first!.id);
+
+    const retry = await redemptionRepo.createWithSeat(
+      { ...slot(couponId, 'organizer-1'), surface: CouponSurface.PAYOUT_FEE },
+      1
+    );
+    expect(retry).not.toBeNull();
+
+    // And once the payout really is written, the counter moves exactly once.
+    await redemptionRepo.markConsumed(retry!.id);
+    expect(await couponRepo.incrementRedemptionIfUnderLimit(couponId)).not.toBeNull();
+    expect(
+      await couponRepo.incrementRedemptionIfUnderLimit(couponId),
+      'the cap still binds after a retry'
     ).toBeNull();
   });
 });

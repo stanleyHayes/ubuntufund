@@ -7,7 +7,8 @@ import type { PayoutRepositoryPort } from '../../domain/ports/outbound/PayoutRep
 import type { CampaignBalanceRepositoryPort } from '../../domain/ports/outbound/CampaignBalanceRepositoryPort.js'
 import type { CampaignSplitRepositoryPort } from '../../domain/ports/outbound/CampaignSplitRepositoryPort.js'
 import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGatewayPort.js'
-import type { CouponService } from '../services/CouponService.js'
+import type { CouponPricing, CouponService } from '../services/CouponService.js'
+import { logger } from '../../infrastructure/logging/logger.js'
 import type { CouponRepositoryPort } from '../../domain/ports/outbound/CouponRepositoryPort.js'
 import type { CouponRedemptionRepositoryPort } from '../../domain/ports/outbound/CouponRedemptionRepositoryPort.js'
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js'
@@ -183,6 +184,8 @@ export class RequestPayoutUseCase {
     }
     let { fee, netAmount } = computePayoutFee(type, amount, cfg, currency)
 
+    /** Priced but not yet redeemed — the redemption brackets the insert below. */
+    let feeCoupon: CouponPricing | undefined
     // A coupon here discounts the SERVICE FEE, never the amount withdrawn: the
     // recipient keeps more and the platform forgoes fee revenue, so the cost is
     // bounded by the fee itself. A `standard` payout is already free, so there
@@ -192,52 +195,30 @@ export class RequestPayoutUseCase {
       if (fee <= 0) {
         throw new AppError('There is no fee on this payout to discount', 422)
       }
+      // A coupon is denominated in its own currency (always GHS today) and
+      // rounds to it. A payout is denominated in the campaign's. Quoting a fee
+      // through the wrong currency's rounding is exactly the bug that made
+      // `computePayoutFee` take a required currency — an XOF fee of 501 at 10%
+      // off becomes 450.9, a value XOF cannot express, and fee + net stops
+      // summing to amount. Refuse rather than silently mis-round.
       const pricing = await this.couponService.validateAndPrice({
         code: input.couponCode,
         userId: requester.userId,
         baseAmount: fee,
         surface: CouponSurface.PAYOUT_FEE,
       })
-      // Redeem here, not later. The discount takes effect on this request and
-      // no money has moved yet, so unlike the subscription rail the caps can be
-      // enforced strictly: if the coupon is exhausted the request is refused
-      // outright rather than honoured at a price it no longer qualifies for.
-      const now = new Date()
-      const slot = await this.couponRedemptionRepo?.createWithSeat(
-        {
-          id: '',
-          couponId: pricing.coupon.id,
-          code: pricing.coupon.code,
-          userId: requester.userId,
-          surface: CouponSurface.PAYOUT_FEE,
-          status: CouponRedemptionStatus.PENDING,
-          baseAmount: pricing.baseAmount,
-          discountAmount: pricing.discountAmount,
-          finalAmount: pricing.finalAmount,
-          currency,
-          createdAt: now,
-          updatedAt: now,
-        },
-        pricing.coupon.perUserLimit,
-      )
-      if (this.couponRedemptionRepo && !slot) {
+      if (pricing.currency !== currency) {
         throw new AppError(
-          'You have already used this coupon the maximum number of times',
+          `This coupon is issued in ${pricing.currency} and cannot be applied to a ${currency} payout`,
           422,
         )
       }
-
-      const bumped = await this.couponRepo?.incrementRedemptionIfUnderLimit(pricing.coupon.id)
-      if (this.couponRepo && !bumped) {
-        // Someone took the last redemption between the quote and here. Give the
-        // seat back so this organizer is not charged for a coupon they never got.
-        if (slot) await this.couponRedemptionRepo?.markReleased(slot.id)
-        throw new AppError('This coupon has reached its redemption limit', 422)
-      }
-      if (slot) await this.couponRedemptionRepo?.markConsumed(slot.id)
-
-      // The redemption row above carries couponId, userId and surface, which is
-      // the audit trail; the payout itself only needs the discounted fee.
+      // Priced here; redeemed further down, around the insert. Nothing is
+      // written yet on purpose — the early-withdrawal ceiling, the balance
+      // clear and the payout insert below can all still reject, and spending
+      // the coupon ahead of them would burn a redemption on a withdrawal that
+      // never happened.
+      feeCoupon = pricing
       fee = pricing.finalAmount
       netAmount = roundToCurrency(amount - fee, currency)
     }
@@ -271,6 +252,40 @@ export class RequestPayoutUseCase {
       }
     }
 
+    // Claim the per-user seat now, with every rejection behind us. PENDING and
+    // reversible: if the insert below fails for any reason — including the
+    // duplicate-key replay, which succeeds by returning the original payout —
+    // the seat goes straight back, so a retried request cannot spend a second
+    // redemption.
+    let couponSlotId: string | undefined
+    if (feeCoupon && this.couponRedemptionRepo) {
+      const now = new Date()
+      const slot = await this.couponRedemptionRepo.createWithSeat(
+        {
+          id: '',
+          couponId: feeCoupon.coupon.id,
+          code: feeCoupon.coupon.code,
+          userId: requester.userId,
+          surface: CouponSurface.PAYOUT_FEE,
+          status: CouponRedemptionStatus.PENDING,
+          baseAmount: feeCoupon.baseAmount,
+          discountAmount: feeCoupon.discountAmount,
+          finalAmount: feeCoupon.finalAmount,
+          currency,
+          createdAt: now,
+          updatedAt: now,
+        },
+        feeCoupon.coupon.perUserLimit,
+      )
+      if (!slot) {
+        throw new AppError(
+          'You have already used this coupon the maximum number of times',
+          422,
+        )
+      }
+      couponSlotId = slot.id
+    }
+
     let saved: PayoutEntity
     try {
       saved = await this.payoutRepo.create(
@@ -299,6 +314,7 @@ export class RequestPayoutUseCase {
       // a 500 instead of the idempotent replay — and, worse, this request had
       // already run the non-idempotent clearPendingToAvailable, permanently
       // understating pendingBalance. Compensate, then replay the winner.
+      if (couponSlotId) await this.couponRedemptionRepo?.markReleased(couponSlotId)
       if (isDuplicateKeyError(error) && requestKey && this.payoutRepo.findByRequestKey) {
         if (needed > 0) {
           await this.campaignBalanceRepo.returnAvailableToPending(campaignId, needed)
@@ -307,6 +323,23 @@ export class RequestPayoutUseCase {
         if (winner) return toPayoutDto(winner)
       }
       throw error
+    }
+
+    // The payout exists at the discounted fee, so the redemption is now real.
+    // The global counter moves here and only here. A cap reached in the
+    // meantime is logged rather than thrown: the payout is already written, and
+    // failing the request now would leave the organizer with a payout they were
+    // told had failed — the same reasoning the subscription rail applies once
+    // money has moved.
+    if (feeCoupon) {
+      const bumped = await this.couponRepo?.incrementRedemptionIfUnderLimit(feeCoupon.coupon.id)
+      if (this.couponRepo && !bumped) {
+        logger.warn(
+          { couponId: feeCoupon.coupon.id, campaignId },
+          'payout settled but the coupon was already at its global limit',
+        )
+      }
+      if (couponSlotId) await this.couponRedemptionRepo?.markConsumed(couponSlotId)
     }
 
     return toPayoutDto(saved)

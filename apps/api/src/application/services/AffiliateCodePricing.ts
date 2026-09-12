@@ -71,6 +71,20 @@ export class AffiliateCodePricing {
     // affiliate discounts their own subscription with their own code.
     if (affiliate.userId === userId) return null;
 
+    // The discount only exists to buy a commission, and the commission is
+    // once per referee ever — AffiliateCommissionService returns null once the
+    // referral has converted. Without this check the discount recurs on every
+    // renewal and upgrade while earning the referrer nothing, and a user
+    // already referred by someone else could take any affiliate's discount
+    // while that affiliate is credited nothing. Both are pure cash out the
+    // door, repeatable indefinitely.
+    const existing = await this.referralRepo.findByRefereeId(userId);
+    if (existing) {
+      const willEarn =
+        existing.status === 'pending' && existing.referrerId === affiliate.id;
+      if (!willEarn) return null;
+    }
+
     const discountAmount = roundToCurrency(
       Math.min((baseAmount * this.discountPercent) / 100, baseAmount),
       currency

@@ -113,9 +113,22 @@ export class SettleSubscriptionUseCase {
     // the existing behaviour and the cheaper of the two.
     let commissionBaseAmount = settled.finalAmount;
     if (settled.couponId) {
-      const coupon = await this.couponRepo.findById(settled.couponId);
-      if (coupon?.commissionBase === CouponCommissionBase.LIST_PRICE) {
-        commissionBaseAmount = settled.baseAmount;
+      try {
+        const coupon = await this.couponRepo.findById(settled.couponId);
+        if (coupon?.commissionBase === CouponCommissionBase.LIST_PRICE) {
+          commissionBaseAmount = settled.baseAmount;
+        }
+      } catch (error) {
+        // Must not escape. transitionToSucceeded has already fired and the
+        // subscription is already active, so a throw here is not retried — the
+        // replayed webhook takes the idempotent no-op branch and returns before
+        // reaching the commission block at all, losing the affiliate's payment
+        // permanently. Falling back to the charged amount is the documented
+        // behaviour and the conservative one.
+        logger.error(
+          { err: error, couponId: settled.couponId, checkoutId: settled.id },
+          'coupon lookup for the commission base failed; using the charged amount'
+        );
       }
     }
 

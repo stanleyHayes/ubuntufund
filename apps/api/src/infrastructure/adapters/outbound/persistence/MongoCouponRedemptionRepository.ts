@@ -69,23 +69,32 @@ export class MongoCouponRedemptionRepository
     // No cap: no seat to claim, and no unique index to satisfy.
     if (!perUserLimit || perUserLimit <= 0) return this.create(redemption);
 
-    // Start at the number of seats already held rather than always at 0, so the
-    // common case is one insert. Seats are only ever contended when two
-    // checkouts race, and the loop below is what resolves that.
-    let seat = await this.countByCouponAndUser(
-      redemption.couponId,
-      redemption.userId
-    );
+    // Which ordinals this user actually holds — not how many.
+    //
+    // Counting and starting there assumes seats are packed densely from zero,
+    // and releasing breaks exactly that: markReleased unsets the ordinal, so a
+    // freed seat 0 can sit underneath a live seat 1. Starting at the count
+    // would begin the search at 1, collide, give up at the limit, and refuse a
+    // seat the user plainly owns — permanently, because the consumed higher
+    // seat never moves and the count never changes.
+    const held = await CouponRedemptionModel.find({
+      couponId: redemption.couponId,
+      userId: redemption.userId,
+      seat: { $exists: true },
+    })
+      .select('seat')
+      .lean();
+    const taken = new Set(held.map((doc) => doc.seat));
 
-    while (seat < perUserLimit) {
+    for (let seat = 0; seat < perUserLimit; seat += 1) {
+      if (taken.has(seat)) continue;
       try {
         return await this.create({ ...redemption, seat });
       } catch (error) {
-        // E11000 means another checkout claimed this ordinal between the count
+        // E11000 means another checkout claimed this ordinal between the read
         // and the insert — exactly the race this exists to lose safely. Any
         // other error is a real failure and must not be swallowed.
         if (!isDuplicateKey(error)) throw error;
-        seat += 1;
       }
     }
     return null;
