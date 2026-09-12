@@ -1,5 +1,6 @@
-import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
-import type { ReactNode } from 'react'
+import { BrandedTextField as TextField, ImageUpload } from '@ubuntu-fund/ui'
+import { useState, type ReactNode } from 'react'
+import { uploadImageViaApi } from '@/lib/uploadImage'
 import { Box, Button, Typography } from '@mui/material'
 import AddRoundedIcon from '@mui/icons-material/AddRounded'
 import InfoRoundedIcon from '@mui/icons-material/InfoRounded'
@@ -83,6 +84,15 @@ function SectionPanel({ title, description, children }: { title: string; descrip
 export default function ContentAboutPage() {
   const block = useContentBlock<AboutData>('about', 'about', FALLBACK)
   const { data, setData } = block
+  const [uploading, setUploading] = useState(false)
+  const uploadPhoto = async (file: File, onProgress: (percent: number) => void) => {
+    setUploading(true)
+    try {
+      return await uploadImageViaApi(file, 'profiles', onProgress)
+    } finally {
+      setUploading(false)
+    }
+  }
 
   const team = data.team ?? []
 
@@ -126,7 +136,7 @@ export default function ContentAboutPage() {
       lede="The story, mission, vision, and team shown on the marketing About page."
       icon={<InfoRoundedIcon />}
       loading={block.loading}
-      saving={block.saving}
+      saving={block.saving || uploading}
       error={block.error}
       isDirty={block.isDirty}
       updatedAt={block.record?.updatedAt}
@@ -211,6 +221,7 @@ export default function ContentAboutPage() {
           />
         </SectionPanel>
 
+        <Box component="fieldset" disabled={uploading || block.saving} sx={{ m: 0, p: 0, border: 0, minWidth: 0 }}>
         <SectionPanel title="Team" description="Members shown in the team grid. Reorder to control display order.">
           {team.length === 0 ? (
             <Box>
@@ -269,14 +280,18 @@ export default function ContentAboutPage() {
                       minRows={2}
                       sx={fieldSx}
                     />
-                    <TextField
-                      size="small"
-                      label="Photo URL"
-                      value={member.image ?? ''}
-                      onChange={(e) => updateMember(index, 'image', e.target.value)}
-                      helperText="Leave blank to show the initials instead."
-                      sx={fieldSx}
-                    />
+                    <Box sx={{ maxWidth: 360, width: '100%' }}>
+                      <ImageUpload
+                        label={`Photo for ${member.name || 'team member'}`}
+                        value={member.image ?? ''}
+                        onChange={(url) => updateMember(index, 'image', url)}
+                        uploadFn={uploadPhoto}
+                        accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif"
+                        aspectRatio={1}
+                        disabled={uploading || block.saving}
+                        helperText="Upload a portrait up to 4 MB. Save changes to publish it. Without a photo, the member’s initials are shown."
+                      />
+                    </Box>
                     <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '2fr 1fr' }, gap: 2 }}>
                       <TextField
                         size="small"
@@ -335,6 +350,7 @@ export default function ContentAboutPage() {
             </>
           )}
         </SectionPanel>
+        </Box>
       </Box>
     </ContentEditorLayout>
   )

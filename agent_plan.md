@@ -1,5 +1,11 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-12 — Campaign-style team photo uploads
+
+- Replaced About-page team Photo URL fields with the shared campaign ImageUpload component: file selection/drag-drop, progress, square portrait preview, replace/remove and 4 MB limit. Authenticated admin uploads use the existing API profiles upload endpoint.
+- CMS save retains the resulting member image alongside existing biography/social links. Team actions and saving are disabled during uploads to avoid reordering or saving an incomplete upload.
+- Validation: admin type check, focused lint and diff checks pass. Mocked mobile browser verified authenticated image upload, preview, CMS save with existing social links retained, and image removal. No real file uploaded or About content published.
+
 ### 2026-09-12 — Planned social profiles prefilled
 
 - User confirmed the social placeholder URLs are the profiles they intend to create. Admin Contact Details now fills blank social fields with those exact Ujimora URLs after loading, preserves existing URLs and leaves edits/clearing available. The normal CMS save publishes the values; no production content was saved in this change.
