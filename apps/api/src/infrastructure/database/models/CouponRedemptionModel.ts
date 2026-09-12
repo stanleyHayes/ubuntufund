@@ -1,5 +1,5 @@
 import mongoose, { Schema, type Document } from 'mongoose';
-import { CouponRedemptionStatus, BillingCycle } from '@ubuntu-fund/types';
+import { CouponRedemptionStatus, BillingCycle, CouponSurface } from '@ubuntu-fund/types';
 
 export interface CouponRedemptionDocument extends Document {
   couponId: string;
@@ -7,8 +7,9 @@ export interface CouponRedemptionDocument extends Document {
   userId: string;
   subscriptionId?: string;
   checkoutId?: string;
-  tier: string;
-  billingCycle: BillingCycle;
+  surface?: CouponSurface;
+  tier?: string;
+  billingCycle?: BillingCycle;
   status: CouponRedemptionStatus;
   baseAmount: number;
   discountAmount: number;
@@ -27,14 +28,16 @@ const couponRedemptionSchema = new Schema<CouponRedemptionDocument>(
     userId: { type: String, required: true, index: true },
     subscriptionId: { type: String },
     checkoutId: { type: String },
-    tier: {
+    // Absent on rows written before surfaces existed — all subscriptions.
+    surface: {
       type: String,
-      required: true,
+      enum: Object.values(CouponSurface),
     },
+    // Subscription context only: a payout-fee redemption has neither.
+    tier: { type: String },
     billingCycle: {
       type: String,
       enum: Object.values(BillingCycle),
-      required: true,
     },
     status: {
       type: String,

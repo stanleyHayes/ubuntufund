@@ -1,4 +1,4 @@
-import type { Payout, RequestPayoutInput } from '@ubuntu-fund/types'
+import { CouponSurface, CouponRedemptionStatus, type Payout, type RequestPayoutInput } from '@ubuntu-fund/types'
 import { PayoutEntity } from '../../domain/entities/Payout.js'
 import { roundToCurrency } from '../../domain/value-objects/Money.js'
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js'
@@ -7,6 +7,9 @@ import type { PayoutRepositoryPort } from '../../domain/ports/outbound/PayoutRep
 import type { CampaignBalanceRepositoryPort } from '../../domain/ports/outbound/CampaignBalanceRepositoryPort.js'
 import type { CampaignSplitRepositoryPort } from '../../domain/ports/outbound/CampaignSplitRepositoryPort.js'
 import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGatewayPort.js'
+import type { CouponService } from '../services/CouponService.js'
+import type { CouponRepositoryPort } from '../../domain/ports/outbound/CouponRepositoryPort.js'
+import type { CouponRedemptionRepositoryPort } from '../../domain/ports/outbound/CouponRedemptionRepositoryPort.js'
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js'
 import { toPayoutDto } from './mappers/payoutDto.js'
 import type { PayoutRequester } from './CreatePayoutRecipientUseCase.js'
@@ -58,6 +61,13 @@ export class RequestPayoutUseCase {
     private readonly configService?: {
       resolvePayoutsConfig(): Promise<PayoutsConfig>
     },
+    /**
+     * Optional: lets a coupon discount the payout service fee. Absent, a
+     * couponCode on the request is ignored entirely and the fee stands.
+     */
+    private readonly couponService?: CouponService,
+    private readonly couponRedemptionRepo?: CouponRedemptionRepositoryPort,
+    private readonly couponRepo?: CouponRepositoryPort,
   ) {}
 
   async execute(
@@ -171,7 +181,67 @@ export class RequestPayoutUseCase {
         422,
       )
     }
-    const { fee, netAmount } = computePayoutFee(type, amount, cfg, currency)
+    let { fee, netAmount } = computePayoutFee(type, amount, cfg, currency)
+
+    // A coupon here discounts the SERVICE FEE, never the amount withdrawn: the
+    // recipient keeps more and the platform forgoes fee revenue, so the cost is
+    // bounded by the fee itself. A `standard` payout is already free, so there
+    // is nothing to discount and the code is refused rather than silently
+    // consuming a redemption for no benefit.
+    if (input.couponCode?.trim() && this.couponService) {
+      if (fee <= 0) {
+        throw new AppError('There is no fee on this payout to discount', 422)
+      }
+      const pricing = await this.couponService.validateAndPrice({
+        code: input.couponCode,
+        userId: requester.userId,
+        baseAmount: fee,
+        surface: CouponSurface.PAYOUT_FEE,
+      })
+      // Redeem here, not later. The discount takes effect on this request and
+      // no money has moved yet, so unlike the subscription rail the caps can be
+      // enforced strictly: if the coupon is exhausted the request is refused
+      // outright rather than honoured at a price it no longer qualifies for.
+      const now = new Date()
+      const slot = await this.couponRedemptionRepo?.createWithSeat(
+        {
+          id: '',
+          couponId: pricing.coupon.id,
+          code: pricing.coupon.code,
+          userId: requester.userId,
+          surface: CouponSurface.PAYOUT_FEE,
+          status: CouponRedemptionStatus.PENDING,
+          baseAmount: pricing.baseAmount,
+          discountAmount: pricing.discountAmount,
+          finalAmount: pricing.finalAmount,
+          currency,
+          createdAt: now,
+          updatedAt: now,
+        },
+        pricing.coupon.perUserLimit,
+      )
+      if (this.couponRedemptionRepo && !slot) {
+        throw new AppError(
+          'You have already used this coupon the maximum number of times',
+          422,
+        )
+      }
+
+      const bumped = await this.couponRepo?.incrementRedemptionIfUnderLimit(pricing.coupon.id)
+      if (this.couponRepo && !bumped) {
+        // Someone took the last redemption between the quote and here. Give the
+        // seat back so this organizer is not charged for a coupon they never got.
+        if (slot) await this.couponRedemptionRepo?.markReleased(slot.id)
+        throw new AppError('This coupon has reached its redemption limit', 422)
+      }
+      if (slot) await this.couponRedemptionRepo?.markConsumed(slot.id)
+
+      // The redemption row above carries couponId, userId and surface, which is
+      // the audit trail; the payout itself only needs the discounted fee.
+      fee = pricing.finalAmount
+      netAmount = roundToCurrency(amount - fee, currency)
+    }
+
     if (netAmount <= 0) {
       throw new AppError('The payout fee equals or exceeds the requested amount', 422)
     }

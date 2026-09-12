@@ -198,21 +198,17 @@ describe('allowedEmails', () => {
 describe('appliesToSurface', () => {
   it('treats an empty list as subscription-only, not as every surface', () => {
     // Every coupon created before surfaces existed has an empty list. Reading
-    // that as "all surfaces" would silently turn live subscription promotions
-    // into donation-fee waivers the moment this shipped.
+    // that as "all surfaces" would have let a live subscription promotion
+    // start waiving withdrawal fees the moment this shipped.
     const c = coupon({ appliesToSurfaces: [] });
     expect(c.appliesToSurface(CouponSurface.SUBSCRIPTION)).toBe(true);
-    expect(c.appliesToSurface(CouponSurface.DONATION)).toBe(false);
     expect(c.appliesToSurface(CouponSurface.PAYOUT_FEE)).toBe(false);
   });
 
   it('admits exactly the surfaces it was given', () => {
-    const c = coupon({
-      appliesToSurfaces: [CouponSurface.DONATION, CouponSurface.PAYOUT_FEE],
-    });
-    expect(c.appliesToSurface(CouponSurface.DONATION)).toBe(true);
+    const c = coupon({ appliesToSurfaces: [CouponSurface.PAYOUT_FEE] });
     expect(c.appliesToSurface(CouponSurface.PAYOUT_FEE)).toBe(true);
-    // Naming other surfaces takes subscription away, which is the point of an
+    // Naming another surface takes subscription away, which is the point of an
     // explicit list.
     expect(c.appliesToSurface(CouponSurface.SUBSCRIPTION)).toBe(false);
   });

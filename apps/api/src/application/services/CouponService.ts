@@ -9,8 +9,13 @@ import { AppError } from '../../infrastructure/adapters/inbound/middleware/error
 export interface ValidateAndPriceInput {
   /** Raw code from the client; matched UPPERCASE. */
   code: string;
-  tier: string;
-  billingCycle: BillingCycle;
+  /**
+   * Subscription context, for tier/cycle scoping. Absent on other surfaces: a
+   * withdrawal has no plan and no billing cycle, so a coupon's tier list
+   * simply does not apply there rather than rejecting every redemption.
+   */
+  tier?: string;
+  billingCycle?: BillingCycle;
   /** The redeeming user, for the per-user limit. */
   userId: string;
   /** The plan's list price (GHS major units) before any discount. */
@@ -80,12 +85,14 @@ export class CouponService {
     }
 
     if (
+      tier !== undefined &&
       coupon.appliesToTiers.length > 0 &&
       !coupon.appliesToTiers.includes(tier)
     ) {
       throw new AppError('This coupon does not apply to the selected plan', 422);
     }
     if (
+      billingCycle !== undefined &&
       coupon.appliesToBillingCycles.length > 0 &&
       !coupon.appliesToBillingCycles.includes(billingCycle)
     ) {

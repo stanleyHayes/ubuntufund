@@ -1,5 +1,12 @@
 import { beforeAll, afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { CouponDiscountType, CouponRedemptionStatus, BillingCycle } from '@ubuntu-fund/types';
+import {
+  CouponDiscountType,
+  CouponRedemptionStatus,
+  CouponSurface,
+  CouponCommissionBase,
+  BillingCycle,
+} from '@ubuntu-fund/types';
+import { CouponService } from '../../src/application/services/CouponService.js';
 import {
   connectTestDatabase,
   dropTestDatabase,
@@ -49,6 +56,10 @@ async function seedCoupon(overrides: Record<string, unknown> = {}) {
     redemptions: 0,
     appliesToTiers: [],
     appliesToBillingCycles: [],
+    appliesToSurfaces: [],
+    commissionBase: CouponCommissionBase.POST_COUPON,
+    newUsersOnly: false,
+    allowedEmails: [],
     active: true,
     ...overrides,
   });
@@ -61,8 +72,8 @@ function slot(couponId: string, userId: string, providerRef?: string) {
     couponId,
     code: 'LAUNCH50',
     userId,
-    tier: 'pro',
-    billingCycle: BillingCycle.MONTHLY,
+    tier: 'pro' as string | undefined,
+    billingCycle: BillingCycle.MONTHLY as BillingCycle | undefined,
     status: CouponRedemptionStatus.PENDING,
     baseAmount: 100,
     discountAmount: 50,
@@ -209,5 +220,76 @@ describe('settling a slot', () => {
     );
 
     expect(results.filter(Boolean)).toHaveLength(1);
+  });
+});
+
+describe('pricing a payout-fee coupon', () => {
+  const eligibility = {
+    emailFor: async () => 'ama@example.com',
+    hasPaidBefore: async () => false,
+  };
+
+  it('quotes a discount against the fee without needing a plan or billing cycle', async () => {
+    // A withdrawal has neither, so requiring them would make the surface
+    // unusable. The coupon's tier list simply does not apply here.
+    const couponId = await seedCoupon({
+      appliesToSurfaces: [CouponSurface.PAYOUT_FEE],
+      appliesToTiers: ['pro'],
+      discountType: CouponDiscountType.PERCENT,
+      amount: 50,
+    });
+    expect(couponId).toBeTruthy();
+
+    const service = new CouponService(couponRepo, redemptionRepo, eligibility);
+    const quote = await service.validateAndPrice({
+      code: 'LAUNCH50',
+      userId: 'creator-1',
+      baseAmount: 40, // the service fee, not the withdrawal
+      surface: CouponSurface.PAYOUT_FEE,
+    });
+
+    expect(quote.discountAmount).toBe(20);
+    expect(quote.finalAmount).toBe(20);
+  });
+
+  it('refuses a subscription coupon on a withdrawal', async () => {
+    await seedCoupon({ appliesToSurfaces: [] });
+    const service = new CouponService(couponRepo, redemptionRepo, eligibility);
+    await expect(
+      service.validateAndPrice({
+        code: 'LAUNCH50',
+        userId: 'creator-1',
+        baseAmount: 40,
+        surface: CouponSurface.PAYOUT_FEE,
+      })
+    ).rejects.toThrow(/cannot be used here/i);
+  });
+
+  it('opens a redemption slot carrying its surface, with no plan attached', async () => {
+    const couponId = await seedCoupon({
+      appliesToSurfaces: [CouponSurface.PAYOUT_FEE],
+      perUserLimit: 1,
+    });
+
+    const opened = await redemptionRepo.createWithSeat(
+      {
+        ...slot(couponId, 'creator-1'),
+        surface: CouponSurface.PAYOUT_FEE,
+        tier: undefined,
+        billingCycle: undefined,
+      },
+      1
+    );
+
+    expect(opened).not.toBeNull();
+    expect(opened!.surface).toBe(CouponSurface.PAYOUT_FEE);
+    expect(opened!.tier).toBeUndefined();
+    // And the per-user cap still binds on this surface.
+    expect(
+      await redemptionRepo.createWithSeat(
+        { ...slot(couponId, 'creator-1'), surface: CouponSurface.PAYOUT_FEE },
+        1
+      )
+    ).toBeNull();
   });
 });

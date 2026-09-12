@@ -6,6 +6,7 @@ import {
 import type { CouponService } from '../services/CouponService.js';
 import type { PlanService } from '../services/PlanService.js';
 import { roundToCurrency } from '../../domain/value-objects/Money.js';
+import type { AffiliateCodePricing } from '../services/AffiliateCodePricing.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 
 /** The platform's only settlement currency, and the one plan prices are in. */
@@ -21,7 +22,14 @@ const CURRENCY = 'GHS';
 export class PreviewCouponUseCase {
   constructor(
     private readonly couponService: CouponService,
-    private readonly planService: PlanService
+    private readonly planService: PlanService,
+    /**
+     * Must be the same instance the checkout uses. The preview exists to tell
+     * the customer what they will pay, so anything checkout would accept has
+     * to quote here too — an affiliate code that previews as "not found" and
+     * then works at checkout is worse than not previewing at all.
+     */
+    private readonly affiliateCodePricing?: AffiliateCodePricing
   ) {}
 
   async execute(
@@ -57,6 +65,28 @@ export class PreviewCouponUseCase {
         currency: pricing.currency,
       };
     } catch (err) {
+      // Mirror the checkout's fallback exactly: an unknown code may be an
+      // affiliate's referral code, which discounts just the same.
+      const unknownCode = err instanceof AppError && err.message === 'Coupon not found';
+      if (unknownCode && this.affiliateCodePricing) {
+        const quote = await this.affiliateCodePricing.quote(
+          code,
+          userId,
+          baseAmount,
+          CURRENCY
+        );
+        if (quote) {
+          return {
+            valid: true,
+            code: quote.code,
+            baseAmount,
+            discountAmount: quote.discountAmount,
+            finalAmount: quote.finalAmount,
+            currency: CURRENCY,
+          };
+        }
+      }
+
       const reason =
         err instanceof AppError
           ? err.message

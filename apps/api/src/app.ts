@@ -913,6 +913,14 @@ export function createApp(): express.Express {
   // over the env defaults, so behaviour is unchanged until an admin sets a value.
   const commercialConfigRepo = new MongoCommercialConfigRepository()
   const commercialConfigService = new CommercialConfigService(commercialConfigRepo, config.payouts)
+  // One instance, shared by the checkout and the preview: the preview exists to
+  // tell a customer what they will pay, so the two must agree by construction.
+  const affiliateCodePricing = new AffiliateCodePricing(
+    affiliateRepo,
+    affiliateReferralRepo,
+    config.affiliate.referralDiscountPercent,
+  )
+
   const requestPayoutUseCase = new RequestPayoutUseCase(
     campaignRepo,
     transferRecipientRepo,
@@ -923,6 +931,9 @@ export function createApp(): express.Express {
     campaignSplitRepo,
     config.splitProceedsEnabled,
     commercialConfigService,
+    couponService,
+    couponRedemptionRepo,
+    couponRepo,
   )
   const approvePayoutUseCase = new ApprovePayoutUseCase(
     payoutRepo,
@@ -1060,11 +1071,7 @@ export function createApp(): express.Express {
     paymentGateway,
     settleSubscriptionUseCase,
     planService,
-    new AffiliateCodePricing(
-      affiliateRepo,
-      affiliateReferralRepo,
-      config.affiliate.referralDiscountPercent,
-    ),
+    affiliateCodePricing,
   )
   const getSubscriptionCheckoutUseCase = new GetSubscriptionCheckoutUseCase(
     subscriptionCheckoutRepo,
@@ -1079,7 +1086,7 @@ export function createApp(): express.Express {
   const listCouponsUseCase = new ListCouponsUseCase(couponRepo)
   const getCouponUseCase = new GetCouponUseCase(couponRepo)
   const deleteCouponUseCase = new DeleteCouponUseCase(couponRepo)
-  const previewCouponUseCase = new PreviewCouponUseCase(couponService, planService)
+  const previewCouponUseCase = new PreviewCouponUseCase(couponService, planService, affiliateCodePricing)
 
   // Affiliate/referral program: owner surface + admin console + payout rail.
   const enrollAffiliateUseCase = new EnrollAffiliateUseCase(affiliateRepo, affiliateBalanceRepo)

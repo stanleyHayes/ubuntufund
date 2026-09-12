@@ -164,25 +164,25 @@ describe('surface gating', () => {
     });
   });
 
-  it('refuses a donation-only coupon at subscription checkout', async () => {
+  it('refuses a payout-only coupon at subscription checkout', async () => {
     await expect(
-      priceOn(coupon({ appliesToSurfaces: [CouponSurface.DONATION] }))
+      priceOn(coupon({ appliesToSurfaces: [CouponSurface.PAYOUT_FEE] }))
     ).rejects.toThrow(/cannot be used here/i);
   });
 
-  it('refuses a subscription coupon on the donation surface', async () => {
+  it('refuses a subscription coupon on the payout-fee surface', async () => {
     // The pre-surfaces default has to hold in both directions, or an old
     // coupon becomes redeemable somewhere it was never meant for.
     await expect(
-      priceOn(coupon({ appliesToSurfaces: [] }), CouponSurface.DONATION)
+      priceOn(coupon({ appliesToSurfaces: [] }), CouponSurface.PAYOUT_FEE)
     ).rejects.toThrow(/cannot be used here/i);
   });
 
   it('admits a coupon scoped to the surface being used', async () => {
     await expect(
       priceOn(
-        coupon({ appliesToSurfaces: [CouponSurface.DONATION] }),
-        CouponSurface.DONATION
+        coupon({ appliesToSurfaces: [CouponSurface.PAYOUT_FEE] }),
+        CouponSurface.PAYOUT_FEE
       )
     ).resolves.toMatchObject({ discountAmount: 100 });
   });

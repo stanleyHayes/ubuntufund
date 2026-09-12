@@ -183,6 +183,14 @@ export interface RequestPayoutInput {
   amount: number
   /** The payout service; defaults to `standard` (free). */
   type?: PayoutType
+  /**
+   * Optional discount code applied to the SERVICE FEE, not to the amount
+   * withdrawn. The recipient keeps more; the platform forgoes fee revenue.
+   * An invalid code is refused outright rather than silently ignored — a
+   * withdrawal is confirmed against a quoted net, and quietly dropping the
+   * discount would disburse a different number than the organizer agreed to.
+   */
+  couponCode?: string
 }
 
 /**

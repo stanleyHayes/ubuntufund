@@ -18,6 +18,8 @@ const requestPayoutSchema = z.object({
   idempotencyKey: z.string().uuid().optional(),
   amount: z.number().positive(),
   type: z.enum(['standard', 'priority', 'early', 'urgent', 'assisted']).optional(),
+  // Discounts the service fee, not the amount withdrawn.
+  couponCode: z.string().min(1).max(50).optional(),
 })
 
 /**

@@ -14,17 +14,21 @@ import type { BillingCycle } from './subscription'
  * on withdrawal), so the only thing a tip-time coupon could discount is the
  * creator's own earnings — an admin-owned coupon reducing a creator's income.
  * The fee a creator actually pays is the withdrawal fee, which is PAYOUT_FEE.
+ *
+ * There is no DONATION surface yet either, and the reason is worth recording.
+ * The sound design is a platform-fee waiver: the donor pays the same, the
+ * campaign receives more, and the cost is bounded by the fee — not a discount
+ * on what the donor pays, which would quietly reduce what the campaign raises.
+ * But the fee percentage is not stored on the intent; it is re-resolved from
+ * the campaign's plan at settlement in four separate places (the Paystack
+ * webhook, the Flutterwave webhook, reconciliation, and intent creation). A
+ * waiver has to reach all four identically or a donation settles with the
+ * wrong split, so it is its own piece of work rather than a value in this
+ * enum that nothing honours.
  */
 export enum CouponSurface {
   /** Reduce the price of a paid-subscription checkout. The customer pays less. */
   SUBSCRIPTION = 'subscription',
-  /**
-   * Waive part of the platform fee on a donation. The donor pays the same and
-   * the campaign receives more; the platform forgoes fee revenue. Framed this
-   * way on purpose — discounting what the donor pays would quietly reduce what
-   * the campaign raises, and the cost here is bounded by the fee itself.
-   */
-  DONATION = 'donation',
   /** Reduce the platform fee on a withdrawal. The recipient receives more. */
   PAYOUT_FEE = 'payout_fee',
 }
@@ -144,8 +148,18 @@ export interface CouponRedemption {
   userId: string
   subscriptionId?: string
   checkoutId?: string
-  tier: string
-  billingCycle: BillingCycle
+  /**
+   * Which surface the slot was opened on. Absent on rows written before
+   * surfaces existed, all of which were subscription checkouts.
+   */
+  surface?: CouponSurface
+  /**
+   * Subscription-only context. A payout-fee redemption has no plan and no
+   * billing cycle, so these cannot be required once a coupon can be redeemed
+   * anywhere but a subscription checkout.
+   */
+  tier?: string
+  billingCycle?: BillingCycle
   status: CouponRedemptionStatus
   baseAmount: number
   discountAmount: number
