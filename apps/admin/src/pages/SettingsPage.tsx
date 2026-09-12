@@ -1,6 +1,7 @@
 import { AutomaticPayoutSettings } from '@/components/AutomaticPayoutSettings'
 import { EarlyCashoutSettings } from '@/components/EarlyCashoutSettings'
 import { ReferralDiscountSettings } from '@/components/ReferralDiscountSettings'
+import { CampaignReviewSettings } from '@/components/CampaignReviewSettings'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -325,6 +326,7 @@ export default function SettingsPage() {
     <Box>
       <EarlyCashoutSettings canEdit={canEdit} />
       <ReferralDiscountSettings canEdit={canEdit} />
+      <CampaignReviewSettings canEdit={canEdit} />
       <AutomaticPayoutSettings canEdit={canEdit} />
       {/* Header */}
       <PageHeader

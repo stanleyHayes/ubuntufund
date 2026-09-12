@@ -49,7 +49,7 @@ export default function DonateScreen() {
     if (!user || !code || !valid || !id) { setCouponNote(''); setCouponOk(null); return }
     let active = true
     const timer = setTimeout(() => {
-      void previewCoupon({ code, surface: CouponSurface.DONATION, campaignId: id, amount: Number(amount) })
+      void previewCoupon({ code, surface: CouponSurface.DONATION, campaignId: id, amount: Number(amount), currency: campaign?.currency })
         .then(result => {
           if (!active) return
           setCouponOk(result.valid)
@@ -92,7 +92,7 @@ export default function DonateScreen() {
       </> : null}
       {method === 'crypto' ? <CryptoContribution key={scope} campaignId={id} amount={Number(amount)} email={email.trim()} name={name} message={message} isAnonymous={anonymous} /> : <>
         <Text style={{ color: p.textSecondary }}>{method === 'wallet' ? 'Your existing Ujimora wallet balance funds this donation.' : 'Card and mobile-money availability follows the secure checkout options for this merchant.'}</Text>
-        <Button mode="contained" loading={busy} disabled={busy || !valid || !tipValid || (method === 'paystack' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))} onPress={() => void donate()}>Donate {valid && tipValid ? (Number(amount) + tipValue).toFixed(2) : '0'} {campaign.currency}</Button>
+        <Button mode="contained" loading={busy} disabled={busy || !valid || !tipValid || couponOk === false || (method === 'paystack' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))} onPress={() => void donate()}>Donate {valid && tipValid ? (Number(amount) + tipValue).toFixed(2) : '0'} {campaign.currency}</Button>
       </>}
     </View>}
   </ScrollView>

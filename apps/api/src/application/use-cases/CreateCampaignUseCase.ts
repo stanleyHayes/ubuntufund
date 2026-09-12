@@ -24,7 +24,23 @@ export class CreateCampaignUseCase {
     // Risk-tiering + review policy (spec §4). Optional so existing unit tests that
     // don't exercise tiering still construct the use-case; absent ⇒ no tier is
     // assigned and every campaign is held for review (the pre-tiering behaviour).
-    private readonly campaignsConfig?: CampaignsConfig
+    private readonly campaignsConfig?: CampaignsConfig,
+    /**
+     * Resolves the effective tiering rules from the versioned store, so an
+     * admin can change what auto-approves without a deploy. Absent, the static
+     * config above is used unchanged.
+     */
+    private readonly configService?: { resolveCampaignsConfig(): Promise<CampaignsConfig> },
+    /** Tells the review team a campaign is waiting. Absent ⇒ no alert. */
+    private readonly reviewAlerts?: {
+      campaignPendingReview(input: {
+        campaignId: string
+        title: string
+        goalAmount: number
+        currency: string
+        tier: number
+      }): Promise<void>
+    }
   ) {}
 
   async execute(input: CreateCampaignInput, creatorId: string): Promise<Campaign> {
@@ -63,9 +79,21 @@ export class CreateCampaignUseCase {
     // the tiering config, keep the legacy "everything is reviewed" behaviour.
     let tier: number | undefined;
     let status = CampaignStatus.PENDING_REVIEW;
-    if (this.campaignsConfig) {
-      tier = deriveCampaignTier(input.goalAmount, this.campaignsConfig.tierThresholds);
-      status = tierRequiresManualReview(tier, this.campaignsConfig.autoApproveMaxTier)
+    // Prefer the versioned store so a dashboard change takes effect on the next
+    // campaign, not the next deploy. A lookup failure falls back to the static
+    // config rather than failing creation: the worst case is one campaign
+    // tiered by slightly stale rules, which beats refusing to create it.
+    let tiering = this.campaignsConfig;
+    if (this.configService) {
+      try {
+        tiering = await this.configService.resolveCampaignsConfig();
+      } catch {
+        tiering = this.campaignsConfig;
+      }
+    }
+    if (tiering) {
+      tier = deriveCampaignTier(input.goalAmount, tiering.tierThresholds);
+      status = tierRequiresManualReview(tier, tiering.autoApproveMaxTier)
         ? CampaignStatus.PENDING_REVIEW
         : CampaignStatus.ACTIVE;
     }
@@ -98,6 +126,20 @@ export class CreateCampaignUseCase {
 
     const saved = await this.campaignRepo.save(campaign);
     const plain = saved.toPlain();
+
+    // A held campaign is invisible to donors until someone approves it, and
+    // nothing else says so — the organizer just sees "Donations closed". Fired
+    // after the save so the alert always names a campaign that exists, and
+    // awaited only for its own error handling: the adapter never throws.
+    if (status === CampaignStatus.PENDING_REVIEW && this.reviewAlerts) {
+      await this.reviewAlerts.campaignPendingReview({
+        campaignId: plain.id,
+        title: plain.title,
+        goalAmount: plain.goalAmount.amount,
+        currency: plain.goalAmount.currency,
+        tier: tier ?? 0,
+      });
+    }
 
     return {
       id: plain.id,

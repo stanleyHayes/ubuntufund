@@ -1,5 +1,9 @@
 import type { CommercialConfigRepositoryPort, CommercialConfigVersion } from '../../domain/ports/outbound/CommercialConfigRepositoryPort.js';
-import type { AffiliateConfig, PayoutsConfig } from '../../infrastructure/config/index.js';
+import type {
+  AffiliateConfig,
+  CampaignsConfig,
+  PayoutsConfig,
+} from '../../infrastructure/config/index.js';
 
 /**
  * Affiliate keys an admin may override, namespaced so they cannot collide with
@@ -13,6 +17,31 @@ import type { AffiliateConfig, PayoutsConfig } from '../../infrastructure/config
  * that service resolves them through this store too.
  */
 export const AFFILIATE_REFERRAL_DISCOUNT_KEY = 'affiliate.referralDiscountPercent';
+
+/**
+ * Where "a campaign is waiting for review" alerts are sent.
+ *
+ * A text setting, not a number — the only one so far, which is why the store
+ * grew a separate text column rather than overloading `value`.
+ */
+export const REVIEW_ALERT_EMAIL_KEY = 'alerts.reviewEmail';
+
+/** The highest campaign tier that goes live without a human reviewing it. */
+export const CAMPAIGN_AUTO_APPROVE_TIER_KEY = 'campaigns.autoApproveMaxTier';
+
+/**
+ * The four ascending goal boundaries that split campaigns into tiers 1–5.
+ *
+ * Stored as four separate keys because the store holds one number per key. That
+ * is a fair trade: each boundary keeps its own history, so "who widened tier 2
+ * and when" is answerable, which a single packed value would lose.
+ */
+export const CAMPAIGN_TIER_THRESHOLD_KEYS = [
+  'campaigns.tierThreshold1',
+  'campaigns.tierThreshold2',
+  'campaigns.tierThreshold3',
+  'campaigns.tierThreshold4',
+] as const;
 
 /**
  * Resolves the effective commercial config (ADR-5): each key is the currently
@@ -42,7 +71,8 @@ export class CommercialConfigService {
   constructor(
     private readonly repo: CommercialConfigRepositoryPort,
     private readonly defaults: PayoutsConfig,
-    private readonly affiliateDefaults?: AffiliateConfig
+    private readonly affiliateDefaults?: AffiliateConfig,
+    private readonly campaignDefaults?: CampaignsConfig
   ) {
     this.keys = Object.keys(defaults).filter(
       (k) =>
@@ -51,14 +81,83 @@ export class CommercialConfigService {
     ) as (keyof PayoutsConfig)[];
   }
 
-  /** Every key an admin may set: the payout fields plus the affiliate ones. */
+  /** Every key an admin may set: payouts, plus affiliate and campaign levers. */
   get allKeys(): string[] {
     const affiliate = this.affiliateDefaults ? [AFFILIATE_REFERRAL_DISCOUNT_KEY] : [];
-    return [...(this.keys as string[]), ...affiliate];
+    const campaigns = this.campaignDefaults
+      ? [CAMPAIGN_AUTO_APPROVE_TIER_KEY, ...CAMPAIGN_TIER_THRESHOLD_KEYS]
+      : [];
+    return [...(this.keys as string[]), ...affiliate, ...campaigns];
+  }
+
+  /**
+   * The effective campaign tiering rules.
+   *
+   * Resolved per call, not cached with the payouts config: an admin tightening
+   * review during a fraud wave needs the next campaign to obey, not the one
+   * after the cache expires.
+   */
+  async resolveCampaignsConfig(): Promise<CampaignsConfig> {
+    const defaults = this.campaignDefaults;
+    if (!defaults) throw new Error('Campaign config defaults were not provided');
+
+    const map = await this.repo.getEffectiveMap(
+      [CAMPAIGN_AUTO_APPROVE_TIER_KEY, ...CAMPAIGN_TIER_THRESHOLD_KEYS],
+      new Date()
+    );
+
+    const autoApproveMaxTier = map[CAMPAIGN_AUTO_APPROVE_TIER_KEY];
+    // A threshold set to 0 would collapse a tier boundary rather than mean
+    // "unset", so only a real number replaces the default — and the set stays
+    // ascending, because deriveCampaignTier counts boundaries a goal exceeds
+    // and an out-of-order list would silently mis-tier every campaign.
+    const thresholds = CAMPAIGN_TIER_THRESHOLD_KEYS.map((key, i) => {
+      const value = map[key];
+      return typeof value === 'number' && value > 0 ? value : defaults.tierThresholds[i];
+    })
+      .filter((v): v is number => typeof v === 'number' && Number.isFinite(v))
+      .sort((a, b) => a - b);
+
+    return {
+      tierThresholds: thresholds.length > 0 ? thresholds : defaults.tierThresholds,
+      autoApproveMaxTier:
+        typeof autoApproveMaxTier === 'number'
+          ? autoApproveMaxTier
+          : defaults.autoApproveMaxTier,
+    };
   }
 
   isKnownKey(key: string): boolean {
-    return this.allKeys.includes(key);
+    return this.allKeys.includes(key) || this.isTextKey(key);
+  }
+
+  /** Whether a key holds text rather than a number. */
+  isTextKey(key: string): boolean {
+    return key === REVIEW_ALERT_EMAIL_KEY;
+  }
+
+  /**
+   * The address review alerts go to, or null to disable them.
+   *
+   * Null rather than falling back to the env default once an admin has set a
+   * value: clearing the field is how you turn the alerts off, and coalescing an
+   * empty string back to the default would make that impossible.
+   */
+  async resolveReviewAlertEmail(fallback: string): Promise<string> {
+    const stored = await this.repo.getEffectiveText(REVIEW_ALERT_EMAIL_KEY, new Date());
+    return stored === null ? fallback : stored;
+  }
+
+  async setTextValue(
+    key: string,
+    textValue: string,
+    createdBy: string,
+    effectiveFrom: Date,
+    reason?: string
+  ): Promise<CommercialConfigVersion> {
+    const v = await this.repo.setText({ key, textValue, effectiveFrom, createdBy, reason });
+    this.cache = null;
+    return v;
   }
 
   /**

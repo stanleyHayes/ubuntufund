@@ -25,6 +25,40 @@ function toDomain(doc: PaymentProviderDocument): PaymentProviderEntity {
  * empty: wallet (on by default, platform default provider), Ghana mobile
  * money rails (MTN MoMo, Telecel Cash, AT Money), cards, and bank transfer.
  */
+/**
+ * The gateway rails, as opposed to the payment *methods* below.
+ *
+ * `mtn-momo`, `card` and friends describe what checkout advertises, and most
+ * are simply things Paystack accepts — there is no separate MTN integration to
+ * switch on, which is why enabling them was refused. These two rows are the
+ * rails themselves, so toggling one genuinely stops that rail taking money.
+ *
+ * Their initial `enabled` comes from the env flags, so introducing them changes
+ * nothing on deploy: a deployment already running Paystack keeps running it.
+ */
+function gatewayProviders() {
+  return [
+    {
+      name: 'Paystack',
+      slug: 'paystack',
+      type: PaymentMethod.GATEWAY,
+      enabled: process.env.PAYMENTS_PAYSTACK_ENABLED !== 'false',
+      isDefault: false,
+      feePercent: 0,
+      displayOrder: 90,
+    },
+    {
+      name: 'Flutterwave',
+      slug: 'flutterwave',
+      type: PaymentMethod.GATEWAY,
+      enabled: process.env.PAYMENTS_FLUTTERWAVE_ENABLED === 'true',
+      isDefault: false,
+      feePercent: 0,
+      displayOrder: 91,
+    },
+  ];
+}
+
 const DEFAULT_PROVIDERS = [
   {
     name: 'Ujimora Wallet',
@@ -87,6 +121,38 @@ export class MongoPaymentProviderRepository implements PaymentProviderRepository
     const count = await PaymentProviderModel.countDocuments();
     if (count === 0) {
       await PaymentProviderModel.insertMany(DEFAULT_PROVIDERS);
+    }
+
+    // Backfill the gateway rows separately. Existing deployments already have
+    // the six method rows, so the count check above would never add these —
+    // and a missing gateway row is now the difference between a rail being
+    // live and not. `$setOnInsert` so an admin's own toggle is never
+    // overwritten by a later boot.
+    for (const gateway of gatewayProviders()) {
+      await PaymentProviderModel.updateOne(
+        { slug: gateway.slug },
+        { $setOnInsert: gateway },
+        { upsert: true }
+      );
+    }
+  }
+
+  /**
+   * Whether a gateway rail is switched on in the dashboard.
+   *
+   * Fails OPEN: an unreadable or absent record returns true, so a database
+   * hiccup can never silently stop the platform taking money. The env flag is
+   * the other half of the decision and still has to allow the rail.
+   */
+  async isGatewayEnabled(slug: string): Promise<boolean> {
+    try {
+      const doc = await PaymentProviderModel.findOne({
+        slug,
+        type: PaymentMethod.GATEWAY,
+      }).select('enabled').lean();
+      return doc ? doc.enabled !== false : true;
+    } catch {
+      return true;
     }
   }
 

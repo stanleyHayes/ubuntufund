@@ -8,6 +8,7 @@ import {
   disconnectTestDatabase,
 } from '../helpers/testDatabase.js';
 import { CouponModel } from '../../src/infrastructure/database/models/CouponModel.js';
+import { CouponRedemptionModel } from '../../src/infrastructure/database/models/CouponRedemptionModel.js';
 import { CampaignModel } from '../../src/infrastructure/database/models/CampaignModel.js';
 import { DonationIntentModel } from '../../src/infrastructure/database/models/DonationIntentModel.js';
 import { CampaignCategory, CampaignPriority } from '@ubuntu-fund/types';
@@ -38,6 +39,8 @@ afterAll(async () => {
 beforeEach(async () => {
   await CouponModel.deleteMany({});
   await DonationIntentModel.deleteMany({});
+  await CouponRedemptionModel.deleteMany({});
+  await CouponRedemptionModel.syncIndexes();
 });
 
 const uniqueEmail = (p: string) => `${p}-${Date.now()}-${Math.random().toString(16).slice(2)}@test.io`;
@@ -165,5 +168,107 @@ describe('a fee-waiver coupon on a donation', () => {
     const intent = await DonationIntentModel.findOne({ campaignId }).sort({ createdAt: -1 });
     expect(intent!.platformFeePercentOverride).toBeUndefined();
     expect(intent!.couponId).toBeUndefined();
+  });
+});
+
+describe('a refused code must leave nothing payable behind', () => {
+  /**
+   * The bypass this guards. The seat used to be claimed after the intent was
+   * written, so a refusal threw 422 with the intent already saved — waiver and
+   * all. The idempotency lookup returns an existing intent unchanged, so
+   * retrying with the same key handed the donor that intent back with coupon
+   * validation skipped entirely, letting them pay a redemption that had just
+   * been refused.
+   */
+  it('leaves no orphan intent when two donations race for the last seat', async () => {
+    // The discriminating case. CouponService's pre-flight count rejects an
+    // already-exhausted limit before anything is written, so ordering only
+    // matters when two requests BOTH pass that count and one then loses the
+    // atomic seat claim. With the seat claimed after the intent, the loser's
+    // intent was already saved carrying the waiver — and the idempotency
+    // lookup would hand it straight back on retry, coupon validation skipped.
+    const { token, userId } = await registerUser(uniqueEmail('race'));
+    const campaignId = await createCampaign(userId);
+    await seedCoupon({ code: 'LASTSEAT', perUserLimit: 1 });
+
+    const send = (key: string) =>
+      request(app)
+        .post('/api/v1/donation-intents')
+        .set('Authorization', `Bearer ${token}`)
+        .set('Idempotency-Key', key)
+        .send({ campaignId, amount: 200, provider: 'wallet', couponCode: 'LASTSEAT' });
+
+    const [a, b] = await Promise.all([send(`race-a-${Date.now()}`), send(`race-b-${Date.now()}`)]);
+
+    const refused = [a, b].filter((r) => r.status === 422);
+    expect(refused, 'exactly one of the two loses the seat').toHaveLength(1);
+
+    // The winner's intent may exist; the loser's must not.
+    expect(
+      await DonationIntentModel.countDocuments({ campaignId }),
+      'a donation refused a seat must not leave an intent carrying its waiver',
+    ).toBe(1);
+  });
+
+  it('writes no intent at all when the per-user limit is already spent', async () => {
+    const { token, userId } = await registerUser(uniqueEmail('exhausted'));
+    const campaignId = await createCampaign(userId);
+    const coupon = await seedCoupon({ code: 'ONCEONLY', perUserLimit: 1 });
+
+    // The donor's single allowed redemption is already held.
+    await CouponRedemptionModel.create({
+      couponId: coupon._id!.toString(),
+      code: 'ONCEONLY',
+      userId,
+      surface: 'donation',
+      status: 'pending',
+      seat: 0,
+      baseAmount: 100,
+      discountAmount: 0,
+      finalAmount: 100,
+      currency: 'GHS',
+    });
+
+    const key = `idem-${Date.now()}`;
+    const first = await request(app)
+      .post('/api/v1/donation-intents')
+      .set('Authorization', `Bearer ${token}`)
+      .set('Idempotency-Key', key)
+      .send({ campaignId, amount: 200, provider: 'wallet', couponCode: 'ONCEONLY' });
+
+    expect(first.status).toBe(422);
+    expect(
+      await DonationIntentModel.countDocuments({ campaignId }),
+      'a refused code must not leave an intent carrying its waiver',
+    ).toBe(0);
+
+    // And the retry cannot resurrect one through the idempotency lookup.
+    const retry = await request(app)
+      .post('/api/v1/donation-intents')
+      .set('Authorization', `Bearer ${token}`)
+      .set('Idempotency-Key', key)
+      .send({ campaignId, amount: 200, provider: 'wallet', couponCode: 'ONCEONLY' });
+
+    expect(retry.status).toBe(422);
+    expect(await DonationIntentModel.countDocuments({ campaignId })).toBe(0);
+  });
+
+  it('correlates the claimed seat with the intent that will settle it', async () => {
+    const { token, userId } = await registerUser(uniqueEmail('correlate'));
+    const campaignId = await createCampaign(userId);
+    await seedCoupon({ code: 'LINKED', perUserLimit: 2 });
+
+    await request(app)
+      .post('/api/v1/donation-intents')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ campaignId, amount: 200, provider: 'wallet', couponCode: 'LINKED' });
+
+    const intent = await DonationIntentModel.findOne({ campaignId });
+    const redemption = await CouponRedemptionModel.findOne({ code: 'LINKED', userId });
+
+    expect(redemption, 'the seat is claimed').not.toBeNull();
+    // Settlement finds the redemption by this reference; without it the coupon
+    // would never be consumed however the donation settled.
+    expect(redemption!.providerRef).toBe(intent!._id!.toString());
   });
 });

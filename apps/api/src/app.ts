@@ -9,6 +9,7 @@ import { MongoPayoutAccountRepository } from './infrastructure/adapters/outbound
 import { createPayoutAccountRoutes } from './infrastructure/adapters/inbound/http/routes/payoutAccountRoutes.js'
 import { VerifyCreatorTipUseCase } from './application/use-cases/VerifyCreatorTipUseCase.js'
 import { ResendOwnerNotifications } from './infrastructure/adapters/outbound/ResendOwnerNotifications.js'
+import { ResendReviewAlerts } from './infrastructure/adapters/outbound/ResendReviewAlerts.js'
 import { GetCampaignPayoutOptionsUseCase } from './application/use-cases/GetCampaignPayoutOptionsUseCase.js'
 import { DonationOwnerNotifier } from './application/services/DonationOwnerNotifier.js'
 import { AiWritingService } from './application/services/AiWritingService.js'
@@ -595,6 +596,18 @@ export function createApp(): express.Express {
     userRepo,
     planLimitsService,
     config.campaigns,
+    // A closure, not the service itself: commercialConfigService is declared
+    // further down, and only the call is deferred — by the time a campaign is
+    // created it is initialised.
+    { resolveCampaignsConfig: () => commercialConfigService.resolveCampaignsConfig() },
+    new ResendReviewAlerts(
+      process.env.RESEND_API_KEY ?? '',
+      process.env.FROM_EMAIL ?? '',
+      // Read through the versioned store so the address is admin-editable;
+      // the env var is only the fallback until someone sets one.
+      () => commercialConfigService.resolveReviewAlertEmail(process.env.REVIEW_ALERT_EMAIL ?? ''),
+      process.env.ADMIN_WEB_URL ?? 'https://admin.ujimora.com',
+    ),
   )
   const getCampaignUseCase = new GetCampaignUseCase(campaignRepo, donationRepo)
   const getCampaignBySlugUseCase = new GetCampaignBySlugUseCase(
@@ -715,6 +728,7 @@ export function createApp(): express.Express {
     gatewayRegistry,
     couponService,
     couponRedemptionRepo,
+    paymentProviderRepo,
   )
   const donateToCampaignUseCase = new DonateToCampaignUseCase(createDonationIntentUseCase)
   // Payout settlement: the signed transfer webhook moves an approved payout to
@@ -823,6 +837,7 @@ export function createApp(): express.Express {
     feePolicy,
     settleDonationUseCase,
     planLimitsService,
+    couponRedemptionRepo,
   )
   // Reconciliation (spec §13): re-verify stale PENDING hosted intents against
   // the provider and safely repair missed settlements.
@@ -836,6 +851,7 @@ export function createApp(): express.Express {
     // Creator tip-collect repair: re-credit SUCCEEDED-but-uncredited tips.
     tipRepo,
     handleTipWebhookUseCase,
+    couponRedemptionRepo,
   )
   // Admin-initiated, provider-integrated refund with compensating ledger (spec §14).
   const processRefundUseCase = new ProcessRefundUseCase(
@@ -916,7 +932,7 @@ export function createApp(): express.Express {
   // ADR-5 (G6): versioned, effective-dated commercial config — overrides layered
   // over the env defaults, so behaviour is unchanged until an admin sets a value.
   const commercialConfigRepo = new MongoCommercialConfigRepository()
-  const commercialConfigService = new CommercialConfigService(commercialConfigRepo, config.payouts, config.affiliate)
+  const commercialConfigService = new CommercialConfigService(commercialConfigRepo, config.payouts, config.affiliate, config.campaigns)
   // One instance, shared by the checkout and the preview: the preview exists to
   // tell a customer what they will pay, so the two must agree by construction.
   const affiliateCodePricing = new AffiliateCodePricing(

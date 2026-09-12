@@ -1,4 +1,4 @@
-import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
+import { BrandedTextField as TextField, SHAPE } from '@ubuntu-fund/ui'
 import { useState, useEffect, useCallback } from 'react'
 import {
   Box, Typography, MenuItem, InputAdornment, Chip,
@@ -7,6 +7,7 @@ import {
 } from '@mui/material'
 import { keyframes } from '@mui/system'
 import SearchIcon from '@mui/icons-material/Search'
+import CheckRoundedIcon from '@mui/icons-material/CheckRounded'
 import AddIcon from '@mui/icons-material/Add'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
@@ -331,13 +332,17 @@ function TestimonialsPage() {
         onClose={() => setDialogOpen(false)}
         maxWidth="sm"
         fullWidth
-        PaperProps={{ sx: { bgcolor: '#1a1a2e', border: `1px solid ${B}`, borderRadius: 3 } }}
+        PaperProps={{ sx: { bgcolor: 'var(--neu-surface)', color: 'text.primary', border: 'var(--neu-border)', borderRadius: SHAPE.card, boxShadow: 'var(--neu-raised)', backdropFilter: 'var(--neu-backdrop)' } }}
       >
-        <DialogTitle sx={{ fontWeight: 800 }}>
-          {editingId ? 'Edit Testimonial' : 'Add Testimonial'}
+        <DialogTitle component="div" sx={{ pb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
+            <Box sx={{ display: 'grid', placeItems: 'center', width: 44, height: 44, flexShrink: 0, borderRadius: SHAPE.sm, boxShadow: 'var(--neu-inset)', color: 'primary.main' }}><FormatQuoteRoundedIcon /></Box>
+            <Typography component="h2" variant="h6" sx={{ fontWeight: 800 }}>{editingId ? 'Edit Testimonial' : 'Add Testimonial'}</Typography>
+          </Box>
+          <Typography variant="body2" color="text.secondary">Share a community member’s experience. Save a draft or publish it on the site.</Typography>
         </DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '16px !important' }}>
-          <Box sx={{ display: 'flex', gap: 2 }}>
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
             <TextField
               fullWidth size="small" label="Name"
               value={form.name}
@@ -363,10 +368,12 @@ function TestimonialsPage() {
             onChange={(e) => setForm({ ...form, quote: e.target.value })}
             sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
           />
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, alignItems: { xs: 'stretch', sm: 'center' } }}>
             <Box>
-              <Typography sx={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.5)', mb: 0.5 }}>Rating</Typography>
+              <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary', mb: 0.5 }}>Rating</Typography>
               <Rating
+                name="testimonial-rating"
+                sx={{ color: 'secondary.main', '& .MuiRating-iconEmpty': { color: 'text.disabled' } }}
                 value={form.rating}
                 onChange={(_, v) => setForm({ ...form, rating: v ?? 5 })}
               />
@@ -375,7 +382,7 @@ function TestimonialsPage() {
               select size="small" label="Status"
               value={form.status}
               onChange={(e) => setForm({ ...form, status: e.target.value as TestimonialStatus })}
-              sx={{ width: 150, '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+              sx={{ width: { xs: '100%', sm: 150 }, '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
             >
               <MenuItem value="draft">Draft</MenuItem>
               <MenuItem value="published">Published</MenuItem>
@@ -385,23 +392,28 @@ function TestimonialsPage() {
               size="small" label="Display Order" type="number"
               value={form.displayOrder}
               onChange={(e) => setForm({ ...form, displayOrder: parseInt(e.target.value) || 0 })}
-              sx={{ width: 120, '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+              sx={{ width: { xs: '100%', sm: 120 }, '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
             />
           </Box>
           <Box>
-            <Typography sx={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.5)', mb: 1 }}>Avatar Color</Typography>
-            <Box sx={{ display: 'flex', gap: 1 }}>
+            <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary', mb: 1 }}>Avatar Color</Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
               {AVATAR_COLORS.map((c) => (
-                <Box
+                <IconButton
                   key={c}
+                  aria-label={`Avatar color ${c}`}
+                  aria-pressed={form.avatarColor === c}
                   onClick={() => setForm({ ...form, avatarColor: c })}
                   sx={{
-                    width: 32, height: 32, borderRadius: '50%', bgcolor: c, cursor: 'pointer',
-                    border: form.avatarColor === c ? '3px solid #fff' : '3px solid transparent',
-                    transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
-                    '&:hover': { boxShadow: '0 0 0 2px rgba(255,255,255,0.35)' },
+                    width: 40, height: 40, flexShrink: 0, borderRadius: '50%', bgcolor: c, color: '#fff',
+                    border: '3px solid', borderColor: form.avatarColor === c ? 'text.primary' : 'transparent',
+                    boxShadow: 'var(--neu-subtle)',
+                    '&:hover': { bgcolor: c, outline: '2px solid', outlineColor: 'text.secondary', outlineOffset: 2 },
+                    '&:focus-visible': { outline: '2px solid', outlineColor: 'secondary.main', outlineOffset: 3 },
                   }}
-                />
+                >
+                  {form.avatarColor === c && <CheckRoundedIcon sx={{ fontSize: 18 }} />}
+                </IconButton>
               ))}
             </Box>
           </Box>
@@ -411,7 +423,8 @@ function TestimonialsPage() {
           <Button
             variant="contained" onClick={handleSave}
             disabled={!form.name || !form.role || !form.location || !form.quote}
-            sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2, bgcolor: ACCENT, '&:hover': { bgcolor: '#F57C00' } }}
+            color="primary"
+            sx={{ textTransform: 'none', fontWeight: 700 }}
           >
             {editingId ? 'Update' : 'Create'}
           </Button>
@@ -422,11 +435,11 @@ function TestimonialsPage() {
       <Dialog
         open={!!deleteConfirm}
         onClose={() => setDeleteConfirm(null)}
-        PaperProps={{ sx: { bgcolor: '#1a1a2e', border: `1px solid ${B}`, borderRadius: 3 } }}
+        PaperProps={{ sx: { bgcolor: 'var(--neu-surface)', color: 'text.primary', border: 'var(--neu-border)', borderRadius: SHAPE.card, boxShadow: 'var(--neu-raised)', backdropFilter: 'var(--neu-backdrop)' } }}
       >
         <DialogTitle sx={{ fontWeight: 800 }}>Remove Testimonial?</DialogTitle>
         <DialogContent>
-          <Typography sx={{ color: 'rgba(255,255,255,0.6)' }}>
+          <Typography sx={{ color: 'text.secondary' }}>
             This hides the testimonial from the site and active admin lists. Its record is retained for audit and recovery.
           </Typography>
         </DialogContent>

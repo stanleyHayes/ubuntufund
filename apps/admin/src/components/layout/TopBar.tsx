@@ -149,6 +149,8 @@ export default function TopBar({
         sx={{
           minHeight: `${MAIN_BAR_HEIGHT}px !important`,
           justifyContent: 'space-between',
+          gap: { xs: 1, sm: 2 },
+          px: { xs: 2, sm: 3 },
           bgcolor: 'background.paper',
           borderBottom: `1px solid ${HAIRLINE}`,
         }}
@@ -159,7 +161,7 @@ export default function TopBar({
             alignItems: 'center',
             gap: 1,
             minWidth: 0,
-            flexGrow: { xs: 1, sm: 0 },
+            flex: 1,
           }}
         >
           <IconButton
@@ -167,34 +169,38 @@ export default function TopBar({
             color="inherit"
             aria-label="Open navigation menu"
             onClick={onOpenNav}
-            sx={{ display: { xs: 'inline-flex', md: 'none' } }}
+            sx={{ display: { xs: 'inline-flex', md: 'none' }, width: 44, height: 44, flexShrink: 0 }}
           >
             <MenuRoundedIcon />
           </IconButton>
           <Search
             data-tour="search"
-            sx={{ width: { xs: '100%', sm: 320 }, flexGrow: { xs: 1, sm: 0 } }}
+            sx={{ width: '100%', maxWidth: 320, minWidth: 0 }}
           >
             <SearchIconWrapper>
               <SearchIcon />
             </SearchIconWrapper>
             <StyledInputBase
-              placeholder="Search campaigns, users, donations..."
+              placeholder="Search…"
+              inputProps={{ 'aria-label': 'Search campaigns, users and donations' }}
               sx={{ width: '100%' }}
             />
           </Search>
         </Box>
 
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.75, sm: 1 }, flexShrink: 0 }}>
           <NotificationBell api={api} attentionCount={total}>
             <AdminActionInbox />
           </NotificationBell>
 
-          <Divider orientation="vertical" flexItem sx={{ mx: 1, borderColor: HAIRLINE }} />
+          <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', sm: 'block' }, mx: 1, borderColor: HAIRLINE }} />
 
           <Box
             component="button"
             data-tour="user-menu"
+            aria-label="Open account menu"
+            aria-haspopup="menu"
+            aria-expanded={Boolean(anchorEl)}
             onClick={(e: React.MouseEvent<HTMLElement>) => setAnchorEl(e.currentTarget)}
             sx={{
               all: 'unset',
@@ -202,9 +208,12 @@ export default function TopBar({
               display: 'inline-flex',
               alignItems: 'center',
               gap: 1,
-              height: 38,
-              pl: 0.5,
-              pr: 1,
+              height: 44,
+              minWidth: { xs: 44, sm: 'auto' },
+              justifyContent: 'center',
+              boxSizing: 'border-box',
+              pl: { xs: 0, sm: 0.5 },
+              pr: { xs: 0, sm: 1 },
               borderRadius: '999px',
               border: `1px solid ${HAIRLINE}`,
               '&:hover': { bgcolor: WASH },
@@ -223,10 +232,10 @@ export default function TopBar({
             >
               {initials}
             </Avatar>
-            <Typography variant="body2" sx={{ fontWeight: 600, maxWidth: 120 }} noWrap>
+            <Typography variant="body2" sx={{ display: { xs: 'none', sm: 'block' }, fontWeight: 600, maxWidth: 120 }} noWrap>
               {firstName}
             </Typography>
-            <ExpandMoreRoundedIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+            <ExpandMoreRoundedIcon sx={{ display: { xs: 'none', sm: 'block' }, fontSize: 16, color: 'text.secondary' }} />
           </Box>
 
           <Menu

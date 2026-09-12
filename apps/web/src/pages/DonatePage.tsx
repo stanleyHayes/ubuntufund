@@ -228,6 +228,7 @@ export function DonatePage() {
         surface: CouponSurface.DONATION,
         campaignId: campaign.id,
         amount: amountValue,
+        currency: campaign.currency,
       })
     } else {
       clearCoupon()

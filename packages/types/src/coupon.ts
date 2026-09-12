@@ -192,6 +192,8 @@ export interface CouponValidationInput {
   /** Donation context: the campaign whose fee is being waived, and the gift. */
   campaignId?: string
   amount?: number
+  /** The donation's currency, so the quote matches what checkout will accept. */
+  currency?: string
 }
 
 export interface CouponPreview {

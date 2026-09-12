@@ -1,4 +1,6 @@
 import type { DonationIntentRepositoryPort } from '../../domain/ports/outbound/DonationIntentRepositoryPort.js';
+import type { CouponRedemptionRepositoryPort } from '../../domain/ports/outbound/CouponRedemptionRepositoryPort.js';
+import { releaseDonationSeat } from '../services/donationCouponSeats.js';
 import type { PaymentAttemptRepositoryPort } from '../../domain/ports/outbound/PaymentAttemptRepositoryPort.js';
 import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGatewayPort.js';
 import type { FeePolicy } from '../services/FeePolicy.js';
@@ -57,7 +59,9 @@ export class HandleFlutterwaveWebhookUseCase {
     private readonly paymentAttemptRepo: PaymentAttemptRepositoryPort,
     private readonly feePolicy: FeePolicy,
     private readonly settleDonationUseCase: SettleDonationUseCase,
-    private readonly planLimits: PlanLimitsService
+    private readonly planLimits: PlanLimitsService,
+    /** Optional: frees a failed donation's fee-waiver seat. */
+    private readonly couponRedemptionRepo?: CouponRedemptionRepositoryPort
   ) {}
 
   async execute(input: FlutterwaveWebhookInput): Promise<void> {
@@ -97,6 +101,7 @@ export class HandleFlutterwaveWebhookUseCase {
     const verified = await this.gateway.verifyTransaction(txRef);
     if (verified.status !== 'success') {
       await this.donationIntentRepo.updateStatus(intent.id, 'FAILED', txRef);
+      await releaseDonationSeat(this.couponRedemptionRepo, intent.id, intent.couponId);
       await this.safeRecordAttempt(intent.id, txRef, 'failed', verified.raw);
       return;
     }

@@ -102,7 +102,15 @@ export class HandleCryptoWebhookUseCase {
     // rate was charged whatever the organizer's plan happened to be today. The
     // other four rails all resolve through the locked rate; this one now does
     // too, and picks up any fee-waiver coupon on the intent along with it.
-    const platformFeePercent = await this.planLimits.platformFeePercentForIntent(intent);
+    // A missing campaign keeps its previous meaning on purpose. This rail passed
+    // `undefined` when the campaign could not be found, which FeePolicy reads as
+    // its configured default of 0%; routing that case through the shared
+    // resolver would have started charging the FREE-plan 3.5% on orphaned
+    // deposits — a silent fee change on money already in flight.
+    const campaign = await this.campaignRepo.findById(intent.campaignId);
+    const platformFeePercent = campaign
+      ? await this.planLimits.platformFeePercentForIntent(intent)
+      : undefined;
     const processorFeeGhs =
       intent.providerFeeMinor !== undefined ? intent.providerFeeMinor / 100 : 0;
 

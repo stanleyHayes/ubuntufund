@@ -1,4 +1,6 @@
 import type { DonationIntentEntity } from '../../domain/entities/DonationIntent.js';
+import type { CouponRedemptionRepositoryPort } from '../../domain/ports/outbound/CouponRedemptionRepositoryPort.js';
+import { releaseDonationSeat } from '../services/donationCouponSeats.js';
 import type { TipEntity } from '../../domain/entities/Tip.js';
 import type { DonationIntentRepositoryPort } from '../../domain/ports/outbound/DonationIntentRepositoryPort.js';
 import type { PaymentAttemptRepositoryPort } from '../../domain/ports/outbound/PaymentAttemptRepositoryPort.js';
@@ -58,7 +60,9 @@ export class ReconcilePaymentsUseCase {
     // tips (a crash between the status transition and the credit). Absent, the
     // sweep behaves exactly as before.
     private readonly tipRepo?: TipRepositoryPort,
-    private readonly tipCreditRepairer?: TipCreditRepairer
+    private readonly tipCreditRepairer?: TipCreditRepairer,
+    /** Optional: frees a failed donation's fee-waiver seat on the sweep. */
+    private readonly couponRedemptionRepo?: CouponRedemptionRepositoryPort
   ) {}
 
   /** Reconcile stale PENDING hosted intents older than `olderThanMinutes`. */
@@ -182,6 +186,9 @@ export class ReconcilePaymentsUseCase {
         intent.id,
         intent.providerRef
       );
+      if (failed) {
+        await releaseDonationSeat(this.couponRedemptionRepo, intent.id, intent.couponId);
+      }
       return failed ? 'failed' : 'pending';
     }
 

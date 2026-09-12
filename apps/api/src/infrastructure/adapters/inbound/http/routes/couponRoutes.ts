@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import {
-  SubscriptionTier,
   BillingCycle,
   CouponDiscountType,
   CouponSurface,
@@ -68,6 +67,7 @@ const previewCouponSchema = z.object({
   // Donation surface: the campaign whose fee would be waived, and the gift.
   campaignId: z.string().min(1).optional(),
   amount: z.number().positive().optional(),
+  currency: z.string().length(3).optional(),
 });
 
 /**

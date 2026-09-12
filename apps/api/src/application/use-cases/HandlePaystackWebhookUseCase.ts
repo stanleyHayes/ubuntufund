@@ -13,6 +13,7 @@ import type { HandleCreatorPayoutWebhookUseCase } from './HandleCreatorPayoutWeb
 import type { SubscriptionCheckoutRepositoryPort } from '../../domain/ports/outbound/SubscriptionCheckoutRepositoryPort.js';
 import type { AffiliateCommissionService } from '../services/AffiliateCommissionService.js';
 import type { CouponRedemptionRepositoryPort } from '../../domain/ports/outbound/CouponRedemptionRepositoryPort.js';
+import { releaseDonationSeat } from '../services/donationCouponSeats.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 import { logger } from '../../infrastructure/logging/logger.js';
 import { fromMinorUnits, minorUnitExponent } from '../../domain/value-objects/Money.js';
@@ -354,6 +355,7 @@ export class HandlePaystackWebhookUseCase {
     if (intent.status === 'FAILED' || intent.status === 'EXPIRED') return;
 
     await this.donationIntentRepo.updateStatus(intent.id, 'FAILED', reference);
+    await releaseDonationSeat(this.couponRedemptionRepo, intent.id, intent.couponId);
 
     try {
       await this.paymentAttemptRepo.record({

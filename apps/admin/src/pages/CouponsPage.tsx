@@ -1,13 +1,13 @@
 import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
-import { BrandedDatePicker } from '@ubuntu-fund/ui'
+import { Link as RouterLink, useLocation } from 'react-router-dom'
+import CouponFormFields from '@/components/coupons/CouponFormFields'
+import { type CouponForm, emptyForm, parseEmails, planLabel } from '@/components/coupons/couponForm'
 import { useState, useEffect, useCallback } from 'react'
 import {
   Box, Typography, MenuItem, InputAdornment, Button, Skeleton,
   Dialog, DialogTitle, DialogContent, DialogActions, IconButton,
-  Snackbar, Alert, Select, OutlinedInput, Checkbox, ListItemText,
-  FormControl, InputLabel, FormControlLabel, Switch,
+  Snackbar, Alert,
 } from '@mui/material'
-import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined'
 import SearchIcon from '@mui/icons-material/Search'
 import AddIcon from '@mui/icons-material/Add'
 import EditIcon from '@mui/icons-material/Edit'
@@ -16,15 +16,11 @@ import LocalOfferRoundedIcon from '@mui/icons-material/LocalOfferRounded'
 import { SHAPE, EmptyState } from '@ubuntu-fund/ui'
 import {
   CouponDiscountType,
-  SubscriptionTier,
-  BillingCycle,
-  CouponSurface,
   CouponCommissionBase,
-  SUBSCRIPTION_PLANS,
   Resource,
   Action,
 } from '@ubuntu-fund/types'
-import type { Coupon, CreateCouponInput, UpdateCouponInput } from '@ubuntu-fund/types'
+import type { Coupon, UpdateCouponInput } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
 import { useAdminPermissions } from '@/context/AdminPermissionContext'
 import { usePagination } from '@/hooks/usePagination'
@@ -35,80 +31,7 @@ import { TONES } from '@/lib/tones'
 
 const ACCENT = TONES.gold.text
 
-const SURFACE_LABEL: Record<CouponSurface, string> = {
-  [CouponSurface.SUBSCRIPTION]: 'Subscriptions',
-  [CouponSurface.DONATION]: 'Donations',
-  [CouponSurface.PAYOUT_FEE]: 'Withdrawal fees',
-}
-
-/** What the platform actually gives up on each surface, in plain terms. */
-const SURFACE_HINT: Record<CouponSurface, string> = {
-  [CouponSurface.SUBSCRIPTION]: 'The subscriber pays less',
-  [CouponSurface.DONATION]: 'Platform fee waived — the campaign receives more',
-  [CouponSurface.PAYOUT_FEE]: 'Lower fee on a withdrawal',
-}
 const PAGE_SIZE = 10
-// Coupons discount paid checkouts, so FREE is never a valid applicability.
-const PAID_TIERS = Object.values(SubscriptionTier).filter((t) => t !== SubscriptionTier.FREE)
-
-/** Display name for a tier id (falls back to the id for admin-added tiers). */
-const planLabel = (t: string): string =>
-  (SUBSCRIPTION_PLANS as Record<string, { name: string }>)[t]?.name ?? t
-
-interface CouponForm {
-  code: string
-  description: string
-  discountType: CouponDiscountType
-  amount: number
-  /** Ceiling on a percentage discount. 0 = none. */
-  maxDiscountAmount: number
-  /** Where the coupon may be redeemed. Empty = subscription only. */
-  appliesToSurfaces: CouponSurface[]
-  /** Which amount an affiliate commission is computed from. */
-  commissionBase: CouponCommissionBase
-  /** Restrict to customers who have never completed a paid checkout. */
-  newUsersOnly: boolean
-  /** Named recipients, one per line in the field; empty = open to anyone. */
-  allowedEmails: string
-  maxRedemptions: number
-  perUserLimit: number
-  minSubtotal: number
-  appliesToTiers: string[]
-  appliesToBillingCycles: BillingCycle[]
-  validFrom: string
-  validUntil: string
-  active: boolean
-}
-
-const emptyForm: CouponForm = {
-  code: '',
-  description: '',
-  discountType: CouponDiscountType.PERCENT,
-  amount: 10,
-  maxDiscountAmount: 0,
-  appliesToSurfaces: [],
-  commissionBase: CouponCommissionBase.POST_COUPON,
-  newUsersOnly: false,
-  allowedEmails: '',
-  maxRedemptions: 0,
-  perUserLimit: 0,
-  minSubtotal: 0,
-  appliesToTiers: [],
-  appliesToBillingCycles: [],
-  validFrom: '',
-  validUntil: '',
-  active: true,
-}
-
-/** One address per line or comma-separated; blanks and duplicates dropped. */
-const parseEmails = (raw: string): string[] => [
-  ...new Set(
-    raw
-      .split(/[\n,;]+/)
-      .map((e) => e.trim().toLowerCase())
-      .filter(Boolean)
-  ),
-]
 
 const toDateInput = (value?: Date | string): string => {
   if (!value) return ''
@@ -136,6 +59,7 @@ function Skel({ w, h }: { w?: string | number; h?: number }) {
 const GRID = '1.2fr 1fr 1fr 1fr 1.4fr 0.7fr 0.8fr'
 
 export default function CouponsPage() {
+  const location = useLocation()
   const { can } = useAdminPermissions()
   const canCreate = can(Resource.COUPONS, Action.CREATE)
   const canUpdate = can(Resource.COUPONS, Action.UPDATE)
@@ -153,7 +77,7 @@ export default function CouponsPage() {
   const [saving, setSaving] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<Coupon | null>(null)
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
-    open: false, message: '', severity: 'success',
+    open: Boolean(location.state?.createdCoupon), message: location.state?.createdCoupon ? `Coupon ${location.state.createdCoupon} created` : '', severity: 'success',
   })
 
   const fetchCoupons = useCallback(() => {
@@ -167,12 +91,6 @@ export default function CouponsPage() {
   }, [])
 
   useEffect(() => fetchCoupons(), [fetchCoupons])
-
-  const openCreate = () => {
-    setEditing(null)
-    setForm(emptyForm)
-    setDialogOpen(true)
-  }
 
   const openEdit = (coupon: Coupon) => {
     setEditing(coupon)
@@ -223,29 +141,6 @@ export default function CouponsPage() {
         const updated = await api.put<Coupon>(`/coupons/${editing.id}`, payload)
         setCoupons((prev) => prev.map((c) => (c.id === updated.id ? updated : c)))
         setSnackbar({ open: true, message: 'Coupon updated', severity: 'success' })
-      } else {
-        const payload: CreateCouponInput = {
-          code: form.code.trim().toUpperCase(),
-          description: form.description || undefined,
-          discountType: form.discountType,
-          amount: form.amount,
-          maxDiscountAmount: form.maxDiscountAmount || undefined,
-          appliesToSurfaces: form.appliesToSurfaces,
-          commissionBase: form.commissionBase,
-          newUsersOnly: form.newUsersOnly,
-          allowedEmails: parseEmails(form.allowedEmails),
-          maxRedemptions: form.maxRedemptions || undefined,
-          perUserLimit: form.perUserLimit || undefined,
-          minSubtotal: form.minSubtotal || undefined,
-          appliesToTiers: form.appliesToTiers,
-          appliesToBillingCycles: form.appliesToBillingCycles,
-          validFrom: form.validFrom || undefined,
-          validUntil: form.validUntil || undefined,
-          active: form.active,
-        }
-        const created = await api.post<Coupon>('/coupons', payload)
-        setCoupons((prev) => [created, ...prev])
-        setSnackbar({ open: true, message: 'Coupon created', severity: 'success' })
       }
       setDialogOpen(false)
     } catch (e) {
@@ -291,13 +186,14 @@ export default function CouponsPage() {
         tone="gold"
         eyebrow="Growth"
         title="Coupons"
-        lede="Create and manage discount codes applied at paid-subscription checkout."
+        lede="Manage promotions for subscriptions, donations and withdrawal fees."
         icon={<LocalOfferRoundedIcon />}
         actions={canCreate ? (
           <Button
             variant="contained"
             startIcon={<AddIcon />}
-            onClick={openCreate}
+            component={RouterLink}
+            to="/coupons/new"
             sx={{ textTransform: 'none', fontWeight: 700, borderRadius: SHAPE.sm, bgcolor: TONES.gold.solid, color: '#0E1916', '&:hover': { bgcolor: TONES.gold.border } }}
           >
             New Coupon
@@ -448,169 +344,9 @@ export default function CouponsPage() {
         fullWidth
         PaperProps={{ sx: { ...raisedSurface, borderRadius: SHAPE.card } }}
       >
-        <DialogTitle sx={{ fontWeight: 800 }}>{editing ? 'Edit Coupon' : 'New Coupon'}</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 800 }}>Edit Coupon</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '16px !important' }}>
-          <TextField
-            fullWidth size="small" label="Code"
-            value={form.code}
-            onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
-            disabled={!!editing}
-            helperText={editing ? 'Code is immutable after creation' : 'Stored uppercase; must be unique'}
-            error={codeInvalid}
-          />
-          <TextField
-            fullWidth size="small" label="Description (optional)"
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-          />
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <TextField
-              select fullWidth size="small" label="Discount Type"
-              value={form.discountType}
-              onChange={(e) => setForm({ ...form, discountType: e.target.value as CouponDiscountType })}
-            >
-              <MenuItem value={CouponDiscountType.PERCENT}>Percent (%)</MenuItem>
-              <MenuItem value={CouponDiscountType.FIXED}>Fixed (GH₵)</MenuItem>
-            </TextField>
-            <TextField
-              fullWidth size="small" label="Amount" type="number"
-              value={form.amount}
-              onChange={(e) => setForm({ ...form, amount: parseFloat(e.target.value) || 0 })}
-              error={amountInvalid}
-              helperText={form.discountType === CouponDiscountType.PERCENT ? '0–100' : 'GH₵ off'}
-              InputProps={{
-                endAdornment: <InputAdornment position="end">{form.discountType === CouponDiscountType.PERCENT ? '%' : 'GH₵'}</InputAdornment>,
-              }}
-            />
-          </Box>
-          {form.discountType === CouponDiscountType.PERCENT && (
-            <TextField
-              fullWidth size="small" label="Maximum discount (optional)" type="number"
-              value={form.maxDiscountAmount}
-              onChange={(e) => setForm({ ...form, maxDiscountAmount: parseFloat(e.target.value) || 0 })}
-              helperText="0 = no ceiling. Caps what this percentage can take off a large plan."
-              InputProps={{ endAdornment: <InputAdornment position="end">GH₵</InputAdornment> }}
-            />
-          )}
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <TextField
-              fullWidth size="small" label="Max Redemptions" type="number"
-              value={form.maxRedemptions}
-              onChange={(e) => setForm({ ...form, maxRedemptions: parseInt(e.target.value) || 0 })}
-              helperText="0 = unlimited"
-            />
-            <TextField
-              fullWidth size="small" label="Per-User Limit" type="number"
-              value={form.perUserLimit}
-              onChange={(e) => setForm({ ...form, perUserLimit: parseInt(e.target.value) || 0 })}
-              helperText="0 = unlimited"
-            />
-          </Box>
-          <TextField
-            fullWidth size="small" label="Minimum Subtotal (GH₵)" type="number"
-            value={form.minSubtotal}
-            onChange={(e) => setForm({ ...form, minSubtotal: parseFloat(e.target.value) || 0 })}
-            helperText="0 = no minimum"
-          />
-          <FormControl fullWidth size="small">
-            <InputLabel shrink id="coupon-tiers-label">Applies to Tiers</InputLabel>
-            <Select
-              labelId="coupon-tiers-label"
-              displayEmpty
-              multiple
-              value={form.appliesToTiers}
-              onChange={(e) => setForm({ ...form, appliesToTiers: e.target.value as string[] })}
-              input={<OutlinedInput label="Applies to Tiers" startAdornment={<InputAdornment position="start"><LocalOfferRoundedIcon fontSize="small" /></InputAdornment>} />}
-              renderValue={(selected) => selected.length === 0 ? 'All tiers' : selected.map((t) => planLabel(t)).join(', ')}
-            >
-              {PAID_TIERS.map((t) => (
-                <MenuItem key={t} value={t}>
-                  <Checkbox checked={form.appliesToTiers.includes(t)} size="small" />
-                  <ListItemText primary={planLabel(t)} />
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <FormControl fullWidth size="small">
-            <InputLabel shrink id="coupon-cycles-label">Applies to Billing Cycles</InputLabel>
-            <Select
-              labelId="coupon-cycles-label"
-              displayEmpty
-              multiple
-              value={form.appliesToBillingCycles}
-              onChange={(e) => setForm({ ...form, appliesToBillingCycles: e.target.value as BillingCycle[] })}
-              input={<OutlinedInput label="Applies to Billing Cycles" startAdornment={<InputAdornment position="start"><CalendarMonthOutlinedIcon fontSize="small" /></InputAdornment>} />}
-              renderValue={(selected) => selected.length === 0 ? 'All cycles' : selected.map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join(', ')}
-            >
-              {Object.values(BillingCycle).map((cycle) => (
-                <MenuItem key={cycle} value={cycle}>
-                  <Checkbox checked={form.appliesToBillingCycles.includes(cycle)} size="small" />
-                  <ListItemText primary={cycle.charAt(0).toUpperCase() + cycle.slice(1)} />
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <FormControl fullWidth size="small">
-            <InputLabel shrink id="coupon-surfaces-label">Where it can be used</InputLabel>
-            <Select
-              labelId="coupon-surfaces-label"
-              displayEmpty
-              multiple
-              value={form.appliesToSurfaces}
-              onChange={(e) => setForm({ ...form, appliesToSurfaces: e.target.value as CouponSurface[] })}
-              input={<OutlinedInput label="Where it can be used" />}
-              renderValue={(selected) =>
-                selected.length === 0
-                  ? 'Subscriptions only'
-                  : selected.map((v) => SURFACE_LABEL[v]).join(', ')
-              }
-            >
-              {Object.values(CouponSurface).map((surface) => (
-                <MenuItem key={surface} value={surface}>
-                  <Checkbox checked={form.appliesToSurfaces.includes(surface)} size="small" />
-                  <ListItemText primary={SURFACE_LABEL[surface]} secondary={SURFACE_HINT[surface]} />
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <TextField
-            select fullWidth size="small" label="Affiliate commission on a discounted sale"
-            value={form.commissionBase}
-            onChange={(e) => setForm({ ...form, commissionBase: e.target.value as CouponCommissionBase })}
-            helperText="Which amount a referrer's commission is calculated from."
-          >
-            <MenuItem value={CouponCommissionBase.POST_COUPON}>Amount actually charged</MenuItem>
-            <MenuItem value={CouponCommissionBase.LIST_PRICE}>Full list price</MenuItem>
-          </TextField>
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <BrandedDatePicker
-              fullWidth size="small" label="Valid From" 
-              value={form.validFrom}
-              onChange={(value) => setForm({ ...form, validFrom: value })}
-              
-            />
-            <BrandedDatePicker
-              fullWidth size="small" label="Valid Until" 
-              value={form.validUntil}
-              onChange={(value) => setForm({ ...form, validUntil: value })} minDate={form.validFrom || undefined}
-              
-            />
-          </Box>
-          <TextField
-            fullWidth size="small" label="Limit to specific people (optional)"
-            multiline minRows={2}
-            value={form.allowedEmails}
-            onChange={(e) => setForm({ ...form, allowedEmails: e.target.value })}
-            helperText="One email per line. Leave blank to let anyone use the code."
-          />
-          <FormControlLabel
-            control={<Switch checked={form.newUsersOnly} onChange={(e) => setForm({ ...form, newUsersOnly: e.target.checked })} />}
-            label="First-time subscribers only"
-          />
-          <FormControlLabel
-            control={<Switch checked={form.active} onChange={(e) => setForm({ ...form, active: e.target.checked })} />}
-            label="Active"
-          />
+          <CouponFormFields form={form} setForm={setForm} editing />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setDialogOpen(false)} sx={{ textTransform: 'none' }} disabled={saving}>Cancel</Button>

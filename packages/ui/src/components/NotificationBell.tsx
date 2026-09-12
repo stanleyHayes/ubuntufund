@@ -10,10 +10,18 @@ type NotificationApi = { get<T>(path: string): Promise<T>; put<T>(path: string):
 export function NotificationBell({
   api,
   attentionCount = 0,
+  iconColor,
   children,
 }: {
   api: NotificationApi
   attentionCount?: number
+  /**
+   * Colour for the bell itself. Only the host knows what surface this sits on —
+   * the web header is forest in both themes, the admin bar is its own tone — so
+   * a single hardcoded value would be wrong somewhere. Defaults to the brand
+   * text token, which is legible in both modes.
+   */
+  iconColor?: string
   children?: ReactNode
 }) {
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
@@ -70,6 +78,12 @@ export function NotificationBell({
       <IconButton
         sx={{
           flexShrink: 0,
+          // Without an explicit colour the icon inherits MUI's default ink,
+          // which is dark — and every host puts this button on a dark surface,
+          // so the bell disappeared into its own background. The host names the
+          // colour because only the host knows what it sits on; the popover
+          // below deliberately does not inherit it.
+          color: iconColor ?? 'var(--text-brand)',
           bgcolor: 'var(--neu-surface)',
           boxShadow: 'var(--neu-subtle)',
           borderRadius: 'var(--shape-button, 10px)',

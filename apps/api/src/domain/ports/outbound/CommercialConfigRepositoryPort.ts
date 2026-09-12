@@ -1,6 +1,7 @@
 export interface CommercialConfigVersion {
   key: string;
-  value: number;
+  value?: number;
+  textValue?: string;
   effectiveFrom: Date;
   createdBy: string;
   reason?: string;
@@ -16,6 +17,16 @@ export interface CommercialConfigRepositoryPort {
   setValue(input: {
     key: string;
     value: number;
+    effectiveFrom: Date;
+    createdBy: string;
+    reason?: string;
+  }): Promise<CommercialConfigVersion>;
+  /** The currently-effective TEXT value for a key at `at`, or null. */
+  getEffectiveText(key: string, at: Date): Promise<string | null>;
+  /** Append a new effective-dated text value for a key. */
+  setText(input: {
+    key: string;
+    textValue: string;
     effectiveFrom: Date;
     createdBy: string;
     reason?: string;

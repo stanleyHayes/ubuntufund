@@ -107,7 +107,8 @@ export interface CampaignsConfig {
   /**
    * The highest tier that is auto-approved (goes live immediately). Campaigns
    * above this tier are held in PENDING_REVIEW for manual compliance review.
-   * Default 2 (Tiers 1–2 automated; 3+ manual), per the v6 tier table.
+   * Default 3 (Tiers 1–3 automated; 4+ manual), so goals up to GHS 250k go live
+   * immediately and only genuinely large asks wait on a person.
    */
   autoApproveMaxTier: number;
 }
@@ -314,7 +315,11 @@ export const config: AppConfig = {
       .map((v) => Number.parseFloat(v.trim()))
       .filter((v) => Number.isFinite(v) && v > 0)
       .sort((a, b) => a - b),
-    autoApproveMaxTier: envNumber(process.env.CAMPAIGN_AUTO_APPROVE_MAX_TIER, 2),
+    // Tier 3 = goals up to GHS 250k go live immediately. Reviewing every
+    // campaign above GHS 50k meant the queue, not the risk, decided how fast
+    // people could raise money. Only the fallback: the effective value comes
+    // from the versioned config store, so it is changeable from the dashboard.
+    autoApproveMaxTier: envNumber(process.env.CAMPAIGN_AUTO_APPROVE_MAX_TIER, 3),
   },
   payouts: {
     priorityFeePercent: envNumber(process.env.PAYOUT_PRIORITY_FEE_PERCENT, 0.5),

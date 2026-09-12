@@ -1,3 +1,4 @@
+import { useContent } from '../hooks/useContent'
 import { useState } from 'react'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
@@ -83,13 +84,7 @@ const footerSections = [
   },
 ]
 
-const socialLinks = [
-  { icon: <FacebookIcon />, label: 'Facebook', href: 'https://facebook.com/ujimora' },
-  { icon: <XIcon />, label: 'X', href: 'https://x.com/ujimora' },
-  { icon: <InstagramIcon />, label: 'Instagram', href: 'https://instagram.com/ujimora' },
-  { icon: <LinkedInIcon />, label: 'LinkedIn', href: 'https://linkedin.com/company/ujimora' },
-  { icon: <YouTubeIcon />, label: 'YouTube', href: 'https://youtube.com/@ujimora' },
-]
+const CONTACT_SOCIALS = { socials: { facebook: '', x: '', instagram: '', linkedin: '', youtube: '' } }
 
 const linkStyle = {
   color: 'rgba(255,255,255,0.5)',
@@ -101,6 +96,15 @@ const linkStyle = {
 }
 
 function Footer() {
+  const contact = useContent('contact', CONTACT_SOCIALS)
+  const socials = { ...CONTACT_SOCIALS.socials, ...contact.socials }
+  const socialLinks = [
+    { icon: <FacebookIcon />, label: 'Facebook', href: socials.facebook },
+    { icon: <XIcon />, label: 'X', href: socials.x },
+    { icon: <InstagramIcon />, label: 'Instagram', href: socials.instagram },
+    { icon: <LinkedInIcon />, label: 'LinkedIn', href: socials.linkedin },
+    { icon: <YouTubeIcon />, label: 'YouTube', href: socials.youtube },
+  ].filter(social => /^https?:\/\//i.test(social.href?.trim() ?? ''))
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
@@ -480,7 +484,7 @@ function Footer() {
               <IconButton
                 key={social.label}
                 component="a"
-                href={social.href}
+                href={social.href.trim()}
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={social.label}

@@ -11,6 +11,7 @@ function toVersion(doc: CommercialConfigDocument): CommercialConfigVersion {
   return {
     key: doc.key,
     value: doc.value,
+    textValue: doc.textValue,
     effectiveFrom: doc.effectiveFrom,
     createdBy: doc.createdBy,
     reason: doc.reason,
@@ -29,7 +30,7 @@ export class MongoCommercialConfigRepository
       key,
       effectiveFrom: { $lte: at },
     }).sort({ effectiveFrom: -1, createdAt: -1 });
-    return doc ? doc.value : null;
+    return doc?.value ?? null;
   }
 
   async getEffectiveMap(keys: string[], at: Date): Promise<Record<string, number>> {
@@ -37,7 +38,9 @@ export class MongoCommercialConfigRepository
     // secondary sort makes the newest write win on an identical `effectiveFrom`
     // (see getEffectiveValue).
     const rows = await CommercialConfigModel.aggregate<{ _id: string; value: number }>([
-      { $match: { key: { $in: keys }, effectiveFrom: { $lte: at } } },
+      // Only numeric rows: a text setting has no `value`, and letting one
+      // through would surface `undefined` where callers expect a number.
+      { $match: { key: { $in: keys }, effectiveFrom: { $lte: at }, value: { $ne: null } } },
       { $sort: { effectiveFrom: -1, createdAt: -1 } },
       { $group: { _id: '$key', value: { $first: '$value' } } },
     ]);
@@ -49,6 +52,26 @@ export class MongoCommercialConfigRepository
   async setValue(input: {
     key: string;
     value: number;
+    effectiveFrom: Date;
+    createdBy: string;
+    reason?: string;
+  }): Promise<CommercialConfigVersion> {
+    const doc = await CommercialConfigModel.create(input);
+    return toVersion(doc);
+  }
+
+  async getEffectiveText(key: string, at: Date): Promise<string | null> {
+    // Same newest-wins ordering as the numeric read.
+    const doc = await CommercialConfigModel.findOne({
+      key,
+      effectiveFrom: { $lte: at },
+    }).sort({ effectiveFrom: -1, createdAt: -1 });
+    return doc?.textValue ?? null;
+  }
+
+  async setText(input: {
+    key: string;
+    textValue: string;
     effectiveFrom: Date;
     createdBy: string;
     reason?: string;

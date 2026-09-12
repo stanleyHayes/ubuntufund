@@ -1,5 +1,41 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-12 — Planned social profiles prefilled
+
+- User confirmed the social placeholder URLs are the profiles they intend to create. Admin Contact Details now fills blank social fields with those exact Ujimora URLs after loading, preserves existing URLs and leaves edits/clearing available. The normal CMS save publishes the values; no production content was saved in this change.
+
+### 2026-09-12 — Contact content wiring and empty social sections
+
+- Live read-only CMS check found all five social URLs blank while address and phone were populated. Contact sidebar ignored the address and rendered an empty social card; response rows were hardcoded launch copy. Footer separately used hardcoded profile URLs.
+- Sidebar now shows saved address/phone, provides direct email contact when socials are absent, and renders configured social links with labels/icons. Footer reads the same contact CMS social fields. Support availability replaces placeholder response rows until estimates are configured.
+- Admin Contact Details now explains social publication and provides optional response-time fields. No social URLs or timing promises were invented or saved to production; official URLs/estimates requested from the user.
+- Validation: admin/marketing type checks and focused lint; mocked browser verified empty/partial social data, saved address/phone, configured social links/response estimates and no overflow at 390px. Inspected mobile screenshot. Live CMS was read only.
+
+### 2026-09-12 — Dedicated coupon creation wizard
+
+- New Coupon opens `/coupons/new`, guarded by coupon CREATE permission. Four branded steps cover Offer, Eligibility, Limits & schedule, and Review; phone layouts stack vertically.
+- Extracted shared coupon fields/model to preserve existing edit options. Creation retains discount caps, surfaces, plans/cycles, commission basis, recipient rules, limits, dates and active state. Review exposes every configured value before POST; failed saves retain input and successful saves return to the list with confirmation.
+- Validation: admin type check, focused lint, production build and three model tests pass (existing bundle-size advisory remains). Mocked browser verified required-code validation, back-navigation retention, no pre-review submission, duplicate-code error/retry, normalized payload, list confirmation, CREATE permission denial and no overflow at 390px. Inspected mobile review screenshot. No real coupon created.
+
+### 2026-09-12 — Testimonial dialog brand colors
+
+- Removed hardcoded purple create/edit/delete dialog backgrounds, faded white labels and orange create-button hover. Dialogs now consume active brand surface/text/material tokens; rating uses brand gold and the save button uses theme states.
+- Added a quote icon and explanatory heading, mobile field stacking and wrapping avatar choices with accessible selection buttons/checkmarks.
+- Validation: admin type check, focused ESLint and diff checks pass. Mocked local browser verified dark/light dialog colors, mobile/desktop dialog bounds at 390/1280px, avatar selection and themed enabled-button hover; inspected dark desktop screenshot. No testimonial was saved or published.
+
+### 2026-09-12 — Branded collaborator invitation choices
+
+- Replaced the native collaborator-role select with vertically stacked, appearance-aware radio cards. Each role has an icon, title and description, with selected depth/outline and keyboard focus treatment.
+- Added a branded invitation heading icon and description; narrowed mobile dialog margins and stacked the campaign collaborator heading/action on phones.
+- Validation: web type check, focused lint and diff checks pass. Mocked local browser confirmed role selection by click and arrow key, no native select in the dialog, and no dialog overflow at 320/390px; inspected the 390px screenshot. No invitation sent or production deployment performed.
+
+### 2026-09-12 — Admin mobile campaign layout and navbar
+
+- Shared admin header statistics stack on phones, use two columns on tablets and up to four on large screens. Shrinkable tracks and wrapping prevent long values from clipping; campaign header padding aligns with the content below.
+- Campaign details now have a full-width organizer action, stacked labeled detail cards on mobile, separate readable start/end dates and an accessible funding progress bar. Loading placeholders are width-bounded.
+- Mobile navbar uses an avatar-only account control, shorter accessible search field, bounded flexible sizing and a desktop-only separator/name/chevron.
+- Validation: admin type check, focused ESLint and diff checks pass. Local browser with mocked API data verified no horizontal overflow at 320/390/768/1440px, single-column statistics/details on phones, account-menu opening and organizer navigation. Inspected the 320px screenshot. No production deployment performed.
+
 ### 2026-09-10 — Brighter dark text and appearance-aware signup choices
 
 - Brightened shared dark primary/secondary/brand text and semantic dark variants, keeping light-mode colors and subtle border tokens unchanged. Password strength now uses semantic success/warning/error colors rather than a dark forest label.

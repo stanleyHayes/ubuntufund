@@ -8,7 +8,6 @@ import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import Stack from '@mui/material/Stack'
-import IconButton from '@mui/material/IconButton'
 import Chip from '@mui/material/Chip'
 import Snackbar from '@mui/material/Snackbar'
 import Alert from '@mui/material/Alert'
@@ -16,6 +15,7 @@ import Accordion from '@mui/material/Accordion'
 import AccordionSummary from '@mui/material/AccordionSummary'
 import AccordionDetails from '@mui/material/AccordionDetails'
 import LocationOnRoundedIcon from '@mui/icons-material/LocationOnRounded'
+import PhoneRoundedIcon from '@mui/icons-material/PhoneRounded'
 import EmailRoundedIcon from '@mui/icons-material/EmailRounded'
 import SendRoundedIcon from '@mui/icons-material/SendRounded'
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded'
@@ -44,6 +44,7 @@ const CONTACT_FALLBACK = {
   phone: '',
   address: '',
   hours: 'Support availability is confirmed by email',
+  responseTimes: [] as { label: string; time: string }[],
   socials: {
     facebook: '',
     x: '',
@@ -64,17 +65,8 @@ const FAQ = [
   { q: 'How long does it take to get a response?', a: 'Response times vary during launch readiness. Submit the form with enough detail for the team to route and investigate your request.' },
   { q: 'I have an issue with my campaign. Who should I contact?', a: 'Select "Campaign support" as your inquiry type and include the campaign link plus a concise description. Do not send passwords or access tokens.' },
   { q: 'How can I partner with Ujimora?', a: 'We welcome partnerships with NGOs, corporations, and government bodies. Select "Partnership" as your inquiry type, or email sales@ujimora.com directly.' },
-  { q: 'Where are your offices located?', a: 'No public walk-in office is listed during launch readiness. Use the contact form before attempting an in-person visit.' },
+  { q: 'Where are your offices located?', a: 'See the support location on this page and contact the team before planning a visit.' },
   { q: 'How do I report suspected fraud?', a: 'Use the campaign report action or email trust@ujimora.com with the campaign link and relevant evidence. Do not publish sensitive identity documents.' },
-]
-
-const OFFICES = [{ city: 'Online support', country: 'Serving Ghana during launch readiness', hq: false }]
-
-const RESPONSE_TIMES = [
-  { label: 'General inquiries', time: 'No guaranteed SLA' },
-  { label: 'Campaign issues', time: 'Reviewed by support' },
-  { label: 'Partnership requests', time: 'Reviewed by support' },
-  { label: 'Fraud reports', time: 'Prioritized for review' },
 ]
 
 // ─── Shared styles ───────────────────────────────────────────────────────────
@@ -99,13 +91,15 @@ function ContactPage() {
   })
   // Runtime CMS: contact details + social links (key 'contact'), falling back to the
   // hardcoded defaults when the CMS is unreachable.
-  const contact = useContent('contact', CONTACT_FALLBACK)
+  const savedContact = useContent('contact', CONTACT_FALLBACK)
+  const contact = { ...CONTACT_FALLBACK, ...savedContact, socials: { ...CONTACT_FALLBACK.socials, ...savedContact.socials } }
+  const responseTimes = (contact.responseTimes ?? []).filter(row => row.label?.trim() && row.time?.trim())
 
   const CONTACT_CHANNELS = [
     { icon: <EmailRoundedIcon />, label: 'Email support', value: contact.email, detail: 'Send account, campaign, or general questions' },
     { icon: <ChatBubbleOutlineRoundedIcon />, label: 'Support hours', value: contact.hours, detail: 'Availability is confirmed before a live conversation' },
-    { icon: <LocationOnRoundedIcon />, label: 'Ghana operations', value: contact.address || 'Serving communities across Ghana', detail: 'No public walk-in office is listed at launch' },
-    { icon: <GroupsRoundedIcon />, label: 'Organization help', value: 'Verification and team access', detail: 'Use the form and select Campaign support' },
+    { icon: <LocationOnRoundedIcon />, label: 'Ghana operations', value: contact.address || 'Serving communities across Ghana', detail: contact.address ? 'Contact us before planning a visit' : 'Contact the team online' },
+    contact.phone ? { icon: <PhoneRoundedIcon />, label: 'Phone', value: contact.phone, detail: 'Call the team about your inquiry' } : { icon: <GroupsRoundedIcon />, label: 'Organization help', value: 'Verification and team access', detail: 'Use the form and select Campaign support' },
   ]
 
   const SOCIAL_LINKS = [
@@ -114,7 +108,7 @@ function ContactPage() {
     { icon: <InstagramIcon />, label: 'Instagram', href: contact.socials.instagram },
     { icon: <LinkedInIcon />, label: 'LinkedIn', href: contact.socials.linkedin },
     { icon: <YouTubeIcon />, label: 'YouTube', href: contact.socials.youtube },
-  ].filter((social) => social.href)
+  ].filter((social) => /^https?:\/\//i.test(social.href?.trim() ?? ''))
 
   const [formData, setFormData] = useState({ name: '', email: '', subject: '', type: 'general', message: '' })
   const [submitted, setSubmitted] = useState(false)
@@ -348,93 +342,35 @@ function ContactPage() {
           {/* ═══ Sidebar ═══ */}
           <Grid size={{ xs: 12, md: 5 }}>
             <Stack spacing={3}>
-              {/* Offices */}
               <Card elevation={0}>
                 <CardContent sx={{ p: 3 }}>
-                  <Typography sx={{ fontWeight: 700, fontSize: '1rem', mb: 2 }}>Support location</Typography>
-                  <Stack spacing={1.5}>
-                    {OFFICES.map((office) => (
-                      <Box
-                        key={office.city}
-                        sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 1.5,
-                          p: 1.5,
-                          borderRadius: SHAPE.card,
-                          bgcolor: office.hq ? 'rgba(46, 61, 47, 0.04)' : 'transparent',
-                        }}
-                      >
-                        <Box sx={{ flex: 1 }}>
-                          <Typography sx={{ fontWeight: 600, fontSize: '0.88rem' }}>
-                            {office.city}
-                            {office.hq && (
-                              <Chip
-                                label="HQ"
-                                size="small"
-                                sx={{
-                                  ml: 1,
-                                  height: 20,
-                                  fontSize: '0.65rem',
-                                  fontWeight: 700,
-                                  bgcolor: 'primary.main',
-                                  color: 'primary.contrastText',
-                                }}
-                              />
-                            )}
-                          </Typography>
-                          <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary' }}>{office.country}</Typography>
-                        </Box>
-                      </Box>
-                    ))}
-                  </Stack>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}><LocationOnRoundedIcon color="primary" /><Typography component="h2" sx={{ fontWeight: 700, fontSize: '1rem' }}>Support location</Typography></Box>
+                  <Typography sx={{ fontWeight: 600, mb: 1, overflowWrap: 'anywhere' }}>{contact.address || 'Online support'}</Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>{contact.address ? 'Contact the team before planning a visit.' : 'Send us a message for help with your account or campaign.'}</Typography>
+                  {contact.phone && <Button component="a" href={`tel:${contact.phone.replace(/[^+0-9]/g, '')}`} startIcon={<PhoneRoundedIcon />} sx={{ overflowWrap: 'anywhere' }}>{contact.phone}</Button>}
                 </CardContent>
               </Card>
 
-              {/* Social Links */}
               <Card elevation={0}>
                 <CardContent sx={{ p: 3 }}>
-                  <Typography sx={{ fontWeight: 700, fontSize: '1rem', mb: 2 }}>Follow us</Typography>
-                  <Stack direction="row" spacing={1}>
-                    {SOCIAL_LINKS.map((social) => (
-                      <IconButton
-                        key={social.label}
-                        component="a"
-                        href={social.href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label={social.label}
-                        sx={{
-                          width: 44,
-                          height: 44,
-                          border: '1.5px solid',
-                          borderColor: 'divider',
-                          borderRadius: SHAPE.sm,
-                          color: 'text.secondary',
-                          '&:hover': {
-                            color: 'secondary.dark',
-                            borderColor: 'secondary.main',
-                            bgcolor: 'rgba(199, 162, 74, 0.08)',
-                          },
-                        }}
-                      >
-                        {social.icon}
-                      </IconButton>
-                    ))}
-                  </Stack>
-                </CardContent>
-              </Card>
-
-              {/* Response SLA */}
-              <Card elevation={0}>
-                <CardContent sx={{ p: 3 }}>
-                  <Typography sx={{ fontWeight: 700, fontSize: '1rem', mb: 1.5 }}>Response times</Typography>
-                  {RESPONSE_TIMES.map((sla) => (
-                    <Box key={sla.label} sx={{ display: 'flex', justifyContent: 'space-between', py: 1, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 'none' } }}>
-                      <Typography sx={{ fontSize: '0.82rem', color: 'text.secondary' }}>{sla.label}</Typography>
-                      <Typography sx={{ fontSize: '0.82rem', fontWeight: 700, color: 'secondary.dark' }}>{sla.time}</Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}><ChatBubbleOutlineRoundedIcon color="primary" /><Typography component="h2" sx={{ fontWeight: 700, fontSize: '1rem' }}>{SOCIAL_LINKS.length ? 'Follow us' : 'Stay in touch'}</Typography></Box>
+                  {SOCIAL_LINKS.length ? <>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>Connect with Ujimora on our official channels.</Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                      {SOCIAL_LINKS.map(social => <Button key={social.label} component="a" href={social.href.trim()} target="_blank" rel="noopener noreferrer" startIcon={social.icon} sx={{ justifyContent: 'flex-start', p: 1.5, boxShadow: 'var(--neu-inset)' }}>{social.label}</Button>)}
                     </Box>
-                  ))}
+                  </> : <>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>Have a question or want to connect? Reach our team directly by email.</Typography>
+                    <Button component="a" href={`mailto:${contact.email || CONTACT_FALLBACK.email}`} startIcon={<EmailRoundedIcon />} sx={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{contact.email || CONTACT_FALLBACK.email}</Button>
+                  </>}
+                </CardContent>
+              </Card>
+
+              <Card elevation={0}>
+                <CardContent sx={{ p: 3 }}>
+                  <Typography component="h2" sx={{ fontWeight: 700, fontSize: '1rem', mb: 1.5 }}>{responseTimes.length ? 'Response times' : 'Support availability'}</Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>{contact.hours || CONTACT_FALLBACK.hours}</Typography>
+                  {responseTimes.length ? responseTimes.map(row => <Box key={row.label} sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', gap: 0.75, py: 1.5, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 'none' } }}><Typography variant="body2" color="text.secondary">{row.label}</Typography><Typography variant="body2" sx={{ fontWeight: 700, color: 'text.primary' }}>{row.time}</Typography></Box>) : <Typography variant="body2" color="text.secondary">Include your campaign link and a description of the issue so we can direct your message to the right team.</Typography>}
                 </CardContent>
               </Card>
             </Stack>

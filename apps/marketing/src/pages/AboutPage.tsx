@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import AccountBalanceRoundedIcon from '@mui/icons-material/AccountBalanceRounded'
 import FactCheckRoundedIcon from '@mui/icons-material/FactCheckRounded'
 import GroupsRoundedIcon from '@mui/icons-material/GroupsRounded'
@@ -57,7 +58,35 @@ function AboutPage() {
   const about = useContent('about', ABOUT_FALLBACK)
   const cmsLeader = about.team?.[0]
   // Older CMS records still contain the launch placeholder.
-  const leader = !cmsLeader || cmsLeader.name === 'Ujimora Team' ? STANLEY_PROFILE : cmsLeader
+  //
+  // Merged over the built-in profile rather than replacing it. A CMS record
+  // only carries the fields its editor exposes, so taking it wholesale blanked
+  // the photo and every link the moment anyone saved the About block — the
+  // card fell back to bare initials. Empty strings are treated as "not set" for
+  // the same reason: a cleared field should fall back, not erase.
+  const leader: TeamMember =
+    !cmsLeader || cmsLeader.name === 'Ujimora Team'
+      ? STANLEY_PROFILE
+      : {
+          ...STANLEY_PROFILE,
+          ...Object.fromEntries(
+            Object.entries(cmsLeader).filter(([, v]) =>
+              Array.isArray(v) ? v.length > 0 : v !== undefined && v !== null && v !== '',
+            ),
+          ),
+        }
+  // The card renders the built-in profile first and swaps to the CMS record
+  // when it arrives, so a CMS photo that 404s made the portrait appear and then
+  // vanish into initials. Falling back to the built-in image keeps a face on
+  // the card; only if that fails too do the initials show.
+  const [portraitFailed, setPortraitFailed] = useState(false)
+  const portrait = portraitFailed ? STANLEY_PROFILE.image : leader.image
+  // srcSet only for the built-in portrait. It lists the packaged JPEGs, and the
+  // browser prefers srcSet over src — so leaving it on a CMS-supplied photo
+  // would quietly render the wrong person.
+  const portraitSrcSet =
+    portrait === STANLEY_PROFILE.image ? STANLEY_PROFILE.imageSrcSet : undefined
+
   return (
     <Box sx={{ flex: 1, bgcolor: 'background.default', pb: { xs: 8, md: 12 } }}>
       <InternalPageHero eyebrow="About Ujimora" title={about.hero.title} description={about.hero.subtitle} icon={<PublicRoundedIcon />} panelLabel="Built in Ghana" panelTitle="Giving infrastructure shaped around local communities." panelBody="Cedi-first records. Human review. Transparent campaign histories." primaryAction={{ label: 'How trust works', href: '#operating-model' }} secondaryAction={{ label: 'Talk to our team', href: '/contact' }} />
@@ -163,7 +192,7 @@ function AboutPage() {
           </Box>
         </Box>
         <Box component="section" id="leadership" aria-labelledby="leadership-name" sx={{ mt: { xs: 7, md: 10 }, scrollMarginTop: 90, bgcolor: 'var(--neu-surface)', boxShadow: 'var(--neu-raised)', border: 'var(--neu-border)', backdropFilter: 'var(--neu-backdrop)', borderRadius: SHAPE.card, overflow: 'hidden', display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'minmax(0,.85fr) minmax(0,1.4fr)' } }}>
-          <Avatar variant="square" src={leader.image} alt={leader.name} imgProps={{ srcSet: leader.imageSrcSet, sizes: '(max-width: 899px) 100vw, 46vw', loading: 'lazy', decoding: 'async' }} sx={{ width: '100%', height: { xs: 300, sm: 380, md: '100%' }, minHeight: { md: 500 }, bgcolor: 'primary.main', color: 'primary.contrastText', fontSize: '5rem', '& img': { objectPosition: '50% 35%' } }}>{leader.initials}</Avatar>
+          <Avatar variant="square" src={portrait} alt={leader.name} imgProps={{ srcSet: portraitSrcSet, sizes: '(max-width: 899px) 100vw, 46vw', loading: 'lazy', decoding: 'async', onError: () => setPortraitFailed(true) }} sx={{ width: '100%', height: { xs: 300, sm: 380, md: '100%' }, minHeight: { md: 500 }, bgcolor: 'primary.main', color: 'primary.contrastText', fontSize: '5rem', '& img': { objectPosition: '50% 35%' } }}>{leader.initials}</Avatar>
           <Box sx={{ p: { xs: 3, sm: 4, md: 5 } }}>
             <Typography variant="overline" color="text.secondary">The person behind the platform</Typography>
             <Typography component="h2" id="leadership-name" sx={{ mt: 1.5, fontSize: { xs: '2rem', md: '2.6rem' }, fontWeight: 900, letterSpacing: '-.035em', lineHeight: 1.12 }}>{leader.name}</Typography>

@@ -60,7 +60,11 @@ function SettingsSection({
   tone?: 'default' | 'danger'
   children: React.ReactNode
 }) {
-  const accent = tone === 'danger' ? CLAY : FOREST
+  // Theme-aware, not the raw brand hex. FOREST is a dark green and this icon
+  // sits on --neu-surface, which is itself dark in dark mode — so the icon was
+  // rendering dark-on-dark and effectively disappearing. The --text-* tokens
+  // are derived per mode precisely so a foreground stays legible on both.
+  const accent = tone === 'danger' ? 'var(--text-error)' : 'var(--text-brand)'
   return (
     <Box
       id={id}

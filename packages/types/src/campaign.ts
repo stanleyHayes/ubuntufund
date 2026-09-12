@@ -134,6 +134,15 @@ export enum PaymentMethod {
   CARD = 'card',
   BANK_TRANSFER = 'bank_transfer',
   CRYPTO = 'crypto',
+  /**
+   * A payment *gateway* rather than a method a donor picks.
+   *
+   * The rows above describe what checkout advertises — MTN, card, bank — and
+   * several of them are simply things Paystack accepts, with no integration of
+   * their own to switch on. A GATEWAY row is the rail itself, and toggling one
+   * really does stop that rail taking money.
+   */
+  GATEWAY = 'gateway',
 }
 
 export interface Donation {

@@ -13,6 +13,11 @@ import DialogActions from '@mui/material/DialogActions'
 import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import Alert from '@mui/material/Alert'
 import IconButton from '@mui/material/IconButton'
+import { FormControl, FormControlLabel, FormLabel, Radio, RadioGroup } from '@mui/material'
+import EditNoteRoundedIcon from '@mui/icons-material/EditNoteRounded'
+import GroupsRoundedIcon from '@mui/icons-material/GroupsRounded'
+import HandshakeRoundedIcon from '@mui/icons-material/HandshakeRounded'
+import PersonAddAltRoundedIcon from '@mui/icons-material/PersonAddAltRounded'
 import DeleteIcon from '@mui/icons-material/Delete'
 import { SHAPE } from '@ubuntu-fund/ui'
 import type { CampaignCollaborator } from '@ubuntu-fund/types'
@@ -24,6 +29,12 @@ interface CollaboratorSectionProps {
   isOwner: boolean
   collaborators: CampaignCollaborator[]
 }
+
+const roleOptions = [
+  { value: CollaboratorRole.EDITOR, title: 'Editor', description: 'Help shape the campaign story and keep its content up to date.', icon: EditNoteRoundedIcon },
+  { value: CollaboratorRole.CO_OWNER, title: 'Co-owner', description: 'Share responsibility for the campaign and coordinate its collaborators.', icon: GroupsRoundedIcon },
+  { value: CollaboratorRole.FEATURED_PARTNER, title: 'Featured partner', description: 'Be featured on the campaign with your name and branding, without editing access.', icon: HandshakeRoundedIcon },
+]
 
 function getRoleLabel(role: CollaboratorRole): string {
   switch (role) {
@@ -138,7 +149,7 @@ export function CollaboratorSection({
 
   return (
     <Box sx={{ mb: 4 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: 3 }}>
         <Typography variant="h5" sx={{ fontWeight: 700 }}>
           Collaborators
         </Typography>
@@ -287,8 +298,14 @@ export function CollaboratorSection({
       )}
 
       {/* Invite Dialog */}
-      <Dialog open={inviteOpen} onClose={() => setInviteOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 700 }}>Invite Collaborator</DialogTitle>
+      <Dialog open={inviteOpen} onClose={() => setInviteOpen(false)} maxWidth="sm" fullWidth aria-labelledby="invite-collaborator-title" aria-describedby="invite-collaborator-description" PaperProps={{ sx: { m: { xs: 2, sm: 4 }, width: { xs: 'calc(100% - 32px)', sm: 'calc(100% - 64px)' } } }}>
+        <DialogTitle component="div" sx={{ px: { xs: 2.5, sm: 3 }, pt: 3, pb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
+            <Box sx={{ display: 'grid', placeItems: 'center', width: 44, height: 44, flexShrink: 0, borderRadius: SHAPE.sm, bgcolor: 'var(--neu-surface)', boxShadow: 'var(--neu-raised)', color: 'primary.main' }}><PersonAddAltRoundedIcon /></Box>
+            <Typography id="invite-collaborator-title" component="h2" variant="h5" sx={{ fontWeight: 800 }}>Invite collaborator</Typography>
+          </Box>
+          <Typography id="invite-collaborator-description" variant="body2" color="text.secondary" sx={{ lineHeight: 1.65 }}>Bring someone into your campaign. Choose how they’ll contribute and add a personal invitation.</Typography>
+        </DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '16px !important' }}>
           <TextField
             label="Email Address"
@@ -298,20 +315,31 @@ export function CollaboratorSection({
             fullWidth
             placeholder="collaborator@example.com"
           />
-          <TextField
-            select
-            label="Role"
-            value={inviteRole}
-            onChange={(e) => setInviteRole(e.target.value as CollaboratorRole)}
-            fullWidth
-            SelectProps={{ native: true }}
-          >
-            <option value={CollaboratorRole.EDITOR}>{getRoleLabel(CollaboratorRole.EDITOR)}</option>
-            <option value={CollaboratorRole.CO_OWNER}>{getRoleLabel(CollaboratorRole.CO_OWNER)}</option>
-            <option value={CollaboratorRole.FEATURED_PARTNER}>
-              {getRoleLabel(CollaboratorRole.FEATURED_PARTNER)}
-            </option>
-          </TextField>
+          <FormControl component="fieldset" fullWidth>
+            <FormLabel component="legend" id="collaborator-role-label" sx={{ color: 'text.primary', fontWeight: 700, mb: 0.5 }}>Their role</FormLabel>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>Choose the best fit for your collaboration.</Typography>
+            <RadioGroup aria-labelledby="collaborator-role-label" value={inviteRole} onChange={(_, value) => setInviteRole(value as CollaboratorRole)} sx={{ gap: 1.5 }}>
+              {roleOptions.map(({ value, title, description, icon: Icon }) => {
+                const selected = inviteRole === value
+                return (
+                  <FormControlLabel
+                    key={value}
+                    value={value}
+                    labelPlacement="start"
+                    control={<Radio size="small" sx={{ p: 0.5, ml: 1, alignSelf: 'center' }} />}
+                    sx={{ m: 0, p: { xs: 1.5, sm: 2 }, minWidth: 0, borderRadius: SHAPE.sm, bgcolor: 'var(--neu-surface)', backdropFilter: 'var(--neu-backdrop)', boxShadow: selected ? 'var(--neu-inset)' : 'var(--neu-raised)', border: '1px solid', borderColor: selected ? 'primary.main' : 'divider', transition: 'box-shadow 160ms ease, border-color 160ms ease', '&:has(input:focus-visible)': { outline: '2px solid', outlineColor: 'secondary.main', outlineOffset: 3 }, '& .MuiFormControlLabel-label': { flex: 1, minWidth: 0 }, '@media (prefers-reduced-motion: reduce)': { transition: 'none' } }}
+                    label={<Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
+                      <Icon sx={{ color: selected ? 'primary.main' : 'text.secondary', fontSize: 26, mt: 0.25, flexShrink: 0 }} />
+                      <Box sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+                        <Typography sx={{ fontWeight: 750, color: 'text.primary', mb: 0.5 }}>{title}</Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '.82rem', lineHeight: 1.6 }}>{description}</Typography>
+                      </Box>
+                    </Box>}
+                  />
+                )
+              })}
+            </RadioGroup>
+          </FormControl>
           <TextField
             label="Revenue Share %"
             type="number"

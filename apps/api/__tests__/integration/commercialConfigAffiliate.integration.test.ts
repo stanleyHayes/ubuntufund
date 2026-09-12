@@ -3,6 +3,9 @@ import { MongoCommercialConfigRepository } from '../../src/infrastructure/adapte
 import {
   CommercialConfigService,
   AFFILIATE_REFERRAL_DISCOUNT_KEY,
+  CAMPAIGN_AUTO_APPROVE_TIER_KEY,
+  CAMPAIGN_TIER_THRESHOLD_KEYS,
+  REVIEW_ALERT_EMAIL_KEY,
 } from '../../src/application/services/CommercialConfigService.js';
 import { CommercialConfigModel } from '../../src/infrastructure/database/models/CommercialConfigModel.js';
 import {
@@ -43,7 +46,8 @@ beforeAll(async () => {
   service = new CommercialConfigService(
     new MongoCommercialConfigRepository(),
     PAYOUTS,
-    { commissionPercent: 10, holdDays: 14, referralDiscountPercent: 10 }
+    { commissionPercent: 10, holdDays: 14, referralDiscountPercent: 10 },
+    { tierThresholds: [10_000, 50_000, 250_000, 1_000_000], autoApproveMaxTier: 3 }
   );
 });
 
@@ -102,5 +106,80 @@ describe('the admin-controlled referral discount', () => {
       await service.resolveReferralDiscountPercent(),
       'a future-dated rate must not apply today'
     ).toBe(10);
+  });
+});
+
+describe('the admin-controlled campaign review rules', () => {
+  it('defaults to auto-approving up to tier 3', async () => {
+    const cfg = await service.resolveCampaignsConfig();
+    expect(cfg.autoApproveMaxTier).toBe(3);
+    expect(cfg.tierThresholds).toEqual([10_000, 50_000, 250_000, 1_000_000]);
+  });
+
+  it('takes an admin value without a restart', async () => {
+    await service.setValue(CAMPAIGN_AUTO_APPROVE_TIER_KEY, 1, 'admin-1', new Date());
+    expect((await service.resolveCampaignsConfig()).autoApproveMaxTier).toBe(1);
+  });
+
+  it('lets zero mean "review everything" rather than falling back', async () => {
+    // The off switch again: a falsy-coalescing read would restore the default
+    // and silently keep auto-approving after an admin asked it to stop.
+    await service.setValue(CAMPAIGN_AUTO_APPROVE_TIER_KEY, 0, 'admin-1', new Date());
+    expect((await service.resolveCampaignsConfig()).autoApproveMaxTier).toBe(0);
+  });
+
+  it('applies a changed boundary', async () => {
+    await service.setValue(CAMPAIGN_TIER_THRESHOLD_KEYS[1], 120_000, 'admin-1', new Date());
+    const cfg = await service.resolveCampaignsConfig();
+    expect(cfg.tierThresholds).toEqual([10_000, 120_000, 250_000, 1_000_000]);
+  });
+
+  it('keeps the boundaries ascending however they were saved', async () => {
+    // deriveCampaignTier counts how many boundaries a goal exceeds, so an
+    // out-of-order set would mis-tier every new campaign — and mis-tiering is
+    // what decides whether someone can raise money today or waits on a human.
+    await service.setValue(CAMPAIGN_TIER_THRESHOLD_KEYS[0], 900_000, 'admin-1', new Date());
+    const cfg = await service.resolveCampaignsConfig();
+    expect(cfg.tierThresholds).toEqual([...cfg.tierThresholds].sort((a, b) => a - b));
+  });
+
+  it('ignores a zero threshold rather than collapsing a tier boundary', async () => {
+    await service.setValue(CAMPAIGN_TIER_THRESHOLD_KEYS[2], 0, 'admin-1', new Date());
+    expect((await service.resolveCampaignsConfig()).tierThresholds).toContain(250_000);
+  });
+});
+
+describe('the admin-controlled review alert recipient', () => {
+  it('uses the env fallback until an admin sets one', async () => {
+    expect(await service.resolveReviewAlertEmail('info@ujimora.com')).toBe('info@ujimora.com');
+  });
+
+  it('takes the admin value', async () => {
+    await service.setTextValue(REVIEW_ALERT_EMAIL_KEY, 'trust@ujimora.com', 'admin-1', new Date());
+    expect(await service.resolveReviewAlertEmail('info@ujimora.com')).toBe('trust@ujimora.com');
+  });
+
+  it('treats an empty value as "off", not as unset', async () => {
+    // Clearing the field is how an admin turns the alerts off. Coalescing an
+    // empty string back to the fallback would silently keep emailing them.
+    await service.setTextValue(REVIEW_ALERT_EMAIL_KEY, '', 'admin-1', new Date());
+    expect(await service.resolveReviewAlertEmail('info@ujimora.com')).toBe('');
+  });
+
+  it('is a known key, so the admin route accepts it', async () => {
+    expect(service.isKnownKey(REVIEW_ALERT_EMAIL_KEY)).toBe(true);
+    expect(service.isTextKey(REVIEW_ALERT_EMAIL_KEY)).toBe(true);
+    // And a numeric key is not mistaken for a text one.
+    expect(service.isTextKey(CAMPAIGN_AUTO_APPROVE_TIER_KEY)).toBe(false);
+  });
+
+  it('does not leak a text row into the numeric config reads', async () => {
+    // The two share a collection. A text row has no `value`, so surfacing it in
+    // the numeric map would hand callers undefined where they expect a number.
+    await service.setTextValue(REVIEW_ALERT_EMAIL_KEY, 'trust@ujimora.com', 'admin-1', new Date());
+    const payouts = await service.resolvePayoutsConfig();
+    expect(Object.values(payouts).every((v) => typeof v === 'number')).toBe(true);
+    const campaigns = await service.resolveCampaignsConfig();
+    expect(campaigns.tierThresholds.every((v) => typeof v === 'number')).toBe(true);
   });
 });

@@ -9,7 +9,14 @@ import mongoose, { Schema, type Document } from 'mongoose';
  */
 export interface CommercialConfigDocument extends Document {
   key: string;
-  value: number;
+  /** Numeric settings (fees, tiers, percentages). Absent on a text setting. */
+  value?: number;
+  /**
+   * Text settings, e.g. the address review alerts are sent to. A separate
+   * column rather than a stringified `value` so existing numeric rows keep
+   * their type and every reader of `value` is unaffected.
+   */
+  textValue?: string;
   effectiveFrom: Date;
   createdBy: string;
   reason?: string;
@@ -20,7 +27,11 @@ export interface CommercialConfigDocument extends Document {
 const schema = new Schema<CommercialConfigDocument>(
   {
     key: { type: String, required: true, index: true },
-    value: { type: Number, required: true },
+    // Exactly one of these is set; which one depends on the key. Neither is
+    // `required`, because requiring both would make text settings impossible
+    // and requiring neither is caught at the application layer.
+    value: { type: Number },
+    textValue: { type: String },
     effectiveFrom: { type: Date, required: true, index: true },
     createdBy: { type: String, required: true },
     reason: { type: String },

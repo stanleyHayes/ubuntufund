@@ -35,6 +35,11 @@ services:
         sync: false
       - key: PAYSTACK_PUBLIC_KEY
         sync: false
+      - key: PAYSTACK_APPROVAL_REQUIRE_SIGNATURE
+        # Transfer-approval callbacks must carry a valid signature. Leave "true".
+        # Only set "false" if Paystack enables Transfer Approval for the account
+        # and turns out not to sign these — otherwise every transfer is declined.
+        value: "true"
       # OpenAI campaign writing. Add the server-only key manually on existing services.
       - key: AI_WRITING_ENABLED
         value: "true"
@@ -108,16 +113,46 @@ services:
         sync: false
       - key: FLUTTERWAVE_WEBHOOK_SECRET_HASH
         sync: false
+      # ── Transactional email (Resend). These were missing entirely, which
+      # means donation notifications to campaign owners have never actually
+      # sent in production: ResendOwnerNotifications returns early without an
+      # API key and a from address. Paste the key in the dashboard; the
+      # addresses are non-secret and must be on the verified ujimora.com domain.
+      - key: RESEND_API_KEY
+        sync: false
+      - key: FROM_EMAIL
+        value: info@ujimora.com # sender; must be on the verified domain
+      - key: REPLY_TO_EMAIL
+        # People reply to transactional mail. Without this those replies land in
+        # the sending mailbox rather than one anybody reads.
+        value: info@ujimora.com
+      - key: REVIEW_ALERT_EMAIL
+        # Where "a campaign is waiting for review" alerts go. Blank disables the
+        # alert rather than emailing nobody — but then held campaigns sit unseen.
+        value: info@ujimora.com
+      - key: ADMIN_WEB_URL
+        # Used to build the review link inside those alerts.
+        value: https://admin.ujimora.com
       # Affiliate program (one-time commission on first paid subscription).
       - key: AFFILIATE_COMMISSION_PERCENT
         value: "10"
       - key: AFFILIATE_HOLD_DAYS
         value: "14"
+      - key: AFFILIATE_REFERRAL_DISCOUNT_PERCENT
+        # What a referee saves for entering an affiliate's code at checkout,
+        # mirroring the commission above. 0 disables referral discounts.
+        # This is only the fallback: the live value is admin-editable under
+        # Settings, and an override there wins over whatever is set here.
+        value: "10"
       # Campaign tiering — GHS goal thresholds (tiers 1–5); auto-approve ≤ tier N.
+      # Both are also admin-editable under Settings, and an override there wins.
+      # A campaign's tier is fixed at creation, so changing these affects new
+      # campaigns only — anything already held still needs approving by hand.
       - key: CAMPAIGN_TIER_THRESHOLDS
         value: "10000,50000,250000,1000000"
       - key: CAMPAIGN_AUTO_APPROVE_MAX_TIER
-        value: "2"
+        # 3 ⇒ goals up to GHS 250k go live immediately; 4+ waits for a person.
+        value: "3"
       # Payout service fees / limits (GHS) — these match the published Payout &
       # Refund policy (priority 0.5% / early 1.0% / urgent 1.5% / assisted 1.5%+50,
       # 80% early-withdrawal ceiling, dual-approval disabled at 0).
@@ -160,5 +195,20 @@ services:
         value: "100000"
       - key: CRYPTO_QUOTE_TTL_SECONDS
         value: "900"
-      # Set BITNOB_CLIENT_ID, BITNOB_CLIENT_SECRET, BITNOB_WEBHOOK_SECRET and
-      # BITNOB_ALLOWED_NETWORKS in Render after provider onboarding. No mock in production.
+      - key: CRYPTO_FALLBACK_PROVIDERS
+        # Comma-separated provider ids to fall back to. Empty = no fallback.
+        value: ""
+      # Bitnob — secrets, blank until provider onboarding completes. Declared
+      # here so the keys exist in the dashboard to paste into; blank keeps the
+      # rail disabled, which is what CRYPTO_PAYMENTS_ENABLED=false already means.
+      - key: BITNOB_CLIENT_ID
+        sync: false
+      - key: BITNOB_CLIENT_SECRET
+        sync: false
+      - key: BITNOB_WEBHOOK_SECRET
+        sync: false
+      - key: BITNOB_ALLOWED_NETWORKS
+        value: ""
+      # CRYPTO_MOCK_WEBHOOK_SECRET is deliberately absent: it exists only for the
+      # mock provider used in tests, and a mock rail must never exist in prod.
+      # PORT is set by Render itself — do not declare it here.

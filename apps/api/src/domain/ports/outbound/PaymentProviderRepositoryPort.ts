@@ -11,4 +11,12 @@ export interface PaymentProviderRepositoryPort {
    * null when no provider exists with the given id.
    */
   toggleEnabled(id: string): Promise<PaymentProviderEntity | null>;
+
+  /**
+   * Whether a gateway rail is switched on in the admin dashboard.
+   *
+   * Fails open on any read problem: this sits in the donation path, and a
+   * database hiccup must not stop the platform taking money.
+   */
+  isGatewayEnabled(slug: string): Promise<boolean>;
 }

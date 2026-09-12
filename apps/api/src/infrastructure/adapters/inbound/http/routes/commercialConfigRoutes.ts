@@ -3,6 +3,9 @@ import type { AuthenticatedRequest, createAuthMiddleware } from '../../middlewar
 import { AppError } from '../../middleware/errorHandler.js';
 import {
   AFFILIATE_REFERRAL_DISCOUNT_KEY,
+  CAMPAIGN_AUTO_APPROVE_TIER_KEY,
+  CAMPAIGN_TIER_THRESHOLD_KEYS,
+  REVIEW_ALERT_EMAIL_KEY,
   type CommercialConfigService,
 } from '../../../../../application/services/CommercialConfigService.js';
 
@@ -24,13 +27,24 @@ export function createCommercialConfigRoutes(deps: {
     deps.requireAdmin,
     async (_req: AuthenticatedRequest, res: Response, next: NextFunction) => {
       try {
-        const [resolved, referralDiscountPercent] = await Promise.all([
-          deps.service.resolvePayoutsConfig(),
-          deps.service.resolveReferralDiscountPercent(),
-        ]);
+        const [resolved, referralDiscountPercent, campaigns, reviewAlertEmail] =
+          await Promise.all([
+            deps.service.resolvePayoutsConfig(),
+            deps.service.resolveReferralDiscountPercent(),
+            deps.service.resolveCampaignsConfig(),
+            deps.service.resolveReviewAlertEmail(''),
+          ]);
         res.json({
           data: {
-            resolved: { ...resolved, [AFFILIATE_REFERRAL_DISCOUNT_KEY]: referralDiscountPercent },
+            resolved: {
+              ...resolved,
+              [AFFILIATE_REFERRAL_DISCOUNT_KEY]: referralDiscountPercent,
+              [CAMPAIGN_AUTO_APPROVE_TIER_KEY]: campaigns.autoApproveMaxTier,
+              ...Object.fromEntries(
+                CAMPAIGN_TIER_THRESHOLD_KEYS.map((k, i) => [k, campaigns.tierThresholds[i]])
+              ),
+              [REVIEW_ALERT_EMAIL_KEY]: reviewAlertEmail,
+            },
             defaults: deps.service.getDefaults(),
             keys: deps.service.allKeys,
           },
@@ -68,6 +82,28 @@ export function createCommercialConfigRoutes(deps: {
           throw new AppError('Unknown commercial-config key.', 400);
         }
         const { value, effectiveFrom, reason } = req.body ?? {};
+
+        // Text settings take a different shape and a different validator.
+        if (deps.service.isTextKey(key)) {
+          if (typeof value !== 'string') {
+            throw new AppError('value must be a string.', 400);
+          }
+          const text = value.trim();
+          // Empty is how alerts are switched off, so it must be allowed — but
+          // anything non-empty has to be a real address or the alert silently
+          // fails to send and nobody learns that campaigns are piling up.
+          if (text && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text)) {
+            throw new AppError('value must be a valid email address.', 400);
+          }
+          const at = effectiveFrom ? new Date(effectiveFrom) : new Date();
+          if (Number.isNaN(at.getTime())) {
+            throw new AppError('effectiveFrom is not a valid date.', 400);
+          }
+          const saved = await deps.service.setTextValue(key, text, req.userId!, at, reason);
+          res.json({ data: saved, message: 'Commercial config updated', status: 200 });
+          return;
+        }
+
         if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
           throw new AppError('value must be a non-negative number.', 400);
         }

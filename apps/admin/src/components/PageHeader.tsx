@@ -47,6 +47,8 @@ export default function PageHeader({
         position: 'relative',
         overflow: 'hidden',
         mb: 3,
+        minWidth: 0,
+        overflowWrap: 'anywhere',
         borderRadius: SHAPE.card,
         bgcolor: 'background.paper',
         boxShadow: 'var(--neu-raised)',
@@ -70,7 +72,7 @@ export default function PageHeader({
 
       <Box
         sx={{
-          px: 3,
+          px: { xs: 2, sm: 3 },
           py: 2.5,
           display: 'flex',
           alignItems: 'flex-start',
@@ -150,8 +152,9 @@ export default function PageHeader({
             m: 0,
             display: 'grid',
             gridTemplateColumns: {
-              xs: 'repeat(2, 1fr)',
-              sm: `repeat(${Math.min(stats.length, 4)}, 1fr)`,
+              xs: 'minmax(0, 1fr)',
+              sm: `repeat(${Math.min(stats.length, 2)}, minmax(0, 1fr))`,
+              lg: `repeat(${Math.min(stats.length, 4)}, minmax(0, 1fr))`,
             },
             boxShadow: 'inset 0 10px 15px -18px rgba(0,0,0,.95)',
           }}
@@ -160,7 +163,8 @@ export default function PageHeader({
             <Box
               key={stat.label}
               sx={{
-                px: 3,
+                minWidth: 0,
+                px: { xs: 2, sm: 3 },
                 py: 1.75,
                 m: 0.65,
                 borderRadius: SHAPE.sm,
@@ -169,7 +173,7 @@ export default function PageHeader({
             >
               <Typography
                 component="dd"
-                sx={{ m: 0, fontSize: '1.5rem', fontWeight: 700, color: t.text, lineHeight: 1.2 }}
+                sx={{ m: 0, fontSize: { xs: '1.3rem', sm: '1.5rem' }, fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: t.text, lineHeight: 1.2 }}
               >
                 {stat.value}
               </Typography>

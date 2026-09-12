@@ -54,7 +54,12 @@ export class AiWritingService {
         throw atCap()
       } catch (error) {
         if ((error as { code?: number }).code !== 11000) throw error
-        // Someone else created or advanced the document. Look again.
+        // A duplicate key is only ambiguous while the document might not exist
+        // yet. Once it does, the filter can do its real job, so a collision
+        // against an already-full quota is a genuine refusal — stop rather than
+        // retrying into the same wall and logging a duplicate-key error each time.
+        const current = await AiQuotaModel.findById(key).select('used').lean()
+        if (current && (current.used ?? 0) >= limit) throw atCap()
       }
     }
     throw atCap()

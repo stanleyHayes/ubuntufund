@@ -13,11 +13,26 @@ interface RichBlock {
   title: string
   body: string
 }
+interface TeamSocial {
+  label: string
+  href: string
+}
 interface TeamMember {
   name: string
   role: string
   initials: string
   bio: string
+  /**
+   * The rest of the leadership card, which this editor previously could not
+   * reach. Saving the block without them blanked the photo and every link on
+   * the public page, because the marketing side takes a CMS member wholesale.
+   */
+  image?: string
+  website?: string
+  websiteLabel?: string
+  companyUrl?: string
+  companyLabel?: string
+  socials?: TeamSocial[]
 }
 interface AboutData {
   hero: { title: string; subtitle: string }
@@ -33,6 +48,20 @@ const FALLBACK: AboutData = {
   vision: { eyebrow: '', title: '', body: '' },
   philosophy: { eyebrow: '', quote: '', body: '' },
   team: [],
+}
+
+/** "LinkedIn: https://…" per line — the shape the public card renders. */
+function parseSocials(raw: string): TeamSocial[] {
+  return raw
+    .split('\n')
+    .map((line) => {
+      const at = line.indexOf(':')
+      if (at < 0) return null
+      const label = line.slice(0, at).trim()
+      const href = line.slice(at + 1).trim()
+      return label && href ? { label, href } : null
+    })
+    .filter((x): x is TeamSocial => x !== null)
 }
 
 function SectionPanel({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
@@ -67,9 +96,17 @@ export default function ContentAboutPage() {
     setData((d) => ({ ...d, philosophy: { ...d.philosophy, [field]: value } }))
 
   const addMember = () =>
-    setData((d) => ({ ...d, team: [...(d.team ?? []), { name: '', role: '', initials: '', bio: '' }] }))
+    setData((d) => ({
+      ...d,
+      team: [...(d.team ?? []), { name: '', role: '', initials: '', bio: '', socials: [] }],
+    }))
 
-  const updateMember = (index: number, field: keyof TeamMember, value: string) =>
+  const updateMember = (
+    index: number,
+    field: keyof TeamMember,
+    // Socials are a list, every other field is text.
+    value: string | TeamSocial[],
+  ) =>
     setData((d) => ({
       ...d,
       team: (d.team ?? []).map((m, i) => (i === index ? { ...m, [field]: value } : m)),
@@ -230,6 +267,56 @@ export default function ContentAboutPage() {
                       onChange={(e) => updateMember(index, 'bio', e.target.value)}
                       multiline
                       minRows={2}
+                      sx={fieldSx}
+                    />
+                    <TextField
+                      size="small"
+                      label="Photo URL"
+                      value={member.image ?? ''}
+                      onChange={(e) => updateMember(index, 'image', e.target.value)}
+                      helperText="Leave blank to show the initials instead."
+                      sx={fieldSx}
+                    />
+                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '2fr 1fr' }, gap: 2 }}>
+                      <TextField
+                        size="small"
+                        label="Personal link"
+                        value={member.website ?? ''}
+                        onChange={(e) => updateMember(index, 'website', e.target.value)}
+                        sx={fieldSx}
+                      />
+                      <TextField
+                        size="small"
+                        label="Link label"
+                        value={member.websiteLabel ?? ''}
+                        onChange={(e) => updateMember(index, 'websiteLabel', e.target.value)}
+                        sx={fieldSx}
+                      />
+                    </Box>
+                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '2fr 1fr' }, gap: 2 }}>
+                      <TextField
+                        size="small"
+                        label="Company link"
+                        value={member.companyUrl ?? ''}
+                        onChange={(e) => updateMember(index, 'companyUrl', e.target.value)}
+                        sx={fieldSx}
+                      />
+                      <TextField
+                        size="small"
+                        label="Company label"
+                        value={member.companyLabel ?? ''}
+                        onChange={(e) => updateMember(index, 'companyLabel', e.target.value)}
+                        sx={fieldSx}
+                      />
+                    </Box>
+                    <TextField
+                      size="small"
+                      label="Social links"
+                      value={(member.socials ?? []).map((x) => `${x.label}: ${x.href}`).join('\n')}
+                      onChange={(e) => updateMember(index, 'socials', parseSocials(e.target.value))}
+                      multiline
+                      minRows={2}
+                      helperText="One per line, as “LinkedIn: https://…”."
                       sx={fieldSx}
                     />
                   </Box>

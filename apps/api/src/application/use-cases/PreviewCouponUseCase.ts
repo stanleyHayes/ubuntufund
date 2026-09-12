@@ -64,6 +64,18 @@ export class PreviewCouponUseCase {
       if (!input.campaignId || !(input.amount && input.amount > 0)) {
         return this.invalid(code, 0, 'A campaign and amount are required');
       }
+      // Checkout refuses a coupon whose currency differs from the donation's,
+      // so the preview has to refuse it too. Quoting a GHS coupon as valid
+      // against a USD gift and then rejecting it at submit loses the donation
+      // outright — the donor is told it applied, then told it did not.
+      const donationCurrency = (input.currency ?? CURRENCY).toUpperCase();
+      if (donationCurrency !== CURRENCY) {
+        return this.invalid(
+          code,
+          0,
+          `This code is issued in ${CURRENCY} and cannot be applied to a ${donationCurrency} donation`
+        );
+      }
       const feePercent = this.planLimits
         ? await this.planLimits.platformFeePercentForCampaign(input.campaignId)
         : 0;
@@ -72,9 +84,16 @@ export class PreviewCouponUseCase {
         return this.invalid(code, 0, 'There is no platform fee on this donation to waive');
       }
     } else {
+      // Relaxing `tier` to optional for the donation surface made this one lie:
+      // an absent tier fell back to the FREE plan (price 0) AND skipped tier
+      // scoping, so previewing a pro-only coupon with no tier answered
+      // "valid, you save 0". Required here, optional only where it does not apply.
+      if (!input.tier) {
+        return this.invalid(code, 0, 'A plan is required to check this coupon');
+      }
       // Base price from the DB-backed plan so the preview matches what checkout
       // will charge (PlanService falls back to the code defaults).
-      const plan = await this.planService.getPlan(input.tier ?? '');
+      const plan = await this.planService.getPlan(input.tier);
       baseAmount = roundToCurrency(
         input.billingCycle === BillingCycle.YEARLY ? plan.priceYearly : plan.priceMonthly,
         CURRENCY

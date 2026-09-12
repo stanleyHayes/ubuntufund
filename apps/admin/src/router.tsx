@@ -24,6 +24,7 @@ import AuditLogPage from './pages/AuditLogPage'
 import SubscriptionsPage from './pages/SubscriptionsPage'
 import ManagePlansPage from './pages/ManagePlansPage'
 import CouponsPage from './pages/CouponsPage'
+import CreateCouponPage from './pages/CreateCouponPage'
 import AffiliatesPage from './pages/AffiliatesPage'
 import AffiliateDetailPage from './pages/AffiliateDetailPage'
 import RolesPage from './pages/RolesPage'
@@ -88,6 +89,7 @@ export const router = createBrowserRouter([
       { path: 'audit', element: <RequirePermission resource={Resource.AUDIT_LOG}><AuditLogPage /></RequirePermission> },
       { path: 'subscriptions', element: <RequirePermission resource={Resource.SUBSCRIPTIONS}><SubscriptionsPage /></RequirePermission> },
       { path: 'plans', element: <RequirePermission resource={Resource.PLANS}><ManagePlansPage /></RequirePermission> },
+      { path: 'coupons/new', element: <RequirePermission resource={Resource.COUPONS} action={Action.CREATE}><CreateCouponPage /></RequirePermission> },
       { path: 'coupons', element: <RequirePermission resource={Resource.COUPONS}><CouponsPage /></RequirePermission> },
       { path: 'affiliates', element: <RequirePermission resource={Resource.AFFILIATES}><AffiliatesPage /></RequirePermission> },
       { path: 'affiliates/:id', element: <RequirePermission resource={Resource.AFFILIATES}><AffiliateDetailPage /></RequirePermission> },

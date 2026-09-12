@@ -1,6 +1,6 @@
 import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
-import type { ReactNode } from 'react'
-import { Box, Typography, InputAdornment } from '@mui/material'
+import { useEffect, useRef, type ReactNode } from 'react'
+import { Box, Typography, InputAdornment, Alert } from '@mui/material'
 import ContactMailRoundedIcon from '@mui/icons-material/ContactMailRounded'
 import EmailRoundedIcon from '@mui/icons-material/EmailRounded'
 import PhoneRoundedIcon from '@mui/icons-material/PhoneRounded'
@@ -28,6 +28,7 @@ interface ContactData {
   address: string
   hours: string
   socials: Socials
+  responseTimes?: { label: string; time: string }[]
 }
 
 const FALLBACK: ContactData = {
@@ -58,6 +59,23 @@ function SectionPanel({ title, children }: { title: string; children: ReactNode 
 export default function ContentContactPage() {
   const block = useContentBlock<ContactData>('contact', 'contact', FALLBACK)
   const { data, setData } = block
+  const socialDefaultsApplied = useRef(false)
+
+  useEffect(() => {
+    if (block.loading) {
+      socialDefaultsApplied.current = false
+      return
+    }
+    if (block.error || socialDefaultsApplied.current) return
+    socialDefaultsApplied.current = true
+    setData(current => ({
+      ...current,
+      socials: SOCIAL_FIELDS.reduce((socials, { key, placeholder }) => {
+        socials[key] = current.socials?.[key]?.trim() ? current.socials[key] : placeholder
+        return socials
+      }, { ...current.socials }),
+    }))
+  }, [block.loading, block.error, setData])
 
   const setField = (field: 'email' | 'phone' | 'address' | 'hours', value: string) =>
     setData((d) => ({ ...d, [field]: value }))
@@ -129,6 +147,7 @@ export default function ContentContactPage() {
         </SectionPanel>
 
         <SectionPanel title="Social links">
+          <Alert severity="info">Empty social fields are prefilled with your planned Ujimora profile URLs. Review them and save changes to show them on the contact page and footer.</Alert>
           {SOCIAL_FIELDS.map(({ key, label, icon, placeholder }) => (
             <TextField
               key={key}
@@ -141,6 +160,10 @@ export default function ContentContactPage() {
               sx={fieldSx}
             />
           ))}
+        </SectionPanel>
+        <SectionPanel title="Response times">
+          <Typography variant="body2" color="text.secondary">Publish the response estimates your team can support. Leave a field blank to omit it; with no estimates, the page shows your support hours.</Typography>
+          {['General inquiries', 'Campaign issues', 'Partnership requests', 'Fraud reports'].map(label => <TextField key={label} label={label} value={data.responseTimes?.find(row => row.label === label)?.time ?? ''} onChange={event => setData(current => ({ ...current, responseTimes: [...(current.responseTimes ?? []).filter(row => row.label !== label), { label, time: event.target.value }] }))} sx={fieldSx} />)}
         </SectionPanel>
       </Box>
     </ContentEditorLayout>

@@ -1,4 +1,4 @@
-import { raisedSurface } from '@/lib/surfaces'
+import { insetSurface, progressTrack, raisedSurface } from '@/lib/surfaces'
 import { DonationCard } from './DonationsPage'
 import Skeleton from '@mui/material/Skeleton'
 import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
@@ -12,6 +12,8 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'
 import BlockIcon from '@mui/icons-material/Block'
 import ReplayIcon from '@mui/icons-material/Replay'
 import DoNotDisturbIcon from '@mui/icons-material/DoNotDisturb'
+import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
+import PersonOutlineRoundedIcon from '@mui/icons-material/PersonOutlineRounded'
 import RocketLaunchRoundedIcon from '@mui/icons-material/RocketLaunchRounded'
 import { useAdminCampaign, useAdminCampaignDonations } from '@/hooks/useApiData'
 import { CampaignStatus, CollaboratorRole, type CampaignCollaborator } from '@ubuntu-fund/types'
@@ -32,7 +34,7 @@ const B = 'var(--mui-palette-divider, rgba(128,140,126,0.18))'
 
 function Skel({ w, h }: { w?: string | number; h?: number }) {
   return (
-    <Skeleton variant="rounded" width={w || '100%'} height={h || 14} />
+    <Skeleton variant="rounded" width={w || '100%'} height={h || 14} sx={{ maxWidth: '100%' }} />
   )
 }
 
@@ -90,11 +92,11 @@ export default function CampaignDetailPage() {
             </Box>
           ))}
         </Box>
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 2fr) minmax(280px, 1fr)' }, gap: 3 }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(0, 2fr) minmax(0, 1fr)' }, gap: 3 }}>
           <Box sx={{ p: 2.5, borderRight: `1px solid ${B}`, borderBottom: `1px solid ${B}` }}>
             <Skel w={300} h={24} />
             <Box sx={{ mt: 2 }}><Skel h={60} /></Box>
-            <Box sx={{ mt: 2, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <Box sx={{ mt: 2, display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))' }, gap: '16px' }}>
               {[0, 1, 2, 3].map(i => <Box key={i}><Skel w={90} h={10} /><Box sx={{ mt: 0.5 }}><Skel w={140} h={14} /></Box></Box>)}
             </Box>
             <Box sx={{ mt: 2 }}><Skel h={4} /></Box>
@@ -132,7 +134,7 @@ export default function CampaignDetailPage() {
 
   return (
     <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', animation: `${fadeIn} 0.4s ease`, '& *': { '@media (prefers-reduced-motion: reduce)': { animation: 'none !important', transition: 'none !important' } } }}>
-      <Box sx={{ px: 2.5, pt: 2.5 }}>
+      <Box sx={{ pt: { xs: 0, sm: 2.5 } }}>
         <PageHeader
           tone="gold"
           eyebrow="Community · Campaign"
@@ -149,10 +151,10 @@ export default function CampaignDetailPage() {
       </Box>
 
       {/* Main content */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 2fr) minmax(280px, 1fr)' }, gap: 3 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(0, 2fr) minmax(0, 1fr)' }, gap: 3 }}>
         {/* Left: Campaign info */}
         <Box sx={{
-          ...raisedSurface, p: 3,
+          ...raisedSurface, p: { xs: 2.5, sm: 3 }, overflowWrap: 'anywhere',
           borderRight: `1px solid ${B}`,
           borderBottom: `1px solid ${B}`,
           animation: `${slideIn} 0.4s ease 0.25s both`,
@@ -163,40 +165,40 @@ export default function CampaignDetailPage() {
             {campaign.description}
           </Typography>
 
-          {/* Separator */}
-          <Box sx={{ borderBottom: `1px solid ${B}`, mb: 2 }} />
-
-          {/* Info grid */}
-          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', mb: 2.5 }}>
-            {[
-              { label: 'Campaign owner', value: 'View organizer profile' },
-              { label: 'Category', value: campaign.category.toUpperCase() },
-              { label: 'Currency', value: campaign.currency },
-              { label: 'Start / End', value: `${new Date(campaign.startDate).toLocaleDateString()} - ${new Date(campaign.endDate).toLocaleDateString()}` },
-            ].map((item, i) => (
-              <Box key={i}>
-                <Typography sx={{ fontSize: '0.65rem', textTransform: 'uppercase', color: 'text.secondary', letterSpacing: 0.8, mb: 0.3 }}>
-                  {item.label}
-                </Typography>
-                <Typography sx={{ fontSize: '0.85rem', color: 'text.primary' }}>
-                  {item.label === 'Campaign owner' ? <Button onClick={() => navigate(`/users/${campaign.creatorId}`)} size="small">{item.value}</Button> : item.value}
-                </Typography>
+          <Box component="section" aria-label="Campaign details" sx={{ borderTop: `1px solid ${B}`, pt: 2.5 }}>
+            <Button
+              onClick={() => navigate(`/users/${campaign.creatorId}`)}
+              fullWidth
+              startIcon={<PersonOutlineRoundedIcon />}
+              endIcon={<ArrowForwardRoundedIcon />}
+              sx={{ ...insetSurface, justifyContent: 'flex-start', gap: 1, p: 2, mb: 2.5, textAlign: 'left', textTransform: 'none', '& .MuiButton-endIcon': { ml: 'auto', flexShrink: 0 } }}
+            >
+              <Box component="span" sx={{ minWidth: 0 }}>
+                <Typography component="span" sx={{ display: 'block', fontSize: '.72rem', color: 'text.secondary', mb: 0.5 }}>Campaign owner</Typography>
+                <Typography component="span" sx={{ display: 'block', fontSize: '.9rem', fontWeight: 700 }}>View organizer profile</Typography>
               </Box>
-            ))}
+            </Button>
+            <Box component="dl" sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))' }, gap: 2, m: 0, mb: 3 }}>
+              {[
+                { label: 'Category', value: campaign.category.replace(/_/g, ' ') },
+                { label: 'Currency', value: campaign.currency },
+                { label: 'Start date', value: new Date(campaign.startDate).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) },
+                { label: 'End date', value: new Date(campaign.endDate).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) },
+              ].map(item => (
+                <Box key={item.label} sx={{ minWidth: 0, ...insetSurface, p: 2 }}>
+                  <Typography component="dt" sx={{ fontSize: '.72rem', color: 'text.secondary', mb: 0.75 }}>{item.label}</Typography>
+                  <Typography component="dd" sx={{ m: 0, fontSize: '.95rem', fontWeight: 600, color: 'text.primary', textTransform: item.label === 'Category' ? 'capitalize' : 'none' }}>{item.value}</Typography>
+                </Box>
+              ))}
+            </Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, mb: 1 }}>
+              <Typography sx={{ fontSize: '.78rem', color: 'text.secondary' }}>Funding progress</Typography>
+              <Typography sx={{ fontSize: '.78rem', fontWeight: 700 }}>{progress}% funded</Typography>
+            </Box>
+            <Box role="progressbar" aria-label="Campaign funding" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100} sx={progressTrack}>
+              <Box sx={{ height: '100%', width: `${progress}%`, bgcolor: 'primary.main', transition: 'width 0.6s ease' }} />
+            </Box>
           </Box>
-
-          {/* Progress bar */}
-          <Box sx={{ position: 'relative', width: '100%', height: 4, bgcolor: 'rgba(255,255,255,0.04)' }}>
-            <Box sx={{
-              position: 'absolute', top: 0, left: 0, height: '100%',
-              width: `${progress}%`,
-              bgcolor: '#5E8F72',
-              transition: 'width 0.6s ease',
-            }} />
-          </Box>
-          <Typography sx={{ fontSize: '0.7rem', color: 'text.secondary', mt: 0.8 }}>
-            {progress}% funded
-          </Typography>
         </Box>
 
         {/* Right: Actions */}

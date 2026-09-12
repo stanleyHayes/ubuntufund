@@ -7,7 +7,9 @@ import {
 import { DonationIntentEntity } from '../../domain/entities/DonationIntent.js'
 import { Money, roundToCurrency } from '../../domain/value-objects/Money.js'
 import type { CouponService } from '../services/CouponService.js'
+import { releaseDonationSeat } from '../services/donationCouponSeats.js'
 import type { CouponRedemptionRepositoryPort } from '../../domain/ports/outbound/CouponRedemptionRepositoryPort.js'
+import type { PaymentProviderRepositoryPort } from '../../domain/ports/outbound/PaymentProviderRepositoryPort.js'
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js'
 import type { LiveSessionRepositoryPort } from '../../domain/ports/outbound/LiveSessionRepositoryPort.js'
 import type { WalletRepositoryPort } from '../../domain/ports/outbound/WalletRepositoryPort.js'
@@ -89,6 +91,8 @@ export class CreateDonationIntentUseCase {
      */
     private readonly couponService?: CouponService,
     private readonly couponRedemptionRepo?: CouponRedemptionRepositoryPort,
+    /** Lets the dashboard's provider toggle actually stop a rail. */
+    private readonly providerRepo?: PaymentProviderRepositoryPort,
   ) {}
 
   /**
@@ -146,6 +150,22 @@ export class CreateDonationIntentUseCase {
   }
 
   /** The hosted gateway for a provider, honoring the feature flags. */
+  /**
+   * Whether a hosted rail may take money right now.
+   *
+   * Two independent switches, and both must allow it. The env flag is the
+   * deploy-time decision about whether the rail exists at all; the dashboard
+   * toggle is the runtime one, so a rail can be stopped without a release.
+   * Previously only the env flag was consulted, which meant switching a
+   * provider off in the admin console changed nothing at all.
+   */
+  private async assertRailEnabled(provider: string): Promise<void> {
+    if (provider === 'wallet') return
+    if (this.providerRepo && !(await this.providerRepo.isGatewayEnabled(provider))) {
+      throw new AppError(`${provider} payments are currently switched off`, 400)
+    }
+  }
+
   private resolveHostedGateway(provider: string): PaymentGatewayPort {
     // Respect the rail flags (spec §16): a rail must be explicitly enabled.
     if (provider === 'flutterwave' && !this.paymentsConfig?.flutterwaveEnabled) {
@@ -187,6 +207,7 @@ export class CreateDonationIntentUseCase {
     // Hosted-rail pre-flight before persisting anything, so a disabled gateway
     // or a guest with no email never leaves an orphan CREATED intent behind.
     if (input.provider !== 'wallet') {
+      await this.assertRailEnabled(input.provider)
       const gateway = this.resolveHostedGateway(input.provider)
       if (!gateway.isConfigured()) {
         throw new AppError('Payments are not configured', 501)
@@ -230,11 +251,16 @@ export class CreateDonationIntentUseCase {
         )
       : undefined
 
-    const intent = await this.createIntent(input, ctx, currency, tip, waiver)
-
-    // Claim the per-user seat once the intent exists, so an abandoned checkout
-    // holds a slot that the failure path can release rather than a redemption
-    // nobody can reclaim. Consumed at settlement, which all five rails share.
+    // Claim the per-user seat BEFORE the intent exists, not after.
+    //
+    // Creating the intent first left a real hole: a refused seat threw 422 with
+    // the intent already written, waiver and all. The idempotency lookup at the
+    // top of this method returns an existing intent unchanged, so retrying with
+    // the same key handed the donor back that intent — fee waived, coupon
+    // validation skipped entirely — and they could pay a redemption that had
+    // been explicitly refused. Refusing before anything is written leaves
+    // nothing to resurrect.
+    let couponSlotId: string | undefined
     if (waiver && this.couponRedemptionRepo) {
       const slotNow = new Date()
       const slot = await this.couponRedemptionRepo.createWithSeat(
@@ -249,7 +275,6 @@ export class CreateDonationIntentUseCase {
           discountAmount: 0,
           finalAmount: input.amount,
           currency,
-          providerRef: intent.id,
           createdAt: slotNow,
           updatedAt: slotNow,
         },
@@ -261,6 +286,23 @@ export class CreateDonationIntentUseCase {
           422,
         )
       }
+      couponSlotId = slot.id
+    }
+
+    let intent: DonationIntentEntity
+    try {
+      intent = await this.createIntent(input, ctx, currency, tip, waiver)
+    } catch (error) {
+      // No intent, so no donation will ever settle against this seat.
+      if (couponSlotId) await this.couponRedemptionRepo?.markReleased(couponSlotId)
+      throw error
+    }
+
+    // Correlate the slot with the intent that will settle it. Settlement looks
+    // the redemption up by this reference, exactly as the subscription rail does
+    // with its charge reference.
+    if (couponSlotId) {
+      await this.couponRedemptionRepo?.setProviderRef(couponSlotId, intent.id)
     }
 
     if (input.provider !== 'wallet') {
@@ -429,6 +471,7 @@ export class CreateDonationIntentUseCase {
     const wallet = wallets.find((w) => w.balance.currency === currency)
     if (!wallet) {
       await this.donationIntentRepo.updateStatus(intent.id, 'FAILED')
+      await releaseDonationSeat(this.couponRedemptionRepo, intent.id, intent.couponId)
       throw new AppError('No wallet found for this currency', 400)
     }
 
@@ -437,6 +480,7 @@ export class CreateDonationIntentUseCase {
     const debited = await this.walletRepo.withdrawIfSufficient(wallet.id, donorUserId, grossCharge)
     if (!debited) {
       await this.donationIntentRepo.updateStatus(intent.id, 'FAILED')
+      await releaseDonationSeat(this.couponRedemptionRepo, intent.id, intent.couponId)
       throw new AppError('Insufficient wallet balance', 400)
     }
 
@@ -460,6 +504,7 @@ export class CreateDonationIntentUseCase {
       // Settlement failed after the debit landed — refund so no money is lost.
       await this.walletRepo.depositAtomic(wallet.id, donorUserId, grossCharge)
       await this.donationIntentRepo.updateStatus(intent.id, 'FAILED')
+      await releaseDonationSeat(this.couponRedemptionRepo, intent.id, intent.couponId)
       throw error
     }
 
