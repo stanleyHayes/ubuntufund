@@ -36,6 +36,9 @@ export interface DonationIntentDocument extends Document {
   paymentMethod?: ContributionMethod;
   providerFeeMinor?: number;
   platformFeeMinor?: number;
+  platformFeePercentOverride?: number;
+  couponId?: string;
+  couponCode?: string;
   netCampaignAmountMinor?: number;
   // Refund tracking (spec §14).
   refundedAmountMinor?: number;
@@ -124,6 +127,10 @@ const donationIntentSchema = new Schema<DonationIntentDocument>(
     paymentMethod: { type: String, enum: CONTRIBUTION_METHODS },
     providerFeeMinor: { type: Number },
     platformFeeMinor: { type: Number },
+    // Locked by a fee-waiver coupon at intent creation; absent otherwise.
+    platformFeePercentOverride: { type: Number },
+    couponId: { type: String, index: true },
+    couponCode: { type: String },
     netCampaignAmountMinor: { type: Number },
     // Refund tracking (spec §14): cumulative refunded minor units + the
     // idempotency keys already applied, so a replayed refund can't double-refund.

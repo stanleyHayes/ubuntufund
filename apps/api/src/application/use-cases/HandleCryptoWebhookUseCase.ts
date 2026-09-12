@@ -96,10 +96,13 @@ export class HandleCryptoWebhookUseCase {
     // amount; the provider + network fee is the processor fee, the platform fee
     // follows the campaign creator's plan (§10). Split/ledger/receipts reuse the
     // shared SettleDonation seam untouched.
-    const campaign = await this.campaignRepo.findById(intent.campaignId);
-    const platformFeePercent = campaign
-      ? await this.planLimits.platformFeePercent(campaign.creatorId)
-      : undefined;
+    // platformFeePercentForIntent, not platformFeePercent(creatorId): the
+    // latter reads the organizer's CURRENT plan rate and so skipped fee
+    // grandfathering, meaning a crypto donation to a campaign with a locked
+    // rate was charged whatever the organizer's plan happened to be today. The
+    // other four rails all resolve through the locked rate; this one now does
+    // too, and picks up any fee-waiver coupon on the intent along with it.
+    const platformFeePercent = await this.planLimits.platformFeePercentForIntent(intent);
     const processorFeeGhs =
       intent.providerFeeMinor !== undefined ? intent.providerFeeMinor / 100 : 0;
 

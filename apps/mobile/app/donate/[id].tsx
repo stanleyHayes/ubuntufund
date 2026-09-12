@@ -12,6 +12,8 @@ import { Button, PageSkeleton } from '@/components/Loading'
 import { PaymentStatus } from '@/components/PaymentStatus'
 import { CryptoContribution } from '@/components/CryptoContribution'
 import { checkout, clearPending, loadPending, paymentScope, type PendingPayment } from '@/lib/payments'
+import { previewCoupon } from '@/lib/coupons'
+import { CouponSurface } from '@ubuntu-fund/types'
 
 export default function DonateScreen() {
   const { id, liveSessionId, amount: presetAmount } = useLocalSearchParams<{ id: string; liveSessionId?: string; amount?: string }>()
@@ -19,6 +21,12 @@ export default function DonateScreen() {
   const { user } = useAuth(); const p = usePalette(); const neu = useNeu()
   const [amount, setAmount] = useState(presetAmount || '')
   const [tip, setTip] = useState('')
+  // A fee-waiver code trims the platform's cut so more of the same gift reaches
+  // the campaign. Signed-in donors only: the coupon's per-user limit has nobody
+  // to count against for a guest, so the field is hidden rather than refused.
+  const [couponCode, setCouponCode] = useState('')
+  const [couponNote, setCouponNote] = useState('')
+  const [couponOk, setCouponOk] = useState<boolean | null>(null)
   const [email, setEmail] = useState(user?.email || '')
   const [name, setName] = useState(user?.name || '')
   const [message, setMessage] = useState('')
@@ -33,10 +41,32 @@ export default function DonateScreen() {
   const valid = Number.isFinite(Number(amount)) && Number(amount) > 0 && Number(amount) === Math.round(Number(amount) * 100) / 100
   const tipValue = Number(tip || '0')
   const tipValid = Number.isFinite(tipValue) && tipValue >= 0 && tipValue === Math.round(tipValue * 100) / 100
+
+  // Quote the code as it is typed. The waiver is a share of the platform fee,
+  // which is a share of the amount, so the saving moves with the gift.
+  useEffect(() => {
+    const code = couponCode.trim()
+    if (!user || !code || !valid || !id) { setCouponNote(''); setCouponOk(null); return }
+    let active = true
+    const timer = setTimeout(() => {
+      void previewCoupon({ code, surface: CouponSurface.DONATION, campaignId: id, amount: Number(amount) })
+        .then(result => {
+          if (!active) return
+          setCouponOk(result.valid)
+          setCouponNote(
+            result.valid
+              ? `Applied — ${result.discountAmount.toFixed(2)} ${campaign?.currency ?? 'GHS'} more reaches this campaign.`
+              : result.reason || 'That code cannot be used here.',
+          )
+        })
+        .catch(() => { if (active) { setCouponOk(null); setCouponNote('') } })
+    }, 400)
+    return () => { active = false; clearTimeout(timer) }
+  }, [user, couponCode, valid, amount, id, campaign?.currency])
   async function donate() {
     setBusy(true); setError('')
     try {
-      const result = await checkout(scope, '/donation-intents', { campaignId: id, liveSessionId, amount: Number(amount), tip: tipValue || undefined, provider: method, donorEmail: email || undefined, donorName: name || undefined, message: message || undefined, isAnonymous: anonymous })
+      const result = await checkout(scope, '/donation-intents', { campaignId: id, liveSessionId, amount: Number(amount), tip: tipValue || undefined, provider: method, donorEmail: email || undefined, donorName: name || undefined, message: message || undefined, isAnonymous: anonymous, couponCode: user && couponCode.trim() ? couponCode.trim() : undefined })
       setPending(result)
       if (result.authorizationUrl?.startsWith('https://')) await WebBrowser.openBrowserAsync(result.authorizationUrl)
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not start checkout.') }
@@ -56,6 +86,10 @@ export default function DonateScreen() {
       <SelectionField label="Payment method" value={method} onChange={setMethod} options={[{ value: 'paystack', label: 'Card or mobile money · secure checkout' }, ...(user ? [{ value: 'wallet', label: 'Ujimora wallet · existing balance' }] : []), { value: 'crypto', label: 'Crypto · supported assets and networks' }]} />
       {error ? <Text accessibilityRole="alert" style={{ color: p.error }}>{error}</Text> : null}
       {method !== 'crypto' && <TextInput label="Support Ujimora (optional tip)" value={tip} onChangeText={setTip} keyboardType="decimal-pad" />}
+      {method !== 'crypto' && user ? <>
+        <TextInput label="Fee waiver code (optional)" value={couponCode} onChangeText={t => setCouponCode(t.toUpperCase())} autoCapitalize="characters" />
+        {couponNote ? <Text style={{ color: couponOk ? p.success : p.error, fontSize: 12, marginTop: 4 }}>{couponNote}</Text> : null}
+      </> : null}
       {method === 'crypto' ? <CryptoContribution key={scope} campaignId={id} amount={Number(amount)} email={email.trim()} name={name} message={message} isAnonymous={anonymous} /> : <>
         <Text style={{ color: p.textSecondary }}>{method === 'wallet' ? 'Your existing Ujimora wallet balance funds this donation.' : 'Card and mobile-money availability follows the secure checkout options for this merchant.'}</Text>
         <Button mode="contained" loading={busy} disabled={busy || !valid || !tipValid || (method === 'paystack' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))} onPress={() => void donate()}>Donate {valid && tipValid ? (Number(amount) + tipValue).toFixed(2) : '0'} {campaign.currency}</Button>

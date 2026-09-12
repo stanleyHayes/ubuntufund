@@ -21,21 +21,43 @@ export class AiWritingService {
       remainingRequests: Math.max(0, this.dailyLimit - (quota?.used ?? 0)),
     }
   }
+  /**
+   * Claim one unit of quota, or refuse because the cap is genuinely reached.
+   *
+   * The upsert makes a duplicate-key error ambiguous, and conflating the two
+   * meanings was a bug: with no quota document yet, concurrent callers all fail
+   * the `used < limit` filter (nothing matches), all attempt the insert, one
+   * wins and the rest get E11000. Reporting that as "daily limit reached" told
+   * users their cap was spent when not a single request had been served.
+   *
+   * A retry disambiguates. Once the document exists the filter does its real
+   * job, so a second E11000 — or a null result — means the cap truly is full.
+   * The loop is bounded: every collision implies another writer succeeded, so
+   * it cannot spin.
+   */
   private async reserve(key: string, limit: number) {
-    try {
-      return await AiQuotaModel.findOneAndUpdate(
-        { _id: key, used: { $lt: limit } },
-        { $inc: { used: 1 }, $setOnInsert: { expiresAt: new Date(Date.now() + 3 * 86400000) } },
-        { upsert: true, new: true },
+    const atCap = () =>
+      new AppError(
+        'The daily AI writing limit has been reached. Please try again tomorrow (UTC).',
+        429,
       )
-    } catch (error) {
-      if ((error as { code?: number }).code === 11000)
-        throw new AppError(
-          'The daily AI writing limit has been reached. Please try again tomorrow (UTC).',
-          429,
+
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      try {
+        const reserved = await AiQuotaModel.findOneAndUpdate(
+          { _id: key, used: { $lt: limit } },
+          { $inc: { used: 1 }, $setOnInsert: { expiresAt: new Date(Date.now() + 3 * 86400000) } },
+          { upsert: true, new: true },
         )
-      throw error
+        if (reserved) return reserved
+        // Filter matched nothing and no insert happened: the cap is real.
+        throw atCap()
+      } catch (error) {
+        if ((error as { code?: number }).code !== 11000) throw error
+        // Someone else created or advanced the document. Look again.
+      }
     }
+    throw atCap()
   }
   async write(userId: string, input: AiWritingRequest) {
     if (!this.provider.isConfigured()) throw new AppError('AI writing is not configured', 503)

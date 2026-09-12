@@ -32,7 +32,7 @@ function affiliatePricing(percent = 20) {
     findByRefereeId: vi.fn(async () => null),
     create: vi.fn(async (r: unknown) => r),
   } as never;
-  return new AffiliateCodePricing(affiliateRepo, referralRepo, percent);
+  return new AffiliateCodePricing(affiliateRepo, referralRepo, async () => percent);
 }
 
 /** A coupon service that knows no coupons at all. */

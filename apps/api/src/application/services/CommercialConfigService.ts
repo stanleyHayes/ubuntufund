@@ -1,5 +1,18 @@
 import type { CommercialConfigRepositoryPort, CommercialConfigVersion } from '../../domain/ports/outbound/CommercialConfigRepositoryPort.js';
-import type { PayoutsConfig } from '../../infrastructure/config/index.js';
+import type { AffiliateConfig, PayoutsConfig } from '../../infrastructure/config/index.js';
+
+/**
+ * Affiliate keys an admin may override, namespaced so they cannot collide with
+ * a PayoutsConfig field of the same name.
+ *
+ * Only `referralDiscountPercent` is here, and the omissions are deliberate.
+ * `commissionPercent` and `holdDays` are read from the static config by
+ * AffiliateCommissionService at accrual time, so advertising them would let an
+ * admin "set" a rate that silently never takes effect — the same trap
+ * APPROVE_TIME_ONLY exists to avoid below. They stay deploy-time settings until
+ * that service resolves them through this store too.
+ */
+export const AFFILIATE_REFERRAL_DISCOUNT_KEY = 'affiliate.referralDiscountPercent';
 
 /**
  * Resolves the effective commercial config (ADR-5): each key is the currently
@@ -28,7 +41,8 @@ export class CommercialConfigService {
 
   constructor(
     private readonly repo: CommercialConfigRepositoryPort,
-    private readonly defaults: PayoutsConfig
+    private readonly defaults: PayoutsConfig,
+    private readonly affiliateDefaults?: AffiliateConfig
   ) {
     this.keys = Object.keys(defaults).filter(
       (k) =>
@@ -37,8 +51,30 @@ export class CommercialConfigService {
     ) as (keyof PayoutsConfig)[];
   }
 
-  isKnownKey(key: string): key is keyof PayoutsConfig & string {
-    return (this.keys as string[]).includes(key);
+  /** Every key an admin may set: the payout fields plus the affiliate ones. */
+  get allKeys(): string[] {
+    const affiliate = this.affiliateDefaults ? [AFFILIATE_REFERRAL_DISCOUNT_KEY] : [];
+    return [...(this.keys as string[]), ...affiliate];
+  }
+
+  isKnownKey(key: string): boolean {
+    return this.allKeys.includes(key);
+  }
+
+  /**
+   * The effective affiliate referral discount, as a percentage of the plan
+   * price. Resolved per call rather than cached alongside the payouts config:
+   * this is a live pricing lever an admin flips in the dashboard, and a stale
+   * read means quoting a customer a discount the platform is no longer giving.
+   */
+  async resolveReferralDiscountPercent(): Promise<number> {
+    const fallback = this.affiliateDefaults?.referralDiscountPercent ?? 0;
+    const map = await this.repo.getEffectiveMap(
+      [AFFILIATE_REFERRAL_DISCOUNT_KEY],
+      new Date()
+    );
+    const value = map[AFFILIATE_REFERRAL_DISCOUNT_KEY];
+    return typeof value === 'number' ? value : fallback;
   }
 
   /** The effective payouts config (overrides layered over env defaults). */
@@ -60,7 +96,7 @@ export class CommercialConfigService {
   }
 
   async setValue(
-    key: keyof PayoutsConfig & string,
+    key: string,
     value: number,
     createdBy: string,
     effectiveFrom: Date,

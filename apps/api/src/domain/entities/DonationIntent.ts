@@ -38,6 +38,10 @@ export interface DonationIntentProps {
   paymentMethod?: ContributionMethod;
   providerFeeMinor?: number;
   platformFeeMinor?: number;
+  /** Fee rate locked by a fee-waiver coupon; absent on an ordinary donation. */
+  platformFeePercentOverride?: number;
+  couponId?: string;
+  couponCode?: string;
   netCampaignAmountMinor?: number;
   // Cumulative refunded campaign-amount in minor units (spec §14). Absent on
   // never-refunded intents. The refund claim caps against the original amount.
@@ -176,6 +180,15 @@ export class DonationIntentEntity {
   }
   get providerFeeMinor(): number | undefined {
     return this.props.providerFeeMinor;
+  }
+  get platformFeePercentOverride(): number | undefined {
+    return this.props.platformFeePercentOverride;
+  }
+  get couponId(): string | undefined {
+    return this.props.couponId;
+  }
+  get couponCode(): string | undefined {
+    return this.props.couponCode;
   }
   get platformFeeMinor(): number | undefined {
     return this.props.platformFeeMinor;

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { CouponPreview, BillingCycle } from '@ubuntu-fund/types'
+import type { CouponPreview, CouponValidationInput } from '@ubuntu-fund/types'
 import { previewCoupon } from '@/lib/coupons'
 
 // ---------------------------------------------------------------------------
@@ -14,11 +14,13 @@ import { previewCoupon } from '@/lib/coupons'
 
 const DEBOUNCE_MS = 400
 
-interface CouponPreviewArgs {
-  code: string
-  tier: string
-  billingCycle: BillingCycle
-}
+/**
+ * Whatever the preview endpoint accepts, which differs per surface: a
+ * subscription quotes against a plan, a donation against a campaign's platform
+ * fee. The debounce and the out-of-order guard below are identical either way,
+ * so they are shared rather than duplicated per screen.
+ */
+type CouponPreviewArgs = CouponValidationInput
 
 interface UseCouponPreviewResult {
   preview: CouponPreview | null
@@ -68,7 +70,7 @@ export function useCouponPreview(): UseCouponPreviewResult {
     setError(null)
 
     timerRef.current = setTimeout(() => {
-      previewCoupon({ code, tier: args.tier, billingCycle: args.billingCycle })
+      previewCoupon({ ...args, code })
         .then((result) => {
           if (reqId !== reqIdRef.current) return // superseded
           setPreview(result)

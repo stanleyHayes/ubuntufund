@@ -10,6 +10,7 @@ import FormControlLabel from '@mui/material/FormControlLabel'
 import Alert from '@mui/material/Alert'
 import AlertTitle from '@mui/material/AlertTitle'
 import Skeleton from '@mui/material/Skeleton'
+import LocalOfferRoundedIcon from '@mui/icons-material/LocalOfferRounded'
 import Divider from '@mui/material/Divider'
 import Link from '@mui/material/Link'
 import InputAdornment from '@mui/material/InputAdornment'
@@ -36,6 +37,9 @@ import {
 } from '@/lib/fundraising'
 import { getCryptoAssets } from '@/lib/crypto'
 import { useSeo, SITE_ORIGIN } from '@/lib/seo'
+import { useAuth } from '@/context/AuthContext'
+import { useCouponPreview } from '@/hooks/useCouponPreview'
+import { CouponSurface } from '@ubuntu-fund/types'
 import { CryptoDonatePanel } from '@/components/donate/CryptoDonatePanel'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
@@ -114,6 +118,19 @@ export function DonatePage() {
   // Form state
   const [amount, setAmount] = useState('')
   const [tip, setTip] = useState('')
+  // A fee-waiver code reduces the platform's cut, never the gift. It needs a
+  // signed-in donor because the coupon's per-user limit has nobody to count
+  // against otherwise, so the field is hidden from guests rather than shown
+  // and then refused.
+  const { user } = useAuth()
+  const [couponCode, setCouponCode] = useState('')
+  const {
+    preview: couponPreview,
+    loading: couponLoading,
+    error: couponError,
+    run: runCoupon,
+    clear: clearCoupon,
+  } = useCouponPreview()
   const [donorEmail, setDonorEmail] = useState('')
   const [donorName, setDonorName] = useState('')
   const [message, setMessage] = useState('')
@@ -201,8 +218,35 @@ export function DonatePage() {
     [amountValid, amountValue, tipValid, tipValue],
   )
 
+  // Quote the code whenever it or the amount changes: the waiver is a share of
+  // the platform fee, which is itself a share of the amount, so the saving
+  // moves with the gift.
+  useEffect(() => {
+    if (user && campaign && couponCode.trim() && amountValid) {
+      runCoupon({
+        code: couponCode,
+        surface: CouponSurface.DONATION,
+        campaignId: campaign.id,
+        amount: amountValue,
+      })
+    } else {
+      clearCoupon()
+    }
+  }, [user, campaign, couponCode, amountValid, amountValue, runCoupon, clearCoupon])
+
+  const validCoupon = couponPreview?.valid ? couponPreview : null
+
   const canSubmit =
-    !submitting && !paymentsDisabled && !!campaign && isActive && amountValid && emailValid && tipValid
+    !submitting &&
+    !paymentsDisabled &&
+    !!campaign &&
+    isActive &&
+    amountValid &&
+    emailValid &&
+    tipValid &&
+    // An invalid code aborts the donation server-side, so block it here rather
+    // than letting the donor press Give and be rejected.
+    !(couponCode.trim() && couponPreview && !couponPreview.valid)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -218,6 +262,7 @@ export function DonatePage() {
         liveSessionId: searchParams.get('liveSessionId') || undefined,
         amount: amountValue,
         tip: tipValid && Number.isFinite(tipValue) && tipValue > 0 ? tipValue : undefined,
+        couponCode: user && couponCode.trim() ? couponCode.trim() : undefined,
         provider: 'paystack',
         donorEmail: donorEmail.trim(),
         donorName: donorName.trim() || undefined,
@@ -481,6 +526,42 @@ export function DonatePage() {
           }}
           sx={{ mb: 3 }}
         />
+
+        {/* Fee-waiver code. Signed-in donors only: the coupon's per-user limit
+            has nobody to count against for a guest. */}
+        {user && (
+          <>
+            <TextField
+              id="donation-coupon"
+              label="Fee waiver code (optional)"
+              value={couponCode}
+              onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+              fullWidth
+              disabled={submitting}
+              helperText={
+                couponError ||
+                (couponPreview && !couponPreview.valid ? couponPreview.reason : undefined) ||
+                (validCoupon && validCoupon.discountAmount > 0
+                  ? `Applied — ${formatCurrency(validCoupon.discountAmount, campaign?.currency ?? 'GHS')} more reaches this campaign.`
+                  : 'Waives part of our platform fee. You still give the full amount above.')
+              }
+              error={Boolean(couponError) || Boolean(couponPreview && !couponPreview.valid)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <LocalOfferRoundedIcon sx={{ fontSize: 18, color: 'text.disabled' }} />
+                  </InputAdornment>
+                ),
+                endAdornment: couponLoading ? (
+                  <InputAdornment position="end">
+                    <Skeleton width={36} height={24} aria-label="Checking code" />
+                  </InputAdornment>
+                ) : undefined,
+              }}
+              sx={{ mb: 3 }}
+            />
+          </>
+        )}
 
         <Divider sx={{ mb: 3 }} />
 

@@ -98,6 +98,18 @@ export interface DonationIntent {
   providerFeeMinor?: number
   /** Ujimora platform fee, minor units. */
   platformFeeMinor?: number
+  /**
+   * Platform fee rate locked onto this donation by a fee-waiver coupon.
+   *
+   * Locked at intent creation for the same reason a campaign locks its own
+   * rate: the donor was shown a split, and re-deriving it at settlement would
+   * let a later coupon edit change what a completed donation credited. Absent
+   * on every donation without a coupon, which is the overwhelming majority.
+   */
+  platformFeePercentOverride?: number
+  /** The fee-waiver coupon applied, for reconciliation and redemption. */
+  couponId?: string
+  couponCode?: string
   /** Net credited to the campaign, minor units. */
   netCampaignAmountMinor?: number
 
@@ -183,6 +195,13 @@ export interface CreateDonationIntentInput {
   paymentMethod?: ContributionMethod
   /** Explicit provider request; honored only when eligible. */
   providerPreference?: DonationProvider
+  /**
+   * A fee-waiver code. It reduces the PLATFORM FEE, never what the donor gives
+   * — the donor pays exactly the amount they chose and the campaign receives
+   * more of it. An invalid code is refused rather than ignored, because a donor
+   * who typed one is expecting the campaign to benefit.
+   */
+  couponCode?: string
 }
 
 /** Body for `POST /donation-intents/:id/payment-attempts`. */

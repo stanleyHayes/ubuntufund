@@ -25,19 +25,23 @@ export interface AffiliateCodeQuote {
  * into the coupon collection would mean every affiliate silently owning a
  * coupon nobody created.
  *
- * Disabled unless `referralDiscountPercent` is above zero, so an existing
- * deployment behaves exactly as it did until someone makes the pricing call.
+ * Disabled while the resolved discount is zero, so the behaviour is inert
+ * until someone sets a rate. The rate is admin-controlled through the versioned
+ * commercial-config store, which is also the audit trail for who changed it,
+ * when, and why.
  */
 export class AffiliateCodePricing {
   constructor(
     private readonly affiliateRepo: AffiliateRepositoryPort,
     private readonly referralRepo: AffiliateReferralRepositoryPort,
-    private readonly discountPercent: number
+    /**
+     * Resolved per quote, not captured at construction: this is a live pricing
+     * lever an admin changes in the dashboard, and a value frozen at boot would
+     * keep quoting a discount the platform had already stopped giving until the
+     * next deploy.
+     */
+    private readonly resolveDiscountPercent: () => Promise<number>
   ) {}
-
-  get enabled(): boolean {
-    return this.discountPercent > 0;
-  }
 
   /**
    * Quote `code` as an affiliate referral, or return null when it is not one.
@@ -52,7 +56,10 @@ export class AffiliateCodePricing {
     baseAmount: number,
     currency: string
   ): Promise<AffiliateCodeQuote | null> {
-    if (!this.enabled) return null;
+    const discountPercent = await this.resolveDiscountPercent();
+    // Zero disables the behaviour outright: an affiliate code typed into the
+    // coupon box is then just an unknown code, exactly as before the feature.
+    if (!(discountPercent > 0)) return null;
 
     // Referral codes are stored lowercase; the checkout box is shared with
     // coupons, which are uppercase, so whatever the customer typed has to be
@@ -86,7 +93,7 @@ export class AffiliateCodePricing {
     }
 
     const discountAmount = roundToCurrency(
-      Math.min((baseAmount * this.discountPercent) / 100, baseAmount),
+      Math.min((baseAmount * discountPercent) / 100, baseAmount),
       currency
     );
 

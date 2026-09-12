@@ -124,7 +124,7 @@ export class HandleFlutterwaveWebhookUseCase {
     }
 
     const platformFeePercent =
-      await this.planLimits.platformFeePercentForCampaign(intent.campaignId);
+      await this.planLimits.platformFeePercentForIntent(intent);
     const breakdown = this.feePolicy.computeSettlementFromProvider({
       gross: verified.amount,
       tip: intent.tip,

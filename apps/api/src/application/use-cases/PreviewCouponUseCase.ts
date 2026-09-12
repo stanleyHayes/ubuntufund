@@ -1,5 +1,6 @@
 import {
   BillingCycle,
+  CouponSurface,
   type CouponPreview,
   type CouponValidationInput,
 } from '@ubuntu-fund/types';
@@ -29,23 +30,56 @@ export class PreviewCouponUseCase {
      * to quote here too — an affiliate code that previews as "not found" and
      * then works at checkout is worse than not previewing at all.
      */
-    private readonly affiliateCodePricing?: AffiliateCodePricing
+    private readonly affiliateCodePricing?: AffiliateCodePricing,
+    /** Resolves a campaign's platform fee, for quoting a donation waiver. */
+    private readonly planLimits?: { platformFeePercentForCampaign(id: string): Promise<number> }
   ) {}
+
+  /** A soft rejection, in the shape this endpoint always answers with. */
+  private invalid(code: string, baseAmount: number, reason: string): CouponPreview {
+    return {
+      valid: false,
+      code,
+      baseAmount,
+      discountAmount: 0,
+      finalAmount: baseAmount,
+      currency: CURRENCY,
+      reason,
+    };
+  }
 
   async execute(
     input: CouponValidationInput,
     userId: string
   ): Promise<CouponPreview> {
     const code = input.code.trim().toUpperCase();
-    // Base price from the DB-backed plan so the preview matches what checkout
-    // will charge (PlanService falls back to the code defaults).
-    const plan = await this.planService.getPlan(input.tier);
-    const baseAmount = roundToCurrency(
-      input.billingCycle === BillingCycle.YEARLY
-        ? plan.priceYearly
-        : plan.priceMonthly,
-      CURRENCY
-    );
+    const surface = input.surface ?? CouponSurface.SUBSCRIPTION;
+
+    // What the coupon is quoted against differs by surface: a subscription
+    // discounts its plan price, a donation discounts only the platform fee —
+    // never the gift itself. Quoting a donation against the gift would show the
+    // donor a saving they do not get and the campaign does not want.
+    let baseAmount: number;
+    if (surface === CouponSurface.DONATION) {
+      if (!input.campaignId || !(input.amount && input.amount > 0)) {
+        return this.invalid(code, 0, 'A campaign and amount are required');
+      }
+      const feePercent = this.planLimits
+        ? await this.planLimits.platformFeePercentForCampaign(input.campaignId)
+        : 0;
+      baseAmount = roundToCurrency((input.amount * feePercent) / 100, CURRENCY);
+      if (baseAmount <= 0) {
+        return this.invalid(code, 0, 'There is no platform fee on this donation to waive');
+      }
+    } else {
+      // Base price from the DB-backed plan so the preview matches what checkout
+      // will charge (PlanService falls back to the code defaults).
+      const plan = await this.planService.getPlan(input.tier ?? '');
+      baseAmount = roundToCurrency(
+        input.billingCycle === BillingCycle.YEARLY ? plan.priceYearly : plan.priceMonthly,
+        CURRENCY
+      );
+    }
 
     try {
       const pricing = await this.couponService.validateAndPrice({
@@ -54,6 +88,7 @@ export class PreviewCouponUseCase {
         billingCycle: input.billingCycle,
         userId,
         baseAmount,
+        surface,
       });
       return {
         valid: true,
@@ -67,7 +102,12 @@ export class PreviewCouponUseCase {
     } catch (err) {
       // Mirror the checkout's fallback exactly: an unknown code may be an
       // affiliate's referral code, which discounts just the same.
-      const unknownCode = err instanceof AppError && err.message === 'Coupon not found';
+      // An affiliate code discounts a subscription, never a donation fee, so
+      // the fallback belongs to that surface only.
+      const unknownCode =
+        err instanceof AppError &&
+        err.message === 'Coupon not found' &&
+        surface === CouponSurface.SUBSCRIPTION;
       if (unknownCode && this.affiliateCodePricing) {
         try {
           const quote = await this.affiliateCodePricing.quote(

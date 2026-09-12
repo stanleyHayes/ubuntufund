@@ -66,6 +66,25 @@ describe('AI usage and quotas', () => {
     expect(provider.write).toHaveBeenCalledTimes(2)
     expect((await service.configuration('creator')).remainingRequests).toBe(0)
   })
+  it('serves the full allowance when the first requests of the day arrive together', async () => {
+    // The regression this guards. With no quota document yet, every concurrent
+    // caller failed the `used < limit` filter, all attempted the insert, one
+    // won and the rest got a duplicate-key error — which was reported as "daily
+    // limit reached" before a single request had been served. A cold start with
+    // simultaneous requests is the normal case, not an exotic one.
+    const service = new AiWritingService(provider, 5, 100)
+
+    const results = await Promise.allSettled(
+      Array.from({ length: 5 }, () => service.write('cold-start-user', input)),
+    )
+
+    expect(
+      results.filter((r) => r.status === 'fulfilled'),
+      'all five are within the allowance of five',
+    ).toHaveLength(5)
+    expect((await service.configuration('cold-start-user')).remainingRequests).toBe(0)
+  })
+
   it('enforces the global cap and releases a rejected user reservation', async () => {
     const service = new AiWritingService(provider, 2, 1)
     await service.write('first', input)

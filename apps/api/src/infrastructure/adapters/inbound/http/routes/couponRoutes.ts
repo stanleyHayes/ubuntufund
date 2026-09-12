@@ -61,8 +61,13 @@ const updateCouponSchema = z.object({
 
 const previewCouponSchema = z.object({
   code: z.string().min(1).max(50),
-  tier: z.nativeEnum(SubscriptionTier),
-  billingCycle: z.nativeEnum(BillingCycle),
+  // Omitted means the subscription surface, so existing clients are unaffected.
+  surface: z.nativeEnum(CouponSurface).optional(),
+  tier: z.string().min(1).max(60).optional(),
+  billingCycle: z.nativeEnum(BillingCycle).optional(),
+  // Donation surface: the campaign whose fee would be waived, and the gift.
+  campaignId: z.string().min(1).optional(),
+  amount: z.number().positive().optional(),
 });
 
 /**

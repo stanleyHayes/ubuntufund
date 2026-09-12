@@ -160,9 +160,7 @@ export class ReconcilePaymentsUseCase {
         return 'mismatched';
       }
 
-      const platformFeePercent = await this.planLimits.platformFeePercentForCampaign(
-        intent.campaignId
-      );
+      const platformFeePercent = await this.planLimits.platformFeePercentForIntent(intent);
       const breakdown = this.feePolicy.computeSettlementFromProvider({
         gross: verified.amount,
         tip: intent.tip,

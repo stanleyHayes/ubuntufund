@@ -15,20 +15,18 @@ import type { BillingCycle } from './subscription'
  * creator's own earnings — an admin-owned coupon reducing a creator's income.
  * The fee a creator actually pays is the withdrawal fee, which is PAYOUT_FEE.
  *
- * There is no DONATION surface yet either, and the reason is worth recording.
- * The sound design is a platform-fee waiver: the donor pays the same, the
- * campaign receives more, and the cost is bounded by the fee — not a discount
- * on what the donor pays, which would quietly reduce what the campaign raises.
- * But the fee percentage is not stored on the intent; it is re-resolved from
- * the campaign's plan at settlement in four separate places (the Paystack
- * webhook, the Flutterwave webhook, reconciliation, and intent creation). A
- * waiver has to reach all four identically or a donation settles with the
- * wrong split, so it is its own piece of work rather than a value in this
- * enum that nothing honours.
  */
 export enum CouponSurface {
   /** Reduce the price of a paid-subscription checkout. The customer pays less. */
   SUBSCRIPTION = 'subscription',
+  /**
+   * Waive part of the platform fee on a donation. The donor pays exactly what
+   * they chose to give and the campaign receives more; the platform forgoes
+   * fee revenue, so the cost is bounded by the fee itself. Deliberately not a
+   * discount on what the donor pays — that would quietly reduce what the
+   * campaign raises, which is the opposite of what a donation promotion is for.
+   */
+  DONATION = 'donation',
   /** Reduce the platform fee on a withdrawal. The recipient receives more. */
   PAYOUT_FEE = 'payout_fee',
 }
@@ -183,8 +181,17 @@ export interface CouponRedemption {
 export interface CouponValidationInput {
   // POST /coupons/preview body
   code: string
-  tier: string
-  billingCycle: BillingCycle
+  /**
+   * Which surface to quote against. Omitted means SUBSCRIPTION, so the existing
+   * callers keep working unchanged.
+   */
+  surface?: CouponSurface
+  /** Subscription context. Required for the subscription surface. */
+  tier?: string
+  billingCycle?: BillingCycle
+  /** Donation context: the campaign whose fee is being waived, and the gift. */
+  campaignId?: string
+  amount?: number
 }
 
 export interface CouponPreview {

@@ -112,6 +112,16 @@ export class SettleSubscriptionUseCase {
     // coupon, or on any lookup failure, the post-coupon amount stands: that is
     // the existing behaviour and the cheaper of the two.
     let commissionBaseAmount = settled.finalAmount;
+
+    // A discount with no coupon behind it came from the affiliate's own
+    // referral code. The platform sets that percentage, so the platform funds
+    // it: paying the referrer less precisely for sharing the code they were
+    // asked to share would quietly discourage the whole mechanism. Commission
+    // is computed on the undiscounted price.
+    if (!settled.couponId && settled.discountAmount > 0) {
+      commissionBaseAmount = settled.baseAmount;
+    }
+
     if (settled.couponId) {
       try {
         const coupon = await this.couponRepo.findById(settled.couponId);

@@ -614,6 +614,8 @@ export function createApp(): express.Express {
     campaignLedgerProjector,
     outboxRepo,
     outboxDispatcher,
+    couponRepo,
+    couponRedemptionRepo,
   )
   // ── Crypto donation rail (Crypto Donations plan) ─────────────────────────
   // A provider-neutral second rail, OFF by default (config.crypto.enabled). The
@@ -711,6 +713,8 @@ export function createApp(): express.Express {
     paymentAttemptRepo,
     config.payments,
     gatewayRegistry,
+    couponService,
+    couponRedemptionRepo,
   )
   const donateToCampaignUseCase = new DonateToCampaignUseCase(createDonationIntentUseCase)
   // Payout settlement: the signed transfer webhook moves an approved payout to
@@ -912,13 +916,15 @@ export function createApp(): express.Express {
   // ADR-5 (G6): versioned, effective-dated commercial config — overrides layered
   // over the env defaults, so behaviour is unchanged until an admin sets a value.
   const commercialConfigRepo = new MongoCommercialConfigRepository()
-  const commercialConfigService = new CommercialConfigService(commercialConfigRepo, config.payouts)
+  const commercialConfigService = new CommercialConfigService(commercialConfigRepo, config.payouts, config.affiliate)
   // One instance, shared by the checkout and the preview: the preview exists to
   // tell a customer what they will pay, so the two must agree by construction.
   const affiliateCodePricing = new AffiliateCodePricing(
     affiliateRepo,
     affiliateReferralRepo,
-    config.affiliate.referralDiscountPercent,
+    // Read through the versioned config store so an admin can change the rate
+    // from the dashboard without a deploy; falls back to the env default.
+    () => commercialConfigService.resolveReferralDiscountPercent(),
   )
 
   const requestPayoutUseCase = new RequestPayoutUseCase(
@@ -1086,7 +1092,7 @@ export function createApp(): express.Express {
   const listCouponsUseCase = new ListCouponsUseCase(couponRepo)
   const getCouponUseCase = new GetCouponUseCase(couponRepo)
   const deleteCouponUseCase = new DeleteCouponUseCase(couponRepo)
-  const previewCouponUseCase = new PreviewCouponUseCase(couponService, planService, affiliateCodePricing)
+  const previewCouponUseCase = new PreviewCouponUseCase(couponService, planService, affiliateCodePricing, planLimitsService)
 
   // Affiliate/referral program: owner surface + admin console + payout rail.
   const enrollAffiliateUseCase = new EnrollAffiliateUseCase(affiliateRepo, affiliateBalanceRepo)

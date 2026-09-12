@@ -37,12 +37,14 @@ const ACCENT = TONES.gold.text
 
 const SURFACE_LABEL: Record<CouponSurface, string> = {
   [CouponSurface.SUBSCRIPTION]: 'Subscriptions',
+  [CouponSurface.DONATION]: 'Donations',
   [CouponSurface.PAYOUT_FEE]: 'Withdrawal fees',
 }
 
 /** What the platform actually gives up on each surface, in plain terms. */
 const SURFACE_HINT: Record<CouponSurface, string> = {
   [CouponSurface.SUBSCRIPTION]: 'The subscriber pays less',
+  [CouponSurface.DONATION]: 'Platform fee waived — the campaign receives more',
   [CouponSurface.PAYOUT_FEE]: 'Lower fee on a withdrawal',
 }
 const PAGE_SIZE = 10

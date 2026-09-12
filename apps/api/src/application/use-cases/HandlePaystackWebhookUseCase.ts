@@ -313,7 +313,7 @@ export class HandlePaystackWebhookUseCase {
 
     // Platform fee follows the campaign creator's subscription plan.
     const platformFeePercent =
-      await this.planLimits.platformFeePercentForCampaign(intent.campaignId);
+      await this.planLimits.platformFeePercentForIntent(intent);
 
     const breakdown = this.feePolicy.computeSettlementFromProvider({
       gross,

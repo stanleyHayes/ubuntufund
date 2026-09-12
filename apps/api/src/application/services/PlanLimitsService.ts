@@ -107,6 +107,32 @@ export class PlanLimitsService {
    * campaign falls back to the Free-plan rate rather than throwing, so a
    * settlement is never blocked by fee resolution.
    */
+  /**
+   * The platform fee rate for a specific donation.
+   *
+   * One implementation for all five settlement rails — wallet, Paystack,
+   * Flutterwave, crypto and reconciliation — because each computes the fee
+   * independently and a waiver that reached only four of them would credit a
+   * campaign the wrong amount on the fifth. They differ in everything except
+   * this question, so this is the only place it is answered.
+   *
+   * A donation carrying a fee-waiver coupon has its rate locked on the intent
+   * at creation, exactly as a campaign locks its rate at creation. Absent one,
+   * this is the campaign's ordinary rate and nothing changes.
+   */
+  async platformFeePercentForIntent(intent: {
+    campaignId: string;
+    platformFeePercentOverride?: number;
+  }): Promise<number> {
+    if (
+      typeof intent.platformFeePercentOverride === 'number' &&
+      Number.isFinite(intent.platformFeePercentOverride)
+    ) {
+      return intent.platformFeePercentOverride;
+    }
+    return this.platformFeePercentForCampaign(intent.campaignId);
+  }
+
   async platformFeePercentForCampaign(campaignId: string): Promise<number> {
     const campaign = await this.campaignRepo.findById(campaignId);
     if (!campaign) {

@@ -13,6 +13,8 @@ import type { PostDonationJournalUseCase } from './PostDonationJournalUseCase.js
 import type { CampaignLedgerProjector } from '../services/CampaignLedgerProjector.js';
 import type { OutboxDispatcher } from '../services/OutboxDispatcher.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
+import type { CouponRepositoryPort } from '../../domain/ports/outbound/CouponRepositoryPort.js';
+import type { CouponRedemptionRepositoryPort } from '../../domain/ports/outbound/CouponRedemptionRepositoryPort.js';
 import { logger } from '../../infrastructure/logging/logger.js';
 
 /** Round an observed FX rate to 6 dp for storage. */
@@ -59,7 +61,15 @@ export class SettleDonationUseCase {
     private readonly postDonationJournalUseCase: PostDonationJournalUseCase,
     private readonly projector: CampaignLedgerProjector,
     private readonly outboxRepo: OutboxRepositoryPort,
-    private readonly outboxDispatcher: OutboxDispatcher
+    private readonly outboxDispatcher: OutboxDispatcher,
+    /**
+     * Optional: redeems a donation's fee-waiver coupon. Wired here rather than
+     * in each rail because all five — wallet, Paystack, Flutterwave, crypto and
+     * reconciliation — converge on this use-case, so the redemption happens
+     * exactly once however the donation settled.
+     */
+    private readonly couponRepo?: CouponRepositoryPort,
+    private readonly couponRedemptionRepo?: CouponRedemptionRepositoryPort
   ) {}
 
   async execute(
@@ -136,6 +146,10 @@ export class SettleDonationUseCase {
       );
     }
 
+    // Separate from the block above on purpose: a failure to record the money
+    // split must not skip the redemption, and vice versa.
+    await this.redeemFeeWaiver(settled);
+
     // ── 3. Durable side-effects (realtime + receipts) via the outbox ─────
     const payload: DonationSucceededPayload = {
       donationId: donation.id,
@@ -158,5 +172,37 @@ export class SettleDonationUseCase {
     await this.outboxDispatcher.dispatch(outboxRecord);
 
     return settled;
+  }
+
+  /**
+   * Redeem a donation's fee-waiver coupon, exactly once.
+   *
+   * Reached only through the exactly-once settlement gate above, so a replayed
+   * webhook returns before getting here and cannot double-redeem. Never throws:
+   * the campaign has already been credited at the waived fee, and failing now
+   * would report an error for a donation that plainly succeeded.
+   *
+   * A coupon found to be over its global cap is logged rather than refused, for
+   * the same reason — the money has moved, and the waiver was already applied
+   * when the donor was quoted.
+   */
+  private async redeemFeeWaiver(settled: DonationIntentEntity): Promise<void> {
+    if (!settled.couponId || !this.couponRedemptionRepo) return;
+    try {
+      const bumped = await this.couponRepo?.incrementRedemptionIfUnderLimit(settled.couponId);
+      if (this.couponRepo && !bumped) {
+        logger.warn(
+          { couponId: settled.couponId, donationIntentId: settled.id },
+          'donation settled but its fee-waiver coupon was already at its global limit'
+        );
+      }
+      const redemption = await this.couponRedemptionRepo.findByProviderRef(settled.id);
+      if (redemption) await this.couponRedemptionRepo.markConsumed(redemption.id);
+    } catch (error) {
+      logger.error(
+        { err: error, donationIntentId: settled.id, couponId: settled.couponId },
+        'failed to redeem a donation fee-waiver coupon (non-fatal)'
+      );
+    }
   }
 }

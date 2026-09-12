@@ -63,7 +63,7 @@ describe('Hosted donation callback verification', () => {
     const reconcile = new ReconcilePaymentsUseCase(
       new Map([['paystack',gateway]]) as never, repo as never,
       {record:vi.fn()} as never, new FeePolicy({platformFeePercent:0,paystackFeePercent:1.95,paystackFlatFee:0}), settle,
-      {platformFeePercentForCampaign:vi.fn(async () => 0)} as never
+      {platformFeePercentForCampaign:vi.fn(async () => 0), platformFeePercentForIntent:vi.fn(async () => 0)} as never
     );
     verify = new VerifyDonationIntentUseCase(repo as never, reconcile);
   });

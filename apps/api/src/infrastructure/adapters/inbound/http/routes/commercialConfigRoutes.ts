@@ -1,7 +1,10 @@
 import { Router, type Response, type NextFunction, type RequestHandler } from 'express';
 import type { AuthenticatedRequest, createAuthMiddleware } from '../../middleware/authMiddleware.js';
 import { AppError } from '../../middleware/errorHandler.js';
-import type { CommercialConfigService } from '../../../../../application/services/CommercialConfigService.js';
+import {
+  AFFILIATE_REFERRAL_DISCOUNT_KEY,
+  type CommercialConfigService,
+} from '../../../../../application/services/CommercialConfigService.js';
 
 /**
  * Admin-only commercial config (ADR-5): view the effective values + env
@@ -21,9 +24,16 @@ export function createCommercialConfigRoutes(deps: {
     deps.requireAdmin,
     async (_req: AuthenticatedRequest, res: Response, next: NextFunction) => {
       try {
-        const resolved = await deps.service.resolvePayoutsConfig();
+        const [resolved, referralDiscountPercent] = await Promise.all([
+          deps.service.resolvePayoutsConfig(),
+          deps.service.resolveReferralDiscountPercent(),
+        ]);
         res.json({
-          data: { resolved, defaults: deps.service.getDefaults(), keys: deps.service.keys },
+          data: {
+            resolved: { ...resolved, [AFFILIATE_REFERRAL_DISCOUNT_KEY]: referralDiscountPercent },
+            defaults: deps.service.getDefaults(),
+            keys: deps.service.allKeys,
+          },
           message: 'Commercial config',
           status: 200,
         });

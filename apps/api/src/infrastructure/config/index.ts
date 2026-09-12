@@ -44,7 +44,7 @@ interface PaystackConfig {
   publicKey: string;
 }
 
-interface AffiliateConfig {
+export interface AffiliateConfig {
   /** Referral commission cut, as a % of the referee's first paid subscription. */
   commissionPercent: number;
   /** Days a newly accrued commission stays 'held' before it matures to 'available'. */
@@ -292,11 +292,18 @@ export const config: AppConfig = {
   affiliate: {
     commissionPercent: envNumber(process.env.AFFILIATE_COMMISSION_PERCENT, 10),
     holdDays: envNumber(process.env.AFFILIATE_HOLD_DAYS, 14),
-    // Off by default: enabling a discount on every referral is a pricing
-    // decision, not something a deploy should start doing on its own.
+    // Mirrors commissionPercent, so the programme reads symmetrically: the
+    // referee saves 10% on their first paid checkout and the referrer earns 10%
+    // of it. Roughly 20% of a first payment as acquisition cost, once, which is
+    // ordinary for referred SaaS signups — and it never touches a renewal,
+    // because the commission it funds is one-time.
+    //
+    // This is only the fallback. The effective rate comes from the versioned
+    // commercial-config store, so an admin can change or zero it from the
+    // dashboard without a deploy.
     referralDiscountPercent: envNumber(
       process.env.AFFILIATE_REFERRAL_DISCOUNT_PERCENT,
-      0
+      10
     ),
   },
   campaigns: {

@@ -26,6 +26,9 @@ const createDonationIntentSchema = z.object({
   country: z.string().regex(/^[A-Za-z]{2}$/).optional(),
   paymentMethod: z.enum(['mobile_money', 'card', 'bank', 'ussd', 'wallet']).optional(),
   providerPreference: z.enum(['wallet', 'paystack', 'flutterwave']).optional(),
+  // Waives part of the PLATFORM FEE, not the donation. The campaign receives
+  // more; the donor gives exactly what they chose.
+  couponCode: z.string().min(1).max(50).optional(),
 });
 
 const recordPaymentAttemptSchema = z.object({

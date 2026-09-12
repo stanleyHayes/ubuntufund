@@ -31,7 +31,7 @@ function build(found: Affiliate | null, percent = 20, existingReferral: unknown 
     create: vi.fn(async (r: unknown) => r),
   } as unknown as AffiliateReferralRepositoryPort;
   return {
-    pricing: new AffiliateCodePricing(affiliateRepo, referralRepo, percent),
+    pricing: new AffiliateCodePricing(affiliateRepo, referralRepo, async () => percent),
     affiliateRepo,
     referralRepo,
   };
@@ -59,7 +59,6 @@ describe('quoting an affiliate code', () => {
     // The default. An existing deployment must behave exactly as before until
     // someone makes the pricing decision.
     const { pricing, affiliateRepo } = build(affiliate(), 0);
-    expect(pricing.enabled).toBe(false);
     await expect(pricing.quote('ama-gh', 'buyer', 200, 'GHS')).resolves.toBeNull();
     expect(affiliateRepo.findByReferralCode).not.toHaveBeenCalled();
   });
@@ -119,7 +118,7 @@ describe('attaching the referral', () => {
       }),
     } as unknown as AffiliateReferralRepositoryPort;
 
-    const pricing = new AffiliateCodePricing(affiliateRepo, referralRepo, 20);
+    const pricing = new AffiliateCodePricing(affiliateRepo, referralRepo, async () => 20);
     await expect(pricing.attachReferral('aff-1', 'buyer', 'ama-gh')).resolves.toBeUndefined();
   });
 });
@@ -159,5 +158,53 @@ describe('the discount only exists to buy a commission', () => {
     await expect(pricing.quote('ama-gh', 'buyer', 200, 'GHS')).resolves.toMatchObject({
       discountAmount: 40,
     });
+  });
+});
+
+describe('the rate is a live setting, not a boot-time constant', () => {
+  it('re-reads the percentage on every quote', async () => {
+    // An admin lowering the rate in the dashboard must take effect on the next
+    // quote. A value captured at construction would keep offering a discount
+    // the platform had already stopped giving until the next deploy.
+    let percent = 10;
+    const affiliateRepo = {
+      findByReferralCode: vi.fn(async () => affiliate()),
+    } as unknown as AffiliateRepositoryPort;
+    const referralRepo = {
+      findByRefereeId: vi.fn(async () => null),
+      create: vi.fn(async (r: unknown) => r),
+    } as unknown as AffiliateReferralRepositoryPort;
+
+    const pricing = new AffiliateCodePricing(
+      affiliateRepo,
+      referralRepo,
+      async () => percent
+    );
+
+    await expect(pricing.quote('ama-gh', 'buyer', 200, 'GHS')).resolves.toMatchObject({
+      discountAmount: 20,
+    });
+
+    percent = 25;
+    await expect(pricing.quote('ama-gh', 'buyer', 200, 'GHS')).resolves.toMatchObject({
+      discountAmount: 50,
+    });
+
+    // And zeroing it switches the feature off without a restart.
+    percent = 0;
+    await expect(pricing.quote('ama-gh', 'buyer', 200, 'GHS')).resolves.toBeNull();
+  });
+
+  it('does not look anything up once the rate is zero', async () => {
+    // The lookup costs a round trip on a code that cannot be honoured.
+    const affiliateRepo = {
+      findByReferralCode: vi.fn(async () => affiliate()),
+    } as unknown as AffiliateRepositoryPort;
+    const referralRepo = { findByRefereeId: vi.fn(), create: vi.fn() } as unknown as AffiliateReferralRepositoryPort;
+
+    const pricing = new AffiliateCodePricing(affiliateRepo, referralRepo, async () => 0);
+    await pricing.quote('ama-gh', 'buyer', 200, 'GHS');
+
+    expect(affiliateRepo.findByReferralCode).not.toHaveBeenCalled();
   });
 });

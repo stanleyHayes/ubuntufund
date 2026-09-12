@@ -1,6 +1,13 @@
-import { TransactionType, type CreateDonationIntentInput } from '@ubuntu-fund/types'
+import {
+  CouponRedemptionStatus,
+  CouponSurface,
+  TransactionType,
+  type CreateDonationIntentInput,
+} from '@ubuntu-fund/types'
 import { DonationIntentEntity } from '../../domain/entities/DonationIntent.js'
-import { Money } from '../../domain/value-objects/Money.js'
+import { Money, roundToCurrency } from '../../domain/value-objects/Money.js'
+import type { CouponService } from '../services/CouponService.js'
+import type { CouponRedemptionRepositoryPort } from '../../domain/ports/outbound/CouponRedemptionRepositoryPort.js'
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js'
 import type { LiveSessionRepositoryPort } from '../../domain/ports/outbound/LiveSessionRepositoryPort.js'
 import type { WalletRepositoryPort } from '../../domain/ports/outbound/WalletRepositoryPort.js'
@@ -76,7 +83,67 @@ export class CreateDonationIntentUseCase {
     // Optional: additional hosted gateways keyed by provider (e.g.
     // 'flutterwave'). Paystack always resolves to the default `paymentGateway`.
     private readonly gatewayRegistry?: Map<string, PaymentGatewayPort>,
+    /**
+     * Optional: lets a donor apply a fee-waiver coupon. Absent, a couponCode on
+     * the request is ignored and every donation pays the ordinary fee.
+     */
+    private readonly couponService?: CouponService,
+    private readonly couponRedemptionRepo?: CouponRedemptionRepositoryPort,
   ) {}
+
+  /**
+   * Price a fee-waiver coupon against this donation and lock the resulting rate.
+   *
+   * Returns the rate to store on the intent, not a discount amount: all five
+   * settlement rails compute the fee from a percentage, and the settled gross
+   * can differ from the quoted one, so a rate scales correctly where a fixed
+   * number would not. A coupon larger than the fee zeroes it and no further.
+   */
+  private async resolveFeeWaiver(
+    code: string,
+    campaignId: string,
+    amount: number,
+    currency: string,
+    donorUserId: string | null,
+  ): Promise<{ percentOverride: number; couponId: string; couponCode: string; perUserLimit?: number }> {
+    if (!this.couponService) {
+      throw new AppError('Discount codes are not available', 422)
+    }
+    // A guest donation has no user to charge a per-user limit against, and a
+    // coupon that cannot enforce its own caps is a coupon anyone can reuse
+    // without limit.
+    if (!donorUserId) {
+      throw new AppError('Sign in to use a discount code', 422)
+    }
+
+    const basePercent = await this.planLimits.platformFeePercentForCampaign(campaignId)
+    const fee = roundToCurrency((amount * basePercent) / 100, currency)
+    if (fee <= 0) {
+      throw new AppError('There is no platform fee on this donation to waive', 422)
+    }
+
+    const pricing = await this.couponService.validateAndPrice({
+      code,
+      userId: donorUserId,
+      baseAmount: fee,
+      surface: CouponSurface.DONATION,
+    })
+    if (pricing.currency !== currency) {
+      throw new AppError(
+        `This code is issued in ${pricing.currency} and cannot be applied to a ${currency} donation`,
+        422,
+      )
+    }
+
+    // Back out the discounted fee as a rate. Division is safe: `fee > 0` above
+    // implies `amount > 0` and `basePercent > 0`.
+    return {
+      percentOverride: (pricing.finalAmount / amount) * 100,
+      couponId: pricing.coupon.id,
+      couponCode: pricing.coupon.code,
+      perUserLimit: pricing.coupon.perUserLimit,
+    }
+  }
 
   /** The hosted gateway for a provider, honoring the feature flags. */
   private resolveHostedGateway(provider: string): PaymentGatewayPort {
@@ -148,7 +215,53 @@ export class CreateDonationIntentUseCase {
       }
     }
 
-    const intent = await this.createIntent(input, ctx, currency, tip)
+    // A fee-waiver code, priced before the intent so the locked rate is part of
+    // the record from the outset. An invalid code aborts the donation rather
+    // than proceeding at full fee: a donor who typed one did so expecting the
+    // campaign to receive more, and silently ignoring it takes their money
+    // under terms they did not agree to.
+    const waiver = input.couponCode?.trim()
+      ? await this.resolveFeeWaiver(
+          input.couponCode,
+          input.campaignId,
+          input.amount,
+          currency,
+          ctx.donorUserId,
+        )
+      : undefined
+
+    const intent = await this.createIntent(input, ctx, currency, tip, waiver)
+
+    // Claim the per-user seat once the intent exists, so an abandoned checkout
+    // holds a slot that the failure path can release rather than a redemption
+    // nobody can reclaim. Consumed at settlement, which all five rails share.
+    if (waiver && this.couponRedemptionRepo) {
+      const slotNow = new Date()
+      const slot = await this.couponRedemptionRepo.createWithSeat(
+        {
+          id: '',
+          couponId: waiver.couponId,
+          code: waiver.couponCode,
+          userId: ctx.donorUserId!,
+          surface: CouponSurface.DONATION,
+          status: CouponRedemptionStatus.PENDING,
+          baseAmount: input.amount,
+          discountAmount: 0,
+          finalAmount: input.amount,
+          currency,
+          providerRef: intent.id,
+          createdAt: slotNow,
+          updatedAt: slotNow,
+        },
+        waiver.perUserLimit,
+      )
+      if (!slot) {
+        throw new AppError(
+          'You have already used this code the maximum number of times',
+          422,
+        )
+      }
+    }
 
     if (input.provider !== 'wallet') {
       // Hosted rail: open the provider checkout and move CREATED → PENDING.
@@ -158,7 +271,7 @@ export class CreateDonationIntentUseCase {
     // ── Wallet rail (authed donor): debit, then settle synchronously ──────
     // The platform fee follows the campaign creator's subscription plan, not a
     // flat rate. Resolve it here (creator known) and pass it into the split.
-    const platformFeePercent = await this.planLimits.platformFeePercentForCampaign(campaign.id)
+    const platformFeePercent = await this.planLimits.platformFeePercentForIntent(intent)
     const settled = await this.settleWalletIntent(
       intent,
       ctx.donorUserId!,
@@ -249,6 +362,7 @@ export class CreateDonationIntentUseCase {
     ctx: CreateDonationIntentContext,
     currency: string,
     tip: number,
+    waiver?: { percentOverride: number; couponId: string; couponCode: string },
   ): Promise<DonationIntentEntity> {
     const now = new Date()
     const draft = new DonationIntentEntity({
@@ -276,6 +390,9 @@ export class CreateDonationIntentUseCase {
       originalCurrency: currency,
       country: input.country,
       paymentMethod: input.paymentMethod,
+      platformFeePercentOverride: waiver?.percentOverride,
+      couponId: waiver?.couponId,
+      couponCode: waiver?.couponCode,
     })
 
     try {

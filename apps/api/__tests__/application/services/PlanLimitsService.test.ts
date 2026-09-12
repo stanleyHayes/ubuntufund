@@ -216,6 +216,33 @@ describe('PlanLimitsService', () => {
     })
   })
 
+  describe('platformFeePercentForIntent — the one resolver all five rails share', () => {
+    beforeEach(() => {
+      campaignRepo.findById = vi
+        .fn()
+        .mockResolvedValue({ creatorId: 'user-1', lockedPlatformFeePercent: 10 })
+    })
+
+    it('prefers a rate locked onto the intent by a fee-waiver coupon', async () => {
+      await expect(
+        service.platformFeePercentForIntent({ campaignId: 'c-1', platformFeePercentOverride: 4 }),
+      ).resolves.toBe(4)
+    })
+
+    it('honours a full waiver rather than reading zero as "unset"', async () => {
+      // A 100%-off coupon locks 0. Treating that as absent would silently
+      // charge the ordinary fee on a donation sold as fee-free — the falsy
+      // trap that makes "off" and "unconfigured" indistinguishable.
+      await expect(
+        service.platformFeePercentForIntent({ campaignId: 'c-1', platformFeePercentOverride: 0 }),
+      ).resolves.toBe(0)
+    })
+
+    it('falls back to the campaign rate when there is no waiver', async () => {
+      await expect(service.platformFeePercentForIntent({ campaignId: 'c-1' })).resolves.toBe(10)
+    })
+  })
+
   describe('platformFeePercentForCampaign — fee grandfathering (ADR-5)', () => {
     it('uses the campaign\'s locked fee, ignoring a later plan-fee change', async () => {
       // Organizer is on a plan whose live fee is now 1.0%, but the campaign
