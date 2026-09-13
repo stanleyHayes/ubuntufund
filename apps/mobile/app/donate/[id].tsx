@@ -1,4 +1,4 @@
-import { LEGAL_ACCEPTANCE_VERSION } from '@ubuntu-fund/types'
+import { acceptsCampaignDonation, LEGAL_ACCEPTANCE_VERSION } from '@ubuntu-fund/types'
 import { useEffect, useState } from 'react'
 import { View, ScrollView, Platform } from 'react-native'
 import { Text, Checkbox } from 'react-native-paper'
@@ -86,7 +86,7 @@ function InAppDonateScreen() {
     <Stack.Screen options={{ title: 'Support this campaign' }} />
     <Text style={{ fontFamily: 'Outfit_800ExtraBold', fontSize: 26, color: p.text }}>{campaign?.title || 'Campaign donation'}</Text>
     {campaignError && <Text style={{ color: p.error }}>{campaignError}</Text>}
-    {currentPending ? <PaymentStatus key={currentPending.id} payment={currentPending} onReset={() => { void clearPending(scope).then(() => setPending(null)) }} /> : campaign?.status !== 'active' ? <Text>This campaign is not accepting donations.</Text> : <View style={{ ...neu.raised, backgroundColor: p.surface, padding: 20, borderRadius: 24, gap: 16 }}>
+    {currentPending ? <PaymentStatus key={currentPending.id} payment={currentPending} onReset={() => { void clearPending(scope).then(() => setPending(null)) }} /> : !campaign || !acceptsCampaignDonation(campaign) ? <Text>This campaign is not accepting donations.</Text> : <View style={{ ...neu.raised, backgroundColor: p.surface, padding: 20, borderRadius: 24, gap: 16 }}>
       <TextInput label={`Amount (${campaign.currency})`} keyboardType="decimal-pad" value={amount} onChangeText={setAmount} />
       <TextInput label="Email" keyboardType="email-address" autoCapitalize="none" value={email} onChangeText={setEmail} />
       <TextInput label="Name (optional)" value={name} onChangeText={setName} />

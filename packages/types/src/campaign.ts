@@ -229,3 +229,8 @@ export interface UpdateCampaignUpdateInput {
   type?: CampaignUpdateType
   mediaUrls?: string[]
 }
+
+/** Funding is a milestone, not a closing condition. */
+export function acceptsCampaignDonation(campaign: { status: string; endDate: Date | string } | null | undefined, now = Date.now()): boolean {
+  return !!campaign && (campaign.status === CampaignStatus.ACTIVE || campaign.status === CampaignStatus.FUNDED) && new Date(campaign.endDate).getTime() > now
+}

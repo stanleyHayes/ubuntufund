@@ -1,5 +1,12 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — Goal reached campaigns remain open
+
+- User clarified reaching a funding goal must not close donations. API already supports overfunding; web wallet/detail/checkout and native checkout incorrectly restricted donations to ACTIVE. Shared eligibility now accepts ACTIVE and FUNDED before endDate, while keeping drafts, pending, blocked and expired campaigns closed.
+- Removed misleading inactive badge for funded/open campaigns; shows “Goal reached · Still accepting donations”. Native detail donation button follows the same eligibility rule. Payout goal milestones remain intact.
+- Two browser flows verify active and funded campaigns above goal can open wallet and continue to checkout. Three shared eligibility/amount/provider tests and14 API campaign tests pass. Web/mobile types and affected lint pass. The contract test now uses Vitest to load the shared TypeScript package consistently (Node ESM re-export failed initially). Logs: `/tmp/ujimora-overfund-browser.log`, `/tmp/ujimora-overfund-policy-web.log`, `/tmp/ujimora-overfund-api.log`, `/tmp/ujimora-overfund-web-types.log`, `/tmp/ujimora-overfund-mobile-types.log`, `/tmp/ujimora-overfund-lint.log`.
+
+
 ### 2026-09-13 — Creator withdrawal currency consistency
 
 - Source audit found bank withdrawals read currency before reserving funds without checking the actual reserved balance. A changed currency could produce a payout in the stale currency. The reservation now checks currency inside the transaction and rolls back on mismatch before creating a payout or sending a transfer.

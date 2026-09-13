@@ -119,3 +119,21 @@ test('wallet donation always requires visible terms acceptance, with an optional
   expect(blankPayload.message).toBeUndefined()
   expect(blankPayload.legalAcceptance).toEqual({ version: '2026-09-12', acceptedTerms: true, ageConfirmed: true })
 })
+
+for (const status of ['active', 'funded']) {
+  test(`goal reached ${status} campaign keeps wallet and checkout open`, async ({ page }) => {
+    const record = { ...campaign, status, raisedAmount: 6000 }
+    await page.route('**/api/v1/campaigns/example', route => route.fulfill({ json: { data: record } }))
+    await page.route('**/api/v1/campaigns/slug/*/public', route => route.fulfill({ json: { data: record } }))
+    await page.route('**/api/v1/payment-providers/enabled', route => route.fulfill({ json: { data: [{ id: 'wallet', name: 'Ujimora Wallet', slug: 'wallet', type: 'wallet', isDefault: true, feePercent: 0 }] } }))
+    await page.goto('/campaigns/example')
+    await expect(page.getByText('Goal reached · Still accepting donations')).toBeVisible()
+    await expect(page.getByText('Campaign Inactive', { exact: true })).toHaveCount(0)
+    await page.getByRole('button', { name: 'Donate with wallet' }).click()
+    await expect(page.getByRole('dialog')).toBeVisible()
+    await page.getByRole('dialog').getByRole('button', { name: 'Cancel', exact: true }).click()
+    await page.getByRole('link', { name: 'Donate now', exact: true }).click()
+    await expect(page.locator('#donor-email')).toBeVisible()
+    await expect(page.getByText("This campaign isn't accepting donations right now.")).toHaveCount(0)
+  })
+}

@@ -1,7 +1,4 @@
-/** The campaign wallet endpoint accepts active, unexpired campaigns only. */
-export function acceptsCampaignDonation(campaign: { status: string; endDate: Date | string } | null, now = Date.now()): boolean {
-  return !!campaign && campaign.status === 'active' && new Date(campaign.endDate).getTime() > now
-}
+export { acceptsCampaignDonation } from '@ubuntu-fund/types'
 
 export function validWalletDonationAmount(value: string): boolean {
   const amount = Number(value)

@@ -30,7 +30,7 @@ import {
   SHAPE,
   LoadingDots,
 } from '@ubuntu-fund/ui'
-import { CampaignStatus } from '@ubuntu-fund/types'
+import { acceptsCampaignDonation } from '@ubuntu-fund/types'
 import {
   createDonationIntent,
   isPaymentsNotConfigured,
@@ -181,7 +181,7 @@ export function DonatePage() {
   const emailValid = EMAIL_RE.test(donorEmail.trim())
   const amountValid = Number.isFinite(amountValue) && amountValue > 0
   const tipValid = tip.trim() === '' || (Number.isFinite(tipValue) && tipValue >= 0)
-  const isActive = campaign?.status === CampaignStatus.ACTIVE
+  const isActive = acceptsCampaignDonation(campaign)
 
   const totalCharge = useMemo(
     () => (amountValid ? amountValue : 0) + (tipValid && Number.isFinite(tipValue) ? tipValue : 0),

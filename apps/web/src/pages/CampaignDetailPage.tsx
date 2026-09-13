@@ -286,7 +286,10 @@ function CampaignDetailContent() {
         >
           {!acceptsCampaignDonation(campaign) ? 'Donations closed' : 'Donate now'}
         </Button>
-        {campaign.status === CampaignStatus.ACTIVE && (
+        {acceptsCampaignDonation(campaign) && campaign.raisedAmount >= campaign.goalAmount && (
+          <Chip label="Goal reached · Still accepting donations" color="success" size="small" />
+        )}
+        {acceptsCampaignDonation(campaign) && campaign.raisedAmount < campaign.goalAmount && (
           <CurrencyDisplay
             amount={Math.max(0, campaign.goalAmount - campaign.raisedAmount)}
             currency={campaign.currency}
@@ -295,7 +298,7 @@ function CampaignDetailContent() {
             sx={{ '&::before': { content: '"Still needed: "' } }}
           />
         )}
-        {campaign.status !== CampaignStatus.ACTIVE && (
+        {!acceptsCampaignDonation(campaign) && (
           <Chip
             label={campaign.status === CampaignStatus.PENDING_REVIEW ? 'Pending Review' : 'Campaign Inactive'}
             color={campaign.status === CampaignStatus.PENDING_REVIEW ? 'warning' : 'error'}

@@ -16,7 +16,7 @@ import type { Palette, NeuRecipes } from '@/theme'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
 import type { CampaignDonation } from '@ubuntu-fund/types'
-import { CollaboratorRole, type CampaignCollaborator } from '@ubuntu-fund/types'
+import { acceptsCampaignDonation, CollaboratorRole, type CampaignCollaborator } from '@ubuntu-fund/types'
 import { CampaignUpdatesList } from '@/components/CampaignUpdatesList'
 import { CampaignComments } from '@/components/CampaignComments'
 
@@ -331,9 +331,10 @@ export default function CampaignDetailScreen() {
               labelStyle={styles.donateLabel}
               buttonColor={p.secondary}
               textColor="#221B0E"
+              disabled={!acceptsCampaignDonation(campaign)}
               onPress={() => router.push(`/donate/${id}`)}
             >
-              Donate Now
+              {acceptsCampaignDonation(campaign) ? 'Donate Now' : 'Donations closed'}
             </Button>
             <Button
               mode="contained"
