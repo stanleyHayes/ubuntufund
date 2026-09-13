@@ -31,3 +31,9 @@ The eight affected files are running together in exec session `27562`, log `/tmp
 The eight-file repair run finished successfully: all 60 tests pass (76.20 seconds). API type-check passes and `git diff --check` is clean. The beneficiary campaign-creation retry error and refund empty-queue assertion did not persist after valid checkout setup. No production API implementation changed during this repair.
 
 This closes every failure from the prior 946-test run through a focused rerun of all eight failing files; it is not a new uninterrupted full-suite pass. Sessions 81527 and 27562 are both terminal. Next backend work can proceed, beginning with the documented KYC review integrity gap, followed by a final full regression after those implementation changes.
+
+## 13 September — index-readiness regression completed
+
+Session 69000 completed against the API source at b18bb0c: 152 files/1063 tests passed, one file/test failed. The previously failing creator withdrawal unique-index case passes. The new failure starts with a 120-second timeout in donation-content-gate, while awaiting its first authorized review-queue read. Two retries then observe accumulated fixture records and fail exact pending-count assertions (2/3 instead of 1). These follow-on assertions are not evidence that the first queue request returned an incorrect count. Log `/tmp/ujimora-api-index-ready-regression.log`.
+
+The unchanged single-file test passes in 7.26 seconds against current API source (`/tmp/ujimora-donation-review-repro.log`, session 47995). This does not establish why the full-run request timed out or close full regression. No retry count assertion was weakened and no production query behavior was changed based on an unproven cause. Root checkout was fast-forwarded to d5d4aac after the run ended, bringing in the separately tested missing-policy and update-publication transactions. A fresh complete run is required on that source.
