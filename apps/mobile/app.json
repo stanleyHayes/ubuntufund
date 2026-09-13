@@ -85,7 +85,8 @@
       [
         "expo-secure-store",
         {
-          "faceIDPermission": "Use Face ID to unlock your Ujimora account when you enable biometric protection."
+          "faceIDPermission": "Use Face ID to unlock your Ujimora account when you enable biometric protection.",
+          "configureAndroidBackup": false
         }
       ],
       "expo-web-browser",
@@ -128,7 +129,8 @@
         {
           "faceIDPermission": "Use Face ID to unlock your Ujimora account when you enable biometric protection."
         }
-      ]
+      ],
+      "./plugins/withPrivateBackupRules"
     ]
   }
 }
