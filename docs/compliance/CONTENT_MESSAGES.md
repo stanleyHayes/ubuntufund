@@ -45,3 +45,8 @@ Verification: two message-moderation tests plus four existing safety/retry tests
 ### Wallet modal acknowledgement — 13 September 2026
 
 CampaignDetailPage's legacy wallet modal omitted legalAcceptance even when sending a public message. It now reuses MessageAgreement, blocks confirmation until explicit acceptance when the trimmed message is nonempty, sends the current version/terms/18+ flags and resets acceptance for each new donation. Empty messages omit both message and acceptance. No API guard was relaxed. Web types/lint pass; mocked browser regression in profile-campaign-polish.spec.ts verifies the exact POST payload, checkbox gating/revocation, Terms link and new-donation reset (`/tmp/ujimora-wallet-acceptance-browser-final.log`). This does not perform a live wallet debit.
+
+
+### Wallet terms independent of optional message — 13 September 2026
+
+Per the user's correction, the wallet modal always displays an unchecked donation terms/18+ acknowledgement and requires it before confirmation. Acceptance is submitted for blank-message and public-message donations. Blank messages remain omitted, and a new dialog resets consent. The shared component has a donation-specific label; other content-message forms retain their existing wording. Browser regression covers both payloads and checkbox states; web types/lint pass. This changes wallet UI acknowledgement, not server-side storage semantics for message-free donations or account-level consent.

@@ -176,7 +176,7 @@ function CampaignDetailContent() {
     donateAmount &&
     validWalletDonationAmount(donateAmount) &&
     donateMessage.length <= 500 &&
-    (!donateMessage.trim() || donateMessageAccepted) &&
+    donateMessageAccepted &&
     !!currentUser && acceptsCampaignDonation(campaign) &&
     !providersLoading && !providersError && walletProviders.some((p) => p.slug === selectedProvider?.slug) &&
     !donating &&
@@ -383,7 +383,7 @@ function CampaignDetailContent() {
               fullWidth
             />
           </Box>
-          {!!donateMessage.trim() && <MessageAgreement checked={donateMessageAccepted} onChange={setDonateMessageAccepted} />}
+          <MessageAgreement donation checked={donateMessageAccepted} onChange={setDonateMessageAccepted} />
           {donateError && <Alert severity="error">{donateError}</Alert>}
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
@@ -402,7 +402,7 @@ function CampaignDetailContent() {
                   currency: campaign.currency,
                   paymentMethod: 'wallet',
                   message: donateMessage.trim() || undefined,
-                  legalAcceptance: donateMessage.trim() && donateMessageAccepted
+                  legalAcceptance: donateMessageAccepted
                     ? { version: LEGAL_ACCEPTANCE_VERSION, acceptedTerms: true, ageConfirmed: true }
                     : undefined,
                   isAnonymous: false,

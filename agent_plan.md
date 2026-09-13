@@ -1,5 +1,12 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — Wallet terms visible independently of message
+
+- Wallet donation terms/18+ checkbox is now always visible and required, even with the optional message empty. The wording refers to this donation. Submission includes acceptance with or without a message; reopening starts unchecked. This supersedes the prior message-conditional UI behavior.
+- Browser regression passes for both blank-message and public-message requests, unchecked/checked/revoked gating and reset. Web types and affected lint pass. No API/content guard changed.
+- Background DataStore APK33497 completed exit0 in1m15s; actual ELF pass count improves to32/48 (`/tmp/ujimora-datastore-apk-elf.json`). New WebRTC144.7559.15 AAR passes only1/2ABIs; not promoted. DataStore package/runtime verification and production integration remain pending.
+
+
 ### 2026-09-13 — Candidate APK startup and DataStore candidate
 
 - Installed native candidate cold-starts on16KB emulator with compatibility disabled; React Native renders the expected unavailable-API screen. Evidence includes PID log, activity state and inspected screenshot. Scope remains archived/debug-signed/non-production.
