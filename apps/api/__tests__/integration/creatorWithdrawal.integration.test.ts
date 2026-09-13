@@ -1,3 +1,4 @@
+import { SUBSCRIPTION_PLANS, SubscriptionTier } from '@ubuntu-fund/types'
 import { MongoSubscriptionRepository } from '../../src/infrastructure/adapters/outbound/persistence/MongoSubscriptionRepository.js'
 import { MongoSubscriptionPlanRepository } from '../../src/infrastructure/adapters/outbound/persistence/MongoSubscriptionPlanRepository.js'
 import mongoose from 'mongoose'
@@ -297,6 +298,46 @@ describe('Creator withdrawal — transfer rail', () => {
       } finally {
         lock.mockRestore()
         await SubscriptionPlanModel.updateOne({ tier: 'starter' }, { $set: { platformFeePercent: plan!.platformFeePercent } })
+      }
+      expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(100)
+      expect((await WalletModel.findOne({ userId: owner.userId }))?.balance).toBe(0)
+      expect(await CreatorPayoutModel.countDocuments({ creatorUserId: owner.userId })).toBe(0)
+      expect(vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/transfer')).length).toBe(before)
+    }
+  })
+
+  it.each(['paystack', 'ujimora_wallet'] as const)('materializes missing built-in policy before %s withdrawal', async destination => {
+    const owner = await creatorWithBalance(100)
+    await SubscriptionModel.deleteOne({ userId: owner.userId })
+    const free = await SubscriptionPlanModel.findOne({ tier: 'free' }).lean()
+    await SubscriptionPlanModel.deleteOne({ tier: 'free' })
+    try {
+      await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`).send({ amount: 100, expectedFeePercent: 3.5, destination, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } }).expect(201)
+      expect(await SubscriptionModel.findOne({ userId: owner.userId }).lean()).toMatchObject({ tier: 'free', consumptionWriteVersion: 1 })
+      expect(await SubscriptionPlanModel.findOne({ tier: 'free' }).lean()).toMatchObject({ platformFeePercent: 3.5, consumptionWriteVersion: 1 })
+    } finally {
+      if (free) await SubscriptionPlanModel.updateOne({ tier: 'free' }, { $set: { platformFeePercent: free.platformFeePercent } })
+    }
+  })
+
+  it.each(['paystack', 'ujimora_wallet'] as const)('rejects stale %s fees when missing policy is concurrently inserted', async destination => {
+    for (const change of ['subscription', 'plan'] as const) {
+      const owner = await creatorWithBalance(100)
+      await SubscriptionModel.deleteOne({ userId: owner.userId })
+      if (change === 'plan') await SubscriptionPlanModel.deleteOne({ tier: 'free' })
+      const target = change === 'subscription' ? MongoSubscriptionRepository.prototype : MongoSubscriptionPlanRepository.prototype
+      const original = target.lockForConsumption
+      const lock = vi.spyOn(target, 'lockForConsumption').mockImplementationOnce(async function (this: typeof target, key) {
+        if (change === 'subscription') await SubscriptionModel.collection.insertOne({ userId: owner.userId, tier: 'starter', status: 'active', billingCycle: 'monthly', currentPeriodStart: new Date(), currentPeriodEnd: new Date(Date.now() + 86400000), cancelAtPeriodEnd: false }, { session: null })
+        else await SubscriptionPlanModel.collection.insertOne({ ...SUBSCRIPTION_PLANS[SubscriptionTier.FREE], platformFeePercent: 4 }, { session: null })
+        return original.call(this, key)
+      })
+      const before = vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/transfer')).length
+      try {
+        await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`).send({ amount: 100, expectedFeePercent: 3.5, destination, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } }).expect(409)
+      } finally {
+        lock.mockRestore()
+        await SubscriptionPlanModel.updateOne({ tier: 'free' }, { $set: { platformFeePercent: 3.5 } })
       }
       expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(100)
       expect((await WalletModel.findOne({ userId: owner.userId }))?.balance).toBe(0)

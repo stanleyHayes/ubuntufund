@@ -1,3 +1,4 @@
+import { AppError } from '../../inbound/middleware/errorHandler.js';
 import {
   SUBSCRIPTION_PLANS,
   SubscriptionTier,
@@ -45,7 +46,17 @@ export class MongoSubscriptionPlanRepository
   implements SubscriptionPlanRepositoryPort
 {
   async lockForConsumption(tier: string): Promise<void> {
-    await SubscriptionPlanModel.updateOne({ tier }, { $inc: { consumptionWriteVersion: 1 } }, { timestamps: false });
+    const defaults = Object.prototype.hasOwnProperty.call(SUBSCRIPTION_PLANS, tier)
+      ? SUBSCRIPTION_PLANS[tier as SubscriptionTier] : undefined;
+    // Built-in defaults are real policy: insert them atomically before consuming
+    // them so a concurrent first insertion cannot bypass the transaction lock.
+    const result = await SubscriptionPlanModel.updateOne({ tier }, {
+      $inc: { consumptionWriteVersion: 1 },
+      ...(defaults ? { $setOnInsert: { ...defaults, createdAt: new Date(), updatedAt: new Date() } } : {}),
+    }, { upsert: !!defaults, timestamps: false });
+    if (!result.matchedCount && !result.upsertedCount) {
+      throw new AppError('This plan is no longer available. Refresh your subscription before withdrawing.', 409);
+    }
   }
   async findAll(): Promise<SubscriptionPlan[]> {
     const docs = await SubscriptionPlanModel.find();

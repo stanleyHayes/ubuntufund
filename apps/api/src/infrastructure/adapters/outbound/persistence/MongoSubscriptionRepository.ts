@@ -1,4 +1,4 @@
-import { SubscriptionTier, type Subscription } from '@ubuntu-fund/types';
+import { SubscriptionTier, SubscriptionStatus, BillingCycle, type Subscription } from '@ubuntu-fund/types';
 import { AppError } from '../../inbound/middleware/errorHandler.js';
 import type { SubscriptionRepositoryPort } from '../../../../domain/ports/outbound/SubscriptionRepositoryPort.js';
 import {
@@ -25,7 +25,18 @@ function toDomain(doc: SubscriptionDocument): Subscription {
 
 export class MongoSubscriptionRepository implements SubscriptionRepositoryPort {
   async lockForConsumption(userId: string): Promise<void> {
-    await SubscriptionModel.updateOne({ userId }, { $inc: { consumptionWriteVersion: 1 } }, { timestamps: false });
+    const now = new Date();
+    // Materialize the same implicit Free subscription as first account access.
+    // The unique user key also fences concurrent first paid-subscription inserts.
+    await SubscriptionModel.updateOne({ userId }, {
+      $inc: { consumptionWriteVersion: 1 },
+      $setOnInsert: {
+        userId, tier: SubscriptionTier.FREE, status: SubscriptionStatus.ACTIVE,
+        billingCycle: BillingCycle.MONTHLY, currentPeriodStart: now,
+        currentPeriodEnd: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
+        cancelAtPeriodEnd: false, createdAt: now, updatedAt: now,
+      },
+    }, { upsert: true, timestamps: false });
   }
   async findByUserId(userId: string): Promise<Subscription | null> {
     const doc = await SubscriptionModel.findOne({ userId });
