@@ -1,3 +1,5 @@
+import { campaignNeedsEarlyCashout, isEarlyWithdrawal } from '../../../../application/services/payoutFee.js'
+import { CampaignModel } from '../../../database/models/CampaignModel.js'
 import type { PlanLimitsService } from '../../../../application/services/PlanLimitsService.js'
 import { UserModel } from '../../../database/models/UserModel.js'
 import mongoose, { type ClientSession } from 'mongoose'
@@ -137,6 +139,21 @@ export class MongoWalletPayoutRepository implements WalletPayoutPort {
           payout.currency !== 'GHS'
         )
           throw new AppError('Wallet payout cannot be approved', 409)
+        // Serialize destination and cashout eligibility with concurrent campaign edits.
+        const campaign = await CampaignModel.findOneAndUpdate(
+          { _id: payout.campaignId },
+          { $inc: { payoutWriteVersion: 1 } },
+          { new: true, session, timestamps: false },
+        )
+        if (!campaign) throw new AppError('Campaign not found', 404)
+        if (payout.recipientId !== `wallet:${campaign.creatorId}`)
+          throw new AppError('Wallet destination must belong to the campaign owner', 409)
+        if (campaignNeedsEarlyCashout({
+          endDate: campaign.endDate,
+          raisedAmount: { amount: campaign.raisedAmount },
+          goalAmount: { amount: campaign.goalAmount },
+        }) && !isEarlyWithdrawal(payout.type))
+          throw new AppError('Campaign eligibility changed. Request early cashout and review its additional fee.', 409)
         const balance = await CampaignBalanceModel.updateOne(
           {
             campaignId: payout.campaignId,

@@ -1,3 +1,4 @@
+import { CampaignModel } from '../../../src/infrastructure/database/models/CampaignModel.js'
 import { UserModel } from '../../../src/infrastructure/database/models/UserModel.js'
 import { beforeAll, afterAll, beforeEach, afterEach, describe, it, expect, vi } from 'vitest'
 import mongoose from 'mongoose'
@@ -12,7 +13,9 @@ import { WalletTransactionModel } from '../../../src/infrastructure/database/mod
 import { JournalEntryModel } from '../../../src/infrastructure/database/models/JournalEntryModel.js'
 import { JournalLineModel } from '../../../src/infrastructure/database/models/JournalLineModel.js'
 import { LedgerAccountModel } from '../../../src/infrastructure/database/models/LedgerAccountModel.js'
+const campaignId = new mongoose.Types.ObjectId().toString()
 const models = [
+  CampaignModel,
   UserModel,
   PayoutModel,
   CampaignBalanceModel,
@@ -40,13 +43,14 @@ const repo = new MongoWalletPayoutRepository({ creatorPolicy: async () => ({ fee
 const adminId = new mongoose.Types.ObjectId().toString()
 async function seed(amount = 100, fee = 10) {
   await UserModel.collection.insertOne({ _id: new mongoose.Types.ObjectId(adminId), role: 'admin', authVersion: 'staff-fixture' })
+  await CampaignModel.collection.insertOne({ _id: new mongoose.Types.ObjectId(campaignId), creatorId: 'owner', endDate: new Date(0), raisedAmount: 100, goalAmount: 1000 })
   await CampaignBalanceModel.create({
-    campaignId: 'campaign',
+    campaignId,
     currency: 'GHS',
     availableBalance: 120,
   })
   return PayoutModel.create({
-    campaignId: 'campaign',
+    campaignId,
     recipientId: 'wallet:owner',
     amount,
     fee,
@@ -66,7 +70,7 @@ describe('transactional wallet payouts', () => {
       repo.settleCampaign(p.id, adminId, 'Reviewed owner and fee', 'staff-fixture'),
     ])
     expect((await WalletModel.findOne({ userId: 'owner' }))?.balance).toBe(90)
-    expect((await CampaignBalanceModel.findOne({ campaignId: 'campaign' }))?.availableBalance).toBe(
+    expect((await CampaignBalanceModel.findOne({ campaignId }))?.availableBalance).toBe(
       20,
     )
     expect(await WalletTransactionModel.countDocuments()).toBe(1)
@@ -110,6 +114,37 @@ describe('transactional wallet payouts', () => {
     expect((await CampaignBalanceModel.findOne())?.availableBalance).toBe(120)
     expect(await WalletModel.countDocuments()).toBe(0)
     expect((await PayoutModel.findById(p.id))?.status).toBe('PENDING')
+    expect(await WalletTransactionModel.countDocuments()).toBe(0)
+    expect(await JournalEntryModel.countDocuments()).toBe(0)
+  })
+  it.each(['owner', 'endDate', 'goal', 'raised'])('retries concurrent campaign %s changes and rejects stale settlement', async (change) => {
+    const p = await seed(100, 0)
+    await PayoutModel.updateOne({ _id: p.id }, { type: 'standard' })
+    const future = new Date(Date.now() + 86_400_000)
+    if (change === 'goal' || change === 'raised')
+      await CampaignModel.updateOne({ _id: campaignId }, { endDate: future, raisedAmount: 1000, goalAmount: 1000 })
+    const original = CampaignModel.findOneAndUpdate.bind(CampaignModel)
+    let changed = false
+    const lock = vi.spyOn(CampaignModel, 'findOneAndUpdate').mockImplementation((...args) => {
+      const query = original(...args)
+      const execute = query.exec.bind(query)
+      query.exec = async (...execArgs) => {
+        if (!changed) {
+          changed = true
+          const update = change === 'owner' ? { creatorId: 'new-owner' }
+            : change === 'endDate' ? { endDate: future }
+            : change === 'goal' ? { goalAmount: 2000 } : { raisedAmount: 500 }
+          await CampaignModel.updateOne({ _id: campaignId }, update, { session: null })
+        }
+        return execute(...execArgs)
+      }
+      return query
+    })
+    await expect(repo.settleCampaign(p.id, adminId, 'Reviewed', 'staff-fixture')).rejects.toMatchObject({ statusCode: 409 })
+    expect(lock.mock.calls.length).toBeGreaterThan(1)
+    expect((await CampaignBalanceModel.findOne())?.availableBalance).toBe(120)
+    expect((await PayoutModel.findById(p.id))?.status).toBe('PENDING')
+    expect(await WalletModel.countDocuments()).toBe(0)
     expect(await WalletTransactionModel.countDocuments()).toBe(0)
     expect(await JournalEntryModel.countDocuments()).toBe(0)
   })
