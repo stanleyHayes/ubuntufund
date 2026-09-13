@@ -68,7 +68,7 @@ jobs:
         run: npx turbo type-check
 
       - name: Test
-        run: npx turbo test
+        run: npx turbo test --concurrency=1
 
       - name: Install Playwright browsers
         run: npx playwright install chromium

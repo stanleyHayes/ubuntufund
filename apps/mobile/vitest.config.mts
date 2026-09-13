@@ -3,6 +3,10 @@ import { fileURLToPath } from 'node:url'
 
 export default defineConfig({
   test: {
+    testTimeout: 30000,
+    hookTimeout: 30000,
+    // Hosted CI has limited CPU; avoid concurrent heavy component transforms.
+    maxWorkers: process.env.CI ? 1 : undefined,
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./test/setup.ts'],

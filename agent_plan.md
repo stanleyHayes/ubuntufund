@@ -2,6 +2,10 @@
 
 ### 2026-09-12 — Ghana and mobile store compliance goal (IN PROGRESS)
 
+- FULL API regression PASS: 1,029 tests across 151 files, session 48519 terminal exit 0 (1091.24s), `/tmp/ujimora-publish-api-tests.log`; source freeze lifted. CI fca28d3 failed on a 5s mobile timeout while package suites competed for CPU. Follow-up limits CI to one package/one client worker and aligns admin/mobile timeout with web (30s); unchanged assertions pass under CI=true: web 178, admin 69, mobile 81. Publishing this verified CI fix separately.
+
+- Engineering checkpoint fca28d3 pushed to main; ls-remote verified exact parity at fca28d3b47a3dc29a996451700a36e99f0162b23. User authorized continued incremental fixes/pushes. CI run 34745173463 passed clean install, dependency-patch tests and replica-set setup and remains active; local full API session 48519 remains active. No source edits while local regression runs.
+
 - User explicitly authorized incremental fix-and-push delivery. Publishing the tested engineering checkpoint now, keeping the complete compliance goal and unresolved requirements active. Web one-worker full rerun passes all 178 tests; all client suites, types, lint, builds and patch checks pass. Full API session 48519 remains in progress and its result will be recorded separately.
 
 - Publishing checkpoint in progress at user request: verified engineering changes staged separately from personal files, DOCX drafts and output. Origin/main fetched and matched HEAD before staging. All seven package type/lint tasks, web/admin/marketing builds, dependency patch checks, admin 69 tests, mobile 81 and shared UI 24 tests pass. Web 178-test suite rerunning with one worker after seven loaded-run failures; full API session 48519 remains running. Compliance goal remains active and release approval is not claimed.

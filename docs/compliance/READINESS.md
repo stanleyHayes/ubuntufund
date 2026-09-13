@@ -202,3 +202,15 @@ Prepublication checks: all seven workspace type/lint tasks pass; web/admin/marke
 ## Incremental publication authorization
 
 The user explicitly requested fixing and pushing incrementally instead of waiting for every compliance item. This engineering checkpoint is therefore being committed with the broader goal still active and all unresolved requirements retained. The web one-worker rerun completed with 178/178 tests across 47 files (`/tmp/ujimora-publish-web-serial-tests.log`, session 45008 exit 0). All seven type/lint tasks, admin 69, mobile 81, shared UI 24 tests, web/admin/marketing builds and dependency-patch checks pass. Full API regression session 48519 remains active at commit preparation; its result is not claimed as passing. The previous full run's four fixture failures have a 27-test passing correction checkpoint, and current crypto changes have eight passing integration tests. Follow-up verification/fixes will be pushed independently.
+
+
+## Published engineering checkpoint
+
+Commit `fca28d3b47a3dc29a996451700a36e99f0162b23` was pushed to main and verified by `git ls-remote`; tracked worktree was clean after publication, with the excluded personal/draft files remaining untracked. [GitHub CI run 34745173463](https://github.com/stanleyHayes/ubuntufund/actions/runs/34745173463) has passed clean dependency installation, dependency-security-patch checks and MongoDB replica-set startup. The remaining CI steps and local full API session 48519 are still running; no final success is claimed. This adds clean-install evidence but does not establish signed native build, provider authorization or regulatory/store approval.
+
+
+## Full API pass and CI execution correction
+
+Local full API regression session 48519 FINISHED exit 0: 1,029 tests across 151 files, 1091.24 seconds, `/tmp/ujimora-publish-api-tests.log`. API/shared source remained unchanged during the run. Source freeze lifted. This is a full passing engineering regression for published application code in fca28d3, not a release approval.
+
+GitHub CI run 34745173463 failed in Test after successful clean install, patch checks, replica-set setup, lint and types. The reported failure was the native organization KYC interaction test exceeding its default five-second timeout while Turbo ran package suites concurrently; admin KYC tests were also under load. CI now uses `turbo test --concurrency=1`; web/admin/mobile Vitest configs restrict CI to one worker, and admin/mobile receive the existing web 30-second test/hook ceiling. No assertions were removed or weakened. Complete validation under CI=true passes web 178/47 files, admin 69/18 files and mobile 81/21 files (`/tmp/ujimora-ci-serialized-client-tests.log`, session 78469 terminal exit 0). Hosted CI must still verify the next commit.

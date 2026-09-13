@@ -31,3 +31,7 @@ ReconcileCryptoUseCase now catches applyEvent/status-read failures per deposit, 
 Eight real HTTP crypto integration tests pass, including one deposit whose application throws while a second settles, later recovery without duplicate credit, and a provider confirmation with insufficient finality remaining PROCESSING with zero campaign credit and settled=0. Disabled-intake recovery remains passing. API types/lint and whitespace checks pass. Logs `/tmp/ujimora-crypto-recovery-isolation-{tests,types,lint}.log`; sessions 15424/60548/47066 terminal exit 0. All provider responses are test doubles, not live money.
 
 The earlier per-record application failure finding is resolved for a returned batch. Provider removal/missing-reference handling, retry scheduling across a large failing backlog, production authorization and full release evidence remain open.
+
+## Recovery batch fairness finding
+
+Read-only follow-up confirms MongoDonationIntentRepository.findStaleCrypto selects PENDING/PROCESSING deposits by oldest updatedAt with a fixed limit. Provider/apply failures do not change scheduling metadata. A full oldest batch of persistently failing or unavailable-provider deposits can therefore recur indefinitely and postpone newer eligible deposits. Add durable attempt scheduling/rotation that preserves financial timestamps and does not lose retryability; verify a batch-boundary scenario with more than the requested limit and repeated failures. This finding is not yet implemented. Source remains unchanged while local regression session 48519 runs.

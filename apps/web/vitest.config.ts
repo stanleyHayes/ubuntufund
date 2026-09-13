@@ -11,6 +11,8 @@ export default defineConfig({
     },
   },
   test: {
+    // Hosted CI has limited CPU; avoid concurrent heavy component transforms.
+    maxWorkers: process.env.CI ? 1 : undefined,
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./__tests__/setup.ts'],
