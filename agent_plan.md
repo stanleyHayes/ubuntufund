@@ -2,6 +2,8 @@
 
 ### 2026-09-12 — Ghana and mobile store compliance goal (IN PROGRESS)
 
+- Native legacy push handler now suppresses foreground banner/sound/badge/list presentation and removes payload logging/listeners. Dormant registration helpers no longer request OS permission or collect/send tokens. All 103 mobile tests, types and lint pass. Background OS delivery, legacy provider registrations and SDK component/traffic minimization remain open in PUSH_NOTIFICATIONS.md. API regression remains in progress; no API/shared edits.
+
 - Fixed the missing Android media-projection permission using explicit Expo foreground-service permissions. Isolated prebuild and release manifest merge pass (session 95412 exit 0, 37s); parsed service/permissions/SDK/backup/blocked-permission assertions pass. Added actual device and Play Console acceptance items. API session 3544 remains confirmed live with source unchanged. See NATIVE_PERMISSIONS.md for artifact hash and provenance.
 
 - Android session 20258 finished successfully. Parsed merged release manifest verifies SDK 36/minimum 24, backup references/all nine exclusions and six blocked permissions absent; inventory/hash recorded in NATIVE_PERMISSIONS.md. The merge exposes a missing media-projection foreground-service permission and transitive component minimization follow-ups. No signed/full native build claimed. API session 3544 confirmed live, source unchanged.
