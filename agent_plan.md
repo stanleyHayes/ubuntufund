@@ -1,5 +1,11 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — Native finding classification and loaded-library evidence
+
+- All48 current APK libraries pass LOAD alignment;27fail RELRO-end alignment specifically. Rechecked current Android documentation and retained that check. Seven flagged ARM64 libraries are among13 actually loaded at successful startup, established by matching executable APK map offsets to ZIP library entries.
+- Native ledger distinguishes static findings from proven runtime failures. Artifact `/tmp/ujimora-current-apk-loaded-libraries.json`; feature/device/store checks remain open. No runtime compatibility claim inferred from startup alone.
+
+
 ### 2026-09-13 — Current APK16KB startup evidence
 
 - Current APK installs successfully on dedicated emulator-5580 (PAGE_SIZE16384; linker compatibility=false, package compatibility disabled=true) and cold-starts in665ms. ReactNativeJS main runs, PID7452 remains alive, screenshot inspected: expected unavailable-API screen and app tab bar. API URL deliberately non-routable; no real payment/provider/account operation exercised.

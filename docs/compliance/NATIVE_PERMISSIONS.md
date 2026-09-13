@@ -284,3 +284,9 @@ The packaged binary manifest (`/tmp/ujimora-current-apk-manifest.txt`) confirms 
 The current f058b3e… APK installs on dedicated emulator-5580 with actual PAGE_SIZE16384, `bionic.linker.16kb.app_compat.enabled=false` and `pm.16kb.app_compat.disabled=true`. Cold launch reports Statusok/665ms; ReactNativeJS runs main and PID7452 remains alive. Inspected screenshot shows expected campaign network-error handling and tab bar because the API URL is deliberately non-routable. Evidence: `/tmp/ujimora-current-apk-install.log`, `/tmp/ujimora-current-apk-startup.log`, `/tmp/ujimora-current-apk-startup-logcat.log`, `/tmp/ujimora-current-apk-maps.log`, `/tmp/ujimora-current-apk-startup.png`.
 
 This is successful startup despite the27static ELF findings; it is not evidence that every feature-dependent library loads or that the static findings are resolved. Physical devices, feature exercise, final production configuration/signing and store acceptance remain open.
+
+### LOAD versus RELRO and actual loaded libraries
+
+Fresh comparison with [Android page-size guidance](https://developer.android.com/guide/practices/page-sizes#check-relro) confirms the documented RELRO test uses `(VirtAddr + MemSiz) % 0x4000`. Current APK passes LOAD alignment for all48 libraries; all27failures are RELRO-end checks, not LOAD failures. Do not describe them as27confirmed runtime crashes.
+
+Matching executable `/proc/7452/maps` APK offsets to stored ARM64 ZIP entries identifies13libraries loaded at startup, including7with RELRO findings: libc++_shared, fbjni, hermestooling, hermesvm, jingle_peerconnection, jsi and reactnative. Evidence `/tmp/ujimora-current-apk-loaded-libraries.json`. These actually loaded despite the static findings on this emulator. This observation does not waive the documented alignment check or establish broader device/feature compatibility; runtime behavior and static findings are retained separately.
