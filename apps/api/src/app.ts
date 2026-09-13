@@ -1,3 +1,4 @@
+import { MongoAffiliatePayoutApproval } from './infrastructure/adapters/outbound/persistence/MongoAffiliatePayoutApproval.js'
 import { MongoManualPayoutApproval } from './infrastructure/adapters/outbound/persistence/MongoManualPayoutApproval.js'
 import { MongoCampaignContentWrite } from './infrastructure/adapters/outbound/persistence/MongoCampaignContentWrite.js'
 import { MongoCommentCreation } from './infrastructure/adapters/outbound/persistence/MongoCommentCreation.js'
@@ -1247,6 +1248,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     affiliateRepo,
     affiliateBalanceRepo,
     paymentGateway,
+    new MongoAffiliatePayoutApproval(),
   )
   const listAffiliatesUseCase = new ListAffiliatesUseCase(affiliateRepo)
   const getAffiliateDetailUseCase = new GetAffiliateDetailUseCase(

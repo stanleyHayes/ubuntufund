@@ -594,3 +594,25 @@ Root full regression88675 remains live on c8adacf; later history/manual snapshot
 are verified by focused suites, not that baseline run. Beneficiary/affiliate and
 other financial consumers, full current regression, native/provider/store and
 legal/regulatory gates remain open.
+
+## Affiliate transfer final authorization
+
+Affiliate approval now forwards the authenticated credential version into a final
+MongoDB transaction. Before committing PROCESSING/providerRef, it conditionally
+writes the current non-deleted administrator, the active affiliate with its exact
+provider destination and original payout requester, and that available owner
+account. The provider call follows the committed transaction. A changed role,
+credential version, affiliate status/owner/destination or closed account fails
+before transfer; existing reservations stay attached to the pending request.
+
+Eight integration cases pass using the real approval use case and MongoDB payout
+repository: seven mutations during provider balance lookup fail with 403/409 and
+PENDING/no provider transfer; the success case observes committed PROCESSING and
+reference outside the transaction before sending. API types/lint pass. An initial
+fixture failure from two missing unique emails was corrected without weakening
+production checks. Logs /tmp/ujimora-affiliate-approval-final-{tests,types,lint}.log.
+
+Scope remains partial: affiliate destination review/KYC evidence, applicable
+amount/maker-checker controls, beneficiary flows and terminal balance transaction
+review remain open, alongside external release gates. Full root regression88675
+retains its c8adacf baseline and does not cover this later implementation.

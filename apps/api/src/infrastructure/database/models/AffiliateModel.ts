@@ -2,6 +2,7 @@ import mongoose, { Schema, type Document } from 'mongoose';
 import { AffiliateStatus, type PayoutRecipientType } from '@ubuntu-fund/types';
 
 export interface AffiliateDocument extends Document {
+  payoutWriteVersion?: number;
   userId: string;
   referralCode: string;
   status: AffiliateStatus;
@@ -19,6 +20,7 @@ const RECIPIENT_TYPES: PayoutRecipientType[] = ['ghipss', 'mobile_money'];
 
 const affiliateSchema = new Schema<AffiliateDocument>(
   {
+    payoutWriteVersion: { type: Number },
     userId: { type: String, required: true, unique: true, index: true },
     // Lowercased so a referral code resolves case-insensitively; unique + indexed
     // so a code maps to exactly one affiliate (the resolve-at-signup lookup).

@@ -11,6 +11,7 @@ import { toAffiliatePayoutDto } from './mappers/affiliateDto.js';
 
 /** Who is approving, and in what role. */
 export interface AffiliatePayoutApprover {
+  authVersion?: string;
   userId: string;
   role?: string;
 }
@@ -32,7 +33,8 @@ export class ApproveAffiliatePayoutUseCase {
     private readonly affiliatePayoutRepo: AffiliatePayoutRepositoryPort,
     private readonly affiliateRepo: AffiliateRepositoryPort,
     private readonly affiliateBalanceRepo: AffiliateBalanceRepositoryPort,
-    private readonly paymentGateway: PaymentGatewayPort
+    private readonly paymentGateway: PaymentGatewayPort,
+    private readonly approval?: { run<T>(approver: AffiliatePayoutApprover, context: { affiliateId: string; ownerId: string; recipientCode: string }, work: () => Promise<T>): Promise<T> }
   ) {}
 
   async execute(
@@ -78,10 +80,11 @@ export class ApproveAffiliatePayoutUseCase {
     // Unique idempotency reference; the transfer webhook correlates on it.
     const reference = `aff-${payout.id}-${randomUUID().slice(0, 8)}`;
 
-    const processing = await this.affiliatePayoutRepo.transitionToProcessing(
+    if (!this.approval) throw new AppError('Affiliate approval transaction is unavailable.', 503);
+    const processing = await this.approval.run(approver, { affiliateId: affiliate.id, ownerId: payout.requestedBy, recipientCode: affiliate.recipientCode }, () => this.affiliatePayoutRepo.transitionToProcessing(
       payout.id,
       { approvedBy: approver.userId, providerRef: reference }
-    );
+    ));
     if (!processing) {
       // Another approval won the race; the reservation belongs to the payout,
       // so leave the balance untouched.

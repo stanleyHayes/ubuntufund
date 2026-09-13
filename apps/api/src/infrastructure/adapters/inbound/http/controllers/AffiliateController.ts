@@ -271,7 +271,7 @@ export class AffiliateController {
     try {
       const payout = await this.approveAffiliatePayoutUseCase.execute(
         req.params.id as string,
-        { userId: req.userId!, role: req.userRole }
+        { userId: req.userId!, role: req.userRole, authVersion: req.authVersion }
       );
       res.json({
         data: payout,
