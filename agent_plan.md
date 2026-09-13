@@ -1,5 +1,11 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — Historical closure inventory
+
+- Added read-only paginated snapshot audit for account deletion requests versus persisted closure/core-cleanup markers. No repair mode, model initialization or contact/provider data in reports. Operator instructions and exclusions are in ACCOUNT_CLOSURE_AUDIT.md.
+- Two real-database tests verify findings, exact record preservation, pagination, output privacy and invalid options; API types/lint pass. Production inventory and approved historical repair remain open.
+
+
 ### 2026-09-13 — Consistent open-account checks for privacy rights
 
 - Real-database follow-up found an explicit null deletedAt was rejected during authentication (HTTP401), before privacy submission could run. User repository lookups/save/closure and data-rights submission/response now consistently treat missing/null as open and a timestamp as closed.
