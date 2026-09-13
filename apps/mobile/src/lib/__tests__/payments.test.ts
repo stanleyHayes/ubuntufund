@@ -1,14 +1,47 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 const { data, post } = vi.hoisted(() => ({ data: new Map<string, string>(), post: vi.fn() }))
 vi.mock('@react-native-async-storage/async-storage', () => ({ default: {
   getItem: async (k: string) => data.get(k) ?? null, setItem: async (k: string, v: string) => { data.set(k, v) }, getAllKeys: async () => [...data.keys()], multiRemove: async (keys: string[]) => { keys.forEach(k => data.delete(k)) },
 } }))
-vi.mock('expo-crypto', () => ({ randomUUID: () => crypto.randomUUID() }))
+vi.mock('expo-crypto', async () => {
+  const { createHash } = await import('node:crypto')
+  return { randomUUID: () => crypto.randomUUID(), CryptoDigestAlgorithm: { SHA256: 'SHA-256' }, digestStringAsync: async (_algorithm: string, input: string) => createHash('sha256').update(input).digest('hex') }
+})
 vi.mock('../api', () => ({ api: { post } }))
 vi.mock('../session', () => ({ sessionSnapshot: () => ({ user: { id: 'ama' } }) }))
 import { paymentKey, checkout, loadPending, clearPending, isPaymentSuccess, cryptoStatusFromIntent } from '../payments'
 beforeEach(() => { data.clear(); post.mockReset() })
 describe('mobile payment recovery', () => {
+  it('keeps contact details and messages out of persisted request keys', async () => {
+    const input = { amount: 10, donorEmail: 'private@example.test', message: 'Personal fundraising message' }
+    const key = await paymentKey('campaign', input)
+    expect(await paymentKey('campaign', input)).toBe(key)
+    expect([...data.keys()]).toHaveLength(1)
+    expect([...data.keys()][0]).toMatch(/^campaign:request-sha256:[a-f0-9]{64}$/)
+    expect(JSON.stringify([...data])).not.toContain(input.donorEmail)
+    expect(JSON.stringify([...data])).not.toContain(input.message)
+    expect(await paymentKey('campaign', { ...input, amount: 11 })).not.toBe(key)
+  })
+  it('migrates a legacy request without creating a second payment attempt', async () => {
+    const input = { amount: 10, donorEmail: 'private@example.test' }
+    const legacy = `campaign:request:${JSON.stringify(input)}`
+    data.set(legacy, 'original-attempt')
+    expect(await paymentKey('campaign', input)).toBe('original-attempt')
+    expect(data.has(legacy)).toBe(false)
+    expect([...data.values()]).toEqual(['original-attempt'])
+  })
+  it('preserves the original attempt if migration cannot be saved', async () => {
+    const input = { amount: 10, donorEmail: 'private@example.test' }
+    const legacy = `campaign:request:${JSON.stringify(input)}`
+    data.set(legacy, 'original-attempt')
+    const failure = vi.spyOn(AsyncStorage, 'setItem').mockRejectedValueOnce(new Error('Storage unavailable'))
+    try { await expect(paymentKey('campaign', input)).rejects.toThrow('Storage unavailable') }
+    finally { failure.mockRestore() }
+    expect(data.get(legacy)).toBe('original-attempt')
+    expect(await paymentKey('campaign', input)).toBe('original-attempt')
+    expect(data.has(legacy)).toBe(false)
+  })
   it('reuses a persisted idempotency key after an ambiguous checkout failure', async () => {
     post.mockRejectedValueOnce(new Error('network interrupted')).mockResolvedValueOnce({ intent: { id: 'intent-1', status: 'PENDING' }, reference: 'uf-intent-1-reference', authorization_url: 'https://checkout.test/1' })
     await expect(checkout('campaign', '/donation-intents', { amount: 100 })).rejects.toThrow()

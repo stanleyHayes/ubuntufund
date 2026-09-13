@@ -1,6 +1,6 @@
 import type { CryptoDonationStatus } from '@ubuntu-fund/types'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { randomUUID } from 'expo-crypto'
+import { CryptoDigestAlgorithm, digestStringAsync, randomUUID } from 'expo-crypto'
 import { api } from './api'
 import { sessionSnapshot } from './session'
 
@@ -8,12 +8,20 @@ export interface PendingPayment { id: string; status: string; reference?: string
 export function paymentScope(kind: string, target: string) { return `ujimora:${sessionSnapshot()?.user.id || 'guest'}:${kind}:${target}` }
 const keyRequests = new Map<string, Promise<string>>()
 export async function paymentKey(scope: string, input: unknown) {
-  const key = `${scope}:request:${JSON.stringify(input)}`
+  const serialized = JSON.stringify(input)
+  const key = `${scope}:request-sha256:${await digestStringAsync(CryptoDigestAlgorithm.SHA256, serialized)}`
+  const legacyKey = `${scope}:request:${serialized}`
   const existing = keyRequests.get(key)
   if (existing) return existing
   const operation = (async () => {
     let value = await AsyncStorage.getItem(key)
-    if (!value) { value = randomUUID(); await AsyncStorage.setItem(key, value) }
+    if (!value) {
+      // Keep the original attempt identity across upgrades and ambiguous results.
+      // Remove the plaintext input only after its replacement is durable.
+      value = await AsyncStorage.getItem(legacyKey) || randomUUID()
+      await AsyncStorage.setItem(key, value)
+    }
+    await AsyncStorage.multiRemove([legacyKey])
     return value
   })()
   keyRequests.set(key, operation)

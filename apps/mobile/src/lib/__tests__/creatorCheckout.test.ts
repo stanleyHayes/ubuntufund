@@ -7,7 +7,10 @@ vi.mock('@react-native-async-storage/async-storage', () => ({ default: {
   getAllKeys: async () => [...data.keys()],
   multiRemove: async (keys: string[]) => { keys.forEach(key => data.delete(key)) },
 } }))
-vi.mock('expo-crypto', () => ({ randomUUID: () => crypto.randomUUID() }))
+vi.mock('expo-crypto', async () => {
+  const { createHash } = await import('node:crypto')
+  return { randomUUID: () => crypto.randomUUID(), CryptoDigestAlgorithm: { SHA256: 'SHA-256' }, digestStringAsync: async (_algorithm: string, input: string) => createHash('sha256').update(input).digest('hex') }
+})
 vi.mock('../api', () => ({ api: { post } }))
 vi.mock('../session', () => ({ sessionSnapshot: () => ({ user: { id: 'viewer' } }) }))
 import { createTip, verifyTip } from '../creators'

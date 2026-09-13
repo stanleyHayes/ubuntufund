@@ -32,6 +32,12 @@ a service-provider relationship cannot be assumed just because a vendor is used.
 
 ## Required release evidence
 
+### Native payment request storage — 13 September 2026
+
+Payment idempotency lookup keys previously embedded JSON checkout input, including optional contact details and messages, in AsyncStorage key names. New keys use a SHA-256 digest of that input. When a matching legacy request is retried, the existing idempotency UUID is saved under the digest key before the plaintext key is removed; failed persistence keeps the original attempt available. Explicit completed-payment cleanup still removes the scope's records. Hashes are not encryption or anonymous data: user/target scope identifiers remain, and pending provider checkout references/URLs still need their own storage and lifecycle review. Untouched historical request keys are not claimed erased by this migration-on-use change.
+
+The mobile payment suite checks private-field absence, repeat/concurrent retry identity, migration, failed-storage recovery and provider pending/confirmed distinctions. Platform JavaScript exports cover iOS, Android and web; signed-device storage/backup inspection remains open. See the execution ledger for final test counts and current full API regression status.
+
 1. Freeze the commit/lockfile and enumerate direct and transitive SDKs in the
    signed artifact, including privacy manifests, required-reason APIs and SDK
    signatures. Keep a dated artifact inventory with versions and owners.
