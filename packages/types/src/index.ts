@@ -29,3 +29,5 @@ export { payoutAccountBrand, payoutInstitutionName } from './payoutBrand'
 export * from './legal-acceptance'
 
 export * from './activity-alerts'
+
+export * from "./blog";

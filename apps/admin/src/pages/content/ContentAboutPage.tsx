@@ -285,7 +285,7 @@ export default function ContentAboutPage() {
                     <Box sx={{ maxWidth: 360, width: '100%' }}>
                       <ImageUpload
                         label={`Photo for ${member.name || 'team member'}`}
-                        value={member.image ?? ''}
+                        value={member.image?.startsWith('/') ? new URL(member.image, import.meta.env.VITE_MARKETING_URL || 'https://ujimora.com').href : member.image ?? ''}
                         onChange={(url) => updateMember(index, 'image', url)}
                         uploadFn={uploadPhoto}
                         accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif"

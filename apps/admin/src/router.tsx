@@ -1,3 +1,7 @@
+import BlogPage from './pages/content/BlogPage'
+import { lazy, Suspense } from 'react'
+import { ReviewQueueSkeleton } from './components/ReviewQueueStates'
+const BlogEditorPage = lazy(() => import('./pages/content/BlogEditorPage'))
 import PublicationReviewsPage from './pages/PublicationReviewsPage'
 import SafetyReportsPage from './pages/SafetyReportsPage'
 import PrivacyRequestsPage from './pages/PrivacyRequestsPage'
@@ -109,6 +113,8 @@ export const router = createBrowserRouter([
       { path: 'testimonials', element: <RequirePermission resource={Resource.TESTIMONIALS}><TestimonialsPage /></RequirePermission> },
       { path: 'payment-providers', element: <RequirePermission resource={Resource.PAYMENT_PROVIDERS}><PaymentProvidersPage /></RequirePermission> },
       { path: 'ai-usage', element: <RequirePermission resource={Resource.ANALYTICS}><AiUsagePage /></RequirePermission> },
+      { path: 'content/blog', element: <RequirePermission resource={Resource.CONTENT}><BlogPage /></RequirePermission> },
+      { path: 'content/blog/:id', element: <RequirePermission resource={Resource.CONTENT}><Suspense fallback={<ReviewQueueSkeleton label="Loading article editor" />}><BlogEditorPage /></Suspense></RequirePermission> },
       { path: 'content/stats', element: <RequirePermission resource={Resource.CONTENT}><ContentStatsPage /></RequirePermission> },
       { path: 'content/faq', element: <RequirePermission resource={Resource.CONTENT}><ContentFaqPage /></RequirePermission> },
       { path: 'content/about', element: <RequirePermission resource={Resource.CONTENT}><ContentAboutPage /></RequirePermission> },

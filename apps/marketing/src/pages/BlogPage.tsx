@@ -1,3 +1,6 @@
+import { Alert, Skeleton } from '@mui/material'
+import { EmptyState } from '@ubuntu-fund/ui'
+import { useBlog, type DisplayArticle } from '@/hooks/useBlog'
 import { useState } from 'react'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
@@ -18,89 +21,7 @@ import { useSeo, SITE_ORIGIN } from '@/lib/seo'
 
 // ─── Data ──────────────────────────────────────────────────
 
-export interface BlogPost {
-  slug: string
-  title: string
-  date: string
-  category: string
-  excerpt: string
-  image: string
-  readTime: number
-  author: { name: string; avatar: string; role: string }
-  featured?: boolean
-}
-
-export const blogPosts: BlogPost[] = [
-  {
-    slug: 'mobile-money-revolutionizing-giving',
-    title: 'Preparing Payment Integrations for Responsible Giving',
-    date: 'March 15, 2026',
-    category: 'Trends',
-    excerpt:
-      'A practical look at provider verification, transaction integrity, refunds, and the release checks required before an external payment method should go live.',
-    image: 'https://images.unsplash.com/photo-1556745757-8d76bdb6984b?w=800&h=500&fit=crop',
-    readTime: 7,
-    author: { name: 'Ujimora Editorial', avatar: 'UF', role: 'Launch guide' },
-    featured: true,
-  },
-  {
-    slug: 'building-trust-verification-journey',
-    title: 'Building Trust in Ghanaian Crowdfunding: Our Verification Journey',
-    date: 'March 1, 2026',
-    category: 'Trust & Safety',
-    excerpt:
-      'Transparency is the foundation of successful crowdfunding. Learn how Ujimora developed its multi-layer verification system to ensure donors can give with confidence.',
-    image: 'https://images.unsplash.com/photo-1521791136064-7986c2920216?w=600&h=400&fit=crop',
-    readTime: 5,
-    author: { name: 'Ujimora Editorial', avatar: 'UF', role: 'Trust guide' },
-  },
-  {
-    slug: '5-campaigns-that-changed-communities',
-    title: 'Five Ways to Document Community Campaign Impact',
-    date: 'February 18, 2026',
-    category: 'Impact',
-    excerpt:
-      'A field guide to collecting evidence, publishing useful updates, recording milestones, and giving supporters a clear view of campaign progress.',
-    image: 'https://images.unsplash.com/photo-1509099836639-18ba1795216d?w=600&h=400&fit=crop',
-    readTime: 9,
-    author: { name: 'Ujimora Editorial', avatar: 'UF', role: 'Campaign guide' },
-  },
-  {
-    slug: 'rise-of-diaspora-giving',
-    title: 'The Rise of Diaspora Giving: Connecting Ghanaians Abroad with Home',
-    date: 'February 5, 2026',
-    category: 'Community',
-    excerpt:
-      'Ghanaians abroad send home billions of cedis in remittances every year. A growing share is being channeled through crowdfunding platforms to support education, healthcare, and infrastructure.',
-    image: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=600&h=400&fit=crop',
-    readTime: 6,
-    author: { name: 'Ujimora Editorial', avatar: 'UF', role: 'Community guide' },
-  },
-  {
-    slug: 'crowdfunding-for-education',
-    title: 'Crowdfunding for Education: Bridging the Gap in Ghanaian Schools',
-    date: 'January 22, 2026',
-    category: 'Education',
-    excerpt:
-      'Education campaigns need precise goals, credible budgets, supporting evidence, and consistent updates. This guide explains how to prepare each one.',
-    image: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=600&h=400&fit=crop',
-    readTime: 8,
-    author: { name: 'Ujimora Editorial', avatar: 'UF', role: 'Education guide' },
-  },
-  {
-    slug: 'guide-successful-health-campaign',
-    title: 'A Guide to Running a Successful Health Campaign',
-    date: 'January 10, 2026',
-    category: 'Guide',
-    excerpt:
-      'Health-related campaigns require special attention to detail, transparency, and urgency. This comprehensive guide covers everything from crafting your story to managing donor updates.',
-    image: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=600&h=400&fit=crop',
-    readTime: 12,
-    author: { name: 'Ujimora Editorial', avatar: 'UF', role: 'Campaign guide' },
-  },
-]
-
-const CATEGORIES = ['All', 'Trends', 'Trust & Safety', 'Impact', 'Community', 'Education', 'Guide']
+export type BlogPost = DisplayArticle
 
 export const CATEGORY_COLORS: Record<string, string> = {
   Trends: '#2E3D2F',
@@ -193,7 +114,7 @@ function FeaturedBlogCard({ post }: { post: BlogPost }) {
         <Box
           component="img"
           src={post.image}
-          alt={post.title}
+          alt={post.imageAlt}
           sx={{
             position: 'absolute',
             inset: 0,
@@ -358,7 +279,7 @@ function BlogCard({ post, variant = 'vertical' }: { post: BlogPost; variant?: 'v
           <Box
             component="img"
             src={post.image}
-            alt={post.title}
+            alt={post.imageAlt}
             sx={{
               width: '100%',
               height: '100%',
@@ -443,7 +364,7 @@ function BlogCard({ post, variant = 'vertical' }: { post: BlogPost; variant?: 'v
         <Box
           component="img"
           src={post.image}
-          alt={post.title}
+          alt={post.imageAlt}
           sx={{
             width: '100%',
             height: 200,
@@ -580,6 +501,8 @@ function BlogCard({ post, variant = 'vertical' }: { post: BlogPost; variant?: 'v
 // ─── Blog Page ─────────────────────────────────────────────
 
 function BlogPage() {
+  const { posts: blogPosts, loading, error, reload } = useBlog()
+  const CATEGORIES = ['All', ...new Set(blogPosts.map(p => p.category))]
   const [activeCategory, setActiveCategory] = useState('All')
 
   useSeo({
@@ -591,11 +514,11 @@ function BlogPage() {
     jsonLd: breadcrumbList(SITE_ORIGIN, [{ name: 'Home', path: '/' }, { name: 'Blog' }]),
   })
 
-  const featured = blogPosts.find((p) => p.featured)!
-  const rest = blogPosts.filter((p) => !p.featured)
+  const featured = blogPosts.find((p) => p.featured) ?? blogPosts[0]
+  const rest = blogPosts.filter((p) => p.id !== featured?.id)
 
   const filtered =
-    activeCategory === 'All' ? rest : rest.filter((p) => p.category === activeCategory)
+    activeCategory === 'All' ? rest : blogPosts.filter((p) => p.category === activeCategory)
 
   return (
     <Box sx={{ flex: 1, pb: 10 }}>
@@ -653,15 +576,18 @@ function BlogPage() {
           })}
         </Box>
 
+        {loading && <Box role="status" aria-label="Loading articles" sx={{ display: 'grid', gap: 2, '& .MuiSkeleton-root': { '@media (prefers-reduced-motion: reduce)': { animation: 'none' } } }}><Skeleton variant="rounded" height={260} /><Skeleton width="70%" height={40} /><Skeleton width="90%" height={24} /></Box>}
+        {error && <Alert severity="error" action={<Button onClick={reload}>Retry</Button>}>{error}</Alert>}
+        {!loading && !error && !blogPosts.length && <EmptyState variant="empty" title="Stories are on their way" description="Visit again soon for field notes from the Ujimora community." />}
         {/* Featured article — hero */}
-        {activeCategory === 'All' && (
+        {!loading && !error && featured && activeCategory === 'All' && (
           <Box sx={{ mb: 6 }}>
             <FeaturedBlogCard post={featured} />
           </Box>
         )}
 
         {/* Section divider */}
-        {activeCategory === 'All' && (
+        {!loading && !error && rest.length > 0 && activeCategory === 'All' && (
           <Box sx={{ mb: 5 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
               <Typography variant="h6" sx={{ fontWeight: 800, whiteSpace: 'nowrap' }}>

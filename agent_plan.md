@@ -1,5 +1,11 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — Blog studio and reported admin UI fixes
+
+- Implemented Content → Blog with Details/Write/Media/Review steps, rich-text toolbar, Markdown source/shared safe preview, authenticated media uploads, explicit review-before-publish, revision-safe private drafts and unpublishing. Preserves the six existing public articles on first migration. Published-only sitemap and grouped branded PDF/Excel/CSV exports included; sidebar connectors retained.
+- Fixed Contact Submissions dialog theme/close/contrast and visible failed-save handling with retained notes. Fixed About team-photo root-relative URLs; shared uploader now provides loading and retry states while retaining Replace/Remove.
+- Three API integration tests, six mocked phone/desktop browser flows and all ten marketing tests pass. API/admin/marketing production builds and affected type checks pass; lint has only existing unrelated warnings. Detailed scope and verification in `docs/BLOG_STUDIO.md`. Broader compliance goal remains active with its existing external and engineering gates.
+
 ### 2026-09-12 — Ghana and mobile store compliance goal (IN PROGRESS)
 
 - Beneficiary destination replacement now explicitly removes obsolete KYC reviewer/time fields; reproduced prior stale fields, then verified raw removal and fresh review. All 14 focused tests/types/lint pass. Full API88675 FINISHED exit 0: 1,117 tests/155 files at c8adacf; root freeze lifted and fast-forwarded to78118b9. Later deltas have focused evidence, not coverage from that older full run.

@@ -20,7 +20,9 @@
   "dependencies": {
     "@mui/x-date-pickers": "^8.29.3",
     "@ubuntu-fund/types": "*",
-    "dayjs": "^1.11.23"
+    "dayjs": "^1.11.23",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "vite": "^8.2.2"

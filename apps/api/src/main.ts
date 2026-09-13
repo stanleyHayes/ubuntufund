@@ -1,3 +1,4 @@
+import { seedBlogIfEmpty } from './infrastructure/database/seedBlog.js';
 import { createApp } from './app.js';
 import { config } from './infrastructure/config/index.js';
 import { connectDatabase, disconnectDatabase } from './infrastructure/database/connection.js';
@@ -7,6 +8,7 @@ import { seedSiteContentIfEmpty } from './infrastructure/database/seedSiteConten
 
 async function bootstrap(): Promise<void> {
   await connectDatabase(config.mongodbUri);
+  await seedBlogIfEmpty();
 
   // Safe prod first-run: populate CMS defaults only when the collection is
   // empty. Never fatal — a seed failure logs and boot continues.

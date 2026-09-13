@@ -1,3 +1,4 @@
+import Skeleton from '@mui/material/Skeleton'
 import { useRef, useState, useCallback } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
@@ -182,12 +183,7 @@ export function ImageUpload({
               <Typography sx={{ fontSize: '0.85rem', color: FOREST, flexGrow: 1, wordBreak: 'break-all' }}>{value.startsWith('kyc://') ? 'Private document uploaded' : 'Document uploaded'}</Typography>
             </Box>
           ) : (
-            <Box
-              component="img"
-              src={value}
-              alt="Uploaded preview"
-              sx={{ display: 'block', width: '100%', aspectRatio: String(aspectRatio), objectFit: 'cover', borderRadius: SHAPE.card, border: `1px solid ${DIVIDER}` }}
-            />
+            <UploadPreview key={value} src={value} label={label} aspectRatio={aspectRatio} />
           )}
           <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
             <Button type="button" size="small" variant="outlined" disabled={disabled || busy || !canUpload}
@@ -261,4 +257,21 @@ export function ImageUpload({
       )}
     </Box>
   )
+}
+
+function UploadPreview({ src, label, aspectRatio }: { src: string; label?: string; aspectRatio: number }) {
+  const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading')
+  const [attempt, setAttempt] = useState(0)
+  return <Box sx={{ position: 'relative', borderRadius: SHAPE.card, overflow: 'hidden', border: `1px solid ${DIVIDER}` }}>
+    {state === 'error' ? <Box role="alert" sx={{ p: 3, display: 'grid', gap: 1, justifyItems: 'start', bgcolor: 'background.paper' }}>
+      <ImageRoundedIcon sx={{ color: 'text.secondary', fontSize: 34 }} />
+      <Typography sx={{ fontWeight: 700 }}>Image preview unavailable</Typography>
+      <Typography variant="body2" color="text.secondary">The saved image could not be loaded. Retry, or replace it with a new upload.</Typography>
+      <Button type="button" onClick={() => { setState('loading'); setAttempt(n => n + 1) }}>Retry preview</Button>
+    </Box> : <>
+      {state === 'loading' && <Skeleton variant="rectangular" sx={{ position: 'absolute', inset: 0, height: '100%', '@media (prefers-reduced-motion: reduce)': { animation: 'none' } }} />}
+      <Box component="img" key={attempt} src={src} alt={label || 'Uploaded image preview'} onLoad={() => setState('ready')} onError={() => setState('error')}
+        sx={{ display: 'block', width: '100%', aspectRatio: String(aspectRatio), objectFit: 'cover', visibility: state === 'loading' ? 'hidden' : 'visible' }} />
+    </>}
+  </Box>
 }

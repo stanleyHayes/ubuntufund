@@ -1,3 +1,4 @@
+import ArticleRoundedIcon from '@mui/icons-material/ArticleRounded'
 import { Chip } from '@mui/material'
 import { useAdminActions } from '@/context/AdminActionContext'
 import { useMemo, useState } from 'react'
@@ -104,6 +105,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Homepage Stats', path: '/content/stats', icon: <QueryStatsRoundedIcon /> },
       { label: 'FAQ', path: '/content/faq', icon: <QuizRoundedIcon /> },
+      { label: 'Blog', path: '/content/blog', icon: <ArticleRoundedIcon /> },
       { label: 'About Page', path: '/content/about', icon: <InfoRoundedIcon /> },
       { label: 'Contact Details', path: '/content/contact', icon: <ContactMailRoundedIcon /> },
     ],

@@ -16,7 +16,6 @@ import { LEGAL_POLICIES } from '@ubuntu-fund/types/src/legal'
 const read = (p: string) => readFileSync(resolve(process.cwd(), p), 'utf8')
 const sitemap = read('public/sitemap.xml')
 const appTsx = read('src/App.tsx')
-const blogPage = read('src/pages/BlogPage.tsx')
 
 const listed = new Set(
   [...sitemap.matchAll(/<loc>https:\/\/ujimora\.com([^<]*)<\/loc>/g)].map((m) => m[1] || '/'),
@@ -43,12 +42,9 @@ describe('sitemap.xml', () => {
     }
   })
 
-  it('lists every blog post', () => {
-    const slugs = [...blogPage.matchAll(/slug: '([^']+)'/g)].map((m) => m[1])
-    expect(slugs.length).toBeGreaterThan(0)
-    for (const slug of slugs) {
-      expect(listed, `blog post ${slug} missing from sitemap.xml`).toContain(`/blog/${slug}`)
-    }
+  it('advertises the live published-article sitemap', () => {
+    expect(read('public/robots.txt')).toContain('Sitemap: https://ujimora.com/api/v1/blog/sitemap.xml')
+    expect([...listed].some(path => path.startsWith('/blog/'))).toBe(false)
   })
 
   it('uses one consistent URL form, so canonicals and sitemap agree', () => {

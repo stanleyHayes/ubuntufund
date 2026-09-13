@@ -1,3 +1,6 @@
+import { raisedSurface, insetSurface } from '@/lib/surfaces'
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
+import { IconButton, Alert } from '@mui/material'
 import ExportMenu from '@/components/ExportMenu'
 import { loadAll } from '@/lib/exports/loadAll'
 import { exportTable, dateCell } from '@/lib/exports/report'
@@ -55,6 +58,8 @@ function Skel({ w, h }: { w?: string | number; h?: number }) {
 function ContactSubmissionsPage() {
   const [submissions, setSubmissions] = useState<ContactSubmission[]>([])
   const [stats, setStats] = useState<Stats>({ total: 0, new: 0, inProgress: 0, resolved: 0 })
+  const [updating, setUpdating] = useState(false)
+  const [updateError, setUpdateError] = useState('')
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -105,7 +110,9 @@ function ContactSubmissionsPage() {
   useEffect(() => { fetchData() }, [fetchData])
 
   const handleUpdateStatus = async () => {
-    if (!selected) return
+    if (!selected || updating) return
+    setUpdating(true)
+    setUpdateError('')
     try {
       const headers = getAuthHeaders()
       const res = await fetch(`/api/v1/contact/${selected.id}/status`, {
@@ -113,16 +120,18 @@ function ContactSubmissionsPage() {
         headers,
         body: JSON.stringify({ status: newStatus, adminNotes }),
       })
+      if (!res.ok) throw new Error('Could not update the submission. Please try again.')
       if (res.ok) {
         setSelected(null)
         fetchData()
       }
-    } catch {
-      // handle error silently
-    }
+    } catch (error) {
+      setUpdateError(error instanceof Error ? error.message : 'Could not update submission')
+    } finally { setUpdating(false) }
   }
 
   const openDetail = (sub: ContactSubmission) => {
+    setUpdateError('')
     setSelected(sub)
     setNewStatus(sub.status)
     setAdminNotes(sub.adminNotes ?? '')
@@ -239,7 +248,7 @@ return { title: 'Contact submissions', filters: [`Status: ${statusFilter}`, `Typ
               }}
             >
               <Box>
-                <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#fff' }}>{sub.name}</Typography>
+                <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: 'text.primary' }}>{sub.name}</Typography>
                 <Typography sx={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.35)' }}>{sub.email}</Typography>
               </Box>
               <Typography sx={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.6)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -269,7 +278,7 @@ return { title: 'Contact submissions', filters: [`Status: ${statusFilter}`, `Typ
                   borderColor: `${statusColors[sub.status] ?? '#78909C'}30`,
                 }}
               />
-              <Typography sx={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.4)' }}>
+              <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary' }}>
                 {new Date(sub.createdAt).toLocaleDateString()}
               </Typography>
             </Box>
@@ -286,30 +295,34 @@ return { title: 'Contact submissions', filters: [`Status: ${statusFilter}`, `Typ
       {/* Detail Dialog */}
       <Dialog
         open={!!selected}
-        onClose={() => setSelected(null)}
+        onClose={() => { if (!updating) setSelected(null) }}
         maxWidth="sm"
         fullWidth
-        PaperProps={{ sx: { bgcolor: '#1a1a2e', border: `1px solid ${B}`, borderRadius: 3 } }}
+        aria-labelledby="contact-detail-title"
+        PaperProps={{ sx: { ...raisedSurface, backgroundImage: 'none', color: 'text.primary', border: '1px solid', borderColor: 'divider', maxHeight: 'calc(100dvh - 32px)', m: 2 } }}
       >
         {selected && (
           <>
-            <DialogTitle sx={{ fontWeight: 800 }}>
+            <DialogTitle id="contact-detail-title" sx={{ fontWeight: 800, pr: 7, overflowWrap: 'anywhere' }}>
+              <IconButton aria-label="Close submission" disabled={updating} onClick={() => setSelected(null)} sx={{ position: 'absolute', right: 16, top: 16, color: 'text.primary' }}><CloseRoundedIcon /></IconButton>
+<Box aria-hidden="true" sx={{ position: 'absolute', right: 50, top: 30, opacity: .045, pointerEvents: 'none' }}><MarkEmailUnreadRoundedIcon sx={{ fontSize: 135 }} /></Box>
               {selected.subject}
-              <Typography sx={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.4)', mt: 0.5 }}>
+              <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary', mt: 0.5 }}>
                 From {selected.name} &lt;{selected.email}&gt; &middot; {new Date(selected.createdAt).toLocaleString()}
               </Typography>
             </DialogTitle>
-            <DialogContent>
+            <DialogContent sx={{ pt: '16px !important' }}>
+              {updateError && <Alert severity="error" sx={{ mb: 2 }}>{updateError}</Alert>}
               <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-                <Chip label={selected.inquiryType} size="small" sx={{ fontWeight: 700, fontSize: '0.7rem', bgcolor: `${inquiryColors[selected.inquiryType]}18`, color: inquiryColors[selected.inquiryType] }} />
-                <Chip label={selected.status.replace('_', ' ')} size="small" sx={{ fontWeight: 700, fontSize: '0.7rem', bgcolor: `${statusColors[selected.status]}18`, color: statusColors[selected.status] }} />
+                <Chip label={selected.inquiryType} size="small" sx={{ fontWeight: 700, fontSize: '0.7rem', bgcolor: 'action.hover', color: 'text.primary' }} />
+                <Chip label={selected.status.replace('_', ' ')} size="small" sx={{ fontWeight: 700, fontSize: '0.7rem', bgcolor: 'action.hover', color: 'text.primary' }} />
               </Box>
-              <Typography sx={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.7)', lineHeight: 1.7, mb: 3, whiteSpace: 'pre-wrap' }}>
+              <Typography sx={{ fontSize: '0.9rem', color: 'text.primary', lineHeight: 1.7, mb: 3, ...insetSurface, p: 2, overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>
                 {selected.message}
               </Typography>
 
               <TextField
-                select fullWidth size="small" label="Update Status"
+                select fullWidth disabled={updating} size="small" label="Update Status"
                 value={newStatus}
                 onChange={(e) => setNewStatus(e.target.value as ContactStatus)}
                 sx={{ mb: 2, '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
@@ -321,19 +334,19 @@ return { title: 'Contact submissions', filters: [`Status: ${statusFilter}`, `Typ
               </TextField>
 
               <TextField
-                fullWidth multiline rows={3} size="small" label="Admin Notes"
+                fullWidth multiline disabled={updating} rows={3} size="small" label="Admin Notes"
                 value={adminNotes}
                 onChange={(e) => setAdminNotes(e.target.value)}
                 sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
               />
             </DialogContent>
             <DialogActions sx={{ px: 3, pb: 2 }}>
-              <Button onClick={() => setSelected(null)} sx={{ textTransform: 'none' }}>Cancel</Button>
+              <Button disabled={updating} onClick={() => setSelected(null)} sx={{ textTransform: 'none' }}>Cancel</Button>
               <Button
-                variant="contained" onClick={handleUpdateStatus}
+                variant="contained" disabled={updating} onClick={handleUpdateStatus}
                 sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2 }}
               >
-                Update
+                {updating ? 'Saving…' : 'Save changes'}
               </Button>
             </DialogActions>
           </>

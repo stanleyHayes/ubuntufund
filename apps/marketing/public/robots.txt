@@ -2,3 +2,4 @@ User-agent: *
 Allow: /
 
 Sitemap: https://ujimora.com/sitemap.xml
+Sitemap: https://ujimora.com/api/v1/blog/sitemap.xml

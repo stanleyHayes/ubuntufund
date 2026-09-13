@@ -1,3 +1,6 @@
+import { Alert, Skeleton } from '@mui/material'
+import { ArticleMarkdown } from '@ubuntu-fund/ui'
+import { useBlog } from '@/hooks/useBlog'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
@@ -11,23 +14,9 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime'
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday'
 import { useParams, useNavigate, useLocation, Link as RouterLink } from 'react-router-dom'
 import { SHAPE, ItemNotFound, breadcrumbList } from '@ubuntu-fund/ui'
-import { blogPosts, CATEGORY_COLORS } from './BlogPage'
+import { CATEGORY_COLORS } from './BlogPage'
 import { useSeo, SITE_ORIGIN } from '@/lib/seo'
 
-// Editorial fallback copy. This intentionally avoids invented impact metrics,
-// customer quotes, or claims about payment providers that are not live.
-function generateBody(post: (typeof blogPosts)[number]): string[] {
-  return [
-    post.excerpt,
-    `For campaign creators, ${post.category.toLowerCase()} begins with a specific goal, evidence that supporters can assess, and a realistic explanation of how funds will be used. Avoid promises that cannot be measured or verified.`,
-    'Publish updates when circumstances, budgets, or timelines change. A useful update identifies what happened, what evidence is available, and what the campaign will do next.',
-    'Supporters should review the campaign story, organizer details, verification state, and recent activity before contributing. A platform review is one signal, not a guarantee of outcome.',
-    'Ujimora currently records wallet-backed contributions in Ghanaian cedis. External payment and payout methods remain unavailable until their production adapters and compliance checks are complete.',
-    'Good fundraising communication is concrete, respectful, and accountable. Protect personal information, obtain consent for sensitive images, and keep records that can support later review.',
-  ]
-}
-
-/** Trim editorial copy to a search-result limit on a word boundary. */
 function clampText(text: string, max: number): string {
   if (text.length <= max) return text
   const cut = text.slice(0, max - 1)
@@ -43,7 +32,9 @@ function brandedTitle(title: string): string {
 
 function BlogDetailPage() {
   const { slug } = useParams<{ slug: string }>()
-  const post = blogPosts.find((p) => p.slug === slug)
+  const { posts, loading, error, reload } = useBlog(slug)
+  const { posts: related } = useBlog()
+  const post = posts[0]
 
   const navigate = useNavigate()
   const { pathname } = useLocation()
@@ -69,6 +60,8 @@ function BlogDetailPage() {
       : undefined,
   })
 
+  if (loading) return <Container maxWidth="md" sx={{ py: 6 }}><Box role="status" aria-label="Loading article"><Skeleton variant="rounded" height={300} /><Skeleton height={60} /><Skeleton height={30} /><Skeleton height={180} /></Box></Container>
+  if (error) return <Container maxWidth="md" sx={{ py: 6 }}><Alert severity="error" action={<Button onClick={reload}>Retry</Button>}>{error}</Alert></Container>
   if (!post) {
     return (
       <Container maxWidth="md" sx={{ py: 10 }}>
@@ -83,8 +76,7 @@ function BlogDetailPage() {
   }
 
   const accent = CATEGORY_COLORS[post.category] || '#2E3D2F'
-  const bodyParagraphs = generateBody(post)
-  const relatedPosts = blogPosts.filter((p) => p.slug !== post.slug).slice(0, 3)
+  const relatedPosts = related.filter((p) => p.slug !== post.slug).slice(0, 3)
 
   return (
     <Box component="article" sx={{ pb: 10 }}>
@@ -99,7 +91,7 @@ function BlogDetailPage() {
         <Box
           component="img"
           src={post.image}
-          alt={post.title}
+          alt={post.imageAlt}
           sx={{
             width: '100%',
             height: '100%',
@@ -245,53 +237,7 @@ function BlogDetailPage() {
 
           {/* Body content */}
           <Box sx={{ maxWidth: 680, mx: 'auto' }}>
-            {bodyParagraphs.map((paragraph, i) => {
-              // Make the 4th paragraph (quote) styled differently
-              if (i === 3) {
-                return (
-                  <Box
-                    key={i}
-                    sx={{
-                      my: 4,
-                      pl: 3,
-                      borderLeft: `4px solid ${accent}`,
-                      py: 1,
-                    }}
-                  >
-                    <Typography
-                      sx={{
-                        fontSize: '1.1rem',
-                        fontStyle: 'italic',
-                        lineHeight: 1.8,
-                        color: 'text.primary',
-                        fontWeight: 500,
-                      }}
-                    >
-                      {paragraph}
-                    </Typography>
-                  </Box>
-                )
-              }
-
-              return (
-                <Typography
-                  key={i}
-                  sx={{
-                    fontSize: '1.05rem',
-                    lineHeight: 1.9,
-                    color: 'text.secondary',
-                    mb: 3,
-                    ...(i === 0 && {
-                      fontSize: '1.15rem',
-                      color: 'text.primary',
-                      fontWeight: 500,
-                    }),
-                  }}
-                >
-                  {paragraph}
-                </Typography>
-              )
-            })}
+            <ArticleMarkdown body={post.body} />
           </Box>
 
           {/* Tags / share section */}
@@ -326,7 +272,7 @@ function BlogDetailPage() {
         </Box>
 
         {/* Related posts */}
-        <Box sx={{ mt: 8 }}>
+        {relatedPosts.length > 0 && <Box sx={{ mt: 8 }}>
           <Typography variant="h5" sx={{ fontWeight: 800, mb: 3 }}>
             More from Ujimora
           </Typography>
@@ -355,7 +301,7 @@ function BlogDetailPage() {
                     <Box
                       component="img"
                       src={related.image}
-                      alt={related.title}
+                      alt={related.imageAlt}
                       sx={{ width: '100%', height: 160, objectFit: 'cover' }}
                     />
                     <Box sx={{ p: 2.5 }}>
@@ -393,7 +339,7 @@ function BlogDetailPage() {
               )
             })}
           </Grid>
-        </Box>
+        </Box>}
       </Container>
     </Box>
   )

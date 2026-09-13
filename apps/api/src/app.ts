@@ -1,3 +1,4 @@
+import { createBlogRoutes } from './infrastructure/adapters/inbound/http/routes/blogRoutes.js'
 import { MongoBeneficiaryPayoutAuthorization } from './infrastructure/adapters/outbound/persistence/MongoBeneficiaryPayoutAuthorization.js'
 import { MongoAffiliatePayoutApproval } from './infrastructure/adapters/outbound/persistence/MongoAffiliatePayoutApproval.js'
 import { MongoManualPayoutApproval } from './infrastructure/adapters/outbound/persistence/MongoManualPayoutApproval.js'
@@ -1744,6 +1745,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
   api.use('/reports', createAdminReportRoutes(adminReportController, authMiddleware, requireAdmin))
   api.use('/analytics', createAnalyticsRoutes(analyticsController, authMiddleware, requireAdmin))
   api.use('/newsletter', createNewsletterRoutes(newsletterController, authMiddleware, requireAdmin, newsletterConsent, userRepo))
+  api.use('/blog', createBlogRoutes(authMiddleware, requireAdmin))
   api.use('/content', createContentRoutes(siteContentController, authMiddleware, requireAdmin))
   api.use('/uploads', createUploadRoutes(uploadController, cloudinaryUploader, authMiddleware))
   api.use('/audit', createAuditLogRoutes(auditLogController, authMiddleware, requireAdmin))
