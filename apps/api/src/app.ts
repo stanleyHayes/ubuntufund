@@ -1,3 +1,4 @@
+import { MongoBeneficiaryPayoutAuthorization } from './infrastructure/adapters/outbound/persistence/MongoBeneficiaryPayoutAuthorization.js'
 import { MongoAffiliatePayoutApproval } from './infrastructure/adapters/outbound/persistence/MongoAffiliatePayoutApproval.js'
 import { MongoManualPayoutApproval } from './infrastructure/adapters/outbound/persistence/MongoManualPayoutApproval.js'
 import { MongoCampaignContentWrite } from './infrastructure/adapters/outbound/persistence/MongoCampaignContentWrite.js'
@@ -1418,6 +1419,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     paymentGateway,
     new MongoUnitOfWork(),
     config.payouts.dualApprovalAmount,
+    new MongoBeneficiaryPayoutAuthorization(),
   )
   const beneficiaryPayoutController = new BeneficiaryPayoutController(beneficiaryPayoutUseCase)
   const leaderboardController = new LeaderboardController(

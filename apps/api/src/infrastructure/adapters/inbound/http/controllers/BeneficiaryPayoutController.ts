@@ -11,7 +11,7 @@ export class BeneficiaryPayoutController {
   constructor(private readonly useCase: BeneficiaryPayoutUseCase) {}
 
   private requester(req: AuthenticatedRequest) {
-    return { userId: req.userId!, role: req.userRole };
+    return { userId: req.userId!, role: req.userRole, authVersion: req.authVersion };
   }
 
   registerRecipient = async (

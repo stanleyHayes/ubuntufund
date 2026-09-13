@@ -205,7 +205,7 @@ describe('Beneficiary payout Integration (flag on, spec §17)', () => {
     expect(await BeneficiaryPayoutModel.countDocuments({ campaignId })).toBe(2);
   });
 
-  it.each(['success', 'mirror_short', 'processing_failure'])('beneficiary reservation and processing commit together: %s', async (scenario) => {
+  it.each(['success', 'mirror_short', 'processing_failure', 'staff_revoked', 'kyc_revoked', 'destination_changed', 'account_changed', 'wrong_currency'])('beneficiary reservation and processing commit together: %s', async (scenario) => {
     const owner = await registerUser(app, uniqueEmail('bp-own'));
     const admin = await createAdmin(app, uniqueEmail('bp-admin'));
     const campaignId = await createActiveCampaign(app, owner.token, owner.userId);
@@ -253,6 +253,27 @@ describe('Beneficiary payout Integration (flag on, spec §17)', () => {
     expect(reqRes.status).toBe(201);
     expect(reqRes.body.data.status).toBe('PENDING');
     const payoutId = reqRes.body.data.id as string;
+
+    if (scenario === 'wrong_currency') await BeneficiaryRecipientModel.updateOne({ campaignId, beneficiaryId: ama.beneficiaryId }, { currency: 'USD' });
+    if (['staff_revoked', 'kyc_revoked', 'destination_changed', 'account_changed', 'wrong_currency'].includes(scenario)) {
+      const before = await CampaignBeneficiaryBalanceModel.findOne({ campaignId, beneficiaryId: ama.beneficiaryId });
+      const aggregate = await CampaignBalanceModel.findOne({ campaignId });
+      const gateway = vi.mocked(fetch).getMockImplementation()!;
+      vi.mocked(fetch).mockClear();
+      vi.mocked(fetch).mockImplementation(async (...args) => {
+        if (String(args[0]).includes('/balance')) {
+          if (scenario === 'staff_revoked') await UserModel.updateOne({ _id: admin.userId }, { authVersion: 'revoked-during-lookup' });
+          else await BeneficiaryRecipientModel.updateOne({ campaignId, beneficiaryId: ama.beneficiaryId }, scenario === 'kyc_revoked' ? { kycVerified: false } : scenario === 'destination_changed' ? { recipientCode: 'changed' } : { accountNumber: 'different' });
+        }
+        return gateway(...args);
+      });
+      await request(app).post(`/api/v1/beneficiary-payouts/${payoutId}/approve`).set('Authorization', `Bearer ${admin.token}`).send({}).expect(scenario === 'staff_revoked' ? 403 : 409);
+      expect((await BeneficiaryPayoutModel.findById(payoutId))?.status).toBe('PENDING');
+      expect((await CampaignBeneficiaryBalanceModel.findOne({ campaignId, beneficiaryId: ama.beneficiaryId }))?.availableBalance).toBe(before?.availableBalance);
+      expect((await CampaignBalanceModel.findOne({ campaignId }))?.availableBalance).toBe(aggregate?.availableBalance);
+      expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).endsWith('/transfer'))).toBe(false);
+      return;
+    }
 
     if (scenario !== 'success') {
       if (scenario === 'mirror_short') await CampaignBalanceModel.updateOne({ campaignId }, { availableBalance: 0 });

@@ -636,3 +636,24 @@ API types/lint and whitespace checks pass. Logs:
 Final staff credentials/current beneficiary KYC/destination validation, first
 approval evidence and post-provider terminal balance consistency remain open.
 Root regression88675 remains live on c8adacf and excludes these later slices.
+
+## Beneficiary final staff and KYC/destination authorization
+
+Final beneficiary reservation now revalidates the authenticated administrator's
+role, closure state and credential version, then locks the same beneficiary
+recipient with unchanged KYC reviewer/time, account, bank, type, currency and
+provider code. This runs inside the balance/PROCESSING transaction. Missing KYC
+reviewer/time fails closed; a destination with a different payout currency is
+rejected before provider lookup. HTTP forwards the current credential version.
+
+All 13 beneficiary integration tests pass, plus API types/lint. Five added cases
+cover credential revocation, withdrawn KYC, replaced provider/account details
+during provider lookup, and a pre-existing currency mismatch: 403/409, unchanged
+balance mirrors, PENDING and no transfer. Existing atomic failure and full paid
+settlement cases pass. Logs /tmp/ujimora-beneficiary-auth-final-{tests,types,lint}.log.
+Render was verified live on the preceding 9d2374a before this commit.
+
+Remaining beneficiary work includes first-approval authorization/review evidence,
+verification evidence completeness and eligibility/consent consumption, and final
+settlement consistency. Other financial/provider/store/native/legal gates remain
+open. Root full regression88675 continues against c8adacf, excluding later slices.

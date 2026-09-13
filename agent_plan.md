@@ -2,6 +2,8 @@
 
 ### 2026-09-12 — Ghana and mobile store compliance goal (IN PROGRESS)
 
+- Beneficiary final reservation now revalidates current staff credentials and locks unchanged KYC/destination evidence; mismatched currency and missing review evidence fail closed. All 13 beneficiary tests/types/lint pass, including five stale-authorization/destination cases with no funds movement or transfer. First-review/evidence/eligibility/settlement scope remains open in KYC_REVIEW_INTEGRITY.md. Root regression88675 continues on c8adacf.
+
 - Beneficiary approval now commits share/campaign reservations and PROCESSING/reference atomically, before provider transfer. Eight integration tests/types/lint pass, including mirror shortfall and failure after processing write with full rollback, plus committed-state provider observation. Final beneficiary staff/KYC/destination and terminal settlement checks remain open; KYC_REVIEW_INTEGRITY.md records evidence. Root regression88675 retains c8adacf.
 
 - Affiliate final approval now transactionally revalidates current staff credentials, active affiliate, original requester account and exact provider destination before committing PROCESSING/reference. Eight real MongoDB/use-case tests and API types/lint pass. Affiliate review/KYC/limits, beneficiary and settlement coverage remain open; details KYC_REVIEW_INTEGRITY.md. Root regression88675 keeps c8adacf source.

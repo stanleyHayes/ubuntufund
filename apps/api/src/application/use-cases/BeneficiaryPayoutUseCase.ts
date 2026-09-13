@@ -29,6 +29,7 @@ const roundMoney = (n: number, currency: string): number =>
   roundToCurrency(n, currency);
 
 export interface SplitRequester {
+  authVersion?: string;
   userId: string;
   role?: string;
 }
@@ -54,7 +55,8 @@ export class BeneficiaryPayoutUseCase {
     private readonly unitOfWork: UnitOfWorkPort,
     // Maker-checker threshold (GHS); `0` disables dual approval. Mirrors the
     // campaign payout rail's control for high-value payouts (spec §16).
-    private readonly dualApprovalAmount = 0
+    private readonly dualApprovalAmount = 0,
+    private readonly authorization?: { assertCurrent(requester: SplitRequester, recipient: BeneficiaryRecipient): Promise<void> }
   ) {}
 
   /** Owner/beneficiary: register a beneficiary's provider payout destination. */
@@ -240,6 +242,7 @@ export class BeneficiaryPayoutUseCase {
       payout.beneficiaryId
     );
     if (!recipient) throw new AppError('Beneficiary payout recipient not found', 404);
+    if (recipient.currency !== payout.currency) throw new AppError('Beneficiary destination currency does not match the payout.', 409);
     if (!recipient.kycVerified) {
       throw new AppError('Beneficiary KYC must be verified before payout', 422);
     }
@@ -253,7 +256,9 @@ export class BeneficiaryPayoutUseCase {
     const reference = `bpay-${payout.id}-${randomUUID().slice(0, 8)}`;
     // Both balance mirrors and the processing reference commit together.
     // No provider calls or compensating balance writes belong in this callback.
+    if (!this.authorization) throw new AppError('Beneficiary approval authorization is unavailable.', 503);
     const processing = await this.unitOfWork.run(async () => {
+      await this.authorization!.assertCurrent(requester, recipient);
       const reserved = await this.beneficiaryBalanceRepo.reserveForPayout(
         payout.campaignId, payout.beneficiaryId, payout.currency, payout.amount,
       );
