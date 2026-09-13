@@ -2,6 +2,8 @@
 
 ### 2026-09-12 — Ghana and mobile store compliance goal (IN PROGRESS)
 
+- Isolated dispute safeguard: creation/status writes serialize against campaign payout locking; automatic final reservation rechecks unresolved disputes. All 28 focused tests/types/lint pass, including concurrent new/reopened disputes with retry/409/no transfer. Root API regression24306 retains baseline0bb30ee; fast-forward only after terminal result, then current regression required. Details KYC_REVIEW_INTEGRITY.md.
+
 - Actual built APK decoded and checked: SDK36, backup disabled, Firebase defaults disabled, blocked permissions absent and screen-sharing declarations retained. Packaged backup resources resolve to res/Vk.xml and res/m3.xml; all nine exclusions verified for full/cloud/device-transfer. Hashes/provenance in NATIVE_PERMISSIONS.md; physical/runtime/store gates remain open. API24306/image74629 confirmed live.
 
 - Native startup now cleans older app-owned temporary recovery-code exports after interrupted sharing, preserving current exports and unrelated files. All 105 mobile tests, types/lint and Android JS export pass; details in NATIVE_PERMISSIONS.md. Current full API regression 24306 remains live on unchanged API 0bb30ee, `/tmp/ujimora-campaign-recipient-full-regression.log`; keep API/shared source frozen. Android image install 74629 remains live.

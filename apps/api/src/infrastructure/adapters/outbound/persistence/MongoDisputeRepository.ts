@@ -1,3 +1,6 @@
+import { CampaignModel } from '../../../database/models/CampaignModel.js';
+import { MongoUnitOfWork } from './MongoUnitOfWork.js';
+import { AppError } from '../../inbound/middleware/errorHandler.js';
 import type {
   DisputeRepositoryPort,
   DisputeRecord,
@@ -27,19 +30,27 @@ function toDomain(doc: DisputeDocument): DisputeRecord {
 }
 
 export class MongoDisputeRepository implements DisputeRepositoryPort {
+  private async lockCampaign(campaignId: string) {
+    const locked = await CampaignModel.updateOne({ _id: campaignId }, { $inc: { payoutWriteVersion: 1 } }, { timestamps: false });
+    if (!locked.matchedCount) throw new AppError('Campaign not found', 404);
+  }
+
   async save(dispute: DisputeRecord): Promise<DisputeRecord> {
-    const doc = await DisputeModel.create({
-      campaignId: dispute.campaignId,
-      reporterId: dispute.reporterId,
-      assigneeId: dispute.assigneeId,
-      reason: dispute.reason,
-      description: dispute.description,
-      status: dispute.status,
-      resolution: dispute.resolution,
-      resolvedBy: dispute.resolvedBy,
-      resolvedAt: dispute.resolvedAt,
+    return new MongoUnitOfWork().run(async () => {
+      await this.lockCampaign(dispute.campaignId);
+      const doc = await DisputeModel.create({
+        campaignId: dispute.campaignId,
+        reporterId: dispute.reporterId,
+        assigneeId: dispute.assigneeId,
+        reason: dispute.reason,
+        description: dispute.description,
+        status: dispute.status,
+        resolution: dispute.resolution,
+        resolvedBy: dispute.resolvedBy,
+        resolvedAt: dispute.resolvedAt,
     });
     return toDomain(doc);
+    });
   }
 
   async findById(id: string): Promise<DisputeRecord | null> {
@@ -69,16 +80,21 @@ export class MongoDisputeRepository implements DisputeRepositoryPort {
     id: string,
     updates: DisputeResolution
   ): Promise<DisputeRecord | null> {
-    const doc = await DisputeModel.findByIdAndUpdate(
-      id,
-      {
-        status: updates.status,
-        resolution: updates.resolution,
-        resolvedBy: updates.resolvedBy,
-        resolvedAt: new Date(),
-      },
-      { new: true }
-    );
-    return doc ? toDomain(doc) : null;
+    return new MongoUnitOfWork().run(async () => {
+      const existing = await DisputeModel.findById(id);
+      if (!existing) return null;
+      await this.lockCampaign(existing.campaignId);
+      const doc = await DisputeModel.findByIdAndUpdate(
+        id,
+        {
+          status: updates.status,
+          resolution: updates.resolution,
+          resolvedBy: updates.resolvedBy,
+          resolvedAt: new Date(),
+        },
+        { new: true }
+      );
+      return doc ? toDomain(doc) : null;
+    });
   }
 }

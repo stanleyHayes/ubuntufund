@@ -1,3 +1,5 @@
+import { MongoDisputeRepository } from '../../src/infrastructure/adapters/outbound/persistence/MongoDisputeRepository.js'
+import { DisputeModel } from '../../src/infrastructure/database/models/DisputeModel.js'
 import { ApprovePayoutUseCase } from '../../src/application/use-cases/ApprovePayoutUseCase.js'
 import { CampaignBalanceModel } from '../../src/infrastructure/database/models/CampaignBalanceModel.js'
 import { MongoCampaignBalanceRepository } from '../../src/infrastructure/adapters/outbound/persistence/MongoCampaignBalanceRepository.js'
@@ -56,6 +58,7 @@ afterAll(async () => {
 beforeEach(async () => {
   vi.clearAllMocks()
   await Promise.all([
+    DisputeModel.deleteMany({}),
     CampaignBalanceModel.deleteMany({}),
     KYCVerificationModel.deleteMany({}),
     PayoutModel.deleteMany({}),
@@ -342,4 +345,37 @@ it.each(['owner', 'code', 'currency', 'review', 'policy'])('rejects concurrent a
     expect((await repo.findById(item.id))?.status).toBe('PENDING')
     expect(provider.initiateTransfer).not.toHaveBeenCalled()
   } finally { lock.mockRestore() }
+})
+
+
+it.each(['created', 'reopened'])('blocks an automatic transfer when a dispute is concurrently %s', async change => {
+  const item = await pending()
+  const disputes = new MongoDisputeRepository()
+  let disputeId = ''
+  const record = { id: '', campaignId: String(ids.campaign), reporterId: String(ids.user), reason: 'Campaign funds need review', status: 'open' as const, createdAt: new Date(), updatedAt: new Date() }
+  if (change === 'reopened') {
+    const dispute = await disputes.save({ ...record, status: 'dismissed' })
+    disputeId = dispute.id
+  }
+  await CampaignBalanceModel.create({ campaignId: String(ids.campaign), currency: 'GHS', availableBalance: 1000 })
+  const guard = new MongoAutomaticPayoutVerification()
+  const original = guard.assertCurrent.bind(guard)
+  let entered = false
+  let release!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve })
+  const check = vi.spyOn(guard, 'assertCurrent').mockImplementationOnce(async userId => { await original(userId); entered = true; await gate })
+  const provider = { isConfigured: () => true, getBalance: async () => [{ currency: 'GHS', balance: 1000 }], initiateTransfer: vi.fn() }
+  const real = new ApprovePayoutUseCase(repo, { findById: async () => ({ recipientCode: 'synthetic-recipient', type: 'ghipss' }) } as never, new MongoCampaignBalanceRepository(), provider as never, { dualApprovalAmount: 40000, maxTransferAmount: 50000 } as never, undefined, undefined, guard)
+  const result = real.executeAutomatic(item.id).then(() => null, error => error)
+  try {
+    await expect.poll(() => entered).toBe(true)
+    if (change === 'created') await disputes.save(record)
+    else await disputes.updateStatus(disputeId, { status: 'under_review' })
+    release()
+    expect(await result).toMatchObject({ statusCode: 409 })
+    expect(check.mock.calls.length).toBeGreaterThan(1)
+    expect((await CampaignBalanceModel.findOne())?.availableBalance).toBe(1000)
+    expect((await repo.findById(item.id))?.status).toBe('PENDING')
+    expect(provider.initiateTransfer).not.toHaveBeenCalled()
+  } finally { release(); await result; check.mockRestore() }
 })

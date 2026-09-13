@@ -1,3 +1,4 @@
+import { DisputeModel } from '../../../database/models/DisputeModel.js'
 import { TransferRecipientModel } from '../../../database/models/TransferRecipientModel.js'
 import { AutomaticPayoutPolicyModel, automaticPayoutDefaults } from '../../../database/models/AutomaticPayoutModel.js'
 import type { PayoutEntity } from '../../../../domain/entities/Payout.js'
@@ -29,6 +30,8 @@ export class MongoAutomaticPayoutVerification {
           goalAmount: { amount: campaign.goalAmount },
         }) && !isEarlyWithdrawal(payout.type))
           throw new AppError('Campaign cashout eligibility changed; manual review required.', 409)
+        if (await DisputeModel.exists({ campaignId: payout.campaignId, status: { $in: ['open', 'under_review'] } }))
+          throw new AppError('Campaign has an unresolved dispute; manual review required.', 409)
         const policy = await AutomaticPayoutPolicyModel.findOneAndUpdate(
           { _id: 'current', enabled: true }, { $inc: { consumptionWriteVersion: 1 } }, { new: true, timestamps: false },
         )
