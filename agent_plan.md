@@ -1,5 +1,9 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — Atomic donation settlement
+
+- Donation success, record, journal, campaign/split projections and outbox now commit in one required transaction; delivery follows commit and cannot trigger compensation of committed funds. Ledger account writes are sequential within the transaction. Five real-database rollback/concurrency/delivery tests and 38 existing focused tests pass; API types/lint pass. Scope/evidence and remaining wallet-debit, split-consent, historic repair and provider/full-suite requirements: `docs/compliance/DONATION_SETTLEMENT_INTEGRITY.md`.
+
 ### 2026-09-13 — Regression recovery and settlement audit
 
 - Replaced the stale TransferUncertainty payout stub with the real entity; now verifies the provider receives the persisted reference and funds are reserved once without refund on an ambiguous outcome. All five focused timeout/testimonial tests and API types pass. Testimonials passes in isolation unchanged; the earlier full-run HTTP400 remains an unresolved intermittent failure, not a proven fix.

@@ -111,9 +111,9 @@ export class MongoLedgerRepository implements LedgerRepositoryPort {
     const entryId = entryDoc._id!.toString();
 
     // Resolve each line's account, then append all lines in one insertMany.
-    const accounts = await Promise.all(
-      entry.lines.map((line) => this.ensureAccount(line))
-    );
+    // Mongoose transactions do not support parallel operations on one session.
+    const accounts: LedgerAccountDocument[] = [];
+    for (const line of entry.lines) accounts.push(await this.ensureAccount(line));
     const lineDocs = await JournalLineModel.insertMany(
       entry.lines.map((line, i) => ({
         journalEntryId: entryId,

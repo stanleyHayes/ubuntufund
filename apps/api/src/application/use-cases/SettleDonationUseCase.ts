@@ -1,3 +1,5 @@
+import type { UnitOfWorkPort } from '../../domain/ports/outbound/UnitOfWorkPort.js';
+import type { OutboxRecord } from '@ubuntu-fund/types';
 import {
   PaymentMethod,
   type DonationSettlementBreakdown,
@@ -51,8 +53,9 @@ export function providerToPaymentMethod(provider: string, channel?: unknown): Pa
  *   3. Enqueue a `donation.succeeded` outbox row and dispatch it in-process
  *      (realtime + receipts), so those side-effects survive a restart.
  *
- * Every step after the gate is idempotent (ledger dedupes on the intent;
- * outbox handlers are re-runnable), so a retried settlement is safe.
+ * The success gate, donation, journal, projections and outbox commit together.
+ * A failed write rolls back the gate; a retry applies the complete settlement.
+ * External outbox delivery runs only after commit.
  */
 export class SettleDonationUseCase {
   constructor(
@@ -62,6 +65,7 @@ export class SettleDonationUseCase {
     private readonly projector: CampaignLedgerProjector,
     private readonly outboxRepo: OutboxRepositoryPort,
     private readonly outboxDispatcher: OutboxDispatcher,
+    private readonly unitOfWork: UnitOfWorkPort,
     /**
      * Optional: redeems a donation's fee-waiver coupon. Wired here rather than
      * in each rail because all five — wallet, Paystack, Flutterwave, crypto and
@@ -77,6 +81,21 @@ export class SettleDonationUseCase {
     breakdown: DonationSettlementBreakdown,
     verifiedChannel?: unknown
   ): Promise<DonationIntentEntity> {
+    const result = await this.unitOfWork.run(() => this.settle(intent, breakdown, verifiedChannel));
+    // External delivery must only observe committed accounting. A delivery
+    // outage must not make the wallet caller refund an already-settled donation.
+    if (result.outbox) {
+      try { await this.outboxDispatcher.dispatch(result.outbox); }
+      catch (error) { logger.error({ err: error, outboxId: result.outbox.id }, 'committed donation delivery pending outbox retry'); }
+    }
+    return result.intent;
+  }
+
+  private async settle(
+    intent: DonationIntentEntity,
+    breakdown: DonationSettlementBreakdown,
+    verifiedChannel?: unknown
+  ): Promise<{ intent: DonationIntentEntity; outbox?: OutboxRecord }> {
     // ── 1. Exactly-once settlement gate ──────────────────────────────────
     const settled = await this.donationIntentRepo.transitionToSucceeded(
       intent.id,
@@ -86,7 +105,7 @@ export class SettleDonationUseCase {
       const current = await this.donationIntentRepo.findById(intent.id);
       if (current?.status === 'SUCCEEDED') {
         // Already settled by a prior call — idempotent no-op.
-        return current;
+        return { intent: current };
       }
       throw new AppError(
         `Cannot settle donation intent in state ${current?.status ?? 'unknown'}`,
@@ -170,10 +189,7 @@ export class SettleDonationUseCase {
       type: 'donation.succeeded',
       payload,
     });
-    // Dispatch now; anything left pending after a crash is re-swept on boot.
-    await this.outboxDispatcher.dispatch(outboxRecord);
-
-    return settled;
+    return { intent: settled, outbox: outboxRecord };
   }
 
   /**

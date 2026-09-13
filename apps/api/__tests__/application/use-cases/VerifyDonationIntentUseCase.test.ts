@@ -59,7 +59,8 @@ describe('Hosted donation callback verification', () => {
       repo as never, {save} as never, {execute:journal} as never,
       {projectDonation:project} as never,
       {enqueue:vi.fn(async () => ({id:'outbox'}))} as never,
-      {dispatch:vi.fn()} as never
+      {dispatch:vi.fn()} as never,
+      { run: async work => work() }
     );
     const reconcile = new ReconcilePaymentsUseCase(
       new Map([['paystack',gateway]]) as never, repo as never,

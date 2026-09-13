@@ -681,6 +681,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     campaignLedgerProjector,
     outboxRepo,
     outboxDispatcher,
+    new MongoUnitOfWork(),
     couponRepo,
     couponRedemptionRepo,
   )

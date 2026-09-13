@@ -1,3 +1,4 @@
+import { MongoUnitOfWork } from '../../src/infrastructure/adapters/outbound/persistence/MongoUnitOfWork.js';
 import { beforeAll, afterAll, expect, it, vi } from 'vitest';
 import { connectTestDatabase, disconnectTestDatabase, dropTestDatabase } from '../helpers/testDatabase.js';
 import { SettleDonationUseCase } from '../../src/application/use-cases/SettleDonationUseCase.js';
@@ -12,7 +13,7 @@ it.each(['wallet', 'paystack', 'bitnob'] as const)('preserves submitted attribut
   const intent = new DonationIntentEntity({ id: `intent-${provider}`, campaignId: 'campaign', donorUserId: null, donorName: 'Submitted guest alias', donorEmail: 'private@example.com', message: 'Submitted message', messageAgreement: agreement, amount: 25, currency: 'GHS', isAnonymous: false, tip: 0, status: 'SUCCEEDED', provider, createdAt: new Date(), updatedAt: new Date() });
   const repo = new MongoDonationRepository();
   const journal = { execute: vi.fn() }, projector = { projectDonation: vi.fn() }, dispatch = { dispatch: vi.fn() };
-  const uc = new SettleDonationUseCase({ transitionToSucceeded: async () => intent, recordSettlementFinancials: vi.fn() } as never, repo, journal as never, projector as never, { enqueue: async () => ({ id: 'outbox' }) } as never, dispatch as never);
+  const uc = new SettleDonationUseCase({ transitionToSucceeded: async () => intent, recordSettlementFinancials: vi.fn() } as never, repo, journal as never, projector as never, { enqueue: async () => ({ id: 'outbox' }) } as never, dispatch as never, new MongoUnitOfWork());
   await uc.execute(intent, { providerRef: `ref-${provider}`, amount: 25, gross: 25, currency: 'GHS', processorFee: 0, platformFee: 0, beneficiaryNet: 25 } as never);
   const row = await DonationModel.findOne({ paymentMethod: provider === 'wallet' ? 'wallet' : provider === 'bitnob' ? 'crypto' : 'card' });
   // Verify through repository mapping too, not just the raw document.
