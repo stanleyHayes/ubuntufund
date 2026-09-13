@@ -5,7 +5,7 @@ import { Button, Text } from 'react-native-paper'
 import { api } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 function displayText(action: string, text: string): string {
-  if (action === 'campaign.create' || action === 'creator.profile' || action === 'organization.profile' || action === 'account.profile') {
+  if (action === 'comment.create' || action === 'campaign.create' || action === 'creator.profile' || action === 'organization.profile' || action === 'account.profile') {
     try { const fields: unknown = JSON.parse(text); if (fields && typeof fields === 'object' && !Array.isArray(fields)) return Object.entries(fields).map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : String(value)}`).join('\n\n') } catch { /* Show original evidence. */ }
   }
   if (!action.startsWith('update.')) return text

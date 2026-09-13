@@ -2,6 +2,12 @@
 
 Engineering controls now cover effective account identity edits and changing an existing private profile to public. Initial registration/legacy identity and all public projections remain separate open requirements.
 
+## Comment attribution checkpoint
+
+New comment admission now includes the displayed account name and avatar, instead of reviewing only the comment body. The existing fingerprint binds these values to actor/action/campaign; changing a registration name or avatar changes the version needing approval. Avatar-bearing submissions stay in the staff media queue. Public name and comment are the only structured text fields; private email/profile/credential fields are excluded. The author identity is re-read after screening and a mismatch denies insertion. Admin/web/native review evidence displays the structured fields.
+
+Seventeen publication integration tests pass, including held public name/avatar, approved resubmission, private-field exclusion and identity mutation during screening. Eight admin and seven web review tests plus API/admin/web/native types/lint pass. Logs `/tmp/ujimora-comment-attribution-{tests,admin,web,checks}.log`. This covers new comment admission only: dynamic author reads, legacy comments, other registration-name projections, immutable avatar bytes, native rendering and final transaction fencing remain open. The post-screening read is not an atomic guarantee against a subsequent identity change.
+
 ## Admission and privacy
 
 - `MongoAccountProfileWrite` assembles the full proposed name, avatar, cover, country and profile-page visibility before any account/profile edit. The publication fingerprint binds actor, account, original identity/visibility and a dedicated identity revision. An unchanged field included in a stale request still receives the final version comparison; it cannot bypass review by appearing unchanged before a concurrent edit.

@@ -31,6 +31,27 @@ async function fixture() {
   return { owner, admin, other, campaign, comments: `/api/v1/campaigns/${campaign.id}/comments`, updates: `/api/v1/campaigns/${campaign.id}/updates` };
 }
 const notes = 'Reviewed the complete proposed public version against community rules.';
+it('reviews comment attribution and media without sharing private account fields', async () => {
+  const f = await fixture();
+  await UserModel.updateOne({ _id: f.owner.id }, { $set: { name: 'Unreviewed registration name', avatarUrl: 'https://example.test/avatar.png' } });
+  await request(app).post(f.comments).set('Authorization', f.owner.auth).send({ content: 'A proposed comment', automatedReviewConsent: true }).expect(409);
+  const held = await PublicationReviewModel.findOne({ actorId: f.owner.id, action: 'comment.create' });
+  expect(JSON.parse(held!.text)).toEqual({ authorName: 'Unreviewed registration name', comment: 'A proposed comment' });
+  expect(held!.mediaUrls).toEqual(['https://example.test/avatar.png']);
+  expect(held!.text).not.toContain('@example.test');
+  expect(screen).not.toHaveBeenCalled();
+  expect(await CampaignCommentModel.countDocuments({ campaignId: f.campaign.id })).toBe(0);
+  await request(app).put(`/api/v1/admin/publication-reviews/${held!.id}/review`).set('Authorization', f.admin.auth).send({ decision: 'approved', notes }).expect(200);
+  await request(app).post(f.comments).set('Authorization', f.owner.auth).send({ content: 'A proposed comment' }).expect(201);
+});
+
+it('rejects a comment when its public author identity changes during screening', async () => {
+  const f = await fixture();
+  screen.mockImplementationOnce(async () => { await UserModel.updateOne({ _id: f.owner.id }, { $set: { name: 'Changed during screening' } }); return 'allowed'; });
+  await request(app).post(f.comments).set('Authorization', f.owner.auth).send({ content: 'Comment with changing attribution', automatedReviewConsent: true }).expect(409);
+  expect(await CampaignCommentModel.countDocuments({ campaignId: f.campaign.id })).toBe(0);
+});
+
 it('retries a transaction whose approval is revoked after its snapshot without creating a live session', async () => {
   const f = await fixture();
   await SubscriptionModel.create({ userId: f.owner.id, tier: 'pro', status: 'active', billingCycle: 'monthly', currentPeriodStart: new Date(), currentPeriodEnd: new Date(Date.now() + 86400000) });
@@ -141,7 +162,7 @@ it('holds without cloud consent, deduplicates retries, isolates evidence and per
 it('screens only opted-in public text and holds flagged, failed or media submissions', async () => {
   const f = await fixture();
   await request(app).post(f.comments).set('Authorization', f.owner.auth).send({ content: 'Allowed public text', automatedReviewConsent: true }).expect(201);
-  expect(screen).toHaveBeenLastCalledWith('Allowed public text');
+  expect(screen).toHaveBeenLastCalledWith(JSON.stringify({ authorName: 'Publication reviewer', comment: 'Allowed public text' }));
   screen.mockResolvedValueOnce('flagged');
   await request(app).post(f.comments).set('Authorization', f.owner.auth).send({ content: 'Flagged fixture text', automatedReviewConsent: true }).expect(409);
   screen.mockRejectedValueOnce(new Error('Provider unavailable'));

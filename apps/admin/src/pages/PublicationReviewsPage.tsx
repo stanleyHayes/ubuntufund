@@ -10,7 +10,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Alert, Button, MenuItem, Paper, Skeleton, Stack, Typography } from '@mui/material'
 import { api } from '@/lib/api'
 function displayText(action: string, text: string): string {
-  if (action === 'donation.public_content' || action === 'tip.public_content' || action === 'campaign.create' || action === 'creator.profile' || action === 'organization.profile' || action === 'account.profile') {
+  if (action === 'comment.create' || action === 'donation.public_content' || action === 'tip.public_content' || action === 'campaign.create' || action === 'creator.profile' || action === 'organization.profile' || action === 'account.profile') {
     try { const fields: unknown = JSON.parse(text); if (fields && typeof fields === 'object' && !Array.isArray(fields)) return Object.entries(fields).map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : String(value)}`).join('\n\n') } catch { /* Show original evidence. */ }
   }
   if (!action.startsWith('update.')) return text

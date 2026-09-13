@@ -44,7 +44,15 @@ export class CampaignCommentUseCases {
     const content = input.content.trim();
     if (!content) throw new AppError('Comment cannot be empty', 400);
     if (!this.admission) throw new AppError('Publication review is unavailable', 503);
-    await this.admission.assertAllowed({ actorId: authorId, action: 'comment.create', resourceId: campaignId, text: content, mediaUrls: [], automatedReviewConsent: input.automatedReviewConsent });
+    const author = await this.users.findById(authorId);
+    if (!author) throw new AppError('The publishing account is unavailable', 401);
+    // Attribution is public content too, including a name entered at signup.
+    await this.admission.assertAllowed({ actorId: authorId, action: 'comment.create', resourceId: campaignId,
+      text: JSON.stringify({ authorName: author.name, comment: content }), mediaUrls: author.avatarUrl ? [author.avatarUrl] : [], automatedReviewConsent: input.automatedReviewConsent });
+    const currentAuthor = await this.users.findById(authorId);
+    if (!currentAuthor || currentAuthor.name !== author.name || currentAuthor.avatarUrl !== author.avatarUrl) {
+      throw new AppError('Your public identity changed during review. Refresh and submit again.', 409);
+    }
     const comment = await this.comments.create(campaignId, authorId, content);
     return this.toDTO(comment);
   }
