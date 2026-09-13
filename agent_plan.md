@@ -1,5 +1,12 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — Full API regression and device-specific split install complete
+
+- API45526 is terminal exit0:1,218tests across165files pass in1,090.26seconds, source1a43ae5. Current API/shared diff against that baseline is empty. This supersedes running entries below and covers wallet attribution, creator currency consistency, null account closure/privacy and historical closure audit. Source freeze lifted; no verification jobs remain running from this checkpoint.
+- Google bundletool generates4 device-specific APKs from the current AAB; all4 pass ZIP16KB checks and install on dedicated emulator-5580. Installed package paths confirm base/ARM64/en/mdpi splits. Cold startup472ms, ReactNativeJS main runs, PID7688 remains alive; settled screenshot inspected with expected non-routable-API error. Native ledger records limitations.27RELRO findings remain.
+- Logs `/tmp/ujimora-api-1a43ae5-full.log`, `/tmp/ujimora-current-split-{build,install,startup,logcat,paths}.log`, `/tmp/ujimora-current-split-alignment.json`; screenshot `/tmp/ujimora-current-split-settled.png`. Provider, physical-device, final signing and legal/store gates remain open.
+
+
 ### 2026-09-13 — Android App Bundle packaging verification
 
 - Current-source bundleRelease68262 passes in38s; Google bundletool1.18.1 validates the resulting AAB (exit0) and config declares PAGE_ALIGNMENT_16K. All48 bundled native binaries match the inspected APK byte-for-byte, so27RELRO findings remain rather than being hidden by different packaging.

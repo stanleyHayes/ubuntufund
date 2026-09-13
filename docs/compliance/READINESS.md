@@ -16,6 +16,10 @@ Current implementation passes all395 frontend tests: web203 across48 files, admi
 
 Production builds for web/admin/marketing also pass on this implementation, and all14 workspace type/lint tasks pass uncached (zero lint errors; existing warnings remain). Logs `/tmp/ujimora-{web,admin,marketing}-ceb9304-build.log` and `/tmp/ujimora-ceb9304-workspace-checks.log`. Build success is not deployment or signed-artifact verification.
 
+## Completed current API regression — 13 September 2026
+
+Full API session45526 completes exit0:1,218tests across165files pass in1,090.26seconds on1a43ae5 API/shared source; current-source comparison is unchanged. Log `/tmp/ujimora-api-1a43ae5-full.log`. This supersedes all running-session statements above and includes recent wallet attribution, currency checks and closure/privacy fixes. Source freeze is lifted. Local test completion does not establish production provider operation, historical repairs, legal authorization or store acceptance.
+
 ## Current authoritative references
 
 | ID | Source | Applicability |

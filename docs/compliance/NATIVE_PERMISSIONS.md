@@ -296,3 +296,9 @@ Matching executable `/proc/7452/maps` APK offsets to stored ARM64 ZIP entries id
 Root bundleRelease68262 passes in38seconds (975tasks,31executed). Artifact `apps/mobile/android/app/build/outputs/bundle/release/app-release.aab`, SHA256 `1b80160f0b7f43f3e82f3fad66a635adbc3f54c1e7393ddf30f52c1dad6d3cb6`. Google bundletool1.18.1 validation exits0; dumped config specifies PAGE_ALIGNMENT_16K. All48 AAB native binaries are byte-identical to the previously inspected APK, retaining the same27RELRO findings.
 
 Evidence: `/tmp/ujimora-current-aab-build.log`, `/tmp/ujimora-current-aab-config.json`, `/tmp/ujimora-current-aab-validation.log`, `/tmp/ujimora-current-aab-native-parity.json`. Tool downloaded from Google's bundletool GitHub release1.18.1. This remains debug-signed with a non-routable API: packaging verification only, not production signing, generated split-APK device acceptance or store approval. No upload/submission occurred.
+
+## Device-specific AAB split installation — 13 September 2026
+
+Google bundletool1.18.1 generated4 APKs for the dedicated16KB ARM64 emulator from the current AAB. Every generated APK passes ZIP16KB alignment. Install succeeds; `pm path` confirms base plus ARM64/en/mdpi splits, not the previous monolithic installation. Cold launch472ms; ReactNativeJS main runs and PID7688 remains alive. Initial screenshot shows loading; the later inspected screenshot shows the expected unavailable-API screen and tab bar.
+
+Evidence `/tmp/ujimora-current-split-{build,install,startup,logcat,paths}.log`, `/tmp/ujimora-current-split-alignment.json`, `/tmp/ujimora-current-split-settled.png`; generated archive `/tmp/ujimora-current-device.apks`. Debug signing/non-routable API remain deliberate local-test constraints. This verifies device-specific packaging/install/startup;27RELRO findings, feature-dependent runtime behavior, physical devices, production signing and store approval remain open.
