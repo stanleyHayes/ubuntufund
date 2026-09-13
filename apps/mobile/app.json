@@ -64,7 +64,11 @@
         "android.permission.READ_MEDIA_AUDIO",
         "android.permission.READ_EXTERNAL_STORAGE"
       ],
-      "allowBackup": false
+      "allowBackup": false,
+      "permissions": [
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png",

@@ -2,6 +2,8 @@
 
 ### 2026-09-12 — Ghana and mobile store compliance goal (IN PROGRESS)
 
+- Fixed the missing Android media-projection permission using explicit Expo foreground-service permissions. Isolated prebuild and release manifest merge pass (session 95412 exit 0, 37s); parsed service/permissions/SDK/backup/blocked-permission assertions pass. Added actual device and Play Console acceptance items. API session 3544 remains confirmed live with source unchanged. See NATIVE_PERMISSIONS.md for artifact hash and provenance.
+
 - Android session 20258 finished successfully. Parsed merged release manifest verifies SDK 36/minimum 24, backup references/all nine exclusions and six blocked permissions absent; inventory/hash recorded in NATIVE_PERMISSIONS.md. The merge exposes a missing media-projection foreground-service permission and transitive component minimization follow-ups. No signed/full native build claimed. API session 3544 confirmed live, source unchanged.
 
 - Native upload privacy: app-owned picker cache copies are removed after upload attempts, including failures, with explicit cache/path guards and visible cleanup failure. Source documents, remote/content URIs and traversal paths are preserved. All 101 mobile tests plus final types/lint pass (`/tmp/ujimora-upload-cache-*`). Native artifact session 20258 remains live: thread inspection shows Android AAR extraction writing files, not a terminal failure (`/tmp/ujimora-manifest-thread-state.log`). Full API session 3544 remains live with unchanged API source.

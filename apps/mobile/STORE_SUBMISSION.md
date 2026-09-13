@@ -38,3 +38,9 @@ acceptance. The requirement ledger is [READINESS](../../docs/compliance/READINES
 Account closure preserves relational and financial integrity; it is not an excuse
 to retain personal data indefinitely. Retention schedules, lawful exceptions,
 processor erasure and outstanding legal holds require documented operator review.
+
+### Android screen-sharing foreground service
+
+- [ ] Declare the media-projection foreground-service use in Play Console with the actual user-initiated live screen-sharing flow and requested review evidence. See [Google foreground-service requirements](https://support.google.com/googleplay/android-developer/answer/13392821?hl=en).
+- [ ] On a signed Android 14+ device build, verify capture consent, denial without capture, app/window selection, visible service notification, stop/disconnect, system revocation and repeated sessions. Also verify microphone behavior when leaving the app during sharing.
+- Source configuration explicitly declares FOREGROUND_SERVICE and FOREGROUND_SERVICE_MEDIA_PROJECTION for the existing WebRTC mediaProjection service. A declaration is not a runtime or store-console verification.
