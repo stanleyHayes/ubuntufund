@@ -31,5 +31,8 @@ process.env.MONGODB_URI ??= testDatabaseUri();
 export async function createTestApp(options: { publicationAdmission?: PublicationAdmissionPort } = {}): Promise<Express> {
   const { createApp } = await import('../../src/app.js');
   // Existing integration suites isolate their feature; publication tests inject the real admission service.
-  return createApp({ publicationAdmission: { assertAllowed: async () => {}, assertCurrent: async () => {} }, ...options });
+  const app = createApp({ publicationAdmission: { assertAllowed: async () => {}, assertCurrent: async () => {} }, ...options });
+  const { initializeDatabaseModels } = await import('../../src/infrastructure/database/connection.js');
+  await initializeDatabaseModels();
+  return app;
 }

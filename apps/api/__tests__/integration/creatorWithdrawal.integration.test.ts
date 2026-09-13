@@ -145,6 +145,7 @@ describe('Creator withdrawal — transfer rail', () => {
     expect(await CreatorPayoutModel.findOne({ requestKey: key }).lean()).toEqual(payout)
     // Simulate a request whose first lookup ran before the other owner's insert.
     // The real unique index then selects the winner after this request reserves.
+    expect(await CreatorPayoutModel.collection.indexes()).toEqual(expect.arrayContaining([expect.objectContaining({ key: { requestKey: 1 }, unique: true })]))
     const lookup = vi.spyOn(MongoCreatorPayoutRepository.prototype, 'findByRequestKey').mockResolvedValueOnce(null).mockResolvedValueOnce(null)
     try {
       await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${other.token}`).send(body).expect(409)
