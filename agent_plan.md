@@ -2,6 +2,8 @@
 
 ### 2026-09-12 — Ghana and mobile store compliance goal (IN PROGRESS)
 
+- WebRTC AAR inspection found 16 KB LOAD alignment but nonzero RELRO end alignment on both installed 64-bit libraries. Candidate 144.7559.15 fixes arm64 alignment only; x86_64 remains nonzero. No dependency upgrade or runtime success claimed; hashes/evidence and next compatibility evaluation in NATIVE_PERMISSIONS.md. APK 37305/API 67839 confirmed live and unchanged.
+
 - Android full assemble 37305 remains live; active ninja/clang compilation confirmed for arm64 appmodules/expo-modules-core. API regression 67839 also confirmed live. Read-only clipboard-provider inspection verifies its restricted .clipboard cache root is separate from recovery-code export files; no unsafe exported-flag change made. Artifact/device/clipboard lifecycle evidence remains open in NATIVE_PERMISSIONS.md.
 
 - Current-source Android prebuild passed from archived 69d94fa; all 184 tracked mobile files match except documented temporary Metro dependency resolution. Full APK assemble session 37305 confirmed live (local debug signing, not store release), `/tmp/ujimora-android-current-assemble.log`. Full API regression 67839 confirmed live on unchanged 69d94fa API/shared source, `/tmp/ujimora-api-manual-approval-regression.log`; preserve source until terminal. No artifact/full-suite pass claimed.
