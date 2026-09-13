@@ -2,6 +2,8 @@
 
 ### 2026-09-13 — Atomic wallet donation accounting
 
+- Published as `428402b`; root main synced to origin. Full API regression97713 is now running on unchanged 428402b API/shared source, log `/tmp/ujimora-wallet-atomic-full-regression.log`. Keep root API/shared frozen until its terminal result; continue read-only audit or new implementation in the isolated checkout.
+
 - Wallet debit, required donor transaction history, intent success and campaign settlement now commit together. Removed post-error compensation that could refund an uncertain committed donation. Known insufficient-funds refusals commit FAILED and free a coupon seat; unexpected write failures leave a resumable intent without money movement.
 - Interrupted wallet requests resume from the stored owner/amount/tip; idempotency lookup and creation-race winners reject mismatched account/payment method. Six real-database wallet cases cover after-write rollback/retry, concurrent debit, delivery failure, insufficient funds and mismatched charge; the route resume test checks ownership and original amount.
 - All 44 tests in six focused files passed, then all 18 tests in the two affected retry files passed after final binding hardening. API types, affected lint and whitespace checks pass. No production funds/history modified. Details and remaining historic reconciliation/provenance/external gates: `docs/compliance/DONATION_SETTLEMENT_INTEGRITY.md`.
