@@ -1,8 +1,12 @@
+import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
+import { ReviewQueueSkeleton, ReviewQueueEmpty, ReviewQueueToolbar } from '@/components/ReviewQueueStates'
+import PrivacyTipRoundedIcon from '@mui/icons-material/PrivacyTipRounded'
+import { raisedSurface } from '@/lib/surfaces'
 import ExportMenu from '@/components/ExportMenu'
 import { loadAll } from '@/lib/exports/loadAll'
 import { exportTable, dateCell } from '@/lib/exports/report'
 import { useCallback, useEffect, useState } from 'react'
-import { Alert, Button, MenuItem, Stack, TextField, Typography } from '@mui/material'
+import { Alert, Button, MenuItem, Stack, Typography } from '@mui/material'
 import { api } from '@/lib/api'
 type Item = { _id: string; userId: string; kind: string; details: string; status: string; response: string; dueAt: string; revision: number }
 function Review({ item, refresh }: { item: Item; refresh: () => Promise<void> }) {
@@ -21,7 +25,7 @@ function Review({ item, refresh }: { item: Item; refresh: () => Promise<void> })
     catch (error) { setError(error instanceof Error ? error.message : 'Could not save review') }
     finally { setBusy(false) }
   }
-  return <Stack spacing={2} sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 2, overflowWrap: 'anywhere' }}>
+  return <Stack spacing={2} sx={{ ...raisedSurface, p: { xs: 2, sm: 3 }, overflowWrap: 'anywhere' }}>
     <Typography fontWeight={700}>{item.kind} · {item.status.replace('_', ' ')}</Typography>
     <Typography variant="body2">Reference {item._id} · Account {item.userId} · Target {new Date(item.dueAt).toLocaleDateString()}</Typography>
     <Typography sx={{ whiteSpace: 'pre-wrap' }}>{item.details}</Typography>
@@ -49,13 +53,17 @@ export function DataRightsQueue() {
   useEffect(() => { void load() }, [load])
   return <Stack spacing={2}>
     <Typography variant="h5">Data access, corrections and complaints</Typography>
-    <ExportMenu title="Data rights requests" disabled={loading || !!error} getReport={async progress => ({ title: "Data rights requests", filters: [`Status: ${status}`], tables: [exportTable("Data rights requests", await loadAll<Item>(`/admin/data-rights?status=${status}`, progress), { ID: r => r._id, Account: r => r.userId, Kind: r => r.kind, Status: r => r.status, "Due (UTC)": r => dateCell(r.dueAt), Details: r => r.details, Response: r => r.response })] })} />
+    <ReviewQueueToolbar>
+      <TextField select label="Request status" value={status} onChange={e => { setStatus(e.target.value); setPage(1) }}><MenuItem value="active">Open and in review</MenuItem><MenuItem value="responded">Responded</MenuItem></TextField>
+      <Button disabled={loading} onClick={() => void load()}>Refresh data requests</Button>
+      <ExportMenu title="Data rights requests" disabled={loading || !!error} getReport={async progress => ({ title: "Data rights requests", filters: [`Status: ${status}`], tables: [exportTable("Data rights requests", await loadAll<Item>(`/admin/data-rights?status=${status}`, progress), { ID: r => r._id, Account: r => r.userId, Kind: r => r.kind, Status: r => r.status, "Due (UTC)": r => dateCell(r.dueAt), Details: r => r.details, Response: r => r.response })] })} />
+    </ReviewQueueToolbar>
     <Alert severity="info">The 30-day response target is an operational deadline. Review applicable legal timing, third-party rights and processor records. Responses appear in the account's Settings; closed-account requests need verified communication through the privacy team.</Alert>
-    <TextField select label="Request status" value={status} onChange={e => { setStatus(e.target.value); setPage(1) }}><MenuItem value="active">Open and in review</MenuItem><MenuItem value="responded">Responded</MenuItem></TextField>
-    <Button disabled={loading} onClick={() => void load()}>Refresh data requests</Button>
+
+
     {error && <Alert severity="error" action={<Button onClick={() => void load()}>Retry</Button>}>{error}</Alert>}
-    {loading ? <Typography>Loading data-rights requests…</Typography> : items.map(item => <Review key={`${item._id}:${item.revision}`} item={item} refresh={load} />)}
-    {!loading && !error && !items.length && <Typography>No requests in this view.</Typography>}
-    <Stack direction="row" spacing={2}><Button disabled={page === 1 || loading} onClick={() => setPage(page - 1)}>Previous data requests</Button><Typography>Page {page} · {total} requests</Typography><Button disabled={page * 25 >= total || loading} onClick={() => setPage(page + 1)}>More data requests</Button></Stack>
+    {loading ? <ReviewQueueSkeleton label="Loading data-rights requests" /> : !error && items.map(item => <Review key={`${item._id}:${item.revision}`} item={item} refresh={load} />)}
+    {!loading && !error && !items.length && <ReviewQueueEmpty title="No requests in this view." description="Access requests, corrections and privacy complaints will appear here. Change the status filter to review completed responses." icon={<PrivacyTipRoundedIcon />} />}
+    <Stack direction="row" useFlexGap flexWrap="wrap" alignItems="center" spacing={2}><Button disabled={page === 1 || loading} onClick={() => setPage(page - 1)}>Previous data requests</Button><Typography>Page {page} · {total} requests</Typography><Button disabled={page * 25 >= total || loading} onClick={() => setPage(page + 1)}>More data requests</Button></Stack>
   </Stack>
 }

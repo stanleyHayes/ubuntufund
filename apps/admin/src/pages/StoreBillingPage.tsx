@@ -1,5 +1,7 @@
+import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
+import { ReviewQueueSkeleton, ReviewQueueEmpty, ReviewQueueToolbar } from '@/components/ReviewQueueStates'
 import { useCallback, useEffect, useState } from 'react'
-import { Alert, Box, Button, Chip, Skeleton, Stack, TextField, Typography } from '@mui/material'
+import { Alert, Box, Button, Chip, Skeleton, Stack, Typography } from '@mui/material'
 import WorkspacePremiumRoundedIcon from '@mui/icons-material/WorkspacePremiumRounded'
 import PageHeader from '@/components/PageHeader'
 import ExportMenu from '@/components/ExportMenu'
@@ -55,8 +57,10 @@ export default function StoreBillingPage() {
   }, [page])
   useEffect(() => { void load() }, [load])
   return <Stack spacing={3}>
-    <PageHeader title="Store billing recovery" eyebrow="Subscriptions" lede="Review pending verification and acknowledgement work from App Store and Google Play." icon={<WorkspacePremiumRoundedIcon />} />
-    <ExportMenu title="Store billing recovery" disabled={loading || !!error} getReport={async progress => {
+    <PageHeader title="Store billing recovery" eyebrow="Subscriptions" lede="Review pending verification and acknowledgement work from App Store and Google Play." icon={<WorkspacePremiumRoundedIcon />} tone="gold" stats={[{ label: "Purchase issues", value: loading ? <Skeleton width={60} /> : error ? "—" : queue?.purchaseTotal ?? 0 }, { label: "Pending notifications", value: loading ? <Skeleton width={60} /> : error ? "—" : queue?.notificationTotal ?? 0 }]} />
+    <ReviewQueueToolbar>
+      <Button disabled={loading} onClick={() => void load()}>Refresh queue</Button>
+      <ExportMenu title="Store billing recovery" disabled={loading || !!error} getReport={async progress => {
       const purchases = await loadAll<WorkItem>('/admin/store-billing', progress, response => ({ items: (response as Queue).purchases, total: (response as Queue).purchaseTotal }))
       const notifications = await loadAll<WorkItem>('/admin/store-billing', progress, response => ({ items: (response as Queue).notifications, total: (response as Queue).notificationTotal }))
       return { title: 'Store billing recovery', filters: ['Pending verification and acknowledgement work'], tables: [
@@ -64,16 +68,17 @@ export default function StoreBillingPage() {
         exportTable('Notifications', notifications, { ID: r => r._id, Store: r => r.store, Attempts: r => r.attempts, 'Review required': r => r.reviewRequired, 'Next attempt (UTC)': r => dateCell(r.nextAttemptAt) }),
       ] }
     }} />
+    </ReviewQueueToolbar>
     <Alert severity="info">Receipts remain private. Correct store configuration or account issues before retrying. Ownership and access dates can only change after verified store evidence. Handle refunds in the responsible store.</Alert>
     {queue && !queue.enabled && <Alert severity="warning">Store billing is disabled. Configure it on the server before retrying this work.</Alert>}
     {error && <Alert severity="error">{error}</Alert>}
-    <Button disabled={loading} onClick={() => void load()}>Refresh queue</Button>
-    {loading && !queue ? <Skeleton variant="rounded" height={200} /> : queue && !error && <>
+
+    {loading ? <ReviewQueueSkeleton label="Loading store billing recovery" /> : queue && !error && <>
       <Typography>{queue.purchaseTotal} purchase issues · {queue.notificationTotal} pending notifications</Typography>
       {queue.purchases.map(item => <Work key={`purchase-${item._id}`} item={item} kind="purchase" enabled={queue.enabled} refresh={load} />)}
       {queue.notifications.map(item => <Work key={`notification-${item._id}`} item={item} kind="notification" enabled={queue.enabled} refresh={load} />)}
-      {queue.purchaseTotal + queue.notificationTotal === 0 && <Typography>No pending billing recovery work.</Typography>}
-      <Stack direction="row" spacing={2} alignItems="center"><Button disabled={loading || page === 1} onClick={() => setPage(value => value - 1)}>Previous</Button><Typography>Page {page}</Typography><Button disabled={loading || page * 25 >= Math.max(queue.purchaseTotal, queue.notificationTotal)} onClick={() => setPage(value => value + 1)}>Next</Button></Stack>
+      {queue.purchaseTotal + queue.notificationTotal === 0 && <ReviewQueueEmpty title="No pending billing recovery work." description="Purchase verification and store notification issues will appear here when they need attention." icon={<WorkspacePremiumRoundedIcon />} />}
+      <Stack direction="row" useFlexGap flexWrap="wrap" spacing={2} alignItems="center"><Button disabled={loading || page === 1} onClick={() => setPage(value => value - 1)}>Previous</Button><Typography>Page {page}</Typography><Button disabled={loading || page * 25 >= Math.max(queue.purchaseTotal, queue.notificationTotal)} onClick={() => setPage(value => value + 1)}>Next</Button></Stack>
     </>}
   </Stack>
 }

@@ -1,9 +1,11 @@
+import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
+import { ReviewQueueSkeleton, ReviewQueueEmpty } from '@/components/ReviewQueueStates'
 import ExportMenu from '@/components/ExportMenu'
 import { loadAll } from '@/lib/exports/loadAll'
 import { exportTable, dateCell } from '@/lib/exports/report'
 import { DataRightsQueue } from '@/components/DataRightsQueue'
 import { useCallback, useEffect, useState } from 'react'
-import { Alert, Box, Button, Chip, Skeleton, Stack, TextField, Typography } from '@mui/material'
+import { Alert, Box, Button, Chip, Skeleton, Stack, Typography } from '@mui/material'
 import PrivacyTipRoundedIcon from '@mui/icons-material/PrivacyTipRounded'
 import PageHeader from '@/components/PageHeader'
 import { api } from '@/lib/api'
@@ -45,7 +47,7 @@ export default function PrivacyRequestsPage() {
   const [error, setError] = useState('')
   const [retrying, setRetrying] = useState(false)
   const load = useCallback(async () => {
-    setError('')
+    setLoading(true); setError('')
     try { const data = await api.get<{ items: PrivacyRequest[]; total: number }>(`/admin/privacy-requests?page=${page}`); setItems(data.items); setTotal(data.total) }
     catch (e) { setError(e instanceof Error ? e.message : 'Could not load requests') }
     finally { setLoading(false) }
@@ -53,14 +55,14 @@ export default function PrivacyRequestsPage() {
   useEffect(() => { void load() }, [load])
   async function retry() { setRetrying(true); try { await api.post('/admin/privacy-requests/retry'); await load() } catch (e) { setError(e instanceof Error ? e.message : 'Retry failed') } finally { setRetrying(false) } }
   return <Stack spacing={3}>
-    <PageHeader title="Privacy requests" eyebrow="Trust & safety" lede="Track account erasure, justified retention and service-provider follow-up." icon={<PrivacyTipRoundedIcon />} />
+    <PageHeader title="Privacy requests" eyebrow="Trust & safety" lede="Track account erasure, justified retention and service-provider follow-up." icon={<PrivacyTipRoundedIcon />} tone="teal" stats={[{ label: "Deletion & retention requests", value: loading ? <Skeleton width={60} /> : error ? "—" : total }]} />
     <DataRightsQueue />
     <Typography variant="h5">Account deletion and retention</Typography>
     <ExportMenu title="Account deletion and retention" disabled={loading || !!error} getReport={async progress => ({ title: "Account deletion and retention", filters: ["All deletion and retention requests"], tables: [exportTable("Account deletion and retention", await loadAll<PrivacyRequest>('/admin/privacy-requests', progress), { ID: r => r._id, Account: r => r.userId, Status: r => r.status, "Requested (UTC)": r => dateCell(r.requestedAt), "Profile cleanup (UTC)": r => dateCell(r.coreRemovedAt), "Next review (UTC)": r => dateCell(r.nextReviewAt), Notes: r => r.reviewNotes })] })} />
     <Alert severity="info">A completed profile cleanup does not certify full erasure. Review retained records, account balances, campaigns, provider copies and backup handling, and respond to the requester.</Alert>
-    <Button variant="outlined" disabled={retrying} onClick={() => { void retry() }}>{retrying ? 'Retrying…' : 'Retry pending cleanup'}</Button>
+    <Button sx={{ alignSelf: 'flex-start' }} variant="outlined" disabled={retrying || loading} onClick={() => { void retry() }}>{retrying ? 'Retrying…' : 'Retry pending cleanup'}</Button>
     {error && <Alert severity="error" action={<Button onClick={() => { void load() }}>Retry</Button>}>{error}</Alert>}
-    {loading ? <Skeleton variant="rounded" height={200} /> : !error && items.length === 0 ? <Typography>No account deletion requests.</Typography> : items.map(item => <Review key={item._id} item={item} refresh={load} />)}
-    <Stack direction="row" spacing={2} alignItems="center"><Button disabled={page === 1} onClick={() => setPage(page - 1)}>Previous</Button><Typography>Page {page} · {total} requests</Typography><Button disabled={page * 25 >= total} onClick={() => setPage(page + 1)}>Next</Button></Stack>
+    {loading ? <ReviewQueueSkeleton label="Loading account deletion requests" /> : !error && items.length === 0 ? <ReviewQueueEmpty title="No account deletion requests." description="Account closure requests and retained-data follow-ups will appear here when they need attention." icon={<PrivacyTipRoundedIcon />} /> : !error && items.map(item => <Review key={item._id} item={item} refresh={load} />)}
+    <Stack direction="row" useFlexGap flexWrap="wrap" spacing={2} alignItems="center"><Button disabled={loading || page === 1} onClick={() => setPage(page - 1)}>Previous</Button><Typography>Page {page} · {total} requests</Typography><Button disabled={loading || page * 25 >= total} onClick={() => setPage(page + 1)}>Next</Button></Stack>
   </Stack>
 }

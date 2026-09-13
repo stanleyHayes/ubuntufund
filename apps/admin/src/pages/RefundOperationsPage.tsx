@@ -1,8 +1,10 @@
+import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
+import { ReviewQueueSkeleton, ReviewQueueEmpty, ReviewQueueToolbar } from '@/components/ReviewQueueStates'
 import ExportMenu from '@/components/ExportMenu'
 import { loadAll } from '@/lib/exports/loadAll'
 import { exportTable, dateCell } from '@/lib/exports/report'
 import { useCallback, useEffect, useState } from 'react'
-import { Alert, Box, Button, Chip, Skeleton, Stack, TextField, Typography } from '@mui/material'
+import { Alert, Box, Button, Chip, Skeleton, Stack, Typography } from '@mui/material'
 import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded'
 import { Action, Resource } from '@ubuntu-fund/types'
 import PageHeader from '@/components/PageHeader'
@@ -50,13 +52,16 @@ export default function RefundOperationsPage() {
     finally { setBusy('') }
   }
   return <Stack spacing={3}>
-    <PageHeader title="Refund recovery" eyebrow="Donations" lede="Review refunds with an unresolved provider outcome or unfinished accounting." icon={<PaymentsRoundedIcon />} />
-    <ExportMenu title="Refund recovery" disabled={loading || !!error} getReport={async progress => ({ title: "Refund recovery", filters: ["Unresolved refund operations"], tables: [exportTable("Refund recovery", await loadAll<Operation>('/admin/refund-operations', progress), { ID: r => r.id, Campaign: r => r.campaignId, Provider: r => r.provider, "Provider reference": r => r.providerReference, Amount: r => r.amount, Currency: r => r.currency, State: r => r.state, "Created (UTC)": r => dateCell(r.createdAt) })] })} />
+    <PageHeader title="Refund recovery" eyebrow="Donations" lede="Review refunds with an unresolved provider outcome or unfinished accounting." icon={<PaymentsRoundedIcon />} tone="gold" stats={[{ label: "Unresolved operations", value: loading ? <Skeleton width={60} /> : error ? "—" : queue?.total ?? 0 }]} />
+    <ReviewQueueToolbar>
+      <Button disabled={loading || !!busy} onClick={() => void load()}>Refresh refunds</Button>
+      <ExportMenu title="Refund recovery" disabled={loading || !!error} getReport={async progress => ({ title: "Refund recovery", filters: ["Unresolved refund operations"], tables: [exportTable("Refund recovery", await loadAll<Operation>('/admin/refund-operations', progress), { ID: r => r.id, Campaign: r => r.campaignId, Provider: r => r.provider, "Provider reference": r => r.providerReference, Amount: r => r.amount, Currency: r => r.currency, State: r => r.state, "Created (UTC)": r => dateCell(r.createdAt) })] })} />
+    </ReviewQueueToolbar>
     <Alert severity="warning">Do not submit a replacement refund while its outcome is uncertain. Verify the original operation with the payment provider using the references below. A pending or failed response is not evidence that local accounting is complete.</Alert>
     {error && <Alert severity="error">{error}</Alert>}
     {notice && <Alert severity={notice.complete ? 'success' : 'warning'}>{notice.text}</Alert>}
-    <Button disabled={loading || !!busy} onClick={() => void load()}>Refresh refunds</Button>
-    {loading && !queue ? <Skeleton variant="rounded" height={240} /> : queue && !error && <>
+
+    {loading ? <ReviewQueueSkeleton label="Loading refund recovery" /> : queue && !error && <>
       <Typography>{queue.total} unresolved refund operations</Typography>
       {queue.items.map(item => <Box key={item.id} sx={{ ...raisedSurface, p: 3, overflowWrap: 'anywhere' }}>
         <Stack spacing={2}>
@@ -80,8 +85,8 @@ export default function RefundOperationsPage() {
           </>}
         </Stack>
       </Box>)}
-      {queue.total === 0 && <Typography>No unresolved refund operations.</Typography>}
-      <Stack direction="row" spacing={2} alignItems="center">
+      {queue.total === 0 && <ReviewQueueEmpty title="No unresolved refund operations." description="Refunds awaiting provider confirmation or accounting recovery will appear here. No recovery action is needed in this queue." icon={<PaymentsRoundedIcon />} />}
+      <Stack direction="row" useFlexGap flexWrap="wrap" spacing={2} alignItems="center">
         <Button disabled={loading || !!busy || page === 1} onClick={() => setPage(value => value - 1)}>Previous</Button>
         <Typography>Page {page}</Typography>
         <Button disabled={loading || !!busy || page * queue.pageSize >= queue.total} onClick={() => setPage(value => value + 1)}>Next</Button>
