@@ -9,7 +9,8 @@ const sdk = vi.hoisted(() => ({
   addNotificationReceivedListener: vi.fn(),
   addNotificationResponseReceivedListener: vi.fn(),
 }))
-vi.mock('expo-notifications', () => sdk)
+vi.mock('expo-notifications', () => { throw new Error('Push registration entrypoint must not load') })
+vi.mock('expo-notifications/build/NotificationsHandler', () => ({ setNotificationHandler: sdk.setNotificationHandler }))
 import { registerForPushNotificationsAsync, registerPushTokenWithApi, setupNotificationHandlers } from '../notifications'
 
 describe('unavailable native push', () => {

@@ -2,6 +2,8 @@
 
 ### 2026-09-12 — Ghana and mobile store compliance goal (IN PROGRESS)
 
+- Disabled Android Firebase messaging auto-init/Analytics collection by default and avoided Expo notification index import, which could refresh persisted legacy push registration. All 103 mobile tests, types/lint and current Android JS export pass. Isolated final manifest asserts both metadata settings false and retained protections (82082 exit 0). Runtime overrides, old IDs/provider registrations, device traffic and SDK removal remain open; see PUSH_NOTIFICATIONS.md.
+
 - Removed unused Android LocationTaskService through an Expo merge plugin and explicitly blocked foreground-location service permission. Actual merged release manifest passes absence/preservation checks (session 99898 exit 0, 1m2s); one-shot KYC foreground permissions, screen sharing, SDK and backup controls remain. Source/signed-device limits recorded in NATIVE_PERMISSIONS.md. Hosted CI 34750624157 was confirmed running for 3ad5014; no latest-main hosted pass claimed.
 
 - Full API session 3544 FINISHED exit 0: all 1,078 tests/154 files pass (966.64s), source held unchanged through d5d4aac API changes. Index readiness, missing-policy and update-publication transactions are included; earlier timeout did not recur, original cause remains unproven. Source freeze lifted. Broader release and external gates remain open.

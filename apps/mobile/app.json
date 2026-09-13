@@ -136,7 +136,8 @@
         }
       ],
       "./plugins/withPrivateBackupRules",
-      "./plugins/withForegroundLocationOnly"
+      "./plugins/withForegroundLocationOnly",
+      "./plugins/withDisabledPushAutoInit"
     ]
   }
 }
