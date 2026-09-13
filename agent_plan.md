@@ -1,5 +1,11 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — Wallet message terms acknowledgement fixed
+
+- Wallet donation dialog now displays the shared unchecked content-terms/18+ acknowledgement when a public message is entered. Confirmation stays disabled until accepted; the request includes current-version legalAcceptance. New donations reset consent and blank messages do not trigger unnecessary message acceptance. Backend enforcement remains intact.
+- Web types and affected lint pass. Browser regression verifies unchecked/checked/revoked gating, policy link, exact wallet request payload and reset on reopening; final run passes. Initial test harness imports failed and were corrected; no application error was bypassed.
+
+
 ### 2026-09-13 — Checkout payment-method redesign
 
 - Replaced the compact row of generic provider symbols with mobile-money/card panels, clear category icons/titles/descriptions, readable provider name badges and subtle SVG watermarks. Panels stack on narrow screens and use theme tokens; selectable wallet choices retain native button/keyboard and selected-state behavior. Payment rails/checkout logic are unchanged.

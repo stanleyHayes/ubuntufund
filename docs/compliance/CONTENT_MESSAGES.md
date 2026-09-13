@@ -40,3 +40,8 @@ Outbox dispatch reads the current donation message/anonymity instead of trusting
 The legacy wallet donation endpoint now forwards explicit message acknowledgement and participates in publishing restrictions. This path was found by the replay regression, rather than treated as covered by the new checkout endpoint.
 
 Verification: two message-moderation tests plus four existing safety/retry tests pass; four SSE tests pass after updating the acknowledged legacy-message fixture, including hidden-message buffered replay. Two message/restriction tests cover the additional legacy path. Three report component tests, one admin hide-action test and a mocked 390px anonymous-supporter report flow pass; screenshot inspected. API/web/native/admin type/lint checks, 42 native tests and all-platform export pass. No real report or payment was submitted.
+
+
+### Wallet modal acknowledgement — 13 September 2026
+
+CampaignDetailPage's legacy wallet modal omitted legalAcceptance even when sending a public message. It now reuses MessageAgreement, blocks confirmation until explicit acceptance when the trimmed message is nonempty, sends the current version/terms/18+ flags and resets acceptance for each new donation. Empty messages omit both message and acceptance. No API guard was relaxed. Web types/lint pass; mocked browser regression in profile-campaign-polish.spec.ts verifies the exact POST payload, checkbox gating/revocation, Terms link and new-donation reset (`/tmp/ujimora-wallet-acceptance-browser-final.log`). This does not perform a live wallet debit.

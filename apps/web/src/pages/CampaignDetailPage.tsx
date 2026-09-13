@@ -1,3 +1,4 @@
+import { MessageAgreement } from '@/components/donate/MessageAgreement'
 import { CampaignOrganizer } from '@/components/campaigns/CampaignOrganizer'
 import { CampaignCashout } from '@/components/campaigns/CampaignCashout'
 import { LoadingDots, sizedImageUrl, breadcrumbList } from '@ubuntu-fund/ui'
@@ -29,6 +30,7 @@ import { useAuth } from '@/context/AuthContext'
 import { useUser } from '@/hooks/useUser'
 import {
   CampaignStatus,
+  LEGAL_ACCEPTANCE_VERSION,
   type CampaignCollaborator,
 } from '@ubuntu-fund/types'
 import { useCampaign } from '@/hooks/useCampaigns'
@@ -114,6 +116,7 @@ function CampaignDetailContent() {
   const [donationRevision, setDonationRevision] = useState(0)
   const [donateAmount, setDonateAmount] = useState('')
   const [donateMessage, setDonateMessage] = useState('')
+  const [donateMessageAccepted, setDonateMessageAccepted] = useState(false)
   const [selectedProvider, setSelectedProvider] = useState<PaymentMethodData | null>(null)
   const [snackOpen, setSnackOpen] = useState(false)
   const [donating, setDonating] = useState(false)
@@ -158,6 +161,7 @@ function CampaignDetailContent() {
     setDonateOpen(true)
     setDonateAmount('')
     setDonateMessage('')
+    setDonateMessageAccepted(false)
     setSelectedProvider(null)
     setDonateError('')
   }
@@ -172,6 +176,7 @@ function CampaignDetailContent() {
     donateAmount &&
     validWalletDonationAmount(donateAmount) &&
     donateMessage.length <= 500 &&
+    (!donateMessage.trim() || donateMessageAccepted) &&
     !!currentUser && acceptsCampaignDonation(campaign) &&
     !providersLoading && !providersError && walletProviders.some((p) => p.slug === selectedProvider?.slug) &&
     !donating &&
@@ -378,6 +383,7 @@ function CampaignDetailContent() {
               fullWidth
             />
           </Box>
+          {!!donateMessage.trim() && <MessageAgreement checked={donateMessageAccepted} onChange={setDonateMessageAccepted} />}
           {donateError && <Alert severity="error">{donateError}</Alert>}
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
@@ -395,7 +401,10 @@ function CampaignDetailContent() {
                   amount: Number(donateAmount),
                   currency: campaign.currency,
                   paymentMethod: 'wallet',
-                  message: donateMessage || undefined,
+                  message: donateMessage.trim() || undefined,
+                  legalAcceptance: donateMessage.trim() && donateMessageAccepted
+                    ? { version: LEGAL_ACCEPTANCE_VERSION, acceptedTerms: true, ageConfirmed: true }
+                    : undefined,
                   isAnonymous: false,
                 })
                 setDonateOpen(false)
@@ -403,6 +412,7 @@ function CampaignDetailContent() {
                 setDonationRevision((value) => value + 1)
                 setDonateAmount('')
                 setDonateMessage('')
+                setDonateMessageAccepted(false)
                 setSelectedProvider(null)
                 setSnackOpen(true)
               } catch (err) {

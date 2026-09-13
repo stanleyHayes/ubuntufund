@@ -245,3 +245,8 @@ Cached AAR inventory maps remaining original failing prebuilt names to AndroidX 
 ### Candidate APK assembly completed — 13 September 2026
 
 Retry35851 completed exit0 in1m37s (1,085tasks,87executed), with lint enabled. APK `/tmp/ujimora-android-69d94fa/android/app/build/outputs/apk/release/app-release.apk`. Actual ELF inspection63780 covers4864-bit libraries: 30pass LOAD/RELRO, the remainder fail; report `/tmp/ujimora-aligned-candidate-apk-elf.json`. This is archived69d94fa JavaScript/debug signing/non-routable API, not a release approved artifact. Final stripped-binary provenance, ZIP alignment, startup and remaining third-party library fixes are still required.
+
+
+### Candidate packaged runtime provenance — 13 September 2026
+
+Candidate APK passes build-tools36.0.0 zipalign -c -P16 4 (exit0). Stripping each verified libc++/fbjni candidate with NDK28 llvm-strip --strip-unneeded yields exact SHA256 matches to all four packaged entries on ARM64/x86_64 (`/tmp/ujimora-candidate-apk-provenance.json`). Emulator installation67508 completed exit0/Success. New APK startup is not yet verified;18 other packaged libraries still fail ELF alignment. No final current-source or store/device acceptance is inferred.
