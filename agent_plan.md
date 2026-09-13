@@ -2,6 +2,8 @@
 
 ### 2026-09-12 — Ghana and mobile store compliance goal (IN PROGRESS)
 
+- APK assemble 37305 ended exit 1 on temporary Metro entrypoint resolution. Corrected only temporary node_modules overlay after terminal result; retry 37597 started with explicit non-routable HTTPS API for startup/native tests. No source/dependency upgrade, successful APK or runtime pass claimed. API 67839 and image install 74629 remain active; NATIVE_PERMISSIONS.md records provenance and limits.
+
 - Native intermediate inventory expands RELRO finding to all 16 observed 64-bit libraries (all pass LOAD alignment). Generated link flags show max-page-size without common-page-size; no single-library fix claimed. Checker evidence in NATIVE_PERMISSIONS.md. APK/API/image-install sessions 37305/67839/74629 confirmed live; preserve their source/dependency state.
 
 - Added repeatable Android 64-bit ELF inventory/check command. Newest inspected WebRTC 150.7871.01 also has nonzero RELRO remainders on both ABIs; no upgrade applied. Dedicated Android 35 ARM 16 KB emulator image installation started for runtime evidence. APK 37305 and API 67839 confirmed live; source unchanged. Details in NATIVE_PERMISSIONS.md.
