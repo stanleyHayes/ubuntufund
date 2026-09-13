@@ -1,5 +1,11 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — Native build complete; APK lint memory retry
+
+- Native70084 completed exit0 in11m9s. Experimental app JNI source now supplies verified C++/fbjni candidates; all four merged native files match their hashes. Final APK provenance/device checks remain required.
+- APK24833 failed terminally due to lint Metaspace exhaustion. Retry35851 is live with increased JVM limits and two workers, retaining lint. Archived source/debug signing/non-routable API scope only; production dependency selection is unchanged. Evidence in `docs/compliance/NATIVE_PERMISSIONS.md`.
+
+
 ### 2026-09-13 — Both-ABI candidate alignment and runtime device evidence
 
 - C++ x86_64 build27955 completed successfully; it and three x86_64 React Native source libraries pass LOAD/RELRO. Both-ABI candidate runtime alignment is verified, with only the previously recorded profiling-marker export difference.
