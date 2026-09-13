@@ -59,3 +59,9 @@ Campaign staff-review records bind a private public-content snapshot to an immut
 ### Publication queue closure follow-up — 13 September 2026
 
 Private organization identity drafts submitted by teammates are now erased by organization resource ID when the organization closes. New review insertion fences the author and, for organization identity, the organization with transactional account writes. Requests authorized earlier cannot create fresh queue records for closed accounts. External screening runs after the insertion transaction. The final five-file publication/erasure regression passes 31 tests; see `ORGANIZATION_IDENTITY.md`. Financial records and minimal audit provenance remain subject to the existing retention ledger.
+
+### Explicit-null closure follow-up — 13 September 2026
+
+Account deletion and its retry worker now match both missing and explicitly null `deletedAt` values when persisting closure. Previously an explicitly null account could undergo profile cleanup without a tombstone. Comment cleanup uses the same predicate to hide explicitly null live comments while preserving already-recorded deletion dates. User records remain tombstones and financial records/balances are preserved.
+
+Two real-database regressions reproduced missing tombstones before the fix. Direct request/worker adapter execution now persists closure and rejects an existing access token without invoking the process-local revocation cache. Tests also verify wallet balance preservation and all three comment states (missing/null/already hidden). All6 erasure integration tests pass (8.81seconds), API types and affected lint pass. Logs: `/tmp/ujimora-null-closure-before.log`, `/tmp/ujimora-null-closure-tests.log`, `/tmp/ujimora-null-closure-types.log`, `/tmp/ujimora-null-closure-lint.log`. No production accounts were modified. Processor deletion, historical null-tombstone inventory and approved retention schedules remain open.

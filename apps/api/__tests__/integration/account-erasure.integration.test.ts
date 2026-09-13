@@ -34,6 +34,7 @@ describe('Account erasure and retained-record review', () => {
     const id = account.user.id;
     await CampaignCommentModel.create([
       { campaignId: 'retention-fixture', authorId: id, content: 'Active comment', authorName: 'Erase Test', authorAvatarUrl: 'https://example.test/private-name.png' },
+      { campaignId: 'retention-fixture', authorId: id, content: 'Explicitly live', deletedAt: null },
       { campaignId: 'retention-fixture', authorId: id, content: 'Already hidden', authorName: 'Erase Test', authorAvatarUrl: 'https://example.test/private-name.png', deletedAt: new Date() },
     ]);
     await ProfileModel.create({ userId: id, phone: '0200000000', bio: 'Private profile' });
@@ -47,7 +48,7 @@ describe('Account erasure and retained-record review', () => {
     await request(app).delete('/api/v1/profile').set('Authorization', account.bearer).expect(200);
     expect(await ProfileModel.countDocuments({ userId: id })).toBe(0);
     const comments = await CampaignCommentModel.find({ authorId: id }).lean();
-    expect(comments).toHaveLength(2);
+    expect(comments).toHaveLength(3);
     for (const comment of comments) {
       expect(comment.deletedAt).toBeInstanceOf(Date);
       expect(comment.authorName).toBeUndefined();
@@ -77,6 +78,23 @@ describe('Account erasure and retained-record review', () => {
     expect(review?.contactEmail).toBe(account.email);
     expect(review?.nextReviewAt).toBeDefined();
     await request(app).get('/api/v1/profile').set('Authorization', account.bearer).expect(401);
+  });
+  it.each(['request', 'worker'] as const)('persists closure for explicit null tombstones through the %s path', async path => {
+    const account = await register();
+    const userId = account.user.id;
+    await UserModel.updateOne({ _id: userId }, { $set: { deletedAt: null } });
+    await WalletModel.updateOne({ userId }, { $set: { balance: 75 } });
+    const erasure = new MongoAccountErasure();
+    if (path === 'request') await erasure.request(userId);
+    else {
+      await AccountDeletionRequestModel.create({ userId, contactEmail: account.email, status: 'pending', nextReviewAt: new Date() });
+      await erasure.sweepPending();
+    }
+    expect((await UserModel.findById(userId))?.deletedAt).toBeInstanceOf(Date);
+    // Direct adapter execution does not touch the process-local revocation cache.
+    // Rejection therefore proves the persisted account tombstone is sufficient.
+    await request(app).get('/api/v1/profile').set('Authorization', account.bearer).expect(401);
+    expect((await WalletModel.findOne({ userId }))?.balance).toBe(75);
   });
   it('survives partial cleanup failure and supports retry from a new worker', async () => {
     const account = await register();

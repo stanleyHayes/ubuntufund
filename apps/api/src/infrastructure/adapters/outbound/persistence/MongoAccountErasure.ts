@@ -42,7 +42,7 @@ export class MongoAccountErasure implements AccountErasurePort {
       status: 'pending',
     } }, { upsert: true });
     // Persist closure before cleanup. All API instances consult this tombstone.
-    await UserModel.updateOne({ _id: userId, deletedAt: { $exists: false } }, { $set: { deletedAt: new Date() } });
+    await UserModel.updateOne({ _id: userId, deletedAt: null }, { $set: { deletedAt: new Date() } });
     try { await this.clean(userId); }
     catch (error) { logger.error({ err: error, userId }, 'Account erasure queued for retry'); }
   }
@@ -52,7 +52,7 @@ export class MongoAccountErasure implements AccountErasurePort {
     let count = 0;
     for (const request of requests) {
       try {
-        await UserModel.updateOne({ _id: request.userId, deletedAt: { $exists: false } }, { $set: { deletedAt: request.requestedAt } });
+        await UserModel.updateOne({ _id: request.userId, deletedAt: null }, { $set: { deletedAt: request.requestedAt } });
         await this.clean(request.userId); count++;
       } catch (error) { logger.error({ err: error, userId: request.userId }, 'Account erasure retry failed'); }
     }
@@ -83,7 +83,7 @@ export class MongoAccountErasure implements AccountErasurePort {
     await ActivityAlertPreferenceModel.deleteMany({ userId });
     await CreatorProfileModel.deleteMany({ userId });
     // Hide UGC pending safety/legal-hold review; do not silently destroy reported evidence.
-    await CampaignCommentModel.updateMany({ authorId: userId, deletedAt: { $exists: false } }, { $set: { deletedAt: new Date() } });
+    await CampaignCommentModel.updateMany({ authorId: userId, deletedAt: null }, { $set: { deletedAt: new Date() } });
     await CampaignCommentModel.updateMany({ authorId: userId }, { $unset: { authorName: '', authorAvatarUrl: '' } });
     await OrganizationMemberModel.updateMany({ $or: [{ userId }, { email: request.contactEmail }, { organizationId: userId }] }, { $set: { status: 'revoked' } });
     await CollaborationModel.updateMany({ userId }, { $set: { status: 'removed', displayName: 'Deleted user' }, $unset: { logoUrl: 1, inviteMessage: 1 } });

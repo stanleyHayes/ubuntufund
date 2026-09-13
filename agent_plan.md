@@ -1,5 +1,11 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — Null-safe account closure
+
+- Deletion request and retry worker now persist tombstones for both missing and explicitly null deletedAt fields. The old missing-only filter could clean an account without persisting closure. Comment cleanup now handles the same null case while preserving existing deletion timestamps.
+- Two real-database regressions fail before the fix and pass afterward. Direct adapter execution bypasses in-process token revocation, proving persisted closure rejects old access tokens; wallet balances remain unchanged. All6 erasure integration tests, API types and affected lint pass. Evidence in DATA_RIGHTS.md. Processor erasure and retention approvals remain open.
+
+
 ### 2026-09-13 — Goal reached campaigns remain open
 
 - User clarified reaching a funding goal must not close donations. API already supports overfunding; web wallet/detail/checkout and native checkout incorrectly restricted donations to ACTIVE. Shared eligibility now accepts ACTIVE and FUNDED before endDate, while keeping drafts, pending, blocked and expired campaigns closed.
