@@ -139,7 +139,7 @@ export default function PageHeader({
         </Box>
 
         {actions && (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, flexShrink: 0, pt: 0.5 }}>
+          <Box role="group" aria-label="Page actions" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 1.25, minWidth: 0, maxWidth: '100%', ml: 'auto', pt: 0.5 }}>
             {actions}
           </Box>
         )}

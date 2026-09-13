@@ -1,6 +1,6 @@
 import ReviewQueuePagination from '@/components/ReviewQueuePagination'
 import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
-import { ReviewQueueSkeleton, ReviewQueueEmpty } from '@/components/ReviewQueueStates'
+import { ReviewQueueSkeleton, ReviewQueueEmpty, ReviewQueueToolbar } from '@/components/ReviewQueueStates'
 import ExportMenu from '@/components/ExportMenu'
 import { loadAll } from '@/lib/exports/loadAll'
 import { exportTable, dateCell } from '@/lib/exports/report'
@@ -60,9 +60,13 @@ export default function PrivacyRequestsPage() {
     <PageHeader title="Privacy requests" eyebrow="Trust & safety" lede="Track account erasure, justified retention and service-provider follow-up." icon={<PrivacyTipRoundedIcon />} tone="teal" stats={[{ label: "Deletion & retention requests", value: loading ? <Skeleton width={60} /> : error ? "—" : total }]} />
     <DataRightsQueue />
     <Typography variant="h5">Account deletion and retention</Typography>
-    <ExportMenu title="Account deletion and retention" disabled={loading || !!error} getReport={async progress => ({ title: "Account deletion and retention", filters: ["All deletion and retention requests"], tables: [exportTable("Account deletion and retention", await loadAll<PrivacyRequest>('/admin/privacy-requests', progress), { ID: r => r._id, Account: r => r.userId, Status: r => r.status, "Requested (UTC)": r => dateCell(r.requestedAt), "Profile cleanup (UTC)": r => dateCell(r.coreRemovedAt), "Next review (UTC)": r => dateCell(r.nextReviewAt), Notes: r => r.reviewNotes })] })} />
-    <Alert severity="info">A completed profile cleanup does not certify full erasure. Review retained records, account balances, campaigns, provider copies and backup handling, and respond to the requester.</Alert>
+    <ReviewQueueToolbar>
     <Button sx={{ alignSelf: 'flex-start' }} variant="outlined" disabled={retrying || loading} onClick={() => { void retry() }}>{retrying ? 'Retrying…' : 'Retry pending cleanup'}</Button>
+    <ExportMenu title="Account deletion and retention" disabled={loading || !!error} getReport={async progress => ({ title: "Account deletion and retention", filters: ["All deletion and retention requests"], tables: [exportTable("Account deletion and retention", await loadAll<PrivacyRequest>('/admin/privacy-requests', progress), { ID: r => r._id, Account: r => r.userId, Status: r => r.status, "Requested (UTC)": r => dateCell(r.requestedAt), "Profile cleanup (UTC)": r => dateCell(r.coreRemovedAt), "Next review (UTC)": r => dateCell(r.nextReviewAt), Notes: r => r.reviewNotes })] })} />
+    </ReviewQueueToolbar>
+
+    <Alert severity="info">A completed profile cleanup does not certify full erasure. Review retained records, account balances, campaigns, provider copies and backup handling, and respond to the requester.</Alert>
+
     {error && <Alert severity="error" action={<Button onClick={() => { void load() }}>Retry</Button>}>{error}</Alert>}
     {loading ? <ReviewQueueSkeleton label="Loading account deletion requests" /> : !error && items.length === 0 ? <ReviewQueueEmpty title="No account deletion requests." description="Account closure requests and retained-data follow-ups will appear here when they need attention." icon={<PrivacyTipRoundedIcon />} /> : !error && items.map(item => <Review key={item._id} item={item} refresh={load} />)}
     {!loading && !error && <ReviewQueuePagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} onPageSizeChange={setPageSize} disabled={loading} />}

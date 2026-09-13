@@ -190,7 +190,7 @@ export default function CouponsPage() {
         title="Coupons"
         lede="Manage promotions for subscriptions, donations and withdrawal fees."
         icon={<LocalOfferRoundedIcon />}
-        actions={canCreate ? (
+        actions={<>{canCreate ? (
           <Button
             variant="contained"
             startIcon={<AddIcon />}
@@ -200,14 +200,14 @@ export default function CouponsPage() {
           >
             New Coupon
           </Button>
-        ) : undefined}
+        ) : undefined}<ExportMenu title="Coupons" disabled={loading || !!error} getReport={() => ({ title: "Coupons", filters: [`Status: ${statusFilter}`, `Search: ${search || 'All'}`], tables: [exportTable("Coupons", filtered, { Code: r => r.code, Description: r => r.description, Type: r => r.discountType, Amount: r => r.amount, Currency: r => r.currency, Redemptions: r => r.redemptions, Active: r => r.active })] })} /></>}
         stats={[
           { label: 'Total Coupons', value: loading ? <Skeleton width={50} /> : coupons.length },
           { label: 'Active', value: loading ? <Skeleton width={50} /> : activeCount },
           { label: 'Redemptions', value: loading ? <Skeleton width={50} /> : totalRedemptions.toLocaleString() },
         ]}
       />
-      <ExportMenu title="Coupons" disabled={loading || !!error} getReport={() => ({ title: "Coupons", filters: [`Status: ${statusFilter}`, `Search: ${search || 'All'}`], tables: [exportTable("Coupons", filtered, { Code: r => r.code, Description: r => r.description, Type: r => r.discountType, Amount: r => r.amount, Currency: r => r.currency, Redemptions: r => r.redemptions, Active: r => r.active })] })} />
+
 
       {/* Filters */}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '2fr 1fr' }, gap: 0, ...raisedSurface, mb: 3 }}>

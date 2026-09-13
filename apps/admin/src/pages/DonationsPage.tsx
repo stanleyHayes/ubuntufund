@@ -201,6 +201,7 @@ export default function DonationsPage() {
         title="Donations"
         lede="Track every contribution moving through the platform, from named supporters to anonymous gifts."
         icon={<VolunteerActivismRoundedIcon />}
+      actions={<ExportMenu title="Donations" disabled={loading || !!error} getReport={() => ({ title: 'Donations', filters: [`Donor type: ${typeFilter}`, `Search: ${search || 'All'}`], tables: [exportTable('Donations', filtered, { ID: r => r.id, Campaign: r => r.campaignTitle ?? r.campaignId, Supporter: r => r.isAnonymous ? 'Anonymous' : r.donorName ?? r.donorId, Amount: r => r.amount, Currency: r => r.currency, Method: r => r.paymentMethod, Anonymous: r => r.isAnonymous, 'Date (UTC)': r => dateCell(r.createdAt) })] })} />}
       />
 
       {error && (
@@ -209,7 +210,7 @@ export default function DonationsPage() {
         </Alert>
       )}
 
-      <ExportMenu title="Donations" disabled={loading || !!error} getReport={() => ({ title: 'Donations', filters: [`Donor type: ${typeFilter}`, `Search: ${search || 'All'}`], tables: [exportTable('Donations', filtered, { ID: r => r.id, Campaign: r => r.campaignTitle ?? r.campaignId, Supporter: r => r.isAnonymous ? 'Anonymous' : r.donorName ?? r.donorId, Amount: r => r.amount, Currency: r => r.currency, Method: r => r.paymentMethod, Anonymous: r => r.isAnonymous, 'Date (UTC)': r => dateCell(r.createdAt) })] })} />
+
       {/* Filter bar */}
       <Box
         sx={{

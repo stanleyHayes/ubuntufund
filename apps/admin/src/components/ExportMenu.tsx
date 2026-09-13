@@ -64,7 +64,7 @@ export default function ExportMenu({ title, disabled = false, getReport }: Props
     }
   }
 
-  return <Box sx={{ mb: 2 }}>
+  return <Box sx={{ minWidth: 0, maxWidth: '100%', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
     <Button variant="outlined" startIcon={<DownloadRoundedIcon />} aria-label={`Export ${title}`} aria-haspopup="menu" aria-expanded={!!anchor} disabled={disabled || !!progress || !user} onClick={event => setAnchor(event.currentTarget)}>Export</Button>
     <Menu anchorEl={anchor} open={!!anchor} onClose={() => setAnchor(null)}>
       <MenuItem onClick={() => void run('pdf')}>Branded PDF</MenuItem>

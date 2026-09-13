@@ -58,8 +58,9 @@ export default function DisputesPage() {
         title="Disputes"
         lede="Review flagged campaigns and donor complaints, then track each case through to resolution."
         icon={<GavelRoundedIcon />}
+      actions={<ExportMenu title="Disputes" disabled={loading || !!error} getReport={() => ({ title: "Disputes", filters: [`Status: ${statusFilter}`, `Search: ${search || 'All'}`], tables: [exportTable("Disputes", filtered, { ID: r => r.id, Campaign: r => r.campaignTitle, Reporter: r => r.reporterName, Status: r => r.status, Reason: r => r.reason, Resolution: r => r.resolution, 'Created (UTC)': r => dateCell(r.createdAt) })] })} />}
       />
-      <ExportMenu title="Disputes" disabled={loading || !!error} getReport={() => ({ title: "Disputes", filters: [`Status: ${statusFilter}`, `Search: ${search || 'All'}`], tables: [exportTable("Disputes", filtered, { ID: r => r.id, Campaign: r => r.campaignTitle, Reporter: r => r.reporterName, Status: r => r.status, Reason: r => r.reason, Resolution: r => r.resolution, 'Created (UTC)': r => dateCell(r.createdAt) })] })} />
+
 
       {error && <Alert severity="error" sx={{ mb: 3 }}>Could not load disputes. Refresh the page to try again.</Alert>}
 

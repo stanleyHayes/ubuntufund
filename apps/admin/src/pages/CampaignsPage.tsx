@@ -163,10 +163,11 @@ export default function CampaignsPage() {
           title="Campaigns"
           lede="Review, approve, and moderate every fundraising campaign live on the platform."
           icon={<RocketLaunchRoundedIcon />}
-        />
+        actions={<ExportMenu title="Campaigns" disabled={loading || !!error} getReport={() => ({ title: 'Campaigns', filters: [`Queue: ${activeTab}`, `Status: ${statusFilter}`, `Category: ${categoryFilter}`, `Search: ${search || 'All'}`], tables: [campaignsTable(filtered)] })} />}
+      />
       </Box>
 
-      <ExportMenu title="Campaigns" disabled={loading || !!error} getReport={() => ({ title: 'Campaigns', filters: [`Queue: ${activeTab}`, `Status: ${statusFilter}`, `Category: ${categoryFilter}`, `Search: ${search || 'All'}`], tables: [campaignsTable(filtered)] })} />
+
       {/* Tabs */}
       <Box sx={{ display: 'flex', gap: 1.5, p: 1.5, ...raisedSurface, mb: 3 }}>
         <Box

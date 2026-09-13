@@ -245,8 +245,7 @@ function AdminProfileForViewer() {
         title={name || 'Admin User'}
         lede="Manage your personal details, password, and notification preferences."
         icon={<PersonRoundedIcon />}
-        actions={
-          <Chip
+        actions={<>{<Chip
             label={user?.role === 'admin' ? 'Administrator' : user?.role ?? 'Admin'}
             size="small"
             sx={{
@@ -257,10 +256,9 @@ function AdminProfileForViewer() {
               color: '#5E8F72',
               borderRadius: SHAPE.sm,
             }}
-          />
-        }
+          />}<ExportMenu title="My profile" getReport={() => ({ title: 'Administrator profile', tables: [exportTable('Account', user ? [user] : [], { ID: r => r.id, Name: r => r.name, Email: r => r.email, Role: r => r.role })] })} /></>}
       />
-      <ExportMenu title="My profile" getReport={() => ({ title: 'Administrator profile', tables: [exportTable('Account', user ? [user] : [], { ID: r => r.id, Name: r => r.name, Email: r => r.email, Role: r => r.role })] })} />
+
 
       <Grid container spacing={3}>
         {/* ─── Personal Information ─── */}

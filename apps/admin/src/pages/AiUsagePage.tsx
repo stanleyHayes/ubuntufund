@@ -63,8 +63,7 @@ export default function AiUsagePage() {
         title="Writing assistant usage"
         lede="Real requests and provider token usage across Ujimora. Campaign text is never saved in this log."
         icon={<AutoAwesomeRoundedIcon />}
-        actions={
-          <Button
+        actions={<>{<Button
             disabled={loading}
             onClick={() => {
               setLoading(true)
@@ -73,8 +72,8 @@ export default function AiUsagePage() {
             }}
           >
             Refresh
-          </Button>
-        }
+          </Button>}<ExportMenu title="AI usage" disabled={loading || !!error} getReport={async progress => { const rows = await loadAll<AiUsageLogEntry>('/ai-writing/usage', progress, response => ({ items: (response as UsagePage).data, total: (response as UsagePage).pagination.total }));
+return { title: 'AI usage', tables: [exportTable('Usage', rows, { ID: r => r.id, User: r => r.userName ?? r.userId, Action: r => r.action, Model: r => r.model, 'Input tokens': r => r.inputTokens, 'Output tokens': r => r.outputTokens, Status: r => r.status, 'Timestamp (UTC)': r => dateCell(r.timestamp) }), ...(stats ? [exportTable('Summary', [stats], { Requests: r => r.totalRequests, 'Requests today': r => r.requestsToday, 'Requests this month': r => r.requestsThisMonth, Errors: r => r.errors, 'Input tokens': r => r.inputTokens, 'Output tokens': r => r.outputTokens })] : [])] } }} /></>}
         stats={
           stats && !error
             ? [
@@ -90,8 +89,7 @@ export default function AiUsagePage() {
             : undefined
         }
       />
-      <ExportMenu title="AI usage" disabled={loading || !!error} getReport={async progress => { const rows = await loadAll<AiUsageLogEntry>('/ai-writing/usage', progress, response => ({ items: (response as UsagePage).data, total: (response as UsagePage).pagination.total }));
-return { title: 'AI usage', tables: [exportTable('Usage', rows, { ID: r => r.id, User: r => r.userName ?? r.userId, Action: r => r.action, Model: r => r.model, 'Input tokens': r => r.inputTokens, 'Output tokens': r => r.outputTokens, Status: r => r.status, 'Timestamp (UTC)': r => dateCell(r.timestamp) }), ...(stats ? [exportTable('Summary', [stats], { Requests: r => r.totalRequests, 'Requests today': r => r.requestsToday, 'Requests this month': r => r.requestsThisMonth, Errors: r => r.errors, 'Input tokens': r => r.inputTokens, 'Output tokens': r => r.outputTokens })] : [])] } }} />
+
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}

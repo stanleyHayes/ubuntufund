@@ -151,9 +151,9 @@ export default function DisputeDetailPage() {
         title={dispute.reason}
         lede="Review the persisted report and campaign context, then record the decision."
         icon={<GavelRoundedIcon />}
-        actions={<Chip label={formatStatus(dispute.status)} color={STATUS_CONFIG[dispute.status].color} size="small" sx={{ fontWeight: 700 }} />}
+        actions={<>{<Chip label={formatStatus(dispute.status)} color={STATUS_CONFIG[dispute.status].color} size="small" sx={{ fontWeight: 700 }} />}<ExportMenu title="Dispute record" disabled={!!loadError || submitting} getReport={() => ({ title: 'Dispute record', tables: [exportTable('Dispute', [dispute], { ID: r => r.id, Campaign: r => r.campaignTitle, Reporter: r => r.reporterName, Status: r => r.status, Reason: r => r.reason, Description: r => r.description, Resolution: r => r.resolution, 'Resolved (UTC)': r => dateCell(r.resolvedAt) })] })} /></>}
       />
-      <ExportMenu title="Dispute record" disabled={!!loadError || submitting} getReport={() => ({ title: 'Dispute record', tables: [exportTable('Dispute', [dispute], { ID: r => r.id, Campaign: r => r.campaignTitle, Reporter: r => r.reporterName, Status: r => r.status, Reason: r => r.reason, Description: r => r.description, Resolution: r => r.resolution, 'Resolved (UTC)': r => dateCell(r.resolvedAt) })] })} />
+
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) 340px' }, gap: 3 }}>
         <Box>

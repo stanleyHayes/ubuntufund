@@ -49,8 +49,9 @@ export default function PaymentProvidersPage() {
 
   return (
     <Box sx={{ bgcolor: 'background.default' }}>
-      <PageHeader tone="green" eyebrow="Payments" title="Payment providers" lede="Manage the payment methods available for campaign donations." icon={<AccountBalanceRoundedIcon />} stats={[{ label: 'Configured', value: isLoading ? <Skeleton width={48} /> : error ? '—' : providers.length }, { label: 'Enabled', value: isLoading ? <Skeleton width={48} /> : error ? '—' : enabledCount }, { label: 'Disabled', value: isLoading ? <Skeleton width={48} /> : error ? '—' : providers.length - enabledCount }]} />
-      <ExportMenu title="Payment providers" disabled={isLoading || !!error} getReport={() => ({ title: "Payment providers", filters: ['Configured providers'], tables: [exportTable("Payment providers", providers, { ID: r => r.id, Name: r => r.name, Type: r => r.type, Enabled: r => r.enabled, Default: r => r.isDefault, 'Fee (%)': r => r.feePercent })] })} />
+      <PageHeader tone="green" eyebrow="Payments" title="Payment providers" lede="Manage the payment methods available for campaign donations." icon={<AccountBalanceRoundedIcon />} stats={[{ label: 'Configured', value: isLoading ? <Skeleton width={48} /> : error ? '—' : providers.length }, { label: 'Enabled', value: isLoading ? <Skeleton width={48} /> : error ? '—' : enabledCount }, { label: 'Disabled', value: isLoading ? <Skeleton width={48} /> : error ? '—' : providers.length - enabledCount }]} actions={<ExportMenu title="Payment providers" disabled={isLoading || !!error} getReport={() => ({ title: "Payment providers", filters: ['Configured providers'], tables: [exportTable("Payment providers", providers, { ID: r => r.id, Name: r => r.name, Type: r => r.type, Enabled: r => r.enabled, Default: r => r.isDefault, 'Fee (%)': r => r.feePercent })] })} />}
+      />
+
 
       <CryptoOperations />
       <Alert severity="info" sx={{ mb: 3 }}>

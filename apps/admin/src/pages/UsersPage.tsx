@@ -106,12 +106,13 @@ export default function UsersPage() {
           title="Users"
           lede="Search, filter, and manage every donor, creator, and organization account on the platform."
           icon={<PeopleRoundedIcon />}
-        />
+        actions={<ExportMenu title="Users" disabled={loading || !!error} getReport={() => ({ title: 'Users', filters: [`Role: ${roleFilter}`, `Search: ${search || 'All'}`], tables: [usersTable(filtered)] })} />}
+      />
       </Box>
 
       {error && <Alert severity="error" sx={{ mb: 3 }}>Could not load users. Refresh the page to try again.</Alert>}
 
-      <ExportMenu title="Users" disabled={loading || !!error} getReport={() => ({ title: 'Users', filters: [`Role: ${roleFilter}`, `Search: ${search || 'All'}`], tables: [usersTable(filtered)] })} />
+
       {/* Filter bar */}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'minmax(0, 2fr) minmax(150px, 1fr) auto' }, ...raisedSurface, mb: 3 }}>
         <Box sx={{ px: 2.5, py: 1.5, display: 'flex', alignItems: 'center' }}>

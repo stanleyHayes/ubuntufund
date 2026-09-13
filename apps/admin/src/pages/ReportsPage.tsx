@@ -76,13 +76,14 @@ export default function ReportsPage() {
       lede="Track fraud signals, campaign funding trends, and platform health in one place."
       icon={<AssessmentRoundedIcon />}
       stats={fraudMetrics.map((m) => ({ label: m.metric, value: reportsLoading ? <Skeleton width={60} /> : reportsError ? '—' : formatMetricValue(m) }))}
-    />
+    actions={<ExportMenu title="Reports" disabled={loading || !!reportsError || !!campaignsError} getReport={() => ({ title: 'Platform reports', tables: analyticsTables(reports, campaigns) })} />}
+      />
   )
 
   return (
     <Box sx={{ bgcolor: 'background.default' }}>
       {header}
-      <ExportMenu title="Reports" disabled={loading || !!reportsError || !!campaignsError} getReport={() => ({ title: 'Platform reports', tables: analyticsTables(reports, campaigns) })} />
+
       {(reportsError || campaignsError) && (
         <Alert severity="error" sx={{ mb: 3 }}>
           {reportsError && 'Report statistics could not be loaded. '}

@@ -193,8 +193,7 @@ function TestimonialsPage() {
         title="Testimonials"
         lede="Manage the success stories and quotes shown on the marketing site."
         icon={<FormatQuoteRoundedIcon />}
-        actions={
-          <Button
+        actions={<>{<Button
             variant="contained"
             startIcon={<AddIcon />}
             onClick={openCreate}
@@ -204,8 +203,8 @@ function TestimonialsPage() {
             }}
           >
             Add Testimonial
-          </Button>
-        }
+          </Button>}<ExportMenu title="Testimonials" disabled={loading} getReport={async progress => { const rows = (await loadAll<Testimonial>('/testimonials/admin' + (statusFilter === 'all' ? '' : '?status=' + encodeURIComponent(statusFilter)), progress)).filter(r => !search || [r.name, r.role, r.location].some(value => value.toLowerCase().includes(search.toLowerCase())));
+return { title: 'Testimonials', filters: [`Status: ${statusFilter}`, `Search: ${search || 'All'}`], tables: [exportTable('Testimonials', rows, { ID: r => r.id, Name: r => r.name, Role: r => r.role, Location: r => r.location, Quote: r => r.quote, Rating: r => r.rating, Status: r => r.status, 'Created (UTC)': r => dateCell(r.createdAt) })] } }} /></>}
         stats={[
           { label: 'Total', value: stats.total.toLocaleString() },
           { label: 'Published', value: stats.published.toLocaleString() },
@@ -213,8 +212,7 @@ function TestimonialsPage() {
           { label: 'Archived', value: stats.archived.toLocaleString() },
         ]}
       />
-      <ExportMenu title="Testimonials" disabled={loading} getReport={async progress => { const rows = (await loadAll<Testimonial>('/testimonials/admin' + (statusFilter === 'all' ? '' : '?status=' + encodeURIComponent(statusFilter)), progress)).filter(r => !search || [r.name, r.role, r.location].some(value => value.toLowerCase().includes(search.toLowerCase())));
-return { title: 'Testimonials', filters: [`Status: ${statusFilter}`, `Search: ${search || 'All'}`], tables: [exportTable('Testimonials', rows, { ID: r => r.id, Name: r => r.name, Role: r => r.role, Location: r => r.location, Quote: r => r.quote, Rating: r => r.rating, Status: r => r.status, 'Created (UTC)': r => dateCell(r.createdAt) })] } }} />
+
 
       {/* Filters */}
       <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>

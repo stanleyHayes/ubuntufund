@@ -270,8 +270,9 @@ export default function DashboardPage() {
         title="Dashboard"
         lede="Jump into any section of the console and keep a pulse on platform activity."
         icon={<DashboardRoundedIcon />}
+      actions={<ExportMenu title="Dashboard" disabled={statsLoading || !!statsError || kycLoading || !!kycError} getReport={() => ({ title: 'Administration dashboard', tables: [overviewTable(stats), exportTable('Verification summary', [kycStats], { Pending: r => r.pending, 'Approved today': r => r.approvedToday, 'Rejected today': r => r.rejectedToday })] })} />}
       />
-      <ExportMenu title="Dashboard" disabled={statsLoading || !!statsError || kycLoading || !!kycError} getReport={() => ({ title: 'Administration dashboard', tables: [overviewTable(stats), exportTable('Verification summary', [kycStats], { Pending: r => r.pending, 'Approved today': r => r.approvedToday, 'Rejected today': r => r.rejectedToday })] })} />
+
 
       {(statsError || kycError) && (
         <Alert severity="error" sx={{ mb: 3 }}>

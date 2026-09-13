@@ -111,12 +111,13 @@ export default function AuditLogPage() {
         title="Audit Log"
         lede="Trace every admin and system action taken on the platform, in order, with full detail."
         icon={<HistoryEduRoundedIcon />}
-      />
-
-      <ExportMenu title="Audit log" disabled={loading || !!error} getReport={async progress => {
+      actions={<ExportMenu title="Audit log" disabled={loading || !!error} getReport={async progress => {
         const entries = await loadAll<AuditEntry>(`/audit?search=${encodeURIComponent(search.trim())}`, progress)
         return { title: 'Audit log', filters: [`Search: ${search || 'All'}`], tables: [{ title: 'Audit entries', columns: [{ label: 'ID' }, { label: 'Timestamp (UTC)', type: 'date' }, { label: 'Actor' }, { label: 'Action' }, { label: 'Resource' }, { label: 'Severity' }, { label: 'Summary' }], rows: entries.map(entry => [entry.id, dateCell(entry.timestamp), entry.user, entry.actionLabel ?? entry.action, entry.resource, entry.severity, entry.summary ?? entry.details]) }] }
-      }} />
+      }} />}
+      />
+
+
       <Box
         sx={{
           ...surfaceSx,

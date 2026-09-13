@@ -193,8 +193,9 @@ export default function ManagePlansPage() {
           { label: 'Paid tiers', value: isLoading ? <Skeleton width={40} /> : error ? '—' : paidCount },
           { label: 'Editing', value: canUpdate ? 'Enabled' : 'View only' },
         ]}
+      actions={<ExportMenu title="Subscription plans" disabled={isLoading || !!error} getReport={() => ({ title: "Subscription plans", filters: ['Published configuration'], tables: [exportTable("Subscription plans", plans, { Tier: r => r.tier, Name: r => r.name, 'Monthly (GHS)': r => r.priceMonthly, 'Yearly (GHS)': r => r.priceYearly, 'Platform fee (%)': r => r.platformFeePercent, 'Active campaigns': r => r.maxActiveCampaigns, 'Maximum goal (GHS)': r => r.maxCampaignGoal, Description: r => r.description })] })} />}
       />
-      <ExportMenu title="Subscription plans" disabled={isLoading || !!error} getReport={() => ({ title: "Subscription plans", filters: ['Published configuration'], tables: [exportTable("Subscription plans", plans, { Tier: r => r.tier, Name: r => r.name, 'Monthly (GHS)': r => r.priceMonthly, 'Yearly (GHS)': r => r.priceYearly, 'Platform fee (%)': r => r.platformFeePercent, 'Active campaigns': r => r.maxActiveCampaigns, 'Maximum goal (GHS)': r => r.maxCampaignGoal, Description: r => r.description })] })} />
+
 
       {canCreate && (
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>

@@ -184,7 +184,7 @@ export default function AffiliateDetailPage() {
         title={affiliate.referralCode}
         lede={`Referral partner for user ${shortId(affiliate.userId)}.`}
         icon={<HandshakeRoundedIcon />}
-        actions={<StatusPill label={affiliate.status} color={affiliateStatusColors[affiliate.status]} />}
+        actions={<>{<StatusPill label={affiliate.status} color={affiliateStatusColors[affiliate.status]} />}<ExportMenu title="Affiliate record" disabled={false} getReport={() => ({ title: 'Affiliate record', filters: [`Affiliate: ${affiliate.id}`], tables: [exportTable('Affiliate', [affiliate], { ID: r => r.id, Account: r => r.userName ?? r.userId, Code: r => r.referralCode, Status: r => r.status, 'Commission (%)': r => r.commissionRate }), exportTable('Balance', [balance], { Currency: r => r.currency, Earned: r => r.totalEarned, Pending: r => r.pendingBalance, Available: r => r.availableBalance, Paid: r => r.paidOutBalance }), exportTable('Referrals', referrals, { ID: r => r.id, Account: r => r.refereeId, Status: r => r.status, 'Created (UTC)': r => dateCell(r.createdAt) }), exportTable('Commissions', commissions, { ID: r => r.id, Account: r => r.refereeId, Amount: r => r.amount, Currency: r => r.currency, Base: r => r.baseAmount, 'Rate (%)': r => r.commissionRate, Status: r => r.status, 'Matures (UTC)': r => dateCell(r.maturesAt) }), exportTable('Payouts', payouts, { ID: r => r.id, Amount: r => r.amount, Currency: r => r.currency, Status: r => r.status, 'Created (UTC)': r => dateCell(r.createdAt) })] })} /></>}
         stats={[
           { label: 'Commission Rate', value: `${affiliate.commissionRate}%` },
           { label: 'Total Earned', value: formatMoney(stats.totalEarned, balance.currency) },
@@ -192,7 +192,7 @@ export default function AffiliateDetailPage() {
           { label: 'Pending', value: formatMoney(stats.pendingBalance, balance.currency) },
         ]}
       />
-      <ExportMenu title="Affiliate record" disabled={false} getReport={() => ({ title: 'Affiliate record', filters: [`Affiliate: ${affiliate.id}`], tables: [exportTable('Affiliate', [affiliate], { ID: r => r.id, Account: r => r.userName ?? r.userId, Code: r => r.referralCode, Status: r => r.status, 'Commission (%)': r => r.commissionRate }), exportTable('Balance', [balance], { Currency: r => r.currency, Earned: r => r.totalEarned, Pending: r => r.pendingBalance, Available: r => r.availableBalance, Paid: r => r.paidOutBalance }), exportTable('Referrals', referrals, { ID: r => r.id, Account: r => r.refereeId, Status: r => r.status, 'Created (UTC)': r => dateCell(r.createdAt) }), exportTable('Commissions', commissions, { ID: r => r.id, Account: r => r.refereeId, Amount: r => r.amount, Currency: r => r.currency, Base: r => r.baseAmount, 'Rate (%)': r => r.commissionRate, Status: r => r.status, 'Matures (UTC)': r => dateCell(r.maturesAt) }), exportTable('Payouts', payouts, { ID: r => r.id, Amount: r => r.amount, Currency: r => r.currency, Status: r => r.status, 'Created (UTC)': r => dateCell(r.createdAt) })] })} />
+
 
       {/* Secondary stats row */}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' }, gap: 2, mb: 3 }}>

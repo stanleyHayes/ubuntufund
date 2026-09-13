@@ -141,8 +141,9 @@ export default function CampaignDetailPage() {
             { label: 'Donors', value: donations.length },
             { label: 'Days Remaining', value: campaign.status === CampaignStatus.EXPIRED ? 'Expired' : daysRemaining },
           ]}
-        />
-      <ExportMenu title="Campaign record" disabled={loading || !!campaignError || donationsLoading || !!donationsError || !!collaboratorsError} getReport={() => ({ title: 'Campaign record', filters: [`Campaign: ${campaign.id}`], tables: [campaignsTable([campaign]), exportTable('Campaign story', [campaign], { Description: r => r.description }), donationsTable(donations), exportTable('Collaborators', collaborators, { ID: r => r.id, Role: r => r.role, Account: r => r.userId })] })} />
+        actions={<ExportMenu title="Campaign record" disabled={loading || !!campaignError || donationsLoading || !!donationsError || !!collaboratorsError} getReport={() => ({ title: 'Campaign record', filters: [`Campaign: ${campaign.id}`], tables: [campaignsTable([campaign]), exportTable('Campaign story', [campaign], { Description: r => r.description }), donationsTable(donations), exportTable('Collaborators', collaborators, { ID: r => r.id, Role: r => r.role, Account: r => r.userId })] })} />}
+      />
+
       </Box>
 
       {/* Main content */}

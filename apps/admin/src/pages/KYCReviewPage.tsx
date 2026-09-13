@@ -136,9 +136,10 @@ export default function KYCReviewPage() {
           { label: 'Approved Today', value: loading ? <Skeleton width={60} /> : error ? '—' : approvedToday },
           { label: 'Rejected Today', value: loading ? <Skeleton width={60} /> : error ? '—' : rejectedToday },
         ]}
+      actions={<ExportMenu title="KYC review" disabled={loading || !!error} getReport={async progress => { const rows = (await loadAll<KYCVerification>('/kyc/pending', progress)).filter(r => (statusFilter === 'all' || r.status === statusFilter) && (typeFilter === 'all' || r.verificationType === typeFilter) && (!search || [r.id, r.userName, r.verificationType].some(value => value.toLowerCase().includes(search.toLowerCase()))));
+return { title: 'KYC review queue', filters: [`Status: ${statusFilter}`, `Type: ${typeFilter}`, `Search: ${search || 'All'}`], tables: [exportTable('Verification decisions', rows, { ID: r => r.id, Account: r => r.userId, Name: r => r.userName, Type: r => r.verificationType, Status: r => r.status, Risk: r => r.riskLevel, 'Submitted (UTC)': r => dateCell(r.createdAt), 'Reviewed (UTC)': r => dateCell(r.reviewedAt) })] } }} />}
       />
-      <ExportMenu title="KYC review" disabled={loading || !!error} getReport={async progress => { const rows = (await loadAll<KYCVerification>('/kyc/pending', progress)).filter(r => (statusFilter === 'all' || r.status === statusFilter) && (typeFilter === 'all' || r.verificationType === typeFilter) && (!search || [r.id, r.userName, r.verificationType].some(value => value.toLowerCase().includes(search.toLowerCase()))));
-return { title: 'KYC review queue', filters: [`Status: ${statusFilter}`, `Type: ${typeFilter}`, `Search: ${search || 'All'}`], tables: [exportTable('Verification decisions', rows, { ID: r => r.id, Account: r => r.userId, Name: r => r.userName, Type: r => r.verificationType, Status: r => r.status, Risk: r => r.riskLevel, 'Submitted (UTC)': r => dateCell(r.createdAt), 'Reviewed (UTC)': r => dateCell(r.reviewedAt) })] } }} />
+
 
       {error && <Alert severity="error" sx={{ mb: 3 }}>Could not load verifications. Refresh the page to try again.</Alert>}
 

@@ -72,8 +72,9 @@ export default function NewsletterPage() {
         lede="Confirmed newsletter subscribers, newest first. Pending requests, withdrawn consent and legacy addresses without confirmation are excluded."
         icon={<MarkEmailReadRoundedIcon />}
         stats={[{ label: 'Total Subscribers', value: loading ? <Skeleton width={60} /> : error ? '—' : subscribers.length }]}
+      actions={<ExportMenu title="Newsletter" disabled={loading || error} getReport={() => ({ title: "Newsletter", filters: ['Confirmed subscribers', `Search: ${search || 'All'}`], tables: [exportTable("Newsletter", filtered, { ID: r => r.id, Email: r => r.email, 'Subscribed (UTC)': r => dateCell(r.createdAt), 'Confirmed (UTC)': r => dateCell(r.confirmedAt) })] })} />}
       />
-      <ExportMenu title="Newsletter" disabled={loading || error} getReport={() => ({ title: "Newsletter", filters: ['Confirmed subscribers', `Search: ${search || 'All'}`], tables: [exportTable("Newsletter", filtered, { ID: r => r.id, Email: r => r.email, 'Subscribed (UTC)': r => dateCell(r.createdAt), 'Confirmed (UTC)': r => dateCell(r.confirmedAt) })] })} />
+
 
       {error && <Alert severity="error" sx={{ mb: 3 }}>Could not load newsletter subscribers. Refresh the page to try again.</Alert>}
 

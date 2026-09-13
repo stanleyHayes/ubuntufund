@@ -338,8 +338,7 @@ export default function SettingsPage() {
         title="Platform Settings"
         lede="Configure global fees, verification, notifications, and security."
         icon={<SettingsRoundedIcon />}
-        actions={
-          canEdit ? (
+        actions={<>{canEdit ? (
             <>
               <Tooltip title="Reset to defaults">
                 <IconButton
@@ -371,14 +370,13 @@ export default function SettingsPage() {
                 Save Changes
               </Button>
             </>
-          ) : undefined
-        }
-      />
-      <ExportMenu title="Persisted settings" getReport={async progress => {
+          ) : undefined}<ExportMenu title="Persisted settings" getReport={async progress => {
 const [config, automatic] = await Promise.all([api.get<{ resolved: Record<string, string | number> }>('/admin/commercial-config', { signal: progress.signal }), api.get<{ enabled: boolean; maxAmount: number; dailyOwnerLimit: number; dailyPlatformLimit: number; reviewMaxAgeDays: number; mobileMoneyMaxAmount: number; mobileMoneyReviewMaxAgeHours: number }>('/admin/automatic-payouts', { signal: progress.signal })]);
 const keys = ['earlyFeePercent', 'affiliate.referralDiscountPercent', 'campaigns.autoApproveMaxTier', 'campaigns.tierThreshold1', 'campaigns.tierThreshold2', 'campaigns.tierThreshold3', 'campaigns.tierThreshold4', 'alerts.reviewEmail'];
 return { title: 'Persisted platform settings', filters: ['Effective server configuration', 'Local preferences and unsaved controls excluded'], tables: [exportTable('Commercial configuration', keys, { Setting: key => key, Value: key => config.resolved[key] }), exportTable('Automatic payouts', [automatic], { Enabled: r => r.enabled, 'Maximum amount (GHS)': r => r.maxAmount, 'Daily owner limit (GHS)': r => r.dailyOwnerLimit, 'Daily platform limit (GHS)': r => r.dailyPlatformLimit, 'Review age (days)': r => r.reviewMaxAgeDays, 'Mobile money maximum (GHS)': r => r.mobileMoneyMaxAmount, 'Mobile money review age (hours)': r => r.mobileMoneyReviewMaxAgeHours })] }
-}} />
+}} /></>}
+      />
+
 
       {!canEdit && (
         <Alert

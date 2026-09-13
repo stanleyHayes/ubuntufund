@@ -334,8 +334,9 @@ export default function OverviewPage() {
           { label: 'Total Users', value: String(stats.totalUsers) },
           { label: 'Avg Donation', value: `GH₵ ${stats.avgDonation.toLocaleString()}` },
         ]}
+      actions={<ExportMenu title="Overview" disabled={statsLoading || !!statsError || reportsLoading || !!reportsError || usersLoading || !!usersError || campaignsLoading || !!campaignsError || donationsLoading || !!donationsError} getReport={() => ({ title: 'Platform overview', tables: [overviewTable(stats), ...analyticsTables(reports, campaigns), usersTable(users), campaignsTable(campaigns), donationsTable(donations)] })} />}
       />
-      <ExportMenu title="Overview" disabled={statsLoading || !!statsError || reportsLoading || !!reportsError || usersLoading || !!usersError || campaignsLoading || !!campaignsError || donationsLoading || !!donationsError} getReport={() => ({ title: 'Platform overview', tables: [overviewTable(stats), ...analyticsTables(reports, campaigns), usersTable(users), campaignsTable(campaigns), donationsTable(donations)] })} />
+
 
       {/* ═══ ROW 2: Donation trend + Category breakdown ═══ */}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '2fr 1fr' }, gap: 3, mt: 4 }}>

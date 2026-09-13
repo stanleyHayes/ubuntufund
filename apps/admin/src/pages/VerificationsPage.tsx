@@ -119,9 +119,10 @@ export default function VerificationsPage() {
         title="Verifications"
         lede="Review identity, phone, institutional, and community verification submissions and approve or reject them."
         icon={<VerifiedUserRoundedIcon />}
+      actions={<ExportMenu title="Verifications" disabled={loading || !!error} getReport={async progress => { const rows = (await loadAll<import('@/types/api').KYCVerification>('/kyc/pending', progress)).filter(r => (statusFilter === 'all' || r.status === statusFilter) && (!search || [r.userName, typeLabels[r.verificationType] ?? r.verificationType].some(value => value.toLowerCase().includes(search.toLowerCase()))));
+return { title: 'Verifications', filters: [`Status: ${statusFilter}`, `Search: ${search || 'All'}`], tables: [exportTable('Verifications', rows, { ID: r => r.id, Account: r => r.userId, Name: r => r.userName, Type: r => r.verificationType, Status: r => r.status, 'Submitted (UTC)': r => dateCell(r.createdAt) })] } }} />}
       />
-      <ExportMenu title="Verifications" disabled={loading || !!error} getReport={async progress => { const rows = (await loadAll<import('@/types/api').KYCVerification>('/kyc/pending', progress)).filter(r => (statusFilter === 'all' || r.status === statusFilter) && (!search || [r.userName, typeLabels[r.verificationType] ?? r.verificationType].some(value => value.toLowerCase().includes(search.toLowerCase()))));
-return { title: 'Verifications', filters: [`Status: ${statusFilter}`, `Search: ${search || 'All'}`], tables: [exportTable('Verifications', rows, { ID: r => r.id, Account: r => r.userId, Name: r => r.userName, Type: r => r.verificationType, Status: r => r.status, 'Submitted (UTC)': r => dateCell(r.createdAt) })] } }} />
+
 
       {error && <Alert severity="error" sx={{ mb: 3 }}>Could not load verifications. Refresh the page to try again.</Alert>}
 

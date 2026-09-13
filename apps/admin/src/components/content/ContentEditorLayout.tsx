@@ -80,7 +80,7 @@ export default function ContentEditorLayout({
         lede={lede}
         icon={icon}
         actions={
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', minWidth: 0, gap: 1.5 }}>
             {isDirty && !loading && (
               <Chip
                 label="Unsaved changes"
@@ -94,6 +94,7 @@ export default function ContentEditorLayout({
                 }}
               />
             )}
+            {exportReport && <ExportMenu title={title} disabled={loading || saving || !!error} getReport={() => exportReport} />}
             <Button
               variant="contained"
               startIcon={saving ? <LoadingDots size={6} /> : <SaveRoundedIcon />}
@@ -113,7 +114,7 @@ export default function ContentEditorLayout({
         </Typography>
       )}
 
-      {exportReport && <ExportMenu title={title} disabled={loading || saving || !!error} getReport={() => exportReport} />}
+
       {loading ? (
         skeleton ?? <DefaultSkeleton />
       ) : error ? (

@@ -90,12 +90,14 @@ export default function SplitProceedsSection({ campaignId }: { campaignId: strin
   return (
     <>
       <Box sx={{ ...raisedSurface, p: 3, mt: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2, mb: 2 }}>
         <Label>Split-proceeds</Label>
         <ExportMenu title="Split proceeds" getReport={() => ({ title: 'Campaign split proceeds', filters: [`Campaign: ${campaignId}`], tables: [
           exportTable('Beneficiary balances', balances, { Beneficiary: r => r.beneficiaryId, Currency: r => r.currency, Pending: r => r.pendingBalance, 'Refund hold': r => r.refundHeldBalance ?? 0, Available: r => r.availableBalance, Paid: r => r.paidOutBalance, 'Updated (UTC)': r => dateCell(r.updatedAt) }),
           exportTable('Split versions', versions, { ID: r => r.id, Version: r => r.version, Status: r => r.status, Locked: r => r.locked, Creator: r => r.createdBy, 'Created (UTC)': r => dateCell(r.createdAt) }),
           exportTable('Allocations', allocations, { Version: r => r.version, Status: r => r.status, Beneficiary: r => r.beneficiaryId, Name: r => r.name, 'Share (%)': r => r.shareBps / 100, Consent: r => r.consent, 'Consent (UTC)': r => dateCell(r.consentAt) }),
         ] })} />
+        </Box>
         {!hasSplit && (
           <EmptyState variant="noData" title="No split configured" description="This campaign pays out to a single recipient." compact />
         )}
