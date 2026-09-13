@@ -1061,6 +1061,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     liveSessionRepo,
     campaignRepo,
     planLimitsService,
+    publicationAdmission,
   )
   const endLiveSessionUseCase = new EndLiveSessionUseCase(liveSessionRepo, campaignRepo, liveVideo)
   const updateLiveSessionPrivacyUseCase = new UpdateLiveSessionPrivacyUseCase(

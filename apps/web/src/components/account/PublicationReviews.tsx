@@ -27,7 +27,7 @@ function ViewerReviews() {
   useEffect(() => { void load() }, [load])
   return <Stack spacing={2} sx={{ py: 2 }}>
     <Typography variant="h6">Publication reviews</Typography>
-    <Typography variant="body2">Held campaigns, account identity, creator-page and organization identity changes, URL changes, comments and updates stay private. After approval, submit the same version from its original form within seven days. Changed content needs a new check. For an appeal, contact support@ujimora.com with the reference below.</Typography>
+    <Typography variant="body2">Held live-session titles, campaigns, account identity, creator-page and organization identity changes, URL changes, comments and updates stay private. After approval, submit the same version from its original form within seven days. Changed content needs a new check. For an appeal, contact support@ujimora.com with the reference below.</Typography>
     <Button disabled={loading} onClick={() => void load()}>Refresh publication reviews</Button>
     {error && <Alert severity="error">{error}</Alert>}
     {loading ? <Typography>Loading reviews…</Typography> : items.map(item => <Stack key={item.id} spacing={1} sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 2, overflowWrap: 'anywhere' }}>

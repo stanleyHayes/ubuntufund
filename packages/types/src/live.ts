@@ -51,6 +51,7 @@ export interface LiveSession {
 
 /** Body for `POST /campaigns/:id/live-sessions`. */
 export interface StartLiveSessionInput {
+  automatedReviewConsent?: boolean
   title?: string
   targetAmount?: number
   showDonorNames?: boolean

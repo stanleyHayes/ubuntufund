@@ -1,3 +1,4 @@
+import type { PublicationAdmissionPort } from '../../domain/ports/outbound/PublicationAdmissionPort.js';
 import type { LiveSession, StartLiveSessionInput } from '@ubuntu-fund/types';
 import { LiveSessionEntity } from '../../domain/entities/LiveSession.js';
 import type { LiveSessionRepositoryPort } from '../../domain/ports/outbound/LiveSessionRepositoryPort.js';
@@ -20,7 +21,8 @@ export class StartLiveSessionUseCase {
   constructor(
     private readonly liveSessionRepo: LiveSessionRepositoryPort,
     private readonly campaignRepo: CampaignRepositoryPort,
-    private readonly planLimits: PlanLimitsService
+    private readonly planLimits: PlanLimitsService,
+    private readonly admission?: PublicationAdmissionPort
   ) {}
 
   async execute(
@@ -57,6 +59,19 @@ export class StartLiveSessionUseCase {
 
     if (input.targetAmount != null && input.targetAmount <= 0) {
       throw new AppError('targetAmount must be a positive number', 400);
+    }
+
+    if (!this.admission) throw new AppError('Publication review is unavailable', 503);
+    await this.admission.assertAllowed({
+      actorId: requester.userId, action: 'live.start', resourceId: campaign.id,
+      text: JSON.stringify([input.title ?? '', input.targetAmount ?? null]),
+      mediaUrls: [], automatedReviewConsent: input.automatedReviewConsent,
+    });
+    // Screening may involve a staff-held retry or provider delay. Recheck the
+    // campaign before creating a session; no overlay token is minted on a hold.
+    const current = await this.campaignRepo.findById(campaign.id);
+    if (!current || !current.canReceiveDonation() || current.creatorId !== campaign.creatorId) {
+      throw new AppError('The campaign is no longer available to go live', 409);
     }
 
     const session = new LiveSessionEntity({

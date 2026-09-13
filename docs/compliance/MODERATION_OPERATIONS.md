@@ -20,6 +20,8 @@ The implementation supplies report intake, blocking and administrator actions. E
 
 ## Remaining engineering before UGC release approval
 
+Current metadata update: new live-session titles/targets now pass private exact-version admission before session creation, with web/native optional automated consent and held-draft resubmission. See PUBLICATION_SCREENING_AUDIT.md for verified cases and remaining final-save fencing. The historical bullets below describe broader responsibilities; title screening does not inspect a live stream.
+
 - Verify the implemented live-session report context, blocking, token revocation and provider room termination against the actual configured provider and signed clients. Complete the rollout steps below.
 - Individual guest/supporter-message reporting and moderation, acceptance before public messages, and defenses against anonymous evasion.
 - Preventive content filtering/review before objectionable material is published across campaign, creator, comment, upload and live surfaces.

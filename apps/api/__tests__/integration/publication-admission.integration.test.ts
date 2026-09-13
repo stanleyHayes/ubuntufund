@@ -12,6 +12,8 @@ import { CampaignUpdateModel } from '../../src/infrastructure/database/models/Ca
 import { UserModel } from '../../src/infrastructure/database/models/UserModel.js';
 import { AuditLogModel } from '../../src/infrastructure/database/models/AuditLogModel.js';
 import { ContentRestrictionModel } from '../../src/infrastructure/database/models/ContentRestrictionModel.js';
+import { SubscriptionModel } from '../../src/infrastructure/database/models/SubscriptionModel.js';
+import { LiveSessionModel } from '../../src/infrastructure/database/models/LiveSessionModel.js';
 let app: Express;
 const screen = vi.fn<(_: string) => Promise<'allowed' | 'flagged'>>();
 beforeAll(async () => { await connectTestDatabase(); await PublicationReviewModel.init(); app = await createTestApp({ publicationAdmission: new MongoPublicationAdmission({ screen }) }); });
@@ -28,6 +30,38 @@ async function fixture() {
   return { owner, admin, other, campaign, comments: `/api/v1/campaigns/${campaign.id}/comments`, updates: `/api/v1/campaigns/${campaign.id}/updates` };
 }
 const notes = 'Reviewed the complete proposed public version against community rules.';
+it('holds live metadata privately, binds staff approval to the exact title and starts only approved content', async () => {
+  const f = await fixture();
+  await SubscriptionModel.create({ userId: f.owner.id, tier: 'pro', status: 'active', billingCycle: 'monthly', currentPeriodStart: new Date(), currentPeriodEnd: new Date(Date.now() + 86400000) });
+  const path = `/api/v1/campaigns/${f.campaign.id}/live-sessions`;
+  const input = { title: 'A proposed fundraising broadcast', targetAmount: 250 };
+  await request(app).post(path).set('Authorization', f.other.auth).send(input).expect(403);
+  await request(app).post(path).set('Authorization', f.owner.auth).send(input).expect(409);
+  expect(screen).not.toHaveBeenCalled();
+  expect(await LiveSessionModel.countDocuments({ campaignId: f.campaign.id })).toBe(0);
+  const review = await PublicationReviewModel.findOne({ actorId: f.owner.id, action: 'live.start' });
+  expect(review).not.toBeNull();
+  await request(app).put(`/api/v1/admin/publication-reviews/${review!.id}/review`).set('Authorization', f.admin.auth).send({ decision: 'approved', notes }).expect(200);
+  await request(app).post(path).set('Authorization', f.owner.auth).send({ ...input, title: 'Unreviewed replacement' }).expect(409);
+  expect(await LiveSessionModel.countDocuments({ campaignId: f.campaign.id })).toBe(0);
+  const started = await request(app).post(path).set('Authorization', f.owner.auth).send(input).expect(201);
+  expect(started.body.data.title).toBe(input.title);
+  expect(await LiveSessionModel.countDocuments({ campaignId: f.campaign.id })).toBe(1);
+});
+
+it('withholds live sessions when screening flags content, fails, or the campaign closes during screening', async () => {
+  const f = await fixture();
+  await SubscriptionModel.create({ userId: f.owner.id, tier: 'pro', status: 'active', billingCycle: 'monthly', currentPeriodStart: new Date(), currentPeriodEnd: new Date(Date.now() + 86400000) });
+  const path = `/api/v1/campaigns/${f.campaign.id}/live-sessions`;
+  screen.mockResolvedValueOnce('flagged');
+  await request(app).post(path).set('Authorization', f.owner.auth).send({ title: 'Flagged version', automatedReviewConsent: true }).expect(409);
+  screen.mockRejectedValueOnce(new Error('Screening unavailable'));
+  await request(app).post(path).set('Authorization', f.owner.auth).send({ title: 'Unavailable version', automatedReviewConsent: true }).expect(409);
+  screen.mockImplementationOnce(async () => { await CampaignModel.updateOne({ _id: f.campaign.id }, { $set: { status: 'blocked' } }); return 'allowed'; });
+  await request(app).post(path).set('Authorization', f.owner.auth).send({ title: 'Previously available campaign', automatedReviewConsent: true }).expect(409);
+  expect(await LiveSessionModel.countDocuments({ campaignId: f.campaign.id })).toBe(0);
+});
+
 it('holds without cloud consent, deduplicates retries, isolates evidence and permits the exact staff-approved version', async () => {
   const f = await fixture();
   const input = { content: 'My proposed public comment' };

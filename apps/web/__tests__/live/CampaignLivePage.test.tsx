@@ -1,3 +1,4 @@
+import { startLiveSession } from '@/lib/fundraising'
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -5,7 +6,7 @@ import { CampaignLivePage } from '@/pages/CampaignLivePage'
 import { ColorModeProvider } from '@/context/ColorModeContext'
 vi.mock('@/context/AuthContext', () => ({ useAuth: () => ({ user: { id: 'owner' } }) }))
 const mocks = vi.hoisted(() => ({ active: null as any, videoEnabled: false }))
-vi.mock('@/lib/api', () => ({ api: { get: vi.fn(async (path: string) => path.endsWith('/active') ? mocks.active : path.endsWith('/video/config') ? { enabled: mocks.videoEnabled } : { id: 'campaign', creatorId: 'owner', title: 'Community campaign', raisedAmount: 250, goalAmount: 5000, currency: 'GHS' }) } }))
+vi.mock('@/lib/api', () => ({ api: { get: vi.fn(async (path: string) => path.startsWith('/publication-reviews') ? { items: [], total: 0 } : path.endsWith('/active') ? mocks.active : path.endsWith('/video/config') ? { enabled: mocks.videoEnabled } : { id: 'campaign', creatorId: 'owner', title: 'Community campaign', raisedAmount: 250, goalAmount: 5000, currency: 'GHS' }) } }))
 vi.mock('@/hooks/useLiveTotals', () => ({ useLiveTotals: () => ({ raisedAmount: 250, goalAmount: 5000, donations: [], connected: false }) }))
 vi.mock('@/components/live/LiveVideoPanel', () => ({ LiveVideoPanel: () => <div>Host video controls</div> }))
 vi.mock('@/components/live/QrCodeManager', () => ({ QrCodeManager: () => null }))
@@ -13,6 +14,7 @@ vi.mock('@/components/LiveDonationFeed', () => ({ LiveDonationFeed: () => null }
 const session = { id: 'session', campaignId: 'campaign', status: 'active', overlayToken: 'test-token', showDonorNames: true, showDonorMessages: true, showAmounts: true, privacyMode: false }
 vi.mock('@/lib/fundraising', async importOriginal => ({ ...await importOriginal<typeof import('@/lib/fundraising')>(), startLiveSession: vi.fn(async () => session) }))
 beforeEach(() => {
+  vi.mocked(startLiveSession).mockReset().mockResolvedValue(session as any)
   const storage = () => { const data = new Map<string, string>(); return { getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => data.set(key, value), removeItem: (key: string) => data.delete(key), clear: () => data.clear() } }
   vi.stubGlobal('localStorage', storage()); vi.stubGlobal('sessionStorage', storage());
   vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} }); mocks.active = null; mocks.videoEnabled = false
@@ -31,6 +33,23 @@ describe('live broadcast workspace', () => {
     // behind the text above — so whichever settles first varies per run.
     expect(await screen.findByRole('button', { name: 'Go LIVE' })).toBeDisabled()
     expect(screen.getByTitle('Broadcast preview')).toHaveAttribute('src', expect.stringContaining('preview=1'))
+  })
+  it('preserves a held title and sends automated review consent only after selection', async () => {
+    mocks.videoEnabled = true
+    vi.mocked(startLiveSession).mockRejectedValueOnce(new Error('Saved privately for safety review.'))
+    mount()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Go LIVE' })).toBeEnabled())
+    const consent = screen.getByRole('checkbox', { name: /Use OpenAI to check/ })
+    expect(consent).not.toBeChecked()
+    fireEvent.change(screen.getByLabelText('Session title (optional)'), { target: { value: 'My held broadcast' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Go LIVE' }))
+    await screen.findByText('Saved privately for safety review.')
+    expect(screen.getByLabelText('Session title (optional)')).toHaveValue('My held broadcast')
+    expect(startLiveSession).toHaveBeenLastCalledWith('campaign', expect.objectContaining({ title: 'My held broadcast', automatedReviewConsent: false }))
+    fireEvent.click(consent)
+    fireEvent.click(screen.getByRole('button', { name: 'Go LIVE' }))
+    await screen.findByText('Host video controls')
+    expect(startLiveSession).toHaveBeenLastCalledWith('campaign', expect.objectContaining({ title: 'My held broadcast', automatedReviewConsent: true }))
   })
   it('starts video-ready sessions and recovers controls from the server after remount', async () => {
     mocks.videoEnabled = true; const view = mount()

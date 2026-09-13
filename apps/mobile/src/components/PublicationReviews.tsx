@@ -29,7 +29,7 @@ function ViewerReviews() {
   useFocusEffect(useCallback(() => { void load() }, [load]))
   return <View style={{ gap: 12, paddingVertical: 16 }}>
     <Text variant="titleMedium">Publication reviews</Text>
-    <Text>Held campaigns, account identity, creator-page and organization identity changes, URL changes, comments and updates stay private. After approval, submit the same version from its original form within seven days. Changed content needs a new check. For an appeal, contact support@ujimora.com with the reference below.</Text>
+    <Text>Held live-session titles, campaigns, account identity, creator-page and organization identity changes, URL changes, comments and updates stay private. After approval, submit the same version from its original form within seven days. Changed content needs a new check. For an appeal, contact support@ujimora.com with the reference below.</Text>
     <Button disabled={loading} onPress={() => void load()}>Refresh publication reviews</Button>
     {!!error && <Text accessibilityRole="alert">{error}</Text>}
     {loading ? <Text>Loading reviews…</Text> : items.map(item => <View key={item.id} style={{ gap: 6, paddingVertical: 12 }}>

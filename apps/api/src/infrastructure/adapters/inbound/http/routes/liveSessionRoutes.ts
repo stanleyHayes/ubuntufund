@@ -9,6 +9,7 @@ import { validate } from '../../middleware/validate.js';
 import type { createAuthMiddleware, createOptionalAuthMiddleware } from '../../middleware/authMiddleware.js';
 
 const startLiveSessionSchema = z.object({
+  automatedReviewConsent: z.boolean().optional(),
   title: z.string().max(200).optional(),
   targetAmount: z.number().positive().optional(),
   showDonorNames: z.boolean().optional(),

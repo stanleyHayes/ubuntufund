@@ -1,3 +1,5 @@
+import { PublicationConsent } from '@/components/PublicationConsent'
+import { PublicationReviews } from '@/components/PublicationReviews'
 import { QrManager } from '@/components/CampaignManagement'
 import { useEffect, useState, useRef } from 'react'
 import { View, ScrollView, AppState, Share, Alert } from 'react-native'
@@ -24,6 +26,7 @@ export default function BroadcastStudio() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [title, setTitle] = useState('')
+  const [automatedReviewConsent, setAutomatedReviewConsent] = useState(false)
   const [target, setTarget] = useState('')
   const [overlayCopied, setOverlayCopied] = useState(false)
   const [retry, setRetry] = useState(0)
@@ -44,7 +47,7 @@ export default function BroadcastStudio() {
     if (mutating.current) return
     mutating.current = true; generation.current += 1
     setBusy(true); setError('')
-    try { setSession(await api.post<LiveSession>(`/campaigns/${id}/live-sessions`, { title: title.trim() || undefined, targetAmount: target ? Number(target) : undefined })) }
+    try { setSession(await api.post<LiveSession>(`/campaigns/${id}/live-sessions`, { automatedReviewConsent, title: title.trim() || undefined, targetAmount: target ? Number(target) : undefined })) }
     catch (e) { setError(e instanceof Error ? e.message : 'Could not start broadcast.') } finally { mutating.current = false; setBusy(false) }
   }
   async function update(input: Record<string, unknown>) {
@@ -84,6 +87,7 @@ export default function BroadcastStudio() {
         <Button mode="contained" disabled={busy} loading={busy} onPress={() => Alert.alert('End broadcast?', 'This closes the live session for viewers.', [{ text: 'Cancel', style: 'cancel' }, { text: 'End broadcast', style: 'destructive', onPress: () => void update({ status: 'ended' }) }])}>End broadcast</Button>
       </View>
     </> : <View style={{ ...neu.raised, backgroundColor: p.surface, borderRadius: 24, padding: 20, gap: 16 }}>
+      <PublicationConsent value={automatedReviewConsent} onChange={setAutomatedReviewConsent} /><PublicationReviews />
       <TextInput label="Broadcast title" value={title} onChangeText={setTitle} maxLength={200} /><TextInput label="Session goal (GHS, optional)" keyboardType="decimal-pad" value={target} onChangeText={setTarget} />
       <Text>Start a session, then connect your camera and microphone. Your campaign must be active and your plan must include live streaming.</Text>
       {!enabled && <Text>Live broadcasting is not configured yet.</Text>}

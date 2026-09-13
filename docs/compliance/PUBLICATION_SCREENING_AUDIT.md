@@ -2,6 +2,14 @@
 
 Status: incomplete overall. Preventive comment/update admission and private staff review are now implemented; see PUBLICATION_REVIEWS.md for the exact coverage and evidence. This audit tracks the remaining C04/C09 paths.
 
+## Live metadata checkpoint — 13 September 2026
+
+StartLiveSessionUseCase now requires production-wired admission for the exact proposed title and session target, bound to requester, campaign and `live.start` action. No new session or overlay token is created on a hold. Existing active-session retrieval remains idempotent and does not publish replacement metadata. Missing admission fails closed. After screening, campaign availability and ownership are re-read before saving. This re-read is not transaction fencing: concurrent campaign/account/plan/review changes at final save remain an open engineering requirement.
+
+Web and native broadcast forms send optional automated-review consent, initially unchecked, and expose the existing private decision list. A held submission retains its draft for exact approved resubmission. This reviews static metadata only; camera/audio, active-stream monitoring, provider revocation and staffed escalation remain separate release gates.
+
+Evidence: 23 API publication/live tests pass, including private hold with zero sessions, exact staff-approved resubmission, altered-title denial, flagged/unavailable screening, unauthorized requester and campaign blocking during screening. Six web studio tests pass, including retained held title and opt-in payload. All 81 native regression tests and API/web/native types/lint pass; existing warnings only. Logs `/tmp/ujimora-live-admission-{tests,web,mobile,checks}.log`. Native screen interaction, browser rendering and signed artifacts were not verified in this slice. This checkpoint supersedes the table's unimplemented live-title screening finding, not the remaining live-content obligations.
+
 ## Current policy and product rules
 
 Apple section 1.2 calls for filtering objectionable posts, reports with timely responses, blocking and public contact details. Google requires accepted terms before creating/uploading UGC and effective ongoing moderation, with reporting/blocking appropriate to the experience. Neither requirement is replaced by an organizer verification badge or a campaign's financial approval threshold. Sources rechecked: [Apple App Review Guidelines](https://developer.apple.com/app-store/review/guidelines/#user-generated-content), [Google UGC policy](https://support.google.com/googleplay/android-developer/answer/9876937?hl=en-GB).

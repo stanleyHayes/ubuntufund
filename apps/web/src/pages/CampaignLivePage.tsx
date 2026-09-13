@@ -1,3 +1,5 @@
+import { PublicationConsent } from '@/components/safety/PublicationConsent'
+import { PublicationReviews } from '@/components/account/PublicationReviews'
 // ---------------------------------------------------------------------------
 // CampaignLivePage — owner-only LIVE control room for a campaign.
 // Route: /campaigns/:id/live  (wrapped in RequireAuth by the routing step).
@@ -109,6 +111,7 @@ export function CampaignLivePage() {
 
   // Start-panel form state.
   const [title, setTitle] = useState('')
+  const [automatedReviewConsent, setAutomatedReviewConsent] = useState(false)
   const [targetAmount, setTargetAmount] = useState('')
   const [startShowNames, setStartShowNames] = useState(true)
   const [startShowMessages, setStartShowMessages] = useState(true)
@@ -173,6 +176,7 @@ export function CampaignLivePage() {
       const amount = Number(targetAmount)
       const created = await startLiveSession(id, {
         title: title.trim() || campaign?.title,
+        automatedReviewConsent,
         targetAmount: Number.isFinite(amount) && amount > 0 ? amount : undefined,
         showDonorNames: startShowNames,
         showDonorMessages: startShowMessages,
@@ -186,7 +190,7 @@ export function CampaignLivePage() {
     } finally {
       setStarting(false)
     }
-  }, [id, campaign?.title, title, targetAmount, startShowNames, startShowMessages, startShowAmounts, startPrivacyMode])
+  }, [id, campaign?.title, title, automatedReviewConsent, targetAmount, startShowNames, startShowMessages, startShowAmounts, startPrivacyMode])
 
   const handleEnd = useCallback(async () => {
     if (!session) return
@@ -418,6 +422,8 @@ export function CampaignLivePage() {
               />
             </FormGroup>
 
+            <PublicationConsent value={automatedReviewConsent} onChange={setAutomatedReviewConsent} />
+            <PublicationReviews />
             <Button
               brandVariant="primary"
               onClick={handleStart}
