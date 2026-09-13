@@ -162,7 +162,7 @@ export class ApprovePayoutUseCase {
     if (payout.provider === 'ujimora_wallet') {
       if (!this.walletPayouts || !this.campaigns)
         throw new AppError('Wallet transfers unavailable', 503)
-      await this.walletPayouts.settleCampaign(payout.id, requester.userId, reviewNote.trim())
+      await this.walletPayouts.settleCampaign(payout.id, requester.userId, reviewNote.trim(), requester.authVersion)
       return toPayoutDto((await this.payoutRepo.findById(payout.id))!)
     }
 

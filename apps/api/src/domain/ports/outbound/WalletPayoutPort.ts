@@ -1,6 +1,6 @@
 export interface WalletPayoutPort {
   recordCampaignReview(payoutId: string, adminId: string, note: string): Promise<void>
-  settleCampaign(payoutId: string, approvedBy: string, reviewNote: string): Promise<void>
+  settleCampaign(payoutId: string, approvedBy: string, reviewNote: string, authVersion?: string): Promise<void>
   transferCreator(input: {
     userId: string
     authVersion: string

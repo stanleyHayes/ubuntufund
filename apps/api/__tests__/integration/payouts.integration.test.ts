@@ -1,3 +1,5 @@
+import { MongoWalletPayoutRepository } from '../../src/infrastructure/adapters/outbound/persistence/MongoWalletPayoutRepository.js';
+import { WalletModel } from '../../src/infrastructure/database/models/WalletModel.js';
 import { TransferRecipientModel } from '../../src/infrastructure/database/models/TransferRecipientModel.js';
 import { MongoPayoutRepository } from '../../src/infrastructure/adapters/outbound/persistence/MongoPayoutRepository.js';
 import { MongoManualPayoutApproval } from '../../src/infrastructure/adapters/outbound/persistence/MongoManualPayoutApproval.js';
@@ -375,6 +377,28 @@ describe('Payouts Integration', () => {
       await request(app).post(`/api/v1/payouts/${created.body.data.id}/approve`).set('Authorization', `Bearer ${admin.token}`).send({ reviewNote: 'Reviewed beneficiary ownership and receiving capacity.' }).expect(403);
       expect((await PayoutModel.findById(created.body.data.id))?.firstApprovedBy).toBeUndefined();
       expect((await TransferRecipientModel.findById(recipient.body.data.id))?.reviews || []).toHaveLength(0);
+    } finally { hook.mockRestore(); }
+  });
+
+  it('rechecks administrator credentials after wallet review but before settlement', async () => {
+    const owner = await registerUser(app, uniqueEmail('wallet-final-owner'));
+    const campaignId = await createActiveCampaign(app, owner.token, owner.userId);
+    const admin = await createAdmin(app, uniqueEmail('wallet-final-admin'));
+    await fundCampaign(app, campaignId, 1000);
+    await endCampaign(campaignId);
+    const created = await request(app).post(`/api/v1/campaigns/${campaignId}/payouts`).set('Authorization', `Bearer ${owner.token}`).send({ amount: 500, destination: 'ujimora_wallet', idempotencyKey: randomUUID() }).expect(201);
+    const before = await WalletModel.findOne({ userId: owner.userId }).lean();
+    const campaignBefore = await CampaignBalanceModel.findOne({ campaignId }).lean();
+    const original = MongoWalletPayoutRepository.prototype.settleCampaign;
+    const hook = vi.spyOn(MongoWalletPayoutRepository.prototype, 'settleCampaign').mockImplementationOnce(async function(...args) {
+      await UserModel.findByIdAndUpdate(admin.userId, { authVersion: randomUUID() });
+      return original.apply(this, args);
+    });
+    try {
+      await request(app).post(`/api/v1/payouts/${created.body.data.id}/approve`).set('Authorization', `Bearer ${admin.token}`).send({ reviewNote: 'Reviewed beneficiary ownership and receiving capacity.' }).expect(403);
+      expect((await WalletModel.findOne({ userId: owner.userId }))?.balance).toBe(before?.balance);
+      expect((await CampaignBalanceModel.findOne({ campaignId }))?.availableBalance).toBe(campaignBefore?.availableBalance);
+      expect((await PayoutModel.findById(created.body.data.id))?.status).toBe('PENDING');
     } finally { hook.mockRestore(); }
   });
 

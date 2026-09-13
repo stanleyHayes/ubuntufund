@@ -2,6 +2,8 @@
 
 ### 2026-09-12 — Ghana and mobile store compliance goal (IN PROGRESS)
 
+- Campaign wallet settlement now checks current staff role, nonclosed account and credential version inside its money transaction. All 40 focused tests, types/lint pass, including three revocation persistence cases and HTTP rotation after review; corrected new fixture idempotency/balance assumptions without changing production validation. Remaining campaign/destination/fee and release boundaries documented in KYC_REVIEW_INTEGRITY.md.
+
 - Recipient/wallet review evidence now requires current staff authorization; high-value first approval and review commit together, and same-maker retries reject before duplicate review. All 44 focused tests plus API types/lint pass, including maker rollback/revocation and preserved final-bank revocation coverage. Remaining status/snapshot/wallet boundaries are explicit in KYC_REVIEW_INTEGRITY.md.
 
 - Manual single/batched campaign bank approval now commits current staff role/credential authorization, balance reservation and PROCESSING reference/legs together; provider calls follow commit. All 34 focused tests and API types/lint pass, including rollback/retry, three staff revocations and provider committed-state assertions. Remaining maker-review/campaign/destination/wallet/other consumer scope recorded in KYC_REVIEW_INTEGRITY.md. Earlier full API pass predates this delta.

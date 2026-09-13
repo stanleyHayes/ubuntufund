@@ -116,10 +116,15 @@ export class MongoWalletPayoutRepository implements WalletPayoutPort {
       { $push: { walletReviews: { adminId, note, reviewedAt: new Date() } } },
     )
   }
-  async settleCampaign(payoutId: string, approvedBy: string, reviewNote: string) {
+  async settleCampaign(payoutId: string, approvedBy: string, reviewNote: string, authVersion = '') {
     const session = await mongoose.startSession()
     try {
       await session.withTransaction(async () => {
+        const staff = await UserModel.updateOne({
+          _id: approvedBy, role: 'admin', deletedAt: null,
+          ...(authVersion ? { authVersion } : { $or: [{ authVersion: '' }, { authVersion: null }] }),
+        }, { $inc: { staffActionVersion: 1 } }, { session })
+        if (!staff.matchedCount) throw new AppError('Current administrator access is required.', 403)
         const payout = await PayoutModel.findOne({
           _id: payoutId,
           provider: 'ujimora_wallet',

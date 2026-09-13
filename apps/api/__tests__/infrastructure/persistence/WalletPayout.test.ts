@@ -37,7 +37,9 @@ beforeEach(async () => {
 })
 afterEach(() => vi.restoreAllMocks())
 const repo = new MongoWalletPayoutRepository({ creatorPolicy: async () => ({ feePercent: 5, eligible: true, planName: 'Fixture' }) })
+const adminId = new mongoose.Types.ObjectId().toString()
 async function seed(amount = 100, fee = 10) {
+  await UserModel.collection.insertOne({ _id: new mongoose.Types.ObjectId(adminId), role: 'admin', authVersion: 'staff-fixture' })
   await CampaignBalanceModel.create({
     campaignId: 'campaign',
     currency: 'GHS',
@@ -60,8 +62,8 @@ describe('transactional wallet payouts', () => {
   it('concurrent approval credits once and posts balanced journal and histories', async () => {
     const p = await seed()
     await Promise.all([
-      repo.settleCampaign(p.id, 'admin', 'Reviewed owner and fee'),
-      repo.settleCampaign(p.id, 'admin', 'Reviewed owner and fee'),
+      repo.settleCampaign(p.id, adminId, 'Reviewed owner and fee', 'staff-fixture'),
+      repo.settleCampaign(p.id, adminId, 'Reviewed owner and fee', 'staff-fixture'),
     ])
     expect((await WalletModel.findOne({ userId: 'owner' }))?.balance).toBe(90)
     expect((await CampaignBalanceModel.findOne({ campaignId: 'campaign' }))?.availableBalance).toBe(
@@ -81,8 +83,8 @@ describe('transactional wallet payouts', () => {
       _id: new mongoose.Types.ObjectId(),
     })
     const results = await Promise.allSettled([
-      repo.settleCampaign(first.id, 'admin', 'Reviewed'),
-      repo.settleCampaign(second.id, 'admin', 'Reviewed'),
+      repo.settleCampaign(first.id, adminId, 'Reviewed', 'staff-fixture'),
+      repo.settleCampaign(second.id, adminId, 'Reviewed', 'staff-fixture'),
     ])
     expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1)
     expect((await WalletModel.findOne())?.balance).toBe(100)
@@ -93,13 +95,23 @@ describe('transactional wallet payouts', () => {
     vi.spyOn(JournalEntryModel, 'create').mockRejectedValueOnce(
       new Error('ledger unavailable') as never,
     )
-    await expect(repo.settleCampaign(p.id, 'admin', 'Reviewed')).rejects.toThrow(
+    await expect(repo.settleCampaign(p.id, adminId, 'Reviewed', 'staff-fixture')).rejects.toThrow(
       'ledger unavailable',
     )
     expect((await CampaignBalanceModel.findOne())?.availableBalance).toBe(120)
     expect(await WalletModel.countDocuments()).toBe(0)
     expect((await PayoutModel.findById(p.id))?.status).toBe('PENDING')
     expect(await WalletTransactionModel.countDocuments()).toBe(0)
+  })
+  it.each(['role', 'closed', 'credentials'])('rejects changed staff %s before wallet settlement', async (change) => {
+    const p = await seed()
+    await UserModel.findByIdAndUpdate(adminId, change === 'role' ? { role: 'user' } : change === 'closed' ? { deletedAt: new Date() } : { authVersion: 'rotated' })
+    await expect(repo.settleCampaign(p.id, adminId, 'Reviewed', 'staff-fixture')).rejects.toMatchObject({ statusCode: 403 })
+    expect((await CampaignBalanceModel.findOne())?.availableBalance).toBe(120)
+    expect(await WalletModel.countDocuments()).toBe(0)
+    expect((await PayoutModel.findById(p.id))?.status).toBe('PENDING')
+    expect(await WalletTransactionModel.countDocuments()).toBe(0)
+    expect(await JournalEntryModel.countDocuments()).toBe(0)
   })
   it('creator retries are idempotent and another user cannot spend this balance', async () => {
     const userId = new mongoose.Types.ObjectId().toString()
