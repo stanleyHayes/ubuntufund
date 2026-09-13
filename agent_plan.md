@@ -1,5 +1,12 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — Dependency native RELRO correction
+
+- Extended the Expo alignment plugin to register both linker flags before Android library projects configure CMake. Prebuild confirms placement/idempotent marker; lint passes. Archived NDK27.1/JDK17 dependency build succeeds in41s, and all six Expo Modules Core/Expo Updates/Screens libraries on ARM64/x86_64 now pass LOAD+RELRO checks.
+- Together with the prior eight app/codegen outputs, 14 source-built libraries are verified. Prebuilt binaries and final current-source signed packaging/device paths remain open; evidence in `docs/compliance/NATIVE_PERMISSIONS.md`.
+- Full API41412 continues on unchanged de8b9e2 API/shared; retain root source freeze until terminal.
+
+
 ### 2026-09-13 — App native RELRO alignment correction
 
 - Expo plugin adds both Android-documented page-size linker flags to the app CMake invocation. Prebuild confirms generated option once; lint passes. Archived native ARM64 and x86_64 builds with the same option pass under NDK27.1/JDK17; all eight appmodules/codegen libraries now pass LOAD+RELRO alignment checks.
