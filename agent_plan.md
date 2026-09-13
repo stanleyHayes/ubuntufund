@@ -2,6 +2,8 @@
 
 ### 2026-09-13 — Atomic donation settlement
 
+- Published as `de49df2`. Full API regression73343 is running against unchanged de49df2 API/shared source; log `/tmp/ujimora-donation-atomic-full-regression.log`. Do not edit or fast-forward root API/shared source until this process is terminal. Continue read-only audit or use an isolated checkout for new implementation. This run supersedes neither the old failed baseline result nor external provider/store verification until its terminal evidence is recorded.
+
 - Donation success, record, journal, campaign/split projections and outbox now commit in one required transaction; delivery follows commit and cannot trigger compensation of committed funds. Ledger account writes are sequential within the transaction. Five real-database rollback/concurrency/delivery tests and 38 existing focused tests pass; API types/lint pass. Scope/evidence and remaining wallet-debit, split-consent, historic repair and provider/full-suite requirements: `docs/compliance/DONATION_SETTLEMENT_INTEGRITY.md`.
 
 ### 2026-09-13 — Regression recovery and settlement audit
