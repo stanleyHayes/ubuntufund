@@ -1,5 +1,11 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — Remove permission for disabled push
+
+- Android blockedPermissions now removes POST_NOTIFICATIONS because push is unavailable and registration/presentation are suppressed. Restore only with implemented consent/delivery rollout. Expo prebuild and release manifest task pass; parsed merged manifest confirms notification permission absent and screen-sharing permission retained.
+- Logs `/tmp/ujimora-push-permission-prebuild.log`, `/tmp/ujimora-push-permission-manifest.log`. Previous APK/AAB precede this config delta; final package/device verification remains open. No JS/API change or production permission revocation claimed.
+
+
 ### 2026-09-13 — Full API regression and device-specific split install complete
 
 - API45526 is terminal exit0:1,218tests across165files pass in1,090.26seconds, source1a43ae5. Current API/shared diff against that baseline is empty. This supersedes running entries below and covers wallet attribution, creator currency consistency, null account closure/privacy and historical closure audit. Source freeze lifted; no verification jobs remain running from this checkpoint.
