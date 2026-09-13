@@ -290,3 +290,9 @@ This is successful startup despite the27static ELF findings; it is not evidence 
 Fresh comparison with [Android page-size guidance](https://developer.android.com/guide/practices/page-sizes#check-relro) confirms the documented RELRO test uses `(VirtAddr + MemSiz) % 0x4000`. Current APK passes LOAD alignment for all48 libraries; all27failures are RELRO-end checks, not LOAD failures. Do not describe them as27confirmed runtime crashes.
 
 Matching executable `/proc/7452/maps` APK offsets to stored ARM64 ZIP entries identifies13libraries loaded at startup, including7with RELRO findings: libc++_shared, fbjni, hermestooling, hermesvm, jingle_peerconnection, jsi and reactnative. Evidence `/tmp/ujimora-current-apk-loaded-libraries.json`. These actually loaded despite the static findings on this emulator. This observation does not waive the documented alignment check or establish broader device/feature compatibility; runtime behavior and static findings are retained separately.
+
+## Current App Bundle packaging — 13 September 2026
+
+Root bundleRelease68262 passes in38seconds (975tasks,31executed). Artifact `apps/mobile/android/app/build/outputs/bundle/release/app-release.aab`, SHA256 `1b80160f0b7f43f3e82f3fad66a635adbc3f54c1e7393ddf30f52c1dad6d3cb6`. Google bundletool1.18.1 validation exits0; dumped config specifies PAGE_ALIGNMENT_16K. All48 AAB native binaries are byte-identical to the previously inspected APK, retaining the same27RELRO findings.
+
+Evidence: `/tmp/ujimora-current-aab-build.log`, `/tmp/ujimora-current-aab-config.json`, `/tmp/ujimora-current-aab-validation.log`, `/tmp/ujimora-current-aab-native-parity.json`. Tool downloaded from Google's bundletool GitHub release1.18.1. This remains debug-signed with a non-routable API: packaging verification only, not production signing, generated split-APK device acceptance or store approval. No upload/submission occurred.

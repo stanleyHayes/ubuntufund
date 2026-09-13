@@ -1,5 +1,11 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — Android App Bundle packaging verification
+
+- Current-source bundleRelease68262 passes in38s; Google bundletool1.18.1 validates the resulting AAB (exit0) and config declares PAGE_ALIGNMENT_16K. All48 bundled native binaries match the inspected APK byte-for-byte, so27RELRO findings remain rather than being hidden by different packaging.
+- AAB SHA2561b80160f0b7f43f3e82f3fad66a635adbc3f54c1e7393ddf30f52c1dad6d3cb6. Debug signing/non-routable API remain local-test limitations; no store upload. Native ledger has evidence. API45526 still running.
+
+
 ### 2026-09-13 — Native finding classification and loaded-library evidence
 
 - All48 current APK libraries pass LOAD alignment;27fail RELRO-end alignment specifically. Rechecked current Android documentation and retained that check. Seven flagged ARM64 libraries are among13 actually loaded at successful startup, established by matching executable APK map offsets to ZIP library entries.
