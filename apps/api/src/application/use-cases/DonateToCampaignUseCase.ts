@@ -18,6 +18,7 @@ export class DonateToCampaignUseCase {
         currency: input.currency,
         provider: 'wallet',
         tip: 0,
+        donorName: input.isAnonymous ? undefined : input.donorName?.trim(),
         message: input.message,
         legalAcceptance: input.legalAcceptance,
         isAnonymous: input.isAnonymous,

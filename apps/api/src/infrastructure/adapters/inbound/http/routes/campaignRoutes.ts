@@ -24,6 +24,7 @@ const donateSchema = z.object({
   amount: z.number().positive(),
   currency: z.string().min(2).max(5),
   paymentMethod: z.nativeEnum(PaymentMethod).default(PaymentMethod.WALLET),
+  donorName: z.string().trim().max(100).optional(),
   message: z.string().max(500).optional(),
   isAnonymous: z.boolean().default(false),
   // Optional live-session attribution: drives overlay stats + real-time events.

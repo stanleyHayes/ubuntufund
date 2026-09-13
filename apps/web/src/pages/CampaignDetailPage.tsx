@@ -1,3 +1,5 @@
+import Checkbox from '@mui/material/Checkbox'
+import FormControlLabel from '@mui/material/FormControlLabel'
 import { MessageAgreement } from '@/components/donate/MessageAgreement'
 import { CampaignOrganizer } from '@/components/campaigns/CampaignOrganizer'
 import { CampaignCashout } from '@/components/campaigns/CampaignCashout'
@@ -115,6 +117,8 @@ function CampaignDetailContent() {
   const [donateOpen, setDonateOpen] = useState(false)
   const [donationRevision, setDonationRevision] = useState(0)
   const [donateAmount, setDonateAmount] = useState('')
+  const [donateName, setDonateName] = useState('')
+  const [donateAnonymous, setDonateAnonymous] = useState(false)
   const [donateMessage, setDonateMessage] = useState('')
   const [donateMessageAccepted, setDonateMessageAccepted] = useState(false)
   const [selectedProvider, setSelectedProvider] = useState<PaymentMethodData | null>(null)
@@ -158,6 +162,8 @@ function CampaignDetailContent() {
   function handleOpenDonate() {
     if (!acceptsCampaignDonation(campaign) || providersLoading || providersError || !walletProviders.length) return
     if (!currentUser) { navigate('/login', { state: { from: { pathname: `/campaigns/${id}` } } }); return }
+    setDonateName(currentUser.name || '')
+    setDonateAnonymous(false)
     setDonateOpen(true)
     setDonateAmount('')
     setDonateMessage('')
@@ -176,6 +182,7 @@ function CampaignDetailContent() {
     donateAmount &&
     validWalletDonationAmount(donateAmount) &&
     donateMessage.length <= 500 &&
+    (donateAnonymous || (!!donateName.trim() && donateName.trim().length <= 100)) &&
     donateMessageAccepted &&
     !!currentUser && acceptsCampaignDonation(campaign) &&
     !providersLoading && !providersError && walletProviders.some((p) => p.slug === selectedProvider?.slug) &&
@@ -375,6 +382,9 @@ function CampaignDetailContent() {
             ) : <Alert severity="info">Wallet donations are not currently available.</Alert>}
           </Box>
 
+          <TextField label="Public donor name" value={donateName} onChange={(e) => setDonateName(e.target.value)} disabled={donateAnonymous} inputProps={{ maxLength: 100 }} fullWidth />
+          <FormControlLabel control={<Checkbox checked={donateAnonymous} onChange={(e) => setDonateAnonymous(e.target.checked)} />} label="Donate anonymously" />
+          <Typography variant="body2" color="text.secondary">{donateAnonymous ? 'Your name will not appear publicly.' : 'Your chosen name will appear after content review. Until then, your donation appears anonymously.'} Messages are also reviewed before publication.</Typography>
           <Box>
             <TextField
               label="Message (optional)"
@@ -408,7 +418,8 @@ function CampaignDetailContent() {
                   legalAcceptance: donateMessageAccepted
                     ? { version: LEGAL_ACCEPTANCE_VERSION, acceptedTerms: true, ageConfirmed: true }
                     : undefined,
-                  isAnonymous: false,
+                  donorName: donateAnonymous ? undefined : donateName.trim(),
+                  isAnonymous: donateAnonymous,
                 })
                 setDonateOpen(false)
                 refresh()

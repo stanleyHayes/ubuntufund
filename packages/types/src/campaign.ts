@@ -183,6 +183,7 @@ export interface CreateDonationInput {
   /** Currency code — 'GHS' (Ghanaian cedi) is the platform's only currency */
   currency: string
   paymentMethod: PaymentMethod
+  donorName?: string
   message?: string
   isAnonymous: boolean
   phoneNumber?: string

@@ -1,5 +1,12 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — Wallet public-name and anonymity choice
+
+- Wallet form previously sent isAnonymous=false without a name, and legacy wallet use case discarded donorName. It now presents an editable account-name default, explicit anonymity checkbox and review explanation; chosen names are bounded and forwarded with terms consent. Anonymous requests omit the name. Existing records are not retroactively attributed; public moderation remains in force.
+- Named/anonymous browser payload flow passes;10 focused API tests, web/API types and affected lint pass. Logs `/tmp/ujimora-wallet-name-{browser,api,web-types,api-types,lint}.log`.
+- Previous full API session25869 was intentionally interrupted (SIGINT, exit130) to apply this user-facing API/shared correction. It did not complete and is not a passing baseline. No full regression remains running; rerun against the new implementation is still required.
+
+
 ### 2026-09-13 — Current dependency checkpoint and API release regression
 
 - Fresh production dependency audit still reports9 entries across the two locally mitigated parser chains; all6 consumer security tests pass. DEPENDENCY_SECURITY.md records exact evidence and upstream limitations.
