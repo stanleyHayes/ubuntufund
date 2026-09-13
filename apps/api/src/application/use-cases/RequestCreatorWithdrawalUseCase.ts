@@ -139,6 +139,8 @@ export class RequestCreatorWithdrawalUseCase {
         await this.accounts.assertCurrent(userId, savedAccount)
         const reserved = await this.balanceRepo.reserveForPayout(userId, input.amount)
         if (!reserved) throw new AppError('Insufficient available balance for this withdrawal.', 400)
+        if (reserved.currency !== currency)
+          throw new AppError('Your balance currency has changed. Refresh your creator dashboard before withdrawing.', 409)
         const payout = await this.payoutRepo.create(new CreatorPayoutEntity({
           id: '', creatorUserId: userId, amount: input.amount, fee, feePercent,
           netAmount, currency, status: 'PENDING', provider: 'paystack',

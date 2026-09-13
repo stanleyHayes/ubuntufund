@@ -1,5 +1,12 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — Creator withdrawal currency consistency
+
+- Source audit found bank withdrawals read currency before reserving funds without checking the actual reserved balance. A changed currency could produce a payout in the stale currency. The reservation now checks currency inside the transaction and rolls back on mismatch before creating a payout or sending a transfer.
+- Regression reproduced HTTP201 before the fix, then verifies HTTP409, unchanged available balance, no payout and no transfer. All31 creator-withdrawal integration tests pass; API types and affected lint pass. Wallet transfers already reserve with an explicit GHS filter.
+- This is prospective consistency protection; historical reconciliation, provider acceptance and remaining financial-write audits stay open. Full API baseline predates this delta.
+
+
 ### 2026-09-13 — DataStore native library upgrade
 
 - Added Expo DataStore plugin pinning the androidx.datastore family to1.2.1. Generated Android prebuild succeeds with exactly one pin; affected lint passes.

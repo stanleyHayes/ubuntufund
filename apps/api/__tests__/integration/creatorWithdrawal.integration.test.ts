@@ -191,6 +191,22 @@ describe('Creator withdrawal — transfer rail', () => {
     expect(vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/transfer')).length).toBe(transfersBefore)
   })
 
+  it('rejects a changed balance currency before sending or retaining a reservation', async () => {
+    const owner = await creatorWithBalance(100)
+    const original = MongoCreatorWithdrawalTransaction.prototype.run
+    const transaction = vi.spyOn(MongoCreatorWithdrawalTransaction.prototype, 'run').mockImplementationOnce(async function (this: MongoCreatorWithdrawalTransaction, userId, version, work) {
+      await CreatorBalanceModel.updateOne({ userId }, { $set: { currency: 'USD' } })
+      return original.call(this, userId, version, work)
+    })
+    const before = vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/transfer')).length
+    try {
+      await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`).send({ amount: 100, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } }).expect(409)
+    } finally { transaction.mockRestore() }
+    expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(100)
+    expect(await CreatorPayoutModel.countDocuments({ creatorUserId: owner.userId })).toBe(0)
+    expect(vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/transfer')).length).toBe(before)
+  })
+
   it('rolls back reservation and payout when the processing transition fails, then permits retry', async () => {
     const owner = await creatorWithBalance(100)
     const body = { amount: 100, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } }
