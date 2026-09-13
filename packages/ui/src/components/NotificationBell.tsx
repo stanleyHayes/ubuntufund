@@ -1,11 +1,16 @@
 import { EmptyState } from './EmptyState'
 import LinkRounded from '@mui/icons-material/LinkRounded'
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Alert, Badge, Box, Button, IconButton, Popover, Skeleton, Typography } from '@mui/material'
 import NotificationsRounded from '@mui/icons-material/NotificationsRounded'
 import CloseRounded from '@mui/icons-material/CloseRounded'
 
 type Notice = { id: string; title: string; message: string; read: boolean; createdAt: string }
+function validNotices(value: unknown): value is Notice[] {
+  return Array.isArray(value) && value.every(item => item && typeof item === 'object' &&
+    ['id', 'title', 'message', 'createdAt'].every(key => typeof item[key] === 'string') &&
+    typeof item.read === 'boolean' && Number.isFinite(Date.parse(item.createdAt)))
+}
 type NotificationApi = { get<T>(path: string): Promise<T>; put<T>(path: string): Promise<T> }
 export function NotificationBell({
   api,
@@ -24,6 +29,8 @@ export function NotificationBell({
   iconColor?: string
   children?: ReactNode
 }) {
+  const revision = useRef(0)
+  const safeAttentionCount = Number.isSafeInteger(attentionCount) && attentionCount >= 0 ? attentionCount : 0
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   const [items, setItems] = useState<Notice[]>([])
   const [unread, setUnread] = useState(0)
@@ -31,18 +38,22 @@ export function NotificationBell({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const refresh = useCallback(async () => {
+    const current = ++revision.current
     try {
       const [notices, count] = await Promise.all([
-        api.get<Notice[]>('/notifications'),
-        api.get<{ count: number }>('/notifications/unread-count'),
+        api.get<unknown>('/notifications'),
+        api.get<{ count?: unknown } | null>('/notifications/unread-count'),
       ])
+      if (current !== revision.current) return
+      if (!validNotices(notices) || !Number.isSafeInteger(count?.count) || Number(count?.count) < 0) throw new Error('Invalid notification response')
       setItems(notices)
-      setUnread(count.count)
+      setUnread(Number(count!.count))
       setError('')
     } catch {
+      if (current !== revision.current) return
       setError('Notifications could not be loaded. Please retry.')
     } finally {
-      setLoading(false)
+      if (current === revision.current) setLoading(false)
     }
   }, [api])
   useEffect(() => {
@@ -56,6 +67,7 @@ export function NotificationBell({
     window.addEventListener('ujimora:notifications-changed', update)
     return () => {
       active = false
+      revision.current++
       clearInterval(timer)
       window.removeEventListener('focus', update)
       window.removeEventListener('ujimora:notifications-changed', update)
@@ -88,7 +100,7 @@ export function NotificationBell({
           boxShadow: 'var(--neu-subtle)',
           borderRadius: 'var(--shape-button, 10px)',
         }}
-        aria-label={`Notifications (${unread} unread${attentionCount ? `, ${attentionCount} actions pending` : ''})`}
+        aria-label={`Notifications (${error ? 'unavailable' : `${unread} unread`}${safeAttentionCount ? `, ${safeAttentionCount} actions pending` : ''})`}
         aria-haspopup="dialog"
         aria-expanded={Boolean(anchor)}
         data-tour="bell"
@@ -97,7 +109,7 @@ export function NotificationBell({
           void refresh()
         }}
       >
-        <Badge badgeContent={unread + attentionCount} color="secondary" max={99}>
+        <Badge badgeContent={error ? '!' : unread + safeAttentionCount} color="secondary" max={99}>
           <NotificationsRounded />
         </Badge>
       </IconButton>
@@ -203,7 +215,7 @@ export function NotificationBell({
               >
                 <Typography variant="overline">Your inbox</Typography>
                 {unread > 0 && (
-                  <Button size="small" disabled={busy} onClick={() => void markRead()}>
+                  <Button size="small" disabled={busy || !!error} onClick={() => void markRead()}>
                     Mark all read
                   </Button>
                 )}
@@ -288,7 +300,7 @@ export function NotificationBell({
                     {new Date(item.createdAt).toLocaleString()}
                   </Typography>
                   {!item.read && (
-                    <Button size="small" disabled={busy} onClick={() => void markRead(item.id)}>
+                    <Button size="small" disabled={busy || !!error} onClick={() => void markRead(item.id)}>
                       Mark as read
                     </Button>
                   )}

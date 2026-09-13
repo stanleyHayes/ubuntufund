@@ -189,7 +189,7 @@ export default function TopBar({
         </Box>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.75, sm: 1 }, flexShrink: 0 }}>
-          <NotificationBell api={api} attentionCount={total}>
+          <NotificationBell key={user?.id ?? 'guest'} api={api} attentionCount={total}>
             <AdminActionInbox />
           </NotificationBell>
 
