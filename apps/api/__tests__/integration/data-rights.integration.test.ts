@@ -7,6 +7,7 @@ import { connectTestDatabase, disconnectTestDatabase, dropTestDatabase } from '.
 import { DataRightsRequestModel, DataRightsEventModel } from '../../src/infrastructure/database/models/DataRightsRequestModel.js';
 import { UserModel } from '../../src/infrastructure/database/models/UserModel.js';
 import { resetRateLimiters } from '../../src/infrastructure/adapters/inbound/middleware/rateLimiter.js';
+import { MongoUnitOfWork } from '../../src/infrastructure/adapters/outbound/persistence/MongoUnitOfWork.js';
 let app: Express, owner: { id: string; token: string }, other: { id: string; token: string }, admin: { id: string; token: string };
 async function register() {
   const result = await request(app).post('/api/v1/auth/register').send({ email: `rights-${randomUUID()}@example.com`, password: 'SecurePass123', name: 'Rights test', legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true } }).expect(201);
@@ -18,6 +19,25 @@ afterAll(async () => { await dropTestDatabase(); await disconnectTestDatabase();
 const body = { kind: 'access', details: 'Please provide a copy of all of my personal data.' };
 const submit = () => request(app).post('/api/v1/data-rights').set('Authorization', `Bearer ${owner.token}`).send(body);
 const review = (id: string, overrides = {}) => request(app).put(`/api/v1/admin/data-rights/${id}/review`).set('Authorization', `Bearer ${admin.token}`).send({ revision: 0, status: 'responded', response: 'Your requested information is included in this response.', evidence: 'Internal evidence: all relevant systems reviewed.', ...overrides });
+it.each(['role', 'credentials', 'closure'] as const)('denies a privacy review when staff %s changes after authentication', async kind => {
+  const created = await submit().expect(201);
+  const before = await UserModel.findById(admin.id);
+  const original = MongoUnitOfWork.prototype.run;
+  const run = vi.spyOn(MongoUnitOfWork.prototype, 'run').mockImplementation(async function (this: MongoUnitOfWork, work) {
+    await UserModel.updateOne({ _id: admin.id }, { $set: kind === 'role' ? { role: 'user' } : kind === 'credentials' ? { authVersion: randomUUID() } : { deletedAt: new Date() } });
+    return original.call(this, work);
+  });
+  try {
+    await review(created.body.data._id).expect(403);
+    const saved = await DataRightsRequestModel.findById(created.body.data._id);
+    expect(saved).toMatchObject({ status: 'open', active: true, revision: 0, response: '' });
+    expect(await DataRightsEventModel.countDocuments({ requestId: created.body.data._id })).toBe(1);
+  } finally {
+    run.mockRestore();
+    await UserModel.updateOne({ _id: admin.id }, { $set: { role: 'admin', authVersion: before?.authVersion ?? '' }, $unset: { deletedAt: 1 } });
+  }
+});
+
 it('records a private request and target, prevents duplicates and rejects spoofed ownership', async () => {
   await request(app).post('/api/v1/data-rights').send(body).expect(401);
   await request(app).post('/api/v1/data-rights').set('Authorization', `Bearer ${owner.token}`).send({ ...body, userId: other.id }).expect(400);

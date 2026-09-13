@@ -83,6 +83,10 @@ export function createDataRightsAdminRoutes(auth: ReturnType<typeof createAuthMi
       req.body.evidence = req.body.evidence.trim();
       req.body.deliveryReference = (req.body.deliveryReference ?? '').trim();
       const item = await new MongoUnitOfWork().run(async () => {
+        const staff = await UserModel.findOneAndUpdate({ _id: req.userId, role: 'admin', deletedAt: null,
+          ...(req.authVersion ? { authVersion: req.authVersion } : { $or: [{ authVersion: '' }, { authVersion: null }] }),
+        }, { $inc: { staffActionVersion: 1 } }, { new: true });
+        if (!staff) throw new AppError('Current administrator access is required to review this request.', 403);
         const existing = await DataRightsRequestModel.findById(req.params.id);
         if (existing && req.body.status === 'responded' && req.body.deliveryMethod === 'account') {
           const owner = await UserModel.findOneAndUpdate({ _id: existing.userId, deletedAt: { $exists: false } }, { $set: { updatedAt: new Date() } });
