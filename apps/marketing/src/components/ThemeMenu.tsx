@@ -43,7 +43,13 @@ export default function ThemeMenu() {
     <Tooltip title="Appearance">
       <IconButton onClick={(event) => setAnchor(event.currentTarget)} aria-label="Change theme"
         aria-haspopup="dialog" aria-expanded={Boolean(anchor)} aria-controls={anchor ? id : undefined}
-        size="small" sx={{ color: 'text.secondary' }}><PaletteRoundedIcon /></IconButton>
+        size="small" sx={{
+          // The navigation surface stays forest green in both color modes.
+          width: 40, height: 40, color: '#DCC07E',
+          bgcolor: 'var(--neu-surface)', boxShadow: 'var(--neu-subtle) !important',
+          '&:hover': { color: '#F5F2EA', bgcolor: 'var(--neu-surface)', boxShadow: 'var(--neu-raised-hover) !important' },
+          '&.Mui-focusVisible': { outline: '2px solid #DCC07E', outlineOffset: 3 },
+        }}><PaletteRoundedIcon sx={{ fontSize: 22 }} /></IconButton>
     </Tooltip>
     <Popover anchorEl={anchor} open={Boolean(anchor)} onClose={() => setAnchor(null)}
       anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }} transformOrigin={{ horizontal: 'right', vertical: 'top' }}
