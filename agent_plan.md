@@ -2,6 +2,8 @@
 
 ### 2026-09-12 — Ghana and mobile store compliance goal (IN PROGRESS)
 
+- CI concurrency now preserves running main checks while queuing the latest pushed revision; superseded PR checks remain cancellable. Repeated main cancellations were observed in hosted runs 34746357533/34746292172. Workflow YAML and actionlint validation pass with two existing unused-loop-variable shellcheck warnings. This supports incremental publication without restarting the full API/E2E run on every push; a hosted full pass remains unproven.
+
 - Data-rights reviews now serialize current staff role, credential version and nonclosed account inside the response/audit transaction. Eight data-rights integration tests, API types/lint pass; role removal, credential rotation and closure after authentication deny without changing the request/revision/audit history. Logs `/tmp/ujimora-rights-authorization-{tests,types,lint}.log`, sessions 61554/60923/62875 terminal exit 0. Publishing incrementally; complete access-data fulfilment, retention/processor and other staff-action requirements remain open.
 
 - Live transaction concurrency evidence: a separately committed approval rejection after the transaction snapshot forces retry and denial with no session/campaign fence committed; simultaneous starts of an approved funded campaign return the same session/token with funds unchanged. All 15 publication integration tests pass (session 24781 terminal 0, `/tmp/ujimora-live-concurrency-tests.log`). No runtime source changed. Remaining live/provider/device and wider compliance gates stay open.

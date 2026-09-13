@@ -8,7 +8,9 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Incremental main pushes must not continually restart the full API/E2E run.
+  # Keep the active main run and the latest pending revision; supersede PR runs.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   MONGODB_TEST_URI: mongodb://127.0.0.1:28017/ubuntu-fund-test
