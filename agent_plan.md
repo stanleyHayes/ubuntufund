@@ -2,6 +2,8 @@
 
 ### 2026-09-12 — Ghana and mobile store compliance goal (IN PROGRESS)
 
+- Native permission audit: generated configuration exposed unnecessary legacy READ_EXTERNAL_STORAGE; explicitly blocked it and verified all six removal directives through Expo introspection. Retained WRITE_EXTERNAL_STORAGE because the installed picker requires it for camera capture below Android 10. Documented the complete generated permission inventory, iOS development-local-network declarations, policy timing and final merged-artifact/device gates in `NATIVE_PERMISSIONS.md`; updated store checklist. No signed-device or store approval claimed. Full API session 99922 and hosted CI 34748600279 remain active at last poll.
+
 - Native payment-storage privacy: request lookup keys now use SHA-256 instead of embedding checkout JSON/contact details/messages. Matching legacy requests preserve their original idempotency UUID and remove plaintext keys only after durable replacement; failed-save recovery is tested. All 84 mobile tests pass after updating the creator checkout crypto mock; mobile types/lint and iOS/Android/web exports pass. Logs `/tmp/ujimora-mobile-payment-storage-{tests,export}.log`. Untouched legacy entries, pending checkout references/URLs, logout cleanup and signed-device/backup evidence remain open in `STORE_DATA_INVENTORY.md`.
 
 - Fresh full API regression started from API source at 0754a37: session 99922, `/tmp/ujimora-compliance-api-regression.log`. It is still running; no API source or tests changed during this run. Do not infer completion from focused suites or this start record. Hosted run 34748600279 also remains in progress at last check.
