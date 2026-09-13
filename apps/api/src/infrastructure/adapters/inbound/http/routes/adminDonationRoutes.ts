@@ -1,5 +1,6 @@
 import { Router, type RequestHandler } from 'express';
-import { z } from 'zod';
+import { z, ZodError } from 'zod';
+import { AppError } from '../../middleware/errorHandler.js';
 import { DonationModel } from '../../../../database/models/DonationModel.js';
 import { CampaignModel } from '../../../../database/models/CampaignModel.js';
 import { UserModel } from '../../../../database/models/UserModel.js';
@@ -10,10 +11,11 @@ export function createAdminDonationRoutes(auth: RequestHandler, admin: RequestHa
   router.use(auth, admin, (_req, res, next) => { res.set('Cache-Control', 'private, no-store'); next(); });
   router.get('/', async (req, res, next) => {
     try {
-      const { page, pageSize } = z.object({ page: z.coerce.number().int().min(1).max(10000).default(1), pageSize: z.coerce.number().int().min(1).max(100).default(50) }).parse(req.query);
+      const { page, pageSize, donorId } = z.object({ donorId: z.string().regex(/^[a-f0-9]{24}$/i).optional(), page: z.coerce.number().int().min(1).max(10000).default(1), pageSize: z.coerce.number().int().min(1).max(100).default(50) }).parse(req.query);
+      const filter = donorId ? { donorId } : {};
       const [donations, total] = await Promise.all([
-        DonationModel.find().select('_id campaignId donorId amount currency paymentMethod isAnonymous createdAt').sort({ createdAt: -1, _id: -1 }).skip((page - 1) * pageSize).limit(pageSize).lean(),
-        DonationModel.countDocuments(),
+        DonationModel.find(filter).select('_id campaignId donorId amount currency paymentMethod isAnonymous createdAt').sort({ createdAt: -1, _id: -1 }).skip((page - 1) * pageSize).limit(pageSize).lean(),
+        DonationModel.countDocuments(filter),
       ]);
       const validIds = (values: string[]) => [...new Set(values.filter(value => /^[a-f0-9]{24}$/i.test(value)))];
       const [campaigns, users] = await Promise.all([
@@ -27,7 +29,7 @@ export function createAdminDonationRoutes(auth: RequestHandler, admin: RequestHa
         donorId: item.isAnonymous ? '' : item.donorId, donorName: item.isAnonymous ? 'Anonymous' : names.get(item.donorId) ?? 'Former or guest supporter',
         amount: item.amount, currency: item.currency, paymentMethod: item.paymentMethod, isAnonymous: item.isAnonymous, createdAt: item.createdAt,
       })) } });
-    } catch (error) { next(error); }
+    } catch (error) { next(error instanceof ZodError ? new AppError('Invalid pagination or member filter', 400) : error); }
   });
   return router;
 }

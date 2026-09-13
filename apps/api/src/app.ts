@@ -1,3 +1,4 @@
+import { createAdminWalletRoutes } from './infrastructure/adapters/inbound/http/routes/adminWalletRoutes.js'
 import { createBlogRoutes } from './infrastructure/adapters/inbound/http/routes/blogRoutes.js'
 import { MongoBeneficiaryPayoutAuthorization } from './infrastructure/adapters/outbound/persistence/MongoBeneficiaryPayoutAuthorization.js'
 import { MongoAffiliatePayoutApproval } from './infrastructure/adapters/outbound/persistence/MongoAffiliatePayoutApproval.js'
@@ -1669,6 +1670,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
   api.use('/admin', createCryptoAdminRoutes(reconcileCryptoUseCase, authMiddleware, requireAdmin))
   api.use('/donations', createDonationRoutes(donationController, authMiddleware, optionalAuthMiddleware))
   // Post-donation message endpoint, composed onto the /donations resource.
+  api.use('/admin/wallets', createAdminWalletRoutes(authMiddleware, requireAdmin))
   api.use('/admin/donations', createAdminDonationRoutes(authMiddleware, requireAdmin))
   api.use('/donations', createDonationMessageRoutes(donationIntentController, authMiddleware))
   // Guest-capable donation-intent + ledger rail.

@@ -1,3 +1,5 @@
+import { Tabs, Tab, MenuItem } from '@mui/material'
+import { raisedSurface } from '@/lib/surfaces'
 import Checkbox from '@mui/material/Checkbox'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import ExportMenu from '@/components/ExportMenu'
@@ -30,7 +32,7 @@ import BadgeRoundedIcon from '@mui/icons-material/BadgeRounded'
 import PublicRoundedIcon from '@mui/icons-material/PublicRounded'
 import PhoneRoundedIcon from '@mui/icons-material/PhoneRounded'
 import CakeRoundedIcon from '@mui/icons-material/CakeRounded'
-import { keyframes, alpha } from '@mui/material/styles'
+import { alpha } from '@mui/material/styles'
 import { SHAPE } from '@ubuntu-fund/ui'
 import { useAuth } from '@/context/AuthContext'
 import PageHeader from '@/components/PageHeader'
@@ -39,11 +41,6 @@ import { api } from '@/lib/api'
 
 // ─── Animations ──────────────────────────────────────────────────────────────
 
-const fadeSlide = keyframes`
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
-`
-
 // ─── Section Card ────────────────────────────────────────────────────────────
 
 function SectionCard({
@@ -51,13 +48,11 @@ function SectionCard({
   title,
   color,
   children,
-  delay = 0,
 }: {
   icon: React.ReactNode
   title: string
   color: string
   children: React.ReactNode
-  delay?: number
 }) {
   return (
     <Card
@@ -66,9 +61,8 @@ function SectionCard({
         borderRadius: SHAPE.card,
         boxShadow: 'var(--neu-raised)',
         overflow: 'hidden',
-        animation: `${fadeSlide} 0.4s ease ${delay}s both`,
         transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-        '&:hover': { transform: 'translateY(-2px)', boxShadow: 'var(--neu-raised-hover) !important' },
+        '@media (prefers-reduced-motion: reduce)': { animation: 'none', transition: 'none' },
       }}
     >
       <Box
@@ -93,6 +87,7 @@ function SectionCard({
         }}
       >
         <Box sx={{ color, display: 'flex', '& svg': { fontSize: 22 } }}>{icon}</Box>
+        <Box aria-hidden="true" sx={{ position: 'absolute', right: 20, top: -18, opacity: .035, pointerEvents: 'none', '& svg': { fontSize: 115 } }}>{icon}</Box>
         <Typography sx={{ fontWeight: 700, fontSize: '0.95rem', color: 'text.primary' }}>{title}</Typography>
       </Box>
       {children}
@@ -119,6 +114,7 @@ export default function AdminProfilePage() {
   return <AdminProfileForViewer key={user?.id ?? 'guest'} />
 }
 function AdminProfileForViewer() {
+  const [tab, setTab] = useState('details')
   const live = useRef(true)
   useEffect(() => { live.current = true; return () => { live.current = false } }, [])
   const [automatedReviewConsent, setAutomatedReviewConsent] = useState(false)
@@ -260,10 +256,18 @@ function AdminProfileForViewer() {
       />
 
 
+      <Box sx={{ ...raisedSurface, mb: 3, p: 1, minWidth: 0 }}>
+        <Tabs value={tab} onChange={(_, value) => setTab(value)} variant="scrollable" scrollButtons="auto" allowScrollButtonsMobile aria-label="Profile sections">
+          <Tab id="profile-tab-details" aria-controls="profile-panel-details" value="details" icon={<PersonRoundedIcon />} iconPosition="start" label="Personal details" />
+          <Tab id="profile-tab-security" aria-controls="profile-panel-security" value="security" icon={<LockRoundedIcon />} iconPosition="start" label="Security" />
+          <Tab id="profile-tab-preferences" aria-controls="profile-panel-preferences" value="preferences" icon={<TuneRoundedIcon />} iconPosition="start" label="Preferences" />
+        </Tabs>
+      </Box>
+      <Typography color="text.secondary" sx={{ mb: 3 }}>{tab === 'details' ? 'Keep your contact information and public introduction up to date.' : tab === 'security' ? 'Manage your password and optional multi-factor authentication. Keep recovery codes somewhere safe.' : 'Choose which notifications you receive and save your language preference.'}</Typography>
       <Grid container spacing={3}>
         {/* ─── Personal Information ─── */}
-        <Grid size={{ xs: 12, lg: 6 }}>
-          <SectionCard icon={<PersonRoundedIcon />} title="Personal Information" color="#5E8F72" delay={0.05}>
+        <Grid size={{ xs: 12 }} role="tabpanel" id="profile-panel-details" aria-labelledby="profile-tab-details" hidden={tab !== 'details'}>
+          <SectionCard icon={<PersonRoundedIcon />} title="Personal Information" color="#5E8F72">
             <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
               <TextField
                 label="Full Name"
@@ -370,10 +374,10 @@ function AdminProfileForViewer() {
           </SectionCard>
         </Grid>
 
-        <Grid size={{ xs: 12 }}><SectionCard icon={<LockRoundedIcon />} title="Account Protection" color="#5E8F72"><Box sx={{ p: 3 }}><MfaSettings key={user?.id} client={api} onTokens={tokens => replaceTokens(tokens, user?.id ?? '')} /></Box></SectionCard></Grid>
+        <Grid size={{ xs: 12 }} role="tabpanel" id="profile-panel-security" aria-labelledby="profile-tab-security" hidden={tab !== 'security'}><SectionCard icon={<LockRoundedIcon />} title="Account Protection" color="#5E8F72"><Box sx={{ p: 3 }}><MfaSettings key={user?.id} client={api} onTokens={tokens => replaceTokens(tokens, user?.id ?? '')} /></Box></SectionCard></Grid>
         {/* ─── Change Password ─── */}
-        <Grid size={{ xs: 12, lg: 6 }}>
-          <SectionCard icon={<LockRoundedIcon />} title="Change Password" color="#C06B58" delay={0.1}>
+        <Grid size={{ xs: 12 }} hidden={tab !== 'security'}>
+          <SectionCard icon={<LockRoundedIcon />} title="Change Password" color="#C06B58">
             <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
               {passwordError && (
                 <Alert severity="error" sx={{ borderRadius: SHAPE.sm, py: 0 }}>
@@ -391,7 +395,7 @@ function AdminProfileForViewer() {
                   input: {
                     endAdornment: (
                       <InputAdornment position="end">
-                        <IconButton size="small" onClick={() => setShowCurrent(!showCurrent)}>
+                        <IconButton aria-label="Toggle current password visibility" size="small" onClick={() => setShowCurrent(!showCurrent)}>
                           {showCurrent ? <VisibilityOffRoundedIcon sx={{ fontSize: 18 }} /> : <VisibilityRoundedIcon sx={{ fontSize: 18 }} />}
                         </IconButton>
                       </InputAdornment>
@@ -412,7 +416,7 @@ function AdminProfileForViewer() {
                   input: {
                     endAdornment: (
                       <InputAdornment position="end">
-                        <IconButton size="small" onClick={() => setShowNew(!showNew)}>
+                        <IconButton aria-label="Toggle new password visibility" size="small" onClick={() => setShowNew(!showNew)}>
                           {showNew ? <VisibilityOffRoundedIcon sx={{ fontSize: 18 }} /> : <VisibilityRoundedIcon sx={{ fontSize: 18 }} />}
                         </IconButton>
                       </InputAdornment>
@@ -485,8 +489,8 @@ function AdminProfileForViewer() {
         </Grid>
 
         {/* ─── Notification Preferences ─── */}
-        <Grid size={{ xs: 12, lg: 6 }}>
-          <SectionCard icon={<TuneRoundedIcon />} title="Notification Preferences" color="#74909A" delay={0.15}>
+        <Grid size={{ xs: 12 }} role="tabpanel" id="profile-panel-preferences" aria-labelledby="profile-tab-preferences" hidden={tab !== 'preferences'}>
+          <SectionCard icon={<TuneRoundedIcon />} title="Notification Preferences" color="#74909A">
             {[
               { label: 'Email Notifications', desc: 'Receive important updates via email', checked: emailNotifs, onChange: setEmailNotifs },
               { label: 'Push Notifications', desc: 'Browser push notifications for real-time alerts', checked: pushNotifs, onChange: setPushNotifs },
@@ -542,8 +546,8 @@ function AdminProfileForViewer() {
         </Grid>
 
         {/* ─── Regional & Display Preferences ─── */}
-        <Grid size={{ xs: 12, lg: 6 }}>
-          <SectionCard icon={<CakeRoundedIcon />} title="Regional & Display" color={TONES.maroon.text} delay={0.2}>
+        <Grid size={{ xs: 12 }} hidden={tab !== 'preferences'}>
+          <SectionCard icon={<CakeRoundedIcon />} title="Regional & Display" color={TONES.maroon.text}>
             <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
               <TextField
                 label="Language"
@@ -554,30 +558,16 @@ function AdminProfileForViewer() {
                 select
                 sx={inputSx}
               >
-                <option value="en">English</option>
-                <option value="fr">Français</option>
-                <option value="sw">Kiswahili</option>
-                <option value="ha">Hausa</option>
-                <option value="yo">Yorùbá</option>
-                <option value="zu">isiZulu</option>
+                <MenuItem value="en">English</MenuItem>
+                <MenuItem value="fr">Français</MenuItem>
+                <MenuItem value="sw">Kiswahili</MenuItem>
+                <MenuItem value="ha">Hausa</MenuItem>
+                <MenuItem value="yo">Yorùbá</MenuItem>
+                <MenuItem value="zu">isiZulu</MenuItem>
               </TextField>
 
               <Divider sx={{ borderColor: 'divider' }} />
-
-              <Box>
-                <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary', mb: 1 }}>Account created</Typography>
-                <Typography sx={{ fontSize: '0.88rem', fontWeight: 600, color: 'text.primary', fontFamily: '"Outfit", monospace' }}>
-                  {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-                </Typography>
-              </Box>
-              <Box>
-                <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary', mb: 1 }}>Last login</Typography>
-                <Typography sx={{ fontSize: '0.88rem', fontWeight: 600, color: 'text.primary', fontFamily: '"Outfit", monospace' }}>
-                  {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-                  {' · '}
-                  {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-                </Typography>
-              </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}><Button variant="contained" startIcon={<SaveRoundedIcon />} disabled={saving} onClick={handleSavePreferences}>Save preferences</Button></Box>
             </Box>
           </SectionCard>
         </Grid>

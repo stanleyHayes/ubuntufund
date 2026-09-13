@@ -31,6 +31,7 @@ interface UseApiResult<T> {
   data: T
   isLoading: boolean
   error: string | null
+  retry: () => void
 }
 
 /**
@@ -73,12 +74,15 @@ function useApiWithFallback<T>(
   apiPath: string,
   initialData: T,
 ): UseApiResult<T> {
+  const [revision, setRevision] = useState(0)
   const [data, setData] = useState<T>(initialData)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
+    setIsLoading(true)
+    setError(null)
 
     async function fetchData() {
       try {
@@ -104,9 +108,9 @@ function useApiWithFallback<T>(
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apiPath])
+  }, [apiPath, revision])
 
-  return { data, isLoading, error }
+  return { data, isLoading, error, retry: () => setRevision(r => r + 1) }
 }
 
 /**
@@ -126,8 +130,8 @@ export function useAdminUsers(): UseApiResult<User[]> {
 /**
  * Fetch donations from the API with a truthful empty state on failure.
  */
-export function useAdminDonations(): UseApiResult<AdminDonation[]> {
-  return useApiWithFallback<AdminDonation[]>('/admin/donations', [])
+export function useAdminDonations(donorId?: string): UseApiResult<AdminDonation[]> {
+  return useApiWithFallback<AdminDonation[]>(`/admin/donations${donorId ? `?donorId=${encodeURIComponent(donorId)}` : ''}`, [])
 }
 
 /**

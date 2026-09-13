@@ -1,3 +1,5 @@
+import { WalletModel } from '../../src/infrastructure/database/models/WalletModel.js';
+import { WalletTransactionModel } from '../../src/infrastructure/database/models/WalletTransactionModel.js';
 import { randomUUID } from 'node:crypto';
 import { beforeAll, afterAll, it, expect } from 'vitest';
 import request from 'supertest';
@@ -61,4 +63,35 @@ it('paginates subscriptions beyond the former 500-record cap without exporting s
   await request(app).get('/api/v1/subscriptions').expect(401);
   await UserModel.findByIdAndUpdate(staff.id, { role: 'user' });
   await request(app).get('/api/v1/subscriptions').set('Authorization', staff.auth).expect(403);
+});
+
+it('scopes wallet balances, transactions and donation history to a member and rejects non-staff reads', async () => {
+  const member = await account(), other = await account(), staff = await account();
+  await UserModel.findByIdAndUpdate(staff.id, { role: 'admin' });
+  await WalletModel.deleteMany({ userId: { $in: [member.id, other.id] } });
+  const wallets = await WalletModel.create([
+    { userId: member.id, type: 'local', currency: 'GHS', balance: 123.45 },
+    { userId: other.id, type: 'local', currency: 'GHS', balance: 999 },
+  ]);
+  await WalletTransactionModel.create(wallets.map(w => ({ walletId: w.id, userId: w.userId, type: 'deposit', status: 'completed', amount: w.balance, currency: 'GHS', reference: randomUUID(), metadata: { secret: 'private-provider-data' } })));
+  for (const path of ['/admin/wallets', '/admin/wallets/transactions']) {
+    await request(app).get(`/api/v1${path}`).expect(401);
+    await request(app).get(`/api/v1${path}`).set('Authorization', member.auth).expect(403);
+    const response = await request(app).get(`/api/v1${path}`).query({ userId: member.id, pageSize: 1 }).set('Authorization', staff.auth).expect(200);
+    expect(response.headers['cache-control']).toBe('private, no-store');
+    expect(response.body.data.total).toBe(1);
+    expect(response.body.data.items[0].userId).toBe(member.id);
+    expect(JSON.stringify(response.body)).not.toContain('private-provider-data');
+    const second = await request(app).get(`/api/v1${path}`).query({ userId: member.id, page: 2, pageSize: 1 }).set('Authorization', staff.auth).expect(200);
+    expect(second.body.data.items).toEqual([]);
+    await request(app).get(`/api/v1${path}?userId=invalid`).set('Authorization', staff.auth).expect(400);
+  }
+  const campaignId = new Types.ObjectId().toString();
+  await DonationModel.create({ campaignId, donorId: member.id, amount: 30, currency: 'GHS', paymentMethod: 'wallet', isAnonymous: true });
+  await DonationModel.create({ campaignId, donorId: other.id, amount: 70, currency: 'GHS', paymentMethod: 'wallet' });
+  const donations = await request(app).get('/api/v1/admin/donations').query({ donorId: member.id }).set('Authorization', staff.auth).expect(200);
+  expect(donations.body.data.total).toBe(1);
+  expect(donations.body.data.items[0]).toMatchObject({ amount: 30, isAnonymous: true, donorId: '' });
+  await UserModel.findByIdAndUpdate(staff.id, { role: 'user' });
+  await request(app).get('/api/v1/admin/wallets').set('Authorization', staff.auth).expect(403);
 });

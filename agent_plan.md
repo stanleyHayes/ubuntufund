@@ -1,5 +1,14 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — Admin wallets and focused member/profile layouts
+
+- Added Community → Wallets and member wallet balances/transaction history, with staff-only no-store paginated reads, explicit safe fields, grouped branded exports, skeleton/error/retry/illustrated empty states and preserved sidebar connectors. Wallet balances stay separate from campaign proceeds and currencies are not summed together.
+- Member donations now use a server-side donor filter, including the member's anonymous contributions without changing public anonymity. Failed requests expose the server message and Retry instead of a dead-end generic alert. Campaigns and donations stack full width. Trust guidance distinguishes verification/evidence from the currently non-automatic numeric score.
+- Light-theme browser inspection also exposed dark sidebar text on the permanent forest surface and inherited header text colors; corrected explicit surface-appropriate foregrounds while preserving connectors.
+- Admin profile now has Personal details/Security/Preferences tabs, retained unsaved input, section watermarks, accessible password toggles and a working language menu/save action. Removed fabricated creation/last-login dates.
+- Verification: three API integration tests (including current-admin checks, member isolation, pagination, private-field exclusion and anonymous donor filtering), four profile tests, mocked phone/desktop browser flows including donation retry, wallet loading/empty/error/export and retained profile drafts; API/admin types, affected lint and admin production build pass. Existing bundle-size advisory remains. Original production donation failure was not independently reproduced; the scoped load and retry path are covered locally. Live financial/provider data was not modified.
+- Earlier full API regression70997 is TERMINAL, exit 1 at f09cba3 API baseline: 1,161 passed, one failed and two skipped; 158 passed/2 failed files. Failures are testimonials login fixture (HTTP400) and TransferUncertainty fake payout missing toPlain. Root source freeze is lifted. These baseline failures and broader compliance/release gates remain open; this full run does not cover later settlement/split/wallet changes.
+
 ### 2026-09-13 — Blog studio and reported admin UI fixes
 
 - Implemented Content → Blog with Details/Write/Media/Review steps, rich-text toolbar, Markdown source/shared safe preview, authenticated media uploads, explicit review-before-publish, revision-safe private drafts and unpublishing. Preserves the six existing public articles on first migration. Published-only sitemap and grouped branded PDF/Excel/CSV exports included; sidebar connectors retained.

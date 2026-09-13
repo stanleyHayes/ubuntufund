@@ -97,6 +97,7 @@ export default function TopBar({
         width: { xs: '100%', md: `calc(100% - ${DRAWER_WIDTH}px)` },
         ml: { xs: 0, md: `${DRAWER_WIDTH}px` },
         bgcolor: 'transparent',
+        color: 'text.primary',
       }}
     >
       {/* Utility strip — darker, with a 1px gold seam highlight */}
@@ -135,7 +136,7 @@ export default function TopBar({
             gap: 0.5,
             fontSize: '0.68rem',
             fontWeight: 600,
-            color: 'text.secondary',
+            color: '#ACBCAF',
             '&:hover': { color: '#C7A24A' },
           }}
         >

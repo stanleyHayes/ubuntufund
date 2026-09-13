@@ -1,3 +1,4 @@
+import WalletsPage from './pages/WalletsPage'
 import BlogPage from './pages/content/BlogPage'
 import { lazy, Suspense } from 'react'
 import { ReviewQueueSkeleton } from './components/ReviewQueueStates'
@@ -89,6 +90,7 @@ export const router = createBrowserRouter([
       { path: 'privacy-requests', element: <RequirePermission resource={Resource.USERS}><PrivacyRequestsPage /></RequirePermission> },
       { path: 'users', element: <RequirePermission resource={Resource.USERS}><UsersPage /></RequirePermission> },
       { path: 'users/:id', element: <RequirePermission resource={Resource.USERS}><UserDetailPage /></RequirePermission> },
+      { path: 'wallets', element: <RequirePermission resource={Resource.WALLETS}><WalletsPage /></RequirePermission> },
       { path: 'donations', element: <RequirePermission resource={Resource.DONATIONS}><DonationsPage /></RequirePermission> },
       { path: 'payouts', element: <RequirePermission resource={Resource.DONATIONS}><PayoutsPage /></RequirePermission> },
       { path: 'disputes', element: <RequirePermission resource={Resource.DISPUTES}><DisputesPage /></RequirePermission> },

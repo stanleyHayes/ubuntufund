@@ -1,3 +1,4 @@
+import AccountBalanceWalletRoundedIcon from '@mui/icons-material/AccountBalanceWalletRounded'
 import ArticleRoundedIcon from '@mui/icons-material/ArticleRounded'
 import { Chip } from '@mui/material'
 import { useAdminActions } from '@/context/AdminActionContext'
@@ -69,6 +70,7 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Publication reviews', path: '/publication-reviews', icon: <VerifiedUserRoundedIcon /> },
       { label: 'Community safety', path: '/safety-reports', icon: <VerifiedUserRoundedIcon /> },
       { label: 'Privacy requests', path: '/privacy-requests', icon: <VerifiedUserRoundedIcon /> },
+      { label: 'Wallets', path: '/wallets', icon: <AccountBalanceWalletRoundedIcon /> },
       { label: 'Donations', path: '/donations', icon: <VolunteerActivismRoundedIcon /> },
       { label: 'Payouts', path: '/payouts', icon: <PaymentsRoundedIcon /> },
       { label: 'Refund recovery', path: '/refund-recovery', icon: <PaymentsRoundedIcon /> },
@@ -182,7 +184,7 @@ export default function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
               fontWeight: 700,
               fontSize: '1rem',
               lineHeight: 1.2,
-              color: 'text.primary',
+              color: '#E8ECE4',
             }}
           >
             Ujimora
@@ -270,7 +272,7 @@ export default function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
                       px: 0.75,
                       py: 0.1,
                       fontSize: '0.58rem',
-                      color: 'text.secondary',
+                      color: '#ACBCAF',
                       fontWeight: 600,
                     }}
                   >
@@ -280,7 +282,7 @@ export default function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
                 <ExpandMoreRoundedIcon
                   sx={{
                     fontSize: 18,
-                    color: 'text.secondary',
+                    color: '#ACBCAF',
                     transform: open ? 'rotate(180deg)' : 'none',
                     transition: 'transform 0.2s ease',
                   }}
@@ -368,7 +370,7 @@ export default function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
                           sx={{
                             fontSize: '0.8rem',
                             fontWeight: 600,
-                            color: active ? ON_FILL : 'text.primary',
+                            color: active ? ON_FILL : '#E8ECE4',
                           }}
                         >
                           {item.label}
@@ -417,10 +419,10 @@ export default function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
           {initials}
         </Avatar>
         <Box sx={{ minWidth: 0, flex: 1 }}>
-          <Typography variant="body2" noWrap sx={{ fontWeight: 600, lineHeight: 1.2 }}>
+          <Typography variant="body2" noWrap sx={{ fontWeight: 600, lineHeight: 1.2, color: '#E8ECE4' }}>
             {user?.name ?? 'Administrator'}
           </Typography>
-          <Typography variant="caption" noWrap sx={{ color: 'text.secondary' }}>
+          <Typography variant="caption" noWrap sx={{ color: '#ACBCAF' }}>
             {user?.role === 'admin' ? 'Administrator' : (user?.role ?? 'Team member')}
           </Typography>
         </Box>

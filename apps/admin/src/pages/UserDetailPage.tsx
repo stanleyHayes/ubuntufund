@@ -1,3 +1,4 @@
+import WalletActivity from '@/components/WalletActivity'
 import ExportMenu from '@/components/ExportMenu'
 import { usersTable, campaignsTable, donationsTable } from '@/lib/exports/tables'
 import { useMemo, useState } from 'react'
@@ -119,10 +120,10 @@ export default function UserDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { data: user, isLoading: loading, error } = useAdminUser(id ?? '')
-  const { data: allCampaigns, isLoading: campaignsLoading, error: campaignsError } = useAdminCampaigns()
-  const { data: allDonations, isLoading: donationsLoading, error: donationsError } = useAdminDonations()
+  const { data: allCampaigns, isLoading: campaignsLoading, error: campaignsError, retry: retryCampaigns } = useAdminCampaigns()
+  const { data: allDonations, isLoading: donationsLoading, error: donationsError, retry: retryDonations } = useAdminDonations(id)
   const userCampaigns = useMemo(() => allCampaigns.filter(c => c.creatorId === id), [allCampaigns, id])
-  const userDonations = useMemo(() => allDonations.filter(d => d.donorId === id), [allDonations, id])
+  const userDonations = useMemo(() => allDonations, [allDonations])
   const campaigns = usePagination(userCampaigns, 12)
   const donations = usePagination(userDonations, 12)
 
@@ -157,7 +158,12 @@ export default function UserDetailPage() {
           </Box>
           <Box sx={{ py: 3 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}><Typography fontWeight={700}>Trust score</Typography><Typography fontWeight={800}>{user.trustScore}<Box component="span" sx={{ color: 'text.secondary', fontWeight: 400 }}> / 100</Box></Typography></Box>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>The recorded score does not currently increase automatically. Verification and campaign evidence are reviewed separately.</Typography>
             <LinearProgress variant="determinate" value={Math.max(0, Math.min(100, user.trustScore))} sx={{ height: 8, borderRadius: SHAPE.bar }} />
+          </Box>
+          <Box sx={{ mb: 3 }}>
+            <Typography fontWeight={700} gutterBottom>How to build trust</Typography>
+            <Typography variant="body2" color="text.secondary">Complete identity verification, keep account and payout details accurate, publish clear campaign budgets and progress updates, and respond to review or dispute requests with supporting evidence. These help reviewers assess credibility; they do not award automatic score points.</Typography>
           </Box>
           <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
             <VerifiedUserIcon sx={{ color: 'primary.main', mt: 0.4 }} />
@@ -169,17 +175,18 @@ export default function UserDetailPage() {
           <ComplianceLimitControl key={user.id} userId={user.id} current={user.complianceApprovedCampaignLimit} />
         </Box>
       </Box>
-      <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'repeat(2, minmax(0, 1fr))' }, mt: 3, alignItems: 'start' }}>
+      <Box sx={{ mt: 3 }}><WalletActivity userId={user.id} /></Box>
+      <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: 'minmax(0, 1fr)', mt: 3, alignItems: 'start' }}>
         <Box sx={panel}>
           <Box sx={{ p: 2.5, borderBottom: 1, borderColor: 'divider' }}><Typography variant="h6" fontWeight={800}>Campaigns</Typography><Typography variant="body2" color="text.secondary">Recent campaigns by this member</Typography></Box>
-          {campaignsLoading ? <Skeleton height={160} sx={{ mx: 3 }} /> : campaignsError ? <Alert severity="error">Campaign activity could not be loaded.</Alert> : !userCampaigns.length ? <EmptyState variant="noData" title="No campaigns yet" description="Campaigns will appear here when this member creates one." compact /> : <Box>
+          {campaignsLoading ? <Skeleton height={160} sx={{ mx: 3 }} /> : campaignsError ? <Alert severity="error" action={<Button onClick={retryCampaigns}>Retry</Button>}>Campaign activity could not be loaded.</Alert> : !userCampaigns.length ? <EmptyState variant="noData" title="No campaigns yet" description="Campaigns will appear here when this member creates one." compact /> : <Box>
             {campaigns.page.map(c => <Box key={c.id} component={RouterLink} to={`/campaigns/${c.id}`} sx={{ display: 'block', p: 2.5, borderBottom: 1, borderColor: 'divider', color: 'text.primary', textDecoration: 'none', '&:hover': { bgcolor: 'action.hover' } }}><Typography fontWeight={700}>{c.title}</Typography><Typography variant="body2" color="text.secondary">{c.status.replaceAll('_', ' ')} · GH₵ {c.raisedAmount.toLocaleString()} raised</Typography></Box>)}
             <PaginationBar pagination={campaigns} neumorphic />
           </Box>}
         </Box>
         <Box sx={panel}>
           <Box sx={{ p: 2.5, borderBottom: 1, borderColor: 'divider' }}><Typography variant="h6" fontWeight={800}>Donations</Typography><Typography variant="body2" color="text.secondary">Recent contributions by this member</Typography></Box>
-          {donationsLoading ? <Skeleton height={160} sx={{ mx: 3 }} /> : donationsError ? <Alert severity="error">Donation activity could not be loaded.</Alert> : !userDonations.length ? <EmptyState variant="noData" title="No donations yet" description="Contributions will appear here when this member supports a campaign." compact /> : <Box>
+          {donationsLoading ? <Skeleton height={160} sx={{ mx: 3 }} /> : donationsError ? <Alert severity="error" action={<Button onClick={retryDonations}>Retry</Button>}>Donation activity could not be loaded. {donationsError}</Alert> : !userDonations.length ? <EmptyState variant="noData" title="No donations yet" description="Contributions will appear here when this member supports a campaign." compact /> : <Box>
             {donations.page.map(d => <Box key={d.id} sx={{ p: 2.5, borderBottom: 1, borderColor: 'divider' }}><Typography fontWeight={700}>{d.currency ?? 'GHS'} {d.amount.toLocaleString()}</Typography><Typography variant="body2" sx={{ overflowWrap: 'anywhere' }}>{d.campaignTitle ?? d.campaignId}</Typography><Typography variant="caption" color="text.secondary">{new Date(d.createdAt).toLocaleDateString()}</Typography></Box>)}
             <PaginationBar pagination={donations} neumorphic />
           </Box>}
