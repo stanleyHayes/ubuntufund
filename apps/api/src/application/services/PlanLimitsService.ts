@@ -216,9 +216,14 @@ export class PlanLimitsService {
   async assertFeature(
     userId: string,
     feature: PlanBooleanFeature,
-    label: string
+    label: string,
+    lock = false
   ): Promise<void> {
-    const plan = await this.resolvePlan(userId);
+    if (lock) {
+      if (!this.subscriptionRepo.lockForConsumption || !this.planService) throw new AppError('Plan verification unavailable.', 503);
+      await this.subscriptionRepo.lockForConsumption(userId);
+    }
+    const plan = await this.resolvePlan(userId, lock);
     if (!plan[feature]) {
       throw new AppError(
         `Your ${plan.name} plan does not include ${label}. Upgrade to unlock it.`,

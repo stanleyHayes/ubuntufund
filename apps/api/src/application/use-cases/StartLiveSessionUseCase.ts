@@ -1,4 +1,5 @@
-import type { PublicationAdmissionPort } from '../../domain/ports/outbound/PublicationAdmissionPort.js';
+import type { LiveSessionCreationPort } from '../../domain/ports/outbound/LiveSessionCreationPort.js';
+import type { PublicationAdmissionPort, PublicationSubmission } from '../../domain/ports/outbound/PublicationAdmissionPort.js';
 import type { LiveSession, StartLiveSessionInput } from '@ubuntu-fund/types';
 import { LiveSessionEntity } from '../../domain/entities/LiveSession.js';
 import type { LiveSessionRepositoryPort } from '../../domain/ports/outbound/LiveSessionRepositoryPort.js';
@@ -11,6 +12,7 @@ import { toLiveSessionDto } from './mappers/liveSessionDto.js';
 export interface LiveSessionRequester {
   userId: string;
   role?: string;
+  authVersion?: string;
 }
 
 /**
@@ -22,7 +24,8 @@ export class StartLiveSessionUseCase {
     private readonly liveSessionRepo: LiveSessionRepositoryPort,
     private readonly campaignRepo: CampaignRepositoryPort,
     private readonly planLimits: PlanLimitsService,
-    private readonly admission?: PublicationAdmissionPort
+    private readonly admission?: PublicationAdmissionPort,
+    private readonly creation?: LiveSessionCreationPort
   ) {}
 
   async execute(
@@ -62,11 +65,12 @@ export class StartLiveSessionUseCase {
     }
 
     if (!this.admission) throw new AppError('Publication review is unavailable', 503);
-    await this.admission.assertAllowed({
+    const submission: PublicationSubmission = {
       actorId: requester.userId, action: 'live.start', resourceId: campaign.id,
       text: JSON.stringify([input.title ?? '', input.targetAmount ?? null]),
       mediaUrls: [], automatedReviewConsent: input.automatedReviewConsent,
-    });
+    };
+    await this.admission.assertAllowed(submission);
     // Screening may involve a staff-held retry or provider delay. Recheck the
     // campaign before creating a session; no overlay token is minted on a hold.
     const current = await this.campaignRepo.findById(campaign.id);
@@ -95,8 +99,14 @@ export class StartLiveSessionUseCase {
     });
 
     try {
-      const saved = await this.liveSessionRepo.save(session);
-      return toLiveSessionDto(saved);
+      if (!this.creation || !this.admission.assertCurrent) throw new AppError('Live publication verification is unavailable', 503);
+      return await this.creation.run(campaign.id, campaign.creatorId, requester.userId, requester.authVersion ?? '', async () => {
+        await this.admission!.assertCurrent!(submission);
+        await this.planLimits.assertFeature(campaign.creatorId, 'liveStreaming', 'LIVE streaming', true);
+        const concurrent = await this.liveSessionRepo.findActiveByCampaignId(campaign.id);
+        if (concurrent) return toLiveSessionDto(concurrent);
+        return toLiveSessionDto(await this.liveSessionRepo.save(session));
+      });
     } catch (error) {
       if ((error as { code?: number }).code === 11000) {
         const concurrent = await this.liveSessionRepo.findActiveByCampaignId(campaign.id);

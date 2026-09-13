@@ -58,7 +58,7 @@ export class LiveSessionController {
       const session = await this.startLiveSessionUseCase.execute(
         req.params.id as string,
         req.body,
-        { userId: req.userId!, role: req.userRole }
+        { userId: req.userId!, role: req.userRole, authVersion: req.authVersion }
       );
       res.status(201).json({
         data: session,

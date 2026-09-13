@@ -1,3 +1,4 @@
+import { MongoLiveSessionCreation } from './infrastructure/adapters/outbound/persistence/MongoLiveSessionCreation.js'
 import { MongoCreatorWithdrawalTransaction } from './infrastructure/adapters/outbound/persistence/MongoCreatorWithdrawalTransaction.js'
 import { MongoCampaignCreation } from './infrastructure/adapters/outbound/persistence/MongoCampaignCreation.js'
 import { MongoAutomaticPayoutVerification } from './infrastructure/adapters/outbound/persistence/MongoAutomaticPayoutVerification.js'
@@ -1062,6 +1063,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     campaignRepo,
     planLimitsService,
     publicationAdmission,
+    new MongoLiveSessionCreation(),
   )
   const endLiveSessionUseCase = new EndLiveSessionUseCase(liveSessionRepo, campaignRepo, liveVideo)
   const updateLiveSessionPrivacyUseCase = new UpdateLiveSessionPrivacyUseCase(

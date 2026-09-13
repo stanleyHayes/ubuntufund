@@ -14,6 +14,7 @@ import { AuditLogModel } from '../../src/infrastructure/database/models/AuditLog
 import { ContentRestrictionModel } from '../../src/infrastructure/database/models/ContentRestrictionModel.js';
 import { SubscriptionModel } from '../../src/infrastructure/database/models/SubscriptionModel.js';
 import { LiveSessionModel } from '../../src/infrastructure/database/models/LiveSessionModel.js';
+import { MongoLiveSessionCreation } from '../../src/infrastructure/adapters/outbound/persistence/MongoLiveSessionCreation.js';
 let app: Express;
 const screen = vi.fn<(_: string) => Promise<'allowed' | 'flagged'>>();
 beforeAll(async () => { await connectTestDatabase(); await PublicationReviewModel.init(); app = await createTestApp({ publicationAdmission: new MongoPublicationAdmission({ screen }) }); });
@@ -30,6 +31,24 @@ async function fixture() {
   return { owner, admin, other, campaign, comments: `/api/v1/campaigns/${campaign.id}/comments`, updates: `/api/v1/campaigns/${campaign.id}/updates` };
 }
 const notes = 'Reviewed the complete proposed public version against community rules.';
+it.each(['credentials', 'approval', 'subscription', 'campaign'] as const)('denies live creation when %s changes after screening and before the final transaction', async kind => {
+  const f = await fixture();
+  await SubscriptionModel.create({ userId: f.owner.id, tier: 'pro', status: 'active', billingCycle: 'monthly', currentPeriodStart: new Date(), currentPeriodEnd: new Date(Date.now() + 86400000) });
+  const original = MongoLiveSessionCreation.prototype.run;
+  const run = vi.spyOn(MongoLiveSessionCreation.prototype, 'run').mockImplementation(async function (this: MongoLiveSessionCreation, ...args) {
+    if (kind === 'credentials') await UserModel.updateOne({ _id: f.owner.id }, { $set: { authVersion: randomUUID() } });
+    if (kind === 'approval') await PublicationReviewModel.updateMany({ actorId: f.owner.id, action: 'live.start' }, { $set: { status: 'rejected' } });
+    if (kind === 'subscription') await SubscriptionModel.updateOne({ userId: f.owner.id }, { $set: { currentPeriodEnd: new Date(0) } });
+    if (kind === 'campaign') await CampaignModel.updateOne({ _id: f.campaign.id }, { $set: { status: 'blocked' } });
+    return original.apply(this, args);
+  });
+  try {
+    await request(app).post(`/api/v1/campaigns/${f.campaign.id}/live-sessions`).set('Authorization', f.owner.auth).send({ title: 'Final authorization fixture', automatedReviewConsent: true }).expect(kind === 'credentials' ? 401 : kind === 'subscription' ? 403 : 409);
+    expect(await LiveSessionModel.countDocuments({ campaignId: f.campaign.id })).toBe(0);
+    expect((await CampaignModel.findById(f.campaign.id))?.liveCreationWriteVersion).toBe(0);
+  } finally { run.mockRestore(); }
+});
+
 it('holds live metadata privately, binds staff approval to the exact title and starts only approved content', async () => {
   const f = await fixture();
   await SubscriptionModel.create({ userId: f.owner.id, tier: 'pro', status: 'active', billingCycle: 'monthly', currentPeriodStart: new Date(), currentPeriodEnd: new Date(Date.now() + 86400000) });
