@@ -66,3 +66,9 @@ transfer safeguards, store compliance or operational erasure. Those remain in
 Native `MediaUploadField` now attempts cleanup in its upload `finally` block, including failed uploads and size rejection. `discardUploadCache` removes only an existing local file beneath the app cache directory; remote/content-provider URLs, source documents outside cache, prefix collisions and traversal paths are preserved. It never deletes the server upload or a user-selected saved copy. A cleanup failure is visible without replacing an earlier upload error. No bulk purge of historical files is implied.
 
 All 101 native tests, final types/lint pass; new tests exercise cache-only deletion, already-removed files, source/traversal preservation and deletion failure. Logs `/tmp/ujimora-upload-cache-{tests,types-final,lint-final}.log`. Physical camera/document-provider behavior and residual historical-cache cleanup remain release checks. The Android manifest run uses the earlier isolated mobile copy and does not validate this new component change.
+
+### Conflicting payment request identity — 13 September 2026
+
+Migration now reads both legacy plaintext and hashed request keys before removing anything. Different persisted attempt IDs or a present but blank/whitespace-only ID produce an actionable recovery error; checkout makes no network request and retains both records. A matching pair removes only the redundant plaintext key. This prevents migration or corrupt storage from silently losing an ambiguous prior charge identity. It deliberately does not erase unresolved records or claim all historical plaintext keys are gone.
+
+All 17 payment recovery tests, native types and affected lint pass. Logs: `/tmp/ujimora-mobile-payment-conflict-tests.log`, `/tmp/ujimora-mobile-payment-conflict-types.log`, `/tmp/ujimora-mobile-payment-conflict-lint.log`. Installed native clients require a new build/update; signed-device storage and production payment acceptance remain unverified.

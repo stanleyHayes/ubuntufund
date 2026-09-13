@@ -31,6 +31,35 @@ describe('mobile payment recovery', () => {
     expect(data.has(legacy)).toBe(false)
     expect([...data.values()]).toEqual(['original-attempt'])
   })
+  it('preserves conflicting legacy and hashed attempts and prevents another checkout', async () => {
+    const input = { amount: 10, donorEmail: 'private@example.test' }
+    const current = await paymentKey('campaign', input)
+    const legacy = `campaign:request:${JSON.stringify(input)}`
+    data.set(legacy, 'different-original-attempt')
+    const original = [...data]
+    await expect(checkout('campaign', '/donation-intents', input)).rejects.toThrow('Two saved attempts')
+    expect(post).not.toHaveBeenCalled()
+    expect([...data]).toEqual(original)
+    expect([...data.values()]).toContain(current)
+  })
+  it.each(['', '   '])('preserves an unreadable saved request identity (%j) without creating a new attempt', async value => {
+    const input = { amount: 10 }
+    await paymentKey('campaign', input)
+    const key = [...data.keys()][0]
+    data.set(key, value)
+    await expect(checkout('campaign', '/donation-intents', input)).rejects.toThrow('could not be read')
+    expect(data.get(key)).toBe(value)
+    expect(post).not.toHaveBeenCalled()
+  })
+  it('removes a redundant plaintext key only when both records identify the same attempt', async () => {
+    const input = { amount: 10, donorEmail: 'private@example.test' }
+    const current = await paymentKey('campaign', input)
+    const legacy = `campaign:request:${JSON.stringify(input)}`
+    data.set(legacy, current)
+    expect(await paymentKey('campaign', input)).toBe(current)
+    expect(data.has(legacy)).toBe(false)
+    expect([...data.values()]).toEqual([current])
+  })
   it('preserves the original attempt if migration cannot be saved', async () => {
     const input = { amount: 10, donorEmail: 'private@example.test' }
     const legacy = `campaign:request:${JSON.stringify(input)}`

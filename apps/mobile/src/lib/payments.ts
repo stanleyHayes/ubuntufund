@@ -15,10 +15,17 @@ export async function paymentKey(scope: string, input: unknown) {
   if (existing) return existing
   const operation = (async () => {
     let value = await AsyncStorage.getItem(key)
+    const legacyValue = await AsyncStorage.getItem(legacyKey)
+    if ((value !== null && !value.trim()) || (legacyValue !== null && !legacyValue.trim())) {
+      throw new Error('A saved payment attempt could not be read. Check your payment history or contact support before trying again. The saved records have been preserved.')
+    }
+    if (value && legacyValue && value !== legacyValue) {
+      throw new Error('Two saved attempts were found for this payment. Check your payment history or contact support before trying again. Both attempts have been preserved.')
+    }
     if (!value) {
       // Keep the original attempt identity across upgrades and ambiguous results.
       // Remove the plaintext input only after its replacement is durable.
-      value = await AsyncStorage.getItem(legacyKey) || randomUUID()
+      value = legacyValue || randomUUID()
       await AsyncStorage.setItem(key, value)
     }
     await AsyncStorage.multiRemove([legacyKey])

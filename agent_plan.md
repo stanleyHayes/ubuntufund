@@ -1,5 +1,12 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — Preserve ambiguous native payment recovery
+
+- Legacy-to-hashed payment request migration now rejects conflicting saved attempt IDs and blank stored IDs, preserving records and stopping checkout before API access. Matching identities still remove redundant plaintext safely; no automatic historical purge or payment replay.
+- All 17 payment recovery tests, native types, affected lint and whitespace checks pass. Evidence and remaining historical/device privacy gates: `docs/compliance/STORE_DATA_INVENTORY.md`. Native installation/build verification remains open.
+- Root full API regression97713 remains running on unchanged 428402b API/shared. Work was isolated; do not fast-forward root API/shared until terminal.
+
+
 ### 2026-09-13 — Read-only historical donation integrity inventory
 
 - Added a paginated snapshot audit for aged successful intents: journal/donation/outbox linkage, journal balance/settlement totals and wallet-history owner/currency/amount/status. No provider calls, money movement, receipt replay, automatic repairs or model/index initialization; reports omit donor/contact/provider details.
