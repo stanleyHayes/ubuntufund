@@ -31,6 +31,40 @@ async function fixture() {
   return { owner, admin, other, campaign, comments: `/api/v1/campaigns/${campaign.id}/comments`, updates: `/api/v1/campaigns/${campaign.id}/updates` };
 }
 const notes = 'Reviewed the complete proposed public version against community rules.';
+it('retries a transaction whose approval is revoked after its snapshot without creating a live session', async () => {
+  const f = await fixture();
+  await SubscriptionModel.create({ userId: f.owner.id, tier: 'pro', status: 'active', billingCycle: 'monthly', currentPeriodStart: new Date(), currentPeriodEnd: new Date(Date.now() + 86400000) });
+  const original = MongoPublicationAdmission.prototype.assertCurrent;
+  let calls = 0;
+  const consume = vi.spyOn(MongoPublicationAdmission.prototype, 'assertCurrent').mockImplementation(async function (this: MongoPublicationAdmission, submission) {
+    if (calls++ === 0) {
+      // The owner/campaign writes have already established the transaction's
+      // snapshot. Commit a competing review change outside that transaction.
+      await PublicationReviewModel.updateOne({ actorId: f.owner.id, action: 'live.start' }, { $set: { status: 'rejected' } }, { session: null });
+    }
+    return original.call(this, submission);
+  });
+  try {
+    await request(app).post(`/api/v1/campaigns/${f.campaign.id}/live-sessions`).set('Authorization', f.owner.auth).send({ title: 'Concurrent review revocation', automatedReviewConsent: true }).expect(409);
+    expect(calls).toBeGreaterThanOrEqual(2);
+    expect(await LiveSessionModel.countDocuments({ campaignId: f.campaign.id })).toBe(0);
+    expect((await CampaignModel.findById(f.campaign.id))?.liveCreationWriteVersion).toBe(0);
+    expect((await PublicationReviewModel.findOne({ actorId: f.owner.id, action: 'live.start' }))?.status).toBe('rejected');
+  } finally { consume.mockRestore(); }
+});
+
+it('serializes concurrent starts of an approved funded campaign into the same active session', async () => {
+  const f = await fixture();
+  await SubscriptionModel.create({ userId: f.owner.id, tier: 'pro', status: 'active', billingCycle: 'monthly', currentPeriodStart: new Date(), currentPeriodEnd: new Date(Date.now() + 86400000) });
+  await CampaignModel.updateOne({ _id: f.campaign.id }, { $set: { status: 'funded', raisedAmount: 500 } });
+  await new MongoPublicationAdmission({ screen }).assertAllowed({ actorId: f.owner.id, action: 'live.start', resourceId: f.campaign.id, text: JSON.stringify(['Shared broadcast', null]), mediaUrls: [], automatedReviewConsent: true });
+  const responses = await Promise.all([1, 2].map(() => request(app).post(`/api/v1/campaigns/${f.campaign.id}/live-sessions`).set('Authorization', f.owner.auth).send({ title: 'Shared broadcast' }).expect(201)));
+  expect(responses[0].body.data.id).toBe(responses[1].body.data.id);
+  expect(responses[0].body.data.overlayToken).toBe(responses[1].body.data.overlayToken);
+  expect(await LiveSessionModel.countDocuments({ campaignId: f.campaign.id, status: 'active' })).toBe(1);
+  expect((await CampaignModel.findById(f.campaign.id))?.raisedAmount).toBe(500);
+});
+
 it.each(['credentials', 'approval', 'subscription', 'campaign'] as const)('denies live creation when %s changes after screening and before the final transaction', async kind => {
   const f = await fixture();
   await SubscriptionModel.create({ userId: f.owner.id, tier: 'pro', status: 'active', billingCycle: 'monthly', currentPeriodStart: new Date(), currentPeriodEnd: new Date(Date.now() + 86400000) });
