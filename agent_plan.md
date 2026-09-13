@@ -2,6 +2,8 @@
 
 ### 2026-09-12 — Ghana and mobile store compliance goal (IN PROGRESS)
 
+- Current-source Android prebuild passed from archived 69d94fa; all 184 tracked mobile files match except documented temporary Metro dependency resolution. Full APK assemble session 37305 confirmed live (local debug signing, not store release), `/tmp/ujimora-android-current-assemble.log`. Full API regression 67839 confirmed live on unchanged 69d94fa API/shared source, `/tmp/ujimora-api-manual-approval-regression.log`; preserve source until terminal. No artifact/full-suite pass claimed.
+
 - Payout reviews now conditionally write the pending payout within the authorized review transaction, serializing ordinary/second-review evidence against concurrent status changes. All 46 focused tests, API types/lint pass, including snapshot interleavings with transaction retry and no appended review/funds movement. Remaining snapshot/consumer/release scope recorded in KYC_REVIEW_INTEGRITY.md.
 
 - Campaign wallet settlement now checks current staff role, nonclosed account and credential version inside its money transaction. All 40 focused tests, types/lint pass, including three revocation persistence cases and HTTP rotation after review; corrected new fixture idempotency/balance assumptions without changing production validation. Remaining campaign/destination/fee and release boundaries documented in KYC_REVIEW_INTEGRITY.md.
