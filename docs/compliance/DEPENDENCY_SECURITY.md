@@ -88,3 +88,7 @@ checks. Running npm from the isolated directory was necessary: the initial
 validation without installing. No application credentials or user data were
 copied. Admin XLSX roundtrip, browser downloads, type/lint and production build
 checks pass after the dependency change.
+
+## Current dependency checkpoint — 13 September 2026
+
+Fresh `npm audit --omit=dev --json` on d6b3a05 reports the same9 affected package entries (5moderate,4high,0critical). The6 actual-consumer security tests all pass. Registry latest versions remain image-size2.0.2 and decode-uri-component0.5.0; the latter is already the source of the documented CommonJS backport, not a newly adopted dependency. No downgrade or unsupported major override was introduced. Logs: `/tmp/ujimora-current-production-audit.json`, `/tmp/ujimora-current-security-checks.log`. This refresh verifies the local mitigation checks, not removal of upstream advisories or store approval.

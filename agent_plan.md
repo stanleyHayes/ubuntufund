@@ -1,5 +1,11 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — Current dependency checkpoint and API release regression
+
+- Fresh production dependency audit still reports9 entries across the two locally mitigated parser chains; all6 consumer security tests pass. DEPENDENCY_SECURITY.md records exact evidence and upstream limitations.
+- Full API regression started on d6b3a05 API/shared sources, session25869, log `/tmp/ujimora-api-d6b3a05-full.log`. Keep API/shared source unchanged until terminal; poll the existing handle rather than duplicating the run. This is RUNNING, not a pass. Previous1210-test baseline predates recent currency/closure/privacy changes.
+
+
 ### 2026-09-13 — Historical closure inventory
 
 - Added read-only paginated snapshot audit for account deletion requests versus persisted closure/core-cleanup markers. No repair mode, model initialization or contact/provider data in reports. Operator instructions and exclusions are in ACCOUNT_CLOSURE_AUDIT.md.
