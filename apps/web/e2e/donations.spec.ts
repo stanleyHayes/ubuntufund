@@ -11,13 +11,13 @@ test.describe('Donations', () => {
     const active = list.data.items.find(
       (c: { status: string; currency: string }) => c.status === 'active' && c.currency === 'GHS'
     )
-    test.skip(!active, 'no active GHS campaign available to donate to')
+    expect(active, 'The E2E seed must provide an active GHS campaign').toBeTruthy()
 
     // The public API deliberately exposes no balance-minting endpoint. An
     // unfunded launch account should receive the real insufficient-balance
     // response when attempting a wallet-backed contribution.
     await page.goto(`/campaigns/${active.id}`)
-    await page.getByRole('button', { name: 'Donate Now' }).click()
+    await page.getByRole('button', { name: 'Donate with wallet', exact: true }).click()
 
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
