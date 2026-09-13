@@ -43,6 +43,6 @@ All 27 focused tests in atomic settlement and donation-intent integration pass, 
 ## Remaining requirements
 
 - Verify deployed wallet operation and reconcile historical wallet debits/compensations; the transaction change is prospective. Provider-independent lost-commit replay is covered locally, not by a production outage exercise.
-- Reconcile historical successful intents with missing or partial donation/journal/projection/outbox records; no historical repair or production fund mutation was performed here.
+- Reconcile historical successful intents with missing or partial donation/journal/projection/outbox records. The read-only structural inventory in `HISTORICAL_DONATION_AUDIT.md` is implemented and tested; historical correction and aggregate/provider proof remain open. No historical repair or production fund mutation was performed here.
 - Audit creator/account restrictions, original quote and funding provenance at remaining financial writes, including refunds and payouts. The wallet campaign gate above verifies current campaign status/end date/currency; it does not close every eligibility policy.
 - Verify every provider/reconciliation path and the full API suite after this change. Focused tests do not establish live-provider operation or overall regulatory/store compliance.

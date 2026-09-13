@@ -1,5 +1,12 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — Read-only historical donation integrity inventory
+
+- Added a paginated snapshot audit for aged successful intents: journal/donation/outbox linkage, journal balance/settlement totals and wallet-history owner/currency/amount/status. No provider calls, money movement, receipt replay, automatic repairs or model/index initialization; reports omit donor/contact/provider details.
+- Four real-database tests pass, including unchanged database snapshots and deterministic paging; API types/affected lint and local CLI smoke pass. Usage, interpretation and explicit unverified historical projection/provider/compensation scope: `docs/compliance/HISTORICAL_DONATION_AUDIT.md`.
+- Production read-only attempt66504 exited 1 with no report; DNS resolves, but database access/snapshot acceptance remains unverified. A bounded connection diagnostic is pending as92829. No production record was changed. Root full API97713 remains running on unchanged 428402b source; this isolated audit tool and campaign projection change are not covered by that baseline.
+
+
 ### 2026-09-13 — Required campaign accounting and wallet eligibility
 
 - A missing/deleted/currency-mismatched campaign projection now aborts the settlement transaction instead of leaving partial accounting marked successful. Wallet settlement checks current campaign status/end date/currency and serializes against concurrent moderation; late externally verified payments remain accountable after expiry.
