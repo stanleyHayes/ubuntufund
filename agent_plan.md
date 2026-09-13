@@ -1,5 +1,11 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — Current production builds and workspace checks
+
+- Web/admin/marketing production builds pass; existing large-chunk warnings remain. All14 uncached workspace type/lint tasks pass with no lint errors (existing hook/unused-import warnings remain). Logs `/tmp/ujimora-{web,admin,marketing}-ceb9304-build.log` and `/tmp/ujimora-ceb9304-workspace-checks.log`.
+- API full session45526 remains running on unchanged1a43ae5 source. This checkpoint adds build/static-analysis evidence and does not imply API/provider/store acceptance.
+
+
 ### 2026-09-13 — Complete current frontend test checkpoint
 
 - All current UI suites pass: web203/48files, admin73/21files, marketing10/4files, native109/23files (native checked at the same implementation in preceding checkpoint). Logs `/tmp/ujimora-{web,admin,marketing}-85314b7-tests.log` and `/tmp/ujimora-mobile-1a43ae5-tests.log`. These are test-suite results, not live-provider or signed-device acceptance.

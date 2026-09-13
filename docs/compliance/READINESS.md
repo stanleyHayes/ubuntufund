@@ -14,6 +14,8 @@ Full API baseline de8b9e2 passes 1,210 tests across163 files (session41412, exit
 
 Current implementation passes all395 frontend tests: web203 across48 files, admin73 across21, marketing10 across4 and native109 across23. Native Android/iOS/web JavaScript export also succeeds. Evidence logs: `/tmp/ujimora-{web,admin,marketing}-85314b7-tests.log`, `/tmp/ujimora-mobile-1a43ae5-tests.log`, `/tmp/ujimora-mobile-1a43ae5-export.log`. Full API session45526 is still running against1a43ae5 source; earlier interrupted run25869 is not a pass. These checks do not close the external legal/provider/store or signed-native release gates below.
 
+Production builds for web/admin/marketing also pass on this implementation, and all14 workspace type/lint tasks pass uncached (zero lint errors; existing warnings remain). Logs `/tmp/ujimora-{web,admin,marketing}-ceb9304-build.log` and `/tmp/ujimora-ceb9304-workspace-checks.log`. Build success is not deployment or signed-artifact verification.
+
 ## Current authoritative references
 
 | ID | Source | Applicability |
