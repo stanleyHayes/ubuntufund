@@ -1,5 +1,10 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — Regression recovery and settlement audit
+
+- Replaced the stale TransferUncertainty payout stub with the real entity; now verifies the provider receives the persisted reference and funds are reserved once without refund on an ambiguous outcome. All five focused timeout/testimonial tests and API types pass. Testimonials passes in isolation unchanged; the earlier full-run HTTP400 remains an unresolved intermittent failure, not a proven fix.
+- Source audit found donation settlement commits its success gate before donation/journal/balance/split/outbox writes, without an encompassing transaction. Split lock/read also consumes a separately fetched version. Next establish atomic settlement before adding a consent failure gate, so failed allocation cannot leave partial credited funds. Wallet debit compensation/crash recovery and historic partial-settlement reconciliation remain separate audit requirements.
+
 ### 2026-09-13 — Admin wallets and focused member/profile layouts
 
 - Added Community → Wallets and member wallet balances/transaction history, with staff-only no-store paginated reads, explicit safe fields, grouped branded exports, skeleton/error/retry/illustrated empty states and preserved sidebar connectors. Wallet balances stay separate from campaign proceeds and currencies are not summed together.
