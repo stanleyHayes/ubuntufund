@@ -2,6 +2,8 @@
 
 ### 2026-09-12 — Ghana and mobile store compliance goal (IN PROGRESS)
 
+- Actual built APK decoded and checked: SDK36, backup disabled, Firebase defaults disabled, blocked permissions absent and screen-sharing declarations retained. Packaged backup resources resolve to res/Vk.xml and res/m3.xml; all nine exclusions verified for full/cloud/device-transfer. Hashes/provenance in NATIVE_PERMISSIONS.md; physical/runtime/store gates remain open. API24306/image74629 confirmed live.
+
 - Native startup now cleans older app-owned temporary recovery-code exports after interrupted sharing, preserving current exports and unrelated files. All 105 mobile tests, types/lint and Android JS export pass; details in NATIVE_PERMISSIONS.md. Current full API regression 24306 remains live on unchanged API 0bb30ee, `/tmp/ujimora-campaign-recipient-full-regression.log`; keep API/shared source frozen. Android image install 74629 remains live.
 
 - Account agreement page redesigned with existing forest/gold PageBanner and SVG chain watermark, icon/title/description policy cards, responsive confirmation panel and separate opt-in explanation. Removed redundant agreement notice on this route. Both confirmations remain unchecked and required; API contract/saved/error states retained. Desktop1440/phone390 browser flows verify links, overflow, explicit consent and exact save payload; web types/lint/build pass. Screenshots `/tmp/ujimora-agreement-{1440,390}.png`.
