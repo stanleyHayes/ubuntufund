@@ -1,5 +1,11 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — Candidate APK startup and DataStore candidate
+
+- Installed native candidate cold-starts on16KB emulator with compatibility disabled; React Native renders the expected unavailable-API screen. Evidence includes PID log, activity state and inspected screenshot. Scope remains archived/debug-signed/non-production.
+- DataStore1.2.1 native AAR passes both-ABI alignment; newer graphics/Fresco candidates still fail. Isolated APK33497 now evaluates aligned DataStore modules with prior runtime candidates; production configuration unchanged. Native ledger has evidence and remaining gates.
+
+
 ### 2026-09-13 — Wallet message terms acknowledgement fixed
 
 - Wallet donation dialog now displays the shared unchecked content-terms/18+ acknowledgement when a public message is entered. Confirmation stays disabled until accepted; the request includes current-version legalAcceptance. New donations reset consent and blank messages do not trigger unnecessary message acceptance. Backend enforcement remains intact.

@@ -250,3 +250,12 @@ Retry35851 completed exit0 in1m37s (1,085tasks,87executed), with lint enabled. A
 ### Candidate packaged runtime provenance — 13 September 2026
 
 Candidate APK passes build-tools36.0.0 zipalign -c -P16 4 (exit0). Stripping each verified libc++/fbjni candidate with NDK28 llvm-strip --strip-unneeded yields exact SHA256 matches to all four packaged entries on ARM64/x86_64 (`/tmp/ujimora-candidate-apk-provenance.json`). Emulator installation67508 completed exit0/Success. New APK startup is not yet verified;18 other packaged libraries still fail ELF alignment. No final current-source or store/device acceptance is inferred.
+
+
+### Packaged candidate starts on16KB; DataStore evaluation — 13 September 2026
+
+The installed candidate APK cold-started successfully on emulator-5580: am start Status:ok, TotalTime597ms, process6933; ReactNativeJS logs Running main and MainActivity is topResumedActivity. Screenshot `/tmp/ujimora-candidate-startup.png` visibly renders the campaign-load error/Retry and navigation expected from https://api.invalid. No fatal exception appears in the observed PID log. Readback confirms16384-byte pages, bionic compatibility false and package compatibility-disabled true. Logs `/tmp/ujimora-candidate-{startup,startup-logcat,activities,maps}.log`. This verifies candidate native/JS startup only, not production connectivity, all media/runtime paths, physical devices, x86_64 execution or store acceptance.
+
+Primary repository metadata identifies stable DataStore1.2.1; both64-bit native entries in its actual AAR pass LOAD/RELRO. New graphics-path1.1.0 and Fresco imagepipeline-native3.7.0 AARs still fail RELRO on both ABIs (remainder0x2000), so no version-only acceptance. Evidence `/tmp/ujimora-native-{datastore-1.2.1,graphics-1.1.0,fresco-imagepipeline-3.7.0}-elf.json`. AndroidX release page confirms1.2.1 stable: https://developer.android.com/jetpack/androidx/releases/datastore (checked13September2026).
+
+Started isolated DataStore APK candidate33497, aligning the androidx.datastore family to1.2.1 through `/tmp/ujimora-datastore-candidate.init.gradle` in addition to prior native/runtime build settings. Log `/tmp/ujimora-datastore-candidate-build.log`; currently live. Production mobile configuration has not changed. Final dependency compatibility, packaged hashes, preference/storage behavior and remaining native findings require verification before promotion.
