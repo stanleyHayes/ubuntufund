@@ -1,3 +1,5 @@
+import { MongoUnitOfWork } from './MongoUnitOfWork.js';
+import { CampaignModel } from '../../../database/models/CampaignModel.js';
 import { CampaignSplitVersionEntity } from '../../../../domain/entities/CampaignSplitVersion.js';
 import type { CampaignSplitRepositoryPort } from '../../../../domain/ports/outbound/CampaignSplitRepositoryPort.js';
 import type { BeneficiaryConsentStatus } from '@ubuntu-fund/types';
@@ -33,6 +35,8 @@ function toDomain(
 export class MongoCampaignSplitRepository
   implements CampaignSplitRepositoryPort
 {
+  private readonly unitOfWork = new MongoUnitOfWork();
+
   async create(
     split: CampaignSplitVersionEntity
   ): Promise<CampaignSplitVersionEntity> {
@@ -111,17 +115,31 @@ export class MongoCampaignSplitRepository
     campaignId: string,
     version: number
   ): Promise<CampaignSplitVersionEntity | null> {
-    // Supersede any OTHER currently-active version, then promote the target.
-    await CampaignSplitVersionModel.updateMany(
-      { campaignId, status: 'active', version: { $ne: version } },
-      { $set: { status: 'superseded' } }
-    );
-    const doc = await CampaignSplitVersionModel.findOneAndUpdate(
-      { campaignId, version, status: { $in: ['draft', 'active'] } },
-      { $set: { status: 'active' } },
-      { new: true }
-    );
-    return doc ? toDomain(doc) : null;
+    return this.unitOfWork.run(async () => {
+      // A campaign-level write serializes amendments to different split documents.
+      const campaign = await CampaignModel.findOneAndUpdate(
+        { _id: campaignId }, { $inc: { splitWriteVersion: 1 } },
+        { new: true, timestamps: false }
+      );
+      if (!campaign) return null;
+      const eligible = {
+        campaignId, version, status: { $in: ['draft', 'active'] },
+        'allocations.1': { $exists: true },
+        allocations: { $not: { $elemMatch: { consent: { $ne: 'accepted' } } } },
+      };
+      // Read and promote under the same transaction; consent changes conflict
+      // with the final write and are re-evaluated on retry.
+      if (!await CampaignSplitVersionModel.exists(eligible)) return null;
+      await CampaignSplitVersionModel.updateMany(
+        { campaignId, status: 'active', version: { $ne: version } },
+        { $set: { status: 'superseded' } }
+      );
+      const doc = await CampaignSplitVersionModel.findOneAndUpdate(
+        eligible, { $set: { status: 'active' } }, { new: true }
+      );
+      if (!doc) throw new Error('Split changed during activation; retry the amendment');
+      return toDomain(doc);
+    });
   }
 
   async lockActive(

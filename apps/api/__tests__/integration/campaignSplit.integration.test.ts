@@ -1,7 +1,9 @@
+import { CampaignSplitVersionModel } from '../../src/infrastructure/database/models/CampaignSplitVersionModel.js';
+import { MongoCampaignSplitRepository } from '../../src/infrastructure/adapters/outbound/persistence/MongoCampaignSplitRepository.js';
 process.env.SPLIT_PROCEEDS_ENABLED = 'true';
 import { SubscriptionModel } from '../../src/infrastructure/database/models/SubscriptionModel.js';
 import { randomUUID } from 'node:crypto';
-import { describe, it, beforeAll, afterAll, expect } from 'vitest';
+import { describe, it, beforeAll, afterAll, expect, vi } from 'vitest';
 import request from 'supertest';
 import type { Express } from 'express';
 import { createTestApp } from '../helpers/testApp.js';
@@ -221,4 +223,53 @@ describe('Campaign split-proceeds Integration (spec §17)', () => {
     );
     expect(statuses).toEqual({ 1: 'superseded', 2: 'active' });
   });
+  async function amendmentFixture() {
+    const { userId, token } = await registerUser(app, uniqueEmail('split-atomic'));
+    const campaignId = await createCampaign(app, token, userId);
+    for (const version of [1, 2, 3]) {
+      const created = await request(app).post(`/api/v1/campaigns/${campaignId}/split`).set('Authorization', `Bearer ${token}`).send({ allocations: ALLOCATIONS }).expect(201);
+      for (const b of created.body.data.allocations) await request(app).post(`/api/v1/campaigns/${campaignId}/split/${version}/consent`).set('Authorization', `Bearer ${token}`).send({ beneficiaryId: b.beneficiaryId, status: 'accepted' }).expect(200);
+    }
+    const activate = (version: number) => request(app).post(`/api/v1/campaigns/${campaignId}/split/${version}/activate`).set('Authorization', `Bearer ${token}`).send({});
+    await activate(1).expect(200);
+    return { campaignId, activate };
+  }
+
+  it('preserves the prior active split if promotion fails after superseding it', async () => {
+    const f = await amendmentFixture();
+    const original = CampaignSplitVersionModel.findOneAndUpdate.bind(CampaignSplitVersionModel);
+    const hook = vi.spyOn(CampaignSplitVersionModel, 'findOneAndUpdate').mockImplementationOnce((...args: Parameters<typeof original>) => {
+      const query = original(...args);
+      const exec = query.exec.bind(query);
+      query.exec = async () => { await exec(); throw new Error('Injected failure after split promotion'); };
+      return query;
+    });
+    try { await f.activate(2).expect(500); } finally { hook.mockRestore(); }
+    expect((await CampaignSplitVersionModel.findOne({ campaignId: f.campaignId, version: 1 }))?.status).toBe('active');
+    expect((await CampaignSplitVersionModel.findOne({ campaignId: f.campaignId, version: 2 }))?.status).toBe('draft');
+    await f.activate(2).expect(200);
+  });
+
+  it('rechecks consent changed after the service-level review without losing the prior split', async () => {
+    const f = await amendmentFixture();
+    const original = MongoCampaignSplitRepository.prototype.activate;
+    const hook = vi.spyOn(MongoCampaignSplitRepository.prototype, 'activate').mockImplementationOnce(async function(campaignId, version) {
+      await CampaignSplitVersionModel.updateOne({ campaignId, version }, { $set: { 'allocations.0.consent': 'declined' } });
+      return original.call(this, campaignId, version);
+    });
+    try { await f.activate(2).expect(409); } finally { hook.mockRestore(); }
+    expect((await CampaignSplitVersionModel.findOne({ campaignId: f.campaignId, version: 1 }))?.status).toBe('active');
+    expect((await CampaignSplitVersionModel.findOne({ campaignId: f.campaignId, version: 2 }))?.status).toBe('draft');
+  });
+
+  it('serializes concurrent amendments so exactly one split remains active', async () => {
+    const f = await amendmentFixture();
+    const results = await Promise.all([f.activate(2), f.activate(3)]);
+    expect(results.map(r => r.status)).toEqual([200, 200]);
+    const active = await CampaignSplitVersionModel.find({ campaignId: f.campaignId, status: 'active' });
+    expect(active).toHaveLength(1);
+    expect([2, 3]).toContain(active[0]!.version);
+    expect(await CampaignSplitVersionModel.countDocuments({ campaignId: f.campaignId, status: 'superseded' })).toBe(2);
+  });
+
 });

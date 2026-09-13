@@ -7,6 +7,10 @@
 - Main implementation pushed as `88fbcdf`; all three Vercel deployments reported successful. Follow-up URL validation rejects malformed/non-HTTPS cover URLs with HTTP 400; focused API tests/types/lint pass. Follow-up pushed as `8889bc2`; Render deploy `dep-daj8rplckfvc739jfcsg` reached live at 2026-09-13 11:52:40 UTC. Health returned HTTP 200/status ok and the production marketing blog API returned six migrated articles. All three Vercel checks passed for the same commit.
 - Three API integration tests, six mocked phone/desktop browser flows and all ten marketing tests pass. API/admin/marketing production builds and affected type checks pass; lint has only existing unrelated warnings. Detailed scope and verification in `docs/BLOG_STUDIO.md`. Broader compliance goal remains active with its existing external and engineering gates.
 
+### 2026-09-13 — Split activation integrity
+
+- Split activation now serializes campaign amendments and atomically supersedes/promotes only a fully accepted version. Consent changes and write failures preserve the previous active split; concurrent amendments leave exactly one active version. Ten focused integration tests, API types/lint and whitespace checks pass. Accrual version consumption and wider compliance gates remain open. Root regression70997 retains its earlier source baseline.
+
 ### 2026-09-12 — Ghana and mobile store compliance goal (IN PROGRESS)
 
 - Beneficiary terminal callbacks, rejected-transfer rollback and reconciliation now commit status, both balances, ledger and settlement flag together. Repair locks the current terminal payout; missing balances and reversal shortfalls fail closed with idempotent retries preserved. All 39 focused integration tests/types/lint pass. Implemented in `/tmp/ujimora-beneficiary-settlement`; publish from that checkout while root regression70997 keeps unchanged f09cba3 API/shared source. Do not fast-forward root API/shared until that run is terminal. Later settlement delta is not covered by the running baseline. Currency/reservation provenance, eligibility/consent and remaining release gates stay open in KYC_REVIEW_INTEGRITY.md.

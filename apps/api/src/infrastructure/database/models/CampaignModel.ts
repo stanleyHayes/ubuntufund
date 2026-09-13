@@ -26,6 +26,7 @@ export interface CampaignDocument extends Document {
   lockedPlatformFeePercent?: number;
   reviewRevision?: number;
   payoutWriteVersion?: number;
+  splitWriteVersion?: number;
   liveCreationWriteVersion?: number;
   commentCreationWriteVersion?: number;
   createdAt: Date;
@@ -45,6 +46,7 @@ const campaignSchema = new Schema<CampaignDocument>(
     },
     title: { type: String, required: true, index: true },
     payoutWriteVersion: { type: Number, default: 0 },
+    splitWriteVersion: { type: Number, default: 0 },
     liveCreationWriteVersion: { type: Number, default: 0 },
     commentCreationWriteVersion: { type: Number, default: 0 },
     description: { type: String, required: true },
