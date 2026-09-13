@@ -11,6 +11,7 @@ export interface CampaignSplitVersionDocument extends Document {
   status: SplitStatus;
   allocations: BeneficiaryAllocation[];
   locked: boolean;
+  accrualWriteVersion?: number;
   lockedAt?: Date;
   createdBy: string;
   createdAt: Date;
@@ -49,6 +50,7 @@ const campaignSplitVersionSchema = new Schema<CampaignSplitVersionDocument>(
     },
     allocations: { type: [allocationSchema], required: true },
     locked: { type: Boolean, default: false },
+    accrualWriteVersion: { type: Number, default: 0 },
     lockedAt: { type: Date },
     createdBy: { type: String, required: true },
   },

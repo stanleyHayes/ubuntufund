@@ -35,7 +35,7 @@ function makeFakes(campaignId: string, hasSplit = true) {
   const splitRepo = {
     async lockActive() {
       locked = true;
-      return null;
+      return hasSplit ? new CampaignSplitVersionEntity({ ...activeSplit(campaignId).toPlain(), locked: true }) : null;
     },
     async findActive() {
       return hasSplit ? activeSplit(campaignId) : null;

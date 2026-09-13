@@ -146,8 +146,8 @@ export class MongoCampaignSplitRepository
     campaignId: string
   ): Promise<CampaignSplitVersionEntity | null> {
     const doc = await CampaignSplitVersionModel.findOneAndUpdate(
-      { campaignId, status: 'active', locked: false },
-      { $set: { locked: true, lockedAt: new Date() } },
+      { campaignId, status: 'active' },
+      [{ $set: { locked: true, lockedAt: { $ifNull: ['$lockedAt', new Date()] }, accrualWriteVersion: { $add: [{ $ifNull: ['$accrualWriteVersion', 0] }, 1] } } }],
       { new: true }
     );
     return doc ? toDomain(doc) : null;

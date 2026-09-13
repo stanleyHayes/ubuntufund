@@ -14,9 +14,16 @@ Outbox dispatch occurs after the transaction commits. An unexpected dispatcher f
 
 The five new cases pass. Another 38 focused tests across wallet donation intents, split accrual, fee waivers, verification and attribution pass on the same implementation. API types, affected lint and whitespace checks pass. Logs: `/tmp/ujimora-donation-atomic-tests.log` (38 existing cases pass; initial new fixture omitted required startDate), `/tmp/ujimora-donation-atomic-regression.log` (all five corrected real-database fixtures pass), `/tmp/ujimora-donation-atomic-types.log`, `/tmp/ujimora-donation-atomic-lint.log`.
 
+## Exact split version and consent — 2026-09-13
+
+Accrual now consumes the version returned by the lock write, without a second active-version read. Every allocation must have accepted consent. The lock returns already-locked versions, preserves the first lock timestamp and increments a write counter to serialize with concurrent consent/amendment changes inside the donation settlement transaction. A consent failure rolls back the donation settlement and lock together.
+
+Four new real-database cases verify declined consent with a successful retry after restoration, repeated contributions without a second version read, consent changed after the settlement snapshot, and activation of a new amendment during settlement. The latter two exercise transaction conflict/retry against independent writes. All 28 tests across atomic settlement, split activation, split accrual integration and SplitAccrualService pass; API types and affected lint pass. Logs: `/tmp/ujimora-split-consent-tests.log`, `/tmp/ujimora-split-consent-types.log`, `/tmp/ujimora-split-consent-lint.log`.
+
+This verifies stored consent at accrual time; it does not establish the authenticity of beneficiary attestations or repair historic allocations. The ongoing full API regression uses the earlier de49df2 source and does not cover this delta.
+
 ## Remaining requirements
 
-- Bind split accrual to the exact locked, consented version; current separate lock/read remains a race. Add consent rejection only with the new atomic settlement boundary and verify amendment races.
 - Couple wallet debit, transaction history, intent and settlement across crashes and uncertain commit outcomes. Debit/compensation outside settlement is not made atomic by this change.
 - Reconcile historical successful intents with missing or partial donation/journal/projection/outbox records; no historical repair or production fund mutation was performed here.
 - Revalidate exact campaign eligibility/currency and funding provenance at the relevant financial writes, including refunds and payouts.

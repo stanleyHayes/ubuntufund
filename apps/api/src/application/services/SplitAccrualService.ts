@@ -1,3 +1,4 @@
+import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 import type { DonationSettlementBreakdown } from '@ubuntu-fund/types';
 import type { CampaignSplitRepositoryPort } from '../../domain/ports/outbound/CampaignSplitRepositoryPort.js';
 import type { CampaignBeneficiaryBalanceRepositoryPort } from '../../domain/ports/outbound/CampaignBeneficiaryBalanceRepositoryPort.js';
@@ -42,9 +43,11 @@ export class SplitAccrualService {
 
     // Lock the active split (idempotent) and read the authoritative, now-locked
     // version the money is arriving under.
-    await this.splitRepo.lockActive(campaignId);
-    const split = await this.splitRepo.findActive(campaignId);
+    const split = await this.splitRepo.lockActive(campaignId);
     if (!split) return; // not a split campaign — campaign-level projection stands
+    if (!split.locked || !split.allConsented()) {
+      throw new AppError('Every beneficiary must consent to the locked split before funds can be allocated.', 409);
+    }
 
     const currency = breakdown.currency;
     const netMinor = toMinor(breakdown.beneficiaryNet);

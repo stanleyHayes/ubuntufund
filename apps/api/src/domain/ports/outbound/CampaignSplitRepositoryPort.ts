@@ -37,7 +37,9 @@ export interface CampaignSplitRepositoryPort {
 
   /**
    * Lock the active version the first time a contribution accrues against it
-   * (spec §17 / ADR-3). Idempotent: null when there is no unlocked active split.
+   * (spec §17 / ADR-3). Returns that exact version, including when already
+   * locked; null only when no active split exists. Repeated calls serialize
+   * against consent/amendment writes without changing the first lockedAt.
    */
   lockActive(campaignId: string): Promise<CampaignSplitVersionEntity | null>;
 }

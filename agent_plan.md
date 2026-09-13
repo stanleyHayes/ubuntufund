@@ -1,5 +1,12 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — Locked split consent at donation accrual
+
+- Accrual uses the exact version returned by the lock, requires all beneficiaries' stored consent, and preserves the first lock timestamp on subsequent contributions. A write counter serializes concurrent consent/amendment changes; the encompassing donation transaction rolls back failed allocation.
+- All 28 focused tests across four files pass, including independent consent and amendment writes during settlement; API types, affected lint and whitespace checks pass. Evidence and remaining wallet debit/crash, historic repair, provenance and external gates: `docs/compliance/DONATION_SETTLEMENT_INTEGRITY.md`.
+- Implemented in isolated `/tmp/ujimora-split-consent` while root full API regression remains on de49df2. Do not fast-forward root API/shared until its OS process97096 and log confirm a terminal result. The running baseline does not cover this later delta.
+
+
 ### 2026-09-13 — Descriptive admin dropdowns
 
 - Standardized admin select fields and coupon multi-selects through shared AdminTextField/AdminSelect: meaningful icons, human-readable titles, contextual descriptions, selected checkmarks, themed surfaces and accessible description associations. Closed fields show compact titles; raw values, existing selection callbacks, disabled choices and coupon checkbox behavior remain intact. KYC filter columns widened; selected titles wrap instead of truncating. Sign-out menu also has explanatory copy.
