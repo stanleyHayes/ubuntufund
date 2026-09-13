@@ -616,3 +616,23 @@ Scope remains partial: affiliate destination review/KYC evidence, applicable
 amount/maker-checker controls, beneficiary flows and terminal balance transaction
 review remain open, alongside external release gates. Full root regression88675
 retains its c8adacf baseline and does not cover this later implementation.
+
+## Beneficiary reservation and processing are atomic
+
+Beneficiary approval now commits its share reservation, campaign aggregate
+reservation and PROCESSING/provider reference in one MongoUnitOfWork transaction.
+A short aggregate balance, losing processing transition or failed database write
+aborts both balance moves without compensating writes. The provider transfer runs
+only after commit. Post-provider outcome handling is unchanged by this slice.
+
+Eight beneficiary integration tests pass, including successful full settlement,
+short campaign mirror and injected failure after the actual processing write.
+Failure cases preserve available/pending or paid balances, PENDING and absent
+provider reference, with no transfer. The success test reads committed PROCESSING,
+reference and reserved share outside any session from inside the provider mock.
+API types/lint and whitespace checks pass. Logs:
+/tmp/ujimora-beneficiary-atomic-final-tests.log and -atomic-{types,lint}.log.
+
+Final staff credentials/current beneficiary KYC/destination validation, first
+approval evidence and post-provider terminal balance consistency remain open.
+Root regression88675 remains live on c8adacf and excludes these later slices.

@@ -205,7 +205,7 @@ describe('Beneficiary payout Integration (flag on, spec §17)', () => {
     expect(await BeneficiaryPayoutModel.countDocuments({ campaignId })).toBe(2);
   });
 
-  it('pays a beneficiary their cleared share end-to-end (register → KYC → request → approve → settle)', async () => {
+  it.each(['success', 'mirror_short', 'processing_failure'])('beneficiary reservation and processing commit together: %s', async (scenario) => {
     const owner = await registerUser(app, uniqueEmail('bp-own'));
     const admin = await createAdmin(app, uniqueEmail('bp-admin'));
     const campaignId = await createActiveCampaign(app, owner.token, owner.userId);
@@ -253,6 +253,43 @@ describe('Beneficiary payout Integration (flag on, spec §17)', () => {
     expect(reqRes.status).toBe(201);
     expect(reqRes.body.data.status).toBe('PENDING');
     const payoutId = reqRes.body.data.id as string;
+
+    if (scenario !== 'success') {
+      if (scenario === 'mirror_short') await CampaignBalanceModel.updateOne({ campaignId }, { availableBalance: 0 });
+      const before = await CampaignBeneficiaryBalanceModel.findOne({ campaignId, beneficiaryId: ama.beneficiaryId });
+      const aggregate = await CampaignBalanceModel.findOne({ campaignId });
+      const original = MongoBeneficiaryPayoutRepository.prototype.transitionToProcessing;
+      const hook = scenario === 'processing_failure' ? vi.spyOn(MongoBeneficiaryPayoutRepository.prototype, 'transitionToProcessing').mockImplementation(async function(...args) {
+        await original.apply(this, args);
+        throw new Error('Injected failure after processing write');
+      }) : undefined;
+      vi.mocked(fetch).mockClear();
+      try {
+        await request(app).post(`/api/v1/beneficiary-payouts/${payoutId}/approve`).set('Authorization', `Bearer ${admin.token}`).send({}).expect(scenario === 'mirror_short' ? 409 : 500);
+        const after = await CampaignBeneficiaryBalanceModel.findOne({ campaignId, beneficiaryId: ama.beneficiaryId });
+        const aggregateAfter = await CampaignBalanceModel.findOne({ campaignId });
+        expect(after?.availableBalance).toBe(before?.availableBalance);
+        expect(after?.pendingBalance).toBe(before?.pendingBalance);
+        expect(aggregateAfter?.availableBalance).toBe(aggregate?.availableBalance);
+        expect(aggregateAfter?.paidOutBalance).toBe(aggregate?.paidOutBalance);
+        const failed = await BeneficiaryPayoutModel.findById(payoutId);
+        expect(failed?.status).toBe('PENDING');
+        expect(failed?.providerRef).toBeUndefined();
+        expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).endsWith('/transfer'))).toBe(false);
+      } finally { hook?.mockRestore(); }
+      return;
+    }
+
+    const gateway = vi.mocked(fetch).getMockImplementation()!;
+    vi.mocked(fetch).mockImplementation(async (...args) => {
+      if (String(args[0]).endsWith('/transfer')) {
+        const saved = await BeneficiaryPayoutModel.collection.findOne({ campaignId, beneficiaryId: ama.beneficiaryId, status: 'PROCESSING' }, { session: null });
+        expect(saved?.providerRef).toMatch(/^bpay-/);
+        const share = await CampaignBeneficiaryBalanceModel.collection.findOne({ campaignId, beneficiaryId: ama.beneficiaryId }, { session: null });
+        expect(share?.availableBalance).toBe(0);
+      }
+      return gateway(...args);
+    });
 
     // Admin approves → transfer initiated.
     const approve = await request(app)

@@ -250,47 +250,22 @@ export class BeneficiaryPayoutUseCase {
       throw new AppError('Insufficient platform balance to fund this payout', 422);
     }
 
-    // Reserve the beneficiary's available → in-transit (authoritative), mirror
-    // into the campaign aggregate.
-    const reserved = await this.beneficiaryBalanceRepo.reserveForPayout(
-      payout.campaignId,
-      payout.beneficiaryId,
-      payout.currency,
-      payout.amount
-    );
-    if (!reserved) {
-      throw new AppError('Insufficient available balance to fund this payout', 422);
-    }
-    const campReserved = await this.campaignBalanceRepo.reserveForPayout(
-      payout.campaignId,
-      payout.amount
-    );
-    if (!campReserved) {
-      // The invariant campaign-available >= beneficiary-available was breached:
-      // do NOT initiate a transfer against inconsistent books. Return the
-      // beneficiary reservation and fail loudly for reconciliation.
-      await this.beneficiaryBalanceRepo.returnToAvailable(
-        payout.campaignId,
-        payout.beneficiaryId,
-        payout.currency,
-        payout.amount
-      );
-      logger.error(
-        { campaignId: payout.campaignId, beneficiaryId: payout.beneficiaryId },
-        'beneficiary payout: campaign available mirror short (invariant breach)'
-      );
-      throw new AppError('Payout could not be reserved; please try again', 409);
-    }
-
     const reference = `bpay-${payout.id}-${randomUUID().slice(0, 8)}`;
-    const processing = await this.payoutRepo.transitionToProcessing(payout.id, {
-      approvedBy: requester.userId,
-      providerRef: reference,
+    // Both balance mirrors and the processing reference commit together.
+    // No provider calls or compensating balance writes belong in this callback.
+    const processing = await this.unitOfWork.run(async () => {
+      const reserved = await this.beneficiaryBalanceRepo.reserveForPayout(
+        payout.campaignId, payout.beneficiaryId, payout.currency, payout.amount,
+      );
+      if (!reserved) throw new AppError('Insufficient available balance to fund this payout', 422);
+      const campReserved = await this.campaignBalanceRepo.reserveForPayout(payout.campaignId, payout.amount);
+      if (!campReserved) throw new AppError('Payout could not be reserved; campaign balance requires reconciliation.', 409);
+      const transitioned = await this.payoutRepo.transitionToProcessing(payout.id, {
+        approvedBy: requester.userId, providerRef: reference,
+      });
+      if (!transitioned) throw new AppError('Payout is no longer pending approval', 409);
+      return transitioned;
     });
-    if (!processing) {
-      await this.returnReservation(payout.campaignId, payout.beneficiaryId, payout.currency, payout.amount);
-      throw new AppError('Payout is no longer pending approval', 409);
-    }
 
     let transfer;
     try {
