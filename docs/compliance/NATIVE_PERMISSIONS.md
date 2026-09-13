@@ -270,3 +270,11 @@ Emulator update57606 succeeds and cold launch reports Status:ok/TotalTime691ms (
 ## Current JavaScript verification — 13 September 2026
 
 On1a43ae5 all109 mobile tests across23 files pass, and the current Expo Android/iOS/web JavaScript export completes successfully. Logs `/tmp/ujimora-mobile-1a43ae5-tests.log`, `/tmp/ujimora-mobile-1a43ae5-export.log`; artifacts `/tmp/ujimora-mobile-1a43ae5-export`. This covers current-source JavaScript bundling after funded-campaign and shared-type changes. It does not replace signed native artifact, permission-denial, provider, physical-device or remaining16KB library verification.
+
+## Current-source APK result — 13 September 2026
+
+Root generated Android build89595 completes successfully in5m35s with lint enabled (973tasks,937executed). Artifact `apps/mobile/android/app/build/outputs/apk/release/app-release.apk`, SHA256 `f058b3eac4e037d56963b538cfffa494790769de4edc9a63be9adce7801a7296`. It uses normal committed dependencies/default NDK27.1, debug signing and non-routable API for local verification. It is not a production-signed submission.
+
+Actual ZIP16KB alignment passes. ELF LOAD/RELRO verifier passes21of48 libraries and fails27. **The earlier16remaining count applies only to the isolated custom-runtime candidate, not this committed-source APK.** Current failures include ARM64/x86_64 React Native/runtime/fbjni and remaining image/WebRTC/noise prebuilts. Logs: `/tmp/ujimora-current-android-build.log`, `/tmp/ujimora-current-apk-elf.json`, `/tmp/ujimora-current-apk-zipalign.log`.
+
+The packaged binary manifest (`/tmp/ujimora-current-apk-manifest.txt`) confirms targetSDK36 and allowBackup=false; background location, overlay and broad media-read permissions are absent. Merged snapshot `/tmp/ujimora-current-merged-manifest.json` also records SDK notification/badge permissions and exported components. Expo clipboard provider is exported by its upstream design with paths restricted to `.clipboard/` cache; this is not evidence of arbitrary file access. Physical permission-denial, SDK networking, final signing/device behavior and ELF remediation remain open.

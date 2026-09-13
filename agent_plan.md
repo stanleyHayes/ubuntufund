@@ -1,5 +1,12 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — Current Android APK built;27 ELF failures remain
+
+- Current-source/root Android89595 completes exit0 in5m35s,973tasks (937executed), lint enabled. APK SHA256 f058b3eac4e037d56963b538cfffa494790769de4edc9a63be9adce7801a7296. Debug-signed, non-routable API, normal committed dependencies/default NDK27.1.
+- Actual APK ZIP16KB alignment passes. ELF inspection passes21/48, fails27/48. Earlier16-failure count belongs only to the experimental custom-runtime APK and must not be presented as the committed product's count.
+- Actual packaged manifest confirms targetSDK36, backup disabled and no background-location/overlay/broad-media-read permissions. Native ledger records scope. API45526 remains running; Android source freeze lifted after terminal build, API/shared freeze remains.
+
+
 ### 2026-09-13 — Current-source Android artifact verification running
 
 - Started root generated Android assembleRelease, session89595, log `/tmp/ujimora-current-android-build.log`, source1e4b61c. Uses committed native plugins/default NDK27.1, ARM64/x86_64, lint enabled, debug signing and non-routable API; no experimental React Native/runtime substitutions. Build configuration reports minSDK24/compileSDK36/targetSDK36. Actual packaged manifest/ELF verification awaits terminal artifact.
