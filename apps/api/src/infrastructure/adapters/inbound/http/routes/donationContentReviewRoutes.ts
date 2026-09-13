@@ -1,3 +1,4 @@
+import { queuePageSize } from '../../middleware/queuePageSize.js';
 import { CampaignModel } from '../../../../database/models/CampaignModel.js';
 import { donationContentVersion as version, isDonationContentApproved } from '../../../../../domain/entities/donationPublicContent.js';
 import { Router, type RequestHandler } from 'express';
@@ -23,9 +24,10 @@ export function createDonationContentReviewRoutes(auth: RequestHandler, admin: R
   router.get('/', async (req, res, next) => {
     try {
       const status = z.enum(['pending', 'approved', 'rejected']).catch('pending').parse(req.query.status);
+      const pageSize = queuePageSize(req.query.pageSize);
       const page = Math.max(1, Math.min(10000, Math.floor(Number(req.query.page)) || 1));
       const filter = donationContentReviewFilter(status);
-      const [rows, total] = await Promise.all([DonationModel.find(filter).sort({ createdAt: 1 }).skip((page - 1) * 25).limit(25), DonationModel.countDocuments(filter)]);
+      const [rows, total] = await Promise.all([DonationModel.find(filter).sort({ createdAt: 1 }).skip((page - 1) * pageSize).limit(pageSize), DonationModel.countDocuments(filter)]);
       res.json({ data: { total, items: rows.map(donation => ({ id: String(donation._id), version: version(donation), action: 'donation.public_content', actorId: donation.donorId === 'guest' ? 'Guest' : donation.donorId, text: JSON.stringify({ donorName: donation.isAnonymous ? 'Anonymous' : donation.donorName ?? '', message: donation.messageHiddenAt ? '' : donation.message ?? '' }), mediaUrls: [], status: donation.publicContentStatus === 'approved' && !isDonationContentApproved(donation) ? 'pending' : donation.publicContentStatus ?? 'pending', reason: 'staff_requested', reviewNotes: donation.publicReviewNotes })) } });
     } catch (error) { next(error); }
   });

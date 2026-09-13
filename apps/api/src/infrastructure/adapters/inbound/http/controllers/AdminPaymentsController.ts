@@ -1,3 +1,4 @@
+import { queuePageSize } from '../../middleware/queuePageSize.js';
 import type { Request, Response, NextFunction } from 'express';
 import type { DonationIntentStatus } from '@ubuntu-fund/types';
 import type { DonationIntentEntity } from '../../../../../domain/entities/DonationIntent.js';
@@ -78,7 +79,7 @@ export class AdminPaymentsController {
       const page = Number(req.query.page ?? 1);
       if (!Number.isInteger(page) || page < 1 || page > 10000) throw new AppError('Invalid page', 400);
       res.set('Cache-Control', 'private, no-store');
-      res.json({ data: await this.processRefundUseCase.listUnresolved(page), status: 'success' });
+      res.json({ data: await this.processRefundUseCase.listUnresolved(page, queuePageSize(req.query.pageSize)), status: 'success' });
     } catch (error) { next(error); }
   };
 

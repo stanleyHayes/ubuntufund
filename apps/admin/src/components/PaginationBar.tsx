@@ -13,11 +13,13 @@ const PAGE_SIZE_OPTIONS = [12, 24, 48]
 
 interface PaginationBarProps {
   pagination: PaginationResult<unknown>
+  disabled?: boolean
+  rangeLabel?: string
   neumorphic?: boolean
   accentColor?: string
 }
 
-export default function PaginationBar({ pagination, accentColor = '#5E8F72', neumorphic = false }: PaginationBarProps) {
+export default function PaginationBar({ pagination, accentColor = '#5E8F72', neumorphic = false, disabled = false, rangeLabel: label }: PaginationBarProps) {
   const { currentPage, totalPages, rangeLabel, hasNext, hasPrev, goToPage, nextPage, prevPage, pageSize, setPageSize } = pagination
 
   if (pagination.totalItems === 0) return null
@@ -38,6 +40,8 @@ export default function PaginationBar({ pagination, accentColor = '#5E8F72', neu
 
   return (
     <Box
+      component="nav"
+      aria-label="Pagination"
       sx={{
         display: 'flex',
         alignItems: 'center',
@@ -52,7 +56,7 @@ export default function PaginationBar({ pagination, accentColor = '#5E8F72', neu
       }}
     >
       {/* Left: range label + page size */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
         <Typography
           sx={{
             fontSize: '0.75rem',
@@ -62,7 +66,7 @@ export default function PaginationBar({ pagination, accentColor = '#5E8F72', neu
             whiteSpace: 'nowrap',
           }}
         >
-          {rangeLabel}
+          {label ?? rangeLabel}
         </Typography>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
@@ -70,6 +74,7 @@ export default function PaginationBar({ pagination, accentColor = '#5E8F72', neu
             per page
           </Typography>
           <TextField
+            disabled={disabled}
             select
             size="small"
             variant={neumorphic ? 'outlined' : 'standard'}
@@ -96,17 +101,17 @@ export default function PaginationBar({ pagination, accentColor = '#5E8F72', neu
       </Box>
 
       {/* Right: page navigation */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, maxWidth: '100%', flexWrap: 'wrap' }}>
         {/* First */}
         <IconButton
           size="small"
           aria-label="First page"
           onClick={() => goToPage(1)}
-          disabled={!hasPrev}
+          disabled={disabled || !hasPrev}
           sx={{
             color: 'text.secondary',
             '&:hover': { color: accentColor, bgcolor: `${accentColor}12` },
-            '&.Mui-disabled': { color: 'rgba(255,255,255,0.1)' },
+            '&.Mui-disabled': { color: 'text.disabled' },
           }}
         >
           <FirstPageIcon sx={{ fontSize: 18 }} />
@@ -117,11 +122,11 @@ export default function PaginationBar({ pagination, accentColor = '#5E8F72', neu
           size="small"
           aria-label="Previous page"
           onClick={prevPage}
-          disabled={!hasPrev}
+          disabled={disabled || !hasPrev}
           sx={{
             color: 'text.secondary',
             '&:hover': { color: accentColor, bgcolor: `${accentColor}12` },
-            '&.Mui-disabled': { color: 'rgba(255,255,255,0.1)' },
+            '&.Mui-disabled': { color: 'text.disabled' },
           }}
         >
           <ChevronLeftIcon sx={{ fontSize: 18 }} />
@@ -138,6 +143,7 @@ export default function PaginationBar({ pagination, accentColor = '#5E8F72', neu
             </Typography>
           ) : (
             <ButtonBase
+              disabled={disabled}
               aria-label={`Page ${p}`}
               aria-current={p === currentPage ? 'page' : undefined}
               key={p}
@@ -174,11 +180,11 @@ export default function PaginationBar({ pagination, accentColor = '#5E8F72', neu
           size="small"
           aria-label="Next page"
           onClick={nextPage}
-          disabled={!hasNext}
+          disabled={disabled || !hasNext}
           sx={{
             color: 'text.secondary',
             '&:hover': { color: accentColor, bgcolor: `${accentColor}12` },
-            '&.Mui-disabled': { color: 'rgba(255,255,255,0.1)' },
+            '&.Mui-disabled': { color: 'text.disabled' },
           }}
         >
           <ChevronRightIcon sx={{ fontSize: 18 }} />
@@ -189,11 +195,11 @@ export default function PaginationBar({ pagination, accentColor = '#5E8F72', neu
           size="small"
           aria-label="Last page"
           onClick={() => goToPage(totalPages)}
-          disabled={!hasNext}
+          disabled={disabled || !hasNext}
           sx={{
             color: 'text.secondary',
             '&:hover': { color: accentColor, bgcolor: `${accentColor}12` },
-            '&.Mui-disabled': { color: 'rgba(255,255,255,0.1)' },
+            '&.Mui-disabled': { color: 'text.disabled' },
           }}
         >
           <LastPageIcon sx={{ fontSize: 18 }} />

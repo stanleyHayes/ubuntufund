@@ -1,3 +1,5 @@
+import ReviewQueuePagination from '@/components/ReviewQueuePagination'
+import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
 import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import { ReviewQueueSkeleton, ReviewQueueEmpty, ReviewQueueToolbar } from '@/components/ReviewQueueStates'
 import ExportMenu from '@/components/ExportMenu'
@@ -34,12 +36,13 @@ export default function RefundOperationsPage() {
   const [references, setReferences] = useState<Record<string, string>>({})
   const [error, setError] = useState('')
   const [notice, setNotice] = useState<{ text: string; complete: boolean } | null>(null)
+  const [pageSize, setPageSize] = useState(12)
   const load = useCallback(async () => {
     setLoading(true); setError('')
-    try { setQueue(await api.get<Queue>(`/admin/refund-operations?page=${page}`)) }
+    try { setQueue(await api.get<Queue>(`/admin/refund-operations?page=${page}&pageSize=${pageSize}`)) }
     catch (e) { setError(e instanceof Error ? e.message : 'Could not load refund operations.') }
     finally { setLoading(false) }
-  }, [page])
+  }, [pageSize, page])
   useEffect(() => { void load() }, [load])
   async function finish(id: string, verify = false, suppliedReference?: string) {
     setBusy(id); setError(''); setNotice(null)
@@ -53,8 +56,8 @@ export default function RefundOperationsPage() {
   }
   return <Stack spacing={3}>
     <PageHeader title="Refund recovery" eyebrow="Donations" lede="Review refunds with an unresolved provider outcome or unfinished accounting." icon={<PaymentsRoundedIcon />} tone="gold" stats={[{ label: "Unresolved operations", value: loading ? <Skeleton width={60} /> : error ? "—" : queue?.total ?? 0 }]} />
-    <ReviewQueueToolbar>
-      <Button disabled={loading || !!busy} onClick={() => void load()}>Refresh refunds</Button>
+    <ReviewQueueToolbar title="Recovery tools" description="Refresh the queue or export a branded report." icon={<PaymentsRoundedIcon />}>
+      <Button variant="outlined" startIcon={<RefreshRoundedIcon />} disabled={loading || !!busy} onClick={() => void load()}>Refresh refunds</Button>
       <ExportMenu title="Refund recovery" disabled={loading || !!error} getReport={async progress => ({ title: "Refund recovery", filters: ["Unresolved refund operations"], tables: [exportTable("Refund recovery", await loadAll<Operation>('/admin/refund-operations', progress), { ID: r => r.id, Campaign: r => r.campaignId, Provider: r => r.provider, "Provider reference": r => r.providerReference, Amount: r => r.amount, Currency: r => r.currency, State: r => r.state, "Created (UTC)": r => dateCell(r.createdAt) })] })} />
     </ReviewQueueToolbar>
     <Alert severity="warning">Do not submit a replacement refund while its outcome is uncertain. Verify the original operation with the payment provider using the references below. A pending or failed response is not evidence that local accounting is complete.</Alert>
@@ -86,11 +89,7 @@ export default function RefundOperationsPage() {
         </Stack>
       </Box>)}
       {queue.total === 0 && <ReviewQueueEmpty title="No unresolved refund operations." description="Refunds awaiting provider confirmation or accounting recovery will appear here. No recovery action is needed in this queue." icon={<PaymentsRoundedIcon />} />}
-      <Stack direction="row" useFlexGap flexWrap="wrap" spacing={2} alignItems="center">
-        <Button disabled={loading || !!busy || page === 1} onClick={() => setPage(value => value - 1)}>Previous</Button>
-        <Typography>Page {page}</Typography>
-        <Button disabled={loading || !!busy || page * queue.pageSize >= queue.total} onClick={() => setPage(value => value + 1)}>Next</Button>
-      </Stack>
+      {!loading && !error && <ReviewQueuePagination page={page} pageSize={pageSize} total={queue.total} onPageChange={setPage} onPageSizeChange={setPageSize} disabled={loading || !!busy} />}
     </>}
   </Stack>
 }

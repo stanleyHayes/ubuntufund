@@ -1,3 +1,4 @@
+import { queuePageSize } from '../../middleware/queuePageSize.js';
 import { isDonationContentApproved } from '../../../../../domain/entities/donationPublicContent.js';
 import { isTipContentApproved } from '../../../../../domain/entities/tipPublicContent.js';
 import { DonationModel } from '../../../../database/models/DonationModel.js';
@@ -99,10 +100,11 @@ export function createAdminSafetyReportRoutes(auth: RequestHandler, admin: Reque
       const parsed = z.object({ page: z.coerce.number().int().min(1).max(10000).default(1), status: z.enum(['pending', 'resolved', 'dismissed']).default('pending') }).safeParse(req.query);
       if (!parsed.success) throw new AppError('Invalid report filters', 400);
       const { page, status } = parsed.data;
+      const pageSize = queuePageSize(req.query.pageSize);
       const filter = { status };
-      const [items, total] = await Promise.all([SafetyReportModel.find(filter).sort({ priority: -1, createdAt: 1 }).skip((page - 1) * 25).limit(25).lean(), SafetyReportModel.countDocuments(filter)]);
+      const [items, total] = await Promise.all([SafetyReportModel.find(filter).sort({ priority: -1, createdAt: 1 }).skip((page - 1) * pageSize).limit(pageSize).lean(), SafetyReportModel.countDocuments(filter)]);
       const pendingLiveCleanup = await LiveSessionModel.countDocuments({ providerStopPending: true }) + await UserBlockModel.countDocuments({ providerCleanupPending: true });
-      res.set('Cache-Control', 'no-store').json({ data: { items, total, page, pageSize: 25, pendingLiveCleanup } });
+      res.set('Cache-Control', 'no-store').json({ data: { items, total, page, pageSize, pendingLiveCleanup } });
     } catch (error) { next(error); }
   });
   router.put('/:id/review', validate(reviewSchema), async (req: AuthenticatedRequest, res, next) => {

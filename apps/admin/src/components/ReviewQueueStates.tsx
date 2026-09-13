@@ -1,10 +1,14 @@
 import type { ReactNode } from 'react'
-import { Box, Skeleton, Stack } from '@mui/material'
+import { Box, Skeleton, Stack, Typography } from '@mui/material'
 import { EmptyState } from '@ubuntu-fund/ui'
 import { raisedSurface } from '@/lib/surfaces'
 
-export function ReviewQueueToolbar({ children }: { children: ReactNode }) {
-  return <Stack direction={{ xs: 'column', sm: 'row' }} useFlexGap flexWrap="wrap" spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }} sx={{ ...raisedSurface, p: { xs: 2, sm: 2.5 }, '& .MuiFormControl-root': { flex: { xs: 'none', sm: '1 1 220px' }, minWidth: 0, maxWidth: { xs: 'none', sm: 420 } }, '& > .MuiButton-root': { flexShrink: 0 } }}>{children}</Stack>
+export function ReviewQueueToolbar({ children, title, description, icon }: { children: ReactNode; title?: string; description?: string; icon?: ReactNode }) {
+  return <Stack direction={{ xs: 'column', sm: 'row' }} useFlexGap flexWrap="wrap" spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }} sx={{ ...raisedSurface, position: 'relative', overflow: 'hidden', p: { xs: 2, sm: 2.5 } }}>
+    {title && <Box sx={{ flex: 1, minWidth: 0, position: 'relative' }}><Typography fontWeight={600}>{title}</Typography><Typography variant="body2" color="text.secondary">{description}</Typography></Box>}
+    {icon && <Box aria-hidden="true" sx={{ position: 'absolute', right: 200, top: -24, opacity: .035, pointerEvents: 'none', '& svg': { fontSize: 140 } }}>{icon}</Box>}
+    <Stack direction={{ xs: 'column', sm: 'row' }} useFlexGap flexWrap="wrap" gap={1.5} alignItems={{ xs: 'stretch', sm: 'center' }} sx={{ position: 'relative', flex: title ? '0 1 auto' : 1, minWidth: 0, '& .MuiFormControl-root': { flex: { xs: 'none', sm: '1 1 220px' }, minWidth: 0, maxWidth: { xs: 'none', sm: 420 } }, '& > .MuiButton-root': { flexShrink: 0 }, '& > .MuiBox-root': { mb: 0, '& > .MuiButton-root': { width: { xs: '100%', sm: 'auto' } } } }}>{children}</Stack>
+  </Stack>
 }
 
 /** Shared review-card placeholders: use on initial load and queue/filter refresh. */

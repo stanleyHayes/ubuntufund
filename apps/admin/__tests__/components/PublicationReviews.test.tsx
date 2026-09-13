@@ -44,7 +44,7 @@ it.each([['tip-content-reviews', 'Supporter names and messages'], ['donation-con
   window.history.replaceState({}, '', `/publication-reviews?queue=${queue}`)
   try {
     render(<PublicationReviewsPage />)
-    await waitFor(() => expect(get).toHaveBeenCalledWith(`/admin/${queue}?status=pending&page=1`))
+    await waitFor(() => expect(get).toHaveBeenCalledWith(`/admin/${queue}?status=pending&page=1&pageSize=12`))
     expect(screen.getByRole('combobox', { name: 'Content queue' })).toHaveTextContent(label)
   } finally { window.history.replaceState({}, '', '/') }
 })

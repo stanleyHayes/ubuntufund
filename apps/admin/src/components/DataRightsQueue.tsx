@@ -1,3 +1,5 @@
+import ReviewQueuePagination from '@/components/ReviewQueuePagination'
+import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
 import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import { ReviewQueueSkeleton, ReviewQueueEmpty, ReviewQueueToolbar } from '@/components/ReviewQueueStates'
 import PrivacyTipRoundedIcon from '@mui/icons-material/PrivacyTipRounded'
@@ -44,18 +46,19 @@ function Review({ item, refresh }: { item: Item; refresh: () => Promise<void> })
 }
 export function DataRightsQueue() {
   const [items, setItems] = useState<Item[]>([]), [page, setPage] = useState(1), [total, setTotal] = useState(0), [status, setStatus] = useState('active'), [error, setError] = useState(''), [loading, setLoading] = useState(true)
+  const [pageSize, setPageSize] = useState(12)
   const load = useCallback(async () => {
     setLoading(true); setError('')
-    try { const data = await api.get<{ items: Item[]; total: number }>(`/admin/data-rights?page=${page}&status=${status}`); if (!Array.isArray(data.items) || !Number.isFinite(data.total)) throw new Error('Invalid request response'); setItems(data.items); setTotal(data.total) }
+    try { const data = await api.get<{ items: Item[]; total: number }>(`/admin/data-rights?page=${page}&pageSize=${pageSize}&status=${status}`); if (!Array.isArray(data.items) || !Number.isFinite(data.total)) throw new Error('Invalid request response'); setItems(data.items); setTotal(data.total) }
     catch { setError('Could not load data-rights requests.') }
     finally { setLoading(false) }
-  }, [page, status])
+  }, [pageSize, page, status])
   useEffect(() => { void load() }, [load])
   return <Stack spacing={2}>
     <Typography variant="h5">Data access, corrections and complaints</Typography>
     <ReviewQueueToolbar>
       <TextField select label="Request status" value={status} onChange={e => { setStatus(e.target.value); setPage(1) }}><MenuItem value="active">Open and in review</MenuItem><MenuItem value="responded">Responded</MenuItem></TextField>
-      <Button disabled={loading} onClick={() => void load()}>Refresh data requests</Button>
+      <Button variant="outlined" startIcon={<RefreshRoundedIcon />} disabled={loading} onClick={() => void load()}>Refresh data requests</Button>
       <ExportMenu title="Data rights requests" disabled={loading || !!error} getReport={async progress => ({ title: "Data rights requests", filters: [`Status: ${status}`], tables: [exportTable("Data rights requests", await loadAll<Item>(`/admin/data-rights?status=${status}`, progress), { ID: r => r._id, Account: r => r.userId, Kind: r => r.kind, Status: r => r.status, "Due (UTC)": r => dateCell(r.dueAt), Details: r => r.details, Response: r => r.response })] })} />
     </ReviewQueueToolbar>
     <Alert severity="info">The 30-day response target is an operational deadline. Review applicable legal timing, third-party rights and processor records. Responses appear in the account's Settings; closed-account requests need verified communication through the privacy team.</Alert>
@@ -64,6 +67,6 @@ export function DataRightsQueue() {
     {error && <Alert severity="error" action={<Button onClick={() => void load()}>Retry</Button>}>{error}</Alert>}
     {loading ? <ReviewQueueSkeleton label="Loading data-rights requests" /> : !error && items.map(item => <Review key={`${item._id}:${item.revision}`} item={item} refresh={load} />)}
     {!loading && !error && !items.length && <ReviewQueueEmpty title="No requests in this view." description="Access requests, corrections and privacy complaints will appear here. Change the status filter to review completed responses." icon={<PrivacyTipRoundedIcon />} />}
-    <Stack direction="row" useFlexGap flexWrap="wrap" alignItems="center" spacing={2}><Button disabled={page === 1 || loading} onClick={() => setPage(page - 1)}>Previous data requests</Button><Typography>Page {page} · {total} requests</Typography><Button disabled={page * 25 >= total || loading} onClick={() => setPage(page + 1)}>More data requests</Button></Stack>
+    {!loading && !error && <ReviewQueuePagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} onPageSizeChange={setPageSize} disabled={loading} />}
   </Stack>
 }

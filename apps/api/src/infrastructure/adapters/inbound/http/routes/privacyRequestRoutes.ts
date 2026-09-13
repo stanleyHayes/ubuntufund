@@ -1,3 +1,4 @@
+import { queuePageSize } from '../../middleware/queuePageSize.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import type { AuthenticatedRequest, createAuthMiddleware } from '../../middleware/authMiddleware.js';
@@ -14,12 +15,13 @@ export function createPrivacyRequestRoutes(auth: ReturnType<typeof createAuthMid
   router.use(auth, requireAdmin);
   router.get('/', async (req, res, next) => {
     try {
+      const pageSize = queuePageSize(req.query.pageSize);
       const page = Math.max(1, Math.min(10000, Math.floor(Number(req.query.page)) || 1));
       const [items, total] = await Promise.all([
-        AccountDeletionRequestModel.find().sort({ nextReviewAt: 1 }).skip((page - 1) * 25).limit(25).lean(),
+        AccountDeletionRequestModel.find().sort({ nextReviewAt: 1 }).skip((page - 1) * pageSize).limit(pageSize).lean(),
         AccountDeletionRequestModel.countDocuments(),
       ]);
-      res.set('Cache-Control', 'no-store').json({ data: { items, total, page, pageSize: 25 } });
+      res.set('Cache-Control', 'no-store').json({ data: { items, total, page, pageSize } });
     } catch (error) { next(error); }
   });
   router.post('/retry', async (_req, res, next) => {

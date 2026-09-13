@@ -1,3 +1,5 @@
+import ReviewQueuePagination from '@/components/ReviewQueuePagination'
+import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
 import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import { ReviewQueueSkeleton, ReviewQueueEmpty, ReviewQueueToolbar } from '@/components/ReviewQueueStates'
 import { useCallback, useEffect, useState } from 'react'
@@ -49,17 +51,18 @@ export default function StoreBillingPage() {
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [pageSize, setPageSize] = useState(12)
   const load = useCallback(async () => {
     setLoading(true); setError('')
-    try { setQueue(await api.get<Queue>(`/admin/store-billing?page=${page}`)) }
+    try { setQueue(await api.get<Queue>(`/admin/store-billing?page=${page}&pageSize=${pageSize}`)) }
     catch (e) { setError(e instanceof Error ? e.message : 'Could not load billing work.') }
     finally { setLoading(false) }
-  }, [page])
+  }, [pageSize, page])
   useEffect(() => { void load() }, [load])
   return <Stack spacing={3}>
     <PageHeader title="Store billing recovery" eyebrow="Subscriptions" lede="Review pending verification and acknowledgement work from App Store and Google Play." icon={<WorkspacePremiumRoundedIcon />} tone="gold" stats={[{ label: "Purchase issues", value: loading ? <Skeleton width={60} /> : error ? "—" : queue?.purchaseTotal ?? 0 }, { label: "Pending notifications", value: loading ? <Skeleton width={60} /> : error ? "—" : queue?.notificationTotal ?? 0 }]} />
-    <ReviewQueueToolbar>
-      <Button disabled={loading} onClick={() => void load()}>Refresh queue</Button>
+    <ReviewQueueToolbar title="Billing tools" description="Refresh verification work or export the recovery queue." icon={<WorkspacePremiumRoundedIcon />}>
+      <Button variant="outlined" startIcon={<RefreshRoundedIcon />} disabled={loading} onClick={() => void load()}>Refresh queue</Button>
       <ExportMenu title="Store billing recovery" disabled={loading || !!error} getReport={async progress => {
       const purchases = await loadAll<WorkItem>('/admin/store-billing', progress, response => ({ items: (response as Queue).purchases, total: (response as Queue).purchaseTotal }))
       const notifications = await loadAll<WorkItem>('/admin/store-billing', progress, response => ({ items: (response as Queue).notifications, total: (response as Queue).notificationTotal }))
@@ -78,7 +81,7 @@ export default function StoreBillingPage() {
       {queue.purchases.map(item => <Work key={`purchase-${item._id}`} item={item} kind="purchase" enabled={queue.enabled} refresh={load} />)}
       {queue.notifications.map(item => <Work key={`notification-${item._id}`} item={item} kind="notification" enabled={queue.enabled} refresh={load} />)}
       {queue.purchaseTotal + queue.notificationTotal === 0 && <ReviewQueueEmpty title="No pending billing recovery work." description="Purchase verification and store notification issues will appear here when they need attention." icon={<WorkspacePremiumRoundedIcon />} />}
-      <Stack direction="row" useFlexGap flexWrap="wrap" spacing={2} alignItems="center"><Button disabled={loading || page === 1} onClick={() => setPage(value => value - 1)}>Previous</Button><Typography>Page {page}</Typography><Button disabled={loading || page * 25 >= Math.max(queue.purchaseTotal, queue.notificationTotal)} onClick={() => setPage(value => value + 1)}>Next</Button></Stack>
+      {!loading && !error && <ReviewQueuePagination page={page} pageSize={pageSize} total={Math.max(queue.purchaseTotal, queue.notificationTotal)} onPageChange={setPage} onPageSizeChange={setPageSize} disabled={loading} rangeLabel={`Page ${page} of ${Math.max(1, Math.ceil(Math.max(queue.purchaseTotal, queue.notificationTotal) / pageSize))} · ${queue.purchaseTotal + queue.notificationTotal} issues`} />}
     </>}
   </Stack>
 }

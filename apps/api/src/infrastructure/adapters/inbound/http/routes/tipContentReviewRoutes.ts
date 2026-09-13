@@ -1,3 +1,4 @@
+import { queuePageSize } from '../../middleware/queuePageSize.js';
 import { tipContentVersion as version, isTipContentApproved } from '../../../../../domain/entities/tipPublicContent.js';
 import { Router, type RequestHandler } from 'express';
 import { z } from 'zod';
@@ -22,9 +23,10 @@ export function createTipContentReviewRoutes(auth: RequestHandler, admin: Reques
   router.get('/', async (req, res, next) => {
     try {
       const status = z.enum(['pending', 'approved', 'rejected']).catch('pending').parse(req.query.status);
+      const pageSize = queuePageSize(req.query.pageSize);
       const page = Math.max(1, Math.min(10000, Math.floor(Number(req.query.page)) || 1));
       const filter = tipContentReviewFilter(status);
-      const [rows, total] = await Promise.all([TipModel.find(filter).sort({ createdAt: 1 }).skip((page - 1) * 25).limit(25), TipModel.countDocuments(filter)]);
+      const [rows, total] = await Promise.all([TipModel.find(filter).sort({ createdAt: 1 }).skip((page - 1) * pageSize).limit(pageSize), TipModel.countDocuments(filter)]);
       res.json({ data: { total, items: rows.map(tip => ({ id: String(tip._id), version: version(tip), action: 'tip.public_content', actorId: tip.supporterUserId ?? 'Guest', text: JSON.stringify({ supporterName: tip.isAnonymous ? 'Anonymous' : tip.supporterName ?? '', message: tip.messageHiddenAt ? '' : tip.message ?? '' }), mediaUrls: [], status: tip.publicContentStatus === 'approved' && !isTipContentApproved(tip) ? 'pending' : tip.publicContentStatus ?? 'pending', reason: 'staff_requested', reviewNotes: tip.publicReviewNotes })) } });
     } catch (error) { next(error); }
   });

@@ -29,5 +29,5 @@ export interface RefundOperationRepositoryPort {
   findById(id: string): Promise<RefundOperation | null>;
   create(operation: RefundOperation): Promise<void>;
   update(id: string, expected: RefundOperationState[], patch: Partial<Pick<RefundOperation, 'state' | 'active' | 'providerReference' | 'issue'>>): Promise<boolean>;
-  listUnresolved(page: number): Promise<{ items: RefundOperation[]; total: number }>;
+  listUnresolved(page: number, pageSize?: number): Promise<{ items: RefundOperation[]; total: number }>;
 }

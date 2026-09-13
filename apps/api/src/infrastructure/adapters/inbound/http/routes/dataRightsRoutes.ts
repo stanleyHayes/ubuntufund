@@ -1,3 +1,4 @@
+import { queuePageSize } from '../../middleware/queuePageSize.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import type { AuthenticatedRequest, createAuthMiddleware } from '../../middleware/authMiddleware.js';
@@ -51,12 +52,13 @@ export function createDataRightsAdminRoutes(auth: ReturnType<typeof createAuthMi
   router.use(auth, requireAdmin, (_req, res, next) => { res.set('Cache-Control', 'private, no-store'); next(); });
   router.get('/', async (req, res, next) => {
     try {
+      const pageSize = queuePageSize(req.query.pageSize);
       const page = pageOf(req.query.page), filter = req.query.status === 'responded' ? { active: false } : { active: true };
       const [items, total] = await Promise.all([
-        DataRightsRequestModel.find(filter).sort({ dueAt: 1 }).skip((page - 1) * 25).limit(25).lean(),
+        DataRightsRequestModel.find(filter).sort({ dueAt: 1 }).skip((page - 1) * pageSize).limit(pageSize).lean(),
         DataRightsRequestModel.countDocuments(filter),
       ]);
-      res.json({ data: { items, total, page, pageSize: 25 } });
+      res.json({ data: { items, total, page, pageSize } });
     } catch (error) { next(error); }
   });
   router.get('/:id/events', async (req, res, next) => {

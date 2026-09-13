@@ -218,9 +218,9 @@ export class ProcessRefundUseCase {
     return { operationId, amount: operation.amount, refundReference: reference, status: state === 'provider_pending' ? 'PROCESSING' : 'PENDING_REVIEW' };
   }
 
-  async listUnresolved(page = 1) {
-    const result = await this.operationRepo.listUnresolved(page);
-    return { ...result, page, pageSize: 25, items: result.items.map(({ requestKey: _key, ...operation }) => operation) };
+  async listUnresolved(page = 1, pageSize = 25) {
+    const result = await this.operationRepo.listUnresolved(page, pageSize);
+    return { ...result, page, pageSize, items: result.items.map(({ requestKey: _key, ...operation }) => operation) };
   }
 
   /** This retry never contacts a payment provider or creates another refund. */

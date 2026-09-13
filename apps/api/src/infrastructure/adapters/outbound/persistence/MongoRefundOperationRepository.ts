@@ -26,10 +26,10 @@ export class MongoRefundOperationRepository implements RefundOperationRepository
     }, { $set: patch });
     return result.matchedCount === 1;
   }
-  async listUnresolved(page: number) {
+  async listUnresolved(page: number, pageSize = 25) {
     await this.ready;
     const [items, total] = await Promise.all([
-      RefundOperationModel.find({ active: true }).sort({ createdAt: 1, _id: 1 }).skip((page - 1) * 25).limit(25).lean(),
+      RefundOperationModel.find({ active: true }).sort({ createdAt: 1, _id: 1 }).skip((page - 1) * pageSize).limit(pageSize).lean(),
       RefundOperationModel.countDocuments({ active: true }),
     ]);
     return { items: items.map(domain), total };

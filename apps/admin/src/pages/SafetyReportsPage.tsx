@@ -1,3 +1,5 @@
+import ReviewQueuePagination from '@/components/ReviewQueuePagination'
+import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
 import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import ShieldRoundedIcon from '@mui/icons-material/ShieldRounded'
 import PageHeader from '@/components/PageHeader'
@@ -15,12 +17,13 @@ export default function SafetyReportsPage() {
   const [loading, setLoading] = useState(true)
   const [items, setItems] = useState<Report[]>([]), [status, setStatus] = useState('pending'), [page, setPage] = useState(1), [total, setTotal] = useState(0)
   const [notes, setNotes] = useState<Record<string, string>>({}), [busy, setBusy] = useState(''), [error, setError] = useState(''), [notice, setNotice] = useState('')
+  const [pageSize, setPageSize] = useState(12)
   const load = useCallback(async () => {
     setLoading(true); setItems([])
-    try { const data = await api.get<{ items: Report[]; total: number; pendingLiveCleanup: number }>(`/admin/safety-reports?status=${status}&page=${page}`); setItems(data.items); setTotal(data.total); setPendingLiveCleanup(data.pendingLiveCleanup ?? 0); setError('') }
+    try { const data = await api.get<{ items: Report[]; total: number; pendingLiveCleanup: number }>(`/admin/safety-reports?status=${status}&page=${page}&pageSize=${pageSize}`); setItems(data.items); setTotal(data.total); setPendingLiveCleanup(data.pendingLiveCleanup ?? 0); setError('') }
     catch (e) { setError(e instanceof Error ? e.message : 'Could not load safety reports') }
     finally { setLoading(false) }
-  }, [page, status])
+  }, [pageSize, page, status])
   useEffect(() => { void load() }, [load])
   async function review(report: Report, action: string) {
     setBusy(report._id); setError(''); setNotice('')
@@ -35,7 +38,7 @@ export default function SafetyReportsPage() {
     <PageHeader title="Community safety reports" eyebrow="Trust & safety" lede="Review reported content and protect your community. Urgent reports appear first." tone="clay" icon={<ShieldRoundedIcon />} stats={[{ label: "Reports in this view", value: loading ? <Skeleton width={60} /> : error ? "—" : total }, { label: "Live cleanup pending", value: loading ? <Skeleton width={60} /> : error ? "—" : pendingLiveCleanup }]} />
     <ReviewQueueToolbar>
       <TextField select sx={{ maxWidth: { sm: 280 } }} label="Status" value={status} onChange={e => { setStatus(e.target.value); setPage(1) }}>{['pending', 'resolved', 'dismissed'].map(value => <MenuItem key={value} value={value}>{value}</MenuItem>)}</TextField>
-      <Button disabled={loading || !!busy} onClick={() => void load()}>Refresh queue</Button>
+      <Button variant="outlined" startIcon={<RefreshRoundedIcon />} disabled={loading || !!busy} onClick={() => void load()}>Refresh queue</Button>
       <ExportMenu title="Safety reports" disabled={loading || !!error} getReport={async progress => ({ title: "Safety reports", filters: [`Status: ${status}`], tables: [exportTable("Safety reports", await loadAll<Report>(`/admin/safety-reports?status=${status}`, progress), { ID: r => r._id, Type: r => r.targetType, Target: r => r.targetId, Reason: r => r.reason, Status: r => r.status, Resolution: r => r.resolution, Priority: r => r.priority, "Created (UTC)": r => dateCell(r.createdAt) })] })} />
     </ReviewQueueToolbar><Typography color="text.secondary">Review reported comments, donor/supporter messages, broadcasts and users. Urgent child-safety and credible-threat reports appear first. Publishing restrictions preserve account settings and financial access.</Typography>
     {pendingLiveCleanup > 0 && <Alert severity="warning" action={<Button onClick={() => { void api.post('/admin/safety-reports/live-cleanup/retry', {}).then(load).catch(() => setError('Live cleanup retry failed.')) }}>Retry cleanup</Button>}>{pendingLiveCleanup} live safety operations still need provider cleanup. These are not complete.</Alert>}
@@ -63,6 +66,6 @@ export default function SafetyReportsPage() {
         </> : report.resolution === 'restrict_user' && <Button disabled={!!busy || ((notes[report._id] || (report.status === 'pending' ? report.reviewNotes : ''))?.trim().length || 0) < 20} onClick={() => void review(report, 'restore')}>Restore publishing after appeal</Button>}
       </Stack>
     </Stack></Paper>)}
-    <Stack direction="row" useFlexGap flexWrap="wrap" alignItems="center" spacing={2}><Button disabled={loading || !!busy || page === 1} onClick={() => setPage(page - 1)}>Previous</Button><Typography>{total} reports · Page {page}</Typography><Button disabled={loading || !!busy || page * 25 >= total} onClick={() => setPage(page + 1)}>Next</Button></Stack>
+    {!loading && !error && <ReviewQueuePagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} onPageSizeChange={setPageSize} disabled={loading || !!busy} />}
   </Stack>
 }

@@ -1,3 +1,4 @@
+import ReviewQueuePagination from '@/components/ReviewQueuePagination'
 import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import { ReviewQueueSkeleton, ReviewQueueEmpty } from '@/components/ReviewQueueStates'
 import ExportMenu from '@/components/ExportMenu'
@@ -46,12 +47,13 @@ export default function PrivacyRequestsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [retrying, setRetrying] = useState(false)
+  const [pageSize, setPageSize] = useState(12)
   const load = useCallback(async () => {
     setLoading(true); setError('')
-    try { const data = await api.get<{ items: PrivacyRequest[]; total: number }>(`/admin/privacy-requests?page=${page}`); setItems(data.items); setTotal(data.total) }
+    try { const data = await api.get<{ items: PrivacyRequest[]; total: number }>(`/admin/privacy-requests?page=${page}&pageSize=${pageSize}`); setItems(data.items); setTotal(data.total) }
     catch (e) { setError(e instanceof Error ? e.message : 'Could not load requests') }
     finally { setLoading(false) }
-  }, [page])
+  }, [pageSize, page])
   useEffect(() => { void load() }, [load])
   async function retry() { setRetrying(true); try { await api.post('/admin/privacy-requests/retry'); await load() } catch (e) { setError(e instanceof Error ? e.message : 'Retry failed') } finally { setRetrying(false) } }
   return <Stack spacing={3}>
@@ -63,6 +65,6 @@ export default function PrivacyRequestsPage() {
     <Button sx={{ alignSelf: 'flex-start' }} variant="outlined" disabled={retrying || loading} onClick={() => { void retry() }}>{retrying ? 'Retrying…' : 'Retry pending cleanup'}</Button>
     {error && <Alert severity="error" action={<Button onClick={() => { void load() }}>Retry</Button>}>{error}</Alert>}
     {loading ? <ReviewQueueSkeleton label="Loading account deletion requests" /> : !error && items.length === 0 ? <ReviewQueueEmpty title="No account deletion requests." description="Account closure requests and retained-data follow-ups will appear here when they need attention." icon={<PrivacyTipRoundedIcon />} /> : !error && items.map(item => <Review key={item._id} item={item} refresh={load} />)}
-    <Stack direction="row" useFlexGap flexWrap="wrap" spacing={2} alignItems="center"><Button disabled={loading || page === 1} onClick={() => setPage(page - 1)}>Previous</Button><Typography>Page {page} · {total} requests</Typography><Button disabled={loading || page * 25 >= total} onClick={() => setPage(page + 1)}>Next</Button></Stack>
+    {!loading && !error && <ReviewQueuePagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} onPageSizeChange={setPageSize} disabled={loading} />}
   </Stack>
 }

@@ -1,3 +1,4 @@
+import { queuePageSize } from '../../middleware/queuePageSize.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import type { createAuthMiddleware, AuthenticatedRequest } from '../../middleware/authMiddleware.js';
@@ -19,14 +20,15 @@ export function createStoreBillingAdminRoutes(auth: ReturnType<typeof createAuth
   router.use((_req, res, next) => { res.set('Cache-Control', 'private, no-store'); next(); });
   router.get('/', async (req, res, next) => {
     try {
+      const pageSize = queuePageSize(req.query.pageSize);
       const page = Math.max(1, Math.min(10000, Math.floor(Number(req.query.page)) || 1));
-      const skip = (page - 1) * 25;
+      const skip = (page - 1) * pageSize;
       const [purchases, notifications, purchaseTotal, notificationTotal] = await Promise.all([
-        StorePurchaseModel.find(storePurchaseIssues).select('_id userId store productId basePlanId active periodEnd acknowledgementPending reviewRequired lastError nextCheckAt lastCheckedAt').sort({ nextCheckAt: 1 }).skip(skip).limit(25).lean(),
-        StoreBillingNotificationModel.find().select('_id store attempts reviewRequired lastError nextAttemptAt leaseUntil updatedAt').sort({ nextAttemptAt: 1 }).skip(skip).limit(25).lean(),
+        StorePurchaseModel.find(storePurchaseIssues).select('_id userId store productId basePlanId active periodEnd acknowledgementPending reviewRequired lastError nextCheckAt lastCheckedAt').sort({ nextCheckAt: 1 }).skip(skip).limit(pageSize).lean(),
+        StoreBillingNotificationModel.find().select('_id store attempts reviewRequired lastError nextAttemptAt leaseUntil updatedAt').sort({ nextAttemptAt: 1 }).skip(skip).limit(pageSize).lean(),
         StorePurchaseModel.countDocuments(storePurchaseIssues), StoreBillingNotificationModel.countDocuments(),
       ]);
-      res.json({ data: { enabled: !!runtime, purchases, notifications, purchaseTotal, notificationTotal, page, pageSize: 25 } });
+      res.json({ data: { enabled: !!runtime, purchases, notifications, purchaseTotal, notificationTotal, page, pageSize } });
     } catch (error) { next(error); }
   });
   router.post('/:kind/:id/retry', validate(z.object({ reason: z.string().trim().min(10).max(1000) }).strict()), async (req: AuthenticatedRequest, res, next) => {

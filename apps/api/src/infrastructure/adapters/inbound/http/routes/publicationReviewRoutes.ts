@@ -1,3 +1,4 @@
+import { queuePageSize } from '../../middleware/queuePageSize.js';
 import { Router, type RequestHandler } from 'express';
 import { z } from 'zod';
 import type { AuthenticatedRequest } from '../../middleware/authMiddleware.js';
@@ -12,11 +13,12 @@ export function createPublicationReviewRoutes(auth: RequestHandler, admin?: Requ
   if (admin) router.use(admin);
   router.get('/', async (req: AuthenticatedRequest, res, next) => {
     try {
+      const pageSize = queuePageSize(req.query.pageSize);
       const page = Math.max(1, Math.min(10000, Math.floor(Number(req.query.page)) || 1));
       const status = z.enum(['pending', 'approved', 'rejected']).catch('pending').parse(req.query.status);
       const filter = admin ? { status } : { actorId: req.userId };
       const [items, total] = await Promise.all([
-        PublicationReviewModel.find(filter).sort({ createdAt: -1 }).skip((page - 1) * 25).limit(25).lean(),
+        PublicationReviewModel.find(filter).sort({ createdAt: -1 }).skip((page - 1) * pageSize).limit(pageSize).lean(),
         PublicationReviewModel.countDocuments(filter),
       ]);
       res.json({ data: { total, items: items.map(item => ({
