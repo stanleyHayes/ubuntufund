@@ -2,6 +2,8 @@
 
 ### 2026-09-12 — Ghana and mobile store compliance goal (IN PROGRESS)
 
+- Android APK retry 37597 FINISHED exit 0 (6m6s). Actual APK ZIP 16 KB alignment passes; all 48 packaged 64-bit libraries pass LOAD alignment, but 41 retain RELRO findings. Hash, logs and local signing/test-endpoint limits recorded in NATIVE_PERMISSIONS.md. Device runtime remains pending; API 67839/image 74629 confirmed live. Public deletion URL returns HTTP 200, but browser inspection was unavailable after two request-header-policy failures; rendered production content is not yet verified.
+
 - APK assemble 37305 ended exit 1 on temporary Metro entrypoint resolution. Corrected only temporary node_modules overlay after terminal result; retry 37597 started with explicit non-routable HTTPS API for startup/native tests. No source/dependency upgrade, successful APK or runtime pass claimed. API 67839 and image install 74629 remain active; NATIVE_PERMISSIONS.md records provenance and limits.
 
 - Native intermediate inventory expands RELRO finding to all 16 observed 64-bit libraries (all pass LOAD alignment). Generated link flags show max-page-size without common-page-size; no single-library fix claimed. Checker evidence in NATIVE_PERMISSIONS.md. APK/API/image-install sessions 37305/67839/74629 confirmed live; preserve their source/dependency state.
