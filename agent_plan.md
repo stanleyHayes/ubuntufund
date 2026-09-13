@@ -1,5 +1,11 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — Complete current frontend test checkpoint
+
+- All current UI suites pass: web203/48files, admin73/21files, marketing10/4files, native109/23files (native checked at the same implementation in preceding checkpoint). Logs `/tmp/ujimora-{web,admin,marketing}-85314b7-tests.log` and `/tmp/ujimora-mobile-1a43ae5-tests.log`. These are test-suite results, not live-provider or signed-device acceptance.
+- API full session45526 remains RUNNING on unchanged1a43ae5 API/shared sources. Preserve that source baseline; latest authoritative output is `/tmp/ujimora-api-1a43ae5-full.log`. No full API success claimed yet.
+
+
 ### 2026-09-13 — Current native tests/export and replacement API regression
 
 - At1a43ae5, all109 native tests across23 files pass, and iOS/Android/web JavaScript export completes exit0. Logs `/tmp/ujimora-mobile-1a43ae5-tests.log` and `/tmp/ujimora-mobile-1a43ae5-export.log`; artifacts `/tmp/ujimora-mobile-1a43ae5-export`. These are not signed-device or native-library alignment acceptance.

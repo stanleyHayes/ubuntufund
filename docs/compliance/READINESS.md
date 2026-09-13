@@ -10,6 +10,10 @@ Donation success, journal/projections and outbox commit together. Split accrual 
 
 Full API baseline de8b9e2 passes 1,210 tests across163 files (session41412, exit0, 1,252.56seconds; `/tmp/ujimora-current-accounting-full-regression.log`). This includes the split-consent, wallet transaction, required campaign projection and historical audit changes. This is engineering evidence, not regulated-payment authorization or provider/store release approval.
 
+## Current frontend verification — 13 September 2026
+
+Current implementation passes all395 frontend tests: web203 across48 files, admin73 across21, marketing10 across4 and native109 across23. Native Android/iOS/web JavaScript export also succeeds. Evidence logs: `/tmp/ujimora-{web,admin,marketing}-85314b7-tests.log`, `/tmp/ujimora-mobile-1a43ae5-tests.log`, `/tmp/ujimora-mobile-1a43ae5-export.log`. Full API session45526 is still running against1a43ae5 source; earlier interrupted run25869 is not a pass. These checks do not close the external legal/provider/store or signed-native release gates below.
+
 ## Current authoritative references
 
 | ID | Source | Applicability |
