@@ -35,4 +35,6 @@ Method: https://www.mongodb.com/docs/manual/core/index-unique/convert-to-unique/
 - Three integration tests: in-place preservation and repeatability, rejection of
   existing/new duplicates without deleting data, and fresh database initialization.
 - API type-check and lint pass. Safe startup diagnostic tests passed separately.
-- Replacement Render deployment verification pending.
+- Deployment dep-daj879qjnfac73epeno0 (a080bd0) reached live at 11:07:54 UTC.
+  Public /health returned HTTP 200 with status ok at 11:08:15 UTC.
+- All 21 existing refund regression tests also pass.
