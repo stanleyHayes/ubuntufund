@@ -1,5 +1,12 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — DataStore native library upgrade
+
+- Added Expo DataStore plugin pinning the androidx.datastore family to1.2.1. Generated Android prebuild succeeds with exactly one pin; affected lint passes.
+- Isolated APK33497 builds with lint enabled. Both packaged DataStore libraries exactly match stripped published1.2.1 binaries and pass LOAD/RELRO; APK ELF results improve to32/48. Emulator update/start succeeds (691ms cold launch). Storage-path, full device and remaining16native-library checks remain open.
+- User requested token/scope clarity: ledger still has15technical/audit areas and5external gates open. These are broad areas, not20small tests; no completion or account-token estimate is claimed.
+
+
 ### 2026-09-13 — Wallet terms visible independently of message
 
 - Wallet donation terms/18+ checkbox is now always visible and required, even with the optional message empty. The wording refers to this donation. Submission includes acceptance with or without a message; reopening starts unchecked. This supersedes the prior message-conditional UI behavior.

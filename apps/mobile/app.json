@@ -138,7 +138,8 @@
       "./plugins/withPrivateBackupRules",
       "./plugins/withForegroundLocationOnly",
       "./plugins/withDisabledPushAutoInit",
-      "./plugins/withAndroidPageAlignment"
+      "./plugins/withAndroidPageAlignment",
+      "./plugins/withAndroidDataStore"
     ]
   }
 }

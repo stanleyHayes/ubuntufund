@@ -259,3 +259,10 @@ The installed candidate APK cold-started successfully on emulator-5580: am start
 Primary repository metadata identifies stable DataStore1.2.1; both64-bit native entries in its actual AAR pass LOAD/RELRO. New graphics-path1.1.0 and Fresco imagepipeline-native3.7.0 AARs still fail RELRO on both ABIs (remainder0x2000), so no version-only acceptance. Evidence `/tmp/ujimora-native-{datastore-1.2.1,graphics-1.1.0,fresco-imagepipeline-3.7.0}-elf.json`. AndroidX release page confirms1.2.1 stable: https://developer.android.com/jetpack/androidx/releases/datastore (checked13September2026).
 
 Started isolated DataStore APK candidate33497, aligning the androidx.datastore family to1.2.1 through `/tmp/ujimora-datastore-candidate.init.gradle` in addition to prior native/runtime build settings. Log `/tmp/ujimora-datastore-candidate-build.log`; currently live. Production mobile configuration has not changed. Final dependency compatibility, packaged hashes, preference/storage behavior and remaining native findings require verification before promotion.
+
+
+### DataStore1.2.1 promoted to generated configuration — 13 September 2026
+
+Added withAndroidDataStore Expo plugin to keep all androidx.datastore modules at1.2.1. Prebuild68111 completes successfully and generated root Gradle contains the pin exactly once; plugin lint26108 passes. Equivalent isolated family resolution passed complete APK assembly33497 with lint. Packaged native counter SHA256 values exactly match published1.2.1 AAR files after llvm-strip --strip-unneeded (`/tmp/ujimora-datastore-packaged-provenance.json`). The raw/unstripped comparison initially differed as expected; the normalized comparison passes bothABIs. APK now passes32of48 ELF checks;16failures remain.
+
+Emulator update57606 succeeds and cold launch reports Status:ok/TotalTime691ms (`/tmp/ujimora-datastore-startup.log`). This is startup evidence, not DataStore read/write/migration or complete runtime proof. Only the DataStore pin is promoted here; custom React Native/C++/fbjni candidates remain isolated, and final current-source/signing/store/runtime integration remains open.
