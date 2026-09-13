@@ -1,5 +1,11 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — Current native tests/export and replacement API regression
+
+- At1a43ae5, all109 native tests across23 files pass, and iOS/Android/web JavaScript export completes exit0. Logs `/tmp/ujimora-mobile-1a43ae5-tests.log` and `/tmp/ujimora-mobile-1a43ae5-export.log`; artifacts `/tmp/ujimora-mobile-1a43ae5-export`. These are not signed-device or native-library alignment acceptance.
+- Replacement full API session45526 is RUNNING against1a43ae5 API/shared sources, log `/tmp/ujimora-api-1a43ae5-full.log`. Keep those sources stable until terminal; poll this handle and do not duplicate the run. The earlier25869 run was deliberately interrupted and is not a pass.
+
+
 ### 2026-09-13 — Wallet public-name and anonymity choice
 
 - Wallet form previously sent isAnonymous=false without a name, and legacy wallet use case discarded donorName. It now presents an editable account-name default, explicit anonymity checkbox and review explanation; chosen names are bounded and forwarded with terms consent. Anonymous requests omit the name. Existing records are not retroactively attributed; public moderation remains in force.
