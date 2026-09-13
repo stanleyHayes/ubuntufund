@@ -3,7 +3,7 @@ test('guest public message requires an unchecked terms acknowledgement on a phon
   await page.setViewportSize({ width: 390, height: 844 })
   await page.route('**/api/v1/**', route => route.fulfill({ json: { data: [] } }))
   await page.route('**/api/v1/payments/crypto/assets', route => route.fulfill({ json: { data: { enabled: false, assets: [] } } }))
-  await page.route('**/api/v1/campaigns/slug/message-test/public', route => route.fulfill({ json: { data: { id: 'aaaaaaaaaaaaaaaaaaaaaaaa', slug: 'message-test', title: 'Community fundraiser', status: 'active', currency: 'GHS', raisedAmount: 100, goalAmount: 1000, imageUrls: [] } } }))
+  await page.route('**/api/v1/campaigns/slug/message-test/public', route => route.fulfill({ json: { data: { id: 'aaaaaaaaaaaaaaaaaaaaaaaa', slug: 'message-test', title: 'Community fundraiser', status: 'active', endDate: new Date(Date.now() + 86400000).toISOString(), currency: 'GHS', raisedAmount: 100, goalAmount: 1000, imageUrls: [] } } }))
   let calls = 0
   await page.route('**/api/v1/donation-intents', route => {
     calls++

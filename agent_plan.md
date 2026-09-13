@@ -1,5 +1,11 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — Browser privacy and donation-consent verification
+
+- Browser legal/deletion links, narrow legal layout, explicit account agreement and private data-request/download checks pass (7 cases). Three donation name/message consent cases initially failed because mocked campaigns omitted endDate after checkout began enforcing deadlines. Fixtures now supply a future endDate; all3 rerun consent cases pass. No application guard was weakened.
+- Logs `/tmp/ujimora-browser-compliance-1fa85fb.log` (7pass/3fixture failures) and `/tmp/ujimora-browser-consent-final.log` (3pass). API full session45526 remains running on unchanged source.
+
+
 ### 2026-09-13 — Current production builds and workspace checks
 
 - Web/admin/marketing production builds pass; existing large-chunk warnings remain. All14 uncached workspace type/lint tasks pass with no lint errors (existing hook/unused-import warnings remain). Logs `/tmp/ujimora-{web,admin,marketing}-ceb9304-build.log` and `/tmp/ujimora-ceb9304-workspace-checks.log`.

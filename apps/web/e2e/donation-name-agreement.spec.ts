@@ -11,7 +11,7 @@ for (const anonymous of [false, true]) {
         return route.fulfill({ status: 503, json: { message: 'Fixture checkout unavailable' } })
       }
       const data = url.includes('/campaigns/slug/')
-        ? { id: 'campaign-test', slug: 'test', title: 'Community learning fund', status: 'active', goalAmount: 10000, raisedAmount: 1200, currency: 'GHS', imageUrls: [] }
+        ? { id: 'campaign-test', slug: 'test', title: 'Community learning fund', status: 'active', endDate: new Date(Date.now() + 86400000).toISOString(), goalAmount: 10000, raisedAmount: 1200, currency: 'GHS', imageUrls: [] }
         : url.includes('/payments/crypto/assets') ? { enabled: false, assets: [] } : {}
       await route.fulfill({ json: { data } })
     })
