@@ -2,6 +2,8 @@
 
 ### 2026-09-12 — Ghana and mobile store compliance goal (IN PROGRESS)
 
+- Automatic reservation now locks current policy and destination, checks exact provider code/owner/currency, policy amount limits and review freshness. All 29 focused tests and final API types/lint pass, including five concurrent recipient/policy changes with no funds movement. Separate counter preserves claim totals. Remaining budget/dispute/history/manual scopes recorded in KYC_REVIEW_INTEGRITY.md.
+
 - Automatic bank execution now serializes current campaign owner/status/deletion/cashout eligibility before funds reservation. All 24 focused tests and API types/lint pass, including four concurrent campaign changes with retry/409/no transfer. Recipient/policy/budget and broader release gates remain open in KYC_REVIEW_INTEGRITY.md. Android image install 74629 remains live.
 
 - Manual single/batched bank reservation now serializes current campaign cashout eligibility inside the final staff/money transaction. All 33 focused tests, types/lint pass, including two concurrent eligibility changes with retry/409/no provider transfer. Remaining automatic/recipient/fee/release scope recorded in KYC_REVIEW_INTEGRITY.md. Android image 74629 remains live.

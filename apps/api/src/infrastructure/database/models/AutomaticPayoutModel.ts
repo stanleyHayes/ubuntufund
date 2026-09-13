@@ -22,6 +22,7 @@ const policySchema = new Schema(
     updatedBy: String,
     revision: { type: Number, default: 0 },
     claims: { type: Number, default: 0 },
+    consumptionWriteVersion: { type: Number, default: 0 },
     history: [Schema.Types.Mixed],
   },
   { timestamps: true },

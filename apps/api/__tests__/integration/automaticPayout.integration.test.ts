@@ -88,6 +88,7 @@ beforeEach(async () => {
     reviewNote: 'Account ownership and capacity reviewed.',
     reviewedAt: new Date(),
     resolvedAccountName: 'Owner',
+    currency: 'GHS', recipientCode: 'synthetic-recipient',
   })
   await PayoutModel.collection.insertOne({
     campaignId: String(ids.campaign),
@@ -306,6 +307,38 @@ it.each(['owner', 'status', 'deleted', 'early'])('rejects concurrent automatic c
     await expect(real.executeAutomatic(item.id)).rejects.toMatchObject({ statusCode: 409 })
     expect(lock.mock.calls.length).toBeGreaterThan(1)
     expect((await CampaignBalanceModel.findOne({ campaignId: String(ids.campaign) }))?.availableBalance).toBe(1000)
+    expect((await repo.findById(item.id))?.status).toBe('PENDING')
+    expect(provider.initiateTransfer).not.toHaveBeenCalled()
+  } finally { lock.mockRestore() }
+})
+
+
+it.each(['owner', 'code', 'currency', 'review', 'policy'])('rejects concurrent automatic recipient or policy %s change', async change => {
+  const item = await pending()
+  await CampaignBalanceModel.create({ campaignId: String(ids.campaign), currency: 'GHS', availableBalance: 1000 })
+  const provider = { isConfigured: () => true, getBalance: async () => [{ currency: 'GHS', balance: 1000 }], initiateTransfer: vi.fn() }
+  const original = CampaignModel.findOneAndUpdate.bind(CampaignModel)
+  let changed = false
+  const lock = vi.spyOn(CampaignModel, 'findOneAndUpdate').mockImplementation((...args) => {
+    const query = original(...args)
+    const execute = query.exec.bind(query)
+    query.exec = async (...execArgs) => {
+      if (!changed) {
+        changed = true
+        if (change === 'policy') await AutomaticPayoutPolicyModel.updateOne({ _id: 'current' }, { enabled: false }, { session: null })
+        else await TransferRecipientModel.updateOne({ _id: ids.recipient }, change === 'owner' ? { createdBy: 'someone-else' }
+          : change === 'code' ? { recipientCode: 'changed-code' }
+          : change === 'currency' ? { currency: 'USD' } : { reviewedAt: new Date(0) }, { session: null })
+      }
+      return execute(...execArgs)
+    }
+    return query
+  })
+  try {
+    const real = new ApprovePayoutUseCase(repo, { findById: async () => ({ recipientCode: 'synthetic-recipient', type: 'ghipss' }) } as never, new MongoCampaignBalanceRepository(), provider as never, { dualApprovalAmount: 40000, maxTransferAmount: 50000 } as never, undefined, undefined, new MongoAutomaticPayoutVerification())
+    await expect(real.executeAutomatic(item.id)).rejects.toMatchObject({ statusCode: 409 })
+    expect(lock.mock.calls.length).toBeGreaterThan(1)
+    expect((await CampaignBalanceModel.findOne())?.availableBalance).toBe(1000)
     expect((await repo.findById(item.id))?.status).toBe('PENDING')
     expect(provider.initiateTransfer).not.toHaveBeenCalled()
   } finally { lock.mockRestore() }

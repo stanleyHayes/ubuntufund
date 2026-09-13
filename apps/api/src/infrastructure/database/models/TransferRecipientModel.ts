@@ -2,6 +2,7 @@ import mongoose, { Schema, type Document } from 'mongoose';
 import type { PayoutRecipientType } from '@ubuntu-fund/types';
 
 export interface TransferRecipientDocument extends Document {
+  payoutWriteVersion?: number;
   campaignId: string;
   createdBy: string;
   type: PayoutRecipientType;
@@ -23,6 +24,7 @@ const RECIPIENT_TYPES: PayoutRecipientType[] = ['ghipss', 'mobile_money'];
 
 const transferRecipientSchema = new Schema<TransferRecipientDocument>(
   {
+    payoutWriteVersion: { type: Number, default: 0 },
     campaignId: { type: String, required: true, index: true },
     createdBy: { type: String, required: true, index: true },
     type: { type: String, enum: RECIPIENT_TYPES, required: true },
