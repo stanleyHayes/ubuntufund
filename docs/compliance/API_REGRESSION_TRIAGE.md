@@ -43,3 +43,7 @@ The unchanged single-file test passes in 7.26 seconds against current API source
 Session 3544 finished with exit 0: **1,078 tests across 154 files pass**, 966.64 seconds (`/tmp/ujimora-api-current-publication-regression.log`). API/shared source remained unchanged throughout. This run includes index readiness, missing withdrawal-policy serialization and campaign-update final authorization/publication transactions through d5d4aac. The earlier donation-content-gate timeout did not recur; its original cause remains unproven, and no assertions were weakened. The API source freeze is lifted.
 
 This establishes a complete passing API regression for that source, not signed-native/provider/legal/store approval or completion of the remaining requirement ledger.
+
+## Current complete regression after manual approval hardening
+
+Session 67839 completed exit 0 on 13 September 2026: 154 files and all 1,091 tests pass, duration 1229.38 seconds, started 10:14:02 UTC. Log `/tmp/ujimora-api-manual-approval-regression.log`. API source/tests/shared types stayed at 69d94fa throughout the run; later commits were independent native/documentation work. This includes manual-bank reservation/transition atomicity, maker evidence rollback, wallet current-staff authorization and review-versus-status transaction retries. The source freeze is lifted. This supersedes historical running/full-test status for this API baseline, and does not prove production provider operation, hosted latest-main CI, native-device behavior or regulatory approval.
