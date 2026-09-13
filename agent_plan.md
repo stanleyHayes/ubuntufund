@@ -1,5 +1,11 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — Corrected included native build candidate
+
+- Completed Hermes outputs from initial candidate fail RELRO on both64-bit ABIs; app-root flags did not reach the included React Native build. Recorded exact ELF and configuration evidence in `docs/compliance/NATIVE_PERMISSIONS.md`.
+- Intentionally cancelled90233 after confirming the defect (terminal130), then started70084 with an explicit init script. Both Hermes ABI caches now contain both required page-size flags; compilation is live. No app dependency/runtime selection changed and no candidate ELF/device pass claimed.
+
+
 ### 2026-09-13 — Current settlement API regression completed
 
 - Full API41412 completed exit0 on unchanged de8b9e2 API/shared: 1,210 tests across163 files pass, 1,252.56seconds. Includes split-consent locking, atomic wallet settlement, required campaign projections and read-only historical audit. Log `/tmp/ujimora-current-accounting-full-regression.log`. Root API/shared freeze is lifted; no duplicate full run needed for later native/docs-only changes.
