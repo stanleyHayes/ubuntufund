@@ -28,7 +28,21 @@ export async function paymentKey(scope: string, input: unknown) {
   try { return await operation } finally { keyRequests.delete(key) }
 }
 export async function savePending(scope: string, payment: PendingPayment) { await AsyncStorage.setItem(`${scope}:pending`, JSON.stringify(payment)) }
-export async function loadPending(scope: string): Promise<PendingPayment | null> { const value = await AsyncStorage.getItem(`${scope}:pending`); try { return value ? JSON.parse(value) : null } catch { return null } }
+export async function loadPending(scope: string): Promise<PendingPayment | null> {
+  const value = await AsyncStorage.getItem(`${scope}:pending`)
+  if (value === null) return null
+  try {
+    const payment: unknown = JSON.parse(value)
+    if (!payment || typeof payment !== 'object' || Array.isArray(payment)) throw new Error('Invalid payment')
+    const record = payment as Record<string, unknown>
+    if (typeof record.id !== 'string' || !record.id.trim() || typeof record.status !== 'string' || !record.status.trim() || record.storageKey !== scope ||
+      (record.reference !== undefined && typeof record.reference !== 'string') ||
+      (record.authorizationUrl !== undefined && typeof record.authorizationUrl !== 'string')) throw new Error('Invalid payment')
+    return record as unknown as PendingPayment
+  } catch {
+    throw new Error('Your saved payment could not be read. Check your payment history or contact support before trying another payment. The saved attempt has been preserved.')
+  }
+}
 export async function clearPending(scope: string) {
   const keys = (await AsyncStorage.getAllKeys()).filter(key => key.startsWith(`${scope}:`))
   await AsyncStorage.multiRemove(keys)
@@ -36,6 +50,8 @@ export async function clearPending(scope: string) {
 export function isPaymentSuccess(status: string) { return ['SUCCEEDED', 'CONFIRMED', 'completed'].includes(status) }
 export function isPaymentTerminal(status: string) { return isPaymentSuccess(status) || ['FAILED', 'EXPIRED', 'CANCELLED', 'failed', 'expired'].includes(status) }
 export async function checkout(scope: string, path: string, input: unknown, topup = false): Promise<PendingPayment> {
+  // Validate recovery state before creating or sending any payment attempt.
+  await loadPending(scope)
   const key = await paymentKey(scope, input)
   const response = await api.post<Record<string, unknown>>(path, input, { 'Idempotency-Key': key })
   const intent = (response.intent || response) as { id: string; status: string }

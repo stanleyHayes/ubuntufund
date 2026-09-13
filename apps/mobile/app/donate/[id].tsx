@@ -44,7 +44,7 @@ function InAppDonateScreen() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const scope = paymentScope('donation', id || '')
-  useEffect(() => { let active = true; void loadPending(scope).then(v => { if (active) setPending(v) }); return () => { active = false } }, [scope])
+  useEffect(() => { let active = true; void loadPending(scope).then(v => { if (active) setPending(v) }).catch(e => { if (active) setError(e instanceof Error ? e.message : 'Could not recover the saved payment.') }); return () => { active = false } }, [scope])
   const currentPending = pending?.storageKey === scope ? pending : null
   const valid = Number.isFinite(Number(amount)) && Number(amount) > 0 && Number(amount) === Math.round(Number(amount) * 100) / 100
   const tipValue = Number(tip || '0')

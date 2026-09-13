@@ -2,6 +2,8 @@
 
 ### 2026-09-12 — Ghana and mobile store compliance goal (IN PROGRESS)
 
+- Native pending checkout integrity: malformed JSON, missing fields, cross-scope records and invalid optional fields now surface recovery guidance and remain preserved; checkout validates recovery state before generating keys or sending a request. Donation and wallet screens catch load errors. All 90 mobile tests, types/lint pass (`/tmp/ujimora-native-recovery-*`). Hosted CI 34748600279 is confirmed successful for older 0a48feb, not latest main. Index-readiness fix published as b18bb0c; full API regression session 69000 is currently running against that API source (`/tmp/ujimora-api-index-ready-regression.log`).
+
 - Settings now has six focused, deep-linked tabs: Payments, Campaigns, Referrals, Notifications, Security and Appearance. Keeps visited panels mounted to retain drafts; uses working persisted policy forms, personal opt-in alert API, optional MFA and immediate browser appearance controls. Removed local-only controls and misleading global Save confirmation. Branded fields fix clipped cashout labels; initial policies have skeletons and retry errors. All 71 admin unit tests, types/lint/build pass; 14 export-placement and two focused 390/1440px browser checks pass (appearance selector corrected to switch). Screenshots inspected. Sidebar branch connectors explicitly preserved per user instruction. Logs `/tmp/ujimora-settings-*`.
 
 - Full API regression session 99922 finished: 152 suites passed, one failed; 1063 tests passed, one withdrawal unique-index race failed. No source changed during the run. Isolated index-readiness repair has 26 withdrawal and 19 refund tests plus API types/lint passing; full regression after repair remains required.

@@ -21,7 +21,7 @@ export function WalletFunding({ walletId, onComplete }: { walletId: string; onCo
   useEffect(() => {
     let active = true
     api.get<{ enabled: boolean; mode: string }>('/wallets/topups/config').then(v => { if (active) setConfig(v) }).catch(e => { if (active) { setError(e.message); setConfig({ enabled: false, mode: 'unknown' }) } })
-    void loadPending(scope).then(v => { if (active) setPending(v) })
+    void loadPending(scope).then(v => { if (active) setPending(v) }).catch(e => { if (active) setError(e instanceof Error ? e.message : 'Could not recover the saved payment.') })
     return () => { active = false }
   }, [scope, retry])
   async function fund() {

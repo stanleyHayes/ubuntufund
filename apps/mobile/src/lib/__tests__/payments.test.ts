@@ -73,3 +73,13 @@ it('maps server crypto states without treating unknown or processing states as p
   expect(cryptoStatusFromIntent('unrecognised')).toBeUndefined()
   expect(isPaymentSuccess(cryptoStatusFromIntent('PROCESSING')!)).toBe(false)
 })
+
+for (const raw of ['{', 'null', '[]', '{}', JSON.stringify({ id: 'intent-1', status: 'PENDING', storageKey: 'another-account' }), JSON.stringify({ id: 'intent-1', status: 'PENDING', storageKey: 'campaign', authorizationUrl: 42 })]) {
+  it(`preserves unreadable recovery state and prevents checkout: ${raw}`, async () => {
+    data.set('campaign:pending', raw)
+    await expect(loadPending('campaign')).rejects.toThrow('saved payment could not be read')
+    await expect(checkout('campaign', '/donation-intents', { amount: 10 })).rejects.toThrow('saved payment could not be read')
+    expect(post).not.toHaveBeenCalled()
+    expect([...data]).toEqual([['campaign:pending', raw]])
+  })
+}
