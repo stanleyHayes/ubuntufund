@@ -64,3 +64,8 @@ checks are recorded in KYC_REVIEW_INTEGRITY.md; a current full run remains requi
 The full run finished with 162 files and all 1,187 tests passing in 974.81 seconds, started 12:29:14 UTC. Log: `/tmp/ujimora-donation-atomic-full-regression.log`. Original tool handle73343 was lost, so completion was verified from the terminal test summary and disappearance of OS process97096. API/shared source stayed at de49df2; concurrent admin changes did not alter that baseline. The earlier testimonial setup failure did not recur, but its original cause remains unproven.
 
 Root API source freeze is lifted. Split-consent d89927a and subsequent wallet transaction changes have separate focused evidence; this full run does not cover them or establish live provider, native-device or legal/store approval.
+
+
+## 2026-09-13 — wallet settlement baseline completed
+
+Session97713 finished exit 0: all 1,202 tests across 162 files passed in 943.05 seconds, started 12:46:45 UTC. Log `/tmp/ujimora-wallet-atomic-full-regression.log`; root API/shared stayed at 428402b throughout. This covers atomic wallet debit/history/settlement and locked split-consent changes. The source freeze is lifted. Later f3d6a27 required-campaign accounting and 3342f8a historical audit have separate focused evidence and are excluded from this full baseline. No provider, production inventory, device or store approval is implied.

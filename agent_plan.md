@@ -1,5 +1,17 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — App native RELRO alignment correction
+
+- Expo plugin adds both Android-documented page-size linker flags to the app CMake invocation. Prebuild confirms generated option once; lint passes. Archived native ARM64 and x86_64 builds with the same option pass under NDK27.1/JDK17; all eight appmodules/codegen libraries now pass LOAD+RELRO alignment checks.
+- Copied prebuilt and separately compiled dependency findings remain open; combined inspection still exits1. No final signed APK/AAB or renewed runtime acceptance claimed. Scope/build evidence: `docs/compliance/NATIVE_PERMISSIONS.md`.
+- Prior full API97713 finished successfully (1,202 tests/162 files at428402b). Root fast-forwarded tode8b9e2. New full API41412 is running on unchanged de8b9e2 API/shared, log `/tmp/ujimora-current-accounting-full-regression.log`; this includes the later campaign-accounting and historical-audit changes. Keep root API/shared frozen until terminal.
+
+
+### 2026-09-13 — Full wallet settlement regression completed
+
+- Full API97713 finished exit 0: 1,202 tests/162 files pass, 943.05 seconds. API/shared source stayed at428402b; root source freeze is lifted. Later campaign-accounting and historical-audit deltas retain separate focused evidence and still need final full-run inclusion. Log `/tmp/ujimora-wallet-atomic-full-regression.log`.
+
+
 ### 2026-09-13 — Preserve ambiguous native payment recovery
 
 - Legacy-to-hashed payment request migration now rejects conflicting saved attempt IDs and blank stored IDs, preserving records and stopping checkout before API access. Matching identities still remove redundant plaintext safely; no automatic historical purge or payment replay.
