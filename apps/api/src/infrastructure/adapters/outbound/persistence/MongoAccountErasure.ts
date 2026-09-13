@@ -84,6 +84,7 @@ export class MongoAccountErasure implements AccountErasurePort {
     await CreatorProfileModel.deleteMany({ userId });
     // Hide UGC pending safety/legal-hold review; do not silently destroy reported evidence.
     await CampaignCommentModel.updateMany({ authorId: userId, deletedAt: { $exists: false } }, { $set: { deletedAt: new Date() } });
+    await CampaignCommentModel.updateMany({ authorId: userId }, { $unset: { authorName: '', authorAvatarUrl: '' } });
     await OrganizationMemberModel.updateMany({ $or: [{ userId }, { email: request.contactEmail }, { organizationId: userId }] }, { $set: { status: 'revoked' } });
     await CollaborationModel.updateMany({ userId }, { $set: { status: 'removed', displayName: 'Deleted user' }, $unset: { logoUrl: 1, inviteMessage: 1 } });
     await SubscriptionModel.updateMany({ userId }, { $set: { cancelAtPeriodEnd: true } });

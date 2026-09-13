@@ -32,6 +32,22 @@ async function fixture() {
   return { owner, admin, other, campaign, comments: `/api/v1/campaigns/${campaign.id}/comments`, updates: `/api/v1/campaigns/${campaign.id}/updates` };
 }
 const notes = 'Reviewed the complete proposed public version against community rules.';
+it('keeps reviewed comment attribution stable and never projects live identity for legacy comments', async () => {
+  const f = await fixture();
+  const created = await request(app).post(f.comments).set('Authorization', f.other.auth).send({ content: 'Reviewed attribution', automatedReviewConsent: true }).expect(201);
+  await UserModel.updateOne({ _id: f.other.id }, { $set: { name: 'Unreviewed replacement', avatarUrl: 'https://example.test/unreviewed.png' } });
+  const legacy = await CampaignCommentModel.create({ campaignId: f.campaign.id, authorId: f.other.id, content: 'Legacy comment' });
+  const response = await request(app).get(f.comments).expect(200);
+  const current = response.body.data.items.find((item: { id: string }) => item.id === created.body.data.id);
+  expect(current.authorName).toBe('Publication reviewer');
+  expect(current.authorAvatarUrl).toBeUndefined();
+  const older = response.body.data.items.find((item: { id: string }) => item.id === legacy.id);
+  expect(older.authorName).toBe('Community member');
+  expect(older.authorAvatarUrl).toBeUndefined();
+  expect(JSON.stringify(response.body)).not.toContain('Unreviewed replacement');
+  expect(JSON.stringify(response.body)).not.toContain('unreviewed.png');
+});
+
 it('rejects a comment when a bilateral block commits during screening', async () => {
   const f = await fixture();
   screen.mockImplementationOnce(async () => {

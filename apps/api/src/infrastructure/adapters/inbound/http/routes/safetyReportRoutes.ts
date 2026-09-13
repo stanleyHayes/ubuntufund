@@ -68,7 +68,8 @@ export function createSafetyReportRoutes(auth: RequestHandler) {
       } else if (input.targetType === 'comment') {
         const comment = await CampaignCommentModel.findById(input.targetId);
         if (!comment) throw new AppError('Comment not found', 404);
-        targetUserId = comment.authorId; campaignId = comment.campaignId; evidence = comment.content;
+        targetUserId = comment.authorId; campaignId = comment.campaignId;
+        evidence = comment.authorName ? JSON.stringify({ authorName: comment.authorName, authorAvatarUrl: comment.authorAvatarUrl, comment: comment.content }) : comment.content;
       } else {
         const user = await UserModel.findOne({ _id: input.targetId, deletedAt: { $exists: false } });
         if (!user) throw new AppError('User not found', 404);

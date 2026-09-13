@@ -4,6 +4,8 @@ export interface CampaignCommentDocument extends Document {
   campaignId: string;
   authorId: string;
   content: string;
+  authorName?: string;
+  authorAvatarUrl?: string;
   deletedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -14,6 +16,8 @@ const campaignCommentSchema = new Schema<CampaignCommentDocument>(
     campaignId: { type: String, required: true, index: true },
     authorId: { type: String, required: true, index: true },
     content: { type: String, required: true, maxlength: 1000 },
+    authorName: { type: String },
+    authorAvatarUrl: { type: String },
     deletedAt: { type: Date, index: true },
   },
   { timestamps: true }

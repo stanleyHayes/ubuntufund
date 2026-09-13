@@ -18,6 +18,7 @@ import { ActivityAlertPreferenceModel } from '../../src/infrastructure/database/
 import { CreatorProfileModel } from '../../src/infrastructure/database/models/CreatorProfileModel.js';
 import { AccountDeletionRequestModel } from '../../src/infrastructure/database/models/AccountDeletionRequestModel.js';
 import { MongoAccountErasure } from '../../src/infrastructure/adapters/outbound/persistence/MongoAccountErasure.js';
+import { CampaignCommentModel } from '../../src/infrastructure/database/models/CampaignCommentModel.js';
 
 describe('Account erasure and retained-record review', () => {
   let app: Express;
@@ -31,6 +32,10 @@ describe('Account erasure and retained-record review', () => {
   it('removes operational data, preserves money and queues residual-data review', async () => {
     const account = await register();
     const id = account.user.id;
+    await CampaignCommentModel.create([
+      { campaignId: 'retention-fixture', authorId: id, content: 'Active comment', authorName: 'Erase Test', authorAvatarUrl: 'https://example.test/private-name.png' },
+      { campaignId: 'retention-fixture', authorId: id, content: 'Already hidden', authorName: 'Erase Test', authorAvatarUrl: 'https://example.test/private-name.png', deletedAt: new Date() },
+    ]);
     await ProfileModel.create({ userId: id, phone: '0200000000', bio: 'Private profile' });
     await PushTokenModel.create({ userId: id, token: `ExponentPushToken[${id}]`, platform: 'ios' });
     await NewsletterSubscriptionModel.create({ email: account.email });
@@ -41,6 +46,13 @@ describe('Account erasure and retained-record review', () => {
     await ActivityAlertPreferenceModel.create({ userId: id, choices: { donationsSent_email: { enabled: true, enabledAt: new Date(), changedAt: new Date() } } });
     await request(app).delete('/api/v1/profile').set('Authorization', account.bearer).expect(200);
     expect(await ProfileModel.countDocuments({ userId: id })).toBe(0);
+    const comments = await CampaignCommentModel.find({ authorId: id }).lean();
+    expect(comments).toHaveLength(2);
+    for (const comment of comments) {
+      expect(comment.deletedAt).toBeInstanceOf(Date);
+      expect(comment.authorName).toBeUndefined();
+      expect(comment.authorAvatarUrl).toBeUndefined();
+    }
     expect(await PushTokenModel.countDocuments({ userId: id })).toBe(0);
     expect(await NewsletterSubscriptionModel.countDocuments({ email: account.email })).toBe(0);
     expect(await CreatorProfileModel.countDocuments({ userId: id })).toBe(0);

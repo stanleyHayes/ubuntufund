@@ -2,12 +2,12 @@ import type { CampaignCommentRecord, CampaignCommentRepositoryPort } from '../..
 import { CampaignCommentModel, type CampaignCommentDocument } from '../../../database/models/CampaignCommentModel.js';
 
 function toRecord(doc: CampaignCommentDocument): CampaignCommentRecord {
-  return { id: doc._id!.toString(), campaignId: doc.campaignId, authorId: doc.authorId, content: doc.content, createdAt: doc.createdAt, updatedAt: doc.updatedAt };
+  return { id: doc._id!.toString(), campaignId: doc.campaignId, authorId: doc.authorId, content: doc.content, authorName: doc.authorName, authorAvatarUrl: doc.authorAvatarUrl, createdAt: doc.createdAt, updatedAt: doc.updatedAt };
 }
 
 export class MongoCampaignCommentRepository implements CampaignCommentRepositoryPort {
-  async create(campaignId: string, authorId: string, content: string): Promise<CampaignCommentRecord> {
-    return toRecord(await CampaignCommentModel.create({ campaignId, authorId, content }));
+  async create(campaignId: string, authorId: string, content: string, attribution?: { authorName: string; authorAvatarUrl?: string }): Promise<CampaignCommentRecord> {
+    return toRecord(await CampaignCommentModel.create({ campaignId, authorId, content, authorName: attribution?.authorName, authorAvatarUrl: attribution?.authorAvatarUrl }));
   }
 
   async findById(id: string): Promise<CampaignCommentRecord | null> {

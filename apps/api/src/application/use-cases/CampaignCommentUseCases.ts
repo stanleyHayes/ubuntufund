@@ -21,11 +21,12 @@ export class CampaignCommentUseCases {
   ) {}
 
   private async toDTO(comment: CampaignCommentRecord): Promise<CampaignComment> {
-    const author = await this.users.findById(comment.authorId);
     return {
       ...comment,
-      authorName: author?.name ?? 'Former member',
-      authorAvatarUrl: author?.avatarUrl,
+      // Only the attribution admitted with this comment may be projected.
+      // Legacy comments have no reviewed snapshot; do not borrow live identity.
+      authorName: comment.authorName ?? 'Community member',
+      authorAvatarUrl: comment.authorName ? comment.authorAvatarUrl : undefined,
     };
   }
 
@@ -60,7 +61,7 @@ export class CampaignCommentUseCases {
         throw new AppError('Your public identity changed during review. Refresh and submit again.', 409);
       }
       if (this.blocks && await this.blocks.isBlocked(authorId, campaign.creatorId)) throw new AppError('You cannot comment on this campaign', 403);
-      return this.toDTO(await this.comments.create(campaignId, authorId, content));
+      return this.toDTO(await this.comments.create(campaignId, authorId, content, { authorName: author.name, authorAvatarUrl: author.avatarUrl }));
     });
   }
 

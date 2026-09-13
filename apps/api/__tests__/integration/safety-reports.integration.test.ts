@@ -17,6 +17,16 @@ async function user(name: string) {
   const r = await request(app).post('/api/v1/auth/register').send({ name, email: `${randomUUID()}@example.test`, password: 'SecurePass123', legalAcceptance: { version: LEGAL_ACCEPTANCE_VERSION, acceptedTerms: true, ageConfirmed: true } }).expect(201);
   return { id: r.body.data.user.id, token: `Bearer ${r.body.data.tokens.accessToken}` };
 }
+it('captures the displayed comment identity independently of later profile changes', async () => {
+  const reporter = await user('Reporter'), author = await user('Current profile name');
+  const comment = await CampaignCommentModel.create({ campaignId: 'aaaaaaaaaaaaaaaaaaaaaaaa', authorId: author.id, content: 'Reported comment', authorName: 'Reviewed author', authorAvatarUrl: 'https://example.test/reviewed.png' });
+  await UserModel.updateOne({ _id: author.id }, { $set: { name: 'Changed profile name', avatarUrl: 'https://example.test/changed.png' } });
+  const report = await request(app).post('/api/v1/safety/reports').set('Authorization', reporter.token).send({ targetType: 'comment', targetId: comment.id, reason: 'harassment', description: 'Review the displayed attribution and comment.' }).expect(201);
+  const evidence = (await SafetyReportModel.findById(report.body.data.id))!.evidence;
+  expect(JSON.parse(evidence!)).toEqual({ authorName: 'Reviewed author', authorAvatarUrl: 'https://example.test/reviewed.png', comment: 'Reported comment' });
+  expect(evidence).not.toContain('Changed profile name');
+});
+
 it('protects reporter identity, keeps evidence after removal, prioritizes urgency and audits moderation', async () => {
   const reporter = await user('Reporter'), author = await user('Author'), admin = await user('Moderator');
   await UserModel.findByIdAndUpdate(admin.id, { role: 'admin' });
@@ -28,10 +38,10 @@ it('protects reporter identity, keeps evidence after removal, prioritizes urgenc
   expect(report.body.data).not.toHaveProperty('reporterId');
   const retry = await request(app).post('/api/v1/safety/reports').set('Authorization', reporter.token).send(input).expect(201);
   expect(retry.body.data.id).toBe(report.body.data.id);
-  expect(await SafetyReportModel.countDocuments()).toBe(1);
+  expect(await SafetyReportModel.countDocuments({ reporterId: reporter.id, targetId: comment.id })).toBe(1);
   await request(app).get('/api/v1/admin/safety-reports').set('Authorization', author.token).expect(403);
   const queue = await request(app).get('/api/v1/admin/safety-reports').set('Authorization', admin.token).expect(200);
-  expect(queue.body.data.items[0]).toMatchObject({ priority: 'urgent', evidence: comment.content, reporterId: reporter.id });
+  expect(queue.body.data.items.find((item: { targetId: string }) => item.targetId === comment.id)).toMatchObject({ priority: 'urgent', evidence: comment.content, reporterId: reporter.id });
   const path = `/api/v1/admin/safety-reports/${report.body.data.id}/review`;
   await request(app).put(path).set('Authorization', admin.token).send({ action: 'hide_comment', notes: 'short' }).expect(400);
   await request(app).put(path).set('Authorization', admin.token).send({ action: 'hide_comment', notes: 'Comment reviewed and removed for threatening language.' }).expect(200);

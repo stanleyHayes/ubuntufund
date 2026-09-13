@@ -87,4 +87,8 @@ Remaining: guest and signed-in supporter aliases need independent publication ad
 
 ### Comment commit checks
 
-Comment insertion now shares a transaction with current account credentials, public author identity, campaign access and exact publication approval. Nineteen publication integration tests pass, including approval revocation after snapshot and credential rotation during screening. Concurrent block insertion is not serialized by the block repository; later identity changes still affect dynamic comment attribution. These remain separate open requirements.
+Comment insertion now shares a transaction with current account credentials, public author identity, campaign access and exact publication approval. Block/unblock changes now write both participant accounts in the relationship transaction; the concurrency follow-up is recorded in PUBLICATION_SCREENING_AUDIT.md.
+
+New comments persist the exact admitted author name/photo with the comment. DTOs use that snapshot rather than the current account profile. Legacy comments without a snapshot display `Community member` and no photo; no unreviewed identity is backfilled. Current restricted/closed/blocked-author filtering remains in force. Safety reports preserve the displayed snapshot alongside comment text, rather than borrowing later profile identity. Account cleanup removes snapshot fields from all comments, including previously hidden comments, while retaining the existing soft-deletion behavior.
+
+Evidence: 32 publication, erasure, visibility and safety integration tests pass; a follow-up safety suite checks saved attribution in report evidence. API types/lint pass. Logs `/tmp/ujimora-comment-snapshot-{tests,reports}.log`. This closes dynamic comment-name/photo substitution for this projection; it does not certify legacy comment text, immutable media bytes, other attribution projections or physical-device behavior.
