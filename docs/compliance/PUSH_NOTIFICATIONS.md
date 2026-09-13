@@ -39,3 +39,9 @@ This does not uninstall the SDK, remove other transitive permissions, retire old
 Build83886 completes exit0 in37seconds for both APK/AAB with lint enabled. APK SHA256 `7133e5284ca6b817be719e5878b2b5017685341ec26214ccae82ba9ac7b42c00`; AAB SHA256 `ea1ea451845ddfaa91a9717976c41807368fd39fe0b26b97723d1d708332848e`. Both actual artifact manifests omit POST_NOTIFICATIONS and retain the screen-sharing foreground-service permission. APK ZIP alignment passes. All48 native binaries match the earlier inspected APK, so27RELRO findings remain.
 
 The APK installs on dedicated emulator-5580. Its installed requested-permission list excludes POST_NOTIFICATIONS; cold startup succeeds507ms. Evidence `/tmp/ujimora-no-push-artifacts.log`, `/tmp/ujimora-no-push-apk-manifest.txt`, `/tmp/ujimora-no-push-aab-manifest.xml`, `/tmp/ujimora-no-push-hashes.json`, `/tmp/ujimora-no-push-installed-package.txt`, `/tmp/ujimora-no-push-startup.log`. Debug signing and deliberately non-routable API mean local package/startup verification, not a production rollout or retirement of legacy tokens/identifiers.
+
+## Explicit withdrawal removes the retained identifier
+
+Unregister now deletes the token belonging to the authenticated account, including a token already disabled by an older client. Repeated requests still return success; another account's token and other devices remain untouched. Three API integration tests cover unavailable registration, withdrawal, idempotency, previously disabled tokens, ownership and unauthenticated access. API types and affected lint pass; logs /tmp/ujimora-push-withdrawal-{tests,types}.log.
+
+This changes future explicit withdrawal requests only. Historical token inventory and provider-side retirement remain open; no production records were purged during verification.

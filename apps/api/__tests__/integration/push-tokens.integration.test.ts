@@ -32,9 +32,31 @@ describe('Push token integration', () => {
 
     await request(app).delete('/api/v1/notifications/push/unregister')
       .set('Authorization', `Bearer ${token}`).send({ token: deviceToken }).expect(200);
-    const disabled = await PushTokenModel.findOne({ token: deviceToken });
-    expect(disabled).not.toBeNull();
-    expect(disabled?.disabledAt).toBeInstanceOf(Date);
+    expect(await PushTokenModel.findOne({ token: deviceToken })).toBeNull();
+    await request(app).delete('/api/v1/notifications/push/unregister')
+      .set('Authorization', `Bearer ${token}`).send({ token: deviceToken }).expect(200);
+  });
+
+  it('removes previously disabled tokens but preserves other accounts and devices', async () => {
+    const userId = (await request(app).get('/api/v1/profile').set('Authorization', `Bearer ${token}`).expect(200)).body.data.id;
+    const withdrawn = `ExponentPushToken[${randomUUID()}]`;
+    const otherDevice = `ExponentPushToken[${randomUUID()}]`;
+    const otherAccount = `ExponentPushToken[${randomUUID()}]`;
+    await PushTokenModel.create([
+      { userId, token: withdrawn, platform: 'ios', disabledAt: new Date() },
+      { userId, token: otherDevice, platform: 'android' },
+      { userId: randomUUID(), token: otherAccount, platform: 'ios' },
+    ]);
+    for (const deviceToken of [withdrawn, otherAccount]) {
+      await request(app).delete('/api/v1/notifications/push/unregister')
+        .set('Authorization', `Bearer ${token}`).send({ token: deviceToken }).expect(200);
+    }
+    expect(await PushTokenModel.findOne({ token: withdrawn })).toBeNull();
+    expect(await PushTokenModel.findOne({ token: otherDevice })).not.toBeNull();
+    expect(await PushTokenModel.findOne({ token: otherAccount })).not.toBeNull();
+    await request(app).delete('/api/v1/notifications/push/unregister')
+      .send({ token: otherDevice }).expect(401);
+    expect(await PushTokenModel.findOne({ token: otherDevice })).not.toBeNull();
   });
 
   it('requires authentication', async () => {

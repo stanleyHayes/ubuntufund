@@ -106,10 +106,9 @@ export class NotificationController {
     next: NextFunction
   ): Promise<void> => {
     try {
-      await PushTokenModel.findOneAndUpdate(
-        { token: req.body.token, userId: req.userId!, disabledAt: null },
-        { $set: { disabledAt: new Date() } }
-      );
+      // Explicit withdrawal needs no retained device identifier, including tokens
+      // disabled by older versions. Keep deletion scoped to the authenticated owner.
+      await PushTokenModel.deleteOne({ token: req.body.token, userId: req.userId! });
       res.json({ data: { registered: false }, message: 'Push token unregistered', status: 200 });
     } catch (error) { next(error); }
   };

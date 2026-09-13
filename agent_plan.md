@@ -1,5 +1,10 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — Remove device identifiers on explicit push withdrawal
+
+- Unregister now deletes the authenticated account's matching token instead of retaining it indefinitely with disabledAt. Previously disabled tokens are removed too; repeated withdrawal remains successful. Other accounts and other devices are preserved.
+- Three focused API integration tests, API type check and affected-file lint pass. Evidence: /tmp/ujimora-push-withdrawal-{tests,types}.log. Historical inventory/provider retirement remain open; this is request-driven cleanup, not a production purge.
+
 ### 2026-09-13 — Disabled-push permission verified in artifacts/device
 
 - On09c32ad, assembleRelease/bundleRelease83886 pass in37seconds with lint enabled. Actual APK and AAB manifests omit POST_NOTIFICATIONS and retain screen-sharing permission. APK ZIP alignment passes; all48 native binaries match the prior inspected APK, retaining27RELRO findings.
