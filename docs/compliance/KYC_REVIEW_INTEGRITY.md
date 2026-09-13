@@ -528,3 +528,22 @@ before the provider call. Logs: /tmp/ujimora-budget-current-{tests,unit,types,li
 Remaining: prior manually paid destination history at final consumption, manual
 destination review snapshots, other financial consumers, full current regression,
 and the separate provider, native, store and legal/regulatory release gates.
+
+## Settled manual destination history at final reservation
+
+The final automatic money transaction now conditionally writes the qualifying
+prior payout using a separate historyWriteVersion counter. It must still be PAID,
+settlementApplied, approved by a nonempty manual actor, and match campaign, owner,
+recipient and currency. The current payout cannot qualify itself. The early claim
+check uses the same eligibility filters. Concurrent corrections, reversals or
+deletion of the consumed history row conflict and retry before any provider call.
+
+All 39 focused integration/verification tests, API types/lint and whitespace checks
+pass in isolated checkout /tmp/ujimora-history-fix. Six concurrent cases cover failed
+status, cleared settlement, automatic/empty approver, currency correction and
+history deletion: each retries then returns 409 with PENDING payout, unchanged
+available balance and no transfer. Logs /tmp/ujimora-history-{tests,types,lint}.log.
+Full API regression88675 remains live on unchanged root baseline c8adacf and does
+not cover this later slice. Do not change root API source until it finishes.
+Manual destination-review snapshots, historical recipient addressing, remaining
+financial consumers and provider/native/store/legal gates remain open.

@@ -70,6 +70,16 @@ export class MongoAutomaticPayoutVerification {
             !recipient.reviewedBy || !recipient.reviewNote || !recipient.resolvedAccountName ||
             !recipient.reviewedAt || recipient.reviewedAt.getTime() < cutoff)
           throw new AppError('Destination needs a current ownership review.', 409)
+        // Lock the exact settled manual history row consumed by this decision.
+        // A reversal or correction after our snapshot must retry this check.
+        const previous = await PayoutModel.findOneAndUpdate({
+          _id: { $ne: payout.id }, recipientId: payout.recipientId,
+          requestedBy: userId, campaignId: payout.campaignId, currency: payout.currency,
+          status: 'PAID', settlementApplied: true,
+          approvedBy: { $exists: true, $nin: ['', null, 'system:auto-payout'] },
+        }, { $inc: { historyWriteVersion: 1 } }, { new: true, timestamps: false })
+        if (!previous) throw new AppError('A settled manual payout to this destination is required; manual review required.', 409)
+
       }
       return work()
     })

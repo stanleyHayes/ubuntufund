@@ -127,11 +127,12 @@ export class AutomaticPayoutService {
           return
         }
         const previous = await PayoutModel.exists({
+          _id: { $ne: current._id }, campaignId: current.campaignId, currency: current.currency,
           recipientId: current.recipientId,
           requestedBy: current.requestedBy,
           status: 'PAID',
           settlementApplied: true,
-          approvedBy: { $exists: true, $ne: 'system:auto-payout' },
+          approvedBy: { $exists: true, $nin: ['', null, 'system:auto-payout'] },
         }).session(session)
         if (!previous) {
           reason = 'First payout to this destination requires manual review.'

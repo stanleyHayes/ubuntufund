@@ -421,3 +421,33 @@ it.each(['missing_claim', 'expired_claim', 'missing_budget', 'lower_limit', 'bud
     expect(provider.initiateTransfer).not.toHaveBeenCalled()
   } finally { release(); await result; check.mockRestore() }
 })
+
+it.each(['reversed', 'unsettled', 'automatic', 'empty_approver', 'currency', 'deleted'])('rechecks settled manual history after concurrent %s change', async change => {
+  const item = await pending()
+  await seedFinalClaim(item.id)
+  await CampaignBalanceModel.create({ campaignId: String(ids.campaign), currency: 'GHS', availableBalance: 1000 })
+  const previous = await PayoutModel.findOne({ status: 'PAID' })
+  const provider = { isConfigured: () => true, getBalance: async () => [{ currency: 'GHS', balance: 1000 }], initiateTransfer: vi.fn() }
+  const guard = new MongoAutomaticPayoutVerification()
+  const original = guard.assertCurrent.bind(guard)
+  let entered = false
+  let release!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve })
+  const check = vi.spyOn(guard, 'assertCurrent').mockImplementationOnce(async userId => { await original(userId); entered = true; await gate })
+  const real = new ApprovePayoutUseCase(repo, { findById: async () => ({ recipientCode: 'synthetic-recipient', type: 'ghipss' }) } as never, new MongoCampaignBalanceRepository(), provider as never, { dualApprovalAmount: 40000, maxTransferAmount: 50000 } as never, undefined, undefined, guard)
+  const result = real.executeAutomatic(item.id).then(() => null, error => error)
+  try {
+    await expect.poll(() => entered).toBe(true)
+    if (change === 'deleted') await PayoutModel.deleteOne({ _id: previous!._id })
+    else await PayoutModel.updateOne({ _id: previous!._id }, change === 'reversed' ? { status: 'FAILED' }
+      : change === 'unsettled' ? { settlementApplied: false }
+      : change === 'automatic' ? { approvedBy: 'system:auto-payout' }
+      : change === 'empty_approver' ? { approvedBy: '' } : { currency: 'USD' })
+    release()
+    expect(await result).toMatchObject({ statusCode: 409 })
+    expect(check.mock.calls.length).toBeGreaterThan(1)
+    expect((await CampaignBalanceModel.findOne())?.availableBalance).toBe(1000)
+    expect((await repo.findById(item.id))?.status).toBe('PENDING')
+    expect(provider.initiateTransfer).not.toHaveBeenCalled()
+  } finally { release(); await result; check.mockRestore() }
+})
