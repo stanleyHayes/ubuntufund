@@ -1,3 +1,4 @@
+import { MongoManualPayoutApproval } from './infrastructure/adapters/outbound/persistence/MongoManualPayoutApproval.js'
 import { MongoCampaignContentWrite } from './infrastructure/adapters/outbound/persistence/MongoCampaignContentWrite.js'
 import { MongoCommentCreation } from './infrastructure/adapters/outbound/persistence/MongoCommentCreation.js'
 import { MongoLiveSessionCreation } from './infrastructure/adapters/outbound/persistence/MongoLiveSessionCreation.js'
@@ -1030,6 +1031,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     campaignRepo,
     new MongoWalletPayoutRepository(),
     new MongoAutomaticPayoutVerification(),
+    new MongoManualPayoutApproval(),
   )
   const listCampaignPayoutsUseCase = new ListCampaignPayoutsUseCase(campaignRepo, payoutRepo)
   const listPayoutsUseCase = new ListPayoutsUseCase(payoutRepo)

@@ -264,7 +264,7 @@ export class PayoutController {
     try {
       const payout = await this.approvePayoutUseCase.execute(
         req.params.id as string,
-        { userId: req.userId!, role: req.userRole },
+        { userId: req.userId!, role: req.userRole, authVersion: req.authVersion },
         req.body.reviewNote,
       )
       res.json({ data: payout, message: 'Payout approved', status: 200 })

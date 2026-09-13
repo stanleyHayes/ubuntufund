@@ -46,6 +46,7 @@ export class ApprovePayoutUseCase {
     private readonly campaigns?: CampaignRepositoryPort,
     private readonly walletPayouts?: WalletPayoutPort,
     private readonly automaticVerification?: { run<T>(userId: string, work: () => Promise<T>): Promise<T> },
+    private readonly manualApproval?: { run<T>(requester: PayoutRequester, work: () => Promise<T>): Promise<T> },
   ) {}
 
   async recipientDetails(payoutId: string, requester: PayoutRequester) {
@@ -216,13 +217,14 @@ export class ApprovePayoutUseCase {
         return processing
       })
     } else {
-      await reserve()
-      if (mustBatch) return this.initiateBatched(payout, recipient, approvedBy)
-      processing = await this.payoutRepo.transitionToProcessing(payout.id, { approvedBy, providerRef: reference })
-      if (!processing) {
-        await this.campaignBalanceRepo.returnToAvailable(payout.campaignId, payout.amount)
-        throw new AppError('Payout is no longer pending approval', 409)
-      }
+      if (!this.manualApproval) throw new AppError('Payout approval transaction is unavailable.', 503)
+      if (mustBatch) return this.initiateBatched(payout, recipient, requester)
+      processing = await this.manualApproval.run(requester, async () => {
+        await reserve()
+        const transitioned = await this.payoutRepo.transitionToProcessing(payout.id, { approvedBy, providerRef: reference })
+        if (!transitioned) throw new AppError('Payout is no longer pending approval', 409)
+        return transitioned
+      })
     }
 
     let transfer
@@ -257,7 +259,7 @@ export class ApprovePayoutUseCase {
 
   /**
    * Split a large standard payout into ≤-ceiling legs and submit each as its own
-   * transfer. The full gross reservation is already held. Each leg carries a
+   * transfer. Commit the full gross reservation with the legs before sending. Each leg carries a
    * unique reference the webhook reconciles on; the payout settles PAID only
    * when every leg succeeds, and lands in NEEDS_REVIEW if any leg fails after
    * another already sent (real money that cannot be un-sent).
@@ -265,8 +267,9 @@ export class ApprovePayoutUseCase {
   private async initiateBatched(
     payout: PayoutEntity,
     recipient: TransferRecipientEntity,
-    approvedBy: string,
+    requester: PayoutRequester,
   ): Promise<Payout> {
+    const approvedBy = requester.userId
     const amounts = splitIntoTransferLegs(payout.netAmount, this.payoutsConfig.maxTransferAmount)
     const legs: PayoutLeg[] = amounts.map((amount, index) => ({
       index,
@@ -276,15 +279,16 @@ export class ApprovePayoutUseCase {
     }))
     const batchRef = `pout-${payout.id}-batch-${randomUUID().slice(0, 8)}`
 
-    const processing = await this.payoutRepo.transitionToProcessingBatched(payout.id, {
-      approvedBy,
-      providerRef: batchRef,
-      legs,
+    if (!this.manualApproval) throw new AppError('Payout approval transaction is unavailable.', 503)
+    const processing = await this.manualApproval.run(requester, async () => {
+      const reserved = await this.campaignBalanceRepo.reserveForPayout(payout.campaignId, payout.amount)
+      if (!reserved) throw new AppError('Insufficient available balance to fund this payout', 422)
+      const transitioned = await this.payoutRepo.transitionToProcessingBatched(payout.id, {
+        approvedBy, providerRef: batchRef, legs,
+      })
+      if (!transitioned) throw new AppError('Payout is no longer pending approval', 409)
+      return transitioned
     })
-    if (!processing) {
-      await this.campaignBalanceRepo.returnToAvailable(payout.campaignId, payout.amount)
-      throw new AppError('Payout is no longer pending approval', 409)
-    }
 
     let submitted = 0
     const failed: PayoutLeg[] = []

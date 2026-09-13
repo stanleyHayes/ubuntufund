@@ -10,6 +10,7 @@ import { toTransferRecipientDto } from './mappers/payoutDto.js'
 export interface PayoutRequester {
   userId: string
   role?: string
+  authVersion?: string
 }
 
 /** The platform's only settlement currency. */

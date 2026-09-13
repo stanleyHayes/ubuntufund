@@ -1,3 +1,5 @@
+import { MongoPayoutRepository } from '../../src/infrastructure/adapters/outbound/persistence/MongoPayoutRepository.js';
+import { MongoManualPayoutApproval } from '../../src/infrastructure/adapters/outbound/persistence/MongoManualPayoutApproval.js';
 import { createHmac, randomUUID } from 'node:crypto';
 
 // The Paystack rail reads its secret from config at app-construction time, so it
@@ -269,6 +271,71 @@ describe('Payouts Integration', () => {
     expect(res.body.data.recipientCode).toMatch(/^RCP_/);
     expect(res.body.data.type).toBe('mobile_money');
     expect(res.body.data.campaignId).toBe(campaignId);
+  });
+
+  it.each([false, true])('rolls back a failed processing write before provider transfer (batched=%s)', async (batched) => {
+    const owner = await registerUser(app, uniqueEmail('atomic-owner'));
+    const campaignId = await createActiveCampaign(app, owner.token, owner.userId);
+    const admin = await createAdmin(app, uniqueEmail('atomic-admin'));
+    await fundCampaign(app, campaignId, batched ? 100000 : 1000);
+    await endCampaign(campaignId);
+    await addRecipient(app, campaignId, owner.token, 'ghipss');
+    const created = await request(app).post(`/api/v1/campaigns/${campaignId}/payouts`).set('Authorization', `Bearer ${owner.token}`).send({ amount: batched ? 60000 : 500 }).expect(201);
+    const id = created.body.data.id;
+    if (batched) {
+      const maker = await createAdmin(app, uniqueEmail('atomic-maker'));
+      await request(app).post(`/api/v1/payouts/${id}/approve`).set('Authorization', `Bearer ${maker.token}`).send({ reviewNote: 'Reviewed beneficiary ownership and receiving capacity.' }).expect(200);
+    }
+    const before = await CampaignBalanceModel.findOne({ campaignId }).lean();
+    const method = batched ? 'transitionToProcessingBatched' : 'transitionToProcessing';
+    const failure = vi.spyOn(MongoPayoutRepository.prototype, method).mockRejectedValueOnce(new Error('processing storage unavailable'));
+    vi.mocked(fetch).mockClear();
+    try {
+      await request(app).post(`/api/v1/payouts/${id}/approve`).set('Authorization', `Bearer ${admin.token}`).send({ reviewNote: 'Reviewed beneficiary ownership and receiving capacity.' }).expect(500);
+      const after = await CampaignBalanceModel.findOne({ campaignId }).lean();
+      expect(after?.availableBalance).toBe(before?.availableBalance);
+      expect((await PayoutModel.findById(id))?.status).toBe('PENDING');
+      expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).endsWith('/transfer'))).toBe(false);
+    } finally { failure.mockRestore(); }
+    const provider = vi.mocked(fetch).getMockImplementation()!;
+    let transfers = 0;
+    vi.mocked(fetch).mockImplementation(async (...args) => {
+      if (String(args[0]).endsWith('/transfer')) {
+        transfers++;
+        const committed = await PayoutModel.findById(id).session(null).lean();
+        const balance = await CampaignBalanceModel.findOne({ campaignId }).session(null).lean();
+        expect(committed?.status).toBe('PROCESSING');
+        expect(committed?.providerRef).toBeTruthy();
+        expect(balance?.availableBalance).toBe(before!.availableBalance - (batched ? 60000 : 500));
+        if (batched) expect(committed?.legs).toHaveLength(2);
+      }
+      return provider(...args);
+    });
+    await request(app).post(`/api/v1/payouts/${id}/approve`).set('Authorization', `Bearer ${admin.token}`).send({ reviewNote: 'Reviewed beneficiary ownership and receiving capacity.' }).expect(200);
+    expect(transfers).toBe(batched ? 2 : 1);
+  });
+
+  it.each(['role', 'closed', 'credentials'])('denies final manual approval after staff %s changes', async (change) => {
+    const owner = await registerUser(app, uniqueEmail('revoked-owner'));
+    const campaignId = await createActiveCampaign(app, owner.token, owner.userId);
+    const admin = await createAdmin(app, uniqueEmail('revoked-admin'));
+    await fundCampaign(app, campaignId, 1000);
+    await endCampaign(campaignId);
+    await addRecipient(app, campaignId, owner.token);
+    const created = await request(app).post(`/api/v1/campaigns/${campaignId}/payouts`).set('Authorization', `Bearer ${owner.token}`).send({ amount: 500 }).expect(201);
+    const before = await CampaignBalanceModel.findOne({ campaignId }).lean();
+    const original = MongoManualPayoutApproval.prototype.run;
+    const hook = vi.spyOn(MongoManualPayoutApproval.prototype, 'run').mockImplementationOnce(async function(requester, work) {
+      await UserModel.findByIdAndUpdate(admin.userId, change === 'role' ? { role: 'user' } : change === 'closed' ? { deletedAt: new Date() } : { authVersion: randomUUID() });
+      return original.call(this, requester, work);
+    });
+    vi.mocked(fetch).mockClear();
+    try {
+      await request(app).post(`/api/v1/payouts/${created.body.data.id}/approve`).set('Authorization', `Bearer ${admin.token}`).send({ reviewNote: 'Reviewed beneficiary ownership and receiving capacity.' }).expect(403);
+      expect((await CampaignBalanceModel.findOne({ campaignId }))?.availableBalance).toBe(before?.availableBalance);
+      expect((await PayoutModel.findById(created.body.data.id))?.status).toBe('PENDING');
+      expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).endsWith('/transfer'))).toBe(false);
+    } finally { hook.mockRestore(); }
   });
 
   it('non-owners cannot register a payout recipient', async () => {
