@@ -2,6 +2,8 @@
 
 ### 2026-09-12 — Ghana and mobile store compliance goal (IN PROGRESS)
 
+- Native startup now cleans older app-owned temporary recovery-code exports after interrupted sharing, preserving current exports and unrelated files. All 105 mobile tests, types/lint and Android JS export pass; details in NATIVE_PERMISSIONS.md. Current full API regression 24306 remains live on unchanged API 0bb30ee, `/tmp/ujimora-campaign-recipient-full-regression.log`; keep API/shared source frozen. Android image install 74629 remains live.
+
 - Account agreement page redesigned with existing forest/gold PageBanner and SVG chain watermark, icon/title/description policy cards, responsive confirmation panel and separate opt-in explanation. Removed redundant agreement notice on this route. Both confirmations remain unchecked and required; API contract/saved/error states retained. Desktop1440/phone390 browser flows verify links, overflow, explicit consent and exact save payload; web types/lint/build pass. Screenshots `/tmp/ujimora-agreement-{1440,390}.png`.
 
 - Automatic reservation now locks current policy and destination, checks exact provider code/owner/currency, policy amount limits and review freshness. All 29 focused tests and final API types/lint pass, including five concurrent recipient/policy changes with no funds movement. Separate counter preserves claim totals. Remaining budget/dispute/history/manual scopes recorded in KYC_REVIEW_INTEGRITY.md.

@@ -16,3 +16,18 @@ export async function downloadRecoveryCodes(codes: string[]) {
     await Sharing.shareAsync(path, { mimeType: 'text/plain', UTI: 'public.plain-text', dialogTitle: 'Save your Ujimora recovery codes' })
   } finally { await FileSystem.deleteAsync(path, { idempotent: true }) }
 }
+
+/** Remove only prior app-owned exports left behind by interrupted sharing. */
+export async function cleanupRecoveryCodeCache(before = Date.now()) {
+  if (Platform.OS === 'web' || !FileSystem.cacheDirectory) return
+  const names = await FileSystem.readDirectoryAsync(FileSystem.cacheDirectory)
+  const stale = names.filter(name => {
+    const match = /^ujimora-recovery-codes-(\d+)\.txt$/.exec(name)
+    return match && Number.isSafeInteger(Number(match[1])) && Number(match[1]) < before
+  })
+  const results = await Promise.allSettled(stale.map(name =>
+    FileSystem.deleteAsync(`${FileSystem.cacheDirectory}${name}`, { idempotent: true }),
+  ))
+  if (results.some(result => result.status === 'rejected'))
+    throw new Error('Temporary recovery-code cleanup could not complete.')
+}
