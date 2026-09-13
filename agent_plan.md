@@ -2,6 +2,8 @@
 
 ### 2026-09-12 — Ghana and mobile store compliance goal (IN PROGRESS)
 
+- Native intermediate inventory expands RELRO finding to all 16 observed 64-bit libraries (all pass LOAD alignment). Generated link flags show max-page-size without common-page-size; no single-library fix claimed. Checker evidence in NATIVE_PERMISSIONS.md. APK/API/image-install sessions 37305/67839/74629 confirmed live; preserve their source/dependency state.
+
 - Added repeatable Android 64-bit ELF inventory/check command. Newest inspected WebRTC 150.7871.01 also has nonzero RELRO remainders on both ABIs; no upgrade applied. Dedicated Android 35 ARM 16 KB emulator image installation started for runtime evidence. APK 37305 and API 67839 confirmed live; source unchanged. Details in NATIVE_PERMISSIONS.md.
 
 - WebRTC AAR inspection found 16 KB LOAD alignment but nonzero RELRO end alignment on both installed 64-bit libraries. Candidate 144.7559.15 fixes arm64 alignment only; x86_64 remains nonzero. No dependency upgrade or runtime success claimed; hashes/evidence and next compatibility evaluation in NATIVE_PERMISSIONS.md. APK 37305/API 67839 confirmed live and unchanged.
