@@ -1,5 +1,12 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — Both-ABI candidate alignment and runtime device evidence
+
+- C++ x86_64 build27955 completed successfully; it and three x86_64 React Native source libraries pass LOAD/RELRO. Both-ABI candidate runtime alignment is verified, with only the previously recorded profiling-marker export difference.
+- Added/re-ran reusable ARM64 runtime probe: actual16KB emulator, candidate mapping,32 dynamic-library cycles and256 cross-library allocation/exception/TLS cleanup checks pass. This does not establish full ABI, x86_64 execution or packaged app acceptance.
+- Native70084 remains live; final source/runtime packaging and device/provider/store gates remain open. Evidence in `docs/compliance/NATIVE_PERMISSIONS.md`.
+
+
 ### 2026-09-13 — ARM64 native/runtime candidates pass ELF checks
 
 - Reconciled all51 pinned Android patch references and applied10 runtime-relevant patches. Isolated ARM64 libc++ build passes; it and three source-built React Native libraries pass LOAD/RELRO. Only exported-symbol difference from NDK libc++ is the compiler profiling marker; runtime/ABI/device acceptance remains open.
