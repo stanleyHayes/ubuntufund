@@ -47,3 +47,13 @@ This establishes a complete passing API regression for that source, not signed-n
 ## Current complete regression after manual approval hardening
 
 Session 67839 completed exit 0 on 13 September 2026: 154 files and all 1,091 tests pass, duration 1229.38 seconds, started 10:14:02 UTC. Log `/tmp/ujimora-api-manual-approval-regression.log`. API source/tests/shared types stayed at 69d94fa throughout the run; later commits were independent native/documentation work. This includes manual-bank reservation/transition atomicity, maker evidence rollback, wallet current-staff authorization and review-versus-status transaction retries. The source freeze is lifted. This supersedes historical running/full-test status for this API baseline, and does not prove production provider operation, hosted latest-main CI, native-device behavior or regulatory approval.
+
+## 2026-09-13 — c8adacf baseline completed
+
+Session88675 completed exit 0: 155 files, 1,117 tests pass, duration1190.11s.
+Log /tmp/ujimora-budget-full-regression.log; source stayed c8adacf throughout.
+This includes automatic budget claims and Render migration diagnostics. It excludes
+later history-address binding, manual destination snapshots, affiliate final
+authorization and beneficiary transaction/authorization changes. Root source freeze
+is lifted after terminal verification and fast-forward to78118b9. Later focused
+checks are recorded in KYC_REVIEW_INTEGRITY.md; a current full run remains required.

@@ -657,3 +657,19 @@ Remaining beneficiary work includes first-approval authorization/review evidence
 verification evidence completeness and eligibility/consent consumption, and final
 settlement consistency. Other financial/provider/store/native/legal gates remain
 open. Root full regression88675 continues against c8adacf, excluding later slices.
+
+## Replacement recipient clears obsolete KYC evidence
+
+A regression test reproduced stale reviewer/time fields after recipient replacement:
+Mongoose omitted the existing `$set: undefined` values, leaving previous evidence
+stored even though kycVerified became false. Replacement now explicitly unsets both
+fields in the same destination update. The test inspects raw stored fields and
+verifies a fresh review records its new reviewer/time. All 14 reset/beneficiary
+integration tests, API types/lint and whitespace checks pass. Logs:
+/tmp/ujimora-beneficiary-kyc-reset-{before,tests,types,lint}.log.
+
+Full API regression88675 FINISHED exit 0: 1,117 tests across 155 files passed in
+1190.11s on unchanged c8adacf. Root has now fast-forwarded to 78118b9; that baseline
+run does not cover subsequent history, manual destination, affiliate, beneficiary
+or this reset delta. Their focused evidence remains separate; current full
+regression and remaining release/engineering gates are still required.

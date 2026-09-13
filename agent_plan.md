@@ -2,6 +2,8 @@
 
 ### 2026-09-12 — Ghana and mobile store compliance goal (IN PROGRESS)
 
+- Beneficiary destination replacement now explicitly removes obsolete KYC reviewer/time fields; reproduced prior stale fields, then verified raw removal and fresh review. All 14 focused tests/types/lint pass. Full API88675 FINISHED exit 0: 1,117 tests/155 files at c8adacf; root freeze lifted and fast-forwarded to78118b9. Later deltas have focused evidence, not coverage from that older full run.
+
 - Beneficiary final reservation now revalidates current staff credentials and locks unchanged KYC/destination evidence; mismatched currency and missing review evidence fail closed. All 13 beneficiary tests/types/lint pass, including five stale-authorization/destination cases with no funds movement or transfer. First-review/evidence/eligibility/settlement scope remains open in KYC_REVIEW_INTEGRITY.md. Root regression88675 continues on c8adacf.
 
 - Beneficiary approval now commits share/campaign reservations and PROCESSING/reference atomically, before provider transfer. Eight integration tests/types/lint pass, including mirror shortfall and failure after processing write with full rollback, plus committed-state provider observation. Final beneficiary staff/KYC/destination and terminal settlement checks remain open; KYC_REVIEW_INTEGRITY.md records evidence. Root regression88675 retains c8adacf.

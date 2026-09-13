@@ -40,10 +40,9 @@ export class MongoBeneficiaryRecipientRepository
           recipientCode: recipient.recipientCode,
           currency: recipient.currency,
           kycVerified: false,
-          kycVerifiedBy: undefined,
-          kycVerifiedAt: undefined,
           createdBy: recipient.createdBy,
         },
+        $unset: { kycVerifiedBy: 1, kycVerifiedAt: 1 },
       },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
