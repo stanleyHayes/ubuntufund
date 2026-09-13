@@ -1,3 +1,4 @@
+import { AppError } from '../../inbound/middleware/errorHandler.js';
 import type { CampaignBeneficiaryBalance } from '@ubuntu-fund/types';
 import type { CampaignBeneficiaryBalanceRepositoryPort } from '../../../../domain/ports/outbound/CampaignBeneficiaryBalanceRepositoryPort.js';
 import {
@@ -114,10 +115,14 @@ export class MongoCampaignBeneficiaryBalanceRepository
     amount: number,
     settleRef?: string
   ): Promise<void> {
-    await CampaignBeneficiaryBalanceModel.updateOne(
+    const result = await CampaignBeneficiaryBalanceModel.updateOne(
       this.settleFilter(campaignId, beneficiaryId, currency, settleRef),
       { $set: { updatedAt: new Date() }, $inc: { availableBalance: amount }, ...this.settleAdd(settleRef) }
     );
+    if (!result.matchedCount && (!settleRef || !await CampaignBeneficiaryBalanceModel.exists({ campaignId, beneficiaryId, currency, settledRefs: settleRef }))) {
+      throw new AppError('Beneficiary settlement balance is missing or insufficient; reconciliation is required.', 409);
+    }
+
   }
 
   async markPaidOut(
@@ -127,10 +132,14 @@ export class MongoCampaignBeneficiaryBalanceRepository
     amount: number,
     settleRef?: string
   ): Promise<void> {
-    await CampaignBeneficiaryBalanceModel.updateOne(
+    const result = await CampaignBeneficiaryBalanceModel.updateOne(
       this.settleFilter(campaignId, beneficiaryId, currency, settleRef),
       { $set: { updatedAt: new Date() }, $inc: { paidOutBalance: amount }, ...this.settleAdd(settleRef) }
     );
+    if (!result.matchedCount && (!settleRef || !await CampaignBeneficiaryBalanceModel.exists({ campaignId, beneficiaryId, currency, settledRefs: settleRef }))) {
+      throw new AppError('Beneficiary settlement balance is missing or insufficient; reconciliation is required.', 409);
+    }
+
   }
 
   async reverseFromPaidOut(
@@ -140,14 +149,18 @@ export class MongoCampaignBeneficiaryBalanceRepository
     amount: number,
     settleRef?: string
   ): Promise<void> {
-    await CampaignBeneficiaryBalanceModel.updateOne(
-      this.settleFilter(campaignId, beneficiaryId, currency, settleRef),
+    const result = await CampaignBeneficiaryBalanceModel.updateOne(
+      { ...this.settleFilter(campaignId, beneficiaryId, currency, settleRef), paidOutBalance: { $gte: amount } },
       {
         $set: { updatedAt: new Date() },
         $inc: { paidOutBalance: -amount, availableBalance: amount },
         ...this.settleAdd(settleRef),
       }
     );
+    if (!result.matchedCount && (!settleRef || !await CampaignBeneficiaryBalanceModel.exists({ campaignId, beneficiaryId, currency, settledRefs: settleRef }))) {
+      throw new AppError('Beneficiary settlement balance is missing or insufficient; reconciliation is required.', 409);
+    }
+
   }
 
   async findOne(

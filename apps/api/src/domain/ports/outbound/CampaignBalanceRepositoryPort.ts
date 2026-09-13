@@ -80,7 +80,8 @@ export interface CampaignBalanceRepositoryPort {
     campaignId: string,
     netAmount: number,
     fee?: number,
-    settleRef?: string
+    settleRef?: string,
+    strict?: boolean
   ): Promise<CampaignBalance | null>;
 
   /**
@@ -90,7 +91,8 @@ export interface CampaignBalanceRepositoryPort {
   returnToAvailable(
     campaignId: string,
     amount: number,
-    settleRef?: string
+    settleRef?: string,
+    strict?: boolean
   ): Promise<CampaignBalance | null>;
 
   /**
@@ -101,7 +103,8 @@ export interface CampaignBalanceRepositoryPort {
     campaignId: string,
     netAmount: number,
     fee?: number,
-    settleRef?: string
+    settleRef?: string,
+    strict?: boolean
   ): Promise<CampaignBalance | null>;
 }
 
@@ -111,3 +114,5 @@ export interface CampaignBalanceRepositoryPort {
  * set on the balance doc), so a duplicate webhook or a reconciliation re-run can
  * never double-apply it. Omitted → unconditional (legacy) behaviour.
  */
+
+/** strict: reject absent balances or reversal shortfalls; an already-applied settleRef remains a no-op. */

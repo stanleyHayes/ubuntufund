@@ -1,3 +1,4 @@
+import { MongoUnitOfWork } from '../../src/infrastructure/adapters/outbound/persistence/MongoUnitOfWork.js';
 import { randomUUID } from 'node:crypto';
 
 import { describe, it, beforeAll, afterAll, expect } from 'vitest';
@@ -251,7 +252,8 @@ describe('Payout settlement repair — extended crash windows (G5)', () => {
       new MongoBeneficiaryPayoutRepository(),
       new MongoCampaignBeneficiaryBalanceRepository(),
       new MongoCampaignBalanceRepository(),
-      new MongoLedgerRepository()
+      new MongoLedgerRepository(),
+      new MongoUnitOfWork()
     );
   }
 

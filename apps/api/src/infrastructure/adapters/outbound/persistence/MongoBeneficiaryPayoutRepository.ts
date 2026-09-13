@@ -130,6 +130,14 @@ export class MongoBeneficiaryPayoutRepository
     return docs.map(toDomain);
   }
 
+  async lockForSettlement(id: string): Promise<BeneficiaryPayoutEntity | null> {
+    const doc = await BeneficiaryPayoutModel.findOneAndUpdate(
+      { _id: id, settlementApplied: false, status: { $in: ['PAID', 'FAILED', 'REVERSED'] } },
+      { $inc: { settlementWriteVersion: 1 } }, { new: true, timestamps: false }
+    );
+    return doc ? toDomain(doc) : null;
+  }
+
   async markSettlementApplied(
     id: string,
     expectedStatus?: PayoutStatus

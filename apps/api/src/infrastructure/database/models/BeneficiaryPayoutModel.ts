@@ -18,6 +18,7 @@ export interface BeneficiaryPayoutDocument extends Document {
   firstApprovedAt?: Date;
   firstApprovalFingerprint?: string;
   settlementApplied?: boolean;
+  settlementWriteVersion?: number;
   /** For a REVERSED payout, the status it reversed from (G7 repair). */
   reversedFrom?: 'PAID' | 'PROCESSING';
   createdAt: Date;
@@ -57,6 +58,7 @@ const schema = new Schema<BeneficiaryPayoutDocument>(
     firstApprovedBy: { type: String },
     firstApprovedAt: { type: Date },
     firstApprovalFingerprint: { type: String },
+    settlementWriteVersion: { type: Number },
     settlementApplied: { type: Boolean, default: false, index: true },
     reversedFrom: { type: String, enum: ['PAID', 'PROCESSING'] },
   },

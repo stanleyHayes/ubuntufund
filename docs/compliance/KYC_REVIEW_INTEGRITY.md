@@ -704,3 +704,33 @@ consent at consumption, terminal settlement consistency, other financial consume
 and provider/legal/native/store release gates. This does not establish a universal
 KYC policy or regulatory approval. Current full regression must supersede the older
 c8adacf baseline before making a current whole-suite claim.
+
+## Beneficiary terminal settlement transactions — 2026-09-13
+
+Success, failure, reversal, immediate rejected-transfer rollback and reconciliation
+repair now execute status changes, both balance effects, journal posting and the
+settlement-applied flag in a MongoUnitOfWork transaction. Reconciliation first
+locks the current unsettled terminal payout so it cannot apply stale effects while
+a concurrent callback changes the status. Provider requests remain outside these
+retryable transactions.
+
+Beneficiary balance settlement now rejects missing documents and reversal
+shortfalls while allowing an already-recorded settlement reference to remain an
+idempotent no-op. Campaign balance methods have an explicit strict option used by
+this beneficiary path: missing mirrors and insufficient paid-out balances abort
+the transaction instead of silently marking the payout applied. Other payout
+consumers retain their existing mode and remain a separate audit scope.
+
+All 39 focused integration tests across beneficiary settlement, repair extensions
+and campaign beneficiary flows pass, including failures after actual journal/flag
+writes, missing balances, reversal shortfalls, concurrent success/failure,
+repair/reversal serialization, and failed immediate return followed by successful
+callback recovery. API types/lint and whitespace checks pass. Logs:
+/tmp/ujimora-beneficiary-settlement-final-{tests,types,lint}.log.
+
+Work was implemented and verified in /tmp/ujimora-beneficiary-settlement while the
+root full regression session 70997 continued on unchanged f09cba3 API/shared source.
+That full run cannot cover this later settlement delta. Remaining: exact currency
+and reservation provenance across all settlement consumers, eligibility/consent
+consumption, complete verification evidence, broader financial consumers and the
+external provider/legal/native/store release gates.

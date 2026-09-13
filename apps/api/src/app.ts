@@ -575,6 +575,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     campaignBeneficiaryBalanceRepo,
     campaignBalanceRepo,
     ledgerRepo,
+    new MongoUnitOfWork(),
   )
   const splitAccrualService = new SplitAccrualService(
     config.splitProceedsEnabled,

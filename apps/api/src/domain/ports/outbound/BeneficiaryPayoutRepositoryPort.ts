@@ -18,6 +18,9 @@ export interface BeneficiaryPayoutRepositoryPort {
   /** Payouts stuck in PROCESSING since before `olderThan` (missed webhook). */
   findStuckProcessing(olderThan: Date): Promise<BeneficiaryPayoutEntity[]>;
 
+  /** Lock the current unsettled terminal payout for a database-only repair transaction. */
+  lockForSettlement(id: string): Promise<BeneficiaryPayoutEntity | null>;
+
   /**
    * Flag a payout's terminal balance/ledger effect as applied (G5, idempotent).
    * `expectedStatus` makes it a compare-and-set on status (G7) so a repair cannot

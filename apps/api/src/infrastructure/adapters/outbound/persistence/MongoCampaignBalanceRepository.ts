@@ -1,3 +1,4 @@
+import { AppError } from '../../inbound/middleware/errorHandler.js';
 import type { CampaignBalance } from '@ubuntu-fund/types';
 import type {
   CampaignBalanceDelta,
@@ -152,7 +153,8 @@ export class MongoCampaignBalanceRepository
     campaignId: string,
     netAmount: number,
     fee = 0,
-    settleRef?: string
+    settleRef?: string,
+    strict = false
   ): Promise<CampaignBalance | null> {
     // The reserved gross (net + fee) already left `availableBalance`; on payout it
     // splits into the beneficiary's disbursed net and Ujimora's retained fee.
@@ -165,13 +167,17 @@ export class MongoCampaignBalanceRepository
       },
       { new: true }
     );
+    if (!doc && strict && (!settleRef || !await CampaignBalanceModel.exists({ campaignId, settledRefs: settleRef }))) {
+      throw new AppError('Campaign settlement balance is missing or insufficient; reconciliation is required.', 409);
+    }
     return doc ? toDomain(doc) : null;
   }
 
   async returnToAvailable(
     campaignId: string,
     amount: number,
-    settleRef?: string
+    settleRef?: string,
+    strict = false
   ): Promise<CampaignBalance | null> {
     const doc = await CampaignBalanceModel.findOneAndUpdate(
       this.settleFilter(campaignId, settleRef),
@@ -182,6 +188,9 @@ export class MongoCampaignBalanceRepository
       },
       { new: true }
     );
+    if (!doc && strict && (!settleRef || !await CampaignBalanceModel.exists({ campaignId, settledRefs: settleRef }))) {
+      throw new AppError('Campaign settlement balance is missing or insufficient; reconciliation is required.', 409);
+    }
     return doc ? toDomain(doc) : null;
   }
 
@@ -189,12 +198,13 @@ export class MongoCampaignBalanceRepository
     campaignId: string,
     netAmount: number,
     fee = 0,
-    settleRef?: string
+    settleRef?: string,
+    strict = false
   ): Promise<CampaignBalance | null> {
     // Undo a paid transfer: the disbursed net + retained fee both return to the
     // campaign's available balance (the gross the beneficiary was charged).
     const doc = await CampaignBalanceModel.findOneAndUpdate(
-      this.settleFilter(campaignId, settleRef),
+      { ...this.settleFilter(campaignId, settleRef), ...(strict ? { paidOutBalance: { $gte: netAmount }, ...(fee > 0 ? { payoutFees: { $gte: fee } } : {}) } : {}) },
       {
         $set: { updatedAt: new Date() },
         $inc: {
@@ -206,6 +216,9 @@ export class MongoCampaignBalanceRepository
       },
       { new: true }
     );
+    if (!doc && strict && (!settleRef || !await CampaignBalanceModel.exists({ campaignId, settledRefs: settleRef }))) {
+      throw new AppError('Campaign settlement balance is missing or insufficient; reconciliation is required.', 409);
+    }
     return doc ? toDomain(doc) : null;
   }
 }

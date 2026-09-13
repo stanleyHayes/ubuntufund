@@ -1,3 +1,4 @@
+import type { UnitOfWorkPort } from '../../domain/ports/outbound/UnitOfWorkPort.js';
 import type { BeneficiaryPayoutRepositoryPort } from '../../domain/ports/outbound/BeneficiaryPayoutRepositoryPort.js';
 import type { CampaignBeneficiaryBalanceRepositoryPort } from '../../domain/ports/outbound/CampaignBeneficiaryBalanceRepositoryPort.js';
 import type { CampaignBalanceRepositoryPort } from '../../domain/ports/outbound/CampaignBalanceRepositoryPort.js';
@@ -18,43 +19,50 @@ export class HandleBeneficiaryPayoutWebhookUseCase {
     private readonly payoutRepo: BeneficiaryPayoutRepositoryPort,
     private readonly beneficiaryBalanceRepo: CampaignBeneficiaryBalanceRepositoryPort,
     private readonly campaignBalanceRepo: CampaignBalanceRepositoryPort,
-    private readonly ledgerRepo: LedgerRepositoryPort
+    private readonly ledgerRepo: LedgerRepositoryPort,
+    private readonly unitOfWork: UnitOfWorkPort
   ) {}
 
   async handleSuccess(reference: string): Promise<void> {
-    const payout = await this.payoutRepo.findByProviderRef(reference);
-    if (!payout) return;
-    const won = await this.payoutRepo.transitionToPaid(payout.id);
-    if (!won) return; // idempotent
-    await this.applyForwardDisbursement(payout, reference);
-    await this.payoutRepo.markSettlementApplied(payout.id, 'PAID');
+    await this.unitOfWork.run(async () => {
+      const payout = await this.payoutRepo.findByProviderRef(reference);
+      if (!payout) return;
+      const won = await this.payoutRepo.transitionToPaid(payout.id);
+      if (!won) return; // idempotent
+      await this.applyForwardDisbursement(payout, reference);
+      await this.payoutRepo.markSettlementApplied(payout.id, 'PAID');
+    });
   }
 
   async handleFailed(reference: string): Promise<void> {
-    const payout = await this.payoutRepo.findByProviderRef(reference);
-    if (!payout) return;
-    const won = await this.payoutRepo.transitionToFailed(payout.id);
-    if (!won) return;
-    await this.applyReturn(payout);
-    await this.payoutRepo.markSettlementApplied(payout.id, 'FAILED');
+    await this.unitOfWork.run(async () => {
+      const payout = await this.payoutRepo.findByProviderRef(reference);
+      if (!payout) return;
+      const won = await this.payoutRepo.transitionToFailed(payout.id);
+      if (!won) return;
+      await this.applyReturn(payout);
+      await this.payoutRepo.markSettlementApplied(payout.id, 'FAILED');
+    });
   }
 
   async handleReversed(reference: string): Promise<void> {
-    const payout = await this.payoutRepo.findByProviderRef(reference);
-    if (!payout) return;
+    await this.unitOfWork.run(async () => {
+      const payout = await this.payoutRepo.findByProviderRef(reference);
+      if (!payout) return;
 
-    const fromPaid = await this.payoutRepo.transitionPaidToReversed(payout.id);
-    if (fromPaid) {
-      await this.applyReversalFromPaid(payout, reference);
-      await this.payoutRepo.markSettlementApplied(payout.id, 'REVERSED');
-      return;
-    }
+      const fromPaid = await this.payoutRepo.transitionPaidToReversed(payout.id);
+      if (fromPaid) {
+        await this.applyReversalFromPaid(payout, reference);
+        await this.payoutRepo.markSettlementApplied(payout.id, 'REVERSED');
+        return;
+      }
 
-    const fromProcessing = await this.payoutRepo.transitionProcessingToReversed(payout.id);
-    if (fromProcessing) {
-      await this.applyReturn(payout);
-      await this.payoutRepo.markSettlementApplied(payout.id, 'REVERSED');
-    }
+      const fromProcessing = await this.payoutRepo.transitionProcessingToReversed(payout.id);
+      if (fromProcessing) {
+        await this.applyReturn(payout);
+        await this.payoutRepo.markSettlementApplied(payout.id, 'REVERSED');
+      }
+    });
   }
 
   /**
@@ -74,23 +82,25 @@ export class HandleBeneficiaryPayoutWebhookUseCase {
    *    repaired status, so a stale repair can't clobber a newer owed effect.
    */
   async repairSettlement(payoutId: string): Promise<void> {
-    const payout = await this.payoutRepo.findById(payoutId);
-    if (!payout) return;
-    if (payout.status === 'PAID') {
-      await this.applyForwardDisbursement(payout, 'reconcile');
-      await this.payoutRepo.markSettlementApplied(payout.id, 'PAID');
-    } else if (payout.status === 'FAILED') {
-      await this.applyReturn(payout);
-      await this.payoutRepo.markSettlementApplied(payout.id, 'FAILED');
-    } else if (payout.status === 'REVERSED') {
-      if (payout.reversedFrom === 'PROCESSING') {
+    await this.unitOfWork.run(async () => {
+      const payout = await this.payoutRepo.lockForSettlement(payoutId);
+      if (!payout) return;
+      if (payout.status === 'PAID') {
+        await this.applyForwardDisbursement(payout, 'reconcile');
+        await this.payoutRepo.markSettlementApplied(payout.id, 'PAID');
+      } else if (payout.status === 'FAILED') {
         await this.applyReturn(payout);
-        await this.payoutRepo.markSettlementApplied(payout.id, 'REVERSED');
-      } else if (payout.reversedFrom === 'PAID') {
-        await this.applyReversalFromPaid(payout, 'reconcile');
-        await this.payoutRepo.markSettlementApplied(payout.id, 'REVERSED');
+        await this.payoutRepo.markSettlementApplied(payout.id, 'FAILED');
+      } else if (payout.status === 'REVERSED') {
+        if (payout.reversedFrom === 'PROCESSING') {
+          await this.applyReturn(payout);
+          await this.payoutRepo.markSettlementApplied(payout.id, 'REVERSED');
+        } else if (payout.reversedFrom === 'PAID') {
+          await this.applyReversalFromPaid(payout, 'reconcile');
+          await this.payoutRepo.markSettlementApplied(payout.id, 'REVERSED');
+        }
       }
-    }
+    });
   }
 
   /**
@@ -109,7 +119,7 @@ export class HandleBeneficiaryPayoutWebhookUseCase {
       payout.amount,
       `${key}:paid`
     );
-    await this.campaignBalanceRepo.markPaidOut(payout.campaignId, payout.amount, 0, `${key}:paid`);
+    await this.campaignBalanceRepo.markPaidOut(payout.campaignId, payout.amount, 0, `${key}:paid`, true);
     await this.ledgerRepo.postEntry(
       JournalEntryEntity.forPayoutDisbursement({
         campaignId: payout.campaignId,
@@ -131,7 +141,7 @@ export class HandleBeneficiaryPayoutWebhookUseCase {
       payout.amount,
       `${key}:returned`
     );
-    await this.campaignBalanceRepo.returnToAvailable(payout.campaignId, payout.amount, `${key}:returned`);
+    await this.campaignBalanceRepo.returnToAvailable(payout.campaignId, payout.amount, `${key}:returned`, true);
   }
 
   /**
@@ -152,7 +162,7 @@ export class HandleBeneficiaryPayoutWebhookUseCase {
       payout.amount,
       `${key}:reversed`
     );
-    await this.campaignBalanceRepo.reverseFromPaidOut(payout.campaignId, payout.amount, 0, `${key}:reversed`);
+    await this.campaignBalanceRepo.reverseFromPaidOut(payout.campaignId, payout.amount, 0, `${key}:reversed`, true);
     await this.ledgerRepo.postEntry(
       JournalEntryEntity.forPayoutReversal({
         campaignId: payout.campaignId,

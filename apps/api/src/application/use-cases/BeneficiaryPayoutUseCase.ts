@@ -353,7 +353,7 @@ export class BeneficiaryPayoutUseCase {
     settleRef?: string
   ): Promise<void> {
     await this.beneficiaryBalanceRepo.returnToAvailable(campaignId, beneficiaryId, currency, amount, settleRef);
-    await this.campaignBalanceRepo.returnToAvailable(campaignId, amount, settleRef);
+    await this.campaignBalanceRepo.returnToAvailable(campaignId, amount, settleRef, true);
   }
 
   private async rollback(
@@ -367,19 +367,21 @@ export class BeneficiaryPayoutUseCase {
     // transfer.failed webhook already settled this payout (and already returned
     // the reservation) while we were suspended in initiateTransfer, we do not
     // return it a second time. Exactly one of {this, the webhook} restores it.
-    const failed = await this.payoutRepo.transitionToFailed(payoutId);
-    if (!failed) return;
-    // Return with the shared settleRef + flag settlement-applied so this
-    // rollback-produced FAILED payout is not re-detected as unsettled and
-    // double-returned (on BOTH buckets) by the reconciliation repair.
-    await this.returnReservation(
-      campaignId,
-      beneficiaryId,
-      currency,
-      amount,
-      `bpay:${payoutId}:returned`
-    );
-    await this.payoutRepo.markSettlementApplied(payoutId, 'FAILED');
+    await this.unitOfWork.run(async () => {
+      const failed = await this.payoutRepo.transitionToFailed(payoutId);
+      if (!failed) return;
+      // Return with the shared settleRef + flag settlement-applied so this
+      // rollback-produced FAILED payout is not re-detected as unsettled and
+      // double-returned (on BOTH buckets) by the reconciliation repair.
+      await this.returnReservation(
+        campaignId,
+        beneficiaryId,
+        currency,
+        amount,
+        `bpay:${payoutId}:returned`
+      );
+      await this.payoutRepo.markSettlementApplied(payoutId, 'FAILED');
+    });
   }
 
   private async assertOwnerOrAdmin(
