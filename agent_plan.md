@@ -1,5 +1,11 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — ARM64 native/runtime candidates pass ELF checks
+
+- Reconciled all51 pinned Android patch references and applied10 runtime-relevant patches. Isolated ARM64 libc++ build passes; it and three source-built React Native libraries pass LOAD/RELRO. Only exported-symbol difference from NDK libc++ is the compiler profiling marker; runtime/ABI/device acceptance remains open.
+- C++ x86_64 candidate27955 and React Native70084 remain live. Candidate binaries are not installed into the app. Details and reproducible paths in `docs/compliance/NATIVE_PERMISSIONS.md`; no API/shared changes.
+
+
 ### 2026-09-13 — Hermes candidate alignment verified
 
 - Corrected source-built Hermes passes LOAD/RELRO on both64-bit ABIs and preserves all71 defined dynamic exports per ABI. ReactAndroid build70084 remains live; final packaging/device and prebuilt runtime gates stay open.
