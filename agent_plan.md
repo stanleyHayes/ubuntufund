@@ -2,6 +2,8 @@
 
 ### 2026-09-12 — Ghana and mobile store compliance goal (IN PROGRESS)
 
+- Android16KB image installed; dedicated emulator5580 booted with PAGE_SIZE16384. APK installed and cold-launched with backcompat properties verified off; ReactNativeJS main/resumed activity, empty crash buffer. Startup-only scope and logs recorded in NATIVE_PERMISSIONS.md; RELRO/full-device/provider/store checks remain open. API24306 remains live; root source unchanged.
+
 - Isolated dispute safeguard: creation/status writes serialize against campaign payout locking; automatic final reservation rechecks unresolved disputes. All 28 focused tests/types/lint pass, including concurrent new/reopened disputes with retry/409/no transfer. Root API regression24306 retains baseline0bb30ee; fast-forward only after terminal result, then current regression required. Details KYC_REVIEW_INTEGRITY.md.
 
 - Actual built APK decoded and checked: SDK36, backup disabled, Firebase defaults disabled, blocked permissions absent and screen-sharing declarations retained. Packaged backup resources resolve to res/Vk.xml and res/m3.xml; all nine exclusions verified for full/cloud/device-transfer. Hashes/provenance in NATIVE_PERMISSIONS.md; physical/runtime/store gates remain open. API24306/image74629 confirmed live.
