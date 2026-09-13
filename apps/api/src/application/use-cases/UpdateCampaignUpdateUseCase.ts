@@ -1,4 +1,5 @@
-import type { PublicationAdmissionPort } from '../../domain/ports/outbound/PublicationAdmissionPort.js';
+import type { CampaignContentWritePort } from '../../domain/ports/outbound/CampaignContentWritePort.js';
+import type { PublicationAdmissionPort, PublicationSubmission } from '../../domain/ports/outbound/PublicationAdmissionPort.js';
 import type { CampaignUpdate, UpdateCampaignUpdateInput } from '@ubuntu-fund/types';
 import type { CampaignUpdateRepositoryPort } from '../../domain/ports/outbound/CampaignUpdateRepositoryPort.js';
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js';
@@ -25,14 +26,16 @@ export class UpdateCampaignUpdateUseCase {
   constructor(
     private readonly updateRepo: CampaignUpdateRepositoryPort,
     private readonly campaignRepo: CampaignRepositoryPort,
-    private readonly admission?: PublicationAdmissionPort
+    private readonly admission?: PublicationAdmissionPort,
+    private readonly publication?: CampaignContentWritePort
   ) {}
 
   async execute(
     campaignId: string,
     updateId: string,
     input: UpdateCampaignUpdateInput,
-    userId: string
+    userId: string,
+    authVersion = ''
   ): Promise<CampaignUpdate> {
     const update = await this.updateRepo.findById(updateId);
     if (!update || update.campaignId !== campaignId) {
@@ -43,6 +46,7 @@ export class UpdateCampaignUpdateUseCase {
     // authorship left the organization unable to moderate its own campaign's
     // updates. The campaign owner can always act, as with comments.
     const campaign = await this.campaignRepo.findById(campaignId);
+    if (!campaign) throw new AppError('Campaign not found', 404);
     if (update.authorId !== userId && campaign?.creatorId !== userId) {
       throw new AppError('You can only edit your own updates', 403);
     }
@@ -56,8 +60,12 @@ export class UpdateCampaignUpdateUseCase {
     });
 
     if (!this.admission) throw new AppError('Publication review is unavailable', 503);
-    await this.admission.assertAllowed({ actorId: userId, action: 'update.edit', resourceId: updateId, baseVersion, text: JSON.stringify([update.title, update.content, update.type]), mediaUrls: update.mediaUrls, automatedReviewConsent: input.automatedReviewConsent });
-    const saved = await this.updateRepo.update(update, new Date(baseVersion));
-    return toDTO(saved);
+    const submission: PublicationSubmission = { actorId: userId, action: 'update.edit', resourceId: updateId, baseVersion, text: JSON.stringify([update.title, update.content, update.type]), mediaUrls: update.mediaUrls, automatedReviewConsent: input.automatedReviewConsent };
+    await this.admission.assertAllowed(submission);
+    if (!this.publication || !this.admission.assertCurrent) throw new AppError('Update publication verification is unavailable', 503);
+    return this.publication.run(userId, authVersion, campaignId, campaign.creatorId, async () => {
+      await this.admission!.assertCurrent!(submission);
+      return toDTO(await this.updateRepo.update(update, new Date(baseVersion)));
+    });
   }
 }

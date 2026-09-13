@@ -1,3 +1,4 @@
+import { MongoCampaignContentWrite } from './infrastructure/adapters/outbound/persistence/MongoCampaignContentWrite.js'
 import { MongoCommentCreation } from './infrastructure/adapters/outbound/persistence/MongoCommentCreation.js'
 import { MongoLiveSessionCreation } from './infrastructure/adapters/outbound/persistence/MongoLiveSessionCreation.js'
 import { MongoCreatorWithdrawalTransaction } from './infrastructure/adapters/outbound/persistence/MongoCreatorWithdrawalTransaction.js'
@@ -1102,9 +1103,10 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     campaignUpdateRepo,
     campaignRepo,
     publicationAdmission,
+    new MongoCampaignContentWrite(),
   )
   const getCampaignUpdatesUseCase = new GetCampaignUpdatesUseCase(campaignUpdateRepo, campaignRepo, publicProfileVisibility)
-  const updateCampaignUpdateUseCase = new UpdateCampaignUpdateUseCase(campaignUpdateRepo, campaignRepo, publicationAdmission)
+  const updateCampaignUpdateUseCase = new UpdateCampaignUpdateUseCase(campaignUpdateRepo, campaignRepo, publicationAdmission, new MongoCampaignContentWrite())
   const deleteCampaignUpdateUseCase = new DeleteCampaignUpdateUseCase(campaignUpdateRepo, campaignRepo)
   const pinCampaignUpdateUseCase = new PinCampaignUpdateUseCase(campaignUpdateRepo, campaignRepo)
   const campaignCommentUseCases = new CampaignCommentUseCases(

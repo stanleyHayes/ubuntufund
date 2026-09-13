@@ -46,7 +46,8 @@ export class CampaignUpdateController {
       const update = await this.createCampaignUpdateUseCase.execute(
         req.params.id as string,
         req.body,
-        req.userId!
+        req.userId!,
+        req.authVersion
       );
       res.status(201).json({
         data: update,
@@ -68,7 +69,8 @@ export class CampaignUpdateController {
         req.params.id as string,
         req.params.updateId as string,
         req.body,
-        req.userId!
+        req.userId!,
+        req.authVersion
       );
       res.json({
         data: update,

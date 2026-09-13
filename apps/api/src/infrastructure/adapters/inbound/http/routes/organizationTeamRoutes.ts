@@ -1,3 +1,4 @@
+import { MongoCampaignContentWrite } from '../../../outbound/persistence/MongoCampaignContentWrite.js'
 import { createHash } from 'node:crypto'
 import { hasCurrentLegalAcceptance } from '@ubuntu-fund/types'
 import type { UnitOfWorkPort } from '../../../../../domain/ports/outbound/UnitOfWorkPort.js'
@@ -289,18 +290,14 @@ export function createOrganizationTeamRoutes(auth: RequestHandler, admission: Pu
           content: z.string().trim().min(1).max(5000),
         })
         .parse(req.body)
-      await admission.assertAllowed({ actorId: req.userId!, action: 'update.create', resourceId: campaignId, text: JSON.stringify([input.title, input.content, 'general']), mediaUrls: [], automatedReviewConsent: input.automatedReviewConsent })
-      // Recheck membership after an asynchronous provider call.
-      await access(organizationId, req.userId!, ['owner', 'admin', 'editor'])
-      const update = await CampaignUpdateModel.create({
-        campaignId,
-        authorId: req.userId,
-        ...input,
-        type: 'general',
-        mediaUrls: [],
-        isPinned: false,
+      const submission = { actorId: req.userId!, action: 'update.create' as const, resourceId: campaignId, text: JSON.stringify([input.title, input.content, 'general']), mediaUrls: [], automatedReviewConsent: input.automatedReviewConsent }
+      await admission.assertAllowed(submission)
+      if (!admission.assertCurrent) throw new AppError('Update publication verification is unavailable', 503)
+      return new MongoCampaignContentWrite().run(req.userId!, req.authVersion ?? '', campaignId, organizationId, async () => {
+        await admission.assertCurrent!(submission)
+        const update = await CampaignUpdateModel.create({ campaignId, authorId: req.userId, title: input.title, content: input.content, type: 'general', mediaUrls: [], isPinned: false })
+        return { id: String(update._id) }
       })
-      return { id: String(update._id) }
     }),
   )
   return router
