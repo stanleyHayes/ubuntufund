@@ -101,3 +101,11 @@ Read-only inspection of the resolved Maven AAR io.github.webrtc-sdk:android:144.
 Maven Central metadata was fetched directly (`/tmp/ujimora-webrtc-maven-metadata.xml`). Candidate 144.7559.15 was downloaded for inspection only, not installed or selected by the build. Its arm64 RELRO remainder is zero, but x86_64 remains 0x2000; both LOAD alignments are 0x4000. Candidate AAR SHA-256 `fc7c8d027eb33860ccbb7847988f7f942d44a92d1f575348bba6c0250cde4071`, details `/tmp/ujimora-webrtc-elf-inspection/candidate-144.7559.15.json`. This same-major candidate is therefore not a proven complete fix. Metadata also lists 150.7871.01; compatibility and artifact evaluation remain open before choosing an upgrade or rebuilding upstream. Do not remove a supported ABI merely to hide a failed check.
 
 Reference: [Android ELF and RELRO checks](https://developer.android.com/guide/practices/page-sizes). Current APK build 37305 and API regression 67839 remain live on their original source; no dependencies or code changed during this inspection.
+
+### Repeatable ELF checker and runtime preparation
+
+`scripts/compliance/inspect-android-native.py <APK-or-AAR> --readelf <NDK-llvm-readelf>` inventories each packaged arm64-v8a/x86_64 library, SHA-256, LOAD alignment and RELRO end remainders. It uses generated temporary filenames rather than extracting archive-controlled paths; missing 64-bit libraries are not a pass. Exit 1 reports alignment findings; ZIP alignment, signing, runtime and store checks are explicitly outside its scope.
+
+The script reproduced both failing 64-bit RELRO checks in newer candidate 150.7871.01 (exit 1): arm64 0x3000, x86_64 0x2000, despite 0x4000 LOAD alignment. AAR hash `0a1627b1a48c2bc17d9a40d62fc47bd45166f44a92d1f575348bba6c0250cde379b0`; `/tmp/ujimora-webrtc-repeatable-check.json`. No upgrade applied. This extends the candidate evaluation; it does not establish a runtime crash or a resolved compatibility gate.
+
+SDK catalog confirms dedicated Android 35 Google APIs 16 KB ARM image availability. Installation has started, `/tmp/ujimora-android-16kb-image-install.log`; no emulator boot/page-size/device behavior is claimed. ADB inventory had no connected devices. Full APK assemble 37305 and API regression 67839 remain live on source 69d94fa; generated native code/dependency intermediates must remain intact.

@@ -2,6 +2,8 @@
 
 ### 2026-09-12 — Ghana and mobile store compliance goal (IN PROGRESS)
 
+- Added repeatable Android 64-bit ELF inventory/check command. Newest inspected WebRTC 150.7871.01 also has nonzero RELRO remainders on both ABIs; no upgrade applied. Dedicated Android 35 ARM 16 KB emulator image installation started for runtime evidence. APK 37305 and API 67839 confirmed live; source unchanged. Details in NATIVE_PERMISSIONS.md.
+
 - WebRTC AAR inspection found 16 KB LOAD alignment but nonzero RELRO end alignment on both installed 64-bit libraries. Candidate 144.7559.15 fixes arm64 alignment only; x86_64 remains nonzero. No dependency upgrade or runtime success claimed; hashes/evidence and next compatibility evaluation in NATIVE_PERMISSIONS.md. APK 37305/API 67839 confirmed live and unchanged.
 
 - Android full assemble 37305 remains live; active ninja/clang compilation confirmed for arm64 appmodules/expo-modules-core. API regression 67839 also confirmed live. Read-only clipboard-provider inspection verifies its restricted .clipboard cache root is separate from recovery-code export files; no unsafe exported-flag change made. Artifact/device/clipboard lifecycle evidence remains open in NATIVE_PERMISSIONS.md.
