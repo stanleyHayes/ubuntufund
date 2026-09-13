@@ -138,7 +138,7 @@ export class ApprovePayoutUseCase {
         throw new AppError('Recipient review storage is unavailable', 503)
       if (!this.manualApproval) throw new AppError('Payout approval transaction is unavailable.', 503)
       const firstApproval = await this.manualApproval.run(requester, async () => {
-        const current = await this.payoutRepo.findById(payout.id)
+        const current = await this.payoutRepo.lockPendingForReview(payout.id)
         if (!current || current.status !== 'PENDING') throw new AppError('Payout is no longer pending approval', 409)
         const needsChecker = this.payoutsConfig.dualApprovalAmount > 0 && current.amount >= this.payoutsConfig.dualApprovalAmount
         if (needsChecker && current.firstApprovedBy === requester.userId)

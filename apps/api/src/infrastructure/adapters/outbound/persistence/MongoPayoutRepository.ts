@@ -178,6 +178,15 @@ export class MongoPayoutRepository implements PayoutRepositoryPort {
     return docs.map(toDomain)
   }
 
+  async lockPendingForReview(id: string): Promise<PayoutEntity | null> {
+    const doc = await PayoutModel.findOneAndUpdate(
+      { _id: id, status: 'PENDING' },
+      { $inc: { reviewWriteVersion: 1 } },
+      { new: true, timestamps: false },
+    )
+    return doc ? toDomain(doc) : null
+  }
+
   async recordFirstApproval(id: string, makerId: string): Promise<PayoutEntity | null> {
     const doc = await PayoutModel.findOneAndUpdate(
       { _id: id, status: 'PENDING', firstApprovedBy: { $exists: false } },

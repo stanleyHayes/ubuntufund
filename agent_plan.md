@@ -2,6 +2,8 @@
 
 ### 2026-09-12 — Ghana and mobile store compliance goal (IN PROGRESS)
 
+- Payout reviews now conditionally write the pending payout within the authorized review transaction, serializing ordinary/second-review evidence against concurrent status changes. All 46 focused tests, API types/lint pass, including snapshot interleavings with transaction retry and no appended review/funds movement. Remaining snapshot/consumer/release scope recorded in KYC_REVIEW_INTEGRITY.md.
+
 - Campaign wallet settlement now checks current staff role, nonclosed account and credential version inside its money transaction. All 40 focused tests, types/lint pass, including three revocation persistence cases and HTTP rotation after review; corrected new fixture idempotency/balance assumptions without changing production validation. Remaining campaign/destination/fee and release boundaries documented in KYC_REVIEW_INTEGRITY.md.
 
 - Recipient/wallet review evidence now requires current staff authorization; high-value first approval and review commit together, and same-maker retries reject before duplicate review. All 44 focused tests plus API types/lint pass, including maker rollback/revocation and preserved final-bank revocation coverage. Remaining status/snapshot/wallet boundaries are explicit in KYC_REVIEW_INTEGRITY.md.

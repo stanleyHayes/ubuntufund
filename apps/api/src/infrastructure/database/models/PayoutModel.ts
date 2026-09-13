@@ -28,6 +28,7 @@ export interface PayoutDocument extends Document {
   approvedBy?: string
   walletReviewNote?: string
   walletReviews?: { adminId: string; note: string; reviewedAt: Date }[]
+  reviewWriteVersion?: number
   firstApprovedBy?: string
   firstApprovedAt?: Date
   legs?: PayoutLeg[]
@@ -106,6 +107,7 @@ const payoutSchema = new Schema<PayoutDocument>(
       type: [{ adminId: String, note: String, reviewedAt: Date }],
       default: undefined,
     },
+    reviewWriteVersion: { type: Number },
     firstApprovedBy: { type: String },
     firstApprovedAt: { type: Date },
     legs: { type: [payoutLegSchema], default: undefined },

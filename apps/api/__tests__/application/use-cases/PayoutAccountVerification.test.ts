@@ -88,6 +88,7 @@ describe('payout account verification', () => {
     const balance = { reserveForPayout: vi.fn() }
     const uc = new ApprovePayoutUseCase(
       {
+        lockPendingForReview: async () => ({ status: 'PENDING', recipientId: 'r', netAmount: 60000, type: 'standard' }),
         findById: async () => ({
           status: 'PENDING',
           recipientId: 'r',

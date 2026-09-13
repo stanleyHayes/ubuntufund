@@ -104,7 +104,7 @@ describe('wallet payout policy', () => {
       createdAt: new Date(),
       updatedAt: new Date(),
     })
-    const payouts = { findById: async () => p, recordFirstApproval: vi.fn(async () => p) }
+    const payouts = { findById: async () => p, lockPendingForReview: async () => p, recordFirstApproval: vi.fn(async () => p) }
     const wallet = { settleCampaign: vi.fn(), recordCampaignReview: vi.fn() }
     const uc = new ApprovePayoutUseCase(
       payouts as never,

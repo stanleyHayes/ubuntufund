@@ -16,6 +16,8 @@ export interface PayoutRepositoryPort {
   extendProviderCheckLease(id: string, ttlMs: number): Promise<void>
   create(payout: PayoutEntity): Promise<PayoutEntity>
   findById(id: string): Promise<PayoutEntity | null>
+  /** Conditional write inside approval transaction; conflicts with status changes. */
+  lockPendingForReview(id: string): Promise<PayoutEntity | null>
   findByCampaignId(campaignId: string): Promise<PayoutEntity[]>
   /** Correlate a provider transfer webhook back to its (single-transfer) payout. */
   findByProviderRef(providerRef: string): Promise<PayoutEntity | null>

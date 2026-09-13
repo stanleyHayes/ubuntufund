@@ -16,7 +16,7 @@ describe('ambiguous transfer outcomes', () => {
   });
   it('keeps funds reserved and the original reference after a timeout', async () => {
     const p = { id: 'payout', status: 'PENDING', amount: 100, netAmount: 100, fee: 0, type: 'standard', currency: 'GHS', campaignId: 'campaign', recipientId: 'recipient' };
-    const repo = { findById: vi.fn(async () => p), transitionToProcessing: vi.fn(async () => ({ ...p, status: 'PROCESSING' })), transitionToFailed: vi.fn() };
+    const repo = { findById: vi.fn(async () => p), lockPendingForReview: vi.fn(async () => p), transitionToProcessing: vi.fn(async () => ({ ...p, status: 'PROCESSING' })), transitionToFailed: vi.fn() };
     const balances = { reserveForPayout: vi.fn(async () => ({})), returnToAvailable: vi.fn() };
     const provider = { isConfigured: () => true, getBalance: async () => [{ currency: 'GHS', balance: 1000 }], initiateTransfer: vi.fn().mockRejectedValue(new TransferOutcomeUnknownError()) };
     const uc = new ApprovePayoutUseCase(repo as never, { recordReview: vi.fn(async () => {}), findById: async () => ({ recipientCode: 'RCP_test' }) } as never, balances as never, provider as never, { dualApprovalAmount: 0, maxTransferAmount: 50000 } as never, undefined, undefined, undefined, { run: async (_requester, work) => work() });

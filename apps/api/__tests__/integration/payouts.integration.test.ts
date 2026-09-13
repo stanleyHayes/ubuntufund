@@ -402,6 +402,41 @@ describe('Payouts Integration', () => {
     } finally { hook.mockRestore(); }
   });
 
+  it.each([false, true])('rejects status changed after review transaction snapshot (second approval=%s)', async (second) => {
+    const owner = await registerUser(app, uniqueEmail('status-owner'));
+    const campaignId = await createActiveCampaign(app, owner.token, owner.userId);
+    const admin = await createAdmin(app, uniqueEmail('status-admin'));
+    await fundCampaign(app, campaignId, second ? 100000 : 1000);
+    await endCampaign(campaignId);
+    const recipient = await addRecipient(app, campaignId, owner.token, 'ghipss');
+    const created = await request(app).post(`/api/v1/campaigns/${campaignId}/payouts`).set('Authorization', `Bearer ${owner.token}`).send({ amount: second ? 60000 : 500 }).expect(201);
+    const id = created.body.data.id;
+    if (second) {
+      const maker = await createAdmin(app, uniqueEmail('status-maker'));
+      await request(app).post(`/api/v1/payouts/${id}/approve`).set('Authorization', `Bearer ${maker.token}`).send({ reviewNote: 'Reviewed beneficiary ownership and receiving capacity.' }).expect(200);
+    }
+    const before = await TransferRecipientModel.findById(recipient.body.data.id).lean();
+    const balance = await CampaignBalanceModel.findOne({ campaignId }).lean();
+    const original = MongoPayoutRepository.prototype.lockPendingForReview;
+    let injected = false;
+    const hook = vi.spyOn(MongoPayoutRepository.prototype, 'lockPendingForReview').mockImplementation(async function(payoutId) {
+      if (!injected) {
+        injected = true;
+        await PayoutModel.updateOne({ _id: payoutId }, { $set: { status: 'FAILED' } }, { session: null });
+      }
+      return original.call(this, payoutId);
+    });
+    vi.mocked(fetch).mockClear();
+    try {
+      await request(app).post(`/api/v1/payouts/${id}/approve`).set('Authorization', `Bearer ${admin.token}`).send({ reviewNote: 'Reviewed beneficiary ownership and receiving capacity.' }).expect(409);
+      expect(hook.mock.calls.length).toBeGreaterThan(1);
+      expect((await TransferRecipientModel.findById(recipient.body.data.id))?.reviews?.length || 0).toBe(before?.reviews?.length || 0);
+      expect((await CampaignBalanceModel.findOne({ campaignId }))?.availableBalance).toBe(balance?.availableBalance);
+      expect((await PayoutModel.findById(id))?.status).toBe('FAILED');
+      expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).endsWith('/transfer'))).toBe(false);
+    } finally { hook.mockRestore(); }
+  });
+
   it('non-owners cannot register a payout recipient', async () => {
     const owner = await registerUser(app, uniqueEmail('own'));
     const campaignId = await createActiveCampaign(app, owner.token, owner.userId);
