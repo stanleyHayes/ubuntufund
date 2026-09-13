@@ -1,5 +1,11 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — Current APK16KB startup evidence
+
+- Current APK installs successfully on dedicated emulator-5580 (PAGE_SIZE16384; linker compatibility=false, package compatibility disabled=true) and cold-starts in665ms. ReactNativeJS main runs, PID7452 remains alive, screenshot inspected: expected unavailable-API screen and app tab bar. API URL deliberately non-routable; no real payment/provider/account operation exercised.
+- Logs `/tmp/ujimora-current-apk-{install,startup,startup-logcat,maps}.log`, screenshot `/tmp/ujimora-current-apk-startup.png`. Startup does not close27static ELF findings or prove feature-loaded libraries/physical-device/store acceptance. API45526 still running.
+
+
 ### 2026-09-13 — Current Android APK built;27 ELF failures remain
 
 - Current-source/root Android89595 completes exit0 in5m35s,973tasks (937executed), lint enabled. APK SHA256 f058b3eac4e037d56963b538cfffa494790769de4edc9a63be9adce7801a7296. Debug-signed, non-routable API, normal committed dependencies/default NDK27.1.
