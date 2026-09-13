@@ -571,3 +571,26 @@ not all historical provenance or all financial consumers. Automatic prior-histor
 address binding, beneficiary/affiliate flows, wider release gates and the current
 full regression remain separate. Root regression88675 is still on c8adacf; do not
 fast-forward that source until it reaches a terminal result.
+
+## Automatic history is bound to reviewed account details
+
+The final automatic reservation now selects settled manual history only from
+payout-specific reviews whose destination snapshots match the current provider
+code, account number, bank code, currency, type, campaign and owner. Only the latest
+review per payout/reviewer is eligible; an older matching entry cannot override a
+later correction. The selected paid payout is still locked and revalidated, and
+its maker snapshot must also match when present. Legacy records without snapshots
+fall back to manual review, where a fresh settled manual payout can establish
+eligible history. No legacy evidence is fabricated or silently backfilled.
+
+All 44 focused automatic integration/verification tests, API types/lint and
+whitespace checks pass. Five added cases cover missing snapshots, changed account
+number/bank code, missing maker evidence and superseded review evidence, each with
+409, unchanged funds/PENDING state and no provider call. The existing real-service
+success and concurrent history-change tests also pass. Logs:
+/tmp/ujimora-history-address-final-{tests,types,lint}.log.
+
+Root full regression88675 remains live on c8adacf; later history/manual snapshots
+are verified by focused suites, not that baseline run. Beneficiary/affiliate and
+other financial consumers, full current regression, native/provider/store and
+legal/regulatory gates remain open.

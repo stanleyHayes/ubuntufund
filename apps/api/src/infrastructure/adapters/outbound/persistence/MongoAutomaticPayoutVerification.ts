@@ -70,14 +70,26 @@ export class MongoAutomaticPayoutVerification {
             !recipient.reviewedBy || !recipient.reviewNote || !recipient.resolvedAccountName ||
             !recipient.reviewedAt || recipient.reviewedAt.getTime() < cutoff)
           throw new AppError('Destination needs a current ownership review.', 409)
+        const fields = ['recipientCode', 'accountNumber', 'bankCode', 'currency', 'type', 'campaignId', 'createdBy'] as const
+        const latestReviews = new Map<string, NonNullable<typeof recipient.reviews>[number]>()
+        for (const review of recipient.reviews ?? []) latestReviews.set(JSON.stringify([review.payoutId, review.reviewedBy]), review)
+        const reviewedDestinations = [...latestReviews.values()].filter(review =>
+          /^[a-f0-9]{24}$/i.test(review.payoutId) && review.destination &&
+          fields.every(field => typeof recipient[field] === 'string' && recipient[field].length > 0 && review.destination![field] === recipient[field]),
+        )
+        if (!reviewedDestinations.length)
+          throw new AppError('No settled manual history for the reviewed account details; manual review required.', 409)
         // Lock the exact settled manual history row consumed by this decision.
         // A reversal or correction after our snapshot must retry this check.
         const previous = await PayoutModel.findOneAndUpdate({
           _id: { $ne: payout.id }, recipientId: payout.recipientId,
+          $or: reviewedDestinations.map(review => ({ _id: review.payoutId, approvedBy: review.reviewedBy })),
           requestedBy: userId, campaignId: payout.campaignId, currency: payout.currency,
           status: 'PAID', settlementApplied: true,
           approvedBy: { $exists: true, $nin: ['', null, 'system:auto-payout'] },
         }, { $inc: { historyWriteVersion: 1 } }, { new: true, timestamps: false })
+        if (previous?.firstApprovedBy && !reviewedDestinations.some(review => review.payoutId === String(previous._id) && review.reviewedBy === previous.firstApprovedBy))
+          throw new AppError('Prior maker review does not match this destination; manual review required.', 409)
         if (!previous) throw new AppError('A settled manual payout to this destination is required; manual review required.', 409)
 
       }

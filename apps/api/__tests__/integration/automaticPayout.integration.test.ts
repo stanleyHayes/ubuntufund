@@ -1,3 +1,4 @@
+import { MongoTransferRecipientRepository } from '../../src/infrastructure/adapters/outbound/persistence/MongoTransferRecipientRepository.js'
 import { MongoDisputeRepository } from '../../src/infrastructure/adapters/outbound/persistence/MongoDisputeRepository.js'
 import { DisputeModel } from '../../src/infrastructure/database/models/DisputeModel.js'
 import { ApprovePayoutUseCase } from '../../src/application/use-cases/ApprovePayoutUseCase.js'
@@ -91,9 +92,9 @@ beforeEach(async () => {
     reviewNote: 'Account ownership and capacity reviewed.',
     reviewedAt: new Date(),
     resolvedAccountName: 'Owner',
-    currency: 'GHS', recipientCode: 'synthetic-recipient',
+    currency: 'GHS', recipientCode: 'synthetic-recipient', accountNumber: '123', bankCode: 'bank',
   })
-  await PayoutModel.collection.insertOne({
+  const previous = await PayoutModel.collection.insertOne({
     campaignId: String(ids.campaign),
     recipientId: String(ids.recipient),
     requestedBy: String(ids.user),
@@ -108,6 +109,7 @@ beforeEach(async () => {
     createdAt: new Date(),
     updatedAt: new Date(),
   })
+  await new MongoTransferRecipientRepository().recordReview(String(ids.recipient), 'admin', 'Account ownership and capacity reviewed.', String(previous.insertedId))
 })
 async function pending(amount = 300) {
   const doc = await PayoutModel.create({
@@ -450,4 +452,25 @@ it.each(['reversed', 'unsettled', 'automatic', 'empty_approver', 'currency', 'de
     expect((await repo.findById(item.id))?.status).toBe('PENDING')
     expect(provider.initiateTransfer).not.toHaveBeenCalled()
   } finally { release(); await result; check.mockRestore() }
+})
+
+it.each(['missing_snapshot', 'accountNumber', 'bankCode', 'maker', 'corrected_review'])('requires paid history matching the reviewed destination (%s)', async change => {
+  const item = await pending()
+  await seedFinalClaim(item.id)
+  await CampaignBalanceModel.create({ campaignId: String(ids.campaign), currency: 'GHS', availableBalance: 1000 })
+  if (change === 'missing_snapshot') await TransferRecipientModel.updateOne({ _id: ids.recipient }, { reviews: [] })
+  else if (change === 'corrected_review') {
+    const previous = await PayoutModel.findOne({ status: 'PAID' })
+    await TransferRecipientModel.updateOne({ _id: ids.recipient }, { accountNumber: 'corrected' })
+    await new MongoTransferRecipientRepository().recordReview(String(ids.recipient), 'admin', 'Corrected destination review evidence.', String(previous!._id))
+    await TransferRecipientModel.updateOne({ _id: ids.recipient }, { accountNumber: '123' })
+  }
+  else if (change === 'maker') await PayoutModel.updateOne({ status: 'PAID' }, { firstApprovedBy: 'different-maker' })
+  else await TransferRecipientModel.updateOne({ _id: ids.recipient }, { [change]: 'changed-account-details' })
+  const provider = { isConfigured: () => true, getBalance: async () => [{ currency: 'GHS', balance: 1000 }], initiateTransfer: vi.fn() }
+  const real = new ApprovePayoutUseCase(repo, { findById: async () => ({ recipientCode: 'synthetic-recipient', type: 'ghipss' }) } as never, new MongoCampaignBalanceRepository(), provider as never, { dualApprovalAmount: 40000, maxTransferAmount: 50000 } as never, undefined, undefined, new MongoAutomaticPayoutVerification())
+  await expect(real.executeAutomatic(item.id)).rejects.toMatchObject({ statusCode: 409 })
+  expect((await CampaignBalanceModel.findOne())?.availableBalance).toBe(1000)
+  expect((await repo.findById(item.id))?.status).toBe('PENDING')
+  expect(provider.initiateTransfer).not.toHaveBeenCalled()
 })
