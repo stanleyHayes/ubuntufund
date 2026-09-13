@@ -1,3 +1,4 @@
+import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 import type { DonationSettlementBreakdown } from '@ubuntu-fund/types';
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js';
 import type { CampaignBalanceRepositoryPort } from '../../domain/ports/outbound/CampaignBalanceRepositoryPort.js';
@@ -38,8 +39,18 @@ export class CampaignLedgerProjector {
   async projectDonation(
     campaignId: string,
     breakdown: DonationSettlementBreakdown,
-    donationIntentId?: string
+    donationIntentId?: string,
+    requireOpenCampaign = false
   ): Promise<void> {
+    // Wallet funds have not left an external provider: eligibility must still
+    // hold in this transaction. The following campaign write serializes any
+    // concurrent closure/status/currency change against this snapshot read.
+    if (requireOpenCampaign) {
+      const campaign = await this.campaignRepo.findById(campaignId);
+      if (!campaign?.canReceiveDonation() || campaign.goalAmount.currency !== breakdown.currency) {
+        throw new AppError('Campaign is not accepting this wallet donation', 409);
+      }
+    }
     // raisedAmount is credited through the ledger settlement (this seam) only.
     const credited = await this.campaignRepo.incrementRaised(
       campaignId,
@@ -47,12 +58,7 @@ export class CampaignLedgerProjector {
       breakdown.currency
     );
     if (!credited) {
-      // The campaign closed between validation and settlement; the money was
-      // still taken, so log rather than lose the projection silently.
-      logger.warn(
-        { campaignId, amount: breakdown.amount },
-        'raised projection skipped: campaign no longer creditable'
-      );
+      throw new AppError('Campaign accounting could not be updated; settlement requires reconciliation', 409);
     }
 
     await this.campaignBalanceRepo.applyDonation(campaignId, breakdown.currency, {

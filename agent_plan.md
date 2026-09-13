@@ -1,5 +1,12 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — Required campaign accounting and wallet eligibility
+
+- A missing/deleted/currency-mismatched campaign projection now aborts the settlement transaction instead of leaving partial accounting marked successful. Wallet settlement checks current campaign status/end date/currency and serializes against concurrent moderation; late externally verified payments remain accountable after expiry.
+- All 27 focused integration tests, API types, affected lint and whitespace checks pass. No production funds modified. Evidence, late-payment semantics and remaining historical/eligibility/provenance gaps: `docs/compliance/DONATION_SETTLEMENT_INTEGRITY.md`.
+- Implemented in isolated checkout while root full regression97713 remains on unchanged 428402b API/shared. Do not fast-forward root until that run is terminal; this delta has separate focused evidence.
+
+
 ### 2026-09-13 — Atomic wallet donation accounting
 
 - Published as `428402b`; root main synced to origin. Full API regression97713 is now running on unchanged 428402b API/shared source, log `/tmp/ujimora-wallet-atomic-full-regression.log`. Keep root API/shared frozen until its terminal result; continue read-only audit or new implementation in the isolated checkout.

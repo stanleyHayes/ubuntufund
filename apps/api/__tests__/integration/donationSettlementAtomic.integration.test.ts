@@ -190,3 +190,36 @@ it('rejects wallet settlement amounts that differ from the stored charge', async
   expect((await WalletModel.findById(f.wallet!.id))?.balance).toBe(200);
   expect((await DonationIntentModel.findById(f.intent.id))?.status).toBe('PENDING');
 });
+
+for (const invalidCampaign of ['deleted', 'currency'] as const) {
+  it(`rolls back all settlement writes when campaign accounting rejects ${invalidCampaign}`, async () => {
+    const f = await fixture();
+    await CampaignModel.updateOne({ _id: f.campaign.id }, { $set: invalidCampaign === 'deleted' ? { deletedAt: new Date() } : { currency: 'USD' } });
+    await expect(f.useCase.execute(f.intent, f.breakdown)).rejects.toThrow('Campaign accounting could not be updated');
+    expect((await DonationIntentModel.findById(f.intent.id))?.status).toBe('PENDING');
+    expect(await DonationModel.countDocuments({ campaignId: f.campaign.id })).toBe(0);
+    expect(await JournalEntryModel.countDocuments({ donationIntentId: f.intent.id })).toBe(0);
+    expect(await OutboxModel.countDocuments({ 'payload.donationIntentId': f.intent.id })).toBe(0);
+  });
+}
+it('rechecks a campaign blocked independently after wallet settlement started', async () => {
+  const f = await fixture(false, true);
+  const original = f.journal.execute.bind(f.journal);
+  vi.spyOn(f.journal, 'execute').mockImplementationOnce(async (...args) => {
+    const result = await original(...args);
+    // A separate moderation write, outside the settlement transaction snapshot.
+    await CampaignModel.collection.updateOne({ _id: f.campaign._id }, { $set: { status: 'blocked' } });
+    return result;
+  });
+  await expect(f.useCase.execute(f.intent, f.breakdown)).rejects.toThrow('not accepting this wallet donation');
+  expect((await WalletModel.findById(f.wallet!.id))?.balance).toBe(200);
+  expect(await WalletTransactionModel.countDocuments({ userId: f.intent.donorUserId })).toBe(0);
+  expect((await DonationIntentModel.findById(f.intent.id))?.status).toBe('PENDING');
+  expect(await DonationModel.countDocuments({ campaignId: f.campaign.id })).toBe(0);
+});
+it('accounts for a verified external payment received after the campaign ended', async () => {
+  const f = await fixture();
+  await CampaignModel.updateOne({ _id: f.campaign.id }, { $set: { status: 'expired', endDate: new Date(Date.now() - 1000) } });
+  await f.useCase.execute(f.intent, f.breakdown);
+  await assertCommitted(f);
+});

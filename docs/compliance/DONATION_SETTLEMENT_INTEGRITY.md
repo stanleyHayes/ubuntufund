@@ -32,9 +32,17 @@ All 44 tests across six focused files pass, including real-database failures aft
 
 The full earlier de49df2 API baseline passed 1,187 tests/162 files; it excludes the later split-consent and wallet deltas above. No production balances or historical records have been modified.
 
+## Required campaign projection and wallet eligibility — 2026-09-13
+
+CampaignLedgerProjector no longer logs and continues when the campaign raised-total write cannot match the campaign/currency. It throws inside settlement so the intent, journal, balance, outbox and any wallet debit roll back together. Wallet donations additionally read current campaign status/end date/currency within that transaction; the campaign write serializes a concurrent moderation change against the snapshot. A blocked campaign retry fails without moving funds.
+
+Externally verified money received after an otherwise existing campaign ends remains accountable: that path does not apply the new wallet-only open-campaign gate. Missing/deleted campaigns or currency mismatch retain pending settlement for reconciliation rather than claiming complete accounting. This does not by itself refund an external provider charge.
+
+All 27 focused tests in atomic settlement and donation-intent integration pass, including deleted/currency-mismatch rollback, a moderation write after the wallet transaction snapshot, and a late external payment after campaign expiry. API types and affected lint pass. Logs: `/tmp/ujimora-campaign-credit-tests.log`, `/tmp/ujimora-campaign-credit-types.log`, `/tmp/ujimora-campaign-credit-lint.log`. Root full regression97713 still uses the preceding 428402b source and excludes this delta.
+
 ## Remaining requirements
 
 - Verify deployed wallet operation and reconcile historical wallet debits/compensations; the transaction change is prospective. Provider-independent lost-commit replay is covered locally, not by a production outage exercise.
 - Reconcile historical successful intents with missing or partial donation/journal/projection/outbox records; no historical repair or production fund mutation was performed here.
-- Revalidate exact campaign eligibility/currency and funding provenance at the relevant financial writes, including refunds and payouts.
+- Audit creator/account restrictions, original quote and funding provenance at remaining financial writes, including refunds and payouts. The wallet campaign gate above verifies current campaign status/end date/currency; it does not close every eligibility policy.
 - Verify every provider/reconciliation path and the full API suite after this change. Focused tests do not establish live-provider operation or overall regulatory/store compliance.
