@@ -81,6 +81,7 @@ export interface SubscriptionPlan {
 }
 
 export interface Subscription {
+  billingProvider?: 'web' | 'apple' | 'google';
   id: string
   userId: string
   tier: string

@@ -1,0 +1,40 @@
+import { test, expect } from '@playwright/test'
+test('keeps the same checkout attempt after a lost response and reload', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.route('**/api/v1/**', route => route.fulfill({ json: { data: [] } }))
+  await page.route('**/api/v1/creators/retry-fixture', route => route.fulfill({ json: { data: { userId: 'aaaaaaaaaaaaaaaaaaaaaaaa', displayName: 'Retry Creator', handle: 'retry-fixture', tipsEnabled: true, presetAmounts: [10, 25], currency: 'GHS', supporterCount: 0, totalReceived: 0, recentTips: [] } } }))
+  const keys: string[] = []
+  await page.route('**/api/v1/creators/retry-fixture/tips', async route => {
+    keys.push(route.request().headers()['idempotency-key'])
+    await route.abort('failed')
+  })
+  await page.goto('/creators/retry-fixture')
+  await page.getByRole('textbox', { name: 'Email address', exact: true }).fill('private@example.com')
+  await page.getByRole('button', { name: /^Support GH/ }).click()
+  await expect.poll(() => keys.length).toBe(1)
+  await page.reload()
+  await page.getByRole('textbox', { name: 'Email address', exact: true }).fill('private@example.com')
+  await page.getByRole('button', { name: /^Support GH/ }).click()
+  await expect.poll(() => keys.length).toBe(2)
+  expect(keys[0]).toMatch(/^[a-f0-9-]{36}$/)
+  expect(keys[1]).toBe(keys[0])
+  expect(await page.evaluate(() => JSON.stringify(localStorage))).not.toContain('private@example.com')
+  let status = 'PENDING'
+  await page.route('**/api/v1/creators/retry-fixture/tips', route => route.fulfill({ json: { data: { checkoutUrl: '/tip/callback?reference=tip-confirmed', reference: 'tip-confirmed', tipId: 'tip-id' } } }))
+  await page.route('**/api/v1/creators/tips/verify', route => route.fulfill({ json: { data: { status, amount: 10, currency: 'GHS', handle: 'retry-fixture', displayName: 'Retry Creator' } } }))
+  await page.getByRole('button', { name: /^Support GH/ }).click()
+  await expect(page).toHaveURL(/tip\/callback/)
+  await expect(page.getByRole('heading', { name: 'Confirming your support…' })).toBeVisible()
+  expect(await page.evaluate(() => Object.keys(localStorage).filter(key => key.startsWith('ujimora:tip-attempt:')).length)).toBe(1)
+  status = 'SUCCEEDED'
+  await page.reload()
+  await expect(page.getByRole('heading', { name: 'Thank you for your support!' })).toBeVisible()
+  expect(await page.evaluate(() => Object.keys(localStorage).filter(key => key.startsWith('ujimora:tip-attempt:')).length)).toBe(0)
+  await page.getByRole('link', { name: 'Back to Retry Creator' }).click()
+  await page.getByRole('textbox', { name: 'Email address', exact: true }).fill('private@example.com')
+  let freshKey = ''
+  await page.route('**/api/v1/creators/retry-fixture/tips', async route => { freshKey = route.request().headers()['idempotency-key']; await route.abort('failed') })
+  await page.getByRole('button', { name: /^Support GH/ }).click()
+  await expect.poll(() => freshKey).not.toBe('')
+  expect(freshKey).not.toBe(keys[0])
+})

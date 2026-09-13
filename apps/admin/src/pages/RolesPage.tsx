@@ -1,3 +1,5 @@
+import ExportMenu from '@/components/ExportMenu'
+import { exportTable } from '@/lib/exports/report'
 import {
   Box,
   Typography,
@@ -47,6 +49,7 @@ export default function RolesPage() {
           { label: 'Permissions', value: 'View only' },
         ]}
       />
+      <ExportMenu title="System roles" disabled={false} getReport={() => ({ title: "System roles", filters: ['Built-in role reference'], tables: [exportTable("System roles", DEFAULT_ROLES, { Role: r => r.name, Slug: r => r.slug, Permissions: r => r.permissions.join(', ') })] })} />
       <Alert severity="info" icon={<LockOutlinedIcon />} sx={{ mb: 3 }}>
         These built-in roles apply across the platform. Permissions are shown for reference and
         cannot be edited here.

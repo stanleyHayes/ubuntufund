@@ -8,7 +8,7 @@ import Avatar from '@mui/material/Avatar'
 import Divider from '@mui/material/Divider'
 import Button from '@mui/material/Button'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
-import MailOutlineIcon from '@mui/icons-material/MailOutline'
+import { NewsletterSignup } from '../components/NewsletterSignup'
 import AccessTimeIcon from '@mui/icons-material/AccessTime'
 import { Link as RouterLink } from 'react-router-dom'
 import { NEUMORPHIC_FOREST_VARS, SHAPE, breadcrumbList } from '@ubuntu-fund/ui'
@@ -761,44 +761,7 @@ function BlogPage() {
               <Typography variant="body2" sx={{ mb: 2.5, opacity: 0.85, lineHeight: 1.6, position: 'relative' }}>
                 Get the latest stories from Ghana's giving community, delivered to your inbox.
               </Typography>
-              <Box sx={{ position: 'relative' }}>
-                <MailOutlineIcon aria-hidden="true" sx={{ position: 'absolute', top: 14, left: 14, fontSize: 20, color: '#CFD7D0', pointerEvents: 'none' }} />
-                <Box
-                  component="input"
-                  type="email"
-                  aria-label="Newsletter email address"
-                  placeholder="Your email"
-                  sx={{
-                    width: '100%',
-                    p: 1.5,
-                    pl: 5.5,
-                    boxSizing: 'border-box',
-                    borderRadius: SHAPE.input,
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    bgcolor: 'rgba(255,255,255,0.1)',
-                    boxShadow: 'var(--neu-inset)',
-                    backdropFilter: 'var(--neu-backdrop)',
-                    color: '#fff',
-                    fontSize: '0.875rem',
-                    outline: 'none',
-                    mb: 1.5,
-                    '&::placeholder': { color: '#CFD7D0', opacity: 1 },
-                    '&:focus-visible': { outline: '2px solid #C7A24A', outlineOffset: 2, borderColor: '#C7A24A' },
-                  }}
-                />
-              </Box>
-              <Button
-                variant="contained"
-                fullWidth
-                sx={{
-                  bgcolor: '#C7A24A',
-                  color: '#1C261D',
-                  fontWeight: 700,
-                  '&:hover': { bgcolor: '#DCC07E' },
-                }}
-              >
-                Subscribe
-              </Button>
+              <NewsletterSignup label="Blog newsletter signup" />
             </Box>
           </Grid>
         </Grid>

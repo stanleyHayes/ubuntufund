@@ -1,9 +1,11 @@
+import { PublicationConsent } from '@/components/safety/PublicationConsent'
+import { PublicationReviews } from '@/components/account/PublicationReviews'
 import { useSeo } from '@/lib/seo'
 import { LoadingDots } from '@ubuntu-fund/ui'
 import { ProfileArtwork } from '@/components/profile/ProfileArtwork'
 import { ProfileImageEditor } from '@/components/profile/ProfileImageEditor'
 import PhotoCameraRoundedIcon from '@mui/icons-material/PhotoCameraRounded'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
@@ -146,6 +148,13 @@ function StatCard({ icon, value, label, color, delay }: { icon: React.ReactNode;
 // ─── Profile Page ────────────────────────────────────────────────────────────
 
 export function ProfilePage() {
+  const { user } = useAuth()
+  return <ProfileForViewer key={user?.id ?? 'guest'} />
+}
+function ProfileForViewer() {
+  const live = useRef(true)
+  useEffect(() => { live.current = true; return () => { live.current = false } }, [])
+  const [automatedReviewConsent, setAutomatedReviewConsent] = useState(false)
   useSeo({
     title: 'Your profile | Ujimora',
     description:
@@ -232,7 +241,8 @@ export function ProfilePage() {
     setProfileSaving(true)
     setProfileError(null)
     try {
-      const saved = await api.put<{ name: string; phone?: string; bio?: string }>('/profile', { name: name.trim(), phone: phone.trim(), bio: bio.trim() })
+      const saved = await api.put<{ name: string; phone?: string; bio?: string }>('/profile', { ...(name.trim() !== savedName ? { name: name.trim() } : {}), phone: phone.trim(), bio: bio.trim(), automatedReviewConsent })
+      if (!live.current) return
       setName(saved.name)
       setSavedName(saved.name)
       setPhone(saved.phone ?? '')
@@ -240,9 +250,9 @@ export function ProfilePage() {
       updateName(saved.name)
       setProfileSnack(true)
     } catch (err) {
-      setProfileError(err instanceof Error ? err.message : 'Failed to save profile.')
+      if (live.current) setProfileError(err instanceof Error ? err.message : 'Failed to save profile.')
     } finally {
-      setProfileSaving(false)
+      if (live.current) setProfileSaving(false)
     }
   }
 
@@ -587,13 +597,15 @@ export function ProfilePage() {
             {/* Edit Profile */}
             <TabPanel value={tab} index={0}>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, maxWidth: '100%' }}>
-                {profileError && <Alert severity="error">{profileError}</Alert>}
+                {profileError && <><Alert severity="error">{profileError}</Alert><PublicationReviews /></>}
                 <TextField id="profile-full-name" label={organizationName ? 'Contact person' : 'Full Name'} value={name} onChange={(e) => setName(e.target.value)} fullWidth />
                 <TextField label="Phone Number" value={phone} onChange={(e) => setPhone(e.target.value)} fullWidth />
                 <Box>
                   <TextField label="Bio" value={bio} onChange={(e) => setBio(e.target.value)} multiline rows={3} fullWidth placeholder="Tell us about yourself..." />
                 </Box>
                 <TextField label="Country" value={country} placeholder="Not provided" fullWidth disabled />
+                <Typography variant="body2">Account names and images can appear with public contributions even if the profile page is private. Phone numbers and this biography are excluded from safety screening.</Typography>
+                <PublicationConsent value={automatedReviewConsent} onChange={setAutomatedReviewConsent} />
                 <Button
                   variant="contained"
                   color="primary"

@@ -13,6 +13,7 @@ export interface CreatorProfileProps {
   tagline?: string;
   bio?: string;
   avatarUrl?: string;
+  coverUrl?: string;
   /** Whether the public page currently accepts tips. */
   tipsEnabled: boolean;
   /** Suggested tip amounts (major units) shown as quick-pick buttons. */
@@ -22,6 +23,7 @@ export interface CreatorProfileProps {
   thankYouMessage?: string;
   createdAt: Date;
   updatedAt: Date;
+  revision?: number;
 }
 
 /** A handle is 3–30 chars: lowercase letters, digits, underscore, hyphen. */
@@ -41,6 +43,8 @@ export class CreatorProfileEntity {
   static isValidHandle(raw: string): boolean {
     return HANDLE_RE.test(CreatorProfileEntity.normalizeHandle(raw));
   }
+
+  get revision(): number { return this.props.revision ?? 0; }
 
   get id(): string {
     return this.props.id;
@@ -63,6 +67,8 @@ export class CreatorProfileEntity {
   get avatarUrl(): string | undefined {
     return this.props.avatarUrl;
   }
+  get coverUrl(): string | undefined { return this.props.coverUrl; }
+
   get tipsEnabled(): boolean {
     return this.props.tipsEnabled;
   }
@@ -83,6 +89,7 @@ export class CreatorProfileEntity {
   }
 
   toPlain(): CreatorProfileProps {
-    return { ...this.props };
+    const { revision: _revision, ...plain } = this.props;
+    return { ...plain };
   }
 }

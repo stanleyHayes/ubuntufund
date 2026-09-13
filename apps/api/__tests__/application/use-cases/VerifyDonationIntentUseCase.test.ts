@@ -1,3 +1,4 @@
+import { GetDonationIntentPublicUseCase } from '../../../src/application/use-cases/GetDonationIntentPublicUseCase.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DonationIntentEntity } from '../../../src/domain/entities/DonationIntent.js';
 import { VerifyDonationIntentUseCase } from '../../../src/application/use-cases/VerifyDonationIntentUseCase.js';
@@ -65,7 +66,7 @@ describe('Hosted donation callback verification', () => {
       {record:vi.fn()} as never, new FeePolicy({platformFeePercent:0,paystackFeePercent:1.95,paystackFlatFee:0}), settle,
       {platformFeePercentForCampaign:vi.fn(async () => 0), platformFeePercentForIntent:vi.fn(async () => 0)} as never
     );
-    verify = new VerifyDonationIntentUseCase(repo as never, reconcile);
+    verify = new VerifyDonationIntentUseCase(repo as never, reconcile, new GetDonationIntentPublicUseCase(repo as never, { findEntryByDonationIntentId: async () => null } as never, {} as never));
   });
 
   it('settles a provider-confirmed test payment even when no webhook arrives', async () => {

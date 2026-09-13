@@ -1,5 +1,8 @@
+import { useAuth } from '@/context/AuthContext'
+import { PublicationReviews } from '@/components/account/PublicationReviews'
+import { PublicationConsent } from '@/components/safety/PublicationConsent'
 import { useSeo } from '@/lib/seo'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import {
   Alert,
   Box,
@@ -49,6 +52,12 @@ const surface = {
   minWidth: 0,
 }
 export function OrganizationTeamPage() {
+  const { user } = useAuth()
+  return <OrganizationTeamForViewer key={user?.id ?? 'guest'} />
+}
+function OrganizationTeamForViewer() {
+  const live = useRef(true)
+  useEffect(() => { live.current = true; return () => { live.current = false } }, [])
   useSeo({
     title: 'Organization team | Ujimora',
     description:
@@ -68,15 +77,21 @@ export function OrganizationTeamPage() {
   const [role, setRole] = useState<Role>('viewer')
   const [name, setName] = useState('')
   const [website, setWebsite] = useState('')
+  const [identityConsent, setIdentityConsent] = useState(false)
+  const [identityError, setIdentityError] = useState('')
   const [campaign, setCampaign] = useState('')
+  const [automatedReviewConsent, setAutomatedReviewConsent] = useState(false)
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   useEffect(() => {
     let active = true
+    setLoading(true)
     api
       .get<Workspace[]>('/organization-team/mine')
       .then(async (rows) => {
         const current = selected || rows.find((w) => w.status === 'active')?.organizationId || ''
+        if (!active) return
+        if (!selected && current) { setWorkspaces(rows); setSelected(current); return }
         const data = current ? await api.get<Detail>(`/organization-team/${current}`) : null
         if (!active) return
         setWorkspaces(rows)
@@ -102,14 +117,25 @@ export function OrganizationTeamPage() {
     setNotice('')
     try {
       await action()
+      if (!live.current) return
       setNotice(message)
       setLoading(true)
       setVersion((v) => v + 1)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Please try again')
+      if (live.current) setError(err instanceof Error ? err.message : 'Please try again')
     } finally {
-      setBusy(false)
+      if (live.current) setBusy(false)
     }
+  }
+  async function saveIdentity() {
+    if (busy) return
+    setBusy(true); setIdentityError(''); setNotice('')
+    try {
+      await api.put(`/organization-team/${selected}/profile`, { organizationName: name, website, automatedReviewConsent: identityConsent })
+      if (!live.current) return
+      setNotice('Organization profile updated.'); setLoading(true); setVersion(value => value + 1)
+    } catch (cause) { if (live.current) setIdentityError(cause instanceof Error ? cause.message : 'Could not save organization details.') }
+    finally { if (live.current) setBusy(false) }
   }
   const manage = detail?.role === 'owner' || detail?.role === 'admin'
   return (
@@ -200,12 +226,13 @@ export function OrganizationTeamPage() {
               <TextField
                 select
                 label="Workspace"
+                disabled={busy}
                 value={selected}
                 onChange={(e) => {
                   setLoading(true)
                   setDetail(null)
                   setSelected(e.target.value)
-                  setCampaign('')
+                  setCampaign(''); setTitle(''); setContent(''); setIdentityConsent(false); setAutomatedReviewConsent(false); setIdentityError(''); setError(''); setNotice('')
                 }}
               >
                 {workspaces
@@ -242,19 +269,9 @@ export function OrganizationTeamPage() {
                         value={website}
                         onChange={(e) => setWebsite(e.target.value)}
                       />
-                      <Button
-                        disabled={busy || name.trim().length < 2}
-                        onClick={() =>
-                          mutate(
-                            () =>
-                              api.put(`/organization-team/${selected}/profile`, {
-                                organizationName: name,
-                                website,
-                              }),
-                            'Organization profile updated.',
-                          )
-                        }
-                      >
+                      <PublicationConsent value={identityConsent} onChange={setIdentityConsent} />
+                      {identityError && <><Alert severity="error">{identityError}</Alert><PublicationReviews /></>}
+                      <Button disabled={busy || name.trim().length < 2} onClick={() => void saveIdentity()}>
                         Save organization details
                       </Button>
                     </Stack>
@@ -459,6 +476,7 @@ export function OrganizationTeamPage() {
                         value={content}
                         onChange={(e) => setContent(e.target.value)}
                       />
+                      <PublicationConsent value={automatedReviewConsent} onChange={setAutomatedReviewConsent} />
                       <Button
                         variant="contained"
                         disabled={busy || !campaign || title.trim().length < 3 || !content.trim()}
@@ -467,7 +485,7 @@ export function OrganizationTeamPage() {
                             () =>
                               api.post(
                                 `/organization-team/${selected}/campaigns/${campaign}/updates`,
-                                { title, content },
+                                { title, content, automatedReviewConsent },
                               ),
                             'Campaign update published under your name.',
                           )

@@ -1,10 +1,14 @@
 import mongoose, { Schema } from 'mongoose'
 const usageSchema = new Schema({
   userId: { type: String, required: true, index: true },
+  consentProvider: String,
+  consentVersion: String,
+  consentAt: Date,
   action: { type: String, required: true },
   timestamp: { type: Date, default: Date.now, index: true },
   inputLength: { type: Number, required: true },
   outputLength: { type: Number, default: 0 },
+  outputDigest: { type: String, select: false },
   status: { type: String, enum: ['pending', 'success', 'error'], default: 'pending' },
   model: { type: String, default: '' },
   inputTokens: { type: Number, default: 0 },

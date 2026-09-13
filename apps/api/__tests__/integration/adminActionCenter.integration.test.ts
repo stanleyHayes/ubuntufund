@@ -23,7 +23,7 @@ it('protects admin counts and matches the actual payout review queue as requests
   const email = 'action-center@example.com'
   const registered = await request(app)
     .post('/api/v1/auth/register')
-    .send({ name: 'Queue Reviewer', email, password: 'SecurePass123' })
+    .send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, name: 'Queue Reviewer', email, password: 'SecurePass123' })
     .expect(201)
   const token = registered.body.data.tokens.accessToken
   await request(app)

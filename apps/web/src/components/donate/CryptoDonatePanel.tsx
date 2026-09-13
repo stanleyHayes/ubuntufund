@@ -1,3 +1,6 @@
+import { DonationReviewStatus } from './DonationReviewStatus'
+import type { DonationContentReviewStatus } from '@ubuntu-fund/types'
+import { hasCurrentLegalAcceptance, type LegalAcceptanceInput } from '@ubuntu-fund/types'
 import { useCallback, useEffect, useState } from 'react'
 import { QRCodeCanvas } from 'qrcode.react'
 import Box from '@mui/material/Box'
@@ -38,6 +41,7 @@ interface Props {
   donorEmail: string
   emailValid: boolean
   donorName?: string
+  legalAcceptance?: LegalAcceptanceInput
   message?: string
   isAnonymous: boolean
   /** Path back to the campaign for the success state. */
@@ -65,12 +69,14 @@ export function CryptoDonatePanel({
   emailValid,
   donorName,
   message,
+  legalAcceptance,
   isAnonymous,
   campaignPath,
 }: Props) {
   const [assets, setAssets] = useState<CryptoAssetInfo[]>([])
   const [asset, setAsset] = useState<CryptoAsset | null>(null)
   const [network, setNetwork] = useState<string | null>(null)
+  const [contentReviewStatus, setContentReviewStatus] = useState<DonationContentReviewStatus>()
   const [phase, setPhase] = useState<'select' | 'quoted' | 'deposit' | 'confirmed' | 'failed'>('select')
   const [quote, setQuote] = useState<CryptoQuote | null>(null)
   const [deposit, setDeposit] = useState<CryptoDepositView | null>(null)
@@ -107,7 +113,7 @@ export function CryptoDonatePanel({
       try {
         const s = await getDonationIntentStatus(deposit.donationIntentId)
         if (!active) return
-        if (s.status === 'SUCCEEDED') setPhase('confirmed')
+        if (s.status === 'SUCCEEDED') { setContentReviewStatus(s.contentReviewStatus); setPhase('confirmed') }
         else if (['FAILED', 'EXPIRED', 'CANCELLED'].includes(s.status)) setPhase('failed')
       } catch {
         /* transient — try again next tick */
@@ -147,6 +153,7 @@ export function CryptoDonatePanel({
 
   const continueToDeposit = useCallback(async () => {
     if (!quote || quoteExpired || quote.fiatAmount !== amount || !amountValid || !emailValid) return
+    if ((message?.trim() || (!isAnonymous && donorName?.trim())) && !hasCurrentLegalAcceptance(legalAcceptance)) { setError('Accept the content terms before posting your public name or message.'); return }
     setBusy(true)
     setError(null)
     try {
@@ -155,6 +162,7 @@ export function CryptoDonatePanel({
         donorEmail,
         donorName: donorName || undefined,
         message: message || undefined,
+        legalAcceptance,
         isAnonymous,
       })
       setDeposit(d)
@@ -164,7 +172,7 @@ export function CryptoDonatePanel({
     } finally {
       setBusy(false)
     }
-  }, [quote, quoteExpired, amount, amountValid, emailValid, campaignId, donorEmail, donorName, message, isAnonymous])
+  }, [quote, quoteExpired, amount, amountValid, emailValid, campaignId, donorEmail, donorName, message, isAnonymous, legalAcceptance])
 
   function reset() {
     setPhase('select')
@@ -238,6 +246,7 @@ export function CryptoDonatePanel({
       <Box sx={{ ...card, textAlign: 'center', py: 5 }} role="status">
         <CheckCircleRoundedIcon sx={{ fontSize: 56, color: 'success.main', mb: 2 }} />
         <Typography variant="h5" sx={{ fontWeight: 800 }}>Your contribution is confirmed</Typography>
+        {deposit && <DonationReviewStatus key={deposit.donationIntentId} intentId={deposit.donationIntentId} initialStatus={contentReviewStatus} />}
         <Typography sx={{ color: 'text.secondary', mt: 1, mb: 3 }}>
           {formatCurrency(deposit?.fiatAmount ?? amount, deposit?.fiatCurrency ?? 'GHS')} has been credited to the campaign. Thank you for making a difference.
         </Typography>

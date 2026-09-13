@@ -1,3 +1,4 @@
+import { exportTable } from '@/lib/exports/report'
 import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import { Box, Button, Autocomplete } from '@mui/material'
 import AddRoundedIcon from '@mui/icons-material/AddRounded'
@@ -65,6 +66,7 @@ export default function ContentFaqPage() {
       updatedAt={block.record?.updatedAt}
       onSave={block.save}
       onReload={block.reload}
+    exportReport={{ title: "Frequently asked questions", filters: [block.isDirty || !block.record ? 'Unsaved content draft' : 'Saved content', block.record ? 'Last saved: ' + block.record.updatedAt : 'Not yet saved'], tables: [exportTable('Questions', items, { Category: r => r.category, Question: r => r.question, Answer: r => r.answer })] }}
     >
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         {items.length === 0 ? (

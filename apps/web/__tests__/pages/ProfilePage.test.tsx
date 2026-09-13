@@ -22,7 +22,7 @@ describe('saved profile details', () => {
   fireEvent.change(name, { target: { value: 'Updated name' } })
   fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }))
   await waitFor(() => expect(updateName).toHaveBeenCalledWith('Updated name'))
-  expect(api.put).toHaveBeenCalledWith('/profile', { name: 'Updated name', phone: '0551234567', bio: 'My own bio' })
+  expect(api.put).toHaveBeenCalledWith('/profile', { name: 'Updated name', phone: '0551234567', bio: 'My own bio', automatedReviewConsent: false })
  })
  it('leaves missing optional fields empty', async () => {
   vi.mocked(api.get).mockResolvedValue({ name: 'New member' })
@@ -48,4 +48,29 @@ describe('saved profile details', () => {
   expect(screen.getByText('Managed by Contact Person')).toBeInTheDocument()
  })
 
+})
+
+it('keeps a held identity draft and private contact fields while allowing review refresh', async () => {
+  updateName.mockClear()
+  vi.mocked(api.get).mockImplementation(async path => path.startsWith('/publication-reviews') ? { items: [], total: 0 } : { name: 'Current name', phone: '0551234567', bio: 'Private biography' })
+  vi.mocked(api.put).mockRejectedValue(new Error('Saved privately for safety review.'))
+  mount()
+  const name = await screen.findByLabelText('Full Name')
+  fireEvent.change(name, { target: { value: 'Held proposed name' } })
+  expect(screen.getByRole('checkbox', { name: /Use OpenAI/ })).not.toBeChecked()
+  fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }))
+  await screen.findByText('Saved privately for safety review.')
+  expect(name).toHaveValue('Held proposed name')
+  expect(screen.getByLabelText('Bio')).toHaveValue('Private biography')
+  expect(screen.getByRole('button', { name: 'Refresh publication reviews' })).toBeInTheDocument()
+  expect(updateName).not.toHaveBeenCalled()
+})
+
+it('saves private contact changes without resubmitting unchanged public identity', async () => {
+  vi.mocked(api.get).mockResolvedValue({ name: 'Current name', phone: '0551234567', bio: 'Private biography' })
+  vi.mocked(api.put).mockResolvedValue({ name: 'Current name', phone: '0551111111', bio: 'Private biography' })
+  mount()
+  fireEvent.change(await screen.findByLabelText('Phone Number'), { target: { value: '0551111111' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }))
+  await waitFor(() => expect(api.put).toHaveBeenLastCalledWith('/profile', { phone: '0551111111', bio: 'Private biography', automatedReviewConsent: false }))
 })

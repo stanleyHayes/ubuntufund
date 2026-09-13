@@ -1,6 +1,6 @@
 import { IconButton } from '@/components/RoundedControls'
 import { useState } from 'react'
-import { View, Image } from 'react-native'
+import { View, Image, Linking } from 'react-native'
 import { Text } from 'react-native-paper'
 import * as ImagePicker from 'expo-image-picker'
 import * as DocumentPicker from 'expo-document-picker'
@@ -9,14 +9,15 @@ import { Button } from './Loading'
 import { api } from '@/lib/api'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
 
-export function MediaUploadField({ label, value, onChange, folder = 'kyc', document = false, crop = false, aspect = [1, 1], onBusyChange, compact = false }: {
-  label: string; value: string; onChange: (url: string) => void; folder?: string; document?: boolean; crop?: boolean; aspect?: [number, number]; onBusyChange?: (busy: boolean) => void; compact?: boolean
+export function MediaUploadField({ label, value, onChange, folder = 'kyc', document = false, crop = false, aspect = [1, 1], onBusyChange, compact = false, disabled = false }: {
+  label: string; value: string; onChange: (url: string) => void; folder?: string; document?: boolean; crop?: boolean; aspect?: [number, number]; onBusyChange?: (busy: boolean) => void; compact?: boolean; disabled?: boolean
 }) {
   const p = usePalette()
   const neu = useNeu()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   async function pick(source: 'camera' | 'library' | 'document') {
+    if (busy || disabled) return
     setError(''); setBusy(true); onBusyChange?.(true)
     try {
       let uri: string, mime: string
@@ -41,20 +42,24 @@ export function MediaUploadField({ label, value, onChange, folder = 'kyc', docum
   if (compact) return <View style={{ gap: 4 }}>
     <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
       <Text style={{ color: p.text, fontFamily: 'Outfit_700Bold', flexGrow: 1, minWidth: 88 }}>{label}</Text>
-      <Button mode="text" icon="image-edit-outline" loading={busy} disabled={busy} accessibilityLabel={`Choose ${label.toLowerCase()}`} onPress={() => void pick('library')}>{value ? 'Change' : 'Add'}</Button>
-      <IconButton icon="camera-outline" size={22} style={{ margin: 0 }} accessibilityLabel={`Take ${label.toLowerCase()}`} disabled={busy} onPress={() => void pick('camera')} />
-      {value ? <IconButton icon="trash-can-outline" size={20} iconColor={p.textSecondary} style={{ margin: 0 }} accessibilityLabel={`Remove ${label.toLowerCase()}`} disabled={busy} onPress={() => onChange('')} /> : null}
+      <Button mode="text" icon="image-edit-outline" loading={busy} disabled={busy || disabled} accessibilityLabel={`Choose ${label.toLowerCase()}`} onPress={() => void pick('library')}>{value ? 'Change' : 'Add'}</Button>
+      <IconButton icon="camera-outline" size={22} style={{ margin: 0 }} accessibilityLabel={`Take ${label.toLowerCase()}`} disabled={busy || disabled} onPress={() => void pick('camera')} />
+      {value ? <IconButton icon="trash-can-outline" size={20} iconColor={p.textSecondary} style={{ margin: 0 }} accessibilityLabel={`Remove ${label.toLowerCase()}`} disabled={busy || disabled} onPress={() => onChange('')} /> : null}
     </View>
     {error ? <Text accessibilityRole="alert" style={{ color: p.error }}>{error}</Text> : null}
   </View>
   return <View style={{ ...neu.inset, backgroundColor: p.surface, padding: 16, borderRadius: 16, gap: 10 }}>
     <Text style={{ color: p.text, fontFamily: 'Outfit_700Bold' }}>{label}</Text>
-    {value && !/\.pdf(?:\?|$)/i.test(value) ? <Image accessibilityLabel={label} source={{ uri: value }} style={{ width: '100%', height: 150, borderRadius: 12 }} resizeMode="contain" /> : null}
+    {value && !value.startsWith('kyc://') && !/\.pdf(?:\?|$)/i.test(value) ? <Image accessibilityLabel={label} source={{ uri: value }} style={{ width: '100%', height: 150, borderRadius: 12 }} resizeMode="contain" /> : null}
+    {value.startsWith('kyc://') && <Button disabled={busy || disabled} onPress={() => {
+      setError(''); setBusy(true)
+      void api.get<{ url: string }>(`/uploads/kyc/${value.slice(6)}/access`).then(result => Linking.openURL(result.url)).catch(e => setError(e instanceof Error ? e.message : 'Could not open private document')).finally(() => setBusy(false))
+    }}>View private document</Button>}
     {value ? <Text style={{ color: p.success }}>Uploaded</Text> : <Text style={{ color: p.textSecondary }}>Choose a clear image{document ? ' or PDF' : ''}, up to 4 MB.</Text>}
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-      <Button mode="outlined" icon="upload" loading={busy} disabled={busy} onPress={() => void pick(document ? 'document' : 'library')}>{value ? 'Replace' : 'Choose file'}</Button>
-      <Button icon="camera" disabled={busy} onPress={() => void pick('camera')}>Camera</Button>
-      {value && <Button disabled={busy} onPress={() => onChange('')}>Remove</Button>}
+      <Button mode="outlined" icon="upload" loading={busy} disabled={busy || disabled} onPress={() => void pick(document ? 'document' : 'library')}>{value ? 'Replace' : 'Choose file'}</Button>
+      <Button icon="camera" disabled={busy || disabled} onPress={() => void pick('camera')}>Camera</Button>
+      {value && <Button disabled={busy || disabled} onPress={() => onChange('')}>Remove</Button>}
     </View>
     {error ? <Text accessibilityRole="alert" style={{ color: p.error }}>{error}</Text> : null}
   </View>

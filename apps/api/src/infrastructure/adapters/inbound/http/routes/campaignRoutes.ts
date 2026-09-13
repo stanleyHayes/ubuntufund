@@ -1,23 +1,26 @@
+import { legalAcceptanceSchema } from './legalAcceptanceSchema.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { CampaignCategory, CampaignPriority, PaymentMethod } from '@ubuntu-fund/types';
 import type { CampaignController } from '../controllers/CampaignController.js';
 import { validate } from '../../middleware/validate.js';
-import type { createAuthMiddleware } from '../../middleware/authMiddleware.js';
+import type { createAuthMiddleware, createOptionalAuthMiddleware } from '../../middleware/authMiddleware.js';
 
 const createCampaignSchema = z.object({
+  automatedReviewConsent: z.boolean().optional(),
   title: z.string().min(3).max(200),
   description: z.string().min(10).max(5000),
   goalAmount: z.number().positive(),
   currency: z.string().min(2).max(5),
   category: z.nativeEnum(CampaignCategory),
   priority: z.nativeEnum(CampaignPriority),
-  beneficiaries: z.array(z.string()).default([]),
+  beneficiaries: z.array(z.string().max(200)).max(20).default([]),
   endDate: z.string().datetime(),
   imageUrls: z.array(z.string().url()).max(10).optional(),
 });
 
 const donateSchema = z.object({
+  legalAcceptance: legalAcceptanceSchema.optional(),
   amount: z.number().positive(),
   currency: z.string().min(2).max(5),
   paymentMethod: z.nativeEnum(PaymentMethod).default(PaymentMethod.WALLET),
@@ -29,6 +32,7 @@ const donateSchema = z.object({
 });
 
 const setSlugSchema = z.object({
+  automatedReviewConsent: z.boolean().optional(),
   slug: z
     .string()
     .min(3)
@@ -41,16 +45,18 @@ const setSlugSchema = z.object({
 
 export function createCampaignRoutes(
   controller: CampaignController,
-  authMiddleware: ReturnType<typeof createAuthMiddleware>
+  authMiddleware: ReturnType<typeof createAuthMiddleware>,
+  optionalAuth: ReturnType<typeof createOptionalAuthMiddleware>
 ): Router {
   const router = Router();
+  router.use((_req, res, next) => { res.set('Cache-Control', 'private, no-store'); next(); });
 
-  router.get('/', controller.list);
+  router.get('/', optionalAuth, controller.list);
   router.get('/creation-options', authMiddleware, controller.creationOptions);
   router.get('/mine', authMiddleware, controller.listMine);
   // Public read by vanity slug (distinct 3-segment path — never shadows /:id).
   router.get('/slug/:slug/public', controller.getBySlugPublic);
-  router.get('/:id', controller.getById);
+  router.get('/:id', optionalAuth, controller.getById);
   router.post(
     '/',
     authMiddleware,

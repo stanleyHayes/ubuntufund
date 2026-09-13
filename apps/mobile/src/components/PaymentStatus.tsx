@@ -1,3 +1,4 @@
+import { DONATION_CONTENT_REVIEW_MESSAGES, type DonationContentReviewStatus } from '@ubuntu-fund/types'
 import { DonationCelebration } from './DonationCelebration'
 import { useCallback, useEffect, useState, useRef } from 'react'
 import { AppState, View } from 'react-native'
@@ -8,13 +9,21 @@ import { isPaymentSuccess, isPaymentTerminal, type PendingPayment } from '@/lib/
 import { Button, Skeleton } from './Loading'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
 
-export function PaymentStatus({ payment, topup = false, onComplete, onReset, onStatusChange }: { payment: PendingPayment; topup?: boolean; onComplete?: () => void; onReset: () => void; onStatusChange?: (status: string) => void }) {
+type PaymentStatusProps = { payment: PendingPayment; topup?: boolean; onComplete?: () => void; onReset: () => void; onStatusChange?: (status: string) => void }
+
+export function PaymentStatus(props: PaymentStatusProps) {
+  // The component owns isolation even when its caller does not provide a key.
+  return <PaymentStatusContent key={JSON.stringify([props.topup ?? false, props.payment.id, props.payment.reference])} {...props} />
+}
+
+function PaymentStatusContent({ payment, topup = false, onComplete, onReset, onStatusChange }: PaymentStatusProps) {
   const p = usePalette(); const neu = useNeu()
   const alive = useRef(true)
   const generation = useRef(0)
   const inFlight = useRef(false)
   const notified = useRef(false)
   useEffect(() => { alive.current = true; return () => { alive.current = false; generation.current += 1 } }, [])
+  const [contentReviewStatus, setContentReviewStatus] = useState<DonationContentReviewStatus>()
   const [status, setStatus] = useState(payment.status)
   const [error, setError] = useState('')
   const [checking, setChecking] = useState(false)
@@ -25,12 +34,13 @@ export function PaymentStatus({ payment, topup = false, onComplete, onReset, onS
     setChecking(true)
     try {
       const result = !topup && payment.reference
-        ? await api.post<{ status: string }>(`/donation-intents/${encodeURIComponent(payment.id)}/verify`, { reference: payment.reference })
-        : await api.get<{ status: string }>(topup ? `/wallets/topups/${encodeURIComponent(payment.id)}` : `/donation-intents/${encodeURIComponent(payment.id)}/public`)
-      if (alive.current && ticket === generation.current) { setStatus(result.status); setError('') }
-    } catch (e) { if (alive.current && ticket === generation.current) setError(e instanceof Error ? e.message : 'Could not check payment status.') }
+        ? await api.post<{ status: string; contentReviewStatus?: DonationContentReviewStatus }>(`/donation-intents/${encodeURIComponent(payment.id)}/verify`, { reference: payment.reference })
+        : await api.get<{ status: string; contentReviewStatus?: DonationContentReviewStatus }>(topup ? `/wallets/topups/${encodeURIComponent(payment.id)}` : `/donation-intents/${encodeURIComponent(payment.id)}/public`)
+      if (alive.current && ticket === generation.current) { setStatus(result.status); setContentReviewStatus(result.contentReviewStatus); setError('') }
+    } catch (e) { if (alive.current && ticket === generation.current) { setContentReviewStatus('unavailable'); setError(e instanceof Error ? e.message : 'Could not check payment status.') } }
     finally { inFlight.current = false; if (alive.current) setChecking(false) }
   }, [payment.id, payment.reference, topup])
+  useEffect(() => { void refresh() }, [refresh])
   const success = isPaymentSuccess(status)
   useEffect(() => { if (success && !notified.current) { notified.current = true; onComplete?.() } }, [success, onComplete])
   useEffect(() => { onStatusChange?.(status) }, [status, onStatusChange])
@@ -46,11 +56,13 @@ export function PaymentStatus({ payment, topup = false, onComplete, onReset, onS
     <Text variant="titleLarge">{success ? (topup ? 'Wallet funded' : 'Thank you for your support') : isPaymentTerminal(status) ? 'Payment was not completed' : 'Awaiting payment confirmation'}</Text>
     {!isPaymentTerminal(status) && <><Skeleton height={12} /><Text>Your balance updates only after provider confirmation. Closing checkout does not confirm or cancel a payment.</Text></>}
     <Text selectable>Reference: {payment.id}</Text><Text>Status: {status}</Text>
+    {success && !topup && contentReviewStatus && DONATION_CONTENT_REVIEW_MESSAGES[contentReviewStatus] ? <Text>{DONATION_CONTENT_REVIEW_MESSAGES[contentReviewStatus]}</Text> : null}
     {error ? <Text accessibilityRole="alert" style={{ color: p.error }}>{error}</Text> : null}
     {!isPaymentTerminal(status) && <>
       {payment.authorizationUrl?.startsWith('https://') && <Button mode="outlined" onPress={() => void WebBrowser.openBrowserAsync(payment.authorizationUrl!)}>Open secure checkout</Button>}
       <Button loading={checking} disabled={checking} onPress={() => void refresh()}>Check status</Button>
     </>}
+    {success && !topup && <Button loading={checking} disabled={checking} onPress={() => void refresh()}>Refresh content review</Button>}
     {isPaymentTerminal(status) && <Button mode="contained" onPress={onReset}>{success ? 'Make another payment' : 'Try again'}</Button>}
   </View>
 }

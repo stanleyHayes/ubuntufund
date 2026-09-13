@@ -1,3 +1,4 @@
+import type { PublicationAdmissionPort } from '../../domain/ports/outbound/PublicationAdmissionPort.js';
 import type { CampaignUpdate, UpdateCampaignUpdateInput } from '@ubuntu-fund/types';
 import type { CampaignUpdateRepositoryPort } from '../../domain/ports/outbound/CampaignUpdateRepositoryPort.js';
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js';
@@ -23,7 +24,8 @@ function toDTO(entity: CampaignUpdateEntity): CampaignUpdate {
 export class UpdateCampaignUpdateUseCase {
   constructor(
     private readonly updateRepo: CampaignUpdateRepositoryPort,
-    private readonly campaignRepo: CampaignRepositoryPort
+    private readonly campaignRepo: CampaignRepositoryPort,
+    private readonly admission?: PublicationAdmissionPort
   ) {}
 
   async execute(
@@ -45,6 +47,7 @@ export class UpdateCampaignUpdateUseCase {
       throw new AppError('You can only edit your own updates', 403);
     }
 
+    const baseVersion = update.updatedAt.toISOString();
     update.applyEdits({
       title: input.title,
       content: input.content,
@@ -52,7 +55,9 @@ export class UpdateCampaignUpdateUseCase {
       mediaUrls: input.mediaUrls,
     });
 
-    const saved = await this.updateRepo.update(update);
+    if (!this.admission) throw new AppError('Publication review is unavailable', 503);
+    await this.admission.assertAllowed({ actorId: userId, action: 'update.edit', resourceId: updateId, baseVersion, text: JSON.stringify([update.title, update.content, update.type]), mediaUrls: update.mediaUrls, automatedReviewConsent: input.automatedReviewConsent });
+    const saved = await this.updateRepo.update(update, new Date(baseVersion));
     return toDTO(saved);
   }
 }

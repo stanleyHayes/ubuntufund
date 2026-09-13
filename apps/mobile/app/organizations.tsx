@@ -1,6 +1,7 @@
+import { usePublicRead } from '@/hooks/usePublicRead'
 import { TouchableOpacity } from '@/components/RoundedControls'
 import { Button } from '@/components/Loading'
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { View, ScrollView, StyleSheet, Animated, TextInput } from 'react-native'
 import { Text, Icon } from 'react-native-paper'
 import { router, Stack } from 'expo-router'
@@ -8,10 +9,14 @@ import { api } from '@/lib/api'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
 import type { Palette, NeuRecipes } from '@/theme'
 
+const fetchOrganizationList = async () => {
+  const data = await api.get<Organization[]>('/organizations')
+  return Array.isArray(data) ? data : []
+}
+
 interface Organization {
   id: string
   name: string
-  email: string
   country: string
   avatarUrl?: string
   verified: boolean
@@ -135,27 +140,9 @@ function SkeletonCard() {
 export default function OrganizationsScreen() {
   const p = usePalette()
   const styles = useStyles()
-  const [organizations, setOrganizations] = useState<Organization[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
-
-  const fetchOrganizations = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const response = await api.get<Organization[]>('/organizations')
-      setOrganizations(Array.isArray(response) ? response : [])
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load organizations')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    fetchOrganizations()
-  }, [fetchOrganizations])
+  const { data, loading, error, refresh: fetchOrganizations } = usePublicRead('organizations', fetchOrganizationList)
+  const organizations = data ?? []
 
   const filtered = search.trim()
     ? organizations.filter((o) => o.name.toLowerCase().includes(search.toLowerCase()))

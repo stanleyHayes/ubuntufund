@@ -27,7 +27,7 @@ function uniqueEmail(label: string): string {
 async function registerUser(app: Express, email: string) {
   const res = await request(app)
     .post('/api/v1/auth/register')
-    .send({ email, password: 'SecurePass123', name: 'Test User' })
+    .send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email, password: 'SecurePass123', name: 'Test User' })
     .expect(201);
   return {
     userId: res.body.data.user.id as string,
@@ -66,6 +66,7 @@ async function openPendingIntent(app: Express, campaignId: string) {
       provider: 'paystack',
       donorEmail: 'guest@example.com',
       donorName: 'Guest',
+      legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true },
     })
     .expect(201);
   return {

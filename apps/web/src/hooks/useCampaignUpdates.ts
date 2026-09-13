@@ -9,51 +9,34 @@ interface UseCampaignUpdatesResult {
   refetch: () => void
 }
 
-export function useCampaignUpdates(campaignId: string): UseCampaignUpdatesResult {
-  const [updates, setUpdates] = useState<CampaignUpdate[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+export function useCampaignUpdates(campaignId: string, viewerId?: string): UseCampaignUpdatesResult {
+  const scope = `${campaignId}:${viewerId ?? 'guest'}`
+  const [refresh, setRefresh] = useState(0)
+  const requestKey = `${scope}:${refresh}`
+  const [state, setState] = useState<{ scope: string; updates: CampaignUpdate[]; error: string | null; loading: boolean }>({ scope: '', updates: [], error: null, loading: true })
 
   useEffect(() => {
     if (!campaignId) return
     let cancelled = false
-    api
-      .get<{ items: CampaignUpdate[] }>(`/campaigns/${campaignId}/updates`)
-      .then((data) => {
-        if (!cancelled) {
-          setUpdates(data.items ?? [])
-          setError(null)
-        }
-      })
-      .catch((err: Error) => {
-        if (!cancelled) {
-          setError(err.message)
-          setUpdates([])
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false)
-      })
+    api.get<{ items: CampaignUpdate[] }>(`/campaigns/${campaignId}/updates`)
+      .then(data => { if (!cancelled) setState({ scope: requestKey, updates: data.items ?? [], error: null, loading: false }) })
+      .catch((error: Error) => { if (!cancelled) setState({ scope: requestKey, updates: [], error: error.message, loading: false }) })
     return () => { cancelled = true }
-  }, [campaignId])
+  }, [campaignId, requestKey])
 
-  const refetch = () => {
-    if (!campaignId) return
-    setIsLoading(true)
-    api
-      .get<{ items: CampaignUpdate[] }>(`/campaigns/${campaignId}/updates`)
-      .then((data) => {
-        setUpdates(data.items ?? [])
-        setError(null)
-      })
-      .catch((err: Error) => {
-        setError(err.message)
-        setUpdates([])
-      })
-      .finally(() => setIsLoading(false))
+  useEffect(() => {
+    const refreshOnFocus = () => { if (document.visibilityState === 'visible') setRefresh(value => value + 1) }
+    window.addEventListener('focus', refreshOnFocus)
+    const timer = window.setInterval(refreshOnFocus, 30000)
+    return () => { window.removeEventListener('focus', refreshOnFocus); window.clearInterval(timer) }
+  }, [])
+
+  return {
+    updates: state.scope === requestKey ? state.updates : [],
+    isLoading: state.scope !== requestKey || state.loading,
+    error: state.scope === requestKey ? state.error : null,
+    refetch: () => setRefresh(value => value + 1),
   }
-
-  return { updates, isLoading, error, refetch }
 }
 
 export function useCreateCampaignUpdate() {
@@ -71,7 +54,7 @@ export function useCreateCampaignUpdate() {
       return result
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create update')
-      return null
+      throw err
     } finally {
       setIsLoading(false)
     }

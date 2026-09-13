@@ -20,9 +20,12 @@ export class CampaignUpdateController {
     res: Response,
     next: NextFunction
   ): Promise<void> => {
+    res.set('Cache-Control', 'private, no-store');
     try {
       const items = await this.getCampaignUpdatesUseCase.execute(
-        req.params.id as string
+        req.params.id as string,
+        req.userId,
+        req.userRole === 'admin'
       );
       res.json({
         data: { items },

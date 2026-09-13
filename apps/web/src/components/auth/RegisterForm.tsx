@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Skeleton from '@mui/material/Skeleton'
+import Stack from '@mui/material/Stack'
 import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import { OrganizationTypePicker } from './OrganizationTypePicker'
 import { PasswordStrength } from './PasswordStrength'
@@ -19,6 +20,7 @@ import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import { Link as RouterLink } from 'react-router-dom'
 import { SubscriptionTier, BillingCycle } from '@ubuntu-fund/types'
 import {
+  LEGAL_ACCEPTANCE_VERSION,
   REFERRAL_CODE_MAX,
   normalizeReferralCode,
   referralCodeProblemMessage,
@@ -53,6 +55,7 @@ interface FieldErrors {
   organizationName?: string
   organizationType?: string
   website?: string
+  legalAcceptance?: string
 }
 
 function Stepper({ current, steps }: { current: number; steps: string[] }) {
@@ -124,6 +127,8 @@ export function RegisterForm() {
   const [accountType, setAccountType] = useState<AccountType>(
     searchParams.get('role') === 'organization' ? 'organization' : 'individual',
   )
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
+  const [ageConfirmed, setAgeConfirmed] = useState(false)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -158,6 +163,7 @@ export function RegisterForm() {
 
   function validateDetails(): FieldErrors {
     const e: FieldErrors = {}
+    if (!acceptedTerms || !ageConfirmed) e.legalAcceptance = 'Accept the terms and confirm you are at least 18 to continue'
     if (!name.trim()) e.name = isOrg ? 'Contact name is required' : 'Name is required'
     if (!email.trim()) e.email = 'Email is required'
     if (!password) e.password = 'Password is required'
@@ -169,7 +175,7 @@ export function RegisterForm() {
       if (website.trim() && !/^https?:\/\/.+/i.test(website.trim()))
         e.website = 'Enter a full URL (https://…)'
     }
-    const keys: (keyof FieldErrors)[] = isOrg && step === 1 ? ['organizationName', 'organizationType', 'website'] : ['name', 'email', 'password', 'confirmPassword']
+    const keys: (keyof FieldErrors)[] = isOrg && step === 1 ? ['organizationName', 'organizationType', 'website'] : ['name', 'email', 'password', 'confirmPassword', 'legalAcceptance']
     return Object.fromEntries(Object.entries(e).filter(([key]) => keys.includes(key as keyof FieldErrors)))
   }
 
@@ -195,6 +201,7 @@ export function RegisterForm() {
       const referral = normalizeReferralCode(referralCode) || undefined
       // 1) Create the account (critical — a failure here blocks signup).
       await register({
+        legalAcceptance: { version: LEGAL_ACCEPTANCE_VERSION, acceptedTerms, ageConfirmed },
         name: name.trim(),
         email: email.trim(),
         password,
@@ -407,6 +414,16 @@ export function RegisterForm() {
             required
             autoComplete="new-password"
           />
+          <Box>
+            <FormControlLabel control={<Checkbox checked={acceptedTerms} onChange={event => setAcceptedTerms(event.target.checked)} />} label="I agree to the Terms of Use and Acceptable Use Policy and have read the Privacy Notice." />
+            <Stack direction="row" sx={{ gap: 2, flexWrap: 'wrap', mb: 1 }}>
+              <Link component={RouterLink} to="/terms" target="_blank" rel="noopener noreferrer">Terms of Use</Link>
+              <Link component={RouterLink} to="/acceptable-use" target="_blank" rel="noopener noreferrer">Acceptable Use</Link>
+              <Link component={RouterLink} to="/privacy" target="_blank" rel="noopener noreferrer">Privacy Notice</Link>
+            </Stack>
+            <FormControlLabel control={<Checkbox checked={ageConfirmed} onChange={event => setAgeConfirmed(event.target.checked)} />} label="I confirm that I am at least 18 years old." />
+            {errors.legalAcceptance && <Alert severity="error">{errors.legalAcceptance}</Alert>}
+          </Box>
           <TextField
             label="Referral code (optional)"
             value={referralCode}
@@ -623,7 +640,7 @@ export function RegisterForm() {
             onClick={handleSubmit}
             variant="contained"
             color="primary"
-            disabled={submitting || !plans[selectedTier]}
+            disabled={submitting || !plans[selectedTier] || !acceptedTerms || !ageConfirmed}
             endIcon={submitting ? <LoadingDots size={6} /> : undefined}
             sx={{ textTransform: 'none', fontWeight: 700, px: 3 }}
           >

@@ -1,3 +1,5 @@
+import type { PublicProfileVisibilityPort } from '../../domain/ports/outbound/PublicProfileVisibilityPort.js';
+import { isPublicCampaign } from '../../domain/services/campaignVisibility.js';
 import type {
   CampaignDonation,
   PaginatedResponse,
@@ -13,15 +15,18 @@ export class ListCampaignDonationsUseCase {
   constructor(
     private readonly donationRepo: DonationRepositoryPort,
     private readonly campaignRepo: CampaignRepositoryPort,
-    private readonly userRepo: UserRepositoryPort
+    private readonly userRepo: UserRepositoryPort,
+    private readonly visibility: PublicProfileVisibilityPort
   ) {}
 
   async execute(
     campaignId: string,
-    params: PaginationParams
+    params: PaginationParams,
+    viewerId?: string,
+    isAdmin = false
   ): Promise<PaginatedResponse<CampaignDonation>> {
     const campaign = await this.campaignRepo.findById(campaignId);
-    if (!campaign) {
+    if (!campaign || (!isPublicCampaign(campaign.status) && campaign.creatorId !== viewerId && !isAdmin)) {
       throw new AppError('Campaign not found', 404);
     }
 
@@ -33,8 +38,9 @@ export class ListCampaignDonationsUseCase {
     const start = (page - 1) * pageSize;
     const pageItems = all.slice(start, start + pageSize);
 
+    const hidden = await this.visibility.hiddenContentAuthorIds(pageItems.map(donation => donation.donorId).filter(id => id !== GUEST_DONOR_ID), viewerId);
     const items = await Promise.all(
-      pageItems.map((donation) => this.toDTO(donation))
+      pageItems.map((donation) => this.toDTO(donation, hidden.has(donation.donorId)))
     );
 
     return {
@@ -46,21 +52,16 @@ export class ListCampaignDonationsUseCase {
     };
   }
 
-  private async toDTO(donation: DonationEntity): Promise<CampaignDonation> {
-    const isGuest = donation.donorId === GUEST_DONOR_ID;
-    const donor = donation.isAnonymous || isGuest
-      ? null
-      : await this.userRepo.findById(donation.donorId);
-
+  private async toDTO(donation: DonationEntity, hidden: boolean): Promise<CampaignDonation> {
     return {
       id: donation.id,
-      donorName: donor ? donor.name : isGuest && !donation.isAnonymous ? 'Guest donor' : 'Anonymous',
-      donorAvatarUrl: donor?.avatarUrl,
+      donorName: hidden ? 'Anonymous' : donation.publicDonorName ?? 'Anonymous',
+      donorAvatarUrl: undefined,
       amount: donation.amount.amount,
       currency: donation.amount.currency,
       paymentMethod: donation.paymentMethod,
-      message: donation.message,
-      isAnonymous: donation.isAnonymous,
+      message: hidden ? undefined : donation.publicMessage,
+      isAnonymous: donation.isAnonymous || hidden || !donation.publicContentApproved,
       createdAt: donation.createdAt,
     };
   }

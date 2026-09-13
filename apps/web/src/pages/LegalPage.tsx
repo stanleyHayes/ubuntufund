@@ -39,7 +39,8 @@ export function LegalPage({ slug }: { slug?: string }) {
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '260px minmax(0, 1fr)' }, gap: 4, alignItems: 'start' }}>
         <Box component="nav" aria-label="On this page" sx={{ ...surface, p: 3, position: { md: 'sticky' }, top: 96, maxHeight: { md: 'calc(100vh - 120px)' }, overflowY: 'auto' }}><Typography fontWeight={700} sx={{ mb: 2 }}>On this page</Typography>{policy.sections.map((section, index) => <Box component="a" href={`#section-${index}`} key={section.title} sx={{ display: 'block', color: 'text.secondary', fontSize: '.9rem', py: .8, textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>{section.title}</Box>)}</Box>
         <Box component="article" sx={{ ...surface, p: { xs: 3, md: 5 }, minWidth: 0 }}>
-          <Typography sx={{ lineHeight: 1.9, mb: 5 }}>{policy.introduction}</Typography>
+          <Typography sx={{ lineHeight: 1.9, mb: 3 }}>{policy.introduction}</Typography>
+          {policy.actions && <Stack spacing={2} sx={{ mb: 5, alignItems: 'flex-start' }}>{policy.actions.map(action => <Button key={action.href} component="a" href={action.href} variant="outlined">{action.label}</Button>)}</Stack>}
           {policy.sections.map((section, index) => <Box component="section" id={`section-${index}`} key={section.title} sx={{ mb: 5, scrollMarginTop: 110 }}><Typography component="h2" variant="h5" sx={{ fontWeight: 700, mb: 2 }}>{section.title}</Typography><Typography color="text.secondary" sx={{ whiteSpace: 'pre-line', lineHeight: 1.9, overflowWrap: 'anywhere' }}>{section.content}</Typography></Box>)}
           <Box sx={{ borderTop: '1px solid', borderColor: 'divider', pt: 3 }}><Typography variant="h6">Need clarification?</Typography><Typography sx={{ mt: 1, lineHeight: 1.8 }}>{policy.contact}</Typography><Button component={Link} to="/legal" sx={{ mt: 2 }}>Browse all policies</Button></Box>
         </Box>

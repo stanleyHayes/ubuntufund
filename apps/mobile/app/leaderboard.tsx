@@ -1,6 +1,7 @@
+import { usePublicRead } from '@/hooks/usePublicRead'
 import { TouchableOpacity } from '@/components/RoundedControls'
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { AppState, View, ScrollView, StyleSheet, Animated } from 'react-native'
+import { View, ScrollView, StyleSheet, Animated } from 'react-native'
 import { Text } from 'react-native-paper'
 import { Stack } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'
@@ -158,35 +159,21 @@ export default function LeaderboardScreen() {
   const { user } = useAuth()
   const p = usePalette()
   const styles = useStyles()
-  const [stats, setStats] = useState({ totalAmount: 0, totalDonations: 0, totalDonors: 0 })
-  const [entries, setEntries] = useState<LeaderboardEntry[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [activePeriod, setActivePeriod] = useState<Period>('Lifetime')
 
   // Rank 1-3 badge colors, drawn from the gold family only.
   const MEDAL_COLORS = [p.secondary, p.secondaryDark, p.secondaryLight]
 
-  const fetchLeaderboard = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const res = await api.get<LeaderboardEntry[]>(`/leaderboard?period=${PERIOD_PARAMS[activePeriod]}`)
-      setEntries(Array.isArray(res) ? res : [])
-      setStats(await api.get(`/leaderboard/stats?period=${PERIOD_PARAMS[activePeriod]}`))
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load leaderboard')
-    } finally {
-      setLoading(false)
-    }
+  const readLeaderboard = useCallback(async () => {
+    const [entries, stats] = await Promise.all([
+      api.get<LeaderboardEntry[]>(`/leaderboard?period=${PERIOD_PARAMS[activePeriod]}`),
+      api.get<{ totalAmount: number; totalDonations: number; totalDonors: number }>(`/leaderboard/stats?period=${PERIOD_PARAMS[activePeriod]}`),
+    ])
+    return { entries: Array.isArray(entries) ? entries : [], stats }
   }, [activePeriod])
-
-  useEffect(() => {
-    void fetchLeaderboard()
-    const timer = setInterval(() => { if (AppState.currentState === 'active') void fetchLeaderboard() }, 30000)
-    const listener = AppState.addEventListener('change', state => { if (state === 'active') void fetchLeaderboard() })
-    return () => { clearInterval(timer); listener.remove() }
-  }, [fetchLeaderboard])
+  const { data, loading, error, refresh: fetchLeaderboard } = usePublicRead(`leaderboard:${activePeriod}`, readLeaderboard)
+  const entries = data?.entries ?? []
+  const stats = data?.stats ?? { totalAmount: 0, totalDonations: 0, totalDonors: 0 }
 
   return (
     <View style={styles.container}>
@@ -228,7 +215,7 @@ export default function LeaderboardScreen() {
       </ScrollView>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
-        {!loading && !error && <View style={{ padding: 16, gap: 8 }}><Text variant="titleLarge">{formatAmount(stats.totalAmount)} raised · {stats.totalDonations} donations</Text><Text>{stats.totalDonors} registered donors. Guest gifts count toward totals, but not named rankings.</Text></View>}
+        {!loading && !error && <View style={{ padding: 16, gap: 8 }}><Text variant="titleLarge">{formatAmount(stats.totalAmount)} raised · {stats.totalDonations} donations</Text><Text>{stats.totalDonors} registered donors. Only public GHS gifts to published campaigns count here. Anonymous gifts and accounts hidden from this board are excluded; public guest gifts count only toward totals.</Text></View>}
         {loading ? (
           <SkeletonRows />
         ) : error ? (

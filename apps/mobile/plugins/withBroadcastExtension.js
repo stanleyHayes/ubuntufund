@@ -13,7 +13,10 @@ module.exports = function withBroadcastExtension(config) {
     { targetName, bundleIdentifier: extensionId, entitlements: { 'com.apple.security.application-groups': [group] } },
   ] } } } } }
   config = withInfoPlist(config, mod => {
-    mod.modResults.UIBackgroundModes = [...new Set([...(mod.modResults.UIBackgroundModes || []), 'audio'])]
+    // Live broadcasting needs audio; the app has no background location, VoIP,
+    // accessory, Bluetooth or background-fetch feature. Keep generated builds
+    // from inheriting unrelated capabilities from a previous local Xcode setup.
+    mod.modResults.UIBackgroundModes = ['audio']
     mod.modResults.RTCAppGroupIdentifier = group
     mod.modResults.RTCScreenSharingExtension = extensionId
     return mod

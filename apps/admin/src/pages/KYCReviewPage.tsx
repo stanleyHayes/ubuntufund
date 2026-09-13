@@ -1,6 +1,10 @@
+import { KYCRejectDialog } from '@/components/kyc/KYCRejectDialog'
+import ExportMenu from '@/components/ExportMenu'
+import { loadAll } from '@/lib/exports/loadAll'
+import { exportTable, dateCell } from '@/lib/exports/report'
 import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import { useState, useMemo } from 'react'
-import { Alert, Skeleton, Box, Typography, MenuItem, Button, Dialog } from '@mui/material'
+import { Alert, Skeleton, Box, Typography, MenuItem, Button, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material'
 import { raisedSurface, insetSurface } from '@/lib/surfaces'
 import SearchIcon from '@mui/icons-material/Search'
 import InputAdornment from '@mui/material/InputAdornment'
@@ -52,10 +56,16 @@ export default function KYCReviewPage() {
   const { can } = useAdminPermissions()
   const [statusFilter, setStatusFilter] = useState('all')
   const [typeFilter, setTypeFilter] = useState('all')
-  const [search, setSearch] = useState('')
+  const [search, setSearch] = useState(() => new URLSearchParams(window.location.search).get('application') ?? '')
   const [localStatuses, setLocalStatuses] = useState<Record<string, string>>({})
   const [selected, setSelected] = useState<KYCVerification | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [actionError, setActionError] = useState('')
+  const [rejectTarget, setRejectTarget] = useState<{ id: string; reviewVersion: string } | null>(null)
+  const [requestTarget, setRequestTarget] = useState<string | null>(null)
+  const [requestPrompt, setRequestPrompt] = useState('')
+  const [savedRequests, setSavedRequests] = useState<Record<string, NonNullable<KYCVerification['informationRequests']>>>({})
 
   const filtered = useMemo(() => {
     return kycVerifications.filter(v => {
@@ -64,7 +74,7 @@ export default function KYCReviewPage() {
       if (typeFilter !== 'all' && v.verificationType !== typeFilter) return false
       if (search) {
         const q = search.toLowerCase()
-        return v.userName.toLowerCase().includes(q) || v.verificationType.toLowerCase().includes(q)
+        return v.id.toLowerCase().includes(q) || v.userName.toLowerCase().includes(q) || v.verificationType.toLowerCase().includes(q)
       }
       return true
     })
@@ -72,24 +82,46 @@ export default function KYCReviewPage() {
 
   const pagination = usePagination(filtered, PAGE_SIZE)
 
-  const handleAction = (id: string, action: string) => {
-    // Optimistically reflect the decision in the queue for a responsive UX.
-    setLocalStatuses(prev => ({ ...prev, [id]: action }))
-    // Persist to the real KYC review endpoints where they exist.
-    // 'in_review' (Request More) has no backend endpoint yet — local-only.
-    const path =
-      action === 'approved' ? `/kyc/${id}/approve` :
-      action === 'rejected' ? `/kyc/${id}/reject` : null
-    if (path) {
-      api.put(path, {}).catch(() => {
-        // Keep the optimistic status; the queue reconciles on next load.
-      })
+  const handleAction = async (id: string, action: string, review?: { evidenceReviewed: true; reviewNotes: string }) => {
+    if (saving) return
+    setActionError('')
+    if (action === 'rejected') {
+      const target = selected?.id === id && detailOpen ? selected : kycVerifications.find(v => v.id === id)
+      if (target) setRejectTarget({ id, reviewVersion: target.reviewVersion })
+      return
     }
+    if (action === 'in_review') {
+      setRequestPrompt('')
+      setRequestTarget(id)
+      return
+    }
+    setSaving(true)
+    try {
+      await api.put(`/kyc/${id}/${action === 'approved' ? 'approve' : 'reject'}`, { ...review, reviewVersion: (selected?.id === id && detailOpen ? selected : kycVerifications.find(v => v.id === id))?.reviewVersion })
+      setLocalStatuses(prev => ({ ...prev, [id]: action }))
+      setDetailOpen(false)
+    } catch (cause) {
+      setActionError(cause instanceof Error ? cause.message : 'Could not save the review. Please try again.')
+    } finally { setSaving(false) }
   }
 
-  const pendingCount = kycVerifications.filter(v => v.status === 'pending').length
-  const approvedToday = kycVerifications.filter(v => v.status === 'approved' && v.reviewedAt && new Date(v.reviewedAt).toDateString() === new Date().toDateString()).length
-  const rejectedToday = kycVerifications.filter(v => v.status === 'rejected' && v.reviewedAt && new Date(v.reviewedAt).toDateString() === new Date().toDateString()).length
+  async function saveInformationRequest() {
+    if (!requestTarget || saving || requestPrompt.trim().length < 20) return
+    setSaving(true); setActionError('')
+    try {
+      const item = await api.put<NonNullable<KYCVerification['informationRequests']>[number]>(`/kyc/${requestTarget}/request-info`, { prompt: requestPrompt.trim(), reviewVersion: (selected?.id === requestTarget && detailOpen ? selected : kycVerifications.find(v => v.id === requestTarget))?.reviewVersion })
+      const previous = savedRequests[requestTarget] ?? kycVerifications.find(v => v.id === requestTarget)?.informationRequests ?? []
+      setSavedRequests(prev => ({ ...prev, [requestTarget]: [...previous, item] }))
+      setLocalStatuses(prev => ({ ...prev, [requestTarget]: 'in_review' }))
+      setSelected(prev => prev?.id === requestTarget ? { ...prev, status: 'in_review', informationRequests: [...previous, item] } : prev)
+      setRequestTarget(null); setDetailOpen(false)
+    } catch (cause) { setActionError(cause instanceof Error ? cause.message : 'Could not save the information request. Please retry.') }
+    finally { setSaving(false) }
+  }
+
+  const pendingCount = kycVerifications.filter(v => (localStatuses[v.id] ?? v.status) === 'pending').length
+  const approvedToday = kycVerifications.filter(v => (localStatuses[v.id] === 'approved' || (!localStatuses[v.id] && v.status === 'approved' && v.reviewedAt && new Date(v.reviewedAt).toDateString() === new Date().toDateString()))).length
+  const rejectedToday = kycVerifications.filter(v => (localStatuses[v.id] === 'rejected' || (!localStatuses[v.id] && v.status === 'rejected' && v.reviewedAt && new Date(v.reviewedAt).toDateString() === new Date().toDateString()))).length
 
   return (
     <Box sx={{ bgcolor: 'background.default', }}>
@@ -105,9 +137,12 @@ export default function KYCReviewPage() {
           { label: 'Rejected Today', value: loading ? <Skeleton width={60} /> : error ? '—' : rejectedToday },
         ]}
       />
+      <ExportMenu title="KYC review" disabled={loading || !!error} getReport={async progress => { const rows = (await loadAll<KYCVerification>('/kyc/pending', progress)).filter(r => (statusFilter === 'all' || r.status === statusFilter) && (typeFilter === 'all' || r.verificationType === typeFilter) && (!search || [r.id, r.userName, r.verificationType].some(value => value.toLowerCase().includes(search.toLowerCase()))));
+return { title: 'KYC review queue', filters: [`Status: ${statusFilter}`, `Type: ${typeFilter}`, `Search: ${search || 'All'}`], tables: [exportTable('Verification decisions', rows, { ID: r => r.id, Account: r => r.userId, Name: r => r.userName, Type: r => r.verificationType, Status: r => r.status, Risk: r => r.riskLevel, 'Submitted (UTC)': r => dateCell(r.createdAt), 'Reviewed (UTC)': r => dateCell(r.reviewedAt) })] } }} />
 
       {error && <Alert severity="error" sx={{ mb: 3 }}>Could not load verifications. Refresh the page to try again.</Alert>}
 
+      {actionError && <Alert severity="error" sx={{ mb: 3 }}>{actionError}</Alert>}
       {/* Filter bar */}
       <Box sx={{
         display: 'grid',
@@ -200,14 +235,15 @@ export default function KYCReviewPage() {
               return (
                 <Box
                   key={v.id}
-                  onClick={() => { setSelected(v); setDetailOpen(true) }}
+                  onClick={() => { setSelected({ ...v, status: st as KYCVerification['status'], informationRequests: savedRequests[v.id] ?? v.informationRequests }); setActionError(''); setDetailOpen(true) }}
                   tabIndex={0}
                   role="button"
                   aria-label={`Review verification for ${v.userName}`}
                   onKeyDown={event => {
                     if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
                       event.preventDefault()
-                      setSelected(v)
+                      setSelected({ ...v, status: st as KYCVerification['status'], informationRequests: savedRequests[v.id] ?? v.informationRequests })
+                      setActionError('')
                       setDetailOpen(true)
                     }
                   }}
@@ -281,12 +317,14 @@ export default function KYCReviewPage() {
                   </Box>
 
                   {/* Actions — segmented one-line row; each label stays on a single line */}
+                  {st === 'in_review' && <Typography sx={{ mt: 2 }}>Awaiting applicant response. Refresh the queue to check for updates.</Typography>}
                   {st === 'pending' && can(Resource.VERIFICATIONS, Action.UPDATE) && (
                     <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 0.75 }} onClick={e => e.stopPropagation()}>
                       <Button
                         size="small"
                         variant="outlined"
-                        onClick={() => handleAction(v.id, 'approved')}
+                        disabled={saving}
+                        onClick={() => { setSelected({ ...v, status: st as KYCVerification['status'], informationRequests: savedRequests[v.id] ?? v.informationRequests }); setActionError(''); setDetailOpen(true) }}
                         sx={{
                           flex: '1 1 0', minWidth: 0, px: 1, whiteSpace: 'nowrap',
                           fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.04em',
@@ -294,12 +332,13 @@ export default function KYCReviewPage() {
                           '&:hover': { borderColor: '#8FAE96', bgcolor: 'rgba(76,175,80,0.08)' },
                         }}
                       >
-                        Approve
+                        Review evidence
                       </Button>
                       <Button
                         size="small"
                         variant="outlined"
-                        onClick={() => handleAction(v.id, 'rejected')}
+                        disabled={saving}
+                        onClick={() => void handleAction(v.id, 'rejected')}
                         sx={{
                           flex: '1 1 0', minWidth: 0, px: 1, whiteSpace: 'nowrap',
                           fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.04em',
@@ -312,7 +351,8 @@ export default function KYCReviewPage() {
                       <Button
                         size="small"
                         variant="outlined"
-                        onClick={() => handleAction(v.id, 'in_review')}
+                        disabled={saving}
+                        onClick={() => void handleAction(v.id, 'in_review')}
                         sx={{
                           flex: '1 1 0', minWidth: 0, px: 1, whiteSpace: 'nowrap',
                           fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.04em',
@@ -350,15 +390,34 @@ export default function KYCReviewPage() {
         )
       )}
 
+      <Button disabled={saving || !!requestTarget} onClick={() => window.location.reload()}>Refresh queue</Button>
+      <Dialog open={!!requestTarget} onClose={() => { if (!saving) setRequestTarget(null) }} maxWidth="sm" fullWidth aria-labelledby="kyc-request-title">
+        <DialogTitle id="kyc-request-title">Request more information</DialogTitle>
+        <DialogContent>
+          <Typography sx={{ mb: 2 }}>Explain what the applicant needs to clarify or upload. This request will appear in their verification account.</Typography>
+          <TextField autoFocus fullWidth multiline minRows={3} label="Information needed" value={requestPrompt} disabled={saving} onChange={event => setRequestPrompt(event.target.value)} inputProps={{ maxLength: 2000 }} helperText={`${requestPrompt.trim().length}/2000 characters (at least 20)`} />
+          {actionError && <Alert severity="error" sx={{ mt: 2 }}>{actionError}</Alert>}
+        </DialogContent>
+        <DialogActions>
+          <Button disabled={saving} onClick={() => setRequestTarget(null)}>Cancel</Button>
+          <Button disabled={saving || requestPrompt.trim().length < 20} onClick={() => void saveInformationRequest()}>{saving ? 'Saving…' : 'Save request'}</Button>
+        </DialogActions>
+      </Dialog>
+      {rejectTarget && <KYCRejectDialog key={rejectTarget.id} {...rejectTarget} onClose={() => setRejectTarget(null)} onSaved={() => {
+        setLocalStatuses(previous => ({ ...previous, [rejectTarget.id]: 'rejected' })); setRejectTarget(null); setDetailOpen(false)
+      }} />}
       {/* Detail Dialog */}
       <Dialog open={detailOpen} onClose={() => setDetailOpen(false)} maxWidth="md" fullWidth PaperProps={{ sx: { ...raisedSurface, color: 'text.primary' } }}>
         {selected && (
           <KYCDetailDialog
+            key={`${selected.id}:${selected.reviewVersion}`}
             verification={selected}
             onClose={() => setDetailOpen(false)}
-            onApprove={() => { handleAction(selected.id, 'approved'); setDetailOpen(false) }}
-            onReject={() => { handleAction(selected.id, 'rejected'); setDetailOpen(false) }}
-            onRequestMore={() => { handleAction(selected.id, 'in_review'); setDetailOpen(false) }}
+            saving={saving}
+            actionError={actionError}
+            onApprove={review => void handleAction(selected.id, 'approved', review)}
+            onReject={() => void handleAction(selected.id, 'rejected')}
+            onRequestMore={() => void handleAction(selected.id, 'in_review')}
           />
         )}
       </Dialog>

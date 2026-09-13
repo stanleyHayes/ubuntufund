@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { usePublicCampaign } from '@/hooks/usePublicCampaign'
 import { useParams, useNavigate } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
@@ -21,9 +21,7 @@ import {
 import { breadcrumbList } from '@ubuntu-fund/ui'
 import { CampaignStatus } from '@ubuntu-fund/types'
 import {
-  getCampaignBySlug,
   donatePath,
-  type CampaignPublicView,
 } from '@/lib/fundraising'
 import { useSeo, SITE_ORIGIN } from '@/lib/seo'
 
@@ -63,10 +61,6 @@ function campaignDescription(story: string): string {
   return `${blurb ? `${blurb} ` : ''}Donate by mobile money or card on Ujimora.`
 }
 
-function looksLikeNotFound(message: string): boolean {
-  return /not\s*found|404|no\s*such|does not exist/i.test(message)
-}
-
 // ---------------------------------------------------------------------------
 // CampaignPublicPage — public landing for QR / social visitors (no auth)
 // Route: /c/:slug
@@ -76,45 +70,7 @@ export function CampaignPublicPage() {
   const { slug } = useParams<{ slug: string }>()
   const navigate = useNavigate()
 
-  const [campaign, setCampaign] = useState<CampaignPublicView | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [notFound, setNotFound] = useState(false)
-
-  useEffect(() => {
-    if (!slug) return
-    let active = true
-    // Reset view state before each fetch — the standard reset-before-fetch
-    // pattern. The React Compiler set-state-in-effect rule flags these synchronous
-    // resets, but they're correct and intended here (no external store to sync to).
-    /* eslint-disable react-hooks/set-state-in-effect */
-    setIsLoading(true)
-    setError(null)
-    setNotFound(false)
-    /* eslint-enable react-hooks/set-state-in-effect */
-
-    getCampaignBySlug(slug)
-      .then((data) => {
-        if (!active) return
-        setCampaign(data)
-      })
-      .catch((err: unknown) => {
-        if (!active) return
-        const message = err instanceof Error ? err.message : 'Failed to load campaign'
-        if (looksLikeNotFound(message)) {
-          setNotFound(true)
-        } else {
-          setError(message)
-        }
-      })
-      .finally(() => {
-        if (active) setIsLoading(false)
-      })
-
-    return () => {
-      active = false
-    }
-  }, [slug])
+  const { campaign, isLoading, error, notFound } = usePublicCampaign(slug)
 
   // This slug URL is the one public shape for a campaign: /campaigns/:id and
   // /c/:id resolve to the same fundraiser and canonicalise here, so the page

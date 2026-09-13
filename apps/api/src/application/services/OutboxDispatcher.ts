@@ -1,7 +1,7 @@
+import type { DonationRepositoryPort } from '../../domain/ports/outbound/DonationRepositoryPort.js';
 import type { DonationSucceededPayload, OutboxRecord } from '@ubuntu-fund/types';
 import type { OutboxRepositoryPort } from '../../domain/ports/outbound/OutboxRepositoryPort.js';
 import type { RealtimeDonationProjector } from './RealtimeDonationProjector.js';
-import type { DonationOwnerNotifier } from './DonationOwnerNotifier.js';
 import { logger } from '../../infrastructure/logging/logger.js';
 
 /** How many pending rows the boot sweep drains per pass. */
@@ -22,7 +22,7 @@ export class OutboxDispatcher {
   constructor(
     private readonly outboxRepo: OutboxRepositoryPort,
     private readonly realtimeProjector: RealtimeDonationProjector,
-    private readonly ownerNotifier?: DonationOwnerNotifier
+    private readonly donations: DonationRepositoryPort
   ) {}
 
   /**
@@ -75,6 +75,7 @@ export class OutboxDispatcher {
   private async handleDonationSucceeded(
     payload: DonationSucceededPayload
   ): Promise<void> {
+    const current = await this.donations.findById(payload.donationId);
     // Publish realtime overlay/feed events and bump live-session stats. The
     // projector swallows its own errors, so a realtime hiccup never blocks the
     // row from being marked dispatched.
@@ -84,15 +85,16 @@ export class OutboxDispatcher {
       {
         donationId: payload.donationId,
         donorId: payload.donorId,
-        donorName: payload.donorName,
+        donorName: current?.publicDonorName,
         amount: payload.amount,
         currency: payload.currency,
-        message: payload.message,
-        isAnonymous: payload.isAnonymous,
+        message: current?.publicMessage,
+        isAnonymous: !current?.publicContentApproved || current.isAnonymous,
         createdAt: new Date(payload.createdAt),
       }
     );
 
-    await this.ownerNotifier?.notify(payload);
+    // Opt-in activity delivery is tracked atomically on the financial records
+    // and reconciled independently by MongoActivityAlerts.
   }
 }

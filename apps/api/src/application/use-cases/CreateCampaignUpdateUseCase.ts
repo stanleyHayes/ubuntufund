@@ -1,3 +1,4 @@
+import type { PublicationAdmissionPort } from '../../domain/ports/outbound/PublicationAdmissionPort.js';
 import type { CampaignUpdate, CreateCampaignUpdateInput } from '@ubuntu-fund/types';
 import { CampaignUpdateEntity } from '../../domain/entities/CampaignUpdate.js';
 import type { CampaignUpdateRepositoryPort } from '../../domain/ports/outbound/CampaignUpdateRepositoryPort.js';
@@ -23,7 +24,8 @@ function toDTO(entity: CampaignUpdateEntity): CampaignUpdate {
 export class CreateCampaignUpdateUseCase {
   constructor(
     private readonly updateRepo: CampaignUpdateRepositoryPort,
-    private readonly campaignRepo: CampaignRepositoryPort
+    private readonly campaignRepo: CampaignRepositoryPort,
+    private readonly admission?: PublicationAdmissionPort
   ) {}
 
   async execute(
@@ -44,6 +46,8 @@ export class CreateCampaignUpdateUseCase {
       throw new AppError('Title and content are required', 400);
     }
 
+    if (!this.admission) throw new AppError('Publication review is unavailable', 503);
+    await this.admission.assertAllowed({ actorId: authorId, action: 'update.create', resourceId: campaignId, text: JSON.stringify([input.title, input.content, input.type]), mediaUrls: input.mediaUrls ?? [], automatedReviewConsent: input.automatedReviewConsent });
     const now = new Date();
     const update = new CampaignUpdateEntity({
       id: '', // Will be assigned by the repository

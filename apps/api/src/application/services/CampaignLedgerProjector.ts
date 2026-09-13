@@ -4,6 +4,7 @@ import type { CampaignBalanceRepositoryPort } from '../../domain/ports/outbound/
 import type { LedgerRepositoryPort } from '../../domain/ports/outbound/LedgerRepositoryPort.js';
 import type { SplitAccrualService } from './SplitAccrualService.js';
 import { logger } from '../../infrastructure/logging/logger.js';
+import { toMinorUnits } from '../../domain/value-objects/Money.js';
 
 /**
  * Projects posted ledger activity onto the campaign read models.
@@ -95,7 +96,12 @@ export class CampaignLedgerProjector {
         donationIntentId,
         split.beneficiaryNet
       );
-      if (actual !== null) pendingReversal = actual; // this was a split donation
+      if (actual !== null) {
+        // A provider refund must not complete accounting for an unclawed share.
+        // The caller's transaction rolls back any earlier beneficiary writes.
+        if (toMinorUnits(actual, currency) !== toMinorUnits(split.beneficiaryNet, currency)) return false;
+        pendingReversal = actual;
+      }
     }
 
     const reversed = await this.campaignBalanceRepo.applyRefund(campaignId, currency, {
@@ -120,6 +126,7 @@ export class CampaignLedgerProjector {
         { campaignId, amount: split.amount },
         'raised projection not reversed on refund: campaign not found for currency'
       );
+      return false;
     }
     return true;
   }

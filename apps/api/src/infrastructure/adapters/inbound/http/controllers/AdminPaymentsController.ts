@@ -51,11 +51,14 @@ export class AdminPaymentsController {
   refund = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
       const body = (req.body ?? {}) as { amount?: number; idempotencyKey?: string };
-      // A stable per-refund key (header or body) makes even partial refunds
-      // exactly-once under a client retry; full refunds are idempotent anyway.
+      // A stable key lets the local reservation reject repeated submissions.
+      // Provider ambiguity/recovery is separate from local duplicate detection.
       const headerKey = req.header('idempotency-key');
       const idempotencyKey =
         headerKey ?? (typeof body.idempotencyKey === 'string' ? body.idempotencyKey : undefined);
+      if (idempotencyKey !== undefined && (!idempotencyKey.trim() || idempotencyKey.length > 200)) {
+        throw new AppError('Refund idempotency key must contain 1–200 characters', 400);
+      }
       const result = await this.processRefundUseCase.execute(
         String(req.params.id),
         {
@@ -64,10 +67,33 @@ export class AdminPaymentsController {
         },
         req.userId ?? 'unknown-admin'
       );
-      res.json({ data: result, status: 'success' });
+      res.status(result.status === 'PROCESSING' || result.status === 'PENDING_REVIEW' ? 202 : 200).json({ data: result, status: 'success' });
     } catch (error) {
       next(error);
     }
+  };
+
+  refundOperations = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const page = Number(req.query.page ?? 1);
+      if (!Number.isInteger(page) || page < 1 || page > 10000) throw new AppError('Invalid page', 400);
+      res.set('Cache-Control', 'private, no-store');
+      res.json({ data: await this.processRefundUseCase.listUnresolved(page), status: 'success' });
+    } catch (error) { next(error); }
+  };
+
+  retryRefundAccounting = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const result = await this.processRefundUseCase.finishLocalReversal(String(req.params.id));
+      res.status(result.status === 'PENDING_REVIEW' ? 202 : 200).json({ data: result, status: 'success' });
+    } catch (error) { next(error); }
+  };
+
+  verifyRefund = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const result = await this.processRefundUseCase.verifyProviderOutcome(String(req.params.id), req.body.providerReference);
+      res.status(result.status === 'PROCESSING' || result.status === 'PENDING_REVIEW' ? 202 : 200).json({ data: result, status: 'success' });
+    } catch (error) { next(error); }
   };
 
   /** GET /admin/payments — search contributions (spec §15). */

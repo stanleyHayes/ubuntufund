@@ -13,6 +13,7 @@ function toDomain(
     beneficiaryId: doc.beneficiaryId,
     currency: doc.currency,
     pendingBalance: doc.pendingBalance,
+    refundHeldBalance: (doc.refundHolds ?? []).reduce((sum, hold) => sum + hold.amount, 0),
     availableBalance: doc.availableBalance,
     paidOutBalance: doc.paidOutBalance,
     updatedAt: doc.updatedAt,

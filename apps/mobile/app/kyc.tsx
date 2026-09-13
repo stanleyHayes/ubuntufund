@@ -1,4 +1,6 @@
+import { OrganizationKYCForm } from '@/components/OrganizationKYCForm'
 import { useAuth } from '@/context/AuthContext'
+import { latestAdultBirthDate, KYC_IDENTITY_DOCUMENT_OPTIONS } from '@ubuntu-fund/types'
 import { SignInRequired } from '@/components/SignInRequired'
 import { useState } from 'react'
 import { View, ScrollView, KeyboardAvoidingView, Platform } from 'react-native'
@@ -13,11 +15,15 @@ import { MediaUploadField } from '@/components/MediaUploadField'
 import { Button } from '@/components/Loading'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
 import { api } from '@/lib/api'
-import { buildKycSubmission, emptyKycDraft, validateKycStep, type KycDraft } from '@/lib/kyc'
+import { changeKycIdentityType, buildKycSubmission, emptyKycDraft, validateKycStep, type KycDraft } from '@/lib/kyc'
 
 const countries = Country.getAllCountries().map(c => ({ value: c.name, label: `${c.flag} ${c.name}` }))
 const steps = ['Personal information', 'ID documents', 'Address verification', 'Selfie']
 export default function KYCScreen() {
+  const { user } = useAuth()
+  return user?.role === 'organization' ? <OrganizationKYCForm key={user.id} /> : <IdentityKYCScreen />
+}
+function IdentityKYCScreen() {
   const { user } = useAuth()
   const p = usePalette(); const neu = useNeu()
   const [draft, setDraft] = useState<KycDraft>(emptyKycDraft)
@@ -62,8 +68,12 @@ export default function KYCScreen() {
         <Text style={{ color: p.textSecondary }}>Step {step + 1} of 4 · {steps[step]}</Text>
         <ProgressBar progress={(step + 1) / 4} color={p.primary} />
         <View style={{ ...neu.raised, backgroundColor: p.surface, borderRadius: 24, padding: 20, gap: 16 }}>
-          {step === 0 && <>{field('Full name', 'fullName')}<BrandedDateField label="Date of birth" value={draft.dateOfBirth} onChange={v => change('dateOfBirth', v)} maxDate={new Date()} /><SelectionField label="Nationality" value={draft.nationality} options={countries} onChange={v => change('nationality', v)} />{field('ID number', 'idNumber')}</>}
-          {step === 1 && <>{upload('Front of your ID', 'idFront', true)}{upload('Back of your ID', 'idBack', true)}</>}
+          {step === 0 && <>{field('Full name', 'fullName')}<BrandedDateField label="Date of birth" value={draft.dateOfBirth} onChange={v => change('dateOfBirth', v)} maxDate={new Date(`${latestAdultBirthDate()}T12:00:00`)} /><SelectionField label="Nationality" value={draft.nationality} options={countries} onChange={v => change('nationality', v)} />{field('ID number', 'idNumber')}</>}
+          {step === 1 && <>
+            <SelectionField label="Identity document type" value={draft.identityDocumentType} options={[...KYC_IDENTITY_DOCUMENT_OPTIONS]} disabled={busy || uploads > 0} onChange={value => { setDraft(previous => changeKycIdentityType(previous, value as KycDraft['identityDocumentType'])); setError('') }} />
+            {upload(draft.identityDocumentType === 'passport' ? 'Passport photo page' : 'Front of your ID', 'idFront', true)}
+            {draft.identityDocumentType !== 'passport' && upload('Back of your ID', 'idBack', true)}
+          </>}
           {step === 2 && <>
             <Button icon="crosshairs-gps" loading={locating} disabled={locating} onPress={() => void locate()}>Use my location</Button>
             <Text style={{ color: p.textSecondary }}>Check the address found by GPS. A location reading does not generate a GhanaPost digital address.</Text>

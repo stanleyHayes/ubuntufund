@@ -20,6 +20,11 @@ export class PayoutAccountService {
     private readonly gateway: PaymentGatewayPort,
     private readonly plans: PlanLimitsService,
   ) {}
+  async assertCurrent(userId: string, account: SavedPayoutAccount) {
+    if (!this.repo.claimCurrent) throw new AppError('Payout verification is unavailable.', 503)
+    if (!await this.repo.claimCurrent(userId, account))
+      throw new AppError('Your payout destination changed. Refresh your accounts before withdrawing.', 409)
+  }
   async list(userId: string) {
     const plan = await this.plans.resolvePlan(userId)
     return {

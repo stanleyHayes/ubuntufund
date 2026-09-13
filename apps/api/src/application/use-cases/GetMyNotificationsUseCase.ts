@@ -5,6 +5,7 @@ export interface NotificationDTO {
   id: string;
   title: string;
   message: string;
+  path?: string;
   type: string;
   read: boolean;
   createdAt: Date;
@@ -16,6 +17,7 @@ export function toNotificationDTO(entity: NotificationEntity): NotificationDTO {
     id: plain.id,
     title: plain.title,
     message: plain.body,
+    path: plain.path,
     type: plain.type,
     read: plain.read,
     createdAt: plain.createdAt,

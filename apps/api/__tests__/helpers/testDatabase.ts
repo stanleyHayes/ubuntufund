@@ -22,8 +22,11 @@ const BASE_MONGODB_URI =
 const TEST_MONGODB_URI = perWorkerDatabaseUri(BASE_MONGODB_URI);
 
 function perWorkerDatabaseUri(uri: string): string {
-  const marker = `${process.pid}-${randomUUID().slice(0, 8)}`;
+  const runId = process.env.UJIMORA_TEST_RUN_ID ?? randomUUID().replace(/-/g, '').slice(0, 16);
+  if (!/^[a-f0-9]{16}$/.test(runId)) throw new Error('Invalid test run namespace');
+  const marker = `${runId}-${process.pid}-${randomUUID().slice(0, 8)}`;
   const [base, query] = uri.split('?');
+  if (!base.endsWith('-test')) throw new Error('Test database name must end with -test');
   const withSuffix = `${base}-${marker}`;
   return query ? `${withSuffix}?${query}` : withSuffix;
 }

@@ -1,3 +1,6 @@
+import { useAuth } from '@/context/AuthContext'
+import { PublicationConsent } from '@/components/PublicationConsent'
+import { PublicationReviews } from '@/components/PublicationReviews'
 import { payoutInstitutionName } from '@ubuntu-fund/types'
 import { randomUUID } from 'expo-crypto'
 import { SegmentedButtons } from '@/components/RoundedControls'
@@ -8,7 +11,7 @@ import { Chip } from '@/components/Chip'
 import { SkeletonLoader, Button } from '@/components/Loading'
 import { BrandedTextInput as TextInput } from '@/components/BrandedTextInput'
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
-import { View, ScrollView, StyleSheet, Share, useWindowDimensions } from 'react-native'
+import { View, ScrollView, StyleSheet, Share, useWindowDimensions, Image } from 'react-native'
 import { Text, Switch, Portal, Dialog, Snackbar } from 'react-native-paper'
 import { Stack, router } from 'expo-router'
 import {
@@ -75,6 +78,12 @@ function makeStyles(p: Palette, neu: NeuRecipes) {
 }
 
 export default function CreatorDashboardScreen() {
+  const { user } = useAuth()
+  return <CreatorDashboardForViewer key={user?.id ?? 'guest'} />
+}
+function CreatorDashboardForViewer() {
+  const live = useRef(true)
+  useEffect(() => { live.current = true; return () => { live.current = false } }, [])
   const { height } = useWindowDimensions()
   const p = usePalette()
   const neu = useNeu()
@@ -102,6 +111,8 @@ export default function CreatorDashboardScreen() {
   }, [])
   const [handle, setHandle] = useState('')
   const [displayName, setDisplayName] = useState('')
+  const [automatedReviewConsent, setAutomatedReviewConsent] = useState(false)
+  const [avatarUrl, setAvatarUrl] = useState(''), [coverUrl, setCoverUrl] = useState('')
   const [tagline, setTagline] = useState('')
   const [bio, setBio] = useState('')
   const [tipsEnabled, setTipsEnabled] = useState(true)
@@ -122,6 +133,7 @@ export default function CreatorDashboardScreen() {
   const [wError, setWError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
+    if (!live.current) return
     setLoading(true)
     setLoadError(null)
     try {
@@ -129,6 +141,7 @@ export default function CreatorDashboardScreen() {
       // so a thrown error here is a REAL failure (5xx, network, expired session) —
       // surface it instead of showing an empty claim form.
       const me = await getMyCreator()
+      if (!live.current) return
       setPolicy(me.policy)
       setProfile(me.profile)
       setBalance(me.balance)
@@ -137,13 +150,17 @@ export default function CreatorDashboardScreen() {
         setDisplayName(me.profile.displayName)
         setTagline(me.profile.tagline ?? '')
         setBio(me.profile.bio ?? '')
+        setAvatarUrl(me.profile.avatarUrl ?? '')
+        setCoverUrl(me.profile.coverUrl ?? '')
         setTipsEnabled(me.profile.tipsEnabled)
-        setPayouts(await listMyPayouts())
+        const payouts = await listMyPayouts()
+        if (live.current) setPayouts(payouts)
       }
     } catch (err) {
+      if (!live.current) return
       setLoadError(err instanceof Error ? err.message : 'We couldn’t load your creator page.')
     } finally {
-      setLoading(false)
+      if (live.current) setLoading(false)
     }
   }, [])
 
@@ -155,14 +172,31 @@ export default function CreatorDashboardScreen() {
     setError(null)
     setSaving(true)
     try {
-      await saveCreatorProfile({ handle, displayName, tagline, bio, tipsEnabled })
+      await saveCreatorProfile({ handle, displayName, tagline, bio, avatarUrl, coverUrl, tipsEnabled, automatedReviewConsent })
+      if (!live.current) return
       setSnack('Your creator page is saved')
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save.')
+      if (live.current) setError(err instanceof Error ? err.message : 'Could not save.')
     } finally {
-      setSaving(false)
+      if (live.current) setSaving(false)
     }
+  }
+
+  async function pauseTips() {
+    setSaving(true); setError(null)
+    try {
+      await api.post('/creators/profile', { tipsEnabled: false })
+      if (live.current) { setTipsEnabled(false); setProfile(previous => previous ? { ...previous, tipsEnabled: false } : previous); setSnack('Tips paused. Your other draft changes are retained.') }
+    } catch (cause) { if (live.current) setError(cause instanceof Error ? cause.message : 'Could not pause tips.') }
+    finally { if (live.current) setSaving(false) }
+  }
+  async function selectAccountImages() {
+    setError(null)
+    try {
+      const images = await api.get<{ avatarUrl?: string; coverUrl?: string }>('/profile')
+      if (live.current) { setAvatarUrl(images.avatarUrl ?? ''); setCoverUrl(images.coverUrl ?? ''); setSnack('Account images selected. Save your creator page to submit them for review.') }
+    } catch { if (live.current) setError('Could not load account images.') }
   }
 
   async function withdraw() {
@@ -291,7 +325,9 @@ export default function CreatorDashboardScreen() {
         )}
 
         <View style={styles.card}>
-          <Button onPress={() => router.push('/profile/edit')}>Edit your photo & cover</Button>
+          <Button onPress={() => router.push('/profile/edit')}>Manage account images</Button>
+          <Button disabled={saving} onPress={() => void selectAccountImages()}>Use account photo and cover</Button>
+          {(avatarUrl || coverUrl) && <View style={{ flexDirection: 'row', gap: 8 }}>{[avatarUrl, coverUrl].map((url, index) => url && <Image key={`${index}:${url}`} source={{ uri: url }} accessibilityLabel={index === 0 ? 'Selected creator photo' : 'Selected creator cover'} style={{ width: 80, height: 64, borderRadius: 8 }} />)}<Button onPress={() => { setAvatarUrl(''); setCoverUrl('') }}>Clear images</Button></View>}
           <Text style={styles.cardTitle}>{profile ? 'Edit your page' : 'Claim your page'}</Text>
           <TextInput
             label="Handle (your link)"
@@ -328,7 +364,9 @@ export default function CreatorDashboardScreen() {
               onValueChange={setTipsEnabled}
             />
           </View>
-          {error ? <Text style={styles.err}>{error}</Text> : null}
+          <PublicationConsent value={automatedReviewConsent} onChange={setAutomatedReviewConsent} />
+          {error ? <><Text style={styles.err}>{error}</Text><PublicationReviews /></> : null}
+          {profile?.tipsEnabled && <Button disabled={saving} onPress={() => void pauseTips()}>Pause tips now</Button>}
           <Button
             mode="contained"
             loading={saving}

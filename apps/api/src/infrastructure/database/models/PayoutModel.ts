@@ -1,3 +1,4 @@
+import { trackActivity } from '../plugins/trackActivity.js';
 import mongoose, { Schema, type Document } from 'mongoose'
 import type {
   PayoutLeg,
@@ -117,5 +118,7 @@ const payoutSchema = new Schema<PayoutDocument>(
 // A leg's transfer reference is globally unique so a transfer webhook correlates
 // to exactly one leg of one payout (sparse: payouts without legs are exempt).
 payoutSchema.index({ 'legs.reference': 1 }, { unique: true, sparse: true })
+
+payoutSchema.plugin(trackActivity);
 
 export const PayoutModel = mongoose.model<PayoutDocument>('Payout', payoutSchema)

@@ -1,3 +1,4 @@
+import type { MfaPort } from '../../domain/ports/outbound/MfaPort.js';
 import { KYCStatus, KYCLevel, type LoginInput, type AuthTokens, type User } from '@ubuntu-fund/types';
 import * as bcrypt from 'bcryptjs';
 import type { UserRepositoryPort } from '../../domain/ports/outbound/UserRepositoryPort.js';
@@ -7,7 +8,8 @@ import type { AuthTokenService } from '../services/AuthTokenService.js';
 export class LoginUserUseCase {
   constructor(
     private readonly userRepo: UserRepositoryPort,
-    private readonly tokenService: AuthTokenService
+    private readonly tokenService: AuthTokenService,
+    private readonly mfa: MfaPort
   ) {}
 
   async execute(
@@ -26,9 +28,12 @@ export class LoginUserUseCase {
       throw new AppError('Invalid email or password', 401);
     }
 
+    await this.mfa.verifyLogin(user.id, user.authVersion, input.mfaCode);
+
     const tokens = this.tokenService.generateTokens({
       userId: user.id,
       role: user.role,
+      authVersion: user.authVersion,
     });
 
     return {
@@ -38,6 +43,7 @@ export class LoginUserUseCase {
         name: user.name,
         organizationName: user.organizationName,
         needsWebsite: user.needsWebsite,
+        legalAcceptance: user.legalAcceptance,
         avatarUrl: user.avatarUrl,
         role: user.role,
         verificationLevel: user.verificationLevel,

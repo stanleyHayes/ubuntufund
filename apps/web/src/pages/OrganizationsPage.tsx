@@ -1,3 +1,4 @@
+import { useAuth } from '@/context/AuthContext'
 import { ProfileArtwork } from '@/components/profile/ProfileArtwork'
 import { useState, useEffect } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
@@ -23,7 +24,6 @@ import { useSeo, SITE_ORIGIN } from '@/lib/seo'
 interface ApiOrg {
   id: string
   name: string
-  email: string
   country: string
   verified: boolean
   avatarUrl?: string
@@ -52,6 +52,11 @@ const fadeInUp = keyframes`
 // ─── Component ──────────────────────────────────────────────
 
 export function OrganizationsPage() {
+  const { user } = useAuth()
+  return <OrganizationsForViewer key={user?.id ?? 'guest'} />
+}
+
+function OrganizationsForViewer() {
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
@@ -64,7 +69,11 @@ export function OrganizationsPage() {
   })
 
   useEffect(() => {
+    let active = true
+    let loading = false
     async function load() {
+      if (loading) return
+      loading = true
       try {
         const [orgs, campaignsRes] = await Promise.all([
           api.get<ApiOrg[]>('/organizations'),
@@ -80,14 +89,19 @@ export function OrganizationsPage() {
             currency: orgCampaigns[0]?.currency ?? 'GHS',
           }
         })
-        setOrganizations(enriched)
+        if (active) setOrganizations(enriched)
       } catch {
-        setOrganizations([])
+        if (active) setOrganizations([])
       } finally {
-        setIsLoading(false)
+        loading = false
+        if (active) setIsLoading(false)
       }
     }
-    load()
+    void load()
+    const refresh = () => { if (document.visibilityState === 'visible') void load() }
+    window.addEventListener('focus', refresh)
+    const timer = window.setInterval(refresh, 30000)
+    return () => { active = false; window.removeEventListener('focus', refresh); window.clearInterval(timer) }
   }, [])
 
   return (

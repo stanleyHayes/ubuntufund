@@ -3,6 +3,7 @@ export interface WalletPayoutPort {
   settleCampaign(payoutId: string, approvedBy: string, reviewNote: string): Promise<void>
   transferCreator(input: {
     userId: string
+    authVersion: string
     amount: number
     fee: number
     feePercent: number

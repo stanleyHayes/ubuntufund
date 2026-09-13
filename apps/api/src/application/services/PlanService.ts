@@ -1,3 +1,4 @@
+import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 import {
   SUBSCRIPTION_PLANS,
   SubscriptionTier,
@@ -29,8 +30,12 @@ export class PlanService {
    * A read failure is logged and swallowed, returning the default so callers
    * can explicitly choose fallback behavior. Strict enforcement and checkout callers propagate failures.
    */
-  async getPlan(tier: string, strict = false): Promise<SubscriptionPlan> {
+  async getPlan(tier: string, strict = false, lock = false): Promise<SubscriptionPlan> {
     try {
+      if (lock) {
+        if (!this.planRepo.lockForConsumption) throw new AppError('Plan verification unavailable.', 503);
+        await this.planRepo.lockForConsumption(tier);
+      }
       const plan = await this.planRepo.findByTier(tier);
       // DB row → seed for that tier → the free seed (safe floor for an unknown
       // or since-deleted tier, so limit enforcement never crashes).

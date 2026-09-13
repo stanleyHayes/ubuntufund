@@ -1,6 +1,8 @@
 import { raisedSurface } from '@/lib/surfaces'
 import Skeleton from '@mui/material/Skeleton'
 import { useEffect, useState } from 'react'
+import ExportMenu from '@/components/ExportMenu'
+import { exportTable, dateCell } from '@/lib/exports/report'
 import { Box, Button, Chip, Typography } from '@mui/material'
 import { EmptyState } from '@ubuntu-fund/ui'
 import type {
@@ -83,11 +85,17 @@ export default function SplitProceedsSection({ campaignId }: { campaignId: strin
   if (failed) return <Box sx={{ ...raisedSurface, p: 3, mt: 3 }}><EmptyState variant="error" title="Split details couldn’t load" description="Try again to retrieve the latest payout configuration." compact action={<Button onClick={() => { setLoading(true); setRetry(value => value + 1) }}>Retry split details</Button>} /></Box>
 
   const hasSplit = Boolean(disclosure) || versions.length > 0
+  const allocations = versions.flatMap(version => version.allocations.map(allocation => ({ ...allocation, version: version.version, status: version.status })))
 
   return (
     <>
       <Box sx={{ ...raisedSurface, p: 3, mt: 3 }}>
         <Label>Split-proceeds</Label>
+        <ExportMenu title="Split proceeds" getReport={() => ({ title: 'Campaign split proceeds', filters: [`Campaign: ${campaignId}`], tables: [
+          exportTable('Beneficiary balances', balances, { Beneficiary: r => r.beneficiaryId, Currency: r => r.currency, Pending: r => r.pendingBalance, 'Refund hold': r => r.refundHeldBalance ?? 0, Available: r => r.availableBalance, Paid: r => r.paidOutBalance, 'Updated (UTC)': r => dateCell(r.updatedAt) }),
+          exportTable('Split versions', versions, { ID: r => r.id, Version: r => r.version, Status: r => r.status, Locked: r => r.locked, Creator: r => r.createdBy, 'Created (UTC)': r => dateCell(r.createdAt) }),
+          exportTable('Allocations', allocations, { Version: r => r.version, Status: r => r.status, Beneficiary: r => r.beneficiaryId, Name: r => r.name, 'Share (%)': r => r.shareBps / 100, Consent: r => r.consent, 'Consent (UTC)': r => dateCell(r.consentAt) }),
+        ] })} />
         {!hasSplit && (
           <EmptyState variant="noData" title="No split configured" description="This campaign pays out to a single recipient." compact />
         )}
@@ -123,6 +131,7 @@ export default function SplitProceedsSection({ campaignId }: { campaignId: strin
                   <Typography sx={{ fontSize: '0.7rem', color: 'text.secondary', wordBreak: 'break-all' }}>{bal.beneficiaryId}</Typography>
                   <Typography sx={{ fontSize: '0.75rem', color: 'text.primary', mt: 0.5 }}>
                     Pending {money(bal.pendingBalance, bal.currency)}
+                    {!!bal.refundHeldBalance && <> · Held for refund review {money(bal.refundHeldBalance, bal.currency)}</>}
                   </Typography>
                   <Typography sx={{ fontSize: '0.75rem', color: 'text.primary' }}>
                     Available {money(bal.availableBalance, bal.currency)} · Paid {money(bal.paidOutBalance, bal.currency)}

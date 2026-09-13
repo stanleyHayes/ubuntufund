@@ -1,32 +1,9 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import Avatar from '@mui/material/Avatar'
 import { Link } from 'react-router-dom'
 import { EmptyState, formatCurrency, SHAPE } from '@ubuntu-fund/ui'
-import { useSSE } from '@/hooks/useSSE'
-import { api } from '@/lib/api'
-
-interface ActivityEvent {
-  type: 'donation' | 'campaign_created' | 'milestone'
-  campaignId?: string
-  campaignTitle?: string
-  donorName?: string
-  amount?: number
-  currency?: string
-  timestamp?: number
-}
-
-interface ActivityItem {
-  id: string
-  type: 'donation' | 'campaign_created' | 'milestone'
-  userName: string
-  campaignTitle?: string
-  campaignId?: string
-  amount?: number
-  currency?: string
-  timestamp: number
-}
+import { usePublicFeed } from '@/hooks/usePublicFeed'
 
 interface RecentDonation {
   id: string
@@ -56,68 +33,12 @@ function formatTimeAgo(ts: number): string {
 }
 
 export function GlobalActivityFeed({ compact = false }: { compact?: boolean }) {
-  const [items, setItems] = useState<ActivityItem[]>([])
-  const pendingRef = useRef<ActivityItem[]>([])
-  const throttleRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const idRef = useRef(0)
-
-  const handleMessage = useCallback((event: string, data: unknown) => {
-    if (event !== 'activity') return
-
-    const activity = data as ActivityEvent
-    const item: ActivityItem = {
-      id: `activity-${++idRef.current}`,
-      type: activity.type ?? 'donation',
-      userName: activity.donorName ?? 'Anonymous',
-      campaignTitle: activity.campaignTitle,
-      campaignId: activity.campaignId,
-      amount: activity.amount,
-      currency: activity.currency,
-      timestamp: activity.timestamp ?? Date.now(),
-    }
-
-    pendingRef.current = [item, ...pendingRef.current]
-
-    if (!throttleRef.current) {
-      throttleRef.current = setTimeout(() => {
-        setItems((prev) => {
-          const merged = [...pendingRef.current, ...prev]
-          pendingRef.current = []
-          return merged.slice(0, compact ? 8 : 20)
-        })
-        throttleRef.current = null
-      }, 500)
-    }
-  }, [compact])
-
-  useSSE('global', { onMessage: handleMessage })
-
-  useEffect(() => {
-    let cancelled = false
-    api.get<RecentDonation[]>(`/donations?limit=${compact ? 8 : 20}`)
-      .then((donations) => {
-        if (cancelled || !Array.isArray(donations)) return
-        setItems(donations.map((donation) => ({
-          id: donation.id,
-          type: 'donation',
-          userName: donation.donorName || 'Anonymous',
-          campaignTitle: donation.campaignTitle,
-          campaignId: donation.campaignId,
-          amount: donation.amount,
-          currency: donation.currency,
-          timestamp: new Date(donation.createdAt).getTime(),
-        })))
-      })
-      .catch(() => {
-        if (!cancelled) setItems([])
-      })
-    return () => {
-      cancelled = true
-      if (throttleRef.current) {
-        clearTimeout(throttleRef.current)
-      }
-    }
-  }, [compact])
+  const { data } = usePublicFeed<RecentDonation[]>(`/donations?limit=${compact ? 8 : 20}`, 'global', 'activity')
+  const items = (Array.isArray(data) ? data : []).map(donation => ({
+    id: donation.id, type: 'donation', userName: donation.donorName || 'Anonymous',
+    campaignTitle: donation.campaignTitle, campaignId: donation.campaignId,
+    amount: donation.amount, currency: donation.currency, timestamp: new Date(donation.createdAt).getTime(),
+  }))
 
   return (
     <Box sx={{ bgcolor: 'background.paper', borderRadius: SHAPE.card, p: { xs: 2.5, md: 4 }, boxShadow: 'var(--neu-inset)' }}>

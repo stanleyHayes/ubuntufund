@@ -1,3 +1,4 @@
+import { trackActivity } from '../plugins/trackActivity.js';
 import mongoose, { Schema, type Document } from 'mongoose';
 import type { RefundStatus } from '../../../domain/ports/outbound/RefundRepositoryPort.js';
 
@@ -43,6 +44,8 @@ const refundSchema = new Schema<RefundDocument>(
   },
   { timestamps: true }
 );
+
+refundSchema.plugin(trackActivity);
 
 export const RefundModel = mongoose.model<RefundDocument>(
   'Refund',

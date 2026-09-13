@@ -1,0 +1,21 @@
+import { test, expect } from '@playwright/test'
+test('requires explicit acknowledgement before submitting a public name without a message', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.route('**/api/v1/**', route => route.fulfill({ json: { data: [] } }))
+  await page.route('**/api/v1/creators/name-fixture', route => route.fulfill({ json: { data: { userId: 'aaaaaaaaaaaaaaaaaaaaaaaa', displayName: 'Name Creator', handle: 'name-fixture', tipsEnabled: true, presetAmounts: [10], currency: 'GHS', supporterCount: 0, totalReceived: 0, recentTips: [] } } }))
+  const submissions: Record<string, unknown>[] = []
+  await page.route('**/api/v1/creators/name-fixture/tips', async route => { submissions.push(route.request().postDataJSON()); await route.abort('failed') })
+  await page.goto('/creators/name-fixture')
+  await page.getByRole('textbox', { name: 'Email address', exact: true }).fill('fixture@example.com')
+  await page.getByRole('textbox', { name: 'Your name (optional)', exact: true }).fill('Public alias')
+  const agreement = page.getByRole('checkbox', { name: 'I am at least 18 and agree to the terms for posting my public name and message.' })
+  await expect(agreement).not.toBeChecked()
+  await page.getByRole('button', { name: /^Support GH/ }).click()
+  await expect(page.getByText('Accept the content terms before posting your public name or message.')).toBeVisible()
+  expect(submissions).toEqual([])
+  await agreement.check()
+  await page.getByRole('button', { name: /^Support GH/ }).click()
+  await expect.poll(() => submissions.length).toBe(1)
+  expect(submissions[0]).toMatchObject({ supporterName: 'Public alias', legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true } })
+  expect(submissions[0].message).toBeUndefined()
+})

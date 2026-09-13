@@ -1,3 +1,6 @@
+import { createReviewedDonation } from '../helpers/reviewedDonation.js';
+import { ContentRestrictionModel } from '../../src/infrastructure/database/models/ContentRestrictionModel.js';
+import { DonationModel } from '../../src/infrastructure/database/models/DonationModel.js';
 import { randomUUID } from 'node:crypto';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
@@ -50,6 +53,7 @@ function parseFrame(raw: string): ParsedFrame | null {
 }
 
 interface SseConnection {
+  closed: Promise<void>;
   statusCode: number;
   contentType?: string;
   events: ParsedFrame[];
@@ -90,6 +94,7 @@ function openSse(
       });
 
       resolve({
+        closed: new Promise<void>(done => res.once('end', done)),
         statusCode: res.statusCode ?? 0,
         contentType: res.headers['content-type'],
         events,
@@ -122,7 +127,7 @@ function openSse(
 async function registerUser(app: Express, email: string) {
   const res = await request(app)
     .post('/api/v1/auth/register')
-    .send({ email, password: 'SecurePass123', name: 'Stream Donor' })
+    .send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email, password: 'SecurePass123', name: 'Stream Donor' })
     .expect(201);
   return {
     userId: res.body.data.user.id as string,
@@ -223,7 +228,8 @@ describe('Realtime SSE gateway', () => {
 
     const frame = await conn.waitFor((f) => f.event === 'donation');
     const data = JSON.parse(frame.data as string);
-    expect(data).toMatchObject({ name: 'Stream Donor', amount: 100 });
+    expect(data).toMatchObject({ name: 'Anonymous', amount: 100 });
+    expect(data.message).toBeUndefined();
     expect(frame.id).toEqual(expect.any(Number));
   });
 
@@ -238,19 +244,23 @@ describe('Realtime SSE gateway', () => {
       .set('Authorization', `Bearer ${donorToken}`)
       .send({
         amount: 100,
+        message: 'Message later hidden by moderation',
+        legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true },
         currency: 'GHS',
         paymentMethod: PaymentMethod.WALLET,
         isAnonymous: false,
       })
       .expect(200);
 
+    await DonationModel.updateMany({ campaignId }, { $set: { messageHiddenAt: new Date(), isAnonymous: true }, $unset: { message: 1 } });
     // A fresh connection resuming from id 0 replays the buffered donation.
     const conn = await openSse(port, `/api/v1/campaigns/${campaignId}/events`, {
       'Last-Event-ID': '0',
     });
     open.push(conn);
     const frame = await conn.waitFor((f) => f.event === 'donation');
-    expect(JSON.parse(frame.data as string)).toMatchObject({ amount: 100 });
+    expect(JSON.parse(frame.data as string)).toMatchObject({ amount: 100, name: 'Anonymous' });
+    expect(JSON.parse(frame.data as string).message).toBeUndefined();
   });
 
   it('gates the live-session SSE feed behind the overlay token', async () => {
@@ -298,6 +308,79 @@ describe('Realtime SSE gateway', () => {
     const privateFrame = await replay.waitFor(f => f.event === 'donation');
     expect(JSON.parse(privateFrame.data as string)).toMatchObject({ name: 'Anonymous', amount: null });
     expect(JSON.parse(privateFrame.data as string).message).toBeUndefined();
+  });
+
+  it('closes an existing stream before delivering newly blocked campaign data and refuses buffered replay', async () => {
+    const owner = await registerUser(app, uniqueEmail('blocked-stream'));
+    const campaignId = await createActiveCampaign(app, owner.token, owner.userId);
+    const conn = await openSse(port, `/api/v1/campaigns/${campaignId}/events`);
+    open.push(conn);
+    expect(conn.statusCode).toBe(200);
+    await CampaignModel.findByIdAndUpdate(campaignId, { status: 'blocked' });
+    const { eventBus, campaignChannel } = await import('../../src/infrastructure/realtime/EventBus.js');
+    eventBus.publish(campaignChannel(campaignId), 'total', { campaignId, raisedAmount: 777 });
+    await conn.closed;
+    expect(conn.events).toEqual([]);
+    await request(app).get(`/api/v1/campaigns/${campaignId}/events`).set('Last-Event-ID', '0').expect(404);
+  });
+
+  it('rebuilds replay from current donation identity and rejects cross-campaign or fabricated fields', async () => {
+    const owner = await registerUser(app, uniqueEmail('replay-identity'));
+    const donor = await registerUser(app, uniqueEmail('replay-donor'));
+    const viewer = await registerUser(app, uniqueEmail('replay-viewer'));
+    const campaignId = await createActiveCampaign(app, owner.token, owner.userId);
+    const donation = await createReviewedDonation({ donorName: 'Reviewed donor name', campaignId, donorId: donor.userId, amount: 42, currency: 'GHS', isAnonymous: false, message: 'Current donor message' });
+    const { eventBus, campaignChannel } = await import('../../src/infrastructure/realtime/EventBus.js');
+    const channel = campaignChannel(campaignId);
+    eventBus.publish(channel, 'donation', { donationId: donation.id, name: 'Stale donor name', donorId: donor.userId, email: 'private@example.com', amount: 999999, message: 'Stale message' });
+    await UserModel.updateOne({ _id: donor.userId }, { $set: { name: 'Current donor name' } });
+    const conn = await openSse(port, `/api/v1/campaigns/${campaignId}/events`); open.push(conn);
+    const frame = await conn.waitFor(f => f.event === 'donation');
+    expect(JSON.parse(frame.data!)).toEqual({ donationId: donation.id, name: 'Reviewed donor name', amount: 42, message: 'Current donor message', createdAt: donation.createdAt.toISOString() });
+    await request(app).put(`/api/v1/safety/blocks/${donor.userId}`).set('Authorization', `Bearer ${viewer.token}`).expect(200);
+    const blocked = await openSse(port, `/api/v1/campaigns/${campaignId}/events`, { Authorization: `Bearer ${viewer.token}` }); open.push(blocked);
+    expect(JSON.parse((await blocked.waitFor(f => f.event === 'donation')).data!)).toMatchObject({ name: 'Anonymous', amount: 42 });
+    expect(JSON.parse(blocked.events.find(f => f.event === 'donation')!.data!)).not.toHaveProperty('message');
+    await ContentRestrictionModel.create({ userId: donor.userId, restrictedBy: owner.userId, reason: 'Replay identity restriction' });
+    const restricted = await openSse(port, `/api/v1/campaigns/${campaignId}/events`); open.push(restricted);
+    expect(JSON.parse((await restricted.waitFor(f => f.event === 'donation')).data!)).toMatchObject({ name: 'Anonymous', amount: 42 });
+    const otherDonation = await DonationModel.create({ campaignId: 'aaaaaaaaaaaaaaaaaaaaaaaa', donorId: donor.userId, amount: 777, currency: 'GHS' });
+    eventBus.publish(channel, 'donation', { donationId: otherDonation.id, name: 'Wrong campaign', amount: 777 });
+    eventBus.publish(channel, 'donation', { donationId: 'not-a-donation', name: 'Fabricated donor', amount: 777 });
+    eventBus.publish(channel, 'total', { marker: 'after-invalid-events' });
+    await restricted.waitFor(f => f.event === 'total' && f.data!.includes('after-invalid-events'));
+    expect(restricted.events.filter(f => f.event === 'donation')).toHaveLength(1);
+  });
+
+  it('applies donor restriction to overlay snapshots while preserving donation and session totals', async () => {
+    const owner = await registerUser(app, uniqueEmail('overlay-identity'));
+    const donor = await registerUser(app, uniqueEmail('overlay-private-donor'));
+    const campaignId = await createActiveCampaign(app, owner.token, owner.userId);
+    const start = await request(app).post(`/api/v1/campaigns/${campaignId}/live-sessions`).set('Authorization', `Bearer ${owner.token}`).send({}).expect(201);
+    const donation = await createReviewedDonation({ donorName: 'Reviewed supporter', campaignId, donorId: donor.userId, amount: 35, currency: 'GHS', message: 'Do not publish restricted message', isAnonymous: false });
+    const path = `/api/v1/live-sessions/${start.body.data.id}/overlay?token=${start.body.data.overlayToken}`;
+    const before = await request(app).get(path).expect(200);
+    expect(before.body.data.recentDonors[0]).toMatchObject({ name: 'Reviewed supporter', message: 'Do not publish restricted message' });
+    await ContentRestrictionModel.create({ userId: donor.userId, restrictedBy: owner.userId, reason: 'Overlay identity restriction' });
+    const after = await request(app).get(path).expect(200);
+    expect(after.body.data.recentDonors[0]).toMatchObject({ donationId: donation.id, name: 'Anonymous', amount: before.body.data.recentDonors[0].amount });
+    expect(after.body.data.recentDonors[0]).not.toHaveProperty('message');
+    expect(after.body.data.totals).toEqual(before.body.data.totals);
+    expect(await DonationModel.exists({ _id: donation.id })).toBeTruthy();
+  });
+
+  it('withholds a buffered reviewed message after its approved snapshot changes', async () => {
+    const owner = await registerUser(app, uniqueEmail('changed-review'));
+    const campaignId = await createActiveCampaign(app, owner.token, owner.userId);
+    const donation = await createReviewedDonation({ donorName: 'Reviewed guest', campaignId, donorId: 'guest', amount: 42, currency: 'GHS', isAnonymous: false, message: 'Reviewed message' });
+    const { eventBus, campaignChannel } = await import('../../src/infrastructure/realtime/EventBus.js');
+    eventBus.publish(campaignChannel(campaignId), 'donation', { donationId: donation.id, name: 'Reviewed guest', amount: 42, message: 'Reviewed message' });
+    await DonationModel.updateOne({ _id: donation.id }, { $set: { message: 'Unreviewed replacement' } });
+    const conn = await openSse(port, `/api/v1/campaigns/${campaignId}/events`); open.push(conn);
+    const frame = JSON.parse((await conn.waitFor(event => event.event === 'donation')).data!);
+    expect(frame).toMatchObject({ donationId: donation.id, name: 'Anonymous', amount: 42 });
+    expect(frame.message).toBeUndefined();
+    expect((await DonationModel.findById(donation.id))?.message).toBe('Unreviewed replacement');
   });
 
   it('404s the SSE feed for an unknown campaign', async () => {

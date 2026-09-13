@@ -7,6 +7,9 @@ import InputAdornment from '@mui/material/InputAdornment'
 import HistoryEduRoundedIcon from '@mui/icons-material/HistoryEduRounded'
 import { api } from '@/lib/api'
 import PageHeader from '@/components/PageHeader'
+import ExportMenu from '@/components/ExportMenu'
+import { loadAll } from '@/lib/exports/loadAll'
+import { dateCell } from '@/lib/exports/report'
 
 const PAGE_SIZE = 10
 const surfaceSx = {
@@ -110,6 +113,10 @@ export default function AuditLogPage() {
         icon={<HistoryEduRoundedIcon />}
       />
 
+      <ExportMenu title="Audit log" disabled={loading || !!error} getReport={async progress => {
+        const entries = await loadAll<AuditEntry>(`/audit?search=${encodeURIComponent(search.trim())}`, progress)
+        return { title: 'Audit log', filters: [`Search: ${search || 'All'}`], tables: [{ title: 'Audit entries', columns: [{ label: 'ID' }, { label: 'Timestamp (UTC)', type: 'date' }, { label: 'Actor' }, { label: 'Action' }, { label: 'Resource' }, { label: 'Severity' }, { label: 'Summary' }], rows: entries.map(entry => [entry.id, dateCell(entry.timestamp), entry.user, entry.actionLabel ?? entry.action, entry.resource, entry.severity, entry.summary ?? entry.details]) }] }
+      }} />
       <Box
         sx={{
           ...surfaceSx,

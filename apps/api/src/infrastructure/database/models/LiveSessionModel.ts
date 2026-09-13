@@ -9,6 +9,9 @@ interface LiveSessionStatsSubdoc {
 }
 
 export interface LiveSessionDocument extends Document {
+  providerRoomIssuedAt?: Date;
+  moderationStoppedAt?: Date;
+  providerStopPending?: boolean;
   campaignId: string;
   title?: string;
   targetAmount?: number;
@@ -39,6 +42,9 @@ const statsSchema = new Schema<LiveSessionStatsSubdoc>(
 
 const liveSessionSchema = new Schema<LiveSessionDocument>(
   {
+    providerRoomIssuedAt: Date,
+    moderationStoppedAt: Date,
+    providerStopPending: { type: Boolean, default: false, index: true },
     campaignId: { type: String, required: true, index: true },
     title: { type: String },
     targetAmount: { type: Number },

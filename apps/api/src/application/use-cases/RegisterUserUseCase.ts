@@ -3,6 +3,7 @@ import {
   type AuthTokens,
   type User,
   UserRole,
+  hasCurrentLegalAcceptance,
   VerificationLevel,
   WalletType,
   KYCStatus,
@@ -37,6 +38,9 @@ export class RegisterUserUseCase {
   async execute(
     input: CreateUserInput
   ): Promise<{ user: User; tokens: AuthTokens }> {
+    if (!hasCurrentLegalAcceptance(input.legalAcceptance)) {
+      throw new AppError('Please accept the current terms and confirm you are at least 18', 400);
+    }
     const existingUser = await this.userRepo.findByEmail(input.email);
     if (existingUser) {
       throw new AppError('Email already registered', 409);
@@ -62,6 +66,7 @@ export class RegisterUserUseCase {
       registrationNumber: input.registrationNumber,
       website: input.website?.trim() || undefined,
       needsWebsite: input.role === UserRole.ORGANIZATION && !input.website?.trim() && input.needsWebsite === true,
+      legalAcceptance: { ...input.legalAcceptance!, acceptedAt: now },
       emailVerified: false,
       createdAt: now,
       updatedAt: now,
@@ -119,6 +124,7 @@ export class RegisterUserUseCase {
     const tokens = this.tokenService.generateTokens({
       userId: savedUser.id,
       role: savedUser.role,
+      authVersion: savedUser.authVersion,
     });
 
     return {
@@ -128,6 +134,7 @@ export class RegisterUserUseCase {
         name: savedUser.name,
         organizationName: savedUser.organizationName,
         needsWebsite: savedUser.needsWebsite,
+        legalAcceptance: savedUser.legalAcceptance,
         avatarUrl: savedUser.avatarUrl,
         role: savedUser.role,
         verificationLevel: savedUser.verificationLevel,

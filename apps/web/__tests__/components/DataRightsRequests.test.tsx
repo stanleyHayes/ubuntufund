@@ -1,0 +1,32 @@
+import { beforeEach, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { DataRightsRequests } from '@/components/account/DataRightsRequests'
+const { get, post } = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn() }))
+vi.mock('@/lib/api', () => ({ api: { get, post } }))
+beforeEach(() => { get.mockReset().mockResolvedValue({ items: [], total: 0 }); post.mockReset().mockResolvedValue({}) })
+it('submits an access request only after explicit input and shows the persisted response', async () => {
+  render(<DataRightsRequests />)
+  await screen.findByText('No privacy requests yet.')
+  expect(post).not.toHaveBeenCalled()
+  expect(screen.getByRole('button', { name: 'Submit privacy request' })).toBeDisabled()
+  fireEvent.change(screen.getByLabelText('What would you like us to review?'), { target: { value: 'Please provide my personal data.' } })
+  get.mockResolvedValue({ items: [{ _id: 'abc', kind: 'access', status: 'open', details: 'Please provide my personal data.', dueAt: '2026-10-12T00:00:00Z', response: '' }], total: 1 })
+  fireEvent.click(screen.getByRole('button', { name: 'Submit privacy request' }))
+  expect(await screen.findByRole('status')).toHaveTextContent('Request received')
+  expect(post).toHaveBeenCalledExactlyOnceWith('/data-rights', { kind: 'access', details: 'Please provide my personal data.' })
+  expect(await screen.findByText('Access to my data · open')).toBeInTheDocument()
+  get.mockResolvedValue({ items: [{ _id: 'abc', kind: 'access', status: 'responded', details: 'Please provide my personal data.', dueAt: '2026-10-12T00:00:00Z', response: 'Here is the requested information.' }], total: 1 })
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh privacy requests' }))
+  expect(await screen.findByText('Here is the requested information.')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Download request and response' })).toBeEnabled()
+})
+it('preserves entered details after submission failure and gives an alternative contact', async () => {
+  post.mockRejectedValue(new Error('Could not submit'))
+  render(<DataRightsRequests />)
+  await screen.findByText('No privacy requests yet.')
+  fireEvent.change(screen.getByLabelText('What would you like us to review?'), { target: { value: 'Please correct my information.' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Submit privacy request' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('Could not submit')
+  expect(screen.getByLabelText('What would you like us to review?')).toHaveValue('Please correct my information.')
+  expect(screen.getByRole('link', { name: 'legal@ujimora.com' })).toHaveAttribute('href', 'mailto:legal@ujimora.com')
+})

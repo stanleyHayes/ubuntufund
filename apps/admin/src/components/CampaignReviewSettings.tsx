@@ -13,22 +13,20 @@ const THRESHOLD_KEYS = [
 
 /** What each auto-approve setting actually means in money terms. */
 const TIER_CHOICES = [
-  { value: 0, label: 'Review every campaign' },
+  { value: 0, label: 'Review every campaign up to GHS 250,000' },
   { value: 1, label: 'Auto-approve tier 1' },
   { value: 2, label: 'Auto-approve tiers 1–2' },
   { value: 3, label: 'Auto-approve tiers 1–3' },
   { value: 4, label: 'Auto-approve tiers 1–4' },
-  { value: 5, label: 'Auto-approve everything' },
+  { value: 5, label: 'Auto-approve all tiers up to GHS 250,000' },
 ]
 
 /**
  * How much fundraising goes live without a person looking at it.
  *
- * A campaign's tier comes from its goal against the four boundaries below, and
- * anything above the auto-approve tier waits in review — invisible to donors,
- * showing "Donations closed" to its organizer — until someone approves it. Both
- * levers live in the versioned config store, so tightening during a fraud wave
- * and loosening afterwards are dashboard actions with an audit trail.
+ * Tier policy applies up to GHS 250,000. Above it, the verified returning
+ * organizer rule takes precedence. Stored tier boundaries still classify all
+ * goals, but cannot waive the higher-goal staff gate.
  *
  * A campaign's tier is fixed at creation, so changing these affects new
  * campaigns only; anything already waiting still needs approving by hand.
@@ -104,16 +102,17 @@ export function CampaignReviewSettings({ canEdit }: { canEdit: boolean }) {
     <Box sx={{ p: 3, my: 3, borderRadius: 3, bgcolor: 'background.paper' }}>
       <Typography variant="h6">Campaign review</Typography>
       <Typography variant="body2" sx={{ my: 2 }}>
-        Campaigns are tiered by their goal. Anything above the auto-approve tier waits for a
-        person and cannot take donations until it is approved, so the organizer sees
-        &ldquo;Donations closed&rdquo; in the meantime. A goal exactly on a boundary stays in the
-        lower tier. Changing these affects new campaigns only.
+        Goals above GHS 250,000 require staff approval unless the organizer has current approved
+        identity verification (business verification for organizations) and an earlier published
+        campaign. Draft, pending and blocked campaigns do not qualify. The tier settings below
+        apply to goals up to GHS 250,000; they cannot waive the higher-goal rule. Plan and compliance
+        limits still apply. Changes affect new campaigns only.
       </Typography>
       {error && <Alert severity="error">{error}</Alert>}
       {message && <Alert severity="success">{message}</Alert>}
       <TextField
         select
-        label="Goes live without review"
+        label="Tier rule up to GHS 250,000"
         value={tier}
         onChange={(e) => setTier(e.target.value)}
         disabled={!canEdit || busy}

@@ -1,3 +1,4 @@
+import { UserModel } from '../../../src/infrastructure/database/models/UserModel.js'
 import { beforeAll, afterAll, beforeEach, afterEach, describe, it, expect, vi } from 'vitest'
 import mongoose from 'mongoose'
 import { connectTestDatabase, disconnectTestDatabase } from '../../helpers/testDatabase.js'
@@ -12,6 +13,7 @@ import { JournalEntryModel } from '../../../src/infrastructure/database/models/J
 import { JournalLineModel } from '../../../src/infrastructure/database/models/JournalLineModel.js'
 import { LedgerAccountModel } from '../../../src/infrastructure/database/models/LedgerAccountModel.js'
 const models = [
+  UserModel,
   PayoutModel,
   CampaignBalanceModel,
   CreatorBalanceModel,
@@ -34,7 +36,7 @@ beforeEach(async () => {
   for (const m of models) await m.deleteMany({})
 })
 afterEach(() => vi.restoreAllMocks())
-const repo = new MongoWalletPayoutRepository()
+const repo = new MongoWalletPayoutRepository({ creatorPolicy: async () => ({ feePercent: 5, eligible: true, planName: 'Fixture' }) })
 async function seed(amount = 100, fee = 10) {
   await CampaignBalanceModel.create({
     campaignId: 'campaign',
@@ -100,9 +102,12 @@ describe('transactional wallet payouts', () => {
     expect(await WalletTransactionModel.countDocuments()).toBe(0)
   })
   it('creator retries are idempotent and another user cannot spend this balance', async () => {
-    await CreatorBalanceModel.create({ userId: 'owner', currency: 'GHS', availableBalance: 100 })
+    const userId = new mongoose.Types.ObjectId().toString()
+    await UserModel.collection.insertOne({ _id: new mongoose.Types.ObjectId(userId), authVersion: 'wallet-fixture' })
+    await CreatorBalanceModel.create({ userId, currency: 'GHS', availableBalance: 100 })
     const input = {
-      userId: 'owner',
+      userId,
+      authVersion: 'wallet-fixture',
       amount: 100,
       fee: 5,
       feePercent: 5,
@@ -110,11 +115,11 @@ describe('transactional wallet payouts', () => {
       reference: 'wallet-creator:owner:test-key',
     }
     await Promise.all([repo.transferCreator(input), repo.transferCreator(input)])
-    expect((await WalletModel.findOne({ userId: 'owner' }))?.balance).toBe(95)
+    expect((await WalletModel.findOne({ userId }))?.balance).toBe(95)
     expect(await CreatorPayoutModel.countDocuments()).toBe(1)
     expect((await CreatorBalanceModel.findOne())?.availableBalance).toBe(0)
     await expect(
-      repo.transferCreator({ ...input, userId: 'other', reference: 'different' }),
-    ).rejects.toMatchObject({ statusCode: 422 })
+      repo.transferCreator({ ...input, userId: new mongoose.Types.ObjectId().toString(), reference: 'different' }),
+    ).rejects.toMatchObject({ statusCode: 401 })
   })
 })

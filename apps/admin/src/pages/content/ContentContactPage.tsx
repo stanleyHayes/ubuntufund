@@ -1,3 +1,4 @@
+import { exportTable } from '@/lib/exports/report'
 import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import { useEffect, useRef, type ReactNode } from 'react'
 import { Box, Typography, InputAdornment, Alert } from '@mui/material'
@@ -105,6 +106,7 @@ export default function ContentContactPage() {
       updatedAt={block.record?.updatedAt}
       onSave={block.save}
       onReload={block.reload}
+    exportReport={{ title: "Contact content", filters: [block.isDirty || !block.record ? 'Unsaved content draft' : 'Saved content', block.record ? 'Last saved: ' + block.record.updatedAt : 'Not yet saved'], tables: [exportTable('Contact details', [data], { Email: r => r.email, Phone: r => r.phone, Address: r => r.address, Hours: r => r.hours }), exportTable('Social links', SOCIAL_FIELDS, { Platform: r => r.label, URL: r => data.socials?.[r.key] }), exportTable('Response times', data.responseTimes ?? [], { Label: r => r.label, Time: r => r.time })] }}
     >
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
         <SectionPanel title="Contact details">

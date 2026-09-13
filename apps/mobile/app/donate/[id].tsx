@@ -1,7 +1,8 @@
+import { LEGAL_ACCEPTANCE_VERSION } from '@ubuntu-fund/types'
 import { useEffect, useState } from 'react'
-import { View, ScrollView } from 'react-native'
+import { View, ScrollView, Platform } from 'react-native'
 import { Text, Checkbox } from 'react-native-paper'
-import { Stack, useLocalSearchParams } from 'expo-router'
+import { router, Stack, useLocalSearchParams } from 'expo-router'
 import * as WebBrowser from 'expo-web-browser'
 import { useCampaign } from '@/hooks/useCampaigns'
 import { useAuth } from '@/context/AuthContext'
@@ -14,8 +15,13 @@ import { CryptoContribution } from '@/components/CryptoContribution'
 import { checkout, clearPending, loadPending, paymentScope, type PendingPayment } from '@/lib/payments'
 import { previewCoupon } from '@/lib/coupons'
 import { CouponSurface } from '@ubuntu-fund/types'
+import ExternalFundraisingScreen from '@/screens/ExternalFundraisingScreen'
 
 export default function DonateScreen() {
+  return Platform.OS === 'ios' ? <ExternalFundraisingScreen /> : <InAppDonateScreen />
+}
+
+function InAppDonateScreen() {
   const { id, liveSessionId, amount: presetAmount } = useLocalSearchParams<{ id: string; liveSessionId?: string; amount?: string }>()
   const { campaign, isLoading, error: campaignError } = useCampaign(id || '')
   const { user } = useAuth(); const p = usePalette(); const neu = useNeu()
@@ -29,6 +35,8 @@ export default function DonateScreen() {
   const [couponOk, setCouponOk] = useState<boolean | null>(null)
   const [email, setEmail] = useState(user?.email || '')
   const [name, setName] = useState(user?.name || '')
+  const [messageAccepted, setMessageAccepted] = useState(false)
+  const messageAcceptance = messageAccepted ? { version: LEGAL_ACCEPTANCE_VERSION, acceptedTerms: true, ageConfirmed: true } : undefined
   const [message, setMessage] = useState('')
   const [anonymous, setAnonymous] = useState(false)
   const [method, setMethod] = useState('paystack')
@@ -64,9 +72,10 @@ export default function DonateScreen() {
     return () => { active = false; clearTimeout(timer) }
   }, [user, couponCode, valid, amount, id, campaign?.currency])
   async function donate() {
+    if ((message.trim() || (!anonymous && name.trim())) && !messageAccepted) { setError('Accept the content terms before posting your public name or message.'); return }
     setBusy(true); setError('')
     try {
-      const result = await checkout(scope, '/donation-intents', { campaignId: id, liveSessionId, amount: Number(amount), tip: tipValue || undefined, provider: method, donorEmail: email || undefined, donorName: name || undefined, message: message || undefined, isAnonymous: anonymous, couponCode: user && couponCode.trim() ? couponCode.trim() : undefined })
+      const result = await checkout(scope, '/donation-intents', { campaignId: id, liveSessionId, amount: Number(amount), tip: tipValue || undefined, provider: method, donorEmail: email || undefined, donorName: name || undefined, message: message || undefined, legalAcceptance: messageAcceptance, isAnonymous: anonymous, couponCode: user && couponCode.trim() ? couponCode.trim() : undefined })
       setPending(result)
       if (result.authorizationUrl?.startsWith('https://')) await WebBrowser.openBrowserAsync(result.authorizationUrl)
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not start checkout.') }
@@ -82,6 +91,7 @@ export default function DonateScreen() {
       <TextInput label="Email" keyboardType="email-address" autoCapitalize="none" value={email} onChangeText={setEmail} />
       <TextInput label="Name (optional)" value={name} onChangeText={setName} />
       <TextInput label="Message (optional)" value={message} onChangeText={setMessage} multiline />
+      {!!(message.trim() || (!anonymous && name.trim())) && <><Checkbox.Item label="I am at least 18 and agree to the terms for posting my public name and message." status={messageAccepted ? 'checked' : 'unchecked'} onPress={() => setMessageAccepted(v => !v)} /><Text onPress={() => router.push('/terms')}>Read the Terms of Use. Messages must not contain private information, threats or abusive content.</Text></>}
       <Checkbox.Item label="Donate anonymously" status={anonymous ? 'checked' : 'unchecked'} onPress={() => setAnonymous(v => !v)} />
       <SelectionField label="Payment method" value={method} onChange={setMethod} options={[{ value: 'paystack', label: 'Card or mobile money · secure checkout' }, ...(user ? [{ value: 'wallet', label: 'Ujimora wallet · existing balance' }] : []), { value: 'crypto', label: 'Crypto · supported assets and networks' }]} />
       {error ? <Text accessibilityRole="alert" style={{ color: p.error }}>{error}</Text> : null}
@@ -90,7 +100,7 @@ export default function DonateScreen() {
         <TextInput label="Fee waiver code (optional)" value={couponCode} onChangeText={t => setCouponCode(t.toUpperCase())} autoCapitalize="characters" />
         {couponNote ? <Text style={{ color: couponOk ? p.success : p.error, fontSize: 12, marginTop: 4 }}>{couponNote}</Text> : null}
       </> : null}
-      {method === 'crypto' ? <CryptoContribution key={scope} campaignId={id} amount={Number(amount)} email={email.trim()} name={name} message={message} isAnonymous={anonymous} /> : <>
+      {method === 'crypto' ? <CryptoContribution key={scope} campaignId={id} amount={Number(amount)} email={email.trim()} name={name} message={message} legalAcceptance={messageAcceptance} isAnonymous={anonymous} /> : <>
         <Text style={{ color: p.textSecondary }}>{method === 'wallet' ? 'Your existing Ujimora wallet balance funds this donation.' : 'Card and mobile-money availability follows the secure checkout options for this merchant.'}</Text>
         <Button mode="contained" loading={busy} disabled={busy || !valid || !tipValid || couponOk === false || (method === 'paystack' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))} onPress={() => void donate()}>Donate {valid && tipValid ? (Number(amount) + tipValue).toFixed(2) : '0'} {campaign.currency}</Button>
       </>}

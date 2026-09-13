@@ -7,6 +7,7 @@ vi.mock('@react-native-async-storage/async-storage', () => ({ default: {
   multiRemove: async (keys: string[]) => { keys.forEach(k => data.delete(k)) },
 } }))
 vi.mock('expo-secure-store', () => ({ getItemAsync: async (key: string) => data.get(`secure:${key}`) ?? null, setItemAsync: async (key: string, value: string) => { data.set(`secure:${key}`, value) }, deleteItemAsync: async (key: string) => { data.delete(`secure:${key}`) }, WHEN_UNLOCKED_THIS_DEVICE_ONLY: 'device' }))
+vi.mock('../biometricVault', () => ({ BIOMETRIC_PREFERENCE: 'uf_biometric_user', clearBiometricCredential: async () => {}, biometricCapability: async () => ({ available: false }), readBiometricCredential: vi.fn(), writeBiometricCredential: vi.fn() }))
 const user = { id: 'member', name: 'Ama', email: 'ama@example.test', role: 'user' }
 const valid = `header.${btoa(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 7200 }))}.sig`
 beforeEach(() => { data.clear(); vi.resetModules(); vi.useRealTimers() })

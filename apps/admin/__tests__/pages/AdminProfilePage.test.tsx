@@ -1,3 +1,4 @@
+vi.mock('@/components/ExportMenu', () => ({ default: () => null }))
 import { beforeEach, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { ThemeProvider } from '@mui/material/styles'
@@ -20,7 +21,7 @@ it('loads saved fields and omits an unset optional country on save', async () =>
   fireEvent.change(name, { target: { value: ' Updated Admin ' } })
   fireEvent.click(screen.getByRole('button', { name: 'Save Profile' }))
   await screen.findByText('Profile updated successfully')
-  expect(api.put).toHaveBeenCalledWith('/profile', { name: 'Updated Admin', phone: '0550000000', bio: 'Existing bio' })
+  expect(api.put).toHaveBeenCalledWith('/profile', { name: 'Updated Admin', phone: '0550000000', bio: 'Existing bio', automatedReviewConsent: false })
   expect(updateName).toHaveBeenCalledWith('Updated Admin')
 })
 it('preserves entered details and shows the server error on failed save', async () => {
@@ -37,4 +38,11 @@ it('prevents saving unloaded data and retries profile loading', async () => {
   expect(screen.queryByRole('button', { name: 'Save Profile' })).not.toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
   await waitFor(() => expect(screen.getByLabelText('Full Name')).toHaveValue('Saved Admin'))
+})
+
+it('omits unchanged identity when saving only private contact fields', async () => {
+  mount()
+  fireEvent.change(await screen.findByLabelText('Phone Number'), { target: { value: '0551111111' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Save Profile' }))
+  await waitFor(() => expect(api.put).toHaveBeenCalledWith('/profile', { phone: '0551111111', bio: 'Existing bio', automatedReviewConsent: false }))
 })

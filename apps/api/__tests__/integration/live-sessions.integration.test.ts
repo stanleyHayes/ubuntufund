@@ -33,7 +33,7 @@ function uniqueEmail(label: string): string {
 async function registerUser(app: Express, email: string) {
   const res = await request(app)
     .post('/api/v1/auth/register')
-    .send({ email, password: 'SecurePass123', name: 'Test User' })
+    .send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email, password: 'SecurePass123', name: 'Test User' })
     .expect(201);
   return {
     userId: res.body.data.user.id as string,
@@ -264,6 +264,7 @@ describe('Live sessions + realtime projector', () => {
         currency: 'GHS',
         paymentMethod: PaymentMethod.WALLET,
         message: 'Go go go!',
+        legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true },
         isAnonymous: false,
         liveSessionId: sessionId,
       });
@@ -276,17 +277,18 @@ describe('Live sessions + realtime projector', () => {
     expect(publicRes.body.data.amountRaised).toBe(100);
     expect(publicRes.body.data.successfulDonations).toBe(1);
 
-    // Overlay shows the donor (names visible by default).
+    // Payment totals update immediately; unreviewed attribution remains hidden.
     const overlay = await request(app).get(
       `/api/v1/live-sessions/${sessionId}/overlay?token=${overlayToken}`
     );
     expect(overlay.body.data.totals.amountRaised).toBe(100);
     expect(overlay.body.data.recentDonors).toHaveLength(1);
     expect(overlay.body.data.recentDonors[0]).toMatchObject({
-      name: 'Test User',
+      name: 'Anonymous',
       amount: 100,
-      message: 'Go go go!',
     });
+
+    expect(overlay.body.data.recentDonors[0].message).toBeUndefined();
 
     // Event bus received the projected events on both channels.
     const campaignTypes = eventBus
@@ -300,7 +302,8 @@ describe('Live sessions + realtime projector', () => {
     const liveDonation = eventBus
       .getBufferedEvents(liveChannel(sessionId))
       .find((e) => e.type === 'donation');
-    expect(liveDonation?.data).toMatchObject({ name: 'Test User', amount: 100 });
+    expect(liveDonation?.data).toMatchObject({ name: 'Anonymous', amount: 100 });
+    expect((liveDonation?.data as { message?: string }).message).toBeUndefined();
   });
 
   it('honors privacy toggles on the overlay and public sheet', async () => {
@@ -323,6 +326,7 @@ describe('Live sessions + realtime projector', () => {
         currency: 'GHS',
         paymentMethod: PaymentMethod.WALLET,
         message: 'secret',
+        legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true },
         isAnonymous: false,
         liveSessionId: sessionId,
       })

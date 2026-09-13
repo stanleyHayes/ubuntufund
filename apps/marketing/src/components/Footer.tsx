@@ -1,5 +1,5 @@
 import { useContent } from '../hooks/useContent'
-import { useState } from 'react'
+import { NewsletterSignup } from './NewsletterSignup'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
 import Grid from '@mui/material/Grid'
@@ -7,8 +7,6 @@ import Typography from '@mui/material/Typography'
 import MuiLink from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
 import IconButton from '@mui/material/IconButton'
-import Button from '@mui/material/Button'
-import { LoadingDots } from '@ubuntu-fund/ui'
 import FacebookIcon from '@mui/icons-material/Facebook'
 import XIcon from '@mui/icons-material/X'
 import InstagramIcon from '@mui/icons-material/Instagram'
@@ -107,7 +105,6 @@ function Footer() {
   ].filter(social => /^https?:\/\//i.test(social.href?.trim() ?? ''))
   const { pathname } = useLocation()
   const navigate = useNavigate()
-  const [email, setEmail] = useState('')
 
   // SPA-aware section links: same-page anchors scroll smoothly; cross-page
   // anchors navigate first, then scroll once the section has mounted.
@@ -126,47 +123,6 @@ function Footer() {
     navigate(to)
     scrollToHash(hash)
   }
-  const [subscribeStatus, setSubscribeStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
-  const [subscribeMessage, setSubscribeMessage] = useState('')
-
-  const handleSubscribe = async () => {
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setSubscribeStatus('error')
-      setSubscribeMessage('Please enter a valid email')
-      return
-    }
-    setSubscribeStatus('loading')
-    try {
-      const res = await fetch('/api/v1/newsletter/subscribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      })
-
-      // A missing/misrouted endpoint answers with an HTML error page, not
-      // JSON. Guard on both status and content-type before parsing so a
-      // 404/500 never surfaces as an "Unexpected token '<'" JSON error.
-      const isJson = res.headers
-        .get('content-type')
-        ?.toLowerCase()
-        .includes('application/json')
-      const data = isJson ? await res.json() : null
-
-      if (!res.ok || !data) {
-        throw new Error('subscribe-failed')
-      }
-
-      setSubscribeStatus('success')
-      setSubscribeMessage(data.data?.message ?? 'Successfully subscribed!')
-      setEmail('')
-      setTimeout(() => setSubscribeStatus('idle'), 4000)
-    } catch {
-      setSubscribeStatus('error')
-      setSubscribeMessage("Couldn't subscribe. Please try again.")
-      setTimeout(() => setSubscribeStatus('idle'), 4000)
-    }
-  }
-
   function isFooterLinkActive(to: string, anchor?: boolean): boolean {
     if (anchor) return false
     const [path] = to.split('#')
@@ -330,67 +286,7 @@ function Footer() {
             <Typography variant="subtitle2" sx={{ color: 'rgba(255,255,255,0.7)', mb: 1.5, fontWeight: 600 }}>
               Stay in the loop
             </Typography>
-            <Box
-              sx={{
-                display: 'flex',
-                gap: 1,
-                bgcolor: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: SHAPE.input,
-                p: 0.5,
-                transition: 'border-color 0.2s ease',
-                '&:focus-within': { borderColor: 'rgba(199, 162, 74,0.3)' },
-              }}
-            >
-              <MailIcon aria-hidden="true" sx={{ alignSelf: 'center', color: '#CFD7D0', fontSize: 20, ml: 1, flexShrink: 0 }} />
-              <Box
-                component="input"
-                type="email"
-                aria-label="Newsletter email address"
-                placeholder="your@email.com"
-                value={email}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
-                onKeyDown={(e: React.KeyboardEvent) => e.key === 'Enter' && handleSubscribe()}
-                sx={{
-                  flex: 1,
-                  minWidth: 0,
-                  border: 'none',
-                  outline: 'none',
-                  bgcolor: 'transparent',
-                  color: '#fff',
-                  fontSize: '0.875rem',
-                  px: 1.5,
-                  fontFamily: 'inherit',
-                  '&::placeholder': { color: 'rgba(255,255,255,0.25)' },
-                }}
-              />
-              <Button
-                variant="contained"
-                color="secondary"
-                size="small"
-                onClick={handleSubscribe}
-                disabled={subscribeStatus === 'loading'}
-                sx={{
-                  borderRadius: SHAPE.sm,
-                  px: 3,
-                  py: 0.8,
-                  fontWeight: 700,
-                  fontSize: '0.8rem',
-                }}
-              >
-                {subscribeStatus === 'loading' ? <LoadingDots size={6} /> : 'Subscribe'}
-              </Button>
-            </Box>
-            {subscribeStatus === 'success' && (
-              <Typography sx={{ color: '#5E8F72', fontSize: '0.78rem', mt: 1, fontWeight: 600 }}>
-                {subscribeMessage}
-              </Typography>
-            )}
-            {subscribeStatus === 'error' && (
-              <Typography sx={{ color: '#ef5350', fontSize: '0.78rem', mt: 1, fontWeight: 600 }}>
-                {subscribeMessage}
-              </Typography>
-            )}
+            <NewsletterSignup label="Footer newsletter signup" />
           </Box>
         </Box>
 

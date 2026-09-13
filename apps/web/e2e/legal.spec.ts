@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-const policies = ['terms', 'privacy', 'organizer-agreement', 'contributor-terms', 'refund-policy', 'acceptable-use', 'cookies', 'billing-terms']
+const policies = ['terms', 'privacy', 'organizer-agreement', 'contributor-terms', 'refund-policy', 'acceptable-use', 'cookies', 'billing-terms', 'delete-account']
 test('every policy is public, readable and linked from the legal hub', async ({ page }) => {
   for (const slug of policies) {
     await page.goto(`/${slug}`)
@@ -39,4 +39,15 @@ test('legal pages follow every saved appearance in light and dark', async ({ pag
       }
     }
   }
+})
+
+test('account deletion is accessible without signing in or reinstalling the app', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/delete-account')
+  await expect(page.getByRole('heading', { name: 'Delete your Ujimora account', exact: true })).toBeVisible()
+  const request = page.getByRole('link', { name: 'Request account and data deletion by email' })
+  await expect(request).toHaveAttribute('href', /^mailto:legal@ujimora.com\?subject=/)
+  await expect(page.getByRole('link', { name: 'Open account settings on the website' })).toHaveAttribute('href', 'https://app.ujimora.com/settings')
+  await expect(page.getByText(/Account closure alone does not mean/)).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
 })

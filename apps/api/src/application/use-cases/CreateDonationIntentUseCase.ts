@@ -1,3 +1,4 @@
+import { donationContentAgreement } from '../services/messageAgreement.js';
 import {
   CouponRedemptionStatus,
   CouponSurface,
@@ -187,6 +188,7 @@ export class CreateDonationIntentUseCase {
     input: CreateDonationIntentInput,
     ctx: CreateDonationIntentContext,
   ): Promise<CreateDonationIntentResult> {
+    donationContentAgreement(input)
     // Idempotency: an existing intent for this key is returned unchanged, so a
     // retry never creates a second intent or charges twice.
     const existing = await this.donationIntentRepo.findByIdempotencyKey(ctx.idempotencyKey)
@@ -417,6 +419,7 @@ export class CreateDonationIntentUseCase {
       donorEmail: input.donorEmail,
       donorName: input.donorName,
       message: input.message,
+        messageAgreement: donationContentAgreement(input),
       isAnonymous: input.isAnonymous ?? false,
       tip,
       status: 'CREATED',

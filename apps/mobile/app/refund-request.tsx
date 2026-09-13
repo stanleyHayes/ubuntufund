@@ -277,7 +277,7 @@ export default function RefundRequestScreen() {
           <Text style={styles.successSubtitle}>Your refund ID is:</Text>
           <Text style={styles.refundId}>{success}</Text>
           <Text style={styles.successNote}>
-            A 2% request fee is recorded. Settlement is not automatic and no processing time is guaranteed.
+            Your request is pending review. Submitting is free; it does not approve or execute a refund. Your statutory rights are unaffected.
           </Text>
           <Button
             mode="contained"
@@ -344,7 +344,7 @@ export default function RefundRequestScreen() {
                 <View style={styles.detailRow}>
                   <Text style={styles.detailKey}>Amount</Text>
                   <Text style={[styles.detailValue, { color: p.primary, fontFamily: 'Outfit_700Bold' }]}>
-                    GH₵ {donation.amount.toLocaleString()}
+                    {donation.currency} {donation.amount.toLocaleString()}
                   </Text>
                 </View>
                 <View style={styles.detailRow}>
@@ -391,7 +391,7 @@ export default function RefundRequestScreen() {
             <View style={styles.policyCard}>
               <Icon source="information-outline" size={18} color={p.primary} />
               <Text style={styles.policyText}>
-                A 2% processing fee will be deducted from the refund. Refunds typically take 5-7 business days to process.
+                Submitting a request is free. Our team reviews eligibility and confirms the amount, any applicable fee treatment and provider timing. Submitting does not approve or execute a refund. Your statutory rights are unaffected.
               </Text>
             </View>
           </View>

@@ -48,7 +48,7 @@ const uniqueEmail = (p: string) => `${p}-${Date.now()}-${Math.random().toString(
 async function registerUser(email: string) {
   const res = await request(app)
     .post('/api/v1/auth/register')
-    .send({ name: 'Donor', email, password: 'SecurePass123' });
+    .send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, name: 'Donor', email, password: 'SecurePass123' });
   return {
     token: res.body.data.tokens.accessToken as string,
     userId: res.body.data.user.id as string,

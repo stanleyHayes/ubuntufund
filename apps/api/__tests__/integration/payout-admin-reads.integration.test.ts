@@ -11,8 +11,9 @@ beforeAll(async () => { await connectTestDatabase(); app = await createTestApp()
 afterAll(async () => { await dropTestDatabase(); await disconnectTestDatabase(); });
 it('mounts all admin payout lists and protects them from non-admin accounts', async () => {
   const email = `payout-reads-${randomUUID()}@example.com`;
-  const registration = await request(app).post('/api/v1/auth/register').send({email, name:'Payout Reader', password:'SecurePass123'}).expect(201);
-  const userToken = registration.body.data.tokens.accessToken;
+  const registration = await request(app).post('/api/v1/auth/register').send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true },email, name:'Payout Reader', password:'SecurePass123'}).expect(201);
+  const ordinaryUser = await request(app).post('/api/v1/auth/register').send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email: `ordinary-${randomUUID()}@example.com`, name: 'Ordinary user', password: 'SecurePass123' }).expect(201);
+  const userToken = ordinaryUser.body.data.tokens.accessToken;
   await UserModel.findByIdAndUpdate(registration.body.data.user.id, { role: 'admin' });
   const login = await request(app).post('/api/v1/auth/login').send({email,password:'SecurePass123'}).expect(200);
   for (const path of ['/payouts/review-queue','/payouts','/beneficiary-payouts/review-queue']) {

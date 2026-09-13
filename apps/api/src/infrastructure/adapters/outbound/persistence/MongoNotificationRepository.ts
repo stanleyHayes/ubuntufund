@@ -11,6 +11,7 @@ function toDomain(doc: NotificationDocument): NotificationEntity {
     userId: doc.userId,
     title: doc.title,
     body: doc.body,
+    path: doc.path,
     type: doc.type,
     read: doc.read,
     createdAt: doc.createdAt,
@@ -22,7 +23,7 @@ export class MongoNotificationRepository implements NotificationRepositoryPort {
     const plain = notification.toPlain();
     const fields = {
       userId: plain.userId, title: plain.title, body: plain.body,
-      type: plain.type, read: plain.read, createdAt: plain.createdAt,
+      path: plain.path, type: plain.type, read: plain.read, createdAt: plain.createdAt,
     };
     // A deterministic event ID makes delivery retries atomic and preserves read state.
     const doc = plain.id

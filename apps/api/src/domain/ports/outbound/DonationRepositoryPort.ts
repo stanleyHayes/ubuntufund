@@ -1,3 +1,4 @@
+import type { LegalAcceptanceRecord } from '@ubuntu-fund/types';
 import type { DonationEntity } from '../../entities/Donation.js';
 
 export interface DonationRepositoryPort {
@@ -13,5 +14,5 @@ export interface DonationRepositoryPort {
    * Set a donation's public message, only when owned by `donorId`. Returns the
    * updated donation, or null when it does not exist or belongs to someone else.
    */
-  updateMessage(id: string, donorId: string, message: string): Promise<DonationEntity | null>;
+  updateMessage(id: string, donorId: string, message: string, agreement: LegalAcceptanceRecord): Promise<DonationEntity | null>;
 }

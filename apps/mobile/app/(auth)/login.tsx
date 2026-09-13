@@ -1,3 +1,4 @@
+import { OtpInput } from '@/components/OtpInput'
 import { TouchableOpacity } from '@/components/RoundedControls'
 import { Button } from '@/components/Loading'
 import { BrandedTextInput as TextInput } from '@/components/BrandedTextInput'
@@ -18,6 +19,9 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('')
   const [secureEntry, setSecureEntry] = useState(true)
   const [loading, setLoading] = useState(false)
+  const [mfaCode, setMfaCode] = useState('')
+  const [mfaRequired, setMfaRequired] = useState(false)
+  const [recoveryMode, setRecoveryMode] = useState(false)
   const [error, setError] = useState('')
   const { login } = useAuth()
   const insets = useSafeAreaInsets()
@@ -27,9 +31,10 @@ export default function LoginScreen() {
     if (!email || !password) return
     setLoading(true)
     try {
-      await login(email, password)
+      await login(email, password, mfaCode || undefined)
       router.replace('/(tabs)')
     } catch (err) {
+      if (err instanceof Error && /authenticator code/i.test(err.message)) setMfaRequired(true)
       setError(err instanceof Error ? err.message : 'Login failed. Please try again.')
     } finally {
       setLoading(false)
@@ -105,6 +110,10 @@ export default function LoginScreen() {
             disabled={loading}
           />
 
+          {mfaRequired && <View style={{ gap: 12 }}>
+            {recoveryMode ? <TextInput label="Recovery code" value={mfaCode} onChangeText={setMfaCode} autoCapitalize="none" autoCorrect={false} disabled={loading} /> : <OtpInput value={mfaCode} onChange={setMfaCode} disabled={loading} />}
+            <Button onPress={() => { setRecoveryMode(value => !value); setMfaCode('') }}>{recoveryMode ? 'Use authenticator code' : 'Use a recovery code'}</Button>
+          </View>}
           <TouchableOpacity style={styles.forgotRow} onPress={() => router.push('/forgot-password')} hitSlop={8}>
             <Text style={styles.forgotText}>Forgot password?</Text>
           </TouchableOpacity>

@@ -28,7 +28,7 @@ describe('Commercial config store (ADR-5 / G6)', () => {
   });
 
   async function adminToken(): Promise<string> {
-    const reg = await request(app).post('/api/v1/auth/register').send({ email: uniqueEmail('cfgadmin'), password: 'SecurePass123', name: 'Cfg Admin' }).expect(201);
+    const reg = await request(app).post('/api/v1/auth/register').send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email: uniqueEmail('cfgadmin'), password: 'SecurePass123', name: 'Cfg Admin' }).expect(201);
     await UserModel.findByIdAndUpdate(reg.body.data.user.id, { role: 'admin' });
     const login = await request(app).post('/api/v1/auth/login').send({ email: reg.body.data.user.email, password: 'SecurePass123' }).expect(200);
     return login.body.data.tokens.accessToken as string;
@@ -125,7 +125,7 @@ describe('Commercial config store (ADR-5 / G6)', () => {
       .send({ value: 1 })
       .expect(400);
 
-    const userReg = await request(app).post('/api/v1/auth/register').send({ email: uniqueEmail('cfguser'), password: 'SecurePass123', name: 'Plain User' }).expect(201);
+    const userReg = await request(app).post('/api/v1/auth/register').send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email: uniqueEmail('cfguser'), password: 'SecurePass123', name: 'Plain User' }).expect(201);
     await request(app)
       .get('/api/v1/admin/commercial-config')
       .set('Authorization', `Bearer ${userReg.body.data.tokens.accessToken}`)

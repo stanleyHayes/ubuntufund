@@ -1,13 +1,14 @@
 import type { DonationIntentRepositoryPort } from '../../domain/ports/outbound/DonationIntentRepositoryPort.js';
 import type { ReconcilePaymentsUseCase } from './ReconcilePaymentsUseCase.js';
-import { toDonationIntentPublicView } from './GetDonationIntentPublicUseCase.js';
+import type { GetDonationIntentPublicUseCase } from './GetDonationIntentPublicUseCase.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 
 /** A redirect requests verification; only the server's provider response proves payment. */
 export class VerifyDonationIntentUseCase {
   constructor(
     private readonly intents: DonationIntentRepositoryPort,
-    private readonly reconcile: Pick<ReconcilePaymentsUseCase, 'reconcileById'>
+    private readonly reconcile: Pick<ReconcilePaymentsUseCase, 'reconcileById'>,
+    private readonly publicStatus: Pick<GetDonationIntentPublicUseCase, 'execute'>
   ) {}
 
   async execute(id: string, reference: string) {
@@ -23,6 +24,6 @@ export class VerifyDonationIntentUseCase {
     }
     const fresh = await this.intents.findById(intent.id);
     if (!fresh) throw new AppError('Donation intent not found', 404);
-    return toDonationIntentPublicView(fresh);
+    return this.publicStatus.execute(fresh.id);
   }
 }

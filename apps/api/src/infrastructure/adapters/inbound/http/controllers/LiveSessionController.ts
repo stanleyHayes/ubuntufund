@@ -34,8 +34,8 @@ export class LiveSessionController {
   hostVideoToken = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try { res.set('Cache-Control', 'no-store').json({ data: await this.video.join(req.params.id as string, req.userId!) }); } catch (error) { next(error); }
   };
-  viewerVideoToken = async (req: Request, res: Response, next: NextFunction) => {
-    try { res.set('Cache-Control', 'no-store').json({ data: await this.video.join(req.params.id as string) }); } catch (error) { next(error); }
+  viewerVideoToken = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try { res.set('Cache-Control', 'no-store').json({ data: await this.video.join(req.params.id as string, undefined, req.userId) }); } catch (error) { next(error); }
   };
 
   getPublicActive = async (req: Request, res: Response, next: NextFunction) => {
@@ -151,7 +151,7 @@ export class LiveSessionController {
 
   /** GET /live-sessions/:id/overlay?token=… — token-gated overlay payload. */
   getOverlay = async (
-    req: Request,
+    req: AuthenticatedRequest,
     res: Response,
     next: NextFunction
   ): Promise<void> => {
@@ -159,7 +159,8 @@ export class LiveSessionController {
       const token = firstQueryValue(req.query.token);
       const view = await this.getLiveSessionOverlayUseCase.execute(
         req.params.id as string,
-        token
+        token,
+        req.userId
       );
       res.json({
         data: view,
@@ -206,7 +207,7 @@ export class LiveSessionController {
     res
       .type('html')
       .set('Referrer-Policy', 'no-referrer')
-      .set('Cache-Control', 'public, max-age=300')
+      .set('Cache-Control', 'private, no-store')
       .send(OVERLAY_PAGE_HTML);
   };
 }

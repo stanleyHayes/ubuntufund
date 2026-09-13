@@ -22,6 +22,7 @@ import type {
   AffiliateCodeQuote,
 } from '../services/AffiliateCodePricing.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
+import type { BillingOwnershipPort } from '../../domain/ports/outbound/BillingOwnershipPort.js';
 
 /** Platform billing currency; subscription plan prices are quoted in GHS. */
 const DEFAULT_CURRENCY = 'GHS';
@@ -43,6 +44,7 @@ const DEFAULT_CURRENCY = 'GHS';
  */
 export class CreateSubscriptionCheckoutUseCase {
   constructor(
+    private readonly billingOwnership: BillingOwnershipPort,
     private readonly subscriptionCheckoutRepo: SubscriptionCheckoutRepositoryPort,
     private readonly couponRedemptionRepo: CouponRedemptionRepositoryPort,
     private readonly userRepo: UserRepositoryPort,
@@ -158,6 +160,7 @@ export class CreateSubscriptionCheckoutUseCase {
     const preview = { baseAmount, discountAmount, finalAmount, currency };
 
     // ── Persist the PENDING checkout + provisional redemption slot ────────
+    await this.billingOwnership.claimProvider(userId, 'web');
     const now = new Date();
     const checkout = await this.subscriptionCheckoutRepo.create({
       id: '', // assigned by the repository

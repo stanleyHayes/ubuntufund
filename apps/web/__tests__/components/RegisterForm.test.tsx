@@ -11,7 +11,13 @@ vi.mock('@/context/AuthContext', () => ({ useAuth: () => ({ register: mocks.regi
 vi.mock('@/hooks/useSubscription', () => ({ useSignupPlans: () => ({ plans: Object.fromEntries(['free', 'starter', 'pro', 'enterprise'].map(name => [name, { name, priceMonthly: name === 'enterprise' ? 99.99 : 0, priceYearly: name === 'enterprise' ? 999 : 0, maxActiveCampaigns: 1, platformFeePercent: 5 }])), error: false, retry: vi.fn() }) }))
 vi.mock('@/components/auth/OrganizationTypePicker', () => ({ OrganizationTypePicker: ({ value, onChange }: { value: string; onChange: (value: string) => void }) => <input aria-label="Organization type" value={value} onChange={e => onChange(e.target.value)} /> }))
 const mount = (role = '') => render(<ThemeProvider theme={ujimoraTheme}><MemoryRouter initialEntries={['/register' + role]}><RegisterForm /></MemoryRouter></ThemeProvider>)
-const next = () => fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
+const next = () => {
+  for (const name of [/I agree to the Terms/, /I confirm that I am at least/]) {
+    const field = screen.queryByRole('checkbox', { name })
+    if (field && !(field as HTMLInputElement).checked) fireEvent.click(field)
+  }
+  fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
+}
 const fill = (label: RegExp, value: string) => fireEvent.change(screen.getByLabelText(label), { target: { value } })
 describe('registration steps', () => {
   it('separates organization fields, validates only that step, and retains entries on Back', () => {
@@ -67,4 +73,13 @@ describe('registration steps', () => {
     await vi.waitFor(() => expect(mocks.register).toHaveBeenCalledWith(expect.objectContaining({ role: 'organization', needsWebsite: true, website: undefined })))
   })
 
+})
+
+it('requires explicit terms and age confirmation before continuing signup', () => {
+  mount(); next()
+  fill(/Full name/, 'Test Person'); fill(/^Email/, 'test@example.com'); fill(/^Password/, 'securePassword1'); fill(/Confirm password/, 'securePassword1')
+  fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(screen.getByRole('alert')).toHaveTextContent('Accept the terms and confirm you are at least 18')
+  expect(screen.getByRole('checkbox', { name: /I agree to the Terms/ })).not.toBeChecked()
+  expect(screen.getByRole('checkbox', { name: /I confirm that I am at least/ })).not.toBeChecked()
 })

@@ -13,6 +13,8 @@ import { useAdminCampaigns } from '@/hooks/useApiData'
 import { usePagination } from '@/hooks/usePagination'
 import PaginationBar from '@/components/PaginationBar'
 import PageHeader from '@/components/PageHeader'
+import ExportMenu from '@/components/ExportMenu'
+import { campaignsTable } from '@/lib/exports/tables'
 
 
 const statusColors: Record<string, string> = {
@@ -164,6 +166,7 @@ export default function CampaignsPage() {
         />
       </Box>
 
+      <ExportMenu title="Campaigns" disabled={loading || !!error} getReport={() => ({ title: 'Campaigns', filters: [`Queue: ${activeTab}`, `Status: ${statusFilter}`, `Category: ${categoryFilter}`, `Search: ${search || 'All'}`], tables: [campaignsTable(filtered)] })} />
       {/* Tabs */}
       <Box sx={{ display: 'flex', gap: 1.5, p: 1.5, ...raisedSurface, mb: 3 }}>
         <Box

@@ -5,6 +5,7 @@ export interface NewsletterSubscriberDTO {
   id: string;
   email: string;
   createdAt: Date;
+  confirmedAt?: Date;
 }
 
 /**
@@ -23,6 +24,7 @@ export class ListNewsletterSubscribersUseCase {
       id: record.id,
       email: record.email,
       createdAt: record.createdAt,
+      confirmedAt: record.confirmedAt,
     }));
   }
 }

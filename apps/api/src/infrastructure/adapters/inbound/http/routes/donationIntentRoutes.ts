@@ -1,3 +1,4 @@
+import { legalAcceptanceSchema } from './legalAcceptanceSchema.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import type { DonationIntentController } from '../controllers/DonationIntentController.js';
@@ -9,6 +10,7 @@ import type {
 } from '../../middleware/authMiddleware.js';
 
 const createDonationIntentSchema = z.object({
+  legalAcceptance: legalAcceptanceSchema.optional(),
   campaignId: z.string().min(1),
   liveSessionId: z.string().min(1).optional(),
   amount: z.number().positive(),
@@ -81,7 +83,8 @@ export function createDonationIntentRoutes(
 }
 
 const addDonationMessageSchema = z.object({
-  message: z.string().min(1).max(500),
+  legalAcceptance: legalAcceptanceSchema.optional(),
+  message: z.string().trim().min(1).max(500),
 });
 
 /**

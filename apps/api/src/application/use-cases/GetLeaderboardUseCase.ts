@@ -69,7 +69,7 @@ function parseLimit(value?: string): number {
 export class GetLeaderboardUseCase {
   constructor(private readonly leaderboardRepo: LeaderboardRepositoryPort) {}
 
-  async execute(query: LeaderboardQueryInput): Promise<LeaderboardEntryDTO[]> {
+  async execute(query: LeaderboardQueryInput, viewerId?: string): Promise<LeaderboardEntryDTO[]> {
     const period = parseLeaderboardPeriod(query.period);
     const category = parseLeaderboardCategory(query.category);
     const limit = parseLimit(query.limit);
@@ -78,6 +78,7 @@ export class GetLeaderboardUseCase {
       period,
       category,
       limit,
+      viewerId,
     });
 
     return donors.map((donor, index) => ({

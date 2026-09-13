@@ -1,3 +1,5 @@
+import { AccountAgreementNotice } from '@/components/AccountAgreementNotice'
+import { WebsiteRequestNotice } from '@/components/WebsiteRequestNotice'
 import { NotificationProvider } from '@/context/NotificationContext'
 import { NotificationBell } from '@/components/NotificationBell'
 import { useState, useCallback, useEffect } from 'react'
@@ -15,12 +17,17 @@ import {
   Outfit_800ExtraBold,
 } from '@expo-google-fonts/outfit'
 import * as NativeSplash from 'expo-splash-screen'
-import { AuthProvider } from '@/context/AuthContext'
+import { AuthProvider, BiometricScreen } from '@/context/AuthContext'
+import type { ReactNode } from 'react'
 import { ColorModeProvider, useColorMode } from '@/context/ColorModeContext'
 import AppSplashScreen from '@/components/SplashScreen'
 import { setupNotificationHandlers } from '@/services/notifications'
 
 NativeSplash.preventAutoHideAsync()
+
+function protectedScreenLayout({ children }: { children: ReactNode }) {
+  return <BiometricScreen>{children}</BiometricScreen>
+}
 
 export default function RootLayout() {
   const [appReady, setAppReady] = useState(false)
@@ -86,9 +93,12 @@ function ThemedApp({
       <AuthProvider>
         <NotificationProvider>
           <NotificationBell />
+          <AccountAgreementNotice />
+          <WebsiteRequestNotice />
           <StatusBar style={pathname === '/' || paperTheme.dark ? 'light' : 'dark'} />
           {appReady && !splashDone && <AppSplashScreen onFinish={onSplashFinish} />}
           <Stack
+            screenLayout={protectedScreenLayout}
             screenOptions={{
               headerStyle: { backgroundColor: paperTheme.colors.background },
               headerTintColor: paperTheme.colors.onBackground,
@@ -111,6 +121,8 @@ function ThemedApp({
               name="forgot-password"
               options={{ headerShown: false, animation: 'fade' }}
             />
+            <Stack.Screen name="account-agreement" options={{ title: 'Account agreement' }} />
+            <Stack.Screen name="delete-account" options={{ title: 'Delete account' }} />
             <Stack.Screen name="legal" options={{ title: 'Legal & trust' }} />
             <Stack.Screen name="organizer-agreement" options={{ title: 'Organizer agreement' }} />
             <Stack.Screen name="contributor-terms" options={{ title: 'Contributor terms' }} />

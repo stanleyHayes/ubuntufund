@@ -1,3 +1,4 @@
+import { ReportContent } from '@/components/ReportContent'
 import { Chip } from '@/components/Chip'
 import { SkeletonLoader, Button } from '@/components/Loading'
 import { useState, useEffect, useMemo } from 'react'
@@ -455,6 +456,7 @@ export default function CampaignDetailScreen() {
                           {donation.message}
                         </Text>
                       )}
+                      {signedInUser && donation.message && <ReportContent donationId={donation.id} />}
                     </View>
                     <View style={styles.donationAmount}>
                       <Text variant="bodyMedium" style={styles.raised}>

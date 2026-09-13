@@ -1,5 +1,7 @@
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
-import { afterEach, expect, it } from 'vitest'
+import { afterEach, expect, it, vi } from 'vitest'
+import { api } from '../../src/lib/api'
+vi.mock('../../src/lib/api', () => ({ api: { get: vi.fn() } }))
 import { KYCDocumentPreview } from '../../src/components/kyc/KYCDocumentPreview'
 
 afterEach(cleanup)
@@ -29,4 +31,14 @@ it('does not render unsafe document URLs', () => {
   render(<KYCDocumentPreview url="javascript:alert(1)" label="id card 1" />)
   expect(screen.getByText(/Document file is unavailable/)).toBeVisible()
   expect(screen.queryByRole('link')).toBeNull()
+})
+
+it('resolves private references through the authenticated API and allows expiry refresh', async () => {
+  vi.mocked(api.get).mockResolvedValue({ url: 'https://api.cloudinary.com/private-download?signature=first', mimeType: 'application/pdf' })
+  render(<KYCDocumentPreview url="kyc://aaaaaaaaaaaaaaaaaaaaaaaa" label="Private ID" />)
+  expect(await screen.findByTitle('Private ID PDF preview')).toHaveAttribute('src', 'https://api.cloudinary.com/private-download?signature=first')
+  expect(api.get).toHaveBeenCalledWith('/uploads/kyc/aaaaaaaaaaaaaaaaaaaaaaaa/access')
+  vi.mocked(api.get).mockResolvedValue({ url: 'https://api.cloudinary.com/private-download?signature=renewed', mimeType: 'application/pdf' })
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh expiring link' }))
+  expect(await screen.findByTitle('Private ID PDF preview')).toHaveAttribute('src', 'https://api.cloudinary.com/private-download?signature=renewed')
 })

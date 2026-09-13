@@ -2,6 +2,7 @@ export interface NewsletterSubscriptionRecord {
   id: string;
   email: string;
   createdAt: Date;
+  confirmedAt?: Date;
 }
 
 export interface NewsletterSubscriptionRepositoryPort {

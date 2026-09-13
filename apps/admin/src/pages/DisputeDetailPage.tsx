@@ -1,3 +1,5 @@
+import ExportMenu from '@/components/ExportMenu'
+import { exportTable, dateCell } from '@/lib/exports/report'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -151,6 +153,7 @@ export default function DisputeDetailPage() {
         icon={<GavelRoundedIcon />}
         actions={<Chip label={formatStatus(dispute.status)} color={STATUS_CONFIG[dispute.status].color} size="small" sx={{ fontWeight: 700 }} />}
       />
+      <ExportMenu title="Dispute record" disabled={!!loadError || submitting} getReport={() => ({ title: 'Dispute record', tables: [exportTable('Dispute', [dispute], { ID: r => r.id, Campaign: r => r.campaignTitle, Reporter: r => r.reporterName, Status: r => r.status, Reason: r => r.reason, Description: r => r.description, Resolution: r => r.resolution, 'Resolved (UTC)': r => dateCell(r.resolvedAt) })] })} />
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) 340px' }, gap: 3 }}>
         <Box>

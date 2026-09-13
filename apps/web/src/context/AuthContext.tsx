@@ -1,3 +1,4 @@
+import type { LegalAcceptanceInput, LegalAcceptanceRecord } from '@ubuntu-fund/types'
 import { SESSION_EXPIRED, browserSession } from '@/lib/session'
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import type { ReactNode } from 'react'
@@ -13,9 +14,11 @@ interface AuthState {
 
 interface AuthContextValue extends AuthState {
   sessionExpired: boolean
-  login: (email: string, password: string) => Promise<void>
-  register: (data: { name: string; email: string; password: string; country?: string; role?: string; organizationName?: string; organizationType?: string; registrationNumber?: string; website?: string; needsWebsite?: boolean; referralCode?: string }) => Promise<void>
+  login: (email: string, password: string, mfaCode?: string) => Promise<void>
+  register: (data: { legalAcceptance?: LegalAcceptanceInput; name: string; email: string; password: string; country?: string; role?: string; organizationName?: string; organizationType?: string; registrationNumber?: string; website?: string; needsWebsite?: boolean; referralCode?: string }) => Promise<void>
+  updateLegalAcceptance: (legalAcceptance: LegalAcceptanceRecord) => void
   updateName: (name: string) => void
+  replaceTokens: (tokens: AuthTokens, userId: string) => void
   logout: () => void
 }
 
@@ -71,20 +74,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState({ user, tokens, isAuthenticated: !!user && !!tokens?.accessToken, isLoading: false })
   }), [])
 
-  const login = useCallback(async (email: string, password: string) => {
-    const { user, tokens } = await loginApi(email, password)
+  const login = useCallback(async (email: string, password: string, mfaCode?: string) => {
+    const { user, tokens } = await loginApi(email, password, mfaCode)
     setSessionExpired(false)
     saveToStorage(user, tokens)
     setState({ user, tokens, isAuthenticated: true, isLoading: false })
   }, [])
 
-  const register = useCallback(async (data: { name: string; email: string; password: string; country?: string; role?: string; organizationName?: string; organizationType?: string; registrationNumber?: string; website?: string; needsWebsite?: boolean; referralCode?: string }) => {
+  const register = useCallback(async (data: { legalAcceptance?: LegalAcceptanceInput; name: string; email: string; password: string; country?: string; role?: string; organizationName?: string; organizationType?: string; registrationNumber?: string; website?: string; needsWebsite?: boolean; referralCode?: string }) => {
     const { user, tokens } = await registerApi(data)
     setSessionExpired(false)
     saveToStorage(user, tokens)
     // Referral attributed — drop the stored code so it can't be reused.
     try { localStorage.removeItem('uf_ref') } catch { /* storage unavailable */ }
     setState({ user, tokens, isAuthenticated: true, isLoading: false })
+  }, [])
+
+  const updateLegalAcceptance = useCallback((legalAcceptance: LegalAcceptanceRecord) => {
+    setState(previous => {
+      if (!previous.user) return previous
+      const user = { ...previous.user, legalAcceptance }
+      try { localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(user)) } catch { /* Current session still updates. */ }
+      return { ...previous, user }
+    })
   }, [])
 
   const updateName = useCallback((name: string) => {
@@ -96,6 +108,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
+  const replaceTokens = useCallback((tokens: AuthTokens, userId: string) => {
+    setState(previous => {
+      if (!previous.user || previous.user.id !== userId) return previous
+      saveToStorage(previous.user, tokens)
+      return { ...previous, tokens }
+    })
+  }, [])
+
   const logout = useCallback(() => {
     clearStorage()
     setSessionExpired(false)
@@ -103,7 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ ...state, sessionExpired, login, register, updateName, logout }}>
+    <AuthContext.Provider value={{ ...state, sessionExpired, login, register, replaceTokens, updateName, updateLegalAcceptance, logout }}>
       {children}
     </AuthContext.Provider>
   )

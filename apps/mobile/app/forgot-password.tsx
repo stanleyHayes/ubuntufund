@@ -27,8 +27,7 @@ export default function ForgotPasswordScreen() {
       await api.post('/auth/forgot-password', { email })
       setSent(true)
     } catch {
-      // Show success even on failure to not reveal if email exists
-      setSent(true)
+      setError('Password recovery is temporarily unavailable. Please try again later.')
     } finally {
       setLoading(false)
     }
@@ -58,7 +57,7 @@ export default function ForgotPasswordScreen() {
               <View style={styles.iconTile}>
                 <Icon source="check-circle" size={28} color={p.success} />
               </View>
-              <Text style={styles.successTitle}>Email sent</Text>
+              <Text style={styles.successTitle}>Request received</Text>
               <Text style={styles.successBody}>
                 If an account exists for {email}, you'll receive a password reset link shortly.
               </Text>

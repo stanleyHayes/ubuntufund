@@ -8,10 +8,11 @@ import {
   type KYCVerificationDocument,
 } from '../../../database/models/KYCVerificationModel.js';
 
-function toDomain(doc: KYCVerificationDocument): KYCVerificationRecord {
+export function toKYCRecord(doc: KYCVerificationDocument): KYCVerificationRecord {
   return {
     id: doc._id!.toString(),
     userId: doc.userId,
+    informationRequests: doc.informationRequests,
     verificationType: doc.verificationType,
     status: doc.status,
     documents: doc.documents,
@@ -56,19 +57,19 @@ export class MongoKYCRepository implements KYCRepositoryPort {
       rejectionReason: record.rejectionReason,
       retryCount: record.retryCount,
     });
-    return toDomain(doc);
+    return toKYCRecord(doc);
   }
 
   async findById(id: string): Promise<KYCVerificationRecord | null> {
     const doc = await KYCVerificationModel.findById(id);
-    return doc ? toDomain(doc) : null;
+    return doc ? toKYCRecord(doc) : null;
   }
 
   async findByUserId(userId: string): Promise<KYCVerificationRecord[]> {
     const docs = await KYCVerificationModel.find({ userId }).sort({
       createdAt: -1,
     });
-    return docs.map(toDomain);
+    return docs.map(toKYCRecord);
   }
 
   async findActiveByUserIdAndType(
@@ -80,14 +81,14 @@ export class MongoKYCRepository implements KYCRepositoryPort {
       verificationType,
       status: { $in: ['pending', 'in_review'] },
     });
-    return doc ? toDomain(doc) : null;
+    return doc ? toKYCRecord(doc) : null;
   }
 
   async findPending(): Promise<KYCVerificationRecord[]> {
-    const docs = await KYCVerificationModel.find({ status: 'pending' }).sort({
+    const docs = await KYCVerificationModel.find({ status: { $in: ['pending', 'in_review'] } }).sort({
       createdAt: 1,
     });
-    return docs.map(toDomain);
+    return docs.map(toKYCRecord);
   }
 
   async update(record: KYCVerificationRecord): Promise<KYCVerificationRecord> {
@@ -108,6 +109,6 @@ export class MongoKYCRepository implements KYCRepositoryPort {
     if (!doc) {
       throw new Error('KYC verification record not found');
     }
-    return toDomain(doc);
+    return toKYCRecord(doc);
   }
 }

@@ -1,3 +1,6 @@
+import { useAuth } from '@/context/AuthContext'
+import { PublicationConsent } from '@/components/safety/PublicationConsent'
+import { PublicationReviews } from '@/components/account/PublicationReviews'
 import { CampaignCashout } from './CampaignCashout'
 import AiWritingAssistant from './AiWritingAssistant'
 import LocalHospitalRoundedIcon from '@mui/icons-material/LocalHospitalRounded'
@@ -9,7 +12,7 @@ import ChurchRoundedIcon from '@mui/icons-material/ChurchRounded'
 import PaletteRoundedIcon from '@mui/icons-material/PaletteRounded'
 import CategoryRoundedIcon from '@mui/icons-material/CategoryRounded'
 import { BrandedDatePicker } from '@ubuntu-fund/ui'
-import { Fragment, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import type { KeyboardEvent, ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
@@ -415,7 +418,14 @@ function ReviewItem({ label, children }: { label: string; children: ReactNode })
 // CampaignForm — a self-contained stepwise creation wizard
 // ---------------------------------------------------------------------------
 export function CampaignForm() {
+  const { user } = useAuth()
+  return <CampaignFormForViewer key={user?.id ?? 'guest'} />
+}
+function CampaignFormForViewer() {
+  const live = useRef(true)
+  useEffect(() => { live.current = true; return () => { live.current = false } }, [])
   const { options, error: optionsError, retry } = useCampaignCreationOptions()
+  const [automatedReviewConsent, setAutomatedReviewConsent] = useState(false)
   const [invitations, setInvitations] = useState('')
   const [split, setSplit] = useState(false)
   const [rows, setRows] = useState<SplitRow[]>([
@@ -521,6 +531,7 @@ export function CampaignForm() {
     const failed: typeof pendingSetup = []
     const messages: string[] = []
     for (const action of pendingSetup) {
+      if (!live.current) return
       try {
         await api.post(action.path, action.payload)
       } catch (error) {
@@ -560,6 +571,7 @@ export function CampaignForm() {
     const cover = formData.coverImageUrl.trim()
     try {
       const created = await createCampaign({
+        automatedReviewConsent,
         title: formData.title.trim(),
         summary: formData.summary.trim(),
         category: formData.category as CampaignCategory,
@@ -573,6 +585,7 @@ export function CampaignForm() {
         endDate: new Date(`${formData.endDate}T00:00:00.000Z`).toISOString(),
         priority: formData.priority,
       })
+      if (!live.current) return
       if (!created?.id) throw new Error('Campaign creation did not return an ID')
       setCreatedId(created.id)
       setCreatedStatus(created.status)
@@ -580,6 +593,7 @@ export function CampaignForm() {
       const failures: string[] = []
       const pending: typeof pendingSetup = []
       for (const email of inviteEmails) {
+        if (!live.current) return
         try {
           await api.post(`/campaigns/${created.id}/collaborators/invite`, {
             userEmail: email,
@@ -597,6 +611,7 @@ export function CampaignForm() {
           )
         }
       }
+      if (!live.current) return
       if (split) {
         try {
           await api.post(`/campaigns/${created.id}/split`, {
@@ -741,6 +756,11 @@ export function CampaignForm() {
 
   return (
     <Box component="form" onSubmit={handleSubmit} noValidate>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        Goals above GHS 250,000 need staff approval unless you have current approved identity verification
+        (business verification for organizations) and an earlier published campaign. Plan, compliance
+        and content-safety checks still apply.
+      </Typography>
       {!options && !optionsError && (
         <Alert severity="info" sx={{ mb: 2 }}>
           Checking your campaign limits…
@@ -1232,13 +1252,15 @@ export function CampaignForm() {
             >
               <ShieldRoundedIcon sx={{ fontSize: 18, color: 'primary.main', mt: 0.1 }} />
               <Typography sx={{ fontSize: '0.82rem', lineHeight: 1.5 }}>
-                Campaigns may go live immediately or require review, depending on the applicable
-                checks. You can still edit any step above.
+                Campaign safety checks and financial approval apply separately. Goals above GH₵250,000 need staff financial approval unless you are currently verified and have a previous published campaign. You can still edit any step above.
               </Typography>
             </Box>
           </Box>
         )}
       </Box>
+
+      {step === 3 && <PublicationConsent value={automatedReviewConsent} onChange={setAutomatedReviewConsent} />}
+      {step === 3 && submitError && <PublicationReviews />}
 
       {/* Inline submit error — keeps the wizard on the review step on failure */}
       {step === 3 && options && (

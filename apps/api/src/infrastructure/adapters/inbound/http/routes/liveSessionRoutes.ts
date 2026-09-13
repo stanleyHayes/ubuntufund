@@ -1,9 +1,12 @@
+import type { RequestHandler } from 'express';
+import type { MongoLiveSafety } from '../../../outbound/persistence/MongoLiveSafety.js';
+import type { AuthenticatedRequest } from '../../middleware/authMiddleware.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import type { LiveSessionController } from '../controllers/LiveSessionController.js';
 import type { RealtimeController } from '../controllers/RealtimeController.js';
 import { validate } from '../../middleware/validate.js';
-import type { createAuthMiddleware } from '../../middleware/authMiddleware.js';
+import type { createAuthMiddleware, createOptionalAuthMiddleware } from '../../middleware/authMiddleware.js';
 
 const startLiveSessionSchema = z.object({
   title: z.string().max(200).optional(),
@@ -31,11 +34,16 @@ const updateLiveSessionSchema = z.object({
 export function createCampaignLiveSessionRoutes(
   liveSessionController: LiveSessionController,
   realtimeController: RealtimeController,
-  authMiddleware: ReturnType<typeof createAuthMiddleware>
+  authMiddleware: ReturnType<typeof createAuthMiddleware>,
+  optionalAuth: ReturnType<typeof createOptionalAuthMiddleware>,
+  safety: MongoLiveSafety
 ): Router {
   const router = Router();
+  const guard: RequestHandler = async (req: AuthenticatedRequest, _res, next) => {
+    try { await safety.assertCampaignVisible(String(req.params.id), req.userId); next(); } catch (error) { next(error); }
+  };
 
-  router.get('/:id/active-live', liveSessionController.getPublicActive);
+  router.get('/:id/active-live', optionalAuth, guard, liveSessionController.getPublicActive);
   router.get('/:id/live-sessions/active', authMiddleware, liveSessionController.getActive);
   router.post(
     '/:id/live-sessions',
@@ -43,7 +51,7 @@ export function createCampaignLiveSessionRoutes(
     validate(startLiveSessionSchema),
     liveSessionController.start
   );
-  router.get('/:id/events', realtimeController.campaignEvents);
+  router.get('/:id/events', optionalAuth, realtimeController.campaignEvents);
 
   return router;
 }
@@ -59,17 +67,23 @@ export function createCampaignLiveSessionRoutes(
 export function createLiveSessionRoutes(
   liveSessionController: LiveSessionController,
   realtimeController: RealtimeController,
-  authMiddleware: ReturnType<typeof createAuthMiddleware>
+  authMiddleware: ReturnType<typeof createAuthMiddleware>,
+  optionalAuth: ReturnType<typeof createOptionalAuthMiddleware>,
+  safety: MongoLiveSafety
 ): Router {
   const router = Router();
+  router.use((_req, res, next) => { res.set('Cache-Control', 'private, no-store'); next(); });
+  const guard: RequestHandler = async (req: AuthenticatedRequest, _res, next) => {
+    try { await safety.assertSessionVisible(String(req.params.id), req.userId); next(); } catch (error) { next(error); }
+  };
 
   router.get('/video/config', liveSessionController.videoConfig);
   router.post('/:id/video/host-token', authMiddleware, liveSessionController.hostVideoToken);
-  router.post('/:id/video/viewer-token', liveSessionController.viewerVideoToken);
-  router.get('/:id/public', liveSessionController.getPublic);
-  router.get('/:id/overlay', liveSessionController.getOverlay);
-  router.get('/:id/overlay/view', liveSessionController.getOverlayView);
-  router.get('/:id/events', realtimeController.liveSessionEvents);
+  router.post('/:id/video/viewer-token', optionalAuth, guard, liveSessionController.viewerVideoToken);
+  router.get('/:id/public', optionalAuth, guard, liveSessionController.getPublic);
+  router.get('/:id/overlay', optionalAuth, guard, liveSessionController.getOverlay);
+  router.get('/:id/overlay/view', optionalAuth, guard, liveSessionController.getOverlayView);
+  router.get('/:id/events', optionalAuth, guard, realtimeController.liveSessionEvents);
   router.post(
     '/:id/overlay-token/rotate',
     authMiddleware,

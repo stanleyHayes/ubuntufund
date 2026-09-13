@@ -1,9 +1,10 @@
-import type { NewsletterSubscriptionRepositoryPort } from '../../domain/ports/outbound/NewsletterSubscriptionRepositoryPort.js';
+import type { NewsletterConsentService } from '../services/NewsletterConsentService.js';
 import { Email } from '../../domain/value-objects/Email.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 
 export interface SubscribeNewsletterInput {
   email: string;
+  consent: true;
 }
 
 export interface SubscribeNewsletterResultDTO {
@@ -12,7 +13,7 @@ export interface SubscribeNewsletterResultDTO {
 
 export class SubscribeNewsletterUseCase {
   constructor(
-    private readonly newsletterRepo: NewsletterSubscriptionRepositoryPort
+    private readonly consent: NewsletterConsentService
   ) {}
 
   async execute(
@@ -27,12 +28,11 @@ export class SubscribeNewsletterUseCase {
       throw new AppError('Please enter a valid email address', 400);
     }
 
-    // Idempotent: re-subscribing an existing address is a no-op that still
-    // reports success to the caller.
-    await this.newsletterRepo.upsertByEmail(email);
+    if (input.consent !== true) throw new AppError('Confirm that you want newsletter emails.', 400);
+    await this.consent.request(email, 'public');
 
     return {
-      message: "You're subscribed. Look out for updates from Ujimora.",
+      message: 'Check your email to confirm your request. If you are already subscribed, your preference stays unchanged.',
     };
   }
 }

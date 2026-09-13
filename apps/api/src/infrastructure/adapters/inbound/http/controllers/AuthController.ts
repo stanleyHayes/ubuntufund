@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
+import type { UserRepositoryPort } from '../../../../../domain/ports/outbound/UserRepositoryPort.js';
 import type { RegisterUserUseCase } from '../../../../../application/use-cases/RegisterUserUseCase.js';
 import type { LoginUserUseCase } from '../../../../../application/use-cases/LoginUserUseCase.js';
 import type { ChangePasswordUseCase } from '../../../../../application/use-cases/ChangePasswordUseCase.js';
@@ -16,7 +17,8 @@ export class AuthController {
     private readonly tokenService: AuthTokenService,
     private readonly changePasswordUseCase?: ChangePasswordUseCase,
     private readonly forgotPasswordUseCase?: ForgotPasswordUseCase,
-    private readonly resetPasswordUseCase?: ResetPasswordUseCase
+    private readonly resetPasswordUseCase?: ResetPasswordUseCase,
+    private readonly userRepo?: UserRepositoryPort
   ) {}
 
   changePassword = async (
@@ -43,7 +45,7 @@ export class AuthController {
       await this.forgotPasswordUseCase.execute(req.body.email);
       res.json({
         data: null,
-        message: 'If that email is registered, a reset link has been sent',
+        message: 'If that email is registered, you will receive a reset link shortly',
         status: 200,
       });
     } catch (error) {
@@ -116,7 +118,14 @@ export class AuthController {
 
       let tokens;
       try {
-        tokens = this.tokenService.refreshTokens(refreshToken);
+        const payload = this.tokenService.verifyRefreshToken(refreshToken);
+        const user = this.userRepo ? await this.userRepo.findById(payload.userId) : null;
+        if (this.userRepo && !user) {
+          res.status(401).json({ message: 'Account is no longer available', status: 401 });
+          return;
+        }
+        if (user && (payload.authVersion ?? '') !== user.authVersion) throw new Error('Session has ended');
+        tokens = this.tokenService.generateTokens({ userId: payload.userId, role: user?.role ?? payload.role, authVersion: user?.authVersion ?? payload.authVersion });
       } catch {
         res.status(401).json({
           message: 'Invalid or expired refresh token',

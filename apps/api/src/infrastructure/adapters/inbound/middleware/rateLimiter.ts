@@ -104,3 +104,9 @@ export const donationIntentRateLimiter = createRateLimiter({
   max: 60,
   scope: 'donation-intent',
 });
+
+/** Limits report spam; persisted uniqueness also suppresses duplicate pending reports. */
+export const safetyReportRateLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 20, scope: 'safety-reports' });
+export const storeBillingRateLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 40, scope: 'store-billing' });
+
+export const dataRightsRateLimiter = createRateLimiter({ windowMs: 15 * 60_000, max: 20, scope: 'data-rights' });

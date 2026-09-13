@@ -15,6 +15,8 @@ import { useAdminDonations, type AdminDonation } from '@/hooks/useApiData'
 import { usePagination } from '@/hooks/usePagination'
 import PaginationBar from '@/components/PaginationBar'
 import PageHeader from '@/components/PageHeader'
+import ExportMenu from '@/components/ExportMenu'
+import { exportTable, dateCell } from '@/lib/exports/report'
 
 function Skel({ w, h }: { w?: string | number; h?: number }) {
   return <Skeleton variant="rounded" width={w ?? '100%'} height={h ?? 14} />
@@ -207,6 +209,7 @@ export default function DonationsPage() {
         </Alert>
       )}
 
+      <ExportMenu title="Donations" disabled={loading || !!error} getReport={() => ({ title: 'Donations', filters: [`Donor type: ${typeFilter}`, `Search: ${search || 'All'}`], tables: [exportTable('Donations', filtered, { ID: r => r.id, Campaign: r => r.campaignTitle ?? r.campaignId, Supporter: r => r.isAnonymous ? 'Anonymous' : r.donorName ?? r.donorId, Amount: r => r.amount, Currency: r => r.currency, Method: r => r.paymentMethod, Anonymous: r => r.isAnonymous, 'Date (UTC)': r => dateCell(r.createdAt) })] })} />
       {/* Filter bar */}
       <Box
         sx={{

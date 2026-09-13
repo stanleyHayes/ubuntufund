@@ -3,6 +3,7 @@ export interface NotificationProps {
   userId: string;
   title: string;
   body: string;
+  path?: string;
   type: string;
   read: boolean;
   createdAt: Date;

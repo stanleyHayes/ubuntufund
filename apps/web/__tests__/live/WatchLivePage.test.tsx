@@ -3,6 +3,7 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { afterEach, expect, it, vi } from 'vitest'
 import { WatchLivePage } from '@/pages/WatchLivePage'
 const state = vi.hoisted(() => ({ status: 'active' }))
+vi.mock('@/context/AuthContext', () => ({ useAuth: () => ({ user: null }) }))
 vi.mock('@/lib/fundraising', () => ({ getLiveSessionPublic: async () => ({ id: 'session', campaignId: 'campaign', title: 'Live for our community', status: state.status, successfulDonations: 2, amountRaised: 100, currency: 'GHS' }) }))
 vi.mock('@/components/live/LiveVideoPanel', () => ({ LiveVideoPanel: ({ host = false }: { host?: boolean }) => <div>{host ? 'Host access' : 'Viewer access'}</div> }))
 afterEach(cleanup)

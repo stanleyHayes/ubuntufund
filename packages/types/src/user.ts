@@ -1,3 +1,4 @@
+import type { LegalAcceptanceInput, LegalAcceptanceRecord } from './legal-acceptance'
 export enum VerificationLevel {
   NONE = 0,
   EMAIL_PHONE = 1,
@@ -29,7 +30,14 @@ export enum KYCLevel {
 
 export type VerificationType = 'identity' | 'address' | 'business' | 'political' | 'media'
 
-export type DocumentType = 'id_card' | 'passport' | 'drivers_license' | 'utility_bill' | 'bank_statement' | 'business_registration' | 'tax_certificate'
+export const KYC_IDENTITY_DOCUMENT_OPTIONS = [
+  { value: 'id_card', label: 'National ID card' },
+  { value: 'passport', label: 'Passport' },
+  { value: 'drivers_license', label: 'Driving licence' },
+] as const
+export type KYCIdentityDocumentType = (typeof KYC_IDENTITY_DOCUMENT_OPTIONS)[number]['value']
+
+export type DocumentType = 'authorization_letter' | 'ownership_register' | 'selfie' | 'id_card' | 'passport' | 'drivers_license' | 'utility_bill' | 'bank_statement' | 'business_registration' | 'tax_certificate'
 
 export type RiskLevel = 'low' | 'medium' | 'high'
 
@@ -60,6 +68,12 @@ export interface KYCPersonalInfo {
 }
 
 export interface KYCBusinessInfo {
+  registeredAddress?: KYCAddress
+  representativeCapacity?: string
+  controlPersons?: Array<{ fullName: string; role: 'director' | 'trustee' | 'beneficial_owner' | 'other_controller'; country: string; ownershipPercent?: number }>
+  ownershipExplanation?: string
+  declaration?: { authorized: boolean; accurate: boolean; acceptedAt: Date }
+
   businessName?: string
   registrationNumber?: string
   taxId?: string
@@ -67,7 +81,16 @@ export interface KYCBusinessInfo {
   incorporationDate?: Date
 }
 
+export interface KYCInformationExchange {
+  id: string
+  prompt: string
+  requestedAt: Date
+  response?: string
+  respondedAt?: Date
+}
+
 export interface KYCVerification {
+  informationRequests?: KYCInformationExchange[]
   id: string
   userId: string
   verificationType: VerificationType
@@ -87,6 +110,7 @@ export interface KYCVerification {
 }
 
 export interface User {
+  legalAcceptance?: LegalAcceptanceRecord
   needsWebsite?: boolean
   organizationName?: string
   id: string
@@ -111,6 +135,7 @@ export interface User {
 }
 
 export interface CreateUserInput {
+  legalAcceptance?: LegalAcceptanceInput
   email: string
   password: string
   name: string
@@ -137,6 +162,7 @@ export enum OrganizationType {
 }
 
 export interface LoginInput {
+  mfaCode?: string
   email: string
   password: string
 }

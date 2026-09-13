@@ -12,6 +12,7 @@ export enum AiWritingAction {
 }
 
 export interface AiWritingRequest {
+  consentToExternalProcessing: boolean
   text: string
   action: AiWritingAction
   prompt?: string
@@ -19,6 +20,8 @@ export interface AiWritingRequest {
 }
 
 export interface AiWritingResponse {
+  /** Identifies the generated result for a private safety report. */
+  requestId?: string
   result: string
   action: AiWritingAction
   originalLength: number

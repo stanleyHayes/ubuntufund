@@ -27,6 +27,7 @@ export interface CampaignProps {
   tier?: number;
   /** Platform fee % locked from the organizer's plan at creation (ADR-5). */
   lockedPlatformFeePercent?: number;
+  reviewRevision?: number;
 }
 
 export class CampaignEntity {

@@ -1,3 +1,4 @@
+import { legalAcceptanceSchema } from './legalAcceptanceSchema.js';
 import { Router } from 'express';
 import type { RequestHandler } from 'express';
 import { z } from 'zod';
@@ -8,6 +9,7 @@ import { authRateLimiter } from '../../middleware/rateLimiter.js';
 
 const registerSchema = z
   .object({
+    legalAcceptance: legalAcceptanceSchema,
     email: z.string().email(),
     password: z.string().min(8).max(128),
     name: z.string().min(2).max(100),
@@ -39,6 +41,7 @@ const registerSchema = z
   });
 
 const loginSchema = z.object({
+  mfaCode: z.string().trim().min(6).max(64).optional(),
   email: z.string().email(),
   password: z.string().min(1),
 });
@@ -66,6 +69,7 @@ export function createAuthRoutes(
   authMiddleware?: RequestHandler
 ): Router {
   const router = Router();
+  router.use((_req, res, next) => { res.set('Cache-Control', 'private, no-store'); next(); });
 
   router.post('/register', authRateLimiter, validate(registerSchema), controller.register);
   router.post('/login', authRateLimiter, validate(loginSchema), controller.login);

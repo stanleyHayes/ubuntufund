@@ -8,6 +8,7 @@ import {
 export interface TokenPayload {
   userId: string;
   role: string;
+  authVersion?: string;
 }
 
 export class AuthTokenService {
@@ -60,7 +61,7 @@ export class AuthTokenService {
     try {
       const decoded = jwt.verify(token, this.jwtSecret) as jwt.JwtPayload & TokenPayload;
       this.assertNotRevoked(decoded);
-      return { userId: decoded.userId, role: decoded.role };
+      return { userId: decoded.userId, role: decoded.role, ...(decoded.authVersion !== undefined ? { authVersion: decoded.authVersion } : {}) };
     } catch {
       throw new Error('Invalid or expired access token');
     }
@@ -70,7 +71,7 @@ export class AuthTokenService {
     try {
       const decoded = jwt.verify(token, this.jwtRefreshSecret) as jwt.JwtPayload & TokenPayload;
       this.assertNotRevoked(decoded);
-      return { userId: decoded.userId, role: decoded.role };
+      return { userId: decoded.userId, role: decoded.role, ...(decoded.authVersion !== undefined ? { authVersion: decoded.authVersion } : {}) };
     } catch {
       throw new Error('Invalid or expired refresh token');
     }
@@ -81,6 +82,7 @@ export class AuthTokenService {
     return this.generateTokens({
       userId: payload.userId,
       role: payload.role,
+      authVersion: payload.authVersion,
     });
   }
 }

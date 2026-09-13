@@ -18,6 +18,7 @@ export default function ProfileScreen() {
   if (isLoading) {
     return (
       <View style={styles.center}>
+        <Stack.Screen options={{ title: 'Profile' }} />
         <SkeletonLoader size="large" color={p.primary} />
       </View>
     )
@@ -26,6 +27,7 @@ export default function ProfileScreen() {
   if (!user) {
     return (
       <View style={styles.center}>
+        <Stack.Screen options={{ title: 'Profile' }} />
         <Text variant="bodyLarge">User not found</Text>
       </View>
     )

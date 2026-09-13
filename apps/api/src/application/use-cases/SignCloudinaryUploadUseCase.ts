@@ -47,7 +47,10 @@ export class SignCloudinaryUploadUseCase {
       );
     }
 
-    const folder = (input.folder ?? '').trim() || 'ubuntu-fund';
+    const requested = (input.folder ?? '').trim() || 'misc';
+    const folders: Record<string, string> = { campaigns: 'ujimora/campaigns', profiles: 'ujimora/profiles', misc: 'ujimora/misc', 'ubuntu-fund': 'ubuntu-fund', 'ujimora/campaigns': 'ujimora/campaigns', 'ujimora/profiles': 'ujimora/profiles', 'ujimora/misc': 'ujimora/misc' };
+    const folder = folders[requested];
+    if (!folder) throw new AppError('Use the private document upload flow for verification documents', 400);
     const timestamp = Math.floor(Date.now() / 1000);
 
     // Only the params sent to Cloudinary alongside the file are signed. Sort

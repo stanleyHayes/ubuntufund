@@ -1,7 +1,9 @@
+import { trackActivity } from '../plugins/trackActivity.js';
 import mongoose, { Schema, type Document } from 'mongoose';
 import { SubscriptionTier, SubscriptionStatus, BillingCycle } from '@ubuntu-fund/types';
 
 export interface SubscriptionDocument extends Document {
+  consumptionWriteVersion: number;
   userId: string;
   tier: string;
   status: SubscriptionStatus;
@@ -10,12 +12,15 @@ export interface SubscriptionDocument extends Document {
   currentPeriodEnd: Date;
   cancelAtPeriodEnd: boolean;
   trialEnd?: Date;
+  billingProvider?: 'web' | 'apple' | 'google';
+  storePurchaseKey?: string;
   createdAt: Date;
   updatedAt: Date;
 }
 
 const subscriptionSchema = new Schema<SubscriptionDocument>(
   {
+    consumptionWriteVersion: { type: Number, default: 0 },
     userId: { type: String, required: true, index: true, unique: true },
     // Free-form so a user can hold an admin-added tier; defaults to the free tier.
     tier: {
@@ -39,6 +44,8 @@ const subscriptionSchema = new Schema<SubscriptionDocument>(
     currentPeriodEnd: { type: Date, required: true },
     cancelAtPeriodEnd: { type: Boolean, default: false },
     trialEnd: { type: Date },
+    billingProvider: { type: String, enum: ['web', 'apple', 'google'] },
+    storePurchaseKey: { type: String },
   },
   {
     timestamps: true,
@@ -52,6 +59,8 @@ const subscriptionSchema = new Schema<SubscriptionDocument>(
     },
   }
 );
+
+subscriptionSchema.plugin(trackActivity);
 
 export const SubscriptionModel = mongoose.model<SubscriptionDocument>(
   'Subscription',

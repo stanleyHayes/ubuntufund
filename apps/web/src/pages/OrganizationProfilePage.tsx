@@ -104,6 +104,12 @@ function organizationDescription(org: Organization): string {
 
 export function OrganizationProfilePage() {
   const { slug } = useParams<{ slug: string }>()
+  const { user } = useAuth()
+  return <OrganizationProfileForViewer key={`${slug}:${user?.id ?? 'guest'}`} />
+}
+
+function OrganizationProfileForViewer() {
+  const { slug } = useParams<{ slug: string }>()
   const navigate = useNavigate()
   const { user } = useAuth()
   const [failedCover, setFailedCover] = useState<string | null>(null)
@@ -121,20 +127,24 @@ export function OrganizationProfilePage() {
       return () => clearTimeout(id)
     }
     let cancelled = false
-    api.get<Organization>(`/organizations/${slug}`)
-      .then((data) => {
+    let loading = false
+    const load = async () => {
+      if (loading) return
+      loading = true
+      try {
+        const data = await api.get<Organization>(`/organizations/${slug}`)
         if (cancelled) return
-        setOrg(data)
-        return api.get<Campaign[]>(`/organizations/${data.id}/campaigns`)
-      })
-      .then((data) => {
-        if (!cancelled && data) setCampaigns(Array.isArray(data) ? data : [])
-      })
-      .catch(() => {
-        if (!cancelled) { setOrg(null); setCampaigns([]) }
-      })
-      .finally(() => { if (!cancelled) setIsLoading(false) })
-    return () => { cancelled = true }
+        const campaigns = await api.get<Campaign[]>(`/organizations/${data.id}/campaigns`)
+        if (!cancelled) { setOrg(data); setCampaigns(Array.isArray(campaigns) ? campaigns : []) }
+      } catch {
+        if (!cancelled) { setOrg(null); setCampaigns([]); setImageEditor(null) }
+      } finally { loading = false; if (!cancelled) setIsLoading(false) }
+    }
+    void load()
+    const refresh = () => { if (document.visibilityState === 'visible') void load() }
+    window.addEventListener('focus', refresh)
+    const timer = window.setInterval(refresh, 30000)
+    return () => { cancelled = true; window.removeEventListener('focus', refresh); window.clearInterval(timer) }
   }, [slug])
 
   const orgImage = org?.coverUrl || org?.logoUrl

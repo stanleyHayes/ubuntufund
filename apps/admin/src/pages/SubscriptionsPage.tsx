@@ -1,3 +1,5 @@
+import ExportMenu from '@/components/ExportMenu'
+import { exportTable, dateCell } from '@/lib/exports/report'
 import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -19,11 +21,11 @@ import {
   Action,
 } from '@ubuntu-fund/types'
 import type { Subscription } from '@ubuntu-fund/types'
-import { api } from '@/lib/api'
 import { useAdminPermissions } from '@/context/AdminPermissionContext'
 import { usePagination } from '@/hooks/usePagination'
 import PaginationBar from '@/components/PaginationBar'
 import PageHeader from '@/components/PageHeader'
+import { loadAll } from '@/lib/exports/loadAll'
 import { TONES } from '@/lib/tones'
 
 
@@ -221,9 +223,9 @@ export default function SubscriptionsPage() {
 
   useEffect(() => {
     let cancelled = false
-    api.get<{ items: AdminSubscription[] }>('/subscriptions')
+    loadAll<AdminSubscription>('/subscriptions')
       .then((response) => {
-        if (!cancelled) setSubscriptions(response.items ?? [])
+        if (!cancelled) setSubscriptions(response)
       })
       .catch((requestError: unknown) => {
         if (!cancelled) setError(requestError instanceof Error ? requestError.message : 'Could not load subscriptions')
@@ -284,6 +286,7 @@ export default function SubscriptionsPage() {
           { label: 'Paid Users', value: loading ? <Skeleton width={60} /> : paidUsers },
         ]}
       />
+      <ExportMenu title="Subscriptions" disabled={loading || !!error} getReport={() => ({ title: "Subscriptions", filters: [`Tier: ${tierFilter}`, `Status: ${statusFilter}`, `Search: ${search || 'All'}`], tables: [exportTable("Subscriptions", filtered, { ID: r => r.id, Member: r => r.userName, Email: r => r.email, Tier: r => r.tier, Status: r => r.status, Provider: r => r.billingProvider ?? 'web', Cycle: r => r.billingCycle, 'Period end (UTC)': r => dateCell(r.currentPeriodEnd) })] })} />
 
       {/* Revenue breakdown by tier */}
       <Box sx={{ ...raisedSurface, mb: 3, px: 3, py: 2 }}>

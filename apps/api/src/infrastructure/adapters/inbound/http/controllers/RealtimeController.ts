@@ -1,3 +1,10 @@
+import { isDonationContentApproved } from '../../../../../domain/entities/donationPublicContent.js';
+import type { PublicProfileVisibilityPort } from '../../../../../domain/ports/outbound/PublicProfileVisibilityPort.js';
+import type { UserRepositoryPort } from '../../../../../domain/ports/outbound/UserRepositoryPort.js';
+import type { AuthenticatedRequest } from '../../middleware/authMiddleware.js';
+import { GUEST_DONOR_ID } from '../../../../../domain/entities/Donation.js';
+import { isPublicCampaign } from '../../../../../domain/services/campaignVisibility.js';
+import { DonationModel } from '../../../../database/models/DonationModel.js';
 import type { Request, Response, NextFunction } from 'express';
 import type { LiveSessionEntity } from '../../../../../domain/entities/LiveSession.js';
 import type { CampaignRepositoryPort } from '../../../../../domain/ports/outbound/CampaignRepositoryPort.js';
@@ -46,28 +53,34 @@ function writeSseEvent(res: Response, event: BusEvent): void {
  *
  * Privacy is applied upstream at publish time (see RealtimeDonationProjector):
  * campaign-channel events carry public data; session-channel events honor the
- * host's overlay toggles. The gateway forwards them verbatim.
+ * host's overlay toggles. The gateway rechecks current message/anonymity state
+ * before delivery, including buffered replay.
  */
 export class RealtimeController {
   constructor(
     private readonly eventBus: EventBus,
     private readonly campaignRepo: CampaignRepositoryPort,
-    private readonly liveSessionRepo: LiveSessionRepositoryPort
+    private readonly liveSessionRepo: LiveSessionRepositoryPort,
+    private readonly users: UserRepositoryPort,
+    private readonly visibility: PublicProfileVisibilityPort
   ) {}
 
   /** GET /campaigns/:id/events — public campaign SSE feed. */
   campaignEvents = async (
-    req: Request,
+    req: AuthenticatedRequest,
     res: Response,
     next: NextFunction
   ): Promise<void> => {
     try {
       const campaignId = req.params.id as string;
       const campaign = await this.campaignRepo.findById(campaignId);
-      if (!campaign) {
+      if (!campaign || !isPublicCampaign(campaign.status) || (await this.visibility.hiddenContentAuthorIds([campaign.creatorId], req.userId)).has(campaign.creatorId)) {
         throw new AppError('Campaign not found', 404);
       }
-      this.stream(req, res, campaignChannel(campaignId));
+      this.stream(req, res, campaignChannel(campaignId), campaignId, undefined, async () => {
+        const current = await this.campaignRepo.findById(campaignId);
+        return !!current && isPublicCampaign(current.status) && !(await this.visibility.hiddenContentAuthorIds([current.creatorId], req.userId)).has(current.creatorId);
+      });
     } catch (error) {
       next(error);
     }
@@ -75,7 +88,7 @@ export class RealtimeController {
 
   /** GET /live-sessions/:id/events?token=… — overlay-token-gated session feed. */
   liveSessionEvents = async (
-    req: Request,
+    req: AuthenticatedRequest,
     res: Response,
     next: NextFunction
   ): Promise<void> => {
@@ -90,9 +103,14 @@ export class RealtimeController {
         throw new AppError('Invalid overlay token', 403);
       }
       if (!session.isActive()) throw new AppError('This live session has ended', 409);
-      this.stream(req, res, liveChannel(sessionId), async () => {
+      const campaign = await this.campaignRepo.findById(session.campaignId);
+      if (!campaign || !isPublicCampaign(campaign.status) || (await this.visibility.hiddenContentAuthorIds([campaign.creatorId], req.userId)).has(campaign.creatorId)) throw new AppError('Campaign not found', 404);
+      this.stream(req, res, liveChannel(sessionId), session.campaignId, async () => {
         const current = await this.liveSessionRepo.findById(sessionId);
         return current?.isActive() && current.overlayToken === token ? current : null;
+      }, async () => {
+        const current = await this.campaignRepo.findById(session.campaignId);
+        return !!current && isPublicCampaign(current.status) && !(await this.visibility.hiddenContentAuthorIds([current.creatorId], req.userId)).has(current.creatorId);
       });
     } catch (error) {
       next(error);
@@ -104,10 +122,10 @@ export class RealtimeController {
    * buffered events after `Last-Event-ID`, subscribe for live events, start the
    * heartbeat, and clean everything up when the client disconnects.
    */
-  private stream(req: Request, res: Response, channel: string, sessionGuard?: () => Promise<LiveSessionEntity | null>): void {
+  private stream(req: AuthenticatedRequest, res: Response, channel: string, campaignId: string, sessionGuard?: () => Promise<LiveSessionEntity | null>, publicationGuard?: () => Promise<boolean>): void {
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache, no-transform',
+      'Cache-Control': 'private, no-store, no-transform',
       Connection: 'keep-alive',
       // Disable proxy buffering (nginx) so events flush immediately.
       'X-Accel-Buffering': 'no',
@@ -120,10 +138,27 @@ export class RealtimeController {
     const deliver = (event: BusEvent) => {
       queue = queue.then(async () => {
         if (closed) return;
-        if (!sessionGuard) { writeSseEvent(res, event); return; }
+        if (publicationGuard && !(await publicationGuard())) { finish(); return; }
+        let data = { ...(event.data as Record<string, unknown>) };
+        if (event.type === 'donation') {
+          const id = typeof data.donationId === 'string' ? data.donationId : '';
+          const current = /^[a-f0-9]{24}$/i.test(id) ? await DonationModel.findOne({ _id: id, campaignId }).lean() : null;
+          // An event is a notification, not authority for donation ownership or identity.
+          if (!current) return;
+          const hidden = current.donorId !== GUEST_DONOR_ID && (await this.visibility.hiddenContentAuthorIds([current.donorId], req.userId)).has(current.donorId);
+          let name = 'Anonymous';
+          if (!hidden && !current.isAnonymous && isDonationContentApproved(current)) {
+            name = current.donorName || (current.donorId === GUEST_DONOR_ID ? 'Guest donor' : 'Supporter');
+          }
+          data = {
+            donationId: String(current._id), name, amount: current.amount,
+            createdAt: current.createdAt.toISOString(),
+            ...(!hidden && isDonationContentApproved(current) && !current.messageHiddenAt && current.message ? { message: current.message } : {}),
+          };
+        }
+        if (!sessionGuard) { if (!closed) writeSseEvent(res, { ...event, data }); return; }
         const session = await sessionGuard();
         if (!session) { finish(); return; }
-        const data = { ...(event.data as Record<string, unknown>) };
         if (event.type === 'donation') {
           if (!session.namesVisible()) data.name = 'Anonymous';
           if (!session.messagesVisible()) delete data.message;
@@ -142,6 +177,7 @@ export class RealtimeController {
     const heartbeat = setInterval(() => {
       queue = queue.then(async () => {
         if (closed) return;
+        if (publicationGuard && !(await publicationGuard())) { finish(); return; }
         if (sessionGuard && !(await sessionGuard())) { finish(); return; }
         if (!closed) res.write(`: heartbeat ${Date.now()}\n\n`);
       }).catch(() => finish());

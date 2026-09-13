@@ -1,4 +1,6 @@
-import { randomUUID } from 'node:crypto';
+import type { LegalAcceptanceInput } from '@ubuntu-fund/types';
+import { messageAgreement } from '../services/messageAgreement.js';
+import { createHash, randomUUID } from 'node:crypto';
 import type { PlanLimitsService } from '../services/PlanLimitsService.js';
 import type { CreatorProfileRepositoryPort } from '../../domain/ports/outbound/CreatorProfileRepositoryPort.js';
 import type { TipRepositoryPort } from '../../domain/ports/outbound/TipRepositoryPort.js';
@@ -9,6 +11,8 @@ import { roundToCurrency } from '../../domain/value-objects/Money.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 
 export interface CreateTipInput {
+  idempotencyKey?: string;
+  legalAcceptance?: LegalAcceptanceInput;
   amount: number;
   supporterEmail: string;
   supporterName?: string;
@@ -34,6 +38,9 @@ export class CreateTipIntentUseCase {
   ) {}
 
   async execute(handle: string, input: CreateTipInput) {
+    if (input.idempotencyKey !== undefined && !/^[a-zA-Z0-9_-]{16,128}$/.test(input.idempotencyKey)) throw new AppError('Invalid checkout request key.', 400);
+    const agreement = messageAgreement(input.message, input.legalAcceptance)
+      ?? messageAgreement(input.isAnonymous ? undefined : input.supporterName, input.legalAcceptance);
     const creator = await this.profileRepo.findByHandle(handle);
     if (!creator) throw new AppError('Creator not found', 404);
     await this.plans.assertCreatorDonations(creator.userId);
@@ -50,30 +57,59 @@ export class CreateTipIntentUseCase {
     const fee = 0; // Plan fee is charged once, on withdrawal.
     const net = roundToCurrency(input.amount - fee, creator.currency);
 
-    const reference = `tip-${randomUUID()}`;
+    const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
+    const reference = input.idempotencyKey
+      ? `tip-${hash([creator.userId, input.supporterUserId ?? 'guest', input.idempotencyKey])}`
+      : `tip-${randomUUID()}`;
+    const requestFingerprint = input.idempotencyKey ? hash([
+      input.amount, creator.currency, input.supporterEmail, input.supporterName ?? '',
+      input.message ?? '', input.isAnonymous ?? false, input.legalAcceptance ?? null,
+    ]) : undefined;
+    const replay = (existing: TipEntity) => {
+      const saved = existing.toPlain();
+      if (saved.requestFingerprint !== requestFingerprint) throw new AppError('This checkout request key was already used for different details.', 409);
+      if (saved.status === 'SUCCEEDED' || saved.status === 'FAILED' || !saved.checkout?.checkoutUrl) return { checkoutUrl: `/tip/callback?reference=${encodeURIComponent(saved.providerRef)}`, accessCode: '', reference: saved.providerRef, tipId: saved.id };
+      return { ...saved.checkout, reference: saved.providerRef, tipId: saved.id };
+    };
+    if (input.idempotencyKey) {
+      const existing = await this.tipRepo.findByProviderRef(reference);
+      if (existing) return replay(existing);
+    }
 
     const now = new Date();
-    const tip = await this.tipRepo.create(
-      new TipEntity({
-        id: '',
-        creatorUserId: creator.userId,
-        amount: input.amount,
-        currency: creator.currency,
-        supporterUserId: input.supporterUserId,
-        supporterName: input.supporterName,
-        supporterEmail: input.supporterEmail,
-        message: input.message,
-        isAnonymous: input.isAnonymous ?? false,
-        status: 'PENDING',
-        settlementApplied: false,
-        provider: 'paystack',
-        providerRef: reference,
-        platformFee: fee,
-        netAmount: net,
-        createdAt: now,
-        updatedAt: now,
-      })
-    );
+    let tip: TipEntity;
+    try {
+      tip = await this.tipRepo.create(
+        new TipEntity({
+          id: '',
+          creatorUserId: creator.userId,
+          amount: input.amount,
+          currency: creator.currency,
+          supporterUserId: input.supporterUserId,
+          supporterName: input.supporterName,
+          supporterEmail: input.supporterEmail,
+          message: input.message,
+          messageAgreement: agreement,
+          isAnonymous: input.isAnonymous ?? false,
+          status: 'PENDING',
+          settlementApplied: false,
+          provider: 'paystack',
+          providerRef: reference,
+          requestFingerprint,
+          platformFee: fee,
+          netAmount: net,
+          createdAt: now,
+          updatedAt: now,
+        })
+      );
+    } catch (error) {
+      // The unique provider reference reserves the attempt across workers.
+      if (input.idempotencyKey && (error as { code?: number }).code === 11000) {
+        const existing = await this.tipRepo.findByProviderRef(reference);
+        if (existing) return replay(existing);
+      }
+      throw error;
+    }
     // Make sure a balance row exists so the later credit lands cleanly.
     await this.balanceRepo.ensure(creator.userId, creator.currency);
 
@@ -89,7 +125,15 @@ export class CreateTipIntentUseCase {
       callbackPath: '/tip/callback',
     });
 
-
+    if (init.reference !== reference) throw new AppError('Payment provider returned an unexpected checkout reference.', 502);
+    if (input.idempotencyKey) {
+      const saved = await this.tipRepo.saveCheckout(reference, { checkoutUrl: init.authorizationUrl, accessCode: init.accessCode });
+      if (!saved) {
+        const current = await this.tipRepo.findByProviderRef(reference);
+        if (current) return replay(current);
+        throw new AppError('Checkout is unavailable. Please contact payment support.', 409);
+      }
+    }
     return {
       checkoutUrl: init.authorizationUrl,
       accessCode: init.accessCode,

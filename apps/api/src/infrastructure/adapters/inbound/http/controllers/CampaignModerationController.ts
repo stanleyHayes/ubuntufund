@@ -6,9 +6,10 @@ import type {
 } from '../../../../../application/use-cases/ReviewCampaignUseCase.js';
 
 const ACTION_MESSAGES: Record<CampaignReviewAction, string> = {
-  approve: 'Campaign approved successfully',
-  reject: 'Campaign rejected',
-  block: 'Campaign blocked',
+  approve: 'Campaign approval recorded',
+  reject: 'Campaign rejection recorded',
+  block: 'Campaign block recorded',
+  reopen: 'Return-to-review decision recorded',
 };
 
 export class CampaignModerationController {
@@ -30,6 +31,9 @@ export class CampaignModerationController {
       const action: CampaignReviewAction = req.body.action ?? 'approve';
       const campaign = await this.reviewCampaignUseCase.execute({
         campaignId: req.params.id as string,
+        actorId: req.userId!, authVersion: req.authVersion ?? '',
+        expectedVersion: req.body.expectedVersion,
+        contentReviewed: req.body.contentReviewed, fundraisingReviewed: req.body.fundraisingReviewed,
         action,
         reason: req.body.reason,
       });
@@ -55,6 +59,9 @@ export class CampaignModerationController {
     try {
       const campaign = await this.reviewCampaignUseCase.execute({
         campaignId: req.params.id as string,
+        actorId: req.userId!, authVersion: req.authVersion ?? '',
+        expectedVersion: req.body.expectedVersion,
+        contentReviewed: req.body.contentReviewed, fundraisingReviewed: req.body.fundraisingReviewed,
         action: 'reject',
         reason: req.body.reason,
       });

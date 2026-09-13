@@ -1,17 +1,15 @@
+import CampaignReviewPanel from '@/components/CampaignReviewPanel'
+import ExportMenu from '@/components/ExportMenu'
+import { campaignsTable, donationsTable } from '@/lib/exports/tables'
+import { exportTable } from '@/lib/exports/report'
 import { insetSurface, progressTrack, raisedSurface } from '@/lib/surfaces'
 import { DonationCard } from './DonationsPage'
 import Skeleton from '@mui/material/Skeleton'
-import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
-import { BrandedDatePicker } from '@ubuntu-fund/ui'
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Box, Typography, Chip, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material'
+import { Box, Typography, Chip } from '@mui/material'
 import Button from '@mui/material/Button'
 import { keyframes } from '@mui/system'
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'
-import BlockIcon from '@mui/icons-material/Block'
-import ReplayIcon from '@mui/icons-material/Replay'
-import DoNotDisturbIcon from '@mui/icons-material/DoNotDisturb'
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import PersonOutlineRoundedIcon from '@mui/icons-material/PersonOutlineRounded'
 import RocketLaunchRoundedIcon from '@mui/icons-material/RocketLaunchRounded'
@@ -49,13 +47,13 @@ const statusColors: Record<string, string> = {
 
 export default function CampaignDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const { data: campaign, isLoading: loading, error: campaignError } = useAdminCampaign(id ?? '')
-  const { data: donations } = useAdminCampaignDonations(id ?? '')
+  const [reviewRefresh, setReviewRefresh] = useState(0)
+  const [nowMs] = useState(() => Date.now())
+  const { data: campaign, isLoading: loading, error: campaignError } = useAdminCampaign(id ?? '', reviewRefresh)
+  const { data: donations, isLoading: donationsLoading, error: donationsError } = useAdminCampaignDonations(id ?? '')
   const navigate = useNavigate()
   const [collaborators, setCollaborators] = useState<CampaignCollaborator[]>([])
   const [collaboratorsError, setCollaboratorsError] = useState<string | null>(null)
-  const [actionLoading, setActionLoading] = useState<string | null>(null)
-  const [editOpen, setEditOpen] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -75,10 +73,6 @@ export default function CampaignDetailPage() {
       })
     return () => { cancelled = true }
   }, [id])
-  const [editLoading, setEditLoading] = useState(false)
-  const [deleteOpen, setDeleteOpen] = useState(false)
-  const [deleteLoading, setDeleteLoading] = useState(false)
-  const [reviewNotes, setReviewNotes] = useState('')
 
   if (loading) {
     return (
@@ -129,7 +123,7 @@ export default function CampaignDetailPage() {
   }
 
   const progress = campaign.goalAmount > 0 ? Math.min(Math.round((campaign.raisedAmount / campaign.goalAmount) * 100), 100) : 0
-  const daysRemaining = Math.max(0, Math.ceil((new Date(campaign.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+  const daysRemaining = Math.max(0, Math.ceil((new Date(campaign.endDate).getTime() - nowMs) / (1000 * 60 * 60 * 24)))
   const statusColor = statusColors[campaign.status] || '#78909C'
 
   return (
@@ -148,6 +142,7 @@ export default function CampaignDetailPage() {
             { label: 'Days Remaining', value: campaign.status === CampaignStatus.EXPIRED ? 'Expired' : daysRemaining },
           ]}
         />
+      <ExportMenu title="Campaign record" disabled={loading || !!campaignError || donationsLoading || !!donationsError || !!collaboratorsError} getReport={() => ({ title: 'Campaign record', filters: [`Campaign: ${campaign.id}`], tables: [campaignsTable([campaign]), exportTable('Campaign story', [campaign], { Description: r => r.description }), donationsTable(donations), exportTable('Collaborators', collaborators, { ID: r => r.id, Role: r => r.role, Account: r => r.userId })] })} />
       </Box>
 
       {/* Main content */}
@@ -182,12 +177,16 @@ export default function CampaignDetailPage() {
               {[
                 { label: 'Category', value: campaign.category.replace(/_/g, ' ') },
                 { label: 'Currency', value: campaign.currency },
-                { label: 'Start date', value: new Date(campaign.startDate).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) },
-                { label: 'End date', value: new Date(campaign.endDate).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) },
+                { label: 'Beneficiaries', value: campaign.beneficiaries.join(', ') || 'None listed' },
+                { label: 'Campaign URL', value: campaign.slug || 'No custom URL' },
+                { label: 'Risk tier', value: campaign.tier ?? 'Not assigned' },
+                { label: 'Locked platform fee', value: campaign.lockedPlatformFeePercent == null ? 'No legacy fee lock; check applicable plan' : `${campaign.lockedPlatformFeePercent}%` },
+                { label: 'Start (UTC)', value: new Date(campaign.startDate).toISOString().replace('T', ' ').replace('.000Z', ' UTC') },
+                { label: 'End (UTC)', value: new Date(campaign.endDate).toISOString().replace('T', ' ').replace('.000Z', ' UTC') },
               ].map(item => (
                 <Box key={item.label} sx={{ minWidth: 0, ...insetSurface, p: 2 }}>
                   <Typography component="dt" sx={{ fontSize: '.72rem', color: 'text.secondary', mb: 0.75 }}>{item.label}</Typography>
-                  <Typography component="dd" sx={{ m: 0, fontSize: '.95rem', fontWeight: 600, color: 'text.primary', textTransform: item.label === 'Category' ? 'capitalize' : 'none' }}>{item.value}</Typography>
+                  <Typography component="dd" sx={{ m: 0, fontSize: '.95rem', fontWeight: 600, color: 'text.primary', overflowWrap: 'anywhere', textTransform: item.label === 'Category' ? 'capitalize' : 'none' }}>{item.value}</Typography>
                 </Box>
               ))}
             </Box>
@@ -225,191 +224,7 @@ export default function CampaignDetailPage() {
             />
           </Box>
 
-          {/* Approve / Reject */}
-          {campaign.status === CampaignStatus.PENDING_REVIEW && (
-            <>
-              <Box sx={{ p: 2.5, borderBottom: `1px solid ${B}` }}>
-                <Button
-                  variant="outlined"
-                  fullWidth
-                  startIcon={<CheckCircleOutlineIcon />}
-                  disabled={actionLoading === 'approve'}
-                  onClick={async () => {
-                    setActionLoading('approve')
-                    try {
-                      await api.put(`/campaigns/${id}/approve`, { action: 'approve' })
-                      window.location.reload()
-                    } catch (err) {
-                      alert(err instanceof Error ? err.message : 'Approve failed')
-                    } finally {
-                      setActionLoading(null)
-                    }
-                  }}
-                  sx={{
-                    color: '#5E8F72', borderColor: '#5E8F72',
-                    fontFamily: '"Outfit", sans-serif', textTransform: 'none',
-                    '&:hover': { borderColor: '#5E8F72', bgcolor: 'rgba(76,175,80,0.08)' },
-                  }}
-                >
-                  {actionLoading === 'approve' ? 'Approving...' : 'Approve'}
-                </Button>
-              </Box>
-              <Box sx={{ p: 2.5, borderBottom: `1px solid ${B}` }}>
-                <Button
-                  variant="outlined"
-                  fullWidth
-                  startIcon={<DoNotDisturbIcon />}
-                  disabled={actionLoading === 'reject'}
-                  onClick={async () => {
-                    setActionLoading('reject')
-                    try {
-                      await api.put(`/campaigns/${id}/approve`, { action: 'reject' })
-                      window.location.reload()
-                    } catch (err) {
-                      alert(err instanceof Error ? err.message : 'Reject failed')
-                    } finally {
-                      setActionLoading(null)
-                    }
-                  }}
-                  sx={{
-                    color: '#C06B58', borderColor: '#C06B58',
-                    fontFamily: '"Outfit", sans-serif', textTransform: 'none',
-                    '&:hover': { borderColor: '#C06B58', bgcolor: 'rgba(192,107,88,0.08)' },
-                  }}
-                >
-                  {actionLoading === 'reject' ? 'Rejecting...' : 'Reject'}
-                </Button>
-              </Box>
-            </>
-          )}
-
-          {/* Block / Unblock */}
-          {campaign.status !== CampaignStatus.BLOCKED ? (
-            <Box sx={{ p: 2.5, borderBottom: `1px solid ${B}` }}>
-              <Button
-                variant="outlined"
-                fullWidth
-                startIcon={<BlockIcon />}
-                disabled={actionLoading === 'block'}
-                onClick={async () => {
-                  setActionLoading('block')
-                  try {
-                    await api.put(`/campaigns/${id}/approve`, { action: 'block' })
-                    window.location.reload()
-                  } catch (err) {
-                    alert(err instanceof Error ? err.message : 'Block failed')
-                  } finally {
-                    setActionLoading(null)
-                  }
-                }}
-                sx={{
-                  color: '#C06B58', borderColor: '#C06B58',
-                  fontFamily: '"Outfit", sans-serif', textTransform: 'none',
-                  '&:hover': { borderColor: '#C06B58', bgcolor: 'rgba(192,107,88,0.08)' },
-                }}
-              >
-                {actionLoading === 'block' ? 'Blocking...' : 'Block'}
-              </Button>
-            </Box>
-          ) : (
-            <Box sx={{ p: 2.5, borderBottom: `1px solid ${B}` }}>
-              <Button
-                variant="outlined"
-                fullWidth
-                startIcon={<ReplayIcon />}
-                disabled={actionLoading === 'unblock'}
-                onClick={async () => {
-                  setActionLoading('unblock')
-                  try {
-                    await api.put(`/campaigns/${id}/review`, { action: 'unblock' })
-                    window.location.reload()
-                  } catch (err) {
-                    alert(err instanceof Error ? err.message : 'Unblock failed')
-                  } finally {
-                    setActionLoading(null)
-                  }
-                }}
-                sx={{
-                  color: '#5E8F72', borderColor: '#5E8F72',
-                  fontFamily: '"Outfit", sans-serif', textTransform: 'none',
-                  '&:hover': { borderColor: '#5E8F72', bgcolor: 'rgba(76,175,80,0.08)' },
-                }}
-              >
-                {actionLoading === 'unblock' ? 'Unblocking...' : 'Unblock'}
-              </Button>
-            </Box>
-          )}
-
-          {/* Review notes */}
-          <Box sx={{ p: 2.5, borderBottom: `1px solid ${B}` }}>
-            <TextField
-              multiline
-              rows={3}
-              fullWidth
-              placeholder="Add review notes..."
-              value={reviewNotes}
-              onChange={(e) => setReviewNotes(e.target.value)}
-              sx={{
-                '& .MuiInputBase-root': {
-                  bgcolor: 'rgba(255,255,255,0.03)',
-                  color: 'text.primary',
-                  fontSize: '0.82rem',
-                  fontFamily: '"Outfit", sans-serif',
-                },
-                '& .MuiOutlinedInput-notchedOutline': { borderColor: B },
-              }}
-            />
-          </Box>
-
-          {/* Review history */}
-          {(campaign.reviewNotes || campaign.reviewedBy) && (
-            <Box sx={{ p: 2.5, borderBottom: `1px solid ${B}` }}>
-              <Typography sx={{ fontSize: '0.65rem', textTransform: 'uppercase', color: 'text.secondary', letterSpacing: 1, mb: 1, fontFamily: '"Outfit", sans-serif' }}>
-                Review History
-              </Typography>
-              {campaign.reviewNotes && (
-                <Typography sx={{ fontSize: '0.82rem', color: 'text.secondary', mb: 1, lineHeight: 1.5 }}>
-                  {campaign.reviewNotes}
-                </Typography>
-              )}
-              {campaign.reviewedBy && (
-                <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>
-                  By {campaign.reviewedBy}
-                  {campaign.reviewedAt && ` · ${new Date(campaign.reviewedAt).toLocaleDateString()}`}
-                </Typography>
-              )}
-            </Box>
-          )}
-
-          <Box sx={{ p: 2.5, borderBottom: `1px solid ${B}` }}>
-            <Button
-              variant="outlined"
-              fullWidth
-              sx={{
-                color: 'text.secondary', borderColor: 'divider',
-                fontFamily: '"Outfit", sans-serif', textTransform: 'none',
-                '&:hover': { borderColor: 'divider', bgcolor: 'rgba(255,255,255,0.05)' },
-              }}
-              onClick={() => setEditOpen(true)}
-            >
-              Edit
-            </Button>
-          </Box>
-          <Box sx={{ p: 2.5 }}>
-            <Button
-              variant="outlined"
-              fullWidth
-              color="error"
-              sx={{
-                color: '#C06B58', borderColor: '#C06B58',
-                fontFamily: '"Outfit", sans-serif', textTransform: 'none',
-                '&:hover': { borderColor: '#C06B58', bgcolor: 'rgba(192,107,88,0.08)' },
-              }}
-              onClick={() => setDeleteOpen(true)}
-            >
-              Delete
-            </Button>
-          </Box>
+          <CampaignReviewPanel campaign={campaign} onChanged={() => setReviewRefresh(n => n + 1)} />
         </Box>
       </Box>
 
@@ -480,84 +295,6 @@ export default function CampaignDetailPage() {
         </Box>
       )}
 
-      {/* Edit Dialog */}
-      <Dialog open={editOpen} onClose={() => setEditOpen(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { bgcolor: 'background.default', color: 'text.primary' } }}>
-        <DialogTitle sx={{ fontWeight: 700, fontFamily: '"Outfit", sans-serif' }}>Edit Campaign</DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <TextField label="Title" defaultValue={campaign?.title} id="admin-edit-title" fullWidth sx={{ '& .MuiInputBase-root': { color: 'text.primary', bgcolor: 'rgba(255,255,255,0.03)' } }} />
-          <TextField label="Description" defaultValue={campaign?.description} id="admin-edit-description" multiline rows={3} fullWidth sx={{ '& .MuiInputBase-root': { color: 'text.primary', bgcolor: 'rgba(255,255,255,0.03)' } }} />
-          <TextField label="Goal Amount" type="number" defaultValue={campaign?.goalAmount} id="admin-edit-goal" fullWidth sx={{ '& .MuiInputBase-root': { color: 'text.primary', bgcolor: 'rgba(255,255,255,0.03)' } }} />
-          <TextField label="Category" defaultValue={campaign?.category} id="admin-edit-category" fullWidth sx={{ '& .MuiInputBase-root': { color: 'text.primary', bgcolor: 'rgba(255,255,255,0.03)' } }} />
-          <TextField label="Priority" defaultValue={campaign?.priority} id="admin-edit-priority" fullWidth sx={{ '& .MuiInputBase-root': { color: 'text.primary', bgcolor: 'rgba(255,255,255,0.03)' } }} />
-          <TextField label="Beneficiaries (comma separated)" defaultValue={campaign?.beneficiaries?.join(', ')} id="admin-edit-beneficiaries" fullWidth sx={{ '& .MuiInputBase-root': { color: 'text.primary', bgcolor: 'rgba(255,255,255,0.03)' } }} />
-          <BrandedDatePicker label="End Date" mode="datetime" defaultValue={campaign?.endDate ? new Date(campaign.endDate).toISOString() : ''} id="admin-edit-endDate" fullWidth sx={{ '& .MuiInputBase-root': { color: 'text.primary', bgcolor: 'rgba(255,255,255,0.03)' } }}  />
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setEditOpen(false)} sx={{ color: 'text.secondary' }}>Cancel</Button>
-          <Button
-            variant="contained"
-            disabled={editLoading}
-            onClick={async () => {
-              setEditLoading(true)
-              try {
-                const title = (document.getElementById('admin-edit-title') as HTMLInputElement)?.value
-                const description = (document.getElementById('admin-edit-description') as HTMLInputElement)?.value
-                const goalAmount = (document.getElementById('admin-edit-goal') as HTMLInputElement)?.value
-                const category = (document.getElementById('admin-edit-category') as HTMLInputElement)?.value
-                const priority = (document.getElementById('admin-edit-priority') as HTMLInputElement)?.value
-                const beneficiaries = (document.getElementById('admin-edit-beneficiaries') as HTMLInputElement)?.value
-                const endDate = (document.getElementById('admin-edit-endDate') as HTMLInputElement)?.value
-                const body: Record<string, unknown> = {}
-                if (title) body.title = title
-                if (description) body.description = description
-                if (goalAmount) body.goalAmount = Number(goalAmount)
-                if (category) body.category = category
-                if (priority) body.priority = priority
-                if (beneficiaries) body.beneficiaries = beneficiaries.split(',').map((b) => b.trim()).filter(Boolean)
-                if (endDate) body.endDate = new Date(endDate).toISOString()
-                await api.put(`/campaigns/${id}`, body)
-                setEditOpen(false)
-                window.location.reload()
-              } catch (err) {
-                alert(err instanceof Error ? err.message : 'Update failed')
-              } finally {
-                setEditLoading(false)
-              }
-            }}
-          >
-            {editLoading ? 'Saving...' : 'Save'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Delete Confirmation */}
-      <Dialog open={deleteOpen} onClose={() => setDeleteOpen(false)} maxWidth="xs" fullWidth PaperProps={{ sx: { bgcolor: 'background.default', color: 'text.primary' } }}>
-        <DialogTitle sx={{ fontWeight: 700, fontFamily: '"Outfit", sans-serif' }}>Delete Campaign</DialogTitle>
-        <DialogContent>
-          <Typography sx={{ color: 'text.secondary' }}>Are you sure you want to delete this campaign? This cannot be undone.</Typography>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setDeleteOpen(false)} sx={{ color: 'text.secondary' }}>Cancel</Button>
-          <Button
-            variant="contained"
-            color="error"
-            disabled={deleteLoading}
-            onClick={async () => {
-              setDeleteLoading(true)
-              try {
-                await api.delete(`/campaigns/${id}`)
-                navigate('/campaigns')
-              } catch (err) {
-                alert(err instanceof Error ? err.message : 'Delete failed')
-              } finally {
-                setDeleteLoading(false)
-              }
-            }}
-          >
-            {deleteLoading ? 'Deleting...' : 'Delete'}
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   )
 }

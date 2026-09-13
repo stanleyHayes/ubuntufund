@@ -15,6 +15,6 @@ export class GetLiveSessionPublicUseCase {
     const session = await this.liveSessionRepo.findById(sessionId);
     if (!session) return null;
     const campaign = await this.campaignRepo?.findById(session.campaignId);
-    return { ...toLiveSessionPublicView(session), currency: campaign?.goalAmount.currency ?? 'GHS' };
+    return { ...toLiveSessionPublicView(session), creatorId: campaign?.creatorId, currency: campaign?.goalAmount.currency ?? 'GHS' };
   }
 }

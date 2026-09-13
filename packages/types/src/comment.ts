@@ -10,5 +10,6 @@ export interface CampaignComment {
 }
 
 export interface CreateCampaignCommentInput {
+  automatedReviewConsent?: boolean;
   content: string
 }

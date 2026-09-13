@@ -1,4 +1,9 @@
+import { useAuth } from '@/context/AuthContext'
+import OrganizationKYCForm from '@/components/OrganizationKYCForm'
+import MenuItem from '@mui/material/MenuItem'
+import KYCInformationRequests from '@/components/KYCInformationRequests'
 import { useSeo } from '@/lib/seo'
+import { adultBirthDateError, latestAdultBirthDate, KYC_IDENTITY_DOCUMENT_OPTIONS, type KYCIdentityDocumentType } from '@ubuntu-fund/types'
 import { LoadingDots } from '@ubuntu-fund/ui'
 import { Country, State, City } from 'country-state-city'
 import ToggleButton from '@mui/material/ToggleButton'
@@ -18,7 +23,7 @@ import StepLabel from '@mui/material/StepLabel'
 import Paper from '@mui/material/Paper'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import { keyframes } from '@mui/material/styles'
-import { ImageUpload } from '@ubuntu-fund/ui'
+import { PrivateDocumentUpload as ImageUpload } from '@/components/auth/PrivateDocumentUpload'
 import { Link as RouterLink } from 'react-router-dom'
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
 import { api } from '@/lib/api'
@@ -37,6 +42,11 @@ const fadeIn = keyframes`
 const steps = ['Personal Info', 'ID Document', 'Address Proof', 'Selfie Verification']
 
 export function KYCPage() {
+  const { user } = useAuth()
+  return user?.role === 'organization' ? <OrganizationKYCForm key={user.id} /> : <IdentityKYCPage />
+}
+
+function IdentityKYCPage() {
   useSeo({
     title: 'Identity verification | Ujimora',
     description:
@@ -46,6 +56,12 @@ export function KYCPage() {
   })
   const [activeStep, setActiveStep] = useState(0)
   const [submitting, setSubmitting] = useState(false)
+  const [uploads, setUploads] = useState(0)
+  async function uploadDocument(file: File, onProgress: (percent: number) => void) {
+    setUploads(value => value + 1)
+    try { return await uploadKycDoc(file, onProgress) }
+    finally { setUploads(value => value - 1) }
+  }
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -55,6 +71,7 @@ export function KYCPage() {
   const [nationality, setNationality] = useState('')
   const [idNumber, setIdNumber] = useState('')
 
+  const [identityDocumentType, setIdentityDocumentType] = useState<KYCIdentityDocumentType>('id_card')
   // Step 2: ID document
   const [idFrontUrl, setIdFrontUrl] = useState('')
   const [idBackUrl, setIdBackUrl] = useState('')
@@ -87,6 +104,9 @@ export function KYCPage() {
   const [selfieUrl, setSelfieUrl] = useState('')
 
   function handleNext() {
+    if (activeStep === 0 && (!fullName.trim() || !idNumber.trim())) { setError('Enter your full name and ID number.'); return }
+    if (activeStep === 1 && (!idFrontUrl || (identityDocumentType !== 'passport' && !idBackUrl))) { setError(identityDocumentType === 'passport' ? 'Upload the photo page of your passport.' : 'Upload the front and back of your ID.'); return }
+    if (activeStep === 0) { const message = adultBirthDateError(dateOfBirth); if (message) { setError(message); return } }
     if (activeStep === 0 && !nationality) { setError('Select your nationality from the list.'); return }
     if (activeStep === 2) { const message = addressError(); if (message) { setError(message); return } }
     setError(null)
@@ -102,6 +122,11 @@ export function KYCPage() {
   }
 
   async function handleSubmit() {
+    if (!fullName.trim() || !idNumber.trim()) { setActiveStep(0); setError('Enter your full name and ID number.'); return }
+    if (!idFrontUrl || (identityDocumentType !== 'passport' && !idBackUrl)) { setActiveStep(1); setError(identityDocumentType === 'passport' ? 'Upload the photo page of your passport.' : 'Upload the front and back of your ID.'); return }
+    if (!selfieUrl) { setActiveStep(3); setError('Upload a clear selfie holding your ID.'); return }
+    const ageError = adultBirthDateError(dateOfBirth)
+    if (ageError) { setActiveStep(0); setError(ageError); return }
     if (!COUNTRY_OPTIONS.some(option => option.label === nationality)) { setActiveStep(0); setError('Select your nationality from the list.'); return }
     const message = addressError()
     if (message) { setActiveStep(2); setError(message); return }
@@ -117,10 +142,10 @@ export function KYCPage() {
           address: { city: city.trim(), state, country, proofMethod, ...(proofMethod === 'document' ? { street: street.trim(), postalCode: postalCode.trim() } : {}), ...(proofMethod === 'ghana_post_gps' ? { gpsAddress: gpsAddress.trim() } : {}) },
         },
         documents: [
-          ...(idFrontUrl ? [{ type: 'id_card' as const, url: idFrontUrl }] : []),
-          ...(idBackUrl ? [{ type: 'id_card' as const, url: idBackUrl }] : []),
+          ...(idFrontUrl ? [{ type: identityDocumentType, url: idFrontUrl }] : []),
+          ...(identityDocumentType !== 'passport' && idBackUrl ? [{ type: identityDocumentType, url: idBackUrl }] : []),
           ...(proofMethod === 'document' && addressDocUrl ? [{ type: 'utility_bill' as const, url: addressDocUrl }] : []),
-          ...(selfieUrl ? [{ type: 'passport' as const, url: selfieUrl }] : []),
+          ...(selfieUrl ? [{ type: 'selfie' as const, url: selfieUrl }] : []),
         ],
       })
       setSubmitted(true)
@@ -139,7 +164,7 @@ export function KYCPage() {
           Verification Submitted!
         </Typography>
         <Typography sx={{ color: 'text.secondary', mb: 4 }}>
-          Your documents are under review. We'll notify you once the review is complete.
+          Your documents are under review. Check your verification status from your profile.
         </Typography>
         <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'center', flexWrap: 'wrap' }}>
           <Button component={RouterLink} to="/profile" variant="outlined" sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700 }}>
@@ -155,6 +180,7 @@ export function KYCPage() {
 
   return (
     <Container maxWidth="md" sx={{ minWidth: 0, width: '100%', px: { xs: 2, sm: 3 }, py: { xs: 3, sm: 6 }, animation: `${fadeIn} 0.4s ease` }}>
+      <KYCInformationRequests />
       <Button
         component={RouterLink}
         to="/profile"
@@ -187,7 +213,7 @@ export function KYCPage() {
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
             <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>Personal Information</Typography>
             <TextField label="Full Name (as on ID)" value={fullName} onChange={(e) => setFullName(e.target.value)} fullWidth required />
-            <BrandedDatePicker label="Date of Birth"  value={dateOfBirth} onChange={setDateOfBirth} maxDate={new Date().toLocaleDateString('en-CA')} fullWidth  required />
+            <BrandedDatePicker label="Date of Birth"  value={dateOfBirth} onChange={setDateOfBirth} maxDate={latestAdultBirthDate()} fullWidth required />
             <Autocomplete
               options={COUNTRY_OPTIONS}
               value={COUNTRY_OPTIONS.find(option => option.label === nationality) ?? null}
@@ -206,6 +232,12 @@ export function KYCPage() {
         {activeStep === 1 && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
             <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>ID Document Upload</Typography>
+            <TextField select fullWidth disabled={uploads > 0 || submitting} label="Identity document type" value={identityDocumentType} onChange={event => {
+              const value = event.target.value as KYCIdentityDocumentType
+              if (value !== identityDocumentType) { setIdentityDocumentType(value); setIdFrontUrl(''); setIdBackUrl(''); setSelfieUrl(''); setError(null) }
+            }} helperText="Changing the type clears the previous ID images and selfie.">
+              {KYC_IDENTITY_DOCUMENT_OPTIONS.map(option => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}
+            </TextField>
             <Typography sx={{ color: 'text.secondary', fontSize: '0.9rem' }}>
               Upload a clear photo or scan of your government-issued ID. Front and back required for ID cards.
             </Typography>
@@ -213,19 +245,19 @@ export function KYCPage() {
               <ImageUpload
                 value={idFrontUrl}
                 onChange={setIdFrontUrl}
-                uploadFn={uploadKycDoc}
-                label="Front side"
-                helperText="Clear photo or scan of the front of your ID."
+                uploadFn={uploadDocument}
+                label={identityDocumentType === 'passport' ? 'Passport photo page' : 'Front side'}
+                helperText={identityDocumentType === 'passport' ? 'Include the page showing your photograph and identity details.' : 'Clear photo or scan of the front of your ID.'}
                 accept="image/*,application/pdf"
               />
-              <ImageUpload
+              {identityDocumentType !== 'passport' && <ImageUpload
                 value={idBackUrl}
                 onChange={setIdBackUrl}
-                uploadFn={uploadKycDoc}
+                uploadFn={uploadDocument}
                 label="Back side"
                 helperText="Clear photo or scan of the back of your ID."
                 accept="image/*,application/pdf"
-              />
+              />}
             </Box>
           </Box>
         )}
@@ -260,7 +292,7 @@ export function KYCPage() {
             </> : <>
               <TextField label="Street Address" value={street} onChange={(e) => setStreet(e.target.value)} fullWidth required autoComplete="street-address" />
               <TextField label="Postal Code (optional)" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} fullWidth autoComplete="postal-code" />
-              <ImageUpload value={addressDocUrl} onChange={setAddressDocUrl} uploadFn={uploadKycDoc} label="Address proof" helperText="Utility bill or bank statement (max 3 months old)." accept="image/*,application/pdf" />
+              <ImageUpload value={addressDocUrl} onChange={setAddressDocUrl} uploadFn={uploadDocument} label="Address proof" helperText="Utility bill or bank statement (max 3 months old)." accept="image/*,application/pdf" />
             </>}
           </Box>
         )}
@@ -274,7 +306,7 @@ export function KYCPage() {
             <ImageUpload
               value={selfieUrl}
               onChange={setSelfieUrl}
-              uploadFn={uploadKycDoc}
+              uploadFn={uploadDocument}
               label="Selfie with ID"
               helperText="Clear selfie holding your ID document."
               accept="image/*"
@@ -292,7 +324,7 @@ export function KYCPage() {
           <Button
             variant="outlined"
             onClick={handleBack}
-            disabled={activeStep === 0}
+            disabled={activeStep === 0 || uploads > 0 || submitting}
             sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2 }}
           >
             Back
@@ -301,7 +333,7 @@ export function KYCPage() {
             <Button
               variant="contained"
               onClick={handleSubmit}
-              disabled={submitting}
+              disabled={submitting || uploads > 0}
               sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2, px: 4 }}
             >
               {submitting ? <><LoadingDots size={6} /> <span>Submitting...</span></> : 'Submit Verification'}
@@ -309,6 +341,7 @@ export function KYCPage() {
           ) : (
             <Button
               variant="contained"
+              disabled={uploads > 0 || submitting}
               onClick={handleNext}
               sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2, px: 4 }}
             >

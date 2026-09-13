@@ -39,7 +39,7 @@ describe('Auth Integration', () => {
     it('registers a new user and rejects a duplicate email', async () => {
       const email = uniqueEmail('register');
 
-      const res = await request(app).post('/api/v1/auth/register').send({
+      const res = await request(app).post('/api/v1/auth/register').send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true },
         email,
         password: 'SecurePass123',
         name: 'Test User',
@@ -54,7 +54,7 @@ describe('Auth Integration', () => {
 
       const duplicate = await request(app)
         .post('/api/v1/auth/register')
-        .send({ email, password: 'SecurePass123', name: 'Second User' });
+        .send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email, password: 'SecurePass123', name: 'Second User' });
 
       expect(duplicate.status).toBe(409);
       expect(duplicate.body.message).toBe('Email already registered');
@@ -66,7 +66,7 @@ describe('Auth Integration', () => {
       const email = uniqueEmail('login');
       await request(app)
         .post('/api/v1/auth/register')
-        .send({ email, password: 'SecurePass123', name: 'Login User' })
+        .send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email, password: 'SecurePass123', name: 'Login User' })
         .expect(201);
 
       const ok = await request(app)
@@ -89,7 +89,7 @@ describe('Auth Integration', () => {
     it('exchanges a valid refresh token, and rejects a malformed one (both unaffected by the auth rate limiter)', async () => {
       const registerRes = await request(app)
         .post('/api/v1/auth/register')
-        .send({ email: uniqueEmail('refresh'), password: 'SecurePass123', name: 'Refresh User' })
+        .send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email: uniqueEmail('refresh'), password: 'SecurePass123', name: 'Refresh User' })
         .expect(201);
 
       const { refreshToken } = registerRes.body.data.tokens;
@@ -112,7 +112,7 @@ describe('Auth Integration', () => {
       const email = uniqueEmail('changepw');
       const registerRes = await request(app)
         .post('/api/v1/auth/register')
-        .send({ email, password: 'SecurePass123', name: 'Change PW User' })
+        .send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email, password: 'SecurePass123', name: 'Change PW User' })
         .expect(201);
 
       const oldAccessToken = registerRes.body.data.tokens.accessToken;

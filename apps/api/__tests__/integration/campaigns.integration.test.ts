@@ -1,3 +1,4 @@
+import { KYCVerificationModel } from '../../src/infrastructure/database/models/KYCVerificationModel.js';
 import { randomUUID } from 'node:crypto';
 import { describe, it, beforeAll, afterAll, expect } from 'vitest';
 import request from 'supertest';
@@ -41,15 +42,19 @@ function campaignPayload(overrides: Partial<Record<string, unknown>> = {}) {
 async function registerUser(app: Express, email: string) {
   const res = await request(app)
     .post('/api/v1/auth/register')
-    .send({ email, password: 'SecurePass123', name: 'Test User' })
+    .send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email, password: 'SecurePass123', name: 'Test User' })
     .expect(201);
 
   return { userId: res.body.data.user.id as string, token: res.body.data.tokens.accessToken as string };
 }
 
-/** Directly raises a user's verificationLevel in the DB (bypasses the KYC flow, mirroring how an already-verified fixture user would look). */
+/** Seeds historical level and current identity evidence for campaign fixtures. */
 async function setVerificationLevel(userId: string, level: number): Promise<void> {
   await UserModel.findByIdAndUpdate(userId, { verificationLevel: level });
+  if (level >= 2) await KYCVerificationModel.create({
+    userId, verificationType: 'identity', status: 'approved', documents: [],
+    expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+  });
 }
 
 /** Seeds an active subscription so a user's plan lifts the Free-tier caps. */
@@ -220,7 +225,7 @@ describe('Campaigns Integration', () => {
   describe('GET /api/v1/campaigns', () => {
     it('paginates the campaign list', async () => {
       const { userId, token } = await registerUser(app, uniqueEmail('paginate'));
-      await setVerificationLevel(userId, 3); // INSTITUTIONAL -> limit 10, room for several campaigns
+      await setVerificationLevel(userId, 3); // current identity evidence permits the three campaigns below
       await seedSubscription(userId, SubscriptionTier.PRO); // Pro plan -> 10 active campaigns
 
       for (let i = 0; i < 3; i++) {
@@ -263,10 +268,11 @@ describe('Campaigns Integration', () => {
 
       const { token: adminToken } = await createAdmin(app, uniqueEmail('approveadmin'));
 
+      const preview = await request(app).get(`/api/v1/campaigns/${campaignId}`).set('Authorization', `Bearer ${adminToken}`).expect(200);
       const res = await request(app)
         .put(`/api/v1/campaigns/${campaignId}/approve`)
         .set('Authorization', `Bearer ${adminToken}`)
-        .send({});
+        .send({ expectedVersion: preview.body.data.reviewVersion, reason: 'Reviewed the full content, media and fundraising evidence.', contentReviewed: true, fundraisingReviewed: true });
 
       expect(res.status).toBe(200);
       expect(res.body.data.status).toBe('active');

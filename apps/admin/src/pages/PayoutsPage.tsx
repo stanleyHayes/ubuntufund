@@ -1,3 +1,5 @@
+import ExportMenu from '@/components/ExportMenu'
+import { exportTable, dateCell } from '@/lib/exports/report'
 import { PayoutTransferControls } from '@/components/PayoutTransferControls'
 import { useSearchParams } from 'react-router-dom'
 import { usePagination } from '@/hooks/usePagination'
@@ -436,6 +438,7 @@ export default function PayoutsPage() {
           { label: 'Needs review', value: needsReview },
         ]}
       />
+      <ExportMenu title="Payouts" disabled={loading || !!error} getReport={() => ({ title: 'Payouts', filters: [`View: ${view}`], tables: isBeneficiary ? [exportTable('Beneficiary payouts', benePayouts, { ID: r => r.id, Campaign: r => r.campaignId, Beneficiary: r => r.beneficiaryId, Amount: r => r.amount, Currency: r => r.currency, Status: r => r.status, Provider: r => r.provider, 'Created (UTC)': r => dateCell(r.createdAt) })] : [exportTable('Campaign payouts', payouts, { ID: r => r.id, Campaign: r => r.campaignTitle ?? r.campaignId, Gross: r => r.amount, Fee: r => r.fee, Net: r => r.netAmount, Currency: r => r.currency, Status: r => r.status, 'Created (UTC)': r => dateCell(r.createdAt) })] })} />
 
       <Box
         sx={{

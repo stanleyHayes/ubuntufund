@@ -1,3 +1,5 @@
+import { UserSafetyControls } from '@/components/safety/UserSafetyControls'
+import { useAuth } from '@/context/AuthContext'
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -12,6 +14,9 @@ import { useSeo } from '@/lib/seo'
 
 export function WatchLivePage() {
   const { sessionId } = useParams()
+  const { user } = useAuth()
+  const [blockedSessionId, setBlockedSessionId] = useState<string | null>(null)
+  const blocked = blockedSessionId === sessionId
   // A broadcast exists only while it is running; indexing one guarantees a
   // result that is dead by the time anyone clicks it.
   useSeo({
@@ -23,20 +28,22 @@ export function WatchLivePage() {
   const [session, setSession] = useState<LiveSessionPublicView | null>(null)
   const [error, setError] = useState('')
   useEffect(() => {
-    if (!sessionId) return
+    if (!sessionId || blocked) return
     let stopped = false
     const load = async () => {
       try { const value = await getLiveSessionPublic(sessionId); if (!stopped) { setSession(value); setError(value ? '' : 'This broadcast was not found.') } }
-      catch (err) { if (!stopped) setError(err instanceof Error ? err.message : 'Could not load broadcast.') }
+      catch (err) { if (!stopped) { setSession(null); setError(err instanceof Error ? err.message : 'Could not load broadcast.') } }
     }
     void load(); const timer = setInterval(load, 10000)
     return () => { stopped = true; clearInterval(timer) }
-  }, [sessionId])
+  }, [sessionId, user?.id, blocked])
   return <Container maxWidth="lg" sx={{ py: 5 }}>
     <Typography component="h1" variant="h4" sx={{ fontWeight: 800, mb: 3 }}>{session?.title || 'Live on Ujimora'}</Typography>
+    {blocked && <Alert severity="success">User blocked. Manage blocked users in Settings.</Alert>}
     {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-    {!session && !error && <Skeleton variant="rounded" height={400} />}
-    {session && <>
+    {!session && !error && !blocked && <Skeleton variant="rounded" height={400} />}
+    {session && !blocked && <>
+      {session.creatorId && <UserSafetyControls userId={session.creatorId} liveSessionId={session.id} onBlocked={() => { setBlockedSessionId(session.id); setSession(null) }} />}
       {session.status === 'active' ? <LiveVideoPanel sessionId={session.id} /> : <Alert severity="info">This broadcast has ended. You can still support the campaign.</Alert>}
       <Box sx={{ mt: 3, p: 3, bgcolor: 'var(--neu-surface)', border: 'var(--neu-border)', boxShadow: 'var(--neu-raised)', borderRadius: SHAPE.card, backdropFilter: 'var(--neu-backdrop)' }}>
         <Typography sx={{ fontWeight: 700, mb: 1 }}>Together, during this broadcast</Typography>

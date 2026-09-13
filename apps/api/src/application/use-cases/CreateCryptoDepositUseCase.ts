@@ -1,3 +1,4 @@
+import { donationContentAgreement } from '../services/messageAgreement.js';
 import { createHash } from 'node:crypto';
 import type {
   CreateCryptoDepositInput,
@@ -49,6 +50,7 @@ export class CreateCryptoDepositUseCase {
     input: CreateCryptoDepositInput,
     ctx: CreateCryptoDepositContext
   ): Promise<CryptoDepositView> {
+    const agreement = donationContentAgreement(input);
     if (!this.config.enabled) {
       throw new AppError('Crypto donations are not enabled', 400);
     }
@@ -110,6 +112,7 @@ export class CreateCryptoDepositUseCase {
           donorEmail: input.donorEmail,
           donorName: input.donorName,
           message: input.message,
+        messageAgreement: agreement,
           isAnonymous: input.isAnonymous ?? false,
           tip: 0,
           status: 'PENDING',

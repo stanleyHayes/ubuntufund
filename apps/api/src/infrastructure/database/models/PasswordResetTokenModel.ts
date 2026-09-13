@@ -3,6 +3,7 @@ import mongoose, { Schema, type Document } from 'mongoose';
 export interface PasswordResetTokenDocument extends Document {
   userId: string;
   tokenHash: string;
+  authVersion?: string;
   expiresAt: Date;
   usedAt?: Date;
   createdAt: Date;
@@ -12,6 +13,7 @@ const passwordResetTokenSchema = new Schema<PasswordResetTokenDocument>(
   {
     userId: { type: String, required: true, index: true },
     tokenHash: { type: String, required: true, index: true },
+    authVersion: { type: String, default: '' },
     expiresAt: { type: Date, required: true },
     usedAt: { type: Date },
   },

@@ -1,7 +1,8 @@
+import { ReportContent } from '@/components/safety/ReportContent'
 import { LoadingDots } from '@ubuntu-fund/ui'
 import Skeleton from '@mui/material/Skeleton'
 import { useEffect, useRef, useState } from 'react'
-import { Alert, Box, Button, MenuItem, Stack, TextField, Typography } from '@mui/material'
+import { Alert, Box, Button, Checkbox, FormControlLabel, Link, MenuItem, Stack, TextField, Typography } from '@mui/material'
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded'
 import { AiWritingAction, type AiWritingResponse } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
@@ -32,7 +33,8 @@ export default function AiWritingAssistant({
   const [action, setAction] = useState(AiWritingAction.IMPROVE_CLARITY)
   const [notes, setNotes] = useState('')
   const [language, setLanguage] = useState('')
-  const [suggestion, setSuggestion] = useState<{ text: string; source: string } | null>(null)
+  const [suggestion, setSuggestion] = useState<{ text: string; source: string; requestId?: string } | null>(null)
+  const [consent, setConsent] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [applied, setApplied] = useState(false)
@@ -53,7 +55,7 @@ export default function AiWritingAssistant({
     }
   }, [])
   async function generate() {
-    if (inFlight.current) return
+    if (inFlight.current || !consent) return
     inFlight.current = true
     setBusy(true)
     setError('')
@@ -62,11 +64,12 @@ export default function AiWritingAssistant({
     const source = value
     try {
       const response = await api.post<AiWritingResponse>('/ai-writing', {
+        consentToExternalProcessing: true,
         text: action === AiWritingAction.CREATE_FROM_PROMPT ? notes : value,
         action,
         targetLanguage: action === AiWritingAction.TRANSLATE ? language : undefined,
       })
-      setSuggestion({ text: response.result, source })
+      setSuggestion({ text: response.result, source, requestId: response.requestId })
       setConfig(
         (previous) =>
           previous && {
@@ -82,6 +85,7 @@ export default function AiWritingAssistant({
         .then(setConfig)
         .catch(() => {})
     } finally {
+      setConsent(false)
       inFlight.current = false
       setBusy(false)
     }
@@ -104,7 +108,7 @@ export default function AiWritingAssistant({
         </Stack>
         <Typography variant="body2" color="text.secondary">
           Turn your notes into a story, or refine your own words. Your text is sent to OpenAI when
-          you request a suggestion. Review it before applying.
+          you request a suggestion. Requests and drafts are checked by OpenAI for safety; flagged drafts are withheld. Review any suggestion before applying.
         </Typography>
         {error && <Alert severity="error">{error}</Alert>}
         {config && !config.enabled && (
@@ -115,6 +119,8 @@ export default function AiWritingAssistant({
         {!config && !error && <Box aria-busy="true" aria-label="Loading writing assistant"><Skeleton variant="rounded" height={56} /><Skeleton width="60%" /></Box>}
         {config?.enabled && (
           <>
+            <FormControlLabel control={<Checkbox checked={consent} disabled={busy} onChange={e => setConsent(e.target.checked)} />} label="I agree to send this text and instructions to OpenAI for this suggestion." />
+            <Typography variant="caption" color="text.secondary">Optional: you can write without AI. Remove sensitive information and obtain permission before sharing someone else’s details. <Link href="/privacy" target="_blank" rel="noopener noreferrer">Privacy policy</Link></Typography>
             <TextField
               select
               label="Writing task"
@@ -164,7 +170,7 @@ export default function AiWritingAssistant({
                 type="button"
                 variant="outlined"
                 disabled={
-                  busy ||
+                  !consent || busy ||
                   !source.trim() ||
                   source.length > 12000 ||
                   config.remainingRequests === 0 ||
@@ -194,6 +200,7 @@ export default function AiWritingAssistant({
             <Typography sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
               {suggestion.text}
             </Typography>
+            {suggestion.requestId && <ReportContent key={suggestion.requestId} aiOutput={{ requestId: suggestion.requestId, text: suggestion.text }} />}
             {changed && (
               <Alert severity="warning" sx={{ mt: 2 }}>
                 Your story changed while this suggestion was open. Generate a new suggestion to keep

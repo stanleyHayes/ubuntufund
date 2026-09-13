@@ -24,7 +24,7 @@ export class DonationController {
         ? parseInt(req.query.limit as string, 10)
         : undefined;
 
-      const donations = await this.listRecentDonationsUseCase.execute(limit);
+      const donations = await this.listRecentDonationsUseCase.execute(limit, req.userId);
 
       res.json({
         data: donations,
@@ -91,7 +91,9 @@ export class DonationController {
 
       const result = await this.listCampaignDonationsUseCase.execute(
         req.params.id as string,
-        { page, pageSize }
+        { page, pageSize },
+        req.userId,
+        req.userRole === 'admin'
       );
 
       res.json({

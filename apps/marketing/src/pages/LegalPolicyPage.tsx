@@ -66,6 +66,7 @@ function LegalPolicyPage({ slug }: { slug: string }) {
       panelTitle={policy.panelTitle}
       panelBody={policy.panelBody}
       introduction={policy.introduction}
+      actions={policy.actions}
       sections={policy.sections}
       contact={policy.contact}
       effectiveDate={`Effective ${policy.effectiveDate}`}

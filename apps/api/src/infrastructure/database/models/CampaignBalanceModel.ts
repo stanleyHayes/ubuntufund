@@ -5,6 +5,7 @@ export interface CampaignBalanceDocument extends Document {
   currency: string;
   totalRaised: number;
   pendingBalance: number;
+  refundHolds: { operationId: string; amount: number }[];
   availableBalance: number;
   paidOutBalance: number;
   platformFees: number;
@@ -22,6 +23,7 @@ const campaignBalanceSchema = new Schema<CampaignBalanceDocument>(
     currency: { type: String, required: true },
     totalRaised: { type: Number, default: 0 },
     pendingBalance: { type: Number, default: 0 },
+    refundHolds: { type: [new Schema({ operationId: { type: String, required: true }, amount: { type: Number, required: true } }, { _id: false })], default: [] },
     availableBalance: { type: Number, default: 0 },
     paidOutBalance: { type: Number, default: 0 },
     platformFees: { type: Number, default: 0 },

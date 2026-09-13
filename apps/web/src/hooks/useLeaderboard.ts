@@ -1,3 +1,4 @@
+import { useAuth } from '@/context/AuthContext'
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '@/lib/api'
 
@@ -45,6 +46,9 @@ export function useLeaderboard(
   category: Category = 'all',
   limit?: number
 ): UseLeaderboardResult {
+  const { user } = useAuth()
+  const scope = `${user?.id ?? 'guest'}:${period}:${category}:${limit}`
+  const [loadedScope, setLoadedScope] = useState('')
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
   const [stats, setStats] = useState<LeaderboardStats>({ totalAmount: 0, totalDonations: 0, totalDonors: 0 })
   const [isLoading, setIsLoading] = useState(true)
@@ -95,16 +99,17 @@ export function useLeaderboard(
       })
       .finally(() => {
         clearTimeout(id)
-        if (!cancelled) setIsLoading(false)
+        if (!cancelled) { setLoadedScope(scope); setIsLoading(false) }
       })
 
     return () => {
       cancelled = true
       clearTimeout(id)
     }
-  }, [period, category, limit, revision])
+  }, [period, category, limit, revision, scope])
 
-  return { entries, stats, isLoading, error, refresh }
+  const current = loadedScope === scope
+  return { entries: current ? entries : [], stats: current ? stats : { totalAmount: 0, totalDonations: 0, totalDonors: 0 }, isLoading: !current || isLoading, error: current ? error : null, refresh }
 }
 
 interface UseFeaturedDonorsResult {
@@ -114,9 +119,20 @@ interface UseFeaturedDonorsResult {
 }
 
 export function useFeaturedDonors(category: Category = 'all', limit: number = 5): UseFeaturedDonorsResult {
+  const { user } = useAuth()
+  const [revision, setRevision] = useState(0)
+  const scope = `${user?.id ?? 'guest'}:${category}:${limit}`
+  const [loadedScope, setLoadedScope] = useState('')
   const [featured, setFeatured] = useState<FeaturedDonors>({ topAllTime: [], topThisMonth: [] })
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const refresh = () => { if (!document.hidden) setRevision(value => value + 1) }
+    const timer = window.setInterval(refresh, 30000)
+    window.addEventListener('focus', refresh)
+    return () => { window.clearInterval(timer); window.removeEventListener('focus', refresh) }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -137,13 +153,14 @@ export function useFeaturedDonors(category: Category = 'all', limit: number = 5)
         }
       })
       .finally(() => {
-        if (!cancelled) setIsLoading(false)
+        if (!cancelled) { setLoadedScope(scope); setIsLoading(false) }
       })
 
     return () => {
       cancelled = true
     }
-  }, [category, limit])
+  }, [category, limit, scope, revision])
 
-  return { featured, isLoading, error }
+  const current = loadedScope === scope
+  return { featured: current ? featured : { topAllTime: [], topThisMonth: [] }, isLoading: !current || isLoading, error: current ? error : null }
 }

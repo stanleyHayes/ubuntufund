@@ -1,4 +1,5 @@
-import type { Request, Response, NextFunction } from 'express';
+import type { AuthenticatedRequest } from '../../middleware/authMiddleware.js';
+import type { Response, NextFunction } from 'express';
 import type { GetOrganizationUseCase } from '../../../../../application/use-cases/GetOrganizationUseCase.js';
 
 export class OrganizationController {
@@ -7,12 +8,12 @@ export class OrganizationController {
   ) {}
 
   list = async (
-    _req: Request,
+    req: AuthenticatedRequest,
     res: Response,
     next: NextFunction
   ): Promise<void> => {
     try {
-      const organizations = await this.getOrganizationUseCase.list();
+      const organizations = await this.getOrganizationUseCase.list(req.userId);
       res.json({
         data: organizations,
         message: 'Organizations retrieved',
@@ -24,13 +25,13 @@ export class OrganizationController {
   };
 
   getBySlug = async (
-    req: Request,
+    req: AuthenticatedRequest,
     res: Response,
     next: NextFunction
   ): Promise<void> => {
     try {
       const organization = await this.getOrganizationUseCase.getBySlugOrId(
-        req.params.slug as string
+        req.params.slug as string, req.userId
       );
       res.json({
         data: organization,
@@ -43,13 +44,13 @@ export class OrganizationController {
   };
 
   getCampaigns = async (
-    req: Request,
+    req: AuthenticatedRequest,
     res: Response,
     next: NextFunction
   ): Promise<void> => {
     try {
       const campaigns = await this.getOrganizationUseCase.getCampaigns(
-        req.params.id as string
+        req.params.id as string, req.userId
       );
       res.json({
         data: campaigns,

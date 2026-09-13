@@ -1,3 +1,6 @@
+import { useAuth } from '@/context/AuthContext'
+import { PublicationConsent } from '@/components/safety/PublicationConsent'
+import { PublicationReviews } from '@/components/account/PublicationReviews'
 import { useSeo } from '@/lib/seo'
 import { payoutInstitutionName } from '@ubuntu-fund/types'
 import { BankPicker } from '@/components/account/BankPicker'
@@ -39,6 +42,8 @@ interface Profile {
   displayName: string
   tagline?: string
   bio?: string
+  avatarUrl?: string
+  coverUrl?: string
   tipsEnabled: boolean
   presetAmounts: number[]
   thankYouMessage?: string
@@ -54,6 +59,12 @@ interface Payout {
 }
 
 export function CreatorDashboardPage() {
+  const { user } = useAuth()
+  return <CreatorDashboardForViewer key={user?.id ?? 'guest'} />
+}
+function CreatorDashboardForViewer() {
+  const live = useRef(true)
+  useEffect(() => { live.current = true; return () => { live.current = false } }, [])
   useSeo({
     title: 'Your creator page | Ujimora',
     description:
@@ -73,6 +84,8 @@ export function CreatorDashboardPage() {
 
   const [handle, setHandle] = useState('')
   const [displayName, setDisplayName] = useState('')
+  const [automatedReviewConsent, setAutomatedReviewConsent] = useState(false)
+  const [avatarUrl, setAvatarUrl] = useState(''), [coverUrl, setCoverUrl] = useState('')
   const [tagline, setTagline] = useState('')
   const [bio, setBio] = useState('')
   const [tipsEnabled, setTipsEnabled] = useState(true)
@@ -125,6 +138,7 @@ export function CreatorDashboardPage() {
   const [wError, setWError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
+    if (!live.current) return
     setLoading(true)
     setLoadError(null)
     try {
@@ -136,6 +150,7 @@ export function CreatorDashboardPage() {
         balance: Balance | null
         policy: { eligible: boolean; planName: string; feePercent: number }
       }>('/creators/me')
+      if (!live.current) return
       setPolicy(me.policy)
       setProfile(me.profile)
       setBalance(me.balance)
@@ -144,18 +159,21 @@ export function CreatorDashboardPage() {
         setDisplayName(me.profile.displayName)
         setTagline(me.profile.tagline ?? '')
         setBio(me.profile.bio ?? '')
+        setAvatarUrl(me.profile.avatarUrl ?? '')
+        setCoverUrl(me.profile.coverUrl ?? '')
         setTipsEnabled(me.profile.tipsEnabled)
         const p = await api.get<Payout[]>('/creators/me/payouts')
-        setPayouts(p)
+        if (live.current) setPayouts(p)
       }
     } catch (err) {
+      if (!live.current) return
       setLoadError(
         err instanceof Error
           ? err.message
           : 'We couldn’t load your creator page. Please try again.',
       )
     } finally {
-      setLoading(false)
+      if (live.current) setLoading(false)
     }
   }, [])
 
@@ -167,14 +185,31 @@ export function CreatorDashboardPage() {
     setError(null)
     setSaving(true)
     try {
-      await api.post('/creators/profile', { handle, displayName, tagline, bio, tipsEnabled })
+      await api.post('/creators/profile', { handle, displayName, tagline, bio, avatarUrl, coverUrl, tipsEnabled, automatedReviewConsent })
+      if (!live.current) return
       setSnack('Your creator page is saved')
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save your page.')
+      if (live.current) setError(err instanceof Error ? err.message : 'Could not save your page.')
     } finally {
-      setSaving(false)
+      if (live.current) setSaving(false)
     }
+  }
+
+  async function pauseTips() {
+    setSaving(true); setError(null)
+    try {
+      await api.post('/creators/profile', { tipsEnabled: false })
+      if (live.current) { setTipsEnabled(false); setProfile(previous => previous ? { ...previous, tipsEnabled: false } : previous); setSnack('Tips paused. Your other draft changes are retained.') }
+    } catch (cause) { if (live.current) setError(cause instanceof Error ? cause.message : 'Could not pause tips.') }
+    finally { if (live.current) setSaving(false) }
+  }
+  async function selectAccountImages() {
+    setError(null)
+    try {
+      const images = await api.get<{ avatarUrl?: string; coverUrl?: string }>('/profile')
+      if (live.current) { setAvatarUrl(images.avatarUrl ?? ''); setCoverUrl(images.coverUrl ?? ''); setSnack('Account images selected. Save your creator page to submit them for review.') }
+    } catch { if (live.current) setError('Could not load account images.') }
   }
 
   async function withdraw() {
@@ -386,8 +421,10 @@ export function CreatorDashboardPage() {
           }}
         >
           <Button href="/profile" sx={{ mb: 2 }}>
-            Edit your profile photo & cover
+            Manage account images
           </Button>
+          <Button disabled={saving} onClick={() => void selectAccountImages()}>Use account photo and cover</Button>
+          {(avatarUrl || coverUrl) && <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>{[avatarUrl, coverUrl].map((url, index) => url && <Box component="img" key={`${index}:${url}`} src={url} alt={index === 0 ? 'Selected creator photo' : 'Selected creator cover'} sx={{ width: 80, height: 64, objectFit: 'cover', borderRadius: 1 }} />)}<Button onClick={() => { setAvatarUrl(''); setCoverUrl('') }}>Clear images</Button></Box>}
           <Typography sx={{ fontWeight: 800, fontSize: '1.05rem', color: INK, mb: 2 }}>
             {profile ? 'Edit your page' : 'Claim your page'}
           </Typography>
@@ -439,6 +476,9 @@ export function CreatorDashboardPage() {
             label="Accept tips"
             sx={{ mb: 1 }}
           />
+          <PublicationConsent value={automatedReviewConsent} onChange={setAutomatedReviewConsent} />
+          {error && <PublicationReviews />}
+          {profile?.tipsEnabled && <Button disabled={saving} onClick={() => void pauseTips()}>Pause tips now</Button>}
           {error && (
             <Alert severity="error" sx={{ mb: 2 }}>
               {error}

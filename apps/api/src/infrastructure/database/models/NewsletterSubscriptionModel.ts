@@ -3,6 +3,13 @@ import mongoose, { Schema, type Document } from 'mongoose';
 export interface NewsletterSubscriptionDocument extends Document {
   email: string;
   createdAt: Date;
+  status?: 'pending' | 'active' | 'unsubscribed';
+  requestedAt?: Date;
+  confirmedAt?: Date;
+  withdrawnAt?: Date;
+  consentVersion?: string;
+  consentSource?: string;
+  confirmationTokenHash?: string;
 }
 
 const newsletterSubscriptionSchema = new Schema<NewsletterSubscriptionDocument>(
@@ -14,9 +21,14 @@ const newsletterSubscriptionSchema = new Schema<NewsletterSubscriptionDocument>(
       lowercase: true,
       trim: true,
     },
-    // A subscription is write-once: `createdAt` is stamped on insert by the
-    // repository's upsert (`$setOnInsert`) and never touched on re-subscribe.
-    // No `updatedAt`, so `timestamps` stays off.
+    // Existing rows without status/confirmation are not evidence of consent.
+    status: { type: String, enum: ['pending', 'active', 'unsubscribed'], default: 'pending' },
+    requestedAt: Date,
+    confirmedAt: Date,
+    withdrawnAt: Date,
+    consentVersion: String,
+    consentSource: String,
+    confirmationTokenHash: { type: String, select: false },
     createdAt: { type: Date, default: Date.now },
   },
   { collection: 'newslettersubscriptions', timestamps: false }

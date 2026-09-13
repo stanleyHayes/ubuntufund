@@ -1,5 +1,9 @@
+import { MongoCampaignCreation } from '../../src/infrastructure/adapters/outbound/persistence/MongoCampaignCreation.js';
+import { CampaignModel } from '../../src/infrastructure/database/models/CampaignModel.js';
+import { ContentRestrictionModel } from '../../src/infrastructure/database/models/ContentRestrictionModel.js';
+import { KYCVerificationModel } from '../../src/infrastructure/database/models/KYCVerificationModel.js';
 import { randomUUID } from 'node:crypto';
-import { beforeAll, afterAll, it, expect } from 'vitest';
+import { beforeAll, afterAll, it, expect, vi } from 'vitest';
 import request from 'supertest';
 import type { Express } from 'express';
 import { SubscriptionTier, SUBSCRIPTION_PLANS, VerificationLevel } from '@ubuntu-fund/types';
@@ -13,12 +17,13 @@ let app: Express;
 beforeAll(async () => { await connectTestDatabase(); app = await createTestApp(); });
 afterAll(async () => { await dropTestDatabase(); await disconnectTestDatabase(); });
 it('uses live plan caps for form options and POST, rejects expired privileges, and gates split/invites', async () => {
-  const registration = await request(app).post('/api/v1/auth/register').send({ email: `campaign-${randomUUID()}@example.com`, name: 'Creator', password: 'SecurePass123' }).expect(201);
+  const registration = await request(app).post('/api/v1/auth/register').send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email: `campaign-${randomUUID()}@example.com`, name: 'Creator', password: 'SecurePass123' }).expect(201);
   const token = registration.body.data.tokens.accessToken;
   const userId = registration.body.data.user.id;
   const unverified = await request(app).get('/api/v1/campaigns/creation-options').set('Authorization', `Bearer ${token}`).expect(200);
   expect(unverified.body.data).toMatchObject({ activeCount: 0, totalCount: 0, canCreate: false, creationBlockReason: 'verification_required' });
   await UserModel.findByIdAndUpdate(userId, { verificationLevel: VerificationLevel.NATIONAL_ID });
+  await KYCVerificationModel.create({ userId, verificationType: 'identity', status: 'approved', expiryDate: new Date('2099-01-01'), documents: [] });
   await SubscriptionPlanModel.findOneAndUpdate({ tier: SubscriptionTier.FREE }, { ...SUBSCRIPTION_PLANS[SubscriptionTier.FREE], maxCampaignGoal: 500, maxMediaPerCampaign: 1 }, { upsert: true });
   const options = await request(app).get('/api/v1/campaigns/creation-options').set('Authorization', `Bearer ${token}`).expect(200);
   expect(options.body.data.maxGoal).toBe(500);
@@ -49,9 +54,10 @@ it('keeps public pricing and creation on the same live Free plan while preservin
   expect(pricing.body.data.find((plan: { tier: string }) => plan.tier === 'free').maxCampaignGoal).toBe(10000);
   expect(pricing.body.data.some((plan: { tier: string }) => plan.tier === 'enterprise')).toBe(false);
   await request(app).put('/api/v1/plans/free').send({ maxCampaignGoal: 20000 }).expect(401);
-  const signup = await request(app).post('/api/v1/auth/register').send({ email: `goal-${randomUUID()}@example.test`, name: 'Goal Test', password: 'SecurePass123' }).expect(201);
+  const signup = await request(app).post('/api/v1/auth/register').send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email: `goal-${randomUUID()}@example.test`, name: 'Goal Test', password: 'SecurePass123' }).expect(201);
   const token = signup.body.data.tokens.accessToken, userId = signup.body.data.user.id;
   await UserModel.findByIdAndUpdate(userId, { verificationLevel: VerificationLevel.NATIONAL_ID });
+  await KYCVerificationModel.create({ userId, verificationType: 'identity', status: 'approved', expiryDate: new Date('2099-01-01'), documents: [] });
   const options = () => request(app).get('/api/v1/campaigns/creation-options').set('Authorization', `Bearer ${token}`);
   expect((await options().expect(200)).body.data.maxGoal).toBe(10000);
   await UserModel.findByIdAndUpdate(userId, { complianceApprovedCampaignLimit: 5000 });
@@ -60,4 +66,66 @@ it('keeps public pricing and creation on the same live Free plan while preservin
   await request(app).post('/api/v1/campaigns').set('Authorization', `Bearer ${token}`).send(input).expect(422);
   await UserModel.findByIdAndUpdate(userId, { $unset: { complianceApprovedCampaignLimit: 1 } });
   await request(app).post('/api/v1/campaigns').set('Authorization', `Bearer ${token}`).send(input).expect(201);
+});
+
+it('reduces stale campaign allowance consistently in options and creation without deleting campaigns', async () => {
+  const signup = await request(app).post('/api/v1/auth/register').send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email: `expiry-${randomUUID()}@example.com`, name: 'Expiry fixture', password: 'SecurePass123' }).expect(201);
+  const userId = signup.body.data.user.id, auth = `Bearer ${signup.body.data.tokens.accessToken}`;
+  await UserModel.updateOne({ _id: userId }, { $set: { verificationLevel: 2 } });
+  await SubscriptionModel.create({ userId, tier: SubscriptionTier.PRO, status: 'active', billingCycle: 'monthly', currentPeriodStart: new Date(), currentPeriodEnd: new Date('2099-01-01') });
+  const evidence = await KYCVerificationModel.create({ userId, verificationType: 'identity', status: 'approved', expiryDate: new Date('2099-01-01'), documents: [] });
+  const options = () => request(app).get('/api/v1/campaigns/creation-options').set('Authorization', auth);
+  expect((await options().expect(200)).body.data.verificationCampaignLimit).toBe(3);
+  const input = { title: 'Evidence expiry campaign', description: 'Community education support and supplies', goalAmount: 100, currency: 'GHS', category: 'education', priority: 'normal', beneficiaries: ['School'], endDate: new Date(Date.now() + 86400000 * 30).toISOString() };
+  const post = () => request(app).post('/api/v1/campaigns').set('Authorization', auth).send(input);
+  const created = await post().expect(201);
+  await KYCVerificationModel.updateOne({ _id: evidence.id }, { $set: { expiryDate: new Date('2020-01-01') } });
+  expect((await options().expect(200)).body.data).toMatchObject({ verificationCampaignLimit: 1, canCreate: false, creationBlockReason: 'verification_limit' });
+  await post().expect(403);
+  await request(app).get(`/api/v1/campaigns/${created.body.data.id}`).set('Authorization', auth).expect(200);
+  expect((await UserModel.findById(userId))!.verificationLevel).toBe(2);
+});
+
+it('serializes concurrent creation at the last available verification slot', async () => {
+  const signup = await request(app).post('/api/v1/auth/register').send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email: `race-${randomUUID()}@example.com`, name: 'Race fixture', password: 'SecurePass123' }).expect(201);
+  const userId = signup.body.data.user.id, auth = `Bearer ${signup.body.data.tokens.accessToken}`;
+  await UserModel.updateOne({ _id: userId }, { $set: { verificationLevel: 1 } });
+  await SubscriptionModel.create({ userId, tier: SubscriptionTier.PRO, status: 'active', billingCycle: 'monthly', currentPeriodStart: new Date(), currentPeriodEnd: new Date('2099-01-01') });
+  const input = { title: 'Concurrent campaign slot', description: 'Community education supplies for the school', goalAmount: 100, currency: 'GHS', category: 'education', priority: 'normal', beneficiaries: ['School'], endDate: new Date(Date.now() + 86400000 * 30).toISOString() };
+  const responses = await Promise.all([1, 2].map(() => request(app).post('/api/v1/campaigns').set('Authorization', auth).send(input)));
+  expect(responses.map(response => response.status).sort()).toEqual([201, 403]);
+  const options = await request(app).get('/api/v1/campaigns/creation-options').set('Authorization', auth).expect(200);
+  expect(options.body.data).toMatchObject({ totalCount: 1, canCreate: false, creationBlockReason: 'verification_limit' });
+});
+
+it.each(['closed', 'credentials', 'agreement', 'restriction', 'expired', 'pending'])('denies campaign creation after %s changes at the final transaction boundary', async change => {
+  const signup = await request(app).post('/api/v1/auth/register').send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email: `revoke-${randomUUID()}@example.com`, name: 'Revocation fixture', password: 'SecurePass123' }).expect(201);
+  const userId = signup.body.data.user.id, auth = `Bearer ${signup.body.data.tokens.accessToken}`;
+  await UserModel.updateOne({ _id: userId }, { $set: { verificationLevel: 2 } });
+  await SubscriptionModel.create({ userId, tier: SubscriptionTier.PRO, status: 'active', billingCycle: 'monthly', currentPeriodStart: new Date(), currentPeriodEnd: new Date('2099-01-01') });
+  const evidence = await KYCVerificationModel.create({ userId, verificationType: 'identity', status: 'approved', expiryDate: new Date('2099-01-01'), documents: [] });
+  const input = { title: 'Original campaign fixture', description: 'Community education supplies for the school', goalAmount: 100, currency: 'GHS', category: 'education', priority: 'normal', beneficiaries: ['School'], endDate: new Date(Date.now() + 86400000 * 30).toISOString() };
+  await request(app).post('/api/v1/campaigns').set('Authorization', auth).send(input).expect(201);
+  let entered = false;
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  const original = MongoCampaignCreation.prototype.run;
+  const spy = vi.spyOn(MongoCampaignCreation.prototype, 'run').mockImplementationOnce(async function<T>(...args: Parameters<typeof original>): Promise<T> {
+    entered = true; await gate;
+    return original.apply(this, args) as Promise<T>;
+  });
+  const response = request(app).post('/api/v1/campaigns').set('Authorization', auth).send({ ...input, title: 'Must not be created' }).then(value => value);
+  try {
+    await expect.poll(() => entered).toBe(true);
+    if (change === 'closed') await UserModel.updateOne({ _id: userId }, { $set: { deletedAt: new Date() } });
+    if (change === 'credentials') await UserModel.updateOne({ _id: userId }, { $set: { authVersion: randomUUID() } });
+    if (change === 'agreement') await UserModel.updateOne({ _id: userId }, { $unset: { legalAcceptance: 1 } });
+    if (change === 'restriction') await ContentRestrictionModel.create({ userId, reason: 'Synthetic review restriction', restrictedBy: 'staff-fixture' });
+    if (change === 'expired') await KYCVerificationModel.updateOne({ _id: evidence.id }, { $set: { expiryDate: new Date('2020-01-01') } });
+    if (change === 'pending') await KYCVerificationModel.create({ userId, verificationType: 'identity', status: 'pending', documents: [] });
+    release();
+    expect((await response).status).toBe(['closed', 'credentials'].includes(change) ? 401 : change === 'agreement' ? 428 : 403);
+    expect(await CampaignModel.countDocuments({ creatorId: userId })).toBe(1);
+    expect(await CampaignModel.countDocuments({ creatorId: userId, title: 'Must not be created' })).toBe(0);
+  } finally { release(); await response; spy.mockRestore(); }
 });

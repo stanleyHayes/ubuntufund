@@ -1,3 +1,25 @@
+import { MongoCreatorWithdrawalTransaction } from './infrastructure/adapters/outbound/persistence/MongoCreatorWithdrawalTransaction.js'
+import { MongoCampaignCreation } from './infrastructure/adapters/outbound/persistence/MongoCampaignCreation.js'
+import { MongoAutomaticPayoutVerification } from './infrastructure/adapters/outbound/persistence/MongoAutomaticPayoutVerification.js'
+import { createDonationContentReviewRoutes } from './infrastructure/adapters/inbound/http/routes/donationContentReviewRoutes.js'
+import { createTipContentReviewRoutes } from './infrastructure/adapters/inbound/http/routes/tipContentReviewRoutes.js'
+import { MongoPublicProfileVisibility } from './infrastructure/adapters/outbound/persistence/MongoPublicProfileVisibility.js'
+import { MongoAccountProfileWrite } from './infrastructure/adapters/outbound/persistence/MongoAccountProfileWrite.js'
+import { MongoCampaignReview } from './infrastructure/adapters/outbound/persistence/MongoCampaignReview.js';
+import { MongoMfa } from './infrastructure/adapters/outbound/persistence/MongoMfa.js'
+import { createAdminDonationRoutes } from './infrastructure/adapters/inbound/http/routes/adminDonationRoutes.js'
+import { createMfaRoutes } from './infrastructure/adapters/inbound/http/routes/mfaRoutes.js'
+import type { PublicationAdmissionPort } from './domain/ports/outbound/PublicationAdmissionPort.js'
+import { MongoPublicationAdmission } from './infrastructure/adapters/outbound/persistence/MongoPublicationAdmission.js'
+import { OpenAiPublicationScreener } from './infrastructure/adapters/outbound/ai/OpenAiPublicationScreener.js'
+import { createPublicationReviewRoutes } from './infrastructure/adapters/inbound/http/routes/publicationReviewRoutes.js'
+import { createDataRightsRoutes, createDataRightsAdminRoutes } from './infrastructure/adapters/inbound/http/routes/dataRightsRoutes.js'
+import { MongoLiveSafety } from './infrastructure/adapters/outbound/persistence/MongoLiveSafety.js'
+import { createSafetyReportRoutes, createAdminSafetyReportRoutes } from './infrastructure/adapters/inbound/http/routes/safetyReportRoutes.js'
+import { MongoUserBlockRepository } from './infrastructure/adapters/outbound/persistence/MongoUserBlockRepository.js'
+import { createUserSafetyRoutes } from './infrastructure/adapters/inbound/http/routes/userSafetyRoutes.js'
+import { createPrivacyRequestRoutes } from './infrastructure/adapters/inbound/http/routes/privacyRequestRoutes.js'
+import { MongoAccountErasure } from './infrastructure/adapters/outbound/persistence/MongoAccountErasure.js'
 import { createOrganizationTeamRoutes } from './infrastructure/adapters/inbound/http/routes/organizationTeamRoutes.js'
 import { AutomaticPayoutService } from './infrastructure/adapters/outbound/payments/AutomaticPayoutService.js'
 import { automaticPayoutRoutes } from './infrastructure/adapters/inbound/http/routes/automaticPayoutRoutes.js'
@@ -8,10 +30,14 @@ import { PayoutAccountService } from './application/services/PayoutAccountServic
 import { MongoPayoutAccountRepository } from './infrastructure/adapters/outbound/persistence/MongoPayoutAccountRepository.js'
 import { createPayoutAccountRoutes } from './infrastructure/adapters/inbound/http/routes/payoutAccountRoutes.js'
 import { VerifyCreatorTipUseCase } from './application/use-cases/VerifyCreatorTipUseCase.js'
-import { ResendOwnerNotifications } from './infrastructure/adapters/outbound/ResendOwnerNotifications.js'
+import { ResendActivityEmails } from './infrastructure/adapters/outbound/ResendActivityEmails.js'
+import { AccountEmails } from './infrastructure/adapters/outbound/AccountEmails.js'
+import { NewsletterConsentService } from './application/services/NewsletterConsentService.js'
+import { MongoActivityAlerts } from './infrastructure/adapters/outbound/persistence/MongoActivityAlerts.js'
+import { createActivityAlertRoutes } from './infrastructure/adapters/inbound/http/routes/activityAlertRoutes.js'
+import { createEmailVerificationRoutes } from './infrastructure/adapters/inbound/http/routes/emailVerificationRoutes.js'
 import { ResendReviewAlerts } from './infrastructure/adapters/outbound/ResendReviewAlerts.js'
 import { GetCampaignPayoutOptionsUseCase } from './application/use-cases/GetCampaignPayoutOptionsUseCase.js'
-import { DonationOwnerNotifier } from './application/services/DonationOwnerNotifier.js'
 import { AiWritingService } from './application/services/AiWritingService.js'
 import { OpenAiWritingProvider } from './infrastructure/adapters/outbound/ai/OpenAiWritingProvider.js'
 import { createAiWritingRoutes } from './infrastructure/adapters/inbound/http/routes/aiWritingRoutes.js'
@@ -117,6 +143,8 @@ import { HandleFlutterwaveWebhookUseCase } from './application/use-cases/HandleF
 import { ReconcilePaymentsUseCase } from './application/use-cases/ReconcilePaymentsUseCase.js'
 import { ReconcilePayoutsUseCase } from './application/use-cases/ReconcilePayoutsUseCase.js'
 import { ProcessRefundUseCase } from './application/use-cases/ProcessRefundUseCase.js'
+import { MongoRefundOperationRepository } from './infrastructure/adapters/outbound/persistence/MongoRefundOperationRepository.js'
+import { MongoRefundFunds } from './infrastructure/adapters/outbound/persistence/MongoRefundFunds.js'
 import { RecordPaymentAttemptUseCase } from './application/use-cases/RecordPaymentAttemptUseCase.js'
 import { HandlePayoutWebhookUseCase } from './application/use-cases/HandlePayoutWebhookUseCase.js'
 import { ListBanksUseCase } from './application/use-cases/ListBanksUseCase.js'
@@ -375,6 +403,11 @@ import { createKYCRoutes } from './infrastructure/adapters/inbound/http/routes/k
 import { createCampaignCollaboratorRoutes } from './infrastructure/adapters/inbound/http/routes/campaignCollaboratorRoutes.js'
 import { createCollaborationRoutes } from './infrastructure/adapters/inbound/http/routes/collaborationRoutes.js'
 import { createSubscriptionRoutes } from './infrastructure/adapters/inbound/http/routes/subscriptionRoutes.js'
+import { MongoUnitOfWork } from './infrastructure/adapters/outbound/persistence/MongoUnitOfWork.js'
+import { MongoBillingOwnership } from './infrastructure/adapters/outbound/persistence/MongoBillingOwnership.js'
+import { configureStoreBilling } from './infrastructure/config/storeBilling.js'
+import { createStoreBillingRoutes, createStoreBillingWebhookRoutes } from './infrastructure/adapters/inbound/http/routes/storeBillingRoutes.js'
+import { createStoreBillingAdminRoutes } from './infrastructure/adapters/inbound/http/routes/storeBillingAdminRoutes.js'
 import { createCouponRoutes } from './infrastructure/adapters/inbound/http/routes/couponRoutes.js'
 import {
   createAffiliateRoutes,
@@ -400,10 +433,13 @@ import { createContactRoutes } from './infrastructure/adapters/inbound/http/rout
  * connection). Exported separately from bootstrap so integration tests can
  * exercise the real route graph with supertest.
  */
-export function createApp(): express.Express {
+export function createApp(options: { publicationAdmission?: PublicationAdmissionPort } = {}): express.Express {
+  const publicationAdmission = options.publicationAdmission ?? new MongoPublicationAdmission(new OpenAiPublicationScreener(config.aiWriting.apiKey))
   // ── Outbound adapters ────────────────────────────────────────────────
   const campaignRepo = new MongoCampaignRepository()
   const userRepo = new MongoUserRepository()
+  const userBlockRepo = new MongoUserBlockRepository()
+  const publicProfileVisibility = new MongoPublicProfileVisibility(userBlockRepo)
   const donationRepo = new MongoDonationRepository()
   const walletRepo = new MongoWalletRepository()
   const walletTxRepo = new MongoWalletTransactionRepository()
@@ -413,7 +449,7 @@ export function createApp(): express.Express {
   const shareRepo = new MongoShareRepository()
   const reportRepo = new MongoReportRepository()
   const adminReportRepo = new MongoAdminReportRepository()
-  const leaderboardRepo = new MongoLeaderboardRepository()
+  const leaderboardRepo = new MongoLeaderboardRepository(publicProfileVisibility)
   const notificationRepo = new MongoNotificationRepository()
   const organizationRepo = new MongoOrganizationRepository()
   const refundRepo = new MongoRefundRepository()
@@ -481,8 +517,8 @@ export function createApp(): express.Express {
 
   // ── Services ─────────────────────────────────────────────────────────
   const tokenService = new AuthTokenService(config.jwtSecret, config.jwtRefreshSecret)
-  const authMiddleware = createAuthMiddleware(tokenService)
-  const optionalAuthMiddleware = createOptionalAuthMiddleware(tokenService)
+  const authMiddleware = createAuthMiddleware(tokenService, userRepo)
+  const optionalAuthMiddleware = createOptionalAuthMiddleware(tokenService, userRepo)
   const qrCodeService = new QrCodeService()
   // Projects successful donations onto the in-process realtime event bus and
   // bumps live-session stats — shared by the wallet rail (today) and the later
@@ -545,19 +581,24 @@ export function createApp(): express.Express {
     ledgerRepo,
     splitAccrualService,
   )
+  const activityEmail = new ResendActivityEmails(process.env.RESEND_API_KEY ?? '', process.env.FROM_EMAIL ?? '', config.publicWebUrl, process.env.REPLY_TO_EMAIL || undefined)
+  const activityAlerts = new MongoActivityAlerts(activityEmail)
+  const accountEmails = new AccountEmails(activityEmail, process.env.AUTH_EMAIL_ENCRYPTION_KEY_BASE64 ? Buffer.from(process.env.AUTH_EMAIL_ENCRYPTION_KEY_BASE64, 'base64') : null)
+  let activityAlertsRunning = false
+  const reconcileActivityAlerts = async () => {
+    if (activityAlertsRunning) return
+    activityAlertsRunning = true
+    try { await accountEmails.deliverPending(); await activityAlerts.capturePending(); await activityAlerts.deliverPending() }
+    finally { activityAlertsRunning = false }
+  }
+  if (config.nodeEnv !== 'test') {
+    const activityTimer = setInterval(() => { void reconcileActivityAlerts().catch(() => logger.error('activity notification reconciliation failed')) }, 30_000)
+    activityTimer.unref()
+  }
   const outboxDispatcher = new OutboxDispatcher(
     outboxRepo,
     realtimeDonationProjector,
-    new DonationOwnerNotifier(
-      campaignRepo,
-      notificationRepo,
-      new ResendOwnerNotifications(
-        process.env.RESEND_API_KEY ?? '',
-        process.env.FROM_EMAIL ?? '',
-        config.publicWebUrl,
-        process.env.REPLY_TO_EMAIL || undefined,
-      ),
-    ),
+    donationRepo,
   )
 
   if (config.nodeEnv === 'production') {
@@ -586,10 +627,11 @@ export function createApp(): express.Express {
     affiliateRepo,
     affiliateReferralRepo,
   )
-  const loginUserUseCase = new LoginUserUseCase(userRepo, tokenService)
-  const changePasswordUseCase = new ChangePasswordUseCase(userRepo, tokenService)
-  const forgotPasswordUseCase = new ForgotPasswordUseCase(userRepo)
-  const resetPasswordUseCase = new ResetPasswordUseCase(userRepo, tokenService)
+  const mfa = new MongoMfa(process.env.MFA_ENCRYPTION_KEY ?? '', tokenService, config.publicWebUrl)
+  const loginUserUseCase = new LoginUserUseCase(userRepo, tokenService, mfa)
+  const changePasswordUseCase = new ChangePasswordUseCase(userRepo, tokenService, accountEmails)
+  const forgotPasswordUseCase = new ForgotPasswordUseCase(userRepo, accountEmails)
+  const resetPasswordUseCase = new ResetPasswordUseCase(userRepo, accountEmails)
 
   const createCampaignUseCase = new CreateCampaignUseCase(
     campaignRepo,
@@ -608,6 +650,9 @@ export function createApp(): express.Express {
       () => commercialConfigService.resolveReviewAlertEmail(process.env.REVIEW_ALERT_EMAIL ?? ''),
       process.env.ADMIN_WEB_URL ?? 'https://admin.ujimora.com',
     ),
+    kycRepo,
+    publicationAdmission,
+    new MongoCampaignCreation(),
   )
   const getCampaignUseCase = new GetCampaignUseCase(campaignRepo, donationRepo)
   const getCampaignBySlugUseCase = new GetCampaignBySlugUseCase(
@@ -615,7 +660,7 @@ export function createApp(): express.Express {
     config.publicWebUrl,
     donationRepo,
   )
-  const setCampaignSlugUseCase = new SetCampaignSlugUseCase(campaignRepo)
+  const setCampaignSlugUseCase = new SetCampaignSlugUseCase(campaignRepo, publicationAdmission, userRepo)
 
   // Donation-intent rail: guest-capable checkout backed by the immutable
   // ledger. settleDonation() is the seam Phase 4 (Paystack) also calls.
@@ -749,6 +794,7 @@ export function createApp(): express.Express {
   // coupon, and awards the one-time affiliate commission. Called by the signed
   // webhook (real charge) and inline for a coupon-zeroed checkout.
   const settleSubscriptionUseCase = new SettleSubscriptionUseCase(
+    new MongoUnitOfWork(),
     subscriptionCheckoutRepo,
     subscriptionRepo,
     couponRepo,
@@ -766,17 +812,29 @@ export function createApp(): express.Express {
   const creatorProfileRepo = new MongoCreatorProfileRepository()
   const creatorBalanceRepo = new MongoCreatorBalanceRepository()
   const tipRepo = new MongoTipRepository()
+  if (config.nodeEnv === 'production') {
+    let clearing = false
+    const timer = setInterval(async () => {
+      if (clearing) return
+      clearing = true
+      try { await tipRepo.clearTerminalCheckoutCredentials() }
+      catch (err) { logger.error({ err }, 'Tip checkout credential cleanup failed') }
+      finally { clearing = false }
+    }, 300_000)
+    timer.unref()
+  }
   const saveCreatorProfileUseCase = new SaveCreatorProfileUseCase(
     creatorProfileRepo,
     creatorBalanceRepo,
     planLimitsService,
+    publicationAdmission,
+    new MongoUnitOfWork(),
   )
   const getCreatorByHandleUseCase = new GetCreatorByHandleUseCase(
     creatorProfileRepo,
     tipRepo,
     planLimitsService,
-    userRepo,
-    profileRepo,
+    publicProfileVisibility,
   )
   const createTipIntentUseCase = new CreateTipIntentUseCase(
     creatorProfileRepo,
@@ -798,7 +856,8 @@ export function createApp(): express.Express {
     paymentGateway,
     planLimitsService,
     payoutAccounts,
-    new MongoWalletPayoutRepository(),
+    new MongoWalletPayoutRepository(planLimitsService),
+    new MongoCreatorWithdrawalTransaction(),
   )
   const handleCreatorPayoutWebhookUseCase = new HandleCreatorPayoutWebhookUseCase(
     creatorPayoutRepo,
@@ -860,6 +919,9 @@ export function createApp(): express.Express {
     ledgerRepo,
     campaignLedgerProjector,
     gatewayRegistry,
+    new MongoRefundOperationRepository(),
+    new MongoUnitOfWork(),
+    new MongoRefundFunds(),
   )
   // Payout reconciliation: repair payouts stuck in PROCESSING (a missed/delayed
   // transfer webhook) by re-verifying against the provider and driving the same
@@ -900,11 +962,10 @@ export function createApp(): express.Express {
           await reconcilePayoutsUseCase
             .reconcileStale({ olderThanMinutes: 1 })
             .catch((err) => logger.error({ err }, 'scheduled payout reconciliation failed'))
-          if (config.crypto.enabled) {
-            await reconcileCryptoUseCase
-              .reconcileStale({ olderThanMinutes: 30 })
-              .catch((err) => logger.error({ err }, 'scheduled crypto reconciliation failed'))
-          }
+          // Disabling new crypto intake must not abandon existing deposits.
+          await reconcileCryptoUseCase
+            .reconcileStale({ olderThanMinutes: 30 })
+            .catch((err) => logger.error({ err }, 'scheduled crypto reconciliation failed'))
         } finally {
           reconcileInFlight = false
         }
@@ -916,7 +977,7 @@ export function createApp(): express.Express {
     donationIntentRepo,
     paymentAttemptRepo,
   )
-  const getDonationIntentPublicUseCase = new GetDonationIntentPublicUseCase(donationIntentRepo)
+  const getDonationIntentPublicUseCase = new GetDonationIntentPublicUseCase(donationIntentRepo, ledgerRepo, donationRepo)
   const addDonationMessageUseCase = new AddDonationMessageUseCase(donationRepo)
 
   // Payout rail: register recipients, request/approve payouts of cleared funds,
@@ -965,6 +1026,7 @@ export function createApp(): express.Express {
     config.payouts,
     campaignRepo,
     new MongoWalletPayoutRepository(),
+    new MongoAutomaticPayoutVerification(),
   )
   const listCampaignPayoutsUseCase = new ListCampaignPayoutsUseCase(campaignRepo, payoutRepo)
   const listPayoutsUseCase = new ListPayoutsUseCase(payoutRepo)
@@ -982,7 +1044,19 @@ export function createApp(): express.Express {
     config.publicApiUrl,
   )
 
-  const liveVideo = new LiveVideoService(config.liveVideo, liveSessionRepo, campaignRepo)
+  const liveSafety = new MongoLiveSafety(userBlockRepo)
+  const liveVideo = new LiveVideoService(config.liveVideo, liveSessionRepo, campaignRepo, liveSafety)
+  if (process.env.NODE_ENV !== 'test') {
+    let running = false
+    const timer = setInterval(async () => {
+      if (running) return
+      running = true
+      try { await liveSafety.reconcile(liveVideo) }
+      catch (err) { logger.error({ err }, 'Live safety reconciliation failed') }
+      finally { running = false }
+    }, 30000)
+    timer.unref()
+  }
   const startLiveSessionUseCase = new StartLiveSessionUseCase(
     liveSessionRepo,
     campaignRepo,
@@ -1000,25 +1074,42 @@ export function createApp(): express.Express {
     campaignRepo,
     donationRepo,
     userRepo,
+    publicProfileVisibility,
   )
 
   const getProfileUseCase = new GetProfileUseCase(userRepo, profileRepo, donationRepo, campaignRepo)
-  const updateProfileUseCase = new UpdateProfileUseCase(userRepo, profileRepo)
-  const getPublicUserProfileUseCase = new GetPublicUserProfileUseCase(userRepo, profileRepo)
-  const deleteAccountUseCase = new DeleteAccountUseCase(userRepo, tokenService)
+  const updateProfileUseCase = new UpdateProfileUseCase(new MongoAccountProfileWrite(new MongoUnitOfWork(), publicationAdmission))
+  const getPublicUserProfileUseCase = new GetPublicUserProfileUseCase(userRepo, publicProfileVisibility, kycRepo)
+  const accountErasure = new MongoAccountErasure()
+  if (config.nodeEnv === 'production') {
+    let erasing = false
+    const erasureTimer = setInterval(async () => {
+      if (erasing) return
+      erasing = true
+      try { await accountErasure.sweepPending() }
+      catch (err) { logger.error({ err }, 'Account erasure sweep failed') }
+      finally { erasing = false }
+    }, 60_000)
+    erasureTimer.unref()
+  }
+  const deleteAccountUseCase = new DeleteAccountUseCase(userRepo, tokenService, accountErasure)
 
   const createCampaignUpdateUseCase = new CreateCampaignUpdateUseCase(
     campaignUpdateRepo,
     campaignRepo,
+    publicationAdmission,
   )
-  const getCampaignUpdatesUseCase = new GetCampaignUpdatesUseCase(campaignUpdateRepo, campaignRepo)
-  const updateCampaignUpdateUseCase = new UpdateCampaignUpdateUseCase(campaignUpdateRepo, campaignRepo)
+  const getCampaignUpdatesUseCase = new GetCampaignUpdatesUseCase(campaignUpdateRepo, campaignRepo, publicProfileVisibility)
+  const updateCampaignUpdateUseCase = new UpdateCampaignUpdateUseCase(campaignUpdateRepo, campaignRepo, publicationAdmission)
   const deleteCampaignUpdateUseCase = new DeleteCampaignUpdateUseCase(campaignUpdateRepo, campaignRepo)
   const pinCampaignUpdateUseCase = new PinCampaignUpdateUseCase(campaignUpdateRepo, campaignRepo)
   const campaignCommentUseCases = new CampaignCommentUseCases(
     campaignCommentRepo,
     campaignRepo,
     userRepo,
+    publicProfileVisibility,
+    userBlockRepo,
+    publicationAdmission,
   )
 
   const shareCampaignUseCase = new ShareCampaignUseCase(shareRepo)
@@ -1028,6 +1119,7 @@ export function createApp(): express.Express {
     donationRepo,
     campaignRepo,
     userRepo,
+    publicProfileVisibility,
   )
   const listMyDonationsUseCase = new ListMyDonationsUseCase(donationRepo, campaignRepo)
   const getDonationUseCase = new GetDonationUseCase(donationRepo, campaignRepo)
@@ -1035,6 +1127,7 @@ export function createApp(): express.Express {
     donationRepo,
     campaignRepo,
     userRepo,
+    publicProfileVisibility,
   )
 
   const getLeaderboardUseCase = new GetLeaderboardUseCase(leaderboardRepo)
@@ -1045,7 +1138,7 @@ export function createApp(): express.Express {
   const markAllNotificationsAsReadUseCase = new MarkAllNotificationsAsReadUseCase(notificationRepo)
   const getUnreadNotificationCountUseCase = new GetUnreadNotificationCountUseCase(notificationRepo)
 
-  const getOrganizationUseCase = new GetOrganizationUseCase(organizationRepo, campaignRepo)
+  const getOrganizationUseCase = new GetOrganizationUseCase(organizationRepo, campaignRepo, publicProfileVisibility, kycRepo)
 
   const requestRefundUseCase = new RequestRefundUseCase(refundRepo, donationRepo)
   const listMyRefundsUseCase = new ListMyRefundsUseCase(refundRepo, campaignRepo)
@@ -1086,6 +1179,7 @@ export function createApp(): express.Express {
   // Paid-subscription checkout rail (coupon-aware; settles via the webhook or,
   // when a coupon zeroes the price, inline via settleSubscriptionUseCase).
   const createSubscriptionCheckoutUseCase = new CreateSubscriptionCheckoutUseCase(
+    new MongoBillingOwnership(),
     subscriptionCheckoutRepo,
     couponRedemptionRepo,
     userRepo,
@@ -1175,12 +1269,13 @@ export function createApp(): express.Express {
   const resolveDisputeUseCase = new ResolveDisputeUseCase(disputeRepo)
   const listReportsUseCase = new ListReportsUseCase(adminReportRepo, campaignRepo)
   const reviewReportUseCase = new ReviewReportUseCase(adminReportRepo)
-  const reviewCampaignUseCase = new ReviewCampaignUseCase(campaignRepo)
+  const reviewCampaignUseCase = new ReviewCampaignUseCase(new MongoCampaignReview())
   const listUsersUseCase = new ListUsersUseCase(adminUserRepo)
   const getAdminUserUseCase = new GetAdminUserUseCase(adminUserRepo)
   const setComplianceLimitUseCase = new SetComplianceLimitUseCase(userRepo, auditLogRepo)
   const getPlatformOverviewUseCase = new GetPlatformOverviewUseCase(analyticsRepo)
-  const subscribeNewsletterUseCase = new SubscribeNewsletterUseCase(newsletterRepo)
+  const newsletterConsent = new NewsletterConsentService(accountEmails)
+  const subscribeNewsletterUseCase = new SubscribeNewsletterUseCase(newsletterConsent)
   const listNewsletterSubscribersUseCase = new ListNewsletterSubscribersUseCase(newsletterRepo)
 
   const listSiteContentUseCase = new ListSiteContentUseCase(siteContentRepo)
@@ -1196,6 +1291,7 @@ export function createApp(): express.Express {
     changePasswordUseCase,
     forgotPasswordUseCase,
     resetPasswordUseCase,
+    userRepo,
   )
   const campaignController = new CampaignController(
     createCampaignUseCase,
@@ -1226,7 +1322,7 @@ export function createApp(): express.Express {
     new GetActiveLiveSessionUseCase(liveSessionRepo, campaignRepo),
     liveVideo,
   )
-  const realtimeController = new RealtimeController(eventBus, campaignRepo, liveSessionRepo)
+  const realtimeController = new RealtimeController(eventBus, campaignRepo, liveSessionRepo, userRepo, publicProfileVisibility)
   const walletController = new WalletController(walletRepo, walletTxRepo, walletTopUps)
   const profileController = new ProfileController(
     getProfileUseCase,
@@ -1257,7 +1353,7 @@ export function createApp(): express.Express {
     recordPaymentAttemptUseCase,
     getDonationIntentPublicUseCase,
     addDonationMessageUseCase,
-    new VerifyDonationIntentUseCase(donationIntentRepo, reconcilePaymentsUseCase),
+    new VerifyDonationIntentUseCase(donationIntentRepo, reconcilePaymentsUseCase, getDonationIntentPublicUseCase),
   )
   const paystackWebhookController = new PaystackWebhookController(handlePaystackWebhookUseCase)
   const flutterwaveWebhookController = new FlutterwaveWebhookController(
@@ -1309,6 +1405,7 @@ export function createApp(): express.Express {
     beneficiaryRecipientRepo,
     beneficiaryPayoutRepo,
     paymentGateway,
+    new MongoUnitOfWork(),
     config.payouts.dualApprovalAmount,
   )
   const beneficiaryPayoutController = new BeneficiaryPayoutController(beneficiaryPayoutUseCase)
@@ -1402,6 +1499,26 @@ export function createApp(): express.Express {
 
   // ── HTTP pipeline ────────────────────────────────────────────────────
   const app = express()
+  app.locals.reconcileActivityAlerts = reconcileActivityAlerts
+  const storeBilling = configureStoreBilling()
+  let storeBillingSweepRunning = false
+  app.locals.reconcileStoreBilling = async () => {
+    if (!storeBilling || storeBillingSweepRunning) return
+    storeBillingSweepRunning = true
+    try {
+      await storeBilling.billing.reconcileNotifications()
+      await storeBilling.billing.reconcile()
+    } finally { storeBillingSweepRunning = false }
+  }
+  if (storeBilling && config.nodeEnv !== 'test') {
+    const timer = setInterval(() => {
+      void app.locals.reconcileStoreBilling().catch(() => logger.error('Store billing sweep failed; durable work remains queued'))
+    }, 60_000)
+    timer.unref()
+  }
+  app.locals.clearTerminalTipCheckouts = () => tipRepo.clearTerminalCheckoutCredentials()
+  app.locals.accountErasure = accountErasure
+  app.locals.reconcileLiveSafety = () => liveSafety.reconcile(liveVideo)
   app.disable('x-powered-by')
   app.use(helmet())
 
@@ -1450,6 +1567,7 @@ export function createApp(): express.Express {
     }),
   )
   app.use(requestLogger)
+  app.use('/api/v1/webhooks/store', createStoreBillingWebhookRoutes(storeBilling))
 
   app.get('/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() })
@@ -1460,14 +1578,25 @@ export function createApp(): express.Express {
   api.use(auditMutation)
 
   api.use('/auth', createAuthRoutes(authController, authMiddleware))
+  api.use('/auth/mfa', createMfaRoutes(mfa, authMiddleware))
+  api.use('/store-billing', createStoreBillingRoutes(storeBilling, planService, authMiddleware))
+  api.use('/profile/activity-alerts', createActivityAlertRoutes(authMiddleware, activityEmail.configured))
+  api.use('/email-verification', createEmailVerificationRoutes(authMiddleware, userRepo, accountEmails))
 
   // The /campaigns resource is composed from sibling routers (Express
   // dispatches across routers sharing a prefix by method + path).
-  api.use('/campaigns', createCampaignRoutes(campaignController, authMiddleware))
-  api.use('/campaigns', createCampaignUpdateRoutes(campaignUpdateController, authMiddleware))
-  api.use('/campaigns', createCampaignCommentRoutes(campaignCommentController, authMiddleware))
+  api.use('/campaigns', createCampaignRoutes(campaignController, authMiddleware, optionalAuthMiddleware))
+  api.use('/campaigns', createCampaignUpdateRoutes(campaignUpdateController, authMiddleware, optionalAuthMiddleware))
+  api.use('/publication-reviews', createPublicationReviewRoutes(authMiddleware))
+  api.use('/admin/donation-content-reviews', createDonationContentReviewRoutes(authMiddleware, requireAdmin))
+  api.use('/admin/tip-content-reviews', createTipContentReviewRoutes(authMiddleware, requireAdmin))
+  api.use('/admin/publication-reviews', createPublicationReviewRoutes(authMiddleware, requireAdmin))
+  api.use('/safety', createSafetyReportRoutes(authMiddleware))
+  api.use('/admin/safety-reports', createAdminSafetyReportRoutes(authMiddleware, requireAdmin, id => liveSafety.stop(id, liveVideo), () => liveSafety.reconcile(liveVideo)))
+  api.use('/safety', createUserSafetyRoutes(userBlockRepo, userRepo, authMiddleware, (first, second) => liveSafety.enforceBlock(first, second, liveVideo)))
+  api.use('/campaigns', createCampaignCommentRoutes(campaignCommentController, authMiddleware, optionalAuthMiddleware))
   api.use('/campaigns', createShareReportRoutes(shareReportController, authMiddleware))
-  api.use('/campaigns', createCampaignDonationRoutes(donationController))
+  api.use('/campaigns', createCampaignDonationRoutes(donationController, optionalAuthMiddleware))
   api.use(
     '/campaigns',
     createCampaignCollaboratorRoutes(
@@ -1486,7 +1615,7 @@ export function createApp(): express.Express {
   // Crypto rail (Crypto Donations plan §17): public asset/network discovery +
   // campaign-scoped quote/deposit. OFF unless config.crypto.enabled.
   api.use('/payments/crypto', createCryptoRoutes(cryptoController))
-  api.use('/campaigns', createCryptoDonationRoutes(cryptoController))
+  api.use('/campaigns', createCryptoDonationRoutes(cryptoController, optionalAuthMiddleware))
   api.use(
     '/campaigns',
     createCampaignBeneficiaryPayoutRoutes(
@@ -1501,26 +1630,31 @@ export function createApp(): express.Express {
   )
   api.use(
     '/campaigns',
-    createCampaignLiveSessionRoutes(liveSessionController, realtimeController, authMiddleware),
+    createCampaignLiveSessionRoutes(liveSessionController, realtimeController, authMiddleware, optionalAuthMiddleware, liveSafety),
   )
 
   // Live sessions + real-time overlay/SSE surface.
   api.use(
     '/live-sessions',
-    createLiveSessionRoutes(liveSessionController, realtimeController, authMiddleware),
+    createLiveSessionRoutes(liveSessionController, realtimeController, authMiddleware, optionalAuthMiddleware, liveSafety),
   )
 
   api.use('/wallets', createWalletRoutes(walletController, authMiddleware))
   api.use('/profile', createProfileRoutes(profileController, authMiddleware))
-  api.use('/users', createUserRoutes(profileController))
+  api.use('/data-rights', createDataRightsRoutes(authMiddleware))
+  api.use('/admin/data-rights', createDataRightsAdminRoutes(authMiddleware))
+  api.use('/admin/privacy-requests', createPrivacyRequestRoutes(authMiddleware, accountErasure))
+  api.use('/admin/store-billing', createStoreBillingAdminRoutes(authMiddleware, storeBilling))
+  api.use('/users', createUserRoutes(profileController, optionalAuthMiddleware))
   api.use('/users', createAdminUserRoutes(adminUserController, authMiddleware, requireAdmin))
   api.use(
     '/admin',
     createAdminPaymentsRoutes(adminPaymentsController, authMiddleware, requireAdmin),
   )
   api.use('/admin', createCryptoAdminRoutes(reconcileCryptoUseCase, authMiddleware, requireAdmin))
-  api.use('/donations', createDonationRoutes(donationController, authMiddleware))
+  api.use('/donations', createDonationRoutes(donationController, authMiddleware, optionalAuthMiddleware))
   // Post-donation message endpoint, composed onto the /donations resource.
+  api.use('/admin/donations', createAdminDonationRoutes(authMiddleware, requireAdmin))
   api.use('/donations', createDonationMessageRoutes(donationIntentController, authMiddleware))
   // Guest-capable donation-intent + ledger rail.
   api.use(
@@ -1528,7 +1662,7 @@ export function createApp(): express.Express {
     createDonationIntentRoutes(donationIntentController, optionalAuthMiddleware),
   )
   api.use('/payout-accounts', createPayoutAccountRoutes(payoutAccounts, authMiddleware))
-  api.use('/leaderboard', createLeaderboardRoutes(leaderboardController))
+  api.use('/leaderboard', createLeaderboardRoutes(leaderboardController, optionalAuthMiddleware))
   api.use(
     '/creators',
     createCreatorRoutes({
@@ -1547,6 +1681,8 @@ export function createApp(): express.Express {
       balanceRepo: creatorBalanceRepo,
       payoutRepo: creatorPayoutRepo,
       authMiddleware,
+      optionalAuth: optionalAuthMiddleware,
+      blocks: userBlockRepo,
     }),
   )
   api.use(
@@ -1559,8 +1695,8 @@ export function createApp(): express.Express {
   )
   api.use('/admin', createAdminActionRoutes(authMiddleware))
   api.use('/notifications', createNotificationRoutes(notificationController, authMiddleware))
-  api.use('/organization-team', createOrganizationTeamRoutes(authMiddleware))
-  api.use('/organizations', createOrganizationRoutes(organizationController))
+  api.use('/organization-team', createOrganizationTeamRoutes(authMiddleware, publicationAdmission, new MongoUnitOfWork()))
+  api.use('/organizations', createOrganizationRoutes(organizationController, optionalAuthMiddleware))
   api.use('/refunds', createRefundRoutes(refundController, authMiddleware))
   api.use('/kyc', createKYCRoutes(kycController, authMiddleware, requireAdmin))
   api.use('/collaborations', createCollaborationRoutes(collaborationController, authMiddleware))
@@ -1594,7 +1730,7 @@ export function createApp(): express.Express {
   api.use('/disputes', createDisputeRoutes(disputeController, authMiddleware, requireAdmin))
   api.use('/reports', createAdminReportRoutes(adminReportController, authMiddleware, requireAdmin))
   api.use('/analytics', createAnalyticsRoutes(analyticsController, authMiddleware, requireAdmin))
-  api.use('/newsletter', createNewsletterRoutes(newsletterController, authMiddleware, requireAdmin))
+  api.use('/newsletter', createNewsletterRoutes(newsletterController, authMiddleware, requireAdmin, newsletterConsent, userRepo))
   api.use('/content', createContentRoutes(siteContentController, authMiddleware, requireAdmin))
   api.use('/uploads', createUploadRoutes(uploadController, cloudinaryUploader, authMiddleware))
   api.use('/audit', createAuditLogRoutes(auditLogController, authMiddleware, requireAdmin))

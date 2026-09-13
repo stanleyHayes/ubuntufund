@@ -1,3 +1,4 @@
+import type { LegalAcceptanceRecord } from '@ubuntu-fund/types';
 import mongoose, { Schema, type Document } from 'mongoose';
 import { UserRole, VerificationLevel, OrganizationType } from '@ubuntu-fund/types';
 
@@ -5,6 +6,14 @@ export interface UserDocument extends Document {
   email: string;
   name: string;
   passwordHash: string;
+  authVersion?: string;
+  staffActionVersion?: number;
+  profileWriteVersion?: number;
+  accountIdentityRevision?: number;
+  publicationWriteVersion?: number;
+  organizationProfileRevision?: number;
+  recoveryEmailRequestedAt?: Date;
+  verificationEmailRequestedAt?: Date;
   avatarUrl?: string;
   coverUrl?: string;
   role: UserRole;
@@ -17,6 +26,9 @@ export interface UserDocument extends Document {
   registrationNumber?: string;
   website?: string;
   needsWebsite?: boolean;
+  websiteRequestedAt?: Date;
+  websiteRequestWithdrawnAt?: Date;
+  legalAcceptance?: LegalAcceptanceRecord;
   /**
    * Compliance-approved campaign-goal ceiling (spec §18). When set, the effective
    * campaign limit is MIN(plan cap, this). Undefined = no compliance restriction
@@ -34,6 +46,14 @@ const userSchema = new Schema<UserDocument>(
     email: { type: String, required: true, unique: true, lowercase: true },
     name: { type: String, required: true },
     passwordHash: { type: String, required: true },
+    authVersion: { type: String },
+    staffActionVersion: { type: Number },
+    profileWriteVersion: { type: Number },
+    accountIdentityRevision: { type: Number },
+    publicationWriteVersion: { type: Number },
+    organizationProfileRevision: { type: Number },
+    recoveryEmailRequestedAt: { type: Date },
+    verificationEmailRequestedAt: { type: Date },
     avatarUrl: { type: String },
     coverUrl: { type: String },
     role: {
@@ -56,6 +76,9 @@ const userSchema = new Schema<UserDocument>(
     registrationNumber: { type: String, trim: true },
     website: { type: String, trim: true },
     needsWebsite: { type: Boolean, default: false },
+    websiteRequestedAt: Date,
+    websiteRequestWithdrawnAt: Date,
+    legalAcceptance: { type: new Schema({ version: String, acceptedTerms: Boolean, ageConfirmed: Boolean, acceptedAt: Date }, { _id: false }) },
     complianceApprovedCampaignLimit: { type: Number },
     deletedAt: { type: Date, index: true },
     deletedBy: { type: String },

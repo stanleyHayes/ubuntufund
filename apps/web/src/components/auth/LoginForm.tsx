@@ -1,3 +1,4 @@
+import { OtpInput } from '@ubuntu-fund/ui'
 import { LoadingDots } from '@ubuntu-fund/ui'
 import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -16,6 +17,9 @@ export function LoginForm() {
   const { login } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [mfaCode, setMfaCode] = useState('')
+  const [mfaRequired, setMfaRequired] = useState(false)
+  const [recoveryMode, setRecoveryMode] = useState(false)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
@@ -30,10 +34,11 @@ export function LoginForm() {
 
     setSubmitting(true)
     try {
-      await login(email, password)
+      await login(email, password, mfaCode || undefined)
       const destination = location.state?.from?.pathname
       navigate(typeof destination === 'string' && destination.startsWith('/') && !destination.startsWith('//') && !destination.includes('\\') ? destination : '/dashboard', { replace: true })
     } catch (err) {
+      if (err instanceof Error && /authenticator code/i.test(err.message)) setMfaRequired(true)
       setError(err instanceof Error ? err.message : 'Login failed. Please try again.')
     } finally {
       setSubmitting(false)
@@ -66,6 +71,10 @@ export function LoginForm() {
         autoComplete="current-password"
       />
 
+      {mfaRequired && <>
+        {recoveryMode ? <TextField label="Recovery code" value={mfaCode} onChange={event => setMfaCode(event.target.value)} autoComplete="off" /> : <OtpInput value={mfaCode} onChange={setMfaCode} disabled={submitting} />}
+        <Button type="button" onClick={() => { setRecoveryMode(value => !value); setMfaCode('') }}>{recoveryMode ? 'Use authenticator code' : 'Use a recovery code'}</Button>
+      </>}
       <Button
         type="submit"
         variant="contained"

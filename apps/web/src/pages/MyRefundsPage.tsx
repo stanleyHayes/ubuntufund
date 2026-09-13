@@ -116,7 +116,7 @@ export function MyRefundsPage() {
                 <TableRow>
                   <TableCell sx={{ fontWeight: 700, fontSize: '0.82rem' }}>Refund ID</TableCell>
                   <TableCell sx={{ fontWeight: 700, fontSize: '0.82rem' }}>Campaign</TableCell>
-                  <TableCell sx={{ fontWeight: 700, fontSize: '0.82rem' }}>Refund Amount</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.82rem' }}>Requested Amount</TableCell>
                   <TableCell sx={{ fontWeight: 700, fontSize: '0.82rem' }}>Reason</TableCell>
                   <TableCell sx={{ fontWeight: 700, fontSize: '0.82rem' }}>Request Date</TableCell>
                   <TableCell sx={{ fontWeight: 700, fontSize: '0.82rem' }}>Status</TableCell>

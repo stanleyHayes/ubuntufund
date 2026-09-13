@@ -1,3 +1,8 @@
+import { createKYCBusinessRoutes } from './kycBusinessRoutes.js';
+import { createKYCInformationRoutes } from './kycInformationRoutes.js';
+import { PrivateKycDocumentModel } from '../../../../database/models/PrivateKycDocumentModel.js';
+import type { AuthenticatedRequest } from '../../middleware/authMiddleware.js';
+import { AppError } from '../../middleware/errorHandler.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import type { KYCController } from '../controllers/KYCController.js';
@@ -8,11 +13,14 @@ import type { requireRole } from '../../middleware/requireRole.js';
 const DOCUMENT_TYPES = [
   'id_card',
   'passport',
+  'selfie',
   'drivers_license',
   'utility_bill',
   'bank_statement',
   'business_registration',
   'tax_certificate',
+  'authorization_letter',
+  'ownership_register',
 ] as const;
 
 const addressSchema = z.object({
@@ -54,10 +62,13 @@ const submitIdentitySchema = z.object({
 });
 
 const approveSchema = z.object({
+  evidenceReviewed: z.boolean().optional(),
+  reviewVersion: z.string().regex(/^[a-f0-9]{64}$/).optional(),
   reviewNotes: z.string().max(2000).optional(),
 });
 
 const rejectSchema = z.object({
+  reviewVersion: z.string().regex(/^[a-f0-9]{64}$/).optional(),
   rejectionReason: z.string().max(1000).optional(),
   reviewNotes: z.string().max(2000).optional(),
 });
@@ -68,12 +79,25 @@ export function createKYCRoutes(
   requireAdmin: ReturnType<typeof requireRole>
 ): Router {
   const router = Router();
+  router.use(createKYCBusinessRoutes(authMiddleware));
+  router.use(createKYCInformationRoutes(authMiddleware, requireAdmin));
 
   // User-facing endpoints
   router.post(
     '/identity',
     authMiddleware,
     validate(submitIdentitySchema),
+    async (req: AuthenticatedRequest, _res, next) => {
+      try {
+        for (const document of req.body.documents ?? []) {
+          const id = /^kyc:\/\/([a-f0-9]{24})$/i.exec(document.url)?.[1];
+          if (!id || !(await PrivateKycDocumentModel.exists({ _id: id, userId: req.userId, deletedAt: { $exists: false } }))) {
+            throw new AppError('Upload each verification document using your private document uploader', 400);
+          }
+        }
+        next();
+      } catch (error) { next(error); }
+    },
     controller.submitIdentity
   );
   router.get('/status', authMiddleware, controller.getStatus);

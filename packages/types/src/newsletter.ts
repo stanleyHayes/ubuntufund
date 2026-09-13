@@ -1,7 +1,7 @@
 export interface NewsletterSubscriber {
   id: string
   email: string
-  status: 'active' | 'unsubscribed'
+  status: 'pending' | 'active' | 'unsubscribed'
   subscribedAt: Date
   unsubscribedAt?: Date
   createdAt: Date
@@ -10,6 +10,7 @@ export interface NewsletterSubscriber {
 
 export interface SubscribeNewsletterInput {
   email: string
+  consent: true
 }
 
 /**
@@ -21,4 +22,5 @@ export interface NewsletterSubscriberSummary {
   id: string
   email: string
   createdAt: string
+  confirmedAt?: string
 }

@@ -4,6 +4,7 @@ import { afterEach, describe, it, expect, vi } from 'vitest'
 import { CreatorTipPage } from '@/pages/CreatorTipPage'
 import { SavedPayoutAccounts } from '@/components/account/SavedPayoutAccounts'
 import { api } from '@/lib/api'
+vi.mock('@/context/AuthContext', () => ({ useAuth: () => ({ user: null }) }))
 vi.mock('@/lib/api', () => ({
   api: { get: vi.fn(), post: vi.fn(), delete: vi.fn() },
   ApiError: class extends Error {

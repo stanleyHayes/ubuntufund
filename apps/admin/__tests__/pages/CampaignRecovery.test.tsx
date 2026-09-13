@@ -1,3 +1,5 @@
+// Export authorization/download behavior is covered by exports/ExportMenu.test.tsx.
+vi.mock('@/components/ExportMenu', () => ({ default: () => null }))
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { ThemeProvider } from '@mui/material/styles'

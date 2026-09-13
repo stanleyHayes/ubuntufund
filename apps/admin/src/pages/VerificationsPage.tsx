@@ -1,3 +1,8 @@
+import { Link as RouterLink } from 'react-router-dom'
+import { KYCRejectDialog } from '@/components/kyc/KYCRejectDialog'
+import ExportMenu from '@/components/ExportMenu'
+import { loadAll } from '@/lib/exports/loadAll'
+import { exportTable, dateCell } from '@/lib/exports/report'
 import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import { useState, useMemo } from 'react'
 import { Alert, Skeleton, Box, Typography, MenuItem } from '@mui/material'
@@ -9,7 +14,6 @@ import VerifiedUserRoundedIcon from '@mui/icons-material/VerifiedUserRounded'
 import Button from '@mui/material/Button'
 import { EmptyState } from '@ubuntu-fund/ui'
 import { useAdminKYCVerifications } from '@/hooks/useApiData'
-import { api } from '@/lib/api'
 import { VerificationLevel, Resource, Action } from '@ubuntu-fund/types'
 import { useAdminPermissions } from '@/context/AdminPermissionContext'
 import { usePagination } from '@/hooks/usePagination'
@@ -64,6 +68,7 @@ export default function VerificationsPage() {
   const { can } = useAdminPermissions()
   const [statusFilter, setStatusFilter] = useState('all')
   const [search, setSearch] = useState('')
+  const [rejectTarget, setRejectTarget] = useState<{ id: string; reviewVersion: string } | null>(null)
   const [localStatuses, setLocalStatuses] = useState<Record<string, VerificationStatus>>({})
 
   // Project the real KYC review queue onto this page's flatter Verification row.
@@ -100,21 +105,14 @@ export default function VerificationsPage() {
 
   const pagination = usePagination(filtered, PAGE_SIZE)
 
-  const handleAction = (id: string, action: VerificationStatus) => {
-    // Optimistic local update, then persist to the real KYC endpoints.
-    setLocalStatuses(prev => ({ ...prev, [id]: action }))
-    const path =
-      action === 'approved' ? `/kyc/${id}/approve` :
-      action === 'rejected' ? `/kyc/${id}/reject` : null
-    if (path) {
-      api.put(path, {}).catch(() => {
-        // Keep the optimistic status; the queue reconciles on next load.
-      })
-    }
+  const handleReject = (id: string) => {
+    const target = kycVerifications.find(v => v.id === id)
+    if (target) setRejectTarget({ id, reviewVersion: target.reviewVersion })
   }
 
   return (
     <Box sx={{ bgcolor: 'background.default', }}>
+      {rejectTarget && <KYCRejectDialog key={rejectTarget.id} {...rejectTarget} onClose={() => setRejectTarget(null)} onSaved={() => { setLocalStatuses(previous => ({ ...previous, [rejectTarget.id]: 'rejected' })); setRejectTarget(null) }} />}
       <PageHeader
         tone="clay"
         eyebrow="Trust & Safety"
@@ -122,6 +120,8 @@ export default function VerificationsPage() {
         lede="Review identity, phone, institutional, and community verification submissions and approve or reject them."
         icon={<VerifiedUserRoundedIcon />}
       />
+      <ExportMenu title="Verifications" disabled={loading || !!error} getReport={async progress => { const rows = (await loadAll<import('@/types/api').KYCVerification>('/kyc/pending', progress)).filter(r => (statusFilter === 'all' || r.status === statusFilter) && (!search || [r.userName, typeLabels[r.verificationType] ?? r.verificationType].some(value => value.toLowerCase().includes(search.toLowerCase()))));
+return { title: 'Verifications', filters: [`Status: ${statusFilter}`, `Search: ${search || 'All'}`], tables: [exportTable('Verifications', rows, { ID: r => r.id, Account: r => r.userId, Name: r => r.userName, Type: r => r.verificationType, Status: r => r.status, 'Submitted (UTC)': r => dateCell(r.createdAt) })] } }} />
 
       {error && <Alert severity="error" sx={{ mb: 3 }}>Could not load verifications. Refresh the page to try again.</Alert>}
 
@@ -247,19 +247,20 @@ export default function VerificationsPage() {
                       <Button
                         size="small"
                         variant="outlined"
-                        onClick={() => handleAction(v.id, 'approved')}
+                        component={RouterLink}
+                        to={`/kyc-review?application=${encodeURIComponent(v.id)}`}
                         sx={{
                           fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.06em',
                           color: '#8FAE96', borderColor: 'rgba(47,107,70,0.3)',
                           '&:hover': { borderColor: '#8FAE96', bgcolor: 'rgba(47,107,70,0.08)' },
                         }}
                       >
-                        Approve
+                        Review evidence
                       </Button>
                       <Button
                         size="small"
                         variant="outlined"
-                        onClick={() => handleAction(v.id, 'rejected')}
+                        onClick={() => handleReject(v.id)}
                         sx={{
                           fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.06em',
                           color: '#C06B58', borderColor: 'rgba(192,107,88,0.3)',

@@ -1,3 +1,4 @@
+import { kycReviewVersion } from '../services/kycReviewVersion.js';
 import type {
   KYCRepositoryPort,
   KYCVerificationRecord,
@@ -7,6 +8,7 @@ import type { UserRepositoryPort } from '../../domain/ports/outbound/UserReposit
 /** KYC verification enriched with the submitting user's display name, for the admin queue. */
 export type AdminKYCVerificationDTO = KYCVerificationRecord & {
   userName: string;
+  reviewVersion: string;
 };
 
 export class GetPendingKYCUseCase {
@@ -29,6 +31,7 @@ export class GetPendingKYCUseCase {
 
     return records.map((record) => ({
       ...record,
+      reviewVersion: kycReviewVersion(record),
       userName: userNameById.get(record.userId) ?? 'Unknown User',
     }));
   }

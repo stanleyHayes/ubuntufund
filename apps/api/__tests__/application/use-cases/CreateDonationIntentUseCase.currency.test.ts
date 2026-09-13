@@ -119,3 +119,12 @@ describe('CreateDonationIntentUseCase — currency resolution (spec §11)', () =
     );
   });
 });
+
+it('rejects public name-only submissions before reserving a fiat payment and saves accepted terms', async () => {
+  const { useCase, donationIntentRepo, created } = deps(paymentsCfg());
+  await expect(useCase.execute({ ...baseInput, donorName: 'Public donor' }, ctx)).rejects.toMatchObject({ statusCode: 428 });
+  expect(donationIntentRepo.findByIdempotencyKey).not.toHaveBeenCalled();
+  expect(donationIntentRepo.create).not.toHaveBeenCalled();
+  await useCase.execute({ ...baseInput, donorName: 'Public donor', legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true } }, ctx);
+  expect(created[0].toPlain().messageAgreement?.acceptedAt).toBeInstanceOf(Date);
+});

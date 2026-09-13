@@ -1,6 +1,13 @@
+import { BiometricSettings } from '@/components/BiometricSettings'
+import { MfaSettings } from '@/components/MfaSettings'
+import { PublicationReviews } from '@/components/PublicationReviews'
+import { DataRightsRequests } from '@/components/DataRightsRequests'
+import { ActivityAlertSettings } from '@/components/ActivityAlertSettings'
+import { NewsletterSettings } from '@/components/NewsletterSettings'
+import { BlockedUsers } from '@/components/BlockedUsers'
 import { TouchableRipple } from '@/components/RoundedControls'
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { View, ScrollView, StyleSheet, Animated, Alert, Platform } from 'react-native'
+import { View, ScrollView, StyleSheet, Animated, Alert } from 'react-native'
 import { Text, Icon, Switch } from 'react-native-paper'
 import { router, Stack } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'
@@ -13,7 +20,6 @@ import {
   type ColorModePreference,
 } from '@/context/ColorModeContext'
 import { SKINS, type Palette, type NeuRecipes } from '@/theme'
-import { registerForPushNotificationsAsync, registerPushTokenWithApi } from '@/services/notifications'
 
 interface SettingsData {
   emailNotifications: boolean
@@ -346,31 +352,6 @@ export default function SettingsScreen() {
     }
   }, [settings])
 
-  const updatePushPermission = useCallback(async (enabled: boolean) => {
-    if (!enabled) {
-      await updateSetting('pushNotifications', false)
-      return
-    }
-
-    const token = await registerForPushNotificationsAsync()
-    if (!token) {
-      setSettings((prev) => ({ ...prev, pushNotifications: false }))
-      Alert.alert(
-        'Notifications remain off',
-        'Permission was not granted. You can enable notifications later in system settings.'
-      )
-      return
-    }
-
-    try {
-      await registerPushTokenWithApi(token, Platform.OS === 'ios' ? 'ios' : 'android')
-      await updateSetting('pushNotifications', true)
-    } catch (err) {
-      setSettings((prev) => ({ ...prev, pushNotifications: false }))
-      setError(err instanceof Error ? err.message : 'Could not enable push notifications')
-    }
-  }, [updateSetting])
-
   const handleDeleteAccount = () => {
     Alert.alert(
       'Delete Account',
@@ -442,10 +423,9 @@ export default function SettingsScreen() {
             {/* Notifications */}
             <Text style={styles.sectionTitle}>Notifications</Text>
             <View style={styles.card}>
-              <ToggleRow icon="email-outline" label="Email Notifications" value={settings.emailNotifications} onToggle={(v) => updateSetting('emailNotifications', v)} />
-              <ToggleRow icon="message-text-outline" label="SMS Notifications" value={settings.smsNotifications} onToggle={(v) => updateSetting('smsNotifications', v)} />
-              <ToggleRow icon="bell-outline" label="Push Notifications" value={settings.pushNotifications} onToggle={updatePushPermission} />
-              <ToggleRow icon="receipt" label="Donation Receipts" value={settings.donationReceipts} onToggle={(v) => updateSetting('donationReceipts', v)} />
+              <ActivityAlertSettings />
+              <NewsletterSettings />
+              <Text>SMS and device push notifications are not available yet. Choose inbox alerts or emails above for supported activity updates.</Text>
             </View>
 
             {/* Account */}
@@ -461,6 +441,8 @@ export default function SettingsScreen() {
               <PickerRow icon="translate" label="Language" value={settings.language} options={LANGUAGES} onChange={(v) => updateSetting('language', v)} color={p.textSecondary} />
             </View>
 
+            <BiometricSettings key={`biometric-${user?.id}`} />
+            <MfaSettings key={user?.id} />
             {/* Privacy */}
             <Text style={styles.sectionTitle}>Privacy</Text>
             <View style={styles.card}>
@@ -468,6 +450,9 @@ export default function SettingsScreen() {
               <ToggleRow icon="trophy-outline" label="Show on Leaderboard" value={settings.showOnLeaderboard} onToggle={(v) => updateSetting('showOnLeaderboard', v)} color={p.secondary} />
             </View>
 
+            <BlockedUsers />
+              <PublicationReviews />
+              <DataRightsRequests />
             {/* Danger Zone */}
             <Text style={[styles.sectionTitle, { color: p.error }]}>Danger Zone</Text>
             <View style={styles.card}>

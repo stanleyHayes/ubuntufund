@@ -1,3 +1,6 @@
+import ExportMenu from '@/components/ExportMenu'
+import { overviewTable } from '@/lib/exports/tables'
+import { exportTable } from '@/lib/exports/report'
 import { useMemo } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import { Alert, Box, ButtonBase, Skeleton, Typography } from '@mui/material'
@@ -268,6 +271,7 @@ export default function DashboardPage() {
         lede="Jump into any section of the console and keep a pulse on platform activity."
         icon={<DashboardRoundedIcon />}
       />
+      <ExportMenu title="Dashboard" disabled={statsLoading || !!statsError || kycLoading || !!kycError} getReport={() => ({ title: 'Administration dashboard', tables: [overviewTable(stats), exportTable('Verification summary', [kycStats], { Pending: r => r.pending, 'Approved today': r => r.approvedToday, 'Rejected today': r => r.rejectedToday })] })} />
 
       {(statsError || kycError) && (
         <Alert severity="error" sx={{ mb: 3 }}>

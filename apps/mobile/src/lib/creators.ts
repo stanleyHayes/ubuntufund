@@ -1,10 +1,13 @@
+import type { LegalAcceptanceInput } from '@ubuntu-fund/types'
+import { paymentScope, paymentKey, savePending, loadPending, clearPending } from './payments'
 import { api } from './api'
+import { Platform } from 'react-native'
 
-// Creator tip jar (buy-me-a-coffee) — mobile client. Mirrors the web flow:
-// tips collect through the shared gateway (open the returned checkout URL in an
-// in-app browser); the balance is credited by the signed webhook.
+// Creator profiles and balances remain available on native. External tip
+// checkout is web-only until the store payment model is approved/implemented.
 
 export interface CreatorPage {
+  userId: string
   handle: string
   displayName: string
   tagline?: string
@@ -16,7 +19,7 @@ export interface CreatorPage {
   currency: string
   supporterCount: number
   totalReceived: number
-  recentTips: Array<{ supporterName: string; amount: number; message?: string }>
+  recentTips: Array<{ id: string; supporterName: string; amount: number; message?: string }>
 }
 
 export interface CreatorBalance {
@@ -27,6 +30,8 @@ export interface CreatorBalance {
 }
 
 export interface CreatorProfile {
+  avatarUrl?: string
+  coverUrl?: string
   handle: string
   displayName: string
   tagline?: string
@@ -56,8 +61,11 @@ export function getCreatorByHandle(handle: string): Promise<CreatorPage> {
 }
 
 export function saveCreatorProfile(input: {
-  handle: string
-  displayName: string
+  automatedReviewConsent?: boolean
+  avatarUrl?: string
+  coverUrl?: string
+  handle?: string
+  displayName?: string
   tagline?: string
   bio?: string
   tipsEnabled?: boolean
@@ -65,17 +73,23 @@ export function saveCreatorProfile(input: {
   return api.post<CreatorProfile>('/creators/profile', input)
 }
 
-export function createTip(
+export async function createTip(
   handle: string,
   input: {
     amount: number
     supporterEmail: string
+    legalAcceptance?: LegalAcceptanceInput
     supporterName?: string
     message?: string
     isAnonymous?: boolean
   },
 ): Promise<{ checkoutUrl: string; reference: string; tipId: string }> {
-  return api.post(`/creators/${handle}/tips`, input)
+  if (Platform.OS !== 'web') return Promise.reject(new Error('Creator tips are not available in this app yet.'))
+  const scope = paymentScope('creator-tip', handle)
+  const key = await paymentKey(scope, {})
+  const result = await api.post<{ checkoutUrl: string; reference: string; tipId: string }>(`/creators/${handle}/tips`, input, { 'Idempotency-Key': key })
+  await savePending(scope, { id: result.tipId, reference: result.reference, status: 'PENDING', storageKey: scope })
+  return result
 }
 
 export function getMyCreator(): Promise<{
@@ -104,4 +118,17 @@ export function requestWithdrawal(input: {
 
 export function listMyPayouts(): Promise<CreatorPayout[]> {
   return api.get<CreatorPayout[]>('/creators/me/payouts')
+}
+
+export async function verifyTip(handle: string, reference: string): Promise<{ status: string; contentReviewStatus?: string }> {
+  const scope = paymentScope('creator-tip', handle)
+  const result = await api.post<{ status: string; contentReviewStatus?: string }>('/creators/tips/verify', { reference })
+  if (result.status === 'SUCCEEDED' || result.status === 'FAILED') {
+    // A local cleanup failure must not hide the provider-confirmed outcome.
+    try {
+      const pending = await loadPending(scope)
+      if (pending?.reference === reference) await clearPending(scope)
+    } catch { /* The retained attempt can still replay confirmation safely. */ }
+  }
+  return result
 }

@@ -501,7 +501,7 @@ function LeaderboardEmptyState() {
 
           {/* LEGENDARY — Top of pyramid (1-2 badges centered) */}
           <Box sx={{ textAlign: 'center', mb: 1 }}>
-            <Typography sx={{
+            <Typography component="div" sx={{
               fontSize: '0.6rem', fontWeight: 800, letterSpacing: 2, textTransform: 'uppercase',
               color: '#C7A24A', mb: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1,
             }}>
@@ -527,7 +527,7 @@ function LeaderboardEmptyState() {
 
           {/* EPIC — Second tier (wider) */}
           <Box sx={{ textAlign: 'center', mb: 1 }}>
-            <Typography sx={{
+            <Typography component="div" sx={{
               fontSize: '0.6rem', fontWeight: 800, letterSpacing: 2, textTransform: 'uppercase',
               color: '#AB47BC', mb: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1,
             }}>
@@ -553,7 +553,7 @@ function LeaderboardEmptyState() {
 
           {/* RARE — Third tier (wider still) */}
           <Box sx={{ textAlign: 'center', mb: 1 }}>
-            <Typography sx={{
+            <Typography component="div" sx={{
               fontSize: '0.6rem', fontWeight: 800, letterSpacing: 2, textTransform: 'uppercase',
               color: 'var(--text-info)', mb: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1,
             }}>
@@ -579,7 +579,7 @@ function LeaderboardEmptyState() {
 
           {/* COMMON — Base of pyramid (widest) */}
           <Box sx={{ textAlign: 'center' }}>
-            <Typography sx={{
+            <Typography component="div" sx={{
               fontSize: '0.6rem', fontWeight: 800, letterSpacing: 2, textTransform: 'uppercase',
               color: 'var(--text-success)', mb: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1,
             }}>
@@ -706,8 +706,8 @@ export function LeaderboardPage() {
           </Box>
 
           <Typography color="text.secondary" variant="body2" sx={{ textAlign: 'center', mb: 4 }}>
-            Rankings celebrate individual and organization accounts. All-category donation totals include guest gifts;
-            guest donors are excluded from the registered donor count. Updates refresh automatically every 30 seconds.
+            Only public GHS gifts to published campaigns count here. Anonymous gifts and accounts hidden from this board are excluded.
+            Public guest gifts count toward all-category totals, but not named rankings or registered donor counts. Updates refresh automatically every 30 seconds.
           </Typography>
           {isEmpty ? <LeaderboardEmptyState /> : <>
           {/* Sort Toggle */}

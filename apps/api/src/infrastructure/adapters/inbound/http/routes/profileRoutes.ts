@@ -1,3 +1,5 @@
+import { UserModel } from '../../../../database/models/UserModel.js';
+import { legalAcceptanceSchema } from './legalAcceptanceSchema.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import type { ProfileController } from '../controllers/ProfileController.js';
@@ -18,6 +20,7 @@ const notificationPreferencesSchema = z
 const imageUrlSchema = z.union([z.literal(''), z.string().url().max(2048).refine((value) => value.startsWith('https://'), 'Use an HTTPS image URL')]).optional();
 
 const updateProfileSchema = z.object({
+  automatedReviewConsent: z.boolean().optional(),
   avatarUrl: imageUrlSchema,
   coverUrl: imageUrlSchema,
   name: z.string().min(2).max(100).optional(),
@@ -38,8 +41,43 @@ export function createProfileRoutes(
   authMiddleware: ReturnType<typeof createAuthMiddleware>
 ): Router {
   const router = Router();
+  router.use((_req, res, next) => { res.set('Cache-Control', 'private, no-store'); next(); });
 
   router.get('/', authMiddleware, controller.getMyProfile);
+  router.get('/website-request', authMiddleware, async (req, res, next) => {
+    try {
+      const userId = (req as import('../../middleware/authMiddleware.js').AuthenticatedRequest).userId!;
+      const user = await UserModel.findOne({ _id: userId, role: 'organization', deletedAt: { $exists: false } }).select('needsWebsite websiteRequestedAt websiteRequestWithdrawnAt').lean();
+      if (!user) { res.status(404).json({ message: 'Organization account not found' }); return; }
+      res.set('Cache-Control', 'private, no-store').json({ data: { needsWebsite: !!user.needsWebsite, requestedAt: user.websiteRequestedAt ?? null, withdrawnAt: user.websiteRequestWithdrawnAt ?? null } });
+    } catch (error) { next(error); }
+  });
+  router.post('/website-request/withdraw', authMiddleware, async (req, res, next) => {
+    try {
+      const userId = (req as import('../../middleware/authMiddleware.js').AuthenticatedRequest).userId!;
+      // Only transition an active request: repeated withdrawals preserve the original timestamp.
+      await UserModel.updateOne({ _id: userId, role: 'organization', needsWebsite: true, deletedAt: { $exists: false } }, { $set: { needsWebsite: false, websiteRequestWithdrawnAt: new Date() } });
+      const user = await UserModel.findOne({ _id: userId, role: 'organization', deletedAt: { $exists: false } }).select('needsWebsite websiteRequestWithdrawnAt').lean();
+      if (!user) { res.status(404).json({ message: 'Organization account not found' }); return; }
+      res.set('Cache-Control', 'private, no-store').json({ data: { needsWebsite: false, withdrawnAt: user.websiteRequestWithdrawnAt ?? null } });
+    } catch (error) { next(error); }
+  });
+  router.post('/legal-acceptance', authMiddleware, validate(legalAcceptanceSchema), async (req, res, next) => {
+    try {
+      const userId = (req as import('../../middleware/authMiddleware.js').AuthenticatedRequest).userId!;
+      // Idempotent for the same version: a retry must not rewrite the acceptance time.
+      await UserModel.updateOne({ _id: userId, deletedAt: { $exists: false }, $or: [
+        { 'legalAcceptance.version': { $ne: req.body.version } },
+        { 'legalAcceptance.acceptedTerms': { $ne: true } },
+        { 'legalAcceptance.ageConfirmed': { $ne: true } },
+      ] }, {
+        $set: { legalAcceptance: { ...req.body, acceptedAt: new Date() } },
+      });
+      const user = await UserModel.findOne({ _id: userId, deletedAt: { $exists: false } });
+      if (!user) { res.status(404).json({ message: 'Account not found' }); return; }
+      res.set('Cache-Control', 'no-store').json({ data: user.legalAcceptance, status: 200 });
+    } catch (error) { next(error); }
+  });
   router.put(
     '/',
     authMiddleware,

@@ -9,6 +9,7 @@ import mongoose, { Schema, type Document } from 'mongoose';
  * `SUBSCRIPTION_PLANS` remains the seed + safe fallback when a row is absent.
  */
 export interface SubscriptionPlanDocument extends Document {
+  consumptionWriteVersion: number;
   tier: string;
   name: string;
   description: string;
@@ -39,6 +40,7 @@ export interface SubscriptionPlanDocument extends Document {
 
 const subscriptionPlanSchema = new Schema<SubscriptionPlanDocument>(
   {
+    consumptionWriteVersion: { type: Number, default: 0 },
     // Free-form so admins can add new tiers; uniqueness is the only constraint.
     tier: {
       type: String,

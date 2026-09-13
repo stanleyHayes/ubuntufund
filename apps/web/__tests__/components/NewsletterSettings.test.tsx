@@ -1,0 +1,31 @@
+import { beforeEach, it, expect, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { NewsletterSettings } from '@/components/account/NewsletterSettings'
+const { get, put } = vi.hoisted(() => ({ get: vi.fn(), put: vi.fn() }))
+vi.mock('@/lib/api', () => ({ api: { get, put } }))
+beforeEach(() => { get.mockReset().mockResolvedValue({ status: 'off' }); put.mockReset().mockResolvedValue({ status: 'pending' }) })
+it('persists the request as pending, refreshes confirmation and withdraws through the same preference', async () => {
+  render(<NewsletterSettings />)
+  const toggle = await screen.findByRole('switch', { name: 'Marketing emails and newsletter' })
+  expect(toggle).not.toBeChecked()
+  fireEvent.click(toggle)
+  expect(await screen.findByRole('status')).toHaveTextContent('No newsletters will be sent until you confirm')
+  expect(screen.getByText('Requested — awaiting email confirmation')).toBeInTheDocument()
+  expect(put).toHaveBeenCalledWith('/newsletter/preference', { enabled: true })
+  get.mockResolvedValue({ status: 'active' })
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh newsletter status' }))
+  expect(await screen.findByText('Subscribed')).toBeInTheDocument()
+  expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  put.mockResolvedValue({ status: 'off' })
+  fireEvent.click(toggle)
+  await waitFor(() => expect(toggle).not.toBeChecked())
+  expect(put).toHaveBeenLastCalledWith('/newsletter/preference', { enabled: false })
+})
+it('preserves the saved choice when a write fails', async () => {
+  put.mockRejectedValue(new Error('Unavailable'))
+  render(<NewsletterSettings />)
+  const toggle = await screen.findByRole('switch', { name: 'Marketing emails and newsletter' })
+  fireEvent.click(toggle)
+  expect(await screen.findByRole('alert')).toHaveTextContent('Unavailable')
+  expect(toggle).not.toBeChecked()
+})

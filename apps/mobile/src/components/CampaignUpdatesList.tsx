@@ -1,7 +1,10 @@
 import { TouchableOpacity } from '@/components/RoundedControls'
+import { ReportContent } from '@/components/ReportContent'
+import { useAuth } from '@/context/AuthContext'
 import { Chip } from '@/components/Chip'
 import { SkeletonLoader } from '@/components/Loading'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useCallback, useMemo } from 'react'
+import { usePublicRead } from '@/hooks/usePublicRead'
 import { View, ScrollView, StyleSheet } from 'react-native'
 import { Text, Avatar, Icon, Surface } from 'react-native-paper'
 import type { CampaignUpdate } from '@ubuntu-fund/types'
@@ -123,6 +126,7 @@ interface CampaignUpdatesListProps {
 }
 
 export function CampaignUpdatesList({ campaignId }: CampaignUpdatesListProps) {
+  const { user } = useAuth()
   const p = usePalette()
   const styles = useStyles()
   const typeColors: Record<string, { text: string; bg: string }> = {
@@ -131,33 +135,14 @@ export function CampaignUpdatesList({ campaignId }: CampaignUpdatesListProps) {
     thank_you: { text: p.success, bg: `${p.success}24` },
     urgent: { text: p.warningText, bg: `${p.warning}29` },
   }
-  const [updates, setUpdates] = useState<CampaignUpdate[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
-
-  useEffect(() => {
-    if (!campaignId) return
-    let cancelled = false
-    api
-      .get<{ items: CampaignUpdate[] }>(`/campaigns/${campaignId}/updates`)
-      .then((data) => {
-        if (!cancelled) {
-          setUpdates(data.items ?? [])
-          setError(null)
-        }
-      })
-      .catch((err: Error) => {
-        if (!cancelled) {
-          setError(err.message)
-          setUpdates([])
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false)
-      })
-    return () => { cancelled = true }
+  const fetchUpdates = useCallback(async () => {
+    if (!campaignId) return []
+    const response = await api.get<{ items: CampaignUpdate[] }>(`/campaigns/${campaignId}/updates`)
+    return response.items ?? []
   }, [campaignId])
+  const { data, loading: isLoading, error } = usePublicRead(`updates:${campaignId}`, fetchUpdates)
+  const updates = data ?? []
 
   const toggleExpand = (id: string) => {
     setExpandedIds((prev) => {
@@ -233,6 +218,7 @@ export function CampaignUpdatesList({ campaignId }: CampaignUpdatesListProps) {
             </View>
 
             <Text style={styles.title}>{update.title}</Text>
+            {user && user.id !== update.authorId && <ReportContent userId={update.authorId} updateId={update.id} />}
 
             <Text style={styles.content} numberOfLines={isExpanded ? undefined : 4}>
               {update.content}

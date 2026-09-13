@@ -116,8 +116,14 @@ describe('CreateCampaignUseCase', () => {
     useCase = new CreateCampaignUseCase(
       campaignRepo,
       userRepo,
-      new PlanLimitsService(subscriptionRepo, campaignRepo)
+      new PlanLimitsService(subscriptionRepo, campaignRepo), undefined, undefined, undefined, undefined, { assertAllowed: async () => {}, assertCurrent: async () => {} }, { run: async <T>(_id: string, _version: string, work: () => Promise<T>) => work() }
     )
+  })
+
+  it('fails closed without a publication admission dependency', async () => {
+    const unwired = new CreateCampaignUseCase(campaignRepo, userRepo, new PlanLimitsService(subscriptionRepo, campaignRepo))
+    await expect(unwired.execute(validInput, 'user-1')).rejects.toThrow('Campaign safety review is unavailable')
+    expect(campaignRepo.save).not.toHaveBeenCalled()
   })
 
   it('creates a campaign and calls save on the repository', async () => {
@@ -217,7 +223,7 @@ describe('CreateCampaignUseCase', () => {
     const starterUseCase = new CreateCampaignUseCase(
       campaignRepo,
       userRepo,
-      new PlanLimitsService(makeSubscriptionRepo(SubscriptionTier.STARTER), campaignRepo)
+      new PlanLimitsService(makeSubscriptionRepo(SubscriptionTier.STARTER), campaignRepo), undefined, undefined, undefined, undefined, { assertAllowed: async () => {}, assertCurrent: async () => {} }, { run: async <T>(_id: string, _version: string, work: () => Promise<T>) => work() }
     )
 
     const result = await starterUseCase.execute(

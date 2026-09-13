@@ -106,6 +106,7 @@ export class DonationIntentController {
       const view = await this.getDonationIntentPublicUseCase.execute(
         req.params.id as string
       );
+      res.setHeader('Cache-Control', 'private, no-store');
       res.json({
         data: view,
         message: 'Donation intent retrieved',
@@ -137,7 +138,8 @@ export class DonationIntentController {
       const result = await this.addDonationMessageUseCase.execute(
         req.params.id as string,
         req.userId!,
-        req.body.message
+        req.body.message,
+        req.body.legalAcceptance
       );
       res.json({
         data: result,

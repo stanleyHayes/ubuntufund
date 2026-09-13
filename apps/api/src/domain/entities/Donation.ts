@@ -1,3 +1,5 @@
+import { isDonationContentApproved } from './donationPublicContent.js';
+import type { LegalAcceptanceRecord } from '@ubuntu-fund/types';
 import { Money } from '../value-objects/Money.js';
 import { PaymentMethod } from '@ubuntu-fund/types';
 
@@ -10,6 +12,12 @@ export interface DonationProps {
   donorId: string;
   amount: Money;
   paymentMethod: PaymentMethod;
+  publicContentStatus?: 'pending' | 'approved' | 'rejected';
+  publicContentFingerprint?: string;
+  publicContentRevokedAt?: Date;
+  donorName?: string;
+  messageHiddenAt?: Date;
+  messageAgreement?: LegalAcceptanceRecord;
   message?: string;
   isAnonymous: boolean;
   createdAt: Date;
@@ -40,6 +48,9 @@ export class DonationEntity {
   get message(): string | undefined {
     return this.props.message;
   }
+  get publicContentApproved(): boolean { return isDonationContentApproved(this.props); }
+  get publicMessage(): string | undefined { return this.publicContentApproved && !this.props.messageHiddenAt ? this.props.message : undefined; }
+  get publicDonorName(): string | undefined { return !this.props.isAnonymous && this.publicContentApproved ? this.props.donorName || (this.props.donorId === GUEST_DONOR_ID ? 'Guest donor' : 'Supporter') : undefined; }
   get paymentMethod(): PaymentMethod {
     return this.props.paymentMethod;
   }

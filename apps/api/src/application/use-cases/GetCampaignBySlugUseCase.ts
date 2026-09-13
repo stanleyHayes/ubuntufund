@@ -1,3 +1,4 @@
+import { isPublicCampaign } from '../../domain/services/campaignVisibility.js';
 import type { Campaign, CampaignPublicView } from '@ubuntu-fund/types';
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js';
 import type { DonationRepositoryPort } from '../../domain/ports/outbound/DonationRepositoryPort.js';
@@ -53,7 +54,7 @@ export class GetCampaignBySlugUseCase {
     // Older campaigns have no vanity slug; their public links use the Mongo ID.
     const entity = await this.campaignRepo.findBySlug(slug)
       ?? (/^[a-f0-9]{24}$/i.test(slug) ? await this.campaignRepo.findById(slug) : null);
-    if (!entity) return null;
+    if (!entity || !isPublicCampaign(entity.toPlain().status)) return null;
 
     const dto = toDTO(entity);
     if (this.donationRepo) {

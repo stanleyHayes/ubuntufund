@@ -251,9 +251,7 @@ export function ForgotPasswordPage() {
       await api.post('/auth/forgot-password', { email: email.trim() })
       setSent(true)
     } catch {
-      // Keep the response account-enumeration safe. The API intentionally
-      // returns the same public outcome whether or not the address exists.
-      setSent(true)
+      setError('Password recovery is temporarily unavailable. Please try again later.')
     } finally {
       setLoading(false)
     }
@@ -318,7 +316,7 @@ export function ForgotPasswordPage() {
               lineHeight: 1.6,
             }}
           >
-            We&apos;ve sent a password reset link to{' '}
+            If an account exists, a password reset link will be sent to{' '}
             <Box component="span" sx={{ color: 'var(--text-brand)', fontWeight: 600, fontStyle: 'normal' }}>
               {email}
             </Box>

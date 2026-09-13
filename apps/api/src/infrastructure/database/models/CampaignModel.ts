@@ -24,6 +24,7 @@ export interface CampaignDocument extends Document {
   deletedBy?: string;
   tier?: number;
   lockedPlatformFeePercent?: number;
+  reviewRevision?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -70,6 +71,7 @@ const campaignSchema = new Schema<CampaignDocument>(
     // Risk/value tier 1–5 (spec §4); index so admin can filter the review queue.
     tier: { type: Number, index: true },
     lockedPlatformFeePercent: { type: Number },
+    reviewRevision: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

@@ -1,3 +1,4 @@
+import { trackActivity } from '../plugins/trackActivity.js';
 import mongoose, { Schema, type Document } from 'mongoose';
 import { TransactionType, TransactionStatus } from '@ubuntu-fund/types';
 
@@ -30,6 +31,8 @@ const walletTransactionSchema = new Schema<WalletTransactionDocument>(
   },
   { timestamps: { createdAt: true, updatedAt: false } }
 );
+
+walletTransactionSchema.plugin(trackActivity);
 
 export const WalletTransactionModel = mongoose.model<WalletTransactionDocument>(
   'WalletTransaction',

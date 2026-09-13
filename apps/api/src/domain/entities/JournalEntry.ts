@@ -275,6 +275,7 @@ export class JournalEntryEntity {
    */
   static forDonationRefund(refs: {
     campaignId: string;
+    externalRef?: string;
     donationId?: string;
     donationIntentId?: string;
     amount: number;
@@ -332,6 +333,7 @@ export class JournalEntryEntity {
       donationId: refs.donationId,
       donationIntentId: refs.donationIntentId,
       memo: refs.memo ?? `refund for donation ${refs.donationId ?? refs.donationIntentId}`,
+      externalRef: refs.externalRef,
       currency: refs.currency,
       lines,
     });

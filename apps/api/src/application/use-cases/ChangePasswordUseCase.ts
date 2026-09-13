@@ -3,6 +3,8 @@ import type { AuthTokens } from '@ubuntu-fund/types';
 import type { UserRepositoryPort } from '../../domain/ports/outbound/UserRepositoryPort.js';
 import type { AuthTokenService } from '../services/AuthTokenService.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
+import type { AccountEmails } from '../../infrastructure/adapters/outbound/AccountEmails.js';
+import { MongoUnitOfWork } from '../../infrastructure/adapters/outbound/persistence/MongoUnitOfWork.js';
 
 export interface ChangePasswordInput {
   currentPassword: string;
@@ -12,7 +14,8 @@ export interface ChangePasswordInput {
 export class ChangePasswordUseCase {
   constructor(
     private readonly userRepo: UserRepositoryPort,
-    private readonly tokenService: AuthTokenService
+    private readonly tokenService: AuthTokenService,
+    private readonly emails?: AccountEmails
   ) {}
 
   async execute(input: ChangePasswordInput, userId: string): Promise<AuthTokens> {
@@ -27,10 +30,13 @@ export class ChangePasswordUseCase {
     }
 
     user.changePassword(await bcrypt.hash(input.newPassword, 12));
-    await this.userRepo.update(user);
+    await new MongoUnitOfWork().run(async () => {
+      await this.userRepo.update(user);
+      await this.emails?.enqueuePasswordChanged(user);
+    });
 
-    // Kick out every existing session, then hand back a fresh pair that
-    // outlives the revocation cutoff.
-    return this.tokenService.rotateAllTokens({ userId: user.id, role: user.role });
+    // The persisted credential version invalidates old sessions on every instance,
+    // without relying on second-granularity token timestamps or a local cache.
+    return this.tokenService.generateTokens({ userId: user.id, role: user.role, authVersion: user.authVersion });
   }
 }

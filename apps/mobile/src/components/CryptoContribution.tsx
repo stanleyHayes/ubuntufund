@@ -1,3 +1,4 @@
+import { hasCurrentLegalAcceptance, type LegalAcceptanceInput } from '@ubuntu-fund/types'
 import QRCode from 'react-native-qrcode-svg'
 import { useEffect, useState, useCallback } from 'react'
 import { View } from 'react-native'
@@ -12,7 +13,7 @@ import { Button, Skeleton } from './Loading'
 import { PaymentStatus } from './PaymentStatus'
 import { usePalette } from '@/context/ColorModeContext'
 
-export function CryptoContribution({ campaignId, amount, email, name, message, isAnonymous }: { campaignId: string; amount: number; email: string; name: string; message: string; isAnonymous: boolean }) {
+export function CryptoContribution({ campaignId, amount, email, name, message, isAnonymous, legalAcceptance }: { campaignId: string; amount: number; email: string; name: string; message: string; legalAcceptance?: LegalAcceptanceInput; isAnonymous: boolean }) {
   const p = usePalette()
   const scope = paymentScope('crypto', campaignId)
   const [assets, setAssets] = useState<CryptoAssetInfo[] | null>(null)
@@ -41,9 +42,10 @@ export function CryptoContribution({ campaignId, amount, email, name, message, i
   }
   async function accept() {
     if (!quote || expired) return
+    if ((message.trim() || (!isAnonymous && name.trim())) && !hasCurrentLegalAcceptance(legalAcceptance)) { setError('Accept the content terms before posting your public name or message.'); return }
     setBusy(true); setError('')
     try {
-      const input = { quoteId: quote.quoteId, donorEmail: email, donorName: name || undefined, message: message || undefined, isAnonymous }
+      const input = { quoteId: quote.quoteId, donorEmail: email, donorName: name || undefined, message: message || undefined, legalAcceptance, isAnonymous }
       const result = await api.post<CryptoDepositView>(`/campaigns/${campaignId}/donations/crypto`, { ...input, idempotencyKey: await paymentKey(scope, input) })
       await AsyncStorage.setItem(`${scope}:deposit`, JSON.stringify(result)); setDeposit(result)
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not create a deposit.') } finally { setBusy(false) }

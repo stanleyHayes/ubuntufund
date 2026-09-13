@@ -1,19 +1,26 @@
+import { adultBirthDateError, KYC_IDENTITY_DOCUMENT_OPTIONS, type KYCIdentityDocumentType } from '@ubuntu-fund/types'
 export interface KycDraft {
+  identityDocumentType: KYCIdentityDocumentType
   fullName: string; dateOfBirth: string; nationality: string; idNumber: string
   country: string; state: string; city: string; street: string; postalCode: string
   proofMethod: 'document' | 'ghana_post_gps'; gpsAddress: string
   idFront: string; idBack: string; addressDoc: string; selfie: string
 }
 export const emptyKycDraft: KycDraft = {
+  identityDocumentType: 'id_card',
   fullName: '', dateOfBirth: '', nationality: '', idNumber: '', country: 'Ghana', state: '', city: '', street: '', postalCode: '',
   proofMethod: 'ghana_post_gps', gpsAddress: '', idFront: '', idBack: '', addressDoc: '', selfie: '',
 }
 export function validateKycStep(d: KycDraft, step: number): string | null {
   if (step === 0) {
     if (!d.fullName.trim() || !d.nationality || !d.idNumber.trim()) return 'Enter your full name, nationality and ID number.'
-    if (!d.dateOfBirth || !Number.isFinite(Date.parse(d.dateOfBirth)) || Date.parse(d.dateOfBirth) >= Date.now()) return 'Choose your date of birth.'
+    const ageError = adultBirthDateError(d.dateOfBirth)
+    if (ageError) return ageError
   }
-  if (step === 1 && (!d.idFront || !d.idBack)) return 'Upload the front and back of your ID.'
+  if (step === 1) {
+    if (!KYC_IDENTITY_DOCUMENT_OPTIONS.some(option => option.value === d.identityDocumentType)) return 'Choose an identity document type.'
+    if (!d.idFront || (d.identityDocumentType !== 'passport' && !d.idBack)) return d.identityDocumentType === 'passport' ? 'Upload the photo page of your passport.' : 'Upload the front and back of your ID.'
+  }
   if (step === 2) {
     if (!d.country || !d.city.trim()) return 'Choose your country and enter or select your city.'
     if (d.proofMethod === 'ghana_post_gps') {
@@ -32,9 +39,14 @@ export function buildKycSubmission(d: KycDraft) {
         ...(d.proofMethod === 'ghana_post_gps' ? { gpsAddress: d.gpsAddress.trim().toUpperCase() } : { street: d.street.trim(), postalCode: d.postalCode.trim() }) },
     },
     documents: [
-      { type: 'id_card', url: d.idFront }, { type: 'id_card', url: d.idBack },
+      { type: d.identityDocumentType, url: d.idFront },
+      ...(d.identityDocumentType !== 'passport' ? [{ type: d.identityDocumentType, url: d.idBack }] : []),
       ...(d.proofMethod === 'document' ? [{ type: 'utility_bill', url: d.addressDoc }] : []),
-      { type: 'passport', url: d.selfie },
+      { type: 'selfie', url: d.selfie },
     ],
   }
+}
+
+export function changeKycIdentityType(draft: KycDraft, identityDocumentType: KYCIdentityDocumentType): KycDraft {
+  return draft.identityDocumentType === identityDocumentType ? draft : { ...draft, identityDocumentType, idFront: '', idBack: '', selfie: '' }
 }

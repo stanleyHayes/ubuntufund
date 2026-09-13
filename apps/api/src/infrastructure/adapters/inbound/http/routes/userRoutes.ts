@@ -1,12 +1,12 @@
 import { Router } from 'express';
 import type { ProfileController } from '../controllers/ProfileController.js';
+import type { createOptionalAuthMiddleware } from '../../middleware/authMiddleware.js';
 
-// Public routes — no authMiddleware required, matching the public
-// (unauthenticated) semantics of GET /campaigns/:id.
-export function createUserRoutes(controller: ProfileController): Router {
+// Guests can read public profiles; authenticated reads honor bilateral blocks.
+export function createUserRoutes(controller: ProfileController, optionalAuth: ReturnType<typeof createOptionalAuthMiddleware>): Router {
   const router = Router();
-
-  router.get('/:id/public', controller.getPublicProfile);
+  router.use((_req, res, next) => { res.set('Cache-Control', 'private, no-store'); next(); });
+  router.get('/:id/public', optionalAuth, controller.getPublicProfile);
 
   return router;
 }

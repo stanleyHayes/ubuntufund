@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { GetCampaignPayoutOptionsUseCase } from '../../../src/application/use-cases/GetCampaignPayoutOptionsUseCase.js'
+import { campaignPayoutBreakdownRows } from '@ubuntu-fund/types'
 describe('cashout options', () => {
   const balances = {
     findByCampaignId: vi.fn(async () => ({
@@ -78,6 +79,7 @@ it('explains fees, paid funds and reserved amounts without deducting fees twice'
         processorFees: 101.4,
         paidOutBalance: 500,
         payoutFees: 10,
+        refundHeldBalance: 75,
         pendingBalance: 4000,
         availableBalance: 258.6,
         currency: 'GHS',
@@ -96,9 +98,13 @@ it('explains fees, paid funds and reserved amounts without deducting fees twice'
     netProceeds: 4968.6,
     paidOut: 500,
     payoutFees: 10,
-    reservedOrAdjustments: 200,
+    reservedOrAdjustments: 125,
+    refundHeld: 75,
     eligible: 4258.6,
   })
+  const rows = campaignPayoutBreakdownRows(result.breakdown)
+  expect(rows).toContainEqual({ label: 'Held for refund review', amount: -75 })
+  expect(rows.slice(0, -1).reduce((sum, row) => sum + row.amount, 0)).toBeCloseTo(result.eligible, 2)
 })
 it('shows a missing balance projection as a discrepancy, not a fee', async () => {
   const uc = new GetCampaignPayoutOptionsUseCase(

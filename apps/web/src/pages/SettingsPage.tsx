@@ -1,3 +1,10 @@
+import { PublicationConsent } from '@/components/safety/PublicationConsent'
+import { MfaSettings } from '@ubuntu-fund/ui'
+import { PublicationReviews } from '@/components/account/PublicationReviews'
+import { DataRightsRequests } from '@/components/account/DataRightsRequests'
+import { ActivityAlertSettings } from '@/components/account/ActivityAlertSettings'
+import { NewsletterSettings } from '@/components/account/NewsletterSettings'
+import { BlockedUsers } from '@/components/safety/BlockedUsers'
 import { useSeo } from '@/lib/seo'
 import Skeleton from '@mui/material/Skeleton'
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded'
@@ -135,12 +142,16 @@ function ToggleRow({
           <Typography sx={{ fontSize: '0.78rem', color: INK_SECONDARY }}>{description}</Typography>
         )}
       </Box>
-      <Switch checked={checked} onChange={(_, v) => onChange(v)} color="primary" />
+      <Switch checked={checked} onChange={(_, v) => onChange(v)} color="primary" slotProps={{ input: { role: 'switch', 'aria-label': label } }} />
     </Box>
   )
 }
 
 export function SettingsPage() {
+  const { user } = useAuth()
+  return <SettingsForViewer key={user?.id ?? 'guest'} />
+}
+function SettingsForViewer() {
   useSeo({
     title: 'Account settings | Ujimora',
     description:
@@ -148,26 +159,18 @@ export function SettingsPage() {
     path: '/settings',
     robots: 'noindex, nofollow',
   })
-  const { user, logout, isLoading: authLoading } = useAuth()
+  const { user, logout, replaceTokens, isLoading: authLoading } = useAuth()
   const { darkMode, setDarkMode, skin, setSkin } = useColorMode()
   const navigate = useNavigate()
 
-  // Notification preferences
-  const [emailNotif, setEmailNotif] = useState(true)
-  const [smsNotif, setSmsNotif] = useState(false)
-  const [pushNotif, setPushNotif] = useState(true)
-  const [donationReceipts, setDonationReceipts] = useState(true)
-  const [campaignUpdates, setCampaignUpdates] = useState(true)
-  const [marketingEmails, setMarketingEmails] = useState(false)
-
-  // Account settings — Ghana launch: currency is fixed to GHS
-  const currency = 'GHS'
   const [language, setLanguage] = useState('English')
 
   // Privacy settings
   const [anonymousDonations, setAnonymousDonations] = useState(false)
   const [showLeaderboards, setShowLeaderboards] = useState(true)
   const [publicProfile, setPublicProfile] = useState(true)
+  const [identityConsent, setIdentityConsent] = useState(false)
+  const [publicationError, setPublicationError] = useState('')
 
   // Delete account
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -179,7 +182,12 @@ export function SettingsPage() {
   const [loadStatus, setLoadStatus] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const live = useRef(true)
+  const writes = useRef(Promise.resolve())
+  const confirmed = useRef<Record<string, unknown>>({ language: 'English', darkMode, anonymousDonations: false, showLeaderboards: true, publicProfile: true })
+  const revision = useRef(0)
+  const fieldRevision = useRef<Record<string, number>>({})
+  useEffect(() => { live.current = true; return () => { live.current = false } }, [])
 
   useEffect(() => {
     // Wait for auth to settle (token refresh on load) before fetching, so the
@@ -190,15 +198,6 @@ export function SettingsPage() {
     setLoadError(null)
     setLoadStatus(null)
     api.get<{
-      notificationPreferences?: {
-        email?: boolean
-        sms?: boolean
-        push?: boolean
-        donationReceipts?: boolean
-        campaignUpdates?: boolean
-        marketingEmails?: boolean
-      }
-      preferredCurrency?: string
       language?: string
       darkMode?: boolean
       anonymousDonations?: boolean
@@ -207,15 +206,7 @@ export function SettingsPage() {
     }>('/profile')
       .then((data) => {
         if (cancelled) return
-        const np = data.notificationPreferences
-        if (np) {
-          if (np.email !== undefined) setEmailNotif(np.email)
-          if (np.sms !== undefined) setSmsNotif(np.sms)
-          if (np.push !== undefined) setPushNotif(np.push)
-          if (np.donationReceipts !== undefined) setDonationReceipts(np.donationReceipts)
-          if (np.campaignUpdates !== undefined) setCampaignUpdates(np.campaignUpdates)
-          if (np.marketingEmails !== undefined) setMarketingEmails(np.marketingEmails)
-        }
+        confirmed.current = { ...confirmed.current, ...data }
         if (data.language) setLanguage(data.language)
         if (data.darkMode !== undefined) setDarkMode(data.darkMode)
         if (data.anonymousDonations !== undefined) setAnonymousDonations(data.anonymousDonations)
@@ -233,41 +224,36 @@ export function SettingsPage() {
     return () => { cancelled = true }
   }, [authLoading, setDarkMode])
 
-  const persistSettings = useCallback((overrides: Record<string, unknown> = {}) => {
-    if (saveTimer.current) clearTimeout(saveTimer.current)
+  const persistSettings = useCallback((patch: Record<string, unknown>) => {
+    const version = ++revision.current
+    for (const key of Object.keys(patch)) fieldRevision.current[key] = version
     setSaving(true)
-    saveTimer.current = setTimeout(async () => {
+    writes.current = writes.current.then(async () => {
+      if (!live.current) return
       try {
-        const payload = {
-          notificationPreferences: {
-            email: emailNotif,
-            sms: smsNotif,
-            push: pushNotif,
-            donationReceipts,
-            campaignUpdates,
-            marketingEmails,
-          },
-          preferredCurrency: currency,
-          language,
-          darkMode,
-          anonymousDonations,
-          showLeaderboards,
-          publicProfile,
-          ...overrides,
-        }
-        await api.put('/profile', payload)
-        setSnackMessage('Settings saved')
-        setSnackSeverity('success')
-        setSnack(true)
+        await api.put('/profile', { ...patch, ...(patch.publicProfile === true ? { automatedReviewConsent: identityConsent } : {}) })
+        if (!live.current) return
+        if (patch.publicProfile === true) setPublicationError('')
+        Object.assign(confirmed.current, patch)
+        if (version === revision.current) { setSnackMessage('Settings saved'); setSnackSeverity('success'); setSnack(true) }
       } catch (err) {
+        if (!live.current) return
+        if (patch.publicProfile === true) setPublicationError(err instanceof Error ? err.message : 'Could not publish your profile.')
+        for (const key of Object.keys(patch)) {
+          if (fieldRevision.current[key] !== version) continue
+          if (key === 'language') setLanguage(confirmed.current[key] as string)
+          if (key === 'darkMode') setDarkMode(confirmed.current[key] as boolean)
+          if (key === 'anonymousDonations') setAnonymousDonations(confirmed.current[key] as boolean)
+          if (key === 'showLeaderboards') setShowLeaderboards(confirmed.current[key] as boolean)
+          if (key === 'publicProfile') setPublicProfile(confirmed.current[key] as boolean)
+        }
         setSnackMessage(err instanceof Error ? err.message : 'Failed to save settings')
-        setSnackSeverity('error')
-        setSnack(true)
+        setSnackSeverity('error'); setSnack(true)
       } finally {
-        setSaving(false)
+        if (live.current && version === revision.current) setSaving(false)
       }
-    }, 400)
-  }, [emailNotif, smsNotif, pushNotif, donationReceipts, campaignUpdates, marketingEmails, currency, language, darkMode, anonymousDonations, showLeaderboards, publicProfile])
+    })
+  }, [setDarkMode, identityConsent])
 
   async function handleDeleteAccount() {
     setSaving(true)
@@ -390,12 +376,9 @@ export function SettingsPage() {
               title="Notifications"
               description="Choose how you hear from us and the campaigns you support."
             >
-              <ToggleRow label="Email notifications" description="Receive updates via email" checked={emailNotif} onChange={(v) => { setEmailNotif(v); persistSettings({ notificationPreferences: { email: v, sms: smsNotif, push: pushNotif, donationReceipts, campaignUpdates, marketingEmails } }) }} />
-              <ToggleRow label="SMS notifications" description="Receive updates via text message" checked={smsNotif} onChange={(v) => { setSmsNotif(v); persistSettings({ notificationPreferences: { email: emailNotif, sms: v, push: pushNotif, donationReceipts, campaignUpdates, marketingEmails } }) }} />
-              <ToggleRow label="Push notifications" description="Browser push notifications" checked={pushNotif} onChange={(v) => { setPushNotif(v); persistSettings({ notificationPreferences: { email: emailNotif, sms: smsNotif, push: v, donationReceipts, campaignUpdates, marketingEmails } }) }} />
-              <ToggleRow label="Donation receipts" description="Receive receipts for your donations" checked={donationReceipts} onChange={(v) => { setDonationReceipts(v); persistSettings({ notificationPreferences: { email: emailNotif, sms: smsNotif, push: pushNotif, donationReceipts: v, campaignUpdates, marketingEmails } }) }} />
-              <ToggleRow label="Campaign updates" description="Updates from campaigns you support" checked={campaignUpdates} onChange={(v) => { setCampaignUpdates(v); persistSettings({ notificationPreferences: { email: emailNotif, sms: smsNotif, push: pushNotif, donationReceipts, campaignUpdates: v, marketingEmails } }) }} />
-              <ToggleRow label="Marketing emails" description="Promotional content and newsletters" checked={marketingEmails} onChange={(v) => { setMarketingEmails(v); persistSettings({ notificationPreferences: { email: emailNotif, sms: smsNotif, push: pushNotif, donationReceipts, campaignUpdates, marketingEmails: v } }) }} />
+              <ActivityAlertSettings />
+              <NewsletterSettings />
+              <Typography variant="body2" color="text.secondary">SMS, browser push and campaign announcement delivery are not available yet. Choose inbox alerts or emails above for supported activity updates.</Typography>
             </SettingsSection>
 
             <SettingsSection
@@ -437,14 +420,23 @@ export function SettingsPage() {
               </Box>
             </SettingsSection>
 
+            <SettingsSection id="security" icon={<ShieldRoundedIcon sx={{ fontSize: 19 }} />} title="Security" description="Choose extra protection for your account.">
+              <MfaSettings key={user?.id} client={api} onTokens={tokens => replaceTokens(tokens, user?.id ?? '')} />
+            </SettingsSection>
             <SettingsSection
               id="privacy"
               icon={<ShieldRoundedIcon sx={{ fontSize: 19 }} />}
               title="Privacy"
               description="Control what others can see about you."
             >
+              <BlockedUsers />
+              <PublicationReviews />
+              <DataRightsRequests />
               <ToggleRow label="Make my donations anonymous by default" checked={anonymousDonations} onChange={(v) => { setAnonymousDonations(v); persistSettings({ anonymousDonations: v }) }} />
               <ToggleRow label="Show me on leaderboards" checked={showLeaderboards} onChange={(v) => { setShowLeaderboards(v); persistSettings({ showLeaderboards: v }) }} />
+              <Typography variant="body2">Making your profile public requires review of its current identity. Hiding it takes effect without review.</Typography>
+              <PublicationConsent value={identityConsent} onChange={setIdentityConsent} />
+              {publicationError && <Alert severity="error">{publicationError} Check Publication reviews above, then enable the switch again after approval.</Alert>}
               <ToggleRow label="Allow profile to be public" checked={publicProfile} onChange={(v) => { setPublicProfile(v); persistSettings({ publicProfile: v }) }} />
             </SettingsSection>
 

@@ -1,3 +1,5 @@
+import { reviewVersion } from '../helpers/kycReviewVersion.js';
+import { PrivateKycDocumentModel } from '../../src/infrastructure/database/models/PrivateKycDocumentModel.js';
 import { randomUUID } from 'node:crypto';
 import { describe, it, beforeAll, afterAll, expect } from 'vitest';
 import request from 'supertest';
@@ -9,6 +11,7 @@ import {
   disconnectTestDatabase,
 } from '../helpers/testDatabase.js';
 import { UserModel } from '../../src/infrastructure/database/models/UserModel.js';
+import { KYCVerificationModel } from '../../src/infrastructure/database/models/KYCVerificationModel.js';
 import { CampaignCategory, CampaignPriority } from '@ubuntu-fund/types';
 
 function uniqueEmail(label: string): string {
@@ -18,7 +21,7 @@ function uniqueEmail(label: string): string {
 async function registerUser(app: Express, email: string) {
   const res = await request(app)
     .post('/api/v1/auth/register')
-    .send({ email, password: 'SecurePass123', name: 'KYC Test User' })
+    .send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email, password: 'SecurePass123', name: 'KYC Test User' })
     .expect(201);
 
   return { userId: res.body.data.user.id as string, token: res.body.data.tokens.accessToken as string };
@@ -52,12 +55,13 @@ describe('KYC Integration', () => {
   it('submits identity verification, an admin approves it, and the user is unblocked to create campaigns', async () => {
     const { userId, token } = await registerUser(app, uniqueEmail('kycuser'));
 
+    const document = await PrivateKycDocumentModel.create({ userId, publicId: 'private/test', resourceType: 'image', format: 'jpg', mimeType: 'image/jpeg' });
     const submitRes = await request(app)
       .post('/api/v1/kyc/identity')
       .set('Authorization', `Bearer ${token}`)
       .send({
-        personalInfo: { fullName: 'Efua Asante', nationality: 'Ghanaian' },
-        documents: [{ type: 'passport', url: 'https://example.com/passport.jpg' }],
+        personalInfo: { fullName: 'Efua Asante', nationality: 'Ghanaian', dateOfBirth: '1995-01-01T00:00:00.000Z' },
+        documents: [{ type: 'passport', url: `kyc://${document.id}` }],
       });
 
     expect(submitRes.status).toBe(201);
@@ -83,7 +87,7 @@ describe('KYC Integration', () => {
     const approveRes = await request(app)
       .put(`/api/v1/kyc/${kycId}/approve`)
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ reviewNotes: 'Documents check out' });
+      .send({ reviewVersion: await reviewVersion(kycId), evidenceReviewed: true, reviewNotes: 'Identity documents reviewed against the application.' });
 
     expect(approveRes.status).toBe(200);
     expect(approveRes.body.data.status).toBe('approved');
@@ -112,6 +116,30 @@ describe('KYC Integration', () => {
       });
 
     expect(createCampaignRes.status).toBe(201);
+  });
+
+  it('rejects a supplied underage birth date before creating an identity record', async () => {
+    const { userId, token } = await registerUser(app, uniqueEmail('underage-identity'));
+    const birth = new Date();
+    birth.setUTCFullYear(birth.getUTCFullYear() - 17);
+    const response = await request(app).post('/api/v1/kyc/identity')
+      .set('Authorization', `Bearer ${token}`).send({ personalInfo: { dateOfBirth: birth.toISOString() } }).expect(422);
+    expect(response.body.message).toMatch(/at least 18/);
+    expect(await KYCVerificationModel.countDocuments({ userId })).toBe(0);
+  });
+
+  it('blocks legacy identity approval with a missing or underage birth date without changing verification', async () => {
+    const admin = await createAdmin(app, uniqueEmail('age-review-admin'));
+    const birth = new Date();
+    birth.setUTCFullYear(birth.getUTCFullYear() - 17);
+    for (const dateOfBirth of [undefined, birth]) {
+      const { userId } = await registerUser(app, uniqueEmail('legacy-age'));
+      const record = await KYCVerificationModel.create({ userId, verificationType: 'identity', status: 'pending', personalInfo: { dateOfBirth }, documents: [] });
+      const before = (await UserModel.findById(userId))?.verificationLevel;
+      await request(app).put(`/api/v1/kyc/${record.id}/approve`).set('Authorization', `Bearer ${admin.token}`).send({ reviewVersion: await reviewVersion(record.id), evidenceReviewed: true, reviewNotes: 'Identity documents reviewed against the application.' }).expect(422);
+      expect((await KYCVerificationModel.findById(record.id))?.status).toBe('pending');
+      expect((await UserModel.findById(userId))?.verificationLevel).toBe(before);
+    }
   });
 
   it('lists pending KYC verifications for admins only', async () => {

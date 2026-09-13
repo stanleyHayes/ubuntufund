@@ -150,6 +150,9 @@ export function SubscriptionPage() {
   const [searchParams] = useSearchParams()
   const [lastCheckout] = useState(() => readSubscriptionHandoff(null))
   const { subscription, isLoading, refetch } = useMySubscription()
+  const storeManaged = subscription?.billingProvider === 'apple' || subscription?.billingProvider === 'google'
+  const storeName = subscription?.billingProvider === 'apple' ? 'App Store' : 'Google Play'
+  const storeManagementUrl = subscription?.billingProvider === 'apple' ? 'https://apps.apple.com/account/subscriptions' : 'https://play.google.com/store/account/subscriptions?package=com.ujimora.app'
   // DB-backed plans (seeded from SUBSCRIPTION_PLANS so nothing flashes empty).
   const plans = usePlanMap()
   // Public, active plans in admin-set order — data-driven so admin-added tiers show.
@@ -181,6 +184,7 @@ export function SubscriptionPage() {
   }, [couponCode, selectedTier, billingCycle, runCoupon, clearCoupon])
 
   function openCheckout(tier: string) {
+    if (storeManaged) { setActionError(`Manage this subscription through ${storeName}.`); return }
     setSelectedTier(tier)
     setCouponCode('')
     setCheckoutError(null)
@@ -198,7 +202,7 @@ export function SubscriptionPage() {
   }
 
   async function handleCheckout() {
-    if (!selectedTier) return
+    if (!selectedTier || storeManaged) return
     const tier = selectedTier
     setCheckoutLoading(true)
     setCheckoutError(null)
@@ -279,6 +283,7 @@ export function SubscriptionPage() {
 
   return (
     <Container maxWidth="lg" sx={{ py: 6 }}>
+      {storeManaged && <Alert severity="info" sx={{ mb: 3 }} action={<Button href={storeManagementUrl} target="_blank" rel="noopener noreferrer">Manage subscription</Button>}>Your subscription is billed through {storeName}. Change plans or cancel there to avoid a second subscription.</Alert>}
       {lastCheckout && <Alert severity="info" sx={{ mb: 3 }} action={<Button href={`/subscription/callback?checkout=${encodeURIComponent(lastCheckout.checkoutId)}`}>Check payment</Button>}>Returning from payment? Check your latest checkout before starting another payment.</Alert>}
       {/* Page header */}
       <Typography
@@ -438,7 +443,7 @@ export function SubscriptionPage() {
             <Typography sx={{ fontSize: '0.82rem', color: 'text.secondary' }}>
               Period: {new Date(currentSub.currentPeriodStart).toLocaleDateString()} &mdash; {new Date(currentSub.currentPeriodEnd).toLocaleDateString()}
             </Typography>
-            {currentSub.tier !== SubscriptionTier.FREE && (
+            {currentSub.tier !== SubscriptionTier.FREE && !storeManaged && (
               <Button
                 variant="text"
                 size="small"
@@ -512,7 +517,7 @@ export function SubscriptionPage() {
           const fitLabel = isPro ? 'Recommended for growth' : tier === SubscriptionTier.ORGANIZATION ? 'Best fit for organizations' : tier === SubscriptionTier.ENTERPRISE ? 'For complex needs' : tier === SubscriptionTier.FREE ? 'Start here' : tier === SubscriptionTier.STARTER ? 'For a growing cause' : 'More ways to fundraise'
           const tc = colorsOf(plan)
           const price = billingToggle === 'yearly' ? plan.priceYearly : plan.priceMonthly
-          const canCheckout = !isCurrent && tier !== SubscriptionTier.FREE && tier !== SubscriptionTier.ENTERPRISE
+          const canCheckout = !storeManaged && !isCurrent && tier !== SubscriptionTier.FREE && tier !== SubscriptionTier.ENTERPRISE
 
           return (
             <Card
@@ -848,7 +853,7 @@ export function SubscriptionPage() {
 
       {/* ═══════════ CHECKOUT DIALOG ═══════════ */}
       <Dialog
-        open={selectedTier !== null}
+        open={selectedTier !== null && !storeManaged}
         onClose={closeCheckout}
         fullWidth
         maxWidth="xs"

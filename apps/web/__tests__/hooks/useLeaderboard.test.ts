@@ -1,9 +1,11 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { useLeaderboard } from '@/hooks/useLeaderboard'
+import { useFeaturedDonors, useLeaderboard } from '@/hooks/useLeaderboard'
 import { api } from '@/lib/api'
+const auth = vi.hoisted(() => ({ user: null as { id: string } | null }))
+vi.mock('@/context/AuthContext', () => ({ useAuth: () => auth }))
 vi.mock('@/lib/api', () => ({ api: { get: vi.fn() } }))
-afterEach(() => { vi.resetAllMocks(); vi.useRealTimers() })
+afterEach(() => { auth.user = null; vi.resetAllMocks(); vi.useRealTimers() })
 const stats = { totalAmount: 4200, totalDonations: 2, totalDonors: 0 }
 describe('leaderboard loading', () => {
   it('shows guest contribution totals even when rankings are empty', async () => {
@@ -38,4 +40,33 @@ describe('leaderboard loading', () => {
     window.dispatchEvent(new Event('focus'))
     expect(api.get).toHaveBeenCalledTimes(6)
   })
+})
+
+it('clears rows and totals on viewer changes and ignores an old viewer response', async () => {
+  auth.user = { id: 'first' }
+  let finish!: (value: unknown) => void
+  vi.mocked(api.get).mockImplementation(url => url.includes('/stats') ? Promise.resolve(stats) : new Promise(resolve => { finish = resolve }))
+  const hook = renderHook(() => useLeaderboard())
+  auth.user = { id: 'second' }
+  vi.mocked(api.get).mockRejectedValue(new Error('Unavailable to second viewer'))
+  hook.rerender()
+  expect(hook.result.current.entries).toEqual([])
+  expect(hook.result.current.stats.totalAmount).toBe(0)
+  await waitFor(() => expect(hook.result.current.error).toBe('Unavailable to second viewer'))
+  await act(async () => finish([{ userId: 'hidden', name: 'Old viewer identity' }]))
+  expect(hook.result.current.entries).toEqual([])
+})
+it('refreshes featured names on focus and clears them on logout or denial', async () => {
+  auth.user = { id: 'first' }
+  vi.mocked(api.get).mockResolvedValue({ topAllTime: [{ userId: 'donor', name: 'Visible donor' }], topThisMonth: [] })
+  const hook = renderHook(() => useFeaturedDonors())
+  await waitFor(() => expect(hook.result.current.featured.topAllTime).toHaveLength(1))
+  vi.mocked(api.get).mockResolvedValue({ topAllTime: [], topThisMonth: [] })
+  act(() => window.dispatchEvent(new Event('focus')))
+  await waitFor(() => expect(hook.result.current.featured.topAllTime).toEqual([]))
+  auth.user = null
+  vi.mocked(api.get).mockRejectedValue(new Error('Unavailable'))
+  hook.rerender()
+  expect(hook.result.current.featured.topAllTime).toEqual([])
+  await waitFor(() => expect(hook.result.current.error).toBe('Unavailable'))
 })

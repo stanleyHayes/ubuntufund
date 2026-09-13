@@ -1,3 +1,5 @@
+import ExportMenu from '@/components/ExportMenu'
+import { usersTable, campaignsTable, donationsTable } from '@/lib/exports/tables'
 import { useMemo, useState } from 'react'
 import { useParams, useNavigate, Link as RouterLink } from 'react-router-dom'
 import { Alert, Avatar, Box, Chip, LinearProgress, Skeleton, Typography, Button } from '@mui/material'
@@ -132,6 +134,7 @@ export default function UserDetailPage() {
     <Box sx={{ color: 'text.primary', minWidth: 0 }}>
       <Button component={RouterLink} to="/users" startIcon={<ArrowBackRoundedIcon />} sx={{ mb: 2 }}>All users</Button>
       <PageHeader tone="gold" eyebrow="Community · Member record" title={user.name} lede="Account details, verification, and giving activity in one place." icon={<PeopleRoundedIcon />} />
+      <ExportMenu title="Member record" disabled={campaignsLoading || !!campaignsError || donationsLoading || !!donationsError} getReport={() => ({ title: 'Member record', filters: [`Account: ${user.id}`], tables: [usersTable([user]), campaignsTable(userCampaigns), donationsTable(userDonations)] })} />
       <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'minmax(0, 1.65fr) minmax(300px, 1fr)' }, alignItems: 'start' }}>
         <Box sx={{ ...panel, p: { xs: 2.5, sm: 3.5 } }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>

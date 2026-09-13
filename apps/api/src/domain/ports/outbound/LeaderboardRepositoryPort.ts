@@ -7,6 +7,7 @@ export type LeaderboardCategory = 'all' | 'user' | 'organization';
 type LeaderboardDonorRole = 'user' | 'organization';
 
 export interface LeaderboardQueryParams {
+  viewerId?: string;
   period: LeaderboardPeriod;
   category: LeaderboardCategory;
   limit: number;
@@ -27,7 +28,7 @@ export interface LeaderboardDonorRecord {
 export interface LeaderboardStatsRecord {
   totalAmount: number;
   totalDonations: number;
-  /** Distinct registered donor IDs; guest gifts remain in amount/donation totals. */
+  /** Eligible registered donor IDs; public guest GHS gifts remain in all-category totals. */
   totalDonors: number;
 }
 

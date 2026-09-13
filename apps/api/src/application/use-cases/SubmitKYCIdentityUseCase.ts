@@ -1,4 +1,5 @@
 import type { KYCAddress, DocumentType } from '@ubuntu-fund/types';
+import { adultBirthDateError } from '@ubuntu-fund/types';
 import type {
   KYCRepositoryPort,
   KYCVerificationRecord,
@@ -24,6 +25,10 @@ export class SubmitKYCIdentityUseCase {
     input: SubmitKYCIdentityInput,
     userId: string
   ): Promise<KYCVerificationRecord> {
+    if (input.personalInfo?.dateOfBirth !== undefined) {
+      const error = adultBirthDateError(input.personalInfo.dateOfBirth);
+      if (error) throw new AppError(error, 422);
+    }
     const existing = await this.kycRepo.findActiveByUserIdAndType(
       userId,
       'identity'

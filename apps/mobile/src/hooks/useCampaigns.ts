@@ -1,4 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useAuth } from '@/context/AuthContext'
+import { useFocusEffect } from 'expo-router'
+import { useState, useCallback } from 'react'
 import { AppState } from 'react-native'
 import { api } from '@/lib/api'
 import type { Campaign, CampaignDetail } from '@ubuntu-fund/types'
@@ -24,13 +26,17 @@ interface UseUserResult {
 }
 
 export function useCampaigns(): UseCampaignsResult {
+  const { user } = useAuth()
   const [retry, setRetry] = useState(0)
+  const scope = `${user?.id ?? 'guest'}:${user?.role ?? 'guest'}:${retry}`
+  const [loadedScope, setLoadedScope] = useState('')
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const refetch = useCallback(() => { setIsLoading(true); setError(null); setRetry(value => value + 1) }, [])
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
+    setIsLoading(true)
     let cancelled = false
     api
       .get<Campaign[] | { items: Campaign[] }>('/campaigns')
@@ -40,26 +46,30 @@ export function useCampaigns(): UseCampaignsResult {
         }
       })
       .catch((err) => {
-        if (!cancelled) setError(err.message)
+        if (!cancelled) { setCampaigns([]); setError(err.message) }
       })
       .finally(() => {
-        if (!cancelled) setIsLoading(false)
+        if (!cancelled) { setLoadedScope(scope); setIsLoading(false) }
       })
     return () => {
       cancelled = true
     }
-  }, [retry])
+  }, [scope]))
 
-  return { campaigns, isLoading, error, refetch }
+  return { campaigns: loadedScope === scope ? campaigns : [], isLoading: isLoading || loadedScope !== scope, error: loadedScope === scope ? error : null, refetch }
 }
 
 export function useCampaign(id: string): UseCampaignResult {
+  const { user } = useAuth()
+  const scope = `${id}:${user?.id ?? 'guest'}:${user?.role ?? 'guest'}`
+  const [loadedScope, setLoadedScope] = useState('')
   const [campaign, setCampaign] = useState<CampaignDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [donationError, setDonationError] = useState<string | null>(null)
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     if (!id) return
+    setIsLoading(true)
     let active = true
     let loading = false
     const load = async () => {
@@ -73,39 +83,39 @@ export function useCampaign(id: string): UseCampaignResult {
           const donations = await api.get<{ items: NonNullable<CampaignDetail['donations']> }>(`/campaigns/${id}/donations?pageSize=5`)
           if (active) { setCampaign({ ...data, donations: donations.items }); setDonationError(null) }
         } catch { if (active) setDonationError('Recent donations could not be loaded. We will retry shortly.') }
-      } catch (e) { if (active) setError(e instanceof Error ? e.message : 'Could not load campaign.') }
-      finally { loading = false; if (active) setIsLoading(false) }
+      } catch (e) { if (active) { setCampaign(null); setDonationError(null); setError(e instanceof Error ? e.message : 'Could not load campaign.') } }
+      finally { loading = false; if (active) { setLoadedScope(scope); setIsLoading(false) } }
     }
     void load()
     const timer = setInterval(() => { if (AppState.currentState === 'active') void load() }, 30000)
     const listener = AppState.addEventListener('change', state => { if (state === 'active') void load() })
     return () => { active = false; clearInterval(timer); listener.remove() }
-  }, [id])
-  return { campaign, isLoading, error, donationError }
+  }, [id, scope]))
+  return { campaign: loadedScope === scope ? campaign : null, isLoading: isLoading || loadedScope !== scope, error: loadedScope === scope ? error : null, donationError: loadedScope === scope ? donationError : null }
 }
 
 export function useUser(userId: string): UseUserResult {
-  const [user, setUser] = useState<User | null>(null)
-  const [isLoading, setIsLoading] = useState(Boolean(userId))
-
-  useEffect(() => {
+  const { user: viewer } = useAuth()
+  const scope = `${userId}:${viewer?.id ?? 'guest'}`
+  const [state, setState] = useState<{ scope: string; user: User | null }>({ scope: '', user: null })
+  useFocusEffect(useCallback(() => {
     if (!userId) return
-    let cancelled = false
-    api
-      .get<User>(`/users/${userId}/public`)
-      .then((data) => {
-        if (!cancelled) setUser(data)
-      })
-      .catch(() => {
-        // User not found — leave null
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false)
-      })
-    return () => {
-      cancelled = true
+    let active = true
+    let loading = false
+    const load = async () => {
+      if (loading) return
+      loading = true
+      try {
+        const user = await api.get<User>(`/users/${userId}/public`)
+        if (active) setState({ scope, user })
+      } catch {
+        if (active) setState({ scope, user: null })
+      } finally { loading = false }
     }
-  }, [userId])
-
-  return { user, isLoading }
+    void load()
+    const timer = setInterval(() => { if (AppState.currentState === 'active') void load() }, 30000)
+    const listener = AppState.addEventListener('change', status => { if (status === 'active') void load() })
+    return () => { active = false; clearInterval(timer); listener.remove() }
+  }, [userId, scope]))
+  return { user: userId && state.scope === scope ? state.user : null, isLoading: Boolean(userId) && state.scope !== scope }
 }

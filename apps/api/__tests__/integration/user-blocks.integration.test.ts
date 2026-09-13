@@ -1,0 +1,64 @@
+import { createReviewedTip } from '../helpers/reviewedTip.js';
+import { CreatorProfileModel } from '../../src/infrastructure/database/models/CreatorProfileModel.js';
+import { randomUUID } from 'node:crypto';
+import { beforeAll, afterAll, expect, it } from 'vitest';
+import request from 'supertest';
+import type { Express } from 'express';
+import { createTestApp } from '../helpers/testApp.js';
+import { connectTestDatabase, disconnectTestDatabase, dropTestDatabase } from '../helpers/testDatabase.js';
+import { UserModel } from '../../src/infrastructure/database/models/UserModel.js';
+import { UserBlockModel } from '../../src/infrastructure/database/models/UserBlockModel.js';
+import { LEGAL_ACCEPTANCE_VERSION } from '@ubuntu-fund/types';
+let app: Express;
+beforeAll(async () => { await connectTestDatabase(); app = await createTestApp(); await UserBlockModel.init(); });
+afterAll(async () => { await dropTestDatabase(); await disconnectTestDatabase(); });
+async function user(name: string) {
+  const response = await request(app).post('/api/v1/auth/register').send({ name, email: `${randomUUID()}@example.test`, password: 'SecurePass123', legalAcceptance: { version: LEGAL_ACCEPTANCE_VERSION, acceptedTerms: true, ageConfirmed: true } }).expect(201);
+  return { id: response.body.data.user.id, token: `Bearer ${response.body.data.tokens.accessToken}` };
+}
+it('persists idempotent private blocks, hides comments both ways and restores them on unblock', async () => {
+  const owner = await user('Organizer'), author = await user('Comment author'), viewer = await user('Viewer');
+  await UserModel.findByIdAndUpdate(owner.id, { verificationLevel: 2 });
+  const campaign = await request(app).post('/api/v1/campaigns').set('Authorization', owner.token).send({ title: 'Community library', description: 'A community library for our local children.', goalAmount: 5000, currency: 'GHS', category: 'community', priority: 'normal', beneficiaries: ['Our community'], endDate: new Date(Date.now() + 7 * 86400000).toISOString() }).expect(201);
+  const path = `/api/v1/campaigns/${campaign.body.data.id}/comments`;
+  await request(app).post(path).set('Authorization', author.token).send({ content: 'A question from the author' }).expect(201);
+  await request(app).post(path).set('Authorization', viewer.token).send({ content: 'A question from the viewer' }).expect(201);
+  await request(app).get('/api/v1/safety/blocks').expect(401);
+  await request(app).put(`/api/v1/safety/blocks/${viewer.id}`).set('Authorization', viewer.token).expect(400);
+  for (let i = 0; i < 2; i++) await request(app).put(`/api/v1/safety/blocks/${author.id}`).set('Authorization', viewer.token).expect(200);
+  expect(await UserBlockModel.countDocuments({ userId: viewer.id, blockedUserId: author.id })).toBe(1);
+  const restartedApp = await createTestApp();
+  const visible = await request(restartedApp).get(path).set('Authorization', viewer.token).expect(200);
+  expect(visible.headers['cache-control']).toContain('no-store');
+  expect(visible.body.data.items.map((item: { authorId: string }) => item.authorId)).toEqual([viewer.id]);
+  const reverse = await request(restartedApp).get(path).set('Authorization', author.token).expect(200);
+  expect(reverse.body.data.items.map((item: { authorId: string }) => item.authorId)).toEqual([author.id]);
+  expect((await request(app).get('/api/v1/safety/blocks').set('Authorization', author.token)).body.data.items).toEqual([]);
+  await request(app).delete(`/api/v1/safety/blocks/${author.id}`).set('Authorization', viewer.token).expect(200);
+  expect((await request(app).get(path).set('Authorization', viewer.token)).body.data.items).toHaveLength(2);
+  await request(app).put(`/api/v1/safety/blocks/${author.id}`).set('Authorization', owner.token).expect(200);
+  await request(app).post(path).set('Authorization', author.token).send({ content: 'Blocked comment' }).expect(403);
+  await request(app).delete(`/api/v1/safety/blocks/${owner.id}`).set('Authorization', author.token).expect(200);
+  await request(app).post(path).set('Authorization', author.token).send({ content: 'Still blocked' }).expect(403);
+});
+
+it('enforces creator blocks and filters blocked supporters without altering financial totals', async () => {
+  const creator = await user('Creator'), supporter = await user('Supporter'), viewer = await user('Creator viewer');
+  const handle = `creator-${randomUUID().slice(0, 8)}`;
+  await CreatorProfileModel.create({ userId: creator.id, handle, displayName: 'Public creator', currency: 'GHS' });
+  await createReviewedTip({ creatorUserId: creator.id, supporterUserId: supporter.id, supporterName: 'Supporter', amount: 20, netAmount: 20, currency: 'GHS', status: 'SUCCEEDED', message: 'A supporter message', providerRef: randomUUID() });
+  const path = `/api/v1/creators/${handle}`;
+  expect((await request(app).get(path).set('Authorization', viewer.token).expect(200)).body.data.recentTips).toHaveLength(1);
+  await request(app).put(`/api/v1/safety/blocks/${supporter.id}`).set('Authorization', viewer.token).expect(200);
+  const filtered = await request(app).get(path).set('Authorization', viewer.token).expect(200);
+  expect(filtered.body.data.recentTips).toEqual([]);
+  expect(filtered.body.data.totalReceived).toBe(20);
+  expect(filtered.body.data.userId).toBe(creator.id);
+  await request(app).put(`/api/v1/safety/blocks/${creator.id}`).set('Authorization', viewer.token).expect(200);
+  await request(app).get(path).set('Authorization', viewer.token).expect(404);
+  await request(app).post(`${path}/tips`).set('Authorization', viewer.token).send({ amount: 20, supporterEmail: 'viewer@example.test' }).expect(404);
+  await request(app).delete(`/api/v1/safety/blocks/${creator.id}`).set('Authorization', viewer.token).expect(200);
+  await request(app).get(path).set('Authorization', viewer.token).expect(200);
+  await UserModel.updateOne({ _id: creator.id }, { $set: { deletedAt: new Date() } });
+  await request(app).get(path).expect(404);
+});

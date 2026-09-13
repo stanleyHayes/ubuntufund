@@ -1,6 +1,7 @@
 import type { TipEntity } from '../../entities/Tip.js';
 
 export interface TipRepositoryPort {
+  saveCheckout(providerRef: string, checkout: { checkoutUrl: string; accessCode: string }): Promise<boolean>;
   create(tip: TipEntity): Promise<TipEntity>;
   findByProviderRef(providerRef: string): Promise<TipEntity | null>;
   /** Recent tips a creator received (public feed / dashboard). */

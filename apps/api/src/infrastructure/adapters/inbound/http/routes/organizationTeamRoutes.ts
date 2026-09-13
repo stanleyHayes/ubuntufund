@@ -1,3 +1,9 @@
+import { createHash } from 'node:crypto'
+import { hasCurrentLegalAcceptance } from '@ubuntu-fund/types'
+import type { UnitOfWorkPort } from '../../../../../domain/ports/outbound/UnitOfWorkPort.js'
+import { ContentRestrictionModel } from '../../../../database/models/ContentRestrictionModel.js'
+import { AuditLogModel } from '../../../../database/models/AuditLogModel.js'
+import type { PublicationAdmissionPort } from '../../../../../domain/ports/outbound/PublicationAdmissionPort.js'
 import { Router, type RequestHandler } from 'express'
 import { isValidObjectId } from 'mongoose'
 import { z } from 'zod'
@@ -45,8 +51,9 @@ async function access(
     throw new AppError('You do not have permission for this organization action', 403)
   return { org, role }
 }
-export function createOrganizationTeamRoutes(auth: RequestHandler) {
+export function createOrganizationTeamRoutes(auth: RequestHandler, admission: PublicationAdmissionPort, uow: UnitOfWorkPort) {
   const router = Router()
+  router.use((_req, res, next) => { res.set('Cache-Control', 'private, no-store'); next() })
   router.use(auth)
   router.get(
     '/mine',
@@ -223,14 +230,41 @@ export function createOrganizationTeamRoutes(auth: RequestHandler) {
     '/:organizationId/profile',
     wrap(async (req) => {
       const organizationId = id(req.params.organizationId)
-      await access(organizationId, req.userId!, ['owner', 'admin'])
-      const input = z
-        .object({
-          organizationName: z.string().trim().min(2).max(120),
-          website: z.union([z.string().url().max(500), z.literal('')]),
-        })
-        .parse(req.body)
-      await UserModel.updateOne({ _id: organizationId }, { $set: input })
+      const { org } = await access(organizationId, req.userId!, ['owner', 'admin'])
+      const input = z.object({
+        organizationName: z.string().trim().min(2).max(120),
+        website: z.union([z.string().trim().url().max(500).refine(value => /^https?:\/\//i.test(value)), z.literal('')]),
+        automatedReviewConsent: z.boolean().optional(),
+      }).strict().parse(req.body)
+      const fields = { organizationName: input.organizationName, website: input.website }
+      const baseVersion = createHash('sha256').update(JSON.stringify([organizationId, org.organizationProfileRevision ?? 0, org.organizationName ?? '', org.website ?? ''])).digest('hex')
+      if (!admission || !uow) throw new AppError('Organization publication review is unavailable', 503)
+      if (await ContentRestrictionModel.exists({ userId: organizationId })) throw new AppError('Publishing for this organization is restricted', 403)
+      await admission.assertAllowed({ actorId: req.userId!, action: 'organization.profile', resourceId: organizationId, baseVersion,
+        text: JSON.stringify(fields), mediaUrls: [], automatedReviewConsent: input.automatedReviewConsent })
+      await uow.run(async () => {
+        // Real writes fence concurrent credential changes, closure and membership revocation.
+        const actor = await UserModel.findOneAndUpdate({ _id: req.userId, deletedAt: null,
+          ...(req.authVersion ? { authVersion: req.authVersion } : { $or: [{ authVersion: '' }, { authVersion: null }] }),
+        }, { $inc: { profileWriteVersion: 1 } }, { new: true })
+        if (!actor) throw new AppError('Your session ended. Sign in again before saving.', 401)
+        if (actor.role !== 'admin' && !hasCurrentLegalAcceptance(actor.legalAcceptance)) throw new AppError('Accept the current agreement before publishing', 428)
+        if (await ContentRestrictionModel.exists({ userId: { $in: [req.userId!, organizationId] } })) throw new AppError('Publishing is restricted', 403)
+        if (req.userId !== organizationId) {
+          const membership = await Members.findOneAndUpdate({ organizationId, userId: req.userId, status: 'active', role: 'admin' }, { $inc: { profileWriteVersion: 1 } }, { new: true })
+          if (!membership) throw new AppError('You no longer have permission to edit this organization', 403)
+        }
+        const revision = org.organizationProfileRevision ?? 0
+        const saved = await UserModel.findOneAndUpdate({ _id: organizationId, role: 'organization', deletedAt: null,
+          organizationName: org.organizationName ?? null, website: org.website ?? null,
+          ...(revision === 0 ? { $or: [{ organizationProfileRevision: 0 }, { organizationProfileRevision: null }] } : { organizationProfileRevision: revision }),
+        }, { $set: fields, $inc: { organizationProfileRevision: 1 } }, { new: true })
+        if (!saved) throw new AppError('The organization changed during review. Reload its current details before retrying.', 409)
+        if (!hasCurrentLegalAcceptance(saved.legalAcceptance)) throw new AppError('The organization must accept the current agreement before publishing', 428)
+        await AuditLogModel.create({ actorId: req.userId, actorRole: actor.role, action: 'organization.profile.updated', resource: organizationId,
+          details: `Reviewed organization identity saved; base version ${baseVersion}; revision ${saved.organizationProfileRevision}`,
+          severity: 'info', method: 'PUT', path: '/organization-team/:organizationId/profile', statusCode: 200 })
+      })
       return { updated: true }
     }),
   )
@@ -250,10 +284,14 @@ export function createOrganizationTeamRoutes(auth: RequestHandler) {
         throw new AppError('Campaign not found', 404)
       const input = z
         .object({
+          automatedReviewConsent: z.boolean().optional(),
           title: z.string().trim().min(3).max(200),
           content: z.string().trim().min(1).max(5000),
         })
         .parse(req.body)
+      await admission.assertAllowed({ actorId: req.userId!, action: 'update.create', resourceId: campaignId, text: JSON.stringify([input.title, input.content, 'general']), mediaUrls: [], automatedReviewConsent: input.automatedReviewConsent })
+      // Recheck membership after an asynchronous provider call.
+      await access(organizationId, req.userId!, ['owner', 'admin', 'editor'])
       const update = await CampaignUpdateModel.create({
         campaignId,
         authorId: req.userId,

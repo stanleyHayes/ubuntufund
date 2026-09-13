@@ -3,10 +3,11 @@ import type {
   PayoutAccountRepositoryPort,
   SavedPayoutAccount,
 } from '../../../../domain/ports/outbound/PayoutAccountRepositoryPort.js'
-const schema = new Schema<{ _id: string; userId: string; accounts: SavedPayoutAccount[] }>(
+const schema = new Schema<{ _id: string; userId: string; accounts: SavedPayoutAccount[]; consumptionWriteVersion: number }>(
   {
     _id: { type: String, required: true },
     userId: { type: String, required: true, unique: true },
+    consumptionWriteVersion: { type: Number, default: 0 },
     accounts: {
       type: [
         {
@@ -28,6 +29,18 @@ const schema = new Schema<{ _id: string; userId: string; accounts: SavedPayoutAc
 )
 const Model = mongoose.model('PayoutAccountWallet', schema)
 export class MongoPayoutAccountRepository implements PayoutAccountRepositoryPort {
+  async claimCurrent(userId: string, account: SavedPayoutAccount) {
+    const result = await Model.updateOne({
+      _id: userId,
+      accounts: { $elemMatch: {
+        id: account.id, fingerprint: account.fingerprint, type: account.type,
+        accountNumber: account.accountNumber, bankCode: account.bankCode,
+        accountName: account.accountName, recipientCode: account.recipientCode,
+        verificationStatus: 'name_matched',
+      } },
+    }, { $inc: { consumptionWriteVersion: 1 } })
+    return result.matchedCount === 1
+  }
   async list(userId: string) {
     return (await Model.findOne({ _id: userId }).lean())?.accounts ?? []
   }

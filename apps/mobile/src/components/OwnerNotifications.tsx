@@ -1,3 +1,5 @@
+import { router } from 'expo-router'
+import { resolveNativePath } from '@/navigation/resolvePath'
 import { View } from 'react-native'
 import { Text, Icon } from 'react-native-paper'
 import { useNotifications } from '@/context/NotificationContext'
@@ -34,7 +36,7 @@ export function OwnerNotifications({ showTitle = true }: { showTitle?: boolean }
         <EmptyState
           icon="bell-check-outline"
           title="You’re all caught up"
-          subtitle="Donation updates and payout news will appear here."
+          subtitle="Activity you opt in to will appear here. Choose alerts and emails in Settings."
         />
       ) : (
         items.map((n) => (
@@ -51,6 +53,8 @@ export function OwnerNotifications({ showTitle = true }: { showTitle?: boolean }
               {n.read ? '' : ' · New'}
             </Text>
             <Text style={{ marginTop: 8, color: palette.textSecondary }}>{n.message}</Text>
+            {n.createdAt && <Text style={{ color: palette.textSecondary, marginTop: 8 }}>{new Date(n.createdAt).toLocaleString()}</Text>}
+            {n.path?.startsWith('/') && !n.path.startsWith('//') && <Button onPress={() => router.push(resolveNativePath(n.path!) as never)}>View details</Button>}
             {!n.read && (
               <Button
                 onPress={() => void markRead(n.id)}

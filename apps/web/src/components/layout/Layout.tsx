@@ -1,3 +1,4 @@
+import { AccountAgreementNotice } from '../auth/AccountAgreement'
 import { useEffect } from 'react'
 import Box from '@mui/material/Box'
 import { Outlet, useLocation } from 'react-router-dom'
@@ -31,6 +32,7 @@ export function Layout() {
       <Header />
       <Box component="main" sx={{ flex: 1 }}>
         <WebsiteRequestNotice />
+        <AccountAgreementNotice />
         <Box key={pathname} className="uf-page-enter">
           <Outlet />
         </Box>

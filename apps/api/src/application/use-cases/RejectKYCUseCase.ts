@@ -29,6 +29,8 @@ export class RejectKYCUseCase {
       );
     }
 
+    const reason = input.rejectionReason?.trim();
+    if (!reason || reason.length < 20 || reason.length > 1000) throw new AppError('Provide an applicant-facing reason of 20 to 1000 characters.', 422);
     const now = new Date();
     const updated: KYCVerificationRecord = {
       ...record,
@@ -36,9 +38,7 @@ export class RejectKYCUseCase {
       reviewedBy: adminId,
       reviewedAt: now,
       reviewNotes: input.reviewNotes ?? record.reviewNotes,
-      rejectionReason:
-        input.rejectionReason ??
-        'Documents did not meet verification requirements',
+      rejectionReason: reason,
       retryCount: record.retryCount + 1,
       updatedAt: now,
     };

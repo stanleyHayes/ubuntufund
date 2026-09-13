@@ -70,7 +70,7 @@ it('request → approval → OTP → provider success → admin and owner refres
   const email = `life-${randomUUID()}@example.com`
   const owner = await request(app)
     .post('/api/v1/auth/register')
-    .send({ email, password: 'SecurePass123', name: 'Owner' })
+    .send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email, password: 'SecurePass123', name: 'Owner' })
     .expect(201)
   const uid = owner.body.data.user.id,
     token = owner.body.data.tokens.accessToken

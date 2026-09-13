@@ -1,3 +1,4 @@
+import { isPublicCampaign } from '../../domain/services/campaignVisibility.js';
 import { CollaborationStatus, type CampaignCollaborator } from '@ubuntu-fund/types';
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js';
 import type { CollaborationRepositoryPort } from '../../domain/ports/outbound/CollaborationRepositoryPort.js';
@@ -10,9 +11,9 @@ export class ListCampaignCollaboratorsUseCase {
     private readonly collaborationRepo: CollaborationRepositoryPort
   ) {}
 
-  async execute(campaignId: string, requesterId?: string): Promise<CampaignCollaborator[]> {
+  async execute(campaignId: string, requesterId?: string, isAdmin = false): Promise<CampaignCollaborator[]> {
     const campaign = await this.campaignRepo.findById(campaignId);
-    if (!campaign) {
+    if (!campaign || (!isPublicCampaign(campaign.status) && campaign.creatorId !== requesterId && !isAdmin)) {
       throw new AppError('Campaign not found', 404);
     }
 

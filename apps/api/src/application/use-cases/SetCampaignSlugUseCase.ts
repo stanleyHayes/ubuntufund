@@ -1,3 +1,5 @@
+import type { UserRepositoryPort } from '../../domain/ports/outbound/UserRepositoryPort.js';
+import type { PublicationAdmissionPort } from '../../domain/ports/outbound/PublicationAdmissionPort.js';
 import type { Campaign } from '@ubuntu-fund/types';
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js';
 import type { CampaignEntity } from '../../domain/entities/Campaign.js';
@@ -38,12 +40,13 @@ function toDTO(entity: CampaignEntity): Campaign {
  * before being persisted.
  */
 export class SetCampaignSlugUseCase {
-  constructor(private readonly campaignRepo: CampaignRepositoryPort) {}
+  constructor(private readonly campaignRepo: CampaignRepositoryPort, private readonly admission?: PublicationAdmissionPort, private readonly userRepo?: UserRepositoryPort) {}
 
   async execute(
     campaignId: string,
     rawSlug: string,
-    requester: SetCampaignSlugRequester
+    requester: SetCampaignSlugRequester,
+    automatedReviewConsent = false
   ): Promise<Campaign> {
     const campaign = await this.campaignRepo.findById(campaignId);
     if (!campaign) {
@@ -73,8 +76,11 @@ export class SetCampaignSlugUseCase {
       if (existing && existing.id !== campaignId) {
         throw new AppError('That slug is already taken', 409);
       }
-      campaign.setSlug(slug);
-      const updated = await this.campaignRepo.update(campaign);
+      if (!this.admission) throw new AppError('Campaign safety review is unavailable', 503);
+      await this.admission.assertAllowed({ actorId: requester.userId, action: 'campaign.slug', resourceId: campaignId, baseVersion: campaign.slug, text: slug, mediaUrls: [], automatedReviewConsent });
+      if (!isOwner && (await this.userRepo?.findById(requester.userId))?.role !== 'admin') throw new AppError('Administrator access changed during review', 403);
+      const updated = await this.campaignRepo.setSlug(campaignId, campaign.slug, slug);
+      if (!updated) throw new AppError('The campaign URL changed while being reviewed. Reload and retry.', 409);
       return toDTO(updated);
     }
 

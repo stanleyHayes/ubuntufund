@@ -1,3 +1,5 @@
+import ExportMenu from '@/components/ExportMenu'
+import { exportTable, dateCell } from '@/lib/exports/report'
 import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import { useState, useEffect, useMemo } from 'react'
 import { Alert, Skeleton, Box, Typography, InputAdornment } from '@mui/material'
@@ -67,10 +69,11 @@ export default function NewsletterPage() {
         tone="green"
         eyebrow="Growth"
         title="Newsletter Subscribers"
-        lede="Everyone who signed up for Ujimora updates from the marketing site, newest first."
+        lede="Confirmed newsletter subscribers, newest first. Pending requests, withdrawn consent and legacy addresses without confirmation are excluded."
         icon={<MarkEmailReadRoundedIcon />}
         stats={[{ label: 'Total Subscribers', value: loading ? <Skeleton width={60} /> : error ? '—' : subscribers.length }]}
       />
+      <ExportMenu title="Newsletter" disabled={loading || error} getReport={() => ({ title: "Newsletter", filters: ['Confirmed subscribers', `Search: ${search || 'All'}`], tables: [exportTable("Newsletter", filtered, { ID: r => r.id, Email: r => r.email, 'Subscribed (UTC)': r => dateCell(r.createdAt), 'Confirmed (UTC)': r => dateCell(r.confirmedAt) })] })} />
 
       {error && <Alert severity="error" sx={{ mb: 3 }}>Could not load newsletter subscribers. Refresh the page to try again.</Alert>}
 
@@ -111,7 +114,7 @@ export default function NewsletterPage() {
         px: 3, py: 1.5, ...raisedSurface, mb: 2,
         bgcolor: 'background.paper',
       }}>
-        {['Email', 'Subscribed'].map((h) => (
+        {['Email', 'Confirmed'].map((h) => (
           <Typography key={h} sx={{ fontSize: '0.68rem', fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
             {h}
           </Typography>
@@ -152,7 +155,7 @@ export default function NewsletterPage() {
               {sub.email}
             </Typography>
             <Typography sx={{ ...insetSurface, px: 1.5, py: 1, fontSize: '0.78rem', color: 'text.secondary' }}>
-              {formatDate(sub.createdAt)}
+              {formatDate(sub.confirmedAt ?? sub.createdAt)}
             </Typography>
           </Box>
         ))

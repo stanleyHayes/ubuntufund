@@ -3,13 +3,14 @@ import { Button } from '@/components/Loading'
 import { BrandedTextInput as TextInput } from '@/components/BrandedTextInput'
 import { useState, useMemo } from 'react'
 import { View, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native'
-import { Text } from 'react-native-paper'
+import { Checkbox, Text } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Link, router, useLocalSearchParams } from 'expo-router'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
 import type { Palette, NeuRecipes } from '@/theme'
 import { OrganizationType } from '@ubuntu-fund/types'
 import {
+  LEGAL_ACCEPTANCE_VERSION,
   REFERRAL_CODE_MAX,
   normalizeReferralCode,
   referralCodeProblemMessage,
@@ -34,6 +35,8 @@ export default function RegisterScreen() {
   const p = usePalette()
   const styles = useStyles()
   const [accountType, setAccountType] = useState<AccountType>('individual')
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
+  const [ageConfirmed, setAgeConfirmed] = useState(false)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -42,6 +45,8 @@ export default function RegisterScreen() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  const [website, setWebsite] = useState('')
+  const [needsWebsite, setNeedsWebsite] = useState(false)
   const [orgName, setOrgName] = useState('')
   const [orgType, setOrgType] = useState<OrganizationType>(OrganizationType.NGO)
   const [registrationNumber, setRegistrationNumber] = useState('')
@@ -61,11 +66,13 @@ export default function RegisterScreen() {
 
   const handleRegister = async () => {
     setError('')
-    const payload: Record<string, string> = { name, email, password, country: 'Ghana' }
+    const payload: Parameters<typeof register>[0] = { name, email, password, country: 'Ghana', legalAcceptance: { version: LEGAL_ACCEPTANCE_VERSION, acceptedTerms, ageConfirmed } }
     const referral = normalizeReferralCode(referralCode)
     if (referral) payload.referralCode = referral
     if (accountType === 'organization') {
       payload.role = 'organization'
+      payload.website = website.trim() || undefined
+      payload.needsWebsite = !website.trim() && needsWebsite
       payload.organizationName = orgName
       payload.organizationType = orgType
       if (registrationNumber) payload.registrationNumber = registrationNumber
@@ -84,6 +91,7 @@ export default function RegisterScreen() {
 
   const passwordsMatch = password === confirmPassword
   const canSubmit =
+    acceptedTerms && ageConfirmed &&
     name &&
     email &&
     password.length >= 8 &&
@@ -188,6 +196,12 @@ export default function RegisterScreen() {
                 activeOutlineColor={p.primary}
                 disabled={loading}
               />
+
+              <TextInput label="Website (optional)" value={website} onChangeText={value => { setWebsite(value); if (value.trim()) setNeedsWebsite(false) }} autoCapitalize="none" keyboardType="url" disabled={loading} style={styles.input} />
+              {!website.trim() && <>
+                <Checkbox.Item label="Does your organization need a website?" status={needsWebsite ? 'checked' : 'unchecked'} onPress={() => setNeedsWebsite(value => !value)} disabled={loading} />
+                <Text style={{ color: p.textSecondary, marginBottom: 16 }}>Optional. Request contact from our parent company, Neurodyne Corp Ltd, about a website for your organization. You can withdraw this request after signing in.</Text>
+              </>}
 
               <Pressable onPress={() => setShowOrgTypePicker(!showOrgTypePicker)}>
                 <TextInput
@@ -335,6 +349,9 @@ export default function RegisterScreen() {
             </Text>
           </View>
 
+          <Checkbox.Item label="I agree to the Terms of Use and Acceptable Use Policy and have read the Privacy Notice." status={acceptedTerms ? 'checked' : 'unchecked'} onPress={() => setAcceptedTerms(!acceptedTerms)} labelStyle={{ color: p.text }} />
+          <Checkbox.Item label="I confirm that I am at least 18 years old." status={ageConfirmed ? 'checked' : 'unchecked'} onPress={() => setAgeConfirmed(!ageConfirmed)} labelStyle={{ color: p.text }} />
+          <Button onPress={() => router.push('/acceptable-use')}>Read Acceptable Use Policy</Button>
           <Button
             mode="contained"
             onPress={handleRegister}
@@ -350,7 +367,7 @@ export default function RegisterScreen() {
           </Button>
 
           <Text style={styles.terms}>
-            By creating an account, you agree to our{' '}
+            Read our{' '}
             <Text style={styles.termsLink} onPress={() => router.push('/terms')}>Terms of Service</Text>
             {' '}and{' '}
             <Text style={styles.termsLink} onPress={() => router.push('/privacy')}>Privacy Policy</Text>

@@ -1,3 +1,5 @@
+import { HandleCryptoWebhookUseCase } from '../../src/application/use-cases/HandleCryptoWebhookUseCase.js';
+import { MockCryptoProvider } from '../../src/infrastructure/adapters/outbound/crypto/MockCryptoProvider.js';
 import { createHmac, randomUUID } from 'node:crypto';
 
 // The crypto rail reads its config at app-construction time, so these must be
@@ -38,7 +40,7 @@ function sign(rawBody: string): string {
 async function registerUser(app: Express, email: string) {
   const res = await request(app)
     .post('/api/v1/auth/register')
-    .send({ email, password: 'SecurePass123', name: 'Crypto Creator' })
+    .send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email, password: 'SecurePass123', name: 'Crypto Creator' })
     .expect(201);
   return {
     userId: res.body.data.user.id as string,
@@ -79,8 +81,11 @@ async function quoteAndDeposit(app: Express, campaignId: string) {
 
   const depRes = await request(app)
     .post(`/api/v1/campaigns/${campaignId}/donations/crypto`)
-    .send({ quoteId: quote.quoteId, donorEmail: 'fan@example.com', donorName: 'Crypto Fan' })
+    .send({ quoteId: quote.quoteId, donorEmail: 'fan@example.com', donorName: 'Crypto Fan', message: 'Best wishes for the project.', legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true } })
     .expect(201);
+  const agreementIntent = await DonationIntentModel.findById(depRes.body.data.donationIntentId);
+  expect(agreementIntent?.messageAgreement?.version).toBe('2026-09-12');
+  expect(agreementIntent?.messageAgreement?.acceptedAt).toBeInstanceOf(Date);
   return depRes.body.data as {
     donationIntentId: string;
     providerRef: string;
@@ -147,6 +152,11 @@ describe('Crypto donations — stablecoin rail (mock provider)', () => {
     expect(intent?.originalCurrency).toBe('USDT');
     expect(intent?.transactionHash).toBe('0xabc123');
     expect(intent?.fxRate).toBe(10.8);
+    const feedback = await request(app).get(`/api/v1/donation-intents/${deposit.donationIntentId}/public`).expect(200);
+    expect(feedback.body.data).toMatchObject({ status: 'SUCCEEDED', contentReviewStatus: 'pending' });
+    expect(feedback.headers['cache-control']).toContain('no-store');
+    expect(JSON.stringify(feedback.body.data)).not.toMatch(/Crypto Fan|Best wishes|fan@example/);
+
 
     // Campaign raised = the locked GHS amount (1,080), never a re-quoted rate.
     campaign = await request(app).get(`/api/v1/campaigns/${campaignId}`).expect(200);
@@ -213,7 +223,47 @@ describe('Crypto donations — stablecoin rail (mock provider)', () => {
       .expect(400);
   });
 
-  it('reconciliation settles a missed-webhook deposit and cannot double-credit', async () => {
+  it('continues after a deposit application error and retries without duplicating successful credit', async () => {
+    const { userId, token } = await registerUser(app, uniqueEmail('partial-recovery'));
+    const campaignId = await createActiveCampaign(app, token, userId);
+    const first = await quoteAndDeposit(app, campaignId);
+    const second = await quoteAndDeposit(app, campaignId);
+    await DonationIntentModel.updateMany({ _id: { $in: [first.donationIntentId, second.donationIntentId] } }, { $set: { updatedAt: new Date(Date.now() - 3600000) } }, { timestamps: false });
+    await UserModel.updateOne({ _id: userId }, { $set: { role: 'admin' } });
+    const original = HandleCryptoWebhookUseCase.prototype.applyEvent;
+    const apply = vi.spyOn(HandleCryptoWebhookUseCase.prototype, 'applyEvent').mockImplementation(async function (this: HandleCryptoWebhookUseCase, intent, event) {
+      if (intent.id === first.donationIntentId) throw new Error('Fixture settlement unavailable');
+      return original.call(this, intent, event);
+    });
+    try {
+      const result = await request(app).post('/api/v1/admin/crypto/reconcile').set('Authorization', `Bearer ${token}`).send({ olderThanMinutes: 1 }).expect(200);
+      expect(result.body.data.errored).toBeGreaterThanOrEqual(1);
+      expect((await DonationIntentModel.findById(second.donationIntentId))?.status).toBe('SUCCEEDED');
+      expect((await DonationIntentModel.findById(first.donationIntentId))?.status).not.toBe('SUCCEEDED');
+      expect((await CampaignModel.findById(campaignId))?.raisedAmount).toBe(1080);
+    } finally { apply.mockRestore(); }
+    await request(app).post('/api/v1/admin/crypto/reconcile').set('Authorization', `Bearer ${token}`).send({ olderThanMinutes: 1 }).expect(200);
+    expect((await DonationIntentModel.findById(first.donationIntentId))?.status).toBe('SUCCEEDED');
+    expect((await CampaignModel.findById(campaignId))?.raisedAmount).toBe(2160);
+  });
+
+  it('does not report settlement before required crypto confirmations', async () => {
+    const { userId, token } = await registerUser(app, uniqueEmail('finality-summary'));
+    const campaignId = await createActiveCampaign(app, token, userId);
+    const deposit = await quoteAndDeposit(app, campaignId);
+    await DonationIntentModel.updateOne({ _id: deposit.donationIntentId }, { $set: { requiredConfirmations: 20, updatedAt: new Date(Date.now() - 3600000) } }, { timestamps: false });
+    await UserModel.updateOne({ _id: userId }, { $set: { role: 'admin' } });
+    const provider = vi.spyOn(MockCryptoProvider.prototype, 'getDeposit').mockResolvedValue({ status: 'confirmed', confirmations: 1 });
+    try {
+      const result = await request(app).post('/api/v1/admin/crypto/reconcile').set('Authorization', `Bearer ${token}`).send({ olderThanMinutes: 1 }).expect(200);
+      expect(result.body.data.settled).toBe(0);
+      expect(result.body.data.detected).toBeGreaterThanOrEqual(1);
+      expect((await DonationIntentModel.findById(deposit.donationIntentId))?.status).toBe('PROCESSING');
+      expect((await CampaignModel.findById(campaignId))?.raisedAmount).toBe(0);
+    } finally { provider.mockRestore(); }
+  });
+
+  it('reconciliation settles an existing deposit while new crypto intake is disabled without double-credit', async () => {
     const { userId, token } = await registerUser(app, uniqueEmail('crec'));
     const campaignId = await createActiveCampaign(app, token, userId);
     const deposit = await quoteAndDeposit(app, campaignId);
@@ -226,11 +276,21 @@ describe('Crypto donations — stablecoin rail (mock provider)', () => {
     );
 
     // An admin runs the crypto reconciliation sweep → provider reports confirmed.
-    const admReg = await request(app).post('/api/v1/auth/register').send({ email: uniqueEmail('cadm'), password: 'SecurePass123', name: 'Adm' }).expect(201);
+    const admReg = await request(app).post('/api/v1/auth/register').send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email: uniqueEmail('cadm'), password: 'SecurePass123', name: 'Adm' }).expect(201);
     await UserModel.findByIdAndUpdate(admReg.body.data.user.id, { role: 'admin' });
     const admLogin = await request(app).post('/api/v1/auth/login').send({ email: admReg.body.data.user.email, password: 'SecurePass123' }).expect(200);
     const adminToken = admLogin.body.data.tokens.accessToken as string;
 
+    const { config } = await import('../../src/infrastructure/config/index.js');
+    const wasEnabled = config.crypto.enabled;
+    config.crypto.enabled = false;
+    try {
+      const assets = await request(app).get('/api/v1/payments/crypto/assets').expect(200);
+      expect(assets.body.data).toMatchObject({ enabled: false, assets: [] });
+      await request(app).post(`/api/v1/campaigns/${campaignId}/donations/crypto/quote`)
+        .send({ fiatAmount: 1080, asset: 'USDT', network: 'TRON' }).expect(400);
+      await request(app).post(`/api/v1/campaigns/${campaignId}/donations/crypto`)
+        .send({ quoteId: 'disabled-quote', donorEmail: 'fixture@example.com' }).expect(400);
     const first = await request(app)
       .post('/api/v1/admin/crypto/reconcile')
       .set('Authorization', `Bearer ${adminToken}`)
@@ -249,5 +309,6 @@ describe('Crypto donations — stablecoin rail (mock provider)', () => {
       .expect(200);
     campaign = await request(app).get(`/api/v1/campaigns/${campaignId}`).expect(200);
     expect(campaign.body.data.raisedAmount).toBe(1080);
+    } finally { config.crypto.enabled = wasEnabled; }
   });
 });

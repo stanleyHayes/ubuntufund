@@ -1,7 +1,9 @@
+import { PublicationConsent } from '../../src/components/PublicationConsent'
+import { PublicationReviews } from '../../src/components/PublicationReviews'
 import { CampaignCashout } from '@/components/CampaignCashout'
 import { useAuth } from '@/context/AuthContext'
 import { SignInRequired } from '@/components/SignInRequired'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { View, ScrollView, KeyboardAvoidingView, Platform } from 'react-native'
 import { Text, Snackbar, Switch, ProgressBar } from 'react-native-paper'
 import { Stack, router } from 'expo-router'
@@ -20,11 +22,18 @@ interface Allocation { name: string; email: string; percent: string }
 const labels = ['Basics', 'Story and media', 'Goal and timeline', 'Review']
 export default function CreateCampaignScreen() {
   const { user } = useAuth()
+  return <CampaignFormForViewer key={user?.id ?? 'guest'} />
+}
+function CampaignFormForViewer() {
+  const live = useRef(true)
+  useEffect(() => { live.current = true; return () => { live.current = false } }, [])
+  const { user } = useAuth()
   const p = usePalette(); const neu = useNeu()
   const [options, setOptions] = useState<Options | null>(null)
   const [loadError, setLoadError] = useState('')
   const [retry, setRetry] = useState(0)
   const [step, setStep] = useState(0)
+  const [automatedReviewConsent, setAutomatedReviewConsent] = useState(false)
   const [title, setTitle] = useState('')
   const [summary, setSummary] = useState('')
   const [description, setDescription] = useState('')
@@ -60,10 +69,12 @@ export default function CreateCampaignScreen() {
     if (!options?.canCreate || created) return
     setBusy(true); setError('')
     try {
-      const campaign = await api.post<{ id: string; status: string }>('/campaigns', { title: title.trim(), summary: summary.trim(), description: description.trim(), category, priority, beneficiaries: beneficiaries.split(',').map(s => s.trim()).filter(Boolean), imageUrls: cover ? [cover] : [], goalAmount: Number(amount), currency: 'GHS', endDate: new Date(end).toISOString() })
+      const campaign = await api.post<{ id: string; status: string }>('/campaigns', { automatedReviewConsent, title: title.trim(), summary: summary.trim(), description: description.trim(), category, priority, beneficiaries: beneficiaries.split(',').map(s => s.trim()).filter(Boolean), imageUrls: cover ? [cover] : [], goalAmount: Number(amount), currency: 'GHS', endDate: new Date(end).toISOString() })
+      if (!live.current) return
       setCreated(campaign)
       const failures: string[] = []
-      for (const email of emails) { try { await api.post(`/campaigns/${campaign.id}/collaborators/invite`, { userEmail: email, role: 'editor', revenueSharePercent: 0 }) } catch (e) { failures.push(`${email}: ${e instanceof Error ? e.message : 'Invitation failed'}`) } }
+      for (const email of emails) { if (!live.current) return; try { await api.post(`/campaigns/${campaign.id}/collaborators/invite`, { userEmail: email, role: 'editor', revenueSharePercent: 0 }) } catch (e) { failures.push(`${email}: ${e instanceof Error ? e.message : 'Invitation failed'}`) } }
+      if (!live.current) return
       if (split) { try { await api.post(`/campaigns/${campaign.id}/split`, { allocations: allocations.map(a => ({ name: a.name.trim(), email: a.email.trim(), shareBps: Math.round(Number(a.percent) * 100) })) }) } catch (e) { failures.push(`Split draft: ${e instanceof Error ? e.message : 'Could not save'}`) } }
       setSetupErrors(failures)
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not create campaign.') }
@@ -82,6 +93,7 @@ export default function CreateCampaignScreen() {
           {step === 0 && <><TextInput label="Campaign title" value={title} onChangeText={setTitle} maxLength={200} /><TextInput label="One-line summary" value={summary} onChangeText={setSummary} maxLength={140} /><SelectionField label="Category" value={category} options={Object.values(CampaignCategory).map(value => ({ value, label: value }))} onChange={v => setCategory(v as CampaignCategory)} /></>}
           {step === 1 && <><TextInput label="Your story" value={description} onChangeText={setDescription} multiline maxLength={5000} /><AiWritingAssistant text={description} onApply={setDescription} /><TextInput label="Beneficiaries (comma-separated)" value={beneficiaries} onChangeText={setBeneficiaries} />{options.plan.maxMediaPerCampaign !== 0 && <MediaUploadField label="Campaign cover" folder="campaigns" value={cover} onChange={setCover} crop aspect={[16, 9]} onBusyChange={setUploading} />}</>}
           {step === 2 && <>
+            <Text>Goals above GHS 250,000 need staff approval unless you have current approved identity verification (business verification for organizations) and an earlier published campaign. Plan, compliance and content-safety checks still apply.</Text>
             <Text>{options.plan.name} · {options.maxGoal === null ? 'No plan goal ceiling' : `Current goal limit: GH₵${options.maxGoal.toLocaleString()}`}</Text><Text>Account compliance limits may be lower than plan limits. Upgrading does not override a compliance cap.</Text>
             <TextInput label="Goal (GHS)" keyboardType="decimal-pad" value={amount} onChangeText={setAmount} /><BrandedDateField label="Campaign end date" value={end} onChange={setEnd} />
             <SelectionField label="Urgency" value={priority} options={Object.values(CampaignPriority).map(value => ({ value, label: value }))} onChange={v => setPriority(v as CampaignPriority)} />
@@ -90,7 +102,7 @@ export default function CreateCampaignScreen() {
             {split && allocations.map((a, i) => <View key={i} style={{ gap: 8 }}><Text>Beneficiary {i + 1}</Text>{(['name', 'email', 'percent'] as const).map(key => <TextInput key={key} label={key === 'percent' ? 'Share (%)' : key} value={a[key]} keyboardType={key === 'percent' ? 'decimal-pad' : key === 'email' ? 'email-address' : 'default'} onChangeText={v => setAllocations(rows => rows.map((row, index) => index === i ? { ...row, [key]: v } : row))} />)}<Button onPress={() => setAllocations(rows => rows.filter((_, index) => index !== i))}>Remove recipient</Button></View>)}
             {split && <Button onPress={() => setAllocations(rows => [...rows, { name: '', email: '', percent: '' }])}>Add recipient</Button>}
           </>}
-          {step === 3 && <><Text variant="titleLarge">{title}</Text><Text>{summary}</Text><Text>{description}</Text><Text>Goal: GH₵{amount} · Ends {end}</Text><Text>Category: {category} · Urgency: {priority}</Text><Text>Beneficiaries: {beneficiaries}</Text><Text>Review everything before submitting. Your campaign follows the platform review process.</Text></>}
+          {step === 3 && <><Text variant="titleLarge">{title}</Text><Text>{summary}</Text><Text>{description}</Text><Text>Goal: GH₵{amount} · Ends {end}</Text><Text>Category: {category} · Urgency: {priority}</Text><Text>Beneficiaries: {beneficiaries}</Text><Text>Safety checks and financial approval apply separately. Goals above GH₵250,000 need staff financial approval unless you are currently verified and have a previous published campaign.</Text><PublicationConsent value={automatedReviewConsent} onChange={setAutomatedReviewConsent} />{error && <PublicationReviews />}</>}
         </View>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>{step > 0 && <Button disabled={busy || uploading} onPress={() => setStep(s => s - 1)}>Back</Button>}<Button mode="contained" loading={busy} disabled={busy || uploading} onPress={step === 3 ? () => void submit() : () => { const issue = validate(step); if (issue) setError(issue); else { setError(''); setStep(s => s + 1) } }}>{step === 3 ? 'Create campaign' : 'Continue'}</Button></View>
       </>}

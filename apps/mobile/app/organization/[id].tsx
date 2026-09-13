@@ -1,9 +1,10 @@
+import { usePublicRead } from '@/hooks/usePublicRead'
 import { Chip } from '@/components/Chip'
 import { SkeletonLoader, Button } from '@/components/Loading'
 import { useCallback, useMemo, useState } from 'react'
 import { ScrollView, StyleSheet, View, Image, Share, Linking } from 'react-native'
 import { Icon, Text } from 'react-native-paper'
-import { Stack, useLocalSearchParams, router, useFocusEffect } from 'expo-router'
+import { Stack, useLocalSearchParams, router } from 'expo-router'
 import type { Campaign, CampaignCategory } from '@ubuntu-fund/types'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
@@ -36,37 +37,24 @@ export default function OrganizationProfileScreen() {
   const { user } = useAuth()
   const p = usePalette()
   const styles = useStyles()
-  const [organization, setOrganization] = useState<OrganizationDetail | null>(null)
-  const [campaigns, setCampaigns] = useState<Campaign[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  const load = useCallback(async () => {
-    if (!id) return
-    setLoading(true)
-    setError(null)
-    try {
-      const detail = await api.get<OrganizationDetail>(`/organizations/${id}`)
-      const campaignList = await api.get<Campaign[]>(`/organizations/${detail.id}/campaigns`)
-      setOrganization(detail)
-      setCampaigns(Array.isArray(campaignList) ? campaignList : [])
-    } catch (loadError) {
-      setOrganization(null)
-      setCampaigns([])
-      setError(loadError instanceof Error ? loadError.message : 'Unable to load organization.')
-    } finally {
-      setLoading(false)
-    }
+  const [actionError, setError] = useState<string | null>(null)
+  const fetchOrganization = useCallback(async () => {
+    if (!id) throw new Error('Organization not found')
+    const organization = await api.get<OrganizationDetail>(`/organizations/${id}`)
+    const campaigns = await api.get<Campaign[]>(`/organizations/${organization.id}/campaigns`)
+    return { organization, campaigns: Array.isArray(campaigns) ? campaigns : [] }
   }, [id])
-
-  useFocusEffect(useCallback(() => { void load() }, [load]))
+  const { data, loading, error: loadError, refresh: load } = usePublicRead(`organization:${id}`, fetchOrganization)
+  const organization = data?.organization ?? null
+  const campaigns = data?.campaigns ?? []
+  const error = loadError ?? actionError
 
   if (loading) {
     return <View style={styles.center}><Stack.Screen options={{ title: 'Organization' }} /><SkeletonLoader size="large" /></View>
   }
 
   if (!organization) {
-    return <View style={styles.center}><EmptyState variant="error" icon="office-building-remove-outline" title={error || 'Organization not found'} ctaLabel="Retry" onCtaPress={load} /></View>
+    return <View style={styles.center}><Stack.Screen options={{ title: 'Organization' }} /><EmptyState variant="error" icon="office-building-remove-outline" title={error || 'Organization not found'} ctaLabel="Retry" onCtaPress={load} /></View>
   }
 
   return (

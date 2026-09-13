@@ -1,4 +1,9 @@
-import { useState, useEffect } from 'react'
+import Checkbox from '@mui/material/Checkbox'
+import FormControlLabel from '@mui/material/FormControlLabel'
+import ExportMenu from '@/components/ExportMenu'
+import { exportTable } from '@/lib/exports/report'
+import { MfaSettings } from '@ubuntu-fund/ui'
+import { useState, useEffect, useRef } from 'react'
 import Skeleton from '@mui/material/Skeleton'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
@@ -110,7 +115,16 @@ const inputSx = {
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function AdminProfilePage() {
-  const { user, updateName } = useAuth()
+  const { user } = useAuth()
+  return <AdminProfileForViewer key={user?.id ?? 'guest'} />
+}
+function AdminProfileForViewer() {
+  const live = useRef(true)
+  useEffect(() => { live.current = true; return () => { live.current = false } }, [])
+  const [automatedReviewConsent, setAutomatedReviewConsent] = useState(false)
+  const [identityError, setIdentityError] = useState('')
+  const savedIdentity = useRef({ name: '', country: '' })
+  const { user, updateName, replaceTokens } = useAuth()
 
   // Profile fields
   const [name, setName] = useState(user?.name ?? '')
@@ -146,6 +160,7 @@ export default function AdminProfilePage() {
     api.get<{ name: string; email: string; phone?: string; country?: string; bio?: string; language?: string; notificationPreferences?: { email?: boolean; push?: boolean } }>('/profile')
       .then(profile => {
         if (!active) return
+        savedIdentity.current = { name: profile.name, country: profile.country ?? '' }
         setName(profile.name); setEmail(profile.email); setPhone(profile.phone ?? '')
         setCountry(profile.country ?? ''); setBio(profile.bio ?? '')
         setLanguage(profile.language ?? 'en')
@@ -158,13 +173,17 @@ export default function AdminProfilePage() {
   }, [revision])
 
   async function handleSaveProfile() {
-    setSaving(true)
+    setSaving(true); setIdentityError('')
     try {
-      const result = await api.put<{ name: string }>('/profile', { name: name.trim(), phone: phone.trim(), ...(country.trim() ? { country: country.trim() } : {}), bio: bio.trim() })
+      const result = await api.put<{ name: string }>('/profile', { ...(name.trim() !== savedIdentity.current.name ? { name: name.trim() } : {}), phone: phone.trim(), ...(country.trim() && country.trim() !== savedIdentity.current.country ? { country: country.trim() } : {}), bio: bio.trim(), automatedReviewConsent })
+      if (!live.current) return
+      savedIdentity.current = { name: result.name, country: country.trim() || savedIdentity.current.country }
       setName(result.name)
       updateName(result.name)
       setSnack({ open: true, message: 'Profile updated successfully', severity: 'success' })
     } catch (error) {
+      if (!live.current) return
+      setIdentityError(error instanceof Error ? error.message : 'Failed to update profile')
       setSnack({ open: true, message: error instanceof Error ? error.message : 'Failed to update profile', severity: 'error' })
     } finally {
       setSaving(false)
@@ -241,6 +260,7 @@ export default function AdminProfilePage() {
           />
         }
       />
+      <ExportMenu title="My profile" getReport={() => ({ title: 'Administrator profile', tables: [exportTable('Account', user ? [user] : [], { ID: r => r.id, Name: r => r.name, Email: r => r.email, Role: r => r.role })] })} />
 
       <Grid container spacing={3}>
         {/* ─── Personal Information ─── */}
@@ -329,6 +349,9 @@ export default function AdminProfilePage() {
                 placeholder="A short bio about yourself..."
                 sx={inputSx}
               />
+              <FormControlLabel control={<Checkbox checked={automatedReviewConsent} onChange={event => setAutomatedReviewConsent(event.target.checked)} />} label="Use OpenAI to check this public identity (optional)" />
+              <Typography variant="body2">Only the proposed public name, country and images are reviewed. Phone numbers and biography are excluded. Without permission, staff review the identity.</Typography>
+              {identityError && <Alert severity="error">{identityError} After approval, save the same version here. <Button href="/publication-reviews" target="_blank" rel="noopener noreferrer">Open review queue in a new tab</Button></Alert>}
               <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
                 <Button
                   variant="contained"
@@ -349,6 +372,7 @@ export default function AdminProfilePage() {
           </SectionCard>
         </Grid>
 
+        <Grid size={{ xs: 12 }}><SectionCard icon={<LockRoundedIcon />} title="Account Protection" color="#5E8F72"><Box sx={{ p: 3 }}><MfaSettings key={user?.id} client={api} onTokens={tokens => replaceTokens(tokens, user?.id ?? '')} /></Box></SectionCard></Grid>
         {/* ─── Change Password ─── */}
         <Grid size={{ xs: 12, lg: 6 }}>
           <SectionCard icon={<LockRoundedIcon />} title="Change Password" color="#C06B58" delay={0.1}>

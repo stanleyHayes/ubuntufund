@@ -1,0 +1,57 @@
+import { createReviewedTip } from '../helpers/reviewedTip.js';
+import { randomUUID } from 'node:crypto';
+import { beforeAll, afterAll, it, expect } from 'vitest';
+import request from 'supertest';
+import type { Express } from 'express';
+import { createTestApp } from '../helpers/testApp.js';
+import { connectTestDatabase, disconnectTestDatabase, dropTestDatabase } from '../helpers/testDatabase.js';
+import { UserModel } from '../../src/infrastructure/database/models/UserModel.js';
+import { CreatorProfileModel } from '../../src/infrastructure/database/models/CreatorProfileModel.js';
+import { TipModel } from '../../src/infrastructure/database/models/TipModel.js';
+import { ContentRestrictionModel } from '../../src/infrastructure/database/models/ContentRestrictionModel.js';
+let app: Express;
+beforeAll(async () => { await connectTestDatabase(); app = await createTestApp(); });
+afterAll(async () => { await dropTestDatabase(); await disconnectTestDatabase(); });
+async function account() {
+  const response = await request(app).post('/api/v1/auth/register').send({ email: `${randomUUID()}@example.com`, password: 'SecurePass123', name: 'Supporter fixture', legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true } }).expect(201);
+  return { id: response.body.data.user.id as string, auth: `Bearer ${response.body.data.tokens.accessToken}` };
+}
+it('hides restricted, closed and blocked supporter snapshots without altering financial totals or tip records', async () => {
+  const owner = await account(), supporter = await account(), viewer = await account();
+  const handle = `creator-${randomUUID()}`;
+  await CreatorProfileModel.create({ userId: owner.id, handle, displayName: 'Public creator' });
+  const tip = await createReviewedTip({ creatorUserId: owner.id, supporterUserId: supporter.id, supporterName: 'Saved supporter name', supporterEmail: 'private@example.com', message: 'Saved supporter message', amount: 100, currency: 'GHS', netAmount: 90, status: 'SUCCEEDED', isAnonymous: false });
+  const path = `/api/v1/creators/${handle}`;
+  const before = (await request(app).get(path).expect(200)).body.data;
+  expect(before.recentTips[0]).toMatchObject({ id: tip.id, supporterName: 'Saved supporter name' });
+  expect(before.recentTips[0]).not.toHaveProperty('supporterEmail');
+  expect(before.recentTips[0]).not.toHaveProperty('supporterUserId');
+  await request(app).put(`/api/v1/safety/blocks/${supporter.id}`).set('Authorization', viewer.auth).expect(200);
+  expect((await request(app).get(path).set('Authorization', viewer.auth).expect(200)).body.data.recentTips).toEqual([]);
+  expect((await request(app).get(path).expect(200)).body.data.recentTips).toHaveLength(1);
+  await ContentRestrictionModel.create({ userId: supporter.id, restrictedBy: owner.id, reason: 'Supporter public identity restriction' });
+  const hidden = (await request(app).get(path).expect(200)).body.data;
+  expect(hidden.recentTips).toEqual([]);
+  expect(hidden.supporterCount).toBe(before.supporterCount);
+  expect(hidden.totalReceived).toBe(before.totalReceived);
+  expect((await TipModel.findById(tip.id))?.message).toBe('Saved supporter message');
+  await ContentRestrictionModel.deleteOne({ userId: supporter.id });
+  expect((await request(app).get(path).expect(200)).body.data.recentTips).toHaveLength(1);
+  await UserModel.updateOne({ _id: supporter.id }, { $set: { deletedAt: new Date() } });
+  expect((await request(app).get(path).expect(200)).body.data.recentTips).toEqual([]);
+  await ContentRestrictionModel.create({ userId: owner.id, restrictedBy: viewer.id, reason: 'Creator public identity restriction' });
+  await request(app).get(path).expect(404);
+});
+it('preserves anonymous and guest support without revealing linked account or contact details', async () => {
+  const owner = await account(), supporter = await account();
+  const handle = `creator-${randomUUID()}`;
+  await CreatorProfileModel.create({ userId: owner.id, handle, displayName: 'Public creator' });
+  await createReviewedTip({ creatorUserId: owner.id, supporterUserId: supporter.id, supporterName: 'Private anonymous identity', supporterEmail: 'secret@example.com', amount: 25, currency: 'GHS', status: 'SUCCEEDED', isAnonymous: true });
+  await createReviewedTip({ creatorUserId: owner.id, supporterName: 'Guest alias', supporterEmail: 'guest@example.com', amount: 15, currency: 'GHS', status: 'SUCCEEDED', isAnonymous: false });
+  const response = await request(app).get(`/api/v1/creators/${handle}`).expect(200);
+  expect(response.body.data.recentTips.map((tip: { supporterName: string }) => tip.supporterName).sort()).toEqual(['Anonymous', 'Guest alias']);
+  const serialized = JSON.stringify(response.body.data.recentTips);
+  expect(serialized).not.toContain(supporter.id);
+  expect(serialized).not.toContain('Private anonymous identity');
+  expect(serialized).not.toContain('@example.com');
+});

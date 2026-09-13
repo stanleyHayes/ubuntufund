@@ -1,3 +1,6 @@
+import type { KYCRepositoryPort } from '../../domain/ports/outbound/KYCRepositoryPort.js';
+import type { PublicProfileVisibilityPort } from '../../domain/ports/outbound/PublicProfileVisibilityPort.js';
+import { isPublicCampaign } from '../../domain/services/campaignVisibility.js';
 import type { Campaign, CampaignCategory } from '@ubuntu-fund/types';
 import { VerificationLevel } from '@ubuntu-fund/types';
 import type { OrganizationRepositoryPort } from '../../domain/ports/outbound/OrganizationRepositoryPort.js';
@@ -11,7 +14,6 @@ import { AppError } from '../../infrastructure/adapters/inbound/middleware/error
 export interface OrganizationSummary {
   id: string;
   name: string;
-  email: string;
   country: string;
   verified: boolean;
   avatarUrl?: string;
@@ -37,17 +39,12 @@ export interface OrganizationDetail extends OrganizationSummary {
 
 const DEFAULT_CURRENCY = 'GHS';
 
-function isVerified(record: OrganizationRecord): boolean {
-  return record.verificationLevel >= VerificationLevel.INSTITUTIONAL;
-}
-
-function toSummary(record: OrganizationRecord): OrganizationSummary {
+function toSummary(record: OrganizationRecord, verified: boolean): OrganizationSummary {
   return {
     id: record.id,
     name: record.name,
-    email: record.email,
     country: record.country ?? '',
-    verified: isVerified(record),
+    verified,
     avatarUrl: record.avatarUrl,
     createdAt: record.createdAt,
   };
@@ -78,21 +75,33 @@ function toCampaignDTO(entity: CampaignEntity): Campaign {
 export class GetOrganizationUseCase {
   constructor(
     private readonly organizationRepo: OrganizationRepositoryPort,
-    private readonly campaignRepo: CampaignRepositoryPort
+    private readonly campaignRepo: CampaignRepositoryPort,
+    private readonly visibility: PublicProfileVisibilityPort,
+    private readonly kycRepo: KYCRepositoryPort
   ) {}
 
-  async list(): Promise<OrganizationSummary[]> {
-    const records = await this.organizationRepo.findAll();
-    return records.map(toSummary);
+  private async isVerified(record: OrganizationRecord): Promise<boolean> {
+    if (record.verificationLevel < VerificationLevel.INSTITUTIONAL) return false;
+    const latest = (await this.kycRepo.findByUserId(record.id))
+      .filter(review => review.verificationType === 'business')
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() || b.id.localeCompare(a.id))[0];
+    const expiry = latest?.expiryDate ? new Date(latest.expiryDate).getTime() : NaN;
+    return latest?.status === 'approved' && Number.isFinite(expiry) && expiry > Date.now();
   }
 
-  async getBySlugOrId(slugOrId: string): Promise<OrganizationDetail> {
+  async list(viewerId?: string): Promise<OrganizationSummary[]> {
+    const records = await this.organizationRepo.findAll();
+    const hidden = await this.visibility.hiddenUserIds(records.map(record => record.id), viewerId);
+    return Promise.all(records.filter(record => !hidden.has(record.id)).map(async record => toSummary(record, await this.isVerified(record))));
+  }
+
+  async getBySlugOrId(slugOrId: string, viewerId?: string): Promise<OrganizationDetail> {
     const record = await this.organizationRepo.findBySlugOrId(slugOrId);
-    if (!record) {
+    if (!record || (await this.visibility.hiddenUserIds([record.id], viewerId)).has(record.id)) {
       throw new AppError('Organization not found', 404);
     }
 
-    const campaigns = await this.campaignRepo.findByCreatorId(record.id);
+    const campaigns = (await this.campaignRepo.findByCreatorId(record.id)).filter(campaign => isPublicCampaign(campaign.status));
     const currency = campaigns[0]?.toPlain().goalAmount.currency ?? DEFAULT_CURRENCY;
     const totalRaised = campaigns.reduce(
       (sum, c) => sum + c.toPlain().raisedAmount.amount,
@@ -102,7 +111,7 @@ export class GetOrganizationUseCase {
       ...new Set(campaigns.map((c) => c.toPlain().category)),
     ];
 
-    const summary = toSummary(record);
+    const summary = toSummary(record, await this.isVerified(record));
 
     return {
       ...summary,
@@ -125,13 +134,13 @@ export class GetOrganizationUseCase {
     };
   }
 
-  async getCampaigns(organizationId: string): Promise<Campaign[]> {
+  async getCampaigns(organizationId: string, viewerId?: string): Promise<Campaign[]> {
     const record = await this.organizationRepo.findById(organizationId);
-    if (!record) {
+    if (!record || (await this.visibility.hiddenUserIds([record.id], viewerId)).has(record.id)) {
       throw new AppError('Organization not found', 404);
     }
 
-    const campaigns = await this.campaignRepo.findByCreatorId(organizationId);
+    const campaigns = (await this.campaignRepo.findByCreatorId(organizationId)).filter(campaign => isPublicCampaign(campaign.status));
     return campaigns.map(toCampaignDTO);
   }
 }

@@ -46,7 +46,7 @@ function sign(rawBody: string): string {
 async function registerUser(app: Express, email: string) {
   const res = await request(app)
     .post('/api/v1/auth/register')
-    .send({ email, password: 'SecurePass123', name: 'Test User' })
+    .send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email, password: 'SecurePass123', name: 'Test User' })
     .expect(201);
   return {
     userId: res.body.data.user.id as string,
@@ -93,6 +93,7 @@ async function openPaystackCheckout(
       provider: 'paystack',
       donorEmail: overrides.donorEmail ?? 'guest@example.com',
       donorName: 'Generous Guest',
+      legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true },
       isAnonymous: false,
     });
   return res;
@@ -239,6 +240,8 @@ describe('Paystack Integration', () => {
     // Intent settled.
     const publicRes = await request(app).get(`/api/v1/donation-intents/${intentId}/public`);
     expect(publicRes.body.data.status).toBe('SUCCEEDED');
+    expect(publicRes.body.data.contentReviewStatus).toBe('pending');
+    expect(JSON.stringify(publicRes.body.data)).not.toMatch(/Generous Guest|guest@example/);
 
     // Campaign raised projected from the campaign-directed amount (tip excluded).
     const campaignRes = await request(app).get(`/api/v1/campaigns/${campaignId}`);

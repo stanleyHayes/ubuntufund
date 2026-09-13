@@ -11,6 +11,8 @@ import type { CouponRepositoryPort } from '../../domain/ports/outbound/CouponRep
 import type { CouponRedemptionRepositoryPort } from '../../domain/ports/outbound/CouponRedemptionRepositoryPort.js';
 import type { AffiliateCommissionService } from '../services/AffiliateCommissionService.js';
 import { logger } from '../../infrastructure/logging/logger.js';
+import type { UnitOfWorkPort } from '../../domain/ports/outbound/UnitOfWorkPort.js';
+import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -30,13 +32,15 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
  *   3. If the checkout carried a coupon: bump the coupon's global redemption
  *      counter (atomic, under-cap), then CONSUME the provisional redemption slot
  *      and link it to the activated subscription.
- *   4. Finally, award the one-time affiliate commission (best-effort — a failure
- *      here never unwinds the already-committed activation).
+ *   4. Award the one-time affiliate commission.
  *
- * Every step after the gate is idempotent, so a replayed settlement is safe.
+ * All database effects run in one transaction. A failure rolls the gate back,
+ * so verification/webhook retry can recover without repeating committed effects.
+ * External payments and notifications must never run inside this transaction.
  */
 export class SettleSubscriptionUseCase {
   constructor(
+    private readonly unitOfWork: UnitOfWorkPort,
     private readonly subscriptionCheckoutRepo: SubscriptionCheckoutRepositoryPort,
     private readonly subscriptionRepo: SubscriptionRepositoryPort,
     private readonly couponRepo: CouponRepositoryPort,
@@ -48,14 +52,24 @@ export class SettleSubscriptionUseCase {
     checkout: SubscriptionCheckout,
     reference: string
   ): Promise<SubscriptionCheckout | null> {
+    return this.unitOfWork.run(() => this.settle(checkout, reference));
+  }
+
+  private async settle(
+    checkout: SubscriptionCheckout,
+    reference: string
+  ): Promise<SubscriptionCheckout | null> {
     // ── 1. Exactly-once settlement gate ──────────────────────────────────
     const settled = await this.subscriptionCheckoutRepo.transitionToSucceeded(
       checkout.id
     );
     if (!settled) {
       // Already settled by a prior call (or terminal) — idempotent no-op.
-      return this.subscriptionCheckoutRepo.findById(checkout.id);
+      const existing = await this.subscriptionCheckoutRepo.findById(checkout.id);
+      if (existing && existing.providerRef !== reference) throw new AppError('Subscription payment reference does not match.', 409);
+      return existing;
     }
+    if (settled.providerRef !== reference) throw new AppError('Subscription payment reference does not match.', 409);
 
     // ── 2. Activate/replace the user's subscription ──────────────────────
     const now = new Date();
@@ -102,15 +116,15 @@ export class SettleSubscriptionUseCase {
       }
     }
 
-    // ── 4. One-time affiliate commission (best-effort, idempotent) ───────
+    // ── 4. One-time affiliate commission (same transaction) ─────────────
     //
     // Which amount the commission is computed from is the coupon's choice.
     // Charging it on finalAmount protects margin but penalises a referrer for
     // a promotion they did not control — and a 100%-off coupon pays them
     // nothing at all while still spending their one-time conversion. A coupon
     // may instead elect LIST_PRICE and make the referrer whole. Absent a
-    // coupon, or on any lookup failure, the post-coupon amount stands: that is
-    // the existing behaviour and the cheaper of the two.
+    // coupon, the post-coupon amount stands. A failed lookup must retry the
+    // transaction; silently changing the commission basis loses owed funds.
     let commissionBaseAmount = settled.finalAmount;
 
     // A discount with no coupon behind it came from the affiliate's own
@@ -123,39 +137,19 @@ export class SettleSubscriptionUseCase {
     }
 
     if (settled.couponId) {
-      try {
-        const coupon = await this.couponRepo.findById(settled.couponId);
-        if (coupon?.commissionBase === CouponCommissionBase.LIST_PRICE) {
-          commissionBaseAmount = settled.baseAmount;
-        }
-      } catch (error) {
-        // Must not escape. transitionToSucceeded has already fired and the
-        // subscription is already active, so a throw here is not retried — the
-        // replayed webhook takes the idempotent no-op branch and returns before
-        // reaching the commission block at all, losing the affiliate's payment
-        // permanently. Falling back to the charged amount is the documented
-        // behaviour and the conservative one.
-        logger.error(
-          { err: error, couponId: settled.couponId, checkoutId: settled.id },
-          'coupon lookup for the commission base failed; using the charged amount'
-        );
+      const coupon = await this.couponRepo.findById(settled.couponId);
+      if (coupon?.commissionBase === CouponCommissionBase.LIST_PRICE) {
+        commissionBaseAmount = settled.baseAmount;
       }
     }
 
     if (this.affiliateCommissionService) {
-      try {
-        await this.affiliateCommissionService.recordSubscriptionCommission({
-          payingUserId: settled.userId,
-          chargedAmount: commissionBaseAmount,
-          currency: settled.currency,
-          sourceRef: reference,
-        });
-      } catch (error) {
-        logger.error(
-          { err: error, checkoutId: settled.id, reference },
-          'failed to record affiliate subscription commission'
-        );
-      }
+      await this.affiliateCommissionService.recordSubscriptionCommission({
+        payingUserId: settled.userId,
+        chargedAmount: commissionBaseAmount,
+        currency: settled.currency,
+        sourceRef: reference,
+      });
     }
 
     return settled;

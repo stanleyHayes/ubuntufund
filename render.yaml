@@ -7,7 +7,7 @@ services:
     name: ujimora-api
     runtime: node
     plan: free
-    buildCommand: npm install
+    buildCommand: npx --yes npm@12.0.2 ci
     startCommand: npm start -w @ubuntu-fund/api
     healthCheckPath: /health
     autoDeploy: true

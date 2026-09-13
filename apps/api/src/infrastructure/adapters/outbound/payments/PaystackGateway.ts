@@ -10,6 +10,7 @@ import type {
   PaymentGatewayInitResult,
   PaymentGatewayPort,
   PaymentGatewayRefundResult,
+  PaymentGatewayRefundVerification,
   PaymentGatewayTransferResult,
   PaymentGatewayVerifyResult,
   ProviderCapabilities,
@@ -229,10 +230,30 @@ export class PaystackGateway implements PaymentGatewayPort {
     }
   }
 
+  async fetchRefund(reference: string): Promise<PaymentGatewayRefundVerification> {
+    if (!this.isConfigured()) throw new AppError('Payments are not configured', 501)
+    if (!/^\d{1,30}$/.test(reference)) throw new AppError('Invalid Paystack refund ID', 400)
+    const json = await this.request<Record<string, unknown>>('GET', `/refund/${reference}`)
+    const data = json.data
+    const transaction = data?.transaction
+    const transactionId = transaction && typeof transaction === 'object' ? (transaction as Record<string, unknown>).id : transaction
+    if (!json.status || !data || String(data.id) !== reference ||
+      !Number.isSafeInteger(data.amount) || Number(data.amount) <= 0 ||
+      typeof data.currency !== 'string' || !/^[A-Z]{3}$/.test(data.currency) ||
+      typeof data.status !== 'string' ||
+      !((typeof transactionId === 'number' && Number.isSafeInteger(transactionId) && transactionId > 0) || (typeof transactionId === 'string' && /^\d{1,30}$/.test(transactionId)))) {
+      throw new AppError('The provider refund record could not be verified', 502)
+    }
+    const note = typeof data.merchant_note === 'string' ? /^Ujimora refund ([a-f0-9-]{36})$/.exec(data.merchant_note) : null
+    return { reference, status: data.status.toLowerCase(), amountMinor: Number(data.amount), currency: data.currency,
+      transactionId: String(transactionId), operationReference: note?.[1] }
+  }
+
   async refundPayment(
     reference: string,
     amountMajor?: number,
     currency = CURRENCY,
+    operationReference?: string,
   ): Promise<PaymentGatewayRefundResult> {
     if (!this.isConfigured()) {
       throw new AppError('Payments are not configured', 501)
@@ -240,6 +261,7 @@ export class PaystackGateway implements PaymentGatewayPort {
     // Paystack /refund correlates on the transaction reference; `amount` (minor
     // units) is optional — omit for a full refund.
     const body: Record<string, unknown> = { transaction: reference }
+    if (operationReference) body.merchant_note = `Ujimora refund ${operationReference}`
     if (amountMajor !== undefined) {
       body.amount = toMinorUnits(amountMajor, currency)
     }
@@ -444,6 +466,7 @@ export class PaystackGateway implements PaymentGatewayPort {
     }
     if (path === '/transfer' && method === 'POST' && res.status >= 500)
       throw new TransferOutcomeUnknownError()
+    if (!res.ok) throw new AppError('Payment provider rejected the request', 502)
     return json
   }
 }

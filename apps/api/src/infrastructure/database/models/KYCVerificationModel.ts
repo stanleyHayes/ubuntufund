@@ -1,5 +1,6 @@
 import mongoose, { Schema, type Document } from 'mongoose';
 import type {
+  KYCInformationExchange,
   VerificationType,
   DocumentType,
   RiskLevel,
@@ -11,6 +12,7 @@ import type {
 import type { KYCVerificationStatus } from '../../../domain/ports/outbound/KYCRepositoryPort.js';
 
 export interface KYCVerificationDocument extends Document {
+  informationRequests?: KYCInformationExchange[];
   userId: string;
   verificationType: VerificationType;
   status: KYCVerificationStatus;
@@ -39,11 +41,14 @@ const VERIFICATION_TYPES: VerificationType[] = [
 const DOCUMENT_TYPES: DocumentType[] = [
   'id_card',
   'passport',
+  'selfie',
   'drivers_license',
   'utility_bill',
   'bank_statement',
   'business_registration',
   'tax_certificate',
+  'authorization_letter',
+  'ownership_register',
 ];
 
 const VERIFICATION_STATUSES: KYCVerificationStatus[] = [
@@ -82,6 +87,11 @@ const personalInfoSchema = new Schema<KYCPersonalInfo>(
 
 const businessInfoSchema = new Schema<KYCBusinessInfo>(
   {
+    registeredAddress: { type: addressSchema },
+    representativeCapacity: String,
+    controlPersons: { type: [{ _id: false, fullName: String, role: { type: String, enum: ['director', 'trustee', 'beneficial_owner', 'other_controller'] }, country: String, ownershipPercent: Number }], default: undefined },
+    ownershipExplanation: String,
+    declaration: { type: new Schema({ authorized: Boolean, accurate: Boolean, acceptedAt: Date }, { _id: false }) },
     businessName: { type: String },
     registrationNumber: { type: String },
     taxId: { type: String },
@@ -103,6 +113,7 @@ const documentSchema = new Schema<KYCDocumentInfo>(
 
 const kycVerificationSchema = new Schema<KYCVerificationDocument>(
   {
+    informationRequests: { type: [{ _id: false, id: { type: String, required: true }, prompt: { type: String, required: true }, requestedAt: { type: Date, required: true }, response: String, respondedAt: Date }], default: [] },
     userId: { type: String, required: true, index: true },
     verificationType: {
       type: String,

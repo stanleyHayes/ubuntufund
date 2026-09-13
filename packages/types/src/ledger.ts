@@ -134,6 +134,8 @@ export interface CampaignBalance {
   totalRaised: number
   /** Beneficiary-net settled, awaiting a payout/clearing run. */
   pendingBalance: number
+  /** Net held for unresolved refunds; excluded from payout-eligible pending. */
+  refundHeldBalance?: number
   /** Beneficiary-net cleared and withdrawable (0 until the payout phase). */
   availableBalance: number
   /** Beneficiary-net already disbursed (0 until the payout phase). */

@@ -1,3 +1,5 @@
+import ExportMenu from '@/components/ExportMenu'
+import { exportTable, dateCell } from '@/lib/exports/report'
 import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -178,6 +180,7 @@ export default function AffiliatesPage() {
           { label: 'Awaiting Approval', value: loadingPayouts ? <Skeleton width={50} /> : pendingPayouts },
         ]}
       />
+      <ExportMenu title="Affiliates" disabled={tab === 0 ? loadingAffiliates || !!affiliatesError : loadingPayouts || !!payoutsError} getReport={() => ({ title: tab === 0 ? 'Affiliates' : 'Affiliate payouts', filters: tab === 0 ? [`Status: ${statusFilter}`, `Search: ${search || 'All'}`] : ['All payouts'], tables: tab === 0 ? [exportTable('Affiliates', filteredAffiliates, { ID: r => r.id, Account: r => r.userName ?? r.userId, Code: r => r.referralCode, Status: r => r.status, 'Commission (%)': r => r.commissionRate, 'Joined (UTC)': r => dateCell(r.createdAt) })] : [exportTable('Affiliate payouts', payouts, { ID: r => r.id, Affiliate: r => r.affiliateId, Amount: r => r.amount, Currency: r => r.currency, Status: r => r.status, 'Created (UTC)': r => dateCell(r.createdAt) })] })} />
 
       <Box sx={{ ...raisedSurface, mb: 3 }}>
         <Tabs

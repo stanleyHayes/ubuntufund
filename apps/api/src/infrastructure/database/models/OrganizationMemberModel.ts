@@ -8,6 +8,7 @@ const schema = new Schema(
     status: { type: String, enum: ['invited', 'active', 'revoked'], required: true },
     invitedBy: { type: String, required: true },
     expiresAt: Date,
+    profileWriteVersion: Number,
   },
   { timestamps: true },
 )

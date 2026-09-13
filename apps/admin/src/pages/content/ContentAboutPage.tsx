@@ -1,3 +1,4 @@
+import { exportTable } from '@/lib/exports/report'
 import { BrandedTextField as TextField, ImageUpload } from '@ubuntu-fund/ui'
 import { useState, type ReactNode } from 'react'
 import { uploadImageViaApi } from '@/lib/uploadImage'
@@ -142,6 +143,7 @@ export default function ContentAboutPage() {
       updatedAt={block.record?.updatedAt}
       onSave={block.save}
       onReload={block.reload}
+    exportReport={{ title: "About Ujimora", filters: [block.isDirty || !block.record ? 'Unsaved content draft' : 'Saved content', block.record ? 'Last saved: ' + block.record.updatedAt : 'Not yet saved'], tables: [exportTable('Hero', [data.hero], { Title: r => r.title, Subtitle: r => r.subtitle }), exportTable('Mission and vision', [data.mission, data.vision], { Eyebrow: r => r.eyebrow, Title: r => r.title, Body: r => r.body }), exportTable('Philosophy', [data.philosophy], { Eyebrow: r => r.eyebrow, Quote: r => r.quote, Body: r => r.body }), exportTable('Team', data.team ?? [], { Name: r => r.name, Role: r => r.role, Biography: r => r.bio, Website: r => r.website, Company: r => r.companyUrl, 'Social links': r => r.socials?.map(social => social.label + ': ' + social.href).join('\n') })] }}
     >
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
         <SectionPanel title="Hero">

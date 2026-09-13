@@ -32,13 +32,14 @@ export class CampaignController {
         this.campaignRepo.countActiveByCreator(userId), this.campaignRepo.countByCreatorId(userId),
       ]);
       if (!user) throw new AppError('User not found', 404);
-      const creationBlockReason = !user.canCreateCampaign(totalCount)
-        ? (user.getCampaignLimit() === 0 ? 'verification_required' : 'verification_limit')
+      const allowance = await this.createCampaignUseCase.campaignAllowance(user);
+      const creationBlockReason = totalCount >= allowance
+        ? (allowance === 0 ? 'verification_required' : 'verification_limit')
         : plan.maxActiveCampaigns >= 0 && activeCount >= plan.maxActiveCampaigns
           ? 'plan_limit' : null;
       res.json({ data: {
         plan, maxGoal: this.planLimits.effectiveGoalCap(plan.maxCampaignGoal, user.complianceApprovedCampaignLimit) ?? null,
-        activeCount, totalCount, verificationCampaignLimit: user.getCampaignLimit(),
+        activeCount, totalCount, verificationCampaignLimit: allowance,
         canCreate: creationBlockReason === null, creationBlockReason,
         canSplit: this.splitEnabled && plan.campaignCollaboration && plan.escrowSupport,
         splitEnabled: this.splitEnabled,
@@ -72,7 +73,7 @@ export class CampaignController {
     next: NextFunction
   ): Promise<void> => {
     try {
-      const campaign = await this.getCampaignUseCase.getById(req.params.id as string);
+      const campaign = await this.getCampaignUseCase.getById(req.params.id as string, req.userId, req.userRole === 'admin');
       if (!campaign) {
         throw new AppError('Campaign not found', 404);
       }
@@ -117,7 +118,8 @@ export class CampaignController {
       const campaign = await this.setCampaignSlugUseCase.execute(
         req.params.id as string,
         req.body.slug as string,
-        { userId: req.userId!, role: req.userRole }
+        { userId: req.userId!, role: req.userRole },
+        req.body.automatedReviewConsent === true
       );
       res.json({
         data: campaign,
@@ -145,7 +147,7 @@ export class CampaignController {
         pageSize,
         sortBy,
         sortOrder,
-      });
+      }, req.userRole === 'admin');
 
       res.json({
         data: result,

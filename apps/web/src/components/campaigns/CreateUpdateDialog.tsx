@@ -1,3 +1,4 @@
+import { PublicationConsent } from '@/components/safety/PublicationConsent'
 import { LoadingDots } from '@ubuntu-fund/ui'
 import { useState } from 'react'
 import Dialog from '@mui/material/Dialog'
@@ -26,6 +27,7 @@ export function CreateUpdateDialog({
   isLoading,
   onSubmit,
 }: CreateUpdateDialogProps) {
+  const [automatedReviewConsent, setAutomatedReviewConsent] = useState(false)
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [type, setType] = useState<CampaignUpdateType>('general')
@@ -35,6 +37,7 @@ export function CreateUpdateDialog({
 
   function handleClose() {
     setTitle('')
+    setAutomatedReviewConsent(false)
     setContent('')
     setType('general')
     setIsPinned(false)
@@ -62,6 +65,7 @@ export function CreateUpdateDialog({
         content: content.trim(),
         type,
         isPinned,
+        automatedReviewConsent,
       })
       setSuccess(true)
       setTimeout(handleClose, 1000)
@@ -142,6 +146,7 @@ export function CreateUpdateDialog({
               />
             </Box>
 
+            <PublicationConsent value={automatedReviewConsent} onChange={setAutomatedReviewConsent} />
             <FormControlLabel
               control={
                 <Checkbox

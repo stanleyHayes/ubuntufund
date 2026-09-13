@@ -1,3 +1,4 @@
+import { PUBLIC_CAMPAIGN_STATUSES } from '../../../../domain/services/campaignVisibility.js';
 import { CampaignStatus, type PaginationParams } from '@ubuntu-fund/types';
 import { CampaignEntity } from '../../../../domain/entities/Campaign.js';
 import { Money } from '../../../../domain/value-objects/Money.js';
@@ -27,6 +28,7 @@ function toDomain(doc: CampaignDocument): CampaignEntity {
     updatedAt: doc.updatedAt,
     tier: doc.tier,
     lockedPlatformFeePercent: doc.lockedPlatformFeePercent,
+    reviewRevision: doc.reviewRevision,
   });
 }
 
@@ -73,7 +75,7 @@ export class MongoCampaignRepository implements CampaignRepositoryPort {
   }
 
   async findAll(
-    params: PaginationParams
+    params: PaginationParams & { includeNonPublic?: boolean }
   ): Promise<{ items: CampaignEntity[]; total: number }> {
     const page = params.page ?? 1;
     const pageSize = params.pageSize ?? 20;
@@ -81,12 +83,13 @@ export class MongoCampaignRepository implements CampaignRepositoryPort {
     const sortField = params.sortBy ?? 'createdAt';
     const sortOrder = params.sortOrder === 'asc' ? 1 : -1;
 
+    const filter = { deletedAt: { $exists: false }, ...(params.includeNonPublic ? {} : { status: { $in: PUBLIC_CAMPAIGN_STATUSES } }) };
     const [docs, total] = await Promise.all([
-      CampaignModel.find({ deletedAt: { $exists: false } })
+      CampaignModel.find(filter)
         .sort({ [sortField]: sortOrder })
         .skip(skip)
         .limit(pageSize),
-      CampaignModel.countDocuments({ deletedAt: { $exists: false } }),
+      CampaignModel.countDocuments(filter),
     ]);
 
     return {
@@ -101,6 +104,14 @@ export class MongoCampaignRepository implements CampaignRepositoryPort {
       deletedAt: { $exists: false },
     });
     return docs.map(toDomain);
+  }
+
+  async setSlug(id: string, expectedSlug: string, slug: string): Promise<CampaignEntity | null> {
+    const doc = await CampaignModel.findOneAndUpdate(
+      { _id: id, deletedAt: { $exists: false }, ...(expectedSlug ? { slug: expectedSlug } : { $or: [{ slug: '' }, { slug: null }] }) },
+      { $set: { slug } }, { new: true },
+    );
+    return doc ? toDomain(doc) : null;
   }
 
   async update(campaign: CampaignEntity): Promise<CampaignEntity> {

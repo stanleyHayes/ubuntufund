@@ -21,7 +21,10 @@ export class VerifyCreatorTipUseCase {
       tip = (await this.tips.findByProviderRef(reference))!;
     }
     if (tip.status === 'SUCCEEDED' && tip.toPlain().settlementApplied === false) await this.settlement.creditSucceededTip(tip);
+    const content = tip.toPlain();
+    const hasPublicContent = !!(content.message?.trim() || (!content.isAnonymous && content.supporterName?.trim()));
+    const contentReviewStatus = hasPublicContent ? content.publicContentStatus ?? 'pending' : 'not_requested';
     const creator = await this.profiles.findByUserId(tip.creatorUserId);
-    return { status: tip.status, amount: tip.amount, currency: tip.currency, handle: creator?.handle, displayName: creator?.displayName, thankYouMessage: creator?.thankYouMessage };
+    return { contentReviewStatus, status: tip.status, amount: tip.amount, currency: tip.currency, handle: creator?.handle, displayName: creator?.displayName, thankYouMessage: creator?.thankYouMessage };
   }
 }

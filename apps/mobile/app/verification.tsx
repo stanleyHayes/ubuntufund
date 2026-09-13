@@ -1,3 +1,5 @@
+import { KYCInformationHistory, type KYCExchange } from '@/components/KYCInformationHistory'
+import { Button } from '@/components/Loading'
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   View,
@@ -6,7 +8,7 @@ import {
   Animated,
 } from 'react-native'
 import { Text, Icon } from 'react-native-paper'
-import { Stack } from 'expo-router'
+import { Stack, useRouter } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
 import { EmptyState } from '@/components/EmptyState'
@@ -16,8 +18,8 @@ import { usePalette, useNeu } from '@/context/ColorModeContext'
 import type { Palette, NeuRecipes } from '@/theme'
 
 interface Verification {
+  informationRequests?: KYCExchange[]
   id: string
-  level: number
   type: string
   status: string
   documentUrls: string[]
@@ -32,34 +34,33 @@ interface KYCStatusResponse {
   kycStatus: string
   kycLevel: number
   verifications: Array<{
+    rejectionReason?: string;
+    informationRequests?: KYCExchange[]
     id: string
     type: string
     status: string
+    expiresAt?: string
     riskLevel?: string
     createdAt: string
   }>
 }
 
-const LEVEL_LABELS: Record<number, string> = {
-  1: 'Email & Phone',
-  2: 'National ID',
-  3: 'Institutional',
-  4: 'Community',
-}
-
-// Map a KYC verification type to the display level used by this screen.
-const TYPE_LEVELS: Record<string, number> = {
-  email_phone: 1,
-  national_id: 2,
-  institutional: 3,
-  community: 4,
+const TYPE_LABELS: Record<string, string> = {
+  identity: 'Identity verification',
+  address: 'Address verification',
+  business: 'Organization verification',
+  political: 'Political verification',
+  media: 'Media verification',
+  email_phone: 'Email and phone verification',
+  national_id: 'Identity verification',
+  institutional: 'Organization verification',
+  community: 'Community verification',
 }
 
 const TYPE_ICONS: Record<string, string> = {
-  email_phone: 'email-check',
-  national_id: 'card-account-details',
-  institutional: 'domain',
-  community: 'account-group',
+  identity: 'card-account-details', address: 'map-marker-check', business: 'domain',
+  political: 'account-group', media: 'newspaper', email_phone: 'email-check',
+  national_id: 'card-account-details', institutional: 'domain', community: 'account-group',
 }
 
 function formatDate(date?: string | null) {
@@ -204,6 +205,7 @@ function SkeletonCard() {
 // ─── Main ────────────────────────────────────────────────────
 
 export default function VerificationScreen() {
+  const router = useRouter()
   const { user } = useAuth()
   const p = usePalette()
   const styles = useStyles()
@@ -212,6 +214,8 @@ export default function VerificationScreen() {
   const [error, setError] = useState<string | null>(null)
 
   const STATUS_CONFIG: Record<string, { color: string; bg: string; icon: string; label: string }> = {
+    in_review: { color: p.warningText, bg: `${p.warning}1F`, icon: 'message-question-outline', label: 'Information requested' },
+    expired: { color: p.warningText, bg: `${p.warning}1F`, icon: 'clock-alert-outline', label: 'Expired' },
     pending: { color: p.warningText, bg: `${p.warning}1F`, icon: 'clock-outline', label: 'Pending' },
     approved: { color: p.success, bg: `${p.success}1A`, icon: 'check-circle', label: 'Approved' },
     rejected: { color: p.error, bg: `${p.error}1A`, icon: 'close-circle', label: 'Rejected' },
@@ -227,10 +231,12 @@ export default function VerificationScreen() {
       setVerifications(
         records.map((r) => ({
           id: r.id,
-          level: TYPE_LEVELS[r.type] ?? res?.kycLevel ?? 1,
           type: r.type,
           status: r.status,
+          rejectionReason: r.rejectionReason,
+          informationRequests: r.informationRequests,
           documentUrls: [],
+          expiresAt: r.expiresAt,
           createdAt: r.createdAt,
           updatedAt: r.createdAt,
         })),
@@ -276,6 +282,7 @@ export default function VerificationScreen() {
           </Text>
         </View>
 
+        <Button disabled={loading} onPress={() => void fetchVerifications()}>Refresh verification status</Button>
         {loading ? (
           <View style={styles.listWrap}>
             {[0, 1, 2].map((i) => <SkeletonCard key={i} />)}
@@ -306,8 +313,7 @@ export default function VerificationScreen() {
                       <Icon source={TYPE_ICONS[v.type] ?? 'shield'} size={20} color={p.primary} />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.cardTitle}>{LEVEL_LABELS[v.level] ?? `Level ${v.level}`}</Text>
-                      <Text style={styles.cardType}>{v.type.replace(/_/g, ' ')}</Text>
+                      <Text style={styles.cardTitle}>{TYPE_LABELS[v.type] ?? 'Verification application'}</Text>
                     </View>
                     <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
                       <Icon source={status.icon} size={14} color={status.color} />
@@ -315,13 +321,15 @@ export default function VerificationScreen() {
                     </View>
                   </View>
 
-                  {v.status === 'rejected' && v.rejectionReason && (
+                  {!!v.informationRequests?.length && <KYCInformationHistory verificationId={v.id} status={v.status} exchanges={v.informationRequests} onSaved={() => void fetchVerifications()} />}
+                  {v.status === 'rejected' && (
                     <View style={styles.rejectionBox}>
                       <Icon source="information" size={14} color={p.error} />
-                      <Text style={styles.rejectionText}>{v.rejectionReason}</Text>
+                      <Text style={styles.rejectionText}>{v.rejectionReason || 'This application was not approved. Contact support if you need clarification.'}</Text>
                     </View>
                   )}
 
+                  {['rejected', 'expired'].includes(v.status) && !verifications.some(item => ['pending', 'in_review'].includes(item.status)) && <Button onPress={() => router.push('/kyc')}>{v.status === 'expired' ? 'Renew verification' : 'Submit corrected application'}</Button>}
                   <View style={styles.cardMeta}>
                     <Text style={styles.cardDate}>Submitted {formatDate(v.createdAt)}</Text>
                     {v.expiresAt && (

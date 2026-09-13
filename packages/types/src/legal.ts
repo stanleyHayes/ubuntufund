@@ -79,6 +79,7 @@ export interface LegalPolicy {
   introduction: string
   effectiveDate: string
   sections: LegalSection[]
+  actions?: { label: string; href: string }[]
   contact: string
 }
 
@@ -93,6 +94,28 @@ const REGULATORY_BASIS: LegalSection = {
 }
 
 export const LEGAL_POLICIES: LegalPolicy[] = [
+  {
+    slug: 'delete-account', route: '/delete-account', order: 9,
+    navLabel: 'Delete your account', icon: 'ShieldRoundedIcon',
+    summary: 'Request deletion of your Ujimora account and associated personal data, including without the app.',
+    eyebrow: 'Privacy controls', title: 'Delete your Ujimora account',
+    description: 'Request account and personal-data deletion from the app, the website, or by email.',
+    panelLabel: 'Your information', panelTitle: 'You can request deletion without reinstalling the app.',
+    panelBody: 'Use Settings when signed in, or contact our privacy team from your account email.',
+    introduction: 'You can initiate account deletion in Ujimora Settings. If you cannot sign in or no longer have the app, use the email request below. You do not need to install the app again.',
+    effectiveDate: '12 September 2026',
+    actions: [
+      { label: 'Request account and data deletion by email', href: `mailto:${E.privacy}?subject=${encodeURIComponent('Ujimora account and personal-data deletion request')}&body=${encodeURIComponent('Please delete my Ujimora account and associated personal data. My account email is: [your account email]. Please confirm the next steps, any information that must be retained, the reason and retention period. I understand that you may need to verify account ownership.')}` },
+      { label: 'Open account settings on the website', href: 'https://app.ujimora.com/settings' },
+    ],
+    sections: [
+      { title: '1. Send your request', content: `Sign in and open Settings → Delete account, or email ${E.privacy} with the subject “Ujimora account and personal-data deletion request”. Send the request from your registered email where possible. We may ask for proportionate information to verify ownership. Never send your password, one-time codes, full payment-card details or identity documents in an initial email.` },
+      { title: '2. What happens to your account', content: 'The in-app deletion action removes your account from active account access. A request also covers associated personal data, including profile information, saved preferences, device tokens and other information that is no longer necessary. Some data needs separate review or removal by a service provider. Account closure alone does not mean every copy of your personal data has already been erased.' },
+      { title: '3. Payments, subscriptions and records we may retain', content: 'Account deletion does not forfeit your rights to eligible funds or refunds. Tell support about outstanding balances, campaigns, payouts, refunds or disputes so they can be resolved. If you have a recurring subscription, request cancellation and check the billing provider’s subscription controls; uninstalling the app is not cancellation. Transaction, identity-verification, fraud, dispute and legal records may need to be retained where there is a specific continuing lawful purpose or obligation. Request details of the categories, reason and applicable retention period from the privacy team.' },
+      { title: '4. Timing and confirmation', content: 'We will verify your request, explain any necessary additional steps and confirm the outcome. Where a legal hold, financial obligation, backup cycle or service-provider process prevents immediate erasure, we will explain what remains and why. Contact the privacy team for the status of a pending request or to request correction, access or deletion of particular data without closing your account.' },
+    ],
+    contact: `Privacy and deletion requests: ${E.privacy}. Payment or subscription help: ${E.support}.`,
+  },
   // ─────────────────────────────────────────────────────────── Terms of Use ──
   {
     slug: 'terms',
@@ -147,12 +170,12 @@ Material changes must be disclosed promptly to contributors and to Ujimora.`,
       {
         title: '7. Campaign limits and verification',
         content:
-          'Subscription entitlements do not override compliance limits. Ujimora may require review or supporting documents, impose a lower approved target, pause fundraising, restrict withdrawals or refuse a campaign where reasonably required for fraud, safety, provider, legal or compliance reasons.',
+          'Goals above GHS 250,000 require staff approval unless the organizer has current approved identity verification (business verification for organizations) and an earlier published campaign. Draft, pending and blocked campaigns do not qualify for this exception. Goals up to GHS 250,000 follow the current tier review policy. Subscription entitlements and automatic approval do not override compliance limits or content-safety controls. Ujimora may require supporting documents, impose a lower approved target, pause fundraising, restrict withdrawals or refuse a campaign where reasonably required for fraud, safety, provider, legal or compliance reasons.',
       },
       {
         title: '8. Payouts and holds',
         content:
-          'Standard payouts are normally initiated within the published period after campaign closure once funds are eligible, reconciled and all verification and compliance conditions are met. Stated timelines are service targets, not guarantees where a lawful, provider or compliance hold applies. Early, priority and assisted payouts are optional request-based services subject to eligibility and disclosed fees.',
+          'Payouts require eligible funds, reconciliation, verification and approval. Confirm provider processing time and any hold with support; submitting a request does not guarantee a payment date. Early, priority and assisted payouts are optional services subject to eligibility and disclosed fees. Applicable rights and mandatory deadlines are unaffected.',
       },
       {
         title: '9. Refunds, reversals and chargebacks',
@@ -221,6 +244,10 @@ Circumvention of subscription, campaign, payment or risk controls.`,
     sections: [
       { title: "Blockchain and crypto payment information", content: "Where you use crypto checkout, payment records may include wallet addresses, network, asset, transaction hash, memo or tag, quote, campaign-currency value and provider references. We use relevant records to match and confirm contributions, investigate failures and support required compliance checks with payment partners. Blockchain transactions can be public and persistent; hiding your name on a campaign does not make a blockchain transfer anonymous. We cannot erase records on public blockchains." },
       {
+        title: 'AI writing and safety screening',
+        content: 'For account and organization identity changes, creator-page changes, campaign creation, campaign URL changes, comments and campaign updates, automated text screening is optional and requires your permission for that submission. If you opt in, the proposed public text is sent to OpenAI for safety screening. Otherwise staff review it; flagged text and attached media also require staff review. Proposed versions and decisions stay in a private publication-review record for up to 30 days, with scheduled deletion, and operational review records are removed on account closure. An approved version must be submitted again within seven days; an approval does not authorize changed content, a campaign goal or any payment. Staff audit records may be retained separately for accountability. When you explicitly request AI writing, your text, instructions and generated draft are processed by OpenAI for writing assistance and safety screening. Flagged drafts are withheld; unavailable screening does not approve a draft. Ujimora records usage and your request-specific permission without storing raw writing input or output in its usage log. A result fingerprint lets us validate safety reports. If you choose Report on a suggestion, the original generated text and your report are saved in the restricted moderation queue for review and follow-up. Review suggestions before using them. Automated checks can make mistakes and do not verify facts or replace human moderation; contact support if a request needs review.',
+      },
+      {
         title: '1. Controller and scope',
         content: `${companyClause()} Contact: ${E.support}; privacy: ${E.privacy}. Ujimora acts as data controller for personal data it determines how and why to process, subject to any processor or controller allocation agreed with payment, identity and infrastructure partners.`,
       },
@@ -254,6 +281,18 @@ Send marketing only where permitted and with applicable choice or consent.`,
           'Data may be shared as necessary with payment processors, banks, identity and KYC vendors, hosting and security providers, professional advisers, authorities where legally required, and campaign parties where the service requires it. Ujimora contractually governs its processors and discloses material categories of recipients.',
       },
       {
+        title: 'Optional activity alerts and emails',
+        content: 'In Settings, you can separately opt in to notification-inbox alerts and emails about donations, creator support, withdrawals and payouts, refunds, wallet activity and subscriptions. Each activity and channel starts off. We store your choices and their change times and use relevant transaction details to prepare the updates you select. Activity emails use our email delivery provider, Resend, and require a verified account email. You can turn a choice off at any time; this stops queued messages that have not already been sent. These choices do not subscribe you to marketing. Account verification, password recovery and password-change security notices remain separate. Newsletter and promotional emails require a separate request and email confirmation. We record when you request, confirm or withdraw that choice. You can turn newsletter emails off in Settings or use the unsubscribe link without signing in. Confirmation emails use Resend. Previously collected addresses without confirmed consent are excluded from the mailing list.',
+      },
+      {
+        title: 'Optional account protection',
+        content: 'After signing in, you can enable an authenticator app for an extra sign-in code. We store its secret encrypted, hashes of single-use recovery codes and security-change records. Keep the setup key and downloaded recovery codes private. On supported mobile devices, biometric unlock is a separate optional setting. Fingerprint and face information stays within your device authentication system; Ujimora uses the result to access a protected saved sign-in credential. Signing out removes that saved credential and biometric preference from the app. You can use password and authenticator sign-in instead. Server-side authenticator data is removed through the account-erasure process; necessary security audit records follow the applicable retention schedule.',
+      },
+      {
+        title: 'Optional organization website requests',
+        content: 'An organization can separately request website assistance during signup. If selected, its organization and contact details and website request may be used for follow-up by parent company Neurodyne Corp Ltd (https://neurodyne.dev; info@neurodyne.dev). This is optional and is not required to use Ujimora. New requests and withdrawals are timestamped. Use Withdraw website request in the signed-in notice to stop the request; for contact already underway, contact info@neurodyne.dev. Withdrawing the request does not affect the account or its donations.',
+      },
+      {
         title: '6. International transfers',
         content:
           'Where data is processed outside Ghana, Ujimora assesses and implements the safeguards required by applicable Ghanaian law and by its contractual and provider arrangements.',
@@ -283,7 +322,7 @@ Send marketing only where permitted and with applicable choice or consent.`,
       },
       {
         title: '12. Contact and complaints',
-        content: `Privacy questions: ${E.privacy}. You may also contact the Ghana Data Protection Commission regarding your rights or concerns where applicable.`,
+        content: `In account Settings, you can submit a private request for access to your data, correction or a privacy review, check progress and read our response. We aim to respond within 30 days; applicable legal requirements continue to apply. If you cannot sign in, or need another way to receive information, contact ${E.privacy}. Request details and review records are used to handle and document your request. You may also contact the Ghana Data Protection Commission regarding your rights or concerns where applicable.`,
       },
       {
         title: '13. Updates',
@@ -458,7 +497,7 @@ Send marketing only where permitted and with applicable choice or consent.`,
     description: 'When and how funds are paid out or refunded, the fees involved, and when holds apply.',
     panelLabel: 'Payout principle',
     panelTitle: 'Funds move only when they are cleared, reconciled and compliant.',
-    panelBody: 'The timings, percentages, fixed fees and reserves below are configurable defaults, versioned in the admin dashboard.',
+    panelBody: 'Review the fee, net amount and eligibility shown for your payout before confirming. Refund requests are free to submit and require review.',
     introduction:
       'This policy explains how payouts and refunds work on Ujimora: the standard payout window, the optional priority, early and assisted payout services, the holds that can apply, and how failed or cancelled campaigns are handled.',
     effectiveDate: LEGAL_ENTITY.effectiveDate,
@@ -468,19 +507,16 @@ Send marketing only where permitted and with applicable choice or consent.`,
       {
         title: '1. Standard payout',
         content:
-          'Recommended default: payout is normally initiated within 3 business days after a campaign closes and satisfies verification, reconciliation and compliance requirements. This is not an unconditional guarantee where a hold is required.',
+          'Standard campaign payout has no additional Ujimora payout service fee. Donation processing and platform fees may already have been deducted before the eligible balance is calculated. Payout requires available funds, verification, reconciliation and approval. Submission does not guarantee a payment date; provider processing and holds can affect timing.',
       },
       {
         title: '2. Priority and early payout',
-        content: `Priority payout: recommended 0.5%, minimum GHS 10, after funds are otherwise eligible.
-Early payout before campaign end: recommended 1.0%, minimum GHS 20.
-Urgent early payout: recommended 1.5%, minimum GHS 30, where operationally available.
-Initial recommended early-withdrawal ceiling: 80% of the eligible available balance, with a 20% reserve.`,
+        content: 'Where available, priority, early and urgent payout services carry an additional service fee. The current percentage, minimum fee, reserve and eligible balance determine the amount available. Review the fee and net transfer shown before confirming. Early and urgent withdrawals are subject to a reserve ceiling. A paid service does not bypass verification, holds or provider restrictions.',
       },
       {
         title: '3. Assisted bank payout',
         content:
-          'You may request an assisted bank-mediated or offline payout. Recommended fee: 1.5% plus a GHS 50 service and logistics charge, plus clearly disclosed third-party costs. Requests require review and use documented bank processes rather than routine staff carriage of large cash amounts.',
+          'Where available, assisted bank payout carries a percentage fee and fixed service charge. Review the fee and net amount before confirming. Requests require operational review and documented bank processes; selecting this option does not confirm offline delivery or authorize an undisclosed charge.',
       },
       {
         title: '4. Holds',
@@ -490,22 +526,22 @@ Initial recommended early-withdrawal ceiling: 80% of the eligible available bala
       {
         title: '5. Refunds',
         content:
-          'Refunds may be issued where required by law, provider rules, a campaign’s disclosed funding model, campaign cancellation, duplicate or erroneous payment, confirmed fraud, or another approved circumstance. Refunds return through the original payment rail where reasonably possible.',
+          'Submitting a donation refund request is free and does not approve or execute a refund. The team reviews applicable law, provider rules, cancellation, duplicate or erroneous payment, fraud concerns and the circumstances of the contribution. Contact support for guest payments, optional platform tips or payments not listed in your account. Eligible refunds use the original payment rail where supported; support must confirm any alternative securely. Review the amount, fee treatment and provider timing with support. Mandatory rights and deadlines are unaffected.',
       },
       {
         title: '6. Target not met',
         content:
-          'Before launch, each campaign clearly discloses whether it is “keep what you raise” or “all-or-nothing”. Where an all-or-nothing target is not attained, eligible contributions are returned in accordance with the disclosed rules and provider capabilities.',
+          'The platform does not automatically refund contributions when a campaign misses its target. A goal is a fundraising target, not an automatic all-or-nothing escrow instruction. Funds remain subject to payout eligibility and holds. If a campaign fails, is cancelled or makes an unfulfilled commitment, request review through your donation record or contact support. Applicable refund rights are unaffected.',
       },
       {
         title: '7. Fee treatment',
         content:
-          'This policy states whether platform, processing and payout fees are refundable in each scenario. Ujimora avoids retaining a fee where applicable law or provider rules require its return.',
+          'No automatic percentage deduction is applied when you submit a new donation refund request. The recorded requested amount is not proof of payment or a final settlement quote. Platform fees, processor charges, optional tips, previously paid-out funds and partial refunds require review against the original transaction and applicable rights. Ujimora will not retain a fee where law or provider rules require its return. Existing financial records retain their historical amounts; contact support to review a previously recorded request fee.',
       },
       {
         title: '8. Admin configuration',
         content:
-          'All timing, percentages, fixed fees, reserve levels, limits and eligibility rules are configurable and versioned in the admin dashboard. The version shown or accepted at the relevant transaction governs, unless the law requires otherwise.',
+          'Administrators can version supported payout pricing and reserve settings. Some transfer limits and approval controls are deployment settings. A later configuration change does not rewrite a payout’s recorded fee and net amount. Review the transaction-specific terms before confirming; applicable law takes precedence.',
       },
       {
         title: '9. Split-proceeds payouts',

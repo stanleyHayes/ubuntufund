@@ -1,3 +1,4 @@
+import type { LegalAcceptanceInput, LegalAcceptanceRecord } from '@ubuntu-fund/types'
 import { accessToken, configureRefresh } from './session'
 
 // In dev, the API runs on your machine. Android emulator uses 10.0.2.2 for localhost.
@@ -137,6 +138,7 @@ export interface AuthTokens {
 }
 
 export interface AuthUser {
+  legalAcceptance?: LegalAcceptanceRecord
   id: string
   name: string
   email: string
@@ -155,19 +157,22 @@ export interface RegisterResponse {
 
 // --- Auth API ---
 
-export async function loginApi(email: string, password: string): Promise<LoginResponse> {
+export async function loginApi(email: string, password: string, mfaCode?: string): Promise<LoginResponse> {
   return request<LoginResponse>('/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, mfaCode }),
   })
 }
 
 export async function registerApi(data: {
+  legalAcceptance?: LegalAcceptanceInput
   name: string
   email: string
   password: string
   country?: string
   role?: string
+  website?: string
+  needsWebsite?: boolean
   organizationName?: string
   organizationType?: string
   registrationNumber?: string

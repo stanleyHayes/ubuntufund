@@ -1,3 +1,5 @@
+import type { LegalAcceptanceInput } from '@ubuntu-fund/types';
+import { messageAgreement } from '../services/messageAgreement.js';
 import type { DonationRepositoryPort } from '../../domain/ports/outbound/DonationRepositoryPort.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 
@@ -5,6 +7,7 @@ export interface DonationMessageResultDTO {
   id: string;
   message: string;
   isAnonymous: boolean;
+  contentReviewStatus: 'pending';
 }
 
 /**
@@ -19,7 +22,8 @@ export class AddDonationMessageUseCase {
   async execute(
     donationId: string,
     donorId: string,
-    message: string
+    message: string,
+    legalAcceptance?: LegalAcceptanceInput
   ): Promise<DonationMessageResultDTO> {
     const donation = await this.donationRepo.findById(donationId);
     if (!donation) {
@@ -29,10 +33,13 @@ export class AddDonationMessageUseCase {
       throw new AppError('You can only edit your own donation message', 403);
     }
 
+    const agreement = messageAgreement(message, legalAcceptance);
+    if (!agreement) throw new AppError('Enter a public message.', 400);
     const updated = await this.donationRepo.updateMessage(
       donationId,
       donorId,
-      message
+      message,
+      agreement
     );
     if (!updated) {
       throw new AppError('Donation not found', 404);
@@ -42,6 +49,7 @@ export class AddDonationMessageUseCase {
       id: updated.id,
       message: updated.message ?? '',
       isAnonymous: updated.isAnonymous,
+      contentReviewStatus: 'pending',
     };
   }
 }

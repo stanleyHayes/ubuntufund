@@ -36,3 +36,5 @@ export type { LoadingDotsProps } from './components/LoadingDots'
 
 export { ThemeStylePicker } from './components/ThemeStylePicker'
 export { NotificationBell } from './components/NotificationBell'
+export { OtpInput } from './components/OtpInput'
+export { MfaSettings } from './components/MfaSettings'

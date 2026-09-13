@@ -9,7 +9,7 @@ import { TestimonialModel } from '../../src/infrastructure/database/models/Testi
 
 async function createAdmin(app: Express): Promise<string> {
   const email = `testimonial-admin-${randomUUID()}@example.com`;
-  const registration = await request(app).post('/api/v1/auth/register').send({
+  const registration = await request(app).post('/api/v1/auth/register').send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true },
     email,
     password: 'SecurePass123',
     name: 'Testimonial Admin',

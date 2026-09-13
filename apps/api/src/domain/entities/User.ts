@@ -1,12 +1,15 @@
+import type { LegalAcceptanceRecord } from '@ubuntu-fund/types';
 import type { UserRole, VerificationLevel, OrganizationType } from '@ubuntu-fund/types';
 import { Email } from '../value-objects/Email.js';
 import { TrustScore } from '../value-objects/TrustScore.js';
+import { randomUUID } from 'node:crypto';
 
 export interface UserProps {
   id: string;
   email: Email;
   name: string;
   passwordHash: string;
+  authVersion?: string;
   avatarUrl?: string;
   coverUrl?: string;
   role: UserRole;
@@ -18,6 +21,7 @@ export interface UserProps {
   registrationNumber?: string;
   website?: string;
   needsWebsite?: boolean;
+  legalAcceptance?: LegalAcceptanceRecord;
   /** Compliance-approved campaign-goal ceiling (spec §18); undefined = plan cap only. */
   complianceApprovedCampaignLimit?: number;
   emailVerified: boolean;
@@ -35,9 +39,13 @@ const CAMPAIGN_LIMITS_BY_VERIFICATION: Record<number, number> = {
 
 export class UserEntity {
   private props: UserProps;
+  readonly originalPasswordHash: string;
+  private readonly originalEmailVerified: boolean;
 
   constructor(props: UserProps) {
     this.props = { ...props };
+    this.originalPasswordHash = props.passwordHash;
+    this.originalEmailVerified = props.emailVerified;
   }
 
   get id(): string {
@@ -52,6 +60,9 @@ export class UserEntity {
   get passwordHash(): string {
     return this.props.passwordHash;
   }
+  get authVersion(): string { return this.props.authVersion ?? ''; }
+  get passwordChanged(): boolean { return this.props.passwordHash !== this.originalPasswordHash; }
+  get emailVerificationChanged(): boolean { return this.props.emailVerified !== this.originalEmailVerified; }
   get avatarUrl(): string | undefined {
     return this.props.avatarUrl;
   }
@@ -88,6 +99,9 @@ export class UserEntity {
   get registrationNumber(): string | undefined {
     return this.props.registrationNumber;
   }
+  get legalAcceptance(): LegalAcceptanceRecord | undefined {
+    return this.props.legalAcceptance;
+  }
   get needsWebsite(): boolean {
     return this.props.needsWebsite ?? false;
   }
@@ -108,6 +122,7 @@ export class UserEntity {
 
   changePassword(newPasswordHash: string): void {
     this.props.passwordHash = newPasswordHash;
+    this.props.authVersion = randomUUID();
     this.props.updatedAt = new Date();
   }
 

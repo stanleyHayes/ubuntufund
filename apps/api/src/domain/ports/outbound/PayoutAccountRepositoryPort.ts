@@ -10,6 +10,8 @@ export interface SavedPayoutAccount {
   resolvedAccountName?: string
 }
 export interface PayoutAccountRepositoryPort {
+  /** Conditional write inside the caller transaction, fencing removal/detail changes. */
+  claimCurrent?(userId: string, account: SavedPayoutAccount): Promise<boolean>
   list(userId: string): Promise<SavedPayoutAccount[]>
   addWithinLimit(userId: string, account: SavedPayoutAccount, limit: number): Promise<boolean>
   remove(userId: string, id: string): Promise<void>

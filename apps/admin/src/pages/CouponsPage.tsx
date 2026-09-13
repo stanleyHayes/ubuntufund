@@ -1,3 +1,5 @@
+import ExportMenu from '@/components/ExportMenu'
+import { exportTable } from '@/lib/exports/report'
 import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import { Link as RouterLink, useLocation } from 'react-router-dom'
 import CouponFormFields from '@/components/coupons/CouponFormFields'
@@ -205,6 +207,7 @@ export default function CouponsPage() {
           { label: 'Redemptions', value: loading ? <Skeleton width={50} /> : totalRedemptions.toLocaleString() },
         ]}
       />
+      <ExportMenu title="Coupons" disabled={loading || !!error} getReport={() => ({ title: "Coupons", filters: [`Status: ${statusFilter}`, `Search: ${search || 'All'}`], tables: [exportTable("Coupons", filtered, { Code: r => r.code, Description: r => r.description, Type: r => r.discountType, Amount: r => r.amount, Currency: r => r.currency, Redemptions: r => r.redemptions, Active: r => r.active })] })} />
 
       {/* Filters */}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '2fr 1fr' }, gap: 0, ...raisedSurface, mb: 3 }}>

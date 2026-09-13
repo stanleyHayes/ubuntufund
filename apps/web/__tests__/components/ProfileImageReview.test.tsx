@@ -1,0 +1,36 @@
+import { beforeEach, afterEach, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { ProfileImageEditor } from '@/components/profile/ProfileImageEditor'
+import { api } from '@/lib/api'
+vi.mock('@/context/AuthContext', () => ({ useAuth: () => ({ user: { id: 'owner' } }) }))
+vi.mock('@/lib/api', () => ({ api: { get: vi.fn(), put: vi.fn() } }))
+vi.mock('@ubuntu-fund/ui', async original => ({ ...await original<typeof import('@ubuntu-fund/ui')>(), ImageUpload: ({ value, onChange }: { value: string; onChange: (value: string) => void }) => <input aria-label="Selected image" value={value} onChange={event => onChange(event.target.value)} /> }))
+beforeEach(() => {
+  vi.resetAllMocks()
+  vi.mocked(api.get).mockResolvedValue({ items: [], total: 0 })
+  vi.stubGlobal('Image', class { onload?: () => void; set src(_value: string) { queueMicrotask(() => this.onload?.()) } })
+})
+afterEach(() => vi.unstubAllGlobals())
+it('retains held media and calls onSaved only after the same image is accepted', async () => {
+  const saved = vi.fn()
+  vi.mocked(api.put).mockRejectedValueOnce(new Error('Saved privately for safety review.')).mockResolvedValueOnce({})
+  render(<ProfileImageEditor kind="avatarUrl" currentUrl="" onClose={() => {}} onSaved={saved} />)
+  fireEvent.change(screen.getByLabelText('Selected image'), { target: { value: 'https://example.test/proposed.png' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Save image' }))
+  await screen.findByText('Saved privately for safety review.')
+  expect(saved).not.toHaveBeenCalled()
+  expect(screen.getByLabelText('Selected image')).toHaveValue('https://example.test/proposed.png')
+  expect(screen.getByRole('button', { name: 'Refresh publication reviews' })).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Save image' }))
+  await waitFor(() => expect(saved).toHaveBeenCalledExactlyOnceWith('https://example.test/proposed.png'))
+  expect(vi.mocked(api.put).mock.calls).toEqual([['/profile', { avatarUrl: 'https://example.test/proposed.png' }], ['/profile', { avatarUrl: 'https://example.test/proposed.png' }]])
+})
+it('does not submit with another account credentials when image validation finishes after unmount', async () => {
+  let loaded!: () => void
+  vi.stubGlobal('Image', class { onload?: () => void; set src(_value: string) { loaded = () => this.onload?.() } })
+  const view = render(<ProfileImageEditor kind="coverUrl" currentUrl="https://example.test/new.png" onClose={() => {}} onSaved={vi.fn()} />)
+  fireEvent.click(screen.getByRole('button', { name: 'Save image' }))
+  view.unmount(); loaded()
+  await new Promise(resolve => setTimeout(resolve, 0))
+  expect(api.put).not.toHaveBeenCalled()
+})

@@ -1,5 +1,6 @@
+import { PublicationReviews } from '@/components/account/PublicationReviews'
 import { ImageUpload, MAX_IMAGE_UPLOAD_MB } from '@ubuntu-fund/ui'
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
@@ -17,6 +18,8 @@ export function ProfileImageEditor({ kind, currentUrl, onClose, onSaved }: {
   onClose: () => void
   onSaved: (url: string) => void
 }) {
+  const live = useRef(true)
+  useEffect(() => { live.current = true; return () => { live.current = false } }, [])
   const [url, setUrl] = useState(currentUrl)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -37,8 +40,9 @@ export function ProfileImageEditor({ kind, currentUrl, onClose, onSaved }: {
           image.src = next
         })
       }
+      if (!live.current) return
       await api.put('/profile', { [kind]: next })
-      onSaved(next)
+      if (live.current) onSaved(next)
     } catch (err) { setError(err instanceof Error ? err.message : 'Could not save image. Try again.') }
     finally { setBusy(false) }
   }
@@ -46,7 +50,8 @@ export function ProfileImageEditor({ kind, currentUrl, onClose, onSaved }: {
     <DialogTitle id="image-editor-title">Update {title}</DialogTitle>
     <DialogContent>
       <Typography color="text.secondary" sx={{ mb: 2 }}>Choose a JPG, PNG or WebP image, up to {MAX_IMAGE_UPLOAD_MB} MB. {kind === 'coverUrl' ? 'A wide landscape image works best.' : 'A square image works best.'}</Typography>
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {error && <><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><PublicationReviews /></>}
+      <Typography sx={{ mb: 2 }}>Images need staff review. A held change stays in this form; after approval, save the same image again.</Typography>
       <ImageUpload
         value={url}
         onChange={(next) => { setUrl(next); setError('') }}

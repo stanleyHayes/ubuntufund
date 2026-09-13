@@ -1,3 +1,4 @@
+import type { LegalAcceptanceRecord } from '@ubuntu-fund/types';
 import mongoose, { Schema, type Document } from 'mongoose';
 import type {
   ContributionMethod,
@@ -16,6 +17,7 @@ export interface DonationIntentDocument extends Document {
   donorEmail?: string;
   donorName?: string;
   message?: string;
+  messageAgreement?: LegalAcceptanceRecord;
   isAnonymous: boolean;
   tip: number;
   status: DonationIntentStatus;
@@ -101,6 +103,7 @@ const donationIntentSchema = new Schema<DonationIntentDocument>(
     donorEmail: { type: String },
     donorName: { type: String },
     message: { type: String },
+    messageAgreement: { version: String, acceptedTerms: Boolean, ageConfirmed: Boolean, acceptedAt: Date },
     isAnonymous: { type: Boolean, default: false },
     tip: { type: Number, default: 0 },
     status: {

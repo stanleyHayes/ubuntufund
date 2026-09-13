@@ -1,4 +1,4 @@
-import type { VerificationType, DocumentType, RiskLevel } from '@ubuntu-fund/types'
+import type { VerificationType, DocumentType, RiskLevel, KYCBusinessInfo } from '@ubuntu-fund/types'
 
 export interface PaymentProvider {
   id: string
@@ -39,6 +39,8 @@ export interface PlatformStats {
 }
 
 export interface KYCVerification {
+  reviewVersion: string
+  informationRequests?: Array<{ id: string; prompt: string; requestedAt: string; response?: string; respondedAt?: string }>
   id: string
   userId: string
   userName: string
@@ -65,13 +67,7 @@ export interface KYCVerification {
       postalCode?: string
     }
   }
-  businessInfo?: {
-    businessName?: string
-    registrationNumber?: string
-    taxId?: string
-    businessType?: string
-    incorporationDate?: Date
-  }
+  businessInfo?: KYCBusinessInfo
   riskLevel: RiskLevel
   reviewedBy?: string
   reviewedAt?: Date

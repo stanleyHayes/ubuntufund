@@ -1,5 +1,4 @@
-import type { ProfileRepositoryPort } from '../../domain/ports/outbound/ProfileRepositoryPort.js';
-import type { UserRepositoryPort } from '../../domain/ports/outbound/UserRepositoryPort.js';
+import type { PublicProfileVisibilityPort } from '../../domain/ports/outbound/PublicProfileVisibilityPort.js';
 import type { PlanLimitsService } from '../services/PlanLimitsService.js';
 import type { CreatorProfileRepositoryPort } from '../../domain/ports/outbound/CreatorProfileRepositoryPort.js';
 import type { TipRepositoryPort } from '../../domain/ports/outbound/TipRepositoryPort.js';
@@ -11,35 +10,35 @@ export class GetCreatorByHandleUseCase {
     private readonly profileRepo: CreatorProfileRepositoryPort,
     private readonly tipRepo: TipRepositoryPort,
     private readonly plans: PlanLimitsService,
-    private readonly users?: UserRepositoryPort,
-    private readonly userProfiles?: ProfileRepositoryPort
+    private readonly visibility: PublicProfileVisibilityPort
   ) {}
 
-  async execute(handle: string) {
+  async execute(handle: string, viewerId?: string) {
     const p = await this.profileRepo.findByHandle(handle);
-    if (!p) throw new AppError('Creator not found', 404);
-    const privacy = await this.userProfiles?.findByUserId(p.userId);
-    const user = privacy?.publicProfile === false ? null : await this.users?.findById(p.userId);
+    if (!p || (await this.visibility.hiddenContentAuthorIds([p.userId], viewerId)).has(p.userId)) throw new AppError('Creator not found', 404);
     const policy = await this.plans.creatorPolicy(p.userId);
     const stats = await this.tipRepo.creatorStats(p.userId);
     const recent = await this.tipRepo.findByCreator(p.userId, 10);
+    const excluded = await this.visibility.hiddenContentAuthorIds(recent.map(tip => tip.toPlain().supporterUserId).filter((id): id is string => !!id), viewerId);
     return {
+      userId: p.userId,
       handle: p.handle,
       displayName: p.displayName,
       tagline: p.tagline,
       bio: p.bio,
-      avatarUrl: p.avatarUrl || user?.avatarUrl,
-      coverUrl: user?.toPlain().coverUrl,
+      avatarUrl: p.avatarUrl,
+      coverUrl: p.coverUrl,
       tipsEnabled: p.tipsEnabled && policy.eligible,
       presetAmounts: p.presetAmounts,
       currency: p.currency,
       thankYouMessage: p.thankYouMessage,
       supporterCount: stats.count,
       totalReceived: stats.totalNet,
-      recentTips: recent.map((t) => ({
-        supporterName: t.isAnonymous ? 'Anonymous' : t.supporterName || 'Someone',
+      recentTips: recent.filter(t => !excluded.has(t.toPlain().supporterUserId ?? '')).map((t) => ({
+        id: t.id,
+        supporterName: t.isAnonymous ? 'Anonymous' : t.toPlain().publicContentStatus === 'approved' ? t.supporterName || 'Someone' : 'Supporter',
         amount: t.amount,
-        message: t.message,
+        message: t.toPlain().publicContentStatus === 'approved' ? t.message : undefined,
       })),
     };
   }

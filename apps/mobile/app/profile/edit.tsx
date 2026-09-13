@@ -1,4 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useAuth } from '@/context/AuthContext'
+import { PublicationConsent } from '@/components/PublicationConsent'
+import { PublicationReviews } from '@/components/PublicationReviews'
+import { OrganizationIdentityEditor } from '@/components/OrganizationIdentityEditor'
+import { useEffect, useState, useRef } from 'react'
 import { ScrollView, View, Image, StyleSheet } from 'react-native'
 import { Text, Snackbar } from 'react-native-paper'
 import { Stack } from 'expo-router'
@@ -14,8 +18,16 @@ import { SelectionField } from '@/components/SelectionField'
 import { Button, PageSkeleton } from '@/components/Loading'
 interface Profile { name: string; phone: string; bio: string; country: string; avatarUrl: string; coverUrl: string }
 export default function EditProfile() {
+  const { user } = useAuth()
+  return <EditProfileForViewer key={user?.id ?? 'guest'} />
+}
+function EditProfileForViewer() {
+  const live = useRef(true)
+  useEffect(() => { live.current = true; return () => { live.current = false } }, [])
+  const [automatedReviewConsent, setAutomatedReviewConsent] = useState(false)
   const p = usePalette(); const neu = useNeu()
   const [profile, setProfile] = useState<Profile | null>(null)
+  const originalIdentity = useRef<Pick<Profile, 'name' | 'country' | 'avatarUrl' | 'coverUrl'> | null>(null)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
@@ -24,15 +36,18 @@ export default function EditProfile() {
   const [newPassword, setNewPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [retry, setRetry] = useState(0)
-  useEffect(() => { let active = true; setError(''); api.get<Partial<Profile>>('/profile').then(v => { if (active) setProfile({ name: v.name || '', phone: v.phone || '', bio: v.bio || '', country: v.country || '', avatarUrl: v.avatarUrl || '', coverUrl: v.coverUrl || '' }) }).catch(e => { if (active) setError(e.message) }); return () => { active = false } }, [retry])
+  useEffect(() => { let active = true; setError(''); api.get<Partial<Profile>>('/profile').then(v => { if (active) { const next = { name: v.name || '', phone: v.phone || '', bio: v.bio || '', country: v.country || '', avatarUrl: v.avatarUrl || '', coverUrl: v.coverUrl || '' }; originalIdentity.current = next; setProfile(next) } }).catch(e => { if (active) setError(e.message) }); return () => { active = false } }, [retry])
   const update = (key: keyof Profile, value: string) => setProfile(v => v ? { ...v, [key]: value } : v)
   async function save() {
     if (!profile || !profile.name.trim()) return
     setBusy(true); setError('')
     try {
-      await api.put('/profile', profile)
+      const changedIdentity = Object.fromEntries((['name', 'country', 'avatarUrl', 'coverUrl'] as const).filter(key => profile[key] !== originalIdentity.current?.[key]).map(key => [key, profile[key]]))
+      const saved = await api.put<Profile>('/profile', { ...changedIdentity, phone: profile.phone, bio: profile.bio, automatedReviewConsent })
+      if (!live.current) return
+      originalIdentity.current = { name: saved.name, country: saved.country ?? '', avatarUrl: saved.avatarUrl ?? '', coverUrl: saved.coverUrl ?? '' }
       const session = sessionSnapshot()
-      if (session) await establishSession({ ...session.user, name: profile.name }, session.tokens)
+      if (session) await establishSession({ ...session.user, name: saved.name }, session.tokens)
       setNotice('Your profile has been updated')
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not save profile.') } finally { setBusy(false) }
   }
@@ -74,6 +89,9 @@ export default function EditProfile() {
         <Text variant="titleLarge" style={{ color: p.text }}>About you</Text>
         {(['name', 'phone', 'bio'] as const).map(key => <TextInput key={key} label={key} value={profile[key]} onChangeText={v => update(key, v)} multiline={key === 'bio'} />)}
         <SelectionField label="Country" value={profile.country} options={Country.getAllCountries().map(c => ({ value: c.name, label: c.name }))} onChange={v => update('country', v)} />
+        <Text>Names and images can appear with public contributions. Phone numbers and this biography are excluded from screening.</Text>
+        <PublicationConsent value={automatedReviewConsent} onChange={setAutomatedReviewConsent} />
+        {error ? <><Text accessibilityRole="alert">{error}</Text><PublicationReviews /></> : null}
         <Button loading={busy} disabled={busy || uploads > 0 || !profile.name.trim()} mode="contained" onPress={() => void save()}>Save profile</Button>
       </View>
       <View style={{ ...neu.raised, backgroundColor: p.surface, borderRadius: 24, padding: 20, gap: 16 }}><Text variant="titleLarge">Change password</Text>
@@ -81,5 +99,6 @@ export default function EditProfile() {
         <Button loading={busy} disabled={busy || !currentPassword || newPassword.length < 8} onPress={() => void changePassword()}>Update password</Button>
       </View>
     </> : <Button onPress={() => setRetry(n => n + 1)}>Retry loading profile</Button>}
+  <OrganizationIdentityEditor />
   </ScrollView><Snackbar visible={!!error || !!notice} duration={error ? Infinity : 4000} onDismiss={() => { setError(''); setNotice('') }} action={{ label: 'Dismiss', onPress: () => { setError(''); setNotice('') } }}>{error || notice}</Snackbar></View>
 }

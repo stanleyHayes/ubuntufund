@@ -10,6 +10,8 @@ import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded'
 import { useAdminCampaigns, useAdminReports } from '@/hooks/useApiData'
 import { CampaignStatus } from '@ubuntu-fund/types'
 import PageHeader from '@/components/PageHeader'
+import ExportMenu from '@/components/ExportMenu'
+import { analyticsTables } from '@/lib/exports/tables'
 
 const panelSx = {
   minWidth: 0,
@@ -80,6 +82,7 @@ export default function ReportsPage() {
   return (
     <Box sx={{ bgcolor: 'background.default' }}>
       {header}
+      <ExportMenu title="Reports" disabled={loading || !!reportsError || !!campaignsError} getReport={() => ({ title: 'Platform reports', tables: analyticsTables(reports, campaigns) })} />
       {(reportsError || campaignsError) && (
         <Alert severity="error" sx={{ mb: 3 }}>
           {reportsError && 'Report statistics could not be loaded. '}

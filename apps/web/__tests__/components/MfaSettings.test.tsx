@@ -1,0 +1,51 @@
+import { expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { MfaSettings, OtpInput } from '@ubuntu-fund/ui'
+it('supports six-digit paste and backspace navigation', () => {
+  const change = vi.fn()
+  const view = render(<OtpInput value="" onChange={change} />)
+  fireEvent.paste(screen.getByLabelText('Digit 1'), { clipboardData: { getData: () => '123456' } })
+  expect(change).toHaveBeenLastCalledWith('123456')
+  view.rerender(<OtpInput value="12345" onChange={change} />)
+  fireEvent.keyDown(screen.getByLabelText('Digit 6'), { key: 'Backspace' })
+  expect(change).toHaveBeenLastCalledWith('1234')
+})
+it('requires confirmation before enabling, rotates tokens and exposes copy/download recovery controls only after success', async () => {
+  const tokens = { accessToken: 'new-access', refreshToken: 'new-refresh' }
+  const client = { get: vi.fn().mockResolvedValue({ enabled: false, available: true, recoveryCodesRemaining: 0 }), post: vi.fn().mockResolvedValueOnce({ enrollmentId: 'setup-id', secret: 'PRIVATESETUPKEY', qrCode: 'data:image/png;base64,eA==' }).mockResolvedValueOnce({ tokens, recoveryCodes: ['abcd-1234-private-recovery'] }) }
+  const onTokens = vi.fn(), writeText = vi.fn().mockResolvedValue(undefined)
+  Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
+  render(<MfaSettings client={client} onTokens={onTokens} />)
+  await screen.findByText('Off — enable it when you are ready.')
+  expect(client.post).not.toHaveBeenCalled()
+  fireEvent.change(screen.getByLabelText('Current password'), { target: { value: 'password' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Set up authenticator' }))
+  await screen.findByText('PRIVATESETUPKEY')
+  expect(onTokens).not.toHaveBeenCalled()
+  expect(screen.queryByRole('button', { name: 'Download recovery codes' })).not.toBeInTheDocument()
+  fireEvent.paste(screen.getByLabelText('Digit 1'), { clipboardData: { getData: () => '123456' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Confirm and enable MFA' }))
+  await screen.findByText('abcd-1234-private-recovery')
+  expect(client.post).toHaveBeenLastCalledWith('/auth/mfa/enable', { password: 'password', code: '123456', enrollmentId: 'setup-id' })
+  expect(onTokens).toHaveBeenCalledWith(tokens)
+  fireEvent.click(screen.getByRole('button', { name: 'Copy recovery codes' }))
+  await waitFor(() => expect(writeText).toHaveBeenCalledWith('abcd-1234-private-recovery'))
+  expect(screen.getByRole('button', { name: 'Download recovery codes' })).toBeEnabled()
+  fireEvent.click(screen.getByRole('button', { name: 'I have saved my codes' }))
+  expect(screen.queryByText('abcd-1234-private-recovery')).not.toBeInTheDocument()
+  expect(screen.queryByText('PRIVATESETUPKEY')).not.toBeInTheDocument()
+})
+it('keeps setup and the session when code confirmation fails', async () => {
+  const client = { get: vi.fn().mockResolvedValue({ enabled: false, available: true, recoveryCodesRemaining: 0 }), post: vi.fn().mockResolvedValueOnce({ enrollmentId: 'setup-id', secret: 'PRIVATESETUPKEY', qrCode: 'data:image/png;base64,eA==' }).mockRejectedValueOnce(new Error('Invalid authenticator code')) }
+  const onTokens = vi.fn()
+  render(<MfaSettings client={client} onTokens={onTokens} />)
+  await screen.findByText('Off — enable it when you are ready.')
+  fireEvent.change(screen.getByLabelText('Current password'), { target: { value: 'password' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Set up authenticator' }))
+  await screen.findByText('PRIVATESETUPKEY')
+  fireEvent.paste(screen.getByLabelText('Digit 1'), { clipboardData: { getData: () => '123456' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Confirm and enable MFA' }))
+  await screen.findByText('Invalid authenticator code')
+  expect(onTokens).not.toHaveBeenCalled()
+  expect(screen.getByText('PRIVATESETUPKEY')).toBeVisible()
+})

@@ -13,6 +13,8 @@ import { useAdminUsers } from '@/hooks/useApiData'
 import { usePagination } from '@/hooks/usePagination'
 import PaginationBar from '@/components/PaginationBar'
 import PageHeader from '@/components/PageHeader'
+import ExportMenu from '@/components/ExportMenu'
+import { usersTable } from '@/lib/exports/tables'
 
 
 const verificationLabels: Record<number, string> = {
@@ -109,6 +111,7 @@ export default function UsersPage() {
 
       {error && <Alert severity="error" sx={{ mb: 3 }}>Could not load users. Refresh the page to try again.</Alert>}
 
+      <ExportMenu title="Users" disabled={loading || !!error} getReport={() => ({ title: 'Users', filters: [`Role: ${roleFilter}`, `Search: ${search || 'All'}`], tables: [usersTable(filtered)] })} />
       {/* Filter bar */}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'minmax(0, 2fr) minmax(150px, 1fr) auto' }, ...raisedSurface, mb: 3 }}>
         <Box sx={{ px: 2.5, py: 1.5, display: 'flex', alignItems: 'center' }}>

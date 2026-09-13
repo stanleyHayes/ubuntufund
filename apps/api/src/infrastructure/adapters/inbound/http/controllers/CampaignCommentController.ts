@@ -6,9 +6,10 @@ export class CampaignCommentController {
   constructor(private readonly comments: CampaignCommentUseCases) {}
 
   list = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    res.set('Cache-Control', 'private, no-store');
     try {
-      const items = await this.comments.list(req.params.id as string, Number(req.query.limit) || 100);
-      res.json({ data: { items }, message: 'Comments retrieved', status: 200 });
+      const items = await this.comments.list(req.params.id as string, Number(req.query.limit) || 100, req.userId, req.userRole === 'admin');
+      res.set('Cache-Control', 'private, no-store').json({ data: { items }, message: 'Comments retrieved', status: 200 });
     } catch (error) { next(error); }
   };
 

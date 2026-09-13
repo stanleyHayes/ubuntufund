@@ -17,7 +17,7 @@ function uniqueEmail(label: string): string {
 async function registerUser(app: Express, email: string) {
   const res = await request(app)
     .post('/api/v1/auth/register')
-    .send({ email, password: 'SecurePass123', name: 'Test User' })
+    .send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email, password: 'SecurePass123', name: 'Test User' })
     .expect(201);
 
   return { userId: res.body.data.user.id as string, token: res.body.data.tokens.accessToken as string };

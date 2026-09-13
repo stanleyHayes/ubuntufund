@@ -1,3 +1,9 @@
+import { tipAttemptKey, rememberTipReference } from '@/lib/tipCheckout'
+import { ReportContent } from '@/components/safety/ReportContent'
+import { MessageAgreement } from '@/components/donate/MessageAgreement'
+import { LEGAL_ACCEPTANCE_VERSION } from '@ubuntu-fund/types'
+import { UserSafetyControls } from '@/components/safety/UserSafetyControls'
+import { useAuth } from '@/context/AuthContext'
 import { ProfileArtwork } from '@/components/profile/ProfileArtwork'
 import Checkbox from '@mui/material/Checkbox'
 import FormControlLabel from '@mui/material/FormControlLabel'
@@ -22,6 +28,7 @@ const INK = 'text.primary'
 const INK_SECONDARY = 'text.secondary'
 
 interface CreatorPage {
+  userId: string
   handle: string
   displayName: string
   tagline?: string
@@ -33,7 +40,7 @@ interface CreatorPage {
   currency: string
   supporterCount: number
   totalReceived: number
-  recentTips: Array<{ supporterName: string; amount: number; message?: string }>
+  recentTips: Array<{ id: string; supporterName: string; amount: number; message?: string }>
 }
 
 /** Collapse whitespace and trim to `max` characters at a word boundary. */
@@ -54,6 +61,14 @@ function creatorDescription(creator: CreatorPage): string {
 }
 
 export function CreatorTipPage() {
+  const { user } = useAuth()
+  const { handle = '' } = useParams()
+  return <CreatorTipForViewer key={`${handle}:${user?.id ?? 'guest'}`} />
+}
+
+function CreatorTipForViewer() {
+  const { user } = useAuth()
+  const [blocked, setBlocked] = useState(false)
   const { handle = '' } = useParams()
   const [page, setPage] = useState<CreatorPage | null>(null)
   const [loading, setLoading] = useState(true)
@@ -68,30 +83,37 @@ export function CreatorTipPage() {
   const [anonymous, setAnonymous] = useState(false)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
+  const [messageAccepted, setMessageAccepted] = useState(false)
+  const messageAcceptance = messageAccepted ? { version: LEGAL_ACCEPTANCE_VERSION, acceptedTerms: true, ageConfirmed: true } : undefined
   const [message, setMessage] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const initialized = useRef(false)
+  const requestVersion = useRef(0)
   const load = useCallback(async () => {
-    setLoading(true)
-    setNotFound(false)
-    setLoadError(false)
+    const version = ++requestVersion.current
+    if (!initialized.current) setLoading(true)
     try {
       const data = await api.get<CreatorPage>(`/creators/${handle}`)
-      setPage(data)
-      if (data.presetAmounts?.[0]) setAmount(data.presetAmounts[0])
+      if (version !== requestVersion.current) return
+      setPage(data); setNotFound(false); setLoadError(false)
+      if (!initialized.current && data.presetAmounts?.[0]) setAmount(data.presetAmounts[0])
+      initialized.current = true
     } catch (err) {
-      // Only a real 404 means "no such creator"; anything else (5xx, network) is
-      // a transient error the visitor can retry — don't imply the page is gone.
-      if (err instanceof ApiError && err.status === 404) setNotFound(true)
-      else setLoadError(true)
-    } finally {
-      setLoading(false)
-    }
+      if (version !== requestVersion.current) return
+      setPage(null)
+      if (err instanceof ApiError && err.status === 404) { setNotFound(true); setLoadError(false) }
+      else { setLoadError(true); setNotFound(false) }
+    } finally { if (version === requestVersion.current) setLoading(false) }
   }, [handle])
 
   useEffect(() => {
     void load()
+    const refresh = () => { if (!document.hidden) void load() }
+    const timer = window.setInterval(refresh, 30000)
+    window.addEventListener('focus', refresh)
+    return () => { requestVersion.current++; window.clearInterval(timer); window.removeEventListener('focus', refresh) }
   }, [load, reloadKey])
 
   const creatorImage = page?.coverUrl || page?.avatarUrl
@@ -108,30 +130,36 @@ export function CreatorTipPage() {
   })
 
   async function handleSupport() {
+    if ((message.trim() || (!anonymous && name.trim())) && !messageAccepted) { setError('Accept the content terms before posting your public name or message.'); return }
     setError(null)
     if (!Number.isFinite(amount) || amount <= 0) {
       setError('Choose an amount.')
       return
     }
     if (!email) {
-      setError('Enter your email so we can send a receipt.')
+      setError('Enter your email address for checkout.')
       return
     }
     setSubmitting(true)
     try {
-      const res = await api.post<{ checkoutUrl: string }>(`/creators/${handle}/tips`, {
+      const attemptKey = await tipAttemptKey(user?.id, handle!)
+      const res = await api.post<{ checkoutUrl: string; reference: string }>(`/creators/${handle}/tips`, {
         amount,
         supporterEmail: email.trim(),
         supporterName: name.trim() || undefined,
         message: message.trim() || undefined,
+        legalAcceptance: messageAcceptance,
         isAnonymous: anonymous,
-      })
+      }, { 'Idempotency-Key': attemptKey })
+      rememberTipReference(attemptKey, res.reference)
       window.location.href = res.checkoutUrl
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not start checkout. Please try again.')
       setSubmitting(false)
     }
   }
+
+  if (blocked) return <Container sx={{ py: 6 }}><Alert severity="success">User blocked. Manage blocked users in Settings.</Alert><Button href="/settings">Open settings</Button></Container>
 
   if (loading) {
     return <AccountPageSkeleton layout="cards" />
@@ -244,6 +272,7 @@ export function CreatorTipPage() {
             >
               {page.displayName}
             </Typography>
+            <UserSafetyControls userId={page.userId} onBlocked={() => { requestVersion.current++; setPage(null); setBlocked(true) }} />
             {page.tagline && (
               <Typography sx={{ color: INK_SECONDARY, mt: 0.5 }}>{page.tagline}</Typography>
             )}
@@ -365,7 +394,7 @@ export function CreatorTipPage() {
                 sx={{ mb: 2 }}
               />
               <TextField
-                label="Email (for your receipt)"
+                label="Email address"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -382,6 +411,7 @@ export function CreatorTipPage() {
                 minRows={2}
                 sx={{ mb: 2 }}
               />
+            {!!(message.trim() || (!anonymous && name.trim())) && <MessageAgreement includeName checked={messageAccepted} onChange={setMessageAccepted} />}
               <FormControlLabel
                 control={
                   <Checkbox checked={anonymous} onChange={(_, value) => setAnonymous(value)} />
@@ -389,7 +419,7 @@ export function CreatorTipPage() {
                 label="Show my support anonymously"
               />
               <Typography variant="body2" sx={{ color: INK_SECONDARY, mb: 2 }}>
-                Your name and message may appear in recent supporters. Anonymous support hides your
+                Your name and message appear in recent supporters only after staff review. Anonymous support hides your
                 name. Your email is private. Available payment methods are shown by Paystack.
               </Typography>
               {error && (
@@ -441,9 +471,9 @@ export function CreatorTipPage() {
           <Box sx={{ mt: 4 }}>
             <Typography sx={{ fontWeight: 800, color: INK, mb: 1.5 }}>Recent supporters</Typography>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-              {page.recentTips.map((t, i) => (
+              {page.recentTips.map((t) => (
                 <Box
-                  key={i}
+                  key={t.id}
                   sx={{
                     p: 2,
                     borderRadius: SHAPE.sm,
@@ -459,6 +489,7 @@ export function CreatorTipPage() {
                       “{t.message}”
                     </Typography>
                   )}
+                  {user && t.message && <ReportContent tipId={t.id} />}
                 </Box>
               ))}
             </Box>

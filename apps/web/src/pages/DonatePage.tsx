@@ -1,3 +1,6 @@
+import { usePublicCampaign } from '@/hooks/usePublicCampaign'
+import { MessageAgreement } from '@/components/donate/MessageAgreement'
+import { LEGAL_ACCEPTANCE_VERSION } from '@ubuntu-fund/types'
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate, useSearchParams, Link as RouterLink } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -29,11 +32,9 @@ import {
 } from '@ubuntu-fund/ui'
 import { CampaignStatus } from '@ubuntu-fund/types'
 import {
-  getCampaignBySlug,
   createDonationIntent,
   isPaymentsNotConfigured,
   campaignPublicPath,
-  type CampaignPublicView,
 } from '@/lib/fundraising'
 import { getCryptoAssets } from '@/lib/crypto'
 import { useSeo, SITE_ORIGIN } from '@/lib/seo'
@@ -89,10 +90,6 @@ function rememberPendingDonation(entry: PendingDonation): void {
   }
 }
 
-function looksLikeNotFound(message: string): boolean {
-  return /not\s*found|404|no\s*such|does not exist/i.test(message)
-}
-
 /** Parse a positive money amount from a free-text field; returns NaN when invalid. */
 function parseAmount(raw: string): number {
   if (!raw.trim()) return NaN
@@ -110,10 +107,7 @@ export function DonatePage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 
-  const [campaign, setCampaign] = useState<CampaignPublicView | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [loadError, setLoadError] = useState<string | null>(null)
-  const [notFound, setNotFound] = useState(false)
+  const { campaign, isLoading, error: loadError, notFound } = usePublicCampaign(slug)
 
   // Form state
   const [amount, setAmount] = useState('')
@@ -133,6 +127,8 @@ export function DonatePage() {
   } = useCouponPreview()
   const [donorEmail, setDonorEmail] = useState('')
   const [donorName, setDonorName] = useState('')
+  const [messageAccepted, setMessageAccepted] = useState(false)
+  const messageAcceptance = messageAccepted ? { version: LEGAL_ACCEPTANCE_VERSION, acceptedTerms: true, ageConfirmed: true } : undefined
   const [message, setMessage] = useState('')
   const [isAnonymous, setIsAnonymous] = useState(false)
 
@@ -149,7 +145,7 @@ export function DonatePage() {
   useSeo({
     title: campaign ? `Donate to ${campaign.title} | Ujimora` : 'Donate | Ujimora',
     description:
-      'Choose an amount in cedis and give securely by mobile money or card. No account needed, and your receipt arrives by email.',
+      'Choose an amount in cedis and give securely by mobile money or card. No account needed. Review your donation details after payment.',
     // A checkout form has nothing to rank for on its own, and it splits signals
     // with the campaign page that links to it — so it points there instead.
     path: `/c/${encodeURIComponent(slug ?? '')}/donate`,
@@ -166,32 +162,6 @@ export function DonatePage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  useEffect(() => {
-    if (!slug) return
-    let active = true
-    setIsLoading(true)
-    setLoadError(null)
-    setNotFound(false)
-
-    getCampaignBySlug(slug)
-      .then((data) => {
-        if (active) setCampaign(data)
-      })
-      .catch((err: unknown) => {
-        if (!active) return
-        const msg = err instanceof Error ? err.message : 'Failed to load campaign'
-        if (looksLikeNotFound(msg)) setNotFound(true)
-        else setLoadError(msg)
-      })
-      .finally(() => {
-        if (active) setIsLoading(false)
-      })
-
-    return () => {
-      active = false
-    }
-  }, [slug])
 
   // Crypto rail availability (server-driven; the toggle is hidden when off).
   useEffect(() => {
@@ -245,6 +215,7 @@ export function DonatePage() {
     amountValid &&
     emailValid &&
     tipValid &&
+    (!(message.trim() || (!isAnonymous && donorName.trim())) || messageAccepted) &&
     // An invalid code aborts the donation server-side, so block it here rather
     // than letting the donor press Give and be rejected.
     !(couponCode.trim() && couponPreview && !couponPreview.valid)
@@ -268,6 +239,7 @@ export function DonatePage() {
         donorEmail: donorEmail.trim(),
         donorName: donorName.trim() || undefined,
         message: message.trim() || undefined,
+        legalAcceptance: messageAcceptance,
         isAnonymous,
       })
 
@@ -569,7 +541,7 @@ export function DonatePage() {
         {/* Donor details */}
         <TextField
           id="donor-email"
-          label="Email for your receipt"
+          label="Email address"
           type="email"
           value={donorEmail}
           onChange={(e) => setDonorEmail(e.target.value)}
@@ -581,7 +553,7 @@ export function DonatePage() {
           helperText={
             touchedEmail && donorEmail.trim() !== '' && !emailValid
               ? 'Enter a valid email address'
-              : 'We’ll send your donation receipt here.'
+              : 'Used by the payment provider for checkout.'
           }
           sx={{ mb: 2 }}
         />
@@ -607,6 +579,8 @@ export function DonatePage() {
           minRows={2}
           sx={{ mb: 1 }}
         />
+
+        {!!(message.trim() || (!isAnonymous && donorName.trim())) && <MessageAgreement includeName={!isAnonymous && !!donorName.trim()} checked={messageAccepted} onChange={setMessageAccepted} />}
 
         <FormControlLabel
           control={
@@ -650,6 +624,7 @@ export function DonatePage() {
             emailValid={emailValid}
             donorName={donorName.trim() || undefined}
             message={message.trim() || undefined}
+            legalAcceptance={messageAcceptance}
             isAnonymous={isAnonymous}
             campaignPath={backToCampaign}
           />

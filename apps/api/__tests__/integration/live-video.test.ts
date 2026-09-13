@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import { TokenVerifier } from 'livekit-server-sdk';
 import { LiveVideoService } from '../../src/infrastructure/adapters/outbound/video/LiveVideoService.js';
-const controls = vi.hoisted(() => ({ deleteRoom: vi.fn() }));
-vi.mock('livekit-server-sdk', async importOriginal => ({ ...await importOriginal<typeof import('livekit-server-sdk')>(), RoomServiceClient: class { deleteRoom = controls.deleteRoom } }));
+const controls = vi.hoisted(() => ({ deleteRoom: vi.fn(), removeParticipant: vi.fn() }));
+vi.mock('livekit-server-sdk', async importOriginal => ({ ...await importOriginal<typeof import('livekit-server-sdk')>(), RoomServiceClient: class { deleteRoom = controls.deleteRoom; removeParticipant = controls.removeParticipant } }));
 const settings = { url: 'wss://video.example.test', apiKey: 'test-key', apiSecret: 'test-secret-for-local-signature-verification' };
 const session = { id: 'session', campaignId: 'campaign', isActive: () => true };
 const sessions = { findById: async () => session } as any;
@@ -19,6 +19,17 @@ describe('live video permissions', () => {
     expect(h.sub).toBe('host-owner'); expect(v.sub).toMatch(/^viewer-/);
     expect(v.exp! - v.nbf!).toBeLessThanOrEqual(60);
     expect(host).not.toHaveProperty('apiSecret');
+  });
+  it('uses identifiable viewer tokens and an explicit revocation cutoff', async () => {
+    const guard = { assertOwnerVisible: vi.fn().mockResolvedValue(undefined), assertSessionVisible: vi.fn().mockResolvedValue(undefined) };
+    const service = new LiveVideoService(settings, sessions, campaigns, guard);
+    const viewer = await service.join('session', undefined, 'viewer-account');
+    expect((await new TokenVerifier(settings.apiKey, settings.apiSecret).verify(viewer.token)).sub).toBe('viewer-viewer-account');
+    controls.removeParticipant.mockResolvedValueOnce(undefined);
+    await service.removeIdentity('session', 'viewer-viewer-account');
+    expect(controls.removeParticipant).toHaveBeenCalledWith('ujimora-session', 'viewer-viewer-account', { revokeTokenTs: expect.any(BigInt) });
+    guard.assertSessionVisible.mockRejectedValueOnce(new Error('Blocked'));
+    await expect(service.join('session', undefined, 'viewer-account')).rejects.toThrow('Blocked');
   });
   it('closes the provider room and surfaces failure so the owner can retry', async () => {
     const service = new LiveVideoService(settings, sessions, campaigns);

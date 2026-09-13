@@ -8,7 +8,7 @@ import { UserModel } from '../../src/infrastructure/database/models/UserModel.js
 
 async function createAdmin(app: Express): Promise<string> {
   const email = `contact-admin-${randomUUID()}@example.com`;
-  const registration = await request(app).post('/api/v1/auth/register').send({ email, password: 'SecurePass123', name: 'Contact Admin' }).expect(201);
+  const registration = await request(app).post('/api/v1/auth/register').send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email, password: 'SecurePass123', name: 'Contact Admin' }).expect(201);
   await UserModel.findByIdAndUpdate(registration.body.data.user.id, { role: 'admin' });
   const login = await request(app).post('/api/v1/auth/login').send({ email, password: 'SecurePass123' }).expect(200);
   return login.body.data.tokens.accessToken as string;

@@ -11,6 +11,7 @@ export interface CampaignUpdateDocument extends Document {
   isPinned: boolean;
   deletedAt?: Date;
   deletedBy?: string;
+  moderationReportId?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -30,6 +31,7 @@ const campaignUpdateSchema = new Schema<CampaignUpdateDocument>(
     isPinned: { type: Boolean, default: false, index: true },
     deletedAt: { type: Date, index: true },
     deletedBy: { type: String },
+    moderationReportId: { type: String },
   },
   { timestamps: true }
 );

@@ -14,6 +14,7 @@ function toDomain(doc: CampaignBalanceDocument): CampaignBalance {
     currency: doc.currency,
     totalRaised: doc.totalRaised,
     pendingBalance: doc.pendingBalance,
+    refundHeldBalance: (doc.refundHolds ?? []).reduce((sum, hold) => sum + hold.amount, 0),
     availableBalance: doc.availableBalance,
     paidOutBalance: doc.paidOutBalance,
     platformFees: doc.platformFees,

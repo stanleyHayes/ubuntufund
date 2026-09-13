@@ -20,7 +20,8 @@
       "bundleIdentifier": "com.ujimora.app",
       "buildNumber": "1",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSFaceIDUsageDescription": "Use Face ID to unlock your Ujimora account when you enable biometric protection."
       },
       "privacyManifests": {
         "NSPrivacyTracking": false,
@@ -54,6 +55,13 @@
             "DEFAULT"
           ]
         }
+      ],
+      "blockedPermissions": [
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_MEDIA_AUDIO"
       ]
     },
     "web": {
@@ -61,6 +69,7 @@
       "bundler": "metro"
     },
     "plugins": [
+      "expo-iap",
       "expo-router",
       "expo-font",
       [
@@ -71,7 +80,12 @@
           "defaultChannel": "default"
         }
       ],
-      "expo-secure-store",
+      [
+        "expo-secure-store",
+        {
+          "faceIDPermission": "Use Face ID to unlock your Ujimora account when you enable biometric protection."
+        }
+      ],
       "expo-web-browser",
       [
         "expo-image-picker",
@@ -84,7 +98,11 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Use your location to fill your verification address."
+          "locationWhenInUsePermission": "Use your location to fill your verification address.",
+          "locationAlwaysAndWhenInUsePermission": false,
+          "locationAlwaysPermission": false,
+          "isIosBackgroundLocationEnabled": false,
+          "isAndroidBackgroundLocationEnabled": false
         }
       ],
       [
@@ -102,7 +120,13 @@
           "microphonePermission": "Broadcast your voice to Ujimora viewers."
         }
       ],
-      "./plugins/withBroadcastExtension"
+      "./plugins/withBroadcastExtension",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Use Face ID to unlock your Ujimora account when you enable biometric protection."
+        }
+      ]
     ]
   }
 }

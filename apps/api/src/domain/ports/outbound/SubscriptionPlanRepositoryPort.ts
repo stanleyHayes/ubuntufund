@@ -12,6 +12,8 @@ import type {
  * id, not a fixed enum.
  */
 export interface SubscriptionPlanRepositoryPort {
+  /** Write an existing policy document inside a consuming transaction. */
+  lockForConsumption?(tier: string): Promise<void>;
   /** All persisted plans (any tier without a row is simply absent here). */
   findAll(): Promise<SubscriptionPlan[]>;
   /** A single plan by its tier, or null when no row has been seeded yet. */

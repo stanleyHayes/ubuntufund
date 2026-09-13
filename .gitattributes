@@ -1,0 +1,2 @@
+# Patch context includes upstream whitespace and must remain byte-preserving.
+patches/**/*.patch -whitespace

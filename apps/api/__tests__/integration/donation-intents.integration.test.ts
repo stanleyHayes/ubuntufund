@@ -1,3 +1,4 @@
+import { DonationModel } from '../../src/infrastructure/database/models/DonationModel.js'
 import { randomUUID } from 'node:crypto'
 import { describe, it, beforeAll, afterAll, expect } from 'vitest'
 import request from 'supertest'
@@ -31,7 +32,7 @@ function uniqueEmail(label: string): string {
 async function registerUser(app: Express, email: string) {
   const res = await request(app)
     .post('/api/v1/auth/register')
-    .send({ email, password: 'SecurePass123', name: 'Test User' })
+    .send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email, password: 'SecurePass123', name: 'Test User' })
     .expect(201)
   return {
     userId: res.body.data.user.id as string,
@@ -122,13 +123,16 @@ describe('Donation Intents Integration', () => {
         amount: 500,
         tip: 50,
         provider: 'wallet',
-        message: 'For the kids',
+        message: 'For the kids', legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true },
         isAnonymous: false,
       })
     expect(res.status).toBe(201)
     expect(res.body.data.status).toBe('SUCCEEDED')
     expect(res.body.data.provider).toBe('wallet')
     const intentId = res.body.data.id as string
+    const storedIntent = await DonationIntentModel.findById(intentId)
+    expect(storedIntent?.messageAgreement?.version).toBe('2026-09-12')
+    expect(storedIntent?.messageAgreement?.acceptedAt).toBeInstanceOf(Date)
 
     // Wallet debited amount + tip.
     const walletRes = await request(app)
@@ -165,6 +169,8 @@ describe('Donation Intents Integration', () => {
     const publicRes = await request(app).get(`/api/v1/donation-intents/${intentId}/public`)
     expect(publicRes.status).toBe(200)
     expect(publicRes.body.data.status).toBe('SUCCEEDED')
+    expect(publicRes.body.data.contentReviewStatus).toBe('pending')
+    expect(JSON.stringify(publicRes.body.data)).not.toContain('For the kids')
     expect(publicRes.body.data.idempotencyKey).toBeUndefined()
 
     // Donation recorded under the donor, visible in their history.
@@ -296,6 +302,7 @@ describe('Donation Intents Integration', () => {
       provider: 'paystack',
       donorEmail: 'guest@example.com',
       donorName: 'Generous Guest',
+      legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true },
       isAnonymous: false,
     })
     expect(res.status).toBe(501)
@@ -343,12 +350,22 @@ describe('Donation Intents Integration', () => {
       .set('Authorization', `Bearer ${donorToken}`)
     const donationId = mineRes.body.data[0].id as string
 
+    await DonationModel.updateOne({ _id: donationId }, { $set: { publicContentStatus: 'approved', publicContentFingerprint: 'a'.repeat(64), publicReviewNotes: 'Previous review notes', publicReviewedBy: creatorId, publicReviewedAt: new Date() } })
+    await request(app).post(`/api/v1/donations/${donationId}/message`).set('Authorization', `Bearer ${donorToken}`).send({ message: 'Missing agreement' }).expect(428)
+    expect((await DonationModel.findById(donationId))?.message).not.toBe('Missing agreement')
     const editRes = await request(app)
       .post(`/api/v1/donations/${donationId}/message`)
       .set('Authorization', `Bearer ${donorToken}`)
-      .send({ message: 'Wishing you all the best!' })
+      .send({ message: 'Wishing you all the best!', legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true } })
     expect(editRes.status).toBe(200)
     expect(editRes.body.data.message).toBe('Wishing you all the best!')
+    expect(editRes.body.data.contentReviewStatus).toBe('pending')
+    const edited = await DonationModel.findById(donationId)
+    expect(edited?.publicContentStatus).toBe('pending')
+    expect(edited?.publicContentFingerprint).toBeUndefined()
+    expect(edited?.publicReviewNotes).toBeUndefined()
+    expect(edited?.messageAgreement?.acceptedAt).toBeInstanceOf(Date)
+    expect(edited?.amount).toBe(250)
 
     const { token: strangerToken } = await registerUser(app, uniqueEmail('stranger6'))
     const blockedRes = await request(app)

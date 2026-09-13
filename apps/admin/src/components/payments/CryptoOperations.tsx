@@ -5,6 +5,8 @@ import { LoadingDots } from '@ubuntu-fund/ui'
 import type { CryptoAssetInfo } from '@ubuntu-fund/types'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
+import ExportMenu from '@/components/ExportMenu'
+import { exportTable } from '@/lib/exports/report'
 
 interface Availability { enabled: boolean; assets: CryptoAssetInfo[] }
 interface Summary { scanned: number; settled: number; detected: number; failed: number; pending: number; errored: number }
@@ -17,6 +19,7 @@ export default function CryptoOperations() {
   const [busy, setBusy] = useState(false)
   const [age, setAge] = useState(30)
   const [summary, setSummary] = useState<Summary | null>(null)
+  const [summaryAge, setSummaryAge] = useState(30)
   async function refresh() {
     setLoading(true)
     setError(null)
@@ -30,7 +33,7 @@ export default function CryptoOperations() {
     setBusy(true)
     setError(null)
     setSummary(null)
-    try { setSummary(await api.post<Summary>('/admin/crypto/reconcile', { olderThanMinutes: age })) }
+    try { setSummary(await api.post<Summary>('/admin/crypto/reconcile', { olderThanMinutes: age })); setSummaryAge(age) }
     catch (e) { setError(e instanceof Error ? e.message : 'Reconciliation failed. Try again.') }
     finally { setBusy(false) }
   }
@@ -40,6 +43,7 @@ export default function CryptoOperations() {
         <Box><CurrencyExchangeRoundedIcon sx={{ color: '#DCC07E', mb: 1 }} /><Typography variant="h5" sx={{ fontWeight: 800 }}>Crypto contributions</Typography><Typography sx={{ color: '#C5CCC2', mt: .5 }}>Checkout availability and delayed payment checks.</Typography></Box>
         <Chip label={loading ? 'Checking availability' : availability ? availability.enabled && availability.assets.length ? 'Offered at checkout' : 'Not offered at checkout' : 'Status unavailable'} sx={{ bgcolor: 'rgba(255,255,255,.12)', color: '#F5F2EA', alignSelf: 'start' }} />
       </Box>
+      <Box sx={{ px: 3, pt: 2 }}><ExportMenu title="Crypto operations" disabled={loading || busy || !!error} getReport={() => ({ title: 'Crypto operations', filters: ['Current provider availability', ...(summary ? [`Latest reconciliation: deposits older than ${summaryAge} minutes`] : [])], tables: [exportTable('Available assets', availability?.assets ?? [], { Asset: r => r.asset, Label: r => r.label, Networks: r => r.networks.map(network => network.label).join(', ') }), ...(summary ? [exportTable('Latest reconciliation', [summary], { Scanned: r => r.scanned, Settled: r => r.settled, Detected: r => r.detected, Failed: r => r.failed, Pending: r => r.pending, Errors: r => r.errored })] : [])] })} /></Box>
       <Box sx={{ p: { xs: 2.5, md: 3 }, display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, gap: 4 }}>
         <Box>
           <Typography sx={{ fontWeight: 800, mb: .75 }}>Currencies & networks</Typography>

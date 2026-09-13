@@ -140,14 +140,14 @@ describe('Payout settlement idempotency + repair (G5)', () => {
     // Owner + admin + funded active campaign.
     const reg = await request(app)
       .post('/api/v1/auth/register')
-      .send({ email: uniqueEmail('g5'), password: 'SecurePass123', name: 'Owner' })
+      .send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email: uniqueEmail('g5'), password: 'SecurePass123', name: 'Owner' })
       .expect(201)
     const token = reg.body.data.tokens.accessToken as string
     const userId = reg.body.data.user.id as string
     await UserModel.findByIdAndUpdate(userId, { verificationLevel: 2 })
     const admReg = await request(app)
       .post('/api/v1/auth/register')
-      .send({ email: uniqueEmail('g5a'), password: 'SecurePass123', name: 'Admin' })
+      .send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email: uniqueEmail('g5a'), password: 'SecurePass123', name: 'Admin' })
       .expect(201)
     await UserModel.findByIdAndUpdate(admReg.body.data.user.id, { role: 'admin' })
     const admLogin = await request(app)
@@ -183,6 +183,7 @@ describe('Payout settlement idempotency + repair (G5)', () => {
         provider: 'paystack',
         donorEmail: 'donor@example.com',
         donorName: 'Donor',
+      legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true },
         isAnonymous: false,
       })
       .expect(201)

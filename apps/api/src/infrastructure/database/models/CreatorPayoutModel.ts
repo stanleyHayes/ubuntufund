@@ -1,3 +1,4 @@
+import { trackActivity } from '../plugins/trackActivity.js';
 import mongoose, { Schema, type Document } from 'mongoose';
 import type { PayoutProvider, PayoutStatus } from '@ubuntu-fund/types';
 
@@ -49,6 +50,8 @@ const schema = new Schema<CreatorPayoutDocument>(
   },
   { collection: 'creator_payouts', timestamps: true }
 );
+
+schema.plugin(trackActivity);
 
 export const CreatorPayoutModel = mongoose.model<CreatorPayoutDocument>(
   'CreatorPayout',

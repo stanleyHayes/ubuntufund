@@ -104,6 +104,8 @@ export interface CampaignBeneficiaryBalance {
   currency: string
   /** Accrued from settled donations, not yet cleared for payout. */
   pendingBalance: number
+  /** Share held for unresolved refunds, unavailable for payout. */
+  refundHeldBalance?: number
   /** Cleared and available for the beneficiary to withdraw. */
   availableBalance: number
   /** Already disbursed to the beneficiary. */

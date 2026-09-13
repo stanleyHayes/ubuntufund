@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import type { CampaignUpdateController } from '../controllers/CampaignUpdateController.js';
 import { validate } from '../../middleware/validate.js';
-import type { createAuthMiddleware } from '../../middleware/authMiddleware.js';
+import type { createAuthMiddleware, createOptionalAuthMiddleware } from '../../middleware/authMiddleware.js';
 
 const campaignUpdateTypeSchema = z.enum([
   'milestone',
@@ -12,18 +12,20 @@ const campaignUpdateTypeSchema = z.enum([
 ]);
 
 const createCampaignUpdateSchema = z.object({
+  automatedReviewConsent: z.boolean().optional(),
   title: z.string().min(3).max(200),
   content: z.string().min(1).max(5000),
   type: campaignUpdateTypeSchema,
-  mediaUrls: z.array(z.string()).default([]),
+  mediaUrls: z.array(z.string().url().max(2000)).max(10).default([]),
   isPinned: z.boolean().default(false),
 });
 
 const updateCampaignUpdateSchema = z.object({
+  automatedReviewConsent: z.boolean().optional(),
   title: z.string().min(3).max(200).optional(),
   content: z.string().min(1).max(5000).optional(),
   type: campaignUpdateTypeSchema.optional(),
-  mediaUrls: z.array(z.string()).optional(),
+  mediaUrls: z.array(z.string().url().max(2000)).max(10).optional(),
 });
 
 /**
@@ -34,11 +36,13 @@ const updateCampaignUpdateSchema = z.object({
  */
 export function createCampaignUpdateRoutes(
   controller: CampaignUpdateController,
-  authMiddleware: ReturnType<typeof createAuthMiddleware>
+  authMiddleware: ReturnType<typeof createAuthMiddleware>,
+  optionalAuth: ReturnType<typeof createOptionalAuthMiddleware>
 ): Router {
   const router = Router();
+  router.use((_req, res, next) => { res.set('Cache-Control', 'private, no-store'); next(); });
 
-  router.get('/:id/updates', controller.list);
+  router.get('/:id/updates', optionalAuth, controller.list);
   router.post(
     '/:id/updates',
     authMiddleware,

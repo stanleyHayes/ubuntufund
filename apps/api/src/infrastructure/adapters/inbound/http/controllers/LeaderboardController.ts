@@ -1,4 +1,5 @@
-import type { Request, Response, NextFunction } from 'express';
+import type { AuthenticatedRequest } from '../../middleware/authMiddleware.js';
+import type { Response, NextFunction } from 'express';
 import type { GetLeaderboardUseCase } from '../../../../../application/use-cases/GetLeaderboardUseCase.js';
 import type { GetLeaderboardStatsUseCase } from '../../../../../application/use-cases/GetLeaderboardStatsUseCase.js';
 
@@ -9,7 +10,7 @@ export class LeaderboardController {
   ) {}
 
   list = async (
-    req: Request,
+    req: AuthenticatedRequest,
     res: Response,
     next: NextFunction
   ): Promise<void> => {
@@ -18,7 +19,7 @@ export class LeaderboardController {
         period: req.query.period as string | undefined,
         category: req.query.category as string | undefined,
         limit: req.query.limit as string | undefined,
-      });
+      }, req.userId);
 
       res.json({
         data: entries,
@@ -31,7 +32,7 @@ export class LeaderboardController {
   };
 
   stats = async (
-    req: Request,
+    req: AuthenticatedRequest,
     res: Response,
     next: NextFunction
   ): Promise<void> => {
@@ -39,7 +40,7 @@ export class LeaderboardController {
       const stats = await this.getLeaderboardStatsUseCase.execute({
         period: req.query.period as string | undefined,
         category: req.query.category as string | undefined,
-      });
+      }, req.userId);
 
       res.json({
         data: stats,
@@ -56,7 +57,7 @@ export class LeaderboardController {
   // existing getLeaderboardUseCase for two fixed periods rather than adding a
   // new constructor dependency, so mount wiring stays unchanged.
   featured = async (
-    req: Request,
+    req: AuthenticatedRequest,
     res: Response,
     next: NextFunction
   ): Promise<void> => {
@@ -69,12 +70,12 @@ export class LeaderboardController {
           period: 'lifetime',
           category,
           limit,
-        }),
+        }, req.userId),
         this.getLeaderboardUseCase.execute({
           period: 'monthly',
           category,
           limit,
-        }),
+        }, req.userId),
       ]);
 
       res.json({

@@ -56,14 +56,14 @@ describe('Image upload proxy (server-side signed Cloudinary)', () => {
   async function authToken(): Promise<string> {
     const reg = await request(app)
       .post('/api/v1/auth/register')
-      .send({ email: uniqueEmail('uploader'), password: 'SecurePass123', name: 'Up Loader' })
+      .send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email: uniqueEmail('uploader'), password: 'SecurePass123', name: 'Up Loader' })
       .expect(201);
     return reg.body.data.tokens.accessToken as string;
   }
 
   it('rejects an unauthenticated upload with 401', async () => {
     await request(app)
-      .post('/api/v1/uploads/image?folder=kyc')
+      .post('/api/v1/uploads/image?folder=profiles')
       .set('Content-Type', 'image/png')
       .send(PNG)
       .expect(401);
@@ -73,7 +73,7 @@ describe('Image upload proxy (server-side signed Cloudinary)', () => {
     const token = await authToken();
     uploadedTo = [];
     const res = await request(app)
-      .post('/api/v1/uploads/image?folder=kyc')
+      .post('/api/v1/uploads/image?folder=profiles')
       .set('Authorization', `Bearer ${token}`)
       .set('Content-Type', 'image/png')
       .send(PNG)
@@ -87,7 +87,7 @@ describe('Image upload proxy (server-side signed Cloudinary)', () => {
   it('rejects a disallowed content-type with 415', async () => {
     const token = await authToken();
     await request(app)
-      .post('/api/v1/uploads/image?folder=kyc')
+      .post('/api/v1/uploads/image?folder=profiles')
       .set('Authorization', `Bearer ${token}`)
       .set('Content-Type', 'text/plain')
       .send(Buffer.from('not an image'))
@@ -97,7 +97,7 @@ describe('Image upload proxy (server-side signed Cloudinary)', () => {
   it('rejects an empty body with 400', async () => {
     const token = await authToken();
     await request(app)
-      .post('/api/v1/uploads/image?folder=kyc')
+      .post('/api/v1/uploads/image?folder=profiles')
       .set('Authorization', `Bearer ${token}`)
       .set('Content-Type', 'image/png')
       .expect(400);

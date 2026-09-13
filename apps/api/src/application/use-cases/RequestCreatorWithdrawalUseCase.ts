@@ -1,3 +1,4 @@
+import type { CreatorWithdrawalTransactionPort } from '../../domain/ports/outbound/CreatorWithdrawalTransactionPort.js'
 import type { WalletPayoutPort } from '../../domain/ports/outbound/WalletPayoutPort.js'
 import type { PayoutAccountService } from '../services/PayoutAccountService.js'
 import type { PlanLimitsService } from '../services/PlanLimitsService.js'
@@ -52,9 +53,10 @@ export class RequestCreatorWithdrawalUseCase {
     private readonly plans: PlanLimitsService,
     private readonly accounts?: PayoutAccountService,
     private readonly walletPayouts?: WalletPayoutPort,
+    private readonly withdrawalTransaction?: CreatorWithdrawalTransactionPort,
   ) {}
 
-  async execute(userId: string, input: CreatorWithdrawalInput) {
+  async execute(userId: string, input: CreatorWithdrawalInput, authVersion = '') {
     const wallet = input.destination === 'ujimora_wallet'
     if (input.destination && !['paystack', 'ujimora_wallet'].includes(input.destination))
       throw new AppError('Unsupported withdrawal destination', 422)
@@ -64,7 +66,7 @@ export class RequestCreatorWithdrawalUseCase {
     if (!/^[0-9a-f-]{36}$/i.test(input.idempotencyKey ?? ''))
       throw new AppError('A transfer request key is required', 422)
     const replay = await this.payoutRepo.findByRequestKey(input.idempotencyKey as string)
-    if (replay) return replay
+    if (replay) return this.ownedReplay(userId, replay)
     if (!wallet && !this.gateway.isConfigured()) {
       throw new AppError('Withdrawals are not available right now.', 503)
     }
@@ -98,6 +100,7 @@ export class RequestCreatorWithdrawalUseCase {
       if (!this.walletPayouts) throw new AppError('Wallet transfers unavailable', 503)
       return this.walletPayouts.transferCreator({
         userId,
+        authVersion,
         amount: input.amount,
         fee,
         feePercent,
@@ -122,64 +125,45 @@ export class RequestCreatorWithdrawalUseCase {
       throw new AppError('A payout destination (account, bank/telco, name) is required.', 400)
     }
 
-    // Reserve first (atomic, guarded on availableBalance ≥ amount).
-    const reserved = await this.balanceRepo.reserveForPayout(userId, input.amount)
-    if (!reserved) {
-      throw new AppError('Insufficient available balance for this withdrawal.', 400)
-    }
-
-    // Persist the PENDING record. If this write fails, the reservation would be
-    // stranded (no record, no reference to reconcile), so return it here — nothing
-    // is in flight yet, so an unguarded return is safe and runs exactly once.
-    let payout: CreatorPayoutEntity
+    if (!this.withdrawalTransaction) throw new AppError('Withdrawals are not available right now.', 503)
+    let committed: CreatorPayoutEntity | { payout: CreatorPayoutEntity; reference: string }
     try {
-      payout = await this.payoutRepo.create(
-        new CreatorPayoutEntity({
-          id: '',
-          creatorUserId: userId,
-          amount: input.amount,
-          fee,
-          feePercent,
-          netAmount,
-          currency,
-          status: 'PENDING',
-          provider: 'paystack',
-          recipientName: r.accountName,
-          requestKey: input.idempotencyKey,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        }),
-      )
+      committed = await this.withdrawalTransaction.run(userId, authVersion, async () => {
+        // A concurrent request may have committed after the initial replay check.
+        const existing = await this.payoutRepo.findByRequestKey(input.idempotencyKey as string)
+        if (existing) return this.ownedReplay(userId, existing)
+        const currentPolicy = await this.plans.creatorPolicy(userId, true)
+        if (currentPolicy.feePercent !== feePercent)
+          throw new AppError('Your withdrawal fee has changed. Refresh your creator dashboard and review the new fee.', 409)
+        if (!savedAccount || !this.accounts) throw new AppError('A verified saved payout account is required.', 422)
+        await this.accounts.assertCurrent(userId, savedAccount)
+        const reserved = await this.balanceRepo.reserveForPayout(userId, input.amount)
+        if (!reserved) throw new AppError('Insufficient available balance for this withdrawal.', 400)
+        const payout = await this.payoutRepo.create(new CreatorPayoutEntity({
+          id: '', creatorUserId: userId, amount: input.amount, fee, feePercent,
+          netAmount, currency, status: 'PENDING', provider: 'paystack',
+          recipientName: r.accountName, requestKey: input.idempotencyKey,
+          createdAt: new Date(), updatedAt: new Date(),
+        }))
+        const reference = `cpay-${payout.id}-${randomUUID().slice(0, 8)}`
+        const processing = await this.payoutRepo.transitionToProcessing(payout.id, { providerRef: reference })
+        if (!processing) throw new AppError('Could not start the withdrawal. Please try again.', 502)
+        return { payout, reference }
+      })
     } catch (err) {
-      await this.balanceRepo.returnToAvailable(userId, input.amount)
-      // A concurrent request with the same key won the unique index. Its record
-      // is authoritative; this one reserved nothing net (returned above) and
-      // replays the winner rather than starting a second transfer.
+      // Transaction rollback restores all local writes before replaying a winner.
       if (isDuplicateKeyError(err)) {
         const winner = await this.payoutRepo.findByRequestKey(input.idempotencyKey as string)
-        if (winner) return winner
+        if (winner) return this.ownedReplay(userId, winner)
       }
-      logger.error({ err, userId }, 'creator withdrawal: payout record creation failed')
+      if (err instanceof AppError) throw err
+      logger.error({ err, userId }, 'creator withdrawal: reservation transaction failed')
       throw new AppError('Could not start the withdrawal. Please try again.', 502)
     }
+    if (committed instanceof CreatorPayoutEntity) return committed
+    const { payout, reference } = committed
 
-    // Move to PROCESSING and persist the provider reference BEFORE any money can
-    // leave. This makes every later failure correlatable (the webhook/reconciler
-    // find the payout by reference) and lets the rollback win a terminal
-    // transition — fixing the ordering that could otherwise double-pay or strand
-    // a payout in PENDING.
-    const reference = `cpay-${payout.id}-${randomUUID().slice(0, 8)}`
-    const processing = await this.payoutRepo.transitionToProcessing(payout.id, {
-      providerRef: reference,
-    })
-    if (!processing) {
-      // A freshly-created PENDING payout should always transition; treat a lost
-      // transition as a transient fault. No money is in flight — return once.
-      logger.error({ payoutId: payout.id }, 'creator withdrawal: could not enter PROCESSING')
-      await this.balanceRepo.returnToAvailable(userId, input.amount, `cpay:${payout.id}:returned`)
-      throw new AppError('Could not start the withdrawal. Please try again.', 502)
-    }
-
+    // External calls happen only after the reservation and reference commit.
     let transferAttempted = false
     let recipientCode = ''
     let transferCode: string | undefined
@@ -243,6 +227,12 @@ export class RequestCreatorWithdrawalUseCase {
       currency,
       reference,
     }
+  }
+
+  private ownedReplay(userId: string, payout: CreatorPayoutEntity): CreatorPayoutEntity {
+    if (payout.creatorUserId !== userId)
+      throw new AppError('This withdrawal request key is unavailable. Start a new withdrawal request.', 409)
+    return payout
   }
 
   /**

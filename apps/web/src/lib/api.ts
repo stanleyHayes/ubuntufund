@@ -1,3 +1,4 @@
+import type { LegalAcceptanceInput, LegalAcceptanceRecord } from '@ubuntu-fund/types'
 import { browserSession, expireSession, forceExpireSession, storedAccessToken } from './session'
 // In production, requests go to '/api/v1' which Vercel rewrites to the API
 // (see vercel.json). Set VITE_API_URL to call an absolute API origin instead.
@@ -111,8 +112,8 @@ async function authedRequest<T>(path: string, options?: RequestInit): Promise<T>
 
 export const api = {
   get: <T>(path: string) => authedRequest<T>(path),
-  post: <T>(path: string, body?: unknown) =>
-    authedRequest<T>(path, { method: 'POST', body: JSON.stringify(body) }),
+  post: <T>(path: string, body?: unknown, headers?: Record<string, string>) =>
+    authedRequest<T>(path, { method: 'POST', body: JSON.stringify(body), headers }),
   put: <T>(path: string, body?: unknown) =>
     authedRequest<T>(path, { method: 'PUT', body: JSON.stringify(body) }),
   delete: <T>(path: string) =>
@@ -127,6 +128,7 @@ export interface AuthTokens {
 }
 
 export interface AuthUser {
+  legalAcceptance?: LegalAcceptanceRecord
   needsWebsite?: boolean
   organizationName?: string
   id: string
@@ -147,15 +149,16 @@ export interface RegisterResponse {
 
 // --- Auth API ---
 
-export async function loginApi(email: string, password: string): Promise<LoginResponse> {
+export async function loginApi(email: string, password: string, mfaCode?: string): Promise<LoginResponse> {
   const res = await request<{ data: LoginResponse }>('/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, mfaCode }),
   })
   return res.data
 }
 
 export async function registerApi(data: {
+  legalAcceptance?: LegalAcceptanceInput
   name: string
   email: string
   password: string

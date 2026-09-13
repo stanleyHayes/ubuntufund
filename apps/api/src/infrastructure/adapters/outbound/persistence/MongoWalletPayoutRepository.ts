@@ -1,3 +1,5 @@
+import type { PlanLimitsService } from '../../../../application/services/PlanLimitsService.js'
+import { UserModel } from '../../../database/models/UserModel.js'
 import mongoose, { type ClientSession } from 'mongoose'
 import {
   WalletType,
@@ -18,6 +20,7 @@ import { JournalLineModel } from '../../../database/models/JournalLineModel.js'
 import { LedgerAccountModel } from '../../../database/models/LedgerAccountModel.js'
 
 export class MongoWalletPayoutRepository implements WalletPayoutPort {
+  constructor(private readonly plans?: Pick<PlanLimitsService, 'creatorPolicy'>) {}
   private async credit(
     session: ClientSession,
     userId: string,
@@ -168,10 +171,15 @@ export class MongoWalletPayoutRepository implements WalletPayoutPort {
     }
   }
   async transferCreator(input: Parameters<WalletPayoutPort['transferCreator']>[0]) {
-    const session = await mongoose.startSession()
+    mongoose.set('transactionAsyncLocalStorage', true)
     let result!: Awaited<ReturnType<WalletPayoutPort['transferCreator']>>
-    try {
-      await session.withTransaction(async () => {
+    await mongoose.connection.transaction(async (session) => {
+        const owner = await UserModel.updateOne({
+          _id: input.userId,
+          deletedAt: null,
+          ...(input.authVersion ? { authVersion: input.authVersion } : { $or: [{ authVersion: '' }, { authVersion: null }] }),
+        }, { $inc: { publicationWriteVersion: 1 } }, { session })
+        if (!owner.matchedCount) throw new AppError('Account authorization changed. Sign in again.', 401)
         let payout = await CreatorPayoutModel.findOne({ providerRef: input.reference }).session(
           session,
         )
@@ -184,6 +192,10 @@ export class MongoWalletPayoutRepository implements WalletPayoutPort {
           )
             throw new AppError('Transfer reference already used with different details', 409)
         } else {
+          if (!this.plans) throw new AppError('Withdrawal fee verification is unavailable.', 503)
+          const policy = await this.plans.creatorPolicy(input.userId, true)
+          if (policy.feePercent !== input.feePercent)
+            throw new AppError('Your withdrawal fee has changed. Refresh your creator dashboard and review the new fee.', 409)
           const balance = await CreatorBalanceModel.updateOne(
             { userId: input.userId, currency: 'GHS', availableBalance: { $gte: input.amount } },
             {
@@ -234,10 +246,7 @@ export class MongoWalletPayoutRepository implements WalletPayoutPort {
           currency: 'GHS',
           reference: input.reference,
         }
-      })
-    } finally {
-      await session.endSession()
-    }
+      }, { readPreference: 'primary', readConcern: { level: 'snapshot' }, writeConcern: { w: 'majority' } })
     return result
   }
 }

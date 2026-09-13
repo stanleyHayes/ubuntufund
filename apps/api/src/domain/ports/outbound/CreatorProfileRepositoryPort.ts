@@ -16,10 +16,12 @@ export interface CreatorProfileRepositoryPort {
       tagline?: string;
       bio?: string;
       avatarUrl?: string;
+  coverUrl?: string;
       tipsEnabled?: boolean;
       presetAmounts?: number[];
       currency?: string;
       thankYouMessage?: string;
-    }
+    },
+    context: { expectedRevision: number | null; authVersion: string; publicChange: boolean }
   ): Promise<CreatorProfileEntity>;
 }

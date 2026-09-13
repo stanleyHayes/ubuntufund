@@ -57,8 +57,8 @@ export class PlanLimitsService {
   ) {}
 
   /** Resolve a plan via PlanService (DB-backed) when wired, else the code defaults. */
-  private async getPlanFor(tier: string): Promise<SubscriptionPlan> {
-    if (this.planService) return this.planService.getPlan(tier, true)
+  private async getPlanFor(tier: string, lock = false): Promise<SubscriptionPlan> {
+    if (this.planService) return this.planService.getPlan(tier, true, lock)
     const seeds = SUBSCRIPTION_PLANS as Record<string, SubscriptionPlan>
     return seeds[tier] ?? seeds[SubscriptionTier.FREE]
   }
@@ -69,22 +69,27 @@ export class PlanLimitsService {
    * (expired, cancelled, past-due) — those users get Free-tier limits, never a
    * stale paid plan.
    */
-  async resolvePlan(userId: string): Promise<SubscriptionPlan> {
+  async resolvePlan(userId: string, lock = false): Promise<SubscriptionPlan> {
     const subscription = await this.subscriptionRepo.findByUserId(userId);
     if (!subscription || !ACTIVE_STATUSES.has(subscription.status)) {
-      return this.getPlanFor(SubscriptionTier.FREE);
+      return this.getPlanFor(SubscriptionTier.FREE, lock);
     }
     const expiry = new Date(subscription.currentPeriodEnd).getTime();
     const trialExpired = subscription.status === SubscriptionStatus.TRIALING && subscription.trialEnd && new Date(subscription.trialEnd).getTime() <= Date.now();
     if (subscription.tier !== SubscriptionTier.FREE && (!Number.isFinite(expiry) || expiry <= Date.now() || trialExpired)) {
-      return this.getPlanFor(SubscriptionTier.FREE);
+      return this.getPlanFor(SubscriptionTier.FREE, lock);
     }
-    return this.getPlanFor(subscription.tier);
+    return this.getPlanFor(subscription.tier, lock);
   }
 
   /** Paid-only creator entitlement and the effective plan rate for withdrawals. */
-  async creatorPolicy(userId: string) {
-    const [plan, subscription] = await Promise.all([this.resolvePlan(userId), this.subscriptionRepo.findByUserId(userId)]);
+  async creatorPolicy(userId: string, lock = false) {
+    if (lock) {
+      if (!this.subscriptionRepo.lockForConsumption || !this.planService) throw new AppError('Withdrawal fee verification unavailable.', 503);
+      await this.subscriptionRepo.lockForConsumption(userId);
+    }
+    const plan = await this.resolvePlan(userId, lock);
+    const subscription = await this.subscriptionRepo.findByUserId(userId);
     const eligible = !!subscription && subscription.status === SubscriptionStatus.ACTIVE &&
       new Date(subscription.currentPeriodEnd).getTime() > Date.now() && plan.active &&
       plan.tier !== SubscriptionTier.FREE && (plan.priceMonthly > 0 || plan.priceYearly > 0);

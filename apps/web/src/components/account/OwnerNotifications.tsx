@@ -1,8 +1,9 @@
+import { Link as RouterLink } from 'react-router-dom'
 import { useCallback, useEffect, useState } from 'react'
 import { Alert, Box, Button, Chip, Skeleton, Typography } from '@mui/material'
 import { api } from '@/lib/api'
 
-type Notice = { id: string; title: string; message: string; read: boolean; createdAt: string }
+type Notice = { id: string; title: string; message: string; read: boolean; createdAt: string; path?: string }
 export function OwnerNotifications() {
   const [items, setItems] = useState<Notice[]>([])
   const [error, setError] = useState('')
@@ -80,7 +81,7 @@ export function OwnerNotifications() {
       ) : (
         !error &&
         items.length === 0 && (
-          <Typography color="text.secondary">New campaign donations will appear here.</Typography>
+          <Typography color="text.secondary">Activity you opt in to will appear here. Choose alerts and emails in Settings.</Typography>
         )
       )}
       {items.slice(0, 10).map((item) => (
@@ -95,6 +96,7 @@ export function OwnerNotifications() {
           <Typography variant="caption" color="text.secondary">
             {new Date(item.createdAt).toLocaleString()}
           </Typography>
+          {item.path?.startsWith('/') && !item.path.startsWith('//') && <Button size="small" component={RouterLink} to={item.path}>View details</Button>}
           {!item.read && (
             <Button size="small" onClick={() => void markRead(item.id)}>
               Mark as read

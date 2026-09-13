@@ -14,6 +14,7 @@ import {
   dropTestDatabase,
 } from './helpers/testDatabase.js'
 const input = {
+  consentToExternalProcessing: true,
   action: AiWritingAction.IMPROVE_CLARITY,
   text: 'Help our community build a library.',
 }
@@ -38,6 +39,13 @@ beforeEach(async () => {
 })
 afterEach(() => vi.unstubAllGlobals())
 describe('AI usage and quotas', () => {
+  it('does not send text or spend quota without explicit permission', async () => {
+    const service = new AiWritingService(provider, 20, 100)
+    await expect(service.write('creator', { ...input, consentToExternalProcessing: false })).rejects.toMatchObject({ statusCode: 400 })
+    expect(provider.write).not.toHaveBeenCalled()
+    expect(await AiUsageModel.countDocuments()).toBe(0)
+    expect(await AiQuotaModel.countDocuments()).toBe(0)
+  })
   it('persists metadata, counts tokens and paginates without saving campaign text', async () => {
     const service = new AiWritingService(provider, 20, 100)
     expect((await service.write('creator', input)).remainingRequests).toBe(19)
@@ -150,9 +158,9 @@ describe('AI HTTP boundaries', () => {
 describe('OpenAI provider contract', () => {
   it('uses the Responses API without storage and records actual token usage', async () => {
     const fetch = vi.fn(
-      async () =>
+      async (url: string) =>
         new Response(
-          JSON.stringify({
+          JSON.stringify(url.endsWith('/moderations') ? { results: [{ flagged: false }] } : {
             status: 'completed',
             model: 'gpt-4.1-mini',
             output: [
@@ -173,7 +181,8 @@ describe('OpenAI provider contract', () => {
       inputTokens: 20,
       outputTokens: 4,
     })
-    const call = fetch.mock.calls[0] as unknown as [string, RequestInit]
+    expect(fetch.mock.calls).toHaveLength(3)
+    const call = fetch.mock.calls[1] as unknown as [string, RequestInit]
     expect(call[0]).toBe('https://api.openai.com/v1/responses')
     expect(JSON.parse(call[1].body as string)).toMatchObject({
       store: false,
@@ -183,7 +192,7 @@ describe('OpenAI provider contract', () => {
   it('rejects incomplete and empty responses without inventing a suggestion', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () => new Response(JSON.stringify({ status: 'incomplete' }))),
+      vi.fn(async (url: string) => new Response(JSON.stringify(url.endsWith('/moderations') ? { results: [{ flagged: false }] } : { status: 'incomplete' }))),
     )
     await expect(
       new OpenAiWritingProvider({ enabled: true, apiKey: 'test-only', model: 'test' }).write(input),

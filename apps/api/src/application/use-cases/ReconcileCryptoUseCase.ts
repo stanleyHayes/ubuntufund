@@ -76,18 +76,28 @@ export class ReconcileCryptoUseCase {
         continue;
       }
 
-      await this.handleCryptoWebhookUseCase.applyEvent(intent, {
-        eventId: `recon-${intent.id}`,
-        type,
-        providerRef: intent.providerRef,
-        transactionHash: status.transactionHash,
-        confirmations: status.confirmations,
-        cryptoAmount: status.cryptoAmount,
-        raw: {},
-      });
-      if (type === 'deposit.confirmed') summary.settled += 1;
-      else if (type === 'deposit.detected') summary.detected += 1;
-      else summary.failed += 1;
+      try {
+        await this.handleCryptoWebhookUseCase.applyEvent(intent, {
+          eventId: `recon-${intent.id}`,
+          type,
+          providerRef: intent.providerRef,
+          transactionHash: status.transactionHash,
+          confirmations: status.confirmations,
+          cryptoAmount: status.cryptoAmount,
+          raw: {},
+        });
+        // A provider confirmation can still be below required finality. Report
+        // persisted local status, never infer successful credit from the event.
+        const current = await this.intentRepo.findById(intent.id);
+        if (!current) summary.errored += 1;
+        else if (current.status === 'SUCCEEDED') summary.settled += 1;
+        else if (current.status === 'PROCESSING') summary.detected += 1;
+        else if (current.status === 'FAILED' || current.status === 'EXPIRED') summary.failed += 1;
+        else summary.pending += 1;
+      } catch (error) {
+        logger.error({ err: error, donationIntentId: intent.id }, 'crypto reconcile: applying deposit status failed');
+        summary.errored += 1;
+      }
     }
 
     return summary;

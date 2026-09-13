@@ -44,6 +44,9 @@ function toDomain(doc: SubscriptionPlanDocument): SubscriptionPlan {
 export class MongoSubscriptionPlanRepository
   implements SubscriptionPlanRepositoryPort
 {
+  async lockForConsumption(tier: string): Promise<void> {
+    await SubscriptionPlanModel.updateOne({ tier }, { $inc: { consumptionWriteVersion: 1 } }, { timestamps: false });
+  }
   async findAll(): Promise<SubscriptionPlan[]> {
     const docs = await SubscriptionPlanModel.find();
     return docs.map(toDomain);

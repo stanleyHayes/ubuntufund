@@ -15,11 +15,11 @@ export class GetLeaderboardStatsUseCase {
   constructor(private readonly leaderboardRepo: LeaderboardRepositoryPort) {}
 
   async execute(
-    query: Omit<LeaderboardQueryInput, 'limit'>
+    query: Omit<LeaderboardQueryInput, 'limit'>, viewerId?: string
   ): Promise<LeaderboardStatsDTO> {
     const period = parseLeaderboardPeriod(query.period);
     const category = parseLeaderboardCategory(query.category);
 
-    return this.leaderboardRepo.getStats({ period, category });
+    return this.leaderboardRepo.getStats({ period, category, viewerId });
   }
 }

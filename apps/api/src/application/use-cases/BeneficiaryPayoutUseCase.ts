@@ -14,6 +14,7 @@ import type { CampaignBalanceRepositoryPort } from '../../domain/ports/outbound/
 import type { BeneficiaryRecipientRepositoryPort } from '../../domain/ports/outbound/BeneficiaryRecipientRepositoryPort.js';
 import type { BeneficiaryPayoutRepositoryPort } from '../../domain/ports/outbound/BeneficiaryPayoutRepositoryPort.js';
 import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGatewayPort.js';
+import type { UnitOfWorkPort } from '../../domain/ports/outbound/UnitOfWorkPort.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 import { logger } from '../../infrastructure/logging/logger.js';
 import { toBeneficiaryPayoutDto } from './mappers/beneficiaryPayoutDto.js';
@@ -50,6 +51,7 @@ export class BeneficiaryPayoutUseCase {
     private readonly recipientRepo: BeneficiaryRecipientRepositoryPort,
     private readonly payoutRepo: BeneficiaryPayoutRepositoryPort,
     private readonly paymentGateway: PaymentGatewayPort,
+    private readonly unitOfWork: UnitOfWorkPort,
     // Maker-checker threshold (GHS); `0` disables dual approval. Mirrors the
     // campaign payout rail's control for high-value payouts (spec §16).
     private readonly dualApprovalAmount = 0
@@ -142,55 +144,56 @@ export class BeneficiaryPayoutUseCase {
       throw new AppError('Payout amount must be greater than zero', 422);
     }
 
-    const balance = await this.beneficiaryBalanceRepo.findOne(campaignId, beneficiaryId, CURRENCY);
-    const available = balance?.availableBalance ?? 0;
-    const pending = balance?.pendingBalance ?? 0;
-    const eligible = roundMoney(available + pending, CURRENCY);
-    if (amount > eligible) {
-      throw new AppError(
-        `Cannot request a payout of ${CURRENCY} ${amount}; only ${CURRENCY} ${eligible} is available.`,
-        422
-      );
-    }
-
-    // Clear just enough of the beneficiary's pending → available (mirroring the
-    // campaign aggregate) so the approval step can reserve the full amount.
-    const needed = roundMoney(amount - available, CURRENCY);
-    if (needed > 0) {
-      const cleared = await this.beneficiaryBalanceRepo.clearPendingToAvailable(
-        campaignId,
-        beneficiaryId,
-        CURRENCY,
-        needed
-      );
-      if (!cleared) {
-        throw new AppError('Insufficient cleared funds for this payout; please try again.', 422);
-      }
-      const mirror = await this.campaignBalanceRepo.clearPendingToAvailable(campaignId, needed);
-      if (!mirror) {
-        logger.error(
-          { campaignId, beneficiaryId, needed },
-          'beneficiary payout: campaign pending mirror short (invariant breach)'
+    // Both balance mirrors and the request must commit together. This callback
+    // contains only database work and may safely be retried on write conflicts.
+    return this.unitOfWork.run(async () => {
+      const balance = await this.beneficiaryBalanceRepo.findOne(campaignId, beneficiaryId, CURRENCY);
+      const available = balance?.availableBalance ?? 0;
+      const pending = balance?.pendingBalance ?? 0;
+      const eligible = roundMoney(available + pending, CURRENCY);
+      if (amount > eligible) {
+        throw new AppError(
+          `Cannot request a payout of ${CURRENCY} ${amount}; only ${CURRENCY} ${eligible} is available.`,
+          422
         );
       }
-    }
 
-    const saved = await this.payoutRepo.create(
-      new BeneficiaryPayoutEntity({
-        id: '',
-        campaignId,
-        beneficiaryId,
-        recipientId: recipient.id,
-        amount,
-        currency: CURRENCY,
-        status: 'PENDING',
-        provider: 'paystack',
-        requestedBy: requester.userId,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      })
-    );
-    return toBeneficiaryPayoutDto(saved);
+      // Clear just enough of the beneficiary's pending → available (mirroring the
+      // campaign aggregate) so the approval step can reserve the full amount.
+      const needed = roundMoney(amount - available, CURRENCY);
+      if (needed > 0) {
+        const cleared = await this.beneficiaryBalanceRepo.clearPendingToAvailable(
+          campaignId,
+          beneficiaryId,
+          CURRENCY,
+          needed
+        );
+        if (!cleared) {
+          throw new AppError('Insufficient cleared funds for this payout; please try again.', 422);
+        }
+        const mirror = await this.campaignBalanceRepo.clearPendingToAvailable(campaignId, needed);
+        if (!mirror) {
+          throw new AppError('Campaign funds require reconciliation before this payout can be requested', 409);
+        }
+      }
+
+      const saved = await this.payoutRepo.create(
+        new BeneficiaryPayoutEntity({
+          id: '',
+          campaignId,
+          beneficiaryId,
+          recipientId: recipient.id,
+          amount,
+          currency: CURRENCY,
+          status: 'PENDING',
+          provider: 'paystack',
+          requestedBy: requester.userId,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+      );
+      return toBeneficiaryPayoutDto(saved);
+    });
   }
 
   /** Admin: approve a KYC-verified beneficiary payout and initiate the transfer. */

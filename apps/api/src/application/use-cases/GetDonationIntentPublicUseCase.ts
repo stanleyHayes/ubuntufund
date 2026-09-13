@@ -1,3 +1,5 @@
+import type { DonationRepositoryPort } from '../../domain/ports/outbound/DonationRepositoryPort.js';
+import type { LedgerRepositoryPort } from '../../domain/ports/outbound/LedgerRepositoryPort.js';
 import type { DonationIntentPublicView } from '@ubuntu-fund/types';
 import type { DonationIntentEntity } from '../../domain/entities/DonationIntent.js';
 import type { DonationIntentRepositoryPort } from '../../domain/ports/outbound/DonationIntentRepositoryPort.js';
@@ -29,7 +31,9 @@ export function toDonationIntentPublicView(
  */
 export class GetDonationIntentPublicUseCase {
   constructor(
-    private readonly donationIntentRepo: DonationIntentRepositoryPort
+    private readonly donationIntentRepo: DonationIntentRepositoryPort,
+    private readonly ledger: LedgerRepositoryPort,
+    private readonly donations: DonationRepositoryPort
   ) {}
 
   async execute(id: string): Promise<DonationIntentPublicView> {
@@ -37,6 +41,16 @@ export class GetDonationIntentPublicUseCase {
     if (!intent) {
       throw new AppError('Donation intent not found', 404);
     }
-    return toDonationIntentPublicView(intent);
+    const view = toDonationIntentPublicView(intent);
+    if (intent.status !== 'SUCCEEDED') return view;
+    const entry = await this.ledger.findEntryByDonationIntentId(intent.id);
+    const donation = entry?.donationId ? await this.donations.findById(entry.donationId) : null;
+    if (!donation || donation.campaignId !== intent.campaignId || donation.donorId !== (intent.donorUserId ?? 'guest')) {
+      return { ...view, contentReviewStatus: 'unavailable' };
+    }
+    const content = donation.toPlain();
+    const requested = !content.publicContentRevokedAt && ((!content.isAnonymous && !!content.donorName?.trim()) || (!content.messageHiddenAt && !!content.message?.trim()));
+    return { ...view, contentReviewStatus: !requested ? 'not_requested' : donation.publicContentApproved ? 'approved' : content.publicContentStatus === 'rejected' ? 'rejected' : 'pending' };
+
   }
 }

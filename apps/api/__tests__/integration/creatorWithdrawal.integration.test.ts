@@ -1,3 +1,9 @@
+import { MongoSubscriptionRepository } from '../../src/infrastructure/adapters/outbound/persistence/MongoSubscriptionRepository.js'
+import { MongoSubscriptionPlanRepository } from '../../src/infrastructure/adapters/outbound/persistence/MongoSubscriptionPlanRepository.js'
+import mongoose from 'mongoose'
+import { MongoCreatorWithdrawalTransaction } from '../../src/infrastructure/adapters/outbound/persistence/MongoCreatorWithdrawalTransaction.js'
+import { MongoWalletPayoutRepository } from '../../src/infrastructure/adapters/outbound/persistence/MongoWalletPayoutRepository.js'
+import { MongoCreatorPayoutRepository } from '../../src/infrastructure/adapters/outbound/persistence/MongoCreatorPayoutRepository.js'
 import { WalletModel } from '../../src/infrastructure/database/models/WalletModel.js'
 import { SubscriptionPlanModel } from '../../src/infrastructure/database/models/SubscriptionPlanModel.js'
 import { SubscriptionModel } from '../../src/infrastructure/database/models/SubscriptionModel.js'
@@ -34,6 +40,7 @@ describe('Creator withdrawal — transfer rail', () => {
   let failRecipient = false
   let failTransfer = false
   let transferAmount: unknown
+  let transferSnapshot: { status?: string; availableBalance?: number; reference?: string }
 
   beforeAll(async () => {
     await connectTestDatabase()
@@ -63,6 +70,9 @@ describe('Creator withdrawal — transfer rail', () => {
           })
         }
         if (u.includes('/transfer')) {
+          const committed = await CreatorPayoutModel.collection.findOne({ providerRef: body.reference }, { session: null })
+          const balance = committed ? await CreatorBalanceModel.collection.findOne({ userId: committed.creatorUserId }, { session: null }) : null
+          transferSnapshot = { status: committed?.status, availableBalance: balance?.availableBalance, reference: committed?.providerRef }
           transferAmount = body.amount
           if (failTransfer) throw new Error('transfer response timed out')
           return json({
@@ -87,7 +97,7 @@ describe('Creator withdrawal — transfer rail', () => {
   async function creatorWithBalance(available: number) {
     const reg = await request(app)
       .post('/api/v1/auth/register')
-      .send({ email: uniqueEmail('cw'), password: 'SecurePass123', name: 'With Draw' })
+      .send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email: uniqueEmail('cw'), password: 'SecurePass123', name: 'With Draw' })
       .expect(201)
     const token = reg.body.data.tokens.accessToken as string
     const userId = reg.body.data.user.id as string
@@ -113,6 +123,186 @@ describe('Creator withdrawal — transfer rail', () => {
     )
     return { token, userId }
   }
+
+  it('denies another creator’s withdrawal key without disclosing payout data or moving funds', async () => {
+    const owner = await creatorWithBalance(200)
+    const other = await creatorWithBalance(200)
+    const key = randomUUID()
+    const body = { amount: 100, expectedFeePercent: 3, idempotencyKey: key, recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } }
+    await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`).send(body).expect(201)
+    const payout = await CreatorPayoutModel.findOne({ requestKey: key }).lean()
+    expect(payout).not.toBeNull()
+    const providerCalls = vi.mocked(fetch).mock.calls.length
+    for (const destination of ['paystack', 'ujimora_wallet']) {
+      const response = await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${other.token}`).send({ ...body, destination }).expect(409)
+      expect(response.body.data).toBeUndefined()
+      expect(JSON.stringify(response.body)).not.toContain(owner.userId)
+      expect(JSON.stringify(response.body)).not.toContain(payout!.providerRef)
+    }
+    expect(vi.mocked(fetch).mock.calls.length).toBe(providerCalls)
+    expect((await CreatorBalanceModel.findOne({ userId: other.userId }))?.availableBalance).toBe(200)
+    expect(await CreatorPayoutModel.countDocuments({ creatorUserId: other.userId })).toBe(0)
+    expect(await CreatorPayoutModel.findOne({ requestKey: key }).lean()).toEqual(payout)
+    // Simulate a request whose first lookup ran before the other owner's insert.
+    // The real unique index then selects the winner after this request reserves.
+    const lookup = vi.spyOn(MongoCreatorPayoutRepository.prototype, 'findByRequestKey').mockResolvedValueOnce(null).mockResolvedValueOnce(null)
+    try {
+      await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${other.token}`).send(body).expect(409)
+    } finally { lookup.mockRestore() }
+    expect((await CreatorBalanceModel.findOne({ userId: other.userId }))?.availableBalance).toBe(200)
+    expect(await CreatorPayoutModel.countDocuments({ creatorUserId: other.userId })).toBe(0)
+    expect(await CreatorPayoutModel.findOne({ requestKey: key }).lean()).toEqual(payout)
+    const callsAfterRace = vi.mocked(fetch).mock.calls.length
+    await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`).send(body).expect(201)
+    expect(vi.mocked(fetch).mock.calls.length).toBe(callsAfterRace)
+    expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(100)
+  })
+
+  it.each(['closure', 'credentials'] as const)('rejects wallet transfer when %s changes after authentication', async change => {
+    const owner = await creatorWithBalance(100)
+    const original = MongoWalletPayoutRepository.prototype.transferCreator
+    const transfer = vi.spyOn(MongoWalletPayoutRepository.prototype, 'transferCreator').mockImplementationOnce(async function (this: MongoWalletPayoutRepository, input) {
+      await UserModel.updateOne({ _id: owner.userId }, { $set: change === 'closure' ? { deletedAt: new Date() } : { authVersion: 'revoked-during-request' } })
+      return original.call(this, input)
+    })
+    try {
+      await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`).send({ amount: 100, expectedFeePercent: 3, destination: 'ujimora_wallet', idempotencyKey: randomUUID() }).expect(401)
+    } finally { transfer.mockRestore() }
+    expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(100)
+    expect(await CreatorPayoutModel.countDocuments({ creatorUserId: owner.userId })).toBe(0)
+    expect((await WalletModel.findOne({ userId: owner.userId }))?.balance).toBe(0)
+  })
+
+  it.each(['closure', 'credentials'] as const)('rejects bank transfer when %s changes before the reservation transaction', async change => {
+    const owner = await creatorWithBalance(100)
+    const original = MongoCreatorWithdrawalTransaction.prototype.run
+    const transaction = vi.spyOn(MongoCreatorWithdrawalTransaction.prototype, 'run').mockImplementationOnce(async function (this: MongoCreatorWithdrawalTransaction, userId, version, work) {
+      await UserModel.updateOne({ _id: userId }, { $set: change === 'closure' ? { deletedAt: new Date() } : { authVersion: 'revoked-before-reservation' } })
+      return original.call(this, userId, version, work)
+    })
+    const transfersBefore = vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/transfer')).length
+    try {
+      await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`).send({ amount: 100, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } }).expect(401)
+    } finally { transaction.mockRestore() }
+    expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(100)
+    expect(await CreatorPayoutModel.countDocuments({ creatorUserId: owner.userId })).toBe(0)
+    expect(vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/transfer')).length).toBe(transfersBefore)
+  })
+
+  it('rolls back reservation and payout when the processing transition fails, then permits retry', async () => {
+    const owner = await creatorWithBalance(100)
+    const body = { amount: 100, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } }
+    const transition = vi.spyOn(MongoCreatorPayoutRepository.prototype, 'transitionToProcessing').mockResolvedValueOnce(null)
+    const transfersBefore = vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/transfer')).length
+    try {
+      await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`).send(body).expect(502)
+    } finally { transition.mockRestore() }
+    expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(100)
+    expect(await CreatorPayoutModel.countDocuments({ creatorUserId: owner.userId })).toBe(0)
+    expect(vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/transfer')).length).toBe(transfersBefore)
+    await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`).send(body).expect(201)
+    expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(0)
+    expect(await CreatorPayoutModel.countDocuments({ creatorUserId: owner.userId, status: 'PROCESSING' })).toBe(1)
+  })
+
+  it('commits the processing reference before the provider call and pays once for concurrent identical requests', async () => {
+    const owner = await creatorWithBalance(100)
+    const body = { amount: 100, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } }
+    const before = vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/transfer')).length
+    const responses = await Promise.all([0, 1].map(() => request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`).send(body)))
+    expect(responses.map(response => response.status)).toEqual([201, 201])
+    const payout = await CreatorPayoutModel.findOne({ creatorUserId: owner.userId })
+    expect(transferSnapshot).toEqual({ status: 'PROCESSING', availableBalance: 0, reference: payout!.providerRef })
+    expect(vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/transfer')).length - before).toBe(1)
+    expect(await CreatorPayoutModel.countDocuments({ creatorUserId: owner.userId })).toBe(1)
+  })
+
+  it.each(['removed', 'review', 'details'] as const)('rejects a %s payout destination at final reservation', async change => {
+    const owner = await creatorWithBalance(100)
+    const original = MongoCreatorWithdrawalTransaction.prototype.run
+    const transaction = vi.spyOn(MongoCreatorWithdrawalTransaction.prototype, 'run').mockImplementationOnce(async function (this: MongoCreatorWithdrawalTransaction, userId, version, work) {
+      const accounts = mongoose.connection.collection('payoutaccounts')
+      if (change === 'removed') await accounts.deleteOne({ userId })
+      else await accounts.updateOne({ userId }, { $set: change === 'review' ? { 'accounts.0.verificationStatus': 'needs_review' } : { 'accounts.0.accountNumber': '0559999999' } })
+      return original.call(this, userId, version, work)
+    })
+    const before = vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/transfer')).length
+    try {
+      await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`).send({ amount: 100, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } }).expect(409)
+    } finally { transaction.mockRestore() }
+    expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(100)
+    expect(await CreatorPayoutModel.countDocuments({ creatorUserId: owner.userId })).toBe(0)
+    expect(vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/transfer')).length).toBe(before)
+  })
+
+  it.each(['plan fee', 'subscription expiry'] as const)('rejects a changed %s before committing the reviewed withdrawal fee', async change => {
+    const owner = await creatorWithBalance(100)
+    const plan = await SubscriptionPlanModel.findOne({ tier: 'starter' })
+    const original = MongoCreatorWithdrawalTransaction.prototype.run
+    const transaction = vi.spyOn(MongoCreatorWithdrawalTransaction.prototype, 'run').mockImplementationOnce(async function (this: MongoCreatorWithdrawalTransaction, userId, version, work) {
+      if (change === 'plan fee') await SubscriptionPlanModel.updateOne({ tier: 'starter' }, { $set: { platformFeePercent: 4 } })
+      else await SubscriptionModel.updateOne({ userId }, { $set: { currentPeriodEnd: new Date(Date.now() - 1000) } })
+      return original.call(this, userId, version, work)
+    })
+    const before = vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/transfer')).length
+    try {
+      await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`).send({ amount: 100, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } }).expect(409)
+    } finally {
+      transaction.mockRestore()
+      await SubscriptionPlanModel.updateOne({ tier: 'starter' }, { $set: { platformFeePercent: plan!.platformFeePercent } })
+    }
+    expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(100)
+    expect(await CreatorPayoutModel.countDocuments({ creatorUserId: owner.userId })).toBe(0)
+    expect(vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/transfer')).length).toBe(before)
+  })
+
+  it.each(['plan fee', 'subscription expiry'] as const)('rejects a changed wallet %s before crediting funds', async change => {
+    const owner = await creatorWithBalance(100)
+    const plan = await SubscriptionPlanModel.findOne({ tier: 'starter' })
+    const original = MongoWalletPayoutRepository.prototype.transferCreator
+    const transfer = vi.spyOn(MongoWalletPayoutRepository.prototype, 'transferCreator').mockImplementationOnce(async function (this: MongoWalletPayoutRepository, input) {
+      if (change === 'plan fee') await SubscriptionPlanModel.updateOne({ tier: 'starter' }, { $set: { platformFeePercent: 4 } })
+      else await SubscriptionModel.updateOne({ userId: owner.userId }, { $set: { currentPeriodEnd: new Date(Date.now() - 1000) } })
+      return original.call(this, input)
+    })
+    try {
+      await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`).send({ amount: 100, expectedFeePercent: 3, destination: 'ujimora_wallet', idempotencyKey: randomUUID() }).expect(409)
+    } finally {
+      transfer.mockRestore()
+      await SubscriptionPlanModel.updateOne({ tier: 'starter' }, { $set: { platformFeePercent: plan!.platformFeePercent } })
+    }
+    expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(100)
+    expect((await WalletModel.findOne({ userId: owner.userId }))?.balance).toBe(0)
+    expect(await CreatorPayoutModel.countDocuments({ creatorUserId: owner.userId })).toBe(0)
+  })
+
+  it.each(['paystack', 'ujimora_wallet'] as const)('retries %s fee validation after concurrent policy edits', async destination => {
+    for (const change of ['subscription', 'plan'] as const) {
+      const owner = await creatorWithBalance(100)
+      const plan = await SubscriptionPlanModel.findOne({ tier: 'starter' })
+      const target = change === 'subscription' ? MongoSubscriptionRepository.prototype : MongoSubscriptionPlanRepository.prototype
+      const original = target.lockForConsumption
+      // The owner write has already established the transaction snapshot. Mutate
+      // the policy outside that session before the policy write, forcing retry.
+      const lock = vi.spyOn(target, 'lockForConsumption').mockImplementationOnce(async function (this: typeof target, key) {
+        if (change === 'subscription') await SubscriptionModel.collection.updateOne({ userId: owner.userId }, { $set: { currentPeriodEnd: new Date(Date.now() - 1000) } }, { session: null })
+        else await SubscriptionPlanModel.collection.updateOne({ tier: 'starter' }, { $set: { platformFeePercent: 4 } }, { session: null })
+        return original.call(this, key)
+      })
+      const before = vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/transfer')).length
+      try {
+        await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`).send({ amount: 100, expectedFeePercent: 3, destination, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } }).expect(409)
+        expect(lock.mock.calls.length).toBeGreaterThanOrEqual(2)
+      } finally {
+        lock.mockRestore()
+        await SubscriptionPlanModel.updateOne({ tier: 'starter' }, { $set: { platformFeePercent: plan!.platformFeePercent } })
+      }
+      expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(100)
+      expect((await WalletModel.findOne({ userId: owner.userId }))?.balance).toBe(0)
+      expect(await CreatorPayoutModel.countDocuments({ creatorUserId: owner.userId })).toBe(0)
+      expect(vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/transfer')).length).toBe(before)
+    }
+  })
 
   it('transfers net earnings to the owner wallet once through the authenticated endpoint', async () => {
     const {token,userId}=await creatorWithBalance(100)
@@ -230,7 +420,7 @@ describe('Creator withdrawal — transfer rail', () => {
     // An admin runs the reconciliation sweep → the provider reports success → settled.
     const admReg = await request(app)
       .post('/api/v1/auth/register')
-      .send({ email: uniqueEmail('recadm'), password: 'SecurePass123', name: 'Adm' })
+      .send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email: uniqueEmail('recadm'), password: 'SecurePass123', name: 'Adm' })
       .expect(201)
     await UserModel.findByIdAndUpdate(admReg.body.data.user.id, { role: 'admin' })
     const admLogin = await request(app)

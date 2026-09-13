@@ -18,7 +18,7 @@ export function errorHandler(
   res: Response,
   _next: NextFunction
 ): void {
-  logger.error({ err }, err.message);
+  logger.error({ err }, 'request failed');
 
   if (err instanceof AppError) {
     res.status(err.statusCode).json({

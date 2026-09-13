@@ -1,3 +1,4 @@
+import { DonationReviewStatus } from '@/components/donate/DonationReviewStatus'
 import { useSeo } from '@/lib/seo'
 import Skeleton from '@mui/material/Skeleton'
 import { useEffect, useMemo, useState, useCallback } from 'react'
@@ -250,6 +251,7 @@ export function DonateCallbackPage() {
         {phase === 'succeeded' && (
           <Box role="status" aria-live="polite">
             <DonationCelebration />
+            {view && <DonationReviewStatus key={view.id} intentId={view.id} initialStatus={view.contentReviewStatus} />}
             <Typography variant="h4" component="h1" sx={{ fontWeight: 900, mb: 1 }}>
               Thank you for showing up.
             </Typography>

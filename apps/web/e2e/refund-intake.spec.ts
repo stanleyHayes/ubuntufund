@@ -1,0 +1,30 @@
+import { test, expect } from '@playwright/test'
+
+test('reviews and submits a free refund request at phone width', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.addInitScript(() => {
+    localStorage.setItem('uf_user', JSON.stringify({ id: 'aaaaaaaaaaaaaaaaaaaaaaaa', name: 'Donor', role: 'user', legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true, acceptedAt: '2026-09-12T00:00:00Z' } }))
+    localStorage.setItem('uf_tokens', JSON.stringify({ accessToken: 'test', refreshToken: 'test' }))
+  })
+  await page.route('**/api/v1/**', route => route.fulfill({ json: { data: route.request().url().endsWith('/auth/refresh') ? { accessToken: 'test', refreshToken: 'test' } : [] } }))
+  await page.route('**/api/v1/notifications/unread-count', route => route.fulfill({ json: { data: { count: 0 } } }))
+  await page.route('**/api/v1/donations/bbbbbbbbbbbbbbbbbbbbbbbb', route => route.fulfill({ json: { data: { campaignName: 'Community garden', amount: 100, currency: 'GHS', date: '2026-09-12T00:00:00Z', paymentMethod: 'wallet' } } }))
+  let submitted: unknown
+  await page.route('**/api/v1/refunds', route => { submitted = route.request().postDataJSON(); return route.fulfill({ status: 201, json: { data: { id: 'refund-reference', status: 'pending' } } }) })
+  await page.goto('/donations/refund/bbbbbbbbbbbbbbbbbbbbbbbb')
+  await expect(page.getByText('Submitting a request is free.', { exact: false })).toBeVisible()
+  await expect(page.getByText('2% processing fee', { exact: false })).toHaveCount(0)
+  await page.getByRole('combobox').click()
+  await page.getByRole('option', { name: 'Duplicate donation' }).click()
+  await page.getByPlaceholder('Please provide additional details about your refund request...').fill('I accidentally donated twice. Please review the duplicate.')
+  await page.getByRole('button', { name: 'Submit Request', exact: true }).click()
+  await expect(page.getByRole('dialog')).toContainText('GH₵100')
+  await expect(page.getByRole('dialog')).toContainText('does not move money or guarantee approval')
+  await page.getByRole('button', { name: 'Confirm Refund', exact: true }).click()
+  await expect(page.getByText('Refund Request Submitted', { exact: true })).toBeVisible()
+  await expect(page.getByText('Refund Request Submitted', { exact: true })).toBeInViewport()
+  expect(submitted).toMatchObject({ donationId: 'bbbbbbbbbbbbbbbbbbbbbbbb', reason: 'Duplicate donation' })
+  await expect(page.getByText('Amount requested:', { exact: false })).toContainText('GH₵100')
+  await page.screenshot({ path: '/tmp/ujimora-refund-intake-phone.png', animations: 'disabled' })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+})

@@ -1,4 +1,5 @@
-import type { Subscription } from '@ubuntu-fund/types';
+import { SubscriptionTier, type Subscription } from '@ubuntu-fund/types';
+import { AppError } from '../../inbound/middleware/errorHandler.js';
 import type { SubscriptionRepositoryPort } from '../../../../domain/ports/outbound/SubscriptionRepositoryPort.js';
 import {
   SubscriptionModel,
@@ -8,6 +9,7 @@ import {
 function toDomain(doc: SubscriptionDocument): Subscription {
   return {
     id: doc._id!.toString(),
+    billingProvider: doc.billingProvider,
     userId: doc.userId,
     tier: doc.tier,
     status: doc.status,
@@ -22,6 +24,9 @@ function toDomain(doc: SubscriptionDocument): Subscription {
 }
 
 export class MongoSubscriptionRepository implements SubscriptionRepositoryPort {
+  async lockForConsumption(userId: string): Promise<void> {
+    await SubscriptionModel.updateOne({ userId }, { $inc: { consumptionWriteVersion: 1 } }, { timestamps: false });
+  }
   async findByUserId(userId: string): Promise<Subscription | null> {
     const doc = await SubscriptionModel.findOne({ userId });
     return doc ? toDomain(doc) : null;
@@ -32,12 +37,27 @@ export class MongoSubscriptionRepository implements SubscriptionRepositoryPort {
     return doc ? toDomain(doc) : null;
   }
 
-  async findAll(limit = 500): Promise<Subscription[]> {
-    const docs = await SubscriptionModel.find().sort({ createdAt: -1 }).limit(Math.min(limit, 1000));
-    return docs.map(toDomain);
+  async findAll({ page, pageSize }: { page: number; pageSize: number }): Promise<{ items: Subscription[]; total: number }> {
+    const [docs, total] = await Promise.all([
+      SubscriptionModel.find().sort({ createdAt: -1, _id: -1 }).skip((page - 1) * pageSize).limit(pageSize),
+      SubscriptionModel.countDocuments(),
+    ]);
+    return { items: docs.map(toDomain), total };
   }
 
   async save(subscription: Subscription): Promise<Subscription> {
+    if (subscription.tier === SubscriptionTier.FREE) {
+      // Concurrent first reads may provision Community while a paid purchase
+      // commits. Never overwrite or fail that existing paid entitlement.
+      const doc = await SubscriptionModel.findOneAndUpdate({ userId: subscription.userId }, {
+        $setOnInsert: {
+          userId: subscription.userId, tier: subscription.tier, status: subscription.status,
+          billingCycle: subscription.billingCycle, currentPeriodStart: subscription.currentPeriodStart,
+          currentPeriodEnd: subscription.currentPeriodEnd, cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+        },
+      }, { new: true, upsert: true });
+      return toDomain(doc!);
+    }
     const doc = await SubscriptionModel.create({
       userId: subscription.userId,
       tier: subscription.tier,
@@ -52,8 +72,8 @@ export class MongoSubscriptionRepository implements SubscriptionRepositoryPort {
   }
 
   async update(subscription: Subscription): Promise<Subscription | null> {
-    const doc = await SubscriptionModel.findByIdAndUpdate(
-      subscription.id,
+    const doc = await SubscriptionModel.findOneAndUpdate(
+      { _id: subscription.id, billingProvider: { $nin: ['apple', 'google'] } },
       {
         tier: subscription.tier,
         status: subscription.status,
@@ -65,6 +85,9 @@ export class MongoSubscriptionRepository implements SubscriptionRepositoryPort {
       },
       { new: true }
     );
+    if (!doc && await SubscriptionModel.exists({ _id: subscription.id, billingProvider: { $in: ['apple', 'google'] } })) {
+      throw new AppError('Manage this subscription through the App Store or Google Play where it was purchased.', 409);
+    }
     return doc ? toDomain(doc) : null;
   }
 }

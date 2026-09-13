@@ -1,7 +1,7 @@
 import { TouchableRipple } from '@/components/RoundedControls'
 import { Button } from '@/components/Loading'
 import { useRef } from 'react'
-import { ScrollView, View } from 'react-native'
+import { Alert, Linking, ScrollView, View } from 'react-native'
 import { Text } from 'react-native-paper'
 import { useRouter, type Href } from 'expo-router'
 import Svg, { G, Rect, Circle } from 'react-native-svg'
@@ -28,6 +28,7 @@ export function LegalScreen({ slug }: { slug?: string }) {
     {!policy ? LEGAL_POLICIES.map(item => <GlassSurface key={item.slug} style={{ padding: 24, borderRadius: 24 }}><Text accessibilityRole="header" style={heading}>{item.navLabel}</Text><Text style={body}>{item.summary}</Text><Button accessibilityLabel={`Read ${item.navLabel}`} onPress={() => router.push(item.route as Href)} style={{ alignSelf: 'flex-start', marginTop: 12 }}>Read policy →</Button></GlassSurface>) : <>
       <GlassSurface style={{ padding: 20, borderRadius: 24 }}><Text accessibilityRole="header" style={heading}>On this page</Text>{policy.sections.map((section, index) => <TouchableRipple key={section.title} accessibilityRole="link" onPress={() => scroll.current?.scrollTo({ y: Math.max(0, (positions.current[index] ?? 0) - 16), animated: false })} style={{ paddingVertical: 12 }}><Text style={{ ...body, color: p.text }}>{section.title}</Text></TouchableRipple>)}</GlassSurface>
       <Text selectable style={body}>{policy.introduction}</Text>
+      {policy.actions?.map(action => <Button key={action.href} accessibilityRole="link" onPress={() => { void Linking.openURL(action.href).catch(() => Alert.alert('Unable to open link', 'Please contact legal@ujimora.com to request account and data deletion.')) }}>{action.label}</Button>)}
       {policy.sections.map((section, index) => <View key={section.title} onLayout={event => { positions.current[index] = event.nativeEvent.layout.y }}><Text accessibilityRole="header" selectable style={heading}>{section.title}</Text><Text selectable style={body}>{section.content}</Text></View>)}
       <GlassSurface style={{ padding: 24, borderRadius: 24 }}><Text accessibilityRole="header" style={heading}>Need clarification?</Text><Text selectable style={body}>{policy.contact}</Text><Button onPress={() => router.push('/legal')}>Browse all policies</Button></GlassSurface>
     </>}

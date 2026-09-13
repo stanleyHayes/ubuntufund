@@ -45,6 +45,7 @@ export class ApprovePayoutUseCase {
     private readonly payoutsConfig: PayoutsConfig,
     private readonly campaigns?: CampaignRepositoryPort,
     private readonly walletPayouts?: WalletPayoutPort,
+    private readonly automaticVerification?: { run<T>(userId: string, work: () => Promise<T>): Promise<T> },
   ) {}
 
   async recipientDetails(payoutId: string, requester: PayoutRequester) {
@@ -198,32 +199,30 @@ export class ApprovePayoutUseCase {
       throw new AppError('Insufficient platform balance to fund this payout', 422)
     }
 
-    // Reserve the funds atomically (available → in-transit). A short balance
-    // leaves the payout untouched (still PENDING) so it can be retried.
-    const reserved = await this.campaignBalanceRepo.reserveForPayout(
-      payout.campaignId,
-      payout.amount,
-    )
-    if (!reserved) {
-      throw new AppError('Insufficient available balance to fund this payout', 422)
-    }
-
     const approvedBy = requester.userId
-    if (mustBatch) {
-      return this.initiateBatched(payout, recipient, approvedBy)
-    }
-
-    // Unique idempotency reference; the transfer webhook correlates on it.
     const reference = `pout-${payout.id}-${randomUUID().slice(0, 8)}`
-
-    const processing = await this.payoutRepo.transitionToProcessing(payout.id, {
-      approvedBy,
-      providerRef: reference,
-    })
-    if (!processing) {
-      // Another approval won the race; return our reservation.
-      await this.campaignBalanceRepo.returnToAvailable(payout.campaignId, payout.amount)
-      throw new AppError('Payout is no longer pending approval', 409)
+    const reserve = async () => {
+      const reserved = await this.campaignBalanceRepo.reserveForPayout(payout.campaignId, payout.amount)
+      if (!reserved) throw new AppError('Insufficient available balance to fund this payout', 422)
+    }
+    let processing: PayoutEntity | null = null
+    if (automatic) {
+      if (!this.automaticVerification) throw new AppError('Automatic verification checks are unavailable; manual review required.', 503)
+      if (mustBatch) throw new AppError('Batched payouts require manual review.', 409)
+      processing = await this.automaticVerification.run(payout.requestedBy, async () => {
+        await reserve()
+        const processing = await this.payoutRepo.transitionToProcessing(payout.id, { approvedBy, providerRef: reference })
+        if (!processing) throw new AppError('Payout is no longer pending approval', 409)
+        return processing
+      })
+    } else {
+      await reserve()
+      if (mustBatch) return this.initiateBatched(payout, recipient, approvedBy)
+      processing = await this.payoutRepo.transitionToProcessing(payout.id, { approvedBy, providerRef: reference })
+      if (!processing) {
+        await this.campaignBalanceRepo.returnToAvailable(payout.campaignId, payout.amount)
+        throw new AppError('Payout is no longer pending approval', 409)
+      }
     }
 
     let transfer

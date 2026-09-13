@@ -38,7 +38,8 @@ export class ProfileController {
     try {
       const profile = await this.updateProfileUseCase.execute(
         req.userId!,
-        req.body
+        req.body,
+        req.authVersion ?? ''
       );
       res.json({
         data: profile,
@@ -57,9 +58,10 @@ export class ProfileController {
   ): Promise<void> => {
     try {
       const profile = await this.getPublicUserProfileUseCase.execute(
-        req.params.id as string
+        req.params.id as string,
+        req.userId
       );
-      res.json({
+      res.set('Cache-Control', 'private, no-store').json({
         data: profile,
         message: 'Public profile retrieved',
         status: 200,
@@ -78,7 +80,7 @@ export class ProfileController {
       await this.deleteAccountUseCase.execute(req.userId!);
       res.json({
         data: null,
-        message: 'Account deletion request completed',
+        message: 'Account closed. Associated data deletion and retained-record review requested',
         status: 200,
       });
     } catch (error) {

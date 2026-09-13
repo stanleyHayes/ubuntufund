@@ -1,4 +1,6 @@
 import { LoadingDots } from '@ubuntu-fund/ui'
+import { ReportContent } from '@/components/safety/ReportContent'
+import { useAuth } from '@/context/AuthContext'
 import { useState } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
@@ -53,7 +55,8 @@ function getUpdateTypeLabel(type: CampaignUpdateType): string {
 }
 
 export function CampaignUpdates({ campaignId, isCreator }: CampaignUpdatesProps) {
-  const { updates, isLoading, error, refetch } = useCampaignUpdates(campaignId)
+  const { user } = useAuth()
+  const { updates, isLoading, error, refetch } = useCampaignUpdates(campaignId, user?.id)
   const { deleteUpdate, isLoading: isDeleting } = useDeleteCampaignUpdate()
   const { pin, isLoading: isPinning } = usePinCampaignUpdate()
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -171,6 +174,7 @@ export function CampaignUpdates({ campaignId, isCreator }: CampaignUpdatesProps)
                 </Box>
               </Box>
 
+              {user && user.id !== update.authorId && <ReportContent userId={update.authorId} updateId={update.id} />}
               {/* Action buttons - only show for creator */}
               {isCreator && (
                 <Box sx={{ display: 'flex', gap: 0.5 }}>

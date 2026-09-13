@@ -92,18 +92,12 @@ export class NotificationController {
   };
 
   registerPushToken = async (
-    req: AuthenticatedRequest,
-    res: Response,
-    next: NextFunction
+    _req: AuthenticatedRequest,
+    res: Response
   ): Promise<void> => {
-    try {
-      await PushTokenModel.findOneAndUpdate(
-        { token: req.body.token },
-        { $set: { userId: req.userId!, platform: req.body.platform, disabledAt: null } },
-        { upsert: true, new: true, runValidators: true }
-      );
-      res.json({ data: { registered: true }, message: 'Push token registered', status: 200 });
-    } catch (error) { next(error); }
+    // There is no push delivery service. Do not collect device identifiers or
+    // treat a legacy profile flag as consent for a future implementation.
+    res.status(503).json({ message: 'Device push notifications are not available yet. Use inbox alerts or email preferences in Settings.', status: 503 });
   };
 
   unregisterPushToken = async (

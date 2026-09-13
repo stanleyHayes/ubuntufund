@@ -10,7 +10,7 @@ import {
 import { AppState } from 'react-native'
 import { useAuth } from './AuthContext'
 import { api } from '@/lib/api'
-export type Notice = { id: string; title: string; message: string; read: boolean }
+export type Notice = { id: string; title: string; message: string; read: boolean; path?: string; createdAt?: string }
 const Context = createContext<{
   items: Notice[]
   loading: boolean

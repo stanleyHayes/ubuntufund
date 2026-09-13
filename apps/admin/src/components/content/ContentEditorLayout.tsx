@@ -4,8 +4,11 @@ import SaveRoundedIcon from '@mui/icons-material/SaveRounded'
 import { ErrorState, LoadingDots } from '@ubuntu-fund/ui'
 import PageHeader from '@/components/PageHeader'
 import type { Tone } from '@/lib/tones'
+import ExportMenu from '@/components/ExportMenu'
+import type { ExportReport } from '@/lib/exports/report'
 
 interface ContentEditorLayoutProps {
+  exportReport?: ExportReport
   tone?: Tone
   eyebrow: string
   title: string
@@ -32,6 +35,7 @@ interface ContentEditorLayoutProps {
  * save toast — so every content editor looks and behaves like a sibling.
  */
 export default function ContentEditorLayout({
+  exportReport,
   tone = 'gold',
   eyebrow,
   title,
@@ -109,6 +113,7 @@ export default function ContentEditorLayout({
         </Typography>
       )}
 
+      {exportReport && <ExportMenu title={title} disabled={loading || saving || !!error} getReport={() => exportReport} />}
       {loading ? (
         skeleton ?? <DefaultSkeleton />
       ) : error ? (

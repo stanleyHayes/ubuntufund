@@ -1,3 +1,4 @@
+import { KYCVerificationModel } from '../../src/infrastructure/database/models/KYCVerificationModel.js';
 import { randomUUID } from 'node:crypto';
 import { describe, it, beforeAll, afterAll, expect } from 'vitest';
 import request from 'supertest';
@@ -54,7 +55,7 @@ function campaignPayload(overrides: Partial<Record<string, unknown>> = {}) {
 async function registerUser(app: Express, email: string) {
   const res = await request(app)
     .post('/api/v1/auth/register')
-    .send({ email, password: 'SecurePass123', name: 'Test User' })
+    .send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email, password: 'SecurePass123', name: 'Test User' })
     .expect(201);
   return {
     userId: res.body.data.user.id as string,
@@ -64,6 +65,10 @@ async function registerUser(app: Express, email: string) {
 
 async function setVerificationLevel(userId: string, level: number): Promise<void> {
   await UserModel.findByIdAndUpdate(userId, { verificationLevel: level });
+  if (level >= 2) await KYCVerificationModel.create({
+    userId, verificationType: 'identity', status: 'approved', documents: [],
+    expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+  });
 }
 
 /** Seeds an active subscription so a user can hold more than one active campaign. */

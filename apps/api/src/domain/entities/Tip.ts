@@ -1,3 +1,4 @@
+import type { LegalAcceptanceRecord } from '@ubuntu-fund/types';
 import type { DonationProvider, DonationIntentStatus } from '@ubuntu-fund/types';
 
 /**
@@ -14,11 +15,15 @@ export interface TipProps {
   supporterUserId?: string;
   supporterName?: string;
   supporterEmail?: string;
+  publicContentStatus?: 'pending' | 'approved' | 'rejected';
   message?: string;
+  messageAgreement?: LegalAcceptanceRecord;
   isAnonymous: boolean;
   status: DonationIntentStatus;
   provider: DonationProvider;
   providerRef: string;
+  requestFingerprint?: string;
+  checkout?: { checkoutUrl: string; accessCode: string };
   /** Platform fee retained on the tip (major units); net = amount − fee. */
   platformFee: number;
   netAmount: number;

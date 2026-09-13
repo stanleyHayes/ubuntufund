@@ -1,3 +1,4 @@
+import { AppError } from '../../inbound/middleware/errorHandler.js';
 import { CampaignUpdateEntity } from '../../../../domain/entities/CampaignUpdate.js';
 import type { CampaignUpdateRepositoryPort } from '../../../../domain/ports/outbound/CampaignUpdateRepositoryPort.js';
 import {
@@ -51,10 +52,10 @@ export class MongoCampaignUpdateRepository implements CampaignUpdateRepositoryPo
     return docs.map(toDomain);
   }
 
-  async update(update: CampaignUpdateEntity): Promise<CampaignUpdateEntity> {
+  async update(update: CampaignUpdateEntity, expectedUpdatedAt?: Date): Promise<CampaignUpdateEntity> {
     const plain = update.toPlain();
-    const doc = await CampaignUpdateModel.findByIdAndUpdate(
-      { _id: plain.id, deletedAt: { $exists: false } },
+    const doc = await CampaignUpdateModel.findOneAndUpdate(
+      { _id: plain.id, deletedAt: { $exists: false }, ...(expectedUpdatedAt ? { updatedAt: expectedUpdatedAt } : {}) },
       {
         title: plain.title,
         content: plain.content,
@@ -66,7 +67,7 @@ export class MongoCampaignUpdateRepository implements CampaignUpdateRepositoryPo
     );
 
     if (!doc) {
-      throw new Error('Campaign update not found');
+      throw new AppError('This update changed or was removed. Reload it before submitting your changes.', 409);
     }
     return toDomain(doc);
   }

@@ -1,4 +1,5 @@
 export * from './campaign'
+export * from './adult-age'
 export * from './shortlink'
 export * from './live'
 export * from './ledger'
@@ -24,3 +25,7 @@ export * from './password'
 export * from './referralCode'
 
 export { payoutAccountBrand, payoutInstitutionName } from './payoutBrand'
+
+export * from './legal-acceptance'
+
+export * from './activity-alerts'

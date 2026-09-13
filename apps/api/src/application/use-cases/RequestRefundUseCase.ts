@@ -6,9 +6,6 @@ import type {
 import { roundToCurrency } from '../../domain/value-objects/Money.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 
-/** 2% processing fee, per the refund policy shown on the request-refund page. */
-const REFUND_FEE_RATE = 0.02;
-
 export interface RequestRefundInput {
   donationId: string;
   reason: string;
@@ -46,8 +43,10 @@ export class RequestRefundUseCase {
     const amount = donation.amount.amount;
     // Round to the donation's own currency precision, not a hardcoded 2dp.
     const currency = donation.amount.currency;
-    const fee = roundToCurrency(amount * REFUND_FEE_RATE, currency);
-    const netAmount = roundToCurrency(amount - fee, currency);
+    // Intake is not a settlement or a fee assessment. Record the full amount
+    // requested; eligibility and provider execution are reviewed separately.
+    const fee = 0;
+    const netAmount = roundToCurrency(amount, currency);
 
     const saved = await this.refundRepo.save({
       id: '', // Assigned by repository

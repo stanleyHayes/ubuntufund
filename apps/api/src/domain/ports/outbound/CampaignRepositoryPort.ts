@@ -5,8 +5,10 @@ export interface CampaignRepositoryPort {
   save(campaign: CampaignEntity): Promise<CampaignEntity>;
   findById(id: string): Promise<CampaignEntity | null>;
   findBySlug(slug: string): Promise<CampaignEntity | null>;
-  findAll(params: PaginationParams): Promise<{ items: CampaignEntity[]; total: number }>;
+  findAll(params: PaginationParams & { includeNonPublic?: boolean }): Promise<{ items: CampaignEntity[]; total: number }>;
   findByCreatorId(creatorId: string): Promise<CampaignEntity[]>;
+  /** Change only the slug; stale replacements cannot overwrite financial state. */
+  setSlug(id: string, expectedSlug: string, slug: string): Promise<CampaignEntity | null>;
   update(campaign: CampaignEntity): Promise<CampaignEntity>;
   delete(id: string): Promise<void>;
   countByCreatorId(creatorId: string): Promise<number>;

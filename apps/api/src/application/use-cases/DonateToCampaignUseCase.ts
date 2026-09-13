@@ -19,6 +19,7 @@ export class DonateToCampaignUseCase {
         provider: 'wallet',
         tip: 0,
         message: input.message,
+        legalAcceptance: input.legalAcceptance,
         isAnonymous: input.isAnonymous,
         liveSessionId: input.liveSessionId,
       },

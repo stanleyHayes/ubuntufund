@@ -1,10 +1,12 @@
 import type { Subscription } from '@ubuntu-fund/types';
 
 export interface SubscriptionRepositoryPort {
+  /** Write an existing policy document inside a consuming transaction. */
+  lockForConsumption?(userId: string): Promise<void>;
   /** A user has at most one subscription record. */
   findByUserId(userId: string): Promise<Subscription | null>;
   findById(id: string): Promise<Subscription | null>;
-  findAll(limit?: number): Promise<Subscription[]>;
+  findAll(params: { page: number; pageSize: number }): Promise<{ items: Subscription[]; total: number }>;
   /** Creates a new subscription record. The `id` on the input is ignored/assigned by the repository. */
   save(subscription: Subscription): Promise<Subscription>;
   /**

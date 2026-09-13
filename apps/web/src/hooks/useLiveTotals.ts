@@ -1,3 +1,6 @@
+import { useAuth } from '@/context/AuthContext'
+import { api } from '@/lib/api'
+import type { CampaignDonation } from '@ubuntu-fund/types'
 // ---------------------------------------------------------------------------
 // useLiveTotals — subscribe to a campaign's real-time SSE feed and expose the
 // running totals + latest donations for LIVE creator controls / overlays.
@@ -10,8 +13,8 @@
 //   • `milestone` → a 25/50/75/100% threshold was crossed
 //
 // It deliberately talks to the fundraising events endpoint directly rather than
-// going through `useSSE` (which targets the separate `/sse/*` gateway and is
-// gated behind VITE_SSE_ENABLED). EventSource reconnects on its own; the hook
+// going through `useSSE` (which is gated behind VITE_SSE_ENABLED).
+// EventSource reconnects on its own; the hook
 // closes the stream on unmount / campaign change.
 // ---------------------------------------------------------------------------
 
@@ -66,11 +69,36 @@ export function useLiveTotals(
     maxDonations = 50,
   } = options
 
+  const { user } = useAuth()
+  const donationKey = `${campaignId}:${user?.id ?? 'guest'}:${enabled}`
+  const [loadedDonationKey, setLoadedDonationKey] = useState('')
+  const [donationRevision, setDonationRevision] = useState(0)
   const [raisedAmount, setRaisedAmount] = useState(initialRaisedAmount)
   const [goalAmount, setGoalAmount] = useState(initialGoalAmount)
   const [donations, setDonations] = useState<LiveDonationEventData[]>([])
   const [lastDonation, setLastDonation] = useState<LiveDonationEventData | null>(null)
   const [connected, setConnected] = useState(false)
+
+  // EventSource cannot attach the account's bearer token. Names therefore come
+  // from authenticated REST reads, never from the guest event payload.
+  useEffect(() => {
+    if (!enabled || !campaignId) return
+    let active = true
+    api.get<{ items: CampaignDonation[] }>(`/campaigns/${campaignId}/donations?page=1&pageSize=${maxDonations}`)
+      .then(response => {
+        if (!active) return
+        const rows = (response.items ?? []).map(row => ({ donationId: row.id, name: row.isAnonymous ? 'Anonymous' : row.donorName || 'Anonymous', amount: row.amount, message: row.message, createdAt: new Date(row.createdAt).toISOString() }))
+        setDonations(rows); setLastDonation(rows[0] ?? null); setLoadedDonationKey(donationKey)
+      }).catch(() => { if (active) { setDonations([]); setLastDonation(null); setLoadedDonationKey(donationKey) } })
+    return () => { active = false }
+  }, [campaignId, enabled, maxDonations, donationKey, donationRevision])
+  useEffect(() => {
+    if (!enabled || !campaignId) return
+    const refresh = () => { if (!document.hidden) setDonationRevision(value => value + 1) }
+    const timer = window.setInterval(refresh, 30000)
+    window.addEventListener('focus', refresh)
+    return () => { window.clearInterval(timer); window.removeEventListener('focus', refresh) }
+  }, [campaignId, enabled])
 
   // Whether a live `total`/`milestone` frame has landed yet. Until it does, the
   // seed values from the loaded campaign (which resolve asynchronously) may
@@ -124,15 +152,7 @@ export function useLiveTotals(
       }
     }
 
-    const handleDonation = (event: MessageEvent) => {
-      try {
-        const data = JSON.parse(event.data) as LiveDonationEventData
-        setLastDonation(data)
-        setDonations((prev) => [data, ...prev].slice(0, maxDonations))
-      } catch {
-        /* ignore a malformed frame */
-      }
-    }
+    const handleDonation = () => setDonationRevision(value => value + 1)
 
     const handleMilestone = (event: MessageEvent) => {
       try {
@@ -162,5 +182,6 @@ export function useLiveTotals(
     }
   }, [campaignId, enabled, maxDonations])
 
-  return { raisedAmount, goalAmount, donations, lastDonation, connected }
+  const current = enabled && loadedDonationKey === donationKey
+  return { raisedAmount, goalAmount, donations: current ? donations : [], lastDonation: current ? lastDonation : null, connected }
 }

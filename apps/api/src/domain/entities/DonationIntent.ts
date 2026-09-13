@@ -1,3 +1,4 @@
+import type { LegalAcceptanceRecord } from '@ubuntu-fund/types';
 import type {
   ContributionMethod,
   CryptoAsset,
@@ -17,6 +18,7 @@ export interface DonationIntentProps {
   donorEmail?: string;
   donorName?: string;
   message?: string;
+  messageAgreement?: LegalAcceptanceRecord;
   isAnonymous: boolean;
   tip: number;
   status: DonationIntentStatus;

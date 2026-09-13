@@ -7,6 +7,7 @@ import { AppError } from '../../middleware/errorHandler.js'
 import { validate } from '../../middleware/validate.js'
 const inputSchema = z
   .object({
+    consentToExternalProcessing: z.literal(true),
     text: z.string().trim().min(1).max(12000),
     action: z.nativeEnum(AiWritingAction),
     prompt: z.string().trim().max(1000).optional(),

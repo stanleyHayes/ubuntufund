@@ -1,3 +1,4 @@
+import { useAuth } from '@/context/AuthContext'
 import { useState, useEffect, useCallback } from 'react'
 import type { Campaign, CampaignCategory, CampaignPriority } from '@ubuntu-fund/types'
 import { api, ApiError } from '@/lib/api'
@@ -32,67 +33,40 @@ interface UseCampaignResult {
   error: string | null
 }
 
-export function useCampaigns(): UseCampaignsResult {
-  const [campaigns, setCampaigns] = useState<Campaign[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+const noCampaigns: Campaign[] = []
+const campaignValue = (value: unknown) => value as Campaign | null
 
+/** Never retain another viewer's private campaign data during a new request. */
+function useCampaignData<T>(path: string, empty: T, parse: (value: unknown) => T) {
+  const { user } = useAuth()
+  const [revision, setRevision] = useState(0)
+  const refresh = useCallback(() => setRevision(value => value + 1), [])
+  const key = `${path}:${user?.id ?? 'guest'}:${user?.role ?? 'guest'}:${revision}`
+  const [state, setState] = useState<{ key: string; data: T; error: string | null }>({ key: '', data: empty, error: null })
   useEffect(() => {
     let cancelled = false
+    api.get<unknown>(path).then(data => {
+      if (!cancelled) setState({ key, data: parse(data), error: null })
+    }).catch((error: Error) => {
+      if (!cancelled) setState({ key, data: empty, error: error instanceof ApiError && error.status === 404 ? null : error.message })
+    })
+    return () => { cancelled = true }
+  }, [path, key, empty, parse])
+  useEffect(() => {
+    window.addEventListener('focus', refresh)
+    return () => window.removeEventListener('focus', refresh)
+  }, [refresh])
+  return { data: state.key === key ? state.data : empty, error: state.key === key ? state.error : null, isLoading: state.key !== key, refresh }
+}
 
-    api
-      .get<Campaign[] | { items: Campaign[] }>('/campaigns')
-      .then((data) => {
-        if (!cancelled) {
-          setCampaigns(toCampaignArray(data))
-          setError(null)
-        }
-      })
-      .catch((err: Error) => {
-        if (!cancelled) {
-          setError(err.message)
-          setCampaigns([])
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false)
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  return { campaigns, isLoading, error }
+export function useCampaigns(): UseCampaignsResult {
+  const result = useCampaignData('/campaigns', noCampaigns, toCampaignArray)
+  return { campaigns: result.data, isLoading: result.isLoading, error: result.error }
 }
 
 export function useMyCampaigns(): UseCampaignsResult {
-  const [campaigns, setCampaigns] = useState<Campaign[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    api.get<Campaign[]>('/campaigns/mine')
-      .then((data) => {
-        if (!cancelled) {
-          setCampaigns(Array.isArray(data) ? data : [])
-          setError(null)
-        }
-      })
-      .catch((requestError: Error) => {
-        if (!cancelled) {
-          setCampaigns([])
-          setError(requestError.message)
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false)
-      })
-    return () => { cancelled = true }
-  }, [])
-
-  return { campaigns, isLoading, error }
+  const result = useCampaignData('/campaigns/mine', noCampaigns, toCampaignArray)
+  return { campaigns: result.data, isLoading: result.isLoading, error: result.error }
 }
 
 // ---------------------------------------------------------------------------
@@ -101,6 +75,7 @@ export function useMyCampaigns(): UseCampaignsResult {
 
 /** Payload sent to POST /campaigns. `imageUrls` carries the cover image. */
 interface CreateCampaignPayload {
+  automatedReviewConsent?: boolean
   title: string
   summary: string
   category: CampaignCategory
@@ -144,37 +119,6 @@ export function useCreateCampaign(): UseCreateCampaignResult {
 }
 
 export function useCampaign(id: string): UseCampaignResult {
-  const [revision, setRevision] = useState(0)
-  const refresh = useCallback(() => setRevision((v) => v + 1), [])
-  const [campaign, setCampaign] = useState<Campaign | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-
-    api
-      .get<Campaign>(`/campaigns/${id}`)
-      .then((data) => {
-        if (!cancelled) {
-          setCampaign(data)
-          setError(null)
-        }
-      })
-      .catch((err: Error) => {
-        if (!cancelled) {
-          setError(err instanceof ApiError && err.status === 404 ? null : err.message)
-          setCampaign(null)
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false)
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [id, revision])
-
-  return { campaign, isLoading, error, refresh }
+  const result = useCampaignData(`/campaigns/${id}`, null, campaignValue)
+  return { campaign: result.data, isLoading: result.isLoading, error: result.error, refresh: result.refresh }
 }

@@ -72,7 +72,8 @@ export class CollaborationController {
     try {
       const collaborators = await this.listCampaignCollaboratorsUseCase.execute(
         req.params.id as string,
-        req.userId
+        req.userId,
+        req.userRole === 'admin'
       );
       res.json({
         data: collaborators,

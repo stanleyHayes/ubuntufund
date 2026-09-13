@@ -1,8 +1,11 @@
+import { currentCampaignAllowance } from '../../domain/services/currentCampaignAllowance.js';
+import type { UserEntity } from '../../domain/entities/User.js';
 import {
   CampaignStatus,
   type CreateCampaignInput,
   type Campaign,
 } from '@ubuntu-fund/types';
+import type { PublicationAdmissionPort, PublicationSubmission } from '../../domain/ports/outbound/PublicationAdmissionPort.js';
 import { CampaignEntity } from '../../domain/entities/Campaign.js';
 import { Money } from '../../domain/value-objects/Money.js';
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js';
@@ -15,6 +18,8 @@ import {
   tierRequiresManualReview,
 } from '../../domain/services/campaignTier.js';
 import type { CampaignsConfig } from '../../infrastructure/config/index.js';
+import type { KYCRepositoryPort } from '../../domain/ports/outbound/KYCRepositoryPort.js';
+import { isVerifiedReturningOrganizer, STAFF_REVIEW_GOAL_GHS } from '../../domain/services/campaignApproval.js';
 
 export class CreateCampaignUseCase {
   constructor(
@@ -40,21 +45,30 @@ export class CreateCampaignUseCase {
         currency: string
         tier: number
       }): Promise<void>
-    }
+    },
+    private readonly kycRepo?: Pick<KYCRepositoryPort, 'findByUserId'>,
+    private readonly admission?: PublicationAdmissionPort,
+    private readonly creation?: { run<T>(userId: string, authVersion: string, work: () => Promise<T>): Promise<T> }
   ) {}
+
+  async campaignAllowance(user: UserEntity): Promise<number> {
+    const records = this.kycRepo ? await this.kycRepo.findByUserId(user.id) : [];
+    return currentCampaignAllowance(user, records);
+  }
 
   async execute(input: CreateCampaignInput, creatorId: string): Promise<Campaign> {
     if (input.currency !== 'GHS') throw new AppError('Campaign goals must be in GHS', 422);
     if (!Number.isFinite(new Date(input.endDate).getTime()) || new Date(input.endDate).getTime() <= Date.now()) throw new AppError('End date must be in the future', 422);
-    const user = await this.userRepo.findById(creatorId);
+    let user = await this.userRepo.findById(creatorId);
     if (!user) {
       throw new AppError('User not found', 404);
     }
 
-    const campaignCount = await this.campaignRepo.countByCreatorId(creatorId);
-    if (!user.canCreateCampaign(campaignCount)) {
+    let campaignCount = await this.campaignRepo.countByCreatorId(creatorId);
+    let allowance = await this.campaignAllowance(user);
+    if (campaignCount >= allowance) {
       throw new AppError(
-        `User cannot create more campaigns. Limit: ${user.getCampaignLimit()}, current: ${campaignCount}`,
+        `User cannot create more campaigns. Limit: ${allowance}, current: ${campaignCount}`,
         403
       );
     }
@@ -69,75 +83,115 @@ export class CreateCampaignUseCase {
       input.imageUrls?.length ?? 0
     );
 
-    const slug = await generateUniqueSlug(input.title, async (candidate) => {
-      const existing = await this.campaignRepo.findBySlug(candidate);
-      return existing !== null;
-    });
+    if (!this.admission) throw new AppError('Campaign safety review is unavailable', 503);
+    const submission: PublicationSubmission = {
+      actorId: creatorId, action: 'campaign.create', resourceId: creatorId,
+      text: JSON.stringify({ title: input.title, description: input.description,
+        category: input.category, priority: input.priority, beneficiaries: input.beneficiaries,
+        goalAmount: input.goalAmount, currency: input.currency, endDate: new Date(input.endDate).toISOString() }),
+      mediaUrls: input.imageUrls ?? [], automatedReviewConsent: input.automatedReviewConsent,
+    };
+    await this.admission.assertAllowed(submission);
+    if (!this.admission.assertCurrent) throw new AppError('Current campaign content verification is unavailable', 503);
+    if (!this.creation) throw new AppError('Campaign creation transaction is unavailable', 503);
+    const expectedAuthVersion = user.toPlain().authVersion ?? '';
+    const saved = await this.creation.run(creatorId, expectedAuthVersion, async () => {
+      // Screening can outlive account/plan changes. Financial eligibility is
+      // evaluated again from current evidence; content approval cannot waive it.
+      user = await this.userRepo.findById(creatorId);
+      if (!user) throw new AppError('Account is no longer available', 401);
+      campaignCount = await this.campaignRepo.countByCreatorId(creatorId);
+      allowance = await this.campaignAllowance(user);
+      if (campaignCount >= allowance) throw new AppError('Campaign creation eligibility changed. Review your verification and retry.', 403);
+      await this.planLimits.assertCanCreateCampaign(creatorId, input.goalAmount, user.complianceApprovedCampaignLimit, input.imageUrls?.length ?? 0);
 
-    // Risk-tier the campaign (spec §4). Low tiers auto-approve (go live now);
-    // high tiers are held in PENDING_REVIEW for manual compliance review. Without
-    // the tiering config, keep the legacy "everything is reviewed" behaviour.
-    let tier: number | undefined;
-    let status = CampaignStatus.PENDING_REVIEW;
-    // Prefer the versioned store so a dashboard change takes effect on the next
-    // campaign, not the next deploy. A lookup failure falls back to the static
-    // config rather than failing creation: the worst case is one campaign
-    // tiered by slightly stale rules, which beats refusing to create it.
-    let tiering = this.campaignsConfig;
-    if (this.configService) {
-      try {
-        tiering = await this.configService.resolveCampaignsConfig();
-      } catch {
-        tiering = this.campaignsConfig;
+      const slug = await generateUniqueSlug(input.title, async (candidate) => {
+        const existing = await this.campaignRepo.findBySlug(candidate);
+        return existing !== null;
+      });
+
+      // Risk-tier the campaign (spec §4). Low tiers auto-approve (go live now);
+      // high tiers are held in PENDING_REVIEW for manual compliance review. Without
+      // the tiering config, keep the legacy "everything is reviewed" behaviour.
+      let tier: number | undefined;
+      let status = CampaignStatus.PENDING_REVIEW;
+      // Prefer the versioned store so a dashboard change takes effect on the next
+      // campaign, not the next deploy. A lookup failure falls back to the static
+      // config rather than failing creation: the worst case is one campaign
+      // tiered by slightly stale rules, which beats refusing to create it.
+      let tiering = this.campaignsConfig;
+      if (this.configService) {
+        try {
+          tiering = await this.configService.resolveCampaignsConfig();
+        } catch {
+          tiering = this.campaignsConfig;
+        }
       }
-    }
-    if (tiering) {
-      tier = deriveCampaignTier(input.goalAmount, tiering.tierThresholds);
-      status = tierRequiresManualReview(tier, tiering.autoApproveMaxTier)
-        ? CampaignStatus.PENDING_REVIEW
-        : CampaignStatus.ACTIVE;
-    }
+      if (tiering) {
+        tier = deriveCampaignTier(input.goalAmount, tiering.tierThresholds);
+        status = tierRequiresManualReview(tier, tiering.autoApproveMaxTier)
+          ? CampaignStatus.PENDING_REVIEW
+          : CampaignStatus.ACTIVE;
+      }
 
-    // Lock the platform fee % from the organizer's plan at creation (ADR-5
-    // grandfathering), so a later admin fee change never surprises this campaign.
-    const lockedPlatformFeePercent = await this.planLimits.platformFeePercent(creatorId);
+      // This GHS gate cannot be loosened by a generic tier setting. Current
+      // verification plus a prior published campaign unlocks the requested
+      // returning-organizer exception; missing evidence stays with staff.
+      if (input.goalAmount > STAFF_REVIEW_GOAL_GHS) {
+        status = CampaignStatus.PENDING_REVIEW;
+        if (this.kycRepo && campaignCount > 0) {
+          const [verifications, earlierCampaigns] = await Promise.all([
+            this.kycRepo.findByUserId(creatorId),
+            this.campaignRepo.findByCreatorId(creatorId),
+          ]);
+          if (isVerifiedReturningOrganizer({ role: user.role, verificationLevel: user.verificationLevel, verifications, earlierCampaignStatuses: earlierCampaigns.map(campaign => campaign.status), now: new Date() })) {
+            status = CampaignStatus.ACTIVE;
+          }
+        }
+      }
 
-    const now = new Date();
-    const campaign = new CampaignEntity({
-      id: '', // Will be assigned by the repository
-      slug,
-      title: input.title,
-      description: input.description,
-      goalAmount: new Money(input.goalAmount, input.currency),
-      raisedAmount: new Money(0, input.currency),
-      category: input.category,
-      priority: input.priority,
-      status,
-      creatorId,
-      beneficiaries: input.beneficiaries,
-      imageUrls: input.imageUrls ?? [],
-      startDate: now,
-      endDate: new Date(input.endDate),
-      createdAt: now,
-      updatedAt: now,
-      tier,
-      lockedPlatformFeePercent,
+      // Lock the platform fee % from the organizer's plan at creation (ADR-5
+      // grandfathering), so a later admin fee change never surprises this campaign.
+      const lockedPlatformFeePercent = await this.planLimits.platformFeePercent(creatorId);
+
+      const now = new Date();
+      const campaign = new CampaignEntity({
+        id: '', // Will be assigned by the repository
+        slug,
+        title: input.title,
+        description: input.description,
+        goalAmount: new Money(input.goalAmount, input.currency),
+        raisedAmount: new Money(0, input.currency),
+        category: input.category,
+        priority: input.priority,
+        status,
+        creatorId,
+        beneficiaries: input.beneficiaries,
+        imageUrls: input.imageUrls ?? [],
+        startDate: now,
+        endDate: new Date(input.endDate),
+        createdAt: now,
+        updatedAt: now,
+        tier,
+        lockedPlatformFeePercent,
+      });
+
+      await this.admission!.assertCurrent!(submission);
+      return this.campaignRepo.save(campaign);
     });
-
-    const saved = await this.campaignRepo.save(campaign);
     const plain = saved.toPlain();
 
     // A held campaign is invisible to donors until someone approves it, and
     // nothing else says so — the organizer just sees "Donations closed". Fired
     // after the save so the alert always names a campaign that exists, and
     // awaited only for its own error handling: the adapter never throws.
-    if (status === CampaignStatus.PENDING_REVIEW && this.reviewAlerts) {
+    if (plain.status === CampaignStatus.PENDING_REVIEW && this.reviewAlerts) {
       await this.reviewAlerts.campaignPendingReview({
         campaignId: plain.id,
         title: plain.title,
         goalAmount: plain.goalAmount.amount,
         currency: plain.goalAmount.currency,
-        tier: tier ?? 0,
+        tier: plain.tier ?? 0,
       });
     }
 

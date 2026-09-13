@@ -48,7 +48,7 @@ function sign(rawBody: string): string {
 async function registerUser(app: Express, email: string) {
   const res = await request(app)
     .post('/api/v1/auth/register')
-    .send({ email, password: 'SecurePass123', name: 'Test User' })
+    .send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email, password: 'SecurePass123', name: 'Test User' })
     .expect(201);
   return {
     userId: res.body.data.user.id as string,
@@ -111,6 +111,7 @@ async function fundCampaign(
       provider: 'paystack',
       donorEmail: 'donor@example.com',
       donorName: 'Donor',
+      legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true },
       isAnonymous: false,
     })
     .expect(201);

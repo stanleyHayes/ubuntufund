@@ -1,3 +1,5 @@
+import { campaignReviewVersion } from '../../domain/services/campaignReviewVersion.js';
+import { isPublicCampaign } from '../../domain/services/campaignVisibility.js';
 import type { Campaign, PaginationParams, PaginatedResponse } from '@ubuntu-fund/types';
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js';
 import type { DonationRepositoryPort } from '../../domain/ports/outbound/DonationRepositoryPort.js';
@@ -33,10 +35,11 @@ export class GetCampaignUseCase {
     private readonly donationRepo?: DonationRepositoryPort
   ) {}
 
-  async getById(id: string): Promise<Campaign | null> {
+  async getById(id: string, viewerId?: string, isAdmin = false): Promise<Campaign | null> {
     const entity = await this.campaignRepo.findById(id);
-    if (!entity) return null;
+    if (!entity || (!isPublicCampaign(entity.status) && entity.creatorId !== viewerId && !isAdmin)) return null;
     const dto = toDTO(entity);
+    if (isAdmin) { dto.reviewVersion = campaignReviewVersion(entity); dto.lockedPlatformFeePercent = entity.lockedPlatformFeePercent; }
     if (this.donationRepo) {
       const counts = await this.donationRepo.countDistinctDonorsByCampaignIds([dto.id]);
       dto.donorCount = counts[dto.id] ?? 0;
@@ -44,12 +47,13 @@ export class GetCampaignUseCase {
     return dto;
   }
 
-  async list(params: PaginationParams): Promise<PaginatedResponse<Campaign>> {
+  async list(params: PaginationParams, isAdmin = false): Promise<PaginatedResponse<Campaign>> {
     const page = params.page ?? 1;
     const pageSize = params.pageSize ?? 20;
 
     const { items, total } = await this.campaignRepo.findAll({
       ...params,
+      includeNonPublic: isAdmin,
       page,
       pageSize,
     });

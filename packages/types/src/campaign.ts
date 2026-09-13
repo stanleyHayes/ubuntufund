@@ -49,6 +49,8 @@ export interface Campaign {
   updatedAt: Date
   /** Number of distinct donors; present on list/detail reads. */
   donorCount?: number
+  /** Present only on current-admin detail reads, for exact-version staff review. */
+  reviewVersion?: string
   reviewNotes?: string
   reviewedBy?: string
   reviewedAt?: Date
@@ -95,10 +97,12 @@ export interface CampaignPublicView extends Campaign {
 
 /** Body for `PATCH /campaigns/:id/slug`. */
 export interface SetCampaignSlugInput {
+  automatedReviewConsent?: boolean
   slug: string
 }
 
 export interface CreateCampaignInput {
+  automatedReviewConsent?: boolean
   title: string
   description: string
   goalAmount: number
@@ -173,6 +177,7 @@ export interface CampaignDonation {
 }
 
 export interface CreateDonationInput {
+  legalAcceptance?: import('./legal-acceptance').LegalAcceptanceInput
   campaignId: string
   amount: number
   /** Currency code — 'GHS' (Ghanaian cedi) is the platform's only currency */
@@ -209,6 +214,7 @@ export interface CampaignUpdate {
 }
 
 export interface CreateCampaignUpdateInput {
+  automatedReviewConsent?: boolean;
   title: string
   content: string
   type: CampaignUpdateType
@@ -217,6 +223,7 @@ export interface CreateCampaignUpdateInput {
 }
 
 export interface UpdateCampaignUpdateInput {
+  automatedReviewConsent?: boolean;
   title?: string
   content?: string
   type?: CampaignUpdateType

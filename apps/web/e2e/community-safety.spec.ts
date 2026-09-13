@@ -1,0 +1,27 @@
+import { test, expect } from '@playwright/test'
+test('creator reporting and blocking are usable at phone width', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.addInitScript(() => {
+    localStorage.setItem('uf_user', JSON.stringify({ id: 'aaaaaaaaaaaaaaaaaaaaaaaa', name: 'Viewer', role: 'user', legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true, acceptedAt: '2026-09-12T00:00:00Z' } }))
+    localStorage.setItem('uf_tokens', JSON.stringify({ accessToken: 'test', refreshToken: 'test' }))
+  })
+  await page.route('**/api/v1/**', route => route.fulfill({ json: { data: route.request().url().endsWith('/auth/refresh') ? { accessToken: 'test', refreshToken: 'test' } : [] } }))
+  await page.route('**/api/v1/notifications/unread-count', route => route.fulfill({ json: { data: { count: 0 } } }))
+  await page.route('**/api/v1/creators/ama', route => route.fulfill({ json: { data: { userId: 'bbbbbbbbbbbbbbbbbbbbbbbb', handle: 'ama', displayName: 'Ama', tagline: 'Community storyteller', bio: 'Stories from our community.', tipsEnabled: true, presetAmounts: [10, 25], currency: 'GHS', supporterCount: 0, totalReceived: 0, recentTips: [] } } }))
+  let report: unknown, blocked = false
+  await page.route('**/api/v1/safety/reports', route => { report = route.request().postDataJSON(); return route.fulfill({ json: { data: { id: 'report', status: 'pending' } } }) })
+  await page.route('**/api/v1/safety/blocks/bbbbbbbbbbbbbbbbbbbbbbbb', route => { blocked = route.request().method() === 'PUT'; return route.fulfill({ json: { data: null } }) })
+  await page.goto('/creators/ama')
+  await page.getByRole('button', { name: 'Report', exact: true }).click()
+  await expect(page.getByRole('dialog')).toBeVisible()
+  await page.getByRole('textbox', { name: 'What happened?' }).fill('This profile contains repeated harassment. Please review it.')
+  await page.screenshot({ path: '/tmp/ujimora-safety-report-phone.png', fullPage: true })
+  await expect(page.locator('body')).toHaveJSProperty('scrollWidth', 390)
+  await page.getByRole('button', { name: 'Send report' }).click()
+  await expect(page.getByRole('status')).toContainText('Report received')
+  expect(report).toMatchObject({ targetType: 'user', targetId: 'bbbbbbbbbbbbbbbbbbbbbbbb', reason: 'harassment' })
+  await page.getByRole('button', { name: 'Block user', exact: true }).click()
+  await expect(page.getByText('User blocked. Manage blocked users in Settings.')).toBeVisible()
+  expect(blocked).toBe(true)
+  await expect(page.getByRole('link', { name: 'Open settings' })).toHaveAttribute('href', '/settings')
+})

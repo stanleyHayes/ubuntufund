@@ -2,6 +2,7 @@ import { AiWritingAction, type AiWritingRequest } from '@ubuntu-fund/types'
 import { z } from 'zod'
 import type { AiWritingProviderPort } from '../../../../domain/ports/outbound/AiWritingProviderPort.js'
 import { AppError } from '../../inbound/middleware/errorHandler.js'
+import { OpenAiContentModerator } from './OpenAiContentModerator.js'
 const directions: Record<AiWritingAction, string> = {
   FORMALIZE: 'Rewrite in a clear, professional tone.',
   SUMMARIZE: 'Summarize concisely without losing key facts.',
@@ -35,6 +36,8 @@ export class OpenAiWritingProvider implements AiWritingProviderPort {
   }
   async write(input: AiWritingRequest) {
     if (!this.isConfigured()) throw new AppError('AI writing is not configured', 503)
+    const moderator = new OpenAiContentModerator(this.config.apiKey)
+    await moderator.assertAllowed(JSON.stringify({ text: input.text, notes: input.prompt, targetLanguage: input.targetLanguage }))
     let response: Response
     try {
       response = await fetch('https://api.openai.com/v1/responses', {
@@ -86,6 +89,7 @@ export class OpenAiWritingProvider implements AiWritingProviderPort {
       .trim()
     if (!text || text.length > 16000)
       throw new AppError('No usable writing suggestion was returned. Try adjusting your text.', 502)
+    await moderator.assertAllowed(text)
     return {
       text,
       model: parsed.model,

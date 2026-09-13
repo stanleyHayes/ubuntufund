@@ -19,6 +19,10 @@ import {
 import { UserModel } from '../../src/infrastructure/database/models/UserModel.js';
 import { CampaignModel } from '../../src/infrastructure/database/models/CampaignModel.js';
 import { CampaignBalanceModel } from '../../src/infrastructure/database/models/CampaignBalanceModel.js';
+import { CampaignBeneficiaryBalanceModel } from '../../src/infrastructure/database/models/CampaignBeneficiaryBalanceModel.js';
+import { BeneficiaryRecipientModel } from '../../src/infrastructure/database/models/BeneficiaryRecipientModel.js';
+import { BeneficiaryPayoutModel } from '../../src/infrastructure/database/models/BeneficiaryPayoutModel.js';
+import { MongoBeneficiaryPayoutRepository } from '../../src/infrastructure/adapters/outbound/persistence/MongoBeneficiaryPayoutRepository.js';
 import { CampaignCategory, CampaignPriority } from '@ubuntu-fund/types';
 
 function uniqueEmail(label: string): string {
@@ -31,7 +35,7 @@ function sign(rawBody: string): string {
 async function registerUser(app: Express, email: string) {
   const res = await request(app)
     .post('/api/v1/auth/register')
-    .send({ email, password: 'SecurePass123', name: 'Test User' })
+    .send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email, password: 'SecurePass123', name: 'Test User' })
     .expect(201);
   return {
     userId: res.body.data.user.id as string,
@@ -78,6 +82,7 @@ async function fundCampaign(app: Express, campaignId: string, amount: number) {
       provider: 'paystack',
       donorEmail: 'donor@example.com',
       donorName: 'Donor',
+      legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true },
       isAnonymous: false,
     })
     .expect(201);
@@ -139,6 +144,65 @@ describe('Beneficiary payout Integration (flag on, spec §17)', () => {
       throw new Error(`unexpected fetch to ${u}`);
     });
     vi.stubGlobal('fetch', fetchMock);
+  });
+
+  async function seedRequestBalances(campaignPending: number) {
+    const owner = await registerUser(app, uniqueEmail('atomic-beneficiary'));
+    const campaignId = await createActiveCampaign(app, owner.token, owner.userId);
+    const beneficiaryId = randomUUID();
+    await CampaignBeneficiaryBalanceModel.create({ campaignId, beneficiaryId, currency: 'GHS', pendingBalance: 100 });
+    await CampaignBalanceModel.create({ campaignId, currency: 'GHS', pendingBalance: campaignPending, totalRaised: campaignPending });
+    await BeneficiaryRecipientModel.create({ campaignId, beneficiaryId, currency: 'GHS', type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'Fixture Beneficiary', recipientCode: 'RCP_fixture', createdBy: owner.userId });
+    const submit = (target: Express = app) => request(target)
+      .post(`/api/v1/campaigns/${campaignId}/split/beneficiaries/${beneficiaryId}/payouts`)
+      .set('Authorization', `Bearer ${owner.token}`).send({ amount: 60 });
+    return { campaignId, beneficiaryId, submit };
+  }
+
+  it('rolls back beneficiary clearing when the campaign mirror is short', async () => {
+    const { campaignId, beneficiaryId, submit } = await seedRequestBalances(20);
+    await submit().expect(409);
+    const beneficiary = await CampaignBeneficiaryBalanceModel.findOne({ campaignId, beneficiaryId });
+    const campaign = await CampaignBalanceModel.findOne({ campaignId });
+    expect(beneficiary?.pendingBalance).toBe(100);
+    expect(beneficiary?.availableBalance).toBe(0);
+    expect(campaign?.pendingBalance).toBe(20);
+    expect(campaign?.availableBalance).toBe(0);
+    expect(await BeneficiaryPayoutModel.countDocuments({ campaignId })).toBe(0);
+    expect(vi.mocked(fetch)).not.toHaveBeenCalled();
+  });
+
+  it('rolls back both cleared balances when saving the payout request fails', async () => {
+    const { campaignId, beneficiaryId, submit } = await seedRequestBalances(100);
+    const failure = vi.spyOn(MongoBeneficiaryPayoutRepository.prototype, 'create').mockRejectedValueOnce(new Error('injected request save failure'));
+    try { await submit().expect(500); } finally { failure.mockRestore(); }
+    const beneficiary = await CampaignBeneficiaryBalanceModel.findOne({ campaignId, beneficiaryId });
+    const campaign = await CampaignBalanceModel.findOne({ campaignId });
+    expect(beneficiary?.pendingBalance).toBe(100);
+    expect(beneficiary?.availableBalance).toBe(0);
+    expect(campaign?.pendingBalance).toBe(100);
+    expect(campaign?.availableBalance).toBe(0);
+    expect(await BeneficiaryPayoutModel.countDocuments({ campaignId })).toBe(0);
+    // A fresh API instance can submit normally after the failed transaction.
+    const resumed = await createTestApp();
+    await submit(resumed).expect(201);
+    expect((await CampaignBalanceModel.findOne({ campaignId }))?.availableBalance).toBe(60);
+    expect((await CampaignBeneficiaryBalanceModel.findOne({ campaignId, beneficiaryId }))?.availableBalance).toBe(60);
+  });
+
+  it('keeps both balance mirrors equal under concurrent beneficiary requests', async () => {
+    const { campaignId, beneficiaryId, submit } = await seedRequestBalances(100);
+    const responses = await Promise.all([submit(), submit()]);
+    expect(responses.map((response) => response.status)).toEqual([201, 201]);
+    const beneficiary = await CampaignBeneficiaryBalanceModel.findOne({ campaignId, beneficiaryId });
+    const campaign = await CampaignBalanceModel.findOne({ campaignId });
+    // Requests do not reserve twice; approval is responsible for reserving the
+    // available balance. Both requests can exist but cannot both pay GHS 60.
+    expect(beneficiary?.pendingBalance).toBe(40);
+    expect(beneficiary?.availableBalance).toBe(60);
+    expect(campaign?.pendingBalance).toBe(40);
+    expect(campaign?.availableBalance).toBe(60);
+    expect(await BeneficiaryPayoutModel.countDocuments({ campaignId })).toBe(2);
   });
 
   it('pays a beneficiary their cleared share end-to-end (register → KYC → request → approve → settle)', async () => {

@@ -7,11 +7,11 @@ export interface RefundRecord {
   requesterId: string;
   reason: string;
   description?: string;
-  /** Original donation amount, before the processing fee. */
+  /** Original campaign-directed donation amount. */
   amount: number;
-  /** Processing fee deducted from the refund (2% of amount). */
+  /** Recorded request fee; new requests are free. Historical values are retained. */
   fee: number;
-  /** Amount actually refunded to the donor (amount - fee). */
+  /** Requested net amount, not evidence of a completed provider refund. */
   netAmount: number;
   currency: string;
   status: RefundStatus;

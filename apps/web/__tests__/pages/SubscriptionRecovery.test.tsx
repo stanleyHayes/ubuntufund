@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { SubscriptionCallbackPage } from '@/pages/SubscriptionCallbackPage'
 import { CreatorDashboardPage } from '@/pages/CreatorDashboardPage'
 import { api } from '@/lib/api'
+vi.mock('@/context/AuthContext', () => ({ useAuth: () => ({ user: { id: 'creator-fixture' } }) }))
 vi.mock('@/lib/api',()=>({api:{get:vi.fn(),post:vi.fn()}}))
 afterEach(()=>vi.resetAllMocks())
 describe('subscription return UI',()=>{

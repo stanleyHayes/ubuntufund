@@ -1,3 +1,4 @@
+import { OtpInput } from '@ubuntu-fund/ui'
 import { BrandedTextField as TextField, LoadingDots } from '@ubuntu-fund/ui'
 import { useState } from 'react'
 import { Box, Button, Typography, Alert, InputAdornment, IconButton } from '@mui/material'
@@ -14,6 +15,9 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [mfaCode, setMfaCode] = useState('')
+  const [mfaRequired, setMfaRequired] = useState(false)
+  const [recoveryMode, setRecoveryMode] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -24,9 +28,10 @@ export default function LoginPage() {
     if (!email.trim() || !password) { setError('Enter your email address and password.'); return }
     setLoading(true)
     try {
-      await login(email.trim(), password)
+      await login(email.trim(), password, mfaCode || undefined)
       navigate('/', { replace: true })
     } catch (err) {
+      if (err instanceof Error && /authenticator code/i.test(err.message)) setMfaRequired(true)
       setError(err instanceof Error ? err.message : 'Sign in failed. Please try again.')
     } finally { setLoading(false) }
   }
@@ -41,6 +46,10 @@ export default function LoginPage() {
         <TextField label="Password" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} fullWidth required autoComplete="current-password" disabled={loading}
           slotProps={{ input: { endAdornment: <InputAdornment position="end"><IconButton type="button" onClick={() => setShowPassword(!showPassword)} edge="end" aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword} disabled={loading}>{showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}</IconButton></InputAdornment> } }} />
         <Box sx={{ textAlign: 'right', mt: -1 }}><RouterLink to="/forgot-password" className="admin-auth-link">Forgot password?</RouterLink></Box>
+        {mfaRequired && <>
+          {recoveryMode ? <TextField label="Recovery code" value={mfaCode} onChange={event => setMfaCode(event.target.value)} autoComplete="off" /> : <OtpInput value={mfaCode} onChange={setMfaCode} disabled={loading} />}
+          <Button onClick={() => { setRecoveryMode(value => !value); setMfaCode('') }}>{recoveryMode ? 'Use authenticator code' : 'Use a recovery code'}</Button>
+        </>}
         <Button type="submit" variant="contained" fullWidth disabled={loading} endIcon={loading ? <LoadingDots size={6} /> : <ArrowForwardRounded />}>{loading ? 'Signing in…' : 'Sign in to workspace'}</Button>
       </Box>
       <div className="admin-auth-form-note">Use the email address associated with your administrator account.</div>

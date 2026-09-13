@@ -1,19 +1,10 @@
 import { EmptyState } from '@ubuntu-fund/ui'
-import { useState, useEffect, useCallback, useRef } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import Avatar from '@mui/material/Avatar'
 import { keyframes } from '@mui/material/styles'
 import { formatCurrency, SHAPE } from '@ubuntu-fund/ui'
-import { useSSE } from '@/hooks/useSSE'
-import { api } from '@/lib/api'
-
-interface DonationEvent {
-  amount: number
-  donorName: string
-  currency: string
-  timestamp: number
-}
+import { usePublicFeed } from '@/hooks/usePublicFeed'
 
 interface CampaignDonationResponse {
   items?: Array<{
@@ -26,75 +17,19 @@ interface CampaignDonationResponse {
   }>
 }
 
-interface FeedItem extends DonationEvent {
-  id: string
-}
-
 const slideIn = keyframes`
   from { opacity: 0; transform: translateY(-16px); max-height: 0; }
   to   { opacity: 1; transform: translateY(0);     max-height: 80px; }
 `
 
 export function LiveDonationFeed({ campaignId, maxItems = 10 }: { campaignId: string; maxItems?: number }) {
-  const [items, setItems] = useState<FeedItem[]>([])
-  const pendingRef = useRef<FeedItem[]>([])
-  const throttleRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const handleMessage = useCallback((event: string, data: unknown) => {
-    if (event !== 'donation') return
-
-    const donation = data as DonationEvent
-    const item: FeedItem = {
-      ...donation,
-      id: `${donation.timestamp}-${Math.random().toString(36).slice(2, 8)}`,
-    }
-
-    pendingRef.current = [item, ...pendingRef.current]
-
-    if (!throttleRef.current) {
-      throttleRef.current = setTimeout(() => {
-        setItems((prev) => {
-          const merged = [...pendingRef.current, ...prev]
-          pendingRef.current = []
-          return merged.slice(0, maxItems)
-        })
-        throttleRef.current = null
-      }, 300)
-    }
-  }, [maxItems])
-
-  useSSE(`campaign:${campaignId}`, { onMessage: handleMessage })
-
-  useEffect(() => {
-    let cancelled = false
-    api.get<CampaignDonationResponse | CampaignDonationResponse['items']>(`/campaigns/${campaignId}/donations?page=1&pageSize=${maxItems}`)
-      .then((response) => {
-        if (cancelled) return
-        const donations = Array.isArray(response) ? response : response?.items ?? []
-        setItems(donations.map((donation) => ({
-          id: donation.id,
-          amount: donation.amount,
-          currency: donation.currency,
-          donorName: donation.isAnonymous ? 'Anonymous' : donation.donorName || 'Supporter',
-          timestamp: new Date(donation.createdAt).getTime(),
-        })))
-      })
-      .catch(() => {
-        if (!cancelled) setItems([])
-      })
-    return () => {
-      cancelled = true
-      if (throttleRef.current) {
-        clearTimeout(throttleRef.current)
-      }
-    }
-  }, [campaignId, maxItems])
-
-  if (items.length === 0) {
-    return (
-      <EmptyState compact variant="noData" title="Support starts here" description="New contributions will appear here as they arrive." />
-    )
-  }
+  const { data } = usePublicFeed<CampaignDonationResponse | CampaignDonationResponse['items']>(`/campaigns/${campaignId}/donations?page=1&pageSize=${maxItems}`, `campaign:${campaignId}`, 'donation')
+  const donations = Array.isArray(data) ? data : data?.items ?? []
+  const items = donations.map(donation => ({
+    id: donation.id, amount: donation.amount, currency: donation.currency,
+    donorName: donation.isAnonymous ? 'Anonymous' : donation.donorName || 'Anonymous',
+    timestamp: new Date(donation.createdAt).getTime(),
+  }))
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>

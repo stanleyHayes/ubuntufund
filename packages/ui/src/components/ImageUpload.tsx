@@ -176,10 +176,10 @@ export function ImageUpload({
       {/* Uploaded → preview + actions */}
       {value ? (
         <Box>
-          {isPdf ? (
+          {isPdf || value.startsWith('kyc://') ? (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 2, border: `1px solid ${DIVIDER}`, borderRadius: SHAPE.card }}>
               <ImageRoundedIcon sx={{ color: SAGE }} />
-              <Typography sx={{ fontSize: '0.85rem', color: FOREST, flexGrow: 1, wordBreak: 'break-all' }}>Document uploaded</Typography>
+              <Typography sx={{ fontSize: '0.85rem', color: FOREST, flexGrow: 1, wordBreak: 'break-all' }}>{value.startsWith('kyc://') ? 'Private document uploaded' : 'Document uploaded'}</Typography>
             </Box>
           ) : (
             <Box

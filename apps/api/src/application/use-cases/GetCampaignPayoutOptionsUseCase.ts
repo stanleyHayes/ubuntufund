@@ -34,6 +34,7 @@ export class GetCampaignPayoutOptionsUseCase {
     const netProceeds = round(accountedRaised - platformFees - processorFees)
     const paidOut = round(balance?.paidOutBalance ?? 0)
     const payoutFees = round(balance?.payoutFees ?? 0)
+    const refundHeld = round(balance?.refundHeldBalance ?? 0)
     const raised = round(campaign.raisedAmount.amount)
     return {
       breakdown: {
@@ -47,7 +48,8 @@ export class GetCampaignPayoutOptionsUseCase {
         netProceeds,
         paidOut,
         payoutFees,
-        reservedOrAdjustments: round(netProceeds - paidOut - payoutFees - eligible),
+        refundHeld,
+        reservedOrAdjustments: round(netProceeds - paidOut - payoutFees - eligible - refundHeld),
         pending: round(balance?.pendingBalance ?? 0),
         available: round(balance?.availableBalance ?? 0),
         eligible,

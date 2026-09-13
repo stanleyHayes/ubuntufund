@@ -1,4 +1,5 @@
 import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import Container from '@mui/material/Container'
 import Stack from '@mui/material/Stack'
@@ -21,6 +22,7 @@ interface LegalPageLayoutProps {
   panelTitle: string
   panelBody: string
   introduction: string
+  actions?: { label: string; href: string }[]
   sections: LegalSection[]
   contact: ReactNode
   /** Human-readable effective/updated date shown in the sidebar chip. */
@@ -36,6 +38,7 @@ export function LegalPageLayout({
   panelTitle,
   panelBody,
   introduction,
+  actions,
   sections,
   contact,
   effectiveDate = 'Updated recently',
@@ -76,6 +79,7 @@ export function LegalPageLayout({
               {introduction}
             </Typography>
 
+            {actions && <Stack spacing={2} sx={{ mb: 5, alignItems: 'flex-start' }}>{actions.map(action => <Button key={action.href} component="a" href={action.href} variant="outlined">{action.label}</Button>)}</Stack>}
             <Stack spacing={{ xs: 4.5, md: 6 }}>
               {sections.map((section) => (
                 <Box id={section.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')} key={section.title} sx={{ scrollMarginTop: 100 }}>

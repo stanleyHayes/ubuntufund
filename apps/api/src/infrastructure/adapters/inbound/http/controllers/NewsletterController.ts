@@ -17,7 +17,7 @@ export class NewsletterController {
       const result = await this.subscribeNewsletterUseCase.execute(req.body);
       res.status(200).json({
         data: { message: result.message },
-        message: 'Subscribed to newsletter',
+        message: 'Newsletter request received',
         status: 200,
       });
     } catch (error) {

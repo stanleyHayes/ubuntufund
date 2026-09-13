@@ -104,6 +104,8 @@ export class SettleDonationUseCase {
         amount: new Money(breakdown.amount, breakdown.currency),
         paymentMethod: providerToPaymentMethod(settled.provider, verifiedChannel),
         message: settled.message,
+        donorName: settled.donorName,
+        messageAgreement: settled.toPlain().messageAgreement,
         isAnonymous: settled.isAnonymous,
         createdAt: new Date(),
       })

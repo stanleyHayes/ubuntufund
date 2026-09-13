@@ -616,6 +616,27 @@ export function createUjimoraTheme(mode: PaletteMode = 'light', skin: ThemeSkin 
           },
         },
       },
+      MuiAlert: {
+        styleOverrides: {
+          action: {
+            // Alert actions must inherit the severity foreground instead of the
+            // raised surface used by standalone icon buttons.
+            '& .MuiIconButton-root': {
+              color: 'inherit',
+              backgroundColor: 'transparent',
+              border: '0 !important',
+              boxShadow: 'none !important',
+              '&:hover': {
+                backgroundColor: 'rgba(127, 127, 127, 0.14)',
+                boxShadow: 'none !important',
+                transform: 'none',
+              },
+              '&:active': { boxShadow: 'none !important', transform: 'none' },
+              '&:focus-visible': { outline: '2px solid currentColor', outlineOffset: 2 },
+            },
+          },
+        },
+      },
       MuiIconButton: {
         styleOverrides: {
           root: {

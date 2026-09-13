@@ -1,3 +1,5 @@
+import ExportMenu from '@/components/ExportMenu'
+import { exportTable } from '@/lib/exports/report'
 import { usePagination } from '@/hooks/usePagination'
 import PaginationBar from '@/components/PaginationBar'
 import { useEffect, useMemo, useState } from 'react'
@@ -192,6 +194,7 @@ export default function ManagePlansPage() {
           { label: 'Editing', value: canUpdate ? 'Enabled' : 'View only' },
         ]}
       />
+      <ExportMenu title="Subscription plans" disabled={isLoading || !!error} getReport={() => ({ title: "Subscription plans", filters: ['Published configuration'], tables: [exportTable("Subscription plans", plans, { Tier: r => r.tier, Name: r => r.name, 'Monthly (GHS)': r => r.priceMonthly, 'Yearly (GHS)': r => r.priceYearly, 'Platform fee (%)': r => r.platformFeePercent, 'Active campaigns': r => r.maxActiveCampaigns, 'Maximum goal (GHS)': r => r.maxCampaignGoal, Description: r => r.description })] })} />
 
       {canCreate && (
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>

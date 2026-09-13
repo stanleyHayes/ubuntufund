@@ -1,3 +1,6 @@
+import ExportMenu from '@/components/ExportMenu'
+import { loadAll } from '@/lib/exports/loadAll'
+import { exportTable, dateCell } from '@/lib/exports/report'
 import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import { useState, useEffect, useCallback } from 'react'
 import {
@@ -148,6 +151,9 @@ function ContactSubmissionsPage() {
           { label: 'Resolved', value: stats.resolved },
         ]}
       />
+      <ExportMenu title="Contact submissions" disabled={loading} getReport={async progress => { const params = new URLSearchParams(); if (statusFilter !== 'all') params.set('status', statusFilter); if (typeFilter !== 'all') params.set('inquiryType', typeFilter);
+const rows = (await loadAll<ContactSubmission>('/contact?' + params, progress)).filter(r => !search || [r.name, r.email, r.subject].some(value => value.toLowerCase().includes(search.toLowerCase())));
+return { title: 'Contact submissions', filters: [`Status: ${statusFilter}`, `Type: ${typeFilter}`, `Search: ${search || 'All'}`], tables: [exportTable('Submissions', rows, { ID: r => r.id, Name: r => r.name, Email: r => r.email, Subject: r => r.subject, Type: r => r.inquiryType, Status: r => r.status, Message: r => r.message, 'Created (UTC)': r => dateCell(r.createdAt) })] } }} />
 
       {/* Filters */}
       <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>

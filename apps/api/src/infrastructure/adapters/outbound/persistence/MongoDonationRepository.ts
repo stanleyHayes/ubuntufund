@@ -1,5 +1,5 @@
 import { DonationEntity } from '../../../../domain/entities/Donation.js';
-import { PaymentMethod } from '@ubuntu-fund/types';
+import { PaymentMethod, type LegalAcceptanceRecord } from '@ubuntu-fund/types';
 import { Money } from '../../../../domain/value-objects/Money.js';
 import type { DonationRepositoryPort } from '../../../../domain/ports/outbound/DonationRepositoryPort.js';
 import {
@@ -15,6 +15,12 @@ function toDomain(doc: DonationDocument): DonationEntity {
     amount: new Money(doc.amount, doc.currency),
     paymentMethod: doc.paymentMethod ?? PaymentMethod.WALLET,
     message: doc.message,
+    donorName: doc.donorName,
+    messageHiddenAt: doc.messageHiddenAt,
+    publicContentStatus: doc.publicContentStatus,
+    publicContentFingerprint: doc.publicContentFingerprint,
+    publicContentRevokedAt: doc.publicContentRevokedAt,
+    messageAgreement: doc.messageAgreement,
     isAnonymous: doc.isAnonymous,
     createdAt: doc.createdAt,
   });
@@ -30,6 +36,8 @@ export class MongoDonationRepository implements DonationRepositoryPort {
       currency: plain.amount.currency,
       paymentMethod: plain.paymentMethod,
       message: plain.message,
+      donorName: plain.donorName,
+      messageAgreement: plain.messageAgreement,
       isAnonymous: plain.isAnonymous,
     });
     return toDomain(doc);
@@ -62,12 +70,13 @@ export class MongoDonationRepository implements DonationRepositoryPort {
   async updateMessage(
     id: string,
     donorId: string,
-    message: string
+    message: string,
+    agreement: LegalAcceptanceRecord
   ): Promise<DonationEntity | null> {
     // Ownership is enforced in the filter: a non-owner matches nothing → null.
     const doc = await DonationModel.findOneAndUpdate(
-      { _id: id, donorId },
-      { $set: { message } },
+      { _id: id, donorId, messageHiddenAt: { $exists: false }, publicContentRevokedAt: { $exists: false } },
+      { $set: { message, messageAgreement: agreement, publicContentStatus: 'pending' }, $unset: { publicContentFingerprint: '', publicReviewedBy: '', publicReviewedAt: '', publicReviewNotes: '' } },
       { new: true }
     );
     return doc ? toDomain(doc) : null;

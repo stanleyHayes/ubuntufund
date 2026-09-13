@@ -23,8 +23,9 @@ interface AuthState {
 }
 
 interface AuthContextValue extends AuthState {
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string, mfaCode?: string) => Promise<void>
   updateName: (name: string) => void
+  replaceTokens: (tokens: AuthTokens, userId: string) => void
   logout: () => void
 }
 
@@ -71,8 +72,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState({ user, tokens, isAuthenticated: !!user && !!tokens?.accessToken, isLoading: false })
   }), [])
 
-  const login = useCallback(async (email: string, password: string) => {
-    const res = await api.post<{ user: AuthUser; tokens: AuthTokens }>('/auth/login', { email, password })
+  const login = useCallback(async (email: string, password: string, mfaCode?: string) => {
+    const res = await api.post<{ user: AuthUser; tokens: AuthTokens }>('/auth/login', { email, password, mfaCode })
     saveToStorage(res.user, res.tokens)
     setState({ user: res.user, tokens: res.tokens, isAuthenticated: true, isLoading: false })
   }, [])
@@ -86,13 +87,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
+  const replaceTokens = useCallback((tokens: AuthTokens, userId: string) => {
+    setState(previous => {
+      if (!previous.user || previous.user.id !== userId) return previous
+      saveToStorage(previous.user, tokens)
+      return { ...previous, tokens }
+    })
+  }, [])
+
   const logout = useCallback(() => {
     clearStorage()
     setState({ user: null, tokens: null, isAuthenticated: false, isLoading: false })
   }, [])
 
   return (
-    <AuthContext.Provider value={{ ...state, login, logout, updateName }}>
+    <AuthContext.Provider value={{ ...state, login, logout, replaceTokens, updateName }}>
       {children}
     </AuthContext.Provider>
   )

@@ -99,12 +99,14 @@ describe('saved payout account limits', () => {
 })
 
 import { GetCreatorByHandleUseCase } from '../../../src/application/use-cases/GetCreatorByHandleUseCase.js'
-it.each([true, false])('respects profile image visibility (%s)', async (publicProfile) => {
+it('returns the separately reviewed creator images', async () => {
   const uc = new GetCreatorByHandleUseCase(
     {
       findByHandle: async () => ({
         userId: 'owner',
         handle: 'pontifex',
+        avatarUrl: 'https://example.com/reviewed-avatar.jpg',
+        coverUrl: 'https://example.com/reviewed-cover.jpg',
         displayName: 'Stanley',
         tipsEnabled: true,
         presetAmounts: [10],
@@ -116,15 +118,9 @@ it.each([true, false])('respects profile image visibility (%s)', async (publicPr
       findByCreator: async () => [],
     } as never,
     { creatorPolicy: async () => ({ eligible: true }) } as never,
-    {
-      findById: async () => ({
-        avatarUrl: 'https://example.com/photo.jpg',
-        toPlain: () => ({ coverUrl: 'https://example.com/cover.jpg' }),
-      }),
-    } as never,
-    { findByUserId: async () => ({ publicProfile }) } as never,
+    { hiddenContentAuthorIds: async () => new Set() } as never,
   )
   const page = await uc.execute('pontifex')
-  expect(page.avatarUrl).toBe(publicProfile ? 'https://example.com/photo.jpg' : undefined)
-  expect(page.coverUrl).toBe(publicProfile ? 'https://example.com/cover.jpg' : undefined)
+  expect(page.avatarUrl).toBe('https://example.com/reviewed-avatar.jpg')
+  expect(page.coverUrl).toBe('https://example.com/reviewed-cover.jpg')
 })

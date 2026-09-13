@@ -58,7 +58,7 @@ describe('Creator tip jar (buy-me-a-coffee) — receive loop', () => {
   it('claims a handle, receives a tip via webhook, and credits the creator balance idempotently', async () => {
     const reg = await request(app)
       .post('/api/v1/auth/register')
-      .send({ email: uniqueEmail('creator'), password: 'SecurePass123', name: 'Ama Creator' })
+      .send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email: uniqueEmail('creator'), password: 'SecurePass123', name: 'Ama Creator' })
       .expect(201);
     const token = reg.body.data.tokens.accessToken as string;
     await SubscriptionModel.create({ userId: reg.body.data.user.id, tier: 'starter', status: 'active', billingCycle: 'monthly', currentPeriodStart: new Date(), currentPeriodEnd: new Date(Date.now() + 86400000) });
@@ -79,10 +79,13 @@ describe('Creator tip jar (buy-me-a-coffee) — receive loop', () => {
     // A supporter opens a tip checkout (no auth).
     const tip = await request(app)
       .post(`/api/v1/creators/${handle}/tips`)
-      .send({ amount: 50, supporterEmail: 'fan@example.com', supporterName: 'Kofi', message: 'Love your work!' })
+      .send({ amount: 50, supporterEmail: 'fan@example.com', supporterName: 'Kofi', message: 'Love your work!', legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true } })
       .expect(201);
     const reference = tip.body.data.reference as string;
     expect(reference.startsWith('tip-')).toBe(true);
+    const storedTip = await TipModel.findOne({ providerRef: reference });
+    expect(storedTip?.messageAgreement?.version).toBe('2026-09-12');
+    expect(storedTip?.messageAgreement?.acceptedAt).toBeInstanceOf(Date);
     expect(tip.body.data.checkoutUrl).toContain(reference);
 
     // Paystack confirms the charge → the tip settles to the creator's balance.
@@ -127,7 +130,7 @@ describe('Creator tip jar (buy-me-a-coffee) — receive loop', () => {
   it('reconcile re-credits a SUCCEEDED tip whose balance credit was lost (crash after the status transition)', async () => {
     const reg = await request(app)
       .post('/api/v1/auth/register')
-      .send({ email: uniqueEmail('lostcredit'), password: 'SecurePass123', name: 'Yaa Creator' })
+      .send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email: uniqueEmail('lostcredit'), password: 'SecurePass123', name: 'Yaa Creator' })
       .expect(201);
     const token = reg.body.data.tokens.accessToken as string;
     const userId = reg.body.data.user.id as string;
@@ -141,7 +144,7 @@ describe('Creator tip jar (buy-me-a-coffee) — receive loop', () => {
 
     const tip = await request(app)
       .post(`/api/v1/creators/${handle}/tips`)
-      .send({ amount: 40, supporterEmail: 'fan2@example.com', supporterName: 'Abena' })
+      .send({ amount: 40, supporterEmail: 'fan2@example.com', supporterName: 'Abena', legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true } })
       .expect(201);
     const reference = tip.body.data.reference as string;
 
@@ -158,7 +161,7 @@ describe('Creator tip jar (buy-me-a-coffee) — receive loop', () => {
     expect((await CreatorBalanceModel.findOne({ userId }))?.availableBalance ?? 0).toBe(0);
 
     // Admin runs the payment reconciliation sweep → the uncredited tip is repaired.
-    const admReg = await request(app).post('/api/v1/auth/register').send({ email: uniqueEmail('tipadm'), password: 'SecurePass123', name: 'Adm' }).expect(201);
+    const admReg = await request(app).post('/api/v1/auth/register').send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email: uniqueEmail('tipadm'), password: 'SecurePass123', name: 'Adm' }).expect(201);
     await UserModel.findByIdAndUpdate(admReg.body.data.user.id, { role: 'admin' });
     const admLogin = await request(app).post('/api/v1/auth/login').send({ email: admReg.body.data.user.email, password: 'SecurePass123' }).expect(200);
     const sweep = await request(app)
@@ -184,15 +187,15 @@ describe('Creator tip jar (buy-me-a-coffee) — receive loop', () => {
   });
 
   it('rejects a taken handle with 409', async () => {
-    const reg1 = await request(app).post('/api/v1/auth/register').send({ email: uniqueEmail('c1'), password: 'SecurePass123', name: 'One' }).expect(201);
-    const reg2 = await request(app).post('/api/v1/auth/register').send({ email: uniqueEmail('c2'), password: 'SecurePass123', name: 'Two' }).expect(201);
+    const reg1 = await request(app).post('/api/v1/auth/register').send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email: uniqueEmail('c1'), password: 'SecurePass123', name: 'One' }).expect(201);
+    const reg2 = await request(app).post('/api/v1/auth/register').send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email: uniqueEmail('c2'), password: 'SecurePass123', name: 'Two' }).expect(201);
     for (const reg of [reg1, reg2]) await SubscriptionModel.create({ userId: reg.body.data.user.id, tier: 'starter', status: 'active', billingCycle: 'monthly', currentPeriodStart: new Date(), currentPeriodEnd: new Date(Date.now() + 86400000) });
     const handle = `dup-${randomUUID().slice(0, 6)}`;
     await request(app).post('/api/v1/creators/profile').set('Authorization', `Bearer ${reg1.body.data.tokens.accessToken}`).send({ handle, displayName: 'One' }).expect(200);
     await request(app).post('/api/v1/creators/profile').set('Authorization', `Bearer ${reg2.body.data.tokens.accessToken}`).send({ handle, displayName: 'Two' }).expect(409);
   });
   it('blocks Free setup and expired or trial creator donations, including direct API access', async () => {
-    const reg = await request(app).post('/api/v1/auth/register').send({ email: uniqueEmail('paid-gate'), password: 'SecurePass123', name: 'Paid Creator' }).expect(201);
+    const reg = await request(app).post('/api/v1/auth/register').send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email: uniqueEmail('paid-gate'), password: 'SecurePass123', name: 'Paid Creator' }).expect(201);
     const token = reg.body.data.tokens.accessToken;
     const userId = reg.body.data.user.id;
     const handle = `paid-${randomUUID().slice(0, 6)}`;

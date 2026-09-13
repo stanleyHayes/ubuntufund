@@ -1,3 +1,6 @@
+import ExportMenu from '@/components/ExportMenu'
+import { loadAll } from '@/lib/exports/loadAll'
+import { exportTable, dateCell } from '@/lib/exports/report'
 import { EmptyState } from '@ubuntu-fund/ui'
 import { useEffect, useState } from 'react'
 import {
@@ -87,6 +90,8 @@ export default function AiUsagePage() {
             : undefined
         }
       />
+      <ExportMenu title="AI usage" disabled={loading || !!error} getReport={async progress => { const rows = await loadAll<AiUsageLogEntry>('/ai-writing/usage', progress, response => ({ items: (response as UsagePage).data, total: (response as UsagePage).pagination.total }));
+return { title: 'AI usage', tables: [exportTable('Usage', rows, { ID: r => r.id, User: r => r.userName ?? r.userId, Action: r => r.action, Model: r => r.model, 'Input tokens': r => r.inputTokens, 'Output tokens': r => r.outputTokens, Status: r => r.status, 'Timestamp (UTC)': r => dateCell(r.timestamp) }), ...(stats ? [exportTable('Summary', [stats], { Requests: r => r.totalRequests, 'Requests today': r => r.requestsToday, 'Requests this month': r => r.requestsThisMonth, Errors: r => r.errors, 'Input tokens': r => r.inputTokens, 'Output tokens': r => r.outputTokens })] : [])] } }} />
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}

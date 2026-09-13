@@ -218,6 +218,7 @@ export interface CampaignPayoutBreakdown {
   paidOut: number
   payoutFees: number
   reservedOrAdjustments: number
+  refundHeld?: number
   pending: number
   available: number
   eligible: number
@@ -236,6 +237,7 @@ export function campaignPayoutBreakdownRows(
     { label: 'Payment processing fees already deducted', amount: -b.processorFees },
     ...(b.paidOut ? [{ label: 'Already paid out or moved to wallet', amount: -b.paidOut }] : []),
     ...(b.payoutFees ? [{ label: 'Previous cashout service fees', amount: -b.payoutFees }] : []),
+    ...(b.refundHeld ? [{ label: 'Held for refund review', amount: -b.refundHeld }] : []),
     ...(b.reservedOrAdjustments
       ? [{ label: 'Reserved funds / balance adjustments', amount: -b.reservedOrAdjustments }]
       : []),

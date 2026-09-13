@@ -1,3 +1,4 @@
+import { KYCVerificationModel } from '../../../database/models/KYCVerificationModel.js'
 import mongoose from 'mongoose'
 import {
   AutomaticPayoutPolicyModel,
@@ -75,6 +76,15 @@ export class AutomaticPayoutService {
           reason = 'Owner verification is required.'
           return
         }
+        const evidence = await KYCVerificationModel.findOne({
+          userId: String(owner._id), verificationType: owner.role === 'organization' ? 'business' : 'identity',
+        }).sort({ createdAt: -1, _id: -1 }).session(session)
+        if (!evidence || evidence.status !== 'approved' || !evidence.expiryDate || evidence.expiryDate.getTime() <= Date.now()) {
+          reason = 'Current owner identity or organization verification requires manual review.'
+          return
+        }
+        // Serialize this claim against account closure and KYC review/submission.
+        await UserModel.updateOne({ _id: owner._id }, { $inc: { publicationWriteVersion: 1 } }, { session })
         const dispute = await DisputeModel.exists({
           campaignId: current.campaignId,
           status: { $in: ['open', 'under_review'] },

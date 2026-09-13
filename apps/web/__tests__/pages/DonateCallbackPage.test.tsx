@@ -62,3 +62,33 @@ describe('Donation return confirmation', () => {
     expect(screen.queryByTestId('donation-particles')).not.toBeInTheDocument()
   })
 })
+
+it.each([
+  ['pending', 'awaiting review'],
+  ['approved', 'has been approved'],
+  ['rejected', 'was not approved'],
+  ['unavailable', 'currently unavailable'],
+])('keeps payment confirmed while showing %s content review', async (contentReviewStatus, text) => {
+  vi.mocked(verifyDonationIntent).mockResolvedValue({ ...confirmed, contentReviewStatus } as never);
+  show();
+  expect(await screen.findByText(new RegExp(text))).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: /donation is confirmed/ })).toBeInTheDocument();
+});
+
+it('refreshes a later decision without re-verifying payment and preserves success on review errors', async () => {
+  vi.mocked(verifyDonationIntent).mockResolvedValue({ ...confirmed, contentReviewStatus: 'pending' } as never)
+  show()
+  expect(await screen.findByText(/awaiting review/)).toBeInTheDocument()
+  vi.mocked(getDonationIntentStatus).mockResolvedValueOnce({ ...confirmed, contentReviewStatus: 'approved' } as never)
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh content review' }))
+  expect(await screen.findByText(/has been approved/)).toBeInTheDocument()
+  vi.mocked(getDonationIntentStatus).mockRejectedValueOnce(new Error('offline'))
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh content review' }))
+  expect(await screen.findByText(/Could not refresh the content review/)).toBeInTheDocument()
+  expect(screen.queryByText(/has been approved/)).not.toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: /donation is confirmed/ })).toBeInTheDocument()
+  expect(verifyDonationIntent).toHaveBeenCalledTimes(1)
+  vi.mocked(getDonationIntentStatus).mockResolvedValueOnce({ ...confirmed, contentReviewStatus: 'rejected' } as never)
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh content review' }))
+  expect(await screen.findByText(/was not approved/)).toBeInTheDocument()
+})

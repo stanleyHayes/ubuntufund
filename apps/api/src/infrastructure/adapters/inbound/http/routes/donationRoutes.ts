@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import type { DonationController } from '../controllers/DonationController.js';
-import type { createAuthMiddleware } from '../../middleware/authMiddleware.js';
+import type { createAuthMiddleware, createOptionalAuthMiddleware } from '../../middleware/authMiddleware.js';
 
 /**
  * Mounted at /donations.
@@ -14,11 +14,13 @@ import type { createAuthMiddleware } from '../../middleware/authMiddleware.js';
  */
 export function createDonationRoutes(
   controller: DonationController,
-  authMiddleware: ReturnType<typeof createAuthMiddleware>
+  authMiddleware: ReturnType<typeof createAuthMiddleware>,
+  optionalAuth: ReturnType<typeof createOptionalAuthMiddleware>
 ): Router {
   const router = Router();
+  router.use((_req, res, next) => { res.set('Cache-Control', 'private, no-store'); next(); });
 
-  router.get('/', controller.listRecent);
+  router.get('/', optionalAuth, controller.listRecent);
   router.get('/mine', authMiddleware, controller.listMine);
   router.get('/:id', authMiddleware, controller.getById);
 

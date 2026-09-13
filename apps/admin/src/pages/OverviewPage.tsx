@@ -1,3 +1,5 @@
+import ExportMenu from '@/components/ExportMenu'
+import { overviewTable, analyticsTables, usersTable, campaignsTable, donationsTable } from '@/lib/exports/tables'
 import { EmptyReport, type EmptyReportKind } from '@/components/EmptyReport'
 import { useMemo } from 'react'
 import { Box, Typography, Chip, LinearProgress, Skeleton } from '@mui/material'
@@ -239,7 +241,7 @@ function FraudMetricCard({ metric, value, change }: { metric: string; value: num
 // OverviewPage
 // ---------------------------------------------------------------------------
 export default function OverviewPage() {
-  const { data: stats } = useAdminStats()
+  const { data: stats, isLoading: statsLoading, error: statsError } = useAdminStats()
   const { data: reports, isLoading: reportsLoading, error: reportsError } = useAdminReports()
   const { data: users, isLoading: usersLoading, error: usersError } = useAdminUsers()
   const { data: campaigns, isLoading: campaignsLoading, error: campaignsError } = useAdminCampaigns()
@@ -333,6 +335,7 @@ export default function OverviewPage() {
           { label: 'Avg Donation', value: `GH₵ ${stats.avgDonation.toLocaleString()}` },
         ]}
       />
+      <ExportMenu title="Overview" disabled={statsLoading || !!statsError || reportsLoading || !!reportsError || usersLoading || !!usersError || campaignsLoading || !!campaignsError || donationsLoading || !!donationsError} getReport={() => ({ title: 'Platform overview', tables: [overviewTable(stats), ...analyticsTables(reports, campaigns), usersTable(users), campaignsTable(campaigns), donationsTable(donations)] })} />
 
       {/* ═══ ROW 2: Donation trend + Category breakdown ═══ */}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '2fr 1fr' }, gap: 3, mt: 4 }}>

@@ -1,11 +1,17 @@
+import { finishTipAttempt } from '@/lib/tipCheckout'
 import { useSeo } from '@/lib/seo'
 import { useEffect, useState } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { Alert, Box, Button, Container, Typography } from '@mui/material'
 import { api } from '@/lib/api'
 import { DonationCelebration } from '@/components/donate/DonationCelebration'
-type Result = { status: string; amount: number; currency: string; handle?: string; displayName?: string; thankYouMessage?: string }
+type Result = { contentReviewStatus?: 'pending' | 'approved' | 'rejected' | 'not_requested'; status: string; amount: number; currency: string; handle?: string; displayName?: string; thankYouMessage?: string }
 export function CreatorTipCallbackPage() {
+  const [params] = useSearchParams()
+  const reference = params.get('reference') || params.get('trxref') || ''
+  return <CreatorTipConfirmation key={reference} reference={reference} />
+}
+function CreatorTipConfirmation({ reference }: { reference: string }) {
   useSeo({
     title: 'Confirming your tip | Ujimora',
     description:
@@ -13,8 +19,6 @@ export function CreatorTipCallbackPage() {
     path: '/tip/callback',
     robots: 'noindex, nofollow',
   })
-  const [params] = useSearchParams()
-  const reference = params.get('reference') || params.get('trxref') || ''
   const [result, setResult] = useState<Result | null>(null)
   const [stopped, setStopped] = useState(false)
   const [error, setError] = useState('')
@@ -26,6 +30,10 @@ export function CreatorTipCallbackPage() {
       try {
         const data = await api.post<Result>('/creators/tips/verify', { reference })
         if (!active) return
+        if (data.status === 'SUCCEEDED' || data.status === 'FAILED') {
+          // Storage cleanup cannot change a confirmed payment into an unknown result.
+          try { finishTipAttempt(reference) } catch { /* Keep the old key for safe replay. */ }
+        }
         setResult(data); setError('')
         if (data.status !== 'PENDING') return
       } catch (e) { if (!active) return; setError(e instanceof Error ? e.message : 'Unable to check payment right now.') }
@@ -41,6 +49,9 @@ export function CreatorTipCallbackPage() {
     {success && <DonationCelebration />}
     <Typography variant="h4" sx={{ fontWeight: 800, mb: 2 }}>{!reference ? 'Payment reference missing' : success ? 'Thank you for your support!' : failed ? 'Payment was not completed' : stopped ? 'Still confirming your support' : 'Confirming your support…'}</Typography>
     <Typography sx={{ color: 'text.secondary', mb: 3 }}>{success ? `${result.currency} ${result.amount.toFixed(2)} confirmed for ${result.displayName || 'this creator'}. ${result.thankYouMessage || 'Your kindness helps them keep creating.'}` : !reference ? 'Open the return link from your payment checkout to check its status.' : failed ? 'This attempt was not successful. If you see a debit, contact support with your payment reference before trying again.' : 'We are checking securely with Paystack. Please do not pay again while confirmation is pending.'}</Typography>
+    {success && result.contentReviewStatus === 'pending' && <Alert severity="info" sx={{ mb: 2 }}>Your payment is confirmed. Your public name and message are waiting for staff review.</Alert>}
+    {success && result.contentReviewStatus === 'approved' && <Alert severity="success" sx={{ mb: 2 }}>Your public name and message passed review. Your anonymity choice still applies.</Alert>}
+    {success && result.contentReviewStatus === 'rejected' && <Alert severity="info" sx={{ mb: 2 }}>Your payment is confirmed. Your public name and message were not approved for display. Contact support@ujimora.com with your payment reference to ask about the decision.</Alert>}
     {error && <Alert severity="warning" sx={{ mb: 2 }}>{error}</Alert>}
     {stopped && <Button onClick={() => { setStopped(false); setError(''); setRetry(r => r + 1) }}>Keep checking</Button>}
     {result?.handle && <Button component={Link} to={`/creators/${encodeURIComponent(result.handle)}`} variant="contained">Back to {result.displayName || 'creator'}</Button>}

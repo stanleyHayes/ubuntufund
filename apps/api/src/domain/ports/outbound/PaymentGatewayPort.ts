@@ -109,6 +109,15 @@ export interface PaymentGatewayRefundResult {
   raw: Record<string, unknown>
 }
 
+export interface PaymentGatewayRefundVerification {
+  reference: string;
+  status: string;
+  amountMinor: number;
+  currency: string;
+  transactionId: string;
+  operationReference?: string;
+}
+
 /** A single-currency balance held with the provider. */
 export interface PaymentGatewayBalance {
   currency: string
@@ -187,7 +196,10 @@ export interface PaymentGatewayPort {
     reference: string,
     amountMajor?: number,
     currency?: string,
+    operationReference?: string,
   ): Promise<PaymentGatewayRefundResult>
+
+  fetchRefund?(reference: string): Promise<PaymentGatewayRefundVerification>
 
   /**
    * Verify a webhook's authenticity from its raw request body and the

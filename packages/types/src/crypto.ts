@@ -1,3 +1,4 @@
+import type { LegalAcceptanceInput } from './legal-acceptance'
 /**
  * Crypto donation rail (Ujimora Crypto Donations plan). A provider-neutral
  * second payment rail alongside the fiat (Paystack) rail: campaigns still have a
@@ -83,6 +84,7 @@ export interface CreateCryptoQuoteInput {
 
 /** Body for `POST /campaigns/:id/donations/crypto` (open a funded deposit). */
 export interface CreateCryptoDepositInput {
+  legalAcceptance?: LegalAcceptanceInput
   quoteId: string
   donorEmail?: string
   donorName?: string

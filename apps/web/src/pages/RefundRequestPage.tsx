@@ -67,6 +67,10 @@ export function RefundRequestPage() {
   const [submitError, setSubmitError] = useState('')
   const [refundId, setRefundId] = useState('')
 
+  useEffect(() => {
+    if (submitted) window.scrollTo({ top: 0, behavior: 'instant' })
+  }, [submitted])
+
   if (!donation) {
     return (
       <Container maxWidth="sm" sx={{ py: 8 }}>
@@ -126,7 +130,7 @@ export function RefundRequestPage() {
                 This request is pending review; settlement is not automatic and no processing time is guaranteed.
               </Typography>
               <Typography sx={{ fontSize: '0.85rem', color: 'text.secondary' }}>
-                Refund amount: {formatCurrency(donation.amount * 0.98, donation.currency)} (after 2% processing fee)
+                Amount requested: {formatCurrency(donation.amount, donation.currency)}. No fee is charged to submit this request.
               </Typography>
             </Box>
             <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
@@ -207,7 +211,7 @@ export function RefundRequestPage() {
         <Alert severity="info" sx={{ mb: 3, borderRadius: SHAPE.card }}>
           <Typography sx={{ fontSize: '0.82rem', fontWeight: 600, mb: 0.5 }}>Refund Policy</Typography>
           <Typography sx={{ fontSize: '0.78rem' }}>
-            Refunds are subject to a 2% processing fee. Refunds typically process within 5-7 business days.
+            Submitting a request is free. Our team reviews eligibility and confirms the amount, any applicable fee treatment and provider timing. Submitting does not approve or execute a refund. Your statutory rights are unaffected.
           </Typography>
         </Alert>
 
@@ -250,7 +254,7 @@ export function RefundRequestPage() {
             />
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pt: 1 }}>
               <Chip
-                label={`Refund amount: ${formatCurrency(donation.amount * 0.98, donation.currency)}`}
+                label={`Amount requested: ${formatCurrency(donation.amount, donation.currency)}`}
                 sx={{ fontWeight: 600, fontSize: '0.8rem', bgcolor: 'rgba(0,0,0,0.04)' }}
               />
               <Button
@@ -272,11 +276,11 @@ export function RefundRequestPage() {
           <DialogContent>
             <Typography sx={{ mb: 1 }}>
               Are you sure you want to request a refund of{' '}
-              <strong>{formatCurrency(donation.amount * 0.98, donation.currency)}</strong> for your donation to{' '}
+              <strong>{formatCurrency(donation.amount, donation.currency)}</strong> for your donation to{' '}
               <strong>{donation.campaignName}</strong>?
             </Typography>
             <Typography sx={{ fontSize: '0.82rem', color: 'text.secondary' }}>
-              A 2% processing fee will be deducted from the refund amount.
+              Submitting is free. This sends your request for review; it does not move money or guarantee approval.
             </Typography>
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 2 }}>

@@ -1,3 +1,5 @@
+import { lockPrivateKycDocuments } from '../../../outbound/persistence/lockPrivateKycDocuments.js';
+import { MongoKYCWorkflowTransaction } from '../../../outbound/persistence/MongoKYCWorkflowTransaction.js';
 import type { GetKYCStatsUseCase } from '../../../../../application/use-cases/GetKYCStatsUseCase.js';
 import type { Response, NextFunction } from 'express';
 import type { AuthenticatedRequest } from '../../middleware/authMiddleware.js';
@@ -29,10 +31,10 @@ export class KYCController {
     next: NextFunction
   ): Promise<void> => {
     try {
-      const record = await this.submitKYCIdentityUseCase.execute(
-        req.body,
-        req.userId!
-      );
+      const record = await new MongoKYCWorkflowTransaction().submit(req.userId!, req.authVersion ?? '', async () => {
+        await lockPrivateKycDocuments(req.userId!, req.body.documents ?? []);
+        return this.submitKYCIdentityUseCase.execute(req.body, req.userId!);
+      });
       res.status(201).json({
         data: record,
         message: 'Identity verification submitted',
@@ -50,6 +52,7 @@ export class KYCController {
   ): Promise<void> => {
     try {
       const result = await this.getKYCStatusUseCase.execute(req.userId!);
+      res.setHeader('Cache-Control', 'private, no-store');
       res.json({
         data: result,
         message: 'KYC status retrieved',
@@ -67,6 +70,7 @@ export class KYCController {
   ): Promise<void> => {
     try {
       const result = await this.getPendingKYCUseCase.execute();
+      res.setHeader('Cache-Control', 'private, no-store');
       res.json({
         data: result,
         message: 'Pending KYC verifications retrieved',
@@ -83,11 +87,11 @@ export class KYCController {
     next: NextFunction
   ): Promise<void> => {
     try {
-      const record = await this.approveKYCUseCase.execute(
+      const record = await new MongoKYCWorkflowTransaction().run(req.params.id as string, req.userId!, req.authVersion ?? '', 'approved', req.body.reviewVersion, () => this.approveKYCUseCase.execute(
         req.params.id as string,
         req.userId!,
         req.body
-      );
+      ));
       res.json({
         data: record,
         message: 'KYC verification approved',
@@ -104,11 +108,11 @@ export class KYCController {
     next: NextFunction
   ): Promise<void> => {
     try {
-      const record = await this.rejectKYCUseCase.execute(
+      const record = await new MongoKYCWorkflowTransaction().run(req.params.id as string, req.userId!, req.authVersion ?? '', 'rejected', req.body.reviewVersion, () => this.rejectKYCUseCase.execute(
         req.params.id as string,
         req.userId!,
         req.body
-      );
+      ));
       res.json({
         data: record,
         message: 'KYC verification rejected',

@@ -1,3 +1,6 @@
+import { CampaignModel } from '../../../database/models/CampaignModel.js';
+import type { PublicProfileVisibilityPort } from '../../../../domain/ports/outbound/PublicProfileVisibilityPort.js';
+import { ProfileModel } from '../../../database/models/ProfileModel.js';
 import { isObjectIdOrHexString, type PipelineStage } from 'mongoose';
 import { UserRole } from '@ubuntu-fund/types';
 import { DonationModel } from '../../../database/models/DonationModel.js';
@@ -37,11 +40,13 @@ function periodStartDate(period: LeaderboardPeriod): Date | null {
 }
 
 export class MongoLeaderboardRepository implements LeaderboardRepositoryPort {
+  constructor(private readonly visibility: PublicProfileVisibilityPort) {}
+
   async getTopDonors(
     params: LeaderboardQueryParams
   ): Promise<LeaderboardDonorRecord[]> {
     const { category, limit } = params;
-    const groups = await this.aggregateDonorTotals(params.period);
+    const groups = await this.eligibleDonorTotals(params);
 
     const donorIds = groups.map((g) => g._id).filter(isObjectIdOrHexString);
     const users = await UserModel.find({ _id: { $in: donorIds } });
@@ -63,13 +68,13 @@ export class MongoLeaderboardRepository implements LeaderboardRepositoryPort {
       entries.push({
         userId: group._id,
         userRole,
-        name: group.allAnonymous ? 'Anonymous' : user.name,
-        avatarUrl: group.allAnonymous ? undefined : user.avatarUrl,
+        name: user.role === UserRole.ORGANIZATION ? user.organizationName || user.name : user.name,
+        avatarUrl: user.avatarUrl,
         totalDonated: group.totalDonated,
         donationCount: group.donationCount,
         currency: group.currency,
         campaignsSupported: group.campaignIds.length,
-        isAnonymous: group.allAnonymous,
+        isAnonymous: false,
       });
     }
 
@@ -81,18 +86,9 @@ export class MongoLeaderboardRepository implements LeaderboardRepositoryPort {
     params: Omit<LeaderboardQueryParams, 'limit'>
   ): Promise<LeaderboardStatsRecord> {
     const { category } = params;
-    const groups = await this.aggregateDonorTotals(params.period);
+    const groups = await this.eligibleDonorTotals(params);
 
-    let relevant = groups;
-    if (category !== 'all') {
-      const donorIds = groups.map((g) => g._id).filter(isObjectIdOrHexString);
-      const users = await UserModel.find({
-        _id: { $in: donorIds },
-        role: category,
-      });
-      const allowedIds = new Set(users.map((u) => u._id!.toString()));
-      relevant = groups.filter((g) => allowedIds.has(g._id));
-    }
+    const relevant = category === 'all' ? groups : groups.filter(group => group._id !== 'guest');
 
     return relevant.reduce(
       (acc, g) => ({
@@ -105,13 +101,29 @@ export class MongoLeaderboardRepository implements LeaderboardRepositoryPort {
     );
   }
 
+  private async eligibleDonorTotals(params: Omit<LeaderboardQueryParams, 'limit'>): Promise<DonorAggregateRaw[]> {
+    const groups = await this.aggregateDonorTotals(params.period);
+    const donorIds = groups.map(group => group._id).filter(isObjectIdOrHexString);
+    const [hidden, optedOut, users] = await Promise.all([
+      this.visibility.hiddenContentAuthorIds(donorIds, params.viewerId),
+      ProfileModel.find({ userId: { $in: donorIds }, showLeaderboards: false }).select('userId').lean(),
+      UserModel.find({ _id: { $in: donorIds }, role: params.category === 'all' ? { $in: [UserRole.USER, UserRole.ORGANIZATION] } : params.category }).select('_id').lean(),
+    ]);
+    for (const profile of optedOut) hidden.add(profile.userId);
+    const eligible = new Set(users.map(user => String(user._id)));
+    return groups.filter(group => (group._id === 'guest' && params.category === 'all') || (eligible.has(group._id) && !hidden.has(group._id)));
+  }
+
   private async aggregateDonorTotals(
     period: LeaderboardPeriod
   ): Promise<DonorAggregateRaw[]> {
     const startDate = periodStartDate(period);
 
     const pipeline = [
-      { $match: startDate ? { createdAt: { $gte: startDate } } : {} },
+      { $match: { currency: 'GHS', isAnonymous: false, ...(startDate ? { createdAt: { $gte: startDate } } : {}) } },
+      { $set: { publicCampaignId: { $convert: { input: '$campaignId', to: 'objectId', onError: null, onNull: null } } } },
+      { $lookup: { from: CampaignModel.collection.name, localField: 'publicCampaignId', foreignField: '_id', as: 'publicCampaign' } },
+      { $match: { 'publicCampaign.status': { $in: ['active', 'funded', 'expired'] } } },
       {
         $group: {
           _id: '$donorId',

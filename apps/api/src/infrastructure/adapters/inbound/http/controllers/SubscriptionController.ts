@@ -1,4 +1,5 @@
 import type { Response, NextFunction } from 'express';
+import { z } from 'zod';
 import type { AuthenticatedRequest } from '../../middleware/authMiddleware.js';
 import type { GetMySubscriptionUseCase } from '../../../../../application/use-cases/GetMySubscriptionUseCase.js';
 import type { SubscribeUseCase } from '../../../../../application/use-cases/SubscribeUseCase.js';
@@ -29,10 +30,11 @@ export class SubscriptionController {
     catch (error) { next(error); }
   };
 
-  list = async (_req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  list = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const items = await this.listSubscriptionsUseCase.execute();
-      res.json({ data: { items }, message: 'Subscriptions retrieved', status: 200 });
+      const params = z.object({ page: z.coerce.number().int().min(1).max(10000).default(1), pageSize: z.coerce.number().int().min(1).max(100).default(50) }).parse(req.query);
+      const result = await this.listSubscriptionsUseCase.execute(params);
+      res.set('Cache-Control', 'private, no-store').json({ data: { ...result, ...params }, message: 'Subscriptions retrieved', status: 200 });
     } catch (error) { next(error); }
   };
 

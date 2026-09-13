@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { Platform } from 'react-native'
 import { sessionSnapshot } from './session'
 import { api, ApiError } from './api'
 import type {
@@ -29,6 +30,7 @@ export function isPaymentsNotConfigured(error: unknown): boolean {
 export async function createSubscriptionCheckout(
   input: CreateSubscriptionCheckoutInput,
 ): Promise<SubscriptionCheckoutResult> {
+  if (Platform.OS !== 'web') throw new Error('Use App Store or Google Play billing for native subscriptions.')
   const result = await api.post<SubscriptionCheckoutResult>('/subscriptions/checkout', input)
   if (!result.activatedWithoutCharge) await AsyncStorage.setItem(`ujimora:subscription:${sessionSnapshot()?.user.id}`, result.checkout.id)
   return result

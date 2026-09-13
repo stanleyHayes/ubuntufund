@@ -1,42 +1,31 @@
-import { useState } from 'react'
-import { Box, Button, Skeleton, Typography } from '@mui/material'
+import { useEffect, useState } from 'react'
+import { Alert, Box, Button, Skeleton, Typography } from '@mui/material'
 import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded'
-
-interface Props {
-  url: string
-  label: string
-}
-
+import { api } from '@/lib/api'
+interface Props { url: string; label: string }
 export function KYCDocumentPreview({ url, label }: Props) {
-  const [loaded, setLoaded] = useState(false)
+  const [privateAccess, setPrivateAccess] = useState<{ url: string; mimeType: string; requestedFor: string } | null>(null)
   const [failed, setFailed] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [attempt, setAttempt] = useState(0)
+  const isPrivate = /^kyc:\/\/[a-f0-9]{24}$/i.test(url)
+  useEffect(() => {
+    let cancelled = false
+    setPrivateAccess(null); setFailed(false); setLoading(isPrivate)
+    if (!isPrivate) return
+    setLoading(true)
+    void api.get<{ url: string; mimeType: string }>(`/uploads/kyc/${url.slice(6)}/access`).then(result => { if (!cancelled) setPrivateAccess({ ...result, requestedFor: url }) }).catch(() => { if (!cancelled) setFailed(true) }).finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [url, isPrivate, attempt])
   let safeUrl: URL | null = null
-  try {
-    const parsed = new URL(url)
-    if (parsed.protocol === 'https:' || parsed.protocol === 'http:') safeUrl = parsed
-  } catch { /* Missing or malformed legacy document URL. */ }
-
-  if (!safeUrl) return <Typography color="error" variant="body2">Document file is unavailable. Request a replacement from the member.</Typography>
-  const isPdf = /\.pdf$/i.test(safeUrl.pathname)
-
-  return (
-    <Box sx={{ mt: 1.5 }}>
-      {isPdf ? (
-        <Box component="iframe" src={safeUrl.href} title={`${label} PDF preview`} referrerPolicy="no-referrer" sx={{ width: '100%', height: { xs: 300, sm: 440 }, border: 0, borderRadius: 1, bgcolor: 'background.paper' }} />
-      ) : failed ? (
-        <Typography variant="body2" color="text.secondary" role="status">Preview could not load. Open the original file to view it.</Typography>
-      ) : (
-        <Box sx={{ position: 'relative', minHeight: loaded ? 0 : 180 }}>
-          {!loaded && <Skeleton variant="rounded" height={180} aria-label={`Loading ${label}`} />}
-          <Box component="img" src={safeUrl.href} alt={`${label} preview`} referrerPolicy="no-referrer"
-            onLoad={() => setLoaded(true)} onError={() => setFailed(true)}
-            sx={{ display: loaded ? 'block' : 'none', width: '100%', maxHeight: 360, objectFit: 'contain', borderRadius: 1, bgcolor: 'background.paper' }} />
-        </Box>
-      )}
-      <Button component="a" href={safeUrl.href} target="_blank" rel="noopener noreferrer" startIcon={<OpenInNewRoundedIcon />} aria-label={`Open original ${label}`} sx={{ mt: 1, textTransform: 'none' }}>
-        Open original
-      </Button>
-      {isPdf && <Typography variant="caption" color="text.secondary" display="block">If the PDF does not display, open the original file in a new tab.</Typography>}
-    </Box>
-  )
+  try { const parsed = new URL(isPrivate ? (privateAccess?.requestedFor === url ? privateAccess.url : '') : url); if (parsed.protocol === 'https:') safeUrl = parsed } catch { /* Waiting for private access or invalid legacy URL. */ }
+  if (loading) return <Skeleton variant="rounded" height={180} />
+  if (!safeUrl) return <Box><Typography color="error">Document file is unavailable.</Typography>{isPrivate && <Button onClick={() => setAttempt(attempt + 1)}>Retry private document</Button>}</Box>
+  const isPdf = privateAccess?.mimeType === 'application/pdf' || /\.pdf$/i.test(safeUrl.pathname)
+  return <Box sx={{ mt: 1.5 }}>
+    {!isPrivate && <Alert severity="warning" sx={{ mb: 2 }}>Legacy document link. This file needs migration to authenticated storage and public-link invalidation.</Alert>}
+    {failed ? <Typography role="status">Preview could not load. Open the original or refresh the private link.</Typography> : isPdf ? <Box component="iframe" src={safeUrl.href} title={`${label} PDF preview`} sandbox="allow-same-origin" referrerPolicy="no-referrer" sx={{ width: '100%', height: { xs: 300, sm: 440 }, border: 0 }} /> : <Box component="img" src={safeUrl.href} alt={`${label} preview`} referrerPolicy="no-referrer" onError={() => setFailed(true)} sx={{ width: '100%', maxHeight: 360, objectFit: 'contain' }} />}
+    <Button component="a" href={safeUrl.href} target="_blank" rel="noopener noreferrer" startIcon={<OpenInNewRoundedIcon />} aria-label={`Open original ${label}`}>Open original</Button>
+    {isPrivate && <Button onClick={() => setAttempt(attempt + 1)}>Refresh expiring link</Button>}
+  </Box>
 }

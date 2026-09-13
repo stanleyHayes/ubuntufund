@@ -7,12 +7,14 @@ export interface CreatorProfileDocument extends Document {
   tagline?: string;
   bio?: string;
   avatarUrl?: string;
+  coverUrl?: string;
   tipsEnabled: boolean;
   presetAmounts: number[];
   currency: string;
   thankYouMessage?: string;
   createdAt: Date;
   updatedAt: Date;
+  revision?: number;
 }
 
 const schema = new Schema<CreatorProfileDocument>(
@@ -24,10 +26,12 @@ const schema = new Schema<CreatorProfileDocument>(
     tagline: { type: String },
     bio: { type: String },
     avatarUrl: { type: String },
+    coverUrl: { type: String },
     tipsEnabled: { type: Boolean, default: true },
     presetAmounts: { type: [Number], default: [10, 25, 50, 100] },
     currency: { type: String, default: 'GHS' },
     thankYouMessage: { type: String },
+    revision: { type: Number, default: 0 },
   },
   { collection: 'creator_profiles', timestamps: true }
 );

@@ -8,7 +8,9 @@ export function requestLogger(req: Request, res: Response, next: NextFunction): 
     logger[level](
       {
         method: req.method,
-        path: req.originalUrl,
+        // Route templates omit user-supplied path/query values. Unknown routes
+        // must not turn arbitrary URLs into a persistent data collection path.
+        path: typeof req.route?.path === 'string' ? req.route.path : '/[unmatched]',
         status: res.statusCode,
         durationMs: Date.now() - start,
       },

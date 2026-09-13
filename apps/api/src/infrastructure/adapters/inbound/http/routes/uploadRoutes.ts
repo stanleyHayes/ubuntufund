@@ -1,3 +1,6 @@
+import { PrivateKycDocumentModel } from '../../../../database/models/PrivateKycDocumentModel.js';
+import { AuditLogModel } from '../../../../database/models/AuditLogModel.js';
+import type { AuthenticatedRequest } from '../../middleware/authMiddleware.js';
 import express, {
   Router,
   type Request,
@@ -81,13 +84,32 @@ export function createUploadRoutes(
         const folderKey = String(req.query.folder ?? 'misc').toLowerCase();
         const folder = FOLDERS[folderKey] ?? FOLDERS.misc;
 
-        const { url } = await uploader.upload({ buffer, mimetype, folder });
-        res.json({ data: { url }, message: 'Uploaded', status: 200 });
+        const result = await uploader.upload({ buffer, mimetype, folder, authenticated: folderKey === 'kyc' });
+        if (folderKey === 'kyc') {
+          if (result.deliveryType !== 'authenticated' || !result.publicId || !result.format || !['image', 'raw'].includes(result.resourceType ?? '')) {
+            throw new AppError('Private document storage could not be confirmed', 502);
+          }
+          const document = await PrivateKycDocumentModel.create({ userId: (req as AuthenticatedRequest).userId, publicId: result.publicId, resourceType: result.resourceType, format: result.format, mimeType: mimetype });
+          res.set('Cache-Control', 'no-store').json({ data: { url: `kyc://${document.id}` }, message: 'Private document uploaded', status: 200 });
+          return;
+        }
+        res.json({ data: { url: result.url }, message: 'Uploaded', status: 200 });
       } catch (error) {
         next(error);
       }
     }
   );
 
+  router.get('/kyc/:id/access', authMiddleware, async (req: AuthenticatedRequest, res, next) => {
+    try {
+      if (!/^[a-f0-9]{24}$/i.test(String(req.params.id))) throw new AppError('Document not found', 404);
+      const document = await PrivateKycDocumentModel.findOne({ _id: req.params.id, deletedAt: { $exists: false } });
+      if (!document || (document.userId !== req.userId && req.userRole !== 'admin')) throw new AppError('Document not found', 404);
+      if (!uploader.privateDownloadUrl) throw new AppError('Document viewing is unavailable', 503);
+      const url = uploader.privateDownloadUrl(document.publicId, document.format, document.resourceType);
+      await AuditLogModel.create({ actorId: req.userId, actorRole: req.userRole, action: 'kyc.document.access', resource: `kyc-document:${document.id}`, details: 'Issued a private verification document viewing link', method: 'GET', path: req.originalUrl.split('?')[0], statusCode: 200 });
+      res.set('Cache-Control', 'no-store').json({ data: { url, mimeType: document.mimeType, expiresInSeconds: 60 }, status: 200 });
+    } catch (error) { next(error); }
+  });
   return router;
 }

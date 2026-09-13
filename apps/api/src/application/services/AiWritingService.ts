@@ -1,4 +1,5 @@
 import { isObjectIdOrHexString } from 'mongoose'
+import { createHash } from 'node:crypto'
 import { UserModel } from '../../infrastructure/database/models/UserModel.js'
 import type { AiWritingRequest } from '@ubuntu-fund/types'
 import type { AiWritingProviderPort } from '../../domain/ports/outbound/AiWritingProviderPort.js'
@@ -65,6 +66,7 @@ export class AiWritingService {
     throw atCap()
   }
   async write(userId: string, input: AiWritingRequest) {
+    if (input.consentToExternalProcessing !== true) throw new AppError('Permission to send text to OpenAI is required', 400)
     if (!this.provider.isConfigured()) throw new AppError('AI writing is not configured', 503)
     const userKey = this.key(userId),
       globalKey = this.key('platform')
@@ -78,6 +80,7 @@ export class AiWritingService {
     // Usage is persisted before the billable request; raw input/output is never stored.
     const usage = await AiUsageModel.create({
       userId,
+      consentProvider: 'OpenAI', consentVersion: '2026-09-12', consentAt: new Date(),
       action: input.action,
       inputLength: input.text.length + (input.prompt?.length ?? 0),
     })
@@ -89,6 +92,7 @@ export class AiWritingService {
           $set: {
             status: 'success',
             outputLength: result.text.length,
+            outputDigest: createHash('sha256').update(result.text).digest('hex'),
             model: result.model,
             inputTokens: result.inputTokens,
             outputTokens: result.outputTokens,
@@ -96,6 +100,7 @@ export class AiWritingService {
         },
       )
       return {
+        requestId: usage.id,
         result: result.text,
         action: input.action,
         originalLength: input.text.length,

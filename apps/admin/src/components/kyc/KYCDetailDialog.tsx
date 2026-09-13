@@ -1,5 +1,7 @@
+import { useState } from 'react'
+import { BrandedTextField } from '@ubuntu-fund/ui'
 import { KYCDocumentPreview } from './KYCDocumentPreview'
-import { Box, Button, DialogActions, DialogContent, DialogTitle, Typography } from '@mui/material'
+import { Alert, Box, Button, Checkbox, FormControlLabel, DialogActions, DialogContent, DialogTitle, Typography } from '@mui/material'
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser'
 import WarningAmberIcon from '@mui/icons-material/WarningAmber'
 import type { KYCVerification } from '@/types/api'
@@ -33,8 +35,10 @@ const typeLabels: Record<string, string> = {
 interface KYCDetailDialogProps {
   verification: KYCVerification
   onClose: () => void
-  onApprove: () => void
+  onApprove: (review: { evidenceReviewed: true; reviewNotes: string }) => void
   onReject: () => void
+  saving?: boolean
+  actionError?: string
   onRequestMore: () => void
 }
 
@@ -44,8 +48,12 @@ function KYCDetailDialog({
   onApprove,
   onReject,
   onRequestMore,
+  saving = false,
+  actionError,
 }: KYCDetailDialogProps) {
   const { can } = useAdminPermissions()
+  const [evidenceReviewed, setEvidenceReviewed] = useState(false)
+  const [reviewNotes, setReviewNotes] = useState('')
   const statusColor = statusColors[verification.status] || '#74909A'
   const riskColor = riskColors[verification.riskLevel] || '#74909A'
 
@@ -124,7 +132,7 @@ function KYCDetailDialog({
           <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', color: 'text.secondary', letterSpacing: '0.05em', mb: 1.5 }}>
             Documents ({verification.documents.length})
           </Typography>
-          {verification.documents.length === 0 && <Typography variant="body2" color="text.secondary">No document files were submitted. Check the address details below for GhanaPost GPS evidence.</Typography>}
+          {verification.documents.length === 0 && <Typography variant="body2" color="text.secondary">No document files were submitted. Request any missing evidence before approval; identity verification requires an ID document.</Typography>}
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
             {verification.documents.map((doc, idx) => (
               <Box
@@ -280,6 +288,30 @@ function KYCDetailDialog({
           </>
         )}
 
+        {verification.businessInfo && (
+          <Box sx={{ ...raisedSurface, p: 2.5, mb: 3 }}>
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>Organization authority and control</Typography>
+            <Typography variant="body2" sx={{ mb: 1 }}>
+              Registered address: {verification.businessInfo.registeredAddress
+                ? [verification.businessInfo.registeredAddress.street, verification.businessInfo.registeredAddress.city, verification.businessInfo.registeredAddress.state, verification.businessInfo.registeredAddress.country, verification.businessInfo.registeredAddress.postalCode, verification.businessInfo.registeredAddress.gpsAddress].filter(Boolean).join(', ')
+                : 'Not provided'}
+            </Typography>
+            <Typography variant="body2" sx={{ mb: 1 }}>Representative capacity: {verification.businessInfo.representativeCapacity || 'Not provided'}</Typography>
+            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', mb: 1 }}>Ownership and control: {verification.businessInfo.ownershipExplanation || 'Not provided'}</Typography>
+            {verification.businessInfo.controlPersons?.length ? verification.businessInfo.controlPersons.map((person, index) => (
+              <Typography key={index} variant="body2" sx={{ mb: 1 }}>
+                {person.fullName} · {person.role.replaceAll('_', ' ')} · {person.country}
+                {person.ownershipPercent !== undefined ? ` · ${person.ownershipPercent}% ownership` : ''}
+              </Typography>
+            )) : <Typography variant="body2">No controlling persons declared.</Typography>}
+            <Typography variant="body2" sx={{ mt: 1 }}>
+              Applicant declarations: authority {verification.businessInfo.declaration?.authorized ? 'confirmed' : 'not confirmed'}; accuracy {verification.businessInfo.declaration?.accurate ? 'confirmed' : 'not confirmed'}.
+              {verification.businessInfo.declaration?.acceptedAt && ` Recorded ${new Date(verification.businessInfo.declaration.acceptedAt).toLocaleString()}.`}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">These are applicant declarations. Review the supporting private documents before making a decision.</Typography>
+          </Box>
+        )}
+
         {/* Review Notes */}
         {verification.reviewNotes && (
           <Box sx={{ ...raisedSurface, p: 2.5, mb: 3 }}>
@@ -342,8 +374,24 @@ function KYCDetailDialog({
             </Box>
           )}
         </Box>
+        {!!verification.informationRequests?.length && <Box sx={{ mt: 3 }}>
+          <Typography variant="h6">Information request history</Typography>
+          {verification.informationRequests.map(item => <Box key={item.id} sx={{ mt: 2, p: 2, ...insetSurface }}>
+            <Typography sx={{ fontWeight: 700 }}>Requested {new Date(item.requestedAt).toLocaleString()}</Typography>
+            <Typography sx={{ whiteSpace: 'pre-wrap' }}>{item.prompt}</Typography>
+            {item.respondedAt ? <>
+              <Typography sx={{ mt: 1, fontWeight: 700 }}>Applicant response · {new Date(item.respondedAt).toLocaleString()}</Typography>
+              <Typography sx={{ whiteSpace: 'pre-wrap' }}>{item.response}</Typography>
+            </> : <Typography sx={{ mt: 1 }}>Awaiting applicant response</Typography>}
+          </Box>)}
+        </Box>}
+        {can(Resource.VERIFICATIONS, Action.UPDATE) && ['pending', 'in_review'].includes(verification.status) && <Box sx={{ mt: 3 }}>
+          <BrandedTextField fullWidth multiline minRows={3} label="Internal review findings" value={reviewNotes} disabled={saving} onChange={event => setReviewNotes(event.target.value)} inputProps={{ maxLength: 2000 }} helperText="Record what you checked and how the evidence supports approval (at least 20 characters). Do not duplicate full ID numbers or document contents." />
+          <FormControlLabel control={<Checkbox checked={evidenceReviewed} disabled={saving} onChange={event => setEvidenceReviewed(event.target.checked)} />} label="I reviewed the application, its documents and applicant responses, and the evidence supports approval." />
+        </Box>}
       </DialogContent>
 
+      {actionError && <Alert severity="error" sx={{ mx: 3 }}>{actionError}</Alert>}
       <DialogActions sx={{ px: 3, py: 2, boxShadow: 'var(--neu-subtle)', display: 'flex', flexWrap: 'wrap', gap: 1 }}>
         <Button
           onClick={onClose}
@@ -361,9 +409,10 @@ function KYCDetailDialog({
         >
           Close
         </Button>
-        {can(Resource.VERIFICATIONS, Action.UPDATE) && verification.status === 'pending' && (
+        {can(Resource.VERIFICATIONS, Action.UPDATE) && ['pending', 'in_review'].includes(verification.status) && (
           <>
             <Button
+              disabled={saving || verification.informationRequests?.some(item => !item.respondedAt)}
               onClick={onRequestMore}
               variant="outlined"
               sx={{
@@ -380,6 +429,7 @@ function KYCDetailDialog({
               Request More
             </Button>
             <Button
+              disabled={saving}
               onClick={onReject}
               variant="outlined"
               sx={{
@@ -396,7 +446,8 @@ function KYCDetailDialog({
               Reject
             </Button>
             <Button
-              onClick={onApprove}
+              disabled={saving || !evidenceReviewed || reviewNotes.trim().length < 20 || verification.informationRequests?.some(item => !item.respondedAt)}
+              onClick={() => onApprove({ evidenceReviewed: true, reviewNotes: reviewNotes.trim() })}
               variant="outlined"
               sx={{
                 flexShrink: 0,

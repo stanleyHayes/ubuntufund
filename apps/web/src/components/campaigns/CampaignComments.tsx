@@ -1,7 +1,10 @@
+import { PublicationConsent } from '@/components/safety/PublicationConsent'
+import { ReportContent } from '@/components/safety/ReportContent'
+import { BlockedUsers } from '@/components/safety/BlockedUsers'
 import { LoadingDots } from '@ubuntu-fund/ui'
 import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import { EmptyState } from '@ubuntu-fund/ui'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Alert, Avatar, Box, Button, IconButton, Skeleton, Stack, Typography } from '@mui/material'
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded'
 import type { CampaignComment } from '@ubuntu-fund/types'
@@ -9,36 +12,55 @@ import { api } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { SHAPE } from '@ubuntu-fund/ui'
 
-export function CampaignComments({ campaignId, creatorId }: { campaignId: string; creatorId: string }) {
+export function CampaignComments(props: { campaignId: string; creatorId: string }) {
+  const { user } = useAuth()
+  // Recreate viewer-specific state immediately when the account or campaign changes.
+  return <CampaignCommentsForViewer key={`${props.campaignId}:${user?.id ?? 'guest'}`} {...props} />
+}
+
+function CampaignCommentsForViewer({ campaignId, creatorId }: { campaignId: string; creatorId: string }) {
   const { user } = useAuth()
   const [comments, setComments] = useState<CampaignComment[]>([])
+  const [blockRevision, setBlockRevision] = useState(0)
+  const [notice, setNotice] = useState('')
   const [content, setContent] = useState('')
+  const [automatedReviewConsent, setAutomatedReviewConsent] = useState(false)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const requestVersion = useRef(0)
   const load = useCallback(async () => {
-    setLoading(true)
+    const version = ++requestVersion.current
     try {
       const response = await api.get<{ items: CampaignComment[] }>(`/campaigns/${campaignId}/comments`)
+      if (version !== requestVersion.current) return
       setComments(response.items ?? [])
       setError(null)
     } catch (err) {
+      if (version !== requestVersion.current) return
+      setComments([])
       setError(err instanceof Error ? err.message : 'Could not load comments')
-    } finally {
-      setLoading(false)
-    }
+    } finally { if (version === requestVersion.current) setLoading(false) }
   }, [campaignId])
 
-  useEffect(() => { void load() }, [load])
+  useEffect(() => {
+    void load()
+    const refresh = () => { if (document.visibilityState === 'visible') void load() }
+    window.addEventListener('focus', refresh)
+    const timer = window.setInterval(refresh, 30000)
+    return () => { requestVersion.current++; window.removeEventListener('focus', refresh); window.clearInterval(timer) }
+  }, [load])
 
   async function submit() {
     if (!content.trim()) return
     setSubmitting(true)
     try {
-      const comment = await api.post<CampaignComment>(`/campaigns/${campaignId}/comments`, { content })
+      const comment = await api.post<CampaignComment>(`/campaigns/${campaignId}/comments`, { content, automatedReviewConsent })
+      requestVersion.current++
       setComments((current) => [comment, ...current])
       setContent('')
+      setAutomatedReviewConsent(false)
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not post comment')
@@ -47,9 +69,19 @@ export function CampaignComments({ campaignId, creatorId }: { campaignId: string
     }
   }
 
+  async function block(authorId: string) {
+    try {
+      await api.put(`/safety/blocks/${authorId}`, {})
+      requestVersion.current++
+      setComments(current => current.filter(comment => comment.authorId !== authorId))
+      setBlockRevision(value => value + 1); setNotice('User blocked. You can unblock them below.'); setError(null)
+    } catch { setError('Could not block this user. Please try again.') }
+  }
+
   async function remove(commentId: string) {
     try {
       await api.delete(`/campaigns/${campaignId}/comments/${commentId}`)
+      requestVersion.current++
       setComments((current) => current.filter((comment) => comment.id !== commentId))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not delete comment')
@@ -61,6 +93,7 @@ export function CampaignComments({ campaignId, creatorId }: { campaignId: string
       {user ? (
         <Box sx={{ p: 2.5, bgcolor: 'background.paper', boxShadow: 'var(--neu-raised)', borderRadius: SHAPE.card }}>
           <TextField fullWidth multiline minRows={2} maxRows={6} value={content} onChange={(event) => setContent(event.target.value)} inputProps={{ maxLength: 1000 }} placeholder="Share encouragement or ask a respectful question…" />
+          <PublicationConsent value={automatedReviewConsent} onChange={setAutomatedReviewConsent} />
           <Box sx={{ mt: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography variant="caption" color="text.secondary">{content.length}/1000</Typography>
             <Button variant="contained" disabled={submitting || !content.trim()} onClick={() => void submit()}>{submitting ? <><LoadingDots size={6} /> <span>Posting…</span></> : 'Post comment'}</Button>
@@ -70,6 +103,8 @@ export function CampaignComments({ campaignId, creatorId }: { campaignId: string
         <Alert severity="info">Sign in to join the conversation.</Alert>
       )}
 
+      {notice && <Alert severity="success" onClose={() => setNotice('')}>{notice}</Alert>}
+      {user && <BlockedUsers key={user.id} revision={blockRevision} onChange={() => void load()} />}
       {error ? <Alert severity="error">{error}</Alert> : null}
       {loading ? (
         <Stack spacing={1.5}>
@@ -93,6 +128,8 @@ export function CampaignComments({ campaignId, creatorId }: { campaignId: string
             <Typography variant="body2" sx={{ fontWeight: 700 }}>{comment.authorName}</Typography>
             <Typography variant="caption" color="text.secondary">{new Date(comment.createdAt).toLocaleString()}</Typography>
             <Typography variant="body2" sx={{ mt: 0.75, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{comment.content}</Typography>
+  {user && user.id !== comment.authorId && <ReportContent userId={comment.authorId} commentId={comment.id} />}
+  {user && user.id !== comment.authorId && <Button size="small" onClick={() => void block(comment.authorId)} aria-label={`Block ${comment.authorName}`}>Block user</Button>}
           </Box>
           {user && (user.id === comment.authorId || user.id === creatorId) ? <IconButton size="small" aria-label="Delete comment" onClick={() => void remove(comment.id)}><DeleteOutlineRoundedIcon fontSize="small" /></IconButton> : null}
         </Box>

@@ -1,3 +1,8 @@
+import PublicationReviewsPage from './pages/PublicationReviewsPage'
+import SafetyReportsPage from './pages/SafetyReportsPage'
+import PrivacyRequestsPage from './pages/PrivacyRequestsPage'
+import StoreBillingPage from './pages/StoreBillingPage'
+import RefundOperationsPage from './pages/RefundOperationsPage'
 import RouteErrorPage from './components/RouteErrorPage'
 import type { ReactNode } from 'react'
 import { createBrowserRouter } from 'react-router-dom'
@@ -75,6 +80,9 @@ export const router = createBrowserRouter([
       { path: 'overview', element: <RequirePermission resource={Resource.ANALYTICS}><OverviewPage /></RequirePermission> },
       { path: 'campaigns', element: <RequirePermission resource={Resource.CAMPAIGNS}><CampaignsPage /></RequirePermission> },
       { path: 'campaigns/:id', element: <RequirePermission resource={Resource.CAMPAIGNS}><CampaignDetailPage /></RequirePermission> },
+      { path: 'publication-reviews', element: <RequirePermission resource={Resource.REPORTS}><PublicationReviewsPage /></RequirePermission> },
+      { path: 'safety-reports', element: <RequirePermission resource={Resource.REPORTS}><SafetyReportsPage /></RequirePermission> },
+      { path: 'privacy-requests', element: <RequirePermission resource={Resource.USERS}><PrivacyRequestsPage /></RequirePermission> },
       { path: 'users', element: <RequirePermission resource={Resource.USERS}><UsersPage /></RequirePermission> },
       { path: 'users/:id', element: <RequirePermission resource={Resource.USERS}><UserDetailPage /></RequirePermission> },
       { path: 'donations', element: <RequirePermission resource={Resource.DONATIONS}><DonationsPage /></RequirePermission> },
@@ -88,6 +96,8 @@ export const router = createBrowserRouter([
       { path: 'kyc-review', element: <RequirePermission resource={Resource.VERIFICATIONS}><KYCReviewPage /></RequirePermission> },
       { path: 'audit', element: <RequirePermission resource={Resource.AUDIT_LOG}><AuditLogPage /></RequirePermission> },
       { path: 'subscriptions', element: <RequirePermission resource={Resource.SUBSCRIPTIONS}><SubscriptionsPage /></RequirePermission> },
+      { path: 'store-billing', element: <RequirePermission resource={Resource.SUBSCRIPTIONS}><StoreBillingPage /></RequirePermission> },
+      { path: 'refund-recovery', element: <RequirePermission resource={Resource.DONATIONS}><RefundOperationsPage /></RequirePermission> },
       { path: 'plans', element: <RequirePermission resource={Resource.PLANS}><ManagePlansPage /></RequirePermission> },
       { path: 'coupons/new', element: <RequirePermission resource={Resource.COUPONS} action={Action.CREATE}><CreateCouponPage /></RequirePermission> },
       { path: 'coupons', element: <RequirePermission resource={Resource.COUPONS}><CouponsPage /></RequirePermission> },

@@ -14,6 +14,7 @@ function toDomain(
     id: doc._id!.toString(),
     email: doc.email,
     createdAt: doc.createdAt,
+    confirmedAt: doc.confirmedAt,
   };
 }
 
@@ -37,8 +38,8 @@ export class MongoNewsletterSubscriptionRepository
   async listAll(): Promise<NewsletterSubscriptionRecord[]> {
     // Newest-first so the admin console surfaces the most recent signups at the
     // top of the list.
-    const docs = await NewsletterSubscriptionModel.find().sort({
-      createdAt: -1,
+    const docs = await NewsletterSubscriptionModel.find({ status: 'active', confirmedAt: { $type: 'date' }, consentVersion: { $type: 'string', $ne: '' } }).sort({
+      confirmedAt: -1,
     });
     return docs.map(toDomain);
   }

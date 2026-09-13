@@ -1,3 +1,4 @@
+import { AccountAgreement } from './components/auth/AccountAgreement'
 import { OrganizationTeamPage } from './pages/OrganizationTeamPage'
 import { PayoutAccountsPage } from './pages/PayoutAccountsPage'
 import { CreatorTipCallbackPage } from './pages/CreatorTipCallbackPage'
@@ -17,6 +18,9 @@ const RegisterPage = lazy(() => import('./pages/RegisterPage').then((m) => ({ de
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })))
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage })))
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage })))
+const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage').then((m) => ({ default: m.VerifyEmailPage })))
+const NewsletterConsentPage = lazy(() => import('./pages/NewsletterConsentPage').then((m) => ({ default: m.NewsletterConsentPage })))
 const ProfilePage = lazy(() => import('./pages/ProfilePage').then((m) => ({ default: m.ProfilePage })))
 const MyDonationsPage = lazy(() => import('./pages/MyDonationsPage').then((m) => ({ default: m.MyDonationsPage })))
 const RefundRequestPage = lazy(() => import('./pages/RefundRequestPage').then((m) => ({ default: m.RefundRequestPage })))
@@ -46,6 +50,10 @@ export const router = createBrowserRouter([
   { path: 'login', element: <LoginPage />, errorElement: <RouteError /> },
   { path: 'register', element: <RegisterPage />, errorElement: <RouteError /> },
   { path: 'forgot-password', element: <ForgotPasswordPage />, errorElement: <RouteError /> },
+  { path: 'reset-password', element: <ResetPasswordPage />, errorElement: <RouteError /> },
+  { path: 'verify-email', element: <VerifyEmailPage />, errorElement: <RouteError /> },
+  { path: 'newsletter/confirm', element: <NewsletterConsentPage key="confirm" action="confirm" />, errorElement: <RouteError /> },
+  { path: 'newsletter/unsubscribe', element: <NewsletterConsentPage key="unsubscribe" action="unsubscribe" />, errorElement: <RouteError /> },
   // Main app — standard layout with header/footer
   {
     path: '/',
@@ -83,6 +91,7 @@ export const router = createBrowserRouter([
       { path: 'wallet', element: <RequireAuth><WalletPage /></RequireAuth> },
       { path: 'invitations', element: <RequireAuth><CollaborationInvitationsPage /></RequireAuth> },
       { path: 'kyc', element: <RequireAuth><KYCPage /></RequireAuth> },
+      { path: 'account-agreement', element: <AccountAgreement /> },
       { path: 'legal', element: <LegalPage /> },
       ...LEGAL_POLICIES.map(policy => ({ path: policy.slug, element: <LegalPage slug={policy.slug} /> })),
       { path: '*', element: <NotFoundPage /> },

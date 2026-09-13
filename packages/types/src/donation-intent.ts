@@ -1,3 +1,4 @@
+import type { LegalAcceptanceInput } from './legal-acceptance'
 /**
  * Donation intents model a single guest-capable checkout from creation through
  * settlement. An intent is the money-changing record every donation flows
@@ -175,6 +176,7 @@ export interface PaymentAttempt {
  * retries safe.
  */
 export interface CreateDonationIntentInput {
+  legalAcceptance?: LegalAcceptanceInput
   campaignId: string
   liveSessionId?: string
   amount: number
@@ -216,7 +218,10 @@ export interface RecordPaymentAttemptInput {
  * Public, poll-friendly view of an intent (`GET /donation-intents/:id/public`).
  * Omits the idempotency key and any donor PII beyond the display name.
  */
+export type DonationContentReviewStatus = 'pending' | 'approved' | 'rejected' | 'not_requested' | 'unavailable'
+
 export interface DonationIntentPublicView {
+  contentReviewStatus?: DonationContentReviewStatus
   id: string
   campaignId: string
   liveSessionId?: string
@@ -259,4 +264,13 @@ export interface PaystackCheckoutInit extends HostedPaymentInit {
 /** Body for `POST /donations/:id/message` (add/edit a donation's public message). */
 export interface AddDonationMessageInput {
   message: string
+}
+
+/** Confirmation copy is separate from the financial payment status. */
+export const DONATION_CONTENT_REVIEW_MESSAGES: Record<DonationContentReviewStatus, string> = {
+  pending: 'Your donation is confirmed. Your public name or message is awaiting review before it appears.',
+  approved: 'Your public name or message has been approved. Privacy and visibility settings still apply.',
+  rejected: 'Your donation is confirmed, but your public name or message was not approved. Contact support@ujimora.com with your payment reference to request a review.',
+  not_requested: '',
+  unavailable: 'Your donation is confirmed. The review status of your public name or message is currently unavailable.',
 }

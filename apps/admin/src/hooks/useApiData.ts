@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
+import { loadAll } from '@/lib/exports/loadAll'
 import {
   type PlatformStats,
   type Dispute,
@@ -81,7 +82,7 @@ function useApiWithFallback<T>(
 
     async function fetchData() {
       try {
-        const result = await api.get<unknown>(apiPath)
+        const result = Array.isArray(initialData) ? await loadAll(apiPath) : await api.get<unknown>(apiPath)
         if (!cancelled) {
           setData(coerceToInitialShape(result, initialData))
           setError(null)
@@ -126,9 +127,7 @@ export function useAdminUsers(): UseApiResult<User[]> {
  * Fetch donations from the API with a truthful empty state on failure.
  */
 export function useAdminDonations(): UseApiResult<AdminDonation[]> {
-  // GET /donations is the recent-donations feed; it honours ?limit (not
-  // page/pageSize) and returns a bare PublicDonationDTO[] array.
-  return useApiWithFallback<AdminDonation[]>('/donations?limit=50', [])
+  return useApiWithFallback<AdminDonation[]>('/admin/donations', [])
 }
 
 /**
@@ -201,8 +200,8 @@ export function useAdminUser(id: string): UseApiResult<User | null> {
  * GET /campaigns/:id is public and returns the full Campaign DTO (incl.
  * donorCount). Failures remain explicit rather than substituting demo data.
  */
-export function useAdminCampaign(id: string): UseApiResult<Campaign | null> {
-  return useApiWithFallback<Campaign | null>(`/campaigns/${id}`, null)
+export function useAdminCampaign(id: string, reviewRefresh = 0): UseApiResult<Campaign | null> {
+  return useApiWithFallback<Campaign | null>(`/campaigns/${id}${reviewRefresh ? `?reviewRefresh=${reviewRefresh}` : ''}`, null)
 }
 
 /**
