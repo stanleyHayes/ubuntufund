@@ -1,13 +1,14 @@
 import { createReviewedTip } from '../helpers/reviewedTip.js';
 import { CreatorProfileModel } from '../../src/infrastructure/database/models/CreatorProfileModel.js';
 import { randomUUID } from 'node:crypto';
-import { beforeAll, afterAll, expect, it } from 'vitest';
+import { beforeAll, afterAll, expect, it, vi } from 'vitest';
 import request from 'supertest';
 import type { Express } from 'express';
 import { createTestApp } from '../helpers/testApp.js';
 import { connectTestDatabase, disconnectTestDatabase, dropTestDatabase } from '../helpers/testDatabase.js';
 import { UserModel } from '../../src/infrastructure/database/models/UserModel.js';
 import { UserBlockModel } from '../../src/infrastructure/database/models/UserBlockModel.js';
+import { MongoUserBlockRepository } from '../../src/infrastructure/adapters/outbound/persistence/MongoUserBlockRepository.js';
 import { LEGAL_ACCEPTANCE_VERSION } from '@ubuntu-fund/types';
 let app: Express;
 beforeAll(async () => { await connectTestDatabase(); app = await createTestApp(); await UserBlockModel.init(); });
@@ -16,6 +17,30 @@ async function user(name: string) {
   const response = await request(app).post('/api/v1/auth/register').send({ name, email: `${randomUUID()}@example.test`, password: 'SecurePass123', legalAcceptance: { version: LEGAL_ACCEPTANCE_VERSION, acceptedTerms: true, ageConfirmed: true } }).expect(201);
   return { id: response.body.data.user.id, token: `Bearer ${response.body.data.tokens.accessToken}` };
 }
+it('rolls back participant revisions when block persistence fails', async () => {
+  const first = await user('First participant'), second = await user('Second participant');
+  const before = await UserModel.find({ _id: { $in: [first.id, second.id] } }).sort({ _id: 1 }).lean();
+  const failure = vi.spyOn(UserBlockModel, 'updateOne').mockRejectedValueOnce(new Error('Block persistence unavailable'));
+  try { await expect(new MongoUserBlockRepository().block(first.id, second.id)).rejects.toThrow('Block persistence unavailable'); }
+  finally { failure.mockRestore(); }
+  const after = await UserModel.find({ _id: { $in: [first.id, second.id] } }).sort({ _id: 1 }).lean();
+  expect(after.map(row => row.publicationWriteVersion)).toEqual(before.map(row => row.publicationWriteVersion));
+  expect(after.map(row => row.updatedAt)).toEqual(before.map(row => row.updatedAt));
+  expect(await UserBlockModel.countDocuments({ userId: first.id, blockedUserId: second.id })).toBe(0);
+});
+
+it('serializes reciprocal and duplicate blocks without losing either direction', async () => {
+  const first = await user('First participant'), second = await user('Second participant');
+  const blocks = new MongoUserBlockRepository();
+  await Promise.all([blocks.block(first.id, second.id), blocks.block(second.id, first.id), blocks.block(first.id, second.id)]);
+  expect(await blocks.list(first.id)).toEqual([second.id]);
+  expect(await blocks.list(second.id)).toEqual([first.id]);
+  await blocks.unblock(first.id, second.id);
+  expect(await blocks.isBlocked(first.id, second.id)).toBe(true);
+  await blocks.unblock(second.id, first.id);
+  expect(await blocks.isBlocked(first.id, second.id)).toBe(false);
+});
+
 it('persists idempotent private blocks, hides comments both ways and restores them on unblock', async () => {
   const owner = await user('Organizer'), author = await user('Comment author'), viewer = await user('Viewer');
   await UserModel.findByIdAndUpdate(owner.id, { verificationLevel: 2 });
@@ -24,6 +49,7 @@ it('persists idempotent private blocks, hides comments both ways and restores th
   await request(app).post(path).set('Authorization', author.token).send({ content: 'A question from the author' }).expect(201);
   await request(app).post(path).set('Authorization', viewer.token).send({ content: 'A question from the viewer' }).expect(201);
   await request(app).get('/api/v1/safety/blocks').expect(401);
+  await request(app).delete('/api/v1/safety/blocks/not-a-user-id').set('Authorization', viewer.token).expect(400);
   await request(app).put(`/api/v1/safety/blocks/${viewer.id}`).set('Authorization', viewer.token).expect(400);
   for (let i = 0; i < 2; i++) await request(app).put(`/api/v1/safety/blocks/${author.id}`).set('Authorization', viewer.token).expect(200);
   expect(await UserBlockModel.countDocuments({ userId: viewer.id, blockedUserId: author.id })).toBe(1);

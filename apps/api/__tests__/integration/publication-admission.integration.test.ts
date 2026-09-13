@@ -15,6 +15,7 @@ import { ContentRestrictionModel } from '../../src/infrastructure/database/model
 import { SubscriptionModel } from '../../src/infrastructure/database/models/SubscriptionModel.js';
 import { LiveSessionModel } from '../../src/infrastructure/database/models/LiveSessionModel.js';
 import { MongoLiveSessionCreation } from '../../src/infrastructure/adapters/outbound/persistence/MongoLiveSessionCreation.js';
+import { MongoUserBlockRepository } from '../../src/infrastructure/adapters/outbound/persistence/MongoUserBlockRepository.js';
 let app: Express;
 const screen = vi.fn<(_: string) => Promise<'allowed' | 'flagged'>>();
 beforeAll(async () => { await connectTestDatabase(); await PublicationReviewModel.init(); app = await createTestApp({ publicationAdmission: new MongoPublicationAdmission({ screen }) }); });
@@ -31,6 +32,37 @@ async function fixture() {
   return { owner, admin, other, campaign, comments: `/api/v1/campaigns/${campaign.id}/comments`, updates: `/api/v1/campaigns/${campaign.id}/updates` };
 }
 const notes = 'Reviewed the complete proposed public version against community rules.';
+it('rejects a comment when a bilateral block commits during screening', async () => {
+  const f = await fixture();
+  screen.mockImplementationOnce(async () => {
+    await new MongoUserBlockRepository().block(f.owner.id, f.other.id);
+    return 'allowed';
+  });
+  await request(app).post(f.comments).set('Authorization', f.other.auth).send({ content: 'Concurrent block', automatedReviewConsent: true }).expect(403);
+  expect(await CampaignCommentModel.countDocuments({ campaignId: f.campaign.id })).toBe(0);
+});
+
+it('serializes a block started during comment commit and hides the earlier comment', async () => {
+  const f = await fixture();
+  const original = MongoPublicationAdmission.prototype.assertCurrent;
+  let block: Promise<void> | undefined;
+  const consume = vi.spyOn(MongoPublicationAdmission.prototype, 'assertCurrent').mockImplementation(async function (this: MongoPublicationAdmission, submission) {
+    // Comment creation already holds the author's account write. This competing
+    // block must commit after it, then prevent subsequent comments and reads.
+    block ??= new MongoUserBlockRepository().block(f.owner.id, f.other.id);
+    return original.call(this, submission);
+  });
+  try {
+    await request(app).post(f.comments).set('Authorization', f.other.auth).send({ content: 'Earlier committed comment', automatedReviewConsent: true }).expect(201);
+    expect(block).toBeDefined();
+    await block;
+    await request(app).post(f.comments).set('Authorization', f.other.auth).send({ content: 'Later blocked comment', automatedReviewConsent: true }).expect(403);
+    expect(await CampaignCommentModel.countDocuments({ campaignId: f.campaign.id })).toBe(1);
+    const visible = await request(app).get(f.comments).set('Authorization', f.owner.auth).expect(200);
+    expect(visible.body.data.items).toEqual([]);
+  } finally { consume.mockRestore(); await block; }
+});
+
 it('reviews comment attribution and media without sharing private account fields', async () => {
   const f = await fixture();
   await UserModel.updateOne({ _id: f.owner.id }, { $set: { name: 'Unreviewed registration name', avatarUrl: 'https://example.test/avatar.png' } });

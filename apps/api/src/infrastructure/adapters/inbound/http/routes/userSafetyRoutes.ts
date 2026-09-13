@@ -28,7 +28,9 @@ export function createUserSafetyRoutes(blocks: UserBlockRepositoryPort, users: U
   });
   router.delete('/blocks/:id', async (req: AuthenticatedRequest, res, next) => {
     try {
-      await blocks.unblock(req.userId!, String(req.params.id));
+      const id = String(req.params.id);
+      if (!/^[a-f0-9]{24}$/i.test(id)) throw new AppError('Choose a valid user to unblock', 400);
+      await blocks.unblock(req.userId!, id);
       res.set('Cache-Control', 'no-store').json({ data: null, message: 'User unblocked' });
     } catch (error) { next(error); }
   });

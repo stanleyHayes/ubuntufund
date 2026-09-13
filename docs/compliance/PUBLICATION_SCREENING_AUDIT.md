@@ -2,6 +2,12 @@
 
 Status: incomplete overall. Preventive comment/update admission and private staff review are now implemented; see PUBLICATION_REVIEWS.md for the exact coverage and evidence. This audit tracks the remaining C04/C09 paths.
 
+## Block transaction checkpoint — 13 September 2026
+
+Block and unblock changes now write both participant accounts, in stable order, in the same snapshot/majority transaction as the relationship change. These account writes conflict with the account write already performed by comment publication; a block cannot commit independently while an older comment snapshot proceeds unchecked. Changes do not modify account financial data or account updatedAt. Provider connection cleanup remains outside the database transaction, with the existing durable pending marker.
+
+Twenty-eight publication, blocking and live-safety integration cases pass, including a block committed during screening, a competing block started inside comment commit followed by hidden history/denied later comments, reciprocal/duplicate blocks, and rollback on block-persistence failure. The four blocking cases pass again after adding malformed unblock-ID validation. API types/lint pass. Logs: `/tmp/ujimora-block-transactions-{tests,unblock,types,lint}.log`. Apple 1.2 and Google UGC references above were rechecked on 13 September. Other publishing/payment paths that only read blocks without a participant write, dynamic attribution and live-provider enforcement still require their own evidence; this is not complete moderation or store approval.
+
 ## Live metadata checkpoint — 13 September 2026
 
 Concurrency verification follow-up: a real Mongo integration test commits an approval rejection with `session:null` after the live transaction has established its snapshot. The approval consumption write conflicts, the transaction retries, and current rejection denies publication; no session or campaign-fence increment commits. Another test concurrently starts an already approved funded campaign twice and verifies the same session ID/overlay token, one active record and unchanged raised amount. All 15 tests in the publication integration file pass (session 24781 terminal 0; `/tmp/ujimora-live-concurrency-tests.log`). This closes those two evidence gaps; other account/plan concurrency interleavings, missing-record fallback policy and existing-session token races remain separate.
