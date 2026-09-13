@@ -6,6 +6,9 @@ test.beforeEach(async ({ page }) => {
     localStorage.setItem('uf_tokens', JSON.stringify({ accessToken: 'test', refreshToken: 'test' }))
   })
   await page.route('**/api/v1/**', route => route.fulfill({ json: { data: route.request().url().endsWith('/auth/refresh') ? { accessToken: 'test', refreshToken: 'test' } : [] } }))
+  await page.route('**/api/v1/payout-accounts', route => route.fulfill({ json: { data: { accounts: [], limit: 2, planName: 'Plus' } } }))
+  await page.route('**/api/v1/banks?**', route => route.fulfill({ json: { data: [{ name: 'MTN', code: 'MTN' }] } }))
+  await page.route('**/api/v1/publication-reviews**', route => route.fulfill({ json: { data: { items: [], total: 0 } } }))
 })
 
 test('Free accounts see the upgrade action and cannot enable a creator page', async ({ page }) => {
@@ -34,9 +37,10 @@ test('paid creators review the fee and net amount and submit the quoted rate', a
   const dialog = page.getByRole('dialog')
   await expect(dialog.getByText(/Fee: GH₵3.00 · You receive: GH₵97.00/)).toBeVisible()
   await dialog.getByLabel('Phone number').fill('0551234567')
-  await dialog.getByLabel('Network code (e.g. MTN)').fill('MTN')
+  await dialog.getByRole('combobox', { name: /Bank or network/ }).fill('MTN')
+  await page.getByRole('option', { name: /MTN/ }).click()
   await dialog.getByLabel('Account name').fill('Ama')
   await dialog.getByRole('button', { name: 'Withdraw', exact: true }).click()
   await expect(page.getByText('Withdrawal started')).toBeVisible()
-  expect(submitted).toEqual({ amount: 100, expectedFeePercent: 3, recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'Ama' } })
+  expect(submitted).toEqual({ idempotencyKey: expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/), amount: 100, expectedFeePercent: 3, recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'Ama' } })
 })

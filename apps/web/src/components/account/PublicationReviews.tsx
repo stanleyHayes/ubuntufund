@@ -11,6 +11,13 @@ function displayText(action: string, text: string): string {
   return text
 }
 type Item = { id: string; action: string; text: string; status: string; reviewNotes?: string; approvalExpiresAt?: string }
+function validQueue(value: unknown): value is { items: Item[]; total: number } {
+  if (!value || typeof value !== 'object') return false
+  const data = value as { items?: unknown; total?: unknown }
+  return Number.isSafeInteger(data.total) && Number(data.total) >= 0 && Array.isArray(data.items) && data.items.every(item =>
+    item && typeof item === 'object' && ['id', 'action', 'text', 'status'].every(key => typeof item[key] === 'string') &&
+    ['reviewNotes', 'approvalExpiresAt'].every(key => item[key] === undefined || typeof item[key] === 'string'))
+}
 export function PublicationReviews() {
   const { user } = useAuth()
   return <ViewerReviews key={user?.id ?? 'guest'} />
@@ -20,8 +27,8 @@ function ViewerReviews() {
   const [error, setError] = useState(''), [loading, setLoading] = useState(true)
   const load = useCallback(async () => {
     setLoading(true)
-    try { const data = await api.get<{ items: Item[]; total: number }>(`/publication-reviews?page=${page}`); setItems(data.items); setTotal(data.total); setError('') }
-    catch { setItems([]); setError('Could not load publication reviews. Please retry.') }
+    try { const data = await api.get<unknown>(`/publication-reviews?page=${page}`); if (!validQueue(data)) throw new Error('Invalid review response'); setItems(data.items); setTotal(data.total); setError('') }
+    catch { setItems([]); setTotal(0); setError('Could not load publication reviews. Please retry.') }
     finally { setLoading(false) }
   }, [page])
   useEffect(() => { void load() }, [load])
@@ -38,6 +45,6 @@ function ViewerReviews() {
       {item.approvalExpiresAt && <Typography variant="caption">Approval expires {new Date(item.approvalExpiresAt).toLocaleString()}</Typography>}
     </Stack>)}
     {!loading && !items.length && !error && <Typography>No publication reviews yet.</Typography>}
-    <Stack direction="row" spacing={1}><Button disabled={loading || page === 1} onClick={() => setPage(page - 1)}>Previous</Button><Button disabled={loading || page * 25 >= total} onClick={() => setPage(page + 1)}>Next</Button></Stack>
+    <Stack direction="row" spacing={1}><Button disabled={loading || !!error || page === 1} onClick={() => setPage(page - 1)}>Previous</Button><Button disabled={loading || !!error || page * 25 >= total} onClick={() => setPage(page + 1)}>Next</Button></Stack>
   </Stack>
 }

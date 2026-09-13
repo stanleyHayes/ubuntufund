@@ -31,6 +31,7 @@ test('newsletter request, confirmation and signed-out withdrawal on a phone', as
     expect(route.request().postDataJSON()).toEqual({ token }); status = 'off'; withdrawals++
     return route.fulfill({ json: { data: { subscribed: false } } })
   })
+  await page.route('**/api/v1/publication-reviews**', route => route.fulfill({ json: { data: { items: [], total: 0 } } }))
   await page.goto('/settings')
   const toggle = page.getByRole('switch', { name: 'Marketing emails and newsletter', exact: true })
   await expect(toggle).not.toBeChecked()

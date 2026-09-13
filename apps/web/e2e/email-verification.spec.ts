@@ -27,6 +27,7 @@ test('verification enables eligibility while activity emails remain opt-in on a 
     expect(route.request().postDataJSON()).toEqual({ token }); verified = true; confirmations++
     return route.fulfill({ json: { data: { emailVerified: true } } })
   })
+  await page.route('**/api/v1/publication-reviews**', route => route.fulfill({ json: { data: { items: [], total: 0 } } }))
   await page.goto('/settings')
   const email = page.getByRole('checkbox', { name: 'Withdrawals and payouts emails', exact: true })
   await expect(email).toBeDisabled()

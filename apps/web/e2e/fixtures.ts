@@ -15,11 +15,15 @@ export async function registerFreshUser(page: Page): Promise<TestUser> {
     name: 'E2E Tester',
   }
   await page.goto('/register')
-  await page.getByLabel(/^Full Name/).fill(user.name)
+  await page.getByRole('button', { name: 'Continue', exact: true }).click()
+  await page.getByLabel(/^Full name/i).fill(user.name)
   await page.getByLabel(/^Email/).fill(user.email)
   await page.getByLabel(/^Password/).fill(user.password)
-  await page.getByLabel(/^Confirm Password/).fill(user.password)
-  await page.getByRole('button', { name: 'Create Account' }).click()
+  await page.getByLabel(/^Confirm password/i).fill(user.password)
+  await page.getByRole('checkbox', { name: /I agree to the Terms of Use/ }).check()
+  await page.getByRole('checkbox', { name: /I confirm that I am at least 18/ }).check()
+  await page.getByRole('button', { name: 'Continue', exact: true }).click()
+  await page.getByRole('button', { name: /^Create account$/i }).click()
   await page.waitForURL(/dashboard/)
   return user
 }

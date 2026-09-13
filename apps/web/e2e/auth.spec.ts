@@ -12,7 +12,7 @@ test.describe('Authentication', () => {
     const password = 'E2ePassword123!'
     // Provision the account through the API (via the dev-server proxy).
     const res = await page.request.post('/api/v1/auth/register', {
-      data: { email, password, name: 'Login Tester' },
+      data: { email, password, name: 'Login Tester', legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true } },
     })
     expect(res.status()).toBe(201)
 
@@ -25,10 +25,11 @@ test.describe('Authentication', () => {
 
   test('wrong password shows an error and stays on the login page', async ({ page }) => {
     const email = `e2e-wrongpw-${randomUUID()}@example.com`
-    await page.request.post('/api/v1/auth/register', {
-      data: { email, password: 'E2ePassword123!', name: 'Wrong PW Tester' },
+    const provision = await page.request.post('/api/v1/auth/register', {
+      data: { email, password: 'E2ePassword123!', name: 'Wrong PW Tester', legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true } },
     })
 
+    expect(provision.status()).toBe(201)
     await page.goto('/login')
     await page.getByLabel(/^Email/).fill(email)
     await page.getByLabel(/^Password/).fill('not-the-password')

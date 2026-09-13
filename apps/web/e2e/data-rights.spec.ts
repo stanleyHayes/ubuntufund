@@ -25,6 +25,7 @@ test('private data request and downloadable response on a phone', async ({ page 
     }
     return route.fulfill({ json: { data: { items, total: items.length } } })
   })
+  await page.route('**/api/v1/publication-reviews**', route => route.fulfill({ json: { data: { items: [], total: 0 } } }))
   await page.goto('/settings')
   await page.getByLabel('What would you like us to review?').fill('Please provide my account and transaction information.')
   await page.getByRole('button', { name: 'Submit privacy request', exact: true }).click()

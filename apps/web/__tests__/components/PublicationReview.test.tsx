@@ -47,3 +47,12 @@ it.each([
   expect(screen.getByText(/submit the same version from its original form within seven days/)).toBeInTheDocument()
   expect(screen.getByText(/Review response: Reviewed safely/)).toBeInTheDocument()
 })
+
+it.each([[], null, { items: [], total: -1 }, { items: [null], total: 1 }, { items: [{ id: 'bad', action: null, text: '', status: 'pending' }], total: 1 }])('contains malformed review responses and supports retry: %j', async response => {
+  vi.mocked(api.get).mockResolvedValueOnce(response).mockResolvedValueOnce({ items: [], total: 0 })
+  render(<ThemeProvider theme={ujimoraTheme}><PublicationReviews /></ThemeProvider>)
+  await screen.findByText('Could not load publication reviews. Please retry.')
+  expect(screen.queryByText('No publication reviews yet.')).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh publication reviews' }))
+  await screen.findByText('No publication reviews yet.')
+})

@@ -22,6 +22,7 @@ test('activity choices stay opt-in, persist on reload and fit a phone screen', a
     }
     return route.fulfill({ json: { data: { preferences, emailVerified: true, emailConfigured: true } } })
   })
+  await page.route('**/api/v1/publication-reviews**', route => route.fulfill({ json: { data: { items: [], total: 0 } } }))
   await page.goto('/settings')
   const withdrawal = page.getByRole('checkbox', { name: 'Withdrawals and payouts emails', exact: true })
   await expect(withdrawal).not.toBeChecked()
