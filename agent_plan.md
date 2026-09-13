@@ -1,5 +1,11 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — Current-source Android artifact verification running
+
+- Started root generated Android assembleRelease, session89595, log `/tmp/ujimora-current-android-build.log`, source1e4b61c. Uses committed native plugins/default NDK27.1, ARM64/x86_64, lint enabled, debug signing and non-routable API; no experimental React Native/runtime substitutions. Build configuration reports minSDK24/compileSDK36/targetSDK36. Actual packaged manifest/ELF verification awaits terminal artifact.
+- Full API session45526 continues against unchanged1a43ae5 API/shared. Preserve API/shared/native sources while these builds run; poll existing handles, do not duplicate. Neither running job is recorded as successful.
+
+
 ### 2026-09-13 — Browser privacy and donation-consent verification
 
 - Browser legal/deletion links, narrow legal layout, explicit account agreement and private data-request/download checks pass (7 cases). Three donation name/message consent cases initially failed because mocked campaigns omitted endDate after checkout began enforcing deadlines. Fixtures now supply a future endDate; all3 rerun consent cases pass. No application guard was weakened.
