@@ -1,3 +1,4 @@
+import { discardUploadCache } from '@/lib/uploadCache'
 import { IconButton } from '@/components/RoundedControls'
 import { useState } from 'react'
 import { View, Image, Linking } from 'react-native'
@@ -19,8 +20,9 @@ export function MediaUploadField({ label, value, onChange, folder = 'kyc', docum
   async function pick(source: 'camera' | 'library' | 'document') {
     if (busy || disabled) return
     setError(''); setBusy(true); onBusyChange?.(true)
+    let uri: string | undefined
     try {
-      let uri: string, mime: string
+      let mime: string
       if (source === 'document') {
         const result = await DocumentPicker.getDocumentAsync({ type: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'], copyToCacheDirectory: true })
         if (result.canceled) return
@@ -37,7 +39,13 @@ export function MediaUploadField({ label, value, onChange, folder = 'kyc', docum
       const result = await api.upload<{ url: string }>(`/uploads/image?folder=${encodeURIComponent(folder)}`, await file.arrayBuffer(), mime)
       onChange(result.url)
     } catch (e) { setError(e instanceof Error ? e.message : 'Upload failed. Please try again.') }
-    finally { setBusy(false); onBusyChange?.(false) }
+    finally {
+      if (uri) {
+        try { discardUploadCache(uri) }
+        catch { setError(previous => previous || 'The temporary upload copy could not be removed from this device.') }
+      }
+      setBusy(false); onBusyChange?.(false)
+    }
   }
   if (compact) return <View style={{ gap: 4 }}>
     <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>

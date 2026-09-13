@@ -60,3 +60,9 @@ The mobile payment suite checks private-field absence, repeat/concurrent retry i
 This inventory does not certify Ghana registration, lawful basis, international
 transfer safeguards, store compliance or operational erasure. Those remain in
 `READINESS.md` and the feature-specific evidence documents.
+
+### Picker upload cache cleanup — 13 September 2026
+
+Native `MediaUploadField` now attempts cleanup in its upload `finally` block, including failed uploads and size rejection. `discardUploadCache` removes only an existing local file beneath the app cache directory; remote/content-provider URLs, source documents outside cache, prefix collisions and traversal paths are preserved. It never deletes the server upload or a user-selected saved copy. A cleanup failure is visible without replacing an earlier upload error. No bulk purge of historical files is implied.
+
+All 101 native tests, final types/lint pass; new tests exercise cache-only deletion, already-removed files, source/traversal preservation and deletion failure. Logs `/tmp/ujimora-upload-cache-{tests,types-final,lint-final}.log`. Physical camera/document-provider behavior and residual historical-cache cleanup remain release checks. The Android manifest run uses the earlier isolated mobile copy and does not validate this new component change.
