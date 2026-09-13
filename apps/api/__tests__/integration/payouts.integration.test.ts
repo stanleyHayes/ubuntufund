@@ -1,3 +1,4 @@
+import { TransferRecipientModel } from '../../src/infrastructure/database/models/TransferRecipientModel.js';
 import { MongoPayoutRepository } from '../../src/infrastructure/adapters/outbound/persistence/MongoPayoutRepository.js';
 import { MongoManualPayoutApproval } from '../../src/infrastructure/adapters/outbound/persistence/MongoManualPayoutApproval.js';
 import { createHmac, randomUUID } from 'node:crypto';
@@ -325,8 +326,9 @@ describe('Payouts Integration', () => {
     const created = await request(app).post(`/api/v1/campaigns/${campaignId}/payouts`).set('Authorization', `Bearer ${owner.token}`).send({ amount: 500 }).expect(201);
     const before = await CampaignBalanceModel.findOne({ campaignId }).lean();
     const original = MongoManualPayoutApproval.prototype.run;
-    const hook = vi.spyOn(MongoManualPayoutApproval.prototype, 'run').mockImplementationOnce(async function(requester, work) {
-      await UserModel.findByIdAndUpdate(admin.userId, change === 'role' ? { role: 'user' } : change === 'closed' ? { deletedAt: new Date() } : { authVersion: randomUUID() });
+    let calls = 0;
+    const hook = vi.spyOn(MongoManualPayoutApproval.prototype, 'run').mockImplementation(async function(requester, work) {
+      if (++calls === 2) await UserModel.findByIdAndUpdate(admin.userId, change === 'role' ? { role: 'user' } : change === 'closed' ? { deletedAt: new Date() } : { authVersion: randomUUID() });
       return original.call(this, requester, work);
     });
     vi.mocked(fetch).mockClear();
@@ -335,6 +337,44 @@ describe('Payouts Integration', () => {
       expect((await CampaignBalanceModel.findOne({ campaignId }))?.availableBalance).toBe(before?.availableBalance);
       expect((await PayoutModel.findById(created.body.data.id))?.status).toBe('PENDING');
       expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).endsWith('/transfer'))).toBe(false);
+    } finally { hook.mockRestore(); }
+  });
+
+  it('rolls back recipient review when recording the first approval fails', async () => {
+    const owner = await registerUser(app, uniqueEmail('maker-owner'));
+    const campaignId = await createActiveCampaign(app, owner.token, owner.userId);
+    const admin = await createAdmin(app, uniqueEmail('maker-admin'));
+    await fundCampaign(app, campaignId, 100000);
+    await endCampaign(campaignId);
+    const recipient = await addRecipient(app, campaignId, owner.token, 'ghipss');
+    const created = await request(app).post(`/api/v1/campaigns/${campaignId}/payouts`).set('Authorization', `Bearer ${owner.token}`).send({ amount: 60000 }).expect(201);
+    const failure = vi.spyOn(MongoPayoutRepository.prototype, 'recordFirstApproval').mockRejectedValueOnce(new Error('maker storage unavailable'));
+    try {
+      await request(app).post(`/api/v1/payouts/${created.body.data.id}/approve`).set('Authorization', `Bearer ${admin.token}`).send({ reviewNote: 'Reviewed beneficiary ownership and receiving capacity.' }).expect(500);
+      expect((await PayoutModel.findById(created.body.data.id))?.firstApprovedBy).toBeUndefined();
+      const saved = await TransferRecipientModel.findById(recipient.body.data.id);
+      expect(saved?.reviews || []).toHaveLength(0);
+      expect(saved?.reviewedBy).toBeUndefined();
+    } finally { failure.mockRestore(); }
+  });
+
+  it('denies a revoked maker before writing review evidence', async () => {
+    const owner = await registerUser(app, uniqueEmail('maker-revoked-owner'));
+    const campaignId = await createActiveCampaign(app, owner.token, owner.userId);
+    const admin = await createAdmin(app, uniqueEmail('maker-revoked-admin'));
+    await fundCampaign(app, campaignId, 100000);
+    await endCampaign(campaignId);
+    const recipient = await addRecipient(app, campaignId, owner.token, 'ghipss');
+    const created = await request(app).post(`/api/v1/campaigns/${campaignId}/payouts`).set('Authorization', `Bearer ${owner.token}`).send({ amount: 60000 }).expect(201);
+    const original = MongoManualPayoutApproval.prototype.run;
+    const hook = vi.spyOn(MongoManualPayoutApproval.prototype, 'run').mockImplementationOnce(async function(requester, work) {
+      await UserModel.findByIdAndUpdate(admin.userId, { role: 'user' });
+      return original.call(this, requester, work);
+    });
+    try {
+      await request(app).post(`/api/v1/payouts/${created.body.data.id}/approve`).set('Authorization', `Bearer ${admin.token}`).send({ reviewNote: 'Reviewed beneficiary ownership and receiving capacity.' }).expect(403);
+      expect((await PayoutModel.findById(created.body.data.id))?.firstApprovedBy).toBeUndefined();
+      expect((await TransferRecipientModel.findById(recipient.body.data.id))?.reviews || []).toHaveLength(0);
     } finally { hook.mockRestore(); }
   });
 

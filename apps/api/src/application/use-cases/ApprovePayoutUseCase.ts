@@ -133,36 +133,30 @@ export class ApprovePayoutUseCase {
           payout.amount >= this.payoutsConfig.dualApprovalAmount))
     )
       throw new AppError('Manual approval required', 409)
-    if (payout.provider !== 'ujimora_wallet' && !automatic) {
-      if (!this.transferRecipientRepo.recordReview)
+    if (!automatic) {
+      if (payout.provider !== 'ujimora_wallet' && !this.transferRecipientRepo.recordReview)
         throw new AppError('Recipient review storage is unavailable', 503)
-      await this.transferRecipientRepo.recordReview(
-        payout.recipientId,
-        requester.userId,
-        reviewNote.trim(),
-        payoutId,
-      )
-    }
-
-    if (payout.provider === 'ujimora_wallet') {
-      if (!this.walletPayouts) throw new AppError('Wallet transfers unavailable', 503)
-      await this.walletPayouts.recordCampaignReview(payout.id, requester.userId, reviewNote.trim())
-    }
-    // Maker-checker: a high-value payout needs two distinct admin approvals.
-    const dualThreshold = this.payoutsConfig.dualApprovalAmount
-    if (dualThreshold > 0 && payout.amount >= dualThreshold) {
-      if (!payout.firstApprovedBy) {
-        const recorded = await this.payoutRepo.recordFirstApproval(payout.id, requester.userId)
-        if (!recorded) {
-          throw new AppError('Payout is no longer pending approval', 409)
+      if (!this.manualApproval) throw new AppError('Payout approval transaction is unavailable.', 503)
+      const firstApproval = await this.manualApproval.run(requester, async () => {
+        const current = await this.payoutRepo.findById(payout.id)
+        if (!current || current.status !== 'PENDING') throw new AppError('Payout is no longer pending approval', 409)
+        const needsChecker = this.payoutsConfig.dualApprovalAmount > 0 && current.amount >= this.payoutsConfig.dualApprovalAmount
+        if (needsChecker && current.firstApprovedBy === requester.userId)
+          throw new AppError('A second, different admin must approve this high-value payout', 409)
+        if (current.provider === 'ujimora_wallet') {
+          if (!this.walletPayouts) throw new AppError('Wallet transfers unavailable', 503)
+          await this.walletPayouts.recordCampaignReview(current.id, requester.userId, reviewNote.trim())
+        } else {
+          await this.transferRecipientRepo.recordReview!(current.recipientId, requester.userId, reviewNote.trim(), current.id)
         }
-        // Still PENDING — a second, different admin must approve to initiate.
-        return toPayoutDto(recorded)
-      }
-      if (payout.firstApprovedBy === requester.userId) {
-        throw new AppError('A second, different admin must approve this high-value payout', 409)
-      }
-      // A distinct second admin is approving — proceed to initiate the transfer.
+        if (needsChecker && !current.firstApprovedBy) {
+          const recorded = await this.payoutRepo.recordFirstApproval(current.id, requester.userId)
+          if (!recorded) throw new AppError('Payout is no longer pending approval', 409)
+          return recorded
+        }
+        return null
+      })
+      if (firstApproval) return toPayoutDto(firstApproval)
     }
 
     if (payout.provider === 'ujimora_wallet') {

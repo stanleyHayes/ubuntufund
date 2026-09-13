@@ -99,6 +99,8 @@ describe('payout account verification', () => {
       balance as never,
       gateway as never,
       { maxTransferAmount: 50000, dualApprovalAmount: 0 } as never,
+      undefined, undefined, undefined,
+      { run: async (_requester, work) => work() },
     )
     await expect(
       uc.execute(

@@ -114,6 +114,8 @@ describe('wallet payout policy', () => {
       cfg as never,
       { findById: async () => campaign } as never,
       wallet,
+      undefined,
+      { run: async (_requester, work) => work() },
     )
     await expect(uc.execute('payout', { userId: 'admin', role: 'admin' })).rejects.toMatchObject({
       statusCode: 422,
