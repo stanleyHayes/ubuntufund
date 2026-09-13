@@ -1,5 +1,11 @@
 # Crypto availability and recovery audit
 
+## Current checkpoint — 13 September 2026
+
+Recovery intake independence, per-deposit isolation, persisted outcome summaries and retry rotation are implemented and tested below. Manual recovery now validates its request shape and nonnegative finite age; the use case rejects invalid date ranges and limits outside integer 1–100 before querying. This prevents malformed requests becoming database errors and protects direct callers from MongoDB's unbounded limit=0 semantics. Omitted age remains 30 minutes; zero age remains supported; clients cannot supply arbitrary batch sizes.
+
+Eleven integration tests across both crypto files pass, including unauthenticated/non-admin rejection, invalid HTTP requests causing no scan, defaults/zero age, direct invalid scheduling controls and prior settlement/recovery regressions. API types/lint pass. Logs `/tmp/ujimora-crypto-controls-{tests,types,lint}.log`; sessions 82055/88336/76867 terminal exit 0. Missing-reference/provider operations, disclosures and external permissions remain unresolved. Historical entries below preserve audit chronology and are superseded by their implementation checkpoints.
+
 13 September 2026 — IN PROGRESS. Read-only inspection while full API regression session 5623 runs. No production configuration, funds or provider settings changed.
 
 | Surface | Current code evidence | Acceptance / next action |

@@ -5,6 +5,8 @@ import {
   type NextFunction,
   type RequestHandler,
 } from 'express';
+import { z } from 'zod';
+import { validate } from '../../middleware/validate.js';
 import type { createAuthMiddleware } from '../../middleware/authMiddleware.js';
 import type { ReconcileCryptoUseCase } from '../../../../../application/use-cases/ReconcileCryptoUseCase.js';
 
@@ -23,6 +25,7 @@ export function createCryptoAdminRoutes(
     '/crypto/reconcile',
     authMiddleware,
     requireAdmin,
+    validate(z.object({ olderThanMinutes: z.number().finite().nonnegative().optional() }).strict().optional()),
     async (req: Request, res: Response, next: NextFunction) => {
       try {
         const body = (req.body ?? {}) as { olderThanMinutes?: number };

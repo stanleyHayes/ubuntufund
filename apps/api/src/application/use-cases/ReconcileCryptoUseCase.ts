@@ -3,6 +3,7 @@ import type { DonationIntentRepositoryPort } from '../../domain/ports/outbound/D
 import type { CryptoPaymentProviderPort } from '../../domain/ports/outbound/CryptoPaymentProviderPort.js';
 import type { HandleCryptoWebhookUseCase } from './HandleCryptoWebhookUseCase.js';
 import { logger } from '../../infrastructure/logging/logger.js';
+import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 
 export interface CryptoReconcileSummary {
   scanned: number;
@@ -33,6 +34,14 @@ export class ReconcileCryptoUseCase {
     olderThanMinutes: number;
     limit?: number;
   }): Promise<CryptoReconcileSummary> {
+    const cutoff = new Date(Date.now() - opts.olderThanMinutes * 60_000);
+    const limit = opts.limit ?? 100;
+    if (!Number.isFinite(opts.olderThanMinutes) || opts.olderThanMinutes < 0 || !Number.isFinite(cutoff.getTime())) {
+      throw new AppError('Recovery age must be a finite, nonnegative number of minutes within the supported date range.', 400);
+    }
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+      throw new AppError('Recovery batch size must be an integer between 1 and 100.', 400);
+    }
     const summary: CryptoReconcileSummary = {
       scanned: 0,
       settled: 0,
@@ -41,8 +50,7 @@ export class ReconcileCryptoUseCase {
       pending: 0,
       errored: 0,
     };
-    const cutoff = new Date(Date.now() - opts.olderThanMinutes * 60_000);
-    const stale = await this.intentRepo.findStaleCrypto(cutoff, opts.limit ?? 100);
+    const stale = await this.intentRepo.findStaleCrypto(cutoff, limit);
 
     for (const intent of stale) {
       summary.scanned += 1;

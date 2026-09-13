@@ -27,6 +27,7 @@ import { CampaignModel } from '../../src/infrastructure/database/models/Campaign
 import { DonationIntentModel } from '../../src/infrastructure/database/models/DonationIntentModel.js';
 import { JournalEntryModel } from '../../src/infrastructure/database/models/JournalEntryModel.js';
 import { CampaignCategory, CampaignPriority } from '@ubuntu-fund/types';
+import { MongoDonationIntentRepository } from '../../src/infrastructure/adapters/outbound/persistence/MongoDonationIntentRepository.js';
 
 function uniqueEmail(label: string): string {
   return `${label}-${randomUUID()}@example.com`;
@@ -221,6 +222,25 @@ describe('Crypto donations — stablecoin rail (mock provider)', () => {
       .post(`/api/v1/campaigns/${campaignId}/donations/crypto/quote`)
       .send({ fiatAmount: 1080, asset: 'BTC', network: 'BITCOIN' })
       .expect(400);
+  });
+
+  it('rejects malformed recovery controls before reading deposits and preserves admin access checks', async () => {
+    const { userId, token } = await registerUser(app, uniqueEmail('recovery-validation'));
+    const scan = vi.spyOn(MongoDonationIntentRepository.prototype, 'findStaleCrypto').mockResolvedValue([]);
+    const run = (body: object) => request(app).post('/api/v1/admin/crypto/reconcile').set('Authorization', `Bearer ${token}`).send(body);
+    try {
+      await request(app).post('/api/v1/admin/crypto/reconcile').send({}).expect(401);
+      await run({ olderThanMinutes: -1 }).expect(403);
+      await UserModel.updateOne({ _id: userId }, { $set: { role: 'admin' } });
+      for (const body of [{ olderThanMinutes: -1 }, { olderThanMinutes: '30' }, { olderThanMinutes: null }, { olderThanMinutes: {} }, { olderThanMinutes: 1e300 }, { limit: 0 }]) {
+        await run(body).expect(400);
+      }
+      expect(scan).not.toHaveBeenCalled();
+      await run({}).expect(200);
+      expect(scan).toHaveBeenLastCalledWith(expect.any(Date), 100);
+      await run({ olderThanMinutes: 0 }).expect(200);
+      expect(scan).toHaveBeenCalledTimes(2);
+    } finally { scan.mockRestore(); }
   });
 
   it('continues after a deposit application error and retries without duplicating successful credit', async () => {

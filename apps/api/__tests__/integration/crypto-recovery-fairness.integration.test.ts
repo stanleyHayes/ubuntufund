@@ -9,6 +9,20 @@ import type { HandleCryptoWebhookUseCase } from '../../src/application/use-cases
 
 beforeAll(connectTestDatabase);
 afterAll(async () => { await dropTestDatabase(); await disconnectTestDatabase(); });
+it('rejects invalid scheduling inputs before querying or polling, including unbounded Mongo limits', async () => {
+  const repo = new MongoDonationIntentRepository();
+  const scan = vi.spyOn(repo, 'findStaleCrypto').mockResolvedValue([]);
+  const recovery = new ReconcileCryptoUseCase(repo, new Map(), {} as HandleCryptoWebhookUseCase);
+  for (const olderThanMinutes of [-1, NaN, Infinity, 1e300]) {
+    await expect(recovery.reconcileStale({ olderThanMinutes })).rejects.toMatchObject({ statusCode: 400 });
+  }
+  for (const limit of [0, -1, 1.5, 101, NaN, Infinity]) {
+    await expect(recovery.reconcileStale({ olderThanMinutes: 0, limit })).rejects.toMatchObject({ statusCode: 400 });
+  }
+  expect(scan).not.toHaveBeenCalled();
+  await expect(recovery.reconcileStale({ olderThanMinutes: 0, limit: 100 })).resolves.toMatchObject({ scanned: 0 });
+  expect(scan).toHaveBeenCalledExactlyOnceWith(expect.any(Date), 100);
+});
 it('rotates failed bounded batches without changing money, status or financial timestamps', async () => {
   const before = new Date(Date.now() - 3600000);
   const rows = await DonationIntentModel.create([0, 1, 2].map(i => ({

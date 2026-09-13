@@ -2,6 +2,8 @@
 
 ### 2026-09-12 — Ghana and mobile store compliance goal (IN PROGRESS)
 
+- Manual crypto recovery rejects malformed, negative and out-of-date-range ages before querying deposits. The shared use case also enforces batches of 1–100, preventing Mongo limit=0 from creating an unbounded sweep. Eleven crypto integration tests, API types/lint pass; HTTP authorization/default/zero-age and direct scheduling controls covered. Logs `/tmp/ujimora-crypto-controls-{tests,types,lint}.log`, sessions 82055/88336/76867 terminal exit 0. Incremental publication; missing-reference/provider operations and broader compliance gates remain open. Hosted CI 34745663334 verified running its Test step after successful install/lint/types.
+
 - Crypto recovery rotates attempted deposits using separate scheduling metadata, so a persistently failing oldest batch does not exclude newer deposits indefinitely. Nine crypto integration tests, API types/lint and whitespace checks pass; bounded-batch retry preserves amounts/status/financial timestamps. Publishing the focused follow-up; provider/authorization and broader compliance gates remain open.
 
 - FULL API regression PASS: 1,029 tests across 151 files, session 48519 terminal exit 0 (1091.24s), `/tmp/ujimora-publish-api-tests.log`; source freeze lifted. CI fca28d3 failed on a 5s mobile timeout while package suites competed for CPU. Follow-up limits CI to one package/one client worker and aligns admin/mobile timeout with web (30s); unchanged assertions pass under CI=true: web 178, admin 69, mobile 81. Publishing this verified CI fix separately.
