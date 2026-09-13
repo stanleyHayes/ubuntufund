@@ -1,6 +1,6 @@
+import TextField from '@/components/AdminTextField'
 import ReviewQueuePagination from '@/components/ReviewQueuePagination'
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
-import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import { ReviewQueueSkeleton, ReviewQueueEmpty, ReviewQueueToolbar } from '@/components/ReviewQueueStates'
 import PrivacyTipRoundedIcon from '@mui/icons-material/PrivacyTipRounded'
 import { raisedSurface } from '@/lib/surfaces'
@@ -35,10 +35,10 @@ function Review({ item, refresh }: { item: Item; refresh: () => Promise<void> })
     {(eventPage === 0 || events.length < eventTotal) && <Button disabled={busy} onClick={() => void history()}>Load review history</Button>}
     {events.map(event => <Typography key={event._id} variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{new Date(event.createdAt).toLocaleString()} · {event.action} · {event.actorId}{'\n'}{event.evidence}{event.deliveryReference && `\nDelivery evidence: ${event.deliveryReference}`}</Typography>)}
     {item.status === 'responded' ? <Typography sx={{ whiteSpace: 'pre-wrap' }}>{item.response}</Typography> : <>
-      <TextField multiline minRows={3} label="Internal review evidence" value={evidence} onChange={e => setEvidence(e.target.value)} helperText="Record systems checked, corrections made, lawful exclusions and processor follow-up. This field is not shown to the requester. Do not paste credentials or identity documents." />
-      <TextField multiline minRows={4} label="Response visible to requester" value={response} onChange={e => setResponse(e.target.value)} helperText="Include the requested information or explain what was corrected, any lawful exclusions and next steps. Acknowledgement alone is not a completed access response. Do not disclose another person's data or security secrets." />
-      <TextField select label="Response delivery" value={deliveryMethod} onChange={e => setDeliveryMethod(e.target.value)}><MenuItem value="account">Publish in account Settings</MenuItem><MenuItem value="verified_external">Record verified external delivery already completed</MenuItem></TextField>
-      {deliveryMethod === 'verified_external' && <TextField multiline label="Identity verification and delivery reference" value={deliveryReference} onChange={e => setDeliveryReference(e.target.value)} helperText="Record the approved identity-verification method and completed secure-delivery receipt or case reference. This records your evidence; it does not send a message or verify delivery automatically." />}
+      <TextField optionContext="privacy" multiline minRows={3} label="Internal review evidence" value={evidence} onChange={e => setEvidence(e.target.value)} helperText="Record systems checked, corrections made, lawful exclusions and processor follow-up. This field is not shown to the requester. Do not paste credentials or identity documents." />
+      <TextField optionContext="privacy" multiline minRows={4} label="Response visible to requester" value={response} onChange={e => setResponse(e.target.value)} helperText="Include the requested information or explain what was corrected, any lawful exclusions and next steps. Acknowledgement alone is not a completed access response. Do not disclose another person's data or security secrets." />
+      <TextField optionContext="privacy" select label="Response delivery" value={deliveryMethod} onChange={e => setDeliveryMethod(e.target.value)}><MenuItem value="account">Publish in account Settings</MenuItem><MenuItem value="verified_external">Record verified external delivery already completed</MenuItem></TextField>
+      {deliveryMethod === 'verified_external' && <TextField optionContext="privacy" multiline label="Identity verification and delivery reference" value={deliveryReference} onChange={e => setDeliveryReference(e.target.value)} helperText="Record the approved identity-verification method and completed secure-delivery receipt or case reference. This records your evidence; it does not send a message or verify delivery automatically." />}
       <Button disabled={busy || evidence.trim().length < 20} onClick={() => void save('in_review')}>Save review progress</Button>
       <Button variant="contained" disabled={busy || evidence.trim().length < 20 || response.trim().length < 20 || (deliveryMethod === 'verified_external' && deliveryReference.trim().length < 20)} onClick={() => void save('responded')}>{deliveryMethod === 'account' ? 'Publish response to requester' : 'Record completed external response'}</Button>
     </>}
@@ -57,7 +57,7 @@ export function DataRightsQueue() {
   return <Stack spacing={2}>
     <Typography variant="h5">Data access, corrections and complaints</Typography>
     <ReviewQueueToolbar>
-      <TextField select label="Request status" value={status} onChange={e => { setStatus(e.target.value); setPage(1) }}><MenuItem value="active">Open and in review</MenuItem><MenuItem value="responded">Responded</MenuItem></TextField>
+      <TextField optionContext="privacy" select label="Request status" value={status} onChange={e => { setStatus(e.target.value); setPage(1) }}><MenuItem value="active">Open and in review</MenuItem><MenuItem value="responded">Responded</MenuItem></TextField>
       <Button variant="outlined" startIcon={<RefreshRoundedIcon />} disabled={loading} onClick={() => void load()}>Refresh data requests</Button>
       <ExportMenu title="Data rights requests" disabled={loading || !!error} getReport={async progress => ({ title: "Data rights requests", filters: [`Status: ${status}`], tables: [exportTable("Data rights requests", await loadAll<Item>(`/admin/data-rights?status=${status}`, progress), { ID: r => r._id, Account: r => r.userId, Kind: r => r.kind, Status: r => r.status, "Due (UTC)": r => dateCell(r.dueAt), Details: r => r.details, Response: r => r.response })] })} />
     </ReviewQueueToolbar>

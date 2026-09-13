@@ -1,7 +1,8 @@
+import TextField from '@/components/AdminTextField'
 import ExportMenu from '@/components/ExportMenu'
 import { loadAll } from '@/lib/exports/loadAll'
 import { exportTable, dateCell } from '@/lib/exports/report'
-import { BrandedTextField as TextField, SHAPE } from '@ubuntu-fund/ui'
+import { SHAPE } from '@ubuntu-fund/ui'
 import { useState, useEffect, useCallback } from 'react'
 import {
   Box, Typography, MenuItem, InputAdornment, Chip,
@@ -216,13 +217,13 @@ return { title: 'Testimonials', filters: [`Status: ${statusFilter}`, `Search: ${
 
       {/* Filters */}
       <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
-        <TextField
+        <TextField optionContext="testimonial"
           size="small" placeholder="Search by name, role, location..."
           value={search} onChange={(e) => setSearch(e.target.value)}
           InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon sx={{ fontSize: 18, color: 'rgba(255,255,255,0.3)' }} /></InputAdornment> }}
           sx={{ flex: 1, minWidth: 200, '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: 'rgba(255,255,255,0.03)' } }}
         />
-        <TextField
+        <TextField optionContext="testimonial"
           select size="small" value={statusFilter}
           onChange={(e) => { setStatusFilter(e.target.value); pagination.goToPage(1) }}
           sx={{ width: 150, '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: 'rgba(255,255,255,0.03)' } }}
@@ -346,26 +347,26 @@ return { title: 'Testimonials', filters: [`Status: ${statusFilter}`, `Search: ${
         </DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '16px !important' }}>
           <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
-            <TextField
+            <TextField optionContext="testimonial"
               fullWidth size="small" label="Name"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
             />
-            <TextField
+            <TextField optionContext="testimonial"
               fullWidth size="small" label="Role"
               value={form.role}
               onChange={(e) => setForm({ ...form, role: e.target.value })}
               sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
             />
           </Box>
-          <TextField
+          <TextField optionContext="testimonial"
             fullWidth size="small" label="Location"
             value={form.location}
             onChange={(e) => setForm({ ...form, location: e.target.value })}
             sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
           />
-          <TextField
+          <TextField optionContext="testimonial"
             fullWidth multiline rows={4} size="small" label="Quote"
             value={form.quote}
             onChange={(e) => setForm({ ...form, quote: e.target.value })}
@@ -381,7 +382,7 @@ return { title: 'Testimonials', filters: [`Status: ${statusFilter}`, `Search: ${
                 onChange={(_, v) => setForm({ ...form, rating: v ?? 5 })}
               />
             </Box>
-            <TextField
+            <TextField optionContext="testimonial"
               select size="small" label="Status"
               value={form.status}
               onChange={(e) => setForm({ ...form, status: e.target.value as TestimonialStatus })}
@@ -391,7 +392,7 @@ return { title: 'Testimonials', filters: [`Status: ${statusFilter}`, `Search: ${
               <MenuItem value="published">Published</MenuItem>
               <MenuItem value="archived">Archived</MenuItem>
             </TextField>
-            <TextField
+            <TextField optionContext="testimonial"
               size="small" label="Display Order" type="number"
               value={form.displayOrder}
               onChange={(e) => setForm({ ...form, displayOrder: parseInt(e.target.value) || 0 })}

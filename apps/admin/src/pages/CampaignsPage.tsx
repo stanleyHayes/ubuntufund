@@ -1,5 +1,5 @@
+import TextField from '@/components/AdminTextField'
 import { CollectionTable, CollectionViewSwitch, useCollectionView } from '@/components/CollectionView'
-import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import { useState } from 'react'
 import { useNavigate, Link as RouterLink } from 'react-router-dom'
 import { Alert, Skeleton, Box, Typography, MenuItem, InputAdornment, Button } from '@mui/material'
@@ -213,7 +213,7 @@ export default function CampaignsPage() {
       {/* Filter bar */}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr 1fr 1fr' }, ...raisedSurface, mb: 3 }}>
         <Box sx={{ px: 2.5, py: 1.5, display: 'flex', alignItems: 'center' }}>
-          <TextField
+          <TextField optionContext="campaign"
             size="small"
             variant="outlined"
             placeholder="Search campaigns..."
@@ -231,7 +231,7 @@ export default function CampaignsPage() {
           />
         </Box>
         <Box sx={{ px: 2.5, py: 1.5, display: 'flex', alignItems: 'center' }}>
-          <TextField
+          <TextField optionContext="campaign"
             select
             size="small"
             variant="outlined"
@@ -247,7 +247,7 @@ export default function CampaignsPage() {
           </TextField>
         </Box>
         <Box sx={{ px: 2.5, py: 1.5, display: 'flex', alignItems: 'center' }}>
-          <TextField
+          <TextField optionContext="campaign"
             select
             size="small"
             variant="outlined"

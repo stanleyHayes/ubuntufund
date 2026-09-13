@@ -1,3 +1,4 @@
+import TextField from '@/components/AdminTextField'
 import ExportMenu from '@/components/ExportMenu'
 import { exportTable, dateCell } from '@/lib/exports/report'
 import { useEffect, useState } from 'react'
@@ -7,7 +8,6 @@ import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
-import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import MenuItem from '@mui/material/MenuItem'
 import Breadcrumbs from '@mui/material/Breadcrumbs'
 import Link from '@mui/material/Link'
@@ -202,8 +202,8 @@ export default function DisputeDetailPage() {
             <Card>
               <CardContent sx={{ p: 3 }}>
                 <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2 }}>Record decision</Typography>
-                <TextField label="Resolution notes" value={resolutionNotes} onChange={(event) => setResolutionNotes(event.target.value)} fullWidth multiline rows={5} sx={{ mb: 2 }} />
-                <TextField select label="Decision" value={resolutionType} onChange={(event) => setResolutionType(event.target.value as 'resolved' | 'dismissed')} fullWidth size="small" sx={{ mb: 3 }}>
+                <TextField optionContext="dispute" label="Resolution notes" value={resolutionNotes} onChange={(event) => setResolutionNotes(event.target.value)} fullWidth multiline rows={5} sx={{ mb: 2 }} />
+                <TextField optionContext="dispute" select label="Decision" value={resolutionType} onChange={(event) => setResolutionType(event.target.value as 'resolved' | 'dismissed')} fullWidth size="small" sx={{ mb: 3 }}>
                   <MenuItem value="resolved">Resolved</MenuItem>
                   <MenuItem value="dismissed">Dismissed</MenuItem>
                 </TextField>

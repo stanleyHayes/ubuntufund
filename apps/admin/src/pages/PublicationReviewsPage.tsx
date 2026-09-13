@@ -1,6 +1,6 @@
+import TextField from '@/components/AdminTextField'
 import ReviewQueuePagination from '@/components/ReviewQueuePagination'
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
-import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import FactCheckRoundedIcon from '@mui/icons-material/FactCheckRounded'
 import PageHeader from '@/components/PageHeader'
 import { raisedSurface } from '@/lib/surfaces'
@@ -45,8 +45,8 @@ export default function PublicationReviewsPage() {
   return <Stack spacing={3}>
     <PageHeader title="Publication reviews" eyebrow="Trust & safety" lede="Review proposed public content and keep each decision tied to its author and version." icon={<FactCheckRoundedIcon />} stats={[{ label: "Submissions in this view", value: loading ? <Skeleton width={60} /> : error ? "—" : total }]} />
     <ReviewQueueToolbar>
-      <TextField select sx={{ maxWidth: { sm: 420 } }} label="Content queue" value={kind} disabled={!!busy} onChange={event => { setKind(event.target.value); setPage(1); setNotes({}) }}><MenuItem value="publication-reviews">Publication proposals</MenuItem><MenuItem value="tip-content-reviews">Supporter names and messages</MenuItem><MenuItem value="donation-content-reviews">Campaign donor names and messages</MenuItem></TextField>
-      <TextField select sx={{ maxWidth: { sm: 280 } }} label="Review status" value={status} onChange={e => { setStatus(e.target.value); setPage(1) }}>{['pending', 'approved', 'rejected'].map(value => <MenuItem key={value} value={value}>{value}</MenuItem>)}</TextField>
+      <TextField optionContext="publication" select sx={{ maxWidth: { sm: 420 } }} label="Content queue" value={kind} disabled={!!busy} onChange={event => { setKind(event.target.value); setPage(1); setNotes({}) }}><MenuItem value="publication-reviews">Publication proposals</MenuItem><MenuItem value="tip-content-reviews">Supporter names and messages</MenuItem><MenuItem value="donation-content-reviews">Campaign donor names and messages</MenuItem></TextField>
+      <TextField optionContext="publication" select sx={{ maxWidth: { sm: 280 } }} label="Review status" value={status} onChange={e => { setStatus(e.target.value); setPage(1) }}>{['pending', 'approved', 'rejected'].map(value => <MenuItem key={value} value={value}>{value}</MenuItem>)}</TextField>
       <Button variant="outlined" startIcon={<RefreshRoundedIcon />} disabled={loading || !!busy} onClick={() => void load()}>Refresh publication reviews</Button>
       <ExportMenu title="Publication reviews" disabled={loading || !!error} getReport={async progress => ({ title: "Publication reviews", filters: [`Queue: ${kind}`, `Status: ${status}`], tables: [exportTable("Publication reviews", await loadAll<Item>(`${endpoint}?status=${status}`, progress), { ID: r => r.id, Action: r => r.action, Author: r => r.actorId, Status: r => r.status, Reason: r => r.reason, Text: r => displayText(r.action, r.text), Notes: r => r.reviewNotes })] })} />
     </ReviewQueueToolbar>
@@ -63,7 +63,7 @@ export default function PublicationReviewsPage() {
       {!!item.mediaUrls.length && <Alert severity="warning">Inspect each attachment through your approved moderation workflow. A URL or text check does not verify the actual media.</Alert>}
       {item.reviewNotes && <Typography>Decision notes: {item.reviewNotes}</Typography>}
       {item.status === 'pending' && <>
-        <TextField label="Review notes (at least 20 characters)" multiline minRows={2} value={notes[item.id] ?? ''} onChange={e => setNotes(current => ({ ...current, [item.id]: e.target.value }))} inputProps={{ maxLength: 2000 }} />
+        <TextField optionContext="publication" label="Review notes (at least 20 characters)" multiline minRows={2} value={notes[item.id] ?? ''} onChange={e => setNotes(current => ({ ...current, [item.id]: e.target.value }))} inputProps={{ maxLength: 2000 }} />
         <Stack direction="row" useFlexGap flexWrap="wrap" spacing={2}>
           <Button disabled={!!busy || (notes[item.id]?.trim().length ?? 0) < 20} onClick={() => void decide(item, 'approved')}>Approve this version</Button>
           <Button color="error" disabled={!!busy || (notes[item.id]?.trim().length ?? 0) < 20} onClick={() => void decide(item, 'rejected')}>Decline this version</Button>

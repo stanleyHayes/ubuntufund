@@ -1,6 +1,6 @@
+import TextField from '@/components/AdminTextField'
 import ExportMenu from '@/components/ExportMenu'
 import { exportTable, dateCell } from '@/lib/exports/report'
-import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Alert, Skeleton, Box, Typography, MenuItem } from '@mui/material'
@@ -71,7 +71,7 @@ export default function DisputesPage() {
         ...raisedSurface,
       }}>
         <Box sx={{ p: 2, minWidth: 0 }}>
-          <TextField
+          <TextField optionContext="dispute"
             select
             fullWidth
             size="small"
@@ -86,7 +86,7 @@ export default function DisputesPage() {
           </TextField>
         </Box>
         <Box sx={{ p: 2, minWidth: 0 }}>
-          <TextField
+          <TextField optionContext="dispute"
             fullWidth
             size="small"
             placeholder="Search disputes..."

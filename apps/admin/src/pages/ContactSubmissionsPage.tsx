@@ -1,10 +1,10 @@
+import TextField from '@/components/AdminTextField'
 import { raisedSurface, insetSurface } from '@/lib/surfaces'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import { IconButton, Alert } from '@mui/material'
 import ExportMenu from '@/components/ExportMenu'
 import { loadAll } from '@/lib/exports/loadAll'
 import { exportTable, dateCell } from '@/lib/exports/report'
-import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import { useState, useEffect, useCallback } from 'react'
 import {
   Box, Typography, MenuItem, InputAdornment, Chip,
@@ -167,13 +167,13 @@ return { title: 'Contact submissions', filters: [`Status: ${statusFilter}`, `Typ
 
       {/* Filters */}
       <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
-        <TextField
+        <TextField optionContext="contact"
           size="small" placeholder="Search by name, email, subject..."
           value={search} onChange={(e) => setSearch(e.target.value)}
           InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon sx={{ fontSize: 18, color: 'rgba(255,255,255,0.3)' }} /></InputAdornment> }}
           sx={{ flex: 1, minWidth: 200, '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: 'rgba(255,255,255,0.03)' } }}
         />
-        <TextField
+        <TextField optionContext="contact"
           select size="small" value={statusFilter}
           onChange={(e) => { setStatusFilter(e.target.value); pagination.goToPage(1) }}
           sx={{ width: 150, '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: 'rgba(255,255,255,0.03)' } }}
@@ -184,7 +184,7 @@ return { title: 'Contact submissions', filters: [`Status: ${statusFilter}`, `Typ
           <MenuItem value="resolved">Resolved</MenuItem>
           <MenuItem value="archived">Archived</MenuItem>
         </TextField>
-        <TextField
+        <TextField optionContext="contact"
           select size="small" value={typeFilter}
           onChange={(e) => { setTypeFilter(e.target.value); pagination.goToPage(1) }}
           sx={{ width: 160, '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: 'rgba(255,255,255,0.03)' } }}
@@ -321,7 +321,7 @@ return { title: 'Contact submissions', filters: [`Status: ${statusFilter}`, `Typ
                 {selected.message}
               </Typography>
 
-              <TextField
+              <TextField optionContext="contact"
                 select fullWidth disabled={updating} size="small" label="Update Status"
                 value={newStatus}
                 onChange={(e) => setNewStatus(e.target.value as ContactStatus)}
@@ -333,7 +333,7 @@ return { title: 'Contact submissions', filters: [`Status: ${statusFilter}`, `Typ
                 <MenuItem value="archived">Archived</MenuItem>
               </TextField>
 
-              <TextField
+              <TextField optionContext="contact"
                 fullWidth multiline disabled={updating} rows={3} size="small" label="Admin Notes"
                 value={adminNotes}
                 onChange={(e) => setAdminNotes(e.target.value)}

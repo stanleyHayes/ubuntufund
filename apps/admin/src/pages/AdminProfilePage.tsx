@@ -1,3 +1,4 @@
+import TextField from '@/components/AdminTextField'
 import { Tabs, Tab, MenuItem } from '@mui/material'
 import { raisedSurface } from '@/lib/surfaces'
 import Checkbox from '@mui/material/Checkbox'
@@ -9,7 +10,6 @@ import { useState, useEffect, useRef } from 'react'
 import Skeleton from '@mui/material/Skeleton'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
-import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import Button from '@mui/material/Button'
 import Alert from '@mui/material/Alert'
 import Card from '@mui/material/Card'
@@ -269,7 +269,7 @@ function AdminProfileForViewer() {
         <Grid size={{ xs: 12 }} role="tabpanel" id="profile-panel-details" aria-labelledby="profile-tab-details" hidden={tab !== 'details'}>
           <SectionCard icon={<PersonRoundedIcon />} title="Personal Information" color="#5E8F72">
             <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-              <TextField
+              <TextField optionContext="language"
                 label="Full Name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -286,7 +286,7 @@ function AdminProfileForViewer() {
                 }}
                 sx={inputSx}
               />
-              <TextField
+              <TextField optionContext="language"
                 label="Email Address"
                 value={email}
                 disabled
@@ -304,7 +304,7 @@ function AdminProfileForViewer() {
                 }}
                 sx={inputSx}
               />
-              <TextField
+              <TextField optionContext="language"
                 label="Phone Number"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
@@ -322,7 +322,7 @@ function AdminProfileForViewer() {
                 }}
                 sx={inputSx}
               />
-              <TextField
+              <TextField optionContext="language"
                 label="Country"
                 value={country}
                 onChange={(e) => setCountry(e.target.value)}
@@ -340,7 +340,7 @@ function AdminProfileForViewer() {
                 }}
                 sx={inputSx}
               />
-              <TextField
+              <TextField optionContext="language"
                 label="Bio"
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
@@ -384,7 +384,7 @@ function AdminProfileForViewer() {
                   {passwordError}
                 </Alert>
               )}
-              <TextField
+              <TextField optionContext="language"
                 label="Current Password"
                 type={showCurrent ? 'text' : 'password'}
                 value={currentPassword}
@@ -404,7 +404,7 @@ function AdminProfileForViewer() {
                 }}
                 sx={inputSx}
               />
-              <TextField
+              <TextField optionContext="language"
                 label="New Password"
                 type={showNew ? 'text' : 'password'}
                 value={newPassword}
@@ -425,7 +425,7 @@ function AdminProfileForViewer() {
                 }}
                 sx={inputSx}
               />
-              <TextField
+              <TextField optionContext="language"
                 label="Confirm New Password"
                 type={showNew ? 'text' : 'password'}
                 value={confirmPassword}
@@ -549,7 +549,7 @@ function AdminProfileForViewer() {
         <Grid size={{ xs: 12 }} hidden={tab !== 'preferences'}>
           <SectionCard icon={<CakeRoundedIcon />} title="Regional & Display" color={TONES.maroon.text}>
             <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-              <TextField
+              <TextField optionContext="language"
                 label="Language"
                 value={language}
                 onChange={(e) => setLanguage(e.target.value)}

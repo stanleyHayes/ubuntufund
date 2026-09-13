@@ -1,9 +1,9 @@
+import TextField, { AdminSelect as Select } from '@/components/AdminTextField'
 import type { Dispatch, SetStateAction } from 'react'
 import {
   Box,
   MenuItem,
   InputAdornment,
-  Select,
   OutlinedInput,
   Checkbox,
   ListItemText,
@@ -12,7 +12,7 @@ import {
   FormControlLabel,
   Switch,
 } from '@mui/material'
-import { BrandedTextField as TextField, BrandedDatePicker } from '@ubuntu-fund/ui'
+import { BrandedDatePicker } from '@ubuntu-fund/ui'
 import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined'
 import LocalOfferRoundedIcon from '@mui/icons-material/LocalOfferRounded'
 import {
@@ -41,7 +41,7 @@ export default function CouponFormFields({
     <>
       {(step === undefined || step === 0) && (
         <>
-          <TextField
+          <TextField optionContext="coupon"
             fullWidth
             size="small"
             label="Code"
@@ -53,7 +53,7 @@ export default function CouponFormFields({
             }
             error={codeInvalid}
           />
-          <TextField
+          <TextField optionContext="coupon"
             fullWidth
             size="small"
             label="Description (optional)"
@@ -61,7 +61,7 @@ export default function CouponFormFields({
             onChange={(e) => setForm({ ...form, description: e.target.value })}
           />
           <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
-            <TextField
+            <TextField optionContext="coupon"
               select
               fullWidth
               size="small"
@@ -74,7 +74,7 @@ export default function CouponFormFields({
               <MenuItem value={CouponDiscountType.PERCENT}>Percent (%)</MenuItem>
               <MenuItem value={CouponDiscountType.FIXED}>Fixed (GH₵)</MenuItem>
             </TextField>
-            <TextField
+            <TextField optionContext="coupon"
               fullWidth
               size="small"
               label="Amount"
@@ -93,7 +93,7 @@ export default function CouponFormFields({
             />
           </Box>
           {form.discountType === CouponDiscountType.PERCENT && (
-            <TextField
+            <TextField optionContext="coupon"
               fullWidth
               size="small"
               label="Maximum discount (optional)"
@@ -114,7 +114,7 @@ export default function CouponFormFields({
             <InputLabel shrink id="coupon-tiers-label">
               Applies to Tiers
             </InputLabel>
-            <Select
+            <Select optionContext="coupon"
               labelId="coupon-tiers-label"
               displayEmpty
               multiple
@@ -146,7 +146,7 @@ export default function CouponFormFields({
             <InputLabel shrink id="coupon-cycles-label">
               Applies to Billing Cycles
             </InputLabel>
-            <Select
+            <Select optionContext="coupon"
               labelId="coupon-cycles-label"
               displayEmpty
               multiple
@@ -182,7 +182,7 @@ export default function CouponFormFields({
             <InputLabel shrink id="coupon-surfaces-label">
               Where it can be used
             </InputLabel>
-            <Select
+            <Select optionContext="coupon"
               labelId="coupon-surfaces-label"
               displayEmpty
               multiple
@@ -208,7 +208,7 @@ export default function CouponFormFields({
               ))}
             </Select>
           </FormControl>
-          <TextField
+          <TextField optionContext="coupon"
             select
             fullWidth
             size="small"
@@ -227,7 +227,7 @@ export default function CouponFormFields({
       {(step === undefined || step === 2) && (
         <>
           <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
-            <TextField
+            <TextField optionContext="coupon"
               fullWidth
               size="small"
               label="Max Redemptions"
@@ -236,7 +236,7 @@ export default function CouponFormFields({
               onChange={(e) => setForm({ ...form, maxRedemptions: parseInt(e.target.value) || 0 })}
               helperText="0 = unlimited"
             />
-            <TextField
+            <TextField optionContext="coupon"
               fullWidth
               size="small"
               label="Per-User Limit"
@@ -246,7 +246,7 @@ export default function CouponFormFields({
               helperText="0 = unlimited"
             />
           </Box>
-          <TextField
+          <TextField optionContext="coupon"
             fullWidth
             size="small"
             label="Minimum Subtotal (GH₵)"
@@ -272,7 +272,7 @@ export default function CouponFormFields({
               minDate={form.validFrom || undefined}
             />
           </Box>
-          <TextField
+          <TextField optionContext="coupon"
             fullWidth
             size="small"
             label="Limit to specific people (optional)"

@@ -1,5 +1,5 @@
+import TextField from '@/components/AdminTextField'
 import { CollectionTable, CollectionViewSwitch, useCollectionView } from '@/components/CollectionView'
-import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import { useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import { Alert, Skeleton, Box, Typography, MenuItem, InputAdornment, Avatar, Chip, Button } from '@mui/material'
@@ -116,7 +116,7 @@ export default function UsersPage() {
       {/* Filter bar */}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'minmax(0, 2fr) minmax(150px, 1fr) auto' }, ...raisedSurface, mb: 3 }}>
         <Box sx={{ px: 2.5, py: 1.5, display: 'flex', alignItems: 'center' }}>
-          <TextField
+          <TextField optionContext="role"
             size="small"
             variant="outlined"
             placeholder="Search users..."
@@ -134,7 +134,7 @@ export default function UsersPage() {
           />
         </Box>
         <Box sx={{ px: 2.5, py: 1.5, display: 'flex', alignItems: 'center' }}>
-          <TextField
+          <TextField optionContext="role"
             select
             size="small"
             variant="outlined"

@@ -1,6 +1,6 @@
+import TextField from '@/components/AdminTextField'
 import ExportMenu from '@/components/ExportMenu'
 import { exportTable, dateCell } from '@/lib/exports/report'
-import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -199,7 +199,7 @@ export default function AffiliatesPage() {
           {/* Filters */}
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '2fr 1fr' }, ...raisedSurface, mb: 3 }}>
             <Box sx={{ px: 2.5, py: 1.5, display: 'flex', alignItems: 'center' }}>
-              <TextField
+              <TextField optionContext="affiliate"
                 size="small" variant="outlined" fullWidth
                 placeholder="Search by code, user, or account name..."
                 value={search} onChange={(e) => setSearch(e.target.value)}
@@ -208,7 +208,7 @@ export default function AffiliatesPage() {
               />
             </Box>
             <Box sx={{ px: 2.5, py: 1.5, display: 'flex', alignItems: 'center' }}>
-              <TextField
+              <TextField optionContext="affiliate"
                 select size="small" variant="outlined" label="Status" fullWidth
                 value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
               >
@@ -404,14 +404,14 @@ export default function AffiliatesPage() {
               <strong style={{ fontFamily: '"Outfit", monospace' }}>{editing.referralCode}</strong> · {editing.userName || 'User unavailable'}
             </Typography>
           )}
-          <TextField
+          <TextField optionContext="affiliate"
             fullWidth size="small" label="Commission Rate" type="number"
             value={editRate}
             onChange={(e) => setEditRate(e.target.value)}
             helperText="Percent of net paid-subscription revenue (0–100)"
             InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
           />
-          <TextField
+          <TextField optionContext="affiliate"
             select fullWidth size="small" label="Status"
             value={editStatus}
             onChange={(e) => setEditStatus(e.target.value as AffiliateStatus)}

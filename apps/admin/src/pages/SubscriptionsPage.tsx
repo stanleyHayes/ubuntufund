@@ -1,6 +1,6 @@
+import TextField from '@/components/AdminTextField'
 import ExportMenu from '@/components/ExportMenu'
 import { exportTable, dateCell } from '@/lib/exports/report'
-import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Skeleton, Box, Typography, MenuItem, InputAdornment, Button } from '@mui/material'
@@ -320,7 +320,7 @@ export default function SubscriptionsPage() {
       {/* Filter bar */}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr 1fr 1fr' }, ...raisedSurface, mb: 3 }}>
         <Box sx={{ px: 2.5, py: 1.5, display: 'flex', alignItems: 'center' }}>
-          <TextField
+          <TextField optionContext="subscription"
             size="small"
             variant="outlined"
             placeholder="Search subscribers..."
@@ -338,7 +338,7 @@ export default function SubscriptionsPage() {
           />
         </Box>
         <Box sx={{ px: 2.5, py: 1.5, display: 'flex', alignItems: 'center' }}>
-          <TextField
+          <TextField optionContext="subscription"
             select size="small" variant="outlined" label="Tier"
             value={tierFilter} onChange={e => setTierFilter(e.target.value)} fullWidth
           >
@@ -349,7 +349,7 @@ export default function SubscriptionsPage() {
           </TextField>
         </Box>
         <Box sx={{ px: 2.5, py: 1.5, display: 'flex', alignItems: 'center' }}>
-          <TextField
+          <TextField optionContext="subscription"
             select size="small" variant="outlined" label="Status"
             value={statusFilter} onChange={e => setStatusFilter(e.target.value)} fullWidth
           >

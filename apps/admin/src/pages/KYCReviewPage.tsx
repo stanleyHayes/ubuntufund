@@ -1,8 +1,8 @@
+import TextField from '@/components/AdminTextField'
 import { KYCRejectDialog } from '@/components/kyc/KYCRejectDialog'
 import ExportMenu from '@/components/ExportMenu'
 import { loadAll } from '@/lib/exports/loadAll'
 import { exportTable, dateCell } from '@/lib/exports/report'
-import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import { useState, useMemo } from 'react'
 import { Alert, Skeleton, Box, Typography, MenuItem, Button, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material'
 import { raisedSurface, insetSurface } from '@/lib/surfaces'
@@ -147,11 +147,11 @@ return { title: 'KYC review queue', filters: [`Status: ${statusFilter}`, `Type: 
       {/* Filter bar */}
       <Box sx={{
         display: 'grid',
-        mb: 3, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', lg: '160px 160px minmax(0, 1fr) auto' },
+        mb: 3, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', lg: 'minmax(210px, 1fr) minmax(210px, 1fr) minmax(240px, 2fr) auto' },
         ...raisedSurface,
       }}>
         <Box sx={{ p: 2, minWidth: 0 }}>
-          <TextField
+          <TextField optionContext="verification"
             select
             fullWidth
             size="small"
@@ -168,7 +168,7 @@ return { title: 'KYC review queue', filters: [`Status: ${statusFilter}`, `Type: 
           </TextField>
         </Box>
         <Box sx={{ p: 2, minWidth: 0 }}>
-          <TextField
+          <TextField optionContext="verification"
             select
             fullWidth
             size="small"
@@ -185,7 +185,7 @@ return { title: 'KYC review queue', filters: [`Status: ${statusFilter}`, `Type: 
           </TextField>
         </Box>
         <Box sx={{ p: 2, minWidth: 0 }}>
-          <TextField
+          <TextField optionContext="verification"
             fullWidth
             size="small"
             placeholder="Search KYC verifications..."
@@ -396,7 +396,7 @@ return { title: 'KYC review queue', filters: [`Status: ${statusFilter}`, `Type: 
         <DialogTitle id="kyc-request-title">Request more information</DialogTitle>
         <DialogContent>
           <Typography sx={{ mb: 2 }}>Explain what the applicant needs to clarify or upload. This request will appear in their verification account.</Typography>
-          <TextField autoFocus fullWidth multiline minRows={3} label="Information needed" value={requestPrompt} disabled={saving} onChange={event => setRequestPrompt(event.target.value)} inputProps={{ maxLength: 2000 }} helperText={`${requestPrompt.trim().length}/2000 characters (at least 20)`} />
+          <TextField optionContext="verification" autoFocus fullWidth multiline minRows={3} label="Information needed" value={requestPrompt} disabled={saving} onChange={event => setRequestPrompt(event.target.value)} inputProps={{ maxLength: 2000 }} helperText={`${requestPrompt.trim().length}/2000 characters (at least 20)`} />
           {actionError && <Alert severity="error" sx={{ mt: 2 }}>{actionError}</Alert>}
         </DialogContent>
         <DialogActions>

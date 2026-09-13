@@ -1,5 +1,5 @@
+import TextField from '@/components/AdminTextField'
 import { Skeleton, Stack } from '@mui/material'
-import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import { useEffect, useState } from 'react'
 import { Alert, Box, Button, MenuItem, Typography } from '@mui/material'
 import { api } from '@/lib/api'
@@ -147,7 +147,7 @@ export function CampaignReviewSettings({ canEdit }: { canEdit: boolean }) {
       </Typography>
       {error && <Alert severity="error">{error}</Alert>}
       {message && <Alert severity="success">{message}</Alert>}
-      <TextField
+      <TextField optionContext="campaign-rule"
         fullWidth
         select
         label="Tier rule up to GHS 250,000"
@@ -164,7 +164,7 @@ export function CampaignReviewSettings({ canEdit }: { canEdit: boolean }) {
       </TextField>
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 1 }}>
         {thresholds.map((value, i) => (
-          <TextField
+          <TextField optionContext="campaign-rule"
             fullWidth
             key={THRESHOLD_KEYS[i]}
             label={`Tier ${i + 1} ceiling (GH₵)`}
@@ -178,7 +178,7 @@ export function CampaignReviewSettings({ canEdit }: { canEdit: boolean }) {
           />
         ))}
       </Box>
-      <TextField
+      <TextField optionContext="campaign-rule"
         fullWidth
         label="Send review alerts to"
         type="email"

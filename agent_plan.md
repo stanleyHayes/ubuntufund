@@ -1,5 +1,12 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — Descriptive admin dropdowns
+
+- Standardized admin select fields and coupon multi-selects through shared AdminTextField/AdminSelect: meaningful icons, human-readable titles, contextual descriptions, selected checkmarks, themed surfaces and accessible description associations. Closed fields show compact titles; raw values, existing selection callbacks, disabled choices and coupon checkbox behavior remain intact. KYC filter columns widened; selected titles wrap instead of truncating. Sign-out menu also has explanatory copy.
+- Covers status, roles, tiers, campaign categories, KYC types, content queues, contact types, donation anonymity, coupons/commission/billing/surfaces, language, review rules, crypto age and page-size menus. Existing export and profile menus retain their rich content and SVG watermarks; sidebar connectors are unchanged. Added the convention to apps/admin/AGENTS.md.
+- All 71 existing admin tests plus two new raw-value/disabled/multi-select tests pass. Fourteen mocked browser flows cover the seven supplied sections at 390/1440 widths in dark/light themes, including option icons/descriptions, selection, keyboard open/Escape/focus and overflow. Rechecked the Plus plan label after mapping legacy starter to its correct description. Screenshots inspected; admin types/build pass and lint has only the existing PublicationReviewsPage ref warning. No production status or financial record was changed by verification.
+- API/shared source remains unchanged at de49df2 during full regression. Original tool handle73343 was lost after interruption, but OS process97096 was verified live and its log continued advancing; do not restart or lift the API source freeze from handle loss alone.
+
 ### 2026-09-13 — Atomic donation settlement
 
 - Published as `de49df2`. Full API regression73343 is running against unchanged de49df2 API/shared source; log `/tmp/ujimora-donation-atomic-full-regression.log`. Do not edit or fast-forward root API/shared source until this process is terminal. Continue read-only audit or use an isolated checkout for new implementation. This run supersedes neither the old failed baseline result nor external provider/store verification until its terminal evidence is recorded.

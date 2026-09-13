@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import { Box, Button, Typography, Chip, Stack, Alert, MenuItem } from '@mui/material'
 import { ArticleRounded, AddRounded, EditRounded } from '@mui/icons-material'
-import { BrandedTextField } from '@ubuntu-fund/ui'
+import BrandedTextField from '@/components/AdminTextField'
 import type { BlogRecord } from '@ubuntu-fund/types'
 import PageHeader from '@/components/PageHeader'
 import {
@@ -87,7 +87,7 @@ export default function BlogPage() {
         }
       />
       <ReviewQueueToolbar>
-        <BrandedTextField
+        <BrandedTextField optionContext="blog"
           label="Search articles"
           value={search}
           onChange={(e) => {
@@ -95,7 +95,7 @@ export default function BlogPage() {
             pagination.goToPage(1)
           }}
         />
-        <BrandedTextField
+        <BrandedTextField optionContext="blog"
           select
           label="Status"
           value={filter}

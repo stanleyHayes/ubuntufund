@@ -1,6 +1,6 @@
+import TextField from '@/components/AdminTextField'
 import ExportMenu from '@/components/ExportMenu'
 import { exportTable } from '@/lib/exports/report'
-import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import { Link as RouterLink, useLocation } from 'react-router-dom'
 import CouponFormFields from '@/components/coupons/CouponFormFields'
 import { type CouponForm, emptyForm, parseEmails, planLabel } from '@/components/coupons/couponForm'
@@ -212,7 +212,7 @@ export default function CouponsPage() {
       {/* Filters */}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '2fr 1fr' }, gap: 0, ...raisedSurface, mb: 3 }}>
         <Box sx={{ px: 2.5, py: 1.5, display: 'flex', alignItems: 'center' }}>
-          <TextField
+          <TextField optionContext="coupon"
             size="small" variant="outlined" fullWidth
             placeholder="Search by code or description..."
             value={search} onChange={(e) => setSearch(e.target.value)}
@@ -221,7 +221,7 @@ export default function CouponsPage() {
           />
         </Box>
         <Box sx={{ px: 2.5, py: 1.5, display: 'flex', alignItems: 'center' }}>
-          <TextField
+          <TextField optionContext="coupon"
             select size="small" variant="outlined" label="Status" fullWidth
             value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
           >

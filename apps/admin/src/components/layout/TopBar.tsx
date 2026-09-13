@@ -347,7 +347,7 @@ export default function TopBar({
               <ListItemIcon>
                 <LogoutRoundedIcon sx={{ fontSize: 18, color: '#C06B58' }} />
               </ListItemIcon>
-              Sign out
+              <Box><Typography fontWeight={600}>Sign out</Typography><Typography variant="caption" color="text.secondary">End this admin session on this device.</Typography></Box>
             </MenuItem>
           </Menu>
         </Box>

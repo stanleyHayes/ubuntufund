@@ -1,4 +1,5 @@
-import { ButtonBase, Box, Typography, IconButton, TextField, MenuItem } from '@mui/material'
+import TextField from '@/components/AdminTextField'
+import { ButtonBase, Box, Typography, IconButton, MenuItem } from '@mui/material'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import FirstPageIcon from '@mui/icons-material/FirstPage'
@@ -73,12 +74,12 @@ export default function PaginationBar({ pagination, accentColor = '#5E8F72', neu
           <Typography sx={{ fontSize: '0.68rem', color: 'text.secondary', whiteSpace: 'nowrap' }}>
             per page
           </Typography>
-          <TextField
+          <TextField optionContext="pagination"
             disabled={disabled}
             select
             size="small"
             variant={neumorphic ? 'outlined' : 'standard'}
-            slotProps={{ select: { inputProps: { 'aria-label': 'Items per page' } } }}
+            slotProps={{ input: { startAdornment: null }, select: { inputProps: { 'aria-label': 'Items per page' } } }}
             value={pageSize}
             onChange={(e) => setPageSize(Number(e.target.value))}
             sx={{

@@ -1,6 +1,6 @@
+import TextField from '@/components/AdminTextField'
 import ReviewQueuePagination from '@/components/ReviewQueuePagination'
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
-import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import ShieldRoundedIcon from '@mui/icons-material/ShieldRounded'
 import PageHeader from '@/components/PageHeader'
 import { raisedSurface } from '@/lib/surfaces'
@@ -37,7 +37,7 @@ export default function SafetyReportsPage() {
   return <Stack spacing={3}>
     <PageHeader title="Community safety reports" eyebrow="Trust & safety" lede="Review reported content and protect your community. Urgent reports appear first." tone="clay" icon={<ShieldRoundedIcon />} stats={[{ label: "Reports in this view", value: loading ? <Skeleton width={60} /> : error ? "—" : total }, { label: "Live cleanup pending", value: loading ? <Skeleton width={60} /> : error ? "—" : pendingLiveCleanup }]} />
     <ReviewQueueToolbar>
-      <TextField select sx={{ maxWidth: { sm: 280 } }} label="Status" value={status} onChange={e => { setStatus(e.target.value); setPage(1) }}>{['pending', 'resolved', 'dismissed'].map(value => <MenuItem key={value} value={value}>{value}</MenuItem>)}</TextField>
+      <TextField optionContext="safety" select sx={{ maxWidth: { sm: 280 } }} label="Status" value={status} onChange={e => { setStatus(e.target.value); setPage(1) }}>{['pending', 'resolved', 'dismissed'].map(value => <MenuItem key={value} value={value}>{value}</MenuItem>)}</TextField>
       <Button variant="outlined" startIcon={<RefreshRoundedIcon />} disabled={loading || !!busy} onClick={() => void load()}>Refresh queue</Button>
       <ExportMenu title="Safety reports" disabled={loading || !!error} getReport={async progress => ({ title: "Safety reports", filters: [`Status: ${status}`], tables: [exportTable("Safety reports", await loadAll<Report>(`/admin/safety-reports?status=${status}`, progress), { ID: r => r._id, Type: r => r.targetType, Target: r => r.targetId, Reason: r => r.reason, Status: r => r.status, Resolution: r => r.resolution, Priority: r => r.priority, "Created (UTC)": r => dateCell(r.createdAt) })] })} />
     </ReviewQueueToolbar><Typography color="text.secondary">Review reported comments, donor/supporter messages, broadcasts and users. Urgent child-safety and credible-threat reports appear first. Publishing restrictions preserve account settings and financial access.</Typography>
@@ -53,7 +53,7 @@ export default function SafetyReportsPage() {
       <Box sx={{ p: 2, bgcolor: 'action.hover' }}><Typography variant="subtitle2">Reported content snapshot</Typography><Typography sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{report.evidence}</Typography></Box>
       {report.status === 'pending' && report.reviewAction && <Alert severity="info">Review started: {report.reviewAction.replaceAll('_', ' ')}. Retry that action to finish it. The original notes are preserved.</Alert>}
       {report.reviewNotes && <Typography>Previous review: {report.reviewNotes}</Typography>}
-      <TextField multiline minRows={2} label="Review notes (at least 20 characters)" value={notes[report._id] ?? (report.status === 'pending' ? report.reviewNotes : '') ?? ''} disabled={report.status === 'pending' && !!report.reviewAction} onChange={e => setNotes(current => ({ ...current, [report._id]: e.target.value }))} inputProps={{ maxLength: 2000 }} />
+      <TextField optionContext="safety" multiline minRows={2} label="Review notes (at least 20 characters)" value={notes[report._id] ?? (report.status === 'pending' ? report.reviewNotes : '') ?? ''} disabled={report.status === 'pending' && !!report.reviewAction} onChange={e => setNotes(current => ({ ...current, [report._id]: e.target.value }))} inputProps={{ maxLength: 2000 }} />
       <Stack direction="row" useFlexGap flexWrap="wrap" spacing={1}>
         {report.status === 'pending' ? <>
           {report.targetType === 'live' && <Button disabled={!!busy || ((notes[report._id] || (report.status === 'pending' ? report.reviewNotes : ''))?.trim().length || 0) < 20} onClick={() => void review(report, 'stop_live')}>End broadcast at provider</Button>}

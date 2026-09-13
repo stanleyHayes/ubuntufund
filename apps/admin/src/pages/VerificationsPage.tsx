@@ -1,9 +1,9 @@
+import TextField from '@/components/AdminTextField'
 import { Link as RouterLink } from 'react-router-dom'
 import { KYCRejectDialog } from '@/components/kyc/KYCRejectDialog'
 import ExportMenu from '@/components/ExportMenu'
 import { loadAll } from '@/lib/exports/loadAll'
 import { exportTable, dateCell } from '@/lib/exports/report'
-import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import { useState, useMemo } from 'react'
 import { Alert, Skeleton, Box, Typography, MenuItem } from '@mui/material'
 import { raisedSurface, insetSurface } from '@/lib/surfaces'
@@ -133,7 +133,7 @@ return { title: 'Verifications', filters: [`Status: ${statusFilter}`, `Search: $
         ...raisedSurface,
       }}>
         <Box sx={{ p: 2, minWidth: 0 }}>
-          <TextField
+          <TextField optionContext="verification"
             select
             fullWidth
             size="small"
@@ -148,7 +148,7 @@ return { title: 'Verifications', filters: [`Status: ${statusFilter}`, `Search: $
           </TextField>
         </Box>
         <Box sx={{ p: 2, minWidth: 0 }}>
-          <TextField
+          <TextField optionContext="verification"
             fullWidth
             size="small"
             placeholder="Search verifications..."

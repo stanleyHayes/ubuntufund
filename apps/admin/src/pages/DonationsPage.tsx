@@ -1,10 +1,10 @@
+import TextField from '@/components/AdminTextField'
 import CreditCardRoundedIcon from '@mui/icons-material/CreditCardRounded'
 import AccountBalanceWalletRoundedIcon from '@mui/icons-material/AccountBalanceWalletRounded'
 import PhoneAndroidRoundedIcon from '@mui/icons-material/PhoneAndroidRounded'
 import CurrencyBitcoinRoundedIcon from '@mui/icons-material/CurrencyBitcoinRounded'
 import AccountBalanceRoundedIcon from '@mui/icons-material/AccountBalanceRounded'
 import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded'
-import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import { useState } from 'react'
 import { Alert, Skeleton, Box, Typography, MenuItem, InputAdornment } from '@mui/material'
 import { raisedSurface, insetSurface } from '@/lib/surfaces'
@@ -221,7 +221,7 @@ export default function DonationsPage() {
         }}
       >
         <Box sx={{ px: 2.5, py: 1.5, display: 'flex', alignItems: 'center' }}>
-          <TextField
+          <TextField optionContext=""
             size="small"
             variant="outlined"
             placeholder="Search by donor or campaign..."
@@ -239,7 +239,7 @@ export default function DonationsPage() {
           />
         </Box>
         <Box sx={{ px: 2.5, py: 1.5, display: 'flex', alignItems: 'center' }}>
-          <TextField
+          <TextField optionContext=""
             select
             size="small"
             variant="outlined"

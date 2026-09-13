@@ -1,5 +1,6 @@
+import TextField from '@/components/AdminTextField'
 import { useEffect, useState } from 'react'
-import { Alert, Box, Button, Chip, MenuItem, Skeleton, TextField, Typography } from '@mui/material'
+import { Alert, Box, Button, Chip, MenuItem, Skeleton, Typography } from '@mui/material'
 import CurrencyExchangeRoundedIcon from '@mui/icons-material/CurrencyExchangeRounded'
 import { LoadingDots } from '@ubuntu-fund/ui'
 import type { CryptoAssetInfo } from '@ubuntu-fund/types'
@@ -61,7 +62,7 @@ export default function CryptoOperations() {
         <Box>
           <Typography sx={{ fontWeight: 800, mb: .75 }}>Check delayed deposits</Typography>
           <Typography color="text.secondary" variant="body2" sx={{ mb: 2 }}>Checks up to 100 pending or processing deposits against the provider and applies confirmed status changes. This can credit confirmed contributions.</Typography>
-          <TextField select fullWidth label="Check deposits older than" value={age} onChange={(e) => setAge(Number(e.target.value))} disabled={busy || user?.role !== 'admin'} sx={{ mb: 2 }}>{[15, 30, 60, 120].map((minutes) => <MenuItem key={minutes} value={minutes}>{minutes} minutes</MenuItem>)}</TextField>
+          <TextField optionContext="crypto" select fullWidth label="Check deposits older than" value={age} onChange={(e) => setAge(Number(e.target.value))} disabled={busy || user?.role !== 'admin'} sx={{ mb: 2 }}>{[15, 30, 60, 120].map((minutes) => <MenuItem key={minutes} value={minutes}>{minutes} minutes</MenuItem>)}</TextField>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1.5 }}>
           <Button variant="contained" onClick={() => void reconcile()} disabled={busy || user?.role !== 'admin'} startIcon={busy ? <LoadingDots size={6} /> : undefined} sx={{ minHeight: 48, borderRadius: '999px' }}>{busy ? 'Checking deposits…' : 'Reconcile deposits'}</Button>
             <ExportMenu title="Crypto operations" disabled={loading || busy || !!error} getReport={() => ({ title: 'Crypto operations', filters: ['Current provider availability', ...(summary ? [`Latest reconciliation: deposits older than ${summaryAge} minutes`] : [])], tables: [exportTable('Available assets', availability?.assets ?? [], { Asset: r => r.asset, Label: r => r.label, Networks: r => r.networks.map(network => network.label).join(', ') }), ...(summary ? [exportTable('Latest reconciliation', [summary], { Scanned: r => r.scanned, Settled: r => r.settled, Detected: r => r.detected, Failed: r => r.failed, Pending: r => r.pending, Errors: r => r.errored, Blocked: r => r.blocked ?? 0 }), exportTable('Deposits requiring investigation', summary.issues ?? [], { 'Deposit ID': r => r.donationIntentId, Provider: r => r.provider, Reason: r => issueLabel(r.reason) })] : [])] })} />
