@@ -633,10 +633,13 @@ export function DonatePage() {
             {/* Accepted payment methods (routed securely through Paystack) */}
             <Box
               sx={{
-                p: 2.5,
+                p: { xs: 2, sm: 2.5 },
                 mb: 3,
                 borderRadius: SHAPE.card,
-                bgcolor: 'action.hover',
+                bgcolor: 'background.paper',
+                boxShadow: 'var(--neu-raised)',
+                border: '1px solid',
+                borderColor: 'divider',
               }}
             >
               <PaymentMethods

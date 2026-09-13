@@ -1,6 +1,11 @@
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import Tooltip from '@mui/material/Tooltip'
+import SmartphoneRounded from '@mui/icons-material/SmartphoneRounded'
+import CreditCardRounded from '@mui/icons-material/CreditCardRounded'
+import AccountBalanceRounded from '@mui/icons-material/AccountBalanceRounded'
+import AccountBalanceWalletRounded from '@mui/icons-material/AccountBalanceWalletRounded'
+import CheckRounded from '@mui/icons-material/CheckRounded'
 import { keyframes } from '@mui/material/styles'
 import { SHAPE } from '../theme'
 
@@ -308,34 +313,51 @@ export function PaymentMethods({
   }
 
   if (compact) {
+    const descriptions: Record<string, string> = {
+      mobile_money: 'Pay from your mobile money account.',
+      card: 'Use your debit or credit card.',
+      bank: 'Pay by bank transfer.',
+      wallet: 'Use your available Ujimora balance.',
+    }
+    const groups = filteredCategories.map(category => ({
+      category,
+      entries: displayProviders.filter(provider => provider.category === category),
+    })).filter(group => group.entries.length)
     return (
       <Box>
-        {title && (
-          <Typography
-            variant="caption"
-            sx={{
-              fontWeight: 700,
-              color: 'text.secondary',
-              textTransform: 'uppercase',
-              letterSpacing: 1,
-              mb: 1.5,
-              display: 'block',
-            }}
-          >
-            {title}
+        {title && <Box sx={{ mb: 2 }}>
+          <Typography component="h3" sx={{ fontWeight: 750, fontSize: '1.05rem', color: 'text.primary' }}>{title}</Typography>
+          <Typography variant="body2" sx={{ color: 'text.secondary', mt: .4 }}>
+            {onSelect ? 'Choose the option that works for you.' : 'Choose your preferred method at checkout.'}
           </Typography>
-        )}
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, justifyContent: 'center' }}>
-          {displayProviders.map((p, i) => (
-            <ProviderCard
-              key={p.name}
-              provider={p}
-              index={i}
-              onSelect={onSelect}
-              selected={selectedSlug ? normalizeSlug(selectedSlug) === normalizeSlug(providerMethodMap.get(p.name)?.slug ?? '') : false}
-              methodData={providerMethodMap.get(p.name)}
-            />
-          ))}
+        </Box>}
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: groups.length > 1 ? 'repeat(2, minmax(0, 1fr))' : '1fr' }, gap: 1.5 }}>
+          {groups.map(({ category, entries }) => {
+            const Icon = category === 'mobile_money' ? SmartphoneRounded : category === 'card' ? CreditCardRounded : category === 'bank' ? AccountBalanceRounded : AccountBalanceWalletRounded
+            return <Box key={category} sx={{ position: 'relative', overflow: 'hidden', minWidth: 0, p: 2, borderRadius: SHAPE.sm, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider' }}>
+              <Icon aria-hidden sx={{ position: 'absolute', right: -12, top: -8, fontSize: 112, color: 'text.primary', opacity: .045, pointerEvents: 'none', transform: 'rotate(-12deg)' }} />
+              <Box sx={{ display: 'flex', gap: 1.25, alignItems: 'center', position: 'relative' }}>
+                <Box sx={{ display: 'grid', placeItems: 'center', width: 40, height: 40, flexShrink: 0, borderRadius: 2, bgcolor: 'action.selected', color: 'text.primary' }}><Icon aria-hidden fontSize="small" /></Box>
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography sx={{ color: 'text.primary', fontWeight: 700, fontSize: '.95rem' }}>{CATEGORY_META[category].label}</Typography>
+                  <Typography sx={{ color: 'text.secondary', fontSize: '.8rem', lineHeight: 1.5 }}>{descriptions[category]}</Typography>
+                </Box>
+              </Box>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: .75, mt: 1.75, position: 'relative' }}>
+                {entries.map(provider => {
+                  const method = providerMethodMap.get(provider.name)
+                  const clickable = !!onSelect && !!method
+                  const selected = !!selectedSlug && normalizeSlug(selectedSlug) === normalizeSlug(method?.slug ?? '')
+                  return <Box key={provider.name} component={clickable ? 'button' : 'span'} type={clickable ? 'button' : undefined}
+                    onClick={clickable ? () => onSelect(method) : undefined}
+                    aria-pressed={clickable ? selected : undefined}
+                    sx={{ display: 'inline-flex', alignItems: 'center', gap: .5, px: 1.25, py: .75, minHeight: clickable ? 44 : undefined, maxWidth: '100%', fontFamily: 'inherit', fontSize: '.8rem', fontWeight: 650, lineHeight: 1.4, borderRadius: 1.5, border: '1px solid', borderColor: selected ? 'primary.main' : 'divider', bgcolor: selected ? 'action.selected' : 'background.default', color: 'text.primary', cursor: clickable ? 'pointer' : 'default', ...(clickable && { '&:hover': { bgcolor: 'action.hover' }, '&:focus-visible': { outline: '2px solid', outlineColor: 'primary.main', outlineOffset: 2 } }) }}>
+                    {selected && <CheckRounded aria-hidden sx={{ fontSize: 16 }} />}{provider.shortName ?? provider.name}
+                  </Box>
+                })}
+              </Box>
+            </Box>
+          })}
         </Box>
       </Box>
     )

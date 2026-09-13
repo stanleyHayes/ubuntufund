@@ -240,3 +240,8 @@ Copied the four independently inspected C++/fbjni candidate binaries into the is
 APK assemble24833 finished exit1 after1m56s: Android lint workers exhausted Metaspace while analyzing ReactAndroid, expo-constants and LiveKit WebRTC. This is not an ignored lint pass. Restarted after terminal failure as35851 with4GB Java heap,2GB metaspace, max-workers2 and a single-use daemon; lint stays enabled. Log `/tmp/ujimora-aligned-candidate-apk-retry.log`. Uses archived69d94fa JS, debug signing and deliberately non-routable https://api.invalid; never a final current-source/provider/store release.
 
 Cached AAR inventory maps remaining original failing prebuilt names to AndroidX graphics-path1.0.1/datastore-core-android1.1.7, Fresco3.6.0, gif3.0.5, avif1.1.1.14d8e3c4, WebRTC144.7559.05 and LiveKit noise2.0.0 (`/tmp/ujimora-remaining-native-owners.json`). This identifies candidate dependency owners, not proof of final selected/packaged versions or remediation. Re-inspect the actual new APK before closing any packaged-library finding.
+
+
+### Candidate APK assembly completed — 13 September 2026
+
+Retry35851 completed exit0 in1m37s (1,085tasks,87executed), with lint enabled. APK `/tmp/ujimora-android-69d94fa/android/app/build/outputs/apk/release/app-release.apk`. Actual ELF inspection63780 covers4864-bit libraries: 30pass LOAD/RELRO, the remainder fail; report `/tmp/ujimora-aligned-candidate-apk-elf.json`. This is archived69d94fa JavaScript/debug signing/non-routable API, not a release approved artifact. Final stripped-binary provenance, ZIP alignment, startup and remaining third-party library fixes are still required.

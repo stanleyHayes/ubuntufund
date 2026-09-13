@@ -1,5 +1,12 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — Checkout payment-method redesign
+
+- Replaced the compact row of generic provider symbols with mobile-money/card panels, clear category icons/titles/descriptions, readable provider name badges and subtle SVG watermarks. Panels stack on narrow screens and use theme tokens; selectable wallet choices retain native button/keyboard and selected-state behavior. Payment rails/checkout logic are unchanged.
+- UI types, affected lint and web production build pass. Three existing checkout/wallet browser flows pass; four temporary visual checks pass at320/390/1440 widths across light/dark themes with no horizontal overflow. Desktop-light and phone-dark previews inspected (`/tmp/ujimora-payments-1440-light.png`, `/tmp/ujimora-payments-390-dark.png`).
+- Background APK35851 completed exit0 in1m37s with lint enabled. Actual packaged ELF inspection remains a partial result; see native ledger for release scope and next checks.
+
+
 ### 2026-09-13 — Native build complete; APK lint memory retry
 
 - Native70084 completed exit0 in11m9s. Experimental app JNI source now supplies verified C++/fbjni candidates; all four merged native files match their hashes. Final APK provenance/device checks remain required.
