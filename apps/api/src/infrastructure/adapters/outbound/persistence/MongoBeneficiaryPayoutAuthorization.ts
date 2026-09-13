@@ -17,7 +17,7 @@ export class MongoBeneficiaryPayoutAuthorization {
     const current = await BeneficiaryRecipientModel.findOneAndUpdate({
       _id: recipient.id, campaignId: recipient.campaignId, beneficiaryId: recipient.beneficiaryId,
       recipientCode: recipient.recipientCode, currency: recipient.currency, kycVerified: true,
-      accountNumber: recipient.accountNumber, bankCode: recipient.bankCode, type: recipient.type,
+      accountNumber: recipient.accountNumber, bankCode: recipient.bankCode, accountName: recipient.accountName, type: recipient.type,
       kycVerifiedBy: recipient.kycVerifiedBy, kycVerifiedAt: recipient.kycVerifiedAt,
     }, { $inc: { payoutWriteVersion: 1 } }, { new: true, timestamps: false })
     if (!current || !current.kycVerifiedBy || !current.kycVerifiedAt)

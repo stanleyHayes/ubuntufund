@@ -1,5 +1,5 @@
 import { TransferOutcomeUnknownError } from '../../domain/errors/TransferOutcomeUnknownError.js';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import type {
   BeneficiaryPayout,
   BeneficiaryRecipient,
@@ -217,34 +217,37 @@ export class BeneficiaryPayoutUseCase {
       throw new AppError(`Payout cannot be approved in state ${payout.status}`, 409);
     }
 
-    // Maker-checker: a high-value beneficiary payout needs two distinct admins.
-    if (this.dualApprovalAmount > 0 && payout.amount >= this.dualApprovalAmount) {
-      if (!payout.firstApprovedBy) {
-        const recorded = await this.payoutRepo.recordFirstApproval(
-          payout.id,
-          requester.userId
-        );
-        if (!recorded) {
-          throw new AppError('Payout is no longer pending approval', 409);
-        }
-        return toBeneficiaryPayoutDto(recorded); // still PENDING, awaiting 2nd
-      }
-      if (payout.firstApprovedBy === requester.userId) {
-        throw new AppError(
-          'A second, different admin must approve this high-value payout',
-          409
-        );
-      }
-    }
-
     const recipient = await this.recipientRepo.findByCampaignAndBeneficiary(
       payout.campaignId,
       payout.beneficiaryId
     );
     if (!recipient) throw new AppError('Beneficiary payout recipient not found', 404);
+    if (recipient.id !== payout.recipientId) throw new AppError('Payout destination was replaced; create a new payout request.', 409);
     if (recipient.currency !== payout.currency) throw new AppError('Beneficiary destination currency does not match the payout.', 409);
     if (!recipient.kycVerified) {
       throw new AppError('Beneficiary KYC must be verified before payout', 422);
+    }
+
+    if (!this.authorization) throw new AppError('Beneficiary approval authorization is unavailable.', 503);
+    // A review covers this exact payout and KYC-reviewed destination. Changed or
+    // legacy evidence starts a fresh maker review, never a second approval.
+    const fingerprint = createHash('sha256').update(JSON.stringify([
+      payout.id, payout.campaignId, payout.beneficiaryId, payout.recipientId,
+      payout.amount, payout.currency, recipient.id, recipient.type, recipient.accountNumber,
+      recipient.bankCode, recipient.accountName, recipient.recipientCode, recipient.currency,
+      recipient.kycVerifiedBy, recipient.kycVerifiedAt ? new Date(recipient.kycVerifiedAt).toISOString() : null,
+    ])).digest('hex');
+    if (this.dualApprovalAmount > 0 && payout.amount >= this.dualApprovalAmount) {
+      if (!payout.firstApprovedBy || payout.toPlain().firstApprovalFingerprint !== fingerprint || !payout.toPlain().firstApprovedAt) {
+        const recorded = await this.unitOfWork.run(async () => {
+          await this.authorization!.assertCurrent(requester, recipient);
+          const reviewed = await this.payoutRepo.recordFirstApproval(payout.id, requester.userId, fingerprint, payout);
+          if (!reviewed) throw new AppError('Payout or its review changed; reload before approving.', 409);
+          return reviewed;
+        });
+        return toBeneficiaryPayoutDto(recorded);
+      }
+      if (payout.firstApprovedBy === requester.userId) throw new AppError('A second, different admin must approve this high-value payout', 409);
     }
 
     const balances = await this.paymentGateway.getBalance();
@@ -256,7 +259,6 @@ export class BeneficiaryPayoutUseCase {
     const reference = `bpay-${payout.id}-${randomUUID().slice(0, 8)}`;
     // Both balance mirrors and the processing reference commit together.
     // No provider calls or compensating balance writes belong in this callback.
-    if (!this.authorization) throw new AppError('Beneficiary approval authorization is unavailable.', 503);
     const processing = await this.unitOfWork.run(async () => {
       await this.authorization!.assertCurrent(requester, recipient);
       const reserved = await this.beneficiaryBalanceRepo.reserveForPayout(
@@ -267,7 +269,7 @@ export class BeneficiaryPayoutUseCase {
       if (!campReserved) throw new AppError('Payout could not be reserved; campaign balance requires reconciliation.', 409);
       const transitioned = await this.payoutRepo.transitionToProcessing(payout.id, {
         approvedBy: requester.userId, providerRef: reference,
-      });
+      }, payout);
       if (!transitioned) throw new AppError('Payout is no longer pending approval', 409);
       return transitioned;
     });

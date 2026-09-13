@@ -16,6 +16,7 @@ export interface BeneficiaryPayoutDocument extends Document {
   approvedBy?: string;
   firstApprovedBy?: string;
   firstApprovedAt?: Date;
+  firstApprovalFingerprint?: string;
   settlementApplied?: boolean;
   /** For a REVERSED payout, the status it reversed from (G7 repair). */
   reversedFrom?: 'PAID' | 'PROCESSING';
@@ -53,6 +54,9 @@ const schema = new Schema<BeneficiaryPayoutDocument>(
     transferCode: { type: String },
     requestedBy: { type: String, required: true },
     approvedBy: { type: String },
+    firstApprovedBy: { type: String },
+    firstApprovedAt: { type: Date },
+    firstApprovalFingerprint: { type: String },
     settlementApplied: { type: Boolean, default: false, index: true },
     reversedFrom: { type: String, enum: ['PAID', 'PROCESSING'] },
   },

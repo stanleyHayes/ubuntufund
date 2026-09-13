@@ -15,6 +15,7 @@ export interface BeneficiaryPayoutProps {
   approvedBy?: string;
   firstApprovedBy?: string;
   firstApprovedAt?: Date;
+  firstApprovalFingerprint?: string;
   /** For a REVERSED payout, the status it reversed from (G7 repair). */
   reversedFrom?: 'PAID' | 'PROCESSING';
   createdAt: Date;

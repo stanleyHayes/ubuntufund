@@ -35,18 +35,21 @@ export interface BeneficiaryPayoutRepositoryPort {
 
   /**
    * Maker-checker: atomically record the FIRST admin approval (set
-   * firstApprovedBy/At while PENDING and not yet first-approved). Null when
-   * already first-approved or no longer PENDING.
+   * firstApprovedBy/At and the reviewed fingerprint while PENDING). Can replace
+   * obsolete review evidence only when the exact request/prior review still matches.
    */
   recordFirstApproval(
     id: string,
-    makerId: string
+    makerId: string,
+    fingerprint: string,
+    expected: BeneficiaryPayoutEntity
   ): Promise<BeneficiaryPayoutEntity | null>;
 
   /** Atomically PENDING → PROCESSING, stamping approver + transfer reference. */
   transitionToProcessing(
     id: string,
-    fields: { approvedBy: string; providerRef: string }
+    fields: { approvedBy: string; providerRef: string },
+    expected: BeneficiaryPayoutEntity
   ): Promise<BeneficiaryPayoutEntity | null>;
   attachTransferCode(
     id: string,

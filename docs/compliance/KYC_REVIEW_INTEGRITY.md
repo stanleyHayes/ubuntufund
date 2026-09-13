@@ -673,3 +673,34 @@ Full API regression88675 FINISHED exit 0: 1,117 tests across 155 files passed in
 run does not cover subsequent history, manual destination, affiliate, beneficiary
 or this reset delta. Their focused evidence remains separate; current full
 regression and remaining release/engineering gates are still required.
+
+## Beneficiary first-review persistence and exact review consumption — 2026-09-13
+
+The first high-value approval previously ran before current staff/KYC validation;
+its reviewer and timestamp were declared in TypeScript but absent from the Mongoose
+schema, so they were not persisted. The schema now retains firstApprovedBy/At and
+an internal SHA-256 fingerprint of the reviewed payout amount/currency, identities,
+exact destination details and KYC reviewer/time. No duplicate destination details
+are exposed in public DTOs.
+
+First review runs inside the same unit of work as current staff credential and
+unchanged recipient/KYC locking. Both first-review and final PROCESSING writes
+compare the exact request and prior review, so a concurrent request/review change
+cannot count as approval or reserve money. Changed destinations or legacy reviews
+without a fingerprint require a fresh first review and then a different second
+administrator. Replaced recipient records require a new payout request. Account
+name joins the existing exact destination authorization predicate.
+
+Focused integration coverage includes stored reviewer/time, self-check rejection,
+successful second approval, staff revocation, changed account/KYC/amount, rollback
+after the actual review write, renewed and legacy reviews, replaced recipient IDs,
+changed review during provider lookup, and simultaneous first reviewers. Existing
+beneficiary reservation and paid-settlement regression coverage remains included.
+Logs: /tmp/ujimora-beneficiary-review-final-{tests,types}.log and
+/tmp/ujimora-beneficiary-review-lint.log. Final outcomes are recorded in agent_plan.md.
+
+Remaining: verification evidence completeness, beneficiary eligibility and split
+consent at consumption, terminal settlement consistency, other financial consumers,
+and provider/legal/native/store release gates. This does not establish a universal
+KYC policy or regulatory approval. Current full regression must supersede the older
+c8adacf baseline before making a current whole-suite claim.

@@ -22,10 +22,22 @@ function toDomain(doc: BeneficiaryPayoutDocument): BeneficiaryPayoutEntity {
     approvedBy: doc.approvedBy,
     firstApprovedBy: doc.firstApprovedBy,
     firstApprovedAt: doc.firstApprovedAt,
+    firstApprovalFingerprint: doc.firstApprovalFingerprint,
     reversedFrom: doc.reversedFrom,
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
   });
+}
+
+/** Compare the exact request and review read by the approver, including legacy absence. */
+function approvalFilter(expected: BeneficiaryPayoutEntity) {
+  const p = expected.toPlain();
+  return { campaignId: p.campaignId, beneficiaryId: p.beneficiaryId, recipientId: p.recipientId,
+    amount: p.amount, currency: p.currency,
+    firstApprovedBy: p.firstApprovedBy ?? { $exists: false },
+    firstApprovedAt: p.firstApprovedAt ?? { $exists: false },
+    firstApprovalFingerprint: p.firstApprovalFingerprint ?? { $exists: false },
+  };
 }
 
 export class MongoBeneficiaryPayoutRepository
@@ -97,11 +109,13 @@ export class MongoBeneficiaryPayoutRepository
 
   async recordFirstApproval(
     id: string,
-    makerId: string
+    makerId: string,
+    fingerprint: string,
+    expected: BeneficiaryPayoutEntity
   ): Promise<BeneficiaryPayoutEntity | null> {
     const doc = await BeneficiaryPayoutModel.findOneAndUpdate(
-      { _id: id, status: 'PENDING', firstApprovedBy: { $exists: false } },
-      { $set: { firstApprovedBy: makerId, firstApprovedAt: new Date() } },
+      { _id: id, status: 'PENDING', ...approvalFilter(expected) },
+      { $set: { firstApprovedBy: makerId, firstApprovedAt: new Date(), firstApprovalFingerprint: fingerprint } },
       { new: true }
     );
     return doc ? toDomain(doc) : null;
@@ -145,10 +159,11 @@ export class MongoBeneficiaryPayoutRepository
 
   async transitionToProcessing(
     id: string,
-    fields: { approvedBy: string; providerRef: string }
+    fields: { approvedBy: string; providerRef: string },
+    expected: BeneficiaryPayoutEntity
   ): Promise<BeneficiaryPayoutEntity | null> {
     const doc = await BeneficiaryPayoutModel.findOneAndUpdate(
-      { _id: id, status: 'PENDING' },
+      { _id: id, status: 'PENDING', ...approvalFilter(expected) },
       {
         $set: {
           status: 'PROCESSING',
