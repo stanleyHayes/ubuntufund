@@ -77,6 +77,7 @@ beforeEach(async () => {
     _id: ids.campaign,
     creatorId: String(ids.user),
     status: 'funded',
+    endDate: new Date(0), raisedAmount: 1000, goalAmount: 1000,
   })
   await TransferRecipientModel.collection.insertOne({
     _id: ids.recipient,
@@ -271,4 +272,41 @@ it('calls the provider only after the real approval transaction commits its rese
   await real.executeAutomatic(item.id)
   expect(provider.initiateTransfer).toHaveBeenCalledTimes(1)
   expect((await repo.findById(item.id))?.status).toBe('PROCESSING')
+})
+
+
+it.each(['owner', 'status', 'deleted', 'early'])('rejects concurrent automatic campaign %s changes before reserving or sending', async change => {
+  const item = await pending()
+  await CampaignBalanceModel.create({ campaignId: String(ids.campaign), currency: 'GHS', availableBalance: 1000 })
+  const provider = {
+    isConfigured: () => true,
+    getBalance: async () => [{ currency: 'GHS', balance: 1000 }],
+    initiateTransfer: vi.fn(),
+  }
+  const original = CampaignModel.findOneAndUpdate.bind(CampaignModel)
+  let changed = false
+  const lock = vi.spyOn(CampaignModel, 'findOneAndUpdate').mockImplementation((...args) => {
+    const query = original(...args)
+    const execute = query.exec.bind(query)
+    query.exec = async (...execArgs) => {
+      if (!changed) {
+        changed = true
+        const update = change === 'owner' ? { creatorId: String(new mongoose.Types.ObjectId()) }
+          : change === 'status' ? { status: 'blocked' }
+          : change === 'deleted' ? { deletedAt: new Date() }
+          : { endDate: new Date(Date.now() + 86_400_000), goalAmount: 2000 }
+        await CampaignModel.updateOne({ _id: ids.campaign }, update, { session: null })
+      }
+      return execute(...execArgs)
+    }
+    return query
+  })
+  try {
+    const real = new ApprovePayoutUseCase(repo, { findById: async () => ({ recipientCode: 'synthetic-recipient', type: 'ghipss' }) } as never, new MongoCampaignBalanceRepository(), provider as never, { dualApprovalAmount: 40000, maxTransferAmount: 50000 } as never, undefined, undefined, new MongoAutomaticPayoutVerification())
+    await expect(real.executeAutomatic(item.id)).rejects.toMatchObject({ statusCode: 409 })
+    expect(lock.mock.calls.length).toBeGreaterThan(1)
+    expect((await CampaignBalanceModel.findOne({ campaignId: String(ids.campaign) }))?.availableBalance).toBe(1000)
+    expect((await repo.findById(item.id))?.status).toBe('PENDING')
+    expect(provider.initiateTransfer).not.toHaveBeenCalled()
+  } finally { lock.mockRestore() }
 })

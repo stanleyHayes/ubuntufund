@@ -2,6 +2,8 @@
 
 ### 2026-09-12 — Ghana and mobile store compliance goal (IN PROGRESS)
 
+- Automatic bank execution now serializes current campaign owner/status/deletion/cashout eligibility before funds reservation. All 24 focused tests and API types/lint pass, including four concurrent campaign changes with retry/409/no transfer. Recipient/policy/budget and broader release gates remain open in KYC_REVIEW_INTEGRITY.md. Android image install 74629 remains live.
+
 - Manual single/batched bank reservation now serializes current campaign cashout eligibility inside the final staff/money transaction. All 33 focused tests, types/lint pass, including two concurrent eligibility changes with retry/409/no provider transfer. Remaining automatic/recipient/fee/release scope recorded in KYC_REVIEW_INTEGRITY.md. Android image 74629 remains live.
 
 - Campaign wallet settlement now serializes current campaign owner and early-cashout eligibility inside its money transaction. All 46 focused tests, API types/lint pass, including four concurrent campaign mutations with retry/409/no funds movement. Evidence and remaining bank/fee/consumer scope in KYC_REVIEW_INTEGRITY.md. Full 1,091-test baseline predates this delta; Android image install 74629 remains live.

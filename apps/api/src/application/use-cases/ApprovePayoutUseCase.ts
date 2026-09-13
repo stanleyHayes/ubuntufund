@@ -45,7 +45,7 @@ export class ApprovePayoutUseCase {
     private readonly payoutsConfig: PayoutsConfig,
     private readonly campaigns?: CampaignRepositoryPort,
     private readonly walletPayouts?: WalletPayoutPort,
-    private readonly automaticVerification?: { run<T>(userId: string, work: () => Promise<T>): Promise<T> },
+    private readonly automaticVerification?: { run<T>(userId: string, work: () => Promise<T>, payout?: Pick<PayoutEntity, 'campaignId' | 'type'>): Promise<T> },
     private readonly manualApproval?: { run<T>(requester: PayoutRequester, work: () => Promise<T>, payout?: Pick<PayoutEntity, 'campaignId' | 'type'>): Promise<T> },
   ) {}
 
@@ -209,7 +209,7 @@ export class ApprovePayoutUseCase {
         const processing = await this.payoutRepo.transitionToProcessing(payout.id, { approvedBy, providerRef: reference })
         if (!processing) throw new AppError('Payout is no longer pending approval', 409)
         return processing
-      })
+      }, payout)
     } else {
       if (!this.manualApproval) throw new AppError('Payout approval transaction is unavailable.', 503)
       if (mustBatch) return this.initiateBatched(payout, recipient, requester)
