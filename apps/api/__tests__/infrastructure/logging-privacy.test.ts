@@ -40,6 +40,13 @@ describe('diagnostic log privacy', () => {
     });
   });
 
+  it('retains MongoDB startup codes without exposing index values or raw error details', () => {
+    const error = Object.assign(new Error('private-sentinel database URI and document'), { name: 'MongoServerError', code: 85, keyValue: { email: 'private-sentinel' } });
+    logger.error({ err: error, modelName: 'CreatorPayout', stage: 'model_initialization' }, 'Database startup failed');
+    expect(JSON.parse(output.lines[0])).toMatchObject({ err: { type: 'MongoServerError', code: 85 }, modelName: 'CreatorPayout', stage: 'model_initialization' });
+    expect(output.lines.join('')).not.toContain('private-sentinel');
+  });
+
   it('logs route templates rather than submitted path values or query tokens, including unmatched requests', async () => {
     const app = express();
     app.use(requestLogger);

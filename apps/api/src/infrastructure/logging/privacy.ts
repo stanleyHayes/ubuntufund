@@ -34,7 +34,8 @@ export function diagnosticError(value: unknown): Record<string, string | number>
     result.statusCode = error.statusCode;
   }
   if (typeof error.code === 'string' && errorCodes.has(error.code)) result.code = error.code;
-  if (error.code === 11000) result.code = 11000; // Duplicate key; never include keyValue.
+  // Numeric MongoDB status codes identify startup/index failures without exposing key values or URIs.
+  if ((result.type === 'MongoServerError' || error.code === 11000) && typeof error.code === 'number' && Number.isSafeInteger(error.code) && error.code >= 0) result.code = error.code;
   // Error messages, stack first lines, causes and provider/DB payloads can embed
   // tokens, document data, submitted text, URLs and connection credentials.
   return result;
