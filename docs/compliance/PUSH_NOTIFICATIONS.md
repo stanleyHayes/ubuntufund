@@ -33,3 +33,9 @@ Validation completed: isolated Android prebuild and release-manifest session 820
 Android blockedPermissions now removes POST_NOTIFICATIONS contributed by Expo Notifications. This matches the unavailable push feature rather than retaining a permission the current app should never request. Expo prebuild and processReleaseMainManifest complete successfully; parsed merged manifest confirms absence of POST_NOTIFICATIONS and preservation of FOREGROUND_SERVICE_MEDIA_PROJECTION. Logs `/tmp/ujimora-push-permission-{prebuild,manifest}.log`.
 
 This does not uninstall the SDK, remove other transitive permissions, retire old tokens or revoke permissions in already-installed builds. Prior APK/AAB evidence predates this configuration change. Final artifact/device verification remains required; future push rollout must explicitly restore permission together with consent/delivery safeguards.
+
+### Packaged and installed permission verification
+
+Build83886 completes exit0 in37seconds for both APK/AAB with lint enabled. APK SHA256 `7133e5284ca6b817be719e5878b2b5017685341ec26214ccae82ba9ac7b42c00`; AAB SHA256 `ea1ea451845ddfaa91a9717976c41807368fd39fe0b26b97723d1d708332848e`. Both actual artifact manifests omit POST_NOTIFICATIONS and retain the screen-sharing foreground-service permission. APK ZIP alignment passes. All48 native binaries match the earlier inspected APK, so27RELRO findings remain.
+
+The APK installs on dedicated emulator-5580. Its installed requested-permission list excludes POST_NOTIFICATIONS; cold startup succeeds507ms. Evidence `/tmp/ujimora-no-push-artifacts.log`, `/tmp/ujimora-no-push-apk-manifest.txt`, `/tmp/ujimora-no-push-aab-manifest.xml`, `/tmp/ujimora-no-push-hashes.json`, `/tmp/ujimora-no-push-installed-package.txt`, `/tmp/ujimora-no-push-startup.log`. Debug signing and deliberately non-routable API mean local package/startup verification, not a production rollout or retirement of legacy tokens/identifiers.

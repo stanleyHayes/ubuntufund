@@ -1,5 +1,11 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — Disabled-push permission verified in artifacts/device
+
+- On09c32ad, assembleRelease/bundleRelease83886 pass in37seconds with lint enabled. Actual APK and AAB manifests omit POST_NOTIFICATIONS and retain screen-sharing permission. APK ZIP alignment passes; all48 native binaries match the prior inspected APK, retaining27RELRO findings.
+- APK installs on dedicated emulator-5580; installed requested-permission inventory excludes POST_NOTIFICATIONS, cold startup succeeds507ms. Debug signing/non-routable API constraints remain. Evidence `/tmp/ujimora-no-push-*`; PUSH_NOTIFICATIONS.md records hashes and scope. No verification job remains running.
+
+
 ### 2026-09-13 — Remove permission for disabled push
 
 - Android blockedPermissions now removes POST_NOTIFICATIONS because push is unavailable and registration/presentation are suppressed. Restore only with implemented consent/delivery rollout. Expo prebuild and release manifest task pass; parsed merged manifest confirms notification permission absent and screen-sharing permission retained.
