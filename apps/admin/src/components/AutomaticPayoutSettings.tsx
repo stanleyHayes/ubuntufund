@@ -1,3 +1,4 @@
+import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import { useEffect, useState } from 'react'
 import {
   Alert,
@@ -5,8 +6,8 @@ import {
   Button,
   FormControlLabel,
   Skeleton,
+  Stack,
   Switch,
-  TextField,
   Typography,
 } from '@mui/material'
 import { api } from '@/lib/api'
@@ -24,11 +25,13 @@ export function AutomaticPayoutSettings({ canEdit }: { canEdit: boolean }) {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
-  const load = () =>
-    api
+  const load = () => {
+    setError('')
+    return api
       .get<Policy>('/admin/automatic-payouts')
       .then(setPolicy)
       .catch((e) => setError(e.message))
+  }
   useEffect(() => {
     void load()
   }, [])
@@ -72,7 +75,13 @@ export function AutomaticPayoutSettings({ canEdit }: { canEdit: boolean }) {
       )}
       {notice && <Alert severity="success">{notice}</Alert>}
       {!policy ? (
-        !error && <Skeleton height={160} />
+        !error && (
+          <Stack aria-label="Loading automatic payout settings" spacing={2}>
+            {Array.from({ length: 6 }, (_, index) => (
+              <Skeleton key={index} variant="rounded" height={56} />
+            ))}
+          </Stack>
+        )
       ) : (
         <>
           <FormControlLabel
@@ -104,6 +113,7 @@ export function AutomaticPayoutSettings({ canEdit }: { canEdit: boolean }) {
               ] as const
             ).map(([key, label]) => (
               <TextField
+                fullWidth
                 key={key}
                 type="number"
                 label={label}

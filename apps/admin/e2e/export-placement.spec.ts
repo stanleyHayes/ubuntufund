@@ -29,7 +29,7 @@ for (const width of [390, 1440]) for (const path of ['/', '/users', '/coupons', 
     await expect(exportButton).toBeVisible()
     await expect(exportButton).toBeEnabled()
     if (path === '/coupons') await expect(actions.getByRole('link', { name: 'New Coupon' })).toBeVisible()
-    if (path === '/settings') await expect(actions.getByRole('button', { name: 'Save Changes' })).toBeVisible()
+    if (path === '/settings') await expect(actions.getByRole('link', { name: 'Manage Plans' })).toBeVisible()
     if (path === '/content/contact') await expect(actions.getByRole('button', { name: 'Save changes' })).toBeVisible()
     await exportButton.click()
     await expect(page.getByRole('menuitem', { name: 'Branded PDF' })).toBeVisible()

@@ -2,6 +2,7 @@
 
 Apply these conventions to new pages and additions to existing pages. Reuse the established Ujimora design; inspect a comparable existing page before implementing a new surface.
 
+- Preserve the sidebar tree connectors: the vertical line and horizontal branches connecting navigation items are an explicit user requirement for all shell redesigns.
 - Use `PageHeader` for page titles, section tone, icon, descriptive text and meaningful statistics. Supply the section SVG icon so the header includes its decorative watermark. Statistics must show skeletons while loading and an unavailable marker on failure, rather than invented zeroes.
 - Put page-wide exports in `PageHeader.actions` beside the existing page actions. Keep section-specific exports with their section heading or related controls in a wrapping action group (`ReviewQueueToolbar` for queues). Content exports belong beside Save; avoid isolated export rows and per-button bottom margins. Preserve the section SVG watermarks and allow action groups to wrap at phone widths.
 - Export format menus must use the branded raised surface, a heading and guidance, a subtle SVG watermark, and a meaningful icon, title and short description for each format. Preserve keyboard focus, accessible descriptions and narrow-screen wrapping; do not revert to bare format-name lists.

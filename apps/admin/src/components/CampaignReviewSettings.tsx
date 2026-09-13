@@ -1,5 +1,7 @@
+import { Skeleton, Stack } from '@mui/material'
+import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import { useEffect, useState } from 'react'
-import { Alert, Box, Button, MenuItem, TextField, Typography } from '@mui/material'
+import { Alert, Box, Button, MenuItem, Typography } from '@mui/material'
 import { api } from '@/lib/api'
 
 const TIER_KEY = 'campaigns.autoApproveMaxTier'
@@ -38,9 +40,13 @@ export function CampaignReviewSettings({ canEdit }: { canEdit: boolean }) {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [retry, setRetry] = useState(0)
 
   useEffect(() => {
     let active = true
+    setLoading(true)
+    setError('')
     api
       .get<{ resolved: Record<string, number> }>('/admin/commercial-config')
       .then((r) => {
@@ -52,10 +58,13 @@ export function CampaignReviewSettings({ canEdit }: { canEdit: boolean }) {
       .catch((e) => {
         if (active) setError(e instanceof Error ? e.message : 'Could not load review settings.')
       })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
     return () => {
       active = false
     }
-  }, [])
+  }, [retry])
 
   const numbers = thresholds.map(Number)
   const thresholdsValid = numbers.every((n) => Number.isFinite(n) && n > 0)
@@ -98,25 +107,54 @@ export function CampaignReviewSettings({ canEdit }: { canEdit: boolean }) {
     }
   }
 
+  if (loading)
+    return (
+      <Stack aria-label="Loading settings" spacing={2} sx={{ p: 3, my: 3 }}>
+        <Skeleton width="45%" height={32} />
+        <Skeleton width="90%" />
+        <Skeleton variant="rounded" height={56} />
+        <Skeleton width={180} height={48} />
+      </Stack>
+    )
+  if (error && !tier)
+    return (
+      <Alert
+        severity="error"
+        sx={{ my: 3 }}
+        action={<Button onClick={() => setRetry((value) => value + 1)}>Retry</Button>}
+      >
+        {error}
+      </Alert>
+    )
+
   return (
-    <Box sx={{ p: 3, my: 3, borderRadius: 3, bgcolor: 'background.paper' }}>
+    <Box
+      sx={{
+        p: { xs: 2, sm: 3 },
+        my: 3,
+        boxShadow: 'var(--neu-raised)',
+        borderRadius: 3,
+        bgcolor: 'background.paper',
+      }}
+    >
       <Typography variant="h6">Campaign review</Typography>
       <Typography variant="body2" sx={{ my: 2 }}>
         Goals above GHS 250,000 require staff approval unless the organizer has current approved
         identity verification (business verification for organizations) and an earlier published
-        campaign. Draft, pending and blocked campaigns do not qualify. The tier settings below
-        apply to goals up to GHS 250,000; they cannot waive the higher-goal rule. Plan and compliance
+        campaign. Draft, pending and blocked campaigns do not qualify. The tier settings below apply
+        to goals up to GHS 250,000; they cannot waive the higher-goal rule. Plan and compliance
         limits still apply. Changes affect new campaigns only.
       </Typography>
       {error && <Alert severity="error">{error}</Alert>}
       {message && <Alert severity="success">{message}</Alert>}
       <TextField
+        fullWidth
         select
         label="Tier rule up to GHS 250,000"
         value={tier}
         onChange={(e) => setTier(e.target.value)}
         disabled={!canEdit || busy}
-        sx={{ minWidth: 260, mb: 2, display: 'block' }}
+        sx={{ minWidth: 0, mb: 2, display: 'block' }}
       >
         {TIER_CHOICES.map((choice) => (
           <MenuItem key={choice.value} value={String(choice.value)}>
@@ -127,6 +165,7 @@ export function CampaignReviewSettings({ canEdit }: { canEdit: boolean }) {
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 1 }}>
         {thresholds.map((value, i) => (
           <TextField
+            fullWidth
             key={THRESHOLD_KEYS[i]}
             label={`Tier ${i + 1} ceiling (GH₵)`}
             type="number"
@@ -140,6 +179,7 @@ export function CampaignReviewSettings({ canEdit }: { canEdit: boolean }) {
         ))}
       </Box>
       <TextField
+        fullWidth
         label="Send review alerts to"
         type="email"
         value={alertEmail}
@@ -151,7 +191,7 @@ export function CampaignReviewSettings({ canEdit }: { canEdit: boolean }) {
             ? 'Enter a valid email address, or clear the field to turn alerts off.'
             : 'Emailed whenever a campaign is held for review. Leave blank to turn these off.'
         }
-        sx={{ minWidth: 320, mt: 1, mb: 1, display: 'block' }}
+        sx={{ minWidth: 0, mt: 1, mb: 1, display: 'block' }}
       />
       {!ascending && thresholdsValid && (
         <Alert severity="warning" sx={{ mb: 1 }}>

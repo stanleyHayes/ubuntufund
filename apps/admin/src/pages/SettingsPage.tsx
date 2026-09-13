@@ -1,880 +1,280 @@
+import { useState, type ReactNode } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { Alert, Box, Button, FormControlLabel, Switch, Tab, Tabs, Typography } from '@mui/material'
+import { MfaSettings, ThemeStylePicker } from '@ubuntu-fund/ui'
+import { Action, Resource } from '@ubuntu-fund/types'
+import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded'
+import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded'
+import CampaignRoundedIcon from '@mui/icons-material/CampaignRounded'
+import PeopleRoundedIcon from '@mui/icons-material/PeopleRounded'
+import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded'
+import SecurityRoundedIcon from '@mui/icons-material/SecurityRounded'
+import PaletteRoundedIcon from '@mui/icons-material/PaletteRounded'
+import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded'
 import ExportMenu from '@/components/ExportMenu'
-import { exportTable } from '@/lib/exports/report'
-import { api } from '@/lib/api'
+import PageHeader from '@/components/PageHeader'
 import { AutomaticPayoutSettings } from '@/components/AutomaticPayoutSettings'
 import { EarlyCashoutSettings } from '@/components/EarlyCashoutSettings'
 import { ReferralDiscountSettings } from '@/components/ReferralDiscountSettings'
 import { CampaignReviewSettings } from '@/components/CampaignReviewSettings'
-import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import Box from '@mui/material/Box'
-import Typography from '@mui/material/Typography'
-import { BrandedTextField as TextField, ThemeStylePicker } from '@ubuntu-fund/ui'
-import Switch from '@mui/material/Switch'
-import Button from '@mui/material/Button'
-import Alert from '@mui/material/Alert'
-import Slider from '@mui/material/Slider'
-import Card from '@mui/material/Card'
-import Chip from '@mui/material/Chip'
-import Snackbar from '@mui/material/Snackbar'
-import IconButton from '@mui/material/IconButton'
-import Grid from '@mui/material/Grid'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableContainer from '@mui/material/TableContainer'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
-import Tooltip from '@mui/material/Tooltip'
-import MonetizationOnRoundedIcon from '@mui/icons-material/MonetizationOnRounded'
-import TuneRoundedIcon from '@mui/icons-material/TuneRounded'
-import VerifiedUserRoundedIcon from '@mui/icons-material/VerifiedUserRounded'
-import NotificationsActiveRoundedIcon from '@mui/icons-material/NotificationsActiveRounded'
-import SecurityRoundedIcon from '@mui/icons-material/SecurityRounded'
-import PaletteRoundedIcon from '@mui/icons-material/PaletteRounded'
-import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded'
-import SaveRoundedIcon from '@mui/icons-material/SaveRounded'
-import RestoreRoundedIcon from '@mui/icons-material/RestoreRounded'
-import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
-import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
-import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded'
-import { keyframes, alpha } from '@mui/material/styles'
-import { Resource, Action, SUBSCRIPTION_PLANS } from '@ubuntu-fund/types'
+import { ActivityAlertSettings } from '@/components/ActivityAlertSettings'
 import { useAdminPermissions } from '@/context/AdminPermissionContext'
 import { useColorMode } from '@/context/ColorModeContext'
-import PageHeader from '@/components/PageHeader'
-import { TONES } from '@/lib/tones'
+import { useAuth } from '@/context/AuthContext'
+import { raisedSurface } from '@/lib/surfaces'
+import { api } from '@/lib/api'
+import { exportTable } from '@/lib/exports/report'
 
-// ─── Animations ──────────────────────────────────────────────────────────────
+const sections = [
+  {
+    id: 'payments',
+    label: 'Payments',
+    icon: <PaymentsRoundedIcon />,
+    description: 'Cashout fees and automatic payout limits. Save each policy separately.',
+  },
+  {
+    id: 'campaigns',
+    label: 'Campaigns',
+    icon: <CampaignRoundedIcon />,
+    description: 'Publication review rules, fundraising tiers and staff review emails.',
+  },
+  {
+    id: 'referrals',
+    label: 'Referrals',
+    icon: <PeopleRoundedIcon />,
+    description: 'The first-subscription discount for referred customers.',
+  },
+  {
+    id: 'notifications',
+    label: 'Notifications',
+    icon: <NotificationsRoundedIcon />,
+    description: 'Your personal activity alerts and email choices. Each choice saves immediately.',
+  },
+  {
+    id: 'security',
+    label: 'Security',
+    icon: <SecurityRoundedIcon />,
+    description: 'Optional extra protection for your own administrator account.',
+  },
+  {
+    id: 'appearance',
+    label: 'Appearance',
+    icon: <PaletteRoundedIcon />,
+    description: 'Make this console comfortable for you. Preferences apply to this browser.',
+  },
+]
 
-const fadeSlide = keyframes`
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
-`
-
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-interface SettingRowProps {
-  label: string
-  description?: string
-  children: React.ReactNode
+function Panel({ children }: { children: ReactNode }) {
+  return <Box sx={{ ...raisedSurface, p: { xs: 2, sm: 3 }, mt: 3 }}>{children}</Box>
 }
-
-// ─── Setting Row ─────────────────────────────────────────────────────────────
-
-function SettingRow({ label, description, children }: SettingRowProps) {
-  return (
-    <Box
-      sx={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 3,
-        py: 2,
-        px: 3,
-        transition: 'background 0.2s ease',
-        '&:hover': { bgcolor: 'rgba(255,255,255,0.02)' },
-      }}
-    >
-      <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Typography sx={{ fontWeight: 600, fontSize: '0.88rem', color: 'text.primary' }}>
-          {label}
-        </Typography>
-        {description && (
-          <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', mt: 0.25 }}>
-            {description}
-          </Typography>
-        )}
-      </Box>
-      <Box sx={{ flexShrink: 0 }}>{children}</Box>
-    </Box>
-  )
-}
-
-// ─── Section Card ────────────────────────────────────────────────────────────
-
-function SectionCard({
-  icon,
-  title,
-  color,
-  badge,
-  children,
-  delay = 0,
-}: {
-  icon: React.ReactNode
-  title: string
-  color: string
-  badge?: React.ReactNode
-  children: React.ReactNode
-  delay?: number
-}) {
-  return (
-    <Card
-      sx={{
-        bgcolor: 'background.paper',
-        borderRadius: 3,
-        boxShadow: 'var(--neu-raised)',
-        overflow: 'hidden',
-        animation: `${fadeSlide} 0.4s ease ${delay}s both`,
-        transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-        '&:hover': {
-          transform: 'translateY(-2px)',
-          boxShadow: 'var(--neu-raised-hover) !important',
-        },
-      }}
-    >
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1.5,
-          px: 3,
-          py: 2,
-          boxShadow: '0 10px 16px -18px rgba(0,0,0,0.8)',
-          position: 'relative',
-          '&::before': {
-            content: '""',
-            position: 'absolute',
-            left: 0,
-            top: '20%',
-            bottom: '20%',
-            width: 3,
-            borderRadius: '0 4px 4px 0',
-            bgcolor: color,
-          },
-        }}
-      >
-        <Box sx={{ color, display: 'flex', '& svg': { fontSize: 22 } }}>{icon}</Box>
-        <Typography sx={{ fontWeight: 700, fontSize: '0.95rem', color: 'text.primary', flex: 1 }}>
-          {title}
-        </Typography>
-        {badge}
-      </Box>
-      <Box sx={{ '& > *:not(:last-child)': { boxShadow: '0 9px 14px -16px rgba(0,0,0,0.85)' } }}>
-        {children}
-      </Box>
-    </Card>
-  )
-}
-
-// ─── Number Input ────────────────────────────────────────────────────────────
-
-function NumberInput({
-  value,
-  onChange,
-  suffix,
-}: {
-  value: string
-  onChange: (v: string) => void
-  suffix?: string
-}) {
-  return (
-    <TextField
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      type="number"
-      size="small"
-      slotProps={{
-        input: {
-          endAdornment: suffix ? (
-            <Typography
-              sx={{ fontSize: '0.75rem', color: 'text.secondary', ml: 0.5, whiteSpace: 'nowrap' }}
-            >
-              {suffix}
-            </Typography>
-          ) : undefined,
-        },
-      }}
-      sx={{
-        width: 120,
-        '& .MuiOutlinedInput-root': {
-          bgcolor: 'rgba(255,255,255,0.03)',
-          '& fieldset': { borderColor: 'divider' },
-          '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.15)' },
-          '&.Mui-focused fieldset': { borderColor: 'primary.main' },
-        },
-        '& .MuiOutlinedInput-input': { color: 'text.primary', textAlign: 'right' },
-      }}
-    />
-  )
-}
-
-// ─── Toggle ──────────────────────────────────────────────────────────────────
-
-function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <Switch
-      checked={checked}
-      onChange={(_, v) => onChange(v)}
-      sx={{
-        '& .MuiSwitch-switchBase.Mui-checked': { color: '#5E8F72' },
-        '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: '#5E8F72' },
-      }}
-    />
-  )
-}
-
-// ─── Tier colors ─────────────────────────────────────────────────────────────
-
-const TIER_COLORS: Record<string, string> = {
-  free: '#78909C',
-  starter: '#74909A',
-  pro: TONES.maroon.text,
-  enterprise: '#C7A24A',
-}
-
-// ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
+  const { user } = useAuth()
+  return <SettingsContent key={user?.id} />
+}
+
+function SettingsContent() {
   const { can } = useAdminPermissions()
   const canEdit = can(Resource.SETTINGS, Action.UPDATE)
-  const navigate = useNavigate()
+  const { user, replaceTokens } = useAuth()
   const { darkMode, setDarkMode, skin, setSkin } = useColorMode()
-  const [loading, setLoading] = useState(true)
-  const [snackOpen, setSnackOpen] = useState(false)
-  const [hasChanges, setHasChanges] = useState(false)
-
-  // Global payment fees (not plan-dependent)
-  const [processingFee, setProcessingFee] = useState('2.9')
-  const [fixedFee, setFixedFee] = useState('0.30')
-  const [withdrawalFee, setWithdrawalFee] = useState('1.5')
-
-  // Global campaign limits (absolute platform maximums)
-  const [minDonation, setMinDonation] = useState('1')
-  const [maxDuration, setMaxDuration] = useState('90')
-
-  // Verification
-  const [emailRequired, setEmailRequired] = useState(true)
-  const [phoneRequired, setPhoneRequired] = useState(true)
-  const [nationalIdRequired, setNationalIdRequired] = useState(true)
-  const [institutionalRequired, setInstitutionalRequired] = useState(false)
-  const [autoApprove, setAutoApprove] = useState(true)
-  const [autoApproveScore, setAutoApproveScore] = useState(70)
-
-  // Notifications
-  const [notifCampaigns, setNotifCampaigns] = useState(true)
-  const [notifDisputes, setNotifDisputes] = useState(true)
-  const [notifLargeDonations, setNotifLargeDonations] = useState(true)
-  const [notifDaily, setNotifDaily] = useState(false)
-  const [notifWeekly, setNotifWeekly] = useState(true)
-  const [notifFraud, setNotifFraud] = useState(true)
-
-  // Security
-  const [twoFactor, setTwoFactor] = useState(true)
-  const [ipWhitelist, setIpWhitelist] = useState(false)
-  const [sessionTimeout, setSessionTimeout] = useState('30')
-  const [loginAlerts, setLoginAlerts] = useState(true)
-
-  // Appearance — darkMode & skin live in ColorModeContext (applied instantly)
-  const [compactMode, setCompactMode] = useState(false)
-  const [showAnimations, setShowAnimations] = useState(true)
-
-  useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 600)
-    return () => clearTimeout(t)
-  }, [])
-
-  function track<T>(setter: (v: T) => void) {
-    return (v: T) => {
-      setter(v)
-      setHasChanges(true)
-    }
+  const [params, setParams] = useSearchParams()
+  const requested = params.get('tab')
+  const active = sections.find((section) => section.id === requested)?.id ?? 'payments'
+  const [visited, setVisited] = useState<string[]>([active])
+  const [appearanceNotice, setAppearanceNotice] = useState('')
+  const panels: Record<string, ReactNode> = {
+    payments: (
+      <>
+        <EarlyCashoutSettings canEdit={canEdit} />
+        <AutomaticPayoutSettings canEdit={canEdit} />
+      </>
+    ),
+    campaigns: <CampaignReviewSettings canEdit={canEdit} />,
+    referrals: <ReferralDiscountSettings canEdit={canEdit} />,
+    notifications: (
+      <Panel>
+        <ActivityAlertSettings />
+      </Panel>
+    ),
+    security: (
+      <Panel>
+        <MfaSettings client={api} onTokens={(tokens) => replaceTokens(tokens, user?.id ?? '')} />
+        <Button component={Link} to="/profile" sx={{ mt: 2 }}>
+          Manage profile and password
+        </Button>
+      </Panel>
+    ),
+    appearance: (
+      <Panel>
+        <Typography variant="h6">Console appearance</Typography>
+        <Typography color="text.secondary" sx={{ mb: 2 }}>
+          Choose a color mode and surface style. Changes apply immediately.
+        </Typography>
+        <FormControlLabel
+          label="Dark mode"
+          control={
+            <Switch
+              checked={darkMode}
+              onChange={(_, value) => {
+                setDarkMode(value)
+                setAppearanceNotice('Color mode updated.')
+              }}
+            />
+          }
+        />
+        <ThemeStylePicker
+          value={skin}
+          onChange={(value) => {
+            setSkin(value)
+            setAppearanceNotice('Surface style updated.')
+          }}
+        />
+        {appearanceNotice && (
+          <Alert severity="success" role="status" sx={{ mt: 2 }}>
+            {appearanceNotice}
+          </Alert>
+        )}
+      </Panel>
+    ),
   }
-
-  function handleSave() {
-    setSnackOpen(true)
-    setHasChanges(false)
-  }
-
-  function handleReset() {
-    setProcessingFee('2.9')
-    setFixedFee('0.30')
-    setWithdrawalFee('1.5')
-    setMinDonation('1')
-    setMaxDuration('90')
-    setHasChanges(false)
-  }
-
-  const plans = Object.values(SUBSCRIPTION_PLANS)
-
-  if (loading) {
-    return (
-      <Box
-        sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}
-      >
-        <Box sx={{ textAlign: 'center' }}>
-          <Box
-            sx={{
-              width: 48,
-              height: 48,
-              borderRadius: '50%',
-              border: '3px solid',
-              borderColor: 'divider',
-              borderTopColor: 'primary.main',
-              animation: 'spin 0.8s linear infinite',
-              mx: 'auto',
-              mb: 2,
-              '@keyframes spin': { to: { transform: 'rotate(360deg)' } },
-            }}
-          />
-          <Typography sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
-            Loading settings...
-          </Typography>
-        </Box>
-      </Box>
-    )
-  }
-
   return (
-    <Box>
-      <EarlyCashoutSettings canEdit={canEdit} />
-      <ReferralDiscountSettings canEdit={canEdit} />
-      <CampaignReviewSettings canEdit={canEdit} />
-      <AutomaticPayoutSettings canEdit={canEdit} />
-      {/* Header */}
+    <Box sx={{ minWidth: 0 }}>
       <PageHeader
-        tone="green"
-        eyebrow="Platform"
-        title="Platform Settings"
-        lede="Configure global fees, verification, notifications, and security."
+        eyebrow="Platform & account"
+        title="Settings"
+        lede="Focused controls for platform policies and your personal console preferences."
         icon={<SettingsRoundedIcon />}
-        actions={<>{canEdit ? (
-            <>
-              <Tooltip title="Reset to defaults">
-                <IconButton
-                  onClick={handleReset}
-                  sx={{
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    borderRadius: 2,
-                    '&:hover': { borderColor: 'warning.main', color: 'warning.main' },
-                  }}
-                >
-                  <RestoreRoundedIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-              <Button
-                variant="contained"
-                startIcon={<SaveRoundedIcon />}
-                onClick={handleSave}
-                disabled={!hasChanges}
-                sx={{
-                  borderRadius: 2,
-                  px: 3,
-                  fontWeight: 700,
-                  textTransform: 'none',
-                  transition: 'box-shadow 200ms ease',
-                  boxShadow: hasChanges ? '0 0 0 3px rgba(143,174,150,0.35)' : 'none',
-                }}
-              >
-                Save Changes
-              </Button>
-            </>
-          ) : undefined}<ExportMenu title="Persisted settings" getReport={async progress => {
-const [config, automatic] = await Promise.all([api.get<{ resolved: Record<string, string | number> }>('/admin/commercial-config', { signal: progress.signal }), api.get<{ enabled: boolean; maxAmount: number; dailyOwnerLimit: number; dailyPlatformLimit: number; reviewMaxAgeDays: number; mobileMoneyMaxAmount: number; mobileMoneyReviewMaxAgeHours: number }>('/admin/automatic-payouts', { signal: progress.signal })]);
-const keys = ['earlyFeePercent', 'affiliate.referralDiscountPercent', 'campaigns.autoApproveMaxTier', 'campaigns.tierThreshold1', 'campaigns.tierThreshold2', 'campaigns.tierThreshold3', 'campaigns.tierThreshold4', 'alerts.reviewEmail'];
-return { title: 'Persisted platform settings', filters: ['Effective server configuration', 'Local preferences and unsaved controls excluded'], tables: [exportTable('Commercial configuration', keys, { Setting: key => key, Value: key => config.resolved[key] }), exportTable('Automatic payouts', [automatic], { Enabled: r => r.enabled, 'Maximum amount (GHS)': r => r.maxAmount, 'Daily owner limit (GHS)': r => r.dailyOwnerLimit, 'Daily platform limit (GHS)': r => r.dailyPlatformLimit, 'Review age (days)': r => r.reviewMaxAgeDays, 'Mobile money maximum (GHS)': r => r.mobileMoneyMaxAmount, 'Mobile money review age (hours)': r => r.mobileMoneyReviewMaxAgeHours })] }
-}} /></>}
+        actions={
+          <>
+            <Button component={Link} to="/plans" startIcon={<OpenInNewRoundedIcon />}>
+              Manage Plans
+            </Button>
+            <ExportMenu
+              title="Persisted settings"
+              getReport={async (progress) => {
+                const [config, automatic] = await Promise.all([
+                  api.get<{ resolved: Record<string, string | number> }>(
+                    '/admin/commercial-config',
+                    { signal: progress.signal },
+                  ),
+                  api.get<{
+                    enabled: boolean
+                    maxAmount: number
+                    dailyOwnerLimit: number
+                    dailyPlatformLimit: number
+                    reviewMaxAgeDays: number
+                    mobileMoneyMaxAmount: number
+                    mobileMoneyReviewMaxAgeHours: number
+                  }>('/admin/automatic-payouts', { signal: progress.signal }),
+                ])
+                const keys = [
+                  'earlyFeePercent',
+                  'affiliate.referralDiscountPercent',
+                  'campaigns.autoApproveMaxTier',
+                  'campaigns.tierThreshold1',
+                  'campaigns.tierThreshold2',
+                  'campaigns.tierThreshold3',
+                  'campaigns.tierThreshold4',
+                  'alerts.reviewEmail',
+                ]
+                return {
+                  title: 'Persisted platform settings',
+                  filters: [
+                    'Effective server configuration',
+                    'Local preferences and unsaved controls excluded',
+                  ],
+                  tables: [
+                    exportTable('Commercial configuration', keys, {
+                      Setting: (key) => key,
+                      Value: (key) => config.resolved[key],
+                    }),
+                    exportTable('Automatic payouts', [automatic], {
+                      Enabled: (r) => r.enabled,
+                      'Maximum amount (GHS)': (r) => r.maxAmount,
+                      'Daily owner limit (GHS)': (r) => r.dailyOwnerLimit,
+                      'Daily platform limit (GHS)': (r) => r.dailyPlatformLimit,
+                      'Review age (days)': (r) => r.reviewMaxAgeDays,
+                      'Mobile money maximum (GHS)': (r) => r.mobileMoneyMaxAmount,
+                      'Mobile money review age (hours)': (r) => r.mobileMoneyReviewMaxAgeHours,
+                    }),
+                  ],
+                }
+              }}
+            />
+          </>
+        }
       />
-
-
-      {!canEdit && (
-        <Alert
-          severity="warning"
-          sx={{
-            mb: 3,
-            bgcolor: 'rgba(211,169,92,0.08)',
-            border: '1px solid rgba(211,169,92,0.2)',
-            borderRadius: 2,
-            animation: `${fadeSlide} 0.3s ease both`,
-            '& .MuiAlert-icon': { color: 'warning.main' },
+      <Box sx={{ ...raisedSurface, p: 1 }}>
+        <Tabs
+          value={active}
+          variant="scrollable"
+          scrollButtons="auto"
+          allowScrollButtonsMobile
+          aria-label="Settings categories"
+          onChange={(_, value: string) => {
+            setVisited((previous) => [...new Set([...previous, active, value])])
+            setParams(
+              (previous) => {
+                previous.set('tab', value)
+                return previous
+              },
+              { replace: true },
+            )
           }}
         >
-          You are viewing settings in read-only mode. Contact an administrator to make changes.
-        </Alert>
-      )}
-
-      {hasChanges && canEdit && (
-        <Alert
-          severity="info"
-          icon={<InfoOutlinedIcon />}
-          sx={{
-            mb: 3,
-            bgcolor: 'rgba(116,144,154,0.08)',
-            border: '1px solid rgba(116,144,154,0.2)',
-            borderRadius: 2,
-            animation: `${fadeSlide} 0.3s ease both`,
-            '& .MuiAlert-icon': { color: 'info.main' },
-          }}
+          {sections.map((section) => (
+            <Tab
+              key={section.id}
+              id={`settings-tab-${section.id}`}
+              aria-controls={`settings-panel-${section.id}`}
+              value={section.id}
+              label={section.label}
+              icon={section.icon}
+              iconPosition="start"
+              sx={{ minHeight: 56, textTransform: 'none', fontWeight: 600 }}
+            />
+          ))}
+        </Tabs>
+      </Box>
+      {sections.map((section) => (
+        <Box
+          key={section.id}
+          role="tabpanel"
+          id={`settings-panel-${section.id}`}
+          aria-labelledby={`settings-tab-${section.id}`}
+          hidden={active !== section.id}
+          tabIndex={0}
         >
-          You have unsaved changes. Click &quot;Save Changes&quot; to apply.
-        </Alert>
-      )}
-
-      <Grid
-        container
-        spacing={3}
-        sx={!canEdit ? { pointerEvents: 'none', opacity: 0.6 } : undefined}
-      >
-        {/* ─── Platform Fees by Subscription Tier ─── */}
-        <Grid size={{ xs: 12 }} sx={{ minWidth: 0, pointerEvents: 'auto' }}>
-          <SectionCard
-            icon={<MonetizationOnRoundedIcon />}
-            title="Platform Fees by Subscription Tier"
-            color="#5E8F72"
-            delay={0}
-            badge={
-              <Button
-                size="small"
-                endIcon={<OpenInNewRoundedIcon sx={{ fontSize: '16px !important' }} />}
-                onClick={() => navigate('/plans')}
-                sx={{
-                  textTransform: 'none',
-                  fontWeight: 700,
-                  fontSize: '0.75rem',
-                  color: '#5E8F72',
-                  borderRadius: 2,
-                  px: 1.5,
-                  '&:hover': { bgcolor: alpha('#5E8F72', 0.08) },
-                }}
-              >
-                Manage Plans
-              </Button>
-            }
-          >
-            <Box sx={{ px: 3, py: 2.5 }}>
-              <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary', mb: 2.5 }}>
-                Platform fees are determined by the user&apos;s subscription tier. To modify these
-                fees, go to Manage Plans.
-              </Typography>
-              <Typography
-                sx={{
-                  display: { xs: 'block', md: 'none' },
-                  fontSize: '0.75rem',
-                  color: 'text.secondary',
-                  mb: 1,
-                }}
-              >
-                Swipe horizontally to see all plan details.
-              </Typography>
-              <TableContainer
-                role="region"
-                aria-label="Platform fees by subscription tier"
-                tabIndex={0}
-                sx={{
-                  maxWidth: '100%',
-                  borderRadius: 2,
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  overflowX: 'auto',
-                  '&:focus-visible': {
-                    outline: '2px solid',
-                    outlineColor: 'primary.main',
-                    outlineOffset: 2,
-                  },
-                }}
-              >
-                <Table size="small" sx={{ minWidth: 680 }}>
-                  <TableHead>
-                    <TableRow sx={{ bgcolor: alpha('#fff', 0.03) }}>
-                      <TableCell
-                        sx={{
-                          fontWeight: 700,
-                          fontSize: '0.78rem',
-                          color: 'text.secondary',
-                          borderColor: 'divider',
-                          py: 1.5,
-                        }}
-                      >
-                        Tier
-                      </TableCell>
-                      <TableCell
-                        align="center"
-                        sx={{
-                          fontWeight: 700,
-                          fontSize: '0.78rem',
-                          color: 'text.secondary',
-                          borderColor: 'divider',
-                          py: 1.5,
-                        }}
-                      >
-                        Platform Fee
-                      </TableCell>
-                      <TableCell
-                        align="center"
-                        sx={{
-                          fontWeight: 700,
-                          fontSize: '0.78rem',
-                          color: 'text.secondary',
-                          borderColor: 'divider',
-                          py: 1.5,
-                        }}
-                      >
-                        Max Campaigns
-                      </TableCell>
-                      <TableCell
-                        align="center"
-                        sx={{
-                          fontWeight: 700,
-                          fontSize: '0.78rem',
-                          color: 'text.secondary',
-                          borderColor: 'divider',
-                          py: 1.5,
-                        }}
-                      >
-                        Max Goal
-                      </TableCell>
-                      <TableCell
-                        align="right"
-                        sx={{
-                          fontWeight: 700,
-                          fontSize: '0.78rem',
-                          color: 'text.secondary',
-                          borderColor: 'divider',
-                          py: 1.5,
-                        }}
-                      >
-                        Price
-                      </TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {plans.map((plan) => {
-                      const tierColor = TIER_COLORS[plan.tier] ?? '#78909C'
-                      return (
-                        <TableRow
-                          key={plan.tier}
-                          sx={{
-                            '&:last-child td': { borderBottom: 0 },
-                            transition: 'background 0.15s ease',
-                            '&:hover': { bgcolor: alpha('#fff', 0.02) },
-                          }}
-                        >
-                          <TableCell sx={{ borderColor: 'divider', py: 1.5 }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                              <Box
-                                sx={{
-                                  width: 8,
-                                  height: 8,
-                                  borderRadius: '50%',
-                                  bgcolor: tierColor,
-                                  flexShrink: 0,
-                                }}
-                              />
-                              <Box>
-                                <Typography
-                                  sx={{
-                                    fontWeight: 700,
-                                    fontSize: '0.85rem',
-                                    color: 'text.primary',
-                                    lineHeight: 1.3,
-                                  }}
-                                >
-                                  {plan.name}
-                                </Typography>
-                                <Typography
-                                  sx={{
-                                    fontSize: '0.7rem',
-                                    color: 'text.secondary',
-                                    lineHeight: 1.3,
-                                  }}
-                                >
-                                  {plan.description}
-                                </Typography>
-                              </Box>
-                            </Box>
-                          </TableCell>
-                          <TableCell align="center" sx={{ borderColor: 'divider', py: 1.5 }}>
-                            <Chip
-                              label={`${plan.platformFeePercent}%`}
-                              size="small"
-                              sx={{
-                                fontWeight: 800,
-                                fontSize: '0.8rem',
-                                bgcolor: alpha(tierColor, 0.12),
-                                color: tierColor,
-                                border: '1px solid',
-                                borderColor: alpha(tierColor, 0.25),
-                                minWidth: 52,
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell align="center" sx={{ borderColor: 'divider', py: 1.5 }}>
-                            <Typography
-                              sx={{ fontSize: '0.85rem', fontWeight: 600, color: 'text.primary' }}
-                            >
-                              {plan.maxActiveCampaigns === -1
-                                ? 'Unlimited'
-                                : plan.maxActiveCampaigns}
-                            </Typography>
-                          </TableCell>
-                          <TableCell align="center" sx={{ borderColor: 'divider', py: 1.5 }}>
-                            <Typography
-                              sx={{ fontSize: '0.85rem', fontWeight: 600, color: 'text.primary' }}
-                            >
-                              {plan.maxCampaignGoal === -1
-                                ? 'Unlimited'
-                                : `GH₵ ${plan.maxCampaignGoal.toLocaleString()}`}
-                            </Typography>
-                          </TableCell>
-                          <TableCell align="right" sx={{ borderColor: 'divider', py: 1.5 }}>
-                            <Typography
-                              sx={{ fontSize: '0.85rem', fontWeight: 700, color: 'text.primary' }}
-                            >
-                              {plan.priceMonthly === 0
-                                ? 'Free'
-                                : `GH₵ ${plan.priceMonthly.toLocaleString()}/mo`}
-                            </Typography>
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Box>
-          </SectionCard>
-        </Grid>
-
-        {/* ─── Global Payment Fees ─── */}
-        <Grid size={{ xs: 12, lg: 6 }}>
-          <SectionCard
-            icon={<MonetizationOnRoundedIcon />}
-            title="Payment Processing"
-            color="#8FAE96"
-            delay={0.06}
-          >
-            <SettingRow
-              label="Processing Fee"
-              description="Payment processor percentage (e.g. Stripe)"
-            >
-              <NumberInput value={processingFee} onChange={track(setProcessingFee)} suffix="%" />
-            </SettingRow>
-            <SettingRow label="Fixed Fee" description="Per-transaction flat charge">
-              <NumberInput value={fixedFee} onChange={track(setFixedFee)} suffix="GHS" />
-            </SettingRow>
-            <SettingRow
-              label="Withdrawal Fee"
-              description="Fee when withdrawing to bank/mobile money"
-            >
-              <NumberInput value={withdrawalFee} onChange={track(setWithdrawalFee)} suffix="%" />
-            </SettingRow>
-          </SectionCard>
-        </Grid>
-
-        {/* ─── Global Campaign Limits ─── */}
-        <Grid size={{ xs: 12, lg: 6 }}>
-          <SectionCard
-            icon={<TuneRoundedIcon />}
-            title="Global Campaign Limits"
-            color="#74909A"
-            delay={0.12}
-          >
-            <Box sx={{ px: 3, py: 1.5, bgcolor: alpha('#74909A', 0.04) }}>
-              <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>
-                These are platform-wide limits. Per-tier limits (max campaigns, max goal) are
-                configured in Manage Plans.
-              </Typography>
-            </Box>
-            <SettingRow
-              label="Maximum Duration"
-              description="Longest campaign runtime allowed on the platform"
-            >
-              <NumberInput value={maxDuration} onChange={track(setMaxDuration)} suffix="days" />
-            </SettingRow>
-            <SettingRow label="Minimum Donation" description="Smallest accepted donation amount">
-              <NumberInput value={minDonation} onChange={track(setMinDonation)} suffix="GHS" />
-            </SettingRow>
-          </SectionCard>
-        </Grid>
-
-        {/* ─── Verification ─── */}
-        <Grid size={{ xs: 12, lg: 6 }}>
-          <SectionCard
-            icon={<VerifiedUserRoundedIcon />}
-            title="Verification Requirements"
-            color={TONES.maroon.text}
-            delay={0.18}
-          >
-            <SettingRow
-              label="Email Verification"
-              description="Require verified email to create campaigns"
-            >
-              <Toggle checked={emailRequired} onChange={track(setEmailRequired)} />
-            </SettingRow>
-            <SettingRow label="Phone Verification" description="Require verified phone number">
-              <Toggle checked={phoneRequired} onChange={track(setPhoneRequired)} />
-            </SettingRow>
-            <SettingRow label="National ID" description="Require government-issued ID upload">
-              <Toggle checked={nationalIdRequired} onChange={track(setNationalIdRequired)} />
-            </SettingRow>
-            <SettingRow
-              label="Institutional Verification"
-              description="Require institutional partner vouching"
-            >
-              <Toggle checked={institutionalRequired} onChange={track(setInstitutionalRequired)} />
-            </SettingRow>
-            <SettingRow
-              label="Auto-Approve Campaigns"
-              description="Automatically approve campaigns from trusted users"
-            >
-              <Toggle checked={autoApprove} onChange={track(setAutoApprove)} />
-            </SettingRow>
-            {autoApprove && (
-              <Box sx={{ px: 3, py: 2.5 }}>
+          {(visited.includes(section.id) || active === section.id) && (
+            <>
+              <Box sx={{ position: 'relative', overflow: 'hidden', mt: 3, px: 1, py: 2 }}>
                 <Box
+                  aria-hidden
                   sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    mb: 1.5,
+                    position: 'absolute',
+                    right: 12,
+                    top: -12,
+                    opacity: 0.06,
+                    pointerEvents: 'none',
+                    '& svg': { fontSize: 120 },
                   }}
                 >
-                  <Typography sx={{ fontSize: '0.82rem', fontWeight: 600, color: 'text.primary' }}>
-                    Minimum Trust Score
-                  </Typography>
-                  <Chip
-                    label={autoApproveScore}
-                    size="small"
-                    sx={{
-                      bgcolor: TONES.maroon.solid,
-                      color: '#fff',
-                      fontWeight: 700,
-                      minWidth: 40,
-                    }}
-                  />
+                  {section.icon}
                 </Box>
-                <Slider
-                  value={autoApproveScore}
-                  onChange={(_, v) => {
-                    setAutoApproveScore(v as number)
-                    setHasChanges(true)
-                  }}
-                  min={0}
-                  max={100}
-                  sx={{
-                    color: TONES.maroon.text,
-                    '& .MuiSlider-rail': { bgcolor: 'rgba(255,255,255,0.06)', height: 6 },
-                    '& .MuiSlider-track': { height: 6 },
-                    '& .MuiSlider-thumb': { width: 18, height: 18 },
-                  }}
-                  marks={[
-                    { value: 0, label: '0' },
-                    { value: 50, label: '50' },
-                    { value: 100, label: '100' },
-                  ]}
-                />
+                <Typography variant="h5">{section.label}</Typography>
+                <Typography color="text.secondary" sx={{ mt: 1, maxWidth: 760 }}>
+                  {section.description}
+                </Typography>
               </Box>
-            )}
-          </SectionCard>
-        </Grid>
-
-        {/* ─── Notifications ─── */}
-        <Grid size={{ xs: 12, lg: 6 }}>
-          <SectionCard
-            icon={<NotificationsActiveRoundedIcon />}
-            title="Notifications"
-            color="#D3A95C"
-            delay={0.24}
-          >
-            <SettingRow
-              label="Campaign Submissions"
-              description="Alert when new campaigns are submitted for review"
-            >
-              <Toggle checked={notifCampaigns} onChange={track(setNotifCampaigns)} />
-            </SettingRow>
-            <SettingRow label="Dispute Alerts" description="Notify on new disputes and escalations">
-              <Toggle checked={notifDisputes} onChange={track(setNotifDisputes)} />
-            </SettingRow>
-            <SettingRow label="Large Donations" description="Alert on donations above threshold">
-              <Toggle checked={notifLargeDonations} onChange={track(setNotifLargeDonations)} />
-            </SettingRow>
-            <SettingRow label="Daily Summary" description="Receive daily platform summary email">
-              <Toggle checked={notifDaily} onChange={track(setNotifDaily)} />
-            </SettingRow>
-            <SettingRow label="Weekly Report" description="Detailed weekly analytics report">
-              <Toggle checked={notifWeekly} onChange={track(setNotifWeekly)} />
-            </SettingRow>
-            <SettingRow label="Fraud Alerts" description="Immediate alerts on suspicious activity">
-              <Toggle checked={notifFraud} onChange={track(setNotifFraud)} />
-            </SettingRow>
-          </SectionCard>
-        </Grid>
-
-        {/* ─── Security ─── */}
-        <Grid size={{ xs: 12, lg: 6 }}>
-          <SectionCard icon={<SecurityRoundedIcon />} title="Security" color="#C06B58" delay={0.3}>
-            <SettingRow
-              label="Two-Factor Authentication"
-              description="Require 2FA for all admin accounts"
-            >
-              <Toggle checked={twoFactor} onChange={track(setTwoFactor)} />
-            </SettingRow>
-            <SettingRow label="IP Whitelist" description="Restrict admin access to specific IPs">
-              <Toggle checked={ipWhitelist} onChange={track(setIpWhitelist)} />
-            </SettingRow>
-            <SettingRow label="Session Timeout" description="Auto-logout after inactivity">
-              <NumberInput
-                value={sessionTimeout}
-                onChange={track(setSessionTimeout)}
-                suffix="min"
-              />
-            </SettingRow>
-            <SettingRow label="Login Alerts" description="Email notification on admin login">
-              <Toggle checked={loginAlerts} onChange={track(setLoginAlerts)} />
-            </SettingRow>
-          </SectionCard>
-        </Grid>
-
-        {/* ─── Appearance ─── */}
-        <Grid size={{ xs: 12 }}>
-          <SectionCard
-            icon={<PaletteRoundedIcon />}
-            title="Appearance"
-            color={TONES.teal.text}
-            delay={0.36}
-          >
-            <SettingRow
-              label="Dark Mode"
-              description="Use the low-light theme for the admin console"
-            >
-              <Toggle checked={darkMode} onChange={setDarkMode} />
-            </SettingRow>
-            <SettingRow
-              label="Compact Mode"
-              description="Reduce spacing for denser information display"
-            >
-              <Toggle checked={compactMode} onChange={track(setCompactMode)} />
-            </SettingRow>
-            <SettingRow label="Animations" description="Enable UI animations and transitions">
-              <Toggle checked={showAnimations} onChange={track(setShowAnimations)} />
-            </SettingRow>
-
-            {/* Theme style — re-skins every surface instantly (persisted per browser) */}
-            <Box sx={{ px: 3, py: 2.5 }}>
-              <ThemeStylePicker value={skin} onChange={setSkin} />
-            </Box>
-          </SectionCard>
-        </Grid>
-      </Grid>
-
-      {/* Snackbar */}
-      <Snackbar
-        open={snackOpen}
-        autoHideDuration={3000}
-        onClose={() => setSnackOpen(false)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert
-          onClose={() => setSnackOpen(false)}
-          icon={<CheckCircleRoundedIcon />}
-          severity="success"
-          variant="filled"
-          sx={{ borderRadius: 2, fontWeight: 600 }}
-        >
-          Settings saved successfully
-        </Alert>
-      </Snackbar>
+              {!canEdit && ['payments', 'campaigns', 'referrals'].includes(section.id) && (
+                <Alert severity="info">Platform policies are read-only for your role.</Alert>
+              )}
+              {panels[section.id]}
+            </>
+          )}
+        </Box>
+      ))}
     </Box>
   )
 }
