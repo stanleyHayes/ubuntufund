@@ -1,5 +1,12 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — Prebuilt runtime candidate evaluation
+
+- NDK28.2 installed and inspected without selecting it: ARM64 libc++_shared still fails RELRO-end alignment; x86_64 passes. ReactAndroid and fbjni AARs both bundle the runtime, so a toolchain upgrade alone cannot prove packaged provenance.
+- Pinned fbjni0.7.0 source builds pass on ARM64/x86_64 with both alignment flags; both candidates pass ELF checks and retain all300 original JNI exports. Candidates are not integrated; ABI/runtime, duplicate-library packaging and other prebuilts remain open. Details in `docs/compliance/NATIVE_PERMISSIONS.md`.
+- NDK29 installation88258 is running side by side for comparison; log `/tmp/ujimora-ndk29-install.log`. Full API41412 remains running on unchanged de8b9e2 source. Preserve both running operations and root API/shared freeze.
+
+
 ### 2026-09-13 — Dependency native RELRO correction
 
 - Extended the Expo alignment plugin to register both linker flags before Android library projects configure CMake. Prebuild confirms placement/idempotent marker; lint passes. Archived NDK27.1/JDK17 dependency build succeeds in41s, and all six Expo Modules Core/Expo Updates/Screens libraries on ARM64/x86_64 now pass LOAD+RELRO checks.

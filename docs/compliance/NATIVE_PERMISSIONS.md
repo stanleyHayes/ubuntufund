@@ -169,3 +169,16 @@ The page-alignment plugin now registers an Android-library callback in the root 
 The archived native build completes successfully in41s under NDK27.1/JDK17. All six rebuilt Expo Modules Core, Expo Updates and React Native Screens libraries on ARM64/x86_64 pass both LOAD and RELRO checks, with zero end remainders. Combined with the earlier eight app/codegen libraries, 14 source-built libraries have verified alignment. The standalone inspection archive covers only those six dependency outputs and is not a release AAR/APK.
 
 Logs `/tmp/ujimora-dependency-page-native-build.log`, `/tmp/ujimora-dependency-page-native-elf.json`, `/tmp/ujimora-dependency-page-prebuild.log`, `/tmp/ujimora-dependency-page-lint.log`. Remaining prebuilt runtime/media libraries, final current-source packaging/signing and runtime paths still require remediation/verification. This supersedes the prior unresolved status only for these six source-built outputs.
+
+
+### Prebuilt runtime and fbjni candidates — 13 September 2026
+
+Maven Central metadata still lists fbjni0.7.0 as latest (`/tmp/ujimora-fbjni-maven-metadata.xml`). The existing ReactAndroid0.83.10 and fbjni0.7.0 AARs both contain libc++_shared.so and libfbjni.so. An NDK setting alone therefore does not establish which runtime ends up packaged; final artifact provenance must be checked.
+
+Installed NDK28.2.13676358 (r28c) side by side without changing the app's selected NDK. Its actual bundled libc++_shared.so passes LOAD checks on both64-bit ABIs, but ARM64 has RELRO-end remainder0x2000; x86_64 has zero. The runtime inspection exits1 (`/tmp/ujimora-ndk28-runtime-elf.json`). Do not select or label this runtime compliant merely from the NDK version. NDK29.0.14206865 installation is now running in session88258 (`/tmp/ujimora-ndk29-install.log`) for independent inspection; do not restart while live.
+
+Fetched the exact [fbjni v0.7.0 source](https://github.com/facebookincubator/fbjni/tree/v0.7.0), commit474795fa9ff0dda60b838871171be935432bae16, into `/tmp/ujimora-fbjni-0.7.0`; source worktree is unchanged. CMake3.22.1/Ninja, Android API24, shared STL and NDK28.2 builds with both page-size flags pass for ARM64/x86_64. Both resulting libfbjni.so files pass LOAD+RELRO checks. Each retains all300 original exported facebook::jni symbols; symbol presence is not full ABI/runtime compatibility proof.
+
+Evidence: `/tmp/ujimora-fbjni-{arm64,x86}-{configure,build}.log`, `/tmp/ujimora-fbjni-rebuilt-elf.json`, `/tmp/ujimora-fbjni-abi/exports.json`. Candidate outputs remain under `/tmp/ujimora-fbjni-aligned`; they are not installed into the app or published as Maven artifacts. Final dependency substitution, bundled-copy elimination, linking, packaged-runtime provenance and device JNI/media paths remain open. No prebuilt release gate is closed by these candidate builds alone.
+
+The build recipe uses the unchanged pinned source with `cmake -S <source> -B <output>/<abi> -G Ninja`, the NDK's `build/cmake/android.toolchain.cmake`, `ANDROID_ABI` set to each64-bit ABI, `ANDROID_PLATFORM=android-24`, `ANDROID_STL=c++_shared`, `CMAKE_BUILD_TYPE=Release`, and `CMAKE_SHARED_LINKER_FLAGS=-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384`; then `cmake --build <output>/<abi> --parallel 4`. Use explicit SDK CMake/Ninja paths as recorded in configure logs.
