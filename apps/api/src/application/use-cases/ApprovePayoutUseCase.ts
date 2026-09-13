@@ -46,7 +46,7 @@ export class ApprovePayoutUseCase {
     private readonly campaigns?: CampaignRepositoryPort,
     private readonly walletPayouts?: WalletPayoutPort,
     private readonly automaticVerification?: { run<T>(userId: string, work: () => Promise<T>): Promise<T> },
-    private readonly manualApproval?: { run<T>(requester: PayoutRequester, work: () => Promise<T>): Promise<T> },
+    private readonly manualApproval?: { run<T>(requester: PayoutRequester, work: () => Promise<T>, payout?: Pick<PayoutEntity, 'campaignId' | 'type'>): Promise<T> },
   ) {}
 
   async recipientDetails(payoutId: string, requester: PayoutRequester) {
@@ -218,7 +218,7 @@ export class ApprovePayoutUseCase {
         const transitioned = await this.payoutRepo.transitionToProcessing(payout.id, { approvedBy, providerRef: reference })
         if (!transitioned) throw new AppError('Payout is no longer pending approval', 409)
         return transitioned
-      })
+      }, payout)
     }
 
     let transfer
@@ -282,7 +282,7 @@ export class ApprovePayoutUseCase {
       })
       if (!transitioned) throw new AppError('Payout is no longer pending approval', 409)
       return transitioned
-    })
+    }, payout)
 
     let submitted = 0
     const failed: PayoutLeg[] = []

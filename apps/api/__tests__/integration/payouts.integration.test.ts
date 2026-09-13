@@ -276,6 +276,44 @@ describe('Payouts Integration', () => {
     expect(res.body.data.campaignId).toBe(campaignId);
   });
 
+  it.each([false, true])('rejects concurrent loss of standard cashout eligibility before transfer (batched=%s)', async (batched) => {
+    const owner = await registerUser(app, uniqueEmail('eligibility-owner'));
+    const campaignId = await createActiveCampaign(app, owner.token, owner.userId);
+    const admin = await createAdmin(app, uniqueEmail('eligibility-admin'));
+    await fundCampaign(app, campaignId, batched ? 100000 : 1000);
+    await endCampaign(campaignId);
+    await addRecipient(app, campaignId, owner.token, 'ghipss');
+    const created = await request(app).post(`/api/v1/campaigns/${campaignId}/payouts`).set('Authorization', `Bearer ${owner.token}`).send({ amount: batched ? 60000 : 500 }).expect(201);
+    const id = created.body.data.id;
+    if (batched) {
+      const maker = await createAdmin(app, uniqueEmail('eligibility-maker'));
+      await request(app).post(`/api/v1/payouts/${id}/approve`).set('Authorization', `Bearer ${maker.token}`).send({ reviewNote: 'Reviewed beneficiary ownership and receiving capacity.' }).expect(200);
+    }
+    const before = await CampaignBalanceModel.findOne({ campaignId }).lean();
+    const original = CampaignModel.findOneAndUpdate.bind(CampaignModel);
+    let changed = false;
+    const lock = vi.spyOn(CampaignModel, 'findOneAndUpdate').mockImplementation((...args) => {
+      const query = original(...args);
+      const execute = query.exec.bind(query);
+      query.exec = async (...execArgs) => {
+        if (!changed) {
+          changed = true;
+          await CampaignModel.updateOne({ _id: campaignId }, { endDate: new Date(Date.now() + 86_400_000), goalAmount: 1000000 }, { session: null });
+        }
+        return execute(...execArgs);
+      };
+      return query;
+    });
+    vi.mocked(fetch).mockClear();
+    try {
+      await request(app).post(`/api/v1/payouts/${id}/approve`).set('Authorization', `Bearer ${admin.token}`).send({ reviewNote: 'Reviewed beneficiary ownership and receiving capacity.' }).expect(409);
+      expect(lock.mock.calls.length).toBeGreaterThan(1);
+      expect((await CampaignBalanceModel.findOne({ campaignId }))?.availableBalance).toBe(before?.availableBalance);
+      expect((await PayoutModel.findById(id))?.status).toBe('PENDING');
+      expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).endsWith('/transfer'))).toBe(false);
+    } finally { lock.mockRestore(); }
+  });
+
   it.each([false, true])('rolls back a failed processing write before provider transfer (batched=%s)', async (batched) => {
     const owner = await registerUser(app, uniqueEmail('atomic-owner'));
     const campaignId = await createActiveCampaign(app, owner.token, owner.userId);
