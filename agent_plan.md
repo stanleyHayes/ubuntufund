@@ -2,6 +2,8 @@
 
 ### 2026-09-12 — Ghana and mobile store compliance goal (IN PROGRESS)
 
+- Account agreement page redesigned with existing forest/gold PageBanner and SVG chain watermark, icon/title/description policy cards, responsive confirmation panel and separate opt-in explanation. Removed redundant agreement notice on this route. Both confirmations remain unchecked and required; API contract/saved/error states retained. Desktop1440/phone390 browser flows verify links, overflow, explicit consent and exact save payload; web types/lint/build pass. Screenshots `/tmp/ujimora-agreement-{1440,390}.png`.
+
 - Automatic reservation now locks current policy and destination, checks exact provider code/owner/currency, policy amount limits and review freshness. All 29 focused tests and final API types/lint pass, including five concurrent recipient/policy changes with no funds movement. Separate counter preserves claim totals. Remaining budget/dispute/history/manual scopes recorded in KYC_REVIEW_INTEGRITY.md.
 
 - Automatic bank execution now serializes current campaign owner/status/deletion/cashout eligibility before funds reservation. All 24 focused tests and API types/lint pass, including four concurrent campaign changes with retry/409/no transfer. Recipient/policy/budget and broader release gates remain open in KYC_REVIEW_INTEGRITY.md. Android image install 74629 remains live.
