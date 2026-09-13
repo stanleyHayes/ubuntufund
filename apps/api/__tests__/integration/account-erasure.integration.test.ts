@@ -73,8 +73,12 @@ describe('Account erasure and retained-record review', () => {
     await request(app).delete('/api/v1/profile').set('Authorization', account.bearer).expect(200);
     failure.mockRestore();
     expect((await AccountDeletionRequestModel.findOne({ userId: account.user.id }))?.status).toBe('pending');
+    const nextReviewAt = new Date(Date.now() + 14 * 86400000);
+    await AccountDeletionRequestModel.updateOne({ userId: account.user.id }, { $set: { revision: 2, reviewNotes: 'Follow up on retained records after cleanup.', nextReviewAt } });
     expect(await new MongoAccountErasure().sweepPending()).toBe(1);
+    expect(await AccountDeletionRequestModel.findOne({ userId: account.user.id })).toMatchObject({ revision: 3, reviewNotes: 'Follow up on retained records after cleanup.', nextReviewAt, status: 'review_required' });
     expect(await new MongoAccountErasure().sweepPending()).toBe(0);
+    expect((await AccountDeletionRequestModel.findOne({ userId: account.user.id }))?.revision).toBe(3);
     expect(await ProfileModel.countDocuments({ userId: account.user.id })).toBe(0);
   });
   it('prevents concurrent retention reviews from overwriting notes and rolls back failed audit writes', async () => {

@@ -96,6 +96,8 @@ export class MongoAccountErasure implements AccountErasurePort {
       $set: { name: 'Deleted user', email: `deleted-${userId}@invalid.ujimora`, passwordHash: '!deleted!', needsWebsite: false },
       $unset: { avatarUrl: 1, coverUrl: 1, organizationName: 1, organizationType: 1, registrationNumber: 1, website: 1, websiteRequestedAt: 1, websiteRequestWithdrawnAt: 1, country: 1 },
     });
-    await AccountDeletionRequestModel.updateOne({ userId, status: 'pending' }, { $set: { status: 'review_required', coreRemovedAt: new Date() } });
+    // Cleanup changes the evidence a staff reviewer saw. Invalidate stale
+    // review forms without replacing their notes or chosen follow-up date.
+    await AccountDeletionRequestModel.updateOne({ userId, status: 'pending' }, { $set: { status: 'review_required', coreRemovedAt: new Date() }, $inc: { revision: 1 } });
   }
 }
