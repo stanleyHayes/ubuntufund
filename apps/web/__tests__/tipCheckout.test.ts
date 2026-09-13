@@ -35,3 +35,20 @@ it('does not silently create another attempt when durable storage is unavailable
   await expect(tipAttemptKey(undefined, 'creator')).rejects.toThrow('unavailable')
   spy.mockRestore()
 })
+it.each(['{broken', 'null', '[]', '{}', '{"key":42}', '{"key":""}', ''])('preserves unreadable current attempts instead of creating a second payment: %s', async stored => {
+  await tipAttemptKey('viewer', 'creator')
+  const scope = Object.keys(storage)[0]
+  storage[scope] = stored
+  await expect(tipAttemptKey('viewer', 'creator')).rejects.toThrow('Contact support')
+  expect(storage[scope]).toBe(stored)
+})
+it('isolates unrelated corrupt entries while recording and clearing a valid reference', async () => {
+  storage['ujimora:tip-attempt:corrupt'] = '{broken'
+  storage['ujimora:tip-attempt:invalid'] = '{"key":null}'
+  const key = await tipAttemptKey('viewer', 'creator')
+  rememberTipReference(key, 'confirmed-reference')
+  finishTipAttempt('confirmed-reference')
+  expect(await tipAttemptKey('viewer', 'creator')).not.toBe(key)
+  expect(storage['ujimora:tip-attempt:corrupt']).toBe('{broken')
+  expect(storage['ujimora:tip-attempt:invalid']).toBe('{"key":null}')
+})
