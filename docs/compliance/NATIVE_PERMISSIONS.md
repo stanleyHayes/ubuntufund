@@ -25,3 +25,9 @@ Background modes contain only `audio`, with no always-location usage description
 ## Remaining acceptance evidence
 
 Inspect the final Android merged manifest/AAB and iOS archive, including transitive SDK privacy manifests, required-reason APIs, foreground services, target SDK and native-library alignment. Test selected-file/camera paths on supported older and current Android versions, denial/manual alternatives, Face ID/fingerprint opt-in and revocation, location scope, live audio/screen sharing, and actual network traffic. No signed build, device permission interaction or store approval was produced in this audit.
+
+## Android cloud backup — 13 September 2026
+
+Generated application configuration initially had `android:allowBackup="true"`. The app now explicitly sets Expo `android.allowBackup: false`; before/after introspection confirms the generated value is false while SecureStore backup/extraction resource references remain intact. Evidence: `/tmp/ujimora-native-backup-introspection.json` and `/tmp/ujimora-native-backup-disabled.json`. This keeps app-local account summaries and payment recovery records out of automatic cloud backup under the documented Android setting. It does not erase pre-existing backups, change local records, or prove a released binary has this setting. A new native build is required.
+
+[Android backup guidance](https://developer.android.com/identity/data/autobackup) explicitly notes that some Android 12+ manufacturers still allow device-to-device transfer when cloud backup is disabled. The current SecureStore extraction rules exclude credentials only; full app-data transfer exclusions, final merged manifest and physical restore/transfer tests remain open. iOS backup policy is separate and unverified.
