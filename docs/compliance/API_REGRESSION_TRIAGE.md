@@ -37,3 +37,9 @@ This closes every failure from the prior 946-test run through a focused rerun of
 Session 69000 completed against the API source at b18bb0c: 152 files/1063 tests passed, one file/test failed. The previously failing creator withdrawal unique-index case passes. The new failure starts with a 120-second timeout in donation-content-gate, while awaiting its first authorized review-queue read. Two retries then observe accumulated fixture records and fail exact pending-count assertions (2/3 instead of 1). These follow-on assertions are not evidence that the first queue request returned an incorrect count. Log `/tmp/ujimora-api-index-ready-regression.log`.
 
 The unchanged single-file test passes in 7.26 seconds against current API source (`/tmp/ujimora-donation-review-repro.log`, session 47995). This does not establish why the full-run request timed out or close full regression. No retry count assertion was weakened and no production query behavior was changed based on an unproven cause. Root checkout was fast-forwarded to d5d4aac after the run ended, bringing in the separately tested missing-policy and update-publication transactions. A fresh complete run is required on that source.
+
+## Current publication and withdrawal regression completed — 13 September 2026
+
+Session 3544 finished with exit 0: **1,078 tests across 154 files pass**, 966.64 seconds (`/tmp/ujimora-api-current-publication-regression.log`). API/shared source remained unchanged throughout. This run includes index readiness, missing withdrawal-policy serialization and campaign-update final authorization/publication transactions through d5d4aac. The earlier donation-content-gate timeout did not recur; its original cause remains unproven, and no assertions were weakened. The API source freeze is lifted.
+
+This establishes a complete passing API regression for that source, not signed-native/provider/legal/store approval or completion of the remaining requirement ledger.

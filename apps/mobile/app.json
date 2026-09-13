@@ -62,7 +62,8 @@
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.READ_MEDIA_VIDEO",
         "android.permission.READ_MEDIA_AUDIO",
-        "android.permission.READ_EXTERNAL_STORAGE"
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION"
       ],
       "allowBackup": false,
       "permissions": [
@@ -134,7 +135,8 @@
           "faceIDPermission": "Use Face ID to unlock your Ujimora account when you enable biometric protection."
         }
       ],
-      "./plugins/withPrivateBackupRules"
+      "./plugins/withPrivateBackupRules",
+      "./plugins/withForegroundLocationOnly"
     ]
   }
 }

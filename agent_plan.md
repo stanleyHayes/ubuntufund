@@ -2,6 +2,10 @@
 
 ### 2026-09-12 — Ghana and mobile store compliance goal (IN PROGRESS)
 
+- Removed unused Android LocationTaskService through an Expo merge plugin and explicitly blocked foreground-location service permission. Actual merged release manifest passes absence/preservation checks (session 99898 exit 0, 1m2s); one-shot KYC foreground permissions, screen sharing, SDK and backup controls remain. Source/signed-device limits recorded in NATIVE_PERMISSIONS.md. Hosted CI 34750624157 was confirmed running for 3ad5014; no latest-main hosted pass claimed.
+
+- Full API session 3544 FINISHED exit 0: all 1,078 tests/154 files pass (966.64s), source held unchanged through d5d4aac API changes. Index readiness, missing-policy and update-publication transactions are included; earlier timeout did not recur, original cause remains unproven. Source freeze lifted. Broader release and external gates remain open.
+
 - Native legacy push handler now suppresses foreground banner/sound/badge/list presentation and removes payload logging/listeners. Dormant registration helpers no longer request OS permission or collect/send tokens. All 103 mobile tests, types and lint pass. Background OS delivery, legacy provider registrations and SDK component/traffic minimization remain open in PUSH_NOTIFICATIONS.md. API regression remains in progress; no API/shared edits.
 
 - Fixed the missing Android media-projection permission using explicit Expo foreground-service permissions. Isolated prebuild and release manifest merge pass (session 95412 exit 0, 37s); parsed service/permissions/SDK/backup/blocked-permission assertions pass. Added actual device and Play Console acceptance items. API session 3544 remains confirmed live with source unchanged. See NATIVE_PERMISSIONS.md for artifact hash and provenance.

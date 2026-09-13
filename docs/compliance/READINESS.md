@@ -218,3 +218,9 @@ GitHub CI run 34745173463 failed in Test after successful clean install, patch c
 ## Full web browser checkpoint — 13 September 2026
 
 All 64 web Playwright cases pass with one worker against an isolated seeded local API (session 32055, terminal exit 0, 2.7 minutes; `/tmp/ujimora-web-full-browser-tests.log`). Registration fixtures traverse the actual wizard and expressly accept the required agreements. KYC address coverage now includes mandatory private ID front/back and selfie references and tests rejection when evidence is absent; GPS substitutes only address proof. The wallet rejection test uses the current action and requires its seed instead of skipping. These checks combine real local auth/wallet flows with explicitly mocked provider/feature scenarios; they do not establish live money movement, external erasure, signed-device behavior, hosted-main success or legal/store approval. Nonfatal unread-count mock warnings remain recorded for follow-up.
+
+## Current publication and withdrawal regression completed — 13 September 2026
+
+Session 3544 finished with exit 0: **1,078 tests across 154 files pass**, 966.64 seconds (`/tmp/ujimora-api-current-publication-regression.log`). API/shared source remained unchanged throughout. This run includes index readiness, missing withdrawal-policy serialization and campaign-update final authorization/publication transactions through d5d4aac. The earlier donation-content-gate timeout did not recur; its original cause remains unproven, and no assertions were weakened. The API source freeze is lifted.
+
+This establishes a complete passing API regression for that source, not signed-native/provider/legal/store approval or completion of the remaining requirement ledger.
