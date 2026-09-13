@@ -46,6 +46,18 @@ export class ReconcileCryptoUseCase {
 
     for (const intent of stale) {
       summary.scanned += 1;
+      // Rotate attempted records even if their provider or settlement fails.
+      // Financial updatedAt is preserved; a crash still leaves them retryable.
+      try {
+        if (!await this.intentRepo.recordCryptoReconciliationAttempt(intent.id, new Date())) {
+          summary.pending += 1;
+          continue;
+        }
+      } catch (error) {
+        logger.error({ err: error, donationIntentId: intent.id }, 'crypto reconcile: scheduling attempt failed');
+        summary.errored += 1;
+        continue;
+      }
       const provider = this.providersByName.get(intent.provider);
       if (!provider || !intent.providerRef) {
         summary.pending += 1;

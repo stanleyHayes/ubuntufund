@@ -198,6 +198,13 @@ export class MongoDonationIntentRepository
    * awaiting confirmations) past `olderThan`. The crypto reconciler re-checks
    * these against the provider to repair a missed webhook (§7/§8).
    */
+  async recordCryptoReconciliationAttempt(id: string, attemptedAt: Date): Promise<boolean> {
+    const result = await DonationIntentModel.updateOne({
+      _id: id, paymentRail: 'CRYPTO', status: { $in: ['PENDING', 'PROCESSING'] },
+    }, { $max: { cryptoReconciledAt: attemptedAt } }, { timestamps: false });
+    return result.matchedCount === 1;
+  }
+
   async findStaleCrypto(
     olderThan: Date,
     limit: number
@@ -208,7 +215,7 @@ export class MongoDonationIntentRepository
       providerRef: { $exists: true, $ne: null },
       updatedAt: { $lt: olderThan },
     })
-      .sort({ updatedAt: 1 })
+      .sort({ cryptoReconciledAt: 1, updatedAt: 1, _id: 1 })
       .limit(limit);
     return docs.map(toDomain);
   }

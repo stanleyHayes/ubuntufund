@@ -52,6 +52,7 @@ export interface DonationIntentRepositoryPort {
    * Crypto intents still in flight (PENDING/PROCESSING) past `olderThan`. The
    * crypto reconciler re-checks these against the provider (Crypto Donations §7/§8).
    */
+  recordCryptoReconciliationAttempt(id: string, attemptedAt: Date): Promise<boolean>;
   findStaleCrypto(olderThan: Date, limit: number): Promise<DonationIntentEntity[]>;
 
   /**

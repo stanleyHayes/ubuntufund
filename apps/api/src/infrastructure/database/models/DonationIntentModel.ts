@@ -55,6 +55,7 @@ export interface DonationIntentDocument extends Document {
   requiredConfirmations?: number;
   quoteId?: string;
   quoteExpiresAt?: Date;
+  cryptoReconciledAt?: Date;
 }
 
 const DONATION_INTENT_STATUSES: DonationIntentStatus[] = [
@@ -149,6 +150,7 @@ const donationIntentSchema = new Schema<DonationIntentDocument>(
     requiredConfirmations: { type: Number },
     quoteId: { type: String },
     quoteExpiresAt: { type: Date },
+    cryptoReconciledAt: { type: Date },
   },
   { collection: 'donationintents', timestamps: true }
 );

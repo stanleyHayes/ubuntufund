@@ -2,6 +2,8 @@
 
 ### 2026-09-12 — Ghana and mobile store compliance goal (IN PROGRESS)
 
+- Crypto recovery rotates attempted deposits using separate scheduling metadata, so a persistently failing oldest batch does not exclude newer deposits indefinitely. Nine crypto integration tests, API types/lint and whitespace checks pass; bounded-batch retry preserves amounts/status/financial timestamps. Publishing the focused follow-up; provider/authorization and broader compliance gates remain open.
+
 - FULL API regression PASS: 1,029 tests across 151 files, session 48519 terminal exit 0 (1091.24s), `/tmp/ujimora-publish-api-tests.log`; source freeze lifted. CI fca28d3 failed on a 5s mobile timeout while package suites competed for CPU. Follow-up limits CI to one package/one client worker and aligns admin/mobile timeout with web (30s); unchanged assertions pass under CI=true: web 178, admin 69, mobile 81. Publishing this verified CI fix separately.
 
 - Engineering checkpoint fca28d3 pushed to main; ls-remote verified exact parity at fca28d3b47a3dc29a996451700a36e99f0162b23. User authorized continued incremental fixes/pushes. CI run 34745173463 passed clean install, dependency-patch tests and replica-set setup and remains active; local full API session 48519 remains active. No source edits while local regression runs.
