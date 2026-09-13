@@ -163,6 +163,7 @@ export class AutomaticPayoutService {
           {
             $set: {
               autoClaimed: true,
+              autoClaimDay: day,
               automationReason: `Automatic policy v${policy.revision}: reviewed destination and limits passed.`,
             },
           },

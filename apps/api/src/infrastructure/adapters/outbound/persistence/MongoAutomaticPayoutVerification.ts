@@ -1,6 +1,7 @@
+import { PayoutModel } from '../../../database/models/PayoutModel.js'
 import { DisputeModel } from '../../../database/models/DisputeModel.js'
 import { TransferRecipientModel } from '../../../database/models/TransferRecipientModel.js'
-import { AutomaticPayoutPolicyModel, automaticPayoutDefaults } from '../../../database/models/AutomaticPayoutModel.js'
+import { AutomaticPayoutPolicyModel, AutomaticPayoutBudgetModel, automaticPayoutDefaults } from '../../../database/models/AutomaticPayoutModel.js'
 import type { PayoutEntity } from '../../../../domain/entities/Payout.js'
 import { campaignNeedsEarlyCashout, isEarlyWithdrawal } from '../../../../application/services/payoutFee.js'
 import { CampaignModel } from '../../../database/models/CampaignModel.js'
@@ -11,7 +12,7 @@ import { AppError } from '../../inbound/middleware/errorHandler.js'
 
 /** Revalidate after provider balance lookup and before reserving campaign money. */
 export class MongoAutomaticPayoutVerification {
-  async run<T>(userId: string, work: () => Promise<T>, payout?: Pick<PayoutEntity, 'campaignId' | 'type' | 'recipientId' | 'currency' | 'amount'> & { recipientCode: string }): Promise<T> {
+  async run<T>(userId: string, work: () => Promise<T>, payout?: Pick<PayoutEntity, 'id' | 'campaignId' | 'type' | 'recipientId' | 'currency' | 'amount'> & { recipientCode: string }): Promise<T> {
     return new MongoUnitOfWork().run(async () => {
       await this.assertCurrent(userId)
       const locked = await UserModel.updateOne({ _id: userId, deletedAt: null }, { $inc: { publicationWriteVersion: 1 } })
@@ -37,6 +38,24 @@ export class MongoAutomaticPayoutVerification {
         )
         if (!policy || payout.amount > (policy.maxAmount ?? automaticPayoutDefaults.maxAmount))
           throw new AppError('Automatic payout policy changed; manual review required.', 409)
+        const day = new Date().toISOString().slice(0, 10)
+        const claimed = await PayoutModel.findOne({
+          _id: payout.id, status: 'PENDING', autoClaimed: true, autoClaimDay: day,
+          campaignId: payout.campaignId, requestedBy: userId, recipientId: payout.recipientId,
+          currency: payout.currency, amount: payout.amount, type: payout.type,
+        })
+        if (!claimed) throw new AppError('Automatic budget claim is unavailable or expired; manual review required.', 409)
+        const amountMinor = Math.round(payout.amount * 100)
+        for (const [key, limit] of [
+          [`${day}:owner:${userId}`, policy.dailyOwnerLimit ?? automaticPayoutDefaults.dailyOwnerLimit],
+          [`${day}:platform`, policy.dailyPlatformLimit ?? automaticPayoutDefaults.dailyPlatformLimit],
+        ] as const) {
+          const budget = await AutomaticPayoutBudgetModel.findOneAndUpdate(
+            { _id: key }, { $inc: { consumptionWriteVersion: 1 } }, { new: true },
+          )
+          if (!budget || !Number.isSafeInteger(budget.usedMinor) || budget.usedMinor < amountMinor || budget.usedMinor > Math.round(limit * 100))
+            throw new AppError('Automatic daily budget requires manual review.', 409)
+        }
         const recipient = await TransferRecipientModel.findOneAndUpdate(
           { _id: payout.recipientId }, { $inc: { payoutWriteVersion: 1 } }, { new: true },
         )

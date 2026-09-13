@@ -45,7 +45,7 @@ export class ApprovePayoutUseCase {
     private readonly payoutsConfig: PayoutsConfig,
     private readonly campaigns?: CampaignRepositoryPort,
     private readonly walletPayouts?: WalletPayoutPort,
-    private readonly automaticVerification?: { run<T>(userId: string, work: () => Promise<T>, payout?: Pick<PayoutEntity, 'campaignId' | 'type' | 'recipientId' | 'currency' | 'amount'> & { recipientCode: string }): Promise<T> },
+    private readonly automaticVerification?: { run<T>(userId: string, work: () => Promise<T>, payout?: Pick<PayoutEntity, 'id' | 'campaignId' | 'type' | 'recipientId' | 'currency' | 'amount'> & { recipientCode: string }): Promise<T> },
     private readonly manualApproval?: { run<T>(requester: PayoutRequester, work: () => Promise<T>, payout?: Pick<PayoutEntity, 'campaignId' | 'type'>): Promise<T> },
   ) {}
 

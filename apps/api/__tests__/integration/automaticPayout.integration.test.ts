@@ -273,7 +273,10 @@ it('calls the provider only after the real approval transaction commits its rese
     }),
   }
   const real = new ApprovePayoutUseCase(repo, { findById: async () => ({ recipientCode: 'synthetic-recipient', type: 'ghipss' }) } as never, new MongoCampaignBalanceRepository(), provider as never, { dualApprovalAmount: 40000, maxTransferAmount: 50000 } as never, undefined, undefined, new MongoAutomaticPayoutVerification())
-  await real.executeAutomatic(item.id)
+  const automatic = new AutomaticPayoutService(real, repo, { dualApprovalAmount: 40000, maxTransferAmount: 50000 } as never)
+  await automatic.consider(item)
+  expect((await PayoutModel.findById(item.id))?.autoClaimDay).toBe(new Date().toISOString().slice(0, 10))
+  expect((await AutomaticPayoutBudgetModel.find()).map(budget => budget.usedMinor)).toEqual([30000, 30000])
   expect(provider.initiateTransfer).toHaveBeenCalledTimes(1)
   expect((await repo.findById(item.id))?.status).toBe('PROCESSING')
 })
@@ -306,6 +309,7 @@ it.each(['owner', 'status', 'deleted', 'early'])('rejects concurrent automatic c
     return query
   })
   try {
+    await seedFinalClaim(item.id)
     const real = new ApprovePayoutUseCase(repo, { findById: async () => ({ recipientCode: 'synthetic-recipient', type: 'ghipss' }) } as never, new MongoCampaignBalanceRepository(), provider as never, { dualApprovalAmount: 40000, maxTransferAmount: 50000 } as never, undefined, undefined, new MongoAutomaticPayoutVerification())
     await expect(real.executeAutomatic(item.id)).rejects.toMatchObject({ statusCode: 409 })
     expect(lock.mock.calls.length).toBeGreaterThan(1)
@@ -338,6 +342,7 @@ it.each(['owner', 'code', 'currency', 'review', 'policy'])('rejects concurrent a
     return query
   })
   try {
+    await seedFinalClaim(item.id)
     const real = new ApprovePayoutUseCase(repo, { findById: async () => ({ recipientCode: 'synthetic-recipient', type: 'ghipss' }) } as never, new MongoCampaignBalanceRepository(), provider as never, { dualApprovalAmount: 40000, maxTransferAmount: 50000 } as never, undefined, undefined, new MongoAutomaticPayoutVerification())
     await expect(real.executeAutomatic(item.id)).rejects.toMatchObject({ statusCode: 409 })
     expect(lock.mock.calls.length).toBeGreaterThan(1)
@@ -365,6 +370,7 @@ it.each(['created', 'reopened'])('blocks an automatic transfer when a dispute is
   const gate = new Promise<void>(resolve => { release = resolve })
   const check = vi.spyOn(guard, 'assertCurrent').mockImplementationOnce(async userId => { await original(userId); entered = true; await gate })
   const provider = { isConfigured: () => true, getBalance: async () => [{ currency: 'GHS', balance: 1000 }], initiateTransfer: vi.fn() }
+  await seedFinalClaim(item.id)
   const real = new ApprovePayoutUseCase(repo, { findById: async () => ({ recipientCode: 'synthetic-recipient', type: 'ghipss' }) } as never, new MongoCampaignBalanceRepository(), provider as never, { dualApprovalAmount: 40000, maxTransferAmount: 50000 } as never, undefined, undefined, guard)
   const result = real.executeAutomatic(item.id).then(() => null, error => error)
   try {
@@ -374,6 +380,42 @@ it.each(['created', 'reopened'])('blocks an automatic transfer when a dispute is
     release()
     expect(await result).toMatchObject({ statusCode: 409 })
     expect(check.mock.calls.length).toBeGreaterThan(1)
+    expect((await CampaignBalanceModel.findOne())?.availableBalance).toBe(1000)
+    expect((await repo.findById(item.id))?.status).toBe('PENDING')
+    expect(provider.initiateTransfer).not.toHaveBeenCalled()
+  } finally { release(); await result; check.mockRestore() }
+})
+
+
+async function seedFinalClaim(id: string) {
+  const day = new Date().toISOString().slice(0, 10)
+  await PayoutModel.updateOne({ _id: id }, { autoClaimed: true, autoClaimDay: day })
+  for (const key of [`${day}:owner:${ids.user}`, `${day}:platform`])
+    await AutomaticPayoutBudgetModel.updateOne({ _id: key }, { usedMinor: 30000 }, { upsert: true })
+}
+
+it.each(['missing_claim', 'expired_claim', 'missing_budget', 'lower_limit', 'budget_changed'])('refuses automatic reservation with %s', async change => {
+  const item = await pending()
+  await seedFinalClaim(item.id)
+  await CampaignBalanceModel.create({ campaignId: String(ids.campaign), currency: 'GHS', availableBalance: 1000 })
+  const provider = { isConfigured: () => true, getBalance: async () => [{ currency: 'GHS', balance: 1000 }], initiateTransfer: vi.fn() }
+  const guard = new MongoAutomaticPayoutVerification()
+  const original = guard.assertCurrent.bind(guard)
+  let entered = false
+  let release!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve })
+  const check = vi.spyOn(guard, 'assertCurrent').mockImplementationOnce(async userId => { await original(userId); entered = true; await gate })
+  const real = new ApprovePayoutUseCase(repo, { findById: async () => ({ recipientCode: 'synthetic-recipient', type: 'ghipss' }) } as never, new MongoCampaignBalanceRepository(), provider as never, { dualApprovalAmount: 40000, maxTransferAmount: 50000 } as never, undefined, undefined, guard)
+  const result = real.executeAutomatic(item.id).then(() => null, error => error)
+  try {
+    await expect.poll(() => entered).toBe(true)
+    if (change === 'missing_claim') await PayoutModel.updateOne({ _id: item.id }, { autoClaimed: false })
+    if (change === 'expired_claim') await PayoutModel.updateOne({ _id: item.id }, { autoClaimDay: '2000-01-01' })
+    if (change === 'missing_budget') await AutomaticPayoutBudgetModel.deleteMany({})
+    if (change === 'lower_limit') await AutomaticPayoutPolicyModel.updateOne({ _id: 'current' }, { dailyOwnerLimit: 200 })
+    if (change === 'budget_changed') await AutomaticPayoutBudgetModel.updateMany({}, { usedMinor: 1000000 })
+    release()
+    expect(await result).toMatchObject({ statusCode: 409 })
     expect((await CampaignBalanceModel.findOne())?.availableBalance).toBe(1000)
     expect((await repo.findById(item.id))?.status).toBe('PENDING')
     expect(provider.initiateTransfer).not.toHaveBeenCalled()

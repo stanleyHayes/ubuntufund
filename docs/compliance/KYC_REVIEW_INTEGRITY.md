@@ -507,3 +507,24 @@ All 29 automatic integration/verification/transfer-uncertainty tests pass, plus 
 Automatic payout's final money transaction now checks for open/under_review disputes after locking the campaign. MongoDisputeRepository creation and status updates now run transactionally and increment the same campaign payoutWriteVersion before committing dispute changes; missing campaigns fail closed. This also covers a dispute newly inserted after an earlier snapshot, which a dispute-only read/write cannot fence. Manual review remains a distinct path; this is not a blanket prohibition on staff-resolved payouts.
 
 All 28 automatic integration/verification tests, API types/lint and whitespace checks pass in isolated checkout `/tmp/ujimora-dispute-fix`. Two concurrent tests pause after verification establishes the snapshot, then create or reopen a dispute through the real repository; automatic approval retries, returns 409, and leaves funds/PENDING unchanged with no provider call. Logs `/tmp/ujimora-dispute-payout-{tests,types,lint}.log`. Root full regression 24306 remains on API baseline 0bb30ee and does not cover this change. Root must fast-forward after its terminal result; subsequent regression remains required. Final budget/history/manual-recipient/other-consumer and release/legal gates stay open.
+
+## Automatic reservation consumes a current daily budget claim
+
+Automatic claims now persist their UTC day on the payout. Final reservation
+requires that same pending payout's claim, owner, campaign, destination, amount,
+currency and type to match. It locks both owner and platform budget records in
+the money transaction and checks their integer minor-unit totals against current
+policy limits. Missing/expired claims, missing budgets and limits reduced below
+already claimed totals require manual review. Consumption increments a separate
+serialization counter; it does not charge the daily budget a second time.
+
+On current main source, 32 automatic integration tests and four verification /
+transfer-uncertainty tests pass, plus API types/lint. Five concurrent mutations
+cover missing/expired claims, missing budgets, lowered limits and changed budget
+totals. The success case runs the real claim service and approval transaction,
+checks each budget is charged once, and observes committed money/reference state
+before the provider call. Logs: /tmp/ujimora-budget-current-{tests,unit,types,lint}.log.
+
+Remaining: prior manually paid destination history at final consumption, manual
+destination review snapshots, other financial consumers, full current regression,
+and the separate provider, native, store and legal/regulatory release gates.

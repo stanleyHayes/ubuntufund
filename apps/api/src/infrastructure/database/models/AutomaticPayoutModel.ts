@@ -30,5 +30,5 @@ const policySchema = new Schema(
 export const AutomaticPayoutPolicyModel = mongoose.model('AutomaticPayoutPolicy', policySchema)
 export const AutomaticPayoutBudgetModel = mongoose.model(
   'AutomaticPayoutBudget',
-  new Schema({ _id: String, usedMinor: { type: Number, default: 0 } }),
+  new Schema({ _id: String, consumptionWriteVersion: { type: Number, default: 0 }, usedMinor: { type: Number, default: 0 } }),
 )

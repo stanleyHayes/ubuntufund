@@ -2,6 +2,8 @@
 
 ### 2026-09-12 — Ghana and mobile store compliance goal (IN PROGRESS)
 
+- Automatic payout final reservation now requires a current dated claim and serializes both daily budgets under current policy without charging twice. All 36 focused tests (32 integration, four verification/uncertainty), API types/lint pass on current main. Five concurrent claim/budget changes fail closed before transfer; real claim-to-provider success verifies committed funds and single budget charge. See KYC_REVIEW_INTEGRITY.md; history/manual-destination and broader release gates remain open.
+
 - Marketing header appearance icon now uses the same light gold as search on its permanent forest surface, with matching 40px sizing and visible hover/focus states. Browser checks passed in light/dark across all four finishes; appearance dialog opens/closes correctly. Marketing types and lint pass; light screenshot inspected.
 
 - Render deployment incident: build succeeded but API startup failed with MongoDB code 86 on Refund.donationId_1 (legacy non-unique index). Added safe startup model/code diagnostics and repeatable in-place prepareUnique/dry-run/unique migration. Production MongoDB 8.0.32 preflight found zero refund records; migration completed without deleting records or indexes. Three real-database migration tests, API types and lint pass. Replacement deploy dep-daj879qjnfac73epeno0 (a080bd0) reached live 11:07:54 UTC; /health HTTP 200/status ok verified 11:08:15 UTC. All 21 refund regression tests also pass. Baseline API regression24306 finished: 1,106 tests across 154 files passed at API0bb30ee; later dispute/diagnostic deltas retain focused verification.

@@ -22,6 +22,7 @@ export interface PayoutDocument extends Document {
   providerStatus?: string
   automationReason?: string
   requestKey?: string
+  autoClaimDay?: string
   autoClaimed?: boolean
   transferCode?: string
   requestedBy: string
@@ -80,6 +81,7 @@ const payoutSchema = new Schema<PayoutDocument>(
     providerStatus: String,
     automationReason: String,
     requestKey: { type: String, unique: true, sparse: true },
+    autoClaimDay: String,
     autoClaimed: Boolean,
     campaignId: { type: String, required: true, index: true },
     recipientId: { type: String, required: true },
