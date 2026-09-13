@@ -52,6 +52,29 @@ it('rejects a comment when its public author identity changes during screening',
   expect(await CampaignCommentModel.countDocuments({ campaignId: f.campaign.id })).toBe(0);
 });
 
+it('rolls back comment creation when approval is revoked after the transaction snapshot', async () => {
+  const f = await fixture();
+  const original = MongoPublicationAdmission.prototype.assertCurrent;
+  let calls = 0;
+  const consume = vi.spyOn(MongoPublicationAdmission.prototype, 'assertCurrent').mockImplementation(async function (this: MongoPublicationAdmission, submission) {
+    if (calls++ === 0) await PublicationReviewModel.updateOne({ actorId: f.owner.id, action: 'comment.create' }, { $set: { status: 'rejected' } }, { session: null });
+    return original.call(this, submission);
+  });
+  try {
+    await request(app).post(f.comments).set('Authorization', f.owner.auth).send({ content: 'Revoked while committing', automatedReviewConsent: true }).expect(409);
+    expect(calls).toBeGreaterThanOrEqual(2);
+    expect(await CampaignCommentModel.countDocuments({ campaignId: f.campaign.id })).toBe(0);
+    expect((await CampaignModel.findById(f.campaign.id))?.commentCreationWriteVersion).toBe(0);
+  } finally { consume.mockRestore(); }
+});
+
+it('denies comments when credentials rotate during screening', async () => {
+  const f = await fixture();
+  screen.mockImplementationOnce(async () => { await UserModel.updateOne({ _id: f.owner.id }, { $set: { authVersion: randomUUID() } }); return 'allowed'; });
+  await request(app).post(f.comments).set('Authorization', f.owner.auth).send({ content: 'Stale credentials', automatedReviewConsent: true }).expect(401);
+  expect(await CampaignCommentModel.countDocuments({ campaignId: f.campaign.id })).toBe(0);
+});
+
 it('retries a transaction whose approval is revoked after its snapshot without creating a live session', async () => {
   const f = await fixture();
   await SubscriptionModel.create({ userId: f.owner.id, tier: 'pro', status: 'active', billingCycle: 'monthly', currentPeriodStart: new Date(), currentPeriodEnd: new Date(Date.now() + 86400000) });

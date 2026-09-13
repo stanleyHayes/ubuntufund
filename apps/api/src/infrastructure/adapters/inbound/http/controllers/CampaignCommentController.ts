@@ -15,7 +15,7 @@ export class CampaignCommentController {
 
   create = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const comment = await this.comments.create(req.params.id as string, req.userId!, req.body);
+      const comment = await this.comments.create(req.params.id as string, req.userId!, req.body, req.authVersion);
       res.status(201).json({ data: comment, message: 'Comment posted', status: 201 });
     } catch (error) { next(error); }
   };

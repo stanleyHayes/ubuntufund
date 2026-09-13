@@ -1,5 +1,6 @@
 import type { PublicProfileVisibilityPort } from '../../domain/ports/outbound/PublicProfileVisibilityPort.js';
-import type { PublicationAdmissionPort } from '../../domain/ports/outbound/PublicationAdmissionPort.js';
+import type { PublicationAdmissionPort, PublicationSubmission } from '../../domain/ports/outbound/PublicationAdmissionPort.js';
+import type { CommentCreationPort } from '../../domain/ports/outbound/CommentCreationPort.js';
 import type { UserBlockRepositoryPort } from '../../domain/ports/outbound/UserBlockRepositoryPort.js';
 import { CampaignStatus } from '@ubuntu-fund/types';
 import type { CampaignComment, CreateCampaignCommentInput } from '@ubuntu-fund/types';
@@ -15,7 +16,8 @@ export class CampaignCommentUseCases {
     private readonly users: UserRepositoryPort,
     private readonly visibility: PublicProfileVisibilityPort,
     private readonly blocks?: UserBlockRepositoryPort,
-    private readonly admission?: PublicationAdmissionPort
+    private readonly admission?: PublicationAdmissionPort,
+    private readonly creation?: CommentCreationPort
   ) {}
 
   private async toDTO(comment: CampaignCommentRecord): Promise<CampaignComment> {
@@ -36,7 +38,7 @@ export class CampaignCommentUseCases {
     return Promise.all(comments.filter(comment => !excluded.has(comment.authorId)).map((comment) => this.toDTO(comment)));
   }
 
-  async create(campaignId: string, authorId: string, input: CreateCampaignCommentInput): Promise<CampaignComment> {
+  async create(campaignId: string, authorId: string, input: CreateCampaignCommentInput, authVersion = ''): Promise<CampaignComment> {
     const campaign = await this.campaigns.findById(campaignId);
     if (!campaign) throw new AppError('Campaign not found', 404);
     if (![CampaignStatus.ACTIVE, CampaignStatus.FUNDED, CampaignStatus.EXPIRED].includes(campaign.status) && campaign.creatorId !== authorId) throw new AppError('Campaign not found', 404);
@@ -47,14 +49,19 @@ export class CampaignCommentUseCases {
     const author = await this.users.findById(authorId);
     if (!author) throw new AppError('The publishing account is unavailable', 401);
     // Attribution is public content too, including a name entered at signup.
-    await this.admission.assertAllowed({ actorId: authorId, action: 'comment.create', resourceId: campaignId,
-      text: JSON.stringify({ authorName: author.name, comment: content }), mediaUrls: author.avatarUrl ? [author.avatarUrl] : [], automatedReviewConsent: input.automatedReviewConsent });
-    const currentAuthor = await this.users.findById(authorId);
-    if (!currentAuthor || currentAuthor.name !== author.name || currentAuthor.avatarUrl !== author.avatarUrl) {
-      throw new AppError('Your public identity changed during review. Refresh and submit again.', 409);
-    }
-    const comment = await this.comments.create(campaignId, authorId, content);
-    return this.toDTO(comment);
+    const submission: PublicationSubmission = { actorId: authorId, action: 'comment.create', resourceId: campaignId,
+      text: JSON.stringify({ authorName: author.name, comment: content }), mediaUrls: author.avatarUrl ? [author.avatarUrl] : [], automatedReviewConsent: input.automatedReviewConsent };
+    await this.admission.assertAllowed(submission);
+    if (!this.creation || !this.admission.assertCurrent) throw new AppError('Comment publication verification is unavailable', 503);
+    return this.creation.run(authorId, authVersion, campaignId, campaign.creatorId, async () => {
+      await this.admission!.assertCurrent!(submission);
+      const currentAuthor = await this.users.findById(authorId);
+      if (!currentAuthor || currentAuthor.name !== author.name || currentAuthor.avatarUrl !== author.avatarUrl) {
+        throw new AppError('Your public identity changed during review. Refresh and submit again.', 409);
+      }
+      if (this.blocks && await this.blocks.isBlocked(authorId, campaign.creatorId)) throw new AppError('You cannot comment on this campaign', 403);
+      return this.toDTO(await this.comments.create(campaignId, authorId, content));
+    });
   }
 
   async remove(campaignId: string, commentId: string, actorId: string, isAdmin: boolean): Promise<void> {

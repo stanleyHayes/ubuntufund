@@ -2,6 +2,8 @@
 
 ### 2026-09-12 — Ghana and mobile store compliance goal (IN PROGRESS)
 
+- Comment creation now commits current credentials, author identity, campaign access and exact approval with insertion in one transaction. All 19 publication integration tests plus API types/lint pass; competing approval rejection retries and leaves no comment. Logs `/tmp/ujimora-comment-transaction-{tests,types,lint}.log`. Concurrent block insertion and later dynamic identity projections remain open.
+
 - Comment admission now binds the public author name and avatar alongside comment text, covering registration identity on this publishing path. Avatar submissions require the existing staff media workflow; a changed identity during screening denies creation. Admin/web/native evidence formatting recognizes structured comment evidence. Seventeen publication API tests, eight admin and seven web review tests pass; all four app type/lint tasks pass. Logs `/tmp/ujimora-comment-attribution-{tests,admin,web,checks}.log`. Initial stale text-only screening assertion corrected. Other identity projections, legacy content, media-byte evidence and final comment transaction fencing remain open.
 
 - Background account cleanup now advances the retention-review revision when pending cleanup completes, invalidating forms based on the previous evidence state. It preserves staff notes and the chosen follow-up date; repeated sweeps do not keep advancing the revision. Four erasure tests and API types pass, sessions 52066/86538 terminal 0; `/tmp/ujimora-cleanup-review-revision-{tests,types}.log`. Hosted CI 34746434640 remains verified running its test stage. Broader compliance remains active.

@@ -1,3 +1,4 @@
+import { MongoCommentCreation } from './infrastructure/adapters/outbound/persistence/MongoCommentCreation.js'
 import { MongoLiveSessionCreation } from './infrastructure/adapters/outbound/persistence/MongoLiveSessionCreation.js'
 import { MongoCreatorWithdrawalTransaction } from './infrastructure/adapters/outbound/persistence/MongoCreatorWithdrawalTransaction.js'
 import { MongoCampaignCreation } from './infrastructure/adapters/outbound/persistence/MongoCampaignCreation.js'
@@ -1113,6 +1114,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     publicProfileVisibility,
     userBlockRepo,
     publicationAdmission,
+    new MongoCommentCreation(),
   )
 
   const shareCampaignUseCase = new ShareCampaignUseCase(shareRepo)
