@@ -20,7 +20,7 @@ const draftSchema = z
       .string()
       .url()
       .max(2000)
-      .refine((v) => new URL(v).protocol === 'https:')
+      .regex(/^https:\/\//i, 'Cover images must use HTTPS')
       .or(z.literal('')),
     imageAlt: z.string().max(300),
     body: z.string().max(150000),

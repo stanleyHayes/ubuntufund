@@ -4,6 +4,7 @@
 
 - Implemented Content → Blog with Details/Write/Media/Review steps, rich-text toolbar, Markdown source/shared safe preview, authenticated media uploads, explicit review-before-publish, revision-safe private drafts and unpublishing. Preserves the six existing public articles on first migration. Published-only sitemap and grouped branded PDF/Excel/CSV exports included; sidebar connectors retained.
 - Fixed Contact Submissions dialog theme/close/contrast and visible failed-save handling with retained notes. Fixed About team-photo root-relative URLs; shared uploader now provides loading and retry states while retaining Replace/Remove.
+- Main implementation pushed as `88fbcdf`; all three Vercel deployments reported successful. Follow-up URL validation rejects malformed/non-HTTPS cover URLs with HTTP 400; focused API tests/types/lint pass. Render deployment is still being monitored.
 - Three API integration tests, six mocked phone/desktop browser flows and all ten marketing tests pass. API/admin/marketing production builds and affected type checks pass; lint has only existing unrelated warnings. Detailed scope and verification in `docs/BLOG_STUDIO.md`. Broader compliance goal remains active with its existing external and engineering gates.
 
 ### 2026-09-12 — Ghana and mobile store compliance goal (IN PROGRESS)

@@ -129,6 +129,9 @@ it('rejects incomplete publication and unsafe URLs', async () => {
     .set('Authorization', `Bearer ${token}`)
     .send({ draft: { ...draft, image: 'javascript:alert(1)' } })
     .expect(400)
+  for (const image of ['https://', 'not a URL', 'http://example.test/image.png']) {
+    await request(app).post('/api/v1/blog/admin/posts').set('Authorization', `Bearer ${token}`).send({ draft: { ...draft, image } }).expect(400)
+  }
   // A non-admin cannot access draft content.
   expect([401, 403]).toContain(
     (await request(app).get('/api/v1/blog/admin/posts').set('Authorization', `Bearer ${reader}`))
