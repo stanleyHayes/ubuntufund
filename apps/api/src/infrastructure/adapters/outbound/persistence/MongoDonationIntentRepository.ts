@@ -212,7 +212,6 @@ export class MongoDonationIntentRepository
     const docs = await DonationIntentModel.find({
       paymentRail: 'CRYPTO',
       status: { $in: ['PENDING', 'PROCESSING'] },
-      providerRef: { $exists: true, $ne: null },
       updatedAt: { $lt: olderThan },
     })
       .sort({ cryptoReconciledAt: 1, updatedAt: 1, _id: 1 })

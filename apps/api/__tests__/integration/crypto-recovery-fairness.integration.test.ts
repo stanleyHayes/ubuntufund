@@ -48,3 +48,26 @@ it('rotates failed bounded batches without changing money, status or financial t
   await DonationIntentModel.updateOne({ _id: rows[0].id }, { $set: { status: 'SUCCEEDED' } });
   expect(await repo.recordCryptoReconciliationAttempt(rows[0].id, new Date())).toBe(false);
 });
+
+it('surfaces missing references and unavailable providers without losing or crediting obligations', async () => {
+  const before = new Date(Date.now() - 3600000);
+  const rows = await DonationIntentModel.create([undefined, '', 'original-reference'].map(providerRef => ({
+    campaignId: 'blocked-fixture', amount: 500, currency: 'GHS', provider: 'bitnob',
+    paymentRail: 'CRYPTO', status: 'PENDING', providerRef,
+    idempotencyKey: randomUUID(), createdAt: before, updatedAt: before,
+    donorEmail: 'private@example.com',
+  })));
+  const applyEvent = vi.fn();
+  const recovery = new ReconcileCryptoUseCase(new MongoDonationIntentRepository(), new Map(), { applyEvent } as unknown as HandleCryptoWebhookUseCase);
+  const summary = await recovery.reconcileStale({ olderThanMinutes: 1 });
+  for (let i = 0; i < rows.length; i++) {
+    expect(summary.issues).toContainEqual({ donationIntentId: rows[i].id, provider: 'bitnob', reason: i < 2 ? 'missing_reference' : 'provider_unavailable' });
+    const saved = await DonationIntentModel.findById(rows[i].id);
+    expect(saved).toMatchObject({ amount: 500, status: 'PENDING', updatedAt: before });
+    expect(saved!.cryptoReconciledAt).toBeInstanceOf(Date);
+  }
+  expect(summary.blocked).toBe(summary.issues.length);
+  expect(summary.settled).toBe(0);
+  expect(JSON.stringify(summary)).not.toContain('private@example.com');
+  expect(applyEvent).not.toHaveBeenCalled();
+});

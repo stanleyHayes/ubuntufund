@@ -12,6 +12,8 @@ export interface CryptoReconcileSummary {
   failed: number;
   pending: number;
   errored: number;
+  blocked: number;
+  issues: Array<{ donationIntentId: string; provider: string; reason: 'missing_reference' | 'provider_unavailable' }>;
 }
 
 /**
@@ -49,6 +51,8 @@ export class ReconcileCryptoUseCase {
       failed: 0,
       pending: 0,
       errored: 0,
+      blocked: 0,
+      issues: [],
     };
     const stale = await this.intentRepo.findStaleCrypto(cutoff, limit);
 
@@ -68,7 +72,8 @@ export class ReconcileCryptoUseCase {
       }
       const provider = this.providersByName.get(intent.provider);
       if (!provider || !intent.providerRef) {
-        summary.pending += 1;
+        summary.blocked += 1;
+        summary.issues.push({ donationIntentId: intent.id, provider: intent.provider, reason: !intent.providerRef ? 'missing_reference' : 'provider_unavailable' });
         continue;
       }
       let status;

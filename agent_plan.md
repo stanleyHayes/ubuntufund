@@ -2,6 +2,8 @@
 
 ### 2026-09-12 — Ghana and mobile store compliance goal (IN PROGRESS)
 
+- Crypto recovery now includes stale records without references and reports them separately as blocked, along with unavailable-provider IDs/reasons. Admin shows investigation guidance and explicitly selected export columns without donor details. Twelve API integration tests and one admin display/export test pass; API/admin types/lint pass (existing admin ref warning only). Logs `/tmp/ujimora-crypto-issues-{tests,admin,checks}.log`; sessions 19953/72398/29485 terminal exit 0. Publishing incrementally. Authoritative provider recovery and external approvals remain open; no manual paid-status override added.
+
 - Manual crypto recovery rejects malformed, negative and out-of-date-range ages before querying deposits. The shared use case also enforces batches of 1–100, preventing Mongo limit=0 from creating an unbounded sweep. Eleven crypto integration tests, API types/lint pass; HTTP authorization/default/zero-age and direct scheduling controls covered. Logs `/tmp/ujimora-crypto-controls-{tests,types,lint}.log`, sessions 82055/88336/76867 terminal exit 0. Incremental publication; missing-reference/provider operations and broader compliance gates remain open. Hosted CI 34745663334 verified running its Test step after successful install/lint/types.
 
 - Crypto recovery rotates attempted deposits using separate scheduling metadata, so a persistently failing oldest batch does not exclude newer deposits indefinitely. Nine crypto integration tests, API types/lint and whitespace checks pass; bounded-batch retry preserves amounts/status/financial timestamps. Publishing the focused follow-up; provider/authorization and broader compliance gates remain open.
