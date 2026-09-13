@@ -55,10 +55,16 @@ export class MongoTransferRecipientRepository implements TransferRecipientReposi
   ): Promise<void> {
     const result = await TransferRecipientModel.updateOne(
       { _id: id },
-      {
-        $set: { reviewedBy, reviewNote, reviewedAt: new Date() },
-        $push: { reviews: { payoutId, reviewedBy, reviewNote, reviewedAt: new Date() } },
-      },
+      [{ $set: {
+        reviewedBy: { $literal: reviewedBy }, reviewNote: { $literal: reviewNote }, reviewedAt: '$$NOW',
+        reviews: { $concatArrays: [{ $ifNull: ['$reviews', []] }, [{
+          payoutId: { $literal: payoutId }, reviewedBy: { $literal: reviewedBy },
+          reviewNote: { $literal: reviewNote }, reviewedAt: '$$NOW',
+          destination: { recipientCode: '$recipientCode', accountNumber: '$accountNumber',
+            bankCode: '$bankCode', currency: '$currency', type: '$type',
+            campaignId: '$campaignId', createdBy: '$createdBy' },
+        }]] },
+      } }],
     )
     if (!result.matchedCount) throw new Error('Payout recipient no longer exists')
   }

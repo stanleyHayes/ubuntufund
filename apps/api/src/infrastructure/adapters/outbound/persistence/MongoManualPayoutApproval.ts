@@ -1,3 +1,4 @@
+import { TransferRecipientModel } from '../../../database/models/TransferRecipientModel.js'
 import type { PayoutEntity } from '../../../../domain/entities/Payout.js'
 import { campaignNeedsEarlyCashout, isEarlyWithdrawal } from '../../../../application/services/payoutFee.js'
 import { CampaignModel } from '../../../database/models/CampaignModel.js'
@@ -8,7 +9,7 @@ import { MongoUnitOfWork } from './MongoUnitOfWork.js'
 
 /** Commit final staff authorization, reservation and processing reference together. */
 export class MongoManualPayoutApproval {
-  async run<T>(requester: PayoutRequester, work: () => Promise<T>, payout?: Pick<PayoutEntity, 'campaignId' | 'type'>): Promise<T> {
+  async run<T>(requester: PayoutRequester, work: () => Promise<T>, payout?: Pick<PayoutEntity, 'id' | 'campaignId' | 'type' | 'recipientId' | 'requestedBy' | 'currency'> & { firstApprovedBy?: string; recipientCode: string }): Promise<T> {
     return new MongoUnitOfWork().run(async () => {
       const staff = await UserModel.updateOne({
         _id: requester.userId, role: 'admin', deletedAt: null,
@@ -27,6 +28,19 @@ export class MongoManualPayoutApproval {
           goalAmount: { amount: campaign.goalAmount },
         }) && !isEarlyWithdrawal(payout.type))
           throw new AppError('Campaign eligibility changed. Request early cashout and review its additional fee.', 409)
+        const recipient = await TransferRecipientModel.findOneAndUpdate(
+          { _id: payout.recipientId }, { $inc: { payoutWriteVersion: 1 } }, { new: true },
+        )
+        if (!recipient || recipient.campaignId !== payout.campaignId || recipient.createdBy !== payout.requestedBy ||
+            recipient.createdBy !== campaign.creatorId || recipient.currency !== payout.currency || recipient.recipientCode !== payout.recipientCode)
+          throw new AppError('Payout destination changed; review it again before approving.', 409)
+        const fields = ['recipientCode', 'accountNumber', 'bankCode', 'currency', 'type', 'campaignId', 'createdBy'] as const
+        for (const reviewer of new Set([requester.userId, payout.firstApprovedBy].filter(Boolean))) {
+          const review = [...(recipient.reviews ?? [])].reverse().find(item => item.payoutId === payout.id && item.reviewedBy === reviewer)
+          if (!review?.destination || fields.some(field => review.destination![field] !== recipient[field]))
+            throw new AppError('Destination no longer matches its payout review; a fresh review is required.', 409)
+        }
+
       }
       return work()
     })

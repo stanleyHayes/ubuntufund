@@ -547,3 +547,27 @@ Full API regression88675 remains live on unchanged root baseline c8adacf and doe
 not cover this later slice. Do not change root API source until it finishes.
 Manual destination-review snapshots, historical recipient addressing, remaining
 financial consumers and provider/native/store/legal gates remain open.
+
+## Manual destination review snapshots
+
+Recipient review recording now atomically appends the destination fields alongside
+reviewer/note/time: provider recipient code, account number, bank code, currency,
+type, campaign and owner. User-supplied strings remain literals in the update
+pipeline. Final single and batched bank reservations lock the recipient and require
+its current ownership/currency/provider code and destination details to match the
+payout-specific review. High-value payouts require matching snapshots for both the
+maker and checker. Missing legacy maker snapshots fail closed; reject/recreate the
+pending request for fresh reviews rather than bypassing maker-checker controls.
+
+All 36 payout and destination-review integration tests pass, including normal single
+and batched flows, atomic snapshot/literal-note preservation, four concurrent changes
+(provider code/account/bank/review removal), and missing maker evidence. Concurrent
+cases retry and prevent reservation. API types/lint pass; a nested Mongoose `type`
+schema issue found by tests was corrected before the successful run. Logs:
+/tmp/ujimora-manual-destination-final.log and -final-{types,lint}.log.
+
+This closes current destination snapshot consumption for these bank payout paths,
+not all historical provenance or all financial consumers. Automatic prior-history
+address binding, beneficiary/affiliate flows, wider release gates and the current
+full regression remain separate. Root regression88675 is still on c8adacf; do not
+fast-forward that source until it reaches a terminal result.

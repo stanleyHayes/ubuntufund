@@ -16,7 +16,7 @@ export interface TransferRecipientDocument extends Document {
   reviewedBy?: string;
   reviewNote?: string;
   reviewedAt?: Date;
-  reviews?: { payoutId: string; reviewedBy: string; reviewNote: string; reviewedAt: Date }[];
+  reviews?: { payoutId: string; reviewedBy: string; reviewNote: string; reviewedAt: Date; destination?: { recipientCode: string; accountNumber: string; bankCode: string; currency: string; type: string; campaignId: string; createdBy: string } }[];
   createdAt: Date;
 }
 
@@ -38,7 +38,7 @@ const transferRecipientSchema = new Schema<TransferRecipientDocument>(
     reviewedBy: String,
     reviewNote: String,
     reviewedAt: Date,
-    reviews: [{ payoutId: String, reviewedBy: String, reviewNote: String, reviewedAt: Date }],
+    reviews: [{ payoutId: String, reviewedBy: String, reviewNote: String, reviewedAt: Date, destination: { recipientCode: String, accountNumber: String, bankCode: String, currency: String, type: { type: String }, campaignId: String, createdBy: String } }],
     createdAt: { type: Date, default: Date.now, index: true },
   },
   { collection: 'transferrecipients', timestamps: false }

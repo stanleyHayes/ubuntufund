@@ -2,6 +2,8 @@
 
 ### 2026-09-12 — Ghana and mobile store compliance goal (IN PROGRESS)
 
+- Manual bank payout reviews now capture destination snapshots atomically; final single/batched reservations validate current destination and both maker/checker snapshots. All 36 payout/destination tests, types/lint pass, including concurrent address/review mutations. Missing legacy maker snapshots require fresh requests/reviews. Details and remaining scope in KYC_REVIEW_INTEGRITY.md; full root regression88675 retains c8adacf baseline.
+
 - Automatic final reservation now locks and revalidates qualifying settled manual destination history. All 39 focused tests/types/lint pass; six concurrent history corrections/deletion cause retry and 409 without reserving/sending funds. Root full API regression88675 remains on c8adacf; keep source frozen until terminal. Evidence and remaining scope: KYC_REVIEW_INTEGRITY.md.
 
 - Automatic payout final reservation now requires a current dated claim and serializes both daily budgets under current policy without charging twice. All 36 focused tests (32 integration, four verification/uncertainty), API types/lint pass on current main. Five concurrent claim/budget changes fail closed before transfer; real claim-to-provider success verifies committed funds and single budget charge. See KYC_REVIEW_INTEGRITY.md; history/manual-destination and broader release gates remain open.
