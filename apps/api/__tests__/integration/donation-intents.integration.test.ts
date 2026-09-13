@@ -260,6 +260,27 @@ describe('Donation Intents Integration', () => {
     expect(entries).toHaveLength(1)
   })
 
+  it('resumes an interrupted wallet intent from stored charge data for its owner only', async () => {
+    const owner = await registerUser(app, uniqueEmail('resume-owner'))
+    const campaignId = await createActiveCampaign(app, owner.token, owner.userId)
+    const walletId = await getWalletId(app, owner.token)
+    await fundWallet(walletId, 200)
+    const key = randomUUID()
+    const intent = await DonationIntentModel.create({ campaignId, donorUserId: owner.userId, amount: 50, tip: 5, currency: 'GHS', provider: 'wallet', status: 'CREATED', idempotencyKey: key })
+    const other = await registerUser(app, uniqueEmail('resume-other'))
+    await request(app).post('/api/v1/donation-intents').set('Authorization', `Bearer ${other.token}`).set('Idempotency-Key', key)
+      .send({ campaignId, amount: 1, provider: 'wallet' }).expect(403)
+    const retry = () => request(app).post('/api/v1/donation-intents').set('Authorization', `Bearer ${owner.token}`).set('Idempotency-Key', key)
+      .send({ campaignId, amount: 1, provider: 'wallet' })
+    const result = await retry()
+    expect(result.status).toBe(201)
+    expect(result.body.data.id).toBe(intent.id)
+    expect(result.body.data.status).toBe('SUCCEEDED')
+    await retry()
+    expect((await WalletModel.findById(walletId))?.balance).toBe(145)
+    expect(await JournalEntryModel.countDocuments({ donationIntentId: intent.id })).toBe(1)
+  })
+
   it('rejects a wallet intent with insufficient balance and takes no money', async () => {
     const { userId: creatorId, token: creatorToken } = await registerUser(
       app,

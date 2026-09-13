@@ -4,6 +4,12 @@ Audit date: 12 September 2026. Owner: Codex. Status: **IN PROGRESS — NOT RELEA
 
 This ledger covers the implemented donation/reward crowdfunding, creator gifts, subscriptions, wallet, crypto, UGC/live sessions, KYC, and personal-data flows across API, web, marketing, admin and native apps. A source-code check does not establish a licence, nonprofit status, privacy registration, legal approval, correct production configuration or store approval. Requirements for additional distribution countries must be added once the owner confirms launch territories. No assumptions of worldwide legal compliance are made.
 
+## Financial accounting checkpoint — 13 September 2026
+
+Donation success, journal/projections and outbox commit together. Split accrual consumes the exact locked version with all stored beneficiary consents. Wallet contributions also debit the donor and record history in that transaction, with owner-bound retries and no compensation after an uncertain commit. Focused failure/concurrency evidence and remaining historical repair/current eligibility/provenance gates are tracked in `DONATION_SETTLEMENT_INTEGRITY.md`.
+
+Full API baseline de49df2 passes 1,187 tests/162 files; later split-consent and wallet changes have separate focused verification. This is engineering evidence, not regulated-payment authorization or provider/store release approval.
+
 ## Current authoritative references
 
 | ID | Source | Applicability |

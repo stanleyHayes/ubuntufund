@@ -22,9 +22,19 @@ Four new real-database cases verify declined consent with a successful retry aft
 
 This verifies stored consent at accrual time; it does not establish the authenticity of beneficiary attestations or repair historic allocations. The ongoing full API regression uses the earlier de49df2 source and does not cover this delta.
 
+## Wallet accounting transaction — 2026-09-13
+
+Wallet debit and required donor transaction history now run after the exactly-once intent gate inside the same settlement transaction. The caller no longer compensates errors by depositing money: a rolled-back transaction leaves the original balance, while an uncertain commit can be resolved by replaying the same intent. Attempt telemetry and outbox delivery follow committed accounting.
+
+Known insufficient-balance/missing-wallet refusals persist FAILED and release an associated coupon seat in the transaction, then return an error after commit. Unexpected write failures roll back and retain a resumable intent. Wallet settlement checks the stored donor, currency, donation amount and gross charge before debit. Interrupted CREATED/PENDING wallet intents resume using stored charge values and require their owner.
+
+All 44 tests across six focused files pass, including real-database failures after wallet debit, transaction-history write and campaign projection, simultaneous settlement, delivery outage, insufficient funds, mismatched amount and interrupted-owner resume using stored amount/tip. Four additional tests cover another account or payment method winning an idempotency-key race; all 18 tests in the affected retry/API files pass on the final implementation. Types and affected lint pass. Logs: `/tmp/ujimora-wallet-atomic-final-tests.log`, `/tmp/ujimora-wallet-retry-binding-tests.log`, `/tmp/ujimora-wallet-atomic-types.log`, `/tmp/ujimora-wallet-atomic-lint.log`. The older attribution fixture now funds a real authenticated wallet rather than treating the wallet rail as a guest payment.
+
+The full earlier de49df2 API baseline passed 1,187 tests/162 files; it excludes the later split-consent and wallet deltas above. No production balances or historical records have been modified.
+
 ## Remaining requirements
 
-- Couple wallet debit, transaction history, intent and settlement across crashes and uncertain commit outcomes. Debit/compensation outside settlement is not made atomic by this change.
+- Verify deployed wallet operation and reconcile historical wallet debits/compensations; the transaction change is prospective. Provider-independent lost-commit replay is covered locally, not by a production outage exercise.
 - Reconcile historical successful intents with missing or partial donation/journal/projection/outbox records; no historical repair or production fund mutation was performed here.
 - Revalidate exact campaign eligibility/currency and funding provenance at the relevant financial writes, including refunds and payouts.
 - Verify every provider/reconciliation path and the full API suite after this change. Focused tests do not establish live-provider operation or overall regulatory/store compliance.

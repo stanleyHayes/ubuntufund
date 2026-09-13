@@ -1,5 +1,13 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — Atomic wallet donation accounting
+
+- Wallet debit, required donor transaction history, intent success and campaign settlement now commit together. Removed post-error compensation that could refund an uncertain committed donation. Known insufficient-funds refusals commit FAILED and free a coupon seat; unexpected write failures leave a resumable intent without money movement.
+- Interrupted wallet requests resume from the stored owner/amount/tip; idempotency lookup and creation-race winners reject mismatched account/payment method. Six real-database wallet cases cover after-write rollback/retry, concurrent debit, delivery failure, insufficient funds and mismatched charge; the route resume test checks ownership and original amount.
+- All 44 tests in six focused files passed, then all 18 tests in the two affected retry files passed after final binding hardening. API types, affected lint and whitespace checks pass. No production funds/history modified. Details and remaining historic reconciliation/provenance/external gates: `docs/compliance/DONATION_SETTLEMENT_INTEGRITY.md`.
+- Full de49df2 baseline FINISHED: 1,187 tests/162 files pass, 974.81 seconds. Process97096 is terminal and root API source freeze is lifted. The full run excludes later split-consent and wallet changes; their focused checks are recorded separately.
+
+
 ### 2026-09-13 — Locked split consent at donation accrual
 
 - Accrual uses the exact version returned by the lock, requires all beneficiaries' stored consent, and preserves the first lock timestamp on subsequent contributions. A write counter serializes concurrent consent/amendment changes; the encompassing donation transaction rolls back failed allocation.

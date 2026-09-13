@@ -1,3 +1,7 @@
+import { WalletModel } from '../../src/infrastructure/database/models/WalletModel.js';
+import { WalletTransactionModel } from '../../src/infrastructure/database/models/WalletTransactionModel.js';
+import { MongoWalletRepository } from '../../src/infrastructure/adapters/outbound/persistence/MongoWalletRepository.js';
+import { MongoWalletTransactionRepository } from '../../src/infrastructure/adapters/outbound/persistence/MongoWalletTransactionRepository.js';
 import { SplitAccrualService } from '../../src/application/services/SplitAccrualService.js';
 import { MongoCampaignSplitRepository } from '../../src/infrastructure/adapters/outbound/persistence/MongoCampaignSplitRepository.js';
 import { MongoCampaignBeneficiaryBalanceRepository } from '../../src/infrastructure/adapters/outbound/persistence/MongoCampaignBeneficiaryBalanceRepository.js';
@@ -28,9 +32,11 @@ import { OutboxModel } from '../../src/infrastructure/database/models/OutboxMode
 beforeAll(async () => { await connectTestDatabase(); await createTestApp(); });
 afterAll(async () => { await dropTestDatabase(); await disconnectTestDatabase(); });
 afterEach(() => vi.restoreAllMocks());
-async function fixture(withSplit = false) {
+async function fixture(withSplit = false, withWallet = false) {
   const campaign = await CampaignModel.create({ title: 'Atomic settlement', description: 'Contribution integrity', creatorId: new Types.ObjectId().toString(), currency: 'GHS', goalAmount: 1000, raisedAmount: 0, category: 'education', status: 'active', startDate: new Date(), endDate: new Date(Date.now() + 86400000) });
-  const row = await DonationIntentModel.create({ campaignId: campaign.id, amount: 100, currency: 'GHS', provider: 'paystack', status: 'PENDING', idempotencyKey: randomUUID() });
+  const row = await DonationIntentModel.create({ campaignId: campaign.id, amount: 100, currency: 'GHS', provider: withWallet ? 'wallet' : 'paystack', donorUserId: withWallet ? new Types.ObjectId().toString() : undefined, status: 'PENDING', idempotencyKey: randomUUID() });
+  const wallet = withWallet ? await WalletModel.create({ userId: row.donorUserId, type: 'local', currency: 'GHS', balance: 200 }) : undefined;
+  const walletRepo = new MongoWalletRepository(), walletTx = new MongoWalletTransactionRepository();
   const repo = new MongoDonationIntentRepository(), ledger = new MongoLedgerRepository();
   const journal = new PostDonationJournalUseCase(ledger);
   const splitRepo = new MongoCampaignSplitRepository();
@@ -38,10 +44,10 @@ async function fixture(withSplit = false) {
   const split = withSplit ? new SplitAccrualService(true, splitRepo, new MongoCampaignBeneficiaryBalanceRepository(), new MongoCampaignBeneficiaryAccrualRepository()) : undefined;
   const projector = new CampaignLedgerProjector(new MongoCampaignRepository(), new MongoCampaignBalanceRepository(), ledger, split);
   const outbox = new MongoOutboxRepository(), dispatcher = { dispatch: vi.fn(async () => {}) };
-  const useCase = new SettleDonationUseCase(repo, new MongoDonationRepository(), journal, projector, outbox, dispatcher as never, new MongoUnitOfWork());
+  const useCase = new SettleDonationUseCase(repo, new MongoDonationRepository(), journal, projector, outbox, dispatcher as never, new MongoUnitOfWork(), undefined, undefined, walletRepo, walletTx);
   const intent = (await repo.findById(row.id))!;
   const breakdown = { amount: 100, gross: 100, tip: 0, currency: 'GHS', processorFee: 2, platformFee: 3, beneficiaryNet: 95, providerRef: `ref-${row.id}` };
-  return { campaign, intent, breakdown, journal, projector, outbox, dispatcher, useCase, splitRepo };
+  return { campaign, intent, breakdown, journal, projector, outbox, dispatcher, useCase, splitRepo, wallet, walletRepo, walletTx };
 }
 async function assertCommitted(f: Awaited<ReturnType<typeof fixture>>) {
   expect((await DonationIntentModel.findById(f.intent.id))?.status).toBe('SUCCEEDED');
@@ -136,4 +142,51 @@ it('retries against an amendment activated before the campaign projection is com
   expect(await CampaignBeneficiaryAccrualModel.findOne({ donationIntentId: f.intent.id }).lean()).toMatchObject({ splitVersion: 2, entries: [{ beneficiaryId: 'C', amount: 47.5 }, { beneficiaryId: 'D', amount: 47.5 }] });
   expect(await CampaignSplitVersionModel.findOne({ campaignId: f.campaign.id, version: 1 }).lean()).toMatchObject({ status: 'superseded', locked: false });
   expect(await CampaignSplitVersionModel.findOne({ campaignId: f.campaign.id, version: 2 }).lean()).toMatchObject({ status: 'active', locked: true });
+});
+
+for (const failingWrite of ['wallet', 'history', 'projection'] as const) {
+  it(`rolls back the wallet debit and complete settlement after ${failingWrite} write failure, then retries once`, async () => {
+    const f = await fixture(false, true);
+    function failAfterWrite<Args extends unknown[], Result>(original: (...args: Args) => Promise<Result>) {
+      return async (...args: Args): Promise<Result> => {
+        await original(...args); throw new Error('Injected wallet settlement interruption');
+      };
+    }
+    if (failingWrite === 'wallet') vi.spyOn(f.walletRepo, 'withdrawIfSufficient').mockImplementationOnce(failAfterWrite(f.walletRepo.withdrawIfSufficient.bind(f.walletRepo)));
+    else if (failingWrite === 'history') vi.spyOn(f.walletTx, 'record').mockImplementationOnce(failAfterWrite(f.walletTx.record.bind(f.walletTx)));
+    else vi.spyOn(f.projector, 'projectDonation').mockImplementationOnce(failAfterWrite(f.projector.projectDonation.bind(f.projector)));
+    await expect(f.useCase.execute(f.intent, f.breakdown)).rejects.toThrow('Injected wallet settlement interruption');
+    expect((await WalletModel.findById(f.wallet!.id))?.balance).toBe(200);
+    expect(await WalletTransactionModel.countDocuments({ userId: f.intent.donorUserId })).toBe(0);
+    expect((await DonationIntentModel.findById(f.intent.id))?.status).toBe('PENDING');
+    expect((await CampaignModel.findById(f.campaign.id))?.raisedAmount).toBe(0);
+    await f.useCase.execute(f.intent, f.breakdown);
+    await f.useCase.execute(f.intent, f.breakdown);
+    await assertCommitted(f);
+    expect((await WalletModel.findById(f.wallet!.id))?.balance).toBe(100);
+    expect(await WalletTransactionModel.countDocuments({ userId: f.intent.donorUserId })).toBe(1);
+  });
+}
+it('serializes concurrent wallet settlement and keeps committed debit when delivery fails', async () => {
+  const f = await fixture(false, true);
+  f.dispatcher.dispatch.mockRejectedValue(new Error('Delivery unavailable'));
+  await Promise.all([f.useCase.execute(f.intent, f.breakdown), f.useCase.execute(f.intent, f.breakdown)]);
+  await assertCommitted(f);
+  expect((await WalletModel.findById(f.wallet!.id))?.balance).toBe(100);
+  expect(await WalletTransactionModel.countDocuments({ userId: f.intent.donorUserId })).toBe(1);
+});
+it('commits a known insufficient-wallet refusal without credit or history', async () => {
+  const f = await fixture(false, true);
+  await WalletModel.updateOne({ _id: f.wallet!.id }, { $set: { balance: 10 } });
+  await expect(f.useCase.execute(f.intent, f.breakdown)).rejects.toThrow('Insufficient wallet balance');
+  expect((await DonationIntentModel.findById(f.intent.id))?.status).toBe('FAILED');
+  expect((await WalletModel.findById(f.wallet!.id))?.balance).toBe(10);
+  expect(await WalletTransactionModel.countDocuments({ userId: f.intent.donorUserId })).toBe(0);
+  expect(await DonationModel.countDocuments({ campaignId: f.campaign.id })).toBe(0);
+});
+it('rejects wallet settlement amounts that differ from the stored charge', async () => {
+  const f = await fixture(false, true);
+  await expect(f.useCase.execute(f.intent, { ...f.breakdown, gross: 99 })).rejects.toThrow('does not match');
+  expect((await WalletModel.findById(f.wallet!.id))?.balance).toBe(200);
+  expect((await DonationIntentModel.findById(f.intent.id))?.status).toBe('PENDING');
 });

@@ -1,7 +1,10 @@
+import type { WalletRepositoryPort } from '../../domain/ports/outbound/WalletRepositoryPort.js';
+import type { WalletTransactionRepositoryPort } from '../../domain/ports/outbound/WalletTransactionRepositoryPort.js';
 import type { UnitOfWorkPort } from '../../domain/ports/outbound/UnitOfWorkPort.js';
 import type { OutboxRecord } from '@ubuntu-fund/types';
 import {
   PaymentMethod,
+  TransactionType,
   type DonationSettlementBreakdown,
   type DonationSucceededPayload,
 } from '@ubuntu-fund/types';
@@ -40,8 +43,7 @@ export function providerToPaymentMethod(provider: string, channel?: unknown): Pa
 
 /**
  * Settles a donation intent — the single reusable seam every payment rail
- * calls once its money has actually moved. The wallet rail calls it inline
- * after debiting; the Paystack rail (Phase 4) calls it from its
+ * calls for verified funds. The wallet rail debits within this transaction; the Paystack rail (Phase 4) calls it from its
  * webhook/verification with the provider's real fee breakdown.
  *
  * settleDonation(intent, providerBreakdown):
@@ -73,7 +75,9 @@ export class SettleDonationUseCase {
      * exactly once however the donation settled.
      */
     private readonly couponRepo?: CouponRepositoryPort,
-    private readonly couponRedemptionRepo?: CouponRedemptionRepositoryPort
+    private readonly couponRedemptionRepo?: CouponRedemptionRepositoryPort,
+    private readonly walletRepo?: WalletRepositoryPort,
+    private readonly walletTxRepo?: WalletTransactionRepositoryPort,
   ) {}
 
   async execute(
@@ -82,6 +86,7 @@ export class SettleDonationUseCase {
     verifiedChannel?: unknown
   ): Promise<DonationIntentEntity> {
     const result = await this.unitOfWork.run(() => this.settle(intent, breakdown, verifiedChannel));
+    if (result.error) throw result.error;
     // External delivery must only observe committed accounting. A delivery
     // outage must not make the wallet caller refund an already-settled donation.
     if (result.outbox) {
@@ -95,7 +100,7 @@ export class SettleDonationUseCase {
     intent: DonationIntentEntity,
     breakdown: DonationSettlementBreakdown,
     verifiedChannel?: unknown
-  ): Promise<{ intent: DonationIntentEntity; outbox?: OutboxRecord }> {
+  ): Promise<{ intent: DonationIntentEntity; outbox?: OutboxRecord; error?: AppError }> {
     // ── 1. Exactly-once settlement gate ──────────────────────────────────
     const settled = await this.donationIntentRepo.transitionToSucceeded(
       intent.id,
@@ -111,6 +116,35 @@ export class SettleDonationUseCase {
         `Cannot settle donation intent in state ${current?.status ?? 'unknown'}`,
         409
       );
+    }
+
+    // The intent gate serializes wallet debits with every replay. These writes
+    // enlist in this same transaction; never compensate an uncertain commit.
+    if (settled.provider === 'wallet') {
+      if (!this.walletRepo || !this.walletTxRepo) throw new AppError('Wallet settlement is unavailable', 503);
+      const userId = settled.donorUserId;
+      if (!userId || breakdown.currency !== settled.currency ||
+          toMinorUnits(breakdown.amount, breakdown.currency) !== toMinorUnits(settled.amount, settled.currency) ||
+          toMinorUnits(breakdown.gross, breakdown.currency) !== toMinorUnits(settled.amount + settled.tip, settled.currency)) {
+        throw new AppError('Wallet settlement does not match the donation intent', 409);
+      }
+      const wallets = await this.walletRepo.findByUserId(userId);
+      const wallet = wallets.find(w => w.balance.currency === settled.currency);
+      const debited = wallet && await this.walletRepo.withdrawIfSufficient(wallet.id, userId, new Money(breakdown.gross, settled.currency));
+      if (!debited) {
+        // A known refusal commits a terminal failure and frees the coupon seat.
+        // Infrastructure failures instead throw and roll back for a safe retry.
+        const failed = await this.donationIntentRepo.updateStatus(settled.id, 'FAILED');
+        if (!failed) throw new AppError('Donation intent disappeared during wallet refusal', 409);
+        if (settled.couponId && this.couponRedemptionRepo) {
+          const seat = await this.couponRedemptionRepo.findByProviderRef(settled.id);
+          if (seat) await this.couponRedemptionRepo.markReleased(seat.id);
+        }
+        return { intent: failed, error: new AppError(wallet ? 'Insufficient wallet balance' : 'No wallet found for this currency', 400) };
+      }
+      await this.walletTxRepo.record({ walletId: wallet!.id, userId, type: TransactionType.DONATION,
+        amount: breakdown.gross, currency: settled.currency, reference: `donation-intent:${settled.id}`,
+        metadata: { campaignId: settled.campaignId, tip: settled.tip } });
     }
 
     // ── 2. Record donation + immutable ledger journal + projections ──────

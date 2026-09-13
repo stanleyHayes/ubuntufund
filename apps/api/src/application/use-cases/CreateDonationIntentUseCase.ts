@@ -2,19 +2,15 @@ import { donationContentAgreement } from '../services/messageAgreement.js';
 import {
   CouponRedemptionStatus,
   CouponSurface,
-  TransactionType,
   type CreateDonationIntentInput,
 } from '@ubuntu-fund/types'
 import { DonationIntentEntity } from '../../domain/entities/DonationIntent.js'
-import { Money, roundToCurrency } from '../../domain/value-objects/Money.js'
+import { roundToCurrency } from '../../domain/value-objects/Money.js'
 import type { CouponService } from '../services/CouponService.js'
-import { releaseDonationSeat } from '../services/donationCouponSeats.js'
 import type { CouponRedemptionRepositoryPort } from '../../domain/ports/outbound/CouponRedemptionRepositoryPort.js'
 import type { PaymentProviderRepositoryPort } from '../../domain/ports/outbound/PaymentProviderRepositoryPort.js'
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js'
 import type { LiveSessionRepositoryPort } from '../../domain/ports/outbound/LiveSessionRepositoryPort.js'
-import type { WalletRepositoryPort } from '../../domain/ports/outbound/WalletRepositoryPort.js'
-import type { WalletTransactionRepositoryPort } from '../../domain/ports/outbound/WalletTransactionRepositoryPort.js'
 import type { DonationIntentRepositoryPort } from '../../domain/ports/outbound/DonationIntentRepositoryPort.js'
 import type { PaymentAttemptRepositoryPort } from '../../domain/ports/outbound/PaymentAttemptRepositoryPort.js'
 import type {
@@ -71,13 +67,11 @@ export class CreateDonationIntentUseCase {
   constructor(
     private readonly campaignRepo: CampaignRepositoryPort,
     private readonly liveSessionRepo: LiveSessionRepositoryPort,
-    private readonly walletRepo: WalletRepositoryPort,
     private readonly donationIntentRepo: DonationIntentRepositoryPort,
     private readonly feePolicy: FeePolicy,
     private readonly settleDonationUseCase: SettleDonationUseCase,
     private readonly paymentGateway: PaymentGatewayPort,
     private readonly planLimits: PlanLimitsService,
-    private readonly walletTxRepo?: WalletTransactionRepositoryPort,
     private readonly paymentAttemptRepo?: PaymentAttemptRepositoryPort,
     // Optional: when wired, enables currency/country-aware contributions behind
     // the multi-currency flag. Absent ⇒ contributions are the campaign's
@@ -189,10 +183,18 @@ export class CreateDonationIntentUseCase {
     ctx: CreateDonationIntentContext,
   ): Promise<CreateDonationIntentResult> {
     donationContentAgreement(input)
-    // Idempotency: an existing intent for this key is returned unchanged, so a
-    // retry never creates a second intent or charges twice.
+    // Resume interrupted wallet accounting under the stored intent and its
+    // owner. The settlement transaction serializes concurrent retries.
     const existing = await this.donationIntentRepo.findByIdempotencyKey(ctx.idempotencyKey)
-    if (existing) return { intent: existing }
+    if (existing) {
+      this.assertWalletRetry(existing, input, ctx)
+      if (existing.provider === 'wallet' && ['CREATED', 'PENDING'].includes(existing.status)) {
+        const campaign = await this.campaignRepo.findById(existing.campaignId)
+        if (!campaign?.canReceiveDonation()) throw new AppError('Campaign is not accepting donations', 400)
+        return { intent: await this.settleWalletIntent(existing) }
+      }
+      return { intent: existing }
+    }
 
     if (input.amount <= 0) {
       throw new AppError('Donation amount must be greater than zero', 400)
@@ -312,17 +314,10 @@ export class CreateDonationIntentUseCase {
       return this.initializeHostedIntent(intent, this.resolveHostedGateway(input.provider))
     }
 
-    // ── Wallet rail (authed donor): debit, then settle synchronously ──────
+    // ── Wallet rail: debit and settlement commit together ────────────────
     // The platform fee follows the campaign creator's subscription plan, not a
     // flat rate. Resolve it here (creator known) and pass it into the split.
-    const platformFeePercent = await this.planLimits.platformFeePercentForIntent(intent)
-    const settled = await this.settleWalletIntent(
-      intent,
-      ctx.donorUserId!,
-      currency,
-      tip,
-      platformFeePercent,
-    )
+    const settled = await this.settleWalletIntent(intent)
     return { intent: settled }
   }
 
@@ -446,88 +441,30 @@ export class CreateDonationIntentUseCase {
       // Lost a race on the same idempotency key — resolve to the winner.
       if (isDuplicateKeyError(error)) {
         const winner = await this.donationIntentRepo.findByIdempotencyKey(ctx.idempotencyKey)
-        if (winner) return winner
+        if (winner) {
+          this.assertWalletRetry(winner, input, ctx)
+          return winner
+        }
       }
       throw error
     }
   }
 
-  private async settleWalletIntent(
-    intent: DonationIntentEntity,
-    donorUserId: string,
-    currency: string,
-    tip: number,
-    platformFeePercent: number,
-  ): Promise<DonationIntentEntity> {
-    // A concurrent retry may have already settled this intent.
-    if (intent.status === 'SUCCEEDED') return intent
+  private assertWalletRetry(intent: DonationIntentEntity, input: CreateDonationIntentInput, ctx: CreateDonationIntentContext): void {
+    if (input.provider !== 'wallet' && intent.provider !== 'wallet') return
+    if (intent.provider !== input.provider) throw new AppError('Idempotency key belongs to a different payment method', 409)
+    if (!ctx.donorUserId || intent.donorUserId !== ctx.donorUserId) throw new AppError('Donation intent belongs to another account', 403)
+  }
 
-    const breakdown = this.feePolicy.computeBreakdown(
-      intent.amount,
-      tip,
-      currency,
-      'wallet',
-      platformFeePercent,
-    )
-
-    const wallets = await this.walletRepo.findByUserId(donorUserId)
-    const wallet = wallets.find((w) => w.balance.currency === currency)
-    if (!wallet) {
-      await this.donationIntentRepo.updateStatus(intent.id, 'FAILED')
-      await releaseDonationSeat(this.couponRedemptionRepo, intent.id, intent.couponId)
-      throw new AppError('No wallet found for this currency', 400)
-    }
-
-    // Charge amount + tip atomically; fails rather than overdrawing.
-    const grossCharge = new Money(breakdown.gross, currency)
-    const debited = await this.walletRepo.withdrawIfSufficient(wallet.id, donorUserId, grossCharge)
-    if (!debited) {
-      await this.donationIntentRepo.updateStatus(intent.id, 'FAILED')
-      await releaseDonationSeat(this.couponRedemptionRepo, intent.id, intent.couponId)
-      throw new AppError('Insufficient wallet balance', 400)
-    }
-
-    // Record the wallet attempt (best-effort; never fails the donation).
+  private async settleWalletIntent(intent: DonationIntentEntity): Promise<DonationIntentEntity> {
+    const platformFeePercent = await this.planLimits.platformFeePercentForIntent(intent)
+    const breakdown = this.feePolicy.computeBreakdown(intent.amount, intent.tip, intent.currency, 'wallet', platformFeePercent)
+    const settled = await this.settleDonationUseCase.execute(intent, breakdown)
+    // Observability follows committed accounting; it cannot refund or fail it.
     if (this.paymentAttemptRepo) {
-      try {
-        await this.paymentAttemptRepo.record({
-          intentId: intent.id,
-          provider: 'wallet',
-          status: 'succeeded',
-        })
-      } catch (error) {
-        logger.error({ err: error, intentId: intent.id }, 'failed to record wallet payment attempt')
-      }
+      try { await this.paymentAttemptRepo.record({ intentId: intent.id, provider: 'wallet', status: 'succeeded' }) }
+      catch (error) { logger.error({ err: error, intentId: intent.id }, 'failed to record wallet payment attempt') }
     }
-
-    let settled: DonationIntentEntity
-    try {
-      settled = await this.settleDonationUseCase.execute(intent, breakdown)
-    } catch (error) {
-      // Settlement failed after the debit landed — refund so no money is lost.
-      await this.walletRepo.depositAtomic(wallet.id, donorUserId, grossCharge)
-      await this.donationIntentRepo.updateStatus(intent.id, 'FAILED')
-      await releaseDonationSeat(this.couponRedemptionRepo, intent.id, intent.couponId)
-      throw error
-    }
-
-    // Wallet ledger row for the donor's transaction history (best-effort).
-    if (this.walletTxRepo) {
-      try {
-        await this.walletTxRepo.record({
-          walletId: wallet.id,
-          userId: donorUserId,
-          type: TransactionType.DONATION,
-          amount: breakdown.gross,
-          currency,
-          reference: `donation-intent:${intent.id}`,
-          metadata: { campaignId: intent.campaignId, tip },
-        })
-      } catch (error) {
-        logger.error({ err: error, intentId: intent.id }, 'failed to record donation transaction')
-      }
-    }
-
     return settled
   }
 }

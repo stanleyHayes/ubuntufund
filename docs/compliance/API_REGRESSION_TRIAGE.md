@@ -57,3 +57,10 @@ later history-address binding, manual destination snapshots, affiliate final
 authorization and beneficiary transaction/authorization changes. Root source freeze
 is lifted after terminal verification and fast-forward to78118b9. Later focused
 checks are recorded in KYC_REVIEW_INTEGRITY.md; a current full run remains required.
+
+
+## 2026-09-13 — de49df2 donation settlement baseline completed
+
+The full run finished with 162 files and all 1,187 tests passing in 974.81 seconds, started 12:29:14 UTC. Log: `/tmp/ujimora-donation-atomic-full-regression.log`. Original tool handle73343 was lost, so completion was verified from the terminal test summary and disappearance of OS process97096. API/shared source stayed at de49df2; concurrent admin changes did not alter that baseline. The earlier testimonial setup failure did not recur, but its original cause remains unproven.
+
+Root API source freeze is lifted. Split-consent d89927a and subsequent wallet transaction changes have separate focused evidence; this full run does not cover them or establish live provider, native-device or legal/store approval.

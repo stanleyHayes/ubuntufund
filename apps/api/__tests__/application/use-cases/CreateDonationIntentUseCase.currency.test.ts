@@ -12,7 +12,7 @@ function deps(paymentsConfig?: PaymentsConfig) {
   };
   const created: DonationIntentEntity[] = [];
   const donationIntentRepo = {
-    findByIdempotencyKey: vi.fn(async () => null),
+    findByIdempotencyKey: vi.fn(async (): Promise<DonationIntentEntity | null> => null),
     create: vi.fn(async (intent: DonationIntentEntity) => {
       // echo back with an id, preserving the draft's props
       const withId = new DonationIntentEntity({ ...intent.toPlain(), id: 'intent-1' });
@@ -42,13 +42,11 @@ function deps(paymentsConfig?: PaymentsConfig) {
   const useCase = new CreateDonationIntentUseCase(
     { findById: vi.fn(async () => campaign) } as never,
     { findById: vi.fn() } as never, // liveSessionRepo (unused)
-    {} as never, // walletRepo (unused on paystack path)
     donationIntentRepo as never,
     {} as never, // feePolicy (unused on create)
     {} as never, // settleDonationUseCase (unused on create)
     paymentGateway as never,
     {} as never, // planLimits (unused on create)
-    undefined,
     paymentAttemptRepo as never,
     paymentsConfig
   );
@@ -128,3 +126,20 @@ it('rejects public name-only submissions before reserving a fiat payment and sav
   await useCase.execute({ ...baseInput, donorName: 'Public donor', legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true } }, ctx);
   expect(created[0].toPlain().messageAgreement?.acceptedAt).toBeInstanceOf(Date);
 });
+
+for (const lookup of ['existing', 'creation-race'] as const) {
+  it.each(['owner', 'provider'] as const)(`rejects wallet %s mismatch after ${lookup}`, async mismatch => {
+    const { useCase, donationIntentRepo } = deps();
+    const winner = new DonationIntentEntity({ id: 'winner', campaignId: 'c1', amount: 10, currency: 'GHS', tip: 0,
+      provider: mismatch === 'provider' ? 'paystack' : 'wallet', donorUserId: mismatch === 'owner' ? 'other' : 'donor',
+      status: 'CREATED', createdAt: new Date(), updatedAt: new Date() });
+    if (lookup === 'existing') donationIntentRepo.findByIdempotencyKey.mockResolvedValueOnce(winner);
+    else {
+      donationIntentRepo.findByIdempotencyKey.mockResolvedValueOnce(null).mockResolvedValueOnce(winner);
+      donationIntentRepo.create.mockRejectedValueOnce(Object.assign(new Error('Duplicate key'), { code: 11000 }));
+    }
+    await expect(useCase.execute({ campaignId: 'c1', amount: 10, provider: 'wallet' }, { donorUserId: 'donor', idempotencyKey: 'collision' }))
+      .rejects.toThrow(mismatch === 'owner' ? 'another account' : 'different payment method');
+    expect(donationIntentRepo.transitionToSucceeded).not.toHaveBeenCalled();
+  });
+}

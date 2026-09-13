@@ -684,6 +684,8 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     new MongoUnitOfWork(),
     couponRepo,
     couponRedemptionRepo,
+    walletRepo,
+    walletTxRepo,
   )
   // ── Crypto donation rail (Crypto Donations plan) ─────────────────────────
   // A provider-neutral second rail, OFF by default (config.crypto.enabled). The
@@ -771,13 +773,11 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
   const createDonationIntentUseCase = new CreateDonationIntentUseCase(
     campaignRepo,
     liveSessionRepo,
-    walletRepo,
     donationIntentRepo,
     feePolicy,
     settleDonationUseCase,
     paymentGateway,
     planLimitsService,
-    walletTxRepo,
     paymentAttemptRepo,
     config.payments,
     gatewayRegistry,
