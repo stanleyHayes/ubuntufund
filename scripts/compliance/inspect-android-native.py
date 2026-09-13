@@ -34,10 +34,10 @@ with zipfile.ZipFile(args.archive) as archive, tempfile.TemporaryDirectory() as 
         rows.append({'path': item.filename, 'sha256': hashlib.sha256(data).hexdigest(),
                      'loadAlignments': alignments, 'relroPresent': bool(relro),
                      'relroEndRemainders': ends,
-                     'alignmentChecksPass': all(value >= 16384 for value in alignments) and all(value == 0 for value in ends)})
+                     'alignmentChecksPass': bool(relro) and all(value >= 16384 for value in alignments) and all(value == 0 for value in ends)})
 if not rows:
     parser.error('No 64-bit native libraries found; this is not a verified alignment pass')
-report = {'scope': '64-bit ELF LOAD and RELRO checks only; ZIP alignment, signing and device behavior are separate',
+report = {'scope': '64-bit ELF LOAD alignment and required RELRO presence/end alignment only; ZIP alignment, signing and device behavior are separate',
           'archiveSha256': hashlib.sha256(args.archive.read_bytes()).hexdigest(), 'libraries': rows}
 print(json.dumps(report, indent=2))
 raise SystemExit(0 if all(row['alignmentChecksPass'] for row in rows) else 1)

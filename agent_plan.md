@@ -1,5 +1,12 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — Strict native inspection and NDK29 evidence
+
+- NDK29 installed successfully but both bundled64-bit C++ runtimes fail the documented RELRO-end check. Toolchain version alone is not acceptance evidence; no runtime selection changed.
+- Closed a checker false-pass case: missing RELRO now fails. Five CLI regression cases pass, and six previously aligned dependency binaries remain passing under the stricter gate. Evidence in `docs/compliance/NATIVE_PERMISSIONS.md`.
+- React Native source build90233 remains live in an isolated archived checkout; full API41412 remains live on unchanged de8b9e2. No duplicate run or root API/shared mutation.
+
+
 ### 2026-09-13 — Prebuilt runtime candidate evaluation
 
 - NDK28.2 installed and inspected without selecting it: ARM64 libc++_shared still fails RELRO-end alignment; x86_64 passes. ReactAndroid and fbjni AARs both bundle the runtime, so a toolchain upgrade alone cannot prove packaged provenance.
