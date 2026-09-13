@@ -40,9 +40,13 @@ Externally verified money received after an otherwise existing campaign ends rem
 
 All 27 focused tests in atomic settlement and donation-intent integration pass, including deleted/currency-mismatch rollback, a moderation write after the wallet transaction snapshot, and a late external payment after campaign expiry. API types and affected lint pass. Logs: `/tmp/ujimora-campaign-credit-tests.log`, `/tmp/ujimora-campaign-credit-types.log`, `/tmp/ujimora-campaign-credit-lint.log`. Root full regression97713 still uses the preceding 428402b source and excludes this delta.
 
+## Full current API regression — 2026-09-13
+
+Session41412 completed exit0: all1,210 tests across163 files pass in1,252.56seconds on unchanged de8b9e2 API/shared. This supersedes the earlier baseline exclusions above and includes every implementation change described here plus the historical read-only audit. Log `/tmp/ujimora-current-accounting-full-regression.log`. Root source freeze is lifted. No live provider or historical production repair is established by this result.
+
 ## Remaining requirements
 
 - Verify deployed wallet operation and reconcile historical wallet debits/compensations; the transaction change is prospective. Provider-independent lost-commit replay is covered locally, not by a production outage exercise.
 - Reconcile historical successful intents with missing or partial donation/journal/projection/outbox records. The read-only structural inventory in `HISTORICAL_DONATION_AUDIT.md` is implemented and tested; historical correction and aggregate/provider proof remain open. No historical repair or production fund mutation was performed here.
 - Audit creator/account restrictions, original quote and funding provenance at remaining financial writes, including refunds and payouts. The wallet campaign gate above verifies current campaign status/end date/currency; it does not close every eligibility policy.
-- Verify every provider/reconciliation path and the full API suite after this change. Focused tests do not establish live-provider operation or overall regulatory/store compliance.
+- Verify every live provider/reconciliation path. The full API suite passes as recorded above; local tests do not establish live-provider operation or overall regulatory/store compliance.

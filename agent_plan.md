@@ -1,5 +1,11 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — Current settlement API regression completed
+
+- Full API41412 completed exit0 on unchanged de8b9e2 API/shared: 1,210 tests across163 files pass, 1,252.56seconds. Includes split-consent locking, atomic wallet settlement, required campaign projections and read-only historical audit. Log `/tmp/ujimora-current-accounting-full-regression.log`. Root API/shared freeze is lifted; no duplicate full run needed for later native/docs-only changes.
+- Native source build90233 remains live. Generated Hermes CMake caches on both64-bit ABIs show empty CMAKE_SHARED_LINKER_FLAGS: the app-root callback does not reach the separate included React Native build. Prepared `/tmp/ujimora-native-source-alignment.init.gradle` for a subsequent isolated invocation; it has not changed the live build or repository dependency selection.
+
+
 ### 2026-09-13 — Strict native inspection and NDK29 evidence
 
 - NDK29 installed successfully but both bundled64-bit C++ runtimes fail the documented RELRO-end check. Toolchain version alone is not acceptance evidence; no runtime selection changed.

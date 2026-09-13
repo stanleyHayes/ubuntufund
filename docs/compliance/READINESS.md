@@ -8,7 +8,7 @@ This ledger covers the implemented donation/reward crowdfunding, creator gifts, 
 
 Donation success, journal/projections and outbox commit together. Split accrual consumes the exact locked version with all stored beneficiary consents. Wallet contributions also debit the donor and record history in that transaction, with owner-bound retries and no compensation after an uncertain commit. Focused failure/concurrency evidence and remaining historical repair/current eligibility/provenance gates are tracked in `DONATION_SETTLEMENT_INTEGRITY.md`.
 
-Full API baseline de49df2 passes 1,187 tests/162 files; later split-consent and wallet changes have separate focused verification. This is engineering evidence, not regulated-payment authorization or provider/store release approval.
+Full API baseline de8b9e2 passes 1,210 tests across163 files (session41412, exit0, 1,252.56seconds; `/tmp/ujimora-current-accounting-full-regression.log`). This includes the split-consent, wallet transaction, required campaign projection and historical audit changes. This is engineering evidence, not regulated-payment authorization or provider/store release approval.
 
 ## Current authoritative references
 
