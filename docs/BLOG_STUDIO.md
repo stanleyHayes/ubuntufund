@@ -28,3 +28,5 @@ On an empty collection, a transaction migrates the six previously public static 
 - Marketing tests cover public Markdown, accessible cover text, unsafe content handling and load failure retry, plus existing sitemap/newsletter/not-found tests.
 - Type checks and production builds cover API/admin/marketing/shared types and UI. Lint retains only pre-existing unrelated warnings. The editor is lazy-loaded.
 - Mocked uploads establish the browser/API contract; they do not establish live Cloudinary delivery. Production deployment verification is recorded separately in the root ledger.
+
+Production: implementation `88fbcdf` and validation follow-up `8889bc2` are pushed to main. Render deployed `8889bc2` live at 2026-09-13 11:52:40 UTC; health HTTP 200/status ok and marketing-proxied blog list HTTP 200/six articles verified. Vercel admin, marketing and web deployment checks passed. Live Cloudinary upload remains outside these read-only production checks.
