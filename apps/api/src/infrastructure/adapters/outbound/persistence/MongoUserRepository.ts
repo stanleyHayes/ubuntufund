@@ -60,14 +60,14 @@ export class MongoUserRepository implements UserRepositoryPort {
   }
 
   async findById(id: string): Promise<UserEntity | null> {
-    const doc = await UserModel.findOne({ _id: id, deletedAt: { $exists: false } });
+    const doc = await UserModel.findOne({ _id: id, deletedAt: null });
     return doc ? toDomain(doc) : null;
   }
 
   async findByEmail(email: string): Promise<UserEntity | null> {
     const doc = await UserModel.findOne({
       email: email.toLowerCase(),
-      deletedAt: { $exists: false },
+      deletedAt: null,
     });
     return doc ? toDomain(doc) : null;
   }
@@ -107,7 +107,7 @@ export class MongoUserRepository implements UserRepositoryPort {
     }
 
     const doc = await UserModel.findOneAndUpdate(
-      { _id: plain.id, deletedAt: { $exists: false }, ...(user.passwordChanged ? { passwordHash: user.originalPasswordHash } : {}) },
+      { _id: plain.id, deletedAt: null, ...(user.passwordChanged ? { passwordHash: user.originalPasswordHash } : {}) },
       update,
       { new: true }
     );
@@ -120,7 +120,7 @@ export class MongoUserRepository implements UserRepositoryPort {
 
   async delete(id: string): Promise<void> {
     await UserModel.updateOne(
-      { _id: id, deletedAt: { $exists: false } },
+      { _id: id, deletedAt: null },
       { $set: { deletedAt: new Date() } }
     );
   }

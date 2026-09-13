@@ -105,3 +105,12 @@ it('uses current administrator authority and does not publish an unreadable resp
   expect(audit?.deliveryReference).toContain('TEST-123');
   await UserModel.findByIdAndUpdate(owner.id, { $unset: { deletedAt: 1 } });
 });
+
+it('allows a live account with an explicit null tombstone to request and receive its data', async () => {
+  await UserModel.updateOne({ _id: owner.id }, { $set: { deletedAt: null } });
+  const created = await submit().expect(201);
+  await review(created.body.data._id).expect(200);
+  const mine = await request(app).get('/api/v1/data-rights').set('Authorization', `Bearer ${owner.token}`).expect(200);
+  expect(mine.body.data.items[0]).toMatchObject({ status: 'responded', deliveryMethod: 'account' });
+  expect(mine.body.data.items[0].response).toContain('requested information');
+});

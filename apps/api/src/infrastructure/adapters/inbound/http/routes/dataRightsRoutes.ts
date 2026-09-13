@@ -31,7 +31,7 @@ export function createDataRightsRoutes(auth: ReturnType<typeof createAuthMiddlew
       req.body.details = req.body.details.trim();
       const item = await new MongoUnitOfWork().run(async () => {
         // Also fence a simultaneous account closure with a write to the active account.
-        const user = await UserModel.findOneAndUpdate({ _id: req.userId, deletedAt: { $exists: false } }, { $set: { updatedAt: new Date() } });
+        const user = await UserModel.findOneAndUpdate({ _id: req.userId, deletedAt: null }, { $set: { updatedAt: new Date() } });
         if (!user) throw new AppError('Account not found', 404);
         if (await DataRightsRequestModel.exists({ userId: req.userId, kind: req.body.kind, active: true })) throw new AppError('You already have an open request of this type. Follow its progress below or contact legal@ujimora.com.', 409);
         const record = await DataRightsRequestModel.create({ userId: req.userId, ...req.body, dueAt: new Date(Date.now() + 30 * 86400_000) });
@@ -91,7 +91,7 @@ export function createDataRightsAdminRoutes(auth: ReturnType<typeof createAuthMi
         if (!staff) throw new AppError('Current administrator access is required to review this request.', 403);
         const existing = await DataRightsRequestModel.findById(req.params.id);
         if (existing && req.body.status === 'responded' && req.body.deliveryMethod === 'account') {
-          const owner = await UserModel.findOneAndUpdate({ _id: existing.userId, deletedAt: { $exists: false } }, { $set: { updatedAt: new Date() } });
+          const owner = await UserModel.findOneAndUpdate({ _id: existing.userId, deletedAt: null }, { $set: { updatedAt: new Date() } });
           if (!owner) throw new AppError('This account is closed. Record review progress and arrange verified communication through the privacy team.', 409);
         }
         const record = await DataRightsRequestModel.findOneAndUpdate({ _id: req.params.id, active: true, revision: req.body.revision }, { $set: {

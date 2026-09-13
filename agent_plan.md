@@ -1,5 +1,11 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — Consistent open-account checks for privacy rights
+
+- Real-database follow-up found an explicit null deletedAt was rejected during authentication (HTTP401), before privacy submission could run. User repository lookups/save/closure and data-rights submission/response now consistently treat missing/null as open and a timestamp as closed.
+- Null-state access-request/response regression passes;15 privacy/erasure tests and7 authentication/deleted-account tests pass. API types and affected lint pass. No production account state changed; historical cleanup reconciliation remains open. See DATA_RIGHTS.md.
+
+
 ### 2026-09-13 — Null-safe account closure
 
 - Deletion request and retry worker now persist tombstones for both missing and explicitly null deletedAt fields. The old missing-only filter could clean an account without persisting closure. Comment cleanup now handles the same null case while preserving existing deletion timestamps.
