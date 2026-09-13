@@ -1,5 +1,11 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-13 — Hermes candidate alignment verified
+
+- Corrected source-built Hermes passes LOAD/RELRO on both64-bit ABIs and preserves all71 defined dynamic exports per ABI. ReactAndroid build70084 remains live; final packaging/device and prebuilt runtime gates stay open.
+- Retrieved pinned NDK C++ runtime base sources and build recipe. Patch inventory has two404s/eight503s; source remains unapplied/unbuilt until provenance is reconciled. Exact evidence/paths in `docs/compliance/NATIVE_PERMISSIONS.md`.
+
+
 ### 2026-09-13 — Corrected included native build candidate
 
 - Completed Hermes outputs from initial candidate fail RELRO on both64-bit ABIs; app-root flags did not reach the included React Native build. Recorded exact ELF and configuration evidence in `docs/compliance/NATIVE_PERMISSIONS.md`.
