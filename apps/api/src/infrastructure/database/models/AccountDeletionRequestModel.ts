@@ -10,5 +10,6 @@ const schema = new Schema({
   nextReviewAt: { type: Date, required: true },
   reviewedBy: String,
   reviewedAt: Date,
+  revision: { type: Number, default: 0 },
 }, { timestamps: true });
 export const AccountDeletionRequestModel = mongoose.model('AccountDeletionRequest', schema);

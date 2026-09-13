@@ -1,3 +1,4 @@
+import { AuditLogModel } from '../../src/infrastructure/database/models/AuditLogModel.js';
 import { TipModel } from '../../src/infrastructure/database/models/TipModel.js';
 import { MongoTipRepository } from '../../src/infrastructure/adapters/outbound/persistence/MongoTipRepository.js';
 import { randomUUID } from 'node:crypto';
@@ -76,6 +77,20 @@ describe('Account erasure and retained-record review', () => {
     expect(await new MongoAccountErasure().sweepPending()).toBe(0);
     expect(await ProfileModel.countDocuments({ userId: account.user.id })).toBe(0);
   });
+  it('prevents concurrent retention reviews from overwriting notes and rolls back failed audit writes', async () => {
+    const staff = await register();
+    await UserModel.updateOne({ _id: staff.user.id }, { $set: { role: 'admin' } });
+    const item = await AccountDeletionRequestModel.create({ userId: randomUUID(), contactEmail: 'fixture@example.com', nextReviewAt: new Date(Date.now() + 86400000) });
+    const input = { revision: 0, reviewNotes: 'Reviewed processor follow-up and retained financial records.', nextReviewAt: new Date(Date.now() + 172800000).toISOString() };
+    const review = () => request(app).put(`/api/v1/admin/privacy-requests/${item.id}/review`).set('Authorization', staff.bearer).send(input);
+    const audit = vi.spyOn(AuditLogModel, 'create').mockRejectedValueOnce(new Error('Audit unavailable'));
+    try { await review().expect(500); } finally { audit.mockRestore(); }
+    expect(await AccountDeletionRequestModel.findById(item.id)).toMatchObject({ revision: 0, reviewNotes: '' });
+    const results = await Promise.all([review(), review()]);
+    expect(results.map(result => result.status).sort()).toEqual([200, 409]);
+    expect(await AccountDeletionRequestModel.findById(item.id)).toMatchObject({ revision: 1, reviewNotes: input.reviewNotes });
+    expect(await AuditLogModel.countDocuments({ resource: item.id, action: 'privacy.retention_review' })).toBe(1);
+  });
   it('restricts the review queue to current admins and rejects stale admin tokens after demotion', async () => {
     const account = await register();
     await request(app).get('/api/v1/admin/privacy-requests').expect(401);
@@ -86,7 +101,7 @@ describe('Account erasure and retained-record review', () => {
     const list = await request(app).get('/api/v1/admin/privacy-requests').set('Authorization', bearer).expect(200);
     const item = list.body.data.items[0];
     await request(app).put(`/api/v1/admin/privacy-requests/${item._id}/review`).set('Authorization', bearer).send({ reviewNotes: 'bad', nextReviewAt: new Date().toISOString() }).expect(400);
-    await request(app).put(`/api/v1/admin/privacy-requests/${item._id}/review`).set('Authorization', bearer).send({ reviewNotes: 'Pending financial retention and Cloudinary deletion evidence from the privacy reviewer.', nextReviewAt: new Date(Date.now() + 86400000).toISOString() }).expect(200);
+    await request(app).put(`/api/v1/admin/privacy-requests/${item._id}/review`).set('Authorization', bearer).send({ revision: item.revision ?? 0, reviewNotes: 'Pending financial retention and Cloudinary deletion evidence from the privacy reviewer.', nextReviewAt: new Date(Date.now() + 86400000).toISOString() }).expect(200);
     await UserModel.updateOne({ _id: account.user.id }, { $set: { role: 'user' } });
     await request(app).get('/api/v1/admin/privacy-requests').set('Authorization', bearer).expect(403);
   });

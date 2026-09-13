@@ -31,6 +31,8 @@ Correct the authoritative source using its authorized workflow and describe the 
 
 ## Retention and closed accounts
 
+13 September retention-review integrity: administrator saves now require the displayed revision and conditionally update only that revision, with compatibility for legacy revision-less records at zero. Current staff role/credential/nonclosed account, review update and a minimal audit event commit transactionally. Audit records identify the review revision and next review date without duplicating contact email or free-text evidence. The admin form preserves failed-save notes and offers refresh on conflicts. Four erasure integration tests and one admin interaction test pass, including concurrent save conflict and audit-failure rollback; API/admin types/lint pass. This protects review provenance, not the legal adequacy of any chosen retention period. Logs `/tmp/ujimora-retention-review-{tests,admin,checks}.log`.
+
 Data-rights requests and review evidence remain restricted administrative records when an account closes so an unresolved request is not silently lost. The account-erasure review explicitly includes these records. Their justified duration, legal holds and eventual erasure/anonymization must be approved and implemented as part of the category schedule below. Indefinite retention is not an approved policy.
 
 | Category | Current engineering behavior | Remaining approval/implementation |

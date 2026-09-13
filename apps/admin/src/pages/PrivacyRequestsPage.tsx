@@ -13,7 +13,7 @@ import { raisedSurface } from '@/lib/surfaces'
 interface PrivacyRequest {
   _id: string; userId: string; contactEmail: string; status: string;
   requestedAt: string; coreRemovedAt?: string; mediaUrls: string[];
-  reviewNotes: string; nextReviewAt: string;
+  reviewNotes: string; nextReviewAt: string; revision?: number;
 }
 function Review({ item, refresh }: { item: PrivacyRequest; refresh: () => Promise<void> }) {
   const [notes, setNotes] = useState(item.reviewNotes)
@@ -22,7 +22,7 @@ function Review({ item, refresh }: { item: PrivacyRequest; refresh: () => Promis
   const [saving, setSaving] = useState(false)
   async function save() {
     setSaving(true); setError('')
-    try { await api.put(`/admin/privacy-requests/${item._id}/review`, { reviewNotes: notes, nextReviewAt: new Date(`${reviewDate}T23:59:59Z`).toISOString() }); await refresh() }
+    try { await api.put(`/admin/privacy-requests/${item._id}/review`, { revision: item.revision ?? 0, reviewNotes: notes, nextReviewAt: new Date(`${reviewDate}T23:59:59Z`).toISOString() }); await refresh() }
     catch (e) { setError(e instanceof Error ? e.message : 'Could not save review') }
     finally { setSaving(false) }
   }
@@ -31,7 +31,7 @@ function Review({ item, refresh }: { item: PrivacyRequest; refresh: () => Promis
     <Typography variant="body2">Requested {new Date(item.requestedAt).toLocaleString()} · Account {item.userId}</Typography>
     <Typography variant="body2" sx={{ my: 2 }}>{item.coreRemovedAt ? 'Operational profile data removed. Financial records, safety evidence and processor copies still require a documented decision.' : 'Retry pending cleanup before reviewing residual records.'}</Typography>
     {item.mediaUrls.length > 0 && <Typography variant="body2" sx={{ mb: 2 }}>Media requiring processor review: {item.mediaUrls.join(', ')}</Typography>}
-    {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+    {error && <Alert severity="error" sx={{ mb: 2 }} action={<Button onClick={() => void refresh()}>Refresh request</Button>}>{error}</Alert>}
     <Stack spacing={2}>
       <TextField multiline minRows={3} label="Review evidence and next steps" value={notes} onChange={e => setNotes(e.target.value)} helperText="Record each retained category, including data-rights requests and review evidence, its lawful purpose, expiry/review date, processor deletion reference and communication with the account owner. Do not paste identity documents." />
       <TextField type="date" label="Next review date" slotProps={{ inputLabel: { shrink: true } }} value={reviewDate} onChange={e => setReviewDate(e.target.value)} />
