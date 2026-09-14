@@ -1,117 +1,70 @@
-import Box from '@mui/material/Box'
-import Typography from '@mui/material/Typography'
-import Button from '@mui/material/Button'
+import { Box, Button, Typography } from '@mui/material'
+import LockOutlined from '@mui/icons-material/LockOutlined'
+import ArrowBackRounded from '@mui/icons-material/ArrowBackRounded'
 import { Link as RouterLink } from 'react-router-dom'
-
-// Shares the branded light treatment of NotFoundPage (parchment ground, warm
-// brown ink, kente bottom accent, drop-in animation) so the admin's "this
-// doesn't exist" and "you can't see this" states read as one design language.
-const keyframes = `
-  @keyframes pd-fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-  @keyframes pd-drop { 0% { transform: translateY(-60px) rotate(-12deg); opacity: 0; } 40% { transform: translateY(8px) rotate(4deg); opacity: 1; } 60% { transform: translateY(-4px) rotate(-2deg); } 100% { transform: translateY(0) rotate(0deg); opacity: 1; } }
-  @keyframes pd-breathe { 0%,100% { transform: scale(1); box-shadow: 0 4px 16px rgba(93,64,55,0.2); } 50% { transform: scale(1.04); box-shadow: 0 6px 28px rgba(93,64,55,0.35); } }
-  @keyframes pd-kente { 0% { background-position: 0 0; } 100% { background-position: 64px 0; } }
-`
-
-function LockSVG({ size = 104 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 100 100" fill="none">
-      <circle cx="50" cy="50" r="44" stroke="#5D4037" strokeWidth="2.5" fill="none" strokeDasharray="280" strokeDashoffset="280" style={{ animation: 'dash 1.5s ease forwards' }} />
-      <circle cx="50" cy="50" r="35" stroke="#C75B39" strokeWidth="1.5" fill="none" opacity="0.4" />
-      <circle cx="50" cy="50" r="28" stroke="#C7A24A" strokeWidth="0.8" fill="none" opacity="0.3" strokeDasharray="4 6" />
-      {/* Padlock */}
-      <rect x="38" y="47" width="24" height="19" rx="3" fill="#5D4037" />
-      <path d="M42 47 v-5 a8 8 0 0 1 16 0 v5" stroke="#5D4037" strokeWidth="3" fill="none" />
-      <circle cx="50" cy="55" r="2.6" fill="#C7A24A" />
-      <rect x="49" y="56" width="2" height="5" rx="1" fill="#C7A24A" />
-    </svg>
-  )
-}
+import PageHeader from './PageHeader'
+import { insetSurface, raisedSurface } from '@/lib/surfaces'
 
 export default function PermissionDenied() {
   return (
-    <Box
-      sx={{
-        minHeight: '80vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        position: 'relative',
-        background: '#F5F0EB',
-        px: 3,
-        py: 6,
-        overflow: 'hidden',
-      }}
-    >
-      <style>{`@keyframes dash { to { stroke-dashoffset: 0; } }` + keyframes}</style>
-
-      <Box sx={{ mb: 2, opacity: 0, animation: 'pd-drop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards' }}>
-        <LockSVG size={110} />
-      </Box>
-
-      <Typography
-        variant="h1"
-        sx={{
-          fontSize: { xs: '2.4rem', md: '3.2rem' },
-          fontWeight: 900,
-          lineHeight: 1.05,
-          color: '#5D4037',
-          mb: 1.5,
-          textAlign: 'center',
-          opacity: 0,
-          animation: 'pd-fadeIn 0.6s ease 0.3s forwards',
-        }}
-      >
-        Access Denied
-      </Typography>
-
-      <Typography
-        variant="h6"
-        sx={{ fontWeight: 600, color: '#5D4037', mb: 1, textAlign: 'center', opacity: 0, animation: 'pd-fadeIn 0.6s ease 0.5s forwards' }}
-      >
-        You don&apos;t have permission to view this page
-      </Typography>
-
-      <Typography
-        variant="body2"
-        sx={{ color: '#8D6E63', mb: 4, textAlign: 'center', maxWidth: 380, opacity: 0, animation: 'pd-fadeIn 0.6s ease 0.7s forwards' }}
-      >
-        Your role doesn&apos;t include access here. Contact a platform administrator if you need it.
-      </Typography>
-
-      <Button
-        component={RouterLink}
-        to="/"
-        variant="contained"
-        sx={{
-          background: '#5D4037',
-          color: '#fff',
-          fontWeight: 600,
-          textTransform: 'none',
-          px: 4,
-          py: 1.2,
-          borderRadius: 2,
-          opacity: 0,
-          animation: 'pd-fadeIn 0.6s ease 0.9s forwards, pd-breathe 2.5s ease 1.5s infinite',
-          '&:hover': { background: '#4E342E' },
-        }}
-      >
-        Back to Dashboard
-      </Button>
+    <Box>
+      <PageHeader
+        eyebrow="Account permissions"
+        title="Access denied"
+        lede="This area requires a different level of access."
+        icon={<LockOutlined />}
+      />
 
       <Box
+        component="section"
+        aria-labelledby="permission-denied-title"
         sx={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: 4,
-          background:
-            'repeating-linear-gradient(90deg, #2E3D2F 0px, #2E3D2F 16px, #C7A24A 16px, #C7A24A 32px, #C75B39 32px, #C75B39 48px, #5D4037 48px, #5D4037 64px)',
-          animation: 'pd-kente 2s linear infinite',
+          ...raisedSurface,
+          position: 'relative',
+          overflow: 'hidden',
+          minHeight: { xs: 'auto', md: 440 },
+          display: 'grid',
+          gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(180px, 0.7fr) minmax(0, 1.3fr)' },
+          alignItems: 'center',
+          gap: { xs: 3, md: 6 },
+          px: { xs: 3, sm: 5, lg: 8 },
+          py: { xs: 5, md: 7 },
         }}
-      />
+      >
+        <Box aria-hidden="true" sx={{ position: 'absolute', right: -48, bottom: -64, color: 'primary.main', opacity: 0.035, pointerEvents: 'none' }}>
+          <LockOutlined sx={{ fontSize: 320 }} />
+        </Box>
+
+        <Box aria-hidden="true" sx={{ display: 'grid', placeItems: 'center' }}>
+          <Box sx={{ ...insetSurface, width: { xs: 136, md: 192 }, height: { xs: 136, md: 192 }, borderRadius: '50%', display: 'grid', placeItems: 'center', position: 'relative' }}>
+            <Box sx={{ ...raisedSurface, width: { xs: 92, md: 128 }, height: { xs: 92, md: 128 }, borderRadius: '50%', display: 'grid', placeItems: 'center', color: 'primary.main' }}>
+              <LockOutlined sx={{ fontSize: { xs: 44, md: 60 }, strokeWidth: 0.5 }} />
+            </Box>
+            <Box sx={{ position: 'absolute', right: { xs: 6, md: 12 }, bottom: { xs: 6, md: 12 }, width: 34, height: 34, borderRadius: '50%', bgcolor: 'secondary.main', color: 'secondary.contrastText', display: 'grid', placeItems: 'center', fontWeight: 700, fontSize: '1rem' }}>!</Box>
+          </Box>
+        </Box>
+
+        <Box sx={{ position: 'relative', maxWidth: 520, textAlign: { xs: 'center', md: 'left' }, mx: { xs: 'auto', md: 0 } }}>
+          <Typography variant="overline" sx={{ color: 'text.secondary', letterSpacing: '0.16em', fontWeight: 600 }}>
+            Restricted area
+          </Typography>
+          <Typography id="permission-denied-title" component="h2" sx={{ mt: 1, mb: 2, color: 'text.primary', fontWeight: 700, fontSize: { xs: '1.75rem', md: '2.35rem' }, lineHeight: 1.15, letterSpacing: '-0.035em', textWrap: 'balance' }}>
+            You don’t have permission to view this page.
+          </Typography>
+          <Typography sx={{ color: 'text.secondary', lineHeight: 1.7, maxWidth: 460 }}>
+            Your current role doesn’t include access to this area. If you need it for your work, contact a platform administrator to review your permissions.
+          </Typography>
+          <Button
+            component={RouterLink}
+            to="/"
+            variant="contained"
+            startIcon={<ArrowBackRounded />}
+            sx={{ mt: 3.5, minHeight: 48, px: 3, width: { xs: '100%', sm: 'auto' }, '@media (prefers-reduced-motion: reduce)': { transition: 'none', '&:hover, &:active': { transform: 'none' } } }}
+          >
+            Back to dashboard
+          </Button>
+        </Box>
+      </Box>
     </Box>
   )
 }

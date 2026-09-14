@@ -1,5 +1,15 @@
 # Ujimora Monorepo — Production Completion Ledger
 
+### 2026-09-14 — Remove admin 404 moving bottom strip
+
+- Removed the bottom accent and its unused kenteSlide keyframes. Affected-file lint and diff checks pass; mocked browser checks at 390/1440px confirm no moving strip, no horizontal overflow and working dashboard navigation. Desktop screenshot inspected: `/tmp/ujimora-404-no-strip-1440.png`.
+
+### 2026-09-14 — Access-denied brand alignment complete
+
+- Replaced hardcoded cream/brown permission screen with the shared admin PageHeader, raised/inset surfaces, theme-aware green/sage controls, gold accent and restrained lock watermark. Responsive layout and reduced-motion button behavior preserve the existing permission guard and dashboard destination.
+- Admin type check and affected-file lint pass. Mocked browser checks pass at 390/1440px in dark/light modes: denial visible, no horizontal overflow, dashboard link navigates correctly. Desktop dark and mobile light screenshots inspected; evidence `/tmp/ujimora-access-{dark,light}-{390,1440}.png`. No live authorization/provider claim.
+
+
 ### 2026-09-13 — Remove device identifiers on explicit push withdrawal
 
 - Unregister now deletes the authenticated account's matching token instead of retaining it indefinitely with disabledAt. Previously disabled tokens are removed too; repeated withdrawal remains successful. Other accounts and other devices are preserved.

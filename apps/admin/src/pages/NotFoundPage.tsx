@@ -40,10 +40,6 @@ const keyframes = `
     60% { transform: translateY(-4px) rotate(-2deg); }
     100% { transform: translateY(0) rotate(0deg); opacity: 1; }
   }
-  @keyframes kenteSlide {
-    0% { background-position: 0 0; }
-    100% { background-position: 64px 0; }
-  }
   @keyframes breatheButton {
     0%, 100% { transform: scale(1); box-shadow: 0 4px 16px rgba(93,64,55,0.2); }
     50% { transform: scale(1.04); box-shadow: 0 6px 28px rgba(93,64,55,0.35); }
@@ -307,19 +303,7 @@ export default function NotFoundPage() {
         Back to Dashboard
       </Button>
 
-      {/* Kente animated bottom accent */}
-      <Box
-        sx={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: 4,
-          background:
-            'repeating-linear-gradient(90deg, #2E3D2F 0px, #2E3D2F 16px, #C7A24A 16px, #C7A24A 32px, #C75B39 32px, #C75B39 48px, #5D4037 48px, #5D4037 64px)',
-          animation: 'kenteSlide 2s linear infinite',
-        }}
-      />
+
     </Box>
   )
 }
