@@ -11,7 +11,7 @@ import { View, ScrollView, StyleSheet, Animated, Alert } from 'react-native'
 import { Text, Icon, Switch } from 'react-native-paper'
 import { router, Stack } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'
-import { api } from '@/lib/api'
+import { api, ApiError } from '@/lib/api'
 import { SignInRequired } from '@/components/SignInRequired'
 import {
   usePalette,
@@ -355,7 +355,7 @@ export default function SettingsScreen() {
   const handleDeleteAccount = () => {
     Alert.alert(
       'Delete Account',
-      'This immediately closes your account and signs you out. Financial and safety records may be retained where required by law, fraud prevention, or an active dispute.',
+      'This immediately closes your account and signs you out. Financial and safety records may be retained where required by law, fraud prevention, or an active dispute. An App Store or Google Play subscription is not cancelled automatically; cancel it in your store subscription settings to stop renewal.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -366,8 +366,8 @@ export default function SettingsScreen() {
               await api.delete('/profile')
               await logout()
               router.replace('/(auth)/login')
-            } catch {
-              Alert.alert('Error', 'Failed to delete account. Please try again.')
+            } catch (err) {
+              Alert.alert('Could not delete account', err instanceof ApiError ? err.message : 'Failed to delete account. Please try again.')
             }
           },
         },

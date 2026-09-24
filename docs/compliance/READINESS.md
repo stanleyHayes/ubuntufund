@@ -240,3 +240,18 @@ All 64 web Playwright cases pass with one worker against an isolated seeded loca
 Session 3544 finished with exit 0: **1,078 tests across 154 files pass**, 966.64 seconds (`/tmp/ujimora-api-current-publication-regression.log`). API/shared source remained unchanged throughout. This run includes index readiness, missing withdrawal-policy serialization and campaign-update final authorization/publication transactions through d5d4aac. The earlier donation-content-gate timeout did not recur; its original cause remains unproven, and no assertions were weakened. The API source freeze is lifted.
 
 This establishes a complete passing API regression for that source, not signed-native/provider/legal/store approval or completion of the remaining requirement ledger.
+
+
+## Store-review hardening — 24 September 2026
+
+Goal for this pass: remove engineering causes of App Store / Google Play rejection and fix defects found along the way. Owner, legal and console gates stay open.
+
+- Consent: anonymous checkout now keeps an explicit terms/18+ acknowledgement and rejects a stale one (C04). 12 message-agreement and donation-intent tests pass.
+- Fundraising (C11): iOS wallet top-up now goes to the website. Crypto is hidden unless the server enables it.
+- Billing (C10): native auto-renewal disclosure and a Subscription terms link. Account deletion warns that store subscriptions need cancelling in the store and shows the server's refusal reason.
+- UGC (C09): Report/Block on member and organization profiles, plus a labelled comment-delete control. Corrected the false "Verified Organization" label.
+- Privacy (C08/C17): shared KYC collection notice and required acknowledgement on web and native. The one-shot GPS use is stated.
+- Platform (C18): committed privacy-manifest reasons, release-only removal of dev-launcher local-network strings, and camera/microphone strings that cover live broadcasting.
+- Bug: native campaign shares pointed at the marketing domain, which only serves its landing page. They now use the web app's campaign URL.
+- Verification: mobile 111 tests / 23 files, type check, lint, all-platform export. Web 203 tests / 48 files, type check, and the KYC Playwright spec (3 pass). Android release APK installs and starts on a 16 KB emulator; see `NATIVE_PERMISSIONS.md`.
+- Owner-only items and console answers: `apps/mobile/APP_REVIEW_NOTES.md`. This includes the Apple Organization developer account (D-U-N-S) required for financial apps.

@@ -123,7 +123,7 @@ function CampaignCommentsForViewer({ campaignId, creatorId }: { campaignId: stri
             {user && user.id !== comment.authorId && <ReportContent userId={comment.authorId} commentId={comment.id} />}
             {user && user.id !== comment.authorId && <Button onPress={() => void block(comment.authorId)}>Block {comment.authorName}</Button>}
           </View>
-          {user && (user.id === comment.authorId || user.id === creatorId) ? <IconButton icon="delete-outline" size={18} onPress={() => void remove(comment.id)} /> : null}
+          {user && (user.id === comment.authorId || user.id === creatorId) ? <IconButton icon="delete-outline" size={18} accessibilityLabel="Delete comment" onPress={() => void remove(comment.id)} /> : null}
         </View>
       ))}
     </View>

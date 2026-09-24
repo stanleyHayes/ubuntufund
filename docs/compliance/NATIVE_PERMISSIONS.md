@@ -302,3 +302,12 @@ Evidence: `/tmp/ujimora-current-aab-build.log`, `/tmp/ujimora-current-aab-config
 Google bundletool1.18.1 generated4 APKs for the dedicated16KB ARM64 emulator from the current AAB. Every generated APK passes ZIP16KB alignment. Install succeeds; `pm path` confirms base plus ARM64/en/mdpi splits, not the previous monolithic installation. Cold launch472ms; ReactNativeJS main runs and PID7688 remains alive. Initial screenshot shows loading; the later inspected screenshot shows the expected unavailable-API screen and tab bar.
 
 Evidence `/tmp/ujimora-current-split-{build,install,startup,logcat,paths}.log`, `/tmp/ujimora-current-split-alignment.json`, `/tmp/ujimora-current-split-settled.png`; generated archive `/tmp/ujimora-current-device.apks`. Debug signing/non-routable API remain deliberate local-test constraints. This verifies device-specific packaging/install/startup;27RELRO findings, feature-dependent runtime behavior, physical devices, production signing and store approval remain open.
+
+
+## Store-review checkpoint — 24 September 2026
+
+Release APK built from the current source (Java 17, debug signing, API `https://api.invalid`): SHA-256 `b9b111753a680ed68dc160b3c14a2e38f9d986380dfd88020b5539d2d9a7eacc`. build-tools 36 `zipalign -c -P 16 4` passes. `inspect-android-native.py`: 48/48 LOAD aligned, 21/48 full pass, with the same 27 RELRO-end findings from upstream prebuilts. Installed on emulator-5580 (PAGE_SIZE 16384): cold start `Status: ok`, 976 ms, ReactNativeJS running main, no fatal log. The `ujimora://delete-account` deep link renders the bundled deletion policy offline.
+
+Google's page-size guide (checked 24 September 2026) treats a misaligned RELRO end as a runtime crash risk. From 1 February 2027 it blocks updates that lack 16 KB support. React Native 0.86.3 `react-android` from Maven Central still fails RELRO for libc++_shared, fbjni, hermestooling and jsi (it passes libreactnative), so an SDK upgrade alone does not clear the finding yet. Re-evaluate upstream releases before that date.
+
+iOS introspection after this checkpoint: camera/microphone purpose strings describe live broadcasting. With `UJIMORA_RELEASE=1`, `NSLocalNetworkUsageDescription` and the `_expo._tcp` Bonjour entry are removed; development builds keep them. Background modes remain `audio` only.

@@ -1,6 +1,6 @@
 # Ujimora store submission checklist
 
-Updated 13 September 2026. **Not approved for release.** Repository implementation
+Updated 24 September 2026. **Not approved for release.** Repository implementation
 is separate from signed-device evidence, legal authorization and store-console
 acceptance. The requirement ledger is [READINESS](../../docs/compliance/READINESS.md).
 
@@ -17,10 +17,17 @@ acceptance. The requirement ledger is [READINESS](../../docs/compliance/READINES
 - [x] Report/block controls and private staff review cover implemented community surfaces; AI generation has screening, explicit transmission consent and an in-app report action. Broader preventive moderation remains open in the readiness ledger.
 - [x] App configuration declares UserDefaults access for preferences and no tracking, blocks broad media/read-storage and background-location/overlay permissions, and supplies camera/microphone/location purpose strings. Legacy write storage remains for the installed picker's pre-Android-10 camera dependency. See [generated permission audit](../../docs/compliance/NATIVE_PERMISSIONS.md); this does not verify the final merged manifest, every linked SDK or production data handling.
 - [x] Bundle/package identifiers and build metadata are configured.
+- [x] iOS wallet top-ups open the website (Safari), like donations; Android keeps hosted Paystack checkout. Crypto is offered only when the server enables it.
+- [x] Native subscription screen shows store-specific auto-renewal terms and links to Subscription terms, Terms of Use and Privacy Policy (App Review 3.1.2).
+- [x] Committed iOS privacy manifest declares UserDefaults, file-timestamp, boot-time and disk-space reasons. Release builds (`UJIMORA_RELEASE=1`, set in the EAS production profile) drop the Expo Dev Launcher local-network purpose string. Camera and microphone strings cover live broadcasting.
+- [x] Member and organization profiles have Report and Block. Organization accounts are labelled verified only at the institutional verification level.
+- [x] Identity verification (web and native) shows a just-in-time data-use notice and requires an acknowledgement before submission.
+- [x] Reviewer notes and console answers are drafted in [APP_REVIEW_NOTES](APP_REVIEW_NOTES.md). Fill in the placeholders before submitting.
 - [ ] Resolve every remaining engineering gate in the readiness ledger before submission.
 - [x] Expo Doctor passes 20/20 against the current checkout on 13 September 2026; log `/tmp/ujimora-compliance-expo-doctor.log`. Fresh iOS/Android/web JavaScript exports also pass; see the readiness ledger.
 - [ ] Verify final locked dependencies with an isolated clean install and complete release checks after all engineering changes. Doctor and JavaScript export do not verify signed native libraries or production services.
 - [ ] Produce signed EAS/store artifacts from the final commit; verify Android API 36/16 KB libraries and merged permissions, and inspect the final iOS privacy report and SDK signatures.
+- [ ] Before 1 February 2027: clear the 27 upstream RELRO-end findings by upgrading to library releases that pass (React Native 0.86.3 still fails). See the 16 KB section in APP_REVIEW_NOTES.
 - [ ] Test installation, cold launch, signup, KYC, consent withdrawal, report/block, external donation return, store purchase/restore, deletion and deep links on physical supported devices.
 - [ ] Verify VoiceOver/TalkBack, text scaling, reduced motion, keyboard avoidance, safe areas and iPad layouts.
 
