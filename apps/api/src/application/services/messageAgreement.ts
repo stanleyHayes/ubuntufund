@@ -11,6 +11,11 @@ export function messageAgreement(message?: string, acceptance?: LegalAcceptanceI
 
 /** Public attribution needs acknowledgement even when only a name is submitted. */
 export function donationContentAgreement(input: { message?: string; donorName?: string; isAnonymous?: boolean; legalAcceptance?: LegalAcceptanceInput }): LegalAcceptanceRecord | undefined {
-  return messageAgreement(input.message, input.legalAcceptance)
+  const contentAgreement = messageAgreement(input.message, input.legalAcceptance)
     ?? messageAgreement(input.isAnonymous ? undefined : input.donorName, input.legalAcceptance);
+  if (contentAgreement || input.legalAcceptance === undefined) return contentAgreement;
+  // Preserve explicit checkout consent even without public content. Never infer
+  // acceptance from anonymity, an empty message or account-level signup consent.
+  if (!hasCurrentLegalAcceptance(input.legalAcceptance)) throw new AppError('Accept the current terms and confirm you are at least 18.', 428);
+  return { version: LEGAL_ACCEPTANCE_VERSION, acceptedTerms: true, ageConfirmed: true, acceptedAt: new Date() };
 }

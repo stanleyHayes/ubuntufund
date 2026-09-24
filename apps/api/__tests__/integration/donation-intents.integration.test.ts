@@ -104,6 +104,26 @@ describe('Donation Intents Integration', () => {
     await disconnectTestDatabase()
   })
 
+  it('persists explicit terms acceptance for an anonymous wallet donation without a message', async () => {
+    const creator = await registerUser(app, uniqueEmail('consent-creator'))
+    const campaignId = await createActiveCampaign(app, creator.token, creator.userId)
+    const donor = await registerUser(app, uniqueEmail('consent-donor'))
+    const walletId = await getWalletId(app, donor.token)
+    await fundWallet(walletId, 100)
+    const startedAt = Date.now()
+    const res = await request(app).post('/api/v1/donation-intents')
+      .set('Authorization', `Bearer ${donor.token}`)
+      .send({
+        campaignId, amount: 10, provider: 'wallet', isAnonymous: true,
+        legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true },
+      }).expect(201)
+    const stored = await DonationIntentModel.findById(res.body.data.id)
+    expect(stored?.messageAgreement?.version).toBe('2026-09-12')
+    expect(stored?.messageAgreement?.acceptedAt.getTime()).toBeGreaterThanOrEqual(startedAt)
+    expect(stored?.messageAgreement?.acceptedAt.getTime()).toBeLessThanOrEqual(Date.now())
+    expect(stored?.isAnonymous).toBe(true)
+  })
+
   it('settles a wallet donation intent: debits wallet, posts a balanced ledger entry, projects raised + balance', async () => {
     const { userId: creatorId, token: creatorToken } = await registerUser(
       app,

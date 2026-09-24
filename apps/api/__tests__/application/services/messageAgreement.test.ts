@@ -19,3 +19,20 @@ it('requires acknowledgement for public names but not private anonymous names', 
   const record = donationContentAgreement({ donorName: 'Name', legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true } });
   expect(record?.acceptedAt).toBeInstanceOf(Date);
 });
+
+it('preserves explicit acknowledgement without public content and rejects invalid supplied consent', () => {
+  expect(donationContentAgreement({ isAnonymous: true })).toBeUndefined();
+  const record = donationContentAgreement({
+    isAnonymous: true, message: ' ',
+    legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true },
+  });
+  expect(record?.acceptedAt).toBeInstanceOf(Date);
+  expect(record?.version).toBe('2026-09-12');
+  for (const legalAcceptance of [
+    { version: 'old', acceptedTerms: true, ageConfirmed: true },
+    { version: '2026-09-12', acceptedTerms: false, ageConfirmed: true },
+    { version: '2026-09-12', acceptedTerms: true, ageConfirmed: false },
+  ]) {
+    expect(() => donationContentAgreement({ isAnonymous: true, legalAcceptance })).toThrow();
+  }
+});
