@@ -28,7 +28,7 @@ BN843072020), UNN House, Nii Osae Ntifu Avenue, East Legon, Accra.
   subscription. Web subscriptions are not offered or linked inside the app.
 - **User-generated content:** comments, campaign updates, donor messages, creator
   pages and live sessions. Users accept the Terms and confirm they are 18+ before
-  posting. Every surface has Report, and profiles/creators/live sessions have
+  posting. Signed-in users see Report on every content surface, and profiles/creators/live sessions have
   Block user (Settings lists blocked users). Reports go to a staffed moderation queue;
   new comments/updates/campaigns are held for review before publication.
 - **Account deletion:** Settings → Delete account (in-app), or the public page
