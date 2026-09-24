@@ -15,7 +15,10 @@
       }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "UJIMORA_RELEASE": "1"
+      }
     },
     "simulator": {
       "extends": "development",

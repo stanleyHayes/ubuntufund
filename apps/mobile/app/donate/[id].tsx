@@ -12,6 +12,7 @@ import { SelectionField } from '@/components/SelectionField'
 import { Button, PageSkeleton } from '@/components/Loading'
 import { PaymentStatus } from '@/components/PaymentStatus'
 import { CryptoContribution } from '@/components/CryptoContribution'
+import { api } from '@/lib/api'
 import { checkout, clearPending, loadPending, paymentScope, type PendingPayment } from '@/lib/payments'
 import { previewCoupon } from '@/lib/coupons'
 import { CouponSurface } from '@ubuntu-fund/types'
@@ -44,6 +45,16 @@ function InAppDonateScreen() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const scope = paymentScope('donation', id || '')
+  // Offer crypto only when the server has it switched on, never as an option that cannot be completed.
+  const [cryptoAvailable, setCryptoAvailable] = useState(false)
+  useEffect(() => {
+    let active = true
+    api.get<{ enabled: boolean; assets: unknown[] }>('/payments/crypto/assets')
+      .then(data => { if (active) setCryptoAvailable(!!data.enabled && Array.isArray(data.assets) && data.assets.length > 0) })
+      .catch(() => { if (active) setCryptoAvailable(false) })
+    return () => { active = false }
+  }, [])
+  useEffect(() => { if (!cryptoAvailable && method === 'crypto') setMethod('paystack') }, [cryptoAvailable, method])
   useEffect(() => { let active = true; void loadPending(scope).then(v => { if (active) setPending(v) }).catch(e => { if (active) setError(e instanceof Error ? e.message : 'Could not recover the saved payment.') }); return () => { active = false } }, [scope])
   const currentPending = pending?.storageKey === scope ? pending : null
   const valid = Number.isFinite(Number(amount)) && Number(amount) > 0 && Number(amount) === Math.round(Number(amount) * 100) / 100
@@ -93,7 +104,7 @@ function InAppDonateScreen() {
       <TextInput label="Message (optional)" value={message} onChangeText={setMessage} multiline />
       {!!(message.trim() || (!anonymous && name.trim())) && <><Checkbox.Item label="I am at least 18 and agree to the terms for posting my public name and message." status={messageAccepted ? 'checked' : 'unchecked'} onPress={() => setMessageAccepted(v => !v)} /><Text onPress={() => router.push('/terms')}>Read the Terms of Use. Messages must not contain private information, threats or abusive content.</Text></>}
       <Checkbox.Item label="Donate anonymously" status={anonymous ? 'checked' : 'unchecked'} onPress={() => setAnonymous(v => !v)} />
-      <SelectionField label="Payment method" value={method} onChange={setMethod} options={[{ value: 'paystack', label: 'Card or mobile money · secure checkout' }, ...(user ? [{ value: 'wallet', label: 'Ujimora wallet · existing balance' }] : []), { value: 'crypto', label: 'Crypto · supported assets and networks' }]} />
+      <SelectionField label="Payment method" value={method} onChange={setMethod} options={[{ value: 'paystack', label: 'Card or mobile money · secure checkout' }, ...(user ? [{ value: 'wallet', label: 'Ujimora wallet · existing balance' }] : []), ...(cryptoAvailable ? [{ value: 'crypto', label: 'Crypto · supported assets and networks' }] : [])]} />
       {error ? <Text accessibilityRole="alert" style={{ color: p.error }}>{error}</Text> : null}
       {method !== 'crypto' && <TextInput label="Support Ujimora (optional tip)" value={tip} onChangeText={setTip} keyboardType="decimal-pad" />}
       {method !== 'crypto' && user ? <>

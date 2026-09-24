@@ -3,7 +3,7 @@ import { View, ScrollView, KeyboardAvoidingView, Platform } from 'react-native'
 import { Text, Checkbox, Snackbar } from 'react-native-paper'
 import { Stack, router } from 'expo-router'
 import { Country } from 'country-state-city'
-import { latestAdultBirthDate, KYC_IDENTITY_DOCUMENT_OPTIONS, type KYCIdentityDocumentType } from '@ubuntu-fund/types'
+import { latestAdultBirthDate, KYC_COLLECTION_NOTICE, KYC_IDENTITY_DOCUMENT_OPTIONS, type KYCIdentityDocumentType } from '@ubuntu-fund/types'
 import { BrandedTextInput } from './BrandedTextInput'
 import { BrandedDateField } from './BrandedDateField'
 import { SelectionField } from './SelectionField'
@@ -67,6 +67,7 @@ export function OrganizationKYCForm() {
         <Text variant="titleLarge">Private supporting documents</Text>
         <SelectionField disabled={busy} label="Representative identity document type" value={draft.identityType} options={[...KYC_IDENTITY_DOCUMENT_OPTIONS]} onChange={value => setDraft(old => value === old.identityType ? old : { ...old, identityType: value as KYCIdentityDocumentType, identity: '' })} />
         {([['registration', 'Organization registration document'], ['authorization', 'Representative authorization document'], ['identity', 'Representative identity document'], ['control', 'Ownership or control register (optional)']] as const).map(([key, label]) => <MediaUploadField disabled={busy} key={`${key}:${key === 'identity' ? draft.identityType : key}`} label={label} value={draft[key]} onChange={value => change(key, value)} folder="kyc" document onBusyChange={value => setUploads(n => n + (value ? 1 : -1))} />)}
+        <Text style={{ color: p.textSecondary }}>{KYC_COLLECTION_NOTICE}</Text>
         <Checkbox.Item disabled={busy} status={draft.authorized ? 'checked' : 'unchecked'} onPress={() => change('authorized', !draft.authorized)} label="I am authorized to submit this application and act for the organization." />
         <Checkbox.Item disabled={busy} status={draft.accurate ? 'checked' : 'unchecked'} onPress={() => change('accurate', !draft.accurate)} label="The organization, representative and control details are accurate and complete to the best of my knowledge." />
         {error ? <Text accessibilityRole="alert" style={{ color: p.error }}>{error}</Text> : null}

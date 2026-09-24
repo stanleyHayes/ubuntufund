@@ -1,9 +1,10 @@
 import { Share, Platform } from 'react-native'
 import type { Campaign } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
+import { campaignShareUrl } from '@/lib/fundraising'
 
 export async function shareCampaign(campaign: Campaign): Promise<void> {
-  const url = `https://ujimora.com/campaigns/${campaign.id}`
+  const url = campaignShareUrl(campaign)
 
   try {
     const result = await Share.share({

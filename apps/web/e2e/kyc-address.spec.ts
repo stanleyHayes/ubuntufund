@@ -55,6 +55,7 @@ test('address choices validate, reset dependent locations and submit GPS without
   await expect(page.getByText('Upload a clear selfie holding your ID.', { exact: true })).toBeVisible()
   await page.locator('input[type=file]').setInputFiles({ name: 'synthetic-selfie.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aD1sAAAAASUVORK5CYII=', 'base64') })
   await expect(page.getByRole('button', { name: 'Preview private document', exact: true })).toHaveCount(1)
+  await page.getByRole('checkbox', { name: /I confirm this information is accurate/ }).check()
   const request = page.waitForRequest('**/kyc/identity')
   await page.getByRole('button', { name: 'Submit Verification' }).click()
   const body = (await request).postDataJSON()

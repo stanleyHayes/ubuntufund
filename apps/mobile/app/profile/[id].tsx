@@ -1,11 +1,13 @@
 import { Chip } from '@/components/Chip'
 import { SkeletonLoader } from '@/components/Loading'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { View, ScrollView, StyleSheet } from 'react-native'
-import { useLocalSearchParams, Stack } from 'expo-router'
+import { useLocalSearchParams, Stack, Link } from 'expo-router'
 import { Text, Avatar, Surface } from 'react-native-paper'
 import { useUser } from '@/hooks/useCampaigns'
 import { TrustBadge } from '@/components/TrustBadge'
+import { UserSafetyControls } from '@/components/UserSafetyControls'
+import { VerificationLevel } from '@ubuntu-fund/types'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
 import type { Palette, NeuRecipes } from '@/theme'
 
@@ -14,6 +16,17 @@ export default function ProfileScreen() {
   const { user, isLoading } = useUser(id ?? '')
   const p = usePalette()
   const styles = useStyles()
+  const [blocked, setBlocked] = useState(false)
+
+  if (blocked) {
+    return (
+      <View style={styles.center}>
+        <Stack.Screen options={{ title: 'Profile' }} />
+        <Text variant="bodyLarge">User blocked.</Text>
+        <Link href="/settings">Manage blocked users in Settings</Link>
+      </View>
+    )
+  }
 
   if (isLoading) {
     return (
@@ -76,11 +89,15 @@ export default function ProfileScreen() {
             <View style={styles.detailRow}>
               <Text variant="bodyMedium" style={styles.muted}>Organization</Text>
               <Text variant="bodyMedium" style={{ fontFamily: 'Outfit_700Bold' }}>
-                Verified Organization
+                {user.verificationLevel >= VerificationLevel.INSTITUTIONAL ? 'Verified organization' : 'Not yet verified'}
               </Text>
             </View>
           )}
         </Surface>
+
+        <View style={{ marginHorizontal: 16, marginTop: 8 }}>
+          <UserSafetyControls userId={user.id} onBlocked={() => setBlocked(true)} />
+        </View>
       </ScrollView>
     </>
   )

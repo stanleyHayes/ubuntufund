@@ -11,6 +11,7 @@ import { api } from '@/lib/api'
 import { CampaignCard } from '@/components/CampaignCard'
 import { GlassSurface } from '@/components/GlassSurface'
 import { EmptyState } from '@/components/EmptyState'
+import { UserSafetyControls } from '@/components/UserSafetyControls'
 import { usePalette } from '@/context/ColorModeContext'
 import type { Palette } from '@/theme'
 
@@ -38,6 +39,7 @@ export default function OrganizationProfileScreen() {
   const p = usePalette()
   const styles = useStyles()
   const [actionError, setError] = useState<string | null>(null)
+  const [blocked, setBlocked] = useState(false)
   const fetchOrganization = useCallback(async () => {
     if (!id) throw new Error('Organization not found')
     const organization = await api.get<OrganizationDetail>(`/organizations/${id}`)
@@ -48,6 +50,10 @@ export default function OrganizationProfileScreen() {
   const organization = data?.organization ?? null
   const campaigns = data?.campaigns ?? []
   const error = loadError ?? actionError
+
+  if (blocked) {
+    return <View style={styles.center}><Stack.Screen options={{ title: 'Organization' }} /><EmptyState variant="default" icon="account-cancel-outline" title="Organization blocked" subtitle="Manage blocked accounts in Settings." ctaLabel="Open settings" onCtaPress={() => router.push('/settings')} /></View>
+  }
 
   if (loading) {
     return <View style={styles.center}><Stack.Screen options={{ title: 'Organization' }} /><SkeletonLoader size="large" /></View>
@@ -67,7 +73,7 @@ export default function OrganizationProfileScreen() {
         <View style={styles.iconTile}><Icon source="office-building" size={30} color="#FFFFFF" /></View>
         <View style={styles.titleRow}>
           <Text style={styles.title}>{organization.name}</Text>
-          {organization.verified && <Icon source="check-decagram" size={20} color={p.success} />}
+          {organization.verified && <View accessible accessibilityLabel="Verified organization"><Icon source="check-decagram" size={20} color={p.success} /></View>}
         </View>
         <Text style={styles.meta}>{[[organization.city, organization.country].filter(Boolean).join(', '), organization.founded ? `Founded ${organization.founded}` : ''].filter(Boolean).join(' · ')}</Text>
         <Text style={styles.statement}>{organization.impactStatement}</Text>
@@ -81,6 +87,7 @@ export default function OrganizationProfileScreen() {
           <Button icon="share-variant" onPress={() => { void Share.share({ message: `Support ${organization.name} on Ujimora: https://app.ujimora.com/organizations/${encodeURIComponent(id)}` }).catch(() => setError('Could not open sharing. Please try again.')) }}>Share</Button>
           {organization.website && /^https?:\/\//i.test(organization.website) && <Button icon="open-in-new" onPress={() => { void Linking.openURL(organization.website!).catch(() => setError('Could not open this website.')) }}>Visit website</Button>}
         </View>
+        <UserSafetyControls userId={organization.id} onBlocked={() => setBlocked(true)} />
       </GlassSurface>
 
       <Text style={styles.sectionTitle}>Campaigns</Text>

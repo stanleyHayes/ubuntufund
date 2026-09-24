@@ -3,7 +3,7 @@ import OrganizationKYCForm from '@/components/OrganizationKYCForm'
 import MenuItem from '@mui/material/MenuItem'
 import KYCInformationRequests from '@/components/KYCInformationRequests'
 import { useSeo } from '@/lib/seo'
-import { adultBirthDateError, latestAdultBirthDate, KYC_IDENTITY_DOCUMENT_OPTIONS, type KYCIdentityDocumentType } from '@ubuntu-fund/types'
+import { adultBirthDateError, latestAdultBirthDate, KYC_COLLECTION_ACKNOWLEDGEMENT, KYC_COLLECTION_NOTICE, KYC_IDENTITY_DOCUMENT_OPTIONS, type KYCIdentityDocumentType } from '@ubuntu-fund/types'
 import { LoadingDots } from '@ubuntu-fund/ui'
 import { Country, State, City } from 'country-state-city'
 import ToggleButton from '@mui/material/ToggleButton'
@@ -16,6 +16,8 @@ import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
+import Checkbox from '@mui/material/Checkbox'
+import FormControlLabel from '@mui/material/FormControlLabel'
 import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import Stepper from '@mui/material/Stepper'
 import Step from '@mui/material/Step'
@@ -63,6 +65,7 @@ function IdentityKYCPage() {
     finally { setUploads(value => value - 1) }
   }
   const [submitted, setSubmitted] = useState(false)
+  const [acknowledged, setAcknowledged] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Step 1: Personal info
@@ -125,6 +128,7 @@ function IdentityKYCPage() {
     if (!fullName.trim() || !idNumber.trim()) { setActiveStep(0); setError('Enter your full name and ID number.'); return }
     if (!idFrontUrl || (identityDocumentType !== 'passport' && !idBackUrl)) { setActiveStep(1); setError(identityDocumentType === 'passport' ? 'Upload the photo page of your passport.' : 'Upload the front and back of your ID.'); return }
     if (!selfieUrl) { setActiveStep(3); setError('Upload a clear selfie holding your ID.'); return }
+    if (!acknowledged) { setActiveStep(3); setError('Confirm the information is accurate and that you have read how identity information is used.'); return }
     const ageError = adultBirthDateError(dateOfBirth)
     if (ageError) { setActiveStep(0); setError(ageError); return }
     if (!COUNTRY_OPTIONS.some(option => option.label === nationality)) { setActiveStep(0); setError('Select your nationality from the list.'); return }
@@ -310,6 +314,13 @@ function IdentityKYCPage() {
               label="Selfie with ID"
               helperText="Clear selfie holding your ID document."
               accept="image/*"
+            />
+            <Typography sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
+              {KYC_COLLECTION_NOTICE} <RouterLink to="/privacy" target="_blank" rel="noopener noreferrer">Privacy Notice</RouterLink>
+            </Typography>
+            <FormControlLabel
+              control={<Checkbox checked={acknowledged} onChange={e => setAcknowledged(e.target.checked)} />}
+              label={KYC_COLLECTION_ACKNOWLEDGEMENT}
             />
           </Box>
         )}

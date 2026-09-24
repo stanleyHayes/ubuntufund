@@ -1,10 +1,10 @@
 import { OrganizationKYCForm } from '@/components/OrganizationKYCForm'
 import { useAuth } from '@/context/AuthContext'
-import { latestAdultBirthDate, KYC_IDENTITY_DOCUMENT_OPTIONS } from '@ubuntu-fund/types'
+import { latestAdultBirthDate, KYC_COLLECTION_ACKNOWLEDGEMENT, KYC_COLLECTION_NOTICE, KYC_IDENTITY_DOCUMENT_OPTIONS } from '@ubuntu-fund/types'
 import { SignInRequired } from '@/components/SignInRequired'
 import { useState } from 'react'
 import { View, ScrollView, KeyboardAvoidingView, Platform } from 'react-native'
-import { Text, Snackbar, ProgressBar } from 'react-native-paper'
+import { Text, Snackbar, ProgressBar, Checkbox } from 'react-native-paper'
 import { Stack, router } from 'expo-router'
 import { Country, State, City } from 'country-state-city'
 import * as Location from 'expo-location'
@@ -31,6 +31,7 @@ function IdentityKYCScreen() {
   const [busy, setBusy] = useState(false)
   const [uploads, setUploads] = useState(0)
   const [locating, setLocating] = useState(false)
+  const [acknowledged, setAcknowledged] = useState(false)
   const [error, setError] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const change = <K extends keyof KycDraft>(key: K, value: KycDraft[K]) => setDraft(d => ({ ...d, [key]: value }))
@@ -67,6 +68,7 @@ function IdentityKYCScreen() {
         <Text style={{ color: p.text, fontFamily: 'Outfit_800ExtraBold', fontSize: 26 }}>Verify your identity</Text>
         <Text style={{ color: p.textSecondary }}>Step {step + 1} of 4 · {steps[step]}</Text>
         <ProgressBar progress={(step + 1) / 4} color={p.primary} />
+        {step === 0 && <Text style={{ color: p.textSecondary }}>{KYC_COLLECTION_NOTICE} <Text style={{ color: p.primary }} onPress={() => router.push('/privacy')}>Privacy Policy</Text></Text>}
         <View style={{ ...neu.raised, backgroundColor: p.surface, borderRadius: 24, padding: 20, gap: 16 }}>
           {step === 0 && <>{field('Full name', 'fullName')}<BrandedDateField label="Date of birth" value={draft.dateOfBirth} onChange={v => change('dateOfBirth', v)} maxDate={new Date(`${latestAdultBirthDate()}T12:00:00`)} /><SelectionField label="Nationality" value={draft.nationality} options={countries} onChange={v => change('nationality', v)} />{field('ID number', 'idNumber')}</>}
           {step === 1 && <>
@@ -76,7 +78,7 @@ function IdentityKYCScreen() {
           </>}
           {step === 2 && <>
             <Button icon="crosshairs-gps" loading={locating} disabled={locating} onPress={() => void locate()}>Use my location</Button>
-            <Text style={{ color: p.textSecondary }}>Check the address found by GPS. A location reading does not generate a GhanaPost digital address.</Text>
+            <Text style={{ color: p.textSecondary }}>Your location is read once, only when you tap this button, to fill in the address fields; coordinates are not saved. Check the address found by GPS. A location reading does not generate a GhanaPost digital address.</Text>
             <SelectionField label="Country" value={draft.country} options={countries} onChange={v => setDraft(d => ({ ...d, country: v, state: '', city: '', proofMethod: v === 'Ghana' ? d.proofMethod : 'document' }))} />
             {states.length ? <SelectionField label="State or province" value={draft.state} options={states.map(s => ({ value: s.name, label: s.name }))} onChange={v => setDraft(d => ({ ...d, state: v, city: '' }))} /> : field('State or province', 'state')}
             {cities.length > 0 && <SelectionField label="Choose a city" value={draft.city} options={Array.from(new Set(cities.map(c => c.name))).map(name => ({ value: name, label: name }))} onChange={v => change('city', v)} />}
@@ -84,11 +86,11 @@ function IdentityKYCScreen() {
             <SelectionField label="Proof of address" value={draft.proofMethod} options={[...(draft.country === 'Ghana' ? [{ value: 'ghana_post_gps', label: 'GhanaPost GPS address' }] : []), { value: 'document', label: 'Upload a document' }]} onChange={v => change('proofMethod', v as KycDraft['proofMethod'])} />
             {draft.proofMethod === 'ghana_post_gps' ? field('GhanaPost GPS address', 'gpsAddress') : <>{field('Street address', 'street')}{field('Postal code (optional)', 'postalCode')}{upload('Utility bill or bank statement', 'addressDoc', true)}</>}
           </>}
-          {step === 3 && <><Text style={{ color: p.textSecondary }}>Take or choose a clear selfie holding your ID.</Text>{upload('Selfie holding your ID', 'selfie')}</>}
+          {step === 3 && <><Text style={{ color: p.textSecondary }}>Take or choose a clear selfie holding your ID.</Text>{upload('Selfie holding your ID', 'selfie')}<Checkbox.Item status={acknowledged ? 'checked' : 'unchecked'} onPress={() => setAcknowledged(v => !v)} label={KYC_COLLECTION_ACKNOWLEDGEMENT} /></>}
         </View>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
           {step > 0 && <Button disabled={busy || uploads > 0} onPress={() => { setError(''); setStep(s => s - 1) }}>Back</Button>}
-          <Button mode="contained" loading={busy} disabled={busy || uploads > 0} onPress={step === 3 ? () => void submit() : next}>{step === 3 ? 'Submit verification' : 'Continue'}</Button>
+          <Button mode="contained" loading={busy} disabled={busy || uploads > 0 || (step === 3 && !acknowledged)} onPress={step === 3 ? () => void submit() : next}>{step === 3 ? 'Submit verification' : 'Continue'}</Button>
         </View>
       </>}
     </ScrollView>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fundraisingUrl } from '../fundraising'
+import { campaignShareUrl, fundraisingUrl, walletFundingUrl } from '../fundraising'
 
 describe('external fundraising handoff', () => {
   it('passes only public campaign context to the donation route', () => {
@@ -17,5 +17,13 @@ describe('external fundraising handoff', () => {
       expect(() => fundraisingUrl('school', {}, origin)).toThrow()
     }
     expect(() => fundraisingUrl('', {}, 'https://app.ujimora.com')).toThrow()
+  })
+  it('sends iOS wallet funding to the website wallet without account context', () => {
+    expect(walletFundingUrl('https://app.ujimora.com/some/path?x=1')).toBe('https://app.ujimora.com/wallet')
+    expect(() => walletFundingUrl('http://app.ujimora.com')).toThrow()
+  })
+  it('shares the public web campaign page, preferring the slug', () => {
+    expect(campaignShareUrl({ id: 'abc', slug: 'school fees' }, 'https://app.ujimora.com')).toBe('https://app.ujimora.com/c/school%20fees')
+    expect(campaignShareUrl({ id: 'abc' }, 'https://app.ujimora.com')).toBe('https://app.ujimora.com/campaigns/abc')
   })
 })

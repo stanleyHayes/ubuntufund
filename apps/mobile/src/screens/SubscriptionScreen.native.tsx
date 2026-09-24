@@ -200,10 +200,13 @@ function StorePlans({ userId }: { userId: string }) {
         </GlassSurface>
       })}
     </>}
-    <Text style={{ color: p.textSecondary }}>Payment is charged to your {storeName} account. Manage or cancel automatic renewal in that account’s subscription settings. Deleting your Ujimora account does not cancel a store subscription.</Text>
+    <Text style={{ color: p.textSecondary }}>{store === 'apple'
+      ? 'Payment is charged to your Apple Account at confirmation of purchase. Subscriptions renew automatically for the same period and price unless automatic renewal is turned off at least 24 hours before the end of the current period; renewal is charged within 24 hours before the period ends.'
+      : 'Payment is charged to your Google Play account at confirmation of purchase. Subscriptions renew automatically for the same period and price until you cancel; cancelling stops future renewals and keeps access until the end of the paid period.'} Manage or cancel automatic renewal in your {storeName} subscription settings. Deleting your Ujimora account does not cancel a store subscription.</Text>
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-      <Button onPress={() => router.push('/terms')}>Terms</Button>
-      <Button onPress={() => router.push('/privacy')}>Privacy</Button>
+      <Button onPress={() => router.push('/billing-terms')}>Subscription terms</Button>
+      <Button onPress={() => router.push('/terms')}>Terms of Use</Button>
+      <Button onPress={() => router.push('/privacy')}>Privacy Policy</Button>
     </View>
   </ScrollView>
 }

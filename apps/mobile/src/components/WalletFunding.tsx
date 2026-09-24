@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { View } from 'react-native'
+import { Linking, Platform, View } from 'react-native'
 import { Text } from 'react-native-paper'
 import * as WebBrowser from 'expo-web-browser'
 import { api } from '@/lib/api'
@@ -8,8 +8,32 @@ import { BrandedTextInput as TextInput } from './BrandedTextInput'
 import { Button, Skeleton } from './Loading'
 import { PaymentStatus } from './PaymentStatus'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
+import { walletFundingUrl } from '@/lib/fundraising'
 
-export function WalletFunding({ walletId, onComplete }: { walletId: string; onComplete: () => void }) {
+export function WalletFunding(props: { walletId: string; onComplete: () => void }) {
+  return Platform.OS === 'ios' ? <ExternalWalletFunding /> : <InAppWalletFunding {...props} />
+}
+
+/** App Review 3.2.1(vi)/3.2.2: wallet balance pays for donations, so iOS adds funds on the website like donations do. */
+function ExternalWalletFunding() {
+  const p = usePalette(); const neu = useNeu()
+  const [error, setError] = useState('')
+  const [opening, setOpening] = useState(false)
+  async function open() {
+    setOpening(true); setError('')
+    try { await Linking.openURL(walletFundingUrl()) }
+    catch { setError('Could not open the Ujimora website. Please try again.') }
+    finally { setOpening(false) }
+  }
+  return <View style={{ ...neu.raised, backgroundColor: p.surface, padding: 20, borderRadius: 24, gap: 12, marginBottom: 20 }}>
+    <Text variant="titleLarge">Fund your wallet</Text>
+    <Text>Wallet top-ups are made on the Ujimora website. Sign in there to add funds; your balance here updates after payment verification.</Text>
+    <Button mode="contained" icon="open-in-new" loading={opening} disabled={opening} onPress={() => void open()}>Continue in browser</Button>
+    {error ? <Text accessibilityRole="alert" style={{ color: p.error }}>{error}</Text> : null}
+  </View>
+}
+
+function InAppWalletFunding({ walletId, onComplete }: { walletId: string; onComplete: () => void }) {
   const p = usePalette(); const neu = useNeu()
   const [config, setConfig] = useState<{ enabled: boolean; mode: string } | null>(null)
   const [amount, setAmount] = useState('100')
