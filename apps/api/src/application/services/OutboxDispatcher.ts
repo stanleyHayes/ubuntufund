@@ -16,10 +16,18 @@ const LEASE_MS = 120_000;
  * settlement commit, so the two do not race for the same row.
  */
 const SWEEP_MIN_AGE_MS = 30_000;
+/**
+ * After this many failed dispatches the sweep stops claiming a row. It stays
+ * `pending` with its attempt count for an operator, rather than retrying a
+ * poison row forever. A full database outage does not count toward this,
+ * because a row that cannot be claimed is never attempted.
+ */
+const MAX_ATTEMPTS = 30;
 
 export interface OutboxDispatcherOptions {
   leaseMs?: number;
   sweepMinAgeMs?: number;
+  maxAttempts?: number;
 }
 
 /**
@@ -40,6 +48,7 @@ export interface OutboxDispatcherOptions {
 export class OutboxDispatcher {
   private readonly leaseMs: number;
   private readonly sweepMinAgeMs: number;
+  private readonly maxAttempts: number;
 
   constructor(
     private readonly outboxRepo: OutboxRepositoryPort,
@@ -49,6 +58,7 @@ export class OutboxDispatcher {
   ) {
     this.leaseMs = options.leaseMs ?? LEASE_MS;
     this.sweepMinAgeMs = options.sweepMinAgeMs ?? SWEEP_MIN_AGE_MS;
+    this.maxAttempts = options.maxAttempts ?? MAX_ATTEMPTS;
   }
 
   /**
@@ -76,7 +86,7 @@ export class OutboxDispatcher {
     const createdBefore = new Date(Date.now() - this.sweepMinAgeMs);
     let count = 0;
     while (count < SWEEP_BATCH) {
-      const claimed = await this.outboxRepo.claimNextPending(createdBefore, this.leaseMs);
+      const claimed = await this.outboxRepo.claimNextPending(createdBefore, this.leaseMs, this.maxAttempts);
       if (!claimed) break;
       count += 1;
       try {
@@ -101,9 +111,12 @@ export class OutboxDispatcher {
    * sweep cannot spin on it; the attempt counter is best-effort bookkeeping.
    */
   private async recordFailure(record: OutboxRecord, error: unknown): Promise<void> {
+    const attempts = (record.attempts ?? 0) + 1;
     logger.error(
-      { err: error, outboxId: record.id, type: record.type },
-      'outbox dispatch failed; will retry on next sweep'
+      { err: error, outboxId: record.id, type: record.type, attempts },
+      attempts >= this.maxAttempts
+        ? 'outbox dispatch failed too often; row parked for operator review'
+        : 'outbox dispatch failed; will retry on next sweep'
     );
     try {
       await this.outboxRepo.recordAttempt(record.id);
@@ -128,9 +141,11 @@ export class OutboxDispatcher {
     payload: DonationSucceededPayload
   ): Promise<void> {
     const current = await this.donations.findById(payload.donationId);
-    // Publish realtime overlay/feed events and bump live-session stats. The
-    // projector swallows its own errors, so a realtime hiccup never blocks the
-    // row from being marked dispatched.
+    // Publish realtime overlay/feed events and bump live-session stats. A
+    // failed campaign lookup or stat credit rejects here, so run() skips
+    // markDispatched and the sweep retries the row once its lease expires (the
+    // credit is exactly-once per donation). Publishing failures are swallowed
+    // inside the projector: the in-memory fan-out is best-effort.
     await this.realtimeProjector.recordDonationRealtime(
       payload.campaignId,
       payload.liveSessionId,

@@ -126,6 +126,69 @@ describe('live-session stats under at-least-once delivery', () => {
     expect(await dispatcher.sweepPending()).toBe(0);
   });
 
+  it('keeps the row pending when the session credit fails, then credits it exactly once on the sweep', async () => {
+    const { campaignId, sessionId, payload } = await liveDonation();
+    const sessions = new MongoLiveSessionRepository();
+    const credit = vi.spyOn(sessions, 'applyDonationStats').mockRejectedValueOnce(new Error('primary stepped down'));
+    const bus = new EventBus();
+    const projector = new RealtimeDonationProjector(bus, new MongoCampaignRepository(), sessions, new MongoUserRepository());
+    const repo = new MongoOutboxRepository();
+    const dispatcher = new OutboxDispatcher(repo, projector, new MongoDonationRepository(), { leaseMs: 0, sweepMinAgeMs: 0 });
+    const record = await repo.enqueue({ type: 'donation.succeeded', payload });
+
+    await dispatcher.dispatch(record);
+    expect(await OutboxModel.findById(record.id).lean()).toMatchObject({ status: 'pending', attempts: 1 });
+    expect(await stats(sessionId)).toMatchObject({ successfulDonations: 0, amountRaised: 0 });
+    expect((await DonationModel.findById(payload.donationId))?.liveStatsAppliedAt).toBeUndefined();
+    expect(bus.getBufferedEvents(campaignChannel(campaignId))).toHaveLength(0);
+
+    expect(await dispatcher.sweepPending()).toBe(1);
+    expect((await OutboxModel.findById(record.id).lean())?.status).toBe('dispatched');
+    expect(await stats(sessionId)).toMatchObject({ successfulDonations: 1, amountRaised: 100 });
+    expect(bus.getBufferedEvents(liveChannel(sessionId)).filter(e => e.type === 'donation')).toHaveLength(1);
+    expect(await dispatcher.sweepPending()).toBe(0);
+    expect(credit).toHaveBeenCalledTimes(2);
+  });
+
+  it('retries when the campaign lookup fails, but not when only the realtime publish fails', async () => {
+    const { sessionId, payload } = await liveDonation();
+    const campaigns = new MongoCampaignRepository();
+    vi.spyOn(campaigns, 'findById').mockRejectedValueOnce(new Error('network blip'));
+    const bus = new EventBus();
+    const publish = vi.spyOn(bus, 'publish').mockImplementation(() => { throw new Error('subscriber crashed'); });
+    const projector = new RealtimeDonationProjector(bus, campaigns, new MongoLiveSessionRepository(), new MongoUserRepository());
+    const repo = new MongoOutboxRepository();
+    const dispatcher = new OutboxDispatcher(repo, projector, new MongoDonationRepository(), { leaseMs: 0, sweepMinAgeMs: 0 });
+    const record = await repo.enqueue({ type: 'donation.succeeded', payload });
+
+    await dispatcher.dispatch(record);
+    expect(await OutboxModel.findById(record.id).lean()).toMatchObject({ status: 'pending', attempts: 1 });
+    expect(publish).not.toHaveBeenCalled();
+    // The retry credits the session; the publish failure is logged, not retried.
+    expect(await dispatcher.sweepPending()).toBe(1);
+    expect(publish).toHaveBeenCalled();
+    expect(await OutboxModel.findById(record.id).lean()).toMatchObject({ status: 'dispatched', attempts: 1 });
+    expect(await stats(sessionId)).toMatchObject({ successfulDonations: 1, amountRaised: 100 });
+  });
+
+  it('parks a row that keeps failing instead of retrying it forever', async () => {
+    const { sessionId, payload } = await liveDonation();
+    const sessions = new MongoLiveSessionRepository();
+    vi.spyOn(sessions, 'applyDonationStats').mockRejectedValue(new Error('poison row'));
+    const projector = new RealtimeDonationProjector(new EventBus(), new MongoCampaignRepository(), sessions, new MongoUserRepository());
+    const repo = new MongoOutboxRepository();
+    const dispatcher = new OutboxDispatcher(repo, projector, new MongoDonationRepository(), { leaseMs: 0, sweepMinAgeMs: 0, maxAttempts: 2 });
+    const record = await repo.enqueue({ type: 'donation.succeeded', payload });
+
+    await dispatcher.dispatch(record);
+    expect(await dispatcher.sweepPending()).toBe(1);
+    expect(await dispatcher.sweepPending()).toBe(0);
+    expect(await OutboxModel.findById(record.id).lean()).toMatchObject({ status: 'pending', attempts: 2 });
+    expect(await stats(sessionId)).toMatchObject({ successfulDonations: 0, amountRaised: 0 });
+    // Still claimable by a sweep without the cap, so later sweeps here must not see it.
+    await OutboxModel.deleteOne({ _id: record.id });
+  });
+
   it('runs a row once when sweeps race the in-process dispatch, and leaves fresh rows to it', async () => {
     const { payload } = await liveDonation();
     const repo = new MongoOutboxRepository();
