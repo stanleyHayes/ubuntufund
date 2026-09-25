@@ -34,11 +34,21 @@ function build() {
     new MongoCouponRepository(), new MongoCouponRedemptionRepository(), affiliate);
   const revoke = new RevokeRefundedSubscriptionUseCase(new MongoUnitOfWork(), checkoutRepo, subscriptionRepo);
   const gateway = { isConfigured: () => true, verifyWebhookSignature: () => true };
+  // Staff-facing record of provider refunds/disputes. It takes the slot just
+  // before the revoke collaborator, so passing revoke one place early (as this
+  // file did before the donations merge added this parameter) silently skipped
+  // revocation; the recorded events below prove each slot got what it expects.
+  const providerEvents: string[] = [];
+  const providerPaymentEvents = {
+    handleRefund: async (event: string) => { providerEvents.push(event); },
+    handleDispute: async (event: string) => { providerEvents.push(event); },
+  };
   const webhook = new HandlePaystackWebhookUseCase(gateway as never, {} as never, {} as never, {} as never, {} as never, {} as never,
-    {} as never, checkoutRepo, settle, {} as never, affiliate, undefined, undefined, undefined, undefined, undefined, revoke);
+    {} as never, checkoutRepo, settle, {} as never, affiliate, undefined, undefined, undefined, undefined, undefined,
+    providerPaymentEvents, revoke);
   const refund = (reference: string, amount?: number) => webhook.execute({ signature: 'signed',
     rawBody: Buffer.from(JSON.stringify({ event: 'refund.processed', data: { transaction_reference: reference, currency: 'GHS', ...(amount ? { amount } : {}) } })) });
-  return { checkoutRepo, settle, revoke, refund };
+  return { checkoutRepo, settle, revoke, refund, providerEvents };
 }
 
 async function paid(s: ReturnType<typeof build>, userId: string, tier: string = SubscriptionTier.PRO, finalAmount = 149) {
@@ -67,6 +77,8 @@ describe('refunded web subscription payments', () => {
     expect(row.currentPeriodEnd.getTime()).toBeLessThanOrEqual(Date.now());
     expect((await AffiliateCommissionModel.findOne({ sourceRef: reference }))?.status).toBe('reversed');
     expect((await AffiliateBalanceModel.findOne({ affiliateId: affiliate.id }))?.pendingBalance).toBe(0);
+    // The refund is still recorded for staff alongside the revocation.
+    expect(s.providerEvents).toEqual(['refund.processed']);
   });
 
   it('only takes back the time an early renewal added', async () => {
