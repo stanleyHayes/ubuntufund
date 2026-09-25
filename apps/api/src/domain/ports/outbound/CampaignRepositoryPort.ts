@@ -23,7 +23,10 @@ export interface CampaignListQuery extends Omit<PaginationParams, 'sortBy'> {
 }
 
 export interface CampaignRepositoryPort {
-  save(campaign: CampaignEntity): Promise<CampaignEntity>;
+  /** `creationIdempotencyKey` is unique per creator: a retried create cannot insert twice. */
+  save(campaign: CampaignEntity, options?: { creationIdempotencyKey?: string }): Promise<CampaignEntity>;
+  /** The campaign this creator already created with this Idempotency-Key, if any. */
+  findByCreationKey(creatorId: string, key: string): Promise<CampaignEntity | null>;
   findById(id: string): Promise<CampaignEntity | null>;
   findBySlug(slug: string): Promise<CampaignEntity | null>;
   findAll(params: CampaignListQuery): Promise<{ items: CampaignEntity[]; total: number }>;

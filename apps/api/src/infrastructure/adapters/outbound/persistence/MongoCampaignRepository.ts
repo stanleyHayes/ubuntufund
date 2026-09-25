@@ -64,9 +64,10 @@ function toDomain(doc: CampaignDocument): CampaignEntity {
 }
 
 export class MongoCampaignRepository implements CampaignRepositoryPort {
-  async save(campaign: CampaignEntity): Promise<CampaignEntity> {
+  async save(campaign: CampaignEntity, options: { creationIdempotencyKey?: string } = {}): Promise<CampaignEntity> {
     const plain = campaign.toPlain();
     const doc = await CampaignModel.create({
+      ...(options.creationIdempotencyKey ? { creationIdempotencyKey: options.creationIdempotencyKey } : {}),
       // Only persist a slug when one is set: a stored '' would collide with
       // other slug-less campaigns on the unique (sparse) index.
       ...(plain.slug ? { slug: plain.slug } : {}),
@@ -94,6 +95,11 @@ export class MongoCampaignRepository implements CampaignRepositoryPort {
       _id: id,
       deletedAt: { $exists: false },
     });
+    return doc ? toDomain(doc) : null;
+  }
+
+  async findByCreationKey(creatorId: string, key: string): Promise<CampaignEntity | null> {
+    const doc = await CampaignModel.findOne({ creatorId, creationIdempotencyKey: key, deletedAt: { $exists: false } });
     return doc ? toDomain(doc) : null;
   }
 

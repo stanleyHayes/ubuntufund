@@ -57,6 +57,21 @@ export class CreateCampaignUseCase {
   }
 
   async execute(input: CreateCampaignInput, creatorId: string): Promise<Campaign> {
+    return (await this.create(input, creatorId)).campaign;
+  }
+
+  /**
+   * A retry after a lost response (timeout, dropped connection) repeats the same
+   * Idempotency-Key and gets the campaign that request already created instead
+   * of a duplicate that would burn a lifetime verification slot. The key is
+   * checked before the allowance/plan checks (the original already passed
+   * them) and again inside the creation transaction; a unique index backs both.
+   */
+  async create(input: CreateCampaignInput, creatorId: string, idempotencyKey?: string): Promise<{ campaign: Campaign; replayed: boolean }> {
+    if (idempotencyKey) {
+      const existing = await this.campaignRepo.findByCreationKey(creatorId, idempotencyKey);
+      if (existing) return { campaign: this.replay(existing, input), replayed: true };
+    }
     if (input.currency !== 'GHS') throw new AppError('Campaign goals must be in GHS', 422);
     if (!Number.isFinite(new Date(input.endDate).getTime()) || new Date(input.endDate).getTime() <= Date.now()) throw new AppError('End date must be in the future', 422);
     let user = await this.userRepo.findById(creatorId);
@@ -95,90 +110,108 @@ export class CreateCampaignUseCase {
     if (!this.admission.assertCurrent) throw new AppError('Current campaign content verification is unavailable', 503);
     if (!this.creation) throw new AppError('Campaign creation transaction is unavailable', 503);
     const expectedAuthVersion = user.toPlain().authVersion ?? '';
-    const saved = await this.creation.run(creatorId, expectedAuthVersion, async () => {
-      // Screening can outlive account/plan changes. Financial eligibility is
-      // evaluated again from current evidence; content approval cannot waive it.
-      user = await this.userRepo.findById(creatorId);
-      if (!user) throw new AppError('Account is no longer available', 401);
-      campaignCount = await this.campaignRepo.countByCreatorId(creatorId);
-      allowance = await this.campaignAllowance(user);
-      if (campaignCount >= allowance) throw new AppError('Campaign creation eligibility changed. Review your verification and retry.', 403);
-      await this.planLimits.assertCanCreateCampaign(creatorId, input.goalAmount, user.complianceApprovedCampaignLimit, input.imageUrls?.length ?? 0);
-
-      const slug = await generateUniqueSlug(input.title, async (candidate) => {
-        const existing = await this.campaignRepo.findBySlug(candidate);
-        return existing !== null;
-      });
-
-      // Risk-tier the campaign (spec §4). Low tiers auto-approve (go live now);
-      // high tiers are held in PENDING_REVIEW for manual compliance review. Without
-      // the tiering config, keep the legacy "everything is reviewed" behaviour.
-      let tier: number | undefined;
-      let status = CampaignStatus.PENDING_REVIEW;
-      // Prefer the versioned store so a dashboard change takes effect on the next
-      // campaign, not the next deploy. A lookup failure falls back to the static
-      // config rather than failing creation: the worst case is one campaign
-      // tiered by slightly stale rules, which beats refusing to create it.
-      let tiering = this.campaignsConfig;
-      if (this.configService) {
-        try {
-          tiering = await this.configService.resolveCampaignsConfig();
-        } catch {
-          tiering = this.campaignsConfig;
+    let outcome: { entity: CampaignEntity; replayed: boolean };
+    try {
+      outcome = await this.creation.run(creatorId, expectedAuthVersion, async () => {
+        // A concurrent request with the same key may have committed while this
+        // one was screened; return it before its slot counts against this one.
+        if (idempotencyKey) {
+          const existing = await this.campaignRepo.findByCreationKey(creatorId, idempotencyKey);
+          if (existing) return { entity: existing, replayed: true };
         }
-      }
-      if (tiering) {
-        tier = deriveCampaignTier(input.goalAmount, tiering.tierThresholds);
-        status = tierRequiresManualReview(tier, tiering.autoApproveMaxTier)
-          ? CampaignStatus.PENDING_REVIEW
-          : CampaignStatus.ACTIVE;
-      }
+        // Screening can outlive account/plan changes. Financial eligibility is
+        // evaluated again from current evidence; content approval cannot waive it.
+        user = await this.userRepo.findById(creatorId);
+        if (!user) throw new AppError('Account is no longer available', 401);
+        campaignCount = await this.campaignRepo.countByCreatorId(creatorId);
+        allowance = await this.campaignAllowance(user);
+        if (campaignCount >= allowance) throw new AppError('Campaign creation eligibility changed. Review your verification and retry.', 403);
+        await this.planLimits.assertCanCreateCampaign(creatorId, input.goalAmount, user.complianceApprovedCampaignLimit, input.imageUrls?.length ?? 0);
 
-      // This GHS gate cannot be loosened by a generic tier setting. Current
-      // verification plus a prior published campaign unlocks the requested
-      // returning-organizer exception; missing evidence stays with staff.
-      if (input.goalAmount > STAFF_REVIEW_GOAL_GHS) {
-        status = CampaignStatus.PENDING_REVIEW;
-        if (this.kycRepo && campaignCount > 0) {
-          const [verifications, earlierCampaigns] = await Promise.all([
-            this.kycRepo.findByUserId(creatorId),
-            this.campaignRepo.findByCreatorId(creatorId),
-          ]);
-          if (isVerifiedReturningOrganizer({ role: user.role, verificationLevel: user.verificationLevel, verifications, earlierCampaignStatuses: earlierCampaigns.map(campaign => campaign.status), now: new Date() })) {
-            status = CampaignStatus.ACTIVE;
+        const slug = await generateUniqueSlug(input.title, async (candidate) => {
+          const existing = await this.campaignRepo.findBySlug(candidate);
+          return existing !== null;
+        });
+
+        // Risk-tier the campaign (spec §4). Low tiers auto-approve (go live now);
+        // high tiers are held in PENDING_REVIEW for manual compliance review. Without
+        // the tiering config, keep the legacy "everything is reviewed" behaviour.
+        let tier: number | undefined;
+        let status = CampaignStatus.PENDING_REVIEW;
+        // Prefer the versioned store so a dashboard change takes effect on the next
+        // campaign, not the next deploy. A lookup failure falls back to the static
+        // config rather than failing creation: the worst case is one campaign
+        // tiered by slightly stale rules, which beats refusing to create it.
+        let tiering = this.campaignsConfig;
+        if (this.configService) {
+          try {
+            tiering = await this.configService.resolveCampaignsConfig();
+          } catch {
+            tiering = this.campaignsConfig;
           }
         }
-      }
+        if (tiering) {
+          tier = deriveCampaignTier(input.goalAmount, tiering.tierThresholds);
+          status = tierRequiresManualReview(tier, tiering.autoApproveMaxTier)
+            ? CampaignStatus.PENDING_REVIEW
+            : CampaignStatus.ACTIVE;
+        }
 
-      // Lock the platform fee % from the organizer's plan at creation (ADR-5
-      // grandfathering), so a later admin fee change never surprises this campaign.
-      const lockedPlatformFeePercent = await this.planLimits.platformFeePercent(creatorId);
+        // This GHS gate cannot be loosened by a generic tier setting. Current
+        // verification plus a prior published campaign unlocks the requested
+        // returning-organizer exception; missing evidence stays with staff.
+        if (input.goalAmount > STAFF_REVIEW_GOAL_GHS) {
+          status = CampaignStatus.PENDING_REVIEW;
+          if (this.kycRepo && campaignCount > 0) {
+            const [verifications, earlierCampaigns] = await Promise.all([
+              this.kycRepo.findByUserId(creatorId),
+              this.campaignRepo.findByCreatorId(creatorId),
+            ]);
+            if (isVerifiedReturningOrganizer({ role: user.role, verificationLevel: user.verificationLevel, verifications, earlierCampaignStatuses: earlierCampaigns.map(campaign => campaign.status), now: new Date() })) {
+              status = CampaignStatus.ACTIVE;
+            }
+          }
+        }
 
-      const now = new Date();
-      const campaign = new CampaignEntity({
-        id: '', // Will be assigned by the repository
-        slug,
-        title: input.title,
-        description: input.description,
-        goalAmount: new Money(input.goalAmount, input.currency),
-        raisedAmount: new Money(0, input.currency),
-        category: input.category,
-        priority: input.priority,
-        status,
-        creatorId,
-        beneficiaries: input.beneficiaries,
-        imageUrls: input.imageUrls ?? [],
-        startDate: now,
-        endDate: new Date(input.endDate),
-        createdAt: now,
-        updatedAt: now,
-        tier,
-        lockedPlatformFeePercent,
+        // Lock the platform fee % from the organizer's plan at creation (ADR-5
+        // grandfathering), so a later admin fee change never surprises this campaign.
+        const lockedPlatformFeePercent = await this.planLimits.platformFeePercent(creatorId);
+
+        const now = new Date();
+        const campaign = new CampaignEntity({
+          id: '', // Will be assigned by the repository
+          slug,
+          title: input.title,
+          description: input.description,
+          goalAmount: new Money(input.goalAmount, input.currency),
+          raisedAmount: new Money(0, input.currency),
+          category: input.category,
+          priority: input.priority,
+          status,
+          creatorId,
+          beneficiaries: input.beneficiaries,
+          imageUrls: input.imageUrls ?? [],
+          startDate: now,
+          endDate: new Date(input.endDate),
+          createdAt: now,
+          updatedAt: now,
+          tier,
+          lockedPlatformFeePercent,
+        });
+
+        await this.admission!.assertCurrent!(submission);
+        return { entity: await this.campaignRepo.save(campaign, { creationIdempotencyKey: idempotencyKey }), replayed: false };
       });
-
-      await this.admission!.assertCurrent!(submission);
-      return this.campaignRepo.save(campaign);
-    });
+    } catch (error) {
+      // Lost the insert race to a same-key request: return the winner.
+      if (idempotencyKey && (error as { code?: number }).code === 11000) {
+        const existing = await this.campaignRepo.findByCreationKey(creatorId, idempotencyKey);
+        if (existing) return { campaign: this.replay(existing, input), replayed: true };
+      }
+      throw error;
+    }
+    if (outcome.replayed) return { campaign: this.replay(outcome.entity, input), replayed: true };
+    const saved = outcome.entity;
     const plain = saved.toPlain();
 
     // A held campaign is invisible to donors until someone approves it, and
@@ -195,25 +228,40 @@ export class CreateCampaignUseCase {
       });
     }
 
-    return {
-      id: plain.id,
-      slug: plain.slug || undefined,
-      title: plain.title,
-      description: plain.description,
-      goalAmount: plain.goalAmount.amount,
-      raisedAmount: plain.raisedAmount.amount,
-      currency: plain.goalAmount.currency,
-      category: plain.category,
-      priority: plain.priority,
-      status: plain.status,
-      creatorId: plain.creatorId,
-      beneficiaries: plain.beneficiaries,
-      imageUrls: plain.imageUrls,
-      startDate: plain.startDate,
-      endDate: plain.endDate,
-      createdAt: plain.createdAt,
-      updatedAt: plain.updatedAt,
-      tier: plain.tier,
-    };
+    return { campaign: toCampaignDTO(saved), replayed: false };
   }
+
+  /** A key identifies one submission; reusing it for different content is a client bug. */
+  private replay(existing: CampaignEntity, input: CreateCampaignInput): Campaign {
+    const plain = existing.toPlain();
+    const same = plain.title === input.title && plain.description === input.description &&
+      plain.goalAmount.amount === input.goalAmount && plain.category === input.category &&
+      plain.endDate.getTime() === new Date(input.endDate).getTime();
+    if (!same) throw new AppError('This Idempotency-Key was already used for a different campaign. Submit again with a new key.', 409);
+    return toCampaignDTO(existing);
+  }
+}
+
+function toCampaignDTO(entity: CampaignEntity): Campaign {
+  const plain = entity.toPlain();
+  return {
+    id: plain.id,
+    slug: plain.slug || undefined,
+    title: plain.title,
+    description: plain.description,
+    goalAmount: plain.goalAmount.amount,
+    raisedAmount: plain.raisedAmount.amount,
+    currency: plain.goalAmount.currency,
+    category: plain.category,
+    priority: plain.priority,
+    status: plain.status,
+    creatorId: plain.creatorId,
+    beneficiaries: plain.beneficiaries,
+    imageUrls: plain.imageUrls,
+    startDate: plain.startDate,
+    endDate: plain.endDate,
+    createdAt: plain.createdAt,
+    updatedAt: plain.updatedAt,
+    tier: plain.tier,
+  };
 }

@@ -96,14 +96,18 @@ export class CampaignController {
     next: NextFunction
   ): Promise<void> => {
     try {
-      const campaign = await this.createCampaignUseCase.execute(
-        req.body,
-        req.userId!
-      );
-      res.status(201).json({
+      // Optional for now (older app builds send none); when present, a retry
+      // with the same key returns the campaign already created (200).
+      const idempotencyKey = req.header('Idempotency-Key');
+      if (idempotencyKey !== undefined && !/^[a-zA-Z0-9_-]{16,100}$/.test(idempotencyKey)) {
+        throw new AppError('Idempotency-Key must be 16-100 letters, digits, hyphens or underscores', 400);
+      }
+      const { campaign, replayed } = await this.createCampaignUseCase.create(req.body, req.userId!, idempotencyKey);
+      const status = replayed ? 200 : 201;
+      res.status(status).json({
         data: campaign,
-        message: 'Campaign created successfully',
-        status: 201,
+        message: replayed ? 'Campaign already created' : 'Campaign created successfully',
+        status,
       });
     } catch (error) {
       next(error);
