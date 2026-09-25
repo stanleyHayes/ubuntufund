@@ -3,6 +3,7 @@ import { AffiliateModel } from '../../../database/models/AffiliateModel.js'
 import { MongoUnitOfWork } from './MongoUnitOfWork.js'
 import { AppError } from '../../inbound/middleware/errorHandler.js'
 import type { AffiliatePayoutApprover } from '../../../../application/use-cases/ApproveAffiliatePayoutUseCase.js'
+import { assertCurrentOwnerVerification } from './MongoPayoutEligibility.js'
 
 export class MongoAffiliatePayoutApproval {
   async run<T>(approver: AffiliatePayoutApprover, context: { affiliateId: string; ownerId: string; recipientCode: string }, work: () => Promise<T>): Promise<T> {
@@ -20,6 +21,9 @@ export class MongoAffiliatePayoutApproval {
       if (!affiliate) throw new AppError('Affiliate eligibility or destination changed; review the payout again.', 409)
       const owner = await UserModel.updateOne({ _id: context.ownerId, deletedAt: null }, { $inc: { publicationWriteVersion: 1 } })
       if (!owner.matchedCount) throw new AppError('Affiliate owner account is unavailable.', 409)
+      // Same money-out gate as every other external rail, re-checked at the
+      // write boundary: a lapsed or superseded verification stops the transfer.
+      await assertCurrentOwnerVerification(context.ownerId)
       return work()
     })
   }

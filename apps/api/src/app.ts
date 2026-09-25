@@ -1357,6 +1357,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     affiliateCommissionRepo,
     paymentGateway,
     new MongoUnitOfWork(),
+    payoutEligibility,
   )
   const approveAffiliatePayoutUseCase = new ApproveAffiliatePayoutUseCase(
     affiliatePayoutRepo,
@@ -1364,6 +1365,8 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     affiliateBalanceRepo,
     paymentGateway,
     new MongoAffiliatePayoutApproval(),
+    affiliateCommissionRepo,
+    new MongoUnitOfWork(),
   )
   const listAffiliatesUseCase = new ListAffiliatesUseCase(affiliateRepo)
   const getAffiliateDetailUseCase = new GetAffiliateDetailUseCase(

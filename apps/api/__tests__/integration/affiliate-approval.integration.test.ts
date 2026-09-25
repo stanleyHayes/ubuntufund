@@ -8,18 +8,22 @@ import { MongoAffiliateRepository } from '../../src/infrastructure/adapters/outb
 import { MongoAffiliatePayoutRepository } from '../../src/infrastructure/adapters/outbound/persistence/MongoAffiliatePayoutRepository.js'
 import { MongoAffiliatePayoutApproval } from '../../src/infrastructure/adapters/outbound/persistence/MongoAffiliatePayoutApproval.js'
 import { ApproveAffiliatePayoutUseCase } from '../../src/application/use-cases/ApproveAffiliatePayoutUseCase.js'
+import { KYCVerificationModel } from '../../src/infrastructure/database/models/KYCVerificationModel.js'
+import { grantCurrentKyc } from '../helpers/currentKyc.js'
 const staff = new mongoose.Types.ObjectId(), owner = new mongoose.Types.ObjectId(), affiliate = new mongoose.Types.ObjectId()
 let payoutId: string
 beforeAll(connectTestDatabase)
 afterAll(async () => { await dropTestDatabase(); await disconnectTestDatabase() })
 beforeEach(async () => {
-  await Promise.all([UserModel.deleteMany({}), AffiliateModel.deleteMany({}), AffiliatePayoutModel.deleteMany({})])
+  await Promise.all([UserModel.deleteMany({}), AffiliateModel.deleteMany({}), AffiliatePayoutModel.deleteMany({}), KYCVerificationModel.deleteMany({})])
   await UserModel.collection.insertMany([{ _id: staff, email: 'staff@example.test', role: 'admin', authVersion: 'current' }, { _id: owner, email: 'owner@example.test', role: 'user' }])
+  // Affiliate commissions leave to an external account: the owner's KYC must be current.
+  await grantCurrentKyc(String(owner))
   await AffiliateModel.create({ _id: affiliate, userId: String(owner), referralCode: 'test-affiliate', status: 'active', commissionRate: 5, recipientCode: 'synthetic' })
   const payout = await AffiliatePayoutModel.create({ affiliateId: String(affiliate), amount: 100, currency: 'GHS', provider: 'paystack', requestedBy: String(owner), status: 'PENDING' })
   payoutId = String(payout._id)
 })
-it.each(['role', 'credentials', 'closed_staff', 'suspended', 'destination', 'owner', 'closed_owner', 'unchanged'])('revalidates affiliate approval after provider lookup: %s', async change => {
+it.each(['role', 'credentials', 'closed_staff', 'suspended', 'destination', 'owner', 'closed_owner', 'kyc_expired', 'email_unverified', 'unchanged'])('revalidates affiliate approval after provider lookup: %s', async change => {
   const provider = {
     isConfigured: () => true,
     getBalance: async () => {
@@ -30,6 +34,8 @@ it.each(['role', 'credentials', 'closed_staff', 'suspended', 'destination', 'own
       if (change === 'destination') await AffiliateModel.updateOne({ _id: affiliate }, { recipientCode: 'changed' })
       if (change === 'owner') await AffiliateModel.updateOne({ _id: affiliate }, { userId: String(staff) })
       if (change === 'closed_owner') await UserModel.updateOne({ _id: owner }, { deletedAt: new Date() })
+      if (change === 'kyc_expired') await KYCVerificationModel.updateMany({ userId: String(owner) }, { expiryDate: new Date(Date.now() - 1000) })
+      if (change === 'email_unverified') await UserModel.updateOne({ _id: owner }, { emailVerified: false })
       return [{ currency: 'GHS', balance: 1000 }]
     },
     initiateTransfer: vi.fn(async () => {

@@ -23,6 +23,11 @@ import { AffiliateCommissionService } from '../../src/application/services/Affil
 import { SetAffiliatePayoutRecipientUseCase } from '../../src/application/use-cases/SetAffiliatePayoutRecipientUseCase.js'
 import { PayoutAccountService } from '../../src/application/services/PayoutAccountService.js'
 import { MongoPayoutAccountRepository } from '../../src/infrastructure/adapters/outbound/persistence/MongoPayoutAccountRepository.js'
+import { MongoPayoutEligibility } from '../../src/infrastructure/adapters/outbound/persistence/MongoPayoutEligibility.js'
+import { MongoAffiliatePayoutApproval } from '../../src/infrastructure/adapters/outbound/persistence/MongoAffiliatePayoutApproval.js'
+import { ApproveAffiliatePayoutUseCase } from '../../src/application/use-cases/ApproveAffiliatePayoutUseCase.js'
+import { KYCVerificationModel } from '../../src/infrastructure/database/models/KYCVerificationModel.js'
+import { grantCurrentKyc } from '../helpers/currentKyc.js'
 
 const commissions = new MongoAffiliateCommissionRepository()
 const balances = new MongoAffiliateBalanceRepository()
@@ -39,13 +44,15 @@ beforeAll(async () => {
 })
 afterAll(async () => { await dropTestDatabase(); await disconnectTestDatabase() })
 beforeEach(async () => {
-  await Promise.all([UserModel, AffiliateModel, AffiliateBalanceModel, AffiliateCommissionModel, AffiliatePayoutModel, AuditLogModel].map((m) => (m as typeof UserModel).deleteMany({})))
+  await Promise.all([UserModel, AffiliateModel, AffiliateBalanceModel, AffiliateCommissionModel, AffiliatePayoutModel, AuditLogModel, KYCVerificationModel].map((m) => (m as typeof UserModel).deleteMany({})))
   owner = new mongoose.Types.ObjectId().toString()
   staff = new mongoose.Types.ObjectId().toString()
   await UserModel.collection.insertMany([
     { _id: new mongoose.Types.ObjectId(owner), email: `aff-${owner}@example.test`, role: 'user' },
     { _id: new mongoose.Types.ObjectId(staff), email: `staff-${staff}@example.test`, role: 'admin', authVersion: 'current' },
   ])
+  // Commissions leave to an external account, so the affiliate needs current KYC.
+  await grantCurrentKyc(owner)
   const affiliate = await AffiliateModel.create({ userId: owner, referralCode: `code-${owner.slice(-6)}`, status: 'active', commissionRate: 10, recipientCode: 'RCP_aff' })
   affiliateId = affiliate.id
   balanceId = (await balances.ensure(affiliateId, 'GHS')).id
@@ -60,7 +67,7 @@ async function commission(amount: number, status: 'held' | 'available', matured 
   return doc
 }
 const balance = async () => (await AffiliateBalanceModel.findById(balanceId).lean())!
-const request = () => new RequestAffiliatePayoutUseCase(affiliates, payouts, balances, commissions, gateway as never, uow)
+const request = () => new RequestAffiliatePayoutUseCase(affiliates, payouts, balances, commissions, gateway as never, uow, new MongoPayoutEligibility())
 
 describe('affiliate commission maturity', () => {
   it('credits each due commission exactly once under concurrent runs and never touches unmatured ones', async () => {
@@ -102,6 +109,53 @@ describe('affiliate payout ledger', () => {
     await expect(request().execute(owner, { amount: 25 })).rejects.toMatchObject({ statusCode: 403 })
     expect((await balance()).availableBalance).toBe(25)
     expect(await AffiliatePayoutModel.countDocuments()).toBe(0)
+  })
+
+  it.each(['missing identity verification', 'expired identity verification', 'unverified email'] as const)(
+    'refuses an affiliate with %s before maturing, reserving or linking anything',
+    async (state) => {
+      const c = await commission(25, 'available')
+      if (state === 'missing identity verification') await KYCVerificationModel.deleteMany({ userId: owner })
+      if (state === 'expired identity verification') await KYCVerificationModel.updateMany({ userId: owner }, { expiryDate: new Date(Date.now() - 1000) })
+      if (state === 'unverified email') await UserModel.updateOne({ _id: owner }, { emailVerified: false })
+      await expect(request().execute(owner, { amount: 25 })).rejects.toMatchObject({
+        statusCode: 409,
+        message: state === 'unverified email'
+          ? expect.stringMatching(/^Verify your email address before withdrawing affiliate commissions/)
+          : expect.stringMatching(/^Verify your identity, or renew an expired verification, before withdrawing affiliate commissions/),
+      })
+      expect((await balance()).availableBalance).toBe(25)
+      expect(await AffiliatePayoutModel.countDocuments()).toBe(0)
+      expect((await AffiliateCommissionModel.findById(c._id).lean())?.payoutId).toBeUndefined()
+      // Without the gate wired the request fails closed.
+      await expect(new RequestAffiliatePayoutUseCase(affiliates, payouts, balances, commissions, gateway as never, uow).execute(owner, { amount: 25 })).rejects.toMatchObject({ statusCode: 503 })
+    },
+  )
+
+  it('re-checks KYC at approval and releases linked commissions when the provider rejects the transfer', async () => {
+    const a = await commission(20, 'available')
+    const payout = await request().execute(owner, { amount: 20 })
+    const provider = { isConfigured: () => true, getBalance: async () => [{ currency: 'GHS', balance: 1000 }], initiateTransfer: vi.fn(async () => ({ status: 'failed', transferCode: 'TRF_rejected' })) }
+    const approve = new ApproveAffiliatePayoutUseCase(payouts, affiliates, balances, provider as never, new MongoAffiliatePayoutApproval(), commissions, uow)
+    const admin = { userId: staff, role: 'admin', authVersion: 'current' }
+
+    // Lapsed KYC stops the approval before any transfer.
+    await KYCVerificationModel.updateMany({ userId: owner }, { expiryDate: new Date(Date.now() - 1000) })
+    await expect(approve.execute(payout.id, admin)).rejects.toMatchObject({ statusCode: 409 })
+    expect(provider.initiateTransfer).not.toHaveBeenCalled()
+    expect((await AffiliatePayoutModel.findById(payout.id).lean())?.status).toBe('PENDING')
+    await KYCVerificationModel.updateMany({ userId: owner }, { expiryDate: new Date(Date.now() + 365 * day) })
+
+    // A definitive provider rejection rolls back: FAILED, reservation returned,
+    // settled, and the commission unlinked so the next payout can pay it.
+    await expect(approve.execute(payout.id, admin)).rejects.toMatchObject({ statusCode: 502 })
+    expect(await AffiliatePayoutModel.findById(payout.id).lean()).toMatchObject({ status: 'FAILED', settlementApplied: true })
+    expect((await balance()).availableBalance).toBe(20)
+    const released = await AffiliateCommissionModel.findById(a._id).lean()
+    expect(released?.status).toBe('available')
+    expect(released?.payoutId).toBeUndefined()
+    const next = await request().execute(owner, { amount: 20 })
+    expect((await AffiliateCommissionModel.findById(a._id).lean())?.payoutId).toBe(next.id)
   })
 
   it('withdraws the full balance, links its commissions and marks them paid when the transfer lands', async () => {

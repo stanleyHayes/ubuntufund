@@ -655,6 +655,9 @@ export function AffiliateDashboardPage() {
                     : 'Choose a payout destination before requesting a payout.'}
                 </Typography>
               )}
+              <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary', mt: 1, textAlign: 'center' }}>
+                Payouts need a verified email address and current identity verification.
+              </Typography>
             </Box>
           </Grid>
         </Grid>
