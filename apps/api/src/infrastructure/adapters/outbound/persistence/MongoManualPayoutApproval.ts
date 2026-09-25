@@ -3,9 +3,11 @@ import type { PayoutEntity } from '../../../../domain/entities/Payout.js'
 import { campaignNeedsEarlyCashout, isEarlyWithdrawal } from '../../../../application/services/payoutFee.js'
 import { CampaignModel } from '../../../database/models/CampaignModel.js'
 import type { PayoutRequester } from '../../../../application/use-cases/CreatePayoutRecipientUseCase.js'
+import { SELF_APPROVAL_MESSAGE } from '../../../../application/use-cases/ApprovePayoutUseCase.js'
 import { UserModel } from '../../../database/models/UserModel.js'
 import { AppError } from '../../inbound/middleware/errorHandler.js'
 import { MongoUnitOfWork } from './MongoUnitOfWork.js'
+import { assertCampaignPayable, assertCurrentOwnerVerification } from './MongoPayoutEligibility.js'
 
 /** Commit final staff authorization, reservation and processing reference together. */
 export class MongoManualPayoutApproval {
@@ -22,6 +24,14 @@ export class MongoManualPayoutApproval {
           { new: true, timestamps: false },
         )
         if (!campaign) throw new AppError('Campaign not found', 404)
+        // Segregation of duties, re-checked at the write boundary: no admin
+        // releases money from a campaign they own or a payout they requested.
+        if (campaign.creatorId === requester.userId || payout.requestedBy === requester.userId)
+          throw new AppError(SELF_APPROVAL_MESSAGE, 403)
+        // A blocked/deleted campaign, an open dispute or lapsed owner KYC stops
+        // the money even for a request queued while everything was in order.
+        await assertCampaignPayable(campaign)
+        await assertCurrentOwnerVerification(campaign.creatorId)
         if (campaignNeedsEarlyCashout({
           endDate: campaign.endDate,
           raisedAmount: { amount: campaign.raisedAmount },

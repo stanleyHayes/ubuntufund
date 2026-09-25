@@ -20,6 +20,8 @@ import { WalletTransactionModel } from '../../../database/models/WalletTransacti
 import { JournalEntryModel } from '../../../database/models/JournalEntryModel.js'
 import { JournalLineModel } from '../../../database/models/JournalLineModel.js'
 import { LedgerAccountModel } from '../../../database/models/LedgerAccountModel.js'
+import { assertCampaignPayable, assertCurrentOwnerVerification } from './MongoPayoutEligibility.js'
+import { SELF_APPROVAL_MESSAGE } from '../../../../application/use-cases/ApprovePayoutUseCase.js'
 
 export class MongoWalletPayoutRepository implements WalletPayoutPort {
   constructor(private readonly plans?: Pick<PlanLimitsService, 'creatorPolicy'>) {}
@@ -148,6 +150,10 @@ export class MongoWalletPayoutRepository implements WalletPayoutPort {
         if (!campaign) throw new AppError('Campaign not found', 404)
         if (payout.recipientId !== `wallet:${campaign.creatorId}`)
           throw new AppError('Wallet destination must belong to the campaign owner', 409)
+        if (campaign.creatorId === approvedBy || payout.requestedBy === approvedBy)
+          throw new AppError(SELF_APPROVAL_MESSAGE, 403)
+        await assertCampaignPayable(campaign, session)
+        await assertCurrentOwnerVerification(campaign.creatorId, { session })
         if (campaignNeedsEarlyCashout({
           endDate: campaign.endDate,
           raisedAmount: { amount: campaign.raisedAmount },

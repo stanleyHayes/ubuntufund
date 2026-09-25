@@ -1,4 +1,5 @@
 import { createHmac, randomUUID } from 'node:crypto'
+import { grantCurrentKyc } from '../helpers/currentKyc.js'
 import { beforeAll, afterAll, it, expect, vi } from 'vitest'
 import request from 'supertest'
 import type { Express } from 'express'
@@ -75,6 +76,7 @@ it('request → approval → OTP → provider success → admin and owner refres
   const uid = owner.body.data.user.id,
     token = owner.body.data.tokens.accessToken
   await UserModel.findByIdAndUpdate(uid, { verificationLevel: 2, emailVerified: true })
+  await grantCurrentKyc(uid)
   const created = await request(app)
     .post('/api/v1/campaigns')
     .set('Authorization', `Bearer ${token}`)
@@ -132,10 +134,31 @@ it('request → approval → OTP → provider success → admin and owner refres
     .set('Authorization', `Bearer ${token}`)
     .send({})
     .expect(403)
+  // Segregation of duties: an owner who is also an admin cannot approve (or
+  // record the maker review for) their own campaign's payout.
   await UserModel.findByIdAndUpdate(uid, { role: 'admin' })
-  const admin = await request(app)
+  const ownerAsAdmin = await request(app)
     .post('/api/v1/auth/login')
     .send({ email, password: 'SecurePass123' })
+    .expect(200)
+  await request(app)
+    .post(`/api/v1/payouts/${pid}/approve`)
+    .set('Authorization', `Bearer ${ownerAsAdmin.body.data.tokens.accessToken}`)
+    .send({ reviewNote: 'Verified owner and receiving capacity for this test payout.' })
+    .expect(403)
+  await UserModel.findByIdAndUpdate(uid, { role: 'user' })
+  expect((await PayoutModel.findById(pid))?.status).toBe('PENDING')
+  expect((await TransferRecipientModel.findById(recipient.id))?.reviews ?? []).toHaveLength(0)
+  // A different administrator approves: nobody releases their own payout.
+  const adminEmail = `life-admin-${randomUUID()}@example.com`
+  const staff = await request(app)
+    .post('/api/v1/auth/register')
+    .send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email: adminEmail, password: 'SecurePass123', name: 'Admin' })
+    .expect(201)
+  await UserModel.findByIdAndUpdate(staff.body.data.user.id, { role: 'admin' })
+  const admin = await request(app)
+    .post('/api/v1/auth/login')
+    .send({ email: adminEmail, password: 'SecurePass123' })
     .expect(200)
   const auth = `Bearer ${admin.body.data.tokens.accessToken}`
   const approved = await request(app)

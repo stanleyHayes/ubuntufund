@@ -10,6 +10,9 @@ import { TipEntity } from '../../domain/entities/Tip.js';
 import { roundToCurrency } from '../../domain/value-objects/Money.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 
+/** Largest single tip (GHS). A tip jar is not a channel for large transfers. */
+export const TIP_MAX_AMOUNT = 10_000;
+
 export interface CreateTipInput {
   idempotencyKey?: string;
   legalAcceptance?: LegalAcceptanceInput;
@@ -49,6 +52,14 @@ export class CreateTipIntentUseCase {
     }
     if (!Number.isFinite(input.amount) || input.amount <= 0) {
       throw new AppError('Enter a tip amount.', 400);
+    }
+    if (input.amount > TIP_MAX_AMOUNT) {
+      throw new AppError(`A single tip can be at most GHS ${TIP_MAX_AMOUNT.toLocaleString('en-US')}.`, 422);
+    }
+    // Tipping your own page only round-trips a card charge into withdrawable
+    // creator funds; it is never a supporter payment.
+    if (input.supporterUserId && input.supporterUserId === creator.userId) {
+      throw new AppError('You cannot tip your own creator page.', 422);
     }
     if (!input.supporterEmail) {
       throw new AppError('An email is required to pay.', 400);

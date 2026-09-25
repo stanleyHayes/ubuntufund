@@ -127,6 +127,29 @@ describe('Creator tip jar (buy-me-a-coffee) — receive loop', () => {
     expect(me2.body.data.balance.availableBalance).toBe(50);
   });
 
+  it('refuses a self-tip and an oversized tip without opening a checkout', async () => {
+    const reg = await request(app)
+      .post('/api/v1/auth/register')
+      .send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email: uniqueEmail('self'), password: 'SecurePass123', name: 'Self Tipper' })
+      .expect(201);
+    const token = reg.body.data.tokens.accessToken as string;
+    await SubscriptionModel.create({ userId: reg.body.data.user.id, tier: 'starter', status: 'active', billingCycle: 'monthly', currentPeriodStart: new Date(), currentPeriodEnd: new Date(Date.now() + 86400000) });
+    const handle = `self-${randomUUID().slice(0, 6)}`;
+    await request(app).post('/api/v1/creators/profile').set('Authorization', `Bearer ${token}`).send({ handle, displayName: 'Self Tipper' }).expect(200);
+    const checkoutsBefore = vi.mocked(fetch).mock.calls.filter(([url]) => String(url).includes('/transaction/initialize')).length;
+    const tip = { supporterEmail: 'self@example.com', legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true } };
+
+    const self = await request(app).post(`/api/v1/creators/${handle}/tips`).set('Authorization', `Bearer ${token}`).send({ ...tip, amount: 50 }).expect(422);
+    expect(self.body.message).toMatch(/your own creator page/i);
+    await request(app).post(`/api/v1/creators/${handle}/tips`).send({ ...tip, amount: 10_000.01 }).expect(400);
+    await request(app).post('/api/v1/creators/profile').set('Authorization', `Bearer ${token}`).send({ presetAmounts: [20_000] }).expect(400);
+
+    expect(await TipModel.countDocuments({ creatorUserId: reg.body.data.user.id })).toBe(0);
+    expect(vi.mocked(fetch).mock.calls.filter(([url]) => String(url).includes('/transaction/initialize')).length).toBe(checkoutsBefore);
+    // The largest allowed tip still opens a checkout.
+    await request(app).post(`/api/v1/creators/${handle}/tips`).send({ ...tip, amount: 10_000 }).expect(201);
+  });
+
   it('reconcile re-credits a SUCCEEDED tip whose balance credit was lost (crash after the status transition)', async () => {
     const reg = await request(app)
       .post('/api/v1/auth/register')

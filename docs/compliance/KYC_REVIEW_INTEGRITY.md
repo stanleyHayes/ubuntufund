@@ -734,3 +734,10 @@ That full run cannot cover this later settlement delta. Remaining: exact currenc
 and reservation provenance across all settlement consumers, eligibility/consent
 consumption, complete verification evidence, broader financial consumers and the
 external provider/legal/native/store release gates.
+
+
+## Money-out consumers checkpoint — 2026-09-25
+
+Campaign payout requests and manual approvals (Paystack and Ujimora Wallet, single and batched) and creator bank/mobile-money withdrawals now require the owner's current evidence, using the same rule as automatic payouts: verified email, stored level (national ID, or institutional for organizations) and a newest identity/business record that is approved with a future expiry. A newer pending, rejected or expired renewal suspends an older approval, and an approval without an expiry is not current. The shared rule lives in `domain/services/currentKycEvidence.ts`; the Mongo gate (`MongoPayoutEligibility`) is enforced inside each rail's reservation transaction and as an early pre-check. Manual approvals also refuse blocked, draft, deleted or disputed campaigns and self-approval by an administrator who owns the campaign or requested the payout. KYC status, the own-profile level, campaign allowance and payout gates now agree on legacy approvals without an expiry. An identity or organization renewal can be submitted only from 30 days before expiry, so an early resubmission can no longer silently downgrade a verified account.
+
+Not covered: Ujimora Wallet transfers of creator tips (funds stay on the platform and can only leave through a gated rail), a staff override flag for the gate, KYC-name matching of payout accounts and beneficiary-payout KYC (still recorded per destination). Existing organizers without current KYC are blocked from payouts until they verify.

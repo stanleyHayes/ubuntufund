@@ -1,5 +1,6 @@
 import type { CreatorWithdrawalTransactionPort } from '../../domain/ports/outbound/CreatorWithdrawalTransactionPort.js'
 import type { WalletPayoutPort } from '../../domain/ports/outbound/WalletPayoutPort.js'
+import type { PayoutEligibilityPort } from '../../domain/ports/outbound/PayoutEligibilityPort.js'
 import type { PayoutAccountService } from '../services/PayoutAccountService.js'
 import type { PlanLimitsService } from '../services/PlanLimitsService.js'
 import { randomUUID } from 'node:crypto'
@@ -10,6 +11,12 @@ import { CreatorPayoutEntity } from '../../domain/entities/CreatorPayout.js'
 import { roundToCurrency } from '../../domain/value-objects/Money.js'
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js'
 import { logger } from '../../infrastructure/logging/logger.js'
+
+/** Smallest withdrawal (GHS). Below it the percentage fee rounds towards zero. */
+export const CREATOR_MIN_WITHDRAWAL = 5
+
+export const CREATOR_VERIFICATION_REQUIRED =
+  'Verify your identity, or renew an expired verification, before withdrawing creator funds to a bank or mobile-money account.'
 
 export interface CreatorWithdrawalInput {
   destination?: 'paystack' | 'ujimora_wallet'
@@ -54,6 +61,8 @@ export class RequestCreatorWithdrawalUseCase {
     private readonly accounts?: PayoutAccountService,
     private readonly walletPayouts?: WalletPayoutPort,
     private readonly withdrawalTransaction?: CreatorWithdrawalTransactionPort,
+    /** Current KYC/KYB gate for money leaving the platform (re-checked in the transaction). */
+    private readonly eligibility?: Pick<PayoutEligibilityPort, 'assertOwnerVerified'>,
   ) {}
 
   async execute(userId: string, input: CreatorWithdrawalInput, authVersion = '') {
@@ -78,6 +87,8 @@ export class RequestCreatorWithdrawalUseCase {
     ) {
       throw new AppError('Enter a withdrawal amount.', 400)
     }
+    if (input.amount < CREATOR_MIN_WITHDRAWAL)
+      throw new AppError(`The minimum withdrawal is GHS ${CREATOR_MIN_WITHDRAWAL}.`, 422)
     const balance = await this.balanceRepo.findByUserId(userId)
     const currency = balance?.currency ?? 'GHS'
 
@@ -95,6 +106,9 @@ export class RequestCreatorWithdrawalUseCase {
     const netAmount = roundToCurrency(input.amount - fee, currency)
     if (!Number.isFinite(fee) || fee < 0 || netAmount <= 0)
       throw new AppError('The withdrawal amount must exceed the fee.', 422)
+    // A plan that charges a fee must never round it away on a tiny amount.
+    if (feePercent > 0 && fee <= 0)
+      throw new AppError('This amount is too small to withdraw with your plan’s fee. Enter a larger amount.', 422)
 
     if (wallet) {
       if (!this.walletPayouts) throw new AppError('Wallet transfers unavailable', 503)
@@ -108,6 +122,10 @@ export class RequestCreatorWithdrawalUseCase {
         reference: `wallet-creator:${userId}:${input.idempotencyKey}`,
       })
     }
+    // Money leaving the platform needs current identity verification. Checked
+    // before any provider call, and again at the reservation write boundary.
+    if (!this.eligibility) throw new AppError('Withdrawals are not available right now.', 503)
+    await this.eligibility.assertOwnerVerified(userId, CREATOR_VERIFICATION_REQUIRED)
     const savedAccount = this.accounts
       ? input.savedAccountId
         ? await this.accounts.get(userId, input.savedAccountId)
@@ -118,7 +136,7 @@ export class RequestCreatorWithdrawalUseCase {
     const r = savedAccount ?? input.recipient
     if (savedAccount && savedAccount.verificationStatus !== 'name_matched')
       throw new AppError(
-        'This payout account needs verification. Choose an account with a matched registered name before withdrawing creator funds.',
+        'The name the bank or telco holds for this account did not match the account name you entered. Choose an account whose name matched before withdrawing creator funds.',
         422,
       )
     if (!r?.accountNumber || !r?.bankCode || !r?.accountName) {

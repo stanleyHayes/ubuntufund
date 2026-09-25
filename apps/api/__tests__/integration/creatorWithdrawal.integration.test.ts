@@ -27,6 +27,8 @@ import {
 import { CreatorBalanceModel } from '../../src/infrastructure/database/models/CreatorBalanceModel.js'
 import { CreatorPayoutModel } from '../../src/infrastructure/database/models/CreatorPayoutModel.js'
 import { UserModel } from '../../src/infrastructure/database/models/UserModel.js'
+import { grantCurrentKyc } from '../helpers/currentKyc.js'
+import { KYCVerificationModel } from '../../src/infrastructure/database/models/KYCVerificationModel.js'
 
 function uniqueEmail(label: string): string {
   return `${label}-${randomUUID()}@example.com`
@@ -116,6 +118,8 @@ describe('Creator withdrawal — transfer rail', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({ handle, displayName: 'With Draw' })
       .expect(200)
+    // Bank and mobile-money withdrawals need current identity verification.
+    await grantCurrentKyc(userId)
     // Fund the tip balance directly.
     await CreatorBalanceModel.updateOne(
       { userId },
@@ -158,6 +162,65 @@ describe('Creator withdrawal — transfer rail', () => {
     await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`).send(body).expect(201)
     expect(vi.mocked(fetch).mock.calls.length).toBe(callsAfterRace)
     expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(100)
+  })
+
+  it.each(['missing', 'expired', 'pending renewal', 'rejected renewal'] as const)(
+    'refuses a bank withdrawal when identity verification is %s, before any provider call',
+    async (state) => {
+      const owner = await creatorWithBalance(100)
+      if (state === 'missing') await KYCVerificationModel.deleteMany({ userId: owner.userId })
+      if (state === 'expired') await KYCVerificationModel.updateMany({ userId: owner.userId }, { expiryDate: new Date(Date.now() - 1000) })
+      if (state === 'pending renewal' || state === 'rejected renewal')
+        await KYCVerificationModel.create({ userId: owner.userId, verificationType: 'identity', status: state === 'pending renewal' ? 'pending' : 'rejected', documents: [], riskLevel: 'low', createdAt: new Date(Date.now() + 1000) })
+      const callsBefore = vi.mocked(fetch).mock.calls.length
+      const res = await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`)
+        .send({ amount: 100, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } })
+        .expect(409)
+      expect(res.body.message).toMatch(/identity/i)
+      expect(vi.mocked(fetch).mock.calls.length).toBe(callsBefore)
+      expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(100)
+      expect(await CreatorPayoutModel.countDocuments({ creatorUserId: owner.userId })).toBe(0)
+    },
+  )
+
+  it('rechecks identity verification at the reservation write boundary', async () => {
+    const owner = await creatorWithBalance(100)
+    const original = MongoCreatorWithdrawalTransaction.prototype.run
+    const transaction = vi.spyOn(MongoCreatorWithdrawalTransaction.prototype, 'run').mockImplementationOnce(async function (this: MongoCreatorWithdrawalTransaction, userId, version, work) {
+      await KYCVerificationModel.updateMany({ userId }, { expiryDate: new Date(Date.now() - 1000) })
+      return original.call(this, userId, version, work)
+    })
+    const transfersBefore = vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/transfer')).length
+    try {
+      await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`)
+        .send({ amount: 100, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } })
+        .expect(409)
+    } finally { transaction.mockRestore() }
+    expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(100)
+    expect(await CreatorPayoutModel.countDocuments({ creatorUserId: owner.userId })).toBe(0)
+    expect(vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/transfer')).length).toBe(transfersBefore)
+  })
+
+  it('keeps Ujimora Wallet transfers (money that stays on the platform) available without identity verification', async () => {
+    const owner = await creatorWithBalance(100)
+    await KYCVerificationModel.deleteMany({ userId: owner.userId })
+    await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`)
+      .send({ amount: 100, expectedFeePercent: 3, destination: 'ujimora_wallet', idempotencyKey: randomUUID() })
+      .expect(201)
+    expect((await WalletModel.findOne({ userId: owner.userId }))?.balance).toBe(97)
+  })
+
+  it.each([
+    [4.99, 'paystack'],
+    [1, 'ujimora_wallet'],
+  ] as const)('refuses a withdrawal of %s below the minimum (%s) without reserving anything', async (amount, destination) => {
+    const owner = await creatorWithBalance(100)
+    const res = await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`)
+      .send({ amount, expectedFeePercent: 3, destination, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } })
+      .expect(422)
+    expect(res.body.message).toMatch(/minimum withdrawal/i)
+    expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(100)
+    expect(await CreatorPayoutModel.countDocuments({ creatorUserId: owner.userId })).toBe(0)
   })
 
   it.each(['closure', 'credentials'] as const)('rejects wallet transfer when %s changes after authentication', async change => {

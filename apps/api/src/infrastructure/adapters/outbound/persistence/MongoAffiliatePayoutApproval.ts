@@ -12,6 +12,8 @@ export class MongoAffiliatePayoutApproval {
         ...(approver.authVersion ? { authVersion: approver.authVersion } : { $or: [{ authVersion: '' }, { authVersion: null }] }),
       }, { $inc: { staffActionVersion: 1 } })
       if (!staff.matchedCount) throw new AppError('Current administrator access is required.', 403)
+      if (context.ownerId === approver.userId)
+        throw new AppError('Another administrator must approve your own affiliate payout.', 403)
       const affiliate = await AffiliateModel.findOneAndUpdate({
         _id: context.affiliateId, userId: context.ownerId, status: 'active', recipientCode: context.recipientCode,
       }, { $inc: { payoutWriteVersion: 1 } }, { new: true, timestamps: false })

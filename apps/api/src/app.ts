@@ -9,6 +9,7 @@ import { MongoLiveSessionCreation } from './infrastructure/adapters/outbound/per
 import { MongoCreatorWithdrawalTransaction } from './infrastructure/adapters/outbound/persistence/MongoCreatorWithdrawalTransaction.js'
 import { MongoCampaignCreation } from './infrastructure/adapters/outbound/persistence/MongoCampaignCreation.js'
 import { MongoAutomaticPayoutVerification } from './infrastructure/adapters/outbound/persistence/MongoAutomaticPayoutVerification.js'
+import { MongoPayoutEligibility } from './infrastructure/adapters/outbound/persistence/MongoPayoutEligibility.js'
 import { createDonationContentReviewRoutes } from './infrastructure/adapters/inbound/http/routes/donationContentReviewRoutes.js'
 import { createTipContentReviewRoutes } from './infrastructure/adapters/inbound/http/routes/tipContentReviewRoutes.js'
 import { MongoPublicProfileVisibility } from './infrastructure/adapters/outbound/persistence/MongoPublicProfileVisibility.js'
@@ -860,6 +861,8 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     paymentGateway,
     planLimitsService,
   )
+  // Money-out gate shared by campaign payouts and creator withdrawals.
+  const payoutEligibility = new MongoPayoutEligibility()
   const requestCreatorWithdrawalUseCase = new RequestCreatorWithdrawalUseCase(
     creatorPayoutRepo,
     creatorBalanceRepo,
@@ -868,6 +871,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     payoutAccounts,
     new MongoWalletPayoutRepository(planLimitsService),
     new MongoCreatorWithdrawalTransaction(),
+    payoutEligibility,
   )
   const handleCreatorPayoutWebhookUseCase = new HandleCreatorPayoutWebhookUseCase(
     creatorPayoutRepo,
@@ -1027,6 +1031,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     couponService,
     couponRedemptionRepo,
     couponRepo,
+    payoutEligibility,
   )
   const approvePayoutUseCase = new ApprovePayoutUseCase(
     payoutRepo,

@@ -1,4 +1,5 @@
 import { KYCVerificationModel } from '../../../database/models/KYCVerificationModel.js'
+import { isCurrentApproval } from '../../../../domain/services/currentKycEvidence.js'
 import mongoose from 'mongoose'
 import {
   AutomaticPayoutPolicyModel,
@@ -79,7 +80,7 @@ export class AutomaticPayoutService {
         const evidence = await KYCVerificationModel.findOne({
           userId: String(owner._id), verificationType: owner.role === 'organization' ? 'business' : 'identity',
         }).sort({ createdAt: -1, _id: -1 }).session(session)
-        if (!evidence || evidence.status !== 'approved' || !evidence.expiryDate || evidence.expiryDate.getTime() <= Date.now()) {
+        if (!isCurrentApproval(evidence)) {
           reason = 'Current owner identity or organization verification requires manual review.'
           return
         }

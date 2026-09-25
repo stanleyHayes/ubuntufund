@@ -35,6 +35,9 @@ import {
 } from '../helpers/testDatabase.js';
 import { UserModel } from '../../src/infrastructure/database/models/UserModel.js';
 import { CampaignModel } from '../../src/infrastructure/database/models/CampaignModel.js';
+import { grantCurrentKyc } from '../helpers/currentKyc.js';
+import { KYCVerificationModel } from '../../src/infrastructure/database/models/KYCVerificationModel.js';
+import { DisputeModel } from '../../src/infrastructure/database/models/DisputeModel.js';
 import { CampaignBalanceModel } from '../../src/infrastructure/database/models/CampaignBalanceModel.js';
 import { PayoutModel } from '../../src/infrastructure/database/models/PayoutModel.js';
 import { CouponModel } from '../../src/infrastructure/database/models/CouponModel.js';
@@ -77,6 +80,8 @@ async function createActiveCampaign(
   creatorId: string
 ) {
   await UserModel.findByIdAndUpdate(creatorId, { verificationLevel: 2 });
+  // Every payout rail requires the owner's identity verification to be current.
+  await grantCurrentKyc(creatorId);
   const createRes = await request(app)
     .post('/api/v1/campaigns')
     .set('Authorization', `Bearer ${creatorToken}`)
@@ -894,6 +899,66 @@ describe('Payouts Integration', () => {
     const payouts = await PayoutModel.find({ campaignId });
     expect(payouts).toHaveLength(0);
   });
+
+  it.each(['expired owner KYC', 'pending KYC renewal', 'blocked campaign', 'open dispute'] as const)(
+    'refuses a payout request with %s and leaves the balance untouched',
+    async (state) => {
+      const { userId, token } = await registerUser(app, uniqueEmail('gate'));
+      const campaignId = await createActiveCampaign(app, token, userId);
+      await fundCampaign(app, campaignId, 1000);
+      await endCampaign(campaignId);
+      await addRecipient(app, campaignId, token);
+      if (state === 'expired owner KYC')
+        await KYCVerificationModel.updateMany({ userId }, { expiryDate: new Date(Date.now() - 1000) });
+      if (state === 'pending KYC renewal')
+        await KYCVerificationModel.create({ userId, verificationType: 'identity', status: 'pending', documents: [], riskLevel: 'low', createdAt: new Date(Date.now() + 1000) });
+      if (state === 'blocked campaign') await CampaignModel.findByIdAndUpdate(campaignId, { status: 'blocked' });
+      if (state === 'open dispute') await DisputeModel.collection.insertOne({ campaignId, status: 'open', createdAt: new Date() });
+
+      const res = await request(app)
+        .post(`/api/v1/campaigns/${campaignId}/payouts`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ amount: 500 });
+      expect(res.status).toBe(409);
+      expect(await PayoutModel.countDocuments({ campaignId })).toBe(0);
+      const balance = await CampaignBalanceModel.findOne({ campaignId });
+      expect(balance?.pendingBalance).toBe(965);
+      expect(balance?.availableBalance).toBe(0);
+    },
+  );
+
+  it.each(['owner KYC expires', 'the campaign is blocked', 'a dispute opens'] as const)(
+    'refuses approval when %s after the request, with no reservation or transfer',
+    async (change) => {
+      const { userId, token } = await registerUser(app, uniqueEmail('gate-approve'));
+      const campaignId = await createActiveCampaign(app, token, userId);
+      const admin = await createAdmin(app, uniqueEmail('admin'));
+      await fundCampaign(app, campaignId, 1000);
+      await endCampaign(campaignId);
+      await addRecipient(app, campaignId, token);
+      const reqRes = await request(app)
+        .post(`/api/v1/campaigns/${campaignId}/payouts`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ amount: 500 })
+        .expect(201);
+      const payoutId = reqRes.body.data.id as string;
+      if (change === 'owner KYC expires')
+        await KYCVerificationModel.updateMany({ userId }, { expiryDate: new Date(Date.now() - 1000) });
+      if (change === 'the campaign is blocked') await CampaignModel.findByIdAndUpdate(campaignId, { status: 'blocked' });
+      if (change === 'a dispute opens') await DisputeModel.collection.insertOne({ campaignId, status: 'under_review', createdAt: new Date() });
+      const transfersBefore = vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/transfer')).length;
+
+      const res = await request(app)
+        .post(`/api/v1/payouts/${payoutId}/approve`)
+        .set('Authorization', `Bearer ${admin.token}`)
+        .send({ reviewNote: 'Verified owner identity, destination ownership and receiving capacity for this payout.' });
+      expect(res.status).toBe(409);
+      expect((await PayoutModel.findById(payoutId))?.status).toBe('PENDING');
+      const balance = await CampaignBalanceModel.findOne({ campaignId });
+      expect(balance?.availableBalance).toBe(500);
+      expect(vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/transfer')).length).toBe(transfersBefore);
+    },
+  );
 
   it('cannot request a payout before registering a recipient', async () => {
     const { userId, token } = await registerUser(app, uniqueEmail('norcp'));

@@ -50,3 +50,10 @@ it.each(['role', 'credentials', 'closed_staff', 'suspended', 'destination', 'own
     expect(provider.initiateTransfer).not.toHaveBeenCalled()
   }
 })
+it('refuses an administrator approving their own affiliate payout inside the approval transaction', async () => {
+  await UserModel.updateOne({ _id: owner }, { role: 'admin', authVersion: 'current' })
+  const work = vi.fn()
+  await expect(new MongoAffiliatePayoutApproval().run({ userId: String(owner), role: 'admin', authVersion: 'current' }, { affiliateId: String(affiliate), ownerId: String(owner), recipientCode: 'synthetic' }, work)).rejects.toMatchObject({ statusCode: 403 })
+  expect(work).not.toHaveBeenCalled()
+  expect((await AffiliatePayoutModel.findById(payoutId))?.status).toBe('PENDING')
+})

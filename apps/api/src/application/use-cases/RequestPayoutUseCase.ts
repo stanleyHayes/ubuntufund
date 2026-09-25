@@ -7,6 +7,7 @@ import type { PayoutRepositoryPort } from '../../domain/ports/outbound/PayoutRep
 import type { CampaignBalanceRepositoryPort } from '../../domain/ports/outbound/CampaignBalanceRepositoryPort.js'
 import type { CampaignSplitRepositoryPort } from '../../domain/ports/outbound/CampaignSplitRepositoryPort.js'
 import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGatewayPort.js'
+import type { PayoutEligibilityPort } from '../../domain/ports/outbound/PayoutEligibilityPort.js'
 import type { CouponPricing, CouponService } from '../services/CouponService.js'
 import { logger } from '../../infrastructure/logging/logger.js'
 import type { CouponRepositoryPort } from '../../domain/ports/outbound/CouponRepositoryPort.js'
@@ -69,6 +70,12 @@ export class RequestPayoutUseCase {
     private readonly couponService?: CouponService,
     private readonly couponRedemptionRepo?: CouponRedemptionRepositoryPort,
     private readonly couponRepo?: CouponRepositoryPort,
+    /**
+     * Money-out gate: the campaign must be payable (not blocked/deleted, no
+     * open dispute) and its owner's KYC/KYB current. Approval re-checks both
+     * inside its transaction; this stops a request that could never be paid.
+     */
+    private readonly eligibility?: PayoutEligibilityPort,
   ) {}
 
   async execute(
@@ -143,6 +150,10 @@ export class RequestPayoutUseCase {
           throw new AppError('Request key already used with different details', 409)
         return toPayoutDto(previous)
       }
+    }
+    if (this.eligibility) {
+      await this.eligibility.assertCampaignPayable(campaignId)
+      await this.eligibility.assertOwnerVerified(campaign.creatorId)
     }
     const recipient = wallet
       ? { id: `wallet:${campaign.creatorId}`, currency: 'GHS' }

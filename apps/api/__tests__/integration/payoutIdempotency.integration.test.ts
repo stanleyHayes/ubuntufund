@@ -1,4 +1,5 @@
 import { createHmac, randomUUID } from 'node:crypto'
+import { grantCurrentKyc } from '../helpers/currentKyc.js'
 
 const PAYSTACK_SECRET = 'sk_test_payout_idempotency_secret'
 process.env.PAYSTACK_SECRET_KEY = PAYSTACK_SECRET
@@ -145,6 +146,7 @@ describe('Payout settlement idempotency + repair (G5)', () => {
     const token = reg.body.data.tokens.accessToken as string
     const userId = reg.body.data.user.id as string
     await UserModel.findByIdAndUpdate(userId, { verificationLevel: 2 })
+    await grantCurrentKyc(userId)
     const admReg = await request(app)
       .post('/api/v1/auth/register')
       .send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email: uniqueEmail('g5a'), password: 'SecurePass123', name: 'Admin' })

@@ -17,6 +17,8 @@ import { toPayoutDto } from './mappers/payoutDto.js'
 import { splitIntoTransferLegs, requiresBatching } from '../services/payoutBatch.js'
 import type { PayoutRequester } from './CreatePayoutRecipientUseCase.js'
 
+export const SELF_APPROVAL_MESSAGE = 'Another administrator must approve payouts from your own campaign or request.'
+
 /**
  * ADMIN approves a PENDING payout: verify platform balance, reserve the funds
  * out of the campaign's `availableBalance` (available → in-transit), initiate
@@ -104,9 +106,17 @@ export class ApprovePayoutUseCase {
       throw new AppError(`Payout cannot be approved in state ${payout.status}`, 409)
     }
 
+    // Segregation of duties (as KYC and campaign review already enforce): an
+    // admin never approves — or records the maker review for — a payout they
+    // requested or one from their own campaign. Checked again at the write
+    // boundary inside the approval transaction.
+    if (!automatic && payout.requestedBy === requester.userId)
+      throw new AppError(SELF_APPROVAL_MESSAGE, 403)
     if (this.campaigns) {
       const campaign = await this.campaigns.findById(payout.campaignId)
       if (!campaign) throw new AppError('Campaign not found', 404)
+      if (!automatic && campaign.creatorId === requester.userId)
+        throw new AppError(SELF_APPROVAL_MESSAGE, 403)
       if (
         payout.provider === 'ujimora_wallet' &&
         payout.recipientId !== `wallet:${campaign.creatorId}`
