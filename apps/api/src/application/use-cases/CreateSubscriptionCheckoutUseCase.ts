@@ -291,16 +291,27 @@ export class CreateSubscriptionCheckoutUseCase {
     }
 
     // ── Paystack rail: open the hosted checkout, store the reference ───────
-    const init = await this.paymentGateway.initializeCharge({
-      email: user.email.value,
-      amount: finalAmount,
-      // The plan's own currency, not the platform default: without it the
-      // charge was scaled and labelled GHS whatever the plan was priced in.
-      currency,
-      referencePrefix: 'sub',
-      callbackPath: `/subscription/callback?checkout=${encodeURIComponent(checkout.id)}`,
-      metadata: { checkoutId: checkout.id, userId, tier, billingCycle, couponId },
-    });
+    let init: Awaited<ReturnType<PaymentGatewayPort['initializeCharge']>>;
+    try {
+      init = await this.paymentGateway.initializeCharge({
+        email: user.email.value,
+        amount: finalAmount,
+        // The plan's own currency, not the platform default: without it the
+        // charge was scaled and labelled GHS whatever the plan was priced in.
+        currency,
+        referencePrefix: 'sub',
+        callbackPath: `/subscription/callback?checkout=${encodeURIComponent(checkout.id)}`,
+        metadata: { checkoutId: checkout.id, userId, tier, billingCycle, couponId },
+      });
+    } catch (error) {
+      // The member never received a payment page, so nothing can be paid on
+      // this checkout. Close it (and free its coupon seat) so an immediate
+      // retry is not refused as "a payment in progress".
+      await new SubscriptionCheckoutResolver(
+        this.subscriptionCheckoutRepo, this.paymentGateway, this.settleSubscriptionUseCase, this.couponRedemptionRepo
+      ).expire(checkout);
+      throw error;
+    }
 
     const withRef =
       (await this.subscriptionCheckoutRepo.setProviderRef(

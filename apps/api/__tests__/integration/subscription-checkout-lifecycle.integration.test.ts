@@ -124,6 +124,14 @@ describe('subscription checkout lifecycle', () => {
     expect(second.preview.discountAmount).toBeGreaterThan(0);
   });
 
+  it('closes a checkout whose payment page could not be opened, so the member can retry at once', async () => {
+    const s = build(); const userId = randomUUID();
+    s.gateway.initializeCharge.mockRejectedValueOnce(new Error('Paystack unreachable'));
+    await expect(buy(s, userId)).rejects.toThrow('Paystack unreachable');
+    expect(await SubscriptionCheckoutModel.findOne({ userId })).toMatchObject({ status: 'expired' });
+    await expect(buy(s, userId)).resolves.toMatchObject({ authorizationUrl: expect.any(String) });
+  });
+
   it('requires explicit confirmation before a different plan replaces one still in force', async () => {
     const s = build(); const userId = randomUUID();
     const plus = await buy(s, userId, SubscriptionTier.STARTER);
