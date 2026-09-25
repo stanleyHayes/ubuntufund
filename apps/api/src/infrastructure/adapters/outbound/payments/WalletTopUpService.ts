@@ -10,14 +10,18 @@ import { JournalEntryModel } from '../../../database/models/JournalEntryModel.js
 import { JournalLineModel } from '../../../database/models/JournalLineModel.js';
 import { LedgerAccountModel } from '../../../database/models/LedgerAccountModel.js';
 import { AppError } from '../../inbound/middleware/errorHandler.js';
+import { flagMoneyAfterClosure } from '../persistence/moneyAfterClosure.js';
 
 /**
  * Paystack reports an opened-but-unpaid checkout as `abandoned` — including one
  * the payer is still completing — so it only closes a top-up once this old.
  */
 const ABANDONED_TOPUP_TTL_MS = 24 * 60 * 60 * 1000;
-/** A failed top-up is re-checked this long, in case the payer completed it after all. */
-const FAILED_TOPUP_RECHECK_MS = 72 * 60 * 60 * 1000;
+/**
+ * A failed top-up is re-checked this long, in case the payer completed it after
+ * all. Account closure waits out the same window (MongoAccountClosureCheck).
+ */
+export const FAILED_TOPUP_RECHECK_MS = 72 * 60 * 60 * 1000;
 
 export interface TopUpReconcileSummary { scanned: number; completed: number; failed: number }
 
@@ -107,8 +111,10 @@ export class WalletTopUpService {
     const feeMinor = Math.round(verified.fees * 100);
     if (verified.reference !== reference || verified.currency !== 'GHS' || verified.amount !== topup.amountMinor / 100 || !Number.isSafeInteger(feeMinor) || feeMinor < 0 || feeMinor > topup.amountMinor) throw new AppError('Top-up payment verification mismatch', 409);
     const session = await mongoose.startSession();
+    let credited = false;
     try {
       await session.withTransaction(async () => {
+        credited = false;
         const claimed = await WalletTopUpModel.findOneAndUpdate({ reference, status: { $in: ['pending', 'failed'] } }, { $set: { status: 'completed', feeMinor, settledAt: new Date() } }, { session, new: true });
         if (!claimed) return;
         const result = await WalletModel.updateOne({ _id: topup.walletId, userId: topup.userId, currency: 'GHS' }, [{ $set: { balance: { $round: [{ $add: ['$balance', topup.amountMinor / 100] }, 2] }, updatedAt: new Date() } }], { session });
@@ -126,7 +132,11 @@ export class WalletTopUpService {
           const account = await LedgerAccountModel.findOneAndUpdate({ kind: line.kind, ownerId: line.owner, currency: 'GHS' }, { $setOnInsert: { createdAt: new Date() } }, { upsert: true, new: true, session });
           await JournalLineModel.create([{ journalEntryId: entry.id, accountId: account.id, accountKind: line.kind, accountOwnerId: line.owner, direction: line.direction, amount: line.minor / 100, currency: 'GHS' }], { session });
         }
+        credited = true;
       });
     } finally { await session.endSession(); }
+    // Closure refuses while a top-up is unconfirmed, but a check-then-erase
+    // race or a very late success can still land here: never silently.
+    if (credited) await flagMoneyAfterClosure(topup.userId, `Wallet top-up ${reference} credited GHS ${(topup.amountMinor / 100).toFixed(2)} after the account was closed.`);
   }
 }

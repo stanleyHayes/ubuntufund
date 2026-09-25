@@ -32,6 +32,8 @@ import { ShortLinkModel } from '../../src/infrastructure/database/models/ShortLi
 import { newRecoveryCodes, recoveryDigest } from '../../src/application/services/Totp.js';
 import { CampaignCategory } from '@ubuntu-fund/types';
 import { PublicationReviewModel } from '../../src/infrastructure/database/models/PublicationReviewModel.js';
+import { WalletTopUpModel } from '../../src/infrastructure/database/models/WalletTopUpModel.js';
+import { DonationIntentModel } from '../../src/infrastructure/database/models/DonationIntentModel.js';
 
 describe('Account erasure and retained-record review', () => {
   let app: Express;
@@ -216,6 +218,35 @@ describe('Account erasure and retained-record review', () => {
     expect(cleared.body.data).toEqual({ blockers: [], openCampaigns: 0, canClose: true });
     await request(app).delete('/api/v1/profile').set('Authorization', account.bearer).send({ password: 'SecurePass123' }).expect(200);
     expect(await CreatorBalanceModel.countDocuments({ userId: id })).toBe(1);
+  });
+  it('waits for money still on its way in (top-ups, open donation and tip checkouts) before closing', async () => {
+    const account = await register();
+    const id = account.user.id;
+    const campaign = await CampaignModel.create({ creatorId: id, title: 'Incoming fixture', description: 'Fixture', goalAmount: 1000, currency: 'GHS', category: CampaignCategory.EDUCATION, status: 'expired', startDate: new Date(Date.now() - 86400000), endDate: new Date(Date.now() - 3600000) });
+    const topUp = (status: string, createdAt = new Date()) => ({ userId: id, walletId: 'wallet-fixture', amountMinor: 5000, reference: `wtop-${randomUUID()}`, idempotencyKey: randomUUID(), status, createdAt });
+    // A pending top-up, and a failed one still inside the 72h re-check window, can still credit the wallet.
+    const [pendingTopUp, recentFailure] = await WalletTopUpModel.create([topUp('pending'), topUp('failed', new Date(Date.now() - 3600000))]);
+    await WalletTopUpModel.collection.insertOne({ ...topUp('failed'), createdAt: new Date(Date.now() - 4 * 86400000) });
+    // An open donation checkout on the account's campaign, and an open tip checkout to its tip jar.
+    const intent = await DonationIntentModel.create({ campaignId: String(campaign._id), amount: 20, currency: 'GHS', status: 'PENDING', provider: 'paystack', providerRef: `ref-${randomUUID()}`, idempotencyKey: randomUUID() });
+    await DonationIntentModel.create({ campaignId: String(campaign._id), amount: 20, currency: 'GHS', status: 'CREATED', provider: 'paystack', idempotencyKey: randomUUID() });
+    const tip = await TipModel.create({ creatorUserId: id, amount: 10, currency: 'GHS', status: 'PENDING', providerRef: `tip-${randomUUID()}` });
+
+    const preview = await request(app).get('/api/v1/profile/closure-check').set('Authorization', account.bearer).expect(200);
+    expect(preview.body.data).toMatchObject({ canClose: false, blockers: [{ kind: 'pending_payment', count: 4 }] });
+    const blocked = await request(app).delete('/api/v1/profile').set('Authorization', account.bearer).send({ password: 'SecurePass123' }).expect(409);
+    expect(blocked.body.errors).toEqual({ accountClosure: ['pending_payment'] });
+    expect(blocked.body.message).toContain('4 incoming payments (wallet top-up, donation or tip) still being confirmed');
+    expect((await UserModel.findById(id))?.deletedAt).toBeUndefined();
+
+    // Once each one settles or finally fails, closure proceeds.
+    await WalletTopUpModel.collection.updateOne({ _id: pendingTopUp._id }, { $set: { status: 'failed', createdAt: new Date(Date.now() - 4 * 86400000) } });
+    await WalletTopUpModel.collection.updateOne({ _id: recentFailure._id }, { $set: { createdAt: new Date(Date.now() - 4 * 86400000) } });
+    await DonationIntentModel.updateOne({ _id: intent._id }, { $set: { status: 'EXPIRED' } });
+    await TipModel.updateOne({ _id: tip._id }, { $set: { status: 'FAILED' } });
+    const cleared = await request(app).get('/api/v1/profile/closure-check').set('Authorization', account.bearer).expect(200);
+    expect(cleared.body.data).toEqual({ blockers: [], openCampaigns: 0, canClose: true });
+    await request(app).delete('/api/v1/profile').set('Authorization', account.bearer).send({ password: 'SecurePass123' }).expect(200);
   });
   it('ends the closed account\'s open campaigns so they stop accepting donations', async () => {
     const owner = await register(), donor = await register();

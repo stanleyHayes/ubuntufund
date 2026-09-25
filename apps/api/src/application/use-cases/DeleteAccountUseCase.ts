@@ -37,6 +37,10 @@ function describeBlocker(blocker: AccountClosureBlocker, whose: 'your' | 'their'
       const count = blocker.count ?? 1;
       return `${count} payout${count === 1 ? '' : 's'} still being processed`;
     }
+    case 'pending_payment': {
+      const count = blocker.count ?? 1;
+      return `${count} incoming payment${count === 1 ? '' : 's'} (wallet top-up, donation or tip) still being confirmed`;
+    }
   }
 }
 

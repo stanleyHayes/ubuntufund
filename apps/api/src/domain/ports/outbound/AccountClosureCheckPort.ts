@@ -5,14 +5,16 @@ export type AccountClosureBlockerKind =
   | 'beneficiary_balance'
   | 'creator_balance'
   | 'affiliate_balance'
-  | 'pending_payout';
+  | 'pending_payout'
+  /** Money on its way in (a wallet top-up, or a donation or tip to this account) not yet confirmed. */
+  | 'pending_payment';
 
 export interface AccountClosureBlocker {
   kind: AccountClosureBlockerKind;
   /** Set for balances: the non-zero total for one currency. */
   currency?: string;
   amount?: number;
-  /** Set for pending payouts: how many are still in flight. */
+  /** Set for pending payouts and pending payments: how many are still in flight. */
   count?: number;
 }
 

@@ -10,6 +10,7 @@ import { JournalEntryModel } from '../../src/infrastructure/database/models/Jour
 import { JournalLineModel } from '../../src/infrastructure/database/models/JournalLineModel.js';
 import { LedgerAccountModel } from '../../src/infrastructure/database/models/LedgerAccountModel.js';
 import type { PaymentGatewayPort } from '../../src/domain/ports/outbound/PaymentGatewayPort.js';
+import { AccountDeletionRequestModel } from '../../src/infrastructure/database/models/AccountDeletionRequestModel.js';
 
 beforeAll(async () => { await connectTestDatabase(); await Promise.all([WalletTopUpModel.init(), WalletModel.init(), JournalEntryModel.init(), JournalLineModel.init(), LedgerAccountModel.init(), WalletTransactionModel.init()]); });
 afterAll(async () => { await dropTestDatabase(); await disconnectTestDatabase(); });
@@ -90,5 +91,27 @@ describe('verified wallet top-ups', () => {
     expect((await WalletModel.findById(walletId))!.balance).toBe(100);
     expect(await JournalEntryModel.countDocuments({ externalRef: topup.reference })).toBe(1);
   });
-});
 
+  it('still credits a top-up confirmed after the account closed, but flags it for staff instead of landing silently', async () => {
+    const topup = await service.initialize(userId, walletId, 100, randomUUID());
+    // The account closes while the payment is in flight (check-then-erase race or a very late success).
+    await UserModel.updateOne({ _id: userId }, { $set: { deletedAt: new Date() } });
+    const nextReviewAt = new Date(Date.now() + 7 * 86400000);
+    await AccountDeletionRequestModel.create({ userId, contactEmail: 'closed@example.test', status: 'pending', nextReviewAt, reviewNotes: 'Staff note kept', revision: 2 });
+    await service.settle(topup.reference);
+    await service.settle(topup.reference);
+    expect((await WalletModel.findById(walletId))!.balance).toBe(100);
+    expect(await JournalEntryModel.countDocuments({ externalRef: topup.reference })).toBe(1);
+    const flagged = await AccountDeletionRequestModel.findOne({ userId }).lean();
+    expect(flagged).toMatchObject({ status: 'review_required', revision: 3 });
+    expect(flagged!.nextReviewAt.getTime()).toBeLessThan(nextReviewAt.getTime());
+    expect(flagged!.reviewNotes).toMatch(/^Staff note kept\n\[system [^\]]+\] Wallet top-up wtop-[\w-]+ credited GHS 100\.00 after the account was closed\.$/);
+  });
+
+  it('does not flag top-ups for open accounts', async () => {
+    const topup = await service.initialize(userId, walletId, 100, randomUUID());
+    await AccountDeletionRequestModel.create({ userId, contactEmail: 'open@example.test', nextReviewAt: new Date(Date.now() + 86400000) });
+    await service.settle(topup.reference);
+    expect(await AccountDeletionRequestModel.findOne({ userId }).lean()).toMatchObject({ status: 'pending', revision: 0, reviewNotes: '' });
+  });
+});
