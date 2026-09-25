@@ -77,6 +77,7 @@ export function createAffiliateRoutes(
  *   GET  /affiliates                        → list every affiliate (newest first)
  *   GET  /affiliates/payouts                → every affiliate payout (approval queue)
  *   POST /affiliates/payouts/:id/approve    → approve + initiate a transfer
+ *   POST /affiliates/payouts/:id/reject     → reject a PENDING payout; its reservation returns
  *   GET  /affiliates/:id                    → one affiliate's full detail view
  *   PUT  /affiliates/:id/commission-rate    → override the commission rate
  *   PUT  /affiliates/:id/status             → activate or suspend the affiliate
@@ -105,6 +106,13 @@ export function createAdminAffiliateRoutes(
     authMiddleware,
     adminGuard,
     affiliateController.approvePayout
+  );
+  router.post(
+    '/payouts/:id/reject',
+    authMiddleware,
+    adminGuard,
+    validate(z.object({ reason: z.string().trim().min(20).max(2000) })),
+    affiliateController.rejectPayout
   );
 
   router.get('/:id', authMiddleware, adminGuard, affiliateController.detail);

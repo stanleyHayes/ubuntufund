@@ -90,6 +90,12 @@ export interface AffiliateBalance {
   pendingBalance: number // held, not yet matured
   availableBalance: number // matured, withdrawable
   paidOutBalance: number
+  /**
+   * Commission reversed after it could no longer be unwound (already paid out,
+   * or reserved by a payout in flight). Recovered from future earnings: it is
+   * withheld from what can be withdrawn until covered.
+   */
+  clawbackOutstanding?: number
   updatedAt: Date
 }
 

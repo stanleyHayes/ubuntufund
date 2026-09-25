@@ -164,6 +164,15 @@ export class MongoAffiliatePayoutRepository
     return doc ? toDomain(doc) : null;
   }
 
+  async transitionPendingToFailed(id: string): Promise<AffiliatePayoutEntity | null> {
+    const doc = await AffiliatePayoutModel.findOneAndUpdate(
+      { _id: id, status: 'PENDING' },
+      { $set: { status: 'FAILED' } },
+      { new: true }
+    );
+    return doc ? toDomain(doc) : null;
+  }
+
   async transitionPaidToReversed(
     id: string
   ): Promise<AffiliatePayoutEntity | null> {

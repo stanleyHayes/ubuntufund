@@ -77,13 +77,49 @@ export class MongoAffiliateCommissionRepository
     return doc ? toDomain(doc) : null;
   }
 
-  async findMaturedHeld(now: Date): Promise<AffiliateCommissionEntity[]> {
-    // The maturity sweep's work list: held commissions whose hold window elapsed.
+  async findMaturedHeld(now: Date, affiliateId?: string): Promise<AffiliateCommissionEntity[]> {
+    // The maturity sweep's work list: held commissions whose hold window
+    // elapsed — one affiliate's when scoped, never the whole platform's.
     const docs = await AffiliateCommissionModel.find({
       status: 'held',
       maturesAt: { $lte: now },
+      ...(affiliateId ? { affiliateId } : {}),
     }).sort({ maturesAt: 1 });
     return docs.map(toDomain);
+  }
+
+  async linkAvailableToPayout(affiliateId: string, payoutId: string, maxAmount: number): Promise<number> {
+    const candidates = await AffiliateCommissionModel.find({
+      affiliateId,
+      status: 'available',
+      payoutId: { $exists: false },
+    }).sort({ maturesAt: 1, _id: 1 });
+    let linkedMinor = 0;
+    const limitMinor = Math.round(maxAmount * 100);
+    for (const commission of candidates) {
+      const amountMinor = Math.round(commission.amount * 100);
+      if (linkedMinor + amountMinor > limitMinor) break;
+      const res = await AffiliateCommissionModel.updateOne(
+        { _id: commission._id, status: 'available', payoutId: { $exists: false } },
+        { $set: { payoutId } }
+      );
+      if (res.modifiedCount === 1) linkedMinor += amountMinor;
+    }
+    return linkedMinor / 100;
+  }
+
+  async markPaidForPayout(payoutId: string): Promise<void> {
+    await AffiliateCommissionModel.updateMany(
+      { payoutId, status: 'available' },
+      { $set: { status: 'paid' } }
+    );
+  }
+
+  async releaseFromPayout(payoutId: string): Promise<void> {
+    await AffiliateCommissionModel.updateMany(
+      { payoutId, status: { $in: ['available', 'paid'] } },
+      { $set: { status: 'available' }, $unset: { payoutId: 1 } }
+    );
   }
 
   async update(

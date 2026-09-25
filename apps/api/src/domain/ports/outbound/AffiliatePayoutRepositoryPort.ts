@@ -56,6 +56,9 @@ export interface AffiliatePayoutRepositoryPort {
   /** Atomically move PROCESSING → FAILED. Null when not PROCESSING. */
   transitionToFailed(id: string): Promise<AffiliatePayoutEntity | null>;
 
+  /** Admin rejection: atomically move PENDING → FAILED. Null when not PENDING. */
+  transitionPendingToFailed?(id: string): Promise<AffiliatePayoutEntity | null>;
+
   /** Atomically move PAID → REVERSED. Null when not PAID. */
   transitionPaidToReversed(id: string): Promise<AffiliatePayoutEntity | null>;
 

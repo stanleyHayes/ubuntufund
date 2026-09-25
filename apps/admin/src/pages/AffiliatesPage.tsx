@@ -137,6 +137,27 @@ export default function AffiliatesPage() {
     }
   }
 
+  // A PENDING affiliate request has already reserved its funds; rejecting it
+  // returns them to the affiliate's available balance (no transfer is sent).
+  const [rejecting, setRejecting] = useState<AffiliatePayout | null>(null)
+  const [rejectReason, setRejectReason] = useState('')
+  const [rejectBusy, setRejectBusy] = useState(false)
+  const handleReject = async () => {
+    if (!rejecting) return
+    setRejectBusy(true)
+    try {
+      const updated = await api.post<AffiliatePayout>(`/affiliates/payouts/${rejecting.id}/reject`, { reason: rejectReason.trim() })
+      setPayouts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))
+      setSnackbar({ open: true, message: 'Payout rejected; the funds are back in the affiliate’s available balance', severity: 'success' })
+      setRejecting(null)
+      setRejectReason('')
+    } catch (e) {
+      setSnackbar({ open: true, message: e instanceof Error ? e.message : 'Failed to reject payout', severity: 'error' })
+    } finally {
+      setRejectBusy(false)
+    }
+  }
+
   const handleApprove = async (payout: AffiliatePayout) => {
     setApprovingId(payout.id)
     try {
@@ -372,6 +393,17 @@ export default function AffiliatesPage() {
                           >
                             {approvingId === p.id ? 'Approving…' : 'Approve'}
                           </Button>
+                        ) : null}
+                        {p.status === 'PENDING' && canUpdate ? (
+                          <Button
+                            size="small"
+                            color="error"
+                            disabled={approvingId === p.id}
+                            onClick={() => { setRejecting(p); setRejectReason('') }}
+                            sx={{ textTransform: 'none', fontWeight: 700, ml: { md: 1 } }}
+                          >
+                            Reject
+                          </Button>
                         ) : (
                           <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>
                             {p.status === 'PENDING' ? 'Awaiting approval' : '—'}
@@ -388,6 +420,45 @@ export default function AffiliatesPage() {
           )}
         </>
       )}
+
+      {/* Reject payout dialog */}
+      <Dialog
+        open={!!rejecting}
+        onClose={() => !rejectBusy && setRejecting(null)}
+        maxWidth="xs"
+        fullWidth
+        aria-labelledby="reject-affiliate-payout-title"
+        PaperProps={{ sx: { ...raisedSurface, borderRadius: SHAPE.card } }}
+      >
+        <DialogTitle id="reject-affiliate-payout-title" sx={{ fontWeight: 800 }}>Reject affiliate payout?</DialogTitle>
+        <DialogContent>
+          <Typography sx={{ fontSize: '0.85rem', color: 'text.secondary', mb: 2 }}>
+            {rejecting ? `${formatMoney(rejecting.amount, rejecting.currency)} returns to the affiliate's available balance. No transfer is sent.` : ''}
+          </Typography>
+          <TextField
+            optionContext="affiliate"
+            fullWidth
+            multiline
+            minRows={2}
+            label="Reason for rejection"
+            helperText="At least 20 characters; recorded in the audit log."
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setRejecting(null)} disabled={rejectBusy} sx={{ textTransform: 'none' }}>Cancel</Button>
+          <Button
+            color="error"
+            variant="contained"
+            disabled={rejectBusy || rejectReason.trim().length < 20}
+            onClick={() => void handleReject()}
+            sx={{ textTransform: 'none', fontWeight: 700 }}
+          >
+            {rejectBusy ? 'Rejecting…' : 'Reject payout'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Edit dialog */}
       <Dialog

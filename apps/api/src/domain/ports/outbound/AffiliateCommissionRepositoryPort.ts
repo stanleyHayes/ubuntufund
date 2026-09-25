@@ -21,7 +21,21 @@ export interface AffiliateCommissionRepositoryPort {
    * maturesAt <= now) — the maturity sweep's work list, ready to move to
    * 'available'.
    */
-  findMaturedHeld(now: Date): Promise<AffiliateCommissionEntity[]>;
+  findMaturedHeld(now: Date, affiliateId?: string): Promise<AffiliateCommissionEntity[]>;
+
+  /**
+   * Stamp `payoutId` on the affiliate's unlinked AVAILABLE commissions, oldest
+   * first, while their running total stays within `maxAmount`. Returns the
+   * linked total. The payout's webhook later marks exactly these paid.
+   */
+  linkAvailableToPayout?(affiliateId: string, payoutId: string, maxAmount: number): Promise<number>;
+  /** The payout was paid: its linked available commissions become `paid`. */
+  markPaidForPayout?(payoutId: string): Promise<void>;
+  /**
+   * The payout failed, was rejected or reversed: its linked commissions return
+   * to unlinked `available` (a paid-then-reversed transfer's too).
+   */
+  releaseFromPayout?(payoutId: string): Promise<void>;
 
   /**
    * Persist a commission's mutated state (status + updatedAt) for its `id`.

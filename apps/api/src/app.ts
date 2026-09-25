@@ -15,6 +15,7 @@ import { payoutControlWarnings } from './infrastructure/config/payoutControls.js
 import { MongoPayoutClosureTransaction } from './infrastructure/adapters/outbound/persistence/MongoPayoutClosureTransaction.js'
 import { ClosePendingPayoutUseCase } from './application/use-cases/ClosePendingPayoutUseCase.js'
 import { ResolveStuckPayoutUseCase } from './application/use-cases/ResolveStuckPayoutUseCase.js'
+import { RejectAffiliatePayoutUseCase } from './application/use-cases/RejectAffiliatePayoutUseCase.js'
 import { createDonationContentReviewRoutes } from './infrastructure/adapters/inbound/http/routes/donationContentReviewRoutes.js'
 import { createTipContentReviewRoutes } from './infrastructure/adapters/inbound/http/routes/tipContentReviewRoutes.js'
 import { MongoPublicProfileVisibility } from './infrastructure/adapters/outbound/persistence/MongoPublicProfileVisibility.js'
@@ -805,6 +806,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
   const handleAffiliatePayoutWebhookUseCase = new HandleAffiliatePayoutWebhookUseCase(
     affiliatePayoutRepo,
     affiliateBalanceRepo,
+    affiliateCommissionRepo,
   )
   // Paid-subscription settlement seam: activates the subscription, redeems any
   // coupon, and awards the one-time affiliate commission. Called by the signed
@@ -984,6 +986,11 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
           await reconcilePayoutsUseCase
             .reconcileStale({ olderThanMinutes: 1 })
             .catch((err) => logger.error({ err }, 'scheduled payout reconciliation failed'))
+          // Held affiliate commissions mature on schedule, not only when their
+          // owner happens to open the dashboard or request a payout.
+          await matureAffiliateCommissionsUseCase
+            .execute()
+            .catch((err) => logger.error({ err }, 'scheduled affiliate commission maturity failed'))
           // Disabling new crypto intake must not abandon existing deposits.
           await reconcileCryptoUseCase
             .reconcileStale({ olderThanMinutes: 30 })
@@ -1244,6 +1251,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     affiliateCommissionRepo,
     affiliateReferralRepo,
     config.publicWebUrl,
+    new MongoUnitOfWork(),
   )
   const listMyAffiliateReferralsUseCase = new ListMyAffiliateReferralsUseCase(
     affiliateRepo,
@@ -1263,6 +1271,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     affiliateBalanceRepo,
     affiliateCommissionRepo,
     paymentGateway,
+    new MongoUnitOfWork(),
   )
   const approveAffiliatePayoutUseCase = new ApproveAffiliatePayoutUseCase(
     affiliatePayoutRepo,
@@ -1286,6 +1295,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
   const matureAffiliateCommissionsUseCase = new MatureAffiliateCommissionsUseCase(
     affiliateCommissionRepo,
     affiliateBalanceRepo,
+    new MongoUnitOfWork(),
   )
 
   const listPlansUseCase = new ListPlansUseCase(planService)
@@ -1534,6 +1544,12 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     listAffiliatePayoutsUseCase,
     approveAffiliatePayoutUseCase,
     updateAffiliateReferralCodeUseCase,
+    new RejectAffiliatePayoutUseCase(
+      affiliatePayoutRepo,
+      affiliateBalanceRepo,
+      affiliateCommissionRepo,
+      new MongoPayoutClosureTransaction(),
+    ),
   )
   const paymentProviderController = new PaymentProviderController(
     listPaymentProvidersUseCase,

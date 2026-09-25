@@ -7,6 +7,8 @@ export interface AffiliateBalanceDocument extends Document {
   pendingBalance: number;
   availableBalance: number;
   paidOutBalance: number;
+  /** Reversed commission not yet recovered (see AffiliateBalance.clawbackOutstanding). */
+  clawbackOutstanding?: number;
   /** Applied settlement keys (G5 idempotency): a payout bucket move runs at most once per key. */
   settledRefs?: string[];
   updatedAt: Date;
@@ -20,6 +22,7 @@ const affiliateBalanceSchema = new Schema<AffiliateBalanceDocument>(
     pendingBalance: { type: Number, default: 0 },
     availableBalance: { type: Number, default: 0 },
     paidOutBalance: { type: Number, default: 0 },
+    clawbackOutstanding: { type: Number, default: 0 },
     settledRefs: { type: [String], default: [] },
     updatedAt: { type: Date, default: Date.now },
   },

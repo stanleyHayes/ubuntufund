@@ -13,7 +13,7 @@ import { MongoUnitOfWork } from './MongoUnitOfWork.js'
 export class MongoPayoutClosureTransaction implements PayoutClosureTransactionPort {
   async run<T>(
     actor: PayoutRequester,
-    closure: { kind: 'rejected' | 'cancelled'; payoutId: string; reason: string },
+    closure: { kind: 'rejected' | 'cancelled'; payoutId: string; reason: string; rail?: 'campaign' | 'affiliate' },
     work: () => Promise<T>,
   ): Promise<T> {
     return new MongoUnitOfWork().run(async () => {
@@ -28,16 +28,19 @@ export class MongoPayoutClosureTransaction implements PayoutClosureTransactionPo
           ? new AppError('Current administrator access is required.', 403)
           : new AppError('Account authorization changed. Sign in again.', 401)
       const result = await work()
+      const affiliate = closure.rail === 'affiliate'
       await AuditLogModel.create({
         actorId: actor.userId,
         actorRole: staff ? 'admin' : actor.role ?? 'user',
-        action: `payout.${closure.kind}`,
+        action: `${affiliate ? 'affiliate_payout' : 'payout'}.${closure.kind}`,
         resource: closure.payoutId,
         details: staff ? 'Pending payout rejected before any transfer' : 'Pending payout cancelled by the campaign owner',
         reason: closure.reason,
         severity: 'warning',
         method: 'POST',
-        path: staff ? '/payouts/:id/reject' : '/campaigns/:id/payouts/:payoutId/cancel',
+        path: affiliate
+          ? '/affiliates/payouts/:id/reject'
+          : staff ? '/payouts/:id/reject' : '/campaigns/:id/payouts/:payoutId/cancel',
         statusCode: 200,
       })
       return result

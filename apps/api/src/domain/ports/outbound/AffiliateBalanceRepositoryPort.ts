@@ -85,4 +85,11 @@ export interface AffiliateBalanceRepositoryPort {
    * $inc. Returns the updated balance.
    */
   reverseAvailable(id: string, amount: number): Promise<AffiliateBalance | null>;
+
+  /**
+   * Record commission reversed after it could no longer be unwound (paid out,
+   * or reserved by an in-flight payout): `clawbackOutstanding += amount`,
+   * `totalEarned -= amount`. Withheld from future withdrawals until covered.
+   */
+  recordClawback?(id: string, amount: number): Promise<AffiliateBalance | null>;
 }

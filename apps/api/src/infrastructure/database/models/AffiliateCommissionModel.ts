@@ -15,6 +15,8 @@ export interface AffiliateCommissionDocument extends Document {
   commissionRate: number;
   status: AffiliateCommissionStatus;
   maturesAt: Date;
+  /** The affiliate payout this available commission is being paid by. */
+  payoutId?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -49,6 +51,7 @@ const affiliateCommissionSchema = new Schema<AffiliateCommissionDocument>(
       index: true,
     },
     maturesAt: { type: Date, required: true },
+    payoutId: { type: String, index: true, sparse: true },
   },
   { collection: 'affiliatecommissions', timestamps: true }
 );
