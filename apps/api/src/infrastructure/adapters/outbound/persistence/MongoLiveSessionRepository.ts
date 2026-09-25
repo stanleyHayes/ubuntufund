@@ -127,6 +127,17 @@ export class MongoLiveSessionRepository implements LiveSessionRepositoryPort {
     return doc ? toDomain(doc) : null;
   }
 
+  async reverseDonationStats(id: string, amount: number, removeDonation: boolean): Promise<void> {
+    if (!isObjectIdOrHexString(id) || !(amount > 0 || removeDonation)) return;
+    const lessOf = (field: string, by: number) => ({ $max: [0, { $subtract: [`$stats.${field}`, by] }] });
+    await LiveSessionModel.updateOne({ _id: id }, [{
+      $set: {
+        'stats.amountRaised': lessOf('amountRaised', Math.max(0, amount)),
+        'stats.successfulDonations': lessOf('successfulDonations', removeDonation ? 1 : 0),
+      },
+    }]);
+  }
+
   async applyDonationStats(
     id: string,
     donationId: string,

@@ -83,6 +83,18 @@ describe('live-session stats under at-least-once delivery', () => {
     expect(liveTotal.sessionAmountRaised).toBeNull();
   });
 
+  it('reverses refunded stats without ever going below zero', async () => {
+    const { campaignId, sessionId, payload } = await liveDonation();
+    await projectorWith(new EventBus()).recordDonationRealtime(campaignId, sessionId, input(payload));
+    const repo = new MongoLiveSessionRepository();
+    await repo.reverseDonationStats(sessionId, 40, false);
+    expect(await stats(sessionId)).toMatchObject({ successfulDonations: 1, amountRaised: 60 });
+    await repo.reverseDonationStats(sessionId, 500, true);
+    await repo.reverseDonationStats(sessionId, 5, true);
+    expect(await stats(sessionId)).toMatchObject({ successfulDonations: 0, amountRaised: 0 });
+    await expect(repo.reverseDonationStats('not-a-session', 5, true)).resolves.toBeUndefined();
+  });
+
   it('ignores a malformed or unknown session id without failing the projection', async () => {
     const { campaignId, payload } = await liveDonation();
     const bus = new EventBus();

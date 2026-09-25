@@ -459,8 +459,9 @@ export class CreateDonationIntentUseCase {
       couponCode: waiver?.couponCode,
     })
 
+    let created: DonationIntentEntity
     try {
-      return await this.donationIntentRepo.create(draft)
+      created = await this.donationIntentRepo.create(draft)
     } catch (error) {
       // Lost a race on the same idempotency key — resolve to the winner.
       if (isDuplicateKeyError(error)) {
@@ -471,6 +472,19 @@ export class CreateDonationIntentUseCase {
         }
       }
       throw error
+    }
+    // Only a newly created intent (never an idempotent replay) is a new
+    // checkout for the broadcast it came from.
+    if (created.liveSessionId) await this.countCheckoutStart(created.liveSessionId)
+    return created
+  }
+
+  /** Best-effort display counter: a failure never affects the donation. */
+  private async countCheckoutStart(liveSessionId: string): Promise<void> {
+    try {
+      await this.liveSessionRepo.incrementStats(liveSessionId, { checkoutStarts: 1 })
+    } catch (error) {
+      logger.warn({ err: error, liveSessionId }, 'failed to count a live checkout start')
     }
   }
 

@@ -13,6 +13,7 @@ import type { CampaignBalanceRepositoryPort } from '../../domain/ports/outbound/
 import type { LedgerRepositoryPort } from '../../domain/ports/outbound/LedgerRepositoryPort.js';
 import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGatewayPort.js';
 import type { CampaignLedgerProjector } from '../services/CampaignLedgerProjector.js';
+import type { LiveSessionRepositoryPort } from '../../domain/ports/outbound/LiveSessionRepositoryPort.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 import { logger } from '../../infrastructure/logging/logger.js';
 
@@ -57,7 +58,9 @@ export class ProcessRefundUseCase {
     private readonly gatewayRegistry: Map<string, PaymentGatewayPort>,
     private readonly operationRepo: RefundOperationRepositoryPort,
     private readonly unitOfWork: UnitOfWorkPort,
-    private readonly refundFunds: RefundFundsPort
+    private readonly refundFunds: RefundFundsPort,
+    /** Keeps a live broadcast's "raised live" figures honest after a refund. */
+    private readonly liveSessions?: Pick<LiveSessionRepositoryPort, 'reverseDonationStats'>
   ) {}
 
   async execute(
@@ -230,8 +233,12 @@ export class ProcessRefundUseCase {
     if (current.state !== 'reversal_pending' && current.state !== 'completed') {
       throw new AppError('Verify the provider outcome before completing local accounting', 409);
     }
+    // Set only by the transaction that completes this operation (its
+    // reversal_pending -> completed gate), so the live figures move once.
+    let reversedLive: { intentId: string; amount: number; full: boolean } | undefined;
     try {
-      return await this.unitOfWork.run(async () => {
+      const outcome = await this.unitOfWork.run(async () => {
+        reversedLive = undefined;
         const operation = await this.operationRepo.findById(operationId);
         if (!operation) throw new AppError('Refund operation not found', 404);
         const result: ProcessRefundResult = {
@@ -255,12 +262,31 @@ export class ProcessRefundUseCase {
           memo: `refund operation ${operation.id} by admin ${operation.adminId} for intent ${operation.intentId}`,
         }));
         await this.donationIntentRepo.updateStatus(operation.intentId, result.status === 'REFUNDED' ? 'REFUNDED' : 'PARTIALLY_REFUNDED', operation.transactionReference);
+        reversedLive = { intentId: operation.intentId, amount: operation.amount, full: result.status === 'REFUNDED' };
         return result;
       });
+      if (reversedLive) await this.reverseLiveStats(reversedLive);
+      return outcome;
     } catch (error) {
       await this.operationRepo.update(operationId, ['reversal_pending'], { issue: 'local_reversal_failed' });
       logger.error({ err: error, operationId }, 'refund local accounting remains pending');
       return { status: 'PENDING_REVIEW', operationId, amount: current.amount, refundReference: current.providerReference };
+    }
+  }
+
+  /**
+   * A refunded live-attributed gift leaves the broadcast's totals. Display
+   * figures only, so this runs after the accounting commits and never fails
+   * or rolls back the refund.
+   */
+  private async reverseLiveStats(reversal: { intentId: string; amount: number; full: boolean }): Promise<void> {
+    if (!this.liveSessions) return;
+    try {
+      const intent = await this.donationIntentRepo.findById(reversal.intentId);
+      if (!intent?.liveSessionId) return;
+      await this.liveSessions.reverseDonationStats(intent.liveSessionId, reversal.amount, reversal.full);
+    } catch (error) {
+      logger.error({ err: error, intentId: reversal.intentId }, 'refund committed; live session stats not reversed');
     }
   }
 }

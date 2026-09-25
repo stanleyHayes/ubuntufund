@@ -332,9 +332,27 @@ describe('Live sessions + realtime projector', () => {
     const attribution = Object.fromEntries(intents.map(intent => [intent.amount, intent.liveSessionId ?? null]));
     expect(attribution).toEqual({ 11: null, 12: null, 13: null, 14: recent.id });
     expect(intents.every(intent => intent.status === 'SUCCEEDED')).toBe(true);
-    expect((await LiveSessionModel.findById(otherSession.id))?.stats).toMatchObject({ successfulDonations: 0, amountRaised: 0 });
-    expect((await LiveSessionModel.findById(stale.id))?.stats).toMatchObject({ successfulDonations: 0, amountRaised: 0 });
-    expect((await LiveSessionModel.findById(recent.id))?.stats).toMatchObject({ successfulDonations: 1, amountRaised: 14 });
+    expect((await LiveSessionModel.findById(otherSession.id))?.stats).toMatchObject({ successfulDonations: 0, amountRaised: 0, checkoutStarts: 0 });
+    expect((await LiveSessionModel.findById(stale.id))?.stats).toMatchObject({ successfulDonations: 0, amountRaised: 0, checkoutStarts: 0 });
+    expect((await LiveSessionModel.findById(recent.id))?.stats).toMatchObject({ successfulDonations: 1, amountRaised: 14, checkoutStarts: 1 });
+  });
+
+  it('counts a live checkout start once per new intent, never for an idempotent replay', async () => {
+    const { userId, token } = await registerUser(app, uniqueEmail('starts'));
+    const campaignId = await createActiveCampaign(app, token, userId);
+    const start = await request(app).post(`/api/v1/campaigns/${campaignId}/live-sessions`).set('Authorization', `Bearer ${token}`).send({}).expect(201);
+    const sessionId = start.body.data.id as string;
+    const { token: donorToken } = await fundedDonor(app, 1000);
+    const key = randomUUID();
+    const give = () => request(app)
+      .post('/api/v1/donation-intents')
+      .set('Authorization', `Bearer ${donorToken}`)
+      .set('Idempotency-Key', key)
+      .send({ campaignId, amount: 20, provider: 'wallet', isAnonymous: true, liveSessionId: sessionId, legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true } });
+    expect((await give()).status).toBeLessThan(300);
+    expect((await give()).status).toBeLessThan(300);
+    const stats = (await request(app).get(`/api/v1/live-sessions/${sessionId}/overlay?token=${start.body.data.overlayToken}`).expect(200)).body.data.totals;
+    expect(stats).toMatchObject({ checkoutStarts: 1, successfulDonations: 1, amountRaised: 20 });
   });
 
   it('honors privacy toggles on the overlay and public sheet', async () => {

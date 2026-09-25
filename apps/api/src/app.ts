@@ -932,6 +932,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     new MongoRefundOperationRepository(),
     new MongoUnitOfWork(),
     new MongoRefundFunds(),
+    liveSessionRepo,
   )
   // Payout reconciliation: repair payouts stuck in PROCESSING (a missed/delayed
   // transfer webhook) by re-verifying against the provider and driving the same

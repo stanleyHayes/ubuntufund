@@ -28,4 +28,10 @@ export interface LiveSessionRepositoryPort {
     donationId: string,
     amount: number
   ): Promise<{ session: LiveSessionEntity | null; duplicate: boolean }>;
+  /**
+   * Take a refunded amount back out of `amountRaised` and, when the refund
+   * completes the donation's full refund, one gift out of
+   * `successfulDonations`. Never drops a counter below zero.
+   */
+  reverseDonationStats(id: string, amount: number, removeDonation: boolean): Promise<void>;
 }
