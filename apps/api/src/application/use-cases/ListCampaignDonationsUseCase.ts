@@ -30,13 +30,18 @@ export class ListCampaignDonationsUseCase {
       throw new AppError('Campaign not found', 404);
     }
 
-    const page = params.page ?? 1;
-    const pageSize = params.pageSize ?? 20;
+    // Callers validate these (parsePagination); clamp anyway so a direct caller
+    // can never ask the database for a negative skip or an unbounded page.
+    const page = Math.max(1, Math.floor(params.page ?? 1));
+    const pageSize = Math.min(100, Math.max(1, Math.floor(params.pageSize ?? 20)));
 
-    const all = await this.donationRepo.findByCampaignId(campaignId);
-    const total = all.length;
-    const start = (page - 1) * pageSize;
-    const pageItems = all.slice(start, start + pageSize);
+    // Page in the database: loading every donation to slice one page out made
+    // each request (and the admin console's page-by-page walk) cost the whole set.
+    const { items: pageItems, total } = await this.donationRepo.findPageByCampaignId(
+      campaignId,
+      (page - 1) * pageSize,
+      pageSize
+    );
 
     const hidden = await this.visibility.hiddenContentAuthorIds(pageItems.map(donation => donation.donorId).filter(id => id !== GUEST_DONOR_ID), viewerId);
     const items = await Promise.all(

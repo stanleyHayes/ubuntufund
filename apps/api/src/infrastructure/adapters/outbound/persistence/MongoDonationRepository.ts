@@ -55,6 +55,19 @@ export class MongoDonationRepository implements DonationRepositoryPort {
     return docs.map(toDomain);
   }
 
+  async findPageByCampaignId(
+    campaignId: string,
+    skip: number,
+    limit: number
+  ): Promise<{ items: DonationEntity[]; total: number }> {
+    const [docs, total] = await Promise.all([
+      // _id breaks createdAt ties so pages never repeat or skip a donation.
+      DonationModel.find({ campaignId }).sort({ createdAt: -1, _id: -1 }).skip(skip).limit(limit),
+      DonationModel.countDocuments({ campaignId }),
+    ]);
+    return { items: docs.map(toDomain), total };
+  }
+
   async findByDonorId(donorId: string): Promise<DonationEntity[]> {
     const docs = await DonationModel.find({ donorId }).sort({ createdAt: -1 });
     return docs.map(toDomain);

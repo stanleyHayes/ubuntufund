@@ -1,3 +1,4 @@
+import { parseCampaignSort, parsePagination } from '../../middleware/pagination.js';
 import type { Response, NextFunction } from 'express';
 import type { AuthenticatedRequest } from '../../middleware/authMiddleware.js';
 import type { CreateCampaignUseCase } from '../../../../../application/use-cases/CreateCampaignUseCase.js';
@@ -137,10 +138,8 @@ export class CampaignController {
     next: NextFunction
   ): Promise<void> => {
     try {
-      const page = parseInt(req.query.page as string) || 1;
-      const pageSize = parseInt(req.query.pageSize as string) || 20;
-      const sortBy = (req.query.sortBy as string) ?? 'createdAt';
-      const sortOrder = (req.query.sortOrder as 'asc' | 'desc') ?? 'desc';
+      const { page, pageSize } = parsePagination(req.query);
+      const { sortBy, sortOrder } = parseCampaignSort(req.query);
 
       const result = await this.getCampaignUseCase.list({
         page,

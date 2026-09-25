@@ -1,3 +1,4 @@
+import { parsePagination } from '../../middleware/pagination.js';
 import type { Response, NextFunction } from 'express';
 import type { AuthenticatedRequest } from '../../middleware/authMiddleware.js';
 import type { ListRecentDonationsUseCase } from '../../../../../application/use-cases/ListRecentDonationsUseCase.js';
@@ -86,8 +87,7 @@ export class DonationController {
     next: NextFunction
   ): Promise<void> => {
     try {
-      const page = parseInt(req.query.page as string) || 1;
-      const pageSize = parseInt(req.query.pageSize as string) || 20;
+      const { page, pageSize } = parsePagination(req.query);
 
       const result = await this.listCampaignDonationsUseCase.execute(
         req.params.id as string,

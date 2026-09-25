@@ -45,6 +45,9 @@ const donationSchema = new Schema<DonationDocument>(
   { timestamps: true }
 );
 
+// Serves the paged public donations tab: filter by campaign, newest first.
+donationSchema.index({ campaignId: 1, createdAt: -1 });
+
 donationSchema.plugin(trackActivity);
 
 export const DonationModel = mongoose.model<DonationDocument>(

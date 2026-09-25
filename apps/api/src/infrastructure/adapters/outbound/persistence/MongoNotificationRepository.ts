@@ -40,10 +40,10 @@ export class MongoNotificationRepository implements NotificationRepositoryPort {
     return doc ? toDomain(doc) : null;
   }
 
-  async findByUserId(userId: string): Promise<NotificationEntity[]> {
-    const docs = await NotificationModel.find({ userId }).sort({
-      createdAt: -1,
-    });
+  async findByUserId(userId: string, window: { limit: number; before?: Date }): Promise<NotificationEntity[]> {
+    const docs = await NotificationModel.find({ userId, ...(window.before ? { createdAt: { $lt: window.before } } : {}) })
+      .sort({ createdAt: -1, _id: -1 })
+      .limit(window.limit);
     return docs.map(toDomain);
   }
 

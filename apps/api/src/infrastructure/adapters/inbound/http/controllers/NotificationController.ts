@@ -1,3 +1,4 @@
+import { parseFeedWindow } from '../../middleware/pagination.js';
 import type { Response, NextFunction } from 'express';
 import type { AuthenticatedRequest } from '../../middleware/authMiddleware.js';
 import type { GetMyNotificationsUseCase } from '../../../../../application/use-cases/GetMyNotificationsUseCase.js';
@@ -21,7 +22,8 @@ export class NotificationController {
   ): Promise<void> => {
     try {
       const notifications = await this.getMyNotificationsUseCase.execute(
-        req.userId!
+        req.userId!,
+        parseFeedWindow(req.query)
       );
       res.json({
         data: notifications,
