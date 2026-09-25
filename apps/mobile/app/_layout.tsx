@@ -3,6 +3,7 @@ import { AccountAgreementNotice } from '@/components/AccountAgreementNotice'
 import { WebsiteRequestNotice } from '@/components/WebsiteRequestNotice'
 import { NotificationProvider } from '@/context/NotificationContext'
 import { NotificationBell } from '@/components/NotificationBell'
+import { UpdateRequiredGate } from '@/components/UpdateRequiredGate'
 import { useState, useCallback, useEffect } from 'react'
 import { View } from 'react-native'
 import { Stack, usePathname } from 'expo-router'
@@ -164,6 +165,8 @@ function ThemedApp({
           </Stack>
         </NotificationProvider>
       </AuthProvider>
+      {/* Above everything, including the biometric lock: an unsupported build cannot be used. */}
+      <UpdateRequiredGate />
     </PaperProvider>
   )
 }

@@ -414,6 +414,8 @@ import { createSubscriptionRoutes } from './infrastructure/adapters/inbound/http
 import { MongoUnitOfWork } from './infrastructure/adapters/outbound/persistence/MongoUnitOfWork.js'
 import { MongoBillingOwnership } from './infrastructure/adapters/outbound/persistence/MongoBillingOwnership.js'
 import { configureStoreBilling } from './infrastructure/config/storeBilling.js'
+import { loadMobileAppConfig } from './infrastructure/config/mobileApp.js'
+import { createAppConfigRoutes } from './infrastructure/adapters/inbound/http/routes/appConfigRoutes.js'
 import { createStoreBillingRoutes, createStoreBillingWebhookRoutes } from './infrastructure/adapters/inbound/http/routes/storeBillingRoutes.js'
 import { createStoreBillingAdminRoutes } from './infrastructure/adapters/inbound/http/routes/storeBillingAdminRoutes.js'
 import { createCouponRoutes } from './infrastructure/adapters/inbound/http/routes/couponRoutes.js'
@@ -1590,10 +1592,14 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     res.json({ status: 'ok', timestamp: new Date().toISOString() })
   })
 
+  // Parsed eagerly so an invalid MIN_APP_VERSION_* fails at boot, not per request.
+  const mobileAppConfig = loadMobileAppConfig()
   const api = express.Router()
   api.use(apiRateLimiter)
   api.use(auditMutation)
 
+  // Public native-app policy (minimum supported version, store links).
+  api.use('/app', createAppConfigRoutes(mobileAppConfig))
   api.use('/auth', createAuthRoutes(authController, authMiddleware))
   api.use('/auth/mfa', createMfaRoutes(mfa, authMiddleware))
   api.use('/store-billing', createStoreBillingRoutes(storeBilling, planService, authMiddleware))
