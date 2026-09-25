@@ -58,6 +58,20 @@ function result(response: UploadResponse): string {
   throw new Error(message)
 }
 
+/**
+ * forceRefresh resolves null when the session has ended and rejects on a
+ * network failure without signing out. A failed renewal on a flaky
+ * connection must not sign staff out mid-upload, so it surfaces as a
+ * connection error, like api.ts does.
+ */
+async function renewForUpload(token: string): Promise<string | null> {
+  try {
+    return await browserSession.forceRefresh(token)
+  } catch {
+    throw new Error('Unable to renew your session. Check your connection and try again.')
+  }
+}
+
 export async function uploadImageViaApi(
   file: File,
   folder: UploadFolder,
@@ -70,9 +84,10 @@ export async function uploadImageViaApi(
   if (response.status === 401) {
     // The token may only look valid here because the device clock is off:
     // renew once and retry before treating the 401 as a sign-out.
-    const renewed = await browserSession.forceRefresh(token).catch(() => null)
+    const renewed = await renewForUpload(token)
     if (renewed && renewed !== token) response = await send(url, file, renewed, onProgress)
-    // Still refused: expire so protected pages fall back to sign-in.
+    // Still refused (or renewal ended the session): expire so protected pages
+    // fall back to sign-in.
     if (response.status === 401) browserSession.expire(renewed ?? token)
   }
   return result(response)
