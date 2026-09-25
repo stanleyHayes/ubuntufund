@@ -17,6 +17,11 @@ describe('errorHandler', () => {
     expect(JSON.stringify(body)).not.toContain('a@b.c');
   });
 
+  it('maps body-parser size and parse errors to 413 / 400', () => {
+    expect(respond(Object.assign(new Error('request entity too large'), { type: 'entity.too.large', status: 413 })).status).toBe(413);
+    expect(respond(Object.assign(new SyntaxError('Unexpected end of JSON input'), { type: 'entity.parse.failed', status: 400 })).status).toBe(400);
+  });
+
   it('keeps AppError status codes and unknown errors as 500', () => {
     expect(respond(new AppError('Nope', 404)).status).toBe(404);
     expect(respond(Object.assign(new Error('x'), { code: 112 })).status).toBe(500);

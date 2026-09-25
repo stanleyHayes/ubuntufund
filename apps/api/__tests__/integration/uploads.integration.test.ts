@@ -94,6 +94,51 @@ describe('Image upload proxy (server-side signed Cloudinary)', () => {
       .expect(415);
   });
 
+  it('rejects a file just over 4 MiB with the friendly 413', async () => {
+    const token = await authToken();
+    const res = await request(app)
+      .post('/api/v1/uploads/image?folder=profiles')
+      .set('Authorization', `Bearer ${token}`)
+      .set('Content-Type', 'image/png')
+      .send(Buffer.alloc(4 * 1024 * 1024 + 1))
+      .expect(413);
+    expect(res.body.message).toBe('File is too large (max 4MB).');
+  });
+
+  it('accepts a file of exactly 4 MiB, the clients\' own cap', async () => {
+    const token = await authToken();
+    await request(app)
+      .post('/api/v1/uploads/image?folder=profiles')
+      .set('Authorization', `Bearer ${token}`)
+      .set('Content-Type', 'image/png')
+      .send(Buffer.concat([PNG, Buffer.alloc(4 * 1024 * 1024 - PNG.length)]))
+      .expect(200);
+  });
+
+  it('answers a body over the parser limit with 413, not 500', async () => {
+    const token = await authToken();
+    const res = await request(app)
+      .post('/api/v1/uploads/image?folder=profiles')
+      .set('Authorization', `Bearer ${token}`)
+      .set('Content-Type', 'image/png')
+      .send(Buffer.alloc(7 * 1024 * 1024))
+      .expect(413);
+    expect(res.body.message).toBe('File or request is too large.');
+  });
+
+  it('answers an oversized or malformed JSON body with 413 / 400, not 500', async () => {
+    await request(app)
+      .post('/api/v1/auth/login')
+      .set('Content-Type', 'application/json')
+      .send(JSON.stringify({ email: 'a@b.co', password: 'x'.repeat(300 * 1024) }))
+      .expect(413);
+    await request(app)
+      .post('/api/v1/auth/login')
+      .set('Content-Type', 'application/json')
+      .send('{"email": ')
+      .expect(400);
+  });
+
   it('rejects an empty body with 400', async () => {
     const token = await authToken();
     await request(app)

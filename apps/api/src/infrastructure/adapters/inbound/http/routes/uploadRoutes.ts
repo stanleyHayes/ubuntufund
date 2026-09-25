@@ -22,8 +22,12 @@ const FOLDERS: Record<string, string> = {
   misc: 'ujimora/misc',
 };
 
-/** Hard server ceiling (the client caps at 4MB; a little headroom here). */
-const MAX_BYTES = 5 * 1024 * 1024;
+/**
+ * Hard server ceiling: 4 MiB, the same cap the web (MAX_IMAGE_UPLOAD_MB) and
+ * mobile uploaders enforce, and what the 413 message says. It was 5 MiB while
+ * the message said 4MB.
+ */
+const MAX_BYTES = 4 * 1024 * 1024;
 
 /**
  * Media upload routes mounted at `/uploads`.
@@ -47,7 +51,10 @@ export function createUploadRoutes(
     // Read the raw request body as a Buffer regardless of content-type; the mime
     // is validated below. Applies only to this route, after the global JSON
     // parser (which ignores non-JSON content types and never touches the stream).
-    express.raw({ type: () => true, limit: '6mb' }),
+    // The parser limit sits just above MAX_BYTES so the explicit check below
+    // answers most oversize files with the friendly message; anything larger
+    // still gets a 413 from the error handler.
+    express.raw({ type: () => true, limit: '5mb' }),
     async (req: Request, res: Response, next: NextFunction) => {
       try {
         if (!uploader.isConfigured()) {

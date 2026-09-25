@@ -59,6 +59,18 @@ export function errorHandler(
     return;
   }
 
+  // body-parser: a JSON body over its 200kb limit or an upload over the raw
+  // parser's limit. These used to fall through to a 500.
+  const bodyError = (err as { type?: unknown }).type;
+  if (bodyError === 'entity.too.large') {
+    res.status(413).json({ message: 'File or request is too large.', status: 413 });
+    return;
+  }
+  if (bodyError === 'entity.parse.failed') {
+    res.status(400).json({ message: 'The request body is not valid JSON.', status: 400 });
+    return;
+  }
+
   // A unique index rejected a concurrent duplicate. Nothing was written twice;
   // the record already exists. Money flows that need a specific answer catch
   // 11000 themselves — this is the fallback instead of a misleading 500.
