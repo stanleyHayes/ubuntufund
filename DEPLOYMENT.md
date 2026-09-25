@@ -160,11 +160,17 @@ is no cookie or same-origin dependency. All three configs still rewrite
 marketing site, which stays on the rewrite.
 
 Preview deployments are served from `*.vercel.app`, which `CORS_ORIGINS` does
-not (and should not) list, so a preview built with the production value cannot
-reach the API from the browser. To keep previews on the rewrite, set
-`VITE_API_URL=/api/v1` for the **Preview** environment in each Vercel project;
-a Vercel env var overrides `.env.production`. Make sure no **Production**-scoped
-`VITE_API_URL` is set there either, or it will override the direct URL.
+not (and should not) list, so a preview built with the production value could
+not reach the API from the browser. Vercel builds previews in production mode,
+so they load `.env.production` too. The web app's `vite.config.ts` handles this
+itself: when `VERCEL_ENV` is set to anything other than `production`, the build
+uses the same-origin `/api/v1` rewrite instead, and `apps/web/turbo.json` puts
+`VERCEL_ENV` in the build's cache key so a preview never reuses a production
+build. No dashboard setting is needed. A `VITE_API_URL` set in a Vercel project
+for an environment still overrides both, so make sure no **Production**-scoped
+(or all-environments) `VITE_API_URL` is set there, or it will replace the direct
+URL. The admin app does not have this switch yet: set `VITE_API_URL=/api/v1` for
+its **Preview** environment in the Vercel project.
 
 ### Environment variables
 
