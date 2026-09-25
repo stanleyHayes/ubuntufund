@@ -22,7 +22,7 @@ function useResource<T>(path: string) {
 }
 export function CollaboratorManager({ campaignId }: { campaignId: string }) {
   const resource = useResource<CampaignCollaborator[] | { items: CampaignCollaborator[] }>(`/campaigns/${campaignId}/collaborators`)
-  const [email, setEmail] = useState(''); const [role, setRole] = useState('editor'); const [share, setShare] = useState('0'); const [message, setMessage] = useState('')
+  const [email, setEmail] = useState(''); const [role, setRole] = useState('editor'); const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false); const [notice, setNotice] = useState(''); const p = usePalette()
   const collaborators = Array.isArray(resource.value) ? resource.value : resource.value?.items ?? []
   async function change(operation: () => Promise<unknown>, success: string) {
@@ -36,9 +36,8 @@ export function CollaboratorManager({ campaignId }: { campaignId: string }) {
     {resource.loading ? <PageSkeleton /> : collaborators.filter(item => item.status !== 'removed').map(item => <View key={item.id} style={{ gap: 6 }}><Text>{item.displayName} · {item.role.replaceAll('_', ' ')} · {item.status}</Text><Button disabled={busy} onPress={() => Alert.alert('Remove collaborator?', `Remove ${item.displayName} from this campaign?`, [{ text: 'Cancel', style: 'cancel' }, { text: 'Remove', style: 'destructive', onPress: () => void change(() => api.delete(`/campaigns/${campaignId}/collaborators/${item.id}`), 'Collaborator removed.') }])}>Remove</Button></View>)}
     <TextInput label="Collaborator email" autoCapitalize="none" keyboardType="email-address" value={email} onChangeText={setEmail} />
     <SelectionField label="Role" value={role} onChange={setRole} options={[{ value: 'editor', label: 'Editor' }, { value: 'co_owner', label: 'Co-owner' }, { value: 'featured_partner', label: 'Featured partner' }]} />
-    <TextInput label="Revenue share (%)" value={share} onChangeText={setShare} keyboardType="decimal-pad" />
     <TextInput label="Invitation message (optional)" value={message} onChangeText={setMessage} multiline />
-    <Button mode="contained" loading={busy} disabled={busy || !/^\S+@\S+\.\S+$/.test(email.trim()) || !Number.isFinite(Number(share)) || Number(share) < 0 || Number(share) > 100} onPress={() => void change(async () => { await api.post(`/campaigns/${campaignId}/collaborators/invite`, { userEmail: email.trim(), role, revenueSharePercent: Number(share), inviteMessage: message.trim() || undefined }); setEmail(''); setMessage('') }, 'Invitation sent.')}>Send invitation</Button>
+    <Button mode="contained" loading={busy} disabled={busy || !/^\S+@\S+\.\S+$/.test(email.trim())} onPress={() => void change(async () => { await api.post(`/campaigns/${campaignId}/collaborators/invite`, { userEmail: email.trim(), role, revenueSharePercent: 0, inviteMessage: message.trim() || undefined }); setEmail(''); setMessage('') }, 'If that email belongs to a Ujimora account, they have been invited.')}>Send invitation</Button>
   </GlassSurface>
 }
 export function SplitManager({ campaignId }: { campaignId: string }) {

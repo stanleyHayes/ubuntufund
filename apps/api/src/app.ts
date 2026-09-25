@@ -1193,6 +1193,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     userRepo,
     collaborationRepo,
     planLimitsService,
+    notificationRepo,
   )
   const removeCollaboratorUseCase = new RemoveCollaboratorUseCase(campaignRepo, collaborationRepo)
   const listCampaignCollaboratorsUseCase = new ListCampaignCollaboratorsUseCase(

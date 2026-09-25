@@ -10,6 +10,9 @@ import type { CollaborationRepositoryPort } from '../../domain/ports/outbound/Co
 import type { PlanLimitsService } from '../services/PlanLimitsService.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 import { toCollaboratorDto } from './mappers/collaborationDto.js';
+import type { NotificationRepositoryPort } from '../../domain/ports/outbound/NotificationRepositoryPort.js';
+import { NotificationEntity } from '../../domain/entities/Notification.js';
+import { logger } from '../../infrastructure/logging/logger.js';
 
 export interface InviteCollaboratorRequest {
   campaignId: string;
@@ -24,13 +27,19 @@ export class InviteCollaboratorUseCase {
     private readonly campaignRepo: CampaignRepositoryPort,
     private readonly userRepo: UserRepositoryPort,
     private readonly collaborationRepo: CollaborationRepositoryPort,
-    private readonly planLimits: PlanLimitsService
+    private readonly planLimits: PlanLimitsService,
+    private readonly notifications?: Pick<NotificationRepositoryPort, 'save'>
   ) {}
 
+  /**
+   * Returns the invitation, or null when the email has no account: the owner
+   * gets the same generic success either way instead of "User not found",
+   * which confirmed whether any email is registered.
+   */
   async execute(
     input: InviteCollaboratorRequest,
     inviterId: string
-  ): Promise<CampaignCollaborator> {
+  ): Promise<CampaignCollaborator | null> {
     const campaign = await this.campaignRepo.findById(input.campaignId);
     if (!campaign) {
       throw new AppError('Campaign not found', 404);
@@ -57,9 +66,7 @@ export class InviteCollaboratorUseCase {
     }
 
     const invitee = await this.userRepo.findByEmail(input.userEmail);
-    if (!invitee) {
-      throw new AppError('User not found', 404);
-    }
+    if (!invitee) return null;
     if (invitee.id === inviterId) {
       throw new AppError(
         'You cannot invite yourself as a collaborator',
@@ -110,6 +117,7 @@ export class InviteCollaboratorUseCase {
         inviteMessage: input.inviteMessage,
       });
       const updated = await this.collaborationRepo.update(existing);
+      await this.notifyInvitee(invitee.id, campaign.title);
       return toCollaboratorDto(updated);
     }
 
@@ -130,6 +138,22 @@ export class InviteCollaboratorUseCase {
     });
 
     const saved = await this.collaborationRepo.save(collaboration);
+    await this.notifyInvitee(invitee.id, campaign.title);
     return toCollaboratorDto(saved);
+  }
+
+  /** In-app notice so the invitee learns of it without opening Invitations. Best-effort. */
+  private async notifyInvitee(userId: string, campaignTitle: string): Promise<void> {
+    if (!this.notifications) return;
+    try {
+      await this.notifications.save(new NotificationEntity({
+        id: '', userId, type: 'collaboration_invitation', read: false, createdAt: new Date(),
+        title: 'Campaign invitation',
+        body: `You were invited to be listed as a collaborator on "${campaignTitle}". Review it in Invitations.`,
+        path: '/invitations',
+      }));
+    } catch (error) {
+      logger.warn({ err: error, userId }, 'Collaboration invitation notification failed');
+    }
   }
 }

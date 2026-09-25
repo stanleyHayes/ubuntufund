@@ -264,7 +264,7 @@ export default function CampaignDetailPage() {
                     {ROLE_LABELS[c.role]}
                   </Typography>
                   <Typography sx={{ fontSize: '0.68rem', color: 'text.secondary', mt: 0.3 }}>
-                    Revenue share: {c.revenueSharePercent}%
+                    Recorded share (not paid automatically): {c.revenueSharePercent}%
                   </Typography>
                   <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', mt: 0.3, textTransform: 'uppercase' }}>
                     {c.status}

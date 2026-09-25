@@ -497,7 +497,7 @@ export default function CampaignDetailScreen() {
                         {c.displayName}
                       </Text>
                       <Text variant="bodySmall" style={styles.muted}>
-                        {ROLE_LABELS[c.role]} &middot; {c.revenueSharePercent}% share
+                        {ROLE_LABELS[c.role]}
                       </Text>
                     </View>
                   </View>
