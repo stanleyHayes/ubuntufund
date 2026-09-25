@@ -1,7 +1,7 @@
 import { campaignReviewVersion } from '../../domain/services/campaignReviewVersion.js';
 import { isPublicCampaign } from '../../domain/services/campaignVisibility.js';
-import type { Campaign, PaginationParams, PaginatedResponse } from '@ubuntu-fund/types';
-import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js';
+import type { Campaign, PaginatedResponse } from '@ubuntu-fund/types';
+import type { CampaignListQuery, CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js';
 import type { DonationRepositoryPort } from '../../domain/ports/outbound/DonationRepositoryPort.js';
 import type { CampaignEntity } from '../../domain/entities/Campaign.js';
 
@@ -47,7 +47,7 @@ export class GetCampaignUseCase {
     return dto;
   }
 
-  async list(params: PaginationParams, isAdmin = false): Promise<PaginatedResponse<Campaign>> {
+  async list(params: Omit<CampaignListQuery, 'includeNonPublic'>, isAdmin = false): Promise<PaginatedResponse<Campaign>> {
     const page = params.page ?? 1;
     const pageSize = params.pageSize ?? 20;
 

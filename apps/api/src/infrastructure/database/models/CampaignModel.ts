@@ -84,6 +84,9 @@ const campaignSchema = new Schema<CampaignDocument>(
   { timestamps: true }
 );
 
+// The expiry sweep and the effective-status listing filters select on both.
+campaignSchema.index({ status: 1, endDate: 1 });
+
 export const CampaignModel = mongoose.model<CampaignDocument>(
   'Campaign',
   campaignSchema

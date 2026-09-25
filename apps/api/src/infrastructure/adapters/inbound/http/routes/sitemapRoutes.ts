@@ -24,6 +24,9 @@ const MAX_CREATORS = 5_000;
  * Only campaigns a visitor may actually open. Draft, pending-review and blocked
  * campaigns render behind guards, and listing them would invite crawlers to
  * pages that answer with nothing — soft 404s that cost crawl budget.
+ *
+ * Only open campaigns are advertised: one whose end date has passed is closed
+ * even before the expiry sweep re-labels it, and daily/0.8 would misstate it.
  */
 const INDEXABLE_STATUSES = ['active', 'funded'];
 
@@ -57,7 +60,7 @@ export function createSitemapRoutes(): Router {
   router.get('/sitemap.xml', async (_req, res) => {
     try {
       const [campaigns, creators] = await Promise.all([
-        CampaignModel.find({ deletedAt: { $exists: false }, status: { $in: INDEXABLE_STATUSES } })
+        CampaignModel.find({ deletedAt: { $exists: false }, status: { $in: INDEXABLE_STATUSES }, endDate: { $gt: new Date() } })
           .select('slug updatedAt')
           .sort({ updatedAt: -1 })
           .limit(MAX_CAMPAIGNS)

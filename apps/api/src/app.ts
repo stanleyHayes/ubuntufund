@@ -140,6 +140,7 @@ import {
 } from './application/use-cases/ForgotPasswordUseCase.js'
 import { CreateCampaignUseCase } from './application/use-cases/CreateCampaignUseCase.js'
 import { GetCampaignUseCase } from './application/use-cases/GetCampaignUseCase.js'
+import { ExpireEndedCampaignsUseCase } from './application/use-cases/ExpireEndedCampaignsUseCase.js'
 import { GetCampaignBySlugUseCase } from './application/use-cases/GetCampaignBySlugUseCase.js'
 import { SetCampaignSlugUseCase } from './application/use-cases/SetCampaignSlugUseCase.js'
 import { DonateToCampaignUseCase } from './application/use-cases/DonateToCampaignUseCase.js'
@@ -664,6 +665,21 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     new MongoCampaignCreation(),
   )
   const getCampaignUseCase = new GetCampaignUseCase(campaignRepo, donationRepo)
+  // Ended campaigns are re-labelled EXPIRED so Explore, the sitemap and
+  // analytics stop presenting them as open. Plan slots and donation eligibility
+  // already follow the end date itself, so this sweep only corrects the label.
+  const expireEndedCampaignsUseCase = new ExpireEndedCampaignsUseCase(campaignRepo)
+  if (config.nodeEnv !== 'test') {
+    let expiring = false
+    const expiryTimer = setInterval(async () => {
+      if (expiring) return
+      expiring = true
+      try { await expireEndedCampaignsUseCase.execute() }
+      catch (err) { logger.error({ err }, 'Campaign expiry sweep failed') }
+      finally { expiring = false }
+    }, 300_000)
+    expiryTimer.unref()
+  }
   const getCampaignBySlugUseCase = new GetCampaignBySlugUseCase(
     campaignRepo,
     config.publicWebUrl,
@@ -1536,6 +1552,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
   app.locals.clearTerminalTipCheckouts = () => tipRepo.clearTerminalCheckoutCredentials()
   app.locals.accountErasure = accountErasure
   app.locals.reconcileLiveSafety = () => liveSafety.reconcile(liveVideo)
+  app.locals.expireEndedCampaigns = () => expireEndedCampaignsUseCase.execute()
   app.disable('x-powered-by')
   app.use(helmet())
 

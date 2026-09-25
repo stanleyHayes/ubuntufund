@@ -1,12 +1,43 @@
 import { PUBLIC_CAMPAIGN_STATUSES } from '../../../../domain/services/campaignVisibility.js';
-import { CampaignStatus, type PaginationParams } from '@ubuntu-fund/types';
+import { CampaignStatus } from '@ubuntu-fund/types';
+import type { FilterQuery, SortOrder } from 'mongoose';
 import { CampaignEntity } from '../../../../domain/entities/Campaign.js';
 import { Money } from '../../../../domain/value-objects/Money.js';
-import type { CampaignRepositoryPort } from '../../../../domain/ports/outbound/CampaignRepositoryPort.js';
+import type {
+  CampaignListQuery,
+  CampaignListStatus,
+  CampaignRepositoryPort,
+} from '../../../../domain/ports/outbound/CampaignRepositoryPort.js';
 import {
   CampaignModel,
   type CampaignDocument,
 } from '../../../database/models/CampaignModel.js';
+
+/** Statuses that still collect until their end date passes. */
+const OPEN_STATUSES = [CampaignStatus.ACTIVE, CampaignStatus.FUNDED];
+
+/**
+ * Filter on a campaign's effective state. The expiry sweep re-labels ended
+ * campaigns periodically, so between sweeps an ended campaign may still be
+ * stored as ACTIVE/FUNDED: listings must not show it as open.
+ */
+function effectiveStatusFilter(status: CampaignListStatus, now: Date): FilterQuery<CampaignDocument> {
+  switch (status) {
+    case CampaignStatus.ACTIVE:
+    case CampaignStatus.FUNDED:
+      return { status, endDate: { $gt: now } };
+    case 'open':
+      return { status: { $in: OPEN_STATUSES }, endDate: { $gt: now } };
+    case CampaignStatus.EXPIRED:
+      return { $or: [{ status: CampaignStatus.EXPIRED }, { status: { $in: OPEN_STATUSES }, endDate: { $lte: now } }] };
+    default:
+      return { status };
+  }
+}
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 function toDomain(doc: CampaignDocument): CampaignEntity {
   return new CampaignEntity({
@@ -74,21 +105,34 @@ export class MongoCampaignRepository implements CampaignRepositoryPort {
     return doc ? toDomain(doc) : null;
   }
 
-  async findAll(
-    params: PaginationParams & { includeNonPublic?: boolean }
-  ): Promise<{ items: CampaignEntity[]; total: number }> {
+  async findAll(params: CampaignListQuery): Promise<{ items: CampaignEntity[]; total: number }> {
     const page = params.page ?? 1;
     const pageSize = params.pageSize ?? 20;
     const skip = (page - 1) * pageSize;
     const sortField = params.sortBy ?? 'createdAt';
-    const sortOrder = params.sortOrder === 'asc' ? 1 : -1;
+    const sortOrder: SortOrder = params.sortOrder === 'asc' ? 1 : -1;
 
-    const filter = { deletedAt: { $exists: false }, ...(params.includeNonPublic ? {} : { status: { $in: PUBLIC_CAMPAIGN_STATUSES } }) };
+    const conditions: FilterQuery<CampaignDocument>[] = [{ deletedAt: { $exists: false } }];
+    if (!params.includeNonPublic) conditions.push({ status: { $in: PUBLIC_CAMPAIGN_STATUSES } });
+    if (params.status) conditions.push(effectiveStatusFilter(params.status, new Date()));
+    if (params.category) conditions.push({ category: params.category });
+    if (params.q) conditions.push({ title: { $regex: escapeRegex(params.q), $options: 'i' } });
+    const filter: FilterQuery<CampaignDocument> = { $and: conditions };
+
+    // `_id` breaks ties so a page boundary never repeats or skips a campaign.
     const [docs, total] = await Promise.all([
-      CampaignModel.find(filter)
-        .sort({ [sortField]: sortOrder })
-        .skip(skip)
-        .limit(pageSize),
+      sortField === 'fundedPercent'
+        ? CampaignModel.aggregate<CampaignDocument>([
+            { $match: filter },
+            { $addFields: { fundedRatio: { $cond: [{ $gt: ['$goalAmount', 0] }, { $divide: ['$raisedAmount', '$goalAmount'] }, 0] } } },
+            { $sort: { fundedRatio: sortOrder, _id: sortOrder } },
+            { $skip: skip },
+            { $limit: pageSize },
+          ])
+        : CampaignModel.find(filter)
+            .sort({ [sortField]: sortOrder, _id: sortOrder })
+            .skip(skip)
+            .limit(pageSize),
       CampaignModel.countDocuments(filter),
     ]);
 
@@ -163,6 +207,12 @@ export class MongoCampaignRepository implements CampaignRepositoryPort {
    * it would let a creator run unlimited simultaneous campaigns simply by
    * getting each to its goal. Only campaigns that are genuinely finished or
    * never started (EXPIRED / BLOCKED / DRAFT) free their slot.
+   *
+   * "Finished" is decided by the end date, not only the stored status: the
+   * expiry sweep runs periodically, and an ended campaign must free its slot at
+   * once rather than lock a Free organiser out until the next sweep. An ended
+   * PENDING_REVIEW campaign frees its slot too, because staff can no longer
+   * approve it (review refuses expired campaigns).
    */
   async countActiveByCreator(creatorId: string): Promise<number> {
     return CampaignModel.countDocuments({
@@ -171,7 +221,18 @@ export class MongoCampaignRepository implements CampaignRepositoryPort {
       status: {
         $in: [CampaignStatus.ACTIVE, CampaignStatus.PENDING_REVIEW, CampaignStatus.FUNDED],
       },
+      endDate: { $gt: new Date() },
     });
+  }
+
+  async expireEnded(now: Date): Promise<number> {
+    // Status only: balances, splits and payouts key on the ledger, never on
+    // this label, and donations were already refused once the end date passed.
+    const result = await CampaignModel.updateMany(
+      { deletedAt: { $exists: false }, status: { $in: OPEN_STATUSES }, endDate: { $lte: now } },
+      { $set: { status: CampaignStatus.EXPIRED } }
+    );
+    return result.modifiedCount;
   }
 
   async incrementRaised(

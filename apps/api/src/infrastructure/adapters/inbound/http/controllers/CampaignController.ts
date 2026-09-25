@@ -9,7 +9,50 @@ import { AppError } from '../../middleware/errorHandler.js';
 
 import type { PlanLimitsService } from '../../../../../application/services/PlanLimitsService.js';
 import type { UserRepositoryPort } from '../../../../../domain/ports/outbound/UserRepositoryPort.js';
-import type { CampaignRepositoryPort } from '../../../../../domain/ports/outbound/CampaignRepositoryPort.js';
+import {
+  CAMPAIGN_LIST_SORT_FIELDS,
+  type CampaignListQuery,
+  type CampaignListSortField,
+  type CampaignListStatus,
+  type CampaignRepositoryPort,
+} from '../../../../../domain/ports/outbound/CampaignRepositoryPort.js';
+import { CampaignCategory, CampaignStatus } from '@ubuntu-fund/types';
+
+const MAX_PAGE_SIZE = 100;
+const MAX_SEARCH_LENGTH = 100;
+/** Effective statuses anyone may filter public listings by. */
+const PUBLIC_LIST_STATUSES: CampaignListStatus[] = [CampaignStatus.ACTIVE, CampaignStatus.FUNDED, CampaignStatus.EXPIRED, 'open'];
+/** Staff can also find campaigns that are not public (e.g. the pending-review queue). */
+const ADMIN_LIST_STATUSES: CampaignListStatus[] = [...PUBLIC_LIST_STATUSES, CampaignStatus.PENDING_REVIEW, CampaignStatus.BLOCKED, CampaignStatus.DRAFT];
+
+function queryString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+}
+
+/** Parse and bound the public listing query; unknown filters are refused rather than ignored. */
+function parseListQuery(query: Record<string, unknown>, isAdmin: boolean): CampaignListQuery {
+  const page = Math.max(1, parseInt(queryString(query.page) ?? '', 10) || 1);
+  const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, parseInt(queryString(query.pageSize) ?? '', 10) || 20));
+  const sortBy = queryString(query.sortBy) ?? 'createdAt';
+  if (!(CAMPAIGN_LIST_SORT_FIELDS as readonly string[]).includes(sortBy)) throw new AppError('Unsupported sort field', 400);
+  const sortOrder = queryString(query.sortOrder) ?? 'desc';
+  if (sortOrder !== 'asc' && sortOrder !== 'desc') throw new AppError('Unsupported sort order', 400);
+  let status = queryString(query.status);
+  if (status && !ADMIN_LIST_STATUSES.includes(status as CampaignListStatus)) throw new AppError('Unsupported status filter', 400);
+  // Like a spoofed `includeNonPublic`, a non-staff request for a non-public
+  // state is ignored: the listing stays public-only either way.
+  if (status && !isAdmin && !PUBLIC_LIST_STATUSES.includes(status as CampaignListStatus)) status = undefined;
+  const category = queryString(query.category);
+  if (category && !(Object.values(CampaignCategory) as string[]).includes(category)) throw new AppError('Unsupported category filter', 400);
+  const q = queryString(query.q);
+  if (q && q.length > MAX_SEARCH_LENGTH) throw new AppError(`Search is limited to ${MAX_SEARCH_LENGTH} characters`, 400);
+  return {
+    page, pageSize, sortBy: sortBy as CampaignListSortField, sortOrder,
+    ...(status ? { status: status as CampaignListStatus } : {}),
+    ...(category ? { category: category as CampaignCategory } : {}),
+    ...(q ? { q } : {}),
+  };
+}
 
 export class CampaignController {
   constructor(
@@ -137,17 +180,8 @@ export class CampaignController {
     next: NextFunction
   ): Promise<void> => {
     try {
-      const page = parseInt(req.query.page as string) || 1;
-      const pageSize = parseInt(req.query.pageSize as string) || 20;
-      const sortBy = (req.query.sortBy as string) ?? 'createdAt';
-      const sortOrder = (req.query.sortOrder as 'asc' | 'desc') ?? 'desc';
-
-      const result = await this.getCampaignUseCase.list({
-        page,
-        pageSize,
-        sortBy,
-        sortOrder,
-      }, req.userRole === 'admin');
+      const isAdmin = req.userRole === 'admin';
+      const result = await this.getCampaignUseCase.list(parseListQuery(req.query, isAdmin), isAdmin);
 
       res.json({
         data: result,
