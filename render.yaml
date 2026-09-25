@@ -60,7 +60,9 @@ services:
         # Only set "false" if Paystack enables Transfer Approval for the account
         # and turns out not to sign these — otherwise every transfer is declined.
         value: "true"
-      # OpenAI campaign writing. Add the server-only key manually on existing services.
+      # OpenAI: campaign writing AND publication/content safety screening (required;
+      # without it every opted-in submission goes to manual staff review). Add the
+      # server-only key manually on existing services.
       - key: AI_WRITING_ENABLED
         value: "true"
       - key: OPENAI_API_KEY

@@ -20,6 +20,8 @@ const REPORT_REASONS: ReportReason[] = [
   'inappropriate_content',
   'spam',
   'illegal_activity',
+  'intellectual_property',
+  'privacy',
   'other',
 ];
 

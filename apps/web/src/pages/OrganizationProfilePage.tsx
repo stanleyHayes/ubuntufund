@@ -16,12 +16,9 @@ import Skeleton from '@mui/material/Skeleton'
 import VerifiedRoundedIcon from '@mui/icons-material/VerifiedRounded'
 import LocationOnRoundedIcon from '@mui/icons-material/LocationOnRounded'
 import CalendarTodayRoundedIcon from '@mui/icons-material/CalendarTodayRounded'
-import PeopleRoundedIcon from '@mui/icons-material/PeopleRounded'
 import LaunchRoundedIcon from '@mui/icons-material/LaunchRounded'
 import FavoriteRoundedIcon from '@mui/icons-material/FavoriteRounded'
 import ShareRoundedIcon from '@mui/icons-material/ShareRounded'
-import PersonAddRoundedIcon from '@mui/icons-material/PersonAddRounded'
-import PersonRemoveRoundedIcon from '@mui/icons-material/PersonRemoveRounded'
 import CampaignRoundedIcon from '@mui/icons-material/CampaignRounded'
 import { keyframes } from '@mui/material/styles'
 import { CurrencyDisplay, EmptyState, ItemNotFound, SHAPE, breadcrumbList, organization } from '@ubuntu-fund/ui'
@@ -33,6 +30,7 @@ import { ProfileImageEditor } from '@/components/profile/ProfileImageEditor'
 import PhotoCameraRoundedIcon from '@mui/icons-material/PhotoCameraRounded'
 import { CampaignCard } from '@/components/campaigns/CampaignCard'
 import { useSeo, SITE_ORIGIN } from '@/lib/seo'
+import { UserSafetyControls } from '@/components/safety/UserSafetyControls'
 
 interface Organization {
   id: string
@@ -78,12 +76,6 @@ function formatCategory(c: string) {
   return c.charAt(0).toUpperCase() + c.slice(1).replace(/_/g, ' ')
 }
 
-function formatNumber(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`
-  return n.toString()
-}
-
 /** Collapse whitespace and trim to `max` characters at a word boundary. */
 function clip(text: string, max: number): string {
   const clean = text.replace(/\s+/g, ' ').trim()
@@ -115,7 +107,7 @@ function OrganizationProfileForViewer() {
   const [failedCover, setFailedCover] = useState<string | null>(null)
   const [imageEditor, setImageEditor] = useState<'coverUrl' | 'avatarUrl' | null>(null)
   const [imageSaved, setImageSaved] = useState(false)
-  const [following, setFollowing] = useState(false)
+  const [blocked, setBlocked] = useState(false)
   const [snackOpen, setSnackOpen] = useState(false)
   const [org, setOrg] = useState<Organization | null>(null)
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
@@ -203,11 +195,12 @@ function OrganizationProfileForViewer() {
     )
   }
 
-  if (!org) {
+  if (!org || blocked) {
     return (
       <Container maxWidth="sm" sx={{ py: 8 }}>
         <ItemNotFound
           itemType="Organization"
+          message={blocked ? 'You blocked this organization, so its profile is hidden from you.' : undefined}
           onBack={() => navigate('/organizations')}
         />
       </Container>
@@ -332,15 +325,6 @@ function OrganizationProfileForViewer() {
               Raised
             </Typography>
           </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <PeopleRoundedIcon sx={{ color: 'primary.main' }} />
-            <Typography variant="h6" sx={{ fontWeight: 700 }}>
-              {formatNumber(org.followerCount)}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Followers
-            </Typography>
-          </Box>
         </Box>
 
         {/* ─── Action Buttons ────────────────────────────── */}
@@ -353,15 +337,6 @@ function OrganizationProfileForViewer() {
             animation: `${fadeInUp} 0.6s ease-out 0.25s both`,
           }}
         >
-          <Button
-            variant={following ? 'outlined' : 'contained'}
-            color="primary"
-            startIcon={following ? <PersonRemoveRoundedIcon /> : <PersonAddRoundedIcon />}
-            onClick={() => setFollowing((prev) => !prev)}
-            sx={{ textTransform: 'none', fontWeight: 600 }}
-          >
-            {following ? 'Following' : 'Follow'}
-          </Button>
           <Button
             variant="outlined"
             color="primary"
@@ -384,6 +359,8 @@ function OrganizationProfileForViewer() {
               Website
             </Button>
           )}
+          {/* Report or block the organization, as on the native profile. */}
+          <UserSafetyControls userId={org.id} onBlocked={() => setBlocked(true)} />
         </Box>
 
         {/* ─── Impact Statement ──────────────────────────── */}

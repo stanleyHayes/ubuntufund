@@ -37,6 +37,7 @@ import { useCreateCampaign } from '@/hooks/useCampaigns'
 import Alert from '@mui/material/Alert'
 import { api } from '@/lib/api'
 import { uploadImageViaApi } from '@/lib/uploadImage'
+import { clearPublicationDraft, publicationDraftKey, readPublicationDraft, writePublicationDraft } from '@/lib/publicationDrafts'
 import { useCampaignCreationOptions } from '@/hooks/useCampaignCreationOptions'
 import { CampaignCreationExtras, type SplitRow } from './CampaignCreationExtras'
 import { ShareCampaignButton } from './ShareCampaignButton'
@@ -136,7 +137,9 @@ const STEPS = [
 
 // Fields validated on each step (priority always has a value)
 const STEP_FIELDS: Record<number, (keyof FormErrors)[]> = {
-  0: ['title', 'summary', 'category'],
+  // No separate summary: the API has no field for it, so it was silently
+  // dropped. Share cards derive their summary from the story.
+  0: ['title', 'category'],
   1: ['description', 'beneficiaries', 'coverImageUrl'],
   2: ['goalAmount', 'endDate'],
   3: [],
@@ -144,7 +147,6 @@ const STEP_FIELDS: Record<number, (keyof FormErrors)[]> = {
 
 interface FormData {
   title: string
-  summary: string
   category: CampaignCategory | ''
   description: string
   beneficiaries: string
@@ -157,7 +159,6 @@ interface FormData {
 
 interface FormErrors {
   title?: string
-  summary?: string
   category?: string
   description?: string
   beneficiaries?: string
@@ -182,9 +183,6 @@ function validate(data: FormData): FormErrors {
   if (!data.title.trim()) e.title = 'Give your campaign a title'
   else if (data.title.trim().length < 5) e.title = 'Use at least 5 characters'
 
-  if (!data.summary.trim()) e.summary = 'Add a one-line summary'
-  else if (data.summary.trim().length < 10) e.summary = 'A little more detail — 10+ characters'
-  else if (data.summary.length > 140) e.summary = 'Keep it under 140 characters'
 
   if (!data.category) e.category = 'Pick a category'
 
@@ -205,6 +203,33 @@ function validate(data: FormData): FormErrors {
 }
 
 const todayIso = new Date().toISOString().split('T')[0]
+
+const EMPTY_FORM: FormData = {
+  title: '',
+  category: '',
+  description: '',
+  beneficiaries: '',
+  coverImageUrl: '',
+  goalAmount: '',
+  currency: 'GHS',
+  endDate: '',
+  priority: CampaignPriority.NORMAL,
+}
+
+/** Accept only a well-formed saved draft; anything else starts a fresh form. */
+function parseFormDraft(value: unknown): FormData | null {
+  if (!value || typeof value !== 'object') return null
+  const draft = value as Record<string, unknown>
+  const text = (key: keyof FormData) => (typeof draft[key] === 'string' ? (draft[key] as string) : '')
+  const category = (Object.values(CampaignCategory) as string[]).includes(text('category')) ? (text('category') as CampaignCategory) : ''
+  const priority = (Object.values(CampaignPriority) as string[]).includes(text('priority')) ? (text('priority') as CampaignPriority) : CampaignPriority.NORMAL
+  const form: FormData = {
+    title: text('title'), category, description: text('description'),
+    beneficiaries: text('beneficiaries'), coverImageUrl: text('coverImageUrl'), goalAmount: text('goalAmount'),
+    currency: 'GHS', endDate: text('endDate'), priority,
+  }
+  return JSON.stringify(form) === JSON.stringify(EMPTY_FORM) ? null : form
+}
 
 // ---------------------------------------------------------------------------
 // Small presentational atoms
@@ -419,9 +444,9 @@ function ReviewItem({ label, children }: { label: string; children: ReactNode })
 // ---------------------------------------------------------------------------
 export function CampaignForm() {
   const { user } = useAuth()
-  return <CampaignFormForViewer key={user?.id ?? 'guest'} />
+  return <CampaignFormForViewer key={user?.id ?? 'guest'} userId={user?.id ?? null} />
 }
-function CampaignFormForViewer() {
+function CampaignFormForViewer({ userId }: { userId: string | null }) {
   const live = useRef(true)
   useEffect(() => { live.current = true; return () => { live.current = false } }, [])
   const { options, error: optionsError, retry } = useCampaignCreationOptions()
@@ -468,18 +493,27 @@ function CampaignFormForViewer() {
                 rows.reduce((sum, row) => sum + Math.round(Number(row.percent) * 100), 0) !== 10000)
             ? 'Check split eligibility, names, emails, and shares totalling 100% (up to two decimals).'
             : ''
-  const [formData, setFormData] = useState<FormData>({
-    title: '',
-    summary: '',
-    category: '',
-    description: '',
-    beneficiaries: '',
-    coverImageUrl: '',
-    goalAmount: '',
-    currency: 'GHS',
-    endDate: '',
-    priority: CampaignPriority.NORMAL,
-  })
+  // The exact submitted version (cover included) survives closing the tab, so
+  // a campaign held for safety review can be resubmitted unchanged once
+  // approved: any change, even a re-uploaded cover, needs a new review.
+  const draftKey = userId ? publicationDraftKey('campaign', userId) : null
+  const [restoredDraft] = useState(() => (draftKey ? readPublicationDraft(draftKey, parseFormDraft) : null))
+  const [draftNotice, setDraftNotice] = useState(restoredDraft !== null)
+  const [formData, setFormData] = useState<FormData>(() => restoredDraft ?? EMPTY_FORM)
+  useEffect(() => {
+    if (!draftKey) return
+    if (JSON.stringify(formData) === JSON.stringify(EMPTY_FORM)) clearPublicationDraft(draftKey)
+    else writePublicationDraft(draftKey, formData)
+  }, [draftKey, formData])
+  function discardDraft() {
+    setFormData(EMPTY_FORM)
+    setTouched({})
+    setStep(0)
+    setDraftNotice(false)
+  }
+  // One Idempotency-Key per submitted version: a resubmit after a lost
+  // response returns the campaign already created instead of a duplicate.
+  const creationKey = useRef<{ payload: string; key: string } | null>(null)
   const [touched, setTouched] = useState<Partial<Record<keyof FormErrors, boolean>>>({})
   const [step, setStep] = useState(0)
   const [submitted, setSubmitted] = useState(false)
@@ -552,7 +586,6 @@ function CampaignFormForViewer() {
     if (Object.keys(all).length > 0) {
       setTouched({
         title: true,
-        summary: true,
         category: true,
         description: true,
         beneficiaries: true,
@@ -569,24 +602,26 @@ function CampaignFormForViewer() {
     }
 
     const cover = formData.coverImageUrl.trim()
+    const payload = {
+      title: formData.title.trim(),
+      category: formData.category as CampaignCategory,
+      description: formData.description.trim(),
+      beneficiaries: parseBeneficiaries(formData.beneficiaries),
+      imageUrls: cover ? [cover] : [],
+      goalAmount: Number(formData.goalAmount),
+      currency: 'GHS',
+      // The date input yields a date-only value ("YYYY-MM-DD"); the API expects
+      // a full ISO datetime (z.string().datetime()), so widen it before sending.
+      endDate: new Date(`${formData.endDate}T00:00:00.000Z`).toISOString(),
+      priority: formData.priority,
+    }
+    const signature = JSON.stringify(payload)
+    if (creationKey.current?.payload !== signature) creationKey.current = { payload: signature, key: crypto.randomUUID() }
     try {
-      const created = await createCampaign({
-        automatedReviewConsent,
-        title: formData.title.trim(),
-        summary: formData.summary.trim(),
-        category: formData.category as CampaignCategory,
-        description: formData.description.trim(),
-        beneficiaries: parseBeneficiaries(formData.beneficiaries),
-        imageUrls: cover ? [cover] : [],
-        goalAmount: Number(formData.goalAmount),
-        currency: 'GHS',
-        // The date input yields a date-only value ("YYYY-MM-DD"); the API expects
-        // a full ISO datetime (z.string().datetime()), so widen it before sending.
-        endDate: new Date(`${formData.endDate}T00:00:00.000Z`).toISOString(),
-        priority: formData.priority,
-      })
+      const created = await createCampaign({ automatedReviewConsent, ...payload }, creationKey.current.key)
       if (!live.current) return
       if (!created?.id) throw new Error('Campaign creation did not return an ID')
+      if (draftKey) clearPublicationDraft(draftKey)
       setCreatedId(created.id)
       setCreatedStatus(created.status)
       setSetupBusy(true)
@@ -761,6 +796,16 @@ function CampaignFormForViewer() {
         (business verification for organizations) and an earlier published campaign. Plan, compliance
         and content-safety checks still apply.
       </Typography>
+      {draftNotice && (
+        <Alert
+          severity="info"
+          sx={{ mb: 2 }}
+          onClose={() => setDraftNotice(false)}
+          action={<Button color="inherit" size="small" onClick={discardDraft}>Start over</Button>}
+        >
+          We restored your unsent draft from this browser. If it is waiting for safety review, submit this same version again once it is approved.
+        </Alert>
+      )}
       {!options && !optionsError && (
         <Alert severity="info" sx={{ mb: 2 }}>
           Checking your campaign limits…
@@ -852,21 +897,6 @@ function CampaignFormForViewer() {
               fullWidth
               sx={fieldSx}
               slotProps={{ htmlInput: { maxLength: 90 } }}
-            />
-
-            <TextField
-              label="Short summary"
-              placeholder="One sentence on what you're raising for and why."
-              value={formData.summary}
-              onChange={change('summary')}
-              onBlur={blur('summary')}
-              error={errFor('summary')}
-              helperText={helperFor('summary', `${formData.summary.length}/140`)}
-              fullWidth
-              multiline
-              rows={2}
-              sx={fieldSx}
-              slotProps={{ htmlInput: { maxLength: 140 } }}
             />
 
             <Box>
@@ -1153,7 +1183,6 @@ function CampaignFormForViewer() {
           >
             <ReviewSection title="Basics" onEdit={() => setStep(0)}>
               <ReviewItem label="Title">{formData.title || '—'}</ReviewItem>
-              <ReviewItem label="Summary">{formData.summary || '—'}</ReviewItem>
               <ReviewItem label="Category">
                 {formData.category
                   ? CATEGORIES.find((c) => c.value === formData.category)?.label

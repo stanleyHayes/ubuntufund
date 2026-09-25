@@ -12,6 +12,8 @@ import { UserModel } from '../../../../database/models/UserModel.js'
 import { OrganizationMemberModel as Members } from '../../../../database/models/OrganizationMemberModel.js'
 import { CampaignModel } from '../../../../database/models/CampaignModel.js'
 import { CampaignUpdateModel } from '../../../../database/models/CampaignUpdateModel.js'
+import { NotificationModel } from '../../../../database/models/NotificationModel.js'
+import { logger } from '../../../../logging/logger.js'
 import { AppError } from '../../middleware/errorHandler.js'
 import type { AuthenticatedRequest } from '../../middleware/authMiddleware.js'
 
@@ -210,6 +212,22 @@ export function createOrganizationTeamRoutes(auth: RequestHandler, admission: Pu
         },
         { upsert: true, new: true },
       )
+      // In-app notice when the invitee already has an account, so they learn
+      // of it without opening the workspace page. No email is sent (whether to
+      // email people without accounts is an owner decision). Best-effort, and
+      // the response is the same either way, so it reveals no account.
+      try {
+        const invitee = await UserModel.findOne({ email: input.email, deletedAt: null }).select('_id').lean()
+        if (invitee) {
+          await NotificationModel.create({
+            userId: String(invitee._id), type: 'organization_invitation', path: '/organization-team', read: false,
+            title: 'Organization invitation',
+            body: `${org.organizationName || org.name} invited you to its team as ${input.role}. Accept it in Organization workspace & team within seven days.`,
+          })
+        }
+      } catch (error) {
+        logger.warn({ err: error, organizationId }, 'Organization invitation notification failed')
+      }
       return {
         id: String(member._id),
         message:

@@ -5,6 +5,12 @@ export interface ShortLinkTargetParams {
   /** The campaign's slug when available, otherwise its id. */
   campaignRef: string;
   creatorId: string;
+  /**
+   * The organiser's creator-page handle. A 'creator' link points at
+   * /creators/:handle; without one it falls back to the campaign page (web and
+   * native have no /u/:userId route).
+   */
+  creatorHandle?: string;
   liveSessionId?: string;
   presetAmount?: number;
   label?: string;
@@ -38,7 +44,9 @@ export function buildShortLinkTarget(
         : donate;
     }
     case 'creator':
-      return `${base}/u/${params.creatorId}`;
+      return params.creatorHandle
+        ? `${base}/creators/${encodeURIComponent(params.creatorHandle)}`
+        : campaign;
     case 'event':
       return params.label
         ? `${campaign}?ref=${encodeURIComponent(params.label)}`

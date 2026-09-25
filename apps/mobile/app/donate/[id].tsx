@@ -19,6 +19,7 @@ import { anonymousDonationDefaults } from '@/lib/donationDefaults'
 import { parseMoneyInput } from '@/lib/moneyInput'
 import { CouponSurface } from '@ubuntu-fund/types'
 import ExternalFundraisingScreen from '@/screens/ExternalFundraisingScreen'
+import { SplitDisclosure } from '@/components/SplitDisclosure'
 
 export default function DonateScreen() {
   return Platform.OS === 'ios' ? <ExternalFundraisingScreen /> : <InAppDonateScreen />
@@ -123,6 +124,7 @@ function InAppDonateScreen() {
     <Text style={{ fontFamily: 'Outfit_800ExtraBold', fontSize: 26, color: p.text }}>{campaign?.title || 'Campaign donation'}</Text>
     {campaignError && <Text style={{ color: p.error }}>{campaignError}</Text>}
     {currentPending ? <PaymentStatus key={currentPending.id} payment={currentPending} onReset={() => { void clearPending(scope).then(() => setPending(null)) }} /> : !campaign || !acceptsCampaignDonation(campaign) ? <Text>This campaign is not accepting donations.</Text> : <View style={{ ...neu.raised, backgroundColor: p.surface, padding: 20, borderRadius: 24, gap: 16 }}>
+      <SplitDisclosure campaignId={campaign.id} />
       <TextInput label={`Amount (${campaign.currency})`} keyboardType="decimal-pad" value={amount} onChangeText={setAmount} />
       <TextInput label="Email" keyboardType="email-address" autoCapitalize="none" value={email} onChangeText={setEmail} />
       <TextInput label="Name (optional)" value={name} onChangeText={setName} />

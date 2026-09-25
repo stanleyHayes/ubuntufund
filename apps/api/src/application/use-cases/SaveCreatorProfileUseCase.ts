@@ -47,9 +47,12 @@ export class SaveCreatorProfileUseCase {
       currency: input.currency ?? before.currency, thankYouMessage: input.thankYouMessage ?? before.thankYouMessage,
     };
     const pauseOnly = !!current && input.tipsEnabled === false && JSON.stringify({ ...fields, tipsEnabled: before.tipsEnabled }) === JSON.stringify(before);
-    const publicChange = !current || (!pauseOnly && JSON.stringify(fields) !== JSON.stringify(before));
+    const changedKeys = (Object.keys(fields) as (keyof typeof fields)[]).filter(key => JSON.stringify(fields[key]) !== JSON.stringify(before[key]));
+    // Removing a creator photo publishes nothing new, so it applies at once.
+    const withdrawalOnly = !!current && changedKeys.length > 0 && changedKeys.every(key => (key === 'avatarUrl' || key === 'coverUrl') && fields[key] === '');
+    const publicChange = !current || (!pauseOnly && !withdrawalOnly && changedKeys.length > 0);
     if (!CreatorProfileEntity.isValidHandle(fields.handle) || fields.displayName.length < 2) throw new AppError('A valid handle and display name are required.', 400);
-    if (!pauseOnly) {
+    if (!pauseOnly && !withdrawalOnly) {
       await this.plans.assertCreatorDonations(userId);
       if (fields.currency !== 'GHS') throw new AppError('Creator pages must use GHS.', 422);
       const existing = await this.profileRepo.findByHandle(fields.handle);
@@ -57,10 +60,12 @@ export class SaveCreatorProfileUseCase {
     }
     if (publicChange) {
       if (!this.admission) throw new AppError('Creator safety review is unavailable', 503);
-      const { avatarUrl, coverUrl } = fields;
+      // Only newly proposed images need media inspection; unchanged ones are
+      // already public. The complete page stays bound in the text.
+      const newMedia = (['avatarUrl', 'coverUrl'] as const).filter(key => fields[key] && fields[key] !== before[key]).map(key => fields[key]);
       await this.admission.assertAllowed({ actorId: userId, action: 'creator.profile', resourceId: userId,
         baseVersion: current ? String(current.revision) : 'new', text: JSON.stringify(fields),
-        mediaUrls: [avatarUrl, coverUrl].filter(Boolean), automatedReviewConsent: input.automatedReviewConsent });
+        mediaUrls: newMedia, automatedReviewConsent: input.automatedReviewConsent });
       await this.plans.assertCreatorDonations(userId);
     }
     if (!this.uow) throw new AppError('Creator profile persistence is unavailable', 503);

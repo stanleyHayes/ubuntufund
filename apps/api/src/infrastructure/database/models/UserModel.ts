@@ -15,6 +15,8 @@ export interface UserDocument extends Document {
   recoveryEmailRequestedAt?: Date;
   verificationEmailRequestedAt?: Date;
   avatarUrl?: string;
+  /** The avatar URL that last passed staff media review on the account-profile path. */
+  reviewedAvatarUrl?: string;
   coverUrl?: string;
   role: UserRole;
   verificationLevel: VerificationLevel;
@@ -55,6 +57,7 @@ const userSchema = new Schema<UserDocument>(
     recoveryEmailRequestedAt: { type: Date },
     verificationEmailRequestedAt: { type: Date },
     avatarUrl: { type: String },
+    reviewedAvatarUrl: { type: String },
     coverUrl: { type: String },
     role: {
       type: String,

@@ -14,6 +14,8 @@ export function resolveNativePath(input: string): string {
     if (parts[0] === 'c' && parts[1] && parts[2] === 'live' && parts[3]) return `/live/${parts[3]}`
     if (parts[0] === 'c' && parts[1]) return `/campaign/shared?slug=${encodeURIComponent(parts[1])}${parts[2] === 'donate' ? '&donate=1' : ''}${url.searchParams.has('amount') ? '&amount=' + encodeURIComponent(url.searchParams.get('amount') || '') : ''}`
     if (parts[0] === 'organizations' && parts[1]) return `/organization/${encodeURIComponent(parts[1])}`
+    // Early creator QR codes pointed at /u/:userId, which no route handles.
+    if (parts[0] === 'u' && parts[1]) return `/profile/${encodeURIComponent(parts[1])}`
     if (path === '/profile') return '/(tabs)/profile'
     if (path === '/subscription' || path === '/subscription/callback' || path === '/subscriptions/callback') return '/(tabs)/subscription'
     if (path === '/campaigns') return '/(tabs)/explore'

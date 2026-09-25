@@ -8,6 +8,7 @@ import type { CampaignCommentRepositoryPort, CampaignCommentRecord } from '../..
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js';
 import type { UserRepositoryPort } from '../../domain/ports/outbound/UserRepositoryPort.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
+import { publicationFingerprint } from '../../domain/services/publicationFingerprint.js';
 
 export class CampaignCommentUseCases {
   constructor(
@@ -50,8 +51,13 @@ export class CampaignCommentUseCases {
     const author = await this.users.findById(authorId);
     if (!author) throw new AppError('The publishing account is unavailable', 401);
     // Attribution is public content too, including a name entered at signup.
+    // An avatar that already passed staff media review on the profile is bound
+    // into the screened text instead of holding every comment for staff again;
+    // a legacy or unreviewed avatar is still inspected as media.
+    const reviewedAvatar = author.hasReviewedAvatar;
     const submission: PublicationSubmission = { actorId: authorId, action: 'comment.create', resourceId: campaignId,
-      text: JSON.stringify({ authorName: author.name, comment: content }), mediaUrls: author.avatarUrl ? [author.avatarUrl] : [], automatedReviewConsent: input.automatedReviewConsent };
+      text: JSON.stringify({ authorName: author.name, ...(reviewedAvatar ? { authorAvatarUrl: author.avatarUrl } : {}), comment: content }),
+      mediaUrls: author.avatarUrl && !reviewedAvatar ? [author.avatarUrl] : [], automatedReviewConsent: input.automatedReviewConsent };
     await this.admission.assertAllowed(submission);
     if (!this.creation || !this.admission.assertCurrent) throw new AppError('Comment publication verification is unavailable', 503);
     return this.creation.run(authorId, authVersion, campaignId, campaign.creatorId, async () => {
@@ -61,7 +67,7 @@ export class CampaignCommentUseCases {
         throw new AppError('Your public identity changed during review. Refresh and submit again.', 409);
       }
       if (this.blocks && await this.blocks.isBlocked(authorId, campaign.creatorId)) throw new AppError('You cannot comment on this campaign', 403);
-      return this.toDTO(await this.comments.create(campaignId, authorId, content, { authorName: author.name, authorAvatarUrl: author.avatarUrl }));
+      return this.toDTO(await this.comments.create(campaignId, authorId, content, { authorName: author.name, authorAvatarUrl: author.avatarUrl, publicationFingerprint: publicationFingerprint(submission) }));
     });
   }
 

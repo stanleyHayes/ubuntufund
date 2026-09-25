@@ -6,6 +6,9 @@ export function requiresContentAcceptance(method: string, originalUrl: string, b
   if (path === '/uploads/image' && new URL(originalUrl, 'https://local.invalid').searchParams.get('folder')?.toLowerCase() === 'kyc') return false;
   if (typeof body?.message === 'string' && body.message.trim() && (path === '/donation-intents' || /^\/campaigns\/[^/]+\/donate$/.test(path) || /^\/creators\/[^/]+\/tips$/.test(path) || /^\/campaigns\/[^/]+\/donations\/crypto$/.test(path))) return true;
   if (path === '/creators/profile' && body?.tipsEnabled === false && Object.keys(body).every(key => key === 'tipsEnabled')) return false;
+  // Removing a creator photo publishes nothing, so restrictions never block it.
+  if (path === '/creators/profile' && body && Object.keys(body).some(key => key === 'avatarUrl' || key === 'coverUrl') &&
+    Object.entries(body).every(([key, value]) => ((key === 'avatarUrl' || key === 'coverUrl') && value === '') || key === 'automatedReviewConsent')) return false;
   if (path === '/profile') return ['name', 'country', 'avatarUrl', 'coverUrl'].some(key => !!body?.[key]) || body?.publicProfile === true;
   return /^\/campaigns\/[^/]+$/.test(path) || path === '/campaigns' || path === '/creators/profile' || path.startsWith('/uploads') ||
     /^\/organization-team\/[^/]+\/(profile|campaigns\/[^/]+\/updates)$/.test(path) ||

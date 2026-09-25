@@ -322,7 +322,7 @@ function OrganizationTeamForViewer() {
                                 email,
                                 role,
                               }),
-                            'Invitation created. Share this workspace link with the recipient; no email has been sent.',
+                            'Invitation created. If the recipient already has an account, it appears in their notifications; no email has been sent, so also share this workspace link with them.',
                           )
                         }
                       >

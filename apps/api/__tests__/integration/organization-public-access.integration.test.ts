@@ -112,3 +112,26 @@ it('shows verification only for the latest approved unexpired business review wi
   await assertBadge(true);
   expect((await UserModel.findById(owner.id))?.verificationLevel).toBe(3);
 });
+
+it('totals every public campaign in one currency on the server and resolves a shared slug to the oldest organization', async () => {
+  const { CampaignModel } = await import('../../src/infrastructure/database/models/CampaignModel.js');
+  const owner = await register();
+  const base = { description: 'Organization campaign', goalAmount: 1000, category: 'community', creatorId: owner.id, startDate: new Date(), endDate: new Date(Date.now() + 86400000) };
+  await CampaignModel.create([
+    { ...base, title: 'Cedi campaign one', currency: 'GHS', raisedAmount: 300, status: 'active' },
+    { ...base, title: 'Cedi campaign two', currency: 'GHS', raisedAmount: 200, status: 'expired' },
+    // A legacy foreign-currency amount must not be added to cedis.
+    { ...base, title: 'Legacy dollar campaign', currency: 'USD', raisedAmount: 999, status: 'funded' },
+    { ...base, title: 'Held campaign', currency: 'GHS', raisedAmount: 5000, status: 'pending_review' },
+  ]);
+  const list = await request(app).get('/api/v1/organizations').expect(200);
+  expect(list.body.data.find((item: { id: string }) => item.id === owner.id)).toMatchObject({ campaignCount: 3, totalRaised: 500, currency: 'GHS' });
+  const detail = await request(app).get(`/api/v1/organizations/${owner.id}`).expect(200);
+  expect(detail.body.data).toMatchObject({ campaignCount: 3, totalRaised: 500, currency: 'GHS' });
+
+  // A newer organization registering the same name does not take over the slug URL.
+  const newer = await register();
+  await UserModel.updateOne({ _id: newer.id }, { $set: { organizationName: owner.name } });
+  const bySlug = await request(app).get(`/api/v1/organizations/${deriveOrganizationSlug(owner.name)}`).expect(200);
+  expect(bySlug.body.data.id).toBe(owner.id);
+});

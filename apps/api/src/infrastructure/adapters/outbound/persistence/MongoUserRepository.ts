@@ -15,6 +15,7 @@ function toDomain(doc: UserDocument): UserEntity {
     passwordHash: doc.passwordHash,
     authVersion: doc.authVersion,
     avatarUrl: doc.avatarUrl,
+    reviewedAvatarUrl: doc.reviewedAvatarUrl,
     coverUrl: doc.coverUrl,
     role: doc.role,
     verificationLevel: doc.verificationLevel,

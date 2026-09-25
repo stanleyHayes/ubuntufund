@@ -49,6 +49,7 @@ import { CouponSurface } from '@ubuntu-fund/types'
 import { CryptoDonatePanel } from '@/components/donate/CryptoDonatePanel'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
+import { SplitDisclosure } from '@/components/campaigns/SplitDisclosure'
 
 // ---------------------------------------------------------------------------
 // Animations
@@ -422,6 +423,8 @@ export function DonatePage() {
           This campaign isn't accepting donations right now.
         </Alert>
       )}
+
+      <SplitDisclosure campaignId={campaign.id} sx={{ mb: 3 }} />
 
       {paymentsDisabled && (
         <Alert

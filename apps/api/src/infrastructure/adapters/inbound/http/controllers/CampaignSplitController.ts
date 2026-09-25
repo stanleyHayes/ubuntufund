@@ -1,4 +1,4 @@
-import type { Request, Response, NextFunction } from 'express';
+import type { Response, NextFunction } from 'express';
 import type { AuthenticatedRequest } from '../../middleware/authMiddleware.js';
 import type { CampaignSplitUseCase } from '../../../../../application/use-cases/CampaignSplitUseCase.js';
 import { AppError } from '../../middleware/errorHandler.js';
@@ -31,13 +31,14 @@ export class CampaignSplitController {
 
   /** GET /campaigns/:id/split — donor-facing disclosure of the active split. */
   getDisclosure = async (
-    req: Request,
+    req: AuthenticatedRequest,
     res: Response,
     next: NextFunction
   ): Promise<void> => {
     try {
       const disclosure = await this.splitUseCase.getDisclosure(
-        req.params.id as string
+        req.params.id as string,
+        { userId: req.userId, role: req.userRole }
       );
       res.json({
         data: disclosure,

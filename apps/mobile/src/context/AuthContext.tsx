@@ -1,4 +1,5 @@
 import { BiometricLock } from '@/components/BiometricLock'
+import { clearAllPublicationDrafts } from '@/lib/publicationDrafts'
 import type { LegalAcceptanceInput } from '@ubuntu-fund/types'
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import type { ReactNode } from 'react'
@@ -136,6 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const refreshToken = sessionSnapshot()?.tokens.refreshToken
     if (refreshToken) void logoutApi(refreshToken).catch(() => {})
     await endSession()
+    await clearAllPublicationDrafts()
   }, [])
 
   return (

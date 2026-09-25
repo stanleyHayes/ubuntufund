@@ -50,6 +50,9 @@ it('lists indexable campaigns under their canonical slug URL, and nothing else',
     { ...base, slug: 'blocked-campaign', status: 'blocked' },
     { ...base, slug: 'pending-campaign', status: 'pending_review' },
     { ...base, slug: 'deleted-campaign', status: 'active', deletedAt: new Date() },
+    // Closed campaigns: one the expiry sweep has not re-labelled yet, and one it has.
+    { ...base, slug: 'ended-campaign', status: 'active', endDate: new Date(Date.now() - 60_000) },
+    { ...base, slug: 'expired-campaign', status: 'expired', endDate: new Date(Date.now() - 60_000) },
     // No slug: the canonical is the slug form, so listing an id URL here would
     // point crawlers at a URL that canonicalises somewhere else.
     { ...base, status: 'active' },
@@ -60,7 +63,7 @@ it('lists indexable campaigns under their canonical slug URL, and nothing else',
 
   expect(res.text).toContain('<loc>https://app.ujimora.com/c/live-campaign</loc>')
   expect(res.text).toContain('<loc>https://app.ujimora.com/c/funded-campaign</loc>')
-  for (const excluded of ['draft-campaign', 'blocked-campaign', 'pending-campaign', 'deleted-campaign']) {
+  for (const excluded of ['draft-campaign', 'blocked-campaign', 'pending-campaign', 'deleted-campaign', 'ended-campaign', 'expired-campaign']) {
     expect(res.text, `${excluded} must not be listed`).not.toContain(excluded)
   }
 

@@ -150,6 +150,7 @@ import {
 } from './application/use-cases/ForgotPasswordUseCase.js'
 import { CreateCampaignUseCase } from './application/use-cases/CreateCampaignUseCase.js'
 import { GetCampaignUseCase } from './application/use-cases/GetCampaignUseCase.js'
+import { ExpireEndedCampaignsUseCase } from './application/use-cases/ExpireEndedCampaignsUseCase.js'
 import { GetCampaignBySlugUseCase } from './application/use-cases/GetCampaignBySlugUseCase.js'
 import { SetCampaignSlugUseCase } from './application/use-cases/SetCampaignSlugUseCase.js'
 import { DonateToCampaignUseCase } from './application/use-cases/DonateToCampaignUseCase.js'
@@ -457,6 +458,11 @@ import { createContactRoutes } from './infrastructure/adapters/inbound/http/rout
  * exercise the real route graph with supertest.
  */
 export function createApp(options: { publicationAdmission?: PublicationAdmissionPort } = {}): express.Express {
+  if (config.nodeEnv === 'production' && !config.aiWriting.apiKey && !options.publicationAdmission) {
+    // Non-fatal so deploys proceed, but loud: every consented submission now
+    // waits for staff instead of automated screening.
+    logger.error('OPENAI_API_KEY missing: publication screening disabled; opted-in submissions go to staff review')
+  }
   const publicationAdmission = options.publicationAdmission ?? new MongoPublicationAdmission(new OpenAiPublicationScreener(config.aiWriting.apiKey))
   // ── Outbound adapters ────────────────────────────────────────────────
   const campaignRepo = new MongoCampaignRepository()
@@ -682,6 +688,21 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     new MongoCampaignCreation(),
   )
   const getCampaignUseCase = new GetCampaignUseCase(campaignRepo, donationRepo)
+  // Ended campaigns are re-labelled EXPIRED so Explore, the sitemap and
+  // analytics stop presenting them as open. Plan slots and donation eligibility
+  // already follow the end date itself, so this sweep only corrects the label.
+  const expireEndedCampaignsUseCase = new ExpireEndedCampaignsUseCase(campaignRepo)
+  if (config.nodeEnv !== 'test') {
+    let expiring = false
+    const expiryTimer = setInterval(async () => {
+      if (expiring) return
+      expiring = true
+      try { await expireEndedCampaignsUseCase.execute() }
+      catch (err) { logger.error({ err }, 'Campaign expiry sweep failed') }
+      finally { expiring = false }
+    }, 300_000)
+    expiryTimer.unref()
+  }
   const getCampaignBySlugUseCase = new GetCampaignBySlugUseCase(
     campaignRepo,
     config.publicWebUrl,
@@ -1114,8 +1135,11 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     campaignRepo,
     config.publicWebUrl,
     config.publicApiUrl,
+    creatorProfileRepo,
   )
-  const resolveShortLinkUseCase = new ResolveShortLinkUseCase(shortLinkRepo, liveSessionRepo)
+  const resolveShortLinkUseCase = new ResolveShortLinkUseCase(shortLinkRepo, liveSessionRepo, {
+    campaignRepo, creatorProfiles: creatorProfileRepo, publicWebUrl: config.publicWebUrl,
+  })
   const listCampaignQrCodesUseCase = new ListCampaignQrCodesUseCase(
     shortLinkRepo,
     campaignRepo,
@@ -1195,7 +1219,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     new MongoCommentCreation(),
   )
 
-  const shareCampaignUseCase = new ShareCampaignUseCase(shareRepo)
+  const shareCampaignUseCase = new ShareCampaignUseCase(shareRepo, campaignRepo)
   const reportCampaignUseCase = new ReportCampaignUseCase(campaignRepo, reportRepo)
 
   const listRecentDonationsUseCase = new ListRecentDonationsUseCase(
@@ -1239,6 +1263,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     userRepo,
     collaborationRepo,
     planLimitsService,
+    notificationRepo,
   )
   const removeCollaboratorUseCase = new RemoveCollaboratorUseCase(campaignRepo, collaborationRepo)
   const listCampaignCollaboratorsUseCase = new ListCampaignCollaboratorsUseCase(
@@ -1663,6 +1688,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
   app.locals.clearTerminalTipCheckouts = () => tipRepo.clearTerminalCheckoutCredentials()
   app.locals.accountErasure = accountErasure
   app.locals.reconcileLiveSafety = () => liveSafety.reconcile(liveVideo)
+  app.locals.expireEndedCampaigns = () => expireEndedCampaignsUseCase.execute()
   app.disable('x-powered-by')
   app.use(helmet())
 
@@ -1766,7 +1792,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
   )
   api.use('/campaigns', createCampaignQrRoutes(shortLinkController, authMiddleware))
   api.use('/campaigns', createCampaignPayoutRoutes(payoutController, authMiddleware))
-  api.use('/campaigns', createCampaignSplitRoutes(campaignSplitController, authMiddleware))
+  api.use('/campaigns', createCampaignSplitRoutes(campaignSplitController, authMiddleware, optionalAuthMiddleware))
   // Crypto rail (Crypto Donations plan §17): public asset/network discovery +
   // campaign-scoped quote/deposit. OFF unless config.crypto.enabled.
   api.use('/payments/crypto', createCryptoRoutes(cryptoController))

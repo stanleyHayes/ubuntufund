@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import type { CampaignSplitController } from '../controllers/CampaignSplitController.js';
 import { validate } from '../../middleware/validate.js';
-import type { createAuthMiddleware } from '../../middleware/authMiddleware.js';
+import type { createAuthMiddleware, createOptionalAuthMiddleware } from '../../middleware/authMiddleware.js';
 
 const createSplitSchema = z.object({
   allocations: z
@@ -33,11 +33,14 @@ const consentSchema = z.object({
  */
 export function createCampaignSplitRoutes(
   splitController: CampaignSplitController,
-  authMiddleware: ReturnType<typeof createAuthMiddleware>
+  authMiddleware: ReturnType<typeof createAuthMiddleware>,
+  optionalAuth?: ReturnType<typeof createOptionalAuthMiddleware>
 ): Router {
   const router = Router();
 
-  router.get('/:id/split', splitController.getDisclosure);
+  // Optional auth lets the owner/admin read a non-public campaign's split.
+  if (optionalAuth) router.get('/:id/split', optionalAuth, splitController.getDisclosure);
+  else router.get('/:id/split', splitController.getDisclosure);
   router.post(
     '/:id/split',
     authMiddleware,

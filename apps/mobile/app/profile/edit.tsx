@@ -9,6 +9,7 @@ import { Stack } from 'expo-router'
 import { Country } from 'country-state-city'
 import { api } from '@/lib/api'
 import { changePassword as submitPasswordChange } from '@/lib/accountSecurity'
+import { clearIdentityDraft, loadIdentityDraft, saveIdentityDraft } from '@/lib/publicationDrafts'
 import { sessionSnapshot, establishSession } from '@/lib/session'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
 import { GlassSurface } from '@/components/GlassSurface'
@@ -24,6 +25,7 @@ export default function EditProfile() {
 }
 function EditProfileForViewer() {
   const { user, replaceTokens } = useAuth()
+  const [heldRestored, setHeldRestored] = useState(false)
   const live = useRef(true)
   useEffect(() => { live.current = true; return () => { live.current = false } }, [])
   const [automatedReviewConsent, setAutomatedReviewConsent] = useState(false)
@@ -38,14 +40,33 @@ function EditProfileForViewer() {
   const [newPassword, setNewPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [retry, setRetry] = useState(0)
-  useEffect(() => { let active = true; setError(''); api.get<Partial<Profile>>('/profile').then(v => { if (active) { const next = { name: v.name || '', phone: v.phone || '', bio: v.bio || '', country: v.country || '', avatarUrl: v.avatarUrl || '', coverUrl: v.coverUrl || '' }; originalIdentity.current = next; setProfile(next) } }).catch(e => { if (active) setError(e.message) }); return () => { active = false } }, [retry])
+  useEffect(() => { let active = true; setError(''); api.get<Partial<Profile>>('/profile').then(async v => {
+    if (!active) return
+    const next = { name: v.name || '', phone: v.phone || '', bio: v.bio || '', country: v.country || '', avatarUrl: v.avatarUrl || '', coverUrl: v.coverUrl || '' }
+    originalIdentity.current = next
+    // A held identity change (a new photo, say) is kept on this device so the
+    // exact version can be saved again after approval instead of re-uploaded.
+    const held = user ? await loadIdentityDraft(user.id) : null
+    if (!active) return
+    const pending = held ? Object.fromEntries(Object.entries(held).filter(([key, value]) => next[key as keyof Profile] !== value)) : {}
+    setHeldRestored(Object.keys(pending).length > 0)
+    setProfile({ ...next, ...pending })
+  }).catch(e => { if (active) setError(e.message) }); return () => { active = false } }, [retry, user])
   const update = (key: keyof Profile, value: string) => setProfile(v => v ? { ...v, [key]: value } : v)
   async function save() {
     if (!profile || !profile.name.trim()) return
     setBusy(true); setError('')
     try {
       const changedIdentity = Object.fromEntries((['name', 'country', 'avatarUrl', 'coverUrl'] as const).filter(key => profile[key] !== originalIdentity.current?.[key]).map(key => [key, profile[key]]))
-      const saved = await api.put<Profile>('/profile', { ...changedIdentity, phone: profile.phone, bio: profile.bio, automatedReviewConsent })
+      let saved: Profile
+      try {
+        saved = await api.put<Profile>('/profile', { ...changedIdentity, phone: profile.phone, bio: profile.bio, automatedReviewConsent })
+      } catch (e) {
+        if (user && Object.keys(changedIdentity).length) await saveIdentityDraft(user.id, changedIdentity)
+        throw e
+      }
+      if (user) await clearIdentityDraft(user.id)
+      setHeldRestored(false)
       if (!live.current) return
       originalIdentity.current = { name: saved.name, country: saved.country ?? '', avatarUrl: saved.avatarUrl ?? '', coverUrl: saved.coverUrl ?? '' }
       const session = sessionSnapshot()
@@ -89,7 +110,8 @@ function EditProfileForViewer() {
           <MediaUploadField compact label="Cover image" folder="profiles" value={profile.coverUrl} onChange={v => update('coverUrl', v)} crop aspect={[16, 9]} onBusyChange={v => setUploads(n => n + (v ? 1 : -1))} />
           <View style={{ height: 1, backgroundColor: p.border }} />
           <MediaUploadField compact label="Profile photo" folder="profiles" value={profile.avatarUrl} onChange={v => update('avatarUrl', v)} crop onBusyChange={v => setUploads(n => n + (v ? 1 : -1))} />
-          <Text style={{ color: p.textSecondary, fontSize: 12, paddingVertical: 8 }}>Images up to 4 MB. Tap Save profile below to apply your changes.</Text>
+          <Text style={{ color: p.textSecondary, fontSize: 12, paddingVertical: 8 }}>Images up to 4 MB. Tap Save profile below to apply your changes. New images need staff review; removing an image takes effect right away.</Text>
+          {heldRestored ? <Text style={{ color: p.text, fontSize: 12, paddingBottom: 8 }}>We restored the changes you last submitted for review. Save them again once they are approved.</Text> : null}
         </View>
       </GlassSurface>
       <View style={{ ...neu.raised, backgroundColor: p.surface, borderRadius: 24, padding: 20, gap: 16 }}>

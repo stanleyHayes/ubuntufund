@@ -59,9 +59,12 @@ export class MongoOrganizationRepository implements OrganizationRepositoryPort {
       return byId;
     }
 
+    // Slugs derive from names, so two organizations can share one. Resolve
+    // to the oldest deterministically: a newer namesake must never take over
+    // an established organization's URL.
     const all = await this.findAll();
-    return (
-      all.find((org) => deriveOrganizationSlug(org.name) === slugOrId) ?? null
-    );
+    return all
+      .filter((org) => deriveOrganizationSlug(org.name) === slugOrId)
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id))[0] ?? null;
   }
 }

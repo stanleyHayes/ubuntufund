@@ -4,7 +4,7 @@ Engineering controls now cover effective account identity edits and changing an 
 
 ## Comment attribution checkpoint
 
-New comment admission now includes the displayed account name and avatar, instead of reviewing only the comment body. The existing fingerprint binds these values to actor/action/campaign; changing a registration name or avatar changes the version needing approval. Avatar-bearing submissions stay in the staff media queue. Public name and comment are the only structured text fields; private email/profile/credential fields are excluded. The author identity is re-read after screening and a mismatch denies insertion. Admin/web/native review evidence displays the structured fields.
+New comment admission now includes the displayed account name and avatar, instead of reviewing only the comment body. The existing fingerprint binds these values to actor/action/campaign; changing a registration name or avatar changes the version needing approval. Avatar-bearing submissions stay in the staff media queue unless the avatar is the exact image staff admitted as new media on the account-profile path (recorded on the account as `reviewedAvatarUrl`); that avatar URL is then bound into the screened comment text instead of holding every comment for a second media review. Legacy or otherwise-set avatars carry no such record and are still held as media. Public name and comment are the only structured text fields; private email/profile/credential fields are excluded. The author identity is re-read after screening and a mismatch denies insertion. Admin/web/native review evidence displays the structured fields.
 
 Seventeen publication integration tests pass, including held public name/avatar, approved resubmission, private-field exclusion and identity mutation during screening. Eight admin and seven web review tests plus API/admin/web/native types/lint pass. Logs `/tmp/ujimora-comment-attribution-{tests,admin,web,checks}.log`. This covers new comment admission only: dynamic author reads, legacy comments, other registration-name projections, immutable avatar bytes, native rendering and final transaction fencing remain open. The post-screening read is not an atomic guarantee against a subsequent identity change.
 
@@ -15,6 +15,12 @@ Seventeen publication integration tests pass, including held public name/avatar,
 - Final transaction checks the original identity/visibility version, current credential version, account existence, agreement and publishing restriction. It preserves independent private patches and existing financial/verification/organization-identity fields. Private-to-public changes review the current complete identity; setting visibility false does not require review and invalidates previous-version approvals.
 - Pure phone/biography/preferences changes bypass publication screening. The agreement/restriction classifier now identifies country as an identity field and no longer misclassifies account biography as public content. Read tracing found that account biography is returned by authenticated account endpoints, not the public profile DTO. User-report snapshots no longer copy this nonpublic biography into moderation evidence.
 - Authenticated profile routes and public profile detail responses use `Cache-Control: private, no-store`. This does not by itself prove every identity projection respects privacy, blocking and moderation; those paths remain under audit.
+
+## Removals and unchanged images (25 September 2026)
+
+- Removing an avatar or cover (setting it to empty) publishes nothing new, so it applies at once without admission, consent, current agreement or an unrestricted account. The identity-version check and the account write still run. A removal combined with any other public change is reviewed as before. Creator-page photo removal behaves the same way.
+- Only newly proposed images are submitted as media. An unchanged, already-public avatar or cover stays in the fingerprinted text, so a name or country change by an account with a photo goes to text screening (when consented) rather than the staff media queue. A new image is still always held for staff.
+- Web and native keep a held image or identity change in the browser/device (per account, 30 days, cleared on sign-out) so the exact version can be saved again after approval instead of re-uploaded under a new URL.
 
 ## Interfaces
 

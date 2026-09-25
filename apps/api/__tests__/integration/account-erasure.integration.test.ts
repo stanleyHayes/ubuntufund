@@ -31,6 +31,7 @@ import { LegalAcceptanceEventModel } from '../../src/infrastructure/database/mod
 import { ShortLinkModel } from '../../src/infrastructure/database/models/ShortLinkModel.js';
 import { newRecoveryCodes, recoveryDigest } from '../../src/application/services/Totp.js';
 import { CampaignCategory } from '@ubuntu-fund/types';
+import { PublicationReviewModel } from '../../src/infrastructure/database/models/PublicationReviewModel.js';
 
 describe('Account erasure and retained-record review', () => {
   let app: Express;
@@ -128,6 +129,26 @@ describe('Account erasure and retained-record review', () => {
     // Rejection therefore proves the persisted account tombstone is sufficient.
     await request(app).get('/api/v1/profile').set('Authorization', account.bearer).expect(401);
     expect((await WalletModel.findOne({ userId }))?.balance).toBe(75);
+  });
+  it('keeps held review and creator media URLs on the deletion request before erasing review drafts', async () => {
+    const account = await register();
+    const id = account.user.id;
+    await UserModel.updateOne({ _id: id }, { $set: { avatarUrl: 'https://media.example.test/current-avatar.jpg' } });
+    await CreatorProfileModel.create({ userId: id, handle: `media-${id}`, displayName: 'Creator', avatarUrl: 'https://media.example.test/creator-avatar.jpg', coverUrl: 'https://media.example.test/creator-cover.jpg' });
+    await PublicationReviewModel.create([
+      { actorId: id, action: 'account.profile', resourceId: id, fingerprint: randomUUID(), text: '{}', reason: 'media', mediaUrls: ['https://media.example.test/held-avatar.jpg'] },
+      { actorId: id, action: 'campaign.create', resourceId: id, fingerprint: randomUUID(), text: '{}', reason: 'media', status: 'rejected', mediaUrls: ['https://media.example.test/declined-cover.jpg', 'https://media.example.test/current-avatar.jpg'] },
+    ]);
+    await new MongoAccountErasure().request(id);
+    expect(await PublicationReviewModel.countDocuments({ actorId: id })).toBe(0);
+    const pending = await AccountDeletionRequestModel.findOne({ userId: id }).lean();
+    expect([...pending!.mediaUrls].sort()).toEqual([
+      'https://media.example.test/creator-avatar.jpg',
+      'https://media.example.test/creator-cover.jpg',
+      'https://media.example.test/current-avatar.jpg',
+      'https://media.example.test/declined-cover.jpg',
+      'https://media.example.test/held-avatar.jpg',
+    ]);
   });
   it('survives partial cleanup failure and supports retry from a new worker', async () => {
     const account = await register();

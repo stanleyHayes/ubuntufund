@@ -316,10 +316,54 @@ it('rejects declined and expired versions, refuses self-review and erases privat
   const clean = { content: 'Previously allowed content', automatedReviewConsent: true };
   await request(app).post(f.comments).set('Authorization', f.other.auth).send(clean).expect(201);
   await PublicationReviewModel.updateOne({ actorId: f.other.id }, { $set: { approvalExpiresAt: new Date(0) } });
+  // The expired approval never authorizes the version again: it is re-screened.
+  screen.mockResolvedValueOnce('flagged');
   await request(app).post(f.comments).set('Authorization', f.other.auth).send(clean).expect(409);
+  expect(await PublicationReviewModel.findOne({ actorId: f.other.id }).lean()).toMatchObject({ status: 'pending', reason: 'flagged' });
   const { MongoAccountErasure } = await import('../../src/infrastructure/adapters/outbound/persistence/MongoAccountErasure.js');
   await new MongoAccountErasure().request(f.owner.id);
   expect(await PublicationReviewModel.countDocuments({ actorId: f.owner.id })).toBe(0);
   expect(await UserModel.exists({ _id: f.owner.id })).toBeTruthy();
   expect(await AuditLogModel.exists({ resource: review!.id })).toBeTruthy();
+});
+
+it('re-queues an expired approval for a fresh decision instead of refusing that version until it is purged', async () => {
+  const f = await fixture();
+  const consented = { content: 'Weekly live title', automatedReviewConsent: true };
+  await request(app).post(f.comments).set('Authorization', f.other.auth).send(consented).expect(201);
+  const expire = () => PublicationReviewModel.updateOne({ actorId: f.other.id }, { $set: { approvalExpiresAt: new Date(Date.now() - 1000) } });
+  await expire();
+  // Consented: screened again and, when allowed, admitted at once.
+  await request(app).post(f.comments).set('Authorization', f.other.auth).send(consented).expect(201);
+  expect(screen).toHaveBeenCalledTimes(2);
+  const approved = await PublicationReviewModel.findOne({ actorId: f.other.id }).lean();
+  expect(approved).toMatchObject({ status: 'approved', reviewedBy: 'automated:openai' });
+  expect(approved!.approvalExpiresAt!.getTime()).toBeGreaterThan(Date.now() + 6 * 86400000);
+  expect(approved!.purgeAt.getTime()).toBeGreaterThan(Date.now() + 29 * 86400000);
+
+  // Without consent it goes back to staff, and the fresh approval admits it.
+  const unconsented = { content: 'Staff reviewed comment' };
+  await request(app).post(f.comments).set('Authorization', f.owner.auth).send(unconsented).expect(409);
+  const review = await PublicationReviewModel.findOne({ actorId: f.owner.id });
+  await request(app).put(`/api/v1/admin/publication-reviews/${review!.id}/review`).set('Authorization', f.admin.auth).send({ decision: 'approved', notes }).expect(200);
+  await PublicationReviewModel.updateOne({ _id: review!._id }, { $set: { approvalExpiresAt: new Date(Date.now() - 1000) } });
+  await request(app).post(f.comments).set('Authorization', f.owner.auth).send(unconsented).expect(409);
+  const requeued = await PublicationReviewModel.findById(review!._id).lean();
+  expect(requeued).toMatchObject({ status: 'pending', reason: 'staff_requested' });
+  expect(requeued!.reviewedBy).toBeUndefined();
+  expect(requeued!.approvalExpiresAt).toBeUndefined();
+  await request(app).put(`/api/v1/admin/publication-reviews/${review!.id}/review`).set('Authorization', f.admin.auth).send({ decision: 'approved', notes }).expect(200);
+  await request(app).post(f.comments).set('Authorization', f.owner.auth).send(unconsented).expect(201);
+});
+
+it('logs and routes to staff when the screener is unavailable', async () => {
+  const f = await fixture();
+  const { logger } = await import('../../src/infrastructure/logging/logger.js');
+  const warn = vi.spyOn(logger, 'warn');
+  try {
+    screen.mockRejectedValueOnce(new Error('Publication screening is unavailable'));
+    await request(app).post(f.comments).set('Authorization', f.other.auth).send({ content: 'Screener outage fixture', automatedReviewConsent: true }).expect(409);
+    expect(await PublicationReviewModel.findOne({ actorId: f.other.id }).lean()).toMatchObject({ status: 'pending', reason: 'unavailable' });
+    expect(warn).toHaveBeenCalledWith(expect.objectContaining({ action: 'comment.create' }), 'Publication screener unavailable; routed to staff review');
+  } finally { warn.mockRestore(); }
 });

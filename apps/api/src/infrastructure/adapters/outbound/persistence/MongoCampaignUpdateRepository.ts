@@ -22,9 +22,10 @@ function toDomain(doc: CampaignUpdateDocument): CampaignUpdateEntity {
 }
 
 export class MongoCampaignUpdateRepository implements CampaignUpdateRepositoryPort {
-  async save(update: CampaignUpdateEntity): Promise<CampaignUpdateEntity> {
+  async save(update: CampaignUpdateEntity, options: { publicationFingerprint?: string } = {}): Promise<CampaignUpdateEntity> {
     const plain = update.toPlain();
     const doc = await CampaignUpdateModel.create({
+      ...(options.publicationFingerprint ? { publicationFingerprint: options.publicationFingerprint } : {}),
       campaignId: plain.campaignId,
       authorId: plain.authorId,
       title: plain.title,
@@ -52,11 +53,12 @@ export class MongoCampaignUpdateRepository implements CampaignUpdateRepositoryPo
     return docs.map(toDomain);
   }
 
-  async update(update: CampaignUpdateEntity, expectedUpdatedAt?: Date): Promise<CampaignUpdateEntity> {
+  async update(update: CampaignUpdateEntity, expectedUpdatedAt?: Date, options: { publicationFingerprint?: string } = {}): Promise<CampaignUpdateEntity> {
     const plain = update.toPlain();
     const doc = await CampaignUpdateModel.findOneAndUpdate(
       { _id: plain.id, deletedAt: { $exists: false }, ...(expectedUpdatedAt ? { updatedAt: expectedUpdatedAt } : {}) },
       {
+        ...(options.publicationFingerprint ? { publicationFingerprint: options.publicationFingerprint } : {}),
         title: plain.title,
         content: plain.content,
         type: plain.type,

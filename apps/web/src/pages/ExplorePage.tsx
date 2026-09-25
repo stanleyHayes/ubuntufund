@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import { keyframes } from '@emotion/react'
@@ -11,12 +11,11 @@ import GroupsRoundedIcon from '@mui/icons-material/GroupsRounded'
 import AccountBalanceRoundedIcon from '@mui/icons-material/AccountBalanceRounded'
 import PaletteRoundedIcon from '@mui/icons-material/PaletteRounded'
 import { CampaignCategory, CampaignStatus } from '@ubuntu-fund/types'
-import type { Campaign } from '@ubuntu-fund/types'
 import { EmptyState, breadcrumbList } from '@ubuntu-fund/ui'
 import { CampaignSearchBar, type CampaignSort } from '@/components/campaigns/CampaignSearchBar'
 import { CampaignCard } from '@/components/campaigns/CampaignCard'
 import { PageBanner } from '@/components/layout/PageBanner'
-import { useCampaigns } from '@/hooks/useCampaigns'
+import { useCampaignSearch } from '@/hooks/useCampaigns'
 import { useSeo, SITE_ORIGIN } from '@/lib/seo'
 
 // ─── Animations ─────────────────────────────────────────────
@@ -44,14 +43,27 @@ const CATEGORY_LABELS: Record<string, { icon: React.ReactNode; label: string }> 
   creative: { icon: <PaletteRoundedIcon sx={{ fontSize: 14 }} />, label: 'Creative' },
 }
 
+// Public discovery only ever lists public campaigns, so there is no
+// pending-review filter. The server matches these by effective state: a
+// campaign past its end date is Expired, never Active or Funded.
 const STATUS_LABELS: Record<string, string> = {
   [CampaignStatus.ACTIVE]: 'Active',
   [CampaignStatus.FUNDED]: 'Funded',
-  [CampaignStatus.PENDING_REVIEW]: 'Pending Review',
   [CampaignStatus.EXPIRED]: 'Expired',
 }
 
 const PER_PAGE = 6
+const SEARCH_DEBOUNCE_MS = 300
+
+/** Page numbers to show: first, last and a window around the current page. */
+function pageWindow(page: number, totalPages: number): (number | 'gap')[] {
+  const pages: (number | 'gap')[] = []
+  for (let i = 0; i < totalPages; i++) {
+    if (i === 0 || i === totalPages - 1 || Math.abs(i - page) <= 1) pages.push(i)
+    else if (pages[pages.length - 1] !== 'gap') pages.push('gap')
+  }
+  return pages
+}
 
 // ─── Skeleton ──────────────────────────────────────────────
 
@@ -95,12 +107,23 @@ function CardSkeleton({ index }: { index: number }) {
 // ─── Component ──────────────────────────────────────────────
 
 export function ExplorePage() {
-  const { campaigns, isLoading: campaignsLoading } = useCampaigns()
   const [search, setSearch] = useState('')
+  const [query, setQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<CampaignCategory | null>(null)
   const [selectedStatus, setSelectedStatus] = useState<CampaignStatus | null>(null)
   const [sort, setSort] = useState<CampaignSort>('most_funded')
   const [page, setPage] = useState(0)
+  // Search, filters and pages run on the server so every public campaign is
+  // reachable, not only the newest page the listing returns by default.
+  const { campaigns, total, totalPages, isLoading: campaignsLoading } = useCampaignSearch({
+    q: query,
+    category: selectedCategory,
+    status: selectedStatus,
+    sortBy: sort === 'newest' ? 'createdAt' : 'fundedPercent',
+    sortOrder: 'desc',
+    page: page + 1,
+    pageSize: PER_PAGE,
+  })
 
   useSeo({
     title: 'Explore campaigns in Ghana | Ujimora',
@@ -110,32 +133,18 @@ export function ExplorePage() {
     jsonLd: breadcrumbList(SITE_ORIGIN, [{ name: 'Home', path: '/' }, { name: 'Explore' }]),
   })
 
+  // Wait for typing to settle before asking the server.
+  useEffect(() => {
+    const id = setTimeout(() => setQuery(search.trim()), SEARCH_DEBOUNCE_MS)
+    return () => clearTimeout(id)
+  }, [search])
+
   // Reset page on filter change
   useEffect(() => {
     const id = setTimeout(() => setPage(0), 0)
     return () => clearTimeout(id)
-  }, [search, selectedCategory, selectedStatus, sort])
+  }, [query, selectedCategory, selectedStatus, sort])
 
-  const filtered = useMemo(() => {
-    // Defensive: never spread/filter a non-array. If a hook ever hands back a
-    // non-array (error/unexpected response), fall back to an empty list instead
-    // of throwing "campaigns.filter is not a function".
-    let result: Campaign[] = Array.isArray(campaigns) ? [...campaigns] : []
-    if (search.trim()) {
-      const q = search.trim().toLowerCase()
-      result = result.filter((c) => c.title.toLowerCase().includes(q))
-    }
-    if (selectedCategory) result = result.filter((c) => c.category === selectedCategory)
-    if (selectedStatus) result = result.filter((c) => c.status === selectedStatus)
-    switch (sort) {
-      case 'most_funded': result.sort((a, b) => b.raisedAmount / b.goalAmount - a.raisedAmount / a.goalAmount); break
-      case 'newest': result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()); break
-    }
-    return result
-  }, [campaigns, search, selectedCategory, selectedStatus, sort])
-
-  const paginated = filtered.slice(page * PER_PAGE, (page + 1) * PER_PAGE)
-  const totalPages = Math.ceil(filtered.length / PER_PAGE)
   const hasFilters = !!(selectedCategory || selectedStatus || search)
 
   return (
@@ -276,7 +285,7 @@ export function ExplorePage() {
           }}
         >
           <Typography sx={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-            Showing <Box component="strong" sx={{ color: 'var(--text-primary)' }}>{filtered.length}</Box> campaign{filtered.length !== 1 ? 's' : ''}
+            Showing <Box component="strong" sx={{ color: 'var(--text-primary)' }}>{total}</Box> campaign{total !== 1 ? 's' : ''}
             {selectedCategory && <> &middot; <strong>{CATEGORY_LABELS[selectedCategory]?.label}</strong></>}
             {selectedStatus && <> &middot; <strong>{STATUS_LABELS[selectedStatus]}</strong></>}
           </Typography>
@@ -317,7 +326,7 @@ export function ExplorePage() {
               <CardSkeleton key={i} index={i} />
             ))}
           </Box>
-        ) : filtered.length === 0 ? (
+        ) : campaigns.length === 0 ? (
           <EmptyState
             variant="search"
             title="No campaigns found"
@@ -331,7 +340,7 @@ export function ExplorePage() {
               gap: 2.5,
             }}
           >
-            {paginated.map((campaign, index) => (
+            {campaigns.map((campaign, index) => (
               <Box key={campaign.id} sx={{ animation: `${fadeInUp} 0.4s ease ${index * 0.06}s both` }}>
                 <CampaignCard campaign={campaign} priority={index < 3} />
               </Box>
@@ -352,7 +361,7 @@ export function ExplorePage() {
             }}
           >
             <Typography sx={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-              Showing {page * PER_PAGE + 1}&ndash;{Math.min((page + 1) * PER_PAGE, filtered.length)} of {filtered.length}
+              Showing {page * PER_PAGE + 1}&ndash;{Math.min((page + 1) * PER_PAGE, total)} of {total}
             </Typography>
             <Box sx={{ display: 'flex', gap: 0.5 }}>
               <Box
@@ -371,10 +380,14 @@ export function ExplorePage() {
               >
                 Prev
               </Box>
-              {Array.from({ length: totalPages }, (_, i) => (
+              {pageWindow(page, totalPages).map((i, index) => i === 'gap' ? (
+                <Box key={`gap-${index}`} component="span" aria-hidden sx={{ px: 1, py: 0.75, fontSize: '0.78rem', color: 'var(--text-secondary)' }}>&hellip;</Box>
+              ) : (
                 <Box
                   key={i}
                   component="button"
+                  aria-label={`Page ${i + 1}`}
+                  aria-current={i === page ? 'page' : undefined}
                   onClick={() => setPage(i)}
                   sx={{
                     px: 1.5, py: 0.75,

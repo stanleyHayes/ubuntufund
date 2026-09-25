@@ -19,6 +19,7 @@ import type { CampaignDonation } from '@ubuntu-fund/types'
 import { acceptsCampaignDonation, CollaboratorRole, type CampaignCollaborator } from '@ubuntu-fund/types'
 import { CampaignUpdatesList } from '@/components/CampaignUpdatesList'
 import { CampaignComments } from '@/components/CampaignComments'
+import { SplitDisclosure } from '@/components/SplitDisclosure'
 
 const ROLE_LABELS: Record<CollaboratorRole, string> = {
   [CollaboratorRole.CO_OWNER]: 'Co-Owner',
@@ -323,6 +324,8 @@ export default function CampaignDetailScreen() {
             </View>
           </Surface>
 
+          <SplitDisclosure campaignId={campaign.id} />
+
           <View style={styles.actionRow}>
             <Button
               mode="contained"
@@ -494,7 +497,7 @@ export default function CampaignDetailScreen() {
                         {c.displayName}
                       </Text>
                       <Text variant="bodySmall" style={styles.muted}>
-                        {ROLE_LABELS[c.role]} &middot; {c.revenueSharePercent}% share
+                        {ROLE_LABELS[c.role]}
                       </Text>
                     </View>
                   </View>

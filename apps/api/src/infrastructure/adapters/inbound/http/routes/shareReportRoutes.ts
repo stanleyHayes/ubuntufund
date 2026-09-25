@@ -14,6 +14,8 @@ const REPORT_REASONS = [
   'inappropriate_content',
   'spam',
   'illegal_activity',
+  'intellectual_property',
+  'privacy',
   'other',
 ] as const;
 

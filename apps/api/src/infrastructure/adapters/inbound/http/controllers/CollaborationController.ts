@@ -33,7 +33,7 @@ export class CollaborationController {
       );
       res.status(201).json({
         data: collaborator,
-        message: 'Collaborator invited successfully',
+        message: collaborator ? 'Collaborator invited successfully' : 'If that email belongs to a Ujimora account, they will be invited.',
         status: 201,
       });
     } catch (error) {

@@ -137,9 +137,6 @@ export function CollaborationInvitationsPage() {
 
                 <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
                   <Typography variant="body2" color="text.secondary">
-                    Revenue share: <strong>{inv.revenueSharePercent}%</strong>
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
                     Invited: {new Date(inv.createdAt).toLocaleDateString()}
                   </Typography>
                 </Box>

@@ -30,6 +30,9 @@ export class ListCampaignCollaboratorsUseCase {
           c.status === CollaborationStatus.ACCEPTED ||
           (isOwner && c.status === CollaborationStatus.PENDING)
       )
-      .map(toCollaboratorDto);
+      .map(toCollaboratorDto)
+      // The private invitation note and inviter are for the owner and staff,
+      // not for everyone who can open the campaign.
+      .map(dto => (isOwner || isAdmin ? dto : { ...dto, inviteMessage: undefined, invitedBy: '' }));
   }
 }

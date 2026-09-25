@@ -101,6 +101,8 @@ export function ReportCampaignDialog({
                 <option value="inappropriate_content">Inappropriate Content</option>
                 <option value="spam">Spam</option>
                 <option value="illegal_activity">Illegal Activity</option>
+                <option value="intellectual_property">Intellectual property / copyright</option>
+                <option value="privacy">Privacy or likeness</option>
                 <option value="other">Other</option>
               </TextField>
             </Box>

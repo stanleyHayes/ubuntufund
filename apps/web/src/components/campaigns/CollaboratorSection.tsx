@@ -31,8 +31,10 @@ interface CollaboratorSectionProps {
 }
 
 const roleOptions = [
-  { value: CollaboratorRole.EDITOR, title: 'Editor', description: 'Help shape the campaign story and keep its content up to date.', icon: EditNoteRoundedIcon },
-  { value: CollaboratorRole.CO_OWNER, title: 'Co-owner', description: 'Share responsibility for the campaign and coordinate its collaborators.', icon: GroupsRoundedIcon },
+  // Roles are display labels only: collaborators cannot edit the campaign,
+  // see donations or manage collaborators. Only the owner can.
+  { value: CollaboratorRole.EDITOR, title: 'Editor', description: 'Listed on the campaign as an editor. Campaign changes are made by the owner.', icon: EditNoteRoundedIcon },
+  { value: CollaboratorRole.CO_OWNER, title: 'Co-owner', description: 'Listed on the campaign as a co-owner. Only the campaign owner can edit or invite.', icon: GroupsRoundedIcon },
   { value: CollaboratorRole.FEATURED_PARTNER, title: 'Featured partner', description: 'Be featured on the campaign with your name and branding, without editing access.', icon: HandshakeRoundedIcon },
 ]
 
@@ -72,10 +74,10 @@ export function CollaboratorSection({
   const [inviteOpen, setInviteOpen] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState<CollaboratorRole>(CollaboratorRole.EDITOR)
-  const [revenueShare, setRevenueShare] = useState('0')
   const [inviteMessage, setInviteMessage] = useState('')
   const [inviteLoading, setInviteLoading] = useState(false)
   const [inviteError, setInviteError] = useState('')
+  const [inviteNotice, setInviteNotice] = useState('')
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [selectedCollaborator, setSelectedCollaborator] = useState<CampaignCollaborator | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
@@ -90,7 +92,6 @@ export function CollaboratorSection({
   const handleInviteOpen = () => {
     setInviteEmail('')
     setInviteRole(CollaboratorRole.EDITOR)
-    setRevenueShare('0')
     setInviteMessage('')
     setInviteError('')
     setInviteOpen(true)
@@ -105,13 +106,20 @@ export function CollaboratorSection({
     setInviteLoading(true)
     setInviteError('')
     try {
-      await api.post(`/campaigns/${campaignId}/collaborators/invite`, {
+      // A recorded percentage is never paid out, so none is offered; real
+      // shared proceeds use the split setup.
+      const invited = await api.post<CampaignCollaborator | null>(`/campaigns/${campaignId}/collaborators/invite`, {
         userEmail: inviteEmail,
         role: inviteRole,
-        revenueSharePercent: Number(revenueShare),
+        revenueSharePercent: 0,
         inviteMessage: inviteMessage || undefined,
       })
       setInviteOpen(false)
+      if (!invited) {
+        // The API does not reveal whether an email has an account.
+        setInviteNotice('If that email belongs to a Ujimora account, they have been invited.')
+        return
+      }
       window.location.reload()
     } catch (err) {
       setInviteError(err instanceof Error ? err.message : 'Failed to send invite')
@@ -203,9 +211,6 @@ export function CollaboratorSection({
                         variant="outlined"
                         color="primary"
                       />
-                      <Typography variant="caption" color="text.secondary">
-                        {collaborator.revenueSharePercent}% revenue share
-                      </Typography>
                     </Box>
                   </Box>
                 </Box>
@@ -272,9 +277,6 @@ export function CollaboratorSection({
                         size="small"
                         color={getStatusColor(collaborator.status)}
                       />
-                      <Typography variant="caption" color="text.secondary">
-                        {collaborator.revenueSharePercent}% revenue share
-                      </Typography>
                     </Box>
                   </Box>
                 </Box>
@@ -294,8 +296,10 @@ export function CollaboratorSection({
       )}
 
       {acceptedCollaborators.length === 0 && pendingCollaborators.length === 0 && isOwner && (
-        <EmptyState compact title="Build your campaign team" description="Invite collaborators to share responsibilities and revenue." />
+        <EmptyState compact title="Build your campaign team" description="Invite people to be listed on your campaign as collaborators." />
       )}
+
+      {inviteNotice && <Alert severity="info" onClose={() => setInviteNotice('')} sx={{ mt: 2 }}>{inviteNotice}</Alert>}
 
       {/* Invite Dialog */}
       <Dialog open={inviteOpen} onClose={() => setInviteOpen(false)} maxWidth="sm" fullWidth aria-labelledby="invite-collaborator-title" aria-describedby="invite-collaborator-description" PaperProps={{ sx: { m: { xs: 2, sm: 4 }, width: { xs: 'calc(100% - 32px)', sm: 'calc(100% - 64px)' } } }}>
@@ -340,14 +344,6 @@ export function CollaboratorSection({
               })}
             </RadioGroup>
           </FormControl>
-          <TextField
-            label="Revenue Share %"
-            type="number"
-            value={revenueShare}
-            onChange={(e) => setRevenueShare(e.target.value)}
-            fullWidth
-            inputProps={{ min: 0, max: 100 }}
-          />
           <TextField
             label="Invitation Message (optional)"
             value={inviteMessage}

@@ -9,6 +9,16 @@ The implementation supplies report intake, blocking and administrator actions. E
 - `/safety-reports` in admin lists pending reports, urgent child-safety/credible-threat concerns first. The action center shows the pending count. Reviews require notes. Staff can dismiss, record another resolution, hide a comment, or restrict publishing. A comment implicated in a publishing restriction is also hidden.
 - Publishing restrictions preserve account settings, privacy requests and existing financial access. Public creator pages are hidden while restricted. Affected users receive the support appeal contact when attempting to publish. An administrator can restore publishing after an appeal, with an audit record; previously hidden comments stay hidden.
 
+## Review controls added 25 September 2026
+
+- Four eyes: an administrator cannot review a report they filed, a report about their own content or account, or a report about content on a campaign they own. Another administrator must act, as for publication, donation-content and tip-content reviews. A single-admin deployment therefore needs a second administrator for these reports.
+- Reports on already-removed comments, or on comments/updates on a campaign the reporter cannot see, are refused. Hiding a comment keeps the original removal time if the author or owner had already deleted it.
+- Hiding a comment or update also withdraws the publication approval of that exact version (it becomes declined), so the author cannot repost the identical text during the approval window.
+- Publishing restrictions keep one active record per account (what enforcement reads) plus an append-only history of every restrict and restore (`ContentRestrictionEvent`). Admin → Safety → Restricted users lists active restrictions with the account name and email, restricts an account directly with notes (no report needed), and lifts a restriction with notes. Lifting requires an active restriction (otherwise 404) and writes one audit entry naming the restriction lifted. Restoring from a report whose restriction has since been replaced by a newer decision is refused until staff explicitly confirm.
+- Edited campaign updates: when a reported update changes after the report, *Hide campaign update* is refused because the current text was not the one reported. *Restrict publishing* still works on that report (a restriction does not depend on the content version) and leaves the edited update visible. To act on the current text, review it and file or accept a new report on the current version, then hide that.
+- Report reasons now include intellectual property / copyright and privacy or likeness, for safety reports and campaign reports. Takedown intake for rights-holders (address, required details, response targets) still needs an owner decision.
+- Restrictions still do not block an account's campaigns or change donations; use the separate campaign *block* moderation action for that (owner decision whether restricting should offer it).
+
 ## Required operating process
 
 1. Assign accountable moderators and coverage, including a backup. Confirm access to the support appeal inbox and restrict report/audit exports to people handling the case. Confirm all launch languages have an escalation path.

@@ -249,7 +249,7 @@ Goal for this pass: remove engineering causes of App Store / Google Play rejecti
 - Consent: anonymous checkout now keeps an explicit terms/18+ acknowledgement and rejects a stale one (C04). 12 message-agreement and donation-intent tests pass.
 - Fundraising (C11): iOS wallet top-up now goes to the website. Crypto is hidden unless the server enables it.
 - Billing (C10): native auto-renewal disclosure and a Subscription terms link. Account deletion warns that store subscriptions need cancelling in the store and shows the server's refusal reason.
-- UGC (C09): Report/Block on member and organization profiles, plus a labelled comment-delete control. Corrected the false "Verified Organization" label.
+- UGC (C09): Report/Block on member and organization profiles, plus a labelled comment-delete control. Corrected the false "Verified Organization" label. (25 September 2026: the web organization profile and the /c/:slug campaign landing page now also offer Report/Block, the landing page links a running broadcast, and the web organization profile's unsaved Follow button and hard-coded follower count were removed.)
 - Privacy (C08/C17): shared KYC collection notice and required acknowledgement on web and native. The one-shot GPS use is stated.
 - Platform (C18): committed privacy-manifest reasons, release-only removal of dev-launcher local-network strings, and camera/microphone strings that cover live broadcasting.
 - Bug: native campaign shares pointed at the marketing domain, which only serves its landing page. They now use the web app's campaign URL.

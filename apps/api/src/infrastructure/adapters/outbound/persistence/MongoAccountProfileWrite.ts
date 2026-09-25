@@ -21,14 +21,22 @@ export class MongoAccountProfileWrite implements AccountProfileWritePort {
     const proposed = { name: changes.name ?? before.name, avatarUrl: changes.avatarUrl ?? before.avatarUrl, coverUrl: changes.coverUrl ?? before.coverUrl, country: changes.country ?? before.country, publicProfile: changes.publicProfile ?? before.publicProfile };
     const identityKeys = ['name', 'avatarUrl', 'coverUrl', 'country'] as const;
     const identityTouched = identityKeys.some(key => changes[key] !== undefined);
-    const publicChange = identityKeys.some(key => proposed[key] !== before[key]) || (!before.publicProfile && proposed.publicProfile);
+    const changedKeys = identityKeys.filter(key => proposed[key] !== before[key]);
+    const publicChange = changedKeys.length > 0 || (!before.publicProfile && proposed.publicProfile);
+    // Taking a photo down publishes nothing new, so it applies at once: a user
+    // must never wait for staff to remove their own image.
+    const withdrawalOnly = changedKeys.length > 0 && !(!before.publicProfile && proposed.publicProfile) &&
+      changedKeys.every(key => (key === 'avatarUrl' || key === 'coverUrl') && proposed[key] === '');
     const versionBound = identityTouched || changes.publicProfile === true;
     const fingerprint = (fields: typeof before, revision: number) => createHash('sha256').update(JSON.stringify([userId, revision, fields])).digest('hex');
     const baseVersion = fingerprint(before, original.accountIdentityRevision ?? 0);
-    if (publicChange) {
+    // Only newly proposed images need media inspection; unchanged ones are
+    // already public. The full proposed identity stays bound in the text.
+    const newMedia = (['avatarUrl', 'coverUrl'] as const).filter(key => proposed[key] && proposed[key] !== before[key]).map(key => proposed[key]);
+    if (publicChange && !withdrawalOnly) {
       if (!this.admission) throw new AppError('Account identity review is unavailable', 503);
       await this.admission.assertAllowed({ actorId: userId, action: 'account.profile', resourceId: userId, baseVersion,
-        text: JSON.stringify(proposed), mediaUrls: [proposed.avatarUrl, proposed.coverUrl].filter(Boolean), automatedReviewConsent: changes.automatedReviewConsent });
+        text: JSON.stringify(proposed), mediaUrls: newMedia, automatedReviewConsent: changes.automatedReviewConsent });
     }
     return this.uow.run(async () => {
       if (versionBound) {
@@ -43,12 +51,19 @@ export class MongoAccountProfileWrite implements AccountProfileWritePort {
       for (const key of ['name', 'avatarUrl', 'coverUrl', 'country'] as const) {
         if (changes[key] !== undefined) identity[key] = changes[key];
       }
+      // A new avatar reached here only through media review: remember that
+      // exact image so comments can carry it without a second media hold.
+      const unset: Record<string, 1> = {};
+      if (proposed.avatarUrl !== before.avatarUrl) {
+        if (proposed.avatarUrl) identity.reviewedAvatarUrl = proposed.avatarUrl;
+        else unset.reviewedAvatarUrl = 1;
+      }
       // The real account write serializes with password changes, closure and erasure.
       const account = await UserModel.findOneAndUpdate({ _id: userId, deletedAt: null,
         ...(authVersion ? { authVersion } : { $or: [{ authVersion: '' }, { authVersion: null }] }),
-      }, { $set: identity, $inc: { profileWriteVersion: 1, ...(identityTouched || changes.publicProfile !== undefined ? { accountIdentityRevision: 1 } : {}) } }, { new: true });
+      }, { $set: identity, ...(Object.keys(unset).length ? { $unset: unset } : {}), $inc: { profileWriteVersion: 1, ...(identityTouched || changes.publicProfile !== undefined ? { accountIdentityRevision: 1 } : {}) } }, { new: true });
       if (!account) throw new AppError('Your session ended. Sign in again before saving.', 401);
-      if (publicChange) {
+      if (publicChange && !withdrawalOnly) {
         if (await ContentRestrictionModel.exists({ userId })) throw new AppError('Publishing is restricted', 403);
         if (account.role !== 'admin' && !hasCurrentLegalAcceptance(account.legalAcceptance)) throw new AppError('Accept the current agreement before publishing', 428);
       }

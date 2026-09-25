@@ -1,6 +1,17 @@
 import type { ShortLinkRepositoryPort } from '../../domain/ports/outbound/ShortLinkRepositoryPort.js';
 import type { LiveSessionRepositoryPort } from '../../domain/ports/outbound/LiveSessionRepositoryPort.js';
+import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js';
+import type { CreatorProfileRepositoryPort } from '../../domain/ports/outbound/CreatorProfileRepositoryPort.js';
+import type { ShortLinkEntity } from '../../domain/entities/ShortLink.js';
 import { logger } from '../../infrastructure/logging/logger.js';
+import { buildShortLinkTarget } from '../utils/shortLinkTarget.js';
+
+/** What redirect-time resolution needs; without it the stored target is used. */
+export interface ShortLinkDestinationContext {
+  campaignRepo: Pick<CampaignRepositoryPort, 'findById'>;
+  creatorProfiles?: Pick<CreatorProfileRepositoryPort, 'findByUserId'>;
+  publicWebUrl: string;
+}
 
 export interface ResolvedShortLink {
   target: string;
@@ -26,8 +37,38 @@ function normalizeSource(source?: string): string | undefined {
 export class ResolveShortLinkUseCase {
   constructor(
     private readonly shortLinkRepo: ShortLinkRepositoryPort,
-    private readonly liveSessionRepo?: LiveSessionRepositoryPort
+    private readonly liveSessionRepo?: LiveSessionRepositoryPort,
+    private readonly destinations?: ShortLinkDestinationContext
   ) {}
+
+  /**
+   * Printed QR codes outlive a campaign's vanity slug, so the destination is
+   * rebuilt from the link's stored kind/params and the campaign's *current*
+   * slug (and the organiser's creator handle) on every scan. The target stored
+   * at creation is only a fallback when the campaign cannot be read.
+   */
+  private async destination(link: ShortLinkEntity): Promise<string> {
+    if (!this.destinations) return link.target;
+    try {
+      const campaign = await this.destinations.campaignRepo.findById(link.campaignId);
+      if (!campaign) return link.target;
+      const creatorHandle = link.kind === 'creator'
+        ? (await this.destinations.creatorProfiles?.findByUserId(campaign.creatorId))?.toPlain().handle || undefined
+        : undefined;
+      return buildShortLinkTarget(this.destinations.publicWebUrl, {
+        kind: link.kind,
+        campaignRef: campaign.slug || campaign.id,
+        creatorId: campaign.creatorId,
+        creatorHandle,
+        liveSessionId: link.liveSessionId,
+        presetAmount: link.presetAmount,
+        label: link.label,
+      });
+    } catch (error) {
+      logger.error({ err: error, code: link.code }, 'short-link destination lookup failed; using stored target');
+      return link.target;
+    }
+  }
 
   async execute(
     code: string,
@@ -55,7 +96,7 @@ export class ResolveShortLinkUseCase {
     }
 
     return {
-      target: updated.target,
+      target: await this.destination(updated),
       code: updated.code,
       campaignId: updated.campaignId,
     };

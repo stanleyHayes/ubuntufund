@@ -12,6 +12,8 @@ export interface CampaignUpdateDocument extends Document {
   deletedAt?: Date;
   deletedBy?: string;
   moderationReportId?: string;
+  /** Fingerprint of the approved version now shown; revoked if moderation hides the update. */
+  publicationFingerprint?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -32,6 +34,7 @@ const campaignUpdateSchema = new Schema<CampaignUpdateDocument>(
     deletedAt: { type: Date, index: true },
     deletedBy: { type: String },
     moderationReportId: { type: String },
+    publicationFingerprint: { type: String },
   },
   { timestamps: true }
 );

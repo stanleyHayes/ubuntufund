@@ -9,6 +9,7 @@ import { api } from '@/lib/api'
 import { EmptyState } from '@/components/EmptyState'
 import { SignInRequired } from '@/components/SignInRequired'
 import { FadeInUp } from '@/components/anim/FadeInUp'
+import { OrganizationInvitations } from '@/components/OrganizationInvitations'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
 import type { Palette, NeuRecipes } from '@/theme'
 
@@ -17,7 +18,6 @@ interface Invitation {
   campaignName: string
   inviterName: string
   role: string
-  revenueShare?: number
   createdAt: string
   status: string
 }
@@ -209,6 +209,7 @@ export default function InvitationsScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+        <OrganizationInvitations />
         {loading ? (
           <View style={styles.listWrap}>
             {[0, 1, 2].map((i) => <SkeletonCard key={i} />)}
@@ -245,15 +246,6 @@ export default function InvitationsScreen() {
                     Role: <Text style={{ fontFamily: 'Outfit_700Bold', color: p.text }}>{inv.role}</Text>
                   </Text>
                 </View>
-
-                {inv.revenueShare !== undefined && inv.revenueShare !== null && (
-                  <View style={styles.invDetail}>
-                    <Icon source="percent" size={14} color={p.textSecondary} />
-                    <Text style={styles.invDetailText}>
-                      Revenue share: <Text style={{ fontFamily: 'Outfit_700Bold', color: p.primary }}>{inv.revenueShare}%</Text>
-                    </Text>
-                  </View>
-                )}
 
                 <Text style={styles.invDate}>{formatDate(inv.createdAt)}</Text>
 

@@ -2,11 +2,13 @@ import { beforeEach, afterEach, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { ProfileImageEditor } from '@/components/profile/ProfileImageEditor'
 import { api } from '@/lib/api'
+import { installMemoryStorage } from '../memoryStorage'
 vi.mock('@/context/AuthContext', () => ({ useAuth: () => ({ user: { id: 'owner' } }) }))
 vi.mock('@/lib/api', () => ({ api: { get: vi.fn(), put: vi.fn() } }))
 vi.mock('@ubuntu-fund/ui', async original => ({ ...await original<typeof import('@ubuntu-fund/ui')>(), ImageUpload: ({ value, onChange }: { value: string; onChange: (value: string) => void }) => <input aria-label="Selected image" value={value} onChange={event => onChange(event.target.value)} /> }))
 beforeEach(() => {
   vi.resetAllMocks()
+  installMemoryStorage()
   vi.mocked(api.get).mockResolvedValue({ items: [], total: 0 })
   vi.stubGlobal('Image', class { onload?: () => void; set src(_value: string) { queueMicrotask(() => this.onload?.()) } })
 })
@@ -33,4 +35,31 @@ it('does not submit with another account credentials when image validation finis
   view.unmount(); loaded()
   await new Promise(resolve => setTimeout(resolve, 0))
   expect(api.put).not.toHaveBeenCalled()
+})
+it('keeps a held image across closing the dialog and clears it once the same image is accepted', async () => {
+  const saved = vi.fn()
+  vi.mocked(api.put).mockRejectedValueOnce(new Error('Saved privately for safety review.')).mockResolvedValueOnce({})
+  const first = render(<ProfileImageEditor kind="avatarUrl" currentUrl="" onClose={() => {}} onSaved={saved} />)
+  fireEvent.change(screen.getByLabelText('Selected image'), { target: { value: 'https://example.test/held.png' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Save image' }))
+  await screen.findByText('Saved privately for safety review.')
+  first.unmount()
+  // Reopened later: the held URL is restored rather than lost to a re-upload.
+  render(<ProfileImageEditor kind="avatarUrl" currentUrl="" onClose={() => {}} onSaved={saved} />)
+  expect(screen.getByLabelText('Selected image')).toHaveValue('https://example.test/held.png')
+  expect(screen.getByText(/This is the image you last submitted/)).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Save image' }))
+  await waitFor(() => expect(saved).toHaveBeenCalledExactlyOnceWith('https://example.test/held.png'))
+  expect(localStorage.length).toBe(0)
+})
+it('removes an image by saving the default without a held draft', async () => {
+  const saved = vi.fn()
+  vi.mocked(api.put).mockResolvedValueOnce({})
+  render(<ProfileImageEditor kind="coverUrl" currentUrl="https://example.test/current.png" onClose={() => {}} onSaved={saved} />)
+  expect(screen.getByText(/takes effect right away/)).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Use default image' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Save image' }))
+  await waitFor(() => expect(saved).toHaveBeenCalledExactlyOnceWith(''))
+  expect(api.put).toHaveBeenCalledWith('/profile', { coverUrl: '' })
+  expect(localStorage.length).toBe(0)
 })

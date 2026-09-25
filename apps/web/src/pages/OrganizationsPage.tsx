@@ -28,6 +28,9 @@ interface ApiOrg {
   verified: boolean
   avatarUrl?: string
   createdAt: string
+  campaignCount?: number
+  totalRaised?: number
+  currency?: string
 }
 
 interface Organization extends ApiOrg {
@@ -75,20 +78,16 @@ function OrganizationsForViewer() {
       if (loading) return
       loading = true
       try {
-        const [orgs, campaignsRes] = await Promise.all([
-          api.get<ApiOrg[]>('/organizations'),
-          api.get<{ items: Array<{ creatorId: string; raisedAmount: number; currency: string }> }>('/campaigns?pageSize=100'),
-        ])
-        const campaigns = Array.isArray(campaignsRes) ? campaignsRes : campaignsRes?.items ?? []
-        const enriched: Organization[] = orgs.map((org) => {
-          const orgCampaigns = campaigns.filter((c) => c.creatorId === org.id)
-          return {
-            ...org,
-            campaignCount: orgCampaigns.length,
-            totalRaised: orgCampaigns.reduce((sum, c) => sum + (c.raisedAmount || 0), 0),
-            currency: orgCampaigns[0]?.currency ?? 'GHS',
-          }
-        })
+        // The server counts every public campaign and totals them in one
+        // currency; joining the first page of /campaigns here missed older
+        // campaigns and added different currencies together.
+        const orgs = await api.get<ApiOrg[]>('/organizations')
+        const enriched: Organization[] = orgs.map((org) => ({
+          ...org,
+          campaignCount: org.campaignCount ?? 0,
+          totalRaised: org.totalRaised ?? 0,
+          currency: org.currency ?? 'GHS',
+        }))
         if (active) setOrganizations(enriched)
       } catch {
         if (active) setOrganizations([])

@@ -7,6 +7,8 @@ import {
 
 export interface CampaignDocument extends Document {
   slug?: string;
+  /** Vanity slugs this campaign used before; old links and QR codes keep working. */
+  previousSlugs?: string[];
   title: string;
   description: string;
   goalAmount: number;
@@ -25,6 +27,8 @@ export interface CampaignDocument extends Document {
   tier?: number;
   lockedPlatformFeePercent?: number;
   reviewRevision?: number;
+  /** Client Idempotency-Key of the POST /campaigns that created this campaign. */
+  creationIdempotencyKey?: string;
   payoutWriteVersion?: number;
   splitWriteVersion?: number;
   liveCreationWriteVersion?: number;
@@ -44,6 +48,7 @@ const campaignSchema = new Schema<CampaignDocument>(
       lowercase: true,
       trim: true,
     },
+    previousSlugs: { type: [String], default: undefined, index: true },
     title: { type: String, required: true, index: true },
     payoutWriteVersion: { type: Number, default: 0 },
     splitWriteVersion: { type: Number, default: 0 },
@@ -80,8 +85,17 @@ const campaignSchema = new Schema<CampaignDocument>(
     tier: { type: Number, index: true },
     lockedPlatformFeePercent: { type: Number },
     reviewRevision: { type: Number, default: 0 },
+    creationIdempotencyKey: { type: String },
   },
   { timestamps: true }
+);
+
+// The expiry sweep and the effective-status listing filters select on both.
+campaignSchema.index({ status: 1, endDate: 1 });
+// A retried POST /campaigns with the same key can never create a second campaign.
+campaignSchema.index(
+  { creatorId: 1, creationIdempotencyKey: 1 },
+  { unique: true, partialFilterExpression: { creationIdempotencyKey: { $type: 'string' } }, name: 'campaign_creation_idempotency' }
 );
 
 export const CampaignModel = mongoose.model<CampaignDocument>(

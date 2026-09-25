@@ -3,6 +3,7 @@ import Alert from '@mui/material/Alert'
 import { AccountPageSkeleton, AccountHeading } from '@/components/account/AccountPage'
 import { useState } from 'react'
 import { useMyCampaigns } from '@/hooks/useCampaigns'
+import { api } from '@/lib/api'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
@@ -15,7 +16,6 @@ import Tabs from '@mui/material/Tabs'
 import Tab from '@mui/material/Tab'
 import Divider from '@mui/material/Divider'
 import AddRoundedIcon from '@mui/icons-material/AddRounded'
-import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded'
 import ShareRoundedIcon from '@mui/icons-material/ShareRounded'
 import PeopleIcon from '@mui/icons-material/People'
@@ -71,13 +71,22 @@ function daysLeft(end: Date) {
   return `${diff} days`
 }
 
+// Creation only produces pending-review or active campaigns, so there is no
+// Draft tab. Tabs match the effective state: an ended campaign is Expired.
 const TAB_FILTERS = [
   { label: 'All', value: 'all' },
+  { label: 'Pending review', value: CampaignStatus.PENDING_REVIEW },
   { label: 'Active', value: CampaignStatus.ACTIVE },
   { label: 'Funded', value: CampaignStatus.FUNDED },
-  { label: 'Draft', value: CampaignStatus.DRAFT },
+  { label: 'Expired', value: CampaignStatus.EXPIRED },
   { label: 'Blocked', value: CampaignStatus.BLOCKED },
 ]
+
+/** An active or funded campaign past its end date is closed, even before the expiry sweep relabels it. */
+function effectiveStatus(campaign: Campaign): CampaignStatus {
+  const open = campaign.status === CampaignStatus.ACTIVE || campaign.status === CampaignStatus.FUNDED
+  return open && new Date(campaign.endDate).getTime() <= Date.now() ? CampaignStatus.EXPIRED : campaign.status
+}
 
 // ─── Kente Progress Bar ────────────────────────────────────
 
@@ -113,7 +122,7 @@ function CampaignRow({
 }) {
   const [hovered, setHovered] = useState(false)
   const pct = Math.min(Math.round((campaign.raisedAmount / campaign.goalAmount) * 100), 100)
-  const statusCfg = STATUS_CONFIG[campaign.status] ?? STATUS_CONFIG[CampaignStatus.DRAFT]
+  const statusCfg = STATUS_CONFIG[effectiveStatus(campaign)] ?? STATUS_CONFIG[CampaignStatus.DRAFT]
   const priorityCfg = PRIORITY_CONFIG[campaign.priority]
   const hasImage = campaign.imageUrls.length > 0
 
@@ -302,7 +311,7 @@ function CampaignRow({
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, color: 'text.secondary' }}>
             <PeopleIcon sx={{ fontSize: 15 }} />
             <Typography variant="caption" sx={{ fontWeight: 600 }}>
-              0 donors
+              {campaign.donorCount ?? 0} {campaign.donorCount === 1 ? 'donor' : 'donors'}
             </Typography>
           </Box>
 
@@ -315,16 +324,6 @@ function CampaignRow({
                 sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main', bgcolor: 'rgba(46, 61, 47,0.06)' } }}
               >
                 <VisibilityRoundedIcon sx={{ fontSize: 18 }} />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Edit" arrow>
-              <IconButton
-                component={RouterLink}
-                to={`/campaigns/${campaign.id}`}
-                size="small"
-                sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main', bgcolor: 'rgba(46, 61, 47,0.06)' } }}
-              >
-                <EditRoundedIcon sx={{ fontSize: 18 }} />
               </IconButton>
             </Tooltip>
             <Tooltip title="Share link" arrow>
@@ -393,7 +392,7 @@ export function MyCampaignsPage() {
   useSeo({
     title: 'My campaigns | Ujimora',
     description:
-      'Manage the fundraisers you run on Ujimora: filter by draft, active or funded, see how much each has raised in cedis, and copy a link to share.',
+      'Manage the fundraisers you run on Ujimora: filter by pending review, active or funded, see how much each has raised in cedis, and copy a link to share.',
     path: '/my-campaigns',
     robots: 'noindex, nofollow',
   })
@@ -401,19 +400,22 @@ export function MyCampaignsPage() {
   const [tabIndex, setTabIndex] = useState(0)
   const [shareSnack, setShareSnack] = useState(false)
 
-  const activeFilter = TAB_FILTERS[tabIndex].value
+  const activeTab = TAB_FILTERS[tabIndex]
+  const activeFilter = activeTab.value
   const filtered = activeFilter === 'all'
     ? campaigns
-    : campaigns.filter((c) => c.status === activeFilter)
+    : campaigns.filter((c) => effectiveStatus(c) === activeFilter)
 
   // Summary stats
   const totalRaised = campaigns.reduce((s, c) => s + c.raisedAmount, 0)
-  const activeCampaigns = campaigns.filter((c) => c.status === CampaignStatus.ACTIVE).length
-  const fundedCampaigns = campaigns.filter((c) => c.status === CampaignStatus.FUNDED).length
+  const activeCampaigns = campaigns.filter((c) => effectiveStatus(c) === CampaignStatus.ACTIVE).length
+  const fundedCampaigns = campaigns.filter((c) => effectiveStatus(c) === CampaignStatus.FUNDED).length
 
   function handleShare(campaignId: string) {
     navigator.clipboard.writeText(`${window.location.origin}/campaigns/${campaignId}`)
     setShareSnack(true)
+    // Best-effort share record, as on the campaign page; never blocks the copy.
+    api.post(`/campaigns/${campaignId}/share`, { platform: 'web-copy' }).catch(() => {})
   }
 
   if (isLoading) return <AccountPageSkeleton layout="cards" />
@@ -454,7 +456,7 @@ export function MyCampaignsPage() {
           {TAB_FILTERS.map((t) => {
             const count = t.value === 'all'
               ? campaigns.length
-              : campaigns.filter((c) => c.status === t.value).length
+              : campaigns.filter((c) => effectiveStatus(c) === t.value).length
             return (
               <Tab
                 key={t.value}
@@ -505,7 +507,7 @@ export function MyCampaignsPage() {
         <EmptyState
           variant="empty"
           title="No campaigns here"
-          description={activeFilter === 'all' ? 'Start making a difference by creating your first campaign.' : `You don't have any ${activeFilter} campaigns.`}
+          description={activeFilter === 'all' ? 'Start making a difference by creating your first campaign.' : `You don't have any ${activeTab.label.toLowerCase()} campaigns.`}
           action={
             <Button
               component={RouterLink}

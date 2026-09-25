@@ -1,5 +1,12 @@
 import { usePublicCampaign } from '@/hooks/usePublicCampaign'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation, Link as RouterLink } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import FlagRoundedIcon from '@mui/icons-material/FlagRounded'
+import LiveTvRoundedIcon from '@mui/icons-material/LiveTvRounded'
+import { useAuth } from '@/context/AuthContext'
+import { api } from '@/lib/api'
+import { ReportCampaignDialog } from '@/components/campaigns/ReportCampaignDialog'
+import { UserSafetyControls } from '@/components/safety/UserSafetyControls'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
@@ -24,6 +31,7 @@ import {
   donatePath,
 } from '@/lib/fundraising'
 import { useSeo, SITE_ORIGIN } from '@/lib/seo'
+import { SplitDisclosure } from '@/components/campaigns/SplitDisclosure'
 
 // ---------------------------------------------------------------------------
 // Animations
@@ -71,6 +79,26 @@ export function CampaignPublicPage() {
   const navigate = useNavigate()
 
   const { campaign, isLoading, error, notFound } = usePublicCampaign(slug)
+  const { search, pathname } = useLocation()
+  const { user } = useAuth()
+  const [reportOpen, setReportOpen] = useState(false)
+  const [blocked, setBlocked] = useState(false)
+  // QR and social visitors land here, so a running broadcast is linked here
+  // too, as on the full campaign page.
+  const [liveSessionId, setLiveSessionId] = useState<string | null>(null)
+  useEffect(() => {
+    if (!campaign?.id) return
+    let stopped = false
+    const load = () => api.get<{ id: string } | null>(`/campaigns/${campaign.id}/active-live`).then(value => { if (!stopped) setLiveSessionId(value?.id ?? null) }).catch(() => {})
+    void load(); const timer = setInterval(load, 15000)
+    return () => { stopped = true; clearInterval(timer) }
+  }, [campaign?.id])
+
+  // An old vanity slug (or the id) still resolves; move the address bar to the
+  // campaign's current slug so shares copy the canonical link.
+  useEffect(() => {
+    if (campaign?.slug && slug && campaign.slug !== slug) navigate(`/c/${encodeURIComponent(campaign.slug)}${search}`, { replace: true })
+  }, [campaign?.slug, slug, search, navigate])
 
   // This slug URL is the one public shape for a campaign: /campaigns/:id and
   // /c/:id resolve to the same fundraiser and canonicalise here, so the page
@@ -140,10 +168,10 @@ export function CampaignPublicPage() {
     )
   }
 
-  if (!campaign) {
+  if (!campaign || blocked) {
     return (
       <Container maxWidth="sm" sx={{ py: 8 }}>
-        <ItemNotFound itemType="Campaign" onBack={() => navigate('/')} backLabel="Explore campaigns" />
+        <ItemNotFound itemType="Campaign" message={blocked ? 'You blocked this organiser, so their campaign is hidden from you.' : undefined} onBack={() => navigate('/')} backLabel="Explore campaigns" />
       </Container>
     )
   }
@@ -236,6 +264,14 @@ export function CampaignPublicPage() {
         )}
       </Box>
 
+      <SplitDisclosure campaignId={campaign.id} sx={{ mb: 2 }} />
+
+      {liveSessionId && (
+        <Button fullWidth variant="outlined" color="primary" startIcon={<LiveTvRoundedIcon />} component={RouterLink} to={`/live/${liveSessionId}`} sx={{ mb: 1.5 }}>
+          Watch live broadcast
+        </Button>
+      )}
+
       {/* Donate CTA */}
       <Button
         fullWidth
@@ -260,6 +296,20 @@ export function CampaignPublicPage() {
           This campaign isn't accepting donations right now.
         </Typography>
       )}
+
+      {/* Safety: report the campaign, or report/block its organiser */}
+      <Box sx={{ mt: 3, display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Button
+          size="small"
+          startIcon={<FlagRoundedIcon />}
+          onClick={() => user ? setReportOpen(true) : navigate('/login', { state: { from: { pathname } } })}
+          sx={{ color: 'var(--text-error)', textTransform: 'none', fontWeight: 600 }}
+        >
+          Report campaign
+        </Button>
+        <UserSafetyControls userId={campaign.creatorId} onBlocked={() => setBlocked(true)} />
+      </Box>
+      <ReportCampaignDialog open={reportOpen} onClose={() => setReportOpen(false)} campaignId={campaign.id} campaignTitle={campaign.title} />
 
       {/* Trust + brand */}
       <Box
