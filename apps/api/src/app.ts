@@ -1665,7 +1665,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
   api.use('/wallets', createWalletRoutes(walletController, authMiddleware))
   api.use('/profile', createProfileRoutes(profileController, authMiddleware))
   api.use('/data-rights', createDataRightsRoutes(authMiddleware))
-  api.use('/admin/data-rights', createDataRightsAdminRoutes(authMiddleware))
+  api.use('/admin/data-rights', createDataRightsAdminRoutes(authMiddleware, accountEmails))
   api.use('/admin/privacy-requests', createPrivacyRequestRoutes(authMiddleware, accountErasure))
   api.use('/admin/store-billing', createStoreBillingAdminRoutes(authMiddleware, storeBilling))
   api.use('/users', createUserRoutes(profileController, optionalAuthMiddleware))

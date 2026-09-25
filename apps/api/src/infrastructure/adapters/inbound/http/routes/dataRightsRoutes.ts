@@ -9,6 +9,7 @@ import { AppError } from '../../middleware/errorHandler.js';
 import { DataRightsRequestModel, DataRightsEventModel } from '../../../../database/models/DataRightsRequestModel.js';
 import { UserModel } from '../../../../database/models/UserModel.js';
 import { MongoUnitOfWork } from '../../../outbound/persistence/MongoUnitOfWork.js';
+import type { AccountEmails } from '../../../outbound/AccountEmails.js';
 
 const fields = '_id kind details status response revision dueAt respondedAt deliveryMethod createdAt updatedAt';
 const pageOf = (value: unknown) => Math.max(1, Math.min(10000, Math.floor(Number(value)) || 1));
@@ -47,7 +48,7 @@ export function createDataRightsRoutes(auth: ReturnType<typeof createAuthMiddlew
   return router;
 }
 
-export function createDataRightsAdminRoutes(auth: ReturnType<typeof createAuthMiddleware>) {
+export function createDataRightsAdminRoutes(auth: ReturnType<typeof createAuthMiddleware>, emails?: Pick<AccountEmails, 'enqueueDataRightsResponse'>) {
   const router = Router();
   router.use(auth, requireAdmin, (_req, res, next) => { res.set('Cache-Control', 'private, no-store'); next(); });
   router.get('/', async (req, res, next) => {
@@ -90,8 +91,9 @@ export function createDataRightsAdminRoutes(auth: ReturnType<typeof createAuthMi
         }, { $inc: { staffActionVersion: 1 } }, { new: true });
         if (!staff) throw new AppError('Current administrator access is required to review this request.', 403);
         const existing = await DataRightsRequestModel.findById(req.params.id);
+        let owner: { _id: unknown; email: string; authVersion?: string | null } | null = null;
         if (existing && req.body.status === 'responded' && req.body.deliveryMethod === 'account') {
-          const owner = await UserModel.findOneAndUpdate({ _id: existing.userId, deletedAt: null }, { $set: { updatedAt: new Date() } });
+          owner = await UserModel.findOneAndUpdate({ _id: existing.userId, deletedAt: null }, { $set: { updatedAt: new Date() } });
           if (!owner) throw new AppError('This account is closed. Record review progress and arrange verified communication through the privacy team.', 409);
         }
         const record = await DataRightsRequestModel.findOneAndUpdate({ _id: req.params.id, active: true, revision: req.body.revision }, { $set: {
@@ -100,6 +102,8 @@ export function createDataRightsAdminRoutes(auth: ReturnType<typeof createAuthMi
         }, $inc: { revision: 1 } }, { new: true });
         if (!record) throw new AppError('Request changed or was already answered. Refresh before reviewing.', 409);
         await DataRightsEventModel.create({ requestId: String(record._id), actorId: req.userId, action: req.body.status, revision: record.revision, evidence: req.body.evidence, ...(req.body.status === 'responded' && req.body.deliveryMethod === 'verified_external' ? { deliveryReference: req.body.deliveryReference } : {}) });
+        // Tell the requester a response is waiting in Settings (no content in the email).
+        if (owner) await emails?.enqueueDataRightsResponse({ id: String(owner._id), email: owner.email, authVersion: owner.authVersion }, String(record._id));
         return record;
       });
       res.json({ data: item });

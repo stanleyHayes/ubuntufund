@@ -3,7 +3,7 @@ import mongoose, { Schema } from 'mongoose';
 const schema = new Schema({
   userId: { type: String, index: true },
   newsletterId: { type: String, index: true },
-  purpose: { type: String, enum: ['recovery', 'verification', 'password_changed', 'newsletter_confirmation'], default: 'recovery' },
+  purpose: { type: String, enum: ['recovery', 'verification', 'password_changed', 'newsletter_confirmation', 'data_rights_response'], default: 'recovery' },
   tokenHash: { type: String, required: true, unique: true },
   authVersion: { type: String, default: '' },
   emailHash: { type: String, required: true },

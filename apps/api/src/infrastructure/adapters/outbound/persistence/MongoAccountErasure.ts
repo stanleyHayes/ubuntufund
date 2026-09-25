@@ -25,6 +25,7 @@ import { DonationModel } from '../../../database/models/DonationModel.js';
 import { TipModel } from '../../../database/models/TipModel.js';
 import { CampaignModel } from '../../../database/models/CampaignModel.js';
 import { LiveSessionModel } from '../../../database/models/LiveSessionModel.js';
+import { ShortLinkModel } from '../../../database/models/ShortLinkModel.js';
 import { logger } from '../../../logging/logger.js';
 import { PrivateKycDocumentModel } from '../../../database/models/PrivateKycDocumentModel.js';
 
@@ -87,6 +88,9 @@ export class MongoAccountErasure implements AccountErasurePort {
     await CampaignCommentModel.updateMany({ authorId: userId }, { $unset: { authorName: '', authorAvatarUrl: '' } });
     await OrganizationMemberModel.updateMany({ $or: [{ userId }, { email: request.contactEmail }, { organizationId: userId }] }, { $set: { status: 'revoked' } });
     await CollaborationModel.updateMany({ userId }, { $set: { status: 'removed', displayName: 'Deleted user' }, $unset: { logoUrl: 1, inviteMessage: 1 } });
+    // QR/short-link labels are free text the user wrote; the pseudonymous
+    // createdBy id stays, like every other retained reference to the tombstone.
+    await ShortLinkModel.updateMany({ createdBy: userId, label: { $exists: true } }, { $unset: { label: 1 } });
     await SubscriptionModel.updateMany({ userId }, { $set: { cancelAtPeriodEnd: true } });
     // Financial values/references remain intact; donor identities are hidden publicly.
     await DonationModel.updateMany({ donorId: userId }, { $set: { isAnonymous: true, publicContentRevokedAt: new Date() }, $unset: { publicContentFingerprint: 1, publicReviewNotes: 1 } });

@@ -68,7 +68,7 @@ export class AccountEmails {
           const token = await NewsletterConsentTokenModel.exists({ subscriptionId: job.newsletterId, tokenHash: job.tokenHash, purpose: 'confirm', expiresAt: { $gt: new Date() } });
           eligible = !!subscription && !!token && digest(subscription.email) === job.emailHash;
         } else {
-          const [user, token] = await Promise.all([UserModel.findOne({ _id: job.userId, deletedAt: null }), job.purpose === 'password_changed' ? Promise.resolve(true) : job.purpose === 'verification' ? EmailVerificationTokenModel.exists(tokenFilter) : PasswordResetTokenModel.exists(tokenFilter)]);
+          const [user, token] = await Promise.all([UserModel.findOne({ _id: job.userId, deletedAt: null }), ['password_changed', 'data_rights_response'].includes(job.purpose) ? Promise.resolve(true) : job.purpose === 'verification' ? EmailVerificationTokenModel.exists(tokenFilter) : PasswordResetTokenModel.exists(tokenFilter)]);
           eligible = !!user && !!token && !(job.purpose === 'verification' && user.emailVerified) && (user.authVersion ?? '') === job.authVersion && digest(user.email) === job.emailHash;
         }
         if (!eligible) {
@@ -90,6 +90,19 @@ export class AccountEmails {
     const payload = { from: this.sender.from, reply_to: this.sender.replyTo, to: [user.email.value], subject: 'Your Ujimora password changed',
       text: `Your Ujimora password was changed and previous sessions have ended.\n\nIf you made this change, no action is needed. If you did not, request a new password at ${this.sender.webUrl}/forgot-password and contact ${this.sender.replyTo}.\n\nThis is an account security notice, not a marketing subscription.` };
     await AccountEmailJobModel.create({ userId: user.id, purpose, tokenHash, authVersion: user.authVersion, emailHash: digest(user.email.value), expiresAt: new Date(Date.now() + 30 * 60_000), encryptedPayload: this.encrypt(payload, tokenHash, purpose) });
+  }
+
+  /**
+   * Called in the data-rights review transaction when a response is published to
+   * the account. Says only that a response is ready; the content stays behind
+   * sign-in. Queueing failure rolls back the review so staff can retry.
+   */
+  async enqueueDataRightsResponse(user: { id: string; email: string; authVersion?: string | null }, requestId: string): Promise<void> {
+    if (!this.configured) return;
+    const tokenHash = digest(randomUUID()), purpose = 'data_rights_response';
+    const payload = { from: this.sender.from, reply_to: this.sender.replyTo, to: [user.email], subject: 'Your Ujimora privacy request has a response',
+      text: `We have responded to your privacy request (reference ${requestId}).\n\nFor your security the response is not included in this email. Sign in and open Settings, then "Your data and privacy requests", to read or download it:\n\n${this.sender.webUrl}/settings\n\nIf you did not make this request, contact ${this.sender.replyTo}.` };
+    await AccountEmailJobModel.create({ userId: user.id, purpose, tokenHash, authVersion: user.authVersion ?? '', emailHash: digest(user.email), expiresAt: new Date(Date.now() + 24 * 3600_000), encryptedPayload: this.encrypt(payload, tokenHash, purpose) });
   }
 
   /** Called in the newsletter consent transaction. */
