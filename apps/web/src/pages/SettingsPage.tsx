@@ -16,8 +16,6 @@ import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
 import Grid from '@mui/material/Grid'
 import Switch from '@mui/material/Switch'
-import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
-import MenuItem from '@mui/material/MenuItem'
 import Button from '@mui/material/Button'
 import Avatar from '@mui/material/Avatar'
 import Chip from '@mui/material/Chip'
@@ -152,15 +150,13 @@ function SettingsForViewer() {
   useSeo({
     title: 'Account settings | Ujimora',
     description:
-      'Choose how Ujimora contacts you, set your language and appearance, control what other people can see about you, and close your account if you wish.',
+      'Choose how Ujimora contacts you, set your appearance, control what other people can see about you, and close your account if you wish.',
     path: '/settings',
     robots: 'noindex, nofollow',
   })
   const { user, logout, replaceTokens, isLoading: authLoading } = useAuth()
   const { darkMode, setDarkMode, skin, setSkin } = useColorMode()
   const navigate = useNavigate()
-
-  const [language, setLanguage] = useState('English')
 
   // Privacy settings
   const [anonymousDonations, setAnonymousDonations] = useState(false)
@@ -181,7 +177,7 @@ function SettingsForViewer() {
 
   const live = useRef(true)
   const writes = useRef(Promise.resolve())
-  const confirmed = useRef<Record<string, unknown>>({ language: 'English', darkMode, anonymousDonations: false, showLeaderboards: true, publicProfile: true })
+  const confirmed = useRef<Record<string, unknown>>({ darkMode, anonymousDonations: false, showLeaderboards: true, publicProfile: true })
   const revision = useRef(0)
   const fieldRevision = useRef<Record<string, number>>({})
   useEffect(() => { live.current = true; return () => { live.current = false } }, [])
@@ -195,7 +191,6 @@ function SettingsForViewer() {
     setLoadError(null)
     setLoadStatus(null)
     api.get<{
-      language?: string
       darkMode?: boolean
       anonymousDonations?: boolean
       showLeaderboards?: boolean
@@ -204,7 +199,6 @@ function SettingsForViewer() {
       .then((data) => {
         if (cancelled) return
         confirmed.current = { ...confirmed.current, ...data }
-        if (data.language) setLanguage(data.language)
         if (data.darkMode !== undefined) setDarkMode(data.darkMode)
         if (data.anonymousDonations !== undefined) setAnonymousDonations(data.anonymousDonations)
         if (data.showLeaderboards !== undefined) setShowLeaderboards(data.showLeaderboards)
@@ -238,7 +232,6 @@ function SettingsForViewer() {
         if (patch.publicProfile === true) setPublicationError(err instanceof Error ? err.message : 'Could not publish your profile.')
         for (const key of Object.keys(patch)) {
           if (fieldRevision.current[key] !== version) continue
-          if (key === 'language') setLanguage(confirmed.current[key] as string)
           if (key === 'darkMode') setDarkMode(confirmed.current[key] as boolean)
           if (key === 'anonymousDonations') setAnonymousDonations(confirmed.current[key] as boolean)
           if (key === 'showLeaderboards') setShowLeaderboards(confirmed.current[key] as boolean)
@@ -372,7 +365,7 @@ function SettingsForViewer() {
               id="preferences"
               icon={<TuneRoundedIcon sx={{ fontSize: 19 }} />}
               title="Preferences"
-              description="Language, currency, and appearance."
+              description="Currency and appearance."
             >
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
                 {/* Currency — fixed for the Ghana launch */}
@@ -387,17 +380,6 @@ function SettingsForViewer() {
                     All donations and campaigns use the Ghanaian cedi.
                   </Typography>
                 </Box>
-                <TextField
-                  select
-                  label="Language"
-                  value={language}
-                  onChange={(e) => { setLanguage(e.target.value); persistSettings({ language: e.target.value }) }}
-                  sx={{ maxWidth: 320 }}
-                >
-                  {['English', 'Twi', 'Ga', 'Ewe', 'Hausa', 'Dagbani'].map((l) => (
-                    <MenuItem key={l} value={l}>{l}</MenuItem>
-                  ))}
-                </TextField>
               </Box>
               <Box sx={{ mt: 1 }}>
                 <ToggleRow label="Dark mode" description="Use Ujimora's low-light color theme" checked={darkMode} onChange={(v) => { setDarkMode(v); persistSettings({ darkMode: v }) }} />

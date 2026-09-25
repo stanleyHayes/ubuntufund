@@ -13,6 +13,8 @@ import { Text, Icon, Switch } from 'react-native-paper'
 import { router, Stack } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
+import { DEFAULT_PRIVACY_SETTINGS, privacySettingPatch, privacySettingsFromProfile, type PrivacySettings } from '@/lib/privacySettings'
+import { PublicationConsent } from '@/components/PublicationConsent'
 import { SignInRequired } from '@/components/SignInRequired'
 import {
   usePalette,
@@ -22,35 +24,12 @@ import {
 } from '@/context/ColorModeContext'
 import { SKINS, type Palette, type NeuRecipes } from '@/theme'
 
-interface SettingsData {
-  emailNotifications: boolean
-  smsNotifications: boolean
-  pushNotifications: boolean
-  donationReceipts: boolean
-  preferredCurrency: string
-  language: string
-  anonymousDonations: boolean
-  showOnLeaderboard: boolean
-}
-
-const LANGUAGES = ['English', 'Twi', 'Ga', 'Ewe', 'Hausa']
 
 const APPEARANCE_OPTIONS: { value: ColorModePreference; label: string; icon: string }[] = [
   { value: 'light', label: 'Light', icon: 'white-balance-sunny' },
   { value: 'dark', label: 'Dark', icon: 'weather-night' },
   { value: 'system', label: 'System', icon: 'cellphone-cog' },
 ]
-
-const DEFAULT_SETTINGS: SettingsData = {
-  emailNotifications: true,
-  smsNotifications: false,
-  pushNotifications: false,
-  donationReceipts: true,
-  preferredCurrency: 'GHS',
-  language: 'English',
-  anonymousDonations: false,
-  showOnLeaderboard: true,
-}
 
 // Shared style factory — built from the active palette so a mode switch recolors
 // everything. Screens call `useStyles()` (below) to get the memoized result.
@@ -89,13 +68,7 @@ function makeStyles(p: Palette, neu: NeuRecipes) {
     },
     toggleLabel: { flex: 1, fontSize: 15, fontFamily: 'Outfit_700Bold', color: p.text },
 
-    pickerValue: { flexDirection: 'row', alignItems: 'center', gap: 4 },
     pickerValueText: { fontSize: 14, fontFamily: 'Outfit_700Bold', color: p.primary },
-    pickerOptions: { flexDirection: 'row', flexWrap: 'wrap', padding: 12, gap: 8 },
-    pickerOption: { ...neu.subtle, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20 },
-    pickerOptionActive: { ...neu.greenInset },
-    pickerOptionText: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: p.text },
-    pickerOptionTextActive: { color: '#fff' },
 
     appearanceRow: { flexDirection: 'row', gap: 8, padding: 12 },
     appearanceOption: {
@@ -184,48 +157,6 @@ function ToggleRow({ icon, label, value, onToggle, color }: {
 
 // ─── Picker Row ──────────────────────────────────────────────
 
-function PickerRow({ icon, label, value, options, onChange, color }: {
-  icon: string; label: string; value: string; options: string[]; onChange: (v: string) => void; color?: string
-}) {
-  const p = usePalette()
-  const styles = useStyles()
-  const [expanded, setExpanded] = useState(false)
-  const tint = color ?? p.primaryLight
-  return (
-    <View>
-      <TouchableRipple style={styles.toggleRow} rippleColor={p.ripple} onPress={() => setExpanded(!expanded)}>
-        <>
-          <View style={[styles.toggleIcon, { backgroundColor: `${tint}14` }]}>
-            <Icon source={icon} size={18} color={tint} />
-          </View>
-          <Text style={styles.toggleLabel}>{label}</Text>
-          <View style={styles.pickerValue}>
-            <Text style={styles.pickerValueText}>{value}</Text>
-            <Icon source={expanded ? 'chevron-up' : 'chevron-down'} size={16} color={p.textSecondary} />
-          </View>
-        </>
-      </TouchableRipple>
-      {expanded && (
-        <View style={styles.pickerOptions}>
-          {options.map((opt) => (
-            <TouchableRipple
-              key={opt}
-              style={[styles.pickerOption, value === opt && styles.pickerOptionActive]}
-              rippleColor={p.ripple}
-              hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
-              onPress={() => { onChange(opt); setExpanded(false) }}
-            >
-              <Text style={[styles.pickerOptionText, value === opt && styles.pickerOptionTextActive]}>
-                {opt}
-              </Text>
-            </TouchableRipple>
-          ))}
-        </View>
-      )}
-    </View>
-  )
-}
-
 // ─── Appearance (light / dark / system) ──────────────────────
 
 function AppearanceRow() {
@@ -296,7 +227,8 @@ export default function SettingsScreen() {
   const { user, logout } = useAuth()
   const p = usePalette()
   const styles = useStyles()
-  const [settings, setSettings] = useState<SettingsData>(DEFAULT_SETTINGS)
+  const [settings, setSettings] = useState<PrivacySettings>(DEFAULT_PRIVACY_SETTINGS)
+  const [automatedReviewConsent, setAutomatedReviewConsent] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -304,20 +236,8 @@ export default function SettingsScreen() {
     setLoading(true)
     setError(null)
     try {
-      const data = await api.get<{
-        notificationPreferences?: { email?: boolean; sms?: boolean; push?: boolean; donationReceipts?: boolean }
-        language?: string; anonymousDonations?: boolean; showLeaderboards?: boolean
-      }>('/profile')
-      setSettings({
-        ...DEFAULT_SETTINGS,
-        emailNotifications: data.notificationPreferences?.email ?? DEFAULT_SETTINGS.emailNotifications,
-        smsNotifications: data.notificationPreferences?.sms ?? DEFAULT_SETTINGS.smsNotifications,
-        pushNotifications: data.notificationPreferences?.push ?? DEFAULT_SETTINGS.pushNotifications,
-        donationReceipts: data.notificationPreferences?.donationReceipts ?? DEFAULT_SETTINGS.donationReceipts,
-        language: data.language ?? DEFAULT_SETTINGS.language,
-        anonymousDonations: data.anonymousDonations ?? DEFAULT_SETTINGS.anonymousDonations,
-        showOnLeaderboard: data.showLeaderboards ?? DEFAULT_SETTINGS.showOnLeaderboard,
-      })
+      const data = await api.get<{ anonymousDonations?: boolean; showLeaderboards?: boolean; publicProfile?: boolean }>('/profile')
+      setSettings(privacySettingsFromProfile(data))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load settings')
     } finally {
@@ -330,28 +250,18 @@ export default function SettingsScreen() {
     fetchSettings()
   }, [user, fetchSettings])
 
-  const updateSetting = useCallback(async <K extends keyof SettingsData,>(key: K, value: SettingsData[K]) => {
+  const updateSetting = useCallback(async <K extends keyof PrivacySettings,>(key: K, value: PrivacySettings[K]) => {
     const previousValue = settings[key]
     setSettings((prev) => ({ ...prev, [key]: value }))
     setError(null)
     try {
-      const payload = key === 'emailNotifications'
-        ? { notificationPreferences: { email: value } }
-        : key === 'smsNotifications'
-          ? { notificationPreferences: { sms: value } }
-          : key === 'pushNotifications'
-            ? { notificationPreferences: { push: value } }
-            : key === 'donationReceipts'
-              ? { notificationPreferences: { donationReceipts: value } }
-              : key === 'showOnLeaderboard'
-                ? { showLeaderboards: value }
-                : { [key]: value }
-      await api.put('/profile', payload)
+      await api.put('/profile', privacySettingPatch(key, value, automatedReviewConsent))
     } catch (err) {
+      // Includes the API's "saved for safety review" answer when going public.
       setSettings((prev) => ({ ...prev, [key]: previousValue }))
       setError(err instanceof Error ? err.message : 'Could not save that setting')
     }
-  }, [settings])
+  }, [settings, automatedReviewConsent])
 
   const handleAccountDeleted = async () => {
     await logout()
@@ -421,7 +331,6 @@ export default function SettingsScreen() {
                 <Text style={styles.toggleLabel}>Currency</Text>
                 <Text style={styles.pickerValueText}>GHS</Text>
               </View>
-              <PickerRow icon="translate" label="Language" value={settings.language} options={LANGUAGES} onChange={(v) => updateSetting('language', v)} color={p.textSecondary} />
             </View>
 
             <BiometricSettings key={`biometric-${user?.id}`} />
@@ -431,6 +340,10 @@ export default function SettingsScreen() {
             <View style={styles.card}>
               <ToggleRow icon="eye-off-outline" label="Anonymous Donations" value={settings.anonymousDonations} onToggle={(v) => updateSetting('anonymousDonations', v)} color={p.textSecondary} />
               <ToggleRow icon="trophy-outline" label="Show on Leaderboard" value={settings.showOnLeaderboard} onToggle={(v) => updateSetting('showOnLeaderboard', v)} color={p.secondary} />
+              <ToggleRow icon="account-eye-outline" label="Public profile" value={settings.publicProfile} onToggle={(v) => updateSetting('publicProfile', v)} color={p.primary} />
+              <View style={{ paddingHorizontal: 14, paddingBottom: 12 }}>
+                <PublicationConsent value={automatedReviewConsent} onChange={setAutomatedReviewConsent} />
+              </View>
             </View>
 
             <BlockedUsers />

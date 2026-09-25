@@ -72,3 +72,14 @@ it('does not touch the session when the password change is refused', async () =>
   await screen.findByText('Current password is incorrect')
   expect(replaceTokens).not.toHaveBeenCalled()
 })
+
+it('does not offer notification or language switches that nothing reads', async () => {
+  mount()
+  fireEvent.click(await screen.findByRole('tab', { name: 'Preferences' }))
+  expect(screen.getByText('Notification Preferences')).toBeVisible()
+  expect(screen.getByText(/notification bell/)).toBeVisible()
+  expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+  expect(screen.queryByText('Push Notifications')).not.toBeInTheDocument()
+  expect(screen.queryByLabelText('Language')).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /save preferences/i })).not.toBeInTheDocument()
+})
