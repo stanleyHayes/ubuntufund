@@ -84,7 +84,7 @@ export const router = createBrowserRouter([
       </AuthGuard>
     ),
     children: [
-      { index: true, element: <DashboardPage /> },
+      { index: true, element: <RequirePermission resource={Resource.ANALYTICS}><DashboardPage /></RequirePermission> },
       { path: 'overview', element: <RequirePermission resource={Resource.ANALYTICS}><OverviewPage /></RequirePermission> },
       { path: 'campaigns', element: <RequirePermission resource={Resource.CAMPAIGNS}><CampaignsPage /></RequirePermission> },
       { path: 'campaigns/:id', element: <RequirePermission resource={Resource.CAMPAIGNS}><CampaignDetailPage /></RequirePermission> },

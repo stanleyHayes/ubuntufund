@@ -9,7 +9,6 @@ export interface PublicUser {
   country?: string
   trustScore: number
   verificationLevel: number
-  role: string
   createdAt: string
 }
 

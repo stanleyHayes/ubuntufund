@@ -201,9 +201,8 @@ function ProfileForViewer() {
     async function fetchImpact() {
       setImpactLoading(true)
       try {
-        const [profileResult, analyticsResult] = await Promise.allSettled([
+        const [profileResult] = await Promise.allSettled([
           api.get<Partial<ProfileImpact> & { name?: string; organizationName?: string; phone?: string; bio?: string; country?: string; avatarUrl?: string; coverUrl?: string }>('/profile'),
-          api.get<Partial<ProfileImpact>>('/analytics/overview'),
         ])
         if (!cancelled) {
           if (profileResult.status === 'rejected') { setProfileLoadError(true); return }
@@ -216,8 +215,7 @@ function ProfileForViewer() {
           setBio(profile.bio ?? '')
           setCountry(profile.country ?? '')
           setImages({ avatarUrl: profile.avatarUrl ?? '', coverUrl: profile.coverUrl ?? '' })
-          const analytics = analyticsResult.status === 'fulfilled' ? analyticsResult.value : {}
-          const merged: ProfileImpact = { ...DEFAULT_IMPACT, ...profile, ...analytics }
+          const merged: ProfileImpact = { ...DEFAULT_IMPACT, ...profile }
           setImpact(merged)
           setInterests(merged.interestedCategories ?? [])
         }

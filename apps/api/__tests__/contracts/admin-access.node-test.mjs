@@ -31,11 +31,12 @@ test('admin can view roles and update payment providers', async () => {
 });
 
 test('regular users cannot access admin controls', async () => {
-  const app = appFor('user');
-  const response = await request(app).get('/rbac/me').expect(200);
-  assert.ok(!response.body.data.permissions.includes('roles:read'));
-  assert.ok(!response.body.data.permissions.includes('payment_providers:update'));
-  await request(app).get('/admin').expect(403);
+  for (const role of ['user', 'organization']) {
+    const app = appFor(role);
+    const response = await request(app).get('/rbac/me').expect(200);
+    assert.deepEqual(response.body.data.permissions, []);
+    await request(app).get('/admin').expect(403);
+  }
 });
 
 test('unknown roles receive no permissions', async () => {

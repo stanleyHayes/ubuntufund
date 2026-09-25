@@ -1,6 +1,6 @@
 import type { KYCRepositoryPort } from '../../domain/ports/outbound/KYCRepositoryPort.js';
 import { currentVerificationLevel } from '../../domain/services/currentVerificationLevel.js';
-import type { UserRole, VerificationLevel } from '@ubuntu-fund/types';
+import type { VerificationLevel } from '@ubuntu-fund/types';
 import type { UserRepositoryPort } from '../../domain/ports/outbound/UserRepositoryPort.js';
 import type { PublicProfileVisibilityPort } from '../../domain/ports/outbound/PublicProfileVisibilityPort.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
@@ -12,7 +12,7 @@ export interface PublicUserProfileDTO {
   country?: string;
   trustScore: number;
   verificationLevel: VerificationLevel;
-  role: UserRole;
+  // No role: a public profile must not reveal which accounts are staff.
   createdAt: Date;
 }
 
@@ -42,7 +42,6 @@ export class GetPublicUserProfileUseCase {
       country: plain.country,
       trustScore: plain.trustScore.value,
       verificationLevel: currentVerificationLevel(user, await this.kycRepo.findByUserId(userId)),
-      role: plain.role,
       createdAt: plain.createdAt,
     };
   }
