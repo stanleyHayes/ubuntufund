@@ -19,6 +19,7 @@ import { usePagination } from '@/hooks/usePagination'
 import PaginationBar from '@/components/PaginationBar'
 import PageHeader from '@/components/PageHeader'
 import { TONES } from '@/lib/tones'
+import { api } from '@/lib/api'
 
 const fadeIn = keyframes`from{opacity:0}to{opacity:1}`
 const slideIn = keyframes`from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}`
@@ -71,37 +72,27 @@ function ContactSubmissionsPage() {
 
   const pagination = usePagination({ totalItems, pageSize: 20 })
 
-  const getAuthHeaders = (): Record<string, string> => {
-    const token = localStorage.getItem('uf_admin_token')
-      ?? (() => { try { return JSON.parse(localStorage.getItem('uf_admin_tokens') ?? 'null')?.accessToken } catch { return null } })()
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-    if (token) headers['Authorization'] = `Bearer ${token}`
-    return headers
-  }
+  const [loadError, setLoadError] = useState('')
 
+  // The shared client refreshes the session, sends 401s to sign-in and throws
+  // descriptive errors, so a failed load shows an error instead of an empty inbox.
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const headers = getAuthHeaders()
       const params = new URLSearchParams({ page: String(pagination.currentPage), pageSize: String(pagination.pageSize) })
       if (statusFilter !== 'all') params.set('status', statusFilter)
       if (typeFilter !== 'all') params.set('inquiryType', typeFilter)
 
-      const [subsRes, statsRes] = await Promise.all([
-        fetch(`/api/v1/contact?${params}`, { headers }),
-        fetch('/api/v1/contact/stats', { headers }),
+      const [subsData, statsData] = await Promise.all([
+        api.get<{ items: ContactSubmission[]; total: number }>(`/contact?${params}`),
+        api.get<Stats>('/contact/stats'),
       ])
-
-      const subsData = await subsRes.json()
-      const statsData = await statsRes.json()
-
-      if (subsRes.ok) {
-        setSubmissions(subsData.data.items)
-        setTotalItems(subsData.data.total)
-      }
-      if (statsRes.ok) setStats(statsData.data)
-    } catch {
-      // API unavailable
+      setSubmissions(subsData.items)
+      setTotalItems(subsData.total)
+      setStats(statsData)
+      setLoadError('')
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : 'Could not load contact submissions')
     } finally {
       setLoading(false)
     }
@@ -114,17 +105,9 @@ function ContactSubmissionsPage() {
     setUpdating(true)
     setUpdateError('')
     try {
-      const headers = getAuthHeaders()
-      const res = await fetch(`/api/v1/contact/${selected.id}/status`, {
-        method: 'PATCH',
-        headers,
-        body: JSON.stringify({ status: newStatus, adminNotes }),
-      })
-      if (!res.ok) throw new Error('Could not update the submission. Please try again.')
-      if (res.ok) {
-        setSelected(null)
-        fetchData()
-      }
+      await api.patch(`/contact/${selected.id}/status`, { status: newStatus, adminNotes })
+      setSelected(null)
+      void fetchData()
     } catch (error) {
       setUpdateError(error instanceof Error ? error.message : 'Could not update submission')
     } finally { setUpdating(false) }
@@ -154,10 +137,10 @@ function ContactSubmissionsPage() {
         lede="Review and respond to inquiries submitted through the site's contact form."
         icon={<MarkEmailUnreadRoundedIcon />}
         stats={[
-          { label: 'Total', value: stats.total },
-          { label: 'New', value: stats.new },
-          { label: 'In Progress', value: stats.inProgress },
-          { label: 'Resolved', value: stats.resolved },
+          { label: 'Total', value: loadError ? '—' : stats.total },
+          { label: 'New', value: loadError ? '—' : stats.new },
+          { label: 'In Progress', value: loadError ? '—' : stats.inProgress },
+          { label: 'Resolved', value: loadError ? '—' : stats.resolved },
         ]}
       actions={<ExportMenu title="Contact submissions" disabled={loading} getReport={async progress => { const params = new URLSearchParams(); if (statusFilter !== 'all') params.set('status', statusFilter); if (typeFilter !== 'all') params.set('inquiryType', typeFilter);
 const rows = (await loadAll<ContactSubmission>('/contact?' + params, progress)).filter(r => !search || [r.name, r.email, r.subject].some(value => value.toLowerCase().includes(search.toLowerCase())));
@@ -225,6 +208,8 @@ return { title: 'Contact submissions', filters: [`Status: ${statusFilter}`, `Typ
               <Skel w={80} h={14} />
             </Box>
           ))
+        ) : loadError ? (
+          <Alert severity="error" sx={{ m: 2 }} action={<Button color="inherit" onClick={() => void fetchData()}>Retry</Button>}>{loadError}</Alert>
         ) : filtered.length === 0 ? (
           <EmptyState variant="search" title="No submissions found" description="No contact submissions match your filters." compact />
         ) : (
