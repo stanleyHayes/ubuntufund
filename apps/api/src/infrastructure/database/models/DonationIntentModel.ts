@@ -56,6 +56,10 @@ export interface DonationIntentDocument extends Document {
   quoteId?: string;
   quoteExpiresAt?: Date;
   cryptoReconciledAt?: Date;
+  /** Last time the fiat payment sweep re-verified this PENDING intent (fairness order). */
+  reconciledAt?: Date;
+  /** Open hosted checkout, retained only while CREATED/PENDING for idempotent retries. */
+  hostedCheckout?: { authorizationUrl?: string; accessCode?: string };
 }
 
 const DONATION_INTENT_STATUSES: DonationIntentStatus[] = [
@@ -151,9 +155,15 @@ const donationIntentSchema = new Schema<DonationIntentDocument>(
     quoteId: { type: String },
     quoteExpiresAt: { type: Date },
     cryptoReconciledAt: { type: Date },
+    reconciledAt: { type: Date },
+    hostedCheckout: { authorizationUrl: String, accessCode: String },
   },
   { collection: 'donationintents', timestamps: true }
 );
+
+// The fiat stale-PENDING sweep: least recently reconciled first, so a backlog
+// of unresolvable checkouts can never starve a newer paid one.
+donationIntentSchema.index({ status: 1, paymentRail: 1, reconciledAt: 1, updatedAt: 1 });
 
 export const DonationIntentModel = mongoose.model<DonationIntentDocument>(
   'DonationIntent',

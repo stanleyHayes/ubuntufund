@@ -52,8 +52,15 @@ function toDomain(doc: DonationIntentDocument): DonationIntentEntity {
     requiredConfirmations: doc.requiredConfirmations,
     quoteId: doc.quoteId,
     quoteExpiresAt: doc.quoteExpiresAt,
+    hostedCheckout:
+      doc.hostedCheckout?.authorizationUrl && ['CREATED', 'PENDING'].includes(doc.status)
+        ? { authorizationUrl: doc.hostedCheckout.authorizationUrl, accessCode: doc.hostedCheckout.accessCode ?? '' }
+        : undefined,
   });
 }
+
+/** Checkout credentials are only kept while a checkout can still be paid. */
+const CLEAR_CHECKOUT = { hostedCheckout: 1 } as const;
 
 export class MongoDonationIntentRepository
   implements DonationIntentRepositoryPort
@@ -137,7 +144,21 @@ export class MongoDonationIntentRepository
           status: 'SUCCEEDED',
           ...(providerRef ? { providerRef } : {}),
         },
+        $unset: CLEAR_CHECKOUT,
       },
+      { new: true }
+    );
+    return doc ? toDomain(doc) : null;
+  }
+
+  async markPendingIfCreated(
+    id: string,
+    providerRef: string,
+    checkout: { authorizationUrl: string; accessCode: string }
+  ): Promise<DonationIntentEntity | null> {
+    const doc = await DonationIntentModel.findOneAndUpdate(
+      { _id: id, status: 'CREATED' },
+      { $set: { status: 'PENDING', providerRef, hostedCheckout: checkout } },
       { new: true }
     );
     return doc ? toDomain(doc) : null;
@@ -155,6 +176,7 @@ export class MongoDonationIntentRepository
           status,
           ...(providerRef ? { providerRef } : {}),
         },
+        ...(status === 'CREATED' || status === 'PENDING' ? {} : { $unset: CLEAR_CHECKOUT }),
       },
       { new: true }
     );
@@ -169,7 +191,41 @@ export class MongoDonationIntentRepository
     // reconciliation sweep can never clobber a concurrently-SUCCEEDED intent.
     const doc = await DonationIntentModel.findOneAndUpdate(
       { _id: id, status: 'PENDING' },
-      { $set: { status: 'FAILED', ...(providerRef ? { providerRef } : {}) } },
+      { $set: { status: 'FAILED', ...(providerRef ? { providerRef } : {}) }, $unset: CLEAR_CHECKOUT },
+      { new: true }
+    );
+    return doc ? toDomain(doc) : null;
+  }
+
+  async markExpiredIfPending(
+    id: string,
+    providerRef?: string
+  ): Promise<DonationIntentEntity | null> {
+    // Same CAS as markFailedIfPending: a webhook that settles the intent first
+    // always wins, so an abandoned-checkout sweep never clobbers a payment.
+    const doc = await DonationIntentModel.findOneAndUpdate(
+      { _id: id, status: 'PENDING', ...(providerRef ? { providerRef } : {}) },
+      { $set: { status: 'EXPIRED' }, $unset: CLEAR_CHECKOUT },
+      { new: true }
+    );
+    return doc ? toDomain(doc) : null;
+  }
+
+  async reopenForLateSuccess(
+    id: string,
+    providerRef: string
+  ): Promise<DonationIntentEntity | null> {
+    // Only hosted fiat intents, only from FAILED/EXPIRED, only for the same
+    // provider reference. The settlement gate then runs exactly once as usual.
+    const doc = await DonationIntentModel.findOneAndUpdate(
+      {
+        _id: id,
+        status: { $in: ['FAILED', 'EXPIRED'] },
+        providerRef,
+        provider: { $ne: 'wallet' },
+        paymentRail: { $ne: 'CRYPTO' },
+      },
+      { $set: { status: 'PENDING' } },
       { new: true }
     );
     return doc ? toDomain(doc) : null;
@@ -188,9 +244,20 @@ export class MongoDonationIntentRepository
       paymentRail: { $ne: 'CRYPTO' },
       updatedAt: { $lt: olderThan },
     })
-      .sort({ updatedAt: 1 })
+      // Never-reconciled rows (field absent) sort first, then the least
+      // recently visited: a backlog of still-open checkouts rotates instead of
+      // pinning the same `limit` rows at the head of every sweep.
+      .sort({ reconciledAt: 1, updatedAt: 1, _id: 1 })
       .limit(limit);
     return docs.map(toDomain);
+  }
+
+  async recordReconciliationAttempt(id: string, attemptedAt: Date): Promise<void> {
+    await DonationIntentModel.updateOne(
+      { _id: id, status: 'PENDING' },
+      { $max: { reconciledAt: attemptedAt } },
+      { timestamps: false }
+    );
   }
 
   /**

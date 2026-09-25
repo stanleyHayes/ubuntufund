@@ -245,4 +245,27 @@ describe('Flutterwave Integration', () => {
     expect(intentDoc?.status).toBe('PENDING');
     expect(await JournalEntryModel.findOne({ donationIntentId: intentId })).toBeNull();
   });
+
+  it('credits a verified late success on an intent already closed as FAILED, once (I008)', async () => {
+    const { userId, token } = await registerUser(app, uniqueEmail('flwlate'));
+    const campaignId = await createActiveCampaign(app, token, userId);
+    const created = await openFlutterwaveCheckout(app, campaignId);
+    const reference = created.body.data.reference as string;
+    const intentId = created.body.data.intent.id as string;
+    await DonationIntentModel.updateOne({ _id: intentId }, { $set: { status: 'FAILED' } });
+
+    // A not-yet-successful re-verification leaves it closed (never re-failed).
+    stubFlutterwave({ verifiedStatus: 'pending' });
+    const raw = JSON.stringify({ event: 'charge.completed', data: { tx_ref: reference } });
+    const send = () => request(app).post('/api/v1/webhooks/flutterwave').set('verif-hash', FLW_HASH)
+      .set('Content-Type', 'application/json').send(raw).expect(200);
+    await send();
+    expect((await DonationIntentModel.findById(intentId))?.status).toBe('FAILED');
+
+    stubFlutterwave();
+    await send();
+    await send();
+    expect((await DonationIntentModel.findById(intentId))?.status).toBe('SUCCEEDED');
+    expect(await JournalEntryModel.find({ donationIntentId: intentId })).toHaveLength(1);
+  });
 });

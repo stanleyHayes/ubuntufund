@@ -34,6 +34,7 @@ import {
   type Transaction,
 } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
+import { WALLET_HISTORY_PAGE_SIZE, nextHistoryCursor, walletTxSign } from '@/lib/walletHistory'
 
 // ---------------------------------------------------------------------------
 // Animations
@@ -95,6 +96,8 @@ export function WalletPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [txError, setTxError] = useState<string | null>(null)
   const [txLoading, setTxLoading] = useState(true)
+  const [txCursor, setTxCursor] = useState<string | null>(null)
+  const [txLoadingMore, setTxLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -104,11 +107,26 @@ export function WalletPage() {
       .catch((err: Error) => setError(err.message))
       .finally(() => setIsLoading(false))
 
-    api.get<Transaction[]>('/wallets/transactions')
-      .then(setTransactions)
+    api.get<Transaction[]>(`/wallets/transactions?limit=${WALLET_HISTORY_PAGE_SIZE}`)
+      .then((rows) => { setTransactions(rows); setTxCursor(nextHistoryCursor(rows)) })
       .catch((err: Error) => setTxError(err.message))
       .finally(() => setTxLoading(false))
   }, [revision])
+
+  // Older history, one page at a time (the API used to cap it at the newest 50).
+  async function loadMoreTransactions() {
+    if (!txCursor) return
+    setTxLoadingMore(true)
+    try {
+      const rows = await api.get<Transaction[]>(`/wallets/transactions?limit=${WALLET_HISTORY_PAGE_SIZE}&before=${encodeURIComponent(txCursor)}`)
+      setTransactions((current) => [...current, ...rows.filter((row) => !current.some((seen) => seen.id === row.id))])
+      setTxCursor(nextHistoryCursor(rows))
+    } catch (err) {
+      setTxError(err instanceof Error ? err.message : 'Could not load older transactions.')
+    } finally {
+      setTxLoadingMore(false)
+    }
+  }
 
   const returnedReference = searchParams.get('reference') ?? searchParams.get('trxref')
   useEffect(() => {
@@ -297,8 +315,15 @@ export function WalletPage() {
                         </Typography>
                       </TableCell>
                       <TableCell>
-                        <Typography sx={{ fontFamily: '"Outfit", monospace', fontWeight: 700, fontSize: '0.85rem' }}>
-                          {formatCurrency(tx.amount, tx.currency)}
+                        <Typography
+                          sx={{
+                            fontFamily: '"Outfit", monospace',
+                            fontWeight: 700,
+                            fontSize: '0.85rem',
+                            color: walletTxSign(tx.type) === '+' ? 'var(--text-brand)' : walletTxSign(tx.type) === '−' ? 'var(--text-error)' : undefined,
+                          }}
+                        >
+                          {walletTxSign(tx.type)}{formatCurrency(tx.amount, tx.currency)}
                         </Typography>
                       </TableCell>
                       <TableCell>
@@ -328,6 +353,13 @@ export function WalletPage() {
                 })}
               </TableBody>
             </Table>
+            {txCursor && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+                <Button onClick={() => void loadMoreTransactions()} disabled={txLoadingMore} sx={{ textTransform: 'none', fontWeight: 700 }}>
+                  {txLoadingMore ? <LoadingDots size={6} /> : 'Load older transactions'}
+                </Button>
+              </Box>
+            )}
           </TableContainer>
         )}
 

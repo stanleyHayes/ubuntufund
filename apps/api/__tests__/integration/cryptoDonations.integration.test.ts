@@ -164,6 +164,39 @@ describe('Crypto donations — stablecoin rail (mock provider)', () => {
     expect(campaign.body.data.raisedAmount).toBe(1080);
   });
 
+  // I120: a signed-in donor's crypto gift was always recorded as a guest's.
+  it('links a signed-in deposit to the donor (history) and keeps guests as guests', async () => {
+    const creator = await registerUser(app, uniqueEmail('clink'));
+    const campaignId = await createActiveCampaign(app, creator.token, creator.userId);
+    const donor = await registerUser(app, uniqueEmail('cdonor'));
+    const quote = async () => (await request(app).post(`/api/v1/campaigns/${campaignId}/donations/crypto/quote`)
+      .send({ fiatAmount: 1080, asset: 'USDT', network: 'TRON' }).expect(200)).body.data;
+    const confirm = async (reference: string) => {
+      const raw = JSON.stringify({ id: `evt-${randomUUID()}`, type: 'deposit.confirmed', reference, transactionHash: `0x${randomUUID().slice(0, 8)}`, cryptoAmount: 100, confirmations: 3 });
+      await request(app).post('/api/v1/webhooks/crypto/mock').set('x-mock-signature', sign(raw)).set('Content-Type', 'application/json').send(raw).expect(200);
+    };
+
+    const key = randomUUID();
+    const signedQuote = await quote();
+    const signed = await request(app).post(`/api/v1/campaigns/${campaignId}/donations/crypto`)
+      .set('Authorization', `Bearer ${donor.token}`).set('Idempotency-Key', key)
+      .send({ quoteId: signedQuote.quoteId, donorEmail: 'donor@example.com', isAnonymous: true }).expect(201);
+    expect((await DonationIntentModel.findById(signed.body.data.donationIntentId))?.donorUserId).toBe(donor.userId);
+    // Another account cannot replay the donor's key to read their deposit.
+    await request(app).post(`/api/v1/campaigns/${campaignId}/donations/crypto`)
+      .set('Authorization', `Bearer ${creator.token}`).set('Idempotency-Key', key)
+      .send({ quoteId: signedQuote.quoteId, donorEmail: 'donor@example.com', isAnonymous: true }).expect(409);
+    await confirm(signed.body.data.providerRef);
+    const mine = await request(app).get('/api/v1/donations/mine').set('Authorization', `Bearer ${donor.token}`).expect(200);
+    const rows = Array.isArray(mine.body.data) ? mine.body.data : mine.body.data.items;
+    expect(rows.some((row: { campaignId: string }) => row.campaignId === campaignId)).toBe(true);
+
+    const guestQuote = await quote();
+    const guest = await request(app).post(`/api/v1/campaigns/${campaignId}/donations/crypto`)
+      .send({ quoteId: guestQuote.quoteId, donorEmail: 'guest@example.com', isAnonymous: true }).expect(201);
+    expect((await DonationIntentModel.findById(guest.body.data.donationIntentId))?.donorUserId ?? null).toBeNull();
+  });
+
   it('is idempotent: a duplicate confirmed webhook never double-credits', async () => {
     const { userId, token } = await registerUser(app, uniqueEmail('cdup'));
     const campaignId = await createActiveCampaign(app, token, userId);

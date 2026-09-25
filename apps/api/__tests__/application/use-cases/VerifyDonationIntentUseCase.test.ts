@@ -46,6 +46,16 @@ describe('Hosted donation callback verification', () => {
         state = 'FAILED';
         return entity();
       }),
+      markExpiredIfPending: vi.fn(async () => {
+        if (state !== 'PENDING') return null;
+        state = 'EXPIRED';
+        return entity();
+      }),
+      reopenForLateSuccess: vi.fn(async () => {
+        if (state !== 'FAILED' && state !== 'EXPIRED') return null;
+        state = 'PENDING';
+        return entity();
+      }),
       recordSettlementFinancials: vi.fn(),
     };
     gateway = {
@@ -85,7 +95,7 @@ describe('Hosted donation callback verification', () => {
   it('exposes verification to guest callbacks through a validated, no-store HTTP endpoint', async () => {
     const app = express();
     app.use(express.json());
-    const controller = new DonationIntentController({} as never,{} as never,{} as never,{} as never,verify);
+    const controller = new DonationIntentController({} as never,{} as never,{} as never,verify);
     app.use('/donation-intents',createDonationIntentRoutes(controller,((_req,_res,next) => next()) as never));
     app.use(errorHandler);
     await request(app).post(`/donation-intents/${id}/verify`).send({}).expect(400);
@@ -94,6 +104,8 @@ describe('Hosted donation callback verification', () => {
     expect(res.headers['cache-control']).toBe('no-store');
     await request(app).post(`/donation-intents/${id}/verify`).send({reference:'wrong'}).expect(404);
     expect(journal).toHaveBeenCalledTimes(1);
+    // I128: no public endpoint can record attempts or plant a provider reference.
+    await request(app).post(`/donation-intents/${id}/payment-attempts`).send({provider:'paystack',providerRef:'uf-other',status:'initiated'}).expect(404);
   });
 
   it('does not double-credit simultaneous callbacks or later repeats', async () => {
@@ -136,10 +148,34 @@ describe('Hosted donation callback verification', () => {
     expect(journal).not.toHaveBeenCalled();
   });
 
-  it.each(['SUCCEEDED','FAILED','EXPIRED','REFUNDED'] as DonationIntentStatus[])('does not reverify terminal status %s', async status => {
+  it.each(['SUCCEEDED','REFUNDED'] as DonationIntentStatus[])('does not reverify settled status %s', async status => {
     state = status;
     expect((await verify.execute(id,reference)).status).toBe(status);
     expect(gateway.verifyTransaction).not.toHaveBeenCalled();
     expect(save).not.toHaveBeenCalled();
+  });
+
+  // I008: a payment the provider completed after we closed the checkout must be
+  // credited, exactly once, and only on a verified matching success.
+  it.each(['FAILED','EXPIRED'] as DonationIntentStatus[])('credits a verified late success on a %s intent exactly once', async status => {
+    state = status;
+    expect((await verify.execute(id,reference)).status).toBe('SUCCEEDED');
+    await verify.execute(id,reference);
+    expect(journal).toHaveBeenCalledTimes(1);
+    expect(save).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    {status:'failed'}, {status:'abandoned'}, {amount:249}, {currency:'USD'}, {reference:'other'},
+  ])('leaves a closed intent closed without a verified matching success: %j', async patch => {
+    state = 'FAILED';
+    gateway.verifyTransaction.mockResolvedValue({status:'success',reference,amount:250,fees:4.88,currency:'GHS',raw:{},...patch});
+    expect((await verify.execute(id,reference)).status).toBe('FAILED');
+    expect(journal).not.toHaveBeenCalled();
+  });
+
+  it('keeps a young abandoned checkout pending (I038)', async () => {
+    gateway.verifyTransaction.mockResolvedValue({status:'abandoned',reference,amount:250,fees:0,currency:'GHS',raw:{}});
+    expect((await verify.execute(id,reference)).status).toBe('PENDING');
   });
 });

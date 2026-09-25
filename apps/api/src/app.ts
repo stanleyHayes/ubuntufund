@@ -163,7 +163,6 @@ import { ReconcilePayoutsUseCase } from './application/use-cases/ReconcilePayout
 import { ProcessRefundUseCase } from './application/use-cases/ProcessRefundUseCase.js'
 import { MongoRefundOperationRepository } from './infrastructure/adapters/outbound/persistence/MongoRefundOperationRepository.js'
 import { MongoRefundFunds } from './infrastructure/adapters/outbound/persistence/MongoRefundFunds.js'
-import { RecordPaymentAttemptUseCase } from './application/use-cases/RecordPaymentAttemptUseCase.js'
 import { HandlePayoutWebhookUseCase } from './application/use-cases/HandlePayoutWebhookUseCase.js'
 import { ListBanksUseCase } from './application/use-cases/ListBanksUseCase.js'
 import { CreatePayoutRecipientUseCase } from './application/use-cases/CreatePayoutRecipientUseCase.js'
@@ -211,6 +210,7 @@ import { ShareCampaignUseCase } from './application/use-cases/ShareCampaignUseCa
 import { ReportCampaignUseCase } from './application/use-cases/ReportCampaignUseCase.js'
 import { ListRecentDonationsUseCase } from './application/use-cases/ListRecentDonationsUseCase.js'
 import { ListMyDonationsUseCase } from './application/use-cases/ListMyDonationsUseCase.js'
+import { MongoDonationPaymentStateRead } from './infrastructure/adapters/outbound/persistence/MongoDonationPaymentStateRead.js'
 import { GetDonationUseCase } from './application/use-cases/GetDonationUseCase.js'
 import { ListCampaignDonationsUseCase } from './application/use-cases/ListCampaignDonationsUseCase.js'
 import { GetLeaderboardUseCase } from './application/use-cases/GetLeaderboardUseCase.js'
@@ -270,6 +270,8 @@ import { SaveCreatorProfileUseCase } from './application/use-cases/SaveCreatorPr
 import { GetCreatorByHandleUseCase } from './application/use-cases/GetCreatorByHandleUseCase.js'
 import { CreateTipIntentUseCase } from './application/use-cases/CreateTipIntentUseCase.js'
 import { HandleTipWebhookUseCase } from './application/use-cases/HandleTipWebhookUseCase.js'
+import { RecordProviderPaymentEventUseCase } from './application/use-cases/RecordProviderPaymentEventUseCase.js'
+import { MongoProviderPaymentEventRepository } from './infrastructure/adapters/outbound/persistence/MongoProviderPaymentEventRepository.js'
 import { MongoCreatorPayoutRepository } from './infrastructure/adapters/outbound/persistence/MongoCreatorPayoutRepository.js'
 import { RequestCreatorWithdrawalUseCase } from './application/use-cases/RequestCreatorWithdrawalUseCase.js'
 import { HandleCreatorPayoutWebhookUseCase } from './application/use-cases/HandleCreatorPayoutWebhookUseCase.js'
@@ -519,6 +521,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     secretKey: config.paystack.secretKey,
     publicKey: config.paystack.publicKey,
     publicWebUrl: config.publicWebUrl,
+    channels: config.paystack.channels,
   })
   // Flutterwave — secondary diaspora-card rail. Inert (isConfigured → false)
   // until a secret key is supplied; enabling also requires PAYMENTS_FLUTTERWAVE_ENABLED.
@@ -761,6 +764,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     cryptoQuoteRepo,
     donationIntentRepo,
     cryptoProvidersByName,
+    profileRepo,
   )
   const handleCryptoWebhookUseCase = new HandleCryptoWebhookUseCase(
     cryptoProvidersByName,
@@ -797,6 +801,8 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     couponService,
     couponRedemptionRepo,
     paymentProviderRepo,
+    // Applies the donor's "anonymous by default" setting when a request omits it.
+    profileRepo,
   )
   const donateToCampaignUseCase = new DonateToCampaignUseCase(createDonationIntentUseCase)
   // Payout settlement: the signed transfer webhook moves an approved payout to
@@ -866,8 +872,15 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     creatorBalanceRepo,
     paymentGateway,
     planLimitsService,
+    // Keys the idempotent tip reference so it cannot be predicted client-side.
+    config.jwtSecret,
   )
-  const handleTipWebhookUseCase = new HandleTipWebhookUseCase(tipRepo, creatorBalanceRepo)
+  const handleTipWebhookUseCase = new HandleTipWebhookUseCase(
+    tipRepo,
+    creatorBalanceRepo,
+    // Re-verifies a late success on a FAILED tip before crediting it.
+    paymentGateway,
+  )
   const creatorPayoutRepo = new MongoCreatorPayoutRepository()
   // Every new recipient code is tagged with the Paystack environment that made it.
   const paystackMode = paystackModeFromSecret(config.paystack.secretKey)
@@ -899,6 +912,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     config.payments.paystackEnabled,
     paystackMode,
   )
+  const providerPaymentEventRepo = new MongoProviderPaymentEventRepository()
   const handlePaystackWebhookUseCase = new HandlePaystackWebhookUseCase(
     paymentGateway,
     donationIntentRepo,
@@ -916,6 +930,13 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     handleCreatorPayoutWebhookUseCase,
     walletTopUps,
     couponRedemptionRepo,
+    // Provider-originated chargebacks/refunds: recorded + surfaced to staff.
+    new RecordProviderPaymentEventUseCase(
+      providerPaymentEventRepo,
+      donationIntentRepo,
+      disputeRepo,
+      new MongoRefundOperationRepository(),
+    ),
   )
   // Flutterwave settlement: verifies the verif-hash, re-verifies the charge
   // server-side, then settles through the same donation seam as Paystack.
@@ -967,9 +988,14 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     handleCreatorPayoutWebhookUseCase,
     creatorPayoutRepo,
   )
-  // Scheduled reconciliation sweep (spec §13). Production-only + flag-gated so
-  // tests/dev never spawn it; unref'd so it can't hold the process open.
-  if (config.payments.reconciliationEnabled && config.nodeEnv === 'production') {
+  // Scheduled reconciliation sweep (spec §13). Flag-gated (on by default only
+  // in production; RECONCILIATION_SCHEDULER_ENABLED opts staging/dev in) and
+  // never under tests; unref'd so it can't hold the process open.
+  if (
+    config.payments.reconciliationEnabled &&
+    config.payments.reconciliationSchedulerEnabled &&
+    config.nodeEnv !== 'test'
+  ) {
     const RECONCILE_INTERVAL_MS = 5 * 60 * 1000
     // Guarded against overlap: a sweep that outruns the interval (a large stale
     // backlog, or a slow provider) would otherwise have a second pass select the
@@ -1008,10 +1034,6 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     }, RECONCILE_INTERVAL_MS)
     timer.unref()
   }
-  const recordPaymentAttemptUseCase = new RecordPaymentAttemptUseCase(
-    donationIntentRepo,
-    paymentAttemptRepo,
-  )
   const getDonationIntentPublicUseCase = new GetDonationIntentPublicUseCase(donationIntentRepo, ledgerRepo, donationRepo)
   const addDonationMessageUseCase = new AddDonationMessageUseCase(donationRepo)
 
@@ -1165,7 +1187,9 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     userRepo,
     publicProfileVisibility,
   )
-  const listMyDonationsUseCase = new ListMyDonationsUseCase(donationRepo, campaignRepo)
+  // Donation history + refund intake read refunds/disputes from the settling intent.
+  const donationPaymentStates = new MongoDonationPaymentStateRead()
+  const listMyDonationsUseCase = new ListMyDonationsUseCase(donationRepo, campaignRepo, donationPaymentStates)
   const getDonationUseCase = new GetDonationUseCase(donationRepo, campaignRepo)
   const listCampaignDonationsUseCase = new ListCampaignDonationsUseCase(
     donationRepo,
@@ -1184,7 +1208,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
 
   const getOrganizationUseCase = new GetOrganizationUseCase(organizationRepo, campaignRepo, publicProfileVisibility, kycRepo)
 
-  const requestRefundUseCase = new RequestRefundUseCase(refundRepo, donationRepo)
+  const requestRefundUseCase = new RequestRefundUseCase(refundRepo, donationRepo, donationPaymentStates)
   const listMyRefundsUseCase = new ListMyRefundsUseCase(refundRepo, campaignRepo)
 
   const submitKYCIdentityUseCase = new SubmitKYCIdentityUseCase(kycRepo)
@@ -1399,7 +1423,6 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
   )
   const donationIntentController = new DonationIntentController(
     createDonationIntentUseCase,
-    recordPaymentAttemptUseCase,
     getDonationIntentPublicUseCase,
     addDonationMessageUseCase,
     new VerifyDonationIntentUseCase(donationIntentRepo, reconcilePaymentsUseCase, getDonationIntentPublicUseCase),
@@ -1414,6 +1437,9 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     reconcilePaymentsUseCase,
     processRefundUseCase,
     reconcilePayoutsUseCase,
+    // On-demand wallet top-up sweep (otherwise only the scheduler runs it).
+    walletTopUps,
+    providerPaymentEventRepo,
   )
   const payoutController = new PayoutController(
     listBanksUseCase,

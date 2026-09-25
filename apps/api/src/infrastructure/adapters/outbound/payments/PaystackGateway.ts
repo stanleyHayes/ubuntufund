@@ -1,5 +1,6 @@
 import { TransferOutcomeUnknownError } from '../../../../domain/errors/TransferOutcomeUnknownError.js'
 import { TransferNotFoundError } from '../../../../domain/errors/TransferNotFoundError.js'
+import { ProviderTransactionNotFoundError } from '../../../../domain/errors/ProviderTransactionNotFoundError.js'
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto'
 import type { DonationIntentEntity } from '../../../../domain/entities/DonationIntent.js'
 import type {
@@ -26,6 +27,22 @@ export interface PaystackGatewayConfig {
   publicKey: string
   /** Donor-facing web app base URL; builds the checkout callback target. */
   publicWebUrl: string
+  /**
+   * Channels offered at checkout when the caller does not narrow them. Absent
+   * or empty ⇒ Paystack shows every channel enabled on the merchant dashboard.
+   */
+  channels?: string[]
+}
+
+function withChannels(channels: string[] | undefined): { channels?: string[] } {
+  return channels?.length ? { channels } : {}
+}
+
+/** Checkout channels for a donation's chosen method, else the configured default. */
+function channelsFor(paymentMethod: string | undefined, fallback: string[] | undefined): string[] | undefined {
+  if (paymentMethod === 'card') return ['card']
+  if (paymentMethod === 'mobile_money') return ['mobile_money']
+  return fallback?.length ? fallback : undefined
 }
 
 /** Shape of Paystack's `{ status, message, data }` envelope. */
@@ -140,6 +157,9 @@ export class PaystackGateway implements PaymentGatewayPort {
       currency,
       reference,
       callback_url: `${this.config.publicWebUrl}/donate/callback`,
+      // Offer only what the checkout promises (card / mobile money), narrowed
+      // further when the donor already picked a method.
+      ...withChannels(channelsFor(intent.paymentMethod, this.config.channels)),
       metadata: {
         donationIntentId: intent.id,
         campaignId: intent.campaignId,
@@ -190,6 +210,7 @@ export class PaystackGateway implements PaymentGatewayPort {
       currency,
       reference,
       callback_url: `${this.config.publicWebUrl}${params.callbackPath ?? '/donate/callback'}`,
+      ...withChannels(params.channels?.length ? params.channels : this.config.channels),
       metadata: params.metadata,
     }
 
@@ -213,6 +234,8 @@ export class PaystackGateway implements PaymentGatewayPort {
     const json = await this.request<PaystackVerifyData>(
       'GET',
       `/transaction/verify/${encodeURIComponent(reference)}`,
+      undefined,
+      { notFound: () => new ProviderTransactionNotFoundError(reference) },
     )
     if (!json.status || !json.data) {
       throw new AppError(`Paystack verification failed: ${json.message ?? 'unknown error'}`, 502)
@@ -438,11 +461,16 @@ export class PaystackGateway implements PaymentGatewayPort {
     }))
   }
 
-  /** Issue a request to the Paystack REST API and parse its JSON envelope. */
+  /**
+   * Issue a request to the Paystack REST API and parse its JSON envelope.
+   * `notFound` maps Paystack's "reference not found" rejection to a typed error
+   * for callers that must tell it apart from a transient failure.
+   */
   private async request<T>(
     method: 'GET' | 'POST',
     path: string,
     body?: unknown,
+    opts: { notFound?: () => Error } = {},
   ): Promise<PaystackEnvelope<T>> {
     let res: Response
     try {
@@ -473,6 +501,14 @@ export class PaystackGateway implements PaymentGatewayPort {
     // resolved instead of being re-verified (and failing) forever.
     if (method === 'GET' && path.startsWith('/transfer/verify/') && res.status === 404)
       throw new TransferNotFoundError(decodeURIComponent(path.slice('/transfer/verify/'.length)))
+    if (
+      opts.notFound &&
+      (res.status === 400 || res.status === 404) &&
+      json.status === false &&
+      typeof json.message === 'string' &&
+      /not found/i.test(json.message)
+    )
+      throw opts.notFound()
     if (!res.ok) throw new AppError('Payment provider rejected the request', 502)
     return json
   }

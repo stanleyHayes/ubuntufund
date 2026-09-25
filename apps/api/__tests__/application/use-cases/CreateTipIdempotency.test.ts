@@ -21,6 +21,7 @@ function setup() {
   const uc = new CreateTipIntentUseCase(
     { findByHandle: async () => ({ userId: 'creator', handle: 'creator', tipsEnabled: true, currency: 'GHS' }) } as never,
     repo as never, { ensure: vi.fn() } as never, gateway as never, { assertCreatorDonations: vi.fn() } as never,
+    'test-tip-reference-secret',
   );
   return { uc, gateway, rows };
 }

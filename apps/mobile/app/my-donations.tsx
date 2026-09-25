@@ -5,6 +5,7 @@ import { Text } from 'react-native-paper'
 import { router, Stack } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
+import { canRequestRefund } from '@/lib/donationRefunds'
 import { EmptyState } from '@/components/EmptyState'
 import { SignInRequired } from '@/components/SignInRequired'
 import { FadeInUp } from '@/components/anim/FadeInUp'
@@ -21,10 +22,19 @@ interface Donation {
   campaignName?: string
   campaignTitle?: string
   status: string
+  /** A refund request is already open for this donation. */
+  refundRequested?: boolean
   paymentMethod?: string
   date?: string
   createdAt?: string
 }
+
+const STATUS_LABELS: Record<string, string> = {
+  refund_pending: 'Refund in progress',
+  partially_refunded: 'Partially refunded',
+}
+
+
 
 const FILTER_TABS = ['All', 'Completed', 'Pending', 'Refunded'] as const
 type FilterTab = (typeof FILTER_TABS)[number]
@@ -34,6 +44,9 @@ function statusColors(p: Palette): Record<string, string> {
   return {
     completed: p.success,
     pending: p.warning,
+    refund_pending: p.warning,
+    disputed: p.warning,
+    partially_refunded: p.primaryLight,
     refunded: p.primaryLight,
     failed: p.error,
   }
@@ -174,7 +187,7 @@ export default function MyDonationsScreen() {
           <View style={styles.listWrap}>
             {filtered.map((d, i) => {
               const statusColor = statusColors(p)[d.status] ?? p.textSecondary
-              const canRefund = d.status === 'completed'
+              const canRefund = canRequestRefund(d)
               return (
                 <FadeInUp key={d.id} index={i}>
                 <TouchableOpacity
@@ -197,7 +210,7 @@ export default function MyDonationsScreen() {
                   <View style={styles.donationFooter}>
                     <View style={[styles.statusChip, { backgroundColor: `${statusColor}18` }]}>
                       <Text style={[styles.statusChipText, { color: statusColor }]}>
-                        {d.status.charAt(0).toUpperCase() + d.status.slice(1)}
+                        {STATUS_LABELS[d.status] ?? d.status.charAt(0).toUpperCase() + d.status.slice(1)}
                       </Text>
                     </View>
                     {d.paymentMethod && (

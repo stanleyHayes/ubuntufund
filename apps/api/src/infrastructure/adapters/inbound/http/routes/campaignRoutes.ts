@@ -22,12 +22,13 @@ const createCampaignSchema = z.object({
 
 const donateSchema = z.object({
   legalAcceptance: legalAcceptanceSchema.optional(),
-  amount: z.number().positive(),
+  amount: z.number().positive().multipleOf(0.01),
   currency: z.string().min(2).max(5),
   paymentMethod: z.nativeEnum(PaymentMethod).default(PaymentMethod.WALLET),
   donorName: z.string().trim().max(100).optional(),
   message: z.string().max(500).optional(),
-  isAnonymous: z.boolean().default(false),
+  // Omitted → the donor's "anonymous by default" setting applies.
+  isAnonymous: z.boolean().optional(),
   // Optional live-session attribution: drives overlay stats + real-time events.
   liveSessionId: z.string().max(200).optional(),
   attributionSource: z.string().max(64).optional(),

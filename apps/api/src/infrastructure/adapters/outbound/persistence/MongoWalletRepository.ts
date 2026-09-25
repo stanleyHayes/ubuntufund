@@ -1,5 +1,5 @@
 import { WalletEntity } from '../../../../domain/entities/Wallet.js';
-import { Money } from '../../../../domain/value-objects/Money.js';
+import { Money, minorUnitExponent } from '../../../../domain/value-objects/Money.js';
 import type { WalletRepositoryPort } from '../../../../domain/ports/outbound/WalletRepositoryPort.js';
 import {
   WalletModel,
@@ -56,9 +56,11 @@ export class MongoWalletRepository implements WalletRepositoryPort {
   }
 
   async depositAtomic(walletId: string, userId: string, amount: Money): Promise<WalletEntity | null> {
+    // Rounded at the currency's precision, like every other wallet credit.
+    const exp = minorUnitExponent(amount.currency);
     const doc = await WalletModel.findOneAndUpdate(
       { _id: walletId, userId, currency: amount.currency },
-      { $inc: { balance: amount.amount } },
+      [{ $set: { balance: { $round: [{ $add: ['$balance', amount.amount] }, exp] }, updatedAt: '$$NOW' } }],
       { new: true }
     );
     return doc ? toDomain(doc) : null;
@@ -69,14 +71,24 @@ export class MongoWalletRepository implements WalletRepositoryPort {
     userId: string,
     amount: Money
   ): Promise<WalletEntity | null> {
+    // Credits are rounded to the currency's minor unit, so a raw float $inc
+    // here left residue (10.00 - 9.99 = 0.009999…): the balance displayed as
+    // GH₵0.01 but a GH₵0.01 donation was then refused. Compare and store at
+    // the currency's precision; $max avoids a -0 balance.
+    const exp = minorUnitExponent(amount.currency);
     const doc = await WalletModel.findOneAndUpdate(
       {
         _id: walletId,
         userId,
         currency: amount.currency,
-        balance: { $gte: amount.amount },
+        $expr: { $gte: [{ $round: ['$balance', exp] }, amount.amount] },
       },
-      { $inc: { balance: -amount.amount } },
+      [{
+        $set: {
+          balance: { $max: [0, { $round: [{ $subtract: ['$balance', amount.amount] }, exp] }] },
+          updatedAt: '$$NOW',
+        },
+      }],
       { new: true }
     );
     return doc ? toDomain(doc) : null;

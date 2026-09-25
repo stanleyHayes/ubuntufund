@@ -11,6 +11,7 @@ it('reserves concurrent worker requests in Mongo and replays persisted checkout 
   const worker = () => new CreateTipIntentUseCase(
     { findByHandle: async () => ({ userId: 'creator', handle: 'creator', currency: 'GHS', tipsEnabled: true }) } as never,
     new MongoTipRepository(), { ensure: vi.fn() } as never, gateway as never, { assertCreatorDonations: vi.fn() } as never,
+    'test-tip-reference-secret',
   );
   const input = { amount: 25, supporterEmail: 'fixture@example.com', idempotencyKey: 'concurrent-mongo-attempt' };
   const results = await Promise.allSettled(Array.from({ length: 8 }, () => worker().execute('creator', input)));
@@ -50,6 +51,7 @@ it('returns confirmation if settlement beats the provider initialization respons
   const uc = new CreateTipIntentUseCase(
     { findByHandle: async () => ({ userId: 'creator', handle: 'creator', currency: 'GHS', tipsEnabled: true }) } as never,
     repo, { ensure: vi.fn() } as never, gateway as never, { assertCreatorDonations: vi.fn() } as never,
+    'test-tip-reference-secret',
   );
   const result = await uc.execute('creator', { amount: 12, supporterEmail: 'fixture@example.com', idempotencyKey: 'settlement-before-init-response' });
   expect(result.checkoutUrl).toBe(`/tip/callback?reference=${result.reference}`);

@@ -34,6 +34,8 @@ export interface InitializeChargeParams {
   metadata?: Record<string, unknown>
   /** Path appended to the configured callback base to return the payer. */
   callbackPath?: string
+  /** Checkout channels to offer (provider names); the gateway default when omitted. */
+  channels?: string[]
 }
 
 /** Server-side verification of a transaction (the callback rail). */

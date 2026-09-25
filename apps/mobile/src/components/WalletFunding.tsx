@@ -9,6 +9,7 @@ import { Button, Skeleton } from './Loading'
 import { PaymentStatus } from './PaymentStatus'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
 import { walletFundingUrl } from '@/lib/fundraising'
+import { parseMoneyInput, validTopUpAmount } from '@/lib/moneyInput'
 
 export function WalletFunding(props: { walletId: string; onComplete: () => void }) {
   return Platform.OS === 'ios' ? <ExternalWalletFunding /> : <InAppWalletFunding {...props} />
@@ -51,7 +52,7 @@ function InAppWalletFunding({ walletId, onComplete }: { walletId: string; onComp
   async function fund() {
     setBusy(true); setError('')
     try {
-      const result = await checkout(scope, '/wallets/topups', { walletId, amount: Number(amount) }, true)
+      const result = await checkout(scope, '/wallets/topups', { walletId, amount: parseMoneyInput(amount) }, true)
       setPending(result)
       if (result.authorizationUrl?.startsWith('https://')) await WebBrowser.openBrowserAsync(result.authorizationUrl)
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not start wallet funding.') }
@@ -65,7 +66,8 @@ function InAppWalletFunding({ walletId, onComplete }: { walletId: string; onComp
     {config.mode === 'test' && <Text style={{ color: p.warningText }}>Test mode: this checkout does not collect live money.</Text>}
     {config.enabled ? <>
       <TextInput label="Top-up amount (GHS)" keyboardType="decimal-pad" value={amount} onChangeText={setAmount} />
-      <Button mode="contained" loading={busy} disabled={busy || !Number.isFinite(Number(amount)) || Number(amount) <= 0 || Number(amount) > 10000 || Number(amount) !== Math.round(Number(amount) * 100) / 100} onPress={() => void fund()}>Fund wallet</Button>
+      <Text style={{ color: p.textSecondary, fontSize: 12 }}>GHS 1–10,000, at most two decimals.</Text>
+      <Button mode="contained" loading={busy} disabled={busy || !validTopUpAmount(amount)} onPress={() => void fund()}>Fund wallet</Button>
     </> : <Text>Wallet funding is not currently available.</Text>}
     {error ? <><Text accessibilityRole="alert" style={{ color: p.error }}>{error}</Text><Button onPress={() => { setError(''); setRetry(value => value + 1) }}>Retry connection</Button></> : null}
   </View>

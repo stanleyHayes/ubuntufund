@@ -23,6 +23,17 @@ export interface DonationIntentRepositoryPort {
     providerRef?: string
   ): Promise<DonationIntentEntity | null>;
 
+  /**
+   * Atomically move a CREATED hosted intent to PENDING with its provider
+   * reference and the open checkout. Null when it is no longer CREATED (a
+   * concurrent retry opened the checkout first).
+   */
+  markPendingIfCreated(
+    id: string,
+    providerRef: string,
+    checkout: { authorizationUrl: string; accessCode: string }
+  ): Promise<DonationIntentEntity | null>;
+
   /** Set a non-terminal→terminal/PENDING status (FAILED, EXPIRED, PENDING). */
   updateStatus(
     id: string,
@@ -42,11 +53,37 @@ export interface DonationIntentRepositoryPort {
   ): Promise<DonationIntentEntity | null>;
 
   /**
+   * Atomically mark a still-PENDING intent EXPIRED (an abandoned hosted checkout
+   * past its TTL). Null when it is no longer PENDING. A payment that still
+   * lands later is revived by {@link reopenForLateSuccess}, never dropped.
+   */
+  markExpiredIfPending(
+    id: string,
+    providerRef?: string
+  ): Promise<DonationIntentEntity | null>;
+
+  /**
+   * Atomically move a FAILED/EXPIRED hosted intent back to PENDING so a
+   * provider-verified late success can settle through the normal exactly-once
+   * gate. Guarded on the same providerRef. Null when the intent is not in a
+   * revivable state (or the reference differs). Callers must have verified the
+   * payment with the provider first.
+   */
+  reopenForLateSuccess(
+    id: string,
+    providerRef: string
+  ): Promise<DonationIntentEntity | null>;
+
+  /**
    * Hosted-rail intents still PENDING past `olderThan` (with a providerRef to
-   * correlate). The reconciliation job re-verifies these against the provider to
-   * repair settlements missed by a dropped webhook (spec §13).
+   * correlate), least recently reconciled first. The reconciliation job
+   * re-verifies these against the provider to repair settlements missed by a
+   * dropped webhook (spec §13).
    */
   findStalePending(olderThan: Date, limit: number): Promise<DonationIntentEntity[]>;
+
+  /** Stamp a sweep's visit on a still-PENDING intent (rotates it to the back). */
+  recordReconciliationAttempt(id: string, attemptedAt: Date): Promise<void>;
 
   /**
    * Crypto intents still in flight (PENDING/PROCESSING) past `olderThan`. The

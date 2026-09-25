@@ -65,6 +65,9 @@ export class HandleFlutterwaveWebhookUseCase {
   ) {}
 
   async execute(input: FlutterwaveWebhookInput): Promise<void> {
+    // Deliberately NOT gated on PAYMENTS_FLUTTERWAVE_ENABLED: that flag stops
+    // new checkouts, but charges opened while the rail was on must still settle
+    // after it is switched off, or donors' paid money would be stranded.
     if (!this.gateway.isConfigured()) {
       throw new AppError('Payments are not configured', 501);
     }
@@ -92,14 +95,20 @@ export class HandleFlutterwaveWebhookUseCase {
   }
 
   private async handleChargeCompleted(txRef: string): Promise<void> {
-    const intent = await this.donationIntentRepo.findByProviderRef(txRef);
+    let intent = await this.donationIntentRepo.findByProviderRef(txRef);
     if (!intent) return; // unknown reference — safe no-op
     if (intent.status === 'SUCCEEDED') return; // idempotent
-    if (intent.status === 'FAILED' || intent.status === 'EXPIRED') return;
+    const closed = intent.status === 'FAILED' || intent.status === 'EXPIRED';
+    // Only open intents settle; a closed one may still be credited below by a
+    // verified late success. Refunded/disputed/cancelled intents are left alone.
+    const open = ['CREATED', 'PENDING', 'REQUIRES_ACTION', 'PROCESSING'].includes(intent.status);
+    if (!closed && !open) return;
 
     // Server-side re-verification is the source of truth (spec §12).
     const verified = await this.gateway.verifyTransaction(txRef);
     if (verified.status !== 'success') {
+      // A closed intent stays as it was; never re-fail it.
+      if (closed) return;
       await this.donationIntentRepo.updateStatus(intent.id, 'FAILED', txRef);
       await releaseDonationSeat(this.couponRedemptionRepo, intent.id, intent.couponId);
       await this.safeRecordAttempt(intent.id, txRef, 'failed', verified.raw);
@@ -126,6 +135,18 @@ export class HandleFlutterwaveWebhookUseCase {
       );
       await this.safeRecordAttempt(intent.id, txRef, 'failed', verified.raw);
       return;
+    }
+
+    if (closed) {
+      // Verified late success on a closed checkout: reopen it so the normal
+      // exactly-once settlement credits the money that moved.
+      const reopened = await this.donationIntentRepo.reopenForLateSuccess(intent.id, txRef);
+      if (!reopened) return;
+      logger.warn(
+        { intentId: intent.id, providerRef: txRef, previousStatus: intent.status, alert: 'late_success_credited' },
+        'flutterwave late success on a closed intent — crediting'
+      );
+      intent = reopened;
     }
 
     const platformFeePercent =

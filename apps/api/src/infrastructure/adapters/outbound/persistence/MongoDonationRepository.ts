@@ -1,4 +1,4 @@
-import { DonationEntity } from '../../../../domain/entities/Donation.js';
+import { DonationEntity, GUEST_DONOR_ID } from '../../../../domain/entities/Donation.js';
 import { PaymentMethod, type LegalAcceptanceRecord } from '@ubuntu-fund/types';
 import { Money } from '../../../../domain/value-objects/Money.js';
 import type { DonationRepositoryPort } from '../../../../domain/ports/outbound/DonationRepositoryPort.js';
@@ -99,7 +99,18 @@ export class MongoDonationRepository implements DonationRepositoryPort {
     if (campaignIds.length === 0) return {};
     const rows = await DonationModel.aggregate<{ _id: string; donors: number }>([
       { $match: { campaignId: { $in: campaignIds } } },
-      { $group: { _id: { campaignId: '$campaignId', donorId: '$donorId' } } },
+      // Every guest donation is stored under the shared donorId 'guest', so
+      // grouping on it counted all guests as ONE supporter. Count each guest
+      // donation as its own supporter instead: a repeat guest is slightly
+      // overcounted, which is far closer than collapsing every guest to 1.
+      {
+        $group: {
+          _id: {
+            campaignId: '$campaignId',
+            donorId: { $cond: [{ $eq: ['$donorId', GUEST_DONOR_ID] }, { $toString: '$_id' }, '$donorId'] },
+          },
+        },
+      },
       { $group: { _id: '$_id.campaignId', donors: { $sum: 1 } } },
     ]);
     return Object.fromEntries(rows.map((r) => [r._id, r.donors]));

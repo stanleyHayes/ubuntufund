@@ -1,11 +1,47 @@
 import type { TipEntity } from '../../domain/entities/Tip.js';
 import type { TipRepositoryPort } from '../../domain/ports/outbound/TipRepositoryPort.js';
 import type { CreatorBalanceRepositoryPort } from '../../domain/ports/outbound/CreatorBalanceRepositoryPort.js';
+import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGatewayPort.js';
+import { chargeMatches } from '../services/providerCharge.js';
+import { logger } from '../../infrastructure/logging/logger.js';
 
 /**
- * Settles a `tip-` charge webhook. Idempotent: the balance credit runs only for
- * the caller that wins the atomic PENDING → SUCCEEDED transition, and the credit
+ * What the provider says it actually charged for a `tip-` reference, in MAJOR
+ * units of `currency`. The signed webhook passes its `data.amount` (parsed from
+ * minor units) and `data.currency`; the verify rail passes the figures from a
+ * server-side `verifyTransaction`.
+ */
+export interface TipCharge {
+  amount: number;
+  currency: string;
+  /**
+   * True when the figures came from our own server-side `verifyTransaction`
+   * (not only from a webhook body). Required before a FAILED tip can be revived
+   * by a late success; the webhook path re-verifies itself when it is absent.
+   */
+  providerVerified?: boolean;
+}
+
+/** True when the provider's charge is exactly the tip the supporter was quoted. */
+export function tipChargeMatches(tip: TipEntity, charge: TipCharge): boolean {
+  return chargeMatches({ amount: tip.amount, currency: tip.currency }, charge);
+}
+
+/**
+ * Settles a `tip-` charge. Idempotent: the balance credit runs only for the
+ * caller that wins the atomic PENDING → SUCCEEDED transition, and the credit
  * itself is guarded by a settleRef, so a duplicate webhook is a harmless no-op.
+ *
+ * The amount and currency the provider charged must equal the tip row before
+ * anything is credited. The row's amount is chosen by the supporter when the
+ * checkout opens, so a charge for a different amount under the same reference
+ * (e.g. a reference claimed at the provider for a smaller sum) must never credit
+ * the row's larger amount. A mismatch is logged and the tip stays PENDING for
+ * manual review.
+ *
+ * A late success on a FAILED tip (the provider first reported the checkout as
+ * failed, then the supporter completed it) is credited too — but only after a
+ * server-side verification confirms the same reference, amount and currency.
  *
  * The PENDING→SUCCEEDED transition and the balance credit are two separate,
  * non-atomic writes: a crash between them would leave a SUCCEEDED-but-uncredited
@@ -17,13 +53,48 @@ import type { CreatorBalanceRepositoryPort } from '../../domain/ports/outbound/C
 export class HandleTipWebhookUseCase {
   constructor(
     private readonly tipRepo: TipRepositoryPort,
-    private readonly balanceRepo: CreatorBalanceRepositoryPort
+    private readonly balanceRepo: CreatorBalanceRepositoryPort,
+    /**
+     * Optional: re-verifies a late success on a FAILED tip server-side. Absent,
+     * a FAILED tip is only revived by a caller that already verified it.
+     */
+    private readonly gateway?: Pick<PaymentGatewayPort, 'verifyTransaction'>
   ) {}
 
-  async handleSuccess(reference: string): Promise<void> {
-    const tip = await this.tipRepo.transitionToSucceeded(reference);
-    if (!tip) return; // unknown reference or already settled
-    await this.applyCredit(tip);
+  async handleSuccess(reference: string, charge: TipCharge): Promise<void> {
+    const tip = await this.tipRepo.findByProviderRef(reference);
+    if (!tip) return; // unknown reference
+    if (tip.status === 'SUCCEEDED') return; // already settled (idempotent)
+    if (tip.status !== 'PENDING' && tip.status !== 'FAILED') return;
+
+    if (!tipChargeMatches(tip, charge)) {
+      logger.warn(
+        {
+          tipId: tip.id,
+          providerRef: reference,
+          expectedAmount: tip.amount,
+          expectedCurrency: tip.currency,
+          providerAmount: charge.amount,
+          providerCurrency: charge.currency,
+        },
+        'tip settlement mismatch — not crediting; left for manual review'
+      );
+      return;
+    }
+
+    if (tip.status === 'FAILED') {
+      if (!(await this.lateSuccessConfirmed(tip, charge))) return;
+      logger.warn(
+        { tipId: tip.id, providerRef: reference },
+        'late provider success on a FAILED tip — crediting after verification'
+      );
+    }
+
+    const won = await this.tipRepo.transitionToSucceeded(reference, {
+      allowFromFailed: tip.status === 'FAILED',
+    });
+    if (!won) return; // a concurrent caller settled it first
+    await this.applyCredit(won);
   }
 
   async handleFailed(reference: string): Promise<void> {
@@ -38,6 +109,27 @@ export class HandleTipWebhookUseCase {
   async creditSucceededTip(tip: TipEntity): Promise<void> {
     if (tip.status !== 'SUCCEEDED') return;
     await this.applyCredit(tip);
+  }
+
+  /**
+   * A FAILED tip is revived only on a server-side verification that the
+   * provider settled exactly this tip. Webhook figures alone are not enough.
+   */
+  private async lateSuccessConfirmed(tip: TipEntity, charge: TipCharge): Promise<boolean> {
+    if (charge.providerVerified) return true;
+    if (!this.gateway) return false;
+    const verified = await this.gateway.verifyTransaction(tip.providerRef);
+    const ok =
+      verified.status === 'success' &&
+      verified.reference === tip.providerRef &&
+      tipChargeMatches(tip, { amount: verified.amount, currency: verified.currency });
+    if (!ok) {
+      logger.warn(
+        { tipId: tip.id, providerRef: tip.providerRef, providerStatus: verified.status },
+        'late tip success could not be verified — not crediting'
+      );
+    }
+    return ok;
   }
 
   private async applyCredit(tip: TipEntity): Promise<void> {

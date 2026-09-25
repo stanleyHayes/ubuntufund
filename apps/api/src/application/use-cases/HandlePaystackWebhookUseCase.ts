@@ -1,4 +1,6 @@
 import type { DonationIntentRepositoryPort } from '../../domain/ports/outbound/DonationIntentRepositoryPort.js';
+import type { DonationIntentEntity } from '../../domain/entities/DonationIntent.js';
+import type { DonationIntentStatus } from '@ubuntu-fund/types';
 import type { PaymentAttemptRepositoryPort } from '../../domain/ports/outbound/PaymentAttemptRepositoryPort.js';
 import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGatewayPort.js';
 import type { FeePolicy } from '../services/FeePolicy.js';
@@ -10,6 +12,7 @@ import type { HandleAffiliatePayoutWebhookUseCase } from './HandleAffiliatePayou
 import type { HandleBeneficiaryPayoutWebhookUseCase } from './HandleBeneficiaryPayoutWebhookUseCase.js';
 import type { HandleTipWebhookUseCase } from './HandleTipWebhookUseCase.js';
 import type { HandleCreatorPayoutWebhookUseCase } from './HandleCreatorPayoutWebhookUseCase.js';
+import type { RecordProviderPaymentEventUseCase } from './RecordProviderPaymentEventUseCase.js';
 import type { SubscriptionCheckoutRepositoryPort } from '../../domain/ports/outbound/SubscriptionCheckoutRepositoryPort.js';
 import type { AffiliateCommissionService } from '../services/AffiliateCommissionService.js';
 import type { CouponRedemptionRepositoryPort } from '../../domain/ports/outbound/CouponRedemptionRepositoryPort.js';
@@ -17,6 +20,7 @@ import { releaseDonationSeat } from '../services/donationCouponSeats.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 import { logger } from '../../infrastructure/logging/logger.js';
 import { fromMinorUnits, minorUnitExponent } from '../../domain/value-objects/Money.js';
+import { chargeMatches, parsePaystackCharge } from '../services/providerCharge.js';
 
 export interface PaystackWebhookInput {
   /** The exact raw request bytes the signature was computed over. */
@@ -36,6 +40,18 @@ interface PaystackChargeData {
   [key: string]: unknown;
 }
 
+/**
+ * Statuses an intent only reaches after it settled. A charge.success for one of
+ * these is a redelivery of money we already credited.
+ */
+const POST_SETTLEMENT_STATES: ReadonlySet<DonationIntentStatus> = new Set([
+  'REFUND_PENDING',
+  'PARTIALLY_REFUNDED',
+  'REFUNDED',
+  'DISPUTED',
+  'CHARGEBACK',
+]);
+
 interface PaystackWebhookEvent {
   event?: string;
   data?: PaystackChargeData;
@@ -50,7 +66,10 @@ interface PaystackWebhookEvent {
  *    fee, and hand off to {@link SettleDonationUseCase} (which posts the
  *    immutable ledger journal, projects the campaign total + beneficiary
  *    balance, and dispatches realtime/receipt side-effects). Idempotent — a
- *    duplicate reference for an already-SUCCEEDED intent is a no-op.
+ *    duplicate reference for an already-SUCCEEDED intent is a no-op, and so is
+ *    a redelivery for one since refunded or disputed. A success on an intent
+ *    already closed as FAILED/EXPIRED is re-verified with Paystack and then
+ *    credited (the donor's money has moved; it is never silently dropped).
  *  - `charge.success` with a `sub-` reference → a paid-subscription checkout:
  *    correlate the {@link SubscriptionCheckout} by its provider reference and
  *    hand off to {@link SettleSubscriptionUseCase} (which activates the
@@ -66,6 +85,9 @@ interface PaystackWebhookEvent {
  *    `sub-` subscription charge, claw back the affiliate commission it earned
  *    via {@link AffiliateCommissionService.reverseForSourceRef} (safe no-op
  *    otherwise).
+ *  - `refund.*` and `charge.dispute.*` → recorded once and surfaced to staff by
+ *    {@link RecordProviderPaymentEventUseCase} (campaign cases open in the
+ *    Disputes queue). No balance moves automatically.
  *  - anything else → ignored.
  *
  * The frontend callback is never trusted as proof of payment; only this signed
@@ -96,7 +118,10 @@ export class HandlePaystackWebhookUseCase {
     private readonly walletTopUps?: { settle(reference: string): Promise<void> },
     // Optional: when wired, a failed subscription charge frees the coupon seat
     // the checkout was holding. Absent, the slot simply stays PENDING.
-    private readonly couponRedemptionRepo?: CouponRedemptionRepositoryPort
+    private readonly couponRedemptionRepo?: CouponRedemptionRepositoryPort,
+    // Optional: records provider-originated chargebacks/disputes and refunds
+    // and surfaces them to staff. Absent, those events are acknowledged only.
+    private readonly providerPaymentEvents?: Pick<RecordProviderPaymentEventUseCase, 'handleDispute' | 'handleRefund'>
   ) {}
 
   async execute(input: PaystackWebhookInput): Promise<void> {
@@ -121,6 +146,14 @@ export class HandlePaystackWebhookUseCase {
     // charge/transfer reference gate below.
     if (event.event === 'refund.processed' || event.event === 'charge.refund') {
       await this.handleRefund(data);
+    }
+    if (event.event?.startsWith('refund.') || event.event === 'charge.refund') {
+      await this.providerPaymentEvents?.handleRefund(event.event, data);
+      return;
+    }
+    // Disputes carry the charge under `data.transaction`; record them for staff.
+    if (event.event?.startsWith('charge.dispute.')) {
+      await this.providerPaymentEvents?.handleDispute(event.event, data);
       return;
     }
 
@@ -135,11 +168,13 @@ export class HandlePaystackWebhookUseCase {
         // Paid-subscription checkouts (`sub-`) and creator tips (`tip-`) settle
         // on their own rails; every other reference is a donation intent.
         if (reference.startsWith('sub-')) {
-          await this.handleSubscriptionSuccess(reference);
+          await this.handleSubscriptionSuccess(reference, data);
           return;
         }
         if (reference.startsWith('tip-')) {
-          await this.handleTipWebhookUseCase?.handleSuccess(reference);
+          // The tip settlement compares what Paystack charged with the tip row
+          // before crediting the creator — never the row's amount on trust.
+          await this.handleTipWebhookUseCase?.handleSuccess(reference, parsePaystackCharge(data));
           return;
         }
         await this.handleChargeSuccess(reference, data);
@@ -212,12 +247,31 @@ export class HandlePaystackWebhookUseCase {
    * Settle a paid-subscription checkout off its signed `charge.success`.
    * Correlates by the checkout's provider reference and defers to
    * {@link SettleSubscriptionUseCase} (idempotent). An unknown reference is a
-   * safe no-op.
+   * safe no-op. The charged amount and currency must equal the checkout's
+   * quoted total — a mismatch is logged and never activates the plan.
    */
-  private async handleSubscriptionSuccess(reference: string): Promise<void> {
+  private async handleSubscriptionSuccess(
+    reference: string,
+    data: PaystackChargeData
+  ): Promise<void> {
     const checkout =
       await this.subscriptionCheckoutRepo.findByProviderRef(reference);
     if (!checkout) return;
+    const charged = parsePaystackCharge(data);
+    if (!chargeMatches({ amount: checkout.finalAmount, currency: checkout.currency }, charged)) {
+      logger.warn(
+        {
+          checkoutId: checkout.id,
+          providerRef: reference,
+          expectedAmount: checkout.finalAmount,
+          expectedCurrency: checkout.currency,
+          providerAmount: charged.amount,
+          providerCurrency: charged.currency,
+        },
+        'subscription settlement mismatch — not activating; left for manual review'
+      );
+      return;
+    }
     await this.settleSubscriptionUseCase.execute(checkout, reference);
   }
 
@@ -261,12 +315,28 @@ export class HandlePaystackWebhookUseCase {
     reference: string,
     data: PaystackChargeData
   ): Promise<void> {
-    const intent = await this.donationIntentRepo.findByProviderRef(reference);
-    // Unknown reference (or already terminal) — ack and ignore. The settlement
-    // gate in SettleDonationUseCase is the ultimate exactly-once guard.
+    let intent = await this.donationIntentRepo.findByProviderRef(reference);
+    // Unknown reference — ack and ignore. The settlement gate in
+    // SettleDonationUseCase is the ultimate exactly-once guard.
     if (!intent) return;
     if (intent.status === 'SUCCEEDED') return;
-    if (intent.status === 'FAILED' || intent.status === 'EXPIRED') return;
+    // Already settled and since refunded/disputed (a redelivered charge.success):
+    // it was credited once; acknowledge instead of letting the settlement gate
+    // throw a 409 that Paystack would retry for days.
+    if (POST_SETTLEMENT_STATES.has(intent.status)) {
+      logger.info(
+        { intentId: intent.id, providerRef: reference, status: intent.status },
+        'paystack charge.success redelivered for an already-settled intent — acknowledged'
+      );
+      return;
+    }
+    if (intent.status === 'CANCELLED') {
+      logger.warn(
+        { intentId: intent.id, providerRef: reference, alert: 'success_on_cancelled_intent' },
+        'paystack charge.success for a cancelled intent — not credited; needs manual review'
+      );
+      return;
+    }
 
     const currency =
       typeof data.currency === 'string' ? data.currency : intent.currency;
@@ -312,6 +382,16 @@ export class HandlePaystackWebhookUseCase {
       return;
     }
 
+    // A success on a checkout we had already closed (provider first said
+    // failed, or the sweep expired an abandoned checkout the donor then paid):
+    // the money has moved, so it must be credited — after a server-side
+    // verification, never on the webhook body alone.
+    if (intent.status === 'FAILED' || intent.status === 'EXPIRED') {
+      const reopened = await this.reopenVerifiedLateSuccess(intent, reference);
+      if (!reopened) return;
+      intent = reopened;
+    }
+
     // Platform fee follows the campaign creator's subscription plan.
     const platformFeePercent =
       await this.planLimits.platformFeePercentForIntent(intent);
@@ -342,6 +422,37 @@ export class HandlePaystackWebhookUseCase {
         'failed to record paystack success attempt'
       );
     }
+  }
+
+  /**
+   * Re-verify a late success with Paystack and, when it matches, move the
+   * closed intent back to PENDING so the normal settlement credits it once.
+   * A verification error propagates, so Paystack redelivers the event.
+   */
+  private async reopenVerifiedLateSuccess(
+    intent: DonationIntentEntity,
+    reference: string
+  ): Promise<DonationIntentEntity | null> {
+    const verified = await this.paymentGateway.verifyTransaction(reference);
+    const confirmed =
+      verified.status === 'success' &&
+      verified.reference === reference &&
+      chargeMatches({ amount: intent.gross, currency: intent.currency }, verified);
+    if (!confirmed) {
+      logger.warn(
+        { intentId: intent.id, providerRef: reference, status: intent.status, providerStatus: verified.status },
+        'late paystack success could not be verified — not crediting'
+      );
+      return null;
+    }
+    const reopened = await this.donationIntentRepo.reopenForLateSuccess(intent.id, reference);
+    if (reopened) {
+      logger.warn(
+        { intentId: intent.id, providerRef: reference, previousStatus: intent.status, alert: 'late_success_credited' },
+        'paystack late success on a closed intent — crediting'
+      );
+    }
+    return reopened;
   }
 
   private async handleChargeFailed(

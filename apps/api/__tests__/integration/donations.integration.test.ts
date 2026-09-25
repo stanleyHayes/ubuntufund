@@ -152,6 +152,36 @@ describe('Donations Integration', () => {
     expect(transactionsRes.body.data).toHaveLength(1)
   })
 
+  it('a retried wallet donation with the same Idempotency-Key debits once (I006)', async () => {
+    const { userId: creatorId, token: creatorToken } = await registerUser(app, uniqueEmail('retrycreator'))
+    const campaignId = await createActiveCampaign(app, creatorToken, creatorId)
+    const { token: donorToken } = await registerUser(app, uniqueEmail('retrydonor'))
+    const walletId = await getWalletId(app, donorToken)
+    await WalletModel.findByIdAndUpdate(walletId, { $set: { balance: 1000 } })
+    const key = randomUUID()
+    const body = { amount: 300, currency: 'GHS', paymentMethod: PaymentMethod.WALLET, isAnonymous: true }
+    const donate = (payload = body, requestKey = key) => request(app)
+      .post(`/api/v1/campaigns/${campaignId}/donate`)
+      .set('Authorization', `Bearer ${donorToken}`)
+      .set('Idempotency-Key', requestKey)
+      .send(payload)
+
+    const [first, second] = await Promise.all([donate(), donate()])
+    expect([first.status, second.status]).toEqual([200, 200])
+    await donate().expect(200)
+    expect((await WalletModel.findById(walletId))!.balance).toBe(700)
+    expect((await request(app).get(`/api/v1/campaigns/${campaignId}`)).body.data.raisedAmount).toBe(300)
+
+    // The same key cannot be reused for a different donation.
+    await donate({ ...body, amount: 50 }).expect(409)
+    await donate(body, 'not a valid key!').expect(400)
+    expect((await WalletModel.findById(walletId))!.balance).toBe(700)
+
+    // A new key is a new donation.
+    await donate(body, randomUUID()).expect(200)
+    expect((await WalletModel.findById(walletId))!.balance).toBe(400)
+  })
+
   it('rejects donation to a campaign that is not active', async () => {
     const { userId: creatorId, token: creatorToken } = await registerUser(
       app,

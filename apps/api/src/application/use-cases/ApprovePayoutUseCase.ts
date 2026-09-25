@@ -3,7 +3,7 @@ import type { CampaignRepositoryPort } from '../../domain/ports/outbound/Campaig
 import { campaignNeedsEarlyCashout, isEarlyWithdrawal } from '../services/payoutFee.js'
 import { TransferOutcomeUnknownError } from '../../domain/errors/TransferOutcomeUnknownError.js'
 import { randomUUID } from 'node:crypto'
-import type { Payout, PayoutLeg } from '@ubuntu-fund/types'
+import { CampaignStatus, type Payout, type PayoutLeg } from '@ubuntu-fund/types'
 import type { PayoutRepositoryPort } from '../../domain/ports/outbound/PayoutRepositoryPort.js'
 import type { TransferRecipientRepositoryPort } from '../../domain/ports/outbound/TransferRecipientRepositoryPort.js'
 import type { CampaignBalanceRepositoryPort } from '../../domain/ports/outbound/CampaignBalanceRepositoryPort.js'
@@ -120,6 +120,9 @@ export class ApprovePayoutUseCase {
       if (!campaign) throw new AppError('Campaign not found', 404)
       if (!automatic && campaign.creatorId === requester.userId)
         throw new AppError(SELF_APPROVAL_MESSAGE, 403)
+      // A payout requested before the campaign was blocked must not be approved after.
+      if (campaign.status === CampaignStatus.BLOCKED)
+        throw new AppError('This campaign is under review; payouts are paused', 409)
       if (
         payout.provider === 'ujimora_wallet' &&
         payout.recipientId !== `wallet:${campaign.creatorId}`

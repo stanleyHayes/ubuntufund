@@ -42,6 +42,12 @@ interface PaystackConfig {
   secretKey: string;
   /** Paystack publishable key — safe to expose to the client. */
   publicKey: string;
+  /**
+   * Checkout channels offered by default (PAYSTACK_CHANNELS, comma-separated).
+   * Defaults to card + mobile money, which is what the checkout copy promises;
+   * ops can widen it (e.g. bank_transfer) without a code change.
+   */
+  channels: string[];
 }
 
 export interface AffiliateConfig {
@@ -90,6 +96,12 @@ export interface PaymentsConfig {
   defaultProvider: string;
   /** Whether the scheduled reconciliation job runs. */
   reconciliationEnabled: boolean;
+  /**
+   * Whether this process starts the in-process reconciliation timer. Defaults
+   * on only when NODE_ENV=production; set RECONCILIATION_SCHEDULER_ENABLED=true
+   * to run it on staging or locally. Never runs under NODE_ENV=test.
+   */
+  reconciliationSchedulerEnabled: boolean;
   /** Currencies the checkout may present when multi-currency is enabled. */
   supportedCurrencies: string[];
   /** Optional static FX source label recorded on contributions (e.g. 'provider', 'manual'). */
@@ -265,6 +277,10 @@ export const config: AppConfig = {
   paystack: {
     secretKey: process.env.PAYSTACK_SECRET_KEY ?? '',
     publicKey: process.env.PAYSTACK_PUBLIC_KEY ?? '',
+    channels: (process.env.PAYSTACK_CHANNELS ?? 'card,mobile_money')
+      .split(',')
+      .map((c) => c.trim())
+      .filter(Boolean),
   },
   // Absent secret key ⇒ the Flutterwave rail is disabled; the webhook rejects
   // everything until the dashboard secret hash is configured too.
@@ -282,6 +298,8 @@ export const config: AppConfig = {
     multiCurrencyEnabled: process.env.PAYMENTS_MULTI_CURRENCY_ENABLED === 'true',
     defaultProvider: process.env.PAYMENTS_DEFAULT_PROVIDER ?? 'paystack',
     reconciliationEnabled: (process.env.PAYMENTS_RECONCILIATION_ENABLED ?? 'true') !== 'false',
+    reconciliationSchedulerEnabled:
+      (process.env.RECONCILIATION_SCHEDULER_ENABLED ?? (nodeEnv === 'production' ? 'true' : 'false')) === 'true',
     supportedCurrencies: (process.env.PAYMENTS_SUPPORTED_CURRENCIES ?? 'GHS,USD,GBP,EUR,CAD')
       .split(',')
       .map((c) => c.trim().toUpperCase())

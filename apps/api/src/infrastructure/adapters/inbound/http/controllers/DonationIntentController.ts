@@ -2,7 +2,6 @@ import { randomUUID } from 'node:crypto';
 import type { Response, NextFunction } from 'express';
 import type { AuthenticatedRequest } from '../../middleware/authMiddleware.js';
 import type { CreateDonationIntentUseCase } from '../../../../../application/use-cases/CreateDonationIntentUseCase.js';
-import type { RecordPaymentAttemptUseCase } from '../../../../../application/use-cases/RecordPaymentAttemptUseCase.js';
 import type { GetDonationIntentPublicUseCase } from '../../../../../application/use-cases/GetDonationIntentPublicUseCase.js';
 import type { AddDonationMessageUseCase } from '../../../../../application/use-cases/AddDonationMessageUseCase.js';
 import type { VerifyDonationIntentUseCase } from '../../../../../application/use-cases/VerifyDonationIntentUseCase.js';
@@ -17,7 +16,6 @@ function firstHeaderValue(value: unknown): string | undefined {
 export class DonationIntentController {
   constructor(
     private readonly createDonationIntentUseCase: CreateDonationIntentUseCase,
-    private readonly recordPaymentAttemptUseCase: RecordPaymentAttemptUseCase,
     private readonly getDonationIntentPublicUseCase: GetDonationIntentPublicUseCase,
     private readonly addDonationMessageUseCase: AddDonationMessageUseCase,
     private readonly verifyDonationIntentUseCase: VerifyDonationIntentUseCase
@@ -68,27 +66,6 @@ export class DonationIntentController {
       res.status(201).json({
         data: intentView,
         message: 'Donation intent created',
-        status: 201,
-      });
-    } catch (error) {
-      next(error);
-    }
-  };
-
-  /** POST /donation-intents/:id/payment-attempts — PUBLIC. */
-  recordAttempt = async (
-    req: AuthenticatedRequest,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> => {
-    try {
-      const attempt = await this.recordPaymentAttemptUseCase.execute(
-        req.params.id as string,
-        req.body
-      );
-      res.status(201).json({
-        data: attempt,
-        message: 'Payment attempt recorded',
         status: 201,
       });
     } catch (error) {

@@ -1,7 +1,7 @@
 import type { TipRepositoryPort } from '../../domain/ports/outbound/TipRepositoryPort.js';
 import type { CreatorProfileRepositoryPort } from '../../domain/ports/outbound/CreatorProfileRepositoryPort.js';
 import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGatewayPort.js';
-import type { HandleTipWebhookUseCase } from './HandleTipWebhookUseCase.js';
+import { tipChargeMatches, type HandleTipWebhookUseCase } from './HandleTipWebhookUseCase.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 
 /** Reference-bound guest confirmation; never exposes donor identity or payout details. */
@@ -11,13 +11,23 @@ export class VerifyCreatorTipUseCase {
   async execute(reference: string) {
     let tip = await this.tips.findByProviderRef(reference);
     if (!tip) throw new AppError('Payment reference not found', 404);
-    if (tip.status === 'PENDING') {
+    // FAILED is re-checked too: a checkout the provider first reported as
+    // failed can still complete, and that money must reach the creator.
+    if (tip.status === 'PENDING' || tip.status === 'FAILED') {
       const verified = await this.gateway.verifyTransaction(reference);
-      if (verified.reference !== tip.providerRef || verified.currency !== tip.currency || !Number.isFinite(verified.amount) || Math.round(verified.amount * 100) !== Math.round(tip.amount * 100)) {
-        throw new AppError('Payment details could not be matched. Please contact support with your reference.', 409);
+      const matches = verified.reference === tip.providerRef && tipChargeMatches(tip, verified);
+      if (!matches) {
+        if (tip.status === 'PENDING') {
+          throw new AppError('Payment details could not be matched. Please contact support with your reference.', 409);
+        }
+      } else if (verified.status === 'success') {
+        await this.settlement.handleSuccess(reference, { amount: verified.amount, currency: verified.currency, providerVerified: true });
+      } else if (verified.status === 'failed' && tip.status === 'PENDING') {
+        // 'abandoned' is NOT terminal: Paystack reports an opened-but-unpaid
+        // checkout that way, and the supporter may still be paying. The
+        // reconciliation sweep expires genuinely abandoned tips later.
+        await this.settlement.handleFailed(reference);
       }
-      if (verified.status === 'success') await this.settlement.handleSuccess(reference);
-      else if (verified.status === 'failed' || verified.status === 'abandoned') await this.settlement.handleFailed(reference);
       tip = (await this.tips.findByProviderRef(reference))!;
     }
     if (tip.status === 'SUCCEEDED' && tip.toPlain().settlementApplied === false) await this.settlement.creditSucceededTip(tip);

@@ -5,6 +5,7 @@ import { payoutInstitutionName } from '@ubuntu-fund/types'
 import { randomUUID } from 'expo-crypto'
 import { SegmentedButtons } from '@/components/RoundedControls'
 import { api } from '@/lib/api'
+import { parseMoneyInput } from '@/lib/moneyInput'
 import { SelectionField } from '@/components/SelectionField'
 import type { SavedAccount } from '@/components/SavedPayoutAccounts'
 import { Chip } from '@/components/Chip'
@@ -125,6 +126,8 @@ function CreatorDashboardForViewer() {
   const requestKey = useRef({ details: '', key: '' })
   const [wOpen, setWOpen] = useState(false)
   const [wAmount, setWAmount] = useState('0')
+  // At most 2 decimals; a decimal comma ("100,50") is accepted, not NaN.
+  const wValue = parseMoneyInput(wAmount)
   const [wType, setWType] = useState('mobile_money')
   const [wAccount, setWAccount] = useState('')
   const [wBank, setWBank] = useState('')
@@ -205,14 +208,14 @@ function CreatorDashboardForViewer() {
     setWSubmitting(true)
     try {
       const details = JSON.stringify({
-        amount: Number(wAmount),
+        amount: wValue,
         destination,
         fee: policy.feePercent,
       })
       if (requestKey.current.details !== details)
         requestKey.current = { details, key: randomUUID() }
       await requestWithdrawal({
-        amount: Number(wAmount),
+        amount: wValue,
         expectedFeePercent: policy.feePercent,
         // Both rails need the key: the bank rail has no other way to tell a
         // retry from a second intentional withdrawal.
@@ -483,10 +486,10 @@ function CreatorDashboardForViewer() {
               {policy && (
                 <Text style={styles.sub}>
                   {policy.planName} transfer fee: {policy.feePercent}%. Fee:{' '}
-                  {fmt(Math.round(Number(wAmount) * policy.feePercent) / 100)} · You receive:{' '}
+                  {fmt(Math.round(wValue * policy.feePercent) / 100)} · You receive:{' '}
                   {fmt(
                     Math.round(
-                      (Number(wAmount) - Math.round(Number(wAmount) * policy.feePercent) / 100) *
+                      (wValue - Math.round(wValue * policy.feePercent) / 100) *
                         100,
                     ) / 100,
                   )}
@@ -502,7 +505,7 @@ function CreatorDashboardForViewer() {
               mode="contained"
               loading={wSubmitting}
               disabled={
-                wSubmitting || !policy || !Number.isFinite(Number(wAmount)) || Number(wAmount) <= 0
+                wSubmitting || !policy || !Number.isFinite(wValue) || wValue <= 0
               }
               onPress={withdraw}
             >

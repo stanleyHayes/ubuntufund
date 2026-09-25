@@ -14,9 +14,12 @@ import type { CryptoQuoteRepositoryPort } from '../../domain/ports/outbound/Cryp
 import type { DonationIntentRepositoryPort } from '../../domain/ports/outbound/DonationIntentRepositoryPort.js';
 import { cryptoFromMinor, cryptoToMinor, toCryptoStatus } from '../services/cryptoMoney.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
+import type { ProfileRepositoryPort } from '../../domain/ports/outbound/ProfileRepositoryPort.js';
 
 export interface CreateCryptoDepositContext {
   idempotencyKey: string;
+  /** Signed-in donor, so the gift appears in their history; null for guests. */
+  donorUserId?: string | null;
 }
 
 /** Duplicate-key detection for the idempotencyKey unique index. */
@@ -42,14 +45,21 @@ export class CreateCryptoDepositUseCase {
     private readonly campaignRepo: CampaignRepositoryPort,
     private readonly quoteRepo: CryptoQuoteRepositoryPort,
     private readonly intentRepo: DonationIntentRepositoryPort,
-    private readonly providersByName?: Map<string, CryptoPaymentProviderPort>
+    private readonly providersByName?: Map<string, CryptoPaymentProviderPort>,
+    /** Reads a signed-in donor's "give anonymously by default" setting. */
+    private readonly profileRepo?: Pick<ProfileRepositoryPort, 'findByUserId'>
   ) {}
 
   async execute(
     campaignId: string,
-    input: CreateCryptoDepositInput,
+    requested: CreateCryptoDepositInput,
     ctx: CreateCryptoDepositContext
   ): Promise<CryptoDepositView> {
+    const donorUserId = ctx.donorUserId ?? null;
+    // An explicit choice wins; otherwise a signed-in donor's saved default.
+    const input = requested.isAnonymous === undefined && donorUserId && this.profileRepo
+      ? { ...requested, isAnonymous: (await this.profileRepo.findByUserId(donorUserId))?.anonymousDonations === true }
+      : requested;
     const agreement = donationContentAgreement(input);
     if (!this.config.enabled) {
       throw new AppError('Crypto donations are not enabled', 400);
@@ -59,6 +69,8 @@ export class CreateCryptoDepositUseCase {
     const existing = await this.intentRepo.findByIdempotencyKey(ctx.idempotencyKey);
     if (existing) {
       if (existing.campaignId !== campaignId || existing.quoteId !== input.quoteId) throw new AppError('Idempotency key belongs to another contribution', 409);
+      // Never hand one account's deposit to another caller replaying its key.
+      if (donorUserId && existing.donorUserId !== donorUserId) throw new AppError('Idempotency key belongs to another contribution', 409);
       return this.toView(existing);
     }
 
@@ -108,7 +120,7 @@ export class CreateCryptoDepositUseCase {
           campaignId,
           amount: quote.fiatAmount, // GHS the campaign is credited on confirmation
           currency: quote.fiatCurrency,
-          donorUserId: null,
+          donorUserId,
           donorEmail: input.donorEmail,
           donorName: input.donorName,
           message: input.message,

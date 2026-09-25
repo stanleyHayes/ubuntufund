@@ -11,23 +11,49 @@ import { JournalLineModel } from '../../../database/models/JournalLineModel.js';
 import { LedgerAccountModel } from '../../../database/models/LedgerAccountModel.js';
 import { AppError } from '../../inbound/middleware/errorHandler.js';
 
+/**
+ * Paystack reports an opened-but-unpaid checkout as `abandoned` — including one
+ * the payer is still completing — so it only closes a top-up once this old.
+ */
+const ABANDONED_TOPUP_TTL_MS = 24 * 60 * 60 * 1000;
+/** A failed top-up is re-checked this long, in case the payer completed it after all. */
+const FAILED_TOPUP_RECHECK_MS = 72 * 60 * 60 * 1000;
+
+export interface TopUpReconcileSummary { scanned: number; completed: number; failed: number }
+
 /** Credits only server-verified Paystack charges; all financial writes commit together. */
 export class WalletTopUpService {
   constructor(private readonly gateway: PaymentGatewayPort, private readonly enabled: boolean, private readonly mode: 'test' | 'live' = 'test') {}
   configuration() { return { enabled: this.enabled && this.gateway.isConfigured(), mode: this.mode }; }
 
   private reconciling = false;
-  async reconcile() {
-    if (this.reconciling || !this.enabled || !this.gateway.isConfigured()) return;
+  /**
+   * Re-verify unfinished top-ups: pending ones every 5 minutes, and recently
+   * failed ones hourly for 72h, because a checkout reported failed can still
+   * complete (settle() credits failed → completed on a verified success).
+   * Each visited row's updatedAt is refreshed so the batch rotates.
+   */
+  async reconcile(): Promise<TopUpReconcileSummary> {
+    const summary: TopUpReconcileSummary = { scanned: 0, completed: 0, failed: 0 };
+    if (this.reconciling || !this.enabled || !this.gateway.isConfigured()) return summary;
     this.reconciling = true;
     try {
-      const pending = await WalletTopUpModel.find({ status: 'pending', updatedAt: { $lt: new Date(Date.now() - 5 * 60000) } }).sort({ updatedAt: 1 }).limit(50);
-      for (const topup of pending) {
+      const now = Date.now();
+      const due = await WalletTopUpModel.find({ $or: [
+        { status: 'pending', updatedAt: { $lt: new Date(now - 5 * 60000) } },
+        { status: 'failed', updatedAt: { $lt: new Date(now - 60 * 60000) }, createdAt: { $gt: new Date(now - FAILED_TOPUP_RECHECK_MS) } },
+      ] }).sort({ updatedAt: 1 }).limit(50);
+      summary.scanned = due.length;
+      for (const topup of due) {
         try { await this.settle(topup.reference); }
-        catch { /* Leave pending for the next sweep; never infer success. */ }
-        await WalletTopUpModel.updateOne({ _id: topup.id, status: 'pending' }, { $set: { updatedAt: new Date() } });
+        catch { /* Leave it for the next sweep; never infer success. */ }
+        const after = await WalletTopUpModel.findById(topup.id).select('status').lean();
+        if (after?.status === 'completed') summary.completed += 1;
+        else if (after?.status === 'failed' && topup.status === 'pending') summary.failed += 1;
+        await WalletTopUpModel.updateOne({ _id: topup.id, status: { $in: ['pending', 'failed'] } }, { $set: { updatedAt: new Date() } });
       }
     } finally { this.reconciling = false; }
+    return summary;
   }
 
   async initialize(userId: string, walletId: string, amount: number, key: string) {
@@ -71,7 +97,12 @@ export class WalletTopUpService {
     const topup = await WalletTopUpModel.findOne({ reference });
     if (!topup || topup.status === 'completed') return;
     const verified = await this.gateway.verifyTransaction(reference);
-    if (['failed', 'abandoned', 'reversed'].includes(verified.status)) { await WalletTopUpModel.updateOne({ reference, status: 'pending' }, { $set: { status: 'failed' } }); return; }
+    // 'abandoned' is what Paystack says for a checkout the payer has opened but
+    // not paid yet — right after the redirect, too — so it only fails the
+    // top-up once the checkout is past its TTL.
+    const createdAt = (topup as { createdAt?: Date }).createdAt;
+    const abandonedTooLong = verified.status === 'abandoned' && !!createdAt && Date.now() - createdAt.getTime() > ABANDONED_TOPUP_TTL_MS;
+    if (verified.status === 'failed' || verified.status === 'reversed' || abandonedTooLong) { await WalletTopUpModel.updateOne({ reference, status: 'pending' }, { $set: { status: 'failed' } }); return; }
     if (verified.status !== 'success') return;
     const feeMinor = Math.round(verified.fees * 100);
     if (verified.reference !== reference || verified.currency !== 'GHS' || verified.amount !== topup.amountMinor / 100 || !Number.isSafeInteger(feeMinor) || feeMinor < 0 || feeMinor > topup.amountMinor) throw new AppError('Top-up payment verification mismatch', 409);

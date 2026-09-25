@@ -24,24 +24,28 @@ import { Link as RouterLink } from 'react-router-dom'
 import { formatCurrency, EmptyState, SHAPE } from '@ubuntu-fund/ui'
 import { PaymentMethod } from '@ubuntu-fund/types'
 import { useMyDonations } from '@/hooks/useDonations'
-import type { UserDonation } from '@/hooks/useDonations'
+import { isRefundEligible } from '@/lib/donationRefunds'
 
 const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   completed: { bg: 'rgba(46, 61, 47,0.08)', color: 'var(--text-brand)' },
   pending: { bg: 'rgba(255,167,38,0.1)', color: 'var(--text-warning)' },
+  refund_pending: { bg: 'rgba(255,167,38,0.1)', color: 'var(--text-warning)' },
+  disputed: { bg: 'rgba(255,167,38,0.1)', color: 'var(--text-warning)' },
+  partially_refunded: { bg: 'rgba(239,83,80,0.08)', color: 'var(--text-error)' },
   refunded: { bg: 'rgba(239,83,80,0.08)', color: 'var(--text-error)' },
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  completed: 'Completed',
+  pending: 'Pending',
+  refund_pending: 'Refund in progress',
+  partially_refunded: 'Partially refunded',
+  refunded: 'Refunded',
+  disputed: 'Disputed',
 }
 
 function formatPaymentMethod(method: PaymentMethod): string {
   return method.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
-}
-
-function isRefundEligible(donation: UserDonation): boolean {
-  if (donation.status !== 'completed') return false
-  const donationDate = new Date(donation.date)
-  const thirtyDaysAgo = new Date()
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-  return donationDate >= thirtyDaysAgo
 }
 
 // ---------------------------------------------------------------------------
@@ -136,6 +140,7 @@ export function MyDonationsPage() {
             <MenuItem value="all">All Statuses</MenuItem>
             <MenuItem value="completed">Completed</MenuItem>
             <MenuItem value="pending">Pending</MenuItem>
+            <MenuItem value="partially_refunded">Partially refunded</MenuItem>
             <MenuItem value="refunded">Refunded</MenuItem>
           </TextField>
           <TextField
@@ -183,7 +188,7 @@ export function MyDonationsPage() {
               </TableHead>
               <TableBody>
                 {filtered.map((d) => {
-                  const statusStyle = STATUS_COLORS[d.status]
+                  const statusStyle = STATUS_COLORS[d.status] ?? STATUS_COLORS.pending
                   return (
                     <TableRow key={d.id} hover>
                       <TableCell>
@@ -213,7 +218,7 @@ export function MyDonationsPage() {
                       </TableCell>
                       <TableCell>
                         <Chip
-                          label={d.status.charAt(0).toUpperCase() + d.status.slice(1)}
+                          label={STATUS_LABELS[d.status] ?? d.status}
                           size="small"
                           sx={{
                             fontWeight: 600,
@@ -229,7 +234,7 @@ export function MyDonationsPage() {
                         </Typography>
                       </TableCell>
                       <TableCell>
-                        {isRefundEligible(d) && (
+                        {isRefundEligible(d) ? (
                           <Button
                             component={RouterLink}
                             to={`/donations/refund/${d.id}`}
@@ -239,7 +244,13 @@ export function MyDonationsPage() {
                           >
                             Request Refund
                           </Button>
-                        )}
+                        ) : d.status === 'completed' && d.paymentMethod === PaymentMethod.WALLET ? (
+                          <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>
+                            Wallet gift: contact support@ujimora.com for a refund
+                          </Typography>
+                        ) : d.refundRequested ? (
+                          <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>Refund requested</Typography>
+                        ) : null}
                       </TableCell>
                     </TableRow>
                   )

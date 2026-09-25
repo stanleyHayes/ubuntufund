@@ -1,7 +1,12 @@
 import { usePublicCampaign } from '@/hooks/usePublicCampaign'
+import { checkoutAttemptKey, forgetCheckoutAttempt, isDefinitiveRejection } from '@/lib/checkoutAttempt'
+import { rememberPendingDonation } from '@/lib/donationHandoff'
+import { parseMoneyInput, sanitizeMoneyInput } from '@/lib/moneyInput'
 import { MessageAgreement } from '@/components/donate/MessageAgreement'
+import { DonationTermsNotice } from '@/components/donate/DonationTermsNotice'
 import { LEGAL_ACCEPTANCE_VERSION } from '@ubuntu-fund/types'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useAnonymousDonationDefault } from '@/hooks/useAnonymousDonationDefault'
 import { useParams, useNavigate, useSearchParams, Link as RouterLink } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
@@ -61,41 +66,13 @@ const fadeInUp = keyframes`
 const PRESET_AMOUNTS = [20, 50, 100, 200] as const
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-// Handoff store — lets the Paystack return page (`/donate/callback`) recover the
-// intent id (to poll) and the campaign slug (to link back) from the reference
-// Paystack echoes on redirect. localStorage survives the full-page round-trip.
-const HANDOFF_KEY = 'uf_pending_donations'
-
-interface PendingDonation {
-  intentId: string
-  reference?: string
-  slug: string
-  title: string
-  amount: number
-  currency: string
-}
-
-/** Persist the pending-donation handoff keyed by its Paystack reference. */
-function rememberPendingDonation(entry: PendingDonation): void {
-  try {
-    const raw = localStorage.getItem(HANDOFF_KEY)
-    const store: Record<string, PendingDonation> = raw ? JSON.parse(raw) : {}
-    if (entry.reference) store[entry.reference] = entry
-    // Keep a "latest" fallback for the case where no reference reaches the callback.
-    store.__last = entry
-    localStorage.setItem(HANDOFF_KEY, JSON.stringify(store))
-  } catch {
-    // Storage may be unavailable (private mode) — the callback still works by
-    // parsing the intent id out of the reference, so this is best-effort only.
-  }
-}
-
-/** Parse a positive money amount from a free-text field; returns NaN when invalid. */
-function parseAmount(raw: string): number {
-  if (!raw.trim()) return NaN
-  const n = Number(raw)
-  return Number.isFinite(n) ? n : NaN
-}
+/**
+ * Parse a money amount from a free-text field (≤ 2 decimals, decimal comma
+ * accepted); NaN when invalid. Previously any Number() was accepted: "1.005"
+ * showed GH₵1.01 but charged GH₵1.00, and the input filter dropped commas so
+ * "100,50" became GH₵10,050.
+ */
+const parseAmount = parseMoneyInput
 
 // ---------------------------------------------------------------------------
 // DonatePage — guest checkout (Paystack card + mobile money)
@@ -131,6 +108,13 @@ export function DonatePage() {
   const messageAcceptance = messageAccepted ? { version: LEGAL_ACCEPTANCE_VERSION, acceptedTerms: true, ageConfirmed: true } : undefined
   const [message, setMessage] = useState('')
   const [isAnonymous, setIsAnonymous] = useState(false)
+  // Pre-select "Give anonymously" from the donor's saved default, unless they
+  // already chose for this donation.
+  const anonymousDefault = useAnonymousDonationDefault(user?.id)
+  const anonymityChosen = useRef(false)
+  useEffect(() => {
+    if (anonymousDefault !== undefined && !anonymityChosen.current) setIsAnonymous(anonymousDefault)
+  }, [anonymousDefault])
 
   // Payment rail: fiat (Paystack) by default; crypto shown only when enabled.
   const [cryptoEnabled, setCryptoEnabled] = useState(false)
@@ -228,20 +212,44 @@ export function DonatePage() {
     setSubmitError('')
     setPaymentsDisabled(false)
 
+    const intentInput = {
+      campaignId: campaign.id,
+      liveSessionId: searchParams.get('liveSessionId') || undefined,
+      amount: amountValue,
+      tip: tipValid && Number.isFinite(tipValue) && tipValue > 0 ? tipValue : undefined,
+      couponCode: user && couponCode.trim() ? couponCode.trim() : undefined,
+      provider: 'paystack' as const,
+      donorEmail: donorEmail.trim(),
+      donorName: donorName.trim() || undefined,
+      message: message.trim() || undefined,
+      legalAcceptance: messageAcceptance,
+      isAnonymous,
+    }
+    // One key per donation attempt: pressing Give again with the same details
+    // (after a lost response, or after coming back from checkout) returns the
+    // same checkout instead of opening a second one.
+    const attemptScope = `donate:${campaign.id}:${user?.id ?? 'guest'}`
+
     try {
-      const result = await createDonationIntent({
-        campaignId: campaign.id,
-        liveSessionId: searchParams.get('liveSessionId') || undefined,
-        amount: amountValue,
-        tip: tipValid && Number.isFinite(tipValue) && tipValue > 0 ? tipValue : undefined,
-        couponCode: user && couponCode.trim() ? couponCode.trim() : undefined,
-        provider: 'paystack',
-        donorEmail: donorEmail.trim(),
-        donorName: donorName.trim() || undefined,
-        message: message.trim() || undefined,
-        legalAcceptance: messageAcceptance,
-        isAnonymous,
-      })
+      let result = await createDonationIntent(intentInput, await checkoutAttemptKey(attemptScope, intentInput))
+
+      if (!result.authorization_url && result.intent.status === 'SUCCEEDED') {
+        // This exact donation was already paid — show its confirmation rather
+        // than charging the donor a second time.
+        await forgetCheckoutAttempt(attemptScope)
+        if (result.intent.providerRef) {
+          navigate(`/donate/callback?reference=${encodeURIComponent(result.intent.providerRef)}`)
+          return
+        }
+        setSubmitError('This donation has already been completed. Thank you!')
+        setSubmitting(false)
+        return
+      }
+      if (!result.authorization_url && ['FAILED', 'EXPIRED', 'CANCELLED'].includes(result.intent.status)) {
+        // The earlier attempt with these details is closed; start a new one.
+        await forgetCheckoutAttempt(attemptScope)
+        result = await createDonationIntent(intentInput, await checkoutAttemptKey(attemptScope, intentInput))
+      }
 
       if (!result.authorization_url) {
         // Paystack should always return a hosted-checkout URL. If it didn't,
@@ -265,6 +273,9 @@ export function DonatePage() {
       // Hand the browser to Paystack's hosted checkout. NEVER treat this as success.
       window.location.href = result.authorization_url
     } catch (err) {
+      // A definite refusal means the next press is a new attempt; a network
+      // error or timeout keeps the key, since the checkout may already exist.
+      if (isDefinitiveRejection(err)) await forgetCheckoutAttempt(attemptScope)
       if (isPaymentsNotConfigured(err)) {
         setPaymentsDisabled(true)
       } else {
@@ -472,12 +483,12 @@ export function DonatePage() {
           id="donation-amount"
           label="Amount"
           value={amount}
-          onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ''))}
+          onChange={(e) => setAmount(sanitizeMoneyInput(e.target.value))}
           fullWidth
           required
           inputMode="decimal"
           error={amount.trim() !== '' && !amountValid}
-          helperText={amount.trim() !== '' && !amountValid ? 'Enter an amount greater than zero' : ' '}
+          helperText={amount.trim() !== '' && !amountValid ? 'Enter an amount greater than zero, with at most 2 decimal places' : ' '}
           InputProps={{
             startAdornment: <InputAdornment position="start">GH₵</InputAdornment>,
           }}
@@ -489,11 +500,11 @@ export function DonatePage() {
           id="donation-tip"
           label="Add a tip to support the platform (optional)"
           value={tip}
-          onChange={(e) => setTip(e.target.value.replace(/[^\d.]/g, ''))}
+          onChange={(e) => setTip(sanitizeMoneyInput(e.target.value))}
           fullWidth
           inputMode="decimal"
           error={!tipValid}
-          helperText={!tipValid ? 'Enter a valid tip amount' : ' '}
+          helperText={!tipValid ? 'Enter a valid tip amount, with at most 2 decimal places' : ' '}
           InputProps={{
             startAdornment: <InputAdornment position="start">GH₵</InputAdornment>,
           }}
@@ -586,7 +597,7 @@ export function DonatePage() {
           control={
             <Checkbox
               checked={isAnonymous}
-              onChange={(e) => setIsAnonymous(e.target.checked)}
+              onChange={(e) => { anonymityChosen.current = true; setIsAnonymous(e.target.checked) }}
               sx={{ '&:focus-visible': { outline: '2px solid #C7A24A' } }}
             />
           }
@@ -654,6 +665,8 @@ export function DonatePage() {
                 {submitError}
               </Alert>
             )}
+
+            <DonationTermsNotice />
 
             {/* Submit */}
             <Button

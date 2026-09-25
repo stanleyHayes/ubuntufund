@@ -9,7 +9,9 @@ export interface UserDonation {
   amount: number
   currency: string
   date: string
-  status: 'completed' | 'pending' | 'refunded'
+  status: 'completed' | 'pending' | 'refund_pending' | 'partially_refunded' | 'refunded' | 'disputed'
+  /** A refund request is already open for this donation. */
+  refundRequested?: boolean
   paymentMethod: PaymentMethod
 }
 

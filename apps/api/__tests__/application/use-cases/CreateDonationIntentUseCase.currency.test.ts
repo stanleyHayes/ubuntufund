@@ -23,6 +23,10 @@ function deps(paymentsConfig?: PaymentsConfig) {
       const last = created[created.length - 1];
       return new DonationIntentEntity({ ...last.toPlain(), status: 'PENDING', providerRef: ref });
     }),
+    markPendingIfCreated: vi.fn(async (_id: string, ref: string, hostedCheckout: { authorizationUrl: string; accessCode: string }) => {
+      const last = created[created.length - 1];
+      return new DonationIntentEntity({ ...last.toPlain(), status: 'PENDING', providerRef: ref, hostedCheckout });
+    }),
     findById: vi.fn(),
     findByProviderRef: vi.fn(),
     transitionToSucceeded: vi.fn(),
@@ -69,6 +73,7 @@ function paymentsCfg(overrides: Partial<PaymentsConfig> = {}): PaymentsConfig {
     multiCurrencyEnabled: true,
     defaultProvider: 'paystack',
     reconciliationEnabled: true,
+    reconciliationSchedulerEnabled: false,
     supportedCurrencies: ['GHS', 'USD', 'GBP', 'EUR', 'CAD'],
     fxSource: 'provider',
     ...overrides,
