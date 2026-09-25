@@ -602,7 +602,7 @@ export function RegisterForm() {
                   </Typography>
                   {price > 0 && (
                     <Typography sx={{ fontSize: '0.7rem', color: INK_SECONDARY }}>
-                      {billingCycle === BillingCycle.YEARLY ? 'per year · billed yearly' : 'per month'}
+                      {billingCycle === BillingCycle.YEARLY ? 'for 1 year · one-time payment' : 'for 30 days · one-time payment'}
                     </Typography>
                   )}
                 </Box>

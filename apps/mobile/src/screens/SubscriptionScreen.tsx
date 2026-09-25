@@ -401,13 +401,17 @@ function CheckoutSheet({
                     </Text>
                     <Text style={[styles.cycleHint, active && styles.cycleHintActive]}>
                       {formatGhs(amount)}
-                      {cycle === BillingCycle.YEARLY ? '/yr' : '/mo'}
+                      {cycle === BillingCycle.YEARLY ? ' / 1 year' : ' / 30 days'}
                     </Text>
                   </View>
                 </TouchableRipple>
               )
             })}
           </View>
+
+          <Text style={styles.sheetSub}>
+            One-time payment for {billingCycle === BillingCycle.YEARLY ? '1 year (365 days)' : '30 days'}. Your plan does not renew automatically.
+          </Text>
 
           {/* Coupon */}
           <TextInput
@@ -481,7 +485,6 @@ export default function SubscriptionScreen() {
   const storeManaged = currentSub.billingProvider === 'apple' || currentSub.billingProvider === 'google'
   const storeManagementUrl = currentSub.billingProvider === 'apple' ? 'https://apps.apple.com/account/subscriptions' : 'https://play.google.com/store/account/subscriptions?package=com.ujimora.app'
   const [isLoading, setIsLoading] = useState(true)
-  const [actionLoading, setActionLoading] = useState(false)
   const [checkoutTier, setCheckoutTier] = useState<string | null>(null)
   // DB-backed plans (seeded from SUBSCRIPTION_PLANS, overlaid from GET /plans) so
   // admin-added tiers appear here too.
@@ -528,29 +531,6 @@ export default function SubscriptionScreen() {
       cancelled = true
     }
   }, [])
-
-  const handleCancel = async () => {
-    if (storeManaged) { await Linking.openURL(storeManagementUrl); return }
-    Alert.alert('Cancel Subscription', 'Are you sure you want to cancel?', [
-      { text: 'No', style: 'cancel' },
-      {
-        text: 'Yes, cancel',
-        style: 'destructive',
-        onPress: async () => {
-          setActionLoading(true)
-          try {
-            await api.post('/subscriptions/cancel')
-            await fetchSubscription()
-            Alert.alert('Cancelled', 'Your subscription has been cancelled.')
-          } catch (err: unknown) {
-            Alert.alert('Error', err instanceof Error ? err.message : 'Failed to cancel')
-          } finally {
-            setActionLoading(false)
-          }
-        },
-      },
-    ])
-  }
 
   const orderedPlans = Object.values(plans)
     .filter((pl) => pl.active !== false && pl.isPublic !== false)
@@ -640,7 +620,7 @@ export default function SubscriptionScreen() {
               ) : (
                 <View style={styles.priceRow}>
                   <Text style={styles.planPrice}>GH₵ {plan.priceMonthly}</Text>
-                  <Text style={styles.priceUnit}>/mo</Text>
+                  <Text style={styles.priceUnit}>{isFree ? '/mo' : ' / 30 days'}</Text>
                 </View>
               )}
 
@@ -669,13 +649,14 @@ export default function SubscriptionScreen() {
                   <Text style={styles.currentChipText}>Current Plan</Text>
                 </View>
               ) : isFree ? (
+                // Web plans end on their own; there is nothing to cancel.
                 <Button
                   mode="text"
                   textColor={p.textSecondary}
                   style={styles.planButton}
-                  onPress={handleCancel}
+                  disabled
                 >
-                  Switch to Free
+                  Free after your plan ends
                 </Button>
               ) : isEnterprise ? (
                 <Button
@@ -728,17 +709,11 @@ export default function SubscriptionScreen() {
         </View>
       )}
 
-      {/* Cancel subscription */}
+      {/* Web plans are one-time purchases: nothing renews, so nothing to cancel. */}
       {paidInForce && !storeManaged && (
-        <Button
-          mode="outlined"
-          textColor={p.error}
-          style={styles.cancelButton}
-          disabled={actionLoading}
-          onPress={handleCancel}
-        >
-          Cancel Subscription
-        </Button>
+        <Text style={styles.renewText}>
+          Your plan does not renew automatically. Buy again before {new Date(currentSub.currentPeriodEnd as string).toLocaleDateString()} to keep your benefits.
+        </Text>
       )}
     </ScrollView>
 

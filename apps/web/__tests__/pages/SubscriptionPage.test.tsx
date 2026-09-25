@@ -57,3 +57,24 @@ describe('lapsed web subscription', () => {
     expect(within(planCard('Pro')).getByText('Current plan')).toBeInTheDocument()
   })
 })
+
+describe('non-renewing web plan copy', () => {
+  it('describes an in-force web plan as ending, with no cancel or auto-renew claims', () => {
+    state.subscription = subscription({ currentPeriodEnd: new Date(Date.now() + 10 * DAY) })
+    mount()
+    expect(screen.getByText('Ends in')).toBeInTheDocument()
+    expect(screen.queryByText('Renews in')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /cancel subscription/i })).not.toBeInTheDocument()
+    expect(screen.getByText(/does not renew automatically/)).toBeInTheDocument()
+    fireEvent.click(within(planCard('Plus')).getByRole('button', { name: 'Choose Plus' }))
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).getByText(/One-time payment for 30 days\. Your plan does not renew automatically\./)).toBeInTheDocument()
+    expect(within(dialog).queryByText(/cancel anytime/i)).not.toBeInTheDocument()
+  })
+
+  it('keeps renewal wording for App Store / Google Play subscriptions', () => {
+    state.subscription = subscription({ billingProvider: 'google', currentPeriodEnd: new Date(Date.now() + 10 * DAY) })
+    mount()
+    expect(screen.getByText('Renews in')).toBeInTheDocument()
+  })
+})

@@ -34,7 +34,6 @@ import {
   type SubscriptionPlan,
 } from '@ubuntu-fund/types'
 import { useMySubscription, usePlanMap } from '@/hooks/useSubscription'
-import { api } from '@/lib/api'
 import {
   readSubscriptionHandoff,
   createSubscriptionCheckout,
@@ -143,7 +142,7 @@ export function SubscriptionPage() {
   useSeo({
     title: 'Your subscription plan | Ujimora',
     description:
-      'See the Ujimora plan you are on, switch between monthly and yearly billing, apply a coupon or cancel, and check the platform fee your plan carries.',
+      'See the Ujimora plan you are on and when it ends, buy a 30-day or one-year plan with a one-time payment, apply a coupon, and check the platform fee your plan carries.',
     path: '/subscription',
     robots: 'noindex, nofollow',
   })
@@ -160,9 +159,7 @@ export function SubscriptionPage() {
   const orderedPlans = Object.values(plans)
     .filter((p) => p.active !== false && p.isPublic !== false)
     .sort(bySortOrder)
-  const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
   const [billingToggle, setBillingToggle] = useState<'monthly' | 'yearly'>(searchParams.get('billingCycle') === 'yearly' ? 'yearly' : 'monthly')
-  const [actionLoading, setActionLoading] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
 
   // ── Paid checkout + coupon flow ────────────────────────────────────────────
@@ -242,20 +239,6 @@ export function SubscriptionPage() {
       }
     } finally {
       setCheckoutLoading(false)
-    }
-  }
-
-  async function handleCancel() {
-    setActionLoading(true)
-    setActionError(null)
-    try {
-      await api.post('/subscriptions/cancel')
-      setCancelDialogOpen(false)
-      refetch()
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Failed to cancel subscription.')
-    } finally {
-      setActionLoading(false)
     }
   }
 
@@ -377,15 +360,25 @@ export function SubscriptionPage() {
             }}
           >
             {[
+              // Web plans are one-time purchases for a fixed period; only App
+              // Store / Google Play subscriptions actually renew.
               {
                 icon: <ReceiptLongRoundedIcon sx={{ fontSize: 20, color: colors.accent }} />,
-                label: 'Billing',
-                value: currentSub.billingCycle === BillingCycle.MONTHLY ? 'Monthly' : 'Yearly',
+                label: storeManaged ? 'Billing' : 'Plan length',
+                value: currentSub.tier === SubscriptionTier.FREE
+                  ? 'Free'
+                  : storeManaged
+                    ? (currentSub.billingCycle === BillingCycle.MONTHLY ? 'Monthly' : 'Yearly')
+                    : (currentSub.billingCycle === BillingCycle.MONTHLY ? '30 days' : '1 year'),
               },
               {
                 icon: <CalendarTodayRoundedIcon sx={{ fontSize: 20, color: colors.accent }} />,
-                label: 'Renews in',
-                value: `${daysLeft} day${daysLeft !== 1 ? 's' : ''}`,
+                label: currentSub.tier === SubscriptionTier.FREE ? 'Ends' : lapsed ? 'Ended' : storeManaged && !currentSub.cancelAtPeriodEnd ? 'Renews in' : 'Ends in',
+                value: currentSub.tier === SubscriptionTier.FREE
+                  ? 'No end date'
+                  : lapsed
+                    ? new Date(currentSub.currentPeriodEnd).toLocaleDateString()
+                    : `${daysLeft} day${daysLeft !== 1 ? 's' : ''}`,
               },
               {
                 icon: <TrendingUpRoundedIcon sx={{ fontSize: 20, color: colors.accent }} />,
@@ -450,23 +443,19 @@ export function SubscriptionPage() {
               ))}
           </Box>}
 
-          {/* Period + Cancel */}
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1, pt: 2, borderTop: '1px solid rgba(0,0,0,0.06)' }}>
-            <Typography sx={{ fontSize: '0.82rem', color: 'text.secondary' }}>
-              Period: {new Date(currentSub.currentPeriodStart).toLocaleDateString()} &mdash; {new Date(currentSub.currentPeriodEnd).toLocaleDateString()}
-            </Typography>
-            {paidInForce && !storeManaged && (
-              <Button
-                variant="text"
-                size="small"
-                color="error"
-                onClick={() => setCancelDialogOpen(true)}
-                sx={{ fontWeight: 600, fontSize: '0.78rem', textTransform: 'none' }}
-              >
-                Cancel subscription
-              </Button>
-            )}
-          </Box>
+          {/* Period. Web plans have nothing to cancel: they simply end. */}
+          {currentSub.tier !== SubscriptionTier.FREE && (
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1, pt: 2, borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+              <Typography sx={{ fontSize: '0.82rem', color: 'text.secondary' }}>
+                Period: {new Date(currentSub.currentPeriodStart).toLocaleDateString()} &mdash; {new Date(currentSub.currentPeriodEnd).toLocaleDateString()}
+              </Typography>
+              {paidInForce && !storeManaged && (
+                <Typography sx={{ fontSize: '0.82rem', color: 'text.secondary' }}>
+                  Your plan does not renew automatically. Buy again before it ends to keep your benefits.
+                </Typography>
+              )}
+            </Box>
+          )}
         </CardContent>
       </Card>
 
@@ -575,13 +564,13 @@ export function SubscriptionPage() {
                         {formatCurrency(billingToggle === 'yearly' ? price / 12 : price, 'GHS')}
                       </Typography>
                       <Typography sx={{ color: 'text.secondary', fontSize: '0.78rem' }}>
-                        /mo
+                        {billingToggle === 'yearly' || tier === SubscriptionTier.FREE ? '/mo' : '/ 30 days'}
                       </Typography>
                     </Box>
                   )}
-                  {billingToggle === 'yearly' && tier !== SubscriptionTier.FREE && tier !== SubscriptionTier.ENTERPRISE && (
+                  {tier !== SubscriptionTier.FREE && tier !== SubscriptionTier.ENTERPRISE && (
                     <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary', mt: 0.25 }}>
-                      GH₵ {price}/year &middot; billed annually
+                      {billingToggle === 'yearly' ? <>GH₵ {price} for 1 year &middot; </> : null}One-time payment &middot; does not auto-renew
                     </Typography>
                   )}
                 </Box>
@@ -885,7 +874,7 @@ export function SubscriptionPage() {
               </DialogTitle>
               <DialogContent>
                 <Typography sx={{ color: 'text.secondary', fontSize: '0.85rem', mb: 2 }}>
-                  Billed {billingToggle === 'yearly' ? 'yearly' : 'monthly'}. You can cancel anytime.
+                  One-time payment for {billingToggle === 'yearly' ? '1 year (365 days)' : '30 days'}. Your plan does not renew automatically.
                 </Typography>
 
                 <TextField
@@ -973,33 +962,6 @@ export function SubscriptionPage() {
         })()}
       </Dialog>
 
-      {/* ═══════════ CANCEL DIALOG ═══════════ */}
-      <Dialog open={cancelDialogOpen} onClose={() => setCancelDialogOpen(false)} PaperProps={{ sx: { borderRadius: SHAPE.card } }}>
-        <DialogTitle sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 700 }}>
-          Cancel Subscription?
-        </DialogTitle>
-        <DialogContent>
-          <Typography sx={{ color: 'text.secondary' }}>
-            Your subscription will remain active until the end of your current billing period
-            ({new Date(currentSub.currentPeriodEnd).toLocaleDateString()}). After that, you'll be moved to the
-            Free plan.
-          </Typography>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setCancelDialogOpen(false)} disabled={actionLoading} sx={{ fontWeight: 600, textTransform: 'none' }}>
-            Keep Subscription
-          </Button>
-          <Button
-            color="error"
-            variant="contained"
-            onClick={handleCancel}
-            disabled={actionLoading}
-            sx={{ fontWeight: 600, textTransform: 'none' }}
-          >
-            {actionLoading ? <><LoadingDots size={6} /> <span>Cancelling...</span></> : 'Confirm Cancel'}
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Container>
   )
 }
