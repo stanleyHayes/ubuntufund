@@ -9,6 +9,7 @@ import type {
 } from '../../../../../application/use-cases/ForgotPasswordUseCase.js';
 import type { AuthTokenService } from '../../../../../application/services/AuthTokenService.js';
 import type { AuthenticatedRequest } from '../../middleware/authMiddleware.js';
+import type { SessionRevocationPort } from '../../../../../domain/ports/outbound/SessionRevocationPort.js';
 
 export class AuthController {
   constructor(
@@ -18,8 +19,28 @@ export class AuthController {
     private readonly changePasswordUseCase?: ChangePasswordUseCase,
     private readonly forgotPasswordUseCase?: ForgotPasswordUseCase,
     private readonly resetPasswordUseCase?: ResetPasswordUseCase,
-    private readonly userRepo?: UserRepositoryPort
+    private readonly userRepo?: UserRepositoryPort,
+    private readonly sessions?: SessionRevocationPort
   ) {}
+
+  /**
+   * Server-side sign-out of the session the refresh token belongs to. Always
+   * answers 200 so it reveals nothing about the token; clients clear local
+   * storage regardless. Other devices stay signed in.
+   */
+  logout = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const session = typeof req.body?.refreshToken === 'string' ? this.tokenService.refreshTokenSessionId(req.body.refreshToken) : null;
+      if (session && this.sessions) await this.sessions.revoke(session.sessionId, session.userId);
+      res.json({ data: null, message: 'Signed out', status: 200 });
+    } catch (error) {
+      next(error);
+    }
+  };
 
   changePassword = async (
     req: AuthenticatedRequest,
@@ -73,7 +94,7 @@ export class AuthController {
     next: NextFunction
   ): Promise<void> => {
     try {
-      const result = await this.registerUseCase.execute(req.body);
+      const result = await this.registerUseCase.execute(req.body, { ip: req.ip, userAgent: req.get('user-agent') });
       res.status(201).json({
         data: result,
         message: 'Registration successful',
@@ -125,7 +146,8 @@ export class AuthController {
           return;
         }
         if (user && (payload.authVersion ?? '') !== user.authVersion) throw new Error('Session has ended');
-        tokens = this.tokenService.generateTokens({ userId: payload.userId, role: user?.role ?? payload.role, authVersion: user?.authVersion ?? payload.authVersion });
+        if (payload.sessionId && this.sessions && await this.sessions.isRevoked(payload.sessionId)) throw new Error('Session was signed out');
+        tokens = this.tokenService.generateTokens({ userId: payload.userId, role: user?.role ?? payload.role, authVersion: user?.authVersion ?? payload.authVersion, sessionId: payload.sessionId });
       } catch {
         res.status(401).json({
           message: 'Invalid or expired refresh token',

@@ -13,14 +13,12 @@ import { usePalette, useNeu } from '@/context/ColorModeContext'
 import type { Palette, NeuRecipes } from '@/theme'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
+import { profileStatTiles, type ProfileMoneyStats } from '@/lib/profileStats'
 
 
-interface ProfileStats {
+interface ProfileStats extends ProfileMoneyStats {
   avatarUrl?: string
   coverUrl?: string
-  campaignsCount: number
-  totalDonated: number
-  totalRaised: number
   verificationLevel: string
   trustScore: number
 }
@@ -153,11 +151,7 @@ export default function ProfileTab() {
               <View><Text accessibilityRole="alert" style={{ color: p.error }}>{statsError}</Text><Button textColor={p.primary} onPress={() => void fetchProfile()}>Try again</Button></View>
             ) : (
               <>
-                {[
-                  { value: stats?.campaignsCount ?? 0, label: 'Campaigns' },
-                  { value: `GH₵ ${stats?.totalDonated ?? 0}`, label: 'Donated' },
-                  { value: `GH₵ ${stats?.totalRaised ?? 0}`, label: 'Raised' },
-                ].map((s, i) => (
+                {profileStatTiles(stats).map((s, i) => (
                   <View key={s.label} style={styles.statBox}>
                     {i > 0 && <View style={styles.statDivider} />}
                     <View style={styles.statInner}>

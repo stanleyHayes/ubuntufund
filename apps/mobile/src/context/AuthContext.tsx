@@ -4,8 +4,10 @@ import { createContext, useContext, useState, useCallback, useEffect } from 'rea
 import type { ReactNode } from 'react'
 import { AppState, Platform, View } from 'react-native'
 import { accessToken, biometricSessionState, setSessionForeground, endSession, establishSession, expireIdleSession, hydrateSession, observeSession, recordActivity, sessionSnapshot } from '@/lib/session'
-import { loginApi, registerApi } from '@/lib/api'
+import { loginApi, logoutApi, registerApi } from '@/lib/api'
 import type { AuthUser, AuthTokens } from '@/lib/api'
+import { onAgreementRequired } from '@/lib/agreementEvents'
+import { fetchLegalStatus, type LegalStatus } from '@/lib/agreementStatus'
 
 interface AuthState {
   user: AuthUser | null
@@ -33,6 +35,9 @@ interface AuthContextValue extends AuthState {
   }) => Promise<void>
   replaceTokens: (tokens: AuthTokens, userId: string) => Promise<void>
   logout: () => Promise<void>
+  /** The API's agreement status for the signed-in user, once loaded. */
+  legalStatus: LegalStatus | null
+  refreshLegalStatus: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -92,17 +97,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   }, [])
 
+  // Re-read the agreement status on sign-in, when the app returns to the
+  // foreground and after any 428: the bundled version can lag the API's.
+  const [fetchedLegalStatus, setLegalStatus] = useState<(LegalStatus & { userId: string }) | null>(null)
+  const signedInUserId = state.isAuthenticated ? state.user?.id : undefined
+  const legalStatus = signedInUserId && fetchedLegalStatus?.userId === signedInUserId ? fetchedLegalStatus : null
+  const refreshLegalStatus = useCallback(async () => {
+    const userId = sessionSnapshot()?.user.id
+    if (!userId) return
+    const status = await fetchLegalStatus()
+    if (status && sessionSnapshot()?.user.id === userId) setLegalStatus({ ...status, userId })
+  }, [])
+  useEffect(() => {
+    if (!signedInUserId) return
+    let active = true, last = Date.now()
+    const load = () => {
+      last = Date.now()
+      fetchLegalStatus().then(status => {
+        if (active && status && sessionSnapshot()?.user.id === signedInUserId) setLegalStatus({ ...status, userId: signedInUserId })
+      }).catch(() => { /* Keep the cached view; the next foreground retries. */ })
+    }
+    load()
+    const appState = AppState.addEventListener('change', value => {
+      if (value === 'active' && Date.now() - last >= 60_000) load()
+    })
+    const unsubscribe = onAgreementRequired(load)
+    return () => { active = false; appState.remove(); unsubscribe() }
+  }, [signedInUserId])
+
   const replaceTokens = useCallback(async (tokens: AuthTokens, userId: string) => {
     const current = sessionSnapshot()
     if (current?.user.id === userId) await establishSession(current.user, tokens)
   }, [])
 
   const logout = useCallback(async () => {
+    // Best-effort server-side sign-out so a copied refresh token stops working;
+    // never delay or block the local sign-out on the network.
+    const refreshToken = sessionSnapshot()?.tokens.refreshToken
+    if (refreshToken) void logoutApi(refreshToken).catch(() => {})
     await endSession()
   }, [])
 
   return (
-    <AuthContext.Provider value={{ ...state, biometricLocked: deviceState.locked, login, register, replaceTokens, logout }}>
+    <AuthContext.Provider value={{ ...state, biometricLocked: deviceState.locked, login, register, replaceTokens, logout, legalStatus, refreshLegalStatus }}>
       <View style={{ flex: 1 }} onTouchStart={recordActivity}>
         <View style={{ flex: 1, display: deviceState.locked || (deviceState.enabled && !foreground) ? 'none' : 'flex' }} accessibilityElementsHidden={deviceState.locked || (deviceState.enabled && !foreground)} importantForAccessibility={deviceState.locked || (deviceState.enabled && !foreground) ? 'no-hide-descendants' : 'auto'}>{children}</View>
         {(deviceState.locked || (deviceState.enabled && !foreground)) && <BiometricLock suspended={!foreground} />}

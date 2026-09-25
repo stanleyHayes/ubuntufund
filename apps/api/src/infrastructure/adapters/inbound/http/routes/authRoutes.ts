@@ -89,6 +89,7 @@ export function createAuthRoutes(
     validate(refreshTokenSchema),
     controller.refreshToken
   );
+  router.post('/logout', validate(z.object({ refreshToken: z.string().min(1).max(4096) })), controller.logout);
   router.post(
     '/forgot-password',
     authRateLimiter,

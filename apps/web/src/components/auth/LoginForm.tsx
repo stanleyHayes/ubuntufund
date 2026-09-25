@@ -71,6 +71,16 @@ export function LoginForm() {
         autoComplete="current-password"
       />
 
+      <Link
+        component={RouterLink}
+        to="/forgot-password"
+        state={email.trim() ? { email: email.trim() } : undefined}
+        underline="hover"
+        sx={{ alignSelf: 'flex-end', mt: -1.5, fontSize: '0.85rem', fontWeight: 600, color: 'secondary.main' }}
+      >
+        Forgot password?
+      </Link>
+
       {mfaRequired && <>
         {recoveryMode ? <TextField label="Recovery code" value={mfaCode} onChange={event => setMfaCode(event.target.value)} autoComplete="off" /> : <OtpInput value={mfaCode} onChange={setMfaCode} disabled={submitting} />}
         <Button type="button" onClick={() => { setRecoveryMode(value => !value); setMfaCode('') }}>{recoveryMode ? 'Use authenticator code' : 'Use a recovery code'}</Button>

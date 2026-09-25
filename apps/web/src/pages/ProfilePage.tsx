@@ -32,26 +32,15 @@ import FavoriteRoundedIcon from '@mui/icons-material/FavoriteRounded'
 import VolunteerActivismRoundedIcon from '@mui/icons-material/VolunteerActivismRounded'
 import CampaignRoundedIcon from '@mui/icons-material/CampaignRounded'
 import EmojiEventsRoundedIcon from '@mui/icons-material/EmojiEventsRounded'
-import LocalFireDepartmentRoundedIcon from '@mui/icons-material/LocalFireDepartmentRounded'
 import LocationOnRoundedIcon from '@mui/icons-material/LocationOnRounded'
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined'
-import StarRoundedIcon from '@mui/icons-material/StarRounded'
-import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded'
 import PeopleRoundedIcon from '@mui/icons-material/PeopleRounded'
-import BookmarkRoundedIcon from '@mui/icons-material/BookmarkRounded'
-import LocalHospitalRoundedIcon from '@mui/icons-material/LocalHospitalRounded'
-import SchoolRoundedIcon from '@mui/icons-material/SchoolRounded'
-import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded'
-import BusinessCenterRoundedIcon from '@mui/icons-material/BusinessCenterRounded'
-import GroupsRoundedIcon from '@mui/icons-material/GroupsRounded'
-import AccountBalanceRoundedIcon from '@mui/icons-material/AccountBalanceRounded'
-import PaletteRoundedIcon from '@mui/icons-material/PaletteRounded'
 import { keyframes } from '@mui/material/styles'
 import { SHAPE, EmptyState } from '@ubuntu-fund/ui'
 import { CampaignCategory } from '@ubuntu-fund/types'
 import { useAuth } from '@/context/AuthContext'
-import { api } from '@/lib/api'
+import { api, type AuthTokens } from '@/lib/api'
 import { Link as RouterLink } from 'react-router-dom'
 
 // ─── Animations ──────────────────────────────────────────────────────────────
@@ -68,46 +57,38 @@ const countUp = keyframes`
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const CATEGORY_ICONS: Record<string, React.ReactNode> = {
-  medical: <LocalHospitalRoundedIcon sx={{ fontSize: 14 }} />,
-  education: <SchoolRoundedIcon sx={{ fontSize: 14 }} />,
-  emergency: <WarningAmberRoundedIcon sx={{ fontSize: 14 }} />,
-  business: <BusinessCenterRoundedIcon sx={{ fontSize: 14 }} />,
-  community: <GroupsRoundedIcon sx={{ fontSize: 14 }} />,
-  religious: <AccountBalanceRoundedIcon sx={{ fontSize: 14 }} />,
-  creative: <PaletteRoundedIcon sx={{ fontSize: 14 }} />,
-}
 
 interface ProfileImpact {
-  totalDonated: number
+  /** Net of completed refunds, one entry per currency (never summed across currencies). */
+  donatedByCurrency: Array<{ currency: string; net: number }>
   donationCount: number
   campaignsSupported: number
   campaignsCreated: number
-  streak: number
-  rank: number
-  followers: number
-  following: number
-  bookmarks: number
   topCategories: CampaignCategory[]
-  interestedCategories: CampaignCategory[]
   recentDonations: Array<{ campaign: string; amount: number; currency: string; date: string }>
-  badges: Array<{ icon: string; label: string; desc: string }>
 }
 
 const DEFAULT_IMPACT: ProfileImpact = {
-  totalDonated: 0,
+  donatedByCurrency: [],
   donationCount: 0,
   campaignsSupported: 0,
   campaignsCreated: 0,
-  streak: 0,
-  rank: 0,
-  followers: 0,
-  following: 0,
-  bookmarks: 0,
   topCategories: [],
-  interestedCategories: [],
   recentDonations: [],
-  badges: [],
+}
+
+function formatMoney(amount: number, currency: string): string {
+  try {
+    return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(amount)
+  } catch {
+    return `${currency} ${amount.toLocaleString()}`
+  }
+}
+
+/** Every currency the member gave in, e.g. "GH₵100.00 · US$30.00"; zero in cedis when none. */
+function formatDonated(entries: ProfileImpact['donatedByCurrency']): string {
+  const given = entries.filter(entry => entry.net > 0)
+  return given.length ? given.map(entry => formatMoney(entry.net, entry.currency)).join(' · ') : formatMoney(0, 'GHS')
 }
 
 // ─── Tab Panel ───────────────────────────────────────────────────────────────
@@ -162,7 +143,7 @@ function ProfileForViewer() {
     path: '/profile',
     robots: 'noindex, nofollow',
   })
-  const { user, updateName } = useAuth()
+  const { user, updateName, replaceTokens } = useAuth()
   const [tab, setTab] = useState(0)
   const [images, setImages] = useState({ avatarUrl: '', coverUrl: '' })
   const [imageEditor, setImageEditor] = useState<'avatarUrl' | 'coverUrl' | null>(null)
@@ -192,8 +173,6 @@ function ProfileForViewer() {
   const [passwordSnack, setPasswordSnack] = useState(false)
   const [passwordSaving, setPasswordSaving] = useState(false)
 
-  // Interests state
-  const [interests, setInterests] = useState<CampaignCategory[]>([])
 
   // Fetch profile impact data
   useEffect(() => {
@@ -201,9 +180,9 @@ function ProfileForViewer() {
     async function fetchImpact() {
       setImpactLoading(true)
       try {
-        const [profileResult, analyticsResult] = await Promise.allSettled([
+        // Only the member's own profile: /analytics/overview holds platform-wide totals.
+        const [profileResult] = await Promise.allSettled([
           api.get<Partial<ProfileImpact> & { name?: string; organizationName?: string; phone?: string; bio?: string; country?: string; avatarUrl?: string; coverUrl?: string }>('/profile'),
-          api.get<Partial<ProfileImpact>>('/analytics/overview'),
         ])
         if (!cancelled) {
           if (profileResult.status === 'rejected') { setProfileLoadError(true); return }
@@ -216,10 +195,8 @@ function ProfileForViewer() {
           setBio(profile.bio ?? '')
           setCountry(profile.country ?? '')
           setImages({ avatarUrl: profile.avatarUrl ?? '', coverUrl: profile.coverUrl ?? '' })
-          const analytics = analyticsResult.status === 'fulfilled' ? analyticsResult.value : {}
-          const merged: ProfileImpact = { ...DEFAULT_IMPACT, ...profile, ...analytics }
-          setImpact(merged)
-          setInterests(merged.interestedCategories ?? [])
+          const merged: ProfileImpact = { ...DEFAULT_IMPACT, ...profile }
+          setImpact({ ...merged, donatedByCurrency: Array.isArray(merged.donatedByCurrency) ? merged.donatedByCurrency : [] })
         }
       } catch {
         // On failure, keep defaults (zeros / empty arrays)
@@ -263,7 +240,10 @@ function ProfileForViewer() {
     if (!currentPassword) { setPasswordError('Current password is required.'); return }
     setPasswordSaving(true)
     try {
-      await api.put('/auth/change-password', { currentPassword, newPassword })
+      // The API rotates authVersion, so the old tokens stop working at once.
+      // Keep this device signed in with the fresh pair it returns.
+      const result = await api.put<{ tokens?: AuthTokens }>('/auth/change-password', { currentPassword, newPassword })
+      if (result?.tokens && user) replaceTokens(result.tokens, user.id)
       setCurrentPassword(''); setNewPassword(''); setConfirmPassword('')
       setPasswordSnack(true)
     } catch (err) {
@@ -273,15 +253,14 @@ function ProfileForViewer() {
     }
   }
 
-  function toggleInterest(cat: CampaignCategory) {
-    setInterests((prev) =>
-      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
-    )
-  }
-
-  function handleShare() {
-    navigator.clipboard.writeText(window.location.href)
-    setShareSnack(true)
+  // /profile is sign-in only; only organizations have a public page to share.
+  const publicProfilePath = user?.role === 'organization' && user.id ? `/organizations/${user.id}` : null
+  async function handleShare() {
+    if (!publicProfilePath) return
+    try {
+      await navigator.clipboard.writeText(new URL(publicProfilePath, window.location.origin).href)
+      setShareSnack(true)
+    } catch { /* Clipboard unavailable: nothing was copied, so no confirmation. */ }
   }
 
   if (impactLoading) return <AccountPageSkeleton layout="cards" />
@@ -305,13 +284,13 @@ function ProfileForViewer() {
             <Typography sx={{ fontSize: '0.68rem', letterSpacing: '0.16em', textTransform: 'uppercase', fontWeight: 700, color: 'text.primary' }}>
               Your community profile
             </Typography>
-            <Tooltip title="Copy profile link">
-              <IconButton aria-label="Copy profile link" onClick={handleShare} sx={{ width: 40, height: 40, borderRadius: SHAPE.sm,
+            {publicProfilePath && <Tooltip title="Copy public profile link">
+              <IconButton aria-label="Copy public profile link" onClick={() => void handleShare()} sx={{ width: 40, height: 40, borderRadius: SHAPE.sm,
                 color: 'text.primary', bgcolor: 'var(--neu-surface)', border: 'var(--neu-border)', boxShadow: 'var(--neu-subtle) !important', backdropFilter: 'var(--neu-backdrop)',
                 '&:hover': { bgcolor: 'action.hover', boxShadow: 'var(--neu-raised-hover) !important' }, '&:focus-visible': { outline: '2px solid', outlineColor: 'primary.main', outlineOffset: 3 } }}>
                 <ShareRoundedIcon sx={{ fontSize: 18 }} />
               </IconButton>
-            </Tooltip>
+            </Tooltip>}
           </Box>
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1fr) 240px' }, gap: { xs: 3, md: 4 }, alignItems: 'stretch' }}>
             <Box sx={{ minWidth: 0 }}>
@@ -345,12 +324,6 @@ function ProfileForViewer() {
                   '&:hover': { bgcolor: 'secondary.light', boxShadow: 'var(--neu-raised-hover) !important' }, '&:focus-visible': { outline: '2px solid', outlineColor: 'primary.main', outlineOffset: 3 } }}>
                   Edit profile
                 </Button>
-                {!impactLoading && impact.streak > 0 && (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, color: 'text.primary' }}>
-                    <LocalFireDepartmentRoundedIcon sx={{ fontSize: 19 }} />
-                    <Typography sx={{ fontSize: '0.78rem', fontWeight: 500 }}>{impact.streak}-month giving streak</Typography>
-                  </Box>
-                )}
               </Box>
             </Box>
             <Box sx={{ p: 2.5, bgcolor: 'var(--neu-surface)', border: 'var(--neu-border)', boxShadow: 'var(--neu-raised)', backdropFilter: 'var(--neu-backdrop)', WebkitBackdropFilter: 'var(--neu-backdrop)', borderRadius: SHAPE.card, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
@@ -375,143 +348,18 @@ function ProfileForViewer() {
         {/* ═══ Stats Grid ═══ */}
         <Grid container spacing={2} sx={{ mb: 4 }}>
           <Grid size={{ xs: 6, sm: 3 }}>
-            <StatCard icon={<VolunteerActivismRoundedIcon />} value={`$${impact.totalDonated.toLocaleString()}`} label="Total Donated" color="#2E3D2F" delay={0} />
+            <StatCard icon={<VolunteerActivismRoundedIcon />} value={formatDonated(impact.donatedByCurrency)} label="Total Donated" color="#2E3D2F" delay={0} />
           </Grid>
           <Grid size={{ xs: 6, sm: 3 }}>
             <StatCard icon={<FavoriteRoundedIcon />} value={String(impact.donationCount)} label="Donations" color="#C75B39" delay={0.08} />
           </Grid>
           <Grid size={{ xs: 6, sm: 3 }}>
-            <StatCard icon={<CampaignRoundedIcon />} value={String(impact.campaignsSupported)} label="Campaigns" color="#C7A24A" delay={0.16} />
+            <StatCard icon={<CampaignRoundedIcon />} value={String(impact.campaignsSupported)} label="Campaigns Supported" color="#C7A24A" delay={0.16} />
           </Grid>
           <Grid size={{ xs: 6, sm: 3 }}>
-            <StatCard icon={<EmojiEventsRoundedIcon />} value={`#${impact.rank}`} label="Leaderboard" color="#6A1B9A" delay={0.24} />
+            <StatCard icon={<EmojiEventsRoundedIcon />} value={String(impact.campaignsCreated)} label="Campaigns Created" color="#6A1B9A" delay={0.24} />
           </Grid>
         </Grid>
-
-        {/* ═══ Social Stats Row ═══ */}
-        <Box
-          sx={{
-            display: 'flex',
-            justifyContent: 'center',
-            gap: 4,
-            mb: 4,
-            animation: `${fadeIn} 0.5s ease 0.3s both`,
-          }}
-        >
-          {[
-            { icon: <PeopleRoundedIcon sx={{ fontSize: 18 }} />, count: impact.followers, label: 'Followers' },
-            { icon: <PeopleRoundedIcon sx={{ fontSize: 18 }} />, count: impact.following, label: 'Following' },
-            { icon: <BookmarkRoundedIcon sx={{ fontSize: 18 }} />, count: impact.bookmarks, label: 'Bookmarks' },
-          ].map((s) => (
-            <Box key={s.label} sx={{ textAlign: 'center' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center', color: 'text.secondary' }}>
-                {s.icon}
-                <Typography sx={{ fontWeight: 800, fontSize: '1.1rem', color: 'text.primary' }}>{s.count}</Typography>
-              </Box>
-              <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                {s.label}
-              </Typography>
-            </Box>
-          ))}
-        </Box>
-
-        {/* ═══ Badges Section ═══ */}
-        <Card
-          elevation={0}
-          sx={{
-            boxShadow: 'var(--neu-raised)',
-            borderRadius: SHAPE.card,
-            mb: 3,
-            animation: `${fadeIn} 0.5s ease 0.35s both`,
-          }}
-        >
-          <CardContent sx={{ p: 3 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-              <StarRoundedIcon sx={{ color: '#C7A24A' }} />
-              <Typography sx={{ fontWeight: 700, fontSize: '1rem' }}>Achievement Badges</Typography>
-            </Box>
-            <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
-              {impact.badges.map((badge, i) => (
-                <Tooltip key={badge.label} title={badge.desc} arrow>
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 0.8,
-                      px: 2,
-                      py: 1,
-                      borderRadius: SHAPE.sm,
-                      bgcolor: 'rgba(199, 162, 74,0.06)',
-                      border: '1px solid rgba(199, 162, 74,0.15)',
-                      animation: `${fadeIn} 0.3s ease ${0.4 + i * 0.06}s both`,
-                      transition: 'all 0.2s ease',
-                      cursor: 'default',
-                      '&:hover': {
-                        bgcolor: 'rgba(199, 162, 74,0.12)',
-                        borderColor: 'rgba(199, 162, 74,0.3)',
-                        transform: 'translateY(-2px)',
-                      },
-                    }}
-                  >
-                    <Typography sx={{ fontSize: '1.2rem' }}>{badge.icon}</Typography>
-                    <Typography sx={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)' }}>{badge.label}</Typography>
-                  </Box>
-                </Tooltip>
-              ))}
-            </Box>
-          </CardContent>
-        </Card>
-
-        {/* ═══ Interested Categories ═══ */}
-        <Card
-          elevation={0}
-          sx={{
-            boxShadow: 'var(--neu-raised)',
-            borderRadius: SHAPE.card,
-            mb: 3,
-            animation: `${fadeIn} 0.5s ease 0.4s both`,
-          }}
-        >
-          <CardContent sx={{ p: 3 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
-              <TrendingUpRoundedIcon sx={{ color: 'var(--text-brand)' }} />
-              <Typography sx={{ fontWeight: 700, fontSize: '1rem' }}>Interested Categories</Typography>
-            </Box>
-            <Typography sx={{ fontSize: '0.82rem', color: 'text.secondary', mb: 2 }}>
-              Select categories to personalize your campaign feed
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-              {Object.values(CampaignCategory).map((cat) => {
-                const active = interests.includes(cat)
-                return (
-                  <Chip
-                    key={cat}
-                    label={<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>{CATEGORY_ICONS[cat] ?? null} {cat.charAt(0).toUpperCase() + cat.slice(1)}</Box>}
-                    onClick={() => toggleInterest(cat)}
-                    sx={{
-                      fontWeight: 600,
-                      fontSize: '0.82rem',
-                      borderRadius: SHAPE.sm,
-                      // `primary.contrastText`, not a literal white: the dark
-                      // palette fills these with pale sage, where white text
-                      // measures 1.5:1. Black-on-black washes are likewise
-                      // invisible in dark mode, so these use action tokens.
-                      bgcolor: active ? 'primary.main' : 'action.hover',
-                      color: active ? 'primary.contrastText' : 'text.primary',
-                      border: '1px solid',
-                      borderColor: active ? 'primary.main' : 'divider',
-                      transition: 'background-color 0.2s ease, border-color 0.2s ease',
-                      '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
-                      '&:hover': {
-                        bgcolor: active ? 'primary.dark' : 'action.selected',
-                      },
-                    }}
-                  />
-                )
-              })}
-            </Box>
-          </CardContent>
-        </Card>
 
         {/* ═══ Recent Donations ═══ */}
         <Card

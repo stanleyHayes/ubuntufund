@@ -23,6 +23,9 @@ import type { AffiliateReferralRepositoryPort } from '../../domain/ports/outboun
 import type { AuthTokenService } from '../services/AuthTokenService.js';
 import { AppError, isDuplicateKeyError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 import { logger } from '../../infrastructure/logging/logger.js';
+import type { AccountEmails } from '../../infrastructure/adapters/outbound/AccountEmails.js';
+import type { LegalAcceptanceLogPort } from '../../domain/ports/outbound/LegalAcceptanceLogPort.js';
+import { MongoUnitOfWork } from '../../infrastructure/adapters/outbound/persistence/MongoUnitOfWork.js';
 
 export class RegisterUserUseCase {
   constructor(
@@ -32,11 +35,18 @@ export class RegisterUserUseCase {
     // Optional: when wired, a `?ref=` referral code on signup links the new user
     // to the referrer's affiliate. Absent, referral capture is simply skipped.
     private readonly affiliateRepo?: AffiliateRepositoryPort,
-    private readonly affiliateReferralRepo?: AffiliateReferralRepositoryPort
+    private readonly affiliateReferralRepo?: AffiliateReferralRepositoryPort,
+    // Optional: when email delivery is configured, a verification link is sent
+    // at signup (payouts and organization invitations need a verified email).
+    private readonly emails?: Pick<AccountEmails, 'configured' | 'enqueue'>,
+    // Optional: when wired, the signup acceptance is also appended to the
+    // consent history in the same transaction as the account.
+    private readonly legalLog?: LegalAcceptanceLogPort
   ) {}
 
   async execute(
-    input: CreateUserInput
+    input: CreateUserInput,
+    context: { ip?: string; userAgent?: string } = {}
   ): Promise<{ user: User; tokens: AuthTokens }> {
     if (!hasCurrentLegalAcceptance(input.legalAcceptance)) {
       throw new AppError('Please accept the current terms and confirm you are at least 18', 400);
@@ -74,9 +84,25 @@ export class RegisterUserUseCase {
 
     // findByEmail above is check-then-insert and bcrypt widens the window: a
     // concurrent registration for the same email loses on the unique index.
+    const legalLog = this.legalLog;
     let savedUser: UserEntity;
     try {
-      savedUser = await this.userRepo.save(user);
+      savedUser = legalLog
+        ? await new MongoUnitOfWork().run(async () => {
+            const created = await this.userRepo.save(user);
+            const acceptance = created.legalAcceptance!;
+            await legalLog.record({
+              userId: created.id,
+              version: acceptance.version,
+              acceptedTerms: acceptance.acceptedTerms,
+              ageConfirmed: acceptance.ageConfirmed,
+              acceptedAt: acceptance.acceptedAt,
+              source: 'register',
+              ...context,
+            });
+            return created;
+          })
+        : await this.userRepo.save(user);
     } catch (error) {
       if (isDuplicateKeyError(error, 'email')) throw new AppError('Email already registered', 409);
       throw error;
@@ -126,6 +152,17 @@ export class RegisterUserUseCase {
           { err, referralCode: input.referralCode, userId: savedUser.id },
           'failed to capture affiliate referral at signup'
         );
+      }
+    }
+
+    // Best-effort, like referral capture: the account already exists, so a
+    // queueing failure must never fail signup. The user can resend the link
+    // from Settings; enqueue applies its own per-account cooldown.
+    if (this.emails?.configured) {
+      try {
+        await this.emails.enqueue(savedUser, 'verification');
+      } catch (err) {
+        logger.warn({ err, userId: savedUser.id }, 'failed to queue signup verification email');
       }
     }
 

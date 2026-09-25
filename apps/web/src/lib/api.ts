@@ -4,6 +4,16 @@ import { browserSession, expireSession, forceExpireSession, storedAccessToken } 
 // (see vercel.json). Set VITE_API_URL to call an absolute API origin instead.
 export const API_BASE = import.meta.env?.VITE_API_URL || '/api/v1'
 
+/**
+ * Dispatched when the API answers 428 (a publishing action needs a current
+ * agreement). AuthContext then re-reads the server's agreement status, because
+ * this bundle's LEGAL_ACCEPTANCE_VERSION can lag the API's.
+ */
+export const AGREEMENT_REQUIRED = 'ujimora:agreement-required'
+function signalAgreementRequired(status: number) {
+  if (status === 428 && typeof window !== 'undefined') window.dispatchEvent(new Event(AGREEMENT_REQUIRED))
+}
+
 interface ApiOptions extends RequestInit {
   token?: string
 }
@@ -18,10 +28,24 @@ class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
+/**
+ * The API rejected a session token with 401. It may only look valid here
+ * because the device clock is off, so renew once before giving up. Resolves to
+ * the new token, or null when the session has ended (already expired locally).
+ */
+async function renewAfter401(token: string): Promise<string | null> {
+  try {
+    return await browserSession.forceRefresh(token)
+  } catch {
+    // A network failure while renewing is not a sign-out.
+    throw new ApiError(0, 'Unable to renew your session. Check your connection and try again.')
+  }
+}
+
+async function request<T>(path: string, options: ApiOptions = {}, retried = false): Promise<T> {
   const { token: suppliedToken, headers: customHeaders, ...fetchOptions } = options
-  const token = suppliedToken && suppliedToken === storedAccessToken()
-    ? await browserSession.ensureAccessToken() : suppliedToken
+  const managed = !!suppliedToken && suppliedToken === storedAccessToken()
+  const token = managed ? await browserSession.ensureAccessToken() : suppliedToken
   if (suppliedToken && !token) throw new ApiError(401, 'Your session has expired. Please sign in again.')
 
   const headers: Record<string, string> = {
@@ -54,6 +78,11 @@ async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
   }
 
   if (!res.ok) {
+    signalAgreementRequired(res.status)
+    if (res.status === 401 && managed && token && !retried) {
+      const renewed = await renewAfter401(token)
+      if (renewed && renewed !== token) return request<T>(path, { ...options, token: renewed }, true)
+    }
     if (res.status === 401 && token) expireSession(token)
     const errorBody = data && typeof data === 'object' ? data as { error?: string; message?: string } : null
     const fallback = res.status === 401
@@ -76,7 +105,7 @@ async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
 // Responses are expected to follow { data: T, ... } – the client unwraps `.data`.
 // ---------------------------------------------------------------------------
 
-async function authedRequest<T>(path: string, options?: RequestInit): Promise<T> {
+async function authedRequest<T>(path: string, options?: RequestInit, retried = false): Promise<T> {
   const hadToken = storedAccessToken()
   const token = await browserSession.ensureAccessToken()
   if (hadToken && !token) throw new ApiError(401, 'Your session has expired. Please sign in again.')
@@ -91,7 +120,13 @@ async function authedRequest<T>(path: string, options?: RequestInit): Promise<T>
     headers: { ...headers, ...(options?.headers as Record<string, string>) },
   })
 
+  if (res.status === 401 && token && !retried) {
+    // Renew once and retry before treating the 401 as a sign-out.
+    const renewed = await renewAfter401(token)
+    if (renewed && renewed !== token) return authedRequest<T>(path, options, true)
+  }
   if (!res.ok) {
+    signalAgreementRequired(res.status)
     // Any 401 on an authed request means this session can no longer act — expire
     // it so protected pages fall back to the sign-in prompt instead of a
     // dead-end error. Guarded by the token we actually sent (so a late reply
@@ -116,8 +151,8 @@ export const api = {
     authedRequest<T>(path, { method: 'POST', body: JSON.stringify(body), headers }),
   put: <T>(path: string, body?: unknown) =>
     authedRequest<T>(path, { method: 'PUT', body: JSON.stringify(body) }),
-  delete: <T>(path: string) =>
-    authedRequest<T>(path, { method: 'DELETE' }),
+  delete: <T>(path: string, body?: unknown) =>
+    authedRequest<T>(path, { method: 'DELETE', ...(body === undefined ? {} : { body: JSON.stringify(body) }) }),
 }
 
 // --- Auth types ---

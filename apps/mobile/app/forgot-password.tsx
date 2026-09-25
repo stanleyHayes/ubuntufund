@@ -9,6 +9,7 @@ import { usePalette, useNeu } from '@/context/ColorModeContext'
 import type { Palette, NeuRecipes } from '@/theme'
 import { UjimoraLogo } from '@/components/UjimoraLogo'
 import { api } from '@/lib/api'
+import { forgotPasswordErrorMessage } from '@/lib/authMessages'
 
 export default function ForgotPasswordScreen() {
   const p = usePalette()
@@ -26,8 +27,8 @@ export default function ForgotPasswordScreen() {
     try {
       await api.post('/auth/forgot-password', { email })
       setSent(true)
-    } catch {
-      setError('Password recovery is temporarily unavailable. Please try again later.')
+    } catch (err) {
+      setError(forgotPasswordErrorMessage(err))
     } finally {
       setLoading(false)
     }

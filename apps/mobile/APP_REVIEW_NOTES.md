@@ -32,7 +32,11 @@ BN843072020), UNN House, Nii Osae Ntifu Avenue, East Legon, Accra.
   Block user (Settings lists blocked users). Reports go to a staffed moderation queue;
   new comments/updates/campaigns are held for review before publication.
 - **Account deletion:** Settings → Delete account (in-app), or the public page
-  `<https://app.ujimora.com/delete-account>`.
+  `<https://app.ujimora.com/delete-account>`. The user confirms with their current
+  password (plus an authenticator code if they turned MFA on). Because Ujimora holds
+  funds, an account with an unpaid balance or a payout in progress is asked to
+  withdraw it first or contact support, who complete the closure. Keep the reviewer
+  account free of balances so deletion can be tested end to end.
 - **Identity verification (KYC)** is only needed to create campaigns or withdraw
   funds. It collects ID images, a selfie and an address; the notice on the form
   explains the purpose. Location is read only when the user taps "Use my location".

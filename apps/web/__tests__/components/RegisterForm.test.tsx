@@ -1,14 +1,15 @@
-import { describe, it, expect, vi } from 'vitest'
+import { afterEach, describe, it, expect, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { ThemeProvider } from '@mui/material/styles'
 import { ujimoraTheme } from '@ubuntu-fund/ui'
 import { RegisterForm } from '@/components/auth/RegisterForm'
-const mocks = vi.hoisted(() => ({ register: vi.fn().mockResolvedValue(undefined), checkout: vi.fn(), navigate: vi.fn() }))
+const livePlans = Object.fromEntries(['free', 'starter', 'pro', 'enterprise'].map(name => [name, { name, priceMonthly: name === 'enterprise' ? 99.99 : 0, priceYearly: name === 'enterprise' ? 999 : 0, maxActiveCampaigns: 1, platformFeePercent: 5 }]))
+const mocks = vi.hoisted(() => ({ register: vi.fn().mockResolvedValue(undefined), checkout: vi.fn(), navigate: vi.fn(), signupPlans: { current: null as null | { plans: Record<string, unknown>; error: boolean } } }))
 vi.mock('react-router-dom', async importOriginal => ({ ...await importOriginal<typeof import('react-router-dom')>(), useNavigate: () => mocks.navigate }))
 vi.mock('@/lib/subscriptions', () => ({ createSubscriptionCheckout: mocks.checkout, saveSubscriptionCheckoutHandoff: vi.fn() }))
 vi.mock('@/context/AuthContext', () => ({ useAuth: () => ({ register: mocks.register }) }))
-vi.mock('@/hooks/useSubscription', () => ({ useSignupPlans: () => ({ plans: Object.fromEntries(['free', 'starter', 'pro', 'enterprise'].map(name => [name, { name, priceMonthly: name === 'enterprise' ? 99.99 : 0, priceYearly: name === 'enterprise' ? 999 : 0, maxActiveCampaigns: 1, platformFeePercent: 5 }])), error: false, retry: vi.fn() }) }))
+vi.mock('@/hooks/useSubscription', () => ({ useSignupPlans: () => ({ ...(mocks.signupPlans.current ?? { plans: livePlans, error: false }), retry: vi.fn() }) }))
 vi.mock('@/components/auth/OrganizationTypePicker', () => ({ OrganizationTypePicker: ({ value, onChange }: { value: string; onChange: (value: string) => void }) => <input aria-label="Organization type" value={value} onChange={e => onChange(e.target.value)} /> }))
 const mount = (role = '') => render(<ThemeProvider theme={ujimoraTheme}><MemoryRouter initialEntries={['/register' + role]}><RegisterForm /></MemoryRouter></ThemeProvider>)
 const next = () => {
@@ -82,4 +83,35 @@ it('requires explicit terms and age confirmation before continuing signup', () =
   expect(screen.getByRole('alert')).toHaveTextContent('Accept the terms and confirm you are at least 18')
   expect(screen.getByRole('checkbox', { name: /I agree to the Terms/ })).not.toBeChecked()
   expect(screen.getByRole('checkbox', { name: /I confirm that I am at least/ })).not.toBeChecked()
+})
+
+describe('signup when live prices are unavailable', () => {
+  const toPlanStep = () => {
+    mount(); next()
+    fill(/Full name/, 'Test Person'); fill(/^Email/, 'test@example.com'); fill(/^Password/, 'securePassword1'); fill(/Confirm password/, 'securePassword1'); next()
+  }
+  afterEach(() => { mocks.signupPlans.current = null })
+
+  it('still creates a Free account when /plans/public fails, without offering unpriced paid tiers', async () => {
+    mocks.register.mockClear(); mocks.navigate.mockClear(); mocks.checkout.mockClear()
+    mocks.signupPlans.current = { plans: {}, error: true }
+    toPlanStep()
+    expect(screen.getByRole('alert')).toHaveTextContent('You can still create a Free account')
+    expect(screen.getByRole('button', { name: /Free/ })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.queryByRole('button', { name: /enterprise/ })).not.toBeInTheDocument()
+    const create = screen.getByRole('button', { name: 'Create account' })
+    expect(create).toBeEnabled()
+    fireEvent.click(create)
+    await vi.waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith('/dashboard'))
+    expect(mocks.register).toHaveBeenCalledTimes(1)
+    expect(mocks.checkout).not.toHaveBeenCalled()
+  })
+
+  it('shows a Free option when the Free plan is hidden from the public list but paid plans load', () => {
+    mocks.signupPlans.current = { plans: { enterprise: livePlans.enterprise }, error: false }
+    toPlanStep()
+    expect(screen.getByRole('button', { name: /No monthly charge/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /enterprise/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Create account' })).toBeEnabled()
+  })
 })

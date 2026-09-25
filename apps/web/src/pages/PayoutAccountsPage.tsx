@@ -4,6 +4,7 @@ import AccountBalanceRounded from '@mui/icons-material/AccountBalanceRounded'
 import { AccountHeading } from '@/components/account/AccountPage'
 import { SavedPayoutAccounts } from '@/components/account/SavedPayoutAccounts'
 import { PayoutAccounts } from '@/components/account/PayoutAccounts'
+import { EmailVerificationNotice } from '@/components/account/EmailVerificationNotice'
 export function PayoutAccountsPage() {
   useSeo({
     title: 'Payout accounts | Ujimora',
@@ -19,6 +20,7 @@ export function PayoutAccountsPage() {
         description="Choose where your campaign and creator earnings go."
         icon={<AccountBalanceRounded />}
       />
+      <EmailVerificationNotice reason="Automatic payouts need a verified email; until then each payout waits for manual review." />
       <SavedPayoutAccounts />
       <Box sx={{ mt: 5 }}>
         <PayoutAccounts />

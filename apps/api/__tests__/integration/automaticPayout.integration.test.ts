@@ -181,6 +181,21 @@ it('keeps expired, missing and superseded owner evidence in manual review withou
   expect(approve.executeAutomatic).not.toHaveBeenCalled()
   expect(await AutomaticPayoutBudgetModel.countDocuments({})).toBe(0)
 })
+it('names email verification as the missing step for automatic payouts', async () => {
+  await UserModel.updateOne({ _id: ids.user }, { $set: { emailVerified: false } })
+  const item = await pending()
+  await service.consider(item)
+  const saved = await PayoutModel.findById(item.id)
+  expect(saved?.status).toBe('PENDING')
+  expect(saved?.automationReason).toBe('Verify your email address to enable automatic payouts.')
+  await expect(new MongoAutomaticPayoutVerification().assertCurrent(String(ids.user))).rejects.toThrow('Verify your email address to enable automatic payouts.')
+  expect(approve.executeAutomatic).not.toHaveBeenCalled()
+  // Identity verification still takes precedence over the email step.
+  await UserModel.updateOne({ _id: ids.user }, { $set: { verificationLevel: 1 } })
+  const next = await pending()
+  await service.consider(next)
+  expect((await PayoutModel.findById(next.id))?.automationReason).toBe('Owner verification is required.')
+})
 it('requires current business evidence for an organization even with approved personal identity', async () => {
   await UserModel.updateOne({ _id: ids.user }, { $set: { role: 'organization', verificationLevel: 3 } })
   const item = await pending()

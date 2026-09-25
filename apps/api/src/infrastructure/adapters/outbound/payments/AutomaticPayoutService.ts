@@ -72,8 +72,13 @@ export class AutomaticPayoutService {
           return
         }
         const owner = await UserModel.findById(current.requestedBy).session(session)
-        if (!owner || owner.deletedAt || !owner.emailVerified || owner.verificationLevel < 2) {
+        if (!owner || owner.deletedAt || owner.verificationLevel < 2) {
           reason = 'Owner verification is required.'
+          return
+        }
+        // Name the missing step: organizers cannot act on a generic reason.
+        if (!owner.emailVerified) {
+          reason = 'Verify your email address to enable automatic payouts.'
           return
         }
         const evidence = await KYCVerificationModel.findOne({

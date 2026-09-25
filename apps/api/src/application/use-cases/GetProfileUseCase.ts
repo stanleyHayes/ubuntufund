@@ -7,6 +7,7 @@ import type { UserRepositoryPort } from '../../domain/ports/outbound/UserReposit
 import type { ProfileRepositoryPort } from '../../domain/ports/outbound/ProfileRepositoryPort.js';
 import type { DonationRepositoryPort } from '../../domain/ports/outbound/DonationRepositoryPort.js';
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js';
+import type { RefundRepositoryPort } from '../../domain/ports/outbound/RefundRepositoryPort.js';
 import type { CampaignEntity } from '../../domain/entities/Campaign.js';
 import {
   ProfileEntity,
@@ -48,34 +49,44 @@ interface RecentDonationDTO {
   date: string;
 }
 
-interface BadgeDTO {
-  icon: string;
-  label: string;
-  desc: string;
+/** Amounts in one currency; never summed across currencies. */
+export interface DonatedInCurrencyDTO {
+  currency: string;
+  gross: number;
+  /** Donations with a completed refund. */
+  refunded: number;
+  net: number;
+}
+
+export interface RaisedInCurrencyDTO {
+  currency: string;
+  raised: number;
 }
 
 export interface ProfileImpactDTO extends ProfileDTO {
+  /**
+   * Legacy single figure for older app builds, which label it GH₵: the net
+   * (refunds excluded) total donated in GHS only. Use donatedByCurrency.
+   */
   totalDonated: number;
+  donatedByCurrency: DonatedInCurrencyDTO[];
+  raisedByCurrency: RaisedInCurrencyDTO[];
   donationCount: number;
   campaignsSupported: number;
   campaignsCreated: number;
-  streak: number;
-  rank: number;
-  followers: number;
-  following: number;
-  bookmarks: number;
   topCategories: CampaignCategory[];
-  interestedCategories: CampaignCategory[];
   recentDonations: RecentDonationDTO[];
-  badges: BadgeDTO[];
 }
+
+const round2 = (value: number) => Math.round(value * 100) / 100;
 
 export class GetProfileUseCase {
   constructor(
     private readonly userRepo: UserRepositoryPort,
     private readonly profileRepo: ProfileRepositoryPort,
     private readonly donationRepo: DonationRepositoryPort,
-    private readonly campaignRepo: CampaignRepositoryPort
+    private readonly campaignRepo: CampaignRepositoryPort,
+    private readonly refundRepo?: RefundRepositoryPort
   ) {}
 
   async execute(userId: string): Promise<ProfileImpactDTO> {
@@ -84,19 +95,41 @@ export class GetProfileUseCase {
       throw new AppError('User not found', 404);
     }
 
-    const [existingProfile, donations, campaignsCreated] = await Promise.all([
+    const [existingProfile, donations, campaignsCreated, createdCampaigns] = await Promise.all([
       this.profileRepo.findByUserId(userId),
       this.donationRepo.findByDonorId(userId),
       this.campaignRepo.countByCreatorId(userId),
+      this.campaignRepo.findByCreatorId(userId),
     ]);
 
     const profileEntity = existingProfile ?? ProfileEntity.createDefault(userId);
     const profilePlain = profileEntity.toPlain();
 
-    const totalDonated = donations.reduce(
-      (sum, donation) => sum + donation.amount.amount,
-      0
-    );
+    // Per currency, never mixed; a completed refund removes that donation.
+    const refunds = this.refundRepo && donations.length
+      ? await this.refundRepo.findByDonationIds(donations.map((donation) => donation.id))
+      : [];
+    const refundedDonations = new Set(refunds.filter((refund) => refund.status === 'completed').map((refund) => refund.donationId));
+    const donated = new Map<string, DonatedInCurrencyDTO>();
+    for (const donation of donations) {
+      const currency = donation.amount.currency;
+      const entry = donated.get(currency) ?? { currency, gross: 0, refunded: 0, net: 0 };
+      entry.gross += donation.amount.amount;
+      if (refundedDonations.has(donation.id)) entry.refunded += donation.amount.amount;
+      donated.set(currency, entry);
+    }
+    const donatedByCurrency = [...donated.values()]
+      .map((entry) => ({ currency: entry.currency, gross: round2(entry.gross), refunded: round2(entry.refunded), net: round2(entry.gross - entry.refunded) }))
+      .sort((a, b) => b.net - a.net || a.currency.localeCompare(b.currency));
+    const raised = new Map<string, number>();
+    for (const campaign of createdCampaigns) {
+      if (campaign.raisedAmount.amount <= 0) continue;
+      raised.set(campaign.raisedAmount.currency, (raised.get(campaign.raisedAmount.currency) ?? 0) + campaign.raisedAmount.amount);
+    }
+    const raisedByCurrency = [...raised.entries()]
+      .map(([currency, amount]) => ({ currency, raised: round2(amount) }))
+      .sort((a, b) => b.raised - a.raised || a.currency.localeCompare(b.currency));
+    const totalDonated = donatedByCurrency.find((entry) => entry.currency === 'GHS')?.net ?? 0;
     const campaignsSupported = new Set(donations.map((d) => d.campaignId))
       .size;
 
@@ -160,18 +193,13 @@ export class GetProfileUseCase {
       createdAt: userPlain.createdAt,
       updatedAt: userPlain.updatedAt,
       totalDonated,
+      donatedByCurrency,
+      raisedByCurrency,
       donationCount: donations.length,
       campaignsSupported,
       campaignsCreated,
-      streak: 0,
-      rank: 0,
-      followers: 0,
-      following: 0,
-      bookmarks: 0,
       topCategories,
-      interestedCategories: [],
       recentDonations,
-      badges: [],
     };
   }
 }

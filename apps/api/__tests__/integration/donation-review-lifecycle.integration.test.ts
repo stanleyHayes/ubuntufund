@@ -32,7 +32,7 @@ it('rejects donor/owner self-review, restricted or erased donors, and demoted st
   await ContentRestrictionModel.create({ userId: donor.id, restrictedBy: staff.id, reason: 'Publishing restricted' });
   await request(app).put(`${path}/${donation.id}/review`).set('Authorization', staff.auth).send(body).expect(409);
   await ContentRestrictionModel.deleteOne({ userId: donor.id });
-  await request(app).delete('/api/v1/profile').set('Authorization', donor.auth).expect(200);
+  await request(app).delete('/api/v1/profile').set('Authorization', donor.auth).send({ password: 'SecurePass123' }).expect(200);
   await request(app).put(`${path}/${donation.id}/review`).set('Authorization', staff.auth).send(body).expect(404);
   await UserModel.updateOne({ _id: staff.id }, { $set: { role: 'user' } });
   await request(app).put(`${path}/${donation.id}/review`).set('Authorization', staff.auth).send(body).expect(403);

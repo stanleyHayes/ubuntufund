@@ -127,7 +127,7 @@ it('removes newsletter tokens, consent events and queued email during account er
   const user = await actor();
   await request(app).put('/api/v1/newsletter/preference').set('Authorization', user.auth).send({ enabled: true }).expect(200);
   expect(await NewsletterConsentTokenModel.countDocuments()).toBe(2);
-  await request(app).delete('/api/v1/profile').set('Authorization', user.auth).expect(200);
+  await request(app).delete('/api/v1/profile').set('Authorization', user.auth).send({ password: 'SecurePass123' }).expect(200);
   expect(await NewsletterSubscriptionModel.countDocuments()).toBe(0);
   expect(await NewsletterConsentTokenModel.countDocuments()).toBe(0);
   expect(await NewsletterConsentEventModel.countDocuments()).toBe(0);

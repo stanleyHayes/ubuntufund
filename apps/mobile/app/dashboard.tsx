@@ -1,5 +1,6 @@
 import { TouchableRipple } from '@/components/RoundedControls'
 import { OwnerNotifications } from '@/components/OwnerNotifications'
+import { EmailVerificationNotice } from '@/components/EmailVerificationNotice'
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { View, ScrollView, StyleSheet, Animated, type DimensionValue } from 'react-native'
 import { Text, Icon } from 'react-native-paper'
@@ -189,6 +190,7 @@ export default function DashboardScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
         <OwnerNotifications />
+        <EmailVerificationNotice />
         {loading ? (
           <DashboardSkeleton />
         ) : error ? (

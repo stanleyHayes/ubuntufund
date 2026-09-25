@@ -29,6 +29,24 @@ describe('admin authentication errors', () => {
     for (const key of ['uf_admin_token', 'uf_admin_tokens', 'uf_admin_user']) expect(localStorage.getItem(key)).toBeNull()
   })
 
+  it('renews once and retries when the server rejects a token that still looks valid here', async () => {
+    window.history.replaceState({}, '', '/users')
+    localStorage.setItem('uf_admin_tokens', JSON.stringify({ accessToken: 'skewed', refreshToken: 'refresh' }))
+    localStorage.setItem('uf_admin_token', 'skewed')
+    localStorage.setItem('uf_admin_last_activity', String(Date.now()))
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/auth/refresh')) return new Response(JSON.stringify({ data: { accessToken: 'renewed', refreshToken: 'next' } }))
+      return (init?.headers as Record<string, string>).Authorization === 'Bearer renewed'
+        ? new Response(JSON.stringify({ data: [{ id: 'u1' }] }))
+        : new Response('{}', { status: 401 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    await expect(api.get('/users')).resolves.toEqual([{ id: 'u1' }])
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/auth/refresh'))).toHaveLength(1)
+    expect(localStorage.getItem('uf_admin_token')).toBe('renewed')
+    window.history.replaceState({}, '', '/login')
+  })
+
   it('returns successful login data', async () => {
     const data = { user: { id: 'admin' }, tokens: { accessToken: 'new-token' } }
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ data }), { status: 200 })))

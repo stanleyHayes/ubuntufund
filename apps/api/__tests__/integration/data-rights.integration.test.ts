@@ -114,3 +114,41 @@ it('allows a live account with an explicit null tombstone to request and receive
   expect(mine.body.data.items[0]).toMatchObject({ status: 'responded', deliveryMethod: 'account' });
   expect(mine.body.data.items[0].response).toContain('requested information');
 });
+
+it('emails the requester that a response is ready, without its content, only for in-account delivery', async () => {
+  const express = (await import('express')).default;
+  const { randomBytes } = await import('node:crypto');
+  const { AccountEmails } = await import('../../src/infrastructure/adapters/outbound/AccountEmails.js');
+  const { AccountEmailJobModel } = await import('../../src/infrastructure/database/models/AccountEmailJobModel.js');
+  const { MongoUserRepository } = await import('../../src/infrastructure/adapters/outbound/persistence/MongoUserRepository.js');
+  const { AuthTokenService } = await import('../../src/application/services/AuthTokenService.js');
+  const { createAuthMiddleware } = await import('../../src/infrastructure/adapters/inbound/middleware/authMiddleware.js');
+  const { errorHandler } = await import('../../src/infrastructure/adapters/inbound/middleware/errorHandler.js');
+  const { createDataRightsAdminRoutes } = await import('../../src/infrastructure/adapters/inbound/http/routes/dataRightsRoutes.js');
+  const sender = { configured: true, from: 'privacy@example.test', replyTo: 'support@example.test', webUrl: 'https://app.example.test', send: vi.fn(async (_key: string, _payload: Record<string, unknown>) => {}) };
+  const emails = new AccountEmails(sender, randomBytes(32));
+  const staffApp = express(); staffApp.use(express.json());
+  staffApp.use('/api/v1/admin/data-rights', createDataRightsAdminRoutes(createAuthMiddleware(new AuthTokenService(process.env.JWT_SECRET!, process.env.JWT_REFRESH_SECRET!), new MongoUserRepository()), emails));
+  staffApp.use(errorHandler);
+  const reviewVia = (id: string, overrides = {}) => request(staffApp).put(`/api/v1/admin/data-rights/${id}/review`).set('Authorization', `Bearer ${admin.token}`).send({ revision: 0, status: 'responded', response: 'Private response text that must stay behind sign-in.', evidence: 'Internal evidence: all relevant systems reviewed.', ...overrides });
+  await AccountEmailJobModel.deleteMany({ purpose: 'data_rights_response' });
+
+  const progress = await submit().expect(201);
+  await reviewVia(progress.body.data._id, { status: 'in_review', response: '' }).expect(200);
+  expect(await AccountEmailJobModel.countDocuments({ purpose: 'data_rights_response' })).toBe(0);
+  await reviewVia(progress.body.data._id, { revision: 1 }).expect(200);
+  expect(await AccountEmailJobModel.countDocuments({ purpose: 'data_rights_response', userId: owner.id })).toBe(1);
+  await emails.deliverPending();
+  const [key, payload] = sender.send.mock.calls.at(-1)!;
+  expect(key).toMatch(/^account-data_rights_response\//);
+  expect(payload.subject).toBe('Your Ujimora privacy request has a response');
+  expect(payload.text).toContain(progress.body.data._id);
+  expect(payload.text).toContain('https://app.example.test/settings');
+  expect(payload.text).not.toContain('Private response text');
+
+  // External delivery records its own evidence and sends nothing to the account.
+  await DataRightsRequestModel.deleteMany({});
+  const external = await submit().expect(201);
+  await reviewVia(external.body.data._id, { deliveryMethod: 'verified_external', deliveryReference: 'Identity verified by phone; response sent by courier ref 42.' }).expect(200);
+  expect(await AccountEmailJobModel.countDocuments({ purpose: 'data_rights_response', userId: owner.id })).toBe(1);
+});

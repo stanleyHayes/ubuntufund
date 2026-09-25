@@ -84,7 +84,7 @@ it('denies self-review, restricted supporters, closed accounts and demoted staff
   await ContentRestrictionModel.create({ userId: supporter.id, restrictedBy: reviewer.id, reason: 'Public content restriction' });
   await request(app).put(`${path}/${tip.id}/review`).set('Authorization', reviewer.auth).send(input).expect(409);
   await ContentRestrictionModel.deleteOne({ userId: supporter.id });
-  await request(app).delete('/api/v1/profile').set('Authorization', supporter.auth).expect(200);
+  await request(app).delete('/api/v1/profile').set('Authorization', supporter.auth).send({ password: 'SecurePass123' }).expect(200);
   await request(app).put(`${path}/${tip.id}/review`).set('Authorization', reviewer.auth).send(input).expect(404);
   await UserModel.updateOne({ _id: reviewer.id }, { $set: { role: 'user' } });
   await request(app).put(`${path}/${tip.id}/review`).set('Authorization', reviewer.auth).send(input).expect(403);

@@ -8,6 +8,7 @@ import { Text, Snackbar } from 'react-native-paper'
 import { Stack } from 'expo-router'
 import { Country } from 'country-state-city'
 import { api } from '@/lib/api'
+import { changePassword as submitPasswordChange } from '@/lib/accountSecurity'
 import { sessionSnapshot, establishSession } from '@/lib/session'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
 import { GlassSurface } from '@/components/GlassSurface'
@@ -22,6 +23,7 @@ export default function EditProfile() {
   return <EditProfileForViewer key={user?.id ?? 'guest'} />
 }
 function EditProfileForViewer() {
+  const { user, replaceTokens } = useAuth()
   const live = useRef(true)
   useEffect(() => { live.current = true; return () => { live.current = false } }, [])
   const [automatedReviewConsent, setAutomatedReviewConsent] = useState(false)
@@ -54,7 +56,12 @@ function EditProfileForViewer() {
   async function changePassword() {
     if (newPassword !== confirm) { setError('The new passwords do not match.'); return }
     setBusy(true); setError('')
-    try { await api.put('/auth/change-password', { currentPassword, newPassword }); setCurrentPassword(''); setNewPassword(''); setConfirm(''); setNotice('Password updated') }
+    try {
+      const result = await submitPasswordChange({ currentPassword, newPassword }, user?.id, replaceTokens)
+      setCurrentPassword(''); setNewPassword(''); setConfirm('')
+      if (result === 'saved') setNotice('Password updated')
+      else setError('Password updated, but this device could not save the new sign-in. Sign in again before using biometric unlock.')
+    }
     catch (e) { setError(e instanceof Error ? e.message : 'Could not update password.') } finally { setBusy(false) }
   }
   if (!profile && !error) return <PageSkeleton />

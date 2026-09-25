@@ -5,8 +5,8 @@ import { ThemeProvider } from '@mui/material/styles'
 import { ujimoraTheme } from '@ubuntu-fund/ui'
 import AdminProfilePage from '@/pages/AdminProfilePage'
 import { api } from '@/lib/api'
-const updateName = vi.hoisted(() => vi.fn())
-vi.mock('@/context/AuthContext', () => ({ useAuth: () => ({ user: { name: 'Old name', email: 'admin@example.com', role: 'admin' }, updateName }) }))
+const { updateName, replaceTokens } = vi.hoisted(() => ({ updateName: vi.fn(), replaceTokens: vi.fn() }))
+vi.mock('@/context/AuthContext', () => ({ useAuth: () => ({ user: { id: 'admin-1', name: 'Old name', email: 'admin@example.com', role: 'admin' }, updateName, replaceTokens }) }))
 vi.mock('@/lib/api', () => ({ api: { get: vi.fn(), put: vi.fn() } }))
 const profile = { name: 'Saved Admin', email: 'admin@example.com', phone: '0550000000', bio: 'Existing bio', language: 'en', notificationPreferences: { email: false, push: false } }
 beforeEach(() => { vi.clearAllMocks(); vi.mocked(api.get).mockResolvedValue(profile); vi.mocked(api.put).mockResolvedValue({ name: 'Updated Admin' }) })
@@ -45,4 +45,41 @@ it('omits unchanged identity when saving only private contact fields', async () 
   fireEvent.change(await screen.findByLabelText('Phone Number'), { target: { value: '0551111111' } })
   fireEvent.click(screen.getByRole('button', { name: 'Save Profile' }))
   await waitFor(() => expect(api.put).toHaveBeenCalledWith('/profile', { phone: '0551111111', bio: 'Existing bio', automatedReviewConsent: false }))
+})
+
+it('keeps the console signed in with the tokens rotated by a password change', async () => {
+  const tokens = { accessToken: 'fresh-access', refreshToken: 'fresh-refresh' }
+  vi.mocked(api.put).mockResolvedValue({ tokens })
+  mount()
+  fireEvent.click(await screen.findByRole('tab', { name: 'Security' }))
+  fireEvent.change(screen.getByLabelText('Current Password'), { target: { value: 'OldPass12345' } })
+  fireEvent.change(screen.getByLabelText('New Password'), { target: { value: 'NewPass12345' } })
+  fireEvent.change(screen.getByLabelText('Confirm New Password'), { target: { value: 'NewPass12345' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Update Password' }))
+  await screen.findByText('Password changed successfully')
+  expect(api.put).toHaveBeenCalledWith('/auth/change-password', { currentPassword: 'OldPass12345', newPassword: 'NewPass12345' })
+  expect(replaceTokens).toHaveBeenCalledWith(tokens, 'admin-1')
+})
+
+it('does not touch the session when the password change is refused', async () => {
+  vi.mocked(api.put).mockRejectedValue(new Error('Current password is incorrect'))
+  mount()
+  fireEvent.click(await screen.findByRole('tab', { name: 'Security' }))
+  fireEvent.change(screen.getByLabelText('Current Password'), { target: { value: 'WrongPass123' } })
+  fireEvent.change(screen.getByLabelText('New Password'), { target: { value: 'NewPass12345' } })
+  fireEvent.change(screen.getByLabelText('Confirm New Password'), { target: { value: 'NewPass12345' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Update Password' }))
+  await screen.findByText('Current password is incorrect')
+  expect(replaceTokens).not.toHaveBeenCalled()
+})
+
+it('does not offer notification or language switches that nothing reads', async () => {
+  mount()
+  fireEvent.click(await screen.findByRole('tab', { name: 'Preferences' }))
+  expect(screen.getByText('Notification Preferences')).toBeVisible()
+  expect(screen.getByText(/notification bell/)).toBeVisible()
+  expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+  expect(screen.queryByText('Push Notifications')).not.toBeInTheDocument()
+  expect(screen.queryByLabelText('Language')).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /save preferences/i })).not.toBeInTheDocument()
 })

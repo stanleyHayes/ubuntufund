@@ -71,13 +71,31 @@ export class ProfileController {
     }
   };
 
+  getClosureCheck = async (
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const preview = await this.deleteAccountUseCase.preview(req.userId!);
+      res.set('Cache-Control', 'private, no-store').json({
+        data: preview,
+        message: 'Account closure check',
+        status: 200,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   deleteMyAccount = async (
     req: AuthenticatedRequest,
     res: Response,
     next: NextFunction
   ): Promise<void> => {
     try {
-      await this.deleteAccountUseCase.execute(req.userId!);
+      const { password, code } = (req.body ?? {}) as { password?: string; code?: string };
+      await this.deleteAccountUseCase.execute(req.userId!, { password, code });
       res.json({
         data: null,
         message: 'Account closed. Associated data deletion and retained-record review requested',

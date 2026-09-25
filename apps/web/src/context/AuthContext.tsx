@@ -1,8 +1,8 @@
-import type { LegalAcceptanceInput, LegalAcceptanceRecord } from '@ubuntu-fund/types'
+import { hasCurrentLegalAcceptance, type LegalAcceptanceInput, type LegalAcceptanceRecord } from '@ubuntu-fund/types'
 import { SESSION_EXPIRED, browserSession } from '@/lib/session'
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import type { ReactNode } from 'react'
-import { loginApi, registerApi } from '@/lib/api'
+import { AGREEMENT_REQUIRED, api, loginApi, registerApi } from '@/lib/api'
 import type { AuthUser, AuthTokens } from '@/lib/api'
 
 interface AuthState {
@@ -12,8 +12,18 @@ interface AuthState {
   isLoading: boolean
 }
 
+/** GET /profile/legal-acceptance: the API's view, which outranks this bundle's constant. */
+interface LegalStatus {
+  current: boolean
+  requiredVersion: string
+}
+
 interface AuthContextValue extends AuthState {
   sessionExpired: boolean
+  /** Whether the signed-in user has accepted the agreement version the API requires. */
+  legalAcceptanceCurrent: boolean
+  /** The version the API requires, once known; accept this one, not the bundled constant. */
+  requiredLegalVersion?: string
   login: (email: string, password: string, mfaCode?: string) => Promise<void>
   register: (data: { legalAcceptance?: LegalAcceptanceInput; name: string; email: string; password: string; country?: string; role?: string; organizationName?: string; organizationType?: string; registrationNumber?: string; website?: string; needsWebsite?: boolean; referralCode?: string }) => Promise<void>
   updateLegalAcceptance: (legalAcceptance: LegalAcceptanceRecord) => void
@@ -69,6 +79,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener(SESSION_EXPIRED, expired)
   }, [])
 
+  // Refresh the agreement status from the server on sign-in, when the tab comes
+  // back into view and after any 428, so a bundle older or newer than the API
+  // cannot hide the notice or show it forever.
+  // Keyed by user so a status fetched for one account never applies to the next.
+  const [fetchedLegalStatus, setLegalStatus] = useState<(LegalStatus & { userId: string }) | null>(null)
+  const signedInUserId = state.isAuthenticated ? state.user?.id : undefined
+  const legalStatus = signedInUserId && fetchedLegalStatus?.userId === signedInUserId ? fetchedLegalStatus : null
+  useEffect(() => {
+    if (!signedInUserId) return
+    let active = true, last = 0
+    const refresh = (force = false) => {
+      if (!force && Date.now() - last < 60_000) return
+      last = Date.now()
+      api.get<LegalStatus>('/profile/legal-acceptance').then(status => {
+        if (active && typeof status?.current === 'boolean' && typeof status.requiredVersion === 'string') setLegalStatus({ userId: signedInUserId, current: status.current, requiredVersion: status.requiredVersion })
+      }).catch(() => { /* Keep the cached view; the next focus retries. */ })
+    }
+    const focus = () => refresh()
+    const visible = () => { if (document.visibilityState === 'visible') refresh() }
+    const required = () => refresh(true)
+    refresh(true)
+    window.addEventListener('focus', focus)
+    document.addEventListener('visibilitychange', visible)
+    window.addEventListener(AGREEMENT_REQUIRED, required)
+    return () => {
+      active = false
+      window.removeEventListener('focus', focus)
+      document.removeEventListener('visibilitychange', visible)
+      window.removeEventListener(AGREEMENT_REQUIRED, required)
+    }
+  }, [signedInUserId])
+
   useEffect(() => browserSession.start(() => {
     const { user, tokens } = loadFromStorage()
     setState({ user, tokens, isAuthenticated: !!user && !!tokens?.accessToken, isLoading: false })
@@ -91,6 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const updateLegalAcceptance = useCallback((legalAcceptance: LegalAcceptanceRecord) => {
+    setLegalStatus(previous => previous && ({ ...previous, current: previous.requiredVersion === legalAcceptance.version && legalAcceptance.acceptedTerms && legalAcceptance.ageConfirmed }))
     setState(previous => {
       if (!previous.user) return previous
       const user = { ...previous.user, legalAcceptance }
@@ -117,13 +160,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const logout = useCallback(() => {
+    browserSession.revokeOnServer()
     clearStorage()
     setSessionExpired(false)
     setState({ user: null, tokens: null, isAuthenticated: false, isLoading: false })
   }, [])
 
   return (
-    <AuthContext.Provider value={{ ...state, sessionExpired, login, register, replaceTokens, updateName, updateLegalAcceptance, logout }}>
+    <AuthContext.Provider value={{
+      ...state, sessionExpired, login, register, replaceTokens, updateName, updateLegalAcceptance, logout,
+      legalAcceptanceCurrent: legalStatus?.current ?? hasCurrentLegalAcceptance(state.user?.legalAcceptance),
+      requiredLegalVersion: legalStatus?.requiredVersion,
+    }}>
       {children}
     </AuthContext.Provider>
   )

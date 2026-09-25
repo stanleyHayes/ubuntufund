@@ -25,6 +25,7 @@ import { DonationModel } from '../../../database/models/DonationModel.js';
 import { TipModel } from '../../../database/models/TipModel.js';
 import { CampaignModel } from '../../../database/models/CampaignModel.js';
 import { LiveSessionModel } from '../../../database/models/LiveSessionModel.js';
+import { ShortLinkModel } from '../../../database/models/ShortLinkModel.js';
 import { logger } from '../../../logging/logger.js';
 import { PrivateKycDocumentModel } from '../../../database/models/PrivateKycDocumentModel.js';
 
@@ -87,12 +88,27 @@ export class MongoAccountErasure implements AccountErasurePort {
     await CampaignCommentModel.updateMany({ authorId: userId }, { $unset: { authorName: '', authorAvatarUrl: '' } });
     await OrganizationMemberModel.updateMany({ $or: [{ userId }, { email: request.contactEmail }, { organizationId: userId }] }, { $set: { status: 'revoked' } });
     await CollaborationModel.updateMany({ userId }, { $set: { status: 'removed', displayName: 'Deleted user' }, $unset: { logoUrl: 1, inviteMessage: 1 } });
+    // QR/short-link labels are free text the user wrote; the pseudonymous
+    // createdBy id stays, like every other retained reference to the tombstone.
+    await ShortLinkModel.updateMany({ createdBy: userId, label: { $exists: true } }, { $unset: { label: 1 } });
     await SubscriptionModel.updateMany({ userId }, { $set: { cancelAtPeriodEnd: true } });
     // Financial values/references remain intact; donor identities are hidden publicly.
     await DonationModel.updateMany({ donorId: userId }, { $set: { isAnonymous: true, publicContentRevokedAt: new Date() }, $unset: { publicContentFingerprint: 1, publicReviewNotes: 1 } });
     await TipModel.updateMany({ supporterUserId: userId }, { $set: { isAnonymous: true, checkoutRevokedAt: new Date() }, $unset: { checkout: 1, requestFingerprint: 1, publicContentFingerprint: 1, publicReviewNotes: 1 } });
     const campaigns = await CampaignModel.find({ creatorId: userId }).select('_id');
     await LiveSessionModel.updateMany({ campaignId: { $in: campaigns.map(c => String(c._id)) }, status: 'active' }, { $set: { status: 'ended', endedAt: new Date(), moderationStoppedAt: new Date(), providerStopPending: true, overlayToken: '', privacyMode: true } });
+    // A closed account cannot run a fundraiser: end open campaigns so they stop
+    // accepting donation intents and crypto quotes (canReceiveDonation only
+    // checks status and end date). EXPIRED is the ordinary end state, not a
+    // moderation block; the end date never moves later. Campaigns awaiting
+    // review return to draft so they leave the staff queue. Both are
+    // idempotent, so a retried sweep is safe. Organizations are users, so
+    // `creatorId` covers their campaigns too.
+    const closedAt = new Date();
+    await CampaignModel.updateMany({ creatorId: userId, status: { $in: ['active', 'funded'] } }, [
+      { $set: { status: 'expired', endDate: { $min: ['$endDate', closedAt] } } },
+    ]);
+    await CampaignModel.updateMany({ creatorId: userId, status: 'pending_review' }, { $set: { status: 'draft' } });
     await UserModel.updateOne({ _id: userId }, {
       $set: { name: 'Deleted user', email: `deleted-${userId}@invalid.ujimora`, passwordHash: '!deleted!', needsWebsite: false },
       $unset: { avatarUrl: 1, coverUrl: 1, organizationName: 1, organizationType: 1, registrationNumber: 1, website: 1, websiteRequestedAt: 1, websiteRequestWithdrawnAt: 1, country: 1 },

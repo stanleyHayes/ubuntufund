@@ -3,7 +3,7 @@ import { browserSession } from './session'
 // (see vercel.json). Set VITE_API_URL to call an absolute API origin instead.
 const API_BASE = import.meta.env.VITE_API_URL || '/api/v1'
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
+async function request<T>(path: string, options?: RequestInit, retried = false): Promise<T> {
   const isPublicAuth = ['/auth/login', '/auth/forgot-password', '/auth/reset-password'].includes(path)
   const token = isPublicAuth ? null : await browserSession.ensureAccessToken()
   const headers: Record<string, string> = {
@@ -15,6 +15,14 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   // permission denial) should bounce to login rather than leave the page throwing
   // silent errors — e.g. the TopBar's notification poll spamming the console.
   if (res.status === 401 && !isPublicAuth) {
+    if (token && !retried) {
+      // The token may only look valid here because the device clock is off:
+      // renew once and retry before treating the 401 as a sign-out.
+      let renewed: string | null
+      try { renewed = await browserSession.forceRefresh(token) }
+      catch { throw new Error('Unable to renew your session. Check your connection and try again.') }
+      if (renewed && renewed !== token) return request<T>(path, options, true)
+    }
     browserSession.expire(token ?? undefined)
     if (!browserSession.accessToken() && !window.location.pathname.startsWith('/login')) {
       window.location.assign('/login')

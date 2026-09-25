@@ -28,6 +28,9 @@ import { MongoUserBlockRepository } from './infrastructure/adapters/outbound/per
 import { createUserSafetyRoutes } from './infrastructure/adapters/inbound/http/routes/userSafetyRoutes.js'
 import { createPrivacyRequestRoutes } from './infrastructure/adapters/inbound/http/routes/privacyRequestRoutes.js'
 import { MongoAccountErasure } from './infrastructure/adapters/outbound/persistence/MongoAccountErasure.js'
+import { MongoAccountClosureCheck } from './infrastructure/adapters/outbound/persistence/MongoAccountClosureCheck.js'
+import { MongoLegalAcceptanceLog } from './infrastructure/adapters/outbound/persistence/MongoLegalAcceptanceLog.js'
+import { MongoSessionRevocation } from './infrastructure/adapters/outbound/persistence/MongoSessionRevocation.js'
 import { createOrganizationTeamRoutes } from './infrastructure/adapters/inbound/http/routes/organizationTeamRoutes.js'
 import { AutomaticPayoutService } from './infrastructure/adapters/outbound/payments/AutomaticPayoutService.js'
 import { automaticPayoutRoutes } from './infrastructure/adapters/inbound/http/routes/automaticPayoutRoutes.js'
@@ -636,6 +639,8 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     // the referrer's affiliate.
     affiliateRepo,
     affiliateReferralRepo,
+    accountEmails,
+    new MongoLegalAcceptanceLog(),
   )
   const mfa = new MongoMfa(process.env.MFA_ENCRYPTION_KEY ?? '', tokenService, config.publicWebUrl)
   const loginUserUseCase = new LoginUserUseCase(userRepo, tokenService, mfa)
@@ -1091,7 +1096,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     publicProfileVisibility,
   )
 
-  const getProfileUseCase = new GetProfileUseCase(userRepo, profileRepo, donationRepo, campaignRepo)
+  const getProfileUseCase = new GetProfileUseCase(userRepo, profileRepo, donationRepo, campaignRepo, refundRepo)
   const updateProfileUseCase = new UpdateProfileUseCase(new MongoAccountProfileWrite(new MongoUnitOfWork(), publicationAdmission))
   const getPublicUserProfileUseCase = new GetPublicUserProfileUseCase(userRepo, publicProfileVisibility, kycRepo)
   const accountErasure = new MongoAccountErasure()
@@ -1106,7 +1111,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     }, 60_000)
     erasureTimer.unref()
   }
-  const deleteAccountUseCase = new DeleteAccountUseCase(userRepo, tokenService, accountErasure)
+  const deleteAccountUseCase = new DeleteAccountUseCase(userRepo, tokenService, accountErasure, new MongoAccountClosureCheck(), mfa)
 
   const createCampaignUpdateUseCase = new CreateCampaignUpdateUseCase(
     campaignUpdateRepo,
@@ -1308,6 +1313,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     forgotPasswordUseCase,
     resetPasswordUseCase,
     userRepo,
+    new MongoSessionRevocation(),
   )
   const campaignController = new CampaignController(
     createCampaignUseCase,
@@ -1680,7 +1686,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
   api.use('/wallets', createWalletRoutes(walletController, authMiddleware))
   api.use('/profile', createProfileRoutes(profileController, authMiddleware))
   api.use('/data-rights', createDataRightsRoutes(authMiddleware))
-  api.use('/admin/data-rights', createDataRightsAdminRoutes(authMiddleware))
+  api.use('/admin/data-rights', createDataRightsAdminRoutes(authMiddleware, accountEmails))
   api.use('/admin/privacy-requests', createPrivacyRequestRoutes(authMiddleware, accountErasure))
   api.use('/admin/store-billing', createStoreBillingAdminRoutes(authMiddleware, storeBilling))
   api.use('/users', createUserRoutes(profileController, optionalAuthMiddleware))

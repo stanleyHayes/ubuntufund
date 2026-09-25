@@ -1,5 +1,5 @@
 import TextField from '@/components/AdminTextField'
-import { Tabs, Tab, MenuItem } from '@mui/material'
+import { Tabs, Tab } from '@mui/material'
 import { raisedSurface } from '@/lib/surfaces'
 import Checkbox from '@mui/material/Checkbox'
 import FormControlLabel from '@mui/material/FormControlLabel'
@@ -16,10 +16,8 @@ import Card from '@mui/material/Card'
 import Chip from '@mui/material/Chip'
 import Snackbar from '@mui/material/Snackbar'
 import Grid from '@mui/material/Grid'
-import Switch from '@mui/material/Switch'
 import InputAdornment from '@mui/material/InputAdornment'
 import IconButton from '@mui/material/IconButton'
-import Divider from '@mui/material/Divider'
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded'
 import LockRoundedIcon from '@mui/icons-material/LockRounded'
 import TuneRoundedIcon from '@mui/icons-material/TuneRounded'
@@ -31,12 +29,10 @@ import EmailRoundedIcon from '@mui/icons-material/EmailRounded'
 import BadgeRoundedIcon from '@mui/icons-material/BadgeRounded'
 import PublicRoundedIcon from '@mui/icons-material/PublicRounded'
 import PhoneRoundedIcon from '@mui/icons-material/PhoneRounded'
-import CakeRoundedIcon from '@mui/icons-material/CakeRounded'
 import { alpha } from '@mui/material/styles'
 import { SHAPE } from '@ubuntu-fund/ui'
 import { useAuth } from '@/context/AuthContext'
 import PageHeader from '@/components/PageHeader'
-import { TONES } from '@/lib/tones'
 import { api } from '@/lib/api'
 
 // ─── Animations ──────────────────────────────────────────────────────────────
@@ -136,11 +132,6 @@ function AdminProfileForViewer() {
   const [showCurrent, setShowCurrent] = useState(false)
   const [showNew, setShowNew] = useState(false)
 
-  // Preferences
-  const [emailNotifs, setEmailNotifs] = useState(true)
-  const [pushNotifs, setPushNotifs] = useState(true)
-  const [language, setLanguage] = useState('en')
-
   // UI state
   const [saving, setSaving] = useState(false)
   const [snack, setSnack] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({ open: false, message: '', severity: 'success' })
@@ -153,15 +144,12 @@ function AdminProfileForViewer() {
     let active = true
     setLoading(true)
     setLoadError('')
-    api.get<{ name: string; email: string; phone?: string; country?: string; bio?: string; language?: string; notificationPreferences?: { email?: boolean; push?: boolean } }>('/profile')
+    api.get<{ name: string; email: string; phone?: string; country?: string; bio?: string }>('/profile')
       .then(profile => {
         if (!active) return
         savedIdentity.current = { name: profile.name, country: profile.country ?? '' }
         setName(profile.name); setEmail(profile.email); setPhone(profile.phone ?? '')
         setCountry(profile.country ?? ''); setBio(profile.bio ?? '')
-        setLanguage(profile.language ?? 'en')
-        setEmailNotifs(profile.notificationPreferences?.email ?? true)
-        setPushNotifs(profile.notificationPreferences?.push ?? true)
       })
       .catch(error => { if (active) setLoadError(error instanceof Error ? error.message : 'Could not load profile') })
       .finally(() => { if (active) setLoading(false) })
@@ -202,28 +190,16 @@ function AdminProfileForViewer() {
     }
     setSaving(true)
     try {
-      await api.put('/auth/change-password', { currentPassword, newPassword })
+      // The API rotates authVersion, so the old tokens stop working at once.
+      // Keep this console signed in with the fresh pair it returns.
+      const result = await api.put<{ tokens?: { accessToken: string; refreshToken: string } }>('/auth/change-password', { currentPassword, newPassword })
+      if (result?.tokens && user) replaceTokens(result.tokens, user.id)
       setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
       setSnack({ open: true, message: 'Password changed successfully', severity: 'success' })
     } catch (error) {
       setSnack({ open: true, message: error instanceof Error ? error.message : 'Failed to change password', severity: 'error' })
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  async function handleSavePreferences() {
-    setSaving(true)
-    try {
-      await api.put('/profile', {
-        notificationPreferences: { email: emailNotifs, push: pushNotifs },
-        language,
-      })
-      setSnack({ open: true, message: 'Preferences saved', severity: 'success' })
-    } catch (error) {
-      setSnack({ open: true, message: error instanceof Error ? error.message : 'Failed to save preferences', severity: 'error' })
     } finally {
       setSaving(false)
     }
@@ -239,7 +215,7 @@ function AdminProfileForViewer() {
         tone="green"
         eyebrow="Account"
         title={name || 'Admin User'}
-        lede="Manage your personal details, password, and notification preferences."
+        lede="Manage your personal details and password."
         icon={<PersonRoundedIcon />}
         actions={<>{<Chip
             label={user?.role === 'admin' ? 'Administrator' : user?.role ?? 'Admin'}
@@ -263,7 +239,7 @@ function AdminProfileForViewer() {
           <Tab id="profile-tab-preferences" aria-controls="profile-panel-preferences" value="preferences" icon={<TuneRoundedIcon />} iconPosition="start" label="Preferences" />
         </Tabs>
       </Box>
-      <Typography color="text.secondary" sx={{ mb: 3 }}>{tab === 'details' ? 'Keep your contact information and public introduction up to date.' : tab === 'security' ? 'Manage your password and optional multi-factor authentication. Keep recovery codes somewhere safe.' : 'Choose which notifications you receive and save your language preference.'}</Typography>
+      <Typography color="text.secondary" sx={{ mb: 3 }}>{tab === 'details' ? 'Keep your contact information and public introduction up to date.' : tab === 'security' ? 'Manage your password and optional multi-factor authentication. Keep recovery codes somewhere safe.' : 'How staff alerts reach you in the console.'}</Typography>
       <Grid container spacing={3}>
         {/* ─── Personal Information ─── */}
         <Grid size={{ xs: 12 }} role="tabpanel" id="profile-panel-details" aria-labelledby="profile-tab-details" hidden={tab !== 'details'}>
@@ -489,85 +465,13 @@ function AdminProfileForViewer() {
         </Grid>
 
         {/* ─── Notification Preferences ─── */}
+        {/* The former email/push switches and language select saved settings that nothing
+            read (push delivery is disabled), so they are replaced with what actually happens. */}
         <Grid size={{ xs: 12 }} role="tabpanel" id="profile-panel-preferences" aria-labelledby="profile-tab-preferences" hidden={tab !== 'preferences'}>
           <SectionCard icon={<TuneRoundedIcon />} title="Notification Preferences" color="#74909A">
-            {[
-              { label: 'Email Notifications', desc: 'Receive important updates via email', checked: emailNotifs, onChange: setEmailNotifs },
-              { label: 'Push Notifications', desc: 'Browser push notifications for real-time alerts', checked: pushNotifs, onChange: setPushNotifs },
-            ].map((pref, i) => (
-              <Box
-                key={pref.label}
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 3,
-                  py: 2,
-                  px: 3,
-                  borderBottom: i < 1 ? '1px solid' : 'none',
-                  borderColor: 'divider',
-                  transition: 'background 0.2s ease',
-                  '&:hover': { bgcolor: 'rgba(255,255,255,0.02)' },
-                }}
-              >
-                <Box>
-                  <Typography sx={{ fontWeight: 600, fontSize: '0.88rem', color: 'text.primary' }}>{pref.label}</Typography>
-                  <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', mt: 0.25 }}>{pref.desc}</Typography>
-                </Box>
-                <Switch
-                  checked={pref.checked}
-                  onChange={(_, v) => pref.onChange(v)}
-                  sx={{
-                    '& .MuiSwitch-switchBase.Mui-checked': { color: '#74909A' },
-                    '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: '#74909A' },
-                  }}
-                />
-              </Box>
-            ))}
-            <Box sx={{ p: 3, pt: 2, display: 'flex', justifyContent: 'flex-end' }}>
-              <Button
-                variant="contained"
-                startIcon={<SaveRoundedIcon />}
-                onClick={handleSavePreferences}
-                disabled={saving}
-                sx={{
-                  borderRadius: SHAPE.sm,
-                  px: 3,
-                  fontWeight: 700,
-                  textTransform: 'none',
-                  bgcolor: '#4A6B75',
-                  '&:hover': { bgcolor: '#74909A' },
-                }}
-              >
-                {saving ? 'Saving...' : 'Save Preferences'}
-              </Button>
-            </Box>
-          </SectionCard>
-        </Grid>
-
-        {/* ─── Regional & Display Preferences ─── */}
-        <Grid size={{ xs: 12 }} hidden={tab !== 'preferences'}>
-          <SectionCard icon={<CakeRoundedIcon />} title="Regional & Display" color={TONES.maroon.text}>
-            <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-              <TextField optionContext="language"
-                label="Language"
-                value={language}
-                onChange={(e) => setLanguage(e.target.value)}
-                fullWidth
-                size="small"
-                select
-                sx={inputSx}
-              >
-                <MenuItem value="en">English</MenuItem>
-                <MenuItem value="fr">Français</MenuItem>
-                <MenuItem value="sw">Kiswahili</MenuItem>
-                <MenuItem value="ha">Hausa</MenuItem>
-                <MenuItem value="yo">Yorùbá</MenuItem>
-                <MenuItem value="zu">isiZulu</MenuItem>
-              </TextField>
-
-              <Divider sx={{ borderColor: 'divider' }} />
-              <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}><Button variant="contained" startIcon={<SaveRoundedIcon />} disabled={saving} onClick={handleSavePreferences}>Save preferences</Button></Box>
+            <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+              <Typography sx={{ fontSize: '0.88rem', color: 'text.primary' }}>Staff alerts appear in the notification bell at the top of the console.</Typography>
+              <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>Email and browser push alerts for staff are not available yet, and the console is in English only. Account security emails, such as password-change notices, are not affected.</Typography>
             </Box>
           </SectionCard>
         </Grid>

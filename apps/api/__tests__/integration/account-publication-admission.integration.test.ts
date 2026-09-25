@@ -100,7 +100,7 @@ it('fails closed for provider outage, revoked credentials, restrictions and clos
   screen.mockImplementationOnce(async () => { await ContentRestrictionModel.create({ userId: restricted.id, reason: 'Restricted during screening', restrictedBy: 'fixture' }); return 'allowed'; });
   await save(restricted, { country: 'Ghana', automatedReviewConsent: true }).expect(403);
   const closing = await account();
-  screen.mockImplementationOnce(async () => { await request(app).delete('/api/v1/profile').set('Authorization', closing.auth).expect(200); return 'allowed'; });
+  screen.mockImplementationOnce(async () => { await request(app).delete('/api/v1/profile').set('Authorization', closing.auth).send({ password: 'SecurePass123' }).expect(200); return 'allowed'; });
   await save(closing, { name: 'Closed request name', automatedReviewConsent: true }).expect(503);
   expect(await ProfileModel.countDocuments({ userId: closing.id })).toBe(0);
   expect(await PublicationReviewModel.countDocuments({ actorId: closing.id })).toBe(0);

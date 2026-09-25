@@ -99,7 +99,8 @@ export class MongoAutomaticPayoutVerification {
 
   async assertCurrent(userId: string): Promise<void> {
     const owner = await UserModel.findOne({ _id: userId, deletedAt: null })
-    if (!owner || !owner.emailVerified || owner.verificationLevel < (owner.role === 'organization' ? 3 : 2)) throw new AppError('Current owner verification requires manual review.', 409)
+    if (!owner || owner.verificationLevel < (owner.role === 'organization' ? 3 : 2)) throw new AppError('Current owner verification requires manual review.', 409)
+    if (!owner.emailVerified) throw new AppError('Verify your email address to enable automatic payouts.', 409)
     const record = await KYCVerificationModel.findOne({ userId, verificationType: owner.role === 'organization' ? 'business' : 'identity' }).sort({ createdAt: -1, _id: -1 })
     if (!record || record.status !== 'approved' || !record.expiryDate || record.expiryDate.getTime() <= Date.now()) throw new AppError('Current owner verification requires manual review.', 409)
   }

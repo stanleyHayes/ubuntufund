@@ -8,14 +8,16 @@ import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
 
 export function AccountAgreementNotice() {
-  const { user, isAuthenticated } = useAuth()
+  const { user, isAuthenticated, legalAcceptanceCurrent } = useAuth()
   const { pathname } = useLocation()
-  if (pathname === '/account-agreement' || !isAuthenticated || hasCurrentLegalAcceptance(user?.legalAcceptance)) return null
+  // The server's status wins; the bundled constant is only a fallback before it loads.
+  const current = legalAcceptanceCurrent ?? hasCurrentLegalAcceptance(user?.legalAcceptance)
+  if (pathname === '/account-agreement' || !isAuthenticated || current) return null
   return <Alert severity="info" sx={{ m: 2 }} action={<Button component={RouterLink} to="/account-agreement">Review</Button>}>Please review the account agreement before publishing or uploading content.</Alert>
 }
 
 export function AccountAgreement() {
-  const { user, isAuthenticated, updateLegalAcceptance } = useAuth()
+  const { user, isAuthenticated, updateLegalAcceptance, legalAcceptanceCurrent, requiredLegalVersion } = useAuth()
   const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [ageConfirmed, setAgeConfirmed] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -23,7 +25,9 @@ export function AccountAgreement() {
   async function save() {
     setSaving(true); setError('')
     try {
-      const record = await api.post<LegalAcceptanceRecord>('/profile/legal-acceptance', { version: LEGAL_ACCEPTANCE_VERSION, acceptedTerms, ageConfirmed })
+      // Accept the version the API requires: an open tab can predate a deploy
+      // that bumped it, and the policy links open the current text.
+      const record = await api.post<LegalAcceptanceRecord>('/profile/legal-acceptance', { version: requiredLegalVersion ?? LEGAL_ACCEPTANCE_VERSION, acceptedTerms, ageConfirmed })
       updateLegalAcceptance(record)
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not save your agreement. Please retry.') }
     finally { setSaving(false) }
@@ -34,7 +38,7 @@ export function AccountAgreement() {
     { to: '/privacy', title: 'Privacy Notice', description: 'How your information is used, protected and managed.', icon: PrivacyTipOutlined },
     { to: '/delete-account', title: 'Account deletion', description: 'Your options for closing your account and requesting data deletion.', icon: ManageAccountsOutlined },
   ]
-  const saved = hasCurrentLegalAcceptance(user?.legalAcceptance)
+  const saved = legalAcceptanceCurrent ?? hasCurrentLegalAcceptance(user?.legalAcceptance)
   const surface = { bgcolor: 'var(--neu-surface)', boxShadow: 'var(--neu-raised)', borderRadius: 'var(--shape-card)' }
   return <Box>
     <PageBanner eyebrow="Your account · Your choices" title="Your account agreement" icon={<FactCheckOutlined />}

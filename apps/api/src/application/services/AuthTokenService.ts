@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import * as jwt from 'jsonwebtoken';
 import type { AuthTokens } from '@ubuntu-fund/types';
 import {
@@ -9,6 +10,22 @@ export interface TokenPayload {
   userId: string;
   role: string;
   authVersion?: string;
+  /**
+   * Session id (`sid` claim), stable across refreshes of one sign-in so the
+   * session can be signed out on the server. A new id is minted when absent.
+   */
+  sessionId?: string;
+}
+
+type DecodedToken = jwt.JwtPayload & TokenPayload & { sid?: string };
+
+function toPayload(decoded: DecodedToken): TokenPayload {
+  return {
+    userId: decoded.userId,
+    role: decoded.role,
+    ...(decoded.authVersion !== undefined ? { authVersion: decoded.authVersion } : {}),
+    ...(typeof decoded.sid === 'string' ? { sessionId: decoded.sid } : {}),
+  };
 }
 
 export class AuthTokenService {
@@ -32,7 +49,9 @@ export class AuthTokenService {
   }
 
   generateTokens(payload: TokenPayload, options?: { iatSeconds?: number }): AuthTokens {
-    const claims = options?.iatSeconds ? { ...payload, iat: options.iatSeconds } : payload;
+    const { sessionId, ...rest } = payload;
+    const base = { ...rest, sid: sessionId ?? randomUUID() };
+    const claims = options?.iatSeconds ? { ...base, iat: options.iatSeconds } : base;
     const accessToken = jwt.sign(claims, this.jwtSecret, {
       expiresIn: this.accessTokenTTL as jwt.SignOptions['expiresIn'],
     });
@@ -59,19 +78,32 @@ export class AuthTokenService {
 
   verifyAccessToken(token: string): TokenPayload {
     try {
-      const decoded = jwt.verify(token, this.jwtSecret) as jwt.JwtPayload & TokenPayload;
+      const decoded = jwt.verify(token, this.jwtSecret) as DecodedToken;
       this.assertNotRevoked(decoded);
-      return { userId: decoded.userId, role: decoded.role, ...(decoded.authVersion !== undefined ? { authVersion: decoded.authVersion } : {}) };
+      return toPayload(decoded);
     } catch {
       throw new Error('Invalid or expired access token');
     }
   }
 
+  /**
+   * The session id of a refresh token whose signature is valid, even if it has
+   * expired or been revoked. Used only to sign that session out.
+   */
+  refreshTokenSessionId(token: string): { userId: string; sessionId: string } | null {
+    try {
+      const decoded = jwt.verify(token, this.jwtRefreshSecret, { ignoreExpiration: true }) as DecodedToken;
+      return typeof decoded.sid === 'string' && typeof decoded.userId === 'string' ? { userId: decoded.userId, sessionId: decoded.sid } : null;
+    } catch {
+      return null;
+    }
+  }
+
   verifyRefreshToken(token: string): TokenPayload {
     try {
-      const decoded = jwt.verify(token, this.jwtRefreshSecret) as jwt.JwtPayload & TokenPayload;
+      const decoded = jwt.verify(token, this.jwtRefreshSecret) as DecodedToken;
       this.assertNotRevoked(decoded);
-      return { userId: decoded.userId, role: decoded.role, ...(decoded.authVersion !== undefined ? { authVersion: decoded.authVersion } : {}) };
+      return toPayload(decoded);
     } catch {
       throw new Error('Invalid or expired refresh token');
     }
@@ -83,6 +115,7 @@ export class AuthTokenService {
       userId: payload.userId,
       role: payload.role,
       authVersion: payload.authVersion,
+      sessionId: payload.sessionId,
     });
   }
 }
