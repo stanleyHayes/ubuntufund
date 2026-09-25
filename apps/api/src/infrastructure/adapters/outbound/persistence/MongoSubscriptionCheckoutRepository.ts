@@ -21,6 +21,8 @@ function toDomain(doc: SubscriptionCheckoutDocument): SubscriptionCheckout {
     couponCode: doc.couponCode,
     commissionBase: doc.commissionBase,
     providerRef: doc.providerRef,
+    ...(doc.authorizationUrl ? { authorizationUrl: doc.authorizationUrl } : {}),
+    ...(doc.accessCode ? { accessCode: doc.accessCode } : {}),
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
   };
@@ -61,14 +63,21 @@ export class MongoSubscriptionCheckoutRepository
 
   async setProviderRef(
     id: string,
-    providerRef: string
+    providerRef: string,
+    page: { authorizationUrl?: string; accessCode?: string } = {}
   ): Promise<SubscriptionCheckout | null> {
     // Attaches the charge reference after the checkout is created, so the signed
     // webhook can correlate the settlement back to it (the unique+sparse index
     // guarantees at most one checkout per reference).
     const doc = await SubscriptionCheckoutModel.findByIdAndUpdate(
       id,
-      { $set: { providerRef } },
+      {
+        $set: {
+          providerRef,
+          ...(page.authorizationUrl ? { authorizationUrl: page.authorizationUrl } : {}),
+          ...(page.accessCode ? { accessCode: page.accessCode } : {}),
+        },
+      },
       { new: true }
     );
     return doc ? toDomain(doc) : null;
@@ -106,9 +115,20 @@ export class MongoSubscriptionCheckoutRepository
       status: SubscriptionCheckoutStatus.PENDING,
       createdAt: { $lt: olderThan },
     })
-      .sort({ createdAt: 1 })
+      // Never-visited rows (field absent) sort first, then the least recently
+      // visited: checkouts Paystack keeps in flight, or that keep failing
+      // verification, rotate instead of pinning the head of every sweep.
+      .sort({ reconciledAt: 1, createdAt: 1, _id: 1 })
       .limit(limit);
     return docs.map(toDomain);
+  }
+
+  async recordReconciliationAttempt(id: string, attemptedAt: Date): Promise<void> {
+    await SubscriptionCheckoutModel.updateOne(
+      { _id: id, status: SubscriptionCheckoutStatus.PENDING },
+      { $max: { reconciledAt: attemptedAt } },
+      { timestamps: false }
+    );
   }
 
   async findPendingByUser(userId: string, limit: number): Promise<SubscriptionCheckout[]> {

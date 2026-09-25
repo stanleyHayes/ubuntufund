@@ -1,6 +1,6 @@
 import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGatewayPort.js';
 import type { SettleSubscriptionUseCase } from './SettleSubscriptionUseCase.js';
-import type { SubscriptionCheckout } from '@ubuntu-fund/types';
+import { SubscriptionCheckoutStatus, type SubscriptionCheckout } from '@ubuntu-fund/types';
 import type { SubscriptionCheckoutRepositoryPort } from '../../domain/ports/outbound/SubscriptionCheckoutRepositoryPort.js';
 import type { CouponRedemptionRepositoryPort } from '../../domain/ports/outbound/CouponRedemptionRepositoryPort.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
@@ -47,4 +47,28 @@ export class GetSubscriptionCheckoutUseCase {
     return this.execute(id, userId);
   }
 
+  /**
+   * The member walked away from an unpaid checkout and wants to start over
+   * (another cycle, a coupon). Paystack is asked first: a paid one is settled
+   * and a failed one closed as usual, and one it is still processing is
+   * refused, since cancelling it could lead to paying twice. Otherwise the
+   * checkout expires at once and frees its coupon seat. If the old payment page
+   * is still paid later, that charge still settles (EXPIRED → SUCCEEDED).
+   */
+  async abandon(id: string, userId: string): Promise<SubscriptionCheckout> {
+    const checkout = await this.execute(id, userId);
+    if (checkout.status !== SubscriptionCheckoutStatus.PENDING) return checkout;
+    if (!this.gateway || !this.settle) throw new AppError('Subscription verification unavailable', 503);
+    const outcome = await new SubscriptionCheckoutResolver(
+      this.subscriptionCheckoutRepo, this.gateway, this.settle, this.couponRedemptionRepo
+    ).resolve(checkout, { expireUnpaidAfterMs: 0 });
+    if (outcome === 'pending') {
+      throw new AppError(
+        'This payment is still being processed, so it cannot be cancelled yet. Check its status again in a few minutes.',
+        409,
+        { checkoutId: [id] }
+      );
+    }
+    return this.execute(id, userId);
+  }
 }

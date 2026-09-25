@@ -8,6 +8,7 @@ import {
   SubscriptionTier,
   type CouponRedemption,
   type CreateSubscriptionCheckoutInput,
+  type SubscriptionCheckout,
   type SubscriptionCheckoutResult,
 } from '@ubuntu-fund/types';
 import type { SubscriptionCheckoutRepositoryPort } from '../../domain/ports/outbound/SubscriptionCheckoutRepositoryPort.js';
@@ -33,10 +34,16 @@ const DEFAULT_CURRENCY = 'GHS';
 
 /**
  * A checkout opened less than this long ago may still be paid in the Paystack
- * window the member left open, so a second one is refused rather than risk two
- * charges. Older unpaid (abandoned) checkouts are expired to make way.
+ * window the member left open, so a second charge is not opened over it: the
+ * same request resumes its payment page, and a different one is refused until
+ * the member cancels it (POST /subscriptions/checkout/:id/abandon). Older
+ * unpaid (abandoned) checkouts are expired to make way.
  */
 const OPEN_CHECKOUT_HOLD_MS = 60 * 60 * 1000;
+
+/** Coupon and affiliate codes are matched case-insensitively. */
+const sameCode = (a?: string, b?: string) =>
+  (a?.trim().toUpperCase() || undefined) === (b?.trim().toUpperCase() || undefined);
 
 /**
  * Opens a paid-subscription checkout for the authenticated user — the
@@ -125,8 +132,25 @@ export class CreateSubscriptionCheckoutUseCase {
     }
 
     // ── Never open a second charge over an unresolved or active purchase ──
-    await this.resolveOpenCheckouts(userId);
+    const resumable = await this.resolveOpenCheckouts(userId, input);
     await this.assertCanBuyOverCurrentPlan(userId, tier, plan.name, input.replaceCurrentPlan === true);
+    if (resumable) {
+      // The member backed out of this exact purchase and asked again: send them
+      // back to the payment page they already have instead of a second charge.
+      return {
+        checkout: resumable,
+        authorizationUrl: resumable.authorizationUrl,
+        accessCode: resumable.accessCode,
+        reference: resumable.providerRef,
+        resumed: true,
+        preview: {
+          baseAmount: resumable.baseAmount,
+          discountAmount: resumable.discountAmount,
+          finalAmount: resumable.finalAmount,
+          currency: resumable.currency,
+        },
+      };
+    }
 
     // ── Price it (with a coupon when supplied; 422 propagates on invalid) ──
     let discountAmount = 0;
@@ -316,7 +340,8 @@ export class CreateSubscriptionCheckoutUseCase {
     const withRef =
       (await this.subscriptionCheckoutRepo.setProviderRef(
         checkout.id,
-        init.reference
+        init.reference,
+        { authorizationUrl: init.authorizationUrl, accessCode: init.accessCode }
       )) ?? checkout;
     if (redemption) {
       await this.couponRedemptionRepo.setProviderRef(
@@ -337,16 +362,22 @@ export class CreateSubscriptionCheckoutUseCase {
   /**
    * Settle, fail or expire the member's earlier PENDING checkouts before a new
    * charge opens. A paid one (webhook still in flight) is activated and the new
-   * purchase refused; one that could still be paid — opened within the last hour,
-   * or still processing — refuses the new purchase; an abandoned older one is
-   * expired, freeing its coupon seat.
+   * purchase refused; an abandoned older one is expired, freeing its coupon
+   * seat. One that could still be paid — opened within the last hour, or still
+   * processing — is returned for resuming when it is this same purchase (plan,
+   * cycle and code) with a payment page to go back to; any other open one
+   * refuses the new purchase, naming the checkout so the member can cancel it.
    */
-  private async resolveOpenCheckouts(userId: string): Promise<void> {
+  private async resolveOpenCheckouts(
+    userId: string,
+    input: CreateSubscriptionCheckoutInput
+  ): Promise<SubscriptionCheckout | null> {
     const open = await this.subscriptionCheckoutRepo.findPendingByUser(userId, 5);
-    if (!open.length) return;
+    if (!open.length) return null;
     const resolver = new SubscriptionCheckoutResolver(
       this.subscriptionCheckoutRepo, this.paymentGateway, this.settleSubscriptionUseCase, this.couponRedemptionRepo
     );
+    let resumable: SubscriptionCheckout | null = null;
     for (const checkout of open) {
       let outcome: CheckoutResolution;
       try {
@@ -367,14 +398,22 @@ export class CreateSubscriptionCheckoutUseCase {
           { checkoutId: [checkout.id] }
         );
       }
-      if (outcome === 'pending') {
-        throw new AppError(
-          'You already have a plan payment in progress. Finish it in the payment window, or check its status on your subscription page, before starting another.',
-          409,
-          { checkoutId: [checkout.id] }
-        );
+      if (outcome !== 'pending') continue;
+      const samePurchase = !resumable && !!checkout.authorizationUrl &&
+        checkout.tier === input.tier && checkout.billingCycle === input.billingCycle &&
+        sameCode(checkout.couponCode, input.couponCode);
+      if (samePurchase) {
+        resumable = checkout;
+        continue;
       }
+      throw new AppError(
+        'You already have a plan payment in progress. Finish it in the payment window, or cancel it before starting another.',
+        409,
+        // The code lets the client offer "cancel it and continue" (…/abandon).
+        { checkoutId: [checkout.id], code: ['checkout_in_progress'] }
+      );
     }
+    return resumable;
   }
 
   /**

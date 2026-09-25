@@ -5,8 +5,8 @@ import { BillingCycle, SUBSCRIPTION_PLANS, SubscriptionStatus, SubscriptionTier,
 
 const DAY = 86_400_000
 const state = vi.hoisted(() => ({ subscription: null as unknown, plans: null as unknown, handoff: null as unknown }))
-const { checkout, preview, clear, readCheckout, clearHandoff } = vi.hoisted(() => ({
-  checkout: vi.fn(), preview: vi.fn(), clear: vi.fn(), readCheckout: vi.fn(), clearHandoff: vi.fn(),
+const { checkout, preview, clear, readCheckout, clearHandoff, abandon } = vi.hoisted(() => ({
+  checkout: vi.fn(), preview: vi.fn(), clear: vi.fn(), readCheckout: vi.fn(), clearHandoff: vi.fn(), abandon: vi.fn(),
 }))
 vi.mock('@/lib/seo', () => ({ useSeo: () => {} }))
 vi.mock('@/hooks/useSubscription', () => ({
@@ -16,7 +16,8 @@ vi.mock('@/hooks/useSubscription', () => ({
 vi.mock('@/hooks/useCouponPreview', () => ({ useCouponPreview: () => ({ preview: null, loading: false, error: null, run: preview, clear }) }))
 vi.mock('@/lib/subscriptions', () => ({ readSubscriptionHandoff: () => state.handoff, createSubscriptionCheckout: checkout,
   saveSubscriptionCheckoutHandoff: vi.fn(), isPaymentsNotConfigured: () => false,
-  readSubscriptionCheckout: readCheckout, clearSubscriptionHandoff: clearHandoff }))
+  readSubscriptionCheckout: readCheckout, clearSubscriptionHandoff: clearHandoff, abandonSubscriptionCheckout: abandon,
+  checkoutInProgressId: (err: { inProgress?: string }) => err?.inProgress ?? null }))
 import { SubscriptionPage } from '@/pages/SubscriptionPage'
 
 function subscription(over: Partial<Subscription> = {}): Subscription {
@@ -32,7 +33,7 @@ const planCard = (name: string) => screen.getAllByText(name, { selector: 'p' })
   .map((node) => node.closest('.MuiCard-root') as HTMLElement).find(Boolean)!
 
 beforeEach(() => {
-  checkout.mockReset(); readCheckout.mockReset(); clearHandoff.mockReset()
+  checkout.mockReset(); readCheckout.mockReset(); clearHandoff.mockReset(); abandon.mockReset()
   state.plans = SUBSCRIPTION_PLANS
   state.handoff = null
 })
@@ -156,5 +157,44 @@ describe('returning-from-payment banner', () => {
     mount()
     await waitFor(() => expect(clearHandoff).toHaveBeenCalledWith('checkout-1'))
     expect(screen.queryByText(/Returning from payment\?/)).not.toBeInTheDocument()
+  })
+})
+
+describe('an earlier unpaid checkout blocking a new purchase', () => {
+  const inProgress = Object.assign(new Error('You already have a plan payment in progress.'), { inProgress: 'earlier' })
+
+  it('lets the member cancel the earlier checkout and carry on with this one', async () => {
+    state.subscription = subscription({ tier: SubscriptionTier.FREE })
+    checkout.mockRejectedValueOnce(inProgress).mockResolvedValueOnce({ checkout: { id: 'new' }, preview: { finalAmount: 149, currency: 'GHS' } })
+    abandon.mockResolvedValue({ id: 'earlier', status: 'expired' })
+    mount('/subscription?tier=pro')
+    const dialog = screen.getByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Continue to payment' }))
+    fireEvent.click(await within(dialog).findByRole('button', { name: 'Cancel it and continue' }))
+    await waitFor(() => expect(checkout).toHaveBeenCalledTimes(2))
+    expect(abandon).toHaveBeenCalledWith('earlier')
+    expect(clearHandoff).toHaveBeenCalledWith('earlier')
+  })
+
+  it('reports an earlier payment that went through instead of buying again', async () => {
+    state.subscription = subscription({ tier: SubscriptionTier.FREE })
+    checkout.mockRejectedValueOnce(inProgress)
+    abandon.mockResolvedValue({ id: 'earlier', status: 'succeeded' })
+    mount('/subscription?tier=pro')
+    const dialog = screen.getByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Continue to payment' }))
+    fireEvent.click(await within(dialog).findByRole('button', { name: 'Cancel it and continue' }))
+    expect(await within(dialog).findByText(/earlier plan payment went through/)).toBeInTheDocument()
+    expect(checkout).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows no cancel action for other checkout errors', async () => {
+    state.subscription = subscription({ tier: SubscriptionTier.FREE })
+    checkout.mockRejectedValueOnce(new Error('That subscription plan is not available'))
+    mount('/subscription?tier=pro')
+    const dialog = screen.getByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Continue to payment' }))
+    expect(await within(dialog).findByText('That subscription plan is not available')).toBeInTheDocument()
+    expect(within(dialog).queryByRole('button', { name: 'Cancel it and continue' })).not.toBeInTheDocument()
   })
 })

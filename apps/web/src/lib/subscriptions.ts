@@ -98,6 +98,26 @@ export function getSubscriptionCheckoutStatus(id: string): Promise<SubscriptionC
 }
 
 /**
+ * Cancel the member's own unpaid checkout so they can start over
+ * (`POST /subscriptions/checkout/:id/abandon`). The API checks with Paystack
+ * first: a payment that went through comes back `succeeded`, and one Paystack
+ * is still processing is refused (409) rather than risk a double charge.
+ */
+export function abandonSubscriptionCheckout(id: string): Promise<SubscriptionCheckout> {
+  return api.post<SubscriptionCheckout>(`/subscriptions/checkout/${encodeURIComponent(id)}/abandon`)
+}
+
+/**
+ * The open checkout blocking a new purchase, when the API refused one because
+ * an earlier plan payment is still payable (409 `checkout_in_progress`).
+ */
+export function checkoutInProgressId(err: unknown): string | null {
+  if (!(err instanceof ApiError) || err.status !== 409) return null
+  if (!err.errors?.code?.includes('checkout_in_progress')) return null
+  return err.errors.checkoutId?.[0] ?? null
+}
+
+/**
  * Read a checkout's stored status without contacting the payment provider
  * (`GET /subscriptions/checkout/:id`). Cheap enough for background checks such
  * as deciding whether to show the "returning from payment?" banner.

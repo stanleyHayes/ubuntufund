@@ -18,6 +18,10 @@ export interface SubscriptionCheckoutDocument extends Document {
   couponCode?: string;
   commissionBase?: CouponCommissionBase;
   providerRef?: string;
+  authorizationUrl?: string;
+  accessCode?: string;
+  /** Last reconciliation-sweep visit; orders the sweep so stuck rows rotate. */
+  reconciledAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -53,6 +57,11 @@ const subscriptionCheckoutSchema = new Schema<SubscriptionCheckoutDocument>(
     // Unique + sparse: the signed webhook correlates settlement back to exactly
     // one checkout by this reference.
     providerRef: { type: String, unique: true, sparse: true },
+    // The hosted payment page for this charge, so an unpaid checkout the member
+    // backed out of can be resumed instead of a second charge being opened.
+    authorizationUrl: { type: String },
+    accessCode: { type: String },
+    reconciledAt: { type: Date },
   },
   {
     collection: 'subscriptioncheckouts',
@@ -68,9 +77,9 @@ const subscriptionCheckoutSchema = new Schema<SubscriptionCheckoutDocument>(
   }
 );
 
-// The reconciliation sweep scans stale PENDING checkouts oldest first; checkout
-// creation looks up a member's own PENDING ones.
-subscriptionCheckoutSchema.index({ status: 1, createdAt: 1 });
+// The reconciliation sweep scans stale PENDING checkouts least recently visited
+// first; checkout creation looks up a member's own PENDING ones.
+subscriptionCheckoutSchema.index({ status: 1, reconciledAt: 1, createdAt: 1 });
 subscriptionCheckoutSchema.index({ userId: 1, status: 1, createdAt: -1 });
 
 export const SubscriptionCheckoutModel =

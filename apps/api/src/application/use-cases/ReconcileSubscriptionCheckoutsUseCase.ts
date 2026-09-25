@@ -33,7 +33,8 @@ export interface SubscriptionCheckoutSweepSummary {
  *   - failed → FAILED, coupon seat released;
  *   - still unpaid after 24 hours → EXPIRED, coupon seat released, which also
  *     frees the member to switch billing rail;
- *   - still processing or a transient provider error → left for the next run.
+ *   - still processing or a transient provider error → left for the next run
+ *     (behind rows not visited yet, so a backlog cannot starve newer ones).
  */
 export class ReconcileSubscriptionCheckoutsUseCase {
   private readonly resolver: SubscriptionCheckoutResolver;
@@ -59,6 +60,14 @@ export class ReconcileSubscriptionCheckoutsUseCase {
     const stale = await this.subscriptionCheckoutRepo.findStalePending(cutoff, opts.limit ?? 100);
     summary.scanned = stale.length;
     for (const checkout of stale) {
+      // Stamp the visit first, so a row the provider cannot resolve yet (still
+      // processing, or verification keeps failing) moves behind rows not yet
+      // checked instead of pinning the head of every sweep.
+      try {
+        await this.subscriptionCheckoutRepo.recordReconciliationAttempt(checkout.id, now);
+      } catch (error) {
+        logger.warn({ err: error, checkoutId: checkout.id }, 'subscription checkout reconciliation: could not stamp sweep visit');
+      }
       let outcome: CheckoutResolution;
       try {
         outcome = await this.resolver.resolve(checkout, { expireUnpaidAfterMs: SUBSCRIPTION_CHECKOUT_TTL_MS, now });
