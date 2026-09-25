@@ -10,6 +10,7 @@ import PrivacyRequestsPage from './pages/PrivacyRequestsPage'
 import StoreBillingPage from './pages/StoreBillingPage'
 import RefundOperationsPage from './pages/RefundOperationsPage'
 import RefundRequestsPage from './pages/RefundRequestsPage'
+import PaymentsPage from './pages/PaymentsPage'
 import RouteErrorPage from './components/RouteErrorPage'
 import type { ReactNode } from 'react'
 import { createBrowserRouter } from 'react-router-dom'
@@ -108,6 +109,7 @@ export const router = createBrowserRouter([
       { path: 'store-billing', element: <RequirePermission resource={Resource.SUBSCRIPTIONS}><StoreBillingPage /></RequirePermission> },
       { path: 'refund-recovery', element: <RequirePermission resource={Resource.DONATIONS}><RefundOperationsPage /></RequirePermission> },
       { path: 'refund-requests', element: <RequirePermission resource={Resource.DONATIONS}><RefundRequestsPage /></RequirePermission> },
+      { path: 'payments', element: <RequirePermission resource={Resource.DONATIONS}><PaymentsPage /></RequirePermission> },
       { path: 'plans', element: <RequirePermission resource={Resource.PLANS}><ManagePlansPage /></RequirePermission> },
       { path: 'coupons/new', element: <RequirePermission resource={Resource.COUPONS} action={Action.CREATE}><CreateCouponPage /></RequirePermission> },
       { path: 'coupons', element: <RequirePermission resource={Resource.COUPONS}><CouponsPage /></RequirePermission> },

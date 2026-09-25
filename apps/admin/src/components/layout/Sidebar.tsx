@@ -17,6 +17,7 @@ import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded'
 import WorkspacePremiumRoundedIcon from '@mui/icons-material/WorkspacePremiumRounded'
 import GavelRoundedIcon from '@mui/icons-material/GavelRounded'
 import FlagRoundedIcon from '@mui/icons-material/FlagRounded'
+import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded'
 import AssignmentReturnRoundedIcon from '@mui/icons-material/AssignmentReturnRounded'
 import VerifiedUserRoundedIcon from '@mui/icons-material/VerifiedUserRounded'
 import BadgeRoundedIcon from '@mui/icons-material/BadgeRounded'
@@ -75,6 +76,7 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Wallets', path: '/wallets', icon: <AccountBalanceWalletRoundedIcon /> },
       { label: 'Donations', path: '/donations', icon: <VolunteerActivismRoundedIcon /> },
       { label: 'Payouts', path: '/payouts', icon: <PaymentsRoundedIcon /> },
+      { label: 'Payments', path: '/payments', icon: <ReceiptLongRoundedIcon /> },
       { label: 'Refund requests', path: '/refund-requests', icon: <AssignmentReturnRoundedIcon /> },
       { label: 'Refund recovery', path: '/refund-recovery', icon: <PaymentsRoundedIcon /> },
       { label: 'Subscriptions', path: '/subscriptions', icon: <WorkspacePremiumRoundedIcon /> },

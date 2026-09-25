@@ -133,7 +133,7 @@ export default function CampaignDetailPage() {
           tone="gold"
           eyebrow="Community · Campaign"
           title={campaign.title}
-          lede="Review this campaign's progress, moderate its status, and manage collaborators and refunds."
+          lede="Review this campaign's progress, moderate its status, and see its donations and collaborators. Refunds are handled from Payments and Refund requests."
           icon={<RocketLaunchRoundedIcon />}
           stats={[
             { label: 'Status / Priority', value: `${campaign.status.replace('_', ' ').toUpperCase()} / ${campaign.priority.toUpperCase()}` },
