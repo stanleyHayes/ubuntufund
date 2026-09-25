@@ -73,6 +73,7 @@ import { MongoReportRepository } from './infrastructure/adapters/outbound/persis
 import { MongoAdminReportRepository } from './infrastructure/adapters/outbound/persistence/MongoAdminReportRepository.js'
 import { MongoLeaderboardRepository } from './infrastructure/adapters/outbound/persistence/MongoLeaderboardRepository.js'
 import { MongoNotificationRepository } from './infrastructure/adapters/outbound/persistence/MongoNotificationRepository.js'
+import { MongoStaffDecisionNotifier } from './infrastructure/adapters/outbound/persistence/MongoStaffDecisionNotices.js'
 import { MongoOrganizationRepository } from './infrastructure/adapters/outbound/persistence/MongoOrganizationRepository.js'
 import { MongoRefundRepository } from './infrastructure/adapters/outbound/persistence/MongoRefundRepository.js'
 import { MongoKYCRepository } from './infrastructure/adapters/outbound/persistence/MongoKYCRepository.js'
@@ -1284,7 +1285,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
   const getDisputeUseCase = new GetDisputeUseCase(disputeRepo, campaignRepo, userRepo)
   const resolveDisputeUseCase = new ResolveDisputeUseCase(disputeRepo)
   const listReportsUseCase = new ListReportsUseCase(adminReportRepo, campaignRepo)
-  const reviewReportUseCase = new ReviewReportUseCase(adminReportRepo)
+  const reviewReportUseCase = new ReviewReportUseCase(adminReportRepo, new MongoStaffDecisionNotifier())
   const reviewCampaignUseCase = new ReviewCampaignUseCase(new MongoCampaignReview())
   const listUsersUseCase = new ListUsersUseCase(adminUserRepo)
   const getAdminUserUseCase = new GetAdminUserUseCase(adminUserRepo)

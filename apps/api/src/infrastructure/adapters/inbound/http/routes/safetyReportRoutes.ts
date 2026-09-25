@@ -5,6 +5,7 @@ import { DonationModel } from '../../../../database/models/DonationModel.js';
 import { createHash } from 'node:crypto';
 import { CampaignUpdateModel } from '../../../../database/models/CampaignUpdateModel.js';
 import { MongoUnitOfWork } from '../../../outbound/persistence/MongoUnitOfWork.js';
+import { recordStaffDecisionNotice, safetyReportNotices } from '../../../outbound/persistence/MongoStaffDecisionNotices.js';
 import { CampaignStatus } from '@ubuntu-fund/types';
 import { AiUsageModel } from '../../../../database/models/AiUsageModel.js';
 import { TipModel } from '../../../../database/models/TipModel.js';
@@ -165,6 +166,11 @@ export function createAdminSafetyReportRoutes(auth: RequestHandler, admin: Reque
       await AuditLogModel.create({ actorId: req.userId, actorRole: req.userRole, action: `safety.${action}`, resource: `safety-report:${report.id}`, details: notes, method: 'PUT', path: req.originalUrl, statusCode: 200 });
       const status = action === 'dismiss' ? 'dismissed' : 'resolved';
       await SafetyReportModel.updateOne({ _id: report.id, status: 'pending', reviewAction: action }, { $set: { status, resolution: action, reviewedAt: new Date() } });
+      // Outcome notices are best-effort: the decision is already recorded, and
+      // deterministic ids keep a retried review from notifying twice.
+      for (const notice of safetyReportNotices({ reportId: report.id, reporterId: report.reporterId, targetUserId: report.targetUserId ?? undefined, action })) {
+        await recordStaffDecisionNotice(notice).catch(() => undefined);
+      }
       res.set('Cache-Control', 'no-store').json({ data: { id: report.id, status } });
     } catch (error) { next(error); }
   });

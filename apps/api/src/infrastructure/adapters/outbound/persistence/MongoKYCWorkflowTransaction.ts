@@ -2,6 +2,7 @@ import { lockPrivateKycDocuments } from './lockPrivateKycDocuments.js';
 import { kycReviewVersion } from '../../../../application/services/kycReviewVersion.js';
 import { toKYCRecord } from './MongoKYCRepository.js';
 import { MongoUnitOfWork } from './MongoUnitOfWork.js';
+import { kycDecisionNotice, recordStaffDecisionNotice } from './MongoStaffDecisionNotices.js';
 import { UserModel } from '../../../database/models/UserModel.js';
 import { KYCVerificationModel } from '../../../database/models/KYCVerificationModel.js';
 import { AuditLogModel } from '../../../database/models/AuditLogModel.js';
@@ -34,6 +35,10 @@ export class MongoKYCWorkflowTransaction {
       if (decision === 'approved') await lockPrivateKycDocuments(record.userId, record.documents);
       const result = await work();
       await AuditLogModel.create({ actorId: adminId, actorRole: 'admin', action: `kyc.${decision}`, resource: id, details: `KYC ${record.verificationType} decision; reviewed version ${reviewVersion}${decision === 'approved' ? '; staff attested evidence review' : ''}`, method: 'PUT', path: `/kyc/:id/${decision === 'approved' ? 'approve' : decision === 'rejected' ? 'reject' : 'request-info'}`, statusCode: 200 });
+      // The applicant hears about the decision only if it commits.
+      const decided = await KYCVerificationModel.findById(id).select('rejectionReason').lean();
+      await recordStaffDecisionNotice(kycDecisionNotice({ kycId: id, userId: record.userId, verificationType: record.verificationType, version: reviewVersion,
+        decision, rejectionReason: decision === 'rejected' ? decided?.rejectionReason : undefined }));
       return result;
     });
   }

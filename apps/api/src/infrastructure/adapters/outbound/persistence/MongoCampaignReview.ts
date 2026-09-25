@@ -12,6 +12,7 @@ import { AuditLogModel } from '../../../database/models/AuditLogModel.js';
 import { AppError } from '../../inbound/middleware/errorHandler.js';
 import { MongoCampaignRepository } from './MongoCampaignRepository.js';
 import { MongoUnitOfWork } from './MongoUnitOfWork.js';
+import { campaignDecisionNotice, recordStaffDecisionNotice } from './MongoStaffDecisionNotices.js';
 
 export class MongoCampaignReview implements CampaignReviewPort {
   async decide(input: ReviewCampaignInput) {
@@ -71,6 +72,9 @@ export class MongoCampaignReview implements CampaignReviewPort {
         details: `Campaign version ${input.expectedVersion} reviewed`, reason: input.reason,
         changes: [{ field: 'status', before: campaign.status, after: afterStatus }],
         severity: input.action === 'approve' ? 'info' : 'warning', method: 'PUT', path: '/campaigns/:id/review', statusCode: 200 });
+      // Tell the organizer in the same transaction, so a rolled-back decision sends nothing.
+      await recordStaffDecisionNotice(campaignDecisionNotice({ campaignId: campaign.id, title: campaign.title, ownerId: campaign.creatorId,
+        version: input.expectedVersion, action: input.action }));
       return (await repo.findById(campaign.id))!;
     });
   }
