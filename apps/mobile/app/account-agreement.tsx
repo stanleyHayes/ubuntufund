@@ -8,6 +8,7 @@ import { useAuth } from '@/context/AuthContext'
 import { usePalette } from '@/context/ColorModeContext'
 import { api } from '@/lib/api'
 import { establishSession, sessionSnapshot } from '@/lib/session'
+import { signInHref } from '@/navigation/returnTo'
 export default function AccountAgreement() {
   const { user, isAuthenticated } = useAuth()
   const p = usePalette()
@@ -28,7 +29,7 @@ export default function AccountAgreement() {
     <Text accessibilityRole="header" style={{ color: p.text, fontSize: 26, fontFamily: 'Outfit_700Bold' }}>Your account agreement</Text>
     <Text style={{ color: p.textSecondary }}>Review the rules for using Ujimora and sharing content. Marketing and notifications are separate choices. You can still read policies, manage eligible funds or request deletion without accepting.</Text>
     {([['/terms', 'Terms of Use'], ['/acceptable-use', 'Acceptable Use'], ['/privacy', 'Privacy Notice'], ['/delete-account', 'Delete account']] as const).map(([path, label]) => <Button key={path} onPress={() => router.push(path as Href)}>{label}</Button>)}
-    {!isAuthenticated ? <Button onPress={() => router.push('/(auth)/login')}>Sign in to review your agreement</Button> : hasCurrentLegalAcceptance(user?.legalAcceptance) ? <Text style={{ color: p.text }}>Your agreement has been saved.</Text> : <>
+    {!isAuthenticated ? <Button onPress={() => router.push(signInHref('/account-agreement'))}>Sign in to review your agreement</Button> : hasCurrentLegalAcceptance(user?.legalAcceptance) ? <Text style={{ color: p.text }}>Your agreement has been saved.</Text> : <>
       {!!error && <Text accessibilityRole="alert" style={{ color: p.error }}>{error}</Text>}
       <Checkbox.Item label="I agree to the Terms of Use and Acceptable Use Policy and have read the Privacy Notice." status={acceptedTerms ? 'checked' : 'unchecked'} onPress={() => setAcceptedTerms(!acceptedTerms)} labelStyle={{ color: p.text }} />
       <Checkbox.Item label="I confirm that I am at least 18 years old." status={ageConfirmed ? 'checked' : 'unchecked'} onPress={() => setAgeConfirmed(!ageConfirmed)} labelStyle={{ color: p.text }} />

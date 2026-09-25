@@ -1,5 +1,7 @@
-import { describe, expect, it } from 'vitest'
-import { afterSignIn, currentHref, safeReturnTo, signInHref } from '../returnTo'
+import { describe, expect, it, vi } from 'vitest'
+const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), dismissTo: vi.fn() }))
+vi.mock('expo-router', () => ({ router }))
+import { completeSignIn, currentHref, safeReturnTo, signInHref } from '../returnTo'
 
 describe('post-sign-in destination', () => {
   it('accepts in-app paths with their query parameters', () => {
@@ -18,13 +20,19 @@ describe('post-sign-in destination', () => {
     expect(signInHref('/my-refunds')).toEqual({ pathname: '/(auth)/login', params: { returnTo: '/my-refunds' } })
     expect(signInHref('https://evil.com')).toBe('/(auth)/login')
     expect(signInHref()).toBe('/(auth)/login')
-    expect(afterSignIn('/wallet')).toBe('/wallet')
-    expect(afterSignIn('//evil.com')).toBe('/(tabs)')
+    completeSignIn('/wallet')
+    expect(router.dismissTo).toHaveBeenCalledWith('/wallet')
+    completeSignIn('//evil.com')
+    completeSignIn(undefined)
+    expect(router.replace).toHaveBeenCalledTimes(2)
+    expect(router.replace).toHaveBeenCalledWith('/(tabs)')
+    expect(router.dismissTo).toHaveBeenCalledTimes(1)
   })
 
   it('serializes the current route and its search params', () => {
     expect(currentHref('/refund-request', { donationId: 'abc', empty: undefined })).toBe('/refund-request?donationId=abc')
     expect(currentHref('/wallet')).toBe('/wallet')
     expect(currentHref('/x', { tag: ['a', 'b'] })).toBe('/x?tag=a&tag=b')
+    expect(currentHref('/campaign/abc', { id: 'abc', tab: 'updates' }, ['campaign', '[id]'])).toBe('/campaign/abc?tab=updates')
   })
 })

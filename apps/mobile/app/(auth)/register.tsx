@@ -19,6 +19,7 @@ import {
 import { useAuth } from '@/context/AuthContext'
 import { UjimoraLogo } from '@/components/UjimoraLogo'
 import { PasswordStrength } from '@/components/PasswordStrength'
+import { completeSignIn, safeReturnTo } from '@/navigation/returnTo'
 
 type AccountType = 'individual' | 'organization'
 
@@ -55,7 +56,8 @@ export default function RegisterScreen() {
   // Mobile previously captured no referral at all, so every install-then-signup
   // was unattributed. A ?ref= deep link seeds the field; it stays editable for
   // codes shared by word of mouth or on a flyer.
-  const { ref: refParam } = useLocalSearchParams<{ ref?: string }>()
+  const { ref: refParam, returnTo: returnToParam } = useLocalSearchParams<{ ref?: string; returnTo?: string }>()
+  const returnTo = safeReturnTo(returnToParam)
   const [referralCode, setReferralCode] = useState(
     typeof refParam === 'string' ? refParam.trim() : ''
   )
@@ -81,7 +83,7 @@ export default function RegisterScreen() {
     setLoading(true)
     try {
       await register(payload as Parameters<typeof register>[0])
-      router.replace('/(tabs)')
+      completeSignIn(returnTo)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed. Please try again.')
     } finally {
@@ -375,7 +377,7 @@ export default function RegisterScreen() {
 
           <View style={styles.footer}>
             <Text style={styles.footerText}>Already have an account? </Text>
-            <Link href="/(auth)/login">
+            <Link href={returnTo ? { pathname: '/(auth)/login', params: { returnTo } } : '/(auth)/login'}>
               <Text style={styles.footerLink}>Sign In</Text>
             </Link>
           </View>

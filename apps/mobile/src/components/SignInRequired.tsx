@@ -3,7 +3,8 @@ import { useMemo } from 'react'
 import { View, StyleSheet } from 'react-native'
 import type { StyleProp, ViewStyle } from 'react-native'
 import { Text, Icon } from 'react-native-paper'
-import { router } from 'expo-router'
+import { router, useGlobalSearchParams, usePathname, useSegments } from 'expo-router'
+import { currentHref, signInHref } from '@/navigation/returnTo'
 import { usePalette } from '@/context/ColorModeContext'
 import type { Palette } from '@/theme'
 
@@ -56,6 +57,10 @@ export function SignInRequired({ what, title = 'Sign in to continue', message, s
   const p = usePalette()
   const styles = useStyles()
   const body = message ?? (what ? `Sign in to view your ${what}.` : 'Sign in to access this page.')
+  // Remember this screen (and its query, e.g. ?donationId=) so sign-in returns here.
+  const pathname = usePathname()
+  const params = useGlobalSearchParams<Record<string, string | string[]>>()
+  const segments = useSegments()
   return (
     <View style={[styles.wrap, style]}>
       <View style={styles.iconTile}>
@@ -68,7 +73,7 @@ export function SignInRequired({ what, title = 'Sign in to continue', message, s
         buttonColor={p.primary}
         textColor="#FFFFFF"
         icon="login"
-        onPress={() => router.push('/(auth)/login')}
+        onPress={() => router.push(signInHref(currentHref(pathname, params, segments)))}
         style={styles.btn}
         contentStyle={styles.btnContent}
         labelStyle={styles.btnLabel}

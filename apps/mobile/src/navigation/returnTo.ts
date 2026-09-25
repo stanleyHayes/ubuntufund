@@ -1,3 +1,5 @@
+import { router } from 'expo-router'
+
 const RETURN_TO_MAX = 512
 
 /**
@@ -16,10 +18,16 @@ export function safeReturnTo(value: unknown): string | null {
   return candidate
 }
 
-/** Serialize a route path plus its search params into a returnTo value. */
-export function currentHref(pathname: string, params: Record<string, string | string[] | undefined> = {}): string {
+/**
+ * Serialize the current route into a returnTo value. `segments` (from
+ * useSegments) lets route params such as `[id]`, which are already part of the
+ * pathname, be left out of the query string.
+ */
+export function currentHref(pathname: string, params: Record<string, string | string[] | undefined> = {}, segments: readonly string[] = []): string {
+  const routeKeys = new Set(segments.filter(s => /^\[.+\]$/.test(s)).map(s => s.replace(/^\[(\.\.\.)?/, '').replace(/\]$/, '')))
   const query = new URLSearchParams()
   for (const [key, value] of Object.entries(params)) {
+    if (routeKeys.has(key)) continue
     for (const item of Array.isArray(value) ? value : [value]) if (item !== undefined) query.append(key, item)
   }
   const search = query.toString()
@@ -32,7 +40,13 @@ export function signInHref(returnTo?: string | null) {
   return target ? { pathname: '/(auth)/login' as const, params: { returnTo: target } } : '/(auth)/login' as const
 }
 
-/** Where to go once signed in: the saved destination, or the Home tab. */
-export function afterSignIn(returnTo: unknown): string {
-  return safeReturnTo(returnTo) ?? '/(tabs)'
+/**
+ * Leave the sign-in screens once signed in: back to the saved destination
+ * (popping the sign-in screens off the stack when that screen is still under
+ * them), or the Home tab when there is none.
+ */
+export function completeSignIn(returnTo: unknown) {
+  const target = safeReturnTo(returnTo)
+  if (target) router.dismissTo(target)
+  else router.replace('/(tabs)')
 }
