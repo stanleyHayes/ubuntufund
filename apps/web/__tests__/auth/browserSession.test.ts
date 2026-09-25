@@ -79,3 +79,45 @@ describe('server-side sign-out', () => {
     expect(fetch).not.toHaveBeenCalled()
   })
 })
+describe('device clock skew', () => {
+  const MIN = 60000
+  // A token as the API issues it: iat and exp in server time.
+  const issued = (serverNow: number) => `header.${btoa(JSON.stringify({ iat: Math.floor(serverNow / 1000), exp: Math.floor(serverNow / 1000) + 15 * 60 }))}.signature`
+  it.each([['behind', -20], ['ahead', 20]])('renews about a minute before server expiry when the device clock is %s', async (_label, skewMinutes) => {
+    // Server time is the device time minus the skew.
+    const token = issued(Date.now() - skewMinutes * MIN)
+    localStorage.setItem('tokens', JSON.stringify({ accessToken: token, refreshToken: 'refresh' }))
+    const fetch = vi.fn(async () => new Response(JSON.stringify({ data: { accessToken: 'renewed', refreshToken: 'next' } })))
+    vi.stubGlobal('fetch', fetch)
+    expect(await session.ensureAccessToken()).toBe(token)
+    vi.setSystemTime(Date.now() + 13 * MIN); session.resetActivity()
+    expect(await session.ensureAccessToken()).toBe(token)
+    expect(fetch).not.toHaveBeenCalled()
+    vi.setSystemTime(Date.now() + 90000); session.resetActivity()
+    expect(await session.ensureAccessToken()).toBe('renewed')
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+  it('forces one shared renewal after a 401 and signs out only when the renewal is refused', async () => {
+    const token = session.accessToken()!
+    const expired = vi.fn()
+    window.addEventListener('expired', expired)
+    let finish!: (response: Response) => void
+    const fetch = vi.fn(() => new Promise<Response>(resolve => { finish = resolve }))
+    vi.stubGlobal('fetch', fetch)
+    const both = Promise.all([session.forceRefresh(token), session.forceRefresh(token)])
+    finish(new Response(JSON.stringify({ data: { accessToken: 'renewed', refreshToken: 'next' } })))
+    expect(await both).toEqual(['renewed', 'renewed'])
+    expect(fetch).toHaveBeenCalledTimes(1)
+    // A late 401 for the old token returns the already-renewed one without refreshing.
+    expect(await session.forceRefresh(token)).toBe('renewed')
+    expect(fetch).toHaveBeenCalledTimes(1)
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('offline') }))
+    await expect(session.forceRefresh('renewed')).rejects.toThrow()
+    expect(session.accessToken()).toBe('renewed')
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 401 })))
+    expect(await session.forceRefresh('renewed')).toBeNull()
+    expect(session.accessToken()).toBeNull()
+    expect(expired).toHaveBeenCalledTimes(1)
+    window.removeEventListener('expired', expired)
+  })
+})

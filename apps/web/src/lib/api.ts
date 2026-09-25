@@ -28,10 +28,24 @@ class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
+/**
+ * The API rejected a session token with 401. It may only look valid here
+ * because the device clock is off, so renew once before giving up. Resolves to
+ * the new token, or null when the session has ended (already expired locally).
+ */
+async function renewAfter401(token: string): Promise<string | null> {
+  try {
+    return await browserSession.forceRefresh(token)
+  } catch {
+    // A network failure while renewing is not a sign-out.
+    throw new ApiError(0, 'Unable to renew your session. Check your connection and try again.')
+  }
+}
+
+async function request<T>(path: string, options: ApiOptions = {}, retried = false): Promise<T> {
   const { token: suppliedToken, headers: customHeaders, ...fetchOptions } = options
-  const token = suppliedToken && suppliedToken === storedAccessToken()
-    ? await browserSession.ensureAccessToken() : suppliedToken
+  const managed = !!suppliedToken && suppliedToken === storedAccessToken()
+  const token = managed ? await browserSession.ensureAccessToken() : suppliedToken
   if (suppliedToken && !token) throw new ApiError(401, 'Your session has expired. Please sign in again.')
 
   const headers: Record<string, string> = {
@@ -65,6 +79,10 @@ async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
 
   if (!res.ok) {
     signalAgreementRequired(res.status)
+    if (res.status === 401 && managed && token && !retried) {
+      const renewed = await renewAfter401(token)
+      if (renewed && renewed !== token) return request<T>(path, { ...options, token: renewed }, true)
+    }
     if (res.status === 401 && token) expireSession(token)
     const errorBody = data && typeof data === 'object' ? data as { error?: string; message?: string } : null
     const fallback = res.status === 401
@@ -87,7 +105,7 @@ async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
 // Responses are expected to follow { data: T, ... } – the client unwraps `.data`.
 // ---------------------------------------------------------------------------
 
-async function authedRequest<T>(path: string, options?: RequestInit): Promise<T> {
+async function authedRequest<T>(path: string, options?: RequestInit, retried = false): Promise<T> {
   const hadToken = storedAccessToken()
   const token = await browserSession.ensureAccessToken()
   if (hadToken && !token) throw new ApiError(401, 'Your session has expired. Please sign in again.')
@@ -102,6 +120,11 @@ async function authedRequest<T>(path: string, options?: RequestInit): Promise<T>
     headers: { ...headers, ...(options?.headers as Record<string, string>) },
   })
 
+  if (res.status === 401 && token && !retried) {
+    // Renew once and retry before treating the 401 as a sign-out.
+    const renewed = await renewAfter401(token)
+    if (renewed && renewed !== token) return authedRequest<T>(path, options, true)
+  }
   if (!res.ok) {
     signalAgreementRequired(res.status)
     // Any 401 on an authed request means this session can no longer act — expire
