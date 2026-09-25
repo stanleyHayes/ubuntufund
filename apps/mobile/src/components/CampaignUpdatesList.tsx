@@ -2,13 +2,15 @@ import { TouchableOpacity } from '@/components/RoundedControls'
 import { ReportContent } from '@/components/ReportContent'
 import { useAuth } from '@/context/AuthContext'
 import { Chip } from '@/components/Chip'
-import { SkeletonLoader } from '@/components/Loading'
+import { Button, SkeletonLoader } from '@/components/Loading'
 import { useState, useCallback, useMemo } from 'react'
 import { usePublicRead } from '@/hooks/usePublicRead'
-import { View, ScrollView, StyleSheet } from 'react-native'
+import { View, ScrollView, StyleSheet, Alert } from 'react-native'
 import { Text, Avatar, Icon, Surface } from 'react-native-paper'
 import type { CampaignUpdate } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
+import { deleteCampaignUpdate, toggleCampaignUpdatePin } from '@/lib/campaignUpdates'
+import { CampaignUpdateComposer } from '@/components/CampaignUpdateComposer'
 import { EmptyState } from '@/components/EmptyState'
 import { RemoteImage } from '@/components/RemoteImage'
 import { FadeInUp } from '@/components/anim/FadeInUp'
@@ -125,7 +127,7 @@ interface CampaignUpdatesListProps {
   isCreator?: boolean
 }
 
-export function CampaignUpdatesList({ campaignId }: CampaignUpdatesListProps) {
+export function CampaignUpdatesList({ campaignId, isCreator = false }: CampaignUpdatesListProps) {
   const { user } = useAuth()
   const p = usePalette()
   const styles = useStyles()
@@ -141,8 +143,27 @@ export function CampaignUpdatesList({ campaignId }: CampaignUpdatesListProps) {
     const response = await api.get<{ items: CampaignUpdate[] }>(`/campaigns/${campaignId}/updates`)
     return response.items ?? []
   }, [campaignId])
-  const { data, loading: isLoading, error } = usePublicRead(`updates:${campaignId}`, fetchUpdates)
+  const { data, loading: isLoading, error, refresh } = usePublicRead(`updates:${campaignId}`, fetchUpdates)
   const updates = data ?? []
+  // Owner actions (post, pin/unpin, delete); the API enforces ownership too.
+  const [actionBusy, setActionBusy] = useState<string | null>(null)
+  const [actionError, setActionError] = useState('')
+  async function runAction(updateId: string, action: () => Promise<unknown>) {
+    setActionBusy(updateId); setActionError('')
+    try { await action(); refresh() }
+    catch (e) { setActionError(e instanceof Error ? e.message : 'Could not change this update. Please try again.') }
+    finally { setActionBusy(null) }
+  }
+  function confirmDelete(updateId: string) {
+    Alert.alert('Delete update?', 'This removes the update for everyone.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => void runAction(updateId, () => deleteCampaignUpdate(campaignId, updateId)) },
+    ])
+  }
+  const ownerTools = isCreator ? <View style={{ paddingHorizontal: 16, paddingTop: 8, gap: 6 }}>
+    <CampaignUpdateComposer campaignId={campaignId} onPosted={refresh} />
+    {!!actionError && <Text accessibilityRole="alert" style={{ color: p.error }}>{actionError}</Text>}
+  </View> : null
 
   const toggleExpand = (id: string) => {
     setExpandedIds((prev) => {
@@ -171,16 +192,21 @@ export function CampaignUpdatesList({ campaignId }: CampaignUpdatesListProps) {
 
   if (updates.length === 0) {
     return (
-      <EmptyState
-        style={styles.updatesEmpty}
-        icon="bell-outline"
-        title="No updates yet"
-        subtitle="Check back soon for news from the campaign creator."
-      />
+      <>
+        {ownerTools}
+        <EmptyState
+          style={styles.updatesEmpty}
+          icon="bell-outline"
+          title="No updates yet"
+          subtitle={isCreator ? 'Share an update to let your supporters know how the campaign is progressing.' : 'Check back soon for news from the campaign creator.'}
+        />
+      </>
     )
   }
 
   return (
+    <>
+    {ownerTools}
     <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
       {updates.map((update, i) => {
         const typeStyle = typeColors[update.type] ?? typeColors.general
@@ -232,6 +258,13 @@ export function CampaignUpdatesList({ campaignId }: CampaignUpdatesListProps) {
               </TouchableOpacity>
             )}
 
+            {isCreator && (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+                <Button icon={update.isPinned ? 'pin-off-outline' : 'pin-outline'} disabled={actionBusy !== null} onPress={() => void runAction(update.id, () => toggleCampaignUpdatePin(campaignId, update.id))}>{update.isPinned ? 'Unpin' : 'Pin'}</Button>
+                <Button icon="delete-outline" textColor={p.error} disabled={actionBusy !== null} onPress={() => confirmDelete(update.id)}>Delete</Button>
+              </View>
+            )}
+
             {update.mediaUrls.length > 0 && (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mediaScroll}>
                 {update.mediaUrls.map((url, mi) => (
@@ -245,5 +278,6 @@ export function CampaignUpdatesList({ campaignId }: CampaignUpdatesListProps) {
       })}
       <View style={{ height: 16 }} />
     </ScrollView>
+    </>
   )
 }

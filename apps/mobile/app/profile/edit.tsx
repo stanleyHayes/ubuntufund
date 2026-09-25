@@ -18,6 +18,7 @@ import { MediaUploadField } from '@/components/MediaUploadField'
 import { BrandedTextInput as TextInput } from '@/components/BrandedTextInput'
 import { SelectionField } from '@/components/SelectionField'
 import { Button, PageSkeleton } from '@/components/Loading'
+import { KeyboardAvoider } from '@/components/KeyboardAvoider'
 interface Profile { name: string; phone: string; bio: string; country: string; avatarUrl: string; coverUrl: string }
 export default function EditProfile() {
   const { user } = useAuth()
@@ -86,7 +87,7 @@ function EditProfileForViewer() {
     catch (e) { setError(e instanceof Error ? e.message : 'Could not update password.') } finally { setBusy(false) }
   }
   if (!profile && !error) return <PageSkeleton />
-  return <View style={{ flex: 1, backgroundColor: p.background }}><Stack.Screen options={{ title: 'Edit profile' }} /><ScrollView automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 20, gap: 20, paddingBottom: 60 }}>
+  return <View style={{ flex: 1, backgroundColor: p.background }}><Stack.Screen options={{ title: 'Edit profile' }} /><KeyboardAvoider><ScrollView automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 20, gap: 20, paddingBottom: 60 }}>
     {profile ? <>
       <View style={{ gap: 6 }}>
         <Text variant="headlineMedium" style={{ color: p.text, fontFamily: 'Outfit_700Bold' }}>Make it yours</Text>
@@ -129,5 +130,5 @@ function EditProfileForViewer() {
       </View>
     </> : <Button onPress={() => setRetry(n => n + 1)}>Retry loading profile</Button>}
   <OrganizationIdentityEditor />
-  </ScrollView><Snackbar visible={!!error || !!notice} duration={error ? Infinity : 4000} onDismiss={() => { setError(''); setNotice('') }} action={{ label: 'Dismiss', onPress: () => { setError(''); setNotice('') } }}>{error || notice}</Snackbar></View>
+  </ScrollView></KeyboardAvoider><Snackbar visible={!!error || !!notice} duration={error ? Infinity : 4000} onDismiss={() => { setError(''); setNotice('') }} action={{ label: 'Dismiss', onPress: () => { setError(''); setNotice('') } }}>{error || notice}</Snackbar></View>
 }

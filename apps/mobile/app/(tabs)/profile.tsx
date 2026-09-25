@@ -14,6 +14,7 @@ import type { Palette, NeuRecipes } from '@/theme'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
 import { profileStatTiles, type ProfileMoneyStats } from '@/lib/profileStats'
+import { formatMoney } from '@/lib/money'
 
 
 interface ProfileStats extends ProfileMoneyStats {

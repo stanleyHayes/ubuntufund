@@ -10,6 +10,8 @@ import { LiveVideo } from '@/components/LiveVideo'
 import { Button, PageSkeleton } from '@/components/Loading'
 import { sessionGoalLine } from '@/lib/fundraising'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
+import { webUrl } from '@/lib/fundraising'
+import { formatMoney } from '@/lib/money'
 
 export default function WatchLive() {
   const { sessionId } = useLocalSearchParams<{ sessionId: string }>()
@@ -32,10 +34,10 @@ export default function WatchLive() {
     {!session && !error && !blocked && <PageSkeleton />}
     {session && !blocked && <>{session.creatorId && <UserSafetyControls userId={session.creatorId} liveSessionId={session.id} onBlocked={() => { setBlockedSessionId(session.id); setSession(null) }} />}<Text variant="headlineMedium">{session.title || 'Live on Ujimora'}</Text>
       {session.status === 'active' ? <LiveVideo sessionId={session.id} /> : <Text>This broadcast has ended. You can still support the campaign.</Text>}
-      <View style={{ ...neu.raised, backgroundColor: p.surface, padding: 20, borderRadius: 24, gap: 12 }}><Text>Together, during this broadcast</Text>{session.amountRaised !== null && <Text variant="headlineMedium">{session.currency || 'GHS'} {session.amountRaised.toLocaleString()}</Text>}<Text>{session.successfulDonations} donations</Text>{sessionGoalLine(session) ? <Text>{sessionGoalLine(session)}</Text> : null}</View>
+      <View style={{ ...neu.raised, backgroundColor: p.surface, padding: 20, borderRadius: 24, gap: 12 }}><Text>Together, during this broadcast</Text>{session.amountRaised !== null && <Text variant="headlineMedium">{formatMoney(session.amountRaised, session.currency)}</Text>}<Text>{session.successfulDonations} donations</Text>{sessionGoalLine(session) ? <Text>{sessionGoalLine(session)}</Text> : null}</View>
       <Button mode="contained" onPress={() => router.push({ pathname: '/donate/[id]', params: { id: session.campaignId, ...(session.status === 'active' ? { liveSessionId: session.id } : {}) } })}>Support this campaign</Button>
       <Button onPress={() => router.push(`/campaign/${session.campaignId}`)}>View campaign</Button>
-      <Button icon="share-variant" onPress={() => void Share.share({ message: `https://app.ujimora.com/live/${session.id}` })}>Share broadcast</Button>
+      <Button icon="share-variant" onPress={() => void Share.share({ message: webUrl(`/live/${encodeURIComponent(session.id)}`) })}>Share broadcast</Button>
     </>}
   </ScrollView>
 }

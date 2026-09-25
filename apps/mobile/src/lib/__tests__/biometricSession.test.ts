@@ -40,13 +40,19 @@ it('requires supported enrolled hardware and explicit initial confirmation befor
   expect(m.data.has('secure:uf_tokens')).toBe(false)
   expect(m.data.has('uf_tokens')).toBe(false)
 })
-it('locks on background, prevents credential access and requires a protected read plus server refresh to unlock', async () => {
+it('locks after a real background period, prevents credential access and requires a protected read plus server refresh to unlock', async () => {
   const { s, renew } = await setup(); await s.enableBiometricSession()
-  s.setSessionForeground(false)
-  expect(s.sessionSnapshot()).toBeNull()
-  expect(await s.accessToken()).toBeNull()
-  expect(renew).not.toHaveBeenCalled()
-  s.setSessionForeground(true)
+  vi.useFakeTimers({ toFake: ['Date'] })
+  try {
+    s.setSessionForeground(false, true)
+    vi.setSystemTime(Date.now() + s.BACKGROUND_GRACE_MS + 1)
+    // Work that runs while still backgrounded past the grace period is refused too.
+    expect(await s.accessToken()).toBeNull()
+    expect(s.sessionSnapshot()).toBeNull()
+    expect(renew).not.toHaveBeenCalled()
+    s.setSessionForeground(true)
+    expect(s.biometricSessionState()).toEqual({ enabled: true, locked: true })
+  } finally { vi.useRealTimers() }
   await s.unlockBiometricSession()
   expect(m.get).toHaveBeenCalledWith('uf_biometric_refresh', expect.objectContaining({ requireAuthentication: true }))
   expect(renew).toHaveBeenCalledWith('original-refresh')
@@ -66,8 +72,13 @@ it('stays locked on cancellation, enrollment changes and revoked server sessions
   m.get.mockResolvedValueOnce(null)
   await expect(s.unlockBiometricSession()).rejects.toThrow('changed or expired')
   renew.mockRejectedValueOnce(Object.assign(new Error('revoked'), { status: 401 }))
-  await expect(s.unlockBiometricSession()).rejects.toThrow('revoked')
+  await expect(s.unlockBiometricSession()).rejects.toThrow('Biometric unlock has expired')
   expect(s.biometricSessionState().locked).toBe(true)
+  // The dead credential is removed so later attempts do not prompt for biometrics again.
+  expect(m.data.has('secure:uf_biometric_refresh')).toBe(false)
+  m.prompt.mockClear()
+  await expect(s.unlockBiometricSession()).rejects.toThrow('changed or expired')
+  expect(s.sessionSnapshot()).toBeNull()
   await s.endSession()
   expect(m.data.has('secure:uf_biometric_refresh')).toBe(false)
   expect(m.data.has('secure:uf_biometric_user')).toBe(false)
@@ -181,3 +192,69 @@ it('locks an idle opted-in session while preserving its protected credential for
     expect(s.sessionSnapshot()?.user.id).toBe(user.id)
   } finally { vi.useRealTimers() }
 });
+
+it('keeps the session through transient interruptions and short backgrounds, and locks only after the grace period', async () => {
+  const { s } = await setup(); await s.enableBiometricSession()
+  vi.useFakeTimers({ toFake: ['Date'] })
+  try {
+    // iOS 'inactive' (Control Center, permission alert) and Android window blur only hide the UI.
+    s.setSessionForeground(false); s.setSessionForeground(true)
+    expect(s.biometricSessionState()).toEqual({ enabled: true, locked: false })
+    expect(s.sessionSnapshot()?.user.id).toBe('member')
+    // A quick background (notification, app switch, Android permission dialog) keeps the session.
+    s.setSessionForeground(false, true)
+    expect(s.sessionSnapshot()?.user.id).toBe('member')
+    vi.setSystemTime(Date.now() + s.BACKGROUND_GRACE_MS - 1_000)
+    s.setSessionForeground(true)
+    expect(s.biometricSessionState().locked).toBe(false)
+    // The grace clock restarts with each background, and a long one locks on return.
+    s.setSessionForeground(false, true)
+    vi.setSystemTime(Date.now() + s.BACKGROUND_GRACE_MS)
+    s.setSessionForeground(true)
+    expect(s.biometricSessionState().locked).toBe(true)
+    expect(s.sessionSnapshot()).toBeNull()
+  } finally { vi.useRealTimers() }
+})
+
+it('gives camera, picker and share hand-offs a longer allowance that ends with the hand-off', async () => {
+  const { s } = await setup(); await s.enableBiometricSession()
+  vi.useFakeTimers({ toFake: ['Date'] })
+  try {
+    let finish!: (value: string) => void
+    const picking = s.withExternalActivity(() => new Promise<string>(done => { finish = done }))
+    s.setSessionForeground(false, true)
+    vi.setSystemTime(Date.now() + 5 * 60_000)
+    // The picked result and the return to the app can arrive in either order.
+    finish('file:///cache/ImagePicker/photo.jpg')
+    expect(await picking).toBe('file:///cache/ImagePicker/photo.jpg')
+    s.setSessionForeground(true)
+    expect(s.biometricSessionState().locked).toBe(false)
+    expect(s.sessionSnapshot()?.user.id).toBe('member')
+    // Once the hand-off is over, an ordinary long background locks again.
+    vi.setSystemTime(Date.now() + 10_000)
+    s.setSessionForeground(false, true)
+    vi.setSystemTime(Date.now() + s.BACKGROUND_GRACE_MS + 1)
+    s.setSessionForeground(true)
+    expect(s.biometricSessionState().locked).toBe(true)
+    // Even a hand-off cannot keep the session unlocked past its own allowance.
+    await s.unlockBiometricSession()
+    const stuck = s.withExternalActivity(() => new Promise(() => {}))
+    s.setSessionForeground(false, true)
+    vi.setSystemTime(Date.now() + s.EXTERNAL_ACTIVITY_GRACE_MS + 1)
+    s.setSessionForeground(true)
+    expect(s.biometricSessionState().locked).toBe(true)
+    void stuck
+  } finally { vi.useRealTimers() }
+})
+
+it('does not lock an opted-out session on background', async () => {
+  const { s } = await setup()
+  vi.useFakeTimers({ toFake: ['Date'] })
+  try {
+    s.setSessionForeground(false, true)
+    vi.setSystemTime(Date.now() + s.BACKGROUND_GRACE_MS * 5)
+    s.setSessionForeground(true)
+    expect(s.biometricSessionState()).toEqual({ enabled: false, locked: false })
+    expect(s.sessionSnapshot()?.user.id).toBe('member')
+  } finally { vi.useRealTimers() }
+})

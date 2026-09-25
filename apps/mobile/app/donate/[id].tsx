@@ -20,6 +20,7 @@ import { parseMoneyInput } from '@/lib/moneyInput'
 import { CouponSurface } from '@ubuntu-fund/types'
 import ExternalFundraisingScreen from '@/screens/ExternalFundraisingScreen'
 import { SplitDisclosure } from '@/components/SplitDisclosure'
+import { KeyboardAvoider } from '@/components/KeyboardAvoider'
 
 export default function DonateScreen() {
   return Platform.OS === 'ios' ? <ExternalFundraisingScreen /> : <InAppDonateScreen />
@@ -119,7 +120,7 @@ function InAppDonateScreen() {
     finally { setBusy(false) }
   }
   if (isLoading) return <PageSkeleton />
-  return <ScrollView automaticallyAdjustKeyboardInsets style={{ flex: 1, backgroundColor: p.background }} keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 20, gap: 20, paddingBottom: 60 }}>
+  return <KeyboardAvoider style={{ backgroundColor: p.background }}><ScrollView automaticallyAdjustKeyboardInsets style={{ flex: 1, backgroundColor: p.background }} keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 20, gap: 20, paddingBottom: 60 }}>
     <Stack.Screen options={{ title: 'Support this campaign' }} />
     <Text style={{ fontFamily: 'Outfit_800ExtraBold', fontSize: 26, color: p.text }}>{campaign?.title || 'Campaign donation'}</Text>
     {campaignError && <Text style={{ color: p.error }}>{campaignError}</Text>}
@@ -147,5 +148,5 @@ function InAppDonateScreen() {
         <Button mode="contained" loading={busy} disabled={busy || !valid || !tipValid || couponOk === false || (method === 'paystack' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))} onPress={() => void donate()}>Donate {valid && tipValid ? (amountValue + tipValue).toFixed(2) : '0'} {campaign.currency}</Button>
       </>}
     </View>}
-  </ScrollView>
+  </ScrollView></KeyboardAvoider>
 }

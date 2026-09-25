@@ -12,6 +12,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { SignInRequired } from '@/components/SignInRequired'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
 import type { Palette, NeuRecipes } from '@/theme'
+import { formatMoney } from '@/lib/money'
 
 interface DonationDetail {
   id: string
@@ -344,7 +345,7 @@ export default function RefundRequestScreen() {
                 <View style={styles.detailRow}>
                   <Text style={styles.detailKey}>Amount</Text>
                   <Text style={[styles.detailValue, { color: p.primary, fontFamily: 'Outfit_700Bold' }]}>
-                    {donation.currency} {donation.amount.toLocaleString()}
+                    {formatMoney(donation.amount, donation.currency)}
                   </Text>
                 </View>
                 <View style={styles.detailRow}>

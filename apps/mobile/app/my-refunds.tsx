@@ -14,6 +14,7 @@ import { SignInRequired } from '@/components/SignInRequired'
 import { FadeInUp } from '@/components/anim/FadeInUp'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
 import type { Palette, NeuRecipes } from '@/theme'
+import { formatMoney } from '@/lib/money'
 
 interface Refund {
   id: string
@@ -225,7 +226,7 @@ export default function MyRefundsScreen() {
                   </Text>
 
                   <View style={styles.refundFooter}>
-                    <Text style={styles.refundAmount}>Requested: {r.currency} {r.amount.toLocaleString()}</Text>
+                    <Text style={styles.refundAmount}>Requested: {formatMoney(r.amount, r.currency)}</Text>
                     <Text style={styles.refundDate}>{formatDate(r.requestDate ?? r.createdAt)}</Text>
                   </View>
 

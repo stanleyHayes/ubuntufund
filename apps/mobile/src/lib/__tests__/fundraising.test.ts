@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { campaignShareUrl, fundraisingUrl, sessionGoalLine, walletFundingUrl } from '../fundraising'
+import { campaignDonationHandle, campaignShareUrl, fundraisingUrl, sessionGoalLine, walletFundingUrl, webUrl } from '../fundraising'
 
 describe('external fundraising handoff', () => {
   it('passes only public campaign context to the donation route', () => {
@@ -33,5 +33,18 @@ describe('external fundraising handoff', () => {
   it('shares the public web campaign page, preferring the slug', () => {
     expect(campaignShareUrl({ id: 'abc', slug: 'school fees' }, 'https://app.ujimora.com')).toBe('https://app.ujimora.com/c/school%20fees')
     expect(campaignShareUrl({ id: 'abc' }, 'https://app.ujimora.com')).toBe('https://app.ujimora.com/campaigns/abc')
+  })
+  it('falls back to the campaign id for legacy campaigns without a slug', () => {
+    const id = 'a'.repeat(24)
+    expect(campaignDonationHandle({ id, slug: 'school-fees' })).toBe('school-fees')
+    expect(campaignDonationHandle({ id, slug: '  ' })).toBe(id)
+    expect(campaignDonationHandle({ id })).toBe(id)
+    expect(campaignDonationHandle({ id, slug: null })).toBe(id)
+    expect(new URL(fundraisingUrl(campaignDonationHandle({ id }), {}, 'https://app.ujimora.com')).pathname).toBe(`/c/${id}/donate`)
+  })
+  it('builds share links from the configured website origin', () => {
+    expect(webUrl('/live/abc', 'https://staging.ujimora.com/some/path')).toBe('https://staging.ujimora.com/live/abc')
+    expect(webUrl('/organizations/a%20b', 'https://app.ujimora.com')).toBe('https://app.ujimora.com/organizations/a%20b')
+    expect(() => webUrl('/live/abc', 'http://app.ujimora.com')).toThrow()
   })
 })

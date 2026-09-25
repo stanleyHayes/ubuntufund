@@ -1,9 +1,10 @@
 import { BiometricLock } from '@/components/BiometricLock'
 import { clearAllPublicationDrafts } from '@/lib/publicationDrafts'
+import { PrivacyCover } from '@/components/PrivacyCover'
 import type { LegalAcceptanceInput } from '@ubuntu-fund/types'
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import type { ReactNode } from 'react'
-import { AppState, Platform, View } from 'react-native'
+import { AppState, Platform, View, type AppStateStatus } from 'react-native'
 import { accessToken, biometricSessionState, setSessionForeground, endSession, establishSession, expireIdleSession, hydrateSession, observeSession, recordActivity, sessionSnapshot } from '@/lib/session'
 import { loginApi, logoutApi, registerApi } from '@/lib/api'
 import type { AuthUser, AuthTokens } from '@/lib/api'
@@ -43,6 +44,11 @@ interface AuthContextValue extends AuthState {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
+/** 'inactive' (app switcher, system sheets) and 'background' hide the app; 'unknown' at launch does not. */
+function isInterrupted(state: AppStateStatus | null | undefined) {
+  return state === 'inactive' || state === 'background'
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({
     user: null,
@@ -52,10 +58,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   })
 
   const [deviceState, setDeviceState] = useState(biometricSessionState())
-  const [foreground, setForeground] = useState(AppState.currentState === 'active')
+  // App state (inactive/background) and Android window focus are tracked
+  // separately: the plain privacy cover follows the app state only, because
+  // Android also blurs the window whenever an in-app Modal (date picker,
+  // notifications) opens.
+  const [appActive, setAppActive] = useState(!isInterrupted(AppState.currentState))
+  const [windowFocused, setWindowFocused] = useState(true)
 
   useEffect(() => {
-    setSessionForeground(AppState.currentState === 'active')
+    const initial = AppState.currentState
+    setSessionForeground(!isInterrupted(initial), initial === 'background')
     let mounted = true
     const sync = () => {
       if (!mounted) return
@@ -67,9 +79,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void hydrateSession().then(async () => { sync(); try { await accessToken() } catch { /* Offline sessions are retained. */ } }).catch(sync)
     const tick = () => { if (!expireIdleSession() && AppState.currentState === 'active') void accessToken().catch(() => {}) }
     const timer = setInterval(tick, 30000)
-    const appState = AppState.addEventListener('change', value => { const active = value === 'active'; setForeground(active); setSessionForeground(active, value === 'background'); if (active) tick() })
-    const blur = Platform.OS === 'android' ? AppState.addEventListener('blur', () => { setForeground(false); setSessionForeground(false) }) : null
-    const focus = Platform.OS === 'android' ? AppState.addEventListener('focus', () => { setForeground(true); setSessionForeground(true); tick() }) : null
+    // Transient interruptions only cover the screen; the session decides
+    // whether a real background lasted long enough to require unlock.
+    const appState = AppState.addEventListener('change', value => { const active = !isInterrupted(value); setSessionForeground(active, value === 'background'); setAppActive(active); if (active) tick() })
+    const blur = Platform.OS === 'android' ? AppState.addEventListener('blur', () => { setSessionForeground(false); setWindowFocused(false) }) : null
+    const focus = Platform.OS === 'android' ? AppState.addEventListener('focus', () => { setSessionForeground(true); setWindowFocused(true); tick() }) : null
     return () => { mounted = false; unsubscribe(); clearInterval(timer); appState.remove(); blur?.remove(); focus?.remove() }
   }, [])
 
@@ -140,11 +154,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await clearAllPublicationDrafts()
   }, [])
 
+  const interrupted = !appActive || !windowFocused
+  const biometricCover = deviceState.locked || (deviceState.enabled && interrupted)
+  const hidden = biometricCover || !appActive
+
   return (
     <AuthContext.Provider value={{ ...state, biometricLocked: deviceState.locked, login, register, replaceTokens, logout, legalStatus, refreshLegalStatus }}>
-      <View style={{ flex: 1 }} onTouchStart={recordActivity}>
-        <View style={{ flex: 1, display: deviceState.locked || (deviceState.enabled && !foreground) ? 'none' : 'flex' }} accessibilityElementsHidden={deviceState.locked || (deviceState.enabled && !foreground)} importantForAccessibility={deviceState.locked || (deviceState.enabled && !foreground) ? 'no-hide-descendants' : 'auto'}>{children}</View>
-        {(deviceState.locked || (deviceState.enabled && !foreground)) && <BiometricLock suspended={!foreground} />}
+      {/* A touch re-syncs a cover left up by a state change that arrived before this provider subscribed. */}
+      <View style={{ flex: 1 }} onTouchStart={() => { if (!appActive && !isInterrupted(AppState.currentState)) setAppActive(true); recordActivity() }}>
+        {/* Covered screens stay mounted (display: none) so an interruption never wipes a form; only an actual lock unmounts them (BiometricScreen). */}
+        <View style={{ flex: 1, display: hidden ? 'none' : 'flex' }} accessibilityElementsHidden={hidden} importantForAccessibility={hidden ? 'no-hide-descendants' : 'auto'}>{children}</View>
+        {biometricCover ? <BiometricLock suspended={interrupted} /> : hidden ? <PrivacyCover /> : null}
       </View>
     </AuthContext.Provider>
   )

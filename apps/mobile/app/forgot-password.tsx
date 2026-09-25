@@ -1,7 +1,7 @@
 import { Button } from '@/components/Loading'
 import { BrandedTextInput as TextInput } from '@/components/BrandedTextInput'
 import { useState, useMemo } from 'react'
-import { View, StyleSheet, Platform, KeyboardAvoidingView, ScrollView } from 'react-native'
+import { View, StyleSheet, ScrollView } from 'react-native'
 import { Text, Icon } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
@@ -10,6 +10,7 @@ import type { Palette, NeuRecipes } from '@/theme'
 import { UjimoraLogo } from '@/components/UjimoraLogo'
 import { api } from '@/lib/api'
 import { forgotPasswordErrorMessage } from '@/lib/authMessages'
+import { KeyboardAvoider } from '@/components/KeyboardAvoider'
 
 export default function ForgotPasswordScreen() {
   const p = usePalette()
@@ -35,7 +36,7 @@ export default function ForgotPasswordScreen() {
   }
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoider style={styles.container} iosBehavior="padding">
       <ScrollView
         contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 32 }]}
         keyboardShouldPersistTaps="handled"
@@ -122,7 +123,7 @@ export default function ForgotPasswordScreen() {
           )}
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardAvoider>
   )
 }
 

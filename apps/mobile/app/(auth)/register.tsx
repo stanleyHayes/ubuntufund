@@ -2,7 +2,7 @@ import { Pressable } from '@/components/RoundedControls'
 import { Button } from '@/components/Loading'
 import { BrandedTextInput as TextInput } from '@/components/BrandedTextInput'
 import { useState, useMemo } from 'react'
-import { View, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native'
+import { View, ScrollView, StyleSheet } from 'react-native'
 import { Checkbox, Text } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Link, router, useLocalSearchParams } from 'expo-router'
@@ -12,13 +12,15 @@ import { OrganizationType } from '@ubuntu-fund/types'
 import {
   LEGAL_ACCEPTANCE_VERSION,
   REFERRAL_CODE_MAX,
-  normalizeReferralCode,
   referralCodeProblemMessage,
   validateReferralCode,
 } from '@ubuntu-fund/types'
 import { useAuth } from '@/context/AuthContext'
 import { UjimoraLogo } from '@/components/UjimoraLogo'
 import { PasswordStrength } from '@/components/PasswordStrength'
+import { completeSignIn, safeReturnTo } from '@/navigation/returnTo'
+import { signupReferralCode } from '@/lib/referral'
+import { KeyboardAvoider } from '@/components/KeyboardAvoider'
 
 type AccountType = 'individual' | 'organization'
 
@@ -55,7 +57,8 @@ export default function RegisterScreen() {
   // Mobile previously captured no referral at all, so every install-then-signup
   // was unattributed. A ?ref= deep link seeds the field; it stays editable for
   // codes shared by word of mouth or on a flyer.
-  const { ref: refParam } = useLocalSearchParams<{ ref?: string }>()
+  const { ref: refParam, returnTo: returnToParam } = useLocalSearchParams<{ ref?: string; returnTo?: string }>()
+  const returnTo = safeReturnTo(returnToParam)
   const [referralCode, setReferralCode] = useState(
     typeof refParam === 'string' ? refParam.trim() : ''
   )
@@ -67,7 +70,7 @@ export default function RegisterScreen() {
   const handleRegister = async () => {
     setError('')
     const payload: Parameters<typeof register>[0] = { name, email, password, country: 'Ghana', legalAcceptance: { version: LEGAL_ACCEPTANCE_VERSION, acceptedTerms, ageConfirmed } }
-    const referral = normalizeReferralCode(referralCode)
+    const referral = signupReferralCode(referralCode)
     if (referral) payload.referralCode = referral
     if (accountType === 'organization') {
       payload.role = 'organization'
@@ -81,7 +84,7 @@ export default function RegisterScreen() {
     setLoading(true)
     try {
       await register(payload as Parameters<typeof register>[0])
-      router.replace('/(tabs)')
+      completeSignIn(returnTo)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed. Please try again.')
     } finally {
@@ -101,7 +104,7 @@ export default function RegisterScreen() {
     (accountType === 'individual' || orgName.trim().length > 0)
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoider style={styles.container} iosBehavior="padding">
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
@@ -344,7 +347,7 @@ export default function RegisterScreen() {
               ]}
             >
               {referralProblem
-                ? referralCodeProblemMessage(referralProblem)
+                ? `${referralCodeProblemMessage(referralProblem)} Until it is fixed, you will sign up without a referral code.`
                 : 'Were you invited? Enter their code so they get credit.'}
             </Text>
           </View>
@@ -375,13 +378,13 @@ export default function RegisterScreen() {
 
           <View style={styles.footer}>
             <Text style={styles.footerText}>Already have an account? </Text>
-            <Link href="/(auth)/login">
+            <Link href={returnTo ? { pathname: '/(auth)/login', params: { returnTo } } : '/(auth)/login'}>
               <Text style={styles.footerLink}>Sign In</Text>
             </Link>
           </View>
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardAvoider>
   )
 }
 

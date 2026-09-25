@@ -31,3 +31,12 @@ it('sends a legacy creator /u/:id link to the member profile instead of not-foun
   expect(resolveNativePath('https://app.ujimora.com/u/64b000000000000000000001')).toBe('/profile/64b000000000000000000001')
   expect(resolveNativePath('/creators/ama')).toBe('/creators/ama')
 })
+
+it('keeps referral codes on native sign-up links', () => {
+  expect(resolveNativePath('ujimora://register?ref=abc')).toBe('/(auth)/register?ref=abc')
+  expect(resolveNativePath('https://app.ujimora.com/register?ref=abc')).toBe('/(auth)/register?ref=abc')
+  expect(resolveNativePath('https://app.ujimora.com/?ref=abc')).toBe('/(auth)/register?ref=abc')
+  expect(resolveNativePath('https://app.ujimora.com/?ref=a%26b')).toBe('/(auth)/register?ref=a%26b')
+  expect(resolveNativePath('https://app.ujimora.com/login?returnTo=%2Fwallet')).toBe('/(auth)/login?returnTo=%2Fwallet')
+  expect(resolveNativePath('https://app.ujimora.com/')).toBe('/')
+})

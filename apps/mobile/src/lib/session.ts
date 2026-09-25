@@ -2,13 +2,13 @@ import { BIOMETRIC_PREFERENCE, biometricCapability, clearBiometricCredential, re
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as SecureStore from 'expo-secure-store'
 import type { AuthTokens, AuthUser } from './api'
+import { BiometricUnlockError } from './unlockError'
 
 export const IDLE_MS = 60 * 60 * 1000
 interface Session { user: AuthUser; tokens: AuthTokens; lastActivity: number }
 let current: Session | null = null
 let biometricUser: string | null = null
 let locked = false
-let foreground = true
 let biometricBusy = false
 let unlockAttempt: Promise<void> | null = null
 export function biometricSessionState() { return { enabled: !!biometricUser, locked } }
@@ -17,9 +17,54 @@ function serialize<T>(work: () => Promise<T>): Promise<T> {
   writes = result.then(() => {}, () => {})
   return result
 }
+/**
+ * How long a real background may last before an opted-in session needs
+ * biometric unlock again. Short hops (a notification, a quick app switch, an
+ * Android permission dialog, which Android reports as a background) keep the
+ * session and the screen the user was working on.
+ */
+export const BACKGROUND_GRACE_MS = 60_000
+/** Allowance while the app hands off to the camera, a picker or a share sheet. */
+export const EXTERNAL_ACTIVITY_GRACE_MS = 10 * 60_000
+/** How long an external activity's allowance outlives its result (the 'active' event can arrive after it). */
+const EXTERNAL_ACTIVITY_TAIL_MS = 5_000
+let backgroundSince: number | null = null
+let externalActivities = 0
+let externalGraceUntil = 0
+function backgroundExpired(now = Date.now()) {
+  return backgroundSince !== null && now >= Math.max(backgroundSince + BACKGROUND_GRACE_MS, externalGraceUntil)
+}
+/**
+ * App lifecycle input. `active: false` without `background` is a transient
+ * interruption (iOS 'inactive', Android window blur): the UI covers private
+ * screens but the session stays unlocked, so forms, pickers and newly shown
+ * recovery codes survive. A real background starts the grace clock, and
+ * coming back after it has run out requires biometric unlock. A background
+ * while a biometric prompt or unlock is in flight still fences that work
+ * immediately.
+ */
 export function setSessionForeground(active: boolean, background = false) {
-  foreground = active
-  if (!active && (!biometricBusy || background)) lockBiometricSession()
+  if (active) {
+    const expired = backgroundExpired()
+    backgroundSince = null
+    if (expired) lockBiometricSession()
+    return
+  }
+  if (!background) return
+  if (backgroundSince === null) backgroundSince = Date.now()
+  if (biometricBusy) lockBiometricSession()
+}
+/**
+ * Run a hand-off to another app or system activity (camera, photo or file
+ * picker, permission prompt, share sheet) with a longer background
+ * allowance, so returning with its result does not lock and unmount the
+ * screen that is waiting for it.
+ */
+export async function withExternalActivity<T>(work: () => Promise<T>): Promise<T> {
+  externalActivities++
+  externalGraceUntil = Math.max(externalGraceUntil, Date.now() + EXTERNAL_ACTIVITY_GRACE_MS)
+  try { return await work() }
+  finally { if (--externalActivities === 0) externalGraceUntil = Math.min(externalGraceUntil, Date.now() + EXTERNAL_ACTIVITY_TAIL_MS) }
 }
 export function lockBiometricSession() {
   if (!biometricUser) return
@@ -98,7 +143,7 @@ export async function establishSession(user: AuthUser, tokens: AuthTokens) {
         if (started !== epoch) return
         await writeBiometricCredential(user.id, tokens.refreshToken, false)
       })
-    } finally { biometricBusy = false; if (!foreground) lockBiometricSession() }
+    } finally { biometricBusy = false; if (backgroundSince !== null) lockBiometricSession() }
   } else await serialize(clearBiometricCredential)
   await persist()
 }
@@ -121,7 +166,7 @@ export async function enableBiometricSession() {
         biometricUser = session.user.id; emit()
       } catch (error) { await clearBiometricCredential(); throw error }
     })
-  } finally { biometricBusy = false; if (!foreground) lockBiometricSession() }
+  } finally { biometricBusy = false; if (backgroundSince !== null) lockBiometricSession() }
 }
 export async function disableBiometricSession() {
   if (!current || locked || biometricBusy) throw new Error('Unlock your account before changing biometric protection.')
@@ -136,7 +181,7 @@ export async function disableBiometricSession() {
       try { await clearBiometricCredential() } catch (error) { await SecureStore.deleteItemAsync('uf_tokens'); throw error }
       if (started === epoch) { biometricUser = null; emit() }
     })
-  } finally { biometricBusy = false; if (!foreground) lockBiometricSession() }
+  } finally { biometricBusy = false; if (backgroundSince !== null) lockBiometricSession() }
 }
 export async function unlockBiometricSession() {
   if (unlockAttempt) return unlockAttempt
@@ -150,24 +195,35 @@ export async function unlockBiometricSession() {
     if (started !== epoch || saved.userId !== userId) return
     const raw = await AsyncStorage.getItem('uf_user')
     const user = raw ? JSON.parse(raw) as AuthUser : null
-    if (!user || user.id !== userId) throw new Error('Saved account information is unavailable. Sign in with your password.')
+    if (!user || user.id !== userId) throw new BiometricUnlockError('Saved account information is unavailable. Sign in with your password.')
     let timeout: ReturnType<typeof setTimeout> | undefined
     let tokens: AuthTokens
     try {
-      tokens = await Promise.race([refresh(saved.refreshToken), new Promise<never>((_resolve, reject) => { timeout = setTimeout(() => reject(new Error('Unlock could not reach Ujimora. Try again or use password sign-in.')), 15_000) })])
+      tokens = await Promise.race([refresh(saved.refreshToken), new Promise<never>((_resolve, reject) => { timeout = setTimeout(() => reject(new BiometricUnlockError('Unlock could not reach Ujimora. Try again or use password sign-in.')), 15_000) })])
+    } catch (error) {
+      const status = (error as { status?: number }).status
+      if (status !== 401 && status !== 403) throw error
+      // The saved credential is past its server expiry (or was revoked). It
+      // can never unlock again, so remove it rather than prompting for
+      // biometrics on every attempt, and say why.
+      if (started === epoch) await serialize(clearBiometricCredential).catch(() => {})
+      throw new BiometricUnlockError('Biometric unlock has expired. It lasts 7 days after you turn it on or last sign in with your password. Sign in with your password, then turn it on again in Settings.')
     } finally { if (timeout) clearTimeout(timeout) }
-    if (started !== epoch || !foreground) return
+    // A background during the check already fenced this attempt (epoch changed).
+    if (started !== epoch || backgroundSince !== null) return
     epoch++; pending = null; locked = false; current = { user, tokens, lastActivity: Date.now() }; emit()
     await persist()
   })()
   unlockAttempt = attempt
-  try { await attempt } finally { if (unlockAttempt === attempt) unlockAttempt = null; biometricBusy = false; if (!foreground) lockBiometricSession() }
+  try { await attempt } finally { if (unlockAttempt === attempt) unlockAttempt = null; biometricBusy = false; if (backgroundSince !== null) lockBiometricSession() }
 }
 export async function endSession() {
   epoch++; pending = null; hydrated = true; current = null; biometricUser = null; locked = false
   emit(); await persist()
 }
 export function expireIdleSession() {
+  // Work that runs while backgrounded past the grace period cannot use the session.
+  if (current && biometricUser && backgroundExpired()) { lockBiometricSession(); return true }
   if (current && Date.now() - current.lastActivity >= IDLE_MS) {
     if (biometricUser) lockBiometricSession()
     else void endSession().catch(() => {})

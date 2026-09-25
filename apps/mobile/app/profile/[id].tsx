@@ -38,10 +38,13 @@ export default function ProfileScreen() {
   }
 
   if (!user) {
+    // Hidden and blocked profiles return 404, but the person may still need to
+    // report or block this account, so keep the safety controls for a real id.
     return (
       <View style={styles.center}>
         <Stack.Screen options={{ title: 'Profile' }} />
-        <Text variant="bodyLarge">User not found</Text>
+        <Text variant="bodyLarge">This profile is not available.</Text>
+        {id && /^[a-f0-9]{24}$/i.test(id) ? <View style={{ marginTop: 16 }}><UserSafetyControls userId={id} onBlocked={() => setBlocked(true)} /></View> : null}
       </View>
     )
   }

@@ -183,7 +183,8 @@ export const OVERLAY_PAGE_HTML = `<!DOCTYPE html>
 
   function money(v) {
     if (v === null || v === undefined) return "GH₵ —";
-    try { return "GH₵ " + Number(v).toLocaleString("en-GH"); }
+    // Always two decimals: 100.5 shows as 100.50, never 100.5 or a float tail.
+    try { return "GH₵ " + Number(v).toLocaleString("en-GH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
     catch (e) { return "GH₵ " + v; }
   }
 

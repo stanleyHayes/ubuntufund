@@ -1,8 +1,9 @@
 import { ReportContent } from '@/components/ReportContent'
+import { ReportCampaign } from '@/components/ReportCampaign'
 import { Chip } from '@/components/Chip'
 import { SkeletonLoader, Button } from '@/components/Loading'
 import { useState, useEffect, useMemo } from 'react'
-import { View, ScrollView, StyleSheet, Alert } from 'react-native'
+import { View, ScrollView, StyleSheet } from 'react-native'
 import { useLocalSearchParams, Stack, router } from 'expo-router'
 import { Text, Surface, Avatar, Icon } from 'react-native-paper'
 import { useCampaign, useUser } from '@/hooks/useCampaigns'
@@ -20,6 +21,7 @@ import { acceptsCampaignDonation, CollaboratorRole, type CampaignCollaborator } 
 import { CampaignUpdatesList } from '@/components/CampaignUpdatesList'
 import { CampaignComments } from '@/components/CampaignComments'
 import { SplitDisclosure } from '@/components/SplitDisclosure'
+import { formatMoney } from '@/lib/money'
 
 const ROLE_LABELS: Record<CollaboratorRole, string> = {
   [CollaboratorRole.CO_OWNER]: 'Co-Owner',
@@ -114,16 +116,6 @@ function makeStyles(p: Palette, neu: NeuRecipes) {
     donationRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     donationInfo: { flex: 1 },
     donationAmount: { alignItems: 'flex-end' },
-    paymentMethodsCard: {
-      ...neu.raised,
-      padding: 14,
-      borderRadius: 14,
-      marginBottom: 16,
-      backgroundColor: p.surface,
-    },
-    paymentMethodItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
-    reportButton: { alignSelf: 'flex-end', marginTop: 4 },
-    reportLabel: { fontSize: 13, fontFamily: 'Outfit_700Bold' },
 
     // Donation modal
     modalOverlay: {
@@ -307,10 +299,10 @@ export default function CampaignDetailScreen() {
             <View style={styles.statsRow}>
               <View>
                 <Text variant="titleMedium" style={styles.raised}>
-                  GH₵ {campaign.raisedAmount.toLocaleString()}
+                  {formatMoney(campaign.raisedAmount, campaign.currency)}
                 </Text>
                 <Text variant="bodySmall" style={styles.muted}>
-                  raised of GH₵ {campaign.goalAmount.toLocaleString()}
+                  raised of {formatMoney(campaign.goalAmount, campaign.currency)}
                 </Text>
               </View>
               <View style={styles.statRight}>
@@ -357,7 +349,7 @@ export default function CampaignDetailScreen() {
 
           {campaign.goalAmount - campaign.raisedAmount > 0 && (
             <Text variant="bodySmall" style={styles.stillNeeded}>
-              Still needed: GH₵ {(campaign.goalAmount - campaign.raisedAmount).toLocaleString()}
+              Still needed: {formatMoney(campaign.goalAmount - campaign.raisedAmount, campaign.currency)}
             </Text>
           )}
 
@@ -365,7 +357,7 @@ export default function CampaignDetailScreen() {
           <Text variant="titleMedium" style={styles.sectionTitle}>
             Updates
           </Text>
-          <CampaignUpdatesList campaignId={campaign.id} isCreator={false} />
+          <CampaignUpdatesList campaignId={campaign.id} isCreator={!!signedInUser && signedInUser.id === campaign.creatorId} />
 
           <Text variant="titleMedium" style={styles.sectionTitle}>
             Comments
@@ -464,7 +456,7 @@ export default function CampaignDetailScreen() {
                     </View>
                     <View style={styles.donationAmount}>
                       <Text variant="bodyMedium" style={styles.raised}>
-                        GH₵ {donation.amount.toLocaleString()}
+                        {formatMoney(donation.amount, campaign.currency)}
                       </Text>
                       <Text variant="labelSmall" style={styles.muted}>
                         {formatDate(donation.createdAt)}
@@ -518,41 +510,8 @@ export default function CampaignDetailScreen() {
             ))}
           </View>
 
-          {/* Payment Method */}
-          <Text variant="titleMedium" style={styles.sectionTitle}>
-            Accepted Payment Method
-          </Text>
-          <Surface style={styles.paymentMethodsCard} elevation={0}>
-            {[{ icon: 'wallet-outline', label: 'Ujimora Wallet' }].map((method) => (
-              <View key={method.label} style={styles.paymentMethodItem}>
-                <Icon source={method.icon} size={20} color={p.textSecondary} />
-                <Text variant="bodySmall">{method.label}</Text>
-              </View>
-            ))}
-          </Surface>
-
-          {/* Report */}
-          <Button
-            mode="text"
-            icon="flag-outline"
-            textColor={p.error}
-            style={styles.reportButton}
-            labelStyle={styles.reportLabel}
-            onPress={() => Alert.alert(
-              'Report Campaign',
-              'Are you sure you want to report this campaign for review?',
-              [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Report', style: 'destructive', onPress: () => {
-                  api.post(`/campaigns/${campaign.id}/report`, { reason: 'Flagged from mobile' })
-                    .then(() => Alert.alert('Reported', 'Thank you. Our team will review this campaign.'))
-                    .catch(() => Alert.alert('Error', 'Could not submit report. Please try again.'))
-                }},
-              ]
-            )}
-          >
-            Report Campaign
-          </Button>
+          {/* Report: signed-in viewers other than the creator; signed-out viewers are asked to sign in. */}
+          <ReportCampaign campaignId={campaign.id} creatorId={campaign.creatorId} />
 
           <View style={{ height: 32 }} />
         </FadeInUp>

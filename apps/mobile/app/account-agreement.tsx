@@ -10,6 +10,7 @@ import { useAuth } from '@/context/AuthContext'
 import { usePalette } from '@/context/ColorModeContext'
 import { api } from '@/lib/api'
 import { establishSession, sessionSnapshot } from '@/lib/session'
+import { signInHref } from '@/navigation/returnTo'
 export default function AccountAgreement() {
   const { user, isAuthenticated, legalStatus, refreshLegalStatus } = useAuth()
   const p = usePalette()
@@ -36,7 +37,7 @@ export default function AccountAgreement() {
     <Text accessibilityRole="header" style={{ color: p.text, fontSize: 26, fontFamily: 'Outfit_700Bold' }}>Your account agreement</Text>
     <Text style={{ color: p.textSecondary }}>Review the rules for using Ujimora and sharing content. Marketing and notifications are separate choices. You can still read policies, manage eligible funds or request deletion without accepting.</Text>
     {([['/terms', 'Terms of Use'], ['/acceptable-use', 'Acceptable Use'], ['/privacy', 'Privacy Notice'], ['/delete-account', 'Delete account']] as const).map(([path, label]) => <Button key={path} onPress={() => router.push(path as Href)}>{label}</Button>)}
-    {!isAuthenticated ? <Button onPress={() => router.push('/(auth)/login')}>Sign in to review your agreement</Button> : notice === 'hidden' ? <Text style={{ color: p.text }}>Your agreement has been saved.</Text> : notice === 'update-app' ? <>
+    {!isAuthenticated ? <Button onPress={() => router.push(signInHref('/account-agreement'))}>Sign in to review your agreement</Button> : notice === 'hidden' ? <Text style={{ color: p.text }}>Your agreement has been saved.</Text> : notice === 'update-app' ? <>
       {/* This build ships older policy text than the version the API requires; never accept unseen terms. */}
       <Text accessibilityRole="alert" style={{ color: p.text }}>An updated account agreement is available. Update Ujimora from the App Store or Google Play to review and accept it, or review it on the Ujimora website.</Text>
       <Button mode="contained" onPress={() => { void Linking.openURL('https://app.ujimora.com/account-agreement') }}>Review on the website</Button>

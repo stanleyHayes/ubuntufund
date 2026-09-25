@@ -3,14 +3,16 @@ import { TouchableOpacity } from '@/components/RoundedControls'
 import { Button } from '@/components/Loading'
 import { BrandedTextInput as TextInput } from '@/components/BrandedTextInput'
 import { useState, useMemo } from 'react'
-import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
+import { View, StyleSheet, ScrollView } from 'react-native'
 import { Text } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Link, router } from 'expo-router'
+import { Link, router, useLocalSearchParams } from 'expo-router'
+import { completeSignIn, safeReturnTo } from '@/navigation/returnTo'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
 import type { Palette, NeuRecipes } from '@/theme'
 import { useAuth } from '@/context/AuthContext'
 import { UjimoraLogo } from '@/components/UjimoraLogo'
+import { KeyboardAvoider } from '@/components/KeyboardAvoider'
 
 export default function LoginScreen() {
   const p = usePalette()
@@ -25,6 +27,8 @@ export default function LoginScreen() {
   const [error, setError] = useState('')
   const { login } = useAuth()
   const insets = useSafeAreaInsets()
+  // A sign-in gate passes the screen the user was trying to open.
+  const returnTo = safeReturnTo(useLocalSearchParams<{ returnTo?: string }>().returnTo)
 
   const handleLogin = async () => {
     setError('')
@@ -32,7 +36,7 @@ export default function LoginScreen() {
     setLoading(true)
     try {
       await login(email, password, mfaCode || undefined)
-      router.replace('/(tabs)')
+      completeSignIn(returnTo)
     } catch (err) {
       if (err instanceof Error && /authenticator code/i.test(err.message)) setMfaRequired(true)
       setError(err instanceof Error ? err.message : 'Login failed. Please try again.')
@@ -42,7 +46,7 @@ export default function LoginScreen() {
   }
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoider style={styles.container} iosBehavior="padding">
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
@@ -134,13 +138,13 @@ export default function LoginScreen() {
 
           <View style={styles.footer}>
             <Text style={styles.footerText}>Don't have an account? </Text>
-            <Link href="/(auth)/register">
+            <Link href={returnTo ? { pathname: '/(auth)/register', params: { returnTo } } : '/(auth)/register'}>
               <Text style={styles.footerLink}>Create one</Text>
             </Link>
           </View>
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardAvoider>
   )
 }
 

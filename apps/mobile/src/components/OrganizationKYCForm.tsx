@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { View, ScrollView, KeyboardAvoidingView, Platform } from 'react-native'
+import { View, ScrollView } from 'react-native'
 import { Text, Checkbox, Snackbar } from 'react-native-paper'
 import { Stack, router } from 'expo-router'
 import { Country } from 'country-state-city'
@@ -12,6 +12,7 @@ import { Button } from './Loading'
 import { usePalette } from '@/context/ColorModeContext'
 import { api } from '@/lib/api'
 import { buildOrganizationKyc, emptyOrganizationKyc, type OrganizationKycDraft } from '@/lib/organizationKyc'
+import { KeyboardAvoider } from '@/components/KeyboardAvoider'
 const countries = Country.getAllCountries().map(c => ({ value: c.name, label: `${c.flag} ${c.name}` }))
 const roles = [{ value: 'director', label: 'Director' }, { value: 'trustee', label: 'Trustee' }, { value: 'beneficial_owner', label: 'Beneficial owner' }, { value: 'other_controller', label: 'Other controller' }]
 export function OrganizationKYCForm() {
@@ -35,7 +36,7 @@ export function OrganizationKYCForm() {
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not submit. Your entries are preserved; please retry.') }
     finally { setSaving(false) }
   }
-  return <KeyboardAvoidingView style={{ flex: 1, backgroundColor: p.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+  return <KeyboardAvoider style={{ flex: 1, backgroundColor: p.background }} iosBehavior="padding">
     <Stack.Screen options={{ title: 'Organization verification' }} />
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 20, gap: 16, paddingBottom: 100 }}>
       <Text variant="headlineMedium">Organization verification</Text>
@@ -75,5 +76,5 @@ export function OrganizationKYCForm() {
       </View>}
     </ScrollView>
     <Snackbar visible={!!error} onDismiss={() => setError('')} duration={10000} action={{ label: 'Dismiss', onPress: () => setError('') }}>{error}</Snackbar>
-  </KeyboardAvoidingView>
+  </KeyboardAvoider>
 }

@@ -8,6 +8,7 @@ import { ProgressBar } from './ProgressBar'
 import { RemoteImage } from './RemoteImage'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
 import type { Palette, NeuRecipes } from '@/theme'
+import { formatMoney } from '@/lib/money'
 
 interface CampaignCardProps {
   campaign: Campaign
@@ -94,10 +95,10 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
 
         <View style={styles.stats}>
           <Text variant="bodySmall" style={styles.raised}>
-            GH₵ {campaign.raisedAmount.toLocaleString()}
+            {formatMoney(campaign.raisedAmount, campaign.currency)}
           </Text>
           <Text variant="bodySmall" style={styles.muted}>
-            of GH₵ {campaign.goalAmount.toLocaleString()}
+            of {formatMoney(campaign.goalAmount, campaign.currency)}
           </Text>
           <Text variant="bodySmall" style={styles.daysLeft}>
             {daysLeft}d left

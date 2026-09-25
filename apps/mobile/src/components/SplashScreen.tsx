@@ -1,10 +1,11 @@
 import { useEffect, useMemo } from 'react'
-import { View, Text, Animated, StyleSheet, Dimensions } from 'react-native'
+import { View, Text, Animated, StyleSheet, useWindowDimensions } from 'react-native'
 import { UjimoraLogo } from './UjimoraLogo'
+import { splashRingSizes } from '@/lib/layout'
 
-const { width } = Dimensions.get('window')
 
 export default function AppSplashScreen({ onFinish }: { onFinish: () => void }) {
+  const rings = splashRingSizes(useWindowDimensions().width)
   const logoScale = useMemo(() => new Animated.Value(0.3), [])
   const logoOpacity = useMemo(() => new Animated.Value(0), [])
   const textOpacity = useMemo(() => new Animated.Value(0), [])
@@ -56,6 +57,7 @@ export default function AppSplashScreen({ onFinish }: { onFinish: () => void }) 
       <Animated.View
         style={[
           styles.ring,
+          { width: rings.inner, height: rings.inner, borderRadius: rings.inner / 2 },
           {
             transform: [{ scale: ringScale }],
             opacity: ringOpacity,
@@ -65,6 +67,7 @@ export default function AppSplashScreen({ onFinish }: { onFinish: () => void }) 
       <Animated.View
         style={[
           styles.ring2,
+          { width: rings.outer, height: rings.outer, borderRadius: rings.outer / 2 },
           {
             transform: [{ scale: ring2Scale }],
             opacity: ring2Opacity,
@@ -159,17 +162,11 @@ const styles = StyleSheet.create({
   },
   ring: {
     position: 'absolute',
-    width: width * 0.7,
-    height: width * 0.7,
-    borderRadius: width * 0.35,
     borderWidth: 1.5,
     borderColor: 'rgba(199, 162, 74, 0.3)',
   },
   ring2: {
     position: 'absolute',
-    width: width * 0.9,
-    height: width * 0.9,
-    borderRadius: width * 0.45,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
   },

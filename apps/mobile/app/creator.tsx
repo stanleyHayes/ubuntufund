@@ -27,6 +27,7 @@ import {
 } from '@/lib/creators'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
 import type { Palette, NeuRecipes } from '@/theme'
+import { KeyboardAvoider } from '@/components/KeyboardAvoider'
 
 const WEB_BASE = process.env.EXPO_PUBLIC_WEB_URL?.replace(/\/$/, '') || 'https://app.ujimora.com'
 
@@ -279,6 +280,7 @@ function CreatorDashboardForViewer() {
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ title: 'Creator page' }} />
+      <KeyboardAvoider>
       <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={styles.content}>
         <Text style={styles.title}>Your creator page</Text>
 
@@ -400,6 +402,7 @@ function CreatorDashboardForViewer() {
           </View>
         )}
       </ScrollView>
+      </KeyboardAvoider>
 
       <Portal>
         <Dialog visible={wOpen} onDismiss={() => setWOpen(false)}>
