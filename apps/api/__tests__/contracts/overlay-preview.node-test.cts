@@ -32,3 +32,17 @@ test('overlay shows the host\'s session goal, with progress only while amounts a
     live.window.close();
   }
 });
+test('overlay announces each donation once even when its event is delivered again', async () => {
+  const listeners: Record<string, (event: { data: string }) => void> = {};
+  const dom = new JSDOM(OVERLAY_PAGE_HTML, { url: 'https://example.test/api/v1/live-sessions/abc/overlay/view?token=t', runScripts: 'dangerously', beforeParse(window: any) {
+    window.fetch = async () => ({ ok: true, status: 200, json: async () => ({ data: { status: 'active', title: 'Live', campaignRaisedAmount: 0, campaignGoalAmount: 100, config: {}, totals: { amountRaised: 0, successfulDonations: 0 } } }) });
+    window.EventSource = class { addEventListener(type: string, fn: (event: { data: string }) => void) { listeners[type] = fn; } close() {} };
+  } });
+  await new Promise(resolve => setTimeout(resolve, 20));
+  const gift = JSON.stringify({ donationId: 'd1', name: 'Ama', amount: 10 });
+  listeners.donation({ data: gift });
+  listeners.donation({ data: gift });
+  listeners.donation({ data: JSON.stringify({ donationId: 'd2', name: 'Kofi', amount: 5 }) });
+  assert.equal(dom.window.document.getElementById('alerts').children.length, 2);
+  dom.window.close();
+});

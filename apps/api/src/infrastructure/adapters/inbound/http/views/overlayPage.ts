@@ -171,6 +171,7 @@ export const OVERLAY_PAGE_HTML = `<!DOCTYPE html>
 
   var goalAmount = 0;
   var sessionTarget = 0;
+  var seenDonations = {};
   var seenMilestones = {};
   var stream = null;
   var refreshTimer = null;
@@ -237,6 +238,11 @@ export const OVERLAY_PAGE_HTML = `<!DOCTYPE html>
   }
 
   function pushAlert(d) {
+    // Each gift is announced once, even if its event is delivered again.
+    if (d.donationId) {
+      if (seenDonations[d.donationId]) return;
+      seenDonations[d.donationId] = true;
+    }
     var node = document.createElement("div");
     node.className = "alert";
     var who = document.createElement("div");
