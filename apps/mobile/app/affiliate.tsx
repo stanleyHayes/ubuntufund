@@ -400,8 +400,8 @@ export default function AffiliateScreen() {
             </View>
             <Text style={styles.enrollTitle}>Earn by referring others</Text>
             <Text style={styles.enrollSubtitle}>
-              Join the affiliate program to get your own referral link. Earn a commission every time
-              someone you refer starts a paid subscription.
+              Join the affiliate program to get your own referral link. Earn a one-time commission when
+              someone you refer buys their first paid plan on the Ujimora website.
             </Text>
             <Button
               mode="contained"

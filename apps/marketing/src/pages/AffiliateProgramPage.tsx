@@ -128,12 +128,12 @@ const FAQS = [
   {
     question: 'How much can I earn?',
     answer:
-      'You earn a 10% commission on the first paid subscription of each member who joins Ujimora through your referral link. There is no limit on how many people you can refer.',
+      'You earn a one-time 10% commission on the first paid plan each member who joins Ujimora through your referral link buys on the Ujimora website. Plans bought through the App Store or Google Play are not eligible. There is no limit on how many people you can refer.',
   },
   {
     question: 'When does a commission count?',
     answer:
-      'A commission is recorded the one time a referred member first upgrades to a paid Ujimora plan. Later renewals or additional plans from the same person do not create new commissions — the reward is for bringing a new paying member on board.',
+      'A commission is recorded the one time a referred member first buys a paid Ujimora plan on the website. Later renewals or additional plans from the same person do not create new commissions, and App Store or Google Play purchases do not earn one — the reward is for bringing a new paying member on board.',
   },
   {
     question: 'Why is there a hold before I can withdraw?',

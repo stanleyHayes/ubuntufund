@@ -80,6 +80,11 @@ export class MongoStoreBilling extends MongoBillingOwnership {
     }
   }
 
+  /**
+   * Store purchases deliberately earn no affiliate commission: the store gives
+   * no price to base it on, and the programme is advertised as web-only. Only
+   * web settlement (SettleSubscriptionUseCase) records commissions.
+   */
   private async apply(userId: string, purchase: VerifiedStorePurchase, revision: number) {
     const key = storePurchaseKey(purchase.store, purchase.reference);
     const linkedKey = purchase.linkedReference ? storePurchaseKey(purchase.store, purchase.linkedReference) : undefined;
