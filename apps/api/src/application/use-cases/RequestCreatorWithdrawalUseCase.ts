@@ -3,6 +3,7 @@ import type { WalletPayoutPort } from '../../domain/ports/outbound/WalletPayoutP
 import type { PayoutEligibilityPort } from '../../domain/ports/outbound/PayoutEligibilityPort.js'
 import type { PayoutAccountService } from '../services/PayoutAccountService.js'
 import type { PlanLimitsService } from '../services/PlanLimitsService.js'
+import { VERIFY_EMAIL_BEFORE_WITHDRAWAL } from '../services/payoutEligibilityMessages.js'
 import { randomUUID } from 'node:crypto'
 import type { CreatorPayoutRepositoryPort } from '../../domain/ports/outbound/CreatorPayoutRepositoryPort.js'
 import type { CreatorBalanceRepositoryPort } from '../../domain/ports/outbound/CreatorBalanceRepositoryPort.js'
@@ -128,7 +129,7 @@ export class RequestCreatorWithdrawalUseCase {
     // Money leaving the platform needs current identity verification. Checked
     // before any provider call, and again at the reservation write boundary.
     if (!this.eligibility) throw new AppError('Withdrawals are not available right now.', 503)
-    await this.eligibility.assertOwnerVerified(userId, CREATOR_VERIFICATION_REQUIRED)
+    await this.eligibility.assertOwnerVerified(userId, CREATOR_VERIFICATION_REQUIRED, VERIFY_EMAIL_BEFORE_WITHDRAWAL)
     const savedAccount = this.accounts
       ? input.savedAccountId
         ? await this.accounts.get(userId, input.savedAccountId)

@@ -901,6 +901,23 @@ describe('Payouts Integration', () => {
     expect(payouts).toHaveLength(0);
   });
 
+  it('tells an owner with current identity verification but an unverified email to verify their email', async () => {
+    const { userId, token } = await registerUser(app, uniqueEmail('gate-email'));
+    const campaignId = await createActiveCampaign(app, token, userId);
+    await fundCampaign(app, campaignId, 1000);
+    await endCampaign(campaignId);
+    await addRecipient(app, campaignId, token);
+    await UserModel.findByIdAndUpdate(userId, { emailVerified: false });
+    const res = await request(app)
+      .post(`/api/v1/campaigns/${campaignId}/payouts`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ amount: 500 })
+      .expect(409);
+    expect(res.body.message).toMatch(/^Verify your email address before funds can be paid out/);
+    expect(res.body.message).not.toMatch(/identity/i);
+    expect(await PayoutModel.countDocuments({ campaignId })).toBe(0);
+  });
+
   it.each(['expired owner KYC', 'pending KYC renewal', 'blocked campaign', 'open dispute'] as const)(
     'refuses a payout request with %s and leaves the balance untouched',
     async (state) => {

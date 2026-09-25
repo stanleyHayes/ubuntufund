@@ -5,7 +5,7 @@ import { usePalette } from '@/context/ColorModeContext'
 import { loadEmailVerification, requestVerificationLink, shouldPromptVerification, type EmailVerificationStatus } from '@/lib/emailVerification'
 import { Button } from './Loading'
 
-/** Automatic payouts and organization invitations need a verified email address. */
+/** Payouts, bank or mobile-money withdrawals and organization invitations need a verified email address. */
 export function EmailVerificationNotice() {
   const p = usePalette()
   const [status, setStatus] = useState<EmailVerificationStatus | null>(null)
@@ -28,7 +28,7 @@ export function EmailVerificationNotice() {
     finally { setBusy(false) }
   }
   return <View style={{ marginHorizontal: 16, marginTop: 12, padding: 12, gap: 8, borderRadius: 12, backgroundColor: `${p.primary}14` }}>
-    <Text style={{ color: p.text }}>Verify your email address. Automatic payouts and organization invitations need a verified email.</Text>
+    <Text style={{ color: p.text }}>Verify your email address. Payouts and withdrawals to a bank or mobile-money account, and organization invitations, need a verified email.</Text>
     {!!message && <Text accessibilityRole="alert" style={{ color: p.success }}>{message}</Text>}
     {!!error && <Text accessibilityRole="alert" style={{ color: p.error }}>{error}</Text>}
     <Button disabled={busy} onPress={() => void send()}>{busy ? 'Sending…' : 'Send verification link'}</Button>

@@ -4,11 +4,12 @@ import Button from '@mui/material/Button'
 import { api } from '@/lib/api'
 
 /**
- * Shown where an unverified email blocks something: automatic payouts fall back
- * to manual review and organization invitations cannot be accepted. Hidden when
- * the address is verified, when email delivery is unavailable, or while loading.
+ * Shown where an unverified email blocks something: no payout or withdrawal to
+ * a bank or mobile-money account can be requested or approved, and organization
+ * invitations cannot be accepted. Hidden when the address is verified, when
+ * email delivery is unavailable, or while loading.
  */
-export function EmailVerificationNotice({ reason = 'Automatic payouts and organization invitations need a verified email address.' }: { reason?: string }) {
+export function EmailVerificationNotice({ reason = 'Payouts and withdrawals to a bank or mobile-money account, and organization invitations, need a verified email address.' }: { reason?: string }) {
   const [status, setStatus] = useState<{ emailVerified: boolean; deliveryConfigured: boolean } | null>(null)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')

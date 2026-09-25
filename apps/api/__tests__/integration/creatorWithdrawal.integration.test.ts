@@ -193,6 +193,19 @@ describe('Creator withdrawal — transfer rail', () => {
     },
   )
 
+  it('tells a creator with current identity verification but an unverified email to verify their email', async () => {
+    const owner = await creatorWithBalance(100)
+    await UserModel.updateOne({ _id: owner.userId }, { emailVerified: false })
+    const callsBefore = vi.mocked(fetch).mock.calls.length
+    const res = await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`)
+      .send({ amount: 100, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } })
+      .expect(409)
+    expect(res.body.message).toMatch(/^Verify your email address before withdrawing creator funds/)
+    expect(res.body.message).not.toMatch(/identity/i)
+    expect(vi.mocked(fetch).mock.calls.length).toBe(callsBefore)
+    expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(100)
+  })
+
   it('refuses an unmatched account, then withdraws once the name is re-entered surname-first', async () => {
     const owner = await creatorWithBalance(100)
     const recipient = { type: 'mobile_money', accountNumber: '0557654321', bankCode: 'MTN' }

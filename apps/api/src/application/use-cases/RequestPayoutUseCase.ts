@@ -21,6 +21,7 @@ import {
   campaignNeedsEarlyCashout,
 } from '../services/payoutFee.js'
 import type { PayoutsConfig } from '../../infrastructure/config/index.js'
+import { VERIFY_EMAIL_BEFORE_PAYOUT } from '../services/payoutEligibilityMessages.js'
 
 const CURRENCY = 'GHS'
 
@@ -159,7 +160,12 @@ export class RequestPayoutUseCase {
     }
     if (this.eligibility) {
       await this.eligibility.assertCampaignPayable(campaignId)
-      await this.eligibility.assertOwnerVerified(campaign.creatorId)
+      // The owner is told the step they can take; staff get a neutral message.
+      await this.eligibility.assertOwnerVerified(
+        campaign.creatorId,
+        undefined,
+        isOwner ? VERIFY_EMAIL_BEFORE_PAYOUT : undefined,
+      )
     }
     const recipient = wallet
       ? { id: `wallet:${campaign.creatorId}`, currency: 'GHS' }
