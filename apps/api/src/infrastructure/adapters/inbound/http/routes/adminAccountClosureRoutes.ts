@@ -81,7 +81,10 @@ export function createAdminAccountClosureRoutes(
       } catch (error) {
         const blockers = error instanceof AppError && error.statusCode === 409 ? error.errors?.accountClosure : undefined;
         if (blockers) {
-          await audit('account.staff_closure_refused', `Staff-assisted account closure refused; outstanding: ${blockers.join(', ')}`, 409);
+          // Staff must still see the blockers if this row cannot be written;
+          // the generic auditMutation row records the 409 attempt as well.
+          await audit('account.staff_closure_refused', `Staff-assisted account closure refused; outstanding: ${blockers.join(', ')}`, 409)
+            .catch((auditError: unknown) => logger.error({ err: auditError, actorId: req.userId, userId: id }, 'staff closure refusal audit write failed'));
         }
         throw error;
       }
