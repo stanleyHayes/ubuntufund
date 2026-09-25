@@ -4,6 +4,8 @@ import type { PayoutEligibilityPort } from '../../domain/ports/outbound/PayoutEl
 import type { PayoutAccountService } from '../services/PayoutAccountService.js'
 import type { PlanLimitsService } from '../services/PlanLimitsService.js'
 import { VERIFY_EMAIL_BEFORE_WITHDRAWAL } from '../services/payoutEligibilityMessages.js'
+import { payoutNamesMatch } from '../../domain/services/payoutNameMatch.js'
+import type { AuditLogRepositoryPort } from '../../domain/ports/outbound/AuditLogRepositoryPort.js'
 import { randomUUID } from 'node:crypto'
 import type { CreatorPayoutRepositoryPort } from '../../domain/ports/outbound/CreatorPayoutRepositoryPort.js'
 import type { CreatorBalanceRepositoryPort } from '../../domain/ports/outbound/CreatorBalanceRepositoryPort.js'
@@ -66,7 +68,14 @@ export class RequestCreatorWithdrawalUseCase {
     private readonly walletPayouts?: WalletPayoutPort,
     private readonly withdrawalTransaction?: CreatorWithdrawalTransactionPort,
     /** Current KYC/KYB gate for money leaving the platform (re-checked in the transaction). */
-    private readonly eligibility?: Pick<PayoutEligibilityPort, 'assertOwnerVerified'>,
+    private readonly eligibility?: Pick<PayoutEligibilityPort, 'assertOwnerVerified' | 'verifiedLegalName'>,
+    /**
+     * Records withdrawals to an account whose provider-held name is not the
+     * creator's verified legal name. "name_matched" only compares the name the
+     * creator typed with the provider's, so this is how compliance sees
+     * possible third-party (mule) destinations on an unreviewed rail.
+     */
+    private readonly audit?: AuditLogRepositoryPort,
   ) {}
 
   async execute(userId: string, input: CreatorWithdrawalInput, authVersion = '') {
@@ -146,6 +155,9 @@ export class RequestCreatorWithdrawalUseCase {
     if (!r?.accountNumber || !r?.bankCode || !r?.accountName) {
       throw new AppError('A payout destination (account, bank/telco, name) is required.', 400)
     }
+    const legalName = savedAccount ? await this.eligibility.verifiedLegalName?.(userId) : undefined
+    const destinationOwnerUnverified =
+      Boolean(legalName) && !payoutNamesMatch(legalName, savedAccount?.resolvedAccountName)
 
     if (!this.withdrawalTransaction) throw new AppError('Withdrawals are not available right now.', 503)
     // Never reserve (and then strand) a withdrawal the platform balance cannot
@@ -197,6 +209,16 @@ export class RequestCreatorWithdrawalUseCase {
     }
     if (committed instanceof CreatorPayoutEntity) return committed
     const { payout, reference, recipientCode } = committed
+    if (destinationOwnerUnverified) {
+      await this.audit?.record({
+        actorId: userId,
+        actorRole: 'user',
+        action: 'creator_withdrawal.destination_not_legal_name',
+        resource: payout.id,
+        details: `The provider-held name on saved payout account ${savedAccount?.id ?? '(unknown)'} does not match the creator's verified legal name. Review for a third-party destination.`,
+        severity: 'warning',
+      })
+    }
     const processingResult = {
       id: payout.id,
       status: 'PROCESSING' as const,

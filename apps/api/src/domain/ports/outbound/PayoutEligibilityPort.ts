@@ -17,4 +17,10 @@ export interface PayoutEligibilityPort {
    * no open or under-review dispute.
    */
   assertCampaignPayable(campaignId: string): Promise<void>;
+  /**
+   * The legal name (organization: registered business name) on the account
+   * holder's current identity approval, or undefined when there is none or it
+   * holds no name. Used to spot payouts to accounts held by someone else.
+   */
+  verifiedLegalName?(userId: string): Promise<string | undefined>;
 }

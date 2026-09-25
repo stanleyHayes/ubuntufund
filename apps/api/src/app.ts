@@ -933,6 +933,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     new MongoWalletPayoutRepository(planLimitsService),
     new MongoCreatorWithdrawalTransaction(),
     payoutEligibility,
+    auditLogRepo,
   )
   const handleCreatorPayoutWebhookUseCase = new HandleCreatorPayoutWebhookUseCase(
     creatorPayoutRepo,

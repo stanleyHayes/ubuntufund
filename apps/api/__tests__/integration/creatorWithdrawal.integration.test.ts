@@ -29,6 +29,7 @@ import { CreatorPayoutModel } from '../../src/infrastructure/database/models/Cre
 import { UserModel } from '../../src/infrastructure/database/models/UserModel.js'
 import { grantCurrentKyc } from '../helpers/currentKyc.js'
 import { KYCVerificationModel } from '../../src/infrastructure/database/models/KYCVerificationModel.js'
+import { AuditLogModel } from '../../src/infrastructure/database/models/AuditLogModel.js'
 
 function uniqueEmail(label: string): string {
   return `${label}-${randomUUID()}@example.com`
@@ -204,6 +205,20 @@ describe('Creator withdrawal — transfer rail', () => {
     expect(res.body.message).not.toMatch(/identity/i)
     expect(vi.mocked(fetch).mock.calls.length).toBe(callsBefore)
     expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(100)
+  })
+
+  it.each([
+    ['a third party', 'Kofi Boateng', 1],
+    ['the creator (surname first)', 'Draw With', 0],
+  ] as const)('audits a withdrawal to an account held by %s against the verified legal name', async (_label, legalName, entries) => {
+    const owner = await creatorWithBalance(100)
+    await KYCVerificationModel.updateMany({ userId: owner.userId }, { $set: { 'personalInfo.fullName': legalName } })
+    // The typed name matches the provider's ("With Draw"), so the account is name_matched.
+    const res = await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`)
+      .send({ amount: 100, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } })
+      .expect(201)
+    const payout = await CreatorPayoutModel.findOne({ providerRef: res.body.data.reference }).orFail()
+    expect(await AuditLogModel.countDocuments({ action: 'creator_withdrawal.destination_not_legal_name', resource: payout.id })).toBe(entries)
   })
 
   it('refuses an unmatched account, then withdraws once the name is re-entered surname-first', async () => {

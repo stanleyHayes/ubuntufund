@@ -84,6 +84,18 @@ export class MongoPayoutEligibility implements PayoutEligibilityPort {
     await assertCurrentOwnerVerification(userId, { message, emailMessage })
   }
 
+  async verifiedLegalName(userId: string): Promise<string | undefined> {
+    const owner = await UserModel.findOne({ _id: userId, deletedAt: null }).select('role')
+    if (!owner) return undefined
+    const organization = owner.role === 'organization'
+    const record = await KYCVerificationModel.findOne({
+      userId,
+      verificationType: organization ? 'business' : 'identity',
+    }).sort({ createdAt: -1, _id: -1 })
+    if (!isCurrentApproval(record)) return undefined
+    return (organization ? record?.businessInfo?.businessName : record?.personalInfo?.fullName)?.trim() || undefined
+  }
+
   async assertCampaignPayable(campaignId: string): Promise<void> {
     const campaign = await CampaignModel.findById(campaignId)
     if (!campaign) throw new AppError('Campaign not found', 404)
