@@ -12,6 +12,7 @@ import { ItemNotFound, BrandLogo, formatCurrency, SHAPE } from '@ubuntu-fund/ui'
 import { SUBSCRIPTION_PLANS, type SubscriptionPlan } from '@ubuntu-fund/types'
 import {
   getSubscriptionCheckoutStatus,
+  readSubscriptionCheckout,
   verifySubscriptionReference,
   readSubscriptionHandoff,
   clearSubscriptionHandoff,
@@ -40,8 +41,18 @@ const popIn = keyframes`
 // Polling
 // ---------------------------------------------------------------------------
 
-const POLL_INTERVAL_MS = 2000
-const MAX_ATTEMPTS = 15 // ~30s
+// Back off between checks (2s, 3s, 5s, 8s, then every 10s; ~2 minutes in all).
+const POLL_DELAYS_MS = [2000, 3000, 5000, 8000]
+const POLL_MAX_DELAY_MS = 10_000
+const MAX_ATTEMPTS = 15
+// Only every few checks asks Paystack (POST …/verify); the rest read the
+// stored status, which the signed webhook updates.
+const VERIFY_EVERY = 4
+// After a 429 the page stops and waits before "Keep checking" works again.
+const RATE_LIMIT_COOLDOWN_MS = 60_000
+
+const delayAfter = (attempt: number) => POLL_DELAYS_MS[attempt - 1] ?? POLL_MAX_DELAY_MS
+const isRateLimited = (error: unknown) => (error as { status?: number } | null)?.status === 429
 
 type Phase = 'resolving' | 'pending' | 'succeeded' | 'failed' | 'expired' | 'timeout' | 'missing'
 
@@ -107,6 +118,14 @@ export function SubscriptionCallbackPage() {
   const [phase, setPhase] = useState<Phase>(checkoutId || reference ? 'resolving' : 'missing')
   const [view, setView] = useState<SubscriptionCheckout | null>(null)
   const [pollNonce, setPollNonce] = useState(0)
+  const [rateLimited, setRateLimited] = useState(false)
+
+  // Re-enable "Keep checking" once the rate-limit cooldown has passed.
+  useEffect(() => {
+    if (!rateLimited) return
+    const timer = setTimeout(() => setRateLimited(false), RATE_LIMIT_COOLDOWN_MS)
+    return () => clearTimeout(timer)
+  }, [rateLimited])
 
   useEffect(() => {
     // The missing case is already the initial phase; nothing to poll.
@@ -115,12 +134,17 @@ export function SubscriptionCallbackPage() {
     let active = true
     let attempts = 0
     let timer: ReturnType<typeof setTimeout> | undefined
+    let knownId: string | null = null
 
     async function poll() {
       attempts += 1
       try {
-        const status = reference ? await verifySubscriptionReference(reference) : await getSubscriptionCheckoutStatus(checkoutId as string)
+        const verifyNow = !knownId || attempts % VERIFY_EVERY === 0
+        const status = !verifyNow && knownId
+          ? await readSubscriptionCheckout(knownId)
+          : reference ? await verifySubscriptionReference(reference) : await getSubscriptionCheckoutStatus(checkoutId as string)
         if (!active) return
+        knownId = status.id
         setView(status)
         // A settled, failed or expired checkout no longer needs the browser
         // handoff; leaving it made the subscription page nag forever.
@@ -140,9 +164,15 @@ export function SubscriptionCallbackPage() {
         }
         // PENDING — keep confirming.
         setPhase('pending')
-      } catch {
-        // Transient error — fall through to retry until we run out of attempts.
+      } catch (error) {
         if (!active) return
+        // Too many checks: stop instead of burning the rest of the budget.
+        if (isRateLimited(error)) {
+          setRateLimited(true)
+          setPhase('timeout')
+          return
+        }
+        // Transient error — fall through to retry until we run out of attempts.
         setPhase('pending')
       }
 
@@ -150,7 +180,7 @@ export function SubscriptionCallbackPage() {
         if (active) setPhase('timeout')
         return
       }
-      timer = setTimeout(poll, POLL_INTERVAL_MS)
+      timer = setTimeout(poll, delayAfter(attempts))
     }
 
     poll()
@@ -291,12 +321,14 @@ export function SubscriptionCallbackPage() {
             <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 420, mx: 'auto', mb: 4 }}>
               This is taking a little longer than usual. Your payment is verified securely in the
               background, so if it went through your plan activates shortly — no need to pay again.
+              {rateLimited && ' We have checked many times in a short while, so please wait a minute before checking again.'}
             </Typography>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, justifyContent: 'center' }}>
               <Button
                 variant="contained"
                 color="secondary"
                 startIcon={<ReplayRoundedIcon />}
+                disabled={rateLimited}
                 onClick={() => {
                   setPhase('resolving')
                   setPollNonce((n) => n + 1)

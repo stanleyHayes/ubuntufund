@@ -25,7 +25,13 @@ export function resetRateLimiters(): void {
   for (const windows of allWindows) windows.clear();
 }
 
-function createRateLimiter(options: { windowMs: number; max: number; scope: string }) {
+export function createRateLimiter(options: {
+  windowMs: number;
+  max: number;
+  scope: string;
+  /** Bucket key; defaults to the client IP. */
+  key?: (req: Request) => string | undefined;
+}) {
   const windows = new Map<string, WindowState>();
   allWindows.push(windows);
 
@@ -39,7 +45,7 @@ function createRateLimiter(options: { windowMs: number; max: number; scope: stri
   sweeper.unref();
 
   return (req: Request, res: Response, next: NextFunction): void => {
-    const key = `${options.scope}:${req.ip ?? 'unknown'}`;
+    const key = `${options.scope}:${options.key?.(req) ?? req.ip ?? 'unknown'}`;
     const now = Date.now();
     let state = windows.get(key);
 
@@ -108,5 +114,21 @@ export const donationIntentRateLimiter = createRateLimiter({
 /** Limits report spam; persisted uniqueness also suppresses duplicate pending reports. */
 export const safetyReportRateLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 20, scope: 'safety-reports' });
 export const storeBillingRateLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 40, scope: 'store-billing' });
+
+/**
+ * Subscription payment verification (each call may hit Paystack): 120 / 15 min
+ * per signed-in member. Its own budget, keyed on the user rather than the IP,
+ * so polling a payment confirmation never competes with donations or payouts,
+ * and members behind one proxy address never share a bucket. Runs after auth.
+ */
+export const subscriptionVerifyRateLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 120,
+  scope: 'subscription-verify',
+  key: (req) => {
+    const userId = (req as Request & { userId?: string }).userId;
+    return userId ? `user:${userId}` : undefined;
+  },
+});
 
 export const dataRightsRateLimiter = createRateLimiter({ windowMs: 15 * 60_000, max: 20, scope: 'data-rights' });

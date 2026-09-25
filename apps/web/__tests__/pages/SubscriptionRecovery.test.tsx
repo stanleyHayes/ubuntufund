@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { SubscriptionCallbackPage } from '@/pages/SubscriptionCallbackPage'
 import { CreatorDashboardPage } from '@/pages/CreatorDashboardPage'
@@ -30,6 +30,32 @@ describe('subscription return UI',()=>{
   expect(await screen.findByText("You're all set!")).toBeInTheDocument()
   expect(localStorage.getItem('uf_pending_subscriptions')).toBeNull()
   vi.unstubAllGlobals()
+ });
+ it('stops polling on a rate limit instead of burning the budget',async()=>{
+  vi.mocked(api.post).mockRejectedValue(Object.assign(new Error('Too many requests, please try again later'),{status:429}))
+  render(<MemoryRouter initialEntries={['/subscription/callback?checkout=checkout']}><SubscriptionCallbackPage/></MemoryRouter>)
+  expect(await screen.findByText('Still confirming your subscription')).toBeInTheDocument()
+  expect(screen.getByRole('button',{name:'Keep checking'})).toBeDisabled()
+  expect(screen.getByText(/wait a minute before checking again/)).toBeInTheDocument()
+  expect(api.post).toHaveBeenCalledTimes(1)
+ });
+ it('reads the stored status between provider checks and backs off',async()=>{
+  vi.useFakeTimers()
+  try {
+   vi.mocked(api.post).mockResolvedValue({id:'checkout',status:'pending',tier:'pro',finalAmount:149,currency:'GHS'})
+   vi.mocked(api.get).mockResolvedValue({id:'checkout',status:'pending',tier:'pro',finalAmount:149,currency:'GHS'})
+   render(<MemoryRouter initialEntries={['/subscription/callback?checkout=checkout']}><SubscriptionCallbackPage/></MemoryRouter>)
+   await act(async()=>{await vi.advanceTimersByTimeAsync(0)})
+   expect(api.post).toHaveBeenCalledTimes(1)
+   await act(async()=>{await vi.advanceTimersByTimeAsync(2000)})
+   expect(api.get).toHaveBeenCalledWith('/subscriptions/checkout/checkout')
+   await act(async()=>{await vi.advanceTimersByTimeAsync(2999)})
+   expect(api.get).toHaveBeenCalledTimes(1) // second gap is 3s, not 2s
+   await act(async()=>{await vi.advanceTimersByTimeAsync(1)})
+   expect(api.get).toHaveBeenCalledTimes(2)
+   await act(async()=>{await vi.advanceTimersByTimeAsync(5000)})
+   expect(api.post).toHaveBeenCalledTimes(2) // 4th check asks Paystack again
+  } finally { vi.useRealTimers() }
  });
  it('keeps the annual plan on payment retry without claiming no debit',async()=>{
   vi.mocked(api.post).mockResolvedValue({id:'checkout',status:'failed',tier:'enterprise',billingCycle:'yearly',finalAmount:999,currency:'GHS'})
