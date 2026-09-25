@@ -1,4 +1,5 @@
 import { useSeo } from '@/lib/seo'
+import { EmailVerificationNotice } from '@/components/account/EmailVerificationNotice'
 import { OwnerNotifications } from '@/components/account/OwnerNotifications'
 import Alert from '@mui/material/Alert'
 import { AccountPageSkeleton } from '@/components/account/AccountPage'
@@ -608,6 +609,7 @@ export function DashboardPage() {
 
       <Container maxWidth="lg" sx={{ mt: -3, pb: 6, position: 'relative', zIndex: 2 }}>
         <OwnerNotifications />
+        <EmailVerificationNotice />
         {/* Stats row */}
         <Grid container spacing={2} sx={{ mb: 4 }}>
           <Grid size={{ xs: 6, md: 3 }}>
