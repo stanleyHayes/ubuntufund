@@ -97,9 +97,16 @@ it('keeps restriction history, lifts only an active restriction once, and guards
   await request(app).get('/api/v1/admin/safety-reports/restrictions').set('Authorization', author.token).expect(403);
 
   const restore = (body: object) => request(app).post(`/api/v1/admin/safety-reports/restrictions/${author.id}/restore`).set('Authorization', admin.token).send({ notes: 'Appeal reviewed and the restriction was lifted.', ...body });
-  await restore({ reportId: first }).expect(409);
+  const refused = await restore({ reportId: first }).expect(409);
+  // The refusal is marked and names the decision that governs the account now.
+  expect(refused.body.errors).toMatchObject({ supersede: ['required'], currentReportId: [second] });
+  expect(refused.body.errors.currentReason).toHaveLength(1);
   expect(await ContentRestrictionModel.exists({ userId: author.id })).toBeTruthy();
-  await restore({ reportId: first, confirmSupersede: true }).expect(200);
+  // A confirmation for a different decision than the one governing now is refused.
+  const stale = await restore({ reportId: first, confirmSupersede: true, supersedeReportId: first }).expect(409);
+  expect(stale.body.errors).toMatchObject({ supersede: ['required'], currentReportId: [second] });
+  expect(await ContentRestrictionModel.exists({ userId: author.id })).toBeTruthy();
+  await restore({ reportId: first, confirmSupersede: true, supersedeReportId: second }).expect(200);
   await restore({}).expect(404);
   expect(await AuditLogModel.countDocuments({ action: 'safety.restore_public_content', resource: `user:${author.id}` })).toBe(1);
   expect(await ContentRestrictionEventModel.findOne({ userId: author.id, action: 'restore' }).lean()).toMatchObject({ liftedReportId: second });

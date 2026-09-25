@@ -11,7 +11,14 @@ import { exportTable, dateCell } from '@/lib/exports/report'
 import { useCallback, useEffect, useState } from 'react'
 import { Alert, Box, Button, Chip, Skeleton, MenuItem, Paper, Stack, Typography } from '@mui/material'
 import { api } from '@/lib/api'
+import { ApiError } from '@/lib/apiError'
 import RestrictedUsersPanel from '@/components/RestrictedUsersPanel'
+/** The restriction that governs an account now, from the API's 409 supersede refusal. */
+interface Supersede { reportId: string; currentReportId: string; currentReason: string }
+function supersedeFrom(error: unknown, reportId: string): Supersede | null {
+  if (!(error instanceof ApiError) || error.status !== 409 || !error.errors?.supersede) return null
+  return { reportId, currentReportId: error.errors.currentReportId?.[0] ?? '', currentReason: error.errors.currentReason?.[0] ?? '' }
+}
 interface Report { _id: string; targetType: 'user' | 'comment' | 'campaign_update' | 'live' | 'donation_message' | 'tip_message' | 'ai_output'; targetId: string; targetUserId?: string; reason: string; description?: string; evidence?: string; priority: string; createdAt: string; status: string; resolution?: string; reviewNotes?: string; reviewAction?: string }
 export default function SafetyReportsPage() {
   const [pendingLiveCleanup, setPendingLiveCleanup] = useState(0)
@@ -21,10 +28,11 @@ export default function SafetyReportsPage() {
   const [pageSize, setPageSize] = useState(12)
   const [view, setView] = useState<'reports' | 'restrictions'>('reports')
   // A restore from an older report is refused (409) when a newer decision now
-  // governs the account; staff may then lift it deliberately.
-  const [supersede, setSupersede] = useState('')
+  // governs the account; staff may then lift that decision deliberately. Only
+  // that specific refusal offers it, and any reload or other error clears it.
+  const [supersede, setSupersede] = useState<Supersede | null>(null)
   const load = useCallback(async () => {
-    setLoading(true); setItems([])
+    setLoading(true); setItems([]); setSupersede(null)
     try { const data = await api.get<{ items: Report[]; total: number; pendingLiveCleanup: number }>(`/admin/safety-reports?status=${status}&page=${page}&pageSize=${pageSize}`); setItems(data.items); setTotal(data.total); setPendingLiveCleanup(data.pendingLiveCleanup ?? 0); setError('') }
     catch (e) { setError(e instanceof Error ? e.message : 'Could not load safety reports') }
     finally { setLoading(false) }
@@ -33,12 +41,16 @@ export default function SafetyReportsPage() {
   async function review(report: Report, action: string) {
     setBusy(report._id); setError(''); setNotice('')
     try {
-      if (action === 'restore' || action === 'restore_supersede') await api.post(`/admin/safety-reports/restrictions/${report.targetUserId}/restore`, { notes: notes[report._id] || report.reviewNotes, reportId: report._id, ...(action === 'restore_supersede' ? { confirmSupersede: true } : {}) })
+      const confirming = action === 'restore_supersede' && supersede?.reportId === report._id ? supersede : null
+      if (action === 'restore_supersede' && !confirming) return
+      if (action === 'restore' || confirming) await api.post(`/admin/safety-reports/restrictions/${report.targetUserId}/restore`, { notes: notes[report._id] || report.reviewNotes, reportId: report._id, ...(confirming ? { confirmSupersede: true, supersedeReportId: confirming.currentReportId } : {}) })
       else await api.put(`/admin/safety-reports/${report._id}/review`, { action, notes: notes[report._id] || report.reviewNotes })
-      setSupersede('')
+      setSupersede(null)
       setNotice(action.startsWith('restore') ? 'Publishing restriction removed. Previously hidden comments and messages remain hidden.' : 'Review saved.'); await load()
     } catch (e) {
-      if (action === 'restore') setSupersede(report._id)
+      // Offer the explicit lift only for the API's supersede refusal, never
+      // for a network failure, a server error or a missing restriction.
+      setSupersede(action.startsWith('restore') ? supersedeFrom(e, report._id) : null)
       setError(e instanceof Error ? e.message : 'Could not save review')
     }
     finally { setBusy('') }
@@ -68,6 +80,10 @@ export default function SafetyReportsPage() {
       {report.status === 'pending' && report.reviewAction && <Alert severity="info">Review started: {report.reviewAction.replaceAll('_', ' ')}. Retry that action to finish it. The original notes are preserved.</Alert>}
       {report.reviewNotes && <Typography>Previous review: {report.reviewNotes}</Typography>}
       <TextField optionContext="safety" multiline minRows={2} label="Review notes (at least 20 characters)" value={notes[report._id] ?? (report.status === 'pending' ? report.reviewNotes : '') ?? ''} disabled={report.status === 'pending' && !!report.reviewAction} onChange={e => setNotes(current => ({ ...current, [report._id]: e.target.value }))} inputProps={{ maxLength: 2000 }} />
+      {supersede?.reportId === report._id && <Alert severity="warning">
+        This account is now restricted under {supersede.currentReportId ? <>report <strong>{supersede.currentReportId}</strong></> : 'a direct staff restriction'}, not this report.
+        {supersede.currentReason && <> Recorded reason: “{supersede.currentReason}”.</>} Review that decision first. Lifting it anyway removes that restriction.
+      </Alert>}
       <Stack direction="row" useFlexGap flexWrap="wrap" spacing={1}>
         {report.status === 'pending' ? <>
           {report.targetType === 'live' && <Button disabled={!!busy || ((notes[report._id] || (report.status === 'pending' ? report.reviewNotes : ''))?.trim().length || 0) < 20} onClick={() => void review(report, 'stop_live')}>End broadcast at provider</Button>}
@@ -79,7 +95,7 @@ export default function SafetyReportsPage() {
           <Button disabled={!!busy || ((notes[report._id] || (report.status === 'pending' ? report.reviewNotes : ''))?.trim().length || 0) < 20} onClick={() => void review(report, 'dismiss')}>Dismiss</Button>
         </> : report.resolution === 'restrict_user' && <>
           <Button disabled={!!busy || ((notes[report._id] || (report.status === 'pending' ? report.reviewNotes : ''))?.trim().length || 0) < 20} onClick={() => void review(report, 'restore')}>Restore publishing after appeal</Button>
-          {supersede === report._id && <Button color="warning" disabled={!!busy} onClick={() => void review(report, 'restore_supersede')}>Lift the current restriction anyway</Button>}
+          {supersede?.reportId === report._id && <Button color="warning" disabled={!!busy} onClick={() => void review(report, 'restore_supersede')}>Lift the current restriction anyway</Button>}
         </>}
       </Stack>
     </Stack></Paper>)}

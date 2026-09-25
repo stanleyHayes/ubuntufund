@@ -1,15 +1,10 @@
 import { browserSession } from './session'
+import { ApiError } from './apiError'
 // In production, requests go to '/api/v1' which Vercel rewrites to the API
 // (see vercel.json). Set VITE_API_URL to call an absolute API origin instead.
 const API_BASE = import.meta.env.VITE_API_URL || '/api/v1'
 
-/** A non-2xx API answer, with the HTTP status and any field errors the server sent. */
-export class ApiError extends Error {
-  constructor(message: string, readonly status: number, readonly errors?: Record<string, string[]>) {
-    super(message)
-    this.name = 'ApiError'
-  }
-}
+export { ApiError }
 
 interface RequestFlags {
   /**
