@@ -13,6 +13,7 @@ import { AppError } from '../../infrastructure/adapters/inbound/middleware/error
 import { logger } from '../../infrastructure/logging/logger.js';
 import { minorUnitExponent } from '../../domain/value-objects/Money.js';
 import { tipChargeMatches, type TipCharge } from './HandleTipWebhookUseCase.js';
+import { ProviderTransactionNotFoundError } from '../../domain/errors/ProviderTransactionNotFoundError.js';
 
 /** The tip settlement seam the reconciler drives; {@link HandleTipWebhookUseCase} satisfies it. */
 export interface TipCreditRepairer {
@@ -30,18 +31,23 @@ export interface TipCreditRepairer {
  */
 export const ABANDONED_CHECKOUT_TTL_MS = 24 * 60 * 60 * 1000;
 
+/** Upper bound on one sweep's batch, whoever asks for it. */
+export const MAX_RECONCILE_LIMIT = 500;
+
 /** Per-intent reconciliation outcome. */
 export type ReconcileOutcome =
-  | 'repaired' // provider says success, we settled a missed webhook
+  | 'repaired' // provider says success, we settled a missed webhook (or a late success)
   | 'failed' // provider says failed, we marked it FAILED
+  | 'expired' // checkout abandoned (or unknown to the provider) past the TTL — EXPIRED
   | 'mismatched' // provider currency/amount ≠ intent — flagged, not credited
   | 'pending' // provider still processing / transient error — left as-is
-  | 'skipped'; // no ref / provider unconfigured
+  | 'skipped'; // no ref / provider unconfigured / not reconcilable
 
 export interface ReconcileSummary {
   scanned: number;
   repaired: number;
   failed: number;
+  expired: number;
   mismatched: number;
   pending: number;
   skipped: number;
@@ -60,9 +66,12 @@ export interface ReconcileSummary {
  *   - provider success (matching currency+amount) → settle via the shared
  *     {@link SettleDonationUseCase} (idempotent; never double-credits),
  *   - provider failed → mark FAILED,
+ *   - abandoned (or unknown to the provider) past {@link ABANDONED_CHECKOUT_TTL_MS}
+ *     → mark EXPIRED and free any fee-waiver seat,
  *   - currency/amount mismatch → flag for manual review, never credit,
  *   - still processing / transient error → leave PENDING.
- * Never creates duplicate ledger entries (settlement is exactly-once).
+ * Each visited row is stamped, so the batch rotates through a backlog. Never
+ * creates duplicate ledger entries (settlement is exactly-once).
  */
 export class ReconcilePaymentsUseCase {
   constructor(
@@ -86,7 +95,8 @@ export class ReconcilePaymentsUseCase {
     opts: { olderThanMinutes?: number; limit?: number } = {}
   ): Promise<ReconcileSummary> {
     const olderThanMinutes = opts.olderThanMinutes ?? 30;
-    const limit = opts.limit ?? 100;
+    const requested = Number.isFinite(opts.limit) ? Math.floor(opts.limit!) : 100;
+    const limit = Math.min(Math.max(requested, 1), MAX_RECONCILE_LIMIT);
     const cutoff = new Date(Date.now() - olderThanMinutes * 60_000);
     const stale = await this.donationIntentRepo.findStalePending(cutoff, limit);
 
@@ -94,6 +104,7 @@ export class ReconcilePaymentsUseCase {
       scanned: stale.length,
       repaired: 0,
       failed: 0,
+      expired: 0,
       mismatched: 0,
       pending: 0,
       skipped: 0,
@@ -101,7 +112,16 @@ export class ReconcilePaymentsUseCase {
       tipsSettled: 0,
       tipsFailed: 0,
     };
+    const visitedAt = new Date();
     for (const intent of stale) {
+      // Stamp the visit first, so a row the provider cannot resolve yet (still
+      // open, unknown, transient error) moves behind rows not yet checked
+      // instead of pinning the head of every sweep.
+      try {
+        await this.donationIntentRepo.recordReconciliationAttempt(intent.id, visitedAt);
+      } catch (error) {
+        logger.warn({ err: error, intentId: intent.id }, 'reconcile: could not stamp sweep visit');
+      }
       const outcome = await this.reconcileOne(intent);
       summary[outcome] += 1;
     }
@@ -195,17 +215,28 @@ export class ReconcilePaymentsUseCase {
     return repaired;
   }
 
-  /** Reconcile a single intent by id (admin action). Throws 404 if unknown. */
+  /**
+   * Reconcile a single intent by id (admin action, donor callback verify).
+   * Throws 404 if unknown. Unlike the sweep, this also re-checks a FAILED or
+   * EXPIRED hosted intent, so a payment the provider completed after we closed
+   * the checkout is still credited — never silently kept.
+   */
   async reconcileById(id: string): Promise<{ outcome: ReconcileOutcome; status: string }> {
     const intent = await this.donationIntentRepo.findById(id);
     if (!intent) throw new AppError('Contribution not found', 404);
-    const outcome = await this.reconcileOne(intent);
+    const outcome = await this.reconcileOne(intent, { allowLateSuccess: true });
     const fresh = await this.donationIntentRepo.findById(id);
     return { outcome, status: fresh?.status ?? intent.status };
   }
 
-  private async reconcileOne(intent: DonationIntentEntity): Promise<ReconcileOutcome> {
-    if (intent.status !== 'PENDING' && intent.status !== 'CREATED') return 'skipped';
+  private async reconcileOne(
+    intent: DonationIntentEntity,
+    opts: { allowLateSuccess?: boolean } = {}
+  ): Promise<ReconcileOutcome> {
+    const closed = intent.status === 'FAILED' || intent.status === 'EXPIRED';
+    const open = intent.status === 'PENDING' || intent.status === 'CREATED';
+    if (!open && !(closed && opts.allowLateSuccess)) return 'skipped';
+    if (closed && (intent.provider === 'wallet' || intent.paymentRail === 'CRYPTO')) return 'skipped';
     if (!intent.providerRef) return 'skipped';
     const gateway = this.gatewayRegistry.get(intent.provider);
     if (!gateway || !gateway.isConfigured()) return 'skipped';
@@ -214,12 +245,17 @@ export class ReconcilePaymentsUseCase {
     try {
       verified = await gateway.verifyTransaction(intent.providerRef);
     } catch (error) {
+      // The provider has never heard of this reference: once the checkout is
+      // past its TTL there is nothing left to wait for.
+      if (error instanceof ProviderTransactionNotFoundError && open && this.pastCheckoutTtl(intent)) {
+        return this.expire(intent);
+      }
       // Transient provider/network error — leave PENDING for the next sweep.
       logger.warn(
         { err: error, intentId: intent.id, providerRef: intent.providerRef, provider: intent.provider },
         'reconcile: provider verification failed (transient)'
       );
-      return 'pending';
+      return closed ? 'skipped' : 'pending';
     }
 
     if (verified.status === 'success') {
@@ -247,6 +283,21 @@ export class ReconcilePaymentsUseCase {
         return 'mismatched';
       }
 
+      if (closed) {
+        // A verified success on a checkout we had already closed: reopen it so
+        // the normal exactly-once settlement credits it.
+        const reopened = await this.donationIntentRepo.reopenForLateSuccess(
+          intent.id,
+          intent.providerRef
+        );
+        if (!reopened) return 'skipped';
+        logger.warn(
+          { intentId: intent.id, providerRef: intent.providerRef, previousStatus: intent.status, alert: 'late_success_credited' },
+          'reconcile: provider confirmed a late payment on a closed intent — crediting'
+        );
+        intent = reopened;
+      }
+
       const platformFeePercent = await this.planLimits.platformFeePercentForIntent(intent);
       const breakdown = this.feePolicy.computeSettlementFromProvider({
         gross: verified.amount,
@@ -260,6 +311,9 @@ export class ReconcilePaymentsUseCase {
       await this.safeRecordAttempt(intent, 'succeeded', verified.raw);
       return 'repaired';
     }
+
+    // Anything short of a verified success leaves a closed intent as it was.
+    if (closed) return 'skipped';
 
     if (verified.status === 'failed') {
       // Atomic guard: only fail an intent still PENDING. A webhook may have
@@ -275,8 +329,30 @@ export class ReconcilePaymentsUseCase {
       return failed ? 'failed' : 'pending';
     }
 
-    // 'pending' / 'abandoned' / anything non-terminal — try again next sweep.
+    // Paystack reports every opened-but-unpaid checkout as 'abandoned' — even
+    // one the donor is still completing — so only close it past the TTL. That
+    // frees the donor's UI (and any fee-waiver seat); a payment that lands
+    // later is still credited by the late-success path.
+    if (verified.status === 'abandoned' && this.pastCheckoutTtl(intent)) {
+      return this.expire(intent);
+    }
+
+    // 'pending' / young 'abandoned' / anything non-terminal — try again next sweep.
     return 'pending';
+  }
+
+  private pastCheckoutTtl(intent: DonationIntentEntity): boolean {
+    return Date.now() - intent.createdAt.getTime() > ABANDONED_CHECKOUT_TTL_MS;
+  }
+
+  private async expire(intent: DonationIntentEntity): Promise<ReconcileOutcome> {
+    const expired = await this.donationIntentRepo.markExpiredIfPending(
+      intent.id,
+      intent.providerRef
+    );
+    if (!expired) return 'pending';
+    await releaseDonationSeat(this.couponRedemptionRepo, intent.id, intent.couponId);
+    return 'expired';
   }
 
   private async safeRecordAttempt(

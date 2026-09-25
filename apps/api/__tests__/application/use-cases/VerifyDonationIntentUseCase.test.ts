@@ -46,6 +46,16 @@ describe('Hosted donation callback verification', () => {
         state = 'FAILED';
         return entity();
       }),
+      markExpiredIfPending: vi.fn(async () => {
+        if (state !== 'PENDING') return null;
+        state = 'EXPIRED';
+        return entity();
+      }),
+      reopenForLateSuccess: vi.fn(async () => {
+        if (state !== 'FAILED' && state !== 'EXPIRED') return null;
+        state = 'PENDING';
+        return entity();
+      }),
       recordSettlementFinancials: vi.fn(),
     };
     gateway = {
@@ -136,10 +146,34 @@ describe('Hosted donation callback verification', () => {
     expect(journal).not.toHaveBeenCalled();
   });
 
-  it.each(['SUCCEEDED','FAILED','EXPIRED','REFUNDED'] as DonationIntentStatus[])('does not reverify terminal status %s', async status => {
+  it.each(['SUCCEEDED','REFUNDED'] as DonationIntentStatus[])('does not reverify settled status %s', async status => {
     state = status;
     expect((await verify.execute(id,reference)).status).toBe(status);
     expect(gateway.verifyTransaction).not.toHaveBeenCalled();
     expect(save).not.toHaveBeenCalled();
+  });
+
+  // I008: a payment the provider completed after we closed the checkout must be
+  // credited, exactly once, and only on a verified matching success.
+  it.each(['FAILED','EXPIRED'] as DonationIntentStatus[])('credits a verified late success on a %s intent exactly once', async status => {
+    state = status;
+    expect((await verify.execute(id,reference)).status).toBe('SUCCEEDED');
+    await verify.execute(id,reference);
+    expect(journal).toHaveBeenCalledTimes(1);
+    expect(save).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    {status:'failed'}, {status:'abandoned'}, {amount:249}, {currency:'USD'}, {reference:'other'},
+  ])('leaves a closed intent closed without a verified matching success: %j', async patch => {
+    state = 'FAILED';
+    gateway.verifyTransaction.mockResolvedValue({status:'success',reference,amount:250,fees:4.88,currency:'GHS',raw:{},...patch});
+    expect((await verify.execute(id,reference)).status).toBe('FAILED');
+    expect(journal).not.toHaveBeenCalled();
+  });
+
+  it('keeps a young abandoned checkout pending (I038)', async () => {
+    gateway.verifyTransaction.mockResolvedValue({status:'abandoned',reference,amount:250,fees:0,currency:'GHS',raw:{}});
+    expect((await verify.execute(id,reference)).status).toBe('PENDING');
   });
 });

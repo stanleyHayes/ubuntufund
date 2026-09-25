@@ -19,7 +19,16 @@ export class VerifyDonationIntentUseCase {
     if (intent.provider !== 'paystack' && intent.provider !== 'flutterwave') {
       throw new AppError('This payment does not use hosted checkout', 400);
     }
-    if (intent.status === 'PENDING' || intent.status === 'CREATED') {
+    // FAILED/EXPIRED are re-checked too: a donor who completes a checkout we
+    // had already closed lands here from the provider's redirect, and must see
+    // the payment confirmed (reconcileById only ever credits a verified
+    // success; anything else leaves the closed intent as it was).
+    if (
+      intent.status === 'PENDING' ||
+      intent.status === 'CREATED' ||
+      intent.status === 'FAILED' ||
+      intent.status === 'EXPIRED'
+    ) {
       await this.reconcile.reconcileById(intent.id);
     }
     const fresh = await this.intents.findById(intent.id);

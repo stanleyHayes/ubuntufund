@@ -175,6 +175,40 @@ export class MongoDonationIntentRepository
     return doc ? toDomain(doc) : null;
   }
 
+  async markExpiredIfPending(
+    id: string,
+    providerRef?: string
+  ): Promise<DonationIntentEntity | null> {
+    // Same CAS as markFailedIfPending: a webhook that settles the intent first
+    // always wins, so an abandoned-checkout sweep never clobbers a payment.
+    const doc = await DonationIntentModel.findOneAndUpdate(
+      { _id: id, status: 'PENDING', ...(providerRef ? { providerRef } : {}) },
+      { $set: { status: 'EXPIRED' } },
+      { new: true }
+    );
+    return doc ? toDomain(doc) : null;
+  }
+
+  async reopenForLateSuccess(
+    id: string,
+    providerRef: string
+  ): Promise<DonationIntentEntity | null> {
+    // Only hosted fiat intents, only from FAILED/EXPIRED, only for the same
+    // provider reference. The settlement gate then runs exactly once as usual.
+    const doc = await DonationIntentModel.findOneAndUpdate(
+      {
+        _id: id,
+        status: { $in: ['FAILED', 'EXPIRED'] },
+        providerRef,
+        provider: { $ne: 'wallet' },
+        paymentRail: { $ne: 'CRYPTO' },
+      },
+      { $set: { status: 'PENDING' } },
+      { new: true }
+    );
+    return doc ? toDomain(doc) : null;
+  }
+
   async findStalePending(
     olderThan: Date,
     limit: number
@@ -188,9 +222,20 @@ export class MongoDonationIntentRepository
       paymentRail: { $ne: 'CRYPTO' },
       updatedAt: { $lt: olderThan },
     })
-      .sort({ updatedAt: 1 })
+      // Never-reconciled rows (field absent) sort first, then the least
+      // recently visited: a backlog of still-open checkouts rotates instead of
+      // pinning the same `limit` rows at the head of every sweep.
+      .sort({ reconciledAt: 1, updatedAt: 1, _id: 1 })
       .limit(limit);
     return docs.map(toDomain);
+  }
+
+  async recordReconciliationAttempt(id: string, attemptedAt: Date): Promise<void> {
+    await DonationIntentModel.updateOne(
+      { _id: id, status: 'PENDING' },
+      { $max: { reconciledAt: attemptedAt } },
+      { timestamps: false }
+    );
   }
 
   /**
