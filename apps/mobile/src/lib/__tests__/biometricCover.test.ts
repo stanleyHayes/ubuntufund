@@ -2,10 +2,15 @@ import '@testing-library/jest-dom/vitest'
 import { createElement, useEffect } from 'react'
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-const m = vi.hoisted(() => ({ state: { enabled: true, locked: false }, listener: () => {}, appChange: (_state: string) => {}, mounted: 0, removed: 0 }))
+const m = vi.hoisted(() => {
+  // AuthProvider subscribes to AppState more than once (session foreground and
+  // agreement-status refresh), so deliver each change to every subscriber.
+  const appListeners = new Set<(state: string) => void>()
+  return { state: { enabled: true, locked: false }, listener: () => {}, appListeners, appChange: (state: string) => { for (const listener of [...appListeners]) listener(state) }, mounted: 0, removed: 0 }
+})
 vi.mock('react-native', async () => {
   const React = await import('react')
-  return { Platform: { OS: 'ios' }, View: ({ children, style, accessibilityElementsHidden }: { children: React.ReactNode; style: object; accessibilityElementsHidden?: boolean }) => React.createElement('div', { style, 'aria-hidden': accessibilityElementsHidden }, children), AppState: { currentState: 'active', addEventListener: (_event: string, callback: (state: string) => void) => { m.appChange = callback; return { remove: () => {} } } } }
+  return { Platform: { OS: 'ios' }, View: ({ children, style, accessibilityElementsHidden }: { children: React.ReactNode; style: object; accessibilityElementsHidden?: boolean }) => React.createElement('div', { style, 'aria-hidden': accessibilityElementsHidden }, children), AppState: { currentState: 'active', addEventListener: (_event: string, callback: (state: string) => void) => { m.appListeners.add(callback); return { remove: () => { m.appListeners.delete(callback) } } } } }
 })
 vi.mock('@/components/BiometricLock', async () => { const React = await import('react'); return { BiometricLock: () => React.createElement('div', { role: 'dialog' }, 'Ujimora is locked') } })
 vi.mock('@/lib/api', () => ({ loginApi: vi.fn(), registerApi: vi.fn() }))
