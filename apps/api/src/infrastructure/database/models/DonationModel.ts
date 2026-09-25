@@ -20,6 +20,8 @@ export interface DonationDocument extends Document {
   message?: string;
   messageHiddenAt?: Date;
   isAnonymous: boolean;
+  /** Set once this donation has been added to its live session's stats. */
+  liveStatsAppliedAt?: Date;
   createdAt: Date;
 }
 
@@ -41,6 +43,9 @@ const donationSchema = new Schema<DonationDocument>(
     message: { type: String },
     messageHiddenAt: Date,
     isAnonymous: { type: Boolean, default: false },
+    // Per-donation claim that makes the live-session stat bump exactly-once
+    // under at-least-once outbox delivery (see MongoLiveSessionRepository).
+    liveStatsAppliedAt: Date,
   },
   { timestamps: true }
 );

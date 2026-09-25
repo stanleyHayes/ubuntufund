@@ -1,3 +1,4 @@
+import { isObjectIdOrHexString } from 'mongoose';
 import type { LiveSessionStats } from '@ubuntu-fund/types';
 import { LiveSessionEntity } from '../../../../domain/entities/LiveSession.js';
 import type { LiveSessionRepositoryPort } from '../../../../domain/ports/outbound/LiveSessionRepositoryPort.js';
@@ -5,6 +6,9 @@ import {
   LiveSessionModel,
   type LiveSessionDocument,
 } from '../../../database/models/LiveSessionModel.js';
+import { DonationModel } from '../../../database/models/DonationModel.js';
+import { logger } from '../../../logging/logger.js';
+import { MongoUnitOfWork } from './MongoUnitOfWork.js';
 
 function toDomain(doc: LiveSessionDocument): LiveSessionEntity {
   return new LiveSessionEntity({
@@ -52,6 +56,9 @@ export class MongoLiveSessionRepository implements LiveSessionRepositoryPort {
   }
 
   async findById(id: string): Promise<LiveSessionEntity | null> {
+    // Session ids arrive from URLs and donor checkout links; a malformed one is
+    // simply not a session (null), never a CastError the API turns into a 400.
+    if (!isObjectIdOrHexString(id)) return null;
     const doc = await LiveSessionModel.findById(id);
     return doc ? toDomain(doc) : null;
   }
@@ -108,7 +115,7 @@ export class MongoLiveSessionRepository implements LiveSessionRepositoryPort {
     }
     if (delta.amountRaised) inc['stats.amountRaised'] = delta.amountRaised;
 
-    if (Object.keys(inc).length === 0) {
+    if (Object.keys(inc).length === 0 || !isObjectIdOrHexString(id)) {
       return this.findById(id);
     }
 
@@ -118,5 +125,37 @@ export class MongoLiveSessionRepository implements LiveSessionRepositoryPort {
       { new: true }
     );
     return doc ? toDomain(doc) : null;
+  }
+
+  async applyDonationStats(
+    id: string,
+    donationId: string,
+    amount: number
+  ): Promise<{ session: LiveSessionEntity | null; duplicate: boolean }> {
+    if (!isObjectIdOrHexString(id)) return { session: null, duplicate: false };
+    if (!isObjectIdOrHexString(donationId)) {
+      logger.warn({ liveSessionId: id, donationId }, 'live stats skipped for an unknown donation');
+      return { session: await this.findById(id), duplicate: false };
+    }
+    // Claim + bump commit together; a concurrent claimant hits a write
+    // conflict, retries, and then sees the claim as already taken.
+    return new MongoUnitOfWork().run(async () => {
+      const claim = await DonationModel.updateOne(
+        { _id: donationId, liveStatsAppliedAt: { $exists: false } },
+        { $set: { liveStatsAppliedAt: new Date() } }
+      );
+      if (claim.modifiedCount !== 1) {
+        // Already credited by an earlier delivery, or no such donation at all.
+        const known = !!(await DonationModel.exists({ _id: donationId }));
+        if (!known) logger.warn({ liveSessionId: id, donationId }, 'live stats skipped for an unknown donation');
+        return { session: await this.findById(id), duplicate: known };
+      }
+      const doc = await LiveSessionModel.findByIdAndUpdate(
+        id,
+        { $inc: { 'stats.successfulDonations': 1, 'stats.amountRaised': amount } },
+        { new: true }
+      );
+      return { session: doc ? toDomain(doc) : null, duplicate: false };
+    });
   }
 }

@@ -38,11 +38,11 @@ it('hides a guest donation message without changing money, preserves private evi
   const current = await DonationModel.findById(donation.id);
   expect(current?.message).toBeUndefined(); expect(current?.messageHiddenAt).toBeInstanceOf(Date); expect(current?.amount).toBe(75);
   expect(await new MongoDonationRepository().updateMessage(donation.id, 'guest', 'Attempt to restore hidden text', { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true, acceptedAt: new Date() })).toBeNull();
-  const recordDonationRealtime = vi.fn(), markDispatched = vi.fn(), recordAttempt = vi.fn();
-  const dispatcher = new OutboxDispatcher({ markDispatched, recordAttempt } as unknown as OutboxRepositoryPort, { recordDonationRealtime } as unknown as RealtimeDonationProjector, new MongoDonationRepository());
+  const recordDonationRealtime = vi.fn(), markDispatched = vi.fn(), recordAttempt = vi.fn(), claim = vi.fn(async () => 'lease');
+  const dispatcher = new OutboxDispatcher({ claim, markDispatched, recordAttempt } as unknown as OutboxRepositoryPort, { recordDonationRealtime } as unknown as RealtimeDonationProjector, new MongoDonationRepository());
   await dispatcher.dispatch({ id: 'outbox-test', type: 'donation.succeeded', status: 'pending', payload: { donationId: donation.id, campaignId: donation.campaignId, donorId: 'guest', donorName: 'Private name', amount: 75, currency: 'GHS', message: donation.message, isAnonymous: false, createdAt: new Date().toISOString() } } as OutboxRecord);
   expect(recordDonationRealtime.mock.calls[0][2]).toMatchObject({ amount: 75, message: undefined, donorName: undefined, isAnonymous: true });
-  expect(markDispatched).toHaveBeenCalled(); expect(recordAttempt).not.toHaveBeenCalled();
+  expect(markDispatched).toHaveBeenCalledWith('outbox-test', 'lease'); expect(recordAttempt).not.toHaveBeenCalled();
 });
 it.each([true, false])('removes a tip message and requeues remaining attribution (anonymous=%s)', async isAnonymous => {
   const reporter = await user(), owner = await user(), supporter = await user(), admin = await user(); await UserModel.findByIdAndUpdate(admin.id, { role: 'admin' });

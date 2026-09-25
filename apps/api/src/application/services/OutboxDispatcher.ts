@@ -6,6 +6,21 @@ import { logger } from '../../infrastructure/logging/logger.js';
 
 /** How many pending rows the boot sweep drains per pass. */
 const SWEEP_BATCH = 100;
+/**
+ * How long one dispatcher holds a row. A failed or crashed dispatch keeps its
+ * lease until it expires, which doubles as the retry back-off.
+ */
+const LEASE_MS = 120_000;
+/**
+ * The sweep leaves fresh rows to the in-process dispatch that follows every
+ * settlement commit, so the two do not race for the same row.
+ */
+const SWEEP_MIN_AGE_MS = 30_000;
+
+export interface OutboxDispatcherOptions {
+  leaseMs?: number;
+  sweepMinAgeMs?: number;
+}
 
 /**
  * Drains the transactional outbox: turns durably-recorded `donation.succeeded`
@@ -15,15 +30,26 @@ const SWEEP_BATCH = 100;
  * {@link sweepPending} re-runs anything still pending — so realtime/receipts
  * survive a crash or restart between the commit and the dispatch.
  *
- * Handlers must be idempotent: a row may be dispatched more than once (an
- * in-process dispatch that raced a restart, then the sweep).
+ * Every dispatch first takes a lease on its row, so the in-process dispatch,
+ * the periodic sweep and another instance's boot sweep never run the same row
+ * at the same time. Delivery is still at-least-once (a lease can expire under
+ * a stalled handler, or the process can die before marking the row), so
+ * handlers must stay idempotent — the live-session stat bump is exactly-once
+ * per donation.
  */
 export class OutboxDispatcher {
+  private readonly leaseMs: number;
+  private readonly sweepMinAgeMs: number;
+
   constructor(
     private readonly outboxRepo: OutboxRepositoryPort,
     private readonly realtimeProjector: RealtimeDonationProjector,
-    private readonly donations: DonationRepositoryPort
-  ) {}
+    private readonly donations: DonationRepositoryPort,
+    options: OutboxDispatcherOptions = {}
+  ) {
+    this.leaseMs = options.leaseMs ?? LEASE_MS;
+    this.sweepMinAgeMs = options.sweepMinAgeMs ?? SWEEP_MIN_AGE_MS;
+  }
 
   /**
    * Dispatch a single row. Marks it dispatched on success; on failure bumps its
@@ -33,31 +59,57 @@ export class OutboxDispatcher {
   async dispatch(record: OutboxRecord): Promise<void> {
     try {
       if (record.status === 'dispatched') return;
-      await this.handle(record);
-      await this.outboxRepo.markDispatched(record.id);
+      // Null: already dispatched, or another dispatcher is running it now.
+      const leaseToken = await this.outboxRepo.claim(record.id, this.leaseMs);
+      if (!leaseToken) return;
+      await this.run(record, leaseToken);
     } catch (error) {
-      logger.error(
-        { err: error, outboxId: record.id, type: record.type },
-        'outbox dispatch failed; will retry on next sweep'
-      );
-      try {
-        await this.outboxRepo.recordAttempt(record.id);
-      } catch {
-        // best-effort attempt bookkeeping
-      }
+      await this.recordFailure(record, error);
     }
   }
 
-  /** Catch-up sweep: re-dispatch every pending row (call on boot). */
+  /**
+   * Catch-up sweep: lease and re-dispatch pending rows older than the
+   * in-process window, oldest first (call on boot and periodically).
+   */
   async sweepPending(): Promise<number> {
-    const pending = await this.outboxRepo.findPending(SWEEP_BATCH);
-    for (const record of pending) {
-      await this.dispatch(record);
+    const createdBefore = new Date(Date.now() - this.sweepMinAgeMs);
+    let count = 0;
+    while (count < SWEEP_BATCH) {
+      const claimed = await this.outboxRepo.claimNextPending(createdBefore, this.leaseMs);
+      if (!claimed) break;
+      count += 1;
+      try {
+        await this.run(claimed.record, claimed.leaseToken);
+      } catch (error) {
+        await this.recordFailure(claimed.record, error);
+      }
     }
-    if (pending.length > 0) {
-      logger.info({ count: pending.length }, 'outbox sweep dispatched pending events');
+    if (count > 0) {
+      logger.info({ count }, 'outbox sweep dispatched pending events');
     }
-    return pending.length;
+    return count;
+  }
+
+  private async run(record: OutboxRecord, leaseToken: string): Promise<void> {
+    await this.handle(record);
+    await this.outboxRepo.markDispatched(record.id, leaseToken);
+  }
+
+  /**
+   * A failed row keeps its lease until it expires (the retry back-off), so the
+   * sweep cannot spin on it; the attempt counter is best-effort bookkeeping.
+   */
+  private async recordFailure(record: OutboxRecord, error: unknown): Promise<void> {
+    logger.error(
+      { err: error, outboxId: record.id, type: record.type },
+      'outbox dispatch failed; will retry on next sweep'
+    );
+    try {
+      await this.outboxRepo.recordAttempt(record.id);
+    } catch {
+      // best-effort attempt bookkeeping
+    }
   }
 
   private async handle(record: OutboxRecord): Promise<void> {

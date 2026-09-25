@@ -8,6 +8,9 @@ export interface OutboxDocument extends Document {
   attempts: number;
   createdAt: Date;
   dispatchedAt?: Date;
+  /** Dispatch lease: only the holder of `leaseToken` may run and settle the row. */
+  leaseToken?: string;
+  leaseUntil?: Date;
 }
 
 const OUTBOX_STATUSES: OutboxStatus[] = ['pending', 'dispatched'];
@@ -26,6 +29,8 @@ const outboxSchema = new Schema<OutboxDocument>(
     attempts: { type: Number, default: 0 },
     createdAt: { type: Date, default: Date.now, index: true },
     dispatchedAt: { type: Date },
+    leaseToken: { type: String },
+    leaseUntil: { type: Date },
   },
   { collection: 'outbox', timestamps: false }
 );
