@@ -50,6 +50,7 @@ async function give() {
   fireEvent.click(screen.getByRole('button', { name: /^Donate GH/ }))
 }
 const sent = (call = 0) => vi.mocked(createDonationIntent).mock.calls[call][0]
+const sentKey = (call: number) => vi.mocked(createDonationIntent).mock.calls[call][1]
 
 // R2-051: the form always sent isAnonymous=false until GET /profile answered,
 // so a donor who is anonymous by default was published by name whenever the
@@ -88,5 +89,55 @@ describe('anonymous-by-default', () => {
     await waitFor(() => expect(createDonationIntent).toHaveBeenCalledTimes(1))
     expect(sent().isAnonymous).toBeUndefined()
     expect(screen.queryByText(/Your saved anonymity setting applies/)).not.toBeInTheDocument()
+  })
+})
+
+// R2-052: the attempt key was forgotten only on a few replayed outcomes, so a
+// donor giving the same amount again in the same tab was sent to the earlier
+// gift's thank-you page without paying, and a refunded or still-settling
+// replay left them stuck on "could not start the secure checkout".
+describe('giving again with the same details', () => {
+  const replay = (status: string) => ({ intent: { id: 'intent-0', status, providerRef: 'uf-intent-0-0f0e0d0c' } })
+
+  it('says the identical gift is already complete instead of showing its confirmation, then starts a new one', async () => {
+    vi.mocked(createDonationIntent).mockResolvedValueOnce(replay('SUCCEEDED') as never).mockResolvedValueOnce(checkout as never)
+    show()
+    await give()
+    expect(await screen.findByText(/already completed an identical .*donation to this campaign/)).toBeInTheDocument()
+    expect(screen.queryByText('Callback page')).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'View it' })).toHaveAttribute('href', '/donate/callback?reference=uf-intent-0-0f0e0d0c')
+    expect(window.location.href).toBe('')
+    fireEvent.click(screen.getByRole('button', { name: /^Donate GH/ }))
+    await waitFor(() => expect(window.location.href).toBe('https://checkout.paystack.com/abc'))
+    expect(sentKey(1)).not.toBe(sentKey(0))
+  })
+
+  it.each(['REFUNDED', 'PARTIALLY_REFUNDED', 'DISPUTED', 'CHARGEBACK', 'REFUND_PENDING'])('treats a %s replay as a closed attempt', async (status) => {
+    vi.mocked(createDonationIntent).mockResolvedValueOnce(replay(status) as never).mockResolvedValueOnce(checkout as never)
+    show()
+    await give()
+    expect(await screen.findByText(/already been processed. Press Donate again/)).toBeInTheDocument()
+    expect(screen.queryByText(/could not start the secure checkout/)).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /^Donate GH/ }))
+    await waitFor(() => expect(window.location.href).toBe('https://checkout.paystack.com/abc'))
+    expect(sentKey(1)).not.toBe(sentKey(0))
+  })
+
+  it('keeps the attempt while the earlier payment is still settling, so it cannot be paid twice', async () => {
+    vi.mocked(createDonationIntent).mockResolvedValue(replay('PROCESSING') as never)
+    show()
+    await give()
+    expect(await screen.findByText(/still being confirmed by the payment provider/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /^Donate GH/ }))
+    await waitFor(() => expect(createDonationIntent).toHaveBeenCalledTimes(2))
+    expect(sentKey(1)).toBe(sentKey(0))
+  })
+
+  it('hands the attempt to the return page so it can be closed once the payment is final', async () => {
+    show()
+    await give()
+    await waitFor(() => expect(window.location.href).toBe('https://checkout.paystack.com/abc'))
+    const handoff = JSON.parse(sessionStorage.getItem('uf_pending_donations') ?? '{}')
+    expect(handoff['uf-intent-1-0a1b2c3d']).toMatchObject({ intentId: 'intent-1', attemptScope: 'donate:campaign-1:donor' })
   })
 })

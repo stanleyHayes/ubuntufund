@@ -68,6 +68,16 @@ const PRESET_AMOUNTS = [20, 50, 100, 200] as const
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 /**
+ * A replayed attempt (same details, same Idempotency-Key) whose payment was
+ * already taken: the checkout is closed, so the next Give must be a new gift.
+ */
+const PAID_STATUSES = ['SUCCEEDED', 'REFUND_PENDING', 'REFUNDED', 'PARTIALLY_REFUNDED', 'DISPUTED', 'CHARGEBACK']
+/** The replayed attempt never took the money: start a new one straight away. */
+const CLOSED_UNPAID_STATUSES = ['FAILED', 'EXPIRED', 'CANCELLED']
+/** Still settling with the provider: keep the key so a retry cannot pay twice. */
+const SETTLING_STATUSES = ['PROCESSING', 'REQUIRES_ACTION']
+
+/**
  * Parse a money amount from a free-text field (≤ 2 decimals, decimal comma
  * accepted); NaN when invalid. Previously any Number() was accepted: "1.005"
  * showed GH₵1.01 but charged GH₵1.00, and the input filter dropped commas so
@@ -126,6 +136,7 @@ export function DonatePage() {
   // Submit state
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
+  const [submitNotice, setSubmitNotice] = useState<{ message: string; reference?: string } | null>(null)
   const [paymentsDisabled, setPaymentsDisabled] = useState(false)
   const [touchedEmail, setTouchedEmail] = useState(false)
 
@@ -213,6 +224,7 @@ export function DonatePage() {
 
     setSubmitting(true)
     setSubmitError('')
+    setSubmitNotice(null)
     setPaymentsDisabled(false)
 
     const intentInput = {
@@ -236,19 +248,27 @@ export function DonatePage() {
     try {
       let result = await createDonationIntent(intentInput, await checkoutAttemptKey(attemptScope, intentInput))
 
-      if (!result.authorization_url && result.intent.status === 'SUCCEEDED') {
-        // This exact donation was already paid — show its confirmation rather
-        // than charging the donor a second time.
+      if (!result.authorization_url && PAID_STATUSES.includes(result.intent.status)) {
+        // A gift with these exact details was already paid (a retry after a
+        // lost response, or the donor giving the same amount again). Do not
+        // charge twice, and do not pass the earlier gift off as this one:
+        // say so, and let the next press start a new donation.
         await forgetCheckoutAttempt(attemptScope)
-        if (result.intent.providerRef) {
-          navigate(`/donate/callback?reference=${encodeURIComponent(result.intent.providerRef)}`)
-          return
-        }
-        setSubmitError('This donation has already been completed. Thank you!')
+        setSubmitNotice({
+          message: result.intent.status === 'SUCCEEDED'
+            ? `You already completed an identical ${formatCurrency(amountValue, 'GHS')} donation to this campaign. Press Donate again to make another donation.`
+            : 'Your earlier donation with these exact details has already been processed. Press Donate again to make a new donation.',
+          reference: result.intent.providerRef,
+        })
         setSubmitting(false)
         return
       }
-      if (!result.authorization_url && ['FAILED', 'EXPIRED', 'CANCELLED'].includes(result.intent.status)) {
+      if (!result.authorization_url && SETTLING_STATUSES.includes(result.intent.status)) {
+        setSubmitError('Your earlier donation with these details is still being confirmed by the payment provider. Please wait a moment before trying again, so you are not charged twice.')
+        setSubmitting(false)
+        return
+      }
+      if (!result.authorization_url && CLOSED_UNPAID_STATUSES.includes(result.intent.status)) {
         // The earlier attempt with these details is closed; start a new one.
         await forgetCheckoutAttempt(attemptScope)
         result = await createDonationIntent(intentInput, await checkoutAttemptKey(attemptScope, intentInput))
@@ -271,6 +291,7 @@ export function DonatePage() {
         title: campaign.title,
         amount: amountValue,
         currency: 'GHS',
+        attemptScope,
       })
 
       // Hand the browser to Paystack's hosted checkout. NEVER treat this as success.
@@ -673,6 +694,24 @@ export function DonatePage() {
             {submitError && (
               <Alert severity="error" sx={{ mb: 3, borderRadius: SHAPE.sm }}>
                 {submitError}
+              </Alert>
+            )}
+            {submitNotice && (
+              <Alert
+                severity="info"
+                sx={{ mb: 3, borderRadius: SHAPE.sm }}
+                action={submitNotice.reference ? (
+                  <Button
+                    component={RouterLink}
+                    to={`/donate/callback?reference=${encodeURIComponent(submitNotice.reference)}`}
+                    color="inherit"
+                    size="small"
+                  >
+                    View it
+                  </Button>
+                ) : undefined}
+              >
+                {submitNotice.message}
               </Alert>
             )}
 
