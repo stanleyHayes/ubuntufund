@@ -115,14 +115,6 @@ function makeStyles(p: Palette, neu: NeuRecipes) {
     donationRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     donationInfo: { flex: 1 },
     donationAmount: { alignItems: 'flex-end' },
-    paymentMethodsCard: {
-      ...neu.raised,
-      padding: 14,
-      borderRadius: 14,
-      marginBottom: 16,
-      backgroundColor: p.surface,
-    },
-    paymentMethodItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
 
     // Donation modal
     modalOverlay: {
@@ -514,19 +506,6 @@ export default function CampaignDetailScreen() {
               </Chip>
             ))}
           </View>
-
-          {/* Payment Method */}
-          <Text variant="titleMedium" style={styles.sectionTitle}>
-            Accepted Payment Method
-          </Text>
-          <Surface style={styles.paymentMethodsCard} elevation={0}>
-            {[{ icon: 'wallet-outline', label: 'Ujimora Wallet' }].map((method) => (
-              <View key={method.label} style={styles.paymentMethodItem}>
-                <Icon source={method.icon} size={20} color={p.textSecondary} />
-                <Text variant="bodySmall">{method.label}</Text>
-              </View>
-            ))}
-          </Surface>
 
           {/* Report: signed-in viewers other than the creator; signed-out viewers are asked to sign in. */}
           <ReportCampaign campaignId={campaign.id} creatorId={campaign.creatorId} />
