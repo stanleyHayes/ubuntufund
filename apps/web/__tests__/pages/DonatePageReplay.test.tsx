@@ -75,4 +75,15 @@ describe('giving again with the same details after a completed donation', () => 
     const [first, second] = idempotencyKeys()
     expect(second).not.toBe(first)
   })
+
+  it.each(['REFUNDED', 'CHARGEBACK', 'FAILED'])('starts a new donation when the earlier attempt with these details is %s', async (status) => {
+    vi.mocked(createDonationIntent)
+      .mockResolvedValueOnce({ intent: { id: 'old', amount: 50, status, providerRef: 'uf-old-ref' } } as never)
+      .mockResolvedValueOnce({ intent: { id: 'new', amount: 50, status: 'PENDING' }, reference: 'uf-new-ref', authorization_url: 'https://checkout.paystack.com/new' } as never)
+    show()
+    await give()
+    await waitFor(() => expect(window.location.href).toBe('https://checkout.paystack.com/new'))
+    const [first, second] = idempotencyKeys()
+    expect(second).not.toBe(first)
+  })
 })

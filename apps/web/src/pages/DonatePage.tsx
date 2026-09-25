@@ -246,8 +246,9 @@ export function DonatePage() {
         setSubmitting(false)
         return
       }
-      if (!result.authorization_url && ['FAILED', 'EXPIRED', 'CANCELLED'].includes(result.intent.status)) {
-        // The earlier attempt with these details is closed; start a new one.
+      if (!result.authorization_url && ['FAILED', 'EXPIRED', 'CANCELLED', 'REFUND_PENDING', 'REFUNDED', 'PARTIALLY_REFUNDED', 'DISPUTED', 'CHARGEBACK'].includes(result.intent.status)) {
+        // The earlier attempt with these details is closed (unpaid, or paid and
+        // since refunded/disputed); start a new one.
         await forgetCheckoutAttempt(attemptScope)
         result = await createDonationIntent(intentInput, await checkoutAttemptKey(attemptScope, intentInput))
       }
