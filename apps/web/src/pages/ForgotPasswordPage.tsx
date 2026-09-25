@@ -4,7 +4,7 @@ import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import Alert from '@mui/material/Alert'
-import { Link as RouterLink } from 'react-router-dom'
+import { Link as RouterLink, useLocation } from 'react-router-dom'
 import { keyframes } from '@emotion/react'
 import { SHAPE } from '@ubuntu-fund/ui'
 import { AuthLayout } from '../components/auth/AuthLayout'
@@ -225,6 +225,16 @@ function DoodleLockKey() {
 // ForgotPasswordPage
 // ---------------------------------------------------------------------------
 
+/** Tells the user what to do next; the API response never says whether the account exists. */
+function forgotPasswordError(err: unknown): string {
+  const status = (err as { status?: unknown } | null)?.status
+  if (status === 429) return 'Too many attempts. Please wait about 15 minutes and try again.'
+  if (status === 400) return 'Enter a valid email address.'
+  // fetch() rejects with a TypeError when the network is unreachable.
+  if (status === 0 || err instanceof TypeError) return "Can't reach Ujimora. Check your connection and try again."
+  return 'Password recovery is temporarily unavailable. Please try again later.'
+}
+
 export function ForgotPasswordPage() {
   useSeo({
     title: 'Reset your password | Ujimora',
@@ -232,7 +242,12 @@ export function ForgotPasswordPage() {
     path: '/forgot-password',
     robots: 'noindex, follow',
   })
-  const [email, setEmail] = useState('')
+  const location = useLocation()
+  // The login form passes the address the user already typed so they need not retype it.
+  const [email, setEmail] = useState(() => {
+    const prefill = (location.state as { email?: unknown } | null)?.email
+    return typeof prefill === 'string' ? prefill : ''
+  })
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -250,8 +265,8 @@ export function ForgotPasswordPage() {
     try {
       await api.post('/auth/forgot-password', { email: email.trim() })
       setSent(true)
-    } catch {
-      setError('Password recovery is temporarily unavailable. Please try again later.')
+    } catch (err) {
+      setError(forgotPasswordError(err))
     } finally {
       setLoading(false)
     }
