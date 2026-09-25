@@ -15,6 +15,9 @@ import { raisedSurface } from '@/lib/surfaces'
 import { usePagination } from '@/hooks/usePagination'
 import PaginationBar from '@/components/PaginationBar'
 import PageHeader from '@/components/PageHeader'
+import AccountClosureControl from '@/components/AccountClosureControl'
+import { useAdminPermissions } from '@/context/AdminPermissionContext'
+import { Action, Resource } from '@ubuntu-fund/types'
 
 const panel = { ...raisedSurface, border: 'var(--neu-border)', backdropFilter: 'var(--neu-backdrop)', overflow: 'hidden' }
 const verificationLabels = ['Unverified', 'Email / phone', 'National ID', 'Institutional', 'Community']
@@ -120,6 +123,7 @@ export default function UserDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { data: user, isLoading: loading, error } = useAdminUser(id ?? '')
+  const { can } = useAdminPermissions()
   const { data: allCampaigns, isLoading: campaignsLoading, error: campaignsError, retry: retryCampaigns } = useAdminCampaigns()
   const { data: allDonations, isLoading: donationsLoading, error: donationsError, retry: retryDonations } = useAdminDonations(id)
   const userCampaigns = useMemo(() => allCampaigns.filter(c => c.creatorId === id), [allCampaigns, id])
@@ -174,6 +178,10 @@ export default function UserDetailPage() {
           <Box sx={{ p: 2.5, borderBottom: 1, borderColor: 'divider' }}><Typography variant="h6" fontWeight={800}>Campaign eligibility</Typography><Typography variant="body2" color="text.secondary">A compliance ceiling works alongside the member’s subscription plan. The lower limit applies.</Typography></Box>
           <ComplianceLimitControl key={user.id} userId={user.id} current={user.complianceApprovedCampaignLimit} />
         </Box>
+        {user.role !== 'admin' && <Box sx={panel}>
+          <Box sx={{ p: 2.5, borderBottom: 1, borderColor: 'divider' }}><Typography variant="h6" fontWeight={800}>Account closure</Typography></Box>
+          <AccountClosureControl key={user.id} userId={user.id} email={user.email} canClose={can(Resource.USERS, Action.DELETE)} />
+        </Box>}
       </Box>
       <Box sx={{ mt: 3 }}><WalletActivity userId={user.id} /></Box>
       <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: 'minmax(0, 1fr)', mt: 3, alignItems: 'start' }}>

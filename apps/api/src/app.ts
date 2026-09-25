@@ -378,6 +378,7 @@ import { createFlutterwaveWebhookRoutes } from './infrastructure/adapters/inboun
 import { createAdminPaymentsRoutes } from './infrastructure/adapters/inbound/http/routes/adminPaymentsRoutes.js'
 import { createAdminRefundRequestRoutes } from './infrastructure/adapters/inbound/http/routes/adminRefundRequestRoutes.js'
 import { createAdminActivityDeliveryRoutes } from './infrastructure/adapters/inbound/http/routes/adminActivityDeliveryRoutes.js'
+import { createAdminAccountClosureRoutes } from './infrastructure/adapters/inbound/http/routes/adminAccountClosureRoutes.js'
 // ── Crypto donation rail (Crypto Donations plan) ────────────────────────────
 import type { CryptoPaymentProviderPort } from './domain/ports/outbound/CryptoPaymentProviderPort.js'
 import { MockCryptoProvider } from './infrastructure/adapters/outbound/crypto/MockCryptoProvider.js'
@@ -1677,6 +1678,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
   api.use('/admin/donations', createAdminDonationRoutes(authMiddleware, requireAdmin))
   api.use('/admin/refund-requests', createAdminRefundRequestRoutes(authMiddleware, requireAdmin, refundRepo))
   api.use('/admin/activity-deliveries', createAdminActivityDeliveryRoutes(authMiddleware, requireAdmin))
+  api.use('/admin/users', createAdminAccountClosureRoutes(authMiddleware, requireAdmin, deleteAccountUseCase))
   api.use('/donations', createDonationMessageRoutes(donationIntentController, authMiddleware))
   // Guest-capable donation-intent + ledger rail.
   api.use(
