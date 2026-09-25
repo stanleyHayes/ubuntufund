@@ -1,19 +1,19 @@
 import { TouchableRipple } from '@/components/RoundedControls'
 import { SkeletonLoader } from '@/components/Loading'
 import { WalletFunding } from '@/components/WalletFunding'
-import { useCallback } from 'react'
-import { useState, useEffect, useMemo } from 'react'
-import { View, ScrollView, StyleSheet } from 'react-native'
+import { useMemo } from 'react'
+import { View, ScrollView, StyleSheet, RefreshControl } from 'react-native'
 import { Text, Icon } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
 import type { Palette, NeuRecipes } from '@/theme'
-import { api } from '@/lib/api'
+import { formatAmountValue, formatMoney } from '@/lib/money'
+import { useWallet } from '@/hooks/useWallet'
 import { useAuth } from '@/context/AuthContext'
 import { EmptyState } from '@/components/EmptyState'
 import { SignInRequired } from '@/components/SignInRequired'
 import { FadeInUp } from '@/components/anim/FadeInUp'
-import { TransactionType, type Transaction, type Wallet } from '@ubuntu-fund/types'
+import { TransactionType } from '@ubuntu-fund/types'
 
 const WALLET_TYPE_LABEL: Record<string, string> = {
   local: 'Local',
@@ -21,11 +21,6 @@ const WALLET_TYPE_LABEL: Record<string, string> = {
   crypto: 'Crypto',
 }
 
-const ghsFormatter = new Intl.NumberFormat('en-GH', { style: 'currency', currency: 'GHS' })
-
-function formatAmount(amount: number) {
-  return ghsFormatter.format(amount)
-}
 
 function formatDate(value: Date | string) {
   const date = new Date(value)
@@ -154,33 +149,7 @@ export default function WalletTab() {
   const { user } = useAuth()
   const p = usePalette()
   const styles = useStyles()
-  const [wallets, setWallets] = useState<Wallet[]>([])
-  const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [revision, setRevision] = useState(0)
-  const refreshed = useCallback(() => setRevision(n => n + 1), [])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!user) return
-    let cancelled = false
-    Promise.all([
-      api.get<Wallet[] | { items: Wallet[] }>('/wallets'),
-      api.get<Transaction[] | { items: Transaction[] }>('/wallets/transactions?limit=30'),
-    ])
-      .then(([walletData, transactionData]) => {
-        if (cancelled) return
-        setWallets(Array.isArray(walletData) ? walletData : walletData.items ?? [])
-        setTransactions(Array.isArray(transactionData) ? transactionData : transactionData.items ?? [])
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load wallet')
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false)
-      })
-    return () => { cancelled = true }
-  }, [user, revision])
+  const { wallets, transactions, isLoading, refreshing, loaded, error, reload, refresh } = useWallet(user?.id)
 
   const primary = wallets[0]
   const secondary = wallets.slice(1)
@@ -193,7 +162,9 @@ export default function WalletTab() {
     )
   }
 
-  if (isLoading) {
+  // The full-screen states apply only before anything has loaded; a later
+  // reload keeps the current balance on screen.
+  if (isLoading && !loaded) {
     return (
       <View style={[styles.container, styles.centered]}>
         <SkeletonLoader size="large" color={p.primary} />
@@ -201,30 +172,32 @@ export default function WalletTab() {
     )
   }
 
-  if (error) {
+  if (error && !loaded) {
     return (
       <View style={styles.container}>
-        <EmptyState variant="error" icon="alert-circle-outline" title="Couldn't load wallet" subtitle={error} />
+        <EmptyState variant="error" icon="alert-circle-outline" title="Couldn't load wallet" subtitle={error} ctaLabel="Try again" ctaIcon="refresh" onCtaPress={reload} />
       </View>
     )
   }
 
   return (
-    <ScrollView automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled" style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <ScrollView automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled" style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={p.primary} colors={[p.primary]} />}>
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <Text style={styles.eyebrow}>WALLET</Text>
         <Text style={styles.title}>Your Balance</Text>
         <Text style={styles.lede}>Track balances across your linked wallets.</Text>
+        {error ? <Text accessibilityRole="alert" style={{ color: p.error, marginTop: 8 }}>Couldn't refresh your wallet: {error} Pull down to try again.</Text> : null}
       </View>
 
       {/* Balance card */}
       <View style={styles.balanceCard}>
-        <Text style={styles.balanceLabel}>Total Balance</Text>
+        <Text style={styles.balanceLabel}>Balance</Text>
         <Text style={styles.balanceValue}>
-          {primary ? formatAmount(primary.balance) : '—'}
+          {primary ? formatMoney(primary.balance, primary.currency) : '—'}
         </Text>
         {secondary.map((w) => (
-          <Text key={w.id} style={styles.balanceSub}>+ {formatAmount(w.balance)}</Text>
+          <Text key={w.id} style={styles.balanceSub}>+ {formatMoney(w.balance, w.currency)}</Text>
         ))}
 
         <View style={styles.secureNote}>
@@ -233,7 +206,7 @@ export default function WalletTab() {
         </View>
       </View>
 
-      {wallets.find(w => w.currency === 'GHS') && <WalletFunding walletId={wallets.find(w => w.currency === 'GHS')!.id} onComplete={refreshed} />}
+      {wallets.find(w => w.currency === 'GHS') && <WalletFunding walletId={wallets.find(w => w.currency === 'GHS')!.id} onComplete={reload} />}
 
       {/* ═══ WALLETS ═══ */}
       <Text style={styles.sectionTitle}>My Wallets</Text>
@@ -246,7 +219,7 @@ export default function WalletTab() {
                   <Text style={styles.walletTypeText}>{WALLET_TYPE_LABEL[w.type] ?? w.type}</Text>
                 </View>
                 <Text style={styles.walletCurrency}>{w.currency}</Text>
-                <Text style={styles.walletBalance}>{w.balance.toLocaleString()}</Text>
+                <Text style={styles.walletBalance}>{formatAmountValue(w.balance)}</Text>
               </View>
             </TouchableRipple>
           </FadeInUp>
@@ -270,7 +243,7 @@ export default function WalletTab() {
                   <Text style={styles.transactionDate}>{formatDate(transaction.createdAt)} · {transaction.status}</Text>
                 </View>
                 <Text style={[styles.transactionAmount, credit && styles.transactionCredit]}>
-                  {credit ? '+' : '−'}{formatAmount(transaction.amount)}
+                  {credit ? '+' : '−'}{formatMoney(transaction.amount, transaction.currency)}
                 </Text>
               </View>
             )
