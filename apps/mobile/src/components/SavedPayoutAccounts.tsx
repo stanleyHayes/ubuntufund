@@ -266,7 +266,7 @@ export function SavedPayoutAccounts() {
                   <Text variant="bodySmall">
                     {a.verificationStatus === 'name_matched'
                       ? 'Registered name matched'
-                      : 'Needs beneficiary review'}
+                      : 'Name not matched: creator withdrawals need a matched account'}
                   </Text>
                   <Button disabled={busy} onPress={() => void remove(a.id)}>
                     Remove saved account

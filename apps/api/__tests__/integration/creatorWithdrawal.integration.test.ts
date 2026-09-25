@@ -183,6 +183,21 @@ describe('Creator withdrawal — transfer rail', () => {
     },
   )
 
+  it('refuses an unmatched account, then withdraws once the name is re-entered surname-first', async () => {
+    const owner = await creatorWithBalance(100)
+    const recipient = { type: 'mobile_money', accountNumber: '0557654321', bankCode: 'MTN' }
+    const refused = await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`)
+      .send({ amount: 50, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { ...recipient, accountName: 'Someone Else' } })
+      .expect(422)
+    expect(refused.body.message).toMatch(/did not match/i)
+    expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(100)
+    // The provider holds "With Draw"; "DRAW WITH" is the same person, surname first.
+    await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`)
+      .send({ amount: 50, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { ...recipient, accountName: 'DRAW WITH' } })
+      .expect(201)
+    expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(50)
+  })
+
   it('rechecks identity verification at the reservation write boundary', async () => {
     const owner = await creatorWithBalance(100)
     const original = MongoCreatorWithdrawalTransaction.prototype.run

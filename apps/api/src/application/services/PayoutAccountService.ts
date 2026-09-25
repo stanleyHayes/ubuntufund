@@ -6,6 +6,7 @@ import type {
 import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGatewayPort.js'
 import type { PlanLimitsService } from './PlanLimitsService.js'
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js'
+import { payoutNamesMatch } from '../../domain/services/payoutNameMatch.js'
 type Input = Pick<SavedPayoutAccount, 'type' | 'accountName' | 'accountNumber' | 'bankCode'>
 const defaults: Record<string, number> = {
   free: 1,
@@ -71,25 +72,29 @@ export class PayoutAccountService {
       .update(`${input.type}:${input.bankCode}:${normalized}`)
       .digest('hex')
     const existing = (await this.repo.list(userId)).find((a) => a.fingerprint === fingerprint)
-    if (existing) return existing
+    if (existing) {
+      if (existing.verificationStatus === 'name_matched') return existing
+      // Re-adding an unmatched account is how a person corrects the name they
+      // typed: resolve it again instead of handing back the stale result.
+      // Both names come from the provider for this same account number, so a
+      // failed lookup falls back to the name it returned before.
+      const resolved = (await this.resolveName(normalized, input.bankCode)) ?? existing.resolvedAccountName
+      const accountName = input.accountName.trim()
+      const patch = {
+        accountName,
+        resolvedAccountName: resolved,
+        verificationStatus: payoutNamesMatch(accountName, resolved) ? ('name_matched' as const) : ('needs_review' as const),
+      }
+      if (!this.repo.updateVerification) return existing
+      return (await this.repo.updateVerification(userId, existing.id, existing.fingerprint, patch)) ?? existing
+    }
     const policy = await this.list(userId)
     if (policy.limit >= 0 && policy.accounts.length >= policy.limit)
       throw new AppError(
         `Your ${policy.planName} plan allows ${policy.limit} payout account(s). Remove an unused account or upgrade.`,
         403,
       )
-    let resolvedAccountName: string | undefined
-    try {
-      resolvedAccountName = (await this.gateway.resolveAccount?.(normalized, input.bankCode))
-        ?.accountName
-    } catch {
-      /* Manual review, never falsely verified. */
-    }
-    const normalize = (s: string) =>
-      s
-        .normalize('NFKC')
-        .toLowerCase()
-        .replace(/[^\p{L}\p{N}]/gu, '')
+    const resolvedAccountName = await this.resolveName(normalized, input.bankCode)
     const account: SavedPayoutAccount = {
       id: randomUUID(),
       fingerprint,
@@ -97,10 +102,9 @@ export class PayoutAccountService {
       accountNumber: normalized,
       accountName: input.accountName.trim(),
       resolvedAccountName,
-      verificationStatus:
-        resolvedAccountName && normalize(resolvedAccountName) === normalize(input.accountName)
-          ? 'name_matched'
-          : 'needs_review',
+      verificationStatus: payoutNamesMatch(input.accountName, resolvedAccountName)
+        ? 'name_matched'
+        : 'needs_review',
       recipientCode: await this.gateway.createTransferRecipient({
         type: input.type,
         name: input.accountName,
@@ -115,5 +119,15 @@ export class PayoutAccountService {
       throw new AppError('Your payout account limit was reached. Refresh your accounts.', 409)
     }
     return account
+  }
+
+  /** The provider-held account name, or undefined (never falsely verified). */
+  private async resolveName(accountNumber: string, bankCode: string): Promise<string | undefined> {
+    try {
+      return (await this.gateway.resolveAccount?.(accountNumber, bankCode))?.accountName
+    } catch {
+      /* Manual review, never falsely verified. */
+      return undefined
+    }
   }
 }

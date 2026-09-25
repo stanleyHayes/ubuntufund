@@ -6,6 +6,7 @@ import type { TransferRecipientRepositoryPort } from '../../domain/ports/outboun
 import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGatewayPort.js'
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js'
 import { toTransferRecipientDto } from './mappers/payoutDto.js'
+import { payoutNamesMatch } from '../../domain/services/payoutNameMatch.js'
 
 export interface PayoutRequester {
   userId: string
@@ -69,15 +70,9 @@ export class CreatePayoutRecipientUseCase {
     } catch {
       /* Fail closed into manual review; never label provider errors as verification. */
     }
-    const normalize = (name: string) =>
-      name
-        .normalize('NFKC')
-        .toLowerCase()
-        .replace(/[^\p{L}\p{N}]/gu, '')
-    const verificationStatus =
-      resolvedAccountName && normalize(resolvedAccountName) === normalize(input.accountName)
-        ? ('name_matched' as const)
-        : ('needs_review' as const)
+    const verificationStatus = payoutNamesMatch(input.accountName, resolvedAccountName)
+      ? ('name_matched' as const)
+      : ('needs_review' as const)
     const recipientCode = await this.paymentGateway.createTransferRecipient({
       type: input.type,
       name: input.accountName,

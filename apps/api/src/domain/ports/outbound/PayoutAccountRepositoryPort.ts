@@ -15,4 +15,14 @@ export interface PayoutAccountRepositoryPort {
   list(userId: string): Promise<SavedPayoutAccount[]>
   addWithinLimit(userId: string, account: SavedPayoutAccount, limit: number): Promise<boolean>
   remove(userId: string, id: string): Promise<void>
+  /**
+   * Re-record the typed name and provider name-check result of one saved
+   * account, matched on its id and fingerprint. Null when it is gone.
+   */
+  updateVerification?(
+    userId: string,
+    id: string,
+    fingerprint: string,
+    patch: Pick<SavedPayoutAccount, 'accountName' | 'verificationStatus' | 'resolvedAccountName'>,
+  ): Promise<SavedPayoutAccount | null>
 }

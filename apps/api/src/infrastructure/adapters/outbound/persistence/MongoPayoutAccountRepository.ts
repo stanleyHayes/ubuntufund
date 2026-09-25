@@ -67,4 +67,26 @@ export class MongoPayoutAccountRepository implements PayoutAccountRepositoryPort
   async remove(userId: string, id: string) {
     await Model.updateOne({ _id: userId }, { $pull: { accounts: { id } } })
   }
+  async updateVerification(
+    userId: string,
+    id: string,
+    fingerprint: string,
+    patch: Pick<SavedPayoutAccount, 'accountName' | 'verificationStatus' | 'resolvedAccountName'>,
+  ) {
+    // Bumping consumptionWriteVersion conflicts with an in-flight withdrawal
+    // that claimed the previous details (claimCurrent), so it must retry.
+    const doc = await Model.findOneAndUpdate(
+      { _id: userId, accounts: { $elemMatch: { id, fingerprint } } },
+      {
+        $set: {
+          'accounts.$.accountName': patch.accountName,
+          'accounts.$.verificationStatus': patch.verificationStatus,
+          'accounts.$.resolvedAccountName': patch.resolvedAccountName,
+        },
+        $inc: { consumptionWriteVersion: 1 },
+      },
+      { new: true },
+    ).lean()
+    return doc?.accounts.find((account) => account.id === id) ?? null
+  }
 }

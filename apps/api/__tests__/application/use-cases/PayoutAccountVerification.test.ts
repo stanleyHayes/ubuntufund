@@ -2,6 +2,8 @@ import { describe, expect, it, vi, afterEach } from 'vitest'
 import { CreatePayoutRecipientUseCase } from '../../../src/application/use-cases/CreatePayoutRecipientUseCase.js'
 import { ApprovePayoutUseCase } from '../../../src/application/use-cases/ApprovePayoutUseCase.js'
 import { PaystackGateway } from '../../../src/infrastructure/adapters/outbound/payments/PaystackGateway.js'
+import { PayoutAccountService } from '../../../src/application/services/PayoutAccountService.js'
+import type { SavedPayoutAccount } from '../../../src/domain/ports/outbound/PayoutAccountRepositoryPort.js'
 const input = {
   type: 'mobile_money' as const,
   accountName: 'Jane Doe',
@@ -130,5 +132,67 @@ describe('payout account verification', () => {
       ),
     ).rejects.toMatchObject({ statusCode: 503 })
     expect(provider.initiateTransfer).not.toHaveBeenCalled()
+  })
+})
+
+describe('saved payout account name checks', () => {
+  function service(resolvedNames: (string | Error)[]) {
+    const saved: SavedPayoutAccount[] = []
+    const repo = {
+      list: vi.fn(async () => saved.map((a) => ({ ...a }))),
+      addWithinLimit: vi.fn(async (_u: string, a: SavedPayoutAccount) => { saved.push({ ...a }); return true }),
+      remove: vi.fn(),
+      updateVerification: vi.fn(async (_u: string, id: string, fingerprint: string, patch: Partial<SavedPayoutAccount>) => {
+        const row = saved.find((a) => a.id === id && a.fingerprint === fingerprint)
+        if (!row) return null
+        Object.assign(row, patch)
+        return { ...row }
+      }),
+    }
+    const gateway = {
+      resolveAccount: vi.fn(async () => {
+        const next = resolvedNames.shift()
+        if (next instanceof Error) throw next
+        return { accountName: next }
+      }),
+      createTransferRecipient: vi.fn(async () => 'RCP_saved'),
+    }
+    const plans = { resolvePlan: async () => ({ name: 'Free', tier: 'free', maxPayoutAccounts: 3 }) }
+    return { svc: new PayoutAccountService(repo as never, gateway as never, plans as never), repo, gateway, saved }
+  }
+  const account = { type: 'mobile_money' as const, accountNumber: '0241234567', bankCode: 'MTN' }
+
+  it('matches a surname-first, diacritic-folded registration on first add', async () => {
+    const { svc } = service(['MENSAH KWAME OSEI'])
+    expect((await svc.add('owner', { ...account, accountName: 'Kwame Ɔsei Mensah' })).verificationStatus).toBe('name_matched')
+  })
+
+  it('re-resolves an unmatched account when it is added again with a corrected name', async () => {
+    const { svc, repo, gateway, saved } = service(['KOFI MENSAH', 'KOFI MENSAH'])
+    const first = await svc.add('owner', { ...account, accountName: 'Kwame Mensah' })
+    expect(first.verificationStatus).toBe('needs_review')
+    const corrected = await svc.add('owner', { ...account, accountName: 'Kofi Mensah' })
+    expect(corrected).toMatchObject({ id: first.id, recipientCode: 'RCP_saved', accountName: 'Kofi Mensah', verificationStatus: 'name_matched' })
+    expect(gateway.resolveAccount).toHaveBeenCalledTimes(2)
+    expect(gateway.createTransferRecipient).toHaveBeenCalledOnce()
+    expect(repo.updateVerification).toHaveBeenCalledOnce()
+    expect(saved).toHaveLength(1)
+  })
+
+  it('keeps a matched account as it is and never downgrades it on re-add', async () => {
+    const { svc, repo, gateway } = service(['KWAME MENSAH'])
+    await svc.add('owner', { ...account, accountName: 'Kwame Mensah' })
+    const again = await svc.add('owner', { ...account, accountName: 'Somebody Else' })
+    expect(again.verificationStatus).toBe('name_matched')
+    expect(again.accountName).toBe('Kwame Mensah')
+    expect(gateway.resolveAccount).toHaveBeenCalledOnce()
+    expect(repo.updateVerification).not.toHaveBeenCalled()
+  })
+
+  it('falls back to the provider name it already returned when a re-check lookup fails', async () => {
+    const { svc } = service(['KOFI MENSAH', new Error('provider unavailable')])
+    await svc.add('owner', { ...account, accountName: 'Kwame Mensah' })
+    const corrected = await svc.add('owner', { ...account, accountName: 'Mensah Kofi' })
+    expect(corrected).toMatchObject({ verificationStatus: 'name_matched', resolvedAccountName: 'KOFI MENSAH' })
   })
 })
