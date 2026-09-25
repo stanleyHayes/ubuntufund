@@ -357,7 +357,7 @@ export default function ManagePlansPage() {
                 <FormControlLabel control={<Switch checked={Boolean(form.popular)} onChange={(e) => setField('popular', e.target.checked)} />} label="Popular" />
               </Box>
               <Typography variant="body2" color="text.secondary">
-                Turning off Active or Public hides this plan from new purchases on the website and in the app store catalog. Existing subscribers are not cancelled.
+                Turning off Active or Public hides this plan from new purchases on the website and in the app store catalog. Existing subscribers are not cancelled and keep all of the plan's benefits, including creator donations, until their period ends.
               </Typography>
               <Typography variant="overline" color="text.secondary">Benefits</Typography>
               <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 0.5 }}>
