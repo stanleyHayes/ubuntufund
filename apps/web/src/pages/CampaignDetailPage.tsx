@@ -1,6 +1,7 @@
 import Checkbox from '@mui/material/Checkbox'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import { MessageAgreement } from '@/components/donate/MessageAgreement'
+import { checkoutAttemptKey, forgetCheckoutAttempt, isDefinitiveRejection } from '@/lib/checkoutAttempt'
 import { CampaignOrganizer } from '@/components/campaigns/CampaignOrganizer'
 import { CampaignCashout } from '@/components/campaigns/CampaignCashout'
 import { LoadingDots, sizedImageUrl, breadcrumbList } from '@ubuntu-fund/ui'
@@ -409,18 +410,24 @@ function CampaignDetailContent() {
               if (!canSubmit) return
               setDonating(true)
               setDonateError('')
+              const attemptScope = `wallet-donate:${id}`
+              const donation = {
+                amount: Number(donateAmount),
+                currency: campaign.currency,
+                paymentMethod: 'wallet',
+                message: donateMessage.trim() || undefined,
+                legalAcceptance: donateMessageAccepted
+                  ? { version: LEGAL_ACCEPTANCE_VERSION, acceptedTerms: true, ageConfirmed: true }
+                  : undefined,
+                donorName: donateAnonymous ? undefined : donateName.trim(),
+                isAnonymous: donateAnonymous,
+              }
               try {
-                await api.post(`/campaigns/${id}/donate`, {
-                  amount: Number(donateAmount),
-                  currency: campaign.currency,
-                  paymentMethod: 'wallet',
-                  message: donateMessage.trim() || undefined,
-                  legalAcceptance: donateMessageAccepted
-                    ? { version: LEGAL_ACCEPTANCE_VERSION, acceptedTerms: true, ageConfirmed: true }
-                    : undefined,
-                  donorName: donateAnonymous ? undefined : donateName.trim(),
-                  isAnonymous: donateAnonymous,
-                })
+                // The same key for a retry of the same donation, so a lost
+                // response can never debit the wallet twice.
+                const requestKey = await checkoutAttemptKey(attemptScope, donation)
+                await api.post(`/campaigns/${id}/donate`, donation, { 'Idempotency-Key': requestKey })
+                await forgetCheckoutAttempt(attemptScope)
                 setDonateOpen(false)
                 refresh()
                 setDonationRevision((value) => value + 1)
@@ -430,6 +437,10 @@ function CampaignDetailContent() {
                 setSelectedProvider(null)
                 setSnackOpen(true)
               } catch (err) {
+                // A definite refusal (e.g. low balance) starts a new attempt next
+                // time; a network error or timeout keeps the key, because the
+                // donation may already have gone through.
+                if (isDefinitiveRejection(err)) await forgetCheckoutAttempt(attemptScope)
                 setDonateError(err instanceof Error ? err.message : 'Donation failed. Please try again.')
               } finally {
                 setDonating(false)

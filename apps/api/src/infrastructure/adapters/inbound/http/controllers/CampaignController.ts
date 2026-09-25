@@ -182,9 +182,12 @@ export class CampaignController {
     next: NextFunction
   ): Promise<void> => {
     try {
+      const header = req.headers['idempotency-key'];
+      const requestKey = Array.isArray(header) ? header[0] : header;
       await this.donateToCampaignUseCase.execute(
         { ...req.body, campaignId: req.params.id as string },
-        req.userId!
+        req.userId!,
+        requestKey
       );
       res.json({
         data: null,
