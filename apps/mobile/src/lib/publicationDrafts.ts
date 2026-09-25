@@ -1,5 +1,4 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { randomUUID } from 'expo-crypto'
 
 /**
  * Unsent public-content versions, per account, so a version held for safety
@@ -68,13 +67,3 @@ export const loadIdentityDraft = (userId: string) => loadDraft('account-identity
 })
 export const saveIdentityDraft = (userId: string, draft: IdentityDraft) => saveDraft('account-identity', userId, draft)
 export const clearIdentityDraft = (userId: string) => clearDraft('account-identity', userId)
-
-/**
- * One Idempotency-Key per submitted version: resubmitting the same payload
- * after a lost response reuses it (the API returns the campaign it already
- * created); any change to the payload starts a new key.
- */
-export function creationRequestKey(current: { payload: string; key: string } | null, payload: unknown): { payload: string; key: string } {
-  const signature = JSON.stringify(payload)
-  return current?.payload === signature ? current : { payload: signature, key: randomUUID() }
-}

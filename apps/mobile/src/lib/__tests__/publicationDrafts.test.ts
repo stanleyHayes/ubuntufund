@@ -5,7 +5,8 @@ vi.mock('@react-native-async-storage/async-storage', () => ({ default: {
   getAllKeys: async () => [...data.keys()], multiRemove: async (keys: string[]) => { keys.forEach(k => data.delete(k)) },
 } }))
 vi.mock('expo-crypto', () => ({ randomUUID: () => crypto.randomUUID() }))
-import { clearAllPublicationDrafts, clearCampaignDraft, clearIdentityDraft, creationRequestKey, loadCampaignDraft, loadIdentityDraft, saveCampaignDraft, saveIdentityDraft, type CampaignDraft } from '../publicationDrafts'
+import { clearAllPublicationDrafts, clearCampaignDraft, clearIdentityDraft, loadCampaignDraft, loadIdentityDraft, saveCampaignDraft, saveIdentityDraft, type CampaignDraft } from '../publicationDrafts'
+import { creationRequestKey } from '../campaignCreationKey'
 
 const draft: CampaignDraft = { title: 'Clinic roof', description: 'The roof leaks.', category: 'medical', priority: 'urgent', beneficiaries: 'Clinic', cover: 'https://media.example.test/cover.jpg', amount: '5000', end: '2099-01-01' }
 beforeEach(() => { data.clear() })
