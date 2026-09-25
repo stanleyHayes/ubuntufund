@@ -13,6 +13,7 @@ import { usePalette, useNeu } from '@/context/ColorModeContext'
 import type { Palette, NeuRecipes } from '@/theme'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
+import { formatMoney } from '@/lib/money'
 
 
 interface ProfileStats {
@@ -155,8 +156,8 @@ export default function ProfileTab() {
               <>
                 {[
                   { value: stats?.campaignsCount ?? 0, label: 'Campaigns' },
-                  { value: `GH₵ ${stats?.totalDonated ?? 0}`, label: 'Donated' },
-                  { value: `GH₵ ${stats?.totalRaised ?? 0}`, label: 'Raised' },
+                  { value: formatMoney(stats?.totalDonated ?? 0), label: 'Donated' },
+                  { value: formatMoney(stats?.totalRaised ?? 0), label: 'Raised' },
                 ].map((s, i) => (
                   <View key={s.label} style={styles.statBox}>
                     {i > 0 && <View style={styles.statDivider} />}

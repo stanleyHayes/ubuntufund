@@ -13,3 +13,11 @@ test('overlay preview escapes titles and never contacts live session endpoints',
     dom.window.close();
   }
 });
+
+test('overlay amounts always show two decimals', () => {
+  const dom = new JSDOM(OVERLAY_PAGE_HTML, { url: 'https://example.test/live-sessions/preview/overlay/view?preview=1&design=forest&title=Roof&raised=100.5&goal=1000', runScripts: 'dangerously', beforeParse(window: any) { window.fetch = () => { throw new Error('Preview must not fetch'); }; window.EventSource = () => { throw new Error('Preview must not connect'); }; } });
+  const doc = dom.window.document;
+  assert.equal(doc.getElementById('raised').textContent, 'GH₵ 100.50');
+  assert.equal(doc.getElementById('goal').textContent, 'GH₵ 1,000.00');
+  dom.window.close();
+});

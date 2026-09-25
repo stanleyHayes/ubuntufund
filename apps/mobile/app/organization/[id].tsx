@@ -15,6 +15,7 @@ import { UserSafetyControls } from '@/components/UserSafetyControls'
 import { usePalette } from '@/context/ColorModeContext'
 import type { Palette } from '@/theme'
 import { webUrl } from '@/lib/fundraising'
+import { formatMoney } from '@/lib/money'
 
 interface OrganizationDetail {
   id: string
@@ -80,7 +81,7 @@ export default function OrganizationProfileScreen() {
         <Text style={styles.statement}>{organization.impactStatement}</Text>
         <View style={styles.stats}>
           <View><Text style={styles.statValue}>{organization.campaignCount}</Text><Text style={styles.statLabel}>Campaigns</Text></View>
-          <View><Text style={styles.statValue}>{organization.currency} {organization.totalRaised.toLocaleString()}</Text><Text style={styles.statLabel}>Raised</Text></View>
+          <View><Text style={styles.statValue}>{formatMoney(organization.totalRaised, organization.currency)}</Text><Text style={styles.statLabel}>Raised</Text></View>
         </View>
         {organization.categories.length > 0 && <View style={styles.chips}>{organization.categories.map((category) => <Chip key={category} compact>{category}</Chip>)}</View>}
         {organization.description ? <Text selectable style={styles.statement}>{organization.description}</Text> : null}

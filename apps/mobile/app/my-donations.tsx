@@ -10,6 +10,7 @@ import { SignInRequired } from '@/components/SignInRequired'
 import { FadeInUp } from '@/components/anim/FadeInUp'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
 import type { Palette, NeuRecipes } from '@/theme'
+import { formatMoney } from '@/lib/money'
 
 interface Donation {
   id: string
@@ -190,7 +191,7 @@ export default function MyDonationsScreen() {
                       <Text style={styles.donationDate}>{formatDate(d.date ?? d.createdAt)}</Text>
                     </View>
                     <Text style={styles.donationAmount}>
-                      GH₵ {d.amount.toLocaleString()}
+                      {formatMoney(d.amount, d.currency)}
                     </Text>
                   </View>
 

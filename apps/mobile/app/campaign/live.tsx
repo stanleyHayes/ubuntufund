@@ -15,6 +15,7 @@ import { BrandedTextInput as TextInput } from '@/components/BrandedTextInput'
 import { Button, PageSkeleton } from '@/components/Loading'
 import { SignInRequired } from '@/components/SignInRequired'
 import { webUrl } from '@/lib/fundraising'
+import { formatMoney } from '@/lib/money'
 
 export default function BroadcastStudio() {
   const { id } = useLocalSearchParams<{ id: string }>()
@@ -81,7 +82,7 @@ export default function BroadcastStudio() {
         <Button disabled={busy} onPress={() => Alert.alert('Replace overlay link?', 'The old OBS link will stop working. Copy the new link into OBS after replacing it.', [{ text: 'Cancel', style: 'cancel' }, { text: 'Replace link', onPress: () => void rotateOverlay() }])}>Replace overlay link</Button>
       </View>
       <View style={{ ...neu.raised, backgroundColor: p.surface, borderRadius: 24, padding: 20, gap: 12 }}>
-        <Text variant="titleLarge">{session.title || 'Your broadcast'}</Text><Text>GH₵{session.stats.amountRaised.toLocaleString()} · {session.stats.successfulDonations} donations</Text>
+        <Text variant="titleLarge">{session.title || 'Your broadcast'}</Text><Text>{formatMoney(session.stats.amountRaised)} · {session.stats.successfulDonations} donations</Text>
         <Button icon="share-variant" onPress={() => void Share.share({ message: `Watch ${session.title || 'my campaign'} live on Ujimora: ${webUrl(`/live/${encodeURIComponent(session.id)}`)}` })}>Share viewer link</Button>
         {(['showDonorNames', 'showDonorMessages', 'showAmounts', 'privacyMode'] as const).map(key => <View key={key} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}><Text style={{ flex: 1 }}>{({ showDonorNames: 'Show donor names', showDonorMessages: 'Show messages', showAmounts: 'Show amounts', privacyMode: 'Privacy mode' })[key]}</Text><Switch disabled={busy} value={session[key]} onValueChange={value => void update({ [key]: value })} /></View>)}
         <Text>Disconnecting your camera leaves the session open so you can reconnect. End broadcast closes it for everyone.</Text>

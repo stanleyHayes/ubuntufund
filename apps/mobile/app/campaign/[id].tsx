@@ -20,6 +20,7 @@ import type { CampaignDonation } from '@ubuntu-fund/types'
 import { acceptsCampaignDonation, CollaboratorRole, type CampaignCollaborator } from '@ubuntu-fund/types'
 import { CampaignUpdatesList } from '@/components/CampaignUpdatesList'
 import { CampaignComments } from '@/components/CampaignComments'
+import { formatMoney } from '@/lib/money'
 
 const ROLE_LABELS: Record<CollaboratorRole, string> = {
   [CollaboratorRole.CO_OWNER]: 'Co-Owner',
@@ -305,10 +306,10 @@ export default function CampaignDetailScreen() {
             <View style={styles.statsRow}>
               <View>
                 <Text variant="titleMedium" style={styles.raised}>
-                  GH₵ {campaign.raisedAmount.toLocaleString()}
+                  {formatMoney(campaign.raisedAmount, campaign.currency)}
                 </Text>
                 <Text variant="bodySmall" style={styles.muted}>
-                  raised of GH₵ {campaign.goalAmount.toLocaleString()}
+                  raised of {formatMoney(campaign.goalAmount, campaign.currency)}
                 </Text>
               </View>
               <View style={styles.statRight}>
@@ -353,7 +354,7 @@ export default function CampaignDetailScreen() {
 
           {campaign.goalAmount - campaign.raisedAmount > 0 && (
             <Text variant="bodySmall" style={styles.stillNeeded}>
-              Still needed: GH₵ {(campaign.goalAmount - campaign.raisedAmount).toLocaleString()}
+              Still needed: {formatMoney(campaign.goalAmount - campaign.raisedAmount, campaign.currency)}
             </Text>
           )}
 
@@ -460,7 +461,7 @@ export default function CampaignDetailScreen() {
                     </View>
                     <View style={styles.donationAmount}>
                       <Text variant="bodyMedium" style={styles.raised}>
-                        GH₵ {donation.amount.toLocaleString()}
+                        {formatMoney(donation.amount, campaign.currency)}
                       </Text>
                       <Text variant="labelSmall" style={styles.muted}>
                         {formatDate(donation.createdAt)}
