@@ -26,6 +26,7 @@ import {
   isPaymentsNotConfigured,
 } from '@/lib/subscriptions'
 import { previewCoupon } from '@/lib/coupons'
+import { isCurrentPlanTier, isPaidPlanInForce } from '@/lib/subscriptionStatus'
 import { useAuth } from '@/context/AuthContext'
 import { SignInRequired } from '@/components/SignInRequired'
 import { GlassSurface } from '@/components/GlassSurface'
@@ -555,6 +556,11 @@ export default function SubscriptionScreen() {
     .filter((pl) => pl.active !== false && pl.isPublic !== false)
     .sort(bySortOrder)
   const currentPlan = plans[currentSub.tier] ?? SUBSCRIPTION_PLANS[SubscriptionTier.FREE]
+  // Web plans never renew on their own: once the period ends the member is
+  // back on Free and may buy any plan again, including the one that lapsed.
+  const paidInForce = isPaidPlanInForce(currentSub)
+  const lapsed = currentSub.tier !== SubscriptionTier.FREE && !paidInForce
+  const statusOk = !lapsed && currentSub.status === SubscriptionStatus.ACTIVE
 
   if (!user) {
     return (
@@ -585,9 +591,9 @@ export default function SubscriptionScreen() {
         <Text style={styles.currentPlanLabel}>Current Plan</Text>
         <Text style={styles.currentPlanName}>{currentPlan.name}</Text>
         <View style={styles.statusRow}>
-          <View style={[styles.statusBadge, currentSub.status === SubscriptionStatus.ACTIVE ? styles.statusActive : styles.statusInactive]}>
-            <Text style={[styles.statusText, currentSub.status === SubscriptionStatus.ACTIVE ? styles.statusTextActive : styles.statusTextInactive]}>
-              {currentSub.status.toUpperCase()}
+          <View style={[styles.statusBadge, statusOk ? styles.statusActive : styles.statusInactive]}>
+            <Text style={[styles.statusText, statusOk ? styles.statusTextActive : styles.statusTextInactive]}>
+              {lapsed ? 'EXPIRED' : currentSub.status.toUpperCase()}
             </Text>
           </View>
           <Text style={styles.billingText}>
@@ -607,7 +613,7 @@ export default function SubscriptionScreen() {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.plansScroll} contentContainerStyle={styles.plansRow}>
         {orderedPlans.map((plan, i) => {
           const tier = plan.tier
-          const isCurrent = tier === currentSub.tier
+          const isCurrent = isCurrentPlanTier(tier, currentSub)
           const isPro = plan.popular === true
           const isEnterprise = tier === SubscriptionTier.ENTERPRISE
           const isFree = plan.priceMonthly === 0
@@ -699,7 +705,7 @@ export default function SubscriptionScreen() {
       </ScrollView>
 
       {/* Upgrade CTA */}
-      {currentSub.tier === SubscriptionTier.FREE && (
+      {(currentSub.tier === SubscriptionTier.FREE || lapsed) && (
         <View style={styles.upgradeCta}>
           <View style={styles.upgradeIconTile}>
             <Icon source="crown" size={22} color={p.secondaryDark} />
@@ -723,7 +729,7 @@ export default function SubscriptionScreen() {
       )}
 
       {/* Cancel subscription */}
-      {currentSub.tier !== SubscriptionTier.FREE && !storeManaged && (
+      {paidInForce && !storeManaged && (
         <Button
           mode="outlined"
           textColor={p.error}

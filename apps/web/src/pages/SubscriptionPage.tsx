@@ -42,6 +42,7 @@ import {
   isPaymentsNotConfigured,
 } from '@/lib/subscriptions'
 import { useCouponPreview } from '@/hooks/useCouponPreview'
+import { isCurrentPlanTier, isPaidPlanInForce } from '@/lib/subscriptionStatus'
 
 // ─── Animations ─────────────────────────────────────────────────────────────
 
@@ -280,6 +281,12 @@ export function SubscriptionPage() {
     ? colorsOf(currentPlan)
     : { accent: '#78909C', bg: 'rgba(120,144,156,0.06)', banner: '#78909C' }
   const daysLeft = Math.max(0, Math.ceil((new Date(currentSub.currentPeriodEnd).getTime() - Date.now()) / 86_400_000))
+  // Web plans never renew on their own, so a paid row can outlive its period.
+  // Once the period ends the member is back on Free and may buy any plan again,
+  // including the one that just lapsed.
+  const paidInForce = isPaidPlanInForce(currentSub)
+  const lapsed = currentSub.tier !== SubscriptionTier.FREE && !paidInForce
+  const isCurrentTier = (tier: string) => isCurrentPlanTier(tier, currentSub)
 
   return (
     <Container maxWidth="lg" sx={{ py: 6 }}>
@@ -344,11 +351,11 @@ export function SubscriptionPage() {
             </Box>
           </Box>
           <Chip
-            label={currentSub.status === SubscriptionStatus.ACTIVE ? 'Active' : currentSub.status}
+            label={lapsed ? 'Expired' : currentSub.status === SubscriptionStatus.ACTIVE ? 'Active' : currentSub.status}
             sx={{
               fontWeight: 700,
               fontSize: '0.75rem',
-              bgcolor: currentSub.status === SubscriptionStatus.ACTIVE ? 'rgba(255,255,255,0.25)' : 'rgba(255,100,100,0.35)',
+              bgcolor: !lapsed && currentSub.status === SubscriptionStatus.ACTIVE ? 'rgba(255,255,255,0.25)' : 'rgba(255,100,100,0.35)',
               color: '#fff',
             }}
           />
@@ -356,6 +363,11 @@ export function SubscriptionPage() {
 
         {/* Stats row */}
         <CardContent sx={{ p: { xs: 3, md: 4 } }}>
+          {lapsed && (
+            <Alert severity="warning" sx={{ mb: 3, borderRadius: SHAPE.sm }}>
+              Your {currentPlan.name} plan ended on {new Date(currentSub.currentPeriodEnd).toLocaleDateString()}. Community features apply until you buy a plan again.
+            </Alert>
+          )}
           <Box
             sx={{
               display: 'grid',
@@ -408,8 +420,8 @@ export function SubscriptionPage() {
             ))}
           </Box>
 
-          {/* Quick features */}
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 3 }}>
+          {/* Quick features — only while the plan still grants them */}
+          {!lapsed && <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 3 }}>
             {[
               currentPlan.featuredListing && 'Featured Listing',
               currentPlan.prioritySupport && 'Priority Support',
@@ -436,14 +448,14 @@ export function SubscriptionPage() {
                   }}
                 />
               ))}
-          </Box>
+          </Box>}
 
           {/* Period + Cancel */}
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1, pt: 2, borderTop: '1px solid rgba(0,0,0,0.06)' }}>
             <Typography sx={{ fontSize: '0.82rem', color: 'text.secondary' }}>
               Period: {new Date(currentSub.currentPeriodStart).toLocaleDateString()} &mdash; {new Date(currentSub.currentPeriodEnd).toLocaleDateString()}
             </Typography>
-            {currentSub.tier !== SubscriptionTier.FREE && !storeManaged && (
+            {paidInForce && !storeManaged && (
               <Button
                 variant="text"
                 size="small"
@@ -512,7 +524,7 @@ export function SubscriptionPage() {
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))', md: `repeat(${Math.min(group.plans.length, groupIndex === 0 ? 3 : 2)}, minmax(0, 1fr))` }, gap: 3, alignItems: 'stretch' }}>
         {group.plans.map((plan) => {
           const tier = plan.tier
-          const isCurrent = tier === currentSub.tier
+          const isCurrent = isCurrentTier(tier)
           const isPro = tier === SubscriptionTier.PRO || plan.popular === true
           const fitLabel = isPro ? 'Recommended for growth' : tier === SubscriptionTier.ORGANIZATION ? 'Best fit for organizations' : tier === SubscriptionTier.ENTERPRISE ? 'For complex needs' : tier === SubscriptionTier.FREE ? 'Start here' : tier === SubscriptionTier.STARTER ? 'For a growing cause' : 'More ways to fundraise'
           const tc = colorsOf(plan)
@@ -705,7 +717,7 @@ export function SubscriptionPage() {
             </Box>
             {orderedPlans.map((plan) => {
               const tier = plan.tier
-              const isCurrent = tier === currentSub.tier
+              const isCurrent = isCurrentTier(tier)
               const tc = colorsOf(plan)
               return (
                 <Box
@@ -777,7 +789,7 @@ export function SubscriptionPage() {
                   </Box>
                   {orderedPlans.map((plan) => {
                     const tier = plan.tier
-                    const isCurrent = tier === currentSub.tier
+                    const isCurrent = isCurrentTier(tier)
                     const tc = colorsOf(plan)
                     return (
                       <Box
@@ -812,7 +824,7 @@ export function SubscriptionPage() {
       )}
 
       {/* ═══════════ UPGRADE CTA ═══════════ */}
-      {currentSub.tier === SubscriptionTier.FREE && (
+      {(currentSub.tier === SubscriptionTier.FREE || lapsed) && (
         <Card
           elevation={0}
           sx={{

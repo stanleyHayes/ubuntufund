@@ -14,7 +14,6 @@ import CancelIcon from '@mui/icons-material/Cancel'
 import {
   SubscriptionTier,
   SubscriptionStatus,
-  BillingCycle,
   SUBSCRIPTION_PLANS,
   type SubscriptionPlan,
   Resource,
@@ -27,6 +26,7 @@ import PaginationBar from '@/components/PaginationBar'
 import PageHeader from '@/components/PageHeader'
 import { loadAll } from '@/lib/exports/loadAll'
 import { TONES } from '@/lib/tones'
+import { summarizeRevenue } from '@/lib/subscriptionRevenue'
 
 
 // ---------------------------------------------------------------------------
@@ -234,24 +234,16 @@ export default function SubscriptionsPage() {
     return () => { cancelled = true }
   }, [])
 
+  // Only plans still inside their paid period count as paying users or
+  // revenue; a lapsed web plan keeps its tier but is Free in practice.
+  const revenue = summarizeRevenue(subscriptions)
   const totalSubscribers = subscriptions.length
-  const paidUsers = subscriptions.filter((subscription) => subscription.tier !== SubscriptionTier.FREE).length
+  const paidUsers = revenue.paidUsers
   const freeUsers = totalSubscribers - paidUsers
-  const monthlyRevenue = subscriptions
-    .filter((subscription) => subscription.status === SubscriptionStatus.ACTIVE && subscription.tier !== SubscriptionTier.FREE)
-    .reduce((sum, subscription) => {
-      const plan = seedPlan(subscription.tier)
-      if (!plan) return sum
-      return sum + (subscription.billingCycle === BillingCycle.MONTHLY ? plan.priceMonthly : plan.priceYearly / 12)
-    }, 0)
+  const monthlyRevenue = revenue.monthlyRevenue
   const revenueByTier = Object.values(SubscriptionTier).filter((tier) => tier !== SubscriptionTier.FREE).map((tier) => {
-    const active = subscriptions.filter((subscription) => subscription.tier === tier && subscription.status === SubscriptionStatus.ACTIVE)
-    const revenue = active.reduce((sum, subscription) => {
-      const plan = seedPlan(subscription.tier)
-      if (!plan) return sum
-      return sum + (subscription.billingCycle === BillingCycle.MONTHLY ? plan.priceMonthly : plan.priceYearly / 12)
-    }, 0)
-    return { tier, name: seedPlan(tier)?.name ?? tier, count: active.length, revenue, color: tierColors[tier] ?? '#78909C' }
+    const { count, revenue: tierRevenue } = revenue.byTier(tier)
+    return { tier, name: seedPlan(tier)?.name ?? tier, count, revenue: tierRevenue, color: tierColors[tier] ?? '#78909C' }
   })
   const totalRevForBar = Math.max(1, revenueByTier.reduce((sum, row) => sum + row.revenue, 0))
 
