@@ -7,7 +7,9 @@ import { AppError } from '../../inbound/middleware/errorHandler.js';
 export interface LiveVideoConfig { url: string; apiKey: string; apiSecret: string }
 /** Credentials remain server-side. Viewers can subscribe but cannot publish tracks or data. */
 export class LiveVideoService {
-  constructor(private readonly config: LiveVideoConfig, private readonly sessions: LiveSessionRepositoryPort, private readonly campaigns: CampaignRepositoryPort, private readonly safety?: { recordHostToken?(id: string): Promise<void>; assertOwnerVisible(ownerId: string, viewerId?: string): Promise<void>; assertSessionVisible(sessionId: string, viewerId?: string): Promise<void> }) {}
+  constructor(private readonly config: LiveVideoConfig, private readonly sessions: LiveSessionRepositoryPort, private readonly campaigns: CampaignRepositoryPort, private readonly safety?: { recordHostToken?(id: string): Promise<void>; assertOwnerVisible(ownerId: string, viewerId?: string): Promise<void>; assertSessionVisible(sessionId: string, viewerId?: string): Promise<void> },
+    /** Throws unless the campaign owner's plan still includes LIVE streaming. Viewers are never gated. */
+    private readonly assertHostEntitled?: (ownerId: string) => Promise<void>) {}
   get enabled() { return /^wss:\/\//.test(this.config.url) && !!this.config.apiKey && !!this.config.apiSecret; }
   async join(sessionId: string, hostId?: string, viewerId?: string) {
     if (!this.enabled) throw new AppError('Live video is not configured yet', 503);
@@ -16,6 +18,9 @@ export class LiveVideoService {
     const campaign = await this.campaigns.findById(session.campaignId);
     if (!campaign || !campaign.canReceiveDonation()) throw new AppError('This campaign is not available to broadcast', 409);
     if (hostId && campaign.creatorId !== hostId) throw new AppError('Only the campaign owner can broadcast', 403);
+    // A publishing token is a paid feature: re-check the plan every time one is
+    // minted, so a plan that lapsed mid-session cannot keep broadcasting.
+    if (hostId) await this.assertHostEntitled?.(campaign.creatorId);
     await this.safety?.assertSessionVisible(sessionId, viewerId);
     await this.safety?.assertOwnerVisible(campaign.creatorId, viewerId);
     if (hostId) await this.safety?.recordHostToken?.(sessionId);

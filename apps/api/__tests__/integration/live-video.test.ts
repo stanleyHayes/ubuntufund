@@ -38,6 +38,15 @@ describe('live video permissions', () => {
     controls.deleteRoom.mockRejectedValueOnce(new Error('unavailable'));
     await expect(service.closeRoom('session')).rejects.toMatchObject({ statusCode: 502 });
   });
+  it('re-checks the owner plan before minting a host token, never for viewers', async () => {
+    const entitled = vi.fn().mockRejectedValue(Object.assign(new Error('Your plan does not include LIVE streaming'), { statusCode: 403 }));
+    const service = new LiveVideoService(settings, sessions, campaigns, undefined, entitled);
+    await expect(service.join('session', 'owner')).rejects.toMatchObject({ statusCode: 403 });
+    expect(entitled).toHaveBeenCalledWith('owner');
+    entitled.mockClear();
+    await expect(service.join('session', undefined, 'viewer-account')).resolves.toMatchObject({ role: 'viewer' });
+    expect(entitled).not.toHaveBeenCalled();
+  });
   it('rejects foreign hosts, closed sessions and missing provider configuration', async () => {
     await expect(new LiveVideoService(settings, sessions, campaigns).join('session', 'intruder')).rejects.toMatchObject({ statusCode: 403 });
     await expect(new LiveVideoService(settings, { findById: async () => ({ ...session, isActive: () => false }) } as any, campaigns).join('session')).rejects.toMatchObject({ statusCode: 409 });

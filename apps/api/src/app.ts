@@ -1070,7 +1070,8 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
   )
 
   const liveSafety = new MongoLiveSafety(userBlockRepo)
-  const liveVideo = new LiveVideoService(config.liveVideo, liveSessionRepo, campaignRepo, liveSafety)
+  const liveVideo = new LiveVideoService(config.liveVideo, liveSessionRepo, campaignRepo, liveSafety,
+    (ownerId) => planLimitsService.assertFeature(ownerId, 'liveStreaming', 'LIVE streaming'))
   if (process.env.NODE_ENV !== 'test') {
     let running = false
     const timer = setInterval(async () => {
