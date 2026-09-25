@@ -1,7 +1,7 @@
-import type { DonationIntentRepositoryPort } from '../../domain/ports/outbound/DonationIntentRepositoryPort.js';
+import type { DonationIntentRepositoryPort } from '@/domain/ports/outbound/DonationIntentRepositoryPort';
 import type { ReconcilePaymentsUseCase } from './ReconcilePaymentsUseCase.js';
 import type { GetDonationIntentPublicUseCase } from './GetDonationIntentPublicUseCase.js';
-import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
+import { AppError } from '@/infrastructure/adapters/inbound/middleware/errorHandler';
 
 /** A redirect requests verification; only the server's provider response proves payment. */
 export class VerifyDonationIntentUseCase {
@@ -13,8 +13,8 @@ export class VerifyDonationIntentUseCase {
 
   async execute(id: string, reference: string) {
     const intent = await this.intents.findById(id);
-    if (!intent || intent.providerRef !== reference) {
-      throw new AppError('Payment reference not found', 404);
+    if (intent?.providerRef !== reference) {
+      throw new AppError('Payment reference not found', 404)
     }
     if (intent.provider !== 'paystack' && intent.provider !== 'flutterwave') {
       throw new AppError('This payment does not use hosted checkout', 400);

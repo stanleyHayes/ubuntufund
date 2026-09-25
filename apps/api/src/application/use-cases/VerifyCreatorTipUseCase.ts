@@ -1,8 +1,8 @@
-import type { TipRepositoryPort } from '../../domain/ports/outbound/TipRepositoryPort.js';
-import type { CreatorProfileRepositoryPort } from '../../domain/ports/outbound/CreatorProfileRepositoryPort.js';
-import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGatewayPort.js';
+import type { TipRepositoryPort } from '@/domain/ports/outbound/TipRepositoryPort';
+import type { CreatorProfileRepositoryPort } from '@/domain/ports/outbound/CreatorProfileRepositoryPort';
+import type { PaymentGatewayPort } from '@/domain/ports/outbound/PaymentGatewayPort';
 import { tipChargeMatches, type HandleTipWebhookUseCase } from './HandleTipWebhookUseCase.js';
-import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
+import { AppError } from '@/infrastructure/adapters/inbound/middleware/errorHandler';
 
 /** Reference-bound guest confirmation; never exposes donor identity or payout details. */
 export class VerifyCreatorTipUseCase {
