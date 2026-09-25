@@ -1,0 +1,122 @@
+// Ujimora: 16 KB page-size RELRO alignment for prebuilt 64-bit native libraries.
+//
+// Google Play requires 16 KB page support for apps targeting Android 15+ and checks that every
+// 64-bit library's PT_GNU_RELRO ends on a 16 KB boundary ((VirtAddr + MemSiz) % 0x4000 == 0).
+// Several prebuilt AARs (React Native, Hermes, fbjni, libc++, Fresco, expo-image decoders,
+// AndroidX graphics, WebRTC, LiveKit noise) are linked with max-page-size=16384 but not
+// common-page-size=16384, so their RELRO ends mid-page.
+//
+// After native libraries are stripped, this rounds each misaligned RELRO end UP to 16 KB and grows
+// the containing writable PT_LOAD by the same zero-filled amount. That is the layout lld produces with
+// -z common-page-size=16384. Only program/section-header size fields change; code, data, relocations
+// and file layout are untouched. On 16 KB devices bionic already protects exactly this range;
+// on 4 KB devices the extra range is zero padding. It refuses (fails the build) when rounding up would
+// cover writable non-RELRO data or another segment. Evidence: docs/compliance/NATIVE_PERMISSIONS.md.
+//
+// Set -Pujimora.relro16k.allowUnaligned=true to downgrade a refusal to a warning.
+
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+
+class UjimoraRelro16k {
+  static final long PAGE16 = 0x4000L
+  static final int PT_LOAD = 1
+  static final int PT_GNU_RELRO = 0x6474e552
+  static final int PF_W = 2
+  static final int SHT_NOBITS = 8
+  static final int ET_DYN = 3
+
+  static long up(long x) { (x + PAGE16 - 1) & ~(PAGE16 - 1) }
+  static long down(long x) { x & ~(PAGE16 - 1) }
+
+  /** Returns 'patched', 'aligned' or 'skipped'; throws IllegalStateException when unsafe. */
+  static String align(File file) {
+    byte[] bytes = file.bytes
+    if (bytes.length < 64 || bytes[0] != 0x7f || bytes[1] != (byte) 0x45 || bytes[2] != (byte) 0x4c || bytes[3] != (byte) 0x46) return 'skipped'
+    if (bytes[4] != 2) return 'skipped' // ELF32: 32-bit ABIs are outside the 16 KB requirement
+    if (bytes[5] != 1) throw new IllegalStateException('big-endian ELF')
+    ByteBuffer b = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
+    if ((b.getShort(16) & 0xffff) != ET_DYN) return 'skipped'
+    long phoff = b.getLong(0x20)
+    int phentsize = b.getShort(0x36) & 0xffff
+    int phnum = b.getShort(0x38) & 0xffff
+    List<Map> phdrs = (0..<phnum).collect { int i ->
+      int base = (int) (phoff + (long) i * phentsize)
+      [base: base, type: b.getInt(base), flags: b.getInt(base + 4), vaddr: b.getLong(base + 16), memsz: b.getLong(base + 40)]
+    }
+    List<Map> relros = phdrs.findAll { it.type == PT_GNU_RELRO }
+    if (relros.isEmpty()) return 'skipped'
+    if (relros.size() != 1) throw new IllegalStateException("expected one PT_GNU_RELRO, found ${relros.size()}")
+    Map r = relros[0]
+    long end = (long) r.vaddr + (long) r.memsz
+    if (end % PAGE16 == 0) return 'aligned'
+    long newEnd = up(end)
+    List<Map> loads = phdrs.findAll { it.type == PT_LOAD }
+    List<Map> containing = loads.findAll { (long) it.vaddr <= (long) r.vaddr && (long) r.vaddr < (long) it.vaddr + (long) it.memsz }
+    if (containing.size() != 1) throw new IllegalStateException('RELRO start is not inside exactly one PT_LOAD')
+    Map c = containing[0]
+    if (((int) c.flags & PF_W) == 0) throw new IllegalStateException('containing PT_LOAD is not writable')
+    long loadEnd = (long) c.vaddr + (long) c.memsz
+    if (loadEnd > end) throw new IllegalStateException('writable data follows RELRO in the same PT_LOAD; rounding up would write-protect it')
+    loads.findAll { !it.is(c) }.each { p ->
+      long lo = down((long) p.vaddr), hi = up((long) p.vaddr + (long) p.memsz)
+      if (lo < newEnd && end < hi) throw new IllegalStateException(String.format('another PT_LOAD overlaps [%#x, %#x)', end, newEnd))
+    }
+    b.putLong((int) r.base + 40, newEnd - (long) r.vaddr)
+    if (loadEnd < newEnd) {
+      b.putLong((int) c.base + 40, newEnd - (long) c.vaddr)
+      fixRelroPadding(b, loadEnd, newEnd)
+    }
+    file.bytes = bytes
+    return 'patched'
+  }
+
+  /** Keep the .relro_padding NOBITS section consistent with the grown segment (cosmetic for tools). */
+  static void fixRelroPadding(ByteBuffer b, long oldLoadEnd, long newEnd) {
+    long shoff = b.getLong(0x28)
+    int shentsize = b.getShort(0x3A) & 0xffff
+    int shnum = b.getShort(0x3C) & 0xffff
+    int shstrndx = b.getShort(0x3E) & 0xffff
+    if (shoff == 0 || shnum == 0 || shstrndx >= shnum) return
+    long strtab = b.getLong((int) (shoff + (long) shstrndx * shentsize) + 24)
+    for (int i = 0; i < shnum; i++) {
+      int base = (int) (shoff + (long) i * shentsize)
+      if (b.getInt(base + 4) != SHT_NOBITS) continue
+      long addr = b.getLong(base + 16), size = b.getLong(base + 32)
+      if (addr + size != oldLoadEnd) continue
+      int nameAt = (int) (strtab + (b.getInt(base) & 0xffffffffL))
+      byte[] expected = '.relro_padding\u0000'.getBytes('US-ASCII')
+      boolean matches = nameAt + expected.length <= b.capacity() && (0..<expected.length).every { b.get(nameAt + it) == expected[it] }
+      if (matches) b.putLong(base + 32, newEnd - addr)
+    }
+  }
+}
+
+def ujimoraAllowUnalignedRelro = (findProperty('ujimora.relro16k.allowUnaligned') ?: 'false').toString() == 'true'
+
+tasks.configureEach { task ->
+  if (!(task.name ==~ /strip.*DebugSymbols/)) return
+  task.doLast { t ->
+    def counts = [patched: [], aligned: 0, refused: []]
+    t.outputs.files.each { root ->
+      if (!root.exists()) return
+      root.eachFileRecurse { File so ->
+        if (!so.isFile() || !so.name.endsWith('.so')) return
+        try {
+          String status = UjimoraRelro16k.align(so)
+          if (status == 'patched') counts.patched << "${so.parentFile.name}/${so.name}"
+          else if (status == 'aligned') counts.aligned++
+        } catch (IllegalStateException unsafe) {
+          counts.refused << "${so.parentFile.name}/${so.name}: ${unsafe.message}"
+        }
+      }
+    }
+    t.logger.lifecycle("Ujimora 16 KB RELRO: patched ${counts.patched.size()}, already aligned ${counts.aligned}, refused ${counts.refused.size()}")
+    counts.patched.each { t.logger.info("  patched ${it}") }
+    if (counts.refused) {
+      String message = "Cannot 16 KB-align RELRO safely:\n  " + counts.refused.join('\n  ')
+      if (ujimoraAllowUnalignedRelro) t.logger.warn(message)
+      else throw new GradleException(message + '\nFix the dependency or pass -Pujimora.relro16k.allowUnaligned=true to ship it unaligned.')
+    }
+  }
+}

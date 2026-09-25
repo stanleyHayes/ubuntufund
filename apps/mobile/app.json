@@ -162,6 +162,7 @@
       "./plugins/withDisabledPushAutoInit",
       "./plugins/withAndroidPageAlignment",
       "./plugins/withAndroidDataStore",
+      "./plugins/withPrebuiltRelroAlignment",
       "./plugins/withReleaseInfoPlist"
     ]
   }

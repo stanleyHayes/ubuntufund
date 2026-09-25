@@ -82,22 +82,19 @@ BN843072020), UNN House, Nii Osae Ntifu Avenue, East Legon, Accra.
 
 ## Android 16 KB page size
 
-Google's [page-size guide](https://developer.android.com/guide/practices/page-sizes)
-(checked 24 September 2026) requires 16 KB support for apps targeting Android 15+,
-and from **1 February 2027** Play will not accept updates that lack it. It checks
-two things: 16 KB `LOAD` segment alignment, and a 16 KB-aligned RELRO end
-(`(VirtAddr + MemSiz) % 0x4000 == 0`). Google warns that a misaligned RELRO end can crash apps.
+Google's [page-size guide](https://developer.android.com/guide/practices/page-sizes) requires
+16 KB support for apps targeting Android 15+, and from 1 February 2027 Play blocks updates without it.
+It checks 16 KB `LOAD` alignment and a 16 KB-aligned RELRO end (`(VirtAddr + MemSiz) % 0x4000 == 0`).
 
-Current release APK (24 September 2026, SHA-256 `b9b11175…`): ZIP 16 KB alignment passes, all
-48 native libraries pass `LOAD` alignment, and 27 fail the RELRO-end check. Every
-failure is an upstream prebuilt library: React Native/Hermes/JSI, libc++, fbjni, Fresco image
-codecs, AndroidX graphics-path, LiveKit WebRTC and noise filter. The APK installs and
-cold-starts on a 16 KB-page emulator with compatibility mode off, and it loads 7 of those
-libraries without faulting. That does not rule out a crash on another code path.
+**Status: all 48 64-bit native libraries pass both checks** (release APK and App Bundle, 25 September 2026).
+Twenty-seven prebuilt libraries (React Native/Hermes/JSI, libc++, fbjni, Fresco, expo-image decoders,
+AndroidX graphics-path, WebRTC, LiveKit noise) ship with a RELRO end that isn't 16 KB aligned. No published version of any of them
+fixes this yet. `plugins/relro16k.gradle`, applied by `plugins/withPrebuiltRelroAlignment.js`, runs after
+the strip step. It rounds each RELRO end up to 16 KB and grows the containing writable segment by the same
+zero-filled amount. Only header size fields change. This is the layout lld itself produces with
+`-z common-page-size=16384`, and bionic already protects exactly that range on 16 KB devices. The build fails
+if a library's layout can't be aligned safely.
 
-Upgrading does not fix this yet: React Native 0.86.3's own `react-android` AAR still
-fails RELRO for libc++_shared, fbjni, hermestooling and jsi. Before 1 February 2027,
-re-run `scripts/compliance/inspect-android-native.py` against the Expo SDK / React
-Native / Fresco / LiveKit releases available then, upgrade to the first set where all
-libraries pass, and test live video and image loading on a 16 KB device. Detailed
-evidence: `docs/compliance/NATIVE_PERMISSIONS.md`.
+Release gate: `python3 scripts/compliance/inspect-android-native.py --readelf <llvm-readelf> app-release.apk`
+must report 48/48, and `zipalign -c -P 16 4` must pass. Remove a library's patch once upstream ships a
+correctly linked build (the hook then reports it as "already aligned"). Evidence: `docs/compliance/NATIVE_PERMISSIONS.md`.

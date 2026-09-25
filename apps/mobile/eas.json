@@ -17,7 +17,9 @@
     "production": {
       "autoIncrement": true,
       "env": {
-        "UJIMORA_RELEASE": "1"
+        "UJIMORA_RELEASE": "1",
+        "EXPO_PUBLIC_API_URL": "https://api.ujimora.com/api/v1",
+        "EXPO_PUBLIC_WEB_URL": "https://app.ujimora.com"
       }
     },
     "simulator": {

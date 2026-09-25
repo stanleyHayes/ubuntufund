@@ -27,7 +27,8 @@ acceptance. The requirement ledger is [READINESS](../../docs/compliance/READINES
 - [x] Expo Doctor passes 20/20 against the current checkout on 13 September 2026; log `/tmp/ujimora-compliance-expo-doctor.log`. Fresh iOS/Android/web JavaScript exports also pass; see the readiness ledger.
 - [ ] Verify final locked dependencies with an isolated clean install and complete release checks after all engineering changes. Doctor and JavaScript export do not verify signed native libraries or production services.
 - [ ] Produce signed EAS/store artifacts from the final commit; verify Android API 36/16 KB libraries and merged permissions, and inspect the final iOS privacy report and SDK signatures.
-- [ ] Before 1 February 2027: clear the 27 upstream RELRO-end findings by upgrading to library releases that pass (React Native 0.86.3 still fails). See the 16 KB section in APP_REVIEW_NOTES.
+- [x] Android 16 KB: all 48 64-bit libraries pass LOAD and RELRO checks. Prebuilt RELRO ends are aligned at build time by `plugins/relro16k.gradle`. Re-run the checker on every release artifact.
+- [x] EAS production profile sets `EXPO_PUBLIC_API_URL` / `EXPO_PUBLIC_WEB_URL`. A release build without them cannot reach the API.
 - [ ] Test installation, cold launch, signup, KYC, consent withdrawal, report/block, external donation return, store purchase/restore, deletion and deep links on physical supported devices.
 - [ ] Verify VoiceOver/TalkBack, text scaling, reduced motion, keyboard avoidance, safe areas and iPad layouts.
 
