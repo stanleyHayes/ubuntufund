@@ -14,6 +14,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { UserSafetyControls } from '@/components/UserSafetyControls'
 import { usePalette } from '@/context/ColorModeContext'
 import type { Palette } from '@/theme'
+import { webUrl } from '@/lib/fundraising'
 
 interface OrganizationDetail {
   id: string
@@ -84,7 +85,7 @@ export default function OrganizationProfileScreen() {
         {organization.categories.length > 0 && <View style={styles.chips}>{organization.categories.map((category) => <Chip key={category} compact>{category}</Chip>)}</View>}
         {organization.description ? <Text selectable style={styles.statement}>{organization.description}</Text> : null}
         <View style={styles.chips}>
-          <Button icon="share-variant" onPress={() => { void Share.share({ message: `Support ${organization.name} on Ujimora: https://app.ujimora.com/organizations/${encodeURIComponent(id)}` }).catch(() => setError('Could not open sharing. Please try again.')) }}>Share</Button>
+          <Button icon="share-variant" onPress={() => { void Share.share({ message: `Support ${organization.name} on Ujimora: ${webUrl(`/organizations/${encodeURIComponent(id)}`)}` }).catch(() => setError('Could not open sharing. Please try again.')) }}>Share</Button>
           {organization.website && /^https?:\/\//i.test(organization.website) && <Button icon="open-in-new" onPress={() => { void Linking.openURL(organization.website!).catch(() => setError('Could not open this website.')) }}>Visit website</Button>}
         </View>
         <UserSafetyControls userId={organization.id} onBlocked={() => setBlocked(true)} />

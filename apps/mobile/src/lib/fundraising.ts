@@ -6,6 +6,15 @@ function websiteBase(origin: string) {
   return base
 }
 
+/**
+ * The public handle for a campaign's donation page: its slug, or its id for
+ * older campaigns created before slugs existed (the web /c/:handle routes
+ * accept a 24-hex id in place of a slug).
+ */
+export function campaignDonationHandle(campaign: { id: string; slug?: string | null }) {
+  return campaign.slug?.trim() || campaign.id
+}
+
 /** Only public campaign context crosses into the browser. Never include account tokens or donor data. */
 export function fundraisingUrl(slug: string, context: { amount?: string; liveSessionId?: string } = {}, origin = DEFAULT_ORIGIN) {
   const base = websiteBase(origin)
@@ -25,5 +34,10 @@ export function walletFundingUrl(origin = DEFAULT_ORIGIN) {
 /** Public campaign page on the web app; the marketing domain serves only its own landing routes. */
 export function campaignShareUrl(campaign: { id: string; slug?: string }, origin = DEFAULT_ORIGIN) {
   const path = campaign.slug ? `/c/${encodeURIComponent(campaign.slug)}` : `/campaigns/${encodeURIComponent(campaign.id)}`
+  return new URL(path, websiteBase(origin).origin).toString()
+}
+
+/** Absolute link to a public page on the web app (share text), following EXPO_PUBLIC_WEB_URL. */
+export function webUrl(path: string, origin = DEFAULT_ORIGIN) {
   return new URL(path, websiteBase(origin).origin).toString()
 }

@@ -14,6 +14,7 @@ import { LiveVideo } from '@/components/LiveVideo'
 import { BrandedTextInput as TextInput } from '@/components/BrandedTextInput'
 import { Button, PageSkeleton } from '@/components/Loading'
 import { SignInRequired } from '@/components/SignInRequired'
+import { webUrl } from '@/lib/fundraising'
 
 export default function BroadcastStudio() {
   const { id } = useLocalSearchParams<{ id: string }>()
@@ -81,7 +82,7 @@ export default function BroadcastStudio() {
       </View>
       <View style={{ ...neu.raised, backgroundColor: p.surface, borderRadius: 24, padding: 20, gap: 12 }}>
         <Text variant="titleLarge">{session.title || 'Your broadcast'}</Text><Text>GH₵{session.stats.amountRaised.toLocaleString()} · {session.stats.successfulDonations} donations</Text>
-        <Button icon="share-variant" onPress={() => void Share.share({ message: `Watch ${session.title || 'my campaign'} live on Ujimora: https://app.ujimora.com/live/${session.id}` })}>Share viewer link</Button>
+        <Button icon="share-variant" onPress={() => void Share.share({ message: `Watch ${session.title || 'my campaign'} live on Ujimora: ${webUrl(`/live/${encodeURIComponent(session.id)}`)}` })}>Share viewer link</Button>
         {(['showDonorNames', 'showDonorMessages', 'showAmounts', 'privacyMode'] as const).map(key => <View key={key} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}><Text style={{ flex: 1 }}>{({ showDonorNames: 'Show donor names', showDonorMessages: 'Show messages', showAmounts: 'Show amounts', privacyMode: 'Privacy mode' })[key]}</Text><Switch disabled={busy} value={session[key]} onValueChange={value => void update({ [key]: value })} /></View>)}
         <Text>Disconnecting your camera leaves the session open so you can reconnect. End broadcast closes it for everyone.</Text>
         <Button mode="contained" disabled={busy} loading={busy} onPress={() => Alert.alert('End broadcast?', 'This closes the live session for viewers.', [{ text: 'Cancel', style: 'cancel' }, { text: 'End broadcast', style: 'destructive', onPress: () => void update({ status: 'ended' }) }])}>End broadcast</Button>
