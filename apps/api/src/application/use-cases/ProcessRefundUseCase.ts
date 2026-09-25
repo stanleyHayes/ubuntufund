@@ -77,6 +77,13 @@ export class ProcessRefundUseCase {
     if (!gateway || !gateway.isConfigured()) {
       throw new AppError(`Refunds are not available for ${intent.provider}`, 501);
     }
+    // A provider we cannot confirm refunds with (Flutterwave today) must be
+    // refused BEFORE the claim and the funds hold below: otherwise the refund
+    // lands in provider_unknown, blocks every later refund on the intent and
+    // freezes the organizer's pending funds with nothing to release them.
+    if (!gateway.fetchRefund) {
+      throw new AppError(`Refunds for ${intent.provider} must be issued in the provider dashboard`, 501);
+    }
 
     // All money math is in the settlement currency at its own minor-unit
     // precision — never a hardcoded 2dp.

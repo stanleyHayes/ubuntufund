@@ -65,6 +65,9 @@ export class HandleFlutterwaveWebhookUseCase {
   ) {}
 
   async execute(input: FlutterwaveWebhookInput): Promise<void> {
+    // Deliberately NOT gated on PAYMENTS_FLUTTERWAVE_ENABLED: that flag stops
+    // new checkouts, but charges opened while the rail was on must still settle
+    // after it is switched off, or donors' paid money would be stranded.
     if (!this.gateway.isConfigured()) {
       throw new AppError('Payments are not configured', 501);
     }
