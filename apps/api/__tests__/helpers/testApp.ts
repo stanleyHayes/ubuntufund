@@ -19,6 +19,10 @@ process.env.LIVEKIT_URL = '';
 process.env.LIVEKIT_API_KEY = '';
 process.env.LIVEKIT_API_SECRET = '';
 process.env.STORE_BILLING_ENABLED = 'false';
+// Public media must be this cloud's uploads (routes/urlSchemas.ts). Pin a name
+// so CI (no .env) and developer machines validate the same URLs; files that
+// exercise real uploads set their own before importing this helper.
+process.env.CLOUDINARY_CLOUD_NAME ||= 'test_cloud';
 
 process.env.JWT_SECRET ??= 'test-jwt-secret-do-not-use-in-production-0001';
 process.env.JWT_REFRESH_SECRET ??= 'test-jwt-refresh-secret-do-not-use-in-production-0002';

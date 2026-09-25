@@ -11,8 +11,9 @@ import type { createAuthMiddleware } from '../../middleware/authMiddleware.js';
 import { AppError } from '../../middleware/errorHandler.js';
 import type { MediaUploader } from '../../../outbound/media/CloudinaryUploader.js';
 
-/** Accepted upload types — images and PDFs (KYC documents). */
+/** Accepted upload types — images everywhere, PDFs for KYC documents only. */
 const ALLOWED_MIME = /^(image\/(jpe?g|png|webp|gif|heic|heif)|application\/pdf)$/i;
+const PDF_MIME = /^application\/pdf$/i;
 
 /** Public `folder` keys → the Cloudinary folder they map to. */
 const FOLDERS: Record<string, string> = {
@@ -74,8 +75,17 @@ export function createUploadRoutes(
           throw new AppError('Only image or PDF files are allowed.', 415);
         }
 
+        // An unknown folder used to fall back to misc silently; name it or fail.
         const folderKey = String(req.query.folder ?? 'misc').toLowerCase();
-        const folder = FOLDERS[folderKey] ?? FOLDERS.misc;
+        if (!Object.prototype.hasOwnProperty.call(FOLDERS, folderKey)) {
+          throw new AppError('Unknown upload folder.', 400);
+        }
+        const folder = FOLDERS[folderKey];
+        // PDFs are verification documents: they go to private KYC storage only,
+        // never to a public profile/campaign/misc folder.
+        if (PDF_MIME.test(mimetype) && folderKey !== 'kyc') {
+          throw new AppError('PDF files are only accepted for verification documents.', 415);
+        }
 
         const result = await uploader.upload({ buffer, mimetype, folder, authenticated: folderKey === 'kyc' });
         if (folderKey === 'kyc') {

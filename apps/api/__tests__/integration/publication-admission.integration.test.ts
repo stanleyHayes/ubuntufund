@@ -3,6 +3,7 @@ import { afterAll, beforeAll, expect, it, vi } from 'vitest';
 import request from 'supertest';
 import type { Express } from 'express';
 import { createTestApp } from '../helpers/testApp.js';
+import { platformMediaUrl } from '../helpers/platformMedia.js';
 import { connectTestDatabase, disconnectTestDatabase, dropTestDatabase } from '../helpers/testDatabase.js';
 import { MongoPublicationAdmission } from '../../src/infrastructure/adapters/outbound/persistence/MongoPublicationAdmission.js';
 import { PublicationReviewModel } from '../../src/infrastructure/database/models/PublicationReviewModel.js';
@@ -239,7 +240,7 @@ it('screens only opted-in public text and holds flagged, failed or media submiss
   screen.mockRejectedValueOnce(new Error('Provider unavailable'));
   await request(app).post(f.comments).set('Authorization', f.owner.auth).send({ content: 'Unavailable fixture text', automatedReviewConsent: true }).expect(409);
   const calls = screen.mock.calls.length;
-  await request(app).post(f.updates).set('Authorization', f.owner.auth).send({ title: 'Media update', content: 'Review the photo too', type: 'general', mediaUrls: ['https://media.example.test/photo.jpg'], automatedReviewConsent: true }).expect(409);
+  await request(app).post(f.updates).set('Authorization', f.owner.auth).send({ title: 'Media update', content: 'Review the photo too', type: 'general', mediaUrls: [platformMediaUrl('photo.jpg')], automatedReviewConsent: true }).expect(409);
   expect(screen).toHaveBeenCalledTimes(calls);
   expect(await CampaignUpdateModel.countDocuments({ campaignId: f.campaign.id })).toBe(0);
   expect(await CampaignCommentModel.countDocuments({ campaignId: f.campaign.id })).toBe(1);

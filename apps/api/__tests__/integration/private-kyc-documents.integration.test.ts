@@ -47,6 +47,22 @@ describe('Private verification documents', () => {
     await request(app).post('/api/v1/kyc/identity').set('Authorization', other.bearer).send({ documents: [{ type: 'id_card', url: uploaded.body.data.url }] }).expect(400);
     await request(app).post('/api/v1/kyc/identity').set('Authorization', owner.bearer).send({ documents: [{ type: 'id_card', url: uploaded.body.data.url }] }).expect(201);
   });
+  it('accepts PDFs only into private KYC storage and rejects unknown folders', async () => {
+    const owner = await register();
+    const PDF = Buffer.from('%PDF-1.7\n%fixture\n');
+    const upload = (folder: string, type: string, body: Buffer) =>
+      request(app).post(`/api/v1/uploads/image?folder=${folder}`).set('Authorization', owner.bearer).set('Content-Type', type).send(body);
+    const kyc = await upload('kyc', 'application/pdf', PDF).expect(200);
+    expect(kyc.body.data.url).toMatch(/^kyc:\/\/[a-f0-9]{24}$/);
+    for (const folder of ['profiles', 'campaigns', 'misc']) {
+      const res = await upload(folder, 'application/pdf', PDF).expect(415);
+      expect(res.body.message).toBe('PDF files are only accepted for verification documents.');
+    }
+    // An unknown folder used to fall back to misc silently.
+    await upload('avatars', 'image/png', PNG).expect(400);
+    await upload('..%2Fkyc', 'image/png', PNG).expect(400);
+  });
+
   it('rejects public document URLs and offers no direct-upload signing endpoint', async () => {
     const owner = await register();
     await request(app).post('/api/v1/kyc/identity').set('Authorization', owner.bearer).send({ documents: [{ type: 'id_card', url: 'https://example.com/public-id.jpg' }] }).expect(400);

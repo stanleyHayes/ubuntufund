@@ -64,6 +64,22 @@ describe('auth email normalisation', () => {
     expect(again.status).toBe(409);
   });
 
+  it('accepts only an http(s) website for an organization sign-up', async () => {
+    const org = (website: string) => request(app).post('/api/v1/auth/register').send({
+      email: `org-${randomUUID()}@example.com`, password: 'SecurePass123', name: 'Org Owner', role: 'organization',
+      organizationName: 'Website Test Org', organizationType: 'ngo', website,
+      legalAcceptance: { version: LEGAL_ACCEPTANCE_VERSION, acceptedTerms: true, ageConfirmed: true },
+    });
+    for (const website of ['javascript:alert(1)', 'data:text/html,<script>1</script>', 'myorg.org', 'https://user:pass@myorg.org']) {
+      const res = await org(website);
+      expect(res.status).toBe(400);
+      expect(res.body.errors).toHaveProperty('website');
+    }
+    const ok = await org(' https://myorg.org ');
+    expect(ok.status).toBe(201);
+    expect(await UserModel.findById(ok.body.data.user.id).select('website').lean()).toMatchObject({ website: 'https://myorg.org' });
+  });
+
   it('accepts a padded email on forgot-password (no validation 400)', async () => {
     const res = await request(app).post('/api/v1/auth/forgot-password').send({ email: ' someone@example.com ' });
     expect(res.status).not.toBe(400);

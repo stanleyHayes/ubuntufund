@@ -3,6 +3,7 @@ import { afterAll, beforeAll, expect, it, vi } from 'vitest';
 import request from 'supertest';
 import type { Express } from 'express';
 import { createTestApp } from '../helpers/testApp.js';
+import { platformMediaUrl } from '../helpers/platformMedia.js';
 import { connectTestDatabase, disconnectTestDatabase, dropTestDatabase } from '../helpers/testDatabase.js';
 import { MongoPublicationAdmission } from '../../src/infrastructure/adapters/outbound/persistence/MongoPublicationAdmission.js';
 import { MongoCreatorBalanceRepository } from '../../src/infrastructure/adapters/outbound/persistence/MongoCreatorBalanceRepository.js';
@@ -66,7 +67,7 @@ it('reviews merged partial edits and retains omitted settings and current public
 });
 it('holds media without sending it to text screening and removes dynamic account-image fallback', async () => {
   screen.mockReset(); screen.mockResolvedValue('allowed');
-  const owner = await account(), body = input(), image = 'https://media.example.test/photo.jpg';
+  const owner = await account(), body = input(), image = platformMediaUrl('photo.jpg');
   await UserModel.findByIdAndUpdate(owner.id, { avatarUrl: image, coverUrl: image });
   await save(owner, { ...body, automatedReviewConsent: true }).expect(200);
   const publicPage = await request(app).get(`/api/v1/creators/${body.handle}`).expect(200);

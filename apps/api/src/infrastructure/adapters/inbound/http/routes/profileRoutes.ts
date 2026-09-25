@@ -2,6 +2,7 @@ import { UserModel } from '../../../../database/models/UserModel.js';
 import { legalAcceptanceSchema } from './legalAcceptanceSchema.js';
 import { Router } from 'express';
 import { z } from 'zod';
+import { platformMediaUrl } from './urlSchemas.js';
 import type { ProfileController } from '../controllers/ProfileController.js';
 import { validate } from '../../middleware/validate.js';
 import type { createAuthMiddleware } from '../../middleware/authMiddleware.js';
@@ -17,7 +18,8 @@ const notificationPreferencesSchema = z
   })
   .partial();
 
-const imageUrlSchema = z.union([z.literal(''), z.string().url().max(2048).refine((value) => value.startsWith('https://'), 'Use an HTTPS image URL')]).optional();
+// '' clears the image; anything else must come from POST /uploads/image.
+const imageUrlSchema = z.union([z.literal(''), platformMediaUrl]).optional();
 
 const updateProfileSchema = z.object({
   automatedReviewConsent: z.boolean().optional(),

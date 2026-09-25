@@ -3,6 +3,7 @@ import { ContentRestrictionModel } from '../../../../database/models/ContentRest
 import { AppError } from '../../middleware/errorHandler.js';
 import type { UserBlockRepositoryPort } from '../../../../../domain/ports/outbound/UserBlockRepositoryPort.js';
 import { z } from 'zod';
+import { platformMediaUrl } from './urlSchemas.js';
 import { validate } from '../../middleware/validate.js';
 import { donationIntentRateLimiter } from '../../middleware/rateLimiter.js';
 import type { VerifyCreatorTipUseCase } from '../../../../../application/use-cases/VerifyCreatorTipUseCase.js';
@@ -46,8 +47,8 @@ export function createCreatorRoutes(deps: {
     validate(z.object({
       handle: z.string().trim().min(3).max(31).optional(), displayName: z.string().trim().min(2).max(100).optional(),
       tagline: z.string().max(200).optional(), bio: z.string().max(5000).optional(),
-      avatarUrl: z.union([z.string().url().max(2000).refine(url => /^https?:\/\//i.test(url)), z.literal('')]).optional(),
-      coverUrl: z.union([z.string().url().max(2000).refine(url => /^https?:\/\//i.test(url)), z.literal('')]).optional(),
+      avatarUrl: z.union([platformMediaUrl, z.literal('')]).optional(),
+      coverUrl: z.union([platformMediaUrl, z.literal('')]).optional(),
       tipsEnabled: z.boolean().optional(), presetAmounts: z.array(z.number().finite().positive().multipleOf(0.01).max(1000000)).max(6).optional(),
       currency: z.literal('GHS').optional(), thankYouMessage: z.string().max(1000).optional(), automatedReviewConsent: z.boolean().optional(),
     }).strict()),

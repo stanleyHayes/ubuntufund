@@ -5,6 +5,7 @@ import request from 'supertest';
 import type { Express } from 'express';
 import { SUBSCRIPTION_PLANS, SubscriptionTier } from '@ubuntu-fund/types';
 import { createTestApp } from '../helpers/testApp.js';
+import { platformMediaUrl } from '../helpers/platformMedia.js';
 import { connectTestDatabase, disconnectTestDatabase, dropTestDatabase } from '../helpers/testDatabase.js';
 import { MongoPublicationAdmission } from '../../src/infrastructure/adapters/outbound/persistence/MongoPublicationAdmission.js';
 import { PublicationReviewModel } from '../../src/infrastructure/database/models/PublicationReviewModel.js';
@@ -72,7 +73,7 @@ it('holds provider failures and media, and rechecks restrictions and verificatio
   const create = (body: object) => request(app).post('/api/v1/campaigns').set('Authorization', owner.auth).send(body);
   screen.mockRejectedValueOnce(new Error('Unavailable fixture provider'));
   await create({ ...input(), automatedReviewConsent: true }).expect(409);
-  await create({ ...input(), imageUrls: ['https://media.example.test/photo.jpg'], automatedReviewConsent: true }).expect(409);
+  await create({ ...input(), imageUrls: [platformMediaUrl('photo.jpg')], automatedReviewConsent: true }).expect(409);
   expect(screen).toHaveBeenCalledTimes(1);
   screen.mockImplementationOnce(async () => { await UserModel.findByIdAndUpdate(owner.id, { verificationLevel: 0 }); return 'allowed'; });
   await create({ ...input(), automatedReviewConsent: true }).expect(403);

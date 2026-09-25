@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { platformMediaUrl } from './urlSchemas.js';
 import type { CampaignUpdateController } from '../controllers/CampaignUpdateController.js';
 import { validate } from '../../middleware/validate.js';
 import type { createAuthMiddleware, createOptionalAuthMiddleware } from '../../middleware/authMiddleware.js';
@@ -16,7 +17,7 @@ const createCampaignUpdateSchema = z.object({
   title: z.string().min(3).max(200),
   content: z.string().min(1).max(5000),
   type: campaignUpdateTypeSchema,
-  mediaUrls: z.array(z.string().url().max(2000)).max(10).default([]),
+  mediaUrls: z.array(platformMediaUrl).max(10).default([]),
   isPinned: z.boolean().default(false),
 });
 
@@ -25,7 +26,7 @@ const updateCampaignUpdateSchema = z.object({
   title: z.string().min(3).max(200).optional(),
   content: z.string().min(1).max(5000).optional(),
   type: campaignUpdateTypeSchema.optional(),
-  mediaUrls: z.array(z.string().url().max(2000)).max(10).optional(),
+  mediaUrls: z.array(platformMediaUrl).max(10).optional(),
 });
 
 /**

@@ -8,6 +8,7 @@ import request from 'supertest';
 import type { Express } from 'express';
 import { SubscriptionTier, SUBSCRIPTION_PLANS, VerificationLevel } from '@ubuntu-fund/types';
 import { createTestApp } from '../helpers/testApp.js';
+import { platformMediaUrl } from '../helpers/platformMedia.js';
 import { connectTestDatabase, disconnectTestDatabase, dropTestDatabase } from '../helpers/testDatabase.js';
 import { UserModel } from '../../src/infrastructure/database/models/UserModel.js';
 import { SubscriptionPlanModel } from '../../src/infrastructure/database/models/SubscriptionPlanModel.js';
@@ -34,7 +35,7 @@ it('uses live plan caps for form options and POST, rejects expired privileges, a
   await post(input).expect(422);
   await SubscriptionModel.findOneAndUpdate({ userId }, { userId, tier: SubscriptionTier.PRO, status: 'active', billingCycle: 'monthly', currentPeriodStart: new Date(Date.now() - 86400000 * 40), currentPeriodEnd: new Date(Date.now() - 1) }, { upsert: true });
   await post(input).expect(422);
-  await post({ ...input, goalAmount: 500, imageUrls: ['https://example.com/a.jpg', 'https://example.com/b.jpg'] }).expect(422);
+  await post({ ...input, goalAmount: 500, imageUrls: [platformMediaUrl('a.jpg'), platformMediaUrl('b.jpg')] }).expect(422);
   const created = await post({ ...input, goalAmount: 500 }).expect(201);
   const campaignId = created.body.data.id;
   const fullPlan = await request(app).get('/api/v1/campaigns/creation-options').set('Authorization', `Bearer ${token}`).expect(200);

@@ -1,4 +1,5 @@
 import { legalAcceptanceSchema } from './legalAcceptanceSchema.js';
+import { webAddress } from './urlSchemas.js';
 import { Router } from 'express';
 import type { RequestHandler } from 'express';
 import { z } from 'zod';
@@ -26,7 +27,7 @@ const registerSchema = z
     organizationName: z.string().min(2).max(160).optional(),
     organizationType: z.nativeEnum(OrganizationType).optional(),
     registrationNumber: z.string().max(100).optional(),
-    website: z.string().trim().url().max(500).optional(),
+    website: webAddress.optional(),
     needsWebsite: z.boolean().optional(),
     referralCode: z.string().min(3).max(24).optional(),
   })

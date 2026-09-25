@@ -1,6 +1,7 @@
 import { legalAcceptanceSchema } from './legalAcceptanceSchema.js';
 import { Router } from 'express';
 import { z } from 'zod';
+import { platformMediaUrl } from './urlSchemas.js';
 import { CampaignCategory, CampaignPriority, PaymentMethod } from '@ubuntu-fund/types';
 import type { CampaignController } from '../controllers/CampaignController.js';
 import { validate } from '../../middleware/validate.js';
@@ -16,7 +17,7 @@ const createCampaignSchema = z.object({
   priority: z.nativeEnum(CampaignPriority),
   beneficiaries: z.array(z.string().max(200)).max(20).default([]),
   endDate: z.string().datetime(),
-  imageUrls: z.array(z.string().url()).max(10).optional(),
+  imageUrls: z.array(platformMediaUrl).max(10).optional(),
 });
 
 const donateSchema = z.object({

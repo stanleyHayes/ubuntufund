@@ -3,6 +3,7 @@ import { afterAll, beforeAll, expect, it, vi } from 'vitest';
 import request from 'supertest';
 import type { Express } from 'express';
 import { createTestApp } from '../helpers/testApp.js';
+import { platformMediaUrl } from '../helpers/platformMedia.js';
 import { connectTestDatabase, disconnectTestDatabase, dropTestDatabase } from '../helpers/testDatabase.js';
 import { UserModel } from '../../src/infrastructure/database/models/UserModel.js';
 import { ProfileModel } from '../../src/infrastructure/database/models/ProfileModel.js';
@@ -28,16 +29,16 @@ it('preserves concurrent privacy, contact, appearance and notification patches o
 });
 it('keeps omitted values and explicit empty strings without restoring a public profile', async () => {
   const owner = await account();
-  await patch(owner, { publicProfile: false, phone: '0551234567', bio: 'Private account biography', avatarUrl: 'https://example.test/avatar.png', coverUrl: 'https://example.test/cover.png', name: 'Updated name' }).expect(200);
+  await patch(owner, { publicProfile: false, phone: '0551234567', bio: 'Private account biography', avatarUrl: platformMediaUrl('avatar.png'), coverUrl: platformMediaUrl('cover.png'), name: 'Updated name' }).expect(200);
   await patch(owner, { phone: '', coverUrl: '' }).expect(200);
   const saved = (await request(app).get('/api/v1/profile').set('Authorization', owner.auth).expect(200)).body.data;
-  expect(saved).toMatchObject({ name: 'Updated name', publicProfile: false, phone: '', bio: 'Private account biography', avatarUrl: 'https://example.test/avatar.png', coverUrl: '' });
+  expect(saved).toMatchObject({ name: 'Updated name', publicProfile: false, phone: '', bio: 'Private account biography', avatarUrl: platformMediaUrl('avatar.png'), coverUrl: '' });
   await request(app).get(`/api/v1/users/${owner.id}/public`).expect(404);
 });
 it('does not let stale general account saves undo identity patches', async () => {
   const owner = await account(), repo = new MongoUserRepository();
   const stale = await repo.findById(owner.id);
-  const identity = { name: 'Current name', country: 'Ghana', avatarUrl: 'https://example.test/new.png', coverUrl: 'https://example.test/new-cover.png' };
+  const identity = { name: 'Current name', country: 'Ghana', avatarUrl: platformMediaUrl('new.png'), coverUrl: platformMediaUrl('new-cover.png') };
   await patch(owner, identity).expect(200);
   await repo.update(stale!);
   expect(await UserModel.findById(owner.id)).toMatchObject(identity);

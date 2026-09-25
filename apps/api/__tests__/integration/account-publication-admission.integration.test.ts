@@ -5,6 +5,7 @@ import { afterAll, beforeAll, expect, it, vi } from 'vitest';
 import request from 'supertest';
 import type { Express } from 'express';
 import { createTestApp } from '../helpers/testApp.js';
+import { platformMediaUrl } from '../helpers/platformMedia.js';
 import { connectTestDatabase, disconnectTestDatabase, dropTestDatabase } from '../helpers/testDatabase.js';
 import { MongoPublicationAdmission } from '../../src/infrastructure/adapters/outbound/persistence/MongoPublicationAdmission.js';
 import { PublicationReviewModel } from '../../src/infrastructure/database/models/PublicationReviewModel.js';
@@ -62,7 +63,7 @@ it('requires a fresh review to expose an existing private profile and allows hid
 });
 it('holds media with exact image slots and never sends it to the text screener', async () => {
   screen.mockReset(); screen.mockResolvedValue('allowed');
-  const owner = await account(), image = 'https://example.test/portrait.jpg';
+  const owner = await account(), image = platformMediaUrl('portrait.jpg');
   await save(owner, { avatarUrl: image, automatedReviewConsent: true }).expect(409);
   expect(screen).not.toHaveBeenCalled();
   await approve(owner);
