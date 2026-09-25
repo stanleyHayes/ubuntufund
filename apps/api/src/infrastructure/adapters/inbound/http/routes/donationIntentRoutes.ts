@@ -33,20 +33,17 @@ const createDonationIntentSchema = z.object({
   couponCode: z.string().min(1).max(50).optional(),
 });
 
-const recordPaymentAttemptSchema = z.object({
-  provider: z.enum(['wallet', 'paystack', 'flutterwave']),
-  providerRef: z.string().max(200).optional(),
-  status: z.enum(['initiated', 'succeeded', 'failed']),
-  raw: z.record(z.unknown()).optional(),
-});
-
 /**
  * The /donation-intents resource (all PUBLIC — guest checkout capable):
  *   POST /                       → create an intent (wallet settles inline)
- *   POST /:id/payment-attempts   → record a checkout attempt
  *   GET  /:id/public             → poll intent status
+ *   POST /:id/verify             → server-verify a hosted checkout by reference
  *
- * Create/record carry a dedicated rate limiter (unauthenticated money writes);
+ * There is deliberately no client endpoint to record payment attempts or set a
+ * provider reference: only the server's gateway calls mint references, so a
+ * caller can never plant another payment's reference on an intent.
+ *
+ * Create/verify carry a dedicated rate limiter (unauthenticated money writes);
  * create takes optional auth so an authenticated wallet donor is recognized
  * while guests still pass through.
  */
@@ -62,13 +59,6 @@ export function createDonationIntentRoutes(
     optionalAuthMiddleware,
     validate(createDonationIntentSchema),
     controller.create
-  );
-
-  router.post(
-    '/:id/payment-attempts',
-    donationIntentRateLimiter,
-    validate(recordPaymentAttemptSchema),
-    controller.recordAttempt
   );
 
   router.get('/:id/public', controller.getPublic);

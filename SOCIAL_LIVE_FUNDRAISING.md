@@ -98,7 +98,7 @@ already publish these events, so overlays work today.
 | Method & path | Auth | Notes |
 |---|---|---|
 | `POST /api/v1/donation-intents` | public (guest) | Create an intent. `provider:'wallet'`+authed settles synchronously; `provider:'paystack'` returns `{ intent, authorization_url, access_code, reference }` (email required). Idempotent via `Idempotency-Key`. |
-| `POST /api/v1/donation-intents/:id/payment-attempts` | public | Advance `CREATED→PENDING`. |
+| `POST /api/v1/donation-intents/:id/verify` | public | `{ reference }` — server-verifies a hosted checkout with the provider (the only client-triggered status change; providers' references are minted server-side). |
 | `GET /api/v1/donation-intents/:id/public` | public | Status polling (no PII). |
 | `POST /api/v1/donations/:id/message` | donor | Add/edit a public donation message (respects anonymity). |
 | `POST /api/v1/webhooks/paystack` | signature | **Raw body**, `x-paystack-signature` = HMAC-SHA512. `charge.success` → settle (ledger + projections + realtime + receipt), idempotent on `reference`. |

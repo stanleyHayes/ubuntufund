@@ -95,7 +95,7 @@ describe('Hosted donation callback verification', () => {
   it('exposes verification to guest callbacks through a validated, no-store HTTP endpoint', async () => {
     const app = express();
     app.use(express.json());
-    const controller = new DonationIntentController({} as never,{} as never,{} as never,{} as never,verify);
+    const controller = new DonationIntentController({} as never,{} as never,{} as never,verify);
     app.use('/donation-intents',createDonationIntentRoutes(controller,((_req,_res,next) => next()) as never));
     app.use(errorHandler);
     await request(app).post(`/donation-intents/${id}/verify`).send({}).expect(400);
@@ -104,6 +104,8 @@ describe('Hosted donation callback verification', () => {
     expect(res.headers['cache-control']).toBe('no-store');
     await request(app).post(`/donation-intents/${id}/verify`).send({reference:'wrong'}).expect(404);
     expect(journal).toHaveBeenCalledTimes(1);
+    // I128: no public endpoint can record attempts or plant a provider reference.
+    await request(app).post(`/donation-intents/${id}/payment-attempts`).send({provider:'paystack',providerRef:'uf-other',status:'initiated'}).expect(404);
   });
 
   it('does not double-credit simultaneous callbacks or later repeats', async () => {

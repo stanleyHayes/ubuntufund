@@ -153,7 +153,6 @@ import { ReconcilePayoutsUseCase } from './application/use-cases/ReconcilePayout
 import { ProcessRefundUseCase } from './application/use-cases/ProcessRefundUseCase.js'
 import { MongoRefundOperationRepository } from './infrastructure/adapters/outbound/persistence/MongoRefundOperationRepository.js'
 import { MongoRefundFunds } from './infrastructure/adapters/outbound/persistence/MongoRefundFunds.js'
-import { RecordPaymentAttemptUseCase } from './application/use-cases/RecordPaymentAttemptUseCase.js'
 import { HandlePayoutWebhookUseCase } from './application/use-cases/HandlePayoutWebhookUseCase.js'
 import { ListBanksUseCase } from './application/use-cases/ListBanksUseCase.js'
 import { CreatePayoutRecipientUseCase } from './application/use-cases/CreatePayoutRecipientUseCase.js'
@@ -1008,10 +1007,6 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     }, RECONCILE_INTERVAL_MS)
     timer.unref()
   }
-  const recordPaymentAttemptUseCase = new RecordPaymentAttemptUseCase(
-    donationIntentRepo,
-    paymentAttemptRepo,
-  )
   const getDonationIntentPublicUseCase = new GetDonationIntentPublicUseCase(donationIntentRepo, ledgerRepo, donationRepo)
   const addDonationMessageUseCase = new AddDonationMessageUseCase(donationRepo)
 
@@ -1393,7 +1388,6 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
   )
   const donationIntentController = new DonationIntentController(
     createDonationIntentUseCase,
-    recordPaymentAttemptUseCase,
     getDonationIntentPublicUseCase,
     addDonationMessageUseCase,
     new VerifyDonationIntentUseCase(donationIntentRepo, reconcilePaymentsUseCase, getDonationIntentPublicUseCase),
