@@ -125,3 +125,70 @@ it('does not treat an unchanged identity payload as permission to overwrite a co
   expect(admission.assertAllowed).not.toHaveBeenCalled();
   expect((await UserModel.findById(owner.id))?.name).toBe('Concurrent reviewed identity');
 });
+
+it('removes an avatar or cover at once, without review, consent, agreement or a lifted restriction', async () => {
+  screen.mockReset(); screen.mockResolvedValue('allowed');
+  const owner = await account(), avatar = 'https://example.test/avatar.jpg', cover = 'https://example.test/cover.jpg';
+  await save(owner, { avatarUrl: avatar, coverUrl: cover }).expect(409);
+  await approve(owner);
+  await save(owner, { avatarUrl: avatar, coverUrl: cover }).expect(200);
+  const reviews = await PublicationReviewModel.countDocuments({ actorId: owner.id });
+  // Cover removal while the avatar remains publishes immediately.
+  await save(owner, { coverUrl: '' }).expect(200);
+  expect(await UserModel.findById(owner.id).lean()).toMatchObject({ avatarUrl: avatar, coverUrl: '' });
+  // Even a restricted account without the current agreement can take its photo down.
+  await ContentRestrictionModel.create({ userId: owner.id, reason: 'Fixture restriction', restrictedBy: 'fixture' });
+  await UserModel.findByIdAndUpdate(owner.id, { $unset: { legalAcceptance: 1 } });
+  await save(owner, { avatarUrl: '' }).expect(200);
+  const saved = await UserModel.findById(owner.id).lean();
+  expect(saved).toMatchObject({ avatarUrl: '' });
+  expect(saved!.reviewedAvatarUrl).toBeUndefined();
+  expect(await PublicationReviewModel.countDocuments({ actorId: owner.id })).toBe(reviews);
+  expect(screen).not.toHaveBeenCalled();
+  // A removal combined with a new public change is still reviewed.
+  await ContentRestrictionModel.deleteMany({ userId: owner.id });
+  await UserModel.findByIdAndUpdate(owner.id, { $set: { legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true, acceptedAt: new Date() } } });
+  await save(owner, { name: 'Renamed while removing', coverUrl: '' }).expect(409);
+});
+
+it('screens a name change by an avatar user as text and never re-holds the unchanged avatar as media', async () => {
+  screen.mockReset(); screen.mockResolvedValue('allowed');
+  const owner = await account(), avatar = 'https://example.test/approved-avatar.jpg';
+  await save(owner, { avatarUrl: avatar }).expect(409);
+  await approve(owner);
+  await save(owner, { avatarUrl: avatar }).expect(200);
+  expect((await UserModel.findById(owner.id).lean())!.reviewedAvatarUrl).toBe(avatar);
+  await save(owner, { name: 'Screened new name', automatedReviewConsent: true }).expect(200);
+  expect(screen).toHaveBeenCalledTimes(1);
+  const review = await PublicationReviewModel.findOne({ actorId: owner.id, status: 'approved', reviewedBy: 'automated:openai' }).lean();
+  expect(review!.mediaUrls).toEqual([]);
+  expect(JSON.parse(review!.text)).toMatchObject({ name: 'Screened new name', avatarUrl: avatar });
+  // A new image is still media, held for staff even with consent.
+  await save(owner, { avatarUrl: 'https://example.test/next-avatar.jpg', automatedReviewConsent: true }).expect(409);
+  expect(await PublicationReviewModel.findOne({ actorId: owner.id, status: 'pending' }).lean()).toMatchObject({ reason: 'media', mediaUrls: ['https://example.test/next-avatar.jpg'] });
+  expect(screen).toHaveBeenCalledTimes(1);
+});
+
+it('lets comments carry a staff-reviewed avatar through text screening but holds a legacy avatar as media', async () => {
+  screen.mockReset(); screen.mockResolvedValue('allowed');
+  const { CampaignModel } = await import('../../src/infrastructure/database/models/CampaignModel.js');
+  const { CampaignCommentModel } = await import('../../src/infrastructure/database/models/CampaignCommentModel.js');
+  const owner = await account(), reviewed = await account(), legacy = await account();
+  const campaign = await CampaignModel.create({ title: 'Comment media fixture', description: 'A public campaign', goalAmount: 500, currency: 'GHS', category: 'education', status: 'active', creatorId: owner.id, startDate: new Date(), endDate: new Date(Date.now() + 86400000) });
+  const comments = `/api/v1/campaigns/${campaign.id}/comments`;
+  const avatar = 'https://example.test/reviewed-commenter.jpg';
+  await save(reviewed, { avatarUrl: avatar }).expect(409);
+  await approve(reviewed);
+  await save(reviewed, { avatarUrl: avatar }).expect(200);
+  const posted = await request(app).post(comments).set('Authorization', reviewed.auth).send({ content: 'Screened with a reviewed avatar', automatedReviewConsent: true }).expect(201);
+  expect(posted.body.data.authorAvatarUrl).toBe(avatar);
+  const review = await PublicationReviewModel.findOne({ actorId: reviewed.id, action: 'comment.create' }).lean();
+  expect(review).toMatchObject({ status: 'approved', mediaUrls: [] });
+  expect(JSON.parse(review!.text)).toMatchObject({ authorAvatarUrl: avatar });
+  // Set outside the reviewed profile path: still inspected as media.
+  await UserModel.findByIdAndUpdate(legacy.id, { $set: { avatarUrl: 'https://example.test/legacy.jpg' } });
+  await request(app).post(comments).set('Authorization', legacy.auth).send({ content: 'Legacy avatar comment', automatedReviewConsent: true }).expect(409);
+  expect(await PublicationReviewModel.findOne({ actorId: legacy.id, action: 'comment.create' }).lean()).toMatchObject({ status: 'pending', reason: 'media', mediaUrls: ['https://example.test/legacy.jpg'] });
+  expect(await CampaignCommentModel.countDocuments({ authorId: legacy.id })).toBe(0);
+  expect(screen).toHaveBeenCalledTimes(1);
+});

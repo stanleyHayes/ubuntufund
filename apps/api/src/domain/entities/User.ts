@@ -11,6 +11,11 @@ export interface UserProps {
   passwordHash: string;
   authVersion?: string;
   avatarUrl?: string;
+  /**
+   * Set only when the current avatar was admitted as new media through the
+   * account-profile review. Legacy or otherwise-set avatars never carry it.
+   */
+  reviewedAvatarUrl?: string;
   coverUrl?: string;
   role: UserRole;
   verificationLevel: VerificationLevel;
@@ -65,6 +70,10 @@ export class UserEntity {
   get emailVerificationChanged(): boolean { return this.props.emailVerified !== this.originalEmailVerified; }
   get avatarUrl(): string | undefined {
     return this.props.avatarUrl;
+  }
+  /** True when the current avatar is the exact image staff media review admitted. */
+  get hasReviewedAvatar(): boolean {
+    return !!this.props.avatarUrl && this.props.avatarUrl === this.props.reviewedAvatarUrl;
   }
   get role(): UserRole {
     return this.props.role;

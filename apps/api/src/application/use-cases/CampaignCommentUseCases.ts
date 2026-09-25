@@ -50,8 +50,13 @@ export class CampaignCommentUseCases {
     const author = await this.users.findById(authorId);
     if (!author) throw new AppError('The publishing account is unavailable', 401);
     // Attribution is public content too, including a name entered at signup.
+    // An avatar that already passed staff media review on the profile is bound
+    // into the screened text instead of holding every comment for staff again;
+    // a legacy or unreviewed avatar is still inspected as media.
+    const reviewedAvatar = author.hasReviewedAvatar;
     const submission: PublicationSubmission = { actorId: authorId, action: 'comment.create', resourceId: campaignId,
-      text: JSON.stringify({ authorName: author.name, comment: content }), mediaUrls: author.avatarUrl ? [author.avatarUrl] : [], automatedReviewConsent: input.automatedReviewConsent };
+      text: JSON.stringify({ authorName: author.name, ...(reviewedAvatar ? { authorAvatarUrl: author.avatarUrl } : {}), comment: content }),
+      mediaUrls: author.avatarUrl && !reviewedAvatar ? [author.avatarUrl] : [], automatedReviewConsent: input.automatedReviewConsent };
     await this.admission.assertAllowed(submission);
     if (!this.creation || !this.admission.assertCurrent) throw new AppError('Comment publication verification is unavailable', 503);
     return this.creation.run(authorId, authVersion, campaignId, campaign.creatorId, async () => {
