@@ -21,7 +21,7 @@ const createCampaignSchema = z.object({
 
 const donateSchema = z.object({
   legalAcceptance: legalAcceptanceSchema.optional(),
-  amount: z.number().positive(),
+  amount: z.number().positive().multipleOf(0.01),
   currency: z.string().min(2).max(5),
   paymentMethod: z.nativeEnum(PaymentMethod).default(PaymentMethod.WALLET),
   donorName: z.string().trim().max(100).optional(),

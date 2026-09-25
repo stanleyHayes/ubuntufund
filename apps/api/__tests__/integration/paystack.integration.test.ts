@@ -169,6 +169,16 @@ describe('Paystack Integration', () => {
     expect(campaignRes.body.data.raisedAmount).toBe(0);
   });
 
+  // I121: sub-pesewa amounts were labelled and charged differently.
+  it('rejects amounts or tips with more than two decimals before opening a checkout', async () => {
+    const { userId: creatorId, token: creatorToken } = await registerUser(app, uniqueEmail('psdecimals'));
+    const campaignId = await createActiveCampaign(app, creatorToken, creatorId);
+    const base = { campaignId, provider: 'paystack', donorEmail: 'd@example.com', isAnonymous: true };
+    await request(app).post('/api/v1/donation-intents').send({ ...base, amount: 1.005 }).expect(400);
+    await request(app).post('/api/v1/donation-intents').send({ ...base, amount: 10, tip: 0.125 }).expect(400);
+    await request(app).post('/api/v1/donation-intents').send({ ...base, amount: 10.25, tip: 0.1 }).expect(201);
+  });
+
   it('requires an email before initializing a Paystack checkout', async () => {
     const { userId: creatorId, token: creatorToken } = await registerUser(app, uniqueEmail('psemail'));
     const campaignId = await createActiveCampaign(app, creatorToken, creatorId);

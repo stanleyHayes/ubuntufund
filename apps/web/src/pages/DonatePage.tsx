@@ -1,6 +1,7 @@
 import { usePublicCampaign } from '@/hooks/usePublicCampaign'
 import { checkoutAttemptKey, forgetCheckoutAttempt, isDefinitiveRejection } from '@/lib/checkoutAttempt'
 import { rememberPendingDonation } from '@/lib/donationHandoff'
+import { parseMoneyInput, sanitizeMoneyInput } from '@/lib/moneyInput'
 import { MessageAgreement } from '@/components/donate/MessageAgreement'
 import { LEGAL_ACCEPTANCE_VERSION } from '@ubuntu-fund/types'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -64,12 +65,13 @@ const fadeInUp = keyframes`
 const PRESET_AMOUNTS = [20, 50, 100, 200] as const
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-/** Parse a positive money amount from a free-text field; returns NaN when invalid. */
-function parseAmount(raw: string): number {
-  if (!raw.trim()) return NaN
-  const n = Number(raw)
-  return Number.isFinite(n) ? n : NaN
-}
+/**
+ * Parse a money amount from a free-text field (≤ 2 decimals, decimal comma
+ * accepted); NaN when invalid. Previously any Number() was accepted: "1.005"
+ * showed GH₵1.01 but charged GH₵1.00, and the input filter dropped commas so
+ * "100,50" became GH₵10,050.
+ */
+const parseAmount = parseMoneyInput
 
 // ---------------------------------------------------------------------------
 // DonatePage — guest checkout (Paystack card + mobile money)
@@ -480,12 +482,12 @@ export function DonatePage() {
           id="donation-amount"
           label="Amount"
           value={amount}
-          onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ''))}
+          onChange={(e) => setAmount(sanitizeMoneyInput(e.target.value))}
           fullWidth
           required
           inputMode="decimal"
           error={amount.trim() !== '' && !amountValid}
-          helperText={amount.trim() !== '' && !amountValid ? 'Enter an amount greater than zero' : ' '}
+          helperText={amount.trim() !== '' && !amountValid ? 'Enter an amount greater than zero, with at most 2 decimal places' : ' '}
           InputProps={{
             startAdornment: <InputAdornment position="start">GH₵</InputAdornment>,
           }}
@@ -497,11 +499,11 @@ export function DonatePage() {
           id="donation-tip"
           label="Add a tip to support the platform (optional)"
           value={tip}
-          onChange={(e) => setTip(e.target.value.replace(/[^\d.]/g, ''))}
+          onChange={(e) => setTip(sanitizeMoneyInput(e.target.value))}
           fullWidth
           inputMode="decimal"
           error={!tipValid}
-          helperText={!tipValid ? 'Enter a valid tip amount' : ' '}
+          helperText={!tipValid ? 'Enter a valid tip amount, with at most 2 decimal places' : ' '}
           InputProps={{
             startAdornment: <InputAdornment position="start">GH₵</InputAdornment>,
           }}

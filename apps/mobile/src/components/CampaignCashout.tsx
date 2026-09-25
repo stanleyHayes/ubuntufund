@@ -3,6 +3,7 @@ import { campaignPayoutBreakdownRows } from '@ubuntu-fund/types'
 import type { CampaignPayoutBreakdown } from '@ubuntu-fund/types'
 import { randomUUID } from 'expo-crypto'
 import { EmptyState } from './EmptyState'
+import { parseMoneyInput } from '@/lib/moneyInput'
 import type { SavedAccount } from './SavedPayoutAccounts'
 import { useEffect, useState, useRef } from 'react'
 import { AppState, View } from 'react-native'
@@ -124,7 +125,8 @@ export function CampaignCashout({ campaignId }: { campaignId: string }) {
     }
   }, [rail])
   const f = options?.fees ?? {}
-  const value = Number(amount)
+  // At most 2 decimals; a decimal comma ("100,50") is accepted, not NaN.
+  const value = parseMoneyInput(amount)
   const fee =
     type === 'standard'
       ? 0

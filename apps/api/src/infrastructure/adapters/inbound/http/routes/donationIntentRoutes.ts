@@ -13,8 +13,10 @@ const createDonationIntentSchema = z.object({
   legalAcceptance: legalAcceptanceSchema.optional(),
   campaignId: z.string().min(1),
   liveSessionId: z.string().min(1).optional(),
-  amount: z.number().positive(),
-  tip: z.number().min(0).optional(),
+  // At most 2 decimals, like creator tips: a 3-decimal amount was labelled and
+  // charged differently (1.005 shown as 1.01, charged as 1.00).
+  amount: z.number().positive().multipleOf(0.01),
+  tip: z.number().min(0).multipleOf(0.01).optional(),
   provider: z.enum(['wallet', 'paystack', 'flutterwave']),
   donorEmail: z.string().email().optional(),
   donorName: z.string().max(120).optional(),
