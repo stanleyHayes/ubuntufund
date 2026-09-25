@@ -6,6 +6,11 @@ import {
   Alert,
   Box,
   Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   MenuItem,
   TextField,
   Typography,
@@ -50,6 +55,9 @@ export function SavedPayoutAccounts() {
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState('')
   const [retry, setRetry] = useState(0)
+  // Removing forces the person to re-enter and re-verify the account, so it
+  // is confirmed first instead of firing the DELETE on one tap.
+  const [pendingRemove, setPendingRemove] = useState<Account | null>(null)
   useEffect(() => {
     let active = true
     setLoading(true)
@@ -114,6 +122,7 @@ export function SavedPayoutAccounts() {
       setError(e instanceof Error ? e.message : 'Could not remove account')
     } finally {
       setBusy(false)
+      setPendingRemove(null)
     }
   }
   const full = !!data && data.limit >= 0 && data.accounts.length >= data.limit
@@ -196,10 +205,37 @@ export function SavedPayoutAccounts() {
                 account={a}
                 institutionName={directory.find((b) => b.code === a.bankCode)?.name}
                 busy={busy}
-                onRemove={() => void remove(a.id)}
+                onRemove={() => setPendingRemove(a)}
               />
             ))}
           </Box>
+          <Dialog
+            open={Boolean(pendingRemove)}
+            onClose={() => (busy ? undefined : setPendingRemove(null))}
+            aria-labelledby="remove-payout-account-title"
+          >
+            <DialogTitle id="remove-payout-account-title">Remove saved account?</DialogTitle>
+            <DialogContent>
+              <DialogContentText>
+                {pendingRemove?.accountName} ending {pendingRemove?.last4} will be removed from your
+                saved payout accounts. Payouts you have already requested keep their original
+                destination. To use this account again you will need to add it and verify it again.
+              </DialogContentText>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setPendingRemove(null)} disabled={busy}>
+                Cancel
+              </Button>
+              <Button
+                color="error"
+                variant="contained"
+                disabled={busy || !pendingRemove}
+                onClick={() => pendingRemove && void remove(pendingRemove.id)}
+              >
+                Remove account
+              </Button>
+            </DialogActions>
+          </Dialog>
           {!data.accounts.length && (
             <EmptyState
               compact

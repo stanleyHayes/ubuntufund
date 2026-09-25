@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { View } from 'react-native'
 import { Text, Icon, ProgressBar } from 'react-native-paper'
 import { api } from '@/lib/api'
+import { confirmDestructive, removePayoutAccountPrompt } from '@/lib/confirmDestructive'
 import { Button, Skeleton } from './Loading'
 import { BrandedTextInput as Input } from './BrandedTextInput'
 import { SelectionField } from './SelectionField'
@@ -96,10 +97,12 @@ export function SavedPayoutAccounts() {
       setBusy(false)
     }
   }
-  async function remove(id: string) {
+  async function remove(account: SavedAccount) {
+    // Removal forces re-entry and re-verification, so confirm it first.
+    if (!(await confirmDestructive(removePayoutAccountPrompt(account)))) return
     setBusy(true)
     try {
-      setData(await api.delete<Data>(`/payout-accounts/${id}`))
+      setData(await api.delete<Data>(`/payout-accounts/${account.id}`))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not remove')
     } finally {
@@ -268,7 +271,7 @@ export function SavedPayoutAccounts() {
                       ? 'Registered name matched'
                       : 'Name not matched: creator withdrawals need a matched account'}
                   </Text>
-                  <Button disabled={busy} onPress={() => void remove(a.id)}>
+                  <Button disabled={busy} onPress={() => void remove(a)}>
                     Remove saved account
                   </Button>
                 </View>
