@@ -9,6 +9,9 @@ import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import MenuItem from '@mui/material/MenuItem'
+import ListItemIcon from '@mui/material/ListItemIcon'
+import ListItemText from '@mui/material/ListItemText'
+import InputAdornment from '@mui/material/InputAdornment'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
@@ -20,6 +23,16 @@ import Grid from '@mui/material/Grid'
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded'
 import VolunteerActivismRoundedIcon from '@mui/icons-material/VolunteerActivismRounded'
 import BarChartRoundedIcon from '@mui/icons-material/BarChartRounded'
+import TuneRoundedIcon from '@mui/icons-material/TuneRounded'
+import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
+import HourglassTopRoundedIcon from '@mui/icons-material/HourglassTopRounded'
+import UndoRoundedIcon from '@mui/icons-material/UndoRounded'
+import ReplayRoundedIcon from '@mui/icons-material/ReplayRounded'
+import PhoneIphoneRoundedIcon from '@mui/icons-material/PhoneIphoneRounded'
+import CreditCardRoundedIcon from '@mui/icons-material/CreditCardRounded'
+import AccountBalanceRoundedIcon from '@mui/icons-material/AccountBalanceRounded'
+import AccountBalanceWalletRoundedIcon from '@mui/icons-material/AccountBalanceWalletRounded'
+import CurrencyBitcoinRoundedIcon from '@mui/icons-material/CurrencyBitcoinRounded'
 import { Link as RouterLink } from 'react-router-dom'
 import { formatCurrency, EmptyState, SHAPE } from '@ubuntu-fund/ui'
 import { PaymentMethod } from '@ubuntu-fund/types'
@@ -46,6 +59,65 @@ const STATUS_LABELS: Record<string, string> = {
 
 function formatPaymentMethod(method: PaymentMethod): string {
   return method.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+type FilterOption = { value: string; label: string; Icon: typeof TuneRoundedIcon; color?: string }
+
+const STATUS_OPTIONS: FilterOption[] = [
+  { value: 'all', label: 'All Statuses', Icon: TuneRoundedIcon },
+  { value: 'completed', label: 'Completed', Icon: CheckCircleRoundedIcon, color: STATUS_COLORS.completed.color },
+  { value: 'pending', label: 'Pending', Icon: HourglassTopRoundedIcon, color: STATUS_COLORS.pending.color },
+  { value: 'partially_refunded', label: 'Partially refunded', Icon: UndoRoundedIcon, color: STATUS_COLORS.partially_refunded.color },
+  { value: 'refunded', label: 'Refunded', Icon: ReplayRoundedIcon, color: STATUS_COLORS.refunded.color },
+]
+
+const METHOD_OPTIONS: FilterOption[] = [
+  { value: 'all', label: 'All Methods', Icon: TuneRoundedIcon },
+  { value: PaymentMethod.MOBILE_MONEY, label: 'Mobile Money', Icon: PhoneIphoneRoundedIcon },
+  { value: PaymentMethod.CARD, label: 'Card', Icon: CreditCardRoundedIcon },
+  { value: PaymentMethod.BANK_TRANSFER, label: 'Bank Transfer', Icon: AccountBalanceRoundedIcon },
+  { value: PaymentMethod.WALLET, label: 'Wallet', Icon: AccountBalanceWalletRoundedIcon },
+  { value: PaymentMethod.CRYPTO, label: 'Crypto', Icon: CurrencyBitcoinRoundedIcon },
+]
+
+// The field's adornment mirrors the selected option's icon, so the value renders as text only.
+function FilterSelect({ label, value, onChange, options, minWidth }: {
+  label: string
+  value: string
+  onChange: (value: string) => void
+  options: FilterOption[]
+  minWidth: number
+}) {
+  const selected = options.find((o) => o.value === value) ?? options[0]
+  return (
+    <TextField
+      select
+      label={label}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      size="small"
+      sx={{ minWidth }}
+      slotProps={{
+        input: {
+          startAdornment: (
+            <InputAdornment position="start" sx={{ color: selected.color ?? 'text.secondary' }}>
+              <selected.Icon fontSize="small" aria-hidden="true" />
+            </InputAdornment>
+          ),
+        },
+        select: { renderValue: () => selected.label },
+      }}
+    >
+      {options.map((o) => (
+        <MenuItem key={o.value} value={o.value}>
+          <ListItemIcon sx={{ color: o.color ?? 'text.secondary' }}>
+            <o.Icon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>{o.label}</ListItemText>
+        </MenuItem>
+      ))}
+    </TextField>
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -129,35 +201,8 @@ export function MyDonationsPage() {
 
         {/* Filters */}
         <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
-          <TextField
-            select
-            label="Status"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            size="small"
-            sx={{ minWidth: 150 }}
-          >
-            <MenuItem value="all">All Statuses</MenuItem>
-            <MenuItem value="completed">Completed</MenuItem>
-            <MenuItem value="pending">Pending</MenuItem>
-            <MenuItem value="partially_refunded">Partially refunded</MenuItem>
-            <MenuItem value="refunded">Refunded</MenuItem>
-          </TextField>
-          <TextField
-            select
-            label="Payment Method"
-            value={methodFilter}
-            onChange={(e) => setMethodFilter(e.target.value)}
-            size="small"
-            sx={{ minWidth: 180 }}
-          >
-            <MenuItem value="all">All Methods</MenuItem>
-            <MenuItem value={PaymentMethod.MOBILE_MONEY}>Mobile Money</MenuItem>
-            <MenuItem value={PaymentMethod.CARD}>Card</MenuItem>
-            <MenuItem value={PaymentMethod.BANK_TRANSFER}>Bank Transfer</MenuItem>
-            <MenuItem value={PaymentMethod.WALLET}>Wallet</MenuItem>
-            <MenuItem value={PaymentMethod.CRYPTO}>Crypto</MenuItem>
-          </TextField>
+          <FilterSelect label="Status" value={statusFilter} onChange={setStatusFilter} options={STATUS_OPTIONS} minWidth={150} />
+          <FilterSelect label="Payment Method" value={methodFilter} onChange={setMethodFilter} options={METHOD_OPTIONS} minWidth={180} />
         </Box>
 
         {/* Table */}
