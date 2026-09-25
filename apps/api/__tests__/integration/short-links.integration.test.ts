@@ -12,6 +12,7 @@ import {
 import { UserModel } from '../../src/infrastructure/database/models/UserModel.js';
 import { ShortLinkModel } from '../../src/infrastructure/database/models/ShortLinkModel.js';
 import { SubscriptionModel } from '../../src/infrastructure/database/models/SubscriptionModel.js';
+import { LiveSessionModel } from '../../src/infrastructure/database/models/LiveSessionModel.js';
 import {
   CampaignCategory,
   CampaignPriority,
@@ -369,6 +370,54 @@ describe('Vanity slugs, short links & dynamic QR', () => {
       expect(png.headers['content-type']).toContain('image/png');
       expect(Buffer.isBuffer(png.body)).toBe(true);
       expect((png.body as Buffer).length).toBeGreaterThan(0);
+    });
+
+    it('binds a live QR only to this campaign’s current broadcast', async () => {
+      const { userId, token } = await registerUser(app, uniqueEmail('liveqr'));
+      await setVerificationLevel(userId, 2);
+      const campaign = await createCampaign(app, token);
+      const other = await registerUser(app, uniqueEmail('liveqr-other'));
+      await setVerificationLevel(other.userId, 2);
+      const otherCampaign = await createCampaign(app, other.token);
+      const mine = await LiveSessionModel.create({ campaignId: campaign.id, status: 'active', overlayToken: randomUUID(), startedAt: new Date() });
+      const theirs = await LiveSessionModel.create({ campaignId: otherCampaign.id, status: 'active', overlayToken: randomUUID(), startedAt: new Date() });
+      const ended = await LiveSessionModel.create({ campaignId: campaign.id, status: 'ended', overlayToken: randomUUID(), startedAt: new Date(), endedAt: new Date() });
+      const create = (body: Record<string, unknown>) => request(app).post(`/api/v1/campaigns/${campaign.id}/qr-codes`).set('Authorization', `Bearer ${token}`).send(body);
+
+      await create({ kind: 'live', liveSessionId: theirs.id }).expect(400);
+      await create({ kind: 'live', liveSessionId: ended.id }).expect(400);
+      await create({ kind: 'live', liveSessionId: 'not-a-session' }).expect(400);
+      const ok = await create({ kind: 'live', liveSessionId: mine.id }).expect(201);
+      expect(ok.body.data.target).toContain(`/live/${mine.id}`);
+      expect((await ShortLinkModel.findOne({ code: ok.body.data.code }))?.liveSessionId).toBe(mine.id);
+      // Other kinds never carry a session, so their scans cannot touch one.
+      const plain = await create({ kind: 'campaign', liveSessionId: theirs.id }).expect(201);
+      expect((await ShortLinkModel.findOne({ code: plain.body.data.code }))?.liveSessionId).toBeUndefined();
+      await request(app).get(`/r/${plain.body.data.code}`).redirects(0).expect(302);
+      expect((await LiveSessionModel.findById(theirs.id))?.stats.scans).toBe(0);
+    });
+
+    it('redirects HEAD requests and link-preview bots without counting a scan', async () => {
+      const { userId, token } = await registerUser(app, uniqueEmail('botscan'));
+      await setVerificationLevel(userId, 2);
+      const campaign = await createCampaign(app, token);
+      const session = await LiveSessionModel.create({ campaignId: campaign.id, status: 'active', overlayToken: randomUUID(), startedAt: new Date() });
+      const created = await request(app).post(`/api/v1/campaigns/${campaign.id}/qr-codes`).set('Authorization', `Bearer ${token}`).send({ kind: 'live', liveSessionId: session.id }).expect(201);
+      const code = created.body.data.code as string;
+
+      const head = await request(app).head(`/r/${code}`).redirects(0);
+      expect(head.status).toBe(302);
+      for (const agent of ['WhatsApp/2.23.20.0 A', 'facebookexternalhit/1.1 Facebot Twitterbot/1.0', 'TelegramBot (like TwitterBot)', 'Slackbot-LinkExpanding 1.0 (+https://api.slack.com/robots)', 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)']) {
+        const res = await request(app).get(`/r/${code}`).set('User-Agent', agent).redirects(0);
+        expect(res.status).toBe(302);
+        expect(res.headers.location).toContain(`/live/${session.id}`);
+      }
+      expect((await ShortLinkModel.findOne({ code }))?.scanCount).toBe(0);
+      expect((await LiveSessionModel.findById(session.id))?.stats.scans).toBe(0);
+
+      await request(app).get(`/r/${code}`).set('User-Agent', 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1').redirects(0).expect(302);
+      expect((await ShortLinkModel.findOne({ code }))?.scanCount).toBe(1);
+      expect((await LiveSessionModel.findById(session.id))?.stats.scans).toBe(1);
     });
 
     it('404s an unknown short code on redirect and render', async () => {

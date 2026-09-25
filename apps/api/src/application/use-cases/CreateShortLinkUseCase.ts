@@ -2,6 +2,7 @@ import type { CreateQrCodeInput, ShortLinkView } from '@ubuntu-fund/types';
 import { ShortLinkEntity } from '../../domain/entities/ShortLink.js';
 import type { ShortLinkRepositoryPort } from '../../domain/ports/outbound/ShortLinkRepositoryPort.js';
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js';
+import type { LiveSessionRepositoryPort } from '../../domain/ports/outbound/LiveSessionRepositoryPort.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 import { generateUniqueShortCode } from '../utils/shortCode.js';
 import { buildShortLinkTarget } from '../utils/shortLinkTarget.js';
@@ -22,7 +23,9 @@ export class CreateShortLinkUseCase {
     private readonly shortLinkRepo: ShortLinkRepositoryPort,
     private readonly campaignRepo: CampaignRepositoryPort,
     private readonly publicWebUrl: string,
-    private readonly publicApiUrl: string
+    private readonly publicApiUrl: string,
+    /** Verifies a live QR's session; without it no session can be attached. */
+    private readonly liveSessions?: Pick<LiveSessionRepositoryPort, 'findById'>
   ) {}
 
   async execute(
@@ -43,6 +46,18 @@ export class CreateShortLinkUseCase {
         403
       );
     }
+
+    // Scans of a live QR are credited to its session, so it may only name this
+    // campaign's current broadcast. Other kinds never carry a session.
+    let liveSessionId: string | undefined;
+    if (input.kind === 'live' && input.liveSessionId) {
+      const session = await this.liveSessions?.findById(input.liveSessionId);
+      if (!session || session.campaignId !== campaign.id || !session.isActive()) {
+        throw new AppError('A live QR code can only point to this campaign’s current broadcast', 400);
+      }
+      liveSessionId = session.id;
+    }
+    input = { ...input, liveSessionId };
 
     if (input.kind === 'amount' && input.presetAmount != null && input.presetAmount <= 0) {
       throw new AppError('presetAmount must be a positive number', 400);

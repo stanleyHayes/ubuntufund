@@ -21,7 +21,8 @@ function normalizeSource(source?: string): string | undefined {
  * Resolve a short code to its destination, recording a coarse scan (source +
  * timestamp) as a side effect. When the scanned link is bound to a live
  * session, the session's `scans` stat is bumped too. Returns null when the code
- * is unknown.
+ * is unknown. `record: false` resolves without counting anything (link-preview
+ * fetchers and HEAD requests are not scans).
  */
 export class ResolveShortLinkUseCase {
   constructor(
@@ -31,17 +32,18 @@ export class ResolveShortLinkUseCase {
 
   async execute(
     code: string,
-    source?: string
+    source?: string,
+    options: { record?: boolean } = {}
   ): Promise<ResolvedShortLink | null> {
-    const updated = await this.shortLinkRepo.recordScan(
-      code,
-      normalizeSource(source)
-    );
+    const record = options.record ?? true;
+    const updated = record
+      ? await this.shortLinkRepo.recordScan(code, normalizeSource(source))
+      : await this.shortLinkRepo.findByCode(code);
     if (!updated) return null;
 
     // Attribute the scan to a live session when the link is bound to one. A
     // failure here must never break the redirect, so it's best-effort.
-    if (updated.liveSessionId && this.liveSessionRepo) {
+    if (record && updated.liveSessionId && this.liveSessionRepo) {
       try {
         await this.liveSessionRepo.incrementStats(updated.liveSessionId, {
           scans: 1,

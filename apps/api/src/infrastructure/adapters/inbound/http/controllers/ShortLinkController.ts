@@ -18,6 +18,17 @@ const FORWARDED_PARAMS = [
   'ref',
 ];
 
+/**
+ * Link-preview fetchers and crawlers (chat apps unfurling a shared link,
+ * search bots). They still get the redirect, but are not counted as scans.
+ */
+const AUTOMATED_AGENT = /\b(?:bot|crawler|spider)\b|preview|facebookexternalhit|facebot|WhatsApp|TelegramBot|Slackbot|Twitterbot|LinkedInBot|Discordbot|Applebot|Googlebot|bingbot|redditbot|Pinterestbot|Embedly/i;
+
+/** HEAD probes and known preview/crawler user agents are not human scans. */
+function isAutomatedFetch(req: Request): boolean {
+  return req.method === 'HEAD' || AUTOMATED_AGENT.test(req.get('user-agent') ?? '');
+}
+
 function firstQueryValue(value: unknown): string | undefined {
   if (typeof value === 'string') return value;
   if (Array.isArray(value) && typeof value[0] === 'string') return value[0];
@@ -110,7 +121,10 @@ export class ShortLinkController {
     }
   };
 
-  /** GET /r/:code — public 302 redirect; records a coarse scan and forwards utm. */
+  /**
+   * GET /r/:code — public 302 redirect; records a coarse scan (not for HEAD or
+   * link-preview bots) and forwards utm.
+   */
   redirect = async (
     req: Request,
     res: Response,
@@ -121,7 +135,9 @@ export class ShortLinkController {
       const source =
         firstQueryValue(req.query.utm_source) ?? firstQueryValue(req.query.ref);
 
-      const resolved = await this.resolveShortLinkUseCase.execute(code, source);
+      const resolved = await this.resolveShortLinkUseCase.execute(code, source, {
+        record: !isAutomatedFetch(req),
+      });
       if (!resolved) {
         throw new AppError('Short link not found', 404);
       }

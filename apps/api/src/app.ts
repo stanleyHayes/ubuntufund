@@ -1047,6 +1047,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     campaignRepo,
     config.publicWebUrl,
     config.publicApiUrl,
+    liveSessionRepo,
   )
   const resolveShortLinkUseCase = new ResolveShortLinkUseCase(shortLinkRepo, liveSessionRepo)
   const listCampaignQrCodesUseCase = new ListCampaignQrCodesUseCase(

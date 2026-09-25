@@ -42,6 +42,12 @@ export interface CreateDonationIntentResult {
   hostedInit?: PaymentGatewayInitResult
 }
 
+/**
+ * How long after a broadcast ends a donation can still be credited to it.
+ * Covers a checkout opened during the broadcast and completed shortly after.
+ */
+const LIVE_ATTRIBUTION_GRACE_MS = 30 * 60 * 1000
+
 /** Duplicate-key detection for the idempotencyKey unique index. */
 function isDuplicateKeyError(error: unknown): boolean {
   return typeof error === 'object' && error !== null && (error as { code?: number }).code === 11000
@@ -232,13 +238,10 @@ export class CreateDonationIntentUseCase {
     const currency = this.resolveCurrency(input, campaign.goalAmount.currency)
     this.assertInternationalCardAllowed(input, currency)
 
-    // Validate live-session attribution belongs to this campaign, if supplied.
-    if (input.liveSessionId) {
-      const session = await this.liveSessionRepo.findById(input.liveSessionId)
-      if (!session || session.campaignId !== input.campaignId) {
-        throw new AppError('Live session does not belong to this campaign', 400)
-      }
-    }
+    // Live-session attribution only credits a broadcast's stats; it must never
+    // block the gift. A malformed or edited ?liveSessionId=, another campaign's
+    // session, or one that ended long ago is dropped rather than refused.
+    const liveSessionId = await this.resolveLiveAttribution(input)
 
     // A fee-waiver code, priced before the intent so the locked rate is part of
     // the record from the outset. An invalid code aborts the donation rather
@@ -295,7 +298,7 @@ export class CreateDonationIntentUseCase {
 
     let intent: DonationIntentEntity
     try {
-      intent = await this.createIntent(input, ctx, currency, tip, waiver)
+      intent = await this.createIntent({ ...input, liveSessionId }, ctx, currency, tip, waiver)
     } catch (error) {
       // No intent, so no donation will ever settle against this seat.
       if (couponSlotId) await this.couponRedemptionRepo?.markReleased(couponSlotId)
@@ -355,6 +358,27 @@ export class CreateDonationIntentUseCase {
     }
 
     return { intent: pending ?? intent, hostedInit: init }
+  }
+
+  /**
+   * The live session to credit this donation to, or undefined. Only this
+   * campaign's session counts, while it is live or within
+   * {@link LIVE_ATTRIBUTION_GRACE_MS} of ending (a donor who opened checkout
+   * during the broadcast and paid just after it ended is still credited).
+   */
+  private async resolveLiveAttribution(input: CreateDonationIntentInput): Promise<string | undefined> {
+    if (!input.liveSessionId) return undefined
+    const session = await this.liveSessionRepo.findById(input.liveSessionId)
+    const endedAt = session?.endedAt?.getTime()
+    const current = !!session && (session.isActive() || (endedAt !== undefined && Date.now() - endedAt <= LIVE_ATTRIBUTION_GRACE_MS))
+    if (!session || session.campaignId !== input.campaignId || !current) {
+      logger.info(
+        { campaignId: input.campaignId, liveSessionId: input.liveSessionId.slice(0, 64) },
+        'dropped live-session attribution that is not this campaign’s current broadcast',
+      )
+      return undefined
+    }
+    return session.id
   }
 
   /**

@@ -12,6 +12,8 @@ import { UserModel } from '../../src/infrastructure/database/models/UserModel.js
 import { CampaignModel } from '../../src/infrastructure/database/models/CampaignModel.js';
 import { WalletModel } from '../../src/infrastructure/database/models/WalletModel.js';
 import { SubscriptionModel } from '../../src/infrastructure/database/models/SubscriptionModel.js';
+import { LiveSessionModel } from '../../src/infrastructure/database/models/LiveSessionModel.js';
+import { DonationIntentModel } from '../../src/infrastructure/database/models/DonationIntentModel.js';
 import {
   eventBus,
   campaignChannel,
@@ -304,6 +306,35 @@ describe('Live sessions + realtime projector', () => {
       .find((e) => e.type === 'donation');
     expect(liveDonation?.data).toMatchObject({ name: 'Anonymous', amount: 100 });
     expect((liveDonation?.data as { message?: string }).message).toBeUndefined();
+  });
+
+  it('never refuses a donation over its live attribution; credits only this campaign’s current broadcast', async () => {
+    const { userId, token } = await registerUser(app, uniqueEmail('attr'));
+    const campaignId = await createActiveCampaign(app, token, userId);
+    const other = await registerUser(app, uniqueEmail('attr-other'));
+    const otherCampaignId = await createActiveCampaign(app, other.token, other.userId);
+    const otherSession = await LiveSessionModel.create({ campaignId: otherCampaignId, status: 'active', overlayToken: randomUUID(), startedAt: new Date() });
+    const recent = await LiveSessionModel.create({ campaignId, status: 'ended', overlayToken: randomUUID(), startedAt: new Date(Date.now() - 3600_000), endedAt: new Date(Date.now() - 10 * 60_000) });
+    const stale = await LiveSessionModel.create({ campaignId, status: 'ended', overlayToken: randomUUID(), startedAt: new Date(Date.now() - 5 * 3600_000), endedAt: new Date(Date.now() - 2 * 3600_000) });
+    const { token: donorToken } = await fundedDonor(app, 1000);
+    const give = (liveSessionId: string, amount: number) => request(app)
+      .post(`/api/v1/campaigns/${campaignId}/donate`)
+      .set('Authorization', `Bearer ${donorToken}`)
+      .send({ amount, currency: 'GHS', paymentMethod: PaymentMethod.WALLET, legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, isAnonymous: true, liveSessionId })
+      .expect(200);
+
+    await give('not-a-session-id', 11);
+    await give(otherSession.id, 12);
+    await give(stale.id, 13);
+    await give(recent.id, 14);
+
+    const intents = await DonationIntentModel.find({ campaignId }).lean();
+    const attribution = Object.fromEntries(intents.map(intent => [intent.amount, intent.liveSessionId ?? null]));
+    expect(attribution).toEqual({ 11: null, 12: null, 13: null, 14: recent.id });
+    expect(intents.every(intent => intent.status === 'SUCCEEDED')).toBe(true);
+    expect((await LiveSessionModel.findById(otherSession.id))?.stats).toMatchObject({ successfulDonations: 0, amountRaised: 0 });
+    expect((await LiveSessionModel.findById(stale.id))?.stats).toMatchObject({ successfulDonations: 0, amountRaised: 0 });
+    expect((await LiveSessionModel.findById(recent.id))?.stats).toMatchObject({ successfulDonations: 1, amountRaised: 14 });
   });
 
   it('honors privacy toggles on the overlay and public sheet', async () => {
