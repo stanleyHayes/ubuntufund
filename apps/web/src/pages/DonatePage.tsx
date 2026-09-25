@@ -2,7 +2,8 @@ import { usePublicCampaign } from '@/hooks/usePublicCampaign'
 import { checkoutAttemptKey, forgetCheckoutAttempt, isDefinitiveRejection } from '@/lib/checkoutAttempt'
 import { MessageAgreement } from '@/components/donate/MessageAgreement'
 import { LEGAL_ACCEPTANCE_VERSION } from '@ubuntu-fund/types'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useAnonymousDonationDefault } from '@/hooks/useAnonymousDonationDefault'
 import { useParams, useNavigate, useSearchParams, Link as RouterLink } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
@@ -132,6 +133,13 @@ export function DonatePage() {
   const messageAcceptance = messageAccepted ? { version: LEGAL_ACCEPTANCE_VERSION, acceptedTerms: true, ageConfirmed: true } : undefined
   const [message, setMessage] = useState('')
   const [isAnonymous, setIsAnonymous] = useState(false)
+  // Pre-select "Give anonymously" from the donor's saved default, unless they
+  // already chose for this donation.
+  const anonymousDefault = useAnonymousDonationDefault(user?.id)
+  const anonymityChosen = useRef(false)
+  useEffect(() => {
+    if (anonymousDefault !== undefined && !anonymityChosen.current) setIsAnonymous(anonymousDefault)
+  }, [anonymousDefault])
 
   // Payment rail: fiat (Paystack) by default; crypto shown only when enabled.
   const [cryptoEnabled, setCryptoEnabled] = useState(false)
@@ -614,7 +622,7 @@ export function DonatePage() {
           control={
             <Checkbox
               checked={isAnonymous}
-              onChange={(e) => setIsAnonymous(e.target.checked)}
+              onChange={(e) => { anonymityChosen.current = true; setIsAnonymous(e.target.checked) }}
               sx={{ '&:focus-visible': { outline: '2px solid #C7A24A' } }}
             />
           }

@@ -2,6 +2,7 @@ import Checkbox from '@mui/material/Checkbox'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import { MessageAgreement } from '@/components/donate/MessageAgreement'
 import { checkoutAttemptKey, forgetCheckoutAttempt, isDefinitiveRejection } from '@/lib/checkoutAttempt'
+import { useAnonymousDonationDefault } from '@/hooks/useAnonymousDonationDefault'
 import { CampaignOrganizer } from '@/components/campaigns/CampaignOrganizer'
 import { CampaignCashout } from '@/components/campaigns/CampaignCashout'
 import { LoadingDots, sizedImageUrl, breadcrumbList } from '@ubuntu-fund/ui'
@@ -128,6 +129,7 @@ function CampaignDetailContent() {
   const [donateError, setDonateError] = useState('')
   const [reportOpen, setReportOpen] = useState(false)
   const { user: currentUser } = useAuth()
+  const anonymousDefault = useAnonymousDonationDefault(currentUser?.id)
   const { user: creator, isLoading: creatorLoading } = useUser(campaign?.creatorId ?? '')
   const [activeTab, setActiveTab] = useState(0)
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false)
@@ -164,7 +166,8 @@ function CampaignDetailContent() {
     if (!acceptsCampaignDonation(campaign) || providersLoading || providersError || !walletProviders.length) return
     if (!currentUser) { navigate('/login', { state: { from: { pathname: `/campaigns/${id}` } } }); return }
     setDonateName(currentUser.name || '')
-    setDonateAnonymous(false)
+    // Start from the donor's "anonymous by default" setting.
+    setDonateAnonymous(anonymousDefault === true)
     setDonateOpen(true)
     setDonateAmount('')
     setDonateMessage('')

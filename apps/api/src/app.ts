@@ -786,6 +786,8 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     couponService,
     couponRedemptionRepo,
     paymentProviderRepo,
+    // Applies the donor's "anonymous by default" setting when a request omits it.
+    profileRepo,
   )
   const donateToCampaignUseCase = new DonateToCampaignUseCase(createDonationIntentUseCase)
   // Payout settlement: the signed transfer webhook moves an approved payout to

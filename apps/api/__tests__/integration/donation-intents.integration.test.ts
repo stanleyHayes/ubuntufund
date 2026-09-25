@@ -124,6 +124,36 @@ describe('Donation Intents Integration', () => {
     expect(stored?.isAnonymous).toBe(true)
   })
 
+  // I081: the saved "anonymous by default" setting must apply when a donation
+  // does not say otherwise; an explicit per-donation choice still wins.
+  it('applies the donor anonymous-by-default setting unless the donation chooses', async () => {
+    const creator = await registerUser(app, uniqueEmail('anon-creator'))
+    const campaignId = await createActiveCampaign(app, creator.token, creator.userId)
+    const donor = await registerUser(app, uniqueEmail('anon-donor'))
+    const walletId = await getWalletId(app, donor.token)
+    await fundWallet(walletId, 100)
+    await request(app).put('/api/v1/profile').set('Authorization', `Bearer ${donor.token}`).send({ anonymousDonations: true }).expect(200)
+
+    const implicit = await request(app).post('/api/v1/donation-intents').set('Authorization', `Bearer ${donor.token}`)
+      .send({ campaignId, amount: 10, provider: 'wallet' }).expect(201)
+    expect((await DonationIntentModel.findById(implicit.body.data.id))?.isAnonymous).toBe(true)
+
+    const legacy = await request(app).post(`/api/v1/campaigns/${campaignId}/donate`).set('Authorization', `Bearer ${donor.token}`)
+      .send({ amount: 5, currency: 'GHS', paymentMethod: 'wallet' }).expect(200)
+    expect(legacy.body.message).toBe('Donation successful')
+    const legacyIntent = await DonationIntentModel.findOne({ campaignId, amount: 5 })
+    expect(legacyIntent?.isAnonymous).toBe(true)
+
+    const explicit = await request(app).post('/api/v1/donation-intents').set('Authorization', `Bearer ${donor.token}`)
+      .send({ campaignId, amount: 11, provider: 'wallet', isAnonymous: false }).expect(201)
+    expect((await DonationIntentModel.findById(explicit.body.data.id))?.isAnonymous).toBe(false)
+
+    await request(app).put('/api/v1/profile').set('Authorization', `Bearer ${donor.token}`).send({ anonymousDonations: false }).expect(200)
+    const publicByDefault = await request(app).post('/api/v1/donation-intents').set('Authorization', `Bearer ${donor.token}`)
+      .send({ campaignId, amount: 12, provider: 'wallet' }).expect(201)
+    expect((await DonationIntentModel.findById(publicByDefault.body.data.id))?.isAnonymous).toBe(false)
+  })
+
   it('settles a wallet donation intent: debits wallet, posts a balanced ledger entry, projects raised + balance', async () => {
     const { userId: creatorId, token: creatorToken } = await registerUser(
       app,

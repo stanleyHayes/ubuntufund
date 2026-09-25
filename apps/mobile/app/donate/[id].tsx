@@ -1,5 +1,5 @@
 import { acceptsCampaignDonation, LEGAL_ACCEPTANCE_VERSION } from '@ubuntu-fund/types'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { View, ScrollView, Platform } from 'react-native'
 import { Text, Checkbox } from 'react-native-paper'
 import { router, Stack, useLocalSearchParams } from 'expo-router'
@@ -15,6 +15,7 @@ import { CryptoContribution } from '@/components/CryptoContribution'
 import { api } from '@/lib/api'
 import { checkout, clearPending, loadPending, paymentScope, type PendingPayment } from '@/lib/payments'
 import { previewCoupon } from '@/lib/coupons'
+import { anonymousDonationDefaults } from '@/lib/donationDefaults'
 import { CouponSurface } from '@ubuntu-fund/types'
 import ExternalFundraisingScreen from '@/screens/ExternalFundraisingScreen'
 
@@ -40,6 +41,27 @@ function InAppDonateScreen() {
   const messageAcceptance = messageAccepted ? { version: LEGAL_ACCEPTANCE_VERSION, acceptedTerms: true, ageConfirmed: true } : undefined
   const [message, setMessage] = useState('')
   const [anonymous, setAnonymous] = useState(false)
+  // Apply the donor's saved "anonymous by default" setting unless they have
+  // already chosen for this donation.
+  const anonymityChosen = useRef(false)
+  const nameRef = useRef(name)
+  nameRef.current = name
+  const userId = user?.id
+  const accountName = user?.name
+  useEffect(() => {
+    if (!userId) return
+    let active = true
+    api.get<{ anonymousDonations?: boolean }>('/profile')
+      .then(profile => {
+        if (!active) return
+        const change = anonymousDonationDefaults(profile, { name: nameRef.current, accountName, chosen: anonymityChosen.current })
+        if (!change) return
+        setAnonymous(true)
+        setName(change.name)
+      })
+      .catch(() => { /* Unknown: the server applies the setting when no choice is sent. */ })
+    return () => { active = false }
+  }, [userId, accountName])
   const [method, setMethod] = useState('paystack')
   const [pending, setPending] = useState<PendingPayment | null>(null)
   const [busy, setBusy] = useState(false)
@@ -103,7 +125,7 @@ function InAppDonateScreen() {
       <TextInput label="Name (optional)" value={name} onChangeText={setName} />
       <TextInput label="Message (optional)" value={message} onChangeText={setMessage} multiline />
       {!!(message.trim() || (!anonymous && name.trim())) && <><Checkbox.Item label="I am at least 18 and agree to the terms for posting my public name and message." status={messageAccepted ? 'checked' : 'unchecked'} onPress={() => setMessageAccepted(v => !v)} /><Text onPress={() => router.push('/terms')}>Read the Terms of Use. Messages must not contain private information, threats or abusive content.</Text></>}
-      <Checkbox.Item label="Donate anonymously" status={anonymous ? 'checked' : 'unchecked'} onPress={() => setAnonymous(v => !v)} />
+      <Checkbox.Item label="Donate anonymously" status={anonymous ? 'checked' : 'unchecked'} onPress={() => { anonymityChosen.current = true; setAnonymous(v => !v) }} />
       <SelectionField label="Payment method" value={method} onChange={setMethod} options={[{ value: 'paystack', label: 'Card or mobile money · secure checkout' }, ...(user ? [{ value: 'wallet', label: 'Ujimora wallet · existing balance' }] : []), ...(cryptoAvailable ? [{ value: 'crypto', label: 'Crypto · supported assets and networks' }] : [])]} />
       {error ? <Text accessibilityRole="alert" style={{ color: p.error }}>{error}</Text> : null}
       {method !== 'crypto' && <TextInput label="Support Ujimora (optional tip)" value={tip} onChangeText={setTip} keyboardType="decimal-pad" />}

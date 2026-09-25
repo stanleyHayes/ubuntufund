@@ -24,6 +24,7 @@ import { AppError } from '../../infrastructure/adapters/inbound/middleware/error
 import { logger } from '../../infrastructure/logging/logger.js'
 import { toMinorUnits } from '../../domain/value-objects/Money.js'
 import type { PaymentsConfig } from '../../infrastructure/config/index.js'
+import type { ProfileRepositoryPort } from '../../domain/ports/outbound/ProfileRepositoryPort.js'
 
 export interface CreateDonationIntentContext {
   /** Authenticated donor id, or null for a guest checkout. */
@@ -88,7 +89,24 @@ export class CreateDonationIntentUseCase {
     private readonly couponRedemptionRepo?: CouponRedemptionRepositoryPort,
     /** Lets the dashboard's provider toggle actually stop a rail. */
     private readonly providerRepo?: PaymentProviderRepositoryPort,
+    /** Reads a signed-in donor's "give anonymously by default" setting. */
+    private readonly profileRepo?: Pick<ProfileRepositoryPort, 'findByUserId'>,
   ) {}
+
+  /**
+   * An explicit per-donation choice always wins. When the client sends none,
+   * a signed-in donor's "Make my donations anonymous by default" setting
+   * applies — previously it was saved but never read, so their name went
+   * public (e.g. on the leaderboard) against their stated preference.
+   */
+  private async withAnonymityDefault(
+    input: CreateDonationIntentInput,
+    ctx: CreateDonationIntentContext,
+  ): Promise<CreateDonationIntentInput> {
+    if (input.isAnonymous !== undefined || !ctx.donorUserId || !this.profileRepo) return input
+    const profile = await this.profileRepo.findByUserId(ctx.donorUserId)
+    return { ...input, isAnonymous: profile?.anonymousDonations === true }
+  }
 
   /**
    * Price a fee-waiver coupon against this donation and lock the resulting rate.
@@ -179,9 +197,10 @@ export class CreateDonationIntentUseCase {
   }
 
   async execute(
-    input: CreateDonationIntentInput,
+    requested: CreateDonationIntentInput,
     ctx: CreateDonationIntentContext,
   ): Promise<CreateDonationIntentResult> {
+    const input = await this.withAnonymityDefault(requested, ctx)
     donationContentAgreement(input)
     // Resume interrupted wallet accounting under the stored intent and its
     // owner. The settlement transaction serializes concurrent retries.
