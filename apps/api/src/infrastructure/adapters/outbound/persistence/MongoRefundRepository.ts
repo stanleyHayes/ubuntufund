@@ -52,6 +52,12 @@ export class MongoRefundRepository implements RefundRepositoryPort {
     return doc ? toDomain(doc) : null;
   }
 
+  async findByDonationIds(donationIds: string[]): Promise<RefundRecord[]> {
+    if (!donationIds.length) return [];
+    const docs = await RefundModel.find({ donationId: { $in: donationIds } });
+    return docs.map(toDomain);
+  }
+
   async findByRequesterId(requesterId: string): Promise<RefundRecord[]> {
     const docs = await RefundModel.find({ requesterId }).sort({
       createdAt: -1,

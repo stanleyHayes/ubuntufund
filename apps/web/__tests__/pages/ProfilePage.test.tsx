@@ -104,3 +104,19 @@ it('keeps the current session untouched when the password change is refused', as
   expect(await screen.findByText('Current password is incorrect')).toBeInTheDocument()
   expect(replaceTokens).not.toHaveBeenCalled()
 })
+
+it('shows donated totals per currency and no placeholder stats or platform analytics', async () => {
+  vi.mocked(api.get).mockReset().mockImplementation(async path => path === '/profile'
+    ? { name: 'Current name', donatedByCurrency: [{ currency: 'GHS', gross: 150.5, refunded: 50.5, net: 100 }, { currency: 'USD', gross: 30, refunded: 0, net: 30 }], donationCount: 4, campaignsSupported: 3, campaignsCreated: 2, recentDonations: [] }
+    : {})
+  mount()
+  const total = await screen.findByText(/100\.00/)
+  expect(total.textContent).toMatch(/GH|GHS/)
+  expect(total.textContent).toContain('30.00')
+  expect(total.textContent).not.toMatch(/^\$/)
+  expect(screen.getByText('Campaigns Created')).toBeInTheDocument()
+  for (const placeholder of [/Leaderboard/, /Followers/, /Following/, /Bookmarks/, /Achievement Badges/, /Interested Categories/, /giving streak/]) expect(screen.queryByText(placeholder)).not.toBeInTheDocument()
+  expect(vi.mocked(api.get).mock.calls.map(([path]) => path)).not.toContain('/analytics/overview')
+  // An individual member has no public page, so there is nothing to share.
+  expect(screen.queryByRole('button', { name: /profile link/i })).not.toBeInTheDocument()
+})

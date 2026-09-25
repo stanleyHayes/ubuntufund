@@ -25,4 +25,6 @@ export interface RefundRepositoryPort {
   /** Enforces one refund request per donation. */
   findByDonationId(donationId: string): Promise<RefundRecord | null>;
   findByRequesterId(requesterId: string): Promise<RefundRecord[]>;
+  /** Refund records for the given donations (at most one each). */
+  findByDonationIds(donationIds: string[]): Promise<RefundRecord[]>;
 }
