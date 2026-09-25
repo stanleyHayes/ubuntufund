@@ -1713,7 +1713,11 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
   )
   api.use('/admin', createAdminActionRoutes(authMiddleware))
   api.use('/notifications', createNotificationRoutes(notificationController, authMiddleware))
-  api.use('/organization-team', createOrganizationTeamRoutes(authMiddleware, publicationAdmission, new MongoUnitOfWork()))
+  api.use('/organization-team', createOrganizationTeamRoutes(authMiddleware, publicationAdmission, new MongoUnitOfWork(),
+    async (organizationId) => {
+      const plan = await planLimitsService.resolvePlan(organizationId)
+      return { limit: plan.maxTeamMembers, planName: plan.name }
+    }))
   api.use('/organizations', createOrganizationRoutes(organizationController, optionalAuthMiddleware))
   api.use('/refunds', createRefundRoutes(refundController, authMiddleware))
   api.use('/kyc', createKYCRoutes(kycController, authMiddleware, requireAdmin))

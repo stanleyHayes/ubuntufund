@@ -36,11 +36,13 @@ import { useAdminPlans } from '@/hooks/useApiData'
 import { useAdminPermissions } from '@/context/AdminPermissionContext'
 import PageHeader from '@/components/PageHeader'
 
+// The first four flags have no implementation yet: members never see them on
+// any plan page, and turning them on grants nothing. The labels say so.
 const FEATURE_TOGGLES: { key: keyof SubscriptionPlan; label: string }[] = [
-  { key: 'featuredListing', label: 'Featured listing' },
-  { key: 'prioritySupport', label: 'Priority support' },
-  { key: 'advancedAnalytics', label: 'Advanced analytics' },
-  { key: 'customBranding', label: 'Custom branding' },
+  { key: 'featuredListing', label: 'Featured listing (not built — hidden from members)' },
+  { key: 'prioritySupport', label: 'Priority support (not built — hidden from members)' },
+  { key: 'advancedAnalytics', label: 'Advanced analytics (not built — hidden from members)' },
+  { key: 'customBranding', label: 'Custom branding (not built — hidden from members)' },
   { key: 'escrowSupport', label: 'Escrow & milestones' },
   { key: 'liveStreaming', label: 'Live streaming' },
   { key: 'campaignCollaboration', label: 'Campaign collaboration' },
@@ -50,7 +52,7 @@ const NUMERIC_LIMITS: { key: keyof SubscriptionPlan; label: string; unlimited?: 
   { key: 'maxActiveCampaigns', label: 'Max active campaigns', unlimited: true },
   { key: 'maxCampaignGoal', label: 'Max campaign goal (GH₵)', unlimited: true },
   { key: 'maxMediaPerCampaign', label: 'Max media per campaign', unlimited: true },
-  { key: 'maxTeamMembers', label: 'Max team members', unlimited: true },
+  { key: 'maxTeamMembers', label: 'Organization team seats (incl. owner)', unlimited: true },
   { key: 'maxPayoutAccounts', label: 'Saved payout accounts', unlimited: true },
   { key: 'maxCollaboratorsPerCampaign', label: 'Max collaborators per campaign', unlimited: true },
 ]

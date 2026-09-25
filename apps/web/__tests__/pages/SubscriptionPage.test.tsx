@@ -78,3 +78,15 @@ describe('non-renewing web plan copy', () => {
     expect(screen.getByText('Renews in')).toBeInTheDocument()
   })
 })
+
+describe('advertised plan benefits', () => {
+  it('lists only benefits the platform delivers', () => {
+    state.subscription = subscription({ currentPeriodEnd: new Date(Date.now() + 10 * DAY) })
+    mount()
+    for (const unbuilt of [/featured listing/i, /priority support/i, /advanced analytics/i, /^analytics$/i, /custom branding/i]) {
+      expect(screen.queryAllByText(unbuilt)).toHaveLength(0)
+    }
+    expect(screen.getAllByText('Live streaming').length).toBeGreaterThan(0)
+    expect(screen.getByText('Organization team seats (incl. owner)')).toBeInTheDocument()
+  })
+})

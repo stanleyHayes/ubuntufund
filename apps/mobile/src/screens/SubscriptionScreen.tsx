@@ -629,10 +629,8 @@ export default function SubscriptionScreen() {
               <View style={styles.featuresList}>
                 {[
                   plan.maxActiveCampaigns === -1 ? 'Unlimited campaigns' : `${plan.maxActiveCampaigns} campaign${plan.maxActiveCampaigns > 1 ? 's' : ''}`,
-                  plan.featuredListing ? 'Featured listing' : null,
-                  plan.prioritySupport ? 'Priority support' : null,
-                  plan.advancedAnalytics ? 'Advanced analytics' : null,
-                  plan.customBranding ? 'Custom branding' : null,
+                  // Featured listing, priority support, advanced analytics and
+                  // custom branding are not built, so they are not advertised.
                   plan.escrowSupport ? 'Escrow support' : null,
                   plan.liveStreaming ? 'Live streaming' : null,
                   plan.tier !== 'free' && (plan.priceMonthly > 0 || plan.priceYearly > 0) ? 'Creator profile donations (active paid plan)' : null,

@@ -9,6 +9,7 @@ import { connectTestDatabase, disconnectTestDatabase, dropTestDatabase } from '.
 import { UserModel } from '../../src/infrastructure/database/models/UserModel.js';
 import { OrganizationMemberModel } from '../../src/infrastructure/database/models/OrganizationMemberModel.js';
 import { ContentRestrictionModel } from '../../src/infrastructure/database/models/ContentRestrictionModel.js';
+import { SubscriptionModel } from '../../src/infrastructure/database/models/SubscriptionModel.js';
 let app: Express;
 beforeAll(async () => { await connectTestDatabase(); app = await createTestApp(); });
 afterAll(async () => { await dropTestDatabase(); await disconnectTestDatabase(); });
@@ -17,8 +18,13 @@ async function account(org = false) {
  const response = await request(app).post('/api/v1/auth/register').send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email, name: 'Contact Person', password: 'SecurePass123', ...(org ? { role: 'organization', organizationName: 'Community Foundation', organizationType: 'ngo' } : {}) }).expect(201);
  return { email, id: response.body.data.user.id, auth: `Bearer ${response.body.data.tokens.accessToken}` };
 }
+/** Team seats are a paid-plan benefit (maxTeamMembers); give the organization one. */
+async function teamPlan(organizationId: string, tier = 'organization', periodEnd = new Date(Date.now() + 86400000)) {
+ await SubscriptionModel.findOneAndUpdate({ userId: organizationId }, { $set: { tier, status: 'active', billingCycle: 'monthly', currentPeriodStart: new Date(), currentPeriodEnd: periodEnd, cancelAtPeriodEnd: false } }, { upsert: true });
+}
 it('keeps organization identity separate and enforces scoped invitations, roles and revocation', async () => {
  const owner = await account(true), member = await account(), outsider = await account();
+ await teamPlan(owner.id);
  const base = `/api/v1/organization-team/${owner.id}`;
  const profile = await request(app).get('/api/v1/profile').set('Authorization', owner.auth).expect(200);
  expect(profile.body.data).toMatchObject({ name: 'Contact Person', organizationName: 'Community Foundation' });
@@ -63,9 +69,33 @@ it('keeps organization identity separate and enforces scoped invitations, roles 
 });
 it('rejects expired invitations and cross-organization membership edits', async () => {
  const owner = await account(true), otherOwner = await account(true), member = await account();
+ await teamPlan(owner.id);
  await UserModel.findByIdAndUpdate(member.id, { emailVerified: true });
  const invitation = await request(app).post(`/api/v1/organization-team/${owner.id}/invitations`).set('Authorization', owner.auth).send({ email: member.email, role: 'editor' }).expect(200);
  await OrganizationMemberModel.findByIdAndUpdate(invitation.body.data.id, { expiresAt: new Date(0) });
  await request(app).post(`/api/v1/organization-team/invitations/${invitation.body.data.id}/accept`).set('Authorization', member.auth).expect(404);
  await request(app).put(`/api/v1/organization-team/${otherOwner.id}/members/${invitation.body.data.id}`).set('Authorization', otherOwner.auth).send({ role: 'admin' }).expect(404);
+});
+it('limits invitations to the plan team seats, counting the owner, members and live invitations', async () => {
+ const owner = await account(true);
+ const base = `/api/v1/organization-team/${owner.id}/invitations`;
+ const invite = (email: string) => request(app).post(base).set('Authorization', owner.auth).send({ email, role: 'viewer' });
+ // Community has one seat: the owner.
+ const refused = await invite(`${randomUUID()}@example.test`).expect(403);
+ expect(refused.body.message).toMatch(/includes 1 team seat, including the owner/);
+ expect(await OrganizationMemberModel.countDocuments({ organizationId: owner.id })).toBe(0);
+ // Pro has three seats: the owner plus two.
+ await teamPlan(owner.id, 'pro');
+ const first = `${randomUUID()}@example.test`, second = `${randomUUID()}@example.test`;
+ await invite(first).expect(200);
+ await invite(second).expect(200);
+ await invite(`${randomUUID()}@example.test`).expect(403);
+ // Re-sending an existing invitation needs no new seat.
+ await invite(second).expect(200);
+ // An expired invitation frees its seat.
+ await OrganizationMemberModel.updateOne({ organizationId: owner.id, email: first }, { expiresAt: new Date(0) });
+ await invite(`${randomUUID()}@example.test`).expect(200);
+ // A lapsed paid plan falls back to Community seats.
+ await teamPlan(owner.id, 'pro', new Date(Date.now() - 1000));
+ await invite(`${randomUUID()}@example.test`).expect(403);
 });

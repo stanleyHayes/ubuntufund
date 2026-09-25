@@ -39,6 +39,9 @@ interface FeatureRow {
   format?: 'boolean' | 'fee' | 'goal' | 'unlimited'
 }
 
+// Only benefits the platform actually delivers are listed. Featured listing,
+// priority support, advanced analytics and custom branding are plan flags with
+// no implementation behind them, so they are deliberately not advertised.
 const FEATURE_SECTIONS: { title: string; rows: FeatureRow[] }[] = [
   {
     title: 'Campaigns',
@@ -46,7 +49,6 @@ const FEATURE_SECTIONS: { title: string; rows: FeatureRow[] }[] = [
       { label: 'Active campaigns', key: 'maxActiveCampaigns', format: 'unlimited' },
       { label: 'Max campaign goal', key: 'maxCampaignGoal', format: 'goal' },
       { label: 'Media uploads per campaign', key: 'maxMediaPerCampaign', format: 'unlimited' },
-      { label: 'Featured listing', key: 'featuredListing', format: 'boolean' },
     ],
   },
   {
@@ -58,9 +60,6 @@ const FEATURE_SECTIONS: { title: string; rows: FeatureRow[] }[] = [
   {
     title: 'Features',
     rows: [
-      { label: 'Priority support', key: 'prioritySupport', format: 'boolean' },
-      { label: 'Advanced analytics', key: 'advancedAnalytics', format: 'boolean' },
-      { label: 'Custom branding', key: 'customBranding', format: 'boolean' },
       { label: 'Escrow & milestones', key: 'escrowSupport', format: 'boolean' },
       { label: 'Live streaming', key: 'liveStreaming', format: 'boolean' },
       { label: 'Creator profile donations (active paid plans)', key: 'creatorDonations', format: 'boolean' },
@@ -69,7 +68,7 @@ const FEATURE_SECTIONS: { title: string; rows: FeatureRow[] }[] = [
   {
     title: 'Team',
     rows: [
-      { label: 'Team members', key: 'maxTeamMembers', format: 'unlimited' },
+      { label: 'Organization team seats (incl. owner)', key: 'maxTeamMembers', format: 'unlimited' },
       { label: 'Campaign collaboration', key: 'campaignCollaboration', format: 'boolean' },
       { label: 'Collaborators per campaign', key: 'maxCollaboratorsPerCampaign', format: 'unlimited' },
     ],
@@ -277,10 +276,6 @@ function PricingPage() {
                     {[
                       plan.maxActiveCampaigns === -1 ? 'Unlimited campaigns' : `${plan.maxActiveCampaigns} active campaign${plan.maxActiveCampaigns !== 1 ? 's' : ''}`,
                       plan.maxCampaignGoal === -1 ? 'No goal limit' : `Up to GH₵ ${plan.maxCampaignGoal.toLocaleString()} goal`,
-                      plan.featuredListing && 'Featured listing',
-                      plan.prioritySupport && 'Priority support',
-                      plan.advancedAnalytics && 'Advanced analytics',
-                      plan.customBranding && 'Custom branding',
                       plan.escrowSupport && 'Escrow & milestones',
                       plan.liveStreaming && 'Live streaming',
                       plan.tier !== 'free' && (plan.priceMonthly > 0 || plan.priceYearly > 0) && 'Creator donations on your profile',
