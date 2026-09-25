@@ -3,6 +3,7 @@ import { SESSION_EXPIRED, browserSession } from '@/lib/session'
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import type { ReactNode } from 'react'
 import { loginApi, registerApi } from '@/lib/api'
+import { clearAllPublicationDrafts } from '@/lib/publicationDrafts'
 import type { AuthUser, AuthTokens } from '@/lib/api'
 
 interface AuthState {
@@ -118,6 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     clearStorage()
+    clearAllPublicationDrafts()
     setSessionExpired(false)
     setState({ user: null, tokens: null, isAuthenticated: false, isLoading: false })
   }, [])

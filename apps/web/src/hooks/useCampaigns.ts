@@ -130,7 +130,8 @@ interface CreateCampaignPayload {
 }
 
 interface UseCreateCampaignResult {
-  createCampaign: (payload: CreateCampaignPayload) => Promise<Campaign>
+  /** Reuse `idempotencyKey` when resubmitting the same version after a lost response. */
+  createCampaign: (payload: CreateCampaignPayload, idempotencyKey?: string) => Promise<Campaign>
   isSubmitting: boolean
   error: string | null
   reset: () => void
@@ -140,11 +141,11 @@ export function useCreateCampaign(): UseCreateCampaignResult {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const createCampaign = useCallback(async (payload: CreateCampaignPayload): Promise<Campaign> => {
+  const createCampaign = useCallback(async (payload: CreateCampaignPayload, idempotencyKey?: string): Promise<Campaign> => {
     setIsSubmitting(true)
     setError(null)
     try {
-      return await api.post<Campaign>('/campaigns', payload)
+      return await api.post<Campaign>('/campaigns', payload, idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Could not create your campaign. Please try again.'
       setError(message)

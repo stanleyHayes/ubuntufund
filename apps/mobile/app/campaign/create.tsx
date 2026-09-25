@@ -9,6 +9,7 @@ import { Text, Snackbar, Switch, ProgressBar } from 'react-native-paper'
 import { Stack, router } from 'expo-router'
 import { CampaignCategory, CampaignPriority, type SubscriptionPlan } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
+import { clearCampaignDraft, creationRequestKey, loadCampaignDraft, saveCampaignDraft } from '@/lib/publicationDrafts'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
 import { BrandedTextInput as TextInput } from '@/components/BrandedTextInput'
 import { BrandedDateField } from '@/components/BrandedDateField'
@@ -51,6 +52,37 @@ function CampaignFormForViewer() {
   const [error, setError] = useState('')
   const [created, setCreated] = useState<{ id: string; status: string } | null>(null)
   const [setupErrors, setSetupErrors] = useState<string[]>([])
+  const [draftRestored, setDraftRestored] = useState(false)
+  const [draftLoaded, setDraftLoaded] = useState(false)
+  const creationKey = useRef<{ payload: string; key: string } | null>(null)
+  // Restore the unsent version once, then keep saving it, so a held campaign
+  // can be resubmitted unchanged after approval even if the app was closed.
+  useEffect(() => {
+    if (!user) return
+    let active = true
+    void loadCampaignDraft(user.id).then(draft => {
+      if (!active) return
+      if (draft) {
+        setTitle(draft.title); setSummary(draft.summary); setDescription(draft.description); setBeneficiaries(draft.beneficiaries)
+        setCover(draft.cover); setAmount(draft.amount); setEnd(draft.end)
+        if ((Object.values(CampaignCategory) as string[]).includes(draft.category)) setCategory(draft.category as CampaignCategory)
+        if ((Object.values(CampaignPriority) as string[]).includes(draft.priority)) setPriority(draft.priority as CampaignPriority)
+        setDraftRestored(true)
+      }
+      setDraftLoaded(true)
+    })
+    return () => { active = false }
+  }, [user])
+  useEffect(() => {
+    if (!user || !draftLoaded || created) return
+    const draft = { title, summary, description, category, priority, beneficiaries, cover, amount, end }
+    if (![title, summary, description, beneficiaries, cover, amount, end].some(Boolean)) void clearCampaignDraft(user.id)
+    else void saveCampaignDraft(user.id, draft)
+  }, [user, draftLoaded, created, title, summary, description, category, priority, beneficiaries, cover, amount, end])
+  function discardDraft() {
+    setTitle(''); setSummary(''); setDescription(''); setBeneficiaries(''); setCover(''); setAmount(''); setEnd('')
+    setCategory(CampaignCategory.COMMUNITY); setPriority(CampaignPriority.NORMAL); setStep(0); setDraftRestored(false)
+  }
   useEffect(() => { if (!user) return; let active = true; setLoadError(''); api.get<Options>('/campaigns/creation-options').then(v => { if (active) setOptions(v) }).catch(e => { if (active) setLoadError(e.message) }); return () => { active = false } }, [retry, user])
   const emails = [...new Set(invites.split(',').map(s => s.trim()).filter(Boolean))]
   function validate(stage: number) {
@@ -69,8 +101,12 @@ function CampaignFormForViewer() {
     if (!options?.canCreate || created) return
     setBusy(true); setError('')
     try {
-      const campaign = await api.post<{ id: string; status: string }>('/campaigns', { automatedReviewConsent, title: title.trim(), summary: summary.trim(), description: description.trim(), category, priority, beneficiaries: beneficiaries.split(',').map(s => s.trim()).filter(Boolean), imageUrls: cover ? [cover] : [], goalAmount: Number(amount), currency: 'GHS', endDate: new Date(end).toISOString() })
+      const payload = { title: title.trim(), summary: summary.trim(), description: description.trim(), category, priority, beneficiaries: beneficiaries.split(',').map(s => s.trim()).filter(Boolean), imageUrls: cover ? [cover] : [], goalAmount: Number(amount), currency: 'GHS', endDate: new Date(end).toISOString() }
+      // Same version, same key: a retry after a lost response cannot create a duplicate.
+      creationKey.current = creationRequestKey(creationKey.current, payload)
+      const campaign = await api.post<{ id: string; status: string }>('/campaigns', { automatedReviewConsent, ...payload }, { 'Idempotency-Key': creationKey.current.key })
       if (!live.current) return
+      if (user) void clearCampaignDraft(user.id)
       setCreated(campaign)
       const failures: string[] = []
       for (const email of emails) { if (!live.current) return; try { await api.post(`/campaigns/${campaign.id}/collaborators/invite`, { userEmail: email, role: 'editor', revenueSharePercent: 0 }) } catch (e) { failures.push(`${email}: ${e instanceof Error ? e.message : 'Invitation failed'}`) } }
@@ -88,6 +124,7 @@ function CampaignFormForViewer() {
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 20, gap: 20, paddingBottom: 60 }}>
       <Text style={{ fontSize: 28, fontFamily: 'Outfit_800ExtraBold', color: p.text }}>Rally your community</Text>
       {created ? <View style={card}><Text variant="titleLarge">Campaign created</Text><Text>Status: {created.status}</Text>{!split && <><Text>Next: set up your payout account for review.</Text><CampaignCashout campaignId={created.id} /></>}{setupErrors.map(e => <Text key={e} style={{ color: p.error }}>{e}</Text>)}{setupErrors.length > 0 && <Text>Your campaign was saved. Complete the remaining invitations or split from campaign management; do not create it again.</Text>}<Button loading={busy} disabled={busy} mode="contained" onPress={() => router.replace(`/campaign/${created.id}`)}>View campaign</Button></View> : loadError ? <View><Text>{loadError}</Text><Button onPress={() => setRetry(n => n + 1)}>Retry</Button></View> : !options?.canCreate ? <View style={card}><Text>{options?.creationBlockReason?.startsWith('verification') ? 'Complete verification before creating another campaign.' : 'Your plan’s active campaign allowance is full.'}</Text><Button onPress={() => router.push(options?.creationBlockReason?.startsWith('verification') ? '/kyc' : '/(tabs)/subscription')}>Review eligibility</Button></View> : <>
+        {draftRestored && <View style={card}><Text>We restored your unsent draft from this device. If it is waiting for safety review, submit this same version again once it is approved.</Text><Button onPress={discardDraft}>Start over</Button></View>}
         <Text style={{ color: p.textSecondary }}>Step {step + 1} of 4 · {labels[step]}</Text><ProgressBar progress={(step + 1) / 4} color={p.primary} />
         <View style={card}>
           {step === 0 && <><TextInput label="Campaign title" value={title} onChangeText={setTitle} maxLength={200} /><TextInput label="One-line summary" value={summary} onChangeText={setSummary} maxLength={140} /><SelectionField label="Category" value={category} options={Object.values(CampaignCategory).map(value => ({ value, label: value }))} onChange={v => setCategory(v as CampaignCategory)} /></>}

@@ -1,4 +1,5 @@
 import { BiometricLock } from '@/components/BiometricLock'
+import { clearAllPublicationDrafts } from '@/lib/publicationDrafts'
 import type { LegalAcceptanceInput } from '@ubuntu-fund/types'
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import type { ReactNode } from 'react'
@@ -99,6 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     await endSession()
+    await clearAllPublicationDrafts()
   }, [])
 
   return (
