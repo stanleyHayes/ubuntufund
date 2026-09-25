@@ -59,6 +59,59 @@ interface ApiOptions extends RequestInit {
   token?: string
 }
 
+/** Ordinary requests give up after this long (connection, headers and body). */
+export const REQUEST_TIMEOUT_MS = 30_000
+/** Uploads (up to 4 MB) get longer on slow mobile connections. */
+export const UPLOAD_TIMEOUT_MS = 120_000
+const NETWORK_ERROR = 'Could not reach Ujimora. Check your connection and try again.'
+const TIMEOUT_ERROR = 'Ujimora took too long to respond. Check your connection and try again.'
+const UNAVAILABLE_ERROR = 'Ujimora is temporarily unavailable. Please try again in a minute.'
+
+interface RawResponse { status: number; ok: boolean; body: unknown }
+
+/**
+ * fetch + read the whole body under one deadline. Android's HTTP client has
+ * no timeouts of its own, so a stalled request would otherwise hang (and keep
+ * upload spinners and disabled buttons) forever. Network failures and
+ * timeouts become ApiError(0, friendly message). The body is parsed only if
+ * it is JSON; an HTML error page from a proxy yields `undefined`.
+ */
+async function send(url: string, init: RequestInit, timeoutMs: number): Promise<RawResponse> {
+  const controller = new AbortController()
+  const outer = init.signal
+  const forward = () => controller.abort()
+  if (outer) { if (outer.aborted) controller.abort(); else outer.addEventListener('abort', forward) }
+  let timedOut = false
+  const timer = setTimeout(() => { timedOut = true; controller.abort() }, timeoutMs)
+  try {
+    const res = await fetch(url, { ...init, signal: controller.signal })
+    const text = await res.text()
+    let body: unknown = null
+    if (text) { try { body = JSON.parse(text) } catch { body = undefined } }
+    return { status: res.status, ok: res.ok, body }
+  } catch (error) {
+    if (timedOut) throw new ApiError(0, TIMEOUT_ERROR)
+    if (outer?.aborted) throw error
+    throw new ApiError(0, NETWORK_ERROR)
+  } finally {
+    clearTimeout(timer)
+    outer?.removeEventListener('abort', forward)
+  }
+}
+
+function failure({ status, body }: RawResponse): ApiError {
+  const payload = body && typeof body === 'object' ? body as { message?: unknown; error?: unknown } : null
+  const message = typeof payload?.message === 'string' ? payload.message : typeof payload?.error === 'string' ? payload.error : null
+  return new ApiError(status, message ?? (status >= 500 ? UNAVAILABLE_ERROR : 'Request failed. Please try again.'))
+}
+
+function unwrap<T>({ status, body }: RawResponse): T {
+  if (body === undefined) throw new ApiError(status, 'Unexpected response from Ujimora. Please try again.')
+  // Unwrap the { data, message, status } envelope when present, matching the
+  // web client. Callers receive the payload directly (never the envelope).
+  return (body && typeof body === 'object' && 'data' in body ? (body as { data: unknown }).data : body) as T
+}
+
 async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
   const { token, headers: customHeaders, ...fetchOptions } = options
 
@@ -71,56 +124,39 @@ async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
     headers['Authorization'] = `Bearer ${token}`
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...fetchOptions,
-    headers,
-  })
-
-  const json = await res.json()
-
-  if (!res.ok) {
-    throw new ApiError(res.status, json.error ?? json.message ?? 'Request failed')
-  }
-
-  // Unwrap the { data, message, status } envelope when present, matching the
-  // web client. Callers receive the payload directly (never the envelope).
-  return (json && typeof json === 'object' && 'data' in json ? json.data : json) as T
+  const res = await send(`${API_BASE}${path}`, { ...fetchOptions, headers }, REQUEST_TIMEOUT_MS)
+  // Check the status before trusting the body: a 502/503 page is HTML.
+  if (!res.ok) throw failure(res)
+  return unwrap<T>(res)
 }
 
 // --- Authenticated request helper ---
 
-async function authedRequest<T>(path: string, options?: RequestInit, retried = false): Promise<T> {
+async function authedRequest<T>(path: string, options?: RequestInit, retried = false, timeoutMs = REQUEST_TIMEOUT_MS): Promise<T> {
   const token = await accessToken()
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await send(`${API_BASE}${path}`, {
     ...options,
     headers: { ...headers, ...(options?.headers as Record<string, string>) },
-  })
+  }, timeoutMs)
 
   if (res.status === 401 && token && !retried) {
     const renewed = await accessToken(true)
-    if (renewed) return authedRequest<T>(path, options, true)
+    if (renewed) return authedRequest<T>(path, options, true, timeoutMs)
   }
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({ message: 'Request failed' }))
-    // Throw ApiError so callers can branch on `status` (e.g. treat a 404 as
-    // "not enrolled"); it still extends Error, so `.message` catches keep working.
-    throw new ApiError(res.status, error.message ?? error.error ?? `HTTP ${res.status}`)
-  }
-
-  const json = await res.json()
-  // Unwrap the { data, message, status } envelope when present, matching the
-  // web client. Callers receive the payload directly (never the envelope).
-  return (json && typeof json === 'object' && 'data' in json ? json.data : json) as T
+  // Throw ApiError so callers can branch on `status` (e.g. treat a 404 as
+  // "not enrolled"); it still extends Error, so `.message` catches keep working.
+  if (!res.ok) throw failure(res)
+  return unwrap<T>(res)
 }
 
 export const api = {
   patch: <T>(path: string, body?: unknown) => authedRequest<T>(path, { method: 'PATCH', body: JSON.stringify(body) }),
-  upload: <T>(path: string, body: ArrayBuffer, contentType: string) => authedRequest<T>(path, { method: 'POST', body, headers: { 'Content-Type': contentType } }),
+  upload: <T>(path: string, body: ArrayBuffer, contentType: string) => authedRequest<T>(path, { method: 'POST', body, headers: { 'Content-Type': contentType } }, false, UPLOAD_TIMEOUT_MS),
   get: <T>(path: string) => authedRequest<T>(path),
   post: <T>(path: string, body?: unknown, headers?: Record<string, string>) =>
     authedRequest<T>(path, { method: 'POST', body: JSON.stringify(body), headers }),
