@@ -1,7 +1,7 @@
 import { DonationReviewStatus } from './DonationReviewStatus'
 import type { DonationContentReviewStatus } from '@ubuntu-fund/types'
 import { hasCurrentLegalAcceptance, type LegalAcceptanceInput } from '@ubuntu-fund/types'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { QRCodeCanvas } from 'qrcode.react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -79,6 +79,7 @@ export function CryptoDonatePanel({
   const [contentReviewStatus, setContentReviewStatus] = useState<DonationContentReviewStatus>()
   const [phase, setPhase] = useState<'select' | 'quoted' | 'deposit' | 'confirmed' | 'failed'>('select')
   const [quote, setQuote] = useState<CryptoQuote | null>(null)
+  const depositKey = useRef<{ quoteId: string; key: string } | null>(null)
   const [deposit, setDeposit] = useState<CryptoDepositView | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -156,6 +157,11 @@ export function CryptoDonatePanel({
     if ((message?.trim() || (!isAnonymous && donorName?.trim())) && !hasCurrentLegalAcceptance(legalAcceptance)) { setError('Accept the content terms before posting your public name or message.'); return }
     setBusy(true)
     setError(null)
+    // One key per quote: a retry after an error or lost response reopens the
+    // same deposit (same address); a new quote is a new deposit.
+    if (depositKey.current?.quoteId !== quote.quoteId) {
+      depositKey.current = { quoteId: quote.quoteId, key: crypto.randomUUID() }
+    }
     try {
       const d = await createCryptoDeposit(campaignId, {
         quoteId: quote.quoteId,
@@ -164,7 +170,7 @@ export function CryptoDonatePanel({
         message: message || undefined,
         legalAcceptance,
         isAnonymous,
-      })
+      }, depositKey.current.key)
       setDeposit(d)
       setPhase('deposit')
     } catch (e) {
@@ -219,8 +225,9 @@ export function CryptoDonatePanel({
         <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', mt: 2, pt: 2, borderTop: '1px solid rgba(255,255,255,.16)' }}>
           <ArrowDownwardRoundedIcon sx={{ color: GOLD, fontSize: 20 }} />
           <Box>
-            <Typography sx={{ color: '#C5CCC2', fontSize: '.75rem' }}>Campaign receives</Typography>
+            <Typography sx={{ color: '#C5CCC2', fontSize: '.75rem' }}>Counts toward the campaign</Typography>
             <Typography sx={{ fontSize: '1.25rem', fontWeight: 750 }}>{formatCurrency(value.fiatAmount, value.fiatCurrency)}</Typography>
+            <Typography sx={{ color: '#C5CCC2', fontSize: '.72rem', mt: .5 }}>Ujimora’s platform fee (and any provider or network fees shown) is deducted before the organizer is paid.</Typography>
           </Box>
         </Box>
       </Box>
@@ -248,7 +255,7 @@ export function CryptoDonatePanel({
         <Typography variant="h5" sx={{ fontWeight: 800 }}>Your contribution is confirmed</Typography>
         {deposit && <DonationReviewStatus key={deposit.donationIntentId} intentId={deposit.donationIntentId} initialStatus={contentReviewStatus} />}
         <Typography sx={{ color: 'text.secondary', mt: 1, mb: 3 }}>
-          {formatCurrency(deposit?.fiatAmount ?? amount, deposit?.fiatCurrency ?? 'GHS')} has been credited to the campaign. Thank you for making a difference.
+          {formatCurrency(deposit?.fiatAmount ?? amount, deposit?.fiatCurrency ?? 'GHS')} has been added to the campaign total. Thank you for making a difference.
         </Typography>
         <Button component={RouterLink} to={campaignPath} variant="contained" sx={primaryButton}>Back to campaign</Button>
       </Box>
@@ -361,7 +368,7 @@ export function CryptoDonatePanel({
       </>}
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       {!amountValid && <Typography sx={{ fontSize: '.8rem', color: 'text.secondary', mb: 1.5 }}>Enter a contribution amount above to continue.</Typography>}
-      {amountValid && !emailValid && <Typography sx={{ fontSize: '.8rem', color: 'text.secondary', mb: 1.5 }}>Enter your email above for your receipt.</Typography>}
+      {amountValid && !emailValid && <Typography sx={{ fontSize: '.8rem', color: 'text.secondary', mb: 1.5 }}>Enter your email above so we can contact you about this payment.</Typography>}
       <Button onClick={getQuote} disabled={busy || !amountValid || !emailValid || !asset || !network} variant="contained" fullWidth startIcon={busy ? <LoadingDots size={6} /> : undefined} sx={primaryButton}>{busy ? 'Getting quote…' : 'Review quote'}</Button>
     </Box>
   )

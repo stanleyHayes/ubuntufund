@@ -750,6 +750,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     cryptoQuoteRepo,
     donationIntentRepo,
     cryptoProvidersByName,
+    profileRepo,
   )
   const handleCryptoWebhookUseCase = new HandleCryptoWebhookUseCase(
     cryptoProvidersByName,

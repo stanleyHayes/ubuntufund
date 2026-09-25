@@ -5,6 +5,7 @@ import type { GetCryptoAssetsUseCase } from '../../../../../application/use-case
 import type { CreateCryptoQuoteUseCase } from '../../../../../application/use-cases/CreateCryptoQuoteUseCase.js';
 import type { CreateCryptoDepositUseCase } from '../../../../../application/use-cases/CreateCryptoDepositUseCase.js';
 import { AppError } from '../../middleware/errorHandler.js';
+import type { AuthenticatedRequest } from '../../middleware/authMiddleware.js';
 
 /** Resolve the idempotency key from the header, body, or generate one. */
 function resolveIdempotencyKey(req: Request): string {
@@ -62,7 +63,12 @@ export class CryptoController {
       const view = await this.createCryptoDepositUseCase.execute(
         String(req.params.id),
         req.body,
-        { idempotencyKey: resolveIdempotencyKey(req) }
+        {
+          idempotencyKey: resolveIdempotencyKey(req),
+          // Signed-in donors (optional auth) own their crypto gift, so it shows
+          // in their donation history instead of being recorded as a guest's.
+          donorUserId: (req as AuthenticatedRequest).userId ?? null,
+        }
       );
       res.status(201).json({ data: view, message: 'Deposit created', status: 201 });
     } catch (error) {

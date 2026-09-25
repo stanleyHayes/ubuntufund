@@ -25,10 +25,15 @@ export function createCryptoQuote(
   return api.post<CryptoQuote>(`/campaigns/${campaignId}/donations/crypto/quote`, input)
 }
 
-/** POST a deposit against an accepted quote — returns the address to fund. */
+/**
+ * POST a deposit against an accepted quote — returns the address to fund.
+ * Pass the same `idempotencyKey` when retrying the same quote, so a lost
+ * response returns the same deposit address instead of opening another one.
+ */
 export function createCryptoDeposit(
   campaignId: string,
   input: CreateCryptoDepositInput,
+  idempotencyKey: string,
 ): Promise<CryptoDepositView> {
-  return api.post<CryptoDepositView>(`/campaigns/${campaignId}/donations/crypto`, input)
+  return api.post<CryptoDepositView>(`/campaigns/${campaignId}/donations/crypto`, input, { 'Idempotency-Key': idempotencyKey })
 }
