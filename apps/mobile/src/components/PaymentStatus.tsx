@@ -60,6 +60,16 @@ function PaymentStatusContent({ payment, topup = false, onComplete, onReset, onS
     return () => clearInterval(clock)
   }, [status])
   const offerStartOver = canStartOver(status, startedAt.current, now)
+  // A top-up the provider reported failed can still complete in the same
+  // checkout (a declined card retried, a late mobile-money approval). For a
+  // while, re-check whenever the payer returns to the app; the server credits
+  // a verified success even after 'failed'.
+  const recheckFailedTopup = topup && status === 'failed' && now - startedAt.current < 30 * 60 * 1000
+  useEffect(() => {
+    if (!recheckFailedTopup) return
+    const listener = AppState.addEventListener('change', state => { if (state === 'active') void refresh() })
+    return () => listener.remove()
+  }, [recheckFailedTopup, refresh])
   return <View style={{ ...neu.raised, backgroundColor: p.surface, padding: 20, borderRadius: 24, gap: 12 }}>
     {success && !topup && <DonationCelebration />}
     <Text variant="titleLarge">{success ? (topup ? 'Wallet funded' : 'Thank you for your support') : isPaymentTerminal(status) ? 'Payment was not completed' : 'Awaiting payment confirmation'}</Text>

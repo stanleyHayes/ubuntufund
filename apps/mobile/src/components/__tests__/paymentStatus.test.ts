@@ -3,15 +3,17 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, expect, it, vi } from 'vitest'
 import { PaymentStatus } from '../PaymentStatus'
 import { api } from '@/lib/api'
-vi.mock('react-native', () => ({ View: 'div', AppState: { currentState: 'active', addEventListener: () => ({ remove() {} }) } }))
+const { appStateListeners } = vi.hoisted(() => ({ appStateListeners: new Set<(state: string) => void>() }))
+vi.mock('react-native', () => ({ View: 'div', AppState: { currentState: 'active', addEventListener: (_event: string, listener: (state: string) => void) => { appStateListeners.add(listener); return { remove() { appStateListeners.delete(listener) } } } } }))
 vi.mock('react-native-paper', () => ({ Text: 'span' }))
 vi.mock('expo-web-browser', () => ({ openBrowserAsync: vi.fn() }))
 vi.mock('../DonationCelebration', () => ({ DonationCelebration: () => null }))
 vi.mock('../Loading', () => ({ Skeleton: () => null, Button: ({ children, onPress, disabled }: { children: string; onPress: () => void; disabled?: boolean }) => createElement('button', { onClick: onPress, disabled }, children) }))
 vi.mock('@/context/ColorModeContext', () => ({ usePalette: () => ({}), useNeu: () => ({ raised: {} }) }))
 vi.mock('@/lib/payments', () => {
-  const isPaymentTerminal = (status: string) => ['SUCCEEDED', 'FAILED', 'EXPIRED'].includes(status)
-  return { isPaymentSuccess: (status: string) => status === 'SUCCEEDED', isPaymentTerminal, canStartOver: (status: string, startedAt: number, now = Date.now()) => !isPaymentTerminal(status) && now - startedAt >= 15 * 60 * 1000 }
+  const isPaymentSuccess = (status: string) => ['SUCCEEDED', 'completed'].includes(status)
+  const isPaymentTerminal = (status: string) => isPaymentSuccess(status) || ['FAILED', 'EXPIRED', 'failed'].includes(status)
+  return { isPaymentSuccess, isPaymentTerminal, canStartOver: (status: string, startedAt: number, now = Date.now()) => !isPaymentTerminal(status) && now - startedAt >= 15 * 60 * 1000 }
 })
 beforeEach(() => vi.clearAllMocks())
 const payment = (id: string, status = 'SUCCEEDED') => ({ id, status, storageKey: '' })
@@ -54,4 +56,14 @@ it('offers a fresh checkout once an unconfirmed payment is stale, and not before
   fireEvent.click(await screen.findByText('Start a new payment'))
   expect(screen.getByText(/don't pay again/)).toBeTruthy()
   expect(reset).toHaveBeenCalledTimes(1)
+})
+it('re-checks a recently failed top-up when the payer returns to the app (I039)', async () => {
+  vi.mocked(api.get).mockResolvedValue({ status: 'failed' })
+  render(createElement(PaymentStatus, { payment: { ...payment('wtop-1', 'failed'), createdAt: Date.now() }, topup: true, onReset() {} }))
+  await waitFor(() => expect(api.get).toHaveBeenCalledTimes(1))
+  expect(appStateListeners.size).toBe(1)
+  vi.mocked(api.get).mockResolvedValue({ status: 'completed' })
+  await act(async () => { for (const listener of appStateListeners) listener('active') })
+  await waitFor(() => expect(api.get).toHaveBeenCalledTimes(2))
+  expect(api.get).toHaveBeenLastCalledWith('/wallets/topups/wtop-1')
 })

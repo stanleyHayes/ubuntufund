@@ -56,4 +56,39 @@ describe('verified wallet top-ups', () => {
     expect((await WalletTopUpModel.findOne({ reference: topup.reference }))!.status).toBe('pending');
     expect(await JournalEntryModel.countDocuments({ externalRef: topup.reference })).toBe(0);
   });
+
+  // I039: an opened-but-unpaid Paystack checkout reports 'abandoned', even
+  // seconds after the redirect while the payer is still on the page.
+  it('keeps a recently abandoned checkout pending and credits it once when it is paid', async () => {
+    const topup = await service.initialize(userId, walletId, 100, randomUUID());
+    verifiedStatus = 'abandoned';
+    expect((await service.status(userId, topup.reference)).status).toBe('pending');
+    verifiedStatus = 'success';
+    expect((await service.status(userId, topup.reference)).status).toBe('completed');
+    await service.settle(topup.reference);
+    expect((await WalletModel.findById(walletId))!.balance).toBe(100);
+    expect(await WalletTransactionModel.countDocuments({ reference: topup.reference })).toBe(1);
+  });
+  it('fails an abandoned checkout only once it is past the TTL', async () => {
+    const topup = await service.initialize(userId, walletId, 100, randomUUID());
+    await WalletTopUpModel.collection.updateOne({ reference: topup.reference }, { $set: { createdAt: new Date(Date.now() - 25 * 3600_000) } });
+    verifiedStatus = 'abandoned';
+    expect((await service.status(userId, topup.reference)).status).toBe('failed');
+  });
+  it('the sweep credits a failed top-up that was paid after all, exactly once', async () => {
+    const topup = await service.initialize(userId, walletId, 100, randomUUID());
+    verifiedStatus = 'failed';
+    await service.settle(topup.reference);
+    expect((await WalletTopUpModel.findOne({ reference: topup.reference }))!.status).toBe('failed');
+    await WalletTopUpModel.collection.updateOne({ reference: topup.reference }, { $set: { updatedAt: new Date(Date.now() - 2 * 3600_000) } });
+    verifiedStatus = 'success';
+    const summary = await service.reconcile();
+    expect(summary.completed).toBeGreaterThanOrEqual(1);
+    expect((await WalletTopUpModel.findOne({ reference: topup.reference }))!.status).toBe('completed');
+    await WalletTopUpModel.collection.updateMany({}, { $set: { updatedAt: new Date(Date.now() - 2 * 3600_000) } });
+    await service.reconcile();
+    expect((await WalletModel.findById(walletId))!.balance).toBe(100);
+    expect(await JournalEntryModel.countDocuments({ externalRef: topup.reference })).toBe(1);
+  });
 });
+
