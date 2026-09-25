@@ -18,6 +18,10 @@ export interface OrganizationSummary {
   verified: boolean;
   avatarUrl?: string;
   createdAt: Date;
+  /** Public campaigns, and what they raised in `currency` (other currencies are not added in). */
+  campaignCount: number;
+  totalRaised: number;
+  currency: string;
 }
 
 /** Response shape for GET /organizations/:slug — enriched with campaign stats. */
@@ -30,16 +34,24 @@ export interface OrganizationDetail extends OrganizationSummary {
   website?: string;
   founded: number;
   impactStatement: string;
-  campaignCount: number;
-  totalRaised: number;
-  currency: string;
   followerCount: number;
   categories: CampaignCategory[];
 }
 
 const DEFAULT_CURRENCY = 'GHS';
 
-function toSummary(record: OrganizationRecord, verified: boolean): OrganizationSummary {
+/**
+ * Campaign totals in the platform currency only: adding amounts raised in
+ * different currencies and labelling the sum with one of them misstates it.
+ */
+function campaignStats(campaigns: CampaignEntity[]): { campaignCount: number; totalRaised: number; currency: string } {
+  const totalRaised = campaigns
+    .filter(campaign => campaign.goalAmount.currency === DEFAULT_CURRENCY)
+    .reduce((sum, campaign) => sum + campaign.raisedAmount.amount, 0);
+  return { campaignCount: campaigns.length, totalRaised, currency: DEFAULT_CURRENCY };
+}
+
+function toSummary(record: OrganizationRecord, verified: boolean, campaigns: CampaignEntity[]): OrganizationSummary {
   return {
     id: record.id,
     name: record.name,
@@ -47,6 +59,7 @@ function toSummary(record: OrganizationRecord, verified: boolean): OrganizationS
     verified,
     avatarUrl: record.avatarUrl,
     createdAt: record.createdAt,
+    ...campaignStats(campaigns),
   };
 }
 
@@ -92,7 +105,11 @@ export class GetOrganizationUseCase {
   async list(viewerId?: string): Promise<OrganizationSummary[]> {
     const records = await this.organizationRepo.findAll();
     const hidden = await this.visibility.hiddenUserIds(records.map(record => record.id), viewerId);
-    return Promise.all(records.filter(record => !hidden.has(record.id)).map(async record => toSummary(record, await this.isVerified(record))));
+    return Promise.all(records.filter(record => !hidden.has(record.id)).map(async record => toSummary(record, await this.isVerified(record), await this.publicCampaigns(record.id))));
+  }
+
+  private async publicCampaigns(organizationId: string): Promise<CampaignEntity[]> {
+    return (await this.campaignRepo.findByCreatorId(organizationId)).filter(campaign => isPublicCampaign(campaign.status));
   }
 
   async getBySlugOrId(slugOrId: string, viewerId?: string): Promise<OrganizationDetail> {
@@ -101,17 +118,13 @@ export class GetOrganizationUseCase {
       throw new AppError('Organization not found', 404);
     }
 
-    const campaigns = (await this.campaignRepo.findByCreatorId(record.id)).filter(campaign => isPublicCampaign(campaign.status));
-    const currency = campaigns[0]?.toPlain().goalAmount.currency ?? DEFAULT_CURRENCY;
-    const totalRaised = campaigns.reduce(
-      (sum, c) => sum + c.toPlain().raisedAmount.amount,
-      0
-    );
+    const campaigns = await this.publicCampaigns(record.id);
+    const { totalRaised, currency } = campaignStats(campaigns);
     const categories = [
       ...new Set(campaigns.map((c) => c.toPlain().category)),
     ];
 
-    const summary = toSummary(record, await this.isVerified(record));
+    const summary = toSummary(record, await this.isVerified(record), campaigns);
 
     return {
       ...summary,
@@ -126,9 +139,6 @@ export class GetOrganizationUseCase {
         campaigns.length > 0
           ? `${record.name} has raised ${currency} ${totalRaised.toLocaleString()} across ${campaigns.length} campaign${campaigns.length !== 1 ? 's' : ''} on Ujimora.`
           : `${record.name} is an organization on Ujimora.`,
-      campaignCount: campaigns.length,
-      totalRaised,
-      currency,
       followerCount: 0,
       categories,
     };

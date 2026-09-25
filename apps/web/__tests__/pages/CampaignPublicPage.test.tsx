@@ -8,7 +8,8 @@ import { api } from '@/lib/api'
 
 const campaignState = vi.hoisted(() => ({ value: null as unknown }))
 vi.mock('@/hooks/usePublicCampaign', () => ({ usePublicCampaign: () => ({ campaign: campaignState.value, isLoading: false, error: null, notFound: false }) }))
-vi.mock('@/context/AuthContext', () => ({ useAuth: () => ({ user: null, isAuthenticated: false }) }))
+const auth = vi.hoisted(() => ({ user: null as { id: string } | null }))
+vi.mock('@/context/AuthContext', () => ({ useAuth: () => auth }))
 vi.mock('@/lib/api', () => ({ api: { get: vi.fn(), post: vi.fn() }, ApiError: class ApiError extends Error { constructor(public status: number, message: string) { super(message) } } }))
 
 import { CampaignPublicPage } from '@/pages/CampaignPublicPage'
@@ -29,6 +30,7 @@ function renderAt(path: string) {
 }
 
 beforeEach(() => {
+  auth.user = null
   vi.mocked(api.get).mockReset()
   vi.mocked(api.get).mockResolvedValue(null)
   campaignState.value = {
@@ -49,4 +51,23 @@ it('stays put on the current slug', async () => {
   renderAt('/c/current-slug')
   expect(await screen.findByText('Clinic roof repair')).toBeInTheDocument()
   expect(screen.getByLabelText('location')).toHaveTextContent('/c/current-slug')
+})
+
+it('links a running broadcast and offers report and block to signed-in visitors', async () => {
+  auth.user = { id: 'visitor' }
+  vi.mocked(api.get).mockImplementation(async (path: string) => path.endsWith('/active-live') ? { id: 'live-1' } : null)
+  renderAt('/c/current-slug')
+  const watch = await screen.findByRole('link', { name: 'Watch live broadcast' })
+  expect(watch).toHaveAttribute('href', '/live/live-1')
+  expect(screen.getByRole('button', { name: 'Report campaign' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Block user' })).toBeInTheDocument()
+})
+
+it('sends signed-out visitors to sign in before reporting, and shows no live link without a broadcast', async () => {
+  renderAt('/c/current-slug')
+  await screen.findByText('Clinic roof repair')
+  expect(screen.queryByRole('link', { name: 'Watch live broadcast' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Block user' })).not.toBeInTheDocument()
+  screen.getByRole('button', { name: 'Report campaign' }).click()
+  await waitFor(() => expect(screen.queryByText('Clinic roof repair')).not.toBeInTheDocument())
 })
