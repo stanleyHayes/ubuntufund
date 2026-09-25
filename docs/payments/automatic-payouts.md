@@ -19,6 +19,10 @@ It checks a stored PROCESSING payout and its exact reference, recipient code, GH
 
 Official references: https://paystack.com/docs/transfers/managing-transfers/ and https://paystack.com/docs/transfers/how-transfers-work/.
 
+## Test → live key cutover
+
+Recipient codes are tied to the Paystack key that created them: a code created with `sk_test_` does not exist for `sk_live_`. Every new saved payout account and campaign recipient now records `recipientMode`. After switching `PAYSTACK_SECRET_KEY` to the live key, run `apps/api/scripts/tag-recipient-mode.ts` (read-only; add `--apply` to write) once against production: it asks Paystack, with the live key, about each untagged code and tags it `live` (known) or `test` (unknown). Inconclusive lookups stay untagged. A saved account tagged `test` gets a fresh live recipient the next time it is used; a campaign recipient tagged `test` is refused at approval until the owner adds the account again. Affiliate and beneficiary destinations create a new recipient on every registration, so re-registering fixes them.
+
 ## Status and recovery
 
 PROCESSING plus provider status `otp` is displayed as awaiting Paystack authorization. Admin payout cards offer **Check Paystack status**, **Resend OTP**, and **Authorize existing transfer**. OTP values are neither stored nor logged. These controls do not create a new transfer.

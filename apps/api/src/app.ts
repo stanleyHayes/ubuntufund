@@ -10,6 +10,7 @@ import { MongoCreatorWithdrawalTransaction } from './infrastructure/adapters/out
 import { MongoCampaignCreation } from './infrastructure/adapters/outbound/persistence/MongoCampaignCreation.js'
 import { MongoAutomaticPayoutVerification } from './infrastructure/adapters/outbound/persistence/MongoAutomaticPayoutVerification.js'
 import { MongoPayoutEligibility } from './infrastructure/adapters/outbound/persistence/MongoPayoutEligibility.js'
+import { paystackModeFromSecret } from './domain/value-objects/PaystackMode.js'
 import { MongoPayoutClosureTransaction } from './infrastructure/adapters/outbound/persistence/MongoPayoutClosureTransaction.js'
 import { ClosePendingPayoutUseCase } from './application/use-cases/ClosePendingPayoutUseCase.js'
 import { ResolveStuckPayoutUseCase } from './application/use-cases/ResolveStuckPayoutUseCase.js'
@@ -859,10 +860,13 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
   )
   const handleTipWebhookUseCase = new HandleTipWebhookUseCase(tipRepo, creatorBalanceRepo)
   const creatorPayoutRepo = new MongoCreatorPayoutRepository()
+  // Every new recipient code is tagged with the Paystack environment that made it.
+  const paystackMode = paystackModeFromSecret(config.paystack.secretKey)
   const payoutAccounts = new PayoutAccountService(
     new MongoPayoutAccountRepository(),
     paymentGateway,
     planLimitsService,
+    paystackMode,
   )
   // Money-out gate shared by campaign payouts and creator withdrawals.
   const payoutEligibility = new MongoPayoutEligibility()
@@ -884,7 +888,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
   const walletTopUps = new WalletTopUpService(
     paymentGateway,
     config.payments.paystackEnabled,
-    config.paystack.secretKey.startsWith('sk_live_') ? 'live' : 'test',
+    paystackMode,
   )
   const handlePaystackWebhookUseCase = new HandlePaystackWebhookUseCase(
     paymentGateway,
@@ -1006,6 +1010,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     transferRecipientRepo,
     paymentGateway,
     payoutAccounts,
+    paystackMode,
   )
   // ADR-5 (G6): versioned, effective-dated commercial config — overrides layered
   // over the env defaults, so behaviour is unchanged until an admin sets a value.
@@ -1046,6 +1051,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     new MongoWalletPayoutRepository(),
     new MongoAutomaticPayoutVerification(),
     new MongoManualPayoutApproval(),
+    paystackMode,
   )
   const listCampaignPayoutsUseCase = new ListCampaignPayoutsUseCase(campaignRepo, payoutRepo)
   const listPayoutsUseCase = new ListPayoutsUseCase(payoutRepo)

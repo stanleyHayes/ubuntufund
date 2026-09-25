@@ -16,6 +16,7 @@ import { logger } from '../../infrastructure/logging/logger.js'
 import { toPayoutDto } from './mappers/payoutDto.js'
 import { splitIntoTransferLegs, requiresBatching } from '../services/payoutBatch.js'
 import type { PayoutRequester } from './CreatePayoutRecipientUseCase.js'
+import { isRecipientFromOtherMode, type PaystackMode } from '../../domain/value-objects/PaystackMode.js'
 
 export const SELF_APPROVAL_MESSAGE = 'Another administrator must approve payouts from your own campaign or request.'
 
@@ -49,6 +50,8 @@ export class ApprovePayoutUseCase {
     private readonly walletPayouts?: WalletPayoutPort,
     private readonly automaticVerification?: { run<T>(userId: string, work: () => Promise<T>, payout?: Pick<PayoutEntity, 'id' | 'campaignId' | 'type' | 'recipientId' | 'currency' | 'amount'> & { recipientCode: string }): Promise<T> },
     private readonly manualApproval?: { run<T>(requester: PayoutRequester, work: () => Promise<T>, payout?: Pick<PayoutEntity, 'id' | 'campaignId' | 'type' | 'recipientId' | 'requestedBy' | 'currency'> & { firstApprovedBy?: string; recipientCode: string }): Promise<T> },
+    /** Current Paystack environment; a recipient tagged with the other one is refused. */
+    private readonly recipientMode?: PaystackMode,
   ) {}
 
   async recipientDetails(payoutId: string, requester: PayoutRequester) {
@@ -180,6 +183,13 @@ export class ApprovePayoutUseCase {
     if (!recipient) {
       throw new AppError('Payout recipient not found', 404)
     }
+    // A test-mode recipient code does not exist for the live key: Paystack
+    // would refuse the transfer. Refuse before reserving anything instead.
+    if (isRecipientFromOtherMode(recipient.recipientMode, this.recipientMode))
+      throw new AppError(
+        'This payout destination was registered in Paystack test mode. The owner must add the account again before it can be paid.',
+        409,
+      )
 
     const mustBatch = requiresBatching(payout.netAmount, this.payoutsConfig.maxTransferAmount)
     if (mustBatch && recipient.type === 'mobile_money')

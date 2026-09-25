@@ -7,6 +7,7 @@ import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGate
 import type { PlanLimitsService } from './PlanLimitsService.js'
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js'
 import { payoutNamesMatch } from '../../domain/services/payoutNameMatch.js'
+import { isRecipientFromOtherMode, type PaystackMode } from '../../domain/value-objects/PaystackMode.js'
 type Input = Pick<SavedPayoutAccount, 'type' | 'accountName' | 'accountNumber' | 'bankCode'>
 const defaults: Record<string, number> = {
   free: 1,
@@ -20,7 +21,32 @@ export class PayoutAccountService {
     private readonly repo: PayoutAccountRepositoryPort,
     private readonly gateway: PaymentGatewayPort,
     private readonly plans: PlanLimitsService,
+    /** Paystack environment new recipient codes belong to (tagged on every account). */
+    private readonly recipientMode?: PaystackMode,
   ) {}
+
+  /**
+   * A saved account whose recipient code was created under the other Paystack
+   * mode (a test code after the live cutover) gets a fresh recipient in place —
+   * same id, fingerprint and name check — so re-adding or reusing it works.
+   */
+  private async currentRecipient(userId: string, account: SavedPayoutAccount): Promise<SavedPayoutAccount> {
+    if (!this.recipientMode || !isRecipientFromOtherMode(account.recipientMode, this.recipientMode)) return account
+    if (!this.repo.updateRecipient) throw new AppError('Payout account refresh is unavailable.', 503)
+    const recipientCode = await this.gateway.createTransferRecipient({
+      type: account.type,
+      name: account.accountName,
+      accountNumber: account.accountNumber,
+      bankCode: account.bankCode,
+      currency: 'GHS',
+    })
+    const updated = await this.repo.updateRecipient(userId, account.id, account.fingerprint, account.recipientCode, {
+      recipientCode,
+      recipientMode: this.recipientMode,
+    })
+    if (!updated) throw new AppError('Your payout destination changed. Refresh your accounts and try again.', 409)
+    return updated
+  }
   async assertCurrent(userId: string, account: SavedPayoutAccount) {
     if (!this.repo.claimCurrent) throw new AppError('Payout verification is unavailable.', 503)
     if (!await this.repo.claimCurrent(userId, account))
@@ -45,10 +71,11 @@ export class PayoutAccountService {
   async get(userId: string, id: string) {
     const a = (await this.repo.list(userId)).find((a) => a.id === id)
     if (!a) throw new AppError('Payout account not found', 404)
-    return a
+    return this.currentRecipient(userId, a)
   }
   async remove(userId: string, id: string) {
-    await this.get(userId, id)
+    if (!(await this.repo.list(userId)).some((a) => a.id === id))
+      throw new AppError('Payout account not found', 404)
     await this.repo.remove(userId, id)
   }
   async add(userId: string, input: Input) {
@@ -71,8 +98,9 @@ export class PayoutAccountService {
     const fingerprint = createHash('sha256')
       .update(`${input.type}:${input.bankCode}:${normalized}`)
       .digest('hex')
-    const existing = (await this.repo.list(userId)).find((a) => a.fingerprint === fingerprint)
-    if (existing) {
+    const found = (await this.repo.list(userId)).find((a) => a.fingerprint === fingerprint)
+    if (found) {
+      const existing = await this.currentRecipient(userId, found)
       if (existing.verificationStatus === 'name_matched') return existing
       // Re-adding an unmatched account is how a person corrects the name they
       // typed: resolve it again instead of handing back the stale result.
@@ -112,6 +140,7 @@ export class PayoutAccountService {
         bankCode: input.bankCode,
         currency: 'GHS',
       }),
+      ...(this.recipientMode ? { recipientMode: this.recipientMode } : {}),
     }
     if (!(await this.repo.addWithinLimit(userId, account, policy.limit))) {
       const duplicate = (await this.repo.list(userId)).find((a) => a.fingerprint === fingerprint)

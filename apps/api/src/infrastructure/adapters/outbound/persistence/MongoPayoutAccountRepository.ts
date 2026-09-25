@@ -18,6 +18,7 @@ const schema = new Schema<{ _id: string; userId: string; accounts: SavedPayoutAc
           bankCode: String,
           accountName: String,
           recipientCode: String,
+          recipientMode: { type: String, enum: ['live', 'test'] },
           verificationStatus: String,
           resolvedAccountName: String,
         },
@@ -66,6 +67,23 @@ export class MongoPayoutAccountRepository implements PayoutAccountRepositoryPort
   }
   async remove(userId: string, id: string) {
     await Model.updateOne({ _id: userId }, { $pull: { accounts: { id } } })
+  }
+  async updateRecipient(
+    userId: string,
+    id: string,
+    fingerprint: string,
+    previousCode: string,
+    next: { recipientCode: string; recipientMode: 'live' | 'test' },
+  ) {
+    const doc = await Model.findOneAndUpdate(
+      { _id: userId, accounts: { $elemMatch: { id, fingerprint, recipientCode: previousCode } } },
+      {
+        $set: { 'accounts.$.recipientCode': next.recipientCode, 'accounts.$.recipientMode': next.recipientMode },
+        $inc: { consumptionWriteVersion: 1 },
+      },
+      { new: true },
+    ).lean()
+    return doc?.accounts.find((account) => account.id === id) ?? null
   }
   async updateVerification(
     userId: string,

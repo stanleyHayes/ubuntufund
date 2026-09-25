@@ -1,4 +1,5 @@
 import type { PayoutRecipientType } from '@ubuntu-fund/types';
+import type { PaystackMode } from '../value-objects/PaystackMode.js';
 
 export interface TransferRecipientProps {
   id: string;
@@ -9,6 +10,8 @@ export interface TransferRecipientProps {
   bankCode: string;
   accountName: string;
   recipientCode: string;
+  /** Paystack environment that created `recipientCode` (absent on older rows). */
+  recipientMode?: PaystackMode;
   currency: string;
   verificationStatus?: 'name_matched' | 'needs_review';
   resolvedAccountName?: string;
@@ -56,6 +59,9 @@ export class TransferRecipientEntity {
   }
   get currency(): string {
     return this.props.currency;
+  }
+  get recipientMode(): PaystackMode | undefined {
+    return this.props.recipientMode;
   }
   get createdAt(): Date {
     return this.props.createdAt;

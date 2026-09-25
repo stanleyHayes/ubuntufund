@@ -7,6 +7,7 @@ import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGate
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js'
 import { toTransferRecipientDto } from './mappers/payoutDto.js'
 import { payoutNamesMatch } from '../../domain/services/payoutNameMatch.js'
+import type { PaystackMode } from '../../domain/value-objects/PaystackMode.js'
 
 export interface PayoutRequester {
   userId: string
@@ -28,6 +29,8 @@ export class CreatePayoutRecipientUseCase {
     private readonly transferRecipientRepo: TransferRecipientRepositoryPort,
     private readonly paymentGateway: PaymentGatewayPort,
     private readonly accounts?: PayoutAccountService,
+    /** Paystack environment new recipient codes belong to. */
+    private readonly recipientMode?: PaystackMode,
   ) {}
 
   async execute(
@@ -93,6 +96,7 @@ export class CreatePayoutRecipientUseCase {
         resolvedAccountName,
         verificationStatus,
         recipientCode,
+        recipientMode: this.recipientMode,
         currency: CURRENCY,
         createdAt: new Date(),
       }),
