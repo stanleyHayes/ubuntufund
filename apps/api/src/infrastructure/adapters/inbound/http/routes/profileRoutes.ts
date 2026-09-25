@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { platformMediaUrl } from './urlSchemas.js';
 import type { ProfileController } from '../controllers/ProfileController.js';
 import { validate } from '../../middleware/validate.js';
+import { clientIp } from '../../middleware/clientIp.js';
 import type { createAuthMiddleware } from '../../middleware/authMiddleware.js';
 import { authRateLimiter } from '../../middleware/rateLimiter.js';
 import { MongoUnitOfWork } from '../../../outbound/persistence/MongoUnitOfWork.js';
@@ -109,7 +110,7 @@ export function createProfileRoutes(
         // Append history only for a real change, in the same transaction, so a
         // retried or repeated request cannot add a duplicate event.
         if (result.modifiedCount === 1) {
-          await legalLog.record({ userId, version, acceptedTerms, ageConfirmed, acceptedAt, source: 'reaccept', ip: req.ip, userAgent: req.get('user-agent') });
+          await legalLog.record({ userId, version, acceptedTerms, ageConfirmed, acceptedAt, source: 'reaccept', ip: clientIp(req), userAgent: req.get('user-agent') });
         }
       });
       const user = await UserModel.findOne({ _id: userId, deletedAt: { $exists: false } });

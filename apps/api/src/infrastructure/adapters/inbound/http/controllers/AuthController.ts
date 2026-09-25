@@ -9,6 +9,7 @@ import type {
 } from '../../../../../application/use-cases/ForgotPasswordUseCase.js';
 import type { AuthTokenService } from '../../../../../application/services/AuthTokenService.js';
 import type { AuthenticatedRequest } from '../../middleware/authMiddleware.js';
+import { clientIp } from '../../middleware/clientIp.js';
 import type { SessionRevocationPort } from '../../../../../domain/ports/outbound/SessionRevocationPort.js';
 
 export class AuthController {
@@ -94,7 +95,9 @@ export class AuthController {
     next: NextFunction
   ): Promise<void> => {
     try {
-      const result = await this.registerUseCase.execute(req.body, { ip: req.ip, userAgent: req.get('user-agent') });
+      // Consent evidence records the real client (see clientIp.ts); req.ip is
+      // Render's proxy in production.
+      const result = await this.registerUseCase.execute(req.body, { ip: clientIp(req), userAgent: req.get('user-agent') });
       res.status(201).json({
         data: result,
         message: 'Registration successful',
@@ -112,7 +115,7 @@ export class AuthController {
   ): Promise<void> => {
     try {
       const result = await this.loginUseCase.execute(req.body, {
-        ip: req.ip,
+        ip: clientIp(req),
         userAgent: req.get('user-agent'),
       });
       res.json({

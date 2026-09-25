@@ -17,19 +17,21 @@ describe('Versioned account agreement', () => {
     await request(app).post('/api/v1/auth/register').send({ ...account(), legalAcceptance }).expect(400);
   });
   it('keeps every accepted version as history instead of overwriting the signup record', async () => {
-    const result = await request(app).post('/api/v1/auth/register').set('User-Agent', 'legal-history-test').send({ ...account(), legalAcceptance: acceptance }).expect(201);
+    // Consent evidence keeps the real client address (CF-Connecting-IP), not Render's proxy.
+    const result = await request(app).post('/api/v1/auth/register').set('User-Agent', 'legal-history-test').set('CF-Connecting-IP', '198.51.100.31').send({ ...account(), legalAcceptance: acceptance }).expect(201);
     const { user, tokens } = result.body.data;
     const bearer = `Bearer ${tokens.accessToken}`;
     const signup = await LegalAcceptanceEventModel.find({ userId: user.id }).lean();
     expect(signup).toHaveLength(1);
-    expect(signup[0]).toMatchObject({ ...acceptance, source: 'register', userAgent: 'legal-history-test' });
+    expect(signup[0]).toMatchObject({ ...acceptance, source: 'register', userAgent: 'legal-history-test', ip: '198.51.100.31' });
     expect(signup[0].acceptedAt.toISOString()).toBe(user.legalAcceptance.acceptedAt);
     // Simulate a user whose stored acceptance is an older version (v1 → current).
     await UserModel.updateOne({ _id: user.id }, { $set: { 'legalAcceptance.version': '2020-01-01' } });
-    const first = await request(app).post('/api/v1/profile/legal-acceptance').set('Authorization', bearer).send(acceptance).expect(200);
+    const first = await request(app).post('/api/v1/profile/legal-acceptance').set('Authorization', bearer).set('CF-Connecting-IP', '198.51.100.32').send(acceptance).expect(200);
     await request(app).post('/api/v1/profile/legal-acceptance').set('Authorization', bearer).send(acceptance).expect(200);
     let history = await LegalAcceptanceEventModel.find({ userId: user.id }).sort({ acceptedAt: 1 }).lean();
     expect(history.map(event => event.source)).toEqual(['register', 'reaccept']);
+    expect(history[1].ip).toBe('198.51.100.32');
     // Racing re-acceptances of a newer version record exactly one event.
     await UserModel.updateOne({ _id: user.id }, { $set: { 'legalAcceptance.version': '2021-01-01' } });
     await Promise.all([1, 2, 3].map(() => request(app).post('/api/v1/profile/legal-acceptance').set('Authorization', bearer).send(acceptance).expect(200)));

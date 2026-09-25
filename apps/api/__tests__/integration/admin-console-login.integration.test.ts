@@ -43,13 +43,16 @@ describe('staff console sign-in', () => {
   it('records administrator sign-ins and failed administrator passwords', async () => {
     const admin = await register('staff');
     await UserModel.findByIdAndUpdate(admin.id, { role: 'admin' });
-    await request(app).post('/api/v1/auth/login').send({ email: admin.email, password: 'WrongPass999', audience: 'admin' }).expect(401);
-    const ok = await request(app).post('/api/v1/auth/login').set('User-Agent', 'console-test')
+    // CF-Connecting-IP is the real client behind Render's proxy (clientIp.ts).
+    await request(app).post('/api/v1/auth/login').set('CF-Connecting-IP', '203.0.113.41')
+      .send({ email: admin.email, password: 'WrongPass999', audience: 'admin' }).expect(401);
+    const ok = await request(app).post('/api/v1/auth/login').set('User-Agent', 'console-test').set('CF-Connecting-IP', '198.51.100.42')
       .send({ email: admin.email, password: PASSWORD, audience: 'admin' }).expect(200);
     expect(ok.body.data.user.role).toBe('admin');
     const rows = await audits(admin.id);
     expect(rows.map(row => row.action)).toEqual(['auth.admin_login.failed', 'auth.admin_login.succeeded']);
-    expect(rows[1]).toMatchObject({ actorRole: 'admin', severity: 'info', userAgent: 'console-test', details: 'Administrator signed in to the staff console' });
+    expect(rows[0]).toMatchObject({ ip: '203.0.113.41' });
+    expect(rows[1]).toMatchObject({ actorRole: 'admin', severity: 'info', userAgent: 'console-test', ip: '198.51.100.42', details: 'Administrator signed in to the staff console' });
     expect(JSON.stringify(rows)).not.toContain(PASSWORD);
   });
 
