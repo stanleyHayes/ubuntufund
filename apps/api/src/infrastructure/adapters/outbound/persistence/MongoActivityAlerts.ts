@@ -96,6 +96,9 @@ export class MongoActivityAlerts {
     if (['payout', 'creatorPayout', 'beneficiaryPayout'].includes(kind)) {
       const labels: Record<string, string> = { PENDING: 'requested', PROCESSING: 'processing', PAID: 'completed', FAILED: 'failed', REVERSED: 'reversed', NEEDS_REVIEW: 'awaiting review' };
       if (!labels[state]) return [];
+      // A request closed before any transfer is "rejected"/"cancelled", not a failed transfer.
+      const closure = (row as { closure?: { kind?: string } }).closure?.kind;
+      if (state === 'FAILED' && (closure === 'rejected' || closure === 'cancelled')) labels.FAILED = closure;
       const owner = kind === 'creatorPayout' ? text(row.creatorUserId) : campaign?.creatorId;
       return owner ? [event(owner, 'withdrawals', `Your ${kind === 'beneficiaryPayout' ? 'beneficiary payout' : 'withdrawal'} is ${labels[state]}`, `The ${amount(row)} request is ${labels[state]}. Open your payout history for fees, net amount and the latest status.`, kind === 'creatorPayout' ? '/creator' : `/campaigns/${row.campaignId}`)] : [];
     }

@@ -1,5 +1,5 @@
 import type { PayoutEntity } from '../../entities/Payout.js'
-import type { PayoutLeg, PayoutLegStatus, PayoutStatus } from '@ubuntu-fund/types'
+import type { PayoutClosure, PayoutLeg, PayoutLegStatus, PayoutStatus } from '@ubuntu-fund/types'
 
 export interface PayoutRepositoryPort {
   findByRequestKey?(key: string): Promise<PayoutEntity | null>
@@ -15,10 +15,22 @@ export interface PayoutRepositoryPort {
   /** Push the lease out (provider error / mismatch) so we stop hot-looping. */
   extendProviderCheckLease(id: string, ttlMs: number): Promise<void>
   create(payout: PayoutEntity): Promise<PayoutEntity>
+  /**
+   * Atomically close a PENDING payout (admin reject / owner cancel) as a
+   * terminal FAILED with its closure recorded and settlement flagged applied —
+   * a PENDING payout reserved nothing. Null when it was no longer PENDING.
+   */
+  closePending?(id: string, closure: PayoutClosure): Promise<PayoutEntity | null>
   findById(id: string): Promise<PayoutEntity | null>
   /** Conditional write inside approval transaction; conflicts with status changes. */
   lockPendingForReview(id: string): Promise<PayoutEntity | null>
   findByCampaignId(campaignId: string): Promise<PayoutEntity[]>
+  /**
+   * Gross total of the campaign's PENDING payout requests. PENDING rows hold
+   * no reservation, so a new request must leave room for them; PROCESSING rows
+   * are already out of `availableBalance`.
+   */
+  sumPendingAmount?(campaignId: string): Promise<number>
   /** Correlate a provider transfer webhook back to its (single-transfer) payout. */
   findByProviderRef(providerRef: string): Promise<PayoutEntity | null>
   /** Correlate a transfer webhook to the batched payout owning a leg reference. */

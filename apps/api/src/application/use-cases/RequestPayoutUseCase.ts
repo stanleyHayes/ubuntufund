@@ -36,8 +36,9 @@ function round2(n: number): number {
  * immediately eligible for payout — there is no holding period. Operationally,
  * settlement accrues net funds to `pendingBalance`; this use-case clears exactly
  * the requested amount from `pending → available` so the later approval can
- * reserve it. The requestable ceiling is therefore `available + pending`, and a
- * request over that ceiling is rejected (never a partial or negative balance).
+ * reserve it. The requestable ceiling is therefore `available + pending` less
+ * the campaign's other PENDING requests, and a request over that ceiling is
+ * rejected (never a partial or negative balance).
  */
 /** Duplicate-key detection for the requestKey unique index. */
 function isDuplicateKeyError(error: unknown): boolean {
@@ -166,7 +167,13 @@ export class RequestPayoutUseCase {
     const available = balance?.availableBalance ?? 0
     const pending = balance?.pendingBalance ?? 0
     const currency = balance?.currency ?? recipient.currency ?? CURRENCY
-    const eligible = roundToCurrency(available + pending, currency)
+    // PENDING requests reserve nothing until approval, so without this the
+    // same funds could be requested twice and the second approval would fail.
+    const pendingRequests = roundToCurrency(
+      (await this.payoutRepo.sumPendingAmount?.(campaignId)) ?? 0,
+      currency,
+    )
+    const eligible = roundToCurrency(Math.max(0, available + pending - pendingRequests), currency)
     if (wallet && currency !== 'GHS')
       throw new AppError('Ujimora Wallet transfers require GHS', 422)
 
@@ -174,7 +181,11 @@ export class RequestPayoutUseCase {
       throw new AppError(
         `Cannot request a payout of ${currency} ${amount.toLocaleString(
           'en-US',
-        )}; only ${currency} ${eligible.toLocaleString('en-US')} is available for payout.`,
+        )}; only ${currency} ${eligible.toLocaleString('en-US')} is available for payout${
+          pendingRequests > 0
+            ? ` (${currency} ${pendingRequests.toLocaleString('en-US')} is already in pending requests)`
+            : ''
+        }.`,
         422,
       )
     }
@@ -254,8 +265,10 @@ export class RequestPayoutUseCase {
     }
 
     // Clear just enough pending → available so the approval step can reserve the
-    // full requested amount out of `availableBalance`.
-    const needed = roundToCurrency(amount - available, currency)
+    // full requested amount out of `availableBalance` — on top of what the
+    // campaign's other PENDING requests will reserve, so approving them in any
+    // order never finds the money already spoken for.
+    const needed = roundToCurrency(pendingRequests + amount - available, currency)
     if (needed > 0) {
       const cleared = await this.campaignBalanceRepo.clearPendingToAvailable(campaignId, needed)
       if (!cleared) {
@@ -314,6 +327,8 @@ export class RequestPayoutUseCase {
           provider: wallet ? 'ujimora_wallet' : 'paystack',
           providerRef: reference,
           requestedBy: requester.userId,
+          // Recorded so a rejection or cancellation returns exactly this.
+          clearedAmount: needed > 0 ? needed : 0,
           createdAt: new Date(),
           updatedAt: new Date(),
         }),

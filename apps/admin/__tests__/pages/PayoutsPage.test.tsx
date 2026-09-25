@@ -1,0 +1,41 @@
+// Export authorization/download behavior is covered by exports/ExportMenu.test.tsx.
+vi.mock('@/components/ExportMenu', () => ({ default: () => null }))
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
+const state = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn() }))
+vi.mock('@/lib/api', () => ({ api: { get: state.get, post: state.post } }))
+import PayoutsPage from '@/pages/PayoutsPage'
+
+const pending = {
+  id: 'payout-1', campaignId: 'campaign-1', campaignTitle: 'Clinic roof', recipientId: 'recipient-1',
+  amount: 500, type: 'standard', fee: 0, netAmount: 500, currency: 'GHS', status: 'PENDING',
+  provider: 'paystack', requestedBy: 'owner-1', createdAt: '2026-09-20T00:00:00Z', updatedAt: '2026-09-20T00:00:00Z',
+}
+const reason = 'Destination evidence did not match the campaign owner.'
+beforeEach(() => {
+  state.get.mockReset().mockResolvedValue([pending])
+  state.post.mockReset().mockResolvedValue({ ...pending, status: 'FAILED', closure: { kind: 'rejected', reason, closedBy: 'admin', closedAt: '2026-09-21T00:00:00Z' } })
+})
+afterEach(cleanup)
+
+it('rejects a pending request only with a 20-character reason and reports that nothing was sent', async () => {
+  render(<MemoryRouter><PayoutsPage /></MemoryRouter>)
+  fireEvent.click(await screen.findByRole('button', { name: 'Reject request' }))
+  const submit = screen.getByRole('button', { name: 'Reject payout' })
+  fireEvent.change(screen.getByRole('textbox', { name: 'Reason for rejection' }), { target: { value: 'too short' } })
+  expect(submit).toBeDisabled()
+  fireEvent.change(screen.getByRole('textbox', { name: 'Reason for rejection' }), { target: { value: reason } })
+  state.get.mockResolvedValue([])
+  fireEvent.click(submit)
+  await waitFor(() => expect(state.post).toHaveBeenCalledWith('/payouts/payout-1/reject', { reason }))
+  expect(await screen.findByText(/no transfer was sent/i)).toBeVisible()
+})
+
+it('labels a closed request as rejected and shows the reason', async () => {
+  state.get.mockResolvedValue([{ ...pending, status: 'FAILED', closure: { kind: 'rejected', reason, closedBy: 'admin', closedAt: '2026-09-21T00:00:00Z' } }])
+  render(<MemoryRouter initialEntries={['/payouts?view=all']}><PayoutsPage /></MemoryRouter>)
+  expect(await screen.findByText('Rejected')).toBeVisible()
+  expect(screen.getByText(reason)).toBeVisible()
+  expect(screen.queryByRole('button', { name: 'Reject request' })).toBeNull()
+})

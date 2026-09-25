@@ -10,6 +10,8 @@ import { MongoCreatorWithdrawalTransaction } from './infrastructure/adapters/out
 import { MongoCampaignCreation } from './infrastructure/adapters/outbound/persistence/MongoCampaignCreation.js'
 import { MongoAutomaticPayoutVerification } from './infrastructure/adapters/outbound/persistence/MongoAutomaticPayoutVerification.js'
 import { MongoPayoutEligibility } from './infrastructure/adapters/outbound/persistence/MongoPayoutEligibility.js'
+import { MongoPayoutClosureTransaction } from './infrastructure/adapters/outbound/persistence/MongoPayoutClosureTransaction.js'
+import { ClosePendingPayoutUseCase } from './application/use-cases/ClosePendingPayoutUseCase.js'
 import { createDonationContentReviewRoutes } from './infrastructure/adapters/inbound/http/routes/donationContentReviewRoutes.js'
 import { createTipContentReviewRoutes } from './infrastructure/adapters/inbound/http/routes/tipContentReviewRoutes.js'
 import { MongoPublicProfileVisibility } from './infrastructure/adapters/outbound/persistence/MongoPublicProfileVisibility.js'
@@ -1399,10 +1401,17 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
       campaignBalanceRepo,
       transferRecipientRepo,
       commercialConfigService,
+      payoutRepo,
     ),
     new AutomaticPayoutService(approvePayoutUseCase, payoutRepo, config.payouts),
     new PayoutTransferControlUseCase(payoutRepo, paymentGateway, handlePayoutWebhookUseCase),
     payoutRepo,
+    new ClosePendingPayoutUseCase(
+      payoutRepo,
+      campaignRepo,
+      campaignBalanceRepo,
+      new MongoPayoutClosureTransaction(),
+    ),
   )
   // Split-proceeds: owner-managed, versioned beneficiary allocations (spec §17).
   const campaignSplitUseCase = new CampaignSplitUseCase(

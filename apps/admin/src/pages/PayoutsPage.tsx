@@ -38,14 +38,73 @@ function money(n: number, currency = 'GHS'): string {
   return `${currency} ${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
+const REJECTION_REASON_MIN = 20
+
+/** Close a PENDING request with a reason the organizer will see. No transfer is ever sent. */
+function PayoutRejectForm({
+  payoutId,
+  busy,
+  onReject,
+}: {
+  payoutId: string
+  busy: boolean
+  onReject: (id: string, reason: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [reason, setReason] = useState('')
+  if (!open)
+    return (
+      <Button color="error" size="small" onClick={() => setOpen(true)} disabled={busy}>
+        Reject request
+      </Button>
+    )
+  return (
+    <Box sx={{ mt: 2 }}>
+      <TextField
+        fullWidth
+        multiline
+        minRows={2}
+        label="Reason for rejection"
+        helperText={`Shown to the organizer. At least ${REJECTION_REASON_MIN} characters. The cleared funds return to the campaign's pending balance; nothing is transferred.`}
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+      />
+      <Box sx={{ mt: 1, display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+        <Button size="small" onClick={() => setOpen(false)} disabled={busy}>
+          Keep request
+        </Button>
+        <Button
+          size="small"
+          color="error"
+          variant="contained"
+          disabled={busy || reason.trim().length < REJECTION_REASON_MIN}
+          onClick={() => onReject(payoutId, reason.trim())}
+        >
+          {busy ? 'Rejecting…' : 'Reject payout'}
+        </Button>
+      </Box>
+    </Box>
+  )
+}
+
+function payoutStatusLabel(payout: Payout): string {
+  if (payout.closure) return payout.closure.kind === 'rejected' ? 'Rejected' : 'Cancelled by organizer'
+  if (payout.status === 'PROCESSING' && payout.providerStatus === 'otp')
+    return 'Awaiting Paystack authorization'
+  if (payout.status === 'PAID') return 'Completed'
+  return payout.status.replace('_', ' ').toLowerCase()
+}
+
 function PayoutCard({
   payout,
   onApprove,
+  onReject,
   approving,
   onUpdated,
 }: {
   payout: Payout
   onApprove: (id: string, reviewNote: string) => void
+  onReject: (id: string, reason: string) => void
   approving: boolean
   onUpdated: () => void
 }) {
@@ -91,13 +150,7 @@ function PayoutCard({
           </Typography>
         </Box>
         <Chip
-          label={
-            payout.status === 'PROCESSING' && payout.providerStatus === 'otp'
-              ? 'Awaiting Paystack authorization'
-              : payout.status === 'PAID'
-                ? 'Completed'
-                : payout.status.replace('_', ' ').toLowerCase()
-          }
+          label={payoutStatusLabel(payout)}
           size="small"
           sx={{
             color: STATUS_TONE[payout.status],
@@ -135,6 +188,12 @@ function PayoutCard({
         )}
         {payout.approvedBy && (
           <Detail label="Approved by" value={payout.approvedByName ?? 'Unavailable account'} />
+        )}
+        {payout.closure && (
+          <Detail
+            label={payout.closure.kind === 'rejected' ? 'Rejection reason' : 'Cancellation note'}
+            value={payout.closure.reason}
+          />
         )}
       </Box>
 
@@ -202,6 +261,9 @@ function PayoutCard({
           >
             {approving ? 'Approving…' : awaitingSecond ? 'Give 2nd approval' : 'Approve'}
           </Button>
+          <Box sx={{ mt: 1 }}>
+            <PayoutRejectForm payoutId={payout.id} busy={approving} onReject={onReject} />
+          </Box>
         </Box>
       )}
     </Box>
@@ -379,6 +441,24 @@ export default function PayoutsPage() {
     [load],
   )
 
+  const reject = useCallback(
+    async (id: string, reason: string) => {
+      setApprovingId(id)
+      setNotice(null)
+      try {
+        await api.post<Payout>(`/payouts/${id}/reject`, { reason })
+        setNotice('Payout request rejected. The organizer can see the reason; no transfer was sent.')
+        await load()
+        window.dispatchEvent(new Event('ujimora:admin-actions-changed'))
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Rejection failed')
+      } finally {
+        setApprovingId(null)
+      }
+    },
+    [load],
+  )
+
   const approveBeneficiary = useCallback(
     async (id: string) => {
       setApprovingId(id)
@@ -542,6 +622,7 @@ export default function PayoutsPage() {
               key={p.id}
               payout={p}
               onApprove={approve}
+              onReject={reject}
               approving={approvingId === p.id}
               onUpdated={() => void load()}
             />

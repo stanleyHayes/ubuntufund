@@ -2,6 +2,7 @@ import { campaignNeedsEarlyCashout } from '../services/payoutFee.js'
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js'
 import type { CampaignBalanceRepositoryPort } from '../../domain/ports/outbound/CampaignBalanceRepositoryPort.js'
 import type { TransferRecipientRepositoryPort } from '../../domain/ports/outbound/TransferRecipientRepositoryPort.js'
+import type { PayoutRepositoryPort } from '../../domain/ports/outbound/PayoutRepositoryPort.js'
 import { roundToCurrency } from '../../domain/value-objects/Money.js'
 import type { PayoutsConfig } from '../../infrastructure/config/index.js'
 import type { PayoutRequester } from './CreatePayoutRecipientUseCase.js'
@@ -13,6 +14,7 @@ export class GetCampaignPayoutOptionsUseCase {
     private readonly balances: CampaignBalanceRepositoryPort,
     private readonly recipients: TransferRecipientRepositoryPort,
     private readonly config: { resolvePayoutsConfig(): Promise<PayoutsConfig> },
+    private readonly payouts?: Pick<PayoutRepositoryPort, 'sumPendingAmount'>,
   ) {}
 
   async execute(id: string, requester: PayoutRequester) {
@@ -20,10 +22,11 @@ export class GetCampaignPayoutOptionsUseCase {
     if (!campaign) throw new AppError('Campaign not found', 404)
     if (campaign.creatorId !== requester.userId && requester.role !== 'admin')
       throw new AppError('Only the campaign owner can view payout details', 403)
-    const [balance, recipient, fees] = await Promise.all([
+    const [balance, recipient, fees, pendingTotal] = await Promise.all([
       this.balances.findByCampaignId(id),
       this.recipients.findLatestByCampaignId(id),
       this.config.resolvePayoutsConfig(),
+      this.payouts?.sumPendingAmount?.(id) ?? Promise.resolve(0),
     ])
     const currency = balance?.currency ?? 'GHS'
     const round = (value: number) => roundToCurrency(value, currency)
@@ -36,6 +39,7 @@ export class GetCampaignPayoutOptionsUseCase {
     const payoutFees = round(balance?.payoutFees ?? 0)
     const refundHeld = round(balance?.refundHeldBalance ?? 0)
     const raised = round(campaign.raisedAmount.amount)
+    const pendingRequests = round(pendingTotal ?? 0)
     return {
       breakdown: {
         lockedPlatformFeePercent: campaign.lockedPlatformFeePercent,
@@ -55,7 +59,10 @@ export class GetCampaignPayoutOptionsUseCase {
         eligible,
       },
       currency,
-      eligible: round((balance?.pendingBalance ?? 0) + (balance?.availableBalance ?? 0)),
+      // What can still be requested: the balance less requests awaiting review
+      // (they reserve nothing until approval), matching RequestPayoutUseCase.
+      eligible: round(Math.max(0, eligible - pendingRequests)),
+      pendingRequests,
       fees,
       requiresEarlyCashout: campaignNeedsEarlyCashout(campaign),
       recipient: recipient
