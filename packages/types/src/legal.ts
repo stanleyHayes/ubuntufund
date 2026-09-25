@@ -267,7 +267,7 @@ Perform identity and business verification, fraud prevention, AML/CFT and securi
 Process subscriptions and fees and reconcile transactions.
 Provide support, resolve disputes and enforce our terms.
 Meet legal, regulatory, audit and partner obligations.
-Improve the service using appropriately governed analytics.
+Improve and oversee the service using internal, aggregated reports on accounts, campaigns and transactions (no third-party analytics or tracking tools).
 Send marketing only where permitted and with applicable choice or consent.`,
       },
       {
@@ -313,7 +313,7 @@ Send marketing only where permitted and with applicable choice or consent.`,
       {
         title: '10. Cookies and analytics',
         content:
-          'Ujimora web properties do not currently use cookies, analytics or advertising technologies. See the Cookie Notice for the browser storage we use.',
+          'Ujimora web properties do not currently use cookies or third-party analytics, tracking or advertising technologies. We produce internal, aggregated reports on accounts, campaigns and transactions from records we already hold (see section 3). See the Cookie Notice for the browser storage we use.',
       },
       {
         title: '11. Children',
@@ -616,7 +616,7 @@ Attempts to bypass KYC/KYB, campaign limits, payment restrictions, subscription 
     title: 'Cookie Notice',
     description: 'The browser storage used on Ujimora web properties, and the choices you have.',
     panelLabel: 'Cookie principle',
-    panelTitle: 'No tracking cookies. Browser storage only for sign-in, preferences, payments and referrals.',
+    panelTitle: 'No tracking cookies. Browser storage only for sign-in, preferences, drafts, payments and referrals.',
     panelBody: 'This notice lists what Ujimora keeps in your browser, how long it stays and how to clear it.',
     introduction:
       'This notice explains the cookies and similar technologies used on Ujimora web properties. We do not currently set cookies; we use your browser’s local and session storage only for the purposes listed below.',
@@ -628,17 +628,19 @@ Attempts to bypass KYC/KYB, campaign limits, payment restrictions, subscription 
       },
       {
         title: '2. What we use',
-        content: `Ujimora web properties do not currently set cookies or use analytics or advertising technologies. We use your browser’s local and session storage for:
-• Sign-in (uf_tokens, uf_user, accessToken, uf_last_activity) to keep you signed in. Removed when you sign out or after an hour of inactivity.
+        content: `Ujimora web properties do not currently set cookies or use third-party analytics, tracking or advertising technologies. We use your browser’s local storage and, where marked, session storage (cleared when you close the tab) for:
+• Sign-in (uf_tokens, uf_tokens:received, uf_user, accessToken, uf_last_activity) to keep you signed in. Removed when you sign out. After an hour without activity they are removed straight away if a Ujimora page is open, or otherwise the next time you open the site; until then they stay in your browser.
 • Display preferences (uf_color_mode, uf_skin), kept until you clear site data.
-• Payment recovery (uf_pending_donations, uf_pending_subscriptions, ujimora:tip-attempt:* and session-only top-up references), so the confirmation page can pick up your payment after the payment provider sends you back. Tip and top-up entries are removed once the payment is resolved; the others are kept until you clear site data.
+• Unsent drafts (ujimora:publication-draft:*): the campaign form while you fill it in, and profile images held for safety review, so the exact version can be submitted again once approved. Saved per account. A draft older than 30 days is deleted the next time its page is opened, and all drafts are deleted when you sign out. They are not deleted when a session ends through inactivity.
+• Payment recovery, so the confirmation page can pick up your payment after the payment provider sends you back. Donation handoffs (uf_pending_donations, session storage) are removed once the payment succeeds, fails or expires. Wallet top-up references (ujimora-topup-*) stay in session storage until you close the tab. Tip attempts (ujimora:tip-attempt:*) are removed once the payment is resolved. Subscription checkouts (uf_pending_subscriptions) are removed once the checkout is settled, fails or expires, or when you clear site data.
+• Checkout retry keys (ujimora:checkout-attempt:*, session storage): opaque codes that stop a retried donation from being charged twice. They contain no amounts or personal details.
 • Referral attribution (uf_ref), which stores an affiliate code from a ?ref= link so the referrer can be credited if you sign up. Kept until you create an account or clear site data.
 The staff console uses equivalent sign-in and display-preference entries.`,
       },
       {
         title: '3. Choices',
         content:
-          'You can clear this storage at any time using your browser’s site-data controls. Clearing sign-in storage signs you out. If we introduce analytics or advertising technologies, we will update this notice first and ask for your consent where required.',
+          'You can clear this storage at any time using your browser’s site-data controls. Clearing sign-in storage signs you out, and clearing drafts removes any unsent campaign or profile-image version. If we introduce analytics, tracking or advertising technologies on our web properties, we will update this notice first and ask for your consent where required.',
       },
       {
         title: '4. Third parties',

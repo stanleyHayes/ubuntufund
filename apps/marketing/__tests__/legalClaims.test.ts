@@ -44,12 +44,32 @@ describe('legal pack describes what actually happens', () => {
 
   it('cookie notice lists every browser-storage key the web and marketing apps write', () => {
     const cookies = policyText('cookies')
-    const sources = [resolve(process.cwd(), '../web/src'), resolve(process.cwd(), 'src')].flatMap(walk)
-    const keys = new Set(sources.flatMap((file) => [...readFileSync(file, 'utf8').matchAll(/'(uf_[a-z_]+)'/g)].map((m) => m[1])))
-    expect(keys.size).toBeGreaterThan(5)
-    for (const key of keys) expect(cookies, `${key} is stored but not disclosed`).toContain(key)
-    expect(cookies).toContain('accessToken')
-    expect(cookies).toContain('ujimora:tip-attempt:')
+    const sources = [resolve(process.cwd(), '../web/src'), resolve(process.cwd(), 'src'), resolve(process.cwd(), '../../packages/ui/src')].flatMap(walk)
+    // Quoted or template-literal keys, local or session storage: uf_* names and
+    // ujimora:… / ujimora-… prefixes (ending in ':' or '-' right before the
+    // closing quote or a `${…}`, so event names like 'ujimora:x-changed' are not keys).
+    const keyPattern = /['"`](uf_[a-z_]+(?=['"`:])|ujimora[:-][a-z-]*[:-](?=['"`]|\$\{))/g
+    const found = sources.flatMap((file) => [...readFileSync(file, 'utf8').matchAll(keyPattern)].map((m) => m[1]))
+    // Strings of the same shape that are not stored in the browser.
+    const notStorage: Record<string, string> = {
+      'ujimora-privacy-request-': 'file name of a downloaded data-rights export',
+      uf_live_session: 'legacy key the live page only removes',
+    }
+    const keys = new Set(found.filter((key) => !(key in notStorage)))
+    expect(keys.size).toBeGreaterThan(10)
+    const wildcards = [...cookies.matchAll(/([\w:-]+)\*/g)].map((m) => m[1])
+    for (const key of keys) {
+      expect(cookies.includes(key) || wildcards.some((prefix) => key.startsWith(prefix)), `${key} is stored but not disclosed`).toBe(true)
+    }
+    // Keys built from other constants (browserSession's `${tokensKey}:received`).
+    for (const key of ['accessToken', 'uf_tokens:received', 'ujimora:tip-attempt:', 'ujimora:publication-draft:', 'ujimora:checkout-attempt:']) expect(cookies).toContain(key)
+  })
+
+  it('cookie notice states how long drafts and payment handoffs really stay', () => {
+    const cookies = policyText('cookies')
+    expect(cookies).toMatch(/ujimora:publication-draft:\*[^•]*30 days[^•]*deleted when you sign out[^•]*not deleted when a session ends through inactivity/)
+    expect(cookies).toMatch(/uf_pending_donations, session storage\) are removed once the payment succeeds, fails or expires/)
+    expect(cookies).not.toMatch(/Removed when you sign out or after an hour of inactivity/)
   })
 
   it('organizer agreement describes the acceptance point campaign creation actually shows', () => {
@@ -71,9 +91,13 @@ describe('legal pack describes what actually happens', () => {
     expect(policyText('terms')).toMatch(/Organizers must also follow the Campaign Organizer Agreement/)
   })
 
-  it('privacy notice no longer claims consent-managed cookies', () => {
+  it('privacy notice discloses internal reporting without claiming no analytics at all', () => {
     const privacy = policyText('privacy')
-    expect(privacy).toMatch(/do not currently use cookies, analytics or advertising technologies/)
+    expect(privacy).toMatch(/do not currently use cookies or third-party analytics, tracking or advertising technologies/)
+    expect(privacy).toMatch(/internal, aggregated reports on accounts, campaigns and transactions/)
+    expect(privacy).not.toMatch(/do not currently use cookies, analytics or advertising/)
+    expect(privacy).not.toMatch(/appropriately governed analytics/)
     expect(privacy).not.toMatch(/controlled through appropriate consent and preferences/)
+    expect(policyText('cookies')).not.toMatch(/do not currently set cookies or use analytics/)
   })
 })
