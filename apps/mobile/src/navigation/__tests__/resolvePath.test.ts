@@ -26,3 +26,12 @@ it('opens profile and organization links and requires subscription refresh after
   expect(resolveNativePath('/organizations/example')).toBe('/organization/example')
   expect(resolveNativePath('/subscription/callback?status=success')).toBe('/(tabs)/subscription')
 })
+
+it('keeps referral codes on native sign-up links', () => {
+  expect(resolveNativePath('ujimora://register?ref=abc')).toBe('/(auth)/register?ref=abc')
+  expect(resolveNativePath('https://app.ujimora.com/register?ref=abc')).toBe('/(auth)/register?ref=abc')
+  expect(resolveNativePath('https://app.ujimora.com/?ref=abc')).toBe('/(auth)/register?ref=abc')
+  expect(resolveNativePath('https://app.ujimora.com/?ref=a%26b')).toBe('/(auth)/register?ref=a%26b')
+  expect(resolveNativePath('https://app.ujimora.com/login?returnTo=%2Fwallet')).toBe('/(auth)/login?returnTo=%2Fwallet')
+  expect(resolveNativePath('https://app.ujimora.com/')).toBe('/')
+})

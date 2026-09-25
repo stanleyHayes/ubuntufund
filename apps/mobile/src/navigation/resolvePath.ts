@@ -20,8 +20,12 @@ export function resolveNativePath(input: string): string {
     if (parts[0] === 'donations' && parts[1] === 'refund' && parts[2]) return `/refund-request?donationId=${encodeURIComponent(parts[2])}`
     if (path === '/donations') return '/my-donations'
     if (path === '/refunds') return '/my-refunds'
-    if (path === '/login') return '/(auth)/login'
-    if (path === '/register') return '/(auth)/register'
+    // Keep ?ref= (referral) and ?returnTo= on the auth screens; they validate both.
+    if (path === '/login') return `/(auth)/login${query}`
+    if (path === '/register') return `/(auth)/register${query}`
+    // Referral links point at the site root (app.ujimora.com/?ref=CODE); '/' would
+    // otherwise redirect straight to the tabs and drop the code.
+    if (path === '/' && url.searchParams.get('ref')) return `/(auth)/register?ref=${encodeURIComponent(url.searchParams.get('ref') || '')}`
     return path + query
   } catch { return '/+not-found' }
 }

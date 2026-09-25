@@ -12,7 +12,6 @@ import { OrganizationType } from '@ubuntu-fund/types'
 import {
   LEGAL_ACCEPTANCE_VERSION,
   REFERRAL_CODE_MAX,
-  normalizeReferralCode,
   referralCodeProblemMessage,
   validateReferralCode,
 } from '@ubuntu-fund/types'
@@ -20,6 +19,7 @@ import { useAuth } from '@/context/AuthContext'
 import { UjimoraLogo } from '@/components/UjimoraLogo'
 import { PasswordStrength } from '@/components/PasswordStrength'
 import { completeSignIn, safeReturnTo } from '@/navigation/returnTo'
+import { signupReferralCode } from '@/lib/referral'
 
 type AccountType = 'individual' | 'organization'
 
@@ -69,7 +69,7 @@ export default function RegisterScreen() {
   const handleRegister = async () => {
     setError('')
     const payload: Parameters<typeof register>[0] = { name, email, password, country: 'Ghana', legalAcceptance: { version: LEGAL_ACCEPTANCE_VERSION, acceptedTerms, ageConfirmed } }
-    const referral = normalizeReferralCode(referralCode)
+    const referral = signupReferralCode(referralCode)
     if (referral) payload.referralCode = referral
     if (accountType === 'organization') {
       payload.role = 'organization'
@@ -346,7 +346,7 @@ export default function RegisterScreen() {
               ]}
             >
               {referralProblem
-                ? referralCodeProblemMessage(referralProblem)
+                ? `${referralCodeProblemMessage(referralProblem)} Until it is fixed, you will sign up without a referral code.`
                 : 'Were you invited? Enter their code so they get credit.'}
             </Text>
           </View>
