@@ -4,7 +4,7 @@ export interface PaymentProvider {
   id: string
   name: string
   slug: string
-  type: 'mobile_money' | 'card' | 'bank' | 'crypto' | 'wallet'
+  type: 'mobile_money' | 'card' | 'bank' | 'crypto' | 'wallet' | 'gateway'
   enabled: boolean
   isDefault: boolean
   feePercent: number
