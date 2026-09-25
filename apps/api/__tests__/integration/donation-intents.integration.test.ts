@@ -299,6 +299,11 @@ describe('Donation Intents Integration', () => {
     await retry()
     expect((await WalletModel.findById(walletId))?.balance).toBe(145)
     expect(await JournalEntryModel.countDocuments({ donationIntentId: intent.id })).toBe(1)
+    // The donation keeps the campaign-directed amount and records the tip
+    // charged with it, so the donor's confirmation can state the full charge.
+    const donations = await DonationModel.find({ campaignId }).lean()
+    expect(donations).toHaveLength(1)
+    expect(donations[0]).toMatchObject({ amount: 50, tip: 5 })
   })
 
   it('rejects a wallet intent with insufficient balance and takes no money', async () => {

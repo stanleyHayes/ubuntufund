@@ -126,6 +126,36 @@ it('creates one anonymous-safe owner alert and one donor confirmation despite du
   expect(sender.send).not.toHaveBeenCalled();
 });
 
+it('tells the donor the total charged when a platform tip was included, without telling the owner', async () => {
+  const owner = await actor(), donor = await actor();
+  await choose(owner, 'donationsReceived', 'inApp'); await choose(donor, 'donationsSent', 'inApp');
+  const gift = await donation(owner.id, donor.id);
+  await DonationModel.updateOne({ _id: gift._id }, { $set: { tip: 2.5 } });
+  await alerts.capturePending(); await alerts.deliverPending();
+  const donorNotice = await NotificationModel.findOne({ userId: donor.id }).lean();
+  expect(donorNotice!.body).toContain('Your donation of GHS 25.00');
+  expect(donorNotice!.body).toContain('Total charged: GHS 27.50, including a GHS 2.50 optional platform tip.');
+  const ownerNotice = await NotificationModel.findOne({ userId: owner.id }).lean();
+  expect(ownerNotice!.body).toContain('GHS 25.00');
+  expect(ownerNotice!.body).not.toContain('tip');
+
+  const plain = await actor(); await choose(plain, 'donationsSent', 'inApp');
+  await donation(owner.id, plain.id);
+  await alerts.capturePending(); await alerts.deliverPending();
+  expect((await NotificationModel.findOne({ userId: plain.id }).lean())!.body).not.toContain('Total charged');
+});
+
+it('states the net amount sent when a completed withdrawal carried fees', async () => {
+  const user = await actor(); await choose(user, 'withdrawals', 'inApp');
+  await CreatorPayoutModel.create({ creatorUserId: user.id, amount: 40, fee: 1.2, netAmount: 38.8, currency: 'GHS', status: 'PAID', provider: 'paystack', settlementApplied: true });
+  await CreatorPayoutModel.create({ creatorUserId: user.id, amount: 20, fee: 1, netAmount: 19, currency: 'GHS', status: 'PENDING', provider: 'paystack' });
+  await alerts.capturePending(); await alerts.deliverPending();
+  const completed = await NotificationModel.findOne({ userId: user.id, title: 'Your withdrawal is completed' }).lean();
+  expect(completed!.body).toContain('The GHS 40.00 request is completed. GHS 38.80 was sent after GHS 1.20 in fees.');
+  const requested = await NotificationModel.findOne({ userId: user.id, title: 'Your withdrawal is requested' }).lean();
+  expect(requested!.body).not.toContain('was sent');
+});
+
 it('does not deliver an older donation after a later opt-in', async () => {
   const user = await actor();
   const gift = await donation(user.id, user.id);

@@ -7,6 +7,8 @@ export interface DonationDocument extends Document {
   campaignId: string;
   donorId: string;
   amount: number;
+  /** Optional platform tip charged alongside `amount` (absent on older rows). */
+  tip?: number;
   currency: string;
   paymentMethod: PaymentMethod;
   publicContentStatus?: 'pending' | 'approved' | 'rejected';
@@ -28,6 +30,7 @@ const donationSchema = new Schema<DonationDocument>(
     campaignId: { type: String, required: true, index: true },
     donorId: { type: String, required: true, index: true },
     amount: { type: Number, required: true },
+    tip: { type: Number, min: 0 },
     currency: { type: String, required: true },
     paymentMethod: { type: String, enum: Object.values(PaymentMethod), default: PaymentMethod.WALLET, required: true },
     publicContentStatus: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending', index: true },
