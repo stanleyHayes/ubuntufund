@@ -30,4 +30,6 @@ export interface RefundOperationRepositoryPort {
   create(operation: RefundOperation): Promise<void>;
   update(id: string, expected: RefundOperationState[], patch: Partial<Pick<RefundOperation, 'state' | 'active' | 'providerReference' | 'issue'>>): Promise<boolean>;
   listUnresolved(page: number, pageSize?: number): Promise<{ items: RefundOperation[]; total: number }>;
+  /** Whether Ujimora itself requested a refund of this amount on this transaction. */
+  existsForTransaction(transactionReference: string, amountMinor?: number): Promise<boolean>;
 }

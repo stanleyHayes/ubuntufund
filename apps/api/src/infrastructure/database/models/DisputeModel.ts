@@ -11,6 +11,15 @@ export interface DisputeDocument extends Document {
   resolution?: string;
   resolvedBy?: string;
   resolvedAt?: Date;
+  source?: 'staff' | 'paystack';
+  providerDisputeId?: string;
+  transactionReference?: string;
+  donationIntentId?: string;
+  amount?: number;
+  currency?: string;
+  dueAt?: Date;
+  providerStatus?: string;
+  providerResolution?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -38,9 +47,22 @@ const disputeSchema = new Schema<DisputeDocument>(
     resolution: { type: String },
     resolvedBy: { type: String },
     resolvedAt: { type: Date },
+    // Provider-originated cases (chargebacks, refunds issued outside Ujimora).
+    source: { type: String, enum: ['staff', 'paystack'] },
+    providerDisputeId: { type: String },
+    transactionReference: { type: String },
+    donationIntentId: { type: String },
+    amount: { type: Number },
+    currency: { type: String },
+    dueAt: { type: Date },
+    providerStatus: { type: String },
+    providerResolution: { type: String },
   },
   { timestamps: true }
 );
+
+// One row per provider case, however often the provider re-sends it.
+disputeSchema.index({ providerDisputeId: 1 }, { unique: true, partialFilterExpression: { providerDisputeId: { $type: 'string' } } });
 
 export const DisputeModel = mongoose.model<DisputeDocument>(
   'Dispute',

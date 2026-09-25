@@ -7,6 +7,13 @@ function domain(doc: Record<string, unknown>): RefundOperation {
 }
 export class MongoRefundOperationRepository implements RefundOperationRepositoryPort {
   private readonly ready = RefundOperationModel.init();
+  async existsForTransaction(transactionReference: string, amountMinor?: number): Promise<boolean> {
+    await this.ready;
+    return !!(await RefundOperationModel.exists({
+      transactionReference,
+      ...(amountMinor !== undefined ? { amountMinor } : {}),
+    }));
+  }
   async findActiveByIntentId(intentId: string) {
     await this.ready;
     const doc = await RefundOperationModel.findOne({ intentId, active: true }).lean();

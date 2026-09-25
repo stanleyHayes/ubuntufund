@@ -17,6 +17,7 @@ const refundSchema = z.object({
  *   POST /admin/reconciliation        → run the reconciliation sweep
  *   POST /admin/reconciliation/payouts → reconcile stuck payouts
  *   POST /admin/reconciliation/topups  → re-verify unfinished wallet top-ups
+ *   GET  /admin/payments/provider-events → provider chargebacks/refunds to review
  */
 export function createAdminPaymentsRoutes(
   controller: AdminPaymentsController,
@@ -27,6 +28,8 @@ export function createAdminPaymentsRoutes(
   router.get('/refund-operations', authMiddleware, requireAdmin, controller.refundOperations);
   router.post('/refund-operations/:id/verify', authMiddleware, requireAdmin, validate(z.object({ providerReference: z.string().trim().regex(/^\d{1,30}$/).optional() })), controller.verifyRefund);
   router.post('/refund-operations/:id/retry-accounting', authMiddleware, requireAdmin, controller.retryRefundAccounting);
+  router.get('/payments/provider-events', authMiddleware, requireAdmin, controller.listProviderEvents);
+  router.post('/payments/provider-events/:id/acknowledge', authMiddleware, requireAdmin, controller.acknowledgeProviderEvent);
   router.get('/payments', authMiddleware, requireAdmin, controller.search);
   router.get('/payments/:id', authMiddleware, requireAdmin, controller.timeline);
   router.post('/payments/:id/reconcile', authMiddleware, requireAdmin, controller.reconcileOne);

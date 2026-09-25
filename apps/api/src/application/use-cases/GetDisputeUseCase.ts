@@ -60,9 +60,11 @@ export class GetDisputeUseCase {
   }
 
   private async toDTO(dispute: DisputeRecord): Promise<DisputeDTO> {
+    // Provider-originated cases carry a system reporter, not a user id.
+    const systemReporter = dispute.reporterId.startsWith('system:');
     const [campaign, reporter, assignee] = await Promise.all([
       this.campaignRepo.findById(dispute.campaignId),
-      this.userRepo.findById(dispute.reporterId),
+      systemReporter ? Promise.resolve(null) : this.userRepo.findById(dispute.reporterId),
       dispute.assigneeId
         ? this.userRepo.findById(dispute.assigneeId)
         : Promise.resolve(null),
@@ -73,7 +75,9 @@ export class GetDisputeUseCase {
       campaignId: dispute.campaignId,
       campaignTitle: campaign ? campaign.title : 'Unknown campaign',
       reporterId: dispute.reporterId,
-      reporterName: reporter ? reporter.name : 'Unknown user',
+      reporterName: systemReporter
+        ? 'Paystack (payment provider)'
+        : reporter ? reporter.name : 'Unknown user',
       assigneeId: dispute.assigneeId,
       assigneeName: assignee ? assignee.name : undefined,
       reason: dispute.reason,

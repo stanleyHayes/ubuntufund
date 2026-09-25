@@ -260,6 +260,8 @@ import { SaveCreatorProfileUseCase } from './application/use-cases/SaveCreatorPr
 import { GetCreatorByHandleUseCase } from './application/use-cases/GetCreatorByHandleUseCase.js'
 import { CreateTipIntentUseCase } from './application/use-cases/CreateTipIntentUseCase.js'
 import { HandleTipWebhookUseCase } from './application/use-cases/HandleTipWebhookUseCase.js'
+import { RecordProviderPaymentEventUseCase } from './application/use-cases/RecordProviderPaymentEventUseCase.js'
+import { MongoProviderPaymentEventRepository } from './infrastructure/adapters/outbound/persistence/MongoProviderPaymentEventRepository.js'
 import { MongoCreatorPayoutRepository } from './infrastructure/adapters/outbound/persistence/MongoCreatorPayoutRepository.js'
 import { RequestCreatorWithdrawalUseCase } from './application/use-cases/RequestCreatorWithdrawalUseCase.js'
 import { HandleCreatorPayoutWebhookUseCase } from './application/use-cases/HandleCreatorPayoutWebhookUseCase.js'
@@ -886,6 +888,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     config.payments.paystackEnabled,
     config.paystack.secretKey.startsWith('sk_live_') ? 'live' : 'test',
   )
+  const providerPaymentEventRepo = new MongoProviderPaymentEventRepository()
   const handlePaystackWebhookUseCase = new HandlePaystackWebhookUseCase(
     paymentGateway,
     donationIntentRepo,
@@ -903,6 +906,13 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     handleCreatorPayoutWebhookUseCase,
     walletTopUps,
     couponRedemptionRepo,
+    // Provider-originated chargebacks/refunds: recorded + surfaced to staff.
+    new RecordProviderPaymentEventUseCase(
+      providerPaymentEventRepo,
+      donationIntentRepo,
+      disputeRepo,
+      new MongoRefundOperationRepository(),
+    ),
   )
   // Flutterwave settlement: verifies the verif-hash, re-verifies the charge
   // server-side, then settles through the same donation seam as Paystack.
@@ -1395,6 +1405,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     reconcilePayoutsUseCase,
     // On-demand wallet top-up sweep (otherwise only the scheduler runs it).
     walletTopUps,
+    providerPaymentEventRepo,
   )
   const payoutController = new PayoutController(
     listBanksUseCase,

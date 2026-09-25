@@ -12,6 +12,7 @@ import type { HandleAffiliatePayoutWebhookUseCase } from './HandleAffiliatePayou
 import type { HandleBeneficiaryPayoutWebhookUseCase } from './HandleBeneficiaryPayoutWebhookUseCase.js';
 import type { HandleTipWebhookUseCase } from './HandleTipWebhookUseCase.js';
 import type { HandleCreatorPayoutWebhookUseCase } from './HandleCreatorPayoutWebhookUseCase.js';
+import type { RecordProviderPaymentEventUseCase } from './RecordProviderPaymentEventUseCase.js';
 import type { SubscriptionCheckoutRepositoryPort } from '../../domain/ports/outbound/SubscriptionCheckoutRepositoryPort.js';
 import type { AffiliateCommissionService } from '../services/AffiliateCommissionService.js';
 import type { CouponRedemptionRepositoryPort } from '../../domain/ports/outbound/CouponRedemptionRepositoryPort.js';
@@ -84,6 +85,9 @@ interface PaystackWebhookEvent {
  *    `sub-` subscription charge, claw back the affiliate commission it earned
  *    via {@link AffiliateCommissionService.reverseForSourceRef} (safe no-op
  *    otherwise).
+ *  - `refund.*` and `charge.dispute.*` → recorded once and surfaced to staff by
+ *    {@link RecordProviderPaymentEventUseCase} (campaign cases open in the
+ *    Disputes queue). No balance moves automatically.
  *  - anything else → ignored.
  *
  * The frontend callback is never trusted as proof of payment; only this signed
@@ -114,7 +118,10 @@ export class HandlePaystackWebhookUseCase {
     private readonly walletTopUps?: { settle(reference: string): Promise<void> },
     // Optional: when wired, a failed subscription charge frees the coupon seat
     // the checkout was holding. Absent, the slot simply stays PENDING.
-    private readonly couponRedemptionRepo?: CouponRedemptionRepositoryPort
+    private readonly couponRedemptionRepo?: CouponRedemptionRepositoryPort,
+    // Optional: records provider-originated chargebacks/disputes and refunds
+    // and surfaces them to staff. Absent, those events are acknowledged only.
+    private readonly providerPaymentEvents?: Pick<RecordProviderPaymentEventUseCase, 'handleDispute' | 'handleRefund'>
   ) {}
 
   async execute(input: PaystackWebhookInput): Promise<void> {
@@ -139,6 +146,14 @@ export class HandlePaystackWebhookUseCase {
     // charge/transfer reference gate below.
     if (event.event === 'refund.processed' || event.event === 'charge.refund') {
       await this.handleRefund(data);
+    }
+    if (event.event?.startsWith('refund.') || event.event === 'charge.refund') {
+      await this.providerPaymentEvents?.handleRefund(event.event, data);
+      return;
+    }
+    // Disputes carry the charge under `data.transaction`; record them for staff.
+    if (event.event?.startsWith('charge.dispute.')) {
+      await this.providerPaymentEvents?.handleDispute(event.event, data);
       return;
     }
 

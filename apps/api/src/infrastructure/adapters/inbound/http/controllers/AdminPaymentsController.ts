@@ -9,6 +9,7 @@ import type { ReconcilePayoutsUseCase } from '../../../../../application/use-cas
 import type { ProcessRefundUseCase } from '../../../../../application/use-cases/ProcessRefundUseCase.js';
 import type { AuthenticatedRequest } from '../../middleware/authMiddleware.js';
 import type { TopUpReconcileSummary } from '../../../outbound/payments/WalletTopUpService.js';
+import type { ProviderPaymentEventRepositoryPort } from '../../../../../domain/ports/outbound/ProviderPaymentEventRepositoryPort.js';
 import { AppError } from '../../middleware/errorHandler.js';
 
 /** A contribution as the admin console sees it — normalized, no provider secrets. */
@@ -48,8 +49,37 @@ export class AdminPaymentsController {
     private readonly processRefundUseCase: ProcessRefundUseCase,
     private readonly reconcilePayoutsUseCase: ReconcilePayoutsUseCase,
     /** Optional: the wallet top-up sweep, so staff can run it on demand. */
-    private readonly topUpReconciler?: { reconcile(): Promise<TopUpReconcileSummary> }
+    private readonly topUpReconciler?: { reconcile(): Promise<TopUpReconcileSummary> },
+    /** Optional: provider-originated chargebacks/refunds for staff review. */
+    private readonly providerEvents?: ProviderPaymentEventRepositoryPort
   ) {}
+
+  /** GET /admin/payments/provider-events — chargebacks/refunds the provider reported. */
+  listProviderEvents = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!this.providerEvents) throw new AppError('Provider events are unavailable', 503);
+      const status = req.query.status === 'acknowledged' || req.query.status === 'open' ? req.query.status : undefined;
+      const limit = Number(req.query.limit);
+      const items = await this.providerEvents.list({ reviewStatus: status, limit: Number.isFinite(limit) ? limit : undefined });
+      res.json({ data: items, status: 'success' });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /** POST /admin/payments/provider-events/:id/acknowledge — mark one reviewed. */
+  acknowledgeProviderEvent = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!this.providerEvents) throw new AppError('Provider events are unavailable', 503);
+      const id = String(req.params.id);
+      if (!/^[a-f0-9]{24}$/i.test(id)) throw new AppError('Provider event not found', 404);
+      const done = await this.providerEvents.acknowledge(id, req.userId!);
+      if (!done) throw new AppError('Provider event not found or already acknowledged', 404);
+      res.json({ data: { id, reviewStatus: 'acknowledged' }, status: 'success' });
+    } catch (error) {
+      next(error);
+    }
+  };
 
   /** POST /admin/payments/:id/refund — refund a contribution (spec §14). */
   refund = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
