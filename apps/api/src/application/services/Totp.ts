@@ -58,7 +58,9 @@ export class TotpCipher {
   decrypt(value: string, userId: string): string {
     if (!this.key) throw new Error('Authenticator encryption is not configured');
     const [iv, tag, encrypted] = value.split('.').map(part => Buffer.from(part, 'base64'));
-    const cipher = createDecipheriv('aes-256-gcm', this.key, iv);
+    // Pin the full 16-byte tag: GCM otherwise accepts truncated tags, which makes forgery far easier.
+    if (!iv || !tag || !encrypted || tag.length !== 16) throw new Error('Invalid authenticator secret payload');
+    const cipher = createDecipheriv('aes-256-gcm', this.key, iv, { authTagLength: 16 });
     cipher.setAAD(Buffer.from(`ujimora:mfa:${userId}`)); cipher.setAuthTag(tag);
     return Buffer.concat([cipher.update(encrypted), cipher.final()]).toString('utf8');
   }

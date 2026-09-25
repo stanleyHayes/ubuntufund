@@ -28,9 +28,12 @@ export class AccountEmails {
   private decrypt(value: string, tokenHash: string, purpose: string): Record<string, unknown> {
     const [iv, tag, ciphertext, extra] = value.split('.');
     if (!iv || !tag || !ciphertext || extra) throw new Error('Invalid recovery payload');
-    const decipher = createDecipheriv('aes-256-gcm', this.key!, Buffer.from(iv, 'base64'));
+    // Pin the full 16-byte tag: GCM otherwise accepts truncated tags, which makes forgery far easier.
+    const authTag = Buffer.from(tag, 'base64');
+    if (authTag.length !== 16) throw new Error('Invalid recovery payload');
+    const decipher = createDecipheriv('aes-256-gcm', this.key!, Buffer.from(iv, 'base64'), { authTagLength: 16 });
     decipher.setAAD(Buffer.from(`account-${purpose}:${tokenHash}`));
-    decipher.setAuthTag(Buffer.from(tag, 'base64'));
+    decipher.setAuthTag(authTag);
     return JSON.parse(Buffer.concat([decipher.update(Buffer.from(ciphertext, 'base64')), decipher.final()]).toString('utf8'));
   }
   async enqueue(user: UserEntity, purpose: 'recovery' | 'verification' = 'recovery'): Promise<void> {
