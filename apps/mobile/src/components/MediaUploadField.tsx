@@ -8,6 +8,7 @@ import * as DocumentPicker from 'expo-document-picker'
 import { File } from 'expo-file-system'
 import { Button } from './Loading'
 import { api } from '@/lib/api'
+import { withExternalActivity } from '@/lib/session'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
 
 export function MediaUploadField({ label, value, onChange, folder = 'kyc', document = false, crop = false, aspect = [1, 1], onBusyChange, compact = false, disabled = false }: {
@@ -22,18 +23,22 @@ export function MediaUploadField({ label, value, onChange, folder = 'kyc', docum
     setError(''); setBusy(true); onBusyChange?.(true)
     let uri: string | undefined
     try {
-      let mime: string
-      if (source === 'document') {
-        const result = await DocumentPicker.getDocumentAsync({ type: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'], copyToCacheDirectory: true })
-        if (result.canceled) return
-        uri = result.assets[0].uri; mime = result.assets[0].mimeType || 'application/pdf'
-      } else {
+      // Pickers, the camera and permission prompts are separate activities on
+      // Android; the allowance keeps an opted-in biometric session (and this
+      // screen) from locking while the user is in them.
+      const picked = await withExternalActivity(async () => {
+        if (source === 'document') {
+          const result = await DocumentPicker.getDocumentAsync({ type: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'], copyToCacheDirectory: true })
+          return result.canceled ? null : { uri: result.assets[0].uri, mime: result.assets[0].mimeType || 'application/pdf' }
+        }
         if (source === 'camera' && !(await ImagePicker.requestCameraPermissionsAsync()).granted) throw new Error('Camera permission is needed to take a photo. You can choose a file instead.')
         const options: ImagePicker.ImagePickerOptions = { mediaTypes: ['images'], allowsEditing: crop, aspect, quality: 0.8 }
         const result = source === 'camera' ? await ImagePicker.launchCameraAsync(options) : await ImagePicker.launchImageLibraryAsync(options)
-        if (result.canceled) return
-        uri = result.assets[0].uri; mime = result.assets[0].mimeType || 'image/jpeg'
-      }
+        return result.canceled ? null : { uri: result.assets[0].uri, mime: result.assets[0].mimeType || 'image/jpeg' }
+      })
+      if (!picked) return
+      uri = picked.uri
+      const mime = picked.mime
       const file = new File(uri)
       if (file.size > 4 * 1024 * 1024) throw new Error('Choose a file smaller than 4 MB.')
       const result = await api.upload<{ url: string }>(`/uploads/image?folder=${encodeURIComponent(folder)}`, await file.arrayBuffer(), mime)

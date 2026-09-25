@@ -22,7 +22,7 @@ export function BiometricSettings() {
   }
   return <View style={{ gap: 12, paddingVertical: 16 }}>
     <Text variant="titleMedium">{capability?.label ?? 'Device biometrics'}</Text>
-    <Text>Optional protection on this device. Lock your account when you leave the app and unlock with supported fingerprint or facial recognition. You can always sign in with your password and MFA instead.</Text>
+    <Text>Optional protection on this device. Your account locks when you leave the app for more than a minute, and you unlock it with supported fingerprint or facial recognition. Biometric unlock lasts 7 days after you turn it on or last sign in with your password; after that, sign in with your password to renew it. You can always sign in with your password and MFA instead.</Text>
     {capability?.available || enabled ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}><Text style={{ flex: 1 }}>{enabled ? 'Enabled on this device' : 'Off'}</Text><Switch accessibilityLabel="Biometric unlock" value={enabled} disabled={busy} onValueChange={value => void toggle(value)} /></View> : <Text>Supported enrolled biometrics are unavailable. Set them up in your device settings, then reopen this page.</Text>}
     {!!error && <Text accessibilityRole="alert" style={{ color: p.error }}>{error}</Text>}{!!message && <Text accessibilityRole="alert" style={{ color: p.success }}>{message}</Text>}
     {enabled && <Button disabled={busy} onPress={lockBiometricSession}>Lock now</Button>}

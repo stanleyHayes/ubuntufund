@@ -6,6 +6,7 @@ import { api } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { usePalette } from '@/context/ColorModeContext'
 import { downloadRecoveryCodes } from '@/lib/recoveryCodes'
+import { withExternalActivity } from '@/lib/session'
 import { BrandedTextInput as TextInput } from './BrandedTextInput'
 import { Button } from './Loading'
 import { OtpInput } from './OtpInput'
@@ -32,7 +33,8 @@ export function MfaSettings() {
     } catch (error) { setError(error instanceof Error ? error.message : 'Could not update authenticator protection.') } finally { setBusy(false) }
   }
   async function copy(text: string) { try { await Clipboard.setStringAsync(text); setMessage('Copied. Keep this information private.') } catch { setError('Could not copy. Select the text manually.') } }
-  async function download() { try { await downloadRecoveryCodes(codes) } catch (error) { setError(error instanceof Error ? error.message : 'Could not save recovery codes.') } }
+  // The Android share sheet backgrounds the app; keep the codes on screen when it returns.
+  async function download() { try { await withExternalActivity(() => downloadRecoveryCodes(codes)) } catch (error) { setError(error instanceof Error ? error.message : 'Could not save recovery codes.') } }
   return <View style={{ paddingVertical: 16, gap: 14 }}>
     <Text variant="titleMedium">Authenticator protection</Text><Text>Optional extra protection for sign-in. Use an authenticator app to generate a six-digit code after entering your password.</Text>
     {!!error && <Text accessibilityRole="alert" style={{ color: p.error }}>{error}</Text>}{!!message && <Text accessibilityRole="alert" style={{ color: p.success }}>{message}</Text>}

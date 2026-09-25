@@ -3,6 +3,7 @@ import { View } from 'react-native'
 import { Text } from 'react-native-paper'
 import { usePalette } from '@/context/ColorModeContext'
 import { endSession, unlockBiometricSession } from '@/lib/session'
+import { BiometricUnlockError } from '@/lib/unlockError'
 import { Button } from './Loading'
 import { UjimoraLogo } from './UjimoraLogo'
 export function BiometricLock({ suspended = false }: { suspended?: boolean }) {
@@ -10,7 +11,8 @@ export function BiometricLock({ suspended = false }: { suspended?: boolean }) {
   async function act(password: boolean) {
     setBusy(true); setError('')
     try { if (password) await endSession(); else await unlockBiometricSession() }
-    catch { setError('Could not unlock. Try again, or sign in with your password and authenticator if enabled.') }
+    // Explain known outcomes (expired unlock, changed biometrics, no connection); keep raw native errors generic.
+    catch (e) { setError(e instanceof BiometricUnlockError ? e.message : 'Could not unlock. Try again, or sign in with your password and authenticator if enabled.') }
     finally { setBusy(false) }
   }
   return <View style={{ flex: 1, justifyContent: 'center', padding: 28, gap: 20, backgroundColor: p.background }} accessibilityViewIsModal>

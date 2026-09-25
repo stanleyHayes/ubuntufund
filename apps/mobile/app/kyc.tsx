@@ -15,6 +15,7 @@ import { MediaUploadField } from '@/components/MediaUploadField'
 import { Button } from '@/components/Loading'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
 import { api } from '@/lib/api'
+import { withExternalActivity } from '@/lib/session'
 import { changeKycIdentityType, buildKycSubmission, emptyKycDraft, validateKycStep, type KycDraft } from '@/lib/kyc'
 
 const countries = Country.getAllCountries().map(c => ({ value: c.name, label: `${c.flag} ${c.name}` }))
@@ -43,7 +44,7 @@ function IdentityKYCScreen() {
   async function locate() {
     setLocating(true)
     try {
-      if (!(await Location.requestForegroundPermissionsAsync()).granted) throw new Error('Location permission was declined. You can choose your address manually.')
+      if (!(await withExternalActivity(() => Location.requestForegroundPermissionsAsync())).granted) throw new Error('Location permission was declined. You can choose your address manually.')
       const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })
       const [address] = await Location.reverseGeocodeAsync(position.coords)
       if (!address) throw new Error('No address was found. Choose your address manually.')
