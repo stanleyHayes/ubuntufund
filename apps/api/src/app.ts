@@ -1076,7 +1076,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     publicationAdmission,
     new MongoLiveSessionCreation(),
   )
-  const endLiveSessionUseCase = new EndLiveSessionUseCase(liveSessionRepo, campaignRepo, liveVideo)
+  const endLiveSessionUseCase = new EndLiveSessionUseCase(liveSessionRepo, campaignRepo, { end: id => liveSafety.end(id, liveVideo) })
   const updateLiveSessionPrivacyUseCase = new UpdateLiveSessionPrivacyUseCase(
     liveSessionRepo,
     campaignRepo,

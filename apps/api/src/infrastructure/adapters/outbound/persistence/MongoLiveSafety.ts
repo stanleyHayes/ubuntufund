@@ -37,6 +37,23 @@ export class MongoLiveSafety {
     await LiveSessionModel.updateOne({ _id: sessionId }, { $set: { status: 'ended', endedAt: new Date(), moderationStoppedAt: session.moderationStoppedAt ?? new Date(), providerStopPending: true, overlayToken: '', privacyMode: true } });
     await this.finishStop(sessionId, video);
   }
+  /**
+   * End a broadcast (owner/admin "End", or the stale sweep). The end is
+   * persisted before any provider call, so join() stops minting tokens at
+   * once; then the host is removed with a revocation cutoff and the room is
+   * deleted. A provider failure leaves providerStopPending for reconcile()
+   * to retry instead of failing the request. Unlike stop() this is not a
+   * moderation action: the overlay token and privacy settings stay, so
+   * viewers and OBS see the normal "broadcast ended" state.
+   * Returns false when the session was not active (nothing to end).
+   */
+  async end(sessionId: string, video: VideoSafety): Promise<boolean> {
+    if (!isObjectIdOrHexString(sessionId)) return false;
+    const ended = await LiveSessionModel.updateOne({ _id: sessionId, status: 'active' }, { $set: { status: 'ended', endedAt: new Date(), providerStopPending: true } });
+    if (ended.modifiedCount !== 1) return false;
+    try { await this.finishStop(sessionId, video); } catch (error) { logger.error({ err: error, sessionId }, 'Live session ended; provider cleanup pending retry'); }
+    return true;
+  }
   private async finishStop(sessionId: string, video: VideoSafety): Promise<void> {
     const session = await LiveSessionModel.findById(sessionId);
     if (!session) return;
@@ -60,7 +77,7 @@ export class MongoLiveSafety {
   }
   async reconcile(video: VideoSafety): Promise<void> {
     for (const session of await LiveSessionModel.find({ providerStopPending: true }).limit(50)) {
-      try { await this.finishStop(String(session._id), video); } catch (error) { logger.error({ err: error, sessionId: session.id }, 'Live moderation stop pending provider retry'); }
+      try { await this.finishStop(String(session._id), video); } catch (error) { logger.error({ err: error, sessionId: session.id }, 'Live stop pending provider retry'); }
     }
     for (const block of await UserBlockModel.find({ providerCleanupPending: true }).limit(50)) {
       try { await this.enforceBlock(block.userId, block.blockedUserId, video); } catch (error) { logger.error({ err: error, blockId: block.id }, 'Live block pending provider retry'); }
