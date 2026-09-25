@@ -48,6 +48,23 @@ export class MongoSiteContentRepository implements SiteContentRepositoryPort {
     return toDomain(doc!);
   }
 
+  async replaceIfUnchanged(
+    key: string,
+    type: string,
+    data: unknown,
+    expectedUpdatedAt: Date,
+    updatedBy?: string
+  ): Promise<SiteContentRecord | null> {
+    // The updatedAt precondition makes read-edit-save atomic: a concurrent
+    // save moves updatedAt, so the stale editor matches nothing.
+    const doc = await SiteContentModel.findOneAndUpdate(
+      { key, updatedAt: expectedUpdatedAt },
+      { $set: { type, data, updatedBy } },
+      { new: true }
+    );
+    return doc ? toDomain(doc) : null;
+  }
+
   async count(): Promise<number> {
     return SiteContentModel.estimatedDocumentCount();
   }

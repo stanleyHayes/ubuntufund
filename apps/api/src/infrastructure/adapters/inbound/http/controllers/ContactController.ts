@@ -7,10 +7,20 @@ function serialize(doc: ContactSubmissionDocument) {
     adminNotes: doc.adminNotes, resolvedAt: doc.resolvedAt, createdAt: doc.createdAt, updatedAt: doc.updatedAt };
 }
 
+export interface ContactStaffAlerts {
+  contactReceived(input: { id: string; name: string; email: string; subject: string; inquiryType: string; message: string }): Promise<void>;
+}
+
 export class ContactController {
+  constructor(private readonly staffAlerts?: ContactStaffAlerts) {}
+
   submit = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const doc = await ContactSubmissionModel.create(req.body);
+      // Fire-and-forget: the message is stored, and a slow or failed alert
+      // must never fail or delay the sender's confirmation.
+      void this.staffAlerts?.contactReceived({ id: doc.id as string, name: doc.name, email: doc.email, subject: doc.subject, inquiryType: doc.inquiryType, message: doc.message })
+        .catch(() => undefined);
       res.status(201).json({ data: { id: doc.id }, message: 'Your message has been received', status: 201 });
     } catch (error) { next(error); }
   };

@@ -11,6 +11,12 @@ export interface DonationProps {
   campaignId: string;
   donorId: string;
   amount: Money;
+  /**
+   * Optional platform tip charged with the donation, in the donation's
+   * currency. Not part of `amount` (the campaign-directed sum); recorded so
+   * the donor's confirmation can state the total they were charged.
+   */
+  tip?: number;
   paymentMethod: PaymentMethod;
   publicContentStatus?: 'pending' | 'approved' | 'rejected';
   publicContentFingerprint?: string;

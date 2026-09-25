@@ -161,3 +161,27 @@ it('migrates the old journal once and never overwrites edits or republishes with
   expect(retained.published).toBeUndefined()
   expect((await request(app).get('/api/v1/blog').expect(200)).body.data).toHaveLength(5)
 })
+
+/**
+ * lastmod used updatedAt, which every private draft save bumps, so crawlers
+ * were told a published article changed when only its unpublished draft did.
+ */
+it('moves the sitemap lastmod only when published content changes', async () => {
+  const lastmod = async (slug: string) => {
+    const xml = (await request(app).get('/api/v1/blog/sitemap.xml').expect(200)).text
+    return new RegExp(`/blog/${slug}</loc><lastmod>([^<]+)</lastmod>`).exec(xml)?.[1]
+  }
+  const post = { ...draft, slug: 'lastmod-field-notes' }
+  const created = (await request(app).post('/api/v1/blog/admin/posts').set('Authorization', `Bearer ${token}`).send({ draft: post }).expect(201)).body.data
+  const published = (await request(app).post(`/api/v1/blog/admin/posts/${created.id}/publish`).set('Authorization', `Bearer ${token}`).send({ revision: created.revision }).expect(200)).body.data
+  const first = await lastmod(post.slug)
+  expect(first).toBeDefined()
+
+  await new Promise((resolve) => setTimeout(resolve, 20))
+  const saved = (await request(app).put(`/api/v1/blog/admin/posts/${created.id}`).set('Authorization', `Bearer ${token}`).send({ revision: published.revision, draft: { ...post, body: 'Private draft edit' } }).expect(200)).body.data
+  expect(await lastmod(post.slug)).toBe(first)
+
+  await request(app).post(`/api/v1/blog/admin/posts/${created.id}/publish`).set('Authorization', `Bearer ${token}`).send({ revision: saved.revision }).expect(200)
+  const republished = await lastmod(post.slug)
+  expect(new Date(republished!).getTime()).toBeGreaterThan(new Date(first!).getTime())
+})

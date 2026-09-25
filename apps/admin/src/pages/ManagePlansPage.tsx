@@ -43,7 +43,7 @@ const FEATURE_TOGGLES: { key: keyof SubscriptionPlan; label: string }[] = [
   { key: 'prioritySupport', label: 'Priority support (not built — hidden from members)' },
   { key: 'advancedAnalytics', label: 'Advanced analytics (not built — hidden from members)' },
   { key: 'customBranding', label: 'Custom branding (not built — hidden from members)' },
-  { key: 'escrowSupport', label: 'Escrow & milestones' },
+  { key: 'escrowSupport', label: 'Split proceeds' },
   { key: 'liveStreaming', label: 'Live streaming' },
   { key: 'campaignCollaboration', label: 'Campaign collaboration' },
 ]

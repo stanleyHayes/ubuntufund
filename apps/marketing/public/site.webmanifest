@@ -1,7 +1,7 @@
 {
   "name": "Ujimora — Ghana's Trust Infrastructure for Giving",
   "short_name": "Ujimora",
-  "description": "Ghana's crowdfunding platform built on trust. Transparent fundraising with verified campaigns, escrow protection, and community trust scores.",
+  "description": "Ghana's crowdfunding platform built on trust: reviewed campaigns, verified organizers and transparent donation records.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

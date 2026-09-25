@@ -60,7 +60,7 @@ const FEATURE_SECTIONS: { title: string; rows: FeatureRow[] }[] = [
   {
     title: 'Features',
     rows: [
-      { label: 'Escrow & milestones', key: 'escrowSupport', format: 'boolean' },
+      { label: 'Split proceeds', key: 'escrowSupport', format: 'boolean' },
       { label: 'Live streaming', key: 'liveStreaming', format: 'boolean' },
       { label: 'Creator profile donations (active paid plans)', key: 'creatorDonations', format: 'boolean' },
     ],
@@ -276,7 +276,7 @@ function PricingPage() {
                     {[
                       plan.maxActiveCampaigns === -1 ? 'Unlimited campaigns' : `${plan.maxActiveCampaigns} active campaign${plan.maxActiveCampaigns !== 1 ? 's' : ''}`,
                       plan.maxCampaignGoal === -1 ? 'No goal limit' : `Up to GH₵ ${plan.maxCampaignGoal.toLocaleString()} goal`,
-                      plan.escrowSupport && 'Escrow & milestones',
+                      plan.escrowSupport && 'Split proceeds',
                       plan.liveStreaming && 'Live streaming',
                       plan.tier !== 'free' && (plan.priceMonthly > 0 || plan.priceYearly > 0) && 'Creator donations on your profile',
                       plan.campaignCollaboration && 'Campaign collaboration',

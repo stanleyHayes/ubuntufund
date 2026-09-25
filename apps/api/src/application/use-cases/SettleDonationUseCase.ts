@@ -155,6 +155,7 @@ export class SettleDonationUseCase {
         campaignId: settled.campaignId,
         donorId,
         amount: new Money(breakdown.amount, breakdown.currency),
+        tip: breakdown.tip,
         paymentMethod: providerToPaymentMethod(settled.provider, verifiedChannel),
         message: settled.message,
         donorName: settled.donorName,

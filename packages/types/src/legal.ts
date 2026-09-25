@@ -207,12 +207,11 @@ Circumvention of subscription, campaign, payment or risk controls.`,
       },
       {
         title: '14. Complaints and disputes',
-        content: `Users should first contact ${E.support}. Ujimora maintains a documented complaint and escalation process. These Terms are governed by the laws of ${LEGAL_ENTITY.governingLaw}, subject to mandatory consumer rights and any agreed lawful dispute-resolution mechanism.`,
+        content: `Users should first contact ${E.support}. If you are not satisfied with the response, you can escalate to ${E.legal}. Privacy complaints can also be submitted in account Settings. These Terms are governed by the laws of ${LEGAL_ENTITY.governingLaw}, subject to mandatory consumer rights and any agreed lawful dispute-resolution mechanism.`,
       },
       {
         title: '15. Changes',
-        content:
-          'Material changes will be published with an effective date and, where appropriate, notified to affected users. Historical versions remain available.',
+        content: `Material changes will be published with an effective date and, where appropriate, notified to affected users. Earlier versions are available on request from ${E.legal}.`,
       },
       {
         title: '16. Split-proceeds campaigns',
@@ -282,11 +281,11 @@ Send marketing only where permitted and with applicable choice or consent.`,
       },
       {
         title: 'Optional activity alerts and emails',
-        content: 'In Settings, you can separately opt in to notification-inbox alerts and emails about donations, creator support, withdrawals and payouts, refunds, wallet activity and subscriptions. Each activity and channel starts off. We store your choices and their change times and use relevant transaction details to prepare the updates you select. Activity emails use our email delivery provider, Resend, and require a verified account email. You can turn a choice off at any time; this stops queued messages that have not already been sent. These choices do not subscribe you to marketing. Account verification, password recovery and password-change security notices remain separate. Newsletter and promotional emails require a separate request and email confirmation. We record when you request, confirm or withdraw that choice. You can turn newsletter emails off in Settings or use the unsubscribe link without signing in. Confirmation emails use Resend. Previously collected addresses without confirmed consent are excluded from the mailing list.',
+        content: 'In Settings, you can separately opt in to notification-inbox alerts and emails about donations, creator support, withdrawals and payouts, refunds, wallet activity and subscriptions. Each activity and channel starts off. We store your choices and their change times and use relevant transaction details to prepare the updates you select. Activity emails use our email delivery provider, Resend, and require a verified account email. You can turn a choice off at any time; this stops queued messages that have not already been sent. These choices do not subscribe you to marketing. Account verification, password recovery and password-change security notices remain separate. Decisions our team makes on your own campaigns, verification applications and reports appear in your notification inbox as service notices. Newsletter and promotional emails require a separate request and email confirmation. We record when you request, confirm or withdraw that choice. You can turn newsletter emails off in Settings or use the unsubscribe link without signing in. Confirmation emails use Resend. Previously collected addresses without confirmed consent are excluded from the mailing list.',
       },
       {
         title: 'Optional account protection',
-        content: 'After signing in, you can enable an authenticator app for an extra sign-in code. We store its secret encrypted, hashes of single-use recovery codes and security-change records. Keep the setup key and downloaded recovery codes private. On supported mobile devices, biometric unlock is a separate optional setting. Fingerprint and face information stays within your device authentication system; Ujimora uses the result to access a protected saved sign-in credential. Signing out removes that saved credential and biometric preference from the app. You can use password and authenticator sign-in instead. Server-side authenticator data is removed through the account-erasure process; necessary security audit records follow the applicable retention schedule.',
+        content: 'After signing in, you can enable an authenticator app for an extra sign-in code. We store its secret encrypted, hashes of single-use recovery codes and security-change records. Keep the setup key and downloaded recovery codes private. On supported mobile devices, biometric unlock is a separate optional setting. Fingerprint and face information stays within your device authentication system; Ujimora uses the result to access a protected saved sign-in credential. Signing out removes that saved credential and biometric preference from the app. You can use password and authenticator sign-in instead. Server-side authenticator data is removed through the account-erasure process; necessary security audit records are kept only as long as needed for security and legal purposes.',
       },
       {
         title: 'Optional organization website requests',
@@ -299,8 +298,7 @@ Send marketing only where permitted and with applicable choice or consent.`,
       },
       {
         title: '7. Retention',
-        content:
-          'Personal data is retained only as long as necessary for the stated purpose and applicable legal, financial, fraud, dispute, audit and regulatory obligations. Ujimora maintains a separate retention schedule by data category.',
+        content: `Personal data is retained only as long as necessary for the stated purpose and applicable legal, financial, fraud, dispute, audit and regulatory obligations. Contact ${E.privacy} for the retention period that applies to particular data.`,
       },
       {
         title: '8. Your rights',
@@ -314,7 +312,7 @@ Send marketing only where permitted and with applicable choice or consent.`,
       {
         title: '10. Cookies and analytics',
         content:
-          'Cookies and similar technologies are governed by our Cookie Notice. Non-essential technologies are controlled through appropriate consent and preferences where required.',
+          'Ujimora web properties do not currently use cookies, analytics or advertising technologies. See the Cookie Notice for the browser storage we use.',
       },
       {
         title: '11. Children',
@@ -401,7 +399,7 @@ Send marketing only where permitted and with applicable choice or consent.`,
       {
         title: '10. Acceptance',
         content:
-          'Acceptance is captured electronically with your user or account ID, the agreement version, a timestamp and the relevant campaign ID.',
+          'Acceptance is captured electronically when you accept the account agreement, recording your user ID, the agreement version and a timestamp. It applies to each campaign you create or control while that version is current.',
       },
       {
         title: '11. Split beneficiary allocation',
@@ -611,16 +609,16 @@ Attempts to bypass KYC/KYB, campaign limits, payment restrictions, subscription 
     route: '/cookies',
     order: 7,
     navLabel: 'Cookie Notice',
-    summary: 'The cookie categories Ujimora uses, your choices, and how the notice is kept current.',
+    summary: 'The browser storage Ujimora uses and how to control it.',
     icon: 'CookieRoundedIcon',
     eyebrow: 'Tracking technologies',
     title: 'Cookie Notice',
-    description: 'The cookies and similar technologies used on Ujimora, and the choices you have.',
+    description: 'The browser storage used on Ujimora web properties, and the choices you have.',
     panelLabel: 'Cookie principle',
-    panelTitle: 'Essential cookies always on; everything else is your choice.',
-    panelBody: 'This notice explains the categories of cookies used and how to control the non-essential ones.',
+    panelTitle: 'No tracking cookies. Browser storage only for sign-in, preferences, payments and referrals.',
+    panelBody: 'This notice lists what Ujimora keeps in your browser, how long it stays and how to clear it.',
     introduction:
-      'This notice explains the cookies and similar technologies used on Ujimora web properties, the categories they fall into, and the choices you have over the non-essential ones.',
+      'This notice explains the cookies and similar technologies used on Ujimora web properties. We do not currently set cookies; we use your browser’s local and session storage only for the purposes listed below.',
     effectiveDate: LEGAL_ENTITY.effectiveDate,
     sections: [
       {
@@ -628,26 +626,28 @@ Attempts to bypass KYC/KYB, campaign limits, payment restrictions, subscription 
         content: 'This notice explains cookies and similar technologies used on Ujimora web properties.',
       },
       {
-        title: '2. Categories',
-        content: `Strictly necessary: authentication, security, session management and payment-flow integrity.
-Preferences: language and user choices.
-Analytics: service usage and performance measurement.
-Marketing: advertising and attribution technologies, if introduced.`,
+        title: '2. What we use',
+        content: `Ujimora web properties do not currently set cookies or use analytics or advertising technologies. We use your browser’s local and session storage for:
+• Sign-in (uf_tokens, uf_user, accessToken, uf_last_activity) to keep you signed in. Removed when you sign out or after an hour of inactivity.
+• Display preferences (uf_color_mode, uf_skin), kept until you clear site data.
+• Payment recovery (uf_pending_donations, uf_pending_subscriptions, ujimora:tip-attempt:* and session-only top-up references), so the confirmation page can pick up your payment after the payment provider sends you back. Tip and top-up entries are removed once the payment is resolved; the others are kept until you clear site data.
+• Referral attribution (uf_ref), which stores an affiliate code from a ?ref= link so the referrer can be credited if you sign up. Kept until you create an account or clear site data.
+The staff console uses equivalent sign-in and display-preference entries.`,
       },
       {
         title: '3. Choices',
         content:
-          'Where required, non-essential cookies are not activated until you make the appropriate choice. You can revisit your preferences at any time, and your browser controls can also block or delete cookies.',
+          'You can clear this storage at any time using your browser’s site-data controls. Clearing sign-in storage signs you out. If we introduce analytics or advertising technologies, we will update this notice first and ask for your consent where required.',
       },
       {
         title: '4. Third parties',
         content:
-          'The production notice identifies the material third-party cookie and SDK providers actually deployed and links them to the relevant purposes.',
+          'We do not use third-party cookies, analytics or tracking SDKs on our web properties. Images and fonts may be delivered by content-delivery providers, which receive standard request information such as your IP address. Payment pages hosted by our payment providers are governed by their own notices.',
       },
       {
         title: '5. Retention',
         content:
-          'The production cookie table specifies each cookie’s name, provider, purpose and duration, generated from the actual deployed stack.',
+          'Each item is kept for the period described in section 2. You can remove any of it sooner by clearing your browser’s site data.',
       },
       {
         title: '6. Updates',

@@ -61,6 +61,10 @@ export const OVERLAY_PAGE_HTML = `<!DOCTYPE html>
   .alert .who { font-weight: 800; font-size: 1.15rem; letter-spacing: .2px; text-shadow: 0 2px 6px rgba(0,0,0,.5); }
   .alert .amt { color: var(--gold); font-weight: 900; }
   .alert .msg { margin-top: 6px; font-size: .95rem; color: rgba(255,255,255,.86); line-height: 1.35; }
+  /* Donor names, messages and titles can be right-to-left. Isolating them keeps
+     their direction (and any stray bidi control characters) from reordering the
+     neighbouring " · GH₵ amount" or the rest of the line. */
+  .alert .who bdi, .alert .msg, .title { unicode-bidi: isolate; }
   @keyframes alert-in  { to { transform: translateX(0); opacity: 1; } }
   @keyframes alert-out { to { transform: translateX(-120%); opacity: 0; } }
 
@@ -138,7 +142,7 @@ export const OVERLAY_PAGE_HTML = `<!DOCTYPE html>
     <div class="status" id="status" role="status"></div>
     <div class="panel" id="panel" hidden>
       <div class="row">
-        <div class="title" id="title">Live Fundraiser</div>
+        <div class="title" id="title" dir="auto">Live Fundraiser</div>
         <div class="totals">
           <div class="raised" id="raised">GH₵ 0</div>
           <div class="goal">of <span id="goal">GH₵ 0</span> goal</div>
@@ -247,7 +251,7 @@ export const OVERLAY_PAGE_HTML = `<!DOCTYPE html>
     node.className = "alert";
     var who = document.createElement("div");
     who.className = "who";
-    var name = document.createElement("span");
+    var name = document.createElement("bdi");
     name.textContent = d.name || "Someone";
     who.appendChild(name);
     if (d.amount !== null && d.amount !== undefined) {
@@ -260,6 +264,7 @@ export const OVERLAY_PAGE_HTML = `<!DOCTYPE html>
     if (d.message) {
       var msg = document.createElement("div");
       msg.className = "msg";
+      msg.dir = "auto";
       msg.textContent = d.message;              // textContent — no HTML injection
       node.appendChild(msg);
     }

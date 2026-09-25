@@ -20,6 +20,7 @@ import Typography from '@mui/material/Typography'
 import { SHAPE, breadcrumbList } from '@ubuntu-fund/ui'
 import { InternalPageHero } from '../components/InternalPageHero'
 import { useContent } from '../hooks/useContent'
+import { isAboutContent } from '../lib/contentShapes'
 import { useSeo, SITE_ORIGIN } from '@/lib/seo'
 
 interface TeamMember { name: string; role: string; initials: string; bio: string; image?: string; /** Only the built-in profile ships one; a CMS record renders its single image. */ imageSrcSet?: string; website?: string; companyUrl?: string; socials?: { label: string; href: string }[] }
@@ -55,7 +56,7 @@ function AboutPage() {
     type: 'website',
     jsonLd: breadcrumbList(SITE_ORIGIN, [{ name: 'Home', path: '/' }, { name: 'About' }]),
   })
-  const about = useContent('about', ABOUT_FALLBACK)
+  const about = useContent('about', ABOUT_FALLBACK, isAboutContent)
   const cmsLeader = about.team?.[0]
   // Older CMS records still contain the launch placeholder.
   //

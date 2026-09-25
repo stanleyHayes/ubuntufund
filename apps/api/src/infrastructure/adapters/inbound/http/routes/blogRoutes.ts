@@ -67,12 +67,12 @@ export function createBlogRoutes(auth: RequestHandler, admin: RequestHandler) {
     '/sitemap.xml',
     wrap(async (_req, res) => {
       const posts = await BlogPostModel.find({ publishedSlug: { $exists: true } })
-        .select('publishedSlug updatedAt')
+        .select('publishedSlug publishedContentAt publishedAt updatedAt')
         .lean()
       const urls = posts
         .map(
           (post) =>
-            `<url><loc>https://ujimora.com/blog/${encodeURIComponent(post.publishedSlug!)}</loc><lastmod>${post.updatedAt.toISOString()}</lastmod></url>`,
+            `<url><loc>https://ujimora.com/blog/${encodeURIComponent(post.publishedSlug!)}</loc><lastmod>${(post.publishedContentAt ?? post.publishedAt ?? post.updatedAt).toISOString()}</lastmod></url>`,
         )
         .join('')
       res
@@ -156,6 +156,7 @@ export function createBlogRoutes(auth: RequestHandler, admin: RequestHandler) {
               published: d,
               publishedSlug: d.slug,
               publishedAt: doc.publishedAt ?? new Date(),
+              publishedContentAt: new Date(),
               updatedBy: (req as AuthenticatedRequest).userId,
             },
             $inc: { revision: 1 },

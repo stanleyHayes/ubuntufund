@@ -21,7 +21,20 @@ interface Event { key: string; userId: string; category: ActivityAlertCategory; 
 export interface ActivityEmailSender { configured: boolean; send(key: string, payload: Record<string, unknown>): Promise<void>; from: string; replyTo: string; webUrl: string }
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
 const text = (value: unknown) => typeof value === 'string' ? value : '';
-const amount = (row: SourceRecord) => `${text(row.currency) || 'GHS'} ${Number(row.amount).toFixed(2)}`;
+const money = (row: SourceRecord, value: number) => `${text(row.currency) || 'GHS'} ${value.toFixed(2)}`;
+const amount = (row: SourceRecord) => money(row, Number(row.amount));
+/** Donor-facing total: the donation plus any optional tip charged with it. */
+function donorCharge(row: SourceRecord): string {
+  const tip = Number(row.tip);
+  if (!Number.isFinite(tip) || tip <= 0) return '';
+  return ` Total charged: ${money(row, Number(row.amount) + tip)}, including a ${money(row, tip)} optional platform tip.`;
+}
+/** A completed withdrawal names what was actually sent when fees applied. */
+function payoutOutcome(row: SourceRecord, state: string): string {
+  const net = Number(row.netAmount), fee = Number(row.fee);
+  if (state !== 'PAID' || row.netAmount == null || !Number.isFinite(net) || !Number.isFinite(fee) || fee <= 0) return '';
+  return ` ${money(row, net)} was sent after ${money(row, fee)} in fees.`;
+}
 const sources = [
   ['donation', DonationModel.collection.name], ['payout', PayoutModel.collection.name],
   ['creatorPayout', CreatorPayoutModel.collection.name], ['beneficiaryPayout', BeneficiaryPayoutModel.collection.name],
@@ -87,7 +100,7 @@ export class MongoActivityAlerts {
       const title = campaign?.title || 'a campaign';
       return [
         ...(campaign ? [event(campaign.creatorId, 'donationsReceived', 'Your campaign received a donation', `A supporter donated ${amount(row)} to “${title}”.`, `/campaigns/${row.campaignId}`, `${base}:owner`)] : []),
-        event(text(row.donorId), 'donationsSent', 'Your donation is confirmed', `Your donation of ${amount(row)} to “${title}” is confirmed. This payment confirmation is not a charitable tax certificate.`, '/donations', `${base}:donor`),
+        event(text(row.donorId), 'donationsSent', 'Your donation is confirmed', `Your donation of ${amount(row)} to “${title}” is confirmed.${donorCharge(row)} This payment confirmation is not a charitable tax certificate.`, '/donations', `${base}:donor`),
       ];
     }
     if (kind === 'tip' && state === 'SUCCEEDED') return [
@@ -101,7 +114,7 @@ export class MongoActivityAlerts {
       const closure = (row as { closure?: { kind?: string } }).closure?.kind;
       if (state === 'FAILED' && (closure === 'rejected' || closure === 'cancelled')) labels.FAILED = closure;
       const owner = kind === 'creatorPayout' ? text(row.creatorUserId) : campaign?.creatorId;
-      return owner ? [event(owner, 'withdrawals', `Your ${kind === 'beneficiaryPayout' ? 'beneficiary payout' : 'withdrawal'} is ${labels[state]}`, `The ${amount(row)} request is ${labels[state]}. Open your payout history for fees, net amount and the latest status.`, kind === 'creatorPayout' ? '/creator' : `/campaigns/${row.campaignId}`)] : [];
+      return owner ? [event(owner, 'withdrawals', `Your ${kind === 'beneficiaryPayout' ? 'beneficiary payout' : 'withdrawal'} is ${labels[state]}`, `The ${amount(row)} request is ${labels[state]}.${payoutOutcome(row, state)} Open your payout history for fees, net amount and the latest status.`, kind === 'creatorPayout' ? '/creator' : `/campaigns/${row.campaignId}`)] : [];
     }
     if (kind === 'refund') return [event(text(row.requesterId), 'refunds', `Your refund is ${state}`, `Your refund request for ${amount(row)} is ${state}. Check the refund details for the approved amount and payment progress.`, '/refunds')];
     if (kind === 'wallet' && ['deposit', 'transfer', 'withdrawal'].includes(text(row.type))) return [event(text(row.userId), 'wallet', `Wallet ${row.type}: ${state}`, `Your wallet ${row.type} of ${amount(row)} is ${state}. Review your wallet history for details.`, '/wallet')];

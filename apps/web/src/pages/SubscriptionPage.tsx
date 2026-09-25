@@ -105,7 +105,7 @@ const FEATURE_SECTIONS: { title: string; rows: FeatureRow[] }[] = [
   {
     title: 'Features',
     rows: [
-      { label: 'Escrow & milestones', key: 'escrowSupport', format: 'boolean' },
+      { label: 'Split proceeds', key: 'escrowSupport', format: 'boolean' },
       { label: 'Live streaming', key: 'liveStreaming', format: 'boolean' },
     ],
   },
@@ -453,7 +453,7 @@ export function SubscriptionPage() {
           {/* Quick features — only while the plan still grants them */}
           {!lapsed && <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 3 }}>
             {[
-              currentPlan.escrowSupport && 'Escrow',
+              currentPlan.escrowSupport && 'Split proceeds',
               currentPlan.liveStreaming && 'Live Streaming',
               currentSub.status === 'active' && new Date(currentSub.currentPeriodEnd).getTime() > Date.now() && currentPlan.tier !== 'free' && (currentPlan.priceMonthly > 0 || currentPlan.priceYearly > 0) && 'Creator profile donations',
               currentPlan.campaignCollaboration && 'Collaboration',
@@ -617,7 +617,7 @@ export function SubscriptionPage() {
                     `${plan.platformFeePercent}% platform fee`,
                     plan.maxActiveCampaigns === -1 ? 'Unlimited campaigns' : `${plan.maxActiveCampaigns} active campaign${plan.maxActiveCampaigns !== 1 ? 's' : ''}`,
                     plan.maxCampaignGoal === -1 ? 'No goal limit' : `Up to GH₵ ${plan.maxCampaignGoal.toLocaleString()} goal`,
-                    plan.escrowSupport && 'Escrow & milestones',
+                    plan.escrowSupport && 'Split proceeds',
                     plan.liveStreaming && 'Live streaming',
                       plan.tier !== 'free' && (plan.priceMonthly > 0 || plan.priceYearly > 0) && 'Creator donations on your profile',
                     plan.campaignCollaboration && 'Campaign collaboration',

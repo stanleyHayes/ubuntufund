@@ -83,6 +83,7 @@ import { MongoReportRepository } from './infrastructure/adapters/outbound/persis
 import { MongoAdminReportRepository } from './infrastructure/adapters/outbound/persistence/MongoAdminReportRepository.js'
 import { MongoLeaderboardRepository } from './infrastructure/adapters/outbound/persistence/MongoLeaderboardRepository.js'
 import { MongoNotificationRepository } from './infrastructure/adapters/outbound/persistence/MongoNotificationRepository.js'
+import { MongoStaffDecisionNotifier } from './infrastructure/adapters/outbound/persistence/MongoStaffDecisionNotices.js'
 import { MongoOrganizationRepository } from './infrastructure/adapters/outbound/persistence/MongoOrganizationRepository.js'
 import { MongoRefundRepository } from './infrastructure/adapters/outbound/persistence/MongoRefundRepository.js'
 import { MongoKYCRepository } from './infrastructure/adapters/outbound/persistence/MongoKYCRepository.js'
@@ -615,6 +616,16 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     ledgerRepo,
     splitAccrualService,
   )
+  // Staff email alerts (campaign review queue, contact messages). Read through
+  // the versioned store so the address is admin-editable; the env var is only
+  // the fallback until someone sets one. A closure, because
+  // commercialConfigService is declared further down and only the call is deferred.
+  const staffAlerts = new ResendReviewAlerts(
+    process.env.RESEND_API_KEY ?? '',
+    process.env.FROM_EMAIL ?? '',
+    () => commercialConfigService.resolveReviewAlertEmail(process.env.REVIEW_ALERT_EMAIL ?? ''),
+    process.env.ADMIN_WEB_URL ?? 'https://admin.ujimora.com',
+  )
   const activityEmail = new ResendActivityEmails(process.env.RESEND_API_KEY ?? '', process.env.FROM_EMAIL ?? '', config.publicWebUrl, process.env.REPLY_TO_EMAIL || undefined)
   const activityAlerts = new MongoActivityAlerts(activityEmail)
   const accountEmails = new AccountEmails(activityEmail, process.env.AUTH_EMAIL_ENCRYPTION_KEY_BASE64 ? Buffer.from(process.env.AUTH_EMAIL_ENCRYPTION_KEY_BASE64, 'base64') : null)
@@ -678,14 +689,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     // further down, and only the call is deferred — by the time a campaign is
     // created it is initialised.
     { resolveCampaignsConfig: () => commercialConfigService.resolveCampaignsConfig() },
-    new ResendReviewAlerts(
-      process.env.RESEND_API_KEY ?? '',
-      process.env.FROM_EMAIL ?? '',
-      // Read through the versioned store so the address is admin-editable;
-      // the env var is only the fallback until someone sets one.
-      () => commercialConfigService.resolveReviewAlertEmail(process.env.REVIEW_ALERT_EMAIL ?? ''),
-      process.env.ADMIN_WEB_URL ?? 'https://admin.ujimora.com',
-    ),
+    staffAlerts,
     kycRepo,
     publicationAdmission,
     new MongoCampaignCreation(),
@@ -1389,7 +1393,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
   const getDisputeUseCase = new GetDisputeUseCase(disputeRepo, campaignRepo, userRepo)
   const resolveDisputeUseCase = new ResolveDisputeUseCase(disputeRepo)
   const listReportsUseCase = new ListReportsUseCase(adminReportRepo, campaignRepo)
-  const reviewReportUseCase = new ReviewReportUseCase(adminReportRepo)
+  const reviewReportUseCase = new ReviewReportUseCase(adminReportRepo, new MongoStaffDecisionNotifier())
   const reviewCampaignUseCase = new ReviewCampaignUseCase(new MongoCampaignReview())
   const listUsersUseCase = new ListUsersUseCase(adminUserRepo)
   const getAdminUserUseCase = new GetAdminUserUseCase(adminUserRepo)
@@ -1658,7 +1662,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
   )
   const auditLogController = new AuditLogController()
   const testimonialController = new TestimonialController()
-  const contactController = new ContactController()
+  const contactController = new ContactController(staffAlerts)
 
   // ── HTTP pipeline ────────────────────────────────────────────────────
   const app = express()
@@ -1956,7 +1960,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
   // Served from the API because campaigns are dynamic; exposed at
   // app.ujimora.com/sitemap.xml via a rewrite, since a sitemap may only list
   // URLs on the host that serves it.
-  app.use('/', createSitemapRoutes())
+  app.use('/', createSitemapRoutes(publicProfileVisibility))
   app.use('/', createShortLinkPublicRoutes(shortLinkController))
 
   app.use(errorHandler)

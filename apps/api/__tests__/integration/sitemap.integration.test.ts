@@ -8,6 +8,10 @@ import {
   disconnectTestDatabase,
 } from '../helpers/testDatabase.js'
 import { CampaignModel } from '../../src/infrastructure/database/models/CampaignModel.js'
+import { CreatorProfileModel } from '../../src/infrastructure/database/models/CreatorProfileModel.js'
+import { ContentRestrictionModel } from '../../src/infrastructure/database/models/ContentRestrictionModel.js'
+import { UserModel } from '../../src/infrastructure/database/models/UserModel.js'
+import { randomUUID } from 'node:crypto'
 
 let app: Express
 
@@ -105,4 +109,28 @@ it('allows crawling the API host but marks every response noindex', async () => 
   const sitemap = await request(app).get('/sitemap.xml').expect(200)
   expect(sitemap.headers['x-robots-tag']).toBeUndefined()
   expect(robots.headers['x-robots-tag']).toBeUndefined()
+})
+
+/**
+ * The public creator page answers 404 for deleted and publishing-restricted
+ * accounts, but the sitemap listed every creator profile: crawlers were sent
+ * to dead URLs, and restricted users' handles stayed publicly enumerable.
+ */
+it('lists only creators whose public page a visitor can open', async () => {
+  const user = async (extra: Record<string, unknown> = {}) =>
+    String((await UserModel.create({ name: 'Creator', email: `${randomUUID()}@example.test`, passwordHash: 'unused', ...extra }))._id)
+  const [visible, restricted, deleted] = await Promise.all([user(), user(), user({ deletedAt: new Date() })])
+  await ContentRestrictionModel.create({ userId: restricted, reason: 'Moderation fixture', restrictedBy: 'moderator' })
+  await CreatorProfileModel.create([
+    { userId: visible, handle: 'visible-creator', displayName: 'Visible' },
+    { userId: restricted, handle: 'restricted-creator', displayName: 'Restricted' },
+    { userId: deleted, handle: 'deleted-creator', displayName: 'Deleted' },
+    { userId: 'aaaaaaaaaaaaaaaaaaaaaaaa', handle: 'orphan-creator', displayName: 'Orphan' },
+  ])
+
+  const res = await request(app).get('/sitemap.xml').expect(200)
+  expect(res.text).toContain('<loc>https://app.ujimora.com/creators/visible-creator</loc>')
+  for (const hidden of ['restricted-creator', 'deleted-creator', 'orphan-creator']) {
+    expect(res.text, `${hidden} must not be listed`).not.toContain(hidden)
+  }
 })

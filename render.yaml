@@ -147,11 +147,15 @@ services:
       - key: RESEND_API_KEY
         sync: false
       - key: FROM_EMAIL
-        value: info@ujimora.com # sender; must be on the verified domain
+        # Sender only; replies go to REPLY_TO_EMAIL. Must be on the verified
+        # ujimora.com domain. Matches the legal pack (no-reply@ is the only
+        # outbound transactional sender).
+        value: no-reply@ujimora.com
       - key: REPLY_TO_EMAIL
-        # People reply to transactional mail. Without this those replies land in
-        # the sending mailbox rather than one anybody reads.
-        value: info@ujimora.com
+        # People reply to transactional mail, and every email prints this as
+        # "Support: ...". The legal pack and help pages name support@ for
+        # support and refunds, so replies must land there.
+        value: support@ujimora.com
       - key: REVIEW_ALERT_EMAIL
         # Where "a campaign is waiting for review" alerts go. Blank disables the
         # alert rather than emailing nobody — but then held campaigns sit unseen.

@@ -35,6 +35,19 @@ export interface SiteContentRepositoryPort {
   ): Promise<SiteContentRecord>;
 
   /**
+   * Replaces the block at `key` only if it still carries `expectedUpdatedAt`
+   * (optimistic concurrency for admin editors). Never creates a block. Returns
+   * null when the block changed, or no longer exists, since it was read.
+   */
+  replaceIfUnchanged(
+    key: string,
+    type: string,
+    data: unknown,
+    expectedUpdatedAt: Date,
+    updatedBy?: string
+  ): Promise<SiteContentRecord | null>;
+
+  /**
    * Number of stored blocks. Used by the boot seed to decide whether to
    * populate first-run defaults (only when the collection is empty).
    */

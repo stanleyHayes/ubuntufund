@@ -24,7 +24,7 @@ const POLICY_DESCRIPTIONS: Record<string, string> = {
   'acceptable-use':
     'Campaigns that may not run on Ujimora, the categories that need enhanced review, the enforcement actions available, and how to report a suspicious campaign.',
   cookies:
-    'The cookie categories Ujimora uses, which are essential, how to change your choices, which third parties set them, how long they last and how updates work.',
+    'What Ujimora keeps in your browser: no tracking cookies, only storage for sign-in, display preferences, payment recovery and referrals, how long each lasts and how to clear it.',
   'billing-terms':
     'How Ujimora subscription plans are billed: monthly and annual cycles, renewal and cancellation, upgrades, downgrades, price changes and enterprise terms.',
 }

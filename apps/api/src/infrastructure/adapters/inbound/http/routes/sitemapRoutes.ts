@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { CampaignModel } from '../../../../database/models/CampaignModel.js';
 import { CreatorProfileModel } from '../../../../database/models/CreatorProfileModel.js';
 import { logger } from '../../../../logging/logger.js';
+import type { PublicProfileVisibilityPort } from '../../../../../domain/ports/outbound/PublicProfileVisibilityPort.js';
 
 /**
  * The sitemap for app.ujimora.com.
@@ -54,7 +55,12 @@ function urlEntry(path: string, lastmod?: Date, changefreq = 'weekly', priority 
   return `<url><loc>${escapeXml(APP_ORIGIN + path)}</loc>${mod}<changefreq>${changefreq}</changefreq><priority>${priority}</priority></url>`;
 }
 
-export function createSitemapRoutes(): Router {
+/**
+ * `visibility` drops creators whose public page answers 404: deleted accounts
+ * and publishing-restricted users. Listing them would both send crawlers to
+ * dead URLs and publicly enumerate the handles of restricted accounts.
+ */
+export function createSitemapRoutes(visibility: Pick<PublicProfileVisibilityPort, 'hiddenContentAuthorIds'>): Router {
   const router = Router();
 
   router.get('/sitemap.xml', async (_req, res) => {
@@ -66,11 +72,13 @@ export function createSitemapRoutes(): Router {
           .limit(MAX_CAMPAIGNS)
           .lean(),
         CreatorProfileModel.find({})
-          .select('handle updatedAt')
+          .select('handle updatedAt userId')
           .sort({ updatedAt: -1 })
           .limit(MAX_CREATORS)
           .lean(),
       ]);
+      // No viewer: the same check the public creator page applies to a signed-out visitor.
+      const hiddenCreators = await visibility.hiddenContentAuthorIds(creators.map((c) => String(c.userId)));
 
       const entries = [
         ...STATIC_ROUTES.map((r) => urlEntry(r.path, undefined, r.changefreq, r.priority)),
@@ -82,7 +90,7 @@ export function createSitemapRoutes(): Router {
           .filter((c) => typeof c.slug === 'string' && c.slug.length > 0)
           .map((c) => urlEntry(`/c/${c.slug}`, c.updatedAt, 'daily', '0.8')),
         ...creators
-          .filter((c) => typeof c.handle === 'string' && c.handle.length > 0)
+          .filter((c) => typeof c.handle === 'string' && c.handle.length > 0 && !hiddenCreators.has(String(c.userId)))
           .map((c) => urlEntry(`/creators/${c.handle}`, c.updatedAt, 'weekly', '0.6')),
       ];
 

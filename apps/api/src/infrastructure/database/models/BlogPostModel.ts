@@ -20,6 +20,9 @@ const schema = new Schema(
     draft: { type: draft, required: true },
     published: { type: draft, default: undefined },
     publishedAt: Date,
+    // When the published content last changed. Draft-only saves bump updatedAt
+    // and must not move the sitemap lastmod.
+    publishedContentAt: Date,
     publishedSlug: { type: String, unique: true, sparse: true },
     revision: { type: Number, default: 1 },
     updatedBy: String,

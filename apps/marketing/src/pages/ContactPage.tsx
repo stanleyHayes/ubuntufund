@@ -31,6 +31,7 @@ import LinkedInIcon from '@mui/icons-material/LinkedIn'
 import YouTubeIcon from '@mui/icons-material/YouTube'
 import { SHAPE } from '@ubuntu-fund/ui'
 import { useContent } from '../hooks/useContent'
+import { isContactContent } from '../lib/contentShapes'
 import { InternalPageHero } from '../components/InternalPageHero'
 import { useSeo, SITE_ORIGIN } from '@/lib/seo'
 
@@ -91,12 +92,12 @@ function ContactPage() {
   })
   // Runtime CMS: contact details + social links (key 'contact'), falling back to the
   // hardcoded defaults when the CMS is unreachable.
-  const savedContact = useContent('contact', CONTACT_FALLBACK)
+  const savedContact = useContent('contact', CONTACT_FALLBACK, isContactContent)
   const contact = { ...CONTACT_FALLBACK, ...savedContact, socials: { ...CONTACT_FALLBACK.socials, ...savedContact.socials } }
   const responseTimes = (contact.responseTimes ?? []).filter(row => row.label?.trim() && row.time?.trim())
 
   const CONTACT_CHANNELS = [
-    { icon: <EmailRoundedIcon />, label: 'Email support', value: contact.email, detail: 'Send account, campaign, or general questions' },
+    { icon: <EmailRoundedIcon />, label: 'Email us', value: contact.email, detail: 'Send account, campaign, or general questions' },
     { icon: <ChatBubbleOutlineRoundedIcon />, label: 'Support hours', value: contact.hours, detail: 'Availability is confirmed before a live conversation' },
     { icon: <LocationOnRoundedIcon />, label: 'Ghana operations', value: contact.address || 'Serving communities across Ghana', detail: contact.address ? 'Contact us before planning a visit' : 'Contact the team online' },
     contact.phone ? { icon: <PhoneRoundedIcon />, label: 'Phone', value: contact.phone, detail: 'Call the team about your inquiry' } : { icon: <GroupsRoundedIcon />, label: 'Organization help', value: 'Verification and team access', detail: 'Use the form and select Campaign support' },
@@ -251,7 +252,7 @@ function ContactPage() {
                     </Box>
                     <Typography variant="h5" sx={{ mb: 1 }}>Message sent</Typography>
                     <Typography sx={{ color: 'text.secondary', mb: 3, maxWidth: 400, mx: 'auto' }}>
-                      Thank you for reaching out. Our team will review your message and get back to you within 24 hours.
+                      Thank you for reaching out. Our team will review your message and reply by email.
                     </Typography>
                     <Button
                       variant="outlined"
