@@ -47,7 +47,8 @@ test('retains identity edits and requires separate approval before making the pr
   await page.goto('/settings')
   const visibility = page.getByRole('switch', { name: 'Allow profile to be public', exact: true })
   await expect(visibility).not.toBeChecked()
-  await visibility.check()
+  // Going public is held for review, so the switch must stay off: click, don't check().
+  await visibility.click()
   await expect(page.getByText(/Check Publication reviews above/)).toBeVisible()
   await expect(visibility).not.toBeChecked()
   expect(stored.publicProfile).toBe(false)

@@ -23,6 +23,8 @@ test.describe('Donations', () => {
     await expect(dialog).toBeVisible()
     await dialog.getByLabel(/^Amount/).fill('50')
     await dialog.getByText(/wallet/i).first().click()
+    // Wallet donations always require the adult-age and Terms of Use acknowledgement.
+    await dialog.getByRole('checkbox', { name: /Terms of Use for this donation/ }).check()
     await dialog.getByRole('button', { name: 'Confirm Donation' }).click()
 
     await expect(page.getByText(/insufficient wallet balance/i)).toBeVisible()

@@ -1,9 +1,11 @@
 import { test, expect } from '@playwright/test'
 const policies = ['terms', 'privacy', 'organizer-agreement', 'contributor-terms', 'refund-policy', 'acceptable-use', 'cookies', 'billing-terms', 'delete-account']
 test('every policy is public, readable and linked from the legal hub', async ({ page }) => {
+  // Nine cold page loads through the CI dev server can exceed the default 30 s budget.
+  test.slow()
   for (const slug of policies) {
     await page.goto(`/${slug}`)
-    await expect(page.locator('article')).toBeVisible()
+    await expect(page.locator('article')).toBeVisible({ timeout: 15_000 })
     await expect(page.getByRole('heading', { name: 'Need clarification?' })).toBeVisible()
     await expect(page.getByRole('navigation', { name: 'On this page' })).toBeVisible()
     await expect(page.getByText('Unexpected Application Error!')).toHaveCount(0)

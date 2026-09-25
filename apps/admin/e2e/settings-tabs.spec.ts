@@ -73,7 +73,11 @@ for (const width of [390, 1440])
     )
     await page.screenshot({ path: `/tmp/ujimora-settings-tabs-${width}.png`, fullPage: true })
     await page.getByRole('tab', { name: 'Appearance', exact: true }).click()
-    await page.getByRole('switch', { name: 'Dark mode' }).uncheck()
+    // Switching mode re-themes the whole app; assert the settled state rather than
+    // uncheck()'s immediate read, which races that re-render on slow runners.
+    const darkMode = page.getByRole('switch', { name: 'Dark mode' })
+    await darkMode.click()
+    await expect(darkMode).not.toBeChecked()
     await expect
       .poll(() => page.evaluate(() => localStorage.getItem('uf_admin_color_mode')))
       .toBe('light')
