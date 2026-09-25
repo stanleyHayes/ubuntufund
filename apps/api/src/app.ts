@@ -348,7 +348,7 @@ import {
 import { requireAdmin } from './infrastructure/adapters/inbound/middleware/requireRole.js'
 import { errorHandler } from './infrastructure/adapters/inbound/middleware/errorHandler.js'
 import { requestLogger } from './infrastructure/adapters/inbound/middleware/requestLogger.js'
-import { apiRateLimiter } from './infrastructure/adapters/inbound/middleware/rateLimiter.js'
+import { apiRouterRateLimiter } from './infrastructure/adapters/inbound/middleware/rateLimiter.js'
 import { auditMutation } from './infrastructure/adapters/inbound/middleware/auditMutation.js'
 
 import { createAuthRoutes } from './infrastructure/adapters/inbound/http/routes/authRoutes.js'
@@ -1591,7 +1591,8 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
   })
 
   const api = express.Router()
-  api.use(apiRateLimiter)
+  // General 300/15 min per client; read-only live polling/SSE has its own bucket.
+  api.use(apiRouterRateLimiter)
   api.use(auditMutation)
 
   api.use('/auth', createAuthRoutes(authController, authMiddleware))

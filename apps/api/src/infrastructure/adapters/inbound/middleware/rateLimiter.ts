@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
+import { rateLimitClientKey } from './clientIp.js';
 
 interface WindowState {
   count: number;
@@ -39,7 +40,10 @@ function createRateLimiter(options: { windowMs: number; max: number; scope: stri
   sweeper.unref();
 
   return (req: Request, res: Response, next: NextFunction): void => {
-    const key = `${options.scope}:${req.ip ?? 'unknown'}`;
+    // Keyed on the resolved client address (see clientIp.ts), never req.ip:
+    // behind Render's proxy req.ip is the proxy, which made every limiter one
+    // bucket shared by the whole platform.
+    const key = `${options.scope}:${rateLimitClientKey(req)}`;
     const now = Date.now();
     let state = windows.get(key);
 
@@ -71,6 +75,40 @@ export const apiRateLimiter = createRateLimiter({
   max: 300,
   scope: 'api',
 });
+
+/**
+ * Read-only live surfaces: 1800 requests / 15 min per IP (2/s sustained).
+ *
+ * The watch page and the host studio poll every 10 s (~90 requests / 15 min
+ * per tab) and SSE clients reconnect on every drop. A room of viewers behind
+ * one carrier-NAT or venue Wi-Fi address would exhaust the general 300 budget
+ * within minutes — and then be locked out of donating, too. These reads get a
+ * separate, larger bucket so they neither hit nor drain the general one.
+ */
+export const liveReadRateLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 1800,
+  scope: 'live-read',
+});
+
+/** Paths (relative to /api/v1) of the read-only live polling and SSE routes. */
+const LIVE_READ_PATHS = [
+  /^\/campaigns\/[^/]+\/(?:events|active-live|live-sessions\/active)\/?$/,
+  /^\/live-sessions\/(?:video\/config|[^/]+\/(?:public|overlay|overlay\/view|events))\/?$/,
+];
+
+export function isLiveReadRequest(req: Request): boolean {
+  return (req.method === 'GET' || req.method === 'HEAD') && LIVE_READ_PATHS.some((path) => path.test(req.path));
+}
+
+/**
+ * The /api/v1 router's limiter: live reads go to their own bucket, everything
+ * else — including every write on the same resources — to the general one.
+ */
+export function apiRouterRateLimiter(req: Request, res: Response, next: NextFunction): void {
+  if (isLiveReadRequest(req)) liveReadRateLimiter(req, res, next);
+  else apiRateLimiter(req, res, next);
+}
 
 /** Strict limit for credential endpoints: 30 requests / 15 min per IP. */
 export const authRateLimiter = createRateLimiter({

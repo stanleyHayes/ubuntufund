@@ -2,6 +2,7 @@ import type { Response, NextFunction } from 'express';
 import type { AuthenticatedRequest } from './authMiddleware.js';
 import { AuditLogModel, type AuditSeverity } from '../../../database/models/AuditLogModel.js';
 import { logger } from '../../../logging/logger.js';
+import { clientIp } from './clientIp.js';
 
 const MUTATION_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
@@ -51,7 +52,7 @@ export function auditMutation(
       method: req.method,
       path: req.originalUrl.split('?')[0],
       statusCode: res.statusCode,
-      ip: req.ip,
+      ip: clientIp(req),
       userAgent: req.get('user-agent'),
     }).catch((error: unknown) => {
       logger.error({ error, path: req.originalUrl }, 'audit log write failed');

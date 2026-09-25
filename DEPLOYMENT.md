@@ -48,10 +48,29 @@ Each app is its own Vercel project pointing at this monorepo:
 | Marketing | `apps/marketing` | [apps/marketing/vercel.json](apps/marketing/vercel.json) |
 | Admin | `apps/admin` | [apps/admin/vercel.json](apps/admin/vercel.json) |
 
-All three configs rewrite `/api/v1/*` to the Render API, so the frontends work
-with **no required environment variables** — import the repo in Vercel three
-times with the root directories above and the rest is picked up from the config
-files.
+The donor app and the admin console call the API origin directly
+(`VITE_API_URL=https://api.ujimora.com/api/v1` in their tracked
+`.env.production`), so the frontends work with **no required environment
+variables** — import the repo in Vercel three times with the root directories
+above and the rest is picked up from the config files.
+
+Why direct: the API rate-limits and audits by client IP, taken from the
+`CF-Connecting-IP` header that Render's Cloudflare edge sets (see
+`apps/api/src/infrastructure/adapters/inbound/middleware/clientIp.ts`). A
+request proxied through Vercel arrives from Vercel's egress IP, so every
+browser using the rewrite shares one rate-limit bucket. Direct calls need the
+browser origin in the API's `CORS_ORIGINS` (render.yaml already lists
+`ujimora.com`, `www`, `app` and `admin`); auth is bearer-token only, so there
+is no cookie or same-origin dependency. All three configs still rewrite
+`/api/v1/*` to the API, for bundles built before the switch and for the
+marketing site, which stays on the rewrite.
+
+Preview deployments are served from `*.vercel.app`, which `CORS_ORIGINS` does
+not (and should not) list, so a preview built with the production value cannot
+reach the API from the browser. To keep previews on the rewrite, set
+`VITE_API_URL=/api/v1` for the **Preview** environment in each Vercel project;
+a Vercel env var overrides `.env.production`. Make sure no **Production**-scoped
+`VITE_API_URL` is set there either, or it will override the direct URL.
 
 ### Environment variables
 
@@ -61,7 +80,7 @@ Each frontend ships an `.env.example` (template), a tracked `.env.production`
 
 | Var | Apps | Purpose |
 |---|---|---|
-| `VITE_API_URL` | web, admin, marketing | API base. Defaults to `/api/v1` (Vercel rewrite → Render). Set to an absolute origin only to bypass the rewrite. |
+| `VITE_API_URL` | web, admin, marketing | API base. Web and admin production builds use `https://api.ujimora.com/api/v1` (direct, so the API sees each browser's IP); marketing and local dev use `/api/v1` (Vercel rewrite / Vite proxy). |
 | `VITE_WEB_APP_URL` | marketing | Donor web-app URL that marketing CTAs link to. Set to the deployed web project's domain in Vercel. |
 | `API_PROXY_TARGET` | web, admin, marketing | **Dev only** — the Vite dev server proxies `/api/v1` here. Not read in production builds. |
 
