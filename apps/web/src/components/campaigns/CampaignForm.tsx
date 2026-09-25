@@ -137,7 +137,9 @@ const STEPS = [
 
 // Fields validated on each step (priority always has a value)
 const STEP_FIELDS: Record<number, (keyof FormErrors)[]> = {
-  0: ['title', 'summary', 'category'],
+  // No separate summary: the API has no field for it, so it was silently
+  // dropped. Share cards derive their summary from the story.
+  0: ['title', 'category'],
   1: ['description', 'beneficiaries', 'coverImageUrl'],
   2: ['goalAmount', 'endDate'],
   3: [],
@@ -145,7 +147,6 @@ const STEP_FIELDS: Record<number, (keyof FormErrors)[]> = {
 
 interface FormData {
   title: string
-  summary: string
   category: CampaignCategory | ''
   description: string
   beneficiaries: string
@@ -158,7 +159,6 @@ interface FormData {
 
 interface FormErrors {
   title?: string
-  summary?: string
   category?: string
   description?: string
   beneficiaries?: string
@@ -183,9 +183,6 @@ function validate(data: FormData): FormErrors {
   if (!data.title.trim()) e.title = 'Give your campaign a title'
   else if (data.title.trim().length < 5) e.title = 'Use at least 5 characters'
 
-  if (!data.summary.trim()) e.summary = 'Add a one-line summary'
-  else if (data.summary.trim().length < 10) e.summary = 'A little more detail — 10+ characters'
-  else if (data.summary.length > 140) e.summary = 'Keep it under 140 characters'
 
   if (!data.category) e.category = 'Pick a category'
 
@@ -209,7 +206,6 @@ const todayIso = new Date().toISOString().split('T')[0]
 
 const EMPTY_FORM: FormData = {
   title: '',
-  summary: '',
   category: '',
   description: '',
   beneficiaries: '',
@@ -228,7 +224,7 @@ function parseFormDraft(value: unknown): FormData | null {
   const category = (Object.values(CampaignCategory) as string[]).includes(text('category')) ? (text('category') as CampaignCategory) : ''
   const priority = (Object.values(CampaignPriority) as string[]).includes(text('priority')) ? (text('priority') as CampaignPriority) : CampaignPriority.NORMAL
   const form: FormData = {
-    title: text('title'), summary: text('summary'), category, description: text('description'),
+    title: text('title'), category, description: text('description'),
     beneficiaries: text('beneficiaries'), coverImageUrl: text('coverImageUrl'), goalAmount: text('goalAmount'),
     currency: 'GHS', endDate: text('endDate'), priority,
   }
@@ -590,7 +586,6 @@ function CampaignFormForViewer({ userId }: { userId: string | null }) {
     if (Object.keys(all).length > 0) {
       setTouched({
         title: true,
-        summary: true,
         category: true,
         description: true,
         beneficiaries: true,
@@ -609,7 +604,6 @@ function CampaignFormForViewer({ userId }: { userId: string | null }) {
     const cover = formData.coverImageUrl.trim()
     const payload = {
       title: formData.title.trim(),
-      summary: formData.summary.trim(),
       category: formData.category as CampaignCategory,
       description: formData.description.trim(),
       beneficiaries: parseBeneficiaries(formData.beneficiaries),
@@ -905,21 +899,6 @@ function CampaignFormForViewer({ userId }: { userId: string | null }) {
               slotProps={{ htmlInput: { maxLength: 90 } }}
             />
 
-            <TextField
-              label="Short summary"
-              placeholder="One sentence on what you're raising for and why."
-              value={formData.summary}
-              onChange={change('summary')}
-              onBlur={blur('summary')}
-              error={errFor('summary')}
-              helperText={helperFor('summary', `${formData.summary.length}/140`)}
-              fullWidth
-              multiline
-              rows={2}
-              sx={fieldSx}
-              slotProps={{ htmlInput: { maxLength: 140 } }}
-            />
-
             <Box>
               <Eyebrow>Category</Eyebrow>
               <Box
@@ -1204,7 +1183,6 @@ function CampaignFormForViewer({ userId }: { userId: string | null }) {
           >
             <ReviewSection title="Basics" onEdit={() => setStep(0)}>
               <ReviewItem label="Title">{formData.title || '—'}</ReviewItem>
-              <ReviewItem label="Summary">{formData.summary || '—'}</ReviewItem>
               <ReviewItem label="Category">
                 {formData.category
                   ? CATEGORIES.find((c) => c.value === formData.category)?.label

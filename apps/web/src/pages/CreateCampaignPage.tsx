@@ -15,7 +15,7 @@ const GOLD_DARK = '#A07E33'
 const DIVIDER = 'var(--border-subtle)'
 
 const ROADMAP = [
-  { label: 'Basics', hint: 'Title, summary & category' },
+  { label: 'Basics', hint: 'Title & category' },
   { label: 'Story', hint: 'The need, who it helps, a photo' },
   { label: 'Goal & timeline', hint: 'Your GH₵ target and deadline' },
   { label: 'Review', hint: 'Confirm, then send for review' },

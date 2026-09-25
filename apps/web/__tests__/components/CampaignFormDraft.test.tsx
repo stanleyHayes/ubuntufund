@@ -55,7 +55,7 @@ it('restores the exact unsent campaign draft, including the cover, after the pag
 it('sends the Idempotency-Key it is given so a resubmitted version cannot create a duplicate', async () => {
   vi.mocked(api.post).mockResolvedValue({ id: 'campaign-1' })
   const { result } = renderHook(() => useCreateCampaign())
-  const payload = { title: 'Title', summary: 'Summary text', category: 'medical', description: 'Description text', beneficiaries: ['A'], imageUrls: [], goalAmount: 10, currency: 'GHS', endDate: '2099-01-01T00:00:00.000Z', priority: 'normal' } as unknown as Parameters<typeof result.current.createCampaign>[0]
+  const payload = { title: 'Title', category: 'medical', description: 'Description text', beneficiaries: ['A'], imageUrls: [], goalAmount: 10, currency: 'GHS', endDate: '2099-01-01T00:00:00.000Z', priority: 'normal' } as unknown as Parameters<typeof result.current.createCampaign>[0]
   await result.current.createCampaign(payload, 'key-0123456789abcdef')
   expect(api.post).toHaveBeenCalledWith('/campaigns', payload, { 'Idempotency-Key': 'key-0123456789abcdef' })
 })

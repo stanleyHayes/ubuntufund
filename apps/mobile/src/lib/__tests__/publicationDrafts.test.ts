@@ -7,7 +7,7 @@ vi.mock('@react-native-async-storage/async-storage', () => ({ default: {
 vi.mock('expo-crypto', () => ({ randomUUID: () => crypto.randomUUID() }))
 import { clearAllPublicationDrafts, clearCampaignDraft, clearIdentityDraft, creationRequestKey, loadCampaignDraft, loadIdentityDraft, saveCampaignDraft, saveIdentityDraft, type CampaignDraft } from '../publicationDrafts'
 
-const draft: CampaignDraft = { title: 'Clinic roof', summary: 'Fix the clinic roof', description: 'The roof leaks.', category: 'medical', priority: 'urgent', beneficiaries: 'Clinic', cover: 'https://media.example.test/cover.jpg', amount: '5000', end: '2099-01-01' }
+const draft: CampaignDraft = { title: 'Clinic roof', description: 'The roof leaks.', category: 'medical', priority: 'urgent', beneficiaries: 'Clinic', cover: 'https://media.example.test/cover.jpg', amount: '5000', end: '2099-01-01' }
 beforeEach(() => { data.clear() })
 
 it('restores the exact draft for the same account only and clears it after creation', async () => {

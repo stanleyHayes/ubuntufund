@@ -47,7 +47,7 @@ function strings<K extends string>(value: Record<string, unknown>, fields: reado
   return Object.fromEntries(fields.map(field => [field, typeof value[field] === 'string' ? value[field] : ''])) as Record<K, string>
 }
 
-const CAMPAIGN_FIELDS = ['title', 'summary', 'description', 'category', 'priority', 'beneficiaries', 'cover', 'amount', 'end'] as const
+const CAMPAIGN_FIELDS = ['title', 'description', 'category', 'priority', 'beneficiaries', 'cover', 'amount', 'end'] as const
 export type CampaignDraft = Record<(typeof CAMPAIGN_FIELDS)[number], string>
 
 export const loadCampaignDraft = (userId: string) => loadDraft('campaign', userId, value => {

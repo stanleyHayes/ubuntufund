@@ -36,7 +36,6 @@ function CampaignFormForViewer() {
   const [step, setStep] = useState(0)
   const [automatedReviewConsent, setAutomatedReviewConsent] = useState(false)
   const [title, setTitle] = useState('')
-  const [summary, setSummary] = useState('')
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState<CampaignCategory>(CampaignCategory.COMMUNITY)
   const [priority, setPriority] = useState<CampaignPriority>(CampaignPriority.NORMAL)
@@ -63,7 +62,7 @@ function CampaignFormForViewer() {
     void loadCampaignDraft(user.id).then(draft => {
       if (!active) return
       if (draft) {
-        setTitle(draft.title); setSummary(draft.summary); setDescription(draft.description); setBeneficiaries(draft.beneficiaries)
+        setTitle(draft.title); setDescription(draft.description); setBeneficiaries(draft.beneficiaries)
         setCover(draft.cover); setAmount(draft.amount); setEnd(draft.end)
         if ((Object.values(CampaignCategory) as string[]).includes(draft.category)) setCategory(draft.category as CampaignCategory)
         if ((Object.values(CampaignPriority) as string[]).includes(draft.priority)) setPriority(draft.priority as CampaignPriority)
@@ -75,18 +74,19 @@ function CampaignFormForViewer() {
   }, [user])
   useEffect(() => {
     if (!user || !draftLoaded || created) return
-    const draft = { title, summary, description, category, priority, beneficiaries, cover, amount, end }
-    if (![title, summary, description, beneficiaries, cover, amount, end].some(Boolean)) void clearCampaignDraft(user.id)
+    const draft = { title, description, category, priority, beneficiaries, cover, amount, end }
+    if (![title, description, beneficiaries, cover, amount, end].some(Boolean)) void clearCampaignDraft(user.id)
     else void saveCampaignDraft(user.id, draft)
-  }, [user, draftLoaded, created, title, summary, description, category, priority, beneficiaries, cover, amount, end])
+  }, [user, draftLoaded, created, title, description, category, priority, beneficiaries, cover, amount, end])
   function discardDraft() {
-    setTitle(''); setSummary(''); setDescription(''); setBeneficiaries(''); setCover(''); setAmount(''); setEnd('')
+    setTitle(''); setDescription(''); setBeneficiaries(''); setCover(''); setAmount(''); setEnd('')
     setCategory(CampaignCategory.COMMUNITY); setPriority(CampaignPriority.NORMAL); setStep(0); setDraftRestored(false)
   }
   useEffect(() => { if (!user) return; let active = true; setLoadError(''); api.get<Options>('/campaigns/creation-options').then(v => { if (active) setOptions(v) }).catch(e => { if (active) setLoadError(e.message) }); return () => { active = false } }, [retry, user])
   const emails = [...new Set(invites.split(',').map(s => s.trim()).filter(Boolean))]
   function validate(stage: number) {
-    if (stage === 0 && (title.trim().length < 5 || summary.trim().length < 10 || summary.length > 140)) return 'Enter a title of at least 5 characters and a summary of 10–140 characters.'
+    // No separate summary: the API has no field for it, so it was silently dropped.
+    if (stage === 0 && title.trim().length < 5) return 'Enter a title of at least 5 characters.'
     if (stage === 1 && (description.trim().length < 20 || description.length > 5000 || !beneficiaries.trim())) return 'Enter a story of 20–5,000 characters and name at least one beneficiary.'
     if (stage === 2) {
       if (!Number.isFinite(Number(amount)) || Number(amount) <= 0 || (options?.maxGoal != null && Number(amount) > options.maxGoal)) return 'Enter a positive goal within your current campaign limit.'
@@ -101,7 +101,7 @@ function CampaignFormForViewer() {
     if (!options?.canCreate || created) return
     setBusy(true); setError('')
     try {
-      const payload = { title: title.trim(), summary: summary.trim(), description: description.trim(), category, priority, beneficiaries: beneficiaries.split(',').map(s => s.trim()).filter(Boolean), imageUrls: cover ? [cover] : [], goalAmount: Number(amount), currency: 'GHS', endDate: new Date(end).toISOString() }
+      const payload = { title: title.trim(), description: description.trim(), category, priority, beneficiaries: beneficiaries.split(',').map(s => s.trim()).filter(Boolean), imageUrls: cover ? [cover] : [], goalAmount: Number(amount), currency: 'GHS', endDate: new Date(end).toISOString() }
       // Same version, same key: a retry after a lost response cannot create a duplicate.
       creationKey.current = creationRequestKey(creationKey.current, payload)
       const campaign = await api.post<{ id: string; status: string }>('/campaigns', { automatedReviewConsent, ...payload }, { 'Idempotency-Key': creationKey.current.key })
@@ -127,7 +127,7 @@ function CampaignFormForViewer() {
         {draftRestored && <View style={card}><Text>We restored your unsent draft from this device. If it is waiting for safety review, submit this same version again once it is approved.</Text><Button onPress={discardDraft}>Start over</Button></View>}
         <Text style={{ color: p.textSecondary }}>Step {step + 1} of 4 · {labels[step]}</Text><ProgressBar progress={(step + 1) / 4} color={p.primary} />
         <View style={card}>
-          {step === 0 && <><TextInput label="Campaign title" value={title} onChangeText={setTitle} maxLength={200} /><TextInput label="One-line summary" value={summary} onChangeText={setSummary} maxLength={140} /><SelectionField label="Category" value={category} options={Object.values(CampaignCategory).map(value => ({ value, label: value }))} onChange={v => setCategory(v as CampaignCategory)} /></>}
+          {step === 0 && <><TextInput label="Campaign title" value={title} onChangeText={setTitle} maxLength={200} /><SelectionField label="Category" value={category} options={Object.values(CampaignCategory).map(value => ({ value, label: value }))} onChange={v => setCategory(v as CampaignCategory)} /></>}
           {step === 1 && <><TextInput label="Your story" value={description} onChangeText={setDescription} multiline maxLength={5000} /><AiWritingAssistant text={description} onApply={setDescription} /><TextInput label="Beneficiaries (comma-separated)" value={beneficiaries} onChangeText={setBeneficiaries} />{options.plan.maxMediaPerCampaign !== 0 && <MediaUploadField label="Campaign cover" folder="campaigns" value={cover} onChange={setCover} crop aspect={[16, 9]} onBusyChange={setUploading} />}</>}
           {step === 2 && <>
             <Text>Goals above GHS 250,000 need staff approval unless you have current approved identity verification (business verification for organizations) and an earlier published campaign. Plan, compliance and content-safety checks still apply.</Text>
@@ -139,7 +139,7 @@ function CampaignFormForViewer() {
             {split && allocations.map((a, i) => <View key={i} style={{ gap: 8 }}><Text>Beneficiary {i + 1}</Text>{(['name', 'email', 'percent'] as const).map(key => <TextInput key={key} label={key === 'percent' ? 'Share (%)' : key} value={a[key]} keyboardType={key === 'percent' ? 'decimal-pad' : key === 'email' ? 'email-address' : 'default'} onChangeText={v => setAllocations(rows => rows.map((row, index) => index === i ? { ...row, [key]: v } : row))} />)}<Button onPress={() => setAllocations(rows => rows.filter((_, index) => index !== i))}>Remove recipient</Button></View>)}
             {split && <Button onPress={() => setAllocations(rows => [...rows, { name: '', email: '', percent: '' }])}>Add recipient</Button>}
           </>}
-          {step === 3 && <><Text variant="titleLarge">{title}</Text><Text>{summary}</Text><Text>{description}</Text><Text>Goal: GH₵{amount} · Ends {end}</Text><Text>Category: {category} · Urgency: {priority}</Text><Text>Beneficiaries: {beneficiaries}</Text><Text>Safety checks and financial approval apply separately. Goals above GH₵250,000 need staff financial approval unless you are currently verified and have a previous published campaign.</Text><PublicationConsent value={automatedReviewConsent} onChange={setAutomatedReviewConsent} />{error && <PublicationReviews />}</>}
+          {step === 3 && <><Text variant="titleLarge">{title}</Text><Text>{description}</Text><Text>Goal: GH₵{amount} · Ends {end}</Text><Text>Category: {category} · Urgency: {priority}</Text><Text>Beneficiaries: {beneficiaries}</Text><Text>Safety checks and financial approval apply separately. Goals above GH₵250,000 need staff financial approval unless you are currently verified and have a previous published campaign.</Text><PublicationConsent value={automatedReviewConsent} onChange={setAutomatedReviewConsent} />{error && <PublicationReviews />}</>}
         </View>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>{step > 0 && <Button disabled={busy || uploading} onPress={() => setStep(s => s - 1)}>Back</Button>}<Button mode="contained" loading={busy} disabled={busy || uploading} onPress={step === 3 ? () => void submit() : () => { const issue = validate(step); if (issue) setError(issue); else { setError(''); setStep(s => s + 1) } }}>{step === 3 ? 'Create campaign' : 'Continue'}</Button></View>
       </>}

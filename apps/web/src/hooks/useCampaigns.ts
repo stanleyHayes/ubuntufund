@@ -118,7 +118,6 @@ export function useMyCampaigns(): UseCampaignsResult {
 interface CreateCampaignPayload {
   automatedReviewConsent?: boolean
   title: string
-  summary: string
   category: CampaignCategory
   description: string
   beneficiaries: string[]
