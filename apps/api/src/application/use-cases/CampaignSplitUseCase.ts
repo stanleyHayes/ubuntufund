@@ -14,6 +14,7 @@ import type { CampaignSplitRepositoryPort } from '../../domain/ports/outbound/Ca
 import type { CampaignBeneficiaryBalanceRepositoryPort } from '../../domain/ports/outbound/CampaignBeneficiaryBalanceRepositoryPort.js';
 import type { CampaignBeneficiaryAccrualRepositoryPort } from '../../domain/ports/outbound/CampaignBeneficiaryAccrualRepositoryPort.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
+import { isPublicCampaign } from '../../domain/services/campaignVisibility.js';
 import { toSplitDto, toSplitDisclosure, toBeneficiaryStatement } from './mappers/splitDto.js';
 
 /** The platform's only settlement currency. */
@@ -98,10 +99,19 @@ export class CampaignSplitUseCase {
     return toSplitDto(created);
   }
 
-  /** Public: the active split's donor-facing disclosure (null when none). */
+  /**
+   * The active split's donor-facing disclosure (null when none). Beneficiary
+   * names and shares are public only for a public campaign; a pending,
+   * rejected or blocked one answers 404 like its detail page, except to the
+   * owner or an administrator.
+   */
   async getDisclosure(
-    campaignId: string
+    campaignId: string,
+    requester?: Partial<SplitRequester>
   ): Promise<CampaignSplitDisclosure | null> {
+    const campaign = await this.campaignRepo.findById(campaignId);
+    const privileged = !!campaign && (campaign.creatorId === requester?.userId || requester?.role === 'admin');
+    if (!campaign || (!isPublicCampaign(campaign.status) && !privileged)) throw new AppError('Campaign not found', 404);
     const active = await this.splitRepo.findActive(campaignId);
     return active ? toSplitDisclosure(active) : null;
   }

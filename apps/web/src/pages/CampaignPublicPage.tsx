@@ -24,6 +24,7 @@ import {
   donatePath,
 } from '@/lib/fundraising'
 import { useSeo, SITE_ORIGIN } from '@/lib/seo'
+import { SplitDisclosure } from '@/components/campaigns/SplitDisclosure'
 
 // ---------------------------------------------------------------------------
 // Animations
@@ -235,6 +236,8 @@ export function CampaignPublicPage() {
           </Box>
         )}
       </Box>
+
+      <SplitDisclosure campaignId={campaign.id} sx={{ mb: 2 }} />
 
       {/* Donate CTA */}
       <Button

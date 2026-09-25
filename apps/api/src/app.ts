@@ -1650,7 +1650,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
   )
   api.use('/campaigns', createCampaignQrRoutes(shortLinkController, authMiddleware))
   api.use('/campaigns', createCampaignPayoutRoutes(payoutController, authMiddleware))
-  api.use('/campaigns', createCampaignSplitRoutes(campaignSplitController, authMiddleware))
+  api.use('/campaigns', createCampaignSplitRoutes(campaignSplitController, authMiddleware, optionalAuthMiddleware))
   // Crypto rail (Crypto Donations plan §17): public asset/network discovery +
   // campaign-scoped quote/deposit. OFF unless config.crypto.enabled.
   api.use('/payments/crypto', createCryptoRoutes(cryptoController))

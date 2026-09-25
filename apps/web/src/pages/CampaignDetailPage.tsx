@@ -51,6 +51,7 @@ import { api } from '@/lib/api'
 import { acceptsCampaignDonation, validWalletDonationAmount, walletDonationProviders } from '@/lib/campaignDetailPolicy'
 import { useEnabledPaymentProviders } from '@/hooks/useEnabledPaymentProviders'
 import { useSeo, SITE_ORIGIN } from '@/lib/seo'
+import { SplitDisclosure } from '@/components/campaigns/SplitDisclosure'
 
 function formatCategory(category: string): string {
   return category.charAt(0).toUpperCase() + category.slice(1).replace(/_/g, ' ')
@@ -278,6 +279,8 @@ function CampaignDetailContent() {
           }}
         />
       </Box>
+
+      <SplitDisclosure campaignId={campaign.id} sx={{ mb: 2 }} />
 
       {/* Donation CTA */}
       <Box sx={{ display: 'flex', gap: 1.5, flexDirection: 'column', alignItems: 'stretch' }}>

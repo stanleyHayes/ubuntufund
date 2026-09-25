@@ -155,6 +155,37 @@ describe('Campaign split-proceeds Integration (spec §17)', () => {
     ]);
   });
 
+  it('discloses a split only for a public campaign, except to its owner or an administrator', async () => {
+    const owner = await registerUser(app, uniqueEmail('split-vis'));
+    const campaignId = await createCampaign(app, owner.token, owner.userId);
+    const created = await request(app).post(`/api/v1/campaigns/${campaignId}/split`).set('Authorization', `Bearer ${owner.token}`).send({ allocations: ALLOCATIONS }).expect(201);
+    for (const b of created.body.data.allocations as { beneficiaryId: string }[]) {
+      await request(app).post(`/api/v1/campaigns/${campaignId}/split/1/consent`).set('Authorization', `Bearer ${owner.token}`).send({ beneficiaryId: b.beneficiaryId, status: 'accepted' }).expect(200);
+    }
+    await request(app).post(`/api/v1/campaigns/${campaignId}/split/1/activate`).set('Authorization', `Bearer ${owner.token}`).send({}).expect(200);
+    const stranger = await registerUser(app, uniqueEmail('split-vis-stranger'));
+    const admin = await registerUser(app, uniqueEmail('split-vis-admin'));
+    await UserModel.findByIdAndUpdate(admin.userId, { role: 'admin' });
+    const { CampaignModel } = await import('../../src/infrastructure/database/models/CampaignModel.js');
+    const read = (token?: string) => {
+      const req = request(app).get(`/api/v1/campaigns/${campaignId}/split`);
+      return token ? req.set('Authorization', `Bearer ${token}`) : req;
+    };
+    for (const status of ['pending_review', 'blocked', 'draft']) {
+      await CampaignModel.updateOne({ _id: campaignId }, { $set: { status } });
+      const denied = await read().expect(404);
+      expect(JSON.stringify(denied.body)).not.toContain('Ama');
+      await read(stranger.token).expect(404);
+      expect((await read(owner.token).expect(200)).body.data.beneficiaries).toHaveLength(2);
+      expect((await read(admin.token).expect(200)).body.data.beneficiaries).toHaveLength(2);
+    }
+    for (const status of ['active', 'funded', 'expired']) {
+      await CampaignModel.updateOne({ _id: campaignId }, { $set: { status } });
+      expect((await read().expect(200)).body.data.beneficiaries).toHaveLength(2);
+    }
+    await request(app).get('/api/v1/campaigns/64b000000000000000000000/split').expect(404);
+  });
+
   it('amends prospectively: a new version supersedes the prior active one', async () => {
     const { userId, token } = await registerUser(app, uniqueEmail('split-amend'));
     const campaignId = await createCampaign(app, token, userId);
