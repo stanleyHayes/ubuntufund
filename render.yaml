@@ -55,6 +55,10 @@ services:
         sync: false
       - key: PAYSTACK_PUBLIC_KEY
         sync: false
+      - key: PAYSTACK_CHANNELS
+        # Checkout channels offered by default (comma-separated). Card + mobile
+        # money is what the checkout copy promises; add e.g. bank_transfer here.
+        value: card,mobile_money
       - key: PAYSTACK_APPROVAL_REQUIRE_SIGNATURE
         # Transfer-approval callbacks must carry a valid signature. Leave "true".
         # Only set "false" if Paystack enables Transfer Approval for the account
@@ -127,6 +131,10 @@ services:
         value: paystack
       - key: PAYMENTS_RECONCILIATION_ENABLED
         value: "true" # scheduled payout/tip reconciliation sweep ON in prod
+      - key: RECONCILIATION_SCHEDULER_ENABLED
+        # This process runs the in-process reconciliation timer (the API's
+        # production default, made explicit). Keep ONE instance, see PLAN above.
+        value: "true"
       - key: PAYMENTS_SUPPORTED_CURRENCIES
         value: "GHS,USD,GBP,EUR,CAD"
       - key: PAYMENTS_FX_SOURCE
@@ -203,6 +211,10 @@ services:
       - key: APPLE_IAP_APP_ID
         sync: false
       - key: APPLE_IAP_ROOT_CERTIFICATES_BASE64
+        sync: false
+      - key: APPLE_IAP_ALLOW_SANDBOX_FALLBACK
+        # Blank = "true": App Review/TestFlight sandbox receipts are accepted
+        # (recorded as sandbox, excluded from revenue). "false" rejects them.
         sync: false
       - key: GOOGLE_PLAY_SERVICE_ACCOUNT_JSON
         sync: false
