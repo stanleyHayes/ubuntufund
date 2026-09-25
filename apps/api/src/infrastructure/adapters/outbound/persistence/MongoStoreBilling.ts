@@ -12,6 +12,18 @@ import { storePurchaseKey, type StoreReceiptCipher } from '../payments/StoreRece
 
 const RETRY_MS = 60_000;
 const RECHECK_MS = 15 * 60_000;
+const DAY_MS = 24 * 60 * 60_000;
+
+/**
+ * A second, separately charged store subscription while another plan is still
+ * active. Still a 409 to the client, but the charge is real, so the purchase is
+ * recorded for staff review rather than dropped.
+ */
+export class DuplicateStorePurchaseError extends AppError {
+  constructor() {
+    super('Another subscription is already active. Contact support to review the duplicate purchase.', 409);
+  }
+}
 
 export class MongoStoreBilling extends MongoBillingOwnership {
   constructor(private readonly verifier: StorePurchaseVerifierPort, private readonly cipher: StoreReceiptCipher) { super(); }
@@ -26,7 +38,39 @@ export class MongoStoreBilling extends MongoBillingOwnership {
     }
     // The verified purchase row is now the durable evidence for this rail.
     await this.claimProvider(userId, store, { refreshHold: false });
-    return this.apply(userId, purchase, revision);
+    try {
+      return await this.apply(userId, purchase, revision);
+    } catch (error) {
+      if (error instanceof DuplicateStorePurchaseError) await this.recordDuplicate(userId, purchase, revision);
+      throw error;
+    }
+  }
+
+  /**
+   * Keep a charged duplicate visible to staff (Admin → Store billing recovery)
+   * after the entitlement transaction refused it. The subscription and applied
+   * revision are untouched and nothing is acknowledged, so Google refunds an
+   * unacknowledged purchase automatically; Apple purchases need the member to
+   * request a refund from Apple. It is re-verified daily and applied once the
+   * other plan lapses.
+   */
+  private async recordDuplicate(userId: string, purchase: VerifiedStorePurchase, revision: number): Promise<void> {
+    const now = new Date();
+    try {
+      await StorePurchaseModel.findOneAndUpdate({
+        _id: storePurchaseKey(purchase.store, purchase.reference), userId,
+        $or: [{ verificationRevision: { $lt: revision } }, { verificationRevision: { $exists: false } }],
+      }, { $set: {
+        userId, store: purchase.store, referenceCiphertext: this.cipher.encrypt(purchase.store, purchase.reference),
+        productId: purchase.productId, basePlanId: purchase.basePlanId, environment: purchase.environment,
+        active: purchase.active, autoRenew: purchase.autoRenew, periodEnd: purchase.periodEnd,
+        acknowledgementPending: false, nextCheckAt: new Date(now.getTime() + DAY_MS), lastCheckedAt: now,
+        verificationRevision: revision, reviewRequired: true, lastError: 'duplicate_active_subscription',
+      } }, { upsert: true });
+    } catch (error) {
+      // A newer verification (or another owner's row) already holds the key.
+      if ((error as { code?: number }).code !== 11000) throw error;
+    }
   }
 
   private async nextRevision(userId: string): Promise<number> {
@@ -68,8 +112,10 @@ export class MongoStoreBilling extends MongoBillingOwnership {
           { $unset: { leaseUntil: 1, processingToken: 1 } });
       } catch (error) {
         const status = error instanceof AppError ? error.statusCode : 503;
+        const lastError = error instanceof DuplicateStorePurchaseError ? 'duplicate_active_subscription'
+          : status < 500 ? 'notification_review_required' : 'notification_retry_pending';
         await StoreBillingNotificationModel.updateOne({ _id: row._id, processingToken, revision: row.revision }, {
-          $set: { reviewRequired: status < 500, lastError: status < 500 ? 'notification_review_required' : 'notification_retry_pending',
+          $set: { reviewRequired: status < 500, lastError,
             nextAttemptAt: new Date(Date.now() + (status < 500 ? 24 * 60 * 60_000 : RETRY_MS)) },
           $unset: { leaseUntil: 1, processingToken: 1 },
         });
@@ -107,7 +153,7 @@ export class MongoStoreBilling extends MongoBillingOwnership {
       const otherActivePurchase = subscription && !samePurchase && !replacesCurrent &&
         subscription.tier !== SubscriptionTier.FREE && subscription.status === 'active' && subscription.currentPeriodEnd > new Date();
       if (purchase.active && otherActivePurchase) {
-        throw new AppError('Another subscription is already active. Contact support to review the duplicate purchase.', 409);
+        throw new DuplicateStorePurchaseError();
       }
       if (existingPurchase && existingPurchase.verificationRevision > revision) return { active: existingPurchase.active, applied: false };
       const now = new Date();

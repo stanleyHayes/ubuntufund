@@ -13,8 +13,9 @@ import { StorePurchaseModel } from '../../src/infrastructure/database/models/Sto
 import { SubscriptionModel } from '../../src/infrastructure/database/models/SubscriptionModel.js';
 import { SubscriptionCheckoutModel } from '../../src/infrastructure/database/models/SubscriptionCheckoutModel.js';
 import { UserModel } from '../../src/infrastructure/database/models/UserModel.js';
+import { StoreBillingNotificationModel } from '../../src/infrastructure/database/models/StoreBillingNotificationModel.js';
 
-const models = [StoreBillingAccountModel, StorePurchaseModel, SubscriptionModel, SubscriptionCheckoutModel, UserModel];
+const models = [StoreBillingAccountModel, StorePurchaseModel, SubscriptionModel, SubscriptionCheckoutModel, UserModel, StoreBillingNotificationModel];
 const cipher = new StoreReceiptCipher(Buffer.alloc(32, 7));
 
 function services() {
@@ -132,6 +133,41 @@ describe('store purchase ownership and recovery', () => {
     const before = (await StoreBillingAccountModel.findOne({ userId: f.userId }))!.providerClaimedAt;
     await f.billing.verifyForUser(f.userId, 'google', f.purchase.reference);
     expect((await StoreBillingAccountModel.findOne({ userId: f.userId }))!.providerClaimedAt).toEqual(before);
+  });
+
+  it('records a charged duplicate store purchase for review without touching the active plan, then applies it once that plan lapses', async () => {
+    const f = await fixture();
+    await f.billing.verifyForUser(f.userId, 'google', f.purchase.reference);
+    const firstKey = storePurchaseKey('google', f.purchase.reference);
+    f.verifier.acknowledge.mockClear();
+    const duplicate = { ...f.purchase, reference: 'second-charged-token', transactionId: 'order-2', tier: 'organization' };
+    f.verifier.verify.mockImplementation(async (_store, reference) => reference === duplicate.reference ? { ...duplicate } : { ...f.purchase });
+    await expect(f.billing.verifyForUser(f.userId, 'google', duplicate.reference)).rejects.toMatchObject({ statusCode: 409 });
+    const recorded = await StorePurchaseModel.findById(storePurchaseKey('google', duplicate.reference));
+    expect(recorded).toMatchObject({ userId: f.userId, reviewRequired: true, lastError: 'duplicate_active_subscription', active: true });
+    expect(recorded!.nextCheckAt.getTime()).toBeGreaterThan(Date.now() + 23 * 60 * 60_000);
+    expect(await SubscriptionModel.findOne({ userId: f.userId })).toMatchObject({ tier: 'pro', storePurchaseKey: firstKey });
+    expect(f.verifier.acknowledge).not.toHaveBeenCalled();
+
+    // The first plan lapses; the daily re-check applies the duplicate.
+    await SubscriptionModel.updateOne({ userId: f.userId }, { $set: { status: 'expired', currentPeriodEnd: new Date(Date.now() - 1000) } });
+    await StorePurchaseModel.updateOne({ _id: storePurchaseKey('google', duplicate.reference) }, { $set: { nextCheckAt: new Date(0) } });
+    await StorePurchaseModel.updateOne({ _id: firstKey }, { $set: { nextCheckAt: new Date(Date.now() + 60 * 60_000) } });
+    await f.billing.reconcile();
+    expect(await SubscriptionModel.findOne({ userId: f.userId })).toMatchObject({ tier: 'organization', status: 'active',
+      storePurchaseKey: storePurchaseKey('google', duplicate.reference) });
+    expect((await StorePurchaseModel.findById(storePurchaseKey('google', duplicate.reference)))?.reviewRequired).toBe(false);
+  });
+
+  it('labels a duplicate found through a store notification so staff can tell what it is', async () => {
+    const f = await fixture();
+    await f.billing.verifyForUser(f.userId, 'google', f.purchase.reference);
+    const duplicate = { ...f.purchase, reference: 'notified-duplicate-token', transactionId: 'order-3' };
+    f.verifier.verify.mockImplementation(async (_store, reference) => reference === duplicate.reference ? { ...duplicate } : { ...f.purchase });
+    await f.billing.enqueueNotification('google', duplicate.reference);
+    await f.billing.reconcileNotifications();
+    expect(await StoreBillingNotificationModel.findOne()).toMatchObject({ reviewRequired: true, lastError: 'duplicate_active_subscription' });
+    expect((await StorePurchaseModel.findById(storePurchaseKey('google', duplicate.reference)))?.lastError).toBe('duplicate_active_subscription');
   });
 
   it('refuses native checkout while a legacy web payment is pending', async () => {
