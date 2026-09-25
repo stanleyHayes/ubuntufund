@@ -29,9 +29,18 @@ export function liveChannel(liveSessionId: string): string {
 export class EventBus {
   private readonly emitter = new EventEmitter();
   private readonly buffers = new Map<string, BusEvent[]>();
-  private sequence = 0;
+  /**
+   * Starts at the boot time in ms rather than 0. Ids must keep increasing
+   * across restarts (free-plan spin-downs, deploys): a client reconnecting with
+   * the previous process's Last-Event-ID would otherwise be "ahead" of every
+   * new event and silently skip the ones published before it reconnected. One
+   * event per millisecond of uptime is far beyond real traffic, so a new
+   * process always starts above the old one's last id. Still a safe integer.
+   */
+  private sequence: number;
 
-  constructor() {
+  constructor(startAt: number = Date.now()) {
+    this.sequence = startAt;
     // Each SSE client attaches one listener per channel; a popular live session
     // can hold many concurrent viewers, so lift the default 10-listener cap.
     this.emitter.setMaxListeners(0);

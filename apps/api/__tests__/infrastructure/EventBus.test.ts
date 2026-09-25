@@ -47,6 +47,26 @@ describe('EventBus', () => {
     expect(buffered[buffered.length - 1]?.data).toMatchObject({ i: 59 });
   });
 
+  it('keeps ids increasing across a restart so a resuming client replays, not skips', () => {
+    const before = new EventBus(1_000_000);
+    before.publish('live:x', 'donation', { n: 1 });
+    const lastSeen = before.publish('live:x', 'donation', { n: 2 }).id;
+
+    // A restart a few seconds later: a fresh process and an empty buffer.
+    const after = new EventBus(1_005_000);
+    const missed = after.publish('live:x', 'donation', { n: 3 });
+
+    expect(missed.id).toBeGreaterThan(lastSeen);
+    expect(after.getBufferedEvents('live:x', lastSeen).map((e) => e.data)).toEqual([{ n: 3 }]);
+  });
+
+  it('seeds ids from the boot time by default (safe integers)', () => {
+    const now = Date.now();
+    const event = new EventBus().publish('campaign:t', 'total', {});
+    expect(event.id).toBeGreaterThan(now);
+    expect(Number.isSafeInteger(event.id)).toBe(true);
+  });
+
   it('builds namespaced channel names', () => {
     expect(campaignChannel('abc')).toBe('campaign:abc');
     expect(liveChannel('xyz')).toBe('live:xyz');
