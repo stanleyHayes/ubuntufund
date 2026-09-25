@@ -69,11 +69,15 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 /**
  * A replayed attempt (same details, same Idempotency-Key) whose payment was
- * already taken: the checkout is closed, so the next Give must be a new gift.
+ * taken and is still held: the checkout is closed, so say so, and let the next
+ * Give be a new gift.
  */
-const PAID_STATUSES = ['SUCCEEDED', 'REFUND_PENDING', 'REFUNDED', 'PARTIALLY_REFUNDED', 'DISPUTED', 'CHARGEBACK']
-/** The replayed attempt never took the money: start a new one straight away. */
-const CLOSED_UNPAID_STATUSES = ['FAILED', 'EXPIRED', 'CANCELLED']
+const PAID_STATUSES = ['SUCCEEDED', 'REFUND_PENDING', 'PARTIALLY_REFUNDED', 'DISPUTED']
+/**
+ * The replayed attempt holds none of the donor's money (never paid, or fully
+ * refunded or charged back): start a new one straight away.
+ */
+const CLOSED_UNPAID_STATUSES = ['FAILED', 'EXPIRED', 'CANCELLED', 'REFUNDED', 'CHARGEBACK']
 /** Still settling with the provider: keep the key so a retry cannot pay twice. */
 const SETTLING_STATUSES = ['PROCESSING', 'REQUIRES_ACTION']
 

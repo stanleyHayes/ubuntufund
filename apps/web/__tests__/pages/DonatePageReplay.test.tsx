@@ -65,9 +65,8 @@ describe('giving again with the same details after a completed donation', () => 
     show()
     await give()
 
-    expect(await screen.findByText(/You already gave .*50 with these details/)).toBeInTheDocument()
-    expect(screen.getByText(/nothing new was charged/)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'View its confirmation' })).toHaveAttribute('href', '/donate/callback?reference=uf-old-ref')
+    expect(await screen.findByText(/You already completed an identical .*50.* donation to this campaign/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'View it' })).toHaveAttribute('href', '/donate/callback?reference=uf-old-ref')
     expect(screen.queryByText('Callback page')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /^Donate / }))

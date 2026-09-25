@@ -112,7 +112,8 @@ describe('giving again with the same details', () => {
     expect(sentKey(1)).not.toBe(sentKey(0))
   })
 
-  it.each(['REFUNDED', 'PARTIALLY_REFUNDED', 'DISPUTED', 'CHARGEBACK', 'REFUND_PENDING'])('treats a %s replay as a closed attempt', async (status) => {
+  // Money still held (fully refunded or charged-back replays start a new checkout at once; see DonatePageReplay.test).
+  it.each(['PARTIALLY_REFUNDED', 'DISPUTED', 'REFUND_PENDING'])('treats a %s replay as a closed attempt', async (status) => {
     vi.mocked(createDonationIntent).mockResolvedValueOnce(replay(status) as never).mockResolvedValueOnce(checkout as never)
     show()
     await give()
