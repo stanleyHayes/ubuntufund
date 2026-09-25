@@ -42,6 +42,12 @@ interface PaystackConfig {
   secretKey: string;
   /** Paystack publishable key — safe to expose to the client. */
   publicKey: string;
+  /**
+   * Checkout channels offered by default (PAYSTACK_CHANNELS, comma-separated).
+   * Defaults to card + mobile money, which is what the checkout copy promises;
+   * ops can widen it (e.g. bank_transfer) without a code change.
+   */
+  channels: string[];
 }
 
 export interface AffiliateConfig {
@@ -271,6 +277,10 @@ export const config: AppConfig = {
   paystack: {
     secretKey: process.env.PAYSTACK_SECRET_KEY ?? '',
     publicKey: process.env.PAYSTACK_PUBLIC_KEY ?? '',
+    channels: (process.env.PAYSTACK_CHANNELS ?? 'card,mobile_money')
+      .split(',')
+      .map((c) => c.trim())
+      .filter(Boolean),
   },
   // Absent secret key ⇒ the Flutterwave rail is disabled; the webhook rejects
   // everything until the dashboard secret hash is configured too.

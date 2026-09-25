@@ -26,6 +26,22 @@ export interface PaystackGatewayConfig {
   publicKey: string
   /** Donor-facing web app base URL; builds the checkout callback target. */
   publicWebUrl: string
+  /**
+   * Channels offered at checkout when the caller does not narrow them. Absent
+   * or empty ⇒ Paystack shows every channel enabled on the merchant dashboard.
+   */
+  channels?: string[]
+}
+
+function withChannels(channels: string[] | undefined): { channels?: string[] } {
+  return channels?.length ? { channels } : {}
+}
+
+/** Checkout channels for a donation's chosen method, else the configured default. */
+function channelsFor(paymentMethod: string | undefined, fallback: string[] | undefined): string[] | undefined {
+  if (paymentMethod === 'card') return ['card']
+  if (paymentMethod === 'mobile_money') return ['mobile_money']
+  return fallback?.length ? fallback : undefined
 }
 
 /** Shape of Paystack's `{ status, message, data }` envelope. */
@@ -140,6 +156,9 @@ export class PaystackGateway implements PaymentGatewayPort {
       currency,
       reference,
       callback_url: `${this.config.publicWebUrl}/donate/callback`,
+      // Offer only what the checkout promises (card / mobile money), narrowed
+      // further when the donor already picked a method.
+      ...withChannels(channelsFor(intent.paymentMethod, this.config.channels)),
       metadata: {
         donationIntentId: intent.id,
         campaignId: intent.campaignId,
@@ -190,6 +209,7 @@ export class PaystackGateway implements PaymentGatewayPort {
       currency,
       reference,
       callback_url: `${this.config.publicWebUrl}${params.callbackPath ?? '/donate/callback'}`,
+      ...withChannels(params.channels?.length ? params.channels : this.config.channels),
       metadata: params.metadata,
     }
 

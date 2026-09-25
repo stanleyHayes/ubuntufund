@@ -510,6 +510,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     secretKey: config.paystack.secretKey,
     publicKey: config.paystack.publicKey,
     publicWebUrl: config.publicWebUrl,
+    channels: config.paystack.channels,
   })
   // Flutterwave — secondary diaspora-card rail. Inert (isConfigured → false)
   // until a secret key is supplied; enabling also requires PAYMENTS_FLUTTERWAVE_ENABLED.
