@@ -2,11 +2,10 @@ import {
   BillingCycle,
   CouponCommissionBase,
   SubscriptionStatus,
-  type Subscription,
   type SubscriptionCheckout,
 } from '@ubuntu-fund/types';
 import type { SubscriptionCheckoutRepositoryPort } from '../../domain/ports/outbound/SubscriptionCheckoutRepositoryPort.js';
-import type { SubscriptionRepositoryPort } from '../../domain/ports/outbound/SubscriptionRepositoryPort.js';
+import type { SubscriptionRecord, SubscriptionRepositoryPort } from '../../domain/ports/outbound/SubscriptionRepositoryPort.js';
 import type { CouponRepositoryPort } from '../../domain/ports/outbound/CouponRepositoryPort.js';
 import type { CouponRedemptionRepositoryPort } from '../../domain/ports/outbound/CouponRedemptionRepositoryPort.js';
 import type { AffiliateCommissionService } from '../services/AffiliateCommissionService.js';
@@ -85,7 +84,7 @@ export class SettleSubscriptionUseCase {
       existing.billingProvider !== 'apple' && existing.billingProvider !== 'google';
     const periodStart = extendsCurrent ? new Date(existing.currentPeriodStart) : now;
     const periodBase = extendsCurrent ? new Date(existing.currentPeriodEnd).getTime() : now.getTime();
-    const next: Subscription = {
+    const next: SubscriptionRecord = {
       id: existing?.id ?? '', // assigned by the repository when creating
       userId: settled.userId,
       tier: settled.tier,
@@ -94,6 +93,8 @@ export class SettleSubscriptionUseCase {
       currentPeriodStart: periodStart,
       currentPeriodEnd: new Date(periodBase + periodDays * MS_PER_DAY),
       cancelAtPeriodEnd: false,
+      // Which charges paid for this period, so a refund removes exactly its time.
+      paymentReferences: extendsCurrent ? [...(existing.paymentReferences ?? []), reference] : [reference],
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     };

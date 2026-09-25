@@ -243,6 +243,7 @@ import { PreviewCouponUseCase } from './application/use-cases/PreviewCouponUseCa
 import { CreateSubscriptionCheckoutUseCase } from './application/use-cases/CreateSubscriptionCheckoutUseCase.js'
 import { GetSubscriptionCheckoutUseCase } from './application/use-cases/GetSubscriptionCheckoutUseCase.js'
 import { SettleSubscriptionUseCase } from './application/use-cases/SettleSubscriptionUseCase.js'
+import { RevokeRefundedSubscriptionUseCase } from './application/use-cases/RevokeRefundedSubscriptionUseCase.js'
 
 // Use cases — affiliate/referral program
 import { EnrollAffiliateUseCase } from './application/use-cases/EnrollAffiliateUseCase.js'
@@ -897,6 +898,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     handleCreatorPayoutWebhookUseCase,
     walletTopUps,
     couponRedemptionRepo,
+    new RevokeRefundedSubscriptionUseCase(new MongoUnitOfWork(), subscriptionCheckoutRepo, subscriptionRepo),
   )
   // Flutterwave settlement: verifies the verif-hash, re-verifies the charge
   // server-side, then settles through the same donation seam as Paystack.

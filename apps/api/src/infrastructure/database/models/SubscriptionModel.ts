@@ -15,6 +15,7 @@ export interface SubscriptionDocument extends Document {
   billingProvider?: 'web' | 'apple' | 'google';
   billingEnvironment?: 'production' | 'sandbox';
   storePurchaseKey?: string;
+  paymentReferences?: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -50,6 +51,8 @@ const subscriptionSchema = new Schema<SubscriptionDocument>(
     // but are not revenue.
     billingEnvironment: { type: String, enum: ['production', 'sandbox'] },
     storePurchaseKey: { type: String },
+    // Web charges that paid for the current period (refunds take their time back).
+    paymentReferences: { type: [String], default: undefined },
   },
   {
     timestamps: true,

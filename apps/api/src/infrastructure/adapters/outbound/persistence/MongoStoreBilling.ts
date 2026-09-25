@@ -128,7 +128,7 @@ export class MongoStoreBilling extends MongoBillingOwnership {
           billingCycle: purchase.billingCycle, currentPeriodStart: purchase.periodStart, currentPeriodEnd: purchase.periodEnd,
           cancelAtPeriodEnd: !purchase.autoRenew, billingProvider: purchase.store, billingEnvironment: purchase.environment,
           storePurchaseKey: key,
-        }, $unset: { trialEnd: 1 } }, { upsert: true });
+        }, $unset: { trialEnd: 1, paymentReferences: 1 } }, { upsert: true });
         await StoreBillingAccountModel.updateOne({ _id: account._id }, { $set: { appliedRevision: revision } });
       }
       return { active: purchase.active, applied: canApply };
