@@ -17,3 +17,23 @@ describe('early cashout surcharge',()=>{
   await expect(uc.execute('payout',{userId:'admin',role:'admin'})).rejects.toMatchObject({statusCode:422});expect(gateway.initiateTransfer).not.toHaveBeenCalled();
  });
 });
+
+// I040: settlement still credits a blocked campaign (no dropped money), but no
+// payout may be requested or approved while it is under review.
+describe('blocked campaigns',()=>{
+ const blocked={...campaign,status:'blocked',endDate:new Date(0)};
+ it('refuses a payout request for a blocked campaign before creating anything',async()=>{
+  const payouts={create:vi.fn()};const balances={findByCampaignId:async()=>({availableBalance:500,pendingBalance:0}),clearPendingToAvailable:vi.fn()};
+  const uc=new RequestPayoutUseCase({findById:async()=>blocked} as never,{findLatestByCampaignId:async()=>({id:'recipient'})} as never,payouts as never,balances as never,{isConfigured:()=>true} as never,cfg as never);
+  await expect(uc.execute('campaign',{amount:100,type:'standard'} as never,{userId:'owner'})).rejects.toMatchObject({statusCode:409});expect(payouts.create).not.toHaveBeenCalled();
+ });
+ it('refuses to approve a payout requested before the campaign was blocked',async()=>{
+  const gateway={isConfigured:()=>true,initiateTransfer:vi.fn()};const uc=new ApprovePayoutUseCase({findById:async()=>({status:'PENDING',campaignId:'campaign',type:'standard',provider:'paystack'})} as never,{} as never,{} as never,gateway as never,cfg as never,{findById:async()=>blocked} as never);
+  await expect(uc.execute('payout',{userId:'admin',role:'admin'},'Reviewed beneficiary ownership and capacity.')).rejects.toMatchObject({statusCode:409});expect(gateway.initiateTransfer).not.toHaveBeenCalled();
+ });
+ it('still lets an ended (funded) campaign request a payout past the blocked check',async()=>{
+  const payouts={create:vi.fn()};const balances={findByCampaignId:async()=>({availableBalance:500,pendingBalance:0}),clearPendingToAvailable:vi.fn()};
+  const uc=new RequestPayoutUseCase({findById:async()=>({...blocked,status:'funded'})} as never,{findLatestByCampaignId:async()=>({id:'recipient'})} as never,payouts as never,balances as never,{isConfigured:()=>true} as never,cfg as never);
+  await uc.execute('campaign',{amount:100,type:'standard'} as never,{userId:'owner'}).catch((error:{statusCode?:number})=>{expect(error.statusCode).not.toBe(409)});
+ });
+});

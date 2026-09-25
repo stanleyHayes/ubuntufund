@@ -475,5 +475,20 @@ describe('Paystack Integration', () => {
     expect(typeof retry.body.data.authorization_url).toBe('string');
     expect(await DonationIntentModel.countDocuments({ idempotencyKey: key })).toBe(1);
   });
+
+  // I040: money that already moved is never dropped because the campaign was
+  // blocked meanwhile; payouts are paused instead (see EarlyCashoutPolicy tests).
+  it('still credits a paid charge that settles after its campaign was blocked', async () => {
+    const { userId: creatorId, token: creatorToken } = await registerUser(app, uniqueEmail('psblocked'));
+    const campaignId = await createActiveCampaign(app, creatorToken, creatorId);
+    const created = await openPaystackCheckout(app, campaignId, { amount: 200, tip: 20 });
+    const reference = created.body.data.reference as string;
+    await CampaignModel.findByIdAndUpdate(campaignId, { status: 'blocked' });
+    const raw = JSON.stringify({ event: 'charge.success', data: { reference, amount: 22000, fees: 330, currency: 'GHS', status: 'success' } });
+    await request(app).post('/api/v1/webhooks/paystack').set('x-paystack-signature', sign(raw)).set('Content-Type', 'application/json').send(raw).expect(200);
+    expect((await DonationIntentModel.findById(created.body.data.intent.id))?.status).toBe('SUCCEEDED');
+    expect(await JournalEntryModel.countDocuments({ donationIntentId: created.body.data.intent.id })).toBe(1);
+    expect((await CampaignModel.findById(campaignId))?.raisedAmount).toBe(200);
+  });
 });
 

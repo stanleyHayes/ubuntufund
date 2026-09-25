@@ -1,4 +1,4 @@
-import { CouponSurface, CouponRedemptionStatus, type Payout, type RequestPayoutInput } from '@ubuntu-fund/types'
+import { CampaignStatus, CouponSurface, CouponRedemptionStatus, type Payout, type RequestPayoutInput } from '@ubuntu-fund/types'
 import { PayoutEntity } from '../../domain/entities/Payout.js'
 import { roundToCurrency } from '../../domain/value-objects/Money.js'
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js'
@@ -94,6 +94,11 @@ export class RequestPayoutUseCase {
     const isAdmin = requester.role === 'admin'
     if (!isOwner && !isAdmin) {
       throw new AppError('Only the campaign owner can request a payout', 403)
+    }
+    // A blocked campaign is under review: donations that still settle keep
+    // their ledger and totals, but no money leaves until staff decide.
+    if (campaign.status === CampaignStatus.BLOCKED) {
+      throw new AppError('This campaign is under review; payouts are paused', 409)
     }
 
     // A split campaign disburses per beneficiary; the campaign-level payout is
