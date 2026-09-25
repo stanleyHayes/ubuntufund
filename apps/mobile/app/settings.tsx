@@ -5,13 +5,14 @@ import { DataRightsRequests } from '@/components/DataRightsRequests'
 import { ActivityAlertSettings } from '@/components/ActivityAlertSettings'
 import { NewsletterSettings } from '@/components/NewsletterSettings'
 import { BlockedUsers } from '@/components/BlockedUsers'
+import { DeleteAccountSection } from '@/components/DeleteAccountSection'
 import { TouchableRipple } from '@/components/RoundedControls'
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { View, ScrollView, StyleSheet, Animated, Alert } from 'react-native'
+import { View, ScrollView, StyleSheet, Animated } from 'react-native'
 import { Text, Icon, Switch } from 'react-native-paper'
 import { router, Stack } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'
-import { api, ApiError } from '@/lib/api'
+import { api } from '@/lib/api'
 import { SignInRequired } from '@/components/SignInRequired'
 import {
   usePalette,
@@ -352,27 +353,9 @@ export default function SettingsScreen() {
     }
   }, [settings])
 
-  const handleDeleteAccount = () => {
-    Alert.alert(
-      'Delete Account',
-      'This immediately closes your account and signs you out. Financial and safety records may be retained where required by law, fraud prevention, or an active dispute. An App Store or Google Play subscription is not cancelled automatically; cancel it in your store subscription settings to stop renewal.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.delete('/profile')
-              await logout()
-              router.replace('/(auth)/login')
-            } catch (err) {
-              Alert.alert('Could not delete account', err instanceof ApiError ? err.message : 'Failed to delete account. Please try again.')
-            }
-          },
-        },
-      ],
-    )
+  const handleAccountDeleted = async () => {
+    await logout()
+    router.replace('/(auth)/login')
   }
 
   const headerOptions = {
@@ -456,12 +439,7 @@ export default function SettingsScreen() {
             {/* Danger Zone */}
             <Text style={[styles.sectionTitle, { color: p.error }]}>Danger Zone</Text>
             <View style={styles.card}>
-              <TouchableRipple style={styles.dangerRow} rippleColor={`${p.error}1A`} onPress={handleDeleteAccount}>
-                <>
-                  <Icon source="delete-outline" size={20} color={p.error} />
-                  <Text style={styles.dangerText}>Delete Account</Text>
-                </>
-              </TouchableRipple>
+              <DeleteAccountSection rowStyle={styles.dangerRow} textStyle={styles.dangerText} onDeleted={handleAccountDeleted} />
             </View>
           </>
         )}

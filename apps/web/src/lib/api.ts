@@ -116,8 +116,8 @@ export const api = {
     authedRequest<T>(path, { method: 'POST', body: JSON.stringify(body), headers }),
   put: <T>(path: string, body?: unknown) =>
     authedRequest<T>(path, { method: 'PUT', body: JSON.stringify(body) }),
-  delete: <T>(path: string) =>
-    authedRequest<T>(path, { method: 'DELETE' }),
+  delete: <T>(path: string, body?: unknown) =>
+    authedRequest<T>(path, { method: 'DELETE', ...(body === undefined ? {} : { body: JSON.stringify(body) }) }),
 }
 
 // --- Auth types ---

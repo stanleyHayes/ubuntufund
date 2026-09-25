@@ -2,6 +2,7 @@ import { PublicationConsent } from '@/components/safety/PublicationConsent'
 import { MfaSettings } from '@ubuntu-fund/ui'
 import { PublicationReviews } from '@/components/account/PublicationReviews'
 import { DataRightsRequests } from '@/components/account/DataRightsRequests'
+import { DeleteAccountDialog } from '@/components/account/DeleteAccountDialog'
 import { ActivityAlertSettings } from '@/components/account/ActivityAlertSettings'
 import { NewsletterSettings } from '@/components/account/NewsletterSettings'
 import { BlockedUsers } from '@/components/safety/BlockedUsers'
@@ -20,10 +21,6 @@ import MenuItem from '@mui/material/MenuItem'
 import Button from '@mui/material/Button'
 import Avatar from '@mui/material/Avatar'
 import Chip from '@mui/material/Chip'
-import Dialog from '@mui/material/Dialog'
-import DialogTitle from '@mui/material/DialogTitle'
-import DialogContent from '@mui/material/DialogContent'
-import DialogActions from '@mui/material/DialogActions'
 import Snackbar from '@mui/material/Snackbar'
 import Alert from '@mui/material/Alert'
 import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded'
@@ -255,20 +252,10 @@ function SettingsForViewer() {
     })
   }, [setDarkMode, identityConsent])
 
-  async function handleDeleteAccount() {
-    setSaving(true)
-    try {
-      await api.delete('/profile')
-      setDeleteOpen(false)
-      logout()
-      navigate('/')
-    } catch (err) {
-      setSnackMessage(err instanceof Error ? err.message : 'Failed to delete account')
-      setSnackSeverity('error')
-      setSnack(true)
-    } finally {
-      setSaving(false)
-    }
+  function handleAccountDeleted() {
+    setDeleteOpen(false)
+    logout()
+    navigate('/')
   }
 
   const initials = (user?.name ?? 'U').split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase()
@@ -460,21 +447,7 @@ function SettingsForViewer() {
         </Grid>
 
         {/* Delete Confirmation */}
-        <Dialog open={deleteOpen} onClose={() => setDeleteOpen(false)} maxWidth="xs" fullWidth>
-          <DialogTitle sx={{ fontWeight: 700, color: 'error.main' }}>Delete account</DialogTitle>
-          <DialogContent>
-            <Typography>
-              This immediately closes your account and signs you out. Your profile will no longer be available.
-              Financial and safety records may be retained where required by law, fraud prevention, or an active dispute.
-            </Typography>
-          </DialogContent>
-          <DialogActions sx={{ px: 3, pb: 2 }}>
-            <Button onClick={() => setDeleteOpen(false)} sx={{ textTransform: 'none' }}>Cancel</Button>
-            <Button variant="contained" color="error" onClick={handleDeleteAccount} sx={{ textTransform: 'none', fontWeight: 700 }}>
-              Delete my account
-            </Button>
-          </DialogActions>
-        </Dialog>
+        <DeleteAccountDialog open={deleteOpen} onClose={() => setDeleteOpen(false)} onDeleted={handleAccountDeleted} />
 
         {saving && (
           <Box sx={{ position: 'fixed', bottom: 'calc(var(--mobile-nav-height, 0px) + 24px)', right: 24, zIndex: 1200, display: 'flex', alignItems: 'center', gap: 1, bgcolor: FOREST, color: '#F5F2EA', px: 2, py: 1, borderRadius: '999px' }}>
