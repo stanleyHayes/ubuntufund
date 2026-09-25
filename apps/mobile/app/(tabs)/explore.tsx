@@ -6,7 +6,8 @@ import { Text, Icon } from 'react-native-paper'
 import { router } from 'expo-router'
 import { CampaignCategory, CampaignStatus } from '@ubuntu-fund/types'
 import type { Campaign } from '@ubuntu-fund/types'
-import { useCampaigns } from '@/hooks/useCampaigns'
+import { useCampaignSearch } from '@/hooks/useCampaigns'
+import { exploreSearchParams, type ExploreSort as SortKey } from '@/lib/exploreSearch'
 import { ProgressBar } from '@/components/ProgressBar'
 import { RemoteImage } from '@/components/RemoteImage'
 import { EmptyState } from '@/components/EmptyState'
@@ -24,13 +25,16 @@ const CATEGORIES: { key: CampaignCategory | null; icon: string; label: string }[
   { key: CampaignCategory.CREATIVE, icon: 'palette', label: 'Creative' },
 ]
 
-const STATUS_FILTERS: { key: string | null; label: string }[] = [
+// The server matches these by effective state: a campaign past its end date
+// is Expired, never Active or Funded.
+const STATUS_FILTERS: { key: CampaignStatus | null; label: string }[] = [
   { key: null, label: 'All' },
   { key: CampaignStatus.ACTIVE, label: 'Active' },
   { key: CampaignStatus.FUNDED, label: 'Funded' },
+  { key: CampaignStatus.EXPIRED, label: 'Expired' },
 ]
 
-type SortKey = 'newest' | 'most_funded' | 'ending_soon'
+const SEARCH_DEBOUNCE_MS = 300
 
 const ghsFormatter = new Intl.NumberFormat('en-GH', { style: 'currency', currency: 'GHS' })
 
@@ -89,23 +93,21 @@ function CampaignRow({ campaign, index }: { campaign: Campaign; index: number })
 export default function ExploreTab() {
   const p = usePalette()
   const styles = useStyles()
-  const { campaigns, isLoading } = useCampaigns()
   const [search, setSearch] = useState('')
+  const [query, setQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<CampaignCategory | null>(null)
-  const [selectedStatus, setSelectedStatus] = useState<string | null>(null)
+  const [selectedStatus, setSelectedStatus] = useState<CampaignStatus | null>(null)
   const [sort, setSort] = useState<SortKey>('newest')
+  // Search, filters and paging run on the server, so every public campaign is
+  // reachable rather than only the newest page.
+  const { campaigns: filtered, total, hasMore, isLoading, isLoadingMore, loadMore } = useCampaignSearch(
+    exploreSearchParams(query, selectedCategory, selectedStatus, sort),
+  )
 
-  const filtered = campaigns.filter((c) => {
-    if (search && !c.title.toLowerCase().includes(search.toLowerCase())) return false
-    if (selectedCategory && c.category !== selectedCategory) return false
-    if (selectedStatus && c.status !== selectedStatus) return false
-    return true
-  }).sort((a, b) => {
-    if (sort === 'newest') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    if (sort === 'most_funded') return (b.raisedAmount / b.goalAmount) - (a.raisedAmount / a.goalAmount)
-    if (sort === 'ending_soon') return new Date(a.endDate).getTime() - new Date(b.endDate).getTime()
-    return 0
-  })
+  useEffect(() => {
+    const id = setTimeout(() => setQuery(search.trim()), SEARCH_DEBOUNCE_MS)
+    return () => clearTimeout(id)
+  }, [search])
 
   return (
     <View style={styles.container}>
@@ -194,7 +196,7 @@ export default function ExploreTab() {
 
       {/* Results count */}
       <View style={styles.resultsHeader}>
-        <Text style={styles.resultsCount}>{filtered.length} campaign{filtered.length !== 1 ? 's' : ''}</Text>
+        <Text style={styles.resultsCount}>{total} campaign{total !== 1 ? 's' : ''}</Text>
       </View>
 
       {/* Campaign list */}
@@ -209,8 +211,19 @@ export default function ExploreTab() {
       ) : (
         <ScrollView contentContainerStyle={styles.results} showsVerticalScrollIndicator={false}>
           {filtered.map((c, i) => (
-            <CampaignRow key={c.id} campaign={c} index={i} />
+            <CampaignRow key={c.id} campaign={c} index={i % 20} />
           ))}
+          {hasMore && (
+            <TouchableOpacity
+              style={styles.loadMore}
+              onPress={loadMore}
+              disabled={isLoadingMore}
+              accessibilityRole="button"
+              accessibilityLabel="Load more campaigns"
+            >
+              <Text style={styles.loadMoreText}>{isLoadingMore ? 'Loading…' : 'Load more'}</Text>
+            </TouchableOpacity>
+          )}
           <View style={{ height: 20 }} />
         </ScrollView>
       )}
@@ -278,6 +291,17 @@ function makeStyles(p: Palette, neu: NeuRecipes) {
     resultsHeader: { paddingHorizontal: 16, paddingBottom: 6 },
     resultsCount: { fontSize: 12, color: p.textSecondary, fontFamily: 'Outfit_400Regular' },
     results: { paddingHorizontal: 16 },
+    loadMore: {
+      ...neu.subtle,
+      alignSelf: 'center',
+      justifyContent: 'center',
+      height: 40,
+      paddingHorizontal: 20,
+      borderRadius: 999,
+      backgroundColor: 'rgba(168,181,160,0.28)',
+      marginTop: 4,
+    },
+    loadMoreText: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: p.text },
 
     // Campaign row
     campaignRow: {

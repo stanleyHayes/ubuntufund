@@ -1,6 +1,6 @@
 import { useAuth } from '@/context/AuthContext'
 import { useState, useEffect, useCallback } from 'react'
-import type { Campaign, CampaignCategory, CampaignPriority } from '@ubuntu-fund/types'
+import type { Campaign, CampaignCategory, CampaignPriority, CampaignStatus } from '@ubuntu-fund/types'
 import { api, ApiError } from '@/lib/api'
 
 /**
@@ -62,6 +62,47 @@ function useCampaignData<T>(path: string, empty: T, parse: (value: unknown) => T
 export function useCampaigns(): UseCampaignsResult {
   const result = useCampaignData('/campaigns', noCampaigns, toCampaignArray)
   return { campaigns: result.data, isLoading: result.isLoading, error: result.error }
+}
+
+/**
+ * Server-side discovery query. The API filters by *effective* status (an
+ * ACTIVE campaign past its end date is EXPIRED), searches titles and pages, so
+ * every public campaign is reachable, not only the newest page.
+ */
+export interface CampaignSearchParams {
+  q?: string
+  category?: CampaignCategory | null
+  status?: CampaignStatus | 'open' | null
+  sortBy?: 'createdAt' | 'raisedAmount' | 'endDate' | 'fundedPercent'
+  sortOrder?: 'asc' | 'desc'
+  page: number
+  pageSize: number
+}
+
+export function campaignSearchPath(params: CampaignSearchParams): string {
+  const query = new URLSearchParams({ page: String(params.page), pageSize: String(params.pageSize) })
+  const q = params.q?.trim().slice(0, 100)
+  if (q) query.set('q', q)
+  if (params.category) query.set('category', params.category)
+  if (params.status) query.set('status', params.status)
+  if (params.sortBy) query.set('sortBy', params.sortBy)
+  if (params.sortOrder) query.set('sortOrder', params.sortOrder)
+  return `/campaigns?${query.toString()}`
+}
+
+interface CampaignPage { campaigns: Campaign[]; total: number; totalPages: number }
+const emptyCampaignPage: CampaignPage = { campaigns: [], total: 0, totalPages: 0 }
+function toCampaignPage(data: unknown): CampaignPage {
+  const campaigns = toCampaignArray(data)
+  const meta = data && typeof data === 'object' ? data as { total?: unknown; totalPages?: unknown } : {}
+  const total = typeof meta.total === 'number' && Number.isFinite(meta.total) ? meta.total : campaigns.length
+  const totalPages = typeof meta.totalPages === 'number' && Number.isFinite(meta.totalPages) ? meta.totalPages : (campaigns.length ? 1 : 0)
+  return { campaigns, total, totalPages }
+}
+
+export function useCampaignSearch(params: CampaignSearchParams): CampaignPage & { isLoading: boolean; error: string | null } {
+  const result = useCampaignData(campaignSearchPath(params), emptyCampaignPage, toCampaignPage)
+  return { ...result.data, isLoading: result.isLoading, error: result.error }
 }
 
 export function useMyCampaigns(): UseCampaignsResult {

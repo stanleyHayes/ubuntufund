@@ -114,10 +114,12 @@ function useApiWithFallback<T>(
 }
 
 /**
- * Fetch campaigns from the API with a truthful empty state on failure.
+ * Fetch every campaign (all server pages, via loadAll) with a truthful empty
+ * state on failure. The Pending tab filters this list, so it must never be
+ * limited to the newest page: an older pending campaign would be unreachable.
  */
 export function useAdminCampaigns(): UseApiResult<Campaign[]> {
-  return useApiWithFallback<Campaign[]>('/campaigns?page=1&pageSize=50', [])
+  return useApiWithFallback<Campaign[]>('/campaigns', [])
 }
 
 /**

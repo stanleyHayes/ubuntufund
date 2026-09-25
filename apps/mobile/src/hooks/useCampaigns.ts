@@ -3,7 +3,7 @@ import { useFocusEffect } from 'expo-router'
 import { useState, useCallback } from 'react'
 import { AppState } from 'react-native'
 import { api } from '@/lib/api'
-import type { Campaign, CampaignDetail } from '@ubuntu-fund/types'
+import type { Campaign, CampaignCategory, CampaignDetail, CampaignStatus } from '@ubuntu-fund/types'
 import type { User } from '@ubuntu-fund/types'
 
 interface UseCampaignsResult {
@@ -57,6 +57,107 @@ export function useCampaigns(): UseCampaignsResult {
   }, [scope]))
 
   return { campaigns: loadedScope === scope ? campaigns : [], isLoading: isLoading || loadedScope !== scope, error: loadedScope === scope ? error : null, refetch }
+}
+
+/**
+ * Server-side discovery query. The API filters by *effective* status (an
+ * ACTIVE campaign past its end date is EXPIRED; `open` is ACTIVE or FUNDED and
+ * not ended), searches titles and pages, so every public campaign is reachable.
+ */
+export interface CampaignSearchParams {
+  q?: string
+  category?: CampaignCategory | null
+  status?: CampaignStatus | 'open' | null
+  sortBy?: 'createdAt' | 'raisedAmount' | 'endDate' | 'fundedPercent'
+  sortOrder?: 'asc' | 'desc'
+  pageSize?: number
+}
+
+export const CAMPAIGN_SEARCH_PAGE_SIZE = 20
+
+/** Everything but the page number, so every page of one search shares it. */
+function campaignSearchQuery(params: CampaignSearchParams): string {
+  const query = new URLSearchParams({ pageSize: String(params.pageSize ?? CAMPAIGN_SEARCH_PAGE_SIZE) })
+  const q = params.q?.trim().slice(0, 100)
+  if (q) query.set('q', q)
+  if (params.category) query.set('category', params.category)
+  if (params.status) query.set('status', params.status)
+  if (params.sortBy) query.set('sortBy', params.sortBy)
+  if (params.sortOrder) query.set('sortOrder', params.sortOrder)
+  return query.toString()
+}
+
+export function campaignSearchPath(params: CampaignSearchParams, page: number): string {
+  return `/campaigns?page=${page}&${campaignSearchQuery(params)}`
+}
+
+interface CampaignPageResponse { items?: Campaign[]; total?: number; totalPages?: number }
+interface CampaignSearchState { scope: string; campaigns: Campaign[]; page: number; total: number; totalPages: number; error: string | null }
+
+interface UseCampaignSearchResult {
+  campaigns: Campaign[]
+  total: number
+  hasMore: boolean
+  isLoading: boolean
+  isLoadingMore: boolean
+  error: string | null
+  loadMore: () => void
+  refetch: () => void
+}
+
+export function useCampaignSearch(params: CampaignSearchParams): UseCampaignSearchResult {
+  const { user } = useAuth()
+  const [retry, setRetry] = useState(0)
+  const query = campaignSearchQuery(params)
+  const scope = `${user?.id ?? 'guest'}:${user?.role ?? 'guest'}:${retry}:${query}`
+  const [state, setState] = useState<CampaignSearchState>({ scope: '', campaigns: [], page: 0, total: 0, totalPages: 0, error: null })
+  const [loadingMore, setLoadingMore] = useState('')
+  const refetch = useCallback(() => setRetry(value => value + 1), [])
+
+  useFocusEffect(useCallback(() => {
+    let cancelled = false
+    api
+      .get<CampaignPageResponse>(`/campaigns?page=1&${query}`)
+      .then((data) => {
+        if (!cancelled) setState({ scope, campaigns: data.items ?? [], page: 1, total: data.total ?? 0, totalPages: data.totalPages ?? 0, error: null })
+      })
+      .catch((err: Error) => {
+        if (!cancelled) setState({ scope, campaigns: [], page: 0, total: 0, totalPages: 0, error: err.message })
+      })
+    return () => { cancelled = true }
+  }, [scope, query]))
+
+  const current = state.scope === scope
+  const hasMore = current && state.page > 0 && state.page < state.totalPages
+  const loadMore = useCallback(() => {
+    if (!hasMore || loadingMore === scope) return
+    const next = state.page + 1
+    setLoadingMore(scope)
+    api
+      .get<CampaignPageResponse>(`/campaigns?page=${next}&${query}`)
+      .then((data) => {
+        // Drop a page that arrives after the search changed or was reloaded.
+        setState(value => {
+          if (value.scope !== scope || value.page !== next - 1) return value
+          const seen = new Set(value.campaigns.map(campaign => campaign.id))
+          const added = (data.items ?? []).filter(campaign => !seen.has(campaign.id))
+          return { ...value, campaigns: [...value.campaigns, ...added], page: next, total: data.total ?? value.total, totalPages: data.totalPages ?? value.totalPages }
+        })
+      })
+      .catch((err: Error) => setState(value => value.scope === scope ? { ...value, error: err.message } : value))
+      .finally(() => setLoadingMore(value => value === scope ? '' : value))
+  }, [hasMore, loadingMore, scope, state.page, query])
+
+  return {
+    campaigns: current ? state.campaigns : [],
+    total: current ? state.total : 0,
+    hasMore,
+    isLoading: !current,
+    isLoadingMore: loadingMore === scope,
+    error: current ? state.error : null,
+    loadMore,
+    refetch,
+  }
 }
 
 export function useCampaign(id: string): UseCampaignResult {
