@@ -5,7 +5,9 @@ const m = vi.hoisted(() => {
 })
 vi.unmock('@/lib/api')
 vi.mock('../session', () => ({ accessToken: m.token, configureRefresh: vi.fn() }))
-import { api, ApiError, loginApi, REQUEST_TIMEOUT_MS, UPLOAD_TIMEOUT_MS } from '../api'
+import { AI_WRITING_TIMEOUT_MS, api, ApiError, loginApi, REQUEST_TIMEOUT_MS, UPLOAD_TIMEOUT_MS } from '../api'
+import { requestAiWriting } from '../aiWriting'
+import { AiWritingAction } from '@ubuntu-fund/types'
 
 const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 const fetchMock = vi.fn<typeof fetch>()
@@ -64,6 +66,26 @@ describe('request timeouts', () => {
     await vi.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS + 1)
     expect(settled).toBe(false)
     await vi.advanceTimersByTimeAsync(UPLOAD_TIMEOUT_MS - REQUEST_TIMEOUT_MS)
+    expect(await pending).toMatchObject({ status: 0, message: expect.stringContaining('took too long') })
+  })
+
+  it('waits out the server budget for AI writing (moderation, generation, moderation) before timing out', async () => {
+    vi.useFakeTimers(); stalledFetch()
+    let settled = false
+    const pending = requestAiWriting({ consentToExternalProcessing: true, text: 'Help Ama finish nursing school', action: AiWritingAction.EXPAND }).catch(e => { settled = true; return e })
+    // A suggestion finished at ~31-60 s is still delivered rather than dropped after it used a daily request.
+    await vi.advanceTimersByTimeAsync(60_000)
+    expect(settled).toBe(false)
+    expect(fetchMock.mock.calls[0][0]).toBe('https://api.ujimora.test/api/v1/ai-writing')
+    expect(AI_WRITING_TIMEOUT_MS).toBeGreaterThanOrEqual(60_000 + 15_000)
+    await vi.advanceTimersByTimeAsync(AI_WRITING_TIMEOUT_MS - 60_000)
+    expect(await pending).toMatchObject({ status: 0, message: expect.stringContaining('took too long') })
+  })
+
+  it('keeps the default deadline for other POSTs', async () => {
+    vi.useFakeTimers(); stalledFetch()
+    const pending = api.post('/campaigns/c1/share', { platform: 'mobile' }).catch(e => e)
+    await vi.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS)
     expect(await pending).toMatchObject({ status: 0, message: expect.stringContaining('took too long') })
   })
 

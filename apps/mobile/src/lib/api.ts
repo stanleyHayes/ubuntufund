@@ -64,6 +64,13 @@ interface ApiOptions extends RequestInit {
 export const REQUEST_TIMEOUT_MS = 30_000
 /** Uploads (up to 4 MB) get longer on slow mobile connections. */
 export const UPLOAD_TIMEOUT_MS = 120_000
+/**
+ * POST /ai-writing reserves a daily quota unit, then runs input moderation
+ * (up to 15 s), the OpenAI Responses call (up to 30 s) and output moderation
+ * (up to 15 s) in turn. A shorter client deadline would drop a suggestion the
+ * server still finishes and charges to the user's daily quota.
+ */
+export const AI_WRITING_TIMEOUT_MS = 90_000
 const NETWORK_ERROR = 'Could not reach Ujimora. Check your connection and try again.'
 const TIMEOUT_ERROR = 'Ujimora took too long to respond. Check your connection and try again.'
 const UNAVAILABLE_ERROR = 'Ujimora is temporarily unavailable. Please try again in a minute.'
@@ -165,8 +172,9 @@ export const api = {
   patch: <T>(path: string, body?: unknown) => authedRequest<T>(path, { method: 'PATCH', body: JSON.stringify(body) }),
   upload: <T>(path: string, body: ArrayBuffer, contentType: string) => authedRequest<T>(path, { method: 'POST', body, headers: { 'Content-Type': contentType } }, false, UPLOAD_TIMEOUT_MS),
   get: <T>(path: string) => authedRequest<T>(path),
-  post: <T>(path: string, body?: unknown, headers?: Record<string, string>) =>
-    authedRequest<T>(path, { method: 'POST', body: JSON.stringify(body), headers }),
+  /** `timeoutMs` is only for endpoints whose server-side work can outlast REQUEST_TIMEOUT_MS. */
+  post: <T>(path: string, body?: unknown, headers?: Record<string, string>, timeoutMs = REQUEST_TIMEOUT_MS) =>
+    authedRequest<T>(path, { method: 'POST', body: JSON.stringify(body), headers }, false, timeoutMs),
   put: <T>(path: string, body?: unknown) =>
     authedRequest<T>(path, { method: 'PUT', body: JSON.stringify(body) }),
   delete: <T>(path: string, body?: unknown) =>

@@ -2,8 +2,9 @@ import { ReportContent } from './ReportContent'
 import { useEffect, useState } from 'react'
 import { Linking, View } from 'react-native'
 import { Checkbox, Text } from 'react-native-paper'
-import { AiWritingAction, type AiWritingResponse } from '@ubuntu-fund/types'
+import { AiWritingAction } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
+import { requestAiWriting } from '@/lib/aiWriting'
 import { SelectionField } from './SelectionField'
 import { BrandedTextInput as TextInput } from './BrandedTextInput'
 import { Button, Skeleton } from './Loading'
@@ -26,7 +27,7 @@ export function AiWritingAssistant({ text, onApply }: { text: string; onApply: (
     setBusy(true); setError(''); setPreview(null)
     const original = text
     try {
-      const response = await api.post<AiWritingResponse>('/ai-writing', { consentToExternalProcessing: true, text: original || prompt, action, prompt: prompt || undefined, targetLanguage: action === AiWritingAction.TRANSLATE ? language : undefined })
+      const response = await requestAiWriting({ consentToExternalProcessing: true, text: original || prompt, action, prompt: prompt || undefined, targetLanguage: action === AiWritingAction.TRANSLATE ? language : undefined })
       setPreview({ original, result: response.result, requestId: response.requestId })
       setConfig(c => c ? { ...c, remainingRequests: response.remainingRequests ?? Math.max(0, c.remainingRequests - 1) } : c)
     } catch (e) { setError(e instanceof Error ? e.message : 'Writing assistance failed.') } finally { setBusy(false); setConsent(false) }
