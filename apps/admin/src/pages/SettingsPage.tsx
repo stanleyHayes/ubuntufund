@@ -22,7 +22,7 @@ import { useAdminPermissions } from '@/context/AdminPermissionContext'
 import { useColorMode } from '@/context/ColorModeContext'
 import { useAuth } from '@/context/AuthContext'
 import { raisedSurface } from '@/lib/surfaces'
-import { api } from '@/lib/api'
+import { api, credentialApi } from '@/lib/api'
 import { exportTable } from '@/lib/exports/report'
 
 const sections = [
@@ -99,7 +99,7 @@ function SettingsContent() {
     ),
     security: (
       <Panel>
-        <MfaSettings client={api} onTokens={(tokens) => replaceTokens(tokens, user?.id ?? '')} />
+        <MfaSettings client={credentialApi} onTokens={(tokens) => replaceTokens(tokens, user?.id ?? '')} />
         <Button component={Link} to="/profile" sx={{ mt: 2 }}>
           Manage profile and password
         </Button>

@@ -1,5 +1,5 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
-import { api } from '../../src/lib/api'
+import { ApiError, api, credentialApi } from '../../src/lib/api'
 
 describe('admin authentication errors', () => {
   beforeEach(() => {
@@ -45,6 +45,41 @@ describe('admin authentication errors', () => {
     expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/auth/refresh'))).toHaveLength(1)
     expect(localStorage.getItem('uf_admin_token')).toBe('renewed')
     window.history.replaceState({}, '', '/login')
+  })
+
+  it('reports a wrong password or code on a credential check without renewing, replaying or signing out', async () => {
+    window.history.replaceState({}, '', '/profile')
+    localStorage.setItem('uf_admin_tokens', JSON.stringify({ accessToken: 'live', refreshToken: 'refresh' }))
+    localStorage.setItem('uf_admin_token', 'live')
+    localStorage.setItem('uf_admin_last_activity', String(Date.now()))
+    const assign = vi.fn()
+    vi.stubGlobal('location', { ...window.location, pathname: '/profile', assign })
+    const fetchMock = vi.fn(async (url: string) => url.endsWith('/auth/refresh')
+      ? new Response(JSON.stringify({ data: { accessToken: 'renewed', refreshToken: 'next' } }))
+      : new Response(JSON.stringify({ message: 'Enter a valid authenticator code or an unused recovery code.', errors: { mfaCode: ['required'] } }), { status: 401 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const failure = await credentialApi.post('/auth/mfa/enable', { password: 'SecurePass123', code: '000000', enrollmentId: 'e1' }).catch(error => error)
+    expect(failure).toBeInstanceOf(ApiError)
+    expect(failure).toMatchObject({ status: 401, message: 'Enter a valid authenticator code or an unused recovery code.', errors: { mfaCode: ['required'] } })
+    // One attempt only: no renewal and no replay that would count the code twice.
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(localStorage.getItem('uf_admin_token')).toBe('live')
+    expect(localStorage.getItem('uf_admin_tokens')).not.toBeNull()
+    expect(assign).not.toHaveBeenCalled()
+    window.history.replaceState({}, '', '/login')
+  })
+
+  it('still treats a credential check sent without any session as a sign-out', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ message: 'Authentication required' }), { status: 401 })))
+    await expect(credentialApi.post('/auth/mfa/setup', { password: 'x' })).rejects.toThrow('Your session has expired')
+  })
+
+  it('exposes the HTTP status on API errors', async () => {
+    localStorage.setItem('uf_admin_token', 'test-token')
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ message: 'Changed elsewhere', errors: { revision: ['stale'] } }), { status: 409 })))
+    const failure = await api.post('/admin/example', {}).catch(error => error)
+    expect(failure).toBeInstanceOf(ApiError)
+    expect(failure).toMatchObject({ status: 409, message: 'Changed elsewhere', errors: { revision: ['stale'] } })
   })
 
   it('returns successful login data', async () => {

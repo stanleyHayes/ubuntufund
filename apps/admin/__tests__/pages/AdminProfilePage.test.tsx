@@ -4,12 +4,15 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { ThemeProvider } from '@mui/material/styles'
 import { ujimoraTheme } from '@ubuntu-fund/ui'
 import AdminProfilePage from '@/pages/AdminProfilePage'
-import { api } from '@/lib/api'
+import { api, credentialApi } from '@/lib/api'
 const { updateName, replaceTokens } = vi.hoisted(() => ({ updateName: vi.fn(), replaceTokens: vi.fn() }))
 vi.mock('@/context/AuthContext', () => ({ useAuth: () => ({ user: { id: 'admin-1', name: 'Old name', email: 'admin@example.com', role: 'admin' }, updateName, replaceTokens }) }))
-vi.mock('@/lib/api', () => ({ api: { get: vi.fn(), put: vi.fn() } }))
+vi.mock('@/lib/api', () => ({ api: { get: vi.fn(), put: vi.fn() }, credentialApi: { get: vi.fn(), post: vi.fn() } }))
 const profile = { name: 'Saved Admin', email: 'admin@example.com', phone: '0550000000', bio: 'Existing bio', language: 'en', notificationPreferences: { email: false, push: false } }
-beforeEach(() => { vi.clearAllMocks(); vi.mocked(api.get).mockResolvedValue(profile); vi.mocked(api.put).mockResolvedValue({ name: 'Updated Admin' }) })
+beforeEach(() => {
+  vi.clearAllMocks(); vi.mocked(api.get).mockResolvedValue(profile); vi.mocked(api.put).mockResolvedValue({ name: 'Updated Admin' })
+  vi.mocked(credentialApi.get).mockResolvedValue({ enabled: false, available: true, recoveryCodesRemaining: 0 })
+})
 const mount = () => render(<ThemeProvider theme={ujimoraTheme}><AdminProfilePage /></ThemeProvider>)
 it('loads saved fields and omits an unset optional country on save', async () => {
   mount()
@@ -82,4 +85,17 @@ it('does not offer notification or language switches that nothing reads', async 
   expect(screen.queryByText('Push Notifications')).not.toBeInTheDocument()
   expect(screen.queryByLabelText('Language')).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: /save preferences/i })).not.toBeInTheDocument()
+})
+
+it('sends authenticator settings through the credential-check client, so a wrong code never signs the admin out', async () => {
+  vi.mocked(credentialApi.post).mockRejectedValue(new Error('Current password is incorrect.'))
+  mount()
+  fireEvent.click(await screen.findByRole('tab', { name: 'Security' }))
+  await waitFor(() => expect(credentialApi.get).toHaveBeenCalledWith('/auth/mfa'))
+  expect(api.get).not.toHaveBeenCalledWith('/auth/mfa')
+  fireEvent.change(await screen.findByLabelText('Current password'), { target: { value: 'WrongPass123' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Set up authenticator' }))
+  expect(await screen.findByText('Current password is incorrect.')).toBeInTheDocument()
+  expect(credentialApi.post).toHaveBeenCalledWith('/auth/mfa/setup', { password: 'WrongPass123' })
+  expect(replaceTokens).not.toHaveBeenCalled()
 })
