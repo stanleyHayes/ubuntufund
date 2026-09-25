@@ -19,7 +19,7 @@ interface DonationTotalsRaw {
   _id: null;
   totalRaised: number;
   totalDonations: number;
-  distinctDonors: string[];
+  distinctDonors: (string | null)[];
 }
 
 interface MonthlyDonationRaw { _id: { year: number; month: number }; amount: number }
@@ -61,7 +61,9 @@ export class MongoAnalyticsRepository implements AnalyticsRepositoryPort {
             _id: null,
             totalRaised: { $sum: '$amount' },
             totalDonations: { $sum: 1 },
-            distinctDonors: { $addToSet: '$donorId' },
+            // Guests share donorId 'guest', which is not an account: leave
+            // it out of the donor-accounts figure used for conversion.
+            distinctDonors: { $addToSet: { $cond: [{ $eq: ['$donorId', 'guest'] }, null, '$donorId'] } },
           },
         },
       ] as PipelineStage[]),
@@ -84,7 +86,7 @@ export class MongoAnalyticsRepository implements AnalyticsRepositoryPort {
     const totals = donationTotals[0];
     const totalRaised = totals?.totalRaised ?? 0;
     const totalDonations = totals?.totalDonations ?? 0;
-    const distinctDonorCount = totals?.distinctDonors.length ?? 0;
+    const distinctDonorCount = totals?.distinctDonors.filter((id) => id !== null).length ?? 0;
     const avgDonation =
       totalDonations > 0 ? round2(totalRaised / totalDonations) : 0;
     const conversionRate =
