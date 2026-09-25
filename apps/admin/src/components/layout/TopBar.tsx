@@ -9,15 +9,12 @@ import {
   Avatar,
   Menu,
   MenuItem,
-  InputBase,
   Box,
   Typography,
   Divider,
   Link,
   ListItemIcon,
 } from '@mui/material'
-import { alpha, styled } from '@mui/material/styles'
-import SearchIcon from '@mui/icons-material/Search'
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded'
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded'
@@ -34,37 +31,6 @@ import { HAIRLINE, WASH, ON_FILL } from '@/lib/tones'
 const UTILITY_BAR_HEIGHT = 34
 const MAIN_BAR_HEIGHT = 64
 export const TOPBAR_HEIGHT = UTILITY_BAR_HEIGHT + MAIN_BAR_HEIGHT
-
-const Search = styled('div')(({ theme }) => ({
-  position: 'relative',
-  borderRadius: 'var(--shape-input, 6px)',
-  backgroundColor: alpha(theme.palette.common.white, 0.06),
-  '&:hover': {
-    backgroundColor: alpha(theme.palette.common.white, 0.1),
-  },
-  width: 320,
-}))
-
-const SearchIconWrapper = styled('div')(({ theme }) => ({
-  padding: theme.spacing(0, 2),
-  height: '100%',
-  position: 'absolute',
-  pointerEvents: 'none',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  color: theme.palette.text.secondary,
-}))
-
-const StyledInputBase = styled(InputBase)(({ theme }) => ({
-  color: 'inherit',
-  width: '100%',
-  '& .MuiInputBase-input': {
-    padding: theme.spacing(1, 1, 1, 0),
-    paddingLeft: `calc(1em + ${theme.spacing(4)})`,
-    fontSize: '0.875rem',
-  },
-}))
 
 export default function TopBar({
   onReplayTour,
@@ -174,19 +140,6 @@ export default function TopBar({
           >
             <MenuRoundedIcon />
           </IconButton>
-          <Search
-            data-tour="search"
-            sx={{ width: '100%', maxWidth: 320, minWidth: 0 }}
-          >
-            <SearchIconWrapper>
-              <SearchIcon />
-            </SearchIconWrapper>
-            <StyledInputBase
-              placeholder="Search…"
-              inputProps={{ 'aria-label': 'Search campaigns, users and donations' }}
-              sx={{ width: '100%' }}
-            />
-          </Search>
         </Box>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.75, sm: 1 }, flexShrink: 0 }}>

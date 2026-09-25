@@ -27,12 +27,6 @@ const ADMIN_TOUR: TourStep[] = [
     body: 'Everything lives in five groups: Operations for the daily pulse, Community for campaigns and people, Trust & Safety for reviews, Growth for outreach, and Platform for configuration.',
   },
   {
-    selector: '[data-tour="search"]',
-    side: 'bottom',
-    title: 'Search everything',
-    body: 'Jump straight to any campaign, user, or donation without leaving the page you are on.',
-  },
-  {
     selector: '[data-tour="bell"]',
     side: 'bottom',
     title: 'Notifications',
