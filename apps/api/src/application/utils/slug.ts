@@ -53,12 +53,29 @@ const MIN_SLUG_LENGTH = 3;
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 /**
- * Normalize arbitrary text to a kebab-case ascii slug: strip diacritics, lower
- * case, collapse every run of non-alphanumerics to a single hyphen, and trim.
- * Returns '' when nothing usable survives.
+ * Letters with no Unicode decomposition, so NFKD + diacritic stripping cannot
+ * reduce them to ASCII and they used to become hyphens: "Dɛnkyɛm" slugged to
+ * "d-nky-m". Covers Akan/Ga/Ewe (ɛ ɔ ŋ ɖ ɣ ʋ ƒ), Hausa (ɓ ɗ ƙ ƴ) and common
+ * Latin ligatures. Existing slugs are unaffected; this applies to new ones.
+ */
+const TRANSLITERATIONS: Record<string, string> = {
+  ɛ: 'e', Ɛ: 'e', ɔ: 'o', Ɔ: 'o', ŋ: 'ng', Ŋ: 'ng',
+  ɓ: 'b', Ɓ: 'b', ɗ: 'd', Ɗ: 'd', ɖ: 'd', Ɖ: 'd', ƙ: 'k', Ƙ: 'k', ƴ: 'y', Ƴ: 'y',
+  ɣ: 'g', Ɣ: 'g', ʋ: 'v', Ʋ: 'v', ƒ: 'f', Ƒ: 'f',
+  ß: 'ss', ẞ: 'ss', æ: 'ae', Æ: 'ae', œ: 'oe', Œ: 'oe', ø: 'o', Ø: 'o',
+  đ: 'd', Đ: 'd', ð: 'd', Ð: 'd', ł: 'l', Ł: 'l', þ: 'th', Þ: 'th', ı: 'i',
+};
+const TRANSLITERABLE = new RegExp(`[${Object.keys(TRANSLITERATIONS).join('')}]`, 'gu');
+
+/**
+ * Normalize arbitrary text to a kebab-case ascii slug: transliterate letters
+ * without a decomposition, strip diacritics, lower case, collapse every run of
+ * non-alphanumerics to a single hyphen, and trim. Returns '' when nothing
+ * usable survives.
  */
 export function slugify(input: string): string {
   return input
+    .replace(TRANSLITERABLE, (letter) => TRANSLITERATIONS[letter] ?? letter)
     .normalize('NFKD')
     .replace(/\p{Diacritic}/gu, '') // drop combining diacritical marks
     .toLowerCase()
