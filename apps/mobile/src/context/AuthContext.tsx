@@ -6,6 +6,8 @@ import { AppState, Platform, View } from 'react-native'
 import { accessToken, biometricSessionState, setSessionForeground, endSession, establishSession, expireIdleSession, hydrateSession, observeSession, recordActivity, sessionSnapshot } from '@/lib/session'
 import { loginApi, registerApi } from '@/lib/api'
 import type { AuthUser, AuthTokens } from '@/lib/api'
+import { onAgreementRequired } from '@/lib/agreementEvents'
+import { fetchLegalStatus, type LegalStatus } from '@/lib/agreementStatus'
 
 interface AuthState {
   user: AuthUser | null
@@ -33,6 +35,9 @@ interface AuthContextValue extends AuthState {
   }) => Promise<void>
   replaceTokens: (tokens: AuthTokens, userId: string) => Promise<void>
   logout: () => Promise<void>
+  /** The API's agreement status for the signed-in user, once loaded. */
+  legalStatus: LegalStatus | null
+  refreshLegalStatus: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -92,6 +97,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   }, [])
 
+  // Re-read the agreement status on sign-in, when the app returns to the
+  // foreground and after any 428: the bundled version can lag the API's.
+  const [fetchedLegalStatus, setLegalStatus] = useState<(LegalStatus & { userId: string }) | null>(null)
+  const signedInUserId = state.isAuthenticated ? state.user?.id : undefined
+  const legalStatus = signedInUserId && fetchedLegalStatus?.userId === signedInUserId ? fetchedLegalStatus : null
+  const refreshLegalStatus = useCallback(async () => {
+    const userId = sessionSnapshot()?.user.id
+    if (!userId) return
+    const status = await fetchLegalStatus()
+    if (status && sessionSnapshot()?.user.id === userId) setLegalStatus({ ...status, userId })
+  }, [])
+  useEffect(() => {
+    if (!signedInUserId) return
+    let last = Date.now()
+    void refreshLegalStatus()
+    const appState = AppState.addEventListener('change', value => {
+      if (value !== 'active' || Date.now() - last < 60_000) return
+      last = Date.now()
+      void refreshLegalStatus()
+    })
+    const unsubscribe = onAgreementRequired(() => { last = Date.now(); void refreshLegalStatus() })
+    return () => { appState.remove(); unsubscribe() }
+  }, [signedInUserId, refreshLegalStatus])
+
   const replaceTokens = useCallback(async (tokens: AuthTokens, userId: string) => {
     const current = sessionSnapshot()
     if (current?.user.id === userId) await establishSession(current.user, tokens)
@@ -102,7 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ ...state, biometricLocked: deviceState.locked, login, register, replaceTokens, logout }}>
+    <AuthContext.Provider value={{ ...state, biometricLocked: deviceState.locked, login, register, replaceTokens, logout, legalStatus, refreshLegalStatus }}>
       <View style={{ flex: 1 }} onTouchStart={recordActivity}>
         <View style={{ flex: 1, display: deviceState.locked || (deviceState.enabled && !foreground) ? 'none' : 'flex' }} accessibilityElementsHidden={deviceState.locked || (deviceState.enabled && !foreground)} importantForAccessibility={deviceState.locked || (deviceState.enabled && !foreground) ? 'no-hide-descendants' : 'auto'}>{children}</View>
         {(deviceState.locked || (deviceState.enabled && !foreground)) && <BiometricLock suspended={!foreground} />}

@@ -4,6 +4,16 @@ import { browserSession, expireSession, forceExpireSession, storedAccessToken } 
 // (see vercel.json). Set VITE_API_URL to call an absolute API origin instead.
 export const API_BASE = import.meta.env?.VITE_API_URL || '/api/v1'
 
+/**
+ * Dispatched when the API answers 428 (a publishing action needs a current
+ * agreement). AuthContext then re-reads the server's agreement status, because
+ * this bundle's LEGAL_ACCEPTANCE_VERSION can lag the API's.
+ */
+export const AGREEMENT_REQUIRED = 'ujimora:agreement-required'
+function signalAgreementRequired(status: number) {
+  if (status === 428 && typeof window !== 'undefined') window.dispatchEvent(new Event(AGREEMENT_REQUIRED))
+}
+
 interface ApiOptions extends RequestInit {
   token?: string
 }
@@ -54,6 +64,7 @@ async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
   }
 
   if (!res.ok) {
+    signalAgreementRequired(res.status)
     if (res.status === 401 && token) expireSession(token)
     const errorBody = data && typeof data === 'object' ? data as { error?: string; message?: string } : null
     const fallback = res.status === 401
@@ -92,6 +103,7 @@ async function authedRequest<T>(path: string, options?: RequestInit): Promise<T>
   })
 
   if (!res.ok) {
+    signalAgreementRequired(res.status)
     // Any 401 on an authed request means this session can no longer act — expire
     // it so protected pages fall back to the sign-in prompt instead of a
     // dead-end error. Guarded by the token we actually sent (so a late reply

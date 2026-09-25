@@ -1,6 +1,7 @@
 import { UserModel } from '../../../../database/models/UserModel.js';
 import { legalAcceptanceSchema } from './legalAcceptanceSchema.js';
 import { Router } from 'express';
+import { LEGAL_ACCEPTANCE_VERSION, hasCurrentLegalAcceptance } from '@ubuntu-fund/types';
 import { z } from 'zod';
 import type { ProfileController } from '../controllers/ProfileController.js';
 import { validate } from '../../middleware/validate.js';
@@ -72,6 +73,21 @@ export function createProfileRoutes(
       const user = await UserModel.findOne({ _id: userId, role: 'organization', deletedAt: { $exists: false } }).select('needsWebsite websiteRequestWithdrawnAt').lean();
       if (!user) { res.status(404).json({ message: 'Organization account not found' }); return; }
       res.set('Cache-Control', 'private, no-store').json({ data: { needsWebsite: false, withdrawnAt: user.websiteRequestWithdrawnAt ?? null } });
+    } catch (error) { next(error); }
+  });
+  // Server-side truth for the agreement notice. Clients bundle their own copy of
+  // LEGAL_ACCEPTANCE_VERSION, which lags the API until they update, so they ask
+  // here on start, on focus and after any 428 instead of trusting the cache.
+  router.get('/legal-acceptance', authMiddleware, async (req, res, next) => {
+    try {
+      const userId = (req as import('../../middleware/authMiddleware.js').AuthenticatedRequest).userId!;
+      const user = await UserModel.findOne({ _id: userId, deletedAt: null }).select('legalAcceptance').lean();
+      if (!user) { res.status(404).json({ message: 'Account not found' }); return; }
+      res.set('Cache-Control', 'no-store').json({ data: {
+        current: hasCurrentLegalAcceptance(user.legalAcceptance),
+        requiredVersion: LEGAL_ACCEPTANCE_VERSION,
+        record: user.legalAcceptance ?? null,
+      }, status: 200 });
     } catch (error) { next(error); }
   });
   router.post('/legal-acceptance', authMiddleware, validate(legalAcceptanceSchema), async (req, res, next) => {

@@ -1,5 +1,6 @@
 import type { LegalAcceptanceInput, LegalAcceptanceRecord } from '@ubuntu-fund/types'
 import { accessToken, configureRefresh } from './session'
+import { signalAgreementRequired } from './agreementEvents'
 
 // In dev, the API runs on your machine. Android emulator uses 10.0.2.2 for localhost.
 // iOS simulator and physical devices (with Expo) use the LAN IP.
@@ -79,6 +80,7 @@ async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
   const json = await res.json()
 
   if (!res.ok) {
+    signalAgreementRequired(res.status)
     throw new ApiError(res.status, json.error ?? json.message ?? 'Request failed')
   }
 
@@ -106,6 +108,7 @@ async function authedRequest<T>(path: string, options?: RequestInit, retried = f
     if (renewed) return authedRequest<T>(path, options, true)
   }
   if (!res.ok) {
+    signalAgreementRequired(res.status)
     const error = await res.json().catch(() => ({ message: 'Request failed' }))
     // Throw ApiError so callers can branch on `status` (e.g. treat a 404 as
     // "not enrolled"); it still extends Error, so `.message` catches keep working.

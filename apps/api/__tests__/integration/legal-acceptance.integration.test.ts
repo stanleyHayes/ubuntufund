@@ -39,6 +39,18 @@ describe('Versioned account agreement', () => {
     expect(history[1].acceptedAt.toISOString()).toBe(first.body.data.acceptedAt);
     expect((await UserModel.findById(user.id))?.legalAcceptance).toMatchObject(acceptance);
   });
+  it('reports the server-side agreement status so clients with an older bundle still see the notice', async () => {
+    const result = await request(app).post('/api/v1/auth/register').send({ ...account(), legalAcceptance: acceptance }).expect(201);
+    const bearer = `Bearer ${result.body.data.tokens.accessToken}`;
+    await request(app).get('/api/v1/profile/legal-acceptance').expect(401);
+    const current = await request(app).get('/api/v1/profile/legal-acceptance').set('Authorization', bearer).expect(200);
+    expect(current.headers['cache-control']).toContain('no-store');
+    expect(current.body.data).toMatchObject({ current: true, requiredVersion: LEGAL_ACCEPTANCE_VERSION, record: acceptance });
+    // As if the API shipped a newer version than the one this user accepted.
+    await UserModel.updateOne({ _id: result.body.data.user.id }, { $set: { 'legalAcceptance.version': '2020-01-01' } });
+    const stale = await request(app).get('/api/v1/profile/legal-acceptance').set('Authorization', bearer).expect(200);
+    expect(stale.body.data).toMatchObject({ current: false, requiredVersion: LEGAL_ACCEPTANCE_VERSION, record: { version: '2020-01-01' } });
+  });
   it('does not create an account without its consent record', async () => {
     const data = account();
     const failure = vi.spyOn(LegalAcceptanceEventModel, 'create').mockRejectedValueOnce(new Error('History unavailable'));
