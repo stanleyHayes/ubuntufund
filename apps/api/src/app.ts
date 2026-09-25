@@ -458,6 +458,9 @@ import { createRbacRoutes } from './infrastructure/adapters/inbound/http/routes/
 import { createTestimonialRoutes } from './infrastructure/adapters/inbound/http/routes/testimonialRoutes.js'
 import { createContactRoutes } from './infrastructure/adapters/inbound/http/routes/contactRoutes.js'
 
+/** How long browsers may reuse a CORS preflight answer (Chromium caps it at 7200). */
+const CORS_PREFLIGHT_MAX_AGE_SECONDS = 7200
+
 /**
  * Assemble the fully-wired Express application (no listening, no DB
  * connection). Exported separately from bootstrap so integration tests can
@@ -1717,10 +1720,16 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     }
     next()
   })
+  // The web and admin builds call the API origin directly, so almost every
+  // browser request (JSON Content-Type, Authorization) is preflighted. Without
+  // Access-Control-Max-Age browsers cache a preflight for ~5 s, adding an
+  // extra round trip to most calls on slow mobile networks; 7200 s is
+  // Chromium's cap (Firefox allows longer).
   app.use(
     cors({
       origin: config.corsOrigins.length > 0 ? config.corsOrigins : true,
       credentials: true,
+      maxAge: CORS_PREFLIGHT_MAX_AGE_SECONDS,
     }),
   )
 

@@ -18,6 +18,16 @@ interface ApiOptions extends RequestInit {
   token?: string
 }
 
+/**
+ * `Content-Type: application/json` only when a body is sent. The API is a
+ * separate origin, and a bodyless anonymous GET with no custom headers is a
+ * CORS "simple" request, so public browsing (campaign lists and pages) skips
+ * the preflight round trip entirely.
+ */
+function jsonHeaders(body: RequestInit['body']): Record<string, string> {
+  return body === undefined || body === null ? {} : { 'Content-Type': 'application/json' }
+}
+
 class ApiError extends Error {
   constructor(
     public status: number,
@@ -49,7 +59,7 @@ async function request<T>(path: string, options: ApiOptions = {}, retried = fals
   if (suppliedToken && !token) throw new ApiError(401, 'Your session has expired. Please sign in again.')
 
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...jsonHeaders(fetchOptions.body),
     ...customHeaders as Record<string, string>,
   }
 
@@ -111,7 +121,7 @@ async function authedRequest<T>(path: string, options?: RequestInit, retried = f
   if (hadToken && !token) throw new ApiError(401, 'Your session has expired. Please sign in again.')
 
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...jsonHeaders(options?.body),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   }
 
