@@ -252,7 +252,7 @@ function ContactPage() {
                     </Box>
                     <Typography variant="h5" sx={{ mb: 1 }}>Message sent</Typography>
                     <Typography sx={{ color: 'text.secondary', mb: 3, maxWidth: 400, mx: 'auto' }}>
-                      Thank you for reaching out. Our team will review your message and get back to you within 24 hours.
+                      Thank you for reaching out. Our team will review your message and reply by email.
                     </Typography>
                     <Button
                       variant="outlined"

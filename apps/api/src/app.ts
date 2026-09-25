@@ -591,6 +591,16 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     ledgerRepo,
     splitAccrualService,
   )
+  // Staff email alerts (campaign review queue, contact messages). Read through
+  // the versioned store so the address is admin-editable; the env var is only
+  // the fallback until someone sets one. A closure, because
+  // commercialConfigService is declared further down and only the call is deferred.
+  const staffAlerts = new ResendReviewAlerts(
+    process.env.RESEND_API_KEY ?? '',
+    process.env.FROM_EMAIL ?? '',
+    () => commercialConfigService.resolveReviewAlertEmail(process.env.REVIEW_ALERT_EMAIL ?? ''),
+    process.env.ADMIN_WEB_URL ?? 'https://admin.ujimora.com',
+  )
   const activityEmail = new ResendActivityEmails(process.env.RESEND_API_KEY ?? '', process.env.FROM_EMAIL ?? '', config.publicWebUrl, process.env.REPLY_TO_EMAIL || undefined)
   const activityAlerts = new MongoActivityAlerts(activityEmail)
   const accountEmails = new AccountEmails(activityEmail, process.env.AUTH_EMAIL_ENCRYPTION_KEY_BASE64 ? Buffer.from(process.env.AUTH_EMAIL_ENCRYPTION_KEY_BASE64, 'base64') : null)
@@ -652,14 +662,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     // further down, and only the call is deferred — by the time a campaign is
     // created it is initialised.
     { resolveCampaignsConfig: () => commercialConfigService.resolveCampaignsConfig() },
-    new ResendReviewAlerts(
-      process.env.RESEND_API_KEY ?? '',
-      process.env.FROM_EMAIL ?? '',
-      // Read through the versioned store so the address is admin-editable;
-      // the env var is only the fallback until someone sets one.
-      () => commercialConfigService.resolveReviewAlertEmail(process.env.REVIEW_ALERT_EMAIL ?? ''),
-      process.env.ADMIN_WEB_URL ?? 'https://admin.ujimora.com',
-    ),
+    staffAlerts,
     kycRepo,
     publicationAdmission,
     new MongoCampaignCreation(),
@@ -1513,7 +1516,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
   const uploadController = new UploadController(signCloudinaryUploadUseCase)
   const auditLogController = new AuditLogController()
   const testimonialController = new TestimonialController()
-  const contactController = new ContactController()
+  const contactController = new ContactController(staffAlerts)
 
   // ── HTTP pipeline ────────────────────────────────────────────────────
   const app = express()
