@@ -17,7 +17,7 @@ function fixture(isAnonymous = false, donorId = GUEST_DONOR_ID) {
     if (id === GUEST_DONOR_ID) throw new Error('Cast to ObjectId failed');
     return {name:'Registered supporter',avatarUrl:'avatar.png'};
   })};
-  const campaignRepo = {findById:vi.fn(async () => ({id:'campaign',status:'active',title:'Campaign',raisedAmount:new Money(200,'GHS'),goalAmount:new Money(1000,'GHS')}))};
+  const campaignRepo = {findById:vi.fn(async () => ({id:'campaign',status:'active',title:'Campaign',raisedAmount:new Money(200,'GHS'),goalAmount:new Money(1000,'GHS'),canReceiveDonation:()=>true}))};
   const donationRepo = {findByCampaignId:vi.fn(async () => [donation]),findRecent:vi.fn(async () => [donation])};
   return {donation,donorRepo,campaignRepo,donationRepo};
 }
