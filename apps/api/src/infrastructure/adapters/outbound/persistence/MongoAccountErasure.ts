@@ -37,7 +37,7 @@ export class MongoAccountErasure implements AccountErasurePort {
     const privateDocuments = await PrivateKycDocumentModel.find({ userId }).select('_id');
     await AccountDeletionRequestModel.updateOne({ userId }, { $setOnInsert: {
       userId, contactEmail: user.email,
-      mediaUrls: [user.avatarUrl, user.coverUrl, creator?.avatarUrl, ...privateDocuments.map(doc => `kyc://${doc._id}`)].filter(Boolean),
+      mediaUrls: [user.avatarUrl, user.coverUrl, creator?.avatarUrl, creator?.coverUrl, ...privateDocuments.map(doc => `kyc://${doc._id}`)].filter(Boolean),
       requestedAt: new Date(), nextReviewAt: new Date(Date.now() + 7 * 86400000),
       status: 'pending',
     } }, { upsert: true });
@@ -63,7 +63,14 @@ export class MongoAccountErasure implements AccountErasurePort {
     const request = await AccountDeletionRequestModel.findOne({ userId });
     if (!request) return;
     await MfaModel.deleteMany({ userId });
-    await PublicationReviewModel.deleteMany({ $or: [{ actorId: userId }, { action: 'organization.profile', resourceId: userId }] });
+    // Held, declined and approved-but-unpublished versions are the only
+    // pointers to media the account uploaded for review. Keep those URLs on the
+    // deletion request for asset cleanup before the review rows go.
+    const reviewFilter = { $or: [{ actorId: userId }, { action: 'organization.profile', resourceId: userId }] };
+    const reviewedMedia = await PublicationReviewModel.distinct('mediaUrls', reviewFilter);
+    const heldMedia = reviewedMedia.filter((url): url is string => typeof url === 'string' && url.length > 0);
+    if (heldMedia.length) await AccountDeletionRequestModel.updateOne({ userId }, { $addToSet: { mediaUrls: { $each: heldMedia } } });
+    await PublicationReviewModel.deleteMany(reviewFilter);
     // Preserve decision provenance/financial references, remove duplicate public-content evidence.
     await CampaignReviewModel.updateMany({ ownerId: userId }, { $unset: { snapshot: 1 }, $set: { snapshotErasedAt: new Date() } });
     await ProfileModel.deleteMany({ userId });
@@ -95,7 +102,7 @@ export class MongoAccountErasure implements AccountErasurePort {
     await LiveSessionModel.updateMany({ campaignId: { $in: campaigns.map(c => String(c._id)) }, status: 'active' }, { $set: { status: 'ended', endedAt: new Date(), moderationStoppedAt: new Date(), providerStopPending: true, overlayToken: '', privacyMode: true } });
     await UserModel.updateOne({ _id: userId }, {
       $set: { name: 'Deleted user', email: `deleted-${userId}@invalid.ujimora`, passwordHash: '!deleted!', needsWebsite: false },
-      $unset: { avatarUrl: 1, coverUrl: 1, organizationName: 1, organizationType: 1, registrationNumber: 1, website: 1, websiteRequestedAt: 1, websiteRequestWithdrawnAt: 1, country: 1 },
+      $unset: { avatarUrl: 1, reviewedAvatarUrl: 1, coverUrl: 1, organizationName: 1, organizationType: 1, registrationNumber: 1, website: 1, websiteRequestedAt: 1, websiteRequestWithdrawnAt: 1, country: 1 },
     });
     // Cleanup changes the evidence a staff reviewer saw. Invalidate stale
     // review forms without replacing their notes or chosen follow-up date.

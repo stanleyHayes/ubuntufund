@@ -443,6 +443,11 @@ import { createContactRoutes } from './infrastructure/adapters/inbound/http/rout
  * exercise the real route graph with supertest.
  */
 export function createApp(options: { publicationAdmission?: PublicationAdmissionPort } = {}): express.Express {
+  if (config.nodeEnv === 'production' && !config.aiWriting.apiKey && !options.publicationAdmission) {
+    // Non-fatal so deploys proceed, but loud: every consented submission now
+    // waits for staff instead of automated screening.
+    logger.error('OPENAI_API_KEY missing: publication screening disabled; opted-in submissions go to staff review')
+  }
   const publicationAdmission = options.publicationAdmission ?? new MongoPublicationAdmission(new OpenAiPublicationScreener(config.aiWriting.apiKey))
   // ── Outbound adapters ────────────────────────────────────────────────
   const campaignRepo = new MongoCampaignRepository()
