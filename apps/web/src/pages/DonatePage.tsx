@@ -3,6 +3,7 @@ import { checkoutAttemptKey, forgetCheckoutAttempt, isDefinitiveRejection } from
 import { rememberPendingDonation } from '@/lib/donationHandoff'
 import { parseMoneyInput, sanitizeMoneyInput } from '@/lib/moneyInput'
 import { MessageAgreement } from '@/components/donate/MessageAgreement'
+import { DonationTermsNotice } from '@/components/donate/DonationTermsNotice'
 import { LEGAL_ACCEPTANCE_VERSION } from '@ubuntu-fund/types'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAnonymousDonationDefault } from '@/hooks/useAnonymousDonationDefault'
@@ -664,6 +665,8 @@ export function DonatePage() {
                 {submitError}
               </Alert>
             )}
+
+            <DonationTermsNotice />
 
             {/* Submit */}
             <Button

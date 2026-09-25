@@ -29,6 +29,7 @@ import {
   createCryptoDeposit,
 } from '@/lib/crypto'
 import { getDonationIntentStatus } from '@/lib/fundraising'
+import { DonationTermsNotice } from './DonationTermsNotice'
 
 const FOREST = '#2E3D2F'
 const GOLD = '#DCC07E'
@@ -369,6 +370,7 @@ export function CryptoDonatePanel({
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       {!amountValid && <Typography sx={{ fontSize: '.8rem', color: 'text.secondary', mb: 1.5 }}>Enter a contribution amount above to continue.</Typography>}
       {amountValid && !emailValid && <Typography sx={{ fontSize: '.8rem', color: 'text.secondary', mb: 1.5 }}>Enter your email above so we can contact you about this payment.</Typography>}
+      <DonationTermsNotice />
       <Button onClick={getQuote} disabled={busy || !amountValid || !emailValid || !asset || !network} variant="contained" fullWidth startIcon={busy ? <LoadingDots size={6} /> : undefined} sx={primaryButton}>{busy ? 'Getting quote…' : 'Review quote'}</Button>
     </Box>
   )

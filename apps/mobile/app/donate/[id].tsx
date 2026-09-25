@@ -138,6 +138,10 @@ function InAppDonateScreen() {
       </> : null}
       {method === 'crypto' ? <CryptoContribution key={scope} campaignId={id} amount={amountValue} email={email.trim()} name={name} message={message} legalAcceptance={messageAcceptance} isAnonymous={anonymous} /> : <>
         <Text style={{ color: p.textSecondary }}>{method === 'wallet' ? 'Your existing Ujimora wallet balance funds this donation.' : 'Card and mobile-money availability follows the secure checkout options for this merchant.'}</Text>
+        {/* Informational: an active guest acceptance step is still an owner/legal decision. */}
+        <Text style={{ color: p.textSecondary, fontSize: 12 }}>
+          Donations are made under our <Text style={{ textDecorationLine: 'underline' }} onPress={() => router.push('/terms')}>Terms of Use</Text>, <Text style={{ textDecorationLine: 'underline' }} onPress={() => router.push('/contributor-terms')}>Contributor Terms</Text> and <Text style={{ textDecorationLine: 'underline' }} onPress={() => router.push('/privacy')}>Privacy Notice</Text>. You must be 18 or older to donate.
+        </Text>
         <Button mode="contained" loading={busy} disabled={busy || !valid || !tipValid || couponOk === false || (method === 'paystack' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))} onPress={() => void donate()}>Donate {valid && tipValid ? (amountValue + tipValue).toFixed(2) : '0'} {campaign.currency}</Button>
       </>}
     </View>}
