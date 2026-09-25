@@ -107,7 +107,7 @@ export class MongoStoreBilling extends MongoBillingOwnership {
       const now = new Date();
       await StorePurchaseModel.findOneAndUpdate({ _id: key }, { $set: {
         userId, store: purchase.store, referenceCiphertext: this.cipher.encrypt(purchase.store, purchase.reference),
-        productId: purchase.productId, basePlanId: purchase.basePlanId,
+        productId: purchase.productId, basePlanId: purchase.basePlanId, environment: purchase.environment,
         active: purchase.active, autoRenew: purchase.autoRenew, periodEnd: purchase.periodEnd,
         acknowledgementPending: purchase.active && purchase.needsAcknowledgement,
         nextCheckAt: new Date(now.getTime() + RECHECK_MS), lastCheckedAt: now, verificationRevision: revision,
@@ -125,7 +125,8 @@ export class MongoStoreBilling extends MongoBillingOwnership {
         await SubscriptionModel.findOneAndUpdate({ userId }, { $set: {
           tier: purchase.tier, status: purchase.active ? SubscriptionStatus.ACTIVE : SubscriptionStatus.EXPIRED,
           billingCycle: purchase.billingCycle, currentPeriodStart: purchase.periodStart, currentPeriodEnd: purchase.periodEnd,
-          cancelAtPeriodEnd: !purchase.autoRenew, billingProvider: purchase.store, storePurchaseKey: key,
+          cancelAtPeriodEnd: !purchase.autoRenew, billingProvider: purchase.store, billingEnvironment: purchase.environment,
+          storePurchaseKey: key,
         }, $unset: { trialEnd: 1 } }, { upsert: true });
         await StoreBillingAccountModel.updateOne({ _id: account._id }, { $set: { appliedRevision: revision } });
       }

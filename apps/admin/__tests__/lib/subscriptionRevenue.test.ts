@@ -18,9 +18,15 @@ describe('admin subscription revenue', () => {
       row({ status: SubscriptionStatus.EXPIRED }),
       row({ tier: SubscriptionTier.FREE }),
       row({ tier: SubscriptionTier.STARTER, billingCycle: BillingCycle.YEARLY }),
+      row({ billingEnvironment: 'sandbox' }),
     ], now)
     expect(summary.paidUsers).toBe(2)
     expect(summary.byTier(SubscriptionTier.PRO)).toEqual({ count: 1, revenue: 149 })
     expect(summary.monthlyRevenue).toBeCloseTo(149 + 490 / 12)
+  })
+
+  it('never counts an App Review / TestFlight sandbox store purchase as revenue', () => {
+    expect(isPaidInForce(row({ billingEnvironment: 'sandbox' }), now)).toBe(false)
+    expect(isPaidInForce(row({ billingEnvironment: 'production' }), now)).toBe(true)
   })
 })

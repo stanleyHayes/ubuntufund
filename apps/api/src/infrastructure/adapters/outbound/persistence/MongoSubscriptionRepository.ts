@@ -10,6 +10,7 @@ function toDomain(doc: SubscriptionDocument): Subscription {
   return {
     id: doc._id!.toString(),
     billingProvider: doc.billingProvider,
+    billingEnvironment: doc.billingEnvironment,
     userId: doc.userId,
     tier: doc.tier,
     status: doc.status,

@@ -107,6 +107,18 @@ describe('store purchase ownership and recovery', () => {
     expect((await SubscriptionModel.findOne({ userId: f.userId }))?.currentPeriodEnd).toEqual(f.purchase.periodEnd);
   });
 
+  it('records the store environment so App Review / TestFlight sandbox access is never revenue', async () => {
+    const f = await fixture();
+    f.purchase.environment = 'sandbox';
+    await f.billing.verifyForUser(f.userId, 'google', f.purchase.reference);
+    expect((await StorePurchaseModel.findOne({ userId: f.userId }))?.environment).toBe('sandbox');
+    const subscription = await new MongoSubscriptionRepository().findByUserId(f.userId);
+    expect(subscription).toMatchObject({ tier: 'pro', status: 'active', billingEnvironment: 'sandbox' });
+    f.purchase.environment = 'production';
+    await f.billing.verifyForUser(f.userId, 'google', f.purchase.reference);
+    expect((await new MongoSubscriptionRepository().findByUserId(f.userId))?.billingEnvironment).toBe('production');
+  });
+
   it('never transfers an already claimed reference even if provider binding were changed', async () => {
     const f = await fixture();
     await f.billing.verifyForUser(f.userId, 'google', f.purchase.reference);

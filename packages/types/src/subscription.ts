@@ -82,6 +82,8 @@ export interface SubscriptionPlan {
 
 export interface Subscription {
   billingProvider?: 'web' | 'apple' | 'google';
+  /** Store plans only: 'sandbox' for App Review / TestFlight purchases, which are not revenue. */
+  billingEnvironment?: 'production' | 'sandbox';
   id: string
   userId: string
   tier: string

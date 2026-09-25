@@ -277,7 +277,7 @@ export default function SubscriptionsPage() {
           { label: 'Free Users', value: loading ? <Skeleton width={60} /> : freeUsers },
           { label: 'Paid Users', value: loading ? <Skeleton width={60} /> : paidUsers },
         ]}
-      actions={<ExportMenu title="Subscriptions" disabled={loading || !!error} getReport={() => ({ title: "Subscriptions", filters: [`Tier: ${tierFilter}`, `Status: ${statusFilter}`, `Search: ${search || 'All'}`], tables: [exportTable("Subscriptions", filtered, { ID: r => r.id, Member: r => r.userName, Email: r => r.email, Tier: r => r.tier, Status: r => r.status, Provider: r => r.billingProvider ?? 'web', Cycle: r => r.billingCycle, 'Period end (UTC)': r => dateCell(r.currentPeriodEnd) })] })} />}
+      actions={<ExportMenu title="Subscriptions" disabled={loading || !!error} getReport={() => ({ title: "Subscriptions", filters: [`Tier: ${tierFilter}`, `Status: ${statusFilter}`, `Search: ${search || 'All'}`], tables: [exportTable("Subscriptions", filtered, { ID: r => r.id, Member: r => r.userName, Email: r => r.email, Tier: r => r.tier, Status: r => r.status, Provider: r => r.billingProvider ?? 'web', Environment: r => r.billingEnvironment ?? 'production', Cycle: r => r.billingCycle, 'Period end (UTC)': r => dateCell(r.currentPeriodEnd) })] })} />}
       />
 
 
