@@ -24,27 +24,38 @@ BN843072020), UNN House, Nii Osae Ntifu Avenue, East Legon, Accra.
   - Creator tips are unavailable inside both apps.
 - **Subscriptions** (organizer plans with higher campaign limits, live streaming and
   collaboration) are sold only through App Store / Google Play in-app purchase.
-  Settings → Subscription has Restore purchases and a link to manage the store
-  subscription. Web subscriptions are not offered or linked inside the app.
+  Profile → Subscription ("Your subscription") has Restore purchases. Once the
+  account has an App Store or Google Play subscription, the same screen also shows
+  Manage App Store / Google Play subscription. Web subscriptions are not offered or
+  linked inside the app.
 - **User-generated content:** comments, campaign updates, donor messages, creator
   pages and live sessions. Users accept the Terms and confirm they are 18+ before
-  posting. Signed-in users see Report on every content surface, and profiles/creators/live sessions have
-  Block user (Settings lists blocked users). Reports go to a staffed moderation queue;
-  new comments/updates/campaigns are held for review before publication.
+  posting. Signed-in users see Report on every content surface, including Report
+  Campaign at the bottom of each campaign page (it asks for a reason; signed-out
+  users are asked to sign in first, and creators cannot report their own
+  campaign). Comment authors link to their profile, and profiles/creators/live
+  sessions have Block user (Settings lists blocked users). Reports go to a staffed
+  moderation queue; new comments/updates/campaigns are held for review before
+  publication.
 - **Account deletion:** Settings → Delete account (in-app), or the public page
   `<https://app.ujimora.com/delete-account>`.
 - **Identity verification (KYC)** is only needed to create campaigns or withdraw
   funds. It collects ID images, a selfie and an address; the notice on the form
   explains the purpose. Location is read only when the user taps "Use my location".
 - **Live broadcasting** (organizers): camera and microphone stream to viewers via
-  LiveKit. iOS uses the `audio` background mode only so a live broadcast's audio is
-  not cut off when the host briefly leaves the app. Android screen sharing uses a
-  `mediaProjection` foreground service that starts only after the host taps Share
-  screen and accepts the system capture prompt.
+  LiveKit. If the host leaves the app, the app turns off the camera and microphone,
+  and the host turns them back on after returning. iOS declares the `audio`
+  background mode only so the host's microphone keeps streaming while they share
+  their screen through the ReplayKit broadcast extension (Go live → Share screen →
+  Start Broadcast). Android screen sharing uses a `mediaProjection` foreground
+  service that starts only after the host taps Share screen and accepts the system
+  capture prompt.
 - **AI writing help** is optional. Each request asks for consent before text is
   sent to OpenAI.
 - **Crypto donations** are switched off on the server and are not shown in the app.
 - **Push notifications** are not used; the app never asks for notification permission.
+- **Update required screen:** the app checks a server-side minimum supported version
+  at launch. None is set for review, so reviewers will not see this screen.
 
 ## Apple App Store Connect
 
