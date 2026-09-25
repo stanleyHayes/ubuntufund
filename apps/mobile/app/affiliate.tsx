@@ -17,6 +17,7 @@ import {
   listAffiliateCommissions,
   requestAffiliatePayout,
 } from '@/lib/affiliate'
+import { referralShareMessage } from '@/lib/referral'
 import type {
   AffiliateDashboard,
   AffiliateReferral,
@@ -329,7 +330,7 @@ export default function AffiliateScreen() {
   const handleShare = useCallback(async () => {
     if (!dashboard) return
     try {
-      await Share.share({ message: dashboard.referralLink })
+      await Share.share({ message: referralShareMessage(dashboard.referralLink, dashboard.affiliate.referralCode) })
     } catch {
       // User cancelled the share sheet, or the OS share failed — non-fatal.
     }
@@ -457,6 +458,9 @@ export default function AffiliateScreen() {
                 </Text>
                 <Icon source="link-variant" size={18} color={p.textSecondary} />
               </View>
+              <Text style={[styles.codeHint, { color: p.textSecondary }]}>
+                The link opens the Ujimora website. Friends who sign up in the app should enter your code {dashboard.affiliate.referralCode}.
+              </Text>
               <Button
                 mode="contained"
                 buttonColor={p.primary}

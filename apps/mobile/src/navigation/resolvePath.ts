@@ -25,9 +25,10 @@ export function resolveNativePath(input: string): string {
     // Keep ?ref= (referral) and ?returnTo= on the auth screens; they validate both.
     if (path === '/login') return `/(auth)/login${query}`
     if (path === '/register') return `/(auth)/register${query}`
-    // Referral links point at the site root (app.ujimora.com/?ref=CODE); '/' would
-    // otherwise redirect straight to the tabs and drop the code.
-    if (path === '/' && url.searchParams.get('ref')) return `/(auth)/register?ref=${encodeURIComponent(url.searchParams.get('ref') || '')}`
+    // Referral links point at the site root (app.ujimora.com/?ref=CODE). Keep only
+    // the code: app/index.tsx sends a signed-out visitor to sign-up with it and a
+    // signed-in member to Home (the session is not known yet at this point).
+    if (path === '/' && url.searchParams.get('ref')) return `/?ref=${encodeURIComponent(url.searchParams.get('ref') || '')}`
     return path + query
   } catch { return '/+not-found' }
 }
