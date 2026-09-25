@@ -152,6 +152,9 @@ vi.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }))
 
+// Mock expo-application (native build number for the update gate)
+vi.mock('expo-application', () => ({ nativeApplicationVersion: null, nativeBuildVersion: null }))
+
 // Mock expo-constants
 vi.mock('expo-constants', () => ({
   default: {

@@ -48,6 +48,17 @@ Account closure preserves relational and financial integrity; it is not an excus
 to retain personal data indefinitely. Retention schedules, lawful exceptions,
 processor erasure and outstanding legal holds require documented operator review.
 
+### Retiring old builds (minimum supported version)
+
+EAS production builds use `appVersionSource: "remote"` with `autoIncrement`, which bumps only the build number (iOS `CFBundleVersion`, Android `versionCode`). `expo.version` in `app.json` (1.0.0) changes only when someone edits it. App Store Connect needs a new version string once a version is approved; Google Play does not, so successive Android builds can all report 1.0.0.
+
+The "Update required" gate compares the API's `MIN_APP_VERSION_IOS` / `MIN_APP_VERSION_ANDROID` with `<expo.version>.<build number>`:
+
+- Set a three-part value (`1.2.0`) to retire every build older than that marketing version.
+- Set a four-part value (`1.0.0.7`) to retire builds 1-6 of 1.0.0 while build 7 of 1.0.0 stays usable. Read the build number of the fixed build from the EAS build page or the store console.
+- Raise the minimum only after the required build is live in that store, for example after bumping `LEGAL_ACCEPTANCE_VERSION`. Setting `1.0.1` when every install reports 1.0.0 blocks all of them, the newest included.
+- Prefer bumping `expo.version` for each store release, so three-part minimums stay enough.
+
 ### Android screen-sharing foreground service
 
 - [ ] Declare the media-projection foreground-service use in Play Console with the actual user-initiated live screen-sharing flow and requested review evidence. See [Google foreground-service requirements](https://support.google.com/googleplay/android-developer/answer/13392821?hl=en).
