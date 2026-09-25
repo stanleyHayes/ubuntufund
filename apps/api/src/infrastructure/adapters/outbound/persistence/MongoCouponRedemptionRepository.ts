@@ -173,6 +173,40 @@ export class MongoCouponRedemptionRepository
     return doc ? toDomain(doc) : null;
   }
 
+  async reconsumeReleased(
+    id: string,
+    perUserLimit: number | undefined
+  ): Promise<CouponRedemption | null> {
+    const current = await CouponRedemptionModel.findOne({ _id: id, status: CouponRedemptionStatus.RELEASED }).lean();
+    if (!current) return null;
+    const consume = (seat?: number) => CouponRedemptionModel.findOneAndUpdate(
+      { _id: id, status: CouponRedemptionStatus.RELEASED },
+      { $set: { status: CouponRedemptionStatus.CONSUMED, ...(seat !== undefined ? { seat } : {}) } },
+      { new: true }
+    );
+    if (perUserLimit && perUserLimit > 0) {
+      const held = await CouponRedemptionModel.find({
+        couponId: current.couponId,
+        userId: current.userId,
+        seat: { $exists: true },
+      }).select('seat').lean();
+      const taken = new Set(held.map((doc) => doc.seat));
+      for (let seat = 0; seat < perUserLimit; seat += 1) {
+        if (taken.has(seat)) continue;
+        try {
+          const doc = await consume(seat);
+          return doc ? toDomain(doc) : null;
+        } catch (error) {
+          // Another checkout took this ordinal first; try the next one.
+          if (!isDuplicateKey(error)) throw error;
+        }
+      }
+    }
+    // No cap, or every seat is held: consume without an ordinal.
+    const doc = await consume();
+    return doc ? toDomain(doc) : null;
+  }
+
   async attachSubscription(
     id: string,
     subscriptionId: string
