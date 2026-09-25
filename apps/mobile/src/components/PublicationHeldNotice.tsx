@@ -1,4 +1,5 @@
-import { View, type StyleProp, type ViewStyle } from 'react-native'
+import { useEffect } from 'react'
+import { AccessibilityInfo, View, type StyleProp, type ViewStyle } from 'react-native'
 import { Icon, Text } from 'react-native-paper'
 import { router } from 'expo-router'
 import { usePalette } from '@/context/ColorModeContext'
@@ -21,6 +22,12 @@ export function PublicationHeldNotice({ retry = 'submit it again unchanged', rev
   style?: StyleProp<ViewStyle>
 }) {
   const p = usePalette()
+  // A live region that arrives already holding its text is not announced
+  // (TalkBack), and VoiceOver ignores live regions, so announce on mount.
+  // Queued so VoiceOver does not drop it while re-reading the submit button.
+  useEffect(() => {
+    AccessibilityInfo.announceForAccessibilityWithOptions('Waiting for safety review. Saved privately; this version is not public yet.', { queue: true })
+  }, [])
   const where = reviews === 'settings' ? 'Check Settings → Publication reviews for the decision.' : `Check Publication reviews ${reviews} for the decision.`
   return <View accessibilityLiveRegion="polite" style={[{ flexDirection: 'row', gap: 10, padding: 14, borderRadius: 12, backgroundColor: `${p.primary}0F` }, style]}>
     <Icon source="clock-outline" size={20} color={p.primary} />

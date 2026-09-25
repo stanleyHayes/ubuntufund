@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { ThemeProvider } from '@mui/material/styles'
 import { ujimoraTheme } from '@ubuntu-fund/ui'
 import { CampaignComments } from '@/components/campaigns/CampaignComments'
 import { CreateUpdateDialog } from '@/components/campaigns/CreateUpdateDialog'
+import { PublicationHeldNotice } from '@/components/safety/PublicationHeldNotice'
 import { isPublicationHeld } from '@/lib/publicationDrafts'
 import { api } from '@/lib/api'
 vi.mock('@/lib/api', () => ({ api: { get: vi.fn(), post: vi.fn() } }))
@@ -12,6 +13,15 @@ vi.mock('@/context/AuthContext', () => ({ useAuth: () => ({ user: { id: 'author'
 const MESSAGE = 'Saved privately for safety review. Your content has not been published. Keep your draft and check Publication reviews before submitting this same version again.'
 /** The shape the API client throws: an Error carrying `status` and `errors`. */
 const apiError = (status: number, message: string, errors?: Record<string, string[]>) => Object.assign(new Error(message), { status, errors })
+
+it('mounts an empty live region and fills that same region, so screen readers announce it', async () => {
+  render(<ThemeProvider theme={ujimoraTheme}><PublicationHeldNotice /></ThemeProvider>)
+  const region = screen.getByRole('status')
+  expect(region).toHaveAttribute('aria-live', 'polite')
+  expect(region).not.toHaveTextContent(/\S/)
+  expect(await within(region).findByText('Waiting for safety review')).toBeInTheDocument()
+  expect(screen.getByRole('status')).toBe(region)
+})
 
 describe('isPublicationHeld', () => {
   it('recognises the held marker and the message from an API without the marker', () => {

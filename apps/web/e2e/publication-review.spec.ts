@@ -21,9 +21,11 @@ test('keeps a held comment private and lets its author resubmit after review at 
   await page.route(`**/api/v1/campaigns/${campaignId}/comments`, route => {
     if (route.request().method() === 'GET') return route.fulfill({ json: { data: { items: [] } } })
     submissions.push(route.request().postDataJSON())
+    // A reworded message, so only the `errors` marker identifies the hold: this
+    // covers api.ts passing `errors` through (the other specs use the message).
     return approved
       ? route.fulfill({ status: 201, json: { data: { id: 'comment', campaignId, authorId: 'aaaaaaaaaaaaaaaaaaaaaaaa', authorName: 'Reader', content: draft, createdAt: '2026-09-12T00:00:00Z' } } })
-      : route.fulfill({ status: 409, json: { message: 'Saved privately for safety review. Your content has not been published. Keep your draft and check Publication reviews before submitting this same version again.' } })
+      : route.fulfill({ status: 409, json: { message: 'Your comment is waiting for a safety review.', errors: { publication: ['held'] } } })
   })
   await page.goto(`/campaigns/${campaignId}`)
   await page.getByRole('tab', { name: 'Comments', exact: true }).click()

@@ -13,13 +13,21 @@ beforeEach(() => {
   vi.stubGlobal('Image', class { onload?: () => void; set src(_value: string) { queueMicrotask(() => this.onload?.()) } })
 })
 afterEach(() => vi.unstubAllGlobals())
+/** What the API client throws for a change held for safety review. */
+const held = () => Object.assign(new Error('Saved privately for safety review.'), { status: 409, errors: { publication: ['held'] } })
+/** Held is an expected step: an info status notice, never a red alert. */
+async function expectHeldNotice() {
+  const notice = (await screen.findByText('Waiting for safety review')).closest('[role="status"]')
+  expect(notice).toHaveClass('MuiAlert-colorInfo')
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+}
 it('retains held media and calls onSaved only after the same image is accepted', async () => {
   const saved = vi.fn()
-  vi.mocked(api.put).mockRejectedValueOnce(new Error('Saved privately for safety review.')).mockResolvedValueOnce({})
+  vi.mocked(api.put).mockRejectedValueOnce(held()).mockResolvedValueOnce({})
   render(<ProfileImageEditor kind="avatarUrl" currentUrl="" onClose={() => {}} onSaved={saved} />)
   fireEvent.change(screen.getByLabelText('Selected image'), { target: { value: 'https://example.test/proposed.png' } })
   fireEvent.click(screen.getByRole('button', { name: 'Save image' }))
-  await screen.findByText('Saved privately for safety review.')
+  await expectHeldNotice()
   expect(saved).not.toHaveBeenCalled()
   expect(screen.getByLabelText('Selected image')).toHaveValue('https://example.test/proposed.png')
   expect(screen.getByRole('button', { name: 'Refresh publication reviews' })).toBeInTheDocument()
@@ -38,11 +46,11 @@ it('does not submit with another account credentials when image validation finis
 })
 it('keeps a held image across closing the dialog and clears it once the same image is accepted', async () => {
   const saved = vi.fn()
-  vi.mocked(api.put).mockRejectedValueOnce(new Error('Saved privately for safety review.')).mockResolvedValueOnce({})
+  vi.mocked(api.put).mockRejectedValueOnce(held()).mockResolvedValueOnce({})
   const first = render(<ProfileImageEditor kind="avatarUrl" currentUrl="" onClose={() => {}} onSaved={saved} />)
   fireEvent.change(screen.getByLabelText('Selected image'), { target: { value: 'https://example.test/held.png' } })
   fireEvent.click(screen.getByRole('button', { name: 'Save image' }))
-  await screen.findByText('Saved privately for safety review.')
+  await expectHeldNotice()
   first.unmount()
   // Reopened later: the held URL is restored rather than lost to a re-upload.
   render(<ProfileImageEditor kind="avatarUrl" currentUrl="" onClose={() => {}} onSaved={saved} />)

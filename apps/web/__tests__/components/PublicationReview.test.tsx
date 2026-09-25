@@ -9,28 +9,36 @@ import { api } from '@/lib/api'
 vi.mock('@/lib/api', () => ({ api: { get: vi.fn(), post: vi.fn() } }))
 vi.mock('@/context/AuthContext', () => ({ useAuth: () => ({ user: { id: 'author' } }) }))
 beforeEach(() => { vi.resetAllMocks(); vi.mocked(api.get).mockResolvedValue({ items: [], total: 0 }) })
+/** What the API client throws for a change held for safety review. */
+const held = () => Object.assign(new Error('Saved privately for safety review.'), { status: 409, errors: { publication: ['held'] } })
+/** Held is an expected step: an info status notice, never a red alert. */
+async function expectHeldNotice() {
+  const notice = (await screen.findByText('Waiting for safety review')).closest('[role="status"]')
+  expect(notice).toHaveClass('MuiAlert-colorInfo')
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+}
 it('starts automated screening unchecked and retains a held comment draft', async () => {
-  vi.mocked(api.post).mockRejectedValue(new Error('Saved privately for safety review.'))
+  vi.mocked(api.post).mockRejectedValue(held())
   render(<ThemeProvider theme={ujimoraTheme}><CampaignComments campaignId="campaign" creatorId="author" /></ThemeProvider>)
   const consent = screen.getByRole('checkbox', { name: /Use OpenAI/ })
   expect(consent).not.toBeChecked()
   fireEvent.change(screen.getByPlaceholderText(/Share encouragement/), { target: { value: 'Proposed public comment' } })
   fireEvent.click(screen.getByRole('button', { name: 'Post comment' }))
-  await screen.findByText('Saved privately for safety review.')
+  await expectHeldNotice()
   expect(api.post).toHaveBeenLastCalledWith('/campaigns/campaign/comments', { content: 'Proposed public comment', automatedReviewConsent: false })
   expect(screen.getByPlaceholderText(/Share encouragement/)).toHaveValue('Proposed public comment')
   fireEvent.click(consent)
   fireEvent.click(screen.getByRole('button', { name: 'Post comment' }))
   await waitFor(() => expect(api.post).toHaveBeenLastCalledWith('/campaigns/campaign/comments', { content: 'Proposed public comment', automatedReviewConsent: true }))
 })
-it('keeps update fields and shows the actual review response instead of a generic failure', async () => {
-  const submit = vi.fn().mockRejectedValue(new Error('Saved privately for safety review.'))
+it('keeps update fields and shows the held notice instead of a generic failure', async () => {
+  const submit = vi.fn().mockRejectedValue(held())
   render(<ThemeProvider theme={ujimoraTheme}><CreateUpdateDialog open onClose={() => {}} isLoading={false} onSubmit={submit} /></ThemeProvider>)
   expect(screen.getByRole('checkbox', { name: /Use OpenAI/ })).not.toBeChecked()
   fireEvent.change(screen.getByPlaceholderText('Enter update title'), { target: { value: 'Proposed update' } })
   fireEvent.change(screen.getByPlaceholderText('Write your update here...'), { target: { value: 'The complete proposed update content.' } })
   fireEvent.click(screen.getByRole('button', { name: /Post Update/i }))
-  await screen.findByText('Saved privately for safety review.')
+  await expectHeldNotice()
   expect(screen.getByPlaceholderText('Enter update title')).toHaveValue('Proposed update')
   expect(submit).toHaveBeenCalledWith(expect.objectContaining({ automatedReviewConsent: false }))
 })
