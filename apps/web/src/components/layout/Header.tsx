@@ -62,7 +62,7 @@ function NavItem({ label, to, active }: { label: string; to: string; active: boo
         display: 'inline-flex',
         alignItems: 'center',
         height: 40,
-        px: 1.5,
+        px: { xs: 1.5, md: 0.75, lg: 1.5 },
         textDecoration: 'none',
         '&:hover .nav-label': { color: CREAM },
       }}
@@ -109,13 +109,14 @@ function CtaButton({ to, children }: { to: string; children: React.ReactNode }) 
       endIcon={<ArrowForwardRoundedIcon sx={{ fontSize: 16 }} />}
       sx={{
         borderRadius: SHAPE.sm,
-        px: 2.5,
+        px: { xs: 2.5, md: 1.5, lg: 2.5 },
         py: 0.85,
         fontFamily: '"Outfit", sans-serif',
         fontWeight: 700,
         fontSize: '0.78rem',
         textTransform: 'uppercase',
         letterSpacing: '0.05em',
+        whiteSpace: 'nowrap',
         color: GOLD_LIGHT,
         border: `1.5px solid rgba(199, 162, 74, 0.55)`,
         bgcolor: 'var(--neu-surface)',
@@ -123,6 +124,7 @@ function CtaButton({ to, children }: { to: string; children: React.ReactNode }) 
         backdropFilter: 'var(--neu-backdrop)',
         transition: 'background-color 160ms ease, color 160ms ease, border-color 160ms ease',
         '&:hover': { bgcolor: GOLD, color: '#1C261D', borderColor: GOLD },
+        '& .MuiButton-endIcon': { display: { md: 'none', lg: 'inherit' } },
       }}
     >
       {children}
@@ -170,17 +172,19 @@ export function Header() {
       }}
     >
       <Container maxWidth="lg">
-        <Toolbar disableGutters sx={{ gap: 2, minHeight: { xs: 62, md: 74 } }}>
+        {/* 900–1199px holds the full nav and every action, so md tightens spacing to avoid overflowing the page. */}
+        <Toolbar disableGutters sx={{ gap: { xs: 2, md: 1, lg: 2 }, minHeight: { xs: 62, md: 74 } }}>
           {/* Brand + tagline */}
           <Box
             component={RouterLink}
             to="/"
             aria-label="Ujimora home"
-            sx={{ display: 'flex', flexDirection: 'column', textDecoration: 'none', mr: 3, py: 0.5 }}
+            sx={{ display: 'flex', flexDirection: 'column', textDecoration: 'none', mr: { xs: 3, md: 0.5, lg: 3 }, py: 0.5 }}
           >
             <BrandLogo size={28} onDark />
             <Typography
               sx={{
+                display: { xs: 'none', sm: 'block', md: 'none', lg: 'block' },
                 mt: 0.35,
                 fontFamily: '"Outfit", sans-serif',
                 fontSize: '0.56rem',
@@ -257,7 +261,7 @@ export function Header() {
                 <Avatar src={avatarUrl} sx={{ width: 30, height: 30, bgcolor: '#A8B5A0', color: '#1C261D', fontSize: '0.75rem', fontWeight: 700 }}>
                   {initials}
                 </Avatar>
-                <Typography variant="body2" sx={{ fontWeight: 600, display: { xs: 'none', sm: 'block' }, maxWidth: 110 }} noWrap>
+                <Typography variant="body2" sx={{ fontWeight: 600, display: { xs: 'none', sm: 'block', md: 'none', lg: 'block' }, maxWidth: 110 }} noWrap>
                   {organizationName || (user?.name ?? '').split(' ')[0]}
                 </Typography>
                 <ExpandMoreRoundedIcon sx={{ fontSize: 16, color: 'rgba(245, 242, 234, 0.6)' }} />
