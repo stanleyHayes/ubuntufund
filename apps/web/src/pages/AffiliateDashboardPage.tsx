@@ -25,6 +25,7 @@ import {
 } from '@ubuntu-fund/types'
 import { updateReferralCode } from '@/lib/affiliate'
 import { AffiliatePayoutDestination } from '@/components/affiliate/AffiliatePayoutDestination'
+import { ReferralHowItWorks, ReferralShareShortcuts } from '@/components/affiliate/ReferralLinkShare'
 import Alert from '@mui/material/Alert'
 import HandshakeRoundedIcon from '@mui/icons-material/HandshakeRounded'
 import ContentCopyRoundedIcon from '@mui/icons-material/ContentCopyRounded'
@@ -522,16 +523,17 @@ export function AffiliateDashboardPage() {
 
       <Container maxWidth="lg" sx={{ mt: -3, pb: 6, position: 'relative', zIndex: 2 }}>
         {/* Referral link + payout */}
-        <Grid container spacing={3} sx={{ mb: 4 }}>
+        <Grid container spacing={3} sx={{ mb: 4, alignItems: 'flex-start' }}>
           {/* Referral link */}
-          <Grid size={{ xs: 12, md: 8 }}>
+          <Grid size={{ xs: 12, lg: 7 }}>
             <Box
               sx={{
                 p: 3,
                 borderRadius: SHAPE.card,
                 bgcolor: 'background.paper',
                 boxShadow: 'var(--neu-raised)',
-                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
                 animation: `${fadeInUp} 0.5s 0.05s ease both`,
               }}
             >
@@ -596,11 +598,13 @@ export function AffiliateDashboardPage() {
                   </IconButton>
                 </Tooltip>
               </Box>
+              <ReferralShareShortcuts link={referralLink} code={affiliate.referralCode} />
+              <ReferralHowItWorks code={affiliate.referralCode} />
             </Box>
           </Grid>
 
           {/* Payout action */}
-          <Grid size={{ xs: 12, md: 4 }}>
+          <Grid size={{ xs: 12, lg: 5 }}>
             <Box
               sx={{
                 p: 3,
