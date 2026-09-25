@@ -638,7 +638,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     affiliateReferralRepo,
   )
   const mfa = new MongoMfa(process.env.MFA_ENCRYPTION_KEY ?? '', tokenService, config.publicWebUrl)
-  const loginUserUseCase = new LoginUserUseCase(userRepo, tokenService, mfa)
+  const loginUserUseCase = new LoginUserUseCase(userRepo, tokenService, mfa, auditLogRepo)
   const changePasswordUseCase = new ChangePasswordUseCase(userRepo, tokenService, accountEmails)
   const forgotPasswordUseCase = new ForgotPasswordUseCase(userRepo, accountEmails)
   const resetPasswordUseCase = new ResetPasswordUseCase(userRepo, accountEmails)

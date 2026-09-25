@@ -25,6 +25,8 @@ export class MongoAuditLogRepository implements AuditLogRepositoryPort {
         statusCode: 200,
         changes: entry.changes,
         reason: entry.reason,
+        ip: entry.ip,
+        userAgent: entry.userAgent,
       });
     } catch (error) {
       logger.error({ error, action: entry.action }, 'audit log write failed');

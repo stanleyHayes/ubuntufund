@@ -13,6 +13,7 @@ import Sidebar, { DRAWER_WIDTH } from './Sidebar'
 import TopBar, { TOPBAR_HEIGHT } from './TopBar'
 import Tour, { type TourStep } from '@/components/Tour'
 import { useAuth } from '@/context/AuthContext'
+import AdminMfaPrompt from './AdminMfaPrompt'
 
 const ADMIN_TOUR: TourStep[] = [
   {
@@ -119,6 +120,7 @@ export default function AdminLayout() {
               '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
             }}
           >
+            <AdminMfaPrompt />
             <Outlet />
           </Box>
         </Box>

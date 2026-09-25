@@ -35,12 +35,18 @@ const STORAGE_USER_KEY = 'uf_admin_user'
 const STORAGE_TOKEN_KEY = 'uf_admin_token'
 const STORAGE_TOKENS_KEY = 'uf_admin_tokens'
 
+/** The staff console is for administrator accounts only. */
+export const STAFF_ROLE = 'admin'
+export const NO_STAFF_ACCESS = 'This account does not have staff access.'
+
 function loadFromStorage(): { user: AuthUser | null; tokens: AuthTokens | null } {
   try {
     const user = JSON.parse(localStorage.getItem(STORAGE_USER_KEY) ?? 'null')
     const tokensStr = localStorage.getItem(STORAGE_TOKENS_KEY)
     const tokens = tokensStr ? JSON.parse(tokensStr) : null
     if (!localStorage.getItem(STORAGE_TOKEN_KEY)) return { user: null, tokens: null }
+    // A stored non-staff session (e.g. from before this check) is treated as signed out.
+    if (user?.role !== STAFF_ROLE) return { user: null, tokens: null }
     return { user, tokens }
   } catch {
     return { user: null, tokens: null }
@@ -73,7 +79,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }), [])
 
   const login = useCallback(async (email: string, password: string, mfaCode?: string) => {
-    const res = await api.post<{ user: AuthUser; tokens: AuthTokens }>('/auth/login', { email, password, mfaCode })
+    // audience 'admin' makes the API refuse member accounts before issuing
+    // tokens; the role check below also covers an older API that ignores it.
+    const res = await api.post<{ user: AuthUser; tokens: AuthTokens }>('/auth/login', { email, password, mfaCode, audience: 'admin' })
+    if (res.user?.role !== STAFF_ROLE) {
+      clearStorage()
+      throw new Error(NO_STAFF_ACCESS)
+    }
     saveToStorage(res.user, res.tokens)
     setState({ user: res.user, tokens: res.tokens, isAuthenticated: true, isLoading: false })
   }, [])
