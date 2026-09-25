@@ -177,13 +177,13 @@ export class MongoCouponRedemptionRepository
     id: string,
     perUserLimit: number | undefined
   ): Promise<CouponRedemption | null> {
+    // Called inside the settlement transaction, where a duplicate-key error
+    // aborts the whole transaction — so no collide-and-retry loop here. A seat
+    // taken concurrently surfaces as an error and the settlement is retried,
+    // by which time the taken seat is visible and skipped.
     const current = await CouponRedemptionModel.findOne({ _id: id, status: CouponRedemptionStatus.RELEASED }).lean();
     if (!current) return null;
-    const consume = (seat?: number) => CouponRedemptionModel.findOneAndUpdate(
-      { _id: id, status: CouponRedemptionStatus.RELEASED },
-      { $set: { status: CouponRedemptionStatus.CONSUMED, ...(seat !== undefined ? { seat } : {}) } },
-      { new: true }
-    );
+    let seat: number | undefined;
     if (perUserLimit && perUserLimit > 0) {
       const held = await CouponRedemptionModel.find({
         couponId: current.couponId,
@@ -191,19 +191,17 @@ export class MongoCouponRedemptionRepository
         seat: { $exists: true },
       }).select('seat').lean();
       const taken = new Set(held.map((doc) => doc.seat));
-      for (let seat = 0; seat < perUserLimit; seat += 1) {
-        if (taken.has(seat)) continue;
-        try {
-          const doc = await consume(seat);
-          return doc ? toDomain(doc) : null;
-        } catch (error) {
-          // Another checkout took this ordinal first; try the next one.
-          if (!isDuplicateKey(error)) throw error;
-        }
+      for (let ordinal = 0; ordinal < perUserLimit && seat === undefined; ordinal += 1) {
+        if (!taken.has(ordinal)) seat = ordinal;
       }
     }
-    // No cap, or every seat is held: consume without an ordinal.
-    const doc = await consume();
+    // No cap, or every seat is held: consume without an ordinal (it still
+    // counts against the limit, since only RELEASED rows are excluded).
+    const doc = await CouponRedemptionModel.findOneAndUpdate(
+      { _id: id, status: CouponRedemptionStatus.RELEASED },
+      { $set: { status: CouponRedemptionStatus.CONSUMED, ...(seat !== undefined ? { seat } : {}) } },
+      { new: true }
+    );
     return doc ? toDomain(doc) : null;
   }
 

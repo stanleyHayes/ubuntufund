@@ -125,6 +125,10 @@ export class HandleTipWebhookUseCase {
       }
       if ((await this.tipRepo.findByProviderRef(reference))?.status === 'SUCCEEDED') return;
     }
+    if (fresh.status !== 'PENDING' && fresh.status !== 'FAILED') {
+      logger.warn({ tipId: fresh.id, providerRef: reference, status: fresh.status }, 'tip success arrived for a tip in a closed state — not crediting');
+      return;
+    }
     throw new AppError('Tip settlement changed concurrently; retry', 409);
   }
 
