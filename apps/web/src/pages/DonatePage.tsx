@@ -5,7 +5,7 @@ import { parseMoneyInput, sanitizeMoneyInput } from '@/lib/moneyInput'
 import { MessageAgreement } from '@/components/donate/MessageAgreement'
 import { DonationTermsNotice } from '@/components/donate/DonationTermsNotice'
 import { LEGAL_ACCEPTANCE_VERSION } from '@ubuntu-fund/types'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAnonymousDonationDefault } from '@/hooks/useAnonymousDonationDefault'
 import { useParams, useNavigate, useSearchParams, Link as RouterLink } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -108,14 +108,16 @@ export function DonatePage() {
   const [messageAccepted, setMessageAccepted] = useState(false)
   const messageAcceptance = messageAccepted ? { version: LEGAL_ACCEPTANCE_VERSION, acceptedTerms: true, ageConfirmed: true } : undefined
   const [message, setMessage] = useState('')
-  const [isAnonymous, setIsAnonymous] = useState(false)
-  // Pre-select "Give anonymously" from the donor's saved default, unless they
-  // already chose for this donation.
+  // "Give anonymously": the donor's choice for this donation, else their saved
+  // default once it has loaded. While neither is known (a guest, or a profile
+  // that is still loading or could not be read) the field is left out of the
+  // request, so the server applies the donor's saved setting. Sending an
+  // explicit false then would publish the name of a donor who asked to be
+  // anonymous by default.
+  const [anonymityChoice, setAnonymityChoice] = useState<boolean>()
   const anonymousDefault = useAnonymousDonationDefault(user?.id)
-  const anonymityChosen = useRef(false)
-  useEffect(() => {
-    if (anonymousDefault !== undefined && !anonymityChosen.current) setIsAnonymous(anonymousDefault)
-  }, [anonymousDefault])
+  const anonymity = anonymityChoice ?? anonymousDefault
+  const isAnonymous = anonymity === true
 
   // Payment rail: fiat (Paystack) by default; crypto shown only when enabled.
   const [cryptoEnabled, setCryptoEnabled] = useState(false)
@@ -224,7 +226,7 @@ export function DonatePage() {
       donorName: donorName.trim() || undefined,
       message: message.trim() || undefined,
       legalAcceptance: messageAcceptance,
-      isAnonymous,
+      isAnonymous: anonymity,
     }
     // One key per donation attempt: pressing Give again with the same details
     // (after a lost response, or after coming back from checkout) returns the
@@ -600,13 +602,18 @@ export function DonatePage() {
           control={
             <Checkbox
               checked={isAnonymous}
-              onChange={(e) => { anonymityChosen.current = true; setIsAnonymous(e.target.checked) }}
+              onChange={(e) => setAnonymityChoice(e.target.checked)}
               sx={{ '&:focus-visible': { outline: '2px solid #C7A24A' } }}
             />
           }
           label="Give anonymously (hide my name publicly)"
-          sx={{ mb: 3, display: 'block' }}
+          sx={{ mb: user && anonymity === undefined ? 0.5 : 3, display: 'block' }}
         />
+        {user && anonymity === undefined && (
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            Your saved anonymity setting applies unless you tick or untick this box.
+          </Typography>
+        )}
 
         {/* Payment rail: fiat (Paystack) or crypto (shown only when enabled) */}
         {cryptoEnabled && (
@@ -639,7 +646,7 @@ export function DonatePage() {
             donorName={donorName.trim() || undefined}
             message={message.trim() || undefined}
             legalAcceptance={messageAcceptance}
-            isAnonymous={isAnonymous}
+            isAnonymous={anonymity}
             campaignPath={backToCampaign}
           />
         ) : (

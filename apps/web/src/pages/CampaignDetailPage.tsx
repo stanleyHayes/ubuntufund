@@ -121,7 +121,7 @@ function CampaignDetailContent() {
   const [donationRevision, setDonationRevision] = useState(0)
   const [donateAmount, setDonateAmount] = useState('')
   const [donateName, setDonateName] = useState('')
-  const [donateAnonymous, setDonateAnonymous] = useState(false)
+  const [donateAnonymityChoice, setDonateAnonymityChoice] = useState<boolean>()
   const [donateMessage, setDonateMessage] = useState('')
   const [donateMessageAccepted, setDonateMessageAccepted] = useState(false)
   const [selectedProvider, setSelectedProvider] = useState<PaymentMethodData | null>(null)
@@ -131,6 +131,13 @@ function CampaignDetailContent() {
   const [reportOpen, setReportOpen] = useState(false)
   const { user: currentUser } = useAuth()
   const anonymousDefault = useAnonymousDonationDefault(currentUser?.id)
+  // "Donate anonymously": the donor's choice for this donation, else their
+  // saved default, read live so it still applies when the profile loads after
+  // the dialog opened. While unknown (loading, or the profile could not be
+  // read) the field is omitted and the server applies the saved setting;
+  // an explicit false would publish a name the donor asked to hide.
+  const donateAnonymity = donateAnonymityChoice ?? anonymousDefault
+  const donateAnonymous = donateAnonymity === true
   const { user: creator, isLoading: creatorLoading } = useUser(campaign?.creatorId ?? '')
   const [activeTab, setActiveTab] = useState(0)
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false)
@@ -168,7 +175,7 @@ function CampaignDetailContent() {
     if (!currentUser) { navigate('/login', { state: { from: { pathname: `/campaigns/${id}` } } }); return }
     setDonateName(currentUser.name || '')
     // Start from the donor's "anonymous by default" setting.
-    setDonateAnonymous(anonymousDefault === true)
+    setDonateAnonymityChoice(undefined)
     setDonateOpen(true)
     setDonateAmount('')
     setDonateMessage('')
@@ -390,8 +397,8 @@ function CampaignDetailContent() {
           </Box>
 
           <TextField label="Public donor name" value={donateName} onChange={(e) => setDonateName(e.target.value)} disabled={donateAnonymous} inputProps={{ maxLength: 100 }} fullWidth />
-          <FormControlLabel control={<Checkbox checked={donateAnonymous} onChange={(e) => setDonateAnonymous(e.target.checked)} />} label="Donate anonymously" />
-          <Typography variant="body2" color="text.secondary">{donateAnonymous ? 'Your name will not appear publicly.' : 'Your chosen name will appear after content review. Until then, your donation appears anonymously.'} Messages are also reviewed before publication.</Typography>
+          <FormControlLabel control={<Checkbox checked={donateAnonymous} onChange={(e) => setDonateAnonymityChoice(e.target.checked)} />} label="Donate anonymously" />
+          <Typography variant="body2" color="text.secondary">{donateAnonymous ? 'Your name will not appear publicly.' : donateAnonymity === undefined ? 'Your saved anonymity setting applies unless you tick or untick this box. If it keeps your donations anonymous, your name will not appear publicly.' : 'Your chosen name will appear after content review. Until then, your donation appears anonymously.'} Messages are also reviewed before publication.</Typography>
           <Box>
             <TextField
               label="Message (optional)"
@@ -426,7 +433,7 @@ function CampaignDetailContent() {
                   ? { version: LEGAL_ACCEPTANCE_VERSION, acceptedTerms: true, ageConfirmed: true }
                   : undefined,
                 donorName: donateAnonymous ? undefined : donateName.trim(),
-                isAnonymous: donateAnonymous,
+                isAnonymous: donateAnonymity,
               }
               try {
                 // The same key for a retry of the same donation, so a lost

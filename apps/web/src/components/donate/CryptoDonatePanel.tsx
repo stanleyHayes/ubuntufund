@@ -44,7 +44,8 @@ interface Props {
   donorName?: string
   legalAcceptance?: LegalAcceptanceInput
   message?: string
-  isAnonymous: boolean
+  /** Undefined when the donor has not chosen: the server applies their saved default. */
+  isAnonymous?: boolean
   /** Path back to the campaign for the success state. */
   campaignPath: string
 }
