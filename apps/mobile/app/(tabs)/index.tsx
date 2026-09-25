@@ -6,7 +6,7 @@ import { Text, Icon } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import type { Campaign } from '@ubuntu-fund/types'
-import { CampaignCategory } from '@ubuntu-fund/types'
+import { acceptsCampaignDonation, CampaignCategory } from '@ubuntu-fund/types'
 import { useCampaigns } from '@/hooks/useCampaigns'
 import { useAuth } from '@/context/AuthContext'
 import { ProgressBar } from '@/components/ProgressBar'
@@ -165,7 +165,8 @@ export default function HomeTab() {
   const { user } = useAuth()
   const insets = useSafeAreaInsets()
 
-  const active = campaigns.filter((c) => c.status === 'active')
+  // Campaigns open for donations, including funded ones before their end date.
+  const active = campaigns.filter((c) => acceptsCampaignDonation(c))
   const featured = active.slice(0, 5)
   const urgent = active.filter((c) => c.priority === 'critical' || c.priority === 'urgent')
   const recent = [...active].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 6)

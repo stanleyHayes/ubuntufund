@@ -39,7 +39,10 @@ function Input({ inputRef, ...props }: Omit<ComponentProps<typeof PaperTextInput
     textColor={p.text} placeholderTextColor={p.textSecondary}
     underlineColor="transparent" activeUnderlineColor="transparent"
     outlineColor="transparent" activeOutlineColor="transparent"
-    outlineStyle={[props.outlineStyle, { borderWidth: 0 }]}
+    // Flat Paper inputs forward unknown props to the native TextInput, whose React Native
+    // outlineStyle prop only accepts 'solid' | 'dotted' | 'dashed'. A style object there throws on
+    // Android and tears down the React host, so only outlined inputs receive it.
+    outlineStyle={props.mode === 'outlined' ? [props.outlineStyle, { borderWidth: 0 }] : undefined}
     onFocus={event => { setFocused(true); props.onFocus?.(event) }}
     onBlur={event => { setFocused(false); props.onBlur?.(event) }} onChangeText={value => { recordActivity(); props.onChangeText?.(value) }} placeholder={placeholder}
     secureTextEntry={props.secureTextEntry && !visible}

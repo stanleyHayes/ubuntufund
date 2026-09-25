@@ -19,7 +19,7 @@ import {
   SHAPE,
 } from '@ubuntu-fund/ui'
 import { breadcrumbList } from '@ubuntu-fund/ui'
-import { CampaignStatus } from '@ubuntu-fund/types'
+import { acceptsCampaignDonation, CampaignStatus } from '@ubuntu-fund/types'
 import {
   donatePath,
 } from '@/lib/fundraising'
@@ -150,7 +150,8 @@ export function CampaignPublicPage() {
 
   const heroImage = campaign.socialPreview?.imageUrl ?? campaign.imageUrls?.[0]
   const summary = campaign.socialPreview?.summary || campaign.description
-  const isActive = campaign.status === CampaignStatus.ACTIVE
+  // Funded campaigns keep accepting donations until their end date, like the donate page.
+  const isActive = acceptsCampaignDonation(campaign)
   const donorCount = campaign.donorCount ?? 0
 
   function handleDonate() {
