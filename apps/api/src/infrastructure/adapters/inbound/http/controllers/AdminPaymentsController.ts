@@ -8,6 +8,7 @@ import type { ReconcilePaymentsUseCase } from '../../../../../application/use-ca
 import type { ReconcilePayoutsUseCase } from '../../../../../application/use-cases/ReconcilePayoutsUseCase.js';
 import type { ProcessRefundUseCase } from '../../../../../application/use-cases/ProcessRefundUseCase.js';
 import type { AuthenticatedRequest } from '../../middleware/authMiddleware.js';
+import type { TopUpReconcileSummary } from '../../../outbound/payments/WalletTopUpService.js';
 import { AppError } from '../../middleware/errorHandler.js';
 
 /** A contribution as the admin console sees it — normalized, no provider secrets. */
@@ -45,7 +46,9 @@ export class AdminPaymentsController {
     private readonly paymentAttemptRepo: PaymentAttemptRepositoryPort,
     private readonly reconcilePaymentsUseCase: ReconcilePaymentsUseCase,
     private readonly processRefundUseCase: ProcessRefundUseCase,
-    private readonly reconcilePayoutsUseCase: ReconcilePayoutsUseCase
+    private readonly reconcilePayoutsUseCase: ReconcilePayoutsUseCase,
+    /** Optional: the wallet top-up sweep, so staff can run it on demand. */
+    private readonly topUpReconciler?: { reconcile(): Promise<TopUpReconcileSummary> }
   ) {}
 
   /** POST /admin/payments/:id/refund — refund a contribution (spec §14). */
@@ -169,6 +172,21 @@ export class AdminPaymentsController {
         olderThanMinutes: body.olderThanMinutes,
         limit: body.limit,
       });
+      res.json({ data: summary, status: 'success' });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /** POST /admin/reconciliation/topups — re-verify unfinished wallet top-ups now. */
+  runTopUpReconciliation = async (
+    _req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      if (!this.topUpReconciler) throw new AppError('Wallet top-up reconciliation is unavailable', 503);
+      const summary = await this.topUpReconciler.reconcile();
       res.json({ data: summary, status: 'success' });
     } catch (error) {
       next(error);

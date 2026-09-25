@@ -954,9 +954,14 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     handleCreatorPayoutWebhookUseCase,
     creatorPayoutRepo,
   )
-  // Scheduled reconciliation sweep (spec §13). Production-only + flag-gated so
-  // tests/dev never spawn it; unref'd so it can't hold the process open.
-  if (config.payments.reconciliationEnabled && config.nodeEnv === 'production') {
+  // Scheduled reconciliation sweep (spec §13). Flag-gated (on by default only
+  // in production; RECONCILIATION_SCHEDULER_ENABLED opts staging/dev in) and
+  // never under tests; unref'd so it can't hold the process open.
+  if (
+    config.payments.reconciliationEnabled &&
+    config.payments.reconciliationSchedulerEnabled &&
+    config.nodeEnv !== 'test'
+  ) {
     const RECONCILE_INTERVAL_MS = 5 * 60 * 1000
     // Guarded against overlap: a sweep that outruns the interval (a large stale
     // backlog, or a slow provider) would otherwise have a second pass select the
@@ -1388,6 +1393,8 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     reconcilePaymentsUseCase,
     processRefundUseCase,
     reconcilePayoutsUseCase,
+    // On-demand wallet top-up sweep (otherwise only the scheduler runs it).
+    walletTopUps,
   )
   const payoutController = new PayoutController(
     listBanksUseCase,

@@ -90,6 +90,12 @@ export interface PaymentsConfig {
   defaultProvider: string;
   /** Whether the scheduled reconciliation job runs. */
   reconciliationEnabled: boolean;
+  /**
+   * Whether this process starts the in-process reconciliation timer. Defaults
+   * on only when NODE_ENV=production; set RECONCILIATION_SCHEDULER_ENABLED=true
+   * to run it on staging or locally. Never runs under NODE_ENV=test.
+   */
+  reconciliationSchedulerEnabled: boolean;
   /** Currencies the checkout may present when multi-currency is enabled. */
   supportedCurrencies: string[];
   /** Optional static FX source label recorded on contributions (e.g. 'provider', 'manual'). */
@@ -282,6 +288,8 @@ export const config: AppConfig = {
     multiCurrencyEnabled: process.env.PAYMENTS_MULTI_CURRENCY_ENABLED === 'true',
     defaultProvider: process.env.PAYMENTS_DEFAULT_PROVIDER ?? 'paystack',
     reconciliationEnabled: (process.env.PAYMENTS_RECONCILIATION_ENABLED ?? 'true') !== 'false',
+    reconciliationSchedulerEnabled:
+      (process.env.RECONCILIATION_SCHEDULER_ENABLED ?? (nodeEnv === 'production' ? 'true' : 'false')) === 'true',
     supportedCurrencies: (process.env.PAYMENTS_SUPPORTED_CURRENCIES ?? 'GHS,USD,GBP,EUR,CAD')
       .split(',')
       .map((c) => c.trim().toUpperCase())

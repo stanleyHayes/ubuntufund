@@ -249,4 +249,15 @@ describe('Reconciliation & admin payments (spec §13, §15)', () => {
       .set('Authorization', `Bearer ${token}`)
       .expect(403);
   });
+
+  it('staff can run the wallet top-up sweep on demand; others cannot (I037)', async () => {
+    const res = await request(app)
+      .post('/api/v1/admin/reconciliation/topups')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+    expect(res.body.data).toEqual(expect.objectContaining({ scanned: expect.any(Number), completed: expect.any(Number), failed: expect.any(Number) }));
+    const { token } = await registerUser(app, uniqueEmail('recon-topups'));
+    await request(app).post('/api/v1/admin/reconciliation/topups').set('Authorization', `Bearer ${token}`).expect(403);
+    await request(app).post('/api/v1/admin/reconciliation/topups').expect(401);
+  });
 });

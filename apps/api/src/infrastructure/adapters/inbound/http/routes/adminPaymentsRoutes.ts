@@ -15,6 +15,8 @@ const refundSchema = z.object({
  *   GET  /admin/payments/:id          → end-to-end trace (contribution + attempts)
  *   POST /admin/payments/:id/reconcile→ re-verify + safely repair one
  *   POST /admin/reconciliation        → run the reconciliation sweep
+ *   POST /admin/reconciliation/payouts → reconcile stuck payouts
+ *   POST /admin/reconciliation/topups  → re-verify unfinished wallet top-ups
  */
 export function createAdminPaymentsRoutes(
   controller: AdminPaymentsController,
@@ -31,5 +33,6 @@ export function createAdminPaymentsRoutes(
   router.post('/payments/:id/refund', authMiddleware, requireAdmin, validate(refundSchema), controller.refund);
   router.post('/reconciliation', authMiddleware, requireAdmin, controller.runReconciliation);
   router.post('/reconciliation/payouts', authMiddleware, requireAdmin, controller.runPayoutReconciliation);
+  router.post('/reconciliation/topups', authMiddleware, requireAdmin, controller.runTopUpReconciliation);
   return router;
 }
