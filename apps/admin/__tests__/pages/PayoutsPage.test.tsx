@@ -32,6 +32,27 @@ it('rejects a pending request only with a 20-character reason and reports that n
   expect(await screen.findByText(/no transfer was sent/i)).toBeVisible()
 })
 
+it('keeps the card and the typed reason when a rejection is refused, and reports it above the list', async () => {
+  state.post.mockRejectedValue(new Error('This payout was already approved by another administrator.'))
+  render(<MemoryRouter><PayoutsPage /></MemoryRouter>)
+  fireEvent.click(await screen.findByRole('button', { name: 'Reject request' }))
+  fireEvent.change(screen.getByRole('textbox', { name: 'Reason for rejection' }), { target: { value: reason } })
+  fireEvent.click(screen.getByRole('button', { name: 'Reject payout' }))
+  expect(await screen.findByText('This payout was already approved by another administrator.')).toBeVisible()
+  expect(screen.queryByText('Payouts couldn’t be loaded')).toBeNull()
+  expect(screen.getByRole('textbox', { name: 'Reason for rejection' })).toHaveValue(reason)
+})
+
+it('keeps the loaded list when a background refresh fails', async () => {
+  render(<MemoryRouter><PayoutsPage /></MemoryRouter>)
+  expect(await screen.findByRole('button', { name: 'Reject request' })).toBeVisible()
+  state.get.mockRejectedValue(new Error('Network unavailable'))
+  window.dispatchEvent(new Event('focus'))
+  expect(await screen.findByText(/Network unavailable/)).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Reject request' })).toBeVisible()
+  expect(screen.queryByText('Payouts couldn’t be loaded')).toBeNull()
+})
+
 it('labels a closed request as rejected and shows the reason', async () => {
   state.get.mockResolvedValue([{ ...pending, status: 'FAILED', closure: { kind: 'rejected', reason, closedBy: 'admin', closedAt: '2026-09-21T00:00:00Z' } }])
   render(<MemoryRouter initialEntries={['/payouts?view=all']}><PayoutsPage /></MemoryRouter>)

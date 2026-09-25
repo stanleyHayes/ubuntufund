@@ -60,7 +60,7 @@ describe('donor refund request staff queue', () => {
     expect(res.body.data.total).toBe(1);
     expect(res.body.data.items[0]).toMatchObject({
       id: requestId, status: 'pending', requesterName: 'refund-listed account', reason: 'Duplicate donation',
-      contribution: { id: intentId, status: 'SUCCEEDED', provider: 'paystack', providerRef },
+      contribution: { id: intentId, status: 'SUCCEEDED', provider: 'paystack', providerRef, amount: 200 },
     });
     await request(app).get('/api/v1/admin/refund-requests?pageSize=500').set('Authorization', adminAuth).expect(400);
     await request(app).get('/api/v1/admin/refund-requests?status=approved').set('Authorization', adminAuth).expect(400);

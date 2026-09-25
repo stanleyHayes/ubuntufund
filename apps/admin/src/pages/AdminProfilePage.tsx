@@ -33,7 +33,7 @@ import { alpha } from '@mui/material/styles'
 import { SHAPE } from '@ubuntu-fund/ui'
 import { useAuth } from '@/context/AuthContext'
 import PageHeader from '@/components/PageHeader'
-import { api } from '@/lib/api'
+import { api, credentialApi } from '@/lib/api'
 
 // ─── Animations ──────────────────────────────────────────────────────────────
 
@@ -351,7 +351,7 @@ function AdminProfileForViewer() {
           </SectionCard>
         </Grid>
 
-        <Grid size={{ xs: 12 }} role="tabpanel" id="profile-panel-security" aria-labelledby="profile-tab-security" hidden={tab !== 'security'}><SectionCard icon={<LockRoundedIcon />} title="Account Protection" color="#5E8F72"><Box sx={{ p: 3 }}><MfaSettings key={user?.id} client={api} onTokens={tokens => replaceTokens(tokens, user?.id ?? '')} /></Box></SectionCard></Grid>
+        <Grid size={{ xs: 12 }} role="tabpanel" id="profile-panel-security" aria-labelledby="profile-tab-security" hidden={tab !== 'security'}><SectionCard icon={<LockRoundedIcon />} title="Account Protection" color="#5E8F72"><Box sx={{ p: 3 }}><MfaSettings key={user?.id} client={credentialApi} onTokens={tokens => replaceTokens(tokens, user?.id ?? '')} /></Box></SectionCard></Grid>
         {/* ─── Change Password ─── */}
         <Grid size={{ xs: 12 }} hidden={tab !== 'security'}>
           <SectionCard icon={<LockRoundedIcon />} title="Change Password" color="#C06B58">

@@ -36,6 +36,8 @@ function toAdminView(i: DonationIntentEntity) {
     providerFeeMinor: p.providerFeeMinor,
     platformFeeMinor: p.platformFeeMinor,
     netCampaignAmountMinor: p.netCampaignAmountMinor,
+    /** Cumulative refunds so far, so staff can see and cap what is left to refund. */
+    refundedAmountMinor: p.refundedAmountMinor,
     createdAt: p.createdAt,
     updatedAt: p.updatedAt,
   };

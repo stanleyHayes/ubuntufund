@@ -252,18 +252,32 @@ export function createAdminSafetyReportRoutes(auth: RequestHandler, admin: Reque
       res.set('Cache-Control', 'no-store').status(201).json({ data: { userId } });
     } catch (error) { next(error); }
   });
-  router.post('/restrictions/:userId/restore', validate(z.object({ notes: z.string().trim().min(20).max(2000), reportId: z.string().regex(/^[a-f0-9]{24}$/i).optional(), confirmSupersede: z.boolean().optional() })), async (req: AuthenticatedRequest, res, next) => {
+  router.post('/restrictions/:userId/restore', validate(z.object({
+    notes: z.string().trim().min(20).max(2000), reportId: z.string().regex(/^[a-f0-9]{24}$/i).optional(), confirmSupersede: z.boolean().optional(),
+    /** The governing report the moderator was shown and confirmed ('' = a direct staff restriction). */
+    supersedeReportId: z.union([z.literal(''), z.string().regex(/^[a-f0-9]{24}$/i)]).optional(),
+  })), async (req: AuthenticatedRequest, res, next) => {
     try {
       const userId = String(req.params.userId);
       if (!/^[a-f0-9]{24}$/i.test(userId)) throw new AppError('Invalid user', 400);
       if (userId === req.userId) throw new AppError('Another administrator must lift your restriction.', 403);
-      const { notes, reportId, confirmSupersede } = req.body as { notes: string; reportId?: string; confirmSupersede?: boolean };
+      const { notes, reportId, confirmSupersede, supersedeReportId } = req.body as { notes: string; reportId?: string; confirmSupersede?: boolean; supersedeReportId?: string };
       await new MongoUnitOfWork().run(async () => {
         const removed = await ContentRestrictionModel.findOneAndDelete({ userId });
         if (!removed) throw new AppError('This account has no active publishing restriction.', 404);
         // Restoring from an older report must not silently lift a newer restriction.
-        if (reportId && removed.reportId !== reportId && confirmSupersede !== true) {
-          throw new AppError('The current restriction came from a different decision. Review it and confirm before lifting it.', 409);
+        const governing = removed.reportId ?? '';
+        if (reportId && governing !== reportId) {
+          // `supersede` marks this refusal for clients, which show the governing
+          // decision and offer an explicit lift only for it.
+          const details = { supersede: ['required'], currentReportId: governing ? [governing] : [], currentReason: [removed.reason] };
+          if (confirmSupersede !== true) {
+            throw new AppError('The current restriction came from a different decision. Review it and confirm before lifting it.', 409, details);
+          }
+          // A confirmation names the decision the moderator saw; a newer one needs a fresh look.
+          if (supersedeReportId !== undefined && supersedeReportId !== governing) {
+            throw new AppError('The current restriction changed since you confirmed. Review the newer decision and confirm again.', 409, details);
+          }
         }
         await ContentRestrictionEventModel.create({ userId, action: 'restore', reason: notes, actorId: req.userId, liftedReason: removed.reason, liftedReportId: removed.reportId });
         await AuditLogModel.create({ actorId: req.userId, actorRole: req.userRole, action: 'safety.restore_public_content', resource: `user:${userId}`, details: notes, reason: notes,

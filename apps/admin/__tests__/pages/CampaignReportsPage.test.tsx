@@ -25,7 +25,7 @@ it('lists pending campaign reports with a link to the campaign', async () => {
   renderPage()
   expect(await screen.findByRole('link', { name: 'School roof appeal' })).toHaveAttribute('href', '/campaigns/campaign-1')
   expect(state.get).toHaveBeenCalledWith('/reports?status=pending&page=1&pageSize=12')
-  expect(screen.getByText('Fraud or scam')).toBeVisible()
+  expect(screen.getByText('Fraudulent activity')).toBeVisible()
   expect(screen.getByText(report.description)).toBeVisible()
 })
 
@@ -68,4 +68,20 @@ it('keeps decisions disabled for read-only staff', async () => {
   fireEvent.change(await screen.findByRole('textbox', { name: /Review notes/ }), { target: { value: NOTE } })
   expect(screen.getByRole('button', { name: 'Mark reviewed' })).toBeDisabled()
   expect(screen.getByRole('button', { name: 'Dismiss' })).toBeDisabled()
+})
+
+it('labels every reason supporters can send, including intellectual property and privacy', async () => {
+  state.get.mockResolvedValue({ items: [
+    { ...report, id: 'report-ip', reason: 'intellectual_property' },
+    { ...report, id: 'report-privacy', reason: 'privacy' },
+    { ...report, id: 'report-legacy', reason: 'legacy_reason' },
+  ], total: 3 })
+  renderPage()
+  expect(await screen.findByText('Intellectual property or copyright')).toBeVisible()
+  expect(screen.getByText('Privacy violation')).toBeVisible()
+  expect(screen.queryByText('intellectual_property')).toBeNull()
+  expect(screen.queryByText('privacy')).toBeNull()
+  // A value the page does not know is still shown rather than hidden.
+  expect(screen.getByText('legacy_reason')).toBeVisible()
+  expect(screen.getByText('Privacy violation').closest('.MuiChip-root')).toHaveClass('MuiChip-colorError')
 })

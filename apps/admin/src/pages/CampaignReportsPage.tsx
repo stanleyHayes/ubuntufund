@@ -11,7 +11,7 @@ import { exportTable, dateCell } from '@/lib/exports/report'
 import { useCallback, useEffect, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import { Alert, Box, Button, Chip, Link, MenuItem, Paper, Skeleton, Stack, Typography } from '@mui/material'
-import { Action, Resource } from '@ubuntu-fund/types'
+import { Action, CAMPAIGN_REPORT_REASON_LABELS, Resource, type CampaignReportReason } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
 import { useAdminPermissions } from '@/context/AdminPermissionContext'
 
@@ -34,14 +34,12 @@ interface Page { items: CampaignReport[]; total: number }
 
 const NOTE_MIN = 20
 const STATUSES: ReportStatus[] = ['pending', 'reviewed', 'dismissed']
-const REASONS: Record<string, string> = {
-  fraudulent: 'Fraud or scam',
-  misleading: 'Misleading information',
-  inappropriate_content: 'Inappropriate content',
-  spam: 'Spam',
-  illegal_activity: 'Illegal activity',
-  other: 'Other',
-}
+/** The same labels supporters pick from on web and mobile; unknown (legacy) values show as sent. */
+const reasonLabel = (reason: string) => Object.prototype.hasOwnProperty.call(CAMPAIGN_REPORT_REASON_LABELS, reason)
+  ? CAMPAIGN_REPORT_REASON_LABELS[reason as CampaignReportReason]
+  : reason
+/** Reasons alleging harm to supporters or other people are highlighted. */
+const SERIOUS_REASONS = new Set<string>(['fraudulent', 'illegal_activity', 'privacy'])
 
 /**
  * Supporter reports raised with the Report button on a campaign page. Recording
@@ -103,7 +101,7 @@ export default function CampaignReportsPage() {
       <ExportMenu title="Campaign reports" disabled={loading || !!error} getReport={async progress => ({
         title: 'Campaign reports', filters: [`Status: ${status}`],
         tables: [exportTable('Campaign reports', await loadAll<CampaignReport>(`/reports?status=${status}`, progress), {
-          ID: r => r.id, Campaign: r => r.campaignTitle, 'Campaign ID': r => r.campaignId, Reason: r => REASONS[r.reason] ?? r.reason,
+          ID: r => r.id, Campaign: r => r.campaignTitle, 'Campaign ID': r => r.campaignId, Reason: r => reasonLabel(r.reason),
           Status: r => r.status, Reporter: r => r.reporterId, 'Created (UTC)': r => dateCell(r.createdAt), 'Review notes': r => r.reviewNotes,
         })],
       })} />
@@ -121,7 +119,7 @@ export default function CampaignReportsPage() {
         <Stack spacing={2}>
           <Box>
             <Stack direction="row" useFlexGap flexWrap="wrap" spacing={1} alignItems="center">
-              <Chip size="small" label={REASONS[report.reason] ?? report.reason} color={report.reason === 'fraudulent' || report.reason === 'illegal_activity' ? 'error' : 'default'} />
+              <Chip size="small" label={reasonLabel(report.reason)} color={SERIOUS_REASONS.has(report.reason) ? 'error' : 'default'} />
               {report.campaignStatus && <Chip size="small" variant="outlined" label={`Campaign ${report.campaignStatus.replaceAll('_', ' ')}`} />}
             </Stack>
             <Typography variant="h6" sx={{ mt: 1, overflowWrap: 'anywhere' }}>

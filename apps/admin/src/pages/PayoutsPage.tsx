@@ -492,7 +492,11 @@ export default function PayoutsPage() {
   const [benePayouts, setBenePayouts] = useState<BeneficiaryPayout[]>([])
   const [escalated, setEscalated] = useState<EscalatedPayout[]>([])
   const [loading, setLoading] = useState(true)
+  // `error` is only for a failed (foreground) load, which replaces the list.
+  // Action failures and background-refresh failures keep the cards mounted,
+  // so typed review notes, rejection reasons and loaded destinations survive.
   const [error, setError] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [approvingId, setApprovingId] = useState<string | null>(null)
 
@@ -501,8 +505,10 @@ export default function PayoutsPage() {
 
   const load = useCallback(
     async (quiet = false) => {
-      if (!quiet) setLoading(true)
-      setError(null)
+      if (!quiet) {
+        setLoading(true)
+        setError(null)
+      }
       // Escalations on every rail (campaign, beneficiary, affiliate, creator)
       // are counted on every view so held funds are never only in a log line.
       void api
@@ -521,13 +527,20 @@ export default function PayoutsPage() {
           const data = await api.get<Payout[]>(path)
           setPayouts(Array.isArray(data) ? data : [])
         }
+        setError(null)
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load payouts')
-        setPayouts([])
-        setBenePayouts([])
-        if (view === 'escalated') setEscalated([])
+        const message = err instanceof Error ? err.message : 'Failed to load payouts'
+        if (quiet) {
+          // Keep what is on screen (and anything typed into it); say it may be stale.
+          setActionError(`Couldn’t refresh payouts (${message}). The list below may be out of date.`)
+        } else {
+          setError(message)
+          setPayouts([])
+          setBenePayouts([])
+          if (view === 'escalated') setEscalated([])
+        }
       } finally {
-        setLoading(false)
+        if (!quiet) setLoading(false)
       }
     },
     [view],
@@ -553,6 +566,7 @@ export default function PayoutsPage() {
     async (id: string, reviewNote: string) => {
       setApprovingId(id)
       setNotice(null)
+      setActionError(null)
       try {
         const updated = await api.post<Payout>(`/payouts/${id}/approve`, { reviewNote })
         setNotice(
@@ -560,10 +574,10 @@ export default function PayoutsPage() {
             ? 'First approval recorded — a second admin must approve.'
             : 'Payout approved; the transfer is initiating.',
         )
-        await load()
+        await load(true)
         window.dispatchEvent(new Event('ujimora:admin-actions-changed'))
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Approval failed')
+        setActionError(err instanceof Error ? err.message : 'Approval failed')
       } finally {
         setApprovingId(null)
       }
@@ -575,13 +589,14 @@ export default function PayoutsPage() {
     async (id: string, reason: string) => {
       setApprovingId(id)
       setNotice(null)
+      setActionError(null)
       try {
         await api.post<Payout>(`/payouts/${id}/reject`, { reason })
         setNotice('Payout request rejected. The organizer can see the reason; no transfer was sent.')
-        await load()
+        await load(true)
         window.dispatchEvent(new Event('ujimora:admin-actions-changed'))
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Rejection failed')
+        setActionError(err instanceof Error ? err.message : 'Rejection failed')
       } finally {
         setApprovingId(null)
       }
@@ -593,6 +608,7 @@ export default function PayoutsPage() {
     async (id: string, reviewNote: string) => {
       setApprovingId(id)
       setNotice(null)
+      setActionError(null)
       try {
         const updated = await api.post<BeneficiaryPayout>(`/beneficiary-payouts/${id}/approve`, { reviewNote })
         setNotice(
@@ -600,10 +616,10 @@ export default function PayoutsPage() {
             ? 'First approval recorded — a second admin must approve.'
             : 'Beneficiary payout approved; the transfer is initiating.',
         )
-        await load()
+        await load(true)
         window.dispatchEvent(new Event('ujimora:admin-actions-changed'))
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Approval failed')
+        setActionError(err instanceof Error ? err.message : 'Approval failed')
       } finally {
         setApprovingId(null)
       }
@@ -632,16 +648,18 @@ export default function PayoutsPage() {
   const verifyKyc = useCallback(
     async (campaignId: string, beneficiaryId: string) => {
       setNotice(null)
+      setActionError(null)
       try {
         await api.post(
           `/campaigns/${campaignId}/split/beneficiaries/${beneficiaryId}/verify-kyc`,
           {},
         )
         setNotice('Beneficiary KYC verified.')
-        await load()
+        // Quiet, so the card (its loaded destination and note) stays mounted.
+        await load(true)
         window.dispatchEvent(new Event('ujimora:admin-actions-changed'))
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'KYC verification failed')
+        setActionError(err instanceof Error ? err.message : 'KYC verification failed')
       }
     },
     [load],
@@ -730,8 +748,13 @@ export default function PayoutsPage() {
           {notice}
         </Alert>
       )}
+      {actionError && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setActionError(null)}>
+          {actionError}
+        </Alert>
+      )}
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+        <Alert severity="error" sx={{ mb: 2 }} action={<Button color="inherit" size="small" onClick={() => void load()}>Retry</Button>}>
           {error}
         </Alert>
       )}
@@ -789,7 +812,7 @@ export default function PayoutsPage() {
               onApprove={approve}
               onReject={reject}
               approving={approvingId === p.id}
-              onUpdated={() => void load()}
+              onUpdated={() => void load(true)}
             />
           ))}
         </Stack>

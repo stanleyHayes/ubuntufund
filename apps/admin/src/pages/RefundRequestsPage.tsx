@@ -3,7 +3,7 @@ import ReviewQueuePagination from '@/components/ReviewQueuePagination'
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
 import AssignmentReturnRoundedIcon from '@mui/icons-material/AssignmentReturnRounded'
 import PageHeader from '@/components/PageHeader'
-import RefundDialog, { REFUNDABLE_STATUSES, type RefundResult } from '@/components/payments/RefundDialog'
+import RefundDialog, { hasRefundableBalance, refundBalance, useRefundKeys, type RefundResult, type RefundableContribution } from '@/components/payments/RefundDialog'
 import { raisedSurface } from '@/lib/surfaces'
 import { ReviewQueueSkeleton, ReviewQueueEmpty, ReviewQueueToolbar } from '@/components/ReviewQueueStates'
 import { useCallback, useEffect, useState } from 'react'
@@ -34,8 +34,12 @@ export interface RefundRequest {
   reviewedAt?: string
   refundOperationId?: string
   createdAt: string
-  contribution: { id: string; status: string; provider: string; providerRef?: string; currency: string } | null
+  /** The linked payment; `amount` is its own total and `refundedAmountMinor` what was already refunded (minor units). */
+  contribution: { id: string; status: string; provider: string; providerRef?: string; currency: string; amount?: number; refundedAmountMinor?: number } | null
 }
+/** The payment as the refund dialog needs it; older APIs omit its own amount, so fall back to the request's. */
+const refundable = (item: RefundRequest): RefundableContribution | null =>
+  item.contribution ? { ...item.contribution, amount: item.contribution.amount ?? item.amount } : null
 interface Page { items: RefundRequest[]; total: number }
 
 const NOTE_MIN = 20
@@ -62,7 +66,9 @@ export default function RefundRequestsPage() {
   const [busy, setBusy] = useState('')
   const [notes, setNotes] = useState<Record<string, string>>({})
   const [operations, setOperations] = useState<Record<string, string>>({})
-  const [refunding, setRefunding] = useState<RefundRequest | null>(null)
+  // The refund key outlives the dialog, so reopening after a lost response reuses it.
+  const refundKeyFor = useRefundKeys()
+  const [refunding, setRefunding] = useState<{ item: RefundRequest; payment: RefundableContribution; key: string } | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -121,6 +127,8 @@ export default function RefundRequestsPage() {
       const note = notes[item.id] ?? ''
       const ready = canUpdate && !busy && note.trim().length >= NOTE_MIN
       const payment = item.contribution
+      const refundPayment = refundable(item)
+      const refundedSoFar = refundPayment ? refundBalance(refundPayment) : null
       const paymentRefunded = !!payment && REFUNDED.includes(payment.status)
       const open = item.status === 'pending' || item.status === 'processing'
       return <Paper key={item.id} component="article" aria-label={`Refund request from ${item.requesterName}`} sx={{ ...raisedSurface, p: { xs: 2, sm: 3 }, overflowWrap: 'anywhere' }}>
@@ -143,9 +151,10 @@ export default function RefundRequestsPage() {
           <Box sx={{ p: 2, bgcolor: 'action.hover' }}>
             {payment ? <>
               <Typography variant="body2">Payment {payment.id} via {payment.provider}{payment.providerRef ? ` · reference ${payment.providerRef}` : ''}</Typography>
+              {!!refundedSoFar?.refunded && <Typography variant="body2">Refunded {formatMoney(refundedSoFar.refunded, payment.currency)} · {formatMoney(refundedSoFar.remaining, payment.currency)} still refundable</Typography>}
               <Stack direction="row" useFlexGap flexWrap="wrap" spacing={1} sx={{ mt: 1 }}>
                 <Button size="small" component={RouterLink} to={`/payments?id=${encodeURIComponent(payment.id)}`}>View payment timeline</Button>
-                {open && REFUNDABLE_STATUSES.includes(payment.status) && <Button size="small" color="error" variant="outlined" disabled={!canUpdate || !!busy} onClick={() => setRefunding(item)}>Refund payment</Button>}
+                {open && refundPayment && hasRefundableBalance(refundPayment) && <Button size="small" color="error" variant="outlined" disabled={!canUpdate || !!busy} onClick={() => setRefunding({ item, payment: refundPayment, key: refundKeyFor(refundPayment) })}>Refund payment</Button>}
               </Stack>
             </> : <Typography variant="body2">No linked payment was found for this donation. It cannot be refunded or marked refunded here; escalate it to the payments team or decline it with a note.</Typography>}
           </Box>
@@ -164,7 +173,7 @@ export default function RefundRequestsPage() {
       </Paper>
     })}
     {!loading && !error && <ReviewQueuePagination page={page} pageSize={pageSize} total={data.total} onPageChange={setPage} onPageSizeChange={setPageSize} disabled={loading || !!busy} />}
-    {refunding?.contribution && <RefundDialog key={refunding.id} open contribution={{ ...refunding.contribution, amount: refunding.amount }}
-      onClose={() => setRefunding(null)} onRefunded={result => refunded(refunding, result)} />}
+    {refunding && <RefundDialog key={refunding.key} open contribution={refunding.payment} idempotencyKey={refunding.key}
+      onClose={failed => { setRefunding(null); if (failed) void load() }} onRefunded={result => refunded(refunding.item, result)} />}
   </Stack>
 }

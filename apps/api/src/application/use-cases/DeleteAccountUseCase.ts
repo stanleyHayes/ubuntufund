@@ -125,7 +125,6 @@ export class DeleteAccountUseCase {
         throw new AppError(describe(blockers), 409, { accountClosure: blockers.map(blocker => blocker.kind) });
       }
     }
-
     if (this.erasure) await this.erasure.request(userId);
     else await this.userRepo.delete(userId);
     this.tokenService.revokeAllTokens(userId);

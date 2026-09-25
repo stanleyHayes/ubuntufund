@@ -1,7 +1,7 @@
 import TextField from '@/components/AdminTextField'
-import { useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { Alert, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Stack, Typography } from '@mui/material'
-import { formatMoney } from '@/lib/money'
+import { formatMoney, fromMinorUnits, roundMoney } from '@/lib/money'
 import { api } from '@/lib/api'
 
 export interface RefundableContribution {
@@ -11,6 +11,8 @@ export interface RefundableContribution {
   provider: string
   providerRef?: string
   status: string
+  /** Already refunded, in the currency's minor units (from the API). */
+  refundedAmountMinor?: number
 }
 export interface RefundResult {
   status: 'REFUNDED' | 'PARTIALLY_REFUNDED' | 'PROCESSING' | 'PENDING_REVIEW'
@@ -25,6 +27,35 @@ function newIdempotencyKey(): string {
   return globalThis.crypto?.randomUUID?.() ?? `refund-${Date.now()}-${Math.random().toString(36).slice(2)}`
 }
 
+/** What has been refunded already and what is left, in major units of the contribution currency. */
+export function refundBalance(contribution: Pick<RefundableContribution, 'amount' | 'currency' | 'refundedAmountMinor'>): { refunded: number; remaining: number } {
+  const refunded = fromMinorUnits(contribution.refundedAmountMinor ?? 0, contribution.currency)
+  return { refunded, remaining: Math.max(0, roundMoney(contribution.amount - refunded, contribution.currency)) }
+}
+
+/** True when the contribution can still be refunded and has money left to refund. */
+export function hasRefundableBalance(contribution: Pick<RefundableContribution, 'amount' | 'currency' | 'refundedAmountMinor' | 'status'>): boolean {
+  return REFUNDABLE_STATUSES.includes(contribution.status) && refundBalance(contribution).remaining > 0
+}
+
+/**
+ * Idempotency keys for refunds, held by the page rather than the dialog. A key
+ * is tied to the contribution as the admin last saw it (id, status, amount
+ * already refunded): closing and reopening the dialog after a lost response
+ * reuses the same key, so the server refuses a second refund. A new key is
+ * issued only once the page shows the contribution changed, i.e. the admin can
+ * see what an earlier attempt did. Call it from event handlers, not render.
+ */
+export function useRefundKeys(): (contribution: RefundableContribution) => string {
+  const keys = useRef(new Map<string, string>())
+  return useCallback((contribution: RefundableContribution) => {
+    const snapshot = `${contribution.id}:${contribution.status}:${contribution.refundedAmountMinor ?? 0}`
+    let key = keys.current.get(snapshot)
+    if (!key) { key = newIdempotencyKey(); keys.current.set(snapshot, key) }
+    return key
+  }, [])
+}
+
 export function refundOutcome(result: RefundResult, currency: string): { severity: 'success' | 'warning'; text: string } {
   if (result.status === 'REFUNDED' || result.status === 'PARTIALLY_REFUNDED') {
     return { severity: 'success', text: `Refund of ${formatMoney(result.amount, currency)} confirmed by the provider${result.refundReference ? ` (reference ${result.refundReference})` : ''}.` }
@@ -37,33 +68,39 @@ export function refundOutcome(result: RefundResult, currency: string): { severit
 
 /**
  * Confirmed refund of one contribution through POST /admin/payments/:id/refund.
- * Mount it fresh for each attempt (key it by contribution): it keeps one
- * idempotency key for its lifetime, so a double click or a retry after a lost
- * response can never ask the provider for a second refund.
+ * The page passes the idempotency key (see useRefundKeys), so a double click,
+ * a retry or a reopen after a lost response can never ask the provider for a
+ * second refund. After a failure the page should reload the contribution
+ * (`onClose(true)`) before offering another refund.
  */
-export default function RefundDialog({ contribution, open, onClose, onRefunded }: {
+export default function RefundDialog({ contribution, idempotencyKey, open, onClose, onRefunded }: {
   contribution: RefundableContribution
+  idempotencyKey: string
   open: boolean
-  onClose: () => void
+  /** `failed` is true when an attempt failed without a result, so the page should reload before another refund. */
+  onClose: (failed: boolean) => void
   onRefunded: (result: RefundResult) => void
 }) {
-  const [idempotencyKey] = useState(newIdempotencyKey)
-  const [amount, setAmount] = useState(String(contribution.amount))
+  const { refunded, remaining } = refundBalance(contribution)
+  const [amount, setAmount] = useState(String(remaining))
   const [confirmed, setConfirmed] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [result, setResult] = useState<RefundResult | null>(null)
 
   const value = Number(amount)
-  const validAmount = amount.trim() !== '' && Number.isFinite(value) && value > 0 && value <= contribution.amount
-  const partial = validAmount && value < contribution.amount
+  const validAmount = remaining > 0 && amount.trim() !== '' && Number.isFinite(value) && value > 0 && roundMoney(value, contribution.currency) <= remaining
+  // Send the amount whenever it is not the untouched full contribution: after
+  // an earlier partial refund the server's default (the full amount) is wrong.
+  const explicitAmount = refunded > 0 || value < contribution.amount
+  const close = () => onClose(!result && !!error)
 
   async function submit() {
     if (busy || result || !validAmount || !confirmed) return
     setBusy(true); setError('')
     try {
       const response = await api.post<RefundResult>(`/admin/payments/${encodeURIComponent(contribution.id)}/refund`, {
-        ...(partial ? { amount: value } : {}),
+        ...(explicitAmount ? { amount: value } : {}),
         idempotencyKey,
       })
       setResult(response)
@@ -77,7 +114,11 @@ export default function RefundDialog({ contribution, open, onClose, onRefunded }
   }
 
   const outcome = result && refundOutcome(result, contribution.currency)
-  return <Dialog open={open} onClose={busy ? undefined : onClose} fullWidth maxWidth="sm" aria-labelledby="refund-dialog-title">
+  const helper = !validAmount
+    ? remaining > 0 ? `Enter an amount above 0 and up to ${remaining}` : 'Nothing is left to refund on this contribution.'
+    : roundMoney(value, contribution.currency) < remaining ? 'Partial refund'
+      : refunded > 0 ? 'Remaining refundable amount' : 'Full campaign amount'
+  return <Dialog open={open} onClose={busy ? undefined : close} fullWidth maxWidth="sm" aria-labelledby="refund-dialog-title">
     <DialogTitle id="refund-dialog-title">Refund contribution</DialogTitle>
     <DialogContent>
       <Stack spacing={2} sx={{ pt: 1 }}>
@@ -85,20 +126,23 @@ export default function RefundDialog({ contribution, open, onClose, onRefunded }
           {formatMoney(contribution.amount, contribution.currency)} via {contribution.provider}
           {contribution.providerRef ? ` · reference ${contribution.providerRef}` : ''}
         </Typography>
+        {refunded > 0 && <Typography variant="body2" fontWeight={600}>
+          Already refunded {formatMoney(refunded, contribution.currency)} · {formatMoney(remaining, contribution.currency)} remaining
+        </Typography>}
         <Alert severity="warning">This asks {contribution.provider} to return money to the donor and cannot be undone. Only the campaign amount is refunded; a separate platform tip is not. Funds already paid out to the campaign cannot be refunded here.</Alert>
         {outcome ? <Alert severity={outcome.severity}>{outcome.text}</Alert> : <>
-          <TextField label={`Refund amount (${contribution.currency})`} type="number" value={amount} disabled={busy}
+          <TextField label={`Refund amount (${contribution.currency})`} type="number" value={amount} disabled={busy || remaining <= 0}
             onChange={event => setAmount(event.target.value)} error={amount !== '' && !validAmount}
-            helperText={validAmount ? (partial ? 'Partial refund' : 'Full campaign amount') : `Enter an amount above 0 and up to ${contribution.amount}`}
-            slotProps={{ htmlInput: { min: 0, max: contribution.amount, step: 'any' } }} />
+            helperText={helper}
+            slotProps={{ htmlInput: { min: 0, max: remaining, step: 'any' } }} />
           <FormControlLabel control={<Checkbox checked={confirmed} disabled={busy} onChange={event => setConfirmed(event.target.checked)} />}
             label="I have checked this refund is approved and the amount is correct." />
-          {error && <Alert severity="error">{error} Retrying reuses this request, so the donor cannot be refunded twice.</Alert>}
+          {error && <Alert severity="error">{error} Retrying here reuses the same request, so it cannot refund the donor twice. Closing reloads the payment so you can see whether money already moved before you refund again.</Alert>}
         </>}
       </Stack>
     </DialogContent>
     <DialogActions>
-      <Button onClick={onClose} disabled={busy}>{result ? 'Close' : 'Cancel'}</Button>
+      <Button onClick={close} disabled={busy}>{result ? 'Close' : 'Cancel'}</Button>
       {!result && <Button variant="contained" color="error" disabled={busy || !validAmount || !confirmed} onClick={() => void submit()}>
         {busy ? 'Submitting refund…' : `Refund ${validAmount ? formatMoney(value, contribution.currency) : ''}`.trim()}
       </Button>}
