@@ -42,6 +42,17 @@ export const LEGAL_ENTITY = {
 const E = LEGAL_ENTITY.emails
 
 /**
+ * Each policy shows its own effective date. `LEGAL_ENTITY.effectiveDate` is the
+ * date of the first published pack and still applies to policies unchanged
+ * since. When a policy's text changes, give it the date the new text is
+ * published, record the change in docs/compliance/LEGAL_REVISIONS.md, and
+ * update the fingerprint in apps/marketing/__tests__/legalClaims.test.ts.
+ * Changing a date never changes LEGAL_ACCEPTANCE_VERSION; re-acceptance is a
+ * separate owner decision.
+ */
+const REVISED_25_SEPTEMBER_2026 = '25 September 2026'
+
+/**
  * The registered-company clause used in the opening section of the Terms and the
  * Privacy Notice. Omits registration number / registered office gracefully while
  * those config values are empty, so a live page never states a fabricated fact.
@@ -132,7 +143,7 @@ export const LEGAL_POLICIES: LegalPolicy[] = [
     panelBody: 'These terms cover accounts, campaigns, contributions, fees, payouts, refunds and dispute handling.',
     introduction:
       'Welcome to Ujimora. These Terms of Use govern your use of our crowdfunding platform. Please read them carefully before creating an account, publishing a campaign, or making a contribution.',
-    effectiveDate: LEGAL_ENTITY.effectiveDate,
+    effectiveDate: REVISED_25_SEPTEMBER_2026,
     sections: [
       { title: 'Creator profile donations and withdrawal fees', content: 'Creator profile donations require an active, unexpired paid subscription. Free plans and trials cannot enable a creator page or accept new tips. If your paid entitlement ends, new tip checkouts are disabled; existing balances remain withdrawable. Each creator withdrawal deducts the current effective plan’s platform-fee percentage from the requested amount. The fee and net transfer are shown before confirmation and fixed for that withdrawal. The same platform fee is not also deducted when a new tip is received. A failed or reversed transfer restores the full requested amount, including the Ujimora fee. Existing withdrawals keep their original fee terms.' },
       { title: "Crypto contributions, where available", content: "Crypto is an optional contribution method only where offered at checkout. Review the supported asset, network, exact amount, campaign-currency value and payment window before sending. A quote is not a completed contribution; campaign credit follows provider confirmation. Crypto contributions are not an investment, savings product or promise of returns. Availability does not represent regulatory approval or an endorsement of an asset." },
@@ -240,7 +251,7 @@ Circumvention of subscription, campaign, payment or risk controls.`,
     panelBody: 'This notice covers account data, campaign records, payments, security, retention, and your rights under Act 843.',
     introduction:
       'At Ujimora, we are committed to protecting your privacy and the security of your personal information. This notice explains how we collect, use, share, retain, and protect data when you use the platform.',
-    effectiveDate: LEGAL_ENTITY.effectiveDate,
+    effectiveDate: REVISED_25_SEPTEMBER_2026,
     sections: [
       { title: "Blockchain and crypto payment information", content: "Where you use crypto checkout, payment records may include wallet addresses, network, asset, transaction hash, memo or tag, quote, campaign-currency value and provider references. We use relevant records to match and confirm contributions, investigate failures and support required compliance checks with payment partners. Blockchain transactions can be public and persistent; hiding your name on a campaign does not make a blockchain transfer anonymous. We cannot erase records on public blockchains." },
       {
@@ -349,7 +360,7 @@ Send marketing only where permitted and with applicable choice or consent.`,
     panelBody: 'This agreement supplements the Terms of Use and applies to everyone who creates or controls a campaign.',
     introduction:
       'This Campaign Organizer Agreement supplements the Ujimora Terms of Use and applies whenever an individual or organization creates or controls a campaign.',
-    effectiveDate: LEGAL_ENTITY.effectiveDate,
+    effectiveDate: REVISED_25_SEPTEMBER_2026,
     sections: [
       { title: "Campaign credit from crypto contributions", content: "Where crypto contributions are enabled, campaign credit is recorded in the campaign currency after confirmation, using the accepted payment value. A pending transfer or unaccepted quote is not available campaign proceeds. Crypto acceptance does not by itself provide crypto payouts or change beneficiary allocations, payout review or applicable fees." },
       {
@@ -620,7 +631,7 @@ Attempts to bypass KYC/KYB, campaign limits, payment restrictions, subscription 
     panelBody: 'This notice lists what Ujimora keeps in your browser, how long it stays and how to clear it.',
     introduction:
       'This notice explains the cookies and similar technologies used on Ujimora web properties. We do not currently set cookies; we use your browser’s local and session storage only for the purposes listed below.',
-    effectiveDate: LEGAL_ENTITY.effectiveDate,
+    effectiveDate: REVISED_25_SEPTEMBER_2026,
     sections: [
       {
         title: '1. Scope',
@@ -677,7 +688,7 @@ The staff console uses equivalent sign-in and display-preference entries.`,
     panelBody: 'Plan price, campaign limits, active-campaign limits, platform fee and features are shown at purchase.',
     introduction:
       'These terms explain how Ujimora subscription plans are billed and managed, including renewal, cancellation, upgrades, downgrades and price changes.',
-    effectiveDate: LEGAL_ENTITY.effectiveDate,
+    effectiveDate: REVISED_25_SEPTEMBER_2026,
     sections: [
       { title: 'Creator profile donations and withdrawal fees', content: 'Creator profile donations require an active, unexpired paid subscription. Free plans and trials cannot enable a creator page or accept new tips. If your paid entitlement ends, new tip checkouts are disabled; existing balances remain withdrawable. Each creator withdrawal deducts the current effective plan’s platform-fee percentage from the requested amount. The fee and net transfer are shown before confirmation and fixed for that withdrawal. The same platform fee is not also deducted when a new tip is received. A failed or reversed transfer restores the full requested amount, including the Ujimora fee. Existing withdrawals keep their original fee terms.' },
       {

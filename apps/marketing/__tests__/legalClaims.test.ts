@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { createHash } from 'node:crypto'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { LEGAL_POLICIES, getPolicyBySlug } from '@ubuntu-fund/types/src/legal'
@@ -28,6 +29,43 @@ function walk(dir: string): string[] {
     return /\.tsx?$/.test(name) && !/\.test\.tsx?$/.test(name) ? [path] : []
   })
 }
+
+/**
+ * The text each policy is published with, and its effective date. Terms
+ * section 15 promises material changes are published with an effective date,
+ * so a policy whose text changes needs a new date: set it in legal.ts, log the
+ * change in docs/compliance/LEGAL_REVISIONS.md, then record the new
+ * fingerprint here. Dates never change LEGAL_ACCEPTANCE_VERSION.
+ */
+const PUBLISHED: Record<string, { effectiveDate: string; sha256: string }> = {
+  'delete-account': { effectiveDate: '12 September 2026', sha256: '48e5b632cb69db39c35b692401529532380183e6d01682c7c65374ad4b8cdb22' },
+  terms: { effectiveDate: '25 September 2026', sha256: '1f44b9d86dfe7ac265d93c52089accadca157b563c19dd866bc8aeb10432df7c' },
+  privacy: { effectiveDate: '25 September 2026', sha256: '666da95f215522afe237612fc3441c40ae87d0f2b9c9f1b1d2296c285112677a' },
+  'organizer-agreement': { effectiveDate: '25 September 2026', sha256: '5e0da530417c8997b64dd755734651427d7360f18be4ea5bcd128f534a9a1302' },
+  'contributor-terms': { effectiveDate: '8 September 2026', sha256: '86000771228c6023d82cb8c96cdafcb8ef18a4c304455c0f543235cc8a879cfe' },
+  'refund-policy': { effectiveDate: '8 September 2026', sha256: '8391898b228ebf3664bc903b28a30ba398d4e8444600d428092966e15cec7765' },
+  'acceptable-use': { effectiveDate: '8 September 2026', sha256: '255d7c5a5c588e8d1a4e650be17a82a4f8f08af1a06209f86c21d7bffa44d78f' },
+  cookies: { effectiveDate: '25 September 2026', sha256: 'b0486b288ae97aa1685a86fa7d76abefe933d1b9ed92913aec80bab22f55907d' },
+  'billing-terms': { effectiveDate: '25 September 2026', sha256: '7c2a73ad1bb1fcd89ae853cf24a79f5d79789ac126aed11c62398c8790630fe3' },
+}
+
+describe('legal policy effective dates', () => {
+  it.each(LEGAL_POLICIES.map((policy) => [policy.slug, policy] as const))('%s shows the date its current text took effect', (slug, policy) => {
+    const { effectiveDate, ...text } = policy
+    const sha256 = createHash('sha256').update(JSON.stringify(text)).digest('hex')
+    const published = PUBLISHED[slug]
+    expect(published, `${slug} has no recorded fingerprint`).toBeDefined()
+    if (sha256 !== published.sha256) {
+      expect(effectiveDate, `${slug} text changed: give it the new publication date in legal.ts`).not.toBe(published.effectiveDate)
+    }
+    expect({ effectiveDate, sha256 }, `${slug}: log the revision in docs/compliance/LEGAL_REVISIONS.md and record the new fingerprint`).toEqual(published)
+  })
+
+  it('logs every current effective date in the revision record', () => {
+    const log = readFileSync(resolve(process.cwd(), '../../docs/compliance/LEGAL_REVISIONS.md'), 'utf8')
+    for (const policy of LEGAL_POLICIES) expect(log, policy.slug).toContain(`| ${policy.title} | ${policy.effectiveDate} |`)
+  })
+})
 
 describe('legal pack describes what actually happens', () => {
   it.each([
