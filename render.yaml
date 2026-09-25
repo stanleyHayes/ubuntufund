@@ -133,6 +133,57 @@ services:
       - key: ADMIN_WEB_URL
         # Used to build the review link inside those alerts.
         value: https://admin.ujimora.com
+      # ── Account security keys. Both FAIL CLOSED when missing: without the
+      # email key, forgot-password, email verification and newsletter
+      # confirmation return 503 and password-changed notices are skipped;
+      # without the MFA key, authenticator enrollment returns 503 (existing
+      # enrollments stay required). sync:false because a literal here would
+      # overwrite the dashboard value on every Blueprint sync — and existing
+      # Blueprint services do not auto-create new sync:false variables, so add
+      # each one by hand under ujimora-api > Environment, then redeploy.
+      # Generate each ONCE with `openssl rand -base64 32` (32 bytes, 44 chars
+      # ending "="), keep it in the password manager, and never rotate
+      # MFA_ENCRYPTION_KEY: enrolled authenticators could no longer be read.
+      # See DEPLOYMENT.md ("API secrets set in the Render dashboard").
+      - key: AUTH_EMAIL_ENCRYPTION_KEY_BASE64
+        sync: false
+      - key: MFA_ENCRYPTION_KEY
+        sync: false
+      # ── Native in-app subscriptions (App Store / Google Play). OFF unless
+      # STORE_BILLING_ENABLED is exactly "true". Once it is, every key the
+      # catalog's stores need must be present and valid or the API refuses to
+      # boot (config/storeBilling.ts) — set the rest before flipping it. Formats
+      # are in DEPLOYMENT.md and docs/compliance/STORE_BILLING.md. Dashboard only.
+      - key: STORE_BILLING_ENABLED
+        sync: false
+      - key: STORE_BILLING_PRODUCTS
+        sync: false
+      - key: STORE_RECEIPT_ENCRYPTION_KEY_BASE64
+        sync: false
+      - key: APPLE_IAP_ENVIRONMENT
+        sync: false
+      - key: APPLE_IAP_PRIVATE_KEY_BASE64
+        sync: false
+      - key: APPLE_IAP_KEY_ID
+        sync: false
+      - key: APPLE_IAP_ISSUER_ID
+        sync: false
+      - key: APPLE_IAP_BUNDLE_ID
+        sync: false
+      - key: APPLE_IAP_APP_ID
+        sync: false
+      - key: APPLE_IAP_ROOT_CERTIFICATES_BASE64
+        sync: false
+      - key: GOOGLE_PLAY_SERVICE_ACCOUNT_JSON
+        sync: false
+      - key: GOOGLE_PLAY_PACKAGE_NAME
+        sync: false
+      - key: GOOGLE_PLAY_ALLOW_TEST_PURCHASES
+        sync: false
+      - key: GOOGLE_PLAY_RTDN_AUDIENCE
+        sync: false
+      - key: GOOGLE_PLAY_RTDN_SERVICE_ACCOUNT
+        sync: false
       # Affiliate program (one-time commission on first paid subscription).
       - key: AFFILIATE_COMMISSION_PERCENT
         value: "10"

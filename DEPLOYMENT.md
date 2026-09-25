@@ -14,20 +14,68 @@ Render's free tier has no MongoDB, so the API uses Atlas:
 
 ## 2. Backend — Render Blueprint
 
-[render.yaml](render.yaml) at the repo root defines the `ubuntu-fund-api`
+[render.yaml](render.yaml) at the repo root defines the `ujimora-api`
 web service (free plan, health check on `/health`, runs `tsx src/main.ts`).
 
 1. In the Render dashboard: **New → Blueprint**, connect this GitHub repo.
 2. Render reads `render.yaml`; when prompted, paste the Atlas URI into
    `MONGODB_URI`. `JWT_SECRET` / `JWT_REFRESH_SECRET` are auto-generated.
-3. Set `CORS_ORIGINS` to your deployed frontend origins, comma-separated,
-   e.g. `https://ujimora.vercel.app,https://admin-ujimora.vercel.app`.
-4. The service URL will be `https://ubuntu-fund-api.onrender.com`. If Render
-   assigns a different name, update the rewrite destinations in the three
-   `vercel.json` files.
+3. `CORS_ORIGINS` is committed in `render.yaml` (`ujimora.com`, `www`, `app`,
+   `admin`). Add an origin there, not in the dashboard, if a frontend moves.
+4. Paste the dashboard-only secrets listed below.
+5. The service is `ujimora-api` (`https://ujimora-api.onrender.com`), served
+   publicly as `https://api.ujimora.com`, which is what the frontends and the
+   `vercel.json` rewrites call.
 
 Note: free Render services sleep after inactivity; the first request after
 idle takes ~30–60s.
+
+### API secrets set in the Render dashboard
+
+Every variable the API reads is declared in `render.yaml` (a test,
+`apps/api/__tests__/infrastructure/render-blueprint.test.ts`, fails if one is
+missing). Secrets and keys that must stay stable are declared `sync: false`:
+the Blueprint only creates the slot, and a committed value would overwrite the
+dashboard on every sync. **Existing Blueprint services do not auto-create new
+`sync: false` variables** — add each one by hand under *ujimora-api →
+Environment*, then redeploy.
+
+In production the API logs one startup error, `Production capabilities disabled
+by missing configuration`, naming (never printing) whatever is missing.
+
+**Account email and MFA** — these fail closed when unset:
+
+| Variable | Format | Without it |
+|---|---|---|
+| `RESEND_API_KEY` | Resend API key | No transactional email at all. |
+| `AUTH_EMAIL_ENCRYPTION_KEY_BASE64` | 32 random bytes, base64: `openssl rand -base64 32` | Forgot-password, email verification and newsletter confirmation return 503; password-changed notices are silently skipped. Also needs `FROM_EMAIL` and an `https` `PUBLIC_WEB_URL` (both committed). Keep it stable and backed up. |
+| `MFA_ENCRYPTION_KEY` | 32 random bytes, standard base64 (44 chars ending `=`): `openssl rand -base64 32` | Authenticator enrollment returns 503. **Never rotate it**: existing enrollments stay required and fail closed if the key changes. |
+
+Check after deploy: `POST /api/v1/auth/forgot-password` with
+`{"email":"nobody@example.com"}` must not return 503; signed in,
+`GET /api/v1/auth/mfa` should report `data.available: true`.
+
+**Native store billing** (App Store / Google Play subscriptions) — off unless
+`STORE_BILLING_ENABLED` is exactly `true`. Once it is, every key the catalog's
+stores need must be present and valid or **the API refuses to boot**, so set
+the rest first. Details: [docs/compliance/STORE_BILLING.md](docs/compliance/STORE_BILLING.md).
+
+| Variable | Format |
+|---|---|
+| `STORE_BILLING_ENABLED` | `true` to enable; anything else keeps it off |
+| `STORE_BILLING_PRODUCTS` | JSON array of `{ "store": "apple"\|"google", "productId", "basePlanId" (Google only, required there), "tier" (not `free`), "billingCycle": "monthly"\|"yearly" }` |
+| `STORE_RECEIPT_ENCRYPTION_KEY_BASE64` | 32 random bytes, base64; stable and backed up (losing it prevents receipt reconciliation) |
+| `APPLE_IAP_ENVIRONMENT` | `production` or `sandbox` |
+| `APPLE_IAP_PRIVATE_KEY_BASE64` | the App Store Connect API `.p8` key file, base64-encoded |
+| `APPLE_IAP_KEY_ID` / `APPLE_IAP_ISSUER_ID` | key id / issuer UUID from App Store Connect |
+| `APPLE_IAP_BUNDLE_ID` | iOS bundle identifier |
+| `APPLE_IAP_APP_ID` | numeric Apple app id (required for `production`) |
+| `APPLE_IAP_ROOT_CERTIFICATES_BASE64` | JSON array of base64-encoded Apple root certificates (DER) |
+| `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` | service-account JSON with `client_email` and `private_key` |
+| `GOOGLE_PLAY_PACKAGE_NAME` | Android package name |
+| `GOOGLE_PLAY_ALLOW_TEST_PURCHASES` | `true` only for a controlled validation; otherwise unset/`false` |
+| `GOOGLE_PLAY_RTDN_AUDIENCE` | `https://` audience of the authenticated Pub/Sub push subscription |
+| `GOOGLE_PLAY_RTDN_SERVICE_ACCOUNT` | email of the Pub/Sub push service account |
 
 ### Creating the first admin
 

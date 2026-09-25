@@ -414,6 +414,8 @@ import { createSubscriptionRoutes } from './infrastructure/adapters/inbound/http
 import { MongoUnitOfWork } from './infrastructure/adapters/outbound/persistence/MongoUnitOfWork.js'
 import { MongoBillingOwnership } from './infrastructure/adapters/outbound/persistence/MongoBillingOwnership.js'
 import { configureStoreBilling } from './infrastructure/config/storeBilling.js'
+import { disabledCapabilities } from './infrastructure/config/capabilities.js'
+import { TotpCipher } from './application/services/Totp.js'
 import { createStoreBillingRoutes, createStoreBillingWebhookRoutes } from './infrastructure/adapters/inbound/http/routes/storeBillingRoutes.js'
 import { createStoreBillingAdminRoutes } from './infrastructure/adapters/inbound/http/routes/storeBillingAdminRoutes.js'
 import { createCouponRoutes } from './infrastructure/adapters/inbound/http/routes/couponRoutes.js'
@@ -1518,6 +1520,17 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
   const app = express()
   app.locals.reconcileActivityAlerts = reconcileActivityAlerts
   const storeBilling = configureStoreBilling()
+  // Email, MFA and store billing fail closed without their keys. Say so once at
+  // boot (names only, never values) instead of refusing to start.
+  if (config.nodeEnv === 'production') {
+    const disabled = disabledCapabilities({
+      accountEmail: accountEmails.configured,
+      mfa: new TotpCipher(process.env.MFA_ENCRYPTION_KEY ?? '').configured,
+      storeBilling: storeBilling !== null,
+    })
+    if (disabled.faults.length > 0) logger.error({ disabled: disabled.faults }, 'Production capabilities disabled by missing configuration')
+    if (disabled.optional.length > 0) logger.warn({ disabled: disabled.optional }, 'Optional production capabilities are off')
+  }
   let storeBillingSweepRunning = false
   app.locals.reconcileStoreBilling = async () => {
     if (!storeBilling || storeBillingSweepRunning) return
