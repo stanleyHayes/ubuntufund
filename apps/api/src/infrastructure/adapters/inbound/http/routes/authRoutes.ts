@@ -7,12 +7,20 @@ import type { AuthController } from '../controllers/AuthController.js';
 import { validate } from '../../middleware/validate.js';
 import { authRateLimiter } from '../../middleware/rateLimiter.js';
 
+/**
+ * Account emails are stored trimmed and lower-cased. Normalise the input the
+ * same way before validating: phone keyboards (iOS autocomplete in particular)
+ * append a trailing space, which used to fail `.email()` with an opaque 400.
+ * Only effective on routes that apply the parsed body (validate(..., { apply: true })).
+ */
+const accountEmail = z.string().trim().toLowerCase().email();
+
 const registerSchema = z
   .object({
     legalAcceptance: legalAcceptanceSchema,
-    email: z.string().email(),
+    email: accountEmail,
     password: z.string().min(8).max(128),
-    name: z.string().min(2).max(100),
+    name: z.string().trim().min(2).max(100),
     country: z.string().min(2).max(100).optional(),
     role: z.enum([UserRole.USER, UserRole.ORGANIZATION]).optional(),
     organizationName: z.string().min(2).max(160).optional(),
@@ -42,7 +50,7 @@ const registerSchema = z
 
 const loginSchema = z.object({
   mfaCode: z.string().trim().min(6).max(64).optional(),
-  email: z.string().email(),
+  email: accountEmail,
   password: z.string().min(1),
 });
 
@@ -56,7 +64,7 @@ const changePasswordSchema = z.object({
 });
 
 const forgotPasswordSchema = z.object({
-  email: z.string().email(),
+  email: accountEmail,
 });
 
 const resetPasswordSchema = z.object({
@@ -71,8 +79,10 @@ export function createAuthRoutes(
   const router = Router();
   router.use((_req, res, next) => { res.set('Cache-Control', 'private, no-store'); next(); });
 
-  router.post('/register', authRateLimiter, validate(registerSchema), controller.register);
-  router.post('/login', authRateLimiter, validate(loginSchema), controller.login);
+  // These schemas declare every field their handlers read, so they apply the
+  // parsed (trimmed, normalised) body. Passwords are never trimmed.
+  router.post('/register', authRateLimiter, validate(registerSchema, { apply: true }), controller.register);
+  router.post('/login', authRateLimiter, validate(loginSchema, { apply: true }), controller.login);
   router.post(
     '/refresh',
     validate(refreshTokenSchema),
@@ -81,13 +91,13 @@ export function createAuthRoutes(
   router.post(
     '/forgot-password',
     authRateLimiter,
-    validate(forgotPasswordSchema),
+    validate(forgotPasswordSchema, { apply: true }),
     controller.forgotPassword
   );
   router.post(
     '/reset-password',
     authRateLimiter,
-    validate(resetPasswordSchema),
+    validate(resetPasswordSchema, { apply: true }),
     controller.resetPassword
   );
   if (authMiddleware) {
