@@ -29,6 +29,15 @@ function setup(resolved: string | Error) {
 }
 afterEach(() => vi.unstubAllGlobals())
 describe('payout account verification', () => {
+  it('refuses an admin who does not own the campaign before querying the provider or saving', async () => {
+    const { uc, gateway, recipients } = setup('Jane Doe')
+    await expect(uc.execute('campaign', input, { userId: 'staff', role: 'admin' })).rejects.toMatchObject({
+      statusCode: 403,
+    })
+    expect(gateway.resolveAccount).not.toHaveBeenCalled()
+    expect(gateway.createTransferRecipient).not.toHaveBeenCalled()
+    expect(recipients.create).not.toHaveBeenCalled()
+  })
   it('checks campaign ownership before querying provider', async () => {
     const { uc, gateway } = setup('Jane Doe')
     await expect(uc.execute('campaign', input, { userId: 'other' })).rejects.toMatchObject({

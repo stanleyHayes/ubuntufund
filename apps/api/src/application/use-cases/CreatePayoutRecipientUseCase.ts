@@ -20,7 +20,7 @@ const CURRENCY = 'GHS'
 
 /**
  * Register a payout recipient (bank or mobile money) for a campaign with the
- * payment provider, then persist it. Owner (or admin) only. The provider call
+ * payment provider, then persist it. Campaign owner only. The provider call
  * returns 501 when payouts are unconfigured.
  */
 export class CreatePayoutRecipientUseCase {
@@ -47,9 +47,11 @@ export class CreatePayoutRecipientUseCase {
       throw new AppError('Campaign not found', 404)
     }
 
-    const isOwner = campaign.creatorId === requester.userId
-    const isAdmin = requester.role === 'admin'
-    if (!isOwner && !isAdmin) {
+    // Owner only, admins included: both approval paths require the destination
+    // to have been registered by the campaign owner (createdBy), so a recipient
+    // an admin registered could never be paid — and letting staff enter bank
+    // details under an owner's campaign would defeat that ownership check.
+    if (campaign.creatorId !== requester.userId) {
       throw new AppError('Only the campaign owner can add a payout recipient', 403)
     }
 
