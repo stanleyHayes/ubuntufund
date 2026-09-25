@@ -69,3 +69,19 @@ it('rejects expired invitations and cross-organization membership edits', async 
  await request(app).post(`/api/v1/organization-team/invitations/${invitation.body.data.id}/accept`).set('Authorization', member.auth).expect(404);
  await request(app).put(`/api/v1/organization-team/${otherOwner.id}/members/${invitation.body.data.id}`).set('Authorization', otherOwner.auth).send({ role: 'admin' }).expect(404);
 });
+
+it('notifies an invitee who already has an account, with the same response for unknown emails', async () => {
+ const { NotificationModel } = await import('../../src/infrastructure/database/models/NotificationModel.js');
+ const owner = await account(true), member = await account();
+ const invite = (email: string) => request(app).post(`/api/v1/organization-team/${owner.id}/invitations`).set('Authorization', owner.auth).send({ email, role: 'editor' }).expect(200);
+ const before = await NotificationModel.countDocuments({ type: 'organization_invitation' });
+ const known = await invite(member.email);
+ const unknown = await invite(`nobody-${randomUUID()}@example.test`);
+ expect(Object.keys(known.body.data).sort()).toEqual(Object.keys(unknown.body.data).sort());
+ expect(known.body.data.message).toBe(unknown.body.data.message);
+ const notice = await NotificationModel.findOne({ userId: member.id, type: 'organization_invitation' }).lean();
+ expect(notice).toMatchObject({ path: '/organization-team', read: false });
+ expect(notice!.body).toContain('Community Foundation');
+ // Only the existing account was notified.
+ expect(await NotificationModel.countDocuments({ type: 'organization_invitation' })).toBe(before + 1);
+});

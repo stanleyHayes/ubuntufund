@@ -9,6 +9,7 @@ import { api } from '@/lib/api'
 import { EmptyState } from '@/components/EmptyState'
 import { SignInRequired } from '@/components/SignInRequired'
 import { FadeInUp } from '@/components/anim/FadeInUp'
+import { OrganizationInvitations } from '@/components/OrganizationInvitations'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
 import type { Palette, NeuRecipes } from '@/theme'
 
@@ -208,6 +209,7 @@ export default function InvitationsScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+        <OrganizationInvitations />
         {loading ? (
           <View style={styles.listWrap}>
             {[0, 1, 2].map((i) => <SkeletonCard key={i} />)}
