@@ -31,6 +31,8 @@ export interface CouponRedemptionRepositoryPort {
   findByProviderRef(providerRef: string): Promise<CouponRedemption | null>;
   /** The slot a subscription checkout opened (for a checkout whose charge never got a reference). */
   findByCheckoutId(checkoutId: string): Promise<CouponRedemption | null>;
+  /** Whether the coupon has ever been applied (any redemption slot, in any status). */
+  existsForCoupon(couponId: string): Promise<boolean>;
 
   /**
    * Attach the provider reference to a provisional PENDING redemption once the

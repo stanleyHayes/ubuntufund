@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import {
   BillingCycle,
   CouponRedemptionStatus,
+  type CouponCommissionBase,
   CouponSurface,
   SubscriptionCheckoutStatus,
   SubscriptionTier,
@@ -135,6 +136,8 @@ export class CreateSubscriptionCheckoutUseCase {
     let couponCode: string | undefined;
     /** Carried from the priced coupon so the seat claim below knows the cap. */
     let perUserLimit: number | undefined;
+    /** Snapshot so settlement never depends on the coupon still existing. */
+    let commissionBase: CouponCommissionBase | undefined;
     /** Set instead when the code turned out to be an affiliate's, not a coupon's. */
     let affiliateCode: AffiliateCodeQuote | null = null;
     if (input.couponCode?.trim()) {
@@ -152,6 +155,7 @@ export class CreateSubscriptionCheckoutUseCase {
         couponId = pricing.coupon.id;
         couponCode = pricing.coupon.code;
         perUserLimit = pricing.coupon.perUserLimit;
+        commissionBase = pricing.coupon.commissionBase;
       } catch (err) {
         // Not a coupon? It may be an affiliate's referral code. One box, one
         // code: the referee gets the discount and the referrer still earns.
@@ -201,6 +205,7 @@ export class CreateSubscriptionCheckoutUseCase {
       currency,
       couponId,
       couponCode,
+      commissionBase,
       createdAt: now,
       updatedAt: now,
     });

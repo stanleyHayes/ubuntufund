@@ -1231,7 +1231,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
   const updateCouponUseCase = new UpdateCouponUseCase(couponRepo)
   const listCouponsUseCase = new ListCouponsUseCase(couponRepo)
   const getCouponUseCase = new GetCouponUseCase(couponRepo)
-  const deleteCouponUseCase = new DeleteCouponUseCase(couponRepo)
+  const deleteCouponUseCase = new DeleteCouponUseCase(couponRepo, couponRedemptionRepo)
   const previewCouponUseCase = new PreviewCouponUseCase(couponService, planService, affiliateCodePricing, planLimitsService)
 
   // Affiliate/referral program: owner surface + admin console + payout rail.

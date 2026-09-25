@@ -110,9 +110,13 @@ export class SettleSubscriptionUseCase {
         settled.couponId
       );
       if (!bumped) {
+        // Two different situations; say which, so finance is not misled.
+        const stillExists = await this.couponRepo.findById(settled.couponId);
         logger.warn(
           { couponId: settled.couponId, checkoutId: settled.id, reference },
-          'subscription settled but coupon was already at its global limit'
+          stillExists
+            ? 'subscription settled but coupon was already at its global limit'
+            : 'subscription settled but its coupon no longer exists'
         );
       }
       const redemption =
@@ -147,8 +151,22 @@ export class SettleSubscriptionUseCase {
     }
 
     if (settled.couponId) {
-      const coupon = await this.couponRepo.findById(settled.couponId);
-      if (coupon?.commissionBase === CouponCommissionBase.LIST_PRICE) {
+      // The basis quoted with the checkout wins; older checkouts fall back to
+      // the live coupon. A coupon deleted before this change can no longer be
+      // read: retrying would never help and would leave a paid plan inactive,
+      // so the default (post-coupon) basis applies and is flagged for finance.
+      let basis = settled.commissionBase;
+      if (!basis) {
+        const coupon = await this.couponRepo.findById(settled.couponId);
+        basis = coupon?.commissionBase;
+        if (!coupon) {
+          logger.error(
+            { couponId: settled.couponId, checkoutId: settled.id, reference },
+            'coupon missing at settlement; affiliate commission used the post-coupon amount'
+          );
+        }
+      }
+      if (basis === CouponCommissionBase.LIST_PRICE) {
         commissionBaseAmount = settled.baseAmount;
       }
     }

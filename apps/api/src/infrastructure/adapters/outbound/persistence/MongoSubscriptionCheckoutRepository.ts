@@ -19,6 +19,7 @@ function toDomain(doc: SubscriptionCheckoutDocument): SubscriptionCheckout {
     currency: doc.currency,
     couponId: doc.couponId,
     couponCode: doc.couponCode,
+    commissionBase: doc.commissionBase,
     providerRef: doc.providerRef,
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
@@ -40,6 +41,7 @@ export class MongoSubscriptionCheckoutRepository
       currency: checkout.currency,
       couponId: checkout.couponId,
       couponCode: checkout.couponCode,
+      commissionBase: checkout.commissionBase,
       providerRef: checkout.providerRef,
     });
     return toDomain(doc);

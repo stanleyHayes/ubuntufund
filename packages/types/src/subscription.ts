@@ -1,3 +1,5 @@
+import type { CouponCommissionBase } from './coupon'
+
 // The v6 commercial model uses five tiers: Community / Plus / Pro / Organization
 // / Enterprise. The enum VALUES are kept stable (free/starter/pro/enterprise) so
 // existing subscription records need no migration — `free` presents as Community
@@ -206,6 +208,11 @@ export interface SubscriptionCheckout {
   currency: string
   couponId?: string
   couponCode?: string
+  /**
+   * The coupon's affiliate-commission basis, captured when the checkout was
+   * quoted, so settlement never depends on the coupon still existing.
+   */
+  commissionBase?: CouponCommissionBase
   providerRef?: string
   createdAt: Date
   updatedAt: Date

@@ -152,6 +152,19 @@ export default function CouponsPage() {
     }
   }
 
+  // Used coupons cannot be deleted (the API answers 409): deactivating stops
+  // the code being applied while keeping its limits and redemption history.
+  const handleDeactivate = async (coupon: Coupon) => {
+    try {
+      const updated = await api.put<Coupon>(`/coupons/${coupon.id}`, { active: false })
+      setCoupons((prev) => prev.map((c) => (c.id === updated.id ? updated : c)))
+      setDeleteTarget(null)
+      setSnackbar({ open: true, message: 'Coupon deactivated', severity: 'success' })
+    } catch (e) {
+      setSnackbar({ open: true, message: e instanceof Error ? e.message : 'Failed to deactivate coupon', severity: 'error' })
+    }
+  }
+
   const handleDelete = async (coupon: Coupon) => {
     try {
       await api.delete(`/coupons/${coupon.id}`)
@@ -370,16 +383,31 @@ export default function CouponsPage() {
         onClose={() => setDeleteTarget(null)}
         PaperProps={{ sx: { ...raisedSurface, borderRadius: SHAPE.card } }}
       >
-        <DialogTitle sx={{ fontWeight: 800 }}>Delete Coupon?</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 800 }}>Delete or deactivate <strong>{deleteTarget?.code}</strong>?</DialogTitle>
         <DialogContent>
           <Typography sx={{ color: 'text.secondary' }}>
-            Permanently delete <strong>{deleteTarget?.code}</strong>? Existing redemptions are retained, but the code can no longer be applied at checkout.
+            Delete an unused coupon permanently. Used coupons can only be deactivated: that stops the code being applied at checkout while keeping its limits and redemption history.
           </Typography>
+          {(deleteTarget?.redemptions ?? 0) > 0 && (
+            <Typography sx={{ color: 'text.secondary', mt: 1.5 }}>
+              This coupon has been redeemed {deleteTarget?.redemptions} time{deleteTarget?.redemptions === 1 ? '' : 's'}, so it cannot be deleted.
+            </Typography>
+          )}
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setDeleteTarget(null)} sx={{ textTransform: 'none' }}>Cancel</Button>
+          {deleteTarget?.active && (
+            <Button
+              variant="contained"
+              onClick={() => deleteTarget && handleDeactivate(deleteTarget)}
+              sx={{ textTransform: 'none', fontWeight: 700, borderRadius: SHAPE.sm, bgcolor: TONES.gold.solid, color: '#0E1916', '&:hover': { bgcolor: TONES.gold.border } }}
+            >
+              Deactivate
+            </Button>
+          )}
           <Button
-            variant="contained" color="error"
+            variant="outlined" color="error"
+            disabled={(deleteTarget?.redemptions ?? 0) > 0}
             onClick={() => deleteTarget && handleDelete(deleteTarget)}
             sx={{ textTransform: 'none', fontWeight: 700, borderRadius: SHAPE.sm }}
           >
