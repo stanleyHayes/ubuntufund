@@ -7,6 +7,9 @@ import { Footer } from './Footer'
 import { WebsiteRequestNotice } from '../auth/WebsiteRequestNotice'
 import { MobileBottomNav } from './MobileBottomNav'
 
+/** Target of the skip link: the page content, after the header navigation. */
+export const MAIN_CONTENT_ID = 'main-content'
+
 export function Layout() {
   const { pathname } = useLocation()
 
@@ -29,8 +32,36 @@ export function Layout() {
           },
       }}
     >
+      {/* First focusable element: lets keyboard users jump past the header
+          navigation (WCAG 2.4.1). Hidden until focused. Focus is moved by hand
+          so the router never sees a hash change. */}
+      <Box
+        component="a"
+        href={`#${MAIN_CONTENT_ID}`}
+        onClick={(event: React.MouseEvent<HTMLAnchorElement>) => {
+          event.preventDefault()
+          document.getElementById(MAIN_CONTENT_ID)?.focus()
+        }}
+        sx={{
+          position: 'absolute',
+          left: 16,
+          top: -64,
+          zIndex: (theme) => theme.zIndex.tooltip + 1,
+          px: 2,
+          py: 1,
+          borderRadius: 1,
+          bgcolor: 'background.paper',
+          color: 'text.primary',
+          fontWeight: 700,
+          boxShadow: 3,
+          textDecoration: 'none',
+          '&:focus': { top: 16 },
+        }}
+      >
+        Skip to main content
+      </Box>
       <Header />
-      <Box component="main" sx={{ flex: 1 }}>
+      <Box component="main" id={MAIN_CONTENT_ID} tabIndex={-1} sx={{ flex: 1, '&:focus': { outline: 'none' } }}>
         <WebsiteRequestNotice />
         <AccountAgreementNotice />
         <Box key={pathname} className="uf-page-enter">
