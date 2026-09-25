@@ -10,7 +10,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import { Alert, Box, Button, Chip, Link, MenuItem, Paper, Skeleton, Stack, Typography } from '@mui/material'
 import { Action, Resource } from '@ubuntu-fund/types'
-import { formatCurrency } from '@ubuntu-fund/ui'
+import { formatMoney } from '@/lib/money'
 import { api } from '@/lib/api'
 import { useAdminPermissions } from '@/context/AdminPermissionContext'
 
@@ -127,7 +127,7 @@ export default function RefundRequestsPage() {
         <Stack spacing={2}>
           <Box>
             <Stack direction="row" useFlexGap flexWrap="wrap" spacing={1} alignItems="center">
-              <Typography fontWeight={700}>{formatCurrency(item.netAmount, item.currency)}</Typography>
+              <Typography fontWeight={700}>{formatMoney(item.netAmount, item.currency)}</Typography>
               <Chip size="small" label={STATUS_LABELS[item.status]} />
               {payment && <Chip size="small" variant="outlined" label={`Payment ${payment.status.replaceAll('_', ' ').toLowerCase()}`} />}
             </Stack>

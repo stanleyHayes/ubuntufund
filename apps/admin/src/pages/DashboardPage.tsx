@@ -65,8 +65,9 @@ const tileTemplates: TileTemplate[] = [
   { label: 'Overview', icon: <InsightsIcon />, route: '/overview', color: '#8FAE96', statKey: null, description: 'platform analytics', resource: Resource.ANALYTICS },
   { label: 'Campaigns', icon: <RocketLaunchIcon />, route: '/campaigns', color: TONES.green.text, statKey: 'activeCampaigns', description: 'active campaigns', resource: Resource.CAMPAIGNS },
   { label: 'Users', icon: <PeopleIcon />, route: '/users', color: '#74909A', statKey: 'totalUsers', formatStat: formatCompact, description: 'registered users', resource: Resource.USERS },
-  { label: 'Donations', icon: <VolunteerActivismIcon />, route: '/donations', color: '#C7A24A', statKey: 'totalRaised', formatStat: formatCurrency, description: 'total raised', resource: Resource.DONATIONS },
-  { label: 'Disputes', icon: <GavelIcon />, route: '/disputes', color: '#C06B58', statKey: 'pendingDisputes', description: 'pending review', resource: Resource.DISPUTES },
+  { label: 'Donations', icon: <VolunteerActivismIcon />, route: '/donations', color: '#C7A24A', statKey: 'totalRaised', formatStat: formatCurrency, description: 'net raised (GH₵, after refunds)', resource: Resource.DONATIONS },
+  // The overview's pendingDisputes figure counts campaign reports, not disputes.
+  { label: 'Disputes', icon: <GavelIcon />, route: '/disputes', color: '#C06B58', statKey: null, description: 'open disputes', resource: Resource.DISPUTES },
   { label: 'Reports', icon: <BarChartIcon />, route: '/reports', color: TONES.maroon.text, statKey: 'totalDonations', description: 'analytics reports', resource: Resource.ANALYTICS },
   { label: 'Verifications', icon: <VerifiedUserIcon />, route: '/verifications', color: TONES.teal.text, statKey: null, description: 'pending verification', resource: Resource.VERIFICATIONS },
   { label: 'Audit Log', icon: <HistoryIcon />, route: '/audit', color: TONES.clay.text, statKey: null, description: 'total entries', resource: Resource.AUDIT_LOG },
@@ -253,10 +254,10 @@ export default function DashboardPage() {
   const { data: kycStats, isLoading: kycLoading, error: kycError } = useKYCStats()
 
   const quickStats = [
-    { label: 'Total Raised', value: statsLoading ? '...' : `GH₵ ${safeStats.totalRaised.toLocaleString()}`, icon: <TrendingUpIcon />, color: '#8FAE96', loading: statsLoading, error: statsError },
+    { label: 'Net raised (GH₵, after refunds)', value: statsLoading ? '...' : `GH₵ ${safeStats.totalRaised.toLocaleString()}`, icon: <TrendingUpIcon />, color: '#8FAE96', loading: statsLoading, error: statsError },
     { label: 'Active Campaigns', value: statsLoading ? '...' : String(safeStats.activeCampaigns), icon: <CampaignIcon />, color: '#74909A', loading: statsLoading, error: statsError },
     { label: 'Total Users', value: statsLoading ? '...' : String(safeStats.totalUsers), icon: <PeopleIcon />, color: TONES.maroon.text, loading: statsLoading, error: statsError },
-    { label: 'Pending Disputes', value: statsLoading ? '...' : String(safeStats.pendingDisputes), icon: <GavelIcon />, color: '#D3A95C', loading: statsLoading, error: statsError },
+    { label: 'Pending campaign reports', value: statsLoading ? '...' : String(safeStats.pendingDisputes), icon: <GavelIcon />, color: '#D3A95C', loading: statsLoading, error: statsError },
     { label: 'Pending KYC', value: String(kycStats?.pending ?? 0), icon: <VerifiedUserIcon />, color: TONES.teal.text, loading: kycLoading, error: kycError },
     { label: 'KYC Approved Today', value: String(kycStats?.approvedToday ?? 0), icon: <VerifiedUserIcon />, color: TONES.green.text, loading: kycLoading, error: kycError },
     { label: 'KYC Rejected Today', value: String(kycStats?.rejectedToday ?? 0), icon: <VerifiedUserIcon />, color: '#C06B58', loading: kycLoading, error: kycError },

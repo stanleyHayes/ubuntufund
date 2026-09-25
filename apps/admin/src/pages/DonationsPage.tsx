@@ -11,6 +11,7 @@ import { raisedSurface, insetSurface } from '@/lib/surfaces'
 import SearchIcon from '@mui/icons-material/Search'
 import VolunteerActivismRoundedIcon from '@mui/icons-material/VolunteerActivismRounded'
 import { EmptyState } from '@ubuntu-fund/ui'
+import { formatMoney } from '@/lib/money'
 import { useAdminDonations, type AdminDonation } from '@/hooks/useApiData'
 import { usePagination } from '@/hooks/usePagination'
 import PaginationBar from '@/components/PaginationBar'
@@ -191,7 +192,13 @@ export default function DonationsPage() {
 
   const pagination = usePagination(filtered, PAGE_SIZE)
 
-  const totalAmount = filtered.reduce((sum, d) => sum + d.amount, 0)
+  // Rows can be in different currencies: total each currency separately.
+  const totalsByCurrency = filtered.reduce<Record<string, number>>((totals, d) => {
+    const currency = d.currency || 'GHS'
+    totals[currency] = (totals[currency] ?? 0) + d.amount
+    return totals
+  }, {})
+  const totalLabel = Object.entries(totalsByCurrency).map(([currency, amount]) => formatMoney(amount, currency)).join(' · ') || formatMoney(0, 'GHS')
 
   return (
     <Box sx={{ bgcolor: 'background.default' }}>
@@ -267,7 +274,7 @@ export default function DonationsPage() {
             ) : error ? (
               'Unavailable'
             ) : (
-              `${filtered.length} donations · GH₵ ${totalAmount.toLocaleString()} total`
+              `${filtered.length} donations · ${totalLabel} gross (refunds not deducted)`
             )}
           </Typography>
         </Box>

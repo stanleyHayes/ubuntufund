@@ -9,7 +9,7 @@ export function donationsTable(rows: AdminDonation[]): ExportTable {
   return exportTable('Donations', rows, { ID: r => r.id, Campaign: r => r.campaignTitle ?? r.campaignId, Supporter: r => r.isAnonymous ? 'Anonymous' : r.donorName ?? r.donorId, Amount: r => r.amount, Currency: r => r.currency, Method: r => r.paymentMethod, Anonymous: r => r.isAnonymous, 'Date (UTC)': r => dateCell(r.createdAt) })
 }
 export function overviewTable(stats: PlatformStats): ExportTable {
-  return exportTable('Platform overview', [stats], { 'Total raised (GHS)': r => r.totalRaised, 'Active campaigns': r => r.activeCampaigns, Users: r => r.totalUsers, 'Pending disputes': r => r.pendingDisputes, Donations: r => r.totalDonations, 'Average donation (GHS)': r => r.avgDonation, 'Conversion (%)': r => r.conversionRate, 'Monthly growth (%)': r => r.monthlyGrowth })
+  return exportTable('Platform overview', [stats], { 'Net raised (GHS, after refunds)': r => r.totalRaised, 'Active campaigns': r => r.activeCampaigns, Users: r => r.totalUsers, 'Pending campaign reports': r => r.pendingDisputes, Donations: r => r.totalDonations, 'Average donation (GHS)': r => r.avgDonation, 'Conversion (%)': r => r.conversionRate, 'Monthly growth (%)': r => r.monthlyGrowth })
 }
 
 export function usersTable(users: User[]): ExportTable {

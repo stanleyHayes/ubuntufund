@@ -1,7 +1,7 @@
 import TextField from '@/components/AdminTextField'
 import { useState } from 'react'
 import { Alert, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Stack, Typography } from '@mui/material'
-import { formatCurrency } from '@ubuntu-fund/ui'
+import { formatMoney } from '@/lib/money'
 import { api } from '@/lib/api'
 
 export interface RefundableContribution {
@@ -27,7 +27,7 @@ function newIdempotencyKey(): string {
 
 export function refundOutcome(result: RefundResult, currency: string): { severity: 'success' | 'warning'; text: string } {
   if (result.status === 'REFUNDED' || result.status === 'PARTIALLY_REFUNDED') {
-    return { severity: 'success', text: `Refund of ${formatCurrency(result.amount, currency)} confirmed by the provider${result.refundReference ? ` (reference ${result.refundReference})` : ''}.` }
+    return { severity: 'success', text: `Refund of ${formatMoney(result.amount, currency)} confirmed by the provider${result.refundReference ? ` (reference ${result.refundReference})` : ''}.` }
   }
   if (result.status === 'PROCESSING') {
     return { severity: 'warning', text: 'The provider is still processing this refund. Follow it in Refund recovery; do not submit it again.' }
@@ -82,7 +82,7 @@ export default function RefundDialog({ contribution, open, onClose, onRefunded }
     <DialogContent>
       <Stack spacing={2} sx={{ pt: 1 }}>
         <Typography variant="body2">
-          {formatCurrency(contribution.amount, contribution.currency)} via {contribution.provider}
+          {formatMoney(contribution.amount, contribution.currency)} via {contribution.provider}
           {contribution.providerRef ? ` · reference ${contribution.providerRef}` : ''}
         </Typography>
         <Alert severity="warning">This asks {contribution.provider} to return money to the donor and cannot be undone. Only the campaign amount is refunded; a separate platform tip is not. Funds already paid out to the campaign cannot be refunded here.</Alert>
@@ -100,7 +100,7 @@ export default function RefundDialog({ contribution, open, onClose, onRefunded }
     <DialogActions>
       <Button onClick={onClose} disabled={busy}>{result ? 'Close' : 'Cancel'}</Button>
       {!result && <Button variant="contained" color="error" disabled={busy || !validAmount || !confirmed} onClick={() => void submit()}>
-        {busy ? 'Submitting refund…' : `Refund ${validAmount ? formatCurrency(value, contribution.currency) : ''}`.trim()}
+        {busy ? 'Submitting refund…' : `Refund ${validAmount ? formatMoney(value, contribution.currency) : ''}`.trim()}
       </Button>}
     </DialogActions>
   </Dialog>

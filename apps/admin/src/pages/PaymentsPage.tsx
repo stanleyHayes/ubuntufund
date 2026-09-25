@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import { Alert, Box, Button, Chip, Link, MenuItem, Paper, Skeleton, Stack, Typography } from '@mui/material'
 import { Action, Resource } from '@ubuntu-fund/types'
-import { formatCurrency } from '@ubuntu-fund/ui'
+import { formatMoney } from '@/lib/money'
 import { api } from '@/lib/api'
 import { useAdminPermissions } from '@/context/AdminPermissionContext'
 
@@ -111,7 +111,7 @@ export default function PaymentsPage() {
       <Stack divider={<Box sx={{ borderTop: '1px solid', borderColor: 'divider' }} />}>
         {results.map(item => <Stack key={item.id} direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ sm: 'center' }} sx={{ p: 1, overflowWrap: 'anywhere' }}>
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography fontWeight={700}>{formatCurrency(item.amount, item.currency)} <Chip size="small" label={label(item.status)} sx={{ ml: 1 }} /></Typography>
+            <Typography fontWeight={700}>{formatMoney(item.amount, item.currency)} <Chip size="small" label={label(item.status)} sx={{ ml: 1 }} /></Typography>
             <Typography variant="body2" color="text.secondary">{new Date(item.createdAt).toLocaleString()} · {item.provider}{item.providerRef ? ` · ${item.providerRef}` : ''}{item.donorEmail ? ` · ${item.donorEmail}` : ''}</Typography>
           </Box>
           <Button size="small" variant={selectedId === item.id ? 'contained' : 'outlined'} onClick={() => open(item.id)}>View timeline</Button>
@@ -122,7 +122,7 @@ export default function PaymentsPage() {
     {selectedId && <Paper component="section" aria-label="Payment timeline" sx={{ ...raisedSurface, p: { xs: 2, sm: 3 }, overflowWrap: 'anywhere' }}>
       {timelineLoading ? <Skeleton variant="rounded" height={160} /> : timelineError ? <Alert severity="error" action={<Button onClick={() => void loadTimeline(selectedId)}>Retry</Button>}>{timelineError}</Alert> : payment && <Stack spacing={2}>
         <Box>
-          <Typography variant="h6">{formatCurrency(payment.amount, payment.currency)}{payment.tip ? ` + ${formatCurrency(payment.tip, payment.currency)} platform tip` : ''}</Typography>
+          <Typography variant="h6">{formatMoney(payment.amount, payment.currency)}{payment.tip ? ` + ${formatMoney(payment.tip, payment.currency)} platform tip` : ''}</Typography>
           <Stack direction="row" useFlexGap flexWrap="wrap" spacing={1} sx={{ mt: 1 }}>
             <Chip size="small" label={label(payment.status)} />
             <Chip size="small" variant="outlined" label={payment.provider} />

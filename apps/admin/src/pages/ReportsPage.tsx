@@ -73,7 +73,7 @@ export default function ReportsPage() {
       tone="green"
       eyebrow="Operations"
       title="Reports"
-      lede="Track fraud signals, campaign funding trends, and platform health in one place."
+      lede="Track fraud signals, campaign funding trends, and platform health in one place. Amounts are GHS donations net of refunds; other currencies are left out."
       icon={<AssessmentRoundedIcon />}
       stats={fraudMetrics.map((m) => ({ label: m.metric, value: reportsLoading ? <Skeleton width={60} /> : reportsError ? '—' : formatMetricValue(m) }))}
     actions={<ExportMenu title="Reports" disabled={loading || !!reportsError || !!campaignsError} getReport={() => ({ title: 'Platform reports', tables: analyticsTables(reports, campaigns) })} />}
