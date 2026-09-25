@@ -31,6 +31,7 @@ import {
   CampaignPriority,
   CampaignStatus,
   CollaboratorRole,
+  ORGANIZER_AGREEMENT_NOTICE,
 } from '@ubuntu-fund/types'
 import { formatCurrency, ImageUpload, SHAPE, LoadingDots } from '@ubuntu-fund/ui'
 import { useCreateCampaign } from '@/hooks/useCampaigns'
@@ -1340,6 +1341,16 @@ function CampaignFormForViewer({ userId }: { userId: string | null }) {
             </Typography>
           </Box>
         </Box>
+      )}
+
+      {/* Submitting is how the organizer accepts the Organizer Agreement (its section 10). */}
+      {step === STEPS.length - 1 && (
+        <Typography sx={{ mt: 3, fontSize: '0.82rem', lineHeight: 1.5, color: INK_SECONDARY }}>
+          {ORGANIZER_AGREEMENT_NOTICE}{' '}
+          <RouterLink to="/organizer-agreement" target="_blank" rel="noopener noreferrer">
+            Read the Campaign Organizer Agreement
+          </RouterLink>
+        </Typography>
       )}
 
       {/* ----------------------------- NAVIGATION ----------------------------- */}

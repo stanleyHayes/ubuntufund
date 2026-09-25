@@ -10,7 +10,9 @@ import {
 } from '../helpers/testDatabase.js';
 import { UserModel } from '../../src/infrastructure/database/models/UserModel.js';
 import { MongoSiteContentRepository } from '../../src/infrastructure/adapters/outbound/persistence/MongoSiteContentRepository.js';
-import { seedSiteContentIfEmpty } from '../../src/infrastructure/database/seedSiteContent.js';
+import { refreshSupersededFaqDefaults, seedSiteContentIfEmpty } from '../../src/infrastructure/database/seedSiteContent.js';
+import { SUPERSEDED_FAQ_DEFAULTS } from '../../src/infrastructure/database/supersededFaqDefaults.js';
+import siteContentDefaults from '../../src/infrastructure/database/siteContentDefaults.json';
 
 function uniqueEmail(label: string): string {
   return `${label}-${randomUUID()}@example.com`;
@@ -226,6 +228,32 @@ describe('Site Content (CMS) Integration', () => {
         .send({ data: { any: 'thing' } });
 
       expect(res.status).toBe(401);
+    });
+  });
+
+  describe('superseded FAQ defaults on an existing deployment', () => {
+    it('replaces answers that still match an earlier default and keeps what an admin wrote', async () => {
+      const repo = new MongoSiteContentRepository();
+      const original = (await repo.getByKey('faq'))!;
+      const earlier = (question: string) => SUPERSEDED_FAQ_DEFAULTS.find((entry) => entry.question === question)!;
+      const admin = { category: 'Local', question: 'Where is your office?', answer: 'Accra.' };
+      await repo.upsert('faq', 'faq', { items: [
+        { category: 'Campaigns', question: 'How long can my campaign run?', answer: earlier('How long can my campaign run?').answer },
+        { category: 'Trust & safety', question: 'How does the trust score work?', answer: earlier('How does the trust score work?').answer },
+        admin,
+      ] }, 'admin-user');
+
+      try {
+        expect(await refreshSupersededFaqDefaults(repo)).toEqual({ replaced: 1, removed: 1 });
+        expect(await refreshSupersededFaqDefaults(repo)).toEqual({ replaced: 0, removed: 0 });
+        const items = (await request(app).get('/api/v1/content/faq').expect(200)).body.data.data.items as { question: string; answer: string }[];
+        const defaults = (siteContentDefaults as { key: string; data: { items?: { question: string; answer: string }[] } }[]).find((block) => block.key === 'faq')!.data.items!;
+        const current = defaults.find((item) => item.question === 'How long can my campaign run?')!;
+        expect(items).toEqual([{ category: 'Campaigns', question: current.question, answer: current.answer }, admin]);
+        expect(JSON.stringify(items)).not.toMatch(/extend once|trust score/i);
+      } finally {
+        await repo.upsert('faq', original.type, original.data);
+      }
     });
   });
 });

@@ -42,6 +42,17 @@ export const LEGAL_ENTITY = {
 const E = LEGAL_ENTITY.emails
 
 /**
+ * Each policy shows its own effective date. `LEGAL_ENTITY.effectiveDate` is the
+ * date of the first published pack and still applies to policies unchanged
+ * since. When a policy's text changes, give it the date the new text is
+ * published, record the change in docs/compliance/LEGAL_REVISIONS.md, and
+ * update the fingerprint in apps/marketing/__tests__/legalClaims.test.ts.
+ * Changing a date never changes LEGAL_ACCEPTANCE_VERSION; re-acceptance is a
+ * separate owner decision.
+ */
+const REVISED_25_SEPTEMBER_2026 = '25 September 2026'
+
+/**
  * The registered-company clause used in the opening section of the Terms and the
  * Privacy Notice. Omits registration number / registered office gracefully while
  * those config values are empty, so a live page never states a fabricated fact.
@@ -132,7 +143,7 @@ export const LEGAL_POLICIES: LegalPolicy[] = [
     panelBody: 'These terms cover accounts, campaigns, contributions, fees, payouts, refunds and dispute handling.',
     introduction:
       'Welcome to Ujimora. These Terms of Use govern your use of our crowdfunding platform. Please read them carefully before creating an account, publishing a campaign, or making a contribution.',
-    effectiveDate: LEGAL_ENTITY.effectiveDate,
+    effectiveDate: REVISED_25_SEPTEMBER_2026,
     sections: [
       { title: 'Creator profile donations and withdrawal fees', content: 'Creator profile donations require an active, unexpired paid subscription. Free plans and trials cannot enable a creator page or accept new tips. If your paid entitlement ends, new tip checkouts are disabled; existing balances remain withdrawable. Each creator withdrawal deducts the current effective plan’s platform-fee percentage from the requested amount. The fee and net transfer are shown before confirmation and fixed for that withdrawal. The same platform fee is not also deducted when a new tip is received. A failed or reversed transfer restores the full requested amount, including the Ujimora fee. Existing withdrawals keep their original fee terms.' },
       { title: "Crypto contributions, where available", content: "Crypto is an optional contribution method only where offered at checkout. Review the supported asset, network, exact amount, campaign-currency value and payment window before sending. A quote is not a completed contribution; campaign credit follows provider confirmation. Crypto contributions are not an investment, savings product or promise of returns. Availability does not represent regulatory approval or an endorsement of an asset." },
@@ -155,7 +166,8 @@ export const LEGAL_POLICIES: LegalPolicy[] = [
 Organizers must have authority to raise and receive funds for the stated purpose.
 Organizers must provide requested KYC/KYB, beneficiary, banking and supporting documents.
 Organizers must use funds consistently with the campaign representation and applicable law.
-Material changes must be disclosed promptly to contributors and to Ujimora.`,
+Material changes must be disclosed promptly to contributors and to Ujimora.
+Organizers must also follow the Campaign Organizer Agreement, which supplements these Terms and which you accept when you submit a campaign.`,
       },
       {
         title: '5. Contributions',
@@ -239,7 +251,7 @@ Circumvention of subscription, campaign, payment or risk controls.`,
     panelBody: 'This notice covers account data, campaign records, payments, security, retention, and your rights under Act 843.',
     introduction:
       'At Ujimora, we are committed to protecting your privacy and the security of your personal information. This notice explains how we collect, use, share, retain, and protect data when you use the platform.',
-    effectiveDate: LEGAL_ENTITY.effectiveDate,
+    effectiveDate: REVISED_25_SEPTEMBER_2026,
     sections: [
       { title: "Blockchain and crypto payment information", content: "Where you use crypto checkout, payment records may include wallet addresses, network, asset, transaction hash, memo or tag, quote, campaign-currency value and provider references. We use relevant records to match and confirm contributions, investigate failures and support required compliance checks with payment partners. Blockchain transactions can be public and persistent; hiding your name on a campaign does not make a blockchain transfer anonymous. We cannot erase records on public blockchains." },
       {
@@ -266,7 +278,7 @@ Perform identity and business verification, fraud prevention, AML/CFT and securi
 Process subscriptions and fees and reconcile transactions.
 Provide support, resolve disputes and enforce our terms.
 Meet legal, regulatory, audit and partner obligations.
-Improve the service using appropriately governed analytics.
+Improve and oversee the service using internal, aggregated reports on accounts, campaigns and transactions (no third-party analytics or tracking tools).
 Send marketing only where permitted and with applicable choice or consent.`,
       },
       {
@@ -312,7 +324,7 @@ Send marketing only where permitted and with applicable choice or consent.`,
       {
         title: '10. Cookies and analytics',
         content:
-          'Ujimora web properties do not currently use cookies, analytics or advertising technologies. See the Cookie Notice for the browser storage we use.',
+          'Ujimora web properties do not currently use cookies or third-party analytics, tracking or advertising technologies. We produce internal, aggregated reports on accounts, campaigns and transactions from records we already hold (see section 3). See the Cookie Notice for the browser storage we use.',
       },
       {
         title: '11. Children',
@@ -348,7 +360,7 @@ Send marketing only where permitted and with applicable choice or consent.`,
     panelBody: 'This agreement supplements the Terms of Use and applies to everyone who creates or controls a campaign.',
     introduction:
       'This Campaign Organizer Agreement supplements the Ujimora Terms of Use and applies whenever an individual or organization creates or controls a campaign.',
-    effectiveDate: LEGAL_ENTITY.effectiveDate,
+    effectiveDate: REVISED_25_SEPTEMBER_2026,
     sections: [
       { title: "Campaign credit from crypto contributions", content: "Where crypto contributions are enabled, campaign credit is recorded in the campaign currency after confirmation, using the accepted payment value. A pending transfer or unaccepted quote is not available campaign proceeds. Crypto acceptance does not by itself provide crypto payouts or change beneficiary allocations, payout review or applicable fees." },
       {
@@ -399,7 +411,7 @@ Send marketing only where permitted and with applicable choice or consent.`,
       {
         title: '10. Acceptance',
         content:
-          'Acceptance is captured electronically when you accept the account agreement, recording your user ID, the agreement version and a timestamp. It applies to each campaign you create or control while that version is current.',
+          'You accept this Agreement when you submit a campaign. On the website and in the mobile app, the last step of campaign creation links to this Agreement and states that submitting the campaign means you agree to it. Ujimora’s records show which account submitted each campaign and when; Ujimora does not keep a separate signature or acceptance record for this Agreement. Submitting a campaign also requires your current acceptance of the Terms of Use, which is recorded with your user ID, the version you accepted and a timestamp. This Agreement continues to apply while you control the campaign.',
       },
       {
         title: '11. Split beneficiary allocation',
@@ -615,11 +627,11 @@ Attempts to bypass KYC/KYB, campaign limits, payment restrictions, subscription 
     title: 'Cookie Notice',
     description: 'The browser storage used on Ujimora web properties, and the choices you have.',
     panelLabel: 'Cookie principle',
-    panelTitle: 'No tracking cookies. Browser storage only for sign-in, preferences, payments and referrals.',
+    panelTitle: 'No tracking cookies. Browser storage only for sign-in, preferences, drafts, payments and referrals.',
     panelBody: 'This notice lists what Ujimora keeps in your browser, how long it stays and how to clear it.',
     introduction:
       'This notice explains the cookies and similar technologies used on Ujimora web properties. We do not currently set cookies; we use your browser’s local and session storage only for the purposes listed below.',
-    effectiveDate: LEGAL_ENTITY.effectiveDate,
+    effectiveDate: REVISED_25_SEPTEMBER_2026,
     sections: [
       {
         title: '1. Scope',
@@ -627,17 +639,19 @@ Attempts to bypass KYC/KYB, campaign limits, payment restrictions, subscription 
       },
       {
         title: '2. What we use',
-        content: `Ujimora web properties do not currently set cookies or use analytics or advertising technologies. We use your browser’s local and session storage for:
-• Sign-in (uf_tokens, uf_user, accessToken, uf_last_activity) to keep you signed in. Removed when you sign out or after an hour of inactivity.
+        content: `Ujimora web properties do not currently set cookies or use third-party analytics, tracking or advertising technologies. We use your browser’s local storage and, where marked, session storage (cleared when you close the tab) for:
+• Sign-in (uf_tokens, uf_tokens:received, uf_user, accessToken, uf_last_activity) to keep you signed in. Removed when you sign out. After an hour without activity they are removed straight away if a Ujimora page is open, or otherwise the next time you open the site; until then they stay in your browser.
 • Display preferences (uf_color_mode, uf_skin), kept until you clear site data.
-• Payment recovery (uf_pending_donations, uf_pending_subscriptions, ujimora:tip-attempt:* and session-only top-up references), so the confirmation page can pick up your payment after the payment provider sends you back. Tip and top-up entries are removed once the payment is resolved; the others are kept until you clear site data.
+• Unsent drafts (ujimora:publication-draft:*): the campaign form until the campaign is created, and profile images held for safety review, so the exact version held for review can be submitted again once approved. Saved per account. A draft older than 30 days is deleted the next time its page is opened, and all drafts are deleted when you sign out. They are not deleted when a session ends through inactivity.
+• Payment recovery, so the confirmation page can pick up your payment after the payment provider sends you back. Donation handoffs (uf_pending_donations, session storage) are removed once the payment succeeds, fails or expires. Wallet top-up references (ujimora-topup-*) stay in session storage until you close the tab. Tip attempts (ujimora:tip-attempt:*) are removed once the payment is resolved. Subscription checkouts (uf_pending_subscriptions) are removed once the checkout is settled, fails or expires, or when you clear site data.
+• Checkout retry keys (ujimora:checkout-attempt:*, session storage): opaque codes that stop a retried donation from being charged twice. They contain no amounts or personal details.
 • Referral attribution (uf_ref), which stores an affiliate code from a ?ref= link so the referrer can be credited if you sign up. Kept until you create an account or clear site data.
 The staff console uses equivalent sign-in and display-preference entries.`,
       },
       {
         title: '3. Choices',
         content:
-          'You can clear this storage at any time using your browser’s site-data controls. Clearing sign-in storage signs you out. If we introduce analytics or advertising technologies, we will update this notice first and ask for your consent where required.',
+          'You can clear this storage at any time using your browser’s site-data controls. Clearing sign-in storage signs you out, and clearing drafts removes any unsent campaign or profile-image version. If we introduce analytics, tracking or advertising technologies on our web properties, we will update this notice first and ask for your consent where required.',
       },
       {
         title: '4. Third parties',
@@ -674,7 +688,7 @@ The staff console uses equivalent sign-in and display-preference entries.`,
     panelBody: 'Plan price, campaign limits, active-campaign limits, platform fee and features are shown at purchase.',
     introduction:
       'These terms explain how Ujimora subscription plans are billed and managed, including renewal, cancellation, upgrades, downgrades and price changes.',
-    effectiveDate: LEGAL_ENTITY.effectiveDate,
+    effectiveDate: REVISED_25_SEPTEMBER_2026,
     sections: [
       { title: 'Creator profile donations and withdrawal fees', content: 'Creator profile donations require an active, unexpired paid subscription. Free plans and trials cannot enable a creator page or accept new tips. If your paid entitlement ends, new tip checkouts are disabled; existing balances remain withdrawable. Each creator withdrawal deducts the current effective plan’s platform-fee percentage from the requested amount. The fee and net transfer are shown before confirmation and fixed for that withdrawal. The same platform fee is not also deducted when a new tip is received. A failed or reversed transfer restores the full requested amount, including the Ujimora fee. Existing withdrawals keep their original fee terms.' },
       {

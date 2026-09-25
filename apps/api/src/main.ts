@@ -5,7 +5,7 @@ import { connectDatabase, disconnectDatabase } from './infrastructure/database/c
 import { logger } from './infrastructure/logging/logger.js';
 import { installProcessFailureHandlers } from './infrastructure/logging/processFailureHandlers.js';
 import { MongoSiteContentRepository } from './infrastructure/adapters/outbound/persistence/MongoSiteContentRepository.js';
-import { seedSiteContentIfEmpty } from './infrastructure/database/seedSiteContent.js';
+import { refreshSupersededFaqDefaults, seedSiteContentIfEmpty } from './infrastructure/database/seedSiteContent.js';
 
 installProcessFailureHandlers(process, logger);
 
@@ -19,6 +19,14 @@ async function bootstrap(): Promise<void> {
     await seedSiteContentIfEmpty(new MongoSiteContentRepository());
   } catch (error) {
     logger.error({ err: error }, 'site content seed failed');
+  }
+  // Existing deployments keep the FAQ of their first boot. Replace answers that
+  // still carry an earlier, since-corrected default word for word; anything an
+  // admin wrote is left alone. Never fatal.
+  try {
+    await refreshSupersededFaqDefaults(new MongoSiteContentRepository());
+  } catch (error) {
+    logger.error({ err: error }, 'superseded FAQ refresh failed');
   }
 
   const app = createApp();

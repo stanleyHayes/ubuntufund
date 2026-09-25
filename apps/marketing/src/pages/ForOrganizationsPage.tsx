@@ -53,7 +53,7 @@ const float = keyframes`
 const FEATURES = [
   { icon: <DashboardRoundedIcon />, title: 'Organization Workspace', description: 'Manage organization-owned campaigns, giving history, and impact totals from a role-aware dashboard.', color: '#2E3D2F' },
   { icon: <GroupsRoundedIcon />, title: 'Campaign Collaboration', description: 'Invite collaborators and manage shared campaign work through accountable invitation flows.', color: '#1565C0' },
-  { icon: <BarChartRoundedIcon />, title: 'Live Campaign Progress', description: 'Track verified campaign totals, goals, donation activity, updates, and supporter comments.', color: '#C7A24A' },
+  { icon: <BarChartRoundedIcon />, title: 'Live Campaign Progress', description: 'Track confirmed campaign totals, goals, donation activity, updates, and supporter comments.', color: '#C7A24A' },
   { icon: <ReceiptLongRoundedIcon />, title: 'Donation History', description: 'Review persisted donation and wallet activity with clear dates, amounts, and payment methods.', color: '#C75B39' },
   { icon: <SyncRoundedIcon />, title: 'Your Organisation Profile', description: 'Personalise your public page with a profile image and cover, and bring your campaigns, followers, and impact together.', color: '#6A1B9A' },
   { icon: <VerifiedUserRoundedIcon />, title: 'Verification Workflow', description: 'Submit organization and identity information for review by the platform trust team.', color: '#00695C' },

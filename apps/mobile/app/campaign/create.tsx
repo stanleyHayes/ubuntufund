@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from 'react'
 import { View, ScrollView } from 'react-native'
 import { Text, Snackbar, Switch, ProgressBar } from 'react-native-paper'
 import { Stack, router } from 'expo-router'
-import { CampaignCategory, CampaignPriority, type SubscriptionPlan } from '@ubuntu-fund/types'
+import { CampaignCategory, CampaignPriority, ORGANIZER_AGREEMENT_NOTICE, type SubscriptionPlan } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
 import { clearCampaignDraft, loadCampaignDraft, saveCampaignDraft } from '@/lib/publicationDrafts'
 import { creationRequestKey } from '@/lib/campaignCreationKey'
@@ -141,7 +141,7 @@ function CampaignFormForViewer() {
             {split && allocations.map((a, i) => <View key={i} style={{ gap: 8 }}><Text>Beneficiary {i + 1}</Text>{(['name', 'email', 'percent'] as const).map(key => <TextInput key={key} label={key === 'percent' ? 'Share (%)' : key} value={a[key]} keyboardType={key === 'percent' ? 'decimal-pad' : key === 'email' ? 'email-address' : 'default'} onChangeText={v => setAllocations(rows => rows.map((row, index) => index === i ? { ...row, [key]: v } : row))} />)}<Button onPress={() => setAllocations(rows => rows.filter((_, index) => index !== i))}>Remove recipient</Button></View>)}
             {split && <Button onPress={() => setAllocations(rows => [...rows, { name: '', email: '', percent: '' }])}>Add recipient</Button>}
           </>}
-          {step === 3 && <><Text variant="titleLarge">{title}</Text><Text>{description}</Text><Text>Goal: GH₵{amount} · Ends {end}</Text><Text>Category: {category} · Urgency: {priority}</Text><Text>Beneficiaries: {beneficiaries}</Text><Text>Safety checks and financial approval apply separately. Goals above GH₵250,000 need staff financial approval unless you are currently verified and have a previous published campaign.</Text><PublicationConsent value={automatedReviewConsent} onChange={setAutomatedReviewConsent} />{error && <PublicationReviews />}</>}
+          {step === 3 && <><Text variant="titleLarge">{title}</Text><Text>{description}</Text><Text>Goal: GH₵{amount} · Ends {end}</Text><Text>Category: {category} · Urgency: {priority}</Text><Text>Beneficiaries: {beneficiaries}</Text><Text>Safety checks and financial approval apply separately. Goals above GH₵250,000 need staff financial approval unless you are currently verified and have a previous published campaign.</Text><PublicationConsent value={automatedReviewConsent} onChange={setAutomatedReviewConsent} />{error && <PublicationReviews />}<Text style={{ color: p.textSecondary }}>{ORGANIZER_AGREEMENT_NOTICE} <Text accessibilityRole="link" style={{ color: p.primary }} onPress={() => router.push('/organizer-agreement')}>Read the Campaign Organizer Agreement</Text></Text></>}
         </View>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>{step > 0 && <Button disabled={busy || uploading} onPress={() => setStep(s => s - 1)}>Back</Button>}<Button mode="contained" loading={busy} disabled={busy || uploading} onPress={step === 3 ? () => void submit() : () => { const issue = validate(step); if (issue) setError(issue); else { setError(''); setStep(s => s + 1) } }}>{step === 3 ? 'Create campaign' : 'Continue'}</Button></View>
       </>}
