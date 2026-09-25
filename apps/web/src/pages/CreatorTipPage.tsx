@@ -9,7 +9,7 @@ import Checkbox from '@mui/material/Checkbox'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import { AccountPageSkeleton } from '@/components/account/AccountPage'
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useParams } from 'react-router-dom'
+import { Link as RouterLink, useParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
@@ -242,6 +242,11 @@ function CreatorTipForViewer() {
     .join('')
     .toUpperCase()
   const fmt = (n: number) => `${page.currency === 'GHS' ? 'GH₵' : ''}${n.toLocaleString()}`
+  // Creator pages show only images approved for the page itself, never the
+  // account photo, so tell the owner why theirs shows the defaults.
+  const missingImages = user?.id === page.userId
+    ? [!page.avatarUrl && 'photo', !page.coverUrl && 'cover'].filter(Boolean).join(' and ')
+    : ''
 
   return (
     <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', py: { xs: 4, md: 7 } }}>
@@ -345,6 +350,18 @@ function CreatorTipForViewer() {
                 </Typography>
               </Box>
             </Box>
+            {missingImages && (
+              <Alert severity="info" sx={{ mt: 2 }}>
+                Visitors see the default {missingImages}. Your creator page shows only images approved for it, not
+                your account images. In creator settings, choose “Use account photo and cover” and save to send them
+                for review.
+                <Box sx={{ mt: 1 }}>
+                  <Button component={RouterLink} to="/creator" color="inherit" size="small" sx={{ px: 0 }}>
+                    Creator settings
+                  </Button>
+                </Box>
+              </Alert>
+            )}
           </Box>
         </Box>
 

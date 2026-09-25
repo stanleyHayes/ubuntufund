@@ -80,6 +80,7 @@ function CreatorTipForViewer() {
   const amountInput = useRef<{ focus(): void } | null>(null)
   const [custom, setCustom] = useState(false)
   const [failedCover, setFailedCover] = useState('')
+  const [failedAvatar, setFailedAvatar] = useState('')
   const [anonymous, setAnonymous] = useState(false)
   const [paymentRef, setPaymentRef] = useState('')
   const [paymentStatus, setPaymentStatus] = useState('')
@@ -209,6 +210,11 @@ function CreatorTipForViewer() {
     .slice(0, 2)
     .join('')
     .toUpperCase()
+  // Creator pages show only images approved for the page itself, never the
+  // account photo, so tell the owner why theirs shows the defaults.
+  const missingImages = user?.id === page.userId
+    ? [!page.avatarUrl && 'photo', !page.coverUrl && 'cover'].filter(Boolean).join(' and ')
+    : ''
 
   return (
     <View style={styles.container}>
@@ -269,8 +275,13 @@ function CreatorTipForViewer() {
           )}
         </View>
         <View style={styles.header}>
-          {page.avatarUrl ? (
-            <Avatar.Image size={84} source={{ uri: page.avatarUrl }} />
+          {page.avatarUrl && failedAvatar !== page.avatarUrl ? (
+            <Avatar.Image
+              size={84}
+              source={{ uri: page.avatarUrl }}
+              onError={() => setFailedAvatar(page.avatarUrl || '')}
+              accessibilityLabel={`${page.displayName}'s photo`}
+            />
           ) : (
             <Avatar.Text size={84} label={initials} />
           )}
@@ -288,6 +299,19 @@ function CreatorTipForViewer() {
             </View>
           </View>
         </View>
+
+        {missingImages ? (
+          <View style={styles.card}>
+            <Text style={styles.bio}>
+              Visitors see the default {missingImages}. Your creator page shows only images approved for it, not
+              your account images. In creator settings, choose “Use account photo and cover” and save to send them
+              for review.
+            </Text>
+            <Link href="/creator" style={{ color: p.primary, fontFamily: 'Outfit_700Bold' }}>
+              Open creator settings
+            </Link>
+          </View>
+        ) : null}
 
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Support {page.displayName.split(' ')[0]}</Text>
