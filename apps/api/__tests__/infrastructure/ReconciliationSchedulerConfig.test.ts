@@ -8,9 +8,16 @@ describe('reconciliation scheduler flag', () => {
     process.env.NODE_ENV = original.NODE_ENV
     if (original.RECONCILIATION_SCHEDULER_ENABLED === undefined) delete process.env.RECONCILIATION_SCHEDULER_ENABLED
     else process.env.RECONCILIATION_SCHEDULER_ENABLED = original.RECONCILIATION_SCHEDULER_ENABLED
+    vi.unstubAllEnvs()
     vi.resetModules()
   })
   async function load() {
+    // config/index.ts needs these at import; CI's Turbo run does not pass them
+    // through and there is no apps/api/.env there (testApp.ts sets them for
+    // the rest of the suite).
+    vi.stubEnv('JWT_SECRET', process.env.JWT_SECRET || 'test-jwt-secret-do-not-use-in-production-0001')
+    vi.stubEnv('JWT_REFRESH_SECRET', process.env.JWT_REFRESH_SECRET || 'test-refresh-secret-do-not-use-in-production-0002')
+    vi.stubEnv('MONGODB_URI', process.env.MONGODB_URI || 'mongodb://127.0.0.1:28017/config-test')
     vi.resetModules()
     return (await import('../../src/infrastructure/config/index.js')).config
   }

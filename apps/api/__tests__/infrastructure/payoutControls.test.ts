@@ -12,6 +12,10 @@ describe('payout maker-checker configuration', () => {
   it('parses the committed render.yaml value to the threshold the API enforces', async () => {
     expect(renderValue).toBeDefined()
     vi.stubEnv('PAYOUT_DUAL_APPROVAL_AMOUNT', renderValue!)
+    // config/index.ts needs these at import; CI's Turbo run does not pass them through.
+    vi.stubEnv('JWT_SECRET', process.env.JWT_SECRET || 'test-jwt-secret-do-not-use-in-production-0001')
+    vi.stubEnv('JWT_REFRESH_SECRET', process.env.JWT_REFRESH_SECRET || 'test-refresh-secret-do-not-use-in-production-0002')
+    vi.stubEnv('MONGODB_URI', process.env.MONGODB_URI || 'mongodb://127.0.0.1:28017/config-test')
     vi.resetModules()
     const { config } = await import('../../src/infrastructure/config/index.js')
     expect(config.payouts.dualApprovalAmount).toBe(Number(renderValue))
