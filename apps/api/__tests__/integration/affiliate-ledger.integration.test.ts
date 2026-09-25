@@ -20,6 +20,9 @@ import { RejectAffiliatePayoutUseCase } from '../../src/application/use-cases/Re
 import { HandleAffiliatePayoutWebhookUseCase } from '../../src/application/use-cases/HandleAffiliatePayoutWebhookUseCase.js'
 import { GetAffiliateDashboardUseCase } from '../../src/application/use-cases/GetAffiliateDashboardUseCase.js'
 import { AffiliateCommissionService } from '../../src/application/services/AffiliateCommissionService.js'
+import { SetAffiliatePayoutRecipientUseCase } from '../../src/application/use-cases/SetAffiliatePayoutRecipientUseCase.js'
+import { PayoutAccountService } from '../../src/application/services/PayoutAccountService.js'
+import { MongoPayoutAccountRepository } from '../../src/infrastructure/adapters/outbound/persistence/MongoPayoutAccountRepository.js'
 
 const commissions = new MongoAffiliateCommissionRepository()
 const balances = new MongoAffiliateBalanceRepository()
@@ -175,5 +178,36 @@ describe('affiliate payout ledger', () => {
     expect(error).toHaveBeenCalled()
     expect((await balance()).clawbackOutstanding).toBe(20)
     error.mockRestore()
+  })
+})
+
+describe('affiliate payout destination', () => {
+  const setup = (resolvedName: string) => {
+    const provider = { isConfigured: () => true, resolveAccount: vi.fn(async () => ({ accountName: resolvedName })), createTransferRecipient: vi.fn(async () => 'RCP_saved_aff') }
+    const plans = { resolvePlan: async () => ({ name: 'Free', tier: 'free', maxPayoutAccounts: 2 }) }
+    const accounts = new PayoutAccountService(new MongoPayoutAccountRepository(), provider as never, plans as never, 'test')
+    return { accounts, provider, useCase: new SetAffiliatePayoutRecipientUseCase(affiliates, provider as never, accounts) }
+  }
+  beforeEach(async () => {
+    await AffiliateModel.updateOne({ _id: affiliateId }, { $unset: { recipientCode: 1 } })
+    await mongoose.connection.collection('payoutaccounts').deleteMany({})
+  })
+
+  it('uses a name-matched saved account and copies its recipient, enabling a payout request', async () => {
+    const { accounts, useCase } = setup('MENSAH KWAME')
+    const saved = await accounts.add(owner, { type: 'mobile_money', accountNumber: '0241234567', bankCode: 'MTN', accountName: 'Kwame Mensah' })
+    await expect(request().execute(owner, { amount: 5 })).rejects.toMatchObject({ statusCode: 400 })
+    const updated = await useCase.execute(owner, { savedAccountId: saved.id })
+    expect(updated).toMatchObject({ recipientCode: 'RCP_saved_aff', accountName: 'Kwame Mensah', bankCode: 'MTN' })
+    await commission(5, 'available')
+    await expect(request().execute(owner, { amount: 5 })).resolves.toMatchObject({ status: 'PENDING' })
+  })
+
+  it.each(['saved', 'entered'] as const)('refuses a %s account whose provider-held name did not match', async (via) => {
+    const { accounts, useCase } = setup('Somebody Else')
+    const details = { type: 'mobile_money' as const, accountNumber: '0249876543', bankCode: 'MTN', accountName: 'Kwame Mensah' }
+    const input = via === 'saved' ? { savedAccountId: (await accounts.add(owner, details)).id } : details
+    await expect(useCase.execute(owner, input)).rejects.toMatchObject({ statusCode: 422 })
+    expect((await AffiliateModel.findById(affiliateId).lean())?.recipientCode).toBeUndefined()
   })
 })

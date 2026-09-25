@@ -123,6 +123,10 @@ export interface SetAffiliatePayoutRecipientInput {
   bankCode: string
   accountName: string
 }
+/** Use one of the signed-in user's saved payout accounts (must be name-matched). */
+export interface SetAffiliateSavedPayoutRecipientInput {
+  savedAccountId: string
+}
 export interface RequestAffiliatePayoutInput {
   amount: number
 }

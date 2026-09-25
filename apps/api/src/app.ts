@@ -1264,6 +1264,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
   const setAffiliatePayoutRecipientUseCase = new SetAffiliatePayoutRecipientUseCase(
     affiliateRepo,
     paymentGateway,
+    payoutAccounts,
   )
   const requestAffiliatePayoutUseCase = new RequestAffiliatePayoutUseCase(
     affiliateRepo,

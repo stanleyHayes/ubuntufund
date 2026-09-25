@@ -47,3 +47,32 @@ export async function listAffiliateCommissions(): Promise<AffiliateCommission[]>
 export async function requestAffiliatePayout(amount: number): Promise<void> {
   await api.post('/affiliate/payouts', { amount })
 }
+
+/** A saved payout account as GET /payout-accounts lists it. */
+export interface SavedPayoutAccountSummary {
+  id: string
+  accountName: string
+  last4: string
+  bankCode: string
+  verificationStatus: string
+}
+
+/**
+ * Affiliate payouts can only go to a saved account whose provider-held name
+ * matched; the rest are shown but cannot be chosen.
+ */
+export function affiliateDestinationChoices(accounts: SavedPayoutAccountSummary[]) {
+  return {
+    selectable: accounts.filter((a) => a.verificationStatus === 'name_matched'),
+    blocked: accounts.filter((a) => a.verificationStatus !== 'name_matched'),
+  }
+}
+
+export async function listSavedPayoutAccounts(): Promise<SavedPayoutAccountSummary[]> {
+  return (await api.get<{ accounts: SavedPayoutAccountSummary[] }>('/payout-accounts')).accounts
+}
+
+/** Choose where affiliate payouts go (`POST /affiliate/payout-recipient`). */
+export async function setAffiliatePayoutRecipient(savedAccountId: string): Promise<Affiliate> {
+  return api.post<Affiliate>('/affiliate/payout-recipient', { savedAccountId })
+}

@@ -24,6 +24,7 @@ import {
   validateReferralCode,
 } from '@ubuntu-fund/types'
 import { updateReferralCode } from '@/lib/affiliate'
+import { AffiliatePayoutDestination } from '@/components/affiliate/AffiliatePayoutDestination'
 import Alert from '@mui/material/Alert'
 import HandshakeRoundedIcon from '@mui/icons-material/HandshakeRounded'
 import ContentCopyRoundedIcon from '@mui/icons-material/ContentCopyRounded'
@@ -469,7 +470,8 @@ export function AffiliateDashboardPage() {
 
   // ── Enrolled dashboard ───────────────────────────────────────────────────────
   const { stats, affiliate, referralLink } = dashboard
-  const canRequestPayout = stats.availableBalance > 0
+  const hasDestination = Boolean(affiliate.recipientCode)
+  const canRequestPayout = stats.availableBalance > 0 && hasDestination
 
   return (
     <Box sx={{ bgcolor: 'background.default', minHeight: '100vh' }}>
@@ -625,6 +627,7 @@ export function AffiliateDashboardPage() {
                 >
                   {formatCurrency(stats.availableBalance, 'GHS')}
                 </Typography>
+                <AffiliatePayoutDestination affiliate={affiliate} onSaved={refresh} />
               </Box>
               <Button
                 variant="contained"
@@ -647,7 +650,9 @@ export function AffiliateDashboardPage() {
               </Button>
               {!canRequestPayout && (
                 <Typography sx={{ fontSize: '0.72rem', color: 'text.disabled', mt: 1, textAlign: 'center' }}>
-                  Commission becomes available after its hold window.
+                  {hasDestination
+                    ? 'Commission becomes available after its hold window.'
+                    : 'Choose a payout destination before requesting a payout.'}
                 </Typography>
               )}
             </Box>

@@ -94,3 +94,11 @@ export function updateReferralCode(referralCode: string): Promise<Affiliate> {
 export function requestPayout(amount: number): Promise<AffiliatePayout> {
   return api.post<AffiliatePayout>('/affiliate/payouts', { amount })
 }
+
+/**
+ * Choose where affiliate payouts go (`POST /affiliate/payout-recipient`): one
+ * of the user's saved payout accounts whose provider-held name matched.
+ */
+export function setPayoutRecipient(savedAccountId: string): Promise<Affiliate> {
+  return api.post<Affiliate>('/affiliate/payout-recipient', { savedAccountId })
+}
