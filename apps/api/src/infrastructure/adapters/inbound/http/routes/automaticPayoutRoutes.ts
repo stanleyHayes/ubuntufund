@@ -8,7 +8,7 @@ import { z } from 'zod'
 import type { AuthenticatedRequest, createAuthMiddleware } from '../../middleware/authMiddleware.js'
 import { requireAdmin } from '../../middleware/requireRole.js'
 import { validate } from '../../middleware/validate.js'
-import { donationIntentRateLimiter } from '../../middleware/rateLimiter.js'
+import { payoutControlRateLimiter } from '../../middleware/rateLimiter.js'
 import { logger } from '../../../../logging/logger.js'
 import { createHmac, timingSafeEqual } from 'node:crypto'
 import { config } from '../../../../config/index.js'
@@ -124,7 +124,7 @@ export function automaticPayoutRoutes(
     '/payouts/:id/transfer-control',
     auth,
     requireAdmin,
-    donationIntentRateLimiter,
+    payoutControlRateLimiter,
     validate(
       z.object({
         action: z.enum(['refresh', 'resend', 'authorize']),

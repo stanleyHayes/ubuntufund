@@ -9,6 +9,8 @@ import type { DonationRepositoryPort } from '../../domain/ports/outbound/Donatio
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js';
 import type { RefundRepositoryPort } from '../../domain/ports/outbound/RefundRepositoryPort.js';
 import type { CampaignEntity } from '../../domain/entities/Campaign.js';
+import type { KYCRepositoryPort } from '../../domain/ports/outbound/KYCRepositoryPort.js';
+import { currentVerificationLevel } from '../../domain/services/currentVerificationLevel.js';
 import {
   ProfileEntity,
   type NotificationPreferences,
@@ -86,7 +88,13 @@ export class GetProfileUseCase {
     private readonly profileRepo: ProfileRepositoryPort,
     private readonly donationRepo: DonationRepositoryPort,
     private readonly campaignRepo: CampaignRepositoryPort,
-    private readonly refundRepo?: RefundRepositoryPort
+    private readonly refundRepo?: RefundRepositoryPort,
+    /**
+     * When wired, the owner's own profile reports the CURRENT evidence-backed
+     * level (the same projection public views use), not the stored historical
+     * maximum, so an expired or superseded verification is not shown as held.
+     */
+    private readonly kycRepo?: Pick<KYCRepositoryPort, 'findByUserId'>
   ) {}
 
   async execute(userId: string): Promise<ProfileImpactDTO> {
@@ -178,7 +186,9 @@ export class GetProfileUseCase {
       avatarUrl: userPlain.avatarUrl,
       coverUrl: userPlain.coverUrl,
       role: userPlain.role,
-      verificationLevel: userPlain.verificationLevel,
+      verificationLevel: this.kycRepo
+        ? currentVerificationLevel(user, await this.kycRepo.findByUserId(userId))
+        : userPlain.verificationLevel,
       trustScore: userPlain.trustScore.value,
       country: userPlain.country,
       phone: profilePlain.phone,

@@ -7,6 +7,7 @@ import type { AffiliateCommissionRepositoryPort } from '../../domain/ports/outbo
 import type { AffiliateBalanceRepositoryPort } from '../../domain/ports/outbound/AffiliateBalanceRepositoryPort.js';
 import { roundToCurrency } from '../../domain/value-objects/Money.js';
 import { logger } from '../../infrastructure/logging/logger.js';
+import type { AffiliateCommissionStatus } from '@ubuntu-fund/types';
 
 const MS_PER_DAY = 86_400_000;
 
@@ -142,50 +143,63 @@ export class AffiliateCommissionService {
    * reversed.
    *  - held      → reverseHeld (pending balance)
    *  - available → reverseAvailable (available balance)
-   *  - paid      → mark reversed only; the funds already left the platform, so
-   *                recovery is manual (logged).
+   *  - paid, or a bucket that no longer covers it (reserved by an in-flight
+   *    payout) → recorded as outstanding clawback, withheld from future
+   *    withdrawals (logged).
    * A NO-OP when no commission exists for the ref, or it is already terminal.
    */
   async reverseForSourceRef(sourceRef: string): Promise<void> {
-    const commission = await this.commissionRepo.findBySourceRef(sourceRef);
-    if (!commission) {
-      return; // nothing was ever accrued for this charge
-    }
-    const prior = commission.status;
-    if (prior === 'reversed' || prior === 'cancelled') {
-      return; // already terminal
-    }
-
     // Atomically claim the reversal: flip the status out of its current bucket
     // FIRST, and only the writer that wins may unwind the balance. A replayed
-    // refund/chargeback for the same charge loses here and no-ops, so the
-    // balance is never double-decremented.
-    const claimed = await this.commissionRepo.transitionStatus(
-      commission.id,
-      prior,
-      'reversed'
-    );
-    if (!claimed) {
-      return; // another reversal already handled this commission
+    // refund/chargeback for the same charge finds it terminal and no-ops, so the
+    // balance is never double-decremented. A claim lost to a status change that
+    // is NOT a reversal (maturity moving it held → available, or a payout
+    // marking it paid) is retried against the new bucket — it used to return
+    // silently, dropping the refund's clawback altogether.
+    let commission = await this.commissionRepo.findBySourceRef(sourceRef);
+    let prior: AffiliateCommissionStatus | undefined;
+    for (let attempt = 0; commission && attempt < 3; attempt++) {
+      const current: AffiliateCommissionStatus = commission.status;
+      if (current === 'reversed' || current === 'cancelled') return; // already terminal
+      if (await this.commissionRepo.transitionStatus(commission.id, current, 'reversed')) {
+        prior = current;
+        break;
+      }
+      commission = await this.commissionRepo.findBySourceRef(sourceRef);
+    }
+    if (!commission) return; // nothing was ever accrued for this charge
+    if (!prior) {
+      logger.error({ sourceRef, commissionId: commission.id }, 'affiliate commission reversal kept losing to concurrent updates; retry the refund reversal');
+      return;
     }
 
     const balance = await this.balanceRepo.findByAffiliateId(
       commission.affiliateId
     );
 
-    if (prior === 'held') {
-      if (balance) {
-        await this.balanceRepo.reverseHeld(balance.id, commission.amount);
-      }
-    } else if (prior === 'available') {
-      if (balance) {
-        await this.balanceRepo.reverseAvailable(balance.id, commission.amount);
-      }
-    } else if (prior === 'paid') {
-      logger.warn(
+    if (!balance) {
+      logger.error(
         { sourceRef, commissionId: commission.id, amount: commission.amount },
-        'reversing an already-paid affiliate commission; manual clawback required'
+        'affiliate commission reversed but the affiliate has no balance to unwind'
       );
+      return;
+    }
+    // A bucket that no longer covers the commission (its funds are reserved by
+    // an in-flight payout, or already paid out) used to be skipped silently:
+    // nothing was clawed back and totalEarned stayed inflated. Record the
+    // shortfall so it is withheld from future withdrawals instead.
+    const unwound =
+      prior === 'held'
+        ? await this.balanceRepo.reverseHeld(balance.id, commission.amount)
+        : prior === 'available'
+          ? await this.balanceRepo.reverseAvailable(balance.id, commission.amount)
+          : null;
+    if (!unwound) {
+      logger.error(
+        { sourceRef, commissionId: commission.id, amount: commission.amount, prior },
+        'affiliate commission reversed after its funds left the unwindable bucket; recorded as outstanding clawback'
+      );
+      await this.balanceRepo.recordClawback?.(balance.id, commission.amount);
     }
   }
 }

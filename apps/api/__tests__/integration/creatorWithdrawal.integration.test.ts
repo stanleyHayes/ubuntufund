@@ -27,6 +27,8 @@ import {
 import { CreatorBalanceModel } from '../../src/infrastructure/database/models/CreatorBalanceModel.js'
 import { CreatorPayoutModel } from '../../src/infrastructure/database/models/CreatorPayoutModel.js'
 import { UserModel } from '../../src/infrastructure/database/models/UserModel.js'
+import { grantCurrentKyc } from '../helpers/currentKyc.js'
+import { KYCVerificationModel } from '../../src/infrastructure/database/models/KYCVerificationModel.js'
 
 function uniqueEmail(label: string): string {
   return `${label}-${randomUUID()}@example.com`
@@ -42,6 +44,11 @@ describe('Creator withdrawal — transfer rail', () => {
   let failTransfer = false
   let transferAmount: unknown
   let transferSnapshot: { status?: string; availableBalance?: number; reference?: string }
+  // Paystack's definitive refusal of POST /transfer (HTTP 4xx, status:false).
+  let rejectTransfer = false
+  let platformBalanceMinor = 100_000_000
+  let verifyNotFound = false
+  let duringTransfer: ((reference: string) => Promise<void>) | undefined
 
   beforeAll(async () => {
     await connectTestDatabase()
@@ -62,9 +69,11 @@ describe('Creator withdrawal — transfer rail', () => {
           return json({ status: true, data: { recipient_code: `RCP_${randomUUID().slice(0, 8)}` } })
         }
         if (u.includes('/balance'))
-          return json({ status: true, data: [{ currency: 'GHS', balance: 100_000_000 }] })
+          return json({ status: true, data: [{ currency: 'GHS', balance: platformBalanceMinor }] })
         if (u.includes('/transfer/verify/')) {
           const ref = decodeURIComponent(u.split('/transfer/verify/')[1] ?? '')
+          if (verifyNotFound)
+            return { ok: false, status: 404, json: async () => ({ status: false, message: 'Transfer not found' }) } as unknown as Response
           return json({
             status: true,
             data: { status: 'success', reference: ref, transfer_code: 'TRF_x' },
@@ -75,7 +84,10 @@ describe('Creator withdrawal — transfer rail', () => {
           const balance = committed ? await CreatorBalanceModel.collection.findOne({ userId: committed.creatorUserId }, { session: null }) : null
           transferSnapshot = { status: committed?.status, availableBalance: balance?.availableBalance, reference: committed?.providerRef }
           transferAmount = body.amount
+          if (duringTransfer) await duringTransfer(String(body.reference))
           if (failTransfer) throw new Error('transfer response timed out')
+          if (rejectTransfer)
+            return { ok: false, status: 400, json: async () => ({ status: false, message: 'Your balance is not enough to fulfil this request' }) } as unknown as Response
           return json({
             status: true,
             data: {
@@ -116,6 +128,8 @@ describe('Creator withdrawal — transfer rail', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({ handle, displayName: 'With Draw' })
       .expect(200)
+    // Bank and mobile-money withdrawals need current identity verification.
+    await grantCurrentKyc(userId)
     // Fund the tip balance directly.
     await CreatorBalanceModel.updateOne(
       { userId },
@@ -158,6 +172,162 @@ describe('Creator withdrawal — transfer rail', () => {
     await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`).send(body).expect(201)
     expect(vi.mocked(fetch).mock.calls.length).toBe(callsAfterRace)
     expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(100)
+  })
+
+  it.each(['missing', 'expired', 'pending renewal', 'rejected renewal'] as const)(
+    'refuses a bank withdrawal when identity verification is %s, before any provider call',
+    async (state) => {
+      const owner = await creatorWithBalance(100)
+      if (state === 'missing') await KYCVerificationModel.deleteMany({ userId: owner.userId })
+      if (state === 'expired') await KYCVerificationModel.updateMany({ userId: owner.userId }, { expiryDate: new Date(Date.now() - 1000) })
+      if (state === 'pending renewal' || state === 'rejected renewal')
+        await KYCVerificationModel.create({ userId: owner.userId, verificationType: 'identity', status: state === 'pending renewal' ? 'pending' : 'rejected', documents: [], riskLevel: 'low', createdAt: new Date(Date.now() + 1000) })
+      const callsBefore = vi.mocked(fetch).mock.calls.length
+      const res = await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`)
+        .send({ amount: 100, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } })
+        .expect(409)
+      expect(res.body.message).toMatch(/identity/i)
+      expect(vi.mocked(fetch).mock.calls.length).toBe(callsBefore)
+      expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(100)
+      expect(await CreatorPayoutModel.countDocuments({ creatorUserId: owner.userId })).toBe(0)
+    },
+  )
+
+  it('refuses an unmatched account, then withdraws once the name is re-entered surname-first', async () => {
+    const owner = await creatorWithBalance(100)
+    const recipient = { type: 'mobile_money', accountNumber: '0557654321', bankCode: 'MTN' }
+    const refused = await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`)
+      .send({ amount: 50, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { ...recipient, accountName: 'Someone Else' } })
+      .expect(422)
+    expect(refused.body.message).toMatch(/did not match/i)
+    expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(100)
+    // The provider holds "With Draw"; "DRAW WITH" is the same person, surname first.
+    await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`)
+      .send({ amount: 50, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { ...recipient, accountName: 'DRAW WITH' } })
+      .expect(201)
+    expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(50)
+  })
+
+  it('returns the reservation at once when Paystack definitively rejects the transfer', async () => {
+    const owner = await creatorWithBalance(100)
+    rejectTransfer = true
+    try {
+      const res = await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`)
+        .send({ amount: 100, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } })
+        .expect(502)
+      expect(res.body.message).toMatch(/balance has been restored/i)
+    } finally { rejectTransfer = false }
+    const payout = await CreatorPayoutModel.findOne({ creatorUserId: owner.userId }).lean()
+    expect(payout).toMatchObject({ status: 'FAILED', settlementApplied: true })
+    expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(100)
+  })
+
+  it('refuses before reserving anything when the platform balance cannot fund the transfer', async () => {
+    const owner = await creatorWithBalance(100)
+    platformBalanceMinor = 50_00
+    const transfersBefore = vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/transfer')).length
+    try {
+      await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`)
+        .send({ amount: 100, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } })
+        .expect(503)
+    } finally { platformBalanceMinor = 100_000_000 }
+    expect(await CreatorPayoutModel.countDocuments({ creatorUserId: owner.userId })).toBe(0)
+    expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(100)
+    expect(vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/transfer')).length).toBe(transfersBefore)
+  })
+
+  it('commits the recipient before POST /transfer so a transfer-approval callback during the call is approved', async () => {
+    const owner = await creatorWithBalance(100)
+    const approvals: number[] = []
+    duringTransfer = async (reference) => {
+      const row = await CreatorPayoutModel.collection.findOne({ providerRef: reference }, { session: null })
+      expect(row?.recipientCode).toMatch(/^RCP_/)
+      const raw = JSON.stringify({ reference, amount: Math.round((row?.netAmount as number) * 100), currency: 'GHS', recipient: { recipient_code: row?.recipientCode } })
+      const res = await request(app).post('/api/v1/payouts/paystack-approval').set('x-paystack-signature', sign(raw)).set('Content-Type', 'application/json').send(raw)
+      approvals.push(res.status)
+    }
+    try {
+      await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`)
+        .send({ amount: 100, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } })
+        .expect(201)
+    } finally { duringTransfer = undefined }
+    expect(approvals).toEqual([200])
+  })
+
+  it('lets an admin resolve a withdrawal escalated to review once Paystack has no such transfer, returning funds exactly once', async () => {
+    const owner = await creatorWithBalance(100)
+    failTransfer = true
+    let reference = ''
+    try {
+      const started = await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`)
+        .send({ amount: 100, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } })
+        .expect(201)
+      reference = started.body.data.reference
+    } finally { failTransfer = false }
+    expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(0)
+    const payout = await CreatorPayoutModel.findOne({ providerRef: reference })
+    // The reconciler escalates after the dwell window; simulate that state.
+    await CreatorPayoutModel.updateOne({ _id: payout!._id }, { status: 'NEEDS_REVIEW' })
+
+    const adminEmail = uniqueEmail('cw-admin')
+    const reg = await request(app).post('/api/v1/auth/register')
+      .send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email: adminEmail, password: 'SecurePass123', name: 'Admin' })
+      .expect(201)
+    await UserModel.updateOne({ _id: reg.body.data.user.id }, { role: 'admin' })
+    const login = await request(app).post('/api/v1/auth/login').send({ email: adminEmail, password: 'SecurePass123' }).expect(200)
+    const admin = `Bearer ${login.body.data.tokens.accessToken}`
+    const note = { note: 'Paystack dashboard shows no transfer under this reference.' }
+
+    await request(app).post(`/api/v1/payouts/stuck/creator/${payout!.id}/resolve`).set('Authorization', `Bearer ${owner.token}`).send(note).expect(403)
+    await request(app).post(`/api/v1/payouts/stuck/wallet/${payout!.id}/resolve`).set('Authorization', admin).send(note).expect(404)
+    verifyNotFound = true
+    try {
+      const resolved = await request(app).post(`/api/v1/payouts/stuck/creator/${payout!.id}/resolve`).set('Authorization', admin).send(note).expect(200)
+      expect(resolved.body.data).toMatchObject({ providerOutcome: 'failed', status: 'FAILED' })
+      await request(app).post(`/api/v1/payouts/stuck/creator/${payout!.id}/resolve`).set('Authorization', admin).send(note).expect(409)
+    } finally { verifyNotFound = false }
+    expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(100)
+    expect(await CreatorPayoutModel.findById(payout!._id).lean()).toMatchObject({ status: 'FAILED', settlementApplied: true })
+  })
+
+  it('rechecks identity verification at the reservation write boundary', async () => {
+    const owner = await creatorWithBalance(100)
+    const original = MongoCreatorWithdrawalTransaction.prototype.run
+    const transaction = vi.spyOn(MongoCreatorWithdrawalTransaction.prototype, 'run').mockImplementationOnce(async function (this: MongoCreatorWithdrawalTransaction, userId, version, work) {
+      await KYCVerificationModel.updateMany({ userId }, { expiryDate: new Date(Date.now() - 1000) })
+      return original.call(this, userId, version, work)
+    })
+    const transfersBefore = vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/transfer')).length
+    try {
+      await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`)
+        .send({ amount: 100, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } })
+        .expect(409)
+    } finally { transaction.mockRestore() }
+    expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(100)
+    expect(await CreatorPayoutModel.countDocuments({ creatorUserId: owner.userId })).toBe(0)
+    expect(vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/transfer')).length).toBe(transfersBefore)
+  })
+
+  it('keeps Ujimora Wallet transfers (money that stays on the platform) available without identity verification', async () => {
+    const owner = await creatorWithBalance(100)
+    await KYCVerificationModel.deleteMany({ userId: owner.userId })
+    await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`)
+      .send({ amount: 100, expectedFeePercent: 3, destination: 'ujimora_wallet', idempotencyKey: randomUUID() })
+      .expect(201)
+    expect((await WalletModel.findOne({ userId: owner.userId }))?.balance).toBe(97)
+  })
+
+  it.each([
+    [4.99, 'paystack'],
+    [1, 'ujimora_wallet'],
+  ] as const)('refuses a withdrawal of %s below the minimum (%s) without reserving anything', async (amount, destination) => {
+    const owner = await creatorWithBalance(100)
+    const res = await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`)
+      .send({ amount, expectedFeePercent: 3, destination, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } })
+      .expect(422)
+    expect(res.body.message).toMatch(/minimum withdrawal/i)
+    expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(100)
+    expect(await CreatorPayoutModel.countDocuments({ creatorUserId: owner.userId })).toBe(0)
   })
 
   it.each(['closure', 'credentials'] as const)('rejects wallet transfer when %s changes after authentication', async change => {

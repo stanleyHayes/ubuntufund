@@ -196,6 +196,14 @@ export class MongoBeneficiaryPayoutRepository
     return doc ? toDomain(doc) : null;
   }
 
+  async escalateProcessing(id: string): Promise<boolean> {
+    return Boolean(await this.transition(id, 'PROCESSING', 'NEEDS_REVIEW'));
+  }
+
+  async reopenForSettlement(id: string): Promise<boolean> {
+    return Boolean(await this.transition(id, 'NEEDS_REVIEW', 'PROCESSING'));
+  }
+
   private async transition(
     id: string,
     from: string,

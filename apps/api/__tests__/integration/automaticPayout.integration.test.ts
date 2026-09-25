@@ -293,6 +293,7 @@ it('calls the provider only after the real approval transaction commits its rese
   const automatic = new AutomaticPayoutService(real, repo, { dualApprovalAmount: 40000, maxTransferAmount: 50000 } as never)
   await automatic.consider(item)
   expect((await PayoutModel.findById(item.id))?.autoClaimDay).toBe(new Date().toISOString().slice(0, 10))
+  expect((await PayoutModel.findById(item.id))?.autoClaimedAt).toBeInstanceOf(Date)
   expect((await AutomaticPayoutBudgetModel.find()).map(budget => budget.usedMinor)).toEqual([30000, 30000])
   expect(provider.initiateTransfer).toHaveBeenCalledTimes(1)
   expect((await repo.findById(item.id))?.status).toBe('PROCESSING')
@@ -404,12 +405,35 @@ it.each(['created', 'reopened'])('blocks an automatic transfer when a dispute is
 })
 
 
-async function seedFinalClaim(id: string) {
-  const day = new Date().toISOString().slice(0, 10)
-  await PayoutModel.updateOne({ _id: id }, { autoClaimed: true, autoClaimDay: day })
+async function seedFinalClaim(id: string, day = new Date().toISOString().slice(0, 10), claimedAt = new Date()) {
+  await PayoutModel.updateOne({ _id: id }, { autoClaimed: true, autoClaimDay: day, autoClaimedAt: claimedAt })
   for (const key of [`${day}:owner:${ids.user}`, `${day}:platform`])
     await AutomaticPayoutBudgetModel.updateOne({ _id: key }, { usedMinor: 30000 }, { upsert: true })
 }
+
+it('verifies a claim taken just before UTC midnight against the day it was taken', async () => {
+  const item = await pending()
+  const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10)
+  await seedFinalClaim(item.id, yesterday, new Date(Date.now() - 5_000))
+  await CampaignBalanceModel.create({ campaignId: String(ids.campaign), currency: 'GHS', availableBalance: 1000 })
+  const guard = new MongoAutomaticPayoutVerification()
+  const work = vi.fn(async () => 'reserved')
+  await expect(guard.run(String(ids.user), work, { ...(await repo.findById(item.id))!.toPlain(), recipientCode: 'synthetic-recipient' })).resolves.toBe('reserved')
+  expect(work).toHaveBeenCalledOnce()
+})
+
+it.each([
+  ['a stale claim', () => new Date(Date.now() - 16 * 60_000), true],
+  ['a legacy claim without a timestamp', () => undefined, true],
+])('falls back to manual review for %s', async (_label, claimedAt) => {
+  const item = await pending()
+  await seedFinalClaim(item.id)
+  if (claimedAt()) await PayoutModel.updateOne({ _id: item.id }, { autoClaimedAt: claimedAt() })
+  else await PayoutModel.updateOne({ _id: item.id }, { $unset: { autoClaimedAt: 1 } })
+  const work = vi.fn()
+  await expect(new MongoAutomaticPayoutVerification().run(String(ids.user), work, { ...(await repo.findById(item.id))!.toPlain(), recipientCode: 'synthetic-recipient' })).rejects.toMatchObject({ statusCode: 409 })
+  expect(work).not.toHaveBeenCalled()
+})
 
 it.each(['missing_claim', 'expired_claim', 'missing_budget', 'lower_limit', 'budget_changed'])('refuses automatic reservation with %s', async change => {
   const item = await pending()
@@ -427,7 +451,7 @@ it.each(['missing_claim', 'expired_claim', 'missing_budget', 'lower_limit', 'bud
   try {
     await expect.poll(() => entered).toBe(true)
     if (change === 'missing_claim') await PayoutModel.updateOne({ _id: item.id }, { autoClaimed: false })
-    if (change === 'expired_claim') await PayoutModel.updateOne({ _id: item.id }, { autoClaimDay: '2000-01-01' })
+    if (change === 'expired_claim') await PayoutModel.updateOne({ _id: item.id }, { autoClaimedAt: new Date(Date.now() - 16 * 60_000) })
     if (change === 'missing_budget') await AutomaticPayoutBudgetModel.deleteMany({})
     if (change === 'lower_limit') await AutomaticPayoutPolicyModel.updateOne({ _id: 'current' }, { dailyOwnerLimit: 200 })
     if (change === 'budget_changed') await AutomaticPayoutBudgetModel.updateMany({}, { usedMinor: 1000000 })

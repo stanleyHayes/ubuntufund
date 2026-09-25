@@ -10,6 +10,9 @@ import type { AffiliateCommissionRepositoryPort } from '../../domain/ports/outbo
 import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGatewayPort.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 import { toAffiliatePayoutDto } from './mappers/affiliateDto.js';
+import { AffiliateStatus } from '@ubuntu-fund/types';
+import type { UnitOfWorkPort } from '../../domain/ports/outbound/UnitOfWorkPort.js';
+import { AffiliateCommissionMaturity } from '../services/AffiliateCommissionMaturity.js';
 
 /** The platform's only settlement currency. */
 const CURRENCY = 'GHS';
@@ -19,12 +22,13 @@ function round2(n: number): number {
 }
 
 /**
- * The current user requests a payout of their available affiliate commission.
- * First matures any of their held commissions whose hold window has elapsed
- * (held → available), then reserves the requested amount out of
- * `availableBalance` (available → in-transit) and records a PENDING payout
- * awaiting ADMIN approval. Only matured (available) funds are withdrawable —
- * still-held (in-hold-window) commissions are not.
+ * The current (active) user requests a payout of their available affiliate
+ * commission. First matures any of their held commissions whose hold window
+ * has elapsed (held → available), then reserves the whole withdrawable
+ * balance out of `availableBalance` (available → in-transit), records a
+ * PENDING payout awaiting ADMIN approval and links the commissions it pays.
+ * Only matured (available) funds are withdrawable — still-held (in-hold-window)
+ * commissions are not, and any outstanding clawback is withheld.
  *
  * The reservation is guarded, so a request over the available balance is
  * rejected. No provider transfer is initiated here; that happens on approval.
@@ -35,7 +39,8 @@ export class RequestAffiliatePayoutUseCase {
     private readonly affiliatePayoutRepo: AffiliatePayoutRepositoryPort,
     private readonly affiliateBalanceRepo: AffiliateBalanceRepositoryPort,
     private readonly affiliateCommissionRepo: AffiliateCommissionRepositoryPort,
-    private readonly paymentGateway: PaymentGatewayPort
+    private readonly paymentGateway: PaymentGatewayPort,
+    private readonly unitOfWork?: UnitOfWorkPort
   ) {}
 
   async execute(
@@ -49,6 +54,11 @@ export class RequestAffiliatePayoutUseCase {
     const affiliate = await this.affiliateRepo.findByUserId(userId);
     if (!affiliate) {
       throw new AppError('Not enrolled in the affiliate program', 404);
+    }
+    // Approval refuses a suspended affiliate; reserving funds for a request
+    // that can never be approved (or released) would strand them.
+    if (affiliate.status !== AffiliateStatus.ACTIVE) {
+      throw new AppError('Your affiliate account is suspended, so payouts are unavailable.', 403);
     }
     if (!affiliate.recipientCode) {
       throw new AppError(
@@ -67,26 +77,21 @@ export class RequestAffiliatePayoutUseCase {
       CURRENCY
     );
 
-    // Mature this affiliate's held commissions whose hold window has elapsed so
-    // their funds become withdrawable before we test the available balance.
-    const now = new Date();
-    const matured = await this.affiliateCommissionRepo.findMaturedHeld(now);
-    for (const commission of matured) {
-      if (commission.affiliateId !== affiliate.id) continue;
-      const cleared = await this.affiliateBalanceRepo.clearPendingToAvailable(
-        balance.id,
-        commission.amount
-      );
-      if (!cleared) continue;
-      commission.markAvailable();
-      await this.affiliateCommissionRepo.update(commission);
-    }
+    // Mature this affiliate's due commissions first so their funds count.
+    await new AffiliateCommissionMaturity(
+      this.affiliateCommissionRepo,
+      this.affiliateBalanceRepo,
+      this.unitOfWork
+    ).mature(new Date(), affiliate.id);
 
     const fresh =
       (await this.affiliateBalanceRepo.findByAffiliateId(affiliate.id)) ??
       balance;
-    const available = fresh.availableBalance;
     const currency = fresh.currency ?? CURRENCY;
+    // Clawed-back commission (a refund after payout) is withheld until covered.
+    const available = round2(
+      Math.max(0, fresh.availableBalance - (fresh.clawbackOutstanding ?? 0))
+    );
 
     if (amount > available) {
       throw new AppError(
@@ -98,33 +103,51 @@ export class RequestAffiliatePayoutUseCase {
         422
       );
     }
-
-    // Reserve the funds atomically (available → in-transit). A short balance
-    // (lost a race) leaves nothing recorded.
-    const reserved = await this.affiliateBalanceRepo.reserveForPayout(
-      fresh.id,
-      amount
-    );
-    if (!reserved) {
+    // A payout takes the whole withdrawable balance so the commissions it pays
+    // can be linked to it exactly (and marked paid when the transfer lands).
+    if (amount !== available) {
       throw new AppError(
-        'Insufficient available balance to fund this payout',
+        `Affiliate payouts withdraw your full available balance of ${currency} ${available.toLocaleString('en-US')}. Refresh and try again.`,
         422
       );
     }
 
-    const saved = await this.affiliatePayoutRepo.create(
-      new AffiliatePayoutEntity({
-        id: '', // assigned by the repository
-        affiliateId: affiliate.id,
-        amount,
-        currency,
-        status: 'PENDING',
-        provider: 'paystack',
-        requestedBy: userId,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      })
-    );
+    // Reserve the funds (available → in-transit), record the payout and link
+    // the commissions it pays, together. A short balance (lost a race) leaves
+    // nothing recorded.
+    const work = async () => {
+      const reserved = await this.affiliateBalanceRepo.reserveForPayout(
+        fresh.id,
+        amount
+      );
+      if (!reserved) {
+        throw new AppError(
+          'Insufficient available balance to fund this payout',
+          422
+        );
+      }
+
+      const created = await this.affiliatePayoutRepo.create(
+        new AffiliatePayoutEntity({
+          id: '', // assigned by the repository
+          affiliateId: affiliate.id,
+          amount,
+          currency,
+          status: 'PENDING',
+          provider: 'paystack',
+          requestedBy: userId,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+      );
+      await this.affiliateCommissionRepo.linkAvailableToPayout?.(
+        affiliate.id,
+        created.id,
+        amount
+      );
+      return created;
+    };
+    const saved = this.unitOfWork ? await this.unitOfWork.run(work) : await work();
 
     return toAffiliatePayoutDto(saved);
   }

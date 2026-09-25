@@ -1,6 +1,7 @@
 import { trackActivity } from '../plugins/trackActivity.js';
 import mongoose, { Schema, type Document } from 'mongoose'
 import type {
+  PayoutClosure,
   PayoutLeg,
   PayoutLegStatus,
   PayoutProvider,
@@ -23,6 +24,8 @@ export interface PayoutDocument extends Document {
   automationReason?: string
   requestKey?: string
   autoClaimDay?: string
+  /** When the automatic budget claim was taken; bounds how long it stays usable. */
+  autoClaimedAt?: Date
   autoClaimed?: boolean
   transferCode?: string
   requestedBy: string
@@ -43,6 +46,14 @@ export interface PayoutDocument extends Document {
    * whose effect a crash left unapplied.
    */
   reversedFrom?: 'PAID' | 'PROCESSING'
+  /**
+   * How much the request moved pending → available (its `needed` amount). A
+   * rejected or cancelled request moves exactly this back so refunds, which
+   * draw on pendingBalance, work again. Absent on requests made before it.
+   */
+  clearedAmount?: number
+  /** Present when a PENDING request was rejected (admin) or cancelled (owner). */
+  closure?: PayoutClosure
   createdAt: Date
   updatedAt: Date
 }
@@ -83,6 +94,7 @@ const payoutSchema = new Schema<PayoutDocument>(
     automationReason: String,
     requestKey: { type: String, unique: true, sparse: true },
     autoClaimDay: String,
+    autoClaimedAt: Date,
     autoClaimed: Boolean,
     campaignId: { type: String, required: true, index: true },
     recipientId: { type: String, required: true },
@@ -117,6 +129,19 @@ const payoutSchema = new Schema<PayoutDocument>(
     legs: { type: [payoutLegSchema], default: undefined },
     settlementApplied: { type: Boolean, default: false, index: true },
     reversedFrom: { type: String, enum: ['PAID', 'PROCESSING'] },
+    clearedAmount: { type: Number },
+    closure: {
+      type: new Schema(
+        {
+          kind: { type: String, enum: ['rejected', 'cancelled'], required: true },
+          reason: { type: String, required: true },
+          closedBy: { type: String, required: true },
+          closedAt: { type: Date, required: true },
+        },
+        { _id: false },
+      ),
+      default: undefined,
+    },
   },
   { collection: 'payouts', timestamps: true },
 )

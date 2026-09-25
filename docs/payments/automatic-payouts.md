@@ -19,6 +19,10 @@ It checks a stored PROCESSING payout and its exact reference, recipient code, GH
 
 Official references: https://paystack.com/docs/transfers/managing-transfers/ and https://paystack.com/docs/transfers/how-transfers-work/.
 
+## Test → live key cutover
+
+Recipient codes are tied to the Paystack key that created them: a code created with `sk_test_` does not exist for `sk_live_`. Every new saved payout account and campaign recipient now records `recipientMode`. After switching `PAYSTACK_SECRET_KEY` to the live key, run `apps/api/scripts/tag-recipient-mode.ts` (read-only; add `--apply` to write) once against production: it asks Paystack, with the live key, about each untagged code and tags it `live` (known) or `test` (unknown). Inconclusive lookups stay untagged. A saved account tagged `test` gets a fresh live recipient the next time it is used; a campaign recipient tagged `test` is refused at approval until the owner adds the account again. Affiliate and beneficiary destinations create a new recipient on every registration, so re-registering fixes them.
+
 ## Status and recovery
 
 PROCESSING plus provider status `otp` is displayed as awaiting Paystack authorization. Admin payout cards offer **Check Paystack status**, **Resend OTP**, and **Authorize existing transfer**. OTP values are neither stored nor logged. These controls do not create a new transfer.
@@ -26,6 +30,10 @@ PROCESSING plus provider status `otp` is displayed as awaiting Paystack authoriz
 A verified `success` settles PAID. `failed`, `abandoned`, `blocked`, and `rejected` use existing failure settlement to restore the reserved funds exactly once. `reversed` uses the reversal handler. Pending/unknown results retain the reservation. Do not create a duplicate while a provider result is unresolved. After confirmed failure and restored balance, the owner can submit a fresh request with a new request key.
 
 Admin/owner payout-list reads verify up to five in-flight single campaign payouts. Owner UI reloads history before fetching balances so a newly settled transfer and available amount agree. Web/admin refresh visible pages every 30 seconds and on focus. Production scheduled payout reconciliation runs every five minutes for records older than one minute. Missing provider responses never imply success or failure.
+
+A single transfer (campaign, beneficiary, affiliate or creator) whose verification keeps failing — typically a POST /transfer that never reached Paystack, so verify answers "Transfer not found" — is escalated to NEEDS_REVIEW after 24 hours in PROCESSING. It is never auto-failed and its funds stay reserved. An admin resolves it with `POST /api/v1/payouts/stuck/:rail/:id/resolve` (`rail` is `campaign`, `beneficiary`, `affiliate` or `creator`; body `{ note }`, at least 20 characters), or from the campaign payout card. Resolution re-verifies the reference and drives Paystack's answer through the rail's own idempotent settlement: success settles PAID, a terminal failure or "not found" returns the reservation once, a reversal uses the reversal handler, and a transfer still pending is left untouched (409). The note is recorded in the audit log.
+
+Creator withdrawals check the Paystack balance before reserving, and a definitive Paystack refusal of POST /transfer (HTTP 4xx) now fails the withdrawal and returns the reservation at once; only a timeout, network error or 5xx keeps it PROCESSING for reconciliation.
 
 `apps/api/scripts/reconcile-campaign-transfer.ts <payout-id>` is a dry-run by default. `--apply` verifies reference/amount/currency and invokes existing idempotent settlement, including incomplete terminal-effect repair. It cannot initiate a transfer.
 

@@ -13,7 +13,11 @@ import { WalletTransactionModel } from '../../../src/infrastructure/database/mod
 import { JournalEntryModel } from '../../../src/infrastructure/database/models/JournalEntryModel.js'
 import { JournalLineModel } from '../../../src/infrastructure/database/models/JournalLineModel.js'
 import { LedgerAccountModel } from '../../../src/infrastructure/database/models/LedgerAccountModel.js'
+import { KYCVerificationModel } from '../../../src/infrastructure/database/models/KYCVerificationModel.js'
+import { DisputeModel } from '../../../src/infrastructure/database/models/DisputeModel.js'
+import { grantCurrentKyc } from '../../helpers/currentKyc.js'
 const campaignId = new mongoose.Types.ObjectId().toString()
+const ownerId = new mongoose.Types.ObjectId().toString()
 const models = [
   CampaignModel,
   UserModel,
@@ -26,6 +30,8 @@ const models = [
   JournalEntryModel,
   JournalLineModel,
   LedgerAccountModel,
+  KYCVerificationModel,
+  DisputeModel,
 ]
 beforeAll(async () => {
   await connectTestDatabase()
@@ -43,7 +49,9 @@ const repo = new MongoWalletPayoutRepository({ creatorPolicy: async () => ({ fee
 const adminId = new mongoose.Types.ObjectId().toString()
 async function seed(amount = 100, fee = 10) {
   await UserModel.collection.insertOne({ _id: new mongoose.Types.ObjectId(adminId), role: 'admin', authVersion: 'staff-fixture' })
-  await CampaignModel.collection.insertOne({ _id: new mongoose.Types.ObjectId(campaignId), creatorId: 'owner', endDate: new Date(0), raisedAmount: 100, goalAmount: 1000 })
+  await UserModel.collection.insertOne({ _id: new mongoose.Types.ObjectId(ownerId), email: `owner-${ownerId}@example.test`, role: 'user', authVersion: 'owner-fixture' })
+  await grantCurrentKyc(ownerId)
+  await CampaignModel.collection.insertOne({ _id: new mongoose.Types.ObjectId(campaignId), creatorId: ownerId, status: 'active', endDate: new Date(0), raisedAmount: 100, goalAmount: 1000 })
   await CampaignBalanceModel.create({
     campaignId,
     currency: 'GHS',
@@ -51,7 +59,7 @@ async function seed(amount = 100, fee = 10) {
   })
   return PayoutModel.create({
     campaignId,
-    recipientId: 'wallet:owner',
+    recipientId: `wallet:${ownerId}`,
     amount,
     fee,
     netAmount: amount - fee,
@@ -59,7 +67,7 @@ async function seed(amount = 100, fee = 10) {
     provider: 'ujimora_wallet',
     status: 'PENDING',
     type: 'early',
-    requestedBy: 'owner',
+    requestedBy: ownerId,
   })
 }
 describe('transactional wallet payouts', () => {
@@ -69,7 +77,7 @@ describe('transactional wallet payouts', () => {
       repo.settleCampaign(p.id, adminId, 'Reviewed owner and fee', 'staff-fixture'),
       repo.settleCampaign(p.id, adminId, 'Reviewed owner and fee', 'staff-fixture'),
     ])
-    expect((await WalletModel.findOne({ userId: 'owner' }))?.balance).toBe(90)
+    expect((await WalletModel.findOne({ userId: ownerId }))?.balance).toBe(90)
     expect((await CampaignBalanceModel.findOne({ campaignId }))?.availableBalance).toBe(
       20,
     )
@@ -147,6 +155,36 @@ describe('transactional wallet payouts', () => {
     expect(await WalletModel.countDocuments()).toBe(0)
     expect(await WalletTransactionModel.countDocuments()).toBe(0)
     expect(await JournalEntryModel.countDocuments()).toBe(0)
+  })
+  it('refuses a wallet payout approved by the campaign owner or requester, with nothing moved', async () => {
+    const p = await seed()
+    await UserModel.updateOne({ _id: ownerId }, { role: 'admin' })
+    await expect(repo.settleCampaign(p.id, ownerId, 'Reviewed my own payout', 'owner-fixture')).rejects.toMatchObject({ statusCode: 403 })
+    await PayoutModel.updateOne({ _id: p.id }, { requestedBy: adminId })
+    await expect(repo.settleCampaign(p.id, adminId, 'Reviewed my own request', 'staff-fixture')).rejects.toMatchObject({ statusCode: 403 })
+    expect((await CampaignBalanceModel.findOne())?.availableBalance).toBe(120)
+    expect((await PayoutModel.findById(p.id))?.status).toBe('PENDING')
+    expect(await WalletModel.countDocuments()).toBe(0)
+  })
+  it.each(['expired', 'pending_renewal', 'missing'] as const)('refuses a wallet payout when the owner KYC is %s', async (state) => {
+    const p = await seed()
+    if (state === 'expired') await KYCVerificationModel.updateMany({ userId: ownerId }, { expiryDate: new Date(Date.now() - 1000) })
+    if (state === 'pending_renewal') await KYCVerificationModel.create({ userId: ownerId, verificationType: 'identity', status: 'pending', documents: [], riskLevel: 'low', createdAt: new Date(Date.now() + 1000) })
+    if (state === 'missing') await KYCVerificationModel.deleteMany({ userId: ownerId })
+    await expect(repo.settleCampaign(p.id, adminId, 'Reviewed', 'staff-fixture')).rejects.toMatchObject({ statusCode: 409 })
+    expect((await CampaignBalanceModel.findOne())?.availableBalance).toBe(120)
+    expect((await PayoutModel.findById(p.id))?.status).toBe('PENDING')
+    expect(await WalletModel.countDocuments()).toBe(0)
+  })
+  it.each(['blocked', 'deleted', 'disputed'] as const)('refuses a wallet payout from a %s campaign', async (state) => {
+    const p = await seed()
+    if (state === 'blocked') await CampaignModel.updateOne({ _id: campaignId }, { status: 'blocked' })
+    if (state === 'deleted') await CampaignModel.updateOne({ _id: campaignId }, { deletedAt: new Date() })
+    if (state === 'disputed') await DisputeModel.collection.insertOne({ campaignId, status: 'open', createdAt: new Date() })
+    await expect(repo.settleCampaign(p.id, adminId, 'Reviewed', 'staff-fixture')).rejects.toMatchObject({ statusCode: 409 })
+    expect((await CampaignBalanceModel.findOne())?.availableBalance).toBe(120)
+    expect((await PayoutModel.findById(p.id))?.status).toBe('PENDING')
+    expect(await WalletModel.countDocuments()).toBe(0)
   })
   it('creator retries are idempotent and another user cannot spend this balance', async () => {
     const userId = new mongoose.Types.ObjectId().toString()

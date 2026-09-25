@@ -9,6 +9,13 @@ import { MongoLiveSessionCreation } from './infrastructure/adapters/outbound/per
 import { MongoCreatorWithdrawalTransaction } from './infrastructure/adapters/outbound/persistence/MongoCreatorWithdrawalTransaction.js'
 import { MongoCampaignCreation } from './infrastructure/adapters/outbound/persistence/MongoCampaignCreation.js'
 import { MongoAutomaticPayoutVerification } from './infrastructure/adapters/outbound/persistence/MongoAutomaticPayoutVerification.js'
+import { MongoPayoutEligibility } from './infrastructure/adapters/outbound/persistence/MongoPayoutEligibility.js'
+import { paystackModeFromSecret } from './domain/value-objects/PaystackMode.js'
+import { payoutControlWarnings } from './infrastructure/config/payoutControls.js'
+import { MongoPayoutClosureTransaction } from './infrastructure/adapters/outbound/persistence/MongoPayoutClosureTransaction.js'
+import { ClosePendingPayoutUseCase } from './application/use-cases/ClosePendingPayoutUseCase.js'
+import { ResolveStuckPayoutUseCase } from './application/use-cases/ResolveStuckPayoutUseCase.js'
+import { RejectAffiliatePayoutUseCase } from './application/use-cases/RejectAffiliatePayoutUseCase.js'
 import { createDonationContentReviewRoutes } from './infrastructure/adapters/inbound/http/routes/donationContentReviewRoutes.js'
 import { createTipContentReviewRoutes } from './infrastructure/adapters/inbound/http/routes/tipContentReviewRoutes.js'
 import { MongoPublicProfileVisibility } from './infrastructure/adapters/outbound/persistence/MongoPublicProfileVisibility.js'
@@ -805,6 +812,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
   const handleAffiliatePayoutWebhookUseCase = new HandleAffiliatePayoutWebhookUseCase(
     affiliatePayoutRepo,
     affiliateBalanceRepo,
+    affiliateCommissionRepo,
   )
   // Paid-subscription settlement seam: activates the subscription, redeems any
   // coupon, and awards the one-time affiliate commission. Called by the signed
@@ -861,11 +869,16 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
   )
   const handleTipWebhookUseCase = new HandleTipWebhookUseCase(tipRepo, creatorBalanceRepo)
   const creatorPayoutRepo = new MongoCreatorPayoutRepository()
+  // Every new recipient code is tagged with the Paystack environment that made it.
+  const paystackMode = paystackModeFromSecret(config.paystack.secretKey)
   const payoutAccounts = new PayoutAccountService(
     new MongoPayoutAccountRepository(),
     paymentGateway,
     planLimitsService,
+    paystackMode,
   )
+  // Money-out gate shared by campaign payouts and creator withdrawals.
+  const payoutEligibility = new MongoPayoutEligibility()
   const requestCreatorWithdrawalUseCase = new RequestCreatorWithdrawalUseCase(
     creatorPayoutRepo,
     creatorBalanceRepo,
@@ -874,6 +887,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     payoutAccounts,
     new MongoWalletPayoutRepository(planLimitsService),
     new MongoCreatorWithdrawalTransaction(),
+    payoutEligibility,
   )
   const handleCreatorPayoutWebhookUseCase = new HandleCreatorPayoutWebhookUseCase(
     creatorPayoutRepo,
@@ -883,7 +897,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
   const walletTopUps = new WalletTopUpService(
     paymentGateway,
     config.payments.paystackEnabled,
-    config.paystack.secretKey.startsWith('sk_live_') ? 'live' : 'test',
+    paystackMode,
   )
   const handlePaystackWebhookUseCase = new HandlePaystackWebhookUseCase(
     paymentGateway,
@@ -978,6 +992,11 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
           await reconcilePayoutsUseCase
             .reconcileStale({ olderThanMinutes: 1 })
             .catch((err) => logger.error({ err }, 'scheduled payout reconciliation failed'))
+          // Held affiliate commissions mature on schedule, not only when their
+          // owner happens to open the dashboard or request a payout.
+          await matureAffiliateCommissionsUseCase
+            .execute()
+            .catch((err) => logger.error({ err }, 'scheduled affiliate commission maturity failed'))
           // Disabling new crypto intake must not abandon existing deposits.
           await reconcileCryptoUseCase
             .reconcileStale({ olderThanMinutes: 30 })
@@ -1005,6 +1024,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     transferRecipientRepo,
     paymentGateway,
     payoutAccounts,
+    paystackMode,
   )
   // ADR-5 (G6): versioned, effective-dated commercial config — overrides layered
   // over the env defaults, so behaviour is unchanged until an admin sets a value.
@@ -1033,6 +1053,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     couponService,
     couponRedemptionRepo,
     couponRepo,
+    payoutEligibility,
   )
   const approvePayoutUseCase = new ApprovePayoutUseCase(
     payoutRepo,
@@ -1044,7 +1065,9 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     new MongoWalletPayoutRepository(),
     new MongoAutomaticPayoutVerification(),
     new MongoManualPayoutApproval(),
+    paystackMode,
   )
+  for (const warning of payoutControlWarnings(config.nodeEnv, config.payouts)) logger.warn(warning)
   const listCampaignPayoutsUseCase = new ListCampaignPayoutsUseCase(campaignRepo, payoutRepo)
   const listPayoutsUseCase = new ListPayoutsUseCase(payoutRepo)
 
@@ -1096,7 +1119,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     publicProfileVisibility,
   )
 
-  const getProfileUseCase = new GetProfileUseCase(userRepo, profileRepo, donationRepo, campaignRepo, refundRepo)
+  const getProfileUseCase = new GetProfileUseCase(userRepo, profileRepo, donationRepo, campaignRepo, refundRepo, kycRepo)
   const updateProfileUseCase = new UpdateProfileUseCase(new MongoAccountProfileWrite(new MongoUnitOfWork(), publicationAdmission))
   const getPublicUserProfileUseCase = new GetPublicUserProfileUseCase(userRepo, publicProfileVisibility, kycRepo)
   const accountErasure = new MongoAccountErasure()
@@ -1234,6 +1257,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     affiliateCommissionRepo,
     affiliateReferralRepo,
     config.publicWebUrl,
+    new MongoUnitOfWork(),
   )
   const listMyAffiliateReferralsUseCase = new ListMyAffiliateReferralsUseCase(
     affiliateRepo,
@@ -1246,6 +1270,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
   const setAffiliatePayoutRecipientUseCase = new SetAffiliatePayoutRecipientUseCase(
     affiliateRepo,
     paymentGateway,
+    payoutAccounts,
   )
   const requestAffiliatePayoutUseCase = new RequestAffiliatePayoutUseCase(
     affiliateRepo,
@@ -1253,6 +1278,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     affiliateBalanceRepo,
     affiliateCommissionRepo,
     paymentGateway,
+    new MongoUnitOfWork(),
   )
   const approveAffiliatePayoutUseCase = new ApproveAffiliatePayoutUseCase(
     affiliatePayoutRepo,
@@ -1276,6 +1302,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
   const matureAffiliateCommissionsUseCase = new MatureAffiliateCommissionsUseCase(
     affiliateCommissionRepo,
     affiliateBalanceRepo,
+    new MongoUnitOfWork(),
   )
 
   const listPlansUseCase = new ListPlansUseCase(planService)
@@ -1400,10 +1427,44 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
       campaignBalanceRepo,
       transferRecipientRepo,
       commercialConfigService,
+      payoutRepo,
     ),
     new AutomaticPayoutService(approvePayoutUseCase, payoutRepo, config.payouts),
     new PayoutTransferControlUseCase(payoutRepo, paymentGateway, handlePayoutWebhookUseCase),
     payoutRepo,
+    new ClosePendingPayoutUseCase(
+      payoutRepo,
+      campaignRepo,
+      campaignBalanceRepo,
+      new MongoPayoutClosureTransaction(),
+    ),
+    // Escalated single transfers settle through each rail's own idempotent handler.
+    new ResolveStuckPayoutUseCase(
+      paymentGateway,
+      {
+        campaign: {
+          findById: (id) => payoutRepo.findById(id),
+          reopenForSettlement: (id) => payoutRepo.reopenForSettlement(id),
+          handler: handlePayoutWebhookUseCase,
+        },
+        beneficiary: {
+          findById: (id) => beneficiaryPayoutRepo.findById(id),
+          reopenForSettlement: (id) => beneficiaryPayoutRepo.reopenForSettlement(id),
+          handler: handleBeneficiaryPayoutWebhookUseCase,
+        },
+        affiliate: {
+          findById: (id) => affiliatePayoutRepo.findById(id),
+          reopenForSettlement: (id) => affiliatePayoutRepo.reopenForSettlement(id),
+          handler: handleAffiliatePayoutWebhookUseCase,
+        },
+        creator: {
+          findById: (id) => creatorPayoutRepo.findById(id),
+          reopenForSettlement: (id) => creatorPayoutRepo.reopenForSettlement(id),
+          handler: handleCreatorPayoutWebhookUseCase,
+        },
+      },
+      auditLogRepo,
+    ),
   )
   // Split-proceeds: owner-managed, versioned beneficiary allocations (spec §17).
   const campaignSplitUseCase = new CampaignSplitUseCase(
@@ -1490,6 +1551,12 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     listAffiliatePayoutsUseCase,
     approveAffiliatePayoutUseCase,
     updateAffiliateReferralCodeUseCase,
+    new RejectAffiliatePayoutUseCase(
+      affiliatePayoutRepo,
+      affiliateBalanceRepo,
+      affiliateCommissionRepo,
+      new MongoPayoutClosureTransaction(),
+    ),
   )
   const paymentProviderController = new PaymentProviderController(
     listPaymentProvidersUseCase,

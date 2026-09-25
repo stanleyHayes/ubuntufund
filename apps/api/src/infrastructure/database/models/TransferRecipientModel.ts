@@ -10,6 +10,7 @@ export interface TransferRecipientDocument extends Document {
   bankCode: string;
   accountName: string;
   recipientCode: string;
+  recipientMode?: 'live' | 'test';
   currency: string;
   verificationStatus?: 'name_matched' | 'needs_review';
   resolvedAccountName?: string;
@@ -32,6 +33,7 @@ const transferRecipientSchema = new Schema<TransferRecipientDocument>(
     bankCode: { type: String, required: true },
     accountName: { type: String, required: true },
     recipientCode: { type: String, required: true, index: true },
+    recipientMode: { type: String, enum: ['live', 'test'] },
     currency: { type: String, required: true },
     verificationStatus: { type: String, enum: ['name_matched', 'needs_review'], default: 'needs_review' },
     resolvedAccountName: String,

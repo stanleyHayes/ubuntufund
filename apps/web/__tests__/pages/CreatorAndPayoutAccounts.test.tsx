@@ -118,6 +118,9 @@ describe('creator and saved accounts', () => {
     vi.mocked(api.delete).mockResolvedValue({ planName: 'Pro', limit: 3, accounts: [] })
     render(<SavedPayoutAccounts />)
     fireEvent.click(await screen.findByRole('button', { name: /Remove saved account/ }))
+    // Removal is confirmed first: nothing is deleted from the card button alone.
+    expect(api.delete).not.toHaveBeenCalled()
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove account' }))
     await waitFor(() => expect(api.delete).toHaveBeenCalledWith('/payout-accounts/a'))
     expect(await screen.findByText(/Removed from saved accounts/)).toBeInTheDocument()
   })

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { AffiliateStatus, REFERRAL_CODE_MAX, REFERRAL_CODE_MIN } from '@ubuntu-fund/types';
 import type { AffiliateController } from '../controllers/AffiliateController.js';
 import { validate } from '../../middleware/validate.js';
+import { payoutDestinationRateLimiter } from '../../middleware/rateLimiter.js';
 import type { createAuthMiddleware } from '../../middleware/authMiddleware.js';
 import type { requireAdmin } from '../../middleware/requireRole.js';
 
@@ -37,7 +38,7 @@ const updateStatusSchema = z.object({
  *   GET  /affiliate                   → dashboard (profile, balance, stats, link)
  *   GET  /affiliate/referrals         → the current user's referred signups
  *   GET  /affiliate/commissions       → the current user's commission ledger
- *   POST /affiliate/payout-recipient  → register a payout destination
+ *   POST /affiliate/payout-recipient  → set the payout destination ({ savedAccountId } or account details)
  *   POST /affiliate/payouts           → request a payout of available commission
  */
 export function createAffiliateRoutes(
@@ -59,7 +60,8 @@ export function createAffiliateRoutes(
   router.post(
     '/payout-recipient',
     authMiddleware,
-    validate(setRecipientSchema),
+    payoutDestinationRateLimiter,
+    validate(z.union([z.object({ savedAccountId: z.string().uuid() }).strict(), setRecipientSchema])),
     affiliateController.setRecipient
   );
   router.post(
@@ -77,6 +79,7 @@ export function createAffiliateRoutes(
  *   GET  /affiliates                        → list every affiliate (newest first)
  *   GET  /affiliates/payouts                → every affiliate payout (approval queue)
  *   POST /affiliates/payouts/:id/approve    → approve + initiate a transfer
+ *   POST /affiliates/payouts/:id/reject     → reject a PENDING payout; its reservation returns
  *   GET  /affiliates/:id                    → one affiliate's full detail view
  *   PUT  /affiliates/:id/commission-rate    → override the commission rate
  *   PUT  /affiliates/:id/status             → activate or suspend the affiliate
@@ -105,6 +108,13 @@ export function createAdminAffiliateRoutes(
     authMiddleware,
     adminGuard,
     affiliateController.approvePayout
+  );
+  router.post(
+    '/payouts/:id/reject',
+    authMiddleware,
+    adminGuard,
+    validate(z.object({ reason: z.string().trim().min(20).max(2000) })),
+    affiliateController.rejectPayout
   );
 
   router.get('/:id', authMiddleware, adminGuard, affiliateController.detail);

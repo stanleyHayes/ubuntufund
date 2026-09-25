@@ -13,6 +13,16 @@ export interface AffiliatePayoutRepositoryPort {
   /** Payouts stuck in PROCESSING since before `olderThan` (missed webhook). */
   findStuckProcessing(olderThan: Date): Promise<AffiliatePayoutEntity[]>;
 
+  /**
+   * Stuck single-transfer handling: move PROCESSING → NEEDS_REVIEW (the
+   * provider could not confirm the transfer for a full dwell window), and back
+   * NEEDS_REVIEW → PROCESSING only so an admin-triggered resolution can drive
+   * the rail's own idempotent settlement handler. Each is a guarded, atomic
+   * transition that reports whether this caller won it.
+   */
+  escalateProcessing?(id: string): Promise<boolean>;
+  reopenForSettlement?(id: string): Promise<boolean>;
+
   /** Flag a payout's terminal balance effect as applied (G5, idempotent). */
   markSettlementApplied(id: string, expectedStatus?: PayoutStatus): Promise<void>;
 
@@ -45,6 +55,9 @@ export interface AffiliatePayoutRepositoryPort {
 
   /** Atomically move PROCESSING → FAILED. Null when not PROCESSING. */
   transitionToFailed(id: string): Promise<AffiliatePayoutEntity | null>;
+
+  /** Admin rejection: atomically move PENDING → FAILED. Null when not PENDING. */
+  transitionPendingToFailed?(id: string): Promise<AffiliatePayoutEntity | null>;
 
   /** Atomically move PAID → REVERSED. Null when not PAID. */
   transitionPaidToReversed(id: string): Promise<AffiliatePayoutEntity | null>;

@@ -2,6 +2,8 @@ import type { CreatorWithdrawalTransactionPort } from '../../../../domain/ports/
 import { MongoUnitOfWork } from './MongoUnitOfWork.js';
 import { UserModel } from '../../../database/models/UserModel.js';
 import { AppError } from '../../inbound/middleware/errorHandler.js';
+import { assertCurrentOwnerVerification } from './MongoPayoutEligibility.js';
+import { CREATOR_VERIFICATION_REQUIRED } from '../../../../application/use-cases/RequestCreatorWithdrawalUseCase.js';
 
 export class MongoCreatorWithdrawalTransaction implements CreatorWithdrawalTransactionPort {
   async run<T>(userId: string, authVersion: string, work: () => Promise<T>): Promise<T> {
@@ -11,6 +13,9 @@ export class MongoCreatorWithdrawalTransaction implements CreatorWithdrawalTrans
         ...(authVersion ? { authVersion } : { $or: [{ authVersion: '' }, { authVersion: null }] }),
       }, { $inc: { publicationWriteVersion: 1 } });
       if (!owner.matchedCount) throw new AppError('Account authorization changed. Sign in again.', 401);
+      // Re-checked at the write boundary: an expiry, revocation or newer
+      // renewal committed after the pre-check still stops the money leaving.
+      await assertCurrentOwnerVerification(userId, { message: CREATOR_VERIFICATION_REQUIRED });
       return work();
     });
   }

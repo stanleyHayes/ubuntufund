@@ -7,8 +7,11 @@ import { campaignNeedsEarlyCashout, isEarlyWithdrawal } from '../../../../applic
 import { CampaignModel } from '../../../database/models/CampaignModel.js'
 import { MongoUnitOfWork } from './MongoUnitOfWork.js'
 import { UserModel } from '../../../database/models/UserModel.js'
-import { KYCVerificationModel } from '../../../database/models/KYCVerificationModel.js'
+import { assertCurrentOwnerVerification } from './MongoPayoutEligibility.js'
 import { AppError } from '../../inbound/middleware/errorHandler.js'
+
+/** How long an automatic budget claim may be verified after it was taken. */
+export const AUTOMATIC_CLAIM_TTL_MS = 15 * 60_000
 
 /** Revalidate after provider balance lookup and before reserving campaign money. */
 export class MongoAutomaticPayoutVerification {
@@ -38,13 +41,19 @@ export class MongoAutomaticPayoutVerification {
         )
         if (!policy || payout.amount > (policy.maxAmount ?? automaticPayoutDefaults.maxAmount))
           throw new AppError('Automatic payout policy changed; manual review required.', 409)
-        const day = new Date().toISOString().slice(0, 10)
+        // Validate the claim against the day it was TAKEN, not today's date:
+        // a claim made at 23:59:59 UTC and verified after midnight (the
+        // provider balance lookup sits in between) is still the same claim
+        // against the same day's budget. Freshness is bounded explicitly.
         const claimed = await PayoutModel.findOne({
-          _id: payout.id, status: 'PENDING', autoClaimed: true, autoClaimDay: day,
+          _id: payout.id, status: 'PENDING', autoClaimed: true,
+          autoClaimedAt: { $gte: new Date(Date.now() - AUTOMATIC_CLAIM_TTL_MS) },
           campaignId: payout.campaignId, requestedBy: userId, recipientId: payout.recipientId,
           currency: payout.currency, amount: payout.amount, type: payout.type,
         })
-        if (!claimed) throw new AppError('Automatic budget claim is unavailable or expired; manual review required.', 409)
+        const day = claimed?.autoClaimDay
+        if (!claimed || !day || !/^\d{4}-\d{2}-\d{2}$/.test(day))
+          throw new AppError('Automatic budget claim is unavailable or expired; manual review required.', 409)
         const amountMinor = Math.round(payout.amount * 100)
         for (const [key, limit] of [
           [`${day}:owner:${userId}`, policy.dailyOwnerLimit ?? automaticPayoutDefaults.dailyOwnerLimit],
@@ -98,10 +107,9 @@ export class MongoAutomaticPayoutVerification {
   }
 
   async assertCurrent(userId: string): Promise<void> {
-    const owner = await UserModel.findOne({ _id: userId, deletedAt: null })
-    if (!owner || owner.verificationLevel < (owner.role === 'organization' ? 3 : 2)) throw new AppError('Current owner verification requires manual review.', 409)
-    if (!owner.emailVerified) throw new AppError('Verify your email address to enable automatic payouts.', 409)
-    const record = await KYCVerificationModel.findOne({ userId, verificationType: owner.role === 'organization' ? 'business' : 'identity' }).sort({ createdAt: -1, _id: -1 })
-    if (!record || record.status !== 'approved' || !record.expiryDate || record.expiryDate.getTime() <= Date.now()) throw new AppError('Current owner verification requires manual review.', 409)
+    const owner = await UserModel.findOne({ _id: userId, deletedAt: null }).select('emailVerified')
+    if (owner && !owner.emailVerified) throw new AppError('Verify your email address to enable automatic payouts.', 409)
+    // The same money-out gate the manual and creator rails use.
+    await assertCurrentOwnerVerification(userId, { message: 'Current owner verification requires manual review.' })
   }
 }

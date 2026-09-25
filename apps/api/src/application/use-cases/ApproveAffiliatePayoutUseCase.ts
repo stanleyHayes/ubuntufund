@@ -66,6 +66,10 @@ export class ApproveAffiliatePayoutUseCase {
     if (!affiliate.recipientCode) {
       throw new AppError('Affiliate has no payout recipient', 422);
     }
+    // Segregation of duties: an admin never approves their own commission.
+    if (payout.requestedBy === approver.userId || affiliate.userId === approver.userId) {
+      throw new AppError('Another administrator must approve your own affiliate payout.', 403);
+    }
 
     // Never initiate a transfer the platform balance cannot cover.
     const balances = await this.paymentGateway.getBalance();

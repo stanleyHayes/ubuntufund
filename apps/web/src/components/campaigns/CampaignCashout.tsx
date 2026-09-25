@@ -201,6 +201,21 @@ export function CampaignCashout({
       setBusy(false)
     }
   }
+  const [cancellingId, setCancellingId] = useState('')
+  async function cancelPayout(payoutId: string) {
+    setCancellingId(payoutId)
+    setError('')
+    setNotice('')
+    try {
+      await api.post<Payout>(`/campaigns/${campaignId}/payouts/${payoutId}/cancel`, {})
+      setNotice('Request cancelled. Nothing was sent, and the amount is back in your balance.')
+      refresh()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not cancel the request.')
+    } finally {
+      setCancellingId('')
+    }
+  }
   async function requestPayout() {
     setBusy(true)
     setError('')
@@ -588,7 +603,12 @@ export function CampaignCashout({
               />
             )}
             {history.map((p) => (
-              <PayoutHistoryCard key={p.id} payout={p} />
+              <PayoutHistoryCard
+                key={p.id}
+                payout={p}
+                onCancel={cancelPayout}
+                cancelling={cancellingId === p.id}
+              />
             ))}
           </>
         )}

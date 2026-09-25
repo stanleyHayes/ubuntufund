@@ -12,7 +12,7 @@ import { Router, type Response, type NextFunction } from 'express';
 import type { AuthenticatedRequest, createAuthMiddleware, createOptionalAuthMiddleware } from '../../middleware/authMiddleware.js';
 import type { SaveCreatorProfileUseCase } from '../../../../../application/use-cases/SaveCreatorProfileUseCase.js';
 import type { GetCreatorByHandleUseCase } from '../../../../../application/use-cases/GetCreatorByHandleUseCase.js';
-import type { CreateTipIntentUseCase } from '../../../../../application/use-cases/CreateTipIntentUseCase.js';
+import { TIP_MAX_AMOUNT, type CreateTipIntentUseCase } from '../../../../../application/use-cases/CreateTipIntentUseCase.js';
 import type { RequestCreatorWithdrawalUseCase } from '../../../../../application/use-cases/RequestCreatorWithdrawalUseCase.js';
 import type { CreatorProfileRepositoryPort } from '../../../../../domain/ports/outbound/CreatorProfileRepositoryPort.js';
 import type { CreatorBalanceRepositoryPort } from '../../../../../domain/ports/outbound/CreatorBalanceRepositoryPort.js';
@@ -49,7 +49,7 @@ export function createCreatorRoutes(deps: {
       tagline: z.string().max(200).optional(), bio: z.string().max(5000).optional(),
       avatarUrl: z.union([platformMediaUrl, z.literal('')]).optional(),
       coverUrl: z.union([platformMediaUrl, z.literal('')]).optional(),
-      tipsEnabled: z.boolean().optional(), presetAmounts: z.array(z.number().finite().positive().multipleOf(0.01).max(1000000)).max(6).optional(),
+      tipsEnabled: z.boolean().optional(), presetAmounts: z.array(z.number().finite().positive().multipleOf(0.01).max(TIP_MAX_AMOUNT)).max(6).optional(),
       currency: z.literal('GHS').optional(), thankYouMessage: z.string().max(1000).optional(), automatedReviewConsent: z.boolean().optional(),
     }).strict()),
     async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
@@ -129,7 +129,7 @@ export function createCreatorRoutes(deps: {
     '/:handle/tips',
     deps.optionalAuth,
     donationIntentRateLimiter,
-    validate(z.object({ legalAcceptance: legalAcceptanceSchema.optional(), amount: z.number().finite().positive().multipleOf(0.01), supporterEmail: z.string().trim().email().max(254), supporterName: z.string().trim().max(100).optional(), message: z.string().trim().max(1000).optional(), isAnonymous: z.boolean().optional() })),
+    validate(z.object({ legalAcceptance: legalAcceptanceSchema.optional(), amount: z.number().finite().positive().multipleOf(0.01).max(TIP_MAX_AMOUNT), supporterEmail: z.string().trim().email().max(254), supporterName: z.string().trim().max(100).optional(), message: z.string().trim().max(1000).optional(), isAnonymous: z.boolean().optional() })),
     async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
       try {
         const profile = await deps.profileRepo.findByHandle(req.params.handle as string);

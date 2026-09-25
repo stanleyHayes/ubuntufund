@@ -24,6 +24,7 @@ export function toPayoutDto(entity: PayoutEntity): Payout {
     firstApprovedBy: p.firstApprovedBy,
     firstApprovedAt: p.firstApprovedAt,
     legs: p.legs,
+    closure: p.closure,
     createdAt: p.createdAt,
     updatedAt: p.updatedAt,
   }

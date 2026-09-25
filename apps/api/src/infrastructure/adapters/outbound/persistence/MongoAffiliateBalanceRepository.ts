@@ -14,6 +14,7 @@ function toDomain(doc: AffiliateBalanceDocument): AffiliateBalance {
     pendingBalance: doc.pendingBalance,
     availableBalance: doc.availableBalance,
     paidOutBalance: doc.paidOutBalance,
+    clawbackOutstanding: doc.clawbackOutstanding ?? 0,
     updatedAt: doc.updatedAt,
   };
 }
@@ -181,6 +182,20 @@ export class MongoAffiliateBalanceRepository
       {
         $set: { updatedAt: new Date() },
         $inc: { pendingBalance: -amount, totalEarned: -amount },
+      },
+      { new: true }
+    );
+    return doc ? toDomain(doc) : null;
+  }
+
+  async recordClawback(id: string, amount: number): Promise<AffiliateBalance | null> {
+    // A reversal that could not be unwound from any bucket: remember it so it
+    // is withheld from future withdrawals, and stop counting it as earned.
+    const doc = await AffiliateBalanceModel.findOneAndUpdate(
+      { _id: id },
+      {
+        $set: { updatedAt: new Date() },
+        $inc: { clawbackOutstanding: amount, totalEarned: -amount },
       },
       { new: true }
     );

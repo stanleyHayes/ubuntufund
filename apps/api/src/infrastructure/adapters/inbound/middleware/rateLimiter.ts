@@ -26,7 +26,13 @@ export function resetRateLimiters(): void {
   for (const windows of allWindows) windows.clear();
 }
 
-function createRateLimiter(options: { windowMs: number; max: number; scope: string }) {
+function createRateLimiter(options: {
+  windowMs: number;
+  max: number;
+  scope: string;
+  /** Bucket key; defaults to the client IP. */
+  key?: (req: Request) => string | undefined;
+}) {
   const windows = new Map<string, WindowState>();
   allWindows.push(windows);
 
@@ -42,8 +48,8 @@ function createRateLimiter(options: { windowMs: number; max: number; scope: stri
   return (req: Request, res: Response, next: NextFunction): void => {
     // Keyed on the resolved client address (see clientIp.ts), never req.ip:
     // behind Render's proxy req.ip is the proxy, which made every limiter one
-    // bucket shared by the whole platform.
-    const key = `${options.scope}:${rateLimitClientKey(req)}`;
+    // bucket shared by the whole platform. A limiter may supply its own key.
+    const key = `${options.scope}:${options.key?.(req) ?? rateLimitClientKey(req)}`;
     const now = Date.now();
     let state = windows.get(key);
 
@@ -141,6 +147,34 @@ export const donationIntentRateLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000,
   max: 60,
   scope: 'donation-intent',
+});
+
+/**
+ * Authenticated payout routes get their own buckets, keyed by the signed-in
+ * user rather than the IP: sharing the public donation-checkout bucket meant
+ * donors checking out (all arriving through the same proxy address) could
+ * 429 an admin entering a time-limited Paystack OTP, and vice versa. Mount
+ * after the auth middleware so the user id is set.
+ */
+const byUser = (req: Request) => {
+  const userId = (req as Request & { userId?: string }).userId;
+  return userId ? `user:${userId}` : undefined;
+};
+
+/** Admin transfer controls (OTP authorize / resend / refresh): 30 per 15 min per admin. */
+export const payoutControlRateLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  scope: 'payout-transfer-control',
+  key: byUser,
+});
+
+/** Registering payout destinations (provider name lookups): 20 per 15 min per user. */
+export const payoutDestinationRateLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  scope: 'payout-destination',
+  key: byUser,
 });
 
 /** Limits report spam; persisted uniqueness also suppresses duplicate pending reports. */

@@ -13,6 +13,8 @@ import type { SetAffiliateCommissionRateUseCase } from '../../../../../applicati
 import type { UpdateAffiliateStatusUseCase } from '../../../../../application/use-cases/UpdateAffiliateStatusUseCase.js';
 import type { ListAffiliatePayoutsUseCase } from '../../../../../application/use-cases/ListAffiliatePayoutsUseCase.js';
 import type { ApproveAffiliatePayoutUseCase } from '../../../../../application/use-cases/ApproveAffiliatePayoutUseCase.js';
+import type { RejectAffiliatePayoutUseCase } from '../../../../../application/use-cases/RejectAffiliatePayoutUseCase.js';
+import { AppError } from '../../middleware/errorHandler.js';
 
 export class AffiliateController {
   constructor(
@@ -28,8 +30,28 @@ export class AffiliateController {
     private readonly updateAffiliateStatusUseCase: UpdateAffiliateStatusUseCase,
     private readonly listAffiliatePayoutsUseCase: ListAffiliatePayoutsUseCase,
     private readonly approveAffiliatePayoutUseCase: ApproveAffiliatePayoutUseCase,
-    private readonly updateAffiliateReferralCodeUseCase: UpdateAffiliateReferralCodeUseCase
+    private readonly updateAffiliateReferralCodeUseCase: UpdateAffiliateReferralCodeUseCase,
+    private readonly rejectAffiliatePayoutUseCase?: RejectAffiliatePayoutUseCase
   ) {}
+
+  /** POST /affiliates/payouts/:id/reject — reject a PENDING payout and release its reservation (admin). */
+  rejectPayout = async (
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      if (!this.rejectAffiliatePayoutUseCase) throw new AppError('Payout review is unavailable.', 503);
+      const payout = await this.rejectAffiliatePayoutUseCase.execute(
+        req.params.id as string,
+        { userId: req.userId!, role: req.userRole, authVersion: req.authVersion },
+        req.body.reason
+      );
+      res.json({ data: payout, message: 'Affiliate payout rejected', status: 200 });
+    } catch (error) {
+      next(error);
+    }
+  };
 
   // ── Owner ('me') ──────────────────────────────────────────────────────────
 

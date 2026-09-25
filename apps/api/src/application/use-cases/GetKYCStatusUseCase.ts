@@ -1,5 +1,6 @@
 import { KYCStatus, KYCLevel, type KYCInformationExchange } from '@ubuntu-fund/types';
 import type { KYCRepositoryPort } from '../../domain/ports/outbound/KYCRepositoryPort.js';
+import { isCurrentApproval, latestKycByType } from '../../domain/services/currentKycEvidence.js';
 
 interface KYCStatusVerificationDTO {
   rejectionReason?: string;
@@ -22,19 +23,18 @@ export class GetKYCStatusUseCase {
   constructor(private readonly kycRepo: KYCRepositoryPort) {}
 
   async execute(userId: string): Promise<KYCStatusDTO> {
-    const now = Date.now();
+    const now = new Date();
     const stored = await this.kycRepo.findByUserId(userId);
     // Derive current display state without rewriting the historical decision.
-    const records = stored.map(record => record.status === 'approved' && record.expiryDate && new Date(record.expiryDate).getTime() <= now
+    // An approval without a finite, future expiry (expired, or a legacy row
+    // that never recorded one) is not current here either, so this status
+    // agrees with the verification level, allowance and payout checks.
+    const records = stored.map(record => record.status === 'approved' && !isCurrentApproval(record, now)
       ? { ...record, status: 'expired' as const } : record);
 
     // Aggregate only the newest submission of each type. Older decisions stay
     // in the history but cannot override a renewal awaiting review or rejected.
-    const latestByType = new Map<string, (typeof records)[number]>();
-    for (const record of [...records].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() || b.id.localeCompare(a.id))) {
-      if (!latestByType.has(record.verificationType)) latestByType.set(record.verificationType, record);
-    }
-    const current = [...latestByType.values()];
+    const current = [...latestKycByType(records).values()];
 
     const approvedTypes = new Set(
       current

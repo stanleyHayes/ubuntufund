@@ -38,14 +38,137 @@ function money(n: number, currency = 'GHS'): string {
   return `${currency} ${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
+const REJECTION_REASON_MIN = 20
+
+/** Close a PENDING request with a reason the organizer will see. No transfer is ever sent. */
+function PayoutRejectForm({
+  payoutId,
+  busy,
+  onReject,
+}: {
+  payoutId: string
+  busy: boolean
+  onReject: (id: string, reason: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [reason, setReason] = useState('')
+  if (!open)
+    return (
+      <Button color="error" size="small" onClick={() => setOpen(true)} disabled={busy}>
+        Reject request
+      </Button>
+    )
+  return (
+    <Box sx={{ mt: 2 }}>
+      <TextField
+        fullWidth
+        multiline
+        minRows={2}
+        label="Reason for rejection"
+        helperText={`Shown to the organizer. At least ${REJECTION_REASON_MIN} characters. The cleared funds return to the campaign's pending balance; nothing is transferred.`}
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+      />
+      <Box sx={{ mt: 1, display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+        <Button size="small" onClick={() => setOpen(false)} disabled={busy}>
+          Keep request
+        </Button>
+        <Button
+          size="small"
+          color="error"
+          variant="contained"
+          disabled={busy || reason.trim().length < REJECTION_REASON_MIN}
+          onClick={() => onReject(payoutId, reason.trim())}
+        >
+          {busy ? 'Rejecting…' : 'Reject payout'}
+        </Button>
+      </Box>
+    </Box>
+  )
+}
+
+/**
+ * A single transfer Paystack could not confirm for a full day was escalated
+ * with its funds still reserved. Resolving never picks an outcome: the API
+ * re-checks Paystack and settles, returns or leaves it according to the answer.
+ */
+function StuckPayoutResolve({ payoutId, onUpdated }: { payoutId: string; onUpdated: () => void }) {
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null)
+  async function resolve() {
+    setBusy(true)
+    setResult(null)
+    try {
+      const outcome = await api.post<{ providerOutcome: string; status: string }>(
+        `/payouts/stuck/campaign/${payoutId}/resolve`,
+        { note: note.trim() },
+      )
+      setResult({
+        ok: true,
+        text: `Paystack reported ${outcome.providerOutcome}; the payout is now ${outcome.status.toLowerCase()}.`,
+      })
+      onUpdated()
+    } catch (e) {
+      setResult({ ok: false, text: e instanceof Error ? e.message : 'Could not resolve this payout' })
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <Box sx={{ mt: 2 }}>
+      <Alert severity="warning" sx={{ py: 0.5 }}>
+        Paystack has not confirmed this transfer for over a day, and the funds are still reserved.
+        Resolving re-checks Paystack: a completed transfer is settled, a failed or unknown one
+        returns the funds to the campaign, and one still in progress is left alone.
+      </Alert>
+      <TextField
+        fullWidth
+        multiline
+        minRows={2}
+        sx={{ mt: 1.5 }}
+        label="What you checked"
+        helperText="At least 20 characters, e.g. what the Paystack dashboard shows for this reference."
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+      />
+      <Box sx={{ mt: 1, display: 'flex', justifyContent: 'flex-end' }}>
+        <Button
+          size="small"
+          variant="contained"
+          disabled={busy || note.trim().length < 20}
+          onClick={() => void resolve()}
+        >
+          {busy ? 'Checking Paystack…' : 'Re-check Paystack and resolve'}
+        </Button>
+      </Box>
+      {result && (
+        <Alert severity={result.ok ? 'success' : 'error'} sx={{ mt: 1 }}>
+          {result.text}
+        </Alert>
+      )}
+    </Box>
+  )
+}
+
+function payoutStatusLabel(payout: Payout): string {
+  if (payout.closure) return payout.closure.kind === 'rejected' ? 'Rejected' : 'Cancelled by organizer'
+  if (payout.status === 'PROCESSING' && payout.providerStatus === 'otp')
+    return 'Awaiting Paystack authorization'
+  if (payout.status === 'PAID') return 'Completed'
+  return payout.status.replace('_', ' ').toLowerCase()
+}
+
 function PayoutCard({
   payout,
   onApprove,
+  onReject,
   approving,
   onUpdated,
 }: {
   payout: Payout
   onApprove: (id: string, reviewNote: string) => void
+  onReject: (id: string, reason: string) => void
   approving: boolean
   onUpdated: () => void
 }) {
@@ -91,13 +214,7 @@ function PayoutCard({
           </Typography>
         </Box>
         <Chip
-          label={
-            payout.status === 'PROCESSING' && payout.providerStatus === 'otp'
-              ? 'Awaiting Paystack authorization'
-              : payout.status === 'PAID'
-                ? 'Completed'
-                : payout.status.replace('_', ' ').toLowerCase()
-          }
+          label={payoutStatusLabel(payout)}
           size="small"
           sx={{
             color: STATUS_TONE[payout.status],
@@ -136,6 +253,12 @@ function PayoutCard({
         {payout.approvedBy && (
           <Detail label="Approved by" value={payout.approvedByName ?? 'Unavailable account'} />
         )}
+        {payout.closure && (
+          <Detail
+            label={payout.closure.kind === 'rejected' ? 'Rejection reason' : 'Cancellation note'}
+            value={payout.closure.reason}
+          />
+        )}
       </Box>
 
       {payout.automationReason && (
@@ -144,11 +267,14 @@ function PayoutCard({
         </Typography>
       )}
       <PayoutTransferControls payout={payout} onUpdated={onUpdated} />
-      {needsReview && (
+      {needsReview && payout.legs && payout.legs.length > 0 && (
         <Alert severity="warning" sx={{ mt: 2, py: 0.5 }}>
           Partially settled — some transfer legs failed after others were sent. Manual
           reconciliation required.
         </Alert>
+      )}
+      {needsReview && !payout.legs?.length && payout.provider === 'paystack' && (
+        <StuckPayoutResolve payoutId={payout.id} onUpdated={onUpdated} />
       )}
       {awaitingSecond && (
         <Alert severity="info" sx={{ mt: 2, py: 0.5 }}>
@@ -202,6 +328,9 @@ function PayoutCard({
           >
             {approving ? 'Approving…' : awaitingSecond ? 'Give 2nd approval' : 'Approve'}
           </Button>
+          <Box sx={{ mt: 1 }}>
+            <PayoutRejectForm payoutId={payout.id} busy={approving} onReject={onReject} />
+          </Box>
         </Box>
       )}
     </Box>
@@ -379,6 +508,24 @@ export default function PayoutsPage() {
     [load],
   )
 
+  const reject = useCallback(
+    async (id: string, reason: string) => {
+      setApprovingId(id)
+      setNotice(null)
+      try {
+        await api.post<Payout>(`/payouts/${id}/reject`, { reason })
+        setNotice('Payout request rejected. The organizer can see the reason; no transfer was sent.')
+        await load()
+        window.dispatchEvent(new Event('ujimora:admin-actions-changed'))
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Rejection failed')
+      } finally {
+        setApprovingId(null)
+      }
+    },
+    [load],
+  )
+
   const approveBeneficiary = useCallback(
     async (id: string) => {
       setApprovingId(id)
@@ -542,6 +689,7 @@ export default function PayoutsPage() {
               key={p.id}
               payout={p}
               onApprove={approve}
+              onReject={reject}
               approving={approvingId === p.id}
               onUpdated={() => void load()}
             />

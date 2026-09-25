@@ -5,6 +5,7 @@ import { Text, Icon, Portal, Dialog, Snackbar } from 'react-native-paper'
 import { Stack } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'
 import { SignInRequired } from '@/components/SignInRequired'
+import { AffiliatePayoutDestination } from '@/components/AffiliatePayoutDestination'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
 import type { Palette, NeuRecipes } from '@/theme'
 import { BrandedTextInput as TextInput } from '@/components/BrandedTextInput'
@@ -368,7 +369,8 @@ export default function AffiliateScreen() {
     )
   }
 
-  const canRequestPayout = !!dashboard && dashboard.stats.availableBalance > 0
+  const hasDestination = !!dashboard?.affiliate.recipientCode
+  const canRequestPayout = !!dashboard && dashboard.stats.availableBalance > 0 && hasDestination
 
   return (
     <View style={styles.container}>
@@ -507,6 +509,11 @@ export default function AffiliateScreen() {
             <View style={styles.card}>
               <Text style={styles.payoutLabel}>Available to withdraw</Text>
               <Text style={styles.payoutValue}>{formatGHS(dashboard.stats.availableBalance)}</Text>
+              <AffiliatePayoutDestination
+                affiliate={dashboard.affiliate}
+                onSaved={() => void fetchDashboard()}
+                color={{ text: p.text, muted: p.textSecondary, accent: p.primary, error: p.error }}
+              />
               <Button
                 mode="contained"
                 buttonColor={p.primary}
@@ -523,7 +530,11 @@ export default function AffiliateScreen() {
                 {payoutLoading ? 'Requesting…' : 'Request payout'}
               </Button>
               {!canRequestPayout ? (
-                <Text style={styles.payoutHint}>Commission becomes available after its hold window.</Text>
+                <Text style={styles.payoutHint}>
+                  {hasDestination
+                    ? 'Commission becomes available after its hold window.'
+                    : 'Choose a payout destination before requesting a payout.'}
+                </Text>
               ) : null}
             </View>
 

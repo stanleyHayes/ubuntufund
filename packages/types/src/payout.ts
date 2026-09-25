@@ -116,6 +116,18 @@ export interface TransferRecipient {
 }
 
 /**
+ * Why a PENDING payout was closed before any transfer: rejected by an admin or
+ * cancelled by the campaign owner. A closed payout is terminal (`FAILED`), never
+ * reserved funds, and returns what its request cleared to the pending balance.
+ */
+export interface PayoutClosure {
+  kind: 'rejected' | 'cancelled'
+  reason: string
+  closedBy: string
+  closedAt: Date
+}
+
+/**
  * A single disbursement of cleared campaign funds to a {@link TransferRecipient}.
  * Amounts are in MAJOR currency units (GHS), consistent with the rest of the
  * ledger; the gateway converts to pesewas at the provider boundary.
@@ -164,6 +176,8 @@ export interface Payout {
    * Undefined/empty for an ordinary single-transfer payout.
    */
   legs?: PayoutLeg[]
+  /** Set when a PENDING request was rejected or cancelled before any transfer. */
+  closure?: PayoutClosure
   createdAt: Date
   updatedAt: Date
 }

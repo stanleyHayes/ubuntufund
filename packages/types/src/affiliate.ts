@@ -90,6 +90,12 @@ export interface AffiliateBalance {
   pendingBalance: number // held, not yet matured
   availableBalance: number // matured, withdrawable
   paidOutBalance: number
+  /**
+   * Commission reversed after it could no longer be unwound (already paid out,
+   * or reserved by a payout in flight). Recovered from future earnings: it is
+   * withheld from what can be withdrawn until covered.
+   */
+  clawbackOutstanding?: number
   updatedAt: Date
 }
 
@@ -116,6 +122,10 @@ export interface SetAffiliatePayoutRecipientInput {
   accountNumber: string
   bankCode: string
   accountName: string
+}
+/** Use one of the signed-in user's saved payout accounts (must be name-matched). */
+export interface SetAffiliateSavedPayoutRecipientInput {
+  savedAccountId: string
 }
 export interface RequestAffiliatePayoutInput {
   amount: number

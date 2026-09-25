@@ -8,6 +8,7 @@ import { MongoKYCRepository } from '../../../outbound/persistence/MongoKYCReposi
 import { lockPrivateKycDocuments } from '../../../outbound/persistence/lockPrivateKycDocuments.js';
 import { UserModel } from '../../../../database/models/UserModel.js';
 import { AuditLogModel } from '../../../../database/models/AuditLogModel.js';
+import { KYC_RENEWAL_WINDOW_DAYS, kycRenewalOpensAt } from '../../../../../domain/services/currentKycEvidence.js';
 
 const name = z.string().trim().min(1).max(200);
 const schema = z.object({
@@ -38,6 +39,8 @@ export function createKYCBusinessRoutes(auth: RequestHandler): Router {
         if (!(await UserModel.exists({ _id: req.userId, role: 'organization', deletedAt: null }))) throw new AppError('Organization verification requires an organization account.', 403);
         const repo = new MongoKYCRepository();
         if (await repo.findActiveByUserIdAndType(req.userId!, 'business')) throw new AppError('An organization verification is already under review.', 409);
+        const renewalOpensAt = kycRenewalOpensAt(await repo.findByUserId(req.userId!), 'business');
+        if (renewalOpensAt) throw new AppError(`Your organization verification is current. You can renew it from ${renewalOpensAt.toISOString().slice(0, 10)}, ${KYC_RENEWAL_WINDOW_DAYS} days before it expires.`, 409);
         await lockPrivateKycDocuments(req.userId!, input.documents);
         const now = new Date();
         const saved = await repo.save({ id: '', userId: req.userId!, verificationType: 'business', status: 'pending', riskLevel: 'medium', retryCount: 0,

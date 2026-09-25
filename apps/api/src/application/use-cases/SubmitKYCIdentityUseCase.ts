@@ -5,6 +5,7 @@ import type {
   KYCVerificationRecord,
 } from '../../domain/ports/outbound/KYCRepositoryPort.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
+import { KYC_RENEWAL_WINDOW_DAYS, kycRenewalOpensAt } from '../../domain/services/currentKycEvidence.js';
 
 export interface SubmitKYCIdentityInput {
   personalInfo?: {
@@ -36,6 +37,13 @@ export class SubmitKYCIdentityUseCase {
     if (existing) {
       throw new AppError(
         'You already have a pending identity verification',
+        409
+      );
+    }
+    const renewalOpensAt = kycRenewalOpensAt(await this.kycRepo.findByUserId(userId), 'identity');
+    if (renewalOpensAt) {
+      throw new AppError(
+        `Your identity verification is current. You can renew it from ${renewalOpensAt.toISOString().slice(0, 10)}, ${KYC_RENEWAL_WINDOW_DAYS} days before it expires.`,
         409
       );
     }

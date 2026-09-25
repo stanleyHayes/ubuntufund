@@ -1,5 +1,6 @@
 import type { AffiliatePayoutRepositoryPort } from '../../domain/ports/outbound/AffiliatePayoutRepositoryPort.js';
 import type { AffiliateBalanceRepositoryPort } from '../../domain/ports/outbound/AffiliateBalanceRepositoryPort.js';
+import type { AffiliateCommissionRepositoryPort } from '../../domain/ports/outbound/AffiliateCommissionRepositoryPort.js';
 
 /**
  * Applies Paystack transfer webhooks to the affiliate payout + balance read
@@ -19,7 +20,13 @@ import type { AffiliateBalanceRepositoryPort } from '../../domain/ports/outbound
 export class HandleAffiliatePayoutWebhookUseCase {
   constructor(
     private readonly affiliatePayoutRepo: AffiliatePayoutRepositoryPort,
-    private readonly affiliateBalanceRepo: AffiliateBalanceRepositoryPort
+    private readonly affiliateBalanceRepo: AffiliateBalanceRepositoryPort,
+    /**
+     * Keeps the commission ledger in step with the payout: linked commissions
+     * become `paid` when the transfer lands and return to `available` when it
+     * fails or is reversed (they used to stay "available" forever).
+     */
+    private readonly affiliateCommissionRepo?: Pick<AffiliateCommissionRepositoryPort, 'markPaidForPayout' | 'releaseFromPayout'>
   ) {}
 
   async handleSuccess(reference: string): Promise<void> {
@@ -40,6 +47,7 @@ export class HandleAffiliatePayoutWebhookUseCase {
       );
     }
     await this.affiliatePayoutRepo.markSettlementApplied(payout.id, 'PAID');
+    await this.affiliateCommissionRepo?.markPaidForPayout?.(payout.id);
   }
 
   async handleFailed(reference: string): Promise<void> {
@@ -51,6 +59,7 @@ export class HandleAffiliatePayoutWebhookUseCase {
 
     await this.applyReturn(payout);
     await this.affiliatePayoutRepo.markSettlementApplied(payout.id, 'FAILED');
+    await this.affiliateCommissionRepo?.releaseFromPayout?.(payout.id);
   }
 
   async handleReversed(reference: string): Promise<void> {
@@ -64,6 +73,7 @@ export class HandleAffiliatePayoutWebhookUseCase {
     if (fromPaid) {
       await this.applyReversalFromPaid(payout);
       await this.affiliatePayoutRepo.markSettlementApplied(payout.id, 'REVERSED');
+      await this.affiliateCommissionRepo?.releaseFromPayout?.(payout.id);
       return;
     }
 
@@ -74,6 +84,7 @@ export class HandleAffiliatePayoutWebhookUseCase {
     if (fromProcessing) {
       await this.applyReturn(payout);
       await this.affiliatePayoutRepo.markSettlementApplied(payout.id, 'REVERSED');
+      await this.affiliateCommissionRepo?.releaseFromPayout?.(payout.id);
     }
     // Otherwise not in a reversible state — idempotent no-op.
   }
@@ -104,10 +115,13 @@ export class HandleAffiliatePayoutWebhookUseCase {
         );
       }
       await this.affiliatePayoutRepo.markSettlementApplied(payout.id, 'PAID');
+      await this.affiliateCommissionRepo?.markPaidForPayout?.(payout.id);
     } else if (payout.status === 'FAILED') {
       await this.applyReturn(payout);
       await this.affiliatePayoutRepo.markSettlementApplied(payout.id, 'FAILED');
+      await this.affiliateCommissionRepo?.releaseFromPayout?.(payout.id);
     } else if (payout.status === 'REVERSED') {
+      await this.affiliateCommissionRepo?.releaseFromPayout?.(payout.id);
       if (payout.reversedFrom === 'PROCESSING') {
         await this.applyReturn(payout);
         await this.affiliatePayoutRepo.markSettlementApplied(payout.id, 'REVERSED');

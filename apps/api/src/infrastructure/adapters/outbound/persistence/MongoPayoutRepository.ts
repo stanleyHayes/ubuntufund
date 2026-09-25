@@ -1,7 +1,7 @@
 import { PayoutEntity } from '../../../../domain/entities/Payout.js'
 import { PayoutCheckLeaseModel } from '../../../database/models/PayoutCheckLeaseModel.js'
 import type { PayoutRepositoryPort } from '../../../../domain/ports/outbound/PayoutRepositoryPort.js'
-import type { PayoutLeg, PayoutLegStatus, PayoutStatus } from '@ubuntu-fund/types'
+import type { PayoutClosure, PayoutLeg, PayoutLegStatus, PayoutStatus } from '@ubuntu-fund/types'
 import { PayoutModel, type PayoutDocument } from '../../../database/models/PayoutModel.js'
 
 function toDomain(doc: PayoutDocument): PayoutEntity {
@@ -33,6 +33,10 @@ function toDomain(doc: PayoutDocument): PayoutEntity {
       status: l.status,
     })),
     reversedFrom: doc.reversedFrom,
+    clearedAmount: doc.clearedAmount,
+    closure: doc.closure
+      ? { kind: doc.closure.kind, reason: doc.closure.reason, closedBy: doc.closure.closedBy, closedAt: doc.closure.closedAt }
+      : undefined,
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
   })
@@ -94,8 +98,21 @@ export class MongoPayoutRepository implements PayoutRepositoryPort {
       transferCode: p.transferCode,
       requestedBy: p.requestedBy,
       approvedBy: p.approvedBy,
+      clearedAmount: p.clearedAmount,
     })
     return toDomain(doc)
+  }
+
+  async closePending(id: string, closure: PayoutClosure): Promise<PayoutEntity | null> {
+    // PENDING holds no reservation, so the closed payout owes no balance
+    // effect: flag it settled so the terminal-unsettled repair never "returns"
+    // money this payout never reserved.
+    const doc = await PayoutModel.findOneAndUpdate(
+      { _id: id, status: 'PENDING' },
+      { $set: { status: 'FAILED', settlementApplied: true, closure } },
+      { new: true },
+    )
+    return doc ? toDomain(doc) : null
   }
 
   async findById(id: string): Promise<PayoutEntity | null> {
@@ -106,6 +123,14 @@ export class MongoPayoutRepository implements PayoutRepositoryPort {
   async findByCampaignId(campaignId: string): Promise<PayoutEntity[]> {
     const docs = await PayoutModel.find({ campaignId }).sort({ createdAt: -1 })
     return docs.map(toDomain)
+  }
+
+  async sumPendingAmount(campaignId: string): Promise<number> {
+    const [row] = await PayoutModel.aggregate<{ total: number }>([
+      { $match: { campaignId, status: 'PENDING' } },
+      { $group: { _id: null, total: { $sum: '$amount' } } },
+    ])
+    return row?.total ?? 0
   }
 
   async findByProviderRef(providerRef: string): Promise<PayoutEntity | null> {
@@ -281,6 +306,23 @@ export class MongoPayoutRepository implements PayoutRepositoryPort {
       { new: true },
     )
     return doc ? toDomain(doc) : null
+  }
+
+  async escalateProcessing(id: string): Promise<boolean> {
+    // Single transfers only: batched payouts escalate through flagNeedsReview.
+    const res = await PayoutModel.updateOne(
+      { _id: id, status: 'PROCESSING', $or: [{ legs: { $exists: false } }, { legs: { $size: 0 } }] },
+      { $set: { status: 'NEEDS_REVIEW' } },
+    )
+    return res.modifiedCount === 1
+  }
+
+  async reopenForSettlement(id: string): Promise<boolean> {
+    const res = await PayoutModel.updateOne(
+      { _id: id, status: 'NEEDS_REVIEW', $or: [{ legs: { $exists: false } }, { legs: { $size: 0 } }] },
+      { $set: { status: 'PROCESSING' } },
+    )
+    return res.modifiedCount === 1
   }
 
   async attachTransferCode(id: string, transferCode: string): Promise<PayoutEntity | null> {

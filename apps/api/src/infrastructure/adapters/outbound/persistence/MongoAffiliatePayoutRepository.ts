@@ -136,6 +136,16 @@ export class MongoAffiliatePayoutRepository
     return doc ? toDomain(doc) : null;
   }
 
+  async escalateProcessing(id: string): Promise<boolean> {
+    const res = await AffiliatePayoutModel.updateOne({ _id: id, status: 'PROCESSING' }, { $set: { status: 'NEEDS_REVIEW' } });
+    return res.modifiedCount === 1;
+  }
+
+  async reopenForSettlement(id: string): Promise<boolean> {
+    const res = await AffiliatePayoutModel.updateOne({ _id: id, status: 'NEEDS_REVIEW' }, { $set: { status: 'PROCESSING' } });
+    return res.modifiedCount === 1;
+  }
+
   async transitionToPaid(id: string): Promise<AffiliatePayoutEntity | null> {
     const doc = await AffiliatePayoutModel.findOneAndUpdate(
       { _id: id, status: 'PROCESSING' },
@@ -148,6 +158,15 @@ export class MongoAffiliatePayoutRepository
   async transitionToFailed(id: string): Promise<AffiliatePayoutEntity | null> {
     const doc = await AffiliatePayoutModel.findOneAndUpdate(
       { _id: id, status: 'PROCESSING' },
+      { $set: { status: 'FAILED' } },
+      { new: true }
+    );
+    return doc ? toDomain(doc) : null;
+  }
+
+  async transitionPendingToFailed(id: string): Promise<AffiliatePayoutEntity | null> {
+    const doc = await AffiliatePayoutModel.findOneAndUpdate(
+      { _id: id, status: 'PENDING' },
       { $set: { status: 'FAILED' } },
       { new: true }
     );

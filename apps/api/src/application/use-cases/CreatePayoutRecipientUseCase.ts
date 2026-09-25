@@ -6,6 +6,8 @@ import type { TransferRecipientRepositoryPort } from '../../domain/ports/outboun
 import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGatewayPort.js'
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js'
 import { toTransferRecipientDto } from './mappers/payoutDto.js'
+import { payoutNamesMatch } from '../../domain/services/payoutNameMatch.js'
+import type { PaystackMode } from '../../domain/value-objects/PaystackMode.js'
 
 export interface PayoutRequester {
   userId: string
@@ -18,7 +20,7 @@ const CURRENCY = 'GHS'
 
 /**
  * Register a payout recipient (bank or mobile money) for a campaign with the
- * payment provider, then persist it. Owner (or admin) only. The provider call
+ * payment provider, then persist it. Campaign owner only. The provider call
  * returns 501 when payouts are unconfigured.
  */
 export class CreatePayoutRecipientUseCase {
@@ -27,6 +29,8 @@ export class CreatePayoutRecipientUseCase {
     private readonly transferRecipientRepo: TransferRecipientRepositoryPort,
     private readonly paymentGateway: PaymentGatewayPort,
     private readonly accounts?: PayoutAccountService,
+    /** Paystack environment new recipient codes belong to. */
+    private readonly recipientMode?: PaystackMode,
   ) {}
 
   async execute(
@@ -43,9 +47,11 @@ export class CreatePayoutRecipientUseCase {
       throw new AppError('Campaign not found', 404)
     }
 
-    const isOwner = campaign.creatorId === requester.userId
-    const isAdmin = requester.role === 'admin'
-    if (!isOwner && !isAdmin) {
+    // Owner only, admins included: both approval paths require the destination
+    // to have been registered by the campaign owner (createdBy), so a recipient
+    // an admin registered could never be paid — and letting staff enter bank
+    // details under an owner's campaign would defeat that ownership check.
+    if (campaign.creatorId !== requester.userId) {
       throw new AppError('Only the campaign owner can add a payout recipient', 403)
     }
 
@@ -69,15 +75,9 @@ export class CreatePayoutRecipientUseCase {
     } catch {
       /* Fail closed into manual review; never label provider errors as verification. */
     }
-    const normalize = (name: string) =>
-      name
-        .normalize('NFKC')
-        .toLowerCase()
-        .replace(/[^\p{L}\p{N}]/gu, '')
-    const verificationStatus =
-      resolvedAccountName && normalize(resolvedAccountName) === normalize(input.accountName)
-        ? ('name_matched' as const)
-        : ('needs_review' as const)
+    const verificationStatus = payoutNamesMatch(input.accountName, resolvedAccountName)
+      ? ('name_matched' as const)
+      : ('needs_review' as const)
     const recipientCode = await this.paymentGateway.createTransferRecipient({
       type: input.type,
       name: input.accountName,
@@ -98,6 +98,7 @@ export class CreatePayoutRecipientUseCase {
         resolvedAccountName,
         verificationStatus,
         recipientCode,
+        recipientMode: this.recipientMode,
         currency: CURRENCY,
         createdAt: new Date(),
       }),

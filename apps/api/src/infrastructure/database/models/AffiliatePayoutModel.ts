@@ -25,6 +25,8 @@ const PAYOUT_STATUSES: PayoutStatus[] = [
   'PAID',
   'FAILED',
   'REVERSED',
+  // A single transfer Paystack could not confirm for a full day; an admin resolves it.
+  'NEEDS_REVIEW',
 ];
 
 const PAYOUT_PROVIDERS: PayoutProvider[] = ['paystack'];

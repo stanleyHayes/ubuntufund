@@ -1,4 +1,5 @@
-import { Box, Chip, Typography } from '@mui/material'
+import { useState } from 'react'
+import { Box, Button, Chip, Typography } from '@mui/material'
 import AccountBalanceWalletRounded from '@mui/icons-material/AccountBalanceWalletRounded'
 import AccountBalanceRounded from '@mui/icons-material/AccountBalanceRounded'
 import ScheduleRounded from '@mui/icons-material/ScheduleRounded'
@@ -29,9 +30,32 @@ const statuses: Record<Payout['status'], { label: string; detail: string }> = {
       'The team needs to reconcile this payout. Contact support with the reference below; do not submit a duplicate.',
   },
 }
-export function PayoutHistoryCard({ payout }: { payout: Payout }) {
-  const state =
-    payout.status === 'PROCESSING' && payout.providerStatus === 'otp'
+function closedState(closure: NonNullable<Payout['closure']>) {
+  return closure.kind === 'rejected'
+    ? {
+        label: 'Rejected',
+        detail: `The admin team rejected this request: ${closure.reason} Nothing was sent, and the amount is back in your campaign balance.`,
+      }
+    : {
+        label: 'Cancelled',
+        detail: 'You cancelled this request. Nothing was sent, and the amount is back in your campaign balance.',
+      }
+}
+
+export function PayoutHistoryCard({
+  payout,
+  onCancel,
+  cancelling = false,
+}: {
+  payout: Payout
+  /** Offered while the request is still awaiting review (no transfer sent yet). */
+  onCancel?: (payoutId: string) => void
+  cancelling?: boolean
+}) {
+  const [confirmingCancel, setConfirmingCancel] = useState(false)
+  const state = payout.closure
+    ? closedState(payout.closure)
+    : payout.status === 'PROCESSING' && payout.providerStatus === 'otp'
       ? {
           label: 'Awaiting authorization',
           detail:
@@ -131,6 +155,33 @@ export function PayoutHistoryCard({ payout }: { payout: Payout }) {
       <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 560, lineHeight: 1.6 }}>
         {state.detail}
       </Typography>
+      {payout.status === 'PENDING' && onCancel && (
+        <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+          {confirmingCancel ? (
+            <>
+              <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                Cancel this request? The amount returns to your balance.
+              </Typography>
+              <Button size="small" onClick={() => setConfirmingCancel(false)} disabled={cancelling}>
+                Keep request
+              </Button>
+              <Button
+                size="small"
+                color="error"
+                variant="contained"
+                disabled={cancelling}
+                onClick={() => onCancel(payout.id)}
+              >
+                {cancelling ? 'Cancelling…' : 'Cancel request'}
+              </Button>
+            </>
+          ) : (
+            <Button size="small" color="error" onClick={() => setConfirmingCancel(true)}>
+              Cancel request
+            </Button>
+          )}
+        </Box>
+      )}
       <Box
         sx={{
           display: 'grid',
