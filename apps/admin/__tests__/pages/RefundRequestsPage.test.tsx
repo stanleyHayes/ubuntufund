@@ -64,3 +64,42 @@ it('keeps every action disabled for read-only staff', async () => {
   expect(screen.getByRole('textbox', { name: /Staff note/ })).toBeDisabled()
   expect(screen.getByRole('button', { name: 'Decline' })).toBeDisabled()
 })
+
+it('passes what was already refunded to the dialog and caps the refund at the remainder', async () => {
+  state.get.mockResolvedValue({ items: [{ ...item, contribution: { ...item.contribution, status: 'PARTIALLY_REFUNDED', amount: 200, refundedAmountMinor: 5000 } }], total: 1 })
+  state.post.mockResolvedValue({ status: 'REFUNDED', operationId: 'op-5', amount: 150 })
+  renderPage()
+  expect(await screen.findByText(/Refunded GH₵50 · GH₵150 still refundable/)).toBeVisible()
+  fireEvent.click(screen.getByRole('button', { name: 'Refund payment' }))
+  const dialog = await screen.findByRole('dialog')
+  expect(within(dialog).getByRole('spinbutton', { name: /Refund amount/ })).toHaveValue(150)
+  fireEvent.click(within(dialog).getByRole('checkbox'))
+  fireEvent.click(within(dialog).getByRole('button', { name: /^Refund/ }))
+  await waitFor(() => expect(state.post).toHaveBeenCalledWith('/admin/payments/intent-1/refund', { amount: 150, idempotencyKey: expect.any(String) }))
+})
+
+it('reloads the queue after a failed refund and reuses the key when the payment is unchanged', async () => {
+  state.post.mockRejectedValueOnce(new Error('Gateway timeout')).mockRejectedValueOnce(new Error('This refund was already processed or would exceed the refundable amount'))
+  renderPage()
+  fireEvent.click(await screen.findByRole('button', { name: 'Refund payment' }))
+  let dialog = await screen.findByRole('dialog')
+  fireEvent.click(within(dialog).getByRole('checkbox'))
+  fireEvent.click(within(dialog).getByRole('button', { name: /^Refund/ }))
+  expect(await within(dialog).findByText(/Gateway timeout/)).toBeVisible()
+  const loadsBefore = state.get.mock.calls.length
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+  await waitFor(() => expect(state.get.mock.calls.length).toBe(loadsBefore + 1))
+  fireEvent.click(await screen.findByRole('button', { name: 'Refund payment' }))
+  dialog = await screen.findByRole('dialog')
+  fireEvent.click(within(dialog).getByRole('checkbox'))
+  fireEvent.click(within(dialog).getByRole('button', { name: /^Refund/ }))
+  await waitFor(() => expect(state.post).toHaveBeenCalledTimes(2))
+  expect(state.post.mock.calls[1][1].idempotencyKey).toBe(state.post.mock.calls[0][1].idempotencyKey)
+})
+
+it('hides the refund action when nothing is left to refund', async () => {
+  state.get.mockResolvedValue({ items: [{ ...item, contribution: { ...item.contribution, status: 'PARTIALLY_REFUNDED', amount: 200, refundedAmountMinor: 20000 } }], total: 1 })
+  renderPage()
+  expect(await screen.findByRole('link', { name: 'View payment timeline' })).toBeVisible()
+  expect(screen.queryByRole('button', { name: 'Refund payment' })).toBeNull()
+})

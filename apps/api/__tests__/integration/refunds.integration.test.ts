@@ -291,6 +291,13 @@ describe('Refunds (spec §14)', () => {
       .send({ amount: 100 })
       .expect(200);
 
+    // Staff see what was already refunded, so the console can offer only the remainder.
+    const lookup = await request(app)
+      .get(`/api/v1/admin/payments/${intentId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+    expect(lookup.body.data.contribution).toMatchObject({ status: 'PARTIALLY_REFUNDED', amount: 200, refundedAmountMinor: 10000 });
+
     // A further GH₵150 would exceed the remaining GH₵100 → rejected, no refund.
     await request(app)
       .post(`/api/v1/admin/payments/${intentId}/refund`)

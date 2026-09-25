@@ -27,7 +27,7 @@ const updateSchema = z.object({
   refundOperationId: z.string().trim().min(1).max(100).optional(),
 }).strict();
 
-type Contribution = { id: string; status: string; provider: string; providerRef?: string; currency: string; refundedAmountMinor?: number };
+type Contribution = { id: string; status: string; provider: string; providerRef?: string; currency: string; amount: number; refundedAmountMinor?: number };
 
 /** Settled donations link to their payment through the settlement journal entry. */
 async function contributionsFor(donationIds: string[]): Promise<Map<string, Contribution>> {
@@ -35,7 +35,7 @@ async function contributionsFor(donationIds: string[]): Promise<Map<string, Cont
     .select('donationId donationIntentId').lean();
   const intentIds = entries.map((entry) => entry.donationIntentId).filter((id): id is string => !!id && OBJECT_ID.test(id));
   const intents = await DonationIntentModel.find({ _id: { $in: intentIds } })
-    .select('_id status provider providerRef currency refundedAmountMinor').lean();
+    .select('_id status provider providerRef currency amount refundedAmountMinor').lean();
   const byIntent = new Map(intents.map((intent) => [String(intent._id), intent]));
   const result = new Map<string, Contribution>();
   for (const entry of entries) {
@@ -43,7 +43,7 @@ async function contributionsFor(donationIds: string[]): Promise<Map<string, Cont
     if (!entry.donationId || !intent) continue;
     result.set(entry.donationId, {
       id: String(intent._id), status: intent.status, provider: intent.provider, providerRef: intent.providerRef,
-      currency: intent.currency, refundedAmountMinor: intent.refundedAmountMinor,
+      currency: intent.currency, amount: intent.amount, refundedAmountMinor: intent.refundedAmountMinor,
     });
   }
   return result;

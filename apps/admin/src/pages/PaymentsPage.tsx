@@ -2,7 +2,7 @@ import TextField from '@/components/AdminTextField'
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
 import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded'
 import PageHeader from '@/components/PageHeader'
-import RefundDialog, { REFUNDABLE_STATUSES } from '@/components/payments/RefundDialog'
+import RefundDialog, { REFUNDABLE_STATUSES, hasRefundableBalance, refundBalance, useRefundKeys } from '@/components/payments/RefundDialog'
 import { raisedSurface } from '@/lib/surfaces'
 import { ReviewQueueEmpty, ReviewQueueSkeleton, ReviewQueueToolbar } from '@/components/ReviewQueueStates'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
@@ -25,6 +25,8 @@ export interface AdminPayment {
   provider: string
   paymentMethod?: string
   providerRef?: string
+  /** Already refunded, in minor units of `currency`. */
+  refundedAmountMinor?: number
   createdAt: string
   updatedAt: string
 }
@@ -53,6 +55,9 @@ export default function PaymentsPage() {
   const [timelineLoading, setTimelineLoading] = useState(false)
   const [timelineError, setTimelineError] = useState('')
   const [refundOpen, setRefundOpen] = useState(0)
+  // The refund key outlives the dialog, so reopening after a lost response reuses it.
+  const refundKeyFor = useRefundKeys()
+  const [refundKey, setRefundKey] = useState('')
 
   const search = useCallback(async (criteria: typeof filters) => {
     setSearching(true); setError('')
@@ -83,6 +88,7 @@ export default function PaymentsPage() {
   const open = (id: string) => setParams(current => { const next = new URLSearchParams(current); next.set('id', id); return next })
   const set = (key: keyof typeof filters) => (event: { target: { value: string } }) => setFilters(current => ({ ...current, [key]: event.target.value }))
   const payment = timeline?.contribution
+  const refundedSoFar = payment ? refundBalance(payment) : null
 
   return <Stack spacing={3}>
     <PageHeader title="Payments" eyebrow="Donations" tone="gold" icon={<ReceiptLongRoundedIcon />}
@@ -128,6 +134,9 @@ export default function PaymentsPage() {
             <Chip size="small" variant="outlined" label={payment.provider} />
             {payment.paymentMethod && <Chip size="small" variant="outlined" label={label(payment.paymentMethod)} />}
           </Stack>
+          {!!refundedSoFar?.refunded && <Typography variant="body2" sx={{ mt: 1 }}>
+            Refunded {formatMoney(refundedSoFar.refunded, payment.currency)} · {formatMoney(refundedSoFar.remaining, payment.currency)} still refundable
+          </Typography>}
         </Box>
         <Typography variant="body2">Contribution {payment.id} · Reference {payment.providerRef || 'not issued'}</Typography>
         <Typography variant="body2">Campaign <Link component={RouterLink} to={`/campaigns/${payment.campaignId}`}>{payment.campaignId}</Link>{payment.donorEmail ? ` · ${payment.donorEmail}` : ' · Donor email not recorded'}{payment.donorName ? ` · ${payment.donorName}` : ''}</Typography>
@@ -143,13 +152,13 @@ export default function PaymentsPage() {
           {!timeline.attempts.length && <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>No provider attempts were recorded.</Typography>}
         </Box>
         <Stack direction="row" useFlexGap flexWrap="wrap" spacing={1}>
-          {REFUNDABLE_STATUSES.includes(payment.status) && <Button color="error" variant="outlined" disabled={!canRefund} onClick={() => setRefundOpen(value => value + 1)}>Refund payment</Button>}
+          {hasRefundableBalance(payment) && <Button color="error" variant="outlined" disabled={!canRefund} onClick={() => { setRefundKey(refundKeyFor(payment)); setRefundOpen(value => value + 1) }}>Refund payment</Button>}
           <Button component={RouterLink} to="/refund-recovery">Refund recovery</Button>
         </Stack>
         {!REFUNDABLE_STATUSES.includes(payment.status) && <Typography variant="body2" color="text.secondary">Only a settled or partly refunded payment can be refunded.</Typography>}
       </Stack>}
     </Paper>}
-    {payment && refundOpen > 0 && <RefundDialog key={`${payment.id}-${refundOpen}`} open contribution={payment}
-      onClose={() => setRefundOpen(0)} onRefunded={() => void loadTimeline(payment.id)} />}
+    {payment && refundOpen > 0 && refundKey && <RefundDialog key={`${payment.id}-${refundOpen}`} open contribution={payment} idempotencyKey={refundKey}
+      onClose={failed => { setRefundOpen(0); if (failed) void loadTimeline(payment.id) }} onRefunded={() => void loadTimeline(payment.id)} />}
   </Stack>
 }
