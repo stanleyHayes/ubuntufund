@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest';
-import { DeleteAccountUseCase, describeClosureBlockers } from '../../../src/application/use-cases/DeleteAccountUseCase.js';
+import { DeleteAccountUseCase, describeClosureBlockers, describeClosureBlockersForStaff } from '../../../src/application/use-cases/DeleteAccountUseCase.js';
 import { AppError } from '../../../src/infrastructure/adapters/inbound/middleware/errorHandler.js';
 import type { AccountClosureCheck } from '../../../src/domain/ports/outbound/AccountClosureCheckPort.js';
 
@@ -63,5 +63,30 @@ it('maps wrong reauthentication to 400 so clients keep the session', async () =>
   await expect(uc.execute('user-1', { password: 'SecurePass123' })).rejects.toMatchObject({ statusCode: 400, errors: { mfaCode: ['required'] } });
   stepUp.verifyStepUp.mockRejectedValueOnce(new AppError('Too many code attempts. Try again in 10 minutes.', 429));
   await expect(uc.execute('user-1', { password: 'SecurePass123', code: '000000' })).rejects.toMatchObject({ statusCode: 429 });
+  expect(erasure.request).not.toHaveBeenCalled();
+});
+
+it('lets staff close without the holder’s password but never past a money blocker', async () => {
+  const { uc, erasure, tokens, stepUp } = setup();
+  await uc.closeByStaff('user-1');
+  expect(stepUp.verifyStepUp).not.toHaveBeenCalled();
+  expect(erasure.request).toHaveBeenCalledWith('user-1');
+  expect(tokens.revokeAllTokens).toHaveBeenCalledWith('user-1');
+
+  const blockers = [{ kind: 'campaign_balance' as const, currency: 'GHS', amount: 40 }, { kind: 'pending_payout' as const, count: 1 }];
+  const blocked = setup({ blockers, openCampaigns: 0 });
+  const failure = await blocked.uc.closeByStaff('user-1').catch(error => error);
+  expect(failure).toMatchObject({ statusCode: 409, errors: { accountClosure: ['campaign_balance', 'pending_payout'] } });
+  expect(failure.message).toBe(describeClosureBlockersForStaff(blockers));
+  expect(failure.message).toContain('GHS 40.00 raised by their campaigns');
+  expect(failure.message).not.toContain('password');
+  expect(blocked.erasure.request).not.toHaveBeenCalled();
+  expect(blocked.tokens.revokeAllTokens).not.toHaveBeenCalled();
+});
+
+it('refuses staff closure of an account that no longer exists', async () => {
+  const { uc, userRepo, erasure } = setup();
+  userRepo.findById.mockResolvedValueOnce(null as never);
+  await expect(uc.closeByStaff('gone')).rejects.toMatchObject({ statusCode: 404 });
   expect(erasure.request).not.toHaveBeenCalled();
 });

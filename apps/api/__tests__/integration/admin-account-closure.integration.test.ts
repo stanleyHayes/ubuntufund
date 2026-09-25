@@ -7,6 +7,7 @@ import { connectTestDatabase, disconnectTestDatabase, dropTestDatabase } from '.
 import { UserModel } from '../../src/infrastructure/database/models/UserModel.js';
 import { AuditLogModel } from '../../src/infrastructure/database/models/AuditLogModel.js';
 import { AccountDeletionRequestModel } from '../../src/infrastructure/database/models/AccountDeletionRequestModel.js';
+import { WalletModel } from '../../src/infrastructure/database/models/WalletModel.js';
 
 const NOTE = 'Holder replied from the registered address asking to close the account.';
 let app: Express, admin: { id: string; auth: string };
@@ -35,8 +36,42 @@ describe('staff-assisted account closure', () => {
     expect(await AccountDeletionRequestModel.exists({ userId: member.id })).toBeTruthy();
     await request(app).get('/api/v1/profile').set('Authorization', member.auth).expect(401);
     const audit = await AuditLogModel.findOne({ resource: `user:${member.id}`, action: 'account.staff_closure' }).lean();
-    expect(audit).toMatchObject({ actorId: admin.id, reason: NOTE, severity: 'warning' });
+    expect(audit).toMatchObject({ actorId: admin.id, reason: NOTE, severity: 'warning', statusCode: 200 });
+    expect(audit?.details).toContain('completed');
     await close(member.id, { verificationNote: NOTE, confirmEmail: member.email }).expect(404);
+    // A retry on a closed account never adds a second closure record.
+    expect(await AuditLogModel.countDocuments({ resource: `user:${member.id}`, action: /^account\.staff_closure/ })).toBe(1);
+  });
+
+  it('never asks the holder for a password: staff closure works although self-service requires one', async () => {
+    const member = await account('closure-stepup');
+    await request(app).delete('/api/v1/profile').set('Authorization', member.auth).send({}).expect(400);
+    await close(member.id, { verificationNote: NOTE, confirmEmail: member.email }).expect(200);
+    expect((await UserModel.findById(member.id).lean())?.deletedAt).toBeInstanceOf(Date);
+  });
+
+  it('shows staff the money blockers first and records a refused attempt as refused, not closed', async () => {
+    const member = await account('closure-balance');
+    await WalletModel.updateOne({ userId: member.id, type: 'local', currency: 'GHS' }, { $set: { balance: 150 } }, { upsert: true });
+    const preview = await request(app).get(`/api/v1/admin/users/${member.id}/closure`).set('Authorization', admin.auth).expect(200);
+    expect(preview.body.data).toMatchObject({ canClose: false, blockers: [{ kind: 'wallet_balance', currency: 'GHS', amount: 150 }] });
+    expect(preview.body.data.message).toContain('GHS 150.00 in their Ujimora wallet');
+    await request(app).get(`/api/v1/admin/users/${member.id}/closure`).set('Authorization', member.auth).expect(403);
+
+    const refused = await close(member.id, { verificationNote: NOTE, confirmEmail: member.email }).expect(409);
+    expect(refused.body.message).toContain('GHS 150.00 in their Ujimora wallet');
+    expect(refused.body.message).not.toContain('password');
+    expect((await UserModel.findById(member.id).lean())?.deletedAt ?? null).toBeNull();
+    expect(await AccountDeletionRequestModel.exists({ userId: member.id })).toBeNull();
+    await request(app).get('/api/v1/profile').set('Authorization', member.auth).expect(200);
+    expect(await AuditLogModel.countDocuments({ resource: `user:${member.id}`, action: 'account.staff_closure' })).toBe(0);
+    expect(await AuditLogModel.findOne({ resource: `user:${member.id}`, action: 'account.staff_closure_refused' }).lean())
+      .toMatchObject({ actorId: admin.id, reason: NOTE, statusCode: 409, details: expect.stringContaining('wallet_balance') });
+
+    await WalletModel.updateOne({ userId: member.id, type: 'local', currency: 'GHS' }, { $set: { balance: 0 } });
+    expect((await request(app).get(`/api/v1/admin/users/${member.id}/closure`).set('Authorization', admin.auth).expect(200)).body.data)
+      .toMatchObject({ canClose: true, blockers: [] });
+    await close(member.id, { verificationNote: NOTE, confirmEmail: member.email }).expect(200);
   });
 
   it('requires a verification note and the matching account email', async () => {

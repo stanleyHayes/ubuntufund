@@ -25,12 +25,12 @@ function formatAmount(amount: number, currency?: string): string {
   return `${currency ?? 'GHS'} ${value}`;
 }
 
-function describeBlocker(blocker: AccountClosureBlocker): string {
+function describeBlocker(blocker: AccountClosureBlocker, whose: 'your' | 'their'): string {
   const amount = formatAmount(blocker.amount ?? 0, blocker.currency);
   switch (blocker.kind) {
-    case 'wallet_balance': return `${amount} in your Ujimora wallet`;
-    case 'campaign_balance': return `${amount} raised by your campaigns that has not been paid out`;
-    case 'beneficiary_balance': return `${amount} held for your campaign beneficiaries`;
+    case 'wallet_balance': return `${amount} in ${whose} Ujimora wallet`;
+    case 'campaign_balance': return `${amount} raised by ${whose} campaigns that has not been paid out`;
+    case 'beneficiary_balance': return `${amount} held for ${whose} campaign beneficiaries`;
     case 'creator_balance': return `${amount} in creator tips not yet withdrawn`;
     case 'affiliate_balance': return `${amount} in affiliate earnings not yet paid out`;
     case 'pending_payout': {
@@ -41,8 +41,16 @@ function describeBlocker(blocker: AccountClosureBlocker): string {
 }
 
 export function describeClosureBlockers(blockers: AccountClosureBlocker[]): string {
-  return `Your account can’t be closed yet. First withdraw or resolve: ${blockers.map(describeBlocker).join('; ')}. `
-    + 'If you can’t, contact support@ujimora.com and we’ll help you close your account.';
+  // Staff cannot override these blockers either (closing would strand the
+  // money), so support helps the holder resolve them rather than closing.
+  return `Your account can’t be closed yet. First withdraw or resolve: ${blockers.map(blocker => describeBlocker(blocker, 'your')).join('; ')}. `
+    + 'If you can’t, contact support@ujimora.com and we’ll help you resolve it so your account can be closed.';
+}
+
+/** The same blockers, worded for staff closing an account on the holder's behalf. */
+export function describeClosureBlockersForStaff(blockers: AccountClosureBlocker[]): string {
+  return `This account can’t be closed while money is outstanding. The holder must first withdraw or resolve: ${blockers.map(blocker => describeBlocker(blocker, 'their')).join('; ')}. `
+    + 'Closing now would strand it, so staff cannot override this.';
 }
 
 export class DeleteAccountUseCase {
@@ -89,10 +97,28 @@ export class DeleteAccountUseCase {
       }
     }
 
+    await this.close(userId, describeClosureBlockers);
+  }
+
+  /**
+   * Staff-assisted closure for a holder who cannot sign in. There is no
+   * step-up: the holder is never asked for a password or code, and the admin
+   * route has already fenced a current administrator, matched the typed
+   * account email and taken a verification note. Only that route may call
+   * this. The money blockers still apply, because staff closing an account
+   * would strand a balance or an in-flight payout just the same.
+   */
+  async closeByStaff(userId: string): Promise<void> {
+    const user = await this.userRepo.findById(userId);
+    if (!user) throw new AppError('Account not found', 404);
+    await this.close(userId, describeClosureBlockersForStaff);
+  }
+
+  private async close(userId: string, describe: (blockers: AccountClosureBlocker[]) => string): Promise<void> {
     if (this.closureCheck) {
       const { blockers } = await this.closureCheck.check(userId);
       if (blockers.length) {
-        throw new AppError(describeClosureBlockers(blockers), 409, { accountClosure: blockers.map(blocker => blocker.kind) });
+        throw new AppError(describe(blockers), 409, { accountClosure: blockers.map(blocker => blocker.kind) });
       }
     }
 
