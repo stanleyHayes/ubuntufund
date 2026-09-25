@@ -5,6 +5,7 @@ import { CampaignUpdateEntity } from '../../domain/entities/CampaignUpdate.js';
 import type { CampaignUpdateRepositoryPort } from '../../domain/ports/outbound/CampaignUpdateRepositoryPort.js';
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
+import { publicationFingerprint } from '../../domain/services/publicationFingerprint.js';
 
 function toDTO(entity: CampaignUpdateEntity): CampaignUpdate {
   const plain = entity.toPlain();
@@ -69,7 +70,7 @@ export class CreateCampaignUpdateUseCase {
     if (!this.publication || !this.admission.assertCurrent) throw new AppError('Update publication verification is unavailable', 503);
     return this.publication.run(authorId, authVersion, campaignId, campaign.creatorId, async () => {
       await this.admission!.assertCurrent!(submission);
-      return toDTO(await this.updateRepo.save(update));
+      return toDTO(await this.updateRepo.save(update, { publicationFingerprint: publicationFingerprint(submission) }));
     });
   }
 }

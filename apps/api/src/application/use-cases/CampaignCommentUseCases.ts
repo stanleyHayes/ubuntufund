@@ -8,6 +8,7 @@ import type { CampaignCommentRepositoryPort, CampaignCommentRecord } from '../..
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js';
 import type { UserRepositoryPort } from '../../domain/ports/outbound/UserRepositoryPort.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
+import { publicationFingerprint } from '../../domain/services/publicationFingerprint.js';
 
 export class CampaignCommentUseCases {
   constructor(
@@ -66,7 +67,7 @@ export class CampaignCommentUseCases {
         throw new AppError('Your public identity changed during review. Refresh and submit again.', 409);
       }
       if (this.blocks && await this.blocks.isBlocked(authorId, campaign.creatorId)) throw new AppError('You cannot comment on this campaign', 403);
-      return this.toDTO(await this.comments.create(campaignId, authorId, content, { authorName: author.name, authorAvatarUrl: author.avatarUrl }));
+      return this.toDTO(await this.comments.create(campaignId, authorId, content, { authorName: author.name, authorAvatarUrl: author.avatarUrl, publicationFingerprint: publicationFingerprint(submission) }));
     });
   }
 

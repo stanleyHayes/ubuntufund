@@ -6,8 +6,8 @@ function toRecord(doc: CampaignCommentDocument): CampaignCommentRecord {
 }
 
 export class MongoCampaignCommentRepository implements CampaignCommentRepositoryPort {
-  async create(campaignId: string, authorId: string, content: string, attribution?: { authorName: string; authorAvatarUrl?: string }): Promise<CampaignCommentRecord> {
-    return toRecord(await CampaignCommentModel.create({ campaignId, authorId, content, authorName: attribution?.authorName, authorAvatarUrl: attribution?.authorAvatarUrl }));
+  async create(campaignId: string, authorId: string, content: string, attribution?: { authorName: string; authorAvatarUrl?: string; publicationFingerprint?: string }): Promise<CampaignCommentRecord> {
+    return toRecord(await CampaignCommentModel.create({ campaignId, authorId, content, authorName: attribution?.authorName, authorAvatarUrl: attribution?.authorAvatarUrl, publicationFingerprint: attribution?.publicationFingerprint }));
   }
 
   async findById(id: string): Promise<CampaignCommentRecord | null> {

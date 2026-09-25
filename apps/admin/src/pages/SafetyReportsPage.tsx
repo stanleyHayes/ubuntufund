@@ -11,6 +11,7 @@ import { exportTable, dateCell } from '@/lib/exports/report'
 import { useCallback, useEffect, useState } from 'react'
 import { Alert, Box, Button, Chip, Skeleton, MenuItem, Paper, Stack, Typography } from '@mui/material'
 import { api } from '@/lib/api'
+import RestrictedUsersPanel from '@/components/RestrictedUsersPanel'
 interface Report { _id: string; targetType: 'user' | 'comment' | 'campaign_update' | 'live' | 'donation_message' | 'tip_message' | 'ai_output'; targetId: string; targetUserId?: string; reason: string; description?: string; evidence?: string; priority: string; createdAt: string; status: string; resolution?: string; reviewNotes?: string; reviewAction?: string }
 export default function SafetyReportsPage() {
   const [pendingLiveCleanup, setPendingLiveCleanup] = useState(0)
@@ -18,6 +19,10 @@ export default function SafetyReportsPage() {
   const [items, setItems] = useState<Report[]>([]), [status, setStatus] = useState('pending'), [page, setPage] = useState(1), [total, setTotal] = useState(0)
   const [notes, setNotes] = useState<Record<string, string>>({}), [busy, setBusy] = useState(''), [error, setError] = useState(''), [notice, setNotice] = useState('')
   const [pageSize, setPageSize] = useState(12)
+  const [view, setView] = useState<'reports' | 'restrictions'>('reports')
+  // A restore from an older report is refused (409) when a newer decision now
+  // governs the account; staff may then lift it deliberately.
+  const [supersede, setSupersede] = useState('')
   const load = useCallback(async () => {
     setLoading(true); setItems([])
     try { const data = await api.get<{ items: Report[]; total: number; pendingLiveCleanup: number }>(`/admin/safety-reports?status=${status}&page=${page}&pageSize=${pageSize}`); setItems(data.items); setTotal(data.total); setPendingLiveCleanup(data.pendingLiveCleanup ?? 0); setError('') }
@@ -28,14 +33,23 @@ export default function SafetyReportsPage() {
   async function review(report: Report, action: string) {
     setBusy(report._id); setError(''); setNotice('')
     try {
-      if (action === 'restore') await api.post(`/admin/safety-reports/restrictions/${report.targetUserId}/restore`, { notes: notes[report._id] || report.reviewNotes })
+      if (action === 'restore' || action === 'restore_supersede') await api.post(`/admin/safety-reports/restrictions/${report.targetUserId}/restore`, { notes: notes[report._id] || report.reviewNotes, reportId: report._id, ...(action === 'restore_supersede' ? { confirmSupersede: true } : {}) })
       else await api.put(`/admin/safety-reports/${report._id}/review`, { action, notes: notes[report._id] || report.reviewNotes })
-      setNotice(action === 'restore' ? 'Publishing restriction removed. Previously hidden comments and messages remain hidden.' : 'Review saved.'); await load()
-    } catch (e) { setError(e instanceof Error ? e.message : 'Could not save review') }
+      setSupersede('')
+      setNotice(action.startsWith('restore') ? 'Publishing restriction removed. Previously hidden comments and messages remain hidden.' : 'Review saved.'); await load()
+    } catch (e) {
+      if (action === 'restore') setSupersede(report._id)
+      setError(e instanceof Error ? e.message : 'Could not save review')
+    }
     finally { setBusy('') }
   }
   return <Stack spacing={3}>
     <PageHeader title="Community safety reports" eyebrow="Trust & safety" lede="Review reported content and protect your community. Urgent reports appear first." tone="clay" icon={<ShieldRoundedIcon />} stats={[{ label: "Reports in this view", value: loading ? <Skeleton width={60} /> : error ? "—" : total }, { label: "Live cleanup pending", value: loading ? <Skeleton width={60} /> : error ? "—" : pendingLiveCleanup }]} />
+    <Stack direction="row" spacing={1} role="group" aria-label="Safety view">
+      <Button variant={view === 'reports' ? 'contained' : 'outlined'} aria-pressed={view === 'reports'} onClick={() => setView('reports')}>Reports</Button>
+      <Button variant={view === 'restrictions' ? 'contained' : 'outlined'} aria-pressed={view === 'restrictions'} onClick={() => setView('restrictions')}>Restricted users</Button>
+    </Stack>
+    {view === 'restrictions' ? <RestrictedUsersPanel /> : <>
     <ReviewQueueToolbar>
       <TextField optionContext="safety" select sx={{ maxWidth: { sm: 280 } }} label="Status" value={status} onChange={e => { setStatus(e.target.value); setPage(1) }}>{['pending', 'resolved', 'dismissed'].map(value => <MenuItem key={value} value={value}>{value}</MenuItem>)}</TextField>
       <Button variant="outlined" startIcon={<RefreshRoundedIcon />} disabled={loading || !!busy} onClick={() => void load()}>Refresh queue</Button>
@@ -63,9 +77,13 @@ export default function SafetyReportsPage() {
           <Button disabled={!report.targetUserId || !!busy || ((notes[report._id] || (report.status === 'pending' ? report.reviewNotes : ''))?.trim().length || 0) < 20} onClick={() => void review(report, 'restrict_user')}>Restrict publishing</Button>
           <Button disabled={!!busy || ((notes[report._id] || (report.status === 'pending' ? report.reviewNotes : ''))?.trim().length || 0) < 20} onClick={() => void review(report, 'resolve')}>Resolve after other action</Button>
           <Button disabled={!!busy || ((notes[report._id] || (report.status === 'pending' ? report.reviewNotes : ''))?.trim().length || 0) < 20} onClick={() => void review(report, 'dismiss')}>Dismiss</Button>
-        </> : report.resolution === 'restrict_user' && <Button disabled={!!busy || ((notes[report._id] || (report.status === 'pending' ? report.reviewNotes : ''))?.trim().length || 0) < 20} onClick={() => void review(report, 'restore')}>Restore publishing after appeal</Button>}
+        </> : report.resolution === 'restrict_user' && <>
+          <Button disabled={!!busy || ((notes[report._id] || (report.status === 'pending' ? report.reviewNotes : ''))?.trim().length || 0) < 20} onClick={() => void review(report, 'restore')}>Restore publishing after appeal</Button>
+          {supersede === report._id && <Button color="warning" disabled={!!busy} onClick={() => void review(report, 'restore_supersede')}>Lift the current restriction anyway</Button>}
+        </>}
       </Stack>
     </Stack></Paper>)}
     {!loading && !error && <ReviewQueuePagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} onPageSizeChange={setPageSize} disabled={loading || !!busy} />}
+    </>}
   </Stack>
 }

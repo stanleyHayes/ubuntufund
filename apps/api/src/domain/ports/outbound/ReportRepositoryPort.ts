@@ -4,6 +4,8 @@ export type ReportReason =
   | 'inappropriate_content'
   | 'spam'
   | 'illegal_activity'
+  | 'intellectual_property'
+  | 'privacy'
   | 'other';
 
 export type ReportStatus = 'pending' | 'reviewed' | 'dismissed';

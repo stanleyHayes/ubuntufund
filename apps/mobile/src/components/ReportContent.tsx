@@ -5,7 +5,7 @@ import { Button } from './Loading'
 import { BrandedTextInput } from './BrandedTextInput'
 import { SelectionField } from './SelectionField'
 import { api } from '@/lib/api'
-const reasons = ['harassment', 'hate', 'sexual_content', 'violence', 'child_safety', 'credible_threat', 'fraud', 'spam', 'other']
+const reasons = ['harassment', 'hate', 'sexual_content', 'violence', 'child_safety', 'credible_threat', 'fraud', 'spam', 'intellectual_property', 'privacy', 'other']
 export function ReportContent({ userId, commentId, updateId, liveSessionId, donationId, tipId, aiOutput }: { userId?: string; commentId?: string; updateId?: string; liveSessionId?: string; donationId?: string; tipId?: string; aiOutput?: { requestId: string; text: string } }) {
   const [open, setOpen] = useState(false), [target, setTarget] = useState(aiOutput ? 'ai_output' : updateId ? 'campaign_update' : donationId ? 'donation_message' : tipId ? 'tip_message' : liveSessionId ? 'live' : commentId ? 'comment' : 'user'), [reason, setReason] = useState('harassment'), [description, setDescription] = useState(''), [busy, setBusy] = useState(false), [error, setError] = useState(''), [sent, setSent] = useState(false)
   async function submit() {

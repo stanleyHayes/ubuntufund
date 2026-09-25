@@ -9,17 +9,23 @@ import { CampaignCommentModel } from '../../src/infrastructure/database/models/C
 import { SafetyReportModel } from '../../src/infrastructure/database/models/SafetyReportModel.js';
 import { ContentRestrictionModel } from '../../src/infrastructure/database/models/ContentRestrictionModel.js';
 import { AuditLogModel } from '../../src/infrastructure/database/models/AuditLogModel.js';
+import { CampaignModel } from '../../src/infrastructure/database/models/CampaignModel.js';
 import { LEGAL_ACCEPTANCE_VERSION } from '@ubuntu-fund/types';
 let app: Express;
 beforeAll(async () => { await connectTestDatabase(); app = await createTestApp(); await SafetyReportModel.init(); });
 afterAll(async () => { await dropTestDatabase(); await disconnectTestDatabase(); });
+/** Reported comments must sit on a campaign the reporter can see. */
+async function publicCampaign(creatorId = 'campaign-owner-fixture') {
+  const campaign = await CampaignModel.create({ title: 'Safety fixture campaign', description: 'A public campaign', goalAmount: 500, currency: 'GHS', category: 'education', status: 'active', creatorId, startDate: new Date(), endDate: new Date(Date.now() + 86400000) });
+  return campaign.id as string;
+}
 async function user(name: string) {
   const r = await request(app).post('/api/v1/auth/register').send({ name, email: `${randomUUID()}@example.test`, password: 'SecurePass123', legalAcceptance: { version: LEGAL_ACCEPTANCE_VERSION, acceptedTerms: true, ageConfirmed: true } }).expect(201);
   return { id: r.body.data.user.id, token: `Bearer ${r.body.data.tokens.accessToken}` };
 }
 it('captures the displayed comment identity independently of later profile changes', async () => {
   const reporter = await user('Reporter'), author = await user('Current profile name');
-  const comment = await CampaignCommentModel.create({ campaignId: 'aaaaaaaaaaaaaaaaaaaaaaaa', authorId: author.id, content: 'Reported comment', authorName: 'Reviewed author', authorAvatarUrl: 'https://example.test/reviewed.png' });
+  const comment = await CampaignCommentModel.create({ campaignId: await publicCampaign(), authorId: author.id, content: 'Reported comment', authorName: 'Reviewed author', authorAvatarUrl: 'https://example.test/reviewed.png' });
   await UserModel.updateOne({ _id: author.id }, { $set: { name: 'Changed profile name', avatarUrl: 'https://example.test/changed.png' } });
   const report = await request(app).post('/api/v1/safety/reports').set('Authorization', reporter.token).send({ targetType: 'comment', targetId: comment.id, reason: 'harassment', description: 'Review the displayed attribution and comment.' }).expect(201);
   const evidence = (await SafetyReportModel.findById(report.body.data.id))!.evidence;
@@ -30,7 +36,7 @@ it('captures the displayed comment identity independently of later profile chang
 it('protects reporter identity, keeps evidence after removal, prioritizes urgency and audits moderation', async () => {
   const reporter = await user('Reporter'), author = await user('Author'), admin = await user('Moderator');
   await UserModel.findByIdAndUpdate(admin.id, { role: 'admin' });
-  const comment = await CampaignCommentModel.create({ campaignId: 'aaaaaaaaaaaaaaaaaaaaaaaa', authorId: author.id, content: 'Content for moderation review' });
+  const comment = await CampaignCommentModel.create({ campaignId: await publicCampaign(), authorId: author.id, content: 'Content for moderation review' });
   const input = { targetType: 'comment', targetId: comment.id, reason: 'credible_threat', description: 'Please review the threat in this comment.' };
   await request(app).post('/api/v1/safety/reports').send(input).expect(401);
   await request(app).post('/api/v1/safety/reports').set('Authorization', author.token).send(input).expect(400);

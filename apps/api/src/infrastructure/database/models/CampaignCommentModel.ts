@@ -6,6 +6,8 @@ export interface CampaignCommentDocument extends Document {
   content: string;
   authorName?: string;
   authorAvatarUrl?: string;
+  /** Fingerprint of the approved publication version; revoked if moderation removes the comment. */
+  publicationFingerprint?: string;
   deletedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -18,6 +20,7 @@ const campaignCommentSchema = new Schema<CampaignCommentDocument>(
     content: { type: String, required: true, maxlength: 1000 },
     authorName: { type: String },
     authorAvatarUrl: { type: String },
+    publicationFingerprint: { type: String },
     deletedAt: { type: Date, index: true },
   },
   { timestamps: true }

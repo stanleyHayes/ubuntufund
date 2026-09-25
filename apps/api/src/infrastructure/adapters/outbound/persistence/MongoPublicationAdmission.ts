@@ -2,9 +2,9 @@ import { MongoUnitOfWork } from './MongoUnitOfWork.js';
 import { hasCurrentLegalAcceptance } from '@ubuntu-fund/types';
 import { UserModel } from '../../../database/models/UserModel.js';
 import { ContentRestrictionModel } from '../../../database/models/ContentRestrictionModel.js';
-import { createHash } from 'node:crypto';
 import type { PublicationAdmissionPort, PublicationSubmission, PublicationTextScreener } from '../../../../domain/ports/outbound/PublicationAdmissionPort.js';
 import { PublicationReviewModel } from '../../../database/models/PublicationReviewModel.js';
+import { publicationFingerprint } from '../../../../domain/services/publicationFingerprint.js';
 import { AppError } from '../../inbound/middleware/errorHandler.js';
 import { logger } from '../../../logging/logger.js';
 
@@ -13,11 +13,7 @@ const APPROVAL_TTL_MS = 7 * 86400000;
 /** Private review records (and their drafts) are purged after this. */
 const REVIEW_RETENTION_MS = 30 * 86400000;
 
-function fingerprintOf(input: PublicationSubmission): string {
-  return createHash('sha256').update(JSON.stringify([
-    input.actorId, input.action, input.resourceId, input.baseVersion ?? '', input.text, input.mediaUrls,
-  ])).digest('hex');
-}
+const fingerprintOf = publicationFingerprint;
 
 export class MongoPublicationAdmission implements PublicationAdmissionPort {
   private readonly uow = new MongoUnitOfWork();
