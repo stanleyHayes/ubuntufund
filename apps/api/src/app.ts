@@ -1781,7 +1781,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
   // Served from the API because campaigns are dynamic; exposed at
   // app.ujimora.com/sitemap.xml via a rewrite, since a sitemap may only list
   // URLs on the host that serves it.
-  app.use('/', createSitemapRoutes())
+  app.use('/', createSitemapRoutes(publicProfileVisibility))
   app.use('/', createShortLinkPublicRoutes(shortLinkController))
 
   app.use(errorHandler)
