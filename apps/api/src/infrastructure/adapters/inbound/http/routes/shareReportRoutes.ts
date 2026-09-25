@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { CAMPAIGN_REPORT_REASONS } from '@ubuntu-fund/types';
 import type { ShareReportController } from '../controllers/ShareReportController.js';
 import { validate } from '../../middleware/validate.js';
 import type { createAuthMiddleware } from '../../middleware/authMiddleware.js';
@@ -8,17 +9,10 @@ const shareSchema = z.object({
   platform: z.string().min(1).max(50).optional(),
 });
 
-const REPORT_REASONS = [
-  'fraudulent',
-  'misleading',
-  'inappropriate_content',
-  'spam',
-  'illegal_activity',
-  'other',
-] as const;
-
+// Shared with the web and native report forms so no client can send a reason
+// this validator rejects.
 const reportSchema = z.object({
-  reason: z.enum(REPORT_REASONS),
+  reason: z.enum(CAMPAIGN_REPORT_REASONS),
   description: z.string().max(2000).optional(),
 });
 

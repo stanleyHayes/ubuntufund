@@ -1,8 +1,9 @@
 import { ReportContent } from '@/components/ReportContent'
+import { ReportCampaign } from '@/components/ReportCampaign'
 import { Chip } from '@/components/Chip'
 import { SkeletonLoader, Button } from '@/components/Loading'
 import { useState, useEffect, useMemo } from 'react'
-import { View, ScrollView, StyleSheet, Alert } from 'react-native'
+import { View, ScrollView, StyleSheet } from 'react-native'
 import { useLocalSearchParams, Stack, router } from 'expo-router'
 import { Text, Surface, Avatar, Icon } from 'react-native-paper'
 import { useCampaign, useUser } from '@/hooks/useCampaigns'
@@ -121,8 +122,6 @@ function makeStyles(p: Palette, neu: NeuRecipes) {
       backgroundColor: p.surface,
     },
     paymentMethodItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
-    reportButton: { alignSelf: 'flex-end', marginTop: 4 },
-    reportLabel: { fontSize: 13, fontFamily: 'Outfit_700Bold' },
 
     // Donation modal
     modalOverlay: {
@@ -528,28 +527,8 @@ export default function CampaignDetailScreen() {
             ))}
           </Surface>
 
-          {/* Report */}
-          <Button
-            mode="text"
-            icon="flag-outline"
-            textColor={p.error}
-            style={styles.reportButton}
-            labelStyle={styles.reportLabel}
-            onPress={() => Alert.alert(
-              'Report Campaign',
-              'Are you sure you want to report this campaign for review?',
-              [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Report', style: 'destructive', onPress: () => {
-                  api.post(`/campaigns/${campaign.id}/report`, { reason: 'Flagged from mobile' })
-                    .then(() => Alert.alert('Reported', 'Thank you. Our team will review this campaign.'))
-                    .catch(() => Alert.alert('Error', 'Could not submit report. Please try again.'))
-                }},
-              ]
-            )}
-          >
-            Report Campaign
-          </Button>
+          {/* Report: signed-in viewers other than the creator; signed-out viewers are asked to sign in. */}
+          <ReportCampaign campaignId={campaign.id} creatorId={campaign.creatorId} />
 
           <View style={{ height: 32 }} />
         </FadeInUp>

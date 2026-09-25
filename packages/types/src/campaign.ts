@@ -235,3 +235,28 @@ export interface UpdateCampaignUpdateInput {
 export function acceptsCampaignDonation(campaign: { status: string; endDate: Date | string } | null | undefined, now = Date.now()): boolean {
   return !!campaign && (campaign.status === CampaignStatus.ACTIVE || campaign.status === CampaignStatus.FUNDED) && new Date(campaign.endDate).getTime() > now
 }
+
+/**
+ * Reasons accepted by `POST /campaigns/:id/report`. The API validator and every
+ * client report form share this list so a client can never send a reason the
+ * server rejects.
+ */
+export const CAMPAIGN_REPORT_REASONS = [
+  'fraudulent',
+  'misleading',
+  'inappropriate_content',
+  'spam',
+  'illegal_activity',
+  'other',
+] as const
+
+export type CampaignReportReason = (typeof CAMPAIGN_REPORT_REASONS)[number]
+
+export const CAMPAIGN_REPORT_REASON_LABELS: Record<CampaignReportReason, string> = {
+  fraudulent: 'Fraudulent activity',
+  misleading: 'Misleading information',
+  inappropriate_content: 'Inappropriate content',
+  spam: 'Spam',
+  illegal_activity: 'Illegal activity',
+  other: 'Other',
+}
