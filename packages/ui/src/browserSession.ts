@@ -31,6 +31,21 @@ export function createBrowserSession(options: {
     clear()
     window.dispatchEvent(new Event(options.expiredEvent))
   }
+  /**
+   * Best-effort server-side sign-out of this session (POST /auth/logout with the
+   * refresh token), so a copied refresh token stops working. Never blocks or
+   * fails the local sign-out; call it before clear().
+   */
+  function revokeOnServer() {
+    const refreshToken = tokens()?.refreshToken
+    if (!refreshToken) return
+    try {
+      void fetch(options.refreshUrl.replace(/\/refresh$/, '/logout'), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken }), keepalive: true,
+      }).catch(() => {})
+    } catch { /* Offline or blocked: the local sign-out still completes. */ }
+  }
   function resetActivity() { localStorage.setItem(options.activityKey, String(Date.now())) }
   function isIdle() {
     const raw = localStorage.getItem(options.activityKey)
@@ -101,5 +116,5 @@ export function createBrowserSession(options: {
       window.removeEventListener(options.expiredEvent, onChange)
     }
   }
-  return { accessToken, expiresAt, expire, clear, resetActivity, ensureAccessToken, start }
+  return { accessToken, expiresAt, expire, clear, revokeOnServer, resetActivity, ensureAccessToken, start }
 }

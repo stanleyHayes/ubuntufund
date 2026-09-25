@@ -160,6 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const logout = useCallback(() => {
+    browserSession.revokeOnServer()
     clearStorage()
     setSessionExpired(false)
     setState({ user: null, tokens: null, isAuthenticated: false, isLoading: false })

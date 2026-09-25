@@ -54,6 +54,7 @@ vi.mock('@/lib/api', () => ({
     delete: vi.fn(),
   },
   loginApi: vi.fn(),
+  logoutApi: vi.fn(async () => {}),
   registerApi: vi.fn(),
   refreshTokenApi: vi.fn(),
 }))

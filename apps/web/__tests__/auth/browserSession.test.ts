@@ -65,3 +65,17 @@ describe('active browser sessions', () => {
     expect(await pending).toBeNull(); expect(session.accessToken()).toBeNull()
   })
 })
+describe('server-side sign-out', () => {
+  it('sends the refresh token to /auth/logout without blocking or failing the local sign-out', async () => {
+    const fetch = vi.fn(async () => { throw new TypeError('offline') })
+    vi.stubGlobal('fetch', fetch)
+    expect(() => session.revokeOnServer()).not.toThrow()
+    session.clear()
+    await vi.runAllTimersAsync()
+    expect(fetch).toHaveBeenCalledWith('/auth/logout', expect.objectContaining({ method: 'POST', body: JSON.stringify({ refreshToken: 'refresh' }), keepalive: true }))
+    expect(session.accessToken()).toBeNull()
+    fetch.mockClear()
+    session.revokeOnServer()
+    expect(fetch).not.toHaveBeenCalled()
+  })
+})

@@ -4,7 +4,7 @@ import { createContext, useContext, useState, useCallback, useEffect } from 'rea
 import type { ReactNode } from 'react'
 import { AppState, Platform, View } from 'react-native'
 import { accessToken, biometricSessionState, setSessionForeground, endSession, establishSession, expireIdleSession, hydrateSession, observeSession, recordActivity, sessionSnapshot } from '@/lib/session'
-import { loginApi, registerApi } from '@/lib/api'
+import { loginApi, logoutApi, registerApi } from '@/lib/api'
 import type { AuthUser, AuthTokens } from '@/lib/api'
 import { onAgreementRequired } from '@/lib/agreementEvents'
 import { fetchLegalStatus, type LegalStatus } from '@/lib/agreementStatus'
@@ -131,6 +131,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const logout = useCallback(async () => {
+    // Best-effort server-side sign-out so a copied refresh token stops working;
+    // never delay or block the local sign-out on the network.
+    const refreshToken = sessionSnapshot()?.tokens.refreshToken
+    if (refreshToken) void logoutApi(refreshToken).catch(() => {})
     await endSession()
   }, [])
 

@@ -188,6 +188,14 @@ export async function registerApi(data: {
   })
 }
 
+/** Server-side sign-out of the session this refresh token belongs to. */
+export async function logoutApi(refreshToken: string): Promise<void> {
+  await request<null>('/auth/logout', {
+    method: 'POST',
+    body: JSON.stringify({ refreshToken }),
+  })
+}
+
 export async function refreshTokenApi(refreshToken: string): Promise<AuthTokens> {
   return request<AuthTokens>('/auth/refresh', {
     method: 'POST',

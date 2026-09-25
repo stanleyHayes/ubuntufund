@@ -30,6 +30,7 @@ import { createPrivacyRequestRoutes } from './infrastructure/adapters/inbound/ht
 import { MongoAccountErasure } from './infrastructure/adapters/outbound/persistence/MongoAccountErasure.js'
 import { MongoAccountClosureCheck } from './infrastructure/adapters/outbound/persistence/MongoAccountClosureCheck.js'
 import { MongoLegalAcceptanceLog } from './infrastructure/adapters/outbound/persistence/MongoLegalAcceptanceLog.js'
+import { MongoSessionRevocation } from './infrastructure/adapters/outbound/persistence/MongoSessionRevocation.js'
 import { createOrganizationTeamRoutes } from './infrastructure/adapters/inbound/http/routes/organizationTeamRoutes.js'
 import { AutomaticPayoutService } from './infrastructure/adapters/outbound/payments/AutomaticPayoutService.js'
 import { automaticPayoutRoutes } from './infrastructure/adapters/inbound/http/routes/automaticPayoutRoutes.js'
@@ -1312,6 +1313,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     forgotPasswordUseCase,
     resetPasswordUseCase,
     userRepo,
+    new MongoSessionRevocation(),
   )
   const campaignController = new CampaignController(
     createCampaignUseCase,
