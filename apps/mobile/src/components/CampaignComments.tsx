@@ -1,8 +1,8 @@
-import { useFocusEffect } from 'expo-router'
+import { router, useFocusEffect } from 'expo-router'
 import { PublicationConsent } from './PublicationConsent'
 import { ReportContent } from './ReportContent'
 import { BlockedUsers } from './BlockedUsers'
-import { IconButton } from '@/components/RoundedControls'
+import { IconButton, TouchableOpacity } from '@/components/RoundedControls'
 import { SkeletonLoader, Button } from '@/components/Loading'
 import { BrandedNativeInput as TextInput } from '@/components/BrandedNativeInput'
 import { useCallback, useRef, useMemo, useState } from 'react'
@@ -13,6 +13,10 @@ import { api } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
 import type { Palette, NeuRecipes } from '@/theme'
+
+const OBJECT_ID = /^[a-f0-9]{24}$/i
+/** Comment authors link to their public member profile (report/block live there too). */
+function openProfile(userId: string) { router.push(`/profile/${userId}`) }
 
 function makeStyles(p: Palette, neu: NeuRecipes) {
   return StyleSheet.create({
@@ -115,9 +119,13 @@ function CampaignCommentsForViewer({ campaignId, creatorId }: { campaignId: stri
       {user && <BlockedUsers key={user.id} revision={blockRevision} onChange={() => void load()} />}
       {comments.length === 0 ? <Text style={styles.empty}>No comments yet.</Text> : comments.map((comment) => (
         <View key={comment.id} style={styles.comment}>
-          <Avatar.Text size={36} label={comment.authorName.slice(0, 1).toUpperCase()} />
+          {OBJECT_ID.test(comment.authorId) ? <TouchableOpacity accessibilityRole="link" accessibilityLabel={`View ${comment.authorName}'s profile`} onPress={() => openProfile(comment.authorId)}>
+            <Avatar.Text size={36} label={comment.authorName.slice(0, 1).toUpperCase()} />
+          </TouchableOpacity> : <Avatar.Text size={36} label={comment.authorName.slice(0, 1).toUpperCase()} />}
           <View style={styles.copy}>
-            <Text style={styles.name}>{comment.authorName}</Text>
+            {OBJECT_ID.test(comment.authorId)
+              ? <Text style={styles.name} accessibilityRole="link" onPress={() => openProfile(comment.authorId)}>{comment.authorName}</Text>
+              : <Text style={styles.name}>{comment.authorName}</Text>}
             <Text style={styles.date}>{new Date(comment.createdAt).toLocaleDateString()}</Text>
             <Text style={styles.body}>{comment.content}</Text>
             {user && user.id !== comment.authorId && <ReportContent userId={comment.authorId} commentId={comment.id} />}
