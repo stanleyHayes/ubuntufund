@@ -103,11 +103,16 @@ export class MongoCampaignRepository implements CampaignRepositoryPort {
     return doc ? toDomain(doc) : null;
   }
 
+  /**
+   * The current slug wins; otherwise a campaign that used this slug before, so
+   * shared links survive a slug change. Slug uniqueness (creation and
+   * SetCampaignSlug) goes through this lookup, so a released slug can never be
+   * claimed by another campaign.
+   */
   async findBySlug(slug: string): Promise<CampaignEntity | null> {
-    const doc = await CampaignModel.findOne({
-      slug: slug.toLowerCase(),
-      deletedAt: { $exists: false },
-    });
+    const normalized = slug.toLowerCase();
+    const doc = await CampaignModel.findOne({ slug: normalized, deletedAt: { $exists: false } })
+      ?? await CampaignModel.findOne({ previousSlugs: normalized, deletedAt: { $exists: false } });
     return doc ? toDomain(doc) : null;
   }
 
@@ -159,7 +164,7 @@ export class MongoCampaignRepository implements CampaignRepositoryPort {
   async setSlug(id: string, expectedSlug: string, slug: string): Promise<CampaignEntity | null> {
     const doc = await CampaignModel.findOneAndUpdate(
       { _id: id, deletedAt: { $exists: false }, ...(expectedSlug ? { slug: expectedSlug } : { $or: [{ slug: '' }, { slug: null }] }) },
-      { $set: { slug } }, { new: true },
+      { $set: { slug }, ...(expectedSlug ? { $addToSet: { previousSlugs: expectedSlug } } : {}) }, { new: true },
     );
     return doc ? toDomain(doc) : null;
   }

@@ -2,6 +2,7 @@ import type { CreateQrCodeInput, ShortLinkView } from '@ubuntu-fund/types';
 import { ShortLinkEntity } from '../../domain/entities/ShortLink.js';
 import type { ShortLinkRepositoryPort } from '../../domain/ports/outbound/ShortLinkRepositoryPort.js';
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js';
+import type { CreatorProfileRepositoryPort } from '../../domain/ports/outbound/CreatorProfileRepositoryPort.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 import { generateUniqueShortCode } from '../utils/shortCode.js';
 import { buildShortLinkTarget } from '../utils/shortLinkTarget.js';
@@ -22,7 +23,8 @@ export class CreateShortLinkUseCase {
     private readonly shortLinkRepo: ShortLinkRepositoryPort,
     private readonly campaignRepo: CampaignRepositoryPort,
     private readonly publicWebUrl: string,
-    private readonly publicApiUrl: string
+    private readonly publicApiUrl: string,
+    private readonly creatorProfiles?: Pick<CreatorProfileRepositoryPort, 'findByUserId'>
   ) {}
 
   async execute(
@@ -48,10 +50,18 @@ export class CreateShortLinkUseCase {
       throw new AppError('presetAmount must be a positive number', 400);
     }
 
+    // A creator QR must land on a real page: the organiser's creator page.
+    let creatorHandle: string | undefined;
+    if (input.kind === 'creator') {
+      creatorHandle = (await this.creatorProfiles?.findByUserId(campaign.creatorId))?.toPlain().handle || undefined;
+      if (!creatorHandle) throw new AppError('Set up your creator page before creating a creator QR code.', 422);
+    }
+
     const target = buildShortLinkTarget(this.publicWebUrl, {
       kind: input.kind,
       campaignRef: campaign.slug || campaign.id,
       creatorId: campaign.creatorId,
+      creatorHandle,
       liveSessionId: input.liveSessionId,
       presetAmount: input.presetAmount,
       label: input.label,

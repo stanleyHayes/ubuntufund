@@ -1,5 +1,6 @@
 import { usePublicCampaign } from '@/hooks/usePublicCampaign'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
+import { useEffect } from 'react'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
@@ -72,6 +73,13 @@ export function CampaignPublicPage() {
   const navigate = useNavigate()
 
   const { campaign, isLoading, error, notFound } = usePublicCampaign(slug)
+  const { search } = useLocation()
+
+  // An old vanity slug (or the id) still resolves; move the address bar to the
+  // campaign's current slug so shares copy the canonical link.
+  useEffect(() => {
+    if (campaign?.slug && slug && campaign.slug !== slug) navigate(`/c/${encodeURIComponent(campaign.slug)}${search}`, { replace: true })
+  }, [campaign?.slug, slug, search, navigate])
 
   // This slug URL is the one public shape for a campaign: /campaigns/:id and
   // /c/:id resolve to the same fundraiser and canonicalise here, so the page

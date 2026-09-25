@@ -11,6 +11,7 @@ import {
 } from '../helpers/testDatabase.js';
 import { UserModel } from '../../src/infrastructure/database/models/UserModel.js';
 import { ShortLinkModel } from '../../src/infrastructure/database/models/ShortLinkModel.js';
+import { CreatorProfileModel } from '../../src/infrastructure/database/models/CreatorProfileModel.js';
 import { SubscriptionModel } from '../../src/infrastructure/database/models/SubscriptionModel.js';
 import {
   CampaignCategory,
@@ -369,6 +370,67 @@ describe('Vanity slugs, short links & dynamic QR', () => {
       expect(png.headers['content-type']).toContain('image/png');
       expect(Buffer.isBuffer(png.body)).toBe(true);
       expect((png.body as Buffer).length).toBeGreaterThan(0);
+    });
+
+    it('points creator QR codes at the creator page and repairs legacy /u/ links on scan', async () => {
+      const { userId, token } = await registerUser(app, uniqueEmail('creator-qr'));
+      await setVerificationLevel(userId, 2);
+      const campaign = await createCampaign(app, token, { title: 'Creator QR Campaign' });
+      const qr = () => request(app).post(`/api/v1/campaigns/${campaign.id}/qr-codes`).set('Authorization', `Bearer ${token}`).send({ kind: 'creator' });
+
+      // No creator page yet: refuse rather than print a code to a dead route.
+      expect((await qr()).status).toBe(422);
+      const handle = `ama-${randomUUID().slice(0, 8)}`;
+      await CreatorProfileModel.create({ userId, handle, displayName: 'Ama Creator' });
+      const created = await qr().expect(201);
+      expect(created.body.data.target).toMatch(new RegExp(`/creators/${handle}$`));
+      expect(created.body.data.target).not.toContain('/u/');
+
+      // A code printed before this fix still stores /u/:userId; scanning it now lands on the creator page.
+      await ShortLinkModel.updateOne({ code: created.body.data.code }, { $set: { target: `https://app.ujimora.com/u/${userId}` } });
+      const scan = await request(app).get(`/r/${created.body.data.code}`).redirects(0).expect(302);
+      expect(scan.headers.location).toMatch(new RegExp(`/creators/${handle}`));
+    });
+
+    it('follows a slug change: printed codes and old slug links reach the campaign, and the old slug stays reserved', async () => {
+      const { userId, token } = await registerUser(app, uniqueEmail('slug-move'));
+      await setVerificationLevel(userId, 2);
+      const campaign = await createCampaign(app, token, { title: 'Slug Before Change' });
+      const oldSlug = campaign.slug!;
+      const create = await request(app).post(`/api/v1/campaigns/${campaign.id}/qr-codes`).set('Authorization', `Bearer ${token}`).send({ kind: 'amount', presetAmount: 50 }).expect(201);
+      const newSlug = `moved-${randomUUID().slice(0, 8)}`;
+      await request(app).patch(`/api/v1/campaigns/${campaign.id}/slug`).set('Authorization', `Bearer ${token}`).send({ slug: newSlug }).expect(200);
+
+      const scan = await request(app).get(`/r/${create.body.data.code}`).redirects(0).expect(302);
+      expect(scan.headers.location).toContain(`/c/${newSlug}/donate?amount=50`);
+      expect(scan.headers.location).not.toContain(oldSlug);
+
+      const old = await request(app).get(`/api/v1/campaigns/slug/${oldSlug}/public`).expect(200);
+      expect(old.body.data.id).toBe(campaign.id);
+      expect(old.body.data.slug).toBe(newSlug);
+      expect(old.body.data.socialPreview.canonicalUrl).toContain(`/c/${newSlug}`);
+
+      // Another campaign cannot claim the released slug; the owner can move back to it.
+      const other = await registerUser(app, uniqueEmail('slug-thief'));
+      await setVerificationLevel(other.userId, 2);
+      const otherCampaign = await createCampaign(app, other.token, { title: 'Another Campaign Entirely' });
+      await request(app).patch(`/api/v1/campaigns/${otherCampaign.id}/slug`).set('Authorization', `Bearer ${other.token}`).send({ slug: oldSlug }).expect(409);
+      await request(app).patch(`/api/v1/campaigns/${campaign.id}/slug`).set('Authorization', `Bearer ${token}`).send({ slug: oldSlug }).expect(200);
+      expect((await request(app).get(`/api/v1/campaigns/slug/${newSlug}/public`).expect(200)).body.data.id).toBe(campaign.id);
+    });
+
+    it('lets browsers and CDNs cache rendered QR images', async () => {
+      const { userId, token } = await registerUser(app, uniqueEmail('qr-cache'));
+      await setVerificationLevel(userId, 2);
+      const campaign = await createCampaign(app, token);
+      const create = await request(app).post(`/api/v1/campaigns/${campaign.id}/qr-codes`).set('Authorization', `Bearer ${token}`).send({ kind: 'campaign' }).expect(201);
+      for (const ext of ['svg', 'png']) {
+        const res = await request(app).get(`/qr/${create.body.data.code}.${ext}`).buffer(true).parse(binaryParser).expect(200);
+        expect(res.headers['cache-control']).toBe('public, max-age=86400, immutable');
+      }
+      // The redirect itself stays uncached: its destination follows the campaign.
+      const redirect = await request(app).get(`/r/${create.body.data.code}`).redirects(0).expect(302);
+      expect(redirect.headers['cache-control']).toBe('no-store');
     });
 
     it('404s an unknown short code on redirect and render', async () => {

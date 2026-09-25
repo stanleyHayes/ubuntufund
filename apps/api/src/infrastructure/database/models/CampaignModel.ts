@@ -7,6 +7,8 @@ import {
 
 export interface CampaignDocument extends Document {
   slug?: string;
+  /** Vanity slugs this campaign used before; old links and QR codes keep working. */
+  previousSlugs?: string[];
   title: string;
   description: string;
   goalAmount: number;
@@ -46,6 +48,7 @@ const campaignSchema = new Schema<CampaignDocument>(
       lowercase: true,
       trim: true,
     },
+    previousSlugs: { type: [String], default: undefined, index: true },
     title: { type: String, required: true, index: true },
     payoutWriteVersion: { type: Number, default: 0 },
     splitWriteVersion: { type: Number, default: 0 },

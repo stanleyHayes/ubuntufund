@@ -28,10 +28,11 @@ export interface CampaignRepositoryPort {
   /** The campaign this creator already created with this Idempotency-Key, if any. */
   findByCreationKey(creatorId: string, key: string): Promise<CampaignEntity | null>;
   findById(id: string): Promise<CampaignEntity | null>;
+  /** By current slug, else by a slug the campaign used before (links survive a change). */
   findBySlug(slug: string): Promise<CampaignEntity | null>;
   findAll(params: CampaignListQuery): Promise<{ items: CampaignEntity[]; total: number }>;
   findByCreatorId(creatorId: string): Promise<CampaignEntity[]>;
-  /** Change only the slug; stale replacements cannot overwrite financial state. */
+  /** Change only the slug (keeping the old one in its history); stale replacements cannot overwrite financial state. */
   setSlug(id: string, expectedSlug: string, slug: string): Promise<CampaignEntity | null>;
   update(campaign: CampaignEntity): Promise<CampaignEntity>;
   delete(id: string): Promise<void>;

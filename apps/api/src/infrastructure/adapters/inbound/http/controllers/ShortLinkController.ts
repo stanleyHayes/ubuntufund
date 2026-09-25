@@ -151,6 +151,8 @@ export class ShortLinkController {
       const shortUrl = buildShortUrl(this.publicApiUrl, code);
       const svg = await this.qrCodeService.toSvg(shortUrl);
       res.setHeader('X-Short-Url', shortUrl);
+      // The image encodes only the short URL, which never changes for a code.
+      res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
       res.type('image/svg+xml').send(svg);
     } catch (error) {
       next(error);
@@ -172,6 +174,7 @@ export class ShortLinkController {
       const shortUrl = buildShortUrl(this.publicApiUrl, code);
       const buffer = await this.qrCodeService.toPngBuffer(shortUrl);
       res.setHeader('X-Short-Url', shortUrl);
+      res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
       res.type('image/png').send(buffer);
     } catch (error) {
       next(error);

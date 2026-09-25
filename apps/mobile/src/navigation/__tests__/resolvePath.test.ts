@@ -26,3 +26,8 @@ it('opens profile and organization links and requires subscription refresh after
   expect(resolveNativePath('/organizations/example')).toBe('/organization/example')
   expect(resolveNativePath('/subscription/callback?status=success')).toBe('/(tabs)/subscription')
 })
+
+it('sends a legacy creator /u/:id link to the member profile instead of not-found', () => {
+  expect(resolveNativePath('https://app.ujimora.com/u/64b000000000000000000001')).toBe('/profile/64b000000000000000000001')
+  expect(resolveNativePath('/creators/ama')).toBe('/creators/ama')
+})
