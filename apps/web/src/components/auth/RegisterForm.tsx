@@ -155,6 +155,26 @@ export function RegisterForm() {
   const [submitting, setSubmitting] = useState(false)
 
   const isOrg = accountType === 'organization'
+  // Free has no price to confirm, so a failed or incomplete /plans/public must
+  // not block a Free signup. Paid tiers still need their live public prices.
+  const plansLoaded = Object.keys(plans).length > 0
+  const staticFree = !plans[SubscriptionTier.FREE] && (plansError || plansLoaded)
+  const tierReady = selectedTier === SubscriptionTier.FREE || !!plans[selectedTier]
+  const tierCards = ALL_TIERS.flatMap((tier) => {
+    const plan = plans[tier]
+    if (plan) {
+      const campaigns = plan.maxActiveCampaigns === -1 ? 'Unlimited' : plan.maxActiveCampaigns
+      return [{
+        tier,
+        name: plan.name,
+        detail: `${campaigns} campaign${plan.maxActiveCampaigns === 1 ? '' : 's'} · ${plan.platformFeePercent}% fee`,
+        price: billingCycle === BillingCycle.YEARLY ? plan.priceYearly : plan.priceMonthly,
+      }]
+    }
+    return tier === SubscriptionTier.FREE && staticFree
+      ? [{ tier, name: 'Free', detail: 'No monthly charge', price: 0 }]
+      : []
+  })
   // Optional field: only validate once something is typed.
   const referralProblem = referralCode.trim() ? validateReferralCode(referralCode) : null
 
@@ -195,7 +215,7 @@ export function RegisterForm() {
 
   async function handleSubmit() {
     setApiError('')
-    if (!plans[selectedTier]) return
+    if (!tierReady) return
     setSubmitting(true)
     try {
       const referral = normalizeReferralCode(referralCode) || undefined
@@ -536,13 +556,10 @@ export function RegisterForm() {
               ))}
             </Box>
           </Box>
-          {plansError && <Alert severity="error" action={<Button onClick={retryPlans}>Retry</Button>}>We couldn’t load current prices. Please retry before choosing a plan.</Alert>}
-          {!plansError && Object.keys(plans).length === 0 && <Box aria-label="Loading current plans" aria-busy="true">{[0, 1, 2].map(row => <Skeleton key={row} variant="rounded" height={84} sx={{ mb: 2 }} />)}</Box>}
-          {ALL_TIERS.filter(tier => plans[tier]).map((tier) => {
-            const plan = plans[tier]
+          {plansError && <Alert severity="error" action={<Button onClick={retryPlans}>Retry</Button>}>We couldn’t load current prices. You can still create a Free account, or retry to see paid plans.</Alert>}
+          {!plansError && !plansLoaded && <Box aria-label="Loading current plans" aria-busy="true">{[0, 1, 2].map(row => <Skeleton key={row} variant="rounded" height={84} sx={{ mb: 2 }} />)}</Box>}
+          {tierCards.map(({ tier, name: planName, detail, price }) => {
             const active = selectedTier === tier
-            const price =
-              billingCycle === BillingCycle.YEARLY ? plan.priceYearly : plan.priceMonthly
             return (
               <Box
                 key={tier}
@@ -589,12 +606,8 @@ export function RegisterForm() {
                   )}
                 </Box>
                 <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography sx={{ fontWeight: 700, color: FOREST }}>{plan.name}</Typography>
-                  <Typography sx={{ fontSize: '0.8rem', color: INK_SECONDARY }}>
-                    {plan.maxActiveCampaigns === -1 ? 'Unlimited' : plan.maxActiveCampaigns}{' '}
-                    campaign{plan.maxActiveCampaigns === 1 ? '' : 's'} · {plan.platformFeePercent}%
-                    fee
-                  </Typography>
+                  <Typography sx={{ fontWeight: 700, color: FOREST }}>{planName}</Typography>
+                  <Typography sx={{ fontSize: '0.8rem', color: INK_SECONDARY }}>{detail}</Typography>
                 </Box>
                 <Box sx={{ textAlign: 'right', flexShrink: 0 }}>
                   <Typography sx={{ fontWeight: 800, color: FOREST }}>
@@ -640,7 +653,7 @@ export function RegisterForm() {
             onClick={handleSubmit}
             variant="contained"
             color="primary"
-            disabled={submitting || !plans[selectedTier] || !acceptedTerms || !ageConfirmed}
+            disabled={submitting || !tierReady || !acceptedTerms || !ageConfirmed}
             endIcon={submitting ? <LoadingDots size={6} /> : undefined}
             sx={{ textTransform: 'none', fontWeight: 700, px: 3 }}
           >
