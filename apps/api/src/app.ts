@@ -1090,7 +1090,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     publicProfileVisibility,
   )
 
-  const getProfileUseCase = new GetProfileUseCase(userRepo, profileRepo, donationRepo, campaignRepo)
+  const getProfileUseCase = new GetProfileUseCase(userRepo, profileRepo, donationRepo, campaignRepo, kycRepo)
   const updateProfileUseCase = new UpdateProfileUseCase(new MongoAccountProfileWrite(new MongoUnitOfWork(), publicationAdmission))
   const getPublicUserProfileUseCase = new GetPublicUserProfileUseCase(userRepo, publicProfileVisibility, kycRepo)
   const accountErasure = new MongoAccountErasure()

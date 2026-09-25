@@ -118,6 +118,37 @@ describe('KYC Integration', () => {
     expect(createCampaignRes.status).toBe(201);
   });
 
+  it('refuses an early identity renewal that would suspend a current approval, then allows it inside the renewal window', async () => {
+    const { userId, token } = await registerUser(app, uniqueEmail('renew'));
+    await UserModel.findByIdAndUpdate(userId, { verificationLevel: 2 });
+    const approval = await KYCVerificationModel.create({ userId, verificationType: 'identity', status: 'approved', documents: [], riskLevel: 'low', expiryDate: new Date(Date.now() + 200 * 86_400_000) });
+    const document = await PrivateKycDocumentModel.create({ userId, publicId: 'private/renew', resourceType: 'image', format: 'jpg', mimeType: 'image/jpeg' });
+    const submission = { personalInfo: { fullName: 'Efua Asante', nationality: 'Ghanaian', dateOfBirth: '1995-01-01T00:00:00.000Z' }, documents: [{ type: 'passport', url: `kyc://${document.id}` }] };
+
+    const early = await request(app).post('/api/v1/kyc/identity').set('Authorization', `Bearer ${token}`).send(submission);
+    expect(early.status).toBe(409);
+    expect(early.body.message).toMatch(/renew it from/i);
+    expect(await KYCVerificationModel.countDocuments({ userId })).toBe(1);
+    expect((await request(app).get('/api/v1/profile').set('Authorization', `Bearer ${token}`).expect(200)).body.data.verificationLevel).toBe(2);
+
+    await KYCVerificationModel.updateOne({ _id: approval._id }, { expiryDate: new Date(Date.now() + 10 * 86_400_000) });
+    await request(app).post('/api/v1/kyc/identity').set('Authorization', `Bearer ${token}`).send(submission).expect(201);
+  });
+
+  it('reports the same not-current state on KYC status and the own profile for a legacy approval without an expiry', async () => {
+    const { userId, token } = await registerUser(app, uniqueEmail('legacy'));
+    await UserModel.findByIdAndUpdate(userId, { verificationLevel: 2 });
+    await KYCVerificationModel.create({ userId, verificationType: 'identity', status: 'approved', documents: [], riskLevel: 'low' });
+
+    const status = await request(app).get('/api/v1/kyc/status').set('Authorization', `Bearer ${token}`).expect(200);
+    expect(status.body.data.kycStatus).toBe('expired');
+    expect(status.body.data.kycLevel).toBe(0);
+    const own = await request(app).get('/api/v1/profile').set('Authorization', `Bearer ${token}`).expect(200);
+    expect(own.body.data.verificationLevel).toBe(1);
+    // The stored historical maximum is never rewritten by a read.
+    expect((await UserModel.findById(userId))?.verificationLevel).toBe(2);
+  });
+
   it('rejects a supplied underage birth date before creating an identity record', async () => {
     const { userId, token } = await registerUser(app, uniqueEmail('underage-identity'));
     const birth = new Date();
