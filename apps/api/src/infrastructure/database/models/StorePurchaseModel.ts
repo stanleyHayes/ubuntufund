@@ -18,6 +18,8 @@ const schema = new Schema({
   reviewRequired: { type: Boolean, default: false },
   lastError: String,
   replacedBy: String,
+  /** App Review / TestFlight purchases are sandbox; never count them as revenue. */
+  environment: { type: String, enum: ['production', 'sandbox'] },
 }, { timestamps: true });
 
 export const StorePurchaseModel = mongoose.model('StorePurchase', schema);

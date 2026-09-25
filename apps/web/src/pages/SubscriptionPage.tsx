@@ -34,14 +34,16 @@ import {
   type SubscriptionPlan,
 } from '@ubuntu-fund/types'
 import { useMySubscription, usePlanMap } from '@/hooks/useSubscription'
-import { api } from '@/lib/api'
 import {
   readSubscriptionHandoff,
   createSubscriptionCheckout,
   saveSubscriptionCheckoutHandoff,
+  clearSubscriptionHandoff,
+  readSubscriptionCheckout,
   isPaymentsNotConfigured,
 } from '@/lib/subscriptions'
 import { useCouponPreview } from '@/hooks/useCouponPreview'
+import { isCurrentPlanTier, isPaidPlanInForce } from '@/lib/subscriptionStatus'
 
 // ─── Animations ─────────────────────────────────────────────────────────────
 
@@ -82,6 +84,9 @@ interface FeatureRow {
   format?: 'boolean' | 'number' | 'fee' | 'goal' | 'unlimited'
 }
 
+// Only benefits the platform actually delivers are listed. Featured listing,
+// priority support, advanced analytics and custom branding are plan flags with
+// no implementation behind them, so they are deliberately not advertised.
 const FEATURE_SECTIONS: { title: string; rows: FeatureRow[] }[] = [
   {
     title: 'Campaigns',
@@ -89,7 +94,6 @@ const FEATURE_SECTIONS: { title: string; rows: FeatureRow[] }[] = [
       { label: 'Active campaigns', key: 'maxActiveCampaigns', format: 'unlimited' },
       { label: 'Max campaign goal', key: 'maxCampaignGoal', format: 'goal' },
       { label: 'Media uploads per campaign', key: 'maxMediaPerCampaign', format: 'unlimited' },
-      { label: 'Featured listing', key: 'featuredListing', format: 'boolean' },
     ],
   },
   {
@@ -101,9 +105,6 @@ const FEATURE_SECTIONS: { title: string; rows: FeatureRow[] }[] = [
   {
     title: 'Features',
     rows: [
-      { label: 'Priority support', key: 'prioritySupport', format: 'boolean' },
-      { label: 'Advanced analytics', key: 'advancedAnalytics', format: 'boolean' },
-      { label: 'Custom branding', key: 'customBranding', format: 'boolean' },
       { label: 'Escrow & milestones', key: 'escrowSupport', format: 'boolean' },
       { label: 'Live streaming', key: 'liveStreaming', format: 'boolean' },
     ],
@@ -111,7 +112,7 @@ const FEATURE_SECTIONS: { title: string; rows: FeatureRow[] }[] = [
   {
     title: 'Team',
     rows: [
-      { label: 'Team members', key: 'maxTeamMembers', format: 'unlimited' },
+      { label: 'Organization team seats (incl. owner)', key: 'maxTeamMembers', format: 'unlimited' },
       { label: 'Campaign collaboration', key: 'campaignCollaboration', format: 'boolean' },
       { label: 'Collaborators per campaign', key: 'maxCollaboratorsPerCampaign', format: 'unlimited' },
     ],
@@ -142,15 +143,34 @@ export function SubscriptionPage() {
   useSeo({
     title: 'Your subscription plan | Ujimora',
     description:
-      'See the Ujimora plan you are on, switch between monthly and yearly billing, apply a coupon or cancel, and check the platform fee your plan carries.',
+      'See the Ujimora plan you are on and when it ends, buy a 30-day or one-year plan with a one-time payment, apply a coupon, and check the platform fee your plan carries.',
     path: '/subscription',
     robots: 'noindex, nofollow',
   })
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [lastCheckout] = useState(() => readSubscriptionHandoff(null))
+  // Only nag about a previous checkout the server still has as unpaid; a
+  // settled, failed or expired one clears the browser handoff instead.
+  const [lastCheckoutPending, setLastCheckoutPending] = useState(false)
+  useEffect(() => {
+    if (!lastCheckout) return
+    let active = true
+    readSubscriptionCheckout(lastCheckout.checkoutId)
+      .then((checkout) => {
+        if (!active) return
+        if (checkout.status === 'pending') setLastCheckoutPending(true)
+        else clearSubscriptionHandoff(lastCheckout.checkoutId)
+      })
+      .catch(() => { if (active) setLastCheckoutPending(false) })
+    return () => { active = false }
+  }, [lastCheckout])
   const { subscription, isLoading, refetch } = useMySubscription()
-  const storeManaged = subscription?.billingProvider === 'apple' || subscription?.billingProvider === 'google'
+  // A running App Store / Google Play plan is managed there. Once it has lapsed
+  // the web can sell a plan again; the API still refuses while the store could
+  // renew or charge it.
+  const storeManaged = (subscription?.billingProvider === 'apple' || subscription?.billingProvider === 'google') &&
+    !!subscription && isPaidPlanInForce(subscription)
   const storeName = subscription?.billingProvider === 'apple' ? 'App Store' : 'Google Play'
   const storeManagementUrl = subscription?.billingProvider === 'apple' ? 'https://apps.apple.com/account/subscriptions' : 'https://play.google.com/store/account/subscriptions?package=com.ujimora.app'
   // DB-backed plans (seeded from SUBSCRIPTION_PLANS so nothing flashes empty).
@@ -159,9 +179,22 @@ export function SubscriptionPage() {
   const orderedPlans = Object.values(plans)
     .filter((p) => p.active !== false && p.isPublic !== false)
     .sort(bySortOrder)
-  const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
   const [billingToggle, setBillingToggle] = useState<'monthly' | 'yearly'>(searchParams.get('billingCycle') === 'yearly' ? 'yearly' : 'monthly')
-  const [actionLoading, setActionLoading] = useState(false)
+  const cyclePrice = (plan: SubscriptionPlan) => billingToggle === 'yearly' ? plan.priceYearly : plan.priceMonthly
+  /**
+   * Whether a tier can be bought here right now: a public, active, self-serve
+   * plan (never Free or the sales-led Enterprise) whose selected cycle has a
+   * price. A zero price means that cycle is not offered. This also gates the
+   * `?tier=` deep link, so a hidden or Enterprise tier never opens checkout.
+   */
+  const canBuyTier = (tier: string) => {
+    const plan = orderedPlans.find((candidate) => candidate.tier === tier)
+    return !!plan && tier !== SubscriptionTier.FREE && tier !== SubscriptionTier.ENTERPRISE && cyclePrice(plan) > 0
+  }
+  const paidPlanActive = !!subscription && isPaidPlanInForce(subscription)
+  /** Renew the plan you have (adds time), switch while one is active (replaces it), or buy. */
+  const checkoutModeFor = (tier: string): 'renew' | 'switch' | 'buy' =>
+    !subscription || !paidPlanActive ? 'buy' : tier === subscription.tier ? 'renew' : 'switch'
   const [actionError, setActionError] = useState<string | null>(null)
 
   // ── Paid checkout + coupon flow ────────────────────────────────────────────
@@ -212,6 +245,8 @@ export function SubscriptionPage() {
         tier,
         billingCycle,
         couponCode: couponCode.trim() || undefined,
+        // Shown and confirmed in the dialog: the current plan is replaced now.
+        ...(checkoutModeFor(tier) === 'switch' ? { replaceCurrentPlan: true } : {}),
       })
       if (result.activatedWithoutCharge) {
         // A coupon zeroed the price — the subscription is already active; show
@@ -244,20 +279,6 @@ export function SubscriptionPage() {
     }
   }
 
-  async function handleCancel() {
-    setActionLoading(true)
-    setActionError(null)
-    try {
-      await api.post('/subscriptions/cancel')
-      setCancelDialogOpen(false)
-      refetch()
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Failed to cancel subscription.')
-    } finally {
-      setActionLoading(false)
-    }
-  }
-
   if (isLoading || !subscription) {
     return (
       <Container maxWidth="lg" sx={{ py: 6 }}>
@@ -280,11 +301,17 @@ export function SubscriptionPage() {
     ? colorsOf(currentPlan)
     : { accent: '#78909C', bg: 'rgba(120,144,156,0.06)', banner: '#78909C' }
   const daysLeft = Math.max(0, Math.ceil((new Date(currentSub.currentPeriodEnd).getTime() - Date.now()) / 86_400_000))
+  // Web plans never renew on their own, so a paid row can outlive its period.
+  // Once the period ends the member is back on Free and may buy any plan again,
+  // including the one that just lapsed.
+  const paidInForce = isPaidPlanInForce(currentSub)
+  const lapsed = currentSub.tier !== SubscriptionTier.FREE && !paidInForce
+  const isCurrentTier = (tier: string) => isCurrentPlanTier(tier, currentSub)
 
   return (
     <Container maxWidth="lg" sx={{ py: 6 }}>
       {storeManaged && <Alert severity="info" sx={{ mb: 3 }} action={<Button href={storeManagementUrl} target="_blank" rel="noopener noreferrer">Manage subscription</Button>}>Your subscription is billed through {storeName}. Change plans or cancel there to avoid a second subscription.</Alert>}
-      {lastCheckout && <Alert severity="info" sx={{ mb: 3 }} action={<Button href={`/subscription/callback?checkout=${encodeURIComponent(lastCheckout.checkoutId)}`}>Check payment</Button>}>Returning from payment? Check your latest checkout before starting another payment.</Alert>}
+      {lastCheckout && lastCheckoutPending && <Alert severity="info" sx={{ mb: 3 }} action={<Button href={`/subscription/callback?checkout=${encodeURIComponent(lastCheckout.checkoutId)}`}>Check payment</Button>}>Returning from payment? Check your latest checkout before starting another payment.</Alert>}
       {/* Page header */}
       <Typography
         variant="h4"
@@ -344,11 +371,11 @@ export function SubscriptionPage() {
             </Box>
           </Box>
           <Chip
-            label={currentSub.status === SubscriptionStatus.ACTIVE ? 'Active' : currentSub.status}
+            label={lapsed ? 'Expired' : currentSub.status === SubscriptionStatus.ACTIVE ? 'Active' : currentSub.status}
             sx={{
               fontWeight: 700,
               fontSize: '0.75rem',
-              bgcolor: currentSub.status === SubscriptionStatus.ACTIVE ? 'rgba(255,255,255,0.25)' : 'rgba(255,100,100,0.35)',
+              bgcolor: !lapsed && currentSub.status === SubscriptionStatus.ACTIVE ? 'rgba(255,255,255,0.25)' : 'rgba(255,100,100,0.35)',
               color: '#fff',
             }}
           />
@@ -356,6 +383,11 @@ export function SubscriptionPage() {
 
         {/* Stats row */}
         <CardContent sx={{ p: { xs: 3, md: 4 } }}>
+          {lapsed && (
+            <Alert severity="warning" sx={{ mb: 3, borderRadius: SHAPE.sm }}>
+              Your {currentPlan.name} plan ended on {new Date(currentSub.currentPeriodEnd).toLocaleDateString()}. Community features apply until you buy a plan again.
+            </Alert>
+          )}
           <Box
             sx={{
               display: 'grid',
@@ -365,15 +397,25 @@ export function SubscriptionPage() {
             }}
           >
             {[
+              // Web plans are one-time purchases for a fixed period; only App
+              // Store / Google Play subscriptions actually renew.
               {
                 icon: <ReceiptLongRoundedIcon sx={{ fontSize: 20, color: colors.accent }} />,
-                label: 'Billing',
-                value: currentSub.billingCycle === BillingCycle.MONTHLY ? 'Monthly' : 'Yearly',
+                label: storeManaged ? 'Billing' : 'Plan length',
+                value: currentSub.tier === SubscriptionTier.FREE
+                  ? 'Free'
+                  : storeManaged
+                    ? (currentSub.billingCycle === BillingCycle.MONTHLY ? 'Monthly' : 'Yearly')
+                    : (currentSub.billingCycle === BillingCycle.MONTHLY ? '30 days' : '1 year'),
               },
               {
                 icon: <CalendarTodayRoundedIcon sx={{ fontSize: 20, color: colors.accent }} />,
-                label: 'Renews in',
-                value: `${daysLeft} day${daysLeft !== 1 ? 's' : ''}`,
+                label: currentSub.tier === SubscriptionTier.FREE ? 'Ends' : lapsed ? 'Ended' : storeManaged && !currentSub.cancelAtPeriodEnd ? 'Renews in' : 'Ends in',
+                value: currentSub.tier === SubscriptionTier.FREE
+                  ? 'No end date'
+                  : lapsed
+                    ? new Date(currentSub.currentPeriodEnd).toLocaleDateString()
+                    : `${daysLeft} day${daysLeft !== 1 ? 's' : ''}`,
               },
               {
                 icon: <TrendingUpRoundedIcon sx={{ fontSize: 20, color: colors.accent }} />,
@@ -408,13 +450,9 @@ export function SubscriptionPage() {
             ))}
           </Box>
 
-          {/* Quick features */}
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 3 }}>
+          {/* Quick features — only while the plan still grants them */}
+          {!lapsed && <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 3 }}>
             {[
-              currentPlan.featuredListing && 'Featured Listing',
-              currentPlan.prioritySupport && 'Priority Support',
-              currentPlan.advancedAnalytics && 'Analytics',
-              currentPlan.customBranding && 'Custom Branding',
               currentPlan.escrowSupport && 'Escrow',
               currentPlan.liveStreaming && 'Live Streaming',
               currentSub.status === 'active' && new Date(currentSub.currentPeriodEnd).getTime() > Date.now() && currentPlan.tier !== 'free' && (currentPlan.priceMonthly > 0 || currentPlan.priceYearly > 0) && 'Creator profile donations',
@@ -436,25 +474,21 @@ export function SubscriptionPage() {
                   }}
                 />
               ))}
-          </Box>
+          </Box>}
 
-          {/* Period + Cancel */}
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1, pt: 2, borderTop: '1px solid rgba(0,0,0,0.06)' }}>
-            <Typography sx={{ fontSize: '0.82rem', color: 'text.secondary' }}>
-              Period: {new Date(currentSub.currentPeriodStart).toLocaleDateString()} &mdash; {new Date(currentSub.currentPeriodEnd).toLocaleDateString()}
-            </Typography>
-            {currentSub.tier !== SubscriptionTier.FREE && !storeManaged && (
-              <Button
-                variant="text"
-                size="small"
-                color="error"
-                onClick={() => setCancelDialogOpen(true)}
-                sx={{ fontWeight: 600, fontSize: '0.78rem', textTransform: 'none' }}
-              >
-                Cancel subscription
-              </Button>
-            )}
-          </Box>
+          {/* Period. Web plans have nothing to cancel: they simply end. */}
+          {currentSub.tier !== SubscriptionTier.FREE && (
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1, pt: 2, borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+              <Typography sx={{ fontSize: '0.82rem', color: 'text.secondary' }}>
+                Period: {new Date(currentSub.currentPeriodStart).toLocaleDateString()} &mdash; {new Date(currentSub.currentPeriodEnd).toLocaleDateString()}
+              </Typography>
+              {paidInForce && !storeManaged && (
+                <Typography sx={{ fontSize: '0.82rem', color: 'text.secondary' }}>
+                  Your plan does not renew automatically. Buy again before it ends to keep your benefits.
+                </Typography>
+              )}
+            </Box>
+          )}
         </CardContent>
       </Card>
 
@@ -512,12 +546,15 @@ export function SubscriptionPage() {
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))', md: `repeat(${Math.min(group.plans.length, groupIndex === 0 ? 3 : 2)}, minmax(0, 1fr))` }, gap: 3, alignItems: 'stretch' }}>
         {group.plans.map((plan) => {
           const tier = plan.tier
-          const isCurrent = tier === currentSub.tier
+          const isCurrent = isCurrentTier(tier)
           const isPro = tier === SubscriptionTier.PRO || plan.popular === true
           const fitLabel = isPro ? 'Recommended for growth' : tier === SubscriptionTier.ORGANIZATION ? 'Best fit for organizations' : tier === SubscriptionTier.ENTERPRISE ? 'For complex needs' : tier === SubscriptionTier.FREE ? 'Start here' : tier === SubscriptionTier.STARTER ? 'For a growing cause' : 'More ways to fundraise'
           const tc = colorsOf(plan)
           const price = billingToggle === 'yearly' ? plan.priceYearly : plan.priceMonthly
-          const canCheckout = !storeManaged && !isCurrent && tier !== SubscriptionTier.FREE && tier !== SubscriptionTier.ENTERPRISE
+          const canCheckout = !storeManaged && canBuyTier(tier)
+          // A running web plan can be renewed early: the new period starts when
+          // the current one ends, so no paid time is lost.
+          const canRenew = isCurrent && paidInForce && canCheckout
 
           return (
             <Card
@@ -563,13 +600,13 @@ export function SubscriptionPage() {
                         {formatCurrency(billingToggle === 'yearly' ? price / 12 : price, 'GHS')}
                       </Typography>
                       <Typography sx={{ color: 'text.secondary', fontSize: '0.78rem' }}>
-                        /mo
+                        {billingToggle === 'yearly' || tier === SubscriptionTier.FREE ? '/mo' : '/ 30 days'}
                       </Typography>
                     </Box>
                   )}
-                  {billingToggle === 'yearly' && tier !== SubscriptionTier.FREE && tier !== SubscriptionTier.ENTERPRISE && (
+                  {tier !== SubscriptionTier.FREE && tier !== SubscriptionTier.ENTERPRISE && (
                     <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary', mt: 0.25 }}>
-                      GH₵ {price}/year &middot; billed annually
+                      {billingToggle === 'yearly' ? <>GH₵ {price} for 1 year &middot; </> : null}One-time payment &middot; does not auto-renew
                     </Typography>
                   )}
                 </Box>
@@ -580,9 +617,6 @@ export function SubscriptionPage() {
                     `${plan.platformFeePercent}% platform fee`,
                     plan.maxActiveCampaigns === -1 ? 'Unlimited campaigns' : `${plan.maxActiveCampaigns} active campaign${plan.maxActiveCampaigns !== 1 ? 's' : ''}`,
                     plan.maxCampaignGoal === -1 ? 'No goal limit' : `Up to GH₵ ${plan.maxCampaignGoal.toLocaleString()} goal`,
-                    plan.featuredListing && 'Featured listing',
-                    plan.prioritySupport && 'Priority support',
-                    plan.advancedAnalytics && 'Advanced analytics',
                     plan.escrowSupport && 'Escrow & milestones',
                     plan.liveStreaming && 'Live streaming',
                       plan.tier !== 'free' && (plan.priceMonthly > 0 || plan.priceYearly > 0) && 'Creator donations on your profile',
@@ -601,7 +635,8 @@ export function SubscriptionPage() {
                   <Button
                     variant="outlined"
                     fullWidth
-                    disabled
+                    disabled={!canRenew}
+                    onClick={canRenew ? () => openCheckout(tier) : undefined}
                     sx={{
                       borderRadius: SHAPE.sm,
                       fontWeight: 700,
@@ -612,7 +647,7 @@ export function SubscriptionPage() {
                       color: tc.accent,
                     }}
                   >
-                    Current Plan
+                    {canRenew ? `Renew ${plan.name}` : 'Current Plan'}
                   </Button>
                 ) : tier === SubscriptionTier.ENTERPRISE ? (
                   <Button
@@ -664,7 +699,7 @@ export function SubscriptionPage() {
                         : { borderColor: tc.accent, color: tc.accent }),
                     }}
                   >
-                    Choose {plan.name}
+                    {price > 0 ? `Choose ${plan.name}` : `${billingToggle === 'yearly' ? 'Yearly' : 'Monthly'} not offered`}
                   </Button>
                 )}
               </CardContent>
@@ -705,7 +740,7 @@ export function SubscriptionPage() {
             </Box>
             {orderedPlans.map((plan) => {
               const tier = plan.tier
-              const isCurrent = tier === currentSub.tier
+              const isCurrent = isCurrentTier(tier)
               const tc = colorsOf(plan)
               return (
                 <Box
@@ -777,7 +812,7 @@ export function SubscriptionPage() {
                   </Box>
                   {orderedPlans.map((plan) => {
                     const tier = plan.tier
-                    const isCurrent = tier === currentSub.tier
+                    const isCurrent = isCurrentTier(tier)
                     const tc = colorsOf(plan)
                     return (
                       <Box
@@ -812,7 +847,7 @@ export function SubscriptionPage() {
       )}
 
       {/* ═══════════ UPGRADE CTA ═══════════ */}
-      {currentSub.tier === SubscriptionTier.FREE && (
+      {(currentSub.tier === SubscriptionTier.FREE || lapsed) && (
         <Card
           elevation={0}
           sx={{
@@ -853,7 +888,7 @@ export function SubscriptionPage() {
 
       {/* ═══════════ CHECKOUT DIALOG ═══════════ */}
       <Dialog
-        open={selectedTier !== null && !storeManaged}
+        open={selectedTier !== null && !storeManaged && canBuyTier(selectedTier)}
         onClose={closeCheckout}
         fullWidth
         maxWidth="xs"
@@ -866,15 +901,26 @@ export function SubscriptionPage() {
           const validCoupon = preview && preview.valid ? preview : null
           const currency = validCoupon?.currency ?? 'GHS'
           const finalAmount = validCoupon ? validCoupon.finalAmount : basePrice
+          const mode = checkoutModeFor(selectedTier)
+          const currentName = plans[currentSub.tier]?.name ?? 'current'
+          const currentEnd = new Date(currentSub.currentPeriodEnd).toLocaleDateString()
+          const periodLabel = billingToggle === 'yearly' ? '1 year (365 days)' : '30 days'
           return (
             <>
               <DialogTitle sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 800 }}>
-                Upgrade to {plan.name}
+                {mode === 'renew' ? `Renew ${plan.name}` : mode === 'switch' ? `Switch to ${plan.name}` : `Upgrade to ${plan.name}`}
               </DialogTitle>
               <DialogContent>
                 <Typography sx={{ color: 'text.secondary', fontSize: '0.85rem', mb: 2 }}>
-                  Billed {billingToggle === 'yearly' ? 'yearly' : 'monthly'}. You can cancel anytime.
+                  {mode === 'renew'
+                    ? `One-time payment. Adds ${periodLabel} after your current plan ends on ${currentEnd}, so no paid time is lost. Your plan does not renew automatically.`
+                    : `One-time payment for ${periodLabel}. Your plan does not renew automatically.`}
                 </Typography>
+                {mode === 'switch' && (
+                  <Alert severity="warning" sx={{ mb: 2, borderRadius: SHAPE.sm }}>
+                    Your {currentName} plan is active until {currentEnd}. {plan.name} replaces it as soon as payment is confirmed, and unused time on {currentName} is not refunded or credited.
+                  </Alert>
+                )}
 
                 <TextField
                   fullWidth
@@ -953,7 +999,7 @@ export function SubscriptionPage() {
                   startIcon={checkoutLoading ? <LoadingDots size={6} /> : undefined}
                   sx={{ bgcolor: '#2E3D2F', fontWeight: 700, textTransform: 'none', '&:hover': { bgcolor: '#1C261D' } }}
                 >
-                  {checkoutLoading ? 'Starting…' : finalAmount === 0 ? 'Activate plan' : 'Continue to payment'}
+                  {checkoutLoading ? 'Starting…' : finalAmount === 0 ? 'Activate plan' : mode === 'switch' ? 'Replace plan and pay' : 'Continue to payment'}
                 </Button>
               </DialogActions>
             </>
@@ -961,33 +1007,6 @@ export function SubscriptionPage() {
         })()}
       </Dialog>
 
-      {/* ═══════════ CANCEL DIALOG ═══════════ */}
-      <Dialog open={cancelDialogOpen} onClose={() => setCancelDialogOpen(false)} PaperProps={{ sx: { borderRadius: SHAPE.card } }}>
-        <DialogTitle sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 700 }}>
-          Cancel Subscription?
-        </DialogTitle>
-        <DialogContent>
-          <Typography sx={{ color: 'text.secondary' }}>
-            Your subscription will remain active until the end of your current billing period
-            ({new Date(currentSub.currentPeriodEnd).toLocaleDateString()}). After that, you'll be moved to the
-            Free plan.
-          </Typography>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setCancelDialogOpen(false)} disabled={actionLoading} sx={{ fontWeight: 600, textTransform: 'none' }}>
-            Keep Subscription
-          </Button>
-          <Button
-            color="error"
-            variant="contained"
-            onClick={handleCancel}
-            disabled={actionLoading}
-            sx={{ fontWeight: 600, textTransform: 'none' }}
-          >
-            {actionLoading ? <><LoadingDots size={6} /> <span>Cancelling...</span></> : 'Confirm Cancel'}
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Container>
   )
 }

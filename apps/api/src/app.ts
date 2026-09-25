@@ -160,6 +160,7 @@ import { HandlePaystackWebhookUseCase } from './application/use-cases/HandlePays
 import { HandleFlutterwaveWebhookUseCase } from './application/use-cases/HandleFlutterwaveWebhookUseCase.js'
 import { ReconcilePaymentsUseCase } from './application/use-cases/ReconcilePaymentsUseCase.js'
 import { ReconcilePayoutsUseCase } from './application/use-cases/ReconcilePayoutsUseCase.js'
+import { ReconcileSubscriptionCheckoutsUseCase } from './application/use-cases/ReconcileSubscriptionCheckoutsUseCase.js'
 import { ProcessRefundUseCase } from './application/use-cases/ProcessRefundUseCase.js'
 import { MongoRefundOperationRepository } from './infrastructure/adapters/outbound/persistence/MongoRefundOperationRepository.js'
 import { MongoRefundFunds } from './infrastructure/adapters/outbound/persistence/MongoRefundFunds.js'
@@ -252,6 +253,7 @@ import { PreviewCouponUseCase } from './application/use-cases/PreviewCouponUseCa
 import { CreateSubscriptionCheckoutUseCase } from './application/use-cases/CreateSubscriptionCheckoutUseCase.js'
 import { GetSubscriptionCheckoutUseCase } from './application/use-cases/GetSubscriptionCheckoutUseCase.js'
 import { SettleSubscriptionUseCase } from './application/use-cases/SettleSubscriptionUseCase.js'
+import { RevokeRefundedSubscriptionUseCase } from './application/use-cases/RevokeRefundedSubscriptionUseCase.js'
 
 // Use cases — affiliate/referral program
 import { EnrollAffiliateUseCase } from './application/use-cases/EnrollAffiliateUseCase.js'
@@ -937,6 +939,8 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
       disputeRepo,
       new MongoRefundOperationRepository(),
     ),
+    new RevokeRefundedSubscriptionUseCase(new MongoUnitOfWork(), subscriptionCheckoutRepo, subscriptionRepo),
+
   )
   // Flutterwave settlement: verifies the verif-hash, re-verifies the charge
   // server-side, then settles through the same donation seam as Paystack.
@@ -988,6 +992,14 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     handleCreatorPayoutWebhookUseCase,
     creatorPayoutRepo,
   )
+  // Paid-subscription checkouts: repair missed webhooks and expire checkouts
+  // left unpaid for a day, freeing their coupon seats and the billing rail.
+  const reconcileSubscriptionCheckoutsUseCase = new ReconcileSubscriptionCheckoutsUseCase(
+    subscriptionCheckoutRepo,
+    paymentGateway,
+    settleSubscriptionUseCase,
+    couponRedemptionRepo,
+  )
   // Scheduled reconciliation sweep (spec §13). Flag-gated (on by default only
   // in production; RECONCILIATION_SCHEDULER_ENABLED opts staging/dev in) and
   // never under tests; unref'd so it can't hold the process open.
@@ -996,6 +1008,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     config.payments.reconciliationSchedulerEnabled &&
     config.nodeEnv !== 'test'
   ) {
+
     const RECONCILE_INTERVAL_MS = 5 * 60 * 1000
     // Guarded against overlap: a sweep that outruns the interval (a large stale
     // backlog, or a slow provider) would otherwise have a second pass select the
@@ -1015,6 +1028,9 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
           await reconcilePaymentsUseCase
             .reconcileStale({ olderThanMinutes: 30 })
             .catch((err) => logger.error({ err }, 'scheduled reconciliation failed'))
+          await reconcileSubscriptionCheckoutsUseCase
+            .reconcileStale({ olderThanMinutes: 30 })
+            .catch((err) => logger.error({ err }, 'scheduled subscription checkout reconciliation failed'))
           await reconcilePayoutsUseCase
             .reconcileStale({ olderThanMinutes: 1 })
             .catch((err) => logger.error({ err }, 'scheduled payout reconciliation failed'))
@@ -1107,7 +1123,8 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
   )
 
   const liveSafety = new MongoLiveSafety(userBlockRepo)
-  const liveVideo = new LiveVideoService(config.liveVideo, liveSessionRepo, campaignRepo, liveSafety)
+  const liveVideo = new LiveVideoService(config.liveVideo, liveSessionRepo, campaignRepo, liveSafety,
+    (ownerId) => planLimitsService.assertFeature(ownerId, 'liveStreaming', 'LIVE streaming'))
   if (process.env.NODE_ENV !== 'test') {
     let running = false
     const timer = setInterval(async () => {
@@ -1256,6 +1273,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     settleSubscriptionUseCase,
     planService,
     affiliateCodePricing,
+    subscriptionRepo,
   )
   const getSubscriptionCheckoutUseCase = new GetSubscriptionCheckoutUseCase(
     subscriptionCheckoutRepo,
@@ -1269,7 +1287,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
   const updateCouponUseCase = new UpdateCouponUseCase(couponRepo)
   const listCouponsUseCase = new ListCouponsUseCase(couponRepo)
   const getCouponUseCase = new GetCouponUseCase(couponRepo)
-  const deleteCouponUseCase = new DeleteCouponUseCase(couponRepo)
+  const deleteCouponUseCase = new DeleteCouponUseCase(couponRepo, couponRedemptionRepo)
   const previewCouponUseCase = new PreviewCouponUseCase(couponService, planService, affiliateCodePricing, planLimitsService)
 
   // Affiliate/referral program: owner surface + admin console + payout rail.
@@ -1833,7 +1851,11 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
   )
   api.use('/admin', createAdminActionRoutes(authMiddleware))
   api.use('/notifications', createNotificationRoutes(notificationController, authMiddleware))
-  api.use('/organization-team', createOrganizationTeamRoutes(authMiddleware, publicationAdmission, new MongoUnitOfWork()))
+  api.use('/organization-team', createOrganizationTeamRoutes(authMiddleware, publicationAdmission, new MongoUnitOfWork(),
+    async (organizationId) => {
+      const plan = await planLimitsService.resolvePlan(organizationId)
+      return { limit: plan.maxTeamMembers, planName: plan.name }
+    }))
   api.use('/organizations', createOrganizationRoutes(organizationController, optionalAuthMiddleware))
   api.use('/refunds', createRefundRoutes(refundController, authMiddleware))
   api.use('/kyc', createKYCRoutes(kycController, authMiddleware, requireAdmin))

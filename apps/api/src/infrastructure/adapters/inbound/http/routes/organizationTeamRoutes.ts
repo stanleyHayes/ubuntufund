@@ -52,7 +52,10 @@ async function access(
     throw new AppError('You do not have permission for this organization action', 403)
   return { org, role }
 }
-export function createOrganizationTeamRoutes(auth: RequestHandler, admission: PublicationAdmissionPort, uow: UnitOfWorkPort) {
+/** The organization's plan seat allowance (owner included); a negative limit means unlimited. */
+export type TeamSeatAllowance = (organizationId: string) => Promise<{ limit: number; planName: string }>
+
+export function createOrganizationTeamRoutes(auth: RequestHandler, admission: PublicationAdmissionPort, uow: UnitOfWorkPort, teamSeats?: TeamSeatAllowance) {
   const router = Router()
   router.use((_req, res, next) => { res.set('Cache-Control', 'private, no-store'); next() })
   router.use(auth)
@@ -176,6 +179,24 @@ export function createOrganizationTeamRoutes(auth: RequestHandler, admission: Pu
           'This member already has access; ask the owner to change their role',
           409,
         )
+      // Plans sell a number of team seats (maxTeamMembers), and the owner holds
+      // one. Active members and unexpired invitations hold the rest; re-sending
+      // an invitation to the same address does not need a new seat.
+      if (teamSeats) {
+        const { limit, planName } = await teamSeats(organizationId)
+        if (limit >= 0) {
+          const held = await Members.countDocuments({
+            organizationId,
+            email: { $ne: input.email },
+            $or: [{ status: 'active' }, { status: 'invited', expiresAt: { $gt: new Date() } }],
+          })
+          if (1 + held + 1 > limit)
+            throw new AppError(
+              `Your ${planName} plan includes ${limit} team seat${limit === 1 ? '' : 's'}, including the owner. Upgrade the organization's plan or remove a member before inviting someone new.`,
+              403,
+            )
+        }
+      }
       const member = await Members.findOneAndUpdate(
         { organizationId, email: input.email },
         {

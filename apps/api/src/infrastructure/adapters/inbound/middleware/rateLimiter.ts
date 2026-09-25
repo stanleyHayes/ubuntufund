@@ -26,7 +26,8 @@ export function resetRateLimiters(): void {
   for (const windows of allWindows) windows.clear();
 }
 
-function createRateLimiter(options: {
+export function createRateLimiter(options: {
+
   windowMs: number;
   max: number;
   scope: string;
@@ -50,6 +51,7 @@ function createRateLimiter(options: {
     // behind Render's proxy req.ip is the proxy, which made every limiter one
     // bucket shared by the whole platform. A limiter may supply its own key.
     const key = `${options.scope}:${options.key?.(req) ?? rateLimitClientKey(req)}`;
+
     const now = Date.now();
     let state = windows.get(key);
 
@@ -180,5 +182,21 @@ export const payoutDestinationRateLimiter = createRateLimiter({
 /** Limits report spam; persisted uniqueness also suppresses duplicate pending reports. */
 export const safetyReportRateLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 20, scope: 'safety-reports' });
 export const storeBillingRateLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 40, scope: 'store-billing' });
+
+/**
+ * Subscription payment verification (each call may hit Paystack): 120 / 15 min
+ * per signed-in member. Its own budget, keyed on the user rather than the IP,
+ * so polling a payment confirmation never competes with donations or payouts,
+ * and members behind one proxy address never share a bucket. Runs after auth.
+ */
+export const subscriptionVerifyRateLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 120,
+  scope: 'subscription-verify',
+  key: (req) => {
+    const userId = (req as Request & { userId?: string }).userId;
+    return userId ? `user:${userId}` : undefined;
+  },
+});
 
 export const dataRightsRateLimiter = createRateLimiter({ windowMs: 15 * 60_000, max: 20, scope: 'data-rights' });

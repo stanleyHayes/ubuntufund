@@ -1,9 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import { BillingCycle } from '@ubuntu-fund/types';
-import { Environment, Status, Type } from '@apple/app-store-server-library';
+import { APIError, APIException, Environment, Status, Type, VerificationException, VerificationStatus } from '@apple/app-store-server-library';
 import {
   StorePurchaseVerifier, createStoreVerifierDependencies, type StoreVerifierDependencies,
 } from '../src/infrastructure/adapters/outbound/payments/StorePurchaseVerifier.js';
+import { appleSandboxFallbackEnabled } from '../src/infrastructure/config/storeBilling.js';
 
 const now = new Date('2026-09-12T12:00:00Z');
 const accountToken = '239a37d9-a34a-4fa2-a845-39d53b7dbfc2';
@@ -143,6 +144,98 @@ describe('App Store verification', () => {
       privateKey: '', keyId: '', issuerId: '', bundleId: 'com.ujimora.app', environment: Environment.PRODUCTION,
       rootCertificates: [],
     } })).toThrow('trusted root certificates');
+  });
+});
+
+/** One App Store environment's client + verifier doubles, all data stamped with that environment. */
+function applePair(environment: Environment) {
+  const transaction = {
+    transactionId: '102', originalTransactionId: '100', productId: 'app.plus.monthly',
+    bundleId: 'com.ujimora.app', environment, type: Type.AUTO_RENEWABLE_SUBSCRIPTION, appAccountToken: accountToken,
+    purchaseDate: now.getTime() - 60_000, expiresDate: now.getTime() + 300_000, inAppOwnershipType: 'PURCHASED',
+  };
+  const item = { originalTransactionId: '100', signedTransactionInfo: 'current', signedRenewalInfo: 'renewal', status: Status.ACTIVE };
+  const client = {
+    getTransactionInfo: vi.fn(async (): Promise<{ signedTransactionInfo?: string }> => ({ signedTransactionInfo: 'requested' })),
+    getAllSubscriptionStatuses: vi.fn(async () => ({ bundleId: 'com.ujimora.app', environment, data: [{ lastTransactions: [item] }] })),
+  };
+  const verifier = {
+    verifyAndDecodeTransaction: vi.fn(async (signed: string) => signed === 'requested' ? { ...transaction, transactionId: '100' } : transaction),
+    verifyAndDecodeRenewalInfo: vi.fn(async () => ({ originalTransactionId: '100', environment, autoRenewStatus: 1 })),
+    verifyAndDecodeNotification: vi.fn(async (): Promise<unknown> => ({
+      notificationType: 'SUBSCRIBED', data: { bundleId: 'com.ujimora.app', environment, signedTransactionInfo: 'current' },
+    })),
+  };
+  return { client, verifier, transaction };
+}
+
+function reviewFixture(withSandbox = true) {
+  const production = applePair(Environment.PRODUCTION);
+  const sandbox = applePair(Environment.SANDBOX);
+  // What production answers for an App Review / TestFlight transaction.
+  production.client.getTransactionInfo.mockRejectedValue(new APIException(404, APIError.TRANSACTION_ID_NOT_FOUND, 'Transaction id not found.'));
+  production.verifier.verifyAndDecodeNotification.mockRejectedValue(new VerificationException(VerificationStatus.INVALID_ENVIRONMENT));
+  const service = new StorePurchaseVerifier({ products, now: () => now, apple: {
+    client: production.client, verifier: production.verifier, bundleId: 'com.ujimora.app', environment: Environment.PRODUCTION,
+    ...(withSandbox ? { sandbox: { client: sandbox.client, verifier: sandbox.verifier } } : {}),
+  } });
+  return { service, production, sandbox };
+}
+
+describe('App Store sandbox fallback for App Review / TestFlight', () => {
+  it('verifies in production first, then in sandbox, and marks the purchase sandbox', async () => {
+    const { service, production, sandbox } = reviewFixture();
+    expect(await service.verify('apple', '100')).toMatchObject({ environment: 'sandbox', active: true, tier: 'starter', reference: '100' });
+    expect(production.client.getTransactionInfo).toHaveBeenCalledWith('100');
+    expect(sandbox.client.getTransactionInfo).toHaveBeenCalledWith('100');
+    expect(sandbox.client.getAllSubscriptionStatuses).toHaveBeenCalledWith('100');
+  });
+
+  it('keeps a real production purchase in production without consulting sandbox', async () => {
+    const { service, production, sandbox } = reviewFixture();
+    production.client.getTransactionInfo.mockResolvedValue({ signedTransactionInfo: 'requested' });
+    expect((await service.verify('apple', '100')).environment).toBe('production');
+    expect(sandbox.client.getTransactionInfo).not.toHaveBeenCalled();
+  });
+
+  it('rejects a sandbox receipt when the fallback is disabled', async () => {
+    const { service, sandbox } = reviewFixture(false);
+    await expect(service.verify('apple', '100')).rejects.toMatchObject({ statusCode: 422 });
+    expect(sandbox.client.getTransactionInfo).not.toHaveBeenCalled();
+  });
+
+  it('does not fall back on a production outage', async () => {
+    const { service, production, sandbox } = reviewFixture();
+    production.client.getTransactionInfo.mockRejectedValue(new APIException(500, APIError.GENERAL_INTERNAL));
+    await expect(service.verify('apple', '100')).rejects.toMatchObject({ statusCode: 503 });
+    expect(sandbox.client.getTransactionInfo).not.toHaveBeenCalled();
+  });
+
+  it('checks the environment against the verifier actually used', async () => {
+    const { service, sandbox } = reviewFixture();
+    sandbox.transaction.environment = Environment.PRODUCTION;
+    await expect(service.verify('apple', '100')).rejects.toMatchObject({ statusCode: 422 });
+  });
+
+  it('accepts a sandbox server notification only with the fallback enabled', async () => {
+    const enabled = reviewFixture();
+    expect(await enabled.service.appleNotification('signed-sandbox-event')).toBe('102');
+    expect(enabled.sandbox.verifier.verifyAndDecodeNotification).toHaveBeenCalledWith('signed-sandbox-event');
+    await expect(reviewFixture(false).service.appleNotification('signed-sandbox-event')).rejects.toMatchObject({ statusCode: 401 });
+  });
+
+  it('never uses the sandbox verifier for a forged notification', async () => {
+    const { service, production, sandbox } = reviewFixture();
+    production.verifier.verifyAndDecodeNotification.mockRejectedValue(new VerificationException(VerificationStatus.VERIFICATION_FAILURE));
+    await expect(service.appleNotification('forged')).rejects.toMatchObject({ statusCode: 401 });
+    expect(sandbox.verifier.verifyAndDecodeNotification).not.toHaveBeenCalled();
+  });
+
+  it('enables the fallback by default and lets operators turn it off', () => {
+    expect(appleSandboxFallbackEnabled({})).toBe(true);
+    expect(appleSandboxFallbackEnabled({ APPLE_IAP_ALLOW_SANDBOX_FALLBACK: 'true' })).toBe(true);
+    expect(appleSandboxFallbackEnabled({ APPLE_IAP_ALLOW_SANDBOX_FALLBACK: 'false' })).toBe(false);
+    expect(() => appleSandboxFallbackEnabled({ APPLE_IAP_ALLOW_SANDBOX_FALLBACK: 'yes' })).toThrow();
   });
 });
 

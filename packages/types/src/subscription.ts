@@ -1,3 +1,5 @@
+import type { CouponCommissionBase } from './coupon'
+
 // The v6 commercial model uses five tiers: Community / Plus / Pro / Organization
 // / Enterprise. The enum VALUES are kept stable (free/starter/pro/enterprise) so
 // existing subscription records need no migration — `free` presents as Community
@@ -82,6 +84,8 @@ export interface SubscriptionPlan {
 
 export interface Subscription {
   billingProvider?: 'web' | 'apple' | 'google';
+  /** Store plans only: 'sandbox' for App Review / TestFlight purchases, which are not revenue. */
+  billingEnvironment?: 'production' | 'sandbox';
   id: string
   userId: string
   tier: string
@@ -185,6 +189,11 @@ export interface CreateSubscriptionCheckoutInput {
   tier: string // must be a paid tier
   billingCycle: BillingCycle
   couponCode?: string
+  /**
+   * The member confirmed that buying a different plan while one is still in
+   * force replaces it immediately, with no credit for unused time.
+   */
+  replaceCurrentPlan?: boolean
 }
 
 export interface SubscriptionCheckout {
@@ -199,6 +208,11 @@ export interface SubscriptionCheckout {
   currency: string
   couponId?: string
   couponCode?: string
+  /**
+   * The coupon's affiliate-commission basis, captured when the checkout was
+   * quoted, so settlement never depends on the coupon still existing.
+   */
+  commissionBase?: CouponCommissionBase
   providerRef?: string
   createdAt: Date
   updatedAt: Date

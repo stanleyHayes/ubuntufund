@@ -24,13 +24,15 @@ export function createStoreBillingRoutes(runtime: StoreBillingRuntime | null, pl
       const parsed = storeSchema.safeParse(req.params.store);
       if (!parsed.success) throw new AppError('Choose a supported app store.', 400);
       const store = parsed.data;
-      const account = await ownership.account(req.userId!);
+      // A claim that could be released (nothing live on that rail) is not
+      // reported, so the app offers store plans again after a lapsed web plan.
+      const provider = await ownership.activeProvider(req.userId!);
       const products = [];
       for (const product of runtime?.products.filter((p) => p.store === store) ?? []) {
         const plan = await plans.getPlan(product.tier, true);
         if (plan.tier === product.tier && plan.active && plan.isPublic) products.push({ ...product, plan });
       }
-      res.json({ data: { available: products.length > 0, provider: account.provider ?? null, products } });
+      res.json({ data: { available: products.length > 0, provider, products } });
     } catch (error) { next(error); }
   });
   router.post('/prepare', billingLimiter, validate(prepareSchema), async (req: AuthenticatedRequest, res, next) => {

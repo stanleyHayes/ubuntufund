@@ -5,6 +5,7 @@ import {
   type Subscription,
 } from '@ubuntu-fund/types';
 import type { SubscriptionRepositoryPort } from '../../domain/ports/outbound/SubscriptionRepositoryPort.js';
+import { withEffectiveStatus } from '../../domain/services/subscriptionStatus.js';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const FREE_PERIOD_DAYS = 30;
@@ -15,7 +16,9 @@ export class GetMySubscriptionUseCase {
   async execute(userId: string): Promise<Subscription> {
     const existing = await this.subscriptionRepo.findByUserId(userId);
     if (existing) {
-      return existing;
+      // A paid period that has ended reads as expired, so clients offer the
+      // same plan again instead of a disabled "Current plan".
+      return withEffectiveStatus(existing);
     }
 
     // Every user is implicitly on the Free plan until they subscribe.

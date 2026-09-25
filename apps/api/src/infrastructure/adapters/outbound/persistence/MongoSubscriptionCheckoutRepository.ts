@@ -19,6 +19,7 @@ function toDomain(doc: SubscriptionCheckoutDocument): SubscriptionCheckout {
     currency: doc.currency,
     couponId: doc.couponId,
     couponCode: doc.couponCode,
+    commissionBase: doc.commissionBase,
     providerRef: doc.providerRef,
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
@@ -40,6 +41,7 @@ export class MongoSubscriptionCheckoutRepository
       currency: checkout.currency,
       couponId: checkout.couponId,
       couponCode: checkout.couponCode,
+      commissionBase: checkout.commissionBase,
       providerRef: checkout.providerRef,
     });
     return toDomain(doc);
@@ -75,15 +77,48 @@ export class MongoSubscriptionCheckoutRepository
   async transitionToSucceeded(
     id: string
   ): Promise<SubscriptionCheckout | null> {
-    // Single exactly-once settlement gate: only fires while still PENDING, so at
-    // most one signed webhook ever activates the subscription. Null => already
-    // terminal (another settlement won, or it failed/expired).
+    // Single exactly-once settlement gate: only fires while PENDING (or EXPIRED,
+    // for a charge the provider confirmed after we gave up on it), so at most
+    // one settlement ever activates the subscription. Null => already
+    // SUCCEEDED (another settlement won) or FAILED.
     const doc = await SubscriptionCheckoutModel.findOneAndUpdate(
-      { _id: id, status: SubscriptionCheckoutStatus.PENDING },
+      {
+        _id: id,
+        status: { $in: [SubscriptionCheckoutStatus.PENDING, SubscriptionCheckoutStatus.EXPIRED] },
+      },
       { $set: { status: SubscriptionCheckoutStatus.SUCCEEDED } },
       { new: true }
     );
     return doc ? toDomain(doc) : null;
+  }
+
+  async transitionToExpired(id: string): Promise<SubscriptionCheckout | null> {
+    const doc = await SubscriptionCheckoutModel.findOneAndUpdate(
+      { _id: id, status: SubscriptionCheckoutStatus.PENDING },
+      { $set: { status: SubscriptionCheckoutStatus.EXPIRED } },
+      { new: true }
+    );
+    return doc ? toDomain(doc) : null;
+  }
+
+  async findStalePending(olderThan: Date, limit: number): Promise<SubscriptionCheckout[]> {
+    const docs = await SubscriptionCheckoutModel.find({
+      status: SubscriptionCheckoutStatus.PENDING,
+      createdAt: { $lt: olderThan },
+    })
+      .sort({ createdAt: 1 })
+      .limit(limit);
+    return docs.map(toDomain);
+  }
+
+  async findPendingByUser(userId: string, limit: number): Promise<SubscriptionCheckout[]> {
+    const docs = await SubscriptionCheckoutModel.find({
+      userId,
+      status: SubscriptionCheckoutStatus.PENDING,
+    })
+      .sort({ createdAt: -1 })
+      .limit(limit);
+    return docs.map(toDomain);
   }
 
   async transitionToFailed(id: string): Promise<SubscriptionCheckout | null> {

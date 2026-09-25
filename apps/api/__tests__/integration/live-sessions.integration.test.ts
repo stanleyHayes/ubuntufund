@@ -185,6 +185,18 @@ describe('Live sessions + realtime projector', () => {
     expect(res.body.message).toMatch(/LIVE streaming/i);
   });
 
+  it('does not let a lapsed plan resume an existing broadcast', async () => {
+    const { userId, token } = await registerUser(app, uniqueEmail('lapsed-host'));
+    const campaignId = await createActiveCampaign(app, token, userId);
+    await request(app).post(`/api/v1/campaigns/${campaignId}/live-sessions`).set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Started while entitled' }).expect(201);
+    await SubscriptionModel.updateOne({ userId }, { $set: { currentPeriodEnd: new Date(Date.now() - 1000) } });
+    const resumed = await request(app).post(`/api/v1/campaigns/${campaignId}/live-sessions`).set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Started while entitled' });
+    expect(resumed.status).toBe(403);
+    expect(resumed.body.message).toMatch(/LIVE streaming/i);
+  });
+
   it('forbids a non-owner from starting a session', async () => {
     const { userId, token } = await registerUser(app, uniqueEmail('owner'));
     const campaignId = await createActiveCampaign(app, token, userId);

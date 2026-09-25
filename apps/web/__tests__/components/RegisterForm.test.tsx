@@ -4,7 +4,8 @@ import { MemoryRouter } from 'react-router-dom'
 import { ThemeProvider } from '@mui/material/styles'
 import { ujimoraTheme } from '@ubuntu-fund/ui'
 import { RegisterForm } from '@/components/auth/RegisterForm'
-const livePlans = Object.fromEntries(['free', 'starter', 'pro', 'enterprise'].map(name => [name, { name, priceMonthly: name === 'enterprise' ? 99.99 : 0, priceYearly: name === 'enterprise' ? 999 : 0, maxActiveCampaigns: 1, platformFeePercent: 5 }]))
+const prices: Record<string, [number, number]> = { free: [0, 0], starter: [49, 0], pro: [149, 1490], enterprise: [99.99, 999] }
+const livePlans = Object.fromEntries(['free', 'starter', 'pro', 'enterprise'].map(name => [name, { name, priceMonthly: prices[name][0], priceYearly: prices[name][1], maxActiveCampaigns: 1, platformFeePercent: 5 }]))
 const mocks = vi.hoisted(() => ({ register: vi.fn().mockResolvedValue(undefined), checkout: vi.fn(), navigate: vi.fn(), signupPlans: { current: null as null | { plans: Record<string, unknown>; error: boolean } } }))
 vi.mock('react-router-dom', async importOriginal => ({ ...await importOriginal<typeof import('react-router-dom')>(), useNavigate: () => mocks.navigate }))
 vi.mock('@/lib/subscriptions', () => ({ createSubscriptionCheckout: mocks.checkout, saveSubscriptionCheckoutHandoff: vi.fn() }))
@@ -44,11 +45,22 @@ describe('registration steps', () => {
     mount(); next()
     fill(/Full name/, 'Test Person'); fill(/^Email/, 'test@example.com'); fill(/^Password/, 'securePassword1'); fill(/Confirm password/, 'securePassword1'); next()
     fireEvent.click(screen.getByRole('button', { name: 'Yearly · save' }))
-    fireEvent.click(screen.getByRole('button', { name: /enterprise/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^pro/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Create account & continue' }))
-    await vi.waitFor(() => expect(mocks.checkout).toHaveBeenCalledWith({ tier: 'enterprise', billingCycle: 'yearly' }))
+    await vi.waitFor(() => expect(mocks.checkout).toHaveBeenCalledWith({ tier: 'pro', billingCycle: 'yearly' }))
     expect(mocks.register).toHaveBeenCalledTimes(1)
-    expect(mocks.navigate).toHaveBeenCalledWith('/subscription?tier=enterprise&billingCycle=yearly&checkoutError=1')
+    expect(mocks.navigate).toHaveBeenCalledWith('/subscription?tier=pro&billingCycle=yearly&checkoutError=1')
+  })
+
+  it('never offers the sales-led Enterprise plan or a paid cycle without a price', () => {
+    mount(); next()
+    fill(/Full name/, 'Test Person'); fill(/^Email/, 'test@example.com'); fill(/^Password/, 'securePassword1'); fill(/Confirm password/, 'securePassword1'); next()
+    expect(screen.queryByRole('button', { name: /enterprise/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^starter/ })).toBeEnabled()
+    fireEvent.click(screen.getByRole('button', { name: 'Yearly · save' }))
+    const starter = screen.getByRole('button', { name: /^starter/ })
+    expect(starter).toBeDisabled()
+    expect(starter).toHaveTextContent('Not offered')
   })
 
   it('offers an unchecked website request only while the organization website is blank', () => {
@@ -108,10 +120,10 @@ describe('signup when live prices are unavailable', () => {
   })
 
   it('shows a Free option when the Free plan is hidden from the public list but paid plans load', () => {
-    mocks.signupPlans.current = { plans: { enterprise: livePlans.enterprise }, error: false }
+    mocks.signupPlans.current = { plans: { pro: livePlans.pro }, error: false }
     toPlanStep()
     expect(screen.getByRole('button', { name: /No monthly charge/ })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /enterprise/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^pro/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Create account' })).toBeEnabled()
   })
 })

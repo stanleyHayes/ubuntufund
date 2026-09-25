@@ -12,6 +12,15 @@ const productSchema = z.object({
 }).strict();
 const text = z.string().min(1);
 
+/**
+ * App Review and TestFlight purchase with sandbox accounts against the
+ * production build, so a production deployment also accepts sandbox receipts
+ * (Apple's documented production-then-sandbox fallback) unless explicitly
+ * disabled. Sandbox purchases are recorded as sandbox and excluded from revenue.
+ */
+export function appleSandboxFallbackEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
+  return z.enum(['true', 'false']).optional().parse(env.APPLE_IAP_ALLOW_SANDBOX_FALLBACK || undefined) !== 'false';
+}
 /** Explicitly disabled until the owner supplies a real catalog and store credentials. */
 export function configureStoreBilling(env: NodeJS.ProcessEnv = process.env) {
   if (env.STORE_BILLING_ENABLED !== 'true') return null;
@@ -33,6 +42,7 @@ export function configureStoreBilling(env: NodeJS.ProcessEnv = process.env) {
         appAppleId: env.APPLE_IAP_APP_ID ? z.coerce.number().int().positive().parse(env.APPLE_IAP_APP_ID) : undefined,
         rootCertificates: z.array(text).min(1).parse(JSON.parse(text.parse(env.APPLE_IAP_ROOT_CERTIFICATES_BASE64)))
           .map((certificate) => Buffer.from(certificate, 'base64')),
+        allowSandboxFallback: environment === 'production' && appleSandboxFallbackEnabled(env),
       };
     }
     if (products.some((p) => p.store === 'google')) {

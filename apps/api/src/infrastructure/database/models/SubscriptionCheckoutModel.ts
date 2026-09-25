@@ -2,6 +2,7 @@ import mongoose, { Schema, type Document } from 'mongoose';
 import {
   SubscriptionCheckoutStatus,
   BillingCycle,
+  CouponCommissionBase,
 } from '@ubuntu-fund/types';
 
 export interface SubscriptionCheckoutDocument extends Document {
@@ -15,6 +16,7 @@ export interface SubscriptionCheckoutDocument extends Document {
   currency: string;
   couponId?: string;
   couponCode?: string;
+  commissionBase?: CouponCommissionBase;
   providerRef?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -46,6 +48,8 @@ const subscriptionCheckoutSchema = new Schema<SubscriptionCheckoutDocument>(
     currency: { type: String, required: true, default: 'GHS' },
     couponId: { type: String },
     couponCode: { type: String },
+    // Snapshot of the coupon's commission basis at quote time.
+    commissionBase: { type: String, enum: Object.values(CouponCommissionBase) },
     // Unique + sparse: the signed webhook correlates settlement back to exactly
     // one checkout by this reference.
     providerRef: { type: String, unique: true, sparse: true },
@@ -63,6 +67,11 @@ const subscriptionCheckoutSchema = new Schema<SubscriptionCheckoutDocument>(
     },
   }
 );
+
+// The reconciliation sweep scans stale PENDING checkouts oldest first; checkout
+// creation looks up a member's own PENDING ones.
+subscriptionCheckoutSchema.index({ status: 1, createdAt: 1 });
+subscriptionCheckoutSchema.index({ userId: 1, status: 1, createdAt: -1 });
 
 export const SubscriptionCheckoutModel =
   mongoose.model<SubscriptionCheckoutDocument>(

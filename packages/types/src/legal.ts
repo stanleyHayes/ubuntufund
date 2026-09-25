@@ -685,17 +685,17 @@ Marketing: advertising and attribution technologies, if introduced.`,
       {
         title: '2. Billing',
         content:
-          'Paid plans are billed monthly or annually as selected. Checkout discloses the total price, any taxes or fees, the billing interval and renewal terms before confirmation.',
+          'Paid plans are charged for the 30-day (monthly) or one-year (yearly) period you select. Before you confirm, checkout shows the plan, the period, any coupon discount and the total you will be charged. If taxes or other charges apply to a plan, checkout will show them before you pay.',
       },
       {
         title: '3. Renewal and cancellation',
         content:
-          'Subscriptions renew according to the selected billing cycle unless cancelled under the displayed process. Cancellation stops future renewal but does not automatically refund elapsed subscription periods except where required by law or an express guarantee.',
+          'Plans bought on the Ujimora website are paid for one period at a time and do not renew automatically; your plan ends at the end of the paid period unless you buy again, and there is nothing to cancel. Plans bought through the App Store or Google Play renew under that store’s terms until you cancel there; cancelling stops future renewal but keeps access until the end of the paid period. Elapsed periods are not automatically refunded except where required by law or an express guarantee.',
       },
       {
         title: '4. Upgrades',
         content:
-          'Upgrades take effect under the displayed billing and proration rules and may immediately increase commercial entitlements, but never bypass compliance approval.',
+          'Upgrades take effect under the billing rules shown before you confirm and may immediately increase commercial entitlements, but never bypass compliance approval. On the website, buying the plan you already have adds the new period to the end of your current one; buying a different plan while one is active replaces it once you confirm, and unused time on the replaced plan is not credited or refunded.',
       },
       {
         title: '5. Downgrades',

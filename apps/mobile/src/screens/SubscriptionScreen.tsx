@@ -26,6 +26,7 @@ import {
   isPaymentsNotConfigured,
 } from '@/lib/subscriptions'
 import { previewCoupon } from '@/lib/coupons'
+import { isCurrentPlanTier, isPaidPlanInForce } from '@/lib/subscriptionStatus'
 import { useAuth } from '@/context/AuthContext'
 import { SignInRequired } from '@/components/SignInRequired'
 import { GlassSurface } from '@/components/GlassSurface'
@@ -250,12 +251,14 @@ async function pollCheckout(id: string): Promise<CheckoutOutcome> {
 function CheckoutSheet({
   tier,
   plans,
+  current,
   visible,
   onClose,
   onActivated,
 }: {
   tier: string | null
   plans: Record<string, SubscriptionPlan>
+  current: SubscriptionData
   visible: boolean
   onClose: () => void
   onActivated: () => Promise<void> | void
@@ -270,16 +273,17 @@ function CheckoutSheet({
   const [error, setError] = useState<string | null>(null)
   const reqId = useRef(0)
 
-  // Reset the sheet each time it opens for a plan.
+  // Reset the sheet each time it opens for a plan, on a cycle it is sold on.
   useEffect(() => {
     if (visible) {
-      setBillingCycle(BillingCycle.MONTHLY)
+      const opened = tier ? plans[tier] : undefined
+      setBillingCycle(opened && !(opened.priceMonthly > 0) && opened.priceYearly > 0 ? BillingCycle.YEARLY : BillingCycle.MONTHLY)
       setCouponCode('')
       setPreview(null)
       setError(null)
       setSubmitting(false)
     }
-  }, [visible, tier])
+  }, [visible, tier, plans])
 
   // Debounced coupon preview (soft endpoint — never throws).
   useEffect(() => {
@@ -314,7 +318,11 @@ function CheckoutSheet({
   const validCoupon = preview?.valid ? preview : null
   const finalAmount = validCoupon ? validCoupon.finalAmount : baseAmount
   const discount = validCoupon ? validCoupon.discountAmount : 0
-  const payLabel = finalAmount === 0 ? 'Activate plan' : `Pay ${formatGhs(finalAmount)}`
+  const offered = baseAmount > 0
+  // Buying a different plan while one is running replaces it immediately, with
+  // no credit for unused time; the member confirms that by paying from here.
+  const switching = isPaidPlanInForce(current) && current.tier !== tier
+  const payLabel = !offered ? 'Not offered' : finalAmount === 0 ? 'Activate plan' : switching ? `Replace plan and pay ${formatGhs(finalAmount)}` : `Pay ${formatGhs(finalAmount)}`
 
   const handleCheckout = async () => {
     setSubmitting(true)
@@ -324,6 +332,7 @@ function CheckoutSheet({
         tier,
         billingCycle,
         couponCode: couponCode.trim() || undefined,
+        ...(switching ? { replaceCurrentPlan: true } : {}),
       })
       if (result.activatedWithoutCharge) {
         onClose()
@@ -392,7 +401,8 @@ function CheckoutSheet({
                   style={[styles.cycleOption, active && styles.cycleOptionActive]}
                   rippleColor={p.ripple}
                   onPress={() => setBillingCycle(cycle)}
-                  accessibilityState={{ selected: active }}
+                  disabled={!(amount > 0)}
+                  accessibilityState={{ selected: active, disabled: !(amount > 0) }}
                 >
                   <View style={{ alignItems: 'center' }}>
                     <Text style={[styles.cycleText, active && styles.cycleTextActive]}>
@@ -400,13 +410,22 @@ function CheckoutSheet({
                     </Text>
                     <Text style={[styles.cycleHint, active && styles.cycleHintActive]}>
                       {formatGhs(amount)}
-                      {cycle === BillingCycle.YEARLY ? '/yr' : '/mo'}
+                      {cycle === BillingCycle.YEARLY ? ' / 1 year' : ' / 30 days'}
                     </Text>
                   </View>
                 </TouchableRipple>
               )
             })}
           </View>
+
+          <Text style={styles.sheetSub}>
+            One-time payment for {billingCycle === BillingCycle.YEARLY ? '1 year (365 days)' : '30 days'}. Your plan does not renew automatically.
+          </Text>
+          {switching ? (
+            <Text style={styles.couponError}>
+              Your {plans[current.tier]?.name ?? 'current'} plan is active until {new Date(current.currentPeriodEnd as string).toLocaleDateString()}. {plan.name} replaces it as soon as payment is confirmed, and unused time is not refunded or credited.
+            </Text>
+          ) : null}
 
           {/* Coupon */}
           <TextInput
@@ -457,7 +476,7 @@ function CheckoutSheet({
             style={styles.payButton}
             contentStyle={styles.payButtonContent}
             loading={submitting}
-            disabled={submitting}
+            disabled={submitting || !offered}
             onPress={handleCheckout}
             accessibilityLabel={payLabel}
           >
@@ -477,10 +496,11 @@ export default function SubscriptionScreen() {
   const p = usePalette()
   const styles = useStyles()
   const [currentSub, setCurrentSub] = useState<SubscriptionData>(DEFAULT_SUB)
-  const storeManaged = currentSub.billingProvider === 'apple' || currentSub.billingProvider === 'google'
+  // A running store plan is managed in that store; a lapsed one no longer blocks
+  // a web purchase (the API still refuses while the store could charge).
+  const storeManaged = (currentSub.billingProvider === 'apple' || currentSub.billingProvider === 'google') && isPaidPlanInForce(currentSub)
   const storeManagementUrl = currentSub.billingProvider === 'apple' ? 'https://apps.apple.com/account/subscriptions' : 'https://play.google.com/store/account/subscriptions?package=com.ujimora.app'
   const [isLoading, setIsLoading] = useState(true)
-  const [actionLoading, setActionLoading] = useState(false)
   const [checkoutTier, setCheckoutTier] = useState<string | null>(null)
   // DB-backed plans (seeded from SUBSCRIPTION_PLANS, overlaid from GET /plans) so
   // admin-added tiers appear here too.
@@ -528,33 +548,15 @@ export default function SubscriptionScreen() {
     }
   }, [])
 
-  const handleCancel = async () => {
-    if (storeManaged) { await Linking.openURL(storeManagementUrl); return }
-    Alert.alert('Cancel Subscription', 'Are you sure you want to cancel?', [
-      { text: 'No', style: 'cancel' },
-      {
-        text: 'Yes, cancel',
-        style: 'destructive',
-        onPress: async () => {
-          setActionLoading(true)
-          try {
-            await api.post('/subscriptions/cancel')
-            await fetchSubscription()
-            Alert.alert('Cancelled', 'Your subscription has been cancelled.')
-          } catch (err: unknown) {
-            Alert.alert('Error', err instanceof Error ? err.message : 'Failed to cancel')
-          } finally {
-            setActionLoading(false)
-          }
-        },
-      },
-    ])
-  }
-
   const orderedPlans = Object.values(plans)
     .filter((pl) => pl.active !== false && pl.isPublic !== false)
     .sort(bySortOrder)
   const currentPlan = plans[currentSub.tier] ?? SUBSCRIPTION_PLANS[SubscriptionTier.FREE]
+  // Web plans never renew on their own: once the period ends the member is
+  // back on Free and may buy any plan again, including the one that lapsed.
+  const paidInForce = isPaidPlanInForce(currentSub)
+  const lapsed = currentSub.tier !== SubscriptionTier.FREE && !paidInForce
+  const statusOk = !lapsed && currentSub.status === SubscriptionStatus.ACTIVE
 
   if (!user) {
     return (
@@ -585,9 +587,9 @@ export default function SubscriptionScreen() {
         <Text style={styles.currentPlanLabel}>Current Plan</Text>
         <Text style={styles.currentPlanName}>{currentPlan.name}</Text>
         <View style={styles.statusRow}>
-          <View style={[styles.statusBadge, currentSub.status === SubscriptionStatus.ACTIVE ? styles.statusActive : styles.statusInactive]}>
-            <Text style={[styles.statusText, currentSub.status === SubscriptionStatus.ACTIVE ? styles.statusTextActive : styles.statusTextInactive]}>
-              {currentSub.status.toUpperCase()}
+          <View style={[styles.statusBadge, statusOk ? styles.statusActive : styles.statusInactive]}>
+            <Text style={[styles.statusText, statusOk ? styles.statusTextActive : styles.statusTextInactive]}>
+              {lapsed ? 'EXPIRED' : currentSub.status.toUpperCase()}
             </Text>
           </View>
           <Text style={styles.billingText}>
@@ -607,7 +609,7 @@ export default function SubscriptionScreen() {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.plansScroll} contentContainerStyle={styles.plansRow}>
         {orderedPlans.map((plan, i) => {
           const tier = plan.tier
-          const isCurrent = tier === currentSub.tier
+          const isCurrent = isCurrentPlanTier(tier, currentSub)
           const isPro = plan.popular === true
           const isEnterprise = tier === SubscriptionTier.ENTERPRISE
           const isFree = plan.priceMonthly === 0
@@ -634,7 +636,7 @@ export default function SubscriptionScreen() {
               ) : (
                 <View style={styles.priceRow}>
                   <Text style={styles.planPrice}>GH₵ {plan.priceMonthly}</Text>
-                  <Text style={styles.priceUnit}>/mo</Text>
+                  <Text style={styles.priceUnit}>{isFree ? '/mo' : ' / 30 days'}</Text>
                 </View>
               )}
 
@@ -643,10 +645,8 @@ export default function SubscriptionScreen() {
               <View style={styles.featuresList}>
                 {[
                   plan.maxActiveCampaigns === -1 ? 'Unlimited campaigns' : `${plan.maxActiveCampaigns} campaign${plan.maxActiveCampaigns > 1 ? 's' : ''}`,
-                  plan.featuredListing ? 'Featured listing' : null,
-                  plan.prioritySupport ? 'Priority support' : null,
-                  plan.advancedAnalytics ? 'Advanced analytics' : null,
-                  plan.customBranding ? 'Custom branding' : null,
+                  // Featured listing, priority support, advanced analytics and
+                  // custom branding are not built, so they are not advertised.
                   plan.escrowSupport ? 'Escrow support' : null,
                   plan.liveStreaming ? 'Live streaming' : null,
                   plan.tier !== 'free' && (plan.priceMonthly > 0 || plan.priceYearly > 0) ? 'Creator profile donations (active paid plan)' : null,
@@ -663,13 +663,14 @@ export default function SubscriptionScreen() {
                   <Text style={styles.currentChipText}>Current Plan</Text>
                 </View>
               ) : isFree ? (
+                // Web plans end on their own; there is nothing to cancel.
                 <Button
                   mode="text"
                   textColor={p.textSecondary}
                   style={styles.planButton}
-                  onPress={handleCancel}
+                  disabled
                 >
-                  Switch to Free
+                  Free after your plan ends
                 </Button>
               ) : isEnterprise ? (
                 <Button
@@ -699,7 +700,7 @@ export default function SubscriptionScreen() {
       </ScrollView>
 
       {/* Upgrade CTA */}
-      {currentSub.tier === SubscriptionTier.FREE && (
+      {(currentSub.tier === SubscriptionTier.FREE || lapsed) && (
         <View style={styles.upgradeCta}>
           <View style={styles.upgradeIconTile}>
             <Icon source="crown" size={22} color={p.secondaryDark} />
@@ -722,23 +723,18 @@ export default function SubscriptionScreen() {
         </View>
       )}
 
-      {/* Cancel subscription */}
-      {currentSub.tier !== SubscriptionTier.FREE && !storeManaged && (
-        <Button
-          mode="outlined"
-          textColor={p.error}
-          style={styles.cancelButton}
-          disabled={actionLoading}
-          onPress={handleCancel}
-        >
-          Cancel Subscription
-        </Button>
+      {/* Web plans are one-time purchases: nothing renews, so nothing to cancel. */}
+      {paidInForce && !storeManaged && (
+        <Text style={styles.renewText}>
+          Your plan does not renew automatically. Buy again before {new Date(currentSub.currentPeriodEnd as string).toLocaleDateString()} to keep your benefits.
+        </Text>
       )}
     </ScrollView>
 
     <CheckoutSheet
       tier={checkoutTier}
       plans={plans}
+      current={currentSub}
       visible={checkoutTier !== null && !storeManaged}
       onClose={() => setCheckoutTier(null)}
       onActivated={fetchSubscription}

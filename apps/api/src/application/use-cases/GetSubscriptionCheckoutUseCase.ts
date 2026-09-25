@@ -4,6 +4,7 @@ import type { SubscriptionCheckout } from '@ubuntu-fund/types';
 import type { SubscriptionCheckoutRepositoryPort } from '../../domain/ports/outbound/SubscriptionCheckoutRepositoryPort.js';
 import type { CouponRedemptionRepositoryPort } from '../../domain/ports/outbound/CouponRedemptionRepositoryPort.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
+import { SUBSCRIPTION_CHECKOUT_TTL_MS, SubscriptionCheckoutResolver } from '../services/SubscriptionCheckoutResolver.js';
 
 /**
  * Fetches one subscription checkout by id, scoped to its owner. The user polls
@@ -37,26 +38,12 @@ export class GetSubscriptionCheckoutUseCase {
     const checkout = await this.execute(id, userId);
     if (checkout.status !== 'pending' || !checkout.providerRef) return checkout;
     if (!this.gateway || !this.settle) throw new AppError('Subscription verification unavailable', 503);
-    const verified = await this.gateway.verifyTransaction(checkout.providerRef);
-    if (verified.reference !== checkout.providerRef || verified.currency !== checkout.currency ||
-        !Number.isFinite(verified.amount) || Math.round(verified.amount * 100) !== Math.round(checkout.finalAmount * 100)) {
-      throw new AppError('Payment does not match this subscription checkout', 409);
-    }
-    if (verified.status === 'success') {
-      await this.settle.execute(checkout, checkout.providerRef);
-    } else if (verified.status === 'failed') {
-      await this.subscriptionCheckoutRepo.transitionToFailed(checkout.id);
-      // Same reasoning as the webhook path: a PENDING slot still counts against
-      // the per-user limit, so leaving it burns the seat on a failed payment.
-      if (this.couponRedemptionRepo && checkout.couponId) {
-        const redemption = await this.couponRedemptionRepo.findByProviderRef(
-          checkout.providerRef
-        );
-        if (redemption) {
-          await this.couponRedemptionRepo.markReleased(redemption.id);
-        }
-      }
-    }
+    // Success settles (repairing a missed webhook), failure frees the coupon
+    // seat, and a checkout abandoned for longer than its lifetime expires so the
+    // member is told to start again rather than wait forever.
+    await new SubscriptionCheckoutResolver(
+      this.subscriptionCheckoutRepo, this.gateway, this.settle, this.couponRedemptionRepo
+    ).resolve(checkout, { expireUnpaidAfterMs: SUBSCRIPTION_CHECKOUT_TTL_MS });
     return this.execute(id, userId);
   }
 

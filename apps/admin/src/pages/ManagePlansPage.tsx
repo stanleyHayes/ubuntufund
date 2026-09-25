@@ -36,21 +36,26 @@ import { useAdminPlans } from '@/hooks/useApiData'
 import { useAdminPermissions } from '@/context/AdminPermissionContext'
 import PageHeader from '@/components/PageHeader'
 
+// The first four flags have no implementation yet: members never see them on
+// any plan page, and turning them on grants nothing. The labels say so.
 const FEATURE_TOGGLES: { key: keyof SubscriptionPlan; label: string }[] = [
-  { key: 'featuredListing', label: 'Featured listing' },
-  { key: 'prioritySupport', label: 'Priority support' },
-  { key: 'advancedAnalytics', label: 'Advanced analytics' },
-  { key: 'customBranding', label: 'Custom branding' },
+  { key: 'featuredListing', label: 'Featured listing (not built — hidden from members)' },
+  { key: 'prioritySupport', label: 'Priority support (not built — hidden from members)' },
+  { key: 'advancedAnalytics', label: 'Advanced analytics (not built — hidden from members)' },
+  { key: 'customBranding', label: 'Custom branding (not built — hidden from members)' },
   { key: 'escrowSupport', label: 'Escrow & milestones' },
   { key: 'liveStreaming', label: 'Live streaming' },
   { key: 'campaignCollaboration', label: 'Campaign collaboration' },
 ]
 
+/** Plan prices only drive web (Paystack) checkout; store prices live on the store products. */
+const WEB_PRICE_HELP = 'Web checkout price. Update store products separately.'
+
 const NUMERIC_LIMITS: { key: keyof SubscriptionPlan; label: string; unlimited?: boolean }[] = [
   { key: 'maxActiveCampaigns', label: 'Max active campaigns', unlimited: true },
   { key: 'maxCampaignGoal', label: 'Max campaign goal (GH₵)', unlimited: true },
   { key: 'maxMediaPerCampaign', label: 'Max media per campaign', unlimited: true },
-  { key: 'maxTeamMembers', label: 'Max team members', unlimited: true },
+  { key: 'maxTeamMembers', label: 'Organization team seats (incl. owner)', unlimited: true },
   { key: 'maxPayoutAccounts', label: 'Saved payout accounts', unlimited: true },
   { key: 'maxCollaboratorsPerCampaign', label: 'Max collaborators per campaign', unlimited: true },
 ]
@@ -211,9 +216,12 @@ export default function ManagePlansPage() {
       )}
 
       <Alert severity="info" sx={{ mb: 3 }}>
-        Prices, limits and tiers are stored in the database and read across the platform. Admins can add new tiers
-        and reorder them; the code-defined defaults seed this list and act as a safe fallback. Use -1 for an
-        unlimited numeric limit.
+        Prices, limits and tiers are stored in the database. Prices here apply to web checkout (Paystack) only: iOS
+        and Android subscribers pay the price set on each App Store and Google Play product, so changing a price here
+        does not change store prices. After a price change, update the matching products in App Store Connect and
+        Google Play Console (mapped by the server&apos;s STORE_BILLING_PRODUCTS). A price of 0 on a paid plan means that
+        billing cycle is not offered. Admins can add new tiers and reorder them; the code-defined defaults seed this
+        list and act as a safe fallback. Use -1 for an unlimited numeric limit.
       </Alert>
       {error && plans.length > 0 && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
 
@@ -309,12 +317,14 @@ export default function ManagePlansPage() {
                   value={form.priceMonthly}
                   onChange={(e) => setField('priceMonthly', Number(e.target.value))}
                   InputProps={{ startAdornment: <InputAdornment position="start">GH₵</InputAdornment> }}
+                  helperText={WEB_PRICE_HELP}
                 />
                 <TextField
                   label="Yearly price" type="number" fullWidth size="small"
                   value={form.priceYearly}
                   onChange={(e) => setField('priceYearly', Number(e.target.value))}
                   InputProps={{ startAdornment: <InputAdornment position="start">GH₵</InputAdornment> }}
+                  helperText={WEB_PRICE_HELP}
                 />
               </Box>
               <TextField
@@ -385,8 +395,8 @@ export default function ManagePlansPage() {
               </Box>
               <TextField label="Description" fullWidth size="small" multiline minRows={2} value={createForm.description} onChange={(e) => setCreateField('description', e.target.value)} />
               <Box sx={{ display: 'flex', gap: 2 }}>
-                <TextField label="Monthly price" type="number" fullWidth size="small" value={createForm.priceMonthly} onChange={(e) => setCreateField('priceMonthly', Number(e.target.value))} InputProps={{ startAdornment: <InputAdornment position="start">GH₵</InputAdornment> }} />
-                <TextField label="Yearly price" type="number" fullWidth size="small" value={createForm.priceYearly} onChange={(e) => setCreateField('priceYearly', Number(e.target.value))} InputProps={{ startAdornment: <InputAdornment position="start">GH₵</InputAdornment> }} />
+                <TextField label="Monthly price" type="number" fullWidth size="small" value={createForm.priceMonthly} onChange={(e) => setCreateField('priceMonthly', Number(e.target.value))} InputProps={{ startAdornment: <InputAdornment position="start">GH₵</InputAdornment> }} helperText={WEB_PRICE_HELP} />
+                <TextField label="Yearly price" type="number" fullWidth size="small" value={createForm.priceYearly} onChange={(e) => setCreateField('priceYearly', Number(e.target.value))} InputProps={{ startAdornment: <InputAdornment position="start">GH₵</InputAdornment> }} helperText={WEB_PRICE_HELP} />
               </Box>
               <TextField label="Platform fee" type="number" fullWidth size="small" value={createForm.platformFeePercent} onChange={(e) => setCreateField('platformFeePercent', Number(e.target.value))} InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }} helperText="Between 0 and 100" />
               <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>

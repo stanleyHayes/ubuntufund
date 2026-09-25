@@ -39,6 +39,9 @@ interface FeatureRow {
   format?: 'boolean' | 'fee' | 'goal' | 'unlimited'
 }
 
+// Only benefits the platform actually delivers are listed. Featured listing,
+// priority support, advanced analytics and custom branding are plan flags with
+// no implementation behind them, so they are deliberately not advertised.
 const FEATURE_SECTIONS: { title: string; rows: FeatureRow[] }[] = [
   {
     title: 'Campaigns',
@@ -46,7 +49,6 @@ const FEATURE_SECTIONS: { title: string; rows: FeatureRow[] }[] = [
       { label: 'Active campaigns', key: 'maxActiveCampaigns', format: 'unlimited' },
       { label: 'Max campaign goal', key: 'maxCampaignGoal', format: 'goal' },
       { label: 'Media uploads per campaign', key: 'maxMediaPerCampaign', format: 'unlimited' },
-      { label: 'Featured listing', key: 'featuredListing', format: 'boolean' },
     ],
   },
   {
@@ -58,9 +60,6 @@ const FEATURE_SECTIONS: { title: string; rows: FeatureRow[] }[] = [
   {
     title: 'Features',
     rows: [
-      { label: 'Priority support', key: 'prioritySupport', format: 'boolean' },
-      { label: 'Advanced analytics', key: 'advancedAnalytics', format: 'boolean' },
-      { label: 'Custom branding', key: 'customBranding', format: 'boolean' },
       { label: 'Escrow & milestones', key: 'escrowSupport', format: 'boolean' },
       { label: 'Live streaming', key: 'liveStreaming', format: 'boolean' },
       { label: 'Creator profile donations (active paid plans)', key: 'creatorDonations', format: 'boolean' },
@@ -69,7 +68,7 @@ const FEATURE_SECTIONS: { title: string; rows: FeatureRow[] }[] = [
   {
     title: 'Team',
     rows: [
-      { label: 'Team members', key: 'maxTeamMembers', format: 'unlimited' },
+      { label: 'Organization team seats (incl. owner)', key: 'maxTeamMembers', format: 'unlimited' },
       { label: 'Campaign collaboration', key: 'campaignCollaboration', format: 'boolean' },
       { label: 'Collaborators per campaign', key: 'maxCollaboratorsPerCampaign', format: 'unlimited' },
     ],
@@ -112,12 +111,16 @@ const faqs = [
     answer: 'You can start with the Community plan without a paid subscription. Check the current checkout for any trial or promotional offers.',
   },
   {
-    question: 'How does yearly billing work?',
-    answer: 'Yearly plans display an equivalent monthly price and the full annual total. The annual total is billed for the year.',
+    question: 'Do plans renew automatically?',
+    answer: 'Plans bought on the Ujimora website are a one-time payment for 30 days or one year and do not renew automatically. Your plan ends on its end date unless you buy again. Plans bought in the Ujimora iOS or Android app are App Store or Google Play subscriptions that renew until you cancel them in that store.',
   },
   {
-    question: 'What happens if I cancel my subscription?',
-    answer: 'Check your subscription page for cancellation options and the effective date. Account deletion is a separate action.',
+    question: 'How does the yearly option work?',
+    answer: 'The yearly option is one payment for 365 days of access. We show the equivalent monthly price next to the full one-year total so you can compare.',
+  },
+  {
+    question: 'What happens if I stop paying?',
+    answer: 'A website plan simply ends on its end date and your account moves to Community features; there is nothing to cancel. App Store and Google Play subscriptions are cancelled in that store and stay active until the end of the paid period. Account deletion is a separate action.',
   },
   {
     question: 'Are there any hidden fees?',
@@ -143,7 +146,7 @@ function PricingPage() {
   // Before the early return below: the head must be set even while plans load.
   useSeo({
     title: 'Pricing and plans | Ujimora',
-    description: 'Compare Ujimora plans side by side: active campaign limits, cedi goal caps, platform fees, team seats and included tools, billed monthly or yearly.',
+    description: 'Compare Ujimora plans side by side: active campaign limits, cedi goal caps, platform fees, team seats and included tools, paid for 30 days or a year at a time.',
     path: '/pricing',
     type: 'website',
     jsonLd: breadcrumbList(SITE_ORIGIN, [{ name: 'Home', path: '/' }, { name: 'Pricing' }]),
@@ -254,12 +257,12 @@ function PricingPage() {
                         <Typography sx={{ fontWeight: 900, fontSize: { xs: '1.85rem', md: '2.2rem' }, lineHeight: 1.2, whiteSpace: 'nowrap' }}>
                           GH₵ {new Intl.NumberFormat('en-GH', { maximumFractionDigits: 2 }).format(yearly ? price / 12 : price)}
                         </Typography>
-                        <Typography sx={{ color: 'text.secondary', fontSize: '0.82rem' }}>/mo</Typography>
+                        <Typography sx={{ color: 'text.secondary', fontSize: '0.82rem' }}>{yearly || price === 0 ? '/mo' : '/ 30 days'}</Typography>
                       </Box>
                     )}
-                    {yearly && !isEnterprise && price > 0 && (
+                    {!isEnterprise && price > 0 && (
                       <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary', mt: 0.25 }}>
-                        GH₵ {price}/year &middot; billed annually
+                        {yearly ? <>GH₵ {price} for 1 year &middot; </> : null}One-time payment on the website &middot; does not auto-renew
                       </Typography>
                     )}
                   </Box>
@@ -273,10 +276,6 @@ function PricingPage() {
                     {[
                       plan.maxActiveCampaigns === -1 ? 'Unlimited campaigns' : `${plan.maxActiveCampaigns} active campaign${plan.maxActiveCampaigns !== 1 ? 's' : ''}`,
                       plan.maxCampaignGoal === -1 ? 'No goal limit' : `Up to GH₵ ${plan.maxCampaignGoal.toLocaleString()} goal`,
-                      plan.featuredListing && 'Featured listing',
-                      plan.prioritySupport && 'Priority support',
-                      plan.advancedAnalytics && 'Advanced analytics',
-                      plan.customBranding && 'Custom branding',
                       plan.escrowSupport && 'Escrow & milestones',
                       plan.liveStreaming && 'Live streaming',
                       plan.tier !== 'free' && (plan.priceMonthly > 0 || plan.priceYearly > 0) && 'Creator donations on your profile',

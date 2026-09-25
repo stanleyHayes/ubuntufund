@@ -27,12 +27,24 @@ export interface SubscriptionCheckoutRepositoryPort {
   ): Promise<SubscriptionCheckout | null>;
 
   /**
-   * Atomically move PENDING → SUCCEEDED. Returns the updated checkout, or null
-   * when it was no longer PENDING (already terminal). This is the single
+   * Atomically move PENDING (or EXPIRED) → SUCCEEDED. Returns the updated
+   * checkout, or null when it was already SUCCEEDED/FAILED. This is the single
    * exactly-once settlement gate, mirroring DonationIntent.transitionToSucceeded.
+   * EXPIRED is accepted because an unpaid checkout is only expired by us; if the
+   * provider later confirms the charge (a late webhook or verification), the
+   * member must get what they paid for rather than lose the money.
    */
   transitionToSucceeded(id: string): Promise<SubscriptionCheckout | null>;
 
   /** Atomically move PENDING → FAILED. Null when not PENDING (idempotent). */
   transitionToFailed(id: string): Promise<SubscriptionCheckout | null>;
+
+  /** Atomically move PENDING → EXPIRED (unpaid past its lifetime). Null when not PENDING. */
+  transitionToExpired(id: string): Promise<SubscriptionCheckout | null>;
+
+  /** PENDING checkouts created before `olderThan`, oldest first (reconciliation sweep). */
+  findStalePending(olderThan: Date, limit: number): Promise<SubscriptionCheckout[]>;
+
+  /** A user's PENDING checkouts, newest first. */
+  findPendingByUser(userId: string, limit: number): Promise<SubscriptionCheckout[]>;
 }

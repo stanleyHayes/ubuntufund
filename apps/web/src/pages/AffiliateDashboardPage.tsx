@@ -437,7 +437,7 @@ export function AffiliateDashboardPage() {
         <EmptyState
           variant="empty"
           title="Earn by referring others to Ujimora"
-          description="Join the affiliate program to get your own referral link. Earn a commission every time someone you refer starts a paid subscription."
+          description="Join the affiliate program to get your own referral link. Earn a one-time commission when someone you refer buys their first paid plan on the Ujimora website."
           action={
             <Button
               variant="contained"
@@ -743,7 +743,7 @@ export function AffiliateDashboardPage() {
                   compact
                   icon={<ReceiptLongRoundedIcon sx={{ fontSize: 40, color: 'text.disabled' }} />}
                   title="No commissions yet"
-                  description="You'll earn a commission when a referred user starts a paid subscription."
+                  description="You'll earn a one-time commission when a referred member buys their first paid plan on the Ujimora website."
                 />
               ) : (
                 <Box sx={{ display: 'flex', flexDirection: 'column' }}>

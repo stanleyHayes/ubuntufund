@@ -2,17 +2,17 @@ import {
   BillingCycle,
   CouponCommissionBase,
   SubscriptionStatus,
-  type Subscription,
   type SubscriptionCheckout,
 } from '@ubuntu-fund/types';
 import type { SubscriptionCheckoutRepositoryPort } from '../../domain/ports/outbound/SubscriptionCheckoutRepositoryPort.js';
-import type { SubscriptionRepositoryPort } from '../../domain/ports/outbound/SubscriptionRepositoryPort.js';
+import type { SubscriptionRecord, SubscriptionRepositoryPort } from '../../domain/ports/outbound/SubscriptionRepositoryPort.js';
 import type { CouponRepositoryPort } from '../../domain/ports/outbound/CouponRepositoryPort.js';
 import type { CouponRedemptionRepositoryPort } from '../../domain/ports/outbound/CouponRedemptionRepositoryPort.js';
 import type { AffiliateCommissionService } from '../services/AffiliateCommissionService.js';
 import { logger } from '../../infrastructure/logging/logger.js';
 import type { UnitOfWorkPort } from '../../domain/ports/outbound/UnitOfWorkPort.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
+import { isPaidPlanInForce } from '../../domain/services/subscriptionStatus.js';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -27,8 +27,11 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
  *   1. Atomically transition the checkout PENDING → SUCCEEDED (the exactly-once
  *      gate). Null => already settled/terminal; return the current record
  *      unchanged (idempotent no-op).
- *   2. Upsert the user's Subscription to the paid tier, ACTIVE, with a fresh
- *      billing period.
+ *   2. Upsert the user's Subscription to the paid tier, ACTIVE. A fresh period
+ *      starts now — unless the member bought the web plan they already have
+ *      while it is still running, in which case the new period is added to the
+ *      end of the current one (early renewal, or a duplicate payment, never
+ *      throws paid days away).
  *   3. If the checkout carried a coupon: bump the coupon's global redemption
  *      counter (atomic, under-cap), then CONSUME the provisional redemption slot
  *      and link it to the activated subscription.
@@ -76,15 +79,22 @@ export class SettleSubscriptionUseCase {
     const periodDays =
       settled.billingCycle === BillingCycle.YEARLY ? 365 : 30;
     const existing = await this.subscriptionRepo.findByUserId(settled.userId);
-    const next: Subscription = {
+    const extendsCurrent = !!existing && existing.tier === settled.tier &&
+      existing.status === SubscriptionStatus.ACTIVE && isPaidPlanInForce(existing, now) &&
+      existing.billingProvider !== 'apple' && existing.billingProvider !== 'google';
+    const periodStart = extendsCurrent ? new Date(existing.currentPeriodStart) : now;
+    const periodBase = extendsCurrent ? new Date(existing.currentPeriodEnd).getTime() : now.getTime();
+    const next: SubscriptionRecord = {
       id: existing?.id ?? '', // assigned by the repository when creating
       userId: settled.userId,
       tier: settled.tier,
       status: SubscriptionStatus.ACTIVE,
       billingCycle: settled.billingCycle,
-      currentPeriodStart: now,
-      currentPeriodEnd: new Date(now.getTime() + periodDays * MS_PER_DAY),
+      currentPeriodStart: periodStart,
+      currentPeriodEnd: new Date(periodBase + periodDays * MS_PER_DAY),
       cancelAtPeriodEnd: false,
+      // Which charges paid for this period, so a refund removes exactly its time.
+      paymentReferences: extendsCurrent ? [...(existing.paymentReferences ?? []), reference] : [reference],
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     };
@@ -100,9 +110,13 @@ export class SettleSubscriptionUseCase {
         settled.couponId
       );
       if (!bumped) {
+        // Two different situations; say which, so finance is not misled.
+        const stillExists = await this.couponRepo.findById(settled.couponId);
         logger.warn(
           { couponId: settled.couponId, checkoutId: settled.id, reference },
-          'subscription settled but coupon was already at its global limit'
+          stillExists
+            ? 'subscription settled but coupon was already at its global limit'
+            : 'subscription settled but its coupon no longer exists'
         );
       }
       const redemption =
@@ -137,8 +151,22 @@ export class SettleSubscriptionUseCase {
     }
 
     if (settled.couponId) {
-      const coupon = await this.couponRepo.findById(settled.couponId);
-      if (coupon?.commissionBase === CouponCommissionBase.LIST_PRICE) {
+      // The basis quoted with the checkout wins; older checkouts fall back to
+      // the live coupon. A coupon deleted before this change can no longer be
+      // read: retrying would never help and would leave a paid plan inactive,
+      // so the default (post-coupon) basis applies and is flagged for finance.
+      let basis = settled.commissionBase;
+      if (!basis) {
+        const coupon = await this.couponRepo.findById(settled.couponId);
+        basis = coupon?.commissionBase;
+        if (!coupon) {
+          logger.error(
+            { couponId: settled.couponId, checkoutId: settled.id, reference },
+            'coupon missing at settlement; affiliate commission used the post-coupon amount'
+          );
+        }
+      }
+      if (basis === CouponCommissionBase.LIST_PRICE) {
         commissionBaseAmount = settled.baseAmount;
       }
     }

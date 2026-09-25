@@ -1,9 +1,13 @@
 import {
+  APIError,
+  APIException,
   AppStoreServerAPIClient,
   Environment,
   SignedDataVerifier,
   Status,
   Type,
+  VerificationException,
+  VerificationStatus,
 } from '@apple/app-store-server-library';
 import { GoogleAuth, OAuth2Client } from 'google-auth-library';
 import { z } from 'zod';
@@ -15,10 +19,21 @@ import { AppError } from '../../inbound/middleware/errorHandler.js';
 type AppleClient = Pick<AppStoreServerAPIClient, 'getTransactionInfo' | 'getAllSubscriptionStatuses'>;
 type AppleVerifier = Pick<SignedDataVerifier,
   'verifyAndDecodeTransaction' | 'verifyAndDecodeRenewalInfo' | 'verifyAndDecodeNotification'>;
+interface ApplePair { client: AppleClient; verifier: AppleVerifier }
 
 export interface StoreVerifierDependencies {
   products: StoreProduct[];
-  apple?: { client: AppleClient; verifier: AppleVerifier; bundleId: string; environment: Environment };
+  apple?: ApplePair & {
+    bundleId: string; environment: Environment;
+    /**
+     * Sandbox client/verifier for a PRODUCTION deployment. App Review and
+     * TestFlight buy with sandbox accounts against the production build, so
+     * Apple's documented order is: verify in production, and only when
+     * production says the transaction does not exist, retry in sandbox.
+     * Absent, sandbox purchases are rejected.
+     */
+    sandbox?: ApplePair;
+  };
   google?: {
     packageName: string;
     allowTestPurchases: boolean;
@@ -50,6 +65,12 @@ const googlePurchaseSchema = z.object({
 });
 
 const invalid = () => new AppError('The store could not verify this subscription.', 422);
+/** Production's definitive "no such transaction" — what a sandbox receipt gets there. */
+const transactionNotFound = (error: unknown) => error instanceof APIException &&
+  (error.apiError === APIError.TRANSACTION_ID_NOT_FOUND || error.apiError === APIError.ORIGINAL_TRANSACTION_ID_NOT_FOUND);
+/** What a production verifier says about correctly signed sandbox data. */
+const wrongEnvironment = (error: unknown) => error instanceof VerificationException &&
+  (error.status === VerificationStatus.INVALID_ENVIRONMENT || error.status === VerificationStatus.INVALID_APP_IDENTIFIER);
 const timestamp = (value: number | undefined): Date => {
   if (value === undefined || !Number.isFinite(value) || value <= 0 || Number.isNaN(new Date(value).getTime())) throw invalid();
   return new Date(value);
@@ -85,6 +106,27 @@ export class StorePurchaseVerifier implements StorePurchaseVerifierPort {
     const apple = this.deps.apple;
     if (!apple) throw new AppError('App Store billing is not configured.', 503);
     if (!/^\d{1,40}$/.test(reference)) throw invalid();
+    const sandbox = apple.environment === Environment.PRODUCTION ? apple.sandbox : undefined;
+    try {
+      return await this.verifyAppleIn(apple, apple.environment, reference);
+    } catch (error) {
+      if (!transactionNotFound(error)) throw error;
+    }
+    // Production has never seen this transaction. With no sandbox fallback
+    // that is a definitive rejection, not a provider outage.
+    if (!sandbox) throw invalid();
+    // App Review / TestFlight: the same checks, against the sandbox environment,
+    // and the result is marked sandbox so it is never counted as revenue.
+    try {
+      return await this.verifyAppleIn(sandbox, Environment.SANDBOX, reference);
+    } catch (error) {
+      if (transactionNotFound(error)) throw invalid();
+      throw error;
+    }
+  }
+
+  private async verifyAppleIn(pair: ApplePair, environment: Environment, reference: string): Promise<VerifiedStorePurchase> {
+    const apple = { ...pair, bundleId: this.deps.apple!.bundleId, environment };
     const lookup = await apple.client.getTransactionInfo(reference);
     if (!lookup.signedTransactionInfo) throw invalid();
     const requested = await apple.verifier.verifyAndDecodeTransaction(lookup.signedTransactionInfo);
@@ -176,13 +218,29 @@ export class StorePurchaseVerifier implements StorePurchaseVerifierPort {
   }
 
   async appleNotification(signedPayload: string): Promise<string | null> {
-    if (!this.deps.apple) throw new AppError('App Store billing is not configured.', 503);
+    const apple = this.deps.apple;
+    if (!apple) throw new AppError('App Store billing is not configured.', 503);
     try {
-      const event = await this.deps.apple.verifier.verifyAndDecodeNotification(signedPayload);
+      let pair: ApplePair = apple;
+      let environment = apple.environment;
+      let event;
+      try {
+        event = await apple.verifier.verifyAndDecodeNotification(signedPayload);
+      } catch (error) {
+        // A sandbox (App Review / TestFlight) notification fails the production
+        // verifier's environment checks. Only then, and only when the fallback
+        // is enabled, verify it in full with the sandbox verifier.
+        if (!apple.sandbox || apple.environment !== Environment.PRODUCTION || !wrongEnvironment(error)) throw error;
+        pair = apple.sandbox;
+        environment = Environment.SANDBOX;
+        event = await pair.verifier.verifyAndDecodeNotification(signedPayload);
+      }
       if (event.notificationType === 'TEST') return null;
-      if (!event.data?.signedTransactionInfo || event.data.bundleId !== this.deps.apple.bundleId ||
-          event.data.environment !== this.deps.apple.environment) throw invalid();
-      const transaction = await this.deps.apple.verifier.verifyAndDecodeTransaction(event.data.signedTransactionInfo);
+      if (!event.data?.signedTransactionInfo || event.data.bundleId !== apple.bundleId ||
+          event.data.environment !== environment) throw invalid();
+      // The caller re-verifies through verify(), which applies the same
+      // production-then-sandbox order and records the environment.
+      const transaction = await pair.verifier.verifyAndDecodeTransaction(event.data.signedTransactionInfo);
       if (!transaction.transactionId) throw invalid();
       // Caller re-fetches authoritative status; notification ordering grants nothing.
       return transaction.transactionId;
@@ -216,7 +274,9 @@ export class StorePurchaseVerifier implements StorePurchaseVerifierPort {
 export function createStoreVerifierDependencies(options: {
   products: StoreProduct[];
   apple?: { privateKey: string; keyId: string; issuerId: string; bundleId: string;
-    environment: Environment.PRODUCTION | Environment.SANDBOX; rootCertificates: Buffer[]; appAppleId?: number };
+    environment: Environment.PRODUCTION | Environment.SANDBOX; rootCertificates: Buffer[]; appAppleId?: number;
+    /** Production only: also accept App Review / TestFlight sandbox purchases, recorded as sandbox. */
+    allowSandboxFallback?: boolean };
   google?: { packageName: string; allowTestPurchases: boolean; credentials: { client_email: string; private_key: string };
     pushAudience: string; pushServiceAccount: string };
 }): StoreVerifierDependencies {
@@ -230,6 +290,11 @@ export function createStoreVerifierDependencies(options: {
       bundleId: a.bundleId, environment: a.environment,
       client: new AppStoreServerAPIClient(a.privateKey, a.keyId, a.issuerId, a.bundleId, a.environment),
       verifier: new SignedDataVerifier(a.rootCertificates, true, a.environment, a.bundleId, a.appAppleId),
+      // Sandbox has no app Apple ID; the same key, roots and bundle apply.
+      ...(a.environment === Environment.PRODUCTION && a.allowSandboxFallback ? { sandbox: {
+        client: new AppStoreServerAPIClient(a.privateKey, a.keyId, a.issuerId, a.bundleId, Environment.SANDBOX),
+        verifier: new SignedDataVerifier(a.rootCertificates, true, Environment.SANDBOX, a.bundleId),
+      } } : {}),
     };
   }
   if (options.google) {

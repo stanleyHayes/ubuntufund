@@ -16,6 +16,7 @@ import type { RecordProviderPaymentEventUseCase } from './RecordProviderPaymentE
 import type { SubscriptionCheckoutRepositoryPort } from '../../domain/ports/outbound/SubscriptionCheckoutRepositoryPort.js';
 import type { AffiliateCommissionService } from '../services/AffiliateCommissionService.js';
 import type { CouponRedemptionRepositoryPort } from '../../domain/ports/outbound/CouponRedemptionRepositoryPort.js';
+import type { RefundedSubscriptionPayment } from './RevokeRefundedSubscriptionUseCase.js';
 import { releaseDonationSeat } from '../services/donationCouponSeats.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 import { logger } from '../../infrastructure/logging/logger.js';
@@ -82,8 +83,9 @@ interface PaystackWebhookEvent {
  *    campaign payout, delegated to {@link HandlePayoutWebhookUseCase}. Both
  *    settle the correlated payout + balances idempotently by reference.
  *  - `refund.processed` / `charge.refund` → when the refunded transaction is a
- *    `sub-` subscription charge, claw back the affiliate commission it earned
- *    via {@link AffiliateCommissionService.reverseForSourceRef} (safe no-op
+ *    `sub-` subscription charge, take back the plan time it paid for and claw
+ *    back the affiliate commission it earned via
+ *    {@link AffiliateCommissionService.reverseForSourceRef} (safe no-op
  *    otherwise).
  *  - `refund.*` and `charge.dispute.*` → recorded once and surfaced to staff by
  *    {@link RecordProviderPaymentEventUseCase} (campaign cases open in the
@@ -121,7 +123,11 @@ export class HandlePaystackWebhookUseCase {
     private readonly couponRedemptionRepo?: CouponRedemptionRepositoryPort,
     // Optional: records provider-originated chargebacks/disputes and refunds
     // and surfaces them to staff. Absent, those events are acknowledged only.
-    private readonly providerPaymentEvents?: Pick<RecordProviderPaymentEventUseCase, 'handleDispute' | 'handleRefund'>
+    private readonly providerPaymentEvents?: Pick<RecordProviderPaymentEventUseCase, 'handleDispute' | 'handleRefund'>,
+    // Optional: when wired, a refunded subscription charge takes back the plan
+    // time it paid for (RevokeRefundedSubscriptionUseCase).
+    private readonly revokeRefundedSubscription?: { execute(payment: RefundedSubscriptionPayment): Promise<unknown> }
+
   ) {}
 
   async execute(input: PaystackWebhookInput): Promise<void> {
@@ -295,12 +301,12 @@ export class HandlePaystackWebhookUseCase {
   }
 
   /**
-   * Affiliate clawback on a refund. When the refunded transaction is a `sub-`
-   * subscription charge, reverse the one-time commission it earned. Guarded so a
-   * missing service, or a non-subscription / unknown reference, is a no-op.
+   * A refunded `sub-` subscription charge: take back the plan time it paid for,
+   * then reverse the one-time affiliate commission it earned. Each step is
+   * idempotent and guarded, so a replayed refund, a non-subscription or unknown
+   * reference, or an unwired service is a no-op.
    */
   private async handleRefund(data: PaystackChargeData): Promise<void> {
-    if (!this.affiliateCommissionService) return;
     const reference =
       typeof data.transaction_reference === 'string'
         ? data.transaction_reference
@@ -308,7 +314,16 @@ export class HandlePaystackWebhookUseCase {
           ? data.reference
           : undefined;
     if (!reference || !reference.startsWith('sub-')) return;
-    await this.affiliateCommissionService.reverseForSourceRef(reference);
+    if (this.revokeRefundedSubscription) {
+      // Refund events carry the refunded amount in minor units.
+      const amount = Number(data.amount);
+      await this.revokeRefundedSubscription.execute({
+        reference,
+        refundedMinor: Number.isFinite(amount) && amount > 0 ? amount : undefined,
+        currency: typeof data.currency === 'string' ? data.currency : undefined,
+      });
+    }
+    await this.affiliateCommissionService?.reverseForSourceRef(reference);
   }
 
   private async handleChargeSuccess(
