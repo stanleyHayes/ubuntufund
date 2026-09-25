@@ -852,8 +852,15 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     creatorBalanceRepo,
     paymentGateway,
     planLimitsService,
+    // Keys the idempotent tip reference so it cannot be predicted client-side.
+    config.jwtSecret,
   )
-  const handleTipWebhookUseCase = new HandleTipWebhookUseCase(tipRepo, creatorBalanceRepo)
+  const handleTipWebhookUseCase = new HandleTipWebhookUseCase(
+    tipRepo,
+    creatorBalanceRepo,
+    // Re-verifies a late success on a FAILED tip before crediting it.
+    paymentGateway,
+  )
   const creatorPayoutRepo = new MongoCreatorPayoutRepository()
   const payoutAccounts = new PayoutAccountService(
     new MongoPayoutAccountRepository(),

@@ -17,6 +17,7 @@ import { releaseDonationSeat } from '../services/donationCouponSeats.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 import { logger } from '../../infrastructure/logging/logger.js';
 import { fromMinorUnits, minorUnitExponent } from '../../domain/value-objects/Money.js';
+import { chargeMatches, parsePaystackCharge } from '../services/providerCharge.js';
 
 export interface PaystackWebhookInput {
   /** The exact raw request bytes the signature was computed over. */
@@ -135,11 +136,13 @@ export class HandlePaystackWebhookUseCase {
         // Paid-subscription checkouts (`sub-`) and creator tips (`tip-`) settle
         // on their own rails; every other reference is a donation intent.
         if (reference.startsWith('sub-')) {
-          await this.handleSubscriptionSuccess(reference);
+          await this.handleSubscriptionSuccess(reference, data);
           return;
         }
         if (reference.startsWith('tip-')) {
-          await this.handleTipWebhookUseCase?.handleSuccess(reference);
+          // The tip settlement compares what Paystack charged with the tip row
+          // before crediting the creator — never the row's amount on trust.
+          await this.handleTipWebhookUseCase?.handleSuccess(reference, parsePaystackCharge(data));
           return;
         }
         await this.handleChargeSuccess(reference, data);
@@ -212,12 +215,31 @@ export class HandlePaystackWebhookUseCase {
    * Settle a paid-subscription checkout off its signed `charge.success`.
    * Correlates by the checkout's provider reference and defers to
    * {@link SettleSubscriptionUseCase} (idempotent). An unknown reference is a
-   * safe no-op.
+   * safe no-op. The charged amount and currency must equal the checkout's
+   * quoted total — a mismatch is logged and never activates the plan.
    */
-  private async handleSubscriptionSuccess(reference: string): Promise<void> {
+  private async handleSubscriptionSuccess(
+    reference: string,
+    data: PaystackChargeData
+  ): Promise<void> {
     const checkout =
       await this.subscriptionCheckoutRepo.findByProviderRef(reference);
     if (!checkout) return;
+    const charged = parsePaystackCharge(data);
+    if (!chargeMatches({ amount: checkout.finalAmount, currency: checkout.currency }, charged)) {
+      logger.warn(
+        {
+          checkoutId: checkout.id,
+          providerRef: reference,
+          expectedAmount: checkout.finalAmount,
+          expectedCurrency: checkout.currency,
+          providerAmount: charged.amount,
+          providerCurrency: charged.currency,
+        },
+        'subscription settlement mismatch — not activating; left for manual review'
+      );
+      return;
+    }
     await this.settleSubscriptionUseCase.execute(checkout, reference);
   }
 

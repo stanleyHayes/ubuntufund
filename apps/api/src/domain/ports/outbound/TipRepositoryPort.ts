@@ -12,9 +12,13 @@ export interface TipRepositoryPort {
   /**
    * Atomically move a tip PENDING → SUCCEEDED. Returns the tip when THIS caller
    * won the transition (so the balance credit runs at most once), or null when
-   * it was already settled (idempotent).
+   * it was already settled (idempotent). `allowFromFailed` also admits FAILED —
+   * only for a late success the caller has verified with the provider.
    */
-  transitionToSucceeded(providerRef: string): Promise<TipEntity | null>;
+  transitionToSucceeded(
+    providerRef: string,
+    opts?: { allowFromFailed?: boolean }
+  ): Promise<TipEntity | null>;
   /** Atomically move a tip PENDING → FAILED. Null when not PENDING. */
   transitionToFailed(providerRef: string): Promise<TipEntity | null>;
 
@@ -27,4 +31,13 @@ export interface TipRepositoryPort {
    * already credited under the old path and are never re-driven.
    */
   findSucceededUnsettled(olderThan: Date, limit?: number): Promise<TipEntity[]>;
+
+  /**
+   * PENDING tips last touched before `olderThan`, least-recently reconciled
+   * first, so a backlog of unresolvable checkouts can never starve newer ones.
+   * The reconciler re-verifies these with the provider to repair a lost webhook.
+   */
+  findStalePending(olderThan: Date, limit: number): Promise<TipEntity[]>;
+  /** Stamp a sweep's visit on a still-PENDING tip (rotates it to the back). */
+  recordReconciliationAttempt(id: string, attemptedAt: Date): Promise<void>;
 }

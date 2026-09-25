@@ -26,6 +26,9 @@ function sign(raw: string): string {
   return createHmac('sha512', PAYSTACK_SECRET).update(raw).digest('hex');
 }
 
+// What /transaction/verify/:ref reports; tests override per case.
+let verifyReply: { status: string; amount: number; currency: string } = { status: 'success', amount: 0, currency: 'GHS' };
+
 describe('Creator tip jar (buy-me-a-coffee) — receive loop', () => {
   let app: Express;
 
@@ -44,6 +47,10 @@ describe('Creator tip jar (buy-me-a-coffee) — receive loop', () => {
         if (u.includes('/transaction/initialize')) {
           const reference = body.reference as string;
           return json({ status: true, data: { authorization_url: `x/${reference}`, access_code: 'a', reference } });
+        }
+        if (u.includes('/transaction/verify/')) {
+          const reference = decodeURIComponent(u.split('/transaction/verify/')[1] ?? '');
+          return json({ status: true, data: { ...verifyReply, reference, fees: 0 } });
         }
         throw new Error(`unexpected fetch ${u}`);
       })
@@ -184,6 +191,65 @@ describe('Creator tip jar (buy-me-a-coffee) — receive loop', () => {
       .expect(200);
     const me2 = await request(app).get('/api/v1/creators/me').set('Authorization', `Bearer ${token}`).expect(200);
     expect(me2.body.data.balance.availableBalance).toBe(40);
+  });
+
+  it('never credits a signed charge.success whose amount differs from the tip, then settles the real one once', async () => {
+    const reg = await request(app).post('/api/v1/auth/register').send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email: uniqueEmail('mismatch'), password: 'SecurePass123', name: 'Esi Creator' }).expect(201);
+    const token = reg.body.data.tokens.accessToken as string;
+    const userId = reg.body.data.user.id as string;
+    await SubscriptionModel.create({ userId, tier: 'starter', status: 'active', billingCycle: 'monthly', currentPeriodStart: new Date(), currentPeriodEnd: new Date(Date.now() + 86400000) });
+    const handle = `esi-${randomUUID().slice(0, 6)}`;
+    await request(app).post('/api/v1/creators/profile').set('Authorization', `Bearer ${token}`).send({ handle, displayName: 'Esi Creator' }).expect(200);
+    // The public profile exposes the creator's user id, and a guest picks the
+    // request key — the reference must still be unpredictable.
+    const idempotencyKey = `attack-${randomUUID()}`;
+    const tip = await request(app).post(`/api/v1/creators/${handle}/tips`).set('Idempotency-Key', idempotencyKey)
+      .send({ amount: 5000, supporterEmail: 'fan3@example.com' }).expect(201);
+    const reference = tip.body.data.reference as string;
+    const { createHash } = await import('node:crypto');
+    expect(reference).not.toBe(`tip-${createHash('sha256').update(JSON.stringify([userId, 'guest', idempotencyKey])).digest('hex')}`);
+
+    const send = async (amountMinor: number, currency = 'GHS') => {
+      const raw = JSON.stringify({ event: 'charge.success', data: { reference, amount: amountMinor, fees: 0, currency, status: 'success' } });
+      await request(app).post('/api/v1/webhooks/paystack').set('x-paystack-signature', sign(raw)).set('Content-Type', 'application/json').send(raw).expect(200);
+    };
+    await send(100); // GH₵1 charged for a GH₵5,000 tip
+    await send(500000, 'USD');
+    expect((await TipModel.findOne({ providerRef: reference }))?.status).toBe('PENDING');
+    expect((await CreatorBalanceModel.findOne({ userId }))?.availableBalance ?? 0).toBe(0);
+
+    await send(500000);
+    await send(500000);
+    expect((await TipModel.findOne({ providerRef: reference }))?.status).toBe('SUCCEEDED');
+    expect((await CreatorBalanceModel.findOne({ userId }))?.availableBalance).toBe(5000);
+  });
+
+  it('the reconciliation sweep settles a paid tip whose webhook never arrived', async () => {
+    const reg = await request(app).post('/api/v1/auth/register').send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email: uniqueEmail('losthook'), password: 'SecurePass123', name: 'Kwesi Creator' }).expect(201);
+    const token = reg.body.data.tokens.accessToken as string;
+    const userId = reg.body.data.user.id as string;
+    await SubscriptionModel.create({ userId, tier: 'starter', status: 'active', billingCycle: 'monthly', currentPeriodStart: new Date(), currentPeriodEnd: new Date(Date.now() + 86400000) });
+    const handle = `kwesi-${randomUUID().slice(0, 6)}`;
+    await request(app).post('/api/v1/creators/profile').set('Authorization', `Bearer ${token}`).send({ handle, displayName: 'Kwesi Creator' }).expect(200);
+    const tip = await request(app).post(`/api/v1/creators/${handle}/tips`).send({ amount: 30, supporterEmail: 'fan4@example.com' }).expect(201);
+    const reference = tip.body.data.reference as string;
+    await TipModel.updateOne({ providerRef: reference }, { $set: { updatedAt: new Date(Date.now() - 3600_000) } }, { timestamps: false });
+
+    const admReg = await request(app).post('/api/v1/auth/register').send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email: uniqueEmail('tipadm2'), password: 'SecurePass123', name: 'Adm' }).expect(201);
+    await UserModel.findByIdAndUpdate(admReg.body.data.user.id, { role: 'admin' });
+    const admLogin = await request(app).post('/api/v1/auth/login').send({ email: admReg.body.data.user.email, password: 'SecurePass123' }).expect(200);
+    const sweep = () => request(app).post('/api/v1/admin/reconciliation').set('Authorization', `Bearer ${admLogin.body.data.tokens.accessToken}`).send({ olderThanMinutes: 1 }).expect(200);
+
+    // Still being paid: stays open.
+    verifyReply = { status: 'abandoned', amount: 3000, currency: 'GHS' };
+    await sweep();
+    expect((await TipModel.findOne({ providerRef: reference }))?.status).toBe('PENDING');
+
+    verifyReply = { status: 'success', amount: 3000, currency: 'GHS' };
+    await sweep();
+    await sweep();
+    expect((await TipModel.findOne({ providerRef: reference }))?.status).toBe('SUCCEEDED');
+    expect((await CreatorBalanceModel.findOne({ userId }))?.availableBalance).toBe(30);
   });
 
   it('rejects a taken handle with 409', async () => {

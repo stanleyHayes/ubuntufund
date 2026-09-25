@@ -33,6 +33,8 @@ export interface TipDocument extends Document {
    * them leaves a SUCCEEDED-but-uncredited tip; reconciliation re-drives those.
    */
   settlementApplied: boolean;
+  /** Last time the payment sweep re-verified this PENDING tip (fairness order). */
+  reconciledAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -65,9 +67,14 @@ const schema = new Schema<TipDocument>(
     platformFee: { type: Number, default: 0 },
     netAmount: { type: Number, default: 0 },
     settlementApplied: { type: Boolean, default: false },
+    reconciledAt: { type: Date },
   },
   { collection: 'tips', timestamps: true }
 );
+
+// The stale-PENDING tip sweep: filter on status/updatedAt, least recently
+// reconciled first.
+schema.index({ status: 1, reconciledAt: 1, updatedAt: 1 });
 
 schema.plugin(trackActivity);
 

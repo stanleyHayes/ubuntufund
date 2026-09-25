@@ -94,9 +94,15 @@ export class MongoTipRepository implements TipRepositoryPort {
     return { count: row?.count ?? 0, totalNet: row?.totalNet ?? 0 };
   }
 
-  async transitionToSucceeded(providerRef: string): Promise<TipEntity | null> {
+  async transitionToSucceeded(
+    providerRef: string,
+    opts: { allowFromFailed?: boolean } = {}
+  ): Promise<TipEntity | null> {
+    // FAILED is admitted only for a provider-verified late success; the caller
+    // (HandleTipWebhookUseCase) owns that verification.
+    const from = opts.allowFromFailed ? ['PENDING', 'FAILED'] : ['PENDING'];
     const doc = await TipModel.findOneAndUpdate(
-      { providerRef, status: 'PENDING' },
+      { providerRef, status: { $in: from } },
       { $set: { status: 'SUCCEEDED' }, $unset: { checkout: 1 } },
       { new: true }
     );
@@ -129,5 +135,22 @@ export class MongoTipRepository implements TipRepositoryPort {
       .sort({ updatedAt: 1 })
       .limit(limit);
     return docs.map(toDomain);
+  }
+
+  async findStalePending(olderThan: Date, limit: number): Promise<TipEntity[]> {
+    // Never-reconciled rows (field absent) sort first, then the least recently
+    // visited — the same fairness rule as the crypto and fiat donation sweeps.
+    const docs = await TipModel.find({ status: 'PENDING', updatedAt: { $lt: olderThan } })
+      .sort({ reconciledAt: 1, updatedAt: 1, _id: 1 })
+      .limit(limit);
+    return docs.map(toDomain);
+  }
+
+  async recordReconciliationAttempt(id: string, attemptedAt: Date): Promise<void> {
+    await TipModel.updateOne(
+      { _id: id, status: 'PENDING' },
+      { $max: { reconciledAt: attemptedAt } },
+      { timestamps: false }
+    );
   }
 }

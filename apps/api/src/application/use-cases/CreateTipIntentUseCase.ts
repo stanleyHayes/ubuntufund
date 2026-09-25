@@ -1,6 +1,6 @@
 import type { LegalAcceptanceInput } from '@ubuntu-fund/types';
 import { messageAgreement } from '../services/messageAgreement.js';
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash, createHmac, randomUUID } from 'node:crypto';
 import type { PlanLimitsService } from '../services/PlanLimitsService.js';
 import type { CreatorProfileRepositoryPort } from '../../domain/ports/outbound/CreatorProfileRepositoryPort.js';
 import type { TipRepositoryPort } from '../../domain/ports/outbound/TipRepositoryPort.js';
@@ -34,8 +34,16 @@ export class CreateTipIntentUseCase {
     private readonly balanceRepo: CreatorBalanceRepositoryPort,
     private readonly gateway: PaymentGatewayPort,
     /** Live paid-plan entitlement; fees are deducted at withdrawal. */
-    private readonly plans: PlanLimitsService
-  ) {}
+    private readonly plans: PlanLimitsService,
+    /**
+     * Server-only key for deriving idempotent `tip-` references. The reference
+     * must be unguessable: anyone who can compute it in advance could open a
+     * cheaper charge under it at the provider before our checkout does.
+     */
+    private readonly referenceSecret: string
+  ) {
+    if (!referenceSecret) throw new Error('CreateTipIntentUseCase requires a reference secret');
+  }
 
   async execute(handle: string, input: CreateTipInput) {
     if (input.idempotencyKey !== undefined && !/^[a-zA-Z0-9_-]{16,128}$/.test(input.idempotencyKey)) throw new AppError('Invalid checkout request key.', 400);
@@ -58,8 +66,15 @@ export class CreateTipIntentUseCase {
     const net = roundToCurrency(input.amount - fee, creator.currency);
 
     const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
+    // Keyed, not a plain hash: the creator id is public and the request key is
+    // chosen by the client, so an unkeyed digest would let anyone predict the
+    // reference and claim it at the provider first. The same inputs still map
+    // to the same reference server-side, so retries stay idempotent.
+    const keyedReference = (value: unknown) => createHmac('sha256', this.referenceSecret)
+      .update(`tip-reference:v1:${JSON.stringify(value)}`)
+      .digest('hex');
     const reference = input.idempotencyKey
-      ? `tip-${hash([creator.userId, input.supporterUserId ?? 'guest', input.idempotencyKey])}`
+      ? `tip-${keyedReference([creator.userId, input.supporterUserId ?? 'guest', input.idempotencyKey])}`
       : `tip-${randomUUID()}`;
     const requestFingerprint = input.idempotencyKey ? hash([
       input.amount, creator.currency, input.supporterEmail, input.supporterName ?? '',

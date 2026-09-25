@@ -12,11 +12,23 @@ import type { SettleDonationUseCase } from './SettleDonationUseCase.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 import { logger } from '../../infrastructure/logging/logger.js';
 import { minorUnitExponent } from '../../domain/value-objects/Money.js';
+import { tipChargeMatches, type TipCharge } from './HandleTipWebhookUseCase.js';
 
-/** The tip-credit repair seam the reconciler drives; {@link HandleTipWebhookUseCase} satisfies it. */
+/** The tip settlement seam the reconciler drives; {@link HandleTipWebhookUseCase} satisfies it. */
 export interface TipCreditRepairer {
   creditSucceededTip(tip: TipEntity): Promise<void>;
+  handleSuccess(reference: string, charge: TipCharge): Promise<void>;
+  handleFailed(reference: string): Promise<void>;
 }
+
+/**
+ * How long a checkout the provider reports as `abandoned` stays open before the
+ * sweep closes it. Paystack reports every opened-but-unpaid checkout as
+ * `abandoned`, including one the payer is still completing, so it is only
+ * treated as final once it is this old. A payment that still lands afterwards
+ * is credited by the late-success path, never dropped.
+ */
+export const ABANDONED_CHECKOUT_TTL_MS = 24 * 60 * 60 * 1000;
 
 /** Per-intent reconciliation outcome. */
 export type ReconcileOutcome =
@@ -35,6 +47,10 @@ export interface ReconcileSummary {
   skipped: number;
   /** SUCCEEDED-but-uncredited creator tips whose balance credit was re-applied. */
   tipsRepaired: number;
+  /** Stale PENDING tips the provider confirmed paid (lost webhook) and settled. */
+  tipsSettled: number;
+  /** Stale PENDING tips closed as FAILED (provider failed, or abandoned past the TTL). */
+  tipsFailed: number;
 }
 
 /**
@@ -82,14 +98,81 @@ export class ReconcilePaymentsUseCase {
       pending: 0,
       skipped: 0,
       tipsRepaired: 0,
+      tipsSettled: 0,
+      tipsFailed: 0,
     };
     for (const intent of stale) {
       const outcome = await this.reconcileOne(intent);
       summary[outcome] += 1;
     }
+    const tips = await this.reconcileStaleTips(cutoff, limit);
+    summary.tipsSettled = tips.settled;
+    summary.tipsFailed = tips.failed;
     summary.tipsRepaired = await this.repairUncreditedTips(cutoff, limit);
     logger.info({ ...summary }, 'payment reconciliation sweep complete');
     return summary;
+  }
+
+  /**
+   * Re-verify stale PENDING tips with the provider, so a tip whose webhook was
+   * lost is still credited (and a dead checkout is eventually closed):
+   *   - success with the same reference, amount and currency → settle,
+   *   - failed, or abandoned for longer than {@link ABANDONED_CHECKOUT_TTL_MS} → FAILED,
+   *   - anything else (still paying, transient error, mismatch) → left PENDING.
+   * Every visited row is stamped first, so unresolvable rows rotate to the back
+   * of the queue and can never starve newer ones.
+   */
+  private async reconcileStaleTips(
+    cutoff: Date,
+    limit: number
+  ): Promise<{ settled: number; failed: number }> {
+    const result = { settled: 0, failed: 0 };
+    if (!this.tipRepo || !this.tipCreditRepairer) return result;
+    const gateway = this.gatewayRegistry.get('paystack');
+    if (!gateway || !gateway.isConfigured()) return result;
+    const now = new Date();
+    const stale = await this.tipRepo.findStalePending(cutoff, limit);
+    for (const tip of stale) {
+      try {
+        await this.tipRepo.recordReconciliationAttempt(tip.id, now);
+        const verified = await gateway.verifyTransaction(tip.providerRef);
+        if (verified.status === 'success') {
+          if (verified.reference !== tip.providerRef || !tipChargeMatches(tip, verified)) {
+            logger.warn(
+              {
+                tipId: tip.id,
+                providerRef: tip.providerRef,
+                expectedAmount: tip.amount,
+                providerAmount: verified.amount,
+                expectedCurrency: tip.currency,
+                providerCurrency: verified.currency,
+              },
+              'reconcile: tip provider/row mismatch — flagged, not credited'
+            );
+            continue;
+          }
+          await this.tipCreditRepairer.handleSuccess(tip.providerRef, {
+            amount: verified.amount,
+            currency: verified.currency,
+            providerVerified: true,
+          });
+          result.settled += 1;
+          continue;
+        }
+        const abandonedTooLong =
+          verified.status === 'abandoned' &&
+          now.getTime() - tip.toPlain().createdAt.getTime() > ABANDONED_CHECKOUT_TTL_MS;
+        if (verified.status === 'failed' || abandonedTooLong) {
+          await this.tipCreditRepairer.handleFailed(tip.providerRef);
+          result.failed += 1;
+        }
+      } catch (error) {
+        // Transient provider/network error — the row stays PENDING and has
+        // already rotated to the back of the queue.
+        logger.warn({ err: error, tipId: tip.id }, 'reconcile: tip verification failed (transient)');
+      }
+    }
+    return result;
   }
 
   /**
