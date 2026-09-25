@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { randomUUID } from 'node:crypto';
 process.env.PAYSTACK_SECRET_KEY = 'sk_test_beneficiary_review';
 process.env.PAYSTACK_PUBLIC_KEY = 'pk_test_beneficiary_review';
@@ -9,6 +10,7 @@ import type { Express } from 'express';
 import { createTestApp } from '../helpers/testApp.js';
 import { connectTestDatabase, dropTestDatabase, disconnectTestDatabase } from '../helpers/testDatabase.js';
 import { UserModel } from '../../src/infrastructure/database/models/UserModel.js';
+import { CampaignModel } from '../../src/infrastructure/database/models/CampaignModel.js';
 import { BeneficiaryRecipientModel } from '../../src/infrastructure/database/models/BeneficiaryRecipientModel.js';
 import { BeneficiaryPayoutModel } from '../../src/infrastructure/database/models/BeneficiaryPayoutModel.js';
 import { CampaignBalanceModel } from '../../src/infrastructure/database/models/CampaignBalanceModel.js';
@@ -30,11 +32,13 @@ async function admin() {
   const login = await request(app).post('/api/v1/auth/login').send({ email, password: 'SecurePass123' }).expect(200);
   return { id, token: login.body.data.tokens.accessToken };
 }
-async function fixture() {
+async function fixture(options: { checkerIsBeneficiary?: boolean } = {}) {
   const maker = await admin(), checker = await admin();
-  const campaignId = randomUUID(), beneficiaryId = randomUUID();
+  // Approval checks the payout's campaign inside the transaction, so it must exist.
+  const campaignObjectId = new mongoose.Types.ObjectId(), campaignId = String(campaignObjectId), beneficiaryId = options.checkerIsBeneficiary ? checker.id : randomUUID();
+  await CampaignModel.collection.insertOne({ _id: campaignObjectId, creatorId: randomUUID(), title: 'Beneficiary review fixture', status: 'active', deletedAt: null });
   const recipient = await BeneficiaryRecipientModel.create({ campaignId, beneficiaryId, currency: 'GHS', type: 'mobile_money', accountNumber: '0551234567', accountName: 'Beneficiary', bankCode: 'MTN', recipientCode: 'RCP_original', kycVerified: true, kycVerifiedBy: maker.id, kycVerifiedAt: new Date(), createdBy: maker.id });
-  const payout = await BeneficiaryPayoutModel.create({ campaignId, beneficiaryId, recipientId: String(recipient._id), amount: 150, currency: 'GHS', status: 'PENDING', provider: 'paystack', requestedBy: beneficiaryId });
+  const payout = await BeneficiaryPayoutModel.create({ campaignId, beneficiaryId, recipientId: String(recipient._id), amount: 150, currency: 'GHS', status: 'PENDING', provider: 'paystack', requestedBy: options.checkerIsBeneficiary ? randomUUID() : beneficiaryId });
   await CampaignBalanceModel.create({ campaignId, currency: 'GHS', availableBalance: 150, totalRaised: 150 });
   await CampaignBeneficiaryBalanceModel.create({ campaignId, beneficiaryId, currency: 'GHS', availableBalance: 150 });
   const approve = (who = maker) => request(app).post(`/api/v1/beneficiary-payouts/${payout.id}/approve`).set('Authorization', `Bearer ${who.token}`).send({ reviewNote: 'Verified the beneficiary MoMo wallet owner and capacity.' });
@@ -157,4 +161,17 @@ it('shows approvers the exact destination under review and refuses members or re
   await recipient(member.body.data.tokens.accessToken).expect(403);
   await BeneficiaryPayoutModel.updateOne({ _id: f.payout.id }, { recipientId: randomUUID() });
   await recipient(f.maker.token).expect(409);
+});
+
+it('never lets an admin approve a payout to themselves, and refuses a payout whose campaign is gone', async () => {
+  const own = await fixture({ checkerIsBeneficiary: true });
+  await own.approve().expect(200);
+  const refused = await own.approve(own.checker).expect(403);
+  expect(refused.body.message).toMatch(/Another administrator must approve a payout to you/);
+  await own.noTransfer();
+
+  const orphan = await fixture();
+  await CampaignModel.collection.deleteOne({ _id: new mongoose.Types.ObjectId(orphan.campaignId) });
+  await orphan.approve().expect(409);
+  await orphan.noTransfer();
 });

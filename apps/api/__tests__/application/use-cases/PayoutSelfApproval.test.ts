@@ -84,7 +84,7 @@ describe('payout segregation of duties', () => {
       { findById: async () => ({ id: 'bpay', campaignId: 'campaign', beneficiaryId: 'b1', status: 'PENDING', requestedBy, amount: 10, currency: 'GHS' }) } as never,
       gateway as never, { run: vi.fn() } as never,
     );
-    await expect(useCase.approvePayout('bpay', { userId: 'admin-a', role: 'admin' })).rejects.toMatchObject({ statusCode: 403 });
+    await expect(useCase.approvePayout('bpay', { userId: 'admin-a', role: 'admin' }, note)).rejects.toMatchObject({ statusCode: 403 });
     expect(recipients.findByCampaignAndBeneficiary).not.toHaveBeenCalled();
     expect(gateway.initiateTransfer).not.toHaveBeenCalled();
   });

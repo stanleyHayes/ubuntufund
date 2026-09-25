@@ -16,12 +16,17 @@ export class MongoBeneficiaryPayoutAuthorization {
       ...(requester.authVersion ? { authVersion: requester.authVersion } : { $or: [{ authVersion: '' }, { authVersion: null }] }),
     }, { $inc: { staffActionVersion: 1 } })
     if (!staff.matchedCount) throw new AppError('Current administrator access is required.', 403)
-    // Segregation of duties: no admin approves a payout from their own campaign.
-    if (isValidObjectId(recipient.campaignId)) {
-      const campaign = await CampaignModel.findById(recipient.campaignId).select('creatorId').lean()
-      if (campaign?.creatorId === requester.userId)
-        throw new AppError('Another administrator must approve payouts from your own campaign or request.', 403)
-    }
+    // Segregation of duties, checked fail-closed inside the transaction: no admin
+    // approves a payout to themselves or from their own campaign, and a payout
+    // whose campaign cannot be found is never approved.
+    if (recipient.beneficiaryId === requester.userId)
+      throw new AppError('Another administrator must approve a payout to you.', 403)
+    const campaign = isValidObjectId(recipient.campaignId)
+      ? await CampaignModel.findById(recipient.campaignId).select('creatorId').lean()
+      : null
+    if (!campaign) throw new AppError('This payout\'s campaign could not be found; review it again before approving.', 409)
+    if (campaign.creatorId === requester.userId)
+      throw new AppError('Another administrator must approve payouts from your own campaign or request.', 403)
     const current = await BeneficiaryRecipientModel.findOneAndUpdate({
       _id: recipient.id, campaignId: recipient.campaignId, beneficiaryId: recipient.beneficiaryId,
       recipientCode: recipient.recipientCode, currency: recipient.currency, kycVerified: true,
