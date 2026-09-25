@@ -337,6 +337,18 @@ export default function ManagePlansPage() {
                   />
                 ))}
               </Box>
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <TextField label="Sort order" type="number" size="small" fullWidth value={form.sortOrder} onChange={(e) => setField('sortOrder', Number(e.target.value))} helperText="Lower = shown first" />
+                <TextField label="Accent colour" size="small" fullWidth value={form.accentColor} onChange={(e) => setField('accentColor', e.target.value)} helperText="#RRGGBB" />
+              </Box>
+              <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                <FormControlLabel control={<Switch checked={form.active ?? true} onChange={(e) => setField('active', e.target.checked)} />} label="Active" />
+                <FormControlLabel control={<Switch checked={form.isPublic ?? true} onChange={(e) => setField('isPublic', e.target.checked)} />} label="Public" />
+                <FormControlLabel control={<Switch checked={Boolean(form.popular)} onChange={(e) => setField('popular', e.target.checked)} />} label="Popular" />
+              </Box>
+              <Typography variant="body2" color="text.secondary">
+                Turning off Active or Public hides this plan from new purchases on the website and in the app store catalog. Existing subscribers are not cancelled.
+              </Typography>
               <Typography variant="overline" color="text.secondary">Benefits</Typography>
               <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 0.5 }}>
                 {FEATURE_TOGGLES.map((toggle) => (
