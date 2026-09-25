@@ -142,9 +142,13 @@ export default function BlogEditorPage() {
           ? 'Article published to the Ujimora blog.'
           : 'Draft saved. Your public article has not changed.',
       )
+      // The layout remounts the page when the path changes. Apply this navigation
+      // synchronously so no further edits land on the outgoing editor and then
+      // disappear when the deferred remount restores this saved step and notice.
       if (id === 'new')
         navigate(`/content/blog/${saved.id}`, {
           replace: true,
+          flushSync: true,
           state: {
             editorStep: step,
             editorNotice: publish ? 'Article published to the Ujimora blog.' : 'Draft saved.',

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import type { ReactNode } from 'react'
 import { Resource, Action, hasPermission, type PermissionString } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
@@ -15,20 +15,24 @@ interface AdminPermissionContextValue {
 const AdminPermissionContext = createContext<AdminPermissionContextValue | null>(null)
 
 export function AdminPermissionProvider({ children }: { children: ReactNode }) {
-  const { isAuthenticated, tokens } = useAuth()
+  const { isAuthenticated, tokens, user } = useAuth()
   const [permissions, setPermissions] = useState<PermissionString[]>([])
   const [roleName, setRoleName] = useState('')
   const [isLoading, setIsLoading] = useState(true)
+  // The account whose permissions are loaded. Access-token rotation for the same
+  // account refreshes permissions in the background: returning to the loading
+  // state would unmount every guarded page and discard unsaved work.
+  const loadedFor = useRef<string | null>(null)
+  const userId = user?.id ?? null
 
   useEffect(() => {
     let cancelled = false
 
     async function fetchPermissions() {
-      setIsLoading(true)
-
       const token = tokens?.accessToken ?? localStorage.getItem('uf_admin_token')
 
       if (!isAuthenticated || !token) {
+        loadedFor.current = null
         if (!cancelled) {
           setPermissions([])
           setRoleName('')
@@ -37,15 +41,20 @@ export function AdminPermissionProvider({ children }: { children: ReactNode }) {
         return
       }
 
+      if (loadedFor.current !== userId) setIsLoading(true)
+
       try {
         const data = await api.get<{ permissions: PermissionString[]; roleName: string }>('/rbac/me')
 
         if (!cancelled) {
           setPermissions(Array.isArray(data.permissions) ? data.permissions : [])
           setRoleName(typeof data.roleName === 'string' ? data.roleName : '')
+          loadedFor.current = userId
         }
       } catch {
-        if (!cancelled) {
+        // A failed background refresh keeps the last known permissions; the API
+        // still enforces every request.
+        if (!cancelled && loadedFor.current !== userId) {
           setPermissions([])
           setRoleName('')
         }
@@ -61,7 +70,7 @@ export function AdminPermissionProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [isAuthenticated, tokens?.accessToken])
+  }, [isAuthenticated, tokens?.accessToken, userId])
 
   const can = useCallback(
     (resource: Resource, action: Action): boolean => {
