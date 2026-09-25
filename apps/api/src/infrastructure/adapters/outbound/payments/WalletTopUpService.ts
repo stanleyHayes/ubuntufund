@@ -10,6 +10,7 @@ import { JournalEntryModel } from '../../../database/models/JournalEntryModel.js
 import { JournalLineModel } from '../../../database/models/JournalLineModel.js';
 import { LedgerAccountModel } from '../../../database/models/LedgerAccountModel.js';
 import { AppError } from '../../inbound/middleware/errorHandler.js';
+import { ProviderTransactionNotFoundError } from '../../../../domain/errors/ProviderTransactionNotFoundError.js';
 
 /**
  * Paystack reports an opened-but-unpaid checkout as `abandoned` — including one
@@ -67,6 +68,9 @@ export class WalletTopUpService {
     let topup = await WalletTopUpModel.findOne({ userId, idempotencyKey: key });
     if (topup) {
       if (topup.amountMinor !== minor || topup.walletId !== walletId) throw new AppError('This request key belongs to a different top-up', 409);
+      // The first attempt's checkout never opened (the provider call failed):
+      // open it now under the same reference instead of replaying a dead row.
+      if (topup.status === 'pending' && !topup.authorizationUrl) return this.openCheckout(topup, user.email);
       return this.view(topup);
     }
     try {
@@ -75,7 +79,11 @@ export class WalletTopUpService {
       if ((error as { code?: number }).code === 11000) throw new AppError('This top-up is already being processed', 409);
       throw error;
     }
-    const result = await this.gateway.initializeCharge({ email: user.email, amount: minor / 100, currency: 'GHS', referencePrefix: 'wtop', reference: topup.reference, callbackPath: '/wallet', metadata: { purpose: 'wallet_topup' } });
+    return this.openCheckout(topup, user.email);
+  }
+
+  private async openCheckout(topup: InstanceType<typeof WalletTopUpModel>, email: string) {
+    const result = await this.gateway.initializeCharge({ email, amount: topup.amountMinor / 100, currency: 'GHS', referencePrefix: 'wtop', reference: topup.reference, callbackPath: '/wallet', metadata: { purpose: 'wallet_topup' } });
     if (result.reference !== topup.reference || !result.authorizationUrl.startsWith('https://')) throw new AppError('Invalid checkout response', 502);
     topup.authorizationUrl = result.authorizationUrl;
     await topup.save();
@@ -96,11 +104,23 @@ export class WalletTopUpService {
   async settle(reference: string) {
     const topup = await WalletTopUpModel.findOne({ reference });
     if (!topup || topup.status === 'completed') return;
-    const verified = await this.gateway.verifyTransaction(reference);
+    const createdAt = (topup as { createdAt?: Date }).createdAt;
+    let verified: Awaited<ReturnType<PaymentGatewayPort['verifyTransaction']>>;
+    try {
+      verified = await this.gateway.verifyTransaction(reference);
+    } catch (error) {
+      if (!(error instanceof ProviderTransactionNotFoundError)) throw error;
+      // Paystack never registered this reference (its checkout never opened):
+      // nothing can be paid under it. Close it once past the TTL so the sweep
+      // stops re-checking it; until then it simply stays pending.
+      if (!!createdAt && Date.now() - createdAt.getTime() > ABANDONED_TOPUP_TTL_MS) {
+        await WalletTopUpModel.updateOne({ reference, status: 'pending' }, { $set: { status: 'failed' } });
+      }
+      return;
+    }
     // 'abandoned' is what Paystack says for a checkout the payer has opened but
     // not paid yet — right after the redirect, too — so it only fails the
     // top-up once the checkout is past its TTL.
-    const createdAt = (topup as { createdAt?: Date }).createdAt;
     const abandonedTooLong = verified.status === 'abandoned' && !!createdAt && Date.now() - createdAt.getTime() > ABANDONED_TOPUP_TTL_MS;
     if (verified.status === 'failed' || verified.status === 'reversed' || abandonedTooLong) { await WalletTopUpModel.updateOne({ reference, status: 'pending' }, { $set: { status: 'failed' } }); return; }
     if (verified.status !== 'success') return;
