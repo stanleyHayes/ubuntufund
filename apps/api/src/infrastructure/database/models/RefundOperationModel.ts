@@ -22,6 +22,8 @@ const schema = new Schema<Omit<RefundOperation, 'id'> & { _id: string }>({
   state: { type: String, required: true, enum: ['submitting', 'provider_pending', 'provider_unknown', 'provider_failed', 'reversal_pending', 'completed'] },
   active: { type: Boolean, required: true },
   providerReference: String,
+  origin: { type: String, enum: ['provider_refund', 'provider_chargeback'] },
+  webhookRefundKey: String,
   issue: { type: String, enum: ['provider_unconfirmed', 'provider_pending', 'provider_failed', 'local_reversal_failed'] },
 }, { timestamps: true });
 // Serialize unresolved refunds per contribution, including different client keys.
@@ -29,4 +31,5 @@ schema.index({ intentId: 1 }, { unique: true, partialFilterExpression: { active:
 schema.index({ intentId: 1, requestKey: 1 }, { unique: true });
 schema.index({ provider: 1, providerReference: 1 }, { unique: true, partialFilterExpression: { providerReference: { $type: 'string' } } });
 schema.index({ active: 1, createdAt: 1 });
+schema.index({ transactionReference: 1, amountMinor: 1 });
 export const RefundOperationModel = mongoose.model('RefundOperation', schema);

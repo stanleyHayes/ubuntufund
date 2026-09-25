@@ -16,6 +16,8 @@ import { DisputeModel } from '../../src/infrastructure/database/models/DisputeMo
 import { ProviderPaymentEventModel } from '../../src/infrastructure/database/models/ProviderPaymentEventModel.js';
 import { RefundOperationModel } from '../../src/infrastructure/database/models/RefundOperationModel.js';
 import { DonationIntentModel } from '../../src/infrastructure/database/models/DonationIntentModel.js';
+import { CampaignBalanceModel } from '../../src/infrastructure/database/models/CampaignBalanceModel.js';
+import { JournalEntryModel } from '../../src/infrastructure/database/models/JournalEntryModel.js';
 import { CampaignCategory, CampaignPriority } from '@ubuntu-fund/types';
 
 const uniqueEmail = (label: string) => `${label}-${randomUUID()}@example.com`;
@@ -131,6 +133,140 @@ describe('Paystack disputes and provider refunds', () => {
     await request(app).post(`/api/v1/admin/payments/provider-events/${event.id}/acknowledge`).set('Authorization', `Bearer ${adminToken}`).expect(404);
     const user = await request(app).post('/api/v1/auth/register').send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email: uniqueEmail('peuser'), password: 'SecurePass123', name: 'User' }).expect(201);
     await request(app).get('/api/v1/admin/payments/provider-events').set('Authorization', `Bearer ${user.body.data.tokens.accessToken}`).expect(403);
+  });
+
+  // R2-001: provider cases must be closed with an accounting-only reversal,
+  // never a console refund (which would pay the donor a second time).
+  const admin = () => `Bearer ${adminToken}`;
+  const providerFetches = () => vi.mocked(fetch).mock.calls.filter(([url]) => String(url).includes('/refund'));
+
+  it('tells staff not to refund again and records a dashboard refund without calling Paystack, once', async () => {
+    const { campaignId, reference, intentId } = await settledDonation();
+    expect(await CampaignBalanceModel.findOne({ campaignId }).lean()).toMatchObject({ totalRaised: 200, pendingBalance: 189.7 });
+    await webhook('refund.processed', { status: 'processed', transaction_reference: reference, refund_reference: 'rf-dash-1', amount: 22000, currency: 'GHS' }).expect(200);
+    const [kase] = await DisputeModel.find({ campaignId });
+    expect(kase.description).toContain('Do NOT issue another refund');
+    expect(kase.description).not.toContain('refund tools');
+
+    // The case cannot be resolved (resuming payouts) before the books match.
+    await request(app).put(`/api/v1/disputes/${kase.id}/resolve`).set('Authorization', admin()).send({ resolution: 'done' }).expect(409);
+    const detail = await request(app).get(`/api/v1/disputes/${kase.id}`).set('Authorization', admin()).expect(200);
+    expect(detail.body.data).toMatchObject({ source: 'paystack', providerCaseKind: 'external_refund', amount: 220, donationIntentId: intentId });
+
+    const before = providerFetches().length;
+    const first = await request(app).post(`/api/v1/disputes/${kase.id}/provider-reversal`).set('Authorization', admin()).send({}).expect(200);
+    // The 220 charge included the separate 20 platform tip: 200 leaves the campaign.
+    expect(first.body.data.reversal).toMatchObject({ status: 'REFUNDED', amount: 200 });
+    expect(first.body.data.dispute.reversalOperationId).toBe(first.body.data.reversal.operationId);
+    const replay = await request(app).post(`/api/v1/disputes/${kase.id}/provider-reversal`).set('Authorization', admin()).send({}).expect(200);
+    expect(replay.body.data.reversal.operationId).toBe(first.body.data.reversal.operationId);
+    expect(providerFetches().length).toBe(before); // no refund request ever reached Paystack
+
+    expect(await CampaignBalanceModel.findOne({ campaignId }).lean()).toMatchObject({ totalRaised: 0, pendingBalance: 0, refundHolds: [] });
+    const intent = await DonationIntentModel.findById(intentId).lean();
+    expect(intent).toMatchObject({ status: 'REFUNDED', refundedAmountMinor: 20000 });
+    const operation = await RefundOperationModel.findById(first.body.data.reversal.operationId).lean();
+    expect(operation).toMatchObject({ state: 'completed', active: false, origin: 'provider_refund', providerReference: kase.providerDisputeId });
+    expect(await JournalEntryModel.countDocuments({ externalRef: `refund:${operation!._id}` })).toBe(1);
+    // A console refund is no longer possible on the reversed contribution.
+    await request(app).post(`/api/v1/admin/payments/${intentId}/refund`).set('Authorization', admin()).send({}).expect(400);
+    // A redelivered webhook neither reopens the case nor treats the reversal as Ujimora's refund.
+    await webhook('refund.processed', { status: 'processed', transaction_reference: reference, refund_reference: 'rf-dash-1', amount: 22000, currency: 'GHS' }).expect(200);
+    expect(await DisputeModel.countDocuments({ campaignId })).toBe(1);
+
+    await request(app).put(`/api/v1/disputes/${kase.id}/resolve`).set('Authorization', admin()).send({ resolution: 'Reversal recorded' }).expect(200);
+    const closed = await request(app).post(`/api/v1/disputes/${kase.id}/provider-reversal`).set('Authorization', admin()).send({});
+    expect([closed.status, closed.body.message]).toEqual([409, 'This case is closed']);
+  });
+
+  it('records a partial dashboard refund proportionally and caps it at the provider amount', async () => {
+    const { campaignId, reference, intentId } = await settledDonation();
+    await webhook('refund.processed', { status: 'processed', transaction_reference: reference, refund_reference: 'rf-part', amount: 5000, currency: 'GHS' }).expect(200);
+    const [kase] = await DisputeModel.find({ campaignId });
+    await request(app).post(`/api/v1/disputes/${kase.id}/provider-reversal`).set('Authorization', admin()).send({ amount: 60 }).expect(400);
+    const res = await request(app).post(`/api/v1/disputes/${kase.id}/provider-reversal`).set('Authorization', admin()).send({}).expect(200);
+    expect(res.body.data.reversal).toMatchObject({ status: 'PARTIALLY_REFUNDED', amount: 50 });
+    expect(await DonationIntentModel.findById(intentId).lean()).toMatchObject({ status: 'PARTIALLY_REFUNDED', refundedAmountMinor: 5000 });
+    // 50 of 200: a quarter of the settled net (189.70) leaves pending.
+    const balance = await CampaignBalanceModel.findOne({ campaignId }).lean();
+    expect(balance?.totalRaised).toBe(150);
+    expect(balance?.pendingBalance).toBeCloseTo(142.27, 6);
+  });
+
+  it('records an accepted chargeback as CHARGEBACK and refuses when the funds were already paid out', async () => {
+    const { campaignId, reference, intentId } = await settledDonation();
+    const dispute = { id: 7100, status: 'awaiting-merchant-feedback', refund_amount: 22000, currency: 'GHS', transaction: { id: 9, reference, amount: 22000, currency: 'GHS' } };
+    await webhook('charge.dispute.create', dispute).expect(200);
+    const [kase] = await DisputeModel.find({ campaignId });
+    expect(kase.description).toContain('Do NOT issue a refund from the console');
+    await webhook('charge.dispute.resolve', { ...dispute, status: 'resolved', resolution: 'merchant-accepted' }).expect(200);
+    await request(app).put(`/api/v1/disputes/${kase.id}/resolve`).set('Authorization', admin()).send({ resolution: 'accepted' }).expect(409);
+
+    // Paid out already: no local clawback is possible, and nothing is claimed.
+    await CampaignBalanceModel.updateOne({ campaignId }, { $set: { pendingBalance: 0 } });
+    const refused = await request(app).post(`/api/v1/disputes/${kase.id}/provider-reversal`).set('Authorization', admin()).send({}).expect(409);
+    expect(refused.body.message).toContain('manual clawback');
+    expect((await DonationIntentModel.findById(intentId).lean())?.refundedAmountMinor ?? 0).toBe(0);
+
+    await CampaignBalanceModel.updateOne({ campaignId }, { $set: { pendingBalance: 189.7 } });
+    const res = await request(app).post(`/api/v1/disputes/${kase.id}/provider-reversal`).set('Authorization', admin()).send({}).expect(200);
+    expect(res.body.data.reversal.status).toBe('CHARGEBACK');
+    expect((await DonationIntentModel.findById(intentId).lean())?.status).toBe('CHARGEBACK');
+    await request(app).put(`/api/v1/disputes/${kase.id}/resolve`).set('Authorization', admin()).send({ resolution: 'Chargeback recorded' }).expect(200);
+  });
+
+  it('refuses a provider reversal while a console refund on the contribution is unresolved', async () => {
+    const { campaignId, reference, intentId } = await settledDonation();
+    await RefundOperationModel.create({
+      _id: randomUUID(), intentId, campaignId, provider: 'paystack', transactionReference: reference,
+      requestKey: 'rk-active', adminId: 'admin', amount: 100, amountMinor: 10000, cumulativeMinor: 10000, maxMinor: 20000, currency: 'GHS',
+      beneficiaryNet: 94.85, platformFee: 3.5, processorFee: 1.65, state: 'provider_unknown', active: true,
+    });
+    await webhook('refund.processed', { status: 'processed', transaction_reference: reference, refund_reference: 'rf-other', amount: 5000, currency: 'GHS' }).expect(200);
+    const [kase] = await DisputeModel.find({ campaignId });
+    const res = await request(app).post(`/api/v1/disputes/${kase.id}/provider-reversal`).set('Authorization', admin()).send({}).expect(409);
+    expect(res.body.message).toContain('needs reconciliation');
+  });
+
+  // R2-004: one provider refund matches at most one console refund operation.
+  it('opens a case for a same-amount dashboard refund next to a console refund', async () => {
+    const op = (d: { intentId: string; campaignId: string; reference: string }, state: string, extra: Record<string, unknown> = {}) => RefundOperationModel.create({
+      _id: randomUUID(), intentId: d.intentId, campaignId: d.campaignId, provider: 'paystack', transactionReference: d.reference,
+      requestKey: randomUUID(), adminId: 'admin', amount: 20, amountMinor: 2000, cumulativeMinor: 2000, maxMinor: 20000, currency: 'GHS',
+      beneficiaryNet: 18.97, platformFee: 0.7, processorFee: 0.33, state, active: state !== 'completed', ...extra,
+    });
+    const refund = (reference: string, ref: string, extra: Record<string, unknown> = {}) =>
+      webhook('refund.processed', { status: 'processed', transaction_reference: reference, refund_reference: ref, amount: 2000, currency: 'GHS', ...extra }).expect(200);
+
+    // A completed console partial refund, then the same amount again from the dashboard.
+    const completed = await settledDonation();
+    await op(completed, 'completed', { providerReference: '4401' });
+    await refund(completed.reference, 'rf-a', { id: 4401 }); // ours, by provider refund id
+    await refund(completed.reference, 'rf-a', { id: 4401 }); // redelivery
+    expect(await DisputeModel.countDocuments({ campaignId: completed.campaignId })).toBe(0);
+    await refund(completed.reference, 'rf-b');
+    expect(await DisputeModel.countDocuments({ campaignId: completed.campaignId })).toBe(1);
+
+    // An unconfirmed console refund plus a duplicate refund from the dashboard.
+    const pending = await settledDonation();
+    await op(pending, 'provider_unknown');
+    await refund(pending.reference, 'rf-c');
+    await refund(pending.reference, 'rf-c'); // redelivery matches the same operation
+    expect(await DisputeModel.countDocuments({ campaignId: pending.campaignId })).toBe(0);
+    await refund(pending.reference, 'rf-d');
+    expect(await DisputeModel.countDocuments({ campaignId: pending.campaignId })).toBe(1);
+
+    // A console refund the provider failed cannot be the refund Paystack processed.
+    const failed = await settledDonation();
+    await op(failed, 'provider_failed');
+    await refund(failed.reference, 'rf-e');
+    expect(await DisputeModel.countDocuments({ campaignId: failed.campaignId })).toBe(1);
+
+    // Without an amount the refund cannot be matched: it is never assumed ours.
+    const noAmount = await settledDonation();
+    await op(noAmount, 'provider_pending');
+    await webhook('refund.processed', { status: 'processed', transaction_reference: noAmount.reference, refund_reference: 'rf-f', currency: 'GHS' }).expect(200);
+    expect(await DisputeModel.countDocuments({ campaignId: noAmount.campaignId })).toBe(1);
   });
 
   it('acknowledges a malformed dispute event without failing the webhook', async () => {

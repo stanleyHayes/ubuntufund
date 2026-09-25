@@ -10,6 +10,10 @@ const resolveDisputeSchema = z.object({
   resolution: z.string().min(1).max(2000),
 });
 
+const providerReversalSchema = z.object({
+  amount: z.number().finite().positive().optional(),
+}).strict();
+
 export function createDisputeRoutes(
   controller: DisputeController,
   authMiddleware: ReturnType<typeof createAuthMiddleware>,
@@ -25,6 +29,14 @@ export function createDisputeRoutes(
     requireAdmin,
     validate(resolveDisputeSchema),
     controller.resolve
+  );
+  // Accounting-only: records money the provider already returned (no refund is sent).
+  router.post(
+    '/:id/provider-reversal',
+    authMiddleware,
+    requireAdmin,
+    validate(providerReversalSchema),
+    controller.recordProviderReversal
   );
 
   return router;

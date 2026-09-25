@@ -9,6 +9,7 @@ import {
   toMinorUnits,
 } from '../../domain/value-objects/Money.js';
 import type { DonationIntentRepositoryPort } from '../../domain/ports/outbound/DonationIntentRepositoryPort.js';
+import type { DonationIntentEntity } from '../../domain/entities/DonationIntent.js';
 import type { CampaignBalanceRepositoryPort } from '../../domain/ports/outbound/CampaignBalanceRepositoryPort.js';
 import type { LedgerRepositoryPort } from '../../domain/ports/outbound/LedgerRepositoryPort.js';
 import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGatewayPort.js';
@@ -30,10 +31,28 @@ export interface ProcessRefundInput {
 }
 
 export interface ProcessRefundResult {
-  status: 'REFUNDED' | 'PARTIALLY_REFUNDED' | 'PROCESSING' | 'PENDING_REVIEW';
+  status: 'REFUNDED' | 'PARTIALLY_REFUNDED' | 'CHARGEBACK' | 'PROCESSING' | 'PENDING_REVIEW';
   operationId: string;
   refundReference?: string;
   amount: number;
+}
+
+/**
+ * Records money a payment provider ALREADY returned to the donor — a refund
+ * issued from the provider dashboard, or a chargeback — so the campaign books
+ * match. Accounting only: it never calls the provider.
+ */
+export interface RecordProviderReversalInput {
+  /** Stable id of the provider case/event; the reversal is recorded once per key. */
+  providerEventKey: string;
+  kind: 'refund' | 'chargeback';
+  /** The charged transaction the provider event names; must be this contribution's. */
+  transactionReference: string;
+  /** Campaign-directed amount in MAJOR units; defaults to the provider amount, capped at what is still refundable. */
+  amount?: number;
+  /** The amount the provider reported returning (major units), when known. */
+  providerAmount?: number;
+  providerCurrency?: string;
 }
 
 /**
@@ -88,41 +107,8 @@ export class ProcessRefundUseCase {
       throw new AppError(`Refunds for ${intent.provider} must be issued in the provider dashboard`, 501);
     }
 
-    // All money math is in the settlement currency at its own minor-unit
-    // precision — never a hardcoded 2dp.
-    const currency = (intent.settlementCurrency ?? intent.currency).toUpperCase();
-    if (currency !== intent.currency.toUpperCase()) {
-      throw new AppError('Refunds involving currency conversion require manual reconciliation', 409);
-    }
-    const roundCur = (n: number): number => {
-      const factor = 10 ** minorUnitExponent(currency);
-      return Math.round(n * factor) / factor;
-    };
-
-    const fullAmount = roundCur(intent.amount);
-    const refundAmount = roundCur(input.amount ?? fullAmount);
-    if (!Number.isFinite(refundAmount) || !Number.isFinite(fullAmount) || refundAmount <= 0 || refundAmount > fullAmount) {
-      throw new AppError('Refund amount must be between 0 and the contribution amount', 400);
-    }
-
-    const maxMinor = toMinorUnits(fullAmount, currency);
-    const amountMinor = toMinorUnits(refundAmount, currency);
-
-    // Split the refunded amount into net/fee legs, proportional to the recorded
-    // settlement, so the compensating entry balances and the buckets unwind.
-    const settledNet =
-      intent.netCampaignAmountMinor !== undefined
-        ? fromMinorUnits(intent.netCampaignAmountMinor, currency)
-        : fullAmount;
-    const settledPlatformFee =
-      intent.platformFeeMinor !== undefined
-        ? fromMinorUnits(intent.platformFeeMinor, currency)
-        : 0;
-    const fraction = refundAmount / fullAmount;
-    const beneficiaryNet = roundCur(settledNet * fraction);
-    const platformFee = roundCur(settledPlatformFee * fraction);
-    // Absorb rounding into the processor-fee leg so amount === net+platform+processor.
-    const processorFee = roundCur(refundAmount - beneficiaryNet - platformFee);
+    const { currency, refundAmount, amountMinor, maxMinor, beneficiaryNet, platformFee, processorFee } =
+      this.planReversal(intent, input.amount);
 
     // Early feedback only. The transactional funds hold below is authoritative
     // when a payout clears funds after this read.
@@ -192,6 +178,132 @@ export class ProcessRefundUseCase {
     }
   }
 
+  /**
+   * Accounting-only reversal of money the provider already returned (a
+   * dashboard refund or a chargeback). It NEVER contacts the provider: it
+   * claims the amount on the contribution, holds the payout-eligible net, then
+   * runs the same local reversal as a verified console refund (funds hold
+   * released, projection reversed, compensating journal entry, intent status).
+   * Keyed on the provider event, so recording the same case twice is a no-op
+   * that returns the first outcome.
+   */
+  async recordProviderReversal(
+    intentId: string,
+    input: RecordProviderReversalInput,
+    adminId: string
+  ): Promise<ProcessRefundResult> {
+    const key = input.providerEventKey.trim();
+    if (!key || key.length > 300) throw new AppError('A provider event key is required', 400);
+    const requestKey = `provider:${key}`;
+    const recorded = await this.operationRepo.findByRequestKey(intentId, requestKey);
+    // A replay (or a retry after a local accounting failure) finishes the same record.
+    if (recorded) return this.finishLocalReversal(recorded.id);
+
+    const intent = await this.donationIntentRepo.findById(intentId);
+    if (!intent) throw new AppError('Contribution not found', 404);
+    if (!intent.providerRef || intent.providerRef !== input.transactionReference) {
+      throw new AppError('The provider event does not match this contribution', 409);
+    }
+    if (intent.status !== 'SUCCEEDED' && intent.status !== 'PARTIALLY_REFUNDED') {
+      throw new AppError('Only a settled contribution can have a provider reversal recorded', 409);
+    }
+    const currency = (intent.settlementCurrency ?? intent.currency).toUpperCase();
+    if (input.providerCurrency && input.providerCurrency.toUpperCase() !== currency) {
+      throw new AppError('The provider amount is in another currency; manual reconciliation is required', 409);
+    }
+    let amount = input.amount;
+    if (amount === undefined) {
+      if (input.providerAmount === undefined) throw new AppError('Enter the amount the provider returned to the donor', 400);
+      // The provider amount can include the separate platform tip; only the
+      // campaign-directed part is reversed here.
+      const remaining = fromMinorUnits(
+        toMinorUnits(intent.amount, currency) - (intent.refundedAmountMinor ?? 0), currency
+      );
+      amount = Math.min(input.providerAmount, remaining);
+    } else if (input.providerAmount !== undefined && toMinorUnits(amount, currency) > toMinorUnits(input.providerAmount, currency)) {
+      throw new AppError('The amount cannot exceed what the provider returned', 400);
+    }
+    if (!Number.isFinite(amount) || amount <= 0) throw new AppError('Nothing is left to reverse on this contribution', 409);
+    const plan = this.planReversal(intent, amount);
+
+    const balance = await this.campaignBalanceRepo.findByCampaignId(intent.campaignId);
+    if (!balance || balance.pendingBalance + 1e-6 < plan.beneficiaryNet) {
+      throw new AppError('These funds appear already paid out; escalate to finance for a manual clawback', 409);
+    }
+    // A console refund still in flight may be this very refund: settle it first.
+    if (await this.operationRepo.findActiveByIntentId(intent.id)) {
+      throw new AppError('A console refund on this contribution needs reconciliation first; it may be the same refund', 409);
+    }
+    const operationId = randomUUID();
+    try {
+      await this.unitOfWork.run(async () => {
+        const claimed = await this.donationIntentRepo.claimRefund(intent.id, plan.amountMinor, plan.maxMinor, requestKey);
+        if (!claimed) throw new AppError('This reversal was already recorded or would exceed the refundable amount', 409);
+        const operation: RefundOperation = {
+          id: operationId, intentId: intent.id, campaignId: intent.campaignId,
+          provider: intent.provider, transactionReference: intent.providerRef!,
+          requestKey, adminId, amount: plan.refundAmount, amountMinor: plan.amountMinor,
+          cumulativeMinor: claimed.refundedAmountMinor ?? plan.amountMinor, maxMinor: plan.maxMinor,
+          currency: plan.currency, beneficiaryNet: plan.beneficiaryNet, platformFee: plan.platformFee,
+          processorFee: plan.processorFee,
+          // The provider already returned the money: straight to local accounting.
+          state: 'reversal_pending', active: true, providerReference: key,
+          origin: input.kind === 'chargeback' ? 'provider_chargeback' : 'provider_refund',
+          createdAt: new Date(), updatedAt: new Date(),
+        };
+        operation.beneficiaryHolds = await this.refundFunds.reserve(operation);
+        operation.fundsHoldVersion = 1;
+        await this.operationRepo.create(operation);
+      });
+    } catch (error) {
+      if ((error as { code?: number }).code === 11000) {
+        throw new AppError('This reversal was already recorded or another refund needs reconciliation', 409);
+      }
+      throw error;
+    }
+    return this.finishLocalReversal(operationId);
+  }
+
+  /** Splits a campaign-directed refund amount into the settled net/fee legs. */
+  private planReversal(intent: DonationIntentEntity, requested?: number) {
+    // All money math is in the settlement currency at its own minor-unit
+    // precision — never a hardcoded 2dp.
+    const currency = (intent.settlementCurrency ?? intent.currency).toUpperCase();
+    if (currency !== intent.currency.toUpperCase()) {
+      throw new AppError('Refunds involving currency conversion require manual reconciliation', 409);
+    }
+    const roundCur = (n: number): number => {
+      const factor = 10 ** minorUnitExponent(currency);
+      return Math.round(n * factor) / factor;
+    };
+
+    const fullAmount = roundCur(intent.amount);
+    const refundAmount = roundCur(requested ?? fullAmount);
+    if (!Number.isFinite(refundAmount) || !Number.isFinite(fullAmount) || refundAmount <= 0 || refundAmount > fullAmount) {
+      throw new AppError('Refund amount must be between 0 and the contribution amount', 400);
+    }
+
+    const maxMinor = toMinorUnits(fullAmount, currency);
+    const amountMinor = toMinorUnits(refundAmount, currency);
+
+    // Split the refunded amount into net/fee legs, proportional to the recorded
+    // settlement, so the compensating entry balances and the buckets unwind.
+    const settledNet =
+      intent.netCampaignAmountMinor !== undefined
+        ? fromMinorUnits(intent.netCampaignAmountMinor, currency)
+        : fullAmount;
+    const settledPlatformFee =
+      intent.platformFeeMinor !== undefined
+        ? fromMinorUnits(intent.platformFeeMinor, currency)
+        : 0;
+    const fraction = refundAmount / fullAmount;
+    const beneficiaryNet = roundCur(settledNet * fraction);
+    const platformFee = roundCur(settledPlatformFee * fraction);
+    // Absorb rounding into the processor-fee leg so amount === net+platform+processor.
+    const processorFee = roundCur(refundAmount - beneficiaryNet - platformFee);
+    return { currency, refundAmount, amountMinor, maxMinor, beneficiaryNet, platformFee, processorFee };
+  }
+
   /** Read-only provider calls; never initiates or retries a provider refund. */
   async verifyProviderOutcome(operationId: string, suppliedReference?: string): Promise<ProcessRefundResult> {
     const operation = await this.operationRepo.findById(operationId);
@@ -248,9 +360,10 @@ export class ProcessRefundUseCase {
         reversedLive = undefined;
         const operation = await this.operationRepo.findById(operationId);
         if (!operation) throw new AppError('Refund operation not found', 404);
+        const full = operation.cumulativeMinor >= operation.maxMinor;
         const result: ProcessRefundResult = {
           operationId, amount: operation.amount, refundReference: operation.providerReference,
-          status: operation.cumulativeMinor < operation.maxMinor ? 'PARTIALLY_REFUNDED' : 'REFUNDED',
+          status: !full ? 'PARTIALLY_REFUNDED' : operation.origin === 'provider_chargeback' ? 'CHARGEBACK' : 'REFUNDED',
         };
         if (operation.state === 'completed') return result;
         if (!(await this.operationRepo.update(operationId, ['reversal_pending'], { state: 'completed', active: false }))) {
@@ -266,10 +379,12 @@ export class ProcessRefundUseCase {
           campaignId: operation.campaignId, externalRef: `refund:${operation.id}`, amount: operation.amount,
           beneficiaryNet: operation.beneficiaryNet, platformFee: operation.platformFee,
           processorFee: operation.processorFee, currency: operation.currency,
-          memo: `refund operation ${operation.id} by admin ${operation.adminId} for intent ${operation.intentId}`,
+          memo: operation.origin
+            ? `${operation.origin === 'provider_chargeback' ? 'chargeback' : 'provider refund'} ${operation.providerReference} recorded by admin ${operation.adminId} for intent ${operation.intentId} (operation ${operation.id})`
+            : `refund operation ${operation.id} by admin ${operation.adminId} for intent ${operation.intentId}`,
         }));
-        await this.donationIntentRepo.updateStatus(operation.intentId, result.status === 'REFUNDED' ? 'REFUNDED' : 'PARTIALLY_REFUNDED', operation.transactionReference);
-        reversedLive = { intentId: operation.intentId, amount: operation.amount, full: result.status === 'REFUNDED' };
+        await this.donationIntentRepo.updateStatus(operation.intentId, result.status === 'CHARGEBACK' ? 'CHARGEBACK' : full ? 'REFUNDED' : 'PARTIALLY_REFUNDED', operation.transactionReference);
+        reversedLive = { intentId: operation.intentId, amount: operation.amount, full };
         return result;
       });
       if (reversedLive) await this.reverseLiveStats(reversedLive);
