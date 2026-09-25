@@ -78,7 +78,9 @@ export function DonateCallbackPage() {
   const [phase, setPhase] = useState<Phase>(intentId ? 'resolving' : 'missing')
 
   // Drop the never-pruned legacy store, and this gift's handoff once its
-  // payment is final, so a shared device keeps no record of it.
+  // payment is final, so a shared device keeps no record of it. Its checkout
+  // attempt is closed too: a later gift with the same details is a new
+  // donation, not a replay that would land back on this confirmation.
   useEffect(() => { clearLegacyDonationHandoff() }, [])
   useEffect(() => {
     if (phase !== 'succeeded' && phase !== 'failed' && phase !== 'expired') return

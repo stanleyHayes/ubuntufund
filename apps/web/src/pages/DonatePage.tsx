@@ -5,7 +5,7 @@ import { parseMoneyInput, sanitizeMoneyInput } from '@/lib/moneyInput'
 import { MessageAgreement } from '@/components/donate/MessageAgreement'
 import { DonationTermsNotice } from '@/components/donate/DonationTermsNotice'
 import { LEGAL_ACCEPTANCE_VERSION } from '@ubuntu-fund/types'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAnonymousDonationDefault } from '@/hooks/useAnonymousDonationDefault'
 import { useParams, useNavigate, useSearchParams, Link as RouterLink } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -68,6 +68,16 @@ const PRESET_AMOUNTS = [20, 50, 100, 200] as const
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 /**
+ * A replayed attempt (same details, same Idempotency-Key) whose payment was
+ * already taken: the checkout is closed, so the next Give must be a new gift.
+ */
+const PAID_STATUSES = ['SUCCEEDED', 'REFUND_PENDING', 'REFUNDED', 'PARTIALLY_REFUNDED', 'DISPUTED', 'CHARGEBACK']
+/** The replayed attempt never took the money: start a new one straight away. */
+const CLOSED_UNPAID_STATUSES = ['FAILED', 'EXPIRED', 'CANCELLED']
+/** Still settling with the provider: keep the key so a retry cannot pay twice. */
+const SETTLING_STATUSES = ['PROCESSING', 'REQUIRES_ACTION']
+
+/**
  * Parse a money amount from a free-text field (≤ 2 decimals, decimal comma
  * accepted); NaN when invalid. Previously any Number() was accepted: "1.005"
  * showed GH₵1.01 but charged GH₵1.00, and the input filter dropped commas so
@@ -108,14 +118,16 @@ export function DonatePage() {
   const [messageAccepted, setMessageAccepted] = useState(false)
   const messageAcceptance = messageAccepted ? { version: LEGAL_ACCEPTANCE_VERSION, acceptedTerms: true, ageConfirmed: true } : undefined
   const [message, setMessage] = useState('')
-  const [isAnonymous, setIsAnonymous] = useState(false)
-  // Pre-select "Give anonymously" from the donor's saved default, unless they
-  // already chose for this donation.
+  // "Give anonymously": the donor's choice for this donation, else their saved
+  // default once it has loaded. While neither is known (a guest, or a profile
+  // that is still loading or could not be read) the field is left out of the
+  // request, so the server applies the donor's saved setting. Sending an
+  // explicit false then would publish the name of a donor who asked to be
+  // anonymous by default.
+  const [anonymityChoice, setAnonymityChoice] = useState<boolean>()
   const anonymousDefault = useAnonymousDonationDefault(user?.id)
-  const anonymityChosen = useRef(false)
-  useEffect(() => {
-    if (anonymousDefault !== undefined && !anonymityChosen.current) setIsAnonymous(anonymousDefault)
-  }, [anonymousDefault])
+  const anonymity = anonymityChoice ?? anonymousDefault
+  const isAnonymous = anonymity === true
 
   // Payment rail: fiat (Paystack) by default; crypto shown only when enabled.
   const [cryptoEnabled, setCryptoEnabled] = useState(false)
@@ -124,7 +136,7 @@ export function DonatePage() {
   // Submit state
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
-  const [completedReplay, setCompletedReplay] = useState<{ amount: number; reference?: string } | null>(null)
+  const [submitNotice, setSubmitNotice] = useState<{ message: string; reference?: string } | null>(null)
   const [paymentsDisabled, setPaymentsDisabled] = useState(false)
   const [touchedEmail, setTouchedEmail] = useState(false)
 
@@ -212,7 +224,7 @@ export function DonatePage() {
 
     setSubmitting(true)
     setSubmitError('')
-    setCompletedReplay(null)
+    setSubmitNotice(null)
     setPaymentsDisabled(false)
 
     const intentInput = {
@@ -226,7 +238,7 @@ export function DonatePage() {
       donorName: donorName.trim() || undefined,
       message: message.trim() || undefined,
       legalAcceptance: messageAcceptance,
-      isAnonymous,
+      isAnonymous: anonymity,
     }
     // One key per donation attempt: pressing Give again with the same details
     // (after a lost response, or after coming back from checkout) returns the
@@ -236,19 +248,28 @@ export function DonatePage() {
     try {
       let result = await createDonationIntent(intentInput, await checkoutAttemptKey(attemptScope, intentInput))
 
-      if (!result.authorization_url && result.intent.status === 'SUCCEEDED') {
-        // These exact details were already paid (e.g. Back after checkout). Say
-        // so plainly instead of showing that earlier gift's success screen as if
-        // it were new; the attempt is forgotten, so pressing Give again makes a
-        // new donation.
+      if (!result.authorization_url && PAID_STATUSES.includes(result.intent.status)) {
+        // A gift with these exact details was already paid (a retry after a
+        // lost response, or the donor giving the same amount again). Do not
+        // charge twice, and do not pass the earlier gift off as this one:
+        // say so, and let the next press start a new donation.
         await forgetCheckoutAttempt(attemptScope)
-        setCompletedReplay({ amount: result.intent.amount, reference: result.intent.providerRef ?? undefined })
+        setSubmitNotice({
+          message: result.intent.status === 'SUCCEEDED'
+            ? `You already completed an identical ${formatCurrency(amountValue, 'GHS')} donation to this campaign. Press Donate again to make another donation.`
+            : 'Your earlier donation with these exact details has already been processed. Press Donate again to make a new donation.',
+          reference: result.intent.providerRef,
+        })
         setSubmitting(false)
         return
       }
-      if (!result.authorization_url && ['FAILED', 'EXPIRED', 'CANCELLED', 'REFUND_PENDING', 'REFUNDED', 'PARTIALLY_REFUNDED', 'DISPUTED', 'CHARGEBACK'].includes(result.intent.status)) {
-        // The earlier attempt with these details is closed (unpaid, or paid and
-        // since refunded/disputed); start a new one.
+      if (!result.authorization_url && SETTLING_STATUSES.includes(result.intent.status)) {
+        setSubmitError('Your earlier donation with these details is still being confirmed by the payment provider. Please wait a moment before trying again, so you are not charged twice.')
+        setSubmitting(false)
+        return
+      }
+      if (!result.authorization_url && CLOSED_UNPAID_STATUSES.includes(result.intent.status)) {
+        // The earlier attempt with these details is closed; start a new one.
         await forgetCheckoutAttempt(attemptScope)
         result = await createDonationIntent(intentInput, await checkoutAttemptKey(attemptScope, intentInput))
       }
@@ -602,13 +623,18 @@ export function DonatePage() {
           control={
             <Checkbox
               checked={isAnonymous}
-              onChange={(e) => { anonymityChosen.current = true; setIsAnonymous(e.target.checked) }}
+              onChange={(e) => setAnonymityChoice(e.target.checked)}
               sx={{ '&:focus-visible': { outline: '2px solid #C7A24A' } }}
             />
           }
           label="Give anonymously (hide my name publicly)"
-          sx={{ mb: 3, display: 'block' }}
+          sx={{ mb: user && anonymity === undefined ? 0.5 : 3, display: 'block' }}
         />
+        {user && anonymity === undefined && (
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            Your saved anonymity setting applies unless you tick or untick this box.
+          </Typography>
+        )}
 
         {/* Payment rail: fiat (Paystack) or crypto (shown only when enabled) */}
         {cryptoEnabled && (
@@ -641,7 +667,7 @@ export function DonatePage() {
             donorName={donorName.trim() || undefined}
             message={message.trim() || undefined}
             legalAcceptance={messageAcceptance}
-            isAnonymous={isAnonymous}
+            isAnonymous={anonymity}
             campaignPath={backToCampaign}
           />
         ) : (
@@ -670,21 +696,22 @@ export function DonatePage() {
                 {submitError}
               </Alert>
             )}
-
-            {completedReplay && (
-              <Alert severity="info" sx={{ mb: 3, borderRadius: SHAPE.sm }}>
-                <AlertTitle>You already gave {formatCurrency(completedReplay.amount, 'GHS')} with these details</AlertTitle>
-                That earlier donation is complete and nothing new was charged.
-                {completedReplay.reference && (
-                  <>
-                    {' '}
-                    <Link component={RouterLink} to={`/donate/callback?reference=${encodeURIComponent(completedReplay.reference)}`}>
-                      View its confirmation
-                    </Link>
-                    .
-                  </>
-                )}{' '}
-                To give again, press the button below.
+            {submitNotice && (
+              <Alert
+                severity="info"
+                sx={{ mb: 3, borderRadius: SHAPE.sm }}
+                action={submitNotice.reference ? (
+                  <Button
+                    component={RouterLink}
+                    to={`/donate/callback?reference=${encodeURIComponent(submitNotice.reference)}`}
+                    color="inherit"
+                    size="small"
+                  >
+                    View it
+                  </Button>
+                ) : undefined}
+              >
+                {submitNotice.message}
               </Alert>
             )}
 

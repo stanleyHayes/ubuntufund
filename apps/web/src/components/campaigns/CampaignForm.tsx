@@ -37,7 +37,7 @@ import { useCreateCampaign } from '@/hooks/useCampaigns'
 import Alert from '@mui/material/Alert'
 import { api } from '@/lib/api'
 import { uploadImageViaApi } from '@/lib/uploadImage'
-import { clearPublicationDraft, publicationDraftKey, readPublicationDraft, writePublicationDraft } from '@/lib/publicationDrafts'
+import { clearDraftSubmission, clearPublicationDraft, draftSubmission, publicationDraftKey, readPublicationDraft, writePublicationDraft, type DraftSubmission } from '@/lib/publicationDrafts'
 import { useCampaignCreationOptions } from '@/hooks/useCampaignCreationOptions'
 import { CampaignCreationExtras, type SplitRow } from './CampaignCreationExtras'
 import { ShareCampaignButton } from './ShareCampaignButton'
@@ -505,15 +505,19 @@ function CampaignFormForViewer({ userId }: { userId: string | null }) {
     if (JSON.stringify(formData) === JSON.stringify(EMPTY_FORM)) clearPublicationDraft(draftKey)
     else writePublicationDraft(draftKey, formData)
   }, [draftKey, formData])
+  // One Idempotency-Key per submitted version: a resubmit after a lost
+  // response returns the campaign already created instead of a duplicate.
+  // It is stored with the draft, because the restored draft invites a
+  // resubmit after a reload, when this ref starts empty again.
+  const creationKey = useRef<DraftSubmission | null>(null)
   function discardDraft() {
+    if (draftKey) clearDraftSubmission(draftKey)
+    creationKey.current = null
     setFormData(EMPTY_FORM)
     setTouched({})
     setStep(0)
     setDraftNotice(false)
   }
-  // One Idempotency-Key per submitted version: a resubmit after a lost
-  // response returns the campaign already created instead of a duplicate.
-  const creationKey = useRef<{ payload: string; key: string } | null>(null)
   const [touched, setTouched] = useState<Partial<Record<keyof FormErrors, boolean>>>({})
   const [step, setStep] = useState(0)
   const [submitted, setSubmitted] = useState(false)
@@ -615,13 +619,16 @@ function CampaignFormForViewer({ userId }: { userId: string | null }) {
       endDate: new Date(`${formData.endDate}T00:00:00.000Z`).toISOString(),
       priority: formData.priority,
     }
-    const signature = JSON.stringify(payload)
-    if (creationKey.current?.payload !== signature) creationKey.current = { payload: signature, key: crypto.randomUUID() }
+    const submission = await draftSubmission(draftKey, payload, creationKey.current)
+    creationKey.current = submission
     try {
-      const created = await createCampaign({ automatedReviewConsent, ...payload }, creationKey.current.key)
+      const created = await createCampaign({ automatedReviewConsent, ...payload }, submission.key)
       if (!live.current) return
       if (!created?.id) throw new Error('Campaign creation did not return an ID')
-      if (draftKey) clearPublicationDraft(draftKey)
+      if (draftKey) {
+        clearPublicationDraft(draftKey)
+        clearDraftSubmission(draftKey)
+      }
       setCreatedId(created.id)
       setCreatedStatus(created.status)
       setSetupBusy(true)

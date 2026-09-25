@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { DonateCallbackPage } from '@/pages/DonateCallbackPage'
 import { getDonationIntentStatus, verifyDonationIntent } from '@/lib/fundraising'
 import { checkoutAttemptKey } from '@/lib/checkoutAttempt'
+import { webcrypto } from 'node:crypto'
 
 vi.mock('@/lib/fundraising', () => ({
   getDonationIntentStatus: vi.fn(), verifyDonationIntent: vi.fn(),
@@ -53,6 +54,24 @@ describe('Donation handoff privacy', () => {
     expect(getDonationIntentStatus).not.toHaveBeenCalled()
     // The legacy store is cleaned up.
     await waitFor(() => expect(localStorage.getItem('uf_pending_donations')).toBeNull())
+  })
+
+  // R2-052: without this, giving the same amount again in the same tab
+  // replayed the paid attempt and showed its confirmation without charging.
+  it.each([
+    ['SUCCEEDED', /thank|success/i],
+    ['FAILED', /didn.t go through/i],
+  ])('closes the checkout attempt once the payment is final (%s)', async (status, heading) => {
+    vi.stubGlobal('crypto', webcrypto)
+    const input = { campaignId: 'campaign', amount: 200 }
+    const before = await checkoutAttemptKey('donate:campaign:guest', input)
+    expect(await checkoutAttemptKey('donate:campaign:guest', input)).toBe(before)
+    sessionStorage.setItem('uf_pending_donations', JSON.stringify({[reference]:{intentId:id,reference,slug:'clinic',title:'Clinic',amount:200,currency:'GHS',attemptScope:'donate:campaign:guest'}}))
+    vi.mocked(verifyDonationIntent).mockResolvedValue({...confirmed,status} as never)
+    vi.mocked(getDonationIntentStatus).mockResolvedValue({...confirmed,status} as never)
+    show()
+    expect(await screen.findByRole('heading', {name:heading})).toBeInTheDocument()
+    await waitFor(async () => expect(await checkoutAttemptKey('donate:campaign:guest', input)).not.toBe(before))
   })
 
   it('removes this gift from the handoff store once its payment is final', async () => {

@@ -18,9 +18,10 @@ export interface PendingDonation {
   amount: number
   currency: string
   /**
-   * The checkout-attempt scope this gift was submitted under. The callback
-   * page forgets that attempt once the payment is final, so giving again with
-   * the same details starts a new donation instead of replaying this one.
+   * The checkout-attempt scope (see checkoutAttempt.ts) this gift was started
+   * under. The return page forgets that attempt once the payment is final, so
+   * giving again with the same details starts a new donation instead of
+   * replaying this one.
    */
   attemptScope?: string
 }

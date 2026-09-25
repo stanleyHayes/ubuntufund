@@ -42,3 +42,45 @@ export function clearAllPublicationDrafts(): void {
     for (const key of Object.keys(localStorage)) if (key.startsWith(PREFIX)) localStorage.removeItem(key)
   } catch { /* storage unavailable */ }
 }
+
+/** The Idempotency-Key a draft was last submitted with, and a digest of what was sent. */
+export interface DraftSubmission {
+  fingerprint: string
+  key: string
+}
+
+const submissionKey = (draftKey: string) => `${draftKey}:submission`
+
+function parseSubmission(value: unknown): DraftSubmission | null {
+  if (!value || typeof value !== 'object') return null
+  const { fingerprint, key } = value as Record<string, unknown>
+  return typeof fingerprint === 'string' && typeof key === 'string' && key ? { fingerprint, key } : null
+}
+
+async function digest(value: string): Promise<string> {
+  const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value))
+  return Array.from(new Uint8Array(bytes), (byte) => byte.toString(16).padStart(2, '0')).join('')
+}
+
+/**
+ * The Idempotency-Key for submitting `payload` from the draft at `draftKey`:
+ * the same key for as long as the submitted content is unchanged, a new one
+ * once it changes. It is kept beside the draft, so a resubmit after a lost
+ * response reuses it even after a reload or reopening the page, when the
+ * restored draft invites the user to submit again. Only a digest of the
+ * content is stored with it. `current` is the page's own copy, which still
+ * works when storage is unavailable.
+ */
+export async function draftSubmission(draftKey: string | null, payload: unknown, current: DraftSubmission | null): Promise<DraftSubmission> {
+  const fingerprint = await digest(JSON.stringify(payload))
+  const stored = draftKey ? readPublicationDraft(submissionKey(draftKey), parseSubmission) : null
+  const submission = [current, stored].find((candidate) => candidate?.fingerprint === fingerprint)
+    ?? { fingerprint, key: crypto.randomUUID() }
+  if (draftKey) writePublicationDraft(submissionKey(draftKey), submission)
+  return submission
+}
+
+/** Forget the draft's submission key once the draft is done with or discarded. */
+export function clearDraftSubmission(draftKey: string): void {
+  clearPublicationDraft(submissionKey(draftKey))
+}

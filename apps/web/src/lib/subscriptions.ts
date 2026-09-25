@@ -14,6 +14,7 @@
 // ---------------------------------------------------------------------------
 
 import { api, request, ApiError } from './api'
+import { storedAccessToken } from './session'
 import { PaymentsNotConfiguredError, isPaymentsNotConfigured } from './fundraising'
 import type {
   CreateSubscriptionCheckoutInput,
@@ -34,22 +35,6 @@ export { SubscriptionCheckoutStatus } from '@ubuntu-fund/types'
 // narrowing helper behave identically whether the 501 surfaces from a donation
 // intent or a subscription checkout.
 export { isPaymentsNotConfigured }
-
-// ---------------------------------------------------------------------------
-// Internal helpers
-// ---------------------------------------------------------------------------
-
-/** Read the stored access token (mirrors the resolution used by `api`). */
-function getStoredToken(): string | undefined {
-  const direct = localStorage.getItem('accessToken')
-  if (direct) return direct
-  try {
-    const tokens = JSON.parse(localStorage.getItem('uf_tokens') ?? 'null')
-    return tokens?.accessToken ?? undefined
-  } catch {
-    return undefined
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Checkout
@@ -76,7 +61,7 @@ export async function createSubscriptionCheckout(
       {
         method: 'POST',
         body: JSON.stringify(input),
-        token: getStoredToken(),
+        token: storedAccessToken() ?? undefined,
       },
     )
     return envelope.data
