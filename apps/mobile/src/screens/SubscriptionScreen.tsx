@@ -21,6 +21,8 @@ import { usePalette, useNeu } from '@/context/ColorModeContext'
 import type { Palette, NeuRecipes } from '@/theme'
 import { api } from '@/lib/api'
 import {
+  abandonSubscriptionCheckout,
+  checkoutInProgressId,
   createSubscriptionCheckout,
   getSubscriptionCheckoutStatus,
   isPaymentsNotConfigured,
@@ -273,6 +275,8 @@ function CheckoutSheet({
   const [previewing, setPreviewing] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /** An earlier unpaid checkout the API says blocks this purchase; the member may cancel it. */
+  const [blockingCheckoutId, setBlockingCheckoutId] = useState<string | null>(null)
   const reqId = useRef(0)
 
   // Reset the sheet each time it opens for a plan, on a cycle it is sold on.
@@ -283,6 +287,7 @@ function CheckoutSheet({
       setCouponCode('')
       setPreview(null)
       setError(null)
+      setBlockingCheckoutId(null)
       setSubmitting(false)
     }
   }, [visible, tier, plans])
@@ -331,6 +336,7 @@ function CheckoutSheet({
   const handleCheckout = async () => {
     setSubmitting(true)
     setError(null)
+    setBlockingCheckoutId(null)
     try {
       const result = await createSubscriptionCheckout({
         tier,
@@ -374,11 +380,37 @@ function CheckoutSheet({
       if (isPaymentsNotConfigured(e)) {
         setError("Card payments aren't available yet — you haven't been charged. Please try again later.")
       } else {
+        setBlockingCheckoutId(checkoutInProgressId(e))
         setError(e instanceof Error ? e.message : 'Checkout failed. Please try again.')
       }
     } finally {
       setSubmitting(false)
     }
+  }
+
+  // The member backed out of an earlier payment page and now wants a different
+  // purchase: cancel that checkout (the API checks with Paystack first), then
+  // carry on with this one.
+  const cancelEarlierAndContinue = async () => {
+    const earlier = blockingCheckoutId
+    if (!earlier) return
+    setSubmitting(true)
+    setError(null)
+    try {
+      const closed = await abandonSubscriptionCheckout(earlier)
+      setBlockingCheckoutId(null)
+      if (closed.status === SubscriptionCheckoutStatus.SUCCEEDED) {
+        onClose()
+        await onActivated()
+        Alert.alert('Plan activated', 'Your earlier plan payment went through, so that plan is now active.')
+        return
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not cancel your earlier payment. Please try again.')
+      setSubmitting(false)
+      return
+    }
+    await handleCheckout()
   }
 
   return (
@@ -477,6 +509,17 @@ function CheckoutSheet({
           </View>
 
           {error ? <Text style={styles.couponError}>{error}</Text> : null}
+          {blockingCheckoutId ? (
+            <Button
+              mode="outlined"
+              textColor={p.primary}
+              style={styles.renewButton}
+              disabled={submitting}
+              onPress={cancelEarlierAndContinue}
+            >
+              Cancel it and continue
+            </Button>
+          ) : null}
 
           <Button
             mode="contained"

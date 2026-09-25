@@ -50,6 +50,8 @@ class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
+    /** Field or reason details the API attached to the error (`errors`). */
+    public errors?: Record<string, string[]>,
   ) {
     super(message)
     this.name = 'ApiError'
@@ -101,9 +103,10 @@ async function send(url: string, init: RequestInit, timeoutMs: number): Promise<
 }
 
 function failure({ status, body }: RawResponse): ApiError {
-  const payload = body && typeof body === 'object' ? body as { message?: unknown; error?: unknown } : null
+  const payload = body && typeof body === 'object' ? body as { message?: unknown; error?: unknown; errors?: unknown } : null
   const message = typeof payload?.message === 'string' ? payload.message : typeof payload?.error === 'string' ? payload.error : null
-  return new ApiError(status, message ?? (status >= 500 ? UNAVAILABLE_ERROR : 'Request failed. Please try again.'))
+  const errors = payload?.errors && typeof payload.errors === 'object' ? payload.errors as Record<string, string[]> : undefined
+  return new ApiError(status, message ?? (status >= 500 ? UNAVAILABLE_ERROR : 'Request failed. Please try again.'), errors)
 }
 
 function unwrap<T>({ status, body }: RawResponse): T {
