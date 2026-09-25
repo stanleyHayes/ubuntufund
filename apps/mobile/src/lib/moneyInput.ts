@@ -21,3 +21,9 @@ export function parseMoneyInput(raw: string): number {
 export function sanitizeMoneyInput(raw: string): string {
   return raw.replace(/[^\d.,]/g, '')
 }
+
+/** Wallet top-ups: GHS 1 to 10,000 with at most two decimals (the API's limits). */
+export function validTopUpAmount(raw: string): boolean {
+  const value = parseMoneyInput(raw)
+  return Number.isFinite(value) && value >= 1 && value <= 10000
+}

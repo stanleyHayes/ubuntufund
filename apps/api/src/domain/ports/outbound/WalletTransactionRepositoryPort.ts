@@ -10,7 +10,14 @@ export interface RecordTransactionInput {
   metadata?: Record<string, unknown>;
 }
 
+/** Keyset cursor: the last row of the previous page (newest-first order). */
+export interface TransactionCursor {
+  createdAt: Date;
+  id: string;
+}
+
 export interface WalletTransactionRepositoryPort {
   record(input: RecordTransactionInput): Promise<Transaction>;
-  findByUserId(userId: string, limit?: number): Promise<Transaction[]>;
+  /** Newest first; with `before`, only rows strictly older than that cursor. */
+  findByUserId(userId: string, limit?: number, before?: TransactionCursor): Promise<Transaction[]>;
 }

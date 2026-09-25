@@ -39,8 +39,18 @@ export class WalletController {
   ): Promise<void> => {
     try {
       const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
+      // `before=<ISO createdAt>_<id>` (the last row shown) pages further back.
+      let before: { createdAt: Date; id: string } | undefined;
+      if (typeof req.query.before === 'string' && req.query.before) {
+        const [at, id] = req.query.before.split('_');
+        const createdAt = new Date(at ?? '');
+        if (!id || !/^[a-f0-9]{24}$/i.test(id) || Number.isNaN(createdAt.getTime())) {
+          throw new AppError('Invalid transactions cursor', 400);
+        }
+        before = { createdAt, id };
+      }
       const transactions = this.walletTxRepo
-        ? await this.walletTxRepo.findByUserId(req.userId!, limit)
+        ? await this.walletTxRepo.findByUserId(req.userId!, limit, before)
         : [];
       res.json({ data: transactions, message: 'Transactions retrieved', status: 200 });
     } catch (error) {

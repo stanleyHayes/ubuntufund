@@ -1,6 +1,8 @@
+import mongoose from 'mongoose';
 import type { Transaction } from '@ubuntu-fund/types';
 import type {
   RecordTransactionInput,
+  TransactionCursor,
   WalletTransactionRepositoryPort,
 } from '../../../../domain/ports/outbound/WalletTransactionRepositoryPort.js';
 import {
@@ -28,9 +30,18 @@ export class MongoWalletTransactionRepository implements WalletTransactionReposi
     return toTransaction(doc);
   }
 
-  async findByUserId(userId: string, limit = 50): Promise<Transaction[]> {
-    const docs = await WalletTransactionModel.find({ userId })
-      .sort({ createdAt: -1 })
+  async findByUserId(userId: string, limit = 50, before?: TransactionCursor): Promise<Transaction[]> {
+    // Keyset pagination on (createdAt, _id) so a page never repeats or skips
+    // rows that share a timestamp.
+    const filter: Record<string, unknown> = { userId };
+    if (before && mongoose.isValidObjectId(before.id)) {
+      filter.$or = [
+        { createdAt: { $lt: before.createdAt } },
+        { createdAt: before.createdAt, _id: { $lt: new mongoose.Types.ObjectId(before.id) } },
+      ];
+    }
+    const docs = await WalletTransactionModel.find(filter)
+      .sort({ createdAt: -1, _id: -1 })
       .limit(limit);
     return docs.map(toTransaction);
   }
