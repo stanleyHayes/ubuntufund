@@ -5,7 +5,7 @@ import { AppState, View } from 'react-native'
 import { Text } from 'react-native-paper'
 import * as WebBrowser from 'expo-web-browser'
 import { api } from '@/lib/api'
-import { isPaymentSuccess, isPaymentTerminal, type PendingPayment } from '@/lib/payments'
+import { canStartOver, isPaymentSuccess, isPaymentTerminal, type PendingPayment } from '@/lib/payments'
 import { Button, Skeleton } from './Loading'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
 
@@ -27,6 +27,9 @@ function PaymentStatusContent({ payment, topup = false, onComplete, onReset, onS
   const [status, setStatus] = useState(payment.status)
   const [error, setError] = useState('')
   const [checking, setChecking] = useState(false)
+  // Older saved attempts carry no createdAt: count from when this screen opened.
+  const startedAt = useRef(payment.createdAt ?? Date.now())
+  const [now, setNow] = useState(() => Date.now())
   const refresh = useCallback(async () => {
     if (inFlight.current) return
     inFlight.current = true
@@ -51,6 +54,12 @@ function PaymentStatusContent({ payment, topup = false, onComplete, onReset, onS
     const listener = AppState.addEventListener('change', state => { if (state === 'active') void refresh() })
     return () => { clearInterval(timer); listener.remove() }
   }, [refresh, status])
+  useEffect(() => {
+    if (isPaymentTerminal(status)) return
+    const clock = setInterval(() => setNow(Date.now()), 30_000)
+    return () => clearInterval(clock)
+  }, [status])
+  const offerStartOver = canStartOver(status, startedAt.current, now)
   return <View style={{ ...neu.raised, backgroundColor: p.surface, padding: 20, borderRadius: 24, gap: 12 }}>
     {success && !topup && <DonationCelebration />}
     <Text variant="titleLarge">{success ? (topup ? 'Wallet funded' : 'Thank you for your support') : isPaymentTerminal(status) ? 'Payment was not completed' : 'Awaiting payment confirmation'}</Text>
@@ -61,6 +70,10 @@ function PaymentStatusContent({ payment, topup = false, onComplete, onReset, onS
     {!isPaymentTerminal(status) && <>
       {payment.authorizationUrl?.startsWith('https://') && <Button mode="outlined" onPress={() => void WebBrowser.openBrowserAsync(payment.authorizationUrl!)}>Open secure checkout</Button>}
       <Button loading={checking} disabled={checking} onPress={() => void refresh()}>Check status</Button>
+      {offerStartOver && <>
+        <Text>Still not confirmed? If you already paid, don't pay again: that payment will still be confirmed once the provider reports it.</Text>
+        <Button mode="text" onPress={onReset}>Start a new payment</Button>
+      </>}
     </>}
     {success && !topup && <Button loading={checking} disabled={checking} onPress={() => void refresh()}>Refresh content review</Button>}
     {isPaymentTerminal(status) && <Button mode="contained" onPress={onReset}>{success ? 'Make another payment' : 'Try again'}</Button>}

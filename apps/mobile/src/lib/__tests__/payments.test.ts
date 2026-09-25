@@ -10,7 +10,7 @@ vi.mock('expo-crypto', async () => {
 })
 vi.mock('../api', () => ({ api: { post } }))
 vi.mock('../session', () => ({ sessionSnapshot: () => ({ user: { id: 'ama' } }) }))
-import { paymentKey, checkout, loadPending, clearPending, isPaymentSuccess, cryptoStatusFromIntent } from '../payments'
+import { paymentKey, checkout, loadPending, clearPending, isPaymentSuccess, cryptoStatusFromIntent, canStartOver, STALE_PAYMENT_MS } from '../payments'
 beforeEach(() => { data.clear(); post.mockReset() })
 describe('mobile payment recovery', () => {
   it('keeps contact details and messages out of persisted request keys', async () => {
@@ -112,3 +112,23 @@ for (const raw of ['{', 'null', '[]', '{}', JSON.stringify({ id: 'intent-1', sta
     expect([...data]).toEqual([['campaign:pending', raw]])
   })
 }
+
+describe('stale unconfirmed payments (I038)', () => {
+  it('offers a new payment only for a non-final payment older than the threshold', () => {
+    const now = 1_000_000_000
+    expect(canStartOver('PENDING', now - STALE_PAYMENT_MS, now)).toBe(true)
+    expect(canStartOver('pending', now - STALE_PAYMENT_MS - 1, now)).toBe(true)
+    expect(canStartOver('PENDING', now - STALE_PAYMENT_MS + 1000, now)).toBe(false)
+    for (const done of ['SUCCEEDED', 'FAILED', 'EXPIRED', 'completed', 'failed']) expect(canStartOver(done, 0, now)).toBe(false)
+  })
+  it('stamps new checkouts and still reads older saved attempts without a timestamp', async () => {
+    post.mockResolvedValueOnce({ intent: { id: 'intent-1', status: 'PENDING' }, reference: 'uf-1' })
+    const saved = await checkout('stamp', '/donation-intents', { amount: 5 })
+    expect(typeof saved.createdAt).toBe('number')
+    expect((await loadPending('stamp'))?.createdAt).toBe(saved.createdAt)
+    data.set('legacy:pending', JSON.stringify({ id: 'x', status: 'PENDING', storageKey: 'legacy' }))
+    expect((await loadPending('legacy'))?.createdAt).toBeUndefined()
+    data.set('bad:pending', JSON.stringify({ id: 'x', status: 'PENDING', storageKey: 'bad', createdAt: 'yesterday' }))
+    await expect(loadPending('bad')).rejects.toThrow()
+  })
+})

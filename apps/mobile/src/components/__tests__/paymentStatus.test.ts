@@ -9,7 +9,10 @@ vi.mock('expo-web-browser', () => ({ openBrowserAsync: vi.fn() }))
 vi.mock('../DonationCelebration', () => ({ DonationCelebration: () => null }))
 vi.mock('../Loading', () => ({ Skeleton: () => null, Button: ({ children, onPress, disabled }: { children: string; onPress: () => void; disabled?: boolean }) => createElement('button', { onClick: onPress, disabled }, children) }))
 vi.mock('@/context/ColorModeContext', () => ({ usePalette: () => ({}), useNeu: () => ({ raised: {} }) }))
-vi.mock('@/lib/payments', () => ({ isPaymentSuccess: (status: string) => status === 'SUCCEEDED', isPaymentTerminal: (status: string) => ['SUCCEEDED', 'FAILED', 'EXPIRED'].includes(status) }))
+vi.mock('@/lib/payments', () => {
+  const isPaymentTerminal = (status: string) => ['SUCCEEDED', 'FAILED', 'EXPIRED'].includes(status)
+  return { isPaymentSuccess: (status: string) => status === 'SUCCEEDED', isPaymentTerminal, canStartOver: (status: string, startedAt: number, now = Date.now()) => !isPaymentTerminal(status) && now - startedAt >= 15 * 60 * 1000 }
+})
 beforeEach(() => vi.clearAllMocks())
 const payment = (id: string, status = 'SUCCEEDED') => ({ id, status, storageKey: '' })
 it('reads review status for an already settled wallet donation and retains success on refresh failure', async () => {
@@ -39,4 +42,16 @@ it('discards a previous payment response after switching targets without caller 
   expect(screen.queryByText(/has been approved/)).toBeNull()
   expect(screen.getByText('Reference: second')).toBeTruthy()
   await waitFor(() => expect(api.get).toHaveBeenCalledWith('/donation-intents/second/public'))
+})
+it('offers a fresh checkout once an unconfirmed payment is stale, and not before (I038)', async () => {
+  vi.mocked(api.post).mockResolvedValue({ status: 'PENDING' })
+  const reset = vi.fn()
+  const fresh = render(createElement(PaymentStatus, { payment: { ...payment('fresh', 'PENDING'), reference: 'uf-fresh', createdAt: Date.now() }, onReset: reset }))
+  await waitFor(() => expect(api.post).toHaveBeenCalled())
+  expect(screen.queryByText('Start a new payment')).toBeNull()
+  fresh.unmount()
+  render(createElement(PaymentStatus, { payment: { ...payment('stale', 'PENDING'), reference: 'uf-stale', createdAt: Date.now() - 16 * 60 * 1000 }, onReset: reset }))
+  fireEvent.click(await screen.findByText('Start a new payment'))
+  expect(screen.getByText(/don't pay again/)).toBeTruthy()
+  expect(reset).toHaveBeenCalledTimes(1)
 })

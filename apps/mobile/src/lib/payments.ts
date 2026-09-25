@@ -4,7 +4,7 @@ import { CryptoDigestAlgorithm, digestStringAsync, randomUUID } from 'expo-crypt
 import { api } from './api'
 import { sessionSnapshot } from './session'
 
-export interface PendingPayment { id: string; status: string; reference?: string; authorizationUrl?: string; storageKey: string }
+export interface PendingPayment { id: string; status: string; reference?: string; authorizationUrl?: string; storageKey: string; /** When the checkout was opened (ms since epoch). */ createdAt?: number }
 export function paymentScope(kind: string, target: string) { return `ujimora:${sessionSnapshot()?.user.id || 'guest'}:${kind}:${target}` }
 const keyRequests = new Map<string, Promise<string>>()
 export async function paymentKey(scope: string, input: unknown) {
@@ -44,7 +44,8 @@ export async function loadPending(scope: string): Promise<PendingPayment | null>
     const record = payment as Record<string, unknown>
     if (typeof record.id !== 'string' || !record.id.trim() || typeof record.status !== 'string' || !record.status.trim() || record.storageKey !== scope ||
       (record.reference !== undefined && typeof record.reference !== 'string') ||
-      (record.authorizationUrl !== undefined && typeof record.authorizationUrl !== 'string')) throw new Error('Invalid payment')
+      (record.authorizationUrl !== undefined && typeof record.authorizationUrl !== 'string') ||
+      (record.createdAt !== undefined && (typeof record.createdAt !== 'number' || !Number.isFinite(record.createdAt)))) throw new Error('Invalid payment')
     return record as unknown as PendingPayment
   } catch {
     throw new Error('Your saved payment could not be read. Check your payment history or contact support before trying another payment. The saved attempt has been preserved.')
@@ -56,13 +57,23 @@ export async function clearPending(scope: string) {
 }
 export function isPaymentSuccess(status: string) { return ['SUCCEEDED', 'CONFIRMED', 'completed'].includes(status) }
 export function isPaymentTerminal(status: string) { return isPaymentSuccess(status) || ['FAILED', 'EXPIRED', 'CANCELLED', 'failed', 'expired'].includes(status) }
+/**
+ * How long a payment may stay unconfirmed before the payer is offered a fresh
+ * checkout. An abandoned provider checkout never reports a final status on its
+ * own for hours, and until then the saved attempt would block every new payment.
+ */
+export const STALE_PAYMENT_MS = 15 * 60 * 1000
+/** True when an unconfirmed payment is old enough to offer "Start a new payment". */
+export function canStartOver(status: string, startedAt: number, now = Date.now()) {
+  return !isPaymentTerminal(status) && now - startedAt >= STALE_PAYMENT_MS
+}
 export async function checkout(scope: string, path: string, input: unknown, topup = false): Promise<PendingPayment> {
   // Validate recovery state before creating or sending any payment attempt.
   await loadPending(scope)
   const key = await paymentKey(scope, input)
   const response = await api.post<Record<string, unknown>>(path, input, { 'Idempotency-Key': key })
   const intent = (response.intent || response) as { id: string; status: string }
-  const payment: PendingPayment = { id: topup ? String(response.reference) : intent.id, status: intent.status, reference: response.reference as string | undefined, authorizationUrl: (response.authorizationUrl || response.authorization_url) as string | undefined, storageKey: scope }
+  const payment: PendingPayment = { id: topup ? String(response.reference) : intent.id, status: intent.status, reference: response.reference as string | undefined, authorizationUrl: (response.authorizationUrl || response.authorization_url) as string | undefined, storageKey: scope, createdAt: Date.now() }
   if (!payment.id || payment.id === 'undefined') throw new Error('Payment reference was not returned. Retry to recover the same request.')
   await savePending(scope, payment)
   return payment
