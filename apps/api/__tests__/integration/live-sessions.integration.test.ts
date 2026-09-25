@@ -357,6 +357,25 @@ describe('Live sessions + realtime projector', () => {
     expect(publicRes.body.data.amountRaised).toBeNull();
   });
 
+  it('serves the pre-live studio preview without a session, framable by the web app', async () => {
+    const res = await request(app)
+      .get('/api/v1/live-sessions/preview/overlay/view?preview=1&token=&title=Friday%20stream&raised=100&goal=400')
+      .expect(200);
+    expect(res.headers['content-type']).toMatch(/text\/html/);
+    expect(res.headers['x-frame-options']).toBeUndefined();
+    expect(res.headers['content-security-policy']).toContain("frame-ancestors 'self'");
+    expect(res.text).toContain('params.get("preview") === "1"');
+  });
+
+  it('treats malformed live-session ids as unknown (404), not a 400 cast error', async () => {
+    await request(app).get('/api/v1/live-sessions/not-a-session/public').expect(404);
+    await request(app).get('/api/v1/live-sessions/not-a-session/overlay?token=x').expect(404);
+    await request(app).get('/api/v1/live-sessions/not-a-session/overlay/view?token=x').expect(404);
+    await request(app).get('/api/v1/live-sessions/not-a-session/events?token=x').expect(404);
+    await request(app).post('/api/v1/live-sessions/not-a-session/video/viewer-token').expect(404);
+    await request(app).get('/api/v1/campaigns/not-a-campaign/active-live').expect(404);
+  });
+
   it('rotates the overlay token, revoking the old one', async () => {
     const { userId, token } = await registerUser(app, uniqueEmail('rotate'));
     const campaignId = await createActiveCampaign(app, token, userId);

@@ -1,3 +1,4 @@
+import { isObjectIdOrHexString } from 'mongoose';
 import type { UserBlockRepositoryPort } from '../../../../domain/ports/outbound/UserBlockRepositoryPort.js';
 import { isPublicCampaign } from '../../../../domain/services/campaignVisibility.js';
 import { CampaignModel } from '../../../database/models/CampaignModel.js';
@@ -17,11 +18,14 @@ export class MongoLiveSafety {
     if (!await UserModel.exists({ _id: ownerId, deletedAt: { $exists: false } }) || await ContentRestrictionModel.exists({ userId: ownerId }) || (viewerId && await this.blocks.isBlocked(ownerId, viewerId))) throw new AppError('Broadcast unavailable', 404);
   }
   async assertCampaignVisible(campaignId: string, viewerId?: string): Promise<void> {
+    // A malformed id is just another unknown broadcast (404), not a 400 CastError.
+    if (!isObjectIdOrHexString(campaignId)) throw new AppError('Broadcast unavailable', 404);
     const campaign = await CampaignModel.findById(campaignId);
     if (!campaign || campaign.deletedAt || !isPublicCampaign(campaign.status)) throw new AppError('Broadcast unavailable', 404);
     await this.assertOwnerVisible(campaign.creatorId, viewerId);
   }
   async assertSessionVisible(sessionId: string, viewerId?: string): Promise<void> {
+    if (!isObjectIdOrHexString(sessionId)) throw new AppError('Broadcast unavailable', 404);
     const session = await LiveSessionModel.findById(sessionId);
     if (!session || session.moderationStoppedAt) throw new AppError('Broadcast unavailable', 404);
     await this.assertCampaignVisible(session.campaignId, viewerId);
