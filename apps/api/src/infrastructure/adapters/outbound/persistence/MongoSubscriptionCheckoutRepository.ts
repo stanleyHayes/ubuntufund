@@ -75,16 +75,20 @@ export class MongoSubscriptionCheckoutRepository
   }
 
   async transitionToSucceeded(
-    id: string
+    id: string,
+    opts: { allowFromFailed?: boolean } = {}
   ): Promise<SubscriptionCheckout | null> {
     // Single exactly-once settlement gate: only fires while PENDING (or EXPIRED,
-    // for a charge the provider confirmed after we gave up on it), so at most
+    // for a charge the provider confirmed after we gave up on it; or FAILED,
+    // for a provider-verified late success the caller vouches for), so at most
     // one settlement ever activates the subscription. Null => already
     // SUCCEEDED (another settlement won) or FAILED.
+    const from = [SubscriptionCheckoutStatus.PENDING, SubscriptionCheckoutStatus.EXPIRED];
+    if (opts.allowFromFailed) from.push(SubscriptionCheckoutStatus.FAILED);
     const doc = await SubscriptionCheckoutModel.findOneAndUpdate(
       {
         _id: id,
-        status: { $in: [SubscriptionCheckoutStatus.PENDING, SubscriptionCheckoutStatus.EXPIRED] },
+        status: { $in: from },
       },
       { $set: { status: SubscriptionCheckoutStatus.SUCCEEDED } },
       { new: true }
