@@ -37,6 +37,8 @@ test('retains a held creator draft, pauses separately, and resubmits after staff
   await expect(consent).not.toBeChecked()
   await page.getByRole('button', { name: 'Save changes', exact: true }).click()
   await expect(page.getByText(/Saved privately for safety review/)).toBeVisible()
+  // Being held for review is expected, not a failure: an info status notice, never a red alert.
+  await expect(page.getByRole('status').filter({ hasText: 'Waiting for safety review' })).toHaveClass(/MuiAlert-colorInfo/)
   await expect(bio).toHaveValue('Proposed new biography')
   expect(submissions[0]).toMatchObject({ bio: 'Proposed new biography', automatedReviewConsent: false })
   expect(profile.bio).toBe('Original biography')

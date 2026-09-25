@@ -47,6 +47,8 @@ test('keeps a campaign draft through private safety review and resubmits the exa
   await page.getByRole('button', { name: 'Publish campaign', exact: true }).click()
   await expect(page.getByText('campaign create · pending')).toBeVisible()
   await expect(page.getByText(/Saved privately for safety review/)).toBeVisible()
+  // Being held for review is expected, not a failure: an info status notice, never a red alert.
+  await expect(page.getByRole('status').filter({ hasText: 'Waiting for safety review' })).toHaveClass(/MuiAlert-colorInfo/)
   expect(submissions[0].automatedReviewConsent).toBe(false)
   await consent.scrollIntoViewIfNeeded()
   await page.screenshot({ path: '/tmp/ujimora-campaign-safety-phone.png', animations: 'disabled' })

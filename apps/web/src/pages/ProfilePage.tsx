@@ -1,5 +1,7 @@
 import { PublicationConsent } from '@/components/safety/PublicationConsent'
 import { PublicationReviews } from '@/components/account/PublicationReviews'
+import { PublicationHeldNotice } from '@/components/safety/PublicationHeldNotice'
+import { isPublicationHeld } from '@/lib/publicationDrafts'
 import { useSeo } from '@/lib/seo'
 import { LoadingDots } from '@ubuntu-fund/ui'
 import { ProfileArtwork } from '@/components/profile/ProfileArtwork'
@@ -163,6 +165,8 @@ function ProfileForViewer() {
   const [profileSnack, setProfileSnack] = useState(false)
   const [profileSaving, setProfileSaving] = useState(false)
   const [profileError, setProfileError] = useState<string | null>(null)
+  // The name change was held for safety review: a notice, not an error.
+  const [profileHeld, setProfileHeld] = useState(false)
   const [shareSnack, setShareSnack] = useState(false)
 
   // Password state
@@ -217,6 +221,7 @@ function ProfileForViewer() {
     if (profileSaving || profileLoadError || impactLoading) return
     setProfileSaving(true)
     setProfileError(null)
+    setProfileHeld(false)
     try {
       const saved = await api.put<{ name: string; phone?: string; bio?: string }>('/profile', { ...(name.trim() !== savedName ? { name: name.trim() } : {}), phone: phone.trim(), bio: bio.trim(), automatedReviewConsent })
       if (!live.current) return
@@ -227,7 +232,9 @@ function ProfileForViewer() {
       updateName(saved.name)
       setProfileSnack(true)
     } catch (err) {
-      if (live.current) setProfileError(err instanceof Error ? err.message : 'Failed to save profile.')
+      if (!live.current) return
+      if (isPublicationHeld(err)) setProfileHeld(true)
+      else setProfileError(err instanceof Error ? err.message : 'Failed to save profile.')
     } finally {
       if (live.current) setProfileSaving(false)
     }
@@ -446,6 +453,7 @@ function ProfileForViewer() {
             <TabPanel value={tab} index={0}>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, maxWidth: '100%' }}>
                 {profileError && <><Alert severity="error">{profileError}</Alert><PublicationReviews /></>}
+                {profileHeld && <><PublicationHeldNotice retry="save it again unchanged" reviews="below" /><PublicationReviews /></>}
                 <TextField id="profile-full-name" label={organizationName ? 'Contact person' : 'Full Name'} value={name} onChange={(e) => setName(e.target.value)} fullWidth />
                 <TextField label="Phone Number" value={phone} onChange={(e) => setPhone(e.target.value)} fullWidth />
                 <Box>

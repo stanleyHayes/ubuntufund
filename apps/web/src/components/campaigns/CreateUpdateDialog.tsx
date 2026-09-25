@@ -1,4 +1,6 @@
 import { PublicationConsent } from '@/components/safety/PublicationConsent'
+import { PublicationHeldNotice } from '@/components/safety/PublicationHeldNotice'
+import { isPublicationHeld } from '@/lib/publicationDrafts'
 import { LoadingDots } from '@ubuntu-fund/ui'
 import { useState } from 'react'
 import Dialog from '@mui/material/Dialog'
@@ -33,6 +35,8 @@ export function CreateUpdateDialog({
   const [type, setType] = useState<CampaignUpdateType>('general')
   const [isPinned, setIsPinned] = useState(false)
   const [error, setError] = useState('')
+  // Held for safety review: shown as a notice, and the fields are kept.
+  const [held, setHeld] = useState(false)
   const [success, setSuccess] = useState(false)
 
   function handleClose() {
@@ -42,6 +46,7 @@ export function CreateUpdateDialog({
     setType('general')
     setIsPinned(false)
     setError('')
+    setHeld(false)
     setSuccess(false)
     onClose()
   }
@@ -58,6 +63,7 @@ export function CreateUpdateDialog({
     }
 
     setError('')
+    setHeld(false)
 
     try {
       await onSubmit({
@@ -70,7 +76,8 @@ export function CreateUpdateDialog({
       setSuccess(true)
       setTimeout(handleClose, 1000)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create update. Please try again.')
+      if (isPublicationHeld(err)) setHeld(true)
+      else setError(err instanceof Error ? err.message : 'Failed to create update. Please try again.')
     }
   }
 
@@ -158,6 +165,7 @@ export function CreateUpdateDialog({
             />
 
             {error && <Alert severity="error">{error}</Alert>}
+            {held && <PublicationHeldNotice retry="post it again unchanged" />}
           </>
         )}
       </DialogContent>

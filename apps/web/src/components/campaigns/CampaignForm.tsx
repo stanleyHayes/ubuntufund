@@ -1,6 +1,7 @@
 import { useAuth } from '@/context/AuthContext'
 import { PublicationConsent } from '@/components/safety/PublicationConsent'
 import { PublicationReviews } from '@/components/account/PublicationReviews'
+import { PublicationHeldNotice } from '@/components/safety/PublicationHeldNotice'
 import { CampaignCashout } from './CampaignCashout'
 import AiWritingAssistant from './AiWritingAssistant'
 import LocalHospitalRoundedIcon from '@mui/icons-material/LocalHospitalRounded'
@@ -523,7 +524,7 @@ function CampaignFormForViewer({ userId }: { userId: string | null }) {
   const [step, setStep] = useState(0)
   const [submitted, setSubmitted] = useState(false)
   const [createdId, setCreatedId] = useState<string | null>(null)
-  const { createCampaign, isSubmitting, error: submitError } = useCreateCampaign()
+  const { createCampaign, isSubmitting, error: submitError, held: submitHeld } = useCreateCampaign()
   // Capture "now" once at mount — keeps the render body pure (react-hooks/purity).
   const [nowMs] = useState(() => Date.now())
 
@@ -686,7 +687,7 @@ function CampaignFormForViewer({ userId }: { userId: string | null }) {
       setSetupBusy(false)
       setSubmitted(true)
     } catch {
-      // Error surfaced via `submitError`; stay on the review step so the user
+      // Surfaced via `submitError` (or `submitHeld` for a safety-review hold); stay on the review step so the user
       // can retry without losing anything they entered.
     }
   }
@@ -1297,7 +1298,7 @@ function CampaignFormForViewer({ userId }: { userId: string | null }) {
       </Box>
 
       {step === 3 && <PublicationConsent value={automatedReviewConsent} onChange={setAutomatedReviewConsent} />}
-      {step === 3 && submitError && <PublicationReviews />}
+      {step === 3 && (submitError || submitHeld) && <PublicationReviews />}
 
       {/* Inline submit error — keeps the wizard on the review step on failure */}
       {step === 3 && options && (
@@ -1341,6 +1342,10 @@ function CampaignFormForViewer({ userId }: { userId: string | null }) {
             </Typography>
           </Box>
         </Box>
+      )}
+
+      {step === STEPS.length - 1 && submitHeld && (
+        <PublicationHeldNotice retry="select Publish campaign again without changes" reviews="above" sx={{ mt: 3 }} />
       )}
 
       {/* Submitting is how the organizer accepts the Organizer Agreement (its section 10). */}

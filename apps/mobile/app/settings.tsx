@@ -1,6 +1,8 @@
 import { BiometricSettings } from '@/components/BiometricSettings'
 import { MfaSettings } from '@/components/MfaSettings'
 import { PublicationReviews } from '@/components/PublicationReviews'
+import { PublicationHeldNotice } from '@/components/PublicationHeldNotice'
+import { isPublicationHeld } from '@/lib/publicationDrafts'
 import { DataRightsRequests } from '@/components/DataRightsRequests'
 import { ActivityAlertSettings } from '@/components/ActivityAlertSettings'
 import { NewsletterSettings } from '@/components/NewsletterSettings'
@@ -231,6 +233,8 @@ export default function SettingsScreen() {
   const [automatedReviewConsent, setAutomatedReviewConsent] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  // Going public was held for safety review: a notice, not an error.
+  const [held, setHeld] = useState(false)
 
   const fetchSettings = useCallback(async () => {
     setLoading(true)
@@ -254,12 +258,14 @@ export default function SettingsScreen() {
     const previousValue = settings[key]
     setSettings((prev) => ({ ...prev, [key]: value }))
     setError(null)
+    if (key === 'publicProfile') setHeld(false)
     try {
       await api.put('/profile', privacySettingPatch(key, value, automatedReviewConsent))
     } catch (err) {
-      // Includes the API's "saved for safety review" answer when going public.
       setSettings((prev) => ({ ...prev, [key]: previousValue }))
-      setError(err instanceof Error ? err.message : 'Could not save that setting')
+      // Going public can be held for safety review: an expected step, not an error.
+      if (key === 'publicProfile' && isPublicationHeld(err)) setHeld(true)
+      else setError(err instanceof Error ? err.message : 'Could not save that setting')
     }
   }, [settings, automatedReviewConsent])
 
@@ -341,8 +347,9 @@ export default function SettingsScreen() {
               <ToggleRow icon="eye-off-outline" label="Anonymous Donations" value={settings.anonymousDonations} onToggle={(v) => updateSetting('anonymousDonations', v)} color={p.textSecondary} />
               <ToggleRow icon="trophy-outline" label="Show on Leaderboard" value={settings.showOnLeaderboard} onToggle={(v) => updateSetting('showOnLeaderboard', v)} color={p.secondary} />
               <ToggleRow icon="account-eye-outline" label="Public profile" value={settings.publicProfile} onToggle={(v) => updateSetting('publicProfile', v)} color={p.primary} />
-              <View style={{ paddingHorizontal: 14, paddingBottom: 12 }}>
+              <View style={{ paddingHorizontal: 14, paddingBottom: 12, gap: 8 }}>
                 <PublicationConsent value={automatedReviewConsent} onChange={setAutomatedReviewConsent} />
+                {held && <PublicationHeldNotice retry="turn on Public profile again" reviews="below" />}
               </View>
             </View>
 

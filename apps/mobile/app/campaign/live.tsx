@@ -1,5 +1,7 @@
 import { PublicationConsent } from '@/components/PublicationConsent'
 import { PublicationReviews } from '@/components/PublicationReviews'
+import { PublicationHeldNotice } from '@/components/PublicationHeldNotice'
+import { isPublicationHeld } from '@/lib/publicationDrafts'
 import { QrManager } from '@/components/CampaignManagement'
 import { useEffect, useState, useRef } from 'react'
 import { View, ScrollView, AppState, Share, Alert } from 'react-native'
@@ -27,6 +29,9 @@ export default function BroadcastStudio() {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  // The session title was held for safety review: a notice, not an error, and
+  // it does not block starting again once approved.
+  const [held, setHeld] = useState(false)
   const [title, setTitle] = useState('')
   const [automatedReviewConsent, setAutomatedReviewConsent] = useState(false)
   const [target, setTarget] = useState('')
@@ -48,9 +53,12 @@ export default function BroadcastStudio() {
   async function start() {
     if (mutating.current) return
     mutating.current = true; generation.current += 1
-    setBusy(true); setError('')
+    setBusy(true); setError(''); setHeld(false)
     try { setSession(await api.post<LiveSession>(`/campaigns/${id}/live-sessions`, { automatedReviewConsent, title: title.trim() || undefined, targetAmount: target ? Number(target) : undefined })) }
-    catch (e) { setError(e instanceof Error ? e.message : 'Could not start broadcast.') } finally { mutating.current = false; setBusy(false) }
+    catch (e) {
+      if (isPublicationHeld(e)) setHeld(true)
+      else setError(e instanceof Error ? e.message : 'Could not start broadcast.')
+    } finally { mutating.current = false; setBusy(false) }
   }
   async function update(input: Record<string, unknown>) {
     if (!session) return
@@ -93,6 +101,7 @@ export default function BroadcastStudio() {
       <TextInput label="Broadcast title" value={title} onChangeText={setTitle} maxLength={200} /><TextInput label="Session goal (GHS, optional)" keyboardType="decimal-pad" value={target} onChangeText={setTarget} />
       <Text>Start a session, then connect your camera and microphone. Your campaign must be active and your plan must include live streaming.</Text>
       {!enabled && <Text>Live broadcasting is not configured yet.</Text>}
+      {held && <PublicationHeldNotice retry="create the session again with the same title and goal" reviews="above" />}
       <Button mode="contained" loading={busy} disabled={busy || !enabled || !!error || (!!target && (!Number.isFinite(Number(target)) || Number(target) <= 0))} onPress={() => void start()}>Create live session</Button>
     </View>}
   </ScrollView>

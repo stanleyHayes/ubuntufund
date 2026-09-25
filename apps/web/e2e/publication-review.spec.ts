@@ -33,6 +33,8 @@ test('keeps a held comment private and lets its author resubmit after review at 
   await composer.fill(draft)
   await page.getByRole('button', { name: 'Post comment', exact: true }).click()
   await expect(page.getByText(/Saved privately for safety review/)).toBeVisible()
+  // Being held for review is expected, not a failure: an info status notice, never a red alert.
+  await expect(page.getByRole('status').filter({ hasText: 'Waiting for safety review' })).toHaveClass(/MuiAlert-colorInfo/)
   await expect(composer).toHaveValue(draft)
   expect(submissions).toEqual([{ content: draft, automatedReviewConsent: false }])
   await consent.scrollIntoViewIfNeeded()

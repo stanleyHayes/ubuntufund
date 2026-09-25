@@ -31,6 +31,8 @@ test('holds organization identity changes and resubmits the same approved versio
   await expect(page.getByRole('checkbox', { name: /Use OpenAI/ })).not.toBeChecked()
   await page.getByRole('button', { name: 'Save organization details' }).click()
   await expect(page.getByText(/Saved privately for safety review/)).toBeVisible()
+  // Being held for review is expected, not a failure: an info status notice, never a red alert.
+  await expect(page.getByRole('status').filter({ hasText: 'Waiting for safety review' })).toHaveClass(/MuiAlert-colorInfo/)
   await expect(page.getByLabel('Organization name')).toHaveValue('Reviewed foundation')
   expect(name).toBe('Original foundation')
   expect(submissions[0]).toEqual({ organizationName: 'Reviewed foundation', website: 'https://reviewed.example.test', automatedReviewConsent: false })

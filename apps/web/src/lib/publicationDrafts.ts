@@ -84,3 +84,19 @@ export async function draftSubmission(draftKey: string | null, payload: unknown,
 export function clearDraftSubmission(draftKey: string): void {
   clearPublicationDraft(submissionKey(draftKey))
 }
+
+/**
+ * The API saved this public change privately for staff safety review (HTTP 409
+ * with `errors.publication: ['held']`). That is an expected state, not a
+ * failure: show a neutral notice, keep the draft, and submit the same version
+ * again after approval. A declined version (422) is still an error. The
+ * message check covers an API deployed before the `errors` marker existed.
+ * Duck-typed so it works with any `ApiError`-shaped error.
+ */
+export function isPublicationHeld(err: unknown): boolean {
+  if (!(err instanceof Error)) return false
+  const { status, errors } = err as Error & { status?: unknown; errors?: Record<string, unknown> }
+  if (status !== 409) return false
+  const publication = errors?.publication
+  return (Array.isArray(publication) && publication.includes('held')) || err.message.startsWith('Saved privately for safety review')
+}

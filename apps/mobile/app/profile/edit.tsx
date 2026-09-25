@@ -1,6 +1,7 @@
 import { useAuth } from '@/context/AuthContext'
 import { PublicationConsent } from '@/components/PublicationConsent'
 import { PublicationReviews } from '@/components/PublicationReviews'
+import { PublicationHeldNotice } from '@/components/PublicationHeldNotice'
 import { OrganizationIdentityEditor } from '@/components/OrganizationIdentityEditor'
 import { useEffect, useState, useRef } from 'react'
 import { ScrollView, View, Image, StyleSheet } from 'react-native'
@@ -9,7 +10,7 @@ import { Stack } from 'expo-router'
 import { Country } from 'country-state-city'
 import { api } from '@/lib/api'
 import { changePassword as submitPasswordChange } from '@/lib/accountSecurity'
-import { clearIdentityDraft, loadIdentityDraft, saveIdentityDraft } from '@/lib/publicationDrafts'
+import { clearIdentityDraft, isPublicationHeld, loadIdentityDraft, saveIdentityDraft } from '@/lib/publicationDrafts'
 import { sessionSnapshot, establishSession } from '@/lib/session'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
 import { GlassSurface } from '@/components/GlassSurface'
@@ -34,6 +35,8 @@ function EditProfileForViewer() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const originalIdentity = useRef<Pick<Profile, 'name' | 'country' | 'avatarUrl' | 'coverUrl'> | null>(null)
   const [error, setError] = useState('')
+  // Identity changes held for safety review: a notice, not an error.
+  const [held, setHeld] = useState(false)
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
   const [uploads, setUploads] = useState(0)
@@ -56,7 +59,7 @@ function EditProfileForViewer() {
   const update = (key: keyof Profile, value: string) => setProfile(v => v ? { ...v, [key]: value } : v)
   async function save() {
     if (!profile || !profile.name.trim()) return
-    setBusy(true); setError('')
+    setBusy(true); setError(''); setHeld(false)
     try {
       const changedIdentity = Object.fromEntries((['name', 'country', 'avatarUrl', 'coverUrl'] as const).filter(key => profile[key] !== originalIdentity.current?.[key]).map(key => [key, profile[key]]))
       let saved: Profile
@@ -73,7 +76,10 @@ function EditProfileForViewer() {
       const session = sessionSnapshot()
       if (session) await establishSession({ ...session.user, name: saved.name }, session.tokens)
       setNotice('Your profile has been updated')
-    } catch (e) { setError(e instanceof Error ? e.message : 'Could not save profile.') } finally { setBusy(false) }
+    } catch (e) {
+      if (isPublicationHeld(e)) setHeld(true)
+      else setError(e instanceof Error ? e.message : 'Could not save profile.')
+    } finally { setBusy(false) }
   }
   async function changePassword() {
     if (newPassword !== confirm) { setError('The new passwords do not match.'); return }
@@ -122,6 +128,7 @@ function EditProfileForViewer() {
         <Text>Names and images can appear with public contributions. Phone numbers and this biography are excluded from screening.</Text>
         <PublicationConsent value={automatedReviewConsent} onChange={setAutomatedReviewConsent} />
         {error ? <><Text accessibilityRole="alert">{error}</Text><PublicationReviews /></> : null}
+        {held ? <><PublicationHeldNotice retry="save it again unchanged" reviews="below" /><PublicationReviews /></> : null}
         <Button loading={busy} disabled={busy || uploads > 0 || !profile.name.trim()} mode="contained" onPress={() => void save()}>Save profile</Button>
       </View>
       <View style={{ ...neu.raised, backgroundColor: p.surface, borderRadius: 24, padding: 20, gap: 16 }}><Text variant="titleLarge">Change password</Text>

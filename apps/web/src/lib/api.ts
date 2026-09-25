@@ -150,7 +150,9 @@ async function authedRequest<T>(path: string, options?: RequestInit, retried = f
       else forceExpireSession()
     }
     const error = await res.json().catch(() => ({ message: 'Request failed' }))
-    throw new ApiError(res.status, error.message ?? error.error ?? `HTTP ${res.status}`)
+    // `errors` carries reason details, e.g. `publication: ['held']` for a change held for review.
+    const details = error?.errors && typeof error.errors === 'object' ? error.errors as Record<string, string[]> : undefined
+    throw new ApiError(res.status, error.message ?? error.error ?? `HTTP ${res.status}`, details)
   }
 
   const json = await res.json()

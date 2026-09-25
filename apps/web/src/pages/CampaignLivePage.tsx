@@ -1,5 +1,7 @@
 import { PublicationConsent } from '@/components/safety/PublicationConsent'
 import { PublicationReviews } from '@/components/account/PublicationReviews'
+import { PublicationHeldNotice } from '@/components/safety/PublicationHeldNotice'
+import { isPublicationHeld } from '@/lib/publicationDrafts'
 // ---------------------------------------------------------------------------
 // CampaignLivePage — owner-only LIVE control room for a campaign.
 // Route: /campaigns/:id/live  (wrapped in RequireAuth by the routing step).
@@ -130,6 +132,8 @@ export function CampaignLivePage() {
   // Ending closes the room for every viewer, so it is confirmed first.
   const [confirmEndOpen, setConfirmEndOpen] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
+  // The session title was held for safety review: a notice, not an error.
+  const [startHeld, setStartHeld] = useState(false)
 
   const isOwner = !!currentUser && !!campaign && currentUser.id === campaign.creatorId
 
@@ -178,6 +182,7 @@ export function CampaignLivePage() {
   const handleStart = useCallback(async () => {
     if (!id) return
     setActionError(null)
+    setStartHeld(false)
     setStarting(true)
     try {
       const amount = Number(targetAmount)
@@ -193,7 +198,8 @@ export function CampaignLivePage() {
       setSession(created)
       persistSession(id, created)
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Could not start the live session.')
+      if (isPublicationHeld(err)) setStartHeld(true)
+      else setActionError(err instanceof Error ? err.message : 'Could not start the live session.')
     } finally {
       setStarting(false)
     }
@@ -431,6 +437,7 @@ export function CampaignLivePage() {
 
             <PublicationConsent value={automatedReviewConsent} onChange={setAutomatedReviewConsent} />
             <PublicationReviews />
+            {startHeld && <PublicationHeldNotice retry="select Go LIVE again with the same title and goal" reviews="above" />}
             <Button
               brandVariant="primary"
               onClick={handleStart}

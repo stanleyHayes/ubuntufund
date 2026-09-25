@@ -1,4 +1,5 @@
 import { PublicationConsent } from '@/components/safety/PublicationConsent'
+import { PublicationHeldNotice } from '@/components/safety/PublicationHeldNotice'
 import { ReportContent } from '@/components/safety/ReportContent'
 import { BlockedUsers } from '@/components/safety/BlockedUsers'
 import { LoadingDots } from '@ubuntu-fund/ui'
@@ -9,6 +10,7 @@ import { Alert, Avatar, Box, Button, IconButton, Skeleton, Stack, Typography } f
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded'
 import type { CampaignComment } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
+import { isPublicationHeld } from '@/lib/publicationDrafts'
 import { useAuth } from '@/context/AuthContext'
 import { SHAPE } from '@ubuntu-fund/ui'
 
@@ -28,6 +30,8 @@ function CampaignCommentsForViewer({ campaignId, creatorId }: { campaignId: stri
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // The last comment was held for safety review: a notice, not an error.
+  const [held, setHeld] = useState(false)
 
   const requestVersion = useRef(0)
   const load = useCallback(async () => {
@@ -55,6 +59,7 @@ function CampaignCommentsForViewer({ campaignId, creatorId }: { campaignId: stri
   async function submit() {
     if (!content.trim()) return
     setSubmitting(true)
+    setHeld(false)
     try {
       const comment = await api.post<CampaignComment>(`/campaigns/${campaignId}/comments`, { content, automatedReviewConsent })
       requestVersion.current++
@@ -63,7 +68,8 @@ function CampaignCommentsForViewer({ campaignId, creatorId }: { campaignId: stri
       setAutomatedReviewConsent(false)
       setError(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not post comment')
+      if (isPublicationHeld(err)) { setHeld(true); setError(null) }
+      else setError(err instanceof Error ? err.message : 'Could not post comment')
     } finally {
       setSubmitting(false)
     }
@@ -98,6 +104,7 @@ function CampaignCommentsForViewer({ campaignId, creatorId }: { campaignId: stri
             <Typography variant="caption" color="text.secondary">{content.length}/1000</Typography>
             <Button variant="contained" disabled={submitting || !content.trim()} onClick={() => void submit()}>{submitting ? <><LoadingDots size={6} /> <span>Posting…</span></> : 'Post comment'}</Button>
           </Box>
+          {held && <PublicationHeldNotice retry="post it again unchanged" sx={{ mt: 1.5 }} />}
         </Box>
       ) : (
         <Alert severity="info">Sign in to join the conversation.</Alert>

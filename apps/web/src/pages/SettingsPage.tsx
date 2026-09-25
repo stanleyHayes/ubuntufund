@@ -1,6 +1,8 @@
 import { PublicationConsent } from '@/components/safety/PublicationConsent'
 import { MfaSettings } from '@ubuntu-fund/ui'
 import { PublicationReviews } from '@/components/account/PublicationReviews'
+import { PublicationHeldNotice } from '@/components/safety/PublicationHeldNotice'
+import { isPublicationHeld } from '@/lib/publicationDrafts'
 import { DataRightsRequests } from '@/components/account/DataRightsRequests'
 import { DeleteAccountDialog } from '@/components/account/DeleteAccountDialog'
 import { ActivityAlertSettings } from '@/components/account/ActivityAlertSettings'
@@ -26,7 +28,7 @@ import TuneRoundedIcon from '@mui/icons-material/TuneRounded'
 import ShieldRoundedIcon from '@mui/icons-material/ShieldRounded'
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded'
 import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded'
-import { useNavigate, Link as RouterLink } from 'react-router-dom'
+import { useLocation, useNavigate, Link as RouterLink } from 'react-router-dom'
 import { SHAPE, ThemeStylePicker } from '@ubuntu-fund/ui'
 import { useAuth } from '@/context/AuthContext'
 import { useColorMode } from '@/context/ColorModeContext'
@@ -157,6 +159,7 @@ function SettingsForViewer() {
   const { user, logout, replaceTokens, isLoading: authLoading } = useAuth()
   const { darkMode, setDarkMode, skin, setSkin } = useColorMode()
   const navigate = useNavigate()
+  const { hash } = useLocation()
 
   // Privacy settings
   const [anonymousDonations, setAnonymousDonations] = useState(false)
@@ -164,12 +167,14 @@ function SettingsForViewer() {
   const [publicProfile, setPublicProfile] = useState(true)
   const [identityConsent, setIdentityConsent] = useState(false)
   const [publicationError, setPublicationError] = useState('')
+  // Going public was held for safety review: a notice, not an error.
+  const [publicationHeld, setPublicationHeld] = useState(false)
 
   // Delete account
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [snack, setSnack] = useState(false)
   const [snackMessage, setSnackMessage] = useState('Settings saved')
-  const [snackSeverity, setSnackSeverity] = useState<'success' | 'error'>('success')
+  const [snackSeverity, setSnackSeverity] = useState<'success' | 'info' | 'error'>('success')
   const [saving, setSaving] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [loadStatus, setLoadStatus] = useState<number | null>(null)
@@ -215,6 +220,14 @@ function SettingsForViewer() {
     return () => { cancelled = true }
   }, [authLoading, setDarkMode])
 
+  // Links such as /settings#privacy (from "Check Publication reviews") land on
+  // their section once the page has rendered past its loading skeleton.
+  const ready = !authLoading && !loading
+  useEffect(() => {
+    if (!ready || !hash) return
+    document.getElementById(hash.slice(1))?.scrollIntoView()
+  }, [ready, hash])
+
   const persistSettings = useCallback((patch: Record<string, unknown>) => {
     const version = ++revision.current
     for (const key of Object.keys(patch)) fieldRevision.current[key] = version
@@ -224,12 +237,16 @@ function SettingsForViewer() {
       try {
         await api.put('/profile', { ...patch, ...(patch.publicProfile === true ? { automatedReviewConsent: identityConsent } : {}) })
         if (!live.current) return
-        if (patch.publicProfile === true) setPublicationError('')
+        if (patch.publicProfile === true) { setPublicationError(''); setPublicationHeld(false) }
         Object.assign(confirmed.current, patch)
         if (version === revision.current) { setSnackMessage('Settings saved'); setSnackSeverity('success'); setSnack(true) }
       } catch (err) {
         if (!live.current) return
-        if (patch.publicProfile === true) setPublicationError(err instanceof Error ? err.message : 'Could not publish your profile.')
+        const held = patch.publicProfile === true && isPublicationHeld(err)
+        if (patch.publicProfile === true) {
+          setPublicationHeld(held)
+          setPublicationError(held ? '' : err instanceof Error ? err.message : 'Could not publish your profile.')
+        }
         for (const key of Object.keys(patch)) {
           if (fieldRevision.current[key] !== version) continue
           if (key === 'darkMode') setDarkMode(confirmed.current[key] as boolean)
@@ -237,8 +254,8 @@ function SettingsForViewer() {
           if (key === 'showLeaderboards') setShowLeaderboards(confirmed.current[key] as boolean)
           if (key === 'publicProfile') setPublicProfile(confirmed.current[key] as boolean)
         }
-        setSnackMessage(err instanceof Error ? err.message : 'Failed to save settings')
-        setSnackSeverity('error'); setSnack(true)
+        setSnackMessage(held ? 'Waiting for safety review. Your profile stays private until it is approved.' : err instanceof Error ? err.message : 'Failed to save settings')
+        setSnackSeverity(held ? 'info' : 'error'); setSnack(true)
       } finally {
         if (live.current && version === revision.current) setSaving(false)
       }
@@ -406,6 +423,7 @@ function SettingsForViewer() {
               <Typography variant="body2">Making your profile public requires review of its current identity. Hiding it takes effect without review.</Typography>
               <PublicationConsent value={identityConsent} onChange={setIdentityConsent} />
               {publicationError && <Alert severity="error">{publicationError} Check Publication reviews above, then enable the switch again after approval.</Alert>}
+              {publicationHeld && <PublicationHeldNotice retry="turn on “Allow profile to be public” again" reviews="above" />}
               <ToggleRow label="Allow profile to be public" checked={publicProfile} onChange={(v) => { setPublicProfile(v); persistSettings({ publicProfile: v }) }} />
             </SettingsSection>
 

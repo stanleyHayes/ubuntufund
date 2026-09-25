@@ -1,5 +1,6 @@
 import { router, useFocusEffect } from 'expo-router'
 import { PublicationConsent } from './PublicationConsent'
+import { PublicationHeldNotice } from './PublicationHeldNotice'
 import { ReportContent } from './ReportContent'
 import { BlockedUsers } from './BlockedUsers'
 import { IconButton, TouchableOpacity } from '@/components/RoundedControls'
@@ -10,6 +11,7 @@ import { Alert, AppState, StyleSheet, View } from 'react-native'
 import { Avatar, Text } from 'react-native-paper'
 import type { CampaignComment } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
+import { isPublicationHeld } from '@/lib/publicationDrafts'
 import { useAuth } from '@/context/AuthContext'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
 import type { Palette, NeuRecipes } from '@/theme'
@@ -50,6 +52,8 @@ function CampaignCommentsForViewer({ campaignId, creatorId }: { campaignId: stri
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  // The last comment was held for safety review: a notice, not an error.
+  const [held, setHeld] = useState(false)
 
   const requestVersion = useRef(0)
   const load = useCallback(async () => {
@@ -76,6 +80,7 @@ function CampaignCommentsForViewer({ campaignId, creatorId }: { campaignId: stri
   async function submit() {
     if (!content.trim()) return
     setSubmitting(true)
+    setHeld(false)
     try {
       const comment = await api.post<CampaignComment>(`/campaigns/${campaignId}/comments`, { content, automatedReviewConsent })
       requestVersion.current++
@@ -83,7 +88,8 @@ function CampaignCommentsForViewer({ campaignId, creatorId }: { campaignId: stri
       setContent('')
       setAutomatedReviewConsent(false)
     } catch (error) {
-      Alert.alert('Could not post', error instanceof Error ? error.message : 'Please try again.')
+      if (isPublicationHeld(error)) setHeld(true)
+      else Alert.alert('Could not post', error instanceof Error ? error.message : 'Please try again.')
     } finally { setSubmitting(false) }
   }
 
@@ -114,6 +120,7 @@ function CampaignCommentsForViewer({ campaignId, creatorId }: { campaignId: stri
         <TextInput multiline maxLength={1000} value={content} onChangeText={setContent} placeholder="Share encouragement or ask a question…" placeholderTextColor={p.textSecondary} style={styles.input} />
         <PublicationConsent value={automatedReviewConsent} onChange={setAutomatedReviewConsent} />
         <Button mode="contained" loading={submitting} disabled={submitting || !content.trim()} onPress={() => void submit()}>Post comment</Button>
+        {held && <PublicationHeldNotice retry="post it again unchanged" openSettings />}
       </View> : <Text style={styles.empty}>Sign in to join the conversation.</Text>}
       {loadError && <View><Text accessibilityRole="alert">{loadError}</Text><Button onPress={() => void load()}>Retry comments</Button></View>}
       {user && <BlockedUsers key={user.id} revision={blockRevision} onChange={() => void load()} />}

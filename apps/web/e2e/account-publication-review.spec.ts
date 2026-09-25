@@ -33,6 +33,8 @@ test('retains identity edits and requires separate approval before making the pr
   await expect(page.getByRole('checkbox', { name: /Use OpenAI/ })).not.toBeChecked()
   await page.getByRole('button', { name: 'Save Changes', exact: true }).click()
   await expect(page.getByText(/Saved privately for safety review/)).toBeVisible()
+  // Being held for review is expected, not a failure: an info status notice, never a red alert.
+  await expect(page.getByRole('status').filter({ hasText: 'Waiting for safety review' })).toHaveClass(/MuiAlert-colorInfo/)
   await expect(name).toHaveValue('Reviewed account name')
   await expect(page.getByLabel('Bio', { exact: true })).toHaveValue('Private biography')
   expect(stored.name).toBe('Current account name')
@@ -50,6 +52,7 @@ test('retains identity edits and requires separate approval before making the pr
   // Going public is held for review, so the switch must stay off: click, don't check().
   await visibility.click()
   await expect(page.getByText(/Check Publication reviews above/)).toBeVisible()
+  await expect(page.getByRole('status').filter({ hasText: 'Waiting for safety review' })).toHaveClass(/MuiAlert-colorInfo/)
   await expect(visibility).not.toBeChecked()
   expect(stored.publicProfile).toBe(false)
   expect(writes[2]).toEqual({ publicProfile: true, automatedReviewConsent: false })

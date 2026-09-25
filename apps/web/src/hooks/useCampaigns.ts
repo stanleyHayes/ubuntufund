@@ -2,6 +2,7 @@ import { useAuth } from '@/context/AuthContext'
 import { useState, useEffect, useCallback } from 'react'
 import type { Campaign, CampaignCategory, CampaignPriority, CampaignStatus } from '@ubuntu-fund/types'
 import { api, ApiError } from '@/lib/api'
+import { isPublicationHeld } from '@/lib/publicationDrafts'
 
 /**
  * Normalise any `/campaigns` response into a Campaign[].
@@ -133,30 +134,34 @@ interface UseCreateCampaignResult {
   createCampaign: (payload: CreateCampaignPayload, idempotencyKey?: string) => Promise<Campaign>
   isSubmitting: boolean
   error: string | null
+  /** The last submission was saved privately for safety review (not an error). */
+  held: boolean
   reset: () => void
 }
 
 export function useCreateCampaign(): UseCreateCampaignResult {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [held, setHeld] = useState(false)
 
   const createCampaign = useCallback(async (payload: CreateCampaignPayload, idempotencyKey?: string): Promise<Campaign> => {
     setIsSubmitting(true)
     setError(null)
+    setHeld(false)
     try {
       return await api.post<Campaign>('/campaigns', payload, idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Could not create your campaign. Please try again.'
-      setError(message)
+      if (isPublicationHeld(err)) setHeld(true)
+      else setError(err instanceof Error ? err.message : 'Could not create your campaign. Please try again.')
       throw err
     } finally {
       setIsSubmitting(false)
     }
   }, [])
 
-  const reset = useCallback(() => setError(null), [])
+  const reset = useCallback(() => { setError(null); setHeld(false) }, [])
 
-  return { createCampaign, isSubmitting, error, reset }
+  return { createCampaign, isSubmitting, error, held, reset }
 }
 
 export function useCampaign(id: string): UseCampaignResult {

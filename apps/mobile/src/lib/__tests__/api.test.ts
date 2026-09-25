@@ -7,6 +7,7 @@ vi.unmock('@/lib/api')
 vi.mock('../session', () => ({ accessToken: m.token, configureRefresh: vi.fn() }))
 import { AI_WRITING_TIMEOUT_MS, api, ApiError, loginApi, REQUEST_TIMEOUT_MS, UPLOAD_TIMEOUT_MS } from '../api'
 import { requestAiWriting } from '../aiWriting'
+import { isPublicationHeld } from '../publicationDrafts'
 import { AiWritingAction } from '@ubuntu-fund/types'
 
 const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
@@ -44,6 +45,26 @@ describe('unauthenticated auth requests', () => {
   it('rejects a 200 whose body is not JSON', async () => {
     fetchMock.mockResolvedValueOnce(new Response('<html>captive portal</html>', { status: 200 }))
     await expect(loginApi('ama@example.test', 'password')).rejects.toMatchObject({ message: 'Unexpected response from Ujimora. Please try again.' })
+  })
+})
+
+describe('publication review answers', () => {
+  const HELD = 'Saved privately for safety review. Your content has not been published. Keep your draft and check Publication reviews before submitting this same version again.'
+  it('keeps the held marker, so a held save reads as a notice rather than a failure', async () => {
+    fetchMock.mockResolvedValueOnce(json(409, { message: HELD, errors: { publication: ['held'] } }))
+    const held = await api.put('/profile', { name: 'Ama' }).catch(e => e)
+    expect(held).toMatchObject({ status: 409, errors: { publication: ['held'] } })
+    expect(isPublicationHeld(held)).toBe(true)
+    // An API deployed before the marker existed is recognised by its message.
+    fetchMock.mockResolvedValueOnce(json(409, { message: HELD }))
+    expect(isPublicationHeld(await api.put('/profile', { name: 'Ama' }).catch(e => e))).toBe(true)
+  })
+  it('leaves a declined version and other conflicts as errors', async () => {
+    fetchMock.mockResolvedValueOnce(json(422, { message: 'This version was declined in safety review.' }))
+    expect(isPublicationHeld(await api.put('/profile', { name: 'Ama' }).catch(e => e))).toBe(false)
+    fetchMock.mockResolvedValueOnce(json(409, { message: 'That handle is taken.' }))
+    expect(isPublicationHeld(await api.post('/creators/profile', { handle: 'ama' }).catch(e => e))).toBe(false)
+    expect(isPublicationHeld(new Error(HELD))).toBe(false)
   })
 })
 

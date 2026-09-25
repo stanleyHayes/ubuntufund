@@ -1,5 +1,6 @@
 import { PublicationConsent } from '../../src/components/PublicationConsent'
 import { PublicationReviews } from '../../src/components/PublicationReviews'
+import { PublicationHeldNotice } from '@/components/PublicationHeldNotice'
 import { CampaignCashout } from '@/components/CampaignCashout'
 import { useAuth } from '@/context/AuthContext'
 import { SignInRequired } from '@/components/SignInRequired'
@@ -9,7 +10,7 @@ import { Text, Snackbar, Switch, ProgressBar } from 'react-native-paper'
 import { Stack, router } from 'expo-router'
 import { CampaignCategory, CampaignPriority, ORGANIZER_AGREEMENT_NOTICE, type SubscriptionPlan } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
-import { clearCampaignDraft, loadCampaignDraft, saveCampaignDraft } from '@/lib/publicationDrafts'
+import { clearCampaignDraft, isPublicationHeld, loadCampaignDraft, saveCampaignDraft } from '@/lib/publicationDrafts'
 import { creationRequestKey } from '@/lib/campaignCreationKey'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
 import { BrandedTextInput as TextInput } from '@/components/BrandedTextInput'
@@ -51,6 +52,8 @@ function CampaignFormForViewer() {
   const [uploading, setUploading] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  // The campaign was held for safety review: a notice, not an error.
+  const [held, setHeld] = useState(false)
   const [created, setCreated] = useState<{ id: string; status: string } | null>(null)
   const [setupErrors, setSetupErrors] = useState<string[]>([])
   const [draftRestored, setDraftRestored] = useState(false)
@@ -82,7 +85,7 @@ function CampaignFormForViewer() {
   }, [user, draftLoaded, created, title, description, category, priority, beneficiaries, cover, amount, end])
   function discardDraft() {
     setTitle(''); setDescription(''); setBeneficiaries(''); setCover(''); setAmount(''); setEnd('')
-    setCategory(CampaignCategory.COMMUNITY); setPriority(CampaignPriority.NORMAL); setStep(0); setDraftRestored(false)
+    setCategory(CampaignCategory.COMMUNITY); setPriority(CampaignPriority.NORMAL); setStep(0); setDraftRestored(false); setHeld(false)
   }
   useEffect(() => { if (!user) return; let active = true; setLoadError(''); api.get<Options>('/campaigns/creation-options').then(v => { if (active) setOptions(v) }).catch(e => { if (active) setLoadError(e.message) }); return () => { active = false } }, [retry, user])
   const emails = [...new Set(invites.split(',').map(s => s.trim()).filter(Boolean))]
@@ -99,6 +102,7 @@ function CampaignFormForViewer() {
     return null
   }
   async function submit() {
+    setHeld(false)
     for (let i = 0; i < 3; i++) { const issue = validate(i); if (issue) { setStep(i); setError(issue); return } }
     if (!options?.canCreate || created) return
     setBusy(true); setError('')
@@ -115,7 +119,10 @@ function CampaignFormForViewer() {
       if (!live.current) return
       if (split) { try { await api.post(`/campaigns/${campaign.id}/split`, { allocations: allocations.map(a => ({ name: a.name.trim(), email: a.email.trim(), shareBps: Math.round(Number(a.percent) * 100) })) }) } catch (e) { failures.push(`Split draft: ${e instanceof Error ? e.message : 'Could not save'}`) } }
       setSetupErrors(failures)
-    } catch (e) { setError(e instanceof Error ? e.message : 'Could not create campaign.') }
+    } catch (e) {
+      if (isPublicationHeld(e)) setHeld(true)
+      else setError(e instanceof Error ? e.message : 'Could not create campaign.')
+    }
     finally { setBusy(false) }
   }
   const card = { ...neu.raised, backgroundColor: p.surface, borderRadius: 24, padding: 20, gap: 16 }
@@ -141,7 +148,7 @@ function CampaignFormForViewer() {
             {split && allocations.map((a, i) => <View key={i} style={{ gap: 8 }}><Text>Beneficiary {i + 1}</Text>{(['name', 'email', 'percent'] as const).map(key => <TextInput key={key} label={key === 'percent' ? 'Share (%)' : key} value={a[key]} keyboardType={key === 'percent' ? 'decimal-pad' : key === 'email' ? 'email-address' : 'default'} onChangeText={v => setAllocations(rows => rows.map((row, index) => index === i ? { ...row, [key]: v } : row))} />)}<Button onPress={() => setAllocations(rows => rows.filter((_, index) => index !== i))}>Remove recipient</Button></View>)}
             {split && <Button onPress={() => setAllocations(rows => [...rows, { name: '', email: '', percent: '' }])}>Add recipient</Button>}
           </>}
-          {step === 3 && <><Text variant="titleLarge">{title}</Text><Text>{description}</Text><Text>Goal: GH₵{amount} · Ends {end}</Text><Text>Category: {category} · Urgency: {priority}</Text><Text>Beneficiaries: {beneficiaries}</Text><Text>Safety checks and financial approval apply separately. Goals above GH₵250,000 need staff financial approval unless you are currently verified and have a previous published campaign.</Text><PublicationConsent value={automatedReviewConsent} onChange={setAutomatedReviewConsent} />{error && <PublicationReviews />}<Text style={{ color: p.textSecondary }}>{ORGANIZER_AGREEMENT_NOTICE} <Text accessibilityRole="link" style={{ color: p.primary }} onPress={() => router.push('/organizer-agreement')}>Read the Campaign Organizer Agreement</Text></Text></>}
+          {step === 3 && <><Text variant="titleLarge">{title}</Text><Text>{description}</Text><Text>Goal: GH₵{amount} · Ends {end}</Text><Text>Category: {category} · Urgency: {priority}</Text><Text>Beneficiaries: {beneficiaries}</Text><Text>Safety checks and financial approval apply separately. Goals above GH₵250,000 need staff financial approval unless you are currently verified and have a previous published campaign.</Text><PublicationConsent value={automatedReviewConsent} onChange={setAutomatedReviewConsent} />{held && <PublicationHeldNotice retry="select Create campaign again without changes" reviews="below" />}{(!!error || held) && <PublicationReviews />}<Text style={{ color: p.textSecondary }}>{ORGANIZER_AGREEMENT_NOTICE} <Text accessibilityRole="link" style={{ color: p.primary }} onPress={() => router.push('/organizer-agreement')}>Read the Campaign Organizer Agreement</Text></Text></>}
         </View>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>{step > 0 && <Button disabled={busy || uploading} onPress={() => setStep(s => s - 1)}>Back</Button>}<Button mode="contained" loading={busy} disabled={busy || uploading} onPress={step === 3 ? () => void submit() : () => { const issue = validate(step); if (issue) setError(issue); else { setError(''); setStep(s => s + 1) } }}>{step === 3 ? 'Create campaign' : 'Continue'}</Button></View>
       </>}

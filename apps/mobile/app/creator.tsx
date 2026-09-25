@@ -1,6 +1,8 @@
 import { useAuth } from '@/context/AuthContext'
 import { PublicationConsent } from '@/components/PublicationConsent'
 import { PublicationReviews } from '@/components/PublicationReviews'
+import { PublicationHeldNotice } from '@/components/PublicationHeldNotice'
+import { isPublicationHeld } from '@/lib/publicationDrafts'
 import { payoutInstitutionName } from '@ubuntu-fund/types'
 import { randomUUID } from 'expo-crypto'
 import { SegmentedButtons } from '@/components/RoundedControls'
@@ -120,6 +122,8 @@ function CreatorDashboardForViewer() {
   const [tipsEnabled, setTipsEnabled] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // The page changes were held for safety review: a notice, not an error.
+  const [held, setHeld] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [snack, setSnack] = useState('')
 
@@ -174,6 +178,7 @@ function CreatorDashboardForViewer() {
 
   async function save() {
     setError(null)
+    setHeld(false)
     setSaving(true)
     try {
       await saveCreatorProfile({ handle, displayName, tagline, bio, avatarUrl, coverUrl, tipsEnabled, automatedReviewConsent })
@@ -181,14 +186,16 @@ function CreatorDashboardForViewer() {
       setSnack('Your creator page is saved')
       await load()
     } catch (err) {
-      if (live.current) setError(err instanceof Error ? err.message : 'Could not save.')
+      if (!live.current) return
+      if (isPublicationHeld(err)) setHeld(true)
+      else setError(err instanceof Error ? err.message : 'Could not save.')
     } finally {
       if (live.current) setSaving(false)
     }
   }
 
   async function pauseTips() {
-    setSaving(true); setError(null)
+    setSaving(true); setError(null); setHeld(false)
     try {
       await api.post('/creators/profile', { tipsEnabled: false })
       if (live.current) { setTipsEnabled(false); setProfile(previous => previous ? { ...previous, tipsEnabled: false } : previous); setSnack('Tips paused. Your other draft changes are retained.') }
@@ -371,6 +378,7 @@ function CreatorDashboardForViewer() {
           </View>
           <PublicationConsent value={automatedReviewConsent} onChange={setAutomatedReviewConsent} />
           {error ? <><Text style={styles.err}>{error}</Text><PublicationReviews /></> : null}
+          {held ? <><PublicationHeldNotice retry="save it again unchanged" reviews="below" /><PublicationReviews /></> : null}
           {profile?.tipsEnabled && <Button disabled={saving} onPress={() => void pauseTips()}>Pause tips now</Button>}
           <Button
             mode="contained"

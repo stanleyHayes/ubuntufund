@@ -1,6 +1,8 @@
 import { useAuth } from '@/context/AuthContext'
 import { PublicationReviews } from '@/components/account/PublicationReviews'
 import { PublicationConsent } from '@/components/safety/PublicationConsent'
+import { PublicationHeldNotice } from '@/components/safety/PublicationHeldNotice'
+import { isPublicationHeld } from '@/lib/publicationDrafts'
 import { useSeo } from '@/lib/seo'
 import { useEffect, useState, useRef } from 'react'
 import {
@@ -79,6 +81,9 @@ function OrganizationTeamForViewer() {
   const [website, setWebsite] = useState('')
   const [identityConsent, setIdentityConsent] = useState(false)
   const [identityError, setIdentityError] = useState('')
+  // Identity changes or a campaign update held for safety review: notices, not errors.
+  const [identityHeld, setIdentityHeld] = useState(false)
+  const [updateHeld, setUpdateHeld] = useState(false)
   const [campaign, setCampaign] = useState('')
   const [automatedReviewConsent, setAutomatedReviewConsent] = useState(false)
   const [title, setTitle] = useState('')
@@ -110,7 +115,7 @@ function OrganizationTeamForViewer() {
       active = false
     }
   }, [selected, version])
-  async function mutate(action: () => Promise<unknown>, message: string) {
+  async function mutate(action: () => Promise<unknown>, message: string, onHeld?: () => void) {
     if (busy) return
     setBusy(true)
     setError('')
@@ -122,19 +127,25 @@ function OrganizationTeamForViewer() {
       setLoading(true)
       setVersion((v) => v + 1)
     } catch (err) {
-      if (live.current) setError(err instanceof Error ? err.message : 'Please try again')
+      if (!live.current) return
+      if (onHeld && isPublicationHeld(err)) onHeld()
+      else setError(err instanceof Error ? err.message : 'Please try again')
     } finally {
       if (live.current) setBusy(false)
     }
   }
   async function saveIdentity() {
     if (busy) return
-    setBusy(true); setIdentityError(''); setNotice('')
+    setBusy(true); setIdentityError(''); setIdentityHeld(false); setNotice('')
     try {
       await api.put(`/organization-team/${selected}/profile`, { organizationName: name, website, automatedReviewConsent: identityConsent })
       if (!live.current) return
       setNotice('Organization profile updated.'); setLoading(true); setVersion(value => value + 1)
-    } catch (cause) { if (live.current) setIdentityError(cause instanceof Error ? cause.message : 'Could not save organization details.') }
+    } catch (cause) {
+      if (!live.current) return
+      if (isPublicationHeld(cause)) setIdentityHeld(true)
+      else setIdentityError(cause instanceof Error ? cause.message : 'Could not save organization details.')
+    }
     finally { if (live.current) setBusy(false) }
   }
   const manage = detail?.role === 'owner' || detail?.role === 'admin'
@@ -232,7 +243,7 @@ function OrganizationTeamForViewer() {
                   setLoading(true)
                   setDetail(null)
                   setSelected(e.target.value)
-                  setCampaign(''); setTitle(''); setContent(''); setIdentityConsent(false); setAutomatedReviewConsent(false); setIdentityError(''); setError(''); setNotice('')
+                  setCampaign(''); setTitle(''); setContent(''); setIdentityConsent(false); setAutomatedReviewConsent(false); setIdentityError(''); setIdentityHeld(false); setUpdateHeld(false); setError(''); setNotice('')
                 }}
               >
                 {workspaces
@@ -271,6 +282,7 @@ function OrganizationTeamForViewer() {
                       />
                       <PublicationConsent value={identityConsent} onChange={setIdentityConsent} />
                       {identityError && <><Alert severity="error">{identityError}</Alert><PublicationReviews /></>}
+                      {identityHeld && <><PublicationHeldNotice retry="save it again unchanged" reviews="below" /><PublicationReviews /></>}
                       <Button disabled={busy || name.trim().length < 2} onClick={() => void saveIdentity()}>
                         Save organization details
                       </Button>
@@ -480,19 +492,22 @@ function OrganizationTeamForViewer() {
                       <Button
                         variant="contained"
                         disabled={busy || !campaign || title.trim().length < 3 || !content.trim()}
-                        onClick={() =>
-                          mutate(
+                        onClick={() => {
+                          setUpdateHeld(false)
+                          void mutate(
                             () =>
                               api.post(
                                 `/organization-team/${selected}/campaigns/${campaign}/updates`,
                                 { title, content, automatedReviewConsent },
                               ),
                             'Campaign update published under your name.',
+                            () => setUpdateHeld(true),
                           )
-                        }
+                        }}
                       >
                         Publish update
                       </Button>
+                      {updateHeld && <><PublicationHeldNotice retry="publish it again unchanged" reviews="below" /><PublicationReviews /></>}
                     </Stack>
                   </Box>
                 )}
