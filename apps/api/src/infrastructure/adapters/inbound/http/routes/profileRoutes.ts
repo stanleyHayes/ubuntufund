@@ -6,6 +6,10 @@ import type { ProfileController } from '../controllers/ProfileController.js';
 import { validate } from '../../middleware/validate.js';
 import type { createAuthMiddleware } from '../../middleware/authMiddleware.js';
 import { authRateLimiter } from '../../middleware/rateLimiter.js';
+import { MongoUnitOfWork } from '../../../outbound/persistence/MongoUnitOfWork.js';
+import { MongoLegalAcceptanceLog } from '../../../outbound/persistence/MongoLegalAcceptanceLog.js';
+
+const legalLog = new MongoLegalAcceptanceLog();
 
 const notificationPreferencesSchema = z
   .object({
@@ -73,13 +77,22 @@ export function createProfileRoutes(
   router.post('/legal-acceptance', authMiddleware, validate(legalAcceptanceSchema), async (req, res, next) => {
     try {
       const userId = (req as import('../../middleware/authMiddleware.js').AuthenticatedRequest).userId!;
-      // Idempotent for the same version: a retry must not rewrite the acceptance time.
-      await UserModel.updateOne({ _id: userId, deletedAt: { $exists: false }, $or: [
-        { 'legalAcceptance.version': { $ne: req.body.version } },
-        { 'legalAcceptance.acceptedTerms': { $ne: true } },
-        { 'legalAcceptance.ageConfirmed': { $ne: true } },
-      ] }, {
-        $set: { legalAcceptance: { ...req.body, acceptedAt: new Date() } },
+      const { version, acceptedTerms, ageConfirmed } = req.body as { version: string; acceptedTerms: boolean; ageConfirmed: boolean };
+      await new MongoUnitOfWork().run(async () => {
+        const acceptedAt = new Date();
+        // Idempotent for the same version: a retry must not rewrite the acceptance time.
+        const result = await UserModel.updateOne({ _id: userId, deletedAt: { $exists: false }, $or: [
+          { 'legalAcceptance.version': { $ne: version } },
+          { 'legalAcceptance.acceptedTerms': { $ne: true } },
+          { 'legalAcceptance.ageConfirmed': { $ne: true } },
+        ] }, {
+          $set: { legalAcceptance: { version, acceptedTerms, ageConfirmed, acceptedAt } },
+        });
+        // Append history only for a real change, in the same transaction, so a
+        // retried or repeated request cannot add a duplicate event.
+        if (result.modifiedCount === 1) {
+          await legalLog.record({ userId, version, acceptedTerms, ageConfirmed, acceptedAt, source: 'reaccept', ip: req.ip, userAgent: req.get('user-agent') });
+        }
       });
       const user = await UserModel.findOne({ _id: userId, deletedAt: { $exists: false } });
       if (!user) { res.status(404).json({ message: 'Account not found' }); return; }

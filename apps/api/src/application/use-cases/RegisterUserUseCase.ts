@@ -24,6 +24,8 @@ import type { AuthTokenService } from '../services/AuthTokenService.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 import { logger } from '../../infrastructure/logging/logger.js';
 import type { AccountEmails } from '../../infrastructure/adapters/outbound/AccountEmails.js';
+import type { LegalAcceptanceLogPort } from '../../domain/ports/outbound/LegalAcceptanceLogPort.js';
+import { MongoUnitOfWork } from '../../infrastructure/adapters/outbound/persistence/MongoUnitOfWork.js';
 
 export class RegisterUserUseCase {
   constructor(
@@ -36,11 +38,15 @@ export class RegisterUserUseCase {
     private readonly affiliateReferralRepo?: AffiliateReferralRepositoryPort,
     // Optional: when email delivery is configured, a verification link is sent
     // at signup (payouts and organization invitations need a verified email).
-    private readonly emails?: Pick<AccountEmails, 'configured' | 'enqueue'>
+    private readonly emails?: Pick<AccountEmails, 'configured' | 'enqueue'>,
+    // Optional: when wired, the signup acceptance is also appended to the
+    // consent history in the same transaction as the account.
+    private readonly legalLog?: LegalAcceptanceLogPort
   ) {}
 
   async execute(
-    input: CreateUserInput
+    input: CreateUserInput,
+    context: { ip?: string; userAgent?: string } = {}
   ): Promise<{ user: User; tokens: AuthTokens }> {
     if (!hasCurrentLegalAcceptance(input.legalAcceptance)) {
       throw new AppError('Please accept the current terms and confirm you are at least 18', 400);
@@ -76,7 +82,23 @@ export class RegisterUserUseCase {
       updatedAt: now,
     });
 
-    const savedUser = await this.userRepo.save(user);
+    const legalLog = this.legalLog;
+    const savedUser = legalLog
+      ? await new MongoUnitOfWork().run(async () => {
+          const created = await this.userRepo.save(user);
+          const acceptance = created.legalAcceptance!;
+          await legalLog.record({
+            userId: created.id,
+            version: acceptance.version,
+            acceptedTerms: acceptance.acceptedTerms,
+            ageConfirmed: acceptance.ageConfirmed,
+            acceptedAt: acceptance.acceptedAt,
+            source: 'register',
+            ...context,
+          });
+          return created;
+        })
+      : await this.userRepo.save(user);
 
     // Create default local wallet
     const wallet = new WalletEntity({

@@ -29,6 +29,7 @@ import { createUserSafetyRoutes } from './infrastructure/adapters/inbound/http/r
 import { createPrivacyRequestRoutes } from './infrastructure/adapters/inbound/http/routes/privacyRequestRoutes.js'
 import { MongoAccountErasure } from './infrastructure/adapters/outbound/persistence/MongoAccountErasure.js'
 import { MongoAccountClosureCheck } from './infrastructure/adapters/outbound/persistence/MongoAccountClosureCheck.js'
+import { MongoLegalAcceptanceLog } from './infrastructure/adapters/outbound/persistence/MongoLegalAcceptanceLog.js'
 import { createOrganizationTeamRoutes } from './infrastructure/adapters/inbound/http/routes/organizationTeamRoutes.js'
 import { AutomaticPayoutService } from './infrastructure/adapters/outbound/payments/AutomaticPayoutService.js'
 import { automaticPayoutRoutes } from './infrastructure/adapters/inbound/http/routes/automaticPayoutRoutes.js'
@@ -637,6 +638,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     affiliateRepo,
     affiliateReferralRepo,
     accountEmails,
+    new MongoLegalAcceptanceLog(),
   )
   const mfa = new MongoMfa(process.env.MFA_ENCRYPTION_KEY ?? '', tokenService, config.publicWebUrl)
   const loginUserUseCase = new LoginUserUseCase(userRepo, tokenService, mfa)

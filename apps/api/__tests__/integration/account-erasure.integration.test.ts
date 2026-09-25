@@ -27,6 +27,7 @@ import { AffiliateModel } from '../../src/infrastructure/database/models/Affilia
 import { AffiliateBalanceModel } from '../../src/infrastructure/database/models/AffiliateBalanceModel.js';
 import { PayoutModel } from '../../src/infrastructure/database/models/PayoutModel.js';
 import { MfaModel } from '../../src/infrastructure/database/models/MfaModel.js';
+import { LegalAcceptanceEventModel } from '../../src/infrastructure/database/models/LegalAcceptanceEventModel.js';
 import { newRecoveryCodes, recoveryDigest } from '../../src/application/services/Totp.js';
 import { CampaignCategory } from '@ubuntu-fund/types';
 
@@ -94,6 +95,8 @@ describe('Account erasure and retained-record review', () => {
     const retainedDonation = await DonationModel.findById(donation._id);
     expect(retainedDonation).toMatchObject({ donorId: id, campaignId: donation.campaignId, amount: 25, currency: 'GHS', isAnonymous: true });
     expect(await ActivityAlertPreferenceModel.countDocuments({ userId: id })).toBe(0);
+    // Consent evidence is retained under the retention schedule, not erased.
+    expect(await LegalAcceptanceEventModel.find({ userId: id }).lean()).toEqual([expect.objectContaining({ source: 'register', version: LEGAL_ACCEPTANCE_VERSION })]);
     const deleted = await UserModel.findById(id);
     expect(deleted?.email).toBe(`deleted-${id}@invalid.ujimora`);
     expect(deleted?.name).toBe('Deleted user');
