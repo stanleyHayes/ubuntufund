@@ -1,4 +1,5 @@
 import { cleanupRecoveryCodeCache } from '@/lib/recoveryCodes'
+import { cleanupPickerCache } from '@/lib/uploadCache'
 import { AccountAgreementNotice } from '@/components/AccountAgreementNotice'
 import { WebsiteRequestNotice } from '@/components/WebsiteRequestNotice'
 import { NotificationProvider } from '@/context/NotificationContext'
@@ -38,6 +39,9 @@ export default function RootLayout() {
   useEffect(() => {
     void cleanupRecoveryCodeCache().catch(() => {
       console.warn('Temporary recovery-code cleanup could not complete; it will retry at the next app start.')
+    })
+    void cleanupPickerCache().catch(() => {
+      console.warn('Temporary upload cleanup could not complete; it will retry at the next app start.')
     })
     const cleanup = setupNotificationHandlers()
     return cleanup
