@@ -182,11 +182,33 @@ To override in production, set the var in each Vercel project's settings; the
 tracked `.env.production` is the committed default. Never put secrets in a
 frontend env file — everything `VITE_`-prefixed is shipped to the browser.
 
-## 4. CI
+## 4. CI and deploy gating
 
 [.github/workflows/ci.yml](.github/workflows/ci.yml) runs lint, type-check,
 unit tests (against a MongoDB service container), Playwright e2e (with the
 real API booted), and builds — on every push/PR to `main`.
+
+The API deploys with `autoDeployTrigger: checksPass`: Render deploys a push to
+`main` only once that commit's GitHub checks pass. A failing (or flaky) run
+holds the deploy — fix or re-run it, or use **Manual Deploy** for an urgent
+fix. Vercel still deploys the frontends on every push.
+
+Known gaps (owner decisions / dashboard settings):
+
+- **No staging.** Vercel preview deployments use the same `vercel.json`
+  rewrite to the production API. Confirm Vercel Deployment Protection
+  (Standard) covers previews. Once a staging API and database exist, make the
+  rewrites host-conditional so only the production hosts reach
+  `api.ujimora.com`.
+- **npm version on Vercel.** The `vercel.json` install commands run the
+  build image's npm (10 on Node 22), not the `npm@12.0.2` pinned in
+  `package.json`, CI and Render, so lockfile/override handling can drift
+  (build reproducibility only — the Vite bundles ship no server packages).
+  To align, set each project's install command to
+  `cd ../.. && npx --yes npm@12.0.2 ci` (root project: `npx --yes npm@12.0.2 ci`)
+  after confirming the project's Node version satisfies npm 12's engines
+  (`^22.22.2 || ^24.15.0`), and check the build log shows npm 12 and the
+  postinstall security patches running.
 
 ## Creator profile donations
 

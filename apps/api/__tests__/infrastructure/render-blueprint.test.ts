@@ -95,6 +95,12 @@ describe('render.yaml blueprint', () => {
     expect(readFileSync(join(repoRoot, 'render.yaml'), 'utf8')).toMatch(/^\s*healthCheckPath: \/health\/ready\s*$/m);
   });
 
+  it('deploys only after CI passes, not on every push', () => {
+    const blueprint = readFileSync(join(repoRoot, 'render.yaml'), 'utf8');
+    expect(blueprint).toMatch(/^\s*autoDeployTrigger: checksPass\s*$/m);
+    expect(blueprint).not.toMatch(/^\s*autoDeploy: true\s*$/m);
+  });
+
   it('does not declare the test-only mock crypto secret', () => {
     expect(declared.has('CRYPTO_MOCK_WEBHOOK_SECRET')).toBe(false);
   });

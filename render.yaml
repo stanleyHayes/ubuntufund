@@ -25,7 +25,12 @@ services:
     # stops routing to (and eventually restarts) an instance that lost the
     # database. /health stays dependency-free for CI and tooling.
     healthCheckPath: /health/ready
-    autoDeploy: true
+    # Deploy a push to main only after its GitHub CI checks pass (lint, type
+    # check, API tests, E2E, build: .github/workflows/ci.yml). The deprecated
+    # `autoDeploy: true` deployed every push immediately, CI or not. A red or
+    # flaky run now holds the deploy; use Manual Deploy in the dashboard for an
+    # urgent fix.
+    autoDeployTrigger: checksPass
     envVars:
       - key: NODE_ENV
         value: production
