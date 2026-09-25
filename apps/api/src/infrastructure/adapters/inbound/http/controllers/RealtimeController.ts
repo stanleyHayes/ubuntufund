@@ -106,12 +106,14 @@ export class RealtimeController {
       if (!session.isActive()) throw new AppError('This live session has ended', 409);
       const campaign = await this.campaignRepo.findById(session.campaignId);
       if (!campaign || !isPublicCampaign(campaign.status) || (await this.visibility.hiddenContentAuthorIds([campaign.creatorId], req.userId)).has(campaign.creatorId)) throw new AppError('Campaign not found', 404);
+      // A closed or expired campaign has no broadcast, whatever the session says.
+      if (!campaign.canReceiveDonation()) throw new AppError('This live session has ended', 409);
       this.stream(req, res, liveChannel(sessionId), session.campaignId, async () => {
         const current = await this.liveSessionRepo.findById(sessionId);
         return current?.isActive() && overlayTokenMatches(current.overlayToken, token) ? current : null;
       }, async () => {
         const current = await this.campaignRepo.findById(session.campaignId);
-        return !!current && isPublicCampaign(current.status) && !(await this.visibility.hiddenContentAuthorIds([current.creatorId], req.userId)).has(current.creatorId);
+        return !!current && isPublicCampaign(current.status) && current.canReceiveDonation() && !(await this.visibility.hiddenContentAuthorIds([current.creatorId], req.userId)).has(current.creatorId);
       });
     } catch (error) {
       next(error);

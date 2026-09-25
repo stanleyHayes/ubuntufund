@@ -9,6 +9,13 @@ import { ContentRestrictionModel } from '../../../database/models/ContentRestric
 import { AppError } from '../../inbound/middleware/errorHandler.js';
 import { logger } from '../../../logging/logger.js';
 interface VideoSafety { enabled?: boolean; removeIdentity(sessionId: string, identity: string): Promise<void>; closeRoom(sessionId: string): Promise<void> }
+/**
+ * Longest a broadcast may stay open. Catches studios closed without "End"
+ * (otherwise LIVE forever, pointing viewers at an empty room).
+ */
+export const MAX_LIVE_SESSION_MS = 12 * 60 * 60 * 1000;
+/** Campaign states that may still broadcast (mirrors Campaign.canReceiveDonation). */
+const BROADCASTABLE_CAMPAIGN_STATUSES = ['active', 'funded'];
 export class MongoLiveSafety {
   constructor(private readonly blocks: UserBlockRepositoryPort) {}
   async recordHostToken(sessionId: string): Promise<void> {
@@ -54,6 +61,23 @@ export class MongoLiveSafety {
     try { await this.finishStop(sessionId, video); } catch (error) { logger.error({ err: error, sessionId }, 'Live session ended; provider cleanup pending retry'); }
     return true;
   }
+  /**
+   * End active broadcasts that can no longer run: the campaign is missing,
+   * deleted, not active/funded or past its end date, or the session has been
+   * open longer than MAX_LIVE_SESSION_MS.
+   */
+  async endStale(video: VideoSafety, now = new Date()): Promise<number> {
+    const campaignIds = (await LiveSessionModel.distinct('campaignId', { status: 'active' })).map(String);
+    const open = await CampaignModel.find({ _id: { $in: campaignIds.filter(id => isObjectIdOrHexString(id)) }, status: { $in: BROADCASTABLE_CAMPAIGN_STATUSES }, endDate: { $gt: now }, deletedAt: null }).select('_id');
+    const openIds = open.map(campaign => String(campaign._id));
+    const stale = await LiveSessionModel.find({ status: 'active', $or: [{ campaignId: { $nin: openIds } }, { startedAt: { $lte: new Date(now.getTime() - MAX_LIVE_SESSION_MS) } }] }).select('_id').limit(50);
+    let count = 0;
+    for (const session of stale) {
+      try { if (await this.end(String(session._id), video)) count += 1; } catch (error) { logger.error({ err: error, sessionId: session.id }, 'Stale live session end failed'); }
+    }
+    if (count > 0) logger.info({ count }, 'Ended stale or closed-campaign live sessions');
+    return count;
+  }
   private async finishStop(sessionId: string, video: VideoSafety): Promise<void> {
     const session = await LiveSessionModel.findById(sessionId);
     if (!session) return;
@@ -82,5 +106,6 @@ export class MongoLiveSafety {
     for (const block of await UserBlockModel.find({ providerCleanupPending: true }).limit(50)) {
       try { await this.enforceBlock(block.userId, block.blockedUserId, video); } catch (error) { logger.error({ err: error, blockId: block.id }, 'Live block pending provider retry'); }
     }
+    try { await this.endStale(video); } catch (error) { logger.error({ err: error }, 'Stale live session sweep failed'); }
   }
 }

@@ -6,7 +6,10 @@ import { toLiveSessionPublicView } from './mappers/liveSessionDto.js';
 /**
  * Public donor-facing sheet for a live session. No token required; the mapper
  * strips the overlay token and honors the host's amount-visibility choice.
- * Returns null when the session is unknown.
+ * Returns null when the session is unknown. A broadcast whose campaign can no
+ * longer take donations (closed or past its end date) reads as ended, even
+ * before the stale-session sweep records it, so viewers are not shown a LIVE
+ * player that cannot connect.
  */
 export class GetLiveSessionPublicUseCase {
   constructor(private readonly liveSessionRepo: LiveSessionRepositoryPort, private readonly campaignRepo?: CampaignRepositoryPort) {}
@@ -15,6 +18,8 @@ export class GetLiveSessionPublicUseCase {
     const session = await this.liveSessionRepo.findById(sessionId);
     if (!session) return null;
     const campaign = await this.campaignRepo?.findById(session.campaignId);
-    return { ...toLiveSessionPublicView(session), creatorId: campaign?.creatorId, currency: campaign?.goalAmount.currency ?? 'GHS' };
+    const view = toLiveSessionPublicView(session);
+    const closed = !!this.campaignRepo && (!campaign || !campaign.canReceiveDonation());
+    return { ...view, status: closed ? 'ended' : view.status, creatorId: campaign?.creatorId, currency: campaign?.goalAmount.currency ?? 'GHS' };
   }
 }

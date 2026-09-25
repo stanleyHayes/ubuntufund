@@ -57,7 +57,8 @@ export class GetLiveSessionOverlayUseCase {
       campaignId: session.campaignId,
       title: session.title,
       targetAmount: session.targetAmount,
-      status: session.status,
+      // A campaign that closed or expired ends its broadcast (the sweep records it).
+      status: campaign.canReceiveDonation() ? session.status : 'ended',
       config: {
         showDonorNames: session.showDonorNames,
         showDonorMessages: session.showDonorMessages,
