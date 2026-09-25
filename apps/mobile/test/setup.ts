@@ -101,6 +101,9 @@ vi.mock('react-native-paper', () => ({
     return React.createElement('button', {}, children)
   },
   Provider: ({ children }: { children?: React.ReactNode }) => children,
+  Portal: Object.assign(({ children }: { children?: React.ReactNode }) => children, {
+    Host: ({ children }: { children?: React.ReactNode }) => children,
+  }),
 }))
 
 // Mock react-native-svg

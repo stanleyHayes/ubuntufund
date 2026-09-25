@@ -5,6 +5,7 @@ import type { LegalAcceptanceInput } from '@ubuntu-fund/types'
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import type { ReactNode } from 'react'
 import { AppState, Platform, View, type AppStateStatus } from 'react-native'
+import { Portal } from 'react-native-paper'
 import { accessToken, biometricSessionState, setSessionForeground, endSession, establishSession, expireIdleSession, hydrateSession, observeSession, recordActivity, sessionSnapshot } from '@/lib/session'
 import { loginApi, logoutApi, registerApi } from '@/lib/api'
 import type { AuthUser, AuthTokens } from '@/lib/api'
@@ -163,7 +164,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {/* A touch re-syncs a cover left up by a state change that arrived before this provider subscribed. */}
       <View style={{ flex: 1 }} onTouchStart={() => { if (!appActive && !isInterrupted(AppState.currentState)) setAppActive(true); recordActivity() }}>
         {/* Covered screens stay mounted (display: none) so an interruption never wipes a form; only an actual lock unmounts them (BiometricScreen). */}
-        <View style={{ flex: 1, display: hidden ? 'none' : 'flex' }} accessibilityElementsHidden={hidden} importantForAccessibility={hidden ? 'no-hide-descendants' : 'auto'}>{children}</View>
+        <View style={{ flex: 1, display: hidden ? 'none' : 'flex' }} accessibilityElementsHidden={hidden} importantForAccessibility={hidden ? 'no-hide-descendants' : 'auto'}>
+          {/* Screen dialogs and menus (Paper portals, e.g. Withdraw funds) mount in this host rather than PaperProvider's, so the cover hides them with their screen instead of drawing them above it. */}
+          <Portal.Host>{children}</Portal.Host>
+        </View>
         {biometricCover ? <BiometricLock suspended={interrupted} /> : hidden ? <PrivacyCover /> : null}
       </View>
     </AuthContext.Provider>

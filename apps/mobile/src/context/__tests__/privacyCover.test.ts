@@ -23,6 +23,22 @@ vi.mock('react-native', async () => {
     },
   }
 })
+// Like Paper's Portal.Host: its children first, then every portal mounted in
+// the nearest host drawn above them (PortalManager).
+vi.mock('react-native-paper', async () => {
+  const React = await import('react')
+  const { createPortal } = await import('react-dom')
+  const Outlet = React.createContext<HTMLElement | null>(null)
+  function Host({ children }: { children: React.ReactNode }) {
+    const [outlet, setOutlet] = React.useState<HTMLElement | null>(null)
+    return React.createElement(Outlet.Provider, { value: outlet }, React.createElement('div', null, children), React.createElement('div', { ref: setOutlet }))
+  }
+  function Portal({ children }: { children: React.ReactNode }) {
+    const outlet = React.useContext(Outlet)
+    return outlet ? createPortal(children, outlet) : null
+  }
+  return { Portal: Object.assign(Portal, { Host }) }
+})
 vi.mock('@/components/BiometricLock', async () => { const React = await import('react'); return { BiometricLock: () => React.createElement('div', { role: 'dialog' }, 'Ujimora is locked') } })
 vi.mock('@/components/PrivacyCover', async () => { const React = await import('react'); return { PrivacyCover: () => React.createElement('div', { role: 'img' }, 'Ujimora') } })
 vi.mock('@/lib/api', () => ({ loginApi: vi.fn(), registerApi: vi.fn() }))
@@ -32,6 +48,7 @@ vi.mock('@/lib/session', () => ({
   observeSession: (listener: () => void) => { m.listener = listener; return () => {} },
   sessionSnapshot: () => m.state.locked ? null : { user: { id: 'member' }, tokens: { accessToken: 'token' } },
 }))
+import { Portal } from 'react-native-paper'
 import { AuthProvider, BiometricScreen } from '@/context/AuthContext'
 function PrivateBalance() { useEffect(() => { m.mounted++; return () => { m.removed++ } }, []); return createElement('input', { 'aria-label': 'Wallet balance', defaultValue: 'GH₵ 1,250.00' }) }
 function renderApp() { return render(createElement(AuthProvider, null, createElement(BiometricScreen, null, createElement(PrivateBalance)))) }
@@ -79,4 +96,28 @@ it('shows the suspended lock over, but keeps mounted, an opted-in screen during 
   expect(screen.getByLabelText('Wallet balance')).toBeVisible()
   act(() => { m.state.locked = true; m.listener() })
   expect(m.removed).toBe(1)
+})
+
+function WithdrawDialog() { return createElement(Portal, null, createElement('input', { 'aria-label': 'Account number', defaultValue: '0241234567' })) }
+// PaperProvider's own host wraps the whole app, as in app/_layout.tsx.
+function renderWithDialog() { return render(createElement(Portal.Host, null, createElement(AuthProvider, null, createElement(BiometricScreen, null, createElement(WithdrawDialog))))) }
+
+it('hides an open Paper dialog (Withdraw funds) with its screen instead of drawing it above the cover', async () => {
+  renderWithDialog()
+  await waitFor(() => expect(screen.getByLabelText('Account number')).toBeVisible())
+  act(() => { m.current = 'inactive'; m.handlers.change('inactive') })
+  expect(screen.getByRole('img')).toHaveTextContent('Ujimora')
+  expect(screen.getByLabelText('Account number')).not.toBeVisible()
+  act(() => { m.current = 'active'; m.handlers.change('active') })
+  expect(screen.getByLabelText('Account number')).toBeVisible()
+  expect(screen.getByLabelText('Account number')).toHaveValue('0241234567')
+})
+
+it('keeps a Paper dialog hidden behind the suspended biometric lock', async () => {
+  m.state = { enabled: true, locked: false }
+  renderWithDialog()
+  await waitFor(() => expect(screen.getByLabelText('Account number')).toBeVisible())
+  act(() => m.handlers.blur())
+  expect(screen.getByRole('dialog')).toHaveTextContent('Ujimora is locked')
+  expect(screen.getByLabelText('Account number')).not.toBeVisible()
 })
