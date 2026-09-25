@@ -467,6 +467,8 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 
 **Needs:** Paystack test keys (refunds)
 
+**Operator note:** a refund only takes back plan time for a charge listed in the subscription's `paymentReferences`. Web plans settled before that field existed need `MONGODB_URI=… tsx apps/api/scripts/backfill-subscription-payment-references.ts` run once per environment (dry run first, then `--apply`); rows it lists as `unmatched` need a manual decision.
+
 **Source:** `apps/api/src/application/use-cases/HandlePaystackWebhookUseCase.ts`, `apps/api/src/application/services/AffiliateCommissionService.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoAffiliateBalanceRepository.ts`
 
 ## SUBS-055 · P0 · Active campaign cap per plan
