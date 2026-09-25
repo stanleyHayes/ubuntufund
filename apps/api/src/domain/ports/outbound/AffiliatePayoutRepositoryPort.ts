@@ -9,6 +9,8 @@ export interface AffiliatePayoutRepositoryPort {
   findByProviderRef(providerRef: string): Promise<AffiliatePayoutEntity | null>;
   /** All affiliate payouts, newest first (admin console). */
   findAll(): Promise<AffiliatePayoutEntity[]>;
+  /** Payouts escalated to NEEDS_REVIEW (oldest first), for the staff queue. */
+  findEscalated?(): Promise<AffiliatePayoutEntity[]>;
 
   /** Payouts stuck in PROCESSING since before `olderThan` (missed webhook). */
   findStuckProcessing(olderThan: Date): Promise<AffiliatePayoutEntity[]>;

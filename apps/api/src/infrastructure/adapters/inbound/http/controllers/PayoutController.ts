@@ -40,6 +40,22 @@ export class PayoutController {
     private readonly resolveStuckPayout?: ResolveStuckPayoutUseCase,
   ) {}
 
+  /** GET /payouts/stuck — single transfers escalated for review on every rail (admin). */
+  listStuck = async (
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      if (!this.resolveStuckPayout) throw new AppError('Payout resolution is unavailable.', 503)
+      const rows = await this.resolveStuckPayout.listEscalated({ userId: req.userId!, role: req.userRole, authVersion: req.authVersion })
+      res.set('Cache-Control', 'private, no-store')
+      res.json({ data: rows, message: 'Escalated payouts', status: 200 })
+    } catch (error) {
+      next(error)
+    }
+  }
+
   /** POST /payouts/stuck/:rail/:id/resolve — settle an escalated transfer from Paystack's outcome (admin). */
   resolveStuck = async (
     req: AuthenticatedRequest,

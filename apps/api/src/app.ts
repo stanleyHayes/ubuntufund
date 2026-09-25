@@ -1022,6 +1022,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     paymentGateway,
     handleCreatorPayoutWebhookUseCase,
     creatorPayoutRepo,
+    auditLogRepo,
   )
   // Paid-subscription checkouts: repair missed webhooks and expire checkouts
   // left unpaid for a day, freeing their coupon seats and the billing rail.
@@ -1531,21 +1532,35 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
           findById: (id) => payoutRepo.findById(id),
           reopenForSettlement: (id) => payoutRepo.reopenForSettlement(id),
           handler: handlePayoutWebhookUseCase,
+          listEscalated: async () => (await payoutRepo.findByStatuses(['NEEDS_REVIEW']))
+            .filter((p) => !p.legs?.length && p.providerRef)
+            .map((p) => ({ id: p.id, amount: p.amount, currency: p.currency, providerRef: p.providerRef, subject: p.campaignId, subjectLabel: 'Campaign', createdAt: p.createdAt, updatedAt: p.updatedAt })),
         },
         beneficiary: {
           findById: (id) => beneficiaryPayoutRepo.findById(id),
           reopenForSettlement: (id) => beneficiaryPayoutRepo.reopenForSettlement(id),
           handler: handleBeneficiaryPayoutWebhookUseCase,
+          listEscalated: async () => (await beneficiaryPayoutRepo.findByStatuses(['NEEDS_REVIEW']))
+            .filter((p) => p.providerRef)
+            .map((p) => ({ id: p.id, amount: p.amount, currency: p.currency, providerRef: p.providerRef, subject: `${p.campaignId} / ${p.beneficiaryId}`, subjectLabel: 'Campaign / beneficiary', createdAt: p.toPlain().createdAt, updatedAt: p.updatedAt })),
         },
         affiliate: {
           findById: (id) => affiliatePayoutRepo.findById(id),
           reopenForSettlement: (id) => affiliatePayoutRepo.reopenForSettlement(id),
           handler: handleAffiliatePayoutWebhookUseCase,
+          listEscalated: async () => ((await affiliatePayoutRepo.findEscalated?.()) ?? [])
+            .map((payout) => payout.toPlain())
+            .filter((p) => p.providerRef)
+            .map((p) => ({ id: p.id, amount: p.amount, currency: p.currency, providerRef: p.providerRef, subject: p.affiliateId, subjectLabel: 'Affiliate', createdAt: p.createdAt, updatedAt: p.updatedAt })),
         },
         creator: {
           findById: (id) => creatorPayoutRepo.findById(id),
           reopenForSettlement: (id) => creatorPayoutRepo.reopenForSettlement(id),
           handler: handleCreatorPayoutWebhookUseCase,
+          listEscalated: async () => ((await creatorPayoutRepo.findEscalated?.()) ?? [])
+            .map((payout) => payout.toPlain())
+            .filter((p) => p.providerRef)
+            .map((p) => ({ id: p.id, amount: p.amount, currency: p.currency, providerRef: p.providerRef, subject: p.creatorUserId, subjectLabel: 'Creator', createdAt: p.createdAt, updatedAt: p.updatedAt })),
         },
       },
       auditLogRepo,

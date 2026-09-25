@@ -291,6 +291,11 @@ describe('Creator withdrawal — transfer rail', () => {
     const admin = `Bearer ${login.body.data.tokens.accessToken}`
     const note = { note: 'Paystack dashboard shows no transfer under this reference.' }
 
+    // Staff can find it in the console's escalated queue, not only in a log line.
+    await request(app).get('/api/v1/payouts/stuck').set('Authorization', `Bearer ${owner.token}`).expect(403)
+    const queue = await request(app).get('/api/v1/payouts/stuck').set('Authorization', admin).expect(200)
+    expect(queue.body.data).toEqual(expect.arrayContaining([expect.objectContaining({ rail: 'creator', id: payout!.id, subject: owner.userId, providerRef: reference })]))
+
     await request(app).post(`/api/v1/payouts/stuck/creator/${payout!.id}/resolve`).set('Authorization', `Bearer ${owner.token}`).send(note).expect(403)
     await request(app).post(`/api/v1/payouts/stuck/wallet/${payout!.id}/resolve`).set('Authorization', admin).send(note).expect(404)
     verifyNotFound = true
@@ -301,6 +306,8 @@ describe('Creator withdrawal — transfer rail', () => {
     } finally { verifyNotFound = false }
     expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(100)
     expect(await CreatorPayoutModel.findById(payout!._id).lean()).toMatchObject({ status: 'FAILED', settlementApplied: true })
+    const after = await request(app).get('/api/v1/payouts/stuck').set('Authorization', admin).expect(200)
+    expect(after.body.data.some((row: { id: string }) => row.id === payout!.id)).toBe(false)
   })
 
   it('rechecks identity verification at the reservation write boundary', async () => {

@@ -115,6 +115,27 @@ export interface TransferRecipient {
   createdAt: Date
 }
 
+/** The payout rails whose single transfers can be escalated for staff review. */
+export type EscalatedPayoutRail = 'campaign' | 'beneficiary' | 'affiliate' | 'creator'
+
+/**
+ * A single transfer the provider could not confirm for a full dwell window,
+ * escalated to NEEDS_REVIEW with its funds still reserved (any rail). Staff
+ * resolve it from the provider's authoritative outcome.
+ */
+export interface EscalatedPayout {
+  rail: EscalatedPayoutRail
+  id: string
+  amount: number
+  currency: string
+  providerRef?: string
+  /** What the payout belongs to: a campaign, beneficiary, affiliate or creator id. */
+  subject: string
+  subjectLabel: string
+  createdAt: Date
+  updatedAt: Date
+}
+
 /**
  * Why a PENDING payout was closed before any transfer: rejected by an admin or
  * cancelled by the campaign owner. A closed payout is terminal (`FAILED`), never

@@ -137,6 +137,11 @@ export class MongoCreatorPayoutRepository implements CreatorPayoutRepositoryPort
     );
   }
 
+  async findEscalated(): Promise<CreatorPayoutEntity[]> {
+    const docs = await CreatorPayoutModel.find({ status: 'NEEDS_REVIEW' }).sort({ updatedAt: 1 });
+    return docs.map(toDomain);
+  }
+
   async findStuckProcessing(olderThan: Date): Promise<CreatorPayoutEntity[]> {
     const docs = await CreatorPayoutModel.find({
       status: 'PROCESSING',

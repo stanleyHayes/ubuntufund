@@ -1,4 +1,4 @@
-import type { PayoutStatus } from '@ubuntu-fund/types'
+import type { EscalatedPayout, PayoutStatus } from '@ubuntu-fund/types'
 import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGatewayPort.js'
 import type { AuditLogRepositoryPort } from '../../domain/ports/outbound/AuditLogRepositoryPort.js'
 import { TransferNotFoundError } from '../../domain/errors/TransferNotFoundError.js'
@@ -15,6 +15,8 @@ export interface StuckPayoutRailAccess {
   findById(id: string): Promise<{ id: string; status: PayoutStatus; providerRef?: string; legs?: unknown[] } | null>
   reopenForSettlement?(id: string): Promise<boolean>
   handler: PayoutWebhookHandler
+  /** This rail's single transfers escalated to NEEDS_REVIEW (for the staff queue). */
+  listEscalated?(): Promise<Omit<EscalatedPayout, 'rail'>[]>
 }
 
 export type StuckPayoutOutcome = 'success' | 'failed' | 'reversed'
@@ -77,6 +79,22 @@ export class ResolveStuckPayoutUseCase {
     })
     logger.warn({ rail, payoutId: payout.id, outcome, status: settled?.status }, 'stuck payout resolved by admin')
     return { rail, payoutId: payout.id, providerOutcome: outcome, status: settled?.status ?? 'PROCESSING' }
+  }
+
+  /**
+   * Admin: every single transfer escalated to NEEDS_REVIEW, across all rails,
+   * oldest first — so staff never depend on a log line to find money held in
+   * review.
+   */
+  async listEscalated(requester: PayoutRequester): Promise<EscalatedPayout[]> {
+    if (requester.role !== 'admin') throw new AppError('Admin access required', 403)
+    const rows = await Promise.all(
+      STUCK_PAYOUT_RAILS.map(async (rail) => {
+        const listed = (await this.rails[rail]?.listEscalated?.()) ?? []
+        return listed.map((row) => ({ ...row, rail }))
+      }),
+    )
+    return rows.flat().sort((a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime())
   }
 
   private async providerOutcome(reference: string): Promise<StuckPayoutOutcome> {

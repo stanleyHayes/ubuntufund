@@ -69,6 +69,11 @@ export class MongoAffiliatePayoutRepository
     return docs.map(toDomain);
   }
 
+  async findEscalated(): Promise<AffiliatePayoutEntity[]> {
+    const docs = await AffiliatePayoutModel.find({ status: 'NEEDS_REVIEW' }).sort({ updatedAt: 1 });
+    return docs.map(toDomain);
+  }
+
   async findStuckProcessing(olderThan: Date): Promise<AffiliatePayoutEntity[]> {
     const docs = await AffiliatePayoutModel.find({
       status: 'PROCESSING',

@@ -19,7 +19,8 @@ import {
 } from '@mui/material'
 import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded'
 import { EmptyState } from '@ubuntu-fund/ui'
-import type { BeneficiaryPayout, Payout, PayoutStatus } from '@ubuntu-fund/types'
+import type { BeneficiaryPayout, EscalatedPayout, Payout, PayoutStatus } from '@ubuntu-fund/types'
+import { StuckPayoutResolve } from '@/components/StuckPayoutResolve'
 import { api } from '@/lib/api'
 import { raisedSurface, insetSurface } from '@/lib/surfaces'
 import { TONES } from '@/lib/tones'
@@ -45,10 +46,12 @@ function PayoutRejectForm({
   payoutId,
   busy,
   onReject,
+  helperText = `Shown to the organizer. At least ${REJECTION_REASON_MIN} characters. The cleared funds return to the campaign's pending balance; nothing is transferred.`,
 }: {
   payoutId: string
   busy: boolean
   onReject: (id: string, reason: string) => void
+  helperText?: string
 }) {
   const [open, setOpen] = useState(false)
   const [reason, setReason] = useState('')
@@ -65,7 +68,7 @@ function PayoutRejectForm({
         multiline
         minRows={2}
         label="Reason for rejection"
-        helperText={`Shown to the organizer. At least ${REJECTION_REASON_MIN} characters. The cleared funds return to the campaign's pending balance; nothing is transferred.`}
+        helperText={helperText}
         value={reason}
         onChange={(e) => setReason(e.target.value)}
       />
@@ -83,70 +86,6 @@ function PayoutRejectForm({
           {busy ? 'Rejecting…' : 'Reject payout'}
         </Button>
       </Box>
-    </Box>
-  )
-}
-
-/**
- * A single transfer Paystack could not confirm for a full day was escalated
- * with its funds still reserved. Resolving never picks an outcome: the API
- * re-checks Paystack and settles, returns or leaves it according to the answer.
- */
-function StuckPayoutResolve({ payoutId, onUpdated }: { payoutId: string; onUpdated: () => void }) {
-  const [note, setNote] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null)
-  async function resolve() {
-    setBusy(true)
-    setResult(null)
-    try {
-      const outcome = await api.post<{ providerOutcome: string; status: string }>(
-        `/payouts/stuck/campaign/${payoutId}/resolve`,
-        { note: note.trim() },
-      )
-      setResult({
-        ok: true,
-        text: `Paystack reported ${outcome.providerOutcome}; the payout is now ${outcome.status.toLowerCase()}.`,
-      })
-      onUpdated()
-    } catch (e) {
-      setResult({ ok: false, text: e instanceof Error ? e.message : 'Could not resolve this payout' })
-    } finally {
-      setBusy(false)
-    }
-  }
-  return (
-    <Box sx={{ mt: 2 }}>
-      <Alert severity="warning" sx={{ py: 0.5 }}>
-        Paystack has not confirmed this transfer for over a day, and the funds are still reserved.
-        Resolving re-checks Paystack: a completed transfer is settled, a failed or unknown one
-        returns the funds to the campaign, and one still in progress is left alone.
-      </Alert>
-      <TextField
-        fullWidth
-        multiline
-        minRows={2}
-        sx={{ mt: 1.5 }}
-        label="What you checked"
-        helperText="At least 20 characters, e.g. what the Paystack dashboard shows for this reference."
-        value={note}
-        onChange={(e) => setNote(e.target.value)}
-      />
-      <Box sx={{ mt: 1, display: 'flex', justifyContent: 'flex-end' }}>
-        <Button
-          size="small"
-          variant="contained"
-          disabled={busy || note.trim().length < 20}
-          onClick={() => void resolve()}
-        >
-          {busy ? 'Checking Paystack…' : 'Re-check Paystack and resolve'}
-        </Button>
-      </Box>
-      {result && (
-        <Alert severity={result.ok ? 'success' : 'error'} sx={{ mt: 1 }}>
-          {result.text}
-        </Alert>
-      )}
     </Box>
   )
 }
@@ -274,7 +213,7 @@ function PayoutCard({
         </Alert>
       )}
       {needsReview && !payout.legs?.length && payout.provider === 'paystack' && (
-        <StuckPayoutResolve payoutId={payout.id} onUpdated={onUpdated} />
+        <StuckPayoutResolve rail="campaign" payoutId={payout.id} onUpdated={onUpdated} />
       )}
       {awaitingSecond && (
         <Alert severity="info" sx={{ mt: 2, py: 0.5 }}>
@@ -368,12 +307,16 @@ interface BeneficiaryDestination {
 function BeneficiaryCard({
   payout,
   onApprove,
+  onReject,
   onVerifyKyc,
+  onUpdated,
   busy,
 }: {
   payout: BeneficiaryPayout
   onApprove: (id: string, reviewNote: string) => void
+  onReject: (id: string, reason: string) => void
   onVerifyKyc: (campaignId: string, beneficiaryId: string) => Promise<void> | void
+  onUpdated: () => void
   busy: boolean
 }) {
   const awaitingSecond = payout.status === 'PENDING' && Boolean(payout.firstApprovedBy)
@@ -403,7 +346,11 @@ function BeneficiaryCard({
           </Typography>
         </Box>
         <Chip
-          label={payout.status.replace('_', ' ')}
+          label={
+            payout.closure
+              ? payout.closure.kind === 'rejected' ? 'Rejected' : 'Cancelled'
+              : payout.status.replace('_', ' ')
+          }
           size="small"
           sx={{
             color: STATUS_TONE[payout.status],
@@ -427,11 +374,20 @@ function BeneficiaryCard({
         {payout.providerRef && <Detail label="Reference" value={payout.providerRef} />}
         {payout.firstApprovedBy && <Detail label="1st approval" value={payout.firstApprovedBy} />}
         {payout.approvedBy && <Detail label="Approved by" value={payout.approvedBy} />}
+        {payout.closure && (
+          <Detail
+            label={payout.closure.kind === 'rejected' ? 'Rejection reason' : 'Cancellation note'}
+            value={payout.closure.reason}
+          />
+        )}
       </Box>
       {awaitingSecond && (
         <Alert severity="info" sx={{ mt: 2, py: 0.5 }}>
           Maker-checker: a first approval is recorded; a second, different admin must approve.
         </Alert>
+      )}
+      {payout.status === 'NEEDS_REVIEW' && payout.providerRef && (
+        <StuckPayoutResolve rail="beneficiary" payoutId={payout.id} onUpdated={onUpdated} />
       )}
       {payout.status === 'PENDING' && (
         <Box sx={{ mt: 2 }}>
@@ -481,37 +437,85 @@ function BeneficiaryCard({
               {awaitingSecond ? 'Give 2nd approval' : 'Approve'}
             </Button>
           </Box>
+          <Box sx={{ mt: 1 }}>
+            <PayoutRejectForm
+              payoutId={payout.id}
+              busy={busy}
+              onReject={onReject}
+              helperText={`Shown to the beneficiary and campaign owner. At least ${REJECTION_REASON_MIN} characters. The cleared funds return to the beneficiary's pending balance; nothing is transferred.`}
+            />
+          </Box>
         </Box>
       )}
     </Box>
   )
 }
 
-type View = 'queue' | 'all' | 'beneficiary'
+/** One escalated single transfer on any rail, resolved from Paystack's outcome. */
+function EscalatedCard({ payout, onUpdated }: { payout: EscalatedPayout; onUpdated: () => void }) {
+  const railLabel = { campaign: 'Campaign payout', beneficiary: 'Beneficiary payout', affiliate: 'Affiliate payout', creator: 'Creator withdrawal' }[payout.rail]
+  return (
+    <Box sx={{ ...raisedSurface, p: 3, borderLeft: `3px solid ${TONES.clay.text}` }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2 }}>
+        <Box>
+          <Typography sx={{ fontWeight: 700, fontSize: 18 }}>{money(payout.amount, payout.currency)}</Typography>
+          <Typography sx={{ fontSize: 12, opacity: 0.7 }}>{railLabel}</Typography>
+        </Box>
+        <Chip
+          label="needs review"
+          size="small"
+          sx={{ color: STATUS_TONE.NEEDS_REVIEW, fontWeight: 700, bgcolor: 'transparent', border: `1px solid ${STATUS_TONE.NEEDS_REVIEW}` }}
+        />
+      </Box>
+      <Box sx={{ ...insetSurface, px: 1.5, py: 1.5, mt: 2, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+        <Detail label={payout.subjectLabel} value={payout.subject} />
+        {payout.providerRef && <Detail label="Reference" value={payout.providerRef} />}
+        <Detail label="Held since" value={new Date(payout.updatedAt).toLocaleString()} />
+        <Detail label="Payout" value={payout.id} />
+      </Box>
+      <StuckPayoutResolve rail={payout.rail} payoutId={payout.id} onUpdated={onUpdated} />
+    </Box>
+  )
+}
+
+type View = 'queue' | 'all' | 'beneficiary' | 'escalated'
 
 export default function PayoutsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const requestedView = searchParams.get('view')
   const view: View =
-    requestedView === 'all' || requestedView === 'beneficiary' ? requestedView : 'queue'
+    requestedView === 'all' || requestedView === 'beneficiary' || requestedView === 'escalated'
+      ? requestedView
+      : 'queue'
   const setView = (value: View) => setSearchParams(value === 'queue' ? {} : { view: value })
   const [payouts, setPayouts] = useState<Payout[]>([])
   const [benePayouts, setBenePayouts] = useState<BeneficiaryPayout[]>([])
+  const [escalated, setEscalated] = useState<EscalatedPayout[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [approvingId, setApprovingId] = useState<string | null>(null)
 
   const isBeneficiary = view === 'beneficiary'
+  const isEscalated = view === 'escalated'
 
   const load = useCallback(
     async (quiet = false) => {
       if (!quiet) setLoading(true)
       setError(null)
+      // Escalations on every rail (campaign, beneficiary, affiliate, creator)
+      // are counted on every view so held funds are never only in a log line.
+      void api
+        .get<EscalatedPayout[]>('/payouts/stuck')
+        .then((rows) => setEscalated(Array.isArray(rows) ? rows : []))
+        .catch(() => { /* The count is advisory; the Escalated view reports errors. */ })
       try {
         if (view === 'beneficiary') {
           const data = await api.get<BeneficiaryPayout[]>('/beneficiary-payouts/review-queue')
           setBenePayouts(Array.isArray(data) ? data : [])
+        } else if (view === 'escalated') {
+          const data = await api.get<EscalatedPayout[]>('/payouts/stuck')
+          setEscalated(Array.isArray(data) ? data : [])
         } else {
           const path = view === 'queue' ? '/payouts/review-queue' : '/payouts'
           const data = await api.get<Payout[]>(path)
@@ -521,6 +525,7 @@ export default function PayoutsPage() {
         setError(err instanceof Error ? err.message : 'Failed to load payouts')
         setPayouts([])
         setBenePayouts([])
+        if (view === 'escalated') setEscalated([])
       } finally {
         setLoading(false)
       }
@@ -606,6 +611,24 @@ export default function PayoutsPage() {
     [load],
   )
 
+  const rejectBeneficiary = useCallback(
+    async (id: string, reason: string) => {
+      setApprovingId(id)
+      setNotice(null)
+      try {
+        await api.post<BeneficiaryPayout>(`/beneficiary-payouts/${id}/reject`, { reason })
+        setNotice('Beneficiary payout request rejected. The reason is recorded; no transfer was sent.')
+        await load()
+        window.dispatchEvent(new Event('ujimora:admin-actions-changed'))
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Rejection failed')
+      } finally {
+        setApprovingId(null)
+      }
+    },
+    [load],
+  )
+
   const verifyKyc = useCallback(
     async (campaignId: string, beneficiaryId: string) => {
       setNotice(null)
@@ -626,9 +649,11 @@ export default function PayoutsPage() {
 
   const payoutPagination = usePagination(payouts, 12)
   const beneficiaryPagination = usePagination(benePayouts, 12)
-  const source = isBeneficiary ? benePayouts : payouts
-  const needsReview = source.filter((p) => p.status === 'NEEDS_REVIEW').length
-  const pending = source.filter((p) => p.status === 'PENDING').length
+  const escalatedPagination = usePagination(escalated, 12)
+  const reviewable: { status: PayoutStatus }[] = isBeneficiary ? benePayouts : payouts
+  const source: unknown[] = isEscalated ? escalated : reviewable
+  const needsReview = isEscalated ? escalated.length : reviewable.filter((p) => p.status === 'NEEDS_REVIEW').length
+  const pending = isEscalated ? 0 : reviewable.filter((p) => p.status === 'PENDING').length
 
   return (
     <Box>
@@ -641,6 +666,7 @@ export default function PayoutsPage() {
         stats={[
           { label: 'Awaiting approval', value: pending },
           { label: 'Needs review', value: needsReview },
+          { label: 'Escalated (all rails)', value: escalated.length },
         ]}
       actions={<ExportMenu title="Payouts" disabled={loading || !!error} getReport={() => ({ title: 'Payouts', filters: [`View: ${view}`], tables: isBeneficiary ? [exportTable('Beneficiary payouts', benePayouts, { ID: r => r.id, Campaign: r => r.campaignId, Beneficiary: r => r.beneficiaryId, Amount: r => r.amount, Currency: r => r.currency, Status: r => r.status, Provider: r => r.provider, 'Created (UTC)': r => dateCell(r.createdAt) })] : [exportTable('Campaign payouts', payouts, { ID: r => r.id, Campaign: r => r.campaignTitle ?? r.campaignId, Gross: r => r.amount, Fee: r => r.fee, Net: r => r.netAmount, Currency: r => r.currency, Status: r => r.status, 'Created (UTC)': r => dateCell(r.createdAt) })] })} />}
       />
@@ -683,12 +709,16 @@ export default function PayoutsPage() {
           value={view}
           onChange={(_, v) =>
             v &&
-            (setView(v as View), payoutPagination.goToPage(1), beneficiaryPagination.goToPage(1))
+            (setView(v as View),
+            payoutPagination.goToPage(1),
+            beneficiaryPagination.goToPage(1),
+            escalatedPagination.goToPage(1))
           }
         >
           <ToggleButton value="queue">Review queue</ToggleButton>
           <ToggleButton value="all">All payouts</ToggleButton>
           <ToggleButton value="beneficiary">Beneficiary</ToggleButton>
+          <ToggleButton value="escalated">Escalated</ToggleButton>
         </ToggleButtonGroup>
         <Button size="small" onClick={() => void load()} disabled={loading}>
           Refresh
@@ -721,13 +751,21 @@ export default function PayoutsPage() {
         <EmptyState
           title={view === 'all' ? 'No payouts yet' : 'Nothing needs attention'}
           description={
-            isBeneficiary
+            isEscalated
+              ? 'No transfer on any rail is held for review.'
+              : isBeneficiary
               ? 'No beneficiary payouts are awaiting KYC, approval, or review.'
               : view === 'queue'
                 ? 'No submitted cashout requests are awaiting review. Saving a payout account does not submit a cashout. The organizer must enter an amount and select Request cashout in the campaign’s Cashout & payout history section.'
                 : 'Campaign payouts will appear here once organizers request them.'
           }
         />
+      ) : isEscalated ? (
+        <Stack spacing={2}>
+          {escalatedPagination.page.map((p) => (
+            <EscalatedCard key={`${p.rail}:${p.id}`} payout={p} onUpdated={() => void load()} />
+          ))}
+        </Stack>
       ) : isBeneficiary ? (
         <Stack spacing={2}>
           {beneficiaryPagination.page.map((p) => (
@@ -735,7 +773,9 @@ export default function PayoutsPage() {
               key={p.id}
               payout={p}
               onApprove={approveBeneficiary}
+              onReject={rejectBeneficiary}
               onVerifyKyc={verifyKyc}
+              onUpdated={() => void load()}
               busy={approvingId === p.id}
             />
           ))}
@@ -757,7 +797,9 @@ export default function PayoutsPage() {
       {!loading && !error && source.length > 0 && (
         <PaginationBar
           neumorphic
-          pagination={isBeneficiary ? beneficiaryPagination : payoutPagination}
+          pagination={
+            isEscalated ? escalatedPagination : isBeneficiary ? beneficiaryPagination : payoutPagination
+          }
         />
       )}
     </Box>
