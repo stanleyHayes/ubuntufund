@@ -11,6 +11,7 @@ import StoreBillingPage from './pages/StoreBillingPage'
 import RefundOperationsPage from './pages/RefundOperationsPage'
 import RefundRequestsPage from './pages/RefundRequestsPage'
 import PaymentsPage from './pages/PaymentsPage'
+import ActivityEmailReviewPage from './pages/ActivityEmailReviewPage'
 import RouteErrorPage from './components/RouteErrorPage'
 import type { ReactNode } from 'react'
 import { createBrowserRouter } from 'react-router-dom'
@@ -119,6 +120,7 @@ export const router = createBrowserRouter([
       { path: 'newsletter', element: <RequirePermission resource={Resource.NEWSLETTER}><NewsletterPage /></RequirePermission> },
       { path: 'contact-submissions', element: <RequirePermission resource={Resource.CONTACT_SUBMISSIONS}><ContactSubmissionsPage /></RequirePermission> },
       { path: 'testimonials', element: <RequirePermission resource={Resource.TESTIMONIALS}><TestimonialsPage /></RequirePermission> },
+      { path: 'activity-email-review', element: <RequirePermission resource={Resource.SETTINGS}><ActivityEmailReviewPage /></RequirePermission> },
       { path: 'payment-providers', element: <RequirePermission resource={Resource.PAYMENT_PROVIDERS}><PaymentProvidersPage /></RequirePermission> },
       { path: 'ai-usage', element: <RequirePermission resource={Resource.ANALYTICS}><AiUsagePage /></RequirePermission> },
       { path: 'content/blog', element: <RequirePermission resource={Resource.CONTENT}><BlogPage /></RequirePermission> },

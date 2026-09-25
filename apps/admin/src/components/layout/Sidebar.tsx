@@ -131,6 +131,7 @@ const NAV_GROUPS: NavGroup[] = [
         icon: <AccountBalanceRoundedIcon />,
       },
       { label: 'Roles', path: '/roles', icon: <AdminPanelSettingsRoundedIcon /> },
+      { label: 'Activity email checks', path: '/activity-email-review', icon: <MarkEmailReadRoundedIcon /> },
     ],
   },
 ]
