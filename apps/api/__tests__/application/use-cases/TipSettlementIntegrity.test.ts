@@ -192,6 +192,18 @@ describe('stale PENDING tips are reconciled with the provider (I042)', () => {
     expect(old.store.status()).toBe('FAILED');
   });
 
+  it('closes a tip whose reference the provider never registered, only past the TTL', async () => {
+    const { ProviderTransactionNotFoundError } = await import('../../../src/domain/errors/ProviderTransactionNotFoundError.js');
+    const young = reconciler({ status: 'success' });
+    young.gateway.verifyTransaction.mockRejectedValue(new ProviderTransactionNotFoundError(REF));
+    await young.uc.reconcileStale();
+    expect(young.store.status()).toBe('PENDING');
+    const old = reconciler({ status: 'success' }, 'PENDING', new Date(Date.now() - ABANDONED_CHECKOUT_TTL_MS - 60_000));
+    old.gateway.verifyTransaction.mockRejectedValue(new ProviderTransactionNotFoundError(REF));
+    expect((await old.uc.reconcileStale()).tipsFailed).toBe(1);
+    expect(old.store.status()).toBe('FAILED');
+  });
+
   it('leaves a tip PENDING on a transient provider error', async () => {
     const { uc, store, gateway } = reconciler({ status: 'success' });
     gateway.verifyTransaction.mockRejectedValueOnce(new Error('timeout'));

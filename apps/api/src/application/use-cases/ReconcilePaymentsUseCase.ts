@@ -187,6 +187,18 @@ export class ReconcilePaymentsUseCase {
           result.failed += 1;
         }
       } catch (error) {
+        // The provider never registered this reference (e.g. checkout
+        // initialisation failed): nothing can be paid under it after the TTL.
+        const tooOld = now.getTime() - tip.toPlain().createdAt.getTime() > ABANDONED_CHECKOUT_TTL_MS;
+        if (error instanceof ProviderTransactionNotFoundError && tooOld) {
+          try {
+            await this.tipCreditRepairer.handleFailed(tip.providerRef);
+            result.failed += 1;
+          } catch (closeError) {
+            logger.warn({ err: closeError, tipId: tip.id }, 'reconcile: could not close an unknown tip reference');
+          }
+          continue;
+        }
         // Transient provider/network error — the row stays PENDING and has
         // already rotated to the back of the queue.
         logger.warn({ err: error, tipId: tip.id }, 'reconcile: tip verification failed (transient)');
