@@ -3,7 +3,7 @@ import { useAuth } from '@/context/AuthContext'
 import { latestAdultBirthDate, KYC_COLLECTION_ACKNOWLEDGEMENT, KYC_COLLECTION_NOTICE, KYC_IDENTITY_DOCUMENT_OPTIONS } from '@ubuntu-fund/types'
 import { SignInRequired } from '@/components/SignInRequired'
 import { useState } from 'react'
-import { View, ScrollView, KeyboardAvoidingView, Platform } from 'react-native'
+import { View, ScrollView } from 'react-native'
 import { Text, Snackbar, ProgressBar, Checkbox } from 'react-native-paper'
 import { Stack, router } from 'expo-router'
 import { Country, State, City } from 'country-state-city'
@@ -18,6 +18,7 @@ import { usePalette, useNeu } from '@/context/ColorModeContext'
 import { api } from '@/lib/api'
 import { withExternalActivity } from '@/lib/session'
 import { changeKycIdentityType, buildKycSubmission, emptyKycDraft, validateKycStep, type KycDraft } from '@/lib/kyc'
+import { KeyboardAvoider } from '@/components/KeyboardAvoider'
 
 const countries = Country.getAllCountries().map(c => ({ value: c.name, label: `${c.flag} ${c.name}` }))
 const steps = ['Personal information', 'ID documents', 'Address verification', 'Selfie']
@@ -69,7 +70,7 @@ function IdentityKYCScreen() {
   const field = (label: string, key: keyof KycDraft) => <TextInput label={label} value={draft[key]} onChangeText={v => change(key, v)} mode="outlined" />
   const upload = (label: string, key: 'idFront' | 'idBack' | 'addressDoc' | 'selfie', document = false) => <MediaUploadField label={label} value={draft[key]} onChange={v => change(key, v)} document={document} onBusyChange={v => setUploads(n => n + (v ? 1 : -1))} />
   if (!user) return <SignInRequired what="identity verification" />
-  return <KeyboardAvoidingView style={{ flex: 1, backgroundColor: p.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+  return <KeyboardAvoider style={{ flex: 1, backgroundColor: p.background }} iosBehavior="padding">
     <Stack.Screen options={{ title: 'Identity verification' }} />
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 20, gap: 20, paddingBottom: 60 }}>
       {submitted ? <View style={{ gap: 16 }}><Text variant="headlineMedium">Verification submitted</Text><Text>Your information and documents are under review. Follow your status from Verification.</Text><Button mode="contained" onPress={() => router.replace('/verification')}>View verification status</Button></View> : <>
@@ -104,5 +105,5 @@ function IdentityKYCScreen() {
       </>}
     </ScrollView>
     <Snackbar visible={!!error} duration={Infinity} onDismiss={() => setError('')} action={{ label: 'Dismiss', onPress: () => setError('') }}>{error}</Snackbar>
-  </KeyboardAvoidingView>
+  </KeyboardAvoider>
 }

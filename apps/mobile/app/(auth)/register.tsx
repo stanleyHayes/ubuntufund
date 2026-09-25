@@ -2,7 +2,7 @@ import { Pressable } from '@/components/RoundedControls'
 import { Button } from '@/components/Loading'
 import { BrandedTextInput as TextInput } from '@/components/BrandedTextInput'
 import { useState, useMemo } from 'react'
-import { View, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native'
+import { View, ScrollView, StyleSheet } from 'react-native'
 import { Checkbox, Text } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Link, router, useLocalSearchParams } from 'expo-router'
@@ -20,6 +20,7 @@ import { UjimoraLogo } from '@/components/UjimoraLogo'
 import { PasswordStrength } from '@/components/PasswordStrength'
 import { completeSignIn, safeReturnTo } from '@/navigation/returnTo'
 import { signupReferralCode } from '@/lib/referral'
+import { KeyboardAvoider } from '@/components/KeyboardAvoider'
 
 type AccountType = 'individual' | 'organization'
 
@@ -103,7 +104,7 @@ export default function RegisterScreen() {
     (accountType === 'individual' || orgName.trim().length > 0)
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoider style={styles.container} iosBehavior="padding">
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
@@ -383,7 +384,7 @@ export default function RegisterScreen() {
           </View>
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardAvoider>
   )
 }
 

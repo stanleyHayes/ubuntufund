@@ -14,6 +14,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { SignInRequired } from '@/components/SignInRequired'
 import { FadeInUp } from '@/components/anim/FadeInUp'
 import { TransactionType } from '@ubuntu-fund/types'
+import { KeyboardAvoider } from '@/components/KeyboardAvoider'
 
 const WALLET_TYPE_LABEL: Record<string, string> = {
   local: 'Local',
@@ -181,6 +182,7 @@ export default function WalletTab() {
   }
 
   return (
+    <KeyboardAvoider style={styles.container}>
     <ScrollView automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled" style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={p.primary} colors={[p.primary]} />}>
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
@@ -251,5 +253,6 @@ export default function WalletTab() {
         </View>
       )}
     </ScrollView>
+    </KeyboardAvoider>
   )
 }

@@ -3,7 +3,7 @@ import { TouchableOpacity } from '@/components/RoundedControls'
 import { Button } from '@/components/Loading'
 import { BrandedTextInput as TextInput } from '@/components/BrandedTextInput'
 import { useState, useMemo } from 'react'
-import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
+import { View, StyleSheet, ScrollView } from 'react-native'
 import { Text } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Link, router, useLocalSearchParams } from 'expo-router'
@@ -12,6 +12,7 @@ import { usePalette, useNeu } from '@/context/ColorModeContext'
 import type { Palette, NeuRecipes } from '@/theme'
 import { useAuth } from '@/context/AuthContext'
 import { UjimoraLogo } from '@/components/UjimoraLogo'
+import { KeyboardAvoider } from '@/components/KeyboardAvoider'
 
 export default function LoginScreen() {
   const p = usePalette()
@@ -45,7 +46,7 @@ export default function LoginScreen() {
   }
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoider style={styles.container} iosBehavior="padding">
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
@@ -143,7 +144,7 @@ export default function LoginScreen() {
           </View>
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardAvoider>
   )
 }
 

@@ -16,6 +16,7 @@ import { ApiError } from '@/lib/api'
 import { getCreatorByHandle, createTip, verifyTip, type CreatorPage } from '@/lib/creators'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
 import type { Palette, NeuRecipes } from '@/theme'
+import { KeyboardAvoider } from '@/components/KeyboardAvoider'
 
 function makeStyles(p: Palette, neu: NeuRecipes) {
   return StyleSheet.create({
@@ -212,6 +213,7 @@ function CreatorTipForViewer() {
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ title: page.displayName }} />
+      <KeyboardAvoider>
       <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={styles.content}>
         {paymentStatus === 'SUCCEEDED' && (
           <>
@@ -399,6 +401,7 @@ function CreatorTipForViewer() {
           </View>
         )}
       </ScrollView>
+      </KeyboardAvoider>
     </View>
   )
 }

@@ -4,7 +4,7 @@ import { CampaignCashout } from '@/components/CampaignCashout'
 import { useAuth } from '@/context/AuthContext'
 import { SignInRequired } from '@/components/SignInRequired'
 import { useEffect, useRef, useState } from 'react'
-import { View, ScrollView, KeyboardAvoidingView, Platform } from 'react-native'
+import { View, ScrollView } from 'react-native'
 import { Text, Snackbar, Switch, ProgressBar } from 'react-native-paper'
 import { Stack, router } from 'expo-router'
 import { CampaignCategory, CampaignPriority, type SubscriptionPlan } from '@ubuntu-fund/types'
@@ -16,6 +16,7 @@ import { SelectionField } from '@/components/SelectionField'
 import { MediaUploadField } from '@/components/MediaUploadField'
 import { AiWritingAssistant } from '@/components/AiWritingAssistant'
 import { Button, PageSkeleton } from '@/components/Loading'
+import { KeyboardAvoider } from '@/components/KeyboardAvoider'
 
 interface Options { plan: SubscriptionPlan; maxGoal: number | null; canCreate: boolean; canSplit: boolean; splitEnabled: boolean; creationBlockReason?: string }
 interface Allocation { name: string; email: string; percent: string }
@@ -83,7 +84,7 @@ function CampaignFormForViewer() {
   const card = { ...neu.raised, backgroundColor: p.surface, borderRadius: 24, padding: 20, gap: 16 }
   if (!user) return <SignInRequired what="campaign creation" />
   if (!options && !loadError) return <PageSkeleton />
-  return <KeyboardAvoidingView style={{ flex: 1, backgroundColor: p.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+  return <KeyboardAvoider style={{ flex: 1, backgroundColor: p.background }} iosBehavior="padding">
     <Stack.Screen options={{ title: 'Start a campaign' }} />
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 20, gap: 20, paddingBottom: 60 }}>
       <Text style={{ fontSize: 28, fontFamily: 'Outfit_800ExtraBold', color: p.text }}>Rally your community</Text>
@@ -107,5 +108,5 @@ function CampaignFormForViewer() {
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>{step > 0 && <Button disabled={busy || uploading} onPress={() => setStep(s => s - 1)}>Back</Button>}<Button mode="contained" loading={busy} disabled={busy || uploading} onPress={step === 3 ? () => void submit() : () => { const issue = validate(step); if (issue) setError(issue); else { setError(''); setStep(s => s + 1) } }}>{step === 3 ? 'Create campaign' : 'Continue'}</Button></View>
       </>}
     </ScrollView><Snackbar visible={!!error} duration={Infinity} onDismiss={() => setError('')} action={{ label: 'Dismiss', onPress: () => setError('') }}>{error}</Snackbar>
-  </KeyboardAvoidingView>
+  </KeyboardAvoider>
 }
