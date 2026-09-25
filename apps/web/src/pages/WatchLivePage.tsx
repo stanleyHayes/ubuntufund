@@ -7,7 +7,7 @@ import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
 import Alert from '@mui/material/Alert'
 import Skeleton from '@mui/material/Skeleton'
-import { Button, CurrencyDisplay, SHAPE } from '@ubuntu-fund/ui'
+import { Button, CurrencyDisplay, ProgressBar, SHAPE } from '@ubuntu-fund/ui'
 import { getLiveSessionPublic, type LiveSessionPublicView } from '@/lib/fundraising'
 import { LiveVideoPanel } from '@/components/live/LiveVideoPanel'
 import { useSeo } from '@/lib/seo'
@@ -49,6 +49,14 @@ export function WatchLivePage() {
         <Typography sx={{ fontWeight: 700, mb: 1 }}>Together, during this broadcast</Typography>
         {session.amountRaised !== null && <CurrencyDisplay amount={session.amountRaised} currency={session.currency ?? 'GHS'} sx={{ fontSize: '1.75rem', fontWeight: 800 }} />}
         <Typography sx={{ color: 'text.secondary' }}>{session.successfulDonations} {session.successfulDonations === 1 ? 'donation' : 'donations'}{session.status === 'active' ? ' · Updates every few seconds' : ''}</Typography>
+        {!!session.targetAmount && session.targetAmount > 0 && <Box sx={{ mt: 2 }}>
+          {/* The host's stretch goal for this broadcast; progress only while amounts are shown. */}
+          <Typography sx={{ color: 'text.secondary', mb: 0.75 }}>
+            Session goal: <CurrencyDisplay amount={session.targetAmount} currency={session.currency ?? 'GHS'} component="span" sx={{ fontWeight: 700, color: 'text.primary' }} />
+            {session.amountRaised !== null && ` · ${Math.min(100, Math.round((session.amountRaised / session.targetAmount) * 100))}% reached`}
+          </Typography>
+          {session.amountRaised !== null && <ProgressBar current={session.amountRaised} goal={session.targetAmount} currency={session.currency ?? 'GHS'} showAmounts={false} showPercentage={false} />}
+        </Box>}
       </Box>
       <Box sx={{ mt: 3, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
         <Button component="a" href={`/c/${session.campaignId}/donate${session.status === 'active' ? `?liveSessionId=${encodeURIComponent(session.id)}` : ''}`} brandVariant="primary">Support this campaign</Button>

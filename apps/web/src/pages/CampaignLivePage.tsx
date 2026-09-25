@@ -366,7 +366,7 @@ export function CampaignLivePage() {
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'minmax(0, 1.65fr) minmax(340px, 1fr)' }, gap: { xs: 3, md: 4 }, alignItems: 'start' }}>
         <Box sx={{ ...PANEL_SX, minWidth: 0, gridColumn: sessionActive ? '1 / -1' : undefined }}>
           {sessionActive && session && <Box sx={{ mb: 3 }}><LiveVideoPanel sessionId={session.id} host /><Typography sx={{ mt: 2, mb: 1, fontWeight: 700 }}>Share your broadcast</Typography><TextField label="Viewer link" fullWidth value={`${window.location.origin}/live/${session.id}`} InputProps={{ readOnly: true }} onFocus={e => e.target.select()} /></Box>}
-          <LiveBroadcastPreview session={sessionActive ? session : null} title={title.trim() || campaign.title} raised={campaign.raisedAmount} goal={campaign.goalAmount} />
+          <LiveBroadcastPreview session={sessionActive ? session : null} title={title.trim() || campaign.title} raised={campaign.raisedAmount} goal={campaign.goalAmount} sessionGoal={Number(targetAmount) || undefined} />
         </Box>
         {!sessionActive ? (
           /* ================= Start panel ================= */

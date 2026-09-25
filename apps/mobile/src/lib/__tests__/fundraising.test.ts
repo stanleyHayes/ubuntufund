@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { campaignShareUrl, fundraisingUrl, walletFundingUrl } from '../fundraising'
+import { campaignShareUrl, fundraisingUrl, sessionGoalLine, walletFundingUrl } from '../fundraising'
 
 describe('external fundraising handoff', () => {
   it('passes only public campaign context to the donation route', () => {
@@ -21,6 +21,14 @@ describe('external fundraising handoff', () => {
   it('sends iOS wallet funding to the website wallet without account context', () => {
     expect(walletFundingUrl('https://app.ujimora.com/some/path?x=1')).toBe('https://app.ujimora.com/wallet')
     expect(() => walletFundingUrl('http://app.ujimora.com')).toThrow()
+  })
+  it('describes a live session goal, with progress only while amounts are shown', () => {
+    const goal = (2000).toLocaleString()
+    expect(sessionGoalLine({ targetAmount: 2000, amountRaised: 500, currency: 'GHS' })).toBe(`Session goal: GHS ${goal} · 25% reached`)
+    expect(sessionGoalLine({ targetAmount: 2000, amountRaised: 2600 })).toBe(`Session goal: GHS ${goal} · 100% reached`)
+    expect(sessionGoalLine({ targetAmount: 2000, amountRaised: null, currency: 'GHS' })).toBe(`Session goal: GHS ${goal}`)
+    expect(sessionGoalLine({ amountRaised: 500 })).toBeNull()
+    expect(sessionGoalLine({ targetAmount: 0, amountRaised: 500 })).toBeNull()
   })
   it('shares the public web campaign page, preferring the slug', () => {
     expect(campaignShareUrl({ id: 'abc', slug: 'school fees' }, 'https://app.ujimora.com')).toBe('https://app.ujimora.com/c/school%20fees')

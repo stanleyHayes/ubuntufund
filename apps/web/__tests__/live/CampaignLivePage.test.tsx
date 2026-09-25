@@ -77,6 +77,14 @@ describe('live broadcast workspace', () => {
     expect(endLiveSession).toHaveBeenCalledWith('session')
     await screen.findByRole('button', { name: 'Go LIVE' })
   })
+  it('previews the session goal being set on the pre-live overlay', async () => {
+    mocks.videoEnabled = true; mount()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Go LIVE' })).toBeEnabled())
+    expect(screen.getByTitle('Broadcast preview').getAttribute('src')).not.toContain('target=')
+    fireEvent.change(screen.getByLabelText('Session goal (optional)'), { target: { value: '2000' } })
+    expect(screen.getByTitle('Broadcast preview').getAttribute('src')).toContain('target=2000')
+    expect(screen.getByTitle('Broadcast preview').getAttribute('src')).toContain('/live-sessions/preview/overlay/view?')
+  })
   it('explains that hiding amounts keeps the campaign progress bar visible', async () => {
     mocks.videoEnabled = true; mocks.active = session; mount()
     await screen.findByText(/Hiding amounts hides each gift’s amount and this broadcast’s total/)

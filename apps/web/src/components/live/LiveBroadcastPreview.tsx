@@ -4,8 +4,10 @@ import Typography from '@mui/material/Typography'
 import Stack from '@mui/material/Stack'
 import { overlayViewUrl, type LiveSession } from '@/lib/fundraising'
 
-export function LiveBroadcastPreview({ session, title, raised, goal }: {
+export function LiveBroadcastPreview({ session, title, raised, goal, sessionGoal }: {
   session: LiveSession | null; title: string; raised: number; goal: number
+  /** The session's own stretch goal being set up, previewed on the overlay. */
+  sessionGoal?: number
 }) {
   const stage = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(960)
@@ -22,6 +24,7 @@ export function LiveBroadcastPreview({ session, title, raised, goal }: {
     url.searchParams.set('title', title)
     url.searchParams.set('raised', String(raised))
     url.searchParams.set('goal', String(goal))
+    if (sessionGoal && sessionGoal > 0) url.searchParams.set('target', String(sessionGoal))
   }
   return <Box sx={{ minWidth: 0 }}>
     <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2, gap: 1 }}>
