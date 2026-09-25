@@ -9,10 +9,14 @@ function readAttempt(stored: string | null): Attempt | null {
   } catch { return null }
 }
 
+async function attemptScope(viewerId: string | undefined, handle: string): Promise<string> {
+  const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify([viewerId ?? 'guest', handle])))
+  return prefix + Array.from(new Uint8Array(bytes), byte => byte.toString(16).padStart(2, '0')).join('')
+}
+
 // Store only an opaque attempt key and provider reference, never payment drafts.
 export async function tipAttemptKey(viewerId: string | undefined, handle: string): Promise<string> {
-  const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify([viewerId ?? 'guest', handle])))
-  const scope = prefix + Array.from(new Uint8Array(bytes), byte => byte.toString(16).padStart(2, '0')).join('')
+  const scope = await attemptScope(viewerId, handle)
   const reserve = () => {
     const stored = localStorage.getItem(scope)
     if (stored !== null) {
@@ -42,4 +46,18 @@ export function finishTipAttempt(reference: string): void {
     if (!attempt) continue
     if (attempt.reference === reference) localStorage.removeItem(scope)
   }
+}
+
+/** The saved attempt for this supporter and creator, if any (key + reference). */
+export async function readTipAttempt(viewerId: string | undefined, handle: string): Promise<Attempt | null> {
+  return readAttempt(localStorage.getItem(await attemptScope(viewerId, handle)))
+}
+
+/**
+ * Forget the saved attempt so the next Support click starts a new checkout.
+ * Only after the earlier payment is known to be final, or the supporter chose
+ * to start over.
+ */
+export async function abandonTipAttempt(viewerId: string | undefined, handle: string): Promise<void> {
+  localStorage.removeItem(await attemptScope(viewerId, handle))
 }

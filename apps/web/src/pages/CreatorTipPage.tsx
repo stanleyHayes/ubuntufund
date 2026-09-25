@@ -1,4 +1,4 @@
-import { tipAttemptKey, rememberTipReference } from '@/lib/tipCheckout'
+import { tipAttemptKey, rememberTipReference, readTipAttempt, abandonTipAttempt, finishTipAttempt } from '@/lib/tipCheckout'
 import { ReportContent } from '@/components/safety/ReportContent'
 import { MessageAgreement } from '@/components/donate/MessageAgreement'
 import { LEGAL_ACCEPTANCE_VERSION } from '@ubuntu-fund/types'
@@ -88,6 +88,7 @@ function CreatorTipForViewer() {
   const [message, setMessage] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [previousAttempt, setPreviousAttempt] = useState<{ reference?: string; status: 'SUCCEEDED' | 'PENDING' | 'UNKNOWN' } | null>(null)
 
   const initialized = useRef(false)
   const requestVersion = useRef(0)
@@ -129,7 +130,38 @@ function CreatorTipForViewer() {
       : undefined,
   })
 
-  async function handleSupport() {
+  /**
+   * The saved attempt key already belongs to a checkout with other details (a
+   * changed amount or message after an abandoned checkout returns 409). Check
+   * that earlier payment instead of leaving the supporter at a dead end.
+   */
+  async function resolvePreviousAttempt(): Promise<'retry' | 'stop'> {
+    const attempt = await readTipAttempt(user?.id, handle!)
+    if (!attempt?.reference) {
+      setPreviousAttempt({ status: 'UNKNOWN' })
+      return 'stop'
+    }
+    let status = 'UNKNOWN'
+    try {
+      status = (await api.post<{ status: string }>('/creators/tips/verify', { reference: attempt.reference })).status
+    } catch { /* Unknown: let the supporter decide below. */ }
+    if (status === 'FAILED') {
+      // The earlier checkout is closed and nothing was taken: start a new one.
+      finishTipAttempt(attempt.reference)
+      await abandonTipAttempt(user?.id, handle!)
+      return 'retry'
+    }
+    setPreviousAttempt({ reference: attempt.reference, status: status === 'SUCCEEDED' ? 'SUCCEEDED' : status === 'PENDING' ? 'PENDING' : 'UNKNOWN' })
+    return 'stop'
+  }
+
+  async function startNewTip() {
+    await abandonTipAttempt(user?.id, handle!)
+    setPreviousAttempt(null)
+    await handleSupport()
+  }
+
+  async function handleSupport(retried = false) {
     if ((message.trim() || (!anonymous && name.trim())) && !messageAccepted) { setError('Accept the content terms before posting your public name or message.'); return }
     setError(null)
     if (!Number.isFinite(amount) || amount <= 0) {
@@ -141,6 +173,7 @@ function CreatorTipForViewer() {
       return
     }
     setSubmitting(true)
+    setPreviousAttempt(null)
     try {
       const attemptKey = await tipAttemptKey(user?.id, handle!)
       const res = await api.post<{ checkoutUrl: string; reference: string }>(`/creators/${handle}/tips`, {
@@ -154,6 +187,12 @@ function CreatorTipForViewer() {
       rememberTipReference(attemptKey, res.reference)
       window.location.href = res.checkoutUrl
     } catch (err) {
+      if (err instanceof ApiError && err.status === 409 && !retried) {
+        const next = await resolvePreviousAttempt().catch(() => 'stop' as const)
+        if (next === 'retry') return handleSupport(true)
+        setSubmitting(false)
+        return
+      }
       setError(err instanceof Error ? err.message : 'Could not start checkout. Please try again.')
       setSubmitting(false)
     }
@@ -422,6 +461,24 @@ function CreatorTipForViewer() {
                 Your name and message appear in recent supporters only after staff review. Anonymous support hides your
                 name. Your email is private. Available payment methods are shown by Paystack.
               </Typography>
+              {previousAttempt && (
+                <Alert
+                  severity={previousAttempt.status === 'SUCCEEDED' ? 'success' : 'warning'}
+                  sx={{ mb: 2 }}
+                  action={
+                    <Button color="inherit" size="small" disabled={submitting} onClick={() => void startNewTip()}>
+                      {previousAttempt.status === 'SUCCEEDED' ? 'Send another tip' : 'Start a new payment'}
+                    </Button>
+                  }
+                >
+                  {previousAttempt.status === 'SUCCEEDED'
+                    ? 'Your previous tip to this creator went through. Send another one only if you mean to tip again.'
+                    : 'You have an unfinished payment for this creator. Check it before starting a new one, so you are not charged twice.'}
+                  {previousAttempt.reference && previousAttempt.status !== 'SUCCEEDED' && (
+                    <> <a href={`/tip/callback?reference=${encodeURIComponent(previousAttempt.reference)}`}>Check the earlier payment</a></>
+                  )}
+                </Alert>
+              )}
               {error && (
                 <Alert severity="error" sx={{ mb: 2 }}>
                   {error}

@@ -52,3 +52,14 @@ it('isolates unrelated corrupt entries while recording and clearing a valid refe
   expect(storage['ujimora:tip-attempt:corrupt']).toBe('{broken')
   expect(storage['ujimora:tip-attempt:invalid']).toBe('{"key":null}')
 })
+
+import { readTipAttempt, abandonTipAttempt } from '../src/lib/tipCheckout'
+it('exposes the saved attempt and can abandon it for a fresh checkout (I043)', async () => {
+  const key = await tipAttemptKey('viewer', 'creator')
+  rememberTipReference(key, 'tip-earlier')
+  expect(await readTipAttempt('viewer', 'creator')).toEqual({ key, reference: 'tip-earlier' })
+  expect(await readTipAttempt('viewer', 'other')).toBeNull()
+  await abandonTipAttempt('viewer', 'creator')
+  expect(await readTipAttempt('viewer', 'creator')).toBeNull()
+  expect(await tipAttemptKey('viewer', 'creator')).not.toBe(key)
+})
