@@ -11,6 +11,7 @@ import { MongoCampaignCreation } from './infrastructure/adapters/outbound/persis
 import { MongoAutomaticPayoutVerification } from './infrastructure/adapters/outbound/persistence/MongoAutomaticPayoutVerification.js'
 import { MongoPayoutEligibility } from './infrastructure/adapters/outbound/persistence/MongoPayoutEligibility.js'
 import { paystackModeFromSecret } from './domain/value-objects/PaystackMode.js'
+import { payoutControlWarnings } from './infrastructure/config/payoutControls.js'
 import { MongoPayoutClosureTransaction } from './infrastructure/adapters/outbound/persistence/MongoPayoutClosureTransaction.js'
 import { ClosePendingPayoutUseCase } from './application/use-cases/ClosePendingPayoutUseCase.js'
 import { ResolveStuckPayoutUseCase } from './application/use-cases/ResolveStuckPayoutUseCase.js'
@@ -1053,6 +1054,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     new MongoManualPayoutApproval(),
     paystackMode,
   )
+  for (const warning of payoutControlWarnings(config.nodeEnv, config.payouts)) logger.warn(warning)
   const listCampaignPayoutsUseCase = new ListCampaignPayoutsUseCase(campaignRepo, payoutRepo)
   const listPayoutsUseCase = new ListPayoutsUseCase(payoutRepo)
 
