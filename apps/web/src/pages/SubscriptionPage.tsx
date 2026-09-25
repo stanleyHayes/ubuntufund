@@ -17,6 +17,7 @@ import InputAdornment from '@mui/material/InputAdornment'
 import Alert from '@mui/material/Alert'
 import Skeleton from '@mui/material/Skeleton'
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded'
+import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import StarRoundedIcon from '@mui/icons-material/StarRounded'
 import RocketLaunchRoundedIcon from '@mui/icons-material/RocketLaunchRounded'
@@ -599,7 +600,8 @@ export function SubscriptionPage() {
               elevation={0}
               sx={{
                 border: 'var(--neu-border)',
-                outline: isPro ? '2px solid' : undefined, outlineColor: 'secondary.main',
+                // The plan you are on outranks the "recommended" highlight.
+                outline: isCurrent || isPro ? '2px solid' : undefined, outlineColor: isCurrent ? 'primary.main' : 'secondary.main',
                 bgcolor: 'var(--neu-surface)', backdropFilter: 'var(--neu-backdrop)', minWidth: 0,
                 borderRadius: SHAPE.card,
                 position: 'relative',
@@ -617,7 +619,12 @@ export function SubscriptionPage() {
                 <Typography sx={{ display: 'flex', alignItems: 'center', gap: 0.75, color: isPro ? 'secondary.contrastText' : 'text.secondary', fontSize: '0.73rem', fontWeight: 700 }}>
                   {isPro && <StarRoundedIcon sx={{ fontSize: 16 }} />}{fitLabel}
                 </Typography>
-                {isCurrent && <Typography sx={{ fontSize: '0.7rem', fontWeight: 700 }}>Current plan</Typography>}
+                {isCurrent && <Chip
+                  icon={<CheckCircleRoundedIcon />}
+                  label="Current plan"
+                  size="small"
+                  sx={{ height: 24, fontSize: '0.7rem', fontWeight: 700, bgcolor: 'primary.main', color: 'primary.contrastText', '& .MuiChip-icon': { color: 'inherit', fontSize: 16 } }}
+                />}
               </Box>
               <CardContent sx={{ p: 3, flex: 1, display: 'flex', flexDirection: 'column' }}>
                 <Typography sx={{ fontWeight: 800, fontSize: '1.35rem', fontFamily: '"Outfit", sans-serif', mb: 0.5 }}>
