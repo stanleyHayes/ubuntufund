@@ -1123,6 +1123,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     couponRedemptionRepo,
     couponRepo,
     payoutEligibility,
+    new MongoUnitOfWork(),
   )
   const approvePayoutUseCase = new ApprovePayoutUseCase(
     payoutRepo,
@@ -1520,6 +1521,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
       campaignRepo,
       campaignBalanceRepo,
       new MongoPayoutClosureTransaction(),
+      { redemptions: couponRedemptionRepo, coupons: couponRepo },
     ),
     // Escalated single transfers settle through each rail's own idempotent handler.
     new ResolveStuckPayoutUseCase(

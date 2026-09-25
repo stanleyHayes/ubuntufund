@@ -52,6 +52,13 @@ export interface CampaignBalanceRepositoryPort {
   ): Promise<CampaignBalance | null>;
 
   /**
+   * Write-fence the balance row inside a payout-request transaction so two
+   * concurrent requests for one campaign serialise on it (the later one
+   * conflicts, retries and sees the earlier one's PENDING request).
+   */
+  fenceRequests?(campaignId: string): Promise<void>;
+
+  /**
    * Inverse of `clearPendingToAvailable`, for compensating a clear whose payout
    * then failed to be created. Atomic and guarded on `availableBalance >=
    * amount`. Returns the updated balance, or null when available is short.

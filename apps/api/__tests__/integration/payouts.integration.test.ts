@@ -42,6 +42,7 @@ import { AuditLogModel } from '../../src/infrastructure/database/models/AuditLog
 import { CampaignBalanceModel } from '../../src/infrastructure/database/models/CampaignBalanceModel.js';
 import { PayoutModel } from '../../src/infrastructure/database/models/PayoutModel.js';
 import { CouponModel } from '../../src/infrastructure/database/models/CouponModel.js';
+import { CouponRedemptionModel } from '../../src/infrastructure/database/models/CouponRedemptionModel.js';
 import { JournalLineModel } from '../../src/infrastructure/database/models/JournalLineModel.js';
 import { CampaignCategory, CampaignPriority } from '@ubuntu-fund/types';
 
@@ -918,6 +919,36 @@ describe('Payouts Integration', () => {
     expect(await PayoutModel.countDocuments({ campaignId })).toBe(0);
   });
 
+  it('serialises concurrent requests so each clears what it needs on top of the others', async () => {
+    const { userId, token } = await registerUser(app, uniqueEmail('race'));
+    const campaignId = await createActiveCampaign(app, token, userId);
+    await fundCampaign(app, campaignId, 1000);
+    await endCampaign(campaignId);
+    await addRecipient(app, campaignId, token);
+    await CampaignBalanceModel.updateOne({ campaignId }, { $set: { availableBalance: 60, pendingBalance: 40 } });
+    const submit = (amount: number) => request(app)
+      .post(`/api/v1/campaigns/${campaignId}/payouts`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ amount, idempotencyKey: randomUUID() });
+    // Without serialisation both read no pending requests and neither clears
+    // anything, leaving GHS 100 of requests against GHS 60 available.
+    const results = await Promise.all([submit(60), submit(40)]);
+    expect(results.map((r) => r.status)).toEqual([201, 201]);
+    let balance = await CampaignBalanceModel.findOne({ campaignId });
+    expect([balance?.availableBalance, balance?.pendingBalance]).toEqual([100, 0]);
+    const cleared = (await PayoutModel.find({ campaignId }).lean()).reduce((sum, p) => sum + (p.clearedAmount ?? 0), 0);
+    expect(cleared).toBe(40);
+
+    // Two requests that together exceed the balance: exactly one is accepted.
+    await CampaignBalanceModel.updateOne({ campaignId }, { $set: { availableBalance: 60, pendingBalance: 40 } });
+    await PayoutModel.deleteMany({ campaignId });
+    const racing = await Promise.all([submit(60), submit(60)]);
+    expect(racing.map((r) => r.status).sort()).toEqual([201, 422]);
+    balance = await CampaignBalanceModel.findOne({ campaignId });
+    expect([balance?.availableBalance, balance?.pendingBalance]).toEqual([60, 40]);
+    expect(await PayoutModel.countDocuments({ campaignId })).toBe(1);
+  });
+
   it.each(['expired owner KYC', 'pending KYC renewal', 'blocked campaign', 'open dispute'] as const)(
     'refuses a payout request with %s and leaves the balance untouched',
     async (state) => {
@@ -1044,6 +1075,52 @@ describe('Payouts Integration', () => {
       await request(app).post(`/api/v1/payouts/${payoutId}/reject`).set('Authorization', `Bearer ${owner.token}`).send({ reason: 'I changed my mind about this payout.' }).expect(403);
       await request(app).post(`/api/v1/payouts/${payoutId}/reject`).set('Authorization', `Bearer ${admin.token}`).send({ reason: 'too short' }).expect(400);
       expect((await PayoutModel.findById(payoutId))?.status).toBe('PENDING');
+    });
+
+    it('returns what a request made before clearedAmount was recorded cleared, leaving other requests covered', async () => {
+      const { campaignId, payoutId } = await pendingRequest(300); // pending 665, available 300
+      const legacy = await PayoutModel.findById(payoutId).orFail();
+      const other = await PayoutModel.create({ campaignId, recipientId: legacy.recipientId, amount: 200, type: 'standard', fee: 0, netAmount: 200, currency: 'GHS', status: 'PENDING', provider: 'paystack', requestedBy: legacy.requestedBy, clearedAmount: 200 });
+      await CampaignBalanceModel.updateOne({ campaignId }, { $inc: { pendingBalance: -200, availableBalance: 200 } }); // pending 465, available 500
+      await PayoutModel.updateOne({ _id: payoutId }, { $unset: { clearedAmount: 1 } });
+      const admin = await createAdmin(app, uniqueEmail('admin'));
+      await request(app).post(`/api/v1/payouts/${payoutId}/reject`).set('Authorization', `Bearer ${admin.token}`).send({ reason: 'Legacy request superseded by a newer one.' }).expect(200);
+      const balance = await CampaignBalanceModel.findOne({ campaignId });
+      // The legacy request's 300 returns; the other request's 200 stays available for it.
+      expect([balance?.pendingBalance, balance?.availableBalance]).toEqual([765, 200]);
+      expect((await PayoutModel.findById(other.id))?.status).toBe('PENDING');
+    });
+
+    it('frees the fee coupon use when a request is cancelled or rejected before any transfer', async () => {
+      const owner = await registerUser(app, uniqueEmail('close-coupon'));
+      const campaignId = await createActiveCampaign(app, owner.token, owner.userId);
+      await fundCampaign(app, campaignId, 1000);
+      await endCampaign(campaignId);
+      await addRecipient(app, campaignId, owner.token);
+      const code = `ONCE${Date.now()}`;
+      await CouponModel.create({ code, discountType: 'percent', amount: 50, currency: 'GHS', redemptions: 0, maxRedemptions: 5, perUserLimit: 1, appliesToSurfaces: ['payout_fee'], active: true });
+      const requestWithCoupon = () => request(app)
+        .post(`/api/v1/campaigns/${campaignId}/payouts`)
+        .set('Authorization', `Bearer ${owner.token}`)
+        .send({ amount: 400, type: 'priority', couponCode: code });
+
+      const first = await requestWithCoupon().expect(201);
+      expect((await CouponModel.findOne({ code }))?.redemptions).toBe(1);
+      // The per-user limit is spent while the request is pending.
+      await request(app).post(`/api/v1/campaigns/${campaignId}/payouts/${first.body.data.id}/cancel`).set('Authorization', `Bearer ${owner.token}`).send({}).expect(200);
+      expect((await CouponModel.findOne({ code }))?.redemptions).toBe(0);
+      expect((await CouponRedemptionModel.findOne({ userId: owner.userId }).lean())?.status).toBe('released');
+
+      // Nothing was paid, so the organizer can use the coupon again — and a rejection frees it too.
+      const second = await requestWithCoupon().expect(201);
+      expect((await CouponModel.findOne({ code }))?.redemptions).toBe(1);
+      const admin = await createAdmin(app, uniqueEmail('admin'));
+      await request(app).post(`/api/v1/payouts/${second.body.data.id}/reject`).set('Authorization', `Bearer ${admin.token}`).send({ reason: 'Destination evidence did not match the campaign owner.' }).expect(200);
+      expect((await CouponModel.findOne({ code }))?.redemptions).toBe(0);
+      expect(await CouponRedemptionModel.countDocuments({ userId: owner.userId, status: { $ne: 'released' } })).toBe(0);
+      // A replayed rejection frees nothing twice.
+      await request(app).post(`/api/v1/payouts/${second.body.data.id}/reject`).set('Authorization', `Bearer ${admin.token}`).send({ reason: 'Destination evidence did not match the campaign owner.' }).expect(409);
+      expect((await CouponModel.findOne({ code }))?.redemptions).toBe(0);
     });
 
     it('lets only the campaign owner cancel their own pending request', async () => {

@@ -3,6 +3,8 @@ import type { PayoutRepositoryPort } from '../../domain/ports/outbound/PayoutRep
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js'
 import type { CampaignBalanceRepositoryPort } from '../../domain/ports/outbound/CampaignBalanceRepositoryPort.js'
 import type { PayoutClosureTransactionPort } from '../../domain/ports/outbound/PayoutClosureTransactionPort.js'
+import type { CouponRepositoryPort } from '../../domain/ports/outbound/CouponRepositoryPort.js'
+import type { CouponRedemptionRepositoryPort } from '../../domain/ports/outbound/CouponRedemptionRepositoryPort.js'
 import { roundToCurrency } from '../../domain/value-objects/Money.js'
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js'
 import { toPayoutDto } from './mappers/payoutDto.js'
@@ -17,9 +19,11 @@ export const PAYOUT_REJECTION_REASON_MIN = 20
  * request. A PENDING payout never reserved money, so closing it only undoes the
  * request's own clearing step — the amount it moved pending → available goes
  * back to pending (bounded by what is still available), which is what lets a
- * refund draw on those funds again. One transaction commits the terminal
- * status, the balance move and the audit entry; a replay finds the payout no
- * longer PENDING and changes nothing.
+ * refund draw on those funds again. A PAYOUT_FEE coupon the request used is
+ * freed too (its per-user seat and its global count), because nothing was
+ * paid out. One transaction commits the terminal status, the balance move, the
+ * coupon release and the audit entry; a replay finds the payout no longer
+ * PENDING and changes nothing.
  */
 export class ClosePendingPayoutUseCase {
   constructor(
@@ -27,6 +31,10 @@ export class ClosePendingPayoutUseCase {
     private readonly campaignRepo: CampaignRepositoryPort,
     private readonly campaignBalanceRepo: CampaignBalanceRepositoryPort,
     private readonly transaction: PayoutClosureTransactionPort,
+    private readonly coupons?: {
+      redemptions: Pick<CouponRedemptionRepositoryPort, 'releaseConsumed'>
+      coupons: Pick<CouponRepositoryPort, 'decrementRedemption'>
+    },
   ) {}
 
   /** Admin: reject a PENDING payout with a reason recorded for the owner. */
@@ -74,14 +82,29 @@ export class ClosePendingPayoutUseCase {
         closedAt: new Date(),
       })
       if (!current) throw new AppError('Payout is no longer pending; refresh before trying again.', 409)
-      const cleared = current.clearedAmount ?? 0
+      const balance = await this.campaignBalanceRepo.findByCampaignId(current.campaignId)
+      const available = balance?.availableBalance ?? 0
+      // A request made before clearedAmount was recorded still cleared its
+      // shortfall pending → available. Return what the campaign's other PENDING
+      // requests do not rely on, so refunds can reach it again.
+      const cleared = current.clearedAmount ?? Math.max(
+        0,
+        Math.min(
+          current.amount,
+          available - ((await this.payoutRepo.sumPendingAmount?.(current.campaignId, current.id)) ?? 0),
+        ),
+      )
       if (cleared > 0) {
         // Another payout may have been approved out of `available` since this
         // request cleared it; return only what is still there.
-        const balance = await this.campaignBalanceRepo.findByCampaignId(current.campaignId)
-        const back = roundToCurrency(Math.min(cleared, balance?.availableBalance ?? 0), current.currency)
+        const back = roundToCurrency(Math.min(cleared, available), current.currency)
         if (back > 0 && !(await this.campaignBalanceRepo.returnAvailableToPending(current.campaignId, back)))
           throw new AppError('Campaign balance changed; try again.', 409)
+      }
+      // Nothing was paid out, so the fee coupon the request used is not spent.
+      if (current.couponRedemptionId && this.coupons?.redemptions.releaseConsumed) {
+        const released = await this.coupons.redemptions.releaseConsumed(current.couponRedemptionId)
+        if (released && current.couponId) await this.coupons.coupons.decrementRedemption?.(current.couponId)
       }
       return current
     })

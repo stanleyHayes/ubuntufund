@@ -1,3 +1,4 @@
+import mongoose from 'mongoose'
 import { PayoutEntity } from '../../../../domain/entities/Payout.js'
 import { PayoutCheckLeaseModel } from '../../../database/models/PayoutCheckLeaseModel.js'
 import type { PayoutRepositoryPort } from '../../../../domain/ports/outbound/PayoutRepositoryPort.js'
@@ -34,6 +35,8 @@ function toDomain(doc: PayoutDocument): PayoutEntity {
     })),
     reversedFrom: doc.reversedFrom,
     clearedAmount: doc.clearedAmount,
+    couponId: doc.couponId,
+    couponRedemptionId: doc.couponRedemptionId,
     closure: doc.closure
       ? { kind: doc.closure.kind, reason: doc.closure.reason, closedBy: doc.closure.closedBy, closedAt: doc.closure.closedAt }
       : undefined,
@@ -99,6 +102,8 @@ export class MongoPayoutRepository implements PayoutRepositoryPort {
       requestedBy: p.requestedBy,
       approvedBy: p.approvedBy,
       clearedAmount: p.clearedAmount,
+      couponId: p.couponId,
+      couponRedemptionId: p.couponRedemptionId,
     })
     return toDomain(doc)
   }
@@ -125,9 +130,15 @@ export class MongoPayoutRepository implements PayoutRepositoryPort {
     return docs.map(toDomain)
   }
 
-  async sumPendingAmount(campaignId: string): Promise<number> {
+  async sumPendingAmount(campaignId: string, excludeId?: string): Promise<number> {
     const [row] = await PayoutModel.aggregate<{ total: number }>([
-      { $match: { campaignId, status: 'PENDING' } },
+      {
+        $match: {
+          campaignId,
+          status: 'PENDING',
+          ...(excludeId && mongoose.isValidObjectId(excludeId) ? { _id: { $ne: new mongoose.Types.ObjectId(excludeId) } } : {}),
+        },
+      },
       { $group: { _id: null, total: { $sum: '$amount' } } },
     ])
     return row?.total ?? 0

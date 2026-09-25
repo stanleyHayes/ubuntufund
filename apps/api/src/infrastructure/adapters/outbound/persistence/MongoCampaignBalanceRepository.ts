@@ -84,6 +84,10 @@ export class MongoCampaignBalanceRepository
     return doc ? toDomain(doc) : null;
   }
 
+  async fenceRequests(campaignId: string): Promise<void> {
+    await CampaignBalanceModel.updateOne({ campaignId }, { $inc: { requestWriteVersion: 1 } });
+  }
+
   async clearPendingToAvailable(
     campaignId: string,
     amount: number

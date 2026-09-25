@@ -62,6 +62,12 @@ export interface CouponRedemptionRepositoryPort {
    * the status `countByCouponAndUser` excludes — is never reachable.
    */
   markReleased(id: string): Promise<CouponRedemption | null>;
+  /**
+   * Free a consumed slot whose purchase was undone before it took effect (a
+   * payout request rejected or cancelled before any transfer): CONSUMED →
+   * RELEASED, returning the per-user seat. True only for the call that freed it.
+   */
+  releaseConsumed?(id: string): Promise<boolean>;
   /** Link the activated subscription once the checkout settles. */
   attachSubscription(
     id: string,

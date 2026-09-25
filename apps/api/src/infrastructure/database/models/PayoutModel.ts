@@ -52,6 +52,9 @@ export interface PayoutDocument extends Document {
    * draw on pendingBalance, work again. Absent on requests made before it.
    */
   clearedAmount?: number
+  /** The PAYOUT_FEE coupon redemption the request consumed; a close frees it. */
+  couponId?: string
+  couponRedemptionId?: string
   /** Present when a PENDING request was rejected (admin) or cancelled (owner). */
   closure?: PayoutClosure
   createdAt: Date
@@ -130,6 +133,8 @@ const payoutSchema = new Schema<PayoutDocument>(
     settlementApplied: { type: Boolean, default: false, index: true },
     reversedFrom: { type: String, enum: ['PAID', 'PROCESSING'] },
     clearedAmount: { type: Number },
+    couponId: { type: String },
+    couponRedemptionId: { type: String },
     closure: {
       type: new Schema(
         {
