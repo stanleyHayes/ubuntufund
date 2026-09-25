@@ -25,7 +25,6 @@ interface SettingsData {
   emailNotifications: boolean
   smsNotifications: boolean
   pushNotifications: boolean
-  donationReceipts: boolean
   preferredCurrency: string
   language: string
   anonymousDonations: boolean
@@ -44,7 +43,6 @@ const DEFAULT_SETTINGS: SettingsData = {
   emailNotifications: true,
   smsNotifications: false,
   pushNotifications: false,
-  donationReceipts: true,
   preferredCurrency: 'GHS',
   language: 'English',
   anonymousDonations: false,
@@ -304,7 +302,7 @@ export default function SettingsScreen() {
     setError(null)
     try {
       const data = await api.get<{
-        notificationPreferences?: { email?: boolean; sms?: boolean; push?: boolean; donationReceipts?: boolean }
+        notificationPreferences?: { email?: boolean; sms?: boolean; push?: boolean }
         language?: string; anonymousDonations?: boolean; showLeaderboards?: boolean
       }>('/profile')
       setSettings({
@@ -312,7 +310,6 @@ export default function SettingsScreen() {
         emailNotifications: data.notificationPreferences?.email ?? DEFAULT_SETTINGS.emailNotifications,
         smsNotifications: data.notificationPreferences?.sms ?? DEFAULT_SETTINGS.smsNotifications,
         pushNotifications: data.notificationPreferences?.push ?? DEFAULT_SETTINGS.pushNotifications,
-        donationReceipts: data.notificationPreferences?.donationReceipts ?? DEFAULT_SETTINGS.donationReceipts,
         language: data.language ?? DEFAULT_SETTINGS.language,
         anonymousDonations: data.anonymousDonations ?? DEFAULT_SETTINGS.anonymousDonations,
         showOnLeaderboard: data.showLeaderboards ?? DEFAULT_SETTINGS.showOnLeaderboard,
@@ -340,11 +337,9 @@ export default function SettingsScreen() {
           ? { notificationPreferences: { sms: value } }
           : key === 'pushNotifications'
             ? { notificationPreferences: { push: value } }
-            : key === 'donationReceipts'
-              ? { notificationPreferences: { donationReceipts: value } }
-              : key === 'showOnLeaderboard'
-                ? { showLeaderboards: value }
-                : { [key]: value }
+            : key === 'showOnLeaderboard'
+              ? { showLeaderboards: value }
+              : { [key]: value }
       await api.put('/profile', payload)
     } catch (err) {
       setSettings((prev) => ({ ...prev, [key]: previousValue }))

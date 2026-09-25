@@ -23,10 +23,43 @@ beforeEach(() => {
   vi.stubGlobal('localStorage', {
     getItem: (key: string) => stored.get(key) ?? null,
     setItem: (key: string, value: string) => stored.set(key,value),
+    removeItem: (key: string) => stored.delete(key),
     clear: () => stored.clear(),
+  })
+  const session = new Map<string, string>()
+  vi.stubGlobal('sessionStorage', {
+    getItem: (key: string) => session.get(key) ?? null,
+    setItem: (key: string, value: string) => session.set(key,value),
+    removeItem: (key: string) => session.delete(key),
+    clear: () => session.clear(),
   })
   vi.mocked(verifyDonationIntent).mockResolvedValue(confirmed as never)
   vi.mocked(getDonationIntentStatus).mockResolvedValue(confirmed as never)
+})
+
+// I129: a bare /donate/callback used to show the previous donor's gift on a
+// shared device, from a never-pruned localStorage `__last` entry.
+describe('Donation handoff privacy', () => {
+  it('never falls back to the last checkout when no reference is present', async () => {
+    const last = {intentId:id,slug:'previous-donor-campaign',title:'Previous gift',amount:999,currency:'GHS'}
+    localStorage.setItem('uf_pending_donations', JSON.stringify({__last:last}))
+    sessionStorage.setItem('uf_pending_donations', JSON.stringify({__last:last}))
+    show('')
+    expect(await screen.findByText(/couldn't find a payment reference/)).toBeInTheDocument()
+    expect(screen.getByText(/don't pay again/)).toBeInTheDocument()
+    expect(screen.queryByText(/receipt is emailed/)).not.toBeInTheDocument()
+    expect(verifyDonationIntent).not.toHaveBeenCalled()
+    expect(getDonationIntentStatus).not.toHaveBeenCalled()
+    // The legacy store is cleaned up.
+    await waitFor(() => expect(localStorage.getItem('uf_pending_donations')).toBeNull())
+  })
+
+  it('removes this gift from the handoff store once its payment is final', async () => {
+    sessionStorage.setItem('uf_pending_donations', JSON.stringify({[reference]:{intentId:id,reference,slug:'clinic',title:'Clinic',amount:200,currency:'GHS'}}))
+    show()
+    expect(await screen.findByRole('heading', {name:/thank|success/i})).toBeInTheDocument()
+    await waitFor(() => expect(sessionStorage.getItem('uf_pending_donations')).toBeNull())
+  })
 })
 
 describe('Donation return confirmation', () => {

@@ -1,5 +1,6 @@
 import { usePublicCampaign } from '@/hooks/usePublicCampaign'
 import { checkoutAttemptKey, forgetCheckoutAttempt, isDefinitiveRejection } from '@/lib/checkoutAttempt'
+import { rememberPendingDonation } from '@/lib/donationHandoff'
 import { MessageAgreement } from '@/components/donate/MessageAgreement'
 import { LEGAL_ACCEPTANCE_VERSION } from '@ubuntu-fund/types'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -62,35 +63,6 @@ const fadeInUp = keyframes`
 
 const PRESET_AMOUNTS = [20, 50, 100, 200] as const
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-
-// Handoff store — lets the Paystack return page (`/donate/callback`) recover the
-// intent id (to poll) and the campaign slug (to link back) from the reference
-// Paystack echoes on redirect. localStorage survives the full-page round-trip.
-const HANDOFF_KEY = 'uf_pending_donations'
-
-interface PendingDonation {
-  intentId: string
-  reference?: string
-  slug: string
-  title: string
-  amount: number
-  currency: string
-}
-
-/** Persist the pending-donation handoff keyed by its Paystack reference. */
-function rememberPendingDonation(entry: PendingDonation): void {
-  try {
-    const raw = localStorage.getItem(HANDOFF_KEY)
-    const store: Record<string, PendingDonation> = raw ? JSON.parse(raw) : {}
-    if (entry.reference) store[entry.reference] = entry
-    // Keep a "latest" fallback for the case where no reference reaches the callback.
-    store.__last = entry
-    localStorage.setItem(HANDOFF_KEY, JSON.stringify(store))
-  } catch {
-    // Storage may be unavailable (private mode) — the callback still works by
-    // parsing the intent id out of the reference, so this is best-effort only.
-  }
-}
 
 /** Parse a positive money amount from a free-text field; returns NaN when invalid. */
 function parseAmount(raw: string): number {

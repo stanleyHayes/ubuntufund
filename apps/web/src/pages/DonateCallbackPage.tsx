@@ -13,6 +13,7 @@ import ReplayRoundedIcon from '@mui/icons-material/ReplayRounded'
 import { keyframes } from '@emotion/react'
 import { ItemNotFound, BrandLogo, formatCurrency, SHAPE } from '@ubuntu-fund/ui'
 import { DonationCelebration } from '@/components/donate/DonationCelebration'
+import { clearLegacyDonationHandoff, forgetPendingDonation, readPendingDonation } from '@/lib/donationHandoff'
 import {
   getDonationIntentStatus,
   verifyDonationIntent,
@@ -29,34 +30,6 @@ const fadeInUp = keyframes`
   from { opacity: 0; transform: translateY(16px); }
   to   { opacity: 1; transform: translateY(0); }
 `
-
-// ---------------------------------------------------------------------------
-// Handoff store (written by DonatePage) — recover the intent id + campaign slug
-// from the Paystack reference echoed back on the return redirect.
-// ---------------------------------------------------------------------------
-
-const HANDOFF_KEY = 'uf_pending_donations'
-
-interface PendingDonation {
-  intentId: string
-  reference?: string
-  slug: string
-  title: string
-  amount: number
-  currency: string
-}
-
-function readHandoff(reference: string | null): PendingDonation | null {
-  try {
-    const raw = localStorage.getItem(HANDOFF_KEY)
-    if (!raw) return null
-    const store: Record<string, PendingDonation> = JSON.parse(raw)
-    if (reference) return store[reference] ?? null
-    return store.__last ?? null
-  } catch {
-    return null
-  }
-}
 
 /**
  * Our Paystack references are minted server-side as `uf-<intentId>-<8hex>`
@@ -96,12 +69,19 @@ export function DonateCallbackPage() {
   // Recover the donor's pending-donation handoff once per reference. A ref would
   // read stale during render (and trips the React Compiler ref rule); useMemo
   // keeps it a plain, render-safe derivation of the URL reference.
-  const handoff = useMemo(() => readHandoff(reference), [reference])
+  const handoff = useMemo(() => readPendingDonation(reference), [reference])
   const intentId =
     intentIdFromReference(reference) ?? explicitId ?? handoff?.intentId
   const paymentReference = reference ?? handoff?.reference
 
   const [phase, setPhase] = useState<Phase>(intentId ? 'resolving' : 'missing')
+
+  // Drop the never-pruned legacy store, and this gift's handoff once its
+  // payment is final, so a shared device keeps no record of it.
+  useEffect(() => { clearLegacyDonationHandoff() }, [])
+  useEffect(() => {
+    if (phase === 'succeeded' || phase === 'failed' || phase === 'expired') forgetPendingDonation(paymentReference)
+  }, [phase, paymentReference])
   const [view, setView] = useState<DonationIntentPublicView | null>(null)
   const [snackOpen, setSnackOpen] = useState(false)
   const [pollNonce, setPollNonce] = useState(0)
@@ -211,7 +191,7 @@ export function DonateCallbackPage() {
       <Container maxWidth="sm" sx={{ py: 8 }}>
         <ItemNotFound
           itemType="Payment"
-          message="We couldn't find a payment reference to confirm. If money left your account, don't worry — your receipt is emailed once payment is confirmed."
+          message="We couldn't find a payment reference to confirm. If money left your account, don't pay again. Keep any receipt from Paystack or your bank or mobile money provider, and email support@ujimora.com with the reference so we can check it."
           onBack={() => navigate('/')}
           backLabel="Go home"
         />
