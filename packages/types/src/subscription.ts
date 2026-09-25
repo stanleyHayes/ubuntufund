@@ -187,6 +187,11 @@ export interface CreateSubscriptionCheckoutInput {
   tier: string // must be a paid tier
   billingCycle: BillingCycle
   couponCode?: string
+  /**
+   * The member confirmed that buying a different plan while one is still in
+   * force replaces it immediately, with no credit for unused time.
+   */
+  replaceCurrentPlan?: boolean
 }
 
 export interface SubscriptionCheckout {

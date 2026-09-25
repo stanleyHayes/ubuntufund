@@ -695,7 +695,7 @@ Marketing: advertising and attribution technologies, if introduced.`,
       {
         title: '4. Upgrades',
         content:
-          'Upgrades take effect under the displayed billing and proration rules and may immediately increase commercial entitlements, but never bypass compliance approval.',
+          'Upgrades take effect under the billing rules shown before you confirm and may immediately increase commercial entitlements, but never bypass compliance approval. On the website, buying the plan you already have adds the new period to the end of your current one; buying a different plan while one is active replaces it once you confirm, and unused time on the replaced plan is not credited or refunded.',
       },
       {
         title: '5. Downgrades',

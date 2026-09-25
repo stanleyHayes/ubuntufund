@@ -23,9 +23,19 @@ import type {
 } from '../services/AffiliateCodePricing.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 import type { BillingOwnershipPort } from '../../domain/ports/outbound/BillingOwnershipPort.js';
+import type { SubscriptionRepositoryPort } from '../../domain/ports/outbound/SubscriptionRepositoryPort.js';
+import { SubscriptionCheckoutResolver, type CheckoutResolution } from '../services/SubscriptionCheckoutResolver.js';
+import { isPaidPlanInForce } from '../../domain/services/subscriptionStatus.js';
 
 /** Platform billing currency; subscription plan prices are quoted in GHS. */
 const DEFAULT_CURRENCY = 'GHS';
+
+/**
+ * A checkout opened less than this long ago may still be paid in the Paystack
+ * window the member left open, so a second one is refused rather than risk two
+ * charges. Older unpaid (abandoned) checkouts are expired to make way.
+ */
+const OPEN_CHECKOUT_HOLD_MS = 60 * 60 * 1000;
 
 /**
  * Opens a paid-subscription checkout for the authenticated user — the
@@ -57,7 +67,9 @@ export class CreateSubscriptionCheckoutUseCase {
      * Absent (or with a zero discount configured), an unknown code stays
      * unknown and the behaviour is exactly what it was.
      */
-    private readonly affiliateCodePricing?: AffiliateCodePricing
+    private readonly affiliateCodePricing?: AffiliateCodePricing,
+    /** The member's current plan, so a purchase never silently discards paid time. */
+    private readonly subscriptionRepo?: SubscriptionRepositoryPort
   ) {}
 
   async execute(
@@ -88,17 +100,32 @@ export class CreateSubscriptionCheckoutUseCase {
     if (plan.tier !== tier || plan.active === false) {
       throw new AppError('That subscription plan is not available', 400);
     }
+    // Enterprise and internal (non-public) plans are negotiated, never bought
+    // self-serve at the list price. Mirrors the store rail's isPublic check.
+    if (plan.isPublic === false || tier === SubscriptionTier.ENTERPRISE) {
+      throw new AppError('This plan is arranged through our sales team. Contact sales@ujimora.com.', 403);
+    }
     const baseAmount = roundToCurrency(
       billingCycle === BillingCycle.YEARLY
         ? plan.priceYearly
         : plan.priceMonthly,
       DEFAULT_CURRENCY
     );
+    // A zero price means that cycle is not offered for a paid plan. Without this
+    // the no-charge branch below would activate it for free for anyone; a
+    // coupon or affiliate code that zeroes a positive price still works.
+    if (!(baseAmount > 0)) {
+      throw new AppError('That billing cycle is not available for this plan', 400);
+    }
 
     const user = await this.userRepo.findById(userId);
     if (!user) {
       throw new AppError('User not found', 404);
     }
+
+    // ── Never open a second charge over an unresolved or active purchase ──
+    await this.resolveOpenCheckouts(userId);
+    await this.assertCanBuyOverCurrentPlan(userId, tier, plan.name, input.replaceCurrentPlan === true);
 
     // ── Price it (with a coupon when supplied; 422 propagates on invalid) ──
     let discountAmount = 0;
@@ -289,5 +316,75 @@ export class CreateSubscriptionCheckoutUseCase {
       reference: init.reference,
       preview,
     };
+  }
+
+  /**
+   * Settle, fail or expire the member's earlier PENDING checkouts before a new
+   * charge opens. A paid one (webhook still in flight) is activated and the new
+   * purchase refused; one that could still be paid — opened within the last hour,
+   * or still processing — refuses the new purchase; an abandoned older one is
+   * expired, freeing its coupon seat.
+   */
+  private async resolveOpenCheckouts(userId: string): Promise<void> {
+    const open = await this.subscriptionCheckoutRepo.findPendingByUser(userId, 5);
+    if (!open.length) return;
+    const resolver = new SubscriptionCheckoutResolver(
+      this.subscriptionCheckoutRepo, this.paymentGateway, this.settleSubscriptionUseCase, this.couponRedemptionRepo
+    );
+    for (const checkout of open) {
+      let outcome: CheckoutResolution;
+      try {
+        outcome = await resolver.resolve(checkout, { expireUnpaidAfterMs: OPEN_CHECKOUT_HOLD_MS });
+      } catch {
+        // We cannot tell whether that earlier payment went through, so opening
+        // another charge now could take the money twice.
+        throw new AppError(
+          'We could not confirm your earlier plan payment. Check its status on your subscription page before starting another payment.',
+          409,
+          { checkoutId: [checkout.id] }
+        );
+      }
+      if (outcome === 'settled') {
+        throw new AppError(
+          'Your earlier plan payment went through and that plan is now active. Review your subscription before buying again.',
+          409,
+          { checkoutId: [checkout.id] }
+        );
+      }
+      if (outcome === 'pending') {
+        throw new AppError(
+          'You already have a plan payment in progress. Finish it in the payment window, or check its status on your subscription page, before starting another.',
+          409,
+          { checkoutId: [checkout.id] }
+        );
+      }
+    }
+  }
+
+  /**
+   * Buying the plan you already have extends it (see SettleSubscriptionUseCase).
+   * Buying a DIFFERENT plan while one is still in force replaces it straight away
+   * and the unused time is not credited — so it needs the member's explicit
+   * confirmation. Store-billed plans are left to the billing-rail claim, which
+   * refuses them with the store-specific message.
+   */
+  private async assertCanBuyOverCurrentPlan(
+    userId: string,
+    tier: string,
+    planName: string,
+    replaceCurrentPlan: boolean
+  ): Promise<void> {
+    if (!this.subscriptionRepo) return;
+    const current = await this.subscriptionRepo.findByUserId(userId);
+    if (!current || !isPaidPlanInForce(current) || current.tier === tier) return;
+    if (current.billingProvider === 'apple' || current.billingProvider === 'google') return;
+    if (replaceCurrentPlan) return;
+    const currentPlan = await this.planService.getPlan(current.tier);
+    const until = new Date(current.currentPeriodEnd).toISOString().slice(0, 10);
+    throw new AppError(
+      `Your ${currentPlan.name} plan is active until ${until}. Buying ${planName} now replaces it straight away, and unused time is not refunded or credited. Confirm the switch to continue.`,
+      409,
+      { code: ['replace_current_plan'] }
+    );
   }
 }

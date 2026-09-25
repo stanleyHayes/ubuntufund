@@ -150,6 +150,7 @@ import { HandlePaystackWebhookUseCase } from './application/use-cases/HandlePays
 import { HandleFlutterwaveWebhookUseCase } from './application/use-cases/HandleFlutterwaveWebhookUseCase.js'
 import { ReconcilePaymentsUseCase } from './application/use-cases/ReconcilePaymentsUseCase.js'
 import { ReconcilePayoutsUseCase } from './application/use-cases/ReconcilePayoutsUseCase.js'
+import { ReconcileSubscriptionCheckoutsUseCase } from './application/use-cases/ReconcileSubscriptionCheckoutsUseCase.js'
 import { ProcessRefundUseCase } from './application/use-cases/ProcessRefundUseCase.js'
 import { MongoRefundOperationRepository } from './infrastructure/adapters/outbound/persistence/MongoRefundOperationRepository.js'
 import { MongoRefundFunds } from './infrastructure/adapters/outbound/persistence/MongoRefundFunds.js'
@@ -947,6 +948,14 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     handleCreatorPayoutWebhookUseCase,
     creatorPayoutRepo,
   )
+  // Paid-subscription checkouts: repair missed webhooks and expire checkouts
+  // left unpaid for a day, freeing their coupon seats and the billing rail.
+  const reconcileSubscriptionCheckoutsUseCase = new ReconcileSubscriptionCheckoutsUseCase(
+    subscriptionCheckoutRepo,
+    paymentGateway,
+    settleSubscriptionUseCase,
+    couponRedemptionRepo,
+  )
   // Scheduled reconciliation sweep (spec §13). Production-only + flag-gated so
   // tests/dev never spawn it; unref'd so it can't hold the process open.
   if (config.payments.reconciliationEnabled && config.nodeEnv === 'production') {
@@ -969,6 +978,9 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
           await reconcilePaymentsUseCase
             .reconcileStale({ olderThanMinutes: 30 })
             .catch((err) => logger.error({ err }, 'scheduled reconciliation failed'))
+          await reconcileSubscriptionCheckoutsUseCase
+            .reconcileStale({ olderThanMinutes: 30 })
+            .catch((err) => logger.error({ err }, 'scheduled subscription checkout reconciliation failed'))
           await reconcilePayoutsUseCase
             .reconcileStale({ olderThanMinutes: 1 })
             .catch((err) => logger.error({ err }, 'scheduled payout reconciliation failed'))
@@ -1203,6 +1215,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     settleSubscriptionUseCase,
     planService,
     affiliateCodePricing,
+    subscriptionRepo,
   )
   const getSubscriptionCheckoutUseCase = new GetSubscriptionCheckoutUseCase(
     subscriptionCheckoutRepo,

@@ -251,12 +251,14 @@ async function pollCheckout(id: string): Promise<CheckoutOutcome> {
 function CheckoutSheet({
   tier,
   plans,
+  current,
   visible,
   onClose,
   onActivated,
 }: {
   tier: string | null
   plans: Record<string, SubscriptionPlan>
+  current: SubscriptionData
   visible: boolean
   onClose: () => void
   onActivated: () => Promise<void> | void
@@ -271,16 +273,17 @@ function CheckoutSheet({
   const [error, setError] = useState<string | null>(null)
   const reqId = useRef(0)
 
-  // Reset the sheet each time it opens for a plan.
+  // Reset the sheet each time it opens for a plan, on a cycle it is sold on.
   useEffect(() => {
     if (visible) {
-      setBillingCycle(BillingCycle.MONTHLY)
+      const opened = tier ? plans[tier] : undefined
+      setBillingCycle(opened && !(opened.priceMonthly > 0) && opened.priceYearly > 0 ? BillingCycle.YEARLY : BillingCycle.MONTHLY)
       setCouponCode('')
       setPreview(null)
       setError(null)
       setSubmitting(false)
     }
-  }, [visible, tier])
+  }, [visible, tier, plans])
 
   // Debounced coupon preview (soft endpoint — never throws).
   useEffect(() => {
@@ -315,7 +318,11 @@ function CheckoutSheet({
   const validCoupon = preview?.valid ? preview : null
   const finalAmount = validCoupon ? validCoupon.finalAmount : baseAmount
   const discount = validCoupon ? validCoupon.discountAmount : 0
-  const payLabel = finalAmount === 0 ? 'Activate plan' : `Pay ${formatGhs(finalAmount)}`
+  const offered = baseAmount > 0
+  // Buying a different plan while one is running replaces it immediately, with
+  // no credit for unused time; the member confirms that by paying from here.
+  const switching = isPaidPlanInForce(current) && current.tier !== tier
+  const payLabel = !offered ? 'Not offered' : finalAmount === 0 ? 'Activate plan' : switching ? `Replace plan and pay ${formatGhs(finalAmount)}` : `Pay ${formatGhs(finalAmount)}`
 
   const handleCheckout = async () => {
     setSubmitting(true)
@@ -325,6 +332,7 @@ function CheckoutSheet({
         tier,
         billingCycle,
         couponCode: couponCode.trim() || undefined,
+        ...(switching ? { replaceCurrentPlan: true } : {}),
       })
       if (result.activatedWithoutCharge) {
         onClose()
@@ -393,7 +401,8 @@ function CheckoutSheet({
                   style={[styles.cycleOption, active && styles.cycleOptionActive]}
                   rippleColor={p.ripple}
                   onPress={() => setBillingCycle(cycle)}
-                  accessibilityState={{ selected: active }}
+                  disabled={!(amount > 0)}
+                  accessibilityState={{ selected: active, disabled: !(amount > 0) }}
                 >
                   <View style={{ alignItems: 'center' }}>
                     <Text style={[styles.cycleText, active && styles.cycleTextActive]}>
@@ -412,6 +421,11 @@ function CheckoutSheet({
           <Text style={styles.sheetSub}>
             One-time payment for {billingCycle === BillingCycle.YEARLY ? '1 year (365 days)' : '30 days'}. Your plan does not renew automatically.
           </Text>
+          {switching ? (
+            <Text style={styles.couponError}>
+              Your {plans[current.tier]?.name ?? 'current'} plan is active until {new Date(current.currentPeriodEnd as string).toLocaleDateString()}. {plan.name} replaces it as soon as payment is confirmed, and unused time is not refunded or credited.
+            </Text>
+          ) : null}
 
           {/* Coupon */}
           <TextInput
@@ -462,7 +476,7 @@ function CheckoutSheet({
             style={styles.payButton}
             contentStyle={styles.payButtonContent}
             loading={submitting}
-            disabled={submitting}
+            disabled={submitting || !offered}
             onPress={handleCheckout}
             accessibilityLabel={payLabel}
           >
@@ -718,6 +732,7 @@ export default function SubscriptionScreen() {
     <CheckoutSheet
       tier={checkoutTier}
       plans={plans}
+      current={currentSub}
       visible={checkoutTier !== null && !storeManaged}
       onClose={() => setCheckoutTier(null)}
       onActivated={fetchSubscription}

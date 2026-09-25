@@ -38,6 +38,8 @@ import {
   readSubscriptionHandoff,
   createSubscriptionCheckout,
   saveSubscriptionCheckoutHandoff,
+  clearSubscriptionHandoff,
+  readSubscriptionCheckout,
   isPaymentsNotConfigured,
 } from '@/lib/subscriptions'
 import { useCouponPreview } from '@/hooks/useCouponPreview'
@@ -148,6 +150,21 @@ export function SubscriptionPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [lastCheckout] = useState(() => readSubscriptionHandoff(null))
+  // Only nag about a previous checkout the server still has as unpaid; a
+  // settled, failed or expired one clears the browser handoff instead.
+  const [lastCheckoutPending, setLastCheckoutPending] = useState(false)
+  useEffect(() => {
+    if (!lastCheckout) return
+    let active = true
+    readSubscriptionCheckout(lastCheckout.checkoutId)
+      .then((checkout) => {
+        if (!active) return
+        if (checkout.status === 'pending') setLastCheckoutPending(true)
+        else clearSubscriptionHandoff(lastCheckout.checkoutId)
+      })
+      .catch(() => { if (active) setLastCheckoutPending(false) })
+    return () => { active = false }
+  }, [lastCheckout])
   const { subscription, isLoading, refetch } = useMySubscription()
   const storeManaged = subscription?.billingProvider === 'apple' || subscription?.billingProvider === 'google'
   const storeName = subscription?.billingProvider === 'apple' ? 'App Store' : 'Google Play'
@@ -159,6 +176,21 @@ export function SubscriptionPage() {
     .filter((p) => p.active !== false && p.isPublic !== false)
     .sort(bySortOrder)
   const [billingToggle, setBillingToggle] = useState<'monthly' | 'yearly'>(searchParams.get('billingCycle') === 'yearly' ? 'yearly' : 'monthly')
+  const cyclePrice = (plan: SubscriptionPlan) => billingToggle === 'yearly' ? plan.priceYearly : plan.priceMonthly
+  /**
+   * Whether a tier can be bought here right now: a public, active, self-serve
+   * plan (never Free or the sales-led Enterprise) whose selected cycle has a
+   * price. A zero price means that cycle is not offered. This also gates the
+   * `?tier=` deep link, so a hidden or Enterprise tier never opens checkout.
+   */
+  const canBuyTier = (tier: string) => {
+    const plan = orderedPlans.find((candidate) => candidate.tier === tier)
+    return !!plan && tier !== SubscriptionTier.FREE && tier !== SubscriptionTier.ENTERPRISE && cyclePrice(plan) > 0
+  }
+  const paidPlanActive = !!subscription && isPaidPlanInForce(subscription)
+  /** Renew the plan you have (adds time), switch while one is active (replaces it), or buy. */
+  const checkoutModeFor = (tier: string): 'renew' | 'switch' | 'buy' =>
+    !subscription || !paidPlanActive ? 'buy' : tier === subscription.tier ? 'renew' : 'switch'
   const [actionError, setActionError] = useState<string | null>(null)
 
   // ── Paid checkout + coupon flow ────────────────────────────────────────────
@@ -209,6 +241,8 @@ export function SubscriptionPage() {
         tier,
         billingCycle,
         couponCode: couponCode.trim() || undefined,
+        // Shown and confirmed in the dialog: the current plan is replaced now.
+        ...(checkoutModeFor(tier) === 'switch' ? { replaceCurrentPlan: true } : {}),
       })
       if (result.activatedWithoutCharge) {
         // A coupon zeroed the price — the subscription is already active; show
@@ -273,7 +307,7 @@ export function SubscriptionPage() {
   return (
     <Container maxWidth="lg" sx={{ py: 6 }}>
       {storeManaged && <Alert severity="info" sx={{ mb: 3 }} action={<Button href={storeManagementUrl} target="_blank" rel="noopener noreferrer">Manage subscription</Button>}>Your subscription is billed through {storeName}. Change plans or cancel there to avoid a second subscription.</Alert>}
-      {lastCheckout && <Alert severity="info" sx={{ mb: 3 }} action={<Button href={`/subscription/callback?checkout=${encodeURIComponent(lastCheckout.checkoutId)}`}>Check payment</Button>}>Returning from payment? Check your latest checkout before starting another payment.</Alert>}
+      {lastCheckout && lastCheckoutPending && <Alert severity="info" sx={{ mb: 3 }} action={<Button href={`/subscription/callback?checkout=${encodeURIComponent(lastCheckout.checkoutId)}`}>Check payment</Button>}>Returning from payment? Check your latest checkout before starting another payment.</Alert>}
       {/* Page header */}
       <Typography
         variant="h4"
@@ -513,7 +547,10 @@ export function SubscriptionPage() {
           const fitLabel = isPro ? 'Recommended for growth' : tier === SubscriptionTier.ORGANIZATION ? 'Best fit for organizations' : tier === SubscriptionTier.ENTERPRISE ? 'For complex needs' : tier === SubscriptionTier.FREE ? 'Start here' : tier === SubscriptionTier.STARTER ? 'For a growing cause' : 'More ways to fundraise'
           const tc = colorsOf(plan)
           const price = billingToggle === 'yearly' ? plan.priceYearly : plan.priceMonthly
-          const canCheckout = !storeManaged && !isCurrent && tier !== SubscriptionTier.FREE && tier !== SubscriptionTier.ENTERPRISE
+          const canCheckout = !storeManaged && canBuyTier(tier)
+          // A running web plan can be renewed early: the new period starts when
+          // the current one ends, so no paid time is lost.
+          const canRenew = isCurrent && paidInForce && canCheckout
 
           return (
             <Card
@@ -594,7 +631,8 @@ export function SubscriptionPage() {
                   <Button
                     variant="outlined"
                     fullWidth
-                    disabled
+                    disabled={!canRenew}
+                    onClick={canRenew ? () => openCheckout(tier) : undefined}
                     sx={{
                       borderRadius: SHAPE.sm,
                       fontWeight: 700,
@@ -605,7 +643,7 @@ export function SubscriptionPage() {
                       color: tc.accent,
                     }}
                   >
-                    Current Plan
+                    {canRenew ? `Renew ${plan.name}` : 'Current Plan'}
                   </Button>
                 ) : tier === SubscriptionTier.ENTERPRISE ? (
                   <Button
@@ -657,7 +695,7 @@ export function SubscriptionPage() {
                         : { borderColor: tc.accent, color: tc.accent }),
                     }}
                   >
-                    Choose {plan.name}
+                    {price > 0 ? `Choose ${plan.name}` : `${billingToggle === 'yearly' ? 'Yearly' : 'Monthly'} not offered`}
                   </Button>
                 )}
               </CardContent>
@@ -846,7 +884,7 @@ export function SubscriptionPage() {
 
       {/* ═══════════ CHECKOUT DIALOG ═══════════ */}
       <Dialog
-        open={selectedTier !== null && !storeManaged}
+        open={selectedTier !== null && !storeManaged && canBuyTier(selectedTier)}
         onClose={closeCheckout}
         fullWidth
         maxWidth="xs"
@@ -859,15 +897,26 @@ export function SubscriptionPage() {
           const validCoupon = preview && preview.valid ? preview : null
           const currency = validCoupon?.currency ?? 'GHS'
           const finalAmount = validCoupon ? validCoupon.finalAmount : basePrice
+          const mode = checkoutModeFor(selectedTier)
+          const currentName = plans[currentSub.tier]?.name ?? 'current'
+          const currentEnd = new Date(currentSub.currentPeriodEnd).toLocaleDateString()
+          const periodLabel = billingToggle === 'yearly' ? '1 year (365 days)' : '30 days'
           return (
             <>
               <DialogTitle sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 800 }}>
-                Upgrade to {plan.name}
+                {mode === 'renew' ? `Renew ${plan.name}` : mode === 'switch' ? `Switch to ${plan.name}` : `Upgrade to ${plan.name}`}
               </DialogTitle>
               <DialogContent>
                 <Typography sx={{ color: 'text.secondary', fontSize: '0.85rem', mb: 2 }}>
-                  One-time payment for {billingToggle === 'yearly' ? '1 year (365 days)' : '30 days'}. Your plan does not renew automatically.
+                  {mode === 'renew'
+                    ? `One-time payment. Adds ${periodLabel} after your current plan ends on ${currentEnd}, so no paid time is lost. Your plan does not renew automatically.`
+                    : `One-time payment for ${periodLabel}. Your plan does not renew automatically.`}
                 </Typography>
+                {mode === 'switch' && (
+                  <Alert severity="warning" sx={{ mb: 2, borderRadius: SHAPE.sm }}>
+                    Your {currentName} plan is active until {currentEnd}. {plan.name} replaces it as soon as payment is confirmed, and unused time on {currentName} is not refunded or credited.
+                  </Alert>
+                )}
 
                 <TextField
                   fullWidth
@@ -946,7 +995,7 @@ export function SubscriptionPage() {
                   startIcon={checkoutLoading ? <LoadingDots size={6} /> : undefined}
                   sx={{ bgcolor: '#2E3D2F', fontWeight: 700, textTransform: 'none', '&:hover': { bgcolor: '#1C261D' } }}
                 >
-                  {checkoutLoading ? 'Starting…' : finalAmount === 0 ? 'Activate plan' : 'Continue to payment'}
+                  {checkoutLoading ? 'Starting…' : finalAmount === 0 ? 'Activate plan' : mode === 'switch' ? 'Replace plan and pay' : 'Continue to payment'}
                 </Button>
               </DialogActions>
             </>

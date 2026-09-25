@@ -29,6 +29,8 @@ export interface CouponRedemptionRepositoryPort {
   findById(id: string): Promise<CouponRedemption | null>;
   /** Correlate a settlement webhook back to its redemption by Paystack reference. */
   findByProviderRef(providerRef: string): Promise<CouponRedemption | null>;
+  /** The slot a subscription checkout opened (for a checkout whose charge never got a reference). */
+  findByCheckoutId(checkoutId: string): Promise<CouponRedemption | null>;
 
   /**
    * Attach the provider reference to a provisional PENDING redemption once the

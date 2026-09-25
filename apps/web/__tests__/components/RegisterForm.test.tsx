@@ -8,7 +8,8 @@ const mocks = vi.hoisted(() => ({ register: vi.fn().mockResolvedValue(undefined)
 vi.mock('react-router-dom', async importOriginal => ({ ...await importOriginal<typeof import('react-router-dom')>(), useNavigate: () => mocks.navigate }))
 vi.mock('@/lib/subscriptions', () => ({ createSubscriptionCheckout: mocks.checkout, saveSubscriptionCheckoutHandoff: vi.fn() }))
 vi.mock('@/context/AuthContext', () => ({ useAuth: () => ({ register: mocks.register }) }))
-vi.mock('@/hooks/useSubscription', () => ({ useSignupPlans: () => ({ plans: Object.fromEntries(['free', 'starter', 'pro', 'enterprise'].map(name => [name, { name, priceMonthly: name === 'enterprise' ? 99.99 : 0, priceYearly: name === 'enterprise' ? 999 : 0, maxActiveCampaigns: 1, platformFeePercent: 5 }])), error: false, retry: vi.fn() }) }))
+const prices: Record<string, [number, number]> = { free: [0, 0], starter: [49, 0], pro: [149, 1490], enterprise: [99.99, 999] }
+vi.mock('@/hooks/useSubscription', () => ({ useSignupPlans: () => ({ plans: Object.fromEntries(['free', 'starter', 'pro', 'enterprise'].map(name => [name, { name, priceMonthly: prices[name][0], priceYearly: prices[name][1], maxActiveCampaigns: 1, platformFeePercent: 5 }])), error: false, retry: vi.fn() }) }))
 vi.mock('@/components/auth/OrganizationTypePicker', () => ({ OrganizationTypePicker: ({ value, onChange }: { value: string; onChange: (value: string) => void }) => <input aria-label="Organization type" value={value} onChange={e => onChange(e.target.value)} /> }))
 const mount = (role = '') => render(<ThemeProvider theme={ujimoraTheme}><MemoryRouter initialEntries={['/register' + role]}><RegisterForm /></MemoryRouter></ThemeProvider>)
 const next = () => {
@@ -43,11 +44,22 @@ describe('registration steps', () => {
     mount(); next()
     fill(/Full name/, 'Test Person'); fill(/^Email/, 'test@example.com'); fill(/^Password/, 'securePassword1'); fill(/Confirm password/, 'securePassword1'); next()
     fireEvent.click(screen.getByRole('button', { name: 'Yearly · save' }))
-    fireEvent.click(screen.getByRole('button', { name: /enterprise/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^pro/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Create account & continue' }))
-    await vi.waitFor(() => expect(mocks.checkout).toHaveBeenCalledWith({ tier: 'enterprise', billingCycle: 'yearly' }))
+    await vi.waitFor(() => expect(mocks.checkout).toHaveBeenCalledWith({ tier: 'pro', billingCycle: 'yearly' }))
     expect(mocks.register).toHaveBeenCalledTimes(1)
-    expect(mocks.navigate).toHaveBeenCalledWith('/subscription?tier=enterprise&billingCycle=yearly&checkoutError=1')
+    expect(mocks.navigate).toHaveBeenCalledWith('/subscription?tier=pro&billingCycle=yearly&checkoutError=1')
+  })
+
+  it('never offers the sales-led Enterprise plan or a paid cycle without a price', () => {
+    mount(); next()
+    fill(/Full name/, 'Test Person'); fill(/^Email/, 'test@example.com'); fill(/^Password/, 'securePassword1'); fill(/Confirm password/, 'securePassword1'); next()
+    expect(screen.queryByRole('button', { name: /enterprise/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^starter/ })).toBeEnabled()
+    fireEvent.click(screen.getByRole('button', { name: 'Yearly · save' }))
+    const starter = screen.getByRole('button', { name: /^starter/ })
+    expect(starter).toBeDisabled()
+    expect(starter).toHaveTextContent('Not offered')
   })
 
   it('offers an unchecked website request only while the organization website is blank', () => {

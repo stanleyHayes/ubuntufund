@@ -21,6 +21,7 @@ const createCheckoutSchema = z.object({
   tier: z.nativeEnum(SubscriptionTier),
   billingCycle: z.nativeEnum(BillingCycle),
   couponCode: z.string().min(1).max(50).optional(),
+  replaceCurrentPlan: z.boolean().optional(),
 });
 
 export function createSubscriptionRoutes(

@@ -14,6 +14,7 @@ import {
   getSubscriptionCheckoutStatus,
   verifySubscriptionReference,
   readSubscriptionHandoff,
+  clearSubscriptionHandoff,
   subscriptionPath,
   dashboardPath,
   SubscriptionCheckoutStatus,
@@ -121,6 +122,9 @@ export function SubscriptionCallbackPage() {
         const status = reference ? await verifySubscriptionReference(reference) : await getSubscriptionCheckoutStatus(checkoutId as string)
         if (!active) return
         setView(status)
+        // A settled, failed or expired checkout no longer needs the browser
+        // handoff; leaving it made the subscription page nag forever.
+        if (status.status !== SubscriptionCheckoutStatus.PENDING) clearSubscriptionHandoff(status.id)
 
         if (status.status === SubscriptionCheckoutStatus.SUCCEEDED) {
           setPhase('succeeded')

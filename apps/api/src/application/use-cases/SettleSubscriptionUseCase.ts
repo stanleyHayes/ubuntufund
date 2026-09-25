@@ -13,6 +13,7 @@ import type { AffiliateCommissionService } from '../services/AffiliateCommission
 import { logger } from '../../infrastructure/logging/logger.js';
 import type { UnitOfWorkPort } from '../../domain/ports/outbound/UnitOfWorkPort.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
+import { isPaidPlanInForce } from '../../domain/services/subscriptionStatus.js';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -27,8 +28,11 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
  *   1. Atomically transition the checkout PENDING → SUCCEEDED (the exactly-once
  *      gate). Null => already settled/terminal; return the current record
  *      unchanged (idempotent no-op).
- *   2. Upsert the user's Subscription to the paid tier, ACTIVE, with a fresh
- *      billing period.
+ *   2. Upsert the user's Subscription to the paid tier, ACTIVE. A fresh period
+ *      starts now — unless the member bought the web plan they already have
+ *      while it is still running, in which case the new period is added to the
+ *      end of the current one (early renewal, or a duplicate payment, never
+ *      throws paid days away).
  *   3. If the checkout carried a coupon: bump the coupon's global redemption
  *      counter (atomic, under-cap), then CONSUME the provisional redemption slot
  *      and link it to the activated subscription.
@@ -76,14 +80,19 @@ export class SettleSubscriptionUseCase {
     const periodDays =
       settled.billingCycle === BillingCycle.YEARLY ? 365 : 30;
     const existing = await this.subscriptionRepo.findByUserId(settled.userId);
+    const extendsCurrent = !!existing && existing.tier === settled.tier &&
+      existing.status === SubscriptionStatus.ACTIVE && isPaidPlanInForce(existing, now) &&
+      existing.billingProvider !== 'apple' && existing.billingProvider !== 'google';
+    const periodStart = extendsCurrent ? new Date(existing.currentPeriodStart) : now;
+    const periodBase = extendsCurrent ? new Date(existing.currentPeriodEnd).getTime() : now.getTime();
     const next: Subscription = {
       id: existing?.id ?? '', // assigned by the repository when creating
       userId: settled.userId,
       tier: settled.tier,
       status: SubscriptionStatus.ACTIVE,
       billingCycle: settled.billingCycle,
-      currentPeriodStart: now,
-      currentPeriodEnd: new Date(now.getTime() + periodDays * MS_PER_DAY),
+      currentPeriodStart: periodStart,
+      currentPeriodEnd: new Date(periodBase + periodDays * MS_PER_DAY),
       cancelAtPeriodEnd: false,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,

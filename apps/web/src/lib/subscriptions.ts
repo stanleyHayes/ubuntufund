@@ -97,6 +97,15 @@ export function getSubscriptionCheckoutStatus(id: string): Promise<SubscriptionC
   return api.post<SubscriptionCheckout>(`/subscriptions/checkout/${encodeURIComponent(id)}/verify`)
 }
 
+/**
+ * Read a checkout's stored status without contacting the payment provider
+ * (`GET /subscriptions/checkout/:id`). Cheap enough for background checks such
+ * as deciding whether to show the "returning from payment?" banner.
+ */
+export function readSubscriptionCheckout(id: string): Promise<SubscriptionCheckout> {
+  return api.get<SubscriptionCheckout>(`/subscriptions/checkout/${encodeURIComponent(id)}`)
+}
+
 // ---------------------------------------------------------------------------
 // Callback handoff store
 //
@@ -128,6 +137,26 @@ export function saveSubscriptionCheckoutHandoff(pending: PendingSubscription): v
   } catch {
     // Storage unavailable (private mode, quota) — the callback falls back to an
     // explicit `?checkout=` id or a "still confirming" state, so ignore.
+  }
+}
+
+/**
+ * Forget a checkout once it is settled, failed or expired, so the subscription
+ * page stops offering to "check payment" for it. Removes its reference entry and
+ * the `__last` fallback when that points at the same checkout.
+ */
+export function clearSubscriptionHandoff(checkoutId: string): void {
+  try {
+    const raw = localStorage.getItem(HANDOFF_KEY)
+    if (!raw) return
+    const store: Record<string, PendingSubscription> = JSON.parse(raw)
+    for (const key of Object.keys(store)) {
+      if (store[key]?.checkoutId === checkoutId) delete store[key]
+    }
+    if (Object.keys(store).length) localStorage.setItem(HANDOFF_KEY, JSON.stringify(store))
+    else localStorage.removeItem(HANDOFF_KEY)
+  } catch {
+    // Storage unavailable — nothing to clear.
   }
 }
 

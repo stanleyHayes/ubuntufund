@@ -44,7 +44,9 @@ type AccountType = 'individual' | 'organization'
 const PERSONAL_STEPS = ['Account', 'Details', 'Plan']
 const ORGANIZATION_STEPS = ['Account', 'Organization', 'Contact', 'Plan']
 
-const PAID_TIERS = [SubscriptionTier.STARTER, SubscriptionTier.PRO, SubscriptionTier.ENTERPRISE]
+// Self-serve plans only. Enterprise is arranged through sales (the API refuses
+// a self-serve Enterprise checkout), so it is never offered at signup.
+const PAID_TIERS = [SubscriptionTier.STARTER, SubscriptionTier.PRO]
 const ALL_TIERS = [SubscriptionTier.FREE, ...PAID_TIERS]
 
 interface FieldErrors {
@@ -193,9 +195,17 @@ export function RegisterForm() {
     setStep((s) => Math.max(s - 1, 0))
   }
 
+  /** A paid plan whose chosen cycle has no price is not offered on that cycle. */
+  const tierAvailable = (tier: SubscriptionTier) => {
+    const plan = plans[tier]
+    if (!plan) return false
+    if (tier === SubscriptionTier.FREE) return true
+    return (billingCycle === BillingCycle.YEARLY ? plan.priceYearly : plan.priceMonthly) > 0
+  }
+
   async function handleSubmit() {
     setApiError('')
-    if (!plans[selectedTier]) return
+    if (!plans[selectedTier] || !tierAvailable(selectedTier)) return
     setSubmitting(true)
     try {
       const referral = normalizeReferralCode(referralCode) || undefined
@@ -543,12 +553,14 @@ export function RegisterForm() {
             const active = selectedTier === tier
             const price =
               billingCycle === BillingCycle.YEARLY ? plan.priceYearly : plan.priceMonthly
+            const offered = tierAvailable(tier)
             return (
               <Box
                 key={tier}
                 component="button"
                 type="button"
                 aria-pressed={active}
+                disabled={!offered}
                 onClick={() => setSelectedTier(tier)}
                 sx={{
                   all: 'unset',
@@ -598,7 +610,7 @@ export function RegisterForm() {
                 </Box>
                 <Box sx={{ textAlign: 'right', flexShrink: 0 }}>
                   <Typography sx={{ fontWeight: 800, color: FOREST }}>
-                    {price === 0 ? 'Free' : formatCurrency(price, 'GHS')}
+                    {!offered ? 'Not offered' : price === 0 ? 'Free' : formatCurrency(price, 'GHS')}
                   </Typography>
                   {price > 0 && (
                     <Typography sx={{ fontSize: '0.7rem', color: INK_SECONDARY }}>
@@ -640,7 +652,7 @@ export function RegisterForm() {
             onClick={handleSubmit}
             variant="contained"
             color="primary"
-            disabled={submitting || !plans[selectedTier] || !acceptedTerms || !ageConfirmed}
+            disabled={submitting || !plans[selectedTier] || !tierAvailable(selectedTier) || !acceptedTerms || !ageConfirmed}
             endIcon={submitting ? <LoadingDots size={6} /> : undefined}
             sx={{ textTransform: 'none', fontWeight: 700, px: 3 }}
           >

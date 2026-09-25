@@ -112,6 +112,11 @@ export class MongoCouponRedemptionRepository
     return doc ? toDomain(doc) : null;
   }
 
+  async findByCheckoutId(checkoutId: string): Promise<CouponRedemption | null> {
+    const doc = await CouponRedemptionModel.findOne({ checkoutId });
+    return doc ? toDomain(doc) : null;
+  }
+
   async setProviderRef(
     id: string,
     providerRef: string
