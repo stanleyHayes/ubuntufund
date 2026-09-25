@@ -10,6 +10,13 @@ export interface ReportListParams {
   pageSize?: number;
 }
 
+export interface ReportReviewInput {
+  status: Exclude<ReportStatus, 'pending'>;
+  /** Staff reasoning, kept on the report and in the audit log. */
+  notes: string;
+  reviewerId: string;
+}
+
 /**
  * Extends the existing ReportRepositoryPort (used by the donor-facing
  * report-a-campaign flow) with the additional operations the moderation
@@ -20,5 +27,10 @@ export interface AdminReportRepositoryPort extends ReportRepositoryPort {
   findAll(
     params: ReportListParams
   ): Promise<{ items: ReportRecord[]; total: number }>;
-  updateStatus(id: string, status: ReportStatus): Promise<ReportRecord | null>;
+  /**
+   * Record a staff decision on a still-pending report and write its audit row
+   * atomically. Resolves null when the report is missing or was already
+   * decided, so two reviewers can never both record a decision.
+   */
+  review(id: string, input: ReportReviewInput): Promise<ReportRecord | null>;
 }

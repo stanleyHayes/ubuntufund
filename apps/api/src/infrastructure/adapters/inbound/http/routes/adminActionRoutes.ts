@@ -8,6 +8,7 @@ import { RefundOperationModel } from '../../../../database/models/RefundOperatio
 import { UserBlockModel } from '../../../../database/models/UserBlockModel.js'
 import { LiveSessionModel } from '../../../../database/models/LiveSessionModel.js'
 import { SafetyReportModel } from '../../../../database/models/SafetyReportModel.js'
+import { ReportModel } from '../../../../database/models/ReportModel.js'
 import { AccountDeletionRequestModel } from '../../../../database/models/AccountDeletionRequestModel.js'
 import { StorePurchaseModel } from '../../../../database/models/StorePurchaseModel.js'
 import { StoreBillingNotificationModel } from '../../../../database/models/StoreBillingNotificationModel.js'
@@ -48,7 +49,7 @@ export function createAdminActionRoutes(auth: ReturnType<typeof createAuthMiddle
         PublicationReviewModel.countDocuments({ status: 'pending' }),
         DonationModel.countDocuments(donationContentReviewFilter('pending')),
         TipModel.countDocuments(tipContentReviewFilter('pending')),
-
+        ReportModel.countDocuments({ status: 'pending' }),
       ])
       const definitions = [
         ['data-rights', 'Data access and privacy requests', '/privacy-requests', 'users'],
@@ -66,6 +67,7 @@ export function createAdminActionRoutes(auth: ReturnType<typeof createAuthMiddle
         ['publication-reviews', 'Public content awaiting review', '/publication-reviews', 'reports'],
         ['donation-content-reviews', 'Campaign donor content awaiting review', '/publication-reviews?queue=donation-content-reviews', 'reports'],
         ['tip-content-reviews', 'Supporter names and messages awaiting review', '/publication-reviews?queue=tip-content-reviews', 'reports'],
+        ['campaign-reports', 'Campaign reports from supporters', '/campaign-reports', 'reports'],
       ]
       const items = definitions.map(([id, title, href, resource], i) => ({
         id,

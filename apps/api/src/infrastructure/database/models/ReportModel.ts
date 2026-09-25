@@ -10,6 +10,9 @@ export interface ReportDocument extends Document {
   reason: ReportReason;
   description?: string;
   status: ReportStatus;
+  reviewedBy?: string;
+  reviewedAt?: Date;
+  reviewNotes?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -37,6 +40,9 @@ const reportSchema = new Schema<ReportDocument>(
       default: 'pending',
       index: true,
     },
+    reviewedBy: { type: String },
+    reviewedAt: { type: Date },
+    reviewNotes: { type: String },
   },
   { timestamps: true }
 );
