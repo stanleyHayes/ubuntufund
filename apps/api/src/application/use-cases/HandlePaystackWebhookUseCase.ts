@@ -1,6 +1,6 @@
 import type { DonationIntentRepositoryPort } from '../../domain/ports/outbound/DonationIntentRepositoryPort.js';
 import type { DonationIntentEntity } from '../../domain/entities/DonationIntent.js';
-import type { DonationIntentStatus } from '@ubuntu-fund/types';
+import { SubscriptionCheckoutStatus, type DonationIntentStatus } from '@ubuntu-fund/types';
 import type { PaymentAttemptRepositoryPort } from '../../domain/ports/outbound/PaymentAttemptRepositoryPort.js';
 import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGatewayPort.js';
 import type { FeePolicy } from '../services/FeePolicy.js';
@@ -276,6 +276,29 @@ export class HandlePaystackWebhookUseCase {
         },
         'subscription settlement mismatch — not activating; left for manual review'
       );
+      return;
+    }
+    if (checkout.status === SubscriptionCheckoutStatus.FAILED) {
+      // An earlier attempt on this Paystack page failed and we closed the
+      // checkout, then the member paid on the same reference. Paid money must
+      // not be dropped: re-verify with Paystack, then settle it.
+      const verified = await this.paymentGateway.verifyTransaction(reference);
+      const confirmed =
+        verified.status === 'success' &&
+        verified.reference === reference &&
+        chargeMatches({ amount: checkout.finalAmount, currency: checkout.currency }, verified);
+      if (!confirmed) {
+        logger.warn(
+          { checkoutId: checkout.id, providerRef: reference, providerStatus: verified.status },
+          'late paystack success on a failed subscription checkout could not be verified — not activating'
+        );
+        return;
+      }
+      logger.warn(
+        { checkoutId: checkout.id, providerRef: reference, alert: 'late_success_on_failed_subscription_checkout' },
+        'paystack late success on a failed subscription checkout — activating'
+      );
+      await this.settleSubscriptionUseCase.execute(checkout, reference, { allowFromFailed: true });
       return;
     }
     await this.settleSubscriptionUseCase.execute(checkout, reference);

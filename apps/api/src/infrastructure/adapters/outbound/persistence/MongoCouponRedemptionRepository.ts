@@ -173,6 +173,38 @@ export class MongoCouponRedemptionRepository
     return doc ? toDomain(doc) : null;
   }
 
+  async reclaimReleased(
+    id: string,
+    perUserLimit: number | undefined
+  ): Promise<{ redemption: CouponRedemption; seated: boolean } | null> {
+    const current = await CouponRedemptionModel.findOne({ _id: id, status: CouponRedemptionStatus.RELEASED });
+    if (!current) return null;
+    let seat: number | undefined;
+    if (perUserLimit && perUserLimit > 0) {
+      // Same ordinal search as createWithSeat. Read in the settlement's own
+      // transaction, so a concurrent claim of the same ordinal surfaces as a
+      // write conflict and the whole settlement retries.
+      const held = await CouponRedemptionModel.find({
+        couponId: current.couponId,
+        userId: current.userId,
+        seat: { $exists: true },
+      })
+        .select('seat')
+        .lean();
+      const taken = new Set(held.map((doc) => doc.seat));
+      for (let ordinal = 0; ordinal < perUserLimit; ordinal += 1) {
+        if (!taken.has(ordinal)) { seat = ordinal; break; }
+      }
+    }
+    const doc = await CouponRedemptionModel.findOneAndUpdate(
+      { _id: id, status: CouponRedemptionStatus.RELEASED },
+      { $set: { status: CouponRedemptionStatus.CONSUMED, ...(seat !== undefined ? { seat } : {}) } },
+      { new: true }
+    );
+    if (!doc) return null;
+    return { redemption: toDomain(doc), seated: !perUserLimit || perUserLimit <= 0 || seat !== undefined };
+  }
+
   async attachSubscription(
     id: string,
     subscriptionId: string

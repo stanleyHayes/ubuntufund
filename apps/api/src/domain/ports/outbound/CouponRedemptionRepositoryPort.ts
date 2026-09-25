@@ -62,6 +62,18 @@ export interface CouponRedemptionRepositoryPort {
    * the status `countByCouponAndUser` excludes — is never reachable.
    */
   markReleased(id: string): Promise<CouponRedemption | null>;
+  /**
+   * A charge settled after its checkout had already expired or failed, so its
+   * slot was RELEASED: move it RELEASED → CONSUMED so the paid use counts
+   * against the per-user limit again, re-taking the lowest free seat when the
+   * coupon has one. `seated` is false when every seat is already held (the
+   * member re-used the coupon meanwhile); the slot is still CONSUMED. Null when
+   * the slot is not RELEASED. Runs inside the settlement transaction.
+   */
+  reclaimReleased(
+    id: string,
+    perUserLimit: number | undefined
+  ): Promise<{ redemption: CouponRedemption; seated: boolean } | null>;
   /** Link the activated subscription once the checkout settles. */
   attachSubscription(
     id: string,

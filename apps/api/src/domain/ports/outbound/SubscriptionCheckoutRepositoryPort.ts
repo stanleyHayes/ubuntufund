@@ -35,8 +35,13 @@ export interface SubscriptionCheckoutRepositoryPort {
    * EXPIRED is accepted because an unpaid checkout is only expired by us; if the
    * provider later confirms the charge (a late webhook or verification), the
    * member must get what they paid for rather than lose the money.
+   * `allowFromFailed` also admits FAILED, only for a success the caller has
+   * just re-verified with the provider (payment retried on the same page).
    */
-  transitionToSucceeded(id: string): Promise<SubscriptionCheckout | null>;
+  transitionToSucceeded(
+    id: string,
+    opts?: { allowFromFailed?: boolean }
+  ): Promise<SubscriptionCheckout | null>;
 
   /** Atomically move PENDING → FAILED. Null when not PENDING (idempotent). */
   transitionToFailed(id: string): Promise<SubscriptionCheckout | null>;
